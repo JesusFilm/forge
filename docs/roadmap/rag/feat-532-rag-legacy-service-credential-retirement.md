@@ -92,8 +92,10 @@ for the original resource dispositions above.
 
 Canonical production variables use `FORGE_RAG_`; the shared provider key is
 `OPENROUTER_API_KEY`, the production model is `FORGE_RAG_EMBED_MODEL_ID`, and
-copy tooling uses `CORPUS_SOURCE_DATABASE_URL`. Railway runtime `DATABASE_URL`,
-`EMBED_MODEL_ID`, and `SERVE_BEARER_TOKENS` retain their existing contract.
+copy tooling uses `CORPUS_SOURCE_DATABASE_URL`. At the October 5 name-migration
+gate, Railway runtime `DATABASE_URL`, `EMBED_MODEL_ID`, and
+`SERVE_BEARER_TOKENS` retained their existing contract; feat-610 is scoped to
+retire the last of these from Forge serving.
 Legacy environment aliases are no longer accepted. Exact host, reader identity,
 write and role-provision acknowledgements remain mandatory.
 
@@ -116,3 +118,15 @@ execution. Neither follow-up requires completion of the broader retirement here.
 
 The pre-existing platform ticket also numbered feat-532 is outside this scope;
 this work retains the existing RAG ticket rather than renumbering unrelated work.
+
+## Owner update — October 6, 2026
+
+Jaco reports that `JesusFilm/jesusfilm-rag` is archived and fully deprecated,
+access to its VM has been revoked, and its Railway project is scheduled for
+deletion. This is an owner-reported disposition, not verification that the
+Railway project has already been deleted or that every legacy credential has
+been revoked. Keep this ticket in progress until the scheduled deletion and
+credential dispositions have redacted operator verification. The separate
+Forge service's `SERVE_BEARER_TOKENS` cutoff is tracked in
+[feat-610](feat-610-rag-static-bearer-retirement.md); it must not remove active
+Forge registered-consumer credentials or shared provider access.

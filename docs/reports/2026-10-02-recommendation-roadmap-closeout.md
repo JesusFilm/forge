@@ -1,9 +1,11 @@
 # Recommendation roadmap closeout
 
 Owner authorization: October 2, 2026 (Pacific/Auckland). The reconciled scope is
-**12 complete, 25 cancelled and one open** across 38 ticket paths. Platform
-feat-554's required future retention evidence remains open; no unfinished work
-was moved to a new ticket. The record and final dependency/index reconciliation
+**12 complete, 25 cancelled and two open** across 39 ticket paths. The original
+38-path scope still has only platform feat-554 open for future retention evidence.
+The newly discovered intermittent HNSW CI failure is tracked separately in
+content-discovery feat-611; no feat-554 acceptance was moved to that ticket.
+The record and final dependency/index reconciliation
 ship in [2541](https://github.com/JesusFilm/forge/pull/2541). The final merged-main
 confirmation is retained on that PR after merge.
 
@@ -61,7 +63,8 @@ on #2541 before merge.
 
 The original scope contains **37 paths**, initially 35 open and two complete.
 The directly required cancelled-status viewer fix adds platform feat-599, for
-**38 scoped paths**. IDs alone are unsafe: content-discovery feat-517 is in scope;
+**38 scoped paths**. The later CI investigation adds content-discovery feat-611,
+making 39 tracked paths. IDs alone are unsafe: content-discovery feat-517 is in scope;
 unrelated platform feat-517 and RAG feat-575 are not. The dispositions below match the audited integration tree on merged main
 `c7e832ae5`, plus the explicit cancellations in #2541.
 
@@ -98,7 +101,7 @@ unrelated platform feat-517 and RAG feat-575 are not. The dispositions below mat
 | [docs/roadmap/content-discovery/feat-565-implemented-shadow-recommendation-promotion.md](../roadmap/content-discovery/feat-565-implemented-shadow-recommendation-promotion.md)           | cowatch     | Complete: direct co-watch/MMR authority and supported fallback verified independently of any study.                                                                                                | [2546](https://github.com/JesusFilm/forge/pull/2546). [Refresh audit](../operations/recommendation-cowatch-refresh-2026-10-01.md#october-2-read-only-refresh-reconciliation).                                                                              |
 | [docs/roadmap/content-discovery/feat-566-recommendation-evidence-gap-remediation.md](../roadmap/content-discovery/feat-566-recommendation-evidence-gap-remediation.md)                   | measurement | Cancelled: nine historical evidence gaps reviewed individually; extra forensic/correlation campaign retired, causes unrecovered and fresh errors still actionable.                                 | [2539](https://github.com/JesusFilm/forge/pull/2539). Ticket-specific D1–D9 dispositions and [historical evidence gaps](../operations/recommendation-evidence-closeout-decisions-2026-09-29.md).                                                           |
 | [docs/roadmap/content-discovery/feat-573-sustainable-cowatch-live-refresh.md](../roadmap/content-discovery/feat-573-sustainable-cowatch-live-refresh.md)                                 | cowatch     | Complete: bounded refresh/revocation/throttle lifecycle verified; next natural post-revocation replacement remains unobserved.                                                                     | [2546](https://github.com/JesusFilm/forge/pull/2546). [Refresh audit](../operations/recommendation-cowatch-refresh-2026-10-01.md#october-2-read-only-refresh-reconciliation).                                                                              |
-| [docs/roadmap/content-discovery/feat-609-refresh-recommendation-integration-fixtures.md](../roadmap/content-discovery/feat-609-refresh-recommendation-integration-fixtures.md)           | fixtures    | Complete: fixed historical timestamps and current-schema fixture isolation, retaining production constraints and migrations.                                                                       | [2544](https://github.com/JesusFilm/forge/pull/2544). [CI: 4 fixture + 52 co-watch tests](https://github.com/JesusFilm/forge/actions/runs/36940081572/job/110630746009); one separate local PostgreSQL/Redis fallback test (not part of the new CI steps). |
+| [docs/roadmap/content-discovery/feat-611-refresh-recommendation-integration-fixtures.md](../roadmap/content-discovery/feat-611-refresh-recommendation-integration-fixtures.md)           | fixtures    | Complete: fixed historical timestamps and current-schema fixture isolation, retaining production constraints and migrations.                                                                       | [2544](https://github.com/JesusFilm/forge/pull/2544). [CI: 4 fixture + 52 co-watch tests](https://github.com/JesusFilm/forge/actions/runs/36940081572/job/110630746009); one separate local PostgreSQL/Redis fallback test (not part of the new CI steps). |
 | [docs/roadmap/platform/feat-554-recommendation-storage-rollout-verification.md](../roadmap/platform/feat-554-recommendation-storage-rollout-verification.md)                             | storage     | Open, in-progress: two real failure-free loaded daily retention cycles still required; zero qualifying cycles in the latest audit.                                                                 | [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                                                                            |
 | [docs/roadmap/platform/feat-555-recommendation-legacy-trace-reclamation.md](../roadmap/platform/feat-555-recommendation-legacy-trace-reclamation.md)                                     | storage     | Complete before this closeout: restrictive legacy-stage retirement and measured physical reclamation retained.                                                                                     | [2537](https://github.com/JesusFilm/forge/pull/2537), [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                      |
 | [docs/roadmap/platform/feat-574-recommendation-storage-efficiency.md](../roadmap/platform/feat-574-recommendation-storage-efficiency.md)                                                 | storage     | Complete: U1–U3 storage implementation, production representation checks and measured fixture savings verified.                                                                                    | [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                                                                            |
@@ -309,8 +312,106 @@ post-merge retention attempts are recorded separately on #2556; future loaded
 behavior remains to be measured. Merging code alone is not deployment or
 clean-cycle evidence.
 
-There are **zero qualifying cycles** through the failed October 4 cycle. Both
-Admin roles must run `66eccae12` or a verified descendant containing the repairs.
+The October 5 ordinary cycle also failed after #2556. Both actual Admin roles
+were observed healthy and compact on `904647329`, a verified descendant of the
+repair, with the correct HTTP/worker runner roles. The bounded ledger audit
+found four failed scheduled attempts between 10:30 and 12:01 UTC and 3,498
+successes through 19:40. Successful attempts committed 9,505 request roots,
+33,123 served items and 17,490 request-free episodes; failed attempts separately
+committed 100 roots, 390 items and 20 episodes. Both ledgers agree on the
+same-window totals, but they have no direct batch reference, so this does not
+establish per-attempt linkage. Their read caps were not reached.
+
+All four errors report expired or closed transactions. The reported operations
+include request deletion, a raw query and ledger update; these identify where
+failure surfaced, not the statement that consumed the budget. At 19:41:50 UTC,
+all 21 retained types had zero rows beyond the 24-hour propagation limit and the
+latest success watermark was 19:40:56. Newly expired records remained
+inside the window, and the scheduler continued bounded catch-up. At the separate
+19:41:56 capacity read, PGDATA had 23,093,526,528 bytes available of 48,891,670,528,
+WAL was 134,217,728 bytes, the legacy stage was empty at 24,576 allocated bytes,
+and no lock waiters were observed. No capacity threshold crossed or new physical
+reclamation is claimed. Saved aggregate receipts are under
+`outputs/heartbeats/20261005T1937-daily/` in the storage evidence directory.
+
+The repeated failures mean the page-five mitigation has not established a clean
+cycle. [PR #2580](https://github.com/JesusFilm/forge/pull/2580) addresses an
+avoidable late-phase admission path reproduced on an owned PostgreSQL fixture:
+the old code started a 500 ms deletion with only 287 ms remaining, then failed
+after preserving earlier committed work. The exact production statement that
+consumed the budget remains unproved.
+
+The repair requires more than 750 ms before admitting a nonterminal
+phase, checked before connection acquisition and after the advisory lock. A
+pre-work yield records durable `SKIPPED` / `budget_yield`, exact committed
+counters, unknown backlog and explicit bounded continuation. It does not
+advance the successful-completion watermark. Real transaction, oldest-scan and
+terminal-write failures remain failures, including failed fallback ledger
+persistence. The five-second deadline, 29-day expiry, deletion order, page caps
+and scheduling bounds remain unchanged. The threshold does not guarantee that
+an admitted phase will finish or that repeated yields cannot delay later work.
+
+Four owned PostgreSQL 18 tests and 68 focused tests passed, including real
+timeout accounting and two yields under retained slow triggers before the
+deferred contribution completed. Service, scheduler and workflow tests cover
+bounded continuation and truthful counters and errors. GitHub's hosted-runner
+incident delayed validation without executing the affected jobs. After runner
+recovery, an explicit empty retry commit preserved the reviewed source tree;
+independent review reconfirmed final head `5d590566c`. All 39 executed PR checks
+passed, including native retention regressions, with six expected scope skips
+in [run 37386269259](https://github.com/JesusFilm/forge/actions/runs/37386269259)
+and the fresh CodeQL scan. Parent inspected underlying job results because the
+existing aggregate gate did not reject earlier `abandoned` prerequisites.
+Normal squash merge `0cb08416ce3e9a1278997d061fc2f8e12e6b2b66` completed at
+October 5 **23:11:49 UTC**. A yield-only sequence cannot qualify as a clean
+loaded cycle.
+
+At **23:27:53 UTC**, both actual Admin HTTP and worker processes matched
+`0cb08416c`, with successful deployments, health 200, compact traces and HTTP
+runner disabled / worker runner enabled. HTTP deployment
+`d9c19a1b-7ddf-47d4-9dbc-0ff3c07cc293` and worker deployment
+`71e88c7d-8be0-4af2-9f15-01cbb79a311b` are recorded in the
+[release receipt](https://github.com/JesusFilm/forge/pull/2580#issuecomment-6005424722).
+Web was checked separately at `904647329` with `/watch` returning 200.
+Both retention ledgers had **zero natural attempts since merge** at the 23:28
+read; no loaded success, yield, lock skip or failure on this release was observed.
+All 21 health types had zero rows more than 24 hours overdue at 23:28:06.
+The latest success expiry cutoff, 22:04:29.558, predates the release. The healthy
+scheduler's next ordinary start is October 6 at 10:30 UTC.
+
+The separate 23:28:08 database read found 117,440,512 WAL bytes, no lock waiters
+or long transactions, and the legacy stage empty at 24,576 allocated bytes.
+PGDATA had 22,988,713,984 bytes available of 48,891,670,528 at 23:28:11. This
+snapshot is not new physical reclamation or a steady growth forecast. Sanitized
+receipts are under `outputs/heartbeats/20261005T2326-pr2580-postmerge/` in the
+storage evidence directory. Deployment and current health earn no clean-cycle
+credit.
+
+The first post-merge CI attempt passed the retention regressions but failed the
+previously intermittent six-card HNSW retrieval assertion. Its new diagnostic
+returned zero ANN candidates and twelve forced-exact candidates, with the seed,
+presentation and exact audio available. This is an executed test failure,
+distinct from the resolved runner outage. Retention's separate fixture databases
+and unchanged retrieval source give no evidence of a retention regression. The
+single failed-job retry passed; all required jobs in
+[post-merge run 37387086276](https://github.com/JesusFilm/forge/actions/runs/37387086276)
+then passed or were appropriately skipped. This does not establish or repair the
+intermittent cause. Eight fresh-schema isolated PostgreSQL 18.6 / pgvector 0.8.7
+runs passed. Their actual HNSW plans attached the provenance/audio subplan to
+the index filter, with eight loops and 1,197–1,199 rejected rows per loop. Those
+passing plans do not explain the failed CI plan. Four later attempts failed at
+fixture setup because the local host ran out of disk space, not during ANN
+retrieval. The owned disposable database was removed and no speculative source
+change was retained. The separate
+[feat-609 follow-up](../roadmap/content-discovery/feat-609-filtered-hnsw-fixture-recall.md)
+records the missing failed-plan/settings diagnostics and required regression
+proof. Production failure is not inferred from this fixture alone; no hard
+dependency or retention acceptance was moved from feat-554.
+
+There are **zero qualifying cycles** through the failed October 5 cycle. Both
+Admin roles must run `0cb08416c` or a verified descendant containing the repairs.
+Verify that merge revision or a descendant in both roles
+before attributing later observations to the admission guard.
 Natural catch-up demonstrated request-root deletion, declining overdue backlog
 and restoration of the serving-health criteria; recovery cannot qualify the
 already failed cycle. Two later ordinary loaded, failure-free daily cycles at the normal
@@ -370,7 +471,7 @@ ID/time and bounded public endpoint/browser observations; consult it before
 claiming the new status model is live.
 The initial October 2 closeout changed test/CI and the roadmap status viewer,
 without recommendation runtime or production SQL changes. Subsequent retention
-repairs #2550, #2551, #2553 and #2556 are runtime changes; their separate release and recovery
+repairs #2550, #2551, #2553, #2556 and #2580 are runtime changes; their separate release and recovery
 evidence is required as described above.
 
 The PostgreSQL CI job passed all 56 relevant native tests: one historical
@@ -389,9 +490,11 @@ production latency estimates. Raw samples and the measurement script are retaine
 under `/home/nisal/Documents/Codex/2026-10-02/recommendation-roadmap-cancelled-status/work/`
 and summarized in #2545. Normal deployed verification is recorded separately.
 
-The direct path/frontmatter audit of merged main `66eccae12` found **12 complete,
-25 cancelled and one open (feat-554)** across 38 paths, including the new viewer
-ticket. Final closure must repeat this audit on merged main, with the merge SHA
+The direct path/frontmatter audit of merged main `0cb08416c` found **12 complete,
+25 cancelled and one open (feat-554)** across the original 38 paths, including the
+viewer ticket. This evidence update adds open feat-609, so the combined tracked
+scope becomes **12 complete, 25 cancelled and two open** across 39 paths.
+Final closure must repeat this audit on merged main, with the merge SHA
 and result retained on #2541. The dependency audit
 checked all 25 retired IDs and 43 affected ticket paths, finding no residual
 retired edge or missing reverse edge; ambiguous legacy IDs resolve by their

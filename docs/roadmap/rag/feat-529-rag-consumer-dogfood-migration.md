@@ -7,7 +7,7 @@ status: "complete"
 start_date: "2026-09-16"
 duration: 7
 depends_on: ["feat-528", "feat-530"]
-blocks: []
+blocks: ["feat-610"]
 tags: ["rag", "auth", "observability"]
 ---
 
@@ -41,6 +41,11 @@ Support existing callers for seven days through registration. Disable legacy
 shared bearer access afterwards only in separately approved production cutover
 scope, with a named owner and exact timestamps. Verify embedding primary/fallback
 configuration and capacity in that later authorized scope, without secrets.
+
+**Superseded October 6, 2026:** The owner reports the seven-day period and team
+notice are complete and authorized the announced cutoff. The remaining Forge
+static-token removal is tracked in [feat-610](feat-610-rag-static-bearer-retirement.md);
+new consumers use portal-issued credentials. See the owner update below.
 
 ## Constraints
 
@@ -96,3 +101,15 @@ shared-bearer cutoff were not executed; the owner waived them as closure gates.
 Legacy bearer access remains until a separately authorized production change.
 No credential, configuration or production data is changed by this ticket
 closure.
+
+## Owner update — October 6, 2026
+
+The September 30 waiver describes the state at that closure. Jaco now reports
+that the seven-day registration period was subsequently completed, the team was
+notified with instructions for the registered-consumer approach, and October 6
+was announced as the old bearer-token decommission date. Active consumers have
+reported working retrieval directly to Jaco and their distinct portal request
+counts have increased. This update records owner attestation; it does not claim
+that this documentation PR re-ran the original scripted +3/+2 proof or changed
+production settings. [Feat-610](feat-610-rag-static-bearer-retirement.md) owns
+the still-required Forge static-token code and Railway variable cutoff.

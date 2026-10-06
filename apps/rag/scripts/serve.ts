@@ -9,7 +9,7 @@ import { serve } from "@hono/node-server"
 import { loadEnvironmentFiles, parseRuntimeEnv } from "../src/config/env.js"
 import { environmentConfigurationError } from "../src/config/environment-error.js"
 import { wire } from "../src/main.js"
-import { createApp, parseTokenRegistry } from "../src/serving/http/index.js"
+import { createApp } from "../src/serving/http/index.js"
 import { createGitHubAdmission } from "../src/serving/http/portal-github.js"
 import { createPostgresSessionStore } from "../src/adapters/postgres/portal-sessions.js"
 import { verifyPortalSessionRenewal } from "./lib/portal-session-renewal-grant.js"
@@ -23,14 +23,6 @@ const packageDirectory = fileURLToPath(new URL("..", import.meta.url))
 async function main(): Promise<void> {
   const input = loadEnvironmentFiles(packageDirectory)
   const env = parseRuntimeEnv(input)
-  if (!env.SERVE_BEARER_TOKENS) {
-    throw environmentConfigurationError(
-      "railway_bearer_tokens_required",
-      "SERVE_BEARER_TOKENS is required to start the HTTP service",
-      "railway",
-    )
-  }
-
   const wiring = wire(input)
   const portalKeys = [
     "RAG_PORTAL_DATABASE_URL",
@@ -54,25 +46,17 @@ async function main(): Promise<void> {
     : undefined
   const consumerWriterUrl = input.RAG_CONSUMER_WRITER_DATABASE_URL
   const consumerReaderUrl = input.RAG_CONSUMER_AUTH_DATABASE_URL
-  if (!!consumerWriterUrl !== !!consumerReaderUrl)
+  if (!consumerWriterUrl || !consumerReaderUrl)
     throw environmentConfigurationError(
       "consumer_access_configuration_incomplete",
-      "consumer access requires both database URLs",
+      "serving requires both consumer access database URLs",
       "railway",
     )
-  const consumerWriter = consumerWriterUrl
-    ? new PrismaClient({ datasourceUrl: consumerWriterUrl })
-    : undefined
-  const consumerReader = consumerReaderUrl
-    ? new PrismaClient({ datasourceUrl: consumerReaderUrl })
-    : undefined
-  const consumers = consumerWriter
-    ? new PostgresConsumerAccess(consumerWriter)
-    : undefined
-  const consumerAuth = consumerReader
-    ? new PostgresConsumerAuthenticator(consumerReader)
-    : undefined
-  if (consumers && !sessions)
+  const consumerWriter = new PrismaClient({ datasourceUrl: consumerWriterUrl })
+  const consumerReader = new PrismaClient({ datasourceUrl: consumerReaderUrl })
+  const consumers = new PostgresConsumerAccess(consumerWriter)
+  const consumerAuth = new PostgresConsumerAuthenticator(consumerReader)
+  if (!sessions)
     throw environmentConfigurationError(
       "consumer_access_requires_portal",
       "consumer access requires portal admission",
@@ -167,7 +151,6 @@ async function main(): Promise<void> {
       : undefined
   const app = createApp({
     retriever: wiring.retriever,
-    tokens: parseTokenRegistry(env.SERVE_BEARER_TOKENS),
     portal,
     consumerAuth,
     usage,

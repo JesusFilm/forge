@@ -101,7 +101,7 @@ its captured `0128` baseline while `0129` is pending.
 Current main already contained a completed fixture-maintenance ticket named
 `feat-590`. To preserve the explicitly requested experiment identity and pass
 the new-ID collision guard, that completed record was renumbered to the next
-unused ID, `feat-609`, with its existing plan/report/index references updated.
+unused ID, now `feat-611`, with its existing plan/report/index references updated.
 Its completed implementation and evidence are unchanged. No experiment IDs or
 GitHub issue identities changed.
 
@@ -804,3 +804,71 @@ This resolves the Analytics API authentication blocker only. No application
 code changed, historical reader was completed, live model build was run, or
 public experiment was activated. #2568 source/adapter acceptance and #2569's
 dependency remain incomplete.
+
+### #2568 programmatic GA reader continuation
+
+The dedicated Mastra reader uses ADC-backed service-account impersonation with
+`analytics.readonly`; it does not inherit the SEO bearer token or force a quota
+project. It applies the fixed JesusFilm.org Watch hostname/path filters and
+checks complete report pagination, response size, counts, requested dates,
+timezone, source truncation, sampling, thresholding, and restricted data. A
+bounded aggregate-page interface and read-only CLI expose path/media-ID mapping
+leads. Canonical mappings and ordered transitions remain explicitly unavailable.
+
+The configured reader participates in the normal source-generation dependency
+path. Qualification failure is preserved through the historical-reader boundary
+and stops the build before a model call. It cannot produce an accepted historical
+snapshot. Production range configuration is pinned to property `320198532` and
+the last complete New York-local day before the requested cutoff; a changed
+property timezone is rejected.
+
+Independent Matt Pocock Standards then Spec review against `3d4d241f0` found
+three issues: a raw CLI configuration error, an ambiguous media-ID coverage
+label, and a UTC cutoff calculation that could include future property-local
+events. The final bounded recheck found all three resolved, including response
+timezone guards and boundary regressions. The review report preserves exact
+per-file hashes at `/tmp/forge-feat-590-orchestration/2568-ga-reader-review.md`.
+No Compound Engineering skills or agents were used.
+
+The real TypeScript CLI successfully impersonated Tatai's service account and
+read the full requested report range, June 21, 2022–October 3, 2026: 200 monthly
+rows and five media-ID-presence rows, totaling 4,006,892 starts, with 3,337,802
+carrying a non-placeholder legacy media ID. A second smoke after the review
+fixes returned the same aggregates with the explicit media-component-ID label,
+`canonicalVideoMappedEvents: null`, and `source_truncation` from August 5, 2022.
+The separate bounded start-page smoke returned 100 of 152,280 aggregate rows
+and a continuation offset; it was not a full import. Live evidence is saved as
+`2568-ga-reader-live-coverage-final.json` and `2568-ga-reader-live-starts.json`
+under the task-local orchestration directory. Tokens and raw viewer/session
+rows were not saved. No live model call, successful historical build, production
+credential change, deployment, or public experiment activation was performed.
+
+The corrected worker tree passed the full Mastra suite: 277 files and 3,238
+tests, with 37 configured skips. Mastra typecheck, full package lint, touched-file
+ESLint/Prettier, diff checks and normal commit hooks passed. Source commit
+`b0892f4e42e67199de7f9617471140be82775381` contains exactly the ten independently
+reviewed application files; root compared all per-file hashes before fast-forward
+integration.
+
+Current main `8ebd6500cccb7356a295232e7cc7a91ab99d558c` introduced retention
+phase-budget handling and an additive conflict in the standalone retention
+test. The resolution preserves all three precomputed retention regressions and
+main's separate yield/continuation test. Static review confirmed the automatic
+runtime merge retains archive transaction fences and counters alongside the
+new budget admission guard. Main also allocated feat-609 to HNSW-recall work;
+only the completed fixture ticket and its references moved again, to feat-611.
+Main's feat-609 HNSW and feat-610 RAG work are unchanged. The collision guard's
+three tests and its actual merged-tree inventory check passed.
+
+Combined verification after that merge passed both Admin/Mastra typechecks,
+15 native generation-to-Admin cases, 23 Mastra reader/workflow cases and 68
+retention service/job/workflow cases. A fresh owned PostgreSQL 18 fixture passed
+all seven standalone retention cases, including committed archival counts,
+ordinary timeout failure, bounded cleanup, and the new phase-budget continuation.
+The fixture database created for that successful run was removed; the integration
+database remains. Main's optional-subtitle migration was applied only to these
+owned local databases, and Prisma Client was regenerated. No new GraphQL schema
+change or generated GraphQL artifact edit was required for this merge.
+Logs are `2568-ga-reader-integration-*.log` and `2568-ga-retention-*.log` under
+the task-local orchestration directory. The merge review is
+`2568-main-merge-review.md` there.

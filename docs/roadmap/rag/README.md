@@ -8,11 +8,11 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (October 5, 2026)
+## Status (October 6, 2026)
 
-- **Total tickets:** 45
+- **Total tickets:** 46
 - **Complete:** 33
-- **In progress:** 1
+- **In progress:** 2
 - **Not started:** 11
 - **Blocked:** 0
 
@@ -20,6 +20,7 @@ database into Admin.
 
 | Forge ID                                                          | Historical issue                                              | Feature                                                               | Status      | Forge PR                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------------------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [feat-610](feat-610-rag-static-bearer-retirement.md)              | —                                                             | Retire Forge RAG static Railway bearer tokens                         | in-progress | [#2582](https://github.com/JesusFilm/forge/pull/2582)                                                                                                                                                                                                                                                                                    |
 | [feat-605](feat-605-rag-safe-search-diagnostics.md)               | —                                                             | Classify intermittent RAG search failures safely                      | complete    | [#2564](https://github.com/JesusFilm/forge/pull/2564)                                                                                                                                                                                                                                                                                    |
 | [feat-606](feat-606-rag-post-migration-workflow-validation.md)    | —                                                             | Verify acquisition and ingestion after the environment-name migration | not-started | —                                                                                                                                                                                                                                                                                                                                        |
 | [feat-600](feat-600-seeker-rag-config-names.md)                   | —                                                             | Name Seeker RAG configuration after its consumer                      | complete    | [#2549](https://github.com/JesusFilm/forge/pull/2549)                                                                                                                                                                                                                                                                                    |
@@ -77,7 +78,7 @@ owner, all consumers have migrated, and external traffic is outside scope.
 Rollback rehearsal/expiry and final snapshot retention are not applicable.
 Unverified Icelandic import provenance and missing direct migration/AGENTS
 README links are accepted limitations. Legacy service and credential retirement
-is deferred to [feat-532](feat-532-rag-legacy-service-credential-retirement.md).
+is tracked in [feat-532](feat-532-rag-legacy-service-credential-retirement.md).
 The verified dashboard candidate includes 51 embedded Icelandic documents;
 publication remains pending the normal reviewed merge and Pages flow.
 
@@ -98,8 +99,11 @@ feat-529 dogfood and feat-530 portal are complete. The owner's
 [acceptance record](evidence/feat-529/owner-acceptance.md) distinguishes observed
 production behavior from waived verification and migration steps. The historical
 [admission evidence](evidence/feat-527/portal-admission-slice.md) records login,
-sign-out and unlisted-account denial. A future shared-bearer cutoff requires
-separate production authorization; this closure does not execute one.
+sign-out and unlisted-account denial. On October 6 Jaco reported that the
+seven-day registration period and team notification were complete and declared
+the shared-bearer decommission date.
+[Feat-610](feat-610-rag-static-bearer-retirement.md) tracks the Forge code and
+Railway variable cutoff; the September 30 closure itself made no such change.
 
 J022 records portal admission through a repository portal-user allowlist changed
 by normal PRs, with safe contributor/read-write CI checks. GitHub OAuth accepts
@@ -122,8 +126,10 @@ Railway token, default-off execution flag and hard resource bounds. Both local
 implementation tickets are tagged `ready-for-agent` and remain not started;
 publication of their specs does not enable execution or provision credentials.
 
-The October 5 environment-name migration subsection of feat-532 is complete;
-the original legacy resource retirement remains in progress. Feat-606 tracks
-separately approved future acquisition/ingestion validation. Feat-605 closes safe
+The October 5 environment-name migration subsection of feat-532 is complete.
+Jaco reports the old repository archived, VM access revoked, and Railway project
+scheduled for deletion; feat-532 remains in progress pending verification of
+that deletion and credential dispositions. Feat-606 tracks separately approved
+future acquisition/ingestion validation. Feat-605 closes safe
 failure instrumentation only; intermittent failure diagnosis and resolution are
 not claimed by its deployment verification.

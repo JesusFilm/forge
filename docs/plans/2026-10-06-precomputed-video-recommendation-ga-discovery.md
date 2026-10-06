@@ -131,6 +131,85 @@ The task-local `ga_api_read.py` uses existing ADC plus impersonation and only
 metadata or aggregate report operations; it is a discovery helper, not the
 production historical reader.
 
+### Reader continuation: explicit source truncation
+
+A further Watch-only `videostarts` report for June 21, 2022–October 3, 2026,
+grouped by year and excluding empty or unset `mediacomponentid`, returned five
+rows. Unlike the earlier standard-dimension monthly report, this report included
+`metadata.dataTruncationReasons`: `DATA_TRUNCATION_TYPE_PROPERTY`, with the
+explicit statement that data is complete only after August 5, 2022. Returning
+every `rowCount` row is therefore insufficient to claim complete coverage.
+Preserve the requested range and source warning; do not silently shorten the
+range or turn unavailable earlier data into zero events.
+
+The report returned non-placeholder media-ID starts of 140,046 (2022), 468,073
+(2023), 785,855 (2024), 958,692 (2025), and 985,136 (2026 through October 3).
+These are ID presence counts, not verified canonical mappings. Cross-report
+comparisons suggest the large historical missing-ID gap is in 2023, while the
+recent-window gap is concentrated in a small part of 2026; the reports are not
+an atomic reconciled snapshot. This request consumed 626 API quota tokens.
+The property currently declares `eventDataRetention: FIFTY_MONTHS` and
+`userDataRetention: FOURTEEN_MONTHS`; those settings alone do not establish
+recoverable ordered sequences. Evidence:
+`ga-sa-watch-start-id-coverage-by-year.json` and `ga-sa-retention-settings.json`
+under the task-local evidence directory.
+
+The existing current route classifier/manifest and
+`watchVideoRouteSnapshotBySlug` can identify current catalog candidates, including
+episode-parent/language checks. They do not by themselves establish historical
+slug ownership or the GA media-ID namespace. A bounded unauthenticated Admin
+GraphQL lookup for two candidate slugs returned HTTP 403, so no live canonical
+mapping was claimed. The read-only code report is
+`/tmp/forge-feat-590-orchestration/2568-ga-path-mapping.md`.
+
+The GA reader/preflight implementation is proceeding independently of those
+external source qualifications. The existing generation transition guard remains
+unchanged; no unavailable transition signal may become a fabricated zero.
+
+The first live smoke of the TypeScript reader used its default impersonated
+authentication path, without a supplied bearer token or SEO credential override.
+For June 21, 2022–October 3, 2026 it returned 200 monthly/event rows plus five
+identified-start rows in two report requests: 4,006,892 total starts and 3,337,802
+starts with a non-placeholder media ID. It correctly returned
+`status: incomplete`, `reason: source_truncation`, and
+`sourceAvailableAfter: 2022-08-05`; mapped-event counts remain unknown.
+The aggregate-page smoke returned 100 of 152,280 path/media-ID rows with
+`nextOffset: 100`, the same truncation warning, and explicit unverified mapping
+and unavailable transitions. This was one bounded page, not a complete import.
+Evidence files are `2568-ga-reader-live-coverage.json` and
+`2568-ga-reader-live-starts.json` in the task-local evidence directory.
+
+The server-side reader is configured with `PRECOMPUTED_GA4_PROPERTY_ID` and
+`PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL`. Production dependency wiring is pinned
+to the verified property `320198532`, its creation date, and `America/New_York`
+timezone. It requests dates through the last fully closed property-local day
+before the generation cutoff and rejects a changed response timezone. Partial
+days are deliberately excluded from this preflight. The read-only inspection
+command accepts an explicit date range, for example from the Mastra package:
+
+```sh
+pnpm inspect:precomputed-ga-watch --start=2022-06-21 --end=2026-10-03 --mode=coverage
+pnpm inspect:precomputed-ga-watch --start=2022-06-21 --end=2026-10-03 --mode=starts --offset=0
+```
+
+Use the existing remote ADC impersonation setup; this command does not require
+an API key or downloaded service-account key. It reports only aggregates.
+`mediaComponentIdCoverage` explicitly names `customEvent:mediacomponentid` and
+keeps `canonicalVideoMappedEvents: null`. A successful inspection command is
+not a successful recommendation build: generation still fails before calling
+the model when source qualification is incomplete or transitions are unavailable.
+No production workload credential configuration or deployment has been performed.
+
+The bounded git-history investigation found no assignment to GA
+`mediacomponentid` in tracked Web/Admin/package code. Commit `344522291`
+(July 21, 2026) introduced Watch's explicit GA player events using `video_id`
+and `video_dub_id`; it did not supply the older dimension. Later consent-gate
+changes (`96dc3aeee`, August 31; removal `09c74a948`, September 10) do not prove
+deployment dates or explain the earlier August discontinuity. The unrelated
+Arclight use of `mediaComponentId` is not a GA-to-Core crosswalk. External
+tag/source definitions or a verified crosswalk remain required. Details:
+`/tmp/forge-feat-590-orchestration/2568-ga-legacy-id-provenance.md`.
+
 ## Current GA reporting data
 
 The GA dashboard contains current data. The age of the warehouse copies below

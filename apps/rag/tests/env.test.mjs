@@ -131,7 +131,7 @@ test("the committed example is a valid local environment", async () => {
   )
 })
 
-test("railway validation requires and validates scoped bearer JSON", () => {
+test("railway validation requires registered auth and ignores the retired static map", () => {
   let error
   try {
     assertEnvironmentForTarget(runtimeEnv, "railway")
@@ -139,21 +139,26 @@ test("railway validation requires and validates scoped bearer JSON", () => {
     error = caught
   }
   assert.ok(error instanceof EnvironmentConfigurationError)
-  assert.equal(error.code, "railway_bearer_tokens_required")
-  assert.equal(error.target, "railway")
-  assert.throws(
-    () =>
-      assertEnvironmentForTarget(
-        { ...runtimeEnv, SERVE_BEARER_TOKENS: '{"token":[]}' },
-        "railway",
-      ),
-    /SERVE_BEARER_TOKENS/,
+  assert.equal(error.code, "consumer_access_configuration_incomplete")
+  const registeredEnv = {
+    ...runtimeEnv,
+    RAG_CONSUMER_WRITER_DATABASE_URL:
+      "postgresql://writer:fixture@localhost/rag",
+    RAG_CONSUMER_AUTH_DATABASE_URL: "postgresql://reader:fixture@localhost/rag",
+  }
+  assert.doesNotThrow(() =>
+    assertEnvironmentForTarget(registeredEnv, "railway"),
   )
   assert.doesNotThrow(() =>
     assertEnvironmentForTarget(
-      { ...runtimeEnv, SERVE_BEARER_TOKENS: '{"token":["*"]}' },
+      { ...registeredEnv, SERVE_BEARER_TOKENS: "retired-invalid-value" },
       "railway",
     ),
+  )
+  assert.equal(
+    parseRuntimeEnv({ ...runtimeEnv, SERVE_BEARER_TOKENS: "retired" })
+      .SERVE_BEARER_TOKENS,
+    undefined,
   )
 })
 

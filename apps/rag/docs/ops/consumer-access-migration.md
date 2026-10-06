@@ -32,12 +32,11 @@ as the transaction commits, so coordinate installation with every caller.
    real backend and a local database. End-to-end user-flow verification is
    deferred to that work. Merging the backend does not claim those checks passed
    or require temporary production consumers or an API-only operator harness.
-5. Use the existing shared token path only during the separately authorized
-   seven-day registration/support grace. It is `legacy-unattributed`; do not
-   infer consumer identity from IP, user agent or caller headers. A credential
-   beginning `rag_` always uses registered lookup; lookup failure never falls
-   through to the shared token map. Feat-529 owns the actual ops HTTP dogfood,
-   grace start, communications and cutoff. No cutoff is automatic in feat-527.
+5. During the historical registration period, the shared token path was
+   `legacy-unattributed`; do not infer consumer identity from IP, user agent or
+   caller headers. Feat-529 records Jaco's October 6 confirmation that the
+   seven-day period and team communication occurred. Feat-610 removes that path
+   after registered consumer operation was confirmed.
 
 ## Production activation ownership (feat-530)
 
@@ -142,9 +141,31 @@ inspection, and operational latency/concurrency. Track these honestly as follow-
 work rather than prerequisites for merging this backend slice. Standard production
 role separation and source configuration remain necessary to enable access.
 
-Feat-528 adds usage visibility and the reporting UI can follow it. Feat-529 owns
-actual RAGBot HTTP dogfood and separately authorized grace/cutoff. The portal
-management UI now precedes dogfood; shared-token retirement remains later work.
+Feat-528 added usage visibility. Feat-529 recorded the historical dogfood and
+registration period; feat-610 owns the subsequent static-token cutoff.
+
+## Static token retirement — October 6, 2026
+
+Jaco reports that the registration period is complete, the team has the new
+consumer instructions, and active consumers show separately increasing usage and
+confirm working retrieval. Feat-610 removes the `SERVE_BEARER_TOKENS` lookup and
+startup requirement. The `/v1/search` Authorization header still carries each
+registered consumer's own Bearer credential; current source grants and usage
+identity remain unchanged.
+
+Deploy the registered-only code through the normal PR-to-main path while the
+old Railway variable is still present. The new code ignores it, so the static
+credentials lose authorization when that build is deployed. Verify service
+health, portal access, registered consumers and usage, and HTTP 401 for a retired
+static token without recording its value. Only then remove
+`SERVE_BEARER_TOKENS` from `forge/production/@forge/rag` and retire its old
+caller-side copies. A removed variable on the pre-cutoff build prevents startup.
+Removing the value after the new build is healthy also prevents an accidental
+return of the old map during rollback.
+Keep the registered consumer database roles, credentials and source grants.
+Record a redacted deployment/verification receipt in feat-610; do not claim
+production revocation from this code PR alone. Rollback must preserve revoked
+credential denials and must not restore static-token access.
 
 ## Recovery and rollback
 
@@ -157,5 +178,6 @@ management UI now precedes dogfood; shared-token retirement remains later work.
   receiver's secret manager. The old credential is never reactivated.
 - Rollback application code only after verifying current deny state. Leave the
   additive schema in place; never restore shared-token access as an incidental
-  rollback. Production grace/cutoff or emergency access changes need separate
-  authorization.
+  rollback. The owner authorized the October 6, 2026 cutoff recorded in
+  feat-610; any later grace, cutoff change, or emergency access change needs
+  separate authorization.

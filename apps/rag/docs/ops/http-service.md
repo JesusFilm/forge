@@ -11,10 +11,11 @@ deploy a local checkout with `railway up`.
 2. Set the config-as-code path to `apps/rag/railway.toml` and confirm Railway
    recognizes its build, pre-deploy, start, and healthcheck settings.
 3. Set `DATABASE_URL` to the existing feat-425 PostgreSQL service reference.
-4. Set `OPENROUTER_API_KEY`, `EMBED_MODEL_ID`, and
-   `SERVE_BEARER_TOKENS`. The bearer value is a JSON map from a distinct random
-   consumer token to a non-empty source-key list; `["*"]` is reserved for
-   consumers approved for every source.
+4. Set `OPENROUTER_API_KEY`, `EMBED_MODEL_ID`, and the separately provisioned
+   `RAG_CONSUMER_WRITER_DATABASE_URL` and `RAG_CONSUMER_AUTH_DATABASE_URL`.
+   Configure portal admission and the reviewed default source keys as described
+   in [consumer-access-migration.md](consumer-access-migration.md). The service
+   requires registered consumer authentication at startup.
 5. Do not set `PORT`; Railway injects it. Add gateway embedding variables only
    when this receiver is intentionally using that gateway.
 6. Re-enable automatic deployments only after the source branch and variables
@@ -41,7 +42,8 @@ Run the environment preflight without printing any values:
 railway run --project 98952497-a4d9-4714-8fe8-0cdbff3147c9 --environment production --service forge-rag --no-local -- pnpm --filter @forge/rag env:check railway
 ```
 
-Inject `SMOKE_TOKEN` through the operator environment, then run the smoke once
+Inject a registered consumer credential as `SMOKE_TOKEN` through the operator
+environment, then run the smoke once
 against the public HTTPS origin and once against the Railway-private origin:
 
 ```sh

@@ -77,6 +77,12 @@ display, verifier-only storage and atomic rotation are unchanged.
 - `apps/rag/docs/ops/environment-and-secrets.md`: actual package-local location
   of the operations guide referenced by the package AGENTS file. It documents
   receiver-first issuance/rotation and `SERVE_BEARER_TOKENS` compatibility.
+
+  **Superseded October 6, 2026:** The guide now directs operators to registered
+  consumer credentials created through the portal. The compatibility statement
+  above records the plan-time state; [feat-610](../roadmap/rag/feat-610-rag-static-bearer-retirement.md)
+  tracks retirement of the Railway token map.
+
 - Dogfood must use the actual `forge-rag-retrieve` ops task through the RAG HTTP
   `POST /v1/search` path. Register RAGBot as an ordinary consumer first. The task definition is not tracked in this checkout; record its
   approved workspace path/revision before executing feat-529. Seeker's client,
@@ -98,7 +104,7 @@ display, verifier-only storage and atomic rotation are unchanged.
   provides storage tradeoffs. Its example handoff channel is not an approval
   for this programme. No applicable unresolved finding exists in `todos/`.
 
-Useful search: `rg -n 'TokenRegistry|lookupScope|resolveScope|SERVE_BEARER_TOKENS|createApp' apps/rag`.
+Historical implementation search: `rg -n 'TokenRegistry|lookupScope|resolveScope|SERVE_BEARER_TOKENS|createApp' apps/rag`.
 
 ## Approved decisions and remaining implementation details
 
@@ -367,6 +373,13 @@ completion deduplication and read-only aggregates. Applied migration history and
 old metadata remain inert for audit/rolling rollback compatibility.
 
 ## D. Shared-token migration and rollback
+
+> **Superseded October 6, 2026:** The owner reports the seven-day registration
+> period and team notice are complete and authorized the announced cutoff.
+> [Feat-610](../roadmap/rag/feat-610-rag-static-bearer-retirement.md) owns the
+> Forge static-token code and Railway variable retirement. New consumers use
+> portal-issued credentials; the original sequence below remains as planning
+> history.
 
 Inventory integrations by accountable owner without recording credential values
 or selectors. Create each through the authenticated backend with runtime ownership. During the seven-day registration/support grace,

@@ -254,7 +254,10 @@ export async function executeStudioRpc(
       return dubs
         .filter(
           (d) =>
-            d.hls && d.downloads.length && d.videoEdition?.subtitles.length,
+            d.hls?.trim() &&
+            d.downloads.some((x) => x.url?.trim()) &&
+            d.videoEdition &&
+            Number(d.lengthInMilliseconds) > 0,
         )
         .map((d) => ({
           videoId: d.videoId,
@@ -263,17 +266,25 @@ export async function executeStudioRpc(
           language: v.language,
           title: d.video.locales[0]?.title ?? d.videoId,
           durationMs: Number(d.lengthInMilliseconds),
-          tracks: d.videoEdition!.subtitles.map((t) => ({
-            id: t.id,
-            primary: t.primary,
-            aiGenerated: t.aiGenerated,
-          })),
-          downloads: d.downloads.map((x) => ({
-            id: x.id,
-            width: x.width,
-            height: x.height,
-            quality: x.quality,
-          })),
+          tracks: d
+            .videoEdition!.subtitles.filter(
+              (t) =>
+                t.vttSrc?.trim() &&
+                (t.videoId === null || t.videoId === d.videoId),
+            )
+            .map((t) => ({
+              id: t.id,
+              primary: t.primary,
+              aiGenerated: t.aiGenerated,
+            })),
+          downloads: d.downloads
+            .filter((x) => x.url?.trim())
+            .map((x) => ({
+              id: x.id,
+              width: x.width,
+              height: x.height,
+              quality: x.quality,
+            })),
         }))
     }
   }

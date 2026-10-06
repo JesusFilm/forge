@@ -36,3 +36,14 @@ or migration operation was executed. It does not authorize a production change.
   needs a separately authorized production change.
 - Primary/fallback embedding and capacity checks specified for that later
   cutoff were not performed as part of this closure.
+
+## Subsequent owner update — October 6, 2026
+
+Jaco reports that the seven-day registration period was completed after this
+September 30 closure, the team received instructions for the registered
+consumer approach, and October 6 was announced as the old bearer-token
+decommission date. Active consumers independently confirmed working retrieval
+and their portal request counts increased separately. This later attestation
+does not retroactively turn the scripted September 30 checks into measured
+results. [Feat-610](../../feat-610-rag-static-bearer-retirement.md) tracks the
+Forge static-token code and Railway variable cutoff.

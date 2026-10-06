@@ -735,6 +735,137 @@ describe("recommendation retention service", () => {
     expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
   })
 
+  it("propagates an ordinary lock-skip ledger failure", async () => {
+    const { prisma, transaction } = buildPrisma()
+    transaction.$queryRaw.mockReset().mockResolvedValueOnce([{ locked: false }])
+    prisma.recommendationRetentionRun.update.mockRejectedValueOnce(
+      new Error("skip ledger unavailable"),
+    )
+
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never),
+    ).rejects.toThrow("skip ledger unavailable")
+    expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
+  })
+
+  it("rechecks budget after admission delay and yields without claiming a health scan", async () => {
+    const { prisma, transaction } = buildPrisma()
+    let clock = 0
+    let lockAttempts = 0
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    transaction.$queryRaw.mockImplementation(async (query: Prisma.Sql) => {
+      if (query.sql.includes("pg_try_advisory_xact_lock")) {
+        if (++lockAttempts === 1) clock = 4_600
+        return [{ locked: true }]
+      }
+      return []
+    })
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).resolves.toMatchObject({
+        status: "yielded",
+        rootsDeleted: 0,
+        rowCounts: {},
+        oldestExpiredAtAfter: null,
+        overdueAfterRun: null,
+        batchLimitReached: true,
+        continuationRequired: true,
+      })
+      expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
+      expect(prisma.$transaction).toHaveBeenCalledTimes(2)
+      expect(
+        transaction.recommendationRetentionRun.update,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: "SKIPPED",
+            reasonCode: "budget_yield",
+            oldestExpiredAtAfter: null,
+          }),
+        }),
+      )
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("keeps a terminal write timeout failed after a safe pre-work yield", async () => {
+    const { prisma, transaction } = buildPrisma()
+    let clock = 0
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    prisma.$transaction
+      .mockImplementationOnce(async (callback) => {
+        clock = 4_600
+        return callback(transaction)
+      })
+      .mockRejectedValueOnce(new Error("terminal write timed out"))
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).rejects.toThrow("terminal write timed out")
+      expect(prisma.recommendationRetentionRun.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: "FAILED" }),
+        }),
+      )
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("does not report a lock-busy terminal yield as a benign skip when fallback persistence fails", async () => {
+    const { prisma, transaction } = buildPrisma()
+    let clock = 0
+    let lockAttempts = 0
+    const now = vi.spyOn(Date, "now").mockImplementation(() => clock)
+    transaction.$queryRaw.mockImplementation(async (query: Prisma.Sql) => {
+      if (query.sql.includes("pg_try_advisory_xact_lock")) {
+        if (++lockAttempts === 1) {
+          clock = 4_600
+          return [{ locked: true }]
+        }
+        return [{ locked: false }]
+      }
+      return []
+    })
+    prisma.recommendationRetentionRun.update.mockRejectedValueOnce(
+      new Error("fallback ledger unavailable"),
+    )
+    try {
+      await expect(
+        purgeExpiredRecommendationRequests(prisma as never),
+      ).rejects.toThrow("fallback ledger unavailable")
+      expect(prisma.recommendationRetentionRun.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: "SKIPPED",
+            reasonCode: "lock_not_acquired",
+          }),
+        }),
+      )
+      expect(transaction.recommendationRequest.findMany).not.toHaveBeenCalled()
+    } finally {
+      now.mockRestore()
+    }
+  })
+
+  it("keeps a failed oldest-expired scan failed rather than yielding", async () => {
+    const { prisma, transaction } = buildPrisma()
+    transaction.recommendationRequest.findFirst.mockRejectedValueOnce(
+      new Error("oldest scan timed out"),
+    )
+
+    await expect(
+      purgeExpiredRecommendationRequests(prisma as never),
+    ).rejects.toThrow("oldest scan timed out")
+    expect(prisma.recommendationRetentionRun.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: "FAILED" }),
+      }),
+    )
+  })
+
   it("continues when an expired authority tombstone remains after the bounded purge", async () => {
     const { prisma, transaction } = buildPrisma()
     const now = new Date("2026-09-29T00:00:00Z")

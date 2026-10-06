@@ -99,7 +99,7 @@ export const STUDIO_MCP_TOOLS = [
   {
     name: "shorts.sourcePreview",
     description:
-      "Read a bounded page of exact-language retained canonical subtitle cues. Follow nextOffset until null for complete range coverage.",
+      "Read exact-language retained cues using sourceSnapshotId from shorts.capture, its language slug, and a range inside the captured trim. Returns explicit no-subtitle evidence when none was selected. Follow nextOffset until null.",
     scope: "shorts:read",
     action: "source-preview",
     schema: studioSourcePreviewSchema,
@@ -141,7 +141,7 @@ export const STUDIO_MCP_TOOLS = [
   {
     name: "shorts.search",
     description:
-      "Find exact-language video/dub/edition, subtitle and download identities for source capture.",
+      "Find exact-language playable video/dub/edition and download identities. Tracks may be empty; use trackId: null in shorts.capture for footage without subtitles.",
     scope: "shorts:read",
     action: "search",
     schema: z
@@ -151,14 +151,15 @@ export const STUDIO_MCP_TOOLS = [
   {
     name: "shorts.capture",
     description:
-      "Capture canonical source and subtitle identity, never a caller URL or replacement transcription. Media materialization remains a trusted broker step.",
+      "Capture canonical footage with exact catalog identities. Set trackId: null explicitly for no subtitles. Returns the snapshot id needed by shorts.source and shorts.sourcePreview. Never invent dialogue or a track. Media materialization remains a trusted broker step.",
     scope: "shorts:edit",
     action: "capture",
     schema: studioCaptureSourceSchema,
   },
   {
     name: "shorts.source",
-    description: "Read canonical source snapshot.",
+    description:
+      "Read a retained canonical source snapshot using its id from shorts.capture. A catalog video or dub id is not a snapshot id.",
     scope: "shorts:read",
     action: "source",
     schema: z.object({ id: studioIdSchema }).strict(),

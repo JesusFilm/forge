@@ -1149,5 +1149,242 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         })
       }
     }, 30_000)
+
+    it("yields before starting another phase when committed work leaves too little time", async () => {
+      const now = new Date()
+      const createdAt = new Date(now.getTime() - 30 * day)
+      const expiresAt = new Date(now.getTime() - day)
+      const requestId = randomUUID()
+      const projectionRunId = randomUUID()
+      const secondProjectionRunId = randomUUID()
+      const standaloneEpisodeId = randomUUID()
+      const manifestId = randomUUID()
+      const generationId = randomUUID()
+      const contributionId = randomUUID()
+      await db.recommendationRequest.create({
+        data: {
+          id: requestId,
+          contractVersion: "semantic-recommendation-v1",
+          surfaceVersion: "watch-below-player-v1",
+          manifestId: COWATCH_MMR_TRIAL_MANIFEST.id,
+          strategyVersion: COWATCH_MMR_TRIAL_MANIFEST.strategyVersion,
+          classifierVersion: "legacy-position-v0",
+          sessionDigest: compositionDigest(requestId),
+          locale: "en",
+          seedMediaId: "fixture-seed",
+          expectedItemCount: 0,
+          state: "ISSUED",
+          result: "EMPTY",
+          deliveryJti: randomUUID(),
+          signingKid: "fixture",
+          issuedAt: createdAt,
+          createdAt,
+          expiresAt,
+        },
+      })
+      await db.recommendationProfileProjectionRun.create({
+        data: {
+          id: projectionRunId,
+          scope: "SESSION",
+          sessionDigest: compositionDigest(projectionRunId),
+          state: "COMPLETED",
+          completedAt: createdAt,
+          createdAt,
+          expiresAt,
+        },
+      })
+      await db.recommendationProfileProjectionRun.create({
+        data: {
+          id: secondProjectionRunId,
+          scope: "SESSION",
+          sessionDigest: compositionDigest(secondProjectionRunId),
+          state: "COMPLETED",
+          completedAt: createdAt,
+          createdAt,
+          expiresAt,
+        },
+      })
+      await db.recommendationPlaybackEpisode.create({
+        data: {
+          id: standaloneEpisodeId,
+          mediaId: "fixture-media",
+          sessionDigest: compositionDigest(standaloneEpisodeId),
+          state: "FINALIZED",
+          activeUntil: new Date(createdAt.getTime() + day),
+          hardUntil: new Date(createdAt.getTime() + 2 * day),
+          createdAt,
+          expiresAt,
+        },
+      })
+      await db.recommendationStrategyManifest.create({
+        data: {
+          id: manifestId,
+          strategyVersion: manifestId,
+          contractVersion: "semantic-recommendation-v1",
+          surfaceVersion: "watch-below-player-v1",
+          generator: "semantic",
+          maxItems: 1,
+        },
+      })
+      await db.recommendationProfileProjectionGeneration.create({
+        data: {
+          id: generationId,
+          manifestId,
+          scope: "SESSION",
+          sessionDigest: compositionDigest(generationId),
+          generation: 1,
+          projectionVersion: "fixture",
+          clusteringVersion: "fixture",
+          eligibilityPolicyVersion: "fixture",
+          outcomeClassifierVersion: "fixture",
+          inputWindowStart: createdAt,
+          inputWindowEnd: expiresAt,
+          inputDigest: compositionDigest(`input-${generationId}`),
+          retentionDays: 1,
+          createdAt,
+          expiresAt,
+        },
+      })
+      await db.recommendationProfileProjectionContribution.create({
+        data: {
+          id: contributionId,
+          generationId,
+          kind: "EXPLICIT_PREFERENCE",
+          sourceIdDigest: compositionDigest(contributionId),
+          targetMediaId: "fixture-media",
+          weight: 0.5,
+          occurredAt: createdAt,
+          createdAt,
+          expiresAt,
+        },
+      })
+      await db.$executeRawUnsafe(`
+        CREATE FUNCTION owned_retention_late_phase() RETURNS trigger
+        LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(4.3); RETURN OLD; END $$
+      `)
+      await db.$executeRawUnsafe(`
+        CREATE TRIGGER owned_retention_late_phase
+        BEFORE DELETE ON recommendation_profile_projection_run
+        FOR EACH ROW EXECUTE FUNCTION owned_retention_late_phase()
+      `)
+      await db.$executeRawUnsafe(`
+        CREATE FUNCTION owned_retention_late_contribution() RETURNS trigger
+        LANGUAGE plpgsql AS $$ BEGIN PERFORM pg_sleep(0.9); RETURN OLD; END $$
+      `)
+      await db.$executeRawUnsafe(`
+        CREATE TRIGGER owned_retention_late_contribution
+        BEFORE DELETE ON recommendation_profile_projection_contribution
+        FOR EACH ROW EXECUTE FUNCTION owned_retention_late_contribution()
+      `)
+      try {
+        const successWatermarkBefore = (
+          await readRecommendationRetentionHealth(db, now)
+        ).latestSuccessAt
+        const first = await purgeExpiredRecommendationRequests(db, now, 1)
+        expect(first).toMatchObject({
+          status: "yielded",
+          rootsDeleted: 1,
+          batchLimitReached: true,
+          continuationRequired: true,
+          overdueAfterRun: null,
+          oldestExpiredAtAfter: null,
+          rowCounts: {
+            requests: 1,
+            expiredStandaloneEpisodes: 1,
+            expiredProfileProjectionRuns: 1,
+          },
+        })
+        const firstDurable =
+          await db.recommendationRetentionRun.findUniqueOrThrow({
+            where: { id: first.runId },
+          })
+        expect(firstDurable).toMatchObject({
+          status: "SKIPPED",
+          reasonCode: "budget_yield",
+          rootsDeleted: 1,
+          oldestExpiredAtAfter: null,
+        })
+        expect(firstDurable.rowCounts).toEqual(first.rowCounts)
+        expect(
+          first.rowCounts.expiredProfileProjectionContributions,
+        ).toBeUndefined()
+        expect(
+          (await readRecommendationRetentionHealth(db, now)).latestSuccessAt,
+        ).toEqual(successWatermarkBefore)
+        expect(
+          await db.recommendationRequest.count({ where: { id: requestId } }),
+        ).toBe(0)
+        expect(
+          await db.recommendationPlaybackEpisode.count({
+            where: { id: standaloneEpisodeId },
+          }),
+        ).toBe(0)
+        expect(
+          await db.recommendationProfileProjectionRun.count({
+            where: { id: { in: [projectionRunId, secondProjectionRunId] } },
+          }),
+        ).toBe(1)
+        expect(
+          await db.recommendationProfileProjectionContribution.count({
+            where: { id: contributionId },
+          }),
+        ).toBe(1)
+        const second = await purgeExpiredRecommendationRequests(db, now, 1)
+        expect(second).toMatchObject({
+          status: "yielded",
+          rootsDeleted: 0,
+          overdueAfterRun: null,
+          continuationRequired: true,
+          rowCounts: { expiredProfileProjectionRuns: 1 },
+        })
+        const secondDurable =
+          await db.recommendationRetentionRun.findUniqueOrThrow({
+            where: { id: second.runId },
+          })
+        expect(secondDurable).toMatchObject({
+          status: "SKIPPED",
+          reasonCode: "budget_yield",
+          rootsDeleted: 0,
+          oldestExpiredAtAfter: null,
+        })
+        expect(secondDurable.rowCounts).toEqual(second.rowCounts)
+        expect(
+          second.rowCounts.expiredProfileProjectionContributions,
+        ).toBeUndefined()
+        expect(
+          await db.recommendationProfileProjectionRun.count({
+            where: { id: { in: [projectionRunId, secondProjectionRunId] } },
+          }),
+        ).toBe(0)
+        expect(
+          await db.recommendationProfileProjectionContribution.count({
+            where: { id: contributionId },
+          }),
+        ).toBe(1)
+        const followUp = await purgeExpiredRecommendationRequests(db, now, 1)
+        expect(followUp.status).toBe("succeeded")
+        expect(followUp.rowCounts.expiredProfileProjectionContributions).toBe(1)
+        expect(
+          await db.recommendationProfileProjectionContribution.count({
+            where: { id: contributionId },
+          }),
+        ).toBe(0)
+      } finally {
+        await db.$executeRawUnsafe(`
+          DROP TRIGGER IF EXISTS owned_retention_late_phase
+          ON recommendation_profile_projection_run
+        `)
+        await db.$executeRawUnsafe(
+          `DROP FUNCTION IF EXISTS owned_retention_late_phase()`,
+        )
+        await db.$executeRawUnsafe(`
+          DROP TRIGGER IF EXISTS owned_retention_late_contribution
+          ON recommendation_profile_projection_contribution
+        `)
+        await db.$executeRawUnsafe(
+          `DROP FUNCTION IF EXISTS owned_retention_late_contribution()`,
+        )
+      }
+    }, 30_000)
   },
 )

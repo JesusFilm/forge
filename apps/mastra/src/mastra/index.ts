@@ -1,3 +1,5 @@
+import { readStudioBytes } from "@forge/studio-server"
+import { studioRuntimeAvailable } from "../services/studio-authoring/availability"
 import { createCalendarRuntime } from "../services/studio-authoring/calendar-runtime"
 import {
   serializeStudioInstructions,
@@ -463,10 +465,18 @@ export const mastra = new Mastra({
       registerApiRoute("/forge-shorts", {
         method: "POST",
         handler: async (c) => {
+          let raw: unknown
+          try {
+            raw = JSON.parse(await readStudioBytes(c.req.raw.clone()))
+          } catch {
+            return c.json({ error: "Invalid Studio request" }, 400)
+          }
           if (
-            env.STUDIO_AGENT_ENABLED !== "true" ||
-            !env.STUDIO_INTERACTIVE_PUBLIC_KEYS ||
-            !env.STUDIO_ADMISSION_SECRET
+            !studioRuntimeAvailable(raw, {
+              enabled: env.STUDIO_AGENT_ENABLED === "true",
+              publicKeys: env.STUDIO_INTERACTIVE_PUBLIC_KEYS,
+              admissionSecret: env.STUDIO_ADMISSION_SECRET,
+            })
           )
             return c.json({ error: "Studio agent unavailable" }, 503)
           return getStudioRuntime()(c.req.raw)
@@ -1113,7 +1123,7 @@ function getStudioRuntime() {
       publicKeys: env.STUDIO_INTERACTIVE_PUBLIC_KEYS!,
       environment: env.STUDIO_ENVIRONMENT,
       model: env.STUDIO_AGENT_MODEL,
-      admissionSecret: env.STUDIO_ADMISSION_SECRET!,
+      admissionSecret: env.STUDIO_ADMISSION_SECRET ?? "",
       serialize: (work) => serializeStudioInstructions(pool, work),
       claim: async (id, digest) => {
         const result = await calendarPool.query({
@@ -1130,7 +1140,7 @@ function getStudioRuntime() {
       publicKeys: env.STUDIO_INTERACTIVE_PUBLIC_KEYS!,
       environment: env.STUDIO_ENVIRONMENT,
       model: env.STUDIO_AGENT_MODEL,
-      admissionSecret: env.STUDIO_ADMISSION_SECRET!,
+      admissionSecret: env.STUDIO_ADMISSION_SECRET ?? "",
       claim: async (id, digest) => {
         const result = await pool.query(
           "INSERT INTO short_agent_execution (id, instruction_digest) VALUES ($1,$2) ON CONFLICT DO NOTHING RETURNING id",

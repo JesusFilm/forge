@@ -17,9 +17,9 @@ describes the private reporting contract and limits.
 - Initial base: `d661b99939e24ba41834adce53c6bad9262bcee9`.
 - Branch: `codex/precomputed-video-recommendations`.
 - Checkout: `/home/nisal/.codex/worktrees/precomputed-video-recommendations/forge`.
-- Latest source commit: `c9b9d6fd6fc283dc810769a1f8baca03113b4a1d` for the
-  #2568 qualification continuation. Root verified its tree matches independent
-  review and that integrated application/package/test files match exactly.
+- Latest source commit: `b0892f4e42e67199de7f9617471140be82775381` for the
+  #2568 GA reader continuation. All ten source files match independent review
+  hashes. Earlier qualification source: `c9b9d6fd6fc283dc810769a1f8baca03113b4a1d`.
   Earlier #2573 sources are `acbb33fe4` and `302dffe31`.
 - The PR records the current published integration SHA and [CI checks](https://github.com/JesusFilm/forge/pull/2578/checks).
   Previous published head `9e0cd06c2` passed 44 checks with six skipped; its main CI
@@ -34,24 +34,30 @@ describes the private reporting contract and limits.
 All issues remain open until merge. Dependencies advance on verified acceptance,
 not issue closure. Implemented, integrated, merged, and live are distinct.
 
-| Issue | Immediate blockers | State                                            | Integrated work                                          |
-| ----- | ------------------ | ------------------------------------------------ | -------------------------------------------------------- |
-| #2566 | None               | Integrated-and-verified                          | `9a984c544`; saved Admin comparison                      |
-| #2567 | #2566              | Integrated-and-verified                          | `c89db0e4e`; bounded Astra producer; no live model smoke |
-| #2568 | #2567              | Fixture and qualification verified; live blocked | `b1703cd8c`, `acbe43fc7`, source `c9b9d6fd6`             |
-| #2569 | #2568              | Waiting for prerequisites                        | Unassigned                                               |
-| #2570 | #2566              | Integrated-and-verified                          | `0a93244a3`; private Watch serving                       |
-| #2571 | #2570              | Integrated-and-verified                          | `267a65281`, `b69592b6c`, corrections in `a7f36d778`     |
-| #2572 | #2571              | Integrated-and-verified                          | Core `a7f36d778`, UI `af8eba415`                         |
-| #2573 | #2572              | Private reporting verified; live incomplete      | Sources `acbb33fe4`, `302dffe31`; migration `0134`       |
-| #2574 | #2569, #2573       | Waiting for prerequisites                        | Unassigned                                               |
-| #2575 | #2574              | Waiting for prerequisites                        | Unassigned                                               |
+| Issue | Immediate blockers | State                                         | Integrated work                                          |
+| ----- | ------------------ | --------------------------------------------- | -------------------------------------------------------- |
+| #2566 | None               | Integrated-and-verified                       | `9a984c544`; saved Admin comparison                      |
+| #2567 | #2566              | Integrated-and-verified                       | `c89db0e4e`; bounded Astra producer; no live model smoke |
+| #2568 | #2567              | GA reader integrated; live qualification open | `b1703cd8c`, `acbe43fc7`, `c9b9d6fd6`, `b0892f4e4`       |
+| #2569 | #2568              | Waiting for prerequisites                     | Unassigned                                               |
+| #2570 | #2566              | Integrated-and-verified                       | `0a93244a3`; private Watch serving                       |
+| #2571 | #2570              | Integrated-and-verified                       | `267a65281`, `b69592b6c`, corrections in `a7f36d778`     |
+| #2572 | #2571              | Integrated-and-verified                       | Core `a7f36d778`, UI `af8eba415`                         |
+| #2573 | #2572              | Private reporting verified; live incomplete   | Sources `acbb33fe4`, `302dffe31`; migration `0134`       |
+| #2574 | #2569, #2573       | Waiting for prerequisites                     | Unassigned                                               |
+| #2575 | #2574              | Waiting for prerequisites                     | Unassigned                                               |
 
 ## Ownership and continuation
 
 Worker B is reusable for #2573 fixes and #2568 mapping/review:
 `01a10a28-aa8e-7080-b3d1-c59293f8f4dd`, currently titled
-`#2568 Verify Admin loading impact`.
+`#2568 Trace historical GA video identifiers`. Its tracked-history investigation
+found no assignment for the legacy `mediacomponentid` in this repository. It
+reviewed the GA reader continuation and the pinned-main merge independently,
+without live API calls or code changes; neither final static review has an
+unresolved finding.
+Its completed path-mapping investigation identified current route/manifest and
+catalog lookup interfaces, but did not claim historical rows are mapped.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
 preserved branch: `codex/feat-590-2573`. Its two source commits are integrated;
 preserve this checkout for any CI correction. Its read-only mapping investigation confirmed
@@ -62,11 +68,15 @@ Its temporary loading verification uses `codex/feat-590-2568-loading` from
 
 Worker A, `01a109e1-47c8-7043-bfd4-a85592cfafc5`, owns the independent #2568
 Watch-scope/source-qualification continuation, based on `9e0cd06c2`, now committed
-as `c9b9d6fd6` and verified in combination. Its title is
-`#2568 Enforce Watch scope and source qualification`. Current-source discovery
-and server API authentication remain with the orchestrator.
+as `c9b9d6fd6` and verified in combination. Its production GA
+report reader/preflight slice from `3d4d241f0b22aead01a358c3d626537bb5f9e570`
+is committed as `b0892f4e4`,
+with title `#2568 Implement GA report source reader` and continuation branch
+`codex/feat-590-2568-ga-reader`. Existing source/generation transition guards
+remain intact: aggregate report access does not prove ordered viewing sequences.
+Current-source discovery and live API probes remain with the orchestrator.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2566/forge`;
-current branch: `codex/feat-590-2568-watch-scope`. Earlier
+preserved branch: `codex/feat-590-2568-watch-scope`. Earlier
 `codex/feat-590-2571-retention-health` and `codex/feat-590-2568` are preserved.
 At most two implementation chats may run. The orchestrator owns integration,
 roadmap/ledger updates, and the single PR. Serialize heavy validation with
@@ -125,6 +135,17 @@ Ten alternating synthetic Next samples measured median total response times
 130.6ms without qualification and 136.9ms with it, adding 2,189 HTML bytes with
 the same 19 static assets. This remains local development evidence.
 
+The GA reader continuation is integrated from `b0892f4e4`: full Mastra tests
+passed 3,238 cases (37 configured skips), and final independent review found no
+unresolved defects. Real Node impersonation/coverage and aggregate-page reads
+succeeded while explicitly retaining source truncation and unknown mappings.
+After merging current main `8ebd6500c`, both application typechecks, 15 native
+generation-to-Admin cases, 23 Mastra cases, 68 retention unit/workflow cases and
+seven fresh PostgreSQL retention cases passed. The additive test conflict kept
+both implementations' cases. The completed fixture ticket now uses feat-611;
+main's new feat-609 HNSW work is preserved. No history-backed model build or
+public experiment activation is implied by these checks.
+
 ## External inputs and boundaries
 
 The user signed into GA4 property `320198532` and the Cloud console. Browser
@@ -170,13 +191,16 @@ or unset `mediacomponentid`. Page paths provide a mapping lead, but canonical
 mapping and ordered transitions remain unverified. Recent-window counts changed
 between requests; they are not a frozen input snapshot. CSV snapshots and browser
 automation remain unimplemented alternatives, with no change to the approved
-requirements. #2568 is now blocked on source qualification and adapter acceptance,
-rather than Analytics authentication.
+requirements. The dedicated TypeScript GA reader now performs these scoped
+reads programmatically, with bounded pagination, date/timezone guards and
+explicit source truncation. Both real coverage and aggregate-page reads passed;
+they remain unqualified inputs. #2568 is blocked on source qualification,
+canonical mapping and ordered transitions, rather than Analytics authentication.
 No new export/link or warehouse write is
 authorized. #2568 live acceptance and #2569 remain blocked; its independent
-qualification boundary is verified. A real source reader must still implement
-and prove URL filtering and transition ordering; validating declarations does
-not execute either operation.
+qualification boundary is verified. The report reader applies the exact
+hostname/pagePath filters; it cannot establish event adjacency or session
+ordering. No unavailable transition signal is recorded as zero.
 
 #2573 live winner certification remains incomplete: the measured human baseline,
 agreed numeric stopping settings, trusted bot qualification, and tracking-loss

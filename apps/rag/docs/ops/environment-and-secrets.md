@@ -17,15 +17,15 @@ or create a database.
 
 ## Contract by operation
 
-| Target                               | Required names                                                                          | Notes                                                                                                                                     |
-| ------------------------------------ | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| local / CI                           | `DATABASE_URL`, `OPENROUTER_API_KEY`                                                    | CI uses non-secret placeholders and no network.                                                                                           |
-| Railway service                      | local/CI names plus `SERVE_BEARER_TOKENS`; Railway injects `PORT`                       | Bearer JSON maps one token per consumer to source keys; `["*"]` means all.                                                                |
-| gateway-primary embedding            | `EMBED_BASE_URL`, `EMBED_API_KEY`; optional `EMBED_WIRE_MODEL_ID`                       | `EMBED_MODEL_ID` remains the canonical row identity.                                                                                      |
-| Firecrawl source                     | `FIRECRAWL_API_KEY`                                                                     | Required only when that source selects Firecrawl.                                                                                         |
-| smoke                                | `SMOKE_BASE_URL`, `SMOKE_TOKEN`; optional `SMOKE_MAX_MS`                                | The token goes only in the Authorization header.                                                                                          |
-| dashboard/evaluation production read | `FORGE_RAG_POSTGRESQL_READONLY_DB_URL`, `OPENROUTER_API_KEY`, optional namespaced model | The database URL must authenticate as the provisioned least-privilege reader. Generic and owner URLs are rejected.                        |
-| other production maintenance/write   | `FORGE_RAG_POSTGRESQL_DB_URL`, `OPENROUTER_API_KEY`, optional namespaced model          | A write also requires exact `FORGE_RAG_ALLOW_PROD_WRITE=1` and `FORGE_RAG_EXPECTED_POSTGRES_HOST` matching the database hostname exactly. |
+| Target                               | Required names                                                                                                        | Notes                                                                                                                                     |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| local / CI                           | `DATABASE_URL`, `OPENROUTER_API_KEY`                                                                                  | CI uses non-secret placeholders and no network.                                                                                           |
+| Railway service                      | local/CI names plus restricted consumer writer/auth-reader URLs and portal admission settings; Railway injects `PORT` | Registered consumer credentials are verified from current database state; the static bearer map is retired under feat-610.                |
+| gateway-primary embedding            | `EMBED_BASE_URL`, `EMBED_API_KEY`; optional `EMBED_WIRE_MODEL_ID`                                                     | `EMBED_MODEL_ID` remains the canonical row identity.                                                                                      |
+| Firecrawl source                     | `FIRECRAWL_API_KEY`                                                                                                   | Required only when that source selects Firecrawl.                                                                                         |
+| smoke                                | `SMOKE_BASE_URL`, `SMOKE_TOKEN`; optional `SMOKE_MAX_MS`                                                              | The token goes only in the Authorization header.                                                                                          |
+| dashboard/evaluation production read | `FORGE_RAG_POSTGRESQL_READONLY_DB_URL`, `OPENROUTER_API_KEY`, optional namespaced model                               | The database URL must authenticate as the provisioned least-privilege reader. Generic and owner URLs are rejected.                        |
+| other production maintenance/write   | `FORGE_RAG_POSTGRESQL_DB_URL`, `OPENROUTER_API_KEY`, optional namespaced model                                        | A write also requires exact `FORGE_RAG_ALLOW_PROD_WRITE=1` and `FORGE_RAG_EXPECTED_POSTGRES_HOST` matching the database hostname exactly. |
 
 ### Direct production acquisition and indexing
 
@@ -69,9 +69,9 @@ preflight. A valid check prints only target and status.
 ## Provisioning (receiver first)
 
 1. Confirm the fixed target identifiers above and the owning operator.
-2. Generate a distinct random bearer per consumer outside the agent session.
-   Record the owner, allowed source keys, creation date, rotation due date, and
-   revocation state without recording the bearer.
+2. Admit the owner through the merged portal allowlist. Create the consumer in
+   the portal and save its one-time credential directly in the approved caller
+   secret manager. Record ownership and source grants without recording the key.
 3. Add namespaced values to Doppler `forge-rag/prd`. Provision the production
    read-only database login through
    [`readonly-database.md`](./readonly-database.md), then store its URL as
@@ -79,21 +79,22 @@ preflight. A valid check prints only target and status.
    names because they are environment-agnostic. Never add plain `DATABASE_URL`
    or `EMBED_MODEL_ID` to this Doppler config.
 4. Provision Railway `forge/production/@forge/rag` as the receiver with its
-   database, provider, gateway (if enabled), Firecrawl (if needed), and bearer
-   registry names. Do not trigger a deployment from the local checkout.
+   database, restricted consumer writer/auth-reader URLs, portal admission,
+   provider, gateway (if enabled), and Firecrawl (if needed). Do not trigger a
+   deployment from the local checkout.
 5. After the Forge service code has merged and Railway autodeploy is healthy,
-   run the production-read validation and a live smoke with secrets injected by
-   the vault. Only then provision callers with their matching token.
+   run the production-read validation and a live smoke with a registered
+   consumer credential injected by the vault. Only then enable its callers.
 6. Record redacted evidence: target identifiers, variable names present,
    validation result, deployment identifier, health/smoke result, and owner.
 
 ## Rotation and revocation
 
-Rotate receiver-first: add the new token to `SERVE_BEARER_TOKENS`, let the
-normal PR-to-main/autodeploy path make the receiver accept it, update one caller,
-smoke that caller, then remove the old token and verify it is rejected. For an
-emergency revoke, remove the compromised token from the receiver first, accept
-the caller outage, rotate the caller, and smoke recovery. Rotate provider keys by
+Rotate registered credentials through the portal with the owning consumer's
+current credential version. The replacement is revealed once and invalidates the
+prior verifier as soon as the transaction commits; update the caller secret
+manager and smoke recovery. For an emergency, suspend or revoke the consumer
+through the portal and verify subsequent requests are denied. Rotate provider keys by
 adding/validating the replacement before revoking the old key. Database rotation
 must retain a tested rollback credential until the migration soak expires.
 
@@ -103,8 +104,21 @@ Authorization headers, corpus text, or raw exception objects.
 ## Service callers
 
 The repository smoke script consumes `SMOKE_BASE_URL` and `SMOKE_TOKEN`.
+`SMOKE_TOKEN` must be a registered consumer credential after feat-610.
 Seeker retains its independently owned caller contract. Consult its current
 configuration rather than deriving caller names from the production database prefix.
+
+## Static bearer map revocation (feat-610)
+
+Jaco reports that the seven-day registration period and team notification are
+complete. The registered-only build removes the static-map lookup and no longer
+requires `SERVE_BEARER_TOKENS` to start. Deploy it through PR-to-main with the
+old Railway value still present, verify registered consumer health and denial
+of the old token, then remove the variable from the fixed Railway service and
+retire caller-side copies. Record only variable names, deployment ID, statuses,
+consumer labels and counts. This is separate from retiring the old
+`JesusFilm/jesusfilm-rag` service under feat-532 and does not rotate or revoke
+registered consumers or shared provider credentials.
 
 ## Environment-name migration gates
 

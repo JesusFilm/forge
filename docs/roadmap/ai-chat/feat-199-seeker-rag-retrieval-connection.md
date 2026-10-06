@@ -116,6 +116,14 @@ RAG's design tenet.
   is the published HTTP contract only.
 - Studio-only remains: no new `registerApiRoute` exposure; route-isolation test
   keeps passing.
+
+- **Superseded October 6, 2026:** The token-issuance instruction below describes
+  the original JesusFilm RAG integration. For current Forge RAG access, an
+  admitted owner creates a registered consumer in the portal and saves its
+  one-time credential in the caller's secret manager. Rotate or revoke that
+  credential through the portal; the Railway `SERVE_BEARER_TOKENS` map is being
+  retired under [feat-610](../rag/feat-610-rag-static-bearer-retirement.md).
+
 - Token issuance (an entry in the RAG service's `SERVE_BEARER_TOKENS`) is an
   ops step outside this repo — code must merge cleanly before it exists.
   Request the all-sources (`*`) scope: a source-scoped token returns silent

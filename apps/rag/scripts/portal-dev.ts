@@ -118,7 +118,6 @@ app.route(
   createApp({
     // Synthetic retrieval only; actual ops dogfood belongs to feat-529.
     retriever: { search: async () => [] },
-    tokens: new Map(),
     consumerAuth: new PostgresConsumerAuthenticator(reader),
     usage,
     portal: {

@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest"
 
 import { createApp } from "./app.js"
-import { parseTokenRegistry } from "./auth.js"
 import { admitted, parsePortalAllowlist } from "./portal-policy.js"
 import { fixture } from "./portal-fixture.test-support.js"
 
@@ -145,7 +144,7 @@ describe("portal admission", () => {
     const f = fixture()
     const app = createApp({
       retriever: { search: async () => [] },
-      tokens: parseTokenRegistry(JSON.stringify({ token: ["*"] })),
+      consumerAuth: { authenticate: async () => null },
       portal: f.deps,
     })
     expect((await app.request("/portal/identity")).status).toBe(401)

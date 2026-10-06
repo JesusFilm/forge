@@ -27,20 +27,24 @@ export const RECOMMENDATION_RETENTION_HEALTH_HOURS = 36
 const RECOMMENDATION_PROFILE_AUDIT_DAYS = 365
 const RECOMMENDATION_RETENTION_LOCK_ID = 368_000_001
 const RECOMMENDATION_RETENTION_TIMEOUT_MS = 5_000
+// An admitted phase may still exhaust the deadline; that remains a failure.
+const RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS = 750
 const RECOMMENDATION_RETENTION_ROOT_CHUNK_SIZE = 50
 const RECOMMENDATION_RETENTION_STANDALONE_EPISODE_PAGE_SIZE = 5
 class RetentionPhaseBusy extends RecommendationConflictError {}
+class RetentionBudgetYield extends Error {}
 
 type RetiringProfile = Readonly<{ id: string; privacyGeneration: number }>
 
 export type RecommendationPurgeResult = Readonly<{
-  status: "succeeded" | "skipped"
+  status: "succeeded" | "skipped" | "yielded"
   runId: string
   rootsDeleted: number
   rowCounts: Record<string, number>
   oldestExpiredAtAfter: string | null
-  overdueAfterRun: boolean
+  overdueAfterRun: boolean | null
   batchLimitReached: boolean
+  continuationRequired?: boolean
   profileVectorSweepSkipped?: boolean
 }>
 
@@ -221,12 +225,18 @@ export async function purgeExpiredRecommendationRequests(
   const deadline = Date.now() + RECOMMENDATION_RETENTION_TIMEOUT_MS
   const phase = async <T>(
     operation: (tx: Prisma.TransactionClient) => Promise<T>,
+    options: { terminal?: boolean } = {},
   ): Promise<T> => {
     const remaining = deadline - Date.now()
     if (remaining <= 0)
       throw new RecommendationConflictError(
         "Recommendation retention batch deadline exceeded",
       )
+    if (
+      !options.terminal &&
+      remaining <= RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS
+    )
+      throw new RetentionBudgetYield()
     const before = { ...rowCounts }
     try {
       return await prisma.$transaction(
@@ -245,6 +255,11 @@ export async function purgeExpiredRecommendationRequests(
             throw new RecommendationConflictError(
               "Recommendation retention batch deadline exceeded",
             )
+          if (
+            !options.terminal &&
+            admittedRemaining <= RECOMMENDATION_RETENTION_MIN_PHASE_ADMISSION_MS
+          )
+            throw new RetentionBudgetYield()
           await tx.$queryRaw(
             Prisma.sql`SELECT set_config('statement_timeout', ${String(admittedRemaining)}, true), set_config('transaction_timeout', ${String(admittedRemaining)}, true)`,
           )
@@ -1178,18 +1193,20 @@ export async function purgeExpiredRecommendationRequests(
       expiredExperiments.length === batchSize ||
       retiredProfiles.length === batchSize ||
       rowCounts.orphanProfileVectorSnapshots === batchSize
-    await phase((tx) =>
-      tx.recommendationRetentionRun.update({
-        where: { id: run.id },
-        data: {
-          status: RecommendationRetentionRunStatus.SUCCEEDED,
-          rootsDeleted: rowCounts.requests ?? 0,
-          rowCounts: rowCounts satisfies Prisma.InputJsonValue,
-          oldestExpiredAtAfter: oldestExpiredAt,
-          reasonCode: overdueAfterRun ? "overdue_roots_remain" : null,
-          completedAt: now,
-        },
-      }),
+    await phase(
+      (tx) =>
+        tx.recommendationRetentionRun.update({
+          where: { id: run.id },
+          data: {
+            status: RecommendationRetentionRunStatus.SUCCEEDED,
+            rootsDeleted: rowCounts.requests ?? 0,
+            rowCounts: rowCounts satisfies Prisma.InputJsonValue,
+            oldestExpiredAtAfter: oldestExpiredAt,
+            reasonCode: overdueAfterRun ? "overdue_roots_remain" : null,
+            completedAt: now,
+          },
+        }),
+      { terminal: true },
     )
     return {
       status: "succeeded",
@@ -1202,27 +1219,62 @@ export async function purgeExpiredRecommendationRequests(
       profileVectorSweepSkipped,
     }
   } catch (error) {
-    const durable = await prisma.recommendationRetentionRun
-      .update({
-        where: { id: run.id },
-        data: {
-          status:
-            error instanceof RetentionPhaseBusy
-              ? RecommendationRetentionRunStatus.SKIPPED
-              : RecommendationRetentionRunStatus.FAILED,
-          // Counts are committed with each mutation phase. An uncertain COMMIT
-          // acknowledgement must never overwrite them with a local snapshot.
-          reasonCode:
-            error instanceof RetentionPhaseBusy
-              ? "lock_not_acquired"
-              : error instanceof Error
-                ? error.constructor.name.slice(0, 64)
-                : "UnknownError",
-          completedAt: now,
-        },
-      })
-      .catch(() => null)
-    if (error instanceof RetentionPhaseBusy) {
+    let failure = error
+    if (failure instanceof RetentionBudgetYield) {
+      try {
+        // Every earlier phase committed its counters with its own mutations.
+        // This phase was refused before work, so the remaining backlog is
+        // deliberately unknown and the scheduler must continue immediately.
+        await phase(
+          (tx) =>
+            tx.recommendationRetentionRun.update({
+              where: { id: run.id },
+              data: {
+                status: RecommendationRetentionRunStatus.SKIPPED,
+                rootsDeleted: rowCounts.requests ?? 0,
+                rowCounts: rowCounts satisfies Prisma.InputJsonValue,
+                oldestExpiredAtAfter: null,
+                reasonCode: "budget_yield",
+                completedAt: now,
+              },
+            }),
+          { terminal: true },
+        )
+        return {
+          status: "yielded",
+          runId: run.id,
+          rootsDeleted: rowCounts.requests ?? 0,
+          rowCounts,
+          oldestExpiredAtAfter: null,
+          overdueAfterRun: null,
+          // Older scheduler steps only know this continuation bit. A budget
+          // yield is incomplete even when no row-count cap was reached.
+          batchLimitReached: true,
+          continuationRequired: true,
+          profileVectorSweepSkipped,
+        }
+      } catch (terminalError) {
+        failure = terminalError
+      }
+    }
+    const lockBusy = failure instanceof RetentionPhaseBusy
+    const durable = await prisma.recommendationRetentionRun.update({
+      where: { id: run.id },
+      data: {
+        status: lockBusy
+          ? RecommendationRetentionRunStatus.SKIPPED
+          : RecommendationRetentionRunStatus.FAILED,
+        // Counts are committed with each mutation phase. An uncertain COMMIT
+        // acknowledgement must never overwrite them with a local snapshot.
+        reasonCode: lockBusy
+          ? "lock_not_acquired"
+          : failure instanceof Error
+            ? failure.constructor.name.slice(0, 64)
+            : "UnknownError",
+        completedAt: now,
+      },
+    })
+    if (lockBusy) {
       const counts = durable?.rowCounts
       const committedCounts =
         counts != null && typeof counts === "object" && !Array.isArray(counts)
@@ -1244,7 +1296,7 @@ export async function purgeExpiredRecommendationRequests(
         profileVectorSweepSkipped,
       }
     }
-    throw error
+    throw failure
   }
 }
 

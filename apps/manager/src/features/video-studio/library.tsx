@@ -125,7 +125,7 @@ export function Library({
         dubId: choice.dubId,
         editionId: choice.editionId,
         language: choice.language,
-        trackId: track,
+        trackId: track || null,
         downloadId: download,
         startMs: Math.round(start * 1000),
         endMs: Math.round(end * 1000),
@@ -306,7 +306,7 @@ export function Library({
                 className="nle-library-card"
                 onClick={() => {
                   setChoice(row)
-                  setTrack(row.tracks[0]!.id)
+                  setTrack(row.tracks[0]?.id ?? "")
                   setDownload(row.downloads[0]!.id)
                   setStart(0)
                   setEnd(Math.min(10, row.durationMs / 1000))
@@ -323,7 +323,7 @@ export function Library({
             ))}
             {!rows.length && (
               <p className="nle-muted">
-                No matching footage with an exact dub and timed subtitle track.
+                No matching playable footage in this language.
               </p>
             )}
           </>
@@ -455,6 +455,7 @@ export function Library({
             <label>
               Subtitle track
               <select value={track} onChange={(e) => setTrack(e.target.value)}>
+                <option value="">No subtitles</option>
                 {choice.tracks.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.primary ? "Primary" : "Alternate"} ·{" "}

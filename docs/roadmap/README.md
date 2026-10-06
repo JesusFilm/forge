@@ -4,22 +4,22 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 1, 2026)
+## Status (October 5, 2026)
 
-- **Total tickets:** 778
-- **Complete:** 587
+- **Total tickets:** 783
+- **Complete:** 589
 - **Cancelled:** 39
 - **In progress:** 55
-- **Not started:** 40
+- **Not started:** 43
 - **Blocked:** 57
-- **Overdue and open:** 135
+- **Overdue and open:** 137
 
 ## Feature Index
 
 Added October 5, after the status snapshot above:
 [feat-590 — Precomputed video recommendation experiment](content-discovery/feat-590-precomputed-video-recommendation-experiment.md)
 is in progress. The completed integration-fixture maintenance record was
-renumbered to feat-609 to keep the two feature identities distinct.
+renumbered to feat-611 to keep the two feature identities distinct.
 
 ### Content Discovery
 
@@ -187,6 +187,7 @@ renumbered to feat-609 to keep the two feature identities distinct.
 | [feat-579](content-discovery/feat-579-watch-search-catalog-publication.md)                                     | Publish Core catalog changes into the serving Watch search index                                | nisal      | P1       | 2026-09-30 | 5    | 2026-10-04 | complete    |
 | [feat-573](content-discovery/feat-573-sustainable-cowatch-live-refresh.md)                                     | Sustain live co-watch with bounded graph refresh                                                | nisal      | P1       | 2026-10-01 | 3    | 2026-10-03 | complete    |
 | [feat-589](content-discovery/feat-589-recommendation-audio-aware-retrieval-locale-identity.md)                 | Repair recommendation audio-aware retrieval and locale identity                                 | nisal      | P1       | 2026-10-01 | 5    | 2026-10-05 | complete    |
+| [feat-609](content-discovery/feat-609-filtered-hnsw-fixture-recall.md)                                         | Diagnose intermittent filtered HNSW recommendation fixture recall                               | nisal      | P1       | 2026-10-06 | 2    | 2026-10-07 | not-started |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | cancelled   |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | cancelled   |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | cancelled   |
@@ -220,7 +221,7 @@ renumbered to feat-609 to keep the two feature identities distinct.
 | [feat-552](content-discovery/feat-552-mobile-explore-clips-feed.md)                                            | Mobile Explore clips feed                                                                       | urim       | P2       | 2026-09-25 | 21   | 2026-10-15 | complete    |
 | [feat-563](content-discovery/feat-563-shadow-evaluation-dispatch-recovery.md)                                  | Atomic and recoverable shadow evaluation dispatch                                               | nisal      | P2       | 2026-09-29 | 3    | 2026-10-01 | complete    |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | cancelled   |
-| [feat-609](content-discovery/feat-609-refresh-recommendation-integration-fixtures.md)                          | Refresh stale recommendation integration test fixtures                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
+| [feat-611](content-discovery/feat-611-refresh-recommendation-integration-fixtures.md)                          | Refresh stale recommendation integration test fixtures                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
 
 ### Media Generation
 
@@ -309,6 +310,8 @@ renumbered to feat-609 to keep the two feature identities distinct.
 | [feat-584](media-generation/feat-584-studio-external-agent-render-a-draft.md)               | Request and retrieve an exact draft render                            | tataihono | P1       | 2026-09-23 | 3    | 2026-09-25 | blocked     |
 | [feat-585](media-generation/feat-585-studio-external-agent-bounded-draft-narration.md)      | Generate draft narration within a durable allowance                   | tataihono | P1       | 2026-09-23 | 3    | 2026-09-25 | complete    |
 | [feat-586](media-generation/feat-586-studio-external-agent-fast-render-inspection.md)       | Inspect a rendered draft quickly with attributable evidence           | tataihono | P1       | 2026-09-23 | 3    | 2026-09-25 | complete    |
+| [feat-607](media-generation/feat-607-studio-subtitle-free-footage-and-source-focus.md)      | Studio subtitle-free footage, source focus, and MCP diagnostics       | tataihono | P1       | 2026-10-06 | 3    | 2026-10-08 | complete    |
+| [feat-608](media-generation/feat-608-studio-colleague-production-replay.md)                 | Verify colleague LUMO and Shorts MCP feedback in production           | tataihono | P1       | 2026-10-06 | 1    | 2026-10-06 | not-started |
 | [feat-438](media-generation/feat-438-subtitle-quality-lab-modularization.md)                | Subtitle quality lab modularization                                   | vlad      | P2       | —          | 4    | —          | blocked     |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                      | AI Video Inspiration Platform                                         | vlad      | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)          | Instagram AI Christian discovery workflow                             | vlad      | P2       | 2026-06-10 | 1    | 2026-06-10 | complete    |
@@ -630,6 +633,7 @@ renumbered to feat-609 to keep the two feature identities distinct.
 | [feat-501](platform/feat-501-admin-experience-editor-performance.md)                   | Admin Experience Editor Performance                                                | tataihono  | P1       | 2026-09-14 | 2    | 2026-09-15 | complete    |
 | [feat-501](platform/feat-501-watch-home-hero-half-viewport.md)                         | Keep the Watch home hero at least half-screen                                      | codex      | P1       | 2026-09-14 | 1    | 2026-09-14 | complete    |
 | [feat-501](platform/feat-501-watch-home-logo-left-edge-alignment.md)                   | Watch header visual alignment                                                      | codex      | P1       | 2026-09-14 | 1    | 2026-09-14 | complete    |
+| [feat-603](platform/feat-603-mobile-in-app-feedback-linear.md)                         | Mobile in-app feedback that files a Linear issue                                   | urim       | P1       | 2026-09-14 | 21   | 2026-10-04 | complete    |
 | [feat-508](platform/feat-508-mobile-export-to-files-folder.md)                         | Mobile raw export saves to a viewer-picked folder, not Photos                      | urim       | P1       | 2026-09-15 | 2    | 2026-09-16 | in-progress |
 | [feat-510](platform/feat-510-expo-patch-ci-recovery.md)                                | Restore Expo compatibility checks after patch drift                                | nisal      | P1       | 2026-09-16 | 1    | 2026-09-16 | complete    |
 | [feat-513](platform/feat-513-admin-workflow-enqueue-only-runtime.md)                   | Keep workflow listeners out of the Admin enqueue-only runtime                      | nisal      | P1       | 2026-09-16 | 2    | 2026-09-17 | complete    |
@@ -660,6 +664,7 @@ renumbered to feat-609 to keep the two feature identities distinct.
 | [feat-578](platform/feat-578-breaking-point-watch-recovery.md)                         | Recover Breaking Point on Watch after Core sync repair                             | nisal      | P1       | 2026-09-30 | 1    | 2026-09-30 | complete    |
 | [feat-582](platform/feat-582-mobile-expo-sdk57-0-26-alignment.md)                      | Align mobile Expo dependencies with the SDK 57.0.26 patch set                      | urim       | P1       | 2026-09-30 | 1    | 2026-09-30 | complete    |
 | [feat-599](platform/feat-599-roadmap-cancelled-status.md)                              | Represent cancelled roadmap work as terminal                                       | nisal      | P1       | 2026-10-02 | 1    | 2026-10-02 | complete    |
+| [feat-604](platform/feat-604-mobile-ui-translation-run-and-device-checks.md)           | Mobile UI first translation run (U16) and open device checks                       | urim       | P1       | 2026-10-06 | 7    | 2026-10-12 | not-started |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
