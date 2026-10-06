@@ -147,7 +147,7 @@ const passageSchema = z.object({
   chunkId: videoId,
   excerpt: z.string().trim().min(8).max(240),
 })
-const evidenceSchema = z.discriminatedUnion("basis", [
+const evidenceSchema = z.union([
   z.object({
     basis: z.literal("transcript"),
     passages: z.array(passageSchema).min(1).max(3),
@@ -175,7 +175,7 @@ export const judgmentSchema = z.object({
         kind: z.enum(["direct", "alternative"]),
         relationship: z.string().trim().min(3).max(80),
         reasonEnglish: z.string().trim().min(12).max(600),
-        addedViewingValueEnglish: z.string().trim().min(12).max(600).optional(),
+        addedViewingValueEnglish: z.string().trim().min(12).max(600).nullable(),
         evidence: evidenceSchema,
         strength: z.number().int().min(0).max(100),
       }),
@@ -949,7 +949,8 @@ export async function runPrecomputedSource(
         kind: judgment.kind,
         relationship: judgment.relationship,
         reasonEnglish: judgment.reasonEnglish,
-        addedViewingValueEnglish: judgment.addedViewingValueEnglish,
+        addedViewingValueEnglish:
+          judgment.addedViewingValueEnglish ?? undefined,
         evidence: judgment.evidence,
       }))
     const rank = { direct: 0, alternative: 0 }

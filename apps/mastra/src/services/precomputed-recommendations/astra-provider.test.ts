@@ -7,12 +7,31 @@ vi.mock("../../config/env", () => ({
 }))
 
 import { AstraAccessError, createAstraModel } from "./astra-provider"
+import { judgmentSchema } from "./source-generation"
 
 const request = {
   schema: z.object({ answer: z.string() }),
   system: "Return the requested JSON object.",
   prompt: "Answer yes.",
   maxOutputTokens: 100,
+}
+
+function expectStrictObjectProperties(value: unknown): void {
+  if (Array.isArray(value)) {
+    value.forEach(expectStrictObjectProperties)
+    return
+  }
+  if (!value || typeof value !== "object") return
+  const schema = value as Record<string, unknown>
+  expect(schema).not.toHaveProperty("oneOf")
+  if (schema.properties && typeof schema.properties === "object") {
+    expect(schema.additionalProperties).toBe(false)
+    expect(Array.isArray(schema.required)).toBe(true)
+    expect([...(schema.required as string[])].sort()).toEqual(
+      Object.keys(schema.properties).sort(),
+    )
+  }
+  Object.values(schema).forEach(expectStrictObjectProperties)
 }
 
 describe("pinned Astra provider adapter", () => {
@@ -81,6 +100,80 @@ describe("pinned Astra provider adapter", () => {
       text: { format: { type: "json_schema", strict: true } },
       provider: { require_parameters: true, allow_fallbacks: false },
     })
+  })
+
+  it("sends the judgment evidence alternatives as a supported nested anyOf", async () => {
+    const judgment = {
+      connections: [
+        {
+          kind: "direct",
+          relationship: "shared story",
+          reasonEnglish: "Both videos cover the same biblical account.",
+          addedViewingValueEnglish: null,
+          evidence: { basis: "metadata", fields: ["title"] },
+          strength: 80,
+        },
+      ],
+    }
+    const transport = vi.fn<typeof fetch>().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "response-judgment",
+          object: "response",
+          created_at: 1_791_244_800,
+          model: "openai/gpt-6-astra",
+          status: "completed",
+          output: [
+            {
+              type: "message",
+              id: "message-judgment",
+              role: "assistant",
+              content: [
+                {
+                  type: "output_text",
+                  text: JSON.stringify(judgment),
+                  annotations: [],
+                },
+              ],
+            },
+          ],
+          usage: { input_tokens: 12, output_tokens: 30, total_tokens: 42 },
+        }),
+        { headers: { "content-type": "application/json" } },
+      ),
+    )
+    vi.stubGlobal("fetch", transport)
+    expect(
+      (
+        await createAstraModel().generate({
+          schema: judgmentSchema,
+          system: "Return the requested JSON object.",
+          prompt: "Compare the supplied videos.",
+          maxOutputTokens: 500,
+        })
+      ).output,
+    ).toEqual(judgment)
+
+    const body = JSON.parse(String(transport.mock.calls[0]?.[1]?.body))
+    const evidence =
+      body.text.format.schema.properties.connections.items.properties.evidence
+    expectStrictObjectProperties(body.text.format.schema)
+    expect(
+      body.text.format.schema.properties.connections.items.required,
+    ).toContain("addedViewingValueEnglish")
+    expect(evidence).toHaveProperty("anyOf")
+    expect(evidence).not.toHaveProperty("oneOf")
+    expect(evidence.anyOf).toHaveLength(2)
+    expect(
+      judgmentSchema.safeParse({
+        connections: [
+          {
+            ...judgment.connections[0],
+            evidence: { basis: "transcript", passages: [] },
+          },
+        ],
+      }).success,
+    ).toBe(false)
   })
 
   it("retains reported charge and tokens when structured output is invalid", async () => {
