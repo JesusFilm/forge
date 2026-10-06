@@ -9,7 +9,7 @@ duration: 14
 depends_on:
   - "feat-519"
 blocks:
-  - "feat-612"
+  - "feat-613"
 tags:
   - "mobile"
   - "platform"

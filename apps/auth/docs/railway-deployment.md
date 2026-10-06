@@ -118,7 +118,7 @@ clients. It does not create AppGrants or consents and does not rewrite
 authorization codes, access tokens, or refresh tokens. The older
 `offline_access` append remains a separate, narrower migration for clients
 carrying the established legacy Admin MCP scope markers. A third migration
-(feat-612) adds `push:campaign:read` and `push:campaign:draft` to every
+(feat-613) adds `push:campaign:read` and `push:campaign:draft` to every
 unseeded, enabled, public dynamic client that uses token authentication `none`,
 PKCE that is not disabled, and holds `experience:read`. Better Auth 1.7.1
 stores `public` as null on a dynamic registration, so the migration accepts

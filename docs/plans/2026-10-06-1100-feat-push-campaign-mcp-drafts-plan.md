@@ -381,7 +381,7 @@ flowchart TB
 ### Documentation / Operational Notes
 
 - Update `apps/admin/CLAUDE.md`. In the "Admin MCP" section, change the tool count to 24 (the section says 15, but the registry has 17 today), list the push tools and scopes, add the auth-first deploy order from KTD3 and its reverse for removal, and add the push MCP service file. In "Localized push campaigns (feat-524)", add the version rule (KTD4, KTD5), the dashboard refusals, and the rollout precondition.
-- Update `docs/roadmap/platform/feat-612-push-campaign-mcp-drafts.md` when work starts and when it completes.
+- Update `docs/roadmap/platform/feat-613-push-campaign-mcp-drafts.md` when work starts and when it completes.
 - Rollback: admin can roll back safely, because the columns are additive and no code reads them before this change. To turn off the push tools for everyone, reverse the KTD3 order:
   1. Deploy an admin change that removes the seven `push.*` registry entries. Then `scopes_supported` stops listing the push scopes, and push calls stop at once.
   2. Remove the scopes from `ADMIN_MCP_DEFAULT_SCOPES`, and deploy auth. The start command runs the seed.

@@ -1,5 +1,5 @@
 ---
-id: "feat-612"
+id: "feat-613"
 title: "Agents draft push campaigns through the admin MCP, and a person publishes"
 owner: "urim"
 priority: "P2"
