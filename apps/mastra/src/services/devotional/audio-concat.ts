@@ -297,3 +297,40 @@ export async function sliceAudio(
     await rm(tmp, { recursive: true, force: true })
   }
 }
+
+/**
+ * Bring one take to a fixed loudness (EBU R128, single pass). Used to join
+ * lines read by two different voices into one segment: the Russian female
+ * voice comes out ~12 dB under the male one, and the render's per-voice
+ * levelling works per SEGMENT, so a mixed segment has to arrive level.
+ */
+export async function normalizeLoudness(
+  bytes: Uint8Array,
+  lufs = -23.5,
+): Promise<Uint8Array> {
+  const tmp = await mkdtemp(path.join(tmpdir(), "devo-norm-"))
+  try {
+    const inp = path.join(tmp, "in.mp3")
+    const out = path.join(tmp, "out.mp3")
+    await writeFile(inp, bytes)
+    await run("ffmpeg", [
+      "-y",
+      "-i",
+      inp,
+      "-af",
+      `loudnorm=I=${lufs}:TP=-1.5:LRA=11`,
+      "-ar",
+      "44100",
+      "-ac",
+      "2",
+      "-c:a",
+      "libmp3lame",
+      "-b:a",
+      "192k",
+      out,
+    ])
+    return new Uint8Array(await readFile(out))
+  } finally {
+    await rm(tmp, { recursive: true, force: true })
+  }
+}

@@ -14,7 +14,7 @@ import {
 
 import { loadShortFonts, SHORT_FONT_FAMILIES } from "../fonts"
 import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
-import { BigStepWord } from "./BigStepWord"
+import { BigStepWord, bigStepFontSize } from "./BigStepWord"
 import { FILM_MARK_URIS } from "./film-marks"
 import {
   SIDE_BOTTOM,
@@ -3039,7 +3039,7 @@ function ClipIntro({
             style={{
               fontFamily: SERIF,
               fontWeight: 600,
-              fontSize: px(126),
+              fontSize: bigStepFontSize(steps[0] ?? "WATCH", px, frameWidth),
               lineHeight: 1,
               letterSpacing: px(7),
               color: INTRO_GOLD,

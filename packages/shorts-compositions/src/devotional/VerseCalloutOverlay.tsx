@@ -65,13 +65,14 @@ export function VerseCalloutOverlay({
     const lit = fade(0.9, 1.6)
     const text = standalone(c.text)
     const at = c.highlight
-      ? text
-          .toLowerCase()
-          .search(
-            new RegExp(
-              `\\b${c.highlight.toLowerCase().replace(/[^a-z' ]/g, "")}\\b`,
-            ),
-          )
+      ? text.toLowerCase().search(
+          // Letter boundaries of any script: `\b` and `[a-z]` are ASCII-only
+          // and silently lost the Russian «спасла» (2026-10-06).
+          new RegExp(
+            `(?<!\\p{L})${c.highlight.toLowerCase().replace(/[^\p{L}' ]/gu, "")}(?!\\p{L})`,
+            "u",
+          ),
+        )
       : -1
     const word = at >= 0 ? text.slice(at, at + c.highlight.length) : ""
     return (

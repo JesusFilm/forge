@@ -26,7 +26,12 @@ import {
   type ProducedDevotionalAudio,
   segmentTakes,
 } from "./devotional-audio"
-import { joinAudioVarGaps, sliceAudio, slowAndPad } from "./audio-concat"
+import {
+  joinAudioVarGaps,
+  normalizeLoudness,
+  sliceAudio,
+  slowAndPad,
+} from "./audio-concat"
 import { createSilentVoiceover } from "./devotional-silent-voiceover"
 import { planFaceCropAnchors } from "./face-crop-anchors"
 import { writeSourcePack } from "./source-pack"
@@ -81,7 +86,10 @@ import {
   type TimedCaption,
 } from "./subtitle-align"
 import { type ChapterPassage, passageForChapter } from "./jesus-film-passages"
-import { voiceNameForId } from "./elevenlabs-voiceover"
+import {
+  type DevotionalVoiceName,
+  voiceNameForId,
+} from "./elevenlabs-voiceover"
 import { videoSourceForIndex } from "./video-sources"
 import { matchCue, planBrollAnchors, planBrollSegments } from "./broll-plan"
 import { type BackgroundPlan, seamDissolveSec } from "./background-timeline"
@@ -2850,6 +2858,7 @@ async function renderInStage(
     headerDate,
     labels: locale.labels,
     ...(locale.stepLabels ? { stepLabels: locale.stepLabels } : {}),
+    ...(locale.hideTranslationTag ? { hideTranslationTag: true } : {}),
     // Suppressed for social cuts. This is the SECOND place the occasion enters
     // — the narration reads it from its own call — and silencing only the voice
     // left "WORLD HUMANITARIAN DAY" sitting on the cover.
@@ -3498,6 +3507,9 @@ export type PrepareAndRenderInput = RenderOptions & {
   /** Read the narration on Eleven v4 in continuous runs (owner, 2026-10-05):
    *  see continuous-voice.ts. Implies word timings. */
   continuousVoice?: boolean
+  /** Two-voice opening: one voice per hook line (see produceDevotionalAudio's
+   *  `hookVoices`). Continuous voice only. */
+  hookVoices?: DevotionalVoiceName[]
 }
 
 export type RenderedDevotional = {
@@ -3647,6 +3659,8 @@ export async function produceNarration(
     hookLine?: string
     /** Continuous Eleven v4 read; see continuous-voice.ts. */
     continuous?: boolean
+    /** One voice per opening line; see RenderOptions.hookVoices. */
+    hookVoices?: DevotionalVoiceName[]
   },
 ): Promise<ProducedDevotionalAudio> {
   const log = opts.log ?? (() => {})
@@ -3688,7 +3702,13 @@ export async function produceNarration(
       // with unchanged words would otherwise return the old reading wholesale,
       // because the per-segment path that checks the take never runs.
       const cachedById = new Map(cached.segments.map((s) => [s.id, s]))
-      const takes = segmentTakes(wanted, devo.voice, !!opts.continuous)
+      const takes = segmentTakes(
+        wanted,
+        devo.voice,
+        !!opts.continuous,
+        (t) => applyStressOverrides(t, locale.stressOverrides ?? []),
+        opts.hookVoices,
+      )
       const changed = wanted.filter((w) => {
         if ((cachedSpoken.get(w.id) ?? "").trim() !== w.text.trim()) return true
         const hit = cachedById.get(w.id)
@@ -3788,7 +3808,17 @@ export async function produceNarration(
       ...(opts.withTimestamps ? { withTimestamps: true } : {}),
       ...(opts.steps ? { steps: true } : {}),
       ...(opts.structure ? { structure: opts.structure } : {}),
-      ...(opts.continuous ? { continuous: true, slice: sliceAudio } : {}),
+      ...(opts.continuous
+        ? {
+            continuous: true,
+            slice: sliceAudio,
+            prepareSync: (t: string) =>
+              applyStressOverrides(t, locale.stressOverrides ?? []),
+            ...(opts.hookVoices?.length
+              ? { hookVoices: opts.hookVoices, normalize: normalizeLoudness }
+              : {}),
+          }
+        : {}),
     },
     locale,
   )
@@ -4097,6 +4127,7 @@ export async function prepareAndRenderDevotional(
     ...(input.continuousVoice && !input.silentPreview
       ? { continuous: true }
       : {}),
+    ...(input.hookVoices?.length ? { hookVoices: input.hookVoices } : {}),
     log,
   })
 

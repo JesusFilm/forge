@@ -1,4 +1,4 @@
-import { AbsoluteFill, Easing, interpolate } from "remotion"
+import { AbsoluteFill, Easing, interpolate, useVideoConfig } from "remotion"
 
 /**
  * The step's own name written across the frame at a whisper: it arrives out of
@@ -11,6 +11,29 @@ import { AbsoluteFill, Easing, interpolate } from "remotion"
  */
 
 const GOLD = "#f2c46b"
+
+/**
+ * The big word's size: px(126) for WATCH / REFLECT / PRAY (unchanged), smaller
+ * when the label would not fit. Russian labels are seven or eight letters of
+ * wide Cyrillic caps (ПОСМОТРИ, ПОДУМАЙ, ПОМОЛИСЬ) and ran off both edges
+ * (owner, 2026-10-06). Letter widths are estimates for Literata 600 caps:
+ * 0.66em for Latin, 0.78em for Cyrillic; the word keeps to 92% of the frame.
+ */
+export function bigStepFontSize(
+  label: string,
+  px: (n: number) => number,
+  frameWidth: number,
+): number {
+  const base = px(126)
+  const track = px(7)
+  const chars = [...label]
+  const em = chars.reduce(
+    (n, c) => n + (/\p{Script=Cyrillic}/u.test(c) ? 0.78 : 0.66),
+    0,
+  )
+  const fit = (frameWidth * 0.92 - track * chars.length) / Math.max(em, 0.1)
+  return Math.max(px(40), Math.min(base, fit))
+}
 const ease = Easing.bezier(0.42, 0, 0.58, 1)
 
 export function BigStepWord({
@@ -31,6 +54,7 @@ export function BigStepWord({
   serif: string
   peak?: number
 }) {
+  const { width } = useVideoConfig()
   const t = frame / fps
   const total = durationInFrames / fps
   // In over a second, hold, and take the same time going back into the blur.
@@ -58,7 +82,7 @@ export function BigStepWord({
         style={{
           fontFamily: serif,
           fontWeight: 600,
-          fontSize: px(126),
+          fontSize: bigStepFontSize(label, px, width),
           lineHeight: 1,
           letterSpacing: px(7),
           color: GOLD,

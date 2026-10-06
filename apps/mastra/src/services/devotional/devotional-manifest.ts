@@ -145,6 +145,8 @@ export type BuildManifestInput = {
   }
   /** Localized three-step column (clip-first). Defaults to English. */
   stepLabels?: readonly [string, string, string]
+  /** See DevotionalLocale.hideTranslationTag. */
+  hideTranslationTag?: boolean
   /** Fixed-date occasion tag for the cover (e.g. "World Humanitarian Day"),
    *  from `devotional-occasions.ts`. Most days have none. */
   occasion?: string
@@ -501,7 +503,7 @@ function buildClipFirstManifest(
     // Shown after the citation ("LUKE 8:16 · BSB"): the viewer should know
     // which translation they are hearing. Absent when the verse could not be
     // verified against a corpus (the model's own wording, flagged upstream).
-    ...(d.scripture.translation
+    ...(d.scripture.translation && !input.hideTranslationTag
       ? { translation: d.scripture.translation }
       : {}),
   })
@@ -663,7 +665,7 @@ export function buildDevotionalManifest(
     // Shown after the citation ("LUKE 8:16 · BSB"): the viewer should know
     // which translation they are hearing. Absent when the verse could not be
     // verified against a corpus (the model's own wording, flagged upstream).
-    ...(d.scripture.translation
+    ...(d.scripture.translation && !input.hideTranslationTag
       ? { translation: d.scripture.translation }
       : {}),
   })

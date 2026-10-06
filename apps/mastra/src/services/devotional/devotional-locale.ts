@@ -118,6 +118,10 @@ export type DevotionalLocale = {
   /** The three-step column of the clip-first structure (WATCH / REFLECT /
    *  PRAY), upper-cased as shown. Defaults to English. */
   stepLabels?: readonly [string, string, string]
+  /** Leave the translation's name off the verse address ("LUKE 8:16 · BSB").
+   *  Russian viewers know the Synodal text; the owner found the tag
+   *  redundant there (2026-10-06). */
+  hideTranslationTag?: boolean
   /** The real target-language Bible a localized edition quotes from (never
    *  machine-translated). English quotes its own corpus and leaves this out. */
   scripture?: {
@@ -362,7 +366,10 @@ export const RU_LOCALE: DevotionalLocale = {
     askLead: RU_ASK_LEAD,
     prayLead: RU_PRAY_LEAD,
   },
-  stepLabels: ["СМОТРИ", "ПОДУМАЙ", "ПОМОЛИСЬ"],
+  // Verbs in the familiar form, like WATCH / REFLECT / PRAY (owner,
+  // 2026-10-06: «посмотри» reads more naturally than «смотри»).
+  stepLabels: ["ПОСМОТРИ", "ПОДУМАЙ", "ПОМОЛИСЬ"],
+  hideTranslationTag: true,
   introKicker: "В ЭТОМ РАЗМЫШЛЕНИИ",
   scripture: { fetch: fetchSynodalPassage, translation: "Синодальный перевод" },
   attributionPrefix: "По мотивам христианской классики",
@@ -376,6 +383,11 @@ export const RU_LOCALE: DevotionalLocale = {
     ["коробов", "коробо́в"],
     ["к Тому, Кто", "к Тому́, Кто"],
     ["самом ожесточённом", "са́мом ожесточённом"],
+    // Bartimaeus RU (2026-10-06): the voice said Лука́ and стои́т.
+    ["Лука ", "Лу́ка "],
+    ["Лука,", "Лу́ка,"],
+    ["Лука.", "Лу́ка."],
+    ["стоит идти", "сто́ит идти"],
   ],
   spokenDate(iso) {
     const p = parseIso(iso)

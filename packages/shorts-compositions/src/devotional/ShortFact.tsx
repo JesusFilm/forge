@@ -1061,7 +1061,7 @@ export function captionTokens(words: ReadonlyArray<TimedWord>): TimedWord[] {
   const out: TimedWord[] = []
   let pending: TimedWord | null = null
   for (const w of words) {
-    const bare = w.word.toLowerCase().replace(/[^a-z']/g, "")
+    const bare = w.word.toLowerCase().replace(/[^\p{L}']/gu, "")
     if (pending && pending.card === w.card) {
       out.push({
         ...w,
@@ -1137,7 +1137,8 @@ function LanguageLayout({
   // The ring draws as the voice says the word (its first spoken mention).
   const said = words.find(
     (w) =>
-      w.word.toLowerCase().replace(/[^a-z']/g, "") === highlight.toLowerCase(),
+      w.word.toLowerCase().replace(/[^\p{L}']/gu, "") ===
+      highlight.toLowerCase(),
   )
   const ringAt = said ? said.startSec : 1.2
   const draw = interpolate(t, [ringAt, ringAt + 0.9], [0, 1], {

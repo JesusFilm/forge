@@ -605,14 +605,19 @@ export function segmentTakes(
   segs: readonly NarrationSegment[],
   devoVoice: string,
   continuous: boolean,
+  /** What the voice is actually given (stress marks); see `prepareSync`. */
+  prepare: (text: string) => string = (t) => t,
+  /** One voice per opening line; see `hookVoices`. */
+  hookVoices?: readonly string[],
 ): Map<string, string> {
   if (!continuous)
     return new Map(
       segs.map((s) => [s.id, voiceTake(s.id, s.voice ?? devoVoice)]),
     )
   const out = new Map<string, string>()
-  for (const run of continuousRuns(segs, devoVoice)) {
-    const take = runTake(run)
+  for (const run of continuousRuns(segs, devoVoice, prepare)) {
+    const two = run.segments[0]?.id === "hook" && hookVoices?.length
+    const take = runTake(two ? { ...run, voice: hookVoices.join("+") } : run)
     for (const s of run.segments) out.set(s.id, take)
   }
   return out
@@ -621,12 +626,13 @@ export function segmentTakes(
 function continuousRuns(
   segs: readonly NarrationSegment[],
   devoVoice: string,
+  prepare: (text: string) => string = (t) => t,
 ): VoiceRun[] {
   return planRuns(
     segs.map((s) => ({
       id: s.id,
       voice: s.voice ?? devoVoice,
-      text: flattenSpokenText(s.text),
+      text: flattenSpokenText(prepare(s.text)),
       ...(s.direction ? { direction: s.direction } : {}),
     })),
   )
@@ -770,6 +776,19 @@ export type ProduceDevotionalAudioDeps = {
    * continuous-voice.ts.
    */
   continuous?: boolean
+  /** Synchronous spoken-text preparation (the locale's stress marks) for the
+   *  continuous read; `speakify` is async and per segment. Pass the same
+   *  function to `segmentTakes` wherever takes are compared. */
+  prepareSync?: (text: string) => string
+  /**
+   * TWO-VOICE OPENING (owner, 2026-10-06, Bartimaeus RU: "more dynamic"):
+   * one voice per spoken line of the hook, in order (the last one repeats).
+   * Each line is read on its own, brought to one loudness with `normalize`,
+   * and joined, so the montage still gets one segment with word times.
+   * Continuous mode only.
+   */
+  hookVoices?: readonly DevotionalVoiceName[]
+  normalize?: (bytes: Uint8Array) => Promise<Uint8Array>
   slice?: (
     bytes: Uint8Array,
     fromSec: number,
@@ -784,6 +803,51 @@ export type ProduceDevotionalAudioDeps = {
  */
 const TTS_MAX_RETRIES = 3
 const TTS_BACKOFF_MS = 1_500
+
+/** The opening read line by line in alternating voices, levelled and joined
+ *  with word times; undefined when any line fails (the caller falls back). */
+async function twoVoiceHookAudio(
+  seg: { text: string; direction?: string },
+  voices: readonly DevotionalVoiceName[],
+  voiceover: typeof generateElevenVoiceover,
+  normalize: (bytes: Uint8Array) => Promise<Uint8Array>,
+  join: (chunks: Uint8Array[], gapsAfter: number[]) => Promise<Uint8Array>,
+): Promise<VoiceoverAudio | undefined> {
+  // The run text is already flattened; the hook's lines end in . ! or ?
+  const lines = seg.text.match(/[^.!?…]+[.!?…]+['’"”»]*/g)?.map((l) => l.trim())
+  if (!lines?.length) return undefined
+  const audios: VoiceoverAudio[] = []
+  for (const [i, line] of lines.entries()) {
+    const voice = voices[i] ?? voices[voices.length - 1]!
+    const speak = () =>
+      voiceover({
+        text: line,
+        voice,
+        voiceSettings: continuousSettings("hook"),
+        model: CONTINUOUS_MODEL,
+        withTimestamps: true,
+        timeoutMs: 120_000,
+      })
+    let r = await speak()
+    for (let t = 0; !r.ok && r.retryable && t < TTS_MAX_RETRIES; t++) {
+      await new Promise((res) => setTimeout(res, TTS_BACKOFF_MS * 2 ** t))
+      r = await speak()
+    }
+    if (!r.ok) return undefined
+    audios.push({ ...r.audio, bytes: await normalize(r.audio.bytes) })
+  }
+  const gaps = lines.map((_, i) => (i < lines.length - 1 ? 0.3 : 0))
+  const words = mergeUnitWords(audios, gaps)
+  return {
+    ...audios[0]!,
+    bytes: await join(
+      audios.map((a) => a.bytes),
+      gaps,
+    ),
+    characterCount: audios.reduce((n, a) => n + a.characterCount, 0),
+    ...(words ? { words } : {}),
+  }
+}
 
 /** The reuse-cache role of a segment: reflection cards by position. */
 function reuseRole(segs: readonly NarrationSegment[], id: string): string {
@@ -829,12 +893,24 @@ export async function produceDevotionalAudio(
     .find((s) => /^reflection-\d+$/.test(s.id))?.id
   const LAST_REFLECTION_TEMPO = 0.92
   const continuous = !!(deps.continuous && deps.slice)
-  const takes = segmentTakes(segs, devotional.voice, continuous)
+  const takes = segmentTakes(
+    segs,
+    devotional.voice,
+    continuous,
+    deps.prepareSync,
+    deps.hookVoices,
+  )
   // Continuous read: synthesise each run that is not fully cached, cut it
   // into its cards, and hand those to the loop below as ready-made audio.
   const fromRun = new Map<string, VoiceoverAudio>()
   if (continuous) {
-    for (const run of continuousRuns(segs, devotional.voice)) {
+    const twoVoiceHook =
+      !!deps.hookVoices?.length && !!deps.normalize && !!deps.joinVarGaps
+    for (const run of continuousRuns(
+      segs,
+      devotional.voice,
+      deps.prepareSync,
+    )) {
       const allCached = run.segments.every((rs) => {
         const seg = segs.find((x) => x.id === rs.id)!
         return !!deps.reusable?.has(
@@ -846,6 +922,17 @@ export async function produceDevotionalAudio(
         )
       })
       if (allCached) continue
+      if (twoVoiceHook && run.segments[0]?.id === "hook") {
+        const hook = await twoVoiceHookAudio(
+          run.segments[0]!,
+          deps.hookVoices!,
+          voiceover,
+          deps.normalize!,
+          deps.joinVarGaps!,
+        )
+        if (hook) fromRun.set("hook", hook)
+        continue
+      }
       const text = run.segments
         .map((rs) =>
           rs.direction ? `${rs.direction.trim()} ${rs.text}` : rs.text,

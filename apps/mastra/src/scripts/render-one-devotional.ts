@@ -14,6 +14,7 @@ import {
   listVideoSources,
   videoSource,
 } from "../services/devotional/video-sources"
+import type { DevotionalVoiceName } from "../services/devotional/elevenlabs-voiceover"
 import { createDevotionalLlm } from "../services/devotional/llm"
 
 function arg(name: string, fallback?: string): string | undefined {
@@ -278,6 +279,15 @@ async function main() {
       // `--voice-v4`: the narration read on Eleven v4 in continuous runs, with
       // the devotional's own `direction` tags (owner, 2026-10-05).
       ...(process.argv.includes("--voice-v4") ? { continuousVoice: true } : {}),
+      // `--hook-voices=russian,russian-female,...`: one voice per opening
+      // line, in order (owner, 2026-10-06). Needs --voice-v4.
+      ...(arg("hook-voices")
+        ? {
+            hookVoices: arg("hook-voices")!
+              .split(",")
+              .map((v) => v.trim()) as DevotionalVoiceName[],
+          }
+        : {}),
       ...(arg("settle-line") ? { settleLine: arg("settle-line") } : {}),
       // Title leads the cover, the mark follows two seconds later (owner rule).
       coverTitleFirst: !process.argv.includes("--no-cover-title-first"),
