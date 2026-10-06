@@ -17,7 +17,8 @@ import {
   type CtrPolicySettings,
 } from "./ctr-policy"
 
-const METHOD = "fixed-horizon-cluster-delta-t-v1"
+export const PRECOMPUTED_CTR_METHOD = "fixed-horizon-cluster-delta-t-v1"
+const METHOD = PRECOMPUTED_CTR_METHOD
 type Arm = "control" | "challenger"
 type TotalsRow = CtrTotals & { arm: Arm | "excluded" }
 type MomentRow = {
@@ -32,6 +33,7 @@ type MomentRow = {
 
 export type PrecomputedCtrReport = {
   schemaVersion: 1
+  evidenceBasis?: "private_unverified" | "isolated_fixture"
   experimentId: string
   revision: number
   isFinal: boolean
@@ -82,8 +84,11 @@ export type PrecomputedCtrReport = {
     other: number
   }
   measurementHealth: {
-    botEligibility: "unverified"
-    trackingLoss: "unobservable"
+    botEligibility: "unverified" | "fixture_verified"
+    trackingLoss: "unobservable" | "fixture_verified"
+    /** Known bots/prefetches skipped by Web are outside this report. */
+    edgeAutomationCoverage?: "partial_unverified"
+    exclusionCountScope?: "admin_bound_only"
     unversionedArchivedVisits: number
     attribution: "server_bound_request_and_item"
   }
@@ -125,6 +130,12 @@ function canonical(value: unknown): string {
 
 function digest(value: unknown): string {
   return createHash("sha256").update(canonical(value)).digest("hex")
+}
+
+export function precomputedCtrPolicyDigest(
+  settings: CtrPolicySettings,
+): string {
+  return digest([METHOD, settings])
 }
 
 function safe(value: bigint | string | number): number {
@@ -187,7 +198,7 @@ export async function declareFixturePrecomputedCtrPolicy(
         method: METHOD,
         settings: input.settings,
         lateEventCutoffHours: input.settings.lateEventCutoffHours,
-        settingsDigest: digest([METHOD, input.settings]),
+        settingsDigest: precomputedCtrPolicyDigest(input.settings),
         authority: "fixture_only",
       },
     })
@@ -326,12 +337,21 @@ function armReport(
 /** Evaluation mutates only append-only report rows. It cannot route traffic or
  * promote a generation. The exclusive fence gives one consistent raw/archive
  * snapshot and waits for accepted in-flight private evidence before finality. */
-export async function evaluatePrivatePrecomputedCtr(
+async function evaluatePrecomputedCtrReport(
   prisma: PrismaClient,
-  input: { experimentId: string; operator: Principal | null; now?: Date },
+  input: {
+    experimentId: string
+    operator: Principal | null
+    now?: Date
+    evidenceBasis: "private_unverified" | "isolated_fixture"
+  },
 ): Promise<PrecomputedCtrRead> {
   if (!hasPermission(input.operator, "operate:recommendation-experiments"))
     throw new ForbiddenError()
+  if (input.evidenceBasis === "isolated_fixture")
+    await (
+      await import("./public-control")
+    ).assertIsolatedPrecomputedControlFixture(prisma)
   return prisma.$transaction(
     async (tx) => {
       await lockPrecomputedCtrEvidence(tx, input.experimentId, "exclusive")
@@ -346,6 +366,22 @@ export async function evaluatePrivatePrecomputedCtr(
           status: "unavailable",
           reason: "experiment_not_found",
         } as const
+      if (
+        input.evidenceBasis === "isolated_fixture" &&
+        experiment.state !== "public_ready"
+      )
+        return {
+          status: "unavailable",
+          reason: "public_experiment_unavailable",
+        } as const
+      if (
+        input.evidenceBasis === "private_unverified" &&
+        experiment.state !== "private_test"
+      )
+        return {
+          status: "unavailable",
+          reason: "private_experiment_unavailable",
+        } as const
       if (!experiment.ctrPolicy)
         return {
           status: "unavailable",
@@ -358,7 +394,7 @@ export async function evaluatePrivatePrecomputedCtr(
       validateCtrPolicySettings(settings)
       if (
         policy.lateEventCutoffHours !== settings.lateEventCutoffHours ||
-        policy.settingsDigest !== digest([METHOD, settings])
+        policy.settingsDigest !== precomputedCtrPolicyDigest(settings)
       )
         return {
           status: "unavailable",
@@ -387,12 +423,26 @@ export async function evaluatePrivatePrecomputedCtr(
         endsAt: experiment.endsAt,
         asOf,
         byArm: moments,
-        botEligibility: "unverified",
-        trackingLoss: "unobservable",
+        botEligibility:
+          input.evidenceBasis === "isolated_fixture"
+            ? "verified"
+            : "unverified",
+        trackingLoss:
+          input.evidenceBasis === "isolated_fixture"
+            ? "verified"
+            : "unobservable",
       })
       const reasons = [...evaluation.reasons]
-      if (policy.authority !== "prelaunch_agreed")
+      if (
+        input.evidenceBasis === "private_unverified" &&
+        policy.authority !== "prelaunch_agreed"
+      )
         reasons.push("numeric_policy_not_agreed")
+      if (
+        input.evidenceBasis === "isolated_fixture" &&
+        policy.authority !== "fixture_only"
+      )
+        reasons.push("fixture_policy_authority_mismatch")
       const unversioned = safe(
         totals.control.unversionedArchivedVisits +
           totals.challenger.unversionedArchivedVisits +
@@ -402,6 +452,7 @@ export async function evaluatePrivatePrecomputedCtr(
       const revision = (latest?.revision ?? 0) + 1
       const report: PrecomputedCtrReport = {
         schemaVersion: 1,
+        evidenceBasis: input.evidenceBasis,
         experimentId: experiment.id,
         revision,
         isFinal,
@@ -445,8 +496,16 @@ export async function evaluatePrivatePrecomputedCtr(
           other: safe(totals.excluded.excludedOther),
         },
         measurementHealth: {
-          botEligibility: "unverified",
-          trackingLoss: "unobservable",
+          botEligibility:
+            input.evidenceBasis === "isolated_fixture"
+              ? "fixture_verified"
+              : "unverified",
+          trackingLoss:
+            input.evidenceBasis === "isolated_fixture"
+              ? "fixture_verified"
+              : "unobservable",
+          edgeAutomationCoverage: "partial_unverified",
+          exclusionCountScope: "admin_bound_only",
           unversionedArchivedVisits: unversioned,
           attribution: "server_bound_request_and_item",
         },
@@ -461,7 +520,10 @@ export async function evaluatePrivatePrecomputedCtr(
           criticalValue: evaluation.criticalValue,
           conservativeDegreesOfFreedom: evaluation.conservativeDegreesOfFreedom,
         },
-        outcome: "inconclusive",
+        outcome:
+          input.evidenceBasis === "isolated_fixture" && reasons.length === 0
+            ? evaluation.outcome
+            : "inconclusive",
         reasons,
       }
       // All retained counts are checked as safe integers before hashing and
@@ -507,6 +569,30 @@ export async function evaluatePrivatePrecomputedCtr(
     },
     { timeout: 30_000, maxWait: 5_000 },
   )
+}
+
+/** Existing private data remains permanently unqualified for public wins. */
+export function evaluatePrivatePrecomputedCtr(
+  prisma: PrismaClient,
+  input: { experimentId: string; operator: Principal | null; now?: Date },
+): Promise<PrecomputedCtrRead> {
+  return evaluatePrecomputedCtrReport(prisma, {
+    ...input,
+    evidenceBasis: "private_unverified",
+  })
+}
+
+/** Fixture decisions use real persisted visits/selections, but are never a
+ * live certificate: edge automation coverage and live human qualification
+ * remain explicitly unavailable. */
+export function evaluatePublicPrecomputedCtr(
+  prisma: PrismaClient,
+  input: { experimentId: string; operator: Principal | null; now?: Date },
+): Promise<PrecomputedCtrRead> {
+  return evaluatePrecomputedCtrReport(prisma, {
+    ...input,
+    evidenceBasis: "isolated_fixture",
+  })
 }
 
 /** Admin and authenticated AI route use this exact versioned read contract. */

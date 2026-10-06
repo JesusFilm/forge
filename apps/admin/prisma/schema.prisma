@@ -6781,7 +6781,7 @@ model RecommendationPrecomputedGenerationRetentionProof {
   @@map("recommendation_precomputed_generation_retention_proof")
 }
 
-/// Frozen configuration for a private Watch test; no public pointer references it.
+/// Frozen Watch cohort. Only the separate, explicit public pointer can select it.
 model RecommendationPrecomputedExperiment {
   id String @id @db.VarChar(191)
   generationId String @map("generation_id")
@@ -6808,10 +6808,50 @@ model RecommendationPrecomputedExperiment {
   ctrClusters RecommendationPrecomputedCtrCluster[]
   ctrTotals RecommendationPrecomputedCtrTotals[]
   ctrReports RecommendationPrecomputedCtrReport[]
+  activePublicControls RecommendationPrecomputedPublicControl[] @relation("PrecomputedPublicActiveExperiment")
+  retainedPublicControls RecommendationPrecomputedPublicControl[] @relation("PrecomputedPublicRetainedExperiment")
 
   @@index([state, startsAt, endsAt], map: "recommendation_precomputed_experiment_window_idx")
   @@index([expiresAt], map: "recommendation_precomputed_experiment_expiry_idx")
   @@map("recommendation_precomputed_experiment")
+}
+
+/// Singleton manual serving choice. Migrations seed incumbent; builds and
+/// evaluations never update this pointer.
+model RecommendationPrecomputedPublicControl {
+  id String @id @db.VarChar(64)
+  version Int @default(1)
+  mode String @default("incumbent") @db.VarChar(16)
+  activeExperimentId String? @map("active_experiment_id") @db.VarChar(191)
+  activeExperiment RecommendationPrecomputedExperiment? @relation("PrecomputedPublicActiveExperiment", fields: [activeExperimentId], references: [id], onDelete: Restrict)
+  retainedExperimentId String? @map("retained_experiment_id") @db.VarChar(191)
+  retainedExperiment RecommendationPrecomputedExperiment? @relation("PrecomputedPublicRetainedExperiment", fields: [retainedExperimentId], references: [id], onDelete: Restrict)
+  reportRevision Int? @map("report_revision")
+  reportEvidenceDigest String? @map("report_evidence_digest") @db.Char(64)
+  authority String? @db.VarChar(32)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("recommendation_precomputed_public_control")
+}
+
+/// Compact, append-only operator decisions; no raw visit identities or
+/// model response bodies. Ordinary retention removes events after one year.
+model RecommendationPrecomputedPublicControlEvent {
+  id String @id @db.Uuid
+  controlVersion Int @unique @map("control_version")
+  action String @db.VarChar(32)
+  actorId String @map("actor_id") @db.VarChar(191)
+  reasonCode String? @map("reason_code") @db.VarChar(64)
+  experimentId String? @map("experiment_id") @db.VarChar(191)
+  generationId String? @map("generation_id")
+  reportRevision Int? @map("report_revision")
+  reportEvidenceDigest String? @map("report_evidence_digest") @db.Char(64)
+  authority String? @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([expiresAt, controlVersion], map: "recommendation_precomputed_public_control_event_expiry_idx")
+  @@map("recommendation_precomputed_public_control_event")
 }
 
 /// Minimal 29-day admission root, including visits without any delivery request.

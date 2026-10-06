@@ -54,7 +54,12 @@ export async function purgeExpiredPrecomputedVisitRoots(
   // Deleting a visit cascades its thin request links. Keep the frozen config
   // longer for audit, then remove it only after every raw visit is gone.
   const experiments = await tx.recommendationPrecomputedExperiment.findMany({
-    where: { expiresAt: { lte: now }, visits: { none: {} } },
+    where: {
+      expiresAt: { lte: now },
+      visits: { none: {} },
+      activePublicControls: { none: {} },
+      retainedPublicControls: { none: {} },
+    },
     orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
     take: batchSize,
     select: { id: true },
@@ -65,12 +70,24 @@ export async function purgeExpiredPrecomputedVisitRoots(
         id: { in: experiments.map(({ id }) => id) },
         expiresAt: { lte: now },
         visits: { none: {} },
+        activePublicControls: { none: {} },
+        retainedPublicControls: { none: {} },
       },
     })
+  const eventsDeleted = await tx.$executeRaw`
+    DELETE FROM recommendation_precomputed_public_control_event event
+    WHERE event.id IN (
+      SELECT expired.id FROM recommendation_precomputed_public_control_event expired
+      WHERE expired.expires_at <= ${now}
+      ORDER BY expired.expires_at, expired.control_version
+      LIMIT ${batchSize}
+    )`
   return {
     visitsDeleted: visitsDeleted.count,
     experimentsDeleted: experimentsDeleted.count,
+    controlEventsDeleted: eventsDeleted,
     visitPageFull: visits.length === batchSize,
     experimentPageFull: experiments.length === batchSize,
+    controlEventPageFull: eventsDeleted === batchSize,
   }
 }

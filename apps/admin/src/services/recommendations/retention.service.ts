@@ -311,6 +311,7 @@ export async function purgeExpiredRecommendationRequests(
       )
       rowCounts.expiredPrecomputedVisits = result.visitsDeleted
       rowCounts.expiredPrecomputedExperiments = result.experimentsDeleted
+      rowCounts.expiredPrecomputedControlEvents = result.controlEventsDeleted
       return result
     })
     // One generation at a time; a large terminal graph enters the non-servable
@@ -1193,6 +1194,7 @@ export async function purgeExpiredRecommendationRequests(
       requestIds.length === batchSize ||
       precomputedPurge.visitPageFull ||
       precomputedPurge.experimentPageFull ||
+      precomputedPurge.controlEventPageFull ||
       precomputedGenerationPurge.pageFull ||
       expiredWatchExposures.length === batchSize ||
       directActionIds.length === batchSize ||

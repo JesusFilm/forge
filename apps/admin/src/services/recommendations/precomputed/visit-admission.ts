@@ -50,7 +50,7 @@ function digest(parts: readonly string[]): string {
 }
 
 /** The incumbent is the live serving route, including any promotion authority. */
-async function readControlRouting(
+export async function readControlRouting(
   prisma: Prisma.TransactionClient | PrismaClient,
 ) {
   const [control, promotion] = await Promise.all([
