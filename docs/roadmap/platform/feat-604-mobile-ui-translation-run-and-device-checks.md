@@ -94,7 +94,7 @@ After U16 merges, the owner ships one production native build (TestFlight and Pl
 
 - Do not publish a production over-the-air update between the merge of #2510 and that native build. The update fingerprint moved, so an update reaches no installed build.
 - Do not cut the production native build before U16 merges. Without catalogs, iOS Settings lists 225 languages that all show English.
-- Deploy the admin change before any build that sends `TRANSLATION`. An older admin does not know `TRANSLATION` or `uiLocale`, so the request fails GraphQL validation before the resolver runs. Admin then writes no `event=refused` line, and the phone shows the one failure message and files a RUM error (checked with graphql-js on 2026-10-06).
+- Deploy the admin change before any build that sends `TRANSLATION`. An older admin does not know `TRANSLATION` or `uiLocale`, so the request fails GraphQL variable coercion before the resolver runs. Document validation passes, because the new values travel in the variables. Admin then writes no `event=refused` line, and the phone shows the one failure message and files a RUM error (checked with graphql-js on 2026-10-06).
 - The local mode costs nothing extra. A paid OpenAI run is the fallback only, and it needs the owner's key and budget.
 - Layer 1 is report-only. Do not make an import depend on GlotLID: it is weakest in low-resource languages and in close pairs such as `sr` and `bs`.
 - Run one import at a time. Two imports at the same time overwrite each other's record and provenance changes.

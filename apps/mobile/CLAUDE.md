@@ -2453,9 +2453,10 @@ the KD, KTD, R, and U numbers that the source cites.
   catalogs (`crk`, `mey-Latn`) also show the kind, because their tag is not
   `en`. Admin must deploy the kind before a build sends it. An older admin
   does not know `TRANSLATION` or `uiLocale`, so the request fails GraphQL
-  validation before the resolver runs. Admin then writes no `event=refused`
-  line, and the phone shows the one failure message and files a RUM error
-  (checked with graphql-js on 2026-10-06).
+  variable coercion before the resolver runs. Document validation passes,
+  because the new values travel in the variables. Admin then writes no
+  `event=refused` line, and the phone shows the one failure message and files
+  a RUM error (checked with graphql-js on 2026-10-06).
 
 ### Add, change, or remove a string
 
