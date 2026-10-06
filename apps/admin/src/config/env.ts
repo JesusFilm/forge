@@ -567,6 +567,8 @@ export const env = createEnv({
     WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED: z
       .enum(["1"])
       .optional(),
+    PRECOMPUTED_WATCH_MEASUREMENT_URL: z.string().url().optional(),
+    WATCH_RECOMMENDATION_MEASUREMENT_API_KEY: z.string().min(32).optional(),
     // Isolated, opt-in recommendation storage benchmark settings. The script
     // validates its own safety guards even when CI skips application validation.
     RECOMMENDATION_STORAGE_BENCHMARK: z.enum(["1"]).optional(),
@@ -1141,6 +1143,12 @@ export const env = createEnv({
     ),
     WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED: emptyToUndefined(
       process.env.WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED,
+    ),
+    PRECOMPUTED_WATCH_MEASUREMENT_URL: emptyToUndefined(
+      process.env.PRECOMPUTED_WATCH_MEASUREMENT_URL,
+    ),
+    WATCH_RECOMMENDATION_MEASUREMENT_API_KEY: emptyToUndefined(
+      process.env.WATCH_RECOMMENDATION_MEASUREMENT_API_KEY,
     ),
     RECOMMENDATION_STORAGE_BENCHMARK: emptyToUndefined(
       process.env.RECOMMENDATION_STORAGE_BENCHMARK,

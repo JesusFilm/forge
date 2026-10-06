@@ -11,6 +11,7 @@ import {
   loadPrecomputedIncumbentBaseline,
   loadPrecomputedIncumbentBaselineReport,
 } from "./incumbent-baseline"
+import { loadWebWatchMeasurement } from "./web-measurement"
 
 const experimentSelect = {
   id: true,
@@ -69,6 +70,62 @@ export async function loadPrecomputedPublicReadiness(
   const baselineReport = baseline
     ? await loadPrecomputedIncumbentBaselineReport(prisma, baseline.id)
     : null
+  const now = new Date()
+  const baselineStart = baseline ? new Date(baseline.startsAt) : null
+  const baselineEnd = baseline
+    ? new Date(
+        Math.min(
+          new Date(baseline.endsAt).getTime(),
+          baseline.stoppedAt
+            ? new Date(baseline.stoppedAt).getTime()
+            : Infinity,
+        ),
+      )
+    : null
+  const completedHour = Math.floor(now.getTime() / 3_600_000) * 3_600_000
+  const baselineCoveredEnd = baselineEnd
+    ? Math.min(
+        Math.floor(baselineEnd.getTime() / 3_600_000) * 3_600_000,
+        completedHour,
+      )
+    : 0
+  const baselineWebMeasurement =
+    baselineStart && baselineCoveredEnd > baselineStart.getTime()
+      ? await loadWebWatchMeasurement(
+          baselineStart,
+          new Date(baselineCoveredEnd),
+          { now },
+        )
+      : null
+  const baselineFullHourWindow =
+    baselineEnd != null &&
+    baselineEnd.getTime() % 3_600_000 === 0 &&
+    baselineCoveredEnd === baselineEnd.getTime()
+  const baselineWebComplete =
+    baselineFullHourWindow && baselineWebMeasurement?.status === "complete"
+  const baselineRequestToVisitGap =
+    baselineFullHourWindow &&
+    baselineWebMeasurement?.status === "complete" &&
+    baselineReport != null &&
+    baselineWebMeasurement.counters.delivery_qualified <
+      baselineReport.eligibleVisits
+  const unresolved = [
+    ...(baselineReport?.isFinal &&
+    baselineReport.evidenceBasis === "verified_incumbent_baseline" &&
+    baselineReport.eligibleVisits > 0
+      ? []
+      : ["verified_incumbent_baseline_missing"]),
+    ...(baselineWebComplete ? [] : ["web_request_health_incomplete"]),
+    ...(baselineRequestToVisitGap
+      ? ["qualified_request_count_below_durable_visits"]
+      : []),
+    "deployed_ga_and_model_access_unverified",
+    "web_edge_exclusion_coverage_partial_unverified",
+    "visit_id_and_browser_identity_loss_audit_unverified",
+    "numeric_stopping_policy_not_agreed_for_live_traffic",
+    "physical_headroom_and_traffic_projection_unverified",
+    "first_actual_catalog_cost_and_coverage_not_reviewed",
+  ]
   const retained =
     control.retainedExperimentId &&
     !experiments.some((item) => item.id === control.retainedExperimentId)
@@ -89,6 +146,9 @@ export async function loadPrecomputedPublicReadiness(
     control,
     baseline,
     baselineReport,
+    baselineWebMeasurement,
+    baselineFullHourWindow,
+    baselineRequestToVisitGap,
     incumbentRouting: routing
       ? {
           manifestId: routing.manifest.id,
@@ -105,17 +165,8 @@ export async function loadPrecomputedPublicReadiness(
     fixtureRehearsalEnvironment,
     liveActivation: {
       status: "blocked" as const,
-      reason:
-        "authenticated_live_measurement_verifier_not_implemented" as const,
-      unresolved: [
-        "deployed_ga_and_model_access_unverified",
-        "trusted_human_and_bot_signal_unverified",
-        "web_edge_exclusion_coverage_partial_unverified",
-        "visit_id_and_browser_identity_loss_audit_unverified",
-        "numeric_stopping_policy_not_agreed_for_live_traffic",
-        "physical_headroom_and_traffic_projection_unverified",
-        "first_actual_catalog_cost_and_coverage_not_reviewed",
-      ],
+      reason: "live_launch_evidence_incomplete" as const,
+      unresolved,
     },
   }
 }

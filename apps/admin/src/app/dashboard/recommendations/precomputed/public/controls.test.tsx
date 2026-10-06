@@ -26,6 +26,9 @@ function readiness(fixture: boolean): Readiness {
     },
     baseline: null,
     baselineReport: null,
+    baselineWebMeasurement: null,
+    baselineFullHourWindow: false,
+    baselineRequestToVisitGap: false,
     incumbentRouting: {
       manifestId: "incumbent-manifest",
       routingDigest: "a".repeat(64),
@@ -45,7 +48,7 @@ function readiness(fixture: boolean): Readiness {
     fixtureRehearsalEnvironment: fixture,
     liveActivation: {
       status: "blocked",
-      reason: "authenticated_live_measurement_verifier_not_implemented",
+      reason: "live_launch_evidence_incomplete",
       unresolved: ["trusted_human_and_bot_signal_unverified"],
     },
   }

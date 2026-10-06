@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   promote: vi.fn(),
   rollback: vi.fn(),
   release: vi.fn(),
+  baselineStart: vi.fn(),
+  baselineStop: vi.fn(),
 }))
 vi.mock("@/auth/session", () => ({
   resolveAdminSessionFromRequest: mocks.session,
@@ -25,6 +27,15 @@ vi.mock("@/services/recommendations/precomputed/public-readiness", () => ({
 }))
 vi.mock("@/services/recommendations/precomputed/ctr-report", () => ({
   evaluatePublicPrecomputedCtr: mocks.evaluate,
+}))
+vi.mock("@/services/recommendations/precomputed/incumbent-baseline", () => ({
+  PrecomputedBaselineError: class extends Error {
+    constructor(readonly code: string) {
+      super(code)
+    }
+  },
+  startPrecomputedIncumbentBaseline: mocks.baselineStart,
+  stopPrecomputedIncumbentBaseline: mocks.baselineStop,
 }))
 vi.mock("@/services/recommendations/precomputed/public-control", () => ({
   PrecomputedPublicControlError: class extends Error {
@@ -75,6 +86,14 @@ describe("manual precomputed public control endpoint", () => {
     mocks.rollback.mockResolvedValue({ mode: "incumbent", version: 4 })
     mocks.release.mockResolvedValue({ mode: "incumbent", version: 5 })
     mocks.evaluate.mockResolvedValue({ status: "available" })
+    mocks.baselineStart.mockResolvedValue({
+      id: "baseline-1",
+      status: "scheduled",
+    })
+    mocks.baselineStop.mockResolvedValue({
+      id: "baseline-1",
+      status: "stopped",
+    })
   })
 
   it("returns an authenticated no-store readiness snapshot without changing serving", async () => {
@@ -217,6 +236,37 @@ describe("manual precomputed public control endpoint", () => {
         expectedControlVersion: 4,
         expectedExperimentId: "experiment-1",
       }),
+    )
+  })
+
+  it("requires recent authentication to start a baseline but allows an immediate stop", async () => {
+    const baselineId = "550e8400-e29b-41d4-a716-446655440000"
+    mocks.session.mockResolvedValue({
+      principal: { id: "operator", role: "ADMIN" },
+      authenticatedAt: new Date("2026-10-05T00:00:00.000Z"),
+    })
+    expect((await POST(request({ action: "start_baseline" }))).status).toBe(401)
+    expect(mocks.baselineStart).not.toHaveBeenCalled()
+    expect(
+      (await POST(request({ action: "stop_baseline", baselineId }))).status,
+    ).toBe(200)
+    expect(mocks.baselineStop).toHaveBeenCalledWith(
+      {},
+      {
+        baselineId,
+        operator: { id: "operator", role: "ADMIN" },
+      },
+    )
+    mocks.session.mockResolvedValue({
+      principal: { id: "operator", role: "ADMIN" },
+      authenticatedAt: new Date("2026-10-06T00:00:00.000Z"),
+    })
+    expect((await POST(request({ action: "start_baseline" }))).status).toBe(200)
+    expect(mocks.baselineStart).toHaveBeenCalledWith(
+      {},
+      {
+        operator: { id: "operator", role: "ADMIN" },
+      },
     )
   })
 })

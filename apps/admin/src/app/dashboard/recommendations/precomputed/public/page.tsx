@@ -30,10 +30,11 @@ export default async function PublicPrecomputedControlPage() {
       <PageSection title="Live readiness" meta="BLOCKED">
         <div className="space-y-3 p-4 text-[13px]">
           <p>
-            A live human/bot and tracking-loss verifier is not implemented. The
-            isolated fixture can rehearse decisions, but its CTR outcome cannot
-            qualify live traffic. The Admin-bound automation count excludes
-            known bots and prefetches skipped by Web.
+            Verified-browser incumbent visits and accepted clicks are measured
+            separately from Web request-health counters. Missing Web hours,
+            incomplete tracking, fixture-only evidence, and the unagreed live
+            stopping policy keep launch blocked. No winner is activated
+            automatically.
           </p>
           <ul className="list-inside list-disc space-y-1">
             {readiness.liveActivation.unresolved.map((reason) => (
