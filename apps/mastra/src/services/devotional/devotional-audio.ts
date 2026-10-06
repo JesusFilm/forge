@@ -827,9 +827,12 @@ async function twoVoiceHookAudio(
       voiceover({
         text: first && seg.direction ? `${seg.direction.trim()} ${line}` : line,
         voice,
+        // Livelier than the reflection for every opening line, the first a
+        // touch more. Owner, 2026-10-06: stability 0.3 / style 0.65 made the
+        // male voice "not sound like himself"; this is the step back.
         voiceSettings: first
-          ? { ...base, stability: 0.3, style: 0.65, speed: 1.12 }
-          : base,
+          ? { ...base, stability: 0.42, style: 0.5, speed: 1.1 }
+          : { ...base, stability: 0.45, style: 0.45, speed: 1.1 },
         model: CONTINUOUS_MODEL,
         withTimestamps: true,
         timeoutMs: 120_000,
