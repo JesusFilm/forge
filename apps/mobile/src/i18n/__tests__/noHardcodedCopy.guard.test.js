@@ -136,7 +136,7 @@ const COPY_EXEMPT_FILES = {
       "src/lib/announcements.ts",
     ].map((file) => [
       file,
-      "Daily Bible Pause review build: an English-only mock on a branch that never merges",
+      "Daily Bible Pause: English-only until its localization pass, owned open debt (code review 2026-10-07, finding #1)",
     ]),
   ),
 }
