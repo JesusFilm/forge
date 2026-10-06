@@ -182,6 +182,7 @@ jobs:
           src/services/push/campaign-content.db.test.ts
           src/services/push/agent-reads.db.test.ts
           src/app/mcp/route.push.db.test.ts
+          src/services/push/schema.db.test.ts
           --no-file-parallelism
       - name: Exercise recommendation tracer migration against PostgreSQL
         env:

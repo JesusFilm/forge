@@ -1,4 +1,4 @@
--- Push campaign drafts through the admin MCP (feat-612), U2.
+-- Push campaign drafts through the admin MCP (feat-613), U2.
 -- Additive columns only. The defaults need no table rewrite, so existing rows
 -- keep their status and start at content version 0.
 BEGIN;

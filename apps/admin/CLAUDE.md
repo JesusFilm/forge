@@ -2864,7 +2864,7 @@ JSON through GraphQL.
 ## Admin MCP (JFP Admin MCP — feat-276 + feat-320 + feat-405)
 
 OAuth-protected JSON-RPC MCP surface at `POST /mcp` for AI agents (Claude,
-Codex) operating on Experiences and, since feat-612, on push campaign drafts.
+Codex) operating on Experiences and, since feat-613, on push campaign drafts.
 Onboarding UI at `/dashboard/mcp`; protected-
 resource metadata at `/.well-known/oauth-protected-resource` (its
 `scopes_supported` derives automatically from the tool registry).
@@ -2888,7 +2888,7 @@ resource metadata at `/.well-known/oauth-protected-resource` (its
   `src/services/push/agent-reads.service.ts` and
   `src/services/push/test-run-state.ts`, and writes with
   `src/services/push/campaign-content.service.ts`.
-- **Push campaign tools (feat-612):** `push.language.search`,
+- **Push campaign tools (feat-613):** `push.language.search`,
   `push.destination.search`, `push.audience.count`, `push.campaign.list`, and
   `push.campaign.read` need scope `push:campaign:read`. `push.campaign.create`
   and `push.campaign.update` need scope `push:campaign:draft`. Only an EDITOR
@@ -3226,10 +3226,10 @@ is `docs/roadmap/platform/feat-524-localized-push-campaigns.md`.
 - Load proof before a first campaign:
   `CI=1 pnpm --filter @forge/admin exec tsx src/scripts/push-campaign-dry-run.ts --registrations=100000 --groups=40`.
 
-### Agent drafts and the content version (feat-612)
+### Agent drafts and the content version (feat-613)
 
 The JFP Admin MCP also writes campaign drafts (see "Admin MCP" above).
-Migration `0135_push_campaign_agent_drafts` adds `content_version`,
+Migration `0137_push_campaign_agent_drafts` adds `content_version`,
 `last_test_content_version`, `ai_last_actor_id`, and `ai_last_written_at` to
 `push_campaign`.
 
