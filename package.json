@@ -67,7 +67,7 @@
       "minimatch@3": "3.1.5",
       "minimatch@9": "9.0.7",
       "minimatch@10": "10.2.5",
-      "@nestjs/core>path-to-regexp": "8.4.0",
+      "@nestjs/core>path-to-regexp": "8.4.2",
       "node-forge": "1.4.0",
       "picomatch@2": "2.3.2",
       "picomatch@3": "3.0.2",
