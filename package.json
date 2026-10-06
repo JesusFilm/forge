@@ -39,7 +39,7 @@
       }
     },
     "overrides": {
-      "@hono/node-server": "1.19.14",
+      "@hono/node-server": "1.19.15",
       "@apollo/server": "5.5.0",
       "@casl/ability": "6.7.5",
       "@nestjs/core": "11.1.18",
