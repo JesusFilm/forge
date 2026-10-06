@@ -3,7 +3,11 @@ import { createHash } from "node:crypto"
 import { GoogleAuth, Impersonated } from "google-auth-library"
 import { z } from "zod"
 
-import { requestGoogleJson } from "../google-auth-client"
+import { env } from "../../config/env"
+import {
+  parseGoogleServiceAccountCredentials,
+  requestGoogleJson,
+} from "../google-auth-client"
 import { GA_WATCH_PROPERTY } from "./ga-watch-history-range"
 import { HistoricalAnalyticsError } from "./historical-analytics"
 import type {
@@ -158,6 +162,28 @@ type TokenProvider = () => Promise<
 
 async function defaultTokenProvider(serviceAccountEmail: string) {
   try {
+    if (env.PRECOMPUTED_GA4_CREDENTIALS_JSON) {
+      const project = serviceAccountEmail.match(
+        /@([a-z0-9-]+)\.iam\.gserviceaccount\.com$/u,
+      )?.[1]
+      const credentials = project
+        ? parseGoogleServiceAccountCredentials(
+            env.PRECOMPUTED_GA4_CREDENTIALS_JSON,
+            project,
+          )
+        : null
+      if (!credentials || credentials.client_email !== serviceAccountEmail)
+        return { ok: false as const }
+      // Explicit deployed identity: never fall back to the operator's ADC or
+      // forward caller-controlled token endpoints from the credential JSON.
+      const token = await new GoogleAuth({
+        credentials,
+        scopes: [GA_SCOPE],
+      }).getAccessToken()
+      return token
+        ? { ok: true as const, accessToken: token }
+        : { ok: false as const }
+    }
     const sourceClient = await new GoogleAuth({
       scopes: ["https://www.googleapis.com/auth/cloud-platform"],
     }).getClient()

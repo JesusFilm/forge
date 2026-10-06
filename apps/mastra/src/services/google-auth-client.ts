@@ -42,7 +42,7 @@ type GoogleAuthFactory = (options: {
   getAccessToken: () => Promise<string | null | undefined>
 }
 
-function parseGoogleServiceAccountCredentials(
+export function parseGoogleServiceAccountCredentials(
   credentialsJson: string,
   expectedProjectId: string,
 ): GoogleServiceAccountCredentials | null {

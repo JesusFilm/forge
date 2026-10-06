@@ -1,6 +1,6 @@
 # Precomputed recommendation orchestration
 
-Updated: 2026-10-06 (Pacific/Auckland).
+Updated: 2026-10-07 (Pacific/Auckland).
 
 Parent: https://github.com/JesusFilm/forge/issues/2565.
 Draft integration PR: https://github.com/JesusFilm/forge/pull/2578.
@@ -12,6 +12,15 @@ findings, and recovery history. The [CTR operations note](../operations/precompu
 describes the private reporting contract and limits.
 
 ## Integration
+
+October 7 continuation: the owner requested completion of the live measurement
+verifier, deployment configuration, actual catalog report and capacity checks.
+The test must stop after one calendar month and return to the incumbent for
+manual reevaluation. A working local demonstration is required before any
+production merge. Numeric winner/health thresholds remain pending; fixture
+settings are not live authority. Workers A/B are continuing from `5c9f38c6f`.
+The orchestrator is preparing the real-data build in isolated local storage,
+with read-only production catalog access. No production experiment is active.
 
 - Orchestrator: `01a109d7-dc1c-7600-a2c4-07dee79b4aff`.
 - Initial base: `d661b99939e24ba41834adce53c6bad9262bcee9`.
@@ -75,8 +84,10 @@ for specific review or CI fixes. B’s follow-up `452fd51dc` is integrated as
 bounded-retention fixture. No additional implementation chat was created.
 Previous branches and integrated work remain saved.
 The orchestrator owns cross-app integration tests, live operator verification,
-shared docs/roadmap, integration and the single PR. No production write/deploy,
-public activation, promotion or schedule is authorized. At most two implementation
+shared docs/roadmap, integration and the single PR. The October 7 instruction
+authorizes necessary deployment preparation; production merge/deployment remains
+behind the requested local demonstration. No public activation, promotion or
+recurring schedule has occurred. At most two implementation
 chats may run. Serialize heavy validation with
 `/tmp/forge-feat590-heavy-validation.lock`.
 

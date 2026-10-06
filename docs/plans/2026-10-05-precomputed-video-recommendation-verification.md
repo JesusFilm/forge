@@ -1481,3 +1481,50 @@ Final root verification is committed with normal hooks; the PR records the
 published head and CI run. #2575's code/fixture acceptance is verified, while
 live verifier implementation and real deployment/measurement/capacity inputs
 remain incomplete. #2573–#2575, parent #2565 and feat-590 are not marked complete.
+
+## October 7 continuation: deployed GA identity and one-month decision
+
+The owner requested completion of live verification, the real catalog report,
+and capacity work, with a working local demonstration before production merge.
+One month means a UTC calendar month with day clamping, followed by incumbent
+serving and manual reevaluation. Other numeric thresholds remain unapproved.
+Workers A/B resumed from `5c9f38c6f`; the root owns real-input preparation.
+
+The already-deployed Mastra credential for
+`forge-seo-production@jfplab.iam.gserviceaccount.com` successfully read property
+`320198532` using only `analytics.readonly`, restricted to the two approved
+JesusFilm.org hosts and exact `/watch` plus descendants. The actual GA reader
+then passed its historical coverage read through October 4: 4,006,916 reported
+video starts, complete aggregate pagination and an explicitly missing prefix
+before August 6, 2022. This is reporting coverage, not verified raw-event history.
+No credentials or raw viewer records are in these receipts.
+
+Mastra now accepts optional sealed `PRECOMPUTED_GA4_CREDENTIALS_JSON`, bound to
+the configured service-account email/project. The existing credential parser
+strips arbitrary token endpoints. Malformed or mismatched explicit credentials
+fail closed, without falling back to ADC; absent credentials preserve operator
+impersonation. The focused tests passed 40 cases, the full Mastra suite passed
+3,267 with 44 configured skips, and typecheck/lint passed. A failing credential
+test preceded implementation. Sequential Standards and Spec review against
+`5c9f38c6f` found no remaining defect in this auth change; live readings verify
+the external boundary beyond mocked token transport.
+
+On October 6 at 20:30:58 UTC the three GA configuration values were staged in
+production Mastra using `--skip-deploys`. The credential uses Railway's reference
+to the existing `SEO_GOOGLE_CREDENTIALS_JSON`; read-back verified resolution and
+the exact property/principal. No deployment or experiment activation was
+triggered. The new code still requires the normal reviewed PR deployment.
+
+Capacity readings at 20:19:05 and 20:19:12 UTC measured 26,275,043,007 database
+bytes and 22,404,128,768 free PGDATA bytes on cluster `7655660030928953395`.
+A later 20:31:40 snapshot had 22,398,713,856 free bytes. These point-in-time
+observations are not an approved build projection. The separate storage owner
+reports 86 failed October 6 scheduled retention attempts; its ongoing repair
+remains separate from this work, and no purge/cleanup was triggered here.
+
+Sanitized receipts under `/tmp/forge-feat-590-orchestration`:
+`20261007-existing-runtime-ga-access.json`,
+`20261007-deployed-credential-reader.json`,
+`20261007-ga-staged-configuration.json`,
+`20261007-production-pgdata-capacity.txt`, and
+`20261007-{ga-auth-focused,mastra-typecheck,mastra-full,auth-lint}.log`.

@@ -306,6 +306,12 @@ instruction can promote the experiment. Preserve the incumbent for rollback.
   treatment of repeated visits, sample/duration requirements, detectable uplift,
   late-event cutoff, and measurement-health criteria. Thresholds are not invented
   in this spec and remain an explicit prelaunch decision.
+  On October 7 the owner selected a one-month test followed by reevaluation.
+  Implement one calendar month in UTC, preserving the start time and clamping
+  the day to the target month's last day. At the cutoff, stop new experiment
+  admissions and serve the incumbent; retain the fixed late-event cutoff and
+  require manual reevaluation. This duration decision does not approve fixture
+  statistical thresholds or automatic promotion.
 - Store versioned evaluation revisions containing both arms' visit/click counts,
   CTR and uncertainty, exclusions, card CTR, fallback/measurement health,
   cohort/window, generation/control identity, stopping-rule version, and
