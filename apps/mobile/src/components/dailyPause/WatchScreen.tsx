@@ -89,7 +89,8 @@ type PauseButtonProps = {
   onPress: () => void
   font: PauseFont
   /** The outline is the frame's upcoming pill, for a second choice. The glass
-   *  is iOS 26 Liquid Glass (the owner, 2026-10-06), else the primary pill. */
+   *  is iOS 26 Liquid Glass tinted cream (the owner, 2026-10-06), else the
+   *  primary pill. */
   variant?: PauseButtonVariant
   /** The button keeps this label's width when its own label is narrower, so
    *  a changing label never moves its edges (the owner, 2026-10-06). */
@@ -154,16 +155,13 @@ export function PauseButton({
           style={styles.glassButton}
           glassEffectStyle="regular"
           colorScheme="dark"
+          tintColor={pauseColors.ink}
           isInteractive
         >
           <ButtonLabel
             label={label}
             widthLabel={widthLabel}
-            style={[
-              styles.buttonLabel,
-              styles.glassLabel,
-              font("sansSemiBold"),
-            ]}
+            style={[styles.buttonLabel, font("sansSemiBold")]}
           />
         </GlassView>
       </Pressable>
@@ -270,7 +268,6 @@ const styles = StyleSheet.create({
     borderRadius: pauseRadii.button,
     overflow: "hidden",
   },
-  glassLabel: { color: pauseColors.ink },
   labelBox: { alignItems: "center" },
   // Equal-width digits, so a count does not move inside the button.
   steadyDigits: { fontVariant: ["tabular-nums"] },

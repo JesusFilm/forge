@@ -95,6 +95,13 @@ function appState(state: AppStateStatus) {
   })
 }
 
+function pulses(root: TestInstance): RenderedNode[] {
+  return root.root.findAll(
+    (node) =>
+      typeof node.type === "string" && node.props.testID === "pause-pulse",
+  )
+}
+
 /** A text node that reads exactly this, not a longer text that contains it. */
 function hasExactText(root: TestInstance, text: string): boolean {
   return (
@@ -199,9 +206,18 @@ it("lets no control skip the ring before zero (R16)", async () => {
 it("makes Amen active at zero and moves on only at the tap (R17)", async () => {
   const root = await render(3)
   advance(PAUSE_INTRO_MS)
+  expect(pulses(root)).toHaveLength(0)
   advance(30_000)
   expect(hasExactText(root, "0")).toBe(true)
   expect(hostsWithLabel(root, "Amen").some(isDisabled)).toBe(false)
+  // The owner (2026-10-06): Amen pulses every two seconds to ask for a tap.
+  expect(pulses(root)).toHaveLength(1)
+  const [amen] = hostsWithLabel(root, "Amen")
+  let inPulse = false
+  for (let node = amen?.parent; node; node = node.parent) {
+    if (node.props.testID === "pause-pulse") inPulse = true
+  }
+  expect(inPulse).toBe(true)
   advance(60_000)
   expect(onContinue).not.toHaveBeenCalled()
   await press(pressableByLabel(root, "Amen"))

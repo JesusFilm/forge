@@ -2,7 +2,13 @@
 // nothing under an ancestor whose opacity animates, and nothing logs, so these
 // tests pin that no ancestor of the glass sets an opacity at all.
 import { act } from "react"
-import { AppState, Platform, StyleSheet, type ViewStyle } from "react-native"
+import {
+  AppState,
+  Platform,
+  StyleSheet,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native"
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
 import type { PauseFace } from "../../../lib/dailyPause/fonts"
@@ -131,11 +137,21 @@ it("draws the Watch screen's Continue in Liquid Glass, with no fading ancestor",
   )
   const [glass] = glasses(root)
   expect(glassLabels(root)).toEqual(["Continue"])
+  // The owner (2026-10-06): cream-tinted glass, with the dark label of the
+  // primary pill.
   expect(glass!.props).toMatchObject({
     glassEffectStyle: "regular",
     colorScheme: "dark",
+    tintColor: pauseColors.ink,
     isInteractive: true,
   })
+  const [label] = root.root.findAll(
+    (node) =>
+      typeof node.type === "string" && node.props.children === "Continue",
+  )
+  expect(StyleSheet.flatten(label!.props.style as TextStyle).color).toBe(
+    pauseColors.background,
+  )
   expect(opacitiesAbove(glass!)).toEqual([])
 })
 
@@ -150,7 +166,7 @@ it("draws Reflect's timer and then its Continue in Liquid Glass, with no fading 
   expect(opacitiesAbove(glasses(root)[0]!)).toEqual([])
 })
 
-it("keeps Amen the frame's primary button", async () => {
+it("draws Amen in Liquid Glass before and after zero, with no fading ancestor", async () => {
   const root = await render(
     <PrayScreen
       devotional={DEVOTIONALS.pharisee}
@@ -159,7 +175,13 @@ it("keeps Amen the frame's primary button", async () => {
       onContinue={() => {}}
     />,
   )
-  expect(glasses(root)).toHaveLength(0)
+  expect(glassLabels(root)).toEqual(["Amen"])
+  expect(opacitiesAbove(glasses(root)[0]!)).toEqual([])
+
+  advance(PAUSE_INTRO_MS)
+  advance(30_000)
+  expect(glassLabels(root)).toEqual(["Amen"])
+  expect(opacitiesAbove(glasses(root)[0]!)).toEqual([])
 })
 
 it.each([

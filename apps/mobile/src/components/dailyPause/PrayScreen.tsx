@@ -21,6 +21,7 @@ import {
   IntroStepper,
   usePauseIntro,
 } from "./PauseIntro"
+import { Pulse } from "./Pulse"
 import { HeldPauseButton } from "./ReflectScreen"
 import { StepperPills } from "./StepperPills"
 import { PauseBody, PauseButton, type PauseFont } from "./WatchScreen"
@@ -71,9 +72,21 @@ export function PrayScreen({
       </ScrollView>
       <IntroCovered intro={intro} style={styles.buttonRow}>
         {countdown.done ? (
-          <PauseButton label="Amen" onPress={onContinue} font={font} />
+          <Pulse>
+            <PauseButton
+              label="Amen"
+              onPress={onContinue}
+              font={font}
+              variant="glass"
+            />
+          </Pulse>
         ) : (
-          <HeldPauseButton label="Amen" spokenLabel="Amen" font={font} />
+          <HeldPauseButton
+            label="Amen"
+            spokenLabel="Amen"
+            font={font}
+            variant="glass"
+          />
         )}
       </IntroCovered>
     </PauseBody>
