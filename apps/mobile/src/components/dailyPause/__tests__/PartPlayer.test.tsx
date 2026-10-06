@@ -64,10 +64,15 @@ jest.mock("expo", () => {
   }
 })
 
+/** The bundled file resolves unless a case says it cannot be loaded. */
+let mockFileFails = false
 jest.mock("expo-asset", () => ({
   Asset: {
     fromModule: () => ({
-      downloadAsync: async () => ({ localUri: "file:///bundle/pharisee.mp4" }),
+      downloadAsync: async () => {
+        if (mockFileFails) throw new Error("no asset")
+        return { localUri: "file:///bundle/pharisee.mp4" }
+      },
     }),
   },
 }))
@@ -123,6 +128,7 @@ beforeEach(() => {
   position = 0
   seeks = []
   dropSeeks = false
+  mockFileFails = false
   Object.defineProperty(player, "currentTime", {
     configurable: true,
     get: () => position,
@@ -318,6 +324,31 @@ describe("the start of a part (KTD8)", () => {
     expect(hostButtons()).not.toContain("Try again")
     expect([...new Set(seeks)]).toEqual([PARTS.teaching.startSec])
     expect(player.play).toHaveBeenCalledTimes(1)
+  })
+})
+
+// Review #5: a file that could not be loaded left a black part with no way on.
+describe("a video file that cannot be loaded", () => {
+  it("offers Try again, and a tap loads the file and plays the part", async () => {
+    mockFileFails = true
+    await mount("film")
+    expect(hostButtons()).toContain("Try again")
+    expect(covered()).toBe(true)
+
+    mockFileFails = false
+    await tap("Try again")
+    await act(async () => {})
+    expect(hostButtons()).not.toContain("Try again")
+    await becomeReady()
+    await frames(2)
+    expect(player.play).toHaveBeenCalledTimes(1)
+  })
+
+  it("stays quiet while the part waits behind the Reflect screen", async () => {
+    mockFileFails = true
+    await mount("prayer", false)
+    expect(hostButtons()).not.toContain("Try again")
+    expect(covered()).toBe(true)
   })
 })
 

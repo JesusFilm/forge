@@ -230,3 +230,26 @@ it("stays on Share after a failed share, raises nothing, and shares again on the
     process.off("unhandledRejection", unhandled)
   }
 })
+
+// Review #5: a video that could not be loaded left a Share button that did
+// nothing, with no message.
+it("offers Try again when the video cannot be loaded, and then shares it", async () => {
+  const video = new File(Paths.bundle, "pharisee.mp4")
+  let failing = true
+  mockFromModule.mockImplementation(() => ({
+    downloadAsync: () =>
+      failing
+        ? Promise.reject(new Error("no asset"))
+        : Promise.resolve({ localUri: video.uri }),
+  }))
+  await render()
+  expect(buttons()).toEqual(["Try again"])
+  expect(hasText(renderer!, "This video could not be loaded.")).toBe(true)
+
+  failing = false
+  await press(pressableByLabel(renderer!, "Try again"))
+  await act(async () => {})
+  expect(buttons()).toEqual(["Share this video"])
+  await tap()
+  expect(mockShareAsync).toHaveBeenCalledTimes(1)
+})

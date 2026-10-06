@@ -11,6 +11,7 @@ import {
 import timeline from "../devotionalTimeline.json"
 import {
   DEVOTIONALS,
+  DEVOTIONAL_VIDEO_DEADLINE_MS,
   useDevotionalVideo,
   type DevotionalVideoState,
 } from "../devotionals"
@@ -88,17 +89,19 @@ describe("the bundled devotionals (R39, R40)", () => {
 describe("useDevotionalVideo", () => {
   const seen: DevotionalVideoState[] = []
 
-  function Probe() {
-    seen.push(useDevotionalVideo(DEVOTIONALS.pharisee))
+  function Probe({ attempt }: { attempt?: number }) {
+    seen.push(useDevotionalVideo(DEVOTIONALS.pharisee, attempt))
     return null
+  }
+
+  function probe(attempt?: number) {
+    return createElement(StrictMode, null, createElement(Probe, { attempt }))
   }
 
   async function mount(): Promise<TestInstance> {
     let renderer!: TestInstance
     await act(async () => {
-      renderer = TestRenderer.create(
-        createElement(StrictMode, null, createElement(Probe)),
-      )
+      renderer = TestRenderer.create(probe())
     })
     return renderer
   }
@@ -148,5 +151,50 @@ describe("useDevotionalVideo", () => {
     const renderer = await mount()
     expect(seen.at(-1)).toEqual({ status: "error" })
     await unmount(renderer)
+  })
+
+  // Review #5: an error state had no way back, so the part stayed black.
+  it("loads the file again for a new attempt after an error", async () => {
+    // StrictMode runs the first load twice, so the failure is a flag.
+    let failing = true
+    mockFromModule.mockImplementation(() => ({
+      downloadAsync: () =>
+        failing
+          ? Promise.reject(new Error("no asset"))
+          : Promise.resolve({ localUri: "file:///bundle/pharisee.mp4" }),
+    }))
+    const renderer = await mount()
+    expect(seen.at(-1)).toEqual({ status: "error" })
+
+    failing = false
+    await act(async () => {
+      renderer.update(probe(1))
+    })
+    expect(seen.at(-1)).toEqual({
+      status: "ready",
+      uri: "file:///bundle/pharisee.mp4",
+    })
+    await unmount(renderer)
+  })
+
+  it("gives an error state when the file does not resolve in time", async () => {
+    jest.useFakeTimers()
+    try {
+      mockFromModule.mockReturnValue({
+        downloadAsync: () => new Promise(() => {}),
+      })
+      const renderer = await mount()
+      await act(async () => {
+        jest.advanceTimersByTime(DEVOTIONAL_VIDEO_DEADLINE_MS - 1)
+      })
+      expect(seen.at(-1)).toEqual({ status: "loading" })
+      await act(async () => {
+        jest.advanceTimersByTime(1)
+      })
+      expect(seen.at(-1)).toEqual({ status: "error" })
+      await unmount(renderer)
+    } finally {
+      jest.useRealTimers()
+    }
   })
 })

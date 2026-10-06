@@ -66,10 +66,19 @@ export function PartPlayer({
   font,
   onEnded,
 }: PartPlayerProps) {
-  const video = useDevotionalVideo(devotional)
-  // "Try again" mounts a new player, which loads the file again.
+  // "Try again" loads the file again and mounts a new player.
   const [attempt, setAttempt] = useState(0)
+  const video = useDevotionalVideo(devotional, attempt)
+  const retry = () => setAttempt((count) => count + 1)
 
+  if (video.status === "error") {
+    return (
+      <View style={styles.fill}>
+        <View testID="part-cover" pointerEvents="none" style={styles.fill} />
+        {active ? <FailedNotice font={font} onRetry={retry} /> : null}
+      </View>
+    )
+  }
   if (video.status !== "ready") {
     return <View testID="part-cover" pointerEvents="none" style={styles.fill} />
   }
@@ -81,8 +90,26 @@ export function PartPlayer({
       active={active}
       font={font}
       onEnded={onEnded}
-      onRetry={() => setAttempt((count) => count + 1)}
+      onRetry={retry}
     />
+  )
+}
+
+/** A part that cannot play, and the one way on. */
+function FailedNotice({
+  font,
+  onRetry,
+}: {
+  font: PauseFont
+  onRetry: () => void
+}) {
+  return (
+    <View style={styles.failed}>
+      <Text style={[styles.failedLabel, font("bodyLight")]}>
+        This part did not start.
+      </Text>
+      <PauseButton label="Try again" onPress={onRetry} font={font} />
+    </View>
   )
 }
 
@@ -394,12 +421,7 @@ function PartVideo({
         </View>
       ) : null}
       {active && stage === "failed" ? (
-        <View style={styles.failed}>
-          <Text style={[styles.failedLabel, font("bodyLight")]}>
-            This part did not start.
-          </Text>
-          <PauseButton label="Try again" onPress={onRetry} font={font} />
-        </View>
+        <FailedNotice font={font} onRetry={onRetry} />
       ) : null}
     </View>
   )

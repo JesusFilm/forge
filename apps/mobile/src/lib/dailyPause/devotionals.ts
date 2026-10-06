@@ -4,6 +4,7 @@
 import { Asset } from "expo-asset"
 import { useEffect, useState } from "react"
 
+import { withTimeout } from "../withTimeout"
 import timeline from "./devotionalTimeline.json"
 
 export type DevotionalId = "pharisee" | "lamp"
@@ -76,12 +77,17 @@ type Resolved = Exclude<DevotionalVideoState, { status: "loading" }>
 
 const LOADING: DevotionalVideoState = { status: "loading" }
 
+/** A file that has not resolved by now reads as an error, so the part can
+ *  offer Try again instead of a black screen. */
+export const DEVOTIONAL_VIDEO_DEADLINE_MS = 8_000
+
 /** Never rejects. */
 async function resolveVideo(devotional: Devotional): Promise<Resolved> {
   try {
-    const { localUri } = await Asset.fromModule(
-      devotional.video,
-    ).downloadAsync()
+    const { localUri } = await withTimeout(
+      Asset.fromModule(devotional.video).downloadAsync(),
+      DEVOTIONAL_VIDEO_DEADLINE_MS,
+    )
     return localUri ? { status: "ready", uri: localUri } : { status: "error" }
   } catch {
     return { status: "error" }
@@ -89,25 +95,28 @@ async function resolveVideo(devotional: Devotional): Promise<Resolved> {
 }
 
 /** The local file of a devotional's video. The player freezes its first
- *  source, so a caller mounts the player only when this reads `ready`. */
+ *  source, so a caller mounts the player only when this reads `ready`. A new
+ *  `attempt` loads the file again, for a Try again after an error. */
 export function useDevotionalVideo(
   devotional: Devotional,
+  attempt = 0,
 ): DevotionalVideoState {
   const [resolved, setResolved] = useState<{
-    id: DevotionalId
+    key: string
     state: Resolved
   } | null>(null)
+  const key = `${devotional.id}:${attempt}`
 
   useEffect(() => {
     let current = true
     void resolveVideo(devotional).then((state) => {
-      if (current) setResolved({ id: devotional.id, state })
+      if (current) setResolved({ key, state })
     })
     return () => {
       current = false
     }
-  }, [devotional])
+  }, [devotional, key])
 
-  // A state for another devotional is stale, so the new one reads as loading.
-  return resolved?.id === devotional.id ? resolved.state : LOADING
+  // A state for another devotional or attempt is stale: the new one loads.
+  return resolved?.key === key ? resolved.state : LOADING
 }

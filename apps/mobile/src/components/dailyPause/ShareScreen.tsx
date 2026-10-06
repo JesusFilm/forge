@@ -1,7 +1,7 @@
 // The Figma "Share" screen (R7, R20, R22). Reaching it marks the run's day
 // done, and "Share this video" offers the bundled video. The run screen draws
 // the close, which is the only way to leave Share.
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { ScrollView, StyleSheet, Text, View } from "react-native"
 
 import { useDevotionalVideo } from "../../lib/dailyPause/devotionals"
@@ -25,7 +25,9 @@ type ShareScreenProps = {
 
 export function ShareScreen({ pin, font }: ShareScreenProps) {
   const { dayKey, devotional } = pin
-  const video = useDevotionalVideo(devotional)
+  // A video that cannot be loaded offers Try again, which loads it again.
+  const [attempt, setAttempt] = useState(0)
+  const video = useDevotionalVideo(devotional, attempt)
   const sharing = useRef(false)
 
   // KTD11: the pinned key, so a run that crosses midnight marks its own day.
@@ -53,9 +55,22 @@ export function ShareScreen({ pin, font }: ShareScreenProps) {
         <View style={styles.top} />
         <Text style={[styles.label, font("sansSemiBold")]}>SHARE</Text>
         <Text style={[styles.prompt, font("display")]}>{PROMPT}</Text>
+        {video.status === "error" ? (
+          <Text style={[styles.failed, font("bodyLight")]}>
+            This video could not be loaded.
+          </Text>
+        ) : null}
       </ScrollView>
       <View style={styles.buttonGap} />
-      <PauseButton label="Share this video" onPress={share} font={font} />
+      {video.status === "error" ? (
+        <PauseButton
+          label="Try again"
+          onPress={() => setAttempt((count) => count + 1)}
+          font={font}
+        />
+      ) : (
+        <PauseButton label="Share this video" onPress={share} font={font} />
+      )}
     </PauseBody>
   )
 }
@@ -76,6 +91,11 @@ const styles = StyleSheet.create({
     color: pauseColors.ink,
     fontSize: 28,
     lineHeight: 36,
+  },
+  failed: {
+    alignSelf: "stretch",
+    color: pauseColors.muted,
+    fontSize: 16,
   },
   buttonGap: { height: pauseSpacing.shareButtonGap },
 })
