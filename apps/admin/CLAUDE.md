@@ -2946,6 +2946,16 @@ resource metadata at `/.well-known/oauth-protected-resource` (its
 seed:first-party-apps` (updates the `scope` table + stored client scopes),
   and **users must re-authenticate their MCP clients** to pick up the new
   consent scopes — existing grants do not gain them.
+
+  **Corrected 2026-10-07 (feat-613):** this bullet is not enough for MCP
+  clients that registered before the change. Auth fixes the scope list of a
+  dynamic client at registration, and refuses the whole sign-in with
+  `invalid_scope` when the client requests a scope outside that list. The
+  Experience tools then stop too, and a new sign-in does not help. Add a seed
+  step that adds the new scope to existing dynamic clients, as the push-scope
+  bullet below does. See
+  `docs/solutions/auth/new-mcp-scope-needs-stored-scope-migration-for-dynamic-clients.md`.
+
 - **Deploy order (push scopes, KTD3):** one pull request cannot set this order,
   because apps/auth and apps/admin autodeploy from `main` in parallel.
   1. Merge the apps/auth change. Its production start command runs
