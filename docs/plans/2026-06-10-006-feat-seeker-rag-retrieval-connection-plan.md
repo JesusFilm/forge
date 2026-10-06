@@ -232,6 +232,14 @@ Inferred plan-time bets the origin left open; flag during review if any should f
 
 ## Risks & Dependencies
 
+> **Superseded October 6, 2026:** The token issuance, rotation, and revocation
+> recipe in the first risk below describes the original JesusFilm RAG integration.
+> For current Forge RAG access, use a registered consumer credential created and
+> managed through the portal, with its one-time value saved in the caller's
+> secret manager. Do not add or remove entries in the Railway
+> `SERVE_BEARER_TOKENS` map; [feat-610](../roadmap/rag/feat-610-rag-static-bearer-retirement.md)
+> owns its retirement.
+
 - **Token issuance is ops, outside this repo:** an entry in the RAG's `SERVE_BEARER_TOKENS` with all-sources (`*`) scope — a source-scoped token silently empties results outside its scope. Blocking for AE2/R11 live verification only; unconfigured behavior (AE1) is fully defined and testable now. The origin deferred token lifecycle to planning: name the accountable owner of the seeker entry in `SERVE_BEARER_TOKENS` at issuance time, and record the rotation/revocation path — rotation is a `JESUSFILM_RAG_API_KEY` env-var update in Railway followed by the AE4 wrong-token retest; revocation is removing the registry entry, after which the tool degrades to `unavailable`. All-sources (`*`) scope is accepted because the corpus is a single public-content source today and source-scoped tokens need reissuance per new source; if a sensitive source is later indexed, reissue with explicit source keys.
 - **RAG-side query handling is a named live-verification gate:** seeker questions are sensitive-category personal data in a ministry context, and this repo's no-query-logging discipline only covers our half. Before R11's live leg, confirm the RAG side's logging/retention posture for raw `query` text under this consumer token — this is a gate on live verification, not a best-effort aside.
 - **Retrieved passages are untrusted input the agent is tuned to obey:** the `message`-field design deliberately maximizes model compliance with tool-result text, and corpus passages arrive in that same channel — an injected corpus document could steer the agent, and the R9 guard does not help (an injected passage IS in the tool result). Blast radius today is misleading output to an authenticated Studio tester plus thread-lifetime memory poisoning; the U4 quoted-material instruction line documents intent, and the real defense belongs to the guardrail gate (see Deferred).

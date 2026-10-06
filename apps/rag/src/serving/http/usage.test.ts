@@ -11,7 +11,6 @@ it("counts completed HTTP attempts, errors, and denies without attributing revok
   let active = true
   let retrievalFails = false
   const app = createApp({
-    tokens: new Map(),
     retriever: {
       search: async () => {
         if (retrievalFails) throw new UsageError("unavailable")
@@ -90,7 +89,6 @@ it("does not count a disconnected retrieval as successful", async () => {
     release = resolve
   })
   const app = createApp({
-    tokens: new Map(),
     consumerAuth: {
       authenticate: async () => ({
         consumerId: "00000000-0000-4000-8000-000000000528",
@@ -142,7 +140,6 @@ it("a failed accounting write does not block retrieval or prevent subsequent cou
   )
   const collector = new UsageCollector(store)
   const app = createApp({
-    tokens: new Map(),
     retriever: { search: async () => [] },
     consumerAuth: {
       authenticate: async () => ({
