@@ -345,13 +345,25 @@ const RU_WEEKDAYS = [
   "Суббота",
 ]
 
+// Owner-reviewed on Bartimaeus (2026-10-06): the address is "ты" throughout,
+// including the connectors ("Давай посмотрим", not "Давайте").
+const RU_ASK_LEAD = "Сначала спроси себя:"
+const RU_PRAY_LEAD = "Поговори об этом с Богом:"
+
 export const RU_LOCALE: DevotionalLocale = {
   lang: "ru",
   filmLanguageId: 3934,
   voice: "russian",
   stripDashes: false,
-  labels: { reflect: "Подумай", askYourself: "Спроси себя", pray: "Помолись" },
+  labels: {
+    reflect: "Подумай",
+    askYourself: "Сначала спроси себя",
+    pray: "Поговори об этом с Богом",
+    askLead: RU_ASK_LEAD,
+    prayLead: RU_PRAY_LEAD,
+  },
   stepLabels: ["СМОТРИ", "ПОДУМАЙ", "ПОМОЛИСЬ"],
+  introKicker: "В ЭТОМ РАЗМЫШЛЕНИИ",
   scripture: { fetch: fetchSynodalPassage, translation: "Синодальный перевод" },
   attributionPrefix: "По мотивам христианской классики",
   // Combining acute accent (U+0301) forces the correct stress for the voice.
@@ -404,17 +416,22 @@ export const RU_LOCALE: DevotionalLocale = {
     reflectionOpen: (chunk) => chunk,
     conclusion: (line) => line,
     questions: (question, prayer) =>
-      [question, prayer].filter(Boolean).join("\n\n"),
-    // FIRST-DRAFT wording, like the rest of the Russian locale — owner (native
-    // speaker) to review before any Russian cut ships.
+      [
+        question && `${RU_ASK_LEAD} ${question}`,
+        prayer && `${RU_PRAY_LEAD} ${prayer}`,
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
+    // watch / reflectAfterClip / pray reviewed by the owner on Bartimaeus
+    // (2026-10-06); the rest is still first-draft wording.
     steps: {
       intro: () => `Давай остановимся и послушаем Писание`,
       read: (ref) => `Вот отрывок из Писания.${ref ? ` ${ref}.` : ""}`,
-      watch: () => `Давайте посмотрим.`,
+      watch: () => `Давай посмотрим.`,
       welcome: () => `Добро пожаловать в Daily Bible Pause.`,
       reflect: () => `Подумай над этим.`,
-      reflectAfterClip: () => `Давайте подумаем, что это значит для нас.`,
-      pray: () => `Принесём это Богу.`,
+      reflectAfterClip: () => `Давай подумаем, что значит эта история.`,
+      pray: () => `Давай принесём это Богу.`,
     },
   },
 }

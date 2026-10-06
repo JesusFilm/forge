@@ -2383,7 +2383,10 @@ function ClipIntro({
     const previewAt = kinetic.length
       ? starts[
           lines.findIndex((l) =>
-            /^\s*(in this devotional|en este devocional)\b/i.test(l),
+            // `\b` is ASCII-only, so it never ends a Cyrillic word: \p{L} instead.
+            /^\s*(in this devotional|en este devocional|в этом размышлении)(?!\p{L})/iu.test(
+              l,
+            ),
           )
         ]
       : undefined
