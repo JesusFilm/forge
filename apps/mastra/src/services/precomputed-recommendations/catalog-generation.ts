@@ -94,6 +94,12 @@ type Checkpoint = {
     targetVideoId: string
     addedViewingValueEnglish?: string
   }
+  repair?: {
+    candidateId: string
+    afterChunkId: string | null
+    attempts: number
+    feedback: CandidateValidationFeedback
+  }
   historySummary?: HistorySummary
 }
 type Dependencies = {
@@ -139,6 +145,18 @@ const bestJudgmentSchema = judgmentSchema.shape.connections.element.extend({
       .unwrap()
       .optional(),
 })
+const repairFeedbackSchema = z.discriminatedUnion("reason", [
+  z.object({
+    reason: z.literal("metadata_field_unavailable"),
+    field: z.enum(["title", "description", "keywords", "bibleCitations"]),
+  }),
+  z.object({ reason: z.literal("transcript_chunk_unavailable"), chunkId: id }),
+  z.object({
+    reason: z.literal("transcript_excerpt_not_verbatim"),
+    chunkId: id,
+  }),
+  z.object({ reason: z.enum(["schema_invalid", "provider_output_invalid"]) }),
+])
 const checkpointSchema: z.ZodType<Checkpoint> = z.object({
   stage: z.enum(["summary", "plan", "discovery", "candidate", "done"]),
   cursor: z.object({
@@ -151,6 +169,14 @@ const checkpointSchema: z.ZodType<Checkpoint> = z.object({
   candidateIds: z.array(id).max(40).optional(),
   analyticsCandidateIds: z.array(id).max(40).optional(),
   bestJudgment: bestJudgmentSchema.optional(),
+  repair: z
+    .object({
+      candidateId: id,
+      afterChunkId: id.nullable(),
+      attempts: nonnegative.min(1).max(MAX_CANDIDATE_JUDGMENT_ATTEMPTS),
+      feedback: repairFeedbackSchema,
+    })
+    .optional(),
   historySummary: z
     .object({
       resultDigest: z.string().regex(/^[a-f0-9]{64}$/u),
@@ -358,6 +384,7 @@ async function processSource(
     next: (output: z.output<T>) => Checkpoint,
     choice?: (output: z.output<T>) => Record<string, unknown> | undefined,
     validate?: (output: z.output<T>) => void,
+    onInvalidOutput?: (feedback: CandidateValidationFeedback) => Checkpoint,
   ) {
     const system = input.historyRequired ? HISTORY_SYSTEM : CONTENT_SYSTEM
     const prompt = JSON.stringify({ task: stage, untrustedCatalogData: data })
@@ -423,6 +450,15 @@ async function processSource(
         failureCode = "internal_failure"
         nextCheckpoint = checkpoint
         selectedChoice = undefined
+      }
+    } else if (failureCode === "provider_invalid_output" && onInvalidOutput) {
+      try {
+        nextCheckpoint = onInvalidOutput(
+          validationFeedback ?? { reason: "provider_output_invalid" },
+        )
+      } catch {
+        failureCode = "internal_failure"
+        nextCheckpoint = checkpoint
       }
     }
     const receipt = parsed(
@@ -636,6 +672,8 @@ async function processSource(
     const candidateIndex = checkpoint.cursor.candidateIndex ?? 0
     const candidateId = checkpoint.candidateIds?.[candidateIndex]
     if (!candidateId) {
+      if (checkpoint.repair)
+        throw new CatalogBuildError("admin_contract_rejected")
       await advance({
         stage: historyDefinition ? "plan" : "discovery",
         cursor: { catalogIndex: catalogIndex + 40 },
@@ -684,9 +722,23 @@ async function processSource(
           }
         : checkpoint.bestJudgment
     }
-    let retryFeedback: CandidateValidationFeedback | undefined
+    const savedRepair = checkpoint.repair
+    if (
+      savedRepair &&
+      (savedRepair.candidateId !== candidate.id ||
+        savedRepair.afterChunkId !==
+          (checkpoint.cursor.candidateAfterChunkId ?? null))
+    )
+      throw new CatalogBuildError("admin_contract_rejected")
+    if ((savedRepair?.attempts ?? 0) >= MAX_CANDIDATE_JUDGMENT_ATTEMPTS)
+      throw new CatalogBuildError(
+        "provider_invalid_output",
+        savedRepair?.feedback,
+      )
+    let retryFeedback: CandidateValidationFeedback | undefined =
+      savedRepair?.feedback
     for (
-      let attempt = 0;
+      let attempt = savedRepair?.attempts ?? 0;
       attempt < MAX_CANDIDATE_JUDGMENT_ATTEMPTS;
       attempt += 1
     ) {
@@ -735,6 +787,15 @@ async function processSource(
             output.connections.forEach((connection) =>
               assertEvidence(connection, chunks.chunks, candidate),
             ),
+          (feedback) => ({
+            ...checkpoint,
+            repair: {
+              candidateId: candidate.id,
+              afterChunkId: checkpoint.cursor.candidateAfterChunkId ?? null,
+              attempts: attempt + 1,
+              feedback,
+            },
+          }),
         )
         break
       } catch (error) {

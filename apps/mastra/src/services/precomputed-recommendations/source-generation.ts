@@ -178,7 +178,10 @@ class SourceGenerationError extends Error {
 }
 
 export type EvidenceValidationFeedback =
-  | { reason: "metadata_field_unavailable"; field: string }
+  | {
+      reason: "metadata_field_unavailable"
+      field: "title" | "description" | "keywords" | "bibleCitations"
+    }
   | { reason: "transcript_chunk_unavailable"; chunkId: string }
   | { reason: "transcript_excerpt_not_verbatim"; chunkId: string }
 
