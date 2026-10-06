@@ -153,12 +153,20 @@ export function createDailyPauseReminderLifecycle(
   }
 
   let chain: Promise<unknown> = Promise.resolve()
+  /** The pass that has not started yet. It reads the settings when it starts,
+   *  so a request before then joins it instead of queueing another pass. */
+  let waiting: Promise<void> | null = null
 
   /** One pass at a time. A failed pass, a failed permission read included,
    *  cancels nothing more, and the next pass runs as usual. */
   function runPass(): Promise<void> {
-    const step = () => runOnce()
+    if (waiting) return waiting
+    const step = () => {
+      waiting = null
+      return runOnce()
+    }
     const next = chain.then(step, step).catch(() => undefined)
+    waiting = next
     chain = next
     return next
   }

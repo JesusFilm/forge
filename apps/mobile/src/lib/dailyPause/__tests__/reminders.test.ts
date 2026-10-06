@@ -309,6 +309,57 @@ describe("the reminder lifecycle", () => {
     expect(h.dailyPending()).toEqual(identifiers("2026-10-06", 14))
   })
 
+  // Review #7: the iOS time spinner updates the settings on every wheel snap,
+  // and each update asked for a full pass of native calls.
+  it("folds a burst of setting changes into one pass with the last time", async () => {
+    const h = harness({ now: new Date(2026, 9, 5, 5, 0).getTime() })
+    h.settings.update({ reminderOn: true })
+    h.lifecycle.attach()
+    await idle()
+    h.adapter.getPermission.mockClear()
+
+    for (let minute = 1; minute <= 20; minute += 1) {
+      h.settings.update({ reminderTime: { hour: 6, minute } })
+    }
+    await idle()
+    await idle()
+
+    expect(h.adapter.getPermission).toHaveBeenCalledTimes(1)
+    for (const id of h.dailyPending()) {
+      expect(wallClock(h.pending.get(id) as DailyPauseReminderRequest)).toBe(
+        "6:20",
+      )
+    }
+  })
+
+  it("runs one more pass for a change that arrives while a pass runs", async () => {
+    const h = harness({ now: new Date(2026, 9, 5, 5, 0).getTime() })
+    h.settings.update({ reminderOn: true })
+    h.lifecycle.attach()
+    await idle()
+    let release: () => void = () => {}
+    h.adapter.getPermission.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve({ granted: true, canAskAgain: false })
+        }),
+    )
+
+    void h.lifecycle.runPass()
+    await idle()
+    // The pass holds at its permission read, past its settings read.
+    h.settings.update({ reminderTime: SIX_THIRTY })
+    release()
+    await idle()
+    await idle()
+
+    for (const id of h.dailyPending()) {
+      expect(wallClock(h.pending.get(id) as DailyPauseReminderRequest)).toBe(
+        "6:30",
+      )
+    }
+  })
+
   it("cancels only its own identifiers when Notifications turn off", async () => {
     const h = harness()
     const lapse = {
