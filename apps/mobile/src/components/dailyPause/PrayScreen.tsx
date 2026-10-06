@@ -73,20 +73,10 @@ export function PrayScreen({
       <IntroCovered intro={intro} style={styles.buttonRow}>
         {countdown.done ? (
           <Pulse>
-            <PauseButton
-              label="Amen"
-              onPress={onContinue}
-              font={font}
-              variant="glass"
-            />
+            <PauseButton label="Amen" onPress={onContinue} font={font} />
           </Pulse>
         ) : (
-          <HeldPauseButton
-            label="Amen"
-            spokenLabel="Amen"
-            font={font}
-            variant="glass"
-          />
+          <HeldPauseButton label="Amen" spokenLabel="Amen" font={font} />
         )}
       </IntroCovered>
     </PauseBody>

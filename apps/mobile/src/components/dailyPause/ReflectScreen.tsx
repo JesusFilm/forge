@@ -29,12 +29,7 @@ import {
 } from "./PauseIntro"
 import { Pulse } from "./Pulse"
 import { StepperPills } from "./StepperPills"
-import {
-  PauseBody,
-  PauseButton,
-  type PauseButtonVariant,
-  type PauseFont,
-} from "./WatchScreen"
+import { PauseBody, PauseButton, type PauseFont } from "./WatchScreen"
 
 const QUOTE_SIZE = 48
 const QUOTE_LEADING = 36
@@ -51,7 +46,6 @@ type HeldPauseButtonProps = {
   label: string
   spokenLabel: string
   font: PauseFont
-  variant?: PauseButtonVariant
   widthLabel?: string
 }
 
@@ -61,7 +55,6 @@ export function HeldPauseButton({
   label,
   spokenLabel,
   font,
-  variant,
   widthLabel,
 }: HeldPauseButtonProps) {
   return (
@@ -76,7 +69,6 @@ export function HeldPauseButton({
         label={label}
         onPress={ignoreTap}
         font={font}
-        variant={variant}
         widthLabel={widthLabel}
       />
     </View>
@@ -147,7 +139,6 @@ export function ReflectScreen({
               label={CONTINUE}
               onPress={onContinue}
               font={font}
-              variant="glass"
               widthLabel={CONTINUE}
             />
           </Pulse>
@@ -156,7 +147,6 @@ export function ReflectScreen({
             label={formatClock(countdown.secondsLeft)}
             spokenLabel={`${CONTINUE}, ${spokenTimeLeft(countdown.secondsLeft)}`}
             font={font}
-            variant="glass"
             widthLabel={CONTINUE}
           />
         )}

@@ -82,16 +82,12 @@ export function PauseMasthead({
   )
 }
 
-export type PauseButtonVariant = "primary" | "outline" | "glass"
-
 type PauseButtonProps = {
   label: string
   onPress: () => void
   font: PauseFont
-  /** The outline is the frame's upcoming pill, for a second choice. The glass
-   *  is iOS 26 Liquid Glass tinted cream (the owner, 2026-10-06), else the
-   *  primary pill. */
-  variant?: PauseButtonVariant
+  /** The outline is the frame's upcoming pill, for a second choice. */
+  variant?: "primary" | "outline"
   /** The button keeps this label's width when its own label is narrower, so
    *  a changing label never moves its edges (the owner, 2026-10-06). */
   widthLabel?: string
@@ -134,7 +130,8 @@ function liquidGlass(): boolean {
   )
 }
 
-/** The frame's primary pill button. */
+/** The frame's pill button. Where iOS has Liquid Glass, every pill is glass
+ *  (the owner, 2026-10-06): the primary is tinted cream, the outline clear. */
 export function PauseButton({
   label,
   onPress,
@@ -142,7 +139,8 @@ export function PauseButton({
   variant = "primary",
   widthLabel,
 }: PauseButtonProps) {
-  if (variant === "glass" && liquidGlass()) {
+  const outline = variant === "outline"
+  if (liquidGlass()) {
     // No ancestor may fade this button: GlassView draws nothing there.
     return (
       <Pressable
@@ -155,19 +153,22 @@ export function PauseButton({
           style={styles.glassButton}
           glassEffectStyle="regular"
           colorScheme="dark"
-          tintColor={pauseColors.ink}
+          tintColor={outline ? undefined : pauseColors.ink}
           isInteractive
         >
           <ButtonLabel
             label={label}
             widthLabel={widthLabel}
-            style={[styles.buttonLabel, font("sansSemiBold")]}
+            style={[
+              styles.buttonLabel,
+              outline && styles.outlineLabel,
+              font("sansSemiBold"),
+            ]}
           />
         </GlassView>
       </Pressable>
     )
   }
-  const outline = variant === "outline"
   return (
     <Pressable
       onPress={onPress}
@@ -210,12 +211,7 @@ export function WatchScreen({
       <StepperPills arrival="watch" font={font} />
       <View style={styles.spacer} />
       <Pulse>
-        <PauseButton
-          label="Continue"
-          onPress={onContinue}
-          font={font}
-          variant="glass"
-        />
+        <PauseButton label="Continue" onPress={onContinue} font={font} />
       </Pulse>
     </PauseBody>
   )

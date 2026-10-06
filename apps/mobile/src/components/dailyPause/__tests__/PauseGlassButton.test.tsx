@@ -1,4 +1,5 @@
-// The Liquid Glass Continue buttons (the owner, 2026-10-06). GlassView draws
+// The Liquid Glass pill buttons (the owner, 2026-10-06): every pill in the
+// pause is glass, the primary tinted cream and the outline clear. GlassView draws
 // nothing under an ancestor whose opacity animates, and nothing logs, so these
 // tests pin that no ancestor of the glass sets an opacity at all.
 import { act } from "react"
@@ -12,6 +13,7 @@ import {
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
 import type { PauseFace } from "../../../lib/dailyPause/fonts"
+import type { PauseDay } from "../../../lib/dailyPause/progress"
 import { pauseColors } from "../../../lib/dailyPause/theme"
 import {
   TestRenderer,
@@ -19,10 +21,11 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { OpeningScreen } from "../OpeningScreen"
 import { PAUSE_INTRO_MS } from "../PauseIntro"
 import { PrayScreen } from "../PrayScreen"
 import { ReflectScreen } from "../ReflectScreen"
-import { WatchScreen } from "../WatchScreen"
+import { PauseButton, WatchScreen } from "../WatchScreen"
 
 // The factory owns its state so a case can turn Liquid Glass off.
 jest.mock("expo-glass-effect", () => {
@@ -204,4 +207,75 @@ it.each([
   expect(StyleSheet.flatten(button!.props.style as ViewStyle)).toMatchObject({
     backgroundColor: pauseColors.ink,
   })
+})
+
+/** Each glass button's label, tint, and label color, in render order. */
+function glassLooks(root: TestInstance) {
+  return glasses(root).map((glass) => {
+    const [label] = root.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        typeof node.props.children === "string" &&
+        isInside(node, glass),
+    )
+    return {
+      label: label!.props.children,
+      tint: glass.props.tintColor,
+      color: StyleSheet.flatten(label!.props.style as TextStyle).color,
+    }
+  })
+}
+
+const PRIMARY = { tint: pauseColors.ink, color: pauseColors.background }
+const OUTLINE = { tint: undefined, color: pauseColors.ink }
+
+it("draws the primary pill tinted cream and the outline pill clear", async () => {
+  const root = await render(
+    <>
+      <PauseButton label="Share this video" onPress={() => {}} font={font} />
+      <PauseButton
+        label="Start over"
+        variant="outline"
+        onPress={() => {}}
+        font={font}
+      />
+    </>,
+  )
+  expect(glassLooks(root)).toEqual([
+    { label: "Share this video", ...PRIMARY },
+    { label: "Start over", ...OUTLINE },
+  ])
+})
+
+it.each<[string, PauseDay, object[]]>([
+  [
+    "Begin Devotional",
+    { step: null, done: false, bellRead: true },
+    [{ label: "Begin Devotional", ...PRIMARY }],
+  ],
+  [
+    "Resume and Start over",
+    { step: "reflectScreen", done: false, bellRead: true },
+    [
+      { label: "Resume", ...PRIMARY },
+      { label: "Start over", ...OUTLINE },
+    ],
+  ],
+])("draws the Opening's %s in glass", async (_case, day, looks) => {
+  const root = await render(
+    <OpeningScreen
+      devotional={DEVOTIONALS.pharisee}
+      meditationLength={3}
+      day={day}
+      font={font}
+      onBegin={() => {}}
+      onResume={() => {}}
+      onStartOver={() => {}}
+      onCustomize={() => {}}
+    />,
+  )
+  expect(glassLooks(root)).toEqual(looks)
+  for (const glass of glasses(root)) {
+    expect(opacitiesAbove(glass)).toEqual([])
+  }
 })
