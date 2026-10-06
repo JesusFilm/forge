@@ -17,6 +17,38 @@ tags:
   - "operations"
 ---
 
+## October 6 eligibility-source unlink failure
+
+The first ordinary loaded cycle on the phase-admission release is **not
+qualifying**. At the 19:41 UTC bounded snapshot, both durable ledgers recorded
+980 successes, ten `budget_yield` skips and 86 scheduled failures. Six early
+failures reported expired/closed transactions; their budget-consuming SQL
+remains unproved. Eighty later failures were PostgreSQL P0001 while deleting
+expired request roots. A separate later check found 81 such failures, not an
+additional count in the original ledger snapshot. No failure-free daily cycle
+has been proved.
+
+The later failures match an exact schema conflict: request deletion cascades to
+an eligibility decision, whose FK clears the source ID on a retained published
+profile contribution. The contribution CHECK requires its source revision to
+clear with the ID, while the shared immutability trigger permits only the
+older outcome-source FK cleanup. Preserve the contribution and its remaining
+observation fields through its own lifetime. The scoped append-only migration
+`0129_recommendation_projection_eligibility_retention_unlink` permits only the
+FK-triggered pair-null transition after the decision is gone, retaining the
+published-child guard for all other edits. Native PostgreSQL proves the
+pre-fix failure/rollback, actual expired-request purge failure and subsequent
+successful cleanup with retained evidence. This local proof is not a production
+release or a repaired timeout claim.
+
+The sanitized `outputs/heartbeats/20261006T1939-daily` receipt records separate
+ledger, backlog and capacity timestamps. At 19:41 all 21
+retained types were inside the 24-hour propagation window and PGDATA had
+22.43 GB free, but failures continued after the last success. Deploy the
+reviewed fix through PR-to-main, verify both actual Admin roles and then two
+later ordinary failure-free loaded cycles with descendants, complete backlog,
+lock skips and headroom. Keep this ticket in progress until those gates pass.
+
 ## October 6 phase-budget repair in progress
 
 The October 5 ordinary scheduled cycle still had four failed attempts amid
