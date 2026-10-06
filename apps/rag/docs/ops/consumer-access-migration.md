@@ -178,5 +178,6 @@ credential denials and must not restore static-token access.
   receiver's secret manager. The old credential is never reactivated.
 - Rollback application code only after verifying current deny state. Leave the
   additive schema in place; never restore shared-token access as an incidental
-  rollback. Production grace/cutoff or emergency access changes need separate
-  authorization.
+  rollback. The owner authorized the October 6, 2026 cutoff recorded in
+  feat-609; any later grace, cutoff change, or emergency access change needs
+  separate authorization.

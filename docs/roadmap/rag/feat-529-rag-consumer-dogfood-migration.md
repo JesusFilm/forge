@@ -42,6 +42,11 @@ shared bearer access afterwards only in separately approved production cutover
 scope, with a named owner and exact timestamps. Verify embedding primary/fallback
 configuration and capacity in that later authorized scope, without secrets.
 
+**Superseded October 6, 2026:** The owner reports the seven-day period and team
+notice are complete and authorized the announced cutoff. The remaining Forge
+static-token removal is tracked in [feat-609](feat-609-rag-static-bearer-retirement.md);
+new consumers use portal-issued credentials. See the owner update below.
+
 ## Constraints
 
 No external consumers; future external access needs separate rate-limit design.
