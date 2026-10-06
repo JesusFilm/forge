@@ -3,7 +3,7 @@ id: "feat-613"
 title: "Agents draft push campaigns through the admin MCP, and a person publishes"
 owner: "urim"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-06"
 duration: 7
 depends_on:
@@ -83,3 +83,48 @@ pnpm --filter @forge/admin lint
 - The route test's registry-dispatch parity loop passes with the new tools.
 - Each acceptance example AE1-AE12 in the plan has a test.
 - A local smoke from Claude or Codex creates a draft in two languages, then edits one language. The dashboard shows the AI marker, and the other language row does not change.
+
+## Results — 2026-10-07
+
+#2596 shipped the apps/auth scopes and the seed step. #2597 shipped the apps/admin tools, the dashboard changes, and the plugin skill. Both are merged and live in production.
+
+- **Checks** — Admin: 9,121 unit tests and 906 real-Postgres tests pass. Auth: 629 tests pass. Typecheck, lint, and the production build pass for both apps. One local failure, `profiler-source-maps.test.ts`, also fails on code identical to `main`.
+- **Acceptance examples** — each of AE1–AE12 has at least one tagged test.
+- **Scale** — local Postgres with 1,000,000 registrations, median times: `push.audience.count` 42–59 ms, an MCP update with 40 copy rows 4–9 ms, and a dashboard save of all 300 copy rows about 72 ms.
+- **Auth rollout** — the auth seed added the push scopes to 58 dynamic clients. A read-only check of the production auth database found both push scopes on 58 of 58 eligible dynamic clients.
+  - The check found no duplicate scope and no change to a client outside the eligible set.
+  - The only first-party clients with the push scopes are the 5 Admin MCP clients.
+- **Admin rollout** — the deploy applied migration `0138_push_campaign_agent_drafts`. `/api/health` returned 200, and `scopes_supported` lists both push scopes.
+- **Live check in production** — Claude Code with the `jfp-admin` plugin 0.2.0 did these steps against `admin.jesusfilm.org`:
+  - New campaign: the agent created the DRAFT `cmux7uytt06ltp10s5gu3pr99`. It opens the `jesus` video, goes to Mexico, and has `english` and `spanish-latin-american` copy.
+  - Fix one language: the agent changed only the Spanish row. The revision went from 1 to 2, and the English row did not change.
+  - Stale save (AE10): the dashboard refused a save from a page loaded at revision 1. The message named the newer change, the typed text stayed in the form, and nothing was saved.
+  - "Load the latest version" loaded revision 2.
+  - A save with no change showed "Nothing changed, so the campaign keeps its status." The revision stayed 2.
+  - Hand edit after an agent write (AE7): a hand save raised the revision to 3, and the AI marker still showed the agent write.
+  - Without the plugin (R28, R38): a headless Claude Code run had no plugin, and its write tools were blocked. It found the destination and the language slug, explained the English fallback, and set no language filter.
+  - The same run saw the live-check draft in the list and did not read its copy, because the author had not named it.
+
+### Learnings
+
+- `docs/solutions/auth/new-mcp-scope-needs-stored-scope-migration-for-dynamic-clients.md` — a new MCP scope needs a migration of the stored scopes of existing dynamic clients, or their sign-in fails.
+- `docs/solutions/architecture-patterns/agent-and-person-share-one-versioned-write-path.md` — the agent and the dashboard write through one versioned path, bound to the version that the write read.
+
+### Carried forward
+
+- **No test send after this change.** The owner tested the send path under feat-524 and closed this item. This work changed that path: a test send now records the content version that it sends.
+  - The finish step records TESTED only when that version still matches. Real-Postgres tests cover both parts.
+  - The first test send after `PUSH_CAMPAIGNS_ENABLED` is on runs this path in production for the first time.
+- **No Codex run.** The owner closed this item. The Codex CLI is not installed on the machine that ran the checks.
+- **Without the plugin, the agent chose the Spanish variant itself.** The skill tells the agent to ask. With the write tools blocked, the run cannot show if the agent asks before it creates.
+- **One question at a time.** #2601 adds this rule to the skill and sets the plugin to 0.2.1. It waits for the owner's merge.
+- **The live-check draft** `cmux7uytt06ltp10s5gu3pr99` stays in production as a DRAFT with the approved copy.
+- **Review findings not applied** (from `ce-code-review` run `20261006-184848-9a6dacb2`):
+  - P2: a browser form changes a line break in agent copy. An unchanged hand save of that copy then moves TESTED back to DRAFT.
+  - A stale-save refusal can name the person who sent a test, not the person who changed the content.
+  - The test pin is written before the run starts. If the start fails, the earlier-version notice disappears, and the campaign stays DRAFT.
+  - `push.campaign.create` is not idempotent. The skill lists drafts before a retry.
+  - If a worker stops, the test-running refusal can name a receipts time that has passed.
+  - The known-language predicate and the zod issue mapper each exist twice.
+  - No suite renders the campaign editor under `<StrictMode>`.
+  - The auth seed reads and then writes a client's scope list with no compare-and-set. Two auth instances that boot together can drop one added scope until the next boot.
