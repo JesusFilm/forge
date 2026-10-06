@@ -371,30 +371,60 @@ and a 60-second timeout after inspecting each dry run. No sampled viewer rows
 were downloaded and no transition aggregate was constructed from this still
 unqualified candidate.
 
+## Approved navigation evidence revision — 2026-10-06
+
+The user approved validated Watch referrer links plus engagement for the first
+build. This explicitly replaces the first-build requirement to prove that both
+Videos were watched consecutively. Legacy ordered-history inputs retain their
+stricter definition. GA `pageReferrer` describes a referring page URL; neither
+that definition nor this repository's tracking code proves source playback,
+event adjacency, or an individual journey.
+
+Read-only GA reports over 2022-06-21 through 2026-10-03, filtered to approved
+JesusFilm.org Watch destinations and Watch referrers, returned 450,061 associated
+`videostarts`. This includes homepage and self-referrals. A bounded page of
+100 out of 163,347 referrer/path/media-ID rows included 1,648 destination starts
+for `/watch/jesus.html/birth-of-jesus/spanish-latin-american.html` with referrer
+`/watch/jesus.html/the-beginning/spanish-latin-american.html`. These are event
+counts, not unique navigations. The pair query retains the source's custom-ID
+truncation warning after 2022-08-05. This sample is not a full ingestion.
+
+Evidence artifacts: `/tmp/forge-feat-590-orchestration/ga-sa-watch-referrer-counts.json`
+and `/tmp/forge-feat-590-orchestration/ga-sa-watch-referrer-pairs.json`.
+Query/fragment values were removed from stored URLs; no viewer/session rows or
+credentials were saved. Current public Watch render data identifies The Beginning
+as `cmp76ycuv02n0ny01faav3nae`, Birth of Jesus as `cmp76yn4x02owny01ta34f78o`,
+and their JESUS parent as `cmp76xcw602imny01vnsbwwy9`, with playable
+`spanish-latin-american` variants. The bounded evidence record is
+`/tmp/forge-feat-590-orchestration/ga-public-watch-identity-evidence.json`.
+This corroborates those current route identities, not historical ownership of
+every URL. General ingestion uses the private cutoff-fenced Admin catalog,
+validating parent and playable-language membership and rejecting ambiguous or
+truncated route identities.
+
+A second live probe over the declared usable interval 2022-08-06 through
+2026-10-03 returned the same five annual referrer rows and a bounded 100 of
+163,347 pair rows with no truncation, sampling, threshold, schema-restriction or
+other-row flags. Metadata retained `America/New_York`. Artifacts use the
+`ga-sa-usable-watch-referrer-` prefix in the same evidence directory. This
+supports the separate usable interval; the earlier prefix remains unavailable,
+and the bounded probe is not a completed import.
+
 ## Remaining acceptance
 
-Find a verified current event source with usable sequence identity, or a
-qualified pre-aggregated transition source. Verify source lineage, canonical
-Video mapping, event definitions, complete historical range, timestamp/session
-and tie-order semantics, and query usage. BigQuery ADC authentication is now
-verified on the remote machine. Direct GA report access is now verified through
-Tatai's service account with `analytics.readonly`; the earlier default ADC
-client failure is resolved by supported impersonation.
-No keys or authorization codes belong in chat.
+Complete the connected GA navigation/engagement source-to-model-to-Admin path.
+Validate canonical endpoints against an authoritative catalog/route mapping,
+state that mapping's basis, and exclude ambiguous, unmapped, homepage and
+self-referral pairs. Preserve source definitions, requested range, usable range,
+cutoff, first/last observed dates, query identity, pagination and usage. A
+provider-declared availability boundary can justify a separately declared usable
+interval; the unavailable prefix and missing periods remain unknown. Complete
+processing of that interval never claims complete historical source coverage.
+Do not invent unknown exclusion counts, exposure, bot filtering or overlap.
 
-Manual snapshots and browser automation were discussed but neither has been
-implemented, and the historical-transition requirement has not changed.
-Successful API authentication enables source inspection; it does not by itself
-establish ordered transitions, full history, or canonical video mapping.
-
-The user clarified that the existing GA dashboard is the available source, and
-current Watch reporting data was verified there. The API dataset listing for
-`cru-ga4-prod-1` exposes no datasets to this account, and a metadata GET for the
-conventional candidate `analytics_320198532` returns denied-or-nonexistent; neither
-establishes the project's actual dataset inventory. A staging coverage query
-was dry-run only: its 21,461,098,825-byte estimate exceeded the existing
-20,000,000,000-byte cap, so it was not executed. Independent Watch-scope and
-provenance improvements can proceed with explicit fixtures. #2568 remains
-incomplete, #2569 remains held, and public
-activation, deployment, new exports and recurring refresh remain outside this
-discovery work.
+Remote GA access through Tatai's service account with `analytics.readonly` is
+verified. Manual snapshots and browser automation remain unimplemented alternatives.
+No new BigQuery export/link or warehouse write is authorized. #2568 remains in
+progress and #2569 remains held until revised acceptance is integrated and
+verified. Public activation, deployment and recurring refresh remain separate
+operations. No keys or authorization codes belong in chat.

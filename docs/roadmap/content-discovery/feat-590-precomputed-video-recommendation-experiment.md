@@ -83,7 +83,9 @@ generation model. Draft [PR #2578](https://github.com/JesusFilm/forge/pull/2578)
 integrates verified Admin comparison, source generation, private Watch serving,
 visit/click attribution and private durable CTR reporting. #2568's fixture and
 source-qualification boundary is verified, and the programmatic GA report reader
-has passed live read-only checks. Canonical mapping and ordered history remain incomplete;
+has passed live read-only checks. The user approved referrer links plus engagement
+as navigation evidence for the first build on October 6; ingestion and canonical
+mapping validation are in progress in the two Sol chats;
 #2569, #2574 and #2575 remain behind their prerequisites. The execution ledger is
 `docs/plans/2026-10-05-precomputed-video-recommendation-status.md`. Public
 experimental serving remains default-off.
@@ -127,8 +129,11 @@ GA4 property `320198532` has an existing BigQuery link. Browser reads work in
 `jfp-data-warehouse`, but verified copies contain only March–July 2023 totals
 without usable video-start session keys. Service-account impersonation now
 authenticates the remote GA Data API reader, which observes current and historical
-Watch aggregates and explicitly reports source truncation. A qualified ordered
-event source and canonical Video mapping remain to be verified. Historical
+Watch aggregates and explicitly reports source truncation. The first build uses
+validated Watch referrer links plus engagement, labeled as navigation evidence,
+under the October 6 user-approved revision. This does not prove consecutive
+playback; strict ordered-history inputs retain their existing meaning. Canonical
+Video mapping and a qualified live build remain to be verified. Historical
 recommendation evidence is limited to verified JesusFilm.org hosts and exact
 `/watch` or `/watch/` descendant paths, as clarified on October 6, 2026.
 The proposed design lets the model explore through authenticated read-only

@@ -192,16 +192,28 @@ instruction can promote the experiment. Preserve the incumbent for rollback.
 
 ### Historical analytics
 
-- The existing historical warehouse is an input; its provider is provisionally
-  BigQuery. Verify its project/dataset, schema, history, authentication, and
-  canonical-video mapping before claiming live integration.
-- Authenticate tools server-side with authorized read-only Google access if
-  BigQuery is confirmed. Existing GA4 summary clients and SEO permissions do
-  not constitute warehouse access or authorization.
+- The first build uses GA Data API property `320198532`; read-only service-account
+  access is verified. Verify schema, history, and canonical-video mapping before
+  claiming a qualified live build. Authenticate server-side; SEO permissions do
+  not constitute authorization for this input.
+- On 2026-10-06 the user approved validated Watch referrer links plus engagement
+  for the first build, explicitly labeled as navigation evidence. This replaces
+  the first build's requirement to prove consecutive playback of both Videos.
+  Associate `pageReferrer` with destination `pagePath` on `videostarts` aggregates;
+  validate both canonical Video mappings and record the mapping basis. Exclude
+  ambiguous, unmapped, homepage, and self-referral pairs. Counts are associated
+  destination starts, not unique navigations or proof of source playback. Do not
+  chain aggregate edges into individual journeys. Existing ordered-history
+  inputs retain their stricter qualification and meaning.
 - Let the model explore the full authorized historical range through bounded,
   paginated queries. Bounded responses protect runtime memory; they do not
   impose an arbitrary short history window or mislabel truncated data as complete.
-- Compute suitable video-level and transition aggregates inside the warehouse.
+  A provider-declared availability boundary may establish a separately recorded
+  usable interval; preserve the full requested range and label the unavailable
+  prefix and gaps unknown. Complete pagination of that usable snapshot is
+  distinct from complete source history. Transport/schema/pagination failures
+  and unresolved response restrictions remain failures.
+- Compute suitable video-level and navigation aggregates at the source.
   Raw user-level rows and identities do not enter prompts or the recommendation
   database. Native and historical measurements retain separate provenance;
   reconcile overlap before combining totals.

@@ -22,8 +22,7 @@ describes the private reporting contract and limits.
   hashes. Earlier qualification source: `c9b9d6fd6fc283dc810769a1f8baca03113b4a1d`.
   Earlier #2573 sources are `acbb33fe4` and `302dffe31`.
 - The PR records the current published integration SHA and [CI checks](https://github.com/JesusFilm/forge/pull/2578/checks).
-  Previous published head `9e0cd06c2` passed 44 checks with six skipped; its main CI
-  workflow passed 37 jobs with three skipped.
+  Published head `a23bdb342` passed [forge-ci run 37396138013](https://github.com/JesusFilm/forge/actions/runs/37396138013), with all 40 jobs completed and no failures.
 - The original dirty `/home/nisal/forge` checkout is preserved.
 - Development chats use exactly `gpt-6-sol`; the application model remains
   `gpt-6-astra`. Matt Pocock implement/TDD/code-review workflow only; no
@@ -34,50 +33,42 @@ describes the private reporting contract and limits.
 All issues remain open until merge. Dependencies advance on verified acceptance,
 not issue closure. Implemented, integrated, merged, and live are distinct.
 
-| Issue | Immediate blockers | State                                         | Integrated work                                          |
-| ----- | ------------------ | --------------------------------------------- | -------------------------------------------------------- |
-| #2566 | None               | Integrated-and-verified                       | `9a984c544`; saved Admin comparison                      |
-| #2567 | #2566              | Integrated-and-verified                       | `c89db0e4e`; bounded Astra producer; no live model smoke |
-| #2568 | #2567              | GA reader integrated; live qualification open | `b1703cd8c`, `acbe43fc7`, `c9b9d6fd6`, `b0892f4e4`       |
-| #2569 | #2568              | Waiting for prerequisites                     | Unassigned                                               |
-| #2570 | #2566              | Integrated-and-verified                       | `0a93244a3`; private Watch serving                       |
-| #2571 | #2570              | Integrated-and-verified                       | `267a65281`, `b69592b6c`, corrections in `a7f36d778`     |
-| #2572 | #2571              | Integrated-and-verified                       | Core `a7f36d778`, UI `af8eba415`                         |
-| #2573 | #2572              | Private reporting verified; live incomplete   | Sources `acbb33fe4`, `302dffe31`; migration `0134`       |
-| #2574 | #2569, #2573       | Waiting for prerequisites                     | Unassigned                                               |
-| #2575 | #2574              | Waiting for prerequisites                     | Unassigned                                               |
+| Issue | Immediate blockers | State                                       | Integrated work                                          |
+| ----- | ------------------ | ------------------------------------------- | -------------------------------------------------------- |
+| #2566 | None               | Integrated-and-verified                     | `9a984c544`; saved Admin comparison                      |
+| #2567 | #2566              | Integrated-and-verified                     | `c89db0e4e`; bounded Astra producer; no live model smoke |
+| #2568 | #2567              | Referrer ingestion in progress              | `b1703cd8c`, `acbe43fc7`, `c9b9d6fd6`, `b0892f4e4`       |
+| #2569 | #2568              | Waiting for prerequisites                   | Unassigned                                               |
+| #2570 | #2566              | Integrated-and-verified                     | `0a93244a3`; private Watch serving                       |
+| #2571 | #2570              | Integrated-and-verified                     | `267a65281`, `b69592b6c`, corrections in `a7f36d778`     |
+| #2572 | #2571              | Integrated-and-verified                     | Core `a7f36d778`, UI `af8eba415`                         |
+| #2573 | #2572              | Private reporting verified; live incomplete | Sources `acbb33fe4`, `302dffe31`; migration `0134`       |
+| #2574 | #2569, #2573       | Waiting for prerequisites                   | Unassigned                                               |
+| #2575 | #2574              | Waiting for prerequisites                   | Unassigned                                               |
 
 ## Ownership and continuation
 
-Worker B is reusable for #2573 fixes and #2568 mapping/review:
-`01a10a28-aa8e-7080-b3d1-c59293f8f4dd`, currently titled
-`#2568 Trace historical GA video identifiers`. Its tracked-history investigation
-found no assignment for the legacy `mediacomponentid` in this repository. It
-reviewed the GA reader continuation and the pinned-main merge independently,
-without live API calls or code changes; neither final static review has an
-unresolved finding.
-Its completed path-mapping investigation identified current route/manifest and
-catalog lookup interfaces, but did not claim historical rows are mapped.
-Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
-preserved branch: `codex/feat-590-2573`. Its two source commits are integrated;
-preserve this checkout for any CI correction. Its read-only mapping investigation confirmed
-Core GraphQL IDs are preserved as Admin `Video.coreId`, but found no proven
-warehouse-to-Core bridge. Earlier branches are preserved.
-Its temporary loading verification uses `codex/feat-590-2568-loading` from
-`c9b9d6fd6`, without changing committed application code.
+Both workers start the approved navigation continuation from
+`a23bdb342709cc6fc1f9a13278c842f6428ac2bf`.
 
-Worker A, `01a109e1-47c8-7043-bfd4-a85592cfafc5`, owns the independent #2568
-Watch-scope/source-qualification continuation, based on `9e0cd06c2`, now committed
-as `c9b9d6fd6` and verified in combination. Its production GA
-report reader/preflight slice from `3d4d241f0b22aead01a358c3d626537bb5f9e570`
-is committed as `b0892f4e4`,
-with title `#2568 Implement GA report source reader` and continuation branch
-`codex/feat-590-2568-ga-reader`. Existing source/generation transition guards
-remain intact: aggregate report access does not prove ordered viewing sequences.
-Current-source discovery and live API probes remain with the orchestrator.
-Checkout: `/home/nisal/.codex/worktrees/feat-590-2566/forge`;
-preserved branch: `codex/feat-590-2568-watch-scope`. Earlier
-`codex/feat-590-2571-retention-health` and `codex/feat-590-2568` are preserved.
+Worker A, `01a109e1-47c8-7043-bfd4-a85592cfafc5`, titled
+`#2568 Implement referrer and engagement ingestion`, owns Mastra's GA reader,
+canonical mapping consumption, historical model tools, source generation and
+focused tests. Checkout: `/home/nisal/.codex/worktrees/feat-590-2566/forge`;
+branch: `codex/feat-590-2568-referrer`. Its earlier GA reader source
+`b0892f4e4` is integrated; earlier branches are preserved.
+
+Worker B, `01a10a28-aa8e-7080-b3d1-c59293f8f4dd`, titled
+`#2568 Validate navigation history in Admin`, owns Admin's mapping contract,
+completion validation, persisted provenance, comparison display and native
+build-through-review tests. Checkout:
+`/home/nisal/.codex/worktrees/feat-590-2570/forge`;
+branch: `codex/feat-590-2568-referrer-admin`. Earlier #2573 work is integrated
+and preserved. The two workers coordinate the backward-compatible wire shape
+before semantic edits. Legacy ordered-history provenance keeps its meaning.
+
+The orchestrator owns live GA/model access probes, public catalog discovery,
+approved specification changes, integration, shared documents and the single PR.
 At most two implementation chats may run. The orchestrator owns integration,
 roadmap/ledger updates, and the single PR. Serialize heavy validation with
 `/tmp/forge-feat590-heavy-validation.lock`.
@@ -187,20 +178,26 @@ The Watch-filtered report from property creation (June 21, 2022) through October
 `videostarts` across September 2022–October 2026. This is report coverage, not
 verified complete raw-event history. Recent video-ID coverage is incomplete:
 720 of 1,017 starts in a separate September 8–October 5 observation have an empty
-or unset `mediacomponentid`. Page paths provide a mapping lead, but canonical
-mapping and ordered transitions remain unverified. Recent-window counts changed
-between requests; they are not a frozen input snapshot. CSV snapshots and browser
-automation remain unimplemented alternatives, with no change to the approved
-requirements. The dedicated TypeScript GA reader now performs these scoped
-reads programmatically, with bounded pagination, date/timezone guards and
-explicit source truncation. Both real coverage and aggregate-page reads passed;
-they remain unqualified inputs. #2568 is blocked on source qualification,
-canonical mapping and ordered transitions, rather than Analytics authentication.
-No new export/link or warehouse write is
-authorized. #2568 live acceptance and #2569 remain blocked; its independent
-qualification boundary is verified. The report reader applies the exact
-hostname/pagePath filters; it cannot establish event adjacency or session
-ordering. No unavailable transition signal is recorded as zero.
+or unset `mediacomponentid`. Page paths provide a mapping lead. The dedicated
+TypeScript reader performs scoped reads with bounded pagination, property-local
+cutoff guards and explicit source truncation. Actual live coverage and aggregate
+page reads passed; they do not yet constitute a qualified model build.
+
+On 2026-10-06 the user approved validated Watch referrer links plus engagement
+for the first build, labeled as navigation evidence. This replaces the original
+requirement to prove consecutive playback for this GA input. A bounded probe
+confirmed 450,061 destination starts with a Watch referrer, including homepage
+and self-referrals, and retrieved 100 of 163,347 pair rows. One pair associated
+1,648 starts of the Spanish Birth of Jesus page with the Spanish The Beginning
+referrer. These are aggregate associations, not unique navigations or individual
+journeys. Canonical endpoint mapping and the connected model-to-Admin build
+remain to be verified. Provider-declared historical gaps stay unknown even when
+all pages of the separately declared usable interval have been processed.
+
+#2568 navigation ingestion is in progress in both Sol chats; #2569 remains held
+until its acceptance is integrated and verified. No unavailable transition,
+exposure, bot-filter, or exclusion count becomes zero. No new export/link or
+warehouse write is authorized.
 
 #2573 live winner certification remains incomplete: the measured human baseline,
 agreed numeric stopping settings, trusted bot qualification, and tracking-loss

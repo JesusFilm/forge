@@ -16,16 +16,25 @@ https://github.com/JesusFilm/forge/issues/2565
 
 ## What to build
 
-Allow the offline source-generation workflow to explore the authorized historical
-GA warehouse through read-only tools and use qualified aggregate evidence in
+Allow the offline source-generation workflow to explore authorized historical
+GA reports through read-only tools and use qualified aggregate evidence in
 recommendation decisions. Admin shows the source coverage and provenance used by
 the saved result, including gaps and uncertain historical bot filtering.
 
-GA4 property `320198532` has an existing daily BigQuery export link to
-`cru-ga4-prod-1`. The specific readable export or authorized view, available
-history, and server-side authentication still require verification. Build the
-adapter with explicit fixtures while discovery is pending; do not invent a
-dataset or treat the existing GA4 summary client as a warehouse.
+GA Data API access to property `320198532` is verified through read-only
+impersonation of
+`watch-ga4-readonly@jesusfilm-org-1738781064783.iam.gserviceaccount.com`.
+On 2026-10-06 the user approved the first build using validated Watch referrer
+links plus engagement, labeled as navigation evidence. This replaces the first
+build's requirement to prove consecutive playback of both Videos. Existing
+ordered-history inputs retain their stricter semantics.
+
+The new input associates `pageReferrer` with the destination `pagePath` on
+`videostarts` aggregates. Both endpoints must map to canonical Watch Videos.
+Counts measure destination starts associated with a referrer, not unique
+navigations, source playback, or consecutive watched Videos. Do not reconstruct
+individual journeys by chaining aggregate associations. Record the mapping
+basis and exclude ambiguous, unmapped, homepage, and self-referral pairs.
 
 The user clarified on 2026-10-06 that this property covers all of jesusfilm.org,
 but historical recommendation evidence must be limited to `/watch` and
@@ -33,17 +42,17 @@ but historical recommendation evidence must be limited to `/watch` and
 verified jesusfilm.org hostname aliases and either exact `/watch` or the
 `/watch/` prefix, and exclude query strings/fragments from path matching. Do
 not include `/watching` or unrelated site pages. Missing or malformed URLs
-and excluded host/path coverage must remain explicit. For transitions, both
-endpoints must be within Watch; scope filtering must not erase intervening
-non-Watch video starts and fabricate a direct Watch-to-Watch transition.
+and excluded host/path coverage must remain explicit. Both navigation endpoints
+must be within Watch. For legacy ordered-history inputs, scope filtering must
+not erase intervening non-Watch starts and fabricate a direct transition.
 
 ## Acceptance criteria
 
 - [ ] Source discovery verifies the provider, schema, history, and Video identifier mapping once authorized access is available. Without it, the operation reports unavailable input rather than a successful history-backed build.
 - [ ] Authentication stays server-side and tools are read-only. Keys, credentials, and individual viewer identities do not enter model prompts or saved recommendation output.
-- [ ] The model can inspect definitions and query the full authorized historical range through bounded/paginated responses. Truncation and incomplete pagination are visible and never presented as complete coverage.
-- [ ] All historical engagement, exposure, and transition evidence is restricted to verified jesusfilm.org `/watch` or `/watch/**` paths. Tests cover `/watch`, nested paths, query/fragment handling, `/watching`, unrelated hosts/pages, missing or malformed URLs, and non-Watch intermediate video starts. Saved provenance includes the versioned host/path filter and scope coverage.
-- [ ] Suitable engagement and video-transition aggregates are computed at the source. Legacy IDs/URLs map to canonical Videos; unknown mappings are reported rather than guessed.
+- [ ] The model can inspect definitions and the full requested historical range through bounded/paginated responses. A provider-declared availability boundary may establish a separately recorded usable interval. The unavailable prefix and gaps remain unknown; completed processing of a usable snapshot never implies complete source history. Arbitrary short lookbacks, partial pagination, sampling, and unresolved response restrictions cannot silently qualify a build.
+- [ ] All historical engagement, exposure, and navigation evidence is restricted to verified jesusfilm.org `/watch` or `/watch/**` paths. Tests cover `/watch`, nested paths, query/fragment handling, `/watching`, unrelated hosts/pages, missing or malformed URLs, homepage/self-referrals, and ambiguous mappings. Legacy ordered-history tests continue to cover non-Watch intermediate starts. Saved provenance includes the versioned host/path filter and known scope coverage; unavailable exclusion counts remain unknown.
+- [ ] Source-computed engagement and referrer aggregates feed the actual model-to-Admin workflow. Validated IDs/URLs map to canonical Videos with a stated mapping basis; unknown mappings are reported rather than guessed. Navigation is explicitly distinct from consecutive playback, unique navigation counts, and viewer journeys.
 - [ ] The model can weigh content and analytics while still requiring an explainable connection. Lack of exposure is not treated as evidence of poor quality.
 - [ ] Native and warehouse evidence retain separate provenance and are not double-counted. Unknown historic bot filtering is labeled unknown, while live A/B eligibility retains its separate policy.
 - [ ] Saved build metadata includes query/range/cutoff, result hashes/counts, measurement qualification, mapping coverage, and query usage/cost qualification without storing raw user-level warehouse rows.
@@ -52,10 +61,13 @@ non-Watch video starts and fabricate a direct Watch-to-Watch transition.
 
 ## Implementation context
 
-The non-secret warehouse location and authorized service configuration are
-external inputs for a live smoke. Their absence must not be hidden by fixtures.
-Reuse Google authentication patterns without assuming existing SEO permissions
-authorize this warehouse.
+Server-side GA access is verified; canonical mapping and a live qualified
+model-to-Admin smoke remain required. GA reports identify a custom-dimension
+availability boundary after 2022-08-05. Preserve the original requested range,
+declare the usable interval separately, and retain that missing prefix in
+provenance. Do not hide missing live acceptance behind fixtures or label unknown
+bot filtering, exposure, overlap, or API query cost as zero. Reuse the dedicated
+read-only service-account path without assuming SEO credentials authorize it.
 
 ## Blocked by
 
