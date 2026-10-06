@@ -18,7 +18,9 @@ verifier, deployment configuration, actual catalog report and capacity checks.
 The test must stop after one calendar month and return to the incumbent for
 manual reevaluation. A working local demonstration is required before any
 production merge. Numeric winner/health thresholds remain pending; fixture
-settings are not live authority. Workers A/B are continuing from `5c9f38c6f`.
+settings are not live authority. Workers A/B continued from `5c9f38c6f`. Deployed-identity GA auth is
+`9d2ff9944`; the one-month cutoff and browser-proof verifier are integrated as
+`2069e87f6`. Their remaining live verifier/baseline work is still in progress.
 The orchestrator is preparing the real-data build in isolated local storage,
 with read-only production catalog access. No production experiment is active.
 
@@ -26,8 +28,11 @@ with read-only production catalog access. No production experiment is active.
 - Initial base: `d661b99939e24ba41834adce53c6bad9262bcee9`.
 - Branch: `codex/precomputed-video-recommendations`.
 - Checkout: `/home/nisal/.codex/worktrees/precomputed-video-recommendations/forge`.
-- Latest verified application integration: `8401049c1` (#2575 control/Watch code
-  and closed-private-report fix); final validation passed, with CI status on the PR.
+- Latest broadly verified integration: `5c9f38c6f`, with real source-build through
+  manual controls and rollback under controlled local measurement. GA auth
+  `9d2ff9944` passed the full Mastra suite and real read-only GA coverage.
+  Follow-on baseline/browser-proof work and real-catalog compatibility fixes
+  still require combined validation.
 - Previous verified application integration: `6b9c9836a44c90983489534355857858ddab0708` (#2574 Mastra `af835cdd0`, Admin `f18768c39`, current-main merge `ae9bc5363`, root verification `6b9c9836a`). Current-main baseline is `1daa80373`; storage CI passed: [run 37419891818](https://github.com/JesusFilm/forge/actions/runs/37419891818), 37 successful jobs, three skipped, no failures.
   #2568 GA ingestion is `084fe3eae`, Admin validation is `58b2aaa18`,
   and the OpenRouter adapter is `b7926faf5`.
@@ -44,18 +49,18 @@ with read-only production catalog access. No production experiment is active.
 All issues remain open until merge. Dependencies advance on verified acceptance,
 not issue closure. Implemented, integrated, merged, and live are distinct.
 
-| Issue | Immediate blockers | State                                         | Integrated work                                                                                         |
-| ----- | ------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| #2566 | None               | Integrated-and-verified                       | `9a984c544`; saved Admin comparison                                                                     |
-| #2567 | #2566              | Integrated-and-verified                       | `c89db0e4e`; bounded producer; OpenRouter transport smoke passed                                        |
-| #2568 | #2567              | Integrated-and-verified                       | `084fe3eae`, `58b2aaa18`; real GA pair and Astra judgment passed                                        |
-| #2569 | #2568              | Integrated-and-verified                       | `1298713cc`, `04200cd9f`; 20 connected native cases and 37 Admin cases passed                           |
-| #2570 | #2566              | Integrated-and-verified                       | `0a93244a3`; private Watch serving                                                                      |
-| #2571 | #2570              | Integrated-and-verified                       | `267a65281`, `b69592b6c`, corrections in `a7f36d778`                                                    |
-| #2572 | #2571              | Integrated-and-verified                       | Core `a7f36d778`, UI `af8eba415`                                                                        |
-| #2573 | #2572              | Private reporting verified; live incomplete   | Sources `acbb33fe4`, `302dffe31`; migration `0134`                                                      |
-| #2574 | #2569, #2573       | Code integrated-and-verified; live incomplete | `af835cdd0`, `f18768c39`; native retention and measured fixture load passed                             |
-| #2575 | #2574              | Code integrated-and-verified; live incomplete | `082fc550f`, `84ef7ce38`, `127b61e1f`, `8401049c1`; isolated native rehearsal and browser checks passed |
+| Issue | Immediate blockers | State                                           | Integrated work                                                                                         |
+| ----- | ------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| #2566 | None               | Integrated-and-verified                         | `9a984c544`; saved Admin comparison                                                                     |
+| #2567 | #2566              | Code verified; live judgment schema fix pending | `c89db0e4e`; bounded producer; OpenRouter transport smoke passed                                        |
+| #2568 | #2567              | Integrated-and-verified                         | `084fe3eae`, `58b2aaa18`; real GA pair and Astra judgment passed                                        |
+| #2569 | #2568              | Code verified; full real build incomplete       | `1298713cc`, `04200cd9f`; 20 connected native cases and 37 Admin cases passed                           |
+| #2570 | #2566              | Integrated-and-verified                         | `0a93244a3`; private Watch serving                                                                      |
+| #2571 | #2570              | Integrated-and-verified                         | `267a65281`, `b69592b6c`, corrections in `a7f36d778`                                                    |
+| #2572 | #2571              | Integrated-and-verified                         | Core `a7f36d778`, UI `af8eba415`                                                                        |
+| #2573 | #2572              | Private reporting verified; live incomplete     | Sources `acbb33fe4`, `302dffe31`; migration `0134`                                                      |
+| #2574 | #2569, #2573       | Code integrated-and-verified; live incomplete   | `af835cdd0`, `f18768c39`; native retention and measured fixture load passed                             |
+| #2575 | #2574              | Code integrated-and-verified; live incomplete   | `082fc550f`, `84ef7ce38`, `127b61e1f`, `8401049c1`; isolated native rehearsal and browser checks passed |
 
 ## Ownership and continuation
 

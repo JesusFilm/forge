@@ -173,8 +173,12 @@ instruction can promote the experiment. Preserve the incumbent for rollback.
   provider fallback and SDK retries, and retain explicit usage accounting.
 - Treat Video as content identity, distinct from Dub and Video Edition. Use
   canonical source/target identity and existing eligibility rules.
-- Establish a declared catalog/input cutoff. Read transcripts in available
-  languages and metadata; derive English working summaries as needed. Discover
+- Establish a declared catalog/input cutoff. On October 7 the owner approved
+  selecting one complete transcript per Video Edition: English when available,
+  otherwise a complete non-English transcript. Keep every eligible Video and
+  every passage of each selected transcript; record the selection policy,
+  selected identities/languages, and incomplete or unavailable editions.
+  Read this material and metadata; derive English working summaries as needed. Discover
   across all eligible catalog content and re-read supporting passages before
   accepting a transcript-backed judgment.
 - Discovery may use existing retrieval and summaries to make catalog-scale

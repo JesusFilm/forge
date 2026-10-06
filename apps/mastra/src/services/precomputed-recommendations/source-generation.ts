@@ -50,6 +50,22 @@ const videoSchema = z.object({
   parentVideoIds: z.array(videoId),
   childVideoIds: z.array(videoId),
   transcriptLanguages: z.array(z.string()),
+  transcriptSelection: z
+    .object({
+      policy: z.literal("english-per-edition-with-complete-fallback-v1"),
+      availableTranscriptCount: z.number().int().nonnegative(),
+      incompleteTranscriptCount: z.number().int().nonnegative(),
+      skippedEditionCount: z.number().int().nonnegative(),
+      selected: z.array(
+        z.object({
+          transcriptId: videoId,
+          videoEditionId: videoId,
+          language: z.string(),
+          totalChunks: z.number().int().positive(),
+        }),
+      ),
+    })
+    .optional(),
   watchRouteIdentity: z
     .object({
       basis: z.literal("current_catalog_cutoff_fenced"),
@@ -391,7 +407,10 @@ export function createAdminSourceDependencies(inputCutoff?: string): {
           .parse(
             await postAdmin(catalogUrl, key, {
               action: "catalog",
-              limit: 40,
+              // Heavily translated videos have thousands of related rows.
+              // Smaller transport pages preserve the complete catalog while
+              // keeping Admin's transaction and response bounds intact.
+              limit: 10,
               ...input,
             }),
           )

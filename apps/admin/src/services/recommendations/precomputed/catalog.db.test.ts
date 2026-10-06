@@ -270,6 +270,189 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     })
 
+    it("returns a long multilingual transcript intact instead of losing usable evidence", async () => {
+      const chunkId = `chunk-0-${suffix}`
+      const original = await prisma.videoTranscriptChunk.findUniqueOrThrow({
+        where: { id: chunkId },
+        select: { rawSourceText: true, updatedAt: true },
+      })
+      const longText = "La esperanza permanece. ".repeat(335)
+      try {
+        await prisma.videoTranscriptChunk.update({
+          where: { id: chunkId },
+          data: { rawSourceText: longText },
+        })
+        const result = await readPrecomputedCatalog(
+          prisma,
+          {
+            action: "chunks",
+            videoId: targetVideoId,
+            cutoff: new Date(Date.now() + 1_000).toISOString(),
+            limit: 1,
+          },
+          "Bearer preview-test-key",
+        )
+        expect(result).toMatchObject({
+          action: "chunks",
+          chunks: [{ id: chunkId, language: "es", text: longText }],
+        })
+        await prisma.videoTranscriptChunk.update({
+          where: { id: chunkId },
+          data: { rawSourceText: longText.repeat(32) },
+        })
+        await expect(
+          readPrecomputedCatalog(
+            prisma,
+            {
+              action: "chunks",
+              videoId: targetVideoId,
+              cutoff: new Date(Date.now() + 1_000).toISOString(),
+              limit: 1,
+            },
+            "Bearer preview-test-key",
+          ),
+        ).rejects.toMatchObject({ code: "oversized" })
+      } finally {
+        await prisma.videoTranscriptChunk.update({
+          where: { id: chunkId },
+          data: original,
+        })
+      }
+    })
+
+    it("reads complete English per edition and complete non-English fallback without sampling passages", async () => {
+      const extraEditionIds = [
+        `fallback-edition-${suffix}`,
+        `partial-edition-${suffix}`,
+        `empty-edition-${suffix}`,
+      ]
+      const addedTranscriptIds: string[] = []
+      try {
+        for (const id of extraEditionIds) {
+          await prisma.videoEdition.create({
+            data: { id, coreId: id, name: id },
+          })
+        }
+        const records = [
+          {
+            editionId: `edition-${suffix}`,
+            language: "en",
+            texts: ["Complete English evidence."],
+          },
+          {
+            editionId: extraEditionIds[0]!,
+            language: "fr",
+            texts: [
+              "Une première partie complète.",
+              "Une deuxième partie complète.",
+            ],
+          },
+          {
+            editionId: extraEditionIds[1]!,
+            language: "en",
+            texts: ["Incomplete English fragment."],
+            declaredChunks: 2,
+          },
+          {
+            editionId: extraEditionIds[1]!,
+            language: "de",
+            texts: ["Vollständiger deutscher Text."],
+          },
+          {
+            editionId: extraEditionIds[2]!,
+            language: "en",
+            texts: [],
+          },
+        ]
+        for (const [index, record] of records.entries()) {
+          const id = `selected-transcript-${index}-${suffix}`
+          addedTranscriptIds.push(id)
+          await prisma.videoTranscript.create({
+            data: {
+              id,
+              videoEditionId: record.editionId,
+              videoId: targetVideoId,
+              language: record.language,
+              model: "fixture",
+              dimensions: 1536,
+              chunkingType: "fixture",
+              maxChunkTokens: 100,
+              overlapTokens: 0,
+              totalChunks: record.declaredChunks ?? record.texts.length,
+              totalTokens: 20,
+              generatedAt: new Date(),
+            },
+          })
+          for (const [chunkIndex, text] of record.texts.entries()) {
+            await prisma.videoTranscriptChunk.create({
+              data: {
+                id: `selected-chunk-${index}-${chunkIndex}-${suffix}`,
+                transcriptId: id,
+                language: record.language,
+                chunkIndex,
+                chunkId: `part-${chunkIndex}`,
+                text,
+                rawSourceText: text,
+                tokenCount: 10,
+              },
+            })
+          }
+        }
+        const selectedCutoff = new Date(Date.now() + 1_000).toISOString()
+        const texts: string[] = []
+        let afterChunkId: string | undefined
+        do {
+          const page = await readPrecomputedCatalog(
+            prisma,
+            {
+              action: "chunks",
+              videoId: targetVideoId,
+              cutoff: selectedCutoff,
+              limit: 1,
+              ...(afterChunkId ? { afterChunkId } : {}),
+            },
+            "Bearer preview-test-key",
+          )
+          if (page.action !== "chunks") throw new Error("Wrong result")
+          texts.push(...page.chunks.map((chunk) => chunk.text))
+          afterChunkId = page.nextCursor ?? undefined
+        } while (afterChunkId)
+        expect(texts).toEqual([
+          "Complete English evidence.",
+          "Une première partie complète.",
+          "Une deuxième partie complète.",
+          "Vollständiger deutscher Text.",
+        ])
+        const video = await readPrecomputedCatalog(
+          prisma,
+          {
+            action: "video",
+            videoId: targetVideoId,
+            cutoff: selectedCutoff,
+          },
+          "Bearer preview-test-key",
+        )
+        expect(video).toMatchObject({
+          video: {
+            transcriptLanguages: ["de", "en", "fr"],
+            transcriptSelection: {
+              policy: "english-per-edition-with-complete-fallback-v1",
+              availableTranscriptCount: 6,
+              incompleteTranscriptCount: 2,
+              skippedEditionCount: 1,
+            },
+          },
+        })
+      } finally {
+        await prisma.videoTranscript.deleteMany({
+          where: { id: { in: addedTranscriptIds } },
+        })
+        await prisma.videoEdition.deleteMany({
+          where: { id: { in: extraEditionIds } },
+        })
+      }
+    })
+
     it("reports that a post-cutoff child metadata version cannot be reconstructed", async () => {
       const pastCutoff = new Date(Date.now() + 1_000).toISOString()
       const original = await prisma.videoLocale.findUniqueOrThrow({

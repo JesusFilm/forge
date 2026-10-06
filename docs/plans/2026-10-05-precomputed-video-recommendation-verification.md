@@ -1528,3 +1528,59 @@ Sanitized receipts under `/tmp/forge-feat-590-orchestration`:
 `20261007-ga-staged-configuration.json`,
 `20261007-production-pgdata-capacity.txt`, and
 `20261007-{ga-auth-focused,mastra-typecheck,mastra-full,auth-lint}.log`.
+
+## October 7 real catalog and input-policy verification
+
+The read-only production content snapshot at `2026-10-06T20:48:05.001Z`
+completed export at 20:58:48 UTC and import into the isolated local
+`forge_capacity.catalog_producer_actual_20261007` schema at 21:01:24 UTC.
+It contains public catalog metadata and transcript text, with no viewer data,
+embeddings, or production writes. Its 280,046 stored chunks match the declared
+counts of all 164,639 transcript records. The Admin catalog boundary confirms
+1,031 eligible Videos.
+
+A 40-video transport page repeatedly exceeded the existing five-second
+transaction deadline on translated films, including after local ANALYZE.
+Ten-video pages traversed the same complete catalog successfully without
+widening production deadlines. The producer now requests those smaller pages.
+Seventy-four real chunks exceeded the initial 5,000-character guard (largest:
+8,035); the bounded guard now permits 8,192 characters without truncation.
+A failing native boundary test preceded the change; long-text success and
+oversized rejection both pass.
+
+The owner approved complete English per Video Edition with complete
+non-English fallback. The native boundary test first returned every translation
+and failed, then passed with the new deterministic selection: English first,
+otherwise language and transcript ID in code-point order. Every stored passage
+of a selected transcript is returned. Incomplete transcripts are ineligible,
+and selection identities, counts and skipped editions are explicit. A fresh
+full catalog read selects 1,226 complete transcripts and 2,686 chunks, including
+three non-English fallbacks, with zero skipped editions that have transcript
+records. All 1,031 eligible Videos remain. Six native catalog cases pass.
+
+Sequential Standards and Spec review of the catalog-policy diff found one
+provenance defect: a zero-chunk transcript was excluded but not counted as
+incomplete. A native failing assertion reproduced it; the summary now counts
+it as incomplete and reports its skipped edition. Admin and Mastra typechecks
+and scoped ESLint passed. The review found no remaining standards or spec
+finding in this bounded input-policy change.
+
+The first real two-video source pilot used GA and exact Astra via OpenRouter.
+Summary, history-plan and discovery calls succeeded and reported $0.0827775
+in total. The final judgment was rejected with HTTP 400 because the generated
+evidence schema contains unsupported `oneOf`. The generation is correctly
+failed with no accepted connections. A minimal real request reproduced
+`invalid_json_schema`; this is an implementation defect being fixed, not a
+credential or model-access blocker. These pilot costs are not a full catalog
+cost report, and failed/unknown-cost attempts remain explicit.
+
+Artifacts: `/tmp/forge-feat-590-real-catalog-20261007/{export-receipt,import-receipt,catalog,transcript-dimensions,two-video-pilot}.json`;
+`/tmp/forge-feat-590-orchestration/20261007-{imported-catalog-inspection,selected-catalog-inspection,language-selection-red,language-selection-green,catalog-bounds-final}.log`;
+`20261007-astra-judgment-schema-error.json` in the same orchestration directory.
+
+PR #2578's published `9d2ff9944` checks have 42 successes and three skips;
+only upstream Expo patch drift and its dependent CI gate fail. The separate
+maintenance PR https://github.com/JesusFilm/forge/pull/2599 aligns seven Expo
+packages. Commit `3b2063d60` passed normal hooks and all 26 applicable CI checks,
+including Expo Doctor, Mobile, Auth and TV checks (six configured skips).
+It has not been merged and publishes no Mobile binary.
