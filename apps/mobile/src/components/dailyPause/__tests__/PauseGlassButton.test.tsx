@@ -12,7 +12,6 @@ import {
 } from "react-native"
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
-import type { PauseFace } from "../../../lib/dailyPause/fonts"
 import type { PauseDay } from "../../../lib/dailyPause/progress"
 import { pauseColors } from "../../../lib/dailyPause/theme"
 import {
@@ -21,6 +20,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { advance, pauseTestFont as font } from "../../../test-utils/dailyPause"
 import { OpeningScreen } from "../OpeningScreen"
 import { PAUSE_INTRO_MS } from "../PauseIntro"
 import { PrayScreen } from "../PrayScreen"
@@ -52,7 +52,6 @@ jest.mock("../../../hooks/useReduceMotion", () => ({
   useReduceMotion: () => false,
 }))
 
-const font = (face: PauseFace) => ({ fontFamily: face })
 const platformOs = Object.getOwnPropertyDescriptor(Platform, "OS")!
 let renderer: TestInstance | null = null
 
@@ -77,14 +76,6 @@ async function render(element: React.ReactElement) {
     renderer = TestRenderer.create(element)
   })
   return renderer!
-}
-
-function advance(ms: number) {
-  for (let left = ms; left > 0; left -= 250) {
-    act(() => {
-      jest.advanceTimersByTime(Math.min(250, left))
-    })
-  }
 }
 
 function glassLabels(root: TestInstance): string[] {

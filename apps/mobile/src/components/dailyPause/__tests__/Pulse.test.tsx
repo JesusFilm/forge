@@ -4,13 +4,13 @@
 import { act } from "react"
 import { Animated, StyleSheet, Text, type ViewStyle } from "react-native"
 
-import type { PauseFace } from "../../../lib/dailyPause/fonts"
 import {
   TestRenderer,
   unmount,
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { pauseTestFont as font, pulses } from "../../../test-utils/dailyPause"
 import { PULSE_CYCLE_MS, PULSE_SCALE, PULSE_SWELL_MS, Pulse } from "../Pulse"
 import { WatchScreen } from "../WatchScreen"
 
@@ -30,7 +30,6 @@ jest.mock("../../../hooks/useReduceMotion", () => ({
   useReduceMotion: () => mockReduceMotion,
 }))
 
-const font = (face: PauseFace) => ({ fontFamily: face })
 let renderer: TestInstance | null = null
 let loopStart: jest.Mock
 let loopStop: jest.Mock
@@ -67,13 +66,6 @@ async function render(element: React.ReactElement) {
     renderer = TestRenderer.create(element)
   })
   return renderer!
-}
-
-function pulses(root: TestInstance): RenderedNode[] {
-  return root.root.findAll(
-    (node) =>
-      typeof node.type === "string" && node.props.testID === "pause-pulse",
-  )
 }
 
 /** True when the host Continue button sits inside a pulse. */

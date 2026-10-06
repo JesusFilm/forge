@@ -93,7 +93,7 @@ function reminderTimeOf(date: Date): ReminderTime {
 /** "asking" holds the switch on while the permission flow runs. */
 type ReminderRequest = "idle" | "asking" | "denied"
 
-export type CustomizeSheetProps = {
+type CustomizeSheetProps = {
   onDone: () => void
 }
 

@@ -9,7 +9,6 @@ import {
 } from "react-native"
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
-import type { PauseFace } from "../../../lib/dailyPause/fonts"
 import type { MeditationLength } from "../../../lib/dailyPause/settings"
 import {
   TestRenderer,
@@ -20,6 +19,11 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import {
+  advance,
+  pauseTestFont as font,
+  pulses,
+} from "../../../test-utils/dailyPause"
 import { PAUSE_INTRO_MS } from "../PauseIntro"
 import { ReflectScreen } from "../ReflectScreen"
 
@@ -27,7 +31,6 @@ jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 62, bottom: 34, left: 0, right: 0 }),
 }))
 
-const font = (face: PauseFace) => ({ fontFamily: face })
 const onContinue = jest.fn()
 let renderer: TestInstance | null = null
 let handlers: ((state: AppStateStatus) => void)[] = []
@@ -75,15 +78,6 @@ async function render(
   return renderer!
 }
 
-/** Small steps, so React commits between timers as it does on a phone. */
-function advance(ms: number) {
-  for (let left = ms; left > 0; left -= 250) {
-    act(() => {
-      jest.advanceTimersByTime(Math.min(250, left))
-    })
-  }
-}
-
 function appState(state: AppStateStatus) {
   act(() => {
     for (const handler of [...handlers]) handler(state)
@@ -100,13 +94,6 @@ function pressableHost(root: TestInstance): RenderedNode | undefined {
       typeof node.type === "string" &&
       node.props.accessibilityLabel === "Continue",
   )[0]
-}
-
-function pulses(root: TestInstance): RenderedNode[] {
-  return root.root.findAll(
-    (node) =>
-      typeof node.type === "string" && node.props.testID === "pause-pulse",
-  )
 }
 
 /** The disabled host button that VoiceOver reads while the timer runs. */

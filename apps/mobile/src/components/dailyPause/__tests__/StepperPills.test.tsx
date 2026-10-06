@@ -5,7 +5,6 @@
 import { act } from "react"
 import { AccessibilityInfo, StyleSheet, type ViewStyle } from "react-native"
 
-import type { PauseFace } from "../../../lib/dailyPause/fonts"
 import { pauseColors } from "../../../lib/dailyPause/theme"
 import {
   TestRenderer,
@@ -13,9 +12,8 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { pauseTestFont as font } from "../../../test-utils/dailyPause"
 import { StepperPills, type StepperStage } from "../StepperPills"
-
-const font = (face: PauseFace) => ({ fontFamily: face })
 
 let renderer: TestInstance | null = null
 

@@ -6,7 +6,6 @@ import { File, Paths } from "expo-file-system"
 import { StrictMode, act } from "react"
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
-import type { PauseFace } from "../../../lib/dailyPause/fonts"
 import {
   PAUSE_DAY_STORAGE_KEY,
   PAUSE_DAY_VERSION,
@@ -21,6 +20,7 @@ import {
   unmount,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { pauseTestFont as font } from "../../../test-utils/dailyPause"
 import { ShareScreen } from "../ShareScreen"
 
 // No @types/node here; jest runs on Node, so the listener API exists.
@@ -54,7 +54,6 @@ jest.mock("expo-sharing", () => ({
 const MONDAY_KEY = "2026-10-05"
 const PIN: Today = { dayKey: MONDAY_KEY, devotional: DEVOTIONALS.pharisee }
 const SHARED_NAME = "Daily Bible Pause – Pharisee.mp4"
-const font = (face: PauseFace) => ({ fontFamily: face })
 
 let renderer: TestInstance | null = null
 

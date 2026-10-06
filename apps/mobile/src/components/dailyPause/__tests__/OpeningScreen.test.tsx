@@ -3,7 +3,6 @@
 import { act } from "react"
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
-import type { PauseFace } from "../../../lib/dailyPause/fonts"
 import {
   PAUSE_STEPS,
   type PauseDay,
@@ -18,13 +17,13 @@ import {
   unmount,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { pauseTestFont as font } from "../../../test-utils/dailyPause"
 import { OpeningScreen } from "../OpeningScreen"
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 62, bottom: 34, left: 0, right: 0 }),
 }))
 
-const font = (face: PauseFace) => ({ fontFamily: face })
 const EMPTY_DAY: PauseDay = { step: null, done: false, bellRead: true }
 
 let renderer: TestInstance | null = null

@@ -14,7 +14,6 @@ import {
   DEVOTIONALS,
   type DevotionalPart,
 } from "../../../lib/dailyPause/devotionals"
-import type { PauseFace } from "../../../lib/dailyPause/fonts"
 import {
   PART_END_GUARD_SECONDS,
   PART_START_BACKSTOP_MS,
@@ -29,6 +28,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { pauseTestFont as font } from "../../../test-utils/dailyPause"
 import { devotionalVideoFrame } from "../../../lib/dailyPause/videoFrame"
 import { PartPlayer } from "../PartPlayer"
 
@@ -109,7 +109,6 @@ const WINDOW = { width: 402, height: 874, scale: 3, fontScale: 1 }
 /** One display frame. A test's animation frame is a zero-delay timer, so one
  *  display frame runs several of them. */
 const FRAME_MS = 16
-const font = (face: PauseFace) => ({ fontFamily: face })
 
 let renderer: TestInstance | null = null
 let onEnded: jest.Mock

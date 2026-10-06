@@ -12,13 +12,13 @@ import {
 } from "react-native"
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
-import type { PauseFace } from "../../../lib/dailyPause/fonts"
 import {
   TestRenderer,
   unmount,
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { advance, pauseTestFont as font } from "../../../test-utils/dailyPause"
 import { PAUSE_INTRO_MS } from "../PauseIntro"
 import { PrayScreen } from "../PrayScreen"
 import { ReflectScreen } from "../ReflectScreen"
@@ -36,7 +36,6 @@ const WINDOW = { width: 402, height: 874, scale: 3, fontScale: 1 }
 /** The body is 874 - 62 - 36 = 776 tall, and the stepper is 220 tall. */
 const CENTERED_SHIFT = (776 - 220) / 2
 
-const font = (face: PauseFace) => ({ fontFamily: face })
 let renderer: TestInstance | null = null
 
 beforeEach(() => {
@@ -97,14 +96,6 @@ async function render(screen: (typeof SCREENS)[number]) {
   })
   await act(async () => {})
   return renderer!
-}
-
-function advance(ms: number) {
-  for (let left = ms; left > 0; left -= 250) {
-    act(() => {
-      jest.advanceTimersByTime(Math.min(250, left))
-    })
-  }
 }
 
 function labelsOf(root: TestInstance): string[] {
