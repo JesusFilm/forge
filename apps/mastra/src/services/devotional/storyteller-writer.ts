@@ -133,24 +133,31 @@ export const OPENING_RULES = [
   "the video is about. On-screen words are claims too: only what the",
   "passage or the reflection says. About 12 to 15 seconds: at most 40",
   "words in all, 12 per line.",
+  "  Lines 1 and 2 are the HOOK; line 3 says plainly what the viewer will",
+  "  get; line 4 turns to the viewer (owner, 2026-10-06).",
   "  1. PROMISE, the first line, under ten words: the promise in the scene,",
   "     with a person in it. The viewer knows at once this is the video they",
   "     clicked. Do not quote the title.",
   "  2. CONTEXT AND GAP, one line: the one fact the tension turns on, set",
   "     against the promise so it lands as a contradiction the viewer",
-  "     cannot resolve yet.",
+  "     cannot resolve yet. Use vivid, emotional words for the people (a",
+  "     beggar YELLING by the road, not a man speaking), never a flat summary.",
   "     Do not retell the plot: the film is about to show it. Name the one",
   "     fact the tension turns on, and leave the rest for the film.",
   "     Recognition, never shame: the viewer thinks 'I know this', not",
   "     'this video is judging me'.",
-  "  3. PREVIEW, one line that starts 'In this devotional': the devotional's",
-  "     strongest finding (the insight), named by WHERE it",
-  "     is and WHAT it concerns, never by what it means ('one word in the",
-  "     father's last sentence, and what it says about the party'). Promise",
+  "  3. PREVIEW, one line that starts 'In this devotional, we': a full,",
+  "     clear sentence with a verb saying what we will look at (the insight,",
+  "     named by WHERE it is and WHAT it concerns) and, honestly, what it",
+  "     does: 'In this devotional, we look at one word in Jesus' answer, and",
+  "     why it says more than it seems.' Never a fragment ('In this",
+  "     devotional: one word...'), never the answer itself, and no hype it",
+  "     cannot keep ('changes everything', 'turns it upside down'). Promise",
   "     only what the reflection delivers, in the reflection's own terms.",
-  "  4. BRIDGE, the last line: points at the story about to play, so the",
-  "     film feels like the answer beginning. A statement, not a command,",
-  "     and not the word 'watch': 'Let's watch.' follows it.",
+  "  4. TURN TO THE VIEWER, the last line: one short line, in the second",
+  "     person, that lets the viewer see themselves in the story, often a",
+  "     question ('What cry have you been hushing?'). Recognition, never",
+  "     shame, and not the word 'watch': 'Let's watch.' follows it.",
   "Do not reuse the reflection's wording: the viewer hears both.",
   "Never give the takeaway or the answer to the gap away.",
 ]
@@ -350,7 +357,7 @@ export function openingProblems(
       why: "the whole opening is 40 words or fewer (12 to 15 seconds); cut the plot, keep the tension",
     })
   for (const l of lines) {
-    const max = /^\s*in this devotional\b/i.test(l) ? 14 : 12
+    const max = /^\s*in this devotional\b/i.test(l) ? 18 : 12
     if (words(l) > max)
       out.push({
         rule: "opening-line-too-long",
@@ -425,7 +432,35 @@ export function openingProblems(
     out.push({
       rule: "opening-bridge",
       sentence: previews[0],
-      why: "the last line points at the story, after the preview",
+      why: "the last line turns to the viewer, after the preview",
+    })
+  // The preview is a full sentence about what WE will look at (owner,
+  // 2026-10-06: "In this devotional: one word in Jesus' reply" read as a
+  // fragment nobody could parse), and it promises no more than it delivers.
+  const preview = previews[0]
+  if (preview && !/^\s*in this devotional,?\s+we\b/i.test(preview))
+    out.push({
+      rule: "opening-preview-sentence",
+      sentence: preview,
+      why: "the preview is a full sentence: 'In this devotional, we look at...', never a fragment",
+    })
+  if (
+    preview &&
+    /changes everything|upside down|everything you (thought|knew)|will shock/i.test(
+      preview,
+    )
+  )
+    out.push({
+      rule: "opening-preview-hype",
+      sentence: preview,
+      why: "say honestly what the insight does; no hype the reflection cannot keep",
+    })
+  // The last line turns to the viewer (owner, 2026-10-06).
+  if (bridge && bridge !== preview && !/\b(you|your|yours)\b/i.test(bridge))
+    out.push({
+      rule: "opening-turn-to-viewer",
+      sentence: bridge,
+      why: "the last line speaks to the viewer, in the second person, so they see themselves in the story",
     })
   return out
 }

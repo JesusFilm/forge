@@ -12,8 +12,8 @@ const o = (line: string): OpeningLine => ({ line, visual: "v", onScreen: "" })
 const good = [
   o("He never left. Now he will not go in."),
   o("His brother wasted everything, and the party is for him."),
-  o("In this devotional: one word in the father's reply, about the feast."),
-  o("It starts with a father and two sons."),
+  o("In this devotional, we look at one word in the father's reply."),
+  o("Where do you stand tonight?"),
 ]
 
 describe("openingProblems", () => {
@@ -60,6 +60,34 @@ describe("openingProblems", () => {
     expect(openingProblems(wordy).map((p) => p.rule)).toContain(
       "opening-too-long",
     )
+  })
+
+  it("wants a full preview sentence, honest, and a last line to the viewer (2026-10-06)", () => {
+    const rules = (lines: OpeningLine[]) =>
+      openingProblems(lines).map((p) => p.rule)
+    expect(
+      rules([
+        good[0],
+        good[1],
+        o("In this devotional: one word in Jesus' reply."),
+        good[3],
+      ]),
+    ).toContain("opening-preview-sentence")
+    expect(
+      rules([
+        good[0],
+        good[1],
+        o("In this devotional, we look at one word that changes everything."),
+        good[3],
+      ]),
+    ).toContain("opening-preview-hype")
+    expect(
+      rules([
+        ...good.slice(0, 3),
+        o("Here is the cry the crowd tried to hush."),
+      ]),
+    ).toContain("opening-turn-to-viewer")
+    expect(rules(good)).not.toContain("opening-turn-to-viewer")
   })
 
   it("does not say watch in the bridge, nor reuse the reflection's words", () => {
