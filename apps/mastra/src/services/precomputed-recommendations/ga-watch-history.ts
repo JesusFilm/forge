@@ -21,6 +21,7 @@ const WATCH_PATH_REGEX = "^/watch(/.*)?$"
 const WATCH_REFERRER_REGEX =
   "^https?://(www\\.)?jesusfilm\\.org/watch(/[^?#]*)?([?#].*)?$"
 const REPORT_PAGE_SIZE = 1_000
+const SNAPSHOT_PAGE_SIZE = 500
 const MAX_REPORT_PAGES = 25
 const EVENT_NAMES = [
   "page_view",
@@ -733,7 +734,7 @@ export async function readGaWatchStartAggregatePage(input: {
     input.offset < 0 ||
     !Number.isInteger(input.limit) ||
     input.limit < 1 ||
-    input.limit > 100
+    input.limit > SNAPSHOT_PAGE_SIZE
   )
     throw new HistoricalAnalyticsError("analytics_unavailable")
   if (input.targetPathnames && !validWatchPathnames(input.targetPathnames))
@@ -933,7 +934,7 @@ export async function readGaWatchReferrerAggregatePage(input: {
     input.offset < 0 ||
     !Number.isInteger(input.limit) ||
     input.limit < 1 ||
-    input.limit > 100
+    input.limit > SNAPSHOT_PAGE_SIZE
   )
     throw new HistoricalAnalyticsError("analytics_unavailable")
   if (
@@ -1283,7 +1284,7 @@ async function readGaNavigationSnapshot(
         readGaWatchStartAggregatePage({
           ...usableInput,
           offset,
-          limit: 100,
+          limit: SNAPSHOT_PAGE_SIZE,
           targetRouteRegex: routeRegex("target", patterns),
         }),
       (row) => {
@@ -1334,7 +1335,7 @@ async function readGaNavigationSnapshot(
           readGaWatchReferrerAggregatePage({
             ...usableInput,
             offset,
-            limit: 100,
+            limit: SNAPSHOT_PAGE_SIZE,
             sourceRouteRegex: routeRegex("source", querySourcePatterns),
             targetRouteRegex: routeRegex("target", patterns),
           }),

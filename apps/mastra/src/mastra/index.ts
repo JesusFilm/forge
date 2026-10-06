@@ -182,6 +182,10 @@ import {
   precomputedSourceGenerationWorkflow,
 } from "./workflows/precomputed-source-generation"
 import {
+  handlePrecomputedCatalogRouteRequest,
+  precomputedCatalogGenerationWorkflow,
+} from "./workflows/precomputed-catalog-generation"
+import {
   isValidServiceBearer,
   parseServiceApiKeys,
 } from "../server/service-bearer"
@@ -317,6 +321,7 @@ export const mastra = new Mastra({
   },
   workflows: {
     precomputedSourceGenerationWorkflow,
+    precomputedCatalogGenerationWorkflow,
     transcriptEmbeddingWorkflow,
     experienceEmbeddingWorkflow,
     evalQueryGenerationWorkflow,
@@ -435,6 +440,20 @@ export const mastra = new Mastra({
       },
     ],
     apiRoutes: [
+      registerApiRoute("/forge-precomputed-catalog-generation", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handlePrecomputedCatalogRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            request: c.req.raw,
+          })
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
       registerApiRoute("/forge-precomputed-source-generation", {
         method: "POST",
         handler: async (c) => {

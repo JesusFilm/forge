@@ -41,7 +41,7 @@ export const precomputedSourceGenerationWorkflow = createWorkflow({
   .then(step)
   .commit()
 
-async function boundedJson(request: Request): Promise<unknown> {
+export async function boundedJson(request: Request): Promise<unknown> {
   if (
     !/^application\/json(?:\s*;|$)/i.test(
       request.headers.get("content-type") ?? "",

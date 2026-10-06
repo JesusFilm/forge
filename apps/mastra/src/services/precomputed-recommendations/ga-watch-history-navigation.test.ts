@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from "vitest"
 
-import { createGaWatchHistoryReader } from "./ga-watch-history"
+import {
+  createGaWatchHistoryReader,
+  readGaWatchReferrerAggregatePage,
+} from "./ga-watch-history"
 import {
   readHistoricalDefinition,
   readHistoricalSnapshot,
@@ -34,6 +37,68 @@ const target = {
 }
 
 describe("qualified GA Watch navigation snapshot", () => {
+  it("reads a 501-row report in two bounded 500-row pages without losing rows", async () => {
+    const requested: number[] = []
+    const fetchImpl = vi.fn(
+      async (_url: URL | RequestInfo, init?: RequestInit) => {
+        const body = JSON.parse(String(init?.body)) as {
+          offset: string
+          limit: string
+        }
+        const offset = Number(body.offset)
+        const limit = Number(body.limit)
+        requested.push(offset)
+        const rows = Array.from({ length: 501 }, (_, index) => [
+          `https://www.jesusfilm.org/watch/source-${index}.html/english.html`,
+          "/watch/target.html/english.html",
+          "media-id",
+          "1",
+        ])
+        return new Response(
+          JSON.stringify({
+            dimensionHeaders: [
+              { name: "pageReferrer" },
+              { name: "pagePath" },
+              { name: "customEvent:mediacomponentid" },
+            ],
+            metricHeaders: [{ name: "eventCount" }],
+            rowCount: rows.length,
+            rows: rows.slice(offset, offset + limit).map((row) => ({
+              dimensionValues: row.slice(0, -1).map((value) => ({ value })),
+              metricValues: [{ value: row.at(-1) }],
+            })),
+            metadata: { timeZone: "America/New_York" },
+          }),
+          { status: 200 },
+        )
+      },
+    )
+    const common = {
+      propertyId: "320198532",
+      serviceAccountEmail:
+        "watch-ga4-readonly@jesusfilm-org-1738781064783.iam.gserviceaccount.com",
+      rangeStart: "2022-08-06",
+      rangeEnd: "2022-10-31",
+      limit: 500,
+      tokenProvider: async () => ({
+        ok: true as const,
+        accessToken: "test-token",
+      }),
+      fetchImpl: fetchImpl as typeof fetch,
+    }
+    const first = await readGaWatchReferrerAggregatePage({
+      ...common,
+      offset: 0,
+    })
+    const second = await readGaWatchReferrerAggregatePage({
+      ...common,
+      offset: 500,
+    })
+    expect([first.rows.length, second.rows.length]).toEqual([500, 1])
+    expect([first.nextOffset, second.nextOffset]).toEqual([500, null])
+    expect(requested).toEqual([0, 500])
+  })
+
   it("covers more than 50 language routes with one bounded coarse query and unique local mapping", async () => {
     const requests: {
       dimensions: string[]

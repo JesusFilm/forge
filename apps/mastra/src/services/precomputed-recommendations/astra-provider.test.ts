@@ -50,6 +50,7 @@ describe("pinned Astra provider adapter", () => {
             input_tokens: 12,
             output_tokens: 3,
             total_tokens: 15,
+            cost: 0.01855,
             input_tokens_details: { cached_tokens: 2 },
             output_tokens_details: { reasoning_tokens: 0 },
           },
@@ -60,7 +61,12 @@ describe("pinned Astra provider adapter", () => {
     vi.stubGlobal("fetch", transport)
     expect(await createAstraModel().generate(request)).toEqual({
       output: { answer: "yes" },
-      usage: { inputTokens: 12, outputTokens: 3, cachedInputTokens: 2 },
+      usage: {
+        inputTokens: 12,
+        outputTokens: 3,
+        cachedInputTokens: 2,
+        costUsd: 0.01855,
+      },
     })
     expect(transport).toHaveBeenCalledTimes(1)
     const [url, init] = transport.mock.calls[0]!
@@ -74,6 +80,43 @@ describe("pinned Astra provider adapter", () => {
       max_output_tokens: 100,
       text: { format: { type: "json_schema", strict: true } },
       provider: { require_parameters: true, allow_fallbacks: false },
+    })
+  })
+
+  it("retains reported charge and tokens when structured output is invalid", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn<typeof fetch>().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            id: "response-malformed",
+            object: "response",
+            created_at: 1_791_244_800,
+            model: "openai/gpt-6-astra",
+            status: "completed",
+            output: [
+              {
+                type: "message",
+                id: "message-malformed",
+                role: "assistant",
+                content: [
+                  { type: "output_text", text: "not json", annotations: [] },
+                ],
+              },
+            ],
+            usage: {
+              input_tokens: 25,
+              output_tokens: 7,
+              total_tokens: 32,
+              cost: 0.023,
+            },
+          }),
+          { headers: { "content-type": "application/json" } },
+        ),
+      ),
+    )
+    await expect(createAstraModel().generate(request)).rejects.toMatchObject({
+      usage: { inputTokens: 25, outputTokens: 7, costUsd: 0.023 },
     })
   })
 

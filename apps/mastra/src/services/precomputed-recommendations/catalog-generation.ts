@@ -1,0 +1,1057 @@
+import { randomUUID } from "node:crypto"
+
+import { z } from "zod"
+
+import {
+  createAstraModel,
+  isAstraAccessFailure,
+  PRECOMPUTED_MODEL_ID,
+  type ModelUsage,
+  type StructuredModel,
+} from "./astra-provider"
+import {
+  CONTENT_SYSTEM,
+  HISTORY_SYSTEM,
+  assertEvidence,
+  createAdminSourceDependencies,
+  digest,
+  analyticsQueryPlanSchema,
+  discoverySchema,
+  judgmentSchema,
+  modelVideo,
+  pages,
+  summarySchema,
+  type Judgment,
+  type SourceCatalog,
+  type SourceIngest,
+  type Video,
+} from "./source-generation"
+import {
+  HistoricalAnalyticsError,
+  readHistoricalDefinition,
+  readHistoricalSnapshot,
+  type HistoricalAnalyticsReader,
+  type HistoricalSnapshot,
+} from "./historical-analytics"
+import { createGaWatchHistoryReader } from "./ga-watch-history"
+import {
+  GA_WATCH_PROPERTY,
+  gaWatchClosedRangeEnd,
+} from "./ga-watch-history-range"
+import { env } from "../../config/env"
+
+const id = z.string().trim().min(1).max(191)
+export const CatalogGenerationInputSchema = z
+  .object({
+    generationId: id,
+    inputCutoff: z.string().datetime(),
+    historyRequired: z.boolean().default(true),
+    capacity: z
+      .object({
+        measuredAt: z.string().datetime(),
+        clusterSystemId: z.string().regex(/^\d{1,20}$/u),
+        observedDbBytes: z.number().int().nonnegative().safe(),
+        availableBytes: z.number().int().nonnegative().safe(),
+        reserveBytes: z.number().int().nonnegative().safe(),
+        projectedBytes: z.number().int().nonnegative().safe(),
+        sampleSourceCount: z.number().int().positive().safe(),
+        sampleBytes: z.number().int().positive().safe(),
+        source: z.literal("operator_verified_pgdata_df"),
+      })
+      .strict(),
+  })
+  .strict()
+export type CatalogGenerationInput = z.output<
+  typeof CatalogGenerationInputSchema
+>
+
+type HistorySummary = {
+  resultDigest: string
+  rowCount: number
+  mappedRows: number
+  unmappedRows: number
+  pageCount: number
+  queryExecutionCount: number
+  navigationCoverage: NonNullable<
+    HistoricalSnapshot["provenance"]["navigationCoverage"]
+  >
+}
+type Checkpoint = {
+  stage: "summary" | "plan" | "discovery" | "candidate" | "done"
+  cursor: {
+    sourceAfterChunkId?: string
+    catalogIndex?: number
+    candidateIndex?: number
+    candidateAfterChunkId?: string
+  }
+  sourceSummaryEnglish?: string
+  candidateIds?: string[]
+  analyticsCandidateIds?: string[]
+  bestJudgment?: Judgment & { targetVideoId: string }
+  historySummary?: HistorySummary
+}
+type Dependencies = {
+  catalog: SourceCatalog
+  ingest: SourceIngest
+  model: StructuredModel
+  history: HistoricalAnalyticsReader
+  gaTransport: {
+    fetchImpl: typeof fetch
+    serviceAccountEmail: string
+    tokenProvider?: () => Promise<
+      { ok: true; accessToken: string } | { ok: false }
+    >
+  }
+}
+type Context = {
+  input: CatalogGenerationInput
+  generationInputDigest: string
+  catalog: SourceCatalog
+  ingest: SourceIngest
+  model: StructuredModel
+  videos: Video[]
+  history?: HistoricalAnalyticsReader
+  historyDefinition?: Awaited<ReturnType<typeof readHistoricalDefinition>>
+  qualificationDigest?: string
+}
+const nonnegative = z.number().int().nonnegative().safe()
+const stateSchema = z.object({
+  state: z.enum([
+    "incomplete",
+    "complete",
+    "failed",
+    "cancelled",
+    "capacity_blocked",
+  ]),
+})
+const bestJudgmentSchema = judgmentSchema.shape.connections.element.extend({
+  targetVideoId: id,
+})
+const checkpointSchema: z.ZodType<Checkpoint> = z.object({
+  stage: z.enum(["summary", "plan", "discovery", "candidate", "done"]),
+  cursor: z.object({
+    sourceAfterChunkId: id.optional(),
+    catalogIndex: nonnegative.optional(),
+    candidateIndex: nonnegative.optional(),
+    candidateAfterChunkId: id.optional(),
+  }),
+  sourceSummaryEnglish: z.string().max(5_000).optional(),
+  candidateIds: z.array(id).max(40).optional(),
+  analyticsCandidateIds: z.array(id).max(40).optional(),
+  bestJudgment: bestJudgmentSchema.optional(),
+  historySummary: z
+    .object({
+      resultDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+      rowCount: nonnegative,
+      mappedRows: nonnegative,
+      unmappedRows: nonnegative,
+      pageCount: nonnegative,
+      queryExecutionCount: nonnegative,
+      navigationCoverage: z.object({
+        candidateEvents: nonnegative,
+        qualifiedEvents: nonnegative,
+        homeEvents: nonnegative,
+        selfEvents: nonnegative,
+        crossHostEvents: nonnegative,
+        malformedEvents: nonnegative,
+        unmappedEvents: nonnegative,
+        ambiguousEvents: nonnegative,
+      }),
+    })
+    .optional(),
+})
+const claimSchema = z.object({
+  sourceState: z.enum([
+    "pending",
+    "claimed",
+    "complete_edges",
+    "complete_empty",
+    "failed",
+  ]),
+  leaseToken: z.uuid().nullable(),
+  checkpointRevision: nonnegative.optional(),
+  checkpoint: checkpointSchema.nullable().optional(),
+})
+const checkpointResponseSchema = z.object({
+  checkpointRevision: nonnegative,
+})
+const modelReceiptSchema = checkpointResponseSchema.extend({
+  receiptStored: z.literal(true),
+  checkpointApplied: z.boolean(),
+  staleLease: z.boolean(),
+})
+const callReservationSchema = z.object({
+  state: z.literal("pending"),
+  callId: id,
+})
+const historyReceiptSchema = z.object({ receiptStored: z.literal(true) })
+const heartbeatSchema = z.object({ sourceState: z.literal("claimed") })
+const manifestSchema = stateSchema.extend({ pendingSourceCount: nonnegative })
+const probeSchema = z.object({
+  observedDbBytes: nonnegative,
+  clusterSystemId: z.string().regex(/^\d{1,20}$/u),
+  availableBytes: z.null(),
+})
+const sourceResponseSchema = z.object({
+  sourceState: z.enum(["complete_edges", "complete_empty"]),
+})
+const qualificationResponseSchema = z.object({
+  qualificationDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+})
+
+type CatalogBuildFailureCode =
+  | "admin_contract_rejected"
+  | "stale_source_claim"
+  | "provider_invalid_output"
+  | "provider_unavailable"
+  | "provider_access_unavailable"
+  | "analytics_incomplete"
+  | "input_stale"
+  | "internal_failure"
+
+class CatalogBuildError extends Error {
+  constructor(readonly code: CatalogBuildFailureCode) {
+    super(code)
+  }
+}
+
+function parsed<T extends z.ZodType>(schema: T, value: unknown): z.output<T> {
+  const checked = schema.safeParse(value)
+  if (!checked.success) throw new CatalogBuildError("admin_contract_rejected")
+  return checked.data
+}
+
+function sanitizeUsage(usage: unknown): ModelUsage {
+  if (typeof usage !== "object" || usage === null) return {}
+  const data = usage as Record<string, unknown>
+  const token = (value: unknown) =>
+    Number.isSafeInteger(value) && Number(value) >= 0
+      ? Number(value)
+      : undefined
+  return {
+    inputTokens: token(data.inputTokens),
+    outputTokens: token(data.outputTokens),
+    cachedInputTokens: token(data.cachedInputTokens),
+    costUsd:
+      typeof data.costUsd === "number" &&
+      Number.isFinite(data.costUsd) &&
+      data.costUsd >= 0
+        ? data.costUsd
+        : undefined,
+  }
+}
+
+function usageFromError(error: unknown): ModelUsage {
+  return typeof error === "object" && error !== null && "usage" in error
+    ? sanitizeUsage(error.usage)
+    : {}
+}
+
+function sumHistory(
+  prior: HistorySummary | undefined,
+  snapshot: HistoricalSnapshot,
+): HistorySummary {
+  const p = snapshot.provenance
+  const observed = p.navigationCoverage
+  if (!observed) throw new HistoricalAnalyticsError("analytics_incomplete")
+  const previous = prior?.navigationCoverage
+  return {
+    resultDigest: digest([prior?.resultDigest ?? null, p.resultDigest]),
+    rowCount: (prior?.rowCount ?? 0) + p.rowCount,
+    mappedRows: (prior?.mappedRows ?? 0) + p.mappedRows,
+    unmappedRows: (prior?.unmappedRows ?? 0) + p.unmappedRows,
+    pageCount: (prior?.pageCount ?? 0) + p.pageCount,
+    queryExecutionCount:
+      (prior?.queryExecutionCount ?? 0) + p.queryExecutionCount,
+    navigationCoverage: {
+      candidateEvents:
+        (previous?.candidateEvents ?? 0) + observed.candidateEvents,
+      qualifiedEvents:
+        (previous?.qualifiedEvents ?? 0) + observed.qualifiedEvents,
+      homeEvents: (previous?.homeEvents ?? 0) + observed.homeEvents,
+      selfEvents: (previous?.selfEvents ?? 0) + observed.selfEvents,
+      crossHostEvents:
+        (previous?.crossHostEvents ?? 0) + observed.crossHostEvents,
+      malformedEvents:
+        (previous?.malformedEvents ?? 0) + observed.malformedEvents,
+      unmappedEvents: (previous?.unmappedEvents ?? 0) + observed.unmappedEvents,
+      ambiguousEvents:
+        (previous?.ambiguousEvents ?? 0) + observed.ambiguousEvents,
+    },
+  }
+}
+
+async function processSource(
+  context: Context,
+  source: Video,
+  leaseToken: string,
+  saved: Checkpoint | null,
+  savedRevision: number,
+): Promise<void> {
+  const {
+    input,
+    generationInputDigest,
+    ingest,
+    catalog,
+    videos,
+    model,
+    history,
+    historyDefinition,
+    qualificationDigest,
+  } = context
+  const identity = {
+    generationId: input.generationId,
+    generationInputDigest,
+    sourceVideoId: source.id,
+    leaseToken,
+  }
+  let revision = savedRevision
+  let checkpoint: Checkpoint = saved ?? {
+    stage: "summary",
+    cursor: {},
+    sourceSummaryEnglish: source.description || source.title,
+  }
+  const heartbeat = async () =>
+    parsed(heartbeatSchema, await ingest({ action: "heartbeat", ...identity }))
+  async function advance(next: Checkpoint) {
+    const response = parsed(
+      checkpointResponseSchema,
+      await ingest({
+        action: "checkpoint",
+        ...identity,
+        expectedRevision: revision,
+        checkpointId: randomUUID(),
+        checkpoint: next,
+      }),
+    )
+    revision = response.checkpointRevision
+    checkpoint = next
+  }
+  async function call<T extends z.ZodType>(
+    stage:
+      | "source_summary"
+      | "analytics_query_plan"
+      | "catalog_discovery"
+      | "candidate_judgment",
+    schema: T,
+    data: unknown,
+    maxOutputTokens: number,
+    next: (output: z.output<T>) => Checkpoint,
+    choice?: (output: z.output<T>) => Record<string, unknown> | undefined,
+    validate?: (output: z.output<T>) => void,
+  ) {
+    const system = input.historyRequired ? HISTORY_SYSTEM : CONTENT_SYSTEM
+    const prompt = JSON.stringify({ task: stage, untrustedCatalogData: data })
+    const inputDigest = digest({ system, prompt })
+    const callId = randomUUID()
+    const startedAt = new Date().toISOString()
+    await heartbeat()
+    const reservation = parsed(
+      callReservationSchema,
+      await ingest({
+        action: "model_call_start",
+        ...identity,
+        callId,
+        stage,
+        modelId: PRECOMPUTED_MODEL_ID,
+        inputDigest,
+        startedAt,
+      }),
+    )
+    if (reservation.callId !== callId)
+      throw new CatalogBuildError("admin_contract_rejected")
+    let output: z.output<T> | undefined
+    let usage: ModelUsage = {}
+    let failureCode: CatalogBuildFailureCode | undefined
+    try {
+      const response = await model.generate({
+        schema,
+        system,
+        prompt,
+        maxOutputTokens,
+      })
+      usage = sanitizeUsage(response.usage)
+      output = schema.parse(response.output)
+      validate?.(output)
+    } catch (error) {
+      usage = { ...usageFromError(error), ...usage }
+      failureCode =
+        error instanceof z.ZodError ||
+        (error instanceof Error && error.message === "provider_invalid_output")
+          ? "provider_invalid_output"
+          : isAstraAccessFailure(error)
+            ? "provider_access_unavailable"
+            : "provider_unavailable"
+    }
+    let nextCheckpoint = checkpoint
+    let selectedChoice: Record<string, unknown> | undefined
+    if (!failureCode) {
+      try {
+        nextCheckpoint = next(output!)
+        selectedChoice = choice?.(output!)
+      } catch {
+        // A charged response still gets its usage receipt even if a local
+        // projection fails before the checkpoint can advance.
+        failureCode = "internal_failure"
+        nextCheckpoint = checkpoint
+        selectedChoice = undefined
+      }
+    }
+    const receipt = parsed(
+      modelReceiptSchema,
+      await ingest({
+        action: "model_call",
+        ...identity,
+        callId,
+        stage,
+        status: failureCode ? "failed" : "succeeded",
+        modelId: PRECOMPUTED_MODEL_ID,
+        inputDigest,
+        ...(failureCode
+          ? { errorCode: failureCode }
+          : { outputDigest: digest(output) }),
+        inputTokens: usage.inputTokens,
+        outputTokens: usage.outputTokens,
+        cachedInputTokens: usage.cachedInputTokens,
+        costUsd: usage.costUsd,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        expectedRevision: revision,
+        checkpointId: randomUUID(),
+        checkpoint: nextCheckpoint,
+        ...(selectedChoice ? { choice: selectedChoice } : {}),
+      }),
+    )
+    if (!receipt.checkpointApplied || receipt.staleLease)
+      throw new CatalogBuildError("stale_source_claim")
+    revision = receipt.checkpointRevision
+    checkpoint = nextCheckpoint
+    if (failureCode) throw new CatalogBuildError(failureCode)
+  }
+
+  let sourceHistory: HistoricalSnapshot | undefined
+  if (history && historyDefinition && checkpoint.stage !== "done") {
+    await heartbeat()
+    sourceHistory = await readHistoricalSnapshot({
+      reader: history,
+      definition: historyDefinition,
+      catalog: [source],
+      routeCatalog: videos,
+      sourceVideoId: source.id,
+      selectedVideoIds: [],
+      includeSourceEngagement: true,
+      cutoff: input.inputCutoff,
+    })
+    if (!checkpoint.historySummary)
+      await advance({
+        ...checkpoint,
+        historySummary: sumHistory(undefined, sourceHistory),
+      })
+  }
+
+  const pageHistoryCache = new Map<number, HistoricalSnapshot>()
+  while (checkpoint.stage !== "done") {
+    if (checkpoint.stage === "summary") {
+      const page = await catalog.chunks({
+        videoId: source.id,
+        cutoff: input.inputCutoff,
+        afterChunkId: checkpoint.cursor.sourceAfterChunkId,
+      })
+      const nextCheckpoint: Checkpoint = {
+        ...checkpoint,
+        stage: page.nextCursor
+          ? "summary"
+          : historyDefinition
+            ? "plan"
+            : "discovery",
+        cursor: page.nextCursor
+          ? { sourceAfterChunkId: page.nextCursor }
+          : { catalogIndex: 0 },
+      }
+      if (page.chunks.length === 0) {
+        await advance(nextCheckpoint)
+      } else {
+        await call(
+          "source_summary",
+          summarySchema,
+          {
+            source: modelVideo(source),
+            previousSummaryEnglish: checkpoint.sourceSummaryEnglish,
+            chunks: page.chunks,
+            historicalDefinitions: sourceHistory?.definitionsForModel,
+            historicalSourceSignal: sourceHistory?.signal(source.id),
+            instruction:
+              "Update the English summary with all new themes and useful connections; use every language supplied.",
+          },
+          2_048,
+          (output) => ({
+            ...nextCheckpoint,
+            sourceSummaryEnglish: output.summaryEnglish,
+          }),
+        )
+      }
+      continue
+    }
+    const catalogIndex = checkpoint.cursor.catalogIndex ?? 0
+    if (catalogIndex >= videos.length) {
+      await advance({ ...checkpoint, stage: "done", cursor: {} })
+      continue
+    }
+    const page = videos.slice(catalogIndex, catalogIndex + 40)
+    if (checkpoint.stage === "plan") {
+      if (!historyDefinition)
+        throw new CatalogBuildError("analytics_incomplete")
+      await call(
+        "analytics_query_plan",
+        analyticsQueryPlanSchema,
+        {
+          historicalDefinitions: sourceHistory?.definitionsForModel,
+          source: modelVideo(source),
+          candidates: page.map(modelVideo),
+          instruction:
+            "Select Video IDs in this page whose Watch starts and source-to-candidate referrer navigation you want to inspect. Navigation is not consecutive playback. Missing exposure is unknown, not negative evidence. Select only page Video IDs.",
+        },
+        2_048,
+        (output) => ({
+          ...checkpoint,
+          stage: "discovery",
+          analyticsCandidateIds: output.candidateVideoIds,
+        }),
+        undefined,
+        (output) => {
+          const ids = new Set(page.map((video) => video.id))
+          if (
+            new Set(output.candidateVideoIds).size !==
+              output.candidateVideoIds.length ||
+            output.candidateVideoIds.some(
+              (videoId) => videoId === source.id || !ids.has(videoId),
+            )
+          )
+            throw new CatalogBuildError("provider_invalid_output")
+        },
+      )
+      continue
+    }
+    let pageHistory = pageHistoryCache.get(catalogIndex)
+    if (history && historyDefinition) {
+      if (!checkpoint.analyticsCandidateIds)
+        throw new HistoricalAnalyticsError("analytics_incomplete")
+      if (!pageHistory) {
+        await heartbeat()
+        pageHistory = await readHistoricalSnapshot({
+          reader: history,
+          definition: historyDefinition,
+          catalog: [source, ...page.filter((video) => video.id !== source.id)],
+          routeCatalog: videos,
+          sourceVideoId: source.id,
+          selectedVideoIds: checkpoint.analyticsCandidateIds,
+          includeSourceEngagement: false,
+          cutoff: input.inputCutoff,
+        })
+        pageHistoryCache.set(catalogIndex, pageHistory)
+      }
+    }
+    if (checkpoint.stage === "discovery") {
+      await call(
+        "catalog_discovery",
+        discoverySchema,
+        {
+          source: modelVideo(source),
+          sourceSummaryEnglish: checkpoint.sourceSummaryEnglish,
+          candidates: page.map(modelVideo),
+          historicalDefinitions: pageHistory?.definitionsForModel,
+          historicalSignals: pageHistory
+            ? page.map((video) => ({
+                videoId: video.id,
+                engagement:
+                  video.id === source.id
+                    ? sourceHistory?.signal(source.id)
+                    : pageHistory?.signal(video.id),
+                navigationFromSource:
+                  pageHistory?.navigation?.(source.id, video.id) ?? null,
+              }))
+            : undefined,
+          instruction:
+            "Return every candidate with a plausible explainable connection; exclude the source and duplicate editions/dubs. Do not impose a fixed number.",
+        },
+        4_096,
+        (output) => ({
+          stage: "candidate",
+          cursor: { catalogIndex, candidateIndex: 0 },
+          sourceSummaryEnglish: checkpoint.sourceSummaryEnglish,
+          candidateIds: output.candidateVideoIds,
+          analyticsCandidateIds: checkpoint.analyticsCandidateIds,
+          historySummary: pageHistory
+            ? sumHistory(checkpoint.historySummary, pageHistory)
+            : checkpoint.historySummary,
+        }),
+        undefined,
+        (output) => {
+          const ids = new Set(page.map((video) => video.id))
+          if (
+            new Set(output.candidateVideoIds).size !==
+              output.candidateVideoIds.length ||
+            output.candidateVideoIds.some(
+              (videoId) =>
+                videoId === source.id ||
+                !ids.has(videoId) ||
+                page.find((video) => video.id === videoId)?.coreId ===
+                  source.coreId,
+            )
+          )
+            throw new CatalogBuildError("provider_invalid_output")
+        },
+      )
+      continue
+    }
+    const candidateIndex = checkpoint.cursor.candidateIndex ?? 0
+    const candidateId = checkpoint.candidateIds?.[candidateIndex]
+    if (!candidateId) {
+      await advance({
+        stage: historyDefinition ? "plan" : "discovery",
+        cursor: { catalogIndex: catalogIndex + 40 },
+        sourceSummaryEnglish: checkpoint.sourceSummaryEnglish,
+        historySummary: checkpoint.historySummary,
+      })
+      continue
+    }
+    const candidate = page.find((video) => video.id === candidateId)
+    if (!candidate) throw new CatalogBuildError("input_stale")
+    const chunks = await catalog.chunks({
+      videoId: candidate.id,
+      cutoff: input.inputCutoff,
+      afterChunkId: checkpoint.cursor.candidateAfterChunkId,
+    })
+    const last = !chunks.nextCursor
+    const nextCandidate = (best: Checkpoint["bestJudgment"]): Checkpoint => ({
+      stage: "candidate",
+      cursor: last
+        ? { catalogIndex, candidateIndex: candidateIndex + 1 }
+        : {
+            catalogIndex,
+            candidateIndex,
+            candidateAfterChunkId: chunks.nextCursor!,
+          },
+      sourceSummaryEnglish: checkpoint.sourceSummaryEnglish,
+      candidateIds: checkpoint.candidateIds,
+      analyticsCandidateIds: checkpoint.analyticsCandidateIds,
+      bestJudgment: last ? undefined : best,
+      historySummary: checkpoint.historySummary,
+    })
+    if (chunks.chunks.length === 0 && !last) {
+      await advance(nextCandidate(checkpoint.bestJudgment))
+      continue
+    }
+    const bestOf = (output: z.output<typeof judgmentSchema>) => {
+      const found = output.connections[0]
+      return found &&
+        (!checkpoint.bestJudgment ||
+          found.strength > checkpoint.bestJudgment.strength)
+        ? { ...found, targetVideoId: candidate.id }
+        : checkpoint.bestJudgment
+    }
+    await call(
+      "candidate_judgment",
+      judgmentSchema,
+      {
+        source: modelVideo(source),
+        sourceSummaryEnglish: checkpoint.sourceSummaryEnglish,
+        candidate: modelVideo(candidate),
+        chunks: chunks.chunks,
+        historicalDefinitions: pageHistory?.definitionsForModel,
+        historicalSourceSignal: sourceHistory?.signal(source.id),
+        historicalCandidateSignal: pageHistory?.signal(candidate.id),
+        historicalNavigation:
+          pageHistory?.navigation?.(source.id, candidate.id) ?? null,
+        instruction:
+          chunks.chunks.length === 0
+            ? "Return zero or one connection. Only metadata evidence is available; do not invent transcript support."
+            : "Return zero or one connection. If transcript evidence is cited, use exact passages and chunk IDs from this batch. For parent/chapter links, explain added viewing value.",
+      },
+      2_048,
+      (output) => nextCandidate(bestOf(output)),
+      last
+        ? (output) => {
+            const best = bestOf(output)
+            return best
+              ? {
+                  targetVideoId: candidate.id,
+                  kind: best.kind,
+                  strength: best.strength,
+                  relationship: best.relationship,
+                  reasonEnglish: best.reasonEnglish,
+                  addedViewingValueEnglish: best.addedViewingValueEnglish,
+                  evidence: best.evidence,
+                }
+              : undefined
+          }
+        : undefined,
+      (output) =>
+        output.connections.forEach((connection) =>
+          assertEvidence(connection, chunks.chunks, candidate),
+        ),
+    )
+  }
+  if (historyDefinition?.provider === "ga_data_api") {
+    if (!checkpoint.historySummary || !qualificationDigest)
+      throw new HistoricalAnalyticsError("analytics_incomplete")
+    parsed(
+      z.object({ replay: z.boolean() }),
+      await ingest({
+        action: "source_history",
+        ...identity,
+        history: {
+          evidenceKind: "referrer_navigation_v1",
+          sourceResource: `properties/${GA_WATCH_PROPERTY.id}`,
+          queryId: historyDefinition.queryId,
+          rangeStart: historyDefinition.rangeStart,
+          rangeEnd: historyDefinition.rangeEnd,
+          qualificationDigest,
+          ...checkpoint.historySummary,
+          status: "complete",
+        },
+      }),
+    )
+  }
+  parsed(sourceResponseSchema, await ingest({ action: "source", ...identity }))
+}
+
+/** One reservation per actual GA HTTP attempt, including transport retries. */
+export async function recordHistoryAttempt(input: {
+  ingest: SourceIngest
+  generationId: string
+  generationInputDigest: string
+  sourceVideoId?: string
+  leaseToken?: string
+  stage: "qualification" | "snapshot_page" | "retry"
+  requestDigest: string
+  url: RequestInfo | URL
+  init?: RequestInit
+  fetchImpl?: typeof fetch
+}): Promise<Response> {
+  const callId = randomUUID()
+  const common = {
+    generationId: input.generationId,
+    generationInputDigest: input.generationInputDigest,
+    ...(input.sourceVideoId
+      ? { sourceVideoId: input.sourceVideoId, leaseToken: input.leaseToken }
+      : {}),
+    callId,
+  }
+  const startedAt = new Date().toISOString()
+  if (input.sourceVideoId) {
+    if (!input.leaseToken)
+      throw new CatalogBuildError("admin_contract_rejected")
+    parsed(
+      heartbeatSchema,
+      await input.ingest({
+        action: "heartbeat",
+        generationId: input.generationId,
+        generationInputDigest: input.generationInputDigest,
+        sourceVideoId: input.sourceVideoId,
+        leaseToken: input.leaseToken,
+      }),
+    )
+  }
+  const reservation = parsed(
+    callReservationSchema,
+    await input.ingest({
+      action: "history_call_start",
+      ...common,
+      stage: input.stage,
+      requestDigest: input.requestDigest,
+      startedAt,
+    }),
+  )
+  if (reservation.callId !== callId)
+    throw new CatalogBuildError("admin_contract_rejected")
+  let response: Response
+  try {
+    response = await (input.fetchImpl ?? fetch)(input.url, input.init)
+  } catch (error) {
+    parsed(
+      historyReceiptSchema,
+      await input.ingest({
+        action: "history_call",
+        ...common,
+        status: "failed",
+        errorCode: "analytics_unavailable",
+        finishedAt: new Date().toISOString(),
+      }),
+    )
+    throw error
+  }
+  parsed(
+    historyReceiptSchema,
+    await input.ingest({
+      action: "history_call",
+      ...common,
+      status: response.ok ? "succeeded" : "failed",
+      ...(response.ok ? {} : { errorCode: "analytics_unavailable" }),
+      finishedAt: new Date().toISOString(),
+    }),
+  )
+  return response
+}
+
+export async function runPrecomputedCatalog(
+  raw: z.input<typeof CatalogGenerationInputSchema>,
+  provided: Partial<Dependencies> = {},
+): Promise<{
+  state: "complete" | "incomplete" | "failed" | "replayed"
+  generationId: string
+  completedSourceCount: number
+  failedSourceCount: number
+}> {
+  const input = CatalogGenerationInputSchema.parse(raw)
+  if (
+    input.historyRequired &&
+    provided.history &&
+    provided.history.evidenceKind !== "referrer_navigation_v1"
+  )
+    throw new HistoricalAnalyticsError("analytics_unavailable")
+  const defaults =
+    provided.catalog && provided.ingest
+      ? null
+      : createAdminSourceDependencies(input.inputCutoff)
+  const catalog = provided.catalog ?? defaults!.catalog
+  const ingest = provided.ingest ?? defaults!.ingest
+  const videos: Video[] = []
+  for await (const page of pages(catalog, input.inputCutoff))
+    videos.push(...page)
+  // Admin validates sourceSetDigest using JavaScript's default code-unit sort.
+  videos.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+  const sourceVideoIds = videos.map((video) => video.id)
+  const generationInputDigest = digest({
+    cutoff: input.inputCutoff,
+    historyRequired: input.historyRequired,
+    videos,
+  })
+  const inputMode = input.historyRequired
+    ? "historical_analytics"
+    : "content_only"
+  const started = parsed(
+    stateSchema,
+    await ingest({
+      action: "start",
+      protocolVersion: 2,
+      generationId: input.generationId,
+      modelId: PRECOMPUTED_MODEL_ID,
+      promptVersion: input.historyRequired
+        ? "astra-catalog-history-navigation-v2"
+        : "astra-catalog-v2",
+      inputMode,
+      inputSnapshotMode: "observed_fenced",
+      inputDigest: generationInputDigest,
+      sourceSetDigest: digest(sourceVideoIds),
+      inputCutoff: input.inputCutoff,
+      expectedSourceCount: sourceVideoIds.length,
+    }),
+  )
+  if (started.state === "complete")
+    return {
+      state: "replayed",
+      generationId: input.generationId,
+      completedSourceCount: sourceVideoIds.length,
+      failedSourceCount: 0,
+    }
+  parsed(
+    manifestSchema,
+    await ingest({
+      action: "manifest",
+      generationId: input.generationId,
+      generationInputDigest,
+      sourceVideoIds,
+    }),
+  )
+  parsed(
+    probeSchema,
+    await ingest({
+      action: "capacity_probe",
+      generationId: input.generationId,
+      generationInputDigest,
+    }),
+  )
+  const capacity = parsed(
+    stateSchema,
+    await ingest({
+      action: "capacity",
+      generationId: input.generationId,
+      generationInputDigest,
+      measurement: input.capacity,
+    }),
+  )
+  if (capacity.state === "capacity_blocked")
+    return {
+      state: "failed",
+      generationId: input.generationId,
+      completedSourceCount: 0,
+      failedSourceCount: 0,
+    }
+  const model = provided.model ?? createAstraModel()
+  let currentSourceVideoId: string | undefined
+  let currentLeaseToken: string | undefined
+  let lastHistoryRequestDigest: string | undefined
+  const serviceAccountEmail =
+    provided.gaTransport?.serviceAccountEmail ??
+    env.PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL
+  const history = input.historyRequired
+    ? (provided.history ??
+      ((env.PRECOMPUTED_GA4_PROPERTY_ID === GA_WATCH_PROPERTY.id ||
+        provided.gaTransport) &&
+      serviceAccountEmail
+        ? createGaWatchHistoryReader({
+            propertyId: GA_WATCH_PROPERTY.id,
+            serviceAccountEmail,
+            rangeStart: GA_WATCH_PROPERTY.createdDate,
+            rangeEnd: gaWatchClosedRangeEnd(input.inputCutoff),
+            ...(provided.gaTransport?.tokenProvider
+              ? { tokenProvider: provided.gaTransport.tokenProvider }
+              : {}),
+            fetchImpl: (url, init) => {
+              const requestDigest = digest({
+                url: String(url),
+                body: init?.body,
+              })
+              const stage =
+                requestDigest === lastHistoryRequestDigest
+                  ? "retry"
+                  : currentSourceVideoId
+                    ? "snapshot_page"
+                    : "qualification"
+              lastHistoryRequestDigest = requestDigest
+              return recordHistoryAttempt({
+                ingest,
+                generationId: input.generationId,
+                generationInputDigest,
+                sourceVideoId: currentSourceVideoId,
+                leaseToken: currentLeaseToken,
+                stage,
+                requestDigest,
+                url,
+                init,
+                fetchImpl: provided.gaTransport?.fetchImpl,
+              })
+            },
+          })
+        : undefined))
+    : undefined
+  if (input.historyRequired && !history)
+    throw new HistoricalAnalyticsError("analytics_unavailable")
+  const historyDefinition = history
+    ? await readHistoricalDefinition(history, input.inputCutoff)
+    : undefined
+  if (input.historyRequired && historyDefinition?.provider !== "ga_data_api")
+    throw new HistoricalAnalyticsError("analytics_unavailable")
+  const qualificationDigest =
+    historyDefinition?.provider === "ga_data_api"
+      ? parsed(
+          qualificationResponseSchema,
+          await ingest({
+            action: "history_qualification",
+            generationId: input.generationId,
+            generationInputDigest,
+            qualification: historyDefinition.qualification,
+          }),
+        ).qualificationDigest
+      : undefined
+  let completedSourceCount = 0
+  let failedSourceCount = 0
+  for (const source of videos) {
+    currentSourceVideoId = source.id
+    currentLeaseToken = undefined
+    const claim = parsed(
+      claimSchema,
+      await ingest({
+        action: "claim",
+        generationId: input.generationId,
+        generationInputDigest,
+        sourceVideoId: source.id,
+        claimId: randomUUID(),
+      }),
+    )
+    if (
+      claim.sourceState === "complete_edges" ||
+      claim.sourceState === "complete_empty"
+    ) {
+      completedSourceCount += 1
+      continue
+    }
+    if (claim.sourceState === "failed") {
+      failedSourceCount += 1
+      continue
+    }
+    if (!claim.leaseToken || claim.checkpointRevision === undefined)
+      throw new CatalogBuildError("admin_contract_rejected")
+    currentLeaseToken = claim.leaseToken
+    try {
+      await processSource(
+        {
+          input,
+          generationInputDigest,
+          catalog,
+          ingest,
+          model,
+          videos,
+          history,
+          historyDefinition,
+          qualificationDigest,
+        },
+        source,
+        claim.leaseToken,
+        claim.checkpoint ?? null,
+        claim.checkpointRevision,
+      )
+      completedSourceCount += 1
+    } catch (error) {
+      const code =
+        error instanceof CatalogBuildError
+          ? error.code
+          : error instanceof HistoricalAnalyticsError
+            ? error.code
+            : error instanceof Error
+              ? error.message
+              : "internal_failure"
+      if (
+        ![
+          "provider_invalid_output",
+          "analytics_incomplete",
+          "input_stale",
+        ].includes(code)
+      )
+        throw error
+      await ingest({
+        action: "fail",
+        generationId: input.generationId,
+        generationInputDigest,
+        sourceVideoId: source.id,
+        leaseToken: claim.leaseToken,
+        failureCode: code,
+      })
+      failedSourceCount += 1
+    }
+  }
+  if (failedSourceCount > 0)
+    return {
+      state: "failed",
+      generationId: input.generationId,
+      completedSourceCount,
+      failedSourceCount,
+    }
+  const completion = parsed(
+    stateSchema,
+    await ingest({
+      action: "complete",
+      generationId: input.generationId,
+      generationInputDigest,
+    }),
+  )
+  if (completion.state !== "complete")
+    throw new CatalogBuildError("admin_contract_rejected")
+  return {
+    state: "complete",
+    generationId: input.generationId,
+    completedSourceCount,
+    failedSourceCount: 0,
+  }
+}

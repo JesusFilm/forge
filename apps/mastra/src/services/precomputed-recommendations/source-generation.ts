@@ -91,11 +91,11 @@ function requireAdminResult<T extends z.ZodType>(
   if (!parsed.success) throw new SourceGenerationError("contract_rejected")
   return parsed.data
 }
-type Video = z.output<typeof videoSchema>
-type Chunk = z.output<typeof chunkSchema>
+export type Video = z.output<typeof videoSchema>
+export type Chunk = z.output<typeof chunkSchema>
 
 /** Route identity is only for server-side validation, never model context. */
-function modelVideo(video: Video): Video {
+export function modelVideo(video: Video): Video {
   const content = { ...video }
   delete content.watchRouteIdentity
   return content
@@ -118,13 +118,13 @@ export type SourceCatalog = {
 }
 export type SourceIngest = (input: unknown) => Promise<unknown>
 
-const summarySchema = z.object({
+export const summarySchema = z.object({
   summaryEnglish: z.string().trim().min(20).max(5_000),
 })
-const discoverySchema = z.object({
+export const discoverySchema = z.object({
   candidateVideoIds: z.array(videoId).max(40),
 })
-const analyticsQueryPlanSchema = z.object({
+export const analyticsQueryPlanSchema = z.object({
   candidateVideoIds: z.array(videoId).max(40),
 })
 const passageSchema = z.object({
@@ -152,7 +152,7 @@ const evidenceSchema = z.discriminatedUnion("basis", [
       .max(5),
   }),
 ])
-const judgmentSchema = z.object({
+export const judgmentSchema = z.object({
   connections: z
     .array(
       z.object({
@@ -166,7 +166,7 @@ const judgmentSchema = z.object({
     )
     .max(1),
 })
-type Judgment = z.output<typeof judgmentSchema>["connections"][number]
+export type Judgment = z.output<typeof judgmentSchema>["connections"][number]
 
 type SafeFailureCode =
   | "provider_invalid_output"
@@ -174,6 +174,7 @@ type SafeFailureCode =
   | "provider_access_unavailable"
   | "input_stale"
   | "catalog_unavailable"
+  | "capacity_attestation_expired"
   | HistoricalAnalyticsFailureCode
   | "contract_rejected"
   | "internal_failure"
@@ -318,6 +319,8 @@ async function postAdmin(
       throw new MissingGenerationError()
     if (reason?.reason === "stale_cutoff")
       throw new SourceGenerationError("input_stale")
+    if (reason?.reason === "capacity_attestation_expired")
+      throw new SourceGenerationError("capacity_attestation_expired")
     throw new SourceGenerationError(
       response.status === 409 ? "contract_rejected" : "catalog_unavailable",
     )
@@ -1010,4 +1013,13 @@ export async function runPrecomputedSource(
       failureCode,
     }
   }
+}
+
+export {
+  CONTENT_SYSTEM,
+  HISTORY_SYSTEM,
+  assertEvidence,
+  chunkPages,
+  digest,
+  pages,
 }
