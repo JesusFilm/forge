@@ -97,41 +97,196 @@ const historicalQualification = z
     }),
   })
   .strict()
-const historicalProvenance = z
-  .object({
+const historicalCommon = z.object({
+  status: z.literal("complete"),
+  queryId: z.string().regex(/^[a-zA-Z0-9_.:-]{1,100}$/),
+  rangeStart: z.iso.date(),
+  rangeEnd: z.iso.date(),
+  cutoff: z.string().datetime(),
+  botFiltering: z.enum(["unknown", "verified_excluded"]),
+  measurement: z.enum(["observed_events", "qualified_engagement"]),
+  overlap: z.enum(["unknown", "verified_disjoint"]),
+  rowCount: z.number().int().nonnegative(),
+  catalogCandidates: z.number().int().nonnegative(),
+  inspectedCandidates: z.number().int().nonnegative(),
+  unmappedCandidates: z.number().int().nonnegative(),
+  mappedRows: z.number().int().nonnegative(),
+  unmappedRows: z.number().int().nonnegative(),
+  pageCount: z.number().int().nonnegative(),
+  queryExecutionCount: z.number().int().nonnegative(),
+  queryUsageDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  resultDigest: z.string().regex(/^[a-f0-9]{64}$/),
+  unmappedDigest: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/)
+    .nullable(),
+  bytesProcessed: z.number().int().nonnegative().nullable(),
+  costQualification: z.enum(["usage_only", "unavailable"]),
+})
+const legacyHistoricalProvenance = historicalCommon
+  .extend({
     provider: z.enum(["bigquery", "fixture"]),
-    status: z.literal("complete"),
-    queryId: z.string().regex(/^[a-zA-Z0-9_.:-]{1,100}$/),
-    rangeStart: z.iso.date(),
-    rangeEnd: z.iso.date(),
-    cutoff: z.string().datetime(),
     identity: z.enum(["canonical_id", "core_id", "slug", "verified_alias"]),
-    botFiltering: z.enum(["unknown", "verified_excluded"]),
-    measurement: z.enum(["observed_events", "qualified_engagement"]),
-    overlap: z.enum(["unknown", "verified_disjoint"]),
     // Older saved generations remain readable, but their scope is unknown.
     qualification: historicalQualification.optional(),
-    rowCount: z.number().int().nonnegative(),
-    catalogCandidates: z.number().int().nonnegative(),
-    inspectedCandidates: z.number().int().nonnegative(),
-    unmappedCandidates: z.number().int().nonnegative(),
-    mappedRows: z.number().int().nonnegative(),
-    unmappedRows: z.number().int().nonnegative(),
-    pageCount: z.number().int().nonnegative(),
-    queryExecutionCount: z.number().int().nonnegative(),
-    queryUsageDigest: z.string().regex(/^[a-f0-9]{64}$/),
-    resultDigest: z.string().regex(/^[a-f0-9]{64}$/),
-    unmappedDigest: z
-      .string()
-      .regex(/^[a-f0-9]{64}$/)
-      .nullable(),
-    bytesProcessed: z.number().int().nonnegative().nullable(),
-    costQualification: z.enum(["usage_only", "unavailable"]),
   })
   .strict()
+const gaHistoricalQualification = z
+  .object({
+    evidenceKind: z.literal("referrer_navigation_v1"),
+    sourceResource: z.literal("properties/320198532"),
+    sourceAvailability: z
+      .object({
+        coverage: z.literal("partial_source_history"),
+        requestedStart: z.iso.date(),
+        requestedEnd: z.iso.date(),
+        usableStart: z.iso.date(),
+        usableEnd: z.iso.date(),
+        truncationType: z.literal("DATA_TRUNCATION_TYPE_PROPERTY"),
+        truncationDate: z.iso.date(),
+        unavailablePrefixStart: z.iso.date(),
+        unavailablePrefixEnd: z.iso.date(),
+        observedFirstMonth: z
+          .string()
+          .regex(/^\d{4}(0[1-9]|1[0-2])$/)
+          .nullable(),
+        observedLastMonth: z
+          .string()
+          .regex(/^\d{4}(0[1-9]|1[0-2])$/)
+          .nullable(),
+      })
+      .strict(),
+    watchScope: z
+      .object({
+        version: z.literal("jesusfilm-watch-v1"),
+        hosts: z.tuple([
+          z.literal("jesusfilm.org"),
+          z.literal("www.jesusfilm.org"),
+        ]),
+        pathRule: z.literal("watch-route-and-children"),
+        eventName: z.literal("videostarts"),
+        includedEvents: z.number().int().nonnegative().safe(),
+        totalEvents: z.null(),
+        missingUrlEvents: z.null(),
+        malformedUrlEvents: z.null(),
+        excludedHostEvents: z.null(),
+        excludedPathEvents: z.null(),
+      })
+      .strict(),
+    mediaComponentIdCoverage: z
+      .object({
+        sourceDimension: z.literal("customEvent:mediacomponentid"),
+        inScopeEvents: z.number().int().nonnegative().safe(),
+        withMediaComponentIdEvents: z.number().int().nonnegative().safe(),
+        canonicalVideoMappedEvents: z.null(),
+      })
+      .strict(),
+    engagement: z
+      .object({
+        definitionVersion: z.literal("watch-videostarts-v1"),
+        botBasis: z.literal("unverified"),
+        overlapIdentity: z.literal("unknown"),
+        exposures: z.literal("unavailable"),
+      })
+      .strict(),
+    transitions: z
+      .object({
+        status: z.literal("unavailable"),
+        reason: z.literal("missing_session_identity"),
+      })
+      .strict(),
+    navigation: z
+      .object({
+        status: z.literal("available"),
+        definitionVersion: z.literal("watch-referrer-v1"),
+        basis: z.literal("same_event_page_referrer_to_page_path"),
+        interpretation: z.literal("navigation_not_playback_sequence"),
+        botBasis: z.literal("unverified"),
+        overlapIdentity: z.literal("unknown"),
+      })
+      .strict(),
+    mapping: z
+      .object({
+        basis: z.literal("current_catalog_cutoff_fenced"),
+        historicalOwnership: z.literal("unverified"),
+      })
+      .strict(),
+  })
+  .strict()
+const gaHistoricalProvenance = historicalCommon
+  .extend({
+    provider: z.literal("ga_data_api"),
+    identity: z.literal("current_catalog_watch_path"),
+    botFiltering: z.literal("unknown"),
+    measurement: z.literal("observed_events"),
+    overlap: z.literal("unknown"),
+    qualification: gaHistoricalQualification,
+    navigationCoverage: z
+      .object({
+        candidateEvents: z.number().int().nonnegative().safe(),
+        qualifiedEvents: z.number().int().nonnegative().safe(),
+        homeEvents: z.number().int().nonnegative().safe(),
+        selfEvents: z.number().int().nonnegative().safe(),
+        crossHostEvents: z.number().int().nonnegative().safe(),
+        malformedEvents: z.number().int().nonnegative().safe(),
+        unmappedEvents: z.number().int().nonnegative().safe(),
+        ambiguousEvents: z.number().int().nonnegative().safe(),
+      })
+      .strict(),
+    bytesProcessed: z.null(),
+    costQualification: z.literal("unavailable"),
+  })
+  .strict()
+const historicalProvenance = z.union([
+  legacyHistoricalProvenance,
+  gaHistoricalProvenance,
+])
 function qualifiedHistoryIsConsistent(
   history: z.output<typeof historicalProvenance>,
 ): boolean {
+  if (history.provider === "ga_data_api") {
+    const quality = history.qualification
+    const availability = quality.sourceAvailability
+    const coverage = history.navigationCoverage
+    const firstMonth = availability.observedFirstMonth
+    const lastMonth = availability.observedLastMonth
+    const nextUsableDay = new Date(`${availability.truncationDate}T12:00:00Z`)
+    nextUsableDay.setUTCDate(nextUsableDay.getUTCDate() + 1)
+    return (
+      history.queryId === "watch-referrer-navigation-v1" &&
+      history.rangeStart === availability.usableStart &&
+      history.rangeEnd === availability.usableEnd &&
+      availability.requestedStart === availability.unavailablePrefixStart &&
+      availability.unavailablePrefixEnd === availability.truncationDate &&
+      availability.usableStart === nextUsableDay.toISOString().slice(0, 10) &&
+      availability.requestedStart <= availability.truncationDate &&
+      availability.usableStart <= availability.usableEnd &&
+      availability.usableEnd === availability.requestedEnd &&
+      history.rangeEnd <= history.cutoff.slice(0, 10) &&
+      ((firstMonth === null && lastMonth === null) ||
+        (firstMonth !== null &&
+          lastMonth !== null &&
+          firstMonth <= lastMonth &&
+          firstMonth >= availability.usableStart.slice(0, 7).replace("-", "") &&
+          lastMonth <= availability.usableEnd.slice(0, 7).replace("-", ""))) &&
+      quality.watchScope.includedEvents ===
+        quality.mediaComponentIdCoverage.inScopeEvents &&
+      quality.mediaComponentIdCoverage.withMediaComponentIdEvents <=
+        quality.mediaComponentIdCoverage.inScopeEvents &&
+      coverage.candidateEvents <= quality.watchScope.includedEvents &&
+      coverage.candidateEvents ===
+        coverage.qualifiedEvents +
+          coverage.homeEvents +
+          coverage.selfEvents +
+          coverage.crossHostEvents +
+          coverage.malformedEvents +
+          coverage.unmappedEvents +
+          coverage.ambiguousEvents &&
+      history.pageCount > 0 &&
+      history.queryExecutionCount > 0 &&
+      (history.unmappedRows === 0 || history.unmappedDigest !== null)
+    )
+  }
   const quality = history.qualification
   if (!quality) return false
   const scope = quality.watchScope
@@ -695,7 +850,7 @@ export async function submitPrecomputedRecommendation(
         ) ||
         generation.input_snapshot_mode !== "observed_fenced" ||
         (generation.input_mode === "historical_analytics" &&
-          input.history.provider !== "bigquery") ||
+          !["bigquery", "ga_data_api"].includes(input.history.provider)) ||
         (generation.input_mode === "historical_fixture" &&
           input.history.provider !== "fixture") ||
         input.history.cutoff !== generation.input_cutoff.toISOString() ||

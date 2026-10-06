@@ -43,6 +43,13 @@ const publishedLocale = {
   deletedAt: null,
 }
 const MAX_DESCRIPTION_CHARACTERS = 5_000
+const MAX_ROUTE_DUBS = 4_096
+const MAX_ROUTE_PARENTS = 256
+const playableDub = {
+  deletedAt: null,
+  published: true,
+  muxVideo: { deletedAt: null, playbackId: { not: null } },
+} satisfies Prisma.VideoDubWhereInput
 
 function videoSelect() {
   return {
@@ -52,13 +59,10 @@ function videoSelect() {
     deletedAt: true,
     restrictViewPlatforms: true,
     dubs: {
-      where: {
-        deletedAt: null,
-        published: true,
-        muxVideo: { deletedAt: null, playbackId: { not: null } },
-      },
-      select: { id: true },
-      take: 1,
+      where: playableDub,
+      orderBy: { id: "asc" as const },
+      select: { id: true, language: { select: { id: true, slug: true } } },
+      take: MAX_ROUTE_DUBS + 1,
     },
     locales: {
       where: publishedLocale,
@@ -79,7 +83,10 @@ function videoSelect() {
     },
     parents: {
       orderBy: { parentId: "asc" as const },
-      select: { parentId: true },
+      select: {
+        parentId: true,
+        parent: { select: { slug: true, deletedAt: true } },
+      },
     },
     children: {
       orderBy: { childId: "asc" as const },
@@ -119,16 +126,96 @@ function compactVideo(video: CatalogVideo) {
     transcriptLanguages: [
       ...new Set(video.transcripts.map((item) => item.language)),
     ].sort(),
+    watchRouteIdentity: {
+      basis: "current_catalog_cutoff_fenced" as const,
+      parentSlugs: [
+        ...new Set(
+          video.parents
+            .filter((item) => item.parent.deletedAt === null)
+            .map((item) => item.parent.slug),
+        ),
+      ]
+        .sort()
+        .slice(0, MAX_ROUTE_PARENTS),
+      playableAudioLanguageSlugs: [
+        ...new Set(
+          video.dubs
+            .map((item) => item.language?.slug)
+            .filter(
+              (slug): slug is string =>
+                typeof slug === "string" && /^[a-z0-9-]+$/.test(slug),
+            ),
+        ),
+      ].sort(),
+      truncated:
+        video.parents.length > MAX_ROUTE_PARENTS ||
+        video.dubs.length > MAX_ROUTE_DUBS,
+    },
   }
 }
 
-function isWatchable(video: CatalogVideo): boolean {
+function isWatchable(video: {
+  deletedAt: Date | null
+  restrictViewPlatforms: string[]
+  dubs: readonly unknown[]
+  locales: ReadonlyArray<{ title: string | null }>
+}): boolean {
   return (
     video.deletedAt === null &&
     !video.restrictViewPlatforms.includes("watch") &&
     video.dubs.length > 0 &&
     video.locales.some((locale) => Boolean(locale.title?.trim()))
   )
+}
+
+async function assertWatchRouteIdentityVersions(
+  tx: Prisma.TransactionClient,
+  videos: CatalogVideo[],
+  cutoff: Date,
+): Promise<void> {
+  const parentIds = [
+    ...new Set(
+      videos.flatMap((video) => video.parents.map((item) => item.parentId)),
+    ),
+  ]
+  const languageIds = [
+    ...new Set(
+      videos.flatMap((video) =>
+        video.dubs.flatMap((dub) => (dub.language ? [dub.language.id] : [])),
+      ),
+    ),
+  ]
+  const later = { gt: cutoff }
+  const [staleParent, staleLanguage] = await Promise.all([
+    parentIds.length
+      ? tx.video.findFirst({
+          where: {
+            id: { in: parentIds },
+            OR: [
+              { createdAt: later },
+              { updatedAt: later },
+              { deletedAt: later },
+            ],
+          },
+          select: { id: true },
+        })
+      : null,
+    languageIds.length
+      ? tx.language.findFirst({
+          where: {
+            id: { in: languageIds },
+            OR: [{ createdAt: later }, { updatedAt: later }],
+          },
+          select: { id: true },
+        })
+      : null,
+  ])
+  if (staleParent || staleLanguage) {
+    throw new PrecomputedCatalogError(
+      "stale_cutoff",
+      "Observed Watch route identity changed after cutoff",
+    )
+  }
 }
 
 /**
@@ -263,7 +350,20 @@ export async function readPrecomputedCatalog(
       if (input.action === "chunks") {
         const video = await tx.video.findFirst({
           where: { id: input.videoId, createdAt: { lte: cutoff } },
-          select: videoSelect(),
+          select: {
+            id: true,
+            deletedAt: true,
+            restrictViewPlatforms: true,
+            dubs: {
+              where: playableDub,
+              select: { id: true },
+              take: 1,
+            },
+            locales: {
+              where: publishedLocale,
+              select: { title: true },
+            },
+          },
         })
         if (!video)
           throw new PrecomputedCatalogError("not_found", "Video not found")
@@ -317,6 +417,7 @@ export async function readPrecomputedCatalog(
         if (!video)
           throw new PrecomputedCatalogError("not_found", "Video not found")
         await assertPrecomputedObservedVersion(tx, [video.id], cutoff)
+        await assertWatchRouteIdentityVersions(tx, [video], cutoff)
         if (!isWatchable(video))
           throw new PrecomputedCatalogError("not_found", "Video not found")
         return { action: "video" as const, video: compactVideo(video) }
@@ -338,6 +439,7 @@ export async function readPrecomputedCatalog(
         page.map((video) => video.id),
         cutoff,
       )
+      await assertWatchRouteIdentityVersions(tx, page, cutoff)
       return {
         action: "catalog" as const,
         videos: page.filter(isWatchable).map(compactVideo),

@@ -81,6 +81,41 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           })
         }
       }
+      const spanishLanguageId = `spanish-language-${suffix}`
+      await prisma.language.create({
+        data: {
+          id: spanishLanguageId,
+          coreId: spanishLanguageId,
+          slug: "spanish",
+        },
+      })
+      await prisma.videoDub.create({
+        data: {
+          id: `dub-spanish-${targetVideoId}`,
+          coreId: `dub-spanish-core-${targetVideoId}`,
+          videoId: targetVideoId,
+          languageId: spanishLanguageId,
+          muxVideoId,
+          published: true,
+        },
+      })
+      const unaddressableLanguageId = `unaddressable-language-${suffix}`
+      await prisma.language.create({
+        data: { id: unaddressableLanguageId, coreId: unaddressableLanguageId },
+      })
+      await prisma.videoDub.create({
+        data: {
+          id: `dub-unaddressable-${targetVideoId}`,
+          coreId: `dub-unaddressable-core-${targetVideoId}`,
+          videoId: targetVideoId,
+          languageId: unaddressableLanguageId,
+          muxVideoId,
+          published: true,
+        },
+      })
+      await prisma.videoRelation.create({
+        data: { parentId: sourceVideoId, childId: targetVideoId },
+      })
       const editionId = `edition-${suffix}`
       await prisma.videoEdition.create({
         data: { id: editionId, coreId: editionId, name: "Spanish edition" },
@@ -165,7 +200,18 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       )
       expect(second).toMatchObject({
         action: "catalog",
-        videos: [{ id: targetVideoId, transcriptLanguages: ["es"] }],
+        videos: [
+          {
+            id: targetVideoId,
+            transcriptLanguages: ["es"],
+            watchRouteIdentity: {
+              basis: "current_catalog_cutoff_fenced",
+              parentSlugs: [sourceVideoId],
+              playableAudioLanguageSlugs: ["english", "spanish"],
+              truncated: false,
+            },
+          },
+        ],
         nextCursor: targetVideoId,
       })
       const observed = [sourceVideoId, targetVideoId]
@@ -226,21 +272,86 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
 
     it("reports that a post-cutoff child metadata version cannot be reconstructed", async () => {
       const pastCutoff = new Date(Date.now() + 1_000).toISOString()
-      await prisma.videoLocale.update({
+      const original = await prisma.videoLocale.findUniqueOrThrow({
         where: { id: `locale-${targetVideoId}` },
-        data: {
-          description:
-            "A changed description that did not update Video.updatedAt.",
-          updatedAt: new Date(Date.now() + 2_000),
-        },
+        select: { description: true, updatedAt: true },
       })
-      await expect(
-        readPrecomputedCatalog(
-          prisma,
-          { action: "video", videoId: targetVideoId, cutoff: pastCutoff },
-          "Bearer preview-test-key",
-        ),
-      ).rejects.toMatchObject({ code: "stale_cutoff" })
+      try {
+        await prisma.videoLocale.update({
+          where: { id: `locale-${targetVideoId}` },
+          data: {
+            description:
+              "A changed description that did not update Video.updatedAt.",
+            updatedAt: new Date(Date.now() + 2_000),
+          },
+        })
+        await expect(
+          readPrecomputedCatalog(
+            prisma,
+            { action: "video", videoId: targetVideoId, cutoff: pastCutoff },
+            "Bearer preview-test-key",
+          ),
+        ).rejects.toMatchObject({ code: "stale_cutoff" })
+      } finally {
+        await prisma.videoLocale.update({
+          where: { id: `locale-${targetVideoId}` },
+          data: original,
+        })
+      }
+    })
+
+    it("rejects route identity when a parent slug or audio language changes after cutoff", async () => {
+      const pastCutoff = new Date(Date.now() + 1_000).toISOString()
+      const parent = await prisma.video.findUniqueOrThrow({
+        where: { id: sourceVideoId },
+        select: { slug: true, updatedAt: true },
+      })
+      const language = await prisma.language.findFirstOrThrow({
+        where: { slug: "spanish" },
+        select: { id: true, slug: true, updatedAt: true },
+      })
+      try {
+        await prisma.video.update({
+          where: { id: sourceVideoId },
+          data: {
+            slug: `${sourceVideoId}-renamed`,
+            updatedAt: new Date(Date.now() + 2_000),
+          },
+        })
+        await expect(
+          readPrecomputedCatalog(
+            prisma,
+            { action: "video", videoId: targetVideoId, cutoff: pastCutoff },
+            "Bearer preview-test-key",
+          ),
+        ).rejects.toMatchObject({ code: "stale_cutoff" })
+      } finally {
+        await prisma.video.update({
+          where: { id: sourceVideoId },
+          data: { slug: parent.slug, updatedAt: parent.updatedAt },
+        })
+      }
+      try {
+        await prisma.language.update({
+          where: { id: language.id },
+          data: {
+            slug: "spanish-renamed",
+            updatedAt: new Date(Date.now() + 2_000),
+          },
+        })
+        await expect(
+          readPrecomputedCatalog(
+            prisma,
+            { action: "video", videoId: targetVideoId, cutoff: pastCutoff },
+            "Bearer preview-test-key",
+          ),
+        ).rejects.toMatchObject({ code: "stale_cutoff" })
+      } finally {
+        await prisma.language.update({
+          where: { id: language.id },
+          data: { slug: language.slug, updatedAt: language.updatedAt },
+        })
+      }
     })
   },
 )

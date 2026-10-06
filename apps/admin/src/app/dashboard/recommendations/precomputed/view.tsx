@@ -16,6 +16,52 @@ function HistoricalQualificationDetails({
 }: {
   quality: HistoricalQualification
 }) {
+  if ("evidenceKind" in quality) {
+    const { sourceAvailability, watchScope, mediaComponentIdCoverage } = quality
+    return (
+      <>
+        <p>
+          GA source {quality.sourceResource}: full requested history{" "}
+          {sourceAvailability.requestedStart} to{" "}
+          {sourceAvailability.requestedEnd}; usable query interval{" "}
+          {sourceAvailability.usableStart} to {sourceAvailability.usableEnd}.
+          Only the usable snapshot finished processing; full historical source
+          coverage is partial.
+        </p>
+        <p>
+          Unavailable historical prefix{" "}
+          {sourceAvailability.unavailablePrefixStart} to{" "}
+          {sourceAvailability.unavailablePrefixEnd} remains unknown. GA reported{" "}
+          {sourceAvailability.truncationType} on{" "}
+          {sourceAvailability.truncationDate}. Observed event months{" "}
+          {sourceAvailability.observedFirstMonth ?? "unknown"} to{" "}
+          {sourceAvailability.observedLastMonth ?? "unknown"}.
+        </p>
+        <p>
+          Watch scope {watchScope.version}: hosts {watchScope.hosts.join(", ")};
+          path /watch or /watch/...; query and fragment ignored.{" "}
+          {watchScope.includedEvents} videostarts in the queried Watch scope.
+          Total property events and excluded host/path/malformed/missing URL
+          counts are unknown.
+        </p>
+        <p>
+          Media component ID present for{" "}
+          {mediaComponentIdCoverage.withMediaComponentIdEvents}/
+          {mediaComponentIdCoverage.inScopeEvents} scoped videostarts; canonical
+          ID mapping by that dimension is unknown. Current-catalog Watch path
+          mapping has unverified historical ownership.
+        </p>
+        <p>
+          Referrer navigation {quality.navigation.definitionVersion} links the
+          page referrer to the page path on the same videostart event. This is
+          navigation evidence, not a consecutive watched-video transition.
+          Ordered transitions are unavailable because session identity is
+          missing. Bot filtering, native overlap, and exposure are unverified or
+          unavailable.
+        </p>
+      </>
+    )
+  }
   const { watchScope, videoIdCoverage, engagement, transitions } = quality
   return (
     <>
@@ -152,19 +198,26 @@ export function PrecomputedComparisonView({
           </p>
         ) : null}
         {comparison.history ? (
-          <p className="px-4 pb-4 text-[13px] text-[var(--color-text-secondary)]">
-            Historical input: {comparison.history.provider};{" "}
-            {comparison.history.rowCount} aggregate rows,{" "}
-            {comparison.history.unmappedRows} unmapped. Bot filtering:{" "}
-            {comparison.history.botFiltering}.
-          </p>
+          <div className="px-4 pb-4 text-[13px] text-[var(--color-text-secondary)]">
+            <p>
+              Historical input: {comparison.history.provider};{" "}
+              {comparison.history.rowCount} aggregate rows,{" "}
+              {comparison.history.unmappedRows} unmapped. Bot filtering:{" "}
+              {comparison.history.botFiltering}.
+            </p>
+            {comparison.history.provider === "ga_data_api" ? (
+              <HistoricalQualificationDetails
+                quality={comparison.history.qualification}
+              />
+            ) : null}
+          </div>
         ) : null}
         {comparison.state === "failed" &&
         comparison.failureCode === "analytics_incomplete" ? (
           <p className="px-4 pb-4 text-[13px] text-[var(--color-text-secondary)]">
-            Historical input remains unqualified: Watch scope, event coverage,
-            ordered transitions, or bounded query coverage could not be
-            established. No history-backed result was published.
+            {comparison.history?.provider === "ga_data_api"
+              ? "Usable GA navigation snapshot or bounded query coverage could not be established. No history-backed result was published."
+              : "Historical input remains unqualified: Watch scope, event coverage, ordered transitions, or bounded query coverage could not be established. No history-backed result was published."}
           </p>
         ) : null}
         {transitionReason ? (
@@ -188,7 +241,11 @@ export function PrecomputedComparisonView({
       <PageSection title="Saved generation" meta="PRIVATE / READ ONLY">
         <div className="space-y-2 p-4 text-[13px] text-[var(--color-text-secondary)]">
           <div className="flex flex-wrap items-center gap-2">
-            <StatusPill tone="success">Complete</StatusPill>
+            <StatusPill tone="success">
+              {comparison.history?.provider === "ga_data_api"
+                ? "Usable snapshot complete"
+                : "Complete"}
+            </StatusPill>
             <StatusPill tone="warning">No public activation</StatusPill>
           </div>
           <p>
@@ -201,7 +258,9 @@ export function PrecomputedComparisonView({
             Input {comparison.generation.inputMode.replaceAll("_", " ")} ·{" "}
             {comparison.generation.inputSnapshotMode === "observed_fenced"
               ? comparison.history
-                ? "Catalog rows checked against cutoff; warehouse aggregates were observed during this build and may change on a later run."
+                ? comparison.history.provider === "ga_data_api"
+                  ? "Catalog rows checked against cutoff; GA Data API aggregates were observed during this build and may change on a later run."
+                  : "Catalog rows checked against cutoff; warehouse aggregates were observed during this build and may change on a later run."
                 : "Observed current rows checked against cutoff; overwritten or deleted historical versions cannot be reconstructed."
               : "Fixture input"}
           </p>
@@ -225,9 +284,12 @@ export function PrecomputedComparisonView({
                 {comparison.history.provider === "fixture"
                   ? "controlled fixture"
                   : comparison.history.provider}
-                ): {comparison.history.rangeStart} to{" "}
-                {comparison.history.rangeEnd}; query{" "}
-                {comparison.history.queryId}.
+                ):{" "}
+                {comparison.history.provider === "ga_data_api"
+                  ? "usable query "
+                  : ""}
+                {comparison.history.rangeStart} to {comparison.history.rangeEnd}
+                ; query {comparison.history.queryId}.
               </p>
               <p>
                 {comparison.history.mappedRows}/{comparison.history.rowCount}{" "}
@@ -241,9 +303,29 @@ export function PrecomputedComparisonView({
                 {comparison.history.inspectedCandidates}/
                 {comparison.history.catalogCandidates} catalog candidates
                 inspected through bounded historical queries;{" "}
-                {comparison.history.unmappedCandidates} lacked a verified legacy
-                mapping.
+                {comparison.history.unmappedCandidates}{" "}
+                {comparison.history.provider === "ga_data_api"
+                  ? "had no unique current-catalog Watch path mapping."
+                  : "lacked a verified legacy mapping."}
               </p>
+              {comparison.history.provider === "ga_data_api" ? (
+                <p>
+                  Queried navigation events{" "}
+                  {comparison.history.navigationCoverage.candidateEvents}:
+                  qualified{" "}
+                  {comparison.history.navigationCoverage.qualifiedEvents}; home{" "}
+                  {comparison.history.navigationCoverage.homeEvents}, self{" "}
+                  {comparison.history.navigationCoverage.selfEvents}, cross-host{" "}
+                  {comparison.history.navigationCoverage.crossHostEvents},
+                  malformed{" "}
+                  {comparison.history.navigationCoverage.malformedEvents},
+                  unmapped{" "}
+                  {comparison.history.navigationCoverage.unmappedEvents},
+                  ambiguous{" "}
+                  {comparison.history.navigationCoverage.ambiguousEvents}. These
+                  counts describe only queried rows.
+                </p>
+              ) : null}
               {comparison.history.qualification ? (
                 <HistoricalQualificationDetails
                   quality={comparison.history.qualification}
