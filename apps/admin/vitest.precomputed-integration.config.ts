@@ -14,6 +14,21 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // The disposable schemas share PostgreSQL's database-scoped extensions.
+    fileParallelism: false,
+    env: {
+      RECOMMENDATION_SEMANTIC_SERVING_ENABLED: "true",
+      // Synthetic native-fixture key, never a deployed credential.
+      RECOMMENDATION_CAPABILITY_KEYRING: JSON.stringify({
+        keys: [
+          {
+            kid: "catalog-native-fixture",
+            status: "active",
+            key: Buffer.alloc(32, 33).toString("base64url"),
+          },
+        ],
+      }),
+    },
     include: [
       "tests/integration/precomputed-source-build.db.test.ts",
       "tests/integration/precomputed-catalog-build.db.test.ts",

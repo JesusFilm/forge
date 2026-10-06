@@ -1291,3 +1291,193 @@ actual catalog run; #2573's human/bot/loss/policy qualifications remain absent.
 #2574 code is integrated-and-verified, unlocking #2575 implementation only.
 No production write, deployment, public activation, promotion or refresh schedule
 was performed.
+
+## Manual controls continuation
+
+#2575 started in the same two exact Sol chats from `6b9c9836a`. Root's next
+connected tracer builds an actual controlled catalog, reads Admin comparison,
+and asserts that the public control remains incumbent. It is expected-red because
+the public control service is not yet implemented; no existing behavior changed.
+Receipt: `2575-catalog-controls-red.log`.
+
+The agreed control contract uses one atomic Admin public delivery operation and
+a default-incumbent versioned pointer, without a racy Web pointer preflight.
+Fixture-qualified evaluation must consume real native visit/click counts and
+require test mode, explicit opt-in and an owned loopback database. It cannot
+authorize a production start or promotion. Private reports remain inconclusive.
+Actual live qualification record creation and the required trusted source audit
+remain incomplete; fixture control rehearsal does not close that acceptance gap.
+
+Storage integration `6b9c9836a44c90983489534355857858ddab0708` passed
+[forge-ci run 37419891818](https://github.com/JesusFilm/forge/actions/runs/37419891818):
+37 successful jobs, three skipped and no failures.
+
+The first root candidate passed: an actual controlled catalog build and Admin
+comparison did not move the incumbent pointer. The next slice passed actual
+build→prepare→unauthorized workflow start rejected→unqualified live start
+rejected→explicit isolated fixture start. These use a temporary candidate alias
+to the Admin worker; final integrated verification is still required. Receipts:
+`2575-catalog-controls-candidate.log`, `2575-catalog-start-candidate.log`.
+The rollback extension was expected-red before its service export existed.
+
+Root review identified an eligible/null-delivery fallback gap in the candidate
+Web route: it could issue a second unbound incumbent request after admission.
+Worker A corrected it and the focused route regression passes. Original arm
+attribution stays with unavailable delivery; bound fallback belongs in Admin.
+First-response cookie loss keeps the same navigation ID and must conflict
+without duplicating the denominator if the retry has a new browser identity.
+
+A now owns the thin public-delivery GraphQL adapter and generated operation in
+addition to Web. B retains all service/state/migration/readiness/CTR/UI/agent API
+work. This avoids idle time waiting for wrappers; final integration remains
+serial and generated files must be produced normally, never hand-edited.
+
+The connected candidate rollback slice passed with two targeted cases. A stale
+control version cannot roll back; the exact authorized target returns to the
+incumbent, retains the experiment pin, and preserves the actual producer's saved
+choice and three-call/$0.04 report. Receipt: `2575-catalog-rollback-candidate.log`.
+This is candidate/native fixture evidence, not production authority.
+
+Web continues to skip declared bot/prefetch traffic before public admission.
+Those upstream exclusions are not present in Admin visit counters: report
+coverage must label them partial/unavailable, never treat a recorded zero as
+complete edge bot coverage. No second telemetry store or extra request is added.
+
+The actual connected candidate visit slice passed: a producer-created saved item
+is issued to a challenger browser; changing the browser identity on the same
+visit UUID cannot reassign it. A signed click remains accepted after rollback,
+its replay adds nothing, and the public evaluator reports exactly one eligible
+visit, one clicked visit, one accepted selection and zero impressions. The
+addressed report read is identical and does not change the incumbent pointer.
+Receipts: `2575-catalog-visit-candidate.log` and
+`2575-catalog-counts-candidate.log`.
+
+Root review found two public-service races/guards: admission lacked the shared
+CTR fence before the final-report check, and a rejected promoted admission could
+still enter saved delivery. B corrected both and its six native seam tests pass,
+including a blocked finalization interleaving and incompatible promoted routing.
+
+The first actual producer-to-promotion candidate rehearsal passed. Forty native
+visits produce an inconclusive interim report and a fixed-horizon fixture result
+from actual signed selections: 20 control visits (the local incumbent is
+explicitly unavailable), 20 challenger visits, 18 clicked challenger visits and
+two empty saved-source visits. A refresh leaves the frozen generation selected;
+interim, wrong-generation and wrong-digest promotion attempts fail. The exact
+final revision promotes, then rollback preserves the report and the producer's
+three-call/$0.04 receipt. No report or winner was seeded. This fixture exercises
+transitions and denominator handling, not real comparative efficacy or readiness.
+Receipt: `2575-catalog-promotion-candidate.log`. Archive/stickiness extensions and
+final integrated checks remain pending at this point.
+
+Backend candidate `ac78b3c856d060b18475c73fafec66cbe050efe1` passed normal hooks
+and was integrated as `082fc550f`. The temporary candidate config was removed.
+The combined native suite passed all 24 cases, and the additional seam typecheck
+passed. A first combined run exposed shared extension initialization; schema
+fixtures now run serially. A second run exposed a reused refresh fixture ID;
+the promotion rehearsal now owns a distinct ID. Neither was a product defect.
+
+The extended rehearsal preserves 21 control visits across 20 browsers and 20
+challenger visits with 18 clicked/2 empty after raw expiry. It rejects the
+archived UUID, retains browser assignment across a new session, deduplicates
+delivery retry, and excludes declared automation and sources outside the frozen
+cohort. All raw visits are gone before the final evaluator runs; its complete
+per-arm report matches the earlier raw report. The resulting fixture promotion
+and rollback still preserve cost and result evidence.
+
+A ninth catalog case now passes actual incumbent recovery: unavailable saved
+signer → real native transcript/vector retrieval and incumbent issuance → signed
+accepted click → one challenger eligible/clicked/fallback/served visit and zero
+unlinked deliveries. The fixture required pgvector in `public`, as expected by
+the production retrieval operator, and matching transcript/dub editions. Both
+source and catalog test bootstraps now install the extension in `public` before
+their disposable schemas. No retrieval service was mocked. Receipt:
+`2575-native-incumbent-fallback-playable.log`. Final all-25-case and typecheck
+verification remains pending after these fixture extensions.
+
+The full official migration chain through `0137` and all seven ordinary
+standalone-retention cases passed on a newly created owned database, which was
+dropped afterward. Receipts: `2575-retention-migrate.log` and
+`2575-retention-native.log`. This is native migration/retention evidence, not a
+production deployment or measured live launch capacity.
+
+## Final manual-control integration review
+
+B's backend `ac78b3c85` and operator `a41a6807a` are integrated as `082fc550f`
+and `84ef7ce38`; A's Watch/GraphQL `3112244b7` is integrated as `127b61e1f`.
+All three source commits passed normal hooks. The root suite now passes all 25
+native build-through-review/control cases (16 source, nine catalog), including
+the actual incumbent-recovery path described above. Receipt:
+`2575-integrated-build-to-controls-final.log`.
+
+The old Watch retention assertion now includes the two additive audit-cleanup
+result fields. Test fixtures install pgvector in public and serialize files
+because extensions are database-scoped. A fixed synthetic signer exists only
+in the dedicated native test configuration. No production configuration changed.
+
+Browser QA used the actual exported operator component with synthetic readiness
+at desktop 1440×1000 and mobile 390×844. Long IDs wrap in the serving pointer;
+tables scroll inside their container and the document does not overflow. Live
+mode has no fixture prepare/start controls. Expanded details correctly show
+0/21 control, 18/20 challenger, 0%/90% visit CTR, isolated_fixture basis and
+partial_unverified edge coverage. Unauthenticated prepare and rollback each
+showed authentication-required without changing the pointer. No console errors
+occurred. Protected page/API responses are 307-to-login / 401.
+
+Four alternating warm local development HTTP samples per mode measured median
+112ms baseline / 106.5ms controls, 52,911 / 62,381 HTML bytes, with 22 script tags
+in each response. This is a small synthetic rendering observation, not a claim
+of faster production loading, FCP or authenticated database-query performance.
+Receipt: `2575-admin-browser-receipt.json`. The temporary preview route/server
+and auto-added Next guide block were removed; viewport was reset. Generated
+preview cache is preserved in /tmp, outside the worktree.
+
+Whole-spec review uses fixed base `d661b99939e24ba41834adce53c6bad9262bcee9`,
+with the previously recorded reviews through #2574 and a final sequential
+Standards then Spec review of #2575 and connected integration coverage. Standards
+review covered app ownership, generated contracts, service caller authorization,
+same-origin/recent-auth controls, native transactions, expiry/pins, normal hooks
+and default-off deployment boundaries. No remaining confirmed Standards defect.
+Spec review reconciled all ten tickets with the approved GA navigation revision,
+verified explicit start versus promotion semantics and real fixture counts, and
+retained the known acceptance gap: no authenticated live human/bot/tracking-loss
+verifier or real agreed inputs. That gap prevents live completion and PR readiness;
+it is not relabeled as satisfied by a fixture. Combined checks/CI remain pending.
+
+The first final Admin run found one stale bounded-retention mock and one root
+invocation error (`RECOMMENDATION_DB_TEST=0`, which is invalid; it must be unset
+for unit tests). The native run additionally exposed a real finalization
+regression: #2575's private/public state guard prevented final evaluation of
+closed private cohorts. This was returned to B with a requirement to preserve
+closed private reporting without reclassifying public evidence. Generation
+retention's three authentication failures were a missing synthetic ingest key
+in the root runner. Initial logs are preserved with `-initial-fail` suffixes;
+final combined checks must pass after the fixes before publication.
+
+The finalization finding is fixed in worker `452fd51dc`, integrated as
+`8401049c1`. Closed private cohorts are recognized by frozen private eligibility
+policy (including the historical v1 identity); a closed public cohort cannot
+be evaluated by the private entry point. The new native regression proves both
+outcomes. The bounded-retention fixture now models tagged-template SQL correctly
+and tests both empty and full audit-event batches. Worker focused verification:
+35 retention/CTR cases and Admin typecheck passed; the original late-event case
+also passed. Normal lint-staged and whole-repository formatting hooks passed.
+Root's additive Watch cleanup-result assertion remains in the integration diff.
+Standards and Spec review of the fix found no remaining confirmed defect; the
+full integrated verification is rerunning with corrected fixture environment.
+
+The post-fix integrated rerun passed the full Admin suite: 572 files, 9,019
+passed tests, 810 expected skips and one todo. All 42 focused native
+control/Watch/CTR/generation-retention cases and all 25 connected source/catalog
+cases pass on the integrated revision. Receipts: `2575-final-admin-full.log`,
+`2575-final-admin-native.log`, `2575-final-connected.log`. The new closed-cohort
+regression and the root-owned additive retention assertion pass together.
+
+The complete final runner exited zero on `8401049c1` plus the task-owned root
+integration tests. Admin and connected-seam typechecks passed; Next route types,
+Admin SDL and gql.tada client generation completed with zero generated drift.
+No temporary preview route or Next instruction change remains in the diff.
+Receipts: `2575-final-{admin-typecheck,seam-typecheck,next-typegen,schema-print,client-generate,generated-drift}.log`.
+Final root verification is committed with normal hooks; the PR records the
+published head and CI run. #2575's code/fixture acceptance is verified, while
+live verifier implementation and real deployment/measurement/capacity inputs
+remain incomplete. #2573–#2575, parent #2565 and feat-590 are not marked complete.

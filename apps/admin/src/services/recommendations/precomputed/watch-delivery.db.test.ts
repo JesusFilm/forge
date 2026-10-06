@@ -1200,8 +1200,10 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       ).toEqual({
         visitsDeleted: 1,
         experimentsDeleted: 1,
+        controlEventsDeleted: 0,
         visitPageFull: true,
         experimentPageFull: true,
+        controlEventPageFull: false,
       })
       expect(
         await prisma.recommendationPrecomputedVisit.findUnique({

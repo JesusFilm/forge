@@ -86,6 +86,9 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     beforeAll(async () => {
       admin = new Client({ connectionString: env.DATABASE_URL })
       await admin.connect()
+      await admin.query(
+        "CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public",
+      )
       await admin.query(`CREATE SCHEMA "${schema}"`)
       await admin.query(`SET search_path TO "${schema}", public`)
       for (const migration of currentAdminMigrationSql)

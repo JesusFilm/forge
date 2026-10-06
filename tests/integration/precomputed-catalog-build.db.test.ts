@@ -1,3 +1,4 @@
+import { createHash, randomUUID } from "node:crypto"
 import { WorkflowsPG } from "@mastra/pg"
 import { PrismaClient } from "@prisma/client"
 import { Client, Pool } from "pg"
@@ -7,6 +8,29 @@ import { env } from "../../apps/admin/src/config/env"
 import { currentAdminMigrationSql } from "../../apps/admin/src/services/recommendations/current-schema.test-fixture"
 import { purgeExpiredPrecomputedGenerations } from "../../apps/admin/src/services/recommendations/precomputed/generation-retention"
 import { readPrecomputedCatalog } from "../../apps/admin/src/services/recommendations/precomputed/catalog"
+import {
+  loadPrecomputedPublicControl,
+  preparePrecomputedPublicExperiment,
+  promotePrecomputedPublicExperiment,
+  rollbackPrecomputedPublicExperiment,
+  startPrecomputedPublicExperiment,
+} from "../../apps/admin/src/services/recommendations/precomputed/public-control"
+import { readControlRouting } from "../../apps/admin/src/services/recommendations/precomputed/visit-admission"
+import { deliverPrecomputedPublicWatchVisit } from "../../apps/admin/src/services/recommendations/precomputed/public-watch"
+import { purgeExpiredPrecomputedVisitRoots } from "../../apps/admin/src/services/recommendations/precomputed/visit-retention"
+import {
+  evaluatePublicPrecomputedCtr,
+  loadPrivatePrecomputedCtrReport,
+} from "../../apps/admin/src/services/recommendations/precomputed/ctr-report"
+import { precomputedBrowserUnitDigest } from "../../apps/admin/src/services/recommendations/precomputed/visit-identity"
+import { chooseExperimentArm } from "../../apps/admin/src/services/recommendations/experiment/assignment"
+import { RecommendationEpisodeService } from "../../apps/admin/src/services/recommendations/episode.service"
+import { createRuntimeRecommendationTokenService } from "../../apps/admin/src/services/recommendations/runtime-token"
+import { getSemanticDeliveryCandidatePool } from "../../apps/admin/src/services/recommendations/delivery-retriever"
+import {
+  createRecommendationTokenService,
+  parseRecommendationKeyring,
+} from "../../apps/admin/src/services/recommendations/token.service"
 import { loadPrecomputedRecommendationComparison } from "../../apps/admin/src/services/recommendations/precomputed/contract"
 import {
   loadDurablePrecomputedBuildReport,
@@ -46,6 +70,11 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     beforeAll(async () => {
       admin = new Client({ connectionString: env.DATABASE_URL })
       await admin.connect()
+      // Retrieval intentionally qualifies the pgvector operator in public,
+      // matching a migrated application database rather than a test schema.
+      await admin.query(
+        "CREATE EXTENSION IF NOT EXISTS vector WITH SCHEMA public",
+      )
       await admin.query(`CREATE SCHEMA "${schema}"`)
       await admin.query(`SET search_path TO "${schema}", public`)
       for (const migration of currentAdminMigrationSql)
@@ -847,5 +876,898 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         retainedBefore,
       )
     })
+
+    it("keeps a completed catalog private when an operator reads its results", async () => {
+      const generationId = `catalog-unlaunched-${suffix}`
+      const before = await loadPrecomputedPublicControl(prisma)
+      expect(before).toMatchObject({ mode: "incumbent" })
+      await expect(
+        runPrecomputedCatalog(
+          {
+            generationId,
+            inputCutoff: cutoff,
+            historyRequired: false,
+            capacity: await fixtureCapacity(),
+          },
+          { ...dependencies(), model: controlledModel(targetId, []) },
+        ),
+      ).resolves.toMatchObject({ state: "complete", completedSourceCount: 2 })
+      expect(
+        await loadPrecomputedRecommendationComparison(prisma, {
+          generationId,
+          sourceVideoId: sourceId,
+          audioLanguageSlug: "english",
+          reviewer,
+        }),
+      ).toMatchObject({ state: "ready", allAcceptedCount: 1 })
+      expect(await loadPrecomputedPublicControl(prisma)).toMatchObject({
+        mode: "incumbent",
+        version: before.version,
+      })
+    })
+
+    it("starts and rolls back a built fixture only through authorized explicit controls", async () => {
+      const generationId = `catalog-public-${suffix}`
+      const experimentId = `catalog-public-test-${suffix}`
+      // Arrange an available incumbent only in this disposable native schema.
+      await prisma.recommendationServingControl.update({
+        where: { id: "recommendation-serving-control" },
+        data: { enabled: true },
+      })
+      await expect(
+        runPrecomputedCatalog(
+          {
+            generationId,
+            inputCutoff: cutoff,
+            historyRequired: false,
+            capacity: await fixtureCapacity(),
+          },
+          { ...dependencies(), model: controlledModel(targetId, []) },
+        ),
+      ).resolves.toMatchObject({ state: "complete", completedSourceCount: 2 })
+      const generation =
+        await prisma.recommendationPrecomputedGeneration.findUniqueOrThrow({
+          where: { id: generationId },
+          select: { sourceSetDigest: true },
+        })
+      const routing = await readControlRouting(prisma)
+      expect(routing).not.toBeNull()
+      const now = Date.now()
+      const prepared = await preparePrecomputedPublicExperiment(prisma, {
+        id: experimentId,
+        generationId,
+        startsAt: new Date(now - 60_000),
+        endsAt: new Date(now + 2 * 3_600_000),
+        expectedControlRoutingDigest: routing!.routingDigest,
+        expectedSourceSetDigest: generation.sourceSetDigest,
+        // Explicit synthetic rehearsal values, never the live stopping policy.
+        policySettings: {
+          baselineHumanVisitCtr: 0.2,
+          minimumDetectableAbsoluteUplift: 0.05,
+          minimumPracticalAbsoluteUplift: 0.05,
+          plannedPower: 0.8,
+          minimumEligibleVisitsPerArm: 20,
+          minimumIndependentBrowsersPerArm: 10,
+          minimumDurationHours: 1,
+          lateEventCutoffHours: 0,
+          maximumActualFallbackRate: 0.2,
+          maximumUnlinkedDeliveryRate: 0,
+        },
+        authority: "isolated_fixture",
+        operator: reviewer,
+      })
+      const before = await loadPrecomputedPublicControl(prisma)
+      expect(before).toMatchObject({ mode: "incumbent" })
+      const input = {
+        experimentId,
+        expectedConfigurationDigest: prepared.configurationDigest,
+        expectedControlVersion: before.version,
+        operator: reviewer,
+      }
+      await expect(
+        startPrecomputedPublicExperiment(prisma, {
+          ...input,
+          operator: { id: null, role: "WORKFLOW_TRIGGER" },
+          authority: "isolated_fixture",
+        }),
+      ).rejects.toThrow()
+      await expect(
+        startPrecomputedPublicExperiment(prisma, {
+          ...input,
+          authority: "live_verified",
+        }),
+      ).rejects.toMatchObject({ code: "readiness_unavailable" })
+      expect(await loadPrecomputedPublicControl(prisma)).toMatchObject({
+        mode: "incumbent",
+        version: before.version,
+      })
+      await startPrecomputedPublicExperiment(prisma, {
+        ...input,
+        authority: "isolated_fixture",
+      })
+      expect(await loadPrecomputedPublicControl(prisma)).toMatchObject({
+        mode: "ab",
+        version: before.version + 1,
+        experimentId,
+        generationId,
+      })
+      const browserDigest = Array.from({ length: 128 }, (_, index) =>
+        createHash("sha256").update(`catalog-browser-${index}`).digest("hex"),
+      ).find(
+        (value) =>
+          chooseExperimentArm({
+            unitDigest: precomputedBrowserUnitDigest(experimentId, value),
+            configurationDigest: prepared.configurationDigest,
+            challengerProbability: 0.5,
+          }) === "CHALLENGER",
+      )
+      if (!browserDigest) throw new Error("No challenger fixture browser")
+      const keyring = parseRecommendationKeyring(
+        JSON.stringify({
+          keys: [
+            {
+              kid: "catalog-public-test",
+              status: "active",
+              key: Buffer.alloc(32, 29).toString("base64url"),
+            },
+          ],
+        }),
+      )
+      const tokenService = {
+        activeKid: keyring.active.kid,
+        ...createRecommendationTokenService({
+          keyring,
+          readRevokedKids: async () => [],
+        }),
+      }
+      const caller = {
+        id: "catalog-fixture-web",
+        role: "CONSUMER_BEARER" as const,
+        rateLimitBucketKey: "catalog-fixture-web",
+      }
+      const visitInput = {
+        visitId: randomUUID(),
+        browserDigest,
+        consentReceiptDigest: null,
+        profileTokenDigest: null,
+        seedMediaId: sourceId,
+        locale: "en",
+        audioLanguageSlug: "english",
+        sessionDigest: "a".repeat(64),
+        clientDeliveryContract: null,
+        trafficCategory: "ordinary_browser" as const,
+        caller,
+      }
+      const issued = await deliverPrecomputedPublicWatchVisit(
+        prisma,
+        visitInput,
+        tokenService,
+      )
+      expect(issued).toMatchObject({
+        disposition: "ab",
+        status: "eligible",
+        arm: "challenger",
+        measurementStatus: "recorded",
+        delivery: { result: "served" },
+      })
+      // A lost first Set-Cookie must not reassign or duplicate the same visit.
+      expect(
+        await deliverPrecomputedPublicWatchVisit(
+          prisma,
+          {
+            ...visitInput,
+            browserDigest: "0".repeat(64),
+          },
+          tokenService,
+        ),
+      ).toMatchObject({
+        status: "unavailable",
+        reason: "visit_identity_conflict",
+      })
+      const rollback = {
+        expectedControlVersion: before.version + 1,
+        expectedExperimentId: experimentId,
+        expectedGenerationId: generationId,
+        expectedReportRevision: null,
+        operator: reviewer,
+        reasonCode: "rehearsal_rollback",
+      }
+      await expect(
+        rollbackPrecomputedPublicExperiment(prisma, {
+          ...rollback,
+          expectedControlVersion: before.version,
+        }),
+      ).rejects.toMatchObject({ code: "stale_control" })
+      await rollbackPrecomputedPublicExperiment(prisma, rollback)
+      expect(await loadPrecomputedPublicControl(prisma)).toMatchObject({
+        mode: "incumbent",
+        version: before.version + 2,
+        experimentId: null,
+        retainedExperimentId: experimentId,
+      })
+      const card = issued.delivery!.items[0]!
+      const episodes = new RecommendationEpisodeService({
+        prisma,
+        tokenService,
+      })
+      const click = {
+        caller,
+        contractVersion: "recommendation-evidence-v1",
+        capability: card.capability,
+        requestId: issued.delivery!.requestId!,
+        itemId: card.id,
+        sessionDigest: visitInput.sessionDigest,
+        browserDigest,
+        eventId: randomUUID(),
+        occurredAt: new Date().toISOString(),
+        claimNonce: `catalog-click-${randomUUID()}`,
+      }
+      // A card already issued by the experiment remains attributable after
+      // rollback; no impression is required and replay cannot add a click.
+      expect(await episodes.select(click)).toMatchObject({ status: "accepted" })
+      expect(await episodes.select(click)).toMatchObject({ status: "replay" })
+      const evaluation = await evaluatePublicPrecomputedCtr(prisma, {
+        experimentId,
+        operator: reviewer,
+      })
+      expect(evaluation).toMatchObject({
+        status: "available",
+        report: {
+          experimentId,
+          generationId,
+          evidenceBasis: "isolated_fixture",
+          isFinal: false,
+          outcome: "inconclusive",
+          byArm: {
+            control: { eligibleVisits: 0, clickedVisits: 0 },
+            challenger: {
+              eligibleVisits: 1,
+              clickedVisits: 1,
+              acceptedSelections: 1,
+              qualifiedImpressions: 0,
+              independentBrowsers: 1,
+              servedVisits: 1,
+            },
+          },
+          measurementHealth: {
+            edgeAutomationCoverage: "partial_unverified",
+            exclusionCountScope: "admin_bound_only",
+          },
+        },
+      })
+      expect(
+        await loadPrivatePrecomputedCtrReport(prisma, {
+          experimentId,
+          reviewer,
+        }),
+      ).toEqual(evaluation)
+      expect(await loadPrecomputedPublicControl(prisma)).toMatchObject({
+        mode: "incumbent",
+        version: before.version + 2,
+        retainedExperimentId: experimentId,
+      })
+      expect(
+        await loadPrecomputedRecommendationComparison(prisma, {
+          generationId,
+          sourceVideoId: sourceId,
+          audioLanguageSlug: "english",
+          reviewer,
+        }),
+      ).toMatchObject({ state: "ready", allAcceptedCount: 1 })
+      expect(
+        await loadDurablePrecomputedBuildReport(prisma, {
+          generationId,
+          sourceVideoId: sourceId,
+          reviewer,
+        }),
+      ).toMatchObject({
+        usage: { modelCallCount: 3, modelKnownCostUsd: 0.04 },
+      })
+    })
+
+    it("promotes only an evaluated fixture winner and retains its evidence through rollback", async () => {
+      const generationId = `catalog-winner-${suffix}`
+      const refreshId = `catalog-winner-refresh-${suffix}`
+      const experimentId = `catalog-winner-test-${suffix}`
+      // The capacity attestation is explicitly synthetic; the catalog producer,
+      // saved choices, delivery receipts, clicks, and evaluator are real code.
+      await prisma.recommendationServingControl.update({
+        where: { id: "recommendation-serving-control" },
+        data: { enabled: true },
+      })
+      const capacity = await fixtureCapacity()
+      await expect(
+        runPrecomputedCatalog(
+          {
+            generationId,
+            inputCutoff: cutoff,
+            historyRequired: false,
+            capacity,
+          },
+          { ...dependencies(), model: controlledModel(targetId, []) },
+        ),
+      ).resolves.toMatchObject({ state: "complete", completedSourceCount: 2 })
+      const generation =
+        await prisma.recommendationPrecomputedGeneration.findUniqueOrThrow({
+          where: { id: generationId },
+        })
+      const routing = await readControlRouting(prisma)
+      if (!routing) throw new Error("Missing fixture incumbent routing")
+      const now = new Date()
+      const endsAt = new Date(now.getTime() + 2 * 3_600_000)
+      const prepared = await preparePrecomputedPublicExperiment(prisma, {
+        id: experimentId,
+        generationId,
+        startsAt: new Date(now.getTime() - 60_000),
+        endsAt,
+        expectedControlRoutingDigest: routing.routingDigest,
+        expectedSourceSetDigest: generation.sourceSetDigest,
+        policySettings: {
+          baselineHumanVisitCtr: 0.2,
+          minimumDetectableAbsoluteUplift: 0.05,
+          minimumPracticalAbsoluteUplift: 0.05,
+          plannedPower: 0.8,
+          minimumEligibleVisitsPerArm: 20,
+          minimumIndependentBrowsersPerArm: 10,
+          minimumDurationHours: 1,
+          lateEventCutoffHours: 0,
+          maximumActualFallbackRate: 0.2,
+          maximumUnlinkedDeliveryRate: 0,
+        },
+        authority: "isolated_fixture",
+        operator: reviewer,
+      })
+      const before = await loadPrecomputedPublicControl(prisma)
+      expect(before.mode).toBe("incumbent")
+      const active = await startPrecomputedPublicExperiment(prisma, {
+        experimentId,
+        expectedConfigurationDigest: prepared.configurationDigest,
+        expectedControlVersion: before.version,
+        authority: "isolated_fixture",
+        operator: reviewer,
+      })
+      const browsers: Record<"control" | "challenger", string[]> = {
+        control: [],
+        challenger: [],
+      }
+      for (let index = 0; index < 512; index += 1) {
+        const browser = createHash("sha256")
+          .update(`winner-browser-${index}`)
+          .digest("hex")
+        const arm =
+          chooseExperimentArm({
+            unitDigest: precomputedBrowserUnitDigest(experimentId, browser),
+            configurationDigest: prepared.configurationDigest,
+            challengerProbability: 0.5,
+          }) === "CONTROL"
+            ? "control"
+            : "challenger"
+        if (browsers[arm].length < 20) browsers[arm].push(browser)
+        if (browsers.control.length === 20 && browsers.challenger.length === 20)
+          break
+      }
+      expect(browsers.control).toHaveLength(20)
+      expect(browsers.challenger).toHaveLength(20)
+      const keyring = parseRecommendationKeyring(
+        JSON.stringify({
+          keys: [
+            {
+              kid: "winner-fixture",
+              status: "active",
+              key: Buffer.alloc(32, 31).toString("base64url"),
+            },
+          ],
+        }),
+      )
+      const tokenService = {
+        activeKid: keyring.active.kid,
+        ...createRecommendationTokenService({
+          keyring,
+          readRevokedKids: async () => [],
+        }),
+      }
+      const caller = {
+        id: "catalog-winner-web",
+        role: "CONSUMER_BEARER" as const,
+        rateLimitBucketKey: "catalog-winner-web",
+      }
+      const episodes = new RecommendationEpisodeService({
+        prisma,
+        tokenService,
+      })
+      const visit = (browserDigest: string, seedMediaId = sourceId) => ({
+        visitId: randomUUID(),
+        browserDigest,
+        seedMediaId,
+        consentReceiptDigest: null,
+        profileTokenDigest: null,
+        locale: "en",
+        audioLanguageSlug: "english",
+        sessionDigest: createHash("sha256").update(browserDigest).digest("hex"),
+        clientDeliveryContract: null,
+        trafficCategory: "ordinary_browser" as const,
+        caller,
+      })
+      for (const arm of ["control", "challenger"] as const) {
+        for (const [index, browser] of browsers[arm].entries()) {
+          // Two genuinely empty saved-source visits remain in the challenger
+          // denominator. The isolated incumbent lacks a healthy retention
+          // watermark, so its unavailable deliveries also remain in the count.
+          const input = visit(
+            browser,
+            arm === "challenger" && index >= 18 ? targetId : sourceId,
+          )
+          const delivered = await deliverPrecomputedPublicWatchVisit(
+            prisma,
+            input,
+            tokenService,
+          )
+          expect(delivered).toMatchObject({
+            disposition: "ab",
+            status: "eligible",
+            arm,
+            measurementStatus: "recorded",
+          })
+          if (arm === "control") {
+            expect(delivered.delivery?.result).toBe("unavailable")
+          } else if (index >= 18) {
+            expect(delivered.delivery?.result).toBe("empty")
+          } else {
+            expect(delivered.delivery?.result).toBe("served")
+            const card = delivered.delivery!.items[0]!
+            const click = {
+              caller,
+              contractVersion: "recommendation-evidence-v1",
+              capability: card.capability,
+              requestId: delivered.delivery!.requestId!,
+              itemId: card.id,
+              sessionDigest: input.sessionDigest,
+              browserDigest: browser,
+              eventId: randomUUID(),
+              occurredAt: new Date().toISOString(),
+              claimNonce: `winner-click-${randomUUID()}`,
+            }
+            expect(await episodes.select(click)).toMatchObject({
+              status: "accepted",
+            })
+            if (index === 0)
+              expect(await episodes.select(click)).toMatchObject({
+                status: "replay",
+              })
+          }
+        }
+      }
+      const repeatBrowserVisit = {
+        ...visit(browsers.control[0]!),
+        sessionDigest: "e".repeat(64),
+      }
+      expect(
+        await deliverPrecomputedPublicWatchVisit(
+          prisma,
+          repeatBrowserVisit,
+          tokenService,
+        ),
+      ).toMatchObject({
+        status: "eligible",
+        arm: "control",
+        measurementStatus: "recorded",
+      })
+      // Delivery retry remains one logical visit; a new session on this
+      // browser stays in the same arm and cluster.
+      expect(
+        await deliverPrecomputedPublicWatchVisit(
+          prisma,
+          repeatBrowserVisit,
+          tokenService,
+        ),
+      ).toMatchObject({
+        status: "eligible",
+        arm: "control",
+        measurementStatus: "recorded",
+      })
+      expect(
+        await deliverPrecomputedPublicWatchVisit(
+          prisma,
+          {
+            ...visit(browsers.challenger[0]!),
+            trafficCategory: "declared_crawler",
+          },
+          tokenService,
+        ),
+      ).toMatchObject({
+        status: "excluded",
+        qualification: "declared_automation",
+      })
+      expect(
+        await deliverPrecomputedPublicWatchVisit(
+          prisma,
+          visit(browsers.challenger[0]!, "later-catalog-addition"),
+          tokenService,
+        ),
+      ).toMatchObject({ status: "excluded", reason: "outside_frozen_cohort" })
+      const interim = await evaluatePublicPrecomputedCtr(prisma, {
+        experimentId,
+        operator: reviewer,
+      })
+      expect(interim).toMatchObject({
+        status: "available",
+        report: {
+          isFinal: false,
+          outcome: "inconclusive",
+          evidenceBasis: "isolated_fixture",
+          byArm: {
+            control: {
+              eligibleVisits: 21,
+              clickedVisits: 0,
+              unavailableVisits: 21,
+              independentBrowsers: 20,
+            },
+            challenger: {
+              eligibleVisits: 20,
+              clickedVisits: 18,
+              acceptedSelections: 18,
+              emptyVisits: 2,
+              independentBrowsers: 20,
+            },
+          },
+        },
+      })
+      if (interim.status !== "available")
+        throw new Error("Missing interim report")
+      const receipt = (revision: number) =>
+        prisma.recommendationPrecomputedCtrReport.findUniqueOrThrow({
+          where: { experimentId_revision: { experimentId, revision } },
+        })
+      const promotion = {
+        expectedControlVersion: active.version,
+        expectedExperimentId: experimentId,
+        expectedGenerationId: generationId,
+        expectedReportRevision: interim.report.revision,
+        expectedReportEvidenceDigest: (await receipt(interim.report.revision))
+          .evidenceDigest,
+        operator: reviewer,
+      }
+      await expect(
+        promotePrecomputedPublicExperiment(prisma, promotion),
+      ).rejects.toMatchObject({ code: "incompatible_target" })
+      // Completing a refresh or evaluating counts never selects new serving.
+      await expect(
+        runPrecomputedCatalog(
+          {
+            generationId: refreshId,
+            inputCutoff: cutoff,
+            historyRequired: false,
+            capacity: await fixtureCapacity(),
+          },
+          { ...dependencies(), model: controlledModel(targetId, []) },
+        ),
+      ).resolves.toMatchObject({ state: "complete" })
+      expect(await loadPrecomputedPublicControl(prisma)).toEqual(active)
+      const afterRawExpiry = new Date(now.getTime() + 30 * 86_400_000)
+      await prisma.$transaction((tx) =>
+        purgeExpiredPrecomputedVisitRoots(tx, afterRawExpiry, 100),
+      )
+      expect(
+        await prisma.recommendationPrecomputedVisit.count({
+          where: { experimentId },
+        }),
+      ).toBe(0)
+      expect(
+        await deliverPrecomputedPublicWatchVisit(
+          prisma,
+          repeatBrowserVisit,
+          tokenService,
+        ),
+      ).toMatchObject({
+        status: "unavailable",
+        reason: "visit_persistence_unavailable",
+      })
+      expect(
+        await prisma.recommendationPrecomputedVisit.count({
+          where: { experimentId },
+        }),
+      ).toBe(0)
+      const final = await evaluatePublicPrecomputedCtr(prisma, {
+        experimentId,
+        operator: reviewer,
+        now: afterRawExpiry,
+      })
+      expect(final).toMatchObject({
+        status: "available",
+        report: {
+          isFinal: true,
+          outcome: "challenger",
+          reasons: [],
+          byArm: interim.report.byArm,
+        },
+      })
+      if (final.status !== "available") throw new Error("Missing final report")
+      expect(await loadPrecomputedPublicControl(prisma)).toEqual(active)
+      const finalPromotion = {
+        ...promotion,
+        expectedReportRevision: final.report.revision,
+        expectedReportEvidenceDigest: (await receipt(final.report.revision))
+          .evidenceDigest,
+      }
+      await expect(
+        promotePrecomputedPublicExperiment(prisma, {
+          ...finalPromotion,
+          expectedGenerationId: refreshId,
+        }),
+      ).rejects.toMatchObject({ code: "incompatible_target" })
+      await expect(
+        promotePrecomputedPublicExperiment(prisma, {
+          ...finalPromotion,
+          expectedReportEvidenceDigest: "0".repeat(64),
+        }),
+      ).rejects.toMatchObject({ code: "incompatible_target" })
+      const promoted = await promotePrecomputedPublicExperiment(
+        prisma,
+        finalPromotion,
+      )
+      expect(promoted).toMatchObject({
+        mode: "promoted",
+        version: active.version + 1,
+        experimentId,
+        generationId,
+        reportRevision: final.report.revision,
+      })
+      expect(
+        await deliverPrecomputedPublicWatchVisit(
+          prisma,
+          visit(browsers.control[0]!),
+          tokenService,
+        ),
+      ).toMatchObject({
+        disposition: "promoted",
+        status: "not_applicable",
+        delivery: { result: "served" },
+      })
+      await rollbackPrecomputedPublicExperiment(prisma, {
+        ...finalPromotion,
+        expectedControlVersion: promoted.version,
+        reasonCode: "winner_rehearsal_complete",
+      })
+      expect(await loadPrecomputedPublicControl(prisma)).toMatchObject({
+        mode: "incumbent",
+        version: active.version + 2,
+        retainedExperimentId: experimentId,
+      })
+      expect(
+        await loadPrivatePrecomputedCtrReport(prisma, {
+          experimentId,
+          reviewer,
+        }),
+      ).toEqual(final)
+      expect(
+        await loadDurablePrecomputedBuildReport(prisma, {
+          generationId,
+          reviewer,
+        }),
+      ).toMatchObject({ usage: { modelCallCount: 3, modelKnownCostUsd: 0.04 } })
+    }, 120_000)
+
+    it("binds a real incumbent recovery to the original challenger visit", async () => {
+      const generationId = `catalog-fallback-${suffix}`
+      const experimentId = `catalog-fallback-test-${suffix}`
+      await prisma.recommendationServingControl.update({
+        where: { id: "recommendation-serving-control" },
+        data: { enabled: true },
+      })
+      await expect(
+        runPrecomputedCatalog(
+          {
+            generationId,
+            inputCutoff: cutoff,
+            historyRequired: false,
+            capacity: await fixtureCapacity(),
+          },
+          { ...dependencies(), model: controlledModel(targetId, []) },
+        ),
+      ).resolves.toMatchObject({ state: "complete" })
+      // Seed real native transcript vectors for the incumbent retrieval path.
+      // These synthetic vectors and retention watermark are fixture setup,
+      // not model, API, request, visit, or click-service mocks.
+      for (const id of [sourceId, targetId]) {
+        const editionId = `fallback-edition-${id}`
+        const transcriptId = `fallback-transcript-${id}`
+        await prisma.videoEdition.create({
+          data: { id: editionId, coreId: editionId, name: "Fixture English" },
+        })
+        await prisma.videoDub.update({
+          where: { id: `dub-${id}` },
+          data: { videoEditionId: editionId },
+        })
+        await prisma.videoTranscript.create({
+          data: {
+            id: transcriptId,
+            videoEditionId: editionId,
+            videoId: id,
+            language: "en",
+            model: "embeddings",
+            embeddingProvider: "jesus-film-ai-gateway",
+            embeddingNativeDimensions: 1536,
+            dimensions: 1536,
+            chunkingType: "fixture",
+            maxChunkTokens: 100,
+            overlapTokens: 0,
+            totalChunks: 1,
+            totalTokens: 10,
+            generatedAt: new Date(),
+          },
+        })
+        await prisma.videoTranscriptChunk.create({
+          data: {
+            id: `fallback-chunk-${id}`,
+            transcriptId,
+            language: "en",
+            model: "embeddings",
+            dimensions: 1536,
+            chunkIndex: 0,
+            chunkId: "fixture-0",
+            text: "Hope during hardship",
+            rawSourceText: "Hope during hardship",
+            tokenCount: 10,
+            startSeconds: 0,
+            endSeconds: 60,
+          },
+        })
+        await prisma.$executeRaw`
+          UPDATE video_transcript_chunk
+          SET embedding = (ARRAY[1::real] || array_fill(0::real, ARRAY[1535]))::public.vector
+          WHERE id = ${`fallback-chunk-${id}`}`
+      }
+      await prisma.recommendationRetentionRun.create({
+        data: {
+          id: `fallback-retention-${suffix}`,
+          status: "SUCCEEDED",
+          batchSize: 100,
+          completedAt: new Date(),
+          expiresAt: new Date(Date.now() + 90 * 86_400_000),
+        },
+      })
+      expect(
+        await getSemanticDeliveryCandidatePool(prisma, {
+          seedMediaId: sourceId,
+          locale: "en",
+          audioLanguageSlug: "english",
+          limit: 6,
+        }),
+      ).toContainEqual(expect.objectContaining({ videoId: targetId }))
+      const generation =
+        await prisma.recommendationPrecomputedGeneration.findUniqueOrThrow({
+          where: { id: generationId },
+        })
+      const routing = await readControlRouting(prisma)
+      if (!routing) throw new Error("Missing fixture incumbent")
+      const prepared = await preparePrecomputedPublicExperiment(prisma, {
+        id: experimentId,
+        generationId,
+        startsAt: new Date(Date.now() - 60_000),
+        endsAt: new Date(Date.now() + 3_600_000),
+        expectedControlRoutingDigest: routing.routingDigest,
+        expectedSourceSetDigest: generation.sourceSetDigest,
+        policySettings: {
+          baselineHumanVisitCtr: 0.2,
+          minimumDetectableAbsoluteUplift: 0.05,
+          minimumPracticalAbsoluteUplift: 0.05,
+          plannedPower: 0.8,
+          minimumEligibleVisitsPerArm: 20,
+          minimumIndependentBrowsersPerArm: 10,
+          minimumDurationHours: 1,
+          lateEventCutoffHours: 0,
+          maximumActualFallbackRate: 0.2,
+          maximumUnlinkedDeliveryRate: 0,
+        },
+        authority: "isolated_fixture",
+        operator: reviewer,
+      })
+      const before = await loadPrecomputedPublicControl(prisma)
+      const active = await startPrecomputedPublicExperiment(prisma, {
+        experimentId,
+        expectedConfigurationDigest: prepared.configurationDigest,
+        expectedControlVersion: before.version,
+        authority: "isolated_fixture",
+        operator: reviewer,
+      })
+      const browserDigest = Array.from({ length: 128 }, (_, i) =>
+        createHash("sha256").update(`fallback-browser-${i}`).digest("hex"),
+      ).find(
+        (value) =>
+          chooseExperimentArm({
+            unitDigest: precomputedBrowserUnitDigest(experimentId, value),
+            configurationDigest: prepared.configurationDigest,
+            challengerProbability: 0.5,
+          }) === "CHALLENGER",
+      )
+      if (!browserDigest) throw new Error("No fixture challenger browser")
+      const caller = {
+        id: "catalog-recovery-web",
+        role: "CONSUMER_BEARER" as const,
+        rateLimitBucketKey: "catalog-recovery-web",
+      }
+      const input = {
+        visitId: randomUUID(),
+        browserDigest,
+        seedMediaId: sourceId,
+        consentReceiptDigest: null,
+        profileTokenDigest: null,
+        locale: "en",
+        audioLanguageSlug: "english",
+        sessionDigest: "f".repeat(64),
+        clientDeliveryContract: null,
+        trafficCategory: "ordinary_browser" as const,
+        caller,
+      }
+      // Inject an unavailable saved-card signer. The incumbent's real factory
+      // retains its test-runtime signer and must issue the actual recovery.
+      const recovered = await deliverPrecomputedPublicWatchVisit(
+        prisma,
+        input,
+        null,
+      )
+      expect(recovered.delivery?.reason).toBeNull()
+      expect(recovered).toMatchObject({
+        status: "eligible",
+        arm: "challenger",
+        measurementStatus: "recorded",
+        delivery: {
+          result: "served",
+          strategyVersion: routing.manifest.strategyVersion,
+        },
+      })
+      const tokenService = createRuntimeRecommendationTokenService(prisma)
+      if (!tokenService)
+        throw new Error("Missing native fixture runtime signer")
+      const card = recovered.delivery!.items[0]!
+      expect(card.targetMediaId).toBe(targetId)
+      const episodes = new RecommendationEpisodeService({
+        prisma,
+        tokenService,
+      })
+      expect(
+        await episodes.select({
+          caller,
+          contractVersion: "recommendation-evidence-v1",
+          capability: card.capability,
+          requestId: recovered.delivery!.requestId!,
+          itemId: card.id,
+          sessionDigest: input.sessionDigest,
+          browserDigest,
+          eventId: randomUUID(),
+          occurredAt: new Date().toISOString(),
+          claimNonce: `fallback-click-${randomUUID()}`,
+        }),
+      ).toMatchObject({ status: "accepted" })
+      expect(
+        await evaluatePublicPrecomputedCtr(prisma, {
+          experimentId,
+          operator: reviewer,
+        }),
+      ).toMatchObject({
+        status: "available",
+        report: {
+          outcome: "inconclusive",
+          byArm: {
+            control: { eligibleVisits: 0, clickedVisits: 0 },
+            challenger: {
+              eligibleVisits: 1,
+              clickedVisits: 1,
+              actualFallbackVisits: 1,
+              servedVisits: 1,
+              unlinkedDeliveredVisits: 0,
+            },
+          },
+        },
+      })
+      await rollbackPrecomputedPublicExperiment(prisma, {
+        expectedControlVersion: active.version,
+        expectedExperimentId: experimentId,
+        expectedGenerationId: generationId,
+        expectedReportRevision: null,
+        reasonCode: "fallback_rehearsal_complete",
+        operator: reviewer,
+      })
+    }, 120_000)
   },
 )

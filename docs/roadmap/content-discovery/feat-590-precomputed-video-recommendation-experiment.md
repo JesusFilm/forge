@@ -91,8 +91,11 @@ verified. #2574 storage and loaded cleanup code is now integrated and verified:
 21 connected native cases, 63 focused Admin cases, 13 Mastra cases and seven
 ordinary-retention cases passed, with migrations through `0136`. The 6,715-root
 loaded fixture passed without equating reclaimed rows to recovered filesystem
-space. #2575 manual controls is ready for implementation. Full catalog execution
-and live readiness are still pending. The execution ledger is
+space. #2575 manual controls and Watch consumption are integrated: 25 connected
+native cases, migration `0137`, and desktop/mobile control checks passed. The final
+Admin suite (9,019 tests), 42 additional native cases, typechecks and generated
+contract checks passed. Live qualification code and real human/bot/loss
+evidence, full catalog execution and production capacity remain incomplete. The execution ledger is
 `docs/plans/2026-10-05-precomputed-video-recommendation-status.md`. Public
 experimental serving remains default-off.
 

@@ -17,7 +17,9 @@ describes the private reporting contract and limits.
 - Initial base: `d661b99939e24ba41834adce53c6bad9262bcee9`.
 - Branch: `codex/precomputed-video-recommendations`.
 - Checkout: `/home/nisal/.codex/worktrees/precomputed-video-recommendations/forge`.
-- Latest locally verified application integration: `f18768c3952dc2dba5489d8bb36884a86ec04193` (#2574 Mastra `af835cdd0`, Admin `f18768c39`, current-main merge `ae9bc5363`). The following orchestration commit adds connected evidence. Current-main baseline is `1daa80373`; storage CI is pending publication.
+- Latest verified application integration: `8401049c1` (#2575 control/Watch code
+  and closed-private-report fix); final validation passed, with CI status on the PR.
+- Previous verified application integration: `6b9c9836a44c90983489534355857858ddab0708` (#2574 Mastra `af835cdd0`, Admin `f18768c39`, current-main merge `ae9bc5363`, root verification `6b9c9836a`). Current-main baseline is `1daa80373`; storage CI passed: [run 37419891818](https://github.com/JesusFilm/forge/actions/runs/37419891818), 37 successful jobs, three skipped, no failures.
   #2568 GA ingestion is `084fe3eae`, Admin validation is `58b2aaa18`,
   and the OpenRouter adapter is `b7926faf5`.
 - Catalog integration `285bb46eb` passed [forge-ci run 37411231982](https://github.com/JesusFilm/forge/actions/runs/37411231982): 37 successful jobs, three skipped and no failures.
@@ -33,38 +35,44 @@ describes the private reporting contract and limits.
 All issues remain open until merge. Dependencies advance on verified acceptance,
 not issue closure. Implemented, integrated, merged, and live are distinct.
 
-| Issue | Immediate blockers | State                                         | Integrated work                                                               |
-| ----- | ------------------ | --------------------------------------------- | ----------------------------------------------------------------------------- |
-| #2566 | None               | Integrated-and-verified                       | `9a984c544`; saved Admin comparison                                           |
-| #2567 | #2566              | Integrated-and-verified                       | `c89db0e4e`; bounded producer; OpenRouter transport smoke passed              |
-| #2568 | #2567              | Integrated-and-verified                       | `084fe3eae`, `58b2aaa18`; real GA pair and Astra judgment passed              |
-| #2569 | #2568              | Integrated-and-verified                       | `1298713cc`, `04200cd9f`; 20 connected native cases and 37 Admin cases passed |
-| #2570 | #2566              | Integrated-and-verified                       | `0a93244a3`; private Watch serving                                            |
-| #2571 | #2570              | Integrated-and-verified                       | `267a65281`, `b69592b6c`, corrections in `a7f36d778`                          |
-| #2572 | #2571              | Integrated-and-verified                       | Core `a7f36d778`, UI `af8eba415`                                              |
-| #2573 | #2572              | Private reporting verified; live incomplete   | Sources `acbb33fe4`, `302dffe31`; migration `0134`                            |
-| #2574 | #2569, #2573       | Code integrated-and-verified; live incomplete | `af835cdd0`, `f18768c39`; native retention and measured fixture load passed   |
-| #2575 | #2574              | Ready for implementation                      | Code prerequisites verified; next dispatch reuses the two Sol chats           |
+| Issue | Immediate blockers | State                                         | Integrated work                                                                                         |
+| ----- | ------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| #2566 | None               | Integrated-and-verified                       | `9a984c544`; saved Admin comparison                                                                     |
+| #2567 | #2566              | Integrated-and-verified                       | `c89db0e4e`; bounded producer; OpenRouter transport smoke passed                                        |
+| #2568 | #2567              | Integrated-and-verified                       | `084fe3eae`, `58b2aaa18`; real GA pair and Astra judgment passed                                        |
+| #2569 | #2568              | Integrated-and-verified                       | `1298713cc`, `04200cd9f`; 20 connected native cases and 37 Admin cases passed                           |
+| #2570 | #2566              | Integrated-and-verified                       | `0a93244a3`; private Watch serving                                                                      |
+| #2571 | #2570              | Integrated-and-verified                       | `267a65281`, `b69592b6c`, corrections in `a7f36d778`                                                    |
+| #2572 | #2571              | Integrated-and-verified                       | Core `a7f36d778`, UI `af8eba415`                                                                        |
+| #2573 | #2572              | Private reporting verified; live incomplete   | Sources `acbb33fe4`, `302dffe31`; migration `0134`                                                      |
+| #2574 | #2569, #2573       | Code integrated-and-verified; live incomplete | `af835cdd0`, `f18768c39`; native retention and measured fixture load passed                             |
+| #2575 | #2574              | Code integrated-and-verified; live incomplete | `082fc550f`, `84ef7ce38`, `127b61e1f`, `8401049c1`; isolated native rehearsal and browser checks passed |
 
 ## Ownership and continuation
 
-Both workers completed #2574 from verified integration
-`285bb46eb2c507dac5ff5506bbbe57be0ce68c8d`, also their fixed review base.
+Both workers started #2575 from locally verified integration
+`6b9c9836a44c90983489534355857858ddab0708`, also their fixed review base.
 
 Worker A, `01a109e1-47c8-7043-bfd4-a85592cfafc5`, titled
-`#2574 Bound Mastra workflow storage`, owns Mastra-only runtime checkpoint and
-observability lifecycle/measurement and a separate runtime evidence note.
+`#2575 Wire Watch experiment controls`, owns Web consumption, stable browser
+assignment, trusted admission propagation and click flow, plus the thin Admin
+public-delivery GraphQL adapter and generated SDL/client operation.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2566/forge`;
-branch: `codex/feat-590-2574`.
+branch: `codex/feat-590-2575`.
 
 Worker B, `01a10a28-aa8e-7080-b3d1-c59293f8f4dd`, titled
-`#2574 Bound Admin storage and prove cleanup`, owns Admin generation retention,
-protected references, storage/capacity reporting, migrations, native loaded
-cleanup and `docs/operations/precomputed-storage-capacity.md`.
+`#2575 Add Admin launch and rollback controls`, owns Admin authorization,
+manual controls, readiness/audit, migrations, public delivery services,
+report qualification and operator run procedure.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
-branch: `codex/feat-590-2574-admin`.
+branch: `codex/feat-590-2575-admin`.
 
-Their runtime retirement-proof contract is integrated. Next assignments will split #2575 between Web delivery consumption (A) and Admin controls/readiness (B), starting at the next recorded verified integration commit.
+Both workers have completed their owned implementation and normal-hook commits.
+A source `3112244b7` is integrated as `127b61e1f`; B sources `ac78b3c85` and
+`a41a6807a` are integrated as `082fc550f` and `84ef7ce38`. They remain available
+for specific review or CI fixes. B’s follow-up `452fd51dc` is integrated as
+`8401049c1`, restoring closed private report evaluation and correcting the
+bounded-retention fixture. No additional implementation chat was created.
 Previous branches and integrated work remain saved.
 The orchestrator owns cross-app integration tests, live operator verification,
 shared docs/roadmap, integration and the single PR. No production write/deploy,
@@ -209,7 +217,7 @@ warehouse write is authorized.
 agreed numeric stopping settings, trusted bot qualification, and tracking-loss
 evidence are absent. Production cookie forwarding, actual catalog cost, and
 measured capacity/headroom also remain prerequisites where required. Fixtures
-cannot satisfy these criteria. #2574 code and local loaded cleanup are verified; actual production capacity approval remains incomplete. #2575 is ready for implementation.
+cannot satisfy these criteria. #2574 code and local loaded cleanup are verified; actual production capacity approval remains incomplete. #2575 code is integrated and locally verified through `8401049c1`. Live start remains unavailable until a trusted qualification verifier and its real inputs exist.
 
 Public experimental serving stays default-off and the incumbent remains available.
 Do not merge, deploy, start public A/B traffic, promote a winner, or enable refresh
@@ -308,3 +316,35 @@ report has a measurable local development render cost; this is not a before/afte
 comparison of the same page or production latency proof. Protected route access
 without authentication still redirects to login. Temporary preview files and
 server were removed. Public serving remains off.
+
+## Manual-control integration verification
+
+The complete connected native suite passed 25 cases, including actual controlled
+catalog builds, no implicit activation, explicit fixture preparation/start,
+stale-target rejection, signed clicks after rollback, raw expiry with identical
+retained arm counts, fixed browser assignment, frozen-cohort exclusions, and an
+actual evaluator-produced fixture winner followed by exact promotion/rollback.
+A separate case exercises real native incumbent retrieval and signed selection
+after saved-signer failure, preserving the original challenger denominator.
+Fixture counts and provider receipts are synthetic; no live winner is claimed.
+
+The official migration chain through `0137` and seven ordinary-retention tests
+passed on a fresh disposable native database. Watch's full worker suite passed
+4,780 tests (10 skipped, one todo); Web and typed-client checks passed. Admin's
+final full suite passed 9,019 tests (810 skipped, one todo), and all 42 focused
+native cases passed. Admin and seam typechecks, regenerated schema/client drift
+checks and Next route types passed. Final published-head CI is tracked on the PR.
+
+Admin desktop/mobile checks passed with 191-character IDs, table scrolling,
+report expansion, and no console errors or document overflow. Unauthenticated
+prepare/rollback showed an error without changing the pointer. The real page
+redirected to login (307); the API returned 401. Four alternating warm samples
+per mode measured median 112ms baseline / 106.5ms controls, 52,911 / 62,381 HTML
+bytes and 22 script tags in each mode. These small local development samples do
+not establish production latency or authenticated query cost. Temporary preview
+route/server were removed and viewport reset.
+
+The live start/promotion verifier is deliberately incomplete pending trusted
+human/bot and loss-audit inputs. The Admin page reports this as blocked and the
+services reject live authority. Thus #2573–#2575 and feat-590 retain incomplete
+live acceptance; PR #2578 remains a draft. No public A/B traffic was activated.
