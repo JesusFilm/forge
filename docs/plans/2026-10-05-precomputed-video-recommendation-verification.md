@@ -1584,3 +1584,48 @@ maintenance PR https://github.com/JesusFilm/forge/pull/2599 aligns seven Expo
 packages. Commit `3b2063d60` passed normal hooks and all 26 applicable CI checks,
 including Expo Doctor, Mobile, Auth and TV checks (six configured skips).
 It has not been merged and publishes no Mobile binary.
+
+## October 7 durable real-data pilot and preview recovery
+
+The provider schema correction is integrated as `0636bf861`: evidence uses
+`anyOf`, the strict-schema optional explanation is nullable on the wire, and
+null is normalized before persistence. The old failed source pilot remains
+visible. The new `actual-durable-two-video-pilot-20261007-v1` completed both
+sources with two accepted connections through native Admin durable ingestion.
+Eight model calls reported 14,383 input and 1,394 output tokens, with $0.2494275
+known cost and no unknown model charges. Thirteen GA request receipts have
+unknown byte/cost figures; those are not zero-cost claims. All 29 source rows
+mapped, with three qualified referrer-navigation events. The successful resumed
+session ran from 21:42:54 to 21:47:02 UTC on October 6; durable elapsed time
+includes an earlier authentication interruption.
+
+The full `actual-full-catalog-20261007-v1` manifest includes all 1,031 Videos.
+Its first source saved summary, plan and discovery checkpoints, then two GA
+report calls reached their 50-second deadlines. It remains incomplete with zero
+completed sources; the two successful model calls reported $0.161118. Replaying
+the same request digest later retrieved all 78 rows across two pages in 26.54
+seconds. A bounded offline timeout correction is being validated before resume.
+This is not a completed full-catalog cost or production capacity report.
+
+The local full-build capacity observation at 21:47:50 UTC measured 6,468,198,400
+available PGDATA bytes, a 5 GB reserve and 760,135,680 projected build bytes.
+Its sample is the total physical precomputed relations after two completed
+pilot sources, including shared/empty-table overhead, scaled conservatively.
+It is not an attributable per-generation allocation or production admission.
+
+The real Next Admin preview exposed a PrismaPg boundary defect: `schema=` in
+the database URL did not select the model-query namespace. Native tests of both
+application pools returned null from public instead of the isolated seeded row.
+The adapter now receives the selected schema explicitly, while preserving the
+raw libpq URI and the existing 10/5 pool budgets. The authenticated local pilot
+page then returned HTTP 200 and rendered complete status, both saved connections,
+provider charges, GA qualification and transcript-backed explanations. These
+are HTTP-rendered observations; browser visual verification remains pending
+because the browser surface disconnected at the interruption. The temporary
+loopback-only demo sign-in harness is excluded from commits and deployment.
+
+Receipts are under `/tmp/forge-feat-590-real-catalog-20261007`:
+`pilot-durable-report.json`, `pilot-durable-calls.jsonl`,
+`full-durable-report.json`, `full-durable-calls.jsonl` and capacity observations.
+Native red/green and local server logs are under
+`/tmp/forge-feat-590-orchestration/20261007-*`.

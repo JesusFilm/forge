@@ -21,8 +21,14 @@ production merge. Numeric winner/health thresholds remain pending; fixture
 settings are not live authority. Workers A/B continued from `5c9f38c6f`. Deployed-identity GA auth is
 `9d2ff9944`; the one-month cutoff and browser-proof verifier are integrated as
 `2069e87f6`. Their remaining live verifier/baseline work is still in progress.
-The orchestrator is preparing the real-data build in isolated local storage,
-with read-only production catalog access. No production experiment is active.
+The real GA/Astra two-video durable pilot is complete: two saved connections,
+eight calls and $0.2494275 known model charges. The full 1,031-video generation
+has its manifest and first-source discovery checkpoint saved; an intermittent
+GA report timeout interrupted it before the first source completed. Replaying
+the exact report succeeded with all 78 rows; a bounded timeout fix is underway.
+The local Admin preview now serves the saved pilot after correcting PrismaPg's
+selected-schema handling. Browser verification is pending reconnection of the
+app browser after the session interruption. No production experiment is active.
 
 - Orchestrator: `01a109d7-dc1c-7600-a2c4-07dee79b4aff`.
 - Initial base: `d661b99939e24ba41834adce53c6bad9262bcee9`.
@@ -49,18 +55,18 @@ with read-only production catalog access. No production experiment is active.
 All issues remain open until merge. Dependencies advance on verified acceptance,
 not issue closure. Implemented, integrated, merged, and live are distinct.
 
-| Issue | Immediate blockers | State                                           | Integrated work                                                                                         |
-| ----- | ------------------ | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| #2566 | None               | Integrated-and-verified                         | `9a984c544`; saved Admin comparison                                                                     |
-| #2567 | #2566              | Code verified; live judgment schema fix pending | `c89db0e4e`; bounded producer; OpenRouter transport smoke passed                                        |
-| #2568 | #2567              | Integrated-and-verified                         | `084fe3eae`, `58b2aaa18`; real GA pair and Astra judgment passed                                        |
-| #2569 | #2568              | Code verified; full real build incomplete       | `1298713cc`, `04200cd9f`; 20 connected native cases and 37 Admin cases passed                           |
-| #2570 | #2566              | Integrated-and-verified                         | `0a93244a3`; private Watch serving                                                                      |
-| #2571 | #2570              | Integrated-and-verified                         | `267a65281`, `b69592b6c`, corrections in `a7f36d778`                                                    |
-| #2572 | #2571              | Integrated-and-verified                         | Core `a7f36d778`, UI `af8eba415`                                                                        |
-| #2573 | #2572              | Private reporting verified; live incomplete     | Sources `acbb33fe4`, `302dffe31`; migration `0134`                                                      |
-| #2574 | #2569, #2573       | Code integrated-and-verified; live incomplete   | `af835cdd0`, `f18768c39`; native retention and measured fixture load passed                             |
-| #2575 | #2574              | Code integrated-and-verified; live incomplete   | `082fc550f`, `84ef7ce38`, `127b61e1f`, `8401049c1`; isolated native rehearsal and browser checks passed |
+| Issue | Immediate blockers | State                                         | Integrated work                                                                                         |
+| ----- | ------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| #2566 | None               | Integrated-and-verified                       | `9a984c544`; saved Admin comparison                                                                     |
+| #2567 | #2566              | Integrated-and-verified                       | `c89db0e4e`, `0636bf861`; exact Astra durable two-video pilot complete                                  |
+| #2568 | #2567              | Integrated-and-verified                       | `084fe3eae`, `58b2aaa18`; real GA pair and Astra judgment passed                                        |
+| #2569 | #2568              | Code verified; full real build incomplete     | `1298713cc`, `04200cd9f`; 20 connected native cases and 37 Admin cases passed                           |
+| #2570 | #2566              | Integrated-and-verified                       | `0a93244a3`; private Watch serving                                                                      |
+| #2571 | #2570              | Integrated-and-verified                       | `267a65281`, `b69592b6c`, corrections in `a7f36d778`                                                    |
+| #2572 | #2571              | Integrated-and-verified                       | Core `a7f36d778`, UI `af8eba415`                                                                        |
+| #2573 | #2572              | Private reporting verified; live incomplete   | Sources `acbb33fe4`, `302dffe31`; migration `0134`                                                      |
+| #2574 | #2569, #2573       | Code integrated-and-verified; live incomplete | `af835cdd0`, `f18768c39`; native retention and measured fixture load passed                             |
+| #2575 | #2574              | Code integrated-and-verified; live incomplete | `082fc550f`, `84ef7ce38`, `127b61e1f`, `8401049c1`; isolated native rehearsal and browser checks passed |
 
 ## Ownership and continuation
 
@@ -79,7 +85,14 @@ Worker B, `01a10a28-aa8e-7080-b3d1-c59293f8f4dd`, titled
 manual controls, readiness/audit, migrations, public delivery services,
 report qualification and operator run procedure.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
-branch: `codex/feat-590-2575-admin`.
+branch: `codex/feat-590-2575-live-admin`.
+
+Current continuation ownership: A owns the GA report timeout fix, with no paid
+model rerun during diagnosis. B owns conditional live prepare/start readiness,
+fresh append-only launch-capacity evidence, and adapter-backed fixture guards.
+The orchestrator owns local preview/schema selection and actual build resumption.
+Their latest shared integration is `e45238fed`; both chats resumed after the
+October 7 session interruption. The completion notes below record earlier slices.
 
 Both workers have completed their owned implementation and normal-hook commits.
 A source `3112244b7` is integrated as `127b61e1f`; B sources `ac78b3c85` and
