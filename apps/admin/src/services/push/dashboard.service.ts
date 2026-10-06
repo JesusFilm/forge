@@ -115,6 +115,8 @@ export type PushCampaignDetail = PushCampaignListRow &
   Readonly<{
     copies: readonly PushCampaignCopyRow[]
     lastError: string | null
+    /** R34 — the version this page shows; a save from it carries this back. */
+    contentVersion: number
     createdAt: Date
   }>
 
@@ -140,6 +142,7 @@ export async function readPushCampaignDetail(
       sendingStartedAt: true,
       completedAt: true,
       lastError: true,
+      contentVersion: true,
       createdAt: true,
       updatedAt: true,
       copies: {
@@ -170,6 +173,7 @@ export async function readPushCampaignDetail(
     sendingStartedAt: row.sendingStartedAt,
     completedAt: row.completedAt,
     lastError: row.lastError,
+    contentVersion: row.contentVersion,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     // English first, so the required row is always the top row in the editor.

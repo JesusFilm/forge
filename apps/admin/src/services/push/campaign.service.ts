@@ -16,10 +16,15 @@ import {
   type PushDestinationKind,
 } from "@prisma/client"
 
+import {
+  isPushCampaignEditable,
+  PUSH_EDITABLE_STATUSES,
+  writePushCampaignContent,
+  type PushCampaignContentWriteResult,
+} from "./campaign-content.service"
 import { cancelPendingPushZones } from "./claims"
 import {
   parsePushInput,
-  PushCampaignUpdateInputSchema,
   PushScheduleInputSchema,
   type PushCampaignUpdateInput,
 } from "./contracts"
@@ -32,11 +37,6 @@ import {
 } from "./errors"
 import { markPushCampaignReservedMissed } from "./recovery"
 
-/** The editor may still change copy, destination, and audience here. */
-const EDITABLE_STATUSES = [
-  PushCampaignStatus.DRAFT,
-  PushCampaignStatus.TESTED,
-] as const
 const CANCELLABLE_STATUSES = [
   PushCampaignStatus.SCHEDULED,
   PushCampaignStatus.SENDING,
@@ -88,7 +88,7 @@ async function requireEditable(
   if (gate == null) {
     throw new PushInvalidTransitionError(null, PushCampaignStatus.DRAFT)
   }
-  if (!EDITABLE_STATUSES.includes(gate.status as never)) {
+  if (!isPushCampaignEditable(gate.status)) {
     throw new PushFrozenError(gate.status)
   }
   return gate
@@ -106,63 +106,26 @@ export async function createPushCampaignDraft(
 }
 
 /**
- * R6 to R8 and R11 — saves the campaign's words, destination, and audience.
+ * R6 to R8 and R11 — the dashboard's save of the campaign's words,
+ * destination, and audience, through the shared content write (KTD4).
  *
- * A tested campaign returns to draft, because the copy it was tested with is
- * no longer the copy it would send.
+ * It binds the dashboard source, so a hand save never sets the AI marker.
  */
 export async function updatePushCampaign(
   prisma: PrismaClient,
   input: {
     campaignId: string
     actorId: string
+    expectedContentVersion: number
     update: PushCampaignUpdateInput
   },
-): Promise<PushCampaignEditState> {
-  const update = parsePushInput(PushCampaignUpdateInputSchema, input.update)
-  const gate = await requireEditable(prisma, input.campaignId)
-
-  const data: Prisma.PushCampaignUpdateManyMutationInput = {
-    status: PushCampaignStatus.DRAFT,
-    lastActorId: input.actorId,
-    ...(update.destination
-      ? {
-          destinationKind: update.destination.kind,
-          destinationSlug: update.destination.slug,
-        }
-      : {}),
-    ...(update.audience
-      ? {
-          audienceScope: update.audience.scope,
-          countries: update.audience.countries,
-          languageFilter: update.audience.languageFilter,
-        }
-      : {}),
-  }
-
-  return prisma.$transaction(async (tx) => {
-    const { count } = await tx.pushCampaign.updateMany({
-      where: { id: input.campaignId, status: { in: [...EDITABLE_STATUSES] } },
-      data,
-    })
-    if (count !== 1) {
-      throw new PushInvalidTransitionError(
-        gate.status,
-        PushCampaignStatus.DRAFT,
-      )
-    }
-    if (update.copies) {
-      await tx.pushCampaignCopy.deleteMany({
-        where: { campaignId: input.campaignId },
-      })
-      await tx.pushCampaignCopy.createMany({
-        data: update.copies.map((copy) => ({
-          ...copy,
-          campaignId: input.campaignId,
-        })),
-      })
-    }
-    return { id: input.campaignId, status: PushCampaignStatus.DRAFT }
+): Promise<PushCampaignContentWriteResult> {
+  return writePushCampaignContent(prisma, {
+    source: "dashboard",
+    campaignId: input.campaignId,
+    actorId: input.actorId,
+    expectedContentVersion: input.expectedContentVersion,
+    update: input.update,
   })
 }
 
@@ -176,7 +139,10 @@ export async function recordPushTestSend(
 ): Promise<PushCampaignEditState> {
   const gate = await requireEditable(prisma, input.campaignId)
   const { count } = await prisma.pushCampaign.updateMany({
-    where: { id: input.campaignId, status: { in: [...EDITABLE_STATUSES] } },
+    where: {
+      id: input.campaignId,
+      status: { in: [...PUSH_EDITABLE_STATUSES] },
+    },
     data: {
       status: PushCampaignStatus.TESTED,
       testSentAt: input.now ?? new Date(),

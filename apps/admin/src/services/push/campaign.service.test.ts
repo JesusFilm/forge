@@ -1,6 +1,13 @@
 import type { PushCampaignStatus } from "@prisma/client"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+const writePushCampaignContent = vi.hoisted(() => vi.fn())
+
+vi.mock("./campaign-content.service", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./campaign-content.service")>()),
+  writePushCampaignContent,
+}))
+
 import {
   PushFrozenError,
   PushInputError,
@@ -113,146 +120,24 @@ describe("push campaign draft", () => {
 })
 
 describe("push campaign edits", () => {
-  it("saves copy, destination, and audience on a draft", async () => {
+  it("saves through the shared content write as the dashboard, with the page's version", async () => {
     const client = buildClient({ status: "DRAFT" })
+    const update = { copies: COPY }
 
     await updatePushCampaign(client as never, {
       campaignId: CAMPAIGN,
       actorId: ACTOR,
-      update: {
-        copies: COPY,
-        destination: { kind: "VIDEO", slug: "jesus" },
-        audience: { scope: "COUNTRIES", countries: ["sa"] },
-      },
+      expectedContentVersion: 6,
+      update,
     })
 
-    const [update] = client.pushCampaign.updateMany.mock.calls[0]
-    expect(update.where).toEqual({
-      id: CAMPAIGN,
-      status: { in: ["DRAFT", "TESTED"] },
-    })
-    expect(update.data).toMatchObject({
-      status: "DRAFT",
-      lastActorId: ACTOR,
-      destinationKind: "VIDEO",
-      destinationSlug: "jesus",
-      audienceScope: "COUNTRIES",
-      countries: ["SA"],
-      languageFilter: [],
-    })
-    expect(client.pushCampaignCopy.deleteMany).toHaveBeenCalledWith({
-      where: { campaignId: CAMPAIGN },
-    })
-    expect(client.pushCampaignCopy.createMany).toHaveBeenCalledWith({
-      data: COPY.map((copy) => ({ ...copy, campaignId: CAMPAIGN })),
-    })
-  })
-
-  it("sends a tested campaign back to draft when it is edited", async () => {
-    const client = buildClient({ status: "TESTED" })
-
-    const state = await updatePushCampaign(client as never, {
+    expect(writePushCampaignContent).toHaveBeenCalledWith(client, {
+      source: "dashboard",
       campaignId: CAMPAIGN,
       actorId: ACTOR,
-      update: { copies: COPY },
+      expectedContentVersion: 6,
+      update,
     })
-
-    expect(state.status).toBe("DRAFT")
-    expect(client.pushCampaign.updateMany.mock.calls[0][0].data.status).toBe(
-      "DRAFT",
-    )
-  })
-
-  it("leaves the copy rows alone when the edit does not name them", async () => {
-    const client = buildClient({ status: "DRAFT" })
-
-    await updatePushCampaign(client as never, {
-      campaignId: CAMPAIGN,
-      actorId: ACTOR,
-      update: { destination: { kind: "SERIES", slug: "jesus" } },
-    })
-
-    expect(client.pushCampaignCopy.deleteMany).not.toHaveBeenCalled()
-    expect(client.pushCampaignCopy.createMany).not.toHaveBeenCalled()
-  })
-
-  it.each(["SENDING", "SENT", "CANCELLED", "PAUSED"] as const)(
-    "refuses an edit while the campaign is %s (AE12)",
-    async (status) => {
-      const client = buildClient({ status })
-
-      await expect(
-        updatePushCampaign(client as never, {
-          campaignId: CAMPAIGN,
-          actorId: ACTOR,
-          update: { copies: COPY },
-        }),
-      ).rejects.toThrowError(PushFrozenError)
-      expect(client.pushCampaign.updateMany).not.toHaveBeenCalled()
-    },
-  )
-
-  it("refuses an edit to a scheduled campaign", async () => {
-    const client = buildClient({ status: "SCHEDULED" })
-
-    await expect(
-      updatePushCampaign(client as never, {
-        campaignId: CAMPAIGN,
-        actorId: ACTOR,
-        update: { copies: COPY },
-      }),
-    ).rejects.toThrowError(PushFrozenError)
-  })
-
-  it("refuses a title one character over the cap", async () => {
-    const client = buildClient({ status: "DRAFT" })
-
-    await expect(
-      updatePushCampaign(client as never, {
-        campaignId: CAMPAIGN,
-        actorId: ACTOR,
-        update: {
-          copies: [{ ...COPY[0], title: "a".repeat(51) }],
-        },
-      }),
-    ).rejects.toThrowError(PushInputError)
-  })
-
-  it("refuses a copy set with no English row", async () => {
-    const client = buildClient({ status: "DRAFT" })
-
-    await expect(
-      updatePushCampaign(client as never, {
-        campaignId: CAMPAIGN,
-        actorId: ACTOR,
-        update: { copies: [COPY[1]] },
-      }),
-    ).rejects.toThrowError(PushInputError)
-  })
-
-  it("refuses an edit to a campaign that is gone", async () => {
-    const client = buildClient(null, { moved: 0 })
-
-    await expect(
-      updatePushCampaign(client as never, {
-        campaignId: CAMPAIGN,
-        actorId: ACTOR,
-        update: { copies: COPY },
-      }),
-    ).rejects.toThrowError(PushInvalidTransitionError)
-    expect(client.pushCampaign.updateMany).not.toHaveBeenCalled()
-  })
-
-  it("refuses an edit that lost the race to a status change", async () => {
-    const client = buildClient({ status: "DRAFT" }, { moved: 0 })
-
-    await expect(
-      updatePushCampaign(client as never, {
-        campaignId: CAMPAIGN,
-        actorId: ACTOR,
-        update: { copies: COPY },
-      }),
-    ).rejects.toThrowError(PushInvalidTransitionError)
   })
 })
 

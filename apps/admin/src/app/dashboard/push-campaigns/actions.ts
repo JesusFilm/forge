@@ -107,6 +107,12 @@ function readCopies(formData: FormData) {
   return copies
 }
 
+/** R34 — the content version the page loaded, or null when the form has none. */
+function readContentVersion(formData: FormData): number | null {
+  const value = text(formData, "contentVersion")
+  return /^\d+$/.test(value) ? Number(value) : null
+}
+
 function readDestinationKind(value: string): PushDestinationKindInput | null {
   return (DESTINATION_KINDS as readonly string[]).includes(value)
     ? (value as PushDestinationKindInput)
@@ -140,8 +146,10 @@ export async function createCampaignAction(): Promise<void> {
 /**
  * R6 to R8 — the words, the destination, and the audience in one save.
  *
- * Copy rows are replaced wholesale, so a row the editor removed is deleted by
- * arriving absent. A tested campaign returns to draft inside the service.
+ * Copy rows are replaced as a set, so a row the editor removed is deleted by
+ * arriving absent. A save that changes something returns a tested campaign
+ * to draft; a save that changes nothing keeps its status (R36). A save from a
+ * page older than the stored version is refused (R34).
  */
 export async function saveCampaignAction(
   _previous: PushActionState,
@@ -150,6 +158,10 @@ export async function saveCampaignAction(
   const actorId = await requirePushActor()
   const campaignId = text(formData, "campaignId")
   if (!campaignId) return refuse("This form carries no campaign")
+  const expectedContentVersion = readContentVersion(formData)
+  if (expectedContentVersion === null) {
+    return refuse("This form carries no campaign version. Reload the page.")
+  }
 
   const copies = readCopies(formData)
   if (copies.length === 0) return refuse("Write the English copy first")
@@ -158,10 +170,12 @@ export async function saveCampaignAction(
   const destinationSlug = text(formData, "destinationSlug")
   const byCountry = text(formData, "audienceScope") === "COUNTRIES"
 
+  let written: boolean
   try {
-    await updatePushCampaign(prisma, {
+    const result = await updatePushCampaign(prisma, {
       campaignId,
       actorId,
+      expectedContentVersion,
       update: {
         copies,
         ...(destinationKind && destinationSlug
@@ -174,13 +188,16 @@ export async function saveCampaignAction(
         },
       },
     })
+    written = result.written
   } catch (error) {
     return toRefusal(error)
   }
 
   revalidateCampaign(campaignId)
   return ok(
-    "Saved. This campaign is a draft again, so test it before you send it.",
+    written
+      ? "Saved. This campaign is a draft again, so test it before you send it."
+      : "Nothing changed, so the campaign keeps its status.",
   )
 }
 

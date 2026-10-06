@@ -42,6 +42,7 @@ function campaign(
     sendingStartedAt: null,
     completedAt: null,
     lastError: null,
+    contentVersion: 4,
     createdAt: new Date("2026-09-20T00:00:00Z"),
     updatedAt: new Date("2026-09-20T00:00:00Z"),
     copies: [
@@ -114,6 +115,16 @@ beforeEach(() => {
 afterEach(() => {
   act(() => root.unmount())
   container.remove()
+})
+
+describe("CampaignEditor content version", () => {
+  it("posts the version the page loaded, so a stale save is refused (R34)", () => {
+    render(campaign({ contentVersion: 7 }))
+    const field = container.querySelector<HTMLInputElement>(
+      'input[type="hidden"][name="contentVersion"]',
+    )
+    expect(field?.value).toBe("7")
+  })
 })
 
 describe("CampaignEditor copy rows", () => {

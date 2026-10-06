@@ -17,16 +17,23 @@ import { notRestrictedFromWatchWhere } from "@/services/search-watchability"
 
 export const PUSH_SERIES_LABELS = [VideoLabel.SERIES, VideoLabel.COLLECTION]
 
-/** A video or series the Watch apps show: live, published, not restricted. */
-export function pushVideoDestinationWhere(
-  kind: "VIDEO" | "SERIES",
-): Prisma.VideoWhereInput {
+/** A live video row of one kind, published or not. SERIES means the series labels. */
+function pushVideoKindWhere(kind: "VIDEO" | "SERIES"): Prisma.VideoWhereInput {
   return {
     deletedAt: null,
     label:
       kind === "SERIES"
         ? { in: PUSH_SERIES_LABELS }
         : { notIn: PUSH_SERIES_LABELS },
+  }
+}
+
+/** A video or series the Watch apps show: live, published, not restricted. */
+export function pushVideoDestinationWhere(
+  kind: "VIDEO" | "SERIES",
+): Prisma.VideoWhereInput {
+  return {
+    ...pushVideoKindWhere(kind),
     locales: { some: { status: LocaleStatus.PUBLISHED, deletedAt: null } },
     ...notRestrictedFromWatchWhere(),
   }
@@ -55,4 +62,25 @@ export async function isPushDestinationPublished(
     },
   })
   return count > 0
+}
+
+/**
+ * KTD9 — every kind under which a live row carries the slug, published or
+ * not. The label split is the one `pushVideoDestinationWhere` uses, so a
+ * slug this finds under a kind is the slug that predicate reads.
+ */
+export async function readPushDestinationKinds(
+  prisma: PrismaClient,
+  slug: string,
+): Promise<PushDestinationKind[]> {
+  const [videos, series, experiences] = await Promise.all([
+    prisma.video.count({ where: { ...pushVideoKindWhere("VIDEO"), slug } }),
+    prisma.video.count({ where: { ...pushVideoKindWhere("SERIES"), slug } }),
+    prisma.experienceLocale.count({ where: { slug } }),
+  ])
+  const kinds: PushDestinationKind[] = []
+  if (videos > 0) kinds.push("VIDEO")
+  if (series > 0) kinds.push("SERIES")
+  if (experiences > 0) kinds.push("EXPERIENCE")
+  return kinds
 }

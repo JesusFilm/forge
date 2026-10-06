@@ -6,6 +6,7 @@ import {
   PushFrozenError,
   PushInputError,
   PushNotTestedError,
+  PushStaleContentVersionError,
   PushTokenShapedIdError,
 } from "@/services/push/errors"
 
@@ -121,7 +122,11 @@ describe("push campaign server actions", () => {
     requireSession.mockResolvedValue(ACTOR)
     countPushAudience.mockResolvedValue({ audience: 1234, unreachable: 7 })
     readPushCampaignDetail.mockResolvedValue(detail())
-    updatePushCampaign.mockResolvedValue({ id: CAMPAIGN, status: "DRAFT" })
+    updatePushCampaign.mockResolvedValue({
+      campaignId: CAMPAIGN,
+      written: true,
+      statusChange: null,
+    })
     schedulePushCampaignRun.mockResolvedValue({ campaignId: CAMPAIGN })
     sendPushCampaignNowRun.mockResolvedValue({ campaignId: CAMPAIGN })
     sendPushCampaignTestRun.mockResolvedValue({ campaignId: CAMPAIGN })
@@ -142,6 +147,7 @@ describe("push campaign server actions", () => {
         PUSH_ACTION_IDLE,
         form({
           campaignId: CAMPAIGN,
+          contentVersion: "3",
           copyLanguage: ["english"],
           copyTitle: ["Hello"],
           copyBody: ["Watch tonight"],
@@ -173,6 +179,7 @@ describe("push campaign server actions", () => {
         PUSH_ACTION_IDLE,
         form({
           campaignId: CAMPAIGN,
+          contentVersion: "3",
           copyLanguage: ["english", "arabic"],
           copyTitle: ["An announcement", "إعلان"],
           copyBody: ["Watch tonight", "شاهد الليلة"],
@@ -187,6 +194,7 @@ describe("push campaign server actions", () => {
       expect(updatePushCampaign).toHaveBeenCalledWith(expect.anything(), {
         campaignId: CAMPAIGN,
         actorId: "user_1",
+        expectedContentVersion: 3,
         update: {
           copies: [
             {
@@ -211,6 +219,7 @@ describe("push campaign server actions", () => {
         PUSH_ACTION_IDLE,
         form({
           campaignId: CAMPAIGN,
+          contentVersion: "3",
           copyLanguage: ["english"],
           copyTitle: ["An announcement"],
           copyBody: ["Watch tonight"],
@@ -236,6 +245,7 @@ describe("push campaign server actions", () => {
         PUSH_ACTION_IDLE,
         form({
           campaignId: CAMPAIGN,
+          contentVersion: "3",
           copyLanguage: ["english"],
           copyTitle: ["An announcement"],
           copyBody: ["Watch tonight"],
@@ -258,6 +268,7 @@ describe("push campaign server actions", () => {
         PUSH_ACTION_IDLE,
         form({
           campaignId: CAMPAIGN,
+          contentVersion: "3",
           copyLanguage: ["english"],
           copyTitle: ["An announcement"],
           copyBody: ["x".repeat(121)],
@@ -270,6 +281,79 @@ describe("push campaign server actions", () => {
       const result = await saveCampaignAction(PUSH_ACTION_IDLE, form({}))
       expect(result.status).toBe("error")
       expect(updatePushCampaign).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      ["no", undefined],
+      ["an empty", ""],
+      ["a fractional", "2.5"],
+      ["a negative", "-1"],
+      ["a non-numeric", "three"],
+    ])(
+      "refuses a form with %s version before it reaches the service (R34)",
+      async (_label, version) => {
+        const result = await saveCampaignAction(
+          PUSH_ACTION_IDLE,
+          form({
+            campaignId: CAMPAIGN,
+            ...(version === undefined ? {} : { contentVersion: version }),
+            copyLanguage: ["english"],
+            copyTitle: ["An announcement"],
+            copyBody: ["Watch tonight"],
+          }),
+        )
+        expect(result.status).toBe("error")
+        expect(updatePushCampaign).not.toHaveBeenCalled()
+      },
+    )
+
+    it("refuses a save from a page that loaded before a later change, and keeps the page as it is (R34)", async () => {
+      updatePushCampaign.mockRejectedValue(
+        new PushStaleContentVersionError({
+          currentContentVersion: 5,
+          lastActorId: "user_2",
+          updatedAt: new Date("2026-10-06T10:05:00Z"),
+        }),
+      )
+
+      const result = await saveCampaignAction(
+        PUSH_ACTION_IDLE,
+        form({
+          campaignId: CAMPAIGN,
+          contentVersion: "3",
+          copyLanguage: ["english"],
+          copyTitle: ["An announcement"],
+          copyBody: ["Watch tonight"],
+        }),
+      )
+
+      expect(result.status).toBe("error")
+      expect(result.status === "error" && result.reason).toContain(
+        "2026-10-06T10:05:00.000Z",
+      )
+      expect(revalidatePath).not.toHaveBeenCalled()
+    })
+
+    it("does not call a save that changed nothing a draft again (R36)", async () => {
+      updatePushCampaign.mockResolvedValue({
+        campaignId: CAMPAIGN,
+        written: false,
+        statusChange: null,
+      })
+
+      const result = await saveCampaignAction(
+        PUSH_ACTION_IDLE,
+        form({
+          campaignId: CAMPAIGN,
+          contentVersion: "3",
+          copyLanguage: ["english"],
+          copyTitle: ["An announcement"],
+          copyBody: ["Watch tonight"],
+        }),
+      )
+
+      expect(result.status).toBe("ok")
+      expect(result.status === "ok" && result.message).not.toContain("draft")
     })
   })
 

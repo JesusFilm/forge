@@ -4,8 +4,11 @@ import {
   PUSH_COPY_BODY_MAX_CHARS,
   PUSH_COPY_TITLE_MAX_CHARS,
   PUSH_MAX_AUDIENCE_COUNTRIES,
+  PUSH_MAX_COPY_ROWS_PER_CALL,
   PushAudienceInputSchema,
   PushCampaignCopySetSchema,
+  PushCampaignCreateInputSchema,
+  PushCampaignPatchInputSchema,
   PushDestinationInputSchema,
   PushScheduleInputSchema,
   PushDeliveryNonceSchema,
@@ -481,3 +484,117 @@ describe("viewer handle contract", () => {
     ).toBe(false)
   })
 })
+
+describe("push campaign patch contract (KTD7)", () => {
+  const rows = (count: number) =>
+    Array.from({ length: count }, (_, index) => ({
+      languageSlug: index === 0 ? "english" : `lang-${index}`,
+      title: "Title",
+      body: "Body",
+    }))
+
+  it("adds no defaults to the audience parts it was not given", () => {
+    expect(
+      PushCampaignPatchInputSchema.parse({ audience: { countries: ["mx"] } }),
+    ).toEqual({ audience: { countries: ["MX"] } })
+  })
+
+  it("accepts 40 copy rows and refuses 41 with an issue on copies", () => {
+    expect(
+      PushCampaignPatchInputSchema.safeParse({
+        copies: rows(PUSH_MAX_COPY_ROWS_PER_CALL),
+      }).success,
+    ).toBe(true)
+
+    const error = captureInputError(() =>
+      parsePushInput(PushCampaignPatchInputSchema, {
+        copies: rows(PUSH_MAX_COPY_ROWS_PER_CALL + 1),
+      }),
+    )
+    expect(error.issues.map((issue) => issue.path)).toEqual(["copies"])
+  })
+
+  it("refuses a removal of the English row", () => {
+    const error = captureInputError(() =>
+      parsePushInput(PushCampaignPatchInputSchema, {
+        removeLanguages: ["spanish", "english"],
+      }),
+    )
+    expect(error.issues.map((issue) => issue.path)).toEqual([
+      "removeLanguages.1",
+    ])
+  })
+
+  it("refuses a language that the call both writes and removes", () => {
+    const error = captureInputError(() =>
+      parsePushInput(PushCampaignPatchInputSchema, {
+        copies: [{ languageSlug: "spanish", title: "Hola", body: "Mira" }],
+        removeLanguages: ["spanish"],
+      }),
+    )
+    expect(error.issues.map((issue) => issue.path)).toEqual([
+      "removeLanguages.0",
+    ])
+  })
+
+  it.each(["sendDate", "localHour", "status"])(
+    "refuses the key %s (R15)",
+    (key) => {
+      const error = captureInputError(() =>
+        parsePushInput(PushCampaignPatchInputSchema, { [key]: "x" }),
+      )
+      expect(error.issues).toHaveLength(1)
+    },
+  )
+})
+
+describe("push campaign create contract (R9)", () => {
+  const english = { languageSlug: "english", title: "Hello", body: "A body" }
+
+  it("requires the English copy", () => {
+    expect(
+      PushCampaignCreateInputSchema.safeParse({
+        copies: [{ languageSlug: "spanish", title: "Hola", body: "Mira" }],
+      }).success,
+    ).toBe(false)
+  })
+
+  it("accepts the copy alone and leaves the destination and audience out", () => {
+    expect(PushCampaignCreateInputSchema.parse({ copies: [english] })).toEqual({
+      copies: [english],
+    })
+  })
+
+  it.each(["sendDate", "localHour"])("refuses the key %s (R15)", (key) => {
+    expect(
+      PushCampaignCreateInputSchema.safeParse({
+        copies: [english],
+        [key]: key === "localHour" ? 9 : "2026-10-07",
+      }).success,
+    ).toBe(false)
+  })
+})
+
+describe("parsePushInput issues", () => {
+  it("names the path of each issue and never the rejected value", () => {
+    const title = "a".repeat(PUSH_COPY_TITLE_MAX_CHARS + 1)
+    const error = captureInputError(() =>
+      parsePushInput(PushCampaignPatchInputSchema, {
+        copies: [{ languageSlug: "english", title, body: "A body" }],
+      }),
+    )
+    expect(error.issues.map((issue) => issue.path)).toEqual(["copies.0.title"])
+    expect(JSON.stringify(error.issues)).not.toContain(title)
+    expect(error.message).not.toContain(title)
+  })
+})
+
+function captureInputError(run: () => unknown): PushInputError {
+  try {
+    run()
+  } catch (error) {
+    if (error instanceof PushInputError) return error
+    throw error
+  }
+  throw new Error("expected a PushInputError")
+}

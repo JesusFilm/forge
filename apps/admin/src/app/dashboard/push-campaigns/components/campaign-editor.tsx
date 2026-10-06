@@ -145,6 +145,11 @@ export function CampaignEditor({
   return (
     <form action={formAction} className="grid gap-6 p-4">
       <input type="hidden" name="campaignId" value={campaign.id} />
+      <input
+        type="hidden"
+        name="contentVersion"
+        value={campaign.contentVersion}
+      />
 
       <fieldset className="grid gap-3">
         <legend className="text-[13px] font-semibold">

@@ -137,6 +137,7 @@ function campaign(
     sendingStartedAt: null,
     completedAt: null,
     lastError: null,
+    contentVersion: 4,
     createdAt: new Date("2026-09-20T00:00:00Z"),
     updatedAt: new Date("2026-09-20T00:00:00Z"),
     copies: [
