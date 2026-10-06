@@ -7,6 +7,10 @@ import {
   loadPrecomputedPublicControl,
 } from "./public-control"
 import { readControlRouting } from "./visit-admission"
+import {
+  loadPrecomputedIncumbentBaseline,
+  loadPrecomputedIncumbentBaselineReport,
+} from "./incumbent-baseline"
 
 const experimentSelect = {
   id: true,
@@ -38,7 +42,7 @@ export async function loadPrecomputedPublicReadiness(
   if (!hasPermission(reviewer, "read:recommendation-aggregates"))
     throw new ForbiddenError()
   const control = await loadPrecomputedPublicControl(prisma)
-  const [routing, generations, experiments] = await Promise.all([
+  const [routing, generations, experiments, baseline] = await Promise.all([
     readControlRouting(prisma),
     prisma.recommendationPrecomputedGeneration.findMany({
       where: { status: "complete" },
@@ -60,7 +64,11 @@ export async function loadPrecomputedPublicReadiness(
       take: 20,
       select: experimentSelect,
     }),
+    loadPrecomputedIncumbentBaseline(prisma),
   ])
+  const baselineReport = baseline
+    ? await loadPrecomputedIncumbentBaselineReport(prisma, baseline.id)
+    : null
   const retained =
     control.retainedExperimentId &&
     !experiments.some((item) => item.id === control.retainedExperimentId)
@@ -79,6 +87,8 @@ export async function loadPrecomputedPublicReadiness(
   return {
     schemaVersion: 1 as const,
     control,
+    baseline,
+    baselineReport,
     incumbentRouting: routing
       ? {
           manifestId: routing.manifest.id,

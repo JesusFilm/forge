@@ -564,6 +564,9 @@ export const env = createEnv({
     RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: z.enum(["1"]).optional(),
     WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: z.string().min(32).optional(),
     WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: z.string().min(1).optional(),
+    WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED: z
+      .enum(["1"])
+      .optional(),
     // Isolated, opt-in recommendation storage benchmark settings. The script
     // validates its own safety guards even when CI skips application validation.
     RECOMMENDATION_STORAGE_BENCHMARK: z.enum(["1"]).optional(),
@@ -1135,6 +1138,9 @@ export const env = createEnv({
     ),
     WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: emptyToUndefined(
       process.env.WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES,
+    ),
+    WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED: emptyToUndefined(
+      process.env.WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED,
     ),
     RECOMMENDATION_STORAGE_BENCHMARK: emptyToUndefined(
       process.env.RECOMMENDATION_STORAGE_BENCHMARK,

@@ -102,6 +102,84 @@ export function PublicPrecomputedControls({
 
   return (
     <>
+      <PageSection
+        title="Verified incumbent baseline"
+        meta="DEFAULT OFF / INCUMBENT ONLY"
+      >
+        <div className="space-y-3 p-4 text-[13px]">
+          <p>
+            This seven-day baseline verifies real browsers and records incumbent
+            Watch visits and clicks. It schedules on the next full UTC hour and
+            does not expose saved recommendations or enroll an A/B cohort.
+          </p>
+          {readiness.baseline ? (
+            <>
+              <p className="break-all">
+                <StatusPill
+                  tone={
+                    readiness.baseline.status === "active"
+                      ? "success"
+                      : "warning"
+                  }
+                >
+                  {readiness.baseline.status}
+                </StatusPill>{" "}
+                {readiness.baseline.id} · {readiness.baseline.startsAt} to{" "}
+                {readiness.baseline.endsAt}
+              </p>
+              {readiness.baselineReport ? (
+                <p>
+                  Verified incumbent visit CTR:{" "}
+                  {readiness.baselineReport.clickedVisits}/
+                  {readiness.baselineReport.eligibleVisits} visits
+                  {readiness.baselineReport.visitCtr === null
+                    ? ""
+                    : ` (${(100 * readiness.baselineReport.visitCtr).toFixed(2)}%)`}
+                  ; {readiness.baselineReport.independentBrowsers} independent
+                  browsers.{" "}
+                  {readiness.baselineReport.isFinal
+                    ? "Final DB evidence."
+                    : "Provisional DB evidence."}{" "}
+                  Web request health:{" "}
+                  {readiness.baselineReport.webRequestHealth}.
+                </p>
+              ) : null}
+              {canOperate &&
+              (readiness.baseline.status === "active" ||
+                readiness.baseline.status === "scheduled" ||
+                readiness.baseline.status === "ended") ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() =>
+                    void post({
+                      action: "stop_baseline",
+                      baselineId: readiness.baseline!.id,
+                    })
+                  }
+                  className="border border-[var(--color-hairline)] px-3 py-2 disabled:opacity-50"
+                >
+                  Stop baseline admission
+                </button>
+              ) : null}
+            </>
+          ) : (
+            <p>No baseline has been started.</p>
+          )}
+          {canOperate &&
+          control.mode === "incumbent" &&
+          (!readiness.baseline || readiness.baseline.status === "stopped") ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void post({ action: "start_baseline" })}
+              className="border border-[var(--color-hairline)] px-3 py-2 disabled:opacity-50"
+            >
+              Schedule verified baseline
+            </button>
+          ) : null}
+        </div>
+      </PageSection>
       <PageSection title="Serving pointer" meta="MANUAL / VERSIONED">
         <div className="min-w-0 space-y-3 p-4 text-[13px]">
           <p className="break-all">

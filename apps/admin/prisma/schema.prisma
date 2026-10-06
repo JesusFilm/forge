@@ -3781,6 +3781,7 @@ model RecommendationRequest {
   renderedFacts           RecommendationRenderedFact[]
   impressions             RecommendationImpression[]
   selections              RecommendationSelection[]
+  precomputedBaselineVisits RecommendationPrecomputedBaselineVisitRequest[]
   episodes                RecommendationPlaybackEpisode[]
   playbackFacts           RecommendationPlaybackFact[]
   outcomes                RecommendationOutcomeRevision[]
@@ -6896,6 +6897,62 @@ model RecommendationPrecomputedVisitRequest {
   @@index([visitId, createdAt], map: "recommendation_precomputed_visit_request_visit_idx")
   @@index([expiresAt], map: "recommendation_precomputed_visit_request_expiry_idx")
   @@map("recommendation_precomputed_visit_request")
+}
+
+/// Operator-enabled, incumbent-only human baseline. It has no experiment FK
+/// and cannot alter the public serving pointer.
+model RecommendationPrecomputedBaselineRun {
+  id String @id @db.Uuid
+  enabled Boolean @default(false)
+  verificationAuthority String @map("verification_authority") @db.VarChar(32)
+  startsAt DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt DateTime @map("ends_at") @db.Timestamptz(6)
+  stoppedAt DateTime? @map("stopped_at") @db.Timestamptz(6)
+  stoppedBy String? @map("stopped_by") @db.VarChar(191)
+  controlRoutingDigest String @map("control_routing_digest") @db.Char(64)
+  actorId String @map("actor_id") @db.VarChar(191)
+  finalReport Json? @map("final_report") @db.JsonB
+  finalReportDigest String? @map("final_report_digest") @db.Char(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  visits RecommendationPrecomputedBaselineVisit[]
+
+  @@index([endsAt, enabled], map: "recommendation_precomputed_baseline_run_window_idx")
+  @@index([expiresAt], map: "recommendation_precomputed_baseline_run_expiry_idx")
+  @@map("recommendation_precomputed_baseline_run")
+}
+
+/// Minimal, verified visit. Raw browser identity and tokens are not persisted.
+model RecommendationPrecomputedBaselineVisit {
+  id String @id @db.Uuid
+  runId String @map("run_id") @db.Uuid
+  run RecommendationPrecomputedBaselineRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  browserUnitDigest String @map("browser_unit_digest") @db.Char(64)
+  sourceVideoId String @map("source_video_id") @db.VarChar(191)
+  locale String @db.VarChar(32)
+  audioLanguageSlug String @map("audio_language_slug") @db.VarChar(64)
+  deliveryResult String @default("not_attempted") @map("delivery_result") @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  requests RecommendationPrecomputedBaselineVisitRequest[]
+
+  @@index([runId, createdAt], map: "recommendation_precomputed_baseline_visit_report_idx")
+  @@index([runId, browserUnitDigest], map: "recommendation_precomputed_baseline_visit_browser_idx")
+  @@index([expiresAt, id], map: "recommendation_precomputed_baseline_visit_expiry_idx")
+  @@map("recommendation_precomputed_baseline_visit")
+}
+
+model RecommendationPrecomputedBaselineVisitRequest {
+  requestId String @id @map("request_id") @db.VarChar(191)
+  request RecommendationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  visitId String @map("visit_id") @db.Uuid
+  visit RecommendationPrecomputedBaselineVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([visitId], map: "recommendation_precomputed_baseline_request_visit_idx")
+  @@index([expiresAt], map: "recommendation_precomputed_baseline_request_expiry_idx")
+  @@map("recommendation_precomputed_baseline_visit_request")
 }
 
 /// Immutable fixture/prelaunch settings; no public activation authority.
