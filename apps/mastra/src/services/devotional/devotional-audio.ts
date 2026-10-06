@@ -819,11 +819,17 @@ async function twoVoiceHookAudio(
   const audios: VoiceoverAudio[] = []
   for (const [i, line] of lines.entries()) {
     const voice = voices[i] ?? voices[voices.length - 1]!
+    // The first line is the hook itself: read with energy (owner,
+    // 2026-10-06), led by the opening's direction tag when it has one.
+    const first = i === 0
+    const base = continuousSettings("hook")
     const speak = () =>
       voiceover({
-        text: line,
+        text: first && seg.direction ? `${seg.direction.trim()} ${line}` : line,
         voice,
-        voiceSettings: continuousSettings("hook"),
+        voiceSettings: first
+          ? { ...base, stability: 0.3, style: 0.65, speed: 1.12 }
+          : base,
         model: CONTINUOUS_MODEL,
         withTimestamps: true,
         timeoutMs: 120_000,

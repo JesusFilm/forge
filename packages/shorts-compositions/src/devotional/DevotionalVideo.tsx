@@ -1840,7 +1840,8 @@ function montageFocusAt(
 }
 
 /** `montage`: a slow push-in across each shot (1 → 1.045), eased, restarting
- *  on every cut. 1 outside the lead. */
+ *  on every cut, except the first shot, which breathes out then in. 1 outside
+ *  the lead. */
 function montagePush(
   t: number,
   starts: ReadonlyArray<number>,
@@ -1854,7 +1855,18 @@ function montagePush(
   const from = k === 0 ? 0 : cuts[k]
   const to = k + 1 < cuts.length ? cuts[k + 1] : leadSec
   const p = Math.max(0, Math.min(1, (t - from) / Math.max(0.1, to - from)))
-  return 1 + 0.045 * Easing.bezier(0.33, 0, 0.67, 1)(p)
+  const ease = Easing.bezier(0.33, 0, 0.67, 1)
+  // The FIRST shot breathes: it opens a little close, eases back, then eases
+  // in again, the way podcast openings move (owner, 2026-10-06, after a Lenny's
+  // Podcast intro: "first pulling the video away a little, then bringing it
+  // closer"). Kept gentle: 1.08 → 1.0 at 45% of the shot → 1.06.
+  if (k === 0) {
+    const turn = 0.45
+    return p < turn
+      ? 1.08 - 0.08 * ease(p / turn)
+      : 1 + 0.06 * ease((p - turn) / (1 - turn))
+  }
+  return 1 + 0.045 * ease(p)
 }
 
 /** `montage`: "Let's watch", WATCH and the passage sit over the last shot
