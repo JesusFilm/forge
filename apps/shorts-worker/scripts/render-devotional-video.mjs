@@ -363,6 +363,10 @@ async function main() {
   // motion and timing (owner: "even 240 would be enough to see what's what").
   // 0.25 of 1080p is 270p. Layout is identical; only the output is smaller.
   const scale = Number(arg("scale", "")) || null
+  // `--audio-only=true`: render the soundtrack alone (mp3, no frames), to put
+  // a corrected narration onto an already rendered picture (owner, 2026-10-07:
+  // fix one mispronounced word without a full re-render).
+  const audioOnly = arg("audio-only", "false") === "true"
   const outPath = abs(arg("out", "devo/artifacts/video/design-grain.mp4"))
   // Preview mode: render N evenly-spaced STILL frames instead of encoding the
   // whole video. Each still costs one frame of Chrome rasterization rather
@@ -705,7 +709,7 @@ async function main() {
       composition,
       serveUrl,
       chromiumOptions,
-      codec: "h264",
+      codec: audioOnly ? "mp3" : "h264",
       outputLocation: outPath,
       inputProps,
       // QUALITY. Two separate knobs, both left at Remotion's defaults before:
@@ -720,8 +724,12 @@ async function main() {
       // text cards and the film grain more bitrate to sit in, which matters
       // because YouTube re-encodes whatever we upload.
       // A draft has nothing to preserve: default quality, and the smaller frame.
-      jpegQuality: scale && scale < 1 ? 80 : 95,
-      crf: scale && scale < 1 ? 23 : 16,
+      ...(audioOnly
+        ? {}
+        : {
+            jpegQuality: scale && scale < 1 ? 80 : 95,
+            crf: scale && scale < 1 ? 23 : 16,
+          }),
       ...(scale ? { scale } : {}),
       ...(range ? { frameRange: range } : {}),
       ...(concurrency ? { concurrency } : {}),

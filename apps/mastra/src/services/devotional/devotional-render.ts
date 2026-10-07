@@ -1448,6 +1448,8 @@ export function runRender(
     frameRange?: string
     /** Draft: output at this fraction of full size (0.25 of 1080p = 270p). */
     draftScale?: number
+    /** Soundtrack only (mp3), no frames. */
+    audioOnly?: boolean
   } = {},
 ): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -1481,6 +1483,7 @@ export function runRender(
         ...(renderGl() ? [`--gl=${renderGl()}`] : []),
         ...(opts.draftScale ? [`--scale=${opts.draftScale}`] : []),
         ...(opts.coverTitleFirst ? ["--cover-title-first=true"] : []),
+        ...(opts.audioOnly ? ["--audio-only=true"] : []),
         ...(opts.coverSecondaryLine
           ? [`--cover-secondary=${opts.coverSecondaryLine}`]
           : []),
@@ -1741,6 +1744,9 @@ export type RenderOptions = {
   /** One voice per opening line (two-voice opening): the take arrives with
    *  its pauses set, so `hookGapSec` does not re-time it. */
   hookVoices?: readonly string[]
+  /** Render the soundtrack only (mp3, no frames) and lay it onto the video
+   *  already at the output path; see render-devotional-video.mjs. */
+  audioOnly?: boolean
   hookGapSec?: number
   /** `montage`, vertical: horizontal focus (0..1) per shot, plus one for the
    *  scene after the last cut. */
@@ -3304,8 +3310,9 @@ async function renderInStage(
   const stillsOnly = Boolean(options.stills || options.stillsFrames)
   // A pack-only run names its pack after the video it describes, without
   // burning a version number for an MP4 it never writes.
+  // An audio-only fix replaces the soundtrack of the video already there.
   const videoPath =
-    stillsOnly || options.packOnly
+    stillsOnly || options.packOnly || options.audioOnly
       ? path.join(options.outDir, filename)
       : await nextFreePath(options.outDir, filename)
   log(
@@ -3406,6 +3413,56 @@ async function renderInStage(
       render: packRender,
       log,
     })
+  }
+  if (options.audioOnly) {
+    // A narration fix on a finished video: render the soundtrack alone and
+    // lay it under the picture already at `videoPath` (the old file is kept
+    // beside it). The timeline must be the one that picture was made from.
+    if (!existsSync(videoPath))
+      throw new Error(`--audio-only needs the rendered video at ${videoPath}`)
+    const audioPath = videoPath.replace(/\.mp4$/, ".audio.mp3")
+    await runRender(
+      path.join(stage, "manifest.json"),
+      audioPath,
+      comp,
+      style,
+      layout,
+      musicVolume,
+      xfadeSec,
+      videoAudioLevel,
+      { ...renderOpts, audioOnly: true },
+    )
+    const before = videoPath.replace(
+      /\.mp4$/,
+      `.before-audio-${Date.now()}.mp4`,
+    )
+    await copyFile(videoPath, before)
+    const muxed = videoPath.replace(/\.mp4$/, ".muxed.mp4")
+    await runFfmpeg([
+      "-y",
+      "-i",
+      before,
+      "-i",
+      audioPath,
+      "-map",
+      "0:v",
+      "-map",
+      "1:a",
+      "-c:v",
+      "copy",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "320k",
+      "-shortest",
+      muxed,
+    ])
+    await copyFile(muxed, videoPath)
+    await rm(muxed, { force: true })
+    log(
+      `🔊 soundtrack replaced (picture kept; old file: ${path.basename(before)})`,
+    )
+    return videoPath
   }
   await runRender(
     path.join(stage, "manifest.json"),

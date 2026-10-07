@@ -279,6 +279,9 @@ async function main() {
       // `--voice-v4`: the narration read on Eleven v4 in continuous runs, with
       // the devotional's own `direction` tags (owner, 2026-10-05).
       ...(process.argv.includes("--voice-v4") ? { continuousVoice: true } : {}),
+      // `--audio-only`: re-render the soundtrack and lay it onto the video
+      // already at the output path (a narration fix, no picture re-render).
+      ...(process.argv.includes("--audio-only") ? { audioOnly: true } : {}),
       // `--hook-voices=russian,russian-female,...`: one voice per opening
       // line, in order (owner, 2026-10-06). Needs --voice-v4.
       ...(arg("hook-voices")
