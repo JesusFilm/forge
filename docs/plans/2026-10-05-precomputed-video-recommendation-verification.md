@@ -1735,7 +1735,9 @@ rendered without JavaScript/console/network errors or horizontal overflow.
 Development DOMContentLoaded was approximately 792 ms for Admin and 354 ms for
 Watch in these observations; these are local development measurements, not
 production Web Vitals or a comparative production performance guarantee.
-The owner has the links, but their review and production merge remain pending.
+The owner subsequently confirmed that the preview looks fine on October 7.
+The requested local demonstration is accepted; production merge and activation
+remain separate operations.
 
 Receipts under `/tmp/forge-feat-590-orchestration`:
 `tailnet-browser-report.json`, `tailnet-browser-admin-report.json`,
@@ -1743,3 +1745,144 @@ Receipts under `/tmp/forge-feat-590-orchestration`:
 `tailnet-watch-desktop.png`, and `tailnet-watch-click-destination.png`.
 The scratch gateways, preview session route and demo entry page are excluded
 from commits and deployment.
+
+## October 7 preview acceptance and resource cleanup
+
+The owner requested cleanup because the host was running short of memory.
+After acceptance, the orchestrator stopped only the task's two preview gateways,
+Admin/Web development servers and temporary preview Redis. Ports 3300, 3313,
+3315 and 3316 are no longer listening. The host links are intentionally offline.
+The paid-data PostgreSQL clone remains available for the remaining native
+checks and selected-transcript retrieval audit.
+
+Removed approximately 1,823 MiB of disposable preview caches from `/tmp` and
+404 MiB of generated Admin/Web server, static and log files. Generated route
+types, source worktrees, screenshots, selected catalog inputs and actual build
+receipts were preserved. Available memory rose from roughly 4 GiB before server
+shutdown to 13 GiB afterward; this is a point-in-time host observation, not an
+application memory benchmark. Unrelated containers and work were left alone.
+
+The exact paid-result table archive, build JSON/JSONL receipts, catalog manifest,
+browser reports and screenshots also have a protected copy at
+`/home/nisal/.local/share/forge/feat-590-evidence-20261007`, with SHA-256 checksums.
+The initial small archive preserves precomputed result tables. A subsequent
+198,328,843-byte custom-format dump also preserves the full actual catalog schema
+(`actual-catalog-schema.dump`, SHA-256
+`978851f19f1bdc528c4a1d4ef0def2b17530326355748c309bfb1c7feb52f361`).
+Its table of contents contains 251 table-data entries. Restoring it into a new
+disposable database succeeded, preserving 1,180 Videos, 164,639 transcripts,
+280,046 chunks, three generations and 46 model-call receipts. The durable pilot's
+eight calls and $0.2494275, and the cancelled full attempt's 34 calls,
+$2.3197855 known charge and one unknown charge, matched the saved records.
+The disposable restore database was removed after verification. The original
+public-content export remains available separately; source and original paid
+data were not removed. The restore receipt is `catalog-backup-restore.json`
+beside the protected archive.
+
+Root's corrected native durable-build run passed all 13 cases, including the
+persisted repair-attempt limit. Its initial run omitted the local fixture ingest
+bearer environment variable and failed authorization; rerunning with that fixture
+configuration passed. The Mastra catalog-generation cases passed 5/5. The Admin
+excerpt-key fix and walkthrough record committed as `94a8e7912` through normal
+lint-staged and full-repository formatting hooks.
+
+## October 7 bounded retrieval feasibility
+
+Worker A's scratch prototype indexed exactly the fixed 1,031 eligible Videos and
+the selected 1,226 complete transcripts / 2,686 chunks (4,055,511 characters).
+It includes all 172 metadata-only Videos and all three non-English fallback
+cases. Five deterministic metadata, transcript, keyword, Bible and structural
+lanes were combined without claiming semantic understanding. Two runs took
+approximately nine seconds each, peaked at 299 MiB RSS, and produced identical
+ordered-pool digest
+`4b9bc61c5db77cb0259d331247fe0129c6d2ee956fe5e200f53fe92f31099cfb`.
+
+The two saved directed pilot connections ranked 14 and 27. A depth of 12 missed
+both, 24 missed one, and 40 included both. Two accepted connections cannot
+establish recommendation recall. The independently defined structural and
+fallback catalog proxies also exposed misses; these proxies are not judgments
+that a link is worth recommending. No candidate depth was selected or integrated.
+The measured reduction curve counts plan/discovery calls only, excluding source
+summaries, judgments, retries, GA requests and provider costs.
+
+The current integration already enforces the approved per-Edition transcript
+selection at its authenticated catalog/chunks boundary. An initial worker audit
+read its older checkout and incorrectly described that policy as missing; the
+worker corrected the report against `94a8e7912`. Remaining work is retrieval
+quality and generation binding, not another transcript-selection implementation.
+The follow-up read-only production check found all 2,686 selected chunk IDs and
+all 1,226 selected Edition transcripts fully covered by non-null, 1,536-dimension
+vectors matching active storage contract `semantic-transcript-pgvector-v2`.
+Every chunk/transcript identity, row timestamp and raw-text hash matched the
+exported snapshot at or before the cutoff. All three fallback transcripts were
+covered. This establishes compatible current vectors and matching selected rows,
+not independent proof of the embedding's exact input-text lineage.
+
+The public Watch visibility rule admits only 2,664 of those chunks: it excludes
+the selected Amharic transcript's 22 chunks. The production transcript projection
+authority table has no rows, so no selected chunk was qualified against a declared
+physical Typesense collection. That does not establish that Typesense itself is
+empty. The existing Postgres vectors support a bounded supplemental semantic
+prototype; the broad public Typesense index remains unqualified for this build.
+
+Reproduction and reports:
+`/tmp/forge-feat-590-real-catalog-20261007/retrieval-audit/`.
+The audit made no paid model calls or production writes and left the worker
+branch clean.
+
+## October 7 current-main integration and compiler memory
+
+Merged main `5bed7ef5b` as `3a07547f1`, then integrated B's live-readiness,
+immutable launch-evidence and capacity changes as `9055913ed`. The integration
+retains root's complete per-Edition transcript policy and A's durable bounded
+candidate repair. Normal lint-staged and full-repository formatting hooks passed.
+
+Main's unrelated migrations share numeric prefixes with this feature. The native
+recommendation fixture's numeric filename filter accidentally included Studio and
+push migrations. In a new disposable database, the existing playback test failed
+on the missing `short_source_snapshot` relation. Selecting migrations by their
+`precomputed` name fixed the fixture: playback (18), profile candidates (4) and
+profile projection (16) passed, 38/38 total. No actual catalog schema was used for
+the failing migration reproduction.
+
+The combined native precomputed suites passed 76 unique cases after correcting
+the test environment. The initial run omitted the preview-enable flag, causing
+seven Watch authorization failures; all 22 Watch cases passed with the flag set.
+The other nine files had already passed and were not needlessly repeated.
+
+Full Admin typechecking exhausted an 8 GiB heap both with and without its saved
+incremental cache. A focused compiler probe traced a large comparison to a
+narrowly inferred native-fixture Prisma constructor assigned to the default
+`PrismaClient` type. Explicit `PrismaClient<Prisma.PrismaClientOptions>` constructor
+typing preserved runtime behavior and removed that extra structural comparison.
+On the same route test, compiler heap fell from about 2.1 GB to 1.5 GB and check
+time from 16.0 s to 4.0 s. The type-only change was applied to 14 feature fixtures.
+Full fresh Admin `tsc --noEmit --incremental false --extendedDiagnostics` then
+passed in 228.25 s at the existing 8 GiB limit, with 8,208,826 KiB reported memory.
+Task-owned failed compiler processes and their verified crash dumps were removed.
+
+Logs in `/tmp/forge-feat-590-orchestration`:
+`20261007-migration-scope-red.log`, `20261007-migration-scope-green.log`,
+`20261007-combined-live-native.log`, `20261007-combined-watch-native.log`,
+`20261007-prisma-assignment-baseline.jsonl`,
+`20261007-prisma-assignment-explicit-options.jsonl`, and
+`20261007-combined-admin-explicit-options-typecheck.log`.
+
+The connected native build-through-Admin suite passed 25/25 after updating its
+controlled model replies to include the required nullable added-viewing-value
+field and its public fixture windows to one UTC calendar month. The unsupported
+`themes` output now explicitly expects an unknown-usage receipt when provider
+schema parsing fails; supported-but-unavailable `keywords` retains known usage.
+The finalization check advances beyond both the month cutoff and raw expiry.
+These fixture corrections leave production validation and usage accounting
+unchanged. Standards review found no convention violations; Spec review confirmed
+the approved month window, explicit unknown usage, and retained native end-to-end
+assertions rather than bypassing the newer contracts.
+
+B's additional capacity test is integrated as `f9f936409`, with the same explicit
+Prisma options typing. Its root native run passed 1/1, covering refused thin
+samples, persisted append-only receipts, ordinary unlinked request accounting and
+database immutability. Logs: `20261007-combined-connected-native-red.log`,
+`20261007-combined-connected-native-fixture-progress.log`,
+`20261007-combined-connected-native.log` and
+`20261007-combined-capacity-native.log`.
