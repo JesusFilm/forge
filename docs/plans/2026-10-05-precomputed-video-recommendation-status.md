@@ -23,12 +23,20 @@ settings are not live authority. Workers A/B continued from `5c9f38c6f`. Deploye
 `2069e87f6`. Their remaining live verifier/baseline work is still in progress.
 The real GA/Astra two-video durable pilot is complete: two saved connections,
 eight calls and $0.2494275 known model charges. The full 1,031-video generation
-has its manifest and first-source discovery checkpoint saved; an intermittent
-GA report timeout interrupted it before the first source completed. Replaying
-the exact report succeeded with all 78 rows; a bounded timeout fix is underway.
+passed the GA timeout after `de5a20bf2`, then two candidate judgments failed
+strict local evidence validation. That attempt is now cancelled, preserving
+$2.3197855 known model charges and one unresolved call with unknown charge.
+A bounded candidate repair is integrated as `aeb55b991` and `e4ecc23ad`:
+strict evidence checks remain, each invalid response retains its charge, and
+the two-attempt limit plus safe feedback survive checkpoint resume. The next
+full build is held for a retrieval audit: the exhaustive implementation requires
+at least 53,612 plan/discovery model calls before individual judgments. The spec
+permits catalog-wide retrieval without requiring exhaustive all-pairs reasoning.
 The local Admin preview now serves the saved pilot after correcting PrismaPg's
-selected-schema handling. Browser verification is pending reconnection of the
-app browser after the session interruption. No production experiment is active.
+selected-schema handling. Local Chromium verified the Admin review, Watch card,
+successful selection and navigation to the target. Temporary gateways on the
+existing Tailscale connection let the owner inspect this isolated pilot from
+their host machine; owner review remains pending. No production experiment is active.
 
 - Orchestrator: `01a109d7-dc1c-7600-a2c4-07dee79b4aff`.
 - Initial base: `d661b99939e24ba41834adce53c6bad9262bcee9`.
@@ -87,11 +95,12 @@ report qualification and operator run procedure.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
 branch: `codex/feat-590-2575-live-admin`.
 
-Current continuation ownership: A owns the GA report timeout fix, with no paid
-model rerun during diagnosis. B owns conditional live prepare/start readiness,
+Current continuation ownership: A completed strict candidate-evidence repair and
+is auditing existing retrieval for a practical full build; no paid rerun during
+the audit. B owns conditional live prepare/start readiness,
 fresh append-only launch-capacity evidence, and adapter-backed fixture guards.
 The orchestrator owns local preview/schema selection and actual build resumption.
-Their latest shared integration is `e45238fed`; both chats resumed after the
+The latest integration is `e4ecc23ad`; both chats resumed after the
 October 7 session interruption. The completion notes below record earlier slices.
 
 Both workers have completed their owned implementation and normal-hook commits.

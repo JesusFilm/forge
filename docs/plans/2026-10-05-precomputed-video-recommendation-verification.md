@@ -1629,3 +1629,117 @@ Receipts are under `/tmp/forge-feat-590-real-catalog-20261007`:
 `full-durable-report.json`, `full-durable-calls.jsonl` and capacity observations.
 Native red/green and local server logs are under
 `/tmp/forge-feat-590-orchestration/20261007-*`.
+
+## October 7 GA recovery, strict-evidence failure and host preview
+
+GA timeout source `08f5b05c9` is integrated as `de5a20bf2`. Detailed Watch
+start/referrer reports receive a bounded 120-second timeout with two attempts;
+summary/coverage reports retain 50 seconds. The same failed request digest was
+replayed with all 78 rows. Mastra typecheck, all 3,264 tests, scoped lint/format,
+and normal hooks passed. The resumed actual run got through the former timeout,
+including a separately recorded HTTP 502 retry after approximately 60 seconds.
+
+The first two full-catalog sources subsequently failed `provider_invalid_output`
+after paid candidate judgments returned. This was local strict validation after
+successful transport, not GA access or provider JSON-schema refusal. The durable
+failure records retained the charges but intentionally removed failed source
+checkpoints and provisional choices; the exact invalid field/excerpt is not
+recoverable from those receipts. Bounded repair and compact reason codes are
+being added without relaxing evidence acceptance.
+
+The operator stopped the runner and cancelled `actual-full-catalog-20261007-v1`
+through the authenticated durable service. Its final audit has 34 model call
+reservations, $2.3197855 known cost, one unresolved call with unknown charge,
+30 completed GA HTTP receipts, and no completed source. The unknown call was
+in flight at process stop and is not recorded as free. The saved two-video pilot
+is still complete and unchanged. A future full attempt requires a new generation;
+no failed-source row or cost ledger was reset. The scratch runner now handles
+termination by finishing the current receipt/checkpoint and stopping before
+reserving another model or GA call. No further paid run occurred during diagnosis.
+
+PrismaPg selected-schema regression checks pass 5/5, including both real app
+pools and libpq multi-host URI preservation; integrated as `cb3a62001` with
+normal hooks. Local Watch playback was enriched for the two pilot Videos only
+using six public production HLS URLs, with no model-input timestamp changes or
+production writes. The real route manifest and Watch page then returned 200.
+Authenticated tester exchange and Web-to-Admin GraphQL preview delivery served
+the saved Samaritan Woman choice from Nicodemus. Two warm HTTP API responses
+were 344 and 218 ms. The initial development compile exceeded the preview
+budget and correctly attributed incumbent fallback. These are development HTTP
+observations, not production rendering performance or a visual browser check.
+
+At the owner's request, a temporary gateway exposes only GET review/static-asset
+paths over the existing Tailscale network, checks the connecting Tailscale user,
+and expires after two hours. Its local Admin session stays inside the gateway.
+The remotely addressable review returned 200 with the pilot, charges and target
+visible. No public internet listener, production activation or serving mutation
+was enabled. Browser tooling still has no connected surface; owner visual review
+remains pending.
+
+Additional receipts: `full-durable-stopped-report.json`,
+`full-durable-cancelled-report.json`, `full-resume-code-provenance.json`, and
+`local-playback-enrichment.json` under the real-catalog scratch directory;
+`20261007-local-watch-delivery.jsonl` and `tailnet-preview.html` under the
+orchestration scratch directory. The resume used the tested worker reader with
+an explicit deployed-identity token provider; integration additionally contains
+the sealed-credential default-provider branch, which this runner did not call.
+
+## October 7 durable evidence repair and actual browser walkthrough
+
+Worker A's `0784a97bf` and `0cfa3343f` are integrated as `aeb55b991` and
+`e4ecc23ad`. Unsupported `themes` metadata evidence is no longer advertised.
+Candidate judgment retries once after invalid evidence and supplies only a
+bounded reason plus field or chunk identity. It never rewrites a quote to make
+it pass. Each charged invalid answer remains a separate cost receipt. Root
+review found that the original local attempt counter reset after interruption;
+the follow-up persists its count and feedback atomically with that receipt.
+A resumed candidate consumes its remaining attempt, or makes no further call
+when both attempts were used. Prompt provenance advances to version 3. Existing
+failed generations and their charges remain unchanged.
+
+Worker validation: Mastra 3,266 passed and 44 skipped; Admin native durable-build
+lifecycle 13/13; Admin and Mastra typechecks, focused repair/resume cases, scoped
+lint, formatting and normal commit hooks passed. Root Standards and Spec review
+found no remaining issue in the bounded repair after the durability follow-up.
+
+A read-only throughput audit found 1,031 sources times 26 catalog pages, with
+one analytics-plan and one discovery call per page: at least 53,612 model calls
+before source summaries or candidate judgments. Only two pages have measured
+prompt sizes and latency; those do not establish a full-runtime or cost forecast.
+The next full paid run remains held while existing retrieval is audited. The
+spec permits summaries and retrieval over the eligible catalog and does not
+promise exhaustive all-pairs inference; all eligible sources and complete
+selected source/target transcripts remain required.
+
+The user requested a host-accessible tunnel. Owner-identity-checked Tailscale
+listeners on ports 3315 (Admin) and 3316 (Watch) serve the isolated pilot for two
+hours. Admin permits read-only review and assets; Watch permits the two pilot
+videos and local recommendation/profile/evidence interactions. The local Admin
+session and tester capability stay in gateway memory. The development proxies
+forward static assets and HMR, provide UUID compatibility using browser
+`getRandomValues`, and supply local Fetch Metadata only after checking the
+owner's tailnet identity and exact request Origin. These temporary HTTP-origin
+accommodations are not production human-verification or tracking-loss evidence.
+
+Local headless Chromium inspected both actual application pages. The Watch row
+served generation `actual-durable-two-video-pilot-20261007-v1`, displayed the
+Samaritan Woman card, accepted its selection with HTTP 200, and navigated to
+`/watch/jesus-speaks-to-a-samaritan-woman.html`. No Watch JavaScript exception,
+console error or failed HTTP response occurred in the final click-through run;
+media/telemetry requests aborted by navigation remain visible separately.
+
+The actual pilot exposed a small Admin rendering defect: two excerpts from the
+same transcript chunk shared a React key. Keys now distinguish each immutable
+passage occurrence, preserving all excerpts. The canonical Admin URL then
+rendered without JavaScript/console/network errors or horizontal overflow.
+Development DOMContentLoaded was approximately 792 ms for Admin and 354 ms for
+Watch in these observations; these are local development measurements, not
+production Web Vitals or a comparative production performance guarantee.
+The owner has the links, but their review and production merge remain pending.
+
+Receipts under `/tmp/forge-feat-590-orchestration`:
+`tailnet-browser-report.json`, `tailnet-browser-admin-report.json`,
+`tailnet-browser-watch-report.json`, `tailnet-admin-desktop.png`,
+`tailnet-watch-desktop.png`, and `tailnet-watch-click-destination.png`.
+The scratch gateways, preview session route and demo entry page are excluded
+from commits and deployment.
