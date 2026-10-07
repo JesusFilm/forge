@@ -49,12 +49,232 @@ function catalog(ids: string[]): SourceCatalog {
       throw new Error("unexpected source read")
     },
     async chunks() {
-      throw new Error("unexpected transcript read")
+      return { chunks: [], nextCursor: null }
     },
   }
 }
 
 describe("catalog generation boundary", () => {
+  it("binds selected transcript bytes to the generation input on replay", async () => {
+    const sourceCatalog = catalog(["source"])
+    let text = "First transcript passage."
+    sourceCatalog.chunks = async () => ({
+      chunks: [
+        {
+          id: "chunk",
+          transcriptId: "transcript",
+          language: "en",
+          chunkIndex: 0,
+          text,
+        },
+      ],
+      nextCursor: null,
+    })
+    const digests: string[] = []
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as Record<string, unknown>
+      digests.push(String(call.inputDigest))
+      return { state: "complete" }
+    })
+    const dependencies = {
+      catalog: sourceCatalog,
+      ingest,
+      model: { generate: vi.fn() },
+    }
+    await runPrecomputedCatalog(input, dependencies)
+    await runPrecomputedCatalog(input, dependencies)
+    text = "A changed transcript passage."
+    await runPrecomputedCatalog(input, dependencies)
+    expect(digests[0]).toBe(digests[1])
+    expect(digests[2]).not.toBe(digests[0])
+    expect(dependencies.model.generate).not.toHaveBeenCalled()
+  })
+
+  it("rejects selected transcript identity drift before opening a generation", async () => {
+    const sourceCatalog = catalog(["source"])
+    const list = sourceCatalog.catalog
+    sourceCatalog.catalog = async (request) => {
+      const page = await list(request)
+      return {
+        ...page,
+        videos: page.videos.map((video) => ({
+          ...video,
+          transcriptSelection: {
+            policy: "english-per-edition-with-complete-fallback-v1" as const,
+            availableTranscriptCount: 1,
+            incompleteTranscriptCount: 0,
+            skippedEditionCount: 0,
+            selected: [
+              {
+                transcriptId: "selected-transcript",
+                videoEditionId: "edition",
+                language: "am",
+                totalChunks: 1,
+              },
+            ],
+          },
+        })),
+      }
+    }
+    sourceCatalog.chunks = async () => ({
+      chunks: [
+        {
+          id: "chunk",
+          transcriptId: "selected-transcript",
+          language: "fr",
+          chunkIndex: 0,
+          text: "A complete but wrongly attributed transcript chunk.",
+        },
+      ],
+      nextCursor: null,
+    })
+    const ingest = vi.fn().mockResolvedValue({ state: "complete" })
+    await expect(
+      runPrecomputedCatalog(input, {
+        catalog: sourceCatalog,
+        ingest,
+        model: { generate: vi.fn() },
+      }),
+    ).rejects.toThrow("candidate_retrieval_selected_transcript_incomplete")
+    expect(ingest).not.toHaveBeenCalled()
+  })
+
+  it("discovers from a bounded catalog pool without losing structural, exact, or fallback targets", async () => {
+    const sourceId = "a-source"
+    const structuralId = "z-structural"
+    const exactId = "z-exact"
+    const fallbackId = "z-fallback"
+    const ids = [
+      sourceId,
+      ...Array.from({ length: 85 }, (_, index) => `b-${index}`),
+      structuralId,
+      exactId,
+      fallbackId,
+    ]
+    const sourceCatalog = catalog(ids)
+    const list = sourceCatalog.catalog
+    sourceCatalog.catalog = async (request) => {
+      const page = await list(request)
+      return {
+        ...page,
+        videos: page.videos.map((video) => ({
+          ...video,
+          title: video.id === sourceId ? "Courage and hope" : video.id,
+          parentVideoIds: video.id === sourceId ? [structuralId] : [],
+          keywords:
+            video.id === sourceId || video.id === exactId
+              ? ["specific shared theme"]
+              : [],
+          transcriptLanguages: video.id === fallbackId ? ["am"] : [],
+          transcriptSelection:
+            video.id === fallbackId
+              ? {
+                  policy:
+                    "english-per-edition-with-complete-fallback-v1" as const,
+                  availableTranscriptCount: 1,
+                  incompleteTranscriptCount: 0,
+                  skippedEditionCount: 0,
+                  selected: [
+                    {
+                      transcriptId: "fallback-transcript",
+                      videoEditionId: "fallback-edition",
+                      language: "am",
+                      totalChunks: 1,
+                    },
+                  ],
+                }
+              : undefined,
+        })),
+      }
+    }
+    sourceCatalog.chunks = async ({ videoId }) => ({
+      chunks:
+        videoId === fallbackId
+          ? [
+              {
+                id: "fallback-chunk",
+                language: "am",
+                transcriptId: "fallback-transcript",
+                chunkIndex: 0,
+                text: "የተለየ ታሪክ እና ትርጉም",
+              },
+            ]
+          : [],
+      nextCursor: null,
+    })
+    const prompts: string[] = []
+    let revision = 0
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as Record<string, unknown>
+      switch (call.action) {
+        case "start":
+        case "capacity":
+          return { state: "incomplete" }
+        case "manifest":
+          return { state: "incomplete", pendingSourceCount: ids.length }
+        case "capacity_probe":
+          return {
+            observedDbBytes: 1,
+            clusterSystemId: "1",
+            availableBytes: null,
+          }
+        case "claim":
+          return call.sourceVideoId === sourceId
+            ? {
+                sourceState: "claimed",
+                leaseToken: "550e8400-e29b-41d4-a716-446655440000",
+                checkpointRevision: 0,
+                checkpoint: {
+                  stage: "discovery",
+                  cursor: { catalogIndex: 0 },
+                  sourceSummaryEnglish: "Courage and hope",
+                },
+              }
+            : { sourceState: "complete_empty", leaseToken: null }
+        case "heartbeat":
+          return { sourceState: "claimed" }
+        case "model_call_start":
+          return { state: "pending", callId: call.callId }
+        case "model_call":
+          return {
+            receiptStored: true,
+            checkpointApplied: true,
+            staleLease: false,
+            checkpointRevision: ++revision,
+          }
+        case "checkpoint":
+          return { checkpointRevision: ++revision }
+        case "source":
+          return { sourceState: "complete_empty" }
+        case "complete":
+          return { state: "complete" }
+        default:
+          throw new Error(`Unexpected action ${String(call.action)}`)
+      }
+    })
+    await runPrecomputedCatalog(input, {
+      catalog: sourceCatalog,
+      ingest,
+      model: {
+        async generate({ prompt, schema }) {
+          prompts.push(prompt)
+          return { output: schema.parse({ candidateVideoIds: [] }), usage: {} }
+        },
+      },
+    })
+    const candidateIds = prompts.flatMap((prompt) => {
+      const parsed = JSON.parse(prompt) as {
+        untrustedCatalogData: { candidates: Array<{ id: string }> }
+      }
+      return parsed.untrustedCatalogData.candidates.map((video) => video.id)
+    })
+    expect(prompts).toHaveLength(2)
+    expect(candidateIds).toContain(structuralId)
+    expect(candidateIds).toContain(exactId)
+    expect(candidateIds).toContain(fallbackId)
+    expect(candidateIds.length).toBeLessThan(ids.length - 1)
+  })
+
   it("does not offer a metadata evidence field absent from catalog Videos", () => {
     expect(
       judgmentSchema.safeParse({
