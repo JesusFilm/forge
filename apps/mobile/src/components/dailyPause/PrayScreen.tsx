@@ -1,6 +1,7 @@
 // The Figma "Transition · Pray" screen (R11, R16, R17, R19, R30). The ring
-// counts the pause down. At zero it fades out and Amen fades in; Amen takes no
-// tap before. The screen opens with the intro in PauseIntro.
+// counts the pause down while Amen shows grey and takes no tap. At zero the
+// ring fades out and Amen turns cream and takes taps. The screen opens with
+// the intro in PauseIntro.
 import { useEffect, useState } from "react"
 import {
   Animated,
@@ -19,14 +20,15 @@ import {
 } from "../../lib/dailyPause/settings"
 import {
   pauseColors,
+  pauseRadii,
   pauseSizes,
   pauseSpacing,
   pauseType,
 } from "../../lib/dailyPause/theme"
 import { CountdownRing } from "./CountdownRing"
 import {
-  Covered,
   IntroContent,
+  IntroCovered,
   IntroStepper,
   usePauseIntro,
 } from "./PauseIntro"
@@ -37,18 +39,21 @@ import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { HeldPauseButton, PauseBody, PauseButton } from "./PauseFrame"
 import { usePauseClock } from "./usePauseClock"
 
+const AMEN = "Amen"
+
 /** At zero the ring fades out over this time (the owner, 2026-10-07). */
 export const PRAY_RING_FADE_MS = 500
-/** Amen starts to fade in, and takes a tap, this long after zero. */
+/** Amen starts to turn cream, and takes taps, this long after zero. */
 export const PRAY_AMEN_FROM_MS = 300
 const AMEN_FADE_MS = 500
-/** Amen is fully in this long after zero. */
+/** Amen is fully cream this long after zero. */
 export const PRAY_FINISH_MS = PRAY_AMEN_FROM_MS + AMEN_FADE_MS
 
 const easeInOut = Easing.inOut(Easing.cubic)
 const easeOut = Easing.out(Easing.cubic)
 
-/** The fade at zero, on one clock: the ring out, then Amen in. */
+/** The change at zero, on one clock: the ring fades out, then Amen's grey
+ *  fades off. */
 function usePrayFinish(done: boolean) {
   const { progress, reduceMotion } = usePauseClock(PRAY_FINISH_MS, done)
   const [amenDue, setAmenDue] = useState(false)
@@ -59,7 +64,7 @@ function usePrayFinish(done: boolean) {
       totalMs: PRAY_FINISH_MS,
       curve: (t) => 1 - easeInOut(t),
     }),
-    amenCover: sampledCurve(progress, {
+    amenGrey: sampledCurve(progress, {
       fromMs: PRAY_AMEN_FROM_MS,
       spanMs: AMEN_FADE_MS,
       totalMs: PRAY_FINISH_MS,
@@ -75,7 +80,7 @@ function usePrayFinish(done: boolean) {
     return () => clearTimeout(timer)
   }, [done, reduceMotion])
 
-  return { ...levels, amenShown: done && (reduceMotion || amenDue) }
+  return { ...levels, amenEnabled: done && (reduceMotion || amenDue) }
 }
 
 type PrayScreenProps = {
@@ -132,21 +137,32 @@ export function PrayScreen({
         </IntroContent>
         <View style={styles.buttonGap} />
       </ScrollView>
-      <Covered
-        level={finish.amenCover}
-        shown={finish.amenShown}
-        testID="pray-amen"
-        style={styles.buttonRow}
-      >
-        {countdown.done ? (
-          <Pulse delayMs={PRAY_FINISH_MS}>
-            <PauseButton label="Amen" onPress={onContinue} font={font} />
-          </Pulse>
-        ) : (
-          // It holds Amen's place, so nothing moves when Amen shows.
-          <HeldPauseButton label="Amen" spokenLabel="Amen" font={font} />
-        )}
-      </Covered>
+      <IntroCovered intro={intro} style={styles.buttonRow}>
+        <View style={styles.amenBox}>
+          {finish.amenEnabled ? (
+            <Pulse delayMs={PRAY_FINISH_MS - PRAY_AMEN_FROM_MS}>
+              <PauseButton label={AMEN} onPress={onContinue} font={font} />
+            </Pulse>
+          ) : (
+            <HeldPauseButton label={AMEN} spokenLabel={AMEN} font={font} />
+          )}
+          {/* Liquid Glass cannot fade its tint, so a grey pill lies over the
+              cream button and fades off it. */}
+          <Animated.View
+            testID="pray-amen-grey"
+            pointerEvents="none"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            style={[styles.amenGrey, { opacity: finish.amenGrey }]}
+          >
+            <Text
+              style={[styles.amenGreyLabel, pauseText(font, pauseType.button)]}
+            >
+              {AMEN}
+            </Text>
+          </Animated.View>
+        </View>
+      </IntroCovered>
     </PauseBody>
   )
 }
@@ -165,6 +181,15 @@ const styles = StyleSheet.create({
     gap: pauseSpacing.screenGap,
   },
   buttonRow: { alignSelf: "stretch", alignItems: "center" },
+  amenBox: { alignSelf: "center" },
+  amenGrey: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: pauseRadii.button,
+    backgroundColor: pauseColors.raised,
+  },
+  amenGreyLabel: { color: pauseColors.muted, textAlign: "center" },
   ringGap: { height: pauseSpacing.prayRingGap },
   ringBox: {
     alignSelf: "stretch",

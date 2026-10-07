@@ -1,7 +1,7 @@
 // The Pray screen (U10, R11, R16, R17, R19, R26, R30). The ring counts the
-// seconds down. At zero it fades out and Amen fades in; Amen takes no tap
-// before. Jest cannot move a native animation, so a stand-in keeps the fade
-// clock in JS, and the tests move it by hand.
+// seconds down while Amen shows grey and takes no tap. At zero the ring fades
+// out and Amen turns cream. Jest cannot move a native animation, so a
+// stand-in keeps that clock in JS, and the tests move it by hand.
 import { StrictMode, act } from "react"
 import {
   Animated,
@@ -157,13 +157,11 @@ function ring(root: TestInstance) {
   }
 }
 
-/** Amen's row: its cover, and whether VoiceOver and touches reach it. */
+/** Amen: the grey over it (1 grey, 0 cream), and whether it takes a tap. */
 function amen(root: TestInstance) {
-  const row = host(root, "pray-amen-covered")
   return {
-    cover: opacityOf(host(root, "pray-amen-cover")),
-    hidden: row.props.accessibilityElementsHidden,
-    touch: row.props.pointerEvents,
+    grey: opacityOf(host(root, "pray-amen-grey")),
+    disabled: hostsWithLabel(root, "Amen").some(isDisabled),
   }
 }
 
@@ -246,12 +244,11 @@ it("lets no control skip the ring before zero (R16)", async () => {
   )
   for (const node of pressables) await press(node)
   expect(onContinue).not.toHaveBeenCalled()
-  expect(hostsWithLabel(root, "Amen").some(isDisabled)).toBe(true)
-  // The owner (2026-10-07): Amen does not show before zero.
-  expect(amen(root)).toEqual({ cover: 1, hidden: true, touch: "none" })
+  // The owner (2026-10-07): before zero, Amen shows grey and disabled.
+  expect(amen(root)).toEqual({ grey: 1, disabled: true })
 })
 
-it("fades the ring out at zero, then fades Amen in (the owner, 2026-10-07)", async () => {
+it("fades the ring out at zero, then turns Amen cream (the owner, 2026-10-07)", async () => {
   const root = await render(3)
   advance(PAUSE_INTRO_MS)
   advance(29_000)
@@ -262,7 +259,7 @@ it("fades the ring out at zero, then fades Amen in (the owner, 2026-10-07)", asy
   expect(hasExactText(root, "0")).toBe(true)
   expect(finishStart).toHaveBeenCalledTimes(1)
   expect(ring(root).hidden).toBe(true)
-  expect(amen(root)).toEqual({ cover: 1, hidden: true, touch: "none" })
+  expect(amen(root)).toEqual({ grey: 1, disabled: true })
 
   finishAt(PRAY_RING_FADE_MS / 2)
   expect(ring(root).level).toBeGreaterThan(0)
@@ -270,25 +267,26 @@ it("fades the ring out at zero, then fades Amen in (the owner, 2026-10-07)", asy
   finishAt(PRAY_RING_FADE_MS)
   expect(ring(root).level).toBe(0)
   finishAt(PRAY_AMEN_FROM_MS)
-  expect(amen(root).cover).toBe(1)
+  expect(amen(root).grey).toBe(1)
   finishAt(PRAY_FINISH_MS)
-  expect(amen(root).cover).toBe(0)
+  expect(amen(root).grey).toBe(0)
 
-  // Amen takes taps from when it starts to show, on its own clock.
+  // Amen takes taps from when its grey starts to fade, on its own clock.
   advance(PRAY_AMEN_FROM_MS - 50)
-  expect(amen(root).touch).toBe("none")
+  expect(amen(root).disabled).toBe(true)
   advance(50)
-  expect(amen(root)).toMatchObject({ hidden: false, touch: "auto" })
+  expect(amen(root).disabled).toBe(false)
   await press(pressableByLabel(root, "Amen"))
   expect(onContinue).toHaveBeenCalledTimes(1)
 })
 
-it("makes Amen active at zero and moves on only at the tap (R17)", async () => {
+it("makes Amen active as the ring fades, and moves on only at the tap (R17)", async () => {
   const root = await render(3)
   advance(PAUSE_INTRO_MS)
   expect(pulses(root)).toHaveLength(0)
   advance(30_000)
   expect(hasExactText(root, "0")).toBe(true)
+  advance(PRAY_AMEN_FROM_MS)
   expect(hostsWithLabel(root, "Amen").some(isDisabled)).toBe(false)
   // The owner (2026-10-06): Amen pulses every two seconds to ask for a tap.
   expect(pulses(root)).toHaveLength(1)
@@ -325,14 +323,14 @@ describe("under Reduce Motion", () => {
     mockReduceMotion = false
   })
 
-  it("hides the ring and shows Amen at once at zero", async () => {
+  it("hides the ring and turns Amen cream at once at zero", async () => {
     const root = await render(3)
     advance(29_000)
-    expect(amen(root)).toEqual({ cover: 1, hidden: true, touch: "none" })
+    expect(amen(root)).toEqual({ grey: 1, disabled: true })
     advance(1_000)
     expect(finishStart).not.toHaveBeenCalled()
     expect(ring(root)).toEqual({ level: 0, hidden: true })
-    expect(amen(root)).toEqual({ cover: 0, hidden: false, touch: "auto" })
+    expect(amen(root)).toEqual({ grey: 0, disabled: false })
   })
 
   it("fills the ring by the fraction of time left, one step a second", async () => {
