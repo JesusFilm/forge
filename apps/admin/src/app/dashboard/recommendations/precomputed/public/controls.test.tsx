@@ -117,7 +117,20 @@ describe("precomputed public operator controls", () => {
         control: { eligibleVisits: 10, clickedVisits: 1, visitCtr: 0.1 },
         challenger: { eligibleVisits: 10, clickedVisits: 6, visitCtr: 0.6 },
       },
-      measurementHealth: { edgeAutomationCoverage: "partial_unverified" },
+      measurementHealth: {
+        edgeAutomationCoverage: "partial_unverified",
+        experimentRequestHealth: {
+          status: "complete",
+          reconciliation: "no_observed_shortfall",
+          attributedDeliveryAttempts: 24,
+          acceptedVisitAttempts: 22,
+          responseFailedAttempts: 1,
+          clickAttempts: 9,
+          clickAcknowledgements: 7,
+          clickUnavailable: 2,
+          clientNetworkLoss: "unobservable",
+        },
+      },
     }
     data.experiments.push({
       id: "experiment-1",
@@ -147,5 +160,11 @@ describe("precomputed public operator controls", () => {
     expect(unverified).not.toContain("Promote exact fixture result")
     result.evidenceBasis = "isolated_fixture"
     expect(render()).toContain("Promote exact fixture result")
+    result.evidenceBasis = "live_incomplete"
+    const live = render()
+    expect(live).toContain("24 attributed delivery attempts")
+    expect(live).toContain("2 server-observed click failures")
+    expect(live).toContain("browser or network events that never reached Web")
+    expect(live).not.toContain("Promote exact fixture result")
   })
 })

@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto"
 import { env } from "@/env"
 import {
+  readWatchExperimentObservationHours,
   readWatchPublicObservationHours,
   watchPublicObservationHour,
 } from "@/lib/recommendation-public-observation"
@@ -11,6 +12,7 @@ export const revalidate = 0
 const HOUR_MS = 3_600_000
 const MAX_HOURS = 35 * 24
 const UTC_HOUR = /^\d{4}-\d{2}-\d{2}T\d{2}:00:00\.000Z$/
+const EXPERIMENT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,190}$/
 const JSON_HEADERS = {
   "cache-control": "private, no-store",
   "content-type": "application/json; charset=utf-8",
@@ -49,8 +51,14 @@ export async function GET(request: Request) {
   const url = new URL(request.url)
   const startParam = url.searchParams.getAll("startHour")
   const endParam = url.searchParams.getAll("endHourExclusive")
+  const experimentParams = url.searchParams.getAll("experimentId")
   if (startParam.length !== 1 || endParam.length !== 1)
     return error(400, "invalid_range")
+  if (
+    experimentParams.length > 1 ||
+    (experimentParams.length === 1 && !EXPERIMENT_ID.test(experimentParams[0]!))
+  )
+    return error(400, "invalid_experiment")
   const start = parseHour(startParam[0]!)
   const end = parseHour(endParam[0]!)
   const currentHour = Math.floor(Date.now() / HOUR_MS) * HOUR_MS
@@ -66,14 +74,20 @@ export async function GET(request: Request) {
   const hours = Array.from({ length: (end - start) / HOUR_MS }, (_, index) =>
     watchPublicObservationHour(new Date(start + index * HOUR_MS)),
   )
-  const observations = await readWatchPublicObservationHours(hours)
+  const experimentId = experimentParams[0]
+  const observations = experimentId
+    ? await readWatchExperimentObservationHours(experimentId, hours)
+    : await readWatchPublicObservationHours(hours)
   if (!observations) return error(503, "observation_unavailable")
   const missingHours = observations
     .filter((observation) => observation.counters === null)
     .map((observation) => observation.hour)
   return new Response(
     JSON.stringify({
-      contractVersion: "watch-public-measurement-v1",
+      contractVersion: experimentId
+        ? "watch-experiment-measurement-v1"
+        : "watch-public-measurement-v1",
+      ...(experimentId ? { experimentId } : {}),
       observedAt: new Date().toISOString(),
       startHour: startParam[0],
       endHourExclusive: endParam[0],

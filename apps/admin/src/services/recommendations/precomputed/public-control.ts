@@ -604,9 +604,12 @@ export async function promotePrecomputedPublicExperiment(
       experiment.generation.sourceSetDigest !== experiment.sourceSetDigest
     )
       throw new PrecomputedPublicControlError("incompatible_target")
+    // Scoped Web counters cover requests that reached Web. A future promotion
+    // check must bind independent client/network-loss calibration and the
+    // owner's agreed limit to this final report before this guard can open.
     if (pointer.authority === "live_verified")
       throw new PrecomputedPublicControlError("readiness_unavailable", [
-        "experiment_scoped_tracking_loss_unverified",
+        "end_to_end_client_loss_unverified",
       ])
     if (pointer.authority !== "isolated_fixture")
       throw new PrecomputedPublicControlError("readiness_unavailable")

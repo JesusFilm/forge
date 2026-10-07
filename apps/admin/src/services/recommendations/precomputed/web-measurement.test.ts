@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import {
+  loadWebExperimentMeasurement,
   loadWebWatchMeasurement,
   WEB_WATCH_MEASUREMENT_CONTRACT,
 } from "./web-measurement"
@@ -52,6 +53,40 @@ const response = (body: unknown, status = 200) =>
   })
 
 describe("authenticated Web Watch measurement reader", () => {
+  it("reads only the requested experiment and keeps retries distinct from durable visits", async () => {
+    const transport = vi.fn(async (requestUrl: string) => {
+      const base = page(requestUrl)
+      return response({
+        ...base,
+        contractVersion: "watch-experiment-measurement-v1",
+        experimentId: "trial-7",
+        hours: base.hours.map((hour) => ({
+          ...hour,
+          counters: {
+            delivery_attempt: 1,
+            delivery_eligible: 1,
+            click_attempt: 3,
+            click_ack: 2,
+            click_unavailable: 1,
+          },
+        })),
+      })
+    })
+    const result = await loadWebExperimentMeasurement(
+      "trial-7",
+      new Date("2026-02-01T00:00:00.000Z"),
+      new Date("2026-02-01T01:00:00.000Z"),
+      { url, apiKey, transport, now },
+    )
+    expect(result).toMatchObject({
+      status: "complete",
+      experimentId: "trial-7",
+      counters: { click_attempt: 3, click_ack: 2, click_unavailable: 1 },
+    })
+    expect(
+      new URL(transport.mock.calls[0]![0]).searchParams.get("experimentId"),
+    ).toBe("trial-7")
+  })
   it("splits a cohort plus late cutoff across the 840-hour endpoint limit", async () => {
     const transport = vi.fn(async (requestUrl: string) =>
       response(page(requestUrl)),

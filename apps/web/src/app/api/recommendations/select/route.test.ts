@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto"
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { issueWatchExperimentMeasurementTicket } from "@/lib/recommendation-experiment-measurement-ticket"
 import {
   adminSelectPrivatePrecomputedRecommendationOperation,
   adminSelectSemanticRecommendationOperation,
@@ -14,7 +15,11 @@ import {
   RECOMMENDATION_EXPERIMENT_BROWSER_COOKIE,
 } from "@/lib/recommendation-experiment-browser"
 
-const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }))
+const { mutate, observePublic, observeScoped } = vi.hoisted(() => ({
+  mutate: vi.fn(),
+  observePublic: vi.fn(async () => true),
+  observeScoped: vi.fn(async () => true),
+}))
 
 vi.mock("@/env", () => ({
   env: {
@@ -22,9 +27,16 @@ vi.mock("@/env", () => ({
     WATCH_PRECOMPUTED_RECOMMENDATIONS_TEST_ENABLED: "true",
     WATCH_RECOMMENDATION_TESTER_SECRET:
       "test-private-secret-strong-enough-1234567890",
+    WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET:
+      "proof-test-secret-strong-enough-1234567890",
   },
 }))
 vi.mock("@/lib/admin-client", () => ({ default: { mutate } }))
+vi.mock("@/lib/recommendation-public-observation", () => ({
+  watchPublicObservationHour: () => "2026100620",
+  recordWatchPublicObservation: observePublic,
+  recordWatchExperimentObservation: observeScoped,
+}))
 
 const { POST, dynamic, revalidate } = await import("./route")
 
@@ -69,6 +81,37 @@ describe("POST /watch/api/recommendations/select", () => {
         },
       },
     })
+  })
+
+  it("keeps signed experiment click attempts and failures separate from accepted selections", async () => {
+    const ticket = issueWatchExperimentMeasurementTicket(
+      "test-private-secret-strong-enough-1234567890",
+      { experimentId: "trial-7", requestId: body.requestId },
+    )
+    expect(ticket).toBeTruthy()
+    const first = await POST(
+      request(JSON.stringify({ ...body, measurementTicket: ticket })),
+    )
+    expect(first.status).toBe(200)
+    expect(observeScoped.mock.calls).toEqual([
+      ["trial-7", "click_attempt", "2026100620"],
+      ["trial-7", "click_ack", "2026100620"],
+    ])
+    observeScoped.mockClear()
+    mutate.mockRejectedValueOnce(new Error("Admin response lost"))
+    const failed = await POST(
+      request(JSON.stringify({ ...body, measurementTicket: ticket })),
+    )
+    expect(failed.status).toBeGreaterThanOrEqual(400)
+    expect(observeScoped.mock.calls).toEqual([
+      ["trial-7", "click_attempt", "2026100620"],
+      ["trial-7", "click_unavailable", "2026100620"],
+    ])
+    observeScoped.mockClear()
+    await POST(
+      request(JSON.stringify({ ...body, measurementTicket: `${ticket}x` })),
+    )
+    expect(observeScoped).not.toHaveBeenCalled()
   })
 
   it.each([

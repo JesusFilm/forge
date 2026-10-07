@@ -596,8 +596,9 @@ export function PublicPrecomputedControls({
                             {result.evidenceBasis === "live_incomplete" ? (
                               <p>
                                 This live cohort cannot certify a winner:
-                                experiment-scoped visit and click attribution
-                                loss is unverified.
+                                browser or network events that never reached Web
+                                remain unverified, even when server-observed
+                                requests reconcile.
                               </p>
                             ) : null}
                             {result.liveLaunchEvidence ? (
@@ -645,6 +646,46 @@ export function PublicPrecomputedControls({
                                 imbalanced hours. These counters describe
                                 observed server requests; end-to-end client
                                 event completeness remains unverified.
+                              </p>
+                            ) : null}
+                            {result.measurementHealth
+                              .experimentRequestHealth ? (
+                              <p>
+                                Experiment-scoped Web requests:{" "}
+                                {
+                                  result.measurementHealth
+                                    .experimentRequestHealth.reconciliation
+                                }
+                                ;{" "}
+                                {
+                                  result.measurementHealth
+                                    .experimentRequestHealth
+                                    .attributedDeliveryAttempts
+                                }{" "}
+                                attributed delivery attempts,{" "}
+                                {
+                                  result.measurementHealth
+                                    .experimentRequestHealth
+                                    .acceptedVisitAttempts
+                                }{" "}
+                                accepted visit attempts,{" "}
+                                {
+                                  result.measurementHealth
+                                    .experimentRequestHealth
+                                    .clickAcknowledgements
+                                }{" "}
+                                click acknowledgements, and{" "}
+                                {
+                                  result.measurementHealth
+                                    .experimentRequestHealth.clickUnavailable
+                                }{" "}
+                                server-observed click failures. Retries can
+                                exceed distinct visits and clicks.{" "}
+                                {
+                                  result.measurementHealth
+                                    .experimentRequestHealth.missingHourCount
+                                }{" "}
+                                hours lack a scoped observation.
                               </p>
                             ) : null}
                             <p>

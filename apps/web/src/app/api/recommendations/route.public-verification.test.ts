@@ -1,25 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { publicVisit, semantic, siteverify, observe, env } = vi.hoisted(() => ({
-  publicVisit: vi.fn(),
-  semantic: vi.fn(),
-  siteverify: vi.fn(),
-  observe: vi.fn(async () => true),
-  env: {
-    NEXT_PUBLIC_CANONICAL_ORIGIN: "https://watch.example",
-    NEXT_PUBLIC_WATCH_RECOMMENDATION_TURNSTILE_SITE_KEY: "watch-site-key",
-    WATCH_RECOMMENDATION_TESTER_SECRET:
-      "browser-cookie-test-secret-0123456789abcdef",
-    WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET:
-      "proof-test-secret-0123456789abcdef",
-    WATCH_RECOMMENDATION_TURNSTILE_SECRET_KEY: "private-siteverify-secret",
-    WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: "watch.example",
-  },
-}))
+const { publicVisit, semantic, siteverify, observe, observeScoped, env } =
+  vi.hoisted(() => ({
+    publicVisit: vi.fn(),
+    semantic: vi.fn(),
+    siteverify: vi.fn(),
+    observe: vi.fn(async () => true),
+    observeScoped: vi.fn(async () => true),
+    env: {
+      NEXT_PUBLIC_CANONICAL_ORIGIN: "https://watch.example",
+      NEXT_PUBLIC_WATCH_RECOMMENDATION_TURNSTILE_SITE_KEY: "watch-site-key",
+      WATCH_RECOMMENDATION_TESTER_SECRET:
+        "browser-cookie-test-secret-0123456789abcdef",
+      WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET:
+        "proof-test-secret-0123456789abcdef",
+      WATCH_RECOMMENDATION_TURNSTILE_SECRET_KEY: "private-siteverify-secret",
+      WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: "watch.example",
+    },
+  }))
 vi.mock("@/env", () => ({ env }))
 vi.mock("@/lib/recommendation-public-observation", () => ({
   watchPublicObservationHour: () => "2026100620",
   recordWatchPublicObservation: observe,
+  recordWatchExperimentObservation: observeScoped,
 }))
 vi.mock("@/lib/recommendation-turnstile", () => ({
   WATCH_RECOMMENDATION_TURNSTILE_ACTION: "watch_recommendations",
@@ -110,10 +113,67 @@ beforeEach(() => {
     hostname: "watch.example",
   })
   observe.mockResolvedValue(true)
+  observeScoped.mockResolvedValue(true)
   vi.spyOn(console, "info").mockImplementation(() => undefined)
 })
 
 describe("live Watch browser verification", () => {
+  it("records a trusted experiment attempt and issues a request-bound measurement ticket", async () => {
+    publicVisit.mockResolvedValueOnce({
+      ...required,
+      status: "eligible",
+      arm: "challenger",
+      reason: null,
+      qualification: "turnstile_verified_browser",
+      measurementStatus: "recorded",
+      delivery: {
+        ...incumbent,
+        result: "served",
+        requestId: "experiment-request-1",
+        items: [{ id: "item-1", imageUrl: null, playbackId: "playback-1" }],
+      },
+    })
+    const response = await POST(request())
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.delivery.measurementTicket).toMatch(/^v1\./)
+    expect(observeScoped.mock.calls).toEqual([
+      ["experiment-1", "delivery_attempt", "2026100620"],
+      ["experiment-1", "delivery_eligible", "2026100620"],
+    ])
+  })
+
+  it("marks a response failure only after Admin supplied the experiment identity", async () => {
+    publicVisit.mockResolvedValueOnce({
+      ...required,
+      status: "eligible",
+      arm: "control",
+      reason: null,
+      qualification: "turnstile_verified_browser",
+      measurementStatus: "recorded",
+      delivery: {
+        ...incumbent,
+        result: "served",
+        items: [
+          {
+            id: "item-1",
+            description: "x".repeat(100_000),
+            imageUrl: null,
+            playbackId: "playback-1",
+          },
+        ],
+      },
+    })
+    expect((await POST(request())).status).toBe(502)
+    expect(observeScoped.mock.calls).toEqual([
+      ["experiment-1", "delivery_attempt", "2026100620"],
+      ["experiment-1", "delivery_response_failed", "2026100620"],
+    ])
+    observeScoped.mockClear()
+    publicVisit.mockRejectedValueOnce(new Error("Admin unreachable"))
+    await POST(request())
+    expect(observeScoped).not.toHaveBeenCalled()
+  })
   it("does not challenge when Admin control is inactive", async () => {
     publicVisit.mockResolvedValueOnce({
       ...required,
@@ -154,6 +214,8 @@ describe("live Watch browser verification", () => {
     const second = await POST(request(cookies(first), "baseline-token"))
     const secondBody = await second.json()
     expect(secondBody.verificationRequired).toBeUndefined()
+    expect(secondBody.delivery.measurementTicket).toBeUndefined()
+    expect(observeScoped).not.toHaveBeenCalled()
     expect(secondBody.delivery.strategyVersion).toBe(
       "semantic-transcript-pgvector-v1",
     )

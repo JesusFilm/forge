@@ -121,7 +121,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
 
     async function createRequest(
       id: string,
-      deliveryDiagnostics?: Record<string, unknown>,
+      deliveryDiagnostics?: Prisma.InputJsonObject,
     ) {
       await prisma.recommendationRequest.create({
         data: {

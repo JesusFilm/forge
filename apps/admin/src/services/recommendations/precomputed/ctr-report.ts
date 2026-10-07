@@ -18,7 +18,9 @@ import {
   type CtrPolicySettings,
 } from "./ctr-policy"
 import {
+  loadWebExperimentMeasurement,
   loadWebWatchMeasurement,
+  type WebExperimentMeasurementRead,
   type WebWatchMeasurementRead,
 } from "./web-measurement"
 
@@ -108,6 +110,22 @@ export type PrecomputedCtrReport = {
       clickAcknowledgements: number
       clickUnavailable: number
       verificationUnavailable: number
+    }
+    experimentRequestHealth?: {
+      status: "complete" | "incomplete" | "unavailable"
+      reconciliation: "no_observed_shortfall" | "incomplete" | "unavailable"
+      requestedHours: number
+      coveredHours: number
+      missingHourCount: number
+      imbalancedHourCount: number
+      attributedDeliveryAttempts: number
+      acceptedVisitAttempts: number
+      notEligibleAttempts: number
+      responseFailedAttempts: number
+      clickAttempts: number
+      clickAcknowledgements: number
+      clickUnavailable: number
+      clientNetworkLoss: "unobservable"
     }
     /** Known bots/prefetches skipped by Web are outside this report. */
     edgeAutomationCoverage?: "partial_unverified"
@@ -368,6 +386,7 @@ async function evaluatePrecomputedCtrReport(
     now?: Date
     evidenceBasis: "private_unverified" | "isolated_fixture" | "live_public"
     webMeasurement?: WebWatchMeasurementRead | null
+    experimentMeasurement?: WebExperimentMeasurementRead | null
   },
 ): Promise<PrecomputedCtrRead> {
   if (!hasPermission(input.operator, "operate:recommendation-experiments"))
@@ -453,6 +472,7 @@ async function evaluatePrecomputedCtrReport(
         experiment.endsAt.getTime() + settings.lateEventCutoffHours * 3_600_000,
       )
       const web = input.webMeasurement
+      const scoped = input.experimentMeasurement
       const livePublic = input.evidenceBasis === "live_public"
       const eligibleVisits = safe(
         totals.control.eligibleVisits + totals.challenger.eligibleVisits,
@@ -485,6 +505,16 @@ async function evaluatePrecomputedCtrReport(
         web.counters.click_ack >= acceptedSelections &&
         web.counters.click_unavailable === 0 &&
         web.counters.delivery_verification_unavailable === 0
+      const scopedReconciled =
+        livePublic &&
+        scoped?.status === "complete" &&
+        scoped.experimentId === experiment.id &&
+        scoped.startHour === experiment.startsAt.toISOString() &&
+        scoped.endHourExclusive === finalAt.toISOString() &&
+        scoped.missingHours.length === 0 &&
+        scoped.imbalancedHours.length === 0 &&
+        scoped.counters.delivery_eligible >= eligibleVisits &&
+        scoped.counters.click_ack >= acceptedSelections
       const isFinal = asOf >= finalAt
       const evaluation = evaluatePrecomputedCtr(settings, {
         startsAt: experiment.startsAt,
@@ -517,7 +547,9 @@ async function evaluatePrecomputedCtrReport(
         reasons.push("live_browser_qualification_unverified")
       if (livePublic && !webComplete)
         reasons.push("web_request_health_incomplete")
-      if (livePublic) reasons.push("experiment_scoped_tracking_loss_unverified")
+      if (livePublic && !scopedReconciled)
+        reasons.push("experiment_scoped_tracking_loss_unverified")
+      if (livePublic) reasons.push("end_to_end_client_loss_unverified")
       const unversioned = safe(
         totals.control.unversionedArchivedVisits +
           totals.challenger.unversionedArchivedVisits +
@@ -648,6 +680,63 @@ async function evaluatePrecomputedCtrReport(
                 },
               }
             : {}),
+          ...(livePublic
+            ? {
+                experimentRequestHealth: {
+                  status: scoped?.status ?? "unavailable",
+                  reconciliation: scopedReconciled
+                    ? ("no_observed_shortfall" as const)
+                    : scoped?.status === "unavailable" || !scoped
+                      ? ("unavailable" as const)
+                      : ("incomplete" as const),
+                  requestedHours:
+                    scoped && scoped.status !== "unavailable"
+                      ? scoped.requestedHours
+                      : 0,
+                  coveredHours:
+                    scoped && scoped.status !== "unavailable"
+                      ? scoped.coveredHours
+                      : 0,
+                  missingHourCount:
+                    scoped && scoped.status !== "unavailable"
+                      ? scoped.missingHours.length
+                      : 0,
+                  imbalancedHourCount:
+                    scoped && scoped.status !== "unavailable"
+                      ? scoped.imbalancedHours.length
+                      : 0,
+                  attributedDeliveryAttempts:
+                    scoped && scoped.status !== "unavailable"
+                      ? scoped.counters.delivery_attempt
+                      : 0,
+                  acceptedVisitAttempts:
+                    scoped && scoped.status !== "unavailable"
+                      ? scoped.counters.delivery_eligible
+                      : 0,
+                  notEligibleAttempts:
+                    scoped && scoped.status !== "unavailable"
+                      ? scoped.counters.delivery_not_eligible
+                      : 0,
+                  responseFailedAttempts:
+                    scoped && scoped.status !== "unavailable"
+                      ? scoped.counters.delivery_response_failed
+                      : 0,
+                  clickAttempts:
+                    scoped && scoped.status !== "unavailable"
+                      ? scoped.counters.click_attempt
+                      : 0,
+                  clickAcknowledgements:
+                    scoped && scoped.status !== "unavailable"
+                      ? scoped.counters.click_ack
+                      : 0,
+                  clickUnavailable:
+                    scoped && scoped.status !== "unavailable"
+                      ? scoped.counters.click_unavailable
+                      : 0,
+                  clientNetworkLoss: "unobservable" as const,
+                },
+              }
+            : {}),
           edgeAutomationCoverage: "partial_unverified",
           exclusionCountScope: "admin_bound_only",
           unversionedArchivedVisits: unversioned,
@@ -745,6 +834,7 @@ export async function evaluatePublicPrecomputedCtr(
     (await import("./public-control"))
       .PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
   let webMeasurement: WebWatchMeasurementRead | null = null
+  let experimentMeasurement: WebExperimentMeasurementRead | null = null
   if (livePublic && experiment?.ctrPolicy) {
     const finalAt = new Date(
       experiment.endsAt.getTime() +
@@ -753,15 +843,19 @@ export async function evaluatePublicPrecomputedCtr(
     const completedHour = Math.floor(now.getTime() / 3_600_000) * 3_600_000
     const end = new Date(Math.min(finalAt.getTime(), completedHour))
     if (end > experiment.startsAt)
-      webMeasurement = await loadWebWatchMeasurement(experiment.startsAt, end, {
-        now,
-      })
+      [webMeasurement, experimentMeasurement] = await Promise.all([
+        loadWebWatchMeasurement(experiment.startsAt, end, { now }),
+        loadWebExperimentMeasurement(experiment.id, experiment.startsAt, end, {
+          now,
+        }),
+      ])
   }
   return evaluatePrecomputedCtrReport(prisma, {
     ...input,
     now,
     evidenceBasis: livePublic ? "live_public" : "isolated_fixture",
     webMeasurement,
+    experimentMeasurement,
   })
 }
 

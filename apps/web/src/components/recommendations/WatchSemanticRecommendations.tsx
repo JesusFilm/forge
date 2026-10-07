@@ -102,6 +102,7 @@ type SemanticEnvelope = {
   strategyVersion: string
   classifierVersion: string
   requestId: string | null
+  measurementTicket: string | null
   result: "served" | "fallback" | "empty" | "unavailable"
   reason: string | null
   expiresAt: string | null
@@ -350,6 +351,9 @@ function parseEnvelope(value: unknown): SemanticEnvelope | null {
     strategyVersion: envelope.strategyVersion,
     classifierVersion: envelope.classifierVersion,
     requestId: envelope.requestId ?? null,
+    measurementTicket: nonEmptyString(envelope.measurementTicket, 850)
+      ? envelope.measurementTicket
+      : null,
     result,
     reason: envelope.reason ?? null,
     expiresAt: envelope.expiresAt ?? null,
@@ -811,6 +815,10 @@ export function WatchSemanticRecommendations({
   )
   const requestId =
     currentState.status === "ready" ? currentState.envelope.requestId : null
+  const measurementTicket =
+    currentState.status === "ready"
+      ? currentState.envelope.measurementTicket
+      : null
 
   const claimEvidence = useCallback(
     (kind: "render" | "impression", itemId: string) => {
@@ -982,6 +990,7 @@ export function WatchSemanticRecommendations({
           occurredAt: new Date().toISOString(),
           tabNonce: tabNonce(),
           claimNonce,
+          ...(measurementTicket ? { measurementTicket } : {}),
         })
       const auxiliary =
         (event.type === "auxclick" && event.button === 1) ||
@@ -1070,7 +1079,7 @@ export function WatchSemanticRecommendations({
           if (isCurrentAttempt()) navigateOnce(item.canonicalHref)
         })
     },
-    [navigateOnce, requestId, requestKey],
+    [measurementTicket, navigateOnce, requestId, requestKey],
   )
 
   const busyItemId =

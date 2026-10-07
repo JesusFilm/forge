@@ -4,9 +4,11 @@ The manual control is visible at Admin
 `/dashboard/recommendations/precomputed/public`. The incumbent remains the
 default after migration and after every catalog build, report read, or CTR
 evaluation. The isolated rehearsal can select an A/B cohort, promote an exact
-final fixture result, and restore the incumbent. **There is no live launch
-path yet:** the authenticated live human/bot and tracking-loss verifier is not
-implemented. Do not interpret a fixture winner as live evidence.
+final fixture result, and restore the incumbent. Live `prepare` and `start`
+exist, but they require the owner-entered numeric policy, complete real Astra
+generation and catalog, verified seven-day incumbent baseline, Web request
+health, and separate launch-capacity receipt. Do not interpret a fixture winner
+as live evidence or treat a successful preparation as activation.
 
 ## Obtain the first real catalog cost and coverage
 
@@ -39,15 +41,17 @@ re-authentication. All responses are `no-store`. A producer/Mastra bearer
 cannot operate this route.
 
 `prepare` freezes a complete generation, source-set and incumbent-routing
-digests, a cohort window, and the numeric stopping policy. It does not change
-Watch serving. `start` requires the exact prepared configuration digest and
-current pointer version; it does **not** require a winner report. A/B
+digests, a one-UTC-calendar-month cohort window, and the predeclared numeric
+stopping policy. It does not change Watch serving. `start` requires the exact
+prepared configuration digest and current pointer version; it does **not**
+require a winner report. A/B
 assignment is stable by browser within the fixed cohort. `evaluate` stores an
 immutable revision based on actual admitted visits and accepted clicks; a
 provisional or inconclusive result cannot promote. `promote` requires a final
 challenger report's exact experiment, generation, revision, and saved evidence
 digest. These transitions are compare-and-swap and write compact operator
-audit rows. Only the isolated fixture authority currently passes readiness.
+audit rows. Live authority passes preparation and start only when its actual
+prelaunch evidence checks pass; no fixture can stand in for those receipts.
 
 `rollback` needs the current pointer version, exact experiment/generation and
 report revision/digest (null while still in A/B), plus a reason code. It
@@ -65,18 +69,27 @@ experiment ID, and reason code. This drops only the rollback pin; ordinary
 bounded retention may then remove the expired cohort and, when no other
 protection applies, its generation. An early or mismatched release is denied.
 
-## Live launch remains blocked
+## Live result qualification remains blocked
 
-Admin readiness lists the missing verifier and evidence explicitly. The
-current public report labels its bot-exclusion count as **Admin-bound only**:
-known crawlers and prefetches skipped at Web never reach that counter. Ordinary
-browser classification does not prove a human visit. A live qualification
-must bind trusted bot/human signals, visit-ID and browser-identity loss,
-Web/edge exclusion coverage, an agreed numerical stopping policy, generation
-cost/coverage, capacity, and cohort/control identities into an immutable
-versioned receipt. Until that code and audit are implemented and reviewed,
-live start and promotion return a readiness error, even if a catalog build
-finishes or a fixture shows a challenger result.
+Admin readiness lists missing evidence explicitly. The public report labels
+its bot-exclusion count as **Admin-bound only**: known crawlers and prefetches
+skipped at Web never reach that counter. For a live cohort, Web now retains
+only bounded per-experiment hourly request counts. Its authenticated read
+distinguishes attributed delivery attempts, eligible responses, click
+acknowledgements, and server-observed failures; the report reconciles those
+against Admin's durable distinct visits and selections. Retries can raise Web
+counts without adding a distinct visit or click. Missing hours, unscoped
+response-less Admin failures, and browser/network attempts that never reached
+Web remain unknown, not zero. See [CTR report](precomputed-ctr-report.md).
+
+Live promotion remains closed even when scoped server counts show no observed
+shortfall. The next qualification step is an independent production
+browser/edge calibration over the same frozen cohort and late-event horizon,
+including induced drops and retries, plus the owner's numeric acceptable-loss
+limit. Bind the calibration, uncertainty and threshold to an immutable final
+report before changing the live promotion guard. No threshold is assumed by
+this runbook. A point-in-time Railway disk snapshot is also not a launch
+capacity receipt; build and baseline growth still need measurement.
 
 When those gaps are resolved, the owner can request the separate manual
 activation in another task. This runbook does not schedule a refresh, deploy
