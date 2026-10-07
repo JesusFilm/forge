@@ -793,6 +793,7 @@ export type ProduceDevotionalAudioDeps = {
    */
   hookVoices?: readonly DevotionalVoiceName[]
   normalize?: (bytes: Uint8Array) => Promise<Uint8Array>
+  measure?: (bytes: Uint8Array) => Promise<number>
   slice?: (
     bytes: Uint8Array,
     fromSec: number,
@@ -825,6 +826,8 @@ async function twoVoiceHookAudio(
     fromSec: number,
     toSec: number,
   ) => Promise<Uint8Array>,
+  /** Measures a cut line: its real length places the next line's words. */
+  measure: (bytes: Uint8Array) => Promise<number>,
 ): Promise<VoiceoverAudio | undefined> {
   // The run text is already flattened; the hook's lines end in . ! or ?
   const lines = seg.text.match(/[^.!?…]+[.!?…]+['’"”»]*/g)?.map((l) => l.trim())
@@ -875,7 +878,7 @@ async function twoVoiceHookAudio(
         endSec: x.endSec - from,
       })),
     })
-    lengths.push(to - from)
+    lengths.push(await measure(bytes))
   }
   // The pauses are final here: the render does not re-time a two-voice
   // opening (its pause cutting clipped the next line's first word, heard as
@@ -961,7 +964,10 @@ export async function produceDevotionalAudio(
   const fromRun = new Map<string, VoiceoverAudio>()
   if (continuous) {
     const twoVoiceHook =
-      !!deps.hookVoices?.length && !!deps.normalize && !!deps.joinVarGaps
+      !!deps.hookVoices?.length &&
+      !!deps.normalize &&
+      !!deps.measure &&
+      !!deps.joinVarGaps
     for (const run of continuousRuns(
       segs,
       devotional.voice,
@@ -986,6 +992,7 @@ export async function produceDevotionalAudio(
           deps.normalize!,
           deps.joinVarGaps!,
           deps.slice!,
+          deps.measure!,
         )
         if (hook) fromRun.set("hook", hook)
         continue

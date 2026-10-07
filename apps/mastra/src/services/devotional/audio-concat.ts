@@ -334,3 +334,36 @@ export async function normalizeLoudness(
     await rm(tmp, { recursive: true, force: true })
   }
 }
+
+/** The real length of an MP3 (ffprobe), for joins that must place word times
+ *  exactly: a computed length drifted ~0.2 s a line on the two-voice opening
+ *  (2026-10-07), because a cut past the take's last sample is simply shorter. */
+export async function audioDurationSec(bytes: Uint8Array): Promise<number> {
+  const tmp = await mkdtemp(path.join(tmpdir(), "devo-dur-"))
+  try {
+    const inp = path.join(tmp, "in.mp3")
+    await writeFile(inp, bytes)
+    const out = await new Promise<string>((resolve, reject) => {
+      const c = spawn("ffprobe", [
+        "-v",
+        "error",
+        "-show_entries",
+        "format=duration",
+        "-of",
+        "csv=p=0",
+        inp,
+      ])
+      let s = ""
+      c.stdout.on("data", (d) => (s += String(d)))
+      c.on("error", reject)
+      c.on("close", (code) =>
+        code === 0 ? resolve(s) : reject(new Error(`ffprobe exit ${code}`)),
+      )
+    })
+    const n = Number(out.trim())
+    if (!Number.isFinite(n)) throw new Error(`no duration: ${out}`)
+    return n
+  } finally {
+    await rm(tmp, { recursive: true, force: true })
+  }
+}

@@ -27,6 +27,7 @@ import {
   segmentTakes,
 } from "./devotional-audio"
 import {
+  audioDurationSec,
   joinAudioVarGaps,
   normalizeLoudness,
   sliceAudio,
@@ -3881,7 +3882,11 @@ export async function produceNarration(
             prepareSync: (t: string) =>
               applyStressOverrides(t, locale.stressOverrides ?? []),
             ...(opts.hookVoices?.length
-              ? { hookVoices: opts.hookVoices, normalize: normalizeLoudness }
+              ? {
+                  hookVoices: opts.hookVoices,
+                  normalize: normalizeLoudness,
+                  measure: audioDurationSec,
+                }
               : {}),
           }
         : {}),
