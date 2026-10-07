@@ -356,6 +356,9 @@ describe("RecommendationEpisodeService", () => {
     const tx = {
       $executeRaw: vi.fn(async () => 1),
       $queryRaw: vi.fn(async () => [{ id: "current" }]),
+      recommendationPrecomputedBaselineVisitRequest: {
+        findUnique: vi.fn(async () => null),
+      },
       recommendationSelection: {
         findUnique: vi.fn(async () => null),
         create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
@@ -488,6 +491,9 @@ describe("RecommendationEpisodeService", () => {
       const tx = {
         $executeRaw: vi.fn(async () => 1),
         $queryRaw: vi.fn(async () => [{ id: "current" }]),
+        recommendationPrecomputedBaselineVisitRequest: {
+          findUnique: vi.fn(async () => null),
+        },
         recommendationSelection: {
           findUnique: vi.fn(async () => null),
           create: vi.fn(async () => ({ episode: { id: "episode-direct" } })),
@@ -785,6 +791,9 @@ describe("RecommendationEpisodeService", () => {
       const tx = {
         $executeRaw: vi.fn(async () => 1),
         $queryRaw: vi.fn(async () => [{ attempts: 1 }]),
+        recommendationPrecomputedBaselineVisitRequest: {
+          findUnique: vi.fn(async () => null),
+        },
         recommendationSelection: {
           findUnique: vi.fn(async () => ({
             id: "selection-1",

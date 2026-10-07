@@ -1771,7 +1771,8 @@ The initial small archive preserves precomputed result tables. A subsequent
 `978851f19f1bdc528c4a1d4ef0def2b17530326355748c309bfb1c7feb52f361`).
 Its table of contents contains 251 table-data entries. Restoring it into a new
 disposable database succeeded, preserving 1,180 Videos, 164,639 transcripts,
-280,046 chunks, three generations and 46 model-call receipts. The durable pilot's
+280,046 chunks, three generations and 46 model-call records, including pending
+reservations. The durable pilot's
 eight calls and $0.2494275, and the cancelled full attempt's 34 calls,
 $2.3197855 known charge and one unknown charge, matched the saved records.
 The disposable restore database was removed after verification. The original
@@ -1886,3 +1887,58 @@ database immutability. Logs: `20261007-combined-connected-native-red.log`,
 `20261007-combined-connected-native-fixture-progress.log`,
 `20261007-combined-connected-native.log` and
 `20261007-combined-capacity-native.log`.
+
+## October 7 native CI coverage and dependency repair
+
+All 143 official migrations, including both `0138` directories and
+`0139_precomputed_live_launch_evidence`, applied successfully to a fresh local
+database. The database was removed after validation. Admin SDL and gql.tada
+regeneration produced no diff. The connected integration TypeScript project also
+passed. Logs: `20261007-full-official-migrations.log`,
+`20261007-schema-print.log`, `20261007-admin-graphql-generate.log`,
+`20261007-schema-drift.log`, and `20261007-combined-integration-typecheck.log`.
+
+The existing CI job did not enable this feature's native tests. Added an owned
+`forge_precomputed_control_test` database and explicit synthetic fixture settings
+to run the precomputed directory, authenticated producer route and connected
+source/catalog suite. The Web Redis job now also runs the authenticated measurement
+route. File concurrency is explicitly disabled to bound shared database and host
+load. These checks require no live GA, model or human-proof credentials.
+
+The exact new commands passed locally: 122/122 precomputed/producer cases,
+25/25 connected cases, and 12/12 Redis cases. The 122 cases include the verified
+baseline fixture and loaded cleanup of 6,715 request/visit roots and 34,395 items.
+Cleanup used 68 bounded runs, 43.805 seconds total and 720 ms maximum per run.
+This is synthetic retention evidence; PostgreSQL relation allocation did not
+shrink and it is not production human-traffic capacity evidence. The owned
+temporary database and Redis container were removed afterward. Logs:
+`20261007-ci-precomputed-native.log`, `20261007-ci-precomputed-connected.log`,
+and `20261007-ci-web-measurement-native.log`.
+
+The published `a9cbf8362` CI run exposed main's known Expo compatibility failure.
+The integration incorporates the already-reviewed repair from
+[PR #2599](https://github.com/JesusFilm/forge/pull/2599), commits `3b2063d60`,
+`1a847ea1c` and `c4573155d`. That repair's 29 successful/six skipped checks include
+online Expo validation; neither PR has been merged to main. Frozen lockfile-only
+validation passes locally without installing another dependency tree. The native
+capacity test's diagnostic payload parameter is now `Prisma.InputJsonObject`,
+matching Prisma's JSON input contract without a type assertion.
+
+The same published run exposed 25 failures in the ordinary retention and
+selection unit fixtures: their mocked transactions lacked the new baseline
+and launch-capacity delegates. Added empty baseline/capacity results and an
+unbound baseline request link without changing existing assertions. Both
+files now pass all 47 cases. Sequential Standards and Spec review found no
+remaining issue in this CI repair: the new native checks exercise the real
+seams, and the ordinary tests continue to verify their original behavior.
+Logs: `20261007-ci-admin-test-failed.log`,
+`20261007-ci-legacy-fixture-green.log` (intermediate failure), and
+`20261007-ci-legacy-fixture-green-final.log`.
+
+A separate read-only production snapshot at 2026-10-07T01:11:28Z found
+26,442,077,887 database bytes and 11,210,350,592 bytes in recommendation relations.
+The PGDATA filesystem had 22,118,305,792 bytes available out of 48,891,670,528.
+There were no deployed precomputed relations. This is a physical snapshot, not a
+launch receipt: actual full-build growth, verified baseline traffic and fresh
+capacity attestation remain required. The protected
+`production-physical-capacity.json` records its timestamp and cluster binding.

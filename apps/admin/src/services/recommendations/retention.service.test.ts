@@ -100,6 +100,20 @@ function buildPrisma({ expiredPublicControlEvents = 0 } = {}) {
       findFirst: vi.fn(async () => null),
     },
     recommendationPrecomputedVisitRequest: { count: count() },
+    recommendationPrecomputedBaselineRun: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async () => null),
+    },
+    recommendationPrecomputedBaselineVisit: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      findFirst: vi.fn(async () => null),
+    },
+    recommendationPrecomputedLaunchCapacityReceipt: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
     recommendationPrecomputedExperiment: {
       findMany: vi.fn(async () => []),
       deleteMany: vi.fn(async () => ({ count: 0 })),
