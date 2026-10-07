@@ -29,14 +29,20 @@ $2.3197855 known model charges and one unresolved call with unknown charge.
 A bounded candidate repair is integrated as `aeb55b991` and `e4ecc23ad`:
 strict evidence checks remain, each invalid response retains its charge, and
 the two-attempt limit plus safe feedback survive checkpoint resume. The next
-full build is held for a retrieval audit: the exhaustive implementation requires
-at least 53,612 plan/discovery model calls before individual judgments. The spec
+full build awaits the bounded real-model retrieval comparison: the exhaustive
+implementation requires at least 53,612 plan/discovery calls before individual
+judgments, versus 4,128 with the reviewed selected-content retrieval policy. The spec
 permits catalog-wide retrieval without requiring exhaustive all-pairs reasoning.
-The local Admin preview now serves the saved pilot after correcting PrismaPg's
+The local Admin preview served the saved pilot after correcting PrismaPg's
 selected-schema handling. Local Chromium verified the Admin review, Watch card,
 successful selection and navigation to the target. Temporary gateways on the
 existing Tailscale connection let the owner inspect this isolated pilot from
-their host machine; owner review remains pending. No production experiment is active.
+their host machine. On October 7 the owner confirmed that the preview looks
+fine. The preview servers, gateways and temporary Redis are now stopped at the
+owner's request to recover memory; their links are offline. Approximately
+2.2 GiB of disposable caches and generated preview files were removed, with
+source, selected catalog inputs and paid-build evidence preserved. No production
+experiment is active; preview acceptance does not authorize its activation.
 
 - Orchestrator: `01a109d7-dc1c-7600-a2c4-07dee79b4aff`.
 - Initial base: `d661b99939e24ba41834adce53c6bad9262bcee9`.
@@ -96,12 +102,23 @@ Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
 branch: `codex/feat-590-2575-live-admin`.
 
 Current continuation ownership: A completed strict candidate-evidence repair and
-is auditing existing retrieval for a practical full build; no paid rerun during
-the audit. B owns conditional live prepare/start readiness,
-fresh append-only launch-capacity evidence, and adapter-backed fixture guards.
+the retrieval audit, and delivered deterministic catalog-wide retrieval in
+`31dfe6fe6` and `b717ec718`. A bounded real-model reference comparison precedes
+the next full build. B's conditional
+live prepare/start readiness and fresh append-only launch-capacity evidence are
+integrated; B delivered experiment-scoped Web attribution telemetry and its Admin
+report reconciliation as `cc4e97fd4`, now integrated and locally verified. B owns the
+final calibration receipt and evaluator under reserved migration `0140`.
+The trusted independent calibration source/key and owner loss threshold remain
+external inputs; unknown browser/network loss stays explicit.
 The orchestrator owns local preview/schema selection and actual build resumption.
-The latest integration is `e4ecc23ad`; both chats resumed after the
-October 7 session interruption. The completion notes below record earlier slices.
+The CI repair is committed locally as `ba0376723`. Retrieval integration
+`16cce70f4` includes the reviewed worker commits and main `89f0f99a6`, which contains the separately
+merged Expo maintenance PR. GitHub rejected publication of the CI repair because
+the current OAuth login lacks workflow scope. The first device code expired;
+fresh owner authorization is still required. The remote feature PR remains
+at `a9cbf8362` and is still a draft.
+The completion notes below record earlier slices.
 
 Both workers have completed their owned implementation and normal-hook commits.
 A source `3112244b7` is integrated as `127b61e1f`; B sources `ac78b3c85` and

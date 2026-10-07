@@ -1,6 +1,9 @@
 import { createHash, generateKeyPairSync, sign } from "node:crypto"
 import { describe, expect, it } from "vitest"
-import { verifyFinalCalibrationAssertion } from "./final-calibration"
+import {
+  reconcileFinalCalibrationLoss,
+  verifyFinalCalibrationAssertion,
+} from "./final-calibration"
 
 const { publicKey, privateKey } = generateKeyPairSync("ed25519")
 const publicKeyPem = publicKey
@@ -56,6 +59,51 @@ function signed(value: ReturnType<typeof claims>) {
 }
 
 describe("independently signed final calibration", () => {
+  it("charges reached-but-unattributed requests and observed failures to the owner loss bound", () => {
+    const source = {
+      deliveryInitiated: 1_000,
+      deliveryReachedWeb: 1_000,
+      clickInitiated: 1_000,
+      clickReachedWeb: 1_000,
+      lossUpperBoundRate: 0,
+    }
+    const scoped = {
+      delivery_attempt: 10,
+      delivery_response_failed: 0,
+      click_attempt: 10,
+      click_unavailable: 0,
+    }
+    expect(reconcileFinalCalibrationLoss(source, scoped)).toMatchObject({
+      upperBoundRate: 0.99,
+      unattributedDeliveryAttempts: 990,
+      unattributedClickAttempts: 990,
+    })
+    expect(
+      reconcileFinalCalibrationLoss(
+        {
+          ...source,
+          deliveryInitiated: 10,
+          deliveryReachedWeb: 10,
+          clickInitiated: 10,
+          clickReachedWeb: 10,
+        },
+        { ...scoped, delivery_response_failed: 1, click_unavailable: 1 },
+      ),
+    ).toMatchObject({ upperBoundRate: 0.1 })
+    expect(
+      reconcileFinalCalibrationLoss(
+        {
+          ...source,
+          deliveryInitiated: 10,
+          deliveryReachedWeb: 9,
+          clickInitiated: 10,
+          clickReachedWeb: 10,
+        },
+        scoped,
+      ),
+    ).toBeNull()
+  })
+
   it("binds a complete, fresh horizon to a configured external source", async () => {
     const assertion = signed(claims())
     const result = await verifyFinalCalibrationAssertion(

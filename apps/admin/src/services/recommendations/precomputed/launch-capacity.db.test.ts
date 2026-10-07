@@ -1,7 +1,7 @@
 import { randomBytes, randomUUID } from "node:crypto"
 import {
-  type Prisma,
   PrismaClient,
+  type Prisma,
   RecommendationDeliveryResult,
   RecommendationRequestState,
 } from "@prisma/client"

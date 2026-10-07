@@ -273,6 +273,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
               connections: [
                 {
                   kind: "direct",
+                  addedViewingValueEnglish: null,
                   relationship: "more_like_this",
                   strength: 90,
                   reasonEnglish:
@@ -296,6 +297,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
               connections: [
                 {
                   kind: "alternative",
+                  addedViewingValueEnglish: null,
                   relationship: "useful_next_watch",
                   strength: 70,
                   reasonEnglish:
@@ -424,6 +426,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
                 connections: [
                   {
                     kind: "direct",
+                    addedViewingValueEnglish: null,
                     relationship: "useful_next_watch",
                     strength: 95,
                     reasonEnglish:
@@ -647,6 +650,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
                 connections: [
                   {
                     kind: "direct",
+                    addedViewingValueEnglish: null,
                     relationship: "useful_next_watch",
                     strength: 95,
                     reasonEnglish:
@@ -1228,8 +1232,11 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       }
     })
 
-    it("rejects metadata evidence for unavailable candidate fields", async () => {
-      for (const field of ["themes", "keywords"] as const) {
+    it("rejects unsupported or unavailable metadata fields and preserves usage status", async () => {
+      for (const { field, unknownUsageCallCount } of [
+        { field: "themes", unknownUsageCallCount: 1 },
+        { field: "keywords", unknownUsageCallCount: 0 },
+      ] as const) {
         const generationId = `invalid-metadata-${field}-${suffix}`
         const result = await runPrecomputedSource(
           { generationId, sourceVideoId: sourceId, inputCutoff: cutoff },
@@ -1252,7 +1259,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         ).toMatchObject({
           state: "failed",
           source: { status: "failed" },
-          usage: { unknownUsageCallCount: 0 },
+          usage: { unknownUsageCallCount },
         })
       }
     })

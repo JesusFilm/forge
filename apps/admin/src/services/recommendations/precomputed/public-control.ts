@@ -684,6 +684,9 @@ export async function promotePrecomputedPublicExperiment(
             "verified" ||
           report.policy.settings.maximumEndToEndLossRate == null ||
           liveCalibration.lossUpperBoundRate >
+            report.policy.settings.maximumEndToEndLossRate ||
+          report.finalCalibration.reconciledLossUpperBoundRate == null ||
+          report.finalCalibration.reconciledLossUpperBoundRate >
             report.policy.settings.maximumEndToEndLossRate)) ||
       report.outcome !== "challenger" ||
       report.reasons.length !== 0 ||

@@ -119,6 +119,81 @@ export type VerifiedFinalCalibration = {
   quietHours: ReadonlySet<string>
 }
 
+type AttemptCounts = Pick<
+  FinalCalibrationClaims,
+  | "deliveryInitiated"
+  | "deliveryReachedWeb"
+  | "clickInitiated"
+  | "clickReachedWeb"
+  | "lossUpperBoundRate"
+>
+
+type ScopedAttemptCounts = {
+  delivery_attempt: number
+  delivery_response_failed: number
+  click_attempt: number
+  click_unavailable: number
+}
+
+/** Both sources count request attempts, including retries. An independently
+ * observed request absent from scoped Web telemetry is loss, and a scoped
+ * failed response is loss too; neither may disappear behind a balanced hash. */
+export function reconcileFinalCalibrationLoss(
+  independent: AttemptCounts,
+  scoped: ScopedAttemptCounts,
+): {
+  upperBoundRate: number
+  unattributedDeliveryAttempts: number
+  unattributedClickAttempts: number
+} | null {
+  if (
+    !Number.isSafeInteger(independent.deliveryInitiated) ||
+    independent.deliveryInitiated < 1 ||
+    !Number.isSafeInteger(independent.deliveryReachedWeb) ||
+    independent.deliveryReachedWeb < 0 ||
+    independent.deliveryReachedWeb > independent.deliveryInitiated ||
+    !Number.isSafeInteger(independent.clickInitiated) ||
+    independent.clickInitiated < 1 ||
+    !Number.isSafeInteger(independent.clickReachedWeb) ||
+    independent.clickReachedWeb < 0 ||
+    independent.clickReachedWeb > independent.clickInitiated ||
+    !Number.isFinite(independent.lossUpperBoundRate) ||
+    independent.lossUpperBoundRate < 0 ||
+    independent.lossUpperBoundRate > 1 ||
+    !Number.isSafeInteger(scoped.delivery_attempt) ||
+    scoped.delivery_attempt < 0 ||
+    scoped.delivery_attempt > independent.deliveryReachedWeb ||
+    !Number.isSafeInteger(scoped.delivery_response_failed) ||
+    scoped.delivery_response_failed < 0 ||
+    scoped.delivery_response_failed > scoped.delivery_attempt ||
+    !Number.isSafeInteger(scoped.click_attempt) ||
+    scoped.click_attempt < 0 ||
+    scoped.click_attempt > independent.clickReachedWeb ||
+    !Number.isSafeInteger(scoped.click_unavailable) ||
+    scoped.click_unavailable < 0 ||
+    scoped.click_unavailable > scoped.click_attempt
+  )
+    return null
+  const unattributedDeliveryAttempts =
+    independent.deliveryReachedWeb - scoped.delivery_attempt
+  const unattributedClickAttempts =
+    independent.clickReachedWeb - scoped.click_attempt
+  const downstreamLossRate = Math.max(
+    (unattributedDeliveryAttempts + scoped.delivery_response_failed) /
+      independent.deliveryInitiated,
+    (unattributedClickAttempts + scoped.click_unavailable) /
+      independent.clickInitiated,
+  )
+  return {
+    upperBoundRate: Math.min(
+      1,
+      independent.lossUpperBoundRate + downstreamLossRate,
+    ),
+    unattributedDeliveryAttempts,
+    unattributedClickAttempts,
+  }
+}
+
 /** Verify a compact Ed25519 JWS with a separately configured source/method
  * binding. The operator only transports the signed assertion, not its counts. */
 export async function verifyFinalCalibrationAssertion(

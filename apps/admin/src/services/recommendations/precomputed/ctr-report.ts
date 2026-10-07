@@ -10,6 +10,7 @@ import {
   type CtrTotals,
 } from "./ctr-evidence"
 import { lockPrecomputedCtrEvidence } from "./ctr-fence"
+import { reconcileFinalCalibrationLoss } from "./final-calibration"
 import { loadPrecomputedFinalCalibration } from "./final-calibration-receipt"
 import { PRECOMPUTED_VISIT_ELIGIBILITY_POLICY } from "./visit-admission"
 import {
@@ -68,6 +69,9 @@ export type PrecomputedCtrReport = {
     sourceRunId: string
     keyId: string
     lossUpperBoundRate: number
+    reconciledLossUpperBoundRate: number | null
+    unattributedDeliveryAttempts: number | null
+    unattributedClickAttempts: number | null
     quietHourCount: number
   }
   eligibilityPolicyVersion: string
@@ -569,6 +573,10 @@ async function evaluatePrecomputedCtrReport(
         scoped.imbalancedHours.length === 0 &&
         scoped.counters.delivery_eligible >= eligibleVisits &&
         scoped.counters.click_ack >= acceptedSelections
+      const reconciledLoss =
+        finalCalibration && scoped && scoped.status !== "unavailable"
+          ? reconcileFinalCalibrationLoss(finalCalibration, scoped.counters)
+          : null
       const calibratedLossVerified =
         livePublic &&
         isFinal &&
@@ -577,11 +585,8 @@ async function evaluatePrecomputedCtrReport(
         scoped != null &&
         (scoped.status === "complete" || scoped.status === "incomplete") &&
         settings.maximumEndToEndLossRate != null &&
-        finalCalibration.lossUpperBoundRate <=
-          settings.maximumEndToEndLossRate &&
-        finalCalibration.deliveryReachedWeb >=
-          scoped.counters.delivery_attempt &&
-        finalCalibration.clickReachedWeb >= scoped.counters.click_attempt
+        reconciledLoss != null &&
+        reconciledLoss.upperBoundRate <= settings.maximumEndToEndLossRate
       const evaluation = evaluatePrecomputedCtr(settings, {
         startsAt: experiment.startsAt,
         endsAt: experiment.endsAt,
@@ -621,8 +626,8 @@ async function evaluatePrecomputedCtrReport(
         reasons.push(
           finalCalibration &&
             settings.maximumEndToEndLossRate != null &&
-            finalCalibration.lossUpperBoundRate >
-              settings.maximumEndToEndLossRate
+            reconciledLoss != null &&
+            reconciledLoss.upperBoundRate > settings.maximumEndToEndLossRate
             ? "end_to_end_client_loss_above_limit"
             : "end_to_end_client_loss_unverified",
         )
@@ -658,6 +663,12 @@ async function evaluatePrecomputedCtrReport(
                 sourceRunId: finalCalibration.sourceRunId,
                 keyId: finalCalibration.keyId,
                 lossUpperBoundRate: finalCalibration.lossUpperBoundRate,
+                reconciledLossUpperBoundRate:
+                  reconciledLoss?.upperBoundRate ?? null,
+                unattributedDeliveryAttempts:
+                  reconciledLoss?.unattributedDeliveryAttempts ?? null,
+                unattributedClickAttempts:
+                  reconciledLoss?.unattributedClickAttempts ?? null,
                 quietHourCount: finalCalibration.quietHours.size,
               },
             }

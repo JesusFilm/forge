@@ -55,7 +55,12 @@ be proved absent by either server store. The final verifier accepts one
 independently signed calibration per frozen experiment. It binds the exact
 experiment, generation, configuration, policy digest, cohort, and late cutoff;
 the configured source and measurement method; complete initiated/reached-Web
-delivery and click counts; an upper loss bound; and a passed drop/retry probe.
+delivery and click counts; an upper transport loss bound; and a passed
+drop/retry probe. Both the independent source and Web's experiment counters
+must count request attempts, including each retry, over the same cohort and
+late horizon. A verified excluded or not-eligible request stays in its known
+outcome bucket; a response-less upstream failure, missing scoped attribution,
+or failed response cannot be silently treated as a successful request.
 The owner must declare `maximumEndToEndLossRate` numerically in the live policy
 before preparation. There is no default or approved value in this repository.
 
@@ -65,8 +70,12 @@ set bits. A missing scoped Redis hash is covered only by a matching signed
 zero-traffic bit. A missing hour without that independent proof stays unknown.
 Global Watch hashes can have unrelated failures or gaps; they remain visible
 diagnostics and cannot override complete, independently qualified cohort
-evidence. A receipt above the agreed loss limit or incomplete scoped evidence
-leaves the result inconclusive; an invalid signature cannot create a receipt.
+evidence. The signed bound plus reached-Web requests absent from scoped
+counters and scoped failed responses forms the reconciled upper loss bound. If
+scoped counts exceed the independent reached-Web census, the sources conflict
+and cannot qualify. A reconciled bound above the agreed limit or incomplete
+scoped evidence leaves the result inconclusive; an invalid signature cannot
+create a receipt.
 Reading a result, attesting, and evaluating never change serving; promotion
 remains an exact manual action.
 

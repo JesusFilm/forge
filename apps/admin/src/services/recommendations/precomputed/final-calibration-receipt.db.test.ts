@@ -94,8 +94,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         boundMethod: "edge-census-upper-v1",
         coverage: "complete",
         dropRetryProbe: "passed",
-        deliveryInitiated: 101,
-        deliveryReachedWeb: 100,
+        deliveryInitiated: 61,
+        deliveryReachedWeb: 60,
         clickInitiated: 22,
         clickReachedWeb: 21,
         lossUpperBoundRate: 0.08,
@@ -173,6 +173,44 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           click_unavailable: 0,
         },
         counterUnit: "web_request_attempts_not_distinct_visits",
+      })
+    }
+
+    async function cloneLiveExperiment(id: string) {
+      const experiment =
+        await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
+          where: { id: experimentId },
+        })
+      await prisma.recommendationPrecomputedExperiment.create({
+        data: {
+          id,
+          generationId,
+          controlManifestId: experiment.controlManifestId,
+          challengerManifestId: experiment.challengerManifestId,
+          controlManifestDigest: experiment.controlManifestDigest,
+          controlRoutingDigest: experiment.controlRoutingDigest,
+          sourceSetDigest: experiment.sourceSetDigest,
+          assignmentPolicyVersion: experiment.assignmentPolicyVersion,
+          eligibilityPolicyVersion: experiment.eligibilityPolicyVersion,
+          deliveryPolicyVersion: experiment.deliveryPolicyVersion,
+          configurationDigest: experiment.configurationDigest,
+          liveEvidence: { contractVersion: "precomputed-live-evidence-v1" },
+          state: "public_ready",
+          startsAt: start,
+          endsAt: end,
+          expiresAt: experiment.expiresAt,
+        },
+      })
+      await prisma.recommendationPrecomputedCtrPolicy.create({
+        data: {
+          experimentId: id,
+          version: "fixed-horizon-cluster-delta-t-v1",
+          method: "fixed-horizon-cluster-delta-t-v1",
+          settings: policySettings,
+          lateEventCutoffHours: 24,
+          settingsDigest: policyDigest,
+          authority: "prelaunch_agreed",
+        },
       })
     }
 
@@ -468,41 +506,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
 
     it("does not infer a missing scoped hour from unsigned silence", async () => {
       const missingId = `calibration-missing-${randomUUID()}`
-      const experiment =
-        await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
-          where: { id: experimentId },
-        })
-      await prisma.recommendationPrecomputedExperiment.create({
-        data: {
-          id: missingId,
-          generationId,
-          controlManifestId: experiment.controlManifestId,
-          challengerManifestId: experiment.challengerManifestId,
-          controlManifestDigest: experiment.controlManifestDigest,
-          controlRoutingDigest: experiment.controlRoutingDigest,
-          sourceSetDigest: experiment.sourceSetDigest,
-          assignmentPolicyVersion: experiment.assignmentPolicyVersion,
-          eligibilityPolicyVersion: experiment.eligibilityPolicyVersion,
-          deliveryPolicyVersion: experiment.deliveryPolicyVersion,
-          configurationDigest: experiment.configurationDigest,
-          liveEvidence: { contractVersion: "precomputed-live-evidence-v1" },
-          state: "public_ready",
-          startsAt: start,
-          endsAt: end,
-          expiresAt: experiment.expiresAt,
-        },
-      })
-      await prisma.recommendationPrecomputedCtrPolicy.create({
-        data: {
-          experimentId: missingId,
-          version: "fixed-horizon-cluster-delta-t-v1",
-          method: "fixed-horizon-cluster-delta-t-v1",
-          settings: policySettings,
-          lateEventCutoffHours: 24,
-          settingsDigest: policyDigest,
-          authority: "prelaunch_agreed",
-        },
-      })
+      await cloneLiveExperiment(missingId)
       await attestPrecomputedFinalCalibration(prisma, {
         assertion: signed({
           ...claims(),
@@ -533,6 +537,47 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           },
           reasons: expect.arrayContaining([
             "experiment_scoped_tracking_loss_unverified",
+            "end_to_end_client_loss_above_limit",
+          ]),
+        },
+      })
+    })
+
+    it("charges reached-Web requests missing from scoped attribution", async () => {
+      const deficitId = `calibration-deficit-${randomUUID()}`
+      await cloneLiveExperiment(deficitId)
+      await attestPrecomputedFinalCalibration(prisma, {
+        assertion: signed({
+          ...claims(),
+          experimentId: deficitId,
+          deliveryInitiated: 1_000,
+          deliveryReachedWeb: 1_000,
+          clickInitiated: 1_000,
+          clickReachedWeb: 1_000,
+          lossUpperBoundRate: 0,
+        }),
+        operator,
+        now,
+        testTrustedKeyring: keyring,
+      })
+      webEvidence(deficitId)
+      const report = await evaluatePublicPrecomputedCtr(prisma, {
+        experimentId: deficitId,
+        operator,
+        now: new Date(),
+        testTrustedKeyring: keyring,
+      })
+      expect(report).toMatchObject({
+        status: "available",
+        report: {
+          evidenceBasis: "live_incomplete",
+          outcome: "inconclusive",
+          finalCalibration: {
+            unattributedDeliveryAttempts: 940,
+            unattributedClickAttempts: 979,
+            reconciledLossUpperBoundRate: 0.979,
+          },
+          reasons: expect.arrayContaining([
             "end_to_end_client_loss_above_limit",
           ]),
         },

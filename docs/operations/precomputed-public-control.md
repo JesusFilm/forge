@@ -94,7 +94,8 @@ an append-only insert. Evaluate only after the receipt: a missing receipt
 returns `final_calibration_pending` without freezing an inconclusive final
 report. An independently proven quiet hour may cover an absent scoped Redis
 hash; unproved absence remains a gap. The final report includes the receipt
-digest, source, upper bound, and scoped reconciliation. A clear challenger
+digest, source, signed transport bound, and reconciled bound that also charges
+reached-Web attribution gaps and scoped failed outcomes. A clear challenger
 result can be promoted only by the separate exact manual CAS action.
 
 The verifier code is present, but no independent source/key, approved bound

@@ -629,12 +629,21 @@ export function PublicPrecomputedControls({
                                 Independent final calibration from{" "}
                                 {result.finalCalibration.sourceId} (run{" "}
                                 {result.finalCalibration.sourceRunId}) measured
-                                an upper loss bound of{" "}
+                                a signed transport loss bound of{" "}
                                 {(
                                   result.finalCalibration.lossUpperBoundRate *
                                   100
                                 ).toFixed(2)}
-                                %. Receipt{" "}
+                                %. The reconciled bound after scoped attribution
+                                and failed responses is{" "}
+                                {result.finalCalibration
+                                  .reconciledLossUpperBoundRate == null
+                                  ? "unverified"
+                                  : `${(
+                                      result.finalCalibration
+                                        .reconciledLossUpperBoundRate * 100
+                                    ).toFixed(2)}%`}
+                                . Receipt{" "}
                                 {result.finalCalibration.receiptDigest};{" "}
                                 {result.finalCalibration.quietHourCount} UTC
                                 hours were attested quiet.
