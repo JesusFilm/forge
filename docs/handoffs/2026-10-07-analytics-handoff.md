@@ -27,15 +27,23 @@ and 3 to 5 plain-language recommendations. Publishing is a separate session
 
 ## The paid-traffic trap (read first)
 
-A few videos got **Facebook ads**, so their totals are not comparable with the
-rest and must never be read as "make more like this". Candidates by view
-count on 2026-10-07 (confirm with Lyuba, then record the final list here):
+Some **long-form** videos get **Facebook ads**, so their totals are not
+comparable with the rest and must never be read as "make more like this".
+Confirmed by Lyuba on 2026-10-07 (Shorts are never advertised):
 
-- Short "When Grace for Someone Else Feels Unfair (Luke 15)" (≈680 views)
-- Long "She wept at his feet in a room that knew her past | Luke 7" (≈470)
-- One of: long "Are You Hiding Your Light? | Luke 8" (≈210), Short "What Jesus
-  Said About Hiding Your Light" (≈240), Short "If you have ever felt too far
-  gone to pray" (≈200)
+- Long "She wept at his feet in a room that knew her past | Luke 7" (≈470 views)
+- Long "Are You Hiding Your Light? | Luke 8" (≈210)
+- Long "The Prodigal Son: Can Grace Feel Unfair? | Luke 15" (ad just started on
+  2026-10-07, ≈50 views; expect it to jump)
+
+Ask Lyuba whenever a new video starts getting ads and add it here.
+
+Other non-organic spikes to keep out of conclusions:
+
+- The Russian channel's first video (Bartimaeus RU) got its first views and
+  subscriber from a friend sharing it with his friends, not from YouTube.
+- High-view Shorts (e.g. "When Grace for Someone Else Feels Unfair", ≈680) are
+  **organic**: they are fair to learn from.
 
 Rules:
 
