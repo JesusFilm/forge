@@ -21,6 +21,7 @@ const INK = "#191512"
 const CHAR = "#221d1a"
 const SANS = `'${SHORT_FONT_FAMILIES.inter}', -apple-system, system-ui, sans-serif`
 const SERIF = `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`
+const HAND = `'${SHORT_FONT_FAMILIES.caveat}', cursive`
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
 const OUT = Easing.bezier(0.2, 0.7, 0.2, 1)
 /** Gentle arrival, no overshoot (owner: the first cut felt a bit harsh). */
@@ -633,10 +634,10 @@ export function VoxLanguageLayout({
                       transform: `translateX(-50%) rotate(-6deg) scale(${(0.7 + 0.3 * swapP).toFixed(3)})`,
                       opacity: swapP * 0.95,
                       color: CHAR,
-                      fontFamily: SERIF,
-                      fontStyle: "italic",
+                      fontFamily: HAND,
                       fontWeight: 700,
-                      fontSize: "0.9em",
+                      fontSize: "1.25em",
+                      lineHeight: 1,
                       whiteSpace: "nowrap",
                     }}
                   >

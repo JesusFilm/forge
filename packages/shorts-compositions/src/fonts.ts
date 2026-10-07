@@ -12,6 +12,7 @@ import {
   MONTSERRAT_CYRILLIC_WOFF2_BASE64,
   MONTSERRAT_LATIN_WOFF2_BASE64,
 } from "./fonts-data"
+import { CAVEAT_BOLD_LATIN_WOFF2_BASE64 } from "./fonts-caveat-data"
 import {
   EB_GARAMOND_LATIN_WOFF2_BASE64,
   EB_GARAMOND_LATIN_ITALIC_WOFF2_BASE64,
@@ -38,6 +39,9 @@ export const SHORT_FONT_FAMILIES = {
   // The source-credit line only (owner's Figma, 2026-09-25). Latin only, and
   // no Greek: the Greek-vocabulary credit sets in Literata instead.
   ptSerif: "PT Serif",
+  // Handwriting: the word written over a struck one in the vox language short
+  // (owner's pick from nine hands mocked up in Figma, 2026-10-07).
+  caveat: "Caveat",
 } as const
 
 // Google Fonts unicode-ranges: Cyrillic copy (the devotional is Russian) needs
@@ -113,6 +117,11 @@ export const FONT_SOURCES: ReadonlyArray<{
     family: SHORT_FONT_FAMILIES.ptSerif,
     base64: PT_SERIF_ITALIC_LATIN_WOFF2_BASE64,
     style: "italic",
+  },
+  // Latin only: English handwriting overlay.
+  {
+    family: SHORT_FONT_FAMILIES.caveat,
+    base64: CAVEAT_BOLD_LATIN_WOFF2_BASE64,
   },
 ]
 
