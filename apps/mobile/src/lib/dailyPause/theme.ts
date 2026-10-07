@@ -52,6 +52,10 @@ export const pauseSpacing = {
   prayRingGap: 87,
   /** The Pray screen's empty box between the attribution and Amen. */
   prayButtonGap: 42,
+  /** The Reflect screen's gap between the verse block and its button, and
+   *  the lift of both off the bottom edge (the owner, 2026-10-07). */
+  reflectButtonGap: 32,
+  reflectButtonLift: 40,
   /** The Share screen's fixed top spacer and its spacer above the button. */
   shareTop: 264,
   shareButtonGap: 17,

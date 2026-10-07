@@ -134,7 +134,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: pauseSpacing.screenGap,
   },
-  buttonRow: { alignSelf: "stretch", alignItems: "center" },
+  // The body's own gap already sits above the button, so the margin adds
+  // only the rest of the Reflect gap.
+  buttonRow: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    marginTop: pauseSpacing.reflectButtonGap - pauseSpacing.screenGap,
+    marginBottom: pauseSpacing.reflectButtonLift,
+  },
   quote: {
     color: pauseColors.accent,
     fontSize: QUOTE_SIZE,
