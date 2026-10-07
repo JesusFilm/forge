@@ -1,4 +1,4 @@
-# RAG Migration Lane
+# RAG Strategy and Migration Lane
 
 Durable Forge-local roadmap for relocating
 [`JesusFilm/jesusfilm-rag`](https://github.com/JesusFilm/jesusfilm-rag/issues/130)
@@ -8,13 +8,16 @@ database into Admin.
 > This lane is intentionally invisible to the public roadmap viewer and the
 > generated `docs/roadmap/README.md` totals. This index is maintained by hand.
 
-## Status (October 6, 2026)
+## Status (October 8, 2026)
 
-- **Total tickets:** 46
+- **Total tickets:** 52
 - **Complete:** 34
-- **In progress:** 1
-- **Not started:** 11
+- **In progress:** 2
+- **Not started:** 16
 - **Blocked:** 0
+
+See the [strategy and Source Expansion map](strategy.md) for workstreams,
+suggestion intake, decision gates and success criteria.
 
 ## Feature Index
 
@@ -58,15 +61,20 @@ database into Admin.
 | [feat-568](feat-568-rag-usage-capacity-review.md)                 | —                                                             | Review usage capacity before volume expansion                         | not-started | —                                                                                                                                                                                                                                                                                                                                        |
 | [feat-529](feat-529-rag-consumer-dogfood-migration.md)            | —                                                             | Dogfood and seven-day migration                                       | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304), [#2459](https://github.com/JesusFilm/forge/pull/2459), [#2472](https://github.com/JesusFilm/forge/pull/2472), [#2513](https://github.com/JesusFilm/forge/pull/2513)                                                                                                               |
 | [feat-530](feat-530-rag-consumer-self-service-portal.md)          | —                                                             | Internal self-service portal                                          | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304), [#2442](https://github.com/JesusFilm/forge/pull/2442), [#2445](https://github.com/JesusFilm/forge/pull/2445) , [#2513](https://github.com/JesusFilm/forge/pull/2513)                                                                                                              |
-| [feat-575](feat-575-rag-portal-session-recovery.md)               | —                                                             | Renew portal sessions and restore the active section                  | complete    | [#2475](https://github.com/JesusFilm/forge/pull/2475), [#2499](https://github.com/JesusFilm/forge/pull/2499)                                                                                                                                                                                                                             |
+| [feat-619](feat-619-rag-portal-session-recovery.md)               | —                                                             | Renew portal sessions and restore the active section                  | complete    | [#2475](https://github.com/JesusFilm/forge/pull/2475), [#2499](https://github.com/JesusFilm/forge/pull/2499)                                                                                                                                                                                                                             |
 | [feat-580](feat-580-rag-consumer-revocation-restoration.md)       | —                                                             | Revoke and restore RAG portal consumers                               | complete    | [#2496](https://github.com/JesusFilm/forge/pull/2496)                                                                                                                                                                                                                                                                                    |
 | [feat-532](feat-532-rag-legacy-service-credential-retirement.md)  | —                                                             | Retire legacy JesusFilm-RAG service and credentials                   | in-progress | [#2379](https://github.com/JesusFilm/forge/pull/2379), [#2558](https://github.com/JesusFilm/forge/pull/2558), [#2563](https://github.com/JesusFilm/forge/pull/2563), [#2562](https://github.com/JesusFilm/forge/pull/2562)                                                                                                               |
 | [feat-518](feat-518-rag-consumer-access-discovery.md)             | —                                                             | Confirm consumer access implementation readiness                      | complete    | [#2304](https://github.com/JesusFilm/forge/pull/2304)                                                                                                                                                                                                                                                                                    |
 | [feat-541](feat-541-rag-database-diagram.md)                      | —                                                             | Document the RAG database schema as a complete ERD                    | complete    | [#2398](https://github.com/JesusFilm/forge/pull/2398)                                                                                                                                                                                                                                                                                    |
 | [feat-569](feat-569-rag-portal-sources.md)                        | —                                                             | Production source catalog in the portal                               | complete    | [#2463](https://github.com/JesusFilm/forge/pull/2463)                                                                                                                                                                                                                                                                                    |
-
-| [feat-575](feat-575-rag-consumer-manual.md) | [#98](https://github.com/JesusFilm/jesusfilm-rag/issues/98) | Build Consumer Manual, database-backed filters and code samples | not-started | [#2485](https://github.com/JesusFilm/forge/pull/2485) |
-| [feat-576](feat-576-rag-governed-test-bench.md) | — | Enable governed test-bench execution and dedicated usage | not-started | [#2485](https://github.com/JesusFilm/forge/pull/2485) |
+| [feat-620](feat-620-rag-consumer-manual.md)                       | [#98](https://github.com/JesusFilm/jesusfilm-rag/issues/98)   | Build Consumer Manual, database-backed filters and code samples       | not-started | [#2485](https://github.com/JesusFilm/forge/pull/2485)                                                                                                                                                                                                                                                                                    |
+| [feat-576](feat-576-rag-governed-test-bench.md)                   | —                                                             | Enable governed test-bench execution and dedicated usage              | not-started | [#2485](https://github.com/JesusFilm/forge/pull/2485)                                                                                                                                                                                                                                                                                    |
+| [feat-621](feat-621-rag-strategy-roadmap.md)                      | —                                                             | Publish the RAG strategy and Source Expansion roadmap                 | in-progress | —                                                                                                                                                                                                                                                                                                                                        |
+| [feat-622](feat-622-rag-source-expansion.md)                      | —                                                             | Source Expansion: govern suggestions through reviewed pilots          | not-started | —                                                                                                                                                                                                                                                                                                                                        |
+| [feat-623](feat-623-rag-source-quality-gates.md)                  | —                                                             | Define repeatable source and retrieval quality gates                  | not-started | —                                                                                                                                                                                                                                                                                                                                        |
+| [feat-624](feat-624-rag-bible-lookup-research.md)                 | —                                                             | Research Bible lookup behavior and licensing                          | not-started | —                                                                                                                                                                                                                                                                                                                                        |
+| [feat-625](feat-625-rag-health-support.md)                        | —                                                             | Close RAG health diagnostics and support gaps                         | not-started | —                                                                                                                                                                                                                                                                                                                                        |
+| [feat-626](feat-626-rag-operational-handover.md)                  | —                                                             | Prepare RAG operational ownership and handover                        | not-started | —                                                                                                                                                                                                                                                                                                                                        |
 
 The September 8 operator decision in [feat-435](feat-435-rag-proof-soak-archive.md)
 accepts the baseline for acquisition/ingestion with the three concerns tracked
@@ -117,7 +125,7 @@ Discovery and J021 evidence stay in separate draft
 
 ## Consumer Manual and test bench
 
-[feat-575](feat-575-rag-consumer-manual.md) specifies the Knowledge page with the
+[feat-620](feat-620-rag-consumer-manual.md) specifies the Knowledge page with the
 approved [A/D composition](evidence/feat-575/consumer-manual-combined.png),
 database-derived filter options, generated consumer
 code and a fully disabled sample bench. It blocks
@@ -134,3 +142,7 @@ that deletion and credential dispositions. Feat-606 tracks separately approved
 future acquisition/ingestion validation. Feat-605 closes safe
 failure instrumentation only; intermittent failure diagnosis and resolution are
 not claimed by its deployment verification.
+
+ID reconciliation (October 8): RAG session recovery is now feat-619 and the
+Consumer Manual is feat-620 (both formerly feat-575). Their historical evidence
+paths and statuses are preserved; platform feat-575 is unchanged.
