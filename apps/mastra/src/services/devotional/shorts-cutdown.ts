@@ -149,7 +149,8 @@ const norm = (s: string) =>
   s
     .toLowerCase()
     .replace(/[’‘]/g, "'")
-    .replace(/[^a-z0-9']+/g, " ")
+    // Letters of any script: `[a-z]` emptied every Russian card (2026-10-07).
+    .replace(/[^\p{L}\p{N}']+/gu, " ")
     .trim()
 
 /**
@@ -1251,7 +1252,7 @@ const FUNCTION_WORDS = new Set(
     " ",
   ),
 )
-const bare = (w: string) => w.toLowerCase().replace(/[^a-z']/g, "")
+const bare = (w: string) => w.toLowerCase().replace(/[^\p{L}']/gu, "")
 
 /**
  * The short's spoken words cut into teaser lines: one sentence per line, a
@@ -1320,7 +1321,7 @@ export function heuristicRoles(text: string): {
 } {
   const content = text
     .split(/\s+/)
-    .map((w) => w.replace(/[^A-Za-z'-]/g, ""))
+    .map((w) => w.replace(/[^\p{L}'-]/gu, ""))
     .filter(
       (w) =>
         w &&
@@ -1552,7 +1553,7 @@ export function questionClip(
   words: { word: string; startSec: number; endSec: number }[]
 } | null {
   const q = question.split(/\s+/).filter(Boolean)
-  const key = (w: string) => w.toLowerCase().replace(/[^a-z0-9']/g, "")
+  const key = (w: string) => w.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "")
   for (let i = 0; i + q.length <= words.length; i++) {
     if (q.every((w, k) => key(words[i + k].word) === key(w))) {
       const run = words.slice(i, i + q.length)

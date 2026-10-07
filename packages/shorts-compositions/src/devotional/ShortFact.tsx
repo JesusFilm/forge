@@ -929,7 +929,13 @@ function ReflectionLayout({
   const floatR = Math.sin((t * 2 * Math.PI) / 5.1) * 1.4
   return (
     <>
-      <FullDevotionalLabel f={f} t={t} text="From the Full Devotional:" />
+      <FullDevotionalLabel
+        f={f}
+        t={t}
+        text={
+          isRussian(words) ? "Из полного видео:" : "From the Full Devotional:"
+        }
+      />
       <div
         style={{
           position: "absolute",
@@ -1026,6 +1032,12 @@ function ReflectionLayout({
       ) : null}
     </>
   )
+}
+
+/** A Russian short (its narration is Cyrillic) says its labels in Russian
+ *  (2026-10-07); the labels are the only fixed English on a fact short. */
+function isRussian(words: ReadonlyArray<{ word: string }>): boolean {
+  return words.some((w) => /\p{Script=Cyrillic}/u.test(w.word))
 }
 
 /** "From the Full Devotional:" over a short (Figma 415-2610, 425-2722):

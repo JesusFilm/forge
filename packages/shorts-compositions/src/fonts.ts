@@ -18,6 +18,10 @@ import {
   EB_GARAMOND_LATIN_ITALIC_WOFF2_BASE64,
 } from "./fonts-ebgaramond-data"
 import {
+  PT_SERIF_CYRILLIC_EXT_WOFF2_BASE64,
+  PT_SERIF_CYRILLIC_WOFF2_BASE64,
+  PT_SERIF_ITALIC_CYRILLIC_EXT_WOFF2_BASE64,
+  PT_SERIF_ITALIC_CYRILLIC_WOFF2_BASE64,
   PT_SERIF_ITALIC_LATIN_WOFF2_BASE64,
   PT_SERIF_LATIN_WOFF2_BASE64,
 } from "./fonts-ptserif-data"
@@ -117,6 +121,29 @@ export const FONT_SOURCES: ReadonlyArray<{
     family: SHORT_FONT_FAMILIES.ptSerif,
     base64: PT_SERIF_ITALIC_LATIN_WOFF2_BASE64,
     style: "italic",
+  },
+  // Cyrillic faces (Russian shorts, 2026-10-07).
+  {
+    family: SHORT_FONT_FAMILIES.ptSerif,
+    base64: PT_SERIF_CYRILLIC_WOFF2_BASE64,
+    unicodeRange: CYRILLIC_RANGE,
+  },
+  {
+    family: SHORT_FONT_FAMILIES.ptSerif,
+    base64: PT_SERIF_CYRILLIC_EXT_WOFF2_BASE64,
+    unicodeRange: CYRILLIC_EXT_RANGE,
+  },
+  {
+    family: SHORT_FONT_FAMILIES.ptSerif,
+    base64: PT_SERIF_ITALIC_CYRILLIC_WOFF2_BASE64,
+    style: "italic",
+    unicodeRange: CYRILLIC_RANGE,
+  },
+  {
+    family: SHORT_FONT_FAMILIES.ptSerif,
+    base64: PT_SERIF_ITALIC_CYRILLIC_EXT_WOFF2_BASE64,
+    style: "italic",
+    unicodeRange: CYRILLIC_EXT_RANGE,
   },
   // Latin only: English handwriting overlay.
   {
