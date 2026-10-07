@@ -6818,6 +6818,7 @@ model RecommendationPrecomputedExperiment {
   ctrClusters RecommendationPrecomputedCtrCluster[]
   ctrTotals RecommendationPrecomputedCtrTotals[]
   ctrReports RecommendationPrecomputedCtrReport[]
+  finalCalibration RecommendationPrecomputedFinalCalibration?
   activePublicControls RecommendationPrecomputedPublicControl[] @relation("PrecomputedPublicActiveExperiment")
   retainedPublicControls RecommendationPrecomputedPublicControl[] @relation("PrecomputedPublicRetainedExperiment")
 
@@ -7065,6 +7066,33 @@ model RecommendationPrecomputedCtrReport {
 
   @@id([experimentId, revision])
   @@map("recommendation_precomputed_ctr_report")
+}
+
+/// One independently signed, append-only final-horizon calibration per live
+/// experiment. It follows the frozen experiment's bounded retention.
+model RecommendationPrecomputedFinalCalibration {
+  experimentId String @id @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  generationId String @map("generation_id")
+  configurationDigest String @map("configuration_digest") @db.Char(64)
+  policyDigest String @map("policy_digest") @db.Char(64)
+  startsAt DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt DateTime @map("ends_at") @db.Timestamptz(6)
+  finalAt DateTime @map("final_at") @db.Timestamptz(6)
+  sourceId String @map("source_id") @db.VarChar(191)
+  sourceRunId String @map("source_run_id") @db.VarChar(191)
+  keyId String @map("key_id") @db.VarChar(191)
+  publicKeyDigest String @map("public_key_digest") @db.Char(64)
+  assertion String @db.VarChar(8192)
+  assertionDigest String @map("assertion_digest") @db.Char(64)
+  lossUpperBound Float @map("loss_upper_bound")
+  observedAt DateTime @map("observed_at") @db.Timestamptz(6)
+  actorId String @map("actor_id") @db.VarChar(191)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([expiresAt], map: "precomputed_final_calibration_expiry_idx")
+  @@map("recommendation_precomputed_final_calibration")
 }
 
 /// One compact choice set per source Video per generation. Reasons and evidence

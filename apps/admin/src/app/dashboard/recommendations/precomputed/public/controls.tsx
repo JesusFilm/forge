@@ -19,6 +19,7 @@ const policyTemplate = {
   lateEventCutoffHours: 48,
   maximumActualFallbackRate: 0.05,
   maximumUnlinkedDeliveryRate: 0.01,
+  maximumEndToEndLossRate: null,
 }
 
 function reportView(value: unknown): PrecomputedCtrReport | null {
@@ -370,7 +371,10 @@ export function PublicPrecomputedControls({
               Enter owner-agreed numeric settings. No live policy has been
               approved by this page. Previewing a digest only checks the
               settings; preparation requires the final verified baseline and a
-              fresh capacity receipt. Starting traffic is a separate action.
+              fresh capacity receipt. Set a numeric
+              <code> maximumEndToEndLossRate</code> from the owner decision;
+              null or absence cannot start a live cohort. Starting traffic is a
+              separate action.
             </p>
             <label className="md:col-span-2">
               Agreed stopping policy JSON
@@ -620,6 +624,31 @@ export function PublicPrecomputedControls({
                                 .
                               </p>
                             ) : null}
+                            {result.finalCalibration ? (
+                              <p>
+                                Independent final calibration from{" "}
+                                {result.finalCalibration.sourceId} (run{" "}
+                                {result.finalCalibration.sourceRunId}) measured
+                                a signed transport loss bound of{" "}
+                                {(
+                                  result.finalCalibration.lossUpperBoundRate *
+                                  100
+                                ).toFixed(2)}
+                                %. The reconciled bound after scoped attribution
+                                and failed responses is{" "}
+                                {result.finalCalibration
+                                  .reconciledLossUpperBoundRate == null
+                                  ? "unverified"
+                                  : `${(
+                                      result.finalCalibration
+                                        .reconciledLossUpperBoundRate * 100
+                                    ).toFixed(2)}%`}
+                                . Receipt{" "}
+                                {result.finalCalibration.receiptDigest};{" "}
+                                {result.finalCalibration.quietHourCount} UTC
+                                hours were attested quiet.
+                              </p>
+                            ) : null}
                             <p>
                               Web/edge bot exclusion coverage:{" "}
                               {result.measurementHealth
@@ -685,7 +714,11 @@ export function PublicPrecomputedControls({
                                   result.measurementHealth
                                     .experimentRequestHealth.missingHourCount
                                 }{" "}
-                                hours lack a scoped observation.
+                                hours lack a scoped observation;{" "}
+                                {result.measurementHealth
+                                  .experimentRequestHealth
+                                  .independentlyCoveredQuietHours ?? 0}{" "}
+                                of those have independent zero-traffic proof.
                               </p>
                             ) : null}
                             <p>

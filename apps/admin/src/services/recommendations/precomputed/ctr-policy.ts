@@ -14,6 +14,8 @@ export type CtrPolicySettings = {
   lateEventCutoffHours: number
   maximumActualFallbackRate: number
   maximumUnlinkedDeliveryRate: number
+  /** Explicitly agreed for live cohorts; absent/null remains unqualified. */
+  maximumEndToEndLossRate?: number | null
 }
 
 export type CtrArmMoments = {
@@ -61,6 +63,8 @@ export function validateCtrPolicySettings(value: CtrPolicySettings): void {
     value.plannedPower >= 1 ||
     !probability(value.maximumActualFallbackRate) ||
     !probability(value.maximumUnlinkedDeliveryRate) ||
+    (value.maximumEndToEndLossRate != null &&
+      !probability(value.maximumEndToEndLossRate)) ||
     !Number.isSafeInteger(value.minimumEligibleVisitsPerArm) ||
     value.minimumEligibleVisitsPerArm < 1 ||
     !Number.isSafeInteger(value.minimumIndependentBrowsersPerArm) ||

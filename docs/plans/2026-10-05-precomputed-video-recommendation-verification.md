@@ -2037,9 +2037,61 @@ normal hooks also passed. Standards and Spec review found no remaining issue
 after correcting the expanded relation query's source-only evidence check.
 Log: `20261007-chapter-dedup-integrated-native.log`.
 
-The saved source can be replayed through the corrected contract without
-repeating its model calls. The benchmark still has two further sources and
+The corrected contract replay finalized all 31 original choices as
+`complete_edges`, using the saved source checkpoint and idempotent source-history
+write. It made no additional model or GA calls. Root integration `f7867f744`
+passed normal hooks. The benchmark still has two further sources and
 the bounded reference comparison to complete; this is not a full catalog
 cost/coverage report. Protected backups include its interrupted receipts and
 a consistent precomputed-table archive, supplementing the previously restored
 full catalog archive. No raw reservation or paid record was reset.
+
+## October 7 final calibration integration
+
+Worker B's `7294be5d8` and `0631d5965` add the signed final-horizon receipt,
+bound to the exact experiment, generation, configuration, policy and time window.
+An independently configured Ed25519 public key binds its source and method;
+operators only transport the signed assertion. Migration `0140` stores one
+immutable bounded receipt per experiment, removed with its retained cohort.
+Missing calibration returns `final_calibration_pending` without freezing the
+final report. Signed quiet-hour proof can account for missing scoped Redis hours.
+Promotion remains a separate manual action tied to the exact verified final
+report and receipt digest. No production source/key, approved measurement method,
+numeric loss limit, or actual live calibration is configured by this change.
+
+Root Spec review identified a count-reconciliation hole: a signed census of
+1,000 reached-Web attempts could previously qualify against only 60 attributed
+deliveries or 21 clicks. The correction adds unattributed attempts and observed
+failed responses to the signed transport-loss bound. The native counterexample
+now reports a conservative 97.9% bound and remains inconclusive; a scoped count
+above the independent census is rejected. Request attempts include retries on
+both sides. The positive fixture uses consistent delivery and click counts.
+Standards and Spec review found no remaining confirmed defect after this fix.
+
+On the combined root tree, all 135 precomputed/producer tests and all 25
+connected source/catalog tests passed, including loaded retention and the
+corrected native calibration cases. All 144 official migrations applied to a
+fresh owned database. Prisma generation succeeded, and regenerated SDL/client
+types showed no drift. The temporary test databases were removed. Worker
+validation also passed full Admin typechecking, Prisma validation, scoped lint,
+17 focused pure/native/legacy CTR tests and normal commit hooks. Logs use the
+`20261007-calibration-` prefix in the orchestration evidence directory.
+
+The UI adds calibration text to the existing report and one nullable policy
+field, with no additional browser request or imported runtime dependency.
+Earlier local preview/loading evidence remains qualified as development-only;
+this slice does not establish production latency.
+
+The metadata-only real benchmark source subsequently failed final acceptance
+because collection `MAG1` and film `1_wl60-0-0` have the same published title,
+Magdalena, and no direct catalog relation. This is a valid rejection under the
+retained duplicate policy. Its 55 provisional choices, completed history,
+checkpoint and 65 provider responses ($4.7986875 known charges) remain saved in
+the incomplete generation. Across the two attempted sources, 103 responses have
+$7.3182775 known charges. The producer must filter ineligible identities before
+reasoning under a new input digest; old receipts and checkpoints will not be
+rewritten. The full catalog restart remains unexecuted.
+
+The owner completed a fresh GitHub device login, and the active CLI login now
+includes workflow scope. This resolves the publication permission failure;
+the next push and published-head CI still need to be observed.

@@ -94,8 +94,11 @@ loaded fixture passed without equating reclaimed rows to recovered filesystem
 space. #2575 manual controls and Watch consumption are integrated: 25 connected
 native cases, migration `0137`, and desktop/mobile control checks passed. The final
 Admin suite (9,019 tests), 42 additional native cases, typechecks and generated
-contract checks passed. Live qualification code and real human/bot/loss
-evidence, full catalog execution and production capacity remain incomplete. The execution ledger is
+contract checks passed. The subsequent signed final-calibration verifier is
+integrated and passes 135 combined precomputed tests, 25 connected tests and
+all 144 official migrations. Its independent source/key/method, agreed numeric
+loss policy and actual live human/bot/loss evidence remain unconfigured. Full
+catalog execution and production capacity also remain incomplete. The execution ledger is
 `docs/plans/2026-10-05-precomputed-video-recommendation-status.md`. Public
 experimental serving remains default-off.
 

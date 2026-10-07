@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   baselineStart: vi.fn(),
   baselineStop: vi.fn(),
   attestCapacity: vi.fn(),
+  attestCalibration: vi.fn(),
 }))
 vi.mock("@/auth/session", () => ({
   resolveAdminSessionFromRequest: mocks.session,
@@ -38,6 +39,12 @@ vi.mock("@/services/recommendations/precomputed/launch-capacity", () => ({
   },
   attestPrecomputedLaunchCapacity: mocks.attestCapacity,
 }))
+vi.mock(
+  "@/services/recommendations/precomputed/final-calibration-receipt",
+  () => ({
+    attestPrecomputedFinalCalibration: mocks.attestCalibration,
+  }),
+)
 vi.mock("@/services/recommendations/precomputed/incumbent-baseline", () => ({
   PrecomputedBaselineError: class extends Error {
     constructor(readonly code: string) {
@@ -108,6 +115,43 @@ describe("manual precomputed public control endpoint", () => {
       id: "capacity-1",
       status: "passed",
     })
+    mocks.attestCalibration.mockResolvedValue({
+      receiptDigest: "c".repeat(64),
+      sourceId: "independent-edge-1",
+      quietHours: new Set(["2026100600"]),
+    })
+  })
+
+  it("accepts only a recent operator session for signed final calibration", async () => {
+    const first = await POST(
+      request({ action: "attest_final_calibration", assertion: "signed.jws" }),
+    )
+    expect(first.status).toBe(200)
+    expect(await first.json()).toMatchObject({
+      receipt: {
+        receiptDigest: "c".repeat(64),
+        quietHourCount: 1,
+      },
+    })
+    expect(mocks.attestCalibration).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ assertion: "signed.jws" }),
+    )
+    mocks.session.mockResolvedValueOnce({
+      principal: { id: "operator", role: "ADMIN" },
+      authenticatedAt: new Date("2026-10-05T23:00:00.000Z"),
+    })
+    expect(
+      (
+        await POST(
+          request({
+            action: "attest_final_calibration",
+            assertion: "signed.jws",
+          }),
+        )
+      ).status,
+    ).toBe(401)
+    expect(mocks.attestCalibration).toHaveBeenCalledTimes(1)
   })
 
   it("previews a numeric digest without approving it or changing serving", async () => {

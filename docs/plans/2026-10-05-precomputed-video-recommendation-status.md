@@ -36,9 +36,17 @@ permits catalog-wide retrieval without requiring exhaustive all-pairs reasoning.
 The first retrieval benchmark source exposed an overly broad core-prefix
 duplicate check at its final save. Fix `e7a30b4ae` preserves the allowed
 chapter/parent-film links while retaining real duplicate rejection; all 28
-related native cases pass on the combined root checkout. Its 38 paid responses
-and $2.51959 known charges remain saved for replay. Two further benchmark
-sources and the bounded reference comparison still precede the full build.
+related native cases pass on the combined root checkout. Root integration
+`f7867f744` passed normal hooks. Its 38 paid responses and $2.51959 known charges
+were reused to finalize all 31 recommendations, with no additional model or GA
+calls for the replay. The metadata-only Magdalena source then reached its
+final save with 55 provisional choices, but correctly failed the retained
+same-title duplicate policy. Its 65 responses and $4.7986875 known charges are
+preserved; the benchmark total is 103 responses and $7.3182775 known charges.
+A owns producer-side identity filtering before paid candidate reasoning, with a
+new retrieval revision and fresh generation. Old checkpoints and accepted
+results remain unchanged. The remaining benchmark and bounded reference
+comparison still precede the full build.
 The local Admin preview served the saved pilot after correcting PrismaPg's
 selected-schema handling. Local Chromium verified the Admin review, Watch card,
 successful selection and navigation to the target. Temporary gateways on the
@@ -46,7 +54,8 @@ existing Tailscale connection let the owner inspect this isolated pilot from
 their host machine. On October 7 the owner confirmed that the preview looks
 fine. The preview servers, gateways and temporary Redis are now stopped at the
 owner's request to recover memory; their links are offline. Approximately
-2.2 GiB of disposable caches and generated preview files were removed, with
+2.4 GiB of disposable caches, generated preview files and the clean merged Expo
+repair worktree were removed, with
 source, selected catalog inputs and paid-build evidence preserved. No production
 experiment is active; preview acceptance does not authorize its activation.
 
@@ -114,16 +123,22 @@ the next full build. B's conditional
 live prepare/start readiness and fresh append-only launch-capacity evidence are
 integrated; B delivered experiment-scoped Web attribution telemetry and its Admin
 report reconciliation as `cc4e97fd4`, now integrated and locally verified. B owns the
-final calibration receipt and evaluator under reserved migration `0140`.
-The trusted independent calibration source/key and owner loss threshold remain
-external inputs; unknown browser/network loss stays explicit.
+final calibration receipt and evaluator in `7294be5d8` and `0631d5965`, now
+integrated and locally verified through migration `0140`. Root checks passed
+135 precomputed cases, 25 connected cases, all 144 official migrations, and
+generated schema/client drift. The verifier binds independently signed
+observations to the frozen cohort and charges both missing attribution and
+observed failed responses against the agreed loss limit. The trusted independent
+calibration source/key/method and owner loss threshold remain external inputs;
+unknown browser/network loss stays explicit.
 The orchestrator owns local preview/schema selection and actual build resumption.
 The CI repair is committed locally as `ba0376723`. Retrieval integration
 `16cce70f4` includes the reviewed worker commits and main `89f0f99a6`, which contains the separately
-merged Expo maintenance PR. GitHub rejected publication of the CI repair because
-the current OAuth login lacks workflow scope. The first device code expired;
-fresh owner authorization is still required. The remote feature PR remains
-at `a9cbf8362` and is still a draft.
+merged Expo maintenance PR. GitHub initially rejected publication of the CI
+repair because the OAuth login lacked workflow scope. After the first device
+code expired, the owner completed fresh device authorization; `gh auth status`
+now confirms workflow scope. Publication and published-head checks follow the
+current local verification. The feature PR remains a draft.
 The completion notes below record earlier slices.
 
 Both workers have completed their owned implementation and normal-hook commits.

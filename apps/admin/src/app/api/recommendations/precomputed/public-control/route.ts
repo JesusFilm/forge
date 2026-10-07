@@ -24,6 +24,8 @@ import {
   PrecomputedLaunchCapacityError,
 } from "@/services/recommendations/precomputed/launch-capacity"
 import { capacityMeasurement } from "@/services/recommendations/precomputed/durable-build"
+import { FinalCalibrationError } from "@/services/recommendations/precomputed/final-calibration"
+import { attestPrecomputedFinalCalibration } from "@/services/recommendations/precomputed/final-calibration-receipt"
 import { precomputedCtrPolicyDigest } from "@/services/recommendations/precomputed/ctr-report"
 import { validateCtrPolicySettings } from "@/services/recommendations/precomputed/ctr-policy"
 import { readRecommendationOperatorBody } from "../../operator-body"
@@ -45,6 +47,7 @@ const policy = z
     lateEventCutoffHours: z.number().int().min(0).max(672),
     maximumActualFallbackRate: z.number().min(0).max(1),
     maximumUnlinkedDeliveryRate: z.number().min(0).max(1),
+    maximumEndToEndLossRate: z.number().min(0).max(1).nullable().optional(),
   })
   .strict()
 const mutation = z.discriminatedUnion("action", [
@@ -56,6 +59,12 @@ const mutation = z.discriminatedUnion("action", [
       action: z.literal("attest_launch_capacity"),
       generationId: id,
       measurement: capacityMeasurement,
+    })
+    .strict(),
+  z
+    .object({
+      action: z.literal("attest_final_calibration"),
+      assertion: z.string().min(1).max(8_192),
     })
     .strict(),
   z.object({ action: z.literal("start_baseline") }).strict(),
@@ -179,6 +188,7 @@ export async function POST(request: Request): Promise<Response> {
       "promote",
       "start_baseline",
       "attest_launch_capacity",
+      "attest_final_calibration",
     ].includes(input.action) &&
     (!session.authenticatedAt ||
       Date.now() - session.authenticatedAt.getTime() > RECENT_AUTH_MS ||
@@ -208,6 +218,17 @@ export async function POST(request: Request): Promise<Response> {
         operator: session.principal,
       })
       return Response.json({ ok: true, receipt }, { headers: NO_STORE })
+    }
+    if (input.action === "attest_final_calibration") {
+      const { quietHours, ...receipt } =
+        await attestPrecomputedFinalCalibration(prisma, {
+          assertion: input.assertion,
+          operator: session.principal,
+        })
+      return Response.json(
+        { ok: true, receipt: { ...receipt, quietHourCount: quietHours.size } },
+        { headers: NO_STORE },
+      )
     }
     if (input.action === "start_baseline") {
       const baseline = await startPrecomputedIncumbentBaseline(prisma, {
@@ -286,6 +307,16 @@ export async function POST(request: Request): Promise<Response> {
     }
     if (cause instanceof PrecomputedLaunchCapacityError)
       return error(cause.code === "invalid_input" ? 400 : 423, cause.code)
+    if (cause instanceof FinalCalibrationError)
+      return error(
+        cause.code === "invalid_assertion"
+          ? 400
+          : cause.code === "untrusted_attestor" ||
+              cause.code === "incomplete_calibration"
+            ? 423
+            : 409,
+        cause.code,
+      )
     if (cause instanceof PrecomputedBaselineError)
       return error(
         cause.code === "invalid_input"

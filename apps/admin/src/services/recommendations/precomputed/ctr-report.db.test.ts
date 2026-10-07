@@ -777,7 +777,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     })
 
-    it("keeps a live result inconclusive when scoped Web requests reconcile but browser response loss remains unknown", async () => {
+    it("leaves a live final revision pending until independent calibration is attested", async () => {
       const prior =
         await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
           where: { id: experimentId },
@@ -953,45 +953,22 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         counterUnit: "web_request_attempts_not_distinct_visits",
       })
       // Web can acknowledge every Admin commit while its response to the
-      // browser is lost. Server counters cannot certify that final hop.
+      // browser is lost. Server counters cannot certify that final hop or
+      // consume the immutable final revision before independent calibration.
       const result = await evaluatePublicPrecomputedCtr(prisma, {
         experimentId: liveId,
         operator,
         now,
       })
-      expect(result).toMatchObject({
-        status: "available",
-        report: {
-          isFinal: true,
-          evidenceBasis: "live_incomplete",
-          outcome: "inconclusive",
-          measurementHealth: {
-            botEligibility: "durable_rows_verified",
-            trackingLoss: "unobservable",
-            endToEndClientEventCompleteness: "unverified",
-            webRequestHealth: { status: "complete" },
-            experimentRequestHealth: {
-              status: "complete",
-              reconciliation: "no_observed_shortfall",
-              attributedDeliveryAttempts: 62,
-              acceptedVisitAttempts: 60,
-              clickAttempts: 25,
-              clickAcknowledgements: 21,
-              clickUnavailable: 4,
-              clientNetworkLoss: "unobservable",
-            },
-          },
-          reasons: expect.arrayContaining([
-            "tracking_loss_unobservable",
-            "end_to_end_client_loss_unverified",
-          ]),
-        },
+      expect(result).toEqual({
+        status: "unavailable",
+        reason: "final_calibration_pending",
       })
-      if (result.status !== "available") throw new Error("Missing live report")
-      expect(result.report.reasons).not.toContain(
-        "experiment_scoped_tracking_loss_unverified",
-      )
-      expect(result.report.uncertainty.lowerBound).toBeGreaterThan(0)
+      expect(
+        await prisma.recommendationPrecomputedCtrReport.count({
+          where: { experimentId: liveId, isFinal: true },
+        }),
+      ).toBe(0)
     })
   },
 )

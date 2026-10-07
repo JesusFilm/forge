@@ -18,6 +18,7 @@ const settings = {
   lateEventCutoffHours: 48,
   maximumActualFallbackRate: 0.05,
   maximumUnlinkedDeliveryRate: 0.01,
+  maximumEndToEndLossRate: 0.1,
 }
 const digest = (letter: string) => letter.repeat(64)
 const sourceSetDigest = createHash("sha256")

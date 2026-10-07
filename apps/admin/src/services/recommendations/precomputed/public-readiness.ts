@@ -166,6 +166,8 @@ export async function loadPrecomputedPublicReadiness(
             authority: livePrepared.ctrPolicy.authority,
             digest: livePrepared.ctrPolicy.settingsDigest,
             baselineHumanVisitCtr: agreedSettings.baselineHumanVisitCtr,
+            maximumEndToEndLossRate:
+              agreedSettings.maximumEndToEndLossRate ?? null,
           }
         : null,
     baseline:
