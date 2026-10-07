@@ -6162,24 +6162,31 @@ model PushTestDevice {
 /// One announcement. Copy, destination, and audience freeze when sending
 /// starts; only cancel is allowed after that.
 model PushCampaign {
-  id               String               @id @default(cuid())
-  status           PushCampaignStatus   @default(DRAFT)
-  destinationKind  PushDestinationKind? @map("destination_kind")
-  destinationSlug  String?              @map("destination_slug") @db.VarChar(191)
-  audienceScope    PushAudienceScope    @default(EVERYWHERE) @map("audience_scope")
-  countries        String[]
-  languageFilter   String[]             @map("language_filter")
-  sendDate         DateTime?            @map("send_date") @db.Date
-  localHour        Int?                 @map("local_hour")
-  mode             PushCampaignMode     @default(WAVE)
-  testSentAt       DateTime?            @map("test_sent_at") @db.Timestamptz()
-  sendingStartedAt DateTime?            @map("sending_started_at") @db.Timestamptz()
-  completedAt      DateTime?            @map("completed_at") @db.Timestamptz()
-  workflowRunLogId String?              @map("workflow_run_log_id")
-  lastActorId      String?              @map("last_actor_id")
-  lastError        String?              @map("last_error") @db.VarChar(256)
-  createdAt        DateTime             @default(now()) @map("created_at") @db.Timestamptz()
-  updatedAt        DateTime             @updatedAt @map("updated_at") @db.Timestamptz()
+  id                     String               @id @default(cuid())
+  status                 PushCampaignStatus   @default(DRAFT)
+  destinationKind        PushDestinationKind? @map("destination_kind")
+  destinationSlug        String?              @map("destination_slug") @db.VarChar(191)
+  audienceScope          PushAudienceScope    @default(EVERYWHERE) @map("audience_scope")
+  countries              String[]
+  languageFilter         String[]             @map("language_filter")
+  sendDate               DateTime?            @map("send_date") @db.Date
+  localHour              Int?                 @map("local_hour")
+  mode                   PushCampaignMode     @default(WAVE)
+  testSentAt             DateTime?            @map("test_sent_at") @db.Timestamptz()
+  sendingStartedAt       DateTime?            @map("sending_started_at") @db.Timestamptz()
+  completedAt            DateTime?            @map("completed_at") @db.Timestamptz()
+  workflowRunLogId       String?              @map("workflow_run_log_id")
+  lastActorId            String?              @map("last_actor_id")
+  lastError              String?              @map("last_error") @db.VarChar(256)
+  /// Increases only when the stored copy, destination, or audience changes.
+  contentVersion         Int                  @default(0) @map("content_version")
+  /// The content version that the last test send carried.
+  lastTestContentVersion Int?                 @map("last_test_content_version")
+  /// The AI marker: the person and time of the most recent MCP write.
+  aiLastActorId          String?              @map("ai_last_actor_id")
+  aiLastWrittenAt        DateTime?            @map("ai_last_written_at") @db.Timestamptz()
+  createdAt              DateTime             @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt              DateTime             @updatedAt @map("updated_at") @db.Timestamptz()
 
   copies       PushCampaignCopy[]
   zones        PushCampaignZone[]

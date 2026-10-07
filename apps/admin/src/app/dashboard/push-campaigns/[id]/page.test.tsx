@@ -137,6 +137,9 @@ function campaign(
     sendingStartedAt: null,
     completedAt: null,
     lastError: null,
+    contentVersion: 4,
+    lastTestContentVersion: null,
+    aiMarker: null,
     createdAt: new Date("2026-09-20T00:00:00Z"),
     updatedAt: new Date("2026-09-20T00:00:00Z"),
     copies: [
@@ -222,6 +225,7 @@ describe("push campaign editor page", () => {
       cancellable: false,
       audience: 1234,
       unreachable: 7,
+      contentVersion: 4,
     })
   })
 
@@ -291,6 +295,63 @@ describe("push campaign editor page", () => {
     const markup = await render({ tab: "report" })
     expect(markup).toContain('data-testid="push-report-worker-state"')
     expect(markup).toContain(page.workerStale)
+  })
+
+  describe("AI marker (R22)", () => {
+    // AE7 — an agent edited one language, then Bob edited another by hand.
+    const MARKER =
+      "An AI agent changed this campaign for Alice Reviewer at 2026-10-06 09:30 UTC. Check every language before you test."
+
+    function markedCampaign(overrides: Partial<PushCampaignDetail> = {}) {
+      return campaign({
+        aiMarker: {
+          actorId: "user_ai",
+          actorName: "Alice Reviewer",
+          writtenAt: new Date("2026-10-06T09:30:00Z"),
+        },
+        updatedAt: new Date("2026-10-06T10:05:00Z"),
+        ...overrides,
+      })
+    }
+
+    it("names the agent write's person and time on the editor tab after a later hand edit (AE7)", async () => {
+      state.campaign = markedCampaign()
+      const markup = await render()
+      expect(markup).toContain('data-testid="push-ai-marker"')
+      expect(markup).toContain(MARKER)
+    })
+
+    it("shows the marker on the report tab", async () => {
+      state.campaign = markedCampaign()
+      state.report = report()
+      const markup = await render({ tab: "report" })
+      expect(markup).toContain(MARKER)
+    })
+
+    it("shows the marker on the frozen view", async () => {
+      state.campaign = markedCampaign({
+        status: "SENDING",
+        sendingStartedAt: new Date("2026-10-06T11:00:00Z"),
+      })
+      const markup = await render()
+      expect(markup).toContain('data-testid="push-freeze-notice"')
+      expect(markup).toContain(MARKER)
+    })
+
+    it("renders no marker text for a campaign no agent changed", async () => {
+      const markup = await render()
+      expect(markup).not.toContain('data-testid="push-ai-marker"')
+      expect(markup).not.toContain("An AI agent")
+    })
+  })
+
+  it("hands the action bar the version the last test carried (R35)", async () => {
+    state.campaign = campaign({ contentVersion: 5, lastTestContentVersion: 4 })
+    await render()
+    expect(state.actionsProps[0]).toMatchObject({
+      contentVersion: 5,
+      lastTestContentVersion: 4,
+    })
   })
 
   it("keeps the worker notice off the report when a worker is online", async () => {

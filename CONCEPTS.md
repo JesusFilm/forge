@@ -26,7 +26,7 @@ It grants no access while unredeemed. A pending preapproval can display as expir
 
 A public OAuth client created at runtime by an MCP host so that each host can establish its own callback metadata and client identity without a pre-seeded credential.
 
-Registering a Dynamic MCP Client identifies the client but grants no application access; authorization still depends on an applicable Application Grant, and the companion MCP resource implementation independently enforces the issued token.
+Registering a Dynamic MCP Client identifies the client but grants no application access; authorization still depends on an applicable Application Grant, and the companion MCP resource implementation independently enforces the issued token. The scopes a Dynamic MCP Client may request are fixed when it registers and do not follow later changes to the defaults. A request that names a scope outside that set is refused as a whole, so the client cannot sign in at all; a scope the MCP resource begins to require must first be added to every existing Dynamic MCP Client.
 
 ## Relationships
 
@@ -1747,6 +1747,20 @@ The record a device creates with admin when notification permission is granted: 
 ### Local-Morning Wave
 
 The delivery of one Announcement Campaign across time zones: each device receives it at the campaign's local hour in its own zone, so a single send spreads over about a day and the report is complete only after the last zone. The wave enforces one announcement per device per local day; when two campaigns collide, the earlier scheduled one wins. "Send now everywhere" is the explicit exception that ignores the local hour.
+
+### Campaign Revision
+
+The number that names one state of an Announcement Campaign's copy, destination, and audience; an AI agent and the dashboard both write against it, so a write made from an older revision is refused instead of overwriting newer work.
+
+_Avoid:_ content version (the same number under its storage name).
+
+Only a real change raises the revision; a save that changes nothing writes nothing. A real change also returns a tested campaign to draft. A test send records the revision it sent, and the campaign counts as tested only while it is still at that revision, so a change made during a test leaves it a draft.
+
+### AI Marker
+
+The campaign-level record that an AI agent created or changed an Announcement Campaign through the JFP Admin MCP. It names the person the agent acted for and the time of the most recent agent write. A later hand edit does not remove it, so it means "an agent changed this campaign", not "an agent wrote all of it". It says nothing about translation quality: the reviewer checks every language.
+
+_Avoid:_ AI-generated campaign (it suggests that the agent wrote all of it).
 
 ## Product feedback
 
