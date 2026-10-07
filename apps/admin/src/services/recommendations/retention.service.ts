@@ -312,6 +312,10 @@ export async function purgeExpiredRecommendationRequests(
       rowCounts.expiredPrecomputedVisits = result.visitsDeleted
       rowCounts.expiredPrecomputedExperiments = result.experimentsDeleted
       rowCounts.expiredPrecomputedControlEvents = result.controlEventsDeleted
+      rowCounts.expiredPrecomputedBaselineVisits = result.baselineVisitsDeleted
+      rowCounts.expiredPrecomputedBaselineRuns = result.baselineRunsDeleted
+      rowCounts.expiredPrecomputedLaunchCapacityReceipts =
+        result.launchCapacityReceiptsDeleted
       return result
     })
     // One generation at a time; a large terminal graph enters the non-servable
@@ -1000,7 +1004,9 @@ export async function purgeExpiredRecommendationRequests(
     const [
       oldestExpiredRoot,
       oldestExpiredPrecomputedVisit,
+      oldestExpiredPrecomputedBaselineVisit,
       oldestExpiredPrecomputedExperiment,
+      oldestExpiredPrecomputedBaselineRun,
       oldestExpiredWatchExposure,
       oldestExpiredAction,
       oldestExpiredDecision,
@@ -1034,8 +1040,22 @@ export async function purgeExpiredRecommendationRequests(
           orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
           select: { expiresAt: true },
         }),
+        tx.recommendationPrecomputedBaselineVisit.findFirst({
+          where: { expiresAt: { lte: now } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
         tx.recommendationPrecomputedExperiment.findFirst({
           where: { expiresAt: { lte: now }, visits: { none: {} } },
+          orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+          select: { expiresAt: true },
+        }),
+        tx.recommendationPrecomputedBaselineRun.findFirst({
+          where: {
+            expiresAt: { lte: now },
+            enabled: false,
+            visits: { none: {} },
+          },
           orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
           select: { expiresAt: true },
         }),
@@ -1152,7 +1172,9 @@ export async function purgeExpiredRecommendationRequests(
     const oldestExpiredAt = earliestDate([
       oldestExpiredRoot?.expiresAt,
       oldestExpiredPrecomputedVisit?.expiresAt,
+      oldestExpiredPrecomputedBaselineVisit?.expiresAt,
       oldestExpiredPrecomputedExperiment?.expiresAt,
+      oldestExpiredPrecomputedBaselineRun?.expiresAt,
       oldestExpiredWatchExposure?.expiresAt,
       oldestExpiredAction?.expiresAt,
       oldestExpiredDecision?.expiresAt,
@@ -1195,6 +1217,10 @@ export async function purgeExpiredRecommendationRequests(
       precomputedPurge.visitPageFull ||
       precomputedPurge.experimentPageFull ||
       precomputedPurge.controlEventPageFull ||
+      precomputedPurge.launchCapacityReceiptPageFull ||
+      precomputedPurge.baselineVisitPageFull ||
+      precomputedPurge.baselineFinalizationPageFull ||
+      precomputedPurge.baselineRunPageFull ||
       precomputedGenerationPurge.pageFull ||
       expiredWatchExposures.length === batchSize ||
       directActionIds.length === batchSize ||
@@ -1357,6 +1383,13 @@ export async function readRecommendationRetentionHealth(
         (SELECT min(expires_at) FROM recommendation_viewer WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_request WHERE expires_at <= ${propagationCutoff}),
         (SELECT min(expires_at) FROM recommendation_precomputed_visit WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_precomputed_baseline_visit WHERE expires_at <= ${propagationCutoff}),
+        (SELECT min(expires_at) FROM recommendation_precomputed_baseline_run
+          WHERE expires_at <= ${propagationCutoff} AND enabled = false
+            AND NOT EXISTS (
+              SELECT 1 FROM recommendation_precomputed_baseline_visit AS visit
+              WHERE visit.run_id = recommendation_precomputed_baseline_run.id
+            )),
         (SELECT min(expires_at) FROM recommendation_precomputed_experiment AS experiment
           WHERE expires_at <= ${propagationCutoff}
             AND NOT EXISTS (

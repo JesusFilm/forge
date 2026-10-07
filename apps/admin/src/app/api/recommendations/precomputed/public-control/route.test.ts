@@ -10,6 +10,9 @@ const mocks = vi.hoisted(() => ({
   promote: vi.fn(),
   rollback: vi.fn(),
   release: vi.fn(),
+  baselineStart: vi.fn(),
+  baselineStop: vi.fn(),
+  attestCapacity: vi.fn(),
 }))
 vi.mock("@/auth/session", () => ({
   resolveAdminSessionFromRequest: mocks.session,
@@ -25,6 +28,24 @@ vi.mock("@/services/recommendations/precomputed/public-readiness", () => ({
 }))
 vi.mock("@/services/recommendations/precomputed/ctr-report", () => ({
   evaluatePublicPrecomputedCtr: mocks.evaluate,
+  precomputedCtrPolicyDigest: () => "f".repeat(64),
+}))
+vi.mock("@/services/recommendations/precomputed/launch-capacity", () => ({
+  PrecomputedLaunchCapacityError: class extends Error {
+    constructor(readonly code: string) {
+      super(code)
+    }
+  },
+  attestPrecomputedLaunchCapacity: mocks.attestCapacity,
+}))
+vi.mock("@/services/recommendations/precomputed/incumbent-baseline", () => ({
+  PrecomputedBaselineError: class extends Error {
+    constructor(readonly code: string) {
+      super(code)
+    }
+  },
+  startPrecomputedIncumbentBaseline: mocks.baselineStart,
+  stopPrecomputedIncumbentBaseline: mocks.baselineStop,
 }))
 vi.mock("@/services/recommendations/precomputed/public-control", () => ({
   PrecomputedPublicControlError: class extends Error {
@@ -75,6 +96,76 @@ describe("manual precomputed public control endpoint", () => {
     mocks.rollback.mockResolvedValue({ mode: "incumbent", version: 4 })
     mocks.release.mockResolvedValue({ mode: "incumbent", version: 5 })
     mocks.evaluate.mockResolvedValue({ status: "available" })
+    mocks.baselineStart.mockResolvedValue({
+      id: "baseline-1",
+      status: "scheduled",
+    })
+    mocks.baselineStop.mockResolvedValue({
+      id: "baseline-1",
+      status: "stopped",
+    })
+    mocks.attestCapacity.mockResolvedValue({
+      id: "capacity-1",
+      status: "passed",
+    })
+  })
+
+  it("previews a numeric digest without approving it or changing serving", async () => {
+    const response = await POST(
+      request({
+        action: "policy_digest",
+        policySettings: {
+          baselineHumanVisitCtr: 0.04,
+          minimumDetectableAbsoluteUplift: 0.02,
+          minimumPracticalAbsoluteUplift: 0.01,
+          plannedPower: 0.8,
+          minimumEligibleVisitsPerArm: 100,
+          minimumIndependentBrowsersPerArm: 100,
+          minimumDurationHours: 168,
+          lateEventCutoffHours: 48,
+          maximumActualFallbackRate: 0.05,
+          maximumUnlinkedDeliveryRate: 0.01,
+        },
+      }),
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      policyDigest: "f".repeat(64),
+      authority: "preview_only",
+    })
+    expect(mocks.prepare).not.toHaveBeenCalled()
+    expect(mocks.start).not.toHaveBeenCalled()
+  })
+
+  it("requires recent operator authentication to attest launch capacity", async () => {
+    const body = {
+      action: "attest_launch_capacity",
+      generationId: "generation-1",
+      measurement: {
+        measuredAt: "2026-10-06T00:04:00.000Z",
+        clusterSystemId: "123456789",
+        observedDbBytes: 1_000_000,
+        availableBytes: 10_000_000_000,
+        reserveBytes: 5_000_000_000,
+        projectedBytes: 1_000_000,
+        sampleSourceCount: 100,
+        sampleBytes: 100_000,
+        source: "operator_verified_pgdata_df",
+      },
+    }
+    expect((await POST(request(body))).status).toBe(200)
+    expect(mocks.attestCapacity).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        generationId: "generation-1",
+        operator: { id: "operator", role: "ADMIN" },
+      }),
+    )
+    mocks.session.mockResolvedValue({
+      principal: { id: "operator", role: "ADMIN" },
+      authenticatedAt: new Date("2026-10-05T00:00:00.000Z"),
+    })
+    expect((await POST(request(body))).status).toBe(401)
   })
 
   it("returns an authenticated no-store readiness snapshot without changing serving", async () => {
@@ -217,6 +308,37 @@ describe("manual precomputed public control endpoint", () => {
         expectedControlVersion: 4,
         expectedExperimentId: "experiment-1",
       }),
+    )
+  })
+
+  it("requires recent authentication to start a baseline but allows an immediate stop", async () => {
+    const baselineId = "550e8400-e29b-41d4-a716-446655440000"
+    mocks.session.mockResolvedValue({
+      principal: { id: "operator", role: "ADMIN" },
+      authenticatedAt: new Date("2026-10-05T00:00:00.000Z"),
+    })
+    expect((await POST(request({ action: "start_baseline" }))).status).toBe(401)
+    expect(mocks.baselineStart).not.toHaveBeenCalled()
+    expect(
+      (await POST(request({ action: "stop_baseline", baselineId }))).status,
+    ).toBe(200)
+    expect(mocks.baselineStop).toHaveBeenCalledWith(
+      {},
+      {
+        baselineId,
+        operator: { id: "operator", role: "ADMIN" },
+      },
+    )
+    mocks.session.mockResolvedValue({
+      principal: { id: "operator", role: "ADMIN" },
+      authenticatedAt: new Date("2026-10-06T00:00:00.000Z"),
+    })
+    expect((await POST(request({ action: "start_baseline" }))).status).toBe(200)
+    expect(mocks.baselineStart).toHaveBeenCalledWith(
+      {},
+      {
+        operator: { id: "operator", role: "ADMIN" },
+      },
     )
   })
 })

@@ -37,6 +37,10 @@ import {
 import { precomputedBrowserUnitDigest } from "./visit-identity"
 import { deliverPrecomputedWatchPreview } from "./watch-delivery"
 import { verifyPrecomputedSourceEligibility } from "./watch-reader"
+import {
+  admitPrecomputedIncumbentBaseline,
+  recordPrecomputedIncumbentBaselineDelivery,
+} from "./incumbent-baseline"
 
 const RAW_VISIT_MS = 29 * 86_400_000
 const HEX_DIGEST = /^[a-f0-9]{64}$/
@@ -65,7 +69,7 @@ export type PrecomputedPublicWatchVisitInput = {
 }
 
 export type PrecomputedPublicWatchVisitResult = {
-  disposition: "inactive" | "ab" | "promoted"
+  disposition: "inactive" | "baseline" | "ab" | "promoted"
   status: "eligible" | "excluded" | "unavailable" | "not_applicable"
   visitId: string
   experimentId: string | null
@@ -139,7 +143,32 @@ async function admitPublicVisit(
         await tx.$queryRaw`SELECT id FROM recommendation_precomputed_public_control
           WHERE id = ${PRECOMPUTED_PUBLIC_CONTROL_ID} FOR SHARE`
         const control = await loadPrecomputedPublicControl(tx, now)
-        if (control.mode === "incumbent") return inactive(input, null)
+        if (control.mode === "incumbent") {
+          const baseline = await admitPrecomputedIncumbentBaseline(tx, {
+            visitId: input.visitId,
+            browserDigest: input.browserDigest!,
+            seedMediaId: input.seedMediaId,
+            locale: input.locale,
+            audioLanguageSlug: input.audioLanguageSlug,
+            humanVerificationReceipt: input.humanVerificationReceipt,
+            caller: input.caller,
+            now,
+          })
+          if (!baseline) return inactive(input, null)
+          return {
+            ...inactive(input, baseline.reason),
+            disposition: "baseline",
+            status:
+              baseline.reason === null
+                ? "eligible"
+                : baseline.reason === "source_unavailable"
+                  ? "excluded"
+                  : "unavailable",
+            arm: baseline.reason === null ? "control" : null,
+            qualification:
+              baseline.reason === null ? "turnstile_verified_browser" : null,
+          }
+        }
         const base = {
           ...inactive(input, null),
           disposition: control.mode,
@@ -417,22 +446,36 @@ export async function deliverPrecomputedPublicWatchVisit(
     delivery = unavailable("public_watch_delivery_unavailable")
   }
   const measurementStatus =
-    admission.disposition === "ab" &&
+    admission.disposition === "baseline" &&
     admission.status === "eligible" &&
     input.browserDigest
-      ? await recordPrivatePrecomputedVisitDelivery(prisma, {
+      ? await recordPrecomputedIncumbentBaselineDelivery(prisma, {
           visitId: input.visitId,
           browserDigest: input.browserDigest,
+          sourceVideoId: input.seedMediaId,
           result: delivery.result,
-          actualStrategy:
-            delivery.result === "unavailable" ? null : delivery.strategyVersion,
           requestId: delivery.requestId,
-          fallbackReason,
           caller: input.caller,
           deadlineAt,
         })
-      : admission.reason === "visit_identity_conflict"
-        ? "conflict"
-        : "not_applicable"
+      : admission.disposition === "ab" &&
+          admission.status === "eligible" &&
+          input.browserDigest
+        ? await recordPrivatePrecomputedVisitDelivery(prisma, {
+            visitId: input.visitId,
+            browserDigest: input.browserDigest,
+            result: delivery.result,
+            actualStrategy:
+              delivery.result === "unavailable"
+                ? null
+                : delivery.strategyVersion,
+            requestId: delivery.requestId,
+            fallbackReason,
+            caller: input.caller,
+            deadlineAt,
+          })
+        : admission.reason === "visit_identity_conflict"
+          ? "conflict"
+          : "not_applicable"
   return { ...admission, measurementStatus, delivery }
 }

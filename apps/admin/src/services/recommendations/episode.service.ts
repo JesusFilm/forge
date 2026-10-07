@@ -43,6 +43,7 @@ import {
 } from "./finalization/job"
 import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
 import { matchesPrivateVisitBrowser } from "./precomputed/visit-selection"
+import { checkPrecomputedBaselineClickBrowser } from "./precomputed/incumbent-baseline"
 import type {
   DeliveryCapabilityBinding,
   EpisodeCapabilityBinding,
@@ -336,6 +337,15 @@ export class RecommendationEpisodeService {
           )
         now = privateReceiptAt
       }
+      const baselineBrowser = await checkPrecomputedBaselineClickBrowser(tx, {
+        requestId: item.requestId,
+        browserDigest: input.browserDigest,
+        now,
+      })
+      if (baselineBrowser === "invalid")
+        throw new RecommendationBindingError(
+          "Recommendation baseline browser binding is invalid",
+        )
       await lockRecommendationItemEvidence(tx, item.id)
       const impression = await tx.recommendationImpression.findUnique({
         where: { itemId: item.id },

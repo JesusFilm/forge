@@ -17,6 +17,10 @@ import {
   type CtrArmMoments,
   type CtrPolicySettings,
 } from "./ctr-policy"
+import {
+  loadWebWatchMeasurement,
+  type WebWatchMeasurementRead,
+} from "./web-measurement"
 
 export const PRECOMPUTED_CTR_METHOD = "fixed-horizon-cluster-delta-t-v1"
 const METHOD = PRECOMPUTED_CTR_METHOD
@@ -34,7 +38,7 @@ type MomentRow = {
 
 export type PrecomputedCtrReport = {
   schemaVersion: 1
-  evidenceBasis?: "private_unverified" | "isolated_fixture"
+  evidenceBasis?: "private_unverified" | "isolated_fixture" | "live_incomplete"
   experimentId: string
   revision: number
   isFinal: boolean
@@ -45,6 +49,12 @@ export type PrecomputedCtrReport = {
   controlRoutingDigest: string
   sourceSetDigest: string
   configurationDigest: string
+  liveLaunchEvidence?: {
+    evidenceDigest: string
+    baselineReportDigest: string
+    launchCapacityReceiptDigest: string
+    authoritativeCatalogSourceSetDigest: string
+  }
   eligibilityPolicyVersion: string
   policy: {
     version: string
@@ -85,8 +95,20 @@ export type PrecomputedCtrReport = {
     other: number
   }
   measurementHealth: {
-    botEligibility: "unverified" | "fixture_verified"
+    botEligibility: "unverified" | "fixture_verified" | "durable_rows_verified"
     trackingLoss: "unobservable" | "fixture_verified"
+    endToEndClientEventCompleteness?: "unverified"
+    webRequestHealth?: {
+      status: "complete" | "incomplete" | "unavailable"
+      requestedHours: number
+      coveredHours: number
+      missingHourCount: number
+      imbalancedHourCount: number
+      qualifiedRequestAttempts: number
+      clickAcknowledgements: number
+      clickUnavailable: number
+      verificationUnavailable: number
+    }
     /** Known bots/prefetches skipped by Web are outside this report. */
     edgeAutomationCoverage?: "partial_unverified"
     exclusionCountScope?: "admin_bound_only"
@@ -344,16 +366,21 @@ async function evaluatePrecomputedCtrReport(
     experimentId: string
     operator: Principal | null
     now?: Date
-    evidenceBasis: "private_unverified" | "isolated_fixture"
+    evidenceBasis: "private_unverified" | "isolated_fixture" | "live_public"
+    webMeasurement?: WebWatchMeasurementRead | null
   },
 ): Promise<PrecomputedCtrRead> {
   if (!hasPermission(input.operator, "operate:recommendation-experiments"))
     throw new ForbiddenError()
   let publicEligibilityPolicy: string | null = null
-  if (input.evidenceBasis === "isolated_fixture") {
+  if (input.evidenceBasis !== "private_unverified") {
     const control = await import("./public-control")
-    await control.assertIsolatedPrecomputedControlFixture(prisma)
-    publicEligibilityPolicy = control.PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY
+    if (input.evidenceBasis === "isolated_fixture")
+      await control.assertIsolatedPrecomputedControlFixture(prisma)
+    publicEligibilityPolicy =
+      input.evidenceBasis === "isolated_fixture"
+        ? control.PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY
+        : control.PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
   }
   return prisma.$transaction(
     async (tx) => {
@@ -370,7 +397,7 @@ async function evaluatePrecomputedCtrReport(
           reason: "experiment_not_found",
         } as const
       if (
-        input.evidenceBasis === "isolated_fixture" &&
+        input.evidenceBasis !== "private_unverified" &&
         (experiment.state !== "public_ready" ||
           experiment.eligibilityPolicyVersion !== publicEligibilityPolicy)
       )
@@ -425,6 +452,39 @@ async function evaluatePrecomputedCtrReport(
       const finalAt = new Date(
         experiment.endsAt.getTime() + settings.lateEventCutoffHours * 3_600_000,
       )
+      const web = input.webMeasurement
+      const livePublic = input.evidenceBasis === "live_public"
+      const eligibleVisits = safe(
+        totals.control.eligibleVisits + totals.challenger.eligibleVisits,
+      )
+      const acceptedSelections = safe(
+        totals.control.acceptedSelections +
+          totals.challenger.acceptedSelections,
+      )
+      const verifiedQualificationRows = livePublic
+        ? await tx.$queryRaw<Array<{ unverified: bigint }>>`
+            SELECT count(*)::bigint AS unverified
+            FROM recommendation_precomputed_visit
+            WHERE experiment_id = ${experiment.id}
+              AND eligibility = 'eligible'
+              AND qualification <> 'turnstile_verified_browser'`
+        : null
+      const botVerified =
+        livePublic &&
+        experiment.liveEvidence != null &&
+        policy.authority === "prelaunch_agreed" &&
+        safe(verifiedQualificationRows?.[0]?.unverified ?? 0n) === 0
+      const webComplete =
+        livePublic &&
+        web?.status === "complete" &&
+        web.startHour === experiment.startsAt.toISOString() &&
+        web.endHourExclusive === finalAt.toISOString() &&
+        web.missingHours.length === 0 &&
+        web.imbalancedHours.length === 0 &&
+        web.counters.delivery_qualified >= eligibleVisits &&
+        web.counters.click_ack >= acceptedSelections &&
+        web.counters.click_unavailable === 0 &&
+        web.counters.delivery_verification_unavailable === 0
       const isFinal = asOf >= finalAt
       const evaluation = evaluatePrecomputedCtr(settings, {
         startsAt: experiment.startsAt,
@@ -432,7 +492,7 @@ async function evaluatePrecomputedCtrReport(
         asOf,
         byArm: moments,
         botEligibility:
-          input.evidenceBasis === "isolated_fixture"
+          input.evidenceBasis === "isolated_fixture" || botVerified
             ? "verified"
             : "unverified",
         trackingLoss:
@@ -451,6 +511,13 @@ async function evaluatePrecomputedCtrReport(
         policy.authority !== "fixture_only"
       )
         reasons.push("fixture_policy_authority_mismatch")
+      if (livePublic && policy.authority !== "prelaunch_agreed")
+        reasons.push("numeric_policy_not_agreed")
+      if (livePublic && !botVerified)
+        reasons.push("live_browser_qualification_unverified")
+      if (livePublic && !webComplete)
+        reasons.push("web_request_health_incomplete")
+      if (livePublic) reasons.push("experiment_scoped_tracking_loss_unverified")
       const unversioned = safe(
         totals.control.unversionedArchivedVisits +
           totals.challenger.unversionedArchivedVisits +
@@ -460,7 +527,9 @@ async function evaluatePrecomputedCtrReport(
       const revision = (latest?.revision ?? 0) + 1
       const report: PrecomputedCtrReport = {
         schemaVersion: 1,
-        evidenceBasis: input.evidenceBasis,
+        evidenceBasis: livePublic
+          ? "live_incomplete"
+          : (input.evidenceBasis as "private_unverified" | "isolated_fixture"),
         experimentId: experiment.id,
         revision,
         isFinal,
@@ -471,6 +540,31 @@ async function evaluatePrecomputedCtrReport(
         controlRoutingDigest: experiment.controlRoutingDigest,
         sourceSetDigest: experiment.sourceSetDigest,
         configurationDigest: experiment.configurationDigest,
+        ...(livePublic &&
+        experiment.liveEvidence &&
+        typeof experiment.liveEvidence === "object" &&
+        !Array.isArray(experiment.liveEvidence)
+          ? {
+              liveLaunchEvidence: {
+                evidenceDigest: String(
+                  (experiment.liveEvidence as Record<string, unknown>)
+                    .evidenceDigest ?? "",
+                ),
+                baselineReportDigest: String(
+                  (experiment.liveEvidence as Record<string, unknown>)
+                    .baselineReportDigest ?? "",
+                ),
+                launchCapacityReceiptDigest: String(
+                  (experiment.liveEvidence as Record<string, unknown>)
+                    .launchCapacityReceiptDigest ?? "",
+                ),
+                authoritativeCatalogSourceSetDigest: String(
+                  (experiment.liveEvidence as Record<string, unknown>)
+                    .authoritativeCatalogSourceSetDigest ?? "",
+                ),
+              },
+            }
+          : {}),
         eligibilityPolicyVersion: experiment.eligibilityPolicyVersion,
         policy: {
           version: policy.version,
@@ -507,11 +601,53 @@ async function evaluatePrecomputedCtrReport(
           botEligibility:
             input.evidenceBasis === "isolated_fixture"
               ? "fixture_verified"
-              : "unverified",
+              : botVerified
+                ? "durable_rows_verified"
+                : "unverified",
           trackingLoss:
             input.evidenceBasis === "isolated_fixture"
               ? "fixture_verified"
               : "unobservable",
+          ...(livePublic
+            ? { endToEndClientEventCompleteness: "unverified" as const }
+            : {}),
+          ...(livePublic
+            ? {
+                webRequestHealth: {
+                  status: web?.status ?? "unavailable",
+                  requestedHours:
+                    web && web.status !== "unavailable"
+                      ? web.requestedHours
+                      : 0,
+                  coveredHours:
+                    web && web.status !== "unavailable" ? web.coveredHours : 0,
+                  missingHourCount:
+                    web && web.status !== "unavailable"
+                      ? web.missingHours.length
+                      : 0,
+                  imbalancedHourCount:
+                    web && web.status !== "unavailable"
+                      ? web.imbalancedHours.length
+                      : 0,
+                  qualifiedRequestAttempts:
+                    web && web.status !== "unavailable"
+                      ? web.counters.delivery_qualified
+                      : 0,
+                  clickAcknowledgements:
+                    web && web.status !== "unavailable"
+                      ? web.counters.click_ack
+                      : 0,
+                  clickUnavailable:
+                    web && web.status !== "unavailable"
+                      ? web.counters.click_unavailable
+                      : 0,
+                  verificationUnavailable:
+                    web && web.status !== "unavailable"
+                      ? web.counters.delivery_verification_unavailable
+                      : 0,
+                },
+              }
+            : {}),
           edgeAutomationCoverage: "partial_unverified",
           exclusionCountScope: "admin_bound_only",
           unversionedArchivedVisits: unversioned,
@@ -529,7 +665,8 @@ async function evaluatePrecomputedCtrReport(
           conservativeDegreesOfFreedom: evaluation.conservativeDegreesOfFreedom,
         },
         outcome:
-          input.evidenceBasis === "isolated_fixture" && reasons.length === 0
+          (input.evidenceBasis === "isolated_fixture" || livePublic) &&
+          reasons.length === 0
             ? evaluation.outcome
             : "inconclusive",
         reasons,
@@ -590,16 +727,41 @@ export function evaluatePrivatePrecomputedCtr(
   })
 }
 
-/** Fixture decisions use real persisted visits/selections, but are never a
- * live certificate: edge automation coverage and live human qualification
- * remain explicitly unavailable. */
-export function evaluatePublicPrecomputedCtr(
+/** Global Web request counters expose telemetry gaps, but cannot prove every
+ * eligible experiment visit/click was attributed. A live report can close at
+ * the fixed horizon while remaining inconclusive until scoped proof exists. */
+export async function evaluatePublicPrecomputedCtr(
   prisma: PrismaClient,
   input: { experimentId: string; operator: Principal | null; now?: Date },
 ): Promise<PrecomputedCtrRead> {
+  const experiment =
+    await prisma.recommendationPrecomputedExperiment.findUnique({
+      where: { id: input.experimentId },
+      include: { ctrPolicy: true },
+    })
+  const now = input.now ?? new Date()
+  const livePublic =
+    experiment?.eligibilityPolicyVersion ===
+    (await import("./public-control"))
+      .PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
+  let webMeasurement: WebWatchMeasurementRead | null = null
+  if (livePublic && experiment?.ctrPolicy) {
+    const finalAt = new Date(
+      experiment.endsAt.getTime() +
+        experiment.ctrPolicy.lateEventCutoffHours * 3_600_000,
+    )
+    const completedHour = Math.floor(now.getTime() / 3_600_000) * 3_600_000
+    const end = new Date(Math.min(finalAt.getTime(), completedHour))
+    if (end > experiment.startsAt)
+      webMeasurement = await loadWebWatchMeasurement(experiment.startsAt, end, {
+        now,
+      })
+  }
   return evaluatePrecomputedCtrReport(prisma, {
     ...input,
-    evidenceBasis: "isolated_fixture",
+    now,
+    evidenceBasis: livePublic ? "live_public" : "isolated_fixture",
+    webMeasurement,
   })
 }
 

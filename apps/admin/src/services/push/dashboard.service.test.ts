@@ -10,6 +10,8 @@ import {
   listPushCampaigns,
   listPushLanguageOptions,
   pushLanguageLabel,
+  readPushActorNames,
+  readPushCampaignDetail,
   readPushDestinationTitle,
   readPushRegistrationsPerDay,
   searchPushDestinations,
@@ -109,6 +111,142 @@ describe("listPushCampaigns", () => {
 
     expect(rows[0]?.englishTitle).toBeNull()
     expect(rows[0]?.languageCount).toBe(1)
+  })
+})
+
+type UserRow = { id: string; name: string; email: string }
+
+/** A user table that answers only the ids the query asks for. */
+function userTable(rows: readonly UserRow[]) {
+  const findMany = vi.fn(
+    async (args: { where: { id: { in: readonly string[] } } }) =>
+      rows.filter((row) => args.where.id.in.includes(row.id)),
+  )
+  return { findMany }
+}
+
+/** Returns only the selected columns, so an unselected column reads as absent. */
+function selectedColumns(
+  row: Record<string, unknown>,
+  select: Record<string, unknown>,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(row).filter(([key]) => Boolean(select[key])),
+  )
+}
+
+function campaignRow(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "c1",
+    status: "DRAFT",
+    mode: "WAVE",
+    destinationKind: "SERIES",
+    destinationSlug: "jesus",
+    audienceScope: "EVERYWHERE",
+    countries: [],
+    languageFilter: [],
+    sendDate: null,
+    localHour: null,
+    testSentAt: null,
+    sendingStartedAt: null,
+    completedAt: null,
+    lastError: null,
+    contentVersion: 4,
+    lastTestContentVersion: 3,
+    lastActorId: "user_hand",
+    aiLastActorId: "user_ai",
+    aiLastWrittenAt: new Date("2026-10-06T09:30:00Z"),
+    createdAt: new Date("2026-10-01T00:00:00Z"),
+    updatedAt: new Date("2026-10-06T10:05:00Z"),
+    copies: [
+      { languageSlug: "english", title: "An announcement", body: "Tonight" },
+    ],
+    ...overrides,
+  }
+}
+
+function detailPrisma(row: Record<string, unknown>, users: UserRow[]) {
+  const user = userTable(users)
+  const prisma = {
+    pushCampaign: {
+      findUnique: vi.fn(async (args: { select: Record<string, unknown> }) =>
+        selectedColumns(row, args.select),
+      ),
+    },
+    user,
+  } as unknown as PrismaClient
+  return { prisma, user }
+}
+
+const PEOPLE: UserRow[] = [
+  { id: "user_hand", name: "Bob Editor", email: "bob@example.org" },
+  { id: "user_ai", name: "Alice Reviewer", email: "alice@example.org" },
+]
+
+describe("readPushCampaignDetail", () => {
+  it("returns the version the last test carried (R35, KTD5)", async () => {
+    const { prisma } = detailPrisma(campaignRow(), PEOPLE)
+
+    const detail = await readPushCampaignDetail(prisma, "c1")
+
+    expect(detail?.contentVersion).toBe(4)
+    expect(detail?.lastTestContentVersion).toBe(3)
+  })
+
+  it("names the agent write's person, not the later hand editor (R22, AE7)", async () => {
+    const { prisma } = detailPrisma(campaignRow(), PEOPLE)
+
+    const detail = await readPushCampaignDetail(prisma, "c1")
+
+    expect(detail?.aiMarker).toEqual({
+      actorId: "user_ai",
+      actorName: "Alice Reviewer",
+      writtenAt: new Date("2026-10-06T09:30:00Z"),
+    })
+  })
+
+  it("returns no marker and looks up no person when no agent wrote it", async () => {
+    const { prisma, user } = detailPrisma(
+      campaignRow({ aiLastActorId: null, aiLastWrittenAt: null }),
+      PEOPLE,
+    )
+
+    const detail = await readPushCampaignDetail(prisma, "c1")
+
+    expect(detail?.aiMarker).toBeNull()
+    expect(user.findMany).not.toHaveBeenCalled()
+  })
+})
+
+describe("readPushActorNames", () => {
+  it("names a person by name, then by email, then by the id itself (KTD6)", async () => {
+    const user = userTable([
+      { id: "named", name: "Alice Reviewer", email: "alice@example.org" },
+      { id: "blank", name: "  ", email: "blank@example.org" },
+    ])
+    const prisma = { user } as unknown as PrismaClient
+
+    const names = await readPushActorNames(prisma, [
+      "named",
+      "blank",
+      "gone",
+      null,
+    ])
+
+    expect(names.get("named")).toBe("Alice Reviewer")
+    expect(names.get("blank")).toBe("blank@example.org")
+    expect(names.get("gone")).toBe("gone")
+    expect(user.findMany).toHaveBeenCalledTimes(1)
+  })
+
+  it("asks for nobody when no id is set", async () => {
+    const user = userTable([])
+    const prisma = { user } as unknown as PrismaClient
+
+    const names = await readPushActorNames(prisma, [null])
+
+    expect(names.size).toBe(0)
+    expect(user.findMany).not.toHaveBeenCalled()
   })
 })
 

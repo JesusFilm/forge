@@ -14,6 +14,18 @@ import {
   startPrecomputedPublicExperiment,
 } from "@/services/recommendations/precomputed/public-control"
 import { loadPrecomputedPublicReadiness } from "@/services/recommendations/precomputed/public-readiness"
+import {
+  PrecomputedBaselineError,
+  startPrecomputedIncumbentBaseline,
+  stopPrecomputedIncumbentBaseline,
+} from "@/services/recommendations/precomputed/incumbent-baseline"
+import {
+  attestPrecomputedLaunchCapacity,
+  PrecomputedLaunchCapacityError,
+} from "@/services/recommendations/precomputed/launch-capacity"
+import { capacityMeasurement } from "@/services/recommendations/precomputed/durable-build"
+import { precomputedCtrPolicyDigest } from "@/services/recommendations/precomputed/ctr-report"
+import { validateCtrPolicySettings } from "@/services/recommendations/precomputed/ctr-policy"
 import { readRecommendationOperatorBody } from "../../operator-body"
 
 const id = z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,190}$/)
@@ -37,6 +49,23 @@ const policy = z
   .strict()
 const mutation = z.discriminatedUnion("action", [
   z
+    .object({ action: z.literal("policy_digest"), policySettings: policy })
+    .strict(),
+  z
+    .object({
+      action: z.literal("attest_launch_capacity"),
+      generationId: id,
+      measurement: capacityMeasurement,
+    })
+    .strict(),
+  z.object({ action: z.literal("start_baseline") }).strict(),
+  z
+    .object({
+      action: z.literal("stop_baseline"),
+      baselineId: z.string().uuid(),
+    })
+    .strict(),
+  z
     .object({
       action: z.literal("prepare"),
       experimentId: id,
@@ -47,6 +76,15 @@ const mutation = z.discriminatedUnion("action", [
       expectedSourceSetDigest: digest,
       policySettings: policy,
       authority,
+      policyAgreement: z
+        .object({
+          authority: z.literal("prelaunch_agreed"),
+          settingsDigest: digest,
+          baselineReportDigest: digest,
+          launchCapacityReceiptDigest: digest,
+        })
+        .strict()
+        .optional(),
     })
     .strict(),
   z
@@ -135,13 +173,55 @@ export async function POST(request: Request): Promise<Response> {
   )
     return error(403, "permission_denied")
   if (
-    ["prepare", "start", "promote"].includes(input.action) &&
+    [
+      "prepare",
+      "start",
+      "promote",
+      "start_baseline",
+      "attest_launch_capacity",
+    ].includes(input.action) &&
     (!session.authenticatedAt ||
       Date.now() - session.authenticatedAt.getTime() > RECENT_AUTH_MS ||
       Date.now() - session.authenticatedAt.getTime() < -60_000)
   )
     return error(401, "recent_authentication_required")
   try {
+    if (input.action === "policy_digest") {
+      try {
+        validateCtrPolicySettings(input.policySettings)
+      } catch {
+        return error(400, "invalid_policy")
+      }
+      return Response.json(
+        {
+          ok: true,
+          policyDigest: precomputedCtrPolicyDigest(input.policySettings),
+          authority: "preview_only",
+        },
+        { headers: NO_STORE },
+      )
+    }
+    if (input.action === "attest_launch_capacity") {
+      const receipt = await attestPrecomputedLaunchCapacity(prisma, {
+        generationId: input.generationId,
+        measurement: input.measurement,
+        operator: session.principal,
+      })
+      return Response.json({ ok: true, receipt }, { headers: NO_STORE })
+    }
+    if (input.action === "start_baseline") {
+      const baseline = await startPrecomputedIncumbentBaseline(prisma, {
+        operator: session.principal,
+      })
+      return Response.json({ ok: true, baseline }, { headers: NO_STORE })
+    }
+    if (input.action === "stop_baseline") {
+      const baseline = await stopPrecomputedIncumbentBaseline(prisma, {
+        baselineId: input.baselineId,
+        operator: session.principal,
+      })
+      return Response.json({ ok: true, baseline }, { headers: NO_STORE })
+    }
     if (input.action === "prepare") {
       const prepared = await preparePrecomputedPublicExperiment(prisma, {
         id: input.experimentId,
@@ -152,6 +232,7 @@ export async function POST(request: Request): Promise<Response> {
         expectedSourceSetDigest: input.expectedSourceSetDigest,
         policySettings: input.policySettings,
         authority: input.authority,
+        policyAgreement: input.policyAgreement,
         operator: session.principal,
       })
       return Response.json({ ok: true, prepared }, { headers: NO_STORE })
@@ -201,15 +282,26 @@ export async function POST(request: Request): Promise<Response> {
               cause.code === "fixture_authority_unavailable"
             ? 423
             : 409
-      return error(status, cause.code)
+      return error(status, cause.code, cause.reasons)
     }
+    if (cause instanceof PrecomputedLaunchCapacityError)
+      return error(cause.code === "invalid_input" ? 400 : 423, cause.code)
+    if (cause instanceof PrecomputedBaselineError)
+      return error(
+        cause.code === "invalid_input"
+          ? 400
+          : cause.code === "verification_unavailable"
+            ? 423
+            : 409,
+        cause.code,
+      )
     return error(503, "acknowledgement_unknown_reconcile_status")
   }
 }
 
-function error(status: number, code: string) {
+function error(status: number, code: string, reasons?: string[]) {
   return Response.json(
-    { ok: false, error: code },
+    { ok: false, error: code, ...(reasons?.length ? { reasons } : {}) },
     { status, headers: NO_STORE },
   )
 }

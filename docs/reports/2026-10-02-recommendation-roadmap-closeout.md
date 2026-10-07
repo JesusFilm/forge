@@ -2,9 +2,10 @@
 
 Owner authorization: October 2, 2026 (Pacific/Auckland). The reconciled scope is
 **12 complete, 25 cancelled and two open** across 39 ticket paths. The original
-38-path scope still has only platform feat-554 open for future retention evidence.
+38-path scope still has only platform feat-554 open for retention repair and
+future daily-cycle evidence.
 The newly discovered intermittent HNSW CI failure is tracked separately in
-content-discovery feat-612; no feat-554 acceptance was moved to that ticket.
+content-discovery feat-609; no feat-554 acceptance was moved to that ticket.
 The record and final dependency/index reconciliation
 ship in [2541](https://github.com/JesusFilm/forge/pull/2541). The final merged-main
 confirmation is retained on that PR after merge.
@@ -63,7 +64,7 @@ on #2541 before merge.
 
 The original scope contains **37 paths**, initially 35 open and two complete.
 The directly required cancelled-status viewer fix adds platform feat-599, for
-**38 scoped paths**. The later CI investigation adds content-discovery feat-612,
+**38 scoped paths**. The later CI investigation adds content-discovery feat-609,
 making 39 tracked paths. IDs alone are unsafe: content-discovery feat-517 is in scope;
 unrelated platform feat-517 and RAG feat-575 are not. The dispositions below match the audited integration tree on merged main
 `c7e832ae5`, plus the explicit cancellations in #2541.
@@ -102,6 +103,7 @@ unrelated platform feat-517 and RAG feat-575 are not. The dispositions below mat
 | [docs/roadmap/content-discovery/feat-566-recommendation-evidence-gap-remediation.md](../roadmap/content-discovery/feat-566-recommendation-evidence-gap-remediation.md)                   | measurement | Cancelled: nine historical evidence gaps reviewed individually; extra forensic/correlation campaign retired, causes unrecovered and fresh errors still actionable.                                 | [2539](https://github.com/JesusFilm/forge/pull/2539). Ticket-specific D1–D9 dispositions and [historical evidence gaps](../operations/recommendation-evidence-closeout-decisions-2026-09-29.md).                                                           |
 | [docs/roadmap/content-discovery/feat-573-sustainable-cowatch-live-refresh.md](../roadmap/content-discovery/feat-573-sustainable-cowatch-live-refresh.md)                                 | cowatch     | Complete: bounded refresh/revocation/throttle lifecycle verified; next natural post-revocation replacement remains unobserved.                                                                     | [2546](https://github.com/JesusFilm/forge/pull/2546). [Refresh audit](../operations/recommendation-cowatch-refresh-2026-10-01.md#october-2-read-only-refresh-reconciliation).                                                                              |
 | [docs/roadmap/content-discovery/feat-612-refresh-recommendation-integration-fixtures.md](../roadmap/content-discovery/feat-612-refresh-recommendation-integration-fixtures.md)           | fixtures    | Complete: fixed historical timestamps and current-schema fixture isolation, retaining production constraints and migrations.                                                                       | [2544](https://github.com/JesusFilm/forge/pull/2544). [CI: 4 fixture + 52 co-watch tests](https://github.com/JesusFilm/forge/actions/runs/36940081572/job/110630746009); one separate local PostgreSQL/Redis fallback test (not part of the new CI steps). |
+| [docs/roadmap/content-discovery/feat-609-filtered-hnsw-fixture-recall.md](../roadmap/content-discovery/feat-609-filtered-hnsw-fixture-recall.md)                                         | fixtures    | Open, in-progress: intermittent HNSW fixture failure remains unexplained; bounded local passes and failure diagnostics do not establish a fix.                                                     | [2595](https://github.com/JesusFilm/forge/pull/2595). Native PostgreSQL investigation and failure-only plan/settings evidence.                                                                                                                             |
 | [docs/roadmap/platform/feat-554-recommendation-storage-rollout-verification.md](../roadmap/platform/feat-554-recommendation-storage-rollout-verification.md)                             | storage     | Open, in-progress: two real failure-free loaded daily retention cycles still required; zero qualifying cycles in the latest audit.                                                                 | [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                                                                            |
 | [docs/roadmap/platform/feat-555-recommendation-legacy-trace-reclamation.md](../roadmap/platform/feat-555-recommendation-legacy-trace-reclamation.md)                                     | storage     | Complete before this closeout: restrictive legacy-stage retirement and measured physical reclamation retained.                                                                                     | [2537](https://github.com/JesusFilm/forge/pull/2537), [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                      |
 | [docs/roadmap/platform/feat-574-recommendation-storage-efficiency.md](../roadmap/platform/feat-574-recommendation-storage-efficiency.md)                                                 | storage     | Complete: U1–U3 storage implementation, production representation checks and measured fixture savings verified.                                                                                    | [2540](https://github.com/JesusFilm/forge/pull/2540). [storage audit](2026-10-02-recommendation-storage-efficiency-closeout.md)                                                                                                                            |
@@ -408,10 +410,105 @@ records the missing failed-plan/settings diagnostics and required regression
 proof. Production failure is not inferred from this fixture alone; no hard
 dependency or retention acceptance was moved from feat-554.
 
-There are **zero qualifying cycles** through the failed October 5 cycle. Both
-Admin roles must run `0cb08416c` or a verified descendant containing the repairs.
-Verify that merge revision or a descendant in both roles
-before attributing later observations to the admission guard.
+The October 7 investigation on main `1daa80373` added seven complete delivery-file
+passes and three targeted HNSW passes on owned PostgreSQL 18.6 / pgvector 0.8.7.
+The preceding 19-file recommendation CI batch also passed 121 tests before the
+last complete-file run without a database reset. None reproduced ANN zero. PR
+[2595](https://github.com/JesusFilm/forge/pull/2595) records failure-only actual
+plan/settings diagnostics and a transaction-local scan-memory comparison. Its
+same-statement diagnostic rerun is not the original failed execution, and the
+original candidates remain the assertion input. Exact head
+`b49433f377806332becce811447fef8d264a887c` passed independent review, 19 executed
+checks and seven expected scope skips, then merged as `20f55715c` at October 6
+20:39:44 UTC. This changes tests and documentation, not delivery behavior.
+Feat-609 remains in-progress; the passing checks do not establish a cause or fix.
+
+The October 6 ordinary cycle on actual Admin HTTP/worker revision `0cb08416c`
+also failed. The 19:41 UTC bounded ledger snapshot contained 980 successful
+purges, ten `SKIPPED` / `budget_yield` attempts and 86 failed attempts. The 990
+successful workflow wrappers include those ten handled yields; they are not
+990 completed purges. Successful purges committed 5,057 roots, 17,590 served
+items and 4,900 standalone episodes. Yields separately committed 651 roots;
+failed attempts committed no roots but did retain 420 standalone episode
+deletions. Both ledger caps were not reached, and aggregate agreement does not
+establish direct per-attempt linkage.
+
+Six initial failures reported expired/closed transactions between 10:30 and
+11:29 UTC. Eighty later failures, beginning at 13:51, reported PostgreSQL
+`P0001` during `recommendationRequest.deleteMany` with the exact guard text
+`published profile projection children are immutable`. A separate 19:44:59
+read found 81 later guard failures, confirming continued rejection after the
+last successful expiry cutoff, 13:49:56.061. These trigger rejections are distinct
+from the earlier timeout failures and the safe budget yields.
+
+Read-only production schema metadata confirms that the contribution's
+`source_eligibility_decision_id` foreign key uses `ON DELETE SET NULL`, while a
+check requires that ID and its revision to be null together. The published-child
+update guard permits source-outcome detachment but rejects eligibility-reference
+detachment. An isolated PostgreSQL reproduction hit that exact guard and rolled
+back parent deletion. The proposed forward migration then allowed actual FK
+cleanup while retaining the contribution evidence. Native checks rejected
+direct eligibility unlinking, non-null reassignment, revision-only and mixed
+content changes, a nested non-FK trigger attempt and published-interest edits.
+Existing outcome-reference cleanup and selection cascades still passed.
+
+The populated-schema purge/lock regression recorded `FAILED`, zero root credit
+and an unchanged success watermark before the fix. After migration it recorded
+`SUCCEEDED` with exactly one root, item, outcome and eligibility decision deleted,
+while preserving the contribution's other fields. Focused regressions and the
+five-test native standalone-retention suite passed. Independent review approved
+exact head `a9cd1c596764cb5f0483f7310fa0721dcec1a846` on
+[2594](https://github.com/JesusFilm/forge/pull/2594#issuecomment-6024710712).
+All 19 successful checks and seven expected scope skips were inspected, including
+every underlying Forge CI job. The normal squash merge is `2913616a2` at
+October 6 20:23:11 UTC. Post-merge Forge CI also passed;
+actual migration application and process revisions are recorded below. No production schema or data mutation
+was used to investigate. This trigger correction does not by itself explain or
+repair the six earlier timeouts. A bounded read of those six stored errors found
+rejections in one eligibility-decision count, one request-root deletion, two
+request-free episode deletions, one playback-fact count and one unobserved
+operation. Wrapper durations were 5,030–8,820 ms. These are rejection locations,
+not proof of which statement consumed the budget; no single further source
+correction is established by that evidence.
+
+At 19:41:43 UTC, all 21 retention-health types still had zero rows more than
+24 hours overdue. HTTP/worker health, compact traces and runner roles were
+correct, but the scheduler was continuing bounded catch-up with no successful
+purge after 13:49 in the observed window. Separate capacity reads at 19:41:49
+and 19:41:56 found 117,440,512 WAL bytes, no lock waiters or long transactions,
+an empty 24,576-byte legacy stage, and 22,426,816,512 bytes free of
+48,891,670,528 on PGDATA. This does not establish sustained retention health or
+new physical reclamation. Aggregate receipts are under
+`outputs/heartbeats/20261006T1939-daily/` in the storage evidence directory.
+
+Normal release verification found migration 0129 started at 20:32:40.565 UTC
+and completed at 20:32:40.596, with one applied migration record, a matching
+checksum, exact guard-body parity and one active update guard. By 20:36:58,
+both actual Admin processes ran `2913616a2`: HTTP deployment
+`34f97d76-b62a-42c5-b8d6-91c26f6372e4` and worker deployment
+`97adfc5e-00d3-42a2-84f6-a22794fe44dd` were successful, health 200, compact,
+with HTTP runner disabled and worker runner enabled. Between migration application
+and that both-role verification, five successful purges committed 500 roots and
+three budget yields committed another 300; no failures were observed in that
+bounded interval. Database behavior changed before both process revisions were
+verified, so those attempts are not proof of both-role convergence.
+
+After both-role verification, the bounded 20:37:46–20:38:11 natural scheduler
+window recorded eight successful attempts in both ledgers, 800 request roots and
+2,877 served items deleted, and no failures or budget yields. At 20:38:57, all 21
+health types had zero rows more than 24 hours overdue and the success cutoff had
+advanced to 20:38:08.969. Capacity reads found 22,393,917,440 bytes free on PGDATA,
+117,440,512 WAL bytes, an empty 24,576-byte legacy stage and no lock waiters.
+Web was separately healthy with Watch 200, and the 50,000 MB volume was ready.
+These bounded recovery observations do not erase the 98 pre-migration failures
+in the later release snapshot, including the six unresolved deadline errors.
+Sanitized release receipts are under
+`outputs/heartbeats/20261006T2024-pr2594-postmerge/` in the storage evidence directory.
+
+There are **zero qualifying cycles** through the failed October 6 cycle. Both
+Admin roles must run `2913616a2` or a verified descendant containing the repairs,
+and migration 0129 must actually be applied, before attributing future evidence
+to the full repair.
 Natural catch-up demonstrated request-root deletion, declining overdue backlog
 and restoration of the serving-health criteria; recovery cannot qualify the
 already failed cycle. Two later ordinary loaded, failure-free daily cycles at the normal
@@ -441,8 +538,8 @@ The canonical architecture plan, root agent guidance and policy point to this
 record so future work does not revive old acceptance gates. The roadmap viewer
 preserves cancellation as distinct from completion; cancellation alone does not
 satisfy a live dependency. The generated README was refreshed from current tickets using the updated
-parser with `TZ=UTC`, preserving the excluded AI Chat/RAG lanes. All 38 scoped
-paths appear with the correct status. Unrelated historical redirects omitted by
+parser with `TZ=UTC`, preserving the excluded AI Chat/RAG lanes. All 39 tracked
+paths appear with the correct status, including in-progress feat-554 and feat-609. Unrelated historical redirects omitted by
 the existing parser are unchanged.
 
 Stale PRs [2150](https://github.com/JesusFilm/forge/pull/2150) and
@@ -471,7 +568,7 @@ ID/time and bounded public endpoint/browser observations; consult it before
 claiming the new status model is live.
 The initial October 2 closeout changed test/CI and the roadmap status viewer,
 without recommendation runtime or production SQL changes. Subsequent retention
-repairs #2550, #2551, #2553, #2556 and #2580 are runtime changes; their separate release and recovery
+repairs #2550, #2551, #2553, #2556, #2580 and #2594 change runtime or database behavior; their separate release and recovery
 evidence is required as described above.
 
 The PostgreSQL CI job passed all 56 relevant native tests: one historical
@@ -490,10 +587,10 @@ production latency estimates. Raw samples and the measurement script are retaine
 under `/home/nisal/Documents/Codex/2026-10-02/recommendation-roadmap-cancelled-status/work/`
 and summarized in #2545. Normal deployed verification is recorded separately.
 
-The direct path/frontmatter audit of merged main `0cb08416c` found **12 complete,
-25 cancelled and one open (feat-554)** across the original 38 paths, including the
-viewer ticket. This evidence update adds open feat-609, so the combined tracked
-scope becomes **12 complete, 25 cancelled and two open** across 39 paths.
+The direct path/frontmatter audit of merged main `20f55715c` found **12 complete,
+25 cancelled and two in-progress** across 39 tracked paths: platform feat-554 and
+content-discovery feat-609 remain open. The original 38-path scope still has only
+feat-554 open; no retention acceptance has moved to the HNSW investigation.
 Final closure must repeat this audit on merged main, with the merge SHA
 and result retained on #2541. The dependency audit
 checked all 25 retired IDs and 43 affected ticket paths, finding no residual

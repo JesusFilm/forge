@@ -30,16 +30,30 @@ export default async function PublicPrecomputedControlPage() {
       <PageSection title="Live readiness" meta="BLOCKED">
         <div className="space-y-3 p-4 text-[13px]">
           <p>
-            A live human/bot and tracking-loss verifier is not implemented. The
-            isolated fixture can rehearse decisions, but its CTR outcome cannot
-            qualify live traffic. The Admin-bound automation count excludes
-            known bots and prefetches skipped by Web.
+            Verified-browser incumbent visits and accepted clicks are measured
+            separately from Web request-health counters. Missing Web hours,
+            incomplete tracking, fixture-only evidence, and the unagreed live
+            stopping policy keep launch blocked. No winner is activated
+            automatically. A quiet hour and a telemetry outage currently look
+            the same to Web; missing hours remain unknown rather than counting
+            as zero traffic.
           </p>
           <ul className="list-inside list-disc space-y-1">
             {readiness.liveActivation.unresolved.map((reason) => (
               <li key={reason}>{reason.replaceAll("_", " ")}</li>
             ))}
           </ul>
+          {readiness.authoritativeCatalogCoverage ? (
+            <p>
+              Admin catalog coverage at the build cutoff:{" "}
+              {readiness.authoritativeCatalogCoverage
+                .authoritativeSourceCount ?? "unavailable"}{" "}
+              eligible Videos versus{" "}
+              {readiness.authoritativeCatalogCoverage.generationSourceCount} in
+              the generation. Both the count and source-set digest must match
+              before live preparation.
+            </p>
+          ) : null}
           <p>
             Inspect{" "}
             <Link

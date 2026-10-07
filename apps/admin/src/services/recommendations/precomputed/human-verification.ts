@@ -3,6 +3,7 @@ import type { Principal } from "@/auth/principal"
 
 const PREFIX = "forge-watch-human-v1."
 const ACTION = "watch_recommendations"
+const FIXTURE_HOSTNAME = "turnstile-test-fixture.local"
 const PAYLOAD_KEYS = [
   "visitId",
   "browserDigest",
@@ -31,6 +32,7 @@ export type WatchHumanReceiptInput = {
 export type WatchHumanReceiptConfig = {
   secret: string | undefined
   allowedHostnames: string | undefined
+  allowFixtureHostname?: boolean
 }
 
 /** Verify the exact, Web-signed Siteverify decision for one Watch visit.
@@ -99,6 +101,9 @@ export function verifyWatchHumanReceipt(
     fields.action !== ACTION ||
     typeof fields.hostname !== "string" ||
     !HOSTNAME.test(fields.hostname) ||
+    (fields.hostname === FIXTURE_HOSTNAME &&
+      (!config.allowFixtureHostname ||
+        process.env.NODE_ENV === "production")) ||
     !config.allowedHostnames
       .split(",")
       .map((hostname) => hostname.trim())
@@ -112,5 +117,5 @@ export function verifyWatchHumanReceipt(
   )
     return false
   const nowSec = Math.floor(input.now.getTime() / 1_000)
-  return nowSec >= fields.issuedAt && nowSec < fields.expiresAt
+  return nowSec + 30 >= fields.issuedAt && nowSec < fields.expiresAt
 }

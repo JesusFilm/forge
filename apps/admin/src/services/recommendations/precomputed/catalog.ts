@@ -1,4 +1,5 @@
-import type { Prisma, PrismaClient } from "@prisma/client"
+import { createHash } from "node:crypto"
+import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { isValidMastraRecommendationIngestBearer } from "@/auth/mastra-ingest-bearer"
 
@@ -92,10 +93,6 @@ function videoSelect() {
       orderBy: { childId: "asc" as const },
       select: { childId: true },
     },
-    transcripts: {
-      orderBy: { id: "asc" as const },
-      select: { language: true },
-    },
   } satisfies Prisma.VideoSelect
 }
 
@@ -103,7 +100,76 @@ type CatalogVideo = Prisma.VideoGetPayload<{
   select: ReturnType<typeof videoSelect>
 }>
 
-function compactVideo(video: CatalogVideo) {
+type TranscriptSelection = {
+  policy: "english-per-edition-with-complete-fallback-v1"
+  availableTranscriptCount: number
+  incompleteTranscriptCount: number
+  skippedEditionCount: number
+  selected: {
+    transcriptId: string
+    videoEditionId: string
+    language: string
+    totalChunks: number
+  }[]
+}
+
+const emptyTranscriptSelection = (): TranscriptSelection => ({
+  policy: "english-per-edition-with-complete-fallback-v1",
+  availableTranscriptCount: 0,
+  incompleteTranscriptCount: 0,
+  skippedEditionCount: 0,
+  selected: [],
+})
+
+/** Select whole transcripts per edition, not a sample of their passages. */
+async function transcriptSelections(
+  tx: Prisma.TransactionClient,
+  videoIds: string[],
+): Promise<Map<string, TranscriptSelection>> {
+  if (videoIds.length === 0) return new Map()
+  // Aggregate inside PostgreSQL: translated films have thousands of transcript
+  // rows, which need not all be hydrated and copied into every model prompt.
+  const rows = await tx.$queryRaw<
+    Array<Omit<TranscriptSelection, "policy"> & { videoId: string }>
+  >`
+    WITH candidates AS (
+      SELECT t.id, t.video_id, t.video_edition_id, t.language, t.total_chunks,
+             count(c.id)::int AS actual_chunks
+      FROM video_transcript t
+      LEFT JOIN video_transcript_chunk c ON c.transcript_id = t.id
+      WHERE t.video_id IN (${Prisma.join(videoIds)})
+      GROUP BY t.id
+    ), ranked AS (
+      SELECT *, row_number() OVER (
+        PARTITION BY video_id, video_edition_id
+        ORDER BY (language = 'en') DESC, language COLLATE "C", id COLLATE "C"
+      ) AS preference
+      FROM candidates
+      WHERE actual_chunks > 0 AND actual_chunks = total_chunks
+    ), summary AS (
+      SELECT video_id, count(*)::int AS available,
+             count(*) FILTER (WHERE actual_chunks = 0 OR actual_chunks <> total_chunks)::int AS incomplete,
+             count(DISTINCT video_edition_id)::int AS editions
+      FROM candidates GROUP BY video_id
+    )
+    SELECT s.video_id AS "videoId", s.available AS "availableTranscriptCount",
+           s.incomplete AS "incompleteTranscriptCount",
+           (s.editions - count(r.id))::int AS "skippedEditionCount",
+           COALESCE(jsonb_agg(jsonb_build_object(
+             'transcriptId', r.id, 'videoEditionId', r.video_edition_id,
+             'language', r.language, 'totalChunks', r.total_chunks
+           ) ORDER BY r.id COLLATE "C") FILTER (WHERE r.id IS NOT NULL), '[]'::jsonb) AS selected
+    FROM summary s LEFT JOIN ranked r ON r.video_id = s.video_id AND r.preference = 1
+    GROUP BY s.video_id, s.available, s.incomplete, s.editions`
+  return new Map(
+    rows.map(({ videoId, ...selection }) => [
+      videoId,
+      { policy: "english-per-edition-with-complete-fallback-v1", ...selection },
+    ]),
+  )
+}
+
+function compactVideo(video: CatalogVideo, selection: TranscriptSelection) {
   const locale =
     video.locales.find((row) => row.locale === "en") ?? video.locales[0]
   const description = locale?.description ?? locale?.snippet ?? ""
@@ -124,8 +190,9 @@ function compactVideo(video: CatalogVideo) {
     parentVideoIds: video.parents.map((item) => item.parentId),
     childVideoIds: video.children.map((item) => item.childId),
     transcriptLanguages: [
-      ...new Set(video.transcripts.map((item) => item.language)),
+      ...new Set(selection.selected.map((item) => item.language)),
     ].sort(),
+    transcriptSelection: selection,
     watchRouteIdentity: {
       basis: "current_catalog_cutoff_fenced" as const,
       parentSlugs: [
@@ -224,7 +291,7 @@ async function assertWatchRouteIdentityVersions(
  * fails the build instead of substituting its new content for the cutoff.
  */
 export async function assertPrecomputedObservedVersion(
-  tx: Prisma.TransactionClient,
+  tx: Pick<Prisma.TransactionClient, "video">,
   videoIds: string[],
   cutoff: Date,
 ): Promise<void> {
@@ -329,6 +396,63 @@ export async function assertPrecomputedObservedVersion(
   }
 }
 
+/** Reconstruct the producer's complete Watch-eligible source identity from
+ * Admin-owned rows at the build cutoff. A self-declared two-video manifest
+ * cannot certify coverage of a larger catalog. Changed current rows fail
+ * closed because overwritten historic values cannot be reconstructed. */
+export async function loadPrecomputedFullCatalogSourceSet(
+  db: Pick<Prisma.TransactionClient, "video">,
+  cutoff: Date,
+): Promise<{ sourceCount: number; sourceSetDigest: string }> {
+  if (!Number.isFinite(cutoff.getTime()))
+    throw new PrecomputedCatalogError("invalid", "Invalid catalog cutoff")
+  const ids: string[] = []
+  let afterVideoId: string | null = null
+  for (;;) {
+    const page: Array<{
+      id: string
+      deletedAt: Date | null
+      restrictViewPlatforms: string[]
+      dubs: Array<{ id: string }>
+      locales: Array<{ title: string | null }>
+    }> = await db.video.findMany({
+      where: {
+        createdAt: { lte: cutoff },
+        ...(afterVideoId ? { id: { gt: afterVideoId } } : {}),
+      },
+      select: {
+        id: true,
+        deletedAt: true,
+        restrictViewPlatforms: true,
+        dubs: { where: playableDub, select: { id: true }, take: 1 },
+        locales: { where: publishedLocale, select: { title: true } },
+      },
+      orderBy: { id: "asc" },
+      take: 200,
+    })
+    if (page.length === 0) break
+    await assertPrecomputedObservedVersion(
+      db,
+      page.map((video) => video.id),
+      cutoff,
+    )
+    for (const video of page) if (isWatchable(video)) ids.push(video.id)
+    if (ids.length > 20_000)
+      throw new PrecomputedCatalogError(
+        "oversized",
+        "Catalog exceeds producer manifest limit",
+      )
+    afterVideoId = page.at(-1)!.id
+    if (page.length < 200) break
+  }
+  return {
+    sourceCount: ids.length,
+    sourceSetDigest: createHash("sha256")
+      .update(JSON.stringify(ids.sort()))
+      .digest("hex"),
+  }
+}
+
 /** Private producer catalog boundary. No recommendation/ranking tables are read. */
 export async function readPrecomputedCatalog(
   prisma: PrismaClient,
@@ -370,9 +494,14 @@ export async function readPrecomputedCatalog(
         await assertPrecomputedObservedVersion(tx, [video.id], cutoff)
         if (!isWatchable(video))
           throw new PrecomputedCatalogError("not_found", "Video not found")
+        const selection = (await transcriptSelections(tx, [video.id])).get(
+          video.id,
+        )
         const rows = await tx.videoTranscriptChunk.findMany({
           where: {
-            transcript: { videoId: input.videoId },
+            transcriptId: {
+              in: selection?.selected.map((item) => item.transcriptId) ?? [],
+            },
             ...(input.afterChunkId ? { id: { gt: input.afterChunkId } } : {}),
           },
           select: {
@@ -395,7 +524,9 @@ export async function readPrecomputedCatalog(
           chunkIndex: chunk.chunkIndex,
           text: chunk.rawSourceText ?? chunk.text,
         }))
-        if (chunks.some((chunk) => chunk.text.length > 5_000)) {
+        // Real catalog chunks reach 8,035 characters. Keep them intact while
+        // retaining a bounded page; the producer reads 20 chunks per request.
+        if (chunks.some((chunk) => chunk.text.length > 8_192)) {
           throw new PrecomputedCatalogError(
             "oversized",
             "Transcript chunk exceeds producer response bound",
@@ -420,7 +551,13 @@ export async function readPrecomputedCatalog(
         await assertWatchRouteIdentityVersions(tx, [video], cutoff)
         if (!isWatchable(video))
           throw new PrecomputedCatalogError("not_found", "Video not found")
-        return { action: "video" as const, video: compactVideo(video) }
+        const selection = (await transcriptSelections(tx, [video.id])).get(
+          video.id,
+        )
+        return {
+          action: "video" as const,
+          video: compactVideo(video, selection ?? emptyTranscriptSelection()),
+        }
       }
 
       const rows = await tx.video.findMany({
@@ -440,9 +577,20 @@ export async function readPrecomputedCatalog(
         cutoff,
       )
       await assertWatchRouteIdentityVersions(tx, page, cutoff)
+      const selections = await transcriptSelections(
+        tx,
+        page.map((video) => video.id),
+      )
       return {
         action: "catalog" as const,
-        videos: page.filter(isWatchable).map(compactVideo),
+        videos: page
+          .filter(isWatchable)
+          .map((video) =>
+            compactVideo(
+              video,
+              selections.get(video.id) ?? emptyTranscriptSelection(),
+            ),
+          ),
         nextCursor: hasMore ? page.at(-1)!.id : null,
       }
     },

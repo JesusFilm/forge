@@ -1,4 +1,4 @@
-import type { PushCampaignStatus } from "@prisma/client"
+import type { PushCampaignStatus, PushDestinationKind } from "@prisma/client"
 
 export type PushServiceErrorCode =
   | "invalid_input"
@@ -20,6 +20,10 @@ export type PushServiceErrorCode =
   | "provider_indeterminate"
   | "provider_fatal"
   | "provider_auth"
+  | "unknown_language"
+  | "unknown_destination"
+  | "stale_content_version"
+  | "too_many_rows"
 
 export class PushServiceError extends Error {
   constructor(
@@ -31,8 +35,14 @@ export class PushServiceError extends Error {
   }
 }
 
+/** R14 — one field to fix. It names the field and never the rejected value. */
+export type PushInputIssue = Readonly<{ path: string; message: string }>
+
 export class PushInputError extends PushServiceError {
-  constructor(message: string) {
+  constructor(
+    message: string,
+    readonly issues: readonly PushInputIssue[] = [],
+  ) {
     super("invalid_input", message)
     this.name = "PushInputError"
   }
@@ -165,13 +175,16 @@ export class PushCampaignsDisabledError extends PushServiceError {
   }
 }
 
-/** KTD2 — one bounded run per campaign, so a second dispatch is refused. */
+/**
+ * KTD2 — one bounded run per campaign, so a second dispatch is refused. A test
+ * in flight replaces the message with its receipt window (KTD17).
+ */
 export class PushRunAlreadyActiveError extends PushServiceError {
-  constructor(readonly workflowRunLogId: string) {
-    super(
-      "run_already_active",
-      "This campaign already has a run in flight; cancel it before you start another",
-    )
+  constructor(
+    readonly workflowRunLogId: string,
+    message = "This campaign already has a run in flight; cancel it before you start another",
+  ) {
+    super("run_already_active", message)
     this.name = "PushRunAlreadyActiveError"
   }
 }
@@ -237,5 +250,82 @@ export class PushProviderAuthError extends PushProviderFatalError {
   constructor(providerCode: string) {
     super(providerCode, "provider_auth")
     this.name = "PushProviderAuthError"
+  }
+}
+
+/** R12 and R31 — a written slug that is not a live Language with a slug. */
+export class PushUnknownLanguageError extends PushServiceError {
+  constructor(readonly slugs: readonly string[]) {
+    super(
+      "unknown_language",
+      `Admin does not know these languages: ${slugs.join(", ")}`,
+    )
+    this.name = "PushUnknownLanguageError"
+  }
+}
+
+/**
+ * R32 and KTD9 — no row of the named kind carries the slug. `actualKind` is
+ * the kind that does carry it, or null when no kind does.
+ */
+export class PushUnknownDestinationError extends PushServiceError {
+  readonly kind: PushDestinationKind
+  readonly slug: string
+  readonly actualKind: PushDestinationKind | null
+
+  constructor(input: {
+    kind: PushDestinationKind
+    slug: string
+    actualKind: PushDestinationKind | null
+  }) {
+    super(
+      "unknown_destination",
+      input.actualKind
+        ? `No ${input.kind} has the slug ${input.slug}; that slug is a ${input.actualKind}`
+        : `No ${input.kind} has the slug ${input.slug}`,
+    )
+    this.name = "PushUnknownDestinationError"
+    this.kind = input.kind
+    this.slug = input.slug
+    this.actualKind = input.actualKind
+  }
+}
+
+/**
+ * R34 and KTD4 — the content changed after the caller read it. The fields
+ * name the newer change, so the caller can say who made it and when.
+ */
+export class PushStaleContentVersionError extends PushServiceError {
+  readonly currentContentVersion: number
+  readonly lastActorId: string | null
+  readonly updatedAt: Date
+
+  constructor(input: {
+    currentContentVersion: number
+    lastActorId: string | null
+    updatedAt: Date
+  }) {
+    super(
+      "stale_content_version",
+      `This campaign changed after you loaded it: version ${input.currentContentVersion} was saved at ${input.updatedAt.toISOString()}. Load the newer version, then make your change again.`,
+    )
+    this.name = "PushStaleContentVersionError"
+    this.currentContentVersion = input.currentContentVersion
+    this.lastActorId = input.lastActorId
+    this.updatedAt = input.updatedAt
+  }
+}
+
+/** KTD7 — the merged copy set would hold more rows than a campaign takes. */
+export class PushTooManyCopyRowsError extends PushServiceError {
+  constructor(
+    readonly rowCount: number,
+    readonly limit: number,
+  ) {
+    super(
+      "too_many_rows",
+      `A campaign holds at most ${limit} copy rows; this change would leave ${rowCount}`,
+    )
+    this.name = "PushTooManyCopyRowsError"
   }
 }

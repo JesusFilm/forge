@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
+import { adminMessages } from "@/i18n/messages"
 import {
   PushCampaignsDisabledError,
   PushDuplicateTestDeviceError,
   PushFrozenError,
   PushInputError,
   PushNotTestedError,
+  PushStaleContentVersionError,
   PushTokenShapedIdError,
 } from "@/services/push/errors"
 
@@ -19,7 +21,14 @@ const createPushCampaignDraft = vi.fn()
 const updatePushCampaign = vi.fn()
 const countPushAudience = vi.fn()
 const readPushCampaignDetail = vi.fn()
+const readPushActorNames = vi.fn()
 const searchPushDestinations = vi.fn()
+
+/** The user table behind the name lookup; an id it lacks reads as itself. */
+const PEOPLE: Record<string, string> = {
+  user_2: "Bob Editor",
+  user_ai: "Alice Reviewer",
+}
 
 const schedulePushCampaignRun = vi.fn()
 const sendPushCampaignNowRun = vi.fn()
@@ -43,6 +52,10 @@ vi.mock("@/auth/session", () => ({
 
 vi.mock("@/db/client", () => ({ prisma: {} }))
 
+vi.mock("@/i18n/server", () => ({
+  getAdminMessages: vi.fn(async () => adminMessages.en),
+}))
+
 vi.mock("@/services/push/campaign.service", () => ({
   createPushCampaignDraft: (...args: unknown[]) =>
     createPushCampaignDraft(...args),
@@ -57,6 +70,7 @@ vi.mock("@/services/push/audience.service", () => ({
 vi.mock("@/services/push/dashboard.service", () => ({
   readPushCampaignDetail: (...args: unknown[]) =>
     readPushCampaignDetail(...args),
+  readPushActorNames: (...args: unknown[]) => readPushActorNames(...args),
   searchPushDestinations: (...args: unknown[]) =>
     searchPushDestinations(...args),
 }))
@@ -111,8 +125,32 @@ function detail(overrides: Record<string, unknown> = {}) {
     audienceScope: "COUNTRIES",
     countries: ["SA", "FR"],
     languageFilter: [],
+    aiMarker: null,
     ...overrides,
   }
+}
+
+const SAVE_FORM = {
+  campaignId: CAMPAIGN,
+  contentVersion: "3",
+  copyLanguage: ["english"],
+  copyTitle: ["An announcement"],
+  copyBody: ["Watch tonight"],
+}
+
+/** Bob saved version 5 at 10:05, after the page loaded version 3. */
+function staleError(lastActorId: string | null = "user_2") {
+  return new PushStaleContentVersionError({
+    currentContentVersion: 5,
+    lastActorId,
+    updatedAt: new Date("2026-10-06T10:05:00Z"),
+  })
+}
+
+const AGENT_MARKER = {
+  actorId: "user_ai",
+  actorName: "Alice Reviewer",
+  writtenAt: new Date("2026-10-06T09:30:00Z"),
 }
 
 describe("push campaign server actions", () => {
@@ -121,7 +159,18 @@ describe("push campaign server actions", () => {
     requireSession.mockResolvedValue(ACTOR)
     countPushAudience.mockResolvedValue({ audience: 1234, unreachable: 7 })
     readPushCampaignDetail.mockResolvedValue(detail())
-    updatePushCampaign.mockResolvedValue({ id: CAMPAIGN, status: "DRAFT" })
+    readPushActorNames.mockImplementation(
+      async (_prisma: unknown, ids: readonly (string | null)[]) =>
+        new Map(
+          ids.flatMap((id) => (id ? [[id, PEOPLE[id] ?? id] as const] : [])),
+        ),
+    )
+    updatePushCampaign.mockResolvedValue({
+      campaignId: CAMPAIGN,
+      written: true,
+      after: { contentVersion: 4 },
+      statusChange: null,
+    })
     schedulePushCampaignRun.mockResolvedValue({ campaignId: CAMPAIGN })
     sendPushCampaignNowRun.mockResolvedValue({ campaignId: CAMPAIGN })
     sendPushCampaignTestRun.mockResolvedValue({ campaignId: CAMPAIGN })
@@ -142,6 +191,7 @@ describe("push campaign server actions", () => {
         PUSH_ACTION_IDLE,
         form({
           campaignId: CAMPAIGN,
+          contentVersion: "3",
           copyLanguage: ["english"],
           copyTitle: ["Hello"],
           copyBody: ["Watch tonight"],
@@ -173,6 +223,7 @@ describe("push campaign server actions", () => {
         PUSH_ACTION_IDLE,
         form({
           campaignId: CAMPAIGN,
+          contentVersion: "3",
           copyLanguage: ["english", "arabic"],
           copyTitle: ["An announcement", "إعلان"],
           copyBody: ["Watch tonight", "شاهد الليلة"],
@@ -187,6 +238,7 @@ describe("push campaign server actions", () => {
       expect(updatePushCampaign).toHaveBeenCalledWith(expect.anything(), {
         campaignId: CAMPAIGN,
         actorId: "user_1",
+        expectedContentVersion: 3,
         update: {
           copies: [
             {
@@ -211,6 +263,7 @@ describe("push campaign server actions", () => {
         PUSH_ACTION_IDLE,
         form({
           campaignId: CAMPAIGN,
+          contentVersion: "3",
           copyLanguage: ["english"],
           copyTitle: ["An announcement"],
           copyBody: ["Watch tonight"],
@@ -236,6 +289,7 @@ describe("push campaign server actions", () => {
         PUSH_ACTION_IDLE,
         form({
           campaignId: CAMPAIGN,
+          contentVersion: "3",
           copyLanguage: ["english"],
           copyTitle: ["An announcement"],
           copyBody: ["Watch tonight"],
@@ -258,6 +312,7 @@ describe("push campaign server actions", () => {
         PUSH_ACTION_IDLE,
         form({
           campaignId: CAMPAIGN,
+          contentVersion: "3",
           copyLanguage: ["english"],
           copyTitle: ["An announcement"],
           copyBody: ["x".repeat(121)],
@@ -271,19 +326,156 @@ describe("push campaign server actions", () => {
       expect(result.status).toBe("error")
       expect(updatePushCampaign).not.toHaveBeenCalled()
     })
+
+    it.each([
+      ["no", undefined],
+      ["an empty", ""],
+      ["a fractional", "2.5"],
+      ["a negative", "-1"],
+      ["a non-numeric", "three"],
+    ])(
+      "refuses a form with %s version before it reaches the service (R34)",
+      async (_label, version) => {
+        const result = await saveCampaignAction(
+          PUSH_ACTION_IDLE,
+          form({
+            campaignId: CAMPAIGN,
+            ...(version === undefined ? {} : { contentVersion: version }),
+            copyLanguage: ["english"],
+            copyTitle: ["An announcement"],
+            copyBody: ["Watch tonight"],
+          }),
+        )
+        expect(result.status).toBe("error")
+        expect(updatePushCampaign).not.toHaveBeenCalled()
+      },
+    )
+
+    it("refuses a stale save with the current version and the last change's person and time, and keeps the page (AE10)", async () => {
+      updatePushCampaign.mockRejectedValue(staleError())
+
+      const result = await saveCampaignAction(PUSH_ACTION_IDLE, form(SAVE_FORM))
+
+      expect(result).toEqual({
+        status: "stale",
+        contentVersion: 5,
+        reason:
+          "This campaign changed after you loaded it. The last change was by Bob Editor at 2026-10-06 10:05 UTC. Load the latest version, then try again.",
+      })
+      expect(revalidatePath).not.toHaveBeenCalled()
+    })
+
+    it("names the later hand editor, then the agent write in a separate sentence", async () => {
+      readPushCampaignDetail.mockResolvedValue(
+        detail({ aiMarker: AGENT_MARKER }),
+      )
+      updatePushCampaign.mockRejectedValue(staleError())
+
+      const result = await saveCampaignAction(PUSH_ACTION_IDLE, form(SAVE_FORM))
+
+      expect(result.status === "stale" && result.reason).toBe(
+        "This campaign changed after you loaded it. The last change was by Bob Editor at 2026-10-06 10:05 UTC. An AI agent changed this campaign for Alice Reviewer at 2026-10-06 09:30 UTC. Load the latest version, then try again.",
+      )
+    })
+
+    it("says an unknown person made the change when the row names no actor", async () => {
+      updatePushCampaign.mockRejectedValue(staleError(null))
+
+      const result = await saveCampaignAction(PUSH_ACTION_IDLE, form(SAVE_FORM))
+
+      expect(result.status === "stale" && result.reason).toContain(
+        "The last change was by an unknown person at 2026-10-06 10:05 UTC.",
+      )
+    })
+
+    it("returns the new version with a save that changed something (KTD15)", async () => {
+      updatePushCampaign.mockResolvedValue({
+        campaignId: CAMPAIGN,
+        written: true,
+        after: { contentVersion: 4 },
+        statusChange: { from: "TESTED", to: "DRAFT" },
+      })
+
+      const result = await saveCampaignAction(PUSH_ACTION_IDLE, form(SAVE_FORM))
+
+      expect(result).toMatchObject({ status: "ok", contentVersion: 4 })
+      expect(revalidatePath).toHaveBeenCalled()
+    })
+
+    it("does not call a save that changed nothing a draft again (R36)", async () => {
+      updatePushCampaign.mockResolvedValue({
+        campaignId: CAMPAIGN,
+        written: false,
+        after: { contentVersion: 3 },
+        statusChange: null,
+      })
+
+      const result = await saveCampaignAction(
+        PUSH_ACTION_IDLE,
+        form({
+          campaignId: CAMPAIGN,
+          contentVersion: "3",
+          copyLanguage: ["english"],
+          copyTitle: ["An announcement"],
+          copyBody: ["Watch tonight"],
+        }),
+      )
+
+      expect(result.status).toBe("ok")
+      expect(result.status === "ok" && result.message).not.toContain("draft")
+    })
   })
 
   describe("sendTestAction", () => {
-    it("starts the test run and records the actor (R10)", async () => {
+    it("starts the test run with the page's version and records the actor (R10, KTD5)", async () => {
       const result = await sendTestAction(
         PUSH_ACTION_IDLE,
-        form({ campaignId: CAMPAIGN }),
+        form({ campaignId: CAMPAIGN, contentVersion: "3" }),
       )
       expect(sendPushCampaignTestRun).toHaveBeenCalledWith({
         campaignId: CAMPAIGN,
         actorId: "user_1",
+        expectedContentVersion: 3,
       })
       expect(result.status).toBe("ok")
+    })
+
+    it.each([
+      ["no", undefined],
+      ["an empty", ""],
+      ["a fractional", "2.5"],
+      ["a negative", "-1"],
+      ["a non-numeric", "three"],
+    ])(
+      "refuses a test send with %s version before it reaches the service (R34)",
+      async (_label, version) => {
+        const result = await sendTestAction(
+          PUSH_ACTION_IDLE,
+          form({
+            campaignId: CAMPAIGN,
+            ...(version === undefined ? {} : { contentVersion: version }),
+          }),
+        )
+        expect(result.status).toBe("error")
+        expect(sendPushCampaignTestRun).not.toHaveBeenCalled()
+      },
+    )
+
+    it("refuses a stale test send with the current version and names the newer change (R34)", async () => {
+      sendPushCampaignTestRun.mockRejectedValue(staleError())
+
+      const result = await sendTestAction(
+        PUSH_ACTION_IDLE,
+        form({ campaignId: CAMPAIGN, contentVersion: "3" }),
+      )
+
+      expect(result).toEqual({
+        status: "stale",
+        contentVersion: 5,
+        reason:
+          "This campaign changed after you loaded it. The last change was by Bob Editor at 2026-10-06 10:05 UTC. Load the latest version, then try again.",
+      })
+      expect(revalidatePath).not.toHaveBeenCalled()
     })
 
     it("surfaces the kill-switch reason when the push flag is off (KTD12)", async () => {
@@ -292,7 +484,7 @@ describe("push campaign server actions", () => {
       )
       const result = await sendTestAction(
         PUSH_ACTION_IDLE,
-        form({ campaignId: CAMPAIGN }),
+        form({ campaignId: CAMPAIGN, contentVersion: "3" }),
       )
       expect(result).toEqual({
         status: "error",

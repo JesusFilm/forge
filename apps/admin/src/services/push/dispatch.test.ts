@@ -20,6 +20,7 @@ const campaignService = vi.hoisted(() => ({
     id: "campaign-1",
     status: "TESTED",
   })),
+  pinPushTestContentVersion: vi.fn(async () => undefined),
 }))
 vi.mock("./campaign.service", () => campaignService)
 
@@ -61,8 +62,11 @@ const {
   sendPushCampaignTestRun,
   startPushCampaignRun,
 } = await import("./dispatch")
-const { PushCampaignsDisabledError, PushRunAlreadyActiveError } =
-  await import("./errors")
+const {
+  PushCampaignsDisabledError,
+  PushRunAlreadyActiveError,
+  PushStaleContentVersionError,
+} = await import("./errors")
 const { runPushCampaign } = await import("@/workflows/pushCampaign")
 
 const CAMPAIGN_ID = "campaign-1"
@@ -253,6 +257,7 @@ beforeEach(() => {
   campaignService.confirmPushSendNow.mockClear()
   campaignService.cancelPushCampaign.mockClear()
   campaignService.recordPushTestSend.mockClear()
+  campaignService.pinPushTestContentVersion.mockClear()
   runtime.world.events.create.mockClear()
   runtime.world.runs.get.mockClear()
   vi.spyOn(console, "info").mockImplementation(() => {})
@@ -392,7 +397,11 @@ describe("the kill switch", () => {
       "test send",
       () =>
         sendPushCampaignTestRun(
-          { campaignId: CAMPAIGN_ID, actorId: "actor-1" },
+          {
+            campaignId: CAMPAIGN_ID,
+            actorId: "actor-1",
+            expectedContentVersion: 5,
+          },
           { prisma: fakePrisma().prisma, campaignsEnabled: false },
         ),
     ],
@@ -416,11 +425,80 @@ describe("one run per campaign", () => {
 
     await expect(
       sendPushCampaignTestRun(
-        { campaignId: CAMPAIGN_ID, actorId: "actor-1" },
+        {
+          campaignId: CAMPAIGN_ID,
+          actorId: "actor-1",
+          expectedContentVersion: 5,
+        },
         { prisma, campaignsEnabled: true },
       ),
     ).rejects.toBeInstanceOf(PushRunAlreadyActiveError)
     dispatch.expectNotDispatched()
+  })
+
+  it("names the receipt window, not cancel, when the run in flight is a test (KTD17)", async () => {
+    const { prisma } = fakePrisma({
+      campaign: {
+        id: CAMPAIGN_ID,
+        status: "DRAFT",
+        workflowRunLogId: "ledger-existing",
+        lastError: null,
+      },
+      ledger: {
+        id: "ledger-existing",
+        status: "RUNNING",
+        details: { kind: "TEST", mode: "WAVE", audienceCount: null },
+        startedAt: new Date("2026-10-06T09:00:30.000Z"),
+        createdAt: new Date("2026-10-06T09:00:00.000Z"),
+      },
+    })
+
+    const send = sendPushCampaignTestRun(
+      {
+        campaignId: CAMPAIGN_ID,
+        actorId: "actor-1",
+        expectedContentVersion: 6,
+      },
+      { prisma, campaignsEnabled: true },
+    )
+
+    await expect(send).rejects.toBeInstanceOf(PushRunAlreadyActiveError)
+    await expect(send).rejects.toMatchObject({
+      message:
+        "The last test is still collecting receipts until about 09:16 UTC. Send a new test after that.",
+    })
+    await expect(send).rejects.not.toThrow(/cancel/i)
+    // The refusal comes before the pin, so the run in flight keeps its version.
+    expect(campaignService.pinPushTestContentVersion).not.toHaveBeenCalled()
+    dispatch.expectNotDispatched()
+  })
+
+  it("keeps the cancel text when the run in flight is live", async () => {
+    const { prisma } = fakePrisma({
+      campaign: {
+        id: CAMPAIGN_ID,
+        status: "SCHEDULED",
+        workflowRunLogId: "ledger-existing",
+        lastError: null,
+      },
+      ledger: {
+        id: "ledger-existing",
+        status: "RUNNING",
+        details: { kind: "LIVE", mode: "WAVE", audienceCount: 42 },
+        startedAt: new Date("2026-10-06T09:00:30.000Z"),
+        createdAt: new Date("2026-10-06T09:00:00.000Z"),
+      },
+    })
+
+    await expect(
+      sendPushCampaignNowRun(
+        { campaignId: CAMPAIGN_ID, actorId: "actor-1" },
+        { prisma, campaignsEnabled: true },
+      ),
+    ).rejects.toMatchObject({
+      message:
+        "This campaign already has a run in flight; cancel it before you start another",
+    })
   })
 
   it("allows a dispatch once the earlier run has finished", async () => {
@@ -440,7 +518,11 @@ describe("one run per campaign", () => {
 
     await expect(
       sendPushCampaignTestRun(
-        { campaignId: CAMPAIGN_ID, actorId: "actor-1" },
+        {
+          campaignId: CAMPAIGN_ID,
+          actorId: "actor-1",
+          expectedContentVersion: 5,
+        },
         { prisma, campaignsEnabled: true },
       ),
     ).resolves.toMatchObject({ runtimeRunId: "runtime-2" })
@@ -498,13 +580,66 @@ describe("the editor's three entry points", () => {
     })
 
     await sendPushCampaignTestRun(
-      { campaignId: CAMPAIGN_ID, actorId: "actor-1" },
+      {
+        campaignId: CAMPAIGN_ID,
+        actorId: "actor-1",
+        expectedContentVersion: 5,
+      },
       { prisma, campaignsEnabled: true },
     )
 
     expect(campaignService.schedulePushCampaign).not.toHaveBeenCalled()
     expect(campaignService.confirmPushSendNow).not.toHaveBeenCalled()
     expect(campaignService.recordPushTestSend).not.toHaveBeenCalled()
+  })
+
+  it("pins the test to the page's version, then starts the run (KTD5)", async () => {
+    const { prisma } = fakePrisma()
+    start.mockResolvedValueOnce({
+      runId: "runtime-1",
+      returnValue: Promise.resolve(undefined),
+    })
+
+    await sendPushCampaignTestRun(
+      {
+        campaignId: CAMPAIGN_ID,
+        actorId: "actor-1",
+        expectedContentVersion: 5,
+      },
+      { prisma, campaignsEnabled: true },
+    )
+
+    expect(campaignService.pinPushTestContentVersion).toHaveBeenCalledWith(
+      prisma,
+      { campaignId: CAMPAIGN_ID, expectedContentVersion: 5 },
+    )
+    expect(
+      campaignService.pinPushTestContentVersion.mock.invocationCallOrder[0],
+    ).toBeLessThan(start.mock.invocationCallOrder[0])
+  })
+
+  it("refuses a test send from a stale page and starts no run (R34)", async () => {
+    const { prisma, calls } = fakePrisma()
+    campaignService.pinPushTestContentVersion.mockRejectedValueOnce(
+      new PushStaleContentVersionError({
+        currentContentVersion: 6,
+        lastActorId: "agent-1",
+        updatedAt: NOW,
+      }),
+    )
+
+    await expect(
+      sendPushCampaignTestRun(
+        {
+          campaignId: CAMPAIGN_ID,
+          actorId: "actor-1",
+          expectedContentVersion: 5,
+        },
+        { prisma, campaignsEnabled: true },
+      ),
+    ).rejects.toBeInstanceOf(PushStaleContentVersionError)
+    dispatch.expectNotDispatched()
+    expect(calls.ledgerCreates).toEqual([])
   })
 
   it("cancels through the campaign service, whatever the runtime answers", async () => {

@@ -24,8 +24,12 @@ import {
   sendTestAction,
 } from "../actions"
 import { ActionFeedback, InlineNotice } from "./action-feedback"
-import { PUSH_ACTION_IDLE } from "./action-state"
+import { PUSH_ACTION_IDLE, pushActionStateForPage } from "./action-state"
 import { ConfirmSendModal } from "./confirm-send-modal"
+import {
+  LoadLatestVersion,
+  type PushReviewMessages,
+} from "./load-latest-version"
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 
@@ -44,6 +48,9 @@ function outcomeTone(
 
 export function CampaignActions({
   campaignId,
+  contentVersion,
+  lastTestContentVersion,
+  messages,
   tested,
   frozen,
   cancellable,
@@ -57,6 +64,10 @@ export function CampaignActions({
   testOutcome,
 }: {
   campaignId: string
+  contentVersion: number
+  /** R35 — the version the last test send carried; null before any test. */
+  lastTestContentVersion: number | null
+  messages: PushReviewMessages
   tested: boolean
   frozen: boolean
   cancellable: boolean
@@ -87,6 +98,10 @@ export function CampaignActions({
   )
   const [sendOpen, setSendOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
+
+  const testFeedback = pushActionStateForPage(testState, contentVersion)
+  const testResultsStale =
+    lastTestContentVersion !== null && lastTestContentVersion !== contentVersion
 
   const where =
     audienceScope === "EVERYWHERE"
@@ -142,6 +157,7 @@ export function CampaignActions({
           </p>
           <form action={testFormAction}>
             <input type="hidden" name="campaignId" value={campaignId} />
+            <input type="hidden" name="contentVersion" value={contentVersion} />
             <SecondaryButton
               type="submit"
               data-testid="push-send-test"
@@ -150,7 +166,16 @@ export function CampaignActions({
               {testPending ? "Sending..." : "Send to test devices"}
             </SecondaryButton>
           </form>
-          <ActionFeedback state={testState} />
+          <ActionFeedback state={testFeedback} />
+          {testFeedback.status === "stale" ? (
+            <LoadLatestVersion messages={messages} />
+          ) : null}
+
+          {testResultsStale ? (
+            <InlineNotice tone="warning" testId="push-test-results-stale">
+              {messages.staleTestResults}
+            </InlineNotice>
+          ) : null}
 
           {testOutcome.length === 0 ? (
             <p

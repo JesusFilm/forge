@@ -18,6 +18,12 @@ import {
 } from "./ctr-report"
 import { validateCtrPolicySettings, type CtrPolicySettings } from "./ctr-policy"
 import { oneUtcCalendarMonthAfter } from "./cohort-window"
+import {
+  liveEvidenceDigest,
+  loadLiveEvidence,
+  type LivePolicyAgreement,
+  type LiveEvidenceSnapshot,
+} from "./live-evidence"
 
 export const PRECOMPUTED_PUBLIC_CONTROL_ID = "precomputed-watch-public-control"
 export const PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY =
@@ -37,6 +43,7 @@ export class PrecomputedPublicControlError extends Error {
       | "incompatible_target"
       | "readiness_unavailable"
       | "fixture_authority_unavailable",
+    readonly reasons: string[] = [],
   ) {
     super(code)
     this.name = "PrecomputedPublicControlError"
@@ -62,7 +69,7 @@ export async function assertIsolatedPrecomputedControlFixture(
     throw new PrecomputedPublicControlError("fixture_authority_unavailable")
   const [database] = await prisma.$queryRaw<
     Array<{ name: string; schema: string }>
-  >`SELECT current_database() AS name, current_schema() AS schema`
+  >`SELECT current_database()::text AS name, current_schema()::text AS schema`
   if (
     !["forge_capacity", "forge_precomputed_control_test"].includes(
       database?.name ?? "",
@@ -152,9 +159,7 @@ export async function loadPrecomputedPublicControl(
   }
 }
 
-/** Freeze a separate public candidate. No serving pointer changes here. The
- * live evidence verifier is intentionally absent until trusted human/bot,
- * tracking-loss, build and capacity reports can be bound to this identity. */
+/** Freeze a separate public candidate. No serving pointer changes here. */
 export async function preparePrecomputedPublicExperiment(
   prisma: PrismaClient,
   input: {
@@ -166,6 +171,7 @@ export async function preparePrecomputedPublicExperiment(
     expectedSourceSetDigest: string
     policySettings: CtrPolicySettings
     authority: "isolated_fixture" | "live_verified"
+    policyAgreement?: LivePolicyAgreement
     operator: Principal | null
   },
 ) {
@@ -185,90 +191,146 @@ export async function preparePrecomputedPublicExperiment(
   )
     throw new PrecomputedPublicControlError("invalid_input")
   validateCtrPolicySettings(input.policySettings)
-  if (input.authority !== "isolated_fixture")
-    throw new PrecomputedPublicControlError("readiness_unavailable")
-  await assertIsolatedPrecomputedControlFixture(prisma)
-  return prisma.$transaction(async (tx) => {
-    const [locked] = await tx.$queryRaw<Array<{ id: string }>>`
+  if (input.authority === "isolated_fixture")
+    await assertIsolatedPrecomputedControlFixture(prisma)
+  const now = new Date()
+  const liveBeforeLock =
+    input.authority === "live_verified"
+      ? await loadLiveEvidence(prisma, {
+          generationId: input.generationId,
+          startsAt: input.startsAt,
+          policySettings: input.policySettings,
+          policyAgreement: input.policyAgreement ?? null,
+          operatorId: input.operator?.id ?? "",
+          now,
+        })
+      : null
+  if (liveBeforeLock?.reasons.length)
+    throw new PrecomputedPublicControlError(
+      "readiness_unavailable",
+      liveBeforeLock.reasons,
+    )
+  return prisma.$transaction(
+    async (tx) => {
+      const [locked] = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM recommendation_precomputed_generation
       WHERE id = ${input.generationId} FOR SHARE`
-    if (!locked) throw new PrecomputedPublicControlError("incompatible_target")
-    const [generation, routing, challenger] = await Promise.all([
-      tx.recommendationPrecomputedGeneration.findUnique({
-        where: { id: input.generationId },
-      }),
-      readControlRouting(tx),
-      tx.recommendationStrategyManifest.findUnique({
-        where: { id: PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID },
-      }),
-    ])
-    if (
-      generation?.status !== "complete" ||
-      generation.sourceSetDigest !== input.expectedSourceSetDigest ||
-      routing?.routingDigest !== input.expectedControlRoutingDigest ||
-      !challenger ||
-      challenger.enabled
-    )
-      throw new PrecomputedPublicControlError("incompatible_target")
-    const sources = await tx.recommendationPrecomputedSource.count({
-      where: { generationId: generation.id },
-    })
-    if (sources !== generation.expectedSourceCount)
-      throw new PrecomputedPublicControlError("incompatible_target")
-    const configurationDigest = digest([
-      "precomputed-public-configuration-v1",
-      input.id,
-      generation.id,
-      generation.sourceSetDigest,
-      routing.manifest.id,
-      routing.manifestDigest,
-      routing.routingDigest,
-      challenger.id,
-      PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
-      PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY,
-      PRECOMPUTED_VISIT_DELIVERY_POLICY,
-      precomputedCtrPolicyDigest(input.policySettings),
-      input.startsAt.toISOString(),
-      input.endsAt.toISOString(),
-    ])
-    const prepared = await tx.recommendationPrecomputedExperiment.create({
-      data: {
-        id: input.id,
-        generationId: generation.id,
-        controlManifestId: routing.manifest.id,
-        challengerManifestId: challenger.id,
-        controlManifestDigest: recommendationManifestDigest(routing.manifest),
-        controlRoutingDigest: routing.routingDigest,
-        sourceSetDigest: generation.sourceSetDigest,
-        assignmentPolicyVersion: PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
-        eligibilityPolicyVersion: PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY,
-        deliveryPolicyVersion: PRECOMPUTED_VISIT_DELIVERY_POLICY,
-        configurationDigest,
-        state: "public_ready",
-        startsAt: input.startsAt,
-        endsAt: input.endsAt,
-        expiresAt: new Date(input.endsAt.getTime() + EXPERIMENT_RETENTION_MS),
-      },
-    })
-    await tx.recommendationPrecomputedCtrPolicy.create({
-      data: {
-        experimentId: input.id,
-        version: PRECOMPUTED_CTR_METHOD,
-        method: PRECOMPUTED_CTR_METHOD,
-        settings: input.policySettings,
-        lateEventCutoffHours: input.policySettings.lateEventCutoffHours,
-        settingsDigest: precomputedCtrPolicyDigest(input.policySettings),
-        authority: "fixture_only",
-      },
-    })
-    return prepared
-  })
+      if (!locked)
+        throw new PrecomputedPublicControlError("incompatible_target")
+      const [generation, routing, challenger] = await Promise.all([
+        tx.recommendationPrecomputedGeneration.findUnique({
+          where: { id: input.generationId },
+        }),
+        readControlRouting(tx),
+        tx.recommendationStrategyManifest.findUnique({
+          where: { id: PRECOMPUTED_WATCH_PREVIEW_MANIFEST_ID },
+        }),
+      ])
+      if (
+        generation?.status !== "complete" ||
+        generation.sourceSetDigest !== input.expectedSourceSetDigest ||
+        routing?.routingDigest !== input.expectedControlRoutingDigest ||
+        !challenger ||
+        challenger.enabled
+      )
+        throw new PrecomputedPublicControlError("incompatible_target")
+      const sources = await tx.recommendationPrecomputedSource.count({
+        where: { generationId: generation.id },
+      })
+      if (sources !== generation.expectedSourceCount)
+        throw new PrecomputedPublicControlError("incompatible_target")
+      const live = liveBeforeLock
+        ? await loadLiveEvidence(tx, {
+            generationId: input.generationId,
+            startsAt: input.startsAt,
+            policySettings: input.policySettings,
+            policyAgreement: input.policyAgreement ?? null,
+            operatorId: input.operator!.id!,
+            now,
+            webMeasurement: liveBeforeLock.webMeasurement,
+          })
+        : null
+      if (live?.reasons.length)
+        throw new PrecomputedPublicControlError(
+          "readiness_unavailable",
+          live.reasons,
+        )
+      if (
+        live &&
+        liveEvidenceDigest(live.snapshot) !==
+          liveEvidenceDigest(liveBeforeLock!.snapshot)
+      )
+        throw new PrecomputedPublicControlError("readiness_unavailable", [
+          "live_evidence_changed",
+        ])
+      const eligibilityPolicy =
+        input.authority === "live_verified"
+          ? PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
+          : PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY
+      const evidenceDigest = live
+        ? liveEvidenceDigest(live.snapshot)
+        : "fixture"
+      const configurationDigest = digest([
+        "precomputed-public-configuration-v1",
+        input.id,
+        generation.id,
+        generation.sourceSetDigest,
+        routing.manifest.id,
+        routing.manifestDigest,
+        routing.routingDigest,
+        challenger.id,
+        PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
+        eligibilityPolicy,
+        PRECOMPUTED_VISIT_DELIVERY_POLICY,
+        precomputedCtrPolicyDigest(input.policySettings),
+        evidenceDigest,
+        input.startsAt.toISOString(),
+        input.endsAt.toISOString(),
+      ])
+      const prepared = await tx.recommendationPrecomputedExperiment.create({
+        data: {
+          id: input.id,
+          generationId: generation.id,
+          controlManifestId: routing.manifest.id,
+          challengerManifestId: challenger.id,
+          controlManifestDigest: recommendationManifestDigest(routing.manifest),
+          controlRoutingDigest: routing.routingDigest,
+          sourceSetDigest: generation.sourceSetDigest,
+          assignmentPolicyVersion: PRECOMPUTED_VISIT_ASSIGNMENT_POLICY,
+          eligibilityPolicyVersion: eligibilityPolicy,
+          deliveryPolicyVersion: PRECOMPUTED_VISIT_DELIVERY_POLICY,
+          configurationDigest,
+          liveEvidence: live
+            ? { ...live.snapshot, evidenceDigest }
+            : Prisma.DbNull,
+          state: "public_ready",
+          startsAt: input.startsAt,
+          endsAt: input.endsAt,
+          expiresAt: new Date(input.endsAt.getTime() + EXPERIMENT_RETENTION_MS),
+        },
+      })
+      await tx.recommendationPrecomputedCtrPolicy.create({
+        data: {
+          experimentId: input.id,
+          version: PRECOMPUTED_CTR_METHOD,
+          method: PRECOMPUTED_CTR_METHOD,
+          settings: input.policySettings,
+          lateEventCutoffHours: input.policySettings.lateEventCutoffHours,
+          settingsDigest: precomputedCtrPolicyDigest(input.policySettings),
+          authority: live ? "prelaunch_agreed" : "fixture_only",
+        },
+      })
+      return prepared
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      timeout: 60_000,
+    },
+  )
 }
 
-/** The first public selection is an explicit compare-and-swap. It requires a
- * frozen complete cohort, intact incumbent routing, predeclared policy and a
- * capacity receipt. Native fixtures can rehearse this transition; live use
- * remains unavailable until an authenticated measurement qualifier exists. */
+/** The first public selection is an explicit compare-and-swap against fresh
+ * evidence. Neither a build nor a CTR report can call this operator action. */
 export async function startPrecomputedPublicExperiment(
   prisma: PrismaClient,
   input: {
@@ -290,100 +352,205 @@ export async function startPrecomputedPublicExperiment(
     input.expectedControlVersion < 1
   )
     throw new PrecomputedPublicControlError("invalid_input")
-  if (input.authority !== "isolated_fixture")
-    throw new PrecomputedPublicControlError("readiness_unavailable")
-  await assertIsolatedPrecomputedControlFixture(prisma)
+  if (input.authority === "isolated_fixture")
+    await assertIsolatedPrecomputedControlFixture(prisma)
   const now = input.now ?? new Date()
-  return prisma.$transaction(async (tx) => {
-    const [pointer] = await tx.$queryRaw<
-      Array<{ version: number; mode: string }>
-    >`SELECT version, mode FROM recommendation_precomputed_public_control
+  const [candidate, declaredPolicy] =
+    input.authority === "live_verified"
+      ? await Promise.all([
+          prisma.recommendationPrecomputedExperiment.findUnique({
+            where: { id: input.experimentId },
+          }),
+          prisma.recommendationPrecomputedCtrPolicy.findUnique({
+            where: { experimentId: input.experimentId },
+          }),
+        ])
+      : [null, null]
+  const saved = candidate?.liveEvidence as
+    | (LiveEvidenceSnapshot & { evidenceDigest: string })
+    | null
+  if (
+    input.authority === "live_verified" &&
+    (!candidate ||
+      !declaredPolicy ||
+      saved?.contractVersion !== "precomputed-live-evidence-v1" ||
+      saved.evidenceDigest !== liveEvidenceDigest(saved))
+  )
+    throw new PrecomputedPublicControlError("readiness_unavailable", [
+      "frozen_live_evidence_missing",
+    ])
+  const liveBeforeLock =
+    saved && candidate && declaredPolicy
+      ? await loadLiveEvidence(prisma, {
+          generationId: candidate.generationId,
+          startsAt: candidate.startsAt,
+          policySettings: declaredPolicy.settings as CtrPolicySettings,
+          policyAgreement: {
+            authority: "prelaunch_agreed",
+            settingsDigest: saved.policyDigest,
+            baselineReportDigest: saved.baselineReportDigest ?? "",
+            launchCapacityReceiptDigest:
+              saved.launchCapacityReceiptDigest ?? "",
+          },
+          capacityReceiptId: saved.launchCapacityReceiptId ?? undefined,
+          operatorId: saved.operatorId,
+          now,
+        })
+      : null
+  if (liveBeforeLock?.reasons.length)
+    throw new PrecomputedPublicControlError(
+      "readiness_unavailable",
+      liveBeforeLock.reasons,
+    )
+  if (
+    liveBeforeLock &&
+    saved &&
+    liveEvidenceDigest(liveBeforeLock.snapshot) !== saved.evidenceDigest
+  )
+    throw new PrecomputedPublicControlError("readiness_unavailable", [
+      "live_evidence_changed",
+    ])
+  return prisma.$transaction(
+    async (tx) => {
+      const [pointer] = await tx.$queryRaw<
+        Array<{ version: number; mode: string }>
+      >`SELECT version, mode FROM recommendation_precomputed_public_control
       WHERE id = ${PRECOMPUTED_PUBLIC_CONTROL_ID} FOR UPDATE`
-    if (!pointer || pointer.version !== input.expectedControlVersion)
-      throw new PrecomputedPublicControlError("stale_control")
-    if (pointer.mode !== "incumbent")
-      throw new PrecomputedPublicControlError("incompatible_target")
-    const [experiment] = await tx.$queryRaw<Array<{ generation_id: string }>>`
+      if (!pointer || pointer.version !== input.expectedControlVersion)
+        throw new PrecomputedPublicControlError("stale_control")
+      if (pointer.mode !== "incumbent")
+        throw new PrecomputedPublicControlError("incompatible_target")
+      if (
+        await tx.recommendationPrecomputedBaselineRun.count({
+          where: { enabled: true },
+        })
+      )
+        throw new PrecomputedPublicControlError("incompatible_target")
+      const [experiment] = await tx.$queryRaw<Array<{ generation_id: string }>>`
       SELECT generation_id FROM recommendation_precomputed_experiment
       WHERE id = ${input.experimentId} FOR SHARE`
-    if (!experiment)
-      throw new PrecomputedPublicControlError("incompatible_target")
-    await tx.$queryRaw`SELECT id FROM recommendation_precomputed_generation
+      if (!experiment)
+        throw new PrecomputedPublicControlError("incompatible_target")
+      await tx.$queryRaw`SELECT id FROM recommendation_precomputed_generation
       WHERE id = ${experiment.generation_id} FOR SHARE`
-    await tx.$queryRaw`SELECT id FROM recommendation_serving_control
+      await tx.$queryRaw`SELECT id FROM recommendation_serving_control
       WHERE id = 'recommendation-serving-control' FOR SHARE`
-    await tx.$queryRaw`SELECT id FROM recommendation_promotion_pointer
+      await tx.$queryRaw`SELECT id FROM recommendation_promotion_pointer
       WHERE id = 'recommendation-promotion-pointer' FOR SHARE`
-    const [frozen, routing, policy, visits, reports] = await Promise.all([
-      tx.recommendationPrecomputedExperiment.findUnique({
-        where: { id: input.experimentId },
-        include: { generation: true },
-      }),
-      readControlRouting(tx),
-      tx.recommendationPrecomputedCtrPolicy.findUnique({
-        where: { experimentId: input.experimentId },
-      }),
-      tx.recommendationPrecomputedVisit.count({
-        where: { experimentId: input.experimentId },
-      }),
-      tx.recommendationPrecomputedCtrReport.count({
-        where: { experimentId: input.experimentId },
-      }),
-    ])
-    if (
-      frozen?.state !== "public_ready" ||
-      frozen.configurationDigest !== input.expectedConfigurationDigest ||
-      frozen.generation.status !== "complete" ||
-      frozen.generation.protocolVersion !== 2 ||
-      frozen.generation.sourceSetDigest !== frozen.sourceSetDigest ||
-      (frozen.generation.capacityPreflight as { status?: string } | null)
-        ?.status !== "passed" ||
-      routing?.routingDigest !== frozen.controlRoutingDigest ||
-      routing.manifest.id !== frozen.controlManifestId ||
-      routing.manifestDigest !== frozen.controlManifestDigest ||
-      policy?.authority !== "fixture_only" ||
-      policy.method !== PRECOMPUTED_CTR_METHOD ||
-      policy.version !== PRECOMPUTED_CTR_METHOD ||
-      policy.settingsDigest !==
-        precomputedCtrPolicyDigest(policy.settings as CtrPolicySettings) ||
-      visits !== 0 ||
-      reports !== 0 ||
-      now < frozen.startsAt ||
-      now >= frozen.endsAt
-    )
-      throw new PrecomputedPublicControlError("incompatible_target")
-    const updated = await tx.recommendationPrecomputedPublicControl.updateMany({
-      where: {
-        id: PRECOMPUTED_PUBLIC_CONTROL_ID,
-        version: input.expectedControlVersion,
-        mode: "incumbent",
-      },
-      data: {
-        version: { increment: 1 },
-        mode: "ab",
-        activeExperimentId: frozen.id,
-        retainedExperimentId: null,
-        authority: input.authority,
-        reportRevision: null,
-        reportEvidenceDigest: null,
-      },
-    })
-    if (updated.count !== 1)
-      throw new PrecomputedPublicControlError("stale_control")
-    await tx.recommendationPrecomputedPublicControlEvent.create({
-      data: {
-        id: randomUUID(),
-        controlVersion: input.expectedControlVersion + 1,
-        action: "start",
-        actorId: input.operator!.id!,
-        experimentId: frozen.id,
-        generationId: frozen.generationId,
-        authority: input.authority,
-        expiresAt: new Date(now.getTime() + EXPERIMENT_RETENTION_MS),
-      },
-    })
-    return loadPrecomputedPublicControl(tx, now)
-  })
+      const [frozen, routing, policy, visits, reports] = await Promise.all([
+        tx.recommendationPrecomputedExperiment.findUnique({
+          where: { id: input.experimentId },
+          include: { generation: true },
+        }),
+        readControlRouting(tx),
+        tx.recommendationPrecomputedCtrPolicy.findUnique({
+          where: { experimentId: input.experimentId },
+        }),
+        tx.recommendationPrecomputedVisit.count({
+          where: { experimentId: input.experimentId },
+        }),
+        tx.recommendationPrecomputedCtrReport.count({
+          where: { experimentId: input.experimentId },
+        }),
+      ])
+      if (
+        frozen?.state !== "public_ready" ||
+        frozen.configurationDigest !== input.expectedConfigurationDigest ||
+        frozen.generation.status !== "complete" ||
+        frozen.generation.protocolVersion !== 2 ||
+        frozen.generation.sourceSetDigest !== frozen.sourceSetDigest ||
+        (frozen.generation.capacityPreflight as { status?: string } | null)
+          ?.status !== "passed" ||
+        routing?.routingDigest !== frozen.controlRoutingDigest ||
+        routing.manifest.id !== frozen.controlManifestId ||
+        routing.manifestDigest !== frozen.controlManifestDigest ||
+        policy?.authority !==
+          (input.authority === "live_verified"
+            ? "prelaunch_agreed"
+            : "fixture_only") ||
+        policy.method !== PRECOMPUTED_CTR_METHOD ||
+        policy.version !== PRECOMPUTED_CTR_METHOD ||
+        policy.settingsDigest !==
+          precomputedCtrPolicyDigest(policy.settings as CtrPolicySettings) ||
+        visits !== 0 ||
+        reports !== 0 ||
+        frozen.eligibilityPolicyVersion !==
+          (input.authority === "live_verified"
+            ? PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
+            : PRECOMPUTED_PUBLIC_ELIGIBILITY_POLICY) ||
+        now < frozen.startsAt ||
+        now >= frozen.endsAt
+      )
+        throw new PrecomputedPublicControlError("incompatible_target")
+      if (liveBeforeLock && saved) {
+        const current = await loadLiveEvidence(tx, {
+          generationId: frozen.generationId,
+          startsAt: frozen.startsAt,
+          policySettings: policy!.settings as CtrPolicySettings,
+          policyAgreement: {
+            authority: "prelaunch_agreed",
+            settingsDigest: saved.policyDigest,
+            baselineReportDigest: saved.baselineReportDigest ?? "",
+            launchCapacityReceiptDigest:
+              saved.launchCapacityReceiptDigest ?? "",
+          },
+          capacityReceiptId: saved.launchCapacityReceiptId ?? undefined,
+          operatorId: saved.operatorId,
+          now,
+          webMeasurement: liveBeforeLock.webMeasurement,
+        })
+        if (current.reasons.length)
+          throw new PrecomputedPublicControlError(
+            "readiness_unavailable",
+            current.reasons,
+          )
+        if (
+          liveEvidenceDigest(current.snapshot) !== saved.evidenceDigest ||
+          liveEvidenceDigest(current.snapshot) !==
+            liveEvidenceDigest(liveBeforeLock.snapshot)
+        )
+          throw new PrecomputedPublicControlError("readiness_unavailable", [
+            "live_evidence_changed",
+          ])
+      }
+      const updated =
+        await tx.recommendationPrecomputedPublicControl.updateMany({
+          where: {
+            id: PRECOMPUTED_PUBLIC_CONTROL_ID,
+            version: input.expectedControlVersion,
+            mode: "incumbent",
+          },
+          data: {
+            version: { increment: 1 },
+            mode: "ab",
+            activeExperimentId: frozen.id,
+            retainedExperimentId: null,
+            authority: input.authority,
+            reportRevision: null,
+            reportEvidenceDigest: null,
+          },
+        })
+      if (updated.count !== 1)
+        throw new PrecomputedPublicControlError("stale_control")
+      await tx.recommendationPrecomputedPublicControlEvent.create({
+        data: {
+          id: randomUUID(),
+          controlVersion: input.expectedControlVersion + 1,
+          action: "start",
+          actorId: input.operator!.id!,
+          experimentId: frozen.id,
+          generationId: frozen.generationId,
+          authority: input.authority,
+          expiresAt: new Date(now.getTime() + EXPERIMENT_RETENTION_MS),
+        },
+      })
+      return loadPrecomputedPublicControl(tx, now)
+    },
+    {
+      isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead,
+      timeout: 60_000,
+    },
+  )
 }
 
 /** Manual CAS promotion consumes an immutable final CTR revision. A report
@@ -437,9 +604,13 @@ export async function promotePrecomputedPublicExperiment(
       experiment.generation.sourceSetDigest !== experiment.sourceSetDigest
     )
       throw new PrecomputedPublicControlError("incompatible_target")
-    if (pointer.authority === "isolated_fixture")
-      await assertIsolatedPrecomputedControlFixture(tx)
-    else throw new PrecomputedPublicControlError("readiness_unavailable")
+    if (pointer.authority === "live_verified")
+      throw new PrecomputedPublicControlError("readiness_unavailable", [
+        "experiment_scoped_tracking_loss_unverified",
+      ])
+    if (pointer.authority !== "isolated_fixture")
+      throw new PrecomputedPublicControlError("readiness_unavailable")
+    await assertIsolatedPrecomputedControlFixture(tx)
     await tx.$queryRaw`SELECT id FROM recommendation_precomputed_generation
       WHERE id = ${experiment.generationId} FOR SHARE`
     await tx.$queryRaw`SELECT id FROM recommendation_serving_control
