@@ -20,3 +20,6 @@ output/
 
 # Devcontainer CLI lockfile — machine-generated, same class as pnpm-lock.yaml
 .devcontainer/devcontainer-lock.json
+
+# Uploaded to Shorts Studio byte for byte; see its README.
+apps/mastra/studio-components

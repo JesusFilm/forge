@@ -13,6 +13,8 @@ export default defineConfig(
       "**/.next/**",
       "**/node_modules/**",
       "**/next-env.d.ts",
+      // Uploaded to Shorts Studio byte for byte; see its README.
+      "apps/mastra/studio-components/**",
     ],
   },
   js.configs.recommended,
