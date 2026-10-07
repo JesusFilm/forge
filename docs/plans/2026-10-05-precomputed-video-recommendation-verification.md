@@ -2461,3 +2461,65 @@ Google's [Data API error guidance](https://developers.google.com/analytics/devgu
 recommends exponential backoff with retry limits for 500/503 responses; the
 observed 502 handling is an explicit local policy, not a claimed GA guarantee.
 No further paid run or full-catalog build has started at this checkpoint.
+
+## Verified retry repair and moving GA availability boundary
+
+Application commit `99d7e8a62` integrates Worker A's `427b7b5ed`: GA report
+requests retry HTTP 500/502/503/504 at most three times, using 30/60-second
+cooldowns and a cumulative ten-minute budget. Valid Retry-After values up to
+60 seconds are honored. Authentication, quota, malformed reports and thrown
+control/receipt failures stop. Physical network exceptions also stop because
+the wrapper cannot safely distinguish them from control failures. Every actual
+request retains its own admission, heartbeat and receipt. The full Mastra suite
+passed 3,310 tests (44 skipped); root passed 62 focused cases and reviewed
+Standards and Spec separately. Types, scoped lint/format, normal hooks and all
+42 applicable CI CheckRuns passed.
+
+Reviewed operator recovery v2 adds fresh official quota/server-error admission
+after GA failures and merges prior sealed discovery evidence with new pages.
+The full runner v3 also rechecks quota freshness after waiting for a shared
+request slot. Both types, 27 focused operator tests and root review passed.
+The approved launched manifest SHA-256 is
+`41762638e02bcbcc3efcf7125efa52526b19ef110053f0abe8172df55af00a3b`;
+the later disabled live manifest is separately identified.
+
+Recovery v2 stopped on October 7 at 08:35:55.952 UTC with `conflict`, after a
+successful official quota probe and seven successful qualification reports.
+No source was reclaimed and no new model call occurred. The source remains at
+attempt 2, checkpoint revision 242, discovery index 360, with 197 provisional
+choices. Cumulative receipts now reconcile all 378 calls: 232 model and 146 GA,
+with $21.3688725 known model charges and zero pending or unknown model charges.
+
+Worker B reconstructed the exact four changed report bodies offline using the
+actual query builders and a local fake fetch. Of 42 candidate intervals, only
+August 8, 2022–October 5, 2026 matched the monthly coverage request digest; that
+interval also matched the identified, referrer and starts request digests. The
+saved qualification instead declares usable start August 7, with truncation
+and unavailable-prefix end August 6. The new requests necessarily derive from
+truncation/prefix end August 7. This semantic difference explains the immutable
+`history_qualification` conflict. The new aggregate response bodies were not
+saved, so other changed totals or coverage fields remain unknown.
+
+The sealed 24-file diagnosis, receipts, request bodies and checkpoint are at
+`/home/nisal/.local/share/forge/feat-590-evidence-20261007/nicodemus-reference-recovery-v2-attempt-1`.
+Its manifest SHA-256 is
+`d369ca326ffff92e0058c800a97313a4eb8daad6b49766d295f6768fd02ffae6`;
+root verified the manifest hash. This investigation made no provider calls.
+
+Worker A's read-only recovery audit found no complete old-range aggregate
+snapshot: source checkpoints retain counts/digests and projected decisions,
+while candidate history caching is process-local. Native receipts retain input
+and output digests, not replayable report pages or full model outputs. Every
+history-mode model stage includes the qualification in its input digest.
+Consequently the original generation cannot safely resume from current saved
+artifacts under the new qualification, and previous choices are not equivalent
+new-generation judgments. Existing generation data and artifacts remain intact.
+
+Ticket #2568 already permits a provider-declared usable interval while retaining
+the original requested range and unknown prefix. The next repair therefore
+targets a complete generation-scoped aggregate snapshot before model work,
+with compact immutable binding, bounded durable storage, complete pagination,
+original mapping/response checks and explicit acquisition usage. This is a
+design in progress, not implemented or qualified live evidence. No old-range
+overwrite, arbitrary shorter lookback, model replay or full-catalog launch is
+authorized by this diagnosis. Both local launch-readiness flags remain false.

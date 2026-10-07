@@ -13,18 +13,24 @@ describes the private reporting contract and limits.
 
 ## Integration
 
-Current checkpoint: application commit `eeff9c6db` has 42 successful CheckRuns,
-five skipped, no failures or pending checks, and both published Railway
-Web/Manager contexts report success with no deployment needed. The local preview
-is accepted and stopped. The bounded Nicodemus full-universe reference is paused
-after discovery reached 360 of 1,001 targets and another GA report returned two
-HTTP 502 responses. Its 232 model calls, 138 GA attempts and 197 provisional
-choices are preserved; all call receipts reconcile, with $21.3688725 known model
-cost and no pending calls or unknown completed-model charges. Worker A is fixing
-bounded GA retry timing and control-error propagation; Worker B owns new versioned
-operator quota-admission helpers. Both changes require review before resuming.
-The full 1,031-video catalog build remains unstarted. Live baseline/calibration
-and owner numeric policy are still required.
+Current checkpoint: application commit `99d7e8a62` has 42 successful CheckRuns,
+with no failed checks. Bounded GA retries and operator quota admission are
+verified. The local preview is accepted and stopped. The bounded Nicodemus
+full-universe reference remains incomplete at 360 of 1,001 discovery targets.
+Its latest recovery completed eight GA requests, then stopped before any source
+claim or new model call because the provider-declared usable history start had
+advanced from August 7 to August 8, 2022. Offline request-digest reconstruction
+confirmed the changed interval; replaying the old qualification would be unsafe.
+All 232 model calls, 146 GA attempts and 197 provisional choices are preserved,
+with $21.3688725 known model cost, matching receipts and no pending calls or
+unknown completed-model charges. Existing artifacts do not contain a complete
+replayable old-range history snapshot, and changed qualification changes model
+inputs; previous choices cannot simply be carried into a new generation.
+Both local launch gates are disabled. Workers A/B are designing the smallest
+generation-scoped aggregate snapshot contract so history can be captured and
+sealed before model work. No provider calls are running. The full 1,031-video
+catalog build remains unstarted. Live baseline/calibration and owner numeric
+policy are still required.
 
 October 7 continuation: the owner requested completion of the live measurement
 verifier, deployment configuration, actual catalog report and capacity checks.
@@ -148,11 +154,10 @@ report qualification and operator run procedure.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
 branch: `codex/feat-590-2575-live-admin`.
 
-Current operator-runner ownership: A is adding fresh quota admission, shared GA
-concurrency and unknown model-charge pauses to the unstarted full-catalog runner
-under `/tmp/forge-feat-590-orchestration/`. B monitors the existing paid Nicodemus
-reference read-only and may request a safe admission pause; it must not launch a
-second run or edit frozen code. Root owns the paid process, integration, evidence
+Current recovery ownership: A owns the Mastra proposal for an immutable GA
+aggregate snapshot; B owns the Admin provenance and retention contract proposal.
+Both are read-only until the contracts agree. Existing reference/full runners
+remain disabled, with no active paid process. Root owns integration, evidence
 preservation and the decision to proceed to the full build. Persistent checkpoint
 and call-receipt files are under the protected evidence directory, not `/tmp`.
 After a crash or restore, reconcile those receipts with the database before any
