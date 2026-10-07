@@ -1,6 +1,7 @@
 ---
 title: "Machine-translated UI catalogs can pass syntax gates in the wrong language"
 date: "2026-07-17"
+last_updated: "2026-10-08"
 category: "ui-bugs"
 module: "apps/web Watch i18n catalogs"
 problem_type: "ui_bug"
@@ -74,6 +75,18 @@ The result localizes 223 of 224 non-English UI catalogs. The remaining catalog
 fails closed to clearly owned English fallback copy rather than displaying an
 unrelated language as authentic localization.
 
+## Later Evidence (2026-10-08)
+
+The mobile U16 run (PR #2604, open as of 2026-10-08) read web's catalogs as
+term references. Several catalogs that the result above counts as localized
+still hold another language in many strings. Out of 462 non-English strings,
+web's `nr` shares 228 with `zu`, `ss` shares 197 with `zu`, `ho` shares 142
+with `tpi`, and `quc` shares 72 with `cak` (a string comparison of
+`apps/web/messages`, 2026-10-08). Mobile ships these four locales as English
+copies (`englishOnlyLocales` in `apps/mobile/i18n/translation-policy.json`),
+and web still ships them as translations. So the review in prevention step 2
+did not find every bridge-language catalog.
+
 ## Why the Gates Are Still Useful
 
 Recursive key and placeholder parity catch incomplete catalogs. Real ICU
@@ -118,6 +131,10 @@ the language modal open. Check localized actions and links, missing-message
 errors, and horizontal overflow.
 
 ## Related
+
+- `docs/solutions/workflow-issues/full-local-claude-translation-run-of-mobile-ui-catalogs.md`:
+  the mobile run, its English-only remedy, and what its automatic language
+  check finds and misses.
 
 - `docs/roadmap/content-discovery/feat-264-watch-language-modal-link-localization.md`
 - `docs/roadmap/content-discovery/feat-265-hassaniyya-latin-watch-ui-localization.md`
