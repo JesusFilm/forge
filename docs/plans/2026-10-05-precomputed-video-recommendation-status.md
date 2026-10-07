@@ -31,7 +31,7 @@ strict evidence checks remain, each invalid response retains its charge, and
 the two-attempt limit plus safe feedback survive checkpoint resume. The next
 full build awaits the bounded real-model retrieval comparison: the exhaustive
 implementation requires at least 53,612 plan/discovery calls before individual
-judgments, versus 4,128 with the reviewed selected-content retrieval policy. The spec
+judgments, versus 4,126 with the reviewed selected-content retrieval policy. The spec
 permits catalog-wide retrieval without requiring exhaustive all-pairs reasoning.
 The first retrieval benchmark source exposed an overly broad core-prefix
 duplicate check at its final save. Fix `e7a30b4ae` preserves the allowed
@@ -43,9 +43,14 @@ calls for the replay. The metadata-only Magdalena source then reached its
 final save with 55 provisional choices, but correctly failed the retained
 same-title duplicate policy. Its 65 responses and $4.7986875 known charges are
 preserved; the benchmark total is 103 responses and $7.3182775 known charges.
-A owns producer-side identity filtering before paid candidate reasoning, with a
-new retrieval revision and fresh generation. Old checkpoints and accepted
-results remain unchanged. The remaining benchmark and bounded reference
+A's producer-side identity filtering is `2b1c689d1`, advancing retrieval to
+`selected-catalog-lexical-v2`. Root verification passed 11 Mastra cases, 22 native
+Admin catalog/identity cases and 25 connected source/catalog cases. The full
+1,031-pool audit has no identity conflicts or unconflicted protected-lane
+omissions. Nicodemus and Amharic pools are unchanged; Magdalena replaces one
+same-title film. A fresh generation will execute the metadata and Amharic cases;
+the older Nicodemus result stays labeled as prior-policy evidence. Old
+checkpoints and accepted results remain unchanged. The remaining benchmark and bounded reference
 comparison still precede the full build.
 The local Admin preview served the saved pilot after correcting PrismaPg's
 selected-schema handling. Local Chromium verified the Admin review, Watch card,
@@ -137,8 +142,10 @@ The CI repair is committed locally as `ba0376723`. Retrieval integration
 merged Expo maintenance PR. GitHub initially rejected publication of the CI
 repair because the OAuth login lacked workflow scope. After the first device
 code expired, the owner completed fresh device authorization; `gh auth status`
-now confirms workflow scope. Publication and published-head checks follow the
-current local verification. The feature PR remains a draft.
+now confirms workflow scope. Published checkpoint `3ea71d9a8` passed all 43
+GitHub check runs, with five skipped. Its separate Railway Web status is pending
+in the automatic `forge-pr-2578` preview environment, not production. The feature
+PR remains a draft; subsequent producer-fix publication needs fresh checks.
 The completion notes below record earlier slices.
 
 Both workers have completed their owned implementation and normal-hook commits.

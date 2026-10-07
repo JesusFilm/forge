@@ -2095,3 +2095,66 @@ rewritten. The full catalog restart remains unexecuted.
 The owner completed a fresh GitHub device login, and the active CLI login now
 includes workflow scope. This resolves the publication permission failure;
 the next push and published-head CI still need to be observed.
+
+## October 7 published calibration CI and producer identity correction
+
+Root `3ea71d9a8` was pushed after normal hooks passed. Its
+[forge-ci run](https://github.com/JesusFilm/forge/actions/runs/37564668902)
+and [CodeQL run](https://github.com/JesusFilm/forge/actions/runs/37564663036)
+completed successfully: 43 successful GitHub check runs and five skipped.
+The status rollup also contains a separate pending Railway StatusContext for
+Web. Read-only Railway inspection identifies environment
+`9338fc4c-f5ef-4813-8ebe-c35b298edbbd` as `forge-pr-2578`, building the feature
+branch at `3ea71d9a8`. It is the existing automatic PR preview, not production;
+no manual deployment operation was issued. The feature PR remains draft.
+
+Worker A's `2b1c689d1` applies the same source/target identity rules before
+paid candidate reasoning. It rejects source copies and chooses deterministic
+canonical targets from the existing selected pool, prioritizing structural
+relations then retrieval rank/ID. This precedes model scoring; it does not
+claim to choose the representative a later model judgment would prefer. The
+distinct-titled direct chapter/film exception remains intact. All nonconflicting
+protected lanes remain uncapped; lexical depth 40 is a minimum, not a total
+recommendation limit. Admin's final strict identity guard is unchanged. Catalog
+metadata now uses a published titled fallback when the English title is empty,
+matching the final Admin validator's identity selection.
+
+The exact TypeScript V1/V2 audit on the frozen 1,031 Videos and 2,686 complete
+selected chunks records 56,291 to 55,700 candidate pairs, with initial
+plan/discovery calls 4,128 to 4,126. Those counts exclude candidate judgments,
+repairs and GA requests. The selected corpus digest is unchanged; the pool
+digest becomes `0780cfd0199c04f88076afcd7869140b56bca02b3253dd5d3c21cd0de4a8797a`.
+Of 659 removed pairs, 64 conflict with the source, 594 conflict with a selected
+canonical target, and one unprotected lexical item is displaced by reranking;
+68 pairs are added. There are no source-target or target-target conflicts and
+no unconflicted structural/exact/metadata/fallback omissions. Of 722 direct
+pairs individually eligible against their source, 678 are selected and 44
+conflict with another selected target's exact title. All 3,090 eligible
+non-English fallback pairs remain. Nicodemus 50 and Amharic 49 candidate pools
+are unchanged; Magdalena 68 replaces only its same-title film candidate.
+
+Root integration passed all 11 focused Mastra cases, all 22 native Admin
+catalog/identity cases, and all 25 connected source/catalog cases. Worker
+Admin/Mastra typechecks, scoped lint/format and normal hooks also passed.
+Standards and Spec review found no remaining confirmed defect. Logs use
+`20261007-identity-v2-integrated-` in the orchestration evidence directory.
+
+The fresh pre-run physical receipt measures 1,769,472 bytes of precomputed
+relations against the 1,007,616-byte pre-benchmark anchor. Its 761,856-byte
+delta covers two processed source instances: one completed and one fully judged
+but rejected at final save, not three completed sources. Twice the observed
+per-instance delta projected across 1,031 sources, plus twice the current
+build-source relation as fixed allowance, gives 786,980,864 bytes. Observed
+PGDATA availability is 6,961,266,688 bytes; preserving the 5,000,000,000-byte
+reserve leaves 1,174,285,824 bytes of projected margin. Shared manifests,
+repeated qualifications and failed receipts are included conservatively.
+This is a local preflight estimate, not production launch capacity.
+
+The new two-source paid benchmark uses a fresh generation and preserves the
+old 103 response receipts and checkpoints. No supported protocol can transfer
+their paid judgments into a different input digest, so no cross-generation
+reuse or cost credit is claimed. A supplemental precomputed-table archive after
+the metadata rejection is protected alongside the restored catalog backup;
+the supplemental archive itself has not been restore-tested. The checksum
+manifest covers 69 files totaling 209,480,939 bytes. The next full catalog run
+remains unstarted pending benchmark/reference evidence and fresh preflight.
