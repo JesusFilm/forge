@@ -18,6 +18,7 @@ import type { DevotionalCard, DevotionalInputProps } from "./schema"
 import { KineticCaption } from "./KineticCaption"
 import { AnimatedBook, AnimatedScroll } from "./SourceEmblems"
 import { StampLine } from "./StampLine"
+import { type ExplainerSpec, VoxExplainer } from "./VoxExplainer"
 import {
   VoxBackdropTint,
   VoxCaption,
@@ -147,6 +148,29 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
     [1, 0, 0, 1],
     clamp,
   )
+  if (fact?.explainer) {
+    return (
+      <AbsoluteFill>
+        <VoxExplainer
+          f={f}
+          t={t}
+          spec={fact.explainer as ExplainerSpec}
+          {...(props.bgFile ? { bgFile: props.bgFile } : {})}
+          {...(props.bgStartOffsetSec != null
+            ? { bgStartOffsetSec: props.bgStartOffsetSec }
+            : {})}
+          {...(props.musicFile ? { musicFile: props.musicFile } : {})}
+        />
+        <AbsoluteFill
+          style={{
+            background: "#000",
+            opacity: blackout,
+            pointerEvents: "none",
+          }}
+        />
+      </AbsoluteFill>
+    )
+  }
   const language = fact?.layout === "language"
   const reflection = fact?.layout === "reflection"
 

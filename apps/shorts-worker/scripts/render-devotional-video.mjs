@@ -465,6 +465,11 @@ async function main() {
     // DESIGN TEST: an audio file that belongs to no card (the "Let's watch."
     // phrase cut out of the scripture segment).
     if (arg("demo-watch-audio", "")) await stage(arg("demo-watch-audio", ""))
+    // A Vox-style explainer short places its own narration clips on a beat
+    // grid (VoxExplainer.tsx); they belong to no card.
+    for (const clip of manifest.shortFact?.explainer?.clips ?? []) {
+      await stage(clip.audioFile)
+    }
     for (const c of manifest.cards) {
       await stage(c.audioFile)
       await stage(c.videoFile)

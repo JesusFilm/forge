@@ -490,6 +490,10 @@ export const devotionalInputPropsSchema = z.object({
       /** Language: the Vox-style explainer instead of the plain verse
        *  (owner, 2026-10-06): kicker, strike, definition, ringOn, swapTo,
        *  finale (see VoxLanguage.tsx). */
+      /** A Vox-style explainer on a beat grid that replaces the whole short
+       *  (VoxExplainer.tsx owns its scenes, narration clips and timing; the
+       *  manifest's single card only sets the length). Validated there. */
+      explainer: z.any().optional(),
       vox: z
         .object({
           kicker: z.string().optional(),
