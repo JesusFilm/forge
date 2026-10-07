@@ -6805,6 +6805,8 @@ model RecommendationPrecomputedExperiment {
   eligibilityPolicyVersion String @map("eligibility_policy_version") @db.VarChar(64)
   deliveryPolicyVersion String @map("delivery_policy_version") @db.VarChar(64)
   configurationDigest String @map("configuration_digest") @db.Char(64)
+  /// Compact evidence snapshot for a verified live prepare; null for fixtures.
+  liveEvidence Json? @map("live_evidence") @db.JsonB
   state String @default("private_test") @db.VarChar(32)
   startsAt DateTime @map("starts_at")
   endsAt DateTime @map("ends_at")
@@ -6822,6 +6824,27 @@ model RecommendationPrecomputedExperiment {
   @@index([state, startsAt, endsAt], map: "recommendation_precomputed_experiment_window_idx")
   @@index([expiresAt], map: "recommendation_precomputed_experiment_expiry_idx")
   @@map("recommendation_precomputed_experiment")
+}
+
+/// Separate append-only physical headroom evidence for a completed build.
+/// Refreshing this never changes the generation's build-capacity receipt.
+model RecommendationPrecomputedLaunchCapacityReceipt {
+  id String @id @db.Uuid
+  generationId String @map("generation_id")
+  actorId String @map("actor_id") @db.VarChar(191)
+  measurement Json @db.JsonB
+  receiptDigest String @map("receipt_digest") @db.Char(64)
+  status String @db.VarChar(16)
+  measuredAt DateTime @map("measured_at") @db.Timestamptz(6)
+  observedDbBytes BigInt @map("observed_db_bytes")
+  projectedBytes BigInt @map("projected_bytes")
+  availableAfterReserveBytes BigInt @map("available_after_reserve_bytes")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([generationId, createdAt(sort: Desc)], map: "precomputed_launch_capacity_generation_idx")
+  @@index([expiresAt], map: "precomputed_launch_capacity_expiry_idx")
+  @@map("recommendation_precomputed_launch_capacity_receipt")
 }
 
 /// Singleton manual serving choice. Migrations seed incumbent; builds and

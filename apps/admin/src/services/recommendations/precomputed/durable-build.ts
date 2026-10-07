@@ -118,7 +118,7 @@ const sourceHistory = z
     status: z.literal("complete"),
   })
   .strict()
-const capacityMeasurement = z
+export const capacityMeasurement = z
   .object({
     measuredAt: z.string().datetime(),
     clusterSystemId: z.string().regex(/^\d{1,20}$/),

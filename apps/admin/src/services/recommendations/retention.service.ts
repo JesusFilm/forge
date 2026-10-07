@@ -314,6 +314,8 @@ export async function purgeExpiredRecommendationRequests(
       rowCounts.expiredPrecomputedControlEvents = result.controlEventsDeleted
       rowCounts.expiredPrecomputedBaselineVisits = result.baselineVisitsDeleted
       rowCounts.expiredPrecomputedBaselineRuns = result.baselineRunsDeleted
+      rowCounts.expiredPrecomputedLaunchCapacityReceipts =
+        result.launchCapacityReceiptsDeleted
       return result
     })
     // One generation at a time; a large terminal graph enters the non-servable
@@ -1215,6 +1217,7 @@ export async function purgeExpiredRecommendationRequests(
       precomputedPurge.visitPageFull ||
       precomputedPurge.experimentPageFull ||
       precomputedPurge.controlEventPageFull ||
+      precomputedPurge.launchCapacityReceiptPageFull ||
       precomputedPurge.baselineVisitPageFull ||
       precomputedPurge.baselineFinalizationPageFull ||
       precomputedPurge.baselineRunPageFull ||

@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, type Prisma } from "@prisma/client"
 import { createHash } from "node:crypto"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
@@ -49,7 +49,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await admin.query(migration)
       const url = new URL(env.DATABASE_URL)
       url.searchParams.set("schema", schema)
-      fixturePrisma = new PrismaClient({
+      fixturePrisma = new PrismaClient<Prisma.PrismaClientOptions>({
         datasources: { db: { url: url.toString() } },
       })
     }, 120_000)

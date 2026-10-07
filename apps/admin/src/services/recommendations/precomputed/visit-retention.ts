@@ -144,10 +144,26 @@ export async function purgeExpiredPrecomputedVisitRoots(
       ORDER BY expired.expires_at, expired.control_version
       LIMIT ${batchSize}
     )`
+  const expiredCapacity =
+    await tx.recommendationPrecomputedLaunchCapacityReceipt.findMany({
+      where: { expiresAt: { lte: now } },
+      orderBy: [{ expiresAt: "asc" }, { id: "asc" }],
+      take: batchSize,
+      select: { id: true },
+    })
+  const launchCapacityReceiptsDeleted = (
+    await tx.recommendationPrecomputedLaunchCapacityReceipt.deleteMany({
+      where: {
+        id: { in: expiredCapacity.map((item) => item.id) },
+        expiresAt: { lte: now },
+      },
+    })
+  ).count
   return {
     visitsDeleted: visitsDeleted.count,
     experimentsDeleted: experimentsDeleted.count,
     controlEventsDeleted: eventsDeleted,
+    launchCapacityReceiptsDeleted,
     baselineVisitsDeleted,
     baselineRunsDeleted,
     baselineVisitPageFull: baselineVisits.length === batchSize,
@@ -157,5 +173,6 @@ export async function purgeExpiredPrecomputedVisitRoots(
     visitPageFull: visits.length === batchSize,
     experimentPageFull: experiments.length === batchSize,
     controlEventPageFull: eventsDeleted === batchSize,
+    launchCapacityReceiptPageFull: expiredCapacity.length === batchSize,
   }
 }

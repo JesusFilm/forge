@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto"
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import { isValidMastraRecommendationIngestBearer } from "@/auth/mastra-ingest-bearer"
@@ -290,7 +291,7 @@ async function assertWatchRouteIdentityVersions(
  * fails the build instead of substituting its new content for the cutoff.
  */
 export async function assertPrecomputedObservedVersion(
-  tx: Prisma.TransactionClient,
+  tx: Pick<Prisma.TransactionClient, "video">,
   videoIds: string[],
   cutoff: Date,
 ): Promise<void> {
@@ -392,6 +393,63 @@ export async function assertPrecomputedObservedVersion(
       "stale_cutoff",
       "Observed catalog version changed after cutoff",
     )
+  }
+}
+
+/** Reconstruct the producer's complete Watch-eligible source identity from
+ * Admin-owned rows at the build cutoff. A self-declared two-video manifest
+ * cannot certify coverage of a larger catalog. Changed current rows fail
+ * closed because overwritten historic values cannot be reconstructed. */
+export async function loadPrecomputedFullCatalogSourceSet(
+  db: Pick<Prisma.TransactionClient, "video">,
+  cutoff: Date,
+): Promise<{ sourceCount: number; sourceSetDigest: string }> {
+  if (!Number.isFinite(cutoff.getTime()))
+    throw new PrecomputedCatalogError("invalid", "Invalid catalog cutoff")
+  const ids: string[] = []
+  let afterVideoId: string | null = null
+  for (;;) {
+    const page: Array<{
+      id: string
+      deletedAt: Date | null
+      restrictViewPlatforms: string[]
+      dubs: Array<{ id: string }>
+      locales: Array<{ title: string | null }>
+    }> = await db.video.findMany({
+      where: {
+        createdAt: { lte: cutoff },
+        ...(afterVideoId ? { id: { gt: afterVideoId } } : {}),
+      },
+      select: {
+        id: true,
+        deletedAt: true,
+        restrictViewPlatforms: true,
+        dubs: { where: playableDub, select: { id: true }, take: 1 },
+        locales: { where: publishedLocale, select: { title: true } },
+      },
+      orderBy: { id: "asc" },
+      take: 200,
+    })
+    if (page.length === 0) break
+    await assertPrecomputedObservedVersion(
+      db,
+      page.map((video) => video.id),
+      cutoff,
+    )
+    for (const video of page) if (isWatchable(video)) ids.push(video.id)
+    if (ids.length > 20_000)
+      throw new PrecomputedCatalogError(
+        "oversized",
+        "Catalog exceeds producer manifest limit",
+      )
+    afterVideoId = page.at(-1)!.id
+    if (page.length < 200) break
+  }
+  return {
+    sourceCount: ids.length,
+    sourceSetDigest: createHash("sha256")
+      .update(JSON.stringify(ids.sort()))
+      .digest("hex"),
   }
 }
 

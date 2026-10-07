@@ -1,10 +1,12 @@
 import { randomUUID } from "node:crypto"
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, type Prisma } from "@prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
 import {
+  assertIsolatedPrecomputedControlFixture,
   loadPrecomputedPublicControl,
   preparePrecomputedPublicExperiment,
   releaseRetainedPrecomputedPublicExperiment,
@@ -32,6 +34,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
   "manual precomputed public control on PostgreSQL",
   () => {
     let prisma: PrismaClient
+    let adapterPrisma: PrismaClient
     let admin: Client
     const schema = `precomputed_public_${Date.now()}_${randomUUID().replaceAll("-", "")}`
     const sourceVideoId = `public-source-${randomUUID()}`
@@ -84,8 +87,17 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await admin.query(migration)
       const url = new URL(env.DATABASE_URL)
       url.searchParams.set("schema", schema)
-      prisma = new PrismaClient({
+      prisma = new PrismaClient<Prisma.PrismaClientOptions>({
         datasources: { db: { url: url.toString() } },
+      })
+      adapterPrisma = new PrismaClient<Prisma.PrismaClientOptions>({
+        adapter: new PrismaPg(
+          {
+            connectionString: env.DATABASE_URL,
+            options: `-c search_path=${schema},public`,
+          },
+          { schema },
+        ),
       })
       await prisma.video.create({
         data: {
@@ -157,6 +169,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
 
     afterAll(async () => {
       await prisma?.$disconnect()
+      await adapterPrisma?.$disconnect()
       if (admin) {
         await admin.query("ROLLBACK").catch(() => undefined)
         await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
@@ -205,7 +218,9 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(routing).not.toBeNull()
       const now = Date.now()
       const startsAt = new Date(now - 60_000)
-      const prepared = await preparePrecomputedPublicExperiment(prisma, {
+      // Exercise the same PrismaPg adapter used by the production Admin app.
+      await assertIsolatedPrecomputedControlFixture(adapterPrisma)
+      const prepared = await preparePrecomputedPublicExperiment(adapterPrisma, {
         id: experimentId,
         generationId,
         startsAt,

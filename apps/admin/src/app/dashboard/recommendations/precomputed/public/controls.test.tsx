@@ -26,7 +26,9 @@ function readiness(fixture: boolean): Readiness {
     },
     baseline: null,
     baselineReport: null,
+    baselineCapacitySample: null,
     baselineWebMeasurement: null,
+    launchCapacityReceipt: null,
     baselineFullHourWindow: false,
     baselineRequestToVisitGap: false,
     incumbentRouting: {
@@ -38,6 +40,10 @@ function readiness(fixture: boolean): Readiness {
         id: "generation-1",
         status: "complete",
         protocolVersion: 2,
+        modelId: "fixture-astra",
+        inputMode: "fixture",
+        inputCutoff: new Date("2026-10-05T00:00:00.000Z"),
+        historicalQualificationDigest: null,
         sourceSetDigest: "b".repeat(64),
         expectedSourceCount: 1,
         capacityPreflight: { status: "passed" },
@@ -45,6 +51,7 @@ function readiness(fixture: boolean): Readiness {
       },
     ],
     experiments: [],
+    authoritativeCatalogCoverage: null,
     fixtureRehearsalEnvironment: fixture,
     liveActivation: {
       status: "blocked",
@@ -121,6 +128,8 @@ describe("precomputed public operator controls", () => {
       startsAt: new Date("2026-10-06T00:00:00.000Z"),
       endsAt: new Date("2026-10-07T00:00:00.000Z"),
       expiresAt: new Date("2027-10-07T00:00:00.000Z"),
+      liveEvidence: null,
+      ctrPolicy: null,
       latestReport: {
         revision: 1,
         isFinal: true,
