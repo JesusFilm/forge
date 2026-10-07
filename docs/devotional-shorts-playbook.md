@@ -469,3 +469,39 @@ channel."` with no `--film-close`.
   cache for the v4 takes when the devotional was read with `--voice-v4`.
 - A fact note always carries its uncredited same-role continuation (the
   language short must reach its point: "It is the word for salvation").
+
+## Revisions 2026-10-07 (owner): insight shorts are Vox explainers
+
+The approved Bartimaeus `language-vox.mp4` is now THE look for every insight
+short: language (original word) and history (historical context). They
+should read as small explainers, not captioned film. Reference render:
+`~/Desktop/Social Media/Bartimaeus/shorts/language-vox.mp4`; earlier tries in
+its `archive/` (clippings, halftone, tape, overlap) were all rejected.
+
+The look (`VoxLanguage.tsx`, `--language-vox=<json>`):
+
+- Film behind: soft black and white (grayscale, contrast 0.88, brightness
+  1.06, light dim) with heavy grain (`VOX_GRAIN_URL`, opacity 0.55). No
+  halftone dots.
+- Two sheets of the owner's rough paper (`paper-assets.ts`, originals in
+  `~/Desktop/devo-data/vox-papers/`), the same paper for both, the top one
+  flipped. A clear gap between them; no tape, no double rules, no bottom rule.
+- Top sheet slides in from the left, bottom sheet from the right (0.45 s,
+  slight overshoot), then both float gently (bob 3.6 s, sway 5.2 s).
+- Top sheet: the verse address between thin side lines, the verse in PT
+  Serif, centred. Bottom sheet: a glossary entry ("THE WORD", headword with
+  syllables + part of speech, a rule, numbered senses).
+- Marks, synced to the voice: black charcoal strikes that cover the whole
+  word; ONE flat gold (#f2c46b, the brand yellow) for every marker sweep and
+  ring, no texture or shadow on gold; the replacement word written by hand
+  over the struck one in Caveat Bold (owner's pick from nine hands, Figma
+  447:2), slightly tilted.
+- Close: a centred stamp of the one idea (Bartimaeus: SALVATION) while the
+  papers recede.
+- Kept from the set rules: "From the Full Devotional" label, safe zones,
+  its own music bed, credits in the caption.
+
+History short in this look: NOT built yet. Port the same pieces (papers,
+gold marks, charcoal strikes, stamp) with a history layout, e.g. the verse
+on the top sheet and the context as a newspaper note on the bottom sheet,
+mock it in Figma first, then render with stills before a full cut.
