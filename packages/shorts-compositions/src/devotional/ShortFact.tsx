@@ -63,6 +63,10 @@ const REFLECTION_TOP = 560
 const LANGUAGE_GRAIN_OPACITY = 0.45
 const SHORT_GRAIN_URL =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.95' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>\")"
+/** A coarser, punchier grain for the black-and-white Vox film (owner,
+ *  2026-10-07: "more grain"): the same noise with its contrast stretched. */
+const VOX_GRAIN_URL =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/><feComponentTransfer><feFuncR type='linear' slope='2.6' intercept='-0.8'/><feFuncG type='linear' slope='2.6' intercept='-0.8'/><feFuncB type='linear' slope='2.6' intercept='-0.8'/></feComponentTransfer></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>\")"
 /** The reflection short's credit has dissolved by this second at the
  *  latest (owner, 2026-10-06: "after about ten seconds"). */
 const REFLECTION_CREDIT_OUT_SEC = 10
@@ -225,11 +229,14 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
         // the tile jumps every other frame like real grain.
         <AbsoluteFill
           style={{
-            backgroundImage: SHORT_GRAIN_URL,
-            backgroundSize: `${f(220)}px ${f(220)}px`,
+            backgroundImage: fact?.vox ? VOX_GRAIN_URL : SHORT_GRAIN_URL,
+            backgroundSize: fact?.vox
+              ? `${f(140)}px ${f(140)}px`
+              : `${f(220)}px ${f(220)}px`,
             backgroundPosition: `${(((Math.floor(frame / 2) * 73) % 220) * width) / 900}px ${(((Math.floor(frame / 2) * 131) % 220) * width) / 900}px`,
             mixBlendMode: "overlay",
-            opacity: LANGUAGE_GRAIN_OPACITY,
+            // The black-and-white Vox film carries a heavier grain.
+            opacity: fact?.vox ? 0.55 : LANGUAGE_GRAIN_OPACITY,
             pointerEvents: "none",
           }}
         />

@@ -2,6 +2,15 @@ import { AbsoluteFill, Easing, interpolate } from "remotion"
 
 import { SHORT_FONT_FAMILIES } from "../fonts"
 
+import {
+  PAPER_CLIP_JPG,
+  PAPER_CLIP_MASK,
+  PAPER_ROUGH_JPG,
+  PAPER_ROUGH_MASK,
+  TAPE_JPG,
+  TAPE_MASK,
+} from "./paper-assets"
+
 /**
  * The language short as a Vox-style explainer (owner, 2026-10-06, on the
  * Bartimaeus word note): paper clippings over a muted film, a marker sweeping
@@ -15,8 +24,6 @@ import { SHORT_FONT_FAMILIES } from "../fonts"
 
 const GOLD = "#f2c46b"
 const INK = "#191512"
-/** Newsprint: warm, a touch grey, never white. */
-const NEWS = "#ebe4d4"
 /** Charcoal for the hand marks (owner, 2026-10-07: like charcoal, thicker). */
 const CHAR = "#221d1a"
 const SANS = `'${SHORT_FONT_FAMILIES.inter}', -apple-system, system-ui, sans-serif`
@@ -246,12 +253,19 @@ function Arrive({
   t,
   at,
   style,
+  paper,
+  pad,
   children,
 }: {
   f: (n: number) => number
   t: number
   at: number
+  /** Placement: top, left, width, transform. */
   style: React.CSSProperties
+  /** The owner's real paper (JPEG + alpha mask), stretched to the content. */
+  paper: { jpg: string; mask: string }
+  /** Inner padding, clear of the torn edges. */
+  pad: string
   children: React.ReactNode
 }) {
   if (t < at - 0.02) return null
@@ -263,22 +277,27 @@ function Arrive({
         ...style,
         opacity: p,
         transform: `${style.transform ?? ""} translateY(${((1 - p) * f(-18)).toFixed(2)}px)`,
-        boxShadow: `0 ${f(12)}px ${f(28)}px rgba(0,0,0,0.42)`,
+        // The shadow follows the paper's own torn outline.
+        filter: `drop-shadow(0 ${f(12)}px ${f(16)}px rgba(0,0,0,0.45))`,
       }}
     >
-      {children}
+      <div
+        style={{
+          position: "relative",
+          padding: pad,
+          backgroundImage: `url(${paper.jpg})`,
+          backgroundSize: "100% 100%",
+          WebkitMaskImage: `url(${paper.mask})`,
+          maskImage: `url(${paper.mask})`,
+          WebkitMaskSize: "100% 100%",
+          maskSize: "100% 100%",
+        }}
+      >
+        {children}
+      </div>
     </div>
   )
 }
-
-/** Newsprint with a faint fibre, the ground every element sits on. */
-const newsprint = (f: (n: number) => number): React.CSSProperties => ({
-  background: NEWS,
-  backgroundImage:
-    "radial-gradient(rgba(60,48,30,0.07) 0.8px, transparent 1px), radial-gradient(rgba(60,48,30,0.05) 0.6px, transparent 0.9px)",
-  backgroundSize: `${f(5)}px ${f(5)}px, ${f(9)}px ${f(9)}px`,
-  backgroundPosition: `0 0, ${f(2)}px ${f(3)}px`,
-})
 
 /** A gentle gold label for the opening word. */
 function GoldBar({
@@ -423,41 +442,27 @@ function Stamp({
  * contrast turns each cell into a dot sized by its darkness.
  */
 export function VoxHalftone({
-  f,
   children,
 }: {
   f: (n: number) => number
   children: React.ReactNode
 }) {
-  const cell = f(12)
+  // Black and white, soft (owner, 2026-10-07: the halftone was too much):
+  // a gentle contrast, blacks lifted to a warm grey, a light dim so the
+  // paper still leads. The heavier grain sits on top (LANGUAGE_GRAIN).
   return (
     <AbsoluteFill>
-      <AbsoluteFill style={{ background: "#fff", filter: "contrast(7)" }}>
-        <AbsoluteFill
-          style={{
-            filter: "grayscale(1) contrast(1.6) brightness(1.05) blur(1px)",
-          }}
-        >
-          {children}
-        </AbsoluteFill>
-        <AbsoluteFill
-          style={{
-            backgroundImage:
-              "radial-gradient(closest-side, #000 0%, #fff 100%)",
-            backgroundSize: `${cell}px ${cell}px`,
-            mixBlendMode: "screen",
-          }}
-        />
-      </AbsoluteFill>
-      {/* Ink on newsprint, then a dim so the paper elements stand out. */}
       <AbsoluteFill
-        style={{ background: "#d8ceb9", mixBlendMode: "multiply" }}
-      />
-      <AbsoluteFill style={{ background: "rgba(25,21,18,0.34)" }} />
+        style={{ filter: "grayscale(1) contrast(0.88) brightness(1.06)" }}
+      >
+        {children}
+      </AbsoluteFill>
+      <AbsoluteFill style={{ background: "rgba(232,226,214,0.12)" }} />
+      <AbsoluteFill style={{ background: "rgba(25,21,18,0.22)" }} />
       <AbsoluteFill
         style={{
           background:
-            "radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 45%, rgba(0,0,0,0.5) 100%)",
+            "radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 50%, rgba(0,0,0,0.32) 100%)",
         }}
       />
     </AbsoluteFill>
@@ -533,13 +538,13 @@ export function VoxLanguageLayout({
           t={t}
           at={verseAt}
           style={{
-            top: f(350),
+            top: f(340),
             left: f(95),
             width: f(690),
-            padding: `${f(22)}px ${f(34)}px ${f(26)}px`,
-            transform: "rotate(-0.6deg)",
-            ...newsprint(f),
+            transform: "rotate(-0.8deg)",
           }}
+          paper={{ jpg: PAPER_CLIP_JPG, mask: PAPER_CLIP_MASK }}
+          pad={`${f(40)}px ${f(50)}px ${f(56)}px`}
         >
           <div style={rule(3)} />
           <div style={{ ...rule(1), marginTop: f(4) }} />
@@ -571,8 +576,8 @@ export function VoxLanguageLayout({
           <div
             style={{
               fontFamily: SERIF,
-              fontSize: f(46),
-              lineHeight: 1.75,
+              fontSize: f(44),
+              lineHeight: 1.62,
               color: INK,
               textAlign: "center",
             }}
@@ -618,29 +623,31 @@ export function VoxLanguageLayout({
             t={t}
             at={defAt}
             style={{
-              top: f(730),
+              // Over the foot of the verse sheet (owner, 2026-10-07).
+              top: f(668),
               left: f(150),
-              width: f(600),
-              padding: `0 0 ${f(22)}px`,
-              transform: "rotate(0.8deg)",
-              ...newsprint(f),
+              width: f(610),
+              transform: "rotate(1.2deg)",
             }}
+            paper={{ jpg: PAPER_ROUGH_JPG, mask: PAPER_ROUGH_MASK }}
+            pad={`${f(34)}px ${f(44)}px ${f(32)}px`}
           >
             <div
               style={{
-                background: INK,
-                color: NEWS,
                 fontFamily: SANS,
                 fontWeight: 700,
                 fontSize: f(18),
-                letterSpacing: f(4),
+                letterSpacing: f(5),
                 textTransform: "uppercase",
-                padding: `${f(8)}px ${f(28)}px`,
+                color: "rgba(25,21,18,0.7)",
+                paddingBottom: f(6),
+                borderBottom: `${f(2)}px solid rgba(25,21,18,0.7)`,
+                display: "inline-block",
               }}
             >
               The word
             </div>
-            <div style={{ padding: `${f(16)}px ${f(28)}px 0` }}>
+            <div style={{ paddingTop: f(10) }}>
               <div
                 style={{ display: "flex", alignItems: "baseline", gap: f(14) }}
               >
@@ -719,6 +726,30 @@ export function VoxLanguageLayout({
               ))}
             </div>
           </Arrive>
+        ) : null}
+        {vox.definition?.length && t >= defAt + 0.15 ? (
+          // A strip of kraft tape holds the glossary to the verse sheet.
+          <div
+            style={{
+              position: "absolute",
+              top: f(648),
+              left: f(355),
+              width: f(240),
+              height: f(240 * (97 / 380)),
+              transform: "rotate(-6deg)",
+              backgroundImage: `url(${TAPE_JPG})`,
+              backgroundSize: "100% 100%",
+              WebkitMaskImage: `url(${TAPE_MASK})`,
+              maskImage: `url(${TAPE_MASK})`,
+              WebkitMaskSize: "100% 100%",
+              maskSize: "100% 100%",
+              opacity:
+                0.92 *
+                interpolate(t, [defAt + 0.15, defAt + 0.45], [0, 1], clamp),
+              // The kraft tape, toned down to sit with the black-and-white film.
+              filter: `grayscale(0.75) brightness(1.05) drop-shadow(0 ${f(3)}px ${f(4)}px rgba(0,0,0,0.3))`,
+            }}
+          />
         ) : null}
       </div>
       {vox.finale ? (
