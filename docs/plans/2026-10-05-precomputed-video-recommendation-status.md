@@ -48,9 +48,16 @@ A's producer-side identity filtering is `2b1c689d1`, advancing retrieval to
 Admin catalog/identity cases and 25 connected source/catalog cases. The full
 1,031-pool audit has no identity conflicts or unconflicted protected-lane
 omissions. Nicodemus and Amharic pools are unchanged; Magdalena replaces one
-same-title film. A fresh generation will execute the metadata and Amharic cases;
-the older Nicodemus result stays labeled as prior-policy evidence. Old
-checkpoints and accepted results remain unchanged. The remaining benchmark and bounded reference
+same-title film. The fresh metadata/Amharic generation paused after one charged analytics plan
+failed strict page-membership validation ($0.221305 known cost). Worker A committed the bounded, durable two-attempt plan repair as
+`3729a7817`, advancing the historical prompt and generation input digest to v5.
+Combined verification passed 13 native durable cases, 10 Mastra cases and all
+27 connected build-to-Admin cases. The new paid benchmark is prepared but not
+yet started. The older Nicodemus result stays labeled as prior-policy evidence. Both
+superseded benchmark generations are now cancelled through the supported Admin
+protocol, releasing capacity reservations while preserving every checkpoint,
+choice and model/GA receipt; before/after digests match. The base catalog and
+latest supplemental benchmark backup have both passed an actual restore check. The remaining benchmark and bounded reference
 comparison still precede the full build.
 The local Admin preview served the saved pilot after correcting PrismaPg's
 selected-schema handling. Local Chromium verified the Admin review, Watch card,
@@ -143,9 +150,11 @@ merged Expo maintenance PR. GitHub initially rejected publication of the CI
 repair because the OAuth login lacked workflow scope. After the first device
 code expired, the owner completed fresh device authorization; `gh auth status`
 now confirms workflow scope. Published checkpoint `3ea71d9a8` passed all 43
-GitHub check runs, with five skipped. Its separate Railway Web status is pending
-in the automatic `forge-pr-2578` preview environment, not production. The feature
-PR remains a draft; subsequent producer-fix publication needs fresh checks.
+GitHub check runs, with five skipped. The subsequent published identity correction `9bb0ab83b` has 42 successful
+GitHub CheckRuns and five skipped; both separate Railway StatusContexts are
+also successful in the automatic `forge-pr-2578` preview environment.
+The feature PR remains a draft; the next plan-repair publication needs fresh
+checks. No production deployment was issued.
 The completion notes below record earlier slices.
 
 Both workers have completed their owned implementation and normal-hook commits.

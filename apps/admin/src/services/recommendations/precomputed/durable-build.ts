@@ -77,6 +77,23 @@ const candidateRepair = z
     feedback: candidateRepairFeedback,
   })
   .strict()
+const planRepair = z
+  .object({
+    catalogIndex: nonnegative,
+    attempts: z.number().int().min(1).max(2),
+    feedback: z
+      .object({
+        reason: z.enum([
+          "schema_invalid",
+          "provider_output_invalid",
+          "plan_source_id",
+          "plan_duplicate_ids",
+          "plan_outside_page",
+        ]),
+      })
+      .strict(),
+  })
+  .strict()
 const checkpoint = z
   .object({
     stage: z.string().trim().min(1).max(64),
@@ -86,6 +103,7 @@ const checkpoint = z
     analyticsCandidateIds: z.array(id).max(40).optional(),
     bestJudgment: provisionalChoice.optional(),
     repair: candidateRepair.optional(),
+    planRepair: planRepair.optional(),
     historySummary: z
       .object({
         resultDigest: hex,

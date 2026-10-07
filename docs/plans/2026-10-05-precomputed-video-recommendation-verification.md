@@ -2158,3 +2158,52 @@ the metadata rejection is protected alongside the restored catalog backup;
 the supplemental archive itself has not been restore-tested. The checksum
 manifest covers 69 files totaling 209,480,939 bytes. The next full catalog run
 remains unstarted pending benchmark/reference evidence and fresh preflight.
+
+## October 7 plan-repair preparation and preserved benchmark evidence
+
+The published identity correction `9bb0ab83b` passed
+[forge-ci](https://github.com/JesusFilm/forge/actions/runs/37566309711) and
+[CodeQL](https://github.com/JesusFilm/forge/actions/runs/37566306193): 42 successful
+GitHub CheckRuns, five skipped, no pending or failed checks. The separate
+Railway Web and Manager StatusContexts both succeeded in the existing PR
+preview environment. These are not production deployments.
+
+The fresh identity-v2 two-source benchmark stopped after a schema-valid analytics
+plan violated the strict current-page unique non-source ID constraint. Its one
+provider response records 15,385 input tokens, 580 output tokens and $0.221305
+known charge. The seven qualification and two source-history GA requests all
+returned HTTP 200. The saved receipt does not distinguish duplicate, source or
+outside-page IDs; no raw response was retained, so a more specific cause is not
+claimed. No manual diagnostic paid retry was started. Worker A delivered `3729a7817`, a durable two-attempt plan repair with
+controlled rule-specific feedback and a new historical prompt/input identity. Strict candidate membership remains.
+
+The base catalog archive plus the latest identity-v2 supplemental archive were
+restored together into an owned empty PostgreSQL database. The restored data
+contains all 1,180 Videos, 164,639 transcripts and 280,046 chunks, together with
+five generations, 150 model receipts, 115 GA receipts, 3,095 build-source rows
+and 55 provisional choices. The temporary restore database was then removed.
+The supplemental archive SHA-256 is
+`9bc8ae58099ab22112204724863580a3709b9ca1ffa900ca2456f9c39cd97247`; the protected
+`identity-v2-paused-backup-restore.json` records both archive identities and counts.
+
+At 2026-10-07T03:35:50Z the supported Admin cancel operation closed the two
+superseded benchmark generations. This releases their 1,038,852,096-byte and
+786,980,864-byte active capacity reservations without deleting results.
+Before/after ordered row digests are identical for build-source checkpoints,
+provisional choices, saved recommendations and all model/GA receipts. The
+protected `superseded-benchmark-cancellation.json` records the operation.
+The full catalog restart remains unexecuted.
+
+Worker A verified 27 connected native cases, including interruption after a
+persisted invalid receipt, same-live-claim replay, successful repair, and
+exhaustion without a third paid attempt. Mastra's focused eight cases, Admin
+and Mastra typechecks, cross-app integration typechecking, scoped lint/format
+and normal commit hooks passed. The root Standards and Spec review found no
+remaining defect in this diff. Combined checks passed 13 native durable cases, 10 Mastra producer cases and
+all 27 connected build-to-Admin cases. The initial connected invocation used
+an unsupported temporary database name and correctly failed the isolated
+fixture authority guard in three control cases; rerunning with the owned,
+allowlisted `forge_precomputed_control_test` database passed all 27. No
+application change or authority weakening was needed. Both temporary test
+databases were removed. Logs use `20261007-plan-repair-integrated-` in the
+orchestration evidence directory.
