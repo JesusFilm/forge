@@ -2409,3 +2409,55 @@ A later read-only Datadog discovery attempt also returned an MCP internal error
 while loading its query guides. This supplies no independent traffic evidence
 and does not prove data is absent. The live baseline, calibration source/key/method
 and numeric owner policy remain unresolved.
+
+## Nicodemus reference recovery and recurring GA errors
+
+The first reference attempt stopped after two HTTP 502 responses for the same
+referrer-navigation request. It retained 55 model calls, 44 provisional choices,
+and a discovery checkpoint at catalog index 80. A separate recorded read-only
+diagnostic changed only the report limit from 500 to 100 and returned HTTP 200
+with zero rows and clean metadata. This did not establish page-size causality.
+After receipt reconciliation and natural lease expiry, the unchanged runner
+resumed. The exact original limit-500 request then returned HTTP 200 in 15.859
+seconds, and the saved analytics plan and prior model decisions were reused.
+
+Resume 1 subsequently stopped on October 7 at 07:36:57 UTC after a different
+engagement/start-path report returned HTTP 502 twice. This request used the full
+August 7, 2022–October 5, 2026 range, dimensions `pagePath` and
+`customEvent:mediacomponentid`, and metric `eventCount`. Fifteen selected Videos
+expanded into 37 target route patterns, with a 2,661-character regex, limit 500,
+offset zero, and a 3,628-byte JSON body. The reconstructed request digest matches
+the recorded digest exactly:
+`73e5c47132495383f3d5884c24d9e5e38a6c270eff0a4c687d40d3ba7497e6a0`.
+The observed failures do not prove a batching or pagination cause. Last observed
+quota counters and capacity admission remained above their existing gates.
+
+The durable source remains claimed at attempt 2, checkpoint revision 242,
+discovery index 360, with 197 provisional choices and its next analytics plan
+saved. Discovery has offered 360 unique targets of 1,001; no final reference
+source is claimed. All 232 model calls and 138 GA attempts are terminal. The
+runtime ledger plus the separate diagnostic ledger contain exactly 740 entries:
+one start and one terminal per native call, with matching kinds, digests and
+statuses. Known model charges total $21.3688725, with no unknown completed-model
+charge. These counts are cumulative for the reference generation, including its
+diagnostic calls; they must not be added again to the first-attempt totals.
+
+The final protected snapshot is 488,283 bytes, with SHA-256
+`5635fe881530d1dff59752c6a66709e75ced07e4a4b931060860f0dfe52b803f`.
+Worker B preserved it with receipt exports, both ledgers, source state, logs,
+request reconstruction and reconciliation in
+`/home/nisal/.local/share/forge/feat-590-evidence-20261007/nicodemus-reference-resume-1-immutable-20261007`.
+Root independently verified the manifest and all 26 listed file hashes. File
+permissions are read-only; this is not a filesystem immutable-attribute claim.
+
+Read-only diagnosis found that GA currently uses two nearly immediate attempts,
+and the shared transport catches injected fetch-wrapper control and receipt
+errors as retryable network failures. Worker A is implementing a GA-only bounded
+retry policy with explicit error propagation; Worker B is preparing new operator
+versions with fresh quota admission and server-error headroom checks after a
+server error. Frozen prior executables and their evidence remain unchanged.
+This work has not yet passed implementation verification or a live retry run.
+Google's [Data API error guidance](https://developers.google.com/analytics/devguides/reporting/data/v1/errors)
+recommends exponential backoff with retry limits for 500/503 responses; the
+observed 502 handling is an explicit local policy, not a claimed GA guarantee.
+No further paid run or full-catalog build has started at this checkpoint.

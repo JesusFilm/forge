@@ -16,9 +16,15 @@ describes the private reporting contract and limits.
 Current checkpoint: application commit `eeff9c6db` has 42 successful CheckRuns,
 five skipped, no failures or pending checks, and both published Railway
 Web/Manager contexts report success with no deployment needed. The local preview
-is accepted and stopped. The bounded Nicodemus full-universe reference is now
-running against the isolated clone; the full 1,031-video catalog build remains
-unstarted. Live baseline/calibration and owner numeric policy are still required.
+is accepted and stopped. The bounded Nicodemus full-universe reference is paused
+after discovery reached 360 of 1,001 targets and another GA report returned two
+HTTP 502 responses. Its 232 model calls, 138 GA attempts and 197 provisional
+choices are preserved; all call receipts reconcile, with $21.3688725 known model
+cost and no pending calls or unknown completed-model charges. Worker A is fixing
+bounded GA retry timing and control-error propagation; Worker B owns new versioned
+operator quota-admission helpers. Both changes require review before resuming.
+The full 1,031-video catalog build remains unstarted. Live baseline/calibration
+and owner numeric policy are still required.
 
 October 7 continuation: the owner requested completion of the live measurement
 verifier, deployment configuration, actual catalog report and capacity checks.
