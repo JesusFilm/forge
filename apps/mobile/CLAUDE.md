@@ -2443,6 +2443,20 @@ the KD, KTD, R, and U numbers that the source cites.
   the Hausa dub with English UI. It feeds the audio, subtitle, Bible, For You,
   and Explore defaults. A reviewed `audio` override wins over an unreviewed
   exact-tag match, so `bn-BD` keeps `bangla-2`.
+- **Translation reports (feat-604).** The feedback sheet shows "A translation
+  is wrong" (`TRANSLATION`) only when the catalog tag is not `en`. Only that
+  kind sends `uiLocale`, the catalog tag. `buildFeedbackSubmissionInput`
+  enforces this, and the sheet says so (`translationLanguageNotice`), and its
+  "What this sends" list shows an "App language" row. `feedbackUiLocale` gives
+  both the row and the request their value, so they cannot differ. Admin
+  writes the tag in the Linear ticket as "App language". The English-only
+  catalogs (`crk`, `mey-Latn`) also show the kind, because their tag is not
+  `en`. Admin must deploy the kind before a build sends it. An older admin
+  does not know `TRANSLATION` or `uiLocale`, so the request fails GraphQL
+  variable coercion before the resolver runs. Document validation passes,
+  because the new values travel in the variables. Admin then writes no
+  `event=refused` line, and the phone shows the one failure message and files
+  a RUM error (checked with graphql-js on 2026-10-06).
 
 ### Add, change, or remove a string
 
@@ -2572,18 +2586,23 @@ real script still checks every answer and writes every catalog. The code is
 2. Translate: for each request file, write `<locale>.answer.json`. It is a
    JSON object that maps each key in `prompt.messagesToTranslate` to its
    translation. Follow `system` and `prompt`.
-3. Import: run the command with `--local-import <dir> --translator <id>`.
+3. Check: run `node scripts/i18n/evaluate-translations.mjs --answers <dir>`.
+   Read `<dir>/evaluation-report.json` (see "Check the translations"). Fix an
+   answer only when a finding shows a real error. Leave a false alarm as it
+   is, and list it in the PR. Do not change a correct translation to clear a
+   warning. The check never stops an import.
+4. Import: run the command with `--local-import <dir> --translator <id>`.
    `<id>` is the Claude model that wrote the answers, for example
    `claude-opus-5-5`. The command checks every answer first. It runs web's
    contract, copy, and script checks, and mobile's plural, select, and ICU
    syntax checks. A locale with a problem gets nothing. Then web's script
    takes the answers from the command's server. It checks them again and
    writes the catalogs. The provenance records the translator.
-4. Read `<dir>/import-report.json`. It gives the status of each locale and
+5. Read `<dir>/import-report.json`. It gives the status of each locale and
    every problem. The terminal shows at most 30 problems for each locale. Fix
    the answer files and run the import again until every locale finishes. The
    command exits 1 while a locale is not finished.
-5. When the export made a new catalog file, run
+6. When the export made a new catalog file, run
    `node scripts/i18n/generate-catalog-index.mjs`. Then run the CI suites.
 
 **Large runs.** A request file for a full catalog is about 280 KB, which is
@@ -2623,6 +2642,66 @@ jq '.prompt.messageContexts | to_entries[0:100] | from_entries' es.request.json
   changed key from every catalog before any translation exists. Run
   `git restore apps/mobile/messages apps/mobile/i18n`. Then delete each new
   catalog file that the export seeded.
+
+### Check the translations
+
+`scripts/i18n/evaluate-translations.mjs` looks for likely errors that the
+import checks cannot see (feat-604). It only writes a report. It never changes
+a catalog, and it never stops an import. The rules are in
+`scripts/i18n/lib/translationEvaluation.js`.
+
+- `--answers <dir>` checks the answer files of a local export. It writes
+  `<dir>/evaluation-report.json`.
+- `--catalogs` checks `messages/`, except English and the English-only
+  locales. It skips a value that equals English, because that value is a
+  pending key. `--out <file>` writes the full report; keep the file outside
+  the repository. `--messages-dir ../web/messages` checks web's catalogs.
+
+| Rule           | Severity             | What it finds                                                                                                                                                                                                                                                                                                                                                            |
+| -------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `script`       | error, warning       | A message with no letter in the locale's script is an error. A mix, such as `Cookie設定`, is a warning. The script comes from the tag or its CLDR default, never from web. When most messages fail, one locale error takes their place. For `Hans` and `Hant`, a table of 55 characters whose Simplified and Traditional forms differ finds a message in the other form. |
+| `language`     | error, warning, info | GlotLID reads each whole catalog, and each message with 40 or more letters. A catalog in another language is an error only when the top label has 0.5 or more and the locale's own language has less than 0.1. Otherwise it is a warning.                                                                                                                                |
+| `english-left` | warning              | Three English words in a row that stay in a translation. A run stops at punctuation, a placeholder, a plural branch, and a kept name.                                                                                                                                                                                                                                    |
+| `length`       | warning              | A translation more than 3 times longer or shorter than the usual ratio of its locale. The longest plural branch stands for the plural.                                                                                                                                                                                                                                   |
+| `repeat`       | info                 | One English text with more than one translation.                                                                                                                                                                                                                                                                                                                         |
+| `web-script`   | warning              | Web's catalog of the locale uses another script, so the app and the website will differ.                                                                                                                                                                                                                                                                                 |
+
+A per-message language finding is a warning at 0.9 or more. The report also
+gives `webAgreement` for the strings that web shares: the count, the rate, and
+each difference. It is information only, because web's catalogs have errors of
+their own. A run on 2026-10-06 found that web's `iu` reads as Greenlandic, that
+`az-Cyrl` and `ms-Arab` use Latin script, and that `snf` reads as French.
+
+- **Language ID.** `scripts/i18n/language-id.py` runs through `uv run`, so the
+  repository has no Python dependency. The model is GlotLID (Apache-2.0) at one
+  pinned revision. The first run downloads 1.7 GB into the Hugging Face cache;
+  later runs take seconds. Without `uv`, the report gives `skipped` and the
+  reason. `--no-language-id` turns it off. The `uv` resolution is fixed by the
+  script's `exclude-newer` date. GlotLID has no label for 10 web languages
+  (`bjt`, `chp`, `den`, `mdh`, `mey-Latn`, `mfv`, `na`, `quv`, `sav`, `xin`),
+  so they get an info finding only. `scripts/i18n/__tests__/languageId.test.js`
+  runs the real accepted-code rule against the model's label list (a fixture)
+  and pins that list. CI installs `uv` for it, and the suite fails in CI
+  without `uv`. When `MODEL_REVISION` changes, regenerate the fixture in
+  `apps/mobile`. A jest check fails until the fixture names the pinned
+  revision.
+
+  ```bash
+  uv run --quiet scripts/i18n/language-id.py --labels \
+    > scripts/i18n/__tests__/fixtures/glotlid-languages.json
+  ```
+
+- **Kept names.** `KEPT_NAMES` lists the names that a translation keeps as
+  written, such as Jesus Film Project, BibleProject, and AirPlay. When
+  `en.json` gets a new product name, add it there. If you do not, the script
+  and English rules flag it.
+- **Limits.** A clean report does not prove that a translation is correct. The
+  rules find the wrong script, the wrong language, English left in, and odd
+  lengths. They cannot find a wrong meaning. GlotLID is weakest in
+  low-resource languages and in close pairs, such as `sr` and `bs`. Read the
+  top three labels before you act on a language finding. GlotLID does not
+  tell Simplified from Traditional Chinese, so only the character table checks
+  the form. Taiwan's Hakka and Hokkien write 个, so `hak` and `nan` may use it.
 
 ### Merge two catalog PRs
 

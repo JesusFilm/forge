@@ -2770,8 +2770,8 @@ fields — `whatsNewFeatureVoteTallies`, `castWhatsNewFeatureVote`,
 ## Mobile in-app feedback
 
 `submitFeedback` is a public GraphQL mutation for the mobile app
-(`src/graphql/mutations/feedback.ts`). A person reports a problem, sends an
-idea, or writes something else from the app. Admin files the Linear issue
+(`src/graphql/mutations/feedback.ts`). A person reports a problem or a wrong
+translation, sends an idea, or writes something else from the app. Admin files the Linear issue
 through `src/services/feedback-linear.ts` and then answers. The plan is
 `docs/plans/2026-09-14-1033-feat-mobile-feedback-linear-plan.md`.
 
@@ -2790,6 +2790,11 @@ through `src/services/feedback-linear.ts` and then answers. The plan is
   `RATE_LIMITED`; the cap answers `DAILY_CAP`. A refused call does not spend
   the day. The address comes from `cf-connecting-ip` only, never from the
   spoofable `x-forwarded-for`.
+- **A `TRANSLATION` report carries `uiLocale`** (feat-604): the catalog tag of
+  the language that the app showed. The ticket shows it as "App language",
+  with its English name when `Intl` knows one, such as `Arabic (ar)`. The bound
+  is a BCP 47 shape of 35 characters at most, not a list of tags, so a new
+  catalog never refuses a report. The phone mirrors the bound.
 - **A log line never carries the message, the name, or the email.** Use the
   plain-string `[feedback] event=<name> key=value` format; Railway logsV2 drops
   JSON from a Next.js runtime handler.

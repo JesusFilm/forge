@@ -23,7 +23,7 @@ import {
   truncateWithoutSurrogateSplit,
 } from "@/services/feedback-text"
 
-export type FeedbackKind = "BROKEN" | "IDEA" | "OTHER"
+export type FeedbackKind = "BROKEN" | "IDEA" | "OTHER" | "TRANSLATION"
 export type FeedbackPlatform = "IOS" | "ANDROID"
 
 export type FeedbackVideoContext = {
@@ -48,6 +48,8 @@ export type MobileFeedbackSubmission = {
   platform: FeedbackPlatform
   name?: string
   email?: string
+  /** The catalog tag of the language the app showed, such as `zh-Hans`. */
+  uiLocale?: string
   video?: FeedbackVideoContext
   deviceDetails?: FeedbackDeviceDetails
 }
@@ -82,6 +84,7 @@ const FEEDBACK_KIND_COPY: Record<
   BROKEN: { short: "Problem", label: "Something's broken" },
   IDEA: { short: "Idea", label: "I have an idea" },
   OTHER: { short: "Other", label: "Something else" },
+  TRANSLATION: { short: "Translation", label: "A translation is wrong" },
 }
 
 const PLATFORM_LABEL: Record<FeedbackPlatform, string> = {
@@ -127,6 +130,18 @@ function formatPosition(seconds: number | undefined): string | undefined {
     : `${minutes}:${paddedSeconds}`
 }
 
+/** "Arabic (ar)": the name is for the person who triages, and the tag names
+ * the catalog file to fix. A tag that `Intl` cannot name stays as sent. */
+function appLanguageText(tag: string): string {
+  try {
+    const name = new Intl.DisplayNames(["en"], { type: "language" }).of(tag)
+    if (name && name !== tag) return `${name} (${tag})`
+  } catch {
+    // RangeError on a tag that passes the bound but not BCP 47.
+  }
+  return tag
+}
+
 /** R17's order: message, context list, then source line. A content field
  * appears only when the submission carries it, so omitting the video tag or
  * device details removes those lines. */
@@ -143,6 +158,11 @@ export function buildFeedbackIssueDescription(
     `- **Kind:** ${FEEDBACK_KIND_COPY[submission.kind].label}`,
   ]
 
+  if (submission.uiLocale) {
+    lines.push(
+      `- **App language:** ${safeFeedbackText(appLanguageText(submission.uiLocale))}`,
+    )
+  }
   if (submission.name) {
     lines.push(`- **Name:** ${safeFeedbackText(submission.name)}`)
   }
