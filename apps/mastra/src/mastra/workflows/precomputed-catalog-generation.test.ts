@@ -21,6 +21,7 @@ const body = {
     source: "operator_verified_pgdata_df",
   },
 }
+const parsedBody = { ...body, sourceConcurrency: 1 }
 
 function request(value: unknown) {
   return new Request(
@@ -65,7 +66,7 @@ describe("private catalog build entrypoint", () => {
       status: 202,
       body: { runId: "run-one", generationId: body.generationId },
     })
-    expect(launch).toHaveBeenCalledExactlyOnceWith(body)
+    expect(launch).toHaveBeenCalledExactlyOnceWith(parsedBody)
   })
 
   it("stamps private catalog trace identity independently of snapshots", async () => {
@@ -82,7 +83,7 @@ describe("private catalog build entrypoint", () => {
         }),
       ).toMatchObject({ status: 202 })
       expect(startAsync).toHaveBeenCalledWith({
-        inputData: body,
+        inputData: parsedBody,
         tracingOptions: {
           hideInput: true,
           hideOutput: true,

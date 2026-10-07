@@ -2338,3 +2338,20 @@ sources, all 1,031 manifest/checkpoint rows, 85 model receipts and 45 GA receipt
 No source was relabeled as a full-catalog completion. Cancellation receipt:
 `v6-benchmark-cancellation.json`. The bounded full-universe comparison and full
 catalog generation remain unstarted.
+
+## Concurrency workflow CI expectations and cold physical sample
+
+At integration `a6e7d043a`, CI found two workflow assertions that expected the
+unparsed input object. The new schema correctly supplies `sourceConcurrency: 1`.
+Worker A updated the launch and trace-input expectations while preserving the
+full trace identity assertions. The targeted workflow test and full Mastra
+suite pass: 288 files, 3,287 tests; 15 files and 44 tests intentionally skipped.
+No provider or GA call is involved in this correction. The normal-hook worker correction is `c5149d6fa`; root review confirms only the parsed-input expectations changed.
+
+The separate exact-only cold physical sample copied the real v6 terminal rows
+and complete manifest through native PostgreSQL DDL, verifying source/sample
+row digests and removing its owned database afterward. Its attributable
+614,400 B allocation and deliberately repeated-manifest forecast of 634,068,992 B
+are documented in [storage capacity](../operations/precomputed-storage-capacity.md).
+The prepared full runner's actual TypeScript check passes. The full catalog and
+one-source full-universe reference remain unstarted at this checkpoint.

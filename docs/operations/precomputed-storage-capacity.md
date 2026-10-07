@@ -188,3 +188,47 @@ with current PGDATA headroom. The Mastra companion note is
 Deletion makes pages reusable inside PostgreSQL; a smaller row count does not
 prove that relation files or the Railway volume have shrunk. No destructive
 production reclamation is part of this work.
+
+## Exact real-cohort retained sample, October 7
+
+The successful historical-v6 cohort saved 55 Magdalena and 18 Amharic-source
+recommendations using the complete frozen 1,031-Video manifest. Its restore-tested
+backup was copied into an owned disposable PostgreSQL 18.6 database using exact
+source table/index/constraint/storage DDL. The source remained read-only; row
+counts, logical sizes and digests matched before/after and in the sample.
+The 1,031 Video-ID foreign-key stubs were measured before the baseline and are
+excluded below. The sample database was removed after verification.
+
+| Measurement                |    Before |     After |     Delta |
+| -------------------------- | --------: | --------: | --------: |
+| Recommendation heap        |       0 B | 237,568 B | 237,568 B |
+| Indexes                    |  81,920 B | 286,720 B | 204,800 B |
+| TOAST                      |  57,344 B | 155,648 B |  98,304 B |
+| Auxiliary storage          |       0 B |  73,728 B |  73,728 B |
+| Seven-table physical total | 139,264 B | 753,664 B | 614,400 B |
+
+The isolated database-size delta also measured 614,400 B. This includes the real
+1,031-row manifest, two finalized source payloads, 85 model receipts and 45 GA
+receipts; no provisional build choices remain. It excludes older diagnostic
+generations. Copying terminal rows does not reproduce original checkpoint/choice
+churn, peak temporary storage, historical bloat, or WAL.
+
+The prepared first-full-build forecast deliberately charges every pair of
+sources the entire two-source physical sample, including its full manifest,
+and adds twice the 311,296 B manifest/build-state allocation:
+
+`ceil(2 × 614,400 × 1,031 / 2) + 622,592 = 634,068,992 B`.
+
+At 05:13:07Z, the actual local clone's cluster `7693385351541764139` had
+6,422,896,640 B available on PGDATA and no active reservations. After the
+5,000,000,000 B reserve and this forecast, 788,827,648 B remained. This is an
+intentionally inflated retained-storage scenario, not a statistical bound,
+measured full-build peak, production capacity receipt, or launch approval.
+Fresh admission and live capacity monitoring remain required.
+
+Machine receipts and the reproducible script are preserved under
+`/home/nisal/.local/share/forge/feat-590-evidence-20261007/` as
+`v6-exact-retained-physical-sample.json`,
+`physical-capacity-v6-exact-retained-20261007.json`, and
+`sample-v6-retained-physical.py`. The prepared full-build runner explicitly uses
+this new sample rather than the earlier mixed-generation measurement.
