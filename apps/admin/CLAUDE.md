@@ -3276,6 +3276,70 @@ Migration `0138_push_campaign_agent_drafts` adds `content_version`,
   short time, an old container can serve a save that does not raise the
   version.
 
+### Campaign delete
+
+The campaign page deletes a campaign through `deletePushCampaign` in
+`src/services/push/campaign.service.ts`. The delete removes the campaign, its
+copy, its zones, and its delivery, open, and attribution rows. Registrations,
+test devices, and workflow ledger rows stay. The MCP has no delete tool. Any
+user with `write:push-campaigns` can delete, so the delete writes an audit row
+(see below) to keep a sent message traceable.
+
+- **Cancel first.** Admin refuses to delete a scheduled or sending campaign.
+- **No run in flight.** A test run blocks the delete until its receipt window
+  ends. A live ledger row that still reads queued or running blocks it only
+  while the runtime says the run is alive or cannot answer, because a run that
+  died can leave its ledger row running (the recovery sweep pauses its campaign).
+  A ledger row with no runtime run id counts as finished, as in the sweep.
+- **No claim in force (KTD3).** A live row that holds a claim blocks the delete
+  until its local day has ended in every zone (the local date plus 36 hours, in
+  UTC) and the 20-hour zone guard has passed. An earlier delete releases the
+  claim, so a second announcement could reach that phone on the same day.
+- **Bounded statements.** A sent, paused, or cancelled campaign loses its
+  delivery rows in pages of 5,000, ordered by id, before the transaction; no
+  transition leaves these statuses, so no run adds rows. A page that a
+  concurrent delete already took moves 0 rows, and the loop reads again.
+- **Guarded transaction.** The transaction deletes deliveries first (the same
+  lock order as the pages, so two deletes do not deadlock), then any stray opens
+  and attributions. It deletes the campaign only while its status and run id
+  equal the gate's values and its content version equals the snapshot's.
+  Otherwise the transaction rolls back. The pages do not roll back, so a delete
+  that stops partway leaves part of the report, and a second delete finishes
+  it. A delete that loses a race to another reads as not found, so the editor
+  lands on the list.
+- **Audit row.** In the same transaction, the delete writes one
+  `workflow_run` row with key `push-campaign-delete`: the actor, the status,
+  the destination, the audience, the content version, every copy row, the
+  zones with their planned audience counts, and `deliveriesDeleted`. That count
+  covers only the rows this call removed; after a stopped delete, the zones
+  still give the planned reach.
+- **No run for a deleted campaign.** `dispatchPushCampaignRun` refuses to
+  start a run when its link to the campaign moves no row, and closes the
+  ledger row as failed.
+- **Real-database suite:** `src/services/push/campaign-delete.db.test.ts`, in
+  CI's push database step.
+
+### Campaign countries
+
+A campaign country must be an ISO code that a phone can report.
+`src/services/push/country-code.ts` refuses an alias such as `UK` (phones store
+`GB`) and a group code such as `EU` with a message that names the code to use.
+`PushCountryCodeSchema` applies it on the dashboard and MCP paths, and the
+editor applies it before it adds a chip. `XK` (Kosovo) stays valid, because the
+edge reports it. The dashboard shows a name, such as "Mexico (MX)", only for a
+code that passes this check.
+
+- **Fail closed on stored codes.** Every content write checks the whole merged
+  audience (KTD7), so a campaign saved earlier with a refused code fails every
+  save and every MCP update until someone replaces the code. This is
+  deliberate: unlike a stale language slug (KTD8), a refused country reaches no
+  phone. Before a deploy, list the stored codes with
+  `SELECT DISTINCT unnest(countries) FROM push_campaign` and check each one
+  with `checkPushCountryCode`.
+- **ICU decides.** The check reads the runtime's ICU data. `country-code.test.ts`
+  pins all 249 ISO 3166-1 codes from tzdata, so a Node or ICU change that drops
+  one fails in CI.
+
 ### Flags and env
 
 Every push var is optional and boots unset. `PUSH_CAMPAIGNS_ENABLED` (default

@@ -100,6 +100,7 @@ import {
   PUSH_MAX_LANGUAGE_FILTER,
   PushDestinationKindSchema,
 } from "@/services/push/contracts"
+import { checkPushCountryCode } from "@/services/push/country-code"
 import { emitRevalidateWebhook } from "@/services/revalidate-webhook"
 import { refreshWatchRouteManifest } from "@/services/watch-route-manifest-refresh.service"
 import { GET, POST } from "./route"
@@ -198,12 +199,16 @@ function maximalCopies(count: number) {
 
 function maximalAudience() {
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+  // Fewer than 300 real country codes exist, so they repeat; every entry is
+  // still 2 bytes, and the schema accepts a repeat and removes it.
+  const realCodes = [...letters]
+    .flatMap((first) => [...letters].map((second) => `${first}${second}`))
+    .filter((code) => checkPushCountryCode(code).kind === "country")
   return {
     scope: "COUNTRIES",
     countries: Array.from(
       { length: PUSH_MAX_AUDIENCE_COUNTRIES },
-      (_, index) =>
-        `${letters[Math.floor(index / 26) % 26]}${letters[index % 26]}`,
+      (_, index) => realCodes[index % realCodes.length],
     ),
     languageFilter: Array.from(
       { length: PUSH_MAX_LANGUAGE_FILTER },

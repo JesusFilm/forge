@@ -43,6 +43,7 @@ import {
   formatPushSendDate,
   formatPushUtcDate,
   isPushCampaignCancellable,
+  isPushCampaignDeletable,
   isPushCampaignFrozen,
   isPushCampaignTested,
   pushStatusView,
@@ -276,7 +277,10 @@ export default async function PushCampaignPage({
             </PageSection>
           )}
 
-          <PageSection title="Send" meta="TEST / SCHEDULE / SEND NOW / CANCEL">
+          <PageSection
+            title="Send"
+            meta="TEST / SCHEDULE / SEND NOW / CANCEL / DELETE"
+          >
             <CampaignActions
               campaignId={campaign.id}
               contentVersion={campaign.contentVersion}
@@ -285,6 +289,7 @@ export default async function PushCampaignPage({
               tested={isPushCampaignTested(campaign.status)}
               frozen={frozen}
               cancellable={isPushCampaignCancellable(campaign.status)}
+              deletable={isPushCampaignDeletable(campaign.status)}
               campaignsEnabled={campaignsEnabled}
               audience={audience.audience}
               unreachable={audience.unreachable}

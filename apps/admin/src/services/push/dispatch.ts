@@ -208,10 +208,17 @@ export async function dispatchPushCampaignRun(
     },
     prisma,
   )
-  await prisma.pushCampaign.updateMany({
+  // A campaign deleted after the caller's checks has no row to link, so no run
+  // starts for it and the ledger row closes as failed.
+  const { count: linked } = await prisma.pushCampaign.updateMany({
     where: { id: input.campaignId },
     data: { workflowRunLogId: ledger.id },
   })
+  if (linked !== 1) {
+    const missing = new PushNotFoundError("That campaign no longer exists")
+    await markWorkflowRunFailed(ledger.id, missing, prisma).catch(() => {})
+    throw missing
+  }
 
   try {
     const run = await startRun(runPushCampaign, [

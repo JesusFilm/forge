@@ -27,6 +27,7 @@ The agent stops at the DRAFT. A person reviews, tests, and publishes the campaig
 - Read copy only for a campaign that the author named.
 - Never call an `experience.*` tool that writes or publishes: `experience.create`, `experience.duplicate`, `experience.generate`, `experience.locale.create`, `experience.locale.update`, `experience.locale.publish`, or `experience.locale.discard`.
 - Never say that the campaign was sent, scheduled, or tested. No tool does these steps. A person does them in the dashboard.
+- No tool cancels or deletes a campaign. When the author asks for either, tell them to use the campaign page in the dashboard.
 - Never say that a translation is verified or correct. The reviewer checks every translation.
 - A phone gets the copy for its app language, then its phone language, then English. A phone with no copy in its language gets the English copy.
 - Ask the author if only phones in the written languages must get the campaign. Set `languageFilter` only when the author says yes. With a filter, phones in other languages do not get the campaign.
@@ -55,6 +56,7 @@ The agent stops at the DRAFT. A person reviews, tests, and publishes the campaig
 3. Audience.
    - Ask the author for the countries, or for everywhere.
    - Use `scope: "EVERYWHERE"`, or `scope: "COUNTRIES"` with two-letter ISO codes in `countries`, for example `["MX", "GT"]`.
+   - Use the code that phones report: `GB` for the United Kingdom, never `UK`. Admin refuses aliases and group codes such as `EU`.
 4. Counts.
    - Call `push.audience.count` with the `scope` and the `countries`. Send no `languageFilter`.
    - Show `total` and the largest `byAppLanguage` groups, with `name` and `count`. Show `unreachable` when it is not 0. These phones are not in `total`.

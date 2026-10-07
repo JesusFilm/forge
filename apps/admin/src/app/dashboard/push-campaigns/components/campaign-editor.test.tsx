@@ -502,6 +502,28 @@ describe("CampaignEditor audience", () => {
     expect(chips).toEqual(["FR"])
   })
 
+  it("labels each chip with the country name and its code", () => {
+    render(campaign({ countries: ["MX", "SA"] }))
+    const chips = [
+      ...container.querySelectorAll<HTMLButtonElement>(
+        '[data-testid="push-country-chip"]',
+      ),
+    ]
+    expect(chips.map((chip) => chip.textContent)).toEqual([
+      "Mexico (MX)",
+      "Saudi Arabia (SA)",
+    ])
+    expect(chips[0]?.getAttribute("aria-label")).toBe("Remove Mexico (MX)")
+    // The form still posts the code, which is what the audience matches on.
+    expect(
+      [
+        ...container.querySelectorAll<HTMLInputElement>(
+          'input[name="country"]',
+        ),
+      ].map((field) => field.value),
+    ).toEqual(["MX", "SA"])
+  })
+
   it("names a malformed country and adds nothing", () => {
     render(campaign({ countries: [] }))
     const input = container.querySelector<HTMLInputElement>(
