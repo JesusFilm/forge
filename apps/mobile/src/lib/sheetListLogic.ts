@@ -2,6 +2,8 @@
 // Filtering, current-section assembly, and the double-tap debounce decision live
 // here so they're unit-testable once and shared by all three sheets.
 
+import { nameComparator } from "./collation"
+
 export const SHEET_DOUBLE_TAP_WINDOW_MS = 500
 
 // Accept a row tap only once per window; the ref/clock stay with the caller so a
@@ -21,6 +23,8 @@ export type SheetListParams<T> = {
   getSearchValues: (item: T) => (string | null | undefined)[]
   // Keep `rows` in the caller's order instead of sorting them by primary label.
   keepRowOrder?: boolean
+  // The UI language tag the label sort collates in (KTD15).
+  uiTag: string
 }
 
 export type SheetListResult<T> = {
@@ -39,11 +43,11 @@ export function assembleSheetList<T>({
   getPrimaryLabel,
   getSearchValues,
   keepRowOrder = false,
+  uiTag,
 }: SheetListParams<T>): SheetListResult<T> {
+  const compareNames = nameComparator(uiTag)
   const byLabel = (a: T, b: T) =>
-    getPrimaryLabel(a)
-      .toLowerCase()
-      .localeCompare(getPrimaryLabel(b).toLowerCase())
+    compareNames(getPrimaryLabel(a), getPrimaryLabel(b))
   const isActive = (item: T) => getSelectionId(item) === activeId
 
   // Sort only the matches, so that when two rows share the id, the first by

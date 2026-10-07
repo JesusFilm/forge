@@ -14,7 +14,7 @@ connection, schema usage, and table selection.
   `public` schema, and `SELECT` on current and future tables created there by the
   provisioning owner.
 - `forge_rag_evaluator` is the default login and inherits only that group. Set
-  `JFRAG_READONLY_ROLE_NAME` to another safe lowercase identifier when separate
+  `FORGE_RAG_READONLY_ROLE_NAME` to another safe lowercase identifier when separate
   evaluation and dashboard logins are required.
 
 The command removes `TEMPORARY` on the RAG database and `CREATE` on its `public`
@@ -40,15 +40,15 @@ the two commands without committing or printing it:
 docker compose -f apps/rag/docker-compose.yml up -d
 DATABASE_URL=postgresql://forge:forge@localhost:5435/forge_rag \
   pnpm --filter @forge/rag db:migrate:deploy
-JFRAG_READONLY_PASSWORD=<generated-64-hex-value> \
+FORGE_RAG_READONLY_PASSWORD=<generated-64-hex-value> \
 DATABASE_URL=postgresql://forge:forge@localhost:5435/forge_rag \
   pnpm --filter @forge/rag db:provision-readonly --local
-JFRAG_POSTGRESQL_READONLY_DB_URL=<local-reader-url> \
+FORGE_RAG_POSTGRESQL_READONLY_DB_URL=<local-reader-url> \
   pnpm --filter @forge/rag db:verify-readonly --local
 ```
 
 The verifier requires the connected username to match
-`JFRAG_READONLY_ROLE_NAME` or `forge_rag_evaluator`. It checks role attributes,
+`FORGE_RAG_READONLY_ROLE_NAME` or `forge_rag_evaluator`. It checks role attributes,
 database and schema creation, object ownership, DML grants, writable sequences,
 and unexpected memberships. It proves a table read succeeds and proves
 persistent DDL, temporary DDL, `INSERT`, `UPDATE`, and `DELETE` are denied. Each
@@ -90,10 +90,10 @@ or rotate a database login.
    runs again. Stop if an affected workload has not been identified and handled.
 3. Generate a 32-byte random password as 64 lowercase hexadecimal characters
    outside the transcript. Put it temporarily in the approved secret receiver
-   as `JFRAG_READONLY_PASSWORD`; never pass it as a command argument.
-4. With the owner URL injected as `JFRAG_POSTGRESQL_DB_URL`, the exact host in
-   `JFRAG_EXPECTED_POSTGRES_HOST`, and the deliberate
-   `JFRAG_ALLOW_PROD_ROLE_PROVISION=1` signal, run:
+   as `FORGE_RAG_READONLY_PASSWORD`; never pass it as a command argument.
+4. With the owner URL injected as `FORGE_RAG_POSTGRESQL_DB_URL`, the exact host in
+   `FORGE_RAG_EXPECTED_POSTGRES_HOST`, and the deliberate
+   `FORGE_RAG_ALLOW_PROD_ROLE_PROVISION=1` signal, run:
 
    ```sh
    doppler run --project forge-rag --config prd -- \
@@ -102,10 +102,10 @@ or rotate a database login.
 
 5. Construct the reader URL from the same approved Railway public endpoint,
    database name, new username, and generated password. Store it only as
-   `JFRAG_POSTGRESQL_READONLY_DB_URL` in Doppler `forge-rag/prd`. Do not replace
+   `FORGE_RAG_POSTGRESQL_READONLY_DB_URL` in Doppler `forge-rag/prd`. Do not replace
    the Railway service's owner `DATABASE_URL`; Prisma pre-deploy migrations
    still require ownership. Evaluation and dashboard startup reject the URL
-   unless its username exactly matches `JFRAG_READONLY_ROLE_NAME`, which defaults
+   unless its username exactly matches `FORGE_RAG_READONLY_ROLE_NAME`, which defaults
    to `forge_rag_evaluator`.
 6. Run `env:check production-read`, then
    `db:verify-readonly --production`, through the same Doppler target. Record
@@ -127,7 +127,7 @@ extend and rerun provisioning before the read workflow uses those objects.
 ## Rotation and rollback
 
 For rollback-safe rotation, provision a new versioned login name with
-`JFRAG_READONLY_ROLE_NAME`, store and verify its URL, and switch the
+`FORGE_RAG_READONLY_ROLE_NAME`, store and verify its URL, and switch the
 production-read secret to it. Retain the previous reader URL through the
 rollback window, then revoke and drop the old login with an explicitly reviewed
 owner session. Rerunning provisioning with the same login changes its password

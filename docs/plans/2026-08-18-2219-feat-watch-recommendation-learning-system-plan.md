@@ -12,6 +12,16 @@ deepened: 2026-08-18
 
 # Watch Recommendation Learning System - Plan
 
+> **Scope supersession, October 2, 2026:** The owner authorized final roadmap
+> reconciliation and cancellation of obsolete optional programme work. Read
+> `docs/reports/2026-10-02-recommendation-roadmap-closeout.md` and each ticket's
+> dated disposition before executing any requirement below. The learned-model,
+> extra-generator, exploration and page-orchestration proposals are historical
+> where cancelled. Existing implementation remains; privacy, eligibility,
+> bounded execution and unresolved operational gates still apply. Direct
+> co-watch/MMR activation does not require a controlled usefulness study, and
+> cancellation proves no causal benefit.
+
 > **Enablement decision, September 10, 2026:** Apply `docs/analytics-and-recommendation-policy.md`. Recommendations, profile creation and learning, and analytics have no consent prerequisite. Preserve the GA and Datadog coverage restored by PR #2229; explicit personalization-disable, reset, and deletion controls remain effective. This amendment supersedes earlier consent requirements while retaining evidence, integrity, retention, and rollout constraints.
 
 ## Goal Capsule

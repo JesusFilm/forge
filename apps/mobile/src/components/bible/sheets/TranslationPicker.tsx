@@ -6,7 +6,6 @@ import type {
   CatalogTranslation,
 } from "../../../lib/bible/data/catalog"
 import type { TranslationDownloads } from "../../../lib/bible/repository/translationDownloads"
-import { READER_SHEET_COPY } from "../../../lib/bible/sheets/copy"
 import {
   readerSheetColors,
   readerSheetControlColors,
@@ -19,12 +18,12 @@ import {
   translationStatusLabel,
 } from "../../../lib/bible/sheets/translationList"
 import type { ReaderTokens } from "../../../lib/bible/theme/palettes"
+import { useUiTag } from "../../../hooks/useUiTag"
+import { useT } from "../../../i18n/useT"
 import { SearchableListSheet } from "../../sheets/SearchableListSheet"
 import { ReaderSheetHeader } from "./ReaderSheetHeader"
 import { TranslationDownloadButton } from "./TranslationDownloadButton"
 import { useDownloadsVersion } from "./useDownloadsVersion"
-
-const COPY = READER_SHEET_COPY.translation
 
 export type TranslationPickerProps = {
   tokens: ReaderTokens
@@ -64,8 +63,10 @@ export function TranslationPicker({
   onPressDownload,
   onClose,
 }: TranslationPickerProps) {
+  const t = useT("BibleTranslationPicker")
   const [onDeviceOnly, setOnDeviceOnly] = useState(offline)
   const version = useDownloadsVersion(downloads)
+  const uiTag = useUiTag()
 
   const rows = useMemo(() => {
     const list = buildTranslationList({
@@ -73,17 +74,32 @@ export function TranslationPicker({
       viewerLanguages,
       onDeviceOnly,
       getState: downloads.getState,
+      uiTag,
     })
     // The "Current" row reads from the rows, so keep it when the filter hides it.
     const active = activeId ? catalog.byId.get(activeId) : undefined
     return active && !list.includes(active) ? [active, ...list] : list
     // `version` makes both memos read the store again after a change.
-  }, [catalog, viewerLanguages, onDeviceOnly, downloads, activeId, version])
+  }, [
+    catalog,
+    viewerLanguages,
+    onDeviceOnly,
+    downloads,
+    activeId,
+    version,
+    uiTag,
+  ])
 
+  // `t` is a new function after a language change, so the list's renderItem
+  // changes too and a recycled row redraws in the new language.
   const getStatus = useCallback(
     (translation: CatalogTranslation) =>
-      translationStatusLabel(translation, downloads.getState(translation.id)),
-    [downloads, version],
+      translationStatusLabel(
+        t,
+        translation,
+        downloads.getState(translation.id),
+      ),
+    [t, downloads, version],
   )
 
   // U14, R37: a pick is a change from the translation on screen.
@@ -120,15 +136,15 @@ export function TranslationPicker({
 
   const headerTop = (
     <View style={styles.headerTop}>
-      <ReaderSheetHeader tokens={tokens} title={COPY.title} onClose={onClose} />
+      <ReaderSheetHeader tokens={tokens} title={t("title")} onClose={onClose} />
       {offline && (
         <Text style={[styles.note, { color: tokens.secondaryText }]}>
-          {COPY.offlineNote}
+          {t("offlineNote")}
         </Text>
       )}
       <View style={styles.filterRow}>
         <Text style={[styles.filterLabel, { color: tokens.text }]}>
-          {COPY.onDeviceOnly}
+          {t("onDeviceOnly")}
         </Text>
         <Switch
           value={onDeviceOnly}
@@ -137,7 +153,8 @@ export function TranslationPicker({
           ios_backgroundColor={controls.switchOff}
           thumbColor="#ffffff"
           accessibilityRole="switch"
-          accessibilityLabel={COPY.onDeviceOnly}
+          accessibilityLabel={t("onDeviceOnly")}
+          {...{ "dd-action-name": "bible-translation-on-device-only" }}
         />
       </View>
     </View>
@@ -157,12 +174,13 @@ export function TranslationPicker({
         getDetailLabel={getCredit}
         getSearchValues={translationSearchValues}
         onSelect={pick}
-        searchPlaceholder={COPY.searchPlaceholder}
-        searchAccessibilityLabel={COPY.searchLabel}
-        emptySearchMessage={COPY.noMatch}
+        searchPlaceholder={t("searchPlaceholder")}
+        searchAccessibilityLabel={t("searchAriaLabel")}
+        emptySearchMessage={t("noMatch")}
         headerTop={headerTop}
         renderActiveAccessory={renderDownload}
         colors={colors}
+        actionName="bible-translation-sheet"
       />
     </View>
   )

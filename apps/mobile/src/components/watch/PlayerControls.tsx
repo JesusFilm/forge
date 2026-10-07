@@ -26,6 +26,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { NativeCastButton } from "../../lib/cast/NativeCastButton"
 import { applySkip } from "../../lib/scrubber"
 import type { PlaybackTarget } from "../../lib/playbackTarget"
@@ -152,6 +153,8 @@ export function RouteButtons({
    *  it, so the veil route row and other surfaces render no gear. */
   onOpenSettings?: () => void
 }) {
+  const t = useT("Player")
+  const tCast = useT("Cast")
   // Android renders the SDK's own button because only a native, attached
   // MediaRouteButton can open the Android dialog — see NativeCastButton. iOS
   // presents the dialog from the context, so it keeps the app-drawn glyph.
@@ -174,6 +177,7 @@ export function RouteButtons({
         }}
         accessibilityRole="button"
         accessibilityLabel={castUi.label}
+        {...{ "dd-action-name": "player-cast" }}
       >
         <Frosted style={styles.iconButton}>
           <MaterialIcons
@@ -197,7 +201,10 @@ export function RouteButtons({
           onBeginPresentingRoutes={onInteract}
           accessibilityRole="button"
           accessibilityLabel={
-            externalPlaybackActive ? "AirPlay: connected" : "AirPlay"
+            // "AirPlay" is a name and stays as it is in every language.
+            externalPlaybackActive
+              ? tCast("airPlayConnectedAriaLabel")
+              : "AirPlay"
           }
         />
       </Frosted>
@@ -212,7 +219,8 @@ export function RouteButtons({
           onOpenSettings()
         }}
         accessibilityRole="button"
-        accessibilityLabel="Video settings"
+        accessibilityLabel={t("settingsAriaLabel")}
+        {...{ "dd-action-name": "player-settings" }}
       >
         <Frosted style={styles.iconButton}>
           <MaterialIcons name="settings" size={22} color={TEXT_ON_OVERLAY} />
@@ -244,6 +252,7 @@ export function PlayerControls({
 }: PlayerControlsProps) {
   const typography = useTypography()
   const insets = useSafeAreaInsets()
+  const t = useT("Player")
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [scrubPreview, setScrubPreview] = useState<number | null>(null)
@@ -501,7 +510,10 @@ export function PlayerControls({
   const timeLabel = (
     <Text
       style={[styles.timeText, typography.caption]}
-      accessibilityLabel={`Elapsed ${formatTime(displayedTime)} of ${formatTime(duration)}`}
+      accessibilityLabel={t("elapsedAriaLabel", {
+        elapsed: formatTime(displayedTime),
+        duration: formatTime(duration),
+      })}
     >
       {formatTime(displayedTime)} / {formatTime(duration)}
     </Text>
@@ -518,7 +530,14 @@ export function PlayerControls({
         onFullscreen?.()
       }}
       accessibilityRole="button"
-      accessibilityLabel={fullscreen ? "Exit fullscreen" : "Fullscreen"}
+      accessibilityLabel={
+        fullscreen ? t("exitFullscreenAriaLabel") : t("fullscreenAriaLabel")
+      }
+      {...{
+        "dd-action-name": fullscreen
+          ? "player-fullscreen-exit"
+          : "player-fullscreen-enter",
+      }}
     >
       <Frosted style={styles.iconButton}>
         <Ionicons
@@ -560,7 +579,8 @@ export function PlayerControls({
         <Pressable
           onPress={() => skip(-SKIP_SECONDS)}
           accessibilityRole="button"
-          accessibilityLabel={`Back ${SKIP_SECONDS} seconds`}
+          accessibilityLabel={t("skipBackAriaLabel", { seconds: SKIP_SECONDS })}
+          {...{ "dd-action-name": "player-skip-back" }}
         >
           <Frosted style={styles.skipButton}>
             <Ionicons
@@ -579,7 +599,7 @@ export function PlayerControls({
           // control again the moment the connection returns.
           <View
             accessibilityRole="image"
-            accessibilityLabel="No connection. The video cannot play."
+            accessibilityLabel={t("offlineAriaLabel")}
           >
             <Frosted style={styles.playButton}>
               <MaterialIcons
@@ -596,11 +616,12 @@ export function PlayerControls({
             accessibilityRole="button"
             accessibilityLabel={
               centerControl === "replay"
-                ? "Replay"
+                ? t("replayAriaLabel")
                 : centerControl === "pause"
-                  ? "Pause"
-                  : "Play"
+                  ? t("pauseAriaLabel")
+                  : t("playAriaLabel")
             }
+            {...{ "dd-action-name": `player-${centerControl}` }}
           >
             <Frosted style={styles.playButton}>
               <Ionicons
@@ -626,7 +647,10 @@ export function PlayerControls({
         <Pressable
           onPress={() => skip(SKIP_SECONDS)}
           accessibilityRole="button"
-          accessibilityLabel={`Forward ${SKIP_SECONDS} seconds`}
+          accessibilityLabel={t("skipForwardAriaLabel", {
+            seconds: SKIP_SECONDS,
+          })}
+          {...{ "dd-action-name": "player-skip-forward" }}
         >
           <Frosted style={styles.skipButton}>
             <Ionicons

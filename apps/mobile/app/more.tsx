@@ -1,10 +1,13 @@
 import { useState } from "react"
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
+import { useRouter } from "expo-router"
 
 import { ScreenTopBar } from "../src/components/ui/ScreenTopBar"
 import { useMiniPlayerBottomClearance } from "../src/hooks/useMiniPlayerBottomClearance"
 import { useTypography } from "../src/hooks/useTypography"
+import { useTextDirection } from "../src/i18n/textDirection"
+import { useT } from "../src/i18n/useT"
 import { formatAppVersion, readAppVersionParts } from "../src/lib/appVersion"
 import {
   BG_COLOR,
@@ -16,6 +19,7 @@ import { WINDOW_EDGE_MARGIN } from "../src/lib/miniPlayer/layout"
 import {
   MY_WATCH_LINK_GROUPS,
   type MyWatchLink,
+  type MyWatchRouteLink,
   type MyWatchSocialLink,
 } from "../src/lib/myWatchLinks"
 import { openExternalUrl } from "../src/lib/openExternalUrl"
@@ -27,16 +31,19 @@ import {
   text,
 } from "../src/styles/shared"
 
-const LINK_HINT = "Opens in your browser"
-
 export default function MoreScreen() {
   const typography = useTypography()
-  const [versionLine] = useState(() => formatAppVersion(readAppVersionParts()))
+  const t = useT("More")
+  const tMyWatch = useT("MyWatch")
+  const uiDirection = useTextDirection().ui
+  // Read once: the native version cannot change while the app runs.
+  const [versionParts] = useState(readAppVersionParts)
+  const versionLine = formatAppVersion(versionParts, t)
   const paddingBottom = useMiniPlayerBottomClearance() + WINDOW_EDGE_MARGIN
 
   return (
     <View style={styles.screen}>
-      <ScreenTopBar title="More" showBack />
+      <ScreenTopBar title={tMyWatch("moreTitle")} showBack />
       <ScrollView
         contentContainerStyle={[styles.content, { paddingBottom }]}
         showsVerticalScrollIndicator={false}
@@ -49,14 +56,31 @@ export default function MoreScreen() {
           >
             <Text
               accessibilityRole="header"
-              style={[text.eyebrow, styles.groupTitle, typography.caption]}
+              style={[
+                text.eyebrow,
+                styles.groupTitle,
+                typography.caption,
+                uiDirection,
+              ]}
             >
-              {group.title}
+              {t(group.titleKey)}
             </Text>
             <View style={styles.card}>
-              {group.links.map((link, index) => (
-                <LinkRow key={link.label} link={link} separated={index > 0} />
-              ))}
+              {group.links.map((link, index) =>
+                "route" in link ? (
+                  <RouteRow
+                    key={link.labelKey}
+                    link={link}
+                    separated={index > 0}
+                  />
+                ) : (
+                  <LinkRow
+                    key={link.labelKey}
+                    link={link}
+                    separated={index > 0}
+                  />
+                ),
+              )}
             </View>
             {group.socials != null && (
               <View style={styles.socialRow}>
@@ -85,6 +109,9 @@ function LinkRow({
   separated: boolean
 }) {
   const typography = useTypography()
+  const t = useT("More")
+  const uiDirection = useTextDirection().ui
+  const label = t(link.labelKey)
 
   return (
     <Pressable
@@ -95,19 +122,62 @@ function LinkRow({
         pressed && feedback.pressed,
       ]}
       accessibilityRole="link"
-      accessibilityLabel={link.label}
-      accessibilityHint={LINK_HINT}
+      accessibilityLabel={label}
+      accessibilityHint={t("linkHint")}
       {...{ "dd-action-name": link.actionName }}
     >
-      <Text style={[styles.rowLabel, typography.body]} numberOfLines={1}>
-        {link.label}
+      <Text
+        style={[styles.rowLabel, typography.body, uiDirection]}
+        numberOfLines={1}
+      >
+        {label}
       </Text>
       <Ionicons name="open-outline" size={18} color={TEXT_SECONDARY} />
     </Pressable>
   )
 }
 
+// Stays in the app, so it reads as a button with a chevron like the My Watch
+// rows. It navigates, as they do: a double tap must not push a second sheet.
+function RouteRow({
+  link,
+  separated,
+}: {
+  link: MyWatchRouteLink
+  separated: boolean
+}) {
+  const typography = useTypography()
+  const router = useRouter()
+  const t = useT("More")
+  const uiDirection = useTextDirection().ui
+  const label = t(link.labelKey)
+
+  return (
+    <Pressable
+      onPress={() => router.navigate(link.route)}
+      style={({ pressed }) => [
+        styles.row,
+        separated && styles.rowSeparator,
+        pressed && feedback.pressed,
+      ]}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint={t(link.hintKey)}
+      {...{ "dd-action-name": link.actionName }}
+    >
+      <Text
+        style={[styles.rowLabel, typography.body, uiDirection]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+      <Ionicons name="chevron-forward" size={18} color={TEXT_SECONDARY} />
+    </Pressable>
+  )
+}
+
 function SocialButton({ link }: { link: MyWatchSocialLink }) {
+  const t = useT("More")
   return (
     <Pressable
       onPress={() => openExternalUrl(link.url)}
@@ -117,7 +187,7 @@ function SocialButton({ link }: { link: MyWatchSocialLink }) {
       ]}
       accessibilityRole="link"
       accessibilityLabel={link.label}
-      accessibilityHint={LINK_HINT}
+      accessibilityHint={t("linkHint")}
       {...{ "dd-action-name": link.actionName }}
     >
       <Ionicons name={link.icon} size={24} color={TEXT_PRIMARY} />

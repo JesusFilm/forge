@@ -23,6 +23,11 @@ import {
   iconInnerSlop,
 } from "../../lib/actionRowSpacing"
 import { BG_COLOR, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
+import { useT } from "../../i18n/useT"
+import {
+  subtitleLabelText,
+  type SubtitleActionLabel,
+} from "../../lib/subtitleSelection"
 import { feedback } from "../../styles/shared"
 import { useTypography } from "../../hooks/useTypography"
 import type { OfflineDownloadState } from "../../lib/offlineManifest"
@@ -84,8 +89,8 @@ export interface ActionButtonRowProps {
   exportEntry?: ExportSessionEntry | null
   /** Selected dub language name shown on the Language row. */
   languageLabel?: string | null
-  /** Selected subtitle name (or "Off") shown on the Subtitles row. */
-  subtitleLabel?: string | null
+  /** Selected subtitle name, or the off state, shown on the Subtitles row. */
+  subtitleLabel?: SubtitleActionLabel
   /** Subtitles on → bright row; off → muted, matching the "Off" state. */
   subtitleActive?: boolean
 }
@@ -103,6 +108,10 @@ export function ActionButtonRow({
   subtitleActive,
 }: ActionButtonRowProps) {
   const typography = useTypography()
+  const tSubtitles = useT("Subtitles")
+  const t = useT("Watch")
+  const tCommon = useT("Common")
+  const tDownload = useT("DownloadButton")
 
   // Measured inputs for the spacing mode: the row's inner width plus each
   // pill's NATURAL width (the real pills clamp at the column, so only the
@@ -121,13 +130,20 @@ export function ActionButtonRow({
   const downloadSlop = { left: ICON_HIT_SLOP_MAX, right: inner }
   const shareSlop = { left: inner, right: ICON_HIT_SLOP_MAX }
 
-  const language = languageLabel?.trim() || "Language"
-  const subtitle = subtitleLabel?.trim() || "Subtitles"
+  const language = languageLabel?.trim() || t("language")
+  const subtitle =
+    subtitleLabelText(subtitleLabel ?? null, tSubtitles("off"))?.trim() ||
+    t("subtitles")
   // Subtitles read bright when on, muted when off (mirrors the "Off" label).
   const subColor = subtitleActive ? TEXT_PRIMARY : TEXT_SECONDARY
   // The ring IS the control, so its glyph, its label and whether it accepts a
   // tap are ONE decision — downloadGlyphInfo owns all three (KTD6).
-  const dl = downloadGlyphInfo(downloadState, downloadProgress, exportEntry)
+  const dl = downloadGlyphInfo(
+    downloadState,
+    downloadProgress,
+    exportEntry,
+    tDownload,
+  )
   // The completed tick reads a touch larger than the idle/failed glyphs.
   const staticIconSize = downloadState === "downloaded" ? 28 : 24
 
@@ -180,7 +196,8 @@ export function ActionButtonRow({
           onPress={onLanguage}
           style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={`Language, ${language}`}
+          accessibilityLabel={t("languageAriaLabel", { language })}
+          {...{ "dd-action-name": "watch-language" }}
         >
           <PillContent
             kind="language"
@@ -197,7 +214,9 @@ export function ActionButtonRow({
           onPress={onSubtitles}
           style={({ pressed }) => [styles.langRow, pressed && feedback.pressed]}
           accessibilityRole="button"
-          accessibilityLabel={`Subtitles, ${subtitle}`}
+          accessibilityLabel={t("subtitlesAriaLabel", { subtitle })}
+          // The label carries catalog text, so the RUM name is fixed (KTD15).
+          {...{ "dd-action-name": "watch-subtitles" }}
         >
           <PillContent
             kind="subtitle"
@@ -224,6 +243,7 @@ export function ActionButtonRow({
         hitSlop={downloadSlop}
         accessibilityRole="button"
         accessibilityLabel={dl.a11yLabel}
+        {...{ "dd-action-name": "watch-download" }}
       >
         {dl.inProgress ? (
           <DownloadProgressRing
@@ -249,7 +269,8 @@ export function ActionButtonRow({
         ]}
         hitSlop={shareSlop}
         accessibilityRole="button"
-        accessibilityLabel="Share"
+        accessibilityLabel={tCommon("shareAriaLabel")}
+        {...{ "dd-action-name": "watch-share" }}
       >
         <Ionicons name="share-outline" size={24} color={TEXT_SECONDARY} />
       </Pressable>

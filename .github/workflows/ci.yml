@@ -73,6 +73,14 @@ jobs:
             | map(select(type == "string" and startswith("@forge/")))
             | unique
           ')
+          # Mobile runs web's translation script on its own catalogs, so a change
+          # to the script or to the language inventory re-runs mobile's suites.
+          if git diff --name-only "$BASE" HEAD -- \
+            apps/web/scripts/translate-ui-catalogs.mjs \
+            apps/web/scripts/openai-catalog-translator.mjs \
+            docs/i18n/watch-ui-official-language-inventory.json | grep -q .; then
+            SERVICES=$(echo "$SERVICES" | jq -c '. + ["@forge/mobile"] | unique')
+          fi
           echo "Affected services: $SERVICES"
           echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
           if git diff --name-only "$BASE" HEAD -- apps/rag/portal/users.json | grep -q .; then
@@ -165,6 +173,18 @@ jobs:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           WATCH_SEARCH_DB_TEST: "1"
         run: pnpm --filter @forge/admin test -- src/services/typesense-watch-search-candidate-trigger-migration.db.test.ts src/services/search-watchability.db.test.ts
+      - name: Exercise push campaign content writes, deletes, agent reads, and MCP tools against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          PUSH_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/push/campaign-content.db.test.ts
+          src/services/push/campaign-delete.db.test.ts
+          src/services/push/agent-reads.db.test.ts
+          src/app/mcp/route.push.db.test.ts
+          src/services/push/schema.db.test.ts
+          --no-file-parallelism
       - name: Exercise recommendation tracer migration against PostgreSQL
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
@@ -176,6 +196,7 @@ jobs:
           src/services/recommendations/migration.lifecycle.db.test.ts
           src/services/recommendations/migration.operations.db.test.ts
           src/services/recommendations/migration.attribution-reliability.db.test.ts
+          src/services/recommendations/migration.playback-upgrade.db.test.ts
           src/services/recommendations/playback-episode.db.test.ts
           src/services/recommendations/snapshot-repair.db.test.ts
           src/services/recommendations/promotion/service.db.test.ts
@@ -186,9 +207,59 @@ jobs:
           src/services/recommendations/admin-ops/detail.db.test.ts
           src/services/recommendations/admin-ops/watch-exposure.service.db.test.ts
           src/services/recommendations/watch-surface-migration.db.test.ts
+          src/services/recommendations/viewing-mode.service.db.test.ts
           src/services/recommendations/delivery-persistence.db.test.ts
           src/db/recommendation-wait-sampler.db.test.ts
           --no-file-parallelism
+      - name: Create owned Co-watch PostgreSQL fixtures
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_test'
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_feat565_test'
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_retention_standalone_test'
+      - name: Apply owned retention fixture migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
+        run: pnpm --filter @forge/admin exec prisma migrate deploy
+      - name: Exercise bounded recommendation retention tail against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
+          RECOMMENDATION_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/recommendations/retention-profile-tail.db.test.ts
+          src/services/recommendations/retention-composition.db.test.ts
+          --no-file-parallelism --testTimeout=60000
+      - name: Exercise loaded standalone retention against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_retention_standalone_test
+          RECOMMENDATION_DB_TEST: "1"
+        run: |
+          pnpm --filter @forge/admin exec prisma migrate deploy
+          pnpm --filter @forge/admin test -- src/services/recommendations/retention-standalone.db.test.ts --no-file-parallelism --testTimeout=60000
+      - name: Exercise Co-watch refresh and measurement reuse against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
+          RECOMMENDATION_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/recommendations/cowatch/refresh.db.test.ts
+          src/services/recommendations/integrity.measurement-reuse.db.test.ts
+          --no-file-parallelism --testTimeout=30000
+      - name: Apply owned Co-watch authority fixture migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_feat565_test
+        run: pnpm --filter @forge/admin exec prisma migrate deploy
+      - name: Exercise Co-watch trial authority and source query against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_feat565_test
+          RECOMMENDATION_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/recommendations/cowatch/trial-authority.db.test.ts
+          src/services/recommendations/cowatch/source-query.db.test.ts
+          --no-file-parallelism --testTimeout=30000
       - name: Exercise semantic retrieval budget against pgvector
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
@@ -509,8 +580,19 @@ jobs:
           pg_dump --version | grep -F 'PostgreSQL) 18.'
           pg_restore --version | grep -F 'PostgreSQL) 18.'
           psql --version | grep -F 'PostgreSQL) 18.'
+      # languageId.test.js runs language-id.py's accepted-code rule through uv.
+      - name: Setup uv for the mobile language-ID test
+        if: matrix.service == '@forge/mobile'
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.11.11"
+          enable-cache: false
       - name: Test package
         run: pnpm --filter "${{ matrix.service }}" run --if-present test
+      # Lines in the job summary, never a failure: the jest suites enforce.
+      - name: Report mobile translation status
+        if: ${{ !cancelled() && matrix.service == '@forge/mobile' }}
+        run: node apps/mobile/scripts/i18n/pending-report.mjs
 
   expo-doctor:
     runs-on: ubuntu-latest

@@ -5,6 +5,8 @@ import { LinearGradient } from "expo-linear-gradient"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT, type UiT } from "../../i18n/useT"
 import {
   ACCENT,
   BG_COLOR,
@@ -55,26 +57,26 @@ const QUEUED: TileBadge = { kind: "pill", icon: "time-outline", failed: false }
 const PAUSED: TileBadge = { kind: "pill", icon: "pause", failed: false }
 const FAILED: TileBadge = { kind: "pill", icon: "alert-circle", failed: true }
 
-function tileView(tile: MyWatchRailTile): TileView {
+function tileView(tile: MyWatchRailTile, t: UiT<"MyWatch">): TileView {
   if (tile.kind === "series") {
     const { group, state } = tile
     const base = {
       title: group.seriesTitle,
-      episodesText: `${tile.episodeCount} episodes`,
+      episodesText: t("tileEpisodes", { count: tile.episodeCount }),
       duration: null,
       posterPath: group.episodes[0]?.posterPath ?? null,
     }
     if (state.status === "failed") {
-      return { ...base, stateText: "Failed", badge: FAILED }
+      return { ...base, stateText: t("tileFailed"), badge: FAILED }
     }
     if (state.status === "inProgress") {
       return {
         ...base,
-        stateText: "In progress",
+        stateText: t("tileInProgress"),
         badge: { kind: "ring", progress: state.progress },
       }
     }
-    return { ...base, stateText: "Downloaded", badge: { kind: "done" } }
+    return { ...base, stateText: t("tileDownloaded"), badge: { kind: "done" } }
   }
 
   const { record, rowState } = tile
@@ -86,20 +88,24 @@ function tileView(tile: MyWatchRailTile): TileView {
   }
   switch (rowState.affordance) {
     case "check":
-      return { ...base, stateText: "Downloaded", badge: { kind: "done" } }
+      return {
+        ...base,
+        stateText: t("tileDownloaded"),
+        badge: { kind: "done" },
+      }
     case "ring":
       return {
         ...base,
-        stateText: "Downloading",
+        stateText: t("tileDownloading"),
         badge: { kind: "ring", progress: rowState.progress ?? 0 },
       }
     case "resume":
-      return { ...base, stateText: "Paused", badge: PAUSED }
+      return { ...base, stateText: t("tilePaused"), badge: PAUSED }
     case "retry":
-      return { ...base, stateText: "Failed", badge: FAILED }
+      return { ...base, stateText: t("tileFailed"), badge: FAILED }
     case "none":
     default:
-      return { ...base, stateText: "Queued", badge: QUEUED }
+      return { ...base, stateText: t("tileQueued"), badge: QUEUED }
   }
 }
 
@@ -155,7 +161,10 @@ function StateBadge({ view }: { view: TileView }) {
  *  or Resume control. Every tap goes to `onPress`, which decides the route. */
 function DownloadTileBase({ tile, width, onPress }: DownloadTileProps) {
   const typography = useTypography()
-  const view = tileView(tile)
+  // Its own subscription, so the memoized tile takes a new UI language too.
+  const t = useT("MyWatch")
+  const uiDirection = useTextDirection().ui
+  const view = tileView(tile, t)
 
   return (
     <Pressable
@@ -164,9 +173,7 @@ function DownloadTileBase({ tile, width, onPress }: DownloadTileProps) {
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabelFor(view)}
       accessibilityHint={
-        tile.kind === "series"
-          ? "Opens this series in Downloads"
-          : "Opens this video"
+        tile.kind === "series" ? t("tileSeriesHint") : t("tileVideoHint")
       }
       // Datadog names a tap from the label unless this is set; the title
       // would give every tile its own action name.
@@ -205,7 +212,10 @@ function DownloadTileBase({ tile, width, onPress }: DownloadTileProps) {
         {view.title}
       </Text>
       {view.episodesText != null && (
-        <Text style={[styles.meta, typography.caption]} numberOfLines={1}>
+        <Text
+          style={[styles.meta, typography.caption, uiDirection]}
+          numberOfLines={1}
+        >
           {view.episodesText}
         </Text>
       )}

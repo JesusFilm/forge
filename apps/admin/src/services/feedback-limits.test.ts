@@ -7,7 +7,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const { envMock } = vi.hoisted(() => ({
-  envMock: { ADMIN_FEEDBACK_DAILY_CAP: undefined as unknown },
+  envMock: { ADMIN_MOBILE_FEEDBACK_DAILY_CAP: undefined as unknown },
 }))
 
 vi.mock("@/config/env", () => ({ env: envMock }))
@@ -38,7 +38,7 @@ function send(overrides: {
 
 beforeEach(() => {
   resetLocalRateLimitState()
-  envMock.ADMIN_FEEDBACK_DAILY_CAP = 1000
+  envMock.ADMIN_MOBILE_FEEDBACK_DAILY_CAP = 1000
 })
 
 describe("feedbackDailyCap", () => {
@@ -55,7 +55,7 @@ describe("feedbackDailyCap", () => {
     ["fractional", 1.5, FEEDBACK_DAILY_CAP_DEFAULT],
     ["unparseable", "many", FEEDBACK_DAILY_CAP_DEFAULT],
   ])("reads %s as %s", (_label, raw, expected) => {
-    envMock.ADMIN_FEEDBACK_DAILY_CAP = raw
+    envMock.ADMIN_MOBILE_FEEDBACK_DAILY_CAP = raw
     expect(feedbackDailyCap()).toBe(expected)
   })
 
@@ -123,7 +123,7 @@ describe("per-address limit", () => {
 
 describe("daily cap", () => {
   it("refuses the call that passes the cap", async () => {
-    envMock.ADMIN_FEEDBACK_DAILY_CAP = 2
+    envMock.ADMIN_MOBILE_FEEDBACK_DAILY_CAP = 2
     expect(await send({ installIdentity: "a" })).toEqual({ allowed: true })
     expect(await send({ installIdentity: "b" })).toEqual({ allowed: true })
     expect(await send({ installIdentity: "c" })).toEqual({
@@ -134,7 +134,7 @@ describe("daily cap", () => {
   })
 
   it("refuses the FIRST call when the cap is 0 — the kill switch", async () => {
-    envMock.ADMIN_FEEDBACK_DAILY_CAP = 0
+    envMock.ADMIN_MOBILE_FEEDBACK_DAILY_CAP = 0
     expect(await send({})).toEqual({
       allowed: false,
       scope: "daily",
@@ -143,7 +143,7 @@ describe("daily cap", () => {
   })
 
   it("starts again on the next UTC day", async () => {
-    envMock.ADMIN_FEEDBACK_DAILY_CAP = 1
+    envMock.ADMIN_MOBILE_FEEDBACK_DAILY_CAP = 1
     const day = Date.parse("2026-09-14T12:00:00.000Z")
     expect(await send({ installIdentity: "a", now: day })).toEqual({
       allowed: true,
@@ -162,7 +162,7 @@ describe("daily cap", () => {
     // With the cap at 6 and the install limit at 5: install A spends 5, its
     // sixth is refused, and B's first call must still be inside the cap. If
     // the refused call had debited the day, B would read DAILY_CAP here.
-    envMock.ADMIN_FEEDBACK_DAILY_CAP = FEEDBACK_INSTALL_LIMIT + 1
+    envMock.ADMIN_MOBILE_FEEDBACK_DAILY_CAP = FEEDBACK_INSTALL_LIMIT + 1
     for (let i = 0; i < FEEDBACK_INSTALL_LIMIT; i++) {
       await send({ installIdentity: "a" })
     }

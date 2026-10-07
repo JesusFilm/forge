@@ -242,7 +242,7 @@ async function findAdminUserForToken(token: VerifiedAdminMcpToken) {
   })
 }
 
-function isAdminMcpRole(
+export function isAdminMcpRole(
   role: string,
 ): role is Extract<Role, "ADMIN" | "EDITOR"> {
   return role === "ADMIN" || role === "EDITOR"

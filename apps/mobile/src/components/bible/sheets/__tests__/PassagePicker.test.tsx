@@ -27,6 +27,43 @@ jest.mock("react-native-safe-area-context", () => ({
 jest.mock("expo-router", () => ({
   useNavigation: () => ({ addListener: () => () => {} }),
 }))
+// A fixture catalog's missing key logs once through Datadog; keep it quiet.
+jest.mock("../../../../lib/datadog", () => ({
+  datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+// A fixture `es` catalog joins the real set; English cases never start the
+// store, so they read en.json as before.
+jest.mock("../../../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(
+      jest.requireActual("../../../../i18n/catalogs.generated"),
+      {
+        es: {
+          BiblePassagePicker: {
+            chooseBook: "Elige un libro",
+            chapterAriaLabel: "Capítulo {chapter}",
+            verseAriaLabel: "Versículo {verse}",
+          },
+        },
+      },
+    ),
+)
+jest.mock("../../../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../../../i18n/pluralData.generated"),
+      ["es"],
+    ),
+)
 
 import { act } from "react"
 import { StyleSheet } from "react-native"
@@ -35,7 +72,13 @@ import type { BookNames } from "../../../../lib/bible/repository/bookNames"
 import { BIBLE_BOOKS, type UsfmBookId } from "../../../../lib/bible/text/books"
 import { readerTokens } from "../../../../lib/bible/theme/palettes"
 import type { VerseRef } from "../../../../lib/bible/versification/convert"
-import { READER_SHEET_COPY } from "../../../../lib/bible/sheets/copy"
+import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../../i18n/localeStore"
+import { getT } from "../../../../i18n/useT"
+import { phoneLocales } from "../../../../test-utils/uiLocaleFixture"
 import {
   TestRenderer,
   unmount,
@@ -46,7 +89,18 @@ import {
 } from "../../../../test-utils/rnTestRenderer"
 import { PassagePicker, type PassagePickerProps } from "../PassagePicker"
 
-const COPY = READER_SHEET_COPY.passage
+const passageT = getT("BiblePassagePicker")
+const readerT = getT("BibleReader")
+const COPY = {
+  chapter: (chapter: number) => passageT("chapterAriaLabel", { chapter }),
+  verse: (verse: number) => passageT("verseAriaLabel", { verse }),
+  goBackTo: (label: string) => readerT("sheetBackAriaLabel", { label }),
+  backToBooks: passageT("books"),
+  backToChapters: passageT("chapters"),
+  notInTranslation: (shortName: string) =>
+    passageT("notInTranslation", { shortName }),
+  chapterTitle: (bookName: string, chapter: number) => `${bookName} ${chapter}`,
+}
 const TOKENS = readerTokens("light")
 const ALL: ReadonlySet<UsfmBookId> = new Set(BIBLE_BOOKS.map((b) => b.usfm))
 const NEW_TESTAMENT: ReadonlySet<UsfmBookId> = new Set(
@@ -240,7 +294,7 @@ describe("PassagePicker", () => {
 
   it("closes from a button, not only a gesture", async () => {
     const { renderer, onClose } = await render()
-    await press(renderer, READER_SHEET_COPY.close)
+    await press(renderer, readerT("sheetCloseAriaLabel"))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 
@@ -253,5 +307,50 @@ describe("PassagePicker", () => {
       backgroundColor?: string
     }
     expect(style.backgroundColor).toBe(TOKENS.background)
+  })
+})
+
+describe("PassagePicker in another UI language", () => {
+  afterEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+  })
+
+  it("formats each chapter's label with its number from the catalog", async () => {
+    mockGetLocales.mockReturnValue(phoneLocales("es-ES"))
+    startLocaleSync()
+    const { renderer } = await render()
+
+    const title = renderer.root.findAll(
+      (node) =>
+        node.type === "Text" && node.props.children === "Elige un libro",
+    )
+    expect(title).toHaveLength(1)
+    await press(renderer, "Psalms")
+
+    expect(pressables(renderer, "Capítulo 23")).toHaveLength(1)
+    expect(pressables(renderer, "Capítulo 150")).toHaveLength(1)
+    expect(labelsWithPrefix(renderer, "Chapter ")).toEqual([])
+    await press(renderer, "Capítulo 23")
+    expect(pressables(renderer, "Versículo 6")).toHaveLength(1)
+  })
+
+  it("keeps each cell's Datadog name when the language changes", async () => {
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+    const { renderer } = await render()
+    await press(renderer, "Psalms")
+    const english = pressables(renderer, "Chapter 23")[0]?.props[
+      "dd-action-name"
+    ]
+
+    mockGetLocales.mockReturnValue(phoneLocales("es-ES"))
+    await act(async () => {
+      refreshLocale()
+    })
+
+    const cell = pressables(renderer, "Capítulo 23")[0]
+    expect(english).toBe("bible-passage-chapter")
+    expect(cell?.props["dd-action-name"]).toBe(english)
   })
 })

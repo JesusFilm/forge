@@ -11,9 +11,11 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 )
 
+import { adminFormsFor } from "../../../i18n/adminLanguage"
 import {
   LAST_WATCHED_HYDRATE_TIMEOUT_MS,
   createLastWatchedStore,
+  screenTitleLocale,
 } from "../store"
 import {
   LAST_WATCHED_STORAGE_KEY,
@@ -467,11 +469,51 @@ describe("the title on the write path", () => {
     expect(JSON.parse(raw).videoTitle).toBe("The Birth of Jesus")
   })
 
+  // U7 (KTD16): an open screen keeps its captured language after a live
+  // change, so the stamp is the language of THAT screen's title.
+  it("stamps a title with the UI language of the slug it writes", async () => {
+    const storage = makeStorage()
+    const titleLocale = jest.fn((slug: string) =>
+      slug === "the-birth-of-jesus" ? "ru" : "es",
+    )
+    const store = createLastWatchedStore({
+      getItem: storage.getItem,
+      setItem: storage.setItem,
+      removeItem: storage.removeItem,
+      now: () => NOW,
+      titleLocale,
+    })
+
+    store.write("the-birth-of-jesus", "Рождение Иисуса")
+    await Promise.resolve()
+
+    expect(titleLocale).toHaveBeenCalledWith("the-birth-of-jesus")
+    expect(store.getRecord()?.titleLocale).toBe("ru")
+    const raw = storage.items.get(LAST_WATCHED_STORAGE_KEY) as string
+    expect(JSON.parse(raw).titleLocale).toBe("ru")
+
+    store.write("the-light", null)
+    expect(store.getRecord()).not.toHaveProperty("titleLocale")
+  })
+
   it("stores no title when the writer supplies none", () => {
     const { store } = makeStore()
 
     store.write("the-birth-of-jesus", null)
 
     expect(store.getRecord()?.videoTitle).toBeNull()
+  })
+})
+
+describe("screenTitleLocale (U7)", () => {
+  // The mini player's screenAdminForms tests cover every branch of the pick.
+  it("uses the session's tag for its own video, else the current tag", () => {
+    const session = {
+      videoSlug: "the-birth-of-jesus",
+      adminForms: adminFormsFor("ru"),
+    }
+    const es = adminFormsFor("es")
+    expect(screenTitleLocale("the-birth-of-jesus", session, es)).toBe("ru")
+    expect(screenTitleLocale("the-light", session, es)).toBe("es")
   })
 })

@@ -29,7 +29,6 @@ export type EnvironmentConfigurationErrorCode =
   | "production_write_host_required"
   | "production_write_opt_in_required"
   | "portal_configuration_incomplete"
-  | "railway_bearer_tokens_required"
 
 export class EnvironmentConfigurationError extends Error {
   override readonly name = "EnvironmentConfigurationError"

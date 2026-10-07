@@ -395,9 +395,10 @@ describe("terminal outcomes leave nothing staged", () => {
     expect(h.port.runExportTransfer).not.toHaveBeenCalled()
     expect(h.destination.copyInto).not.toHaveBeenCalled()
     expectStageRemoved(h)
+    // The reason, not its text: the report names it in the UI language.
     expect(h.reports[0]).toMatchObject({
       outcome: "blocked",
-      detail: expect.any(String),
+      blockReason: "insufficient-storage",
     })
   })
 

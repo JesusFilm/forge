@@ -79,15 +79,15 @@ const DEFAULT_DATADOG_TRIAGE_DEV_SESSION_MARKERS =
 const DEFAULT_SUBTITLE_ENRICHMENT_MODEL = "google/gemini-2.5-flash"
 const DEFAULT_SUBTITLE_ENRICHMENT_TIMEOUT_MS = 120_000
 const DEFAULT_SUBTITLE_ENRICHMENT_CONCURRENCY = 10
-const DEFAULT_JESUSFILM_RAG_USER_AGENT = "forge-mastra-jesusfilm-rag/1.0"
-const DEFAULT_JESUSFILM_RAG_TIMEOUT_MS = 5_000
+const DEFAULT_SEEKER_RAG_USER_AGENT = "forge-mastra-jesusfilm-rag/1.0"
+const DEFAULT_SEEKER_RAG_TIMEOUT_MS = 5_000
 const RAILWAY_INTERNAL_SUFFIX = ".railway.internal"
 // 2 MiB ceiling on the buffered RAG response body (feat-202). Sized ~8x above a
 // generous legitimate topK=5 payload (≈ max passage text × 5 + citation
 // overhead) so a valid retrieval is never rejected, while bounding the heap a
 // misbehaving upstream can claim before the byte-cap aborts the stream. Override
-// via JESUSFILM_RAG_MAX_RESPONSE_BYTES; never required at boot.
-const DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES = 2_097_152
+// via SEEKER_RAG_MAX_RESPONSE_BYTES; never required at boot.
+const DEFAULT_SEEKER_RAG_MAX_RESPONSE_BYTES = 2_097_152
 // 2 MiB ceiling on the buffered admin agent-tools response body (feat-327).
 //
 // This is a POLICY ceiling, not a derived contract bound — say so plainly,
@@ -234,7 +234,7 @@ const envSchema = z.object({
   ADMIN_AGENT_TOOLS_ALLOWED_HOSTS: z.string().min(1).optional(),
   // Byte-cap on the buffered agent-tools response body (feat-327). `.optional()`
   // with a runtime fallback in `getAdminAgentToolsConfig()` — mirrors
-  // JESUSFILM_RAG_MAX_RESPONSE_BYTES: stays out of the boot-time `missing` list
+  // SEEKER_RAG_MAX_RESPONSE_BYTES: stays out of the boot-time `missing` list
   // while the 16 MiB `.max()` ceiling fails LOUD (boot-time parse error) on an
   // over-range operator typo rather than silently widening the cap and defeating
   // the OOM guard this var exists to provide.
@@ -468,40 +468,40 @@ const envSchema = z.object({
   RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   // RAG retrieval (feat-199). Fully optional — unset degrades to a runtime
   // `config_missing` result, never a boot failure (ticket "never a boot
-  // failure"). The base URL is gated by `JESUSFILM_RAG_ALLOWED_HOSTS` in
+  // failure"). The base URL is gated by `SEEKER_RAG_ALLOWED_HOSTS` in
   // production (the one RAG-driven boot throw — a security control), but no RAG
   // var is ever pushed into the production `missing` list.
-  JESUSFILM_RAG_ALLOWED_HOSTS: z.string().min(1).optional(),
-  JESUSFILM_RAG_API_KEY: z.string().min(1).optional(),
-  JESUSFILM_RAG_BASE_URL: z.string().url().optional(),
+  SEEKER_RAG_ALLOWED_HOSTS: z.string().min(1).optional(),
+  SEEKER_RAG_API_KEY: z.string().min(1).optional(),
+  SEEKER_RAG_BASE_URL: z.string().url().optional(),
   // Caller-budget rule (docs/solutions/best-practices/outbound-timeout-shorter-than-caller-budget-20260506.md):
   // this single-attempt RAG timeout MUST stay strictly below the upstream
   // ceiling — the Mastra agent tool-call budget, well under Railway's request
   // limit. The 30_000 cap is comfortably under that today. If a future
   // mastra-gateway enforces a tighter per-turn budget (e.g. 10 s), lower this
   // cap to match so a misconfigured override can't outlive the caller.
-  JESUSFILM_RAG_TIMEOUT_MS: z.coerce
+  SEEKER_RAG_TIMEOUT_MS: z.coerce
     .number()
     .int()
     .positive()
     .max(30_000)
-    .default(DEFAULT_JESUSFILM_RAG_TIMEOUT_MS),
-  JESUSFILM_RAG_USER_AGENT: z
+    .default(DEFAULT_SEEKER_RAG_TIMEOUT_MS),
+  SEEKER_RAG_USER_AGENT: z
     .string()
     .min(1)
-    .default(DEFAULT_JESUSFILM_RAG_USER_AGENT),
+    .default(DEFAULT_SEEKER_RAG_USER_AGENT),
   // Byte-cap on the buffered RAG response body (feat-202). `.optional()` with a
   // runtime fallback in `getJesusfilmRagConfig()` — NOT a required-at-boot var
   // (KTD5: stays out of the production `missing` list in assertMastraRuntimeEnv).
-  // Unset → DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES (2 MiB). The 16 MiB `.max()`
+  // Unset → DEFAULT_SEEKER_RAG_MAX_RESPONSE_BYTES (2 MiB). The 16 MiB `.max()`
   // ceiling fails LOUD (boot-time parse error) on an over-range operator typo
   // like "99999999999" rather than silently widening the cap to ~93 GB and
   // defeating the OOM guard this var exists to provide — a fail-open footgun on a
   // safety control. 16 MiB is 8× the default: ample headroom for a legitimate
   // raise if passages grow, while bounding the ~2× transient peak per in-flight
   // read so even the widest sanctioned config stays survivable on the shared
-  // process. Mirrors the sibling JESUSFILM_RAG_TIMEOUT_MS `.max(30_000)`.
-  JESUSFILM_RAG_MAX_RESPONSE_BYTES: z.coerce
+  // process. Mirrors the sibling SEEKER_RAG_TIMEOUT_MS `.max(30_000)`.
+  SEEKER_RAG_MAX_RESPONSE_BYTES: z.coerce
     .number()
     .int()
     .positive()
@@ -516,7 +516,7 @@ const envSchema = z.object({
   LANGFUSE_ALLOWED_HOSTS: z.string().min(1).optional(),
   // No default base URL: Langfuse cloud keys are region-bound, so a hardcoded
   // region default yields confusing 401s. Unset means unconfigured — the same
-  // posture as JESUSFILM_RAG_BASE_URL.
+  // posture as SEEKER_RAG_BASE_URL.
   LANGFUSE_BASE_URL: z.string().url().optional(),
   // Unlike the Bearer-token siblings in this file, this key pair feeds HTTP
   // Basic auth (`base64(public:secret)`) — Langfuse's documented auth scheme.
@@ -553,7 +553,7 @@ const envSchema = z.object({
   LANGFUSE_USER_AGENT: z.string().min(1).default(DEFAULT_LANGFUSE_USER_AGENT),
   // Byte-cap on the buffered Langfuse prompt response body. `.optional()` with
   // a runtime fallback in `getLangfuseConfig()` — mirrors
-  // JESUSFILM_RAG_MAX_RESPONSE_BYTES: stays out of the boot-time `missing`
+  // SEEKER_RAG_MAX_RESPONSE_BYTES: stays out of the boot-time `missing`
   // list while the 5 MiB `.max()` ceiling fails LOUD (boot-time parse error)
   // on an over-range operator typo rather than silently widening the cap and
   // defeating the OOM guard this var exists to provide. 5 MiB is 20× the
@@ -1114,20 +1114,16 @@ export const env = envSchema.parse({
   RAILWAY_S3_SECRET_ACCESS_KEY: emptyToUndefined(
     process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
   ),
-  JESUSFILM_RAG_ALLOWED_HOSTS: emptyToUndefined(
-    process.env.JESUSFILM_RAG_ALLOWED_HOSTS,
+  SEEKER_RAG_ALLOWED_HOSTS: emptyToUndefined(
+    process.env.SEEKER_RAG_ALLOWED_HOSTS,
   ),
-  JESUSFILM_RAG_API_KEY: emptyToUndefined(process.env.JESUSFILM_RAG_API_KEY),
-  JESUSFILM_RAG_BASE_URL: emptyToUndefined(process.env.JESUSFILM_RAG_BASE_URL),
-  JESUSFILM_RAG_TIMEOUT_MS: emptyToUndefined(
-    process.env.JESUSFILM_RAG_TIMEOUT_MS,
+  SEEKER_RAG_API_KEY: emptyToUndefined(process.env.SEEKER_RAG_API_KEY),
+  SEEKER_RAG_BASE_URL: emptyToUndefined(process.env.SEEKER_RAG_BASE_URL),
+  SEEKER_RAG_TIMEOUT_MS: emptyToUndefined(process.env.SEEKER_RAG_TIMEOUT_MS),
+  SEEKER_RAG_MAX_RESPONSE_BYTES: emptyToUndefined(
+    process.env.SEEKER_RAG_MAX_RESPONSE_BYTES,
   ),
-  JESUSFILM_RAG_MAX_RESPONSE_BYTES: emptyToUndefined(
-    process.env.JESUSFILM_RAG_MAX_RESPONSE_BYTES,
-  ),
-  JESUSFILM_RAG_USER_AGENT: emptyToUndefined(
-    process.env.JESUSFILM_RAG_USER_AGENT,
-  ),
+  SEEKER_RAG_USER_AGENT: emptyToUndefined(process.env.SEEKER_RAG_USER_AGENT),
   LANGFUSE_ALLOWED_HOSTS: emptyToUndefined(process.env.LANGFUSE_ALLOWED_HOSTS),
   LANGFUSE_BASE_URL: emptyToUndefined(process.env.LANGFUSE_BASE_URL),
   LANGFUSE_PUBLIC_KEY: emptyToUndefined(process.env.LANGFUSE_PUBLIC_KEY),
@@ -1447,11 +1443,11 @@ function assertJesusfilmRagBaseUrlAllowedForProduction() {
   // https, or plain HTTP only for Railway's WireGuard-encrypted private network,
   // AND require a non-empty allowlist containing the hostname. A label-boundary
   // check keeps lookalike and empty-label hosts out of the HTTP carve-out.
-  if (!env.JESUSFILM_RAG_BASE_URL) return
-  const baseUrl = new URL(env.JESUSFILM_RAG_BASE_URL)
+  if (!env.SEEKER_RAG_BASE_URL) return
+  const baseUrl = new URL(env.SEEKER_RAG_BASE_URL)
   const host = baseUrl.hostname.toLowerCase()
-  const allowedHosts = env.JESUSFILM_RAG_ALLOWED_HOSTS
-    ? csvSet(env.JESUSFILM_RAG_ALLOWED_HOSTS)
+  const allowedHosts = env.SEEKER_RAG_ALLOWED_HOSTS
+    ? csvSet(env.SEEKER_RAG_ALLOWED_HOSTS)
     : new Set<string>()
   const railwayPrivateHttp =
     baseUrl.protocol === "http:" &&
@@ -1463,7 +1459,7 @@ function assertJesusfilmRagBaseUrlAllowedForProduction() {
     !allowedHosts.has(host)
   ) {
     throw new Error(
-      "JESUSFILM_RAG_BASE_URL must use https or Railway-private http and a host listed in JESUSFILM_RAG_ALLOWED_HOSTS for Mastra production",
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
     )
   }
 }
@@ -1631,7 +1627,7 @@ export function assertMastraRuntimeEnv() {
   assertFirecrawlApiUrlAllowedForProduction()
   if (env.YOUTUBE_API_KEY) assertYouTubeBaseUrlAllowedForProduction()
   // The only RAG-driven boot throw (a security control). A missing
-  // JESUSFILM_RAG_API_KEY is deliberately NOT in `missing` above — a key-absent
+  // SEEKER_RAG_API_KEY is deliberately NOT in `missing` above — a key-absent
   // state degrades at runtime via the client's `config_missing` short-circuit,
   // honoring the ticket's "never a boot failure" rule.
   assertJesusfilmRagBaseUrlAllowedForProduction()
@@ -2346,15 +2342,15 @@ export function getInstagramSiteIngestConfig(): InstagramSiteIngestConfig | null
 
 export function getJesusfilmRagConfig(): JesusfilmRagConfig {
   return {
-    baseUrl: env.JESUSFILM_RAG_BASE_URL,
-    apiKey: env.JESUSFILM_RAG_API_KEY,
-    timeoutMs: env.JESUSFILM_RAG_TIMEOUT_MS,
-    userAgent: env.JESUSFILM_RAG_USER_AGENT,
+    baseUrl: env.SEEKER_RAG_BASE_URL,
+    apiKey: env.SEEKER_RAG_API_KEY,
+    timeoutMs: env.SEEKER_RAG_TIMEOUT_MS,
+    userAgent: env.SEEKER_RAG_USER_AGENT,
     // `.optional()` schema + runtime fallback: keeps the knob out of the
     // boot-time `missing` list while always handing the client a concrete cap.
     maxResponseBytes:
-      env.JESUSFILM_RAG_MAX_RESPONSE_BYTES ??
-      DEFAULT_JESUSFILM_RAG_MAX_RESPONSE_BYTES,
+      env.SEEKER_RAG_MAX_RESPONSE_BYTES ??
+      DEFAULT_SEEKER_RAG_MAX_RESPONSE_BYTES,
   }
 }
 

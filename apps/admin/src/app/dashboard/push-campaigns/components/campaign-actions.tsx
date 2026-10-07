@@ -1,12 +1,13 @@
 "use client"
 
 /**
- * R10, R11, R17 — test, schedule, send now, cancel.
+ * R10, R11, R17 — test, schedule, send now, cancel, delete.
  *
  * Nothing here decides whether a transition is legal. The buttons stay live
  * whenever a transition is conceivable, so the editor reads the service's own
  * refusal rather than a guess this component made.
  */
+import { Trash2 } from "lucide-react"
 import { startTransition, useActionState, useState } from "react"
 
 import {
@@ -19,13 +20,19 @@ import type { PushTestSendOutcome } from "@/services/push/campaign.service"
 
 import {
   cancelCampaignAction,
+  deleteCampaignAction,
   scheduleCampaignAction,
   sendNowAction,
   sendTestAction,
 } from "../actions"
 import { ActionFeedback, InlineNotice } from "./action-feedback"
-import { PUSH_ACTION_IDLE } from "./action-state"
+import { PUSH_ACTION_IDLE, pushActionStateForPage } from "./action-state"
+import { formatPushCountry } from "./campaign-view"
 import { ConfirmSendModal } from "./confirm-send-modal"
+import {
+  LoadLatestVersion,
+  type PushReviewMessages,
+} from "./load-latest-version"
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 
@@ -44,9 +51,13 @@ function outcomeTone(
 
 export function CampaignActions({
   campaignId,
+  contentVersion,
+  lastTestContentVersion,
+  messages,
   tested,
   frozen,
   cancellable,
+  deletable,
   campaignsEnabled,
   audience,
   unreachable,
@@ -57,9 +68,15 @@ export function CampaignActions({
   testOutcome,
 }: {
   campaignId: string
+  contentVersion: number
+  /** R35 — the version the last test send carried; null before any test. */
+  lastTestContentVersion: number | null
+  messages: PushReviewMessages
   tested: boolean
   frozen: boolean
   cancellable: boolean
+  /** A scheduled or sending campaign is cancelled before it can be deleted. */
+  deletable: boolean
   campaignsEnabled: boolean
   audience: number
   unreachable: number
@@ -85,14 +102,23 @@ export function CampaignActions({
     cancelCampaignAction,
     PUSH_ACTION_IDLE,
   )
+  const [deleteState, deleteFormAction, deletePending] = useActionState(
+    deleteCampaignAction,
+    PUSH_ACTION_IDLE,
+  )
   const [sendOpen, setSendOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+
+  const testFeedback = pushActionStateForPage(testState, contentVersion)
+  const testResultsStale =
+    lastTestContentVersion !== null && lastTestContentVersion !== contentVersion
 
   const where =
     audienceScope === "EVERYWHERE"
       ? "every country"
       : countries.length > 0
-        ? countries.join(", ")
+        ? countries.map(formatPushCountry).join(", ")
         : "no country yet"
 
   // The confirmation collects the typed count, so the dispatch happens outside
@@ -110,6 +136,13 @@ export function CampaignActions({
     data.set("campaignId", campaignId)
     startTransition(() => cancelFormAction(data))
     setCancelOpen(false)
+  }
+
+  function confirmDelete() {
+    const data = new FormData()
+    data.set("campaignId", campaignId)
+    startTransition(() => deleteFormAction(data))
+    setDeleteOpen(false)
   }
 
   return (
@@ -142,6 +175,7 @@ export function CampaignActions({
           </p>
           <form action={testFormAction}>
             <input type="hidden" name="campaignId" value={campaignId} />
+            <input type="hidden" name="contentVersion" value={contentVersion} />
             <SecondaryButton
               type="submit"
               data-testid="push-send-test"
@@ -150,7 +184,16 @@ export function CampaignActions({
               {testPending ? "Sending..." : "Send to test devices"}
             </SecondaryButton>
           </form>
-          <ActionFeedback state={testState} />
+          <ActionFeedback state={testFeedback} />
+          {testFeedback.status === "stale" ? (
+            <LoadLatestVersion messages={messages} />
+          ) : null}
+
+          {testResultsStale ? (
+            <InlineNotice tone="warning" testId="push-test-results-stale">
+              {messages.staleTestResults}
+            </InlineNotice>
+          ) : null}
 
           {testOutcome.length === 0 ? (
             <p
@@ -283,6 +326,36 @@ export function CampaignActions({
         </section>
       ) : null}
 
+      <section className="grid gap-2">
+        <h3 className="text-[13px] font-semibold">Delete</h3>
+        {deletable ? (
+          <>
+            <p className="text-[12px] leading-5 text-[var(--color-text-muted)]">
+              This removes the campaign from admin, with its copy, its test
+              results, and its report.
+            </p>
+            <SecondaryButton
+              type="button"
+              data-testid="push-delete-open"
+              onClick={() => setDeleteOpen(true)}
+              disabled={deletePending}
+              className="hover:border-[var(--color-danger-border)] hover:text-[var(--color-danger)]"
+            >
+              <Trash2 className="h-3 w-3" strokeWidth={1.5} />
+              {deletePending ? "Deleting..." : "Delete this campaign"}
+            </SecondaryButton>
+            <ActionFeedback state={deleteState} />
+          </>
+        ) : (
+          <p
+            data-testid="push-delete-unavailable"
+            className="text-[12px] leading-5 text-[var(--color-text-muted)]"
+          >
+            Cancel this campaign before you delete it.
+          </p>
+        )}
+      </section>
+
       <ConfirmSendModal
         open={sendOpen}
         testId="push-send-now-confirm"
@@ -310,6 +383,17 @@ export function CampaignActions({
         pending={cancelPending}
         onCancel={() => setCancelOpen(false)}
         onConfirm={confirmCancel}
+      />
+
+      <ConfirmSendModal
+        open={deleteOpen}
+        testId="push-delete-confirm"
+        title="Delete this campaign?"
+        consequence="This deletes the campaign, its copy in every language, its test results, and its report. You cannot undo this."
+        confirmLabel="Delete the campaign"
+        pending={deletePending}
+        onCancel={() => setDeleteOpen(false)}
+        onConfirm={confirmDelete}
       />
     </div>
   )

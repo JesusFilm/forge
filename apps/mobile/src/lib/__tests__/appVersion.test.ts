@@ -23,6 +23,7 @@ jest.mock("expo-constants", () => ({
   default: mockConstants,
 }))
 
+import { getT, type UiT } from "../../i18n/useT"
 import { formatAppVersion, readAppVersionParts } from "../appVersion"
 
 beforeEach(() => {
@@ -35,28 +36,40 @@ beforeEach(() => {
 
 describe("formatAppVersion", () => {
   it("shows the version and the build number", () => {
-    expect(formatAppVersion({ version: "1.0.0", build: "7" })).toBe(
-      "Version 1.0.0 (7)",
-    )
+    expect(
+      formatAppVersion({ version: "1.0.0", build: "7" }, getT("More")),
+    ).toBe("Version 1.0.0 (7)")
   })
 
   it("shows the version alone when the build number is null", () => {
-    expect(formatAppVersion({ version: "1.0.0", build: null })).toBe(
-      "Version 1.0.0",
-    )
+    expect(
+      formatAppVersion({ version: "1.0.0", build: null }, getT("More")),
+    ).toBe("Version 1.0.0")
   })
 
   it("treats a blank build number as absent", () => {
-    expect(formatAppVersion({ version: "1.0.0", build: "  " })).toBe(
-      "Version 1.0.0",
-    )
+    expect(
+      formatAppVersion({ version: "1.0.0", build: "  " }, getT("More")),
+    ).toBe("Version 1.0.0")
   })
 
   it.each([
     ["null", null],
     ["blank", " "],
   ])("gives no line for a %s version, even with a build", (_name, version) => {
-    expect(formatAppVersion({ version, build: "7" })).toBeNull()
+    expect(formatAppVersion({ version, build: "7" }, getT("More"))).toBeNull()
+  })
+
+  it("reads the line from the translator it is given, trimmed", () => {
+    const t = ((key: string, values: Record<string, string>) =>
+      `${key}:${values.version}/${values.build ?? "-"}`) as unknown as UiT<"More">
+
+    expect(formatAppVersion({ version: " 2.0 ", build: " 9 " }, t)).toBe(
+      "versionWithBuild:2.0/9",
+    )
+    expect(formatAppVersion({ version: "2.0", build: null }, t)).toBe(
+      "version:2.0/-",
+    )
   })
 })
 
@@ -81,7 +94,7 @@ describe("readAppVersionParts", () => {
     mockApplication.nativeBuildVersion = null
     mockConstants.expoConfig = null
     expect(readAppVersionParts()).toEqual({ version: null, build: null })
-    expect(formatAppVersion(readAppVersionParts())).toBeNull()
+    expect(formatAppVersion(readAppVersionParts(), getT("More"))).toBeNull()
   })
 
   it("never requires expo-application when the binary lacks its native module", () => {

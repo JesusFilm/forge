@@ -1,7 +1,7 @@
 ---
 title: "Retiring a mechanism: sweep docs prose for its names, not just code symbols"
 date: "2026-07-08"
-last_updated: "2026-09-23"
+last_updated: "2026-10-02"
 category: "workflow-issues"
 module: "roadmap + docs-solutions"
 problem_type: "workflow_issue"
@@ -313,6 +313,18 @@ reads — spend and grant-surface with zero function.
   was exactly the file everyone would have guessed was pure history.
 
 ## Examples
+
+**Roadmap-scope retirement without runtime removal (October 2, 2026).**
+Recommendation closeout cancelled optional learned models and generators while
+retaining working delivery. The canonical plan needed a dated scope amendment,
+each ticket needed its own reason, and both dependency directions needed
+reconciliation. The roadmap reader also mapped `cancelled` to `blocked`, so
+editing frontmatter alone would have kept retired work in the open workload.
+Audit the status consumer and generated indexes as well as prose. Cancellation
+does not mean implementation or causal benefit; current privacy and operational
+obligations keep their original owners. See
+`docs/reports/2026-10-02-recommendation-roadmap-closeout.md` for the path-specific
+record, including genuine pending checks.
 
 **The stamped instruction (feat-233).** Before feat-239's sweep-and-review,
 the Resolution's operational-tail paragraph read as a live instruction:

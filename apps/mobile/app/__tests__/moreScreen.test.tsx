@@ -101,7 +101,11 @@ const GIVE_URL = "https://www.jesusfilm.org/give/"
 
 const ROW_TABLE: readonly (readonly [string, string, string])[] = [
   ["Give", GIVE_URL, "more-give"],
-  ["Contact Us", "https://www.jesusfilm.org/contact/", "more-contact-us"],
+  [
+    "Contact Jesus Film Project",
+    "https://www.jesusfilm.org/contact/",
+    "more-contact-us",
+  ],
   [
     "About Jesus Film",
     "https://www.jesusfilm.org/about/",
@@ -140,10 +144,10 @@ const SOCIAL_TABLE: readonly (readonly [string, string, string, string])[] = [
 ]
 
 const EXPECTED_LINK_ORDER = [
-  "Give",
-  "Contact Us",
+  "Contact Jesus Film Project",
   "About Jesus Film",
   "Newsletter",
+  "Give",
   "X",
   "Facebook",
   "Instagram",
@@ -242,10 +246,10 @@ describe("MoreScreen", () => {
       (node) => `${String(node.props.accessibilityLabel)}@${groupOf(node)}`,
     )
     expect(groups).toEqual([
-      "Give@more-group-support",
-      "Contact Us@more-group-support",
+      "Contact Jesus Film Project@more-group-support",
       "About Jesus Film@more-group-about",
       "Newsletter@more-group-about",
+      "Give@more-group-about",
       "X@more-group-about",
       "Facebook@more-group-about",
       "Instagram@more-group-about",
@@ -254,6 +258,37 @@ describe("MoreScreen", () => {
       "Terms of Use@more-group-legal",
       "Legal Statement@more-group-legal",
     ])
+    await unmount(renderer)
+  })
+
+  it("lists Send Feedback first in Support, then Contact Jesus Film Project", async () => {
+    const renderer = await render()
+    const supportRows = hostNodes(
+      renderer,
+      (node) =>
+        (node.props.accessibilityRole === "link" ||
+          node.props.accessibilityRole === "button") &&
+        groupOf(node) === "more-group-support",
+    ).map((node) => String(node.props.accessibilityLabel))
+    expect(supportRows).toEqual(["Send Feedback", "Contact Jesus Film Project"])
+    await unmount(renderer)
+  })
+
+  // The one row that stays in the app: it opens the root feedback sheet route,
+  // so it reads as a button with a chevron, not a link that leaves the app.
+  it("opens the feedback sheet from Send Feedback, never the browser", async () => {
+    const renderer = await render()
+    const row = hostByLabel(renderer, "Send Feedback")
+    expect(row.props.accessibilityRole).toBe("button")
+    expect(row.props.accessibilityHint).toBe("Opens the feedback form")
+    expect(row.props["dd-action-name"]).toBe("more-send-feedback")
+    expect(styleOf(row).minHeight).toBeGreaterThanOrEqual(44)
+    expect(mockIconRenders).toContain("chevron-forward")
+    await press(pressableByLabel(renderer, "Send Feedback"))
+    expect(mockRouter.navigate).toHaveBeenCalledTimes(1)
+    expect(mockRouter.navigate).toHaveBeenCalledWith("/feedback")
+    expect(mockRouter.push).not.toHaveBeenCalled()
+    expect(mockedOpen).not.toHaveBeenCalled()
     await unmount(renderer)
   })
 
@@ -337,6 +372,9 @@ describe("MoreScreen", () => {
       mockSignInGate.open = state.gateOpen
       const renderer = await render()
       expect(linkLabels(renderer)).toEqual(EXPECTED_LINK_ORDER)
+      expect(
+        hostByLabel(renderer, "Send Feedback").props.accessibilityRole,
+      ).toBe("button")
       expect(headerTexts(renderer)).toEqual([
         "More",
         "Support",

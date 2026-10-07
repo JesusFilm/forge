@@ -29,28 +29,28 @@ export function requireReadonlyDatabaseUrl(
   const role = requireReadonlyRoleName(roleName)
   if (decodeURIComponent(parsed.username) !== role)
     throw new Error(
-      "read-only database URL username must match JFRAG_READONLY_ROLE_NAME",
+      "read-only database URL username must match FORGE_RAG_READONLY_ROLE_NAME",
     )
   return parsed.toString()
 }
 
 export type DashboardDatabase = {
   url: string
-  source: "JFRAG_POSTGRESQL_READONLY_DB_URL" | "DATABASE_URL"
+  source: "FORGE_RAG_POSTGRESQL_READONLY_DB_URL" | "DATABASE_URL"
 }
 
 export function resolveDashboardDatabase(
   input: Record<string, string | undefined>,
   options: { allowDev?: boolean } = {},
 ): DashboardDatabase {
-  const namespaced = input.JFRAG_POSTGRESQL_READONLY_DB_URL?.trim()
+  const namespaced = input.FORGE_RAG_POSTGRESQL_READONLY_DB_URL?.trim()
   if (namespaced) {
     return {
       url: requireReadonlyDatabaseUrl(
         namespaced,
-        input.JFRAG_READONLY_ROLE_NAME,
+        input.FORGE_RAG_READONLY_ROLE_NAME,
       ),
-      source: "JFRAG_POSTGRESQL_READONLY_DB_URL",
+      source: "FORGE_RAG_POSTGRESQL_READONLY_DB_URL",
     }
   }
 
@@ -58,7 +58,7 @@ export function resolveDashboardDatabase(
   if (!generic) {
     throw environmentConfigurationError(
       "dashboard_database_required",
-      "JFRAG_POSTGRESQL_READONLY_DB_URL is required for a dashboard read",
+      "FORGE_RAG_POSTGRESQL_READONLY_DB_URL is required for a dashboard read",
       "dashboard",
     )
   }

@@ -13,6 +13,7 @@ import { StyleSheet, View, useWindowDimensions } from "react-native"
 import { Image } from "expo-image"
 import { useNavigation } from "expo-router"
 
+import { useT } from "../../i18n/useT"
 import { BLACK } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
 import {
@@ -95,6 +96,7 @@ export function PlayerSlot({
   cast = null,
   progressFeedRef = null,
 }: PlayerSlotProps) {
+  const tCommon = useT("Common")
   const store = getPlaybackRequestStore()
   const { width: screenWidth, height: screenHeight } = useWindowDimensions()
   const viewRef = useRef<View | null>(null)
@@ -255,7 +257,7 @@ export function PlayerSlot({
             style={StyleSheet.absoluteFill}
             contentFit="cover"
             recyclingKey="player-slot-poster"
-            accessibilityLabel="Video thumbnail"
+            accessibilityLabel={tCommon("videoThumbnailAriaLabel")}
           />
         )
       )}

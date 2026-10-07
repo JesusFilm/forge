@@ -28,10 +28,7 @@ jest.mock("../../src/lib/push/testIdReveal", () => ({
 import { act } from "react"
 
 import MissionScreen from "../mission"
-import {
-  BETA_CTA_LABEL,
-  BETA_SIGNUP_URL,
-} from "../../src/components/home/missionContent"
+import { BETA_SIGNUP_URL } from "../../src/components/home/missionContent"
 import { openExternalUrl } from "../../src/lib/openExternalUrl"
 import { PUSH_TEST_ID_REVEAL_HOLD_MS } from "../../src/lib/push/constants"
 import { revealPushTestId } from "../../src/lib/push/testIdReveal"
@@ -41,6 +38,10 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../src/test-utils/rnTestRenderer"
+
+// The English catalog text (`Mission.betaCta`), written out so a broken key
+// cannot pass.
+const BETA_CTA_LABEL = "Become a beta tester"
 
 const mockedOpen = jest.mocked(openExternalUrl)
 const mockedReveal = jest.mocked(revealPushTestId)

@@ -14,7 +14,7 @@
     "eas-build-pre-install": "bash scripts/eas-build-pre-install.sh",
     "eas-build-on-success": "bash scripts/eas-build-on-success.sh",
     "update:preview": "touch src/env.ts && EXPO_NO_DOTENV=1 eas update --channel preview --environment preview --message \"preview update\"",
-    "update:production": "touch src/env.ts && EXPO_NO_DOTENV=1 eas update --channel production --environment production --message \"production update\"",
+    "update:production": "node scripts/i18n/check-pending-gate.mjs --update-production && touch src/env.ts && EXPO_NO_DOTENV=1 eas update --channel production --environment production --message \"production update\"",
     "icons:generate": "node scripts/generate-app-icon.mjs",
     "bible:data": "node --import tsx scripts/build-bible-data.mjs"
   },
@@ -28,6 +28,9 @@
     "@expo/vector-icons": "^15.0.2",
     "@forge/admin-graphql": "workspace:*",
     "@forge/watch-url-policy": "workspace:*",
+    "@formatjs/icu-messageformat-parser": "3.5.10",
+    "@formatjs/intl-locale": "5.3.12",
+    "@formatjs/intl-pluralrules": "6.3.15",
     "@hebcal/hdate": "^0.21.1",
     "@kesha-antonov/react-native-background-downloader": "^4.5.5",
     "@react-native-async-storage/async-storage": "^2.2.0",
@@ -35,13 +38,13 @@
     "@shopify/flash-list": "2.0.2",
     "@t3-oss/env-core": "^0.13.11",
     "better-auth": "1.7.1",
-    "expo": "~57.0.26",
+    "expo": "~57.0.27",
     "expo-application": "~57.0.3",
-    "expo-asset": "~57.0.18",
+    "expo-asset": "~57.0.19",
     "expo-blur": "~57.0.3",
     "expo-build-properties": "~57.0.22",
     "expo-clipboard": "~57.0.2",
-    "expo-constants": "~57.0.20",
+    "expo-constants": "~57.0.21",
     "expo-crypto": "~57.0.3",
     "expo-dev-client": "~57.0.19",
     "expo-device": "~57.0.2",
@@ -50,15 +53,16 @@
     "expo-glass-effect": "~57.0.4",
     "expo-image": "~57.0.5",
     "expo-linear-gradient": "^57.0.2",
-    "expo-linking": "~57.0.11",
+    "expo-linking": "~57.0.12",
+    "expo-localization": "~57.0.2",
     "expo-network": "~57.0.2",
-    "expo-notifications": "~57.0.21",
-    "expo-router": "~57.0.24",
+    "expo-notifications": "~57.0.22",
+    "expo-router": "~57.0.25",
     "expo-screen-orientation": "~57.0.2",
     "expo-secure-store": "~57.0.4",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
-    "expo-updates": "~57.0.24",
+    "expo-updates": "~57.0.25",
     "expo-video": "~57.0.5",
     "expo-web-browser": "~57.0.3",
     "graphql": "16.13.1",
@@ -68,6 +72,7 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.2",
     "react-native-webview": "13.16.1",
+    "use-intl": "4.13.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -99,7 +104,7 @@
       "\\.bible$": "jest-expo/src/preset/assetFileTransformer.js"
     },
     "transformIgnorePatterns": [
-      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|expo-glass-effect|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod|@datadog))"
+      "/node_modules/(?!(.pnpm|react-native|@react-native|@react-native-community|expo|expo-glass-effect|@expo|react-navigation|@react-navigation|@hebcal|@t3-oss|zod|@datadog|use-intl|intl-messageformat|@formatjs))"
     ],
     "moduleNameMapper": {
       "^(\\.{1,2}/.*)\\.js$": "$1",

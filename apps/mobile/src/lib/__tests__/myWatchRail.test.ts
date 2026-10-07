@@ -1,4 +1,4 @@
-import { libraryRowState } from "../libraryDownloads"
+import { libraryRowAffordance } from "../libraryDownloads"
 import {
   MY_WATCH_RAIL_MAX_TILES,
   buildMyWatchRail,
@@ -179,7 +179,7 @@ describe("buildMyWatchRail — one-episode series (R21)", () => {
     const tile = asVideo(tiles[0])
     expect(tile.key).toBe("video:ep-only")
     expect(tile.record).toBe(onlyEpisode)
-    expect(tile.rowState).toEqual(libraryRowState(onlyEpisode))
+    expect(tile.rowState).toEqual(libraryRowAffordance(onlyEpisode))
   })
 
   it("orders a converted episode tile by that episode's own enqueuedAt", () => {
@@ -315,7 +315,7 @@ describe("buildMyWatchRail — series aggregate state", () => {
         posterPath: null,
       },
     })
-    expect(libraryRowState(midSwap).affordance).toBe("check")
+    expect(libraryRowAffordance(midSwap).affordance).toBe("check")
 
     const tile = seriesOf(
       midSwap,
@@ -333,11 +333,9 @@ describe("buildMyWatchRail — video tile state (R7)", () => {
     const [pausedTile, queuedTile] = buildMyWatchRail([paused, queued])
 
     expect(asVideo(pausedTile).rowState).toEqual({
-      subtitle: "Paused",
       affordance: "resume",
     })
     expect(asVideo(queuedTile).rowState).toEqual({
-      subtitle: "Queued",
       affordance: "none",
     })
   })
@@ -353,7 +351,6 @@ describe("buildMyWatchRail — video tile state (R7)", () => {
 
     expect(asVideo(failedTile).rowState.affordance).toBe("retry")
     expect(asVideo(doneTile).rowState).toEqual({
-      subtitle: "12 MB · Downloaded",
       affordance: "check",
     })
   })

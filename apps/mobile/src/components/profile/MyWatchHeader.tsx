@@ -5,6 +5,9 @@ import { SessionReplayView } from "@datadog/mobile-react-native-session-replay"
 import { useRouter } from "expo-router"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useUiTag } from "../../hooks/useUiTag"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
 import {
   accountIdentity,
   useAccountDeletedNotice,
@@ -13,7 +16,6 @@ import {
 } from "./accountHooks"
 import { clearAccountDeletedNotice } from "../../lib/accountDeletedNotice"
 import { signInWithHostedPage } from "../../lib/authActions"
-import { SIGN_IN_ERROR_MESSAGE } from "../../lib/authCopy"
 import { clearNewAccountNotice } from "../../lib/newAccountNotice"
 import { isSignInAvailable } from "../../lib/signInGate"
 import {
@@ -33,16 +35,13 @@ type SignInPhase = "idle" | "busy" | "error"
 
 type IconName = ComponentProps<typeof Ionicons>["name"]
 
-const NEW_ACCOUNT_MESSAGE =
-  "This is a new account, so there is no watch history yet. If you expected to see yours, you may have signed in with a different email than you use on the web."
-const ACCOUNT_DELETED_MESSAGE = "Your account was deleted."
-
 function NoticeCard({
   icon,
   iconColor,
   message,
   tone,
   dismissLabel,
+  dismissActionName,
   onDismiss,
 }: {
   icon: IconName
@@ -50,9 +49,12 @@ function NoticeCard({
   message: string
   tone: "error" | "info"
   dismissLabel: string
+  /** The RUM tap name, so a translated label does not split the series. */
+  dismissActionName: string
   onDismiss: () => void
 }) {
   const typography = useTypography()
+  const uiDirection = useTextDirection().ui
   return (
     <View style={styles.noticeCard}>
       <Ionicons name={icon} size={18} color={iconColor} />
@@ -61,6 +63,7 @@ function NoticeCard({
           styles.noticeText,
           typography.caption,
           tone === "error" ? styles.noticeTextError : null,
+          uiDirection,
         ]}
       >
         {message}
@@ -70,6 +73,7 @@ function NoticeCard({
         hitSlop={13}
         accessibilityRole="button"
         accessibilityLabel={dismissLabel}
+        {...{ "dd-action-name": dismissActionName }}
         style={({ pressed }) => [pressed && feedback.pressed]}
       >
         <Ionicons name="close" size={18} color={TEXT_SECONDARY} />
@@ -79,13 +83,14 @@ function NoticeCard({
 }
 
 function GuestIdentity({ nameSize }: { nameSize: TextStyle }) {
+  const t = useT("MyWatch")
   return (
     <View style={styles.identity}>
       <View style={[styles.avatar, styles.guestAvatar]}>
         <Ionicons name="person" size={34} color={TEXT_SECONDARY} />
       </View>
       <Text style={[styles.name, nameSize]} numberOfLines={1}>
-        Guest
+        {t("guestName")}
       </Text>
     </View>
   )
@@ -96,6 +101,11 @@ function GuestIdentity({ nameSize }: { nameSize: TextStyle }) {
  *  Account screen, which holds Sign out and Delete account. */
 export function MyWatchHeader() {
   const typography = useTypography()
+  const t = useT("Auth")
+  const tMyWatch = useT("MyWatch")
+  const tDelete = useT("DeleteAccount")
+  const uiTag = useUiTag()
+  const uiDirection = useTextDirection().ui
   const router = useRouter()
   const snapshot = useAuthSnapshot()
   const newAccountNotice = useNewAccountNotice()
@@ -110,9 +120,10 @@ export function MyWatchHeader() {
       <NoticeCard
         icon="checkmark-circle"
         iconColor={TEXT_SECONDARY}
-        message={ACCOUNT_DELETED_MESSAGE}
+        message={tDelete("deletedNotice")}
         tone="info"
-        dismissLabel="Dismiss account deleted notice"
+        dismissLabel={tDelete("dismissDeletedNoticeAriaLabel")}
+        dismissActionName="my-watch-account-deleted-dismiss"
         onDismiss={clearAccountDeletedNotice}
       />
     ) : null
@@ -129,7 +140,7 @@ export function MyWatchHeader() {
             style={styles.signInCard}
             accessibilityRole="button"
             accessibilityState={{ disabled: true }}
-            accessibilityLabel="Sign in, coming soon, Accounts are not available yet"
+            accessibilityLabel={t("signInComingSoonAriaLabel")}
           >
             <View style={styles.signInTextBlock}>
               <Text
@@ -137,12 +148,15 @@ export function MyWatchHeader() {
                   styles.signInTitle,
                   typography.titleSmall,
                   styles.signInDimmed,
+                  uiDirection,
                 ]}
               >
-                Sign in · coming soon
+                {t("signInComingSoon")}
               </Text>
-              <Text style={[styles.signInSubtitle, typography.caption]}>
-                Accounts are not available yet
+              <Text
+                style={[styles.signInSubtitle, typography.caption, uiDirection]}
+              >
+                {t("accountsUnavailable")}
               </Text>
             </View>
           </Pressable>
@@ -180,15 +194,19 @@ export function MyWatchHeader() {
             pressed && feedback.pressed,
           ]}
           accessibilityRole="button"
-          accessibilityLabel="Sign in"
+          accessibilityLabel={t("signIn")}
           {...{ "dd-action-name": "profile-sign-in" }}
         >
           <View style={styles.signInTextBlock}>
-            <Text style={[styles.signInTitle, typography.titleSmall]}>
-              {signingIn ? "Signing in…" : "Sign in"}
+            <Text
+              style={[styles.signInTitle, typography.titleSmall, uiDirection]}
+            >
+              {signingIn ? t("signingIn") : t("signIn")}
             </Text>
-            <Text style={[styles.signInSubtitle, typography.caption]}>
-              Keep your place across devices
+            <Text
+              style={[styles.signInSubtitle, typography.caption, uiDirection]}
+            >
+              {t("signInSubtitle")}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color={TEXT_SECONDARY} />
@@ -197,9 +215,10 @@ export function MyWatchHeader() {
           <NoticeCard
             icon="warning"
             iconColor={WARNING_COLOR}
-            message={SIGN_IN_ERROR_MESSAGE}
+            message={t("signInErrorMessage")}
             tone="error"
-            dismissLabel="Dismiss"
+            dismissLabel={t("dismissAriaLabel")}
+            dismissActionName="profile-sign-in-error-dismiss"
             onDismiss={() => setSignInPhase("idle")}
           />
         ) : null}
@@ -208,7 +227,11 @@ export function MyWatchHeader() {
     )
   }
 
-  const { displayName, initial } = accountIdentity(snapshot.user)
+  const { displayName, initial } = accountIdentity(
+    snapshot.user,
+    t("signedInFallbackName"),
+    uiTag,
+  )
 
   return (
     <View style={styles.container}>
@@ -219,7 +242,7 @@ export function MyWatchHeader() {
           pressed && feedback.pressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Account"
+        accessibilityLabel={tMyWatch("accountTitle")}
         {...{ "dd-action-name": "my-watch-account" }}
       >
         {/* Session Replay masks inputs, not rendered text. The name falls back
@@ -262,9 +285,10 @@ export function MyWatchHeader() {
         <NoticeCard
           icon="information-circle"
           iconColor={ACCENT}
-          message={NEW_ACCOUNT_MESSAGE}
+          message={t("newAccountNotice")}
           tone="info"
-          dismissLabel="Dismiss new account notice"
+          dismissLabel={t("dismissNewAccountNoticeAriaLabel")}
+          dismissActionName="profile-new-account-notice-dismiss"
           onDismiss={clearNewAccountNotice}
         />
       ) : null}

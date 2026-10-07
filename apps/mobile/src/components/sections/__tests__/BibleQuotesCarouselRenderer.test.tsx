@@ -25,6 +25,10 @@ jest.mock("../../../lib/datadog", () => ({
   datadogLog: { info: jest.fn(), warn: (...a: unknown[]) => mockWarn(...a) },
 }))
 
+// The UI language, for the passage-direction cases (KTD13).
+let mockUiTag = "en"
+jest.mock("../../../hooks/useUiTag", () => ({ useUiTag: () => mockUiTag }))
+
 import { act } from "react"
 import type React from "react"
 import { AccessibilityInfo, Dimensions } from "react-native"
@@ -225,6 +229,55 @@ function passageLinks(renderer: TestInstance): RenderedNode[] {
       typeof node.props.onPress === "function",
   )
 }
+
+// U7: the passage's language (R10, KTD13). An English passage on a card in
+// another UI language carries the English mark and a left-to-right direction.
+describe("BibleQuotesCarouselRenderer — the passage language", () => {
+  /** The quote card's language marks (its composite and host nodes agree). */
+  function cardLanguages(renderer: TestInstance, reference: string): unknown[] {
+    const cards = renderer.root.findAll(
+      (node) =>
+        node.props.accessible === true &&
+        typeof node.props.accessibilityLabel === "string" &&
+        node.props.accessibilityLabel.startsWith(reference),
+    )
+    expect(cards.length).toBeGreaterThan(0)
+    return [...new Set(cards.map((node) => node.props.accessibilityLanguage))]
+  }
+
+  const PASSAGE_TEXTS = [
+    "Let’s make man in our image",
+    "World English Bible British Edition",
+    "Public Domain",
+  ]
+
+  afterEach(() => {
+    mockUiTag = "en"
+  })
+
+  it.each([
+    ["an English passage in an Arabic UI", "ar", "en", ["en"], "ltr"],
+    ["an Arabic passage in an Arabic UI", "ar", "ar", [undefined], "rtl"],
+    ["an English passage in an English UI", "en", "en", ["en"], undefined],
+    ["a Russian passage in an English UI", "en", "ru", [undefined], undefined],
+  ])("marks and sets %s", (_case, uiTag, textLang, marks, direction) => {
+    mockUiTag = uiTag
+    const renderer = render([{ ...PASSAGE_QUOTE, textLang }])
+    expect(cardLanguages(renderer, "Genesis 1:26-27")).toEqual(marks)
+    for (const needle of PASSAGE_TEXTS) {
+      const style = flatStyle(findText(renderer, needle))
+      expect([style.writingDirection, style.direction]).toEqual([
+        direction,
+        direction,
+      ])
+    }
+  })
+
+  it("leaves the Experience quote as it was", () => {
+    const renderer = render([EXPERIENCE_QUOTE])
+    expect(cardLanguages(renderer, "John 3:16")).toEqual([undefined])
+  })
+})
 
 describe("BibleQuotesCarouselRenderer — passage cards", () => {
   it("renders the verse, the translation, the copyright and the link", () => {

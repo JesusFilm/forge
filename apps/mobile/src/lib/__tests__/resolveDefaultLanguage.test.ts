@@ -1,29 +1,62 @@
+// The phone's languages reach the resolver through the real locale store and a
+// mocked expo-localization (KTD12). `es` is a fixture catalog, so a case can
+// change the UI language.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(jest.requireActual("../../i18n/catalogs.generated"), {
+      es: {},
+    }),
+)
+jest.mock("../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../i18n/pluralData.generated"),
+      ["es"],
+    ),
+)
+
+import {
+  getCatalogTag,
+  getLocaleEpoch,
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../i18n/localeStore"
+import { phoneLocales } from "../../test-utils/uiLocaleFixture"
 import { resolveDefaultSlug } from "../resolveDefaultLanguage"
 
-/**
- * Pure-function tests for watch-session default-language resolution. Device
- * locale (from Intl.DateTimeFormat) is overridden per-test to exercise the
- * priority chain: device locale → video primary → English → first option.
- */
-
-const realDateTimeFormat = Intl.DateTimeFormat
-
-function mockDeviceLocale(locale: string | null) {
-  if (locale === null) {
-    // Simulate Intl throwing / unavailable
-    Intl.DateTimeFormat = (() => {
-      throw new Error("no intl")
-    }) as unknown as typeof Intl.DateTimeFormat
-    return
-  }
-  Intl.DateTimeFormat = (() => ({
-    resolvedOptions: () => ({ locale }),
-  })) as unknown as typeof Intl.DateTimeFormat
+/** Starts the store on a phone with these languages, in order. */
+function setPhone(...tags: string[]) {
+  resetLocaleStoreForTests()
+  mockGetLocales.mockReturnValue(tags.flatMap((tag) => phoneLocales(tag)))
+  startLocaleSync()
 }
 
-afterEach(() => {
-  Intl.DateTimeFormat = realDateTimeFormat
+/** Changes the phone's languages on a running store (a live change). */
+function changePhone(...tags: string[]) {
+  mockGetLocales.mockReturnValue(tags.flatMap((tag) => phoneLocales(tag)))
+  refreshLocale()
+}
+
+beforeEach(() => {
+  mockGetLocales.mockReset()
+  setPhone("en-US")
 })
+
+afterEach(() => {
+  jest.restoreAllMocks()
+})
+
+afterAll(() => resetLocaleStoreForTests())
 
 const opt = (slug: string, bcp47: string | null) => ({
   slug,
@@ -41,12 +74,11 @@ const langOpt = (
 
 describe("resolveDefaultSlug", () => {
   it("returns null for an empty option list", () => {
-    mockDeviceLocale("en-US")
     expect(resolveDefaultSlug([], "en")).toBeNull()
   })
 
-  it("prefers the device locale match by bcp47 prefix", () => {
-    mockDeviceLocale("es-MX")
+  it("prefers the phone language match by bcp47 prefix", () => {
+    setPhone("es-MX")
     const options = [opt("english", "en"), opt("spanish", "es-419")]
     expect(resolveDefaultSlug(options, "en")).toBe("spanish")
   })
@@ -60,86 +92,180 @@ describe("resolveDefaultSlug", () => {
     opt("english", "en"),
   ]
 
-  it("prefers the exact tag over a longer one sharing its prefix (device step)", () => {
-    mockDeviceLocale("en-US")
+  it("prefers the exact tag over a longer one sharing its prefix (phone step)", () => {
+    setPhone("en-US")
     expect(resolveDefaultSlug(enCollision(), null)).toBe("english")
   })
 
+  it("prefers the longest exact tag the phone names (pt-PT over pt)", () => {
+    setPhone("pt-PT")
+    const options = [opt("portuguese", "pt"), opt("portuguese-pt", "pt-PT")]
+    expect(resolveDefaultSlug(options, null)).toBe("portuguese-pt")
+  })
+
   it("prefers the exact tag at the video-primary step", () => {
-    mockDeviceLocale("fr-FR")
+    setPhone("fr-FR")
     expect(resolveDefaultSlug(enCollision(), "en")).toBe("english")
   })
 
   it("prefers the exact tag at the English fallback step", () => {
-    mockDeviceLocale("fr-FR")
+    setPhone("fr-FR")
     expect(resolveDefaultSlug(enCollision(), "de")).toBe("english")
   })
 
   it("still falls back to a prefix match when no exact tag exists", () => {
-    mockDeviceLocale("en-US")
+    setPhone("en-US")
     // Only the regional tag is offered — it must still be chosen.
     expect(resolveDefaultSlug([opt("en-nai", "en-nai")], null)).toBe("en-nai")
   })
 
-  it("device locale wins over the video primary language when both match", () => {
-    mockDeviceLocale("en-US")
+  it("the phone language wins over the video primary language when both match", () => {
+    setPhone("en-US")
     const options = [opt("french", "fr"), opt("english", "en")]
-    // primary is French, but the device locale (English) takes priority
+    // primary is French, but the phone language (English) takes priority
     expect(resolveDefaultSlug(options, "fr")).toBe("english")
   })
 
-  it("matches device locale on the language prefix, ignoring region", () => {
-    mockDeviceLocale("pt-BR")
+  it("matches the phone language on the language prefix, ignoring region", () => {
+    setPhone("pt-BR")
     const options = [opt("english", "en"), opt("portuguese", "pt-PT")]
     expect(resolveDefaultSlug(options, "en")).toBe("portuguese")
   })
 
-  it("falls back to the video primary language when device locale is absent", () => {
-    mockDeviceLocale("de-DE")
+  it("falls back to the video primary language when the phone language is absent", () => {
+    setPhone("de-DE")
     const options = [opt("english", "en"), opt("french", "fr")]
     expect(resolveDefaultSlug(options, "fr")).toBe("french")
   })
 
-  it("falls back to English when neither device locale nor primary match", () => {
-    mockDeviceLocale("de-DE")
+  it("falls back to English when neither the phone language nor the primary match", () => {
+    setPhone("de-DE")
     const options = [opt("english", "en"), opt("french", "fr")]
     expect(resolveDefaultSlug(options, "ja")).toBe("english")
   })
 
   it("falls back to the first option when nothing matches", () => {
-    mockDeviceLocale("de-DE")
+    setPhone("de-DE")
     const options = [opt("french", "fr"), opt("italian", "it")]
     expect(resolveDefaultSlug(options, "ja")).toBe("french")
   })
 
-  it("falls back gracefully when Intl is unavailable", () => {
-    mockDeviceLocale(null)
-    const options = [opt("french", "fr"), opt("english", "en")]
-    // device locale unresolved → primary (none match "ja") → English
-    expect(resolveDefaultSlug(options, "ja")).toBe("english")
-  })
-
   it("ignores options with a null bcp47 when matching", () => {
-    mockDeviceLocale("en-US")
+    setPhone("en-US")
     const options = [opt("unknown", null), opt("english", "en")]
     expect(resolveDefaultSlug(options, null)).toBe("english")
   })
 
+  describe("the phone language (KTD12)", () => {
+    it("matches the phone language's slug before its bcp47 tag", () => {
+      // Admin tags bangla-muslim bn-BD, so a tag match would pick it. The
+      // reviewed bn entry, which Explore uses too, names bangla-2.
+      setPhone("bn-BD")
+      const options = [
+        langOpt("v-muslim", "bn-BD", "bangla-muslim"),
+        langOpt("v-bangla", "bn", "bangla-2"),
+      ]
+      expect(resolveDefaultSlug(options, null)).toBe("v-bangla")
+    })
+
+    // AE10: a Hausa phone has no UI catalog, so the UI falls back, but the
+    // default audio follows the phone's first language.
+    it("gives a Hausa phone the Hausa dub, then the primary language, then English", () => {
+      setPhone("ha-NG", "es-MX")
+      expect(getCatalogTag()).toBe("es")
+      const hausa = langOpt("v-ha", "ha", "hausa")
+      const english = langOpt("v-en", "en", "english")
+      const french = langOpt("v-fr", "fr", "french")
+      const spanish = langOpt("v-es", "es", "spanish-latin-american")
+      expect(resolveDefaultSlug([english, spanish, french, hausa], "fr")).toBe(
+        "v-ha",
+      )
+      expect(resolveDefaultSlug([english, spanish, french], "fr")).toBe("v-fr")
+      expect(resolveDefaultSlug([spanish, english], "fr")).toBe("v-en")
+    })
+
+    // Admin has no Esperanto dub, so the phone's slug is null.
+    it("never matches a phone language with no slug to a dub with no slug", () => {
+      setPhone("eo")
+      const options = [opt("english", "en"), opt("french", "fr")]
+      expect(resolveDefaultSlug(options, "fr")).toBe("french")
+    })
+
+    it("falls to the primary language, then English, when the phone list is empty", () => {
+      setPhone()
+      const options = [opt("french", "fr"), opt("english", "en")]
+      expect(resolveDefaultSlug(options, "fr")).toBe("french")
+      expect(resolveDefaultSlug(options, "ja")).toBe("english")
+    })
+
+    it("falls to the primary language when expo-localization cannot be read", () => {
+      resetLocaleStoreForTests()
+      mockGetLocales.mockImplementation(() => {
+        throw new Error("Cannot find native module 'ExpoLocalization'")
+      })
+      startLocaleSync()
+      const options = [opt("french", "fr"), opt("english", "en")]
+      expect(resolveDefaultSlug(options, "fr")).toBe("french")
+    })
+
+    it("never takes the Intl default locale as the phone language", () => {
+      // On iOS, Intl follows the app's resolved language once the app declares
+      // localizations, so it is not the phone language (KTD12).
+      setPhone()
+      jest.spyOn(Intl, "DateTimeFormat").mockImplementation(
+        () =>
+          ({
+            resolvedOptions: () => ({ locale: "ko-KR" }),
+          }) as unknown as Intl.DateTimeFormat,
+      )
+      const options = [opt("english", "en"), opt("korean", "ko")]
+      expect(resolveDefaultSlug(options, null)).toBe("english")
+    })
+
+    it("follows a live phone change for the next resolution", () => {
+      setPhone("ha-NG")
+      const options = [
+        langOpt("v-ha", "ha", "hausa"),
+        langOpt("v-yo", "yo", "yoruba"),
+      ]
+      expect(resolveDefaultSlug(options, null)).toBe("v-ha")
+      changePhone("yo-NG")
+      expect(resolveDefaultSlug(options, null)).toBe("v-yo")
+    })
+  })
+
   describe("preferred language (app-wide persisted choice, matched by slug)", () => {
-    it("prefers the persisted language above the device locale", () => {
-      mockDeviceLocale("en-US")
+    it("prefers the persisted language above the phone language", () => {
+      setPhone("en-US")
       const options = [
         langOpt("v-english", "en", "english"),
         langOpt("v-spanish", "es-419", "spanish"),
       ]
-      // Device is English, but the user's persisted choice is Spanish.
+      // The phone is English, but the user's persisted choice is Spanish.
       expect(resolveDefaultSlug(options, "en", "spanish")).toBe("v-spanish")
+    })
+
+    // AE3: the UI language never moves a saved audio pick.
+    it("keeps a saved Korean pick after the UI language changes from en to es", () => {
+      setPhone("en-US")
+      const options = [
+        langOpt("v-en", "en", "english"),
+        langOpt("v-es", "es", "spanish-latin-american"),
+        langOpt("v-ko", "ko", "korean"),
+      ]
+      expect(resolveDefaultSlug(options, "en", "korean")).toBe("v-ko")
+      changePhone("es-MX")
+      expect(getCatalogTag()).toBe("es")
+      expect(getLocaleEpoch()).toBe(1)
+      expect(resolveDefaultSlug(options, "en", "korean")).toBe("v-ko")
+      // The same video with no pick now takes the new phone language.
+      expect(resolveDefaultSlug(options, "en", null)).toBe("v-es")
     })
 
     // The reported bug: bcp47 prefixes collide across distinct languages. An
     // exact languageSlug match must pick the right sibling, not the first by tag.
     it("picks the exact language, not a bcp47-prefix sibling (Korean vs Kurmanji)", () => {
-      mockDeviceLocale("en-US")
+      setPhone("en-US")
       // Kurmanji Standard's tag "ko-kmr" shares the "ko" prefix with Korean and
       // is listed FIRST — a prefix match would wrongly return it.
       const options = [
@@ -150,7 +276,7 @@ describe("resolveDefaultSlug", () => {
     })
 
     it("picks plain English, not English North American Indigenous (en vs en-nai)", () => {
-      mockDeviceLocale("de-DE")
+      setPhone("de-DE")
       const options = [
         langOpt("v-en-nai", "en-nai", "english-north-american-indigenous"),
         langOpt("v-en", "en", "english"),
@@ -158,18 +284,18 @@ describe("resolveDefaultSlug", () => {
       expect(resolveDefaultSlug(options, "en", "english")).toBe("v-en")
     })
 
-    it("falls through to the device locale when no option matches the preference", () => {
-      mockDeviceLocale("en-US")
+    it("falls through to the phone language when no option matches the preference", () => {
+      setPhone("en-US")
       const options = [
         langOpt("v-english", "en", "english"),
         langOpt("v-french", "fr", "french"),
       ]
-      // Preferred Japanese isn't offered → device locale (English) wins.
+      // Preferred Japanese isn't offered → the phone language (English) wins.
       expect(resolveDefaultSlug(options, "fr", "japanese")).toBe("v-english")
     })
 
     it("ignores a null/empty preference and uses the existing chain", () => {
-      mockDeviceLocale("es-MX")
+      setPhone("es-MX")
       const options = [
         langOpt("v-english", "en", "english"),
         langOpt("v-spanish", "es-419", "spanish"),

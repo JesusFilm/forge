@@ -14,7 +14,7 @@ export async function GET() {
   const lines: string[] = [
     `# JesusFilm Roadmap`,
     "",
-    `> Project roadmap for JesusFilm (JFP). ${features.length} features across ${ALL_LANES.length} lanes: ${counts.complete} complete, ${counts["in-progress"]} in-progress, ${counts["not-started"]} not-started, ${counts.blocked} blocked.`,
+    `> Project roadmap for JesusFilm (JFP). ${features.length} features across ${ALL_LANES.length} lanes: ${counts.complete} complete, ${counts.cancelled} cancelled, ${counts["in-progress"]} in-progress, ${counts["not-started"]} not-started, ${counts.blocked} blocked.`,
     "",
     `This site provides a read-only view of the JesusFilm project roadmap. Every page is available as markdown by appending \`.md\` to the URL.`,
     "",

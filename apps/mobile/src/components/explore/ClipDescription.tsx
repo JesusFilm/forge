@@ -13,8 +13,9 @@ import {
   type TextStyle,
 } from "react-native"
 
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
 import { TEXT_ON_OVERLAY } from "../../lib/color"
-import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import {
   useTextOverflow,
@@ -25,6 +26,8 @@ import { useExplorePagerHold } from "./ExplorePager"
 
 export type ClipDescriptionProps = {
   description: string | null
+  /** The language of `description` (KTD13); null when it is not known. */
+  descriptionLang?: string | null
   /** "more" was tapped. The clip keeps playing; the overlay holds the video. */
   onExpand: () => void
   /** "less" was tapped. */
@@ -51,10 +54,13 @@ function overflowsOneLine(e: TextLayoutEvent): boolean {
 /** The clip's description: one line, with "more" at its end when it overflows (R15). */
 export function ClipDescription({
   description,
+  descriptionLang,
   onExpand,
   onCollapse,
 }: ClipDescriptionProps) {
   const typography = useTypography()
+  const t = useT("Explore")
+  const bodyDirection = useTextDirection().text(descriptionLang)
   const { height } = useWindowDimensions()
   // The hook's reset on new text does not call `onCollapse`: a swipe has
   // already cleared the feed's pause, and a late call would act on the next clip.
@@ -82,7 +88,7 @@ export function ClipDescription({
 
   if (description == null || description.length === 0) return null
 
-  const bodyStyle = [styles.body, typography.bodySmall]
+  const bodyStyle = [styles.body, typography.bodySmall, bodyDirection.style]
   const toggleStyle = [styles.toggleText, typography.bodySmall]
 
   return (
@@ -92,6 +98,7 @@ export function ClipDescription({
           description={description}
           maxHeight={Math.round(height * EXPANDED_MAX_SCREEN_SHARE)}
           bodyStyle={bodyStyle}
+          bodyLanguage={bodyDirection.accessibilityLanguage}
           toggleStyle={toggleStyle}
           onCollapse={handleCollapse}
         />
@@ -100,6 +107,7 @@ export function ClipDescription({
           <Text
             style={[bodyStyle, styles.line]}
             numberOfLines={COLLAPSED_LINES}
+            accessibilityLanguage={bodyDirection.accessibilityLanguage}
           >
             {description}
           </Text>
@@ -109,9 +117,10 @@ export function ClipDescription({
               hitSlop={TOGGLE_HIT_SLOP}
               style={styles.more}
               accessibilityRole="button"
-              accessibilityLabel={EXPLORE_COPY.descriptionMoreLabel}
+              accessibilityLabel={t("descriptionMoreAriaLabel")}
+              {...{ "dd-action-name": "explore-description-more" }}
             >
-              <Text style={toggleStyle}>{EXPLORE_COPY.descriptionMore}</Text>
+              <Text style={toggleStyle}>{t("descriptionMore")}</Text>
             </Pressable>
           )}
         </View>
@@ -146,6 +155,8 @@ type OpenDescriptionProps = {
   description: string
   maxHeight: number
   bodyStyle: StyleProp<TextStyle>
+  /** The description's language for VoiceOver (KTD13). */
+  bodyLanguage?: string
   toggleStyle: StyleProp<TextStyle>
   onCollapse: () => void
 }
@@ -156,9 +167,11 @@ function OpenDescription({
   description,
   maxHeight,
   bodyStyle,
+  bodyLanguage,
   toggleStyle,
   onCollapse,
 }: OpenDescriptionProps) {
+  const t = useT("Explore")
   const holdPager = useExplorePagerHold()
   const [viewport, setViewport] = useState(0)
   const [content, setContent] = useState(0)
@@ -219,15 +232,18 @@ function OpenDescription({
       onTouchEnd={handleTouchEnd}
       onTouchCancel={releasePager}
     >
-      <Text style={bodyStyle}>{description}</Text>
+      <Text style={bodyStyle} accessibilityLanguage={bodyLanguage}>
+        {description}
+      </Text>
       <Pressable
         onPress={onCollapse}
         hitSlop={TOGGLE_HIT_SLOP}
         style={styles.less}
         accessibilityRole="button"
-        accessibilityLabel={EXPLORE_COPY.descriptionLessLabel}
+        accessibilityLabel={t("descriptionLessAriaLabel")}
+        {...{ "dd-action-name": "explore-description-less" }}
       >
-        <Text style={toggleStyle}>{EXPLORE_COPY.descriptionLess}</Text>
+        <Text style={toggleStyle}>{t("descriptionLess")}</Text>
       </Pressable>
     </ScrollView>
   )

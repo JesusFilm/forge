@@ -1,7 +1,19 @@
 import { useEffect, useMemo, useState } from "react"
-import { getGraphQLUrl } from "../lib/config"
-import { pickThumbnailUrl, type VideoImage } from "../lib/types"
-import type { AdminBlock, WatchExperience } from "../lib/queries"
+import { parse, print, type DocumentNode } from "graphql"
+import type { TypedDocumentNode } from "@apollo/client"
+
+import { currentAdminForms } from "../i18n/adminLanguage"
+import { useLocaleEpoch } from "../i18n/useT"
+import { getApolloClient } from "../lib/apolloClient"
+import { pickThumbnailUrl } from "../lib/types"
+import { chunk } from "../lib/watchHome/topUpFetch"
+import {
+  videoThumbnailFragment,
+  type AdminBlock,
+  type VideoThumbnailData,
+  type WatchExperience,
+} from "../lib/queries"
+import { pickVideoText, readTitle, videoTextVariables } from "../lib/videoText"
 
 // videoId → its resolvable card thumbnail and localized title. Both nullable:
 // a video may resolve one without the other (missing images or empty locale).
@@ -10,6 +22,10 @@ export type VideoMetaMap = Map<string, VideoMeta>
 
 const FETCH_TIMEOUT_MS = 15_000
 const SAFE_ID_RE = /^[a-zA-Z0-9_-]+$/
+
+// Admin rejects more than 200 aliases per document, and each video costs 6
+// (its own alias plus the fragment's). 30 videos stay at 180.
+export const VIDEO_THUMBNAIL_BATCH_SIZE = 30
 
 function collectVideoIds(experience: WatchExperience | null): string[] {
   if (!experience?.blocks) return []
@@ -46,80 +62,141 @@ function collectVideoIds(experience: WatchExperience | null): string[] {
   for (const block of experience.blocks) {
     if (block) scanBlock(block as AdminBlock)
   }
-  return Array.from(ids)
+  return Array.from(ids).filter((id) => SAFE_ID_RE.test(id))
 }
 
-function buildBatchQuery(videoIds: string[]): string {
-  const safeIds = videoIds.filter((id) => SAFE_ID_RE.test(id))
-  // Hardcoded en locale (app-wide convention); flat MediaCollection items carry
-  // no title, so the card resolves it from the linked video's localized title.
-  const fields = safeIds
-    .map(
-      (id, i) =>
-        `v${i}: video(id: "${id}") { id images { mobileCinematicHigh mobileCinematicLow videoStill thumbnail url } locales(locale: "en") { title } }`,
-    )
-    .join("\n    ")
-  return `{\n    ${fields}\n  }`
+type VideoThumbnailsResult = Record<string, VideoThumbnailData | null>
+type VideoThumbnailsVariables = Record<string, string>
+
+// The typed fragment's definitions (it spreads the shared title rows).
+const FRAGMENT_SOURCE = print(videoThumbnailFragment as DocumentNode)
+const documentsByCount = new Map<
+  number,
+  TypedDocumentNode<VideoThumbnailsResult, VideoThumbnailsVariables>
+>()
+
+/** One aliased `video(id:)` per id, each spreading the typed VideoThumbnail
+ *  fragment; ids travel as variables. Callers send at most one batch size. */
+export function videoThumbnailsDocument(
+  count: number,
+): TypedDocumentNode<VideoThumbnailsResult, VideoThumbnailsVariables> {
+  const cached = documentsByCount.get(count)
+  if (cached) return cached
+  const indexes = Array.from({ length: count }, (_, i) => i)
+  const variables = [
+    "$textSlug: String!",
+    ...indexes.map((i) => `$id${i}: ID!`),
+  ]
+  const fields = indexes.map(
+    (i) => `v${i}: video(id: $id${i}) { ...VideoThumbnail }`,
+  )
+  const document = parse(
+    `query VideoThumbnails(${variables.join(", ")}) {\n  ${fields.join(
+      "\n  ",
+    )}\n}\n${FRAGMENT_SOURCE}`,
+  ) as TypedDocumentNode<VideoThumbnailsResult, VideoThumbnailsVariables>
+  documentsByCount.set(count, document)
+  return document
 }
+
+/** The variables for {@link videoThumbnailsDocument}. */
+export function videoThumbnailsVariables(
+  videoIds: readonly string[],
+  textSlug: string,
+): VideoThumbnailsVariables {
+  const variables: VideoThumbnailsVariables = { textSlug }
+  videoIds.forEach((id, i) => {
+    variables[`id${i}`] = id
+  })
+  return variables
+}
+
+/** The meta map from one batch answer, titles in the UI language else English. */
+export function videoMetaFromResult(
+  videoIds: readonly string[],
+  data: VideoThumbnailsResult | null | undefined,
+  forms: Parameters<typeof pickVideoText>[1],
+): VideoMetaMap {
+  const map: VideoMetaMap = new Map()
+  if (!data) return map
+  videoIds.forEach((_, i) => {
+    const video = data[`v${i}`]
+    if (!video?.documentId) return
+    const thumbnail = video.images ? pickThumbnailUrl([...video.images]) : null
+    const title = pickVideoText(video, forms, readTitle)?.text.trim() || null
+    if (thumbnail || title) map.set(video.documentId, { thumbnail, title })
+  })
+  return map
+}
+
+type MetaState = { textSlug: string; map: VideoMetaMap }
 
 export function useVideoThumbnails(
   experience: WatchExperience | null,
 ): VideoMetaMap {
   const videoIds = useMemo(() => collectVideoIds(experience), [experience])
-  const [meta, setMeta] = useState<VideoMetaMap>(new Map())
+  // The root Experience follows the UI language (KTD16), so the titles do too.
+  useLocaleEpoch()
+  const forms = currentAdminForms()
+  const { textSlug } = videoTextVariables(forms)
+  const [meta, setMeta] = useState<MetaState>({ textSlug, map: new Map() })
 
   useEffect(() => {
     if (videoIds.length === 0) {
-      setMeta(new Map())
+      setMeta({ textSlug, map: new Map() })
       return
     }
 
+    let cancelled = false
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
 
-    async function fetchThumbnails() {
-      try {
-        const response = await fetch(getGraphQLUrl(), {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ query: buildBatchQuery(videoIds) }),
-          signal: controller.signal,
-        })
-
-        if (controller.signal.aborted) return
-        const json = await response.json()
-        if (controller.signal.aborted || !json.data) return
-
+    const client = getApolloClient()
+    void Promise.allSettled(
+      chunk(videoIds, VIDEO_THUMBNAIL_BATCH_SIZE).map((ids) =>
+        client
+          .query({
+            query: videoThumbnailsDocument(ids.length),
+            variables: videoThumbnailsVariables(ids, textSlug),
+            fetchPolicy: "cache-first",
+            context: { fetchOptions: { signal: controller.signal } },
+          })
+          .then((result) => videoMetaFromResult(ids, result.data, forms)),
+      ),
+    )
+      .then((results) => {
+        if (cancelled) return
         const map: VideoMetaMap = new Map()
-        for (let i = 0; i < videoIds.length; i++) {
-          const videoData = json.data[`v${i}`] as {
-            id?: string
-            images?: VideoImage[]
-            locales?: { title?: string | null }[] | null
-          } | null
-          if (!videoData?.id) continue
-          const thumb = videoData.images
-            ? pickThumbnailUrl(videoData.images)
-            : null
-          const title = videoData.locales?.[0]?.title?.trim() || null
-          if (thumb || title) {
-            map.set(videoData.id, { thumbnail: thumb ?? null, title })
+        let answered = false
+        for (const result of results) {
+          if (result.status === "fulfilled") {
+            answered = true
+            for (const [id, entry] of result.value) map.set(id, entry)
+          } else if (__DEV__) {
+            console.warn("[useVideoThumbnails] fetch failed")
           }
         }
-        if (!controller.signal.aborted) setMeta(map)
-      } catch {
-        if (__DEV__) console.warn("[useVideoThumbnails] fetch failed")
-      } finally {
-        clearTimeout(timer)
-      }
-    }
+        // As before: a fetch where every batch failed keeps the last map.
+        if (answered) setMeta({ textSlug, map })
+      })
+      .finally(() => clearTimeout(timer))
 
-    fetchThumbnails()
     return () => {
+      cancelled = true
       controller.abort()
       clearTimeout(timer)
     }
-  }, [videoIds])
+    // The table returns one `forms` object per catalog, so it moves with the slug.
+  }, [videoIds, textSlug, forms])
 
-  return meta
+  // Titles from another language never show; the art does not depend on it.
+  return useMemo(() => {
+    if (meta.textSlug === textSlug) return meta.map
+    const artOnly: VideoMetaMap = new Map()
+    for (const [id, entry] of meta.map) {
+      if (entry.thumbnail)
+        artOnly.set(id, { thumbnail: entry.thumbnail, title: null })
+    }
+    return artOnly
+  }, [meta, textSlug])
 }

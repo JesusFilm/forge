@@ -151,11 +151,7 @@ import {
 } from "../PlaybackHost"
 import { isTabletLayout } from "../../../hooks/useIsTabletLayout"
 import { readerMovementBandHeight } from "../../../lib/bible/reader/chrome"
-import {
-  ENDED_FADE_DURATION_MS,
-  MINI_PLAYER_DISMISS_LABEL,
-  MINI_PLAYER_FAILURE_TEXT,
-} from "../MiniPlayerWindow"
+import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
 import {
   ACCESSIBILITY_MIN_TARGET,
   defaultCornerFrame,
@@ -184,6 +180,10 @@ import {
 } from "../../../test-utils/rnTestRenderer"
 
 jest.setTimeout(20_000)
+
+// The English text the window shows; the catalog is the source.
+const MINI_PLAYER_DISMISS_LABEL = "Close the mini player"
+const MINI_PLAYER_FAILURE_TEXT = "Playback failed"
 
 const video = jest.requireMock("expo-video") as ExpoVideoMock
 const progressStore = jest.requireMock("../../../lib/watchProgress/store") as {

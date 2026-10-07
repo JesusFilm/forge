@@ -34,8 +34,13 @@ export function useNewAccountNotice(): string | null {
 }
 
 /** What the header and the Account screen show for a signed-in viewer. The
- *  name falls back to the email, so every value is PII and renders masked. */
-export function accountIdentity(user: AuthUser): {
+ *  name falls back to the email, so every value is PII and renders masked.
+ *  The initial is uppercased in the UI language, as other UI text is. */
+export function accountIdentity(
+  user: AuthUser,
+  fallbackName: string,
+  uiTag: string,
+): {
   name: string | undefined
   displayName: string
   initial: string | undefined
@@ -43,8 +48,8 @@ export function accountIdentity(user: AuthUser): {
   const name = user.name?.trim() || undefined
   return {
     name,
-    displayName: name || user.email || "Signed in",
-    initial: name ? Array.from(name)[0]?.toLocaleUpperCase() : undefined,
+    displayName: name || user.email || fallbackName,
+    initial: name ? Array.from(name)[0]?.toLocaleUpperCase(uiTag) : undefined,
   }
 }
 

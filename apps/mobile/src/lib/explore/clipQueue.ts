@@ -4,10 +4,18 @@
  * Order (F3): the slate first (R25), then R21's tiers, with R30 and R31.
  */
 
+import type { AdminLanguageForms } from "../../i18n/adminLanguage"
 import { pickCardImage, type CardImageSource } from "../cardImage"
 import { extractMuxPlaybackId, isMuxPlaybackId } from "../muxThumbnail"
 import type { ExploreClipCandidatesData } from "../queries"
 import { cleanStreamUrl, validateStreamingUrl } from "../validateUrl"
+import {
+  pickVideoText,
+  readDescription,
+  readTitle,
+  videoTextVariables,
+  type LocalizedText,
+} from "../videoText"
 import type { ClipTimingRequest, ClipTimingResult } from "./clipTiming"
 import {
   eligibleStartsOnce,
@@ -66,6 +74,11 @@ export type CandidateMedia = {
   tracks: TimingTrack[]
   /** R13: the feed-language track, or null. */
   captionVttSrc: string | null
+  /** R9, R10: the hydration's text in the UI language, else English. */
+  title: LocalizedText | null
+  description: LocalizedText | null
+  /** The `$textSlug` the hydration asked with. */
+  textSlug: string
 }
 
 /** Absent: not hydrated. `unknown`: hydrated, timing not yet known. */
@@ -386,6 +399,7 @@ function readCandidateMedia(
   video: CandidateVideo | undefined,
   candidate: PoolCandidate,
   feedLanguageSlug: string,
+  forms: AdminLanguageForms,
 ): CandidateMedia | null {
   const audioLanguageSlug = audioSlugOf(candidate, feedLanguageSlug)
   const subtitleOnly = candidate.availability === "SUBTITLE_ONLY"
@@ -421,6 +435,9 @@ function readCandidateMedia(
       language: { slug: track.language?.slug ?? null },
     })),
     captionVttSrc,
+    title: pickVideoText(video, forms, readTitle),
+    description: pickVideoText(video, forms, readDescription),
+    textSlug: videoTextVariables(forms).textSlug,
   }
 }
 
@@ -440,6 +457,8 @@ export function applyHydration(
   state: ClipQueueState,
   token: number,
   videos: readonly CandidateVideo[] | null | undefined,
+  /** The forms whose `$textSlug` the request carried (KTD16). */
+  forms: AdminLanguageForms,
 ): ClipQueueState {
   const flight = heldFor(state, "hydrate", token)
   if (flight == null) return state
@@ -456,6 +475,7 @@ export function applyHydration(
       byCoreId.get(candidate.coreId),
       candidate,
       state.feedLanguageSlug,
+      forms,
     )
     if (read == null) {
       knowledge.set(id, "ineligible")
@@ -750,6 +770,13 @@ function readyClip(
 ): ReadyClip {
   return {
     ...candidate,
+    // The inventory's text is in the feed language; the hydration's rows
+    // follow the UI language (R9), and only a missing row keeps it.
+    title: media.title?.text ?? candidate.title,
+    titleLang: media.title?.lang ?? null,
+    description: media.description?.text ?? candidate.description,
+    descriptionLang: media.description?.lang ?? null,
+    textSlug: media.textSlug,
     // The hydrated dub is the one that plays.
     durationSeconds: media.durationSeconds,
     muxPlaybackId: media.muxPlaybackId,

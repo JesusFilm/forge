@@ -13,8 +13,8 @@ import {
 import type { VideoPlayer } from "expo-video"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
-import { EXPLORE_COPY } from "../../lib/explore/copy"
 import { readOr } from "../../lib/explore/playerRead"
 import type { ClipWindow } from "../../lib/explore/types"
 import { useExplorePagerHold } from "./ExplorePager"
@@ -46,6 +46,18 @@ const TRACK_HEIGHT = 3
 const THUMB = 12
 /** A drag this far sideways is a scrub, and the pager may no longer take it. */
 const SCRUB_LOCK_DX = 8
+
+/** m:ss for a place in a clip, which is never an hour long. */
+function clipClock(seconds: number): string {
+  const whole = Number.isFinite(seconds) ? Math.max(0, Math.floor(seconds)) : 0
+  return `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`
+}
+
+/** The pill above a scrub: "0:12 / 0:48". Digits and a slash only, so it stays
+ *  out of the catalog: the translator rejects a message that equals English. */
+function scrubTime(elapsed: number, length: number): string {
+  return `${clipClock(elapsed)} / ${clipClock(length)}`
+}
 
 function lengthOf({ startSeconds, endSeconds }: ClipWindow): number {
   return Math.max(endSeconds - startSeconds, 0)
@@ -81,6 +93,7 @@ export function ClipProgressBar({
   veiled,
 }: ClipProgressBarProps) {
   const typography = useTypography()
+  const t = useT("Explore")
   const { startSeconds, endSeconds } = clipWindow
   const length = lengthOf(clipWindow)
 
@@ -242,12 +255,12 @@ export function ClipProgressBar({
       // iOS promotes a plain View with a role only when `accessible` is set.
       accessible
       accessibilityRole="adjustable"
-      accessibilityLabel={EXPLORE_COPY.progressLabel}
+      accessibilityLabel={t("progressAriaLabel")}
       accessibilityValue={{
         min: 0,
         max: total,
         now: elapsed,
-        text: EXPLORE_COPY.progressValue(elapsed, total),
+        text: t("progressAriaValue", { elapsed, length: total }),
       }}
       accessibilityActions={[{ name: "increment" }, { name: "decrement" }]}
       onAccessibilityAction={handleAction}
@@ -282,7 +295,7 @@ export function ClipProgressBar({
           ]}
         >
           <Text style={[styles.pillText, typography.caption]}>
-            {EXPLORE_COPY.scrubTime(scrubSeconds, total)}
+            {scrubTime(scrubSeconds, total)}
           </Text>
         </Animated.View>
       )}

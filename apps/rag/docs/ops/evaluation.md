@@ -27,7 +27,7 @@ loss must also have one of the bounded dispositions accepted by the comparator.
 ## Run the local copied corpus
 
 Use the approved local environment without printing its values. Set
-`JFRAG_EVAL_CORPUS_REVISION` to the reviewed, non-secret corpus-copy identity
+`FORGE_RAG_EVAL_CORPUS_REVISION` to the reviewed, non-secret corpus-copy identity
 used by both candidates, then run:
 
 ```sh

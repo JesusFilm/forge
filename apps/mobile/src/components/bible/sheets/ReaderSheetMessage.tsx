@@ -11,7 +11,8 @@ export type ReaderSheetMessageProps = {
   sheetTitle: string
   title: string
   body: string
-  action: { label: string; onPress: () => void }
+  /** `actionName` is the Datadog tap name; it never changes with the label. */
+  action: { label: string; actionName: string; onPress: () => void }
   onClose: () => void
 }
 
@@ -42,6 +43,7 @@ export function ReaderSheetMessage({
           onPress={action.onPress}
           accessibilityRole="button"
           accessibilityLabel={action.label}
+          {...{ "dd-action-name": action.actionName }}
           style={({ pressed }) => [
             styles.action,
             { backgroundColor: controls.selectedFill },

@@ -14,6 +14,9 @@ import {
 import { ScreenTopBar, leaveToMyWatch } from "../src/components/ui/ScreenTopBar"
 import { useMiniPlayerBottomClearance } from "../src/hooks/useMiniPlayerBottomClearance"
 import { useTypography } from "../src/hooks/useTypography"
+import { useUiTag } from "../src/hooks/useUiTag"
+import { useTextDirection } from "../src/i18n/textDirection"
+import { useT } from "../src/i18n/useT"
 import { signOut } from "../src/lib/authActions"
 import type { AuthSessionSnapshot, AuthUser } from "../src/lib/authSession"
 import {
@@ -52,7 +55,13 @@ function useLeaveOnSignOut(status: AuthSessionSnapshot["status"]): boolean {
 
 function Identity({ user }: { user: AuthUser }) {
   const typography = useTypography()
-  const { name, displayName, initial } = accountIdentity(user)
+  const t = useT("Auth")
+  const uiTag = useUiTag()
+  const { name, displayName, initial } = accountIdentity(
+    user,
+    t("signedInFallbackName"),
+    uiTag,
+  )
   const email = user.email
 
   // Session Replay masks inputs, not rendered text. The name falls back to
@@ -88,6 +97,7 @@ function Identity({ user }: { user: AuthUser }) {
 
 function SignOutButton() {
   const typography = useTypography()
+  const t = useT("Auth")
   const [signingOut, setSigningOut] = useState(false)
   // Ref guard, not the state: two taps can land off one stale render.
   const flight = useRef(false)
@@ -114,12 +124,12 @@ function SignOutButton() {
         pressed && feedback.pressed,
       ]}
       accessibilityRole="button"
-      accessibilityLabel="Sign out"
+      accessibilityLabel={t("signOut")}
       accessibilityState={{ disabled: signingOut, busy: signingOut }}
       {...{ "dd-action-name": "profile-sign-out" }}
     >
       <Text style={[styles.signOutLabel, typography.body]}>
-        {signingOut ? "Signing out…" : "Sign out"}
+        {signingOut ? t("signingOut") : t("signOut")}
       </Text>
     </Pressable>
   )
@@ -127,13 +137,15 @@ function SignOutButton() {
 
 export default function AccountScreen() {
   const typography = useTypography()
+  const t = useT("MyWatch")
+  const uiDirection = useTextDirection().ui
   const snapshot = useAuthSnapshot()
   const leaving = useLeaveOnSignOut(snapshot.status)
   const bottomPad = useMiniPlayerBottomClearance() + WINDOW_EDGE_MARGIN
 
   return (
     <View style={styles.screen}>
-      <ScreenTopBar title="Account" showBack />
+      <ScreenTopBar title={t("accountTitle")} showBack />
       {snapshot.status === "signedIn" ? (
         <ScrollView
           contentContainerStyle={[styles.content, { paddingBottom: bottomPad }]}
@@ -146,8 +158,8 @@ export default function AccountScreen() {
           </View>
         </ScrollView>
       ) : leaving ? null : (
-        <Text style={[styles.notSignedIn, typography.body]}>
-          You are not signed in
+        <Text style={[styles.notSignedIn, typography.body, uiDirection]}>
+          {t("notSignedIn")}
         </Text>
       )}
     </View>

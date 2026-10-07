@@ -1,5 +1,6 @@
 import { Animated, StyleSheet, View, useWindowDimensions } from "react-native"
 
+import { useT } from "../../i18n/useT"
 import { SURFACE_COLOR } from "../../lib/color"
 import { PLAYER_HEIGHT_RATIO } from "../../lib/playerLayout"
 import { useShimmerOpacity } from "../../hooks/useShimmerOpacity"
@@ -30,9 +31,13 @@ export function VideoDetailSkeleton({
 
   // Shared fade-in/out so the skeleton reads as "loading", not "failed".
   const opacity = useShimmerOpacity()
+  const t = useT("Player")
 
   return (
-    <View accessibilityLabel="Loading video" accessibilityRole="progressbar">
+    <View
+      accessibilityLabel={t("loadingVideoAriaLabel")}
+      accessibilityRole="progressbar"
+    >
       {variant === "full" && (
         <>
           <Animated.View

@@ -8,6 +8,10 @@ import {
   PUSH_COPY_BODY_MAX_CHARS,
   PUSH_COPY_TITLE_MAX_CHARS,
 } from "@/services/push/contracts"
+import {
+  checkPushCountryCode,
+  pushCountryCodeRefusal,
+} from "@/services/push/country-code"
 
 type StatusTone = "success" | "warning" | "danger" | "info" | "muted"
 
@@ -48,11 +52,36 @@ export function isPushCampaignCancellable(status: PushCampaignStatus): boolean {
   return status === "SCHEDULED" || status === "SENDING"
 }
 
+/** A campaign that can still send is cancelled first; the service owns the rest. */
+export function isPushCampaignDeletable(status: PushCampaignStatus): boolean {
+  return !isPushCampaignCancellable(status)
+}
+
+/**
+ * `Mexico (MX)`. Only a code that matches phones gets a name: an alias such as
+ * `UK` stays a bare code, so the page never makes it look like a real target.
+ */
+export function formatPushCountry(code: string): string {
+  const check = checkPushCountryCode(code)
+  return check.kind === "country" ? `${check.name} (${code})` : code
+}
+
 export function formatPushUtcDate(value: Date | null): string {
   if (!value) return "—"
   return `${value.toISOString().slice(0, 10)} ${value
     .toISOString()
     .slice(11, 16)} UTC`
+}
+
+/** Fills a message that names a person and a time, such as the AI marker. */
+export function formatPushActorMessage(
+  template: string,
+  person: string,
+  at: Date,
+): string {
+  return template
+    .replace("{person}", person)
+    .replace("{time}", formatPushUtcDate(at))
 }
 
 export function formatPushSendDate(value: Date | null): string {
@@ -78,7 +107,7 @@ export function formatPushAudience(campaign: {
   const where =
     campaign.audienceScope === "EVERYWHERE"
       ? "Everywhere"
-      : `${campaign.countries.length} country/countries: ${campaign.countries.join(", ")}`
+      : `${campaign.countries.length} country/countries: ${campaign.countries.map(formatPushCountry).join(", ")}`
   if (campaign.languageFilter.length === 0) return where
   return `${where} — languages: ${campaign.languageFilter.join(", ")}`
 }
@@ -113,7 +142,7 @@ export function pushCopyFieldError(
   return null
 }
 
-/** A country chip the editor typed. Two letters, upper case, no repeats. */
+/** A country chip the editor typed: an ISO country code, upper case, no repeats. */
 export function normalizePushCountryInput(
   value: string,
   existing: readonly string[],
@@ -122,6 +151,8 @@ export function normalizePushCountryInput(
   if (!/^[A-Z]{2}$/.test(country)) {
     return { error: "A country is a two-letter ISO code, such as SA or FR." }
   }
+  const refusal = pushCountryCodeRefusal(country)
+  if (refusal) return { error: `${refusal}.` }
   if (existing.includes(country)) {
     return { error: `${country} is already on the list.` }
   }

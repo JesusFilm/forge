@@ -13,6 +13,9 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
 import { useSheetListHeight } from "../../hooks/useSheetListHeight"
+import { useUiTag } from "../../hooks/useUiTag"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useLocaleEpoch, useT, type UiT } from "../../i18n/useT"
 import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { acceptSheetTap, assembleSheetList } from "../../lib/sheetListLogic"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
@@ -44,6 +47,8 @@ export type SearchableListSheetProps<T> = {
   getSelectionId: (item: T) => string
   getKey: (item: T) => string
   getPrimaryLabel: (item: T) => string
+  // The language of the primary label (KTD13). Absent or null: not known.
+  getPrimaryLang?: (item: T) => string | null | undefined
   getSecondaryLabel?: (item: T) => string | null | undefined
   // A short state line under the labels (e.g. "Downloaded"); read out with the
   // row's name so a screen reader learns it too.
@@ -67,13 +72,19 @@ export type SearchableListSheetProps<T> = {
   // reaches it as its own element.
   renderActiveAccessory?: (item: T) => ReactNode
   colors?: SearchableListSheetColors
+  // The RUM prefix for the row and clear-search taps. The row label carries
+  // translated text, so Datadog must not name the tap from it (KTD15).
+  actionName?: string
 }
 
 function accessibleName(
+  t: UiT<"ListSheet">,
   primary: string,
   status: string | null | undefined,
 ): string {
-  return status ? `${primary}, ${status}` : primary
+  return status
+    ? t("rowWithStatusAriaLabel", { name: primary, status })
+    : primary
 }
 
 // Generic searchable list sheet: FlashList + search + "Current" section + 500ms
@@ -85,6 +96,7 @@ export function SearchableListSheet<T>({
   getSelectionId,
   getKey,
   getPrimaryLabel,
+  getPrimaryLang,
   getSecondaryLabel,
   getStatusLabel,
   getDetailLabel,
@@ -98,6 +110,7 @@ export function SearchableListSheet<T>({
   keepRowOrder = false,
   renderActiveAccessory,
   colors = DEFAULT_LIST_SHEET_COLORS,
+  actionName = "list-sheet",
 }: SearchableListSheetProps<T>) {
   const insets = useSafeAreaInsets()
   const { height: windowHeight } = useWindowDimensions()
@@ -110,6 +123,10 @@ export function SearchableListSheet<T>({
   // Debounce so a fast double-tap can't fire the selection (and router.back())
   // twice and pop the underlying screen.
   const lastSelectRef = useRef(0)
+  const uiTag = useUiTag()
+  const direction = useTextDirection()
+  const t = useT("ListSheet")
+  const epoch = useLocaleEpoch()
 
   const { active, filtered } = useMemo(
     () =>
@@ -121,6 +138,7 @@ export function SearchableListSheet<T>({
         getPrimaryLabel,
         getSearchValues,
         keepRowOrder,
+        uiTag,
       }),
     [
       rows,
@@ -130,6 +148,7 @@ export function SearchableListSheet<T>({
       getPrimaryLabel,
       getSearchValues,
       keepRowOrder,
+      uiTag,
     ],
   )
 
@@ -157,18 +176,30 @@ export function SearchableListSheet<T>({
       const secondary = getSecondaryLabel?.(item)
       const status = getStatusLabel?.(item)
       const detail = getDetailLabel?.(item)
+      const primaryDirection = direction.text(getPrimaryLang?.(item))
       return (
         <Pressable
           style={({ pressed }) => [styles.listRow, pressed && feedback.pressed]}
           onPress={() => handleSelect(item)}
           accessibilityRole="radio"
           accessibilityState={{ selected: false }}
-          accessibilityLabel={accessibleName(getPrimaryLabel(item), status)}
+          accessibilityLabel={accessibleName(t, getPrimaryLabel(item), status)}
+          // The mark fits only a label that is the name alone (R10).
+          accessibilityLanguage={
+            status ? undefined : primaryDirection.accessibilityLanguage
+          }
+          {...{ "dd-action-name": `${actionName}-row` }}
         >
           <View style={styles.nameColumn}>
             <Text
-              style={[styles.listRowText, typography.body, primaryText]}
+              style={[
+                styles.listRowText,
+                typography.body,
+                primaryText,
+                primaryDirection.style,
+              ]}
               numberOfLines={1}
+              accessibilityLanguage={primaryDirection.accessibilityLanguage}
             >
               {getPrimaryLabel(item)}
             </Text>
@@ -182,7 +213,12 @@ export function SearchableListSheet<T>({
             ) : null}
             {status ? (
               <Text
-                style={[styles.nativeText, typography.bodySmall, secondaryText]}
+                style={[
+                  styles.nativeText,
+                  typography.bodySmall,
+                  secondaryText,
+                  direction.ui,
+                ]}
                 numberOfLines={1}
               >
                 {status}
@@ -202,6 +238,7 @@ export function SearchableListSheet<T>({
     },
     [
       getPrimaryLabel,
+      getPrimaryLang,
       getSecondaryLabel,
       getStatusLabel,
       getDetailLabel,
@@ -209,6 +246,9 @@ export function SearchableListSheet<T>({
       typography,
       primaryText,
       secondaryText,
+      t,
+      actionName,
+      direction,
     ],
   )
 
@@ -217,6 +257,9 @@ export function SearchableListSheet<T>({
   const activeSecondary = active ? getSecondaryLabel?.(active) : null
   const activeStatus = active ? getStatusLabel?.(active) : null
   const activeDetail = active ? getDetailLabel?.(active) : null
+  const activeDirection = direction.text(
+    active ? getPrimaryLang?.(active) : null,
+  )
 
   // Search + current selection live in the list header so they scroll with the
   // list in one container.
@@ -247,7 +290,8 @@ export function SearchableListSheet<T>({
             onPress={() => setQuery("")}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Clear search"
+            accessibilityLabel={t("clearSearchAriaLabel")}
+            {...{ "dd-action-name": `${actionName}-clear-search` }}
           >
             <Ionicons
               name="close-circle"
@@ -261,9 +305,14 @@ export function SearchableListSheet<T>({
       {active && (
         <View style={styles.currentSection}>
           <Text
-            style={[styles.currentLabel, typography.bodySmall, secondaryText]}
+            style={[
+              styles.currentLabel,
+              typography.bodySmall,
+              secondaryText,
+              direction.ui,
+            ]}
           >
-            Current
+            {t("current")}
           </Text>
           <View style={[styles.listRow, { backgroundColor: colors.surface }]}>
             <View
@@ -273,9 +322,13 @@ export function SearchableListSheet<T>({
               // child texts one by one.
               accessible
               accessibilityLabel={accessibleName(
+                t,
                 getPrimaryLabel(active),
                 activeStatus,
               )}
+              accessibilityLanguage={
+                activeStatus ? undefined : activeDirection.accessibilityLanguage
+              }
             >
               <Ionicons name="checkmark" size={18} color={colors.accent} />
               <View style={styles.nameColumn}>
@@ -285,9 +338,11 @@ export function SearchableListSheet<T>({
                     typography.body,
                     styles.listRowTextActive,
                     primaryText,
+                    activeDirection.style,
                   ]}
                   // An accessory takes width, so a long name gets a second line.
                   numberOfLines={renderActiveAccessory ? 2 : 1}
+                  accessibilityLanguage={activeDirection.accessibilityLanguage}
                 >
                   {getPrimaryLabel(active)}
                 </Text>
@@ -309,6 +364,7 @@ export function SearchableListSheet<T>({
                       styles.nativeText,
                       typography.bodySmall,
                       secondaryText,
+                      direction.ui,
                     ]}
                     numberOfLines={1}
                   >
@@ -343,6 +399,8 @@ export function SearchableListSheet<T>({
           data={filtered}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
+          // Recycled rows redraw on a language change (KTD5).
+          extraData={epoch}
           keyboardShouldPersistTaps="handled"
           // Off by intent: FlashList v2's default maintainVisibleContentPosition
           // (for chat-like lists) makes our list jump when the search swaps data

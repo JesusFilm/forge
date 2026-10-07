@@ -29,9 +29,46 @@ jest.mock("@expo/vector-icons/MaterialCommunityIcons", () => ({
   __esModule: true,
   default: () => null,
 }))
+// A fixture `ru` catalog joins the real set, so the "Off" text can change
+// language while the row is on screen.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(
+      jest.requireActual("../../../i18n/catalogs.generated"),
+      {
+        ru: { Subtitles: { off: "Выкл.", noSubtitles: "Без субтитров" } },
+      },
+    ),
+)
+jest.mock("../../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../../i18n/pluralData.generated"),
+      ["ru"],
+    ),
+)
 
 import { act } from "react"
 
+import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
+import { SUBTITLES_OFF } from "../../../lib/subtitleSelection"
+import {
+  phoneLocales,
+  tapActionName,
+} from "../../../test-utils/uiLocaleFixture"
 import { SeriesActionRow } from "../SeriesActionRow"
 import { EXPORT_IN_PROGRESS_COLOR } from "../../../lib/downloadGlyph"
 import type { SeriesDownloadState } from "../../../lib/seriesDownloadAggregate"
@@ -277,5 +314,52 @@ describe("SeriesActionRow download-all control", () => {
       await pressAll(labelled(renderer, label))
       expect(onDownload).toHaveBeenCalledTimes(1)
     })
+  })
+})
+
+// KTD15: the "Off" state arrives as a sentinel, and only this row turns it
+// into catalog text. The pill keeps one RUM action name in every language.
+describe("SeriesActionRow subtitles pill", () => {
+  beforeEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+  })
+  afterAll(() => resetLocaleStoreForTests())
+
+  function pill(renderer: TestInstance, label: string): RenderedNode {
+    const [node] = labelled(renderer, label).filter(
+      (n) => typeof n.props.onPress === "function",
+    )
+    expect(node).toBeDefined()
+    return node
+  }
+
+  it("renders the off state from the catalog, with one tap name", async () => {
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <SeriesActionRow
+          onLanguage={() => {}}
+          onSubtitles={() => {}}
+          onDownload={onDownload}
+          onShare={() => {}}
+          downloadState={state()}
+          subtitleLabel={SUBTITLES_OFF}
+        />,
+      )
+    })
+    const englishName = tapActionName(pill(renderer, "Subtitles, Off"))
+
+    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
+    await act(async () => {
+      refreshLocale()
+    })
+
+    const russian = pill(renderer, "Subtitles, Выкл.")
+    expect(labelled(renderer, "Subtitles, Off")).toHaveLength(0)
+    expect(tapActionName(russian)).toBe(englishName)
+    expect(englishName).toBe("series-subtitles")
   })
 })

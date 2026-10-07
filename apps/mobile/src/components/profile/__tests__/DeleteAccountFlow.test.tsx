@@ -49,14 +49,7 @@ jest.mock("../../../lib/authSession", () => {
 
 import { act } from "react"
 
-import {
-  DELETE_FAILED_MESSAGE,
-  DELETE_UNCONFIRMED_MESSAGE,
-  DeleteAccountFlow,
-  REAUTH_FAILED_MESSAGE,
-  REAUTH_PROMPT_MESSAGE,
-  WRONG_ACCOUNT_MESSAGE,
-} from "../DeleteAccountFlow"
+import { DeleteAccountFlow } from "../DeleteAccountFlow"
 import type { DeleteAccountOutcome } from "../../../lib/accountDeletion"
 import {
   deleteAccount,
@@ -73,6 +66,18 @@ import {
   type NodeRequireLike,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+
+// The flow's messages, pinned as the English the catalog must render.
+const DELETE_FAILED_MESSAGE =
+  "Deleting your account failed — nothing was changed. Please try again. If it keeps failing, contact help@jesusfilm.org."
+const REAUTH_FAILED_MESSAGE =
+  "Signing in did not work, so your account was not deleted. Please try again."
+const REAUTH_PROMPT_MESSAGE =
+  "For security, sign in again first. Deletion then continues automatically."
+const WRONG_ACCOUNT_MESSAGE =
+  "A different account signed in, so nothing was deleted. To delete the original account, sign in with it and try again."
+const DELETE_UNCONFIRMED_MESSAGE =
+  "We could not confirm whether your account was deleted. Reopen the app to check. If you are still signed in, nothing changed and you can try again."
 
 const mockedSignIn = jest.mocked(signInWithHostedPage)
 const mockedDelete = jest.mocked(deleteAccount)

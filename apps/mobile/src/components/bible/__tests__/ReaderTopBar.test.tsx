@@ -10,11 +10,59 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
-import { READER_COPY } from "../../../lib/bible/reader/copy"
 import type { TranslationLabel } from "../../../lib/bible/reader/labels"
 import type { PillDownloadStatus } from "../../../lib/bible/reader/labels"
 import { readerTokens } from "../../../lib/bible/theme/palettes"
 import { ReaderTopBar, STAND_IN_TIP_MS } from "../ReaderTopBar"
+import {
+  refreshLocale,
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
+import { getT } from "../../../i18n/useT"
+import {
+  phoneLocales,
+  tapActionName,
+} from "../../../test-utils/uiLocaleFixture"
+
+const readerT = getT("BibleReader")
+
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+// A fixture `ru` catalog joins the real set; English cases never start the
+// store, so they read en.json as before.
+jest.mock("../../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(
+      jest.requireActual("../../../i18n/catalogs.generated"),
+      {
+        ru: {
+          Common: { goBackAriaLabel: "Назад" },
+          BibleReader: {
+            settingsAriaLabel: "Настройки чтения",
+            choosePassageAriaLabel: "{passage}. Выбрать отрывок",
+          },
+        },
+      },
+    ),
+)
+jest.mock("../../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../../i18n/pluralData.generated"),
+      ["ru"],
+    ),
+)
+jest.mock("../../../lib/datadog", () => ({
+  datadogLog: { info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
 
 jest.mock("expo-glass-effect", () => ({
   GlassView: () => null,
@@ -43,7 +91,9 @@ afterEach(async () => {
 
 const BSB_LABEL: TranslationLabel = {
   text: "BSB",
-  accessibilityLabel: READER_COPY.translation("Berean Standard Bible"),
+  accessibilityLabel: readerT("translationAriaLabel", {
+    name: "Berean Standard Bible",
+  }),
   note: null,
   noteKey: null,
 }
@@ -119,9 +169,9 @@ describe("ReaderTopBar translation pill download status", () => {
     expect(
       buttons(renderer).map((node) => node.props.accessibilityLabel),
     ).toEqual([
-      READER_COPY.choosePassage("John 3:16"),
+      readerT("choosePassageAriaLabel", { passage: "John 3:16" }),
       BSB_LABEL.accessibilityLabel,
-      READER_COPY.settings,
+      readerT("settingsAriaLabel"),
     ])
   })
 
@@ -153,9 +203,9 @@ describe("ReaderTopBar translation pill", () => {
     expect(
       buttons(renderer).map((node) => node.props.accessibilityLabel),
     ).toEqual([
-      READER_COPY.choosePassage("John 3:16"),
+      readerT("choosePassageAriaLabel", { passage: "John 3:16" }),
       BSB_LABEL.accessibilityLabel,
-      READER_COPY.settings,
+      readerT("settingsAriaLabel"),
     ])
     expect(textCount(renderer, "BSB")).toBe(1)
   })
@@ -182,7 +232,7 @@ describe("ReaderTopBar translation pill", () => {
     const renderer = await render(null, null)
     const [, translation] = buttons(renderer)
     expect(translation!.props.accessibilityLabel).toBe(
-      READER_COPY.chooseTranslationWaiting,
+      readerT("chooseTranslationWaitingAriaLabel"),
     )
     expect(translation!.props.accessibilityState).toMatchObject({
       disabled: true,
@@ -238,10 +288,10 @@ describe("ReaderTopBar stand-in note", () => {
     expect(
       buttons(renderer).map((node) => node.props.accessibilityLabel),
     ).toEqual([
-      READER_COPY.choosePassage("John 3:16"),
-      READER_COPY.translation("Berean Standard Bible"),
+      readerT("choosePassageAriaLabel", { passage: "John 3:16" }),
+      readerT("translationAriaLabel", { name: "Berean Standard Bible" }),
       NOTE,
-      READER_COPY.settings,
+      readerT("settingsAriaLabel"),
     ])
     // The icon is inside its own button, not inside the translation pill.
     expect(iconCount(renderer, "information-circle-outline")).toBe(1)
@@ -257,7 +307,7 @@ describe("ReaderTopBar stand-in note", () => {
     }
     expect(owners).toContain(NOTE)
     expect(owners).not.toContain(
-      READER_COPY.translation("Berean Standard Bible"),
+      readerT("translationAriaLabel", { name: "Berean Standard Bible" }),
     )
   })
 
@@ -326,5 +376,42 @@ describe("ReaderTopBar stand-in note", () => {
     await pressInfo(renderer)
     await render(null, { ...STAND_IN, noteKey: "offline-stand-in:BSB" })
     expect(tips(renderer)).toHaveLength(0)
+  })
+})
+
+describe("ReaderTopBar in another UI language", () => {
+  afterEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+  })
+
+  function buttonLabelled(renderer: TestInstance, label: string) {
+    const [button] = buttons(renderer).filter(
+      (node) => node.props.accessibilityLabel === label,
+    )
+    if (!button) throw new Error(`no button labelled "${label}"`)
+    return button
+  }
+
+  it("keeps each control's Datadog name when its label changes language", async () => {
+    mockGetLocales.mockReturnValue(phoneLocales("en-US"))
+    startLocaleSync()
+    const renderer = await render(null)
+    const english = [
+      tapActionName(buttonLabelled(renderer, "Reader settings")),
+      tapActionName(buttonLabelled(renderer, "John 3:16. Choose a passage")),
+    ]
+
+    mockGetLocales.mockReturnValue(phoneLocales("ru-RU"))
+    await act(async () => {
+      refreshLocale()
+    })
+
+    const russian = [
+      tapActionName(buttonLabelled(renderer, "Настройки чтения")),
+      tapActionName(buttonLabelled(renderer, "John 3:16. Выбрать отрывок")),
+    ]
+    expect(english).toEqual(["bible-reader-settings", "bible-reader-passage"])
+    expect(russian).toEqual(english)
   })
 })

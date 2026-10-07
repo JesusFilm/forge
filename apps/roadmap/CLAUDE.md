@@ -7,6 +7,7 @@ Read-only Next.js dashboard that renders feature tickets from `docs/roadmap/` ma
 ## Architecture
 
 - `lib/features.ts` — reads markdown files from `../../docs/roadmap/`, parses YAML frontmatter with `gray-matter`, computes blocked status from dependencies.
+- `cancelled` is terminal for its own ticket and excluded from open/overdue work. Historical `canceled` spelling normalizes to `cancelled`. A dependency on cancelled work remains blocked until the dependency is removed; duplicate IDs are treated as incomplete unless every matching ticket is complete.
 - `components/` — server components except `RoadmapTimeline.tsx` (client, for hover interactions and toggle), `CopyBrainstormButton.tsx` (client, clipboard), `Sidebar.tsx` (client, mobile toggle), `MarkdownRenderer.tsx` (client, react-markdown).
 - Data flows one way: `docs/roadmap/*.md` → `lib/features.ts` → pages/components.
 

@@ -106,6 +106,27 @@ describe("ScreenTopBar", () => {
     await unmount(renderer)
   })
 
+  it("gives both controls fixed tap names, so a translated label keeps one series", async () => {
+    const renderer = await render({
+      title: "Account",
+      showBack: true,
+      trailingAction: {
+        icon: "menu",
+        accessibilityLabel: "Más",
+        onPress: () => {},
+        actionName: "test-menu",
+      },
+    })
+
+    // On the host node: a wrapper that drops the prop would fail here.
+    const named = hostNodes(renderer, (node) => "dd-action-name" in node.props)
+    expect(named.map((node) => node.props["dd-action-name"])).toEqual([
+      "screen-top-bar-back",
+      "test-menu",
+    ])
+    await unmount(renderer)
+  })
+
   it("renders no header text when the title is omitted, and keeps the trailing action", async () => {
     const renderer = await render({
       trailingAction: {

@@ -9,13 +9,13 @@ import {
 } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useT } from "../../i18n/useT"
 import {
   READER_CHROME_MAX_FONT_SCALE,
   READER_TOUCH_TARGET,
   READER_TOP_BAR_HEIGHT,
   READER_TOP_BAR_OFFSET,
 } from "../../lib/bible/reader/chrome"
-import { READER_COPY } from "../../lib/bible/reader/copy"
 import type {
   PillDownloadStatus,
   TranslationLabel,
@@ -61,6 +61,8 @@ export function ReaderTopBar({
   translationStatus,
   onPressSettings,
 }: ReaderTopBarProps) {
+  const t = useT("BibleReader")
+  const common = useT("Common")
   const note = translation?.note ?? null
   const noteKey = translation?.noteKey ?? null
   // The stand-in the open tip is for. Its text can change while a book name
@@ -103,7 +105,8 @@ export function ReaderTopBar({
         {onBack && (
           <ReaderGlassButton
             tokens={tokens}
-            accessibilityLabel={READER_COPY.back}
+            accessibilityLabel={common("goBackAriaLabel")}
+            actionName="bible-reader-back"
             onPress={onBack}
           >
             <Ionicons name="chevron-back" size={24} color={tokens.icon} />
@@ -113,9 +116,10 @@ export function ReaderTopBar({
           tokens={tokens}
           accessibilityLabel={
             passage
-              ? READER_COPY.choosePassage(passage)
-              : READER_COPY.choosePassageWaiting
+              ? t("choosePassageAriaLabel", { passage })
+              : t("choosePassageWaitingAriaLabel")
           }
+          actionName="bible-reader-passage"
           onPress={onPressPassage}
           disabled={passage === null}
           pulse={pulse}
@@ -136,8 +140,9 @@ export function ReaderTopBar({
           shape="pill"
           accessibilityLabel={
             translation?.accessibilityLabel ??
-            READER_COPY.chooseTranslationWaiting
+            t("chooseTranslationWaitingAriaLabel")
           }
+          actionName="bible-reader-translation"
           onPress={onPressTranslation}
           disabled={translation === null}
           style={styles.translation}
@@ -165,6 +170,7 @@ export function ReaderTopBar({
             accessibilityLabel={note}
             accessibilityState={{ expanded: tipOpen }}
             style={({ pressed }) => [styles.info, pressed && styles.pressed]}
+            {...{ "dd-action-name": "bible-reader-stand-in-info" }}
           >
             <Ionicons
               name="information-circle-outline"
@@ -177,7 +183,8 @@ export function ReaderTopBar({
       <View style={styles.trailing} pointerEvents="box-none">
         <ReaderGlassButton
           tokens={tokens}
-          accessibilityLabel={READER_COPY.settings}
+          accessibilityLabel={t("settingsAriaLabel")}
+          actionName="bible-reader-settings"
           onPress={onPressSettings}
         >
           <Ionicons name="settings-outline" size={22} color={tokens.icon} />
@@ -266,6 +273,7 @@ function StandInTip({ tokens, note, top, arrowX, onPress }: StandInTipProps) {
         accessibilityRole="text"
         accessibilityLabel={note}
         style={styles.tip}
+        {...{ "dd-action-name": "bible-reader-stand-in-tip" }}
       >
         <View
           style={[styles.tipArrow, { left: arrowLeft }]}

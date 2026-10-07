@@ -1,3 +1,7 @@
+import {
+  EmbeddingProviderError,
+  EmbeddingResponseError,
+} from "../../contracts/index.js"
 import type { Embedder } from "../../contracts/index.js"
 
 export type OpenAICompatibleEmbedderOptions = {
@@ -87,10 +91,7 @@ export class OpenAICompatibleEmbedder implements Embedder {
         },
       )
       if (!response.ok) {
-        const error = new Error(
-          `embeddings failed: ${response.status} ${response.statusText}`,
-        ) as Error & { retryable?: boolean }
-        error.retryable = response.status === 429 || response.status >= 500
+        const error = new EmbeddingProviderError(response.status)
         throw error
       }
       const body = (await response.json()) as EmbeddingResponse
@@ -99,7 +100,9 @@ export class OpenAICompatibleEmbedder implements Embedder {
         rows.length !== inputs.length ||
         rows.some((row, index) => row.index !== index)
       ) {
-        throw new Error("embedding response count/index mismatch")
+        throw new EmbeddingResponseError(
+          "embedding response count/index mismatch",
+        )
       }
       return rows.map(({ embedding }, index) => {
         const vector =
@@ -111,7 +114,7 @@ export class OpenAICompatibleEmbedder implements Embedder {
           vector.length !== this.dimensions ||
           vector.some((value) => !Number.isFinite(value))
         ) {
-          throw new Error(
+          throw new EmbeddingResponseError(
             `embedding ${index} has invalid width or non-finite values; expected ${this.dimensions}`,
           )
         }

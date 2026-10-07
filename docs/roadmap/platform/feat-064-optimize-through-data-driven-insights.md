@@ -7,13 +7,20 @@ status: "not-started"
 start_date: "2026-11-15"
 duration: 46
 depends_on:
-  - "feat-063"
+  - "feat-447"
 blocks: []
 tags:
   - "analytics"
   - "platform"
   - "optimization"
 ---
+
+## Dependency reconciliation — October 2, 2026
+
+The upstream personalization prerequisite is the delivered bounded profile rollout
+(feat-447), replacing the cancelled umbrella feat-063. This ticket retains its
+separate analytics/product-insight scope and status; the recommendation closeout
+does not implement its reporting programme or reinstate cancelled studies.
 
 ## Problem
 
@@ -24,7 +31,7 @@ Personalization and discovery improvements will stall if the team cannot measure
 1. `apps/manager/src/app/api/coverage-snapshots/route.ts` — reporting endpoint pattern
 2. `apps/cms/src/api/coverage-snapshot/services/coverage-snapshot.ts` — snapshot generation
 3. `apps/cms/src/api/video-coverage/services/video-coverage.ts` — coverage reporting logic
-4. `docs/roadmap/content-discovery/feat-063-personalize-discovery-experiences.md` — upstream personalization capability
+4. `docs/roadmap/content-discovery/feat-447-live-anonymous-profile-personalization-pilot.md` — upstream personalization capability
 5. `apps/manager/src/app/dashboard/page.tsx` — reporting/dashboard presentation baseline
 
 ## Grep These

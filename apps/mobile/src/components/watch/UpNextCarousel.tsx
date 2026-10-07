@@ -21,6 +21,8 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { carousel, card, feedback, text, CARD_GAP } from "../../styles/shared"
 import type { WatchSibling } from "../../lib/normalizeVideo"
 import { encodeWatchSeed } from "../../lib/watchSeed"
@@ -42,6 +44,10 @@ const CARD_ASPECT_RATIO = 16 / 9
 export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
   const router = useRouter()
   const typography = useTypography()
+  const t = useT("Watch")
+  const tCommon = useT("Common")
+  const epoch = useLocaleEpoch()
+  const direction = useTextDirection()
   const { width: screenWidth } = useWindowDimensions()
 
   const cardWidth = Math.round(screenWidth * CARD_WIDTH_RATIO)
@@ -50,7 +56,15 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
   const renderItem = useCallback(
     ({ item }: { item: WatchSibling }) => {
       const isCurrent = item.slug === currentSlug
-      const title = item.title ?? item.label ?? "Untitled"
+      const title = item.title ?? item.label ?? tCommon("untitled")
+      // A raw label stand-in has no known language; "untitled" is UI text.
+      const titleDirection = direction.text(
+        item.title != null
+          ? item.titleLang
+          : item.label != null
+            ? null
+            : direction.uiTag,
+      )
 
       const handlePress = () => {
         if (!isCurrent) {
@@ -80,8 +94,11 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
           onPress={handlePress}
           accessibilityRole="button"
           accessibilityLabel={
-            isCurrent ? `Currently playing ${title}` : `Play ${title}`
+            isCurrent
+              ? t("currentlyPlayingAriaLabel", { title })
+              : tCommon("playTitleAriaLabel", { title })
           }
+          {...{ "dd-action-name": "watch-up-next-card" }}
         >
           {item.posterUrl != null ? (
             <Image
@@ -113,15 +130,20 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
           {isCurrent && (
             <View style={styles.playingPill} pointerEvents="none">
               <Text style={[styles.playingPillText, typography.caption]}>
-                Playing
+                {t("playingBadge")}
               </Text>
             </View>
           )}
 
           <View style={styles.titleOverlay} pointerEvents="none">
             <Text
-              style={[styles.cardTitle, typography.bodySmall]}
+              style={[
+                styles.cardTitle,
+                typography.bodySmall,
+                titleDirection.style,
+              ]}
               numberOfLines={2}
+              accessibilityLanguage={titleDirection.accessibilityLanguage}
             >
               {title}
             </Text>
@@ -129,7 +151,16 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
         </Pressable>
       )
     },
-    [currentSlug, cardWidth, cardHeight, typography, router],
+    [
+      currentSlug,
+      cardWidth,
+      cardHeight,
+      typography,
+      router,
+      t,
+      tCommon,
+      direction,
+    ],
   )
 
   if (siblings.length === 0) return null
@@ -137,14 +168,15 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
   return (
     <View>
       <Text
-        style={[text.sectionHeadingPadded, typography.titleLarge]}
+        style={[text.sectionHeadingPadded, typography.titleLarge, direction.ui]}
         accessibilityRole="header"
       >
-        Up Next
+        {t("upNextHeading")}
       </Text>
       <FlatList
         data={siblings}
         renderItem={renderItem}
+        extraData={epoch}
         keyExtractor={(item) => item.documentId}
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -152,7 +184,9 @@ export function UpNextCarousel({ siblings, currentSlug }: UpNextCarouselProps) {
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
-        accessibilityLabel={`${siblings.length} sibling videos`}
+        accessibilityLabel={t("upNextListAriaLabel", {
+          count: siblings.length,
+        })}
       />
     </View>
   )

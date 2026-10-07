@@ -23,6 +23,8 @@ import { PlatformBlur } from "../ui/PlatformBlur"
 type ReaderGlassButtonProps = {
   tokens: ReaderTokens
   accessibilityLabel: string
+  /** The Datadog tap name. The label is translated; this stays the same. */
+  actionName: string
   onPress: () => void
   /** A circle holds one glyph; a pill grows with its label. */
   shape?: "circle" | "pill"
@@ -37,6 +39,7 @@ type ReaderGlassButtonProps = {
 export function ReaderGlassButton({
   tokens,
   accessibilityLabel,
+  actionName,
   onPress,
   shape = "circle",
   disabled = false,
@@ -53,6 +56,7 @@ export function ReaderGlassButton({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled }}
       style={[styles.target, style]}
+      {...{ "dd-action-name": actionName }}
     >
       {({ pressed }) => (
         <ReaderGlassSurface

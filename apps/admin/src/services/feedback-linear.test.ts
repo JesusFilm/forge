@@ -59,19 +59,19 @@ function successResponse(issueId = "issue-1"): Response {
 }
 
 beforeEach(() => {
-  envMutable.ADMIN_FEEDBACK_LINEAR_API_KEY = "lin_api_test"
-  envMutable.ADMIN_FEEDBACK_LINEAR_TEAM_ID = "team-1"
-  envMutable.ADMIN_FEEDBACK_LINEAR_PROJECT_ID = "project-1"
-  envMutable.ADMIN_FEEDBACK_LINEAR_LABEL_ID = "label-1"
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY = "lin_api_test"
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_TEAM_ID = "team-1"
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID = "project-1"
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID = "label-1"
   vi.spyOn(console, "log").mockImplementation(() => {})
   vi.spyOn(console, "warn").mockImplementation(() => {})
 })
 
 afterEach(() => {
-  envMutable.ADMIN_FEEDBACK_LINEAR_API_KEY = undefined
-  envMutable.ADMIN_FEEDBACK_LINEAR_TEAM_ID = undefined
-  envMutable.ADMIN_FEEDBACK_LINEAR_PROJECT_ID = undefined
-  envMutable.ADMIN_FEEDBACK_LINEAR_LABEL_ID = undefined
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY = undefined
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_TEAM_ID = undefined
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID = undefined
+  envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID = undefined
   vi.restoreAllMocks()
 })
 
@@ -90,6 +90,17 @@ describe("buildFeedbackIssueTitle", () => {
         message: "Let me download audio only\nfor long drives",
       }),
     ).toBe("[Mobile feedback] Idea: Let me download audio only")
+  })
+
+  it("uses the Translation short name for a translation report", () => {
+    expect(
+      buildFeedbackIssueTitle({
+        ...minimalSubmission,
+        kind: "TRANSLATION",
+        uiLocale: "ar",
+        message: "The Play button says Stop",
+      }),
+    ).toBe("[Mobile feedback] Translation: The Play button says Stop")
   })
 
   it("falls back to Feedback when the first line carries nothing visible", () => {
@@ -182,6 +193,7 @@ describe("buildFeedbackIssueDescription", () => {
       ].join("\n"),
     )
     for (const absent of [
+      "App language",
       "Name",
       "Email",
       "Video",
@@ -193,6 +205,43 @@ describe("buildFeedbackIssueDescription", () => {
     ]) {
       expect(description).not.toContain(`**${absent}:**`)
     }
+  })
+
+  it("names the app language right after the kind of a translation report", () => {
+    const description = buildFeedbackIssueDescription({
+      ...minimalSubmission,
+      kind: "TRANSLATION",
+      uiLocale: "zh-Hans",
+    })
+    expect(description).toContain(
+      [
+        "- **Kind:** A translation is wrong",
+        "- **App language:** Simplified Chinese \\(zh\\-Hans\\)",
+        "- **Platform:** Android",
+      ].join("\n"),
+    )
+  })
+
+  it("prints the tag alone when Intl has no name for it", () => {
+    // qaa is in the BCP 47 private-use range, so no ICU update names it.
+    expect(
+      buildFeedbackIssueDescription({
+        ...minimalSubmission,
+        kind: "TRANSLATION",
+        uiLocale: "qaa",
+      }),
+    ).toContain("- **App language:** qaa\n")
+  })
+
+  it("prints the tag alone when Intl throws on it", () => {
+    // Passes admin's bound, but a lone one-letter subtag is not BCP 47.
+    expect(
+      buildFeedbackIssueDescription({
+        ...minimalSubmission,
+        kind: "TRANSLATION",
+        uiLocale: "en-a",
+      }),
+    ).toContain("- **App language:** en\\-a\n")
   })
 
   it("omits the position line when the player could not report one", () => {
@@ -225,7 +274,7 @@ describe("buildFeedbackIssueDescription", () => {
 
 describe("createLinearFeedbackIssue", () => {
   it("refuses without a network call when the API key is missing (AE8)", async () => {
-    envMutable.ADMIN_FEEDBACK_LINEAR_API_KEY = undefined
+    envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY = undefined
     const fetchMock = vi.fn<typeof fetch>()
 
     await expect(
@@ -239,7 +288,7 @@ describe("createLinearFeedbackIssue", () => {
   })
 
   it("refuses without a network call when the team id is missing (AE8)", async () => {
-    envMutable.ADMIN_FEEDBACK_LINEAR_TEAM_ID = undefined
+    envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_TEAM_ID = undefined
     const fetchMock = vi.fn<typeof fetch>()
 
     await expect(
@@ -285,8 +334,8 @@ describe("createLinearFeedbackIssue", () => {
   })
 
   it("omits the project and the label when neither is configured", async () => {
-    envMutable.ADMIN_FEEDBACK_LINEAR_PROJECT_ID = undefined
-    envMutable.ADMIN_FEEDBACK_LINEAR_LABEL_ID = undefined
+    envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID = undefined
+    envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID = undefined
     const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(successResponse())
 
     await createLinearFeedbackIssue(fullSubmission, fetchMock)
@@ -479,7 +528,7 @@ describe("createLinearFeedbackIssue logging", () => {
   })
 
   it("logs config_missing with no status", async () => {
-    envMutable.ADMIN_FEEDBACK_LINEAR_API_KEY = undefined
+    envMutable.ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY = undefined
 
     await createLinearFeedbackIssue(fullSubmission, vi.fn<typeof fetch>())
 

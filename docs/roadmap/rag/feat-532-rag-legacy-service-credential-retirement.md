@@ -3,7 +3,7 @@ id: "feat-532"
 title: "Retire legacy JesusFilm-RAG service and credentials"
 owner: "jaco"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-09-22"
 duration: 1
 depends_on: ["feat-435"]
@@ -40,8 +40,8 @@ that the deployment is stopped or that legacy credentials are retired.
 1. In a separately authorized operator task, identify the exact legacy service
    and credential targets and their disposition. Reconfirm that each proposed
    retirement target is unused by Forge and its consumers. A `JFRAG_` name alone
-   does not identify an obsolete credential: Forge dashboard/evaluation still
-   consume namespaced production-read configuration.
+   does not identify an obsolete credential: verify its actual target and all
+   consumers independently, including the Forge production-read configuration.
 2. Prepare a bounded retirement plan covering only named legacy resources,
    shared provider/database dependencies, expected effects, and recovery or
    irreversible-action handling. Obtain operation-specific authorization before
@@ -76,4 +76,57 @@ that the deployment is stopped or that legacy credentials are retired.
   link, status-count, and reciprocal dependency checks.
 
 Created by [draft PR #2379](https://github.com/JesusFilm/forge/pull/2379). This
-ticket is not started and does not block the completed feat-435 documentation.
+ticket is in progress and does not block the completed feat-435 documentation.
+
+## Environment-name migration — complete
+
+The October 5 environment-name migration completed its separately approved scope.
+[PR #2558](https://github.com/JesusFilm/forge/pull/2558) added compatibility,
+[PR #2563](https://github.com/JesusFilm/forge/pull/2563) updated active operator
+documentation, and [PR #2562](https://github.com/JesusFilm/forge/pull/2562)
+removed compatibility after canonical consumers were verified. All six legacy
+configuration names in the approved cleanup are absent and the canonical contract
+validates. Removing a name does not prove the underlying credential was revoked,
+a service stopped, or a database retired; overall feat-532 remains in progress
+for the original resource dispositions above.
+
+Canonical production variables use `FORGE_RAG_`; the shared provider key is
+`OPENROUTER_API_KEY`, the production model is `FORGE_RAG_EMBED_MODEL_ID`, and
+copy tooling uses `CORPUS_SOURCE_DATABASE_URL`. At the October 5 name-migration
+gate, Railway runtime `DATABASE_URL`, `EMBED_MODEL_ID`, and
+`SERVE_BEARER_TOKENS` retained their existing contract; feat-610 is scoped to
+retire the last of these from Forge serving.
+Legacy environment aliases are no longer accepted. Exact host, reader identity,
+write and role-provision acknowledgements remain mandatory.
+
+Environment/argument/unit checks and bounded retrieval/HTTP smoke were the
+migration validation scope. The final gate observed health HTTP 200, five smoke
+results, three authenticated consumer results, and three guarded database retrieval
+results, all on the first attempt. No HTTP 500 was observed during that bounded
+gate; this is not a reliability or root-cause claim. No rollback was performed.
+Private configuration and recovery evidence remain outside this repository.
+
+[PR #2564](https://github.com/JesusFilm/forge/pull/2564) added safe search
+instrumentation; its normal deployment and server-generated request ID header
+were verified. [Feat-605](feat-605-rag-safe-search-diagnostics.md) records
+that implementation without claiming the intermittent failure is fixed.
+Evaluation inputs were unit-tested without running evaluation. Acquisition,
+ingestion, reembedding, corpus writes, and role provisioning were excluded from
+migration validation. [Feat-606](feat-606-rag-post-migration-workflow-validation.md)
+records future acquisition/ingestion validation requiring its own bounded approved
+execution. Neither follow-up requires completion of the broader retirement here.
+
+The pre-existing platform ticket also numbered feat-532 is outside this scope;
+this work retains the existing RAG ticket rather than renumbering unrelated work.
+
+## Owner update — October 6, 2026
+
+Jaco reports that `JesusFilm/jesusfilm-rag` is archived and fully deprecated,
+access to its VM has been revoked, and its Railway project is scheduled for
+deletion. This is an owner-reported disposition, not verification that the
+Railway project has already been deleted or that every legacy credential has
+been revoked. Keep this ticket in progress until the scheduled deletion and
+credential dispositions have redacted operator verification. The separate
+Forge service's `SERVE_BEARER_TOKENS` cutoff is tracked in
+[feat-610](feat-610-rag-static-bearer-retirement.md); it must not remove active
+Forge registered-consumer credentials or shared provider access.

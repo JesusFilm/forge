@@ -3,6 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import { TEXT_BODY } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { layout, text } from "../../styles/shared"
 import type { AdminBlock } from "../../lib/queries"
 
@@ -20,6 +21,7 @@ const COLLAPSED_LINES = 3
 
 export function TextRenderer({ section }: TextRendererProps) {
   const typography = useTypography()
+  const t = useT("Common")
   const [expanded, setExpanded] = useState(false)
 
   const s = section as Record<string, unknown>
@@ -84,10 +86,15 @@ export function TextRenderer({ section }: TextRendererProps) {
           onPress={handleToggle}
           style={styles.toggleButton}
           accessibilityRole="button"
-          accessibilityLabel={expanded ? "Show less" : "Read more"}
+          accessibilityLabel={expanded ? t("showLess") : t("readMore")}
+          {...{
+            "dd-action-name": expanded
+              ? "section-text-less"
+              : "section-text-more",
+          }}
         >
           <Text style={[text.accentLinkText, typography.bodySmall]}>
-            {expanded ? "Show less" : "Read more"}
+            {expanded ? t("showLess") : t("readMore")}
           </Text>
         </Pressable>
       )}

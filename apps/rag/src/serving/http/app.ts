@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto"
+import { safeSearchFailure, SearchStageError } from "../../contracts/index.js"
 import {
   createUsageReportRoutes,
   type UsageReportDeps,
@@ -9,12 +11,7 @@ import { Hono } from "hono"
 import { bodyLimit } from "hono/body-limit"
 
 import type { Retriever } from "../../contracts/index.js"
-import {
-  bearerToken,
-  lookupScope,
-  resolveScope,
-  type TokenRegistry,
-} from "./auth.js"
+import { bearerToken, resolveScope } from "./auth.js"
 import { createPortal, type PortalDeps } from "./portal.js"
 import type {
   AuthenticatedConsumer,
@@ -25,30 +22,52 @@ const MAX_SEARCH_BODY_BYTES = 16 * 1024
 
 export type AppDeps = {
   retriever: Retriever
-  tokens: TokenRegistry
   portal?: PortalDeps
-  consumerAuth?: ConsumerAuthenticator
+  consumerAuth: ConsumerAuthenticator
   usage?: UsageCollector
   usageReport?: UsageReportDeps
 }
 
 export function createApp(deps: AppDeps): Hono<{
   Bindings: { outgoing?: ServerResponse }
-  Variables: { authenticatedConsumer: AuthenticatedConsumer | null }
+  Variables: {
+    authenticatedConsumer: AuthenticatedConsumer | null
+    requestId: string
+  }
 }> {
   const app = new Hono<{
     Bindings: { outgoing?: ServerResponse }
-    Variables: { authenticatedConsumer: AuthenticatedConsumer | null }
+    Variables: {
+      authenticatedConsumer: AuthenticatedConsumer | null
+      requestId: string
+    }
   }>()
 
   app.onError((error, context) => {
-    if (error.name === "BodyLimitError") {
+    let bodyLimitError = false
+    try {
+      bodyLimitError = error.name === "BodyLimitError"
+    } catch {
+      /* Untrusted error accessors stay redacted. */
+    }
+    if (bodyLimitError) {
       return context.json({ error: "payload_too_large" }, 413)
     }
-    console.error(`[rag] event=request_failed code=internal`)
+    const requestId = context.get("requestId") ?? randomUUID()
+    context.header("x-rag-request-id", requestId)
+    const failure = safeSearchFailure(error)
+    console.error(
+      `[rag] event=request_failed code=internal request_id=${requestId} stage=${failure.stage} category=${failure.category} detail=${failure.detail}`,
+    )
     return context.json({ error: "internal" }, 500)
   })
 
+  app.use("*", async (context, next) => {
+    const requestId = randomUUID()
+    context.set("requestId", requestId)
+    context.header("x-rag-request-id", requestId)
+    await next()
+  })
   app.get("/v1/health", (context) => context.json({ status: "ok" }))
   if (deps.usageReport)
     app.route("/internal/usage", createUsageReportRoutes(deps.usageReport))
@@ -65,38 +84,25 @@ export function createApp(deps: AppDeps): Hono<{
     }),
     async (context) => {
       const authorization = context.req.header("authorization")
-      let scope = null as ReturnType<typeof lookupScope>
       context.set("authenticatedConsumer", null)
-      if (deps.consumerAuth) {
-        const presented = bearerToken(authorization)
-        if (presented?.startsWith("rag_")) {
-          try {
-            const consumer = await deps.consumerAuth.authenticate(presented)
-            if (consumer) {
-              context.set("authenticatedConsumer", consumer)
-              scope = { allowedSourceKeys: consumer.allowedSourceKeys }
-            }
-          } catch {
-            deps.usage?.denial("auth_unavailable")
-            return context.json({ error: "auth_unavailable" }, 503)
-          }
-        } else {
-          scope = lookupScope(deps.tokens, authorization)
-        }
-      } else {
-        scope = lookupScope(deps.tokens, authorization)
+      let consumer: AuthenticatedConsumer | null
+      try {
+        consumer = await deps.consumerAuth.authenticate(
+          bearerToken(authorization) ?? "",
+        )
+      } catch {
+        deps.usage?.denial("auth_unavailable")
+        return context.json({ error: "auth_unavailable" }, 503)
       }
-      if (!scope) {
+      if (!consumer) {
         deps.usage?.denial("unauthorized")
         return context.json({ error: "unauthorized" }, 401, {
           "WWW-Authenticate": "Bearer",
         })
       }
 
-      const consumer = context.get("authenticatedConsumer")
-      if (consumer)
-        await deps.usage?.admit(consumer.consumerId, context.env?.outgoing)
-      else deps.usage?.denial("legacy_unattributed")
+      context.set("authenticatedConsumer", consumer)
+      await deps.usage?.admit(consumer.consumerId, context.env?.outgoing)
       const text = await context.req.text()
 
       let raw: unknown
@@ -115,8 +121,11 @@ export function createApp(deps: AppDeps): Hono<{
       }
 
       const { query, policy = {} } = parsed.data
-      const allowedSourceKeys = resolveScope(scope, policy.allowedSourceKeys)
-      if (allowedSourceKeys?.length === 0) {
+      const allowedSourceKeys = resolveScope(
+        consumer.allowedSourceKeys,
+        policy.allowedSourceKeys,
+      )
+      if (allowedSourceKeys.length === 0) {
         return context.json({ results: [] })
       }
 
@@ -124,7 +133,11 @@ export function createApp(deps: AppDeps): Hono<{
         ...policy,
         allowedSourceKeys,
       })
-      return context.json(searchResponseSchema.parse({ results }))
+      try {
+        return context.json(searchResponseSchema.parse({ results }))
+      } catch (error) {
+        throw new SearchStageError("response_contract", error)
+      }
     },
   )
 

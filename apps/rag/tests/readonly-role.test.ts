@@ -56,7 +56,7 @@ describe("read-only role inputs", () => {
           cwd: new URL("..", import.meta.url),
           env: {
             DATABASE_URL: `postgresql://owner:${connectionSecret}@127.0.0.1:1/rag`,
-            JFRAG_READONLY_PASSWORD: password,
+            FORGE_RAG_READONLY_PASSWORD: password,
             PATH: process.env.PATH,
           },
         },

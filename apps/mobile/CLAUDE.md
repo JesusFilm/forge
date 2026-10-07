@@ -16,8 +16,9 @@ This is a Server-Driven UI (SDUI) app. Admin controls the content
 blocks and their order via the Experience content type. The app renders them.
 
 **Home tab — Experience-driven body, client-owned hero.** The Home body renders
-from the prod `watch-home` homepage Experience (`watchSetting.homepageExperience`,
-locale `en` — the same Experience web renders), adapted into the existing
+from the prod `watch-home` homepage Experience (`watchSetting.homepageExperience`
+in the UI catalog tag, with the `en` homepage as the fallback; see
+"Localization"), adapted into the existing
 `WatchHomeModel`/`HomeShelf` shape by `src/lib/watchHome/experienceAdapter.ts`
 (lean cards from flat `MediaCollectionBlock` items; NOT the SDUI
 `/experience/[slug]` renderers). Under-curated items (null authored
@@ -90,7 +91,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Card/poster art comes from `pickCardImage` in `src/lib/cardImage.ts` (SYNC with `apps/tv`) — never hand-roll a field chain. A record's bare `images[].url` is the variant-less Cloudflare delivery base and 400s, so it ranks LAST; the scan is field-major so a `videoStill`-first entry falls through to a sibling's cinematic art. Any query selecting `images` must select `videoStill` too.
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
-- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
+- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`, asking `passage(languageSlug:)` with the screen's captured text slug plus an `englishPassage`; with no passage in the UI language the card shows the English one with an English language mark), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
 
 ## Admin endpoint resolution (feat-339)
 
@@ -481,11 +482,12 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - **Do not gate the back-swipe on chrome visibility.** An earlier fix held `gestureEnabled` false while the player chrome was mounted. `shouldArmHideTimer` never arms while paused or ended, so the chrome never auto-hides in those states and the hold never released: pausing a video killed the edge back-swipe for the screen's whole life. Only fullscreen may disable the gesture. Every `gestureEnabled` write must still land on BOTH the screen and its parent stack — the pop that dismisses a nested route belongs to the ROOT stack, which consults only its own top screen. `app/__tests__/backSwipeGesture.guard.test.js` pins the layout options AND the edge width; `useFullscreenPresentation.test.tsx` pins that the gesture stays enabled outside fullscreen.
 - **Never set a react-native-screens `orientation` screen option.** `expo-screen-orientation`'s `ScreenOrientationViewController` answers UIKit from its OWN registry mask — what `lockAsync` writes — only while no screen carries an orientation. The moment one does, it defers to the react-native-screens view-controller chain instead, and a **dev client** has `expo-dev-launcher`'s `DevLauncherViewController` sitting in that chain: the resolved mask loses landscape, UIKit refuses the geometry request (`UIWindowScene.interfaceOrientationsNotSupported`, readable via `xcrun simctl spawn <udid> log stream`), fullscreen stays portrait, and leaving fullscreen strands the details page in landscape until the route pops. The option was always redundant — `src/lib/orientation.ts`'s lock already names the orientation on both platforms — so `useFullscreenPresentation` sets only the lock, and the dev client now rotates exactly like a Release build. Verified 2026-08-26 on the iPhone 17 Pro Max simulator in BOTH build types. `app/__tests__/screenOrientationOption.guard.test.js` blocks the one-line revert across every `.ts`/`.tsx` file under `app/` and `src/`, with a >100-file floor so the scan cannot silently go empty. It has TWO rules, and both are live: Rule 1 matches the key next to a quoted orientation value anywhere in the file (this catches the ternary across line breaks); Rule 2 matches a bare `orientation` KEY of any value shape — named constant, shorthand property — but only inside a brace-matched `screenOptions`/`options` object, so `src/lib/watchHome/`'s unrelated `orientation` key does not trip it. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 - **`PlayerSlot` must never depend on getting exactly one good `onLayout`.** `measureInWindow` SILENTLY drops its callback when the native node is not attached yet, and the host (`PlaybackHost`) returns null while the slot's rect is null — so one unlucky cold open leaves an opaque black box with no poster, no chrome, and no recovery except leaving the screen. Measured on the iPhone 17 Pro Max simulator over 10 cold deep-link opens: 2/10 on unmodified main, 0/10 after the bounded `requestAnimationFrame` re-measure. Three parts, and all three matter: retry until a rect lands, refuse a zero-size measure, and gate `isDrawn` on the RECT rather than on the attachment so the slot keeps its own poster while the host has nothing to draw. `src/components/watch/__tests__/PlayerSlot.test.tsx` drives a real `measureInWindow` callback and pins all three parts: a zero-size measure publishes nothing, a valid one publishes exactly the measured rect, and the pump stops asking once a rect lands. Exhaustion logs `player_slot.measure_exhausted` once, so an unmeasurable slot is visible in production instead of silent. The instrumentation that separates the cases is a `console.log` in `measureIntoStore` plus one inside the `measureInWindow` callback — `onLayout` fires in BOTH the good and the black run; only the callback differs. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
+- **Two RN Modals from one player: close the first, then mount the second in a LATER commit.** The settings sheet and the player-door feedback sheet (`src/components/feedback/FeedbackModal.tsx`) are both component-state `<Modal>`s hosted by `VideoPlayer.tsx`. The report row calls `onReportProblem` first (the host reads the playback position and freezes the video context AT THE TAP), then runs the settings sheet's own exit; the host mounts `FeedbackModal` from an effect keyed on `settingsOpen`, so its first render lands in a React commit AFTER the one that removed the settings sheet. Why: RN presents every `<Modal>` with `presentViewController:` on the react view controller and removes it with `dismissViewControllerAnimated:` (`react-native/React/Fabric/Mounting/ComponentViews/Modal/RCTModalHostViewComponentView.mm`, `ensurePresentedOnlyIfNeeded`), and nothing in that file queues a present behind a dismissal still in flight. `videoPlayerFeedbackDoor.test.tsx` pins the commit order by logging the modal stub's RENDER, not its mount effect — inside ONE commit React renders the new child before it runs the old child's cleanup, so a mount-order assertion alone stays green for a same-commit swap (falsified 2026-09-14). What jest cannot see is the native half: the second sheet appearing over the fullscreen player in landscape, and the keyboard leaving the message field and Send reachable there (AE13) — both are simulator checks. Every Modal over the player also sets `supportedOrientations={["portrait", "landscape"]}`; see `docs/solutions/runtime-errors/player-settings-sheet-fullscreen-orientation-sigabrt-crash.md`.
 - Search requires `EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN` (mobile's OWN dedicated fleet key — its own entry in admin's `FLEET_ADMIN_API_KEYS` CSV, NOT `WEB_ADMIN_API_KEYS`, and never the same value as TV's; provision in EAS Environments per profile, `.env.local` for dev). `watchSearch` is a PUBLIC resolver, so the bearer buys a per-device rate-limit bucket, not access; a missing/rotated key degrades to the shared `public:<ip>` bucket rather than an `UNAUTHENTICATED` error. The bearer rides ONLY on the `WatchSearch` operation — never attach it to public queries, or every public query also spends the fleet key's rate-limit budget. Admin buckets a fleet key per device (`consumer:<key>:v:<viewer_id>` from the `x-viewer-id` header, else `consumer:<key>:<ip>`), so the fleet doesn't collapse into one bucket. See `src/lib/authHeaders.ts`.
   - **Superseded 2026-09-21:** the bearer also rides the eight recommendation
-    operations and the two push writes (`RegisterPushDevice`,
-    `ReportPushOpen`). `carriesFleetBearer` in `src/lib/authHeaders.ts` is the
-    allowlist, and `src/lib/__tests__/authHeaders.test.ts` pins it.
+    operations, the two push writes (`RegisterPushDevice`, `ReportPushOpen`),
+    and `SubmitFeedback`. `carriesFleetBearer` in `src/lib/authHeaders.ts` is
+    the allowlist, and `src/lib/__tests__/authHeaders.test.ts` pins it.
 
 ## Auth + watch progress (feat: mobile login & continue watching)
 
@@ -739,8 +741,11 @@ data layer and playback attribution only; the Home shelf is `feat-517`.
   response's `expiresAt` is the authority on the item capabilities (ten
   minutes today): past it the hook sends no evidence and returns null from
   `select`; the UI refreshes instead.
-  `resolveRecommendationContext` maps the watch preference to
-  `{ locale: "en", audioLanguageSlug: prefs.audioLanguageSlug ?? "english" }`.
+  `resolveRecommendationContext` takes the locale from the UI catalog's
+  `forYouLocale` (`tl` sends `fil`) and the audio from the saved pick, else
+  `defaultAudioLanguage()`, else `english`. Only `coverage_unavailable`
+  starts one retry with `en` metadata and the SAME audio (KD14), and a pair
+  with no pool is not asked again in the session.
 - **Evidence and selection mirror Web's literals.** `render` carries
   `{ surfacePolicy: "watch-for-you-v1" }`, `impression`
   `{ visibilityPolicy: "watch-for-you-v1" }`, both under
@@ -1057,15 +1062,17 @@ sheet closes.
   `libraryDeleteConfirm`) is not a `Modal`. It draws inside its route, so the
   host would cover its buttons on iOS too. `INLINE_SHEET_IDS` in
   `src/lib/miniPlayer/suppression.ts` names it. The counter's `inlineCount`
-  feeds `miniPlayerPresentation`'s `openInlineSheetCount`. The other two
-  component-state sheets, the quiz and the player settings, are `Modal`s.
+  feeds `miniPlayerPresentation`'s `openInlineSheetCount`. The other three
+  component-state sheets, the quiz, the player settings, and the player-door
+  feedback sheet, are `Modal`s.
 - **Two mechanisms count the sheets, because the app presents them two
-  ways.** The first is the nine sheet ROUTES in `IN_APP_SHEET_ROUTE_PATTERNS`
+  ways.** The first is the ten sheet ROUTES in `IN_APP_SHEET_ROUTE_PATTERNS`
   (`src/lib/miniPlayer/suppression.ts`). Six come from `app/watch/_layout.tsx`
-  and `app/series/_layout.tsx`. The three Bible reader sheets come from the
-  root `app/_layout.tsx`. The second is the three sheets that are component
-  state. `getNonRouteSheetCounter()` counts them by id, so an unbalanced call
-  is attributable. Keep both in step with those layouts.
+  and `app/series/_layout.tsx`. The three Bible reader sheets and the
+  `feedback` sheet come from the root `app/_layout.tsx`. The second is the four
+  sheets that are component state. `getNonRouteSheetCounter()` counts them by
+  id, so an unbalanced call is attributable. Keep both in step with those
+  layouts.
 - **Give a new sheet a route or a `Modal`.** A sheet drawn inside a route must
   be in `INLINE_SHEET_IDS`, or iOS draws the window over it.
 - Suppression hides by opacity and drops pointer events. It never unmounts the
@@ -1375,10 +1382,12 @@ the KTD, R and AE numbers the source comments cite.
   pair by identifier.
 - **The reminder body NAMES the video, and the title travels in the record, not
   in the payload.** `src/lib/lapseReminders/copy.ts` is the only place a body is
-  built: `LAPSE_REMINDER_COPY_TITLED` when the record carries a title,
-  `LAPSE_REMINDER_COPY` when it does not. Both sets must stay — a record written
-  before titles, or one whose title failed the sanitizer, still has to read as a
-  finished sentence. The title is baked into the body AT SCHEDULE TIME, so a
+  built, from the `LapseReminder` catalog namespace through `getT`: the
+  `*TitledBody` messages when the record carries a title, the `*Body` messages
+  when it does not. Both sets must stay — a record written before titles, one
+  whose title failed the sanitizer, or one whose title locale differs from the
+  UI locale still has to read as a finished sentence in the UI language. The
+  title is baked into the body AT SCHEDULE TIME, so a
   pending reminder keeps the title it was scheduled with. It never enters the
   notification payload: the tap still reads the slug alone, so a CMS title can
   never steer navigation.
@@ -1555,8 +1564,8 @@ design record is
   reminder, so a reminder pending from an older build still routes. A slug is
   1 to 200 RFC 3986 unreserved characters, never `.` or `..`; the nonce is
   base64url, carried opaque and never logged. Any other shape opens Home and
-  shows `PUSH_UNRESOLVABLE_DESTINATION_MESSAGE` (`src/lib/push/copy.ts`)
-  through `PushNoticeHost`, which the root layout mounts beside
+  shows `pushUnresolvableDestinationMessage()` (`src/lib/push/copy.ts`, the
+  `Push` catalog namespace) through `PushNoticeHost`, which the root layout mounts beside
   `ExportReportHost` so the message has a host that belongs to no route.
 - **Routes:** video → `/watch/<slug>`, series → `/series/<slug>`, experience →
   select that experience (this changes the saved home experience, by decision)
@@ -2056,7 +2065,9 @@ from there, so no two files can disagree about the bar's size.
   and it compares the assigned token rather than using a lookahead, whose
   `\s*` can match zero characters and slip past the value it was told to
   reject. It also fails when either layout spells a tab label: both layouts
-  read `TAB_LABELS` in `src/lib/tabBar.ts`, so a rename is a one-line change.
+  read `useTabLabels()` in `src/lib/tabBar.ts`, which maps each tab through
+  `TAB_LABEL_KEYS` to the `Tabs` catalog namespace, so a rename is a one-line
+  change and a language change relabels the bar without a remount.
 - **A fade is not available on the material.** `GlassView` renders nothing
   inside a layer whose opacity an ancestor animates, so any fade of
   `TabBarBackground` forces `PlatformBlur` on every iOS version and changes the
@@ -2388,6 +2399,368 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
 - **In a worktree under `.claude/worktrees/`, run jest with
   `--no-watchman`.** Watchman roots its watch at the main checkout there, and
   its crawl covers every worktree.
+
+## Localization
+
+The app shows its UI text in the phone's language when web has a catalog for
+that language. The design record is
+`docs/plans/2026-09-28-1016-feat-mobile-ui-localization-plan.md`; it defines
+the KD, KTD, R, and U numbers that the source cites.
+
+- **Catalogs.** `messages/<tag>.json` has one file per web catalog, with the
+  same tags as `apps/web/messages/`. `en.json` is the source. Namespaces are
+  PascalCase and keys are camelCase. A key for an accessibility label or hint
+  contains `Aria` (`goBackAriaLabel`), so the translator writes spoken text.
+  Read text with `useT("<Namespace>")`, or `getT` outside React. After a
+  catalog file is added or removed, run
+  `node scripts/i18n/generate-catalog-index.mjs`; its `--check` guard fails on
+  drift. `crk` and `mey-Latn` are English-only, as on web: their catalogs are
+  copies of `en.json`, and they never go to the translator.
+- **Start-up.** `startLocaleSync()` runs at module scope in the guarded
+  `require` block of `app/_layout.tsx`, next to
+  `preventNativeSplashAutoHide()`. So the first frame and the first Admin
+  request use the phone's language. Only `src/i18n/localeStore.ts` loads
+  `expo-localization`, lazily inside its `try` blocks, so a dev client built
+  before the module stays on English. No file reads the `Intl` default locale.
+- **Three Admin language forms (KTD9).** Admin's tags differ from the catalog
+  tags for about 54 locales, so `currentAdminForms()` in
+  `src/i18n/adminLanguage.ts` gives each catalog three forms. The catalog tag
+  is for `watchSetting`, `experienceBySlug`, and For You (`forYouLocale`). The
+  language slug (`textSlug`, the identity) is for video text rows, study
+  questions, search, and Bible passages. Admin's raw tag (`rawTag`) is for the
+  `Language.name` and `BibleBook.name` maps. The table is generated by
+  `node scripts/i18n/generate-admin-languages.mjs [--check]`, with overrides in
+  `i18n/admin-language-overrides.json`. A `text` slug must be where Admin
+  stores the text rows: `es` reads `spanish-latin-american` and `id` reads
+  `indonesian-yesus` (production, 2026-09-29), not web's audio table.
+- **Captured forms (KTD16).** A watch or series screen captures its forms at
+  mount with `useScreenAdminForms(slug)`, and the playback session keeps them,
+  so an open screen keeps its text after an Android language change (KD12).
+  Code under those routes passes the forms to every reader and never reads
+  the store for Admin content.
+- **Default audio (KTD12).** `defaultAudioLanguage()` in the store takes the
+  phone's first language before any catalog fallback, so a Hausa phone gets
+  the Hausa dub with English UI. It feeds the audio, subtitle, Bible, For You,
+  and Explore defaults. A reviewed `audio` override wins over an unreviewed
+  exact-tag match, so `bn-BD` keeps `bangla-2`.
+- **Translation reports (feat-604).** The feedback sheet shows "A translation
+  is wrong" (`TRANSLATION`) only when the catalog tag is not `en`. Only that
+  kind sends `uiLocale`, the catalog tag. `buildFeedbackSubmissionInput`
+  enforces this, and the sheet says so (`translationLanguageNotice`), and its
+  "What this sends" list shows an "App language" row. `feedbackUiLocale` gives
+  both the row and the request their value, so they cannot differ. Admin
+  writes the tag in the Linear ticket as "App language". The English-only
+  catalogs (`crk`, `mey-Latn`) also show the kind, because their tag is not
+  `en`. Admin must deploy the kind before a build sends it. An older admin
+  does not know `TRANSLATION` or `uiLocale`, so the request fails GraphQL
+  variable coercion before the resolver runs. Document validation passes,
+  because the new values travel in the variables. Admin then writes no
+  `event=refused` line, and the phone shows the one failure message and files
+  a RUM error (checked with graphql-js on 2026-10-06).
+
+### Add, change, or remove a string
+
+1. Edit `messages/en.json`. A new namespace needs a sentence in
+   `i18n/translation-contexts.json` (`namespaces.<Namespace>`). Add a `keys`
+   override when the key name does not tell the translator the role. A
+   message with no words (only placeholders and punctuation, such as
+   `{name}, {status}`) goes on `intentionallyLocaleNeutral` in
+   `i18n/translation-policy.json`: web's copy check rejects a translation
+   that equals English, so the command and CI refuse such a key otherwise.
+2. In `apps/mobile`, translate the change. Use the local mode first (see
+   "Translate with Claude"): it costs nothing extra. The paid mode is
+   `node scripts/i18n/translate-catalogs.mjs` with no mode flag. The command is
+   not a `package.json` script, because a new script entry moves the
+   fingerprint runtime version.
+3. Commit `en.json`, the changed catalogs, and `i18n/*.json` in the same PR as
+   the code (KD6).
+
+**Until the first full translation run (U16), no locale catalog exists.** Use
+`--restamp` after an `en.json` change. A plain run then creates all 224
+catalogs and translates all of them. So does `--local-export` without
+`--locales`.
+
+A full run follows KTD6. It creates `{}` for each web catalog that mobile
+lacks. It removes deleted keys from every catalog, the source record, the
+pending list, and the context overrides. It deletes the translations of each
+key whose English no longer matches `i18n/source-record.json`. It predicts the
+keys that web's script will translate, prints the estimate, and asks. Then it
+runs `apps/web/scripts/translate-ui-catalogs.mjs` once per model group. Last,
+it removes finished keys from the pending list and records each translated
+locale in `i18n/translation-provenance.json`.
+
+Every mode first removes deleted keys and copies English into the
+English-only catalogs.
+
+| Mode                    | Network   | What it does                                                                                                  |
+| ----------------------- | --------- | ------------------------------------------------------------------------------------------------------------- |
+| (none)                  | yes, paid | The full run above.                                                                                           |
+| `--dry-run [--json]`    | no        | Prints the plan and the estimate. Writes nothing.                                                             |
+| `--prune-only`          | no        | Removes deleted keys.                                                                                         |
+| `--restamp`             | no        | Records the hash of each key that no catalog holds an older translation of. Refuses a key that still has one. |
+| `--mark-pending <keys>` | no        | Puts comma-separated keys on the pending list. A changed key takes its new English in every catalog.          |
+| `--local-export <dir>`  | no        | Does the local steps of a full run, then writes one request file per locale into `<dir>`.                     |
+| `--local-import <dir>`  | no        | Checks the answer files in `<dir>`, then writes them through web's script. Needs `--translator <id>`.         |
+
+Options: `--locales <tags>` limits the seeding and the translation.
+`--max-attempts <n>` and `--concurrency <n>` go to web's script (default 4
+each). `--yes` skips the prompt, for non-interactive use only.
+`--translator <id>` names the Claude model that wrote the answers of a local
+import, and the provenance records it.
+
+- **Budget rule.** A paid run costs money. An agent asks the owner for an
+  OpenAI key and a budget before any paid run. The command prints the request
+  estimate first and waits for "yes". Without a terminal, it refuses unless
+  `--yes` is set. The local modes cost nothing extra: a Claude session on the
+  owner's subscription writes the translations (owner decision, 2026-10-02).
+- **Pending list.** `pendingKeys` in `i18n/translation-policy.json` maps a key
+  to the date it went pending. A pending key shows English in the other
+  locales until a later run translates it. Use `--mark-pending <key>` when a
+  run cannot happen now.
+- **A failed or quota-stopped run.** The run stops at the first used-up quota
+  (`--stop-on-quota`). The summary names the finished, failed, and not-started
+  locales. An unfinished locale keeps its old catalog and provenance: it still
+  lacks the new key, or shows English for it, so a CI suite names it. Run the
+  command again to finish it.
+- **Models.** `i18n/model-table.json` pins the model for each locale.
+  `defaultModel` is web's default, and every entry is an OpenAI API model ID.
+  Web recorded `codex-local-agent` for `zh`, `zh-Hans`, and `zh-Hant`, which
+  is not an API model, so those tags use `gpt-5.6`, the model web used for
+  `ru`. A locale that fails on the 20,000-token output limit takes a `-pro` or
+  `gpt-5.6-` model, which uses the Responses API with 40,000 tokens. The table
+  governs the paid mode only. The provenance accepts an API model ID or a
+  Claude model ID (`claude-…`), never a label such as `codex-local-agent`. A
+  Claude model ID has a version number, so a label such as `claude-code` fails.
+- **Web's script (R19, R20).** The command passes mobile's `--messages-dir`,
+  `--manifest`, `--progress`, `--policy`, `--contexts`, `--stop-on-quota`,
+  `--locales`, `--model`, `--concurrency`, and `--max-attempts`, and web's
+  `--inventory`. It never passes `--keys` or `--promote`.
+  `i18n/script-manifest.json` is a stub that the script reads and never
+  writes. Each model group has its own progress file in the temp directory;
+  the name holds the English digest, the policy digest, and the model. The
+  command refuses to run when the script's source lacks any of these flags,
+  because the script ignores an unknown flag and would use web's own policy.
+- **CI.** `src/i18n/__tests__/` has `catalogParity`, `catalogFormat`,
+  `sourceRecord`, and `translationPolicy`. They check key parity in both
+  directions, placeholders and plurals, that every message formats, the source
+  record, the pending list, the context sentences, the model table, the stub
+  manifest, and that each message with no words is locale-neutral.
+  `scripts/i18n/__tests__/` covers the command (with the local modes), the
+  gate, and the report. A change to web's two script files or to
+  `docs/i18n/watch-ui-official-language-inventory.json` also runs the mobile
+  jobs. The mobile test job writes `scripts/i18n/pending-report.mjs` to the
+  job summary: the pending count, the oldest pending key, and each web
+  catalog that mobile lacks or has not declared natively.
+- **No hard-coded English (KTD14).** `src/i18n/__tests__/noHardcodedCopy.guard.test.js`
+  parses `app/` and `src/` with the TypeScript compiler. It fails on JSX text,
+  a literal in a copy prop, `Alert.alert` text, a registered copy module that
+  stops reading the catalog, `getT(` in a `.tsx` file, a store read at module
+  scope, a second `expo-localization` importer, and any read of the `Intl`
+  default locale. Brands, legal modules, and dev-only files sit on an exact
+  allowlist, each with a reason; an unused entry fails too. Text that a
+  variable carries is invisible to it, so error screens show catalog text,
+  never `error.message` (`app/__tests__/errorScreenCopy.guard.test.js`).
+- **Text direction (KTD13).** `useTextDirection()` in
+  `src/i18n/textDirection.ts` gives the direction style for left-aligned text:
+  `rtl` for a right-to-left language, `ltr` for English fallback text in a
+  right-to-left UI, and nothing in an English UI. Admin text passes its own
+  `*Lang` field; UI text uses the catalog tag. English fallback text also gets
+  `accessibilityLanguage="en"` on iOS. It never applies to containers or to
+  centered text, and the layout never mirrors (KTD4).
+
+### Translate with Claude (local mode)
+
+The local mode runs the same pipeline as a paid run. Only the translator is
+different: a Claude session writes the answers instead of the OpenAI API. Web's
+real script still checks every answer and writes every catalog. The code is
+`scripts/i18n/local-modes.mjs` and `scripts/i18n/lib/localTranslation.js`.
+
+1. Export: `node scripts/i18n/translate-catalogs.mjs --local-export <dir>`.
+   Use a new folder outside every git repository, for example under
+   `$TMPDIR`. The command does the local steps of a full run and writes them.
+   Then it runs web's script against its own server on 127.0.0.1. The server
+   records each request in `<locale>.request.json`. That file holds `system`
+   and `prompt`: the exact instructions that the paid model gets. The prompt
+   also holds the existing translations of that locale as references.
+   `index.json` lists the keys for each locale.
+2. Translate: for each request file, write `<locale>.answer.json`. It is a
+   JSON object that maps each key in `prompt.messagesToTranslate` to its
+   translation. Follow `system` and `prompt`.
+3. Check: run `node scripts/i18n/evaluate-translations.mjs --answers <dir>`.
+   Read `<dir>/evaluation-report.json` (see "Check the translations"). Fix an
+   answer only when a finding shows a real error. Leave a false alarm as it
+   is, and list it in the PR. Do not change a correct translation to clear a
+   warning. The check never stops an import.
+4. Import: run the command with `--local-import <dir> --translator <id>`.
+   `<id>` is the Claude model that wrote the answers, for example
+   `claude-opus-5-5`. The command checks every answer first. It runs web's
+   contract, copy, and script checks, and mobile's plural, select, and ICU
+   syntax checks. A locale with a problem gets nothing. Then web's script
+   takes the answers from the command's server. It checks them again and
+   writes the catalogs. The provenance records the translator.
+5. Read `<dir>/import-report.json`. It gives the status of each locale and
+   every problem. The terminal shows at most 30 problems for each locale. Fix
+   the answer files and run the import again until every locale finishes. The
+   command exits 1 while a locale is not finished.
+6. When the export made a new catalog file, run
+   `node scripts/i18n/generate-catalog-index.mjs`. Then run the CI suites.
+
+**Large runs.** A request file for a full catalog is about 280 KB, which is
+more than one file read shows. Read it in parts with `jq`:
+
+```bash
+jq -r '.system' es.request.json
+jq '.prompt | del(.messageContexts, .messagesToTranslate, .existingReferenceTranslations)' es.request.json
+jq '.prompt.messagesToTranslate | to_entries[0:100] | from_entries' es.request.json
+jq '.prompt.messageContexts | to_entries[0:100] | from_entries' es.request.json
+```
+
+- The `system` text is the same in every file, so read it once.
+- Give each subagent a batch of locales. A subagent writes only the answer
+  files of its own locales.
+- Run one import at a time, after the subagents finish. Two imports at the
+  same time overwrite each other's changes to the record and the provenance.
+
+**Rules.**
+
+- **No request leaves the computer.** Both modes point `OPENAI_BASE_URL` at
+  the command's own server. Web's script sends a token for that run in place
+  of a key. The server refuses a request without that token, and a request
+  from a browser.
+- **The import covers the exported locales.** Without `--locales`, it seeds no
+  other catalog. A locale with no answer file yet keeps its catalog.
+- **A key fails when its English or its context changed after the export.**
+  A change to the system prompt also counts. Export again into a new folder.
+- **The work folder stays outside every git repository.** A file there is
+  untracked, and an untracked file stops `eas update` (`cli.requireCommit`).
+  The command resolves symlinks and asks git. It also refuses to export into a
+  folder that is not empty.
+- **An export that leaves out a locale prints the reason.** Translate the
+  request files that it wrote. Export the missing locales into a second folder
+  with `--locales`. Then import each folder.
+- **To abandon an export, restore the catalogs.** The export clears each
+  changed key from every catalog before any translation exists. Run
+  `git restore apps/mobile/messages apps/mobile/i18n`. Then delete each new
+  catalog file that the export seeded.
+
+### Check the translations
+
+`scripts/i18n/evaluate-translations.mjs` looks for likely errors that the
+import checks cannot see (feat-604). It only writes a report. It never changes
+a catalog, and it never stops an import. The rules are in
+`scripts/i18n/lib/translationEvaluation.js`.
+
+- `--answers <dir>` checks the answer files of a local export. It writes
+  `<dir>/evaluation-report.json`.
+- `--catalogs` checks `messages/`, except English and the English-only
+  locales. It skips a value that equals English, because that value is a
+  pending key. `--out <file>` writes the full report; keep the file outside
+  the repository. `--messages-dir ../web/messages` checks web's catalogs.
+
+| Rule           | Severity             | What it finds                                                                                                                                                                                                                                                                                                                                                            |
+| -------------- | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `script`       | error, warning       | A message with no letter in the locale's script is an error. A mix, such as `Cookie設定`, is a warning. The script comes from the tag or its CLDR default, never from web. When most messages fail, one locale error takes their place. For `Hans` and `Hant`, a table of 55 characters whose Simplified and Traditional forms differ finds a message in the other form. |
+| `language`     | error, warning, info | GlotLID reads each whole catalog, and each message with 40 or more letters. A catalog in another language is an error only when the top label has 0.5 or more and the locale's own language has less than 0.1. Otherwise it is a warning.                                                                                                                                |
+| `english-left` | warning              | Three English words in a row that stay in a translation. A run stops at punctuation, a placeholder, a plural branch, and a kept name.                                                                                                                                                                                                                                    |
+| `length`       | warning              | A translation more than 3 times longer or shorter than the usual ratio of its locale. The longest plural branch stands for the plural.                                                                                                                                                                                                                                   |
+| `repeat`       | info                 | One English text with more than one translation.                                                                                                                                                                                                                                                                                                                         |
+| `web-script`   | warning              | Web's catalog of the locale uses another script, so the app and the website will differ.                                                                                                                                                                                                                                                                                 |
+
+A per-message language finding is a warning at 0.9 or more. The report also
+gives `webAgreement` for the strings that web shares: the count, the rate, and
+each difference. It is information only, because web's catalogs have errors of
+their own. A run on 2026-10-06 found that web's `iu` reads as Greenlandic, that
+`az-Cyrl` and `ms-Arab` use Latin script, and that `snf` reads as French.
+
+- **Language ID.** `scripts/i18n/language-id.py` runs through `uv run`, so the
+  repository has no Python dependency. The model is GlotLID (Apache-2.0) at one
+  pinned revision. The first run downloads 1.7 GB into the Hugging Face cache;
+  later runs take seconds. Without `uv`, the report gives `skipped` and the
+  reason. `--no-language-id` turns it off. The `uv` resolution is fixed by the
+  script's `exclude-newer` date. GlotLID has no label for 10 web languages
+  (`bjt`, `chp`, `den`, `mdh`, `mey-Latn`, `mfv`, `na`, `quv`, `sav`, `xin`),
+  so they get an info finding only. `scripts/i18n/__tests__/languageId.test.js`
+  runs the real accepted-code rule against the model's label list (a fixture)
+  and pins that list. CI installs `uv` for it, and the suite fails in CI
+  without `uv`. When `MODEL_REVISION` changes, regenerate the fixture in
+  `apps/mobile`. A jest check fails until the fixture names the pinned
+  revision.
+
+  ```bash
+  uv run --quiet scripts/i18n/language-id.py --labels \
+    > scripts/i18n/__tests__/fixtures/glotlid-languages.json
+  ```
+
+- **Kept names.** `KEPT_NAMES` lists the names that a translation keeps as
+  written, such as Jesus Film Project, BibleProject, and AirPlay. When
+  `en.json` gets a new product name, add it there. If you do not, the script
+  and English rules flag it.
+- **Limits.** A clean report does not prove that a translation is correct. The
+  rules find the wrong script, the wrong language, English left in, and odd
+  lengths. They cannot find a wrong meaning. GlotLID is weakest in
+  low-resource languages and in close pairs, such as `sr` and `bs`. Read the
+  top three labels before you act on a language finding. GlotLID does not
+  tell Simplified from Traditional Chinese, so only the character table checks
+  the form. Taiwan's Hakka and Hokkien write 个, so `hak` and `nan` may use it.
+
+### Merge two catalog PRs
+
+Never merge `i18n/source-record.json` by hand. When a catalog or the record
+conflicts, take `main`'s catalogs and `main`'s `source-record.json`, and merge
+`en.json` by hand. Run the command again: it translates only your own new and
+changed keys, because their hashes do not match `main`'s record. Then run
+`--restamp`, which changes nothing when the record is correct. Before U16,
+`--restamp` alone is enough.
+
+### Release gates
+
+`scripts/i18n/check-pending-gate.mjs` stops a production release while the
+pending list is not empty (KD13). It uses only Node built-ins, because EAS
+runs the pre-install hook before `pnpm install`.
+
+- **EAS production build.** `scripts/eas-build-pre-install.sh` runs the gate
+  when `EAS_BUILD_PROFILE=production`. The gate is the hook's only fatal step;
+  the Datadog version stamp stays non-fatal.
+- **`update:production`.** The script runs the gate first.
+- **Override: `I18N_ALLOW_PENDING=1`, for an emergency only.** The gate
+  prints a `WARNING:` line whenever it honors the override. For
+  `update:production`, set it in the shell:
+  `I18N_ALLOW_PENDING=1 pnpm --filter @forge/mobile update:production`. EAS
+  build workers do not see local variables. For a native build, the owner
+  creates a plain-text variable in the EAS `production` environment with
+  `eas env:create`, runs the one build, and deletes the variable. Never put it
+  in `eas.json`, because an `eas.json` edit moves the runtime version.
+
+### Native configuration and the native-build window
+
+- `app.json` carries the `expo-localization` config plugin with 225 locales.
+  `app/__tests__/localizationConfig.guard.test.js` pins that list to
+  `i18n/native-locales.json`. `app.json` also carries
+  `./plugins/withIosLeftToRightAppearance`, a plugin that removes the Android
+  `resourceConfigurations` filter, and
+  `ios.infoPlist.UIPrefersShowingLanguageSettings: true`. The filter would
+  drop library translations in region folders, such as the Cast framework's
+  `values-zh-rCN`. The Info.plist key makes iOS always show the per-app
+  language row.
+- **Never add a `forcesRTL` key to the plugin options, not even `false`.** The
+  plugin writes the key for any non-null value, and iOS then forces
+  right-to-left on an Arabic, Farsi, or Urdu phone. The guard rejects it. With
+  `supportsRTL: false`, iOS resets `allowRTL(false)` and `forceRTL(false)` at
+  every launch before React loads; Android calls only `allowRTL(false)`.
+- The iOS `NativeTabs` bar gets `unstable_nativeProps={{ direction: "ltr" }}`,
+  because UIKit tabs ignore `allowRTL`.
+- **These changes move the fingerprint runtime version:** the
+  `expo-localization` native module (U2), the `app.json` plugins and the
+  Info.plist key (U3), and the `update:production` edit (U4). A native build
+  must ship before the next `eas update` reaches anyone. Publish no production
+  over-the-air update between the merge and that build.
+- **The production native build that carries U3 waits for the first full
+  translation run (U16).** Without the catalogs, iOS shows a per-app language
+  row with 225 entries that all show English. The pending gate cannot stop
+  that build, because the pending list is empty before U16.
+- **A locale that web adds later** ships its mobile catalog at once by
+  over-the-air update: run the command, then the catalog index generator. It
+  joins `native-locales.json` and `app.json` at the next native build.
 
 ## Component render tests
 

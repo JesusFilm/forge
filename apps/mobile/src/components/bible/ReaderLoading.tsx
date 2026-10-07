@@ -1,11 +1,12 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
-import { READER_COPY } from "../../lib/bible/reader/copy"
+import { useT } from "../../i18n/useT"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 
 /** A quiet chapter-load indicator. Reduce Motion shows three still dots. */
 export function ReaderLoading({ tokens }: { tokens: ReaderTokens }) {
+  const t = useT("BibleReader")
   const reduceMotion = useReduceMotion()
   return (
     <View
@@ -13,7 +14,7 @@ export function ReaderLoading({ tokens }: { tokens: ReaderTokens }) {
       style={styles.loading}
       accessible
       accessibilityRole="progressbar"
-      accessibilityLabel={READER_COPY.loading}
+      accessibilityLabel={t("loadingAriaLabel")}
     >
       {reduceMotion ? (
         <View style={styles.dots}>

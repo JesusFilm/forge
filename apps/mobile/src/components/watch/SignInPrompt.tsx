@@ -3,8 +3,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useT } from "../../i18n/useT"
 import { signInWithHostedPage } from "../../lib/authActions"
-import { SIGN_IN_ERROR_MESSAGE } from "../../lib/authCopy"
 import { getAuthSession } from "../../lib/authSession"
 import {
   ACCENT,
@@ -15,7 +15,6 @@ import {
 } from "../../lib/color"
 import { isSignInAvailable } from "../../lib/signInGate"
 import {
-  SIGN_IN_PROMPT_COPY,
   SIGN_IN_PROMPT_DISMISSED_AT_STORAGE_KEY,
   isSignInPromptArmed,
   markSignInPromptShown,
@@ -47,6 +46,7 @@ export function SignInPrompt() {
 }
 
 function SignInPromptBanner() {
+  const t = useT("Auth")
   const session = useSyncExternalStore(
     (onStoreChange) => getAuthSession().subscribe(onStoreChange),
     () => getAuthSession().getSnapshot(),
@@ -135,13 +135,14 @@ function SignInPromptBanner() {
     return (
       <View style={styles.banner}>
         <Ionicons name="warning" size={20} color={WARNING_COLOR} />
-        <Text style={styles.copy}>{SIGN_IN_ERROR_MESSAGE}</Text>
+        <Text style={styles.copy}>{t("signInErrorMessage")}</Text>
         <Pressable
           onPress={() => setPhase("idle")}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel="Dismiss"
+          accessibilityLabel={t("dismissAriaLabel")}
           style={({ pressed }) => [pressed && feedback.pressed]}
+          {...{ "dd-action-name": "signin-prompt-error-dismiss" }}
         >
           <Ionicons name="close" size={18} color={TEXT_SECONDARY} />
         </Pressable>
@@ -152,7 +153,7 @@ function SignInPromptBanner() {
   return (
     <View style={styles.banner}>
       <Ionicons name="bookmark-outline" size={20} color={ACCENT} />
-      <Text style={styles.copy}>{SIGN_IN_PROMPT_COPY}</Text>
+      <Text style={styles.copy}>{t("signInPromptMessage")}</Text>
       <Pressable
         onPress={accept}
         disabled={busy}
@@ -161,18 +162,18 @@ function SignInPromptBanner() {
           pressed && feedback.pressed,
         ]}
         accessibilityRole="button"
-        accessibilityLabel="Sign in"
+        accessibilityLabel={t("signIn")}
         {...{ "dd-action-name": "signin-prompt-accept" }}
       >
         <Text style={styles.signInLabel}>
-          {busy ? "Signing in…" : "Sign in"}
+          {busy ? t("signingIn") : t("signIn")}
         </Text>
       </Pressable>
       <Pressable
         onPress={dismiss}
         hitSlop={12}
         accessibilityRole="button"
-        accessibilityLabel="Dismiss"
+        accessibilityLabel={t("dismissAriaLabel")}
         {...{ "dd-action-name": "signin-prompt-dismiss" }}
       >
         <Ionicons name="close" size={18} color={TEXT_SECONDARY} />
