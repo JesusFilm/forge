@@ -7,8 +7,6 @@ import {
   PAPER_CLIP_MASK,
   PAPER_ROUGH_JPG,
   PAPER_ROUGH_MASK,
-  TAPE_JPG,
-  TAPE_MASK,
 } from "./paper-assets"
 
 /**
@@ -114,51 +112,67 @@ function Strike({
   children,
   width = 12,
   id,
+  color = CHAR,
 }: {
   t: number
   at: number
   children: React.ReactNode
   width?: number
   id: string
+  color?: string
 }) {
   const p = interpolate(t, [at, at + 0.32], [0, 1], { ...clamp, easing: OUT })
   return (
     <span style={{ position: "relative", display: "inline-block" }}>
       {children}
       {p > 0 ? (
-        <svg
-          viewBox="0 0 100 20"
-          preserveAspectRatio="none"
+        // Revealed left to right by a clip, across the WHOLE word (owner,
+        // 2026-10-07: a dash-drawn stroke under non-scaling-stroke stopped
+        // after "medi").
+        <span
           style={{
             position: "absolute",
             left: "-7%",
-            width: "114%",
+            width: `${(114 * p).toFixed(2)}%`,
             top: "26%",
             height: "48%",
-            overflow: "visible",
+            overflow: "hidden",
           }}
         >
-          <CharcoalDefs id={id} seed={4} />
-          <g filter={`url(#${id})`}>
-            {["M2,12 C30,8 60,14 98,7", "M4,14 C34,10 62,15 96,10"].map(
-              (d, i) => (
-                <path
-                  key={i}
-                  d={d}
-                  fill="none"
-                  stroke={CHAR}
-                  strokeOpacity={i ? 0.55 : 0.92}
-                  strokeWidth={i ? width * 0.6 : width}
-                  strokeLinecap="round"
-                  vectorEffect="non-scaling-stroke"
-                  pathLength={1}
-                  strokeDasharray="1 1"
-                  strokeDashoffset={1 - p}
-                />
-              ),
-            )}
-          </g>
-        </svg>
+          <svg
+            viewBox="0 0 100 20"
+            preserveAspectRatio="none"
+            style={{
+              position: "absolute",
+              left: 0,
+              width: `${(100 / Math.max(p, 0.001)).toFixed(3)}%`,
+              top: 0,
+              height: "100%",
+              overflow: "visible",
+              ...(color === GOLD
+                ? { filter: "drop-shadow(0 1px 1.5px rgba(70,45,10,0.6))" }
+                : {}),
+            }}
+          >
+            <CharcoalDefs id={id} seed={4} />
+            <g filter={`url(#${id})`}>
+              {["M2,12 C30,8 60,14 98,7", "M4,14 C34,10 62,15 96,10"].map(
+                (d, i) => (
+                  <path
+                    key={i}
+                    d={d}
+                    fill="none"
+                    stroke={color}
+                    strokeOpacity={i ? 0.55 : 0.95}
+                    strokeWidth={i ? width * 0.6 : width}
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                ),
+              )}
+            </g>
+          </svg>
+        </span>
       ) : null}
     </span>
   )
@@ -170,11 +184,13 @@ function Ring({
   at,
   children,
   id,
+  color = CHAR,
 }: {
   t: number
   at: number
   children: React.ReactNode
   id: string
+  color?: string
 }) {
   const p = interpolate(t, [at, at + 0.6], [0, 1], {
     ...clamp,
@@ -194,6 +210,9 @@ function Ring({
             top: "-32%",
             height: "164%",
             overflow: "visible",
+            ...(color === GOLD
+              ? { filter: "drop-shadow(0 1px 1.5px rgba(70,45,10,0.6))" }
+              : {}),
           }}
         >
           <CharcoalDefs id={id} seed={9} />
@@ -201,9 +220,9 @@ function Ring({
             filter={`url(#${id})`}
             d="M150,10 C190,14 198,48 172,64 C140,82 50,80 18,64 C-6,50 4,18 40,10 C80,2 130,4 168,14"
             fill="none"
-            stroke={CHAR}
-            strokeOpacity={0.9}
-            strokeWidth={9}
+            stroke={color}
+            strokeOpacity={0.95}
+            strokeWidth={color === GOLD ? 11 : 9}
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
             pathLength={1}
@@ -546,8 +565,6 @@ export function VoxLanguageLayout({
           paper={{ jpg: PAPER_CLIP_JPG, mask: PAPER_CLIP_MASK }}
           pad={`${f(40)}px ${f(50)}px ${f(56)}px`}
         >
-          <div style={rule(3)} />
-          <div style={{ ...rule(1), marginTop: f(4) }} />
           {reference ? (
             <div
               style={{
@@ -613,7 +630,6 @@ export function VoxLanguageLayout({
             ) : null}
             {after}
           </div>
-          <div style={{ ...rule(1), marginTop: f(10) }} />
         </Arrive>
         {/* The meaning as a newspaper glossary box: an ink bar, a headword
             with its syllables and part of speech, numbered senses. */}
@@ -623,8 +639,9 @@ export function VoxLanguageLayout({
             t={t}
             at={defAt}
             style={{
-              // Over the foot of the verse sheet (owner, 2026-10-07).
-              top: f(668),
+              // Its own space below the verse sheet (owner, 2026-10-07: the
+              // sheets look wrong overlapping; no tape).
+              top: f(735),
               left: f(150),
               width: f(610),
               transform: "rotate(1.2deg)",
@@ -685,7 +702,13 @@ export function VoxLanguageLayout({
                   }}
                 >
                   not only a{" "}
-                  <Strike t={t} at={strikeAt} id="vox-strike-def">
+                  <Strike
+                    t={t}
+                    at={strikeAt}
+                    id="vox-strike-def"
+                    color={GOLD}
+                    width={14}
+                  >
                     {vox.strike}
                   </Strike>{" "}
                   word
@@ -715,7 +738,7 @@ export function VoxLanguageLayout({
                   </span>
                   <span>
                     {i === 0 ? (
-                      <Ring t={t} at={ringAt} id="vox-ring-def">
+                      <Ring t={t} at={ringAt} id="vox-ring-def" color={GOLD}>
                         {line}
                       </Ring>
                     ) : (
@@ -726,30 +749,6 @@ export function VoxLanguageLayout({
               ))}
             </div>
           </Arrive>
-        ) : null}
-        {vox.definition?.length && t >= defAt + 0.15 ? (
-          // A strip of kraft tape holds the glossary to the verse sheet.
-          <div
-            style={{
-              position: "absolute",
-              top: f(648),
-              left: f(355),
-              width: f(240),
-              height: f(240 * (97 / 380)),
-              transform: "rotate(-6deg)",
-              backgroundImage: `url(${TAPE_JPG})`,
-              backgroundSize: "100% 100%",
-              WebkitMaskImage: `url(${TAPE_MASK})`,
-              maskImage: `url(${TAPE_MASK})`,
-              WebkitMaskSize: "100% 100%",
-              maskSize: "100% 100%",
-              opacity:
-                0.92 *
-                interpolate(t, [defAt + 0.15, defAt + 0.45], [0, 1], clamp),
-              // The kraft tape, toned down to sit with the black-and-white film.
-              filter: `grayscale(0.75) brightness(1.05) drop-shadow(0 ${f(3)}px ${f(4)}px rgba(0,0,0,0.3))`,
-            }}
-          />
         ) : null}
       </div>
       {vox.finale ? (
