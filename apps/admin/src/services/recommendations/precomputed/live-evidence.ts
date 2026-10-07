@@ -178,6 +178,8 @@ export async function loadLiveEvidence(
           authority: input.policyAgreement.authority,
           digest: policyDigest,
           baselineHumanVisitCtr: input.policySettings.baselineHumanVisitCtr,
+          maximumEndToEndLossRate:
+            input.policySettings.maximumEndToEndLossRate ?? null,
         }
       : null,
     baseline:

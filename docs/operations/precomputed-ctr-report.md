@@ -49,18 +49,46 @@ hours, and any observed shortfall against durable Admin rows. A zero-counter
 hour is not inferred from a missing Redis hash. The global Watch counters are
 diagnostic and cannot substitute for these scoped counters.
 
-The report separately labels client/network loss **unobservable**: a browser
+Server counters alone leave client/network loss **unobservable**: a browser
 that never reaches Web, or a lost Web response after an Admin commit, cannot
-be proved absent by either server store. A scoped result of “no observed
-shortfall” is not a verified loss rate or a live winner. To qualify a live
-result later, collect an independent production browser/edge calibration of
-initiated Watch delivery and click attempts against the same frozen cohort and
-hour range, include deliberately dropped/retried requests, record its measured
-loss and uncertainty, and obtain the owner's numeric acceptable-loss limit
-before versioning an immutable qualification receipt. Do not use a fixture or
-global counter surplus to fill a scoped or client-side gap. Until that receipt
-is implemented and reviewed, final live reports remain inconclusive and
-manual promotion stays closed.
+be proved absent by either server store. The final verifier accepts one
+independently signed calibration per frozen experiment. It binds the exact
+experiment, generation, configuration, policy digest, cohort, and late cutoff;
+the configured source and measurement method; complete initiated/reached-Web
+delivery and click counts; an upper loss bound; and a passed drop/retry probe.
+The owner must declare `maximumEndToEndLossRate` numerically in the live policy
+before preparation. There is no default or approved value in this repository.
+
+The attestor signs one bit per UTC hour from cohort start through the late
+cutoff, least-significant bit first, asserting zero experiment traffic only for
+set bits. A missing scoped Redis hash is covered only by a matching signed
+zero-traffic bit. A missing hour without that independent proof stays unknown.
+Global Watch hashes can have unrelated failures or gaps; they remain visible
+diagnostics and cannot override complete, independently qualified cohort
+evidence. A receipt above the agreed loss limit or incomplete scoped evidence
+leaves the result inconclusive; an invalid signature cannot create a receipt.
+Reading a result, attesting, and evaluating never change serving; promotion
+remains an exact manual action.
+
+After the fixed late cutoff, submit the compact Ed25519 JWS through the
+recent-session, same-origin Admin operator route with
+`{"action":"attest_final_calibration","assertion":"<signed JWS>"}`. The JWS
+header uses `alg: EdDSA`, `typ: precomputed-calibration+jws`, and a configured
+`kid`; the signed payload uses `precomputed-final-calibration-v1`. The Admin
+environment keyring `PRECOMPUTED_FINAL_CALIBRATION_PUBLIC_KEYS` maps each key ID
+to its independently approved `sourceId`, `boundMethod`, and public key. Admin
+never receives the private key. The assertion must be under 8 KiB and observed
+within 15 minutes of submission. Only one immutable receipt is stored, and it
+expires with the experiment; raw viewer events are not copied into Admin.
+Evaluate **after** submission. Without a valid receipt, final evaluation
+returns `final_calibration_pending` without consuming the immutable final
+revision; after final evaluation, late receipt submission is rejected.
+
+No independent production attestor, approved bound method, public key, source
+collection, or owner loss limit has been selected or provisioned here. Those
+external decisions and actual observations are still required before a real
+cohort can qualify. The verifier will not accept operator-entered counters or
+a fixture signature as production authority.
 
 Ordinary retention archives each expired raw visit exactly once into compact
 per-browser clusters and per-arm totals, keeping a UUID marker to reject

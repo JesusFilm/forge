@@ -17,6 +17,7 @@ import {
   type PrecomputedCtrReport,
 } from "./ctr-report"
 import { validateCtrPolicySettings, type CtrPolicySettings } from "./ctr-policy"
+import { loadPrecomputedFinalCalibration } from "./final-calibration-receipt"
 import { oneUtcCalendarMonthAfter } from "./cohort-window"
 import {
   liveEvidenceDigest,
@@ -566,6 +567,7 @@ export async function promotePrecomputedPublicExperiment(
     expectedReportEvidenceDigest: string
     operator: Principal | null
     now?: Date
+    testTrustedKeyring?: string
   },
 ): Promise<PrecomputedPublicControl> {
   if (!hasPermission(input.operator, "operate:recommendation-experiments"))
@@ -582,6 +584,8 @@ export async function promotePrecomputedPublicExperiment(
   )
     throw new PrecomputedPublicControlError("invalid_input")
   const now = input.now ?? new Date()
+  if (input.testTrustedKeyring)
+    await assertIsolatedPrecomputedControlFixture(prisma)
   return prisma.$transaction(async (tx) => {
     const [locked] = await tx.$queryRaw<Array<{ version: number }>>`
       SELECT version FROM recommendation_precomputed_public_control
@@ -591,7 +595,9 @@ export async function promotePrecomputedPublicExperiment(
     const pointer =
       await tx.recommendationPrecomputedPublicControl.findUniqueOrThrow({
         where: { id: PRECOMPUTED_PUBLIC_CONTROL_ID },
-        include: { activeExperiment: { include: { generation: true } } },
+        include: {
+          activeExperiment: { include: { generation: true, ctrPolicy: true } },
+        },
       })
     const experiment = pointer.activeExperiment
     if (
@@ -604,16 +610,36 @@ export async function promotePrecomputedPublicExperiment(
       experiment.generation.sourceSetDigest !== experiment.sourceSetDigest
     )
       throw new PrecomputedPublicControlError("incompatible_target")
-    // Scoped Web counters cover requests that reached Web. A future promotion
-    // check must bind independent client/network-loss calibration and the
-    // owner's agreed limit to this final report before this guard can open.
-    if (pointer.authority === "live_verified")
+    if (
+      pointer.authority !== "isolated_fixture" &&
+      pointer.authority !== "live_verified"
+    )
+      throw new PrecomputedPublicControlError("readiness_unavailable")
+    if (pointer.authority === "isolated_fixture")
+      await assertIsolatedPrecomputedControlFixture(tx)
+    const policy = experiment.ctrPolicy
+    const liveCalibration =
+      pointer.authority === "live_verified" && policy
+        ? await loadPrecomputedFinalCalibration(
+            tx,
+            {
+              id: experiment.id,
+              generationId: experiment.generationId,
+              configurationDigest: experiment.configurationDigest,
+              startsAt: experiment.startsAt,
+              endsAt: experiment.endsAt,
+              expiresAt: experiment.expiresAt,
+              policyDigest: policy.settingsDigest,
+              lateEventCutoffHours: policy.lateEventCutoffHours,
+            },
+            now,
+            input.testTrustedKeyring,
+          )
+        : null
+    if (pointer.authority === "live_verified" && !liveCalibration)
       throw new PrecomputedPublicControlError("readiness_unavailable", [
         "end_to_end_client_loss_unverified",
       ])
-    if (pointer.authority !== "isolated_fixture")
-      throw new PrecomputedPublicControlError("readiness_unavailable")
-    await assertIsolatedPrecomputedControlFixture(tx)
     await tx.$queryRaw`SELECT id FROM recommendation_precomputed_generation
       WHERE id = ${experiment.generationId} FOR SHARE`
     await tx.$queryRaw`SELECT id FROM recommendation_serving_control
@@ -643,7 +669,22 @@ export async function promotePrecomputedPublicExperiment(
       report.sourceSetDigest !== experiment.sourceSetDigest ||
       report.controlRoutingDigest !== experiment.controlRoutingDigest ||
       report.policy.digest !== reportRow.policyDigest ||
-      report.evidenceBasis !== "isolated_fixture" ||
+      report.evidenceBasis !==
+        (pointer.authority === "live_verified"
+          ? "live_verified"
+          : "isolated_fixture") ||
+      (pointer.authority === "live_verified" &&
+        (!liveCalibration ||
+          report.finalCalibration?.receiptDigest !==
+            liveCalibration.receiptDigest ||
+          report.finalCalibration.sourceId !== liveCalibration.sourceId ||
+          report.finalCalibration.keyId !== liveCalibration.keyId ||
+          report.measurementHealth.trackingLoss !== "calibration_verified" ||
+          report.measurementHealth.endToEndClientEventCompleteness !==
+            "verified" ||
+          report.policy.settings.maximumEndToEndLossRate == null ||
+          liveCalibration.lossUpperBoundRate >
+            report.policy.settings.maximumEndToEndLossRate)) ||
       report.outcome !== "challenger" ||
       report.reasons.length !== 0 ||
       routing?.routingDigest !== experiment.controlRoutingDigest

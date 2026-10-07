@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest"
-import { evaluatePrecomputedCtr, type CtrPolicySettings } from "./ctr-policy"
+import {
+  evaluatePrecomputedCtr,
+  validateCtrPolicySettings,
+  type CtrPolicySettings,
+} from "./ctr-policy"
 
 const settings: CtrPolicySettings = {
   baselineHumanVisitCtr: 0.2,
@@ -32,6 +36,20 @@ function arm(clicks: number) {
 }
 
 describe("fixed-horizon clustered visit CTR", () => {
+  it("does not invent a loss limit and rejects an invalid owner value", () => {
+    expect(() =>
+      validateCtrPolicySettings({
+        ...settings,
+        maximumEndToEndLossRate: null,
+      }),
+    ).not.toThrow()
+    expect(() =>
+      validateCtrPolicySettings({
+        ...settings,
+        maximumEndToEndLossRate: 1.1,
+      }),
+    ).toThrow("invalid_ctr_stopping_policy")
+  })
   it("finds a clear challenger win only after the declared final look", () => {
     const evidence = {
       startsAt: start,

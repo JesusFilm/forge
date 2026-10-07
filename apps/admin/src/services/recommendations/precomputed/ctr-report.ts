@@ -10,6 +10,7 @@ import {
   type CtrTotals,
 } from "./ctr-evidence"
 import { lockPrecomputedCtrEvidence } from "./ctr-fence"
+import { loadPrecomputedFinalCalibration } from "./final-calibration-receipt"
 import { PRECOMPUTED_VISIT_ELIGIBILITY_POLICY } from "./visit-admission"
 import {
   evaluatePrecomputedCtr,
@@ -40,7 +41,11 @@ type MomentRow = {
 
 export type PrecomputedCtrReport = {
   schemaVersion: 1
-  evidenceBasis?: "private_unverified" | "isolated_fixture" | "live_incomplete"
+  evidenceBasis?:
+    | "private_unverified"
+    | "isolated_fixture"
+    | "live_incomplete"
+    | "live_verified"
   experimentId: string
   revision: number
   isFinal: boolean
@@ -56,6 +61,14 @@ export type PrecomputedCtrReport = {
     baselineReportDigest: string
     launchCapacityReceiptDigest: string
     authoritativeCatalogSourceSetDigest: string
+  }
+  finalCalibration?: {
+    receiptDigest: string
+    sourceId: string
+    sourceRunId: string
+    keyId: string
+    lossUpperBoundRate: number
+    quietHourCount: number
   }
   eligibilityPolicyVersion: string
   policy: {
@@ -98,8 +111,8 @@ export type PrecomputedCtrReport = {
   }
   measurementHealth: {
     botEligibility: "unverified" | "fixture_verified" | "durable_rows_verified"
-    trackingLoss: "unobservable" | "fixture_verified"
-    endToEndClientEventCompleteness?: "unverified"
+    trackingLoss: "unobservable" | "fixture_verified" | "calibration_verified"
+    endToEndClientEventCompleteness?: "unverified" | "verified"
     webRequestHealth?: {
       status: "complete" | "incomplete" | "unavailable"
       requestedHours: number
@@ -117,6 +130,7 @@ export type PrecomputedCtrReport = {
       requestedHours: number
       coveredHours: number
       missingHourCount: number
+      independentlyCoveredQuietHours?: number
       imbalancedHourCount: number
       attributedDeliveryAttempts: number
       acceptedVisitAttempts: number
@@ -125,7 +139,7 @@ export type PrecomputedCtrReport = {
       clickAttempts: number
       clickAcknowledgements: number
       clickUnavailable: number
-      clientNetworkLoss: "unobservable"
+      clientNetworkLoss: "unobservable" | "calibration_verified"
     }
     /** Known bots/prefetches skipped by Web are outside this report. */
     edgeAutomationCoverage?: "partial_unverified"
@@ -387,6 +401,7 @@ async function evaluatePrecomputedCtrReport(
     evidenceBasis: "private_unverified" | "isolated_fixture" | "live_public"
     webMeasurement?: WebWatchMeasurementRead | null
     experimentMeasurement?: WebExperimentMeasurementRead | null
+    testTrustedKeyring?: string
   },
 ): Promise<PrecomputedCtrRead> {
   if (!hasPermission(input.operator, "operate:recommendation-experiments"))
@@ -471,9 +486,33 @@ async function evaluatePrecomputedCtrReport(
       const finalAt = new Date(
         experiment.endsAt.getTime() + settings.lateEventCutoffHours * 3_600_000,
       )
+      const livePublic = input.evidenceBasis === "live_public"
+      const isFinal = asOf >= finalAt
+      const finalCalibration =
+        livePublic && isFinal
+          ? await loadPrecomputedFinalCalibration(
+              tx,
+              {
+                id: experiment.id,
+                generationId: experiment.generationId,
+                configurationDigest: experiment.configurationDigest,
+                startsAt: experiment.startsAt,
+                endsAt: experiment.endsAt,
+                expiresAt: experiment.expiresAt,
+                policyDigest: policy.settingsDigest,
+                lateEventCutoffHours: settings.lateEventCutoffHours,
+              },
+              asOf,
+              input.testTrustedKeyring,
+            )
+          : null
+      if (livePublic && isFinal && !finalCalibration)
+        return {
+          status: "unavailable",
+          reason: "final_calibration_pending",
+        } as const
       const web = input.webMeasurement
       const scoped = input.experimentMeasurement
-      const livePublic = input.evidenceBasis === "live_public"
       const eligibleVisits = safe(
         totals.control.eligibleVisits + totals.challenger.eligibleVisits,
       )
@@ -505,17 +544,44 @@ async function evaluatePrecomputedCtrReport(
         web.counters.click_ack >= acceptedSelections &&
         web.counters.click_unavailable === 0 &&
         web.counters.delivery_verification_unavailable === 0
+      const scopedMissing =
+        scoped && scoped.status !== "unavailable"
+          ? new Set(scoped.missingHours)
+          : new Set<string>()
+      const quietHoursCovered =
+        finalCalibration != null &&
+        [...scopedMissing].every((hour) =>
+          finalCalibration.quietHours.has(hour),
+        ) &&
+        [...finalCalibration.quietHours].every((hour) =>
+          scopedMissing.has(hour),
+        )
       const scopedReconciled =
         livePublic &&
-        scoped?.status === "complete" &&
+        scoped != null &&
+        scoped.status !== "unavailable" &&
+        (scoped.status === "complete" || quietHoursCovered) &&
+        (finalCalibration == null || quietHoursCovered) &&
         scoped.experimentId === experiment.id &&
         scoped.startHour === experiment.startsAt.toISOString() &&
         scoped.endHourExclusive === finalAt.toISOString() &&
-        scoped.missingHours.length === 0 &&
+        (scoped.missingHours.length === 0 || quietHoursCovered) &&
         scoped.imbalancedHours.length === 0 &&
         scoped.counters.delivery_eligible >= eligibleVisits &&
         scoped.counters.click_ack >= acceptedSelections
-      const isFinal = asOf >= finalAt
+      const calibratedLossVerified =
+        livePublic &&
+        isFinal &&
+        finalCalibration != null &&
+        scopedReconciled &&
+        scoped != null &&
+        (scoped.status === "complete" || scoped.status === "incomplete") &&
+        settings.maximumEndToEndLossRate != null &&
+        finalCalibration.lossUpperBoundRate <=
+          settings.maximumEndToEndLossRate &&
+        finalCalibration.deliveryReachedWeb >=
+          scoped.counters.delivery_attempt &&
+        finalCalibration.clickReachedWeb >= scoped.counters.click_attempt
       const evaluation = evaluatePrecomputedCtr(settings, {
         startsAt: experiment.startsAt,
         endsAt: experiment.endsAt,
@@ -526,7 +592,7 @@ async function evaluatePrecomputedCtrReport(
             ? "verified"
             : "unverified",
         trackingLoss:
-          input.evidenceBasis === "isolated_fixture"
+          input.evidenceBasis === "isolated_fixture" || calibratedLossVerified
             ? "verified"
             : "unobservable",
       })
@@ -545,11 +611,21 @@ async function evaluatePrecomputedCtrReport(
         reasons.push("numeric_policy_not_agreed")
       if (livePublic && !botVerified)
         reasons.push("live_browser_qualification_unverified")
-      if (livePublic && !webComplete)
+      if (livePublic && !webComplete && !calibratedLossVerified)
         reasons.push("web_request_health_incomplete")
       if (livePublic && !scopedReconciled)
         reasons.push("experiment_scoped_tracking_loss_unverified")
-      if (livePublic) reasons.push("end_to_end_client_loss_unverified")
+      if (livePublic && settings.maximumEndToEndLossRate == null)
+        reasons.push("end_to_end_loss_limit_not_agreed")
+      if (livePublic && !calibratedLossVerified)
+        reasons.push(
+          finalCalibration &&
+            settings.maximumEndToEndLossRate != null &&
+            finalCalibration.lossUpperBoundRate >
+              settings.maximumEndToEndLossRate
+            ? "end_to_end_client_loss_above_limit"
+            : "end_to_end_client_loss_unverified",
+        )
       const unversioned = safe(
         totals.control.unversionedArchivedVisits +
           totals.challenger.unversionedArchivedVisits +
@@ -560,7 +636,9 @@ async function evaluatePrecomputedCtrReport(
       const report: PrecomputedCtrReport = {
         schemaVersion: 1,
         evidenceBasis: livePublic
-          ? "live_incomplete"
+          ? calibratedLossVerified
+            ? "live_verified"
+            : "live_incomplete"
           : (input.evidenceBasis as "private_unverified" | "isolated_fixture"),
         experimentId: experiment.id,
         revision,
@@ -572,6 +650,18 @@ async function evaluatePrecomputedCtrReport(
         controlRoutingDigest: experiment.controlRoutingDigest,
         sourceSetDigest: experiment.sourceSetDigest,
         configurationDigest: experiment.configurationDigest,
+        ...(finalCalibration
+          ? {
+              finalCalibration: {
+                receiptDigest: finalCalibration.receiptDigest,
+                sourceId: finalCalibration.sourceId,
+                sourceRunId: finalCalibration.sourceRunId,
+                keyId: finalCalibration.keyId,
+                lossUpperBoundRate: finalCalibration.lossUpperBoundRate,
+                quietHourCount: finalCalibration.quietHours.size,
+              },
+            }
+          : {}),
         ...(livePublic &&
         experiment.liveEvidence &&
         typeof experiment.liveEvidence === "object" &&
@@ -639,9 +729,15 @@ async function evaluatePrecomputedCtrReport(
           trackingLoss:
             input.evidenceBasis === "isolated_fixture"
               ? "fixture_verified"
-              : "unobservable",
+              : calibratedLossVerified
+                ? "calibration_verified"
+                : "unobservable",
           ...(livePublic
-            ? { endToEndClientEventCompleteness: "unverified" as const }
+            ? {
+                endToEndClientEventCompleteness: calibratedLossVerified
+                  ? ("verified" as const)
+                  : ("unverified" as const),
+              }
             : {}),
           ...(livePublic
             ? {
@@ -701,6 +797,12 @@ async function evaluatePrecomputedCtrReport(
                     scoped && scoped.status !== "unavailable"
                       ? scoped.missingHours.length
                       : 0,
+                  independentlyCoveredQuietHours:
+                    quietHoursCovered &&
+                    scoped &&
+                    scoped.status !== "unavailable"
+                      ? scoped.missingHours.length
+                      : 0,
                   imbalancedHourCount:
                     scoped && scoped.status !== "unavailable"
                       ? scoped.imbalancedHours.length
@@ -733,7 +835,9 @@ async function evaluatePrecomputedCtrReport(
                     scoped && scoped.status !== "unavailable"
                       ? scoped.counters.click_unavailable
                       : 0,
-                  clientNetworkLoss: "unobservable" as const,
+                  clientNetworkLoss: calibratedLossVerified
+                    ? ("calibration_verified" as const)
+                    : ("unobservable" as const),
                 },
               }
             : {}),
@@ -816,12 +920,17 @@ export function evaluatePrivatePrecomputedCtr(
   })
 }
 
-/** Global Web request counters expose telemetry gaps, but cannot prove every
- * eligible experiment visit/click was attributed. A live report can close at
- * the fixed horizon while remaining inconclusive until scoped proof exists. */
+/** Global and experiment Web counters are reconciled independently. Only an
+ * attestor-signed final calibration can close the remaining client/network
+ * loss boundary for a live result. */
 export async function evaluatePublicPrecomputedCtr(
   prisma: PrismaClient,
-  input: { experimentId: string; operator: Principal | null; now?: Date },
+  input: {
+    experimentId: string
+    operator: Principal | null
+    now?: Date
+    testTrustedKeyring?: string
+  },
 ): Promise<PrecomputedCtrRead> {
   const experiment =
     await prisma.recommendationPrecomputedExperiment.findUnique({
@@ -829,10 +938,12 @@ export async function evaluatePublicPrecomputedCtr(
       include: { ctrPolicy: true },
     })
   const now = input.now ?? new Date()
+  const control = await import("./public-control")
+  if (input.testTrustedKeyring)
+    await control.assertIsolatedPrecomputedControlFixture(prisma)
   const livePublic =
     experiment?.eligibilityPolicyVersion ===
-    (await import("./public-control"))
-      .PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
+    control.PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY
   let webMeasurement: WebWatchMeasurementRead | null = null
   let experimentMeasurement: WebExperimentMeasurementRead | null = null
   if (livePublic && experiment?.ctrPolicy) {
@@ -856,6 +967,7 @@ export async function evaluatePublicPrecomputedCtr(
     evidenceBasis: livePublic ? "live_public" : "isolated_fixture",
     webMeasurement,
     experimentMeasurement,
+    testTrustedKeyring: input.testTrustedKeyring,
   })
 }
 

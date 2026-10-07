@@ -8,6 +8,7 @@ export type PrecomputedLiveFacts = {
     authority: string
     digest: string
     baselineHumanVisitCtr: number
+    maximumEndToEndLossRate: number | null
   } | null
   baseline: {
     authority: string
@@ -65,6 +66,13 @@ export function evaluatePrecomputedLiveFacts(
     !HEX_DIGEST.test(facts.policy.digest)
   )
     reasons.push("numeric_policy_not_agreed")
+  if (
+    facts.policy?.maximumEndToEndLossRate == null ||
+    !Number.isFinite(facts.policy.maximumEndToEndLossRate) ||
+    facts.policy.maximumEndToEndLossRate < 0 ||
+    facts.policy.maximumEndToEndLossRate > 1
+  )
+    reasons.push("end_to_end_loss_limit_not_agreed")
   const baseline = facts.baseline
   if (
     baseline?.authority !== "live_verified" ||

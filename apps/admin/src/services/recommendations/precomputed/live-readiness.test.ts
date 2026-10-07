@@ -8,6 +8,7 @@ const verified = () => ({
     authority: "prelaunch_agreed" as const,
     digest: "a".repeat(64),
     baselineHumanVisitCtr: 0.04,
+    maximumEndToEndLossRate: 0.03,
   },
   baseline: {
     authority: "live_verified" as const,
@@ -55,6 +56,15 @@ const verified = () => ({
 })
 
 describe("contingent public Watch live readiness", () => {
+  it("requires an owner-entered end-to-end loss limit before live preparation", () => {
+    const facts = verified()
+    expect(
+      evaluatePrecomputedLiveFacts({
+        ...facts,
+        policy: { ...facts.policy, maximumEndToEndLossRate: null },
+      }),
+    ).toContain("end_to_end_loss_limit_not_agreed")
+  })
   it("can qualify only an explicitly agreed numeric policy with real stored evidence", () => {
     expect(evaluatePrecomputedLiveFacts(verified())).toEqual([])
   })

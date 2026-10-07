@@ -69,7 +69,7 @@ experiment ID, and reason code. This drops only the rollback pin; ordinary
 bounded retention may then remove the expired cohort and, when no other
 protection applies, its generation. An early or mismatched release is denied.
 
-## Live result qualification remains blocked
+## Live result qualification
 
 Admin readiness lists missing evidence explicitly. The public report labels
 its bot-exclusion count as **Admin-bound only**: known crawlers and prefetches
@@ -82,14 +82,34 @@ counts without adding a distinct visit or click. Missing hours, unscoped
 response-less Admin failures, and browser/network attempts that never reached
 Web remain unknown, not zero. See [CTR report](precomputed-ctr-report.md).
 
-Live promotion remains closed even when scoped server counts show no observed
-shortfall. The next qualification step is an independent production
-browser/edge calibration over the same frozen cohort and late-event horizon,
-including induced drops and retries, plus the owner's numeric acceptable-loss
-limit. Bind the calibration, uncertainty and threshold to an immutable final
-report before changing the live promotion guard. No threshold is assumed by
-this runbook. A point-in-time Railway disk snapshot is also not a launch
-capacity receipt; build and baseline growth still need measurement.
+Live preparation requires an owner-entered numeric
+`maximumEndToEndLossRate` alongside the other agreed policy settings; null or
+omission is blocked. After the cohort and late cutoff, a separately configured
+browser/edge attestor must sign complete horizon counts, a conservative upper
+loss bound, quiet-hour proof, and a passed drop/retry probe. An operator with a
+recent Admin session transports that signed assertion using
+`attest_final_calibration` on the same protected control route. Admin verifies
+its configured source/key/method binding and frozen experiment identity before
+an append-only insert. Evaluate only after the receipt: a missing receipt
+returns `final_calibration_pending` without freezing an inconclusive final
+report. An independently proven quiet hour may cover an absent scoped Redis
+hash; unproved absence remains a gap. The final report includes the receipt
+digest, source, upper bound, and scoped reconciliation. A clear challenger
+result can be promoted only by the separate exact manual CAS action.
+
+The verifier code is present, but no independent source/key, approved bound
+method, actual calibration, or owner loss threshold is provisioned in this
+repository. Do not configure an Admin/Web/fixture signer as the external
+attestor. See [CTR report](precomputed-ctr-report.md) for the signed contract
+and operator sequence. A point-in-time Railway disk snapshot is also not a
+launch capacity receipt; build and baseline growth still need measurement.
+
+Each recommendation delivery or selection can make two additional sequential
+scoped Redis writes. Each uses the existing 250 ms bound, so a hung Redis path
+can add up to about 500 ms before the response. The browser makes no extra
+request: it keeps a short ticket from the existing delivery response in memory
+and returns it in the existing selection POST. Monitor Watch latency as well
+as counter coverage during a cohort.
 
 When those gaps are resolved, the owner can request the separate manual
 activation in another task. This runbook does not schedule a refresh, deploy
