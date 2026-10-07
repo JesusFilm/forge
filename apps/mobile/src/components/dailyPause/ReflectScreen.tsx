@@ -149,8 +149,8 @@ const styles = StyleSheet.create({
   verse: {
     alignSelf: "stretch",
     color: pauseColors.ink,
-    fontSize: 17,
-    lineHeight: 26,
+    fontSize: 20,
+    lineHeight: 30,
   },
   label: {
     alignSelf: "stretch",
