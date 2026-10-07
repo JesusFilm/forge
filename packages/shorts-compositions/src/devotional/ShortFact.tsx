@@ -20,8 +20,8 @@ import { AnimatedBook, AnimatedScroll } from "./SourceEmblems"
 import { StampLine } from "./StampLine"
 import { type ExplainerSpec, VoxExplainer } from "./VoxExplainer"
 import {
-  VoxBackdropTint,
   VoxCaption,
+  VoxHalftone,
   VoxLanguageLayout,
   VoxTag,
 } from "./VoxLanguage"
@@ -176,30 +176,27 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
-      {props.bgFile ? (
-        <AbsoluteFill
-          style={{
-            transform: `scale(${interpolate(frame, [0, durationInFrames], [1.04, 1.1])})`,
-          }}
-        >
-          <OffthreadVideo
-            src={staticFile(props.bgFile)}
-            muted
-            trimBefore={Math.round((props.bgStartOffsetSec ?? 0) * fps)}
-            playbackRate={props.bgPlaybackRate ?? 1}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              // The Vox explainer mutes the film so the paper and gold lead.
-              ...(fact?.vox
-                ? { filter: "grayscale(0.8) contrast(1.08) brightness(0.92)" }
-                : {}),
-            }}
-          />
-        </AbsoluteFill>
-      ) : null}
-      {fact?.vox ? <VoxBackdropTint /> : null}
+      {props.bgFile
+        ? (() => {
+            const film = (
+              <AbsoluteFill
+                style={{
+                  transform: `scale(${interpolate(frame, [0, durationInFrames], [1.04, 1.1])})`,
+                }}
+              >
+                <OffthreadVideo
+                  src={staticFile(props.bgFile)}
+                  muted
+                  trimBefore={Math.round((props.bgStartOffsetSec ?? 0) * fps)}
+                  playbackRate={props.bgPlaybackRate ?? 1}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+              </AbsoluteFill>
+            )
+            // The Vox explainer prints the film as a newspaper halftone.
+            return fact?.vox ? <VoxHalftone f={f}>{film}</VoxHalftone> : film
+          })()
+        : null}
       {/* An even dim, then the Figma's soft dark pool behind the text. */}
       <AbsoluteFill style={{ background: "rgba(0,0,0,0.28)" }} />
       <div
