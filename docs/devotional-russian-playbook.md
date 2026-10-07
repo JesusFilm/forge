@@ -95,3 +95,14 @@ muxed under the existing picture (the old file is kept beside it).
 (+ `.rtf`), Russian covers in Figma (row under the English ones; a title font
 without Cyrillic, such as Poppins, is swapped for Montserrat) exported to
 `covers/ru/`, shorts in `shorts/ru/`.
+
+## 7. Russian shorts
+
+- intro: run `render-one-devotional.ts --teaser-intro` directly with the
+  Russian flags (`--lang=ru`, `--hook-voices=...`, `--voice-v4`) and
+  `--cta-text="Смотри полное видео на нашем YouTube-канале."`; the cutter's
+  intro step does not pass the language or the two voices yet.
+- reflection / language: `cut-devotional-shorts.ts --from=<ru video>.source
+--only=reflection --reflection=<a-b>`. Paragraph numbers follow the Russian
+  text (a dropped paragraph shifts them). The labels switch to Russian on
+  their own («Из полного видео:»).
