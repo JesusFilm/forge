@@ -2397,7 +2397,7 @@ function ClipIntro({
       ? starts[
           lines.findIndex((l) =>
             // `\b` is ASCII-only, so it never ends a Cyrillic word: \p{L} instead.
-            /^\s*(in this devotional|en este devocional|в этом размышлении)(?!\p{L})/iu.test(
+            /^\s*(in this devotional|en este devocional|в этом размышлении|в этом видео)(?!\p{L})/iu.test(
               l,
             ),
           )
@@ -2454,21 +2454,23 @@ function ClipIntro({
             fps={fps}
             spanSec={3.6}
           />
-          <div
-            style={{
-              fontFamily: SANS,
-              fontWeight: 500,
-              fontSize: px(wide ? 8.5 : 11),
-              letterSpacing: px(2.2 + 1.2 * (1 - kickerIn)),
-              color: "rgba(255,255,255,0.78)",
-              whiteSpace: "nowrap",
-              opacity: kickerIn,
-              transform: `translateY(${(-px(6) * (1 - kickerIn)).toFixed(1)}px)`,
-              textShadow: `0 ${px(1)}px ${px(10)}px rgba(0,0,0,0.5)`,
-            }}
-          >
-            {kicker}
-          </div>
+          {kicker ? (
+            <div
+              style={{
+                fontFamily: SANS,
+                fontWeight: 500,
+                fontSize: px(wide ? 8.5 : 11),
+                letterSpacing: px(2.2 + 1.2 * (1 - kickerIn)),
+                color: "rgba(255,255,255,0.78)",
+                whiteSpace: "nowrap",
+                opacity: kickerIn,
+                transform: `translateY(${(-px(6) * (1 - kickerIn)).toFixed(1)}px)`,
+                textShadow: `0 ${px(1)}px ${px(10)}px rgba(0,0,0,0.5)`,
+              }}
+            >
+              {kicker}
+            </div>
+          ) : null}
         </div>
       ) : null
     return (
@@ -5566,7 +5568,7 @@ function CardBody({
             framed={card.introFrame === true}
             {...(card.introCaptions ? { captions: card.introCaptions } : {})}
             {...(card.introKinetic ? { kinetic: card.introKinetic } : {})}
-            {...(card.introKicker ? { kicker: card.introKicker } : {})}
+            {...(card.introKicker != null ? { kicker: card.introKicker } : {})}
             {...(card.passageRef ? { passageRef: card.passageRef } : {})}
             cta={card.introCta === true}
             ctaCalm={card.introCtaStyle === "calm"}

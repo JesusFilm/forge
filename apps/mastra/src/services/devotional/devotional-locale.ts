@@ -370,7 +370,9 @@ export const RU_LOCALE: DevotionalLocale = {
   // 2026-10-06: «посмотри» reads more naturally than «смотри»).
   stepLabels: ["ПОСМОТРИ", "ПОДУМАЙ", "ПОМОЛИСЬ"],
   hideTranslationTag: true,
-  introKicker: "В ЭТОМ РАЗМЫШЛЕНИИ",
+  // No kicker under the Jesus Film mark in Russian (owner, 2026-10-07); the
+  // spoken preview says «В этом видео…» itself.
+  introKicker: "",
   scripture: { fetch: fetchSynodalPassage, translation: "Синодальный перевод" },
   attributionPrefix: "По мотивам христианской классики",
   // Combining acute accent (U+0301) forces the correct stress for the voice.

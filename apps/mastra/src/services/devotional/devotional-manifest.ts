@@ -386,7 +386,8 @@ function buildClipFirstManifest(
             ...(input.intro === "montage" && input.introKinetic?.length
               ? { introKinetic: input.introKinetic }
               : {}),
-            ...(input.intro === "montage" && input.introKicker
+            // "" is a real value: no kicker under the mark (RU, 2026-10-07).
+            ...(input.intro === "montage" && input.introKicker != null
               ? { introKicker: input.introKicker }
               : {}),
             ...(input.intro === "montage" && input.introCaptions

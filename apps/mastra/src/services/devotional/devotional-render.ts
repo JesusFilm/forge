@@ -2886,7 +2886,7 @@ async function renderInStage(
     ...(options.openingFrame ? { openingFrame: true } : {}),
     ...(options.introCaptions ? { introCaptions: options.introCaptions } : {}),
     ...(options.introKinetic ? { introKinetic: options.introKinetic } : {}),
-    ...(locale.introKicker ? { introKicker: locale.introKicker } : {}),
+    ...(locale.introKicker != null ? { introKicker: locale.introKicker } : {}),
     ...(options.introTeaser &&
     options.intro === "montage" &&
     options.introCtaText
