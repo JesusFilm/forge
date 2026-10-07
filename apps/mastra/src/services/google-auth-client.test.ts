@@ -13,6 +13,7 @@ const privateKey = [
 afterEach(() => {
   vi.useRealTimers()
   vi.unstubAllEnvs()
+  vi.restoreAllMocks()
 })
 
 function serviceAccountJson(overrides: Record<string, unknown> = {}): string {
@@ -370,5 +371,146 @@ describe("requestGoogleJson", () => {
       attempts: 2,
     })
     expect(fetchImpl).toHaveBeenCalledTimes(2)
+  })
+
+  it("applies an opt-in HTTP retry schedule to the same request with a total deadline", async () => {
+    let now = 1_000_000
+    vi.spyOn(Date, "now").mockImplementation(() => now)
+    const timeouts: number[] = []
+    vi.spyOn(AbortSignal, "timeout").mockImplementation((ms) => {
+      timeouts.push(ms)
+      return new AbortController().signal
+    })
+    const bodies: string[] = []
+    const fetchImpl = vi.fn(
+      async (_url: URL | RequestInfo, init?: RequestInit) => {
+        bodies.push(String(init?.body))
+        return bodies.length < 3
+          ? new Response("unavailable", { status: 502 })
+          : new Response("{}", { status: 200 })
+      },
+    ) as typeof fetch
+    const sleep = vi.fn(async (ms: number) => {
+      now += ms
+    })
+    const retryHttp = vi.fn(
+      ({ attempt }: { attempt: number }) =>
+        [30_000, 60_000][attempt - 1] ?? null,
+    )
+
+    await expect(
+      requestGoogleJson({
+        url: new URL("https://www.googleapis.com/example"),
+        accessToken: "access",
+        body: { page: 1 },
+        timeoutMs: 120_000,
+        maxElapsedMs: 600_000,
+        maxResponseBytes: 16,
+        maxAttempts: 3,
+        fetchImpl,
+        sleep,
+        retryHttp,
+        propagateFetchError: true,
+      }),
+    ).resolves.toEqual({ ok: true, body: {}, attempts: 3 })
+    expect(bodies).toEqual(['{"page":1}', '{"page":1}', '{"page":1}'])
+    expect(sleep.mock.calls.map(([ms]) => ms)).toEqual([30_000, 60_000])
+    expect(timeouts).toEqual([120_000, 120_000, 120_000])
+    expect(retryHttp).toHaveBeenCalledTimes(2)
+  })
+
+  it("propagates protected fetch failures without retrying while default callers still retry", async () => {
+    const failure = new Error("operator_pause_at_call_boundary")
+    const protectedFetch = vi.fn(async () => {
+      throw failure
+    }) as typeof fetch
+    const options = {
+      url: new URL("https://www.googleapis.com/example"),
+      accessToken: "access",
+      body: {},
+      timeoutMs: 1_000,
+      maxResponseBytes: 16,
+      maxAttempts: 3,
+      fetchImpl: protectedFetch,
+      sleep: async () => undefined,
+    }
+    await expect(
+      requestGoogleJson({ ...options, propagateFetchError: true }),
+    ).rejects.toBe(failure)
+    expect(protectedFetch).toHaveBeenCalledTimes(1)
+
+    const legacyFetch = vi.fn(async () => {
+      throw new TypeError("network disconnected")
+    }) as typeof fetch
+    await expect(
+      requestGoogleJson({ ...options, maxAttempts: 2, fetchImpl: legacyFetch }),
+    ).resolves.toMatchObject({
+      ok: false,
+      reason: "network_error",
+      attempts: 2,
+    })
+    expect(legacyFetch).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not wait or retry once the total deadline cannot accommodate a scheduled delay", async () => {
+    let now = 1_000_000
+    vi.spyOn(Date, "now").mockImplementation(() => now)
+    const fetchImpl = vi.fn(async () => {
+      now += 580_000
+      return new Response("unavailable", { status: 502 })
+    }) as typeof fetch
+    const sleep = vi.fn(async () => undefined)
+    await expect(
+      requestGoogleJson({
+        url: new URL("https://www.googleapis.com/example"),
+        accessToken: "access",
+        body: {},
+        timeoutMs: 120_000,
+        maxElapsedMs: 600_000,
+        maxResponseBytes: 16,
+        maxAttempts: 3,
+        fetchImpl,
+        sleep,
+        retryHttp: () => 30_000,
+      }),
+    ).resolves.toMatchObject({ ok: false, status: 502, attempts: 1 })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+    expect(sleep).not.toHaveBeenCalled()
+  })
+
+  it("bounds a later attempt by the remaining total deadline", async () => {
+    let now = 1_000_000
+    vi.spyOn(Date, "now").mockImplementation(() => now)
+    const timeouts: number[] = []
+    vi.spyOn(AbortSignal, "timeout").mockImplementation((ms) => {
+      timeouts.push(ms)
+      return new AbortController().signal
+    })
+    let calls = 0
+    const fetchImpl = vi.fn(async () => {
+      calls += 1
+      if (calls === 1) {
+        now += 500_000
+        return new Response("unavailable", { status: 502 })
+      }
+      return new Response("{}", { status: 200 })
+    }) as typeof fetch
+    await expect(
+      requestGoogleJson({
+        url: new URL("https://www.googleapis.com/example"),
+        accessToken: "access",
+        body: {},
+        timeoutMs: 120_000,
+        maxElapsedMs: 600_000,
+        maxResponseBytes: 16,
+        maxAttempts: 3,
+        fetchImpl,
+        sleep: async (ms) => {
+          now += ms
+        },
+        retryHttp: () => 30_000,
+      }),
+    ).resolves.toEqual({ ok: true, body: {}, attempts: 2 })
+    expect(timeouts).toEqual([120_000, 70_000])
   })
 })

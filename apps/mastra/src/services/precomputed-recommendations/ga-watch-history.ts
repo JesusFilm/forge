@@ -29,6 +29,8 @@ const SNAPSHOT_PAGE_SIZE = 500
 const COVERAGE_REPORT_TIMEOUT_MS = 50_000
 const DETAILED_REPORT_TIMEOUT_MS = 120_000
 const MAX_REPORT_PAGES = 25
+const GA_REPORT_MAX_ELAPSED_MS = 600_000
+const GA_REPORT_RETRY_DELAYS_MS = [30_000, 60_000] as const
 const EVENT_NAMES = [
   "page_view",
   "videostarts",
@@ -373,6 +375,26 @@ function watchFilter(
   }
 }
 
+function gaReportRetryDelay(input: {
+  status: number
+  attempt: number
+  retryAfter: string | null
+}): number | null {
+  if (![500, 502, 503, 504].includes(input.status)) return null
+  const scheduled = GA_REPORT_RETRY_DELAYS_MS[input.attempt - 1]
+  if (scheduled === undefined) return null
+  if (input.retryAfter === null) return scheduled
+
+  const header = input.retryAfter.trim()
+  const requested = /^\d+$/u.test(header)
+    ? Number(header) * 1_000
+    : /^[A-Za-z]{3}, /u.test(header) && / GMT$/u.test(header)
+      ? Math.max(0, Date.parse(header) - Date.now())
+      : NaN
+  if (!Number.isSafeInteger(requested) || requested > 60_000) return null
+  return Math.max(scheduled, requested)
+}
+
 async function requestReportPage(input: {
   propertyId: string
   rangeStart: string
@@ -416,7 +438,12 @@ async function requestReportPage(input: {
         ? COVERAGE_REPORT_TIMEOUT_MS
         : DETAILED_REPORT_TIMEOUT_MS,
     maxResponseBytes: 2_097_152,
-    maxAttempts: 2,
+    maxAttempts: 3,
+    maxElapsedMs: GA_REPORT_MAX_ELAPSED_MS,
+    retryHttp: gaReportRetryDelay,
+    // The wrapped fetch also enforces admission and persists each receipt.
+    // Its failures must escape without being mistaken for network retries.
+    propagateFetchError: true,
     fetchImpl: input.fetchImpl,
   })
   if (!response.ok) throw new HistoricalAnalyticsError("analytics_unavailable")

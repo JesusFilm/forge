@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 
 import {
   createGaWatchHistoryReader,
@@ -7,6 +7,11 @@ import {
   readGaWatchStartAggregatePage,
 } from "./ga-watch-history"
 import { readHistoricalDefinition } from "./historical-analytics"
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.restoreAllMocks()
+})
 
 const monthly = [
   ["202209", "videostarts", "7"],
@@ -473,5 +478,208 @@ describe("GA Watch history coverage preflight", () => {
     expect(JSON.stringify(fake.requests[0])).toContain(
       '"values":["/watch/jesus.html/the-beginning/english.html"]',
     )
+  })
+})
+
+describe("GA report retry admission", () => {
+  const input = {
+    propertyId: "320198532",
+    serviceAccountEmail:
+      "watch-ga4-readonly@jesusfilm-org-1738781064783.iam.gserviceaccount.com",
+    rangeStart: "2022-08-07",
+    rangeEnd: "2026-10-05",
+    offset: 0,
+    limit: 1,
+    tokenProvider: async () => ({
+      ok: true as const,
+      accessToken: "test-token",
+    }),
+  }
+
+  it("retries the identical 502 report after 30 and 60 seconds and accepts only a complete response", async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-10-07T00:00:00.000Z"))
+    const attempts: { at: number; body: string }[] = []
+    const fetchImpl = vi.fn(
+      async (_url: URL | RequestInfo, init?: RequestInit) => {
+        attempts.push({ at: Date.now(), body: String(init?.body) })
+        return attempts.length < 3
+          ? new Response("upstream gateway", { status: 502 })
+          : new Response(
+              JSON.stringify(
+                report(
+                  ["pagePath", "customEvent:mediacomponentid"],
+                  starts,
+                  0,
+                  1,
+                ),
+              ),
+              { status: 200 },
+            )
+      },
+    ) as typeof fetch
+
+    const pending = readGaWatchStartAggregatePage({ ...input, fetchImpl })
+    const assertion = expect(pending).resolves.toMatchObject({
+      status: "unqualified",
+      rowCount: 2,
+      requestCount: 3,
+      rows: [{ starts: 4 }],
+    })
+    await vi.advanceTimersByTimeAsync(30_000)
+    await vi.advanceTimersByTimeAsync(60_000)
+    await assertion
+    expect(attempts.map(({ at }) => at)).toEqual([
+      Date.parse("2026-10-07T00:00:00.000Z"),
+      Date.parse("2026-10-07T00:00:30.000Z"),
+      Date.parse("2026-10-07T00:01:30.000Z"),
+    ])
+    expect(new Set(attempts.map(({ body }) => body)).size).toBe(1)
+  })
+
+  it("stops after a third 502 without treating the report as complete", async () => {
+    vi.useFakeTimers()
+    const fetchImpl = vi.fn(
+      async () => new Response("bad gateway", { status: 502 }),
+    ) as typeof fetch
+    const pending = readGaWatchStartAggregatePage({ ...input, fetchImpl })
+    const assertion = expect(pending).rejects.toMatchObject({
+      code: "analytics_unavailable",
+    })
+    await vi.advanceTimersByTimeAsync(90_000)
+    await assertion
+    expect(fetchImpl).toHaveBeenCalledTimes(3)
+  })
+
+  it.each([500, 504])(
+    "retries HTTP %i once after the first cooldown",
+    async (status) => {
+      vi.useFakeTimers()
+      let calls = 0
+      const fetchImpl = vi.fn(async () => {
+        calls += 1
+        return calls === 1
+          ? new Response("server error", { status })
+          : new Response(
+              JSON.stringify(
+                report(
+                  ["pagePath", "customEvent:mediacomponentid"],
+                  starts,
+                  0,
+                  1,
+                ),
+              ),
+              { status: 200 },
+            )
+      }) as typeof fetch
+      const pending = readGaWatchStartAggregatePage({ ...input, fetchImpl })
+      const assertion = expect(pending).resolves.toMatchObject({
+        requestCount: 2,
+      })
+      await vi.advanceTimersByTimeAsync(30_000)
+      await assertion
+      expect(fetchImpl).toHaveBeenCalledTimes(2)
+    },
+  )
+
+  it.each([
+    ["seconds", "45"],
+    ["HTTP date", "Wed, 07 Oct 2026 00:00:45 GMT"],
+  ])(
+    "honors valid Retry-After %s without shortening the scheduled delay",
+    async (_kind, retryAfter) => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date("2026-10-07T00:00:00.000Z"))
+      const times: number[] = []
+      const fetchImpl = vi.fn(async (_url: URL | RequestInfo) => {
+        times.push(Date.now())
+        return times.length === 1
+          ? new Response("unavailable", {
+              status: 503,
+              headers: { "retry-after": retryAfter },
+            })
+          : new Response(
+              JSON.stringify(
+                report(
+                  ["pagePath", "customEvent:mediacomponentid"],
+                  starts,
+                  0,
+                  1,
+                ),
+              ),
+              { status: 200 },
+            )
+      }) as typeof fetch
+      const pending = readGaWatchStartAggregatePage({ ...input, fetchImpl })
+      await vi.advanceTimersByTimeAsync(45_000)
+      await expect(pending).resolves.toMatchObject({ requestCount: 2 })
+      expect(times).toEqual([
+        Date.parse("2026-10-07T00:00:00.000Z"),
+        Date.parse("2026-10-07T00:00:45.000Z"),
+      ])
+    },
+  )
+
+  it.each([
+    ["invalid", "soon"],
+    ["over-cap", "61"],
+    ["over-cap date", "Wed, 07 Oct 2026 00:01:01 GMT"],
+  ])("stops on a %s Retry-After value", async (_case, retryAfter) => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-10-07T00:00:00.000Z"))
+    const fetchImpl = vi.fn(
+      async () =>
+        new Response("unavailable", {
+          status: 502,
+          headers: { "retry-after": retryAfter },
+        }),
+    ) as typeof fetch
+    await expect(
+      readGaWatchStartAggregatePage({ ...input, fetchImpl }),
+    ).rejects.toMatchObject({ code: "analytics_unavailable" })
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([429, 401, 403, 404, 501])(
+    "does not retry HTTP %i",
+    async (status) => {
+      const fetchImpl = vi.fn(
+        async () => new Response("error", { status }),
+      ) as typeof fetch
+      await expect(
+        readGaWatchStartAggregatePage({ ...input, fetchImpl }),
+      ).rejects.toMatchObject({ code: "analytics_unavailable" })
+      expect(fetchImpl).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  it("does not retry a malformed successful report or a thrown admission error", async () => {
+    const malformed = vi.fn(
+      async () => new Response("{}", { status: 200 }),
+    ) as typeof fetch
+    await expect(
+      readGaWatchStartAggregatePage({ ...input, fetchImpl: malformed }),
+    ).rejects.toMatchObject({ code: "analytics_incomplete" })
+    expect(malformed).toHaveBeenCalledTimes(1)
+
+    const pause = new Error("operator_pause_at_call_boundary")
+    const blocked = vi.fn(async () => {
+      throw pause
+    }) as typeof fetch
+    await expect(
+      readGaWatchStartAggregatePage({ ...input, fetchImpl: blocked }),
+    ).rejects.toBe(pause)
+    expect(blocked).toHaveBeenCalledTimes(1)
+  })
+
+  it("does not retry a physical fetch exception without a safe wrapper classification", async () => {
+    const disconnect = new TypeError("network disconnected")
+    const fetchImpl = vi.fn(async () => {
+      throw disconnect
+    }) as typeof fetch
+    await expect(
+      readGaWatchStartAggregatePage({ ...input, fetchImpl }),
+    ).rejects.toBe(disconnect)
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
   })
 })
