@@ -2355,3 +2355,57 @@ row digests and removing its owned database afterward. Its attributable
 are documented in [storage capacity](../operations/precomputed-storage-capacity.md).
 The prepared full runner's actual TypeScript check passes. The full catalog and
 one-source full-universe reference remain unstarted at this checkpoint.
+
+## Persistent checkpoints and launched Nicodemus reference
+
+At application head `eeff9c6db29826dffe9b454e47550f65d93cf74e`, all 47
+CheckRuns are terminal: 42 successful, five skipped, none failed. The two
+published Railway Web/Manager contexts report success with no deployment needed.
+The PR remains a draft; this is not a production deployment.
+
+The local paid-run checkpoint helper has seven focused passing cases, including
+sticky receipt-write failure, MVCC snapshot freshness, archive-size limits and
+preservation of the latest usable snapshot. Two native read-only smoke runs
+streamed a real precomputed-table `pg_dump`, fully decompressed it with
+`pg_restore --file=/dev/null`, and verified SHA sidecars. The final smoke produced
+two 322,837-byte archives and a sanitized fixture ledger in protected 0700/0600
+storage. No model/GA calls or database writes occurred in these smoke runs.
+The base catalog backup remains separate and was previously restore-verified.
+
+Root reviewed and launched generation
+`actual-nicodemus-full-universe-reference-20261007-v1` using the exact reviewed
+manifest SHA-256
+`fca84ea91495bd443801dfbc6096eda4cc6347708714c20b7bec4801de1a8534`.
+All 11 executable/policy/test/capacity-sample hashes matched; 17 focused cases,
+actual runner TypeScript, formatting and read-only decoding of the 73 saved v6
+choices passed. Source policy is isolated in a scratch checkout at `64aaf0848`;
+only Nicodemus receives all 1,001 canonical targets, preserving the selected 50
+as its prefix and appending 951 omitted targets. Thirty exclusions are explained
+by source/self or duplicate identity. All 1,031 source rows remain in the manifest.
+The input digest is
+`7a8b87c1a31dae8dd26dda1385b21e4927a4449fd85d0897385875d06e365ef1`.
+This is full-universe discovery, not an exhaustive judgment of every pair or a
+measurement of human recommendation recall.
+
+The initial persistent checkpoint and native capacity admission passed. The
+recorded official GA quota snapshot returned HTTP 200 at 05:53:13 UTC on October 7:
+399,999 core property-hour tokens, 139,999 project-hour tokens, 1,883,124 daily
+tokens and 50 concurrent slots remaining. Astra subsequently completed its
+source summary and first analytics plan, recording $0.24851 known model cost.
+These are launch observations, not final totals. The comparison is still running;
+no final quality result or full-catalog completion is claimed.
+
+Snapshot archives and compact call receipts are fsynced to
+`/home/nisal/.local/share/forge/feat-590-evidence-20261007/runtime-checkpoints`.
+A receipt failure remains a stop condition even after a successful later snapshot.
+Both persistent and native terminal writes are attempted before stopping so paid
+usage and model checkpoint data have the best available recovery path. The
+comparison emits success only after its final persistent snapshot. Recovery must
+reconcile the persistent ledger with restored database state before resuming;
+receipts alone do not recover post-snapshot model output. No automatic replay is
+permitted after a crash or restore.
+
+A later read-only Datadog discovery attempt also returned an MCP internal error
+while loading its query guides. This supplies no independent traffic evidence
+and does not prove data is absent. The live baseline, calibration source/key/method
+and numeric owner policy remain unresolved.

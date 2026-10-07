@@ -13,6 +13,13 @@ describes the private reporting contract and limits.
 
 ## Integration
 
+Current checkpoint: application commit `eeff9c6db` has 42 successful CheckRuns,
+five skipped, no failures or pending checks, and both published Railway
+Web/Manager contexts report success with no deployment needed. The local preview
+is accepted and stopped. The bounded Nicodemus full-universe reference is now
+running against the isolated clone; the full 1,031-video catalog build remains
+unstarted. Live baseline/calibration and owner numeric policy are still required.
+
 October 7 continuation: the owner requested completion of the live measurement
 verifier, deployment configuration, actual catalog report and capacity checks.
 The test must stop after one calendar month and return to the incumbent for
@@ -60,7 +67,7 @@ is still unstarted. Worker A delivered exact model-visible passage selection as 
 Root verification passed 14 Mastra cases and all 28 connected native cases,
 including later-page Amharic evidence. Historical prompt v6 and content prompt
 v5 both enter their generation input digests; Admin evidence/validation is
-unchanged. The paid v6 benchmark at committed root `64aaf0848` completed both sources: Magdalena saved 55 connections and the Amharic source saved 18. The run took 20 minutes 7 seconds, made 85 successful model calls and recorded $7.1801625 known model cost with no pending or unknown model charge. Its 45 GA attempts include 43 successes and two recovered failures; GA bytes and monetary cost remain unknown. This is a completed two-source cohort within an incomplete 1,031-source generation, not the full build. Worker A delivered bounded source concurrency as `68c47c0c`; root integration passed 19 Mastra and 32 native connected cases. Worker B is preparing a separate one-source full-universe discovery reference with no paid launch yet. The older Nicodemus result stays labeled as prior-policy evidence. Both
+unchanged. The paid v6 benchmark at committed root `64aaf0848` completed both sources: Magdalena saved 55 connections and the Amharic source saved 18. The run took 20 minutes 7 seconds, made 85 successful model calls and recorded $7.1801625 known model cost with no pending or unknown model charge. Its 45 GA attempts include 43 successes and two recovered failures; GA bytes and monetary cost remain unknown. This is a completed two-source cohort within an incomplete 1,031-source generation, not the full build. Worker A delivered bounded source concurrency as `68c47c0c`; root integration passed 19 Mastra and 32 native connected cases. Worker B prepared the separate one-source full-universe discovery reference, and root launched it after exact-code review on October 7. It is an in-progress diagnostic, not a completed quality comparison. The older Nicodemus result stays labeled as prior-policy evidence. Both
 superseded benchmark generations are now cancelled through the supported Admin
 protocol, releasing capacity reservations while preserving every checkpoint,
 choice and model/GA receipt; before/after digests match. The base catalog and
@@ -134,6 +141,16 @@ manual controls, readiness/audit, migrations, public delivery services,
 report qualification and operator run procedure.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
 branch: `codex/feat-590-2575-live-admin`.
+
+Current operator-runner ownership: A is adding fresh quota admission, shared GA
+concurrency and unknown model-charge pauses to the unstarted full-catalog runner
+under `/tmp/forge-feat-590-orchestration/`. B monitors the existing paid Nicodemus
+reference read-only and may request a safe admission pause; it must not launch a
+second run or edit frozen code. Root owns the paid process, integration, evidence
+preservation and the decision to proceed to the full build. Persistent checkpoint
+and call-receipt files are under the protected evidence directory, not `/tmp`.
+After a crash or restore, reconcile those receipts with the database before any
+resumption; a compact receipt cannot reconstruct an uncheckpointed model output.
 
 Current continuation ownership: A completed strict candidate-evidence repair and
 the retrieval audit, and delivered deterministic catalog-wide retrieval in
