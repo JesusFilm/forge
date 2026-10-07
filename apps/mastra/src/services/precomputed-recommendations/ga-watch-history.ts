@@ -19,6 +19,7 @@ import {
   type WatchRouteCatalogVideo,
 } from "./watch-route-identity"
 import { gaCaptureDigest } from "./ga-watch-capture-artifact"
+import { takeSettledGaPhysicalFailure } from "./ga-physical-transport"
 
 const GA_SCOPE = "https://www.googleapis.com/auth/analytics.readonly"
 const WATCH_HOSTS = ["jesusfilm.org", "www.jesusfilm.org"] as const
@@ -442,6 +443,10 @@ async function requestReportPage(input: {
     maxAttempts: 3,
     maxElapsedMs: GA_REPORT_MAX_ELAPSED_MS,
     retryHttp: gaReportRetryDelay,
+    retryFetchError: ({ error, attempt }) =>
+      takeSettledGaPhysicalFailure(error)
+        ? (GA_REPORT_RETRY_DELAYS_MS[attempt - 1] ?? null)
+        : null,
     // The wrapped fetch also enforces admission and persists each receipt.
     // Its failures must escape without being mistaken for network retries.
     propagateFetchError: true,

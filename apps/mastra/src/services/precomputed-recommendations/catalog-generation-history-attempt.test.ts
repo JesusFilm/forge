@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 
 import { recordHistoryAttempt } from "./catalog-generation"
+import { fetchGaPhysical } from "./ga-physical-transport"
 import { readGaWatchStartAggregatePage } from "./ga-watch-history"
 
 describe("GA report attempt accounting", () => {
@@ -123,6 +124,361 @@ describe("GA report attempt accounting", () => {
     expect(receipts.map(({ callId }) => callId)).toEqual(
       starts.map(({ callId }) => callId),
     )
+  })
+
+  it("retries a settled physical connection reset before returning the page", async () => {
+    vi.useFakeTimers()
+    const events: string[] = []
+    const reset = new TypeError("fetch failed", {
+      cause: Object.assign(new Error("connection reset"), {
+        code: "ECONNRESET",
+      }),
+    })
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as { action: string; callId?: string }
+      events.push(call.action)
+      return call.action === "history_call_start"
+        ? { state: "pending", callId: call.callId }
+        : { receiptStored: true }
+    })
+    const physical = vi
+      .fn<typeof fetch>()
+      .mockImplementationOnce(async () => {
+        events.push("http")
+        throw reset
+      })
+      .mockImplementationOnce(async () => {
+        events.push("http")
+        return new Response(report, { status: 200 })
+      })
+    vi.stubGlobal("fetch", physical)
+    let reserved = 0
+    const pending = readGaWatchStartAggregatePage({
+      ...pageInput,
+      fetchImpl: (url, init) =>
+        recordHistoryAttempt({
+          ingest,
+          generationId: "generation-one",
+          generationInputDigest: "a".repeat(64),
+          stage: reserved++ === 0 ? "snapshot_page" : "retry",
+          requestDigest: "b".repeat(64),
+          url,
+          init,
+        }),
+    })
+    const assertion = expect(pending).resolves.toMatchObject({
+      requestCount: 2,
+      rows: [{ starts: 4 }],
+    })
+    await vi.advanceTimersByTimeAsync(30_000)
+    await assertion
+    expect(events).toEqual([
+      "history_call_start",
+      "http",
+      "history_call",
+      "history_call_start",
+      "http",
+      "history_call",
+    ])
+    expect(physical).toHaveBeenCalledTimes(2)
+    const starts = ingest.mock.calls
+      .map(
+        ([call]) => call as { action: string; stage?: string; callId?: string },
+      )
+      .filter(({ action }) => action === "history_call_start")
+    expect(starts.map(({ stage }) => stage)).toEqual(["snapshot_page", "retry"])
+    expect(new Set(starts.map(({ callId }) => callId)).size).toBe(2)
+    expect(
+      ingest.mock.calls
+        .map(
+          ([call]) =>
+            call as { action: string; status?: string; errorCode?: string },
+        )
+        .filter(({ action }) => action === "history_call"),
+    ).toMatchObject([
+      { status: "failed", errorCode: "analytics_unavailable" },
+      { status: "succeeded" },
+    ])
+  })
+
+  it("retries a physical failure inside an admitted external fetch adapter", async () => {
+    vi.useFakeTimers()
+    const reset = new TypeError("fetch failed", {
+      cause: Object.assign(new Error("connection reset"), {
+        code: "ECONNRESET",
+      }),
+    })
+    const physical = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(reset)
+      .mockResolvedValueOnce(new Response(report, { status: 200 }))
+    const admit = vi.fn(async () => undefined)
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as { action: string; callId?: string }
+      return call.action === "history_call_start"
+        ? { state: "pending", callId: call.callId }
+        : { receiptStored: true }
+    })
+    const pending = readGaWatchStartAggregatePage({
+      ...pageInput,
+      fetchImpl: (url, init) =>
+        recordHistoryAttempt({
+          ingest,
+          generationId: "generation-one",
+          generationInputDigest: "a".repeat(64),
+          stage: "snapshot_page",
+          requestDigest: "b".repeat(64),
+          url,
+          init,
+          fetchImpl: async (resource, requestInit) => {
+            await admit()
+            return fetchGaPhysical(resource, requestInit, physical)
+          },
+        }),
+    })
+    const assertion = expect(pending).resolves.toMatchObject({
+      requestCount: 2,
+      rows: [{ starts: 4 }],
+    })
+    await vi.advanceTimersByTimeAsync(30_000)
+    await assertion
+    expect(admit).toHaveBeenCalledTimes(2)
+    expect(physical).toHaveBeenCalledTimes(2)
+    expect(
+      ingest.mock.calls.filter(
+        ([call]) => (call as { action: string }).action === "history_call",
+      ),
+    ).toHaveLength(2)
+  })
+
+  it("does not retry a quota-admission TypeError with the same native cause before physical fetch", async () => {
+    const localFailure = new TypeError("quota admission failed", {
+      cause: Object.assign(new Error("connection reset"), {
+        code: "ECONNRESET",
+      }),
+    })
+    const admit = vi.fn(async () => {
+      throw localFailure
+    })
+    const physical = vi.fn<typeof fetch>()
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as { action: string; callId?: string }
+      return call.action === "history_call_start"
+        ? { state: "pending", callId: call.callId }
+        : { receiptStored: true }
+    })
+    await expect(
+      readGaWatchStartAggregatePage({
+        ...pageInput,
+        fetchImpl: (url, init) =>
+          recordHistoryAttempt({
+            ingest,
+            generationId: "generation-one",
+            generationInputDigest: "a".repeat(64),
+            stage: "snapshot_page",
+            requestDigest: "b".repeat(64),
+            url,
+            init,
+            fetchImpl: async (resource, requestInit) => {
+              await admit()
+              return fetchGaPhysical(resource, requestInit, physical)
+            },
+          }),
+      }),
+    ).rejects.toBe(localFailure)
+    expect(admit).toHaveBeenCalledOnce()
+    expect(physical).not.toHaveBeenCalled()
+    expect(
+      ingest.mock.calls
+        .map(([call]) => call as { action: string; errorCode?: string })
+        .filter(({ action }) => action === "history_call"),
+    ).toMatchObject([{ errorCode: "analytics_unavailable" }])
+  })
+
+  it.each([
+    ["arbitrary TypeError", new TypeError("fetch failed")],
+    ["cancellation", new DOMException("cancelled", "AbortError")],
+  ])("does not retry %s from the physical fetch", async (_label, failure) => {
+    const physical = vi.fn<typeof fetch>().mockRejectedValue(failure)
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as { action: string; callId?: string }
+      return call.action === "history_call_start"
+        ? { state: "pending", callId: call.callId }
+        : { receiptStored: true }
+    })
+    await expect(
+      readGaWatchStartAggregatePage({
+        ...pageInput,
+        fetchImpl: (url, init) =>
+          recordHistoryAttempt({
+            ingest,
+            generationId: "generation-one",
+            generationInputDigest: "a".repeat(64),
+            stage: "snapshot_page",
+            requestDigest: "b".repeat(64),
+            url,
+            init,
+            fetchImpl: (resource, requestInit) =>
+              fetchGaPhysical(resource, requestInit, physical),
+          }),
+      }),
+    ).rejects.toBe(failure)
+    expect(physical).toHaveBeenCalledOnce()
+    expect(
+      ingest.mock.calls.filter(
+        ([call]) => (call as { action: string }).action === "history_call",
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("does not retry a native-looking failure after its request signal aborts", async () => {
+    const controller = new AbortController()
+    const failure = new TypeError("fetch failed", {
+      cause: Object.assign(new Error("connection reset"), {
+        code: "ECONNRESET",
+      }),
+    })
+    const physical = vi.fn<typeof fetch>().mockImplementation(async () => {
+      controller.abort()
+      throw failure
+    })
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as { action: string; callId?: string }
+      return call.action === "history_call_start"
+        ? { state: "pending", callId: call.callId }
+        : { receiptStored: true }
+    })
+    await expect(
+      readGaWatchStartAggregatePage({
+        ...pageInput,
+        fetchImpl: (url, init) =>
+          recordHistoryAttempt({
+            ingest,
+            generationId: "generation-one",
+            generationInputDigest: "a".repeat(64),
+            stage: "snapshot_page",
+            requestDigest: "b".repeat(64),
+            url,
+            init: { ...init, signal: controller.signal },
+            fetchImpl: (resource, requestInit) =>
+              fetchGaPhysical(resource, requestInit, physical),
+          }),
+      }),
+    ).rejects.toBe(failure)
+    expect(physical).toHaveBeenCalledOnce()
+  })
+
+  it("does not retry when the physical failure's terminal receipt cannot persist", async () => {
+    const connectionReset = () =>
+      new TypeError("fetch failed", {
+        cause: Object.assign(new Error("connection reset"), {
+          code: "ECONNRESET",
+        }),
+      })
+    const physicalFailure = connectionReset()
+    const receiptFailure = connectionReset()
+    const physical = vi.fn<typeof fetch>().mockRejectedValue(physicalFailure)
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as { action: string; callId?: string }
+      if (call.action === "history_call_start")
+        return { state: "pending", callId: call.callId }
+      if (call.action === "history_call") throw receiptFailure
+      return { receiptStored: true }
+    })
+    await expect(
+      readGaWatchStartAggregatePage({
+        ...pageInput,
+        fetchImpl: (url, init) =>
+          recordHistoryAttempt({
+            ingest,
+            generationId: "generation-one",
+            generationInputDigest: "a".repeat(64),
+            stage: "snapshot_page",
+            requestDigest: "b".repeat(64),
+            url,
+            init,
+            fetchImpl: (resource, requestInit) =>
+              fetchGaPhysical(resource, requestInit, physical),
+          }),
+      }),
+    ).rejects.toBe(receiptFailure)
+    expect(physical).toHaveBeenCalledOnce()
+    expect(
+      ingest.mock.calls.filter(
+        ([call]) =>
+          (call as { action: string }).action === "history_call_start",
+      ),
+    ).toHaveLength(1)
+    expect(
+      ingest.mock.calls.filter(
+        ([call]) => (call as { action: string }).action === "history_call",
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("exhausts the same three-attempt budget across physical and HTTP failures", async () => {
+    vi.useFakeTimers()
+    const reset = () =>
+      new TypeError("fetch failed", {
+        cause: Object.assign(new Error("connection reset"), {
+          code: "ECONNRESET",
+        }),
+      })
+    const first = reset()
+    const final = reset()
+    const physical = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(first)
+      .mockResolvedValueOnce(new Response("bad gateway", { status: 502 }))
+      .mockRejectedValueOnce(final)
+    vi.stubGlobal("fetch", physical)
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as { action: string; callId?: string }
+      return call.action === "history_call_start"
+        ? { state: "pending", callId: call.callId }
+        : { receiptStored: true }
+    })
+    let reserved = 0
+    const pending = readGaWatchStartAggregatePage({
+      ...pageInput,
+      fetchImpl: (url, init) =>
+        recordHistoryAttempt({
+          ingest,
+          generationId: "generation-one",
+          generationInputDigest: "a".repeat(64),
+          stage: reserved++ === 0 ? "snapshot_page" : "retry",
+          requestDigest: "b".repeat(64),
+          url,
+          init,
+        }),
+    })
+    const assertion = expect(pending).rejects.toBe(final)
+    await vi.advanceTimersByTimeAsync(90_000)
+    await assertion
+    expect(physical).toHaveBeenCalledTimes(3)
+    const starts = ingest.mock.calls
+      .map(
+        ([call]) => call as { action: string; stage?: string; callId?: string },
+      )
+      .filter(({ action }) => action === "history_call_start")
+    expect(starts.map(({ stage }) => stage)).toEqual([
+      "snapshot_page",
+      "retry",
+      "retry",
+    ])
+    expect(new Set(starts.map(({ callId }) => callId)).size).toBe(3)
+    expect(
+      ingest.mock.calls
+        .map(
+          ([call]) =>
+            call as { action: string; status?: string; errorCode?: string },
+        )
+        .filter(({ action }) => action === "history_call"),
+    ).toMatchObject([
+      { status: "failed", errorCode: "analytics_unavailable" },
+      { status: "failed", errorCode: "ga_http_502" },
+      { status: "failed", errorCode: "analytics_unavailable" },
+    ])
   })
 
   it("stops after a retry's lease heartbeat fails before another physical request", async () => {

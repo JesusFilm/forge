@@ -39,6 +39,10 @@ import {
 } from "./historical-analytics"
 import { createGaWatchHistoryReader } from "./ga-watch-history"
 import {
+  fetchGaPhysical,
+  settleGaPhysicalFailure,
+} from "./ga-physical-transport"
+import {
   gaCaptureCanonicalJson,
   gaCaptureDigest,
   openGaWatchCaptureArtifact,
@@ -1177,7 +1181,9 @@ export async function recordHistoryAttempt(input: {
     throw new CatalogBuildError("admin_contract_rejected")
   let response: Response
   try {
-    response = await (input.fetchImpl ?? fetch)(input.url, input.init)
+    response = input.fetchImpl
+      ? await input.fetchImpl(input.url, input.init)
+      : await fetchGaPhysical(input.url, input.init)
   } catch (error) {
     const timedOut =
       input.init?.signal?.aborted === true &&
@@ -1194,6 +1200,7 @@ export async function recordHistoryAttempt(input: {
         finishedAt: new Date().toISOString(),
       }),
     )
+    settleGaPhysicalFailure(error, input.init?.signal)
     throw error
   }
   parsed(

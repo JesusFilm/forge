@@ -2620,3 +2620,72 @@ All paid phase flags remain disabled pending executable pin refresh and fresh
 storage admission. The capture, clone restore, reference comparison and full
 1,031-video build are still incomplete. Public experiment activation remains a
 separate operation.
+
+## October 8 third capture attempt
+
+Telemetry integration `0b60a5ac6` passed published CI: 42 successful CheckRuns,
+five skipped CheckRuns and two successful Railway status contexts, with no
+pending or failing jobs. The detached operator advanced to that exact commit;
+only the catalog-generation telemetry hash and the two commit metadata pins
+changed among its 31 critical files. Its 25 offline cases, reference-policy
+case, types, formatting and input/route/journal identity checks passed.
+
+The capture-only continuation resumed at offset 53,500 and saved another
+39,000 rows. It recovered eight recorded HTTP 502 failures, then stopped on
+`TypeError: fetch failed` at 14:10:52.555 UTC on October 7. The last request's
+underlying native cause was not retained and must not be inferred from that
+message. Its receipt is `analytics_unavailable`, not a proven request timeout.
+All 244 GA starts and terminals match native IDs, request digests, statuses and
+error codes: 225 succeeded, 19 failed, none pending. No source was claimed and
+no model call occurred. The generation remains incomplete and unsealed, with
+185 saved start pages / 92,500 rows of 152,304 declared. Referrer pages and the
+second verification pass remain unstarted. The final recorded quota probe was
+above every admission floor. The runner disabled all paid phase flags on exit.
+
+Root reverified all compressed/raw page hashes and native/protected request
+records. The stopped checkpoint, log, receipts, quota observations, admission,
+code inventory, monitor and 185 page files are preserved under
+`/home/nisal/.local/share/forge/feat-590-evidence-20261007/ga-capture-v3-attempt3-transport-20261007T141053Z`.
+The immutable manifest SHA-256 is
+`75d5e417687948a830e06ab77967fa8b42b203d839bb55664ef5769d12caeab9`;
+195 copied files total 5,112,195 bytes. The final database archive is 547,062
+bytes, SHA-256
+`e82a309c6cc4d84b738da0cbcb3384742aaa176de49d3087e7893b5069f858fc`.
+Original staging is retained for a separately reviewed continuation.
+
+Cleanup released only the clean integrated telemetry worktree and the unused
+Admin worker's dependency installation, recovering 1,028,755,456 bytes by
+before/after filesystem measurement. All three telemetry source files and all
+25 Admin worker files exactly matched integration before cleanup. Branches,
+shared dependency targets, the Admin worker's source and its uniquely cited
+browser timing evidence remain. The old cross-service smoke helper now imports
+Admin from the integration checkout. Root free space was about 2.8 GB afterward.
+
+## October 8 bounded physical transport repair
+
+Worker `13b4fd853` adds opt-in physical-fetch retries to the existing GA path.
+A weak provenance marker is created only around the actual report fetch when
+an unaborted native `TypeError` has one of the recognized transient cause codes.
+That failure becomes retryable only after its terminal history receipt has
+persisted. HTTP failures and physical failures share the original three-attempt,
+600-second budget and 30/60-second backoff. Arbitrary errors, cancellation,
+local admission errors and terminal-record failures still escape unchanged.
+No query, page size, input identity, date range or stored page was changed.
+
+Worker validation passed 138 cases across 18 relevant files, Mastra types,
+scoped lint/format and sequential fixed-point Standards/Spec review. Root review
+found no outstanding issue; 54 focused cases and the native PostgreSQL capture
+and sealed-resume regression pass. The external operator must import the same
+scratch module instance and call `fetchGaPhysical` inside its admitted report
+callback before another capture is reviewed. Wrapping the admission boundary
+itself would incorrectly make quota-probe failures retryable and is forbidden.
+The helper must also enter the executable hash inventory.
+
+Worker B's pagination audit confirms that the current query-spec digest,
+journal, producer and Admin verifier share the 500-row contract. Larger physical
+requests split into existing-sized blocks need versioned request-to-page
+attribution, bounded responses, interruption recovery and full re-verification.
+This generation therefore retains 500-row reads and all 185 saved pages. It has
+120 first-pass start pages and all 305 second-pass start pages remaining, plus
+both referrer passes and final qualification. No larger-query experiment or
+new generation was launched by the audit.

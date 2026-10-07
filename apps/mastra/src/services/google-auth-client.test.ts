@@ -452,6 +452,73 @@ describe("requestGoogleJson", () => {
     expect(legacyFetch).toHaveBeenCalledTimes(2)
   })
 
+  it("uses an opt-in fetch retry within the existing attempt and deadline budget", async () => {
+    let now = 1_000_000
+    vi.spyOn(Date, "now").mockImplementation(() => now)
+    const physicalFailure = new TypeError("fetch failed")
+    const fetchImpl = vi
+      .fn<typeof fetch>()
+      .mockRejectedValueOnce(physicalFailure)
+      .mockResolvedValueOnce(new Response("{}", { status: 200 }))
+    const sleep = vi.fn(async (ms: number) => {
+      now += ms
+    })
+    const retryFetchError = vi.fn(
+      ({ error, attempt }: { error: unknown; attempt: number }) =>
+        error === physicalFailure && attempt === 1 ? 30_000 : null,
+    )
+
+    await expect(
+      requestGoogleJson({
+        url: new URL("https://www.googleapis.com/example"),
+        accessToken: "access",
+        body: { page: 1 },
+        timeoutMs: 120_000,
+        maxResponseBytes: 16,
+        maxAttempts: 3,
+        maxElapsedMs: 600_000,
+        fetchImpl,
+        sleep,
+        propagateFetchError: true,
+        retryFetchError,
+      }),
+    ).resolves.toEqual({ ok: true, body: {}, attempts: 2 })
+    expect(fetchImpl).toHaveBeenCalledTimes(2)
+    expect(sleep).toHaveBeenCalledExactlyOnceWith(30_000)
+    expect(retryFetchError).toHaveBeenCalledExactlyOnceWith({
+      error: physicalFailure,
+      attempt: 1,
+    })
+  })
+
+  it("preserves the original fetch failure when its retry delay exceeds the deadline", async () => {
+    let now = 1_000_000
+    vi.spyOn(Date, "now").mockImplementation(() => now)
+    const physicalFailure = new TypeError("fetch failed")
+    const fetchImpl = vi.fn(async () => {
+      now += 580_000
+      throw physicalFailure
+    }) as typeof fetch
+    const sleep = vi.fn(async () => undefined)
+    await expect(
+      requestGoogleJson({
+        url: new URL("https://www.googleapis.com/example"),
+        accessToken: "access",
+        body: {},
+        timeoutMs: 120_000,
+        maxResponseBytes: 16,
+        maxAttempts: 3,
+        maxElapsedMs: 600_000,
+        fetchImpl,
+        sleep,
+        propagateFetchError: true,
+        retryFetchError: () => 30_000,
+      }),
+    ).rejects.toBe(physicalFailure)
+    expect(fetchImpl).toHaveBeenCalledOnce()
+    expect(sleep).not.toHaveBeenCalled()
+  })
+
   it("does not wait or retry once the total deadline cannot accommodate a scheduled delay", async () => {
     let now = 1_000_000
     vi.spyOn(Date, "now").mockImplementation(() => now)

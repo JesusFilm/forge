@@ -171,6 +171,10 @@ export async function requestGoogleJson(options: {
     retryAfter: string | null
   }) => number | null
   propagateFetchError?: boolean
+  retryFetchError?: (failure: {
+    error: unknown
+    attempt: number
+  }) => number | null
   fetchImpl?: typeof fetch
   sleep?: (ms: number) => Promise<void>
 }): Promise<
@@ -216,7 +220,23 @@ export async function requestGoogleJson(options: {
         signal: AbortSignal.timeout(timeoutMs),
       })
     } catch (error) {
-      if (options.propagateFetchError) throw error
+      if (options.propagateFetchError) {
+        const delay =
+          attempt < options.maxAttempts
+            ? options.retryFetchError?.({ error, attempt })
+            : null
+        if (
+          delay !== null &&
+          delay !== undefined &&
+          Number.isSafeInteger(delay) &&
+          delay >= 0 &&
+          (deadline === null || delay < deadline - Date.now())
+        ) {
+          await sleep(delay)
+          continue
+        }
+        throw error
+      }
       last = {
         ok: false,
         reason:

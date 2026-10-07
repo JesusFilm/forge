@@ -24,19 +24,28 @@ the subsequent docs commit `afa911729` exposed a flaky concurrency assertion
 that compared receipt completion order with reservation order. Root corrected
 that assertion to compare every call/source pair without requiring order.
 Integrated repair `c7e2768e3` passed published CI, including the final CI gate.
-Its real v3 capture remains incomplete: two attempts settled 148 GA requests
-(138 successful, 10 failed), saved 107 pages / 53,500 start rows out of the
-provider-declared 152,304, and made no model calls or source claims. The last
-page exhausted bounded retries at offset 53,500. Referrer capture and the
-complete second verification pass have not started. Quota probes remained
-above the configured admission floors; the old receipt code did not preserve
-the exact failing HTTP status, so quota exhaustion is not established.
+Its real v3 capture remains incomplete after three attempts: 244 GA requests
+are settled (225 successful, 19 failed), with 185 pages / 92,500 start rows
+saved out of the provider-declared 152,304. There are no pending calls, model
+calls or source claims. The third attempt recovered the prior failed page and
+eight HTTP 502 failures, then stopped on a physical `TypeError: fetch failed`
+at offset 92,500. The retained error does not identify its underlying native
+cause. Referrer capture and the complete second verification pass have not
+started. The last quota probe remained above the admission floors.
 Integrated worker fix `4ac6ffa14` records bounded HTTP status or a proven request timeout
 without changing retries, queries or input identities. Its regression resumes
 after 107 saved pages and rejects corruption and verification drift. Root's 18
-focused tests and native PostgreSQL capture/resume regression pass. Executable
-code pins and fresh storage admission still need review before capture-only
-continuation. All paid launch flags remain disabled.
+focused tests and native PostgreSQL capture/resume regression pass. Root commit
+`0b60a5ac6` passed all 42 applicable CheckRuns and both Railway status contexts.
+The operator's 25 offline cases and reference-policy check passed with the same
+generation, query, corpus, pool and route identities before the third attempt.
+All paid launch flags are disabled after its terminal checkpoint. Worker repair
+`13b4fd853` permits retries only for marked physical fetch failures with a known
+transient native cause and a persisted terminal receipt, within the existing
+three-attempt/600-second budget. Root's 54 focused cases and native PostgreSQL
+capture/resume regression pass; the external adapter still needs its reviewed
+physical-fetch binding and refreshed code pins before continuation. The pagination audit confirms that this generation
+must retain its 500-row query/artifact contract to preserve the 185 saved pages.
 The local preview is accepted and stopped. The bounded Nicodemus
 full-universe reference remains incomplete at 360 of 1,001 discovery targets.
 Its latest recovery completed eight GA requests, then stopped before any source
@@ -52,7 +61,11 @@ New historical generations can capture
 and seal complete Watch aggregates before model work; v2 generations are not
 rewritten. The owned local database has migrations 0139–0141 after a successful
 disposable-clone rehearsal and protected backup; old evidence digests match.
-Both incomplete capture attempts and the staged pages have protected backups.
+All three incomplete capture attempts and their staged pages have protected backups.
+Root verified every saved page hash and every settled request before preserving
+the third attempt. Cleanup recovered another 1,028,755,456 bytes from an
+integrated telemetry worktree and retired worker dependencies; source branches,
+shared runtime dependencies and the historical browser timing artifact remain.
 No provider calls are running. The full 1,031-video
 catalog build remains unstarted. Live baseline/calibration and owner numeric
 policy are still required.
