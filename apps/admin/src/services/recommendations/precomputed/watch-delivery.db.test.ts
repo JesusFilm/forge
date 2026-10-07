@@ -1197,7 +1197,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await prisma.$transaction((tx) =>
           purgeExpiredPrecomputedVisitRoots(tx, now, 1),
         ),
-      ).toEqual({
+      ).toMatchObject({
         visitsDeleted: 1,
         experimentsDeleted: 1,
         controlEventsDeleted: 0,

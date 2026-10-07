@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   release: vi.fn(),
   baselineStart: vi.fn(),
   baselineStop: vi.fn(),
+  attestCapacity: vi.fn(),
 }))
 vi.mock("@/auth/session", () => ({
   resolveAdminSessionFromRequest: mocks.session,
@@ -27,6 +28,15 @@ vi.mock("@/services/recommendations/precomputed/public-readiness", () => ({
 }))
 vi.mock("@/services/recommendations/precomputed/ctr-report", () => ({
   evaluatePublicPrecomputedCtr: mocks.evaluate,
+  precomputedCtrPolicyDigest: () => "f".repeat(64),
+}))
+vi.mock("@/services/recommendations/precomputed/launch-capacity", () => ({
+  PrecomputedLaunchCapacityError: class extends Error {
+    constructor(readonly code: string) {
+      super(code)
+    }
+  },
+  attestPrecomputedLaunchCapacity: mocks.attestCapacity,
 }))
 vi.mock("@/services/recommendations/precomputed/incumbent-baseline", () => ({
   PrecomputedBaselineError: class extends Error {
@@ -94,6 +104,68 @@ describe("manual precomputed public control endpoint", () => {
       id: "baseline-1",
       status: "stopped",
     })
+    mocks.attestCapacity.mockResolvedValue({
+      id: "capacity-1",
+      status: "passed",
+    })
+  })
+
+  it("previews a numeric digest without approving it or changing serving", async () => {
+    const response = await POST(
+      request({
+        action: "policy_digest",
+        policySettings: {
+          baselineHumanVisitCtr: 0.04,
+          minimumDetectableAbsoluteUplift: 0.02,
+          minimumPracticalAbsoluteUplift: 0.01,
+          plannedPower: 0.8,
+          minimumEligibleVisitsPerArm: 100,
+          minimumIndependentBrowsersPerArm: 100,
+          minimumDurationHours: 168,
+          lateEventCutoffHours: 48,
+          maximumActualFallbackRate: 0.05,
+          maximumUnlinkedDeliveryRate: 0.01,
+        },
+      }),
+    )
+    expect(response.status).toBe(200)
+    expect(await response.json()).toMatchObject({
+      policyDigest: "f".repeat(64),
+      authority: "preview_only",
+    })
+    expect(mocks.prepare).not.toHaveBeenCalled()
+    expect(mocks.start).not.toHaveBeenCalled()
+  })
+
+  it("requires recent operator authentication to attest launch capacity", async () => {
+    const body = {
+      action: "attest_launch_capacity",
+      generationId: "generation-1",
+      measurement: {
+        measuredAt: "2026-10-06T00:04:00.000Z",
+        clusterSystemId: "123456789",
+        observedDbBytes: 1_000_000,
+        availableBytes: 10_000_000_000,
+        reserveBytes: 5_000_000_000,
+        projectedBytes: 1_000_000,
+        sampleSourceCount: 100,
+        sampleBytes: 100_000,
+        source: "operator_verified_pgdata_df",
+      },
+    }
+    expect((await POST(request(body))).status).toBe(200)
+    expect(mocks.attestCapacity).toHaveBeenCalledWith(
+      {},
+      expect.objectContaining({
+        generationId: "generation-1",
+        operator: { id: "operator", role: "ADMIN" },
+      }),
+    )
+    mocks.session.mockResolvedValue({
+      principal: { id: "operator", role: "ADMIN" },
+      authenticatedAt: new Date("2026-10-05T00:00:00.000Z"),
+    })
+    expect((await POST(request(body))).status).toBe(401)
   })
 
   it("returns an authenticated no-store readiness snapshot without changing serving", async () => {

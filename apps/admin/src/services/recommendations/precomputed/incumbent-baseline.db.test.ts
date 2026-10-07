@@ -1,5 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
+import { PrismaPg } from "@prisma/adapter-pg"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
@@ -38,6 +39,7 @@ describe.skipIf(!fixtureReady)(
     } as const
     let admin: Client
     let prisma: PrismaClient
+    let adapterPrisma: PrismaClient
 
     beforeAll(async () => {
       admin = new Client({ connectionString: env.DATABASE_URL })
@@ -50,6 +52,15 @@ describe.skipIf(!fixtureReady)(
       url.searchParams.set("schema", schema)
       prisma = new PrismaClient({
         datasources: { db: { url: url.toString() } },
+      })
+      adapterPrisma = new PrismaClient({
+        adapter: new PrismaPg(
+          {
+            connectionString: env.DATABASE_URL,
+            options: `-c search_path=${schema},public`,
+          },
+          { schema },
+        ),
       })
       await prisma.video.create({
         data: {
@@ -98,6 +109,7 @@ describe.skipIf(!fixtureReady)(
 
     afterAll(async () => {
       await prisma?.$disconnect()
+      await adapterPrisma?.$disconnect()
       if (admin) {
         await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
         await admin.end()
@@ -105,7 +117,9 @@ describe.skipIf(!fixtureReady)(
     })
 
     it("requires explicit isolated authority, challenges the same UUID, records only incumbent, and stops", async () => {
-      const baseline = await startPrecomputedIncumbentBaseline(prisma, {
+      // Production uses PrismaPg; this also exercises its handling of the
+      // fixture guard's current_database/current_schema scalar types.
+      const baseline = await startPrecomputedIncumbentBaseline(adapterPrisma, {
         operator,
       })
       expect(baseline).toMatchObject({

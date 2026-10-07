@@ -12,6 +12,9 @@ import {
   loadPrecomputedIncumbentBaselineReport,
 } from "./incumbent-baseline"
 import { loadWebWatchMeasurement } from "./web-measurement"
+import { evaluatePrecomputedLiveFacts } from "./live-readiness"
+import { loadPrecomputedFullCatalogSourceSet } from "./catalog"
+import type { CtrPolicySettings } from "./ctr-policy"
 
 const experimentSelect = {
   id: true,
@@ -22,6 +25,10 @@ const experimentSelect = {
   startsAt: true,
   endsAt: true,
   expiresAt: true,
+  liveEvidence: true,
+  ctrPolicy: {
+    select: { authority: true, settings: true, settingsDigest: true },
+  },
   ctrReports: {
     take: 1,
     orderBy: { revision: "desc" as const },
@@ -53,6 +60,10 @@ export async function loadPrecomputedPublicReadiness(
         id: true,
         status: true,
         protocolVersion: true,
+        modelId: true,
+        inputMode: true,
+        inputCutoff: true,
+        historicalQualificationDigest: true,
         sourceSetDigest: true,
         expectedSourceCount: true,
         capacityPreflight: true,
@@ -70,6 +81,11 @@ export async function loadPrecomputedPublicReadiness(
   const baselineReport = baseline
     ? await loadPrecomputedIncumbentBaselineReport(prisma, baseline.id)
     : null
+  const [baselinePhysical] = baselineReport?.isFinal
+    ? await prisma.$queryRaw<Array<{ bytes: bigint }>>`
+        SELECT (pg_total_relation_size('recommendation_precomputed_baseline_visit') +
+                pg_total_relation_size('recommendation_precomputed_baseline_visit_request'))::bigint AS bytes`
+    : []
   const now = new Date()
   const baselineStart = baseline ? new Date(baseline.startsAt) : null
   const baselineEnd = baseline
@@ -109,23 +125,110 @@ export async function loadPrecomputedPublicReadiness(
     baselineReport != null &&
     baselineWebMeasurement.counters.delivery_qualified <
       baselineReport.eligibleVisits
-  const unresolved = [
-    ...(baselineReport?.isFinal &&
-    baselineReport.evidenceBasis === "verified_incumbent_baseline" &&
-    baselineReport.eligibleVisits > 0
-      ? []
-      : ["verified_incumbent_baseline_missing"]),
-    ...(baselineWebComplete ? [] : ["web_request_health_incomplete"]),
-    ...(baselineRequestToVisitGap
-      ? ["qualified_request_count_below_durable_visits"]
-      : []),
-    "deployed_ga_and_model_access_unverified",
-    "web_edge_exclusion_coverage_partial_unverified",
-    "visit_id_and_browser_identity_loss_audit_unverified",
-    "numeric_stopping_policy_not_agreed_for_live_traffic",
-    "physical_headroom_and_traffic_projection_unverified",
-    "first_actual_catalog_cost_and_coverage_not_reviewed",
-  ]
+  const latestGeneration = generations[0]
+  const fullCatalog = latestGeneration
+    ? await loadPrecomputedFullCatalogSourceSet(
+        prisma,
+        latestGeneration.inputCutoff,
+      ).catch(() => null)
+    : null
+  const livePrepared = experiments.find(
+    (item) =>
+      item.liveEvidence != null &&
+      item.ctrPolicy?.authority === "prelaunch_agreed",
+  )
+  const [latestCapacity, sourceCount, modelCallCount, unknownModelCostCount] =
+    latestGeneration
+      ? await Promise.all([
+          prisma.recommendationPrecomputedLaunchCapacityReceipt.findFirst({
+            where: { generationId: latestGeneration.id },
+            orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          }),
+          prisma.recommendationPrecomputedSource.count({
+            where: { generationId: latestGeneration.id },
+          }),
+          prisma.recommendationPrecomputedModelCall.count({
+            where: { generationId: latestGeneration.id },
+          }),
+          prisma.recommendationPrecomputedModelCall.count({
+            where: { generationId: latestGeneration.id, costUsd: null },
+          }),
+        ])
+      : [null, 0, 0, 0]
+  const agreedSettings = livePrepared?.ctrPolicy?.settings as
+    | CtrPolicySettings
+    | undefined
+  const unresolved = evaluatePrecomputedLiveFacts({
+    now,
+    policy:
+      agreedSettings && livePrepared?.ctrPolicy
+        ? {
+            authority: livePrepared.ctrPolicy.authority,
+            digest: livePrepared.ctrPolicy.settingsDigest,
+            baselineHumanVisitCtr: agreedSettings.baselineHumanVisitCtr,
+          }
+        : null,
+    baseline:
+      baseline && baselineReport
+        ? {
+            authority: baseline.verificationAuthority,
+            isFinal: baselineReport.isFinal && baseline.stoppedAt === null,
+            reportDigest: baseline.finalReportDigest ?? "",
+            eligibleVisits: baselineReport.eligibleVisits,
+            visitCtr: baselineReport.visitCtr,
+            startsAt: baseline.startsAt,
+            endsAt: baseline.endsAt,
+          }
+        : null,
+    web:
+      baselineWebMeasurement && baselineWebMeasurement.status !== "unavailable"
+        ? {
+            status: baselineWebComplete
+              ? baselineWebMeasurement.status
+              : "incomplete",
+            startHour: baselineWebMeasurement.startHour,
+            endHourExclusive: baselineWebMeasurement.endHourExclusive,
+            requestedHours: baselineWebMeasurement.requestedHours,
+            coveredHours: baselineWebMeasurement.coveredHours,
+            missingHours: baselineWebMeasurement.missingHours,
+            imbalancedHours: baselineWebMeasurement.imbalancedHours,
+            qualifiedRequestAttempts:
+              baselineWebMeasurement.counters.delivery_qualified,
+            clickUnavailable: baselineWebMeasurement.counters.click_unavailable,
+            verificationUnavailable:
+              baselineWebMeasurement.counters.delivery_verification_unavailable,
+          }
+        : null,
+    generation: latestGeneration
+      ? {
+          status: latestGeneration.status,
+          protocolVersion: latestGeneration.protocolVersion,
+          modelId: latestGeneration.modelId,
+          inputMode: latestGeneration.inputMode,
+          sourceSetDigest: latestGeneration.sourceSetDigest,
+          historicalQualificationDigest:
+            latestGeneration.historicalQualificationDigest,
+          expectedSourceCount: latestGeneration.expectedSourceCount,
+          sourceCount,
+          catalogSourceCount: fullCatalog?.sourceCount ?? null,
+          catalogSourceSetDigest: fullCatalog?.sourceSetDigest ?? null,
+          modelCallCount,
+          unknownModelCostCount,
+        }
+      : null,
+    capacity: latestCapacity
+      ? {
+          status: latestCapacity.status,
+          receiptDigest: latestCapacity.receiptDigest,
+          measuredAt: latestCapacity.measuredAt.toISOString(),
+          availableAfterReserveBytes: Number(
+            latestCapacity.availableAfterReserveBytes,
+          ),
+          projectedBytes: Number(latestCapacity.projectedBytes),
+        }
+      : null,
+    hourAlignedCohort: true,
+  })
   const retained =
     control.retainedExperimentId &&
     !experiments.some((item) => item.id === control.retainedExperimentId)
@@ -146,9 +249,27 @@ export async function loadPrecomputedPublicReadiness(
     control,
     baseline,
     baselineReport,
+    baselineCapacitySample: baselineReport?.isFinal
+      ? {
+          verifiedVisits: baselineReport.eligibleVisits,
+          physicalVisitBytes: Number(baselinePhysical?.bytes ?? 0),
+        }
+      : null,
     baselineWebMeasurement,
     baselineFullHourWindow,
     baselineRequestToVisitGap,
+    launchCapacityReceipt: latestCapacity
+      ? {
+          id: latestCapacity.id,
+          generationId: latestCapacity.generationId,
+          receiptDigest: latestCapacity.receiptDigest,
+          status: latestCapacity.status,
+          measuredAt: latestCapacity.measuredAt,
+          projectedBytes: latestCapacity.projectedBytes.toString(),
+          availableAfterReserveBytes:
+            latestCapacity.availableAfterReserveBytes.toString(),
+        }
+      : null,
     incumbentRouting: routing
       ? {
           manifestId: routing.manifest.id,
@@ -156,6 +277,15 @@ export async function loadPrecomputedPublicReadiness(
         }
       : null,
     generations,
+    authoritativeCatalogCoverage: latestGeneration
+      ? {
+          generationId: latestGeneration.id,
+          authoritativeSourceCount: fullCatalog?.sourceCount ?? null,
+          authoritativeSourceSetDigest: fullCatalog?.sourceSetDigest ?? null,
+          generationSourceCount: latestGeneration.expectedSourceCount,
+          generationSourceSetDigest: latestGeneration.sourceSetDigest,
+        }
+      : null,
     experiments: [...experiments, ...(retained ? [retained] : [])].map(
       ({ ctrReports, ...item }) => ({
         ...item,
@@ -164,8 +294,10 @@ export async function loadPrecomputedPublicReadiness(
     ),
     fixtureRehearsalEnvironment,
     liveActivation: {
-      status: "blocked" as const,
-      reason: "live_launch_evidence_incomplete" as const,
+      status: unresolved.length ? ("blocked" as const) : ("ready" as const),
+      reason: unresolved.length
+        ? ("live_launch_evidence_incomplete" as const)
+        : ("manual_start_required" as const),
       unresolved,
     },
   }

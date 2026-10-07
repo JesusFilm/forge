@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import {
   Prisma,
   PrismaClient,
@@ -7,18 +7,30 @@ import {
   RecommendationRequestState,
 } from "@prisma/client"
 import { Client } from "pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
 import { purgeExpiredPrecomputedVisitRoots } from "./visit-retention"
+import { PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY } from "./public-control"
 import { matchesPrivateVisitBrowser } from "./visit-selection"
 import { precomputedBrowserUnitDigest } from "./visit-identity"
 import {
   declareFixturePrecomputedCtrPolicy,
   evaluatePrivatePrecomputedCtr,
+  evaluatePublicPrecomputedCtr,
   loadPrivatePrecomputedCtrIndex,
   loadPrivatePrecomputedCtrReport,
 } from "./ctr-report"
+import {
+  loadWebWatchMeasurement,
+  WEB_WATCH_COUNTERS,
+  type WebWatchCounters,
+} from "./web-measurement"
+
+vi.mock("./web-measurement", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./web-measurement")>()),
+  loadWebWatchMeasurement: vi.fn(),
+}))
 
 const operator = { id: "ctr-fixture-operator", role: "ADMIN" as const }
 const days = (n: number) => n * 86_400_000
@@ -761,6 +773,125 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         canDeclarePolicy: false,
         declarationUnavailableReason: "experiment_unavailable",
       })
+    })
+
+    it("closes a live cohort inconclusive even when global Web counters exceed its durable visits and clicks", async () => {
+      const prior =
+        await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
+          where: { id: experimentId },
+          include: { ctrPolicy: true },
+        })
+      const liveId = `live-attribution-${randomUUID()}`
+      const end = new Date(
+        Math.floor((now.getTime() - days(2)) / 3_600_000) * 3_600_000,
+      )
+      const start = new Date(end.getTime() - days(30))
+      const finalAt = new Date(end.getTime() + days(1))
+      await prisma.recommendationPrecomputedExperiment.create({
+        data: {
+          id: liveId,
+          generationId: prior.generationId,
+          controlManifestId: prior.controlManifestId,
+          challengerManifestId: prior.challengerManifestId,
+          controlManifestDigest: prior.controlManifestDigest,
+          controlRoutingDigest: prior.controlRoutingDigest,
+          sourceSetDigest: prior.sourceSetDigest,
+          assignmentPolicyVersion: prior.assignmentPolicyVersion,
+          eligibilityPolicyVersion: PRECOMPUTED_PUBLIC_LIVE_ELIGIBILITY_POLICY,
+          deliveryPolicyVersion: prior.deliveryPolicyVersion,
+          configurationDigest: "f".repeat(64),
+          liveEvidence: { contractVersion: "precomputed-live-evidence-v1" },
+          state: "public_ready",
+          startsAt: start,
+          endsAt: end,
+          expiresAt: new Date(end.getTime() + days(365)),
+        },
+      })
+      await prisma.recommendationPrecomputedCtrPolicy.create({
+        data: {
+          experimentId: liveId,
+          version: prior.ctrPolicy!.version,
+          method: prior.ctrPolicy!.method,
+          settings: prior.ctrPolicy!.settings!,
+          lateEventCutoffHours: prior.ctrPolicy!.lateEventCutoffHours,
+          settingsDigest: prior.ctrPolicy!.settingsDigest,
+          authority: "prelaunch_agreed",
+        },
+      })
+      const at = new Date(end.getTime() - days(1))
+      for (let index = 0; index < 30; index++) {
+        for (const arm of [
+          RecommendationExperimentArm.CONTROL,
+          RecommendationExperimentArm.CHALLENGER,
+        ]) {
+          const visitId = randomUUID()
+          await prisma.recommendationPrecomputedVisit.create({
+            data: {
+              id: visitId,
+              experimentId: liveId,
+              browserUnitDigest: createHash("sha256")
+                .update(`${arm}-${index}`)
+                .digest("hex"),
+              sourceVideoId: "source-video",
+              locale: "en",
+              audioLanguageSlug: "english",
+              eligibility: "eligible",
+              qualification: "turnstile_verified_browser",
+              arm,
+              createdAt: at,
+              expiresAt: new Date(now.getTime() + 12 * 3_600_000),
+            },
+          })
+          if (
+            (arm === RecommendationExperimentArm.CONTROL && index === 0) ||
+            (arm === RecommendationExperimentArm.CHALLENGER && index < 20)
+          )
+            await selection(visitId, new Date(at.getTime() + 60_000))
+        }
+      }
+      const counters = Object.fromEntries(
+        WEB_WATCH_COUNTERS.map((counter) => [counter, 0]),
+      ) as WebWatchCounters
+      counters.delivery_qualified = 1_000
+      counters.click_ack = 1_000
+      vi.mocked(loadWebWatchMeasurement).mockResolvedValueOnce({
+        status: "complete",
+        contractVersion: "watch-public-measurement-v1",
+        startHour: start.toISOString(),
+        endHourExclusive: finalAt.toISOString(),
+        observedAt: now.toISOString(),
+        requestedHours: (finalAt.getTime() - start.getTime()) / 3_600_000,
+        coveredHours: (finalAt.getTime() - start.getTime()) / 3_600_000,
+        missingHours: [],
+        imbalancedHours: [],
+        counters,
+        counterUnit: "web_request_attempts_not_distinct_visits",
+      })
+      const result = await evaluatePublicPrecomputedCtr(prisma, {
+        experimentId: liveId,
+        operator,
+        now,
+      })
+      expect(result).toMatchObject({
+        status: "available",
+        report: {
+          isFinal: true,
+          evidenceBasis: "live_incomplete",
+          outcome: "inconclusive",
+          measurementHealth: {
+            botEligibility: "durable_rows_verified",
+            trackingLoss: "unobservable",
+            endToEndClientEventCompleteness: "unverified",
+            webRequestHealth: { status: "complete" },
+          },
+          reasons: expect.arrayContaining([
+            "experiment_scoped_tracking_loss_unverified",
+            "tracking_loss_unobservable",
+          ]),
+        },
+      })
+      if (result.status !== "available") throw new Error("Missing live report")
+      expect(result.report.uncertainty.lowerBound).toBeGreaterThan(0)
     })
   },
 )

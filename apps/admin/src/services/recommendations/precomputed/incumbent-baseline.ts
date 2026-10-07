@@ -43,7 +43,7 @@ async function assertLocalBaselineFixture(
   const [database] = await prisma.$queryRaw<
     Array<{ name: string; schema: string }>
   >`
-    SELECT current_database() AS name, current_schema() AS schema`
+    SELECT current_database()::text AS name, current_schema()::text AS schema`
   if (
     !isDisposableBaselineDatabase(database?.name ?? "", database?.schema ?? "")
   )
