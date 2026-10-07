@@ -773,5 +773,8 @@
     "send": "Ipatulod",
     "sending": "Ip-ipatulod…",
     "sendAriaLabel": "Ipatulod ti komento"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Us-usaren ti app ti lokal a networkmo tapno mabirokan dagiti Cast nga aparato, ket iti kasta maipabuyam dagiti bidio iti TV-mo."
   }
 }

@@ -773,5 +773,8 @@
     "send": "보내기",
     "sending": "보내는 중…",
     "sendAriaLabel": "의견 보내기"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "앱에서 로컬 네트워크를 사용해 전송 가능한 기기를 찾아 TV에서 동영상을 재생할 수 있게 합니다."
   }
 }

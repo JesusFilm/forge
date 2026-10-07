@@ -773,5 +773,8 @@
     "send": "Send",
     "sending": "Sending…",
     "sendAriaLabel": "Send feedback"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "The app uses your local network to find Cast devices, so you can play videos on your TV."
   }
 }

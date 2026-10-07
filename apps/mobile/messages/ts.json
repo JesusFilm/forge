@@ -773,5 +773,8 @@
     "send": "Rhumela",
     "sending": "Ku rhumela…",
     "sendAriaLabel": "Rhumela mavonelo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App yi tirhisa netiweke ya wena ya kusuhi ku lavisisa switirhisiwa leswi u nga kombisaka tivhidiyo eka swona, leswaku u kota ku tlanga tivhidiyo eka TV ya wena."
   }
 }

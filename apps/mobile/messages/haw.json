@@ -773,5 +773,8 @@
     "send": "Hoʻouna",
     "sending": "Ke hoʻouna nei…",
     "sendAriaLabel": "Hoʻouna i kou manaʻo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Hoʻohana ka polokalamu i kāu pūnaewele kūloko e ʻimi ai i nā hāmeʻa hoʻolele, i hiki iā ʻoe ke pāʻani i nā wikiō ma kāu kīwī."
   }
 }

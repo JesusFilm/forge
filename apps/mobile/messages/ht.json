@@ -773,5 +773,8 @@
     "send": "Voye",
     "sending": "Ap voye…",
     "sendAriaLabel": "Voye kòmantè a"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikasyon an itilize rezo lokal ou pou jwenn aparèy difizyon yo, konsa ou ka jwe videyo sou televizyon ou."
   }
 }

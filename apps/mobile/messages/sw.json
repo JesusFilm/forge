@@ -773,5 +773,8 @@
     "send": "Tuma",
     "sending": "Inatuma…",
     "sendAriaLabel": "Tuma maoni"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Programu inatumia mtandao wako wa karibu kutafuta vifaa unavyoweza kutuma video kwavyo, ili uweze kucheza video kwenye TV yako."
   }
 }

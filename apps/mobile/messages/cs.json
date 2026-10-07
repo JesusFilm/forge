@@ -773,5 +773,8 @@
     "send": "Odeslat",
     "sending": "Odesílání…",
     "sendAriaLabel": "Odeslat zpětnou vazbu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikace používá vaši místní síť k vyhledání zařízení pro odesílání, abyste mohli přehrávat videa na své televizi."
   }
 }

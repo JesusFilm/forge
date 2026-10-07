@@ -773,5 +773,8 @@
     "send": "Romela",
     "sending": "Ho romela…",
     "sendAriaLabel": "Romela maikutlo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App e sebelisa marang-rang a hao a haufi ho batla lisebelisoa tseo u ka romelang livideo ho tsona, e le hore u khone ho bapala livideo ho TV ea hao."
   }
 }

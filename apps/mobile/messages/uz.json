@@ -773,5 +773,8 @@
     "send": "Yuborish",
     "sending": "Yuborilmoqda…",
     "sendAriaLabel": "Fikr-mulohaza yuborish"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Ilova uzatish qurilmalarini topish uchun mahalliy tarmog‘ingizdan foydalanadi, shunda videolarni televizoringizda ijro eta olasiz."
   }
 }

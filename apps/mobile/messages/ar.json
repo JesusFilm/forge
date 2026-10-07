@@ -773,5 +773,8 @@
     "send": "إرسال",
     "sending": "جارٍ الإرسال…",
     "sendAriaLabel": "إرسال الملاحظات"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "يستخدم التطبيق شبكتك المحلية للعثور على أجهزة البث، لتتمكن من تشغيل مقاطع الفيديو على تلفازك."
   }
 }

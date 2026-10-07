@@ -773,5 +773,8 @@
     "send": "Emondo",
     "sending": "Oñemondohína…",
     "sendAriaLabel": "Emondo ne remiandu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Ko tembiporu’i oipuru nde ñanduti tendapegua ohekávo mba’e’oka omondóva TV-pe, ikatu hag̃uáicha rehecha ta’ãngamýi nde TV-pe."
   }
 }

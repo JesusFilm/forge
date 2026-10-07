@@ -773,5 +773,8 @@
     "send": "Ohereza",
     "sending": "Birimo koherezwa…",
     "sendAriaLabel": "Ohereza igitekerezo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Porogaramu ikoresha umuyoboro wawe w’aho uri mu gushakisha ibikoresho ushobora kwerekaniraho videwo, kugira ngo ubashe gukina videwo kuri TV yawe."
   }
 }

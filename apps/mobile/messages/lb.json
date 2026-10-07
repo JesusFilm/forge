@@ -773,5 +773,8 @@
     "send": "Schécken",
     "sending": "Gëtt geschéckt…",
     "sendAriaLabel": "Feedback schécken"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "D’App benotzt Äert lokaalt Netz, fir Streaming-Apparater ze fannen, domat Dir Videoen op Ärem Fernseh ofspille kënnt."
   }
 }

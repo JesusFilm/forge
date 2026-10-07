@@ -773,5 +773,8 @@
     "send": "Hantar",
     "sending": "Menghantar…",
     "sendAriaLabel": "Hantar maklum balas"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikasi ini menggunakan rangkaian setempat anda untuk mencari peranti penghantaran supaya anda boleh memainkan video di TV anda."
   }
 }

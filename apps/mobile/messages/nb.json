@@ -773,5 +773,8 @@
     "send": "Send inn",
     "sending": "Sender …",
     "sendAriaLabel": "Send tilbakemelding"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Appen bruker det lokale nettverket ditt til å finne enheter å sende til, slik at du kan spille av videoer på TV-en din."
   }
 }

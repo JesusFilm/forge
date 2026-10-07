@@ -773,5 +773,8 @@
     "send": "Senda",
     "sending": "Sendir…",
     "sendAriaLabel": "Senda álit"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Appið notar staðarnetið þitt til að finna tæki sem hægt er að varpa í, svo þú getir spilað myndbönd í sjónvarpinu þínu."
   }
 }

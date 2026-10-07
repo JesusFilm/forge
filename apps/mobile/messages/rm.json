@@ -773,5 +773,8 @@
     "send": "Trametter",
     "sending": "Vegn tramess…",
     "sendAriaLabel": "Trametter il resun"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "L’app utilisescha Vossa rait locala per chattar apparats da transmissiun, uschia che Vus pudais reproducir videos sin Vossa televisiun."
   }
 }

@@ -773,5 +773,8 @@
     "send": "Alefaso",
     "sending": "Mandefa…",
     "sendAriaLabel": "Alefaso ny fanehoan-kevitra"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Mampiasa ny tambajotranao eo an-toerana ny fampiharana mba hitady fitaovana azo andefasana lahatsary, ka afaka mandefa lahatsary amin’ny fahitalavitrao ianao."
   }
 }

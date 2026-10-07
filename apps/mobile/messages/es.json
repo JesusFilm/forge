@@ -773,5 +773,8 @@
     "send": "Enviar",
     "sending": "Enviando…",
     "sendAriaLabel": "Enviar comentarios"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "La app usa tu red local para encontrar dispositivos a los que transmitir, de modo que puedas reproducir videos en tu televisor."
   }
 }

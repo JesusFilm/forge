@@ -773,5 +773,8 @@
     "send": "Mandar",
     "sending": "Mandadís…",
     "sendAriaLabel": "Mandar l’avís"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "L’aplicacion utiliza vòstra ret locala per trobar d’aparelhs de difusion, per que poscatz legir de vidèos sus vòstre televisor."
   }
 }

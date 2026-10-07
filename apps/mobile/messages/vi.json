@@ -773,5 +773,8 @@
     "send": "Gửi",
     "sending": "Đang gửi…",
     "sendAriaLabel": "Gửi phản hồi"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Ứng dụng dùng mạng cục bộ của bạn để tìm các thiết bị truyền, nhờ vậy bạn có thể phát video trên TV của mình."
   }
 }

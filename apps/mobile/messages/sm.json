@@ -773,5 +773,8 @@
     "send": "Lafo",
     "sending": "O loʻo lafo…",
     "sendAriaLabel": "Lafo lou manatu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "E faʻaaoga e le polokalame lau fesoʻotaʻiga faʻalotoifale e suʻe ai masini mo le lafo i le TV, ina ia mafai ona e tā vitio i lau TV."
   }
 }

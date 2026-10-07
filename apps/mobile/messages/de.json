@@ -773,5 +773,8 @@
     "send": "Senden",
     "sending": "Wird gesendet…",
     "sendAriaLabel": "Feedback senden"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Die App nutzt dein lokales Netzwerk, um Geräte für die Übertragung zu finden, damit du Videos auf deinem Fernseher abspielen kannst."
   }
 }

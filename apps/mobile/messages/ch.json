@@ -773,5 +773,8 @@
     "send": "Na’hånao",
     "sending": "Ma na’hahånao…",
     "sendAriaLabel": "Na’hånao i hinasso-mu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "I app ha usa i lokat na network-mu para u sodda’ i aparatu siha para na’hånao gi TV, para siña un egga’ i bidio siha gi TV-mu."
   }
 }

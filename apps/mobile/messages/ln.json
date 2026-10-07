@@ -773,5 +773,8 @@
     "send": "Tinda",
     "sending": "Ezali kotinda…",
     "sendAriaLabel": "Tinda makanisi"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Application esalelaka réseau ya esika ozali mpo na koluka bisaleli oyo okoki kotindela ba vidéo, mpo okoka kotambwisa ba vidéo na TV na yo."
   }
 }

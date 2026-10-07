@@ -773,5 +773,8 @@
     "send": "Küldés",
     "sending": "Küldés…",
     "sendAriaLabel": "Visszajelzés küldése"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Az alkalmazás a helyi hálózatodat használja az átküldésre alkalmas eszközök megtalálásához, hogy videókat játszhass le a tévéden."
   }
 }

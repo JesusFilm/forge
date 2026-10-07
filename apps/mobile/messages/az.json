@@ -773,5 +773,8 @@
     "send": "Göndər",
     "sending": "Göndərilir…",
     "sendAriaLabel": "Rəy göndər"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Tətbiq ötürmə cihazlarını tapmaq üçün yerli şəbəkənizdən istifadə edir ki, videoları televizorunuzda oynada biləsiniz."
   }
 }

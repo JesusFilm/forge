@@ -773,5 +773,8 @@
     "send": "送信",
     "sending": "送信中…",
     "sendAriaLabel": "フィードバックを送信"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "このアプリはローカルネットワークを使ってキャスト対応デバイスを探し、テレビで動画を再生できるようにします。"
   }
 }

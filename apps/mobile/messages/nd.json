@@ -773,5 +773,8 @@
     "send": "Thumela",
     "sending": "Kuyathunyelwa…",
     "sendAriaLabel": "Thumela umbono"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "I-app isebenzisa inethiwekhi yakho yendawo ukudinga amadivayisi ongathumela kuwo amavidiyo, ukuze ukwazi ukudlala amavidiyo ku-TV yakho."
   }
 }

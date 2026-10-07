@@ -773,5 +773,8 @@
     "send": "ላክ",
     "sending": "በመላክ ላይ…",
     "sendAriaLabel": "አስተያየት ላክ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "መተግበሪያው የማስተላለፊያ መሣሪያዎችን ለማግኘት የአካባቢ ኔትወርክዎን ይጠቀማል፤ በዚህም ቪዲዮዎችን በቲቪዎ ላይ ማጫወት ይችላሉ።"
   }
 }
