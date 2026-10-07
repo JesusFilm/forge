@@ -21,7 +21,13 @@ function pulseScale(progress: Animated.Value) {
   })
 }
 
-export function Pulse({ children }: { children: ReactNode }) {
+type PulseProps = {
+  children: ReactNode
+  /** The first swell waits this long, for an entrance to end first. */
+  delayMs?: number
+}
+
+export function Pulse({ children, delayMs = 0 }: PulseProps) {
   const reduceMotion = useReduceMotion()
   const [progress] = useState(() => new Animated.Value(0))
   const [scale] = useState(() => pulseScale(progress))
@@ -36,9 +42,14 @@ export function Pulse({ children }: { children: ReactNode }) {
         useNativeDriver: true,
       }),
     )
-    loop.start()
-    return () => loop.stop()
-  }, [progress, reduceMotion])
+    let timer: ReturnType<typeof setTimeout> | null = null
+    if (delayMs > 0) timer = setTimeout(() => loop.start(), delayMs)
+    else loop.start()
+    return () => {
+      if (timer !== null) clearTimeout(timer)
+      loop.stop()
+    }
+  }, [delayMs, progress, reduceMotion])
 
   // A new plain view, because iOS keeps the last native scale on the old one.
   if (reduceMotion) return <View style={styles.row}>{children}</View>

@@ -72,6 +72,8 @@ const SCREENS = [
       labelsOf(root).find((label) => label.startsWith("Continue")),
     full: "Continue, 45 seconds left",
     oneDown: "Continue, 44 seconds left",
+    buttonID: "pause-intro",
+    buttonWithContent: true,
   },
   {
     name: "Pray",
@@ -87,6 +89,9 @@ const SCREENS = [
       labelsOf(root).find((label) => label.endsWith("left")),
     full: "30 seconds left",
     oneDown: "29 seconds left",
+    // Amen waits for zero (the owner, 2026-10-07); PrayScreen.test covers it.
+    buttonID: "pray-amen",
+    buttonWithContent: false,
   },
 ]
 
@@ -140,9 +145,12 @@ function content(root: TestInstance): RenderedNode {
 
 /** The button below the scroll view. It may be Liquid Glass, so a cover
  *  fades off it and its own opacity never moves. */
-function buttonRow(root: TestInstance): { row: RenderedNode; cover: number } {
-  const [row] = hosts(root, "pause-intro-covered")
-  const [cover] = hosts(root, "pause-intro-cover")
+function buttonRow(
+  root: TestInstance,
+  id: string,
+): { row: RenderedNode; cover: number } {
+  const [row] = hosts(root, `${id}-covered`)
+  const [cover] = hosts(root, `${id}-cover`)
   return { row: row!, cover: Number(style(cover!).opacity) }
 }
 
@@ -150,7 +158,7 @@ describe.each(SCREENS)("the $name screen", (screen) => {
   it("starts the stepper at the center of the screen, with the content hidden", async () => {
     const root = await render(screen)
     expect(stepperShift(root)).toBe(CENTERED_SHIFT)
-    const { row, cover } = buttonRow(root)
+    const { row, cover } = buttonRow(root, screen.buttonID)
     expect(style(content(root)).opacity).toBe(0)
     expect(cover).toBe(1)
     expect(style(row).opacity).toBeUndefined()
@@ -186,7 +194,9 @@ describe.each(SCREENS)("the $name screen", (screen) => {
     advance(999)
     expect(screen.timer(root)).toBe(screen.full)
     expect(content(root).props.accessibilityElementsHidden).toBe(false)
-    expect(buttonRow(root).row.props.accessibilityElementsHidden).toBe(false)
+    expect(
+      buttonRow(root, screen.buttonID).row.props.accessibilityElementsHidden,
+    ).toBe(!screen.buttonWithContent)
     advance(1)
     expect(screen.timer(root)).toBe(screen.oneDown)
   })
@@ -196,10 +206,12 @@ describe.each(SCREENS)("the $name screen", (screen) => {
     const root = await render(screen)
     expect(stepperShift(root)).toBe(0)
     expect(style(content(root)).opacity).toBe(1)
-    expect(buttonRow(root).cover).toBe(0)
-    for (const shown of [content(root), buttonRow(root).row]) {
-      expect(shown.props.accessibilityElementsHidden).toBe(false)
-    }
+    const { row, cover } = buttonRow(root, screen.buttonID)
+    expect(cover).toBe(screen.buttonWithContent ? 0 : 1)
+    expect(content(root).props.accessibilityElementsHidden).toBe(false)
+    expect(row.props.accessibilityElementsHidden).toBe(
+      !screen.buttonWithContent,
+    )
     advance(1000)
     expect(screen.timer(root)).toBe(screen.oneDown)
   })

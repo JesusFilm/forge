@@ -170,22 +170,54 @@ function hiddenUntilShown(shown: boolean) {
   }
 }
 
-/** IntroContent for Liquid Glass, which draws nothing under a fading
- *  ancestor. A cover in the ground's color fades off the content instead. */
-export function IntroCovered({ intro, style, children }: IntroContentProps) {
+type CoveredProps = {
+  /** The cover: 1 hides the content, 0 shows it. */
+  level: Animated.AnimatedInterpolation<number>
+  /** VoiceOver and touches skip the content until it shows. */
+  shown: boolean
+  /** Names the row (`<testID>-covered`) and its cover (`<testID>-cover`). */
+  testID: string
+  style?: StyleProp<ViewStyle>
+  children: ReactNode
+}
+
+/** Content for Liquid Glass, which draws nothing under a fading ancestor. A
+ *  cover in the ground's color fades off the content instead. */
+export function Covered({
+  level,
+  shown,
+  testID,
+  style,
+  children,
+}: CoveredProps) {
   return (
     <Animated.View
-      testID="pause-intro-covered"
-      {...hiddenUntilShown(intro.shown)}
-      style={[style, { transform: [{ translateY: intro.contentRise }] }]}
+      testID={`${testID}-covered`}
+      {...hiddenUntilShown(shown)}
+      pointerEvents={shown ? "auto" : "none"}
+      style={style}
     >
       {children}
       <Animated.View
-        testID="pause-intro-cover"
+        testID={`${testID}-cover`}
         pointerEvents="none"
-        style={[styles.cover, { opacity: intro.coverLevel }]}
+        style={[styles.cover, { opacity: level }]}
       />
     </Animated.View>
+  )
+}
+
+/** IntroContent for Liquid Glass. */
+export function IntroCovered({ intro, style, children }: IntroContentProps) {
+  return (
+    <Covered
+      level={intro.coverLevel}
+      shown={intro.shown}
+      testID="pause-intro"
+      style={[style, { transform: [{ translateY: intro.contentRise }] }]}
+    >
+      {children}
+    </Covered>
   )
 }
 

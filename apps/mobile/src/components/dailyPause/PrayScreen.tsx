@@ -1,7 +1,15 @@
 // The Figma "Transition · Pray" screen (R11, R16, R17, R19, R30). The ring
-// counts the pause down, and Amen takes no tap before zero. The screen opens
-// with the intro in PauseIntro, and the pause starts after.
-import { ScrollView, StyleSheet, Text, View } from "react-native"
+// counts the pause down. At zero it fades out and Amen fades in; Amen takes no
+// tap before. The screen opens with the intro in PauseIntro.
+import { useEffect, useState } from "react"
+import {
+  Animated,
+  Easing,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 
 import { useCountdown } from "../../lib/dailyPause/countdown"
 import type { Devotional } from "../../lib/dailyPause/devotionals"
@@ -17,15 +25,58 @@ import {
 } from "../../lib/dailyPause/theme"
 import { CountdownRing } from "./CountdownRing"
 import {
+  Covered,
   IntroContent,
-  IntroCovered,
   IntroStepper,
   usePauseIntro,
 } from "./PauseIntro"
 import { Pulse } from "./Pulse"
+import { sampledCurve } from "./sampledCurve"
 import { StepperPills } from "./StepperPills"
 import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { HeldPauseButton, PauseBody, PauseButton } from "./PauseFrame"
+import { usePauseClock } from "./usePauseClock"
+
+/** At zero the ring fades out over this time (the owner, 2026-10-07). */
+export const PRAY_RING_FADE_MS = 500
+/** Amen starts to fade in, and takes a tap, this long after zero. */
+export const PRAY_AMEN_FROM_MS = 300
+const AMEN_FADE_MS = 500
+/** Amen is fully in this long after zero. */
+export const PRAY_FINISH_MS = PRAY_AMEN_FROM_MS + AMEN_FADE_MS
+
+const easeInOut = Easing.inOut(Easing.cubic)
+const easeOut = Easing.out(Easing.cubic)
+
+/** The fade at zero, on one clock: the ring out, then Amen in. */
+function usePrayFinish(done: boolean) {
+  const { progress, reduceMotion } = usePauseClock(PRAY_FINISH_MS, done)
+  const [amenDue, setAmenDue] = useState(false)
+  const [levels] = useState(() => ({
+    ring: sampledCurve(progress, {
+      fromMs: 0,
+      spanMs: PRAY_RING_FADE_MS,
+      totalMs: PRAY_FINISH_MS,
+      curve: (t) => 1 - easeInOut(t),
+    }),
+    amenCover: sampledCurve(progress, {
+      fromMs: PRAY_AMEN_FROM_MS,
+      spanMs: AMEN_FADE_MS,
+      totalMs: PRAY_FINISH_MS,
+      curve: (t) => 1 - easeOut(t),
+    }),
+  }))
+
+  // A native completion callback is unreliable on this app, so Amen takes
+  // taps from its own clock.
+  useEffect(() => {
+    if (!done || reduceMotion) return
+    const timer = setTimeout(() => setAmenDue(true), PRAY_AMEN_FROM_MS)
+    return () => clearTimeout(timer)
+  }, [done, reduceMotion])
+
+  return { ...levels, amenShown: done && (reduceMotion || amenDue) }
+}
 
 type PrayScreenProps = {
   /** The run's pinned devotional. */
@@ -46,6 +97,7 @@ export function PrayScreen({
     PAUSE_TIMERS[meditationLength].praySec,
     intro.shown,
   )
+  const finish = usePrayFinish(countdown.done)
 
   return (
     <PauseBody>
@@ -60,7 +112,16 @@ export function PrayScreen({
         <View style={styles.ringGap} />
         <IntroContent intro={intro} style={styles.content}>
           <View style={styles.ringBox}>
-            <CountdownRing countdown={countdown} font={font} />
+            <Animated.View
+              testID="pray-ring-fade"
+              accessibilityElementsHidden={countdown.done}
+              importantForAccessibility={
+                countdown.done ? "no-hide-descendants" : "auto"
+              }
+              style={{ opacity: finish.ring }}
+            >
+              <CountdownRing countdown={countdown} font={font} />
+            </Animated.View>
           </View>
           <Text style={[styles.prompt, pauseText(font, pauseType.reading)]}>
             {devotional.prayerPrompt}
@@ -71,15 +132,21 @@ export function PrayScreen({
         </IntroContent>
         <View style={styles.buttonGap} />
       </ScrollView>
-      <IntroCovered intro={intro} style={styles.buttonRow}>
+      <Covered
+        level={finish.amenCover}
+        shown={finish.amenShown}
+        testID="pray-amen"
+        style={styles.buttonRow}
+      >
         {countdown.done ? (
-          <Pulse>
+          <Pulse delayMs={PRAY_FINISH_MS}>
             <PauseButton label="Amen" onPress={onContinue} font={font} />
           </Pulse>
         ) : (
+          // It holds Amen's place, so nothing moves when Amen shows.
           <HeldPauseButton label="Amen" spokenLabel="Amen" font={font} />
         )}
-      </IntroCovered>
+      </Covered>
     </PauseBody>
   )
 }

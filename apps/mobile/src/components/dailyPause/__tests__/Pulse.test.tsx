@@ -135,6 +135,43 @@ it("swells to its peak and settles once a cycle", async () => {
   expect(at(1)).toBe(1)
 })
 
+it("waits `delayMs` before its first swell", async () => {
+  jest.useFakeTimers()
+  try {
+    await render(
+      <Pulse delayMs={800}>
+        <Text>Tap</Text>
+      </Pulse>,
+    )
+    act(() => {
+      jest.advanceTimersByTime(799)
+    })
+    expect(loopStart).not.toHaveBeenCalled()
+    act(() => {
+      jest.advanceTimersByTime(1)
+    })
+    expect(loopStart).toHaveBeenCalledTimes(1)
+
+    // An unmount before the delay ends starts nothing.
+    await unmount(renderer!)
+    renderer = null
+    loopStart.mockClear()
+    await render(
+      <Pulse delayMs={800}>
+        <Text>Tap</Text>
+      </Pulse>,
+    )
+    await unmount(renderer!)
+    renderer = null
+    act(() => {
+      jest.advanceTimersByTime(800)
+    })
+    expect(loopStart).not.toHaveBeenCalled()
+  } finally {
+    jest.useRealTimers()
+  }
+})
+
 it("stops the loop when it unmounts", async () => {
   await render(
     <Pulse>

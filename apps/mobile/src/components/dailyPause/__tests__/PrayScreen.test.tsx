@@ -1,7 +1,10 @@
 // The Pray screen (U10, R11, R16, R17, R19, R26, R30). The ring counts the
-// seconds down, and Amen ignores taps until the ring reaches zero.
+// seconds down. At zero it fades out and Amen fades in; Amen takes no tap
+// before. Jest cannot move a native animation, so a stand-in keeps the fade
+// clock in JS, and the tests move it by hand.
 import { StrictMode, act } from "react"
 import {
+  Animated,
   AppState,
   StyleSheet,
   type AppStateStatus,
@@ -25,7 +28,12 @@ import {
   pulses,
 } from "../../../test-utils/dailyPause"
 import { PAUSE_INTRO_MS } from "../PauseIntro"
-import { PrayScreen } from "../PrayScreen"
+import {
+  PRAY_AMEN_FROM_MS,
+  PRAY_FINISH_MS,
+  PRAY_RING_FADE_MS,
+  PrayScreen,
+} from "../PrayScreen"
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 62, bottom: 34, left: 0, right: 0 }),
@@ -39,11 +47,27 @@ jest.mock("../../../hooks/useReduceMotion", () => ({
 const onContinue = jest.fn()
 let renderer: TestInstance | null = null
 let handlers: ((state: AppStateStatus) => void)[] = []
+/** The fade clock at zero, and its start. */
+let finishClock: Animated.Value | null = null
+let finishStart: jest.Mock
 
 beforeEach(() => {
   jest.useFakeTimers({ now: new Date(2026, 9, 5, 7, 0) })
   onContinue.mockReset()
   handlers = []
+  finishClock = null
+  finishStart = jest.fn()
+  const timing = Animated.timing
+  jest.spyOn(Animated, "timing").mockImplementation((value, config) => {
+    if (config.duration !== PRAY_FINISH_MS) return timing(value, config)
+    expect(config.useNativeDriver).toBe(true)
+    finishClock = value as Animated.Value
+    return {
+      start: finishStart,
+      stop: jest.fn(),
+      reset: jest.fn(),
+    } as unknown as Animated.CompositeAnimation
+  })
   jest.spyOn(AppState, "addEventListener").mockImplementation(((
     _event: string,
     handler: (state: AppStateStatus) => void,
@@ -111,6 +135,41 @@ function ringLabel(root: TestInstance): string | undefined {
     (node) =>
       typeof node.type === "string" && node.props.accessibilityRole === "timer",
   )[0]?.props.accessibilityLabel
+}
+
+function host(root: TestInstance, testID: string): RenderedNode {
+  const [node] = root.root.findAll(
+    (one) => typeof one.type === "string" && one.props.testID === testID,
+  )
+  return node!
+}
+
+function opacityOf(node: RenderedNode): number {
+  return Number(StyleSheet.flatten(node.props.style as ViewStyle).opacity)
+}
+
+/** The ring's fade wrapper: its opacity, and whether VoiceOver reaches it. */
+function ring(root: TestInstance) {
+  const node = host(root, "pray-ring-fade")
+  return {
+    level: opacityOf(node),
+    hidden: node.props.accessibilityElementsHidden,
+  }
+}
+
+/** Amen's row: its cover, and whether VoiceOver and touches reach it. */
+function amen(root: TestInstance) {
+  const row = host(root, "pray-amen-covered")
+  return {
+    cover: opacityOf(host(root, "pray-amen-cover")),
+    hidden: row.props.accessibilityElementsHidden,
+    touch: row.props.pointerEvents,
+  }
+}
+
+/** Moves the fade clock to this many ms after zero. */
+function finishAt(ms: number) {
+  act(() => finishClock!.setValue(ms / PRAY_FINISH_MS))
 }
 
 function isDisabled(node: RenderedNode): boolean {
@@ -188,6 +247,40 @@ it("lets no control skip the ring before zero (R16)", async () => {
   for (const node of pressables) await press(node)
   expect(onContinue).not.toHaveBeenCalled()
   expect(hostsWithLabel(root, "Amen").some(isDisabled)).toBe(true)
+  // The owner (2026-10-07): Amen does not show before zero.
+  expect(amen(root)).toEqual({ cover: 1, hidden: true, touch: "none" })
+})
+
+it("fades the ring out at zero, then fades Amen in (the owner, 2026-10-07)", async () => {
+  const root = await render(3)
+  advance(PAUSE_INTRO_MS)
+  advance(29_000)
+  expect(ring(root)).toEqual({ level: 1, hidden: false })
+  expect(finishStart).not.toHaveBeenCalled()
+
+  advance(1_000)
+  expect(hasExactText(root, "0")).toBe(true)
+  expect(finishStart).toHaveBeenCalledTimes(1)
+  expect(ring(root).hidden).toBe(true)
+  expect(amen(root)).toEqual({ cover: 1, hidden: true, touch: "none" })
+
+  finishAt(PRAY_RING_FADE_MS / 2)
+  expect(ring(root).level).toBeGreaterThan(0)
+  expect(ring(root).level).toBeLessThan(1)
+  finishAt(PRAY_RING_FADE_MS)
+  expect(ring(root).level).toBe(0)
+  finishAt(PRAY_AMEN_FROM_MS)
+  expect(amen(root).cover).toBe(1)
+  finishAt(PRAY_FINISH_MS)
+  expect(amen(root).cover).toBe(0)
+
+  // Amen takes taps from when it starts to show, on its own clock.
+  advance(PRAY_AMEN_FROM_MS - 50)
+  expect(amen(root).touch).toBe("none")
+  advance(50)
+  expect(amen(root)).toMatchObject({ hidden: false, touch: "auto" })
+  await press(pressableByLabel(root, "Amen"))
+  expect(onContinue).toHaveBeenCalledTimes(1)
 })
 
 it("makes Amen active at zero and moves on only at the tap (R17)", async () => {
@@ -230,6 +323,16 @@ describe("under Reduce Motion", () => {
 
   afterEach(() => {
     mockReduceMotion = false
+  })
+
+  it("hides the ring and shows Amen at once at zero", async () => {
+    const root = await render(3)
+    advance(29_000)
+    expect(amen(root)).toEqual({ cover: 1, hidden: true, touch: "none" })
+    advance(1_000)
+    expect(finishStart).not.toHaveBeenCalled()
+    expect(ring(root)).toEqual({ level: 0, hidden: true })
+    expect(amen(root)).toEqual({ cover: 0, hidden: false, touch: "auto" })
   })
 
   it("fills the ring by the fraction of time left, one step a second", async () => {
