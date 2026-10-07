@@ -43,6 +43,7 @@ export type FeedbackRefusal = NonNullable<FeedbackSubmissionAnswer["refusal"]>
  * lowercase or misspelled value cannot compile. */
 export const FEEDBACK_KINDS = [
   "BROKEN",
+  "TRANSLATION",
   "IDEA",
   "OTHER",
 ] as const satisfies readonly FeedbackKind[]
