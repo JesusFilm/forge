@@ -692,7 +692,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             where: { id: generationId },
           })
         ).promptVersion,
-      ).toBe("astra-catalog-history-navigation-v5")
+      ).toBe("astra-catalog-history-navigation-v6")
       expect(first.checkpoint).toMatchObject({
         stage: "plan",
         planRepair: {
@@ -2083,6 +2083,202 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         expectedReportRevision: null,
         reasonCode: "fallback_rehearsal_complete",
         operator: reviewer,
+      })
+    }, 120_000)
+
+    it("saves exact non-English transcript support from a later native catalog page", async () => {
+      const videoId = `z-catalog-span-${suffix}`
+      const editionId = `span-edition-${suffix}`
+      const transcriptId = `span-transcript-${suffix}`
+      const firstChunkId = `span-chunk-0-${suffix}`
+      const secondChunkId = `span-chunk-1-${suffix}`
+      const firstText = "ይህ የመጀመሪያው ክፍል ስለ ጉዞ ይናገራል።"
+      const secondText = "በችግር ጊዜ ተስፋ እና ድፍረት አብረው የሚያገለግሉ ትምህርቶች ናቸው።"
+      await prisma.video.create({
+        data: {
+          id: videoId,
+          coreId: `core-${videoId}`,
+          slug: `span-story-${suffix}`,
+          ...catalogTimestamps,
+        },
+      })
+      await prisma.videoLocale.create({
+        data: {
+          id: `locale-${videoId}`,
+          videoId,
+          locale: "en",
+          status: "PUBLISHED",
+          title: "Courage and hope in another story",
+          description: "A distinct story about hope during hardship.",
+          ...catalogTimestamps,
+        },
+      })
+      await prisma.videoEdition.create({
+        data: { id: editionId, coreId: editionId, name: "Amharic source" },
+      })
+      await prisma.videoDub.create({
+        data: {
+          id: `dub-${videoId}`,
+          coreId: `dub-core-${videoId}`,
+          videoId,
+          languageId: `catalog-language-${suffix}`,
+          muxVideoId: `catalog-mux-${suffix}`,
+          videoEditionId: editionId,
+          published: true,
+          ...catalogTimestamps,
+        },
+      })
+      await prisma.videoTranscript.create({
+        data: {
+          id: transcriptId,
+          videoEditionId: editionId,
+          videoId,
+          language: "am",
+          model: "embeddings",
+          embeddingProvider: "jesus-film-ai-gateway",
+          embeddingNativeDimensions: 1536,
+          dimensions: 1536,
+          chunkingType: "fixture",
+          maxChunkTokens: 100,
+          overlapTokens: 0,
+          totalChunks: 2,
+          totalTokens: 20,
+          generatedAt: catalogCreatedAt,
+        },
+      })
+      for (const [index, text] of [firstText, secondText].entries()) {
+        await prisma.videoTranscriptChunk.create({
+          data: {
+            id: index === 0 ? firstChunkId : secondChunkId,
+            transcriptId,
+            language: "am",
+            model: "embeddings",
+            dimensions: 1536,
+            chunkIndex: index,
+            chunkId: `fixture-${index}`,
+            text,
+            rawSourceText: text,
+            tokenCount: 10,
+            startSeconds: index * 60,
+            endSeconds: (index + 1) * 60,
+          },
+        })
+      }
+
+      const connected = dependencies()
+      const catalog: SourceCatalog = {
+        ...connected.catalog,
+        async chunks(input) {
+          const result = await readPrecomputedCatalog(
+            prisma,
+            { action: "chunks", ...input, limit: 1 },
+            bearer,
+          )
+          if (result.action !== "chunks") throw new Error("Wrong response")
+          return result
+        },
+      }
+      const seenChunkIds: string[] = []
+      const model: StructuredModel = {
+        async generate({ schema: outputSchema, prompt }) {
+          const data = JSON.parse(prompt) as {
+            task: string
+            untrustedCatalogData: {
+              source: { id: string }
+              transcriptChunks?: Array<{
+                id: string
+                language: string
+                spans: Array<{ id: string; text: string }>
+              }>
+            }
+          }
+          const source = data.untrustedCatalogData.source.id
+          if (data.task === "source_summary")
+            return {
+              output: outputSchema.parse({
+                summaryEnglish: "Stories of hope and courage during hardship.",
+              }),
+              usage: { inputTokens: 10, outputTokens: 2, costUsd: 0.001 },
+            }
+          if (data.task === "catalog_discovery")
+            return {
+              output: outputSchema.parse({
+                candidateVideoIds: source === sourceId ? [videoId] : [],
+              }),
+              usage: { inputTokens: 10, outputTokens: 2, costUsd: 0.001 },
+            }
+          if (data.task !== "candidate_judgment" || source !== sourceId)
+            throw new Error(`Unexpected model task: ${data.task}`)
+          const chunk = data.untrustedCatalogData.transcriptChunks?.[0]
+          if (!chunk || chunk.language !== "am")
+            throw new Error("Expected complete Amharic transcript page")
+          seenChunkIds.push(chunk.id)
+          const connections =
+            chunk.id === firstChunkId
+              ? []
+              : [
+                  {
+                    kind: "direct",
+                    relationship: "hope_through_hardship",
+                    reasonEnglish:
+                      "The second story gives another account of hope during hardship.",
+                    addedViewingValueEnglish: null,
+                    evidence: {
+                      basis: "transcript",
+                      spanIds: [chunk.spans[0]!.id],
+                    },
+                    strength: 90,
+                  },
+                ]
+          if (chunk.id === secondChunkId)
+            expect(chunk.spans[0]!.text).toBe(secondText)
+          return {
+            output: outputSchema.parse({ connections }),
+            usage: { inputTokens: 10, outputTokens: 2, costUsd: 0.001 },
+          }
+        },
+      }
+      const generationId = `catalog-span-${suffix}`
+      // Earlier tests legitimately update catalog rows after the suite's
+      // historical cutoff. Fence this build after those fixture mutations.
+      const spanCutoff = new Date().toISOString()
+      await expect(
+        runPrecomputedCatalog(
+          {
+            generationId,
+            inputCutoff: spanCutoff,
+            historyRequired: false,
+            capacity: await fixtureCapacity(),
+          },
+          { catalog, ingest: connected.ingest, model },
+        ),
+      ).resolves.toMatchObject({ state: "complete", failedSourceCount: 0 })
+      expect(seenChunkIds).toEqual([firstChunkId, secondChunkId])
+      const comparison = await loadPrecomputedRecommendationComparison(prisma, {
+        generationId,
+        sourceVideoId: sourceId,
+        audioLanguageSlug: "english",
+        reviewer,
+      })
+      expect(comparison).toMatchObject({
+        state: "ready",
+        allAcceptedCount: 1,
+        experimental: [
+          {
+            targetVideoId: videoId,
+            evidence: {
+              basis: "transcript",
+              passages: [
+                {
+                  chunkId: secondChunkId,
+                  videoId,
+                  language: "am",
+                  excerpt: secondText,
+                },
+              ],
+            },
+          },
+        ],
       })
     }, 120_000)
   },

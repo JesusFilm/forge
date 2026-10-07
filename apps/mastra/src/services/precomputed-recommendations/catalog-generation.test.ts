@@ -1,7 +1,9 @@
 import { createHash } from "node:crypto"
 
 import { describe, expect, it, vi } from "vitest"
+import { z } from "zod"
 
+import type { StructuredModel } from "./astra-provider"
 import { runPrecomputedCatalog } from "./catalog-generation"
 import { judgmentSchema, type SourceCatalog } from "./source-generation"
 
@@ -445,19 +447,19 @@ describe("catalog generation boundary", () => {
 
   it("repairs bad evidence once and fails truthfully when repair is exhausted", async () => {
     const passage = "A sufficiently long transcript passage."
-    const connection = (excerpt: string) => ({
+    const connection = (spanId: string) => ({
       kind: "direct",
       relationship: "shared story",
       reasonEnglish: "Both videos cover the same biblical account.",
       addedViewingValueEnglish: null,
       evidence: {
         basis: "transcript",
-        passages: [{ chunkId: "chunk-1", excerpt }],
+        spanIds: [spanId],
       },
       strength: 70,
     })
     const metadataConnection = {
-      ...connection(passage),
+      ...connection("offered"),
       evidence: { basis: "metadata", fields: ["keywords"] },
     }
     const run = async (
@@ -467,7 +469,7 @@ describe("catalog generation boundary", () => {
         candidateId: string
         afterChunkId: null
         attempts: number
-        feedback: { reason: "transcript_excerpt_not_verbatim"; chunkId: string }
+        feedback: { reason: "provider_output_invalid" }
       },
     ) => {
       const sourceCatalog = catalog(["source", "target"])
@@ -483,16 +485,37 @@ describe("catalog generation boundary", () => {
         ],
         nextCursor: null,
       })
-      const generate = vi
-        .fn()
-        .mockResolvedValueOnce({
-          output: { connections: [firstConnection] },
-          usage: { inputTokens: 1, outputTokens: 2, costUsd: 0.01 },
-        })
-        .mockResolvedValueOnce({
-          output: { connections: [secondConnection] },
-          usage: { inputTokens: 1, outputTokens: 2, costUsd: 0.01 },
-        })
+      let modelAttempt = 0
+      const generate = vi.fn(
+        async <T extends z.ZodType>({
+          prompt,
+          schema,
+        }: {
+          prompt: string
+          schema: T
+        }) => {
+          const selected =
+            modelAttempt++ === 0 ? firstConnection : secondConnection
+          const offered = (
+            JSON.parse(prompt) as {
+              untrustedCatalogData: {
+                transcriptChunks: Array<{ spans: Array<{ id: string }> }>
+              }
+            }
+          ).untrustedCatalogData.transcriptChunks[0]!.spans[0]!.id
+          const output = JSON.parse(JSON.stringify(selected)) as {
+            evidence?: { basis?: string; spanIds?: string[] }
+          }
+          if (output.evidence?.basis === "transcript")
+            output.evidence.spanIds = output.evidence.spanIds?.map((id) =>
+              id === "offered" ? offered : id,
+            )
+          return {
+            output: schema.parse({ connections: [output] }) as z.output<T>,
+            usage: { inputTokens: 1, outputTokens: 2, costUsd: 0.01 },
+          }
+        },
+      )
       const writes: Array<Record<string, unknown>> = []
       const warnings: string[] = []
       const warn = vi
@@ -559,7 +582,7 @@ describe("catalog generation boundary", () => {
         const result = await runPrecomputedCatalog(input, {
           catalog: sourceCatalog,
           ingest,
-          model: { generate },
+          model: { generate: generate as StructuredModel["generate"] },
         })
         return { result, generate, writes, warnings }
       } finally {
@@ -568,18 +591,16 @@ describe("catalog generation boundary", () => {
     }
 
     const repaired = await run(
-      connection("A passage absent from the chunk."),
-      connection(passage),
+      connection("f".repeat(32)),
+      connection("offered"),
     )
     expect(repaired.result.state).toBe("complete")
     expect(repaired.generate).toHaveBeenCalledTimes(2)
     expect(repaired.generate.mock.calls[1]?.[0].prompt).toContain(
-      '"reason":"transcript_excerpt_not_verbatim","chunkId":"chunk-1"',
+      '"reason":"provider_output_invalid"',
     )
     expect(repaired.warnings).toHaveLength(1)
-    expect(repaired.warnings[0]).not.toContain(
-      "A passage absent from the chunk.",
-    )
+    expect(repaired.warnings[0]).not.toContain("f".repeat(32))
     const receipts = repaired.writes.filter(
       (call) => call.action === "model_call",
     )
@@ -592,13 +613,21 @@ describe("catalog generation boundary", () => {
     expect(receipts[0]).not.toHaveProperty("choice")
     expect(receipts[1]).toMatchObject({
       status: "succeeded",
-      choice: { evidence: connection(passage).evidence },
+      choice: {
+        evidence: {
+          basis: "transcript",
+          passages: [{ chunkId: "chunk-1", excerpt: passage }],
+        },
+      },
     })
     expect(
       repaired.writes.filter((call) => call.action === "fail"),
     ).toHaveLength(0)
 
-    const metadataRepaired = await run(metadataConnection, connection(passage))
+    const metadataRepaired = await run(
+      metadataConnection,
+      connection("offered"),
+    )
     expect(metadataRepaired.result.state).toBe("complete")
     expect(metadataRepaired.generate.mock.calls[1]?.[0].prompt).toContain(
       '"reason":"metadata_field_unavailable","field":"keywords"',
@@ -607,24 +636,18 @@ describe("catalog generation boundary", () => {
       metadataRepaired.writes.filter((call) => call.action === "model_call")[0],
     ).not.toHaveProperty("choice")
 
-    const missingChunk = await run(
-      {
-        ...connection(passage),
-        evidence: {
-          basis: "transcript",
-          passages: [{ chunkId: "missing-chunk", excerpt: passage }],
-        },
-      },
-      connection(passage),
+    const malformedId = await run(
+      connection("invalid-format"),
+      connection("offered"),
     )
-    expect(missingChunk.result.state).toBe("complete")
-    expect(missingChunk.generate.mock.calls[1]?.[0].prompt).toContain(
-      '"reason":"transcript_chunk_unavailable","chunkId":"missing-chunk"',
+    expect(malformedId.result.state).toBe("complete")
+    expect(malformedId.generate.mock.calls[1]?.[0].prompt).toContain(
+      '"reason":"schema_invalid"',
     )
 
     const exhausted = await run(
-      connection("A passage absent from the chunk."),
-      connection("Still not present in the chunk."),
+      connection("f".repeat(32)),
+      connection("e".repeat(32)),
     )
     expect(exhausted.result.state).toBe("failed")
     expect(exhausted.generate).toHaveBeenCalledTimes(2)
@@ -664,17 +687,20 @@ describe("catalog generation boundary", () => {
       afterChunkId: null,
       attempts: 1,
       feedback: {
-        reason: "transcript_excerpt_not_verbatim" as const,
-        chunkId: "chunk-1",
+        reason: "provider_output_invalid" as const,
       },
     }
-    const resumed = await run(connection(passage), connection(passage), repair)
+    const resumed = await run(
+      connection("offered"),
+      connection("offered"),
+      repair,
+    )
     expect(resumed.result.state).toBe("complete")
     expect(resumed.generate).toHaveBeenCalledOnce()
     expect(resumed.generate.mock.calls[0]?.[0].prompt).toContain(
-      '"reason":"transcript_excerpt_not_verbatim","chunkId":"chunk-1"',
+      '"reason":"provider_output_invalid"',
     )
-    const atLimit = await run(connection(passage), connection(passage), {
+    const atLimit = await run(connection("offered"), connection("offered"), {
       ...repair,
       attempts: 2,
     })
