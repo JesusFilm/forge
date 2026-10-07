@@ -2580,3 +2580,43 @@ reference pool, phase-specific quota gates and object-inclusive restore proof.
 No real GA, model, S3, production or paid-local-data mutation occurred during
 this integration. Live capture, reference comparison and the full 1,031-video
 build remain unstarted under v3, with both existing launch flags disabled.
+
+## October 8 partial capture and recovery telemetry
+
+Published integration `c7e2768e3` passed the complete CI gate. The local schema
+upgrade applied only migrations 0139–0141 after a disposable-clone rehearsal;
+the protected full backup and all 21 preexisting table digests were verified.
+
+The new v3 generation `actual-nicodemus-ga-capture-reference-20261007-v3`
+remains incomplete after two capture attempts. Native and protected receipts
+reconcile 148 settled GA attempts: 138 successful and 10 failed, zero pending.
+There are no model attempts, source claims or sealed objects. The first attempt
+stopped on a qualification timeout. The second saved 107 start-report pages
+(53,500 rows of 152,304 declared), then exhausted the existing bounded retries
+at offset 53,500. No referrer pages or second verification pass were acquired.
+The final quota probe remained above every admission floor. Earlier receipts
+record only `analytics_unavailable`; they cannot establish the final HTTP code.
+
+Protected attempt manifests are SHA-256
+`8ee1636d0349b4d199efc62c2ec85888474d91698da433556928173a61284aa5`
+and `0bd35b25b5a62a4e039d53c7d6dfddbff358b03bd3654ceb3d6e1e71880cb820`.
+The independent staged-page backup contains 108 files / 2,570,816 bytes with
+manifest SHA-256
+`ce916e6c8f289cba8ff7404ceb6c9c6de75235c304eacb3ea181e08c3bc5fb42`.
+Original staging remains available for journal-validated continuation. Neither
+prior paid generation nor its decisions were rewritten.
+
+Worker commit `4ac6ffa14` adds bounded `ga_http_<status>` receipts and
+`ga_timeout` only when the request's aborted signal proves that timeout.
+Original responses/errors, query bodies, pagination, retries and generation
+identities are unchanged. Root Standards and Spec review found no outstanding
+issue. Root validation passes 18 focused Mastra cases and the native PostgreSQL
+capture/sealed-resume case, including no GA access during sealed model work.
+The deep-resume regression saves 107 pages, rejects corrupt saved bytes, resumes
+at offset 53,500, rejects second-pass drift, then verifies all pages before seal.
+Worker validation also passed 102 precomputed cases, typecheck and scoped lint.
+
+All paid phase flags remain disabled pending executable pin refresh and fresh
+storage admission. The capture, clone restore, reference comparison and full
+1,031-video build are still incomplete. Public experiment activation remains a
+separate operation.

@@ -1179,13 +1179,18 @@ export async function recordHistoryAttempt(input: {
   try {
     response = await (input.fetchImpl ?? fetch)(input.url, input.init)
   } catch (error) {
+    const timedOut =
+      input.init?.signal?.aborted === true &&
+      input.init.signal.reason === error &&
+      error instanceof DOMException &&
+      error.name === "TimeoutError"
     parsed(
       historyReceiptSchema,
       await input.ingest({
         action: "history_call",
         ...common,
         status: "failed",
-        errorCode: "analytics_unavailable",
+        errorCode: timedOut ? "ga_timeout" : "analytics_unavailable",
         finishedAt: new Date().toISOString(),
       }),
     )
@@ -1197,7 +1202,16 @@ export async function recordHistoryAttempt(input: {
       action: "history_call",
       ...common,
       status: response.ok ? "succeeded" : "failed",
-      ...(response.ok ? {} : { errorCode: "analytics_unavailable" }),
+      ...(response.ok
+        ? {}
+        : {
+            errorCode:
+              Number.isInteger(response.status) &&
+              response.status >= 100 &&
+              response.status <= 599
+                ? `ga_http_${response.status}`
+                : "analytics_unavailable",
+          }),
       finishedAt: new Date().toISOString(),
     }),
   )

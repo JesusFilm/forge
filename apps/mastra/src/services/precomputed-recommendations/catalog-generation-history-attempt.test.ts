@@ -262,10 +262,108 @@ describe("GA report attempt accounting", () => {
       .map(([call]) => call as Record<string, unknown>)
       .filter((call) => call.action === "history_call")
     expect(receipts.map((call) => call.status)).toEqual(["failed", "succeeded"])
+    expect(receipts[0]?.errorCode).toBe("ga_http_503")
     expect(receipts.every((call) => !Object.hasOwn(call, "costUsd"))).toBe(true)
     expect(
       receipts.every((call) => !Object.hasOwn(call, "bytesProcessed")),
     ).toBe(true)
+  })
+
+  it("records an aborted request timeout without retrying or changing the thrown error", async () => {
+    const controller = new AbortController()
+    const timeout = new DOMException("request timed out", "TimeoutError")
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as { action: string; callId?: string }
+      return call.action === "history_call_start"
+        ? { state: "pending", callId: call.callId }
+        : { receiptStored: true }
+    })
+    const physical = vi.fn(async () => {
+      controller.abort(timeout)
+      throw timeout
+    }) as typeof fetch
+    await expect(
+      recordHistoryAttempt({
+        ingest,
+        generationId: "generation-one",
+        generationInputDigest: "a".repeat(64),
+        stage: "snapshot_page",
+        requestDigest: "b".repeat(64),
+        url: new URL("https://analyticsdata.googleapis.com/v1beta/report"),
+        init: { method: "POST", signal: controller.signal },
+        fetchImpl: physical,
+      }),
+    ).rejects.toBe(timeout)
+    const receipts = ingest.mock.calls
+      .map(([call]) => call as Record<string, unknown>)
+      .filter((call) => call.action === "history_call")
+    expect(physical).toHaveBeenCalledOnce()
+    expect(receipts).toHaveLength(1)
+    expect(receipts[0]).toMatchObject({
+      status: "failed",
+      errorCode: "ga_timeout",
+    })
+  })
+
+  it("records HTTP 429 without retrying the physical request", async () => {
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as { action: string; callId?: string }
+      return call.action === "history_call_start"
+        ? { state: "pending", callId: call.callId }
+        : { receiptStored: true }
+    })
+    const physical = vi.fn(async () => new Response("", { status: 429 }))
+    await expect(
+      readGaWatchStartAggregatePage({
+        ...pageInput,
+        fetchImpl: (url, init) =>
+          recordHistoryAttempt({
+            ingest,
+            generationId: "generation-one",
+            generationInputDigest: "a".repeat(64),
+            stage: "snapshot_page",
+            requestDigest: "b".repeat(64),
+            url,
+            init,
+            fetchImpl: physical,
+          }),
+      }),
+    ).rejects.toMatchObject({ code: "analytics_unavailable" })
+    expect(physical).toHaveBeenCalledOnce()
+    expect(
+      ingest.mock.calls
+        .map(([call]) => call as Record<string, unknown>)
+        .find((call) => call.action === "history_call"),
+    ).toMatchObject({ status: "failed", errorCode: "ga_http_429" })
+  })
+
+  it("keeps an unrelated TimeoutError generic when the request signal did not abort", async () => {
+    const timeout = new DOMException("unrelated timeout", "TimeoutError")
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as { action: string; callId?: string }
+      return call.action === "history_call_start"
+        ? { state: "pending", callId: call.callId }
+        : { receiptStored: true }
+    })
+    await expect(
+      recordHistoryAttempt({
+        ingest,
+        generationId: "generation-one",
+        generationInputDigest: "a".repeat(64),
+        stage: "snapshot_page",
+        requestDigest: "b".repeat(64),
+        url: new URL("https://analyticsdata.googleapis.com/v1beta/report"),
+        init: { method: "POST", signal: new AbortController().signal },
+        fetchImpl: async () => {
+          throw timeout
+        },
+      }),
+    ).rejects.toBe(timeout)
+    expect(
+      ingest.mock.calls
+        .map(([call]) => call as Record<string, unknown>)
+        .find((call) => call.action === "history_call"),
+    ).toMatchObject({ status: "failed", errorCode: "analytics_unavailable" })
   })
 
   it("renews a long source read before every page and stops on a stale lease", async () => {

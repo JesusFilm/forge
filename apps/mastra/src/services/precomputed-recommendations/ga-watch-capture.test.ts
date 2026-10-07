@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, unlink } from "node:fs/promises"
+import { mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -301,6 +301,119 @@ describe("GA Watch aggregate capture", () => {
         return body.dimensions[0]?.name === "pagePath" && body.limit === "500"
       })
       expect(startCaptureCalls).toHaveLength(2)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("resumes after 107 committed start pages and rejects saved-page corruption or verification drift", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "ga-capture-deep-resume-"))
+    const fetchImpl = gaFixtureFetch()
+    const base = captureInput(directory, fetchImpl)
+    const startOffsets: number[] = []
+    let interruptAtNextPage = true
+    let driftOnVerification = false
+    const input = {
+      ...base,
+      createReader: (
+        rangeStart: string,
+        rangeEnd: string,
+        stage: "qualification" | "snapshot_page",
+      ) => {
+        const reader = base.createReader(rangeStart, rangeEnd)
+        if (stage !== "snapshot_page") return reader
+        return {
+          ...reader,
+          async readWatchStartsPage(page: { offset: number; limit: number }) {
+            startOffsets.push(page.offset)
+            if (interruptAtNextPage && page.offset === 53_500) {
+              interruptAtNextPage = false
+              throw new Error("simulated_start_page_interruption")
+            }
+            const rows = Array.from(
+              { length: Math.min(page.limit, 53_501 - page.offset) },
+              (_, index) => {
+                const identity = page.offset + index
+                return {
+                  pagePath: `/watch/target-${identity}.html/english.html`,
+                  mediaComponentId: "media",
+                  starts: identity === 0 ? (driftOnVerification ? 4 : 3) : 0,
+                  rowIdentityDigest: identity.toString(16).padStart(64, "0"),
+                }
+              },
+            )
+            return {
+              provider: "ga_data_api" as const,
+              status: "unqualified" as const,
+              propertyId: "320198532",
+              rangeStart,
+              rangeEnd,
+              rows,
+              rowCount: 53_501,
+              nextOffset:
+                page.offset + rows.length < 53_501
+                  ? page.offset + rows.length
+                  : null,
+              requestCount: 1,
+              propertyTimeZone: "America/New_York",
+              reportLimitations: [],
+              sourceAvailableAfter: null,
+              truncatedDateRanges: [],
+              truncationTypes: [],
+              canonicalMapping: "unverified" as const,
+              orderedTransitions: "unavailable" as const,
+              botFiltering: "unknown" as const,
+              snapshotConsistency: "not_frozen" as const,
+            }
+          },
+        }
+      },
+    }
+    try {
+      await expect(captureGaWatchAggregates(input)).rejects.toThrow(
+        "simulated_start_page_interruption",
+      )
+      const journal = JSON.parse(
+        await readFile(join(directory, "journal.json"), "utf8"),
+      ) as {
+        starts: {
+          expectedTotal: number
+          complete: boolean
+          pages: { path: string; pageOffset: number }[]
+        }
+      }
+      expect(journal.starts.expectedTotal).toBe(53_501)
+      expect(journal.starts.complete).toBe(false)
+      expect(journal.starts.pages).toHaveLength(107)
+      expect(journal.starts.pages.at(-1)?.pageOffset).toBe(53_000)
+
+      const savedPath = journal.starts.pages[0]!.path
+      const savedBytes = await readFile(savedPath)
+      await writeFile(savedPath, "corrupt")
+      const beforeCorruptResume = startOffsets.length
+      await expect(captureGaWatchAggregates(input)).rejects.toMatchObject({
+        code: "ga_capture_corrupt_block",
+      })
+      expect(startOffsets).toHaveLength(beforeCorruptResume)
+      await writeFile(savedPath, savedBytes)
+
+      const beforeDriftResume = startOffsets.length
+      driftOnVerification = true
+      await expect(captureGaWatchAggregates(input)).rejects.toMatchObject({
+        code: "analytics_incomplete",
+      })
+      expect(startOffsets.slice(beforeDriftResume)).toEqual([53_500, 0])
+      await expect(
+        readFile(join(directory, "artifact.bin")),
+      ).rejects.toMatchObject({ code: "ENOENT" })
+
+      driftOnVerification = false
+      const beforeSuccessfulResume = startOffsets.length
+      const sealed = await captureGaWatchAggregates(input)
+      expect(sealed.header.verification).toBe("two_matching_passes")
+      expect(startOffsets.slice(beforeSuccessfulResume)).toEqual(
+        Array.from({ length: 108 }, (_, index) => index * 500),
+      )
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
