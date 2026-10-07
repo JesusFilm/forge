@@ -620,6 +620,18 @@ export async function validatePrecomputedChoices(
   const seenTargets = new Set<string>()
   const seenRanks = new Set<string>()
   const kept = [source]
+  const relatives = await tx.videoRelation.findMany({
+    where: {
+      parentId: { in: videoIds },
+      childId: { in: videoIds },
+    },
+    select: { parentId: true, childId: true },
+  })
+  const pairKey = (a: string, b: string) =>
+    JSON.stringify(a < b ? [a, b] : [b, a])
+  const relatedPairs = new Set(
+    relatives.map((item) => pairKey(item.parentId, item.childId)),
+  )
   const titleForIdentity = (video: (typeof videos)[number]) =>
     video.locales.find((locale) => locale.locale === "en" && locale.title)
       ?.title ?? video.locales.find((locale) => locale.title)?.title
@@ -637,10 +649,23 @@ export async function validatePrecomputedChoices(
       throw new PrecomputedRecommendationError("invalid", "Duplicate rank")
     seenRanks.add(rankKey)
     for (const prior of kept) {
+      const targetTitle = titleForIdentity(target)
+      const priorTitle = titleForIdentity(prior)
+      const duplicateReason = videoIdentityDuplicateReason(
+        { videoCoreId: target.coreId, videoTitle: targetTitle },
+        { videoCoreId: prior.coreId, videoTitle: priorTitle },
+      )
+      // A film core ID can prefix its distinct-titled chapter IDs. Their
+      // explicit parent/child relation distinguishes this from a format copy.
       if (
-        videoIdentityDuplicateReason(
-          { videoCoreId: target.coreId, videoTitle: titleForIdentity(target) },
-          { videoCoreId: prior.coreId, videoTitle: titleForIdentity(prior) },
+        duplicateReason &&
+        !(
+          duplicateReason === "core_prefix" &&
+          target.coreId !== prior.coreId &&
+          targetTitle &&
+          priorTitle &&
+          targetTitle !== priorTitle &&
+          relatedPairs.has(pairKey(target.id, prior.id))
         )
       )
         throw new PrecomputedRecommendationError(
@@ -663,18 +688,13 @@ export async function validatePrecomputedChoices(
     }
   }
 
-  const relatives = await tx.videoRelation.findMany({
-    where: {
-      OR: [
-        { parentId: sourceVideoId, childId: { in: videoIds } },
-        { childId: sourceVideoId, parentId: { in: videoIds } },
-      ],
-    },
-    select: { parentId: true, childId: true },
-  })
   const relatedIds = new Set(
-    relatives.map((item) =>
-      item.parentId === sourceVideoId ? item.childId : item.parentId,
+    relatives.flatMap((item) =>
+      item.parentId === sourceVideoId
+        ? [item.childId]
+        : item.childId === sourceVideoId
+          ? [item.parentId]
+          : [],
     ),
   )
   for (const item of choices) {

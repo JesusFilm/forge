@@ -33,6 +33,12 @@ full build awaits the bounded real-model retrieval comparison: the exhaustive
 implementation requires at least 53,612 plan/discovery calls before individual
 judgments, versus 4,128 with the reviewed selected-content retrieval policy. The spec
 permits catalog-wide retrieval without requiring exhaustive all-pairs reasoning.
+The first retrieval benchmark source exposed an overly broad core-prefix
+duplicate check at its final save. Fix `e7a30b4ae` preserves the allowed
+chapter/parent-film links while retaining real duplicate rejection; all 28
+related native cases pass on the combined root checkout. Its 38 paid responses
+and $2.51959 known charges remain saved for replay. Two further benchmark
+sources and the bounded reference comparison still precede the full build.
 The local Admin preview served the saved pilot after correcting PrismaPg's
 selected-schema handling. Local Chromium verified the Admin review, Watch card,
 successful selection and navigation to the target. Temporary gateways on the

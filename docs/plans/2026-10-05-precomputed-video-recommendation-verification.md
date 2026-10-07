@@ -2013,3 +2013,33 @@ The clean Expo repair worktree was removed after its commit was integrated
 and its separate PR merged, freeing approximately 203 MiB beyond the earlier
 2.2 GiB cache cleanup. Its branch and shared dependencies were preserved.
 The catalog database remains in use by the bounded real-model benchmark.
+
+## October 7 real benchmark chapter/film regression
+
+The first benchmark source reached its final save after 38 costed Astra
+responses, with $2.51959 known model charges. The durable ledger contains 37
+successful outcomes and one evidence-invalid outcome that was repaired; GA
+recorded 25 HTTP attempts including two earlier timeouts. The final failure was
+Admin's source-level `Duplicate Video content` check, not a failed model judgment.
+The chapter `9_0-TheSavior5518` and parent film `9_0-TheSavior` share a core-ID
+prefix despite having distinct published titles and a direct catalog relation.
+Four other accepted chapter/film pairs had the same false-positive pattern.
+The accepted specification explicitly permits these useful relationships.
+
+Worker fix `e7a30b4ae` narrows the exception to distinct core IDs, distinct
+published titles and direct parent/child relations. Exact-core, equal-title and
+unrelated-prefix duplicates remain rejected; the shared search dedup helper is
+unchanged. Added-viewing-value evidence remains required only for choices
+directly related to the source, including when two other recommended targets
+are related to each other. The combined root checkout passed all 15 contract
+and 13 durable-build native cases. Worker Admin typecheck, lint, format and
+normal hooks also passed. Standards and Spec review found no remaining issue
+after correcting the expanded relation query's source-only evidence check.
+Log: `20261007-chapter-dedup-integrated-native.log`.
+
+The saved source can be replayed through the corrected contract without
+repeating its model calls. The benchmark still has two further sources and
+the bounded reference comparison to complete; this is not a full catalog
+cost/coverage report. Protected backups include its interrupted receipts and
+a consistent precomputed-table archive, supplementing the previously restored
+full catalog archive. No raw reservation or paid record was reset.
