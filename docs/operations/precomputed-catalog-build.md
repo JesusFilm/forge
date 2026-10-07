@@ -13,7 +13,15 @@ has recommendations. An actual first run requires an authorized paid OpenRouter
 key for `openai/gpt-6-astra`, `ADMIN_RECOMMENDATION_CATALOG_URL`,
 `ADMIN_RECOMMENDATION_INGEST_URL`, `ADMIN_MASTRA_RECOMMENDATION_API_KEY`,
 `MASTRA_SERVICE_API_KEYS`, `PRECOMPUTED_GA4_PROPERTY_ID=320198532`, and
-`PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL` with ADC impersonation access. The
+`PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL` with ADC impersonation access or the
+optional sealed `PRECOMPUTED_GA4_CREDENTIALS_JSON` for that exact identity.
+Explicit credentials request only `analytics.readonly`; invalid credentials
+fail without falling back to another identity. On October 7 the existing Mastra
+identity `forge-seo-production@jfplab.iam.gserviceaccount.com` passed both a
+scoped live report and this reader's historical coverage read for property
+`320198532`. Its existing secret-manager value can be referenced by the new
+configuration; no new key or user login is needed. These are real read checks,
+not a completed build or a deployment of this branch. The
 Admin ingest bearer and Mastra service bearer are separate credentials. Use the
 normal PR-to-main deployment path; this procedure does not deploy code.
 

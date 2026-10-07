@@ -173,8 +173,12 @@ instruction can promote the experiment. Preserve the incumbent for rollback.
   provider fallback and SDK retries, and retain explicit usage accounting.
 - Treat Video as content identity, distinct from Dub and Video Edition. Use
   canonical source/target identity and existing eligibility rules.
-- Establish a declared catalog/input cutoff. Read transcripts in available
-  languages and metadata; derive English working summaries as needed. Discover
+- Establish a declared catalog/input cutoff. On October 7 the owner approved
+  selecting one complete transcript per Video Edition: English when available,
+  otherwise a complete non-English transcript. Keep every eligible Video and
+  every passage of each selected transcript; record the selection policy,
+  selected identities/languages, and incomplete or unavailable editions.
+  Read this material and metadata; derive English working summaries as needed. Discover
   across all eligible catalog content and re-read supporting passages before
   accepting a transcript-backed judgment.
 - Discovery may use existing retrieval and summaries to make catalog-scale
@@ -306,6 +310,12 @@ instruction can promote the experiment. Preserve the incumbent for rollback.
   treatment of repeated visits, sample/duration requirements, detectable uplift,
   late-event cutoff, and measurement-health criteria. Thresholds are not invented
   in this spec and remain an explicit prelaunch decision.
+  On October 7 the owner selected a one-month test followed by reevaluation.
+  Implement one calendar month in UTC, preserving the start time and clamping
+  the day to the target month's last day. At the cutoff, stop new experiment
+  admissions and serve the incumbent; retain the fixed late-event cutoff and
+  require manual reevaluation. This duration decision does not approve fixture
+  statistical thresholds or automatic promotion.
 - Store versioned evaluation revisions containing both arms' visit/click counts,
   CTR and uncertainty, exclusions, card CTR, fallback/measurement health,
   cohort/window, generation/control identity, stopping-rule version, and

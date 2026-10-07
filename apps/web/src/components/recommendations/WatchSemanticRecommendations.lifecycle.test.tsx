@@ -31,6 +31,17 @@ vi.mock("next/link", () => {
 vi.mock("@/components/watch/MuxHoverPreview", () => ({
   MuxHoverPreview: () => null,
 }))
+vi.mock("@/components/recommendations/WatchRecommendationVerification", () => ({
+  WatchRecommendationVerification: ({
+    onToken,
+  }: {
+    onToken: (token: string) => void
+  }) => (
+    <button type="button" onClick={() => onToken("verified-token")}>
+      Verify recommendations
+    </button>
+  ),
+}))
 
 import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
 import {
@@ -102,6 +113,64 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     ).toMatch(
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
     )
+  })
+
+  it("requests verification only after an active signal and retries the same visit", async () => {
+    let deliveryCount = 0
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith("/api/recommendations")) {
+          deliveryCount += 1
+          return deliveryCount === 1
+            ? jsonResponse({
+                delivery: {
+                  ...delivery,
+                  result: "empty",
+                  items: [],
+                  requestId: null,
+                },
+                verificationRequired: true,
+                verificationSiteKey: "watch-site-key",
+              })
+            : jsonResponse({ delivery })
+        }
+        return acceptedEvidenceResponse(init)
+      },
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+    expect(container.textContent).toContain("Verify recommendations")
+    const verify = container.querySelector("button")!
+    act(() => verify.click())
+    await flush()
+    const calls = fetchMock.mock.calls.filter(([input]) =>
+      String(input).endsWith("/api/recommendations"),
+    )
+    expect(calls).toHaveLength(2)
+    const first = calls[0]?.[1] as RequestInit
+    const second = calls[1]?.[1] as RequestInit
+    expect(
+      (second.headers as Record<string, string>)[
+        "x-forge-recommendation-visit-id"
+      ],
+    ).toBe(
+      (first.headers as Record<string, string>)[
+        "x-forge-recommendation-visit-id"
+      ],
+    )
+    expect(JSON.parse(String(second.body)).turnstileToken).toBe(
+      "verified-token",
+    )
+    expect(container.textContent).toContain("Target video")
   })
 
   it.each([-301, 0, 601])(

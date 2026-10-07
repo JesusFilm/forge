@@ -207,6 +207,7 @@ const envSchema = z.object({
     .string()
     .regex(/^[a-z0-9-]+@[a-z0-9-]+\.iam\.gserviceaccount\.com$/u)
     .optional(),
+  PRECOMPUTED_GA4_CREDENTIALS_JSON: z.string().min(1).max(65_536).optional(),
   ADMIN_MASTRA_RECOMMENDATION_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY: z.string().min(1).optional(),
   ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY: z.string().min(1).optional(),
@@ -889,6 +890,9 @@ export const env = envSchema.parse({
   ),
   PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL: emptyToUndefined(
     process.env.PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL,
+  ),
+  PRECOMPUTED_GA4_CREDENTIALS_JSON: emptyToUndefined(
+    process.env.PRECOMPUTED_GA4_CREDENTIALS_JSON,
   ),
   ADMIN_MASTRA_RECOMMENDATION_API_KEY: emptyToUndefined(
     process.env.ADMIN_MASTRA_RECOMMENDATION_API_KEY,

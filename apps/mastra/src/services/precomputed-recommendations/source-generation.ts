@@ -50,6 +50,22 @@ const videoSchema = z.object({
   parentVideoIds: z.array(videoId),
   childVideoIds: z.array(videoId),
   transcriptLanguages: z.array(z.string()),
+  transcriptSelection: z
+    .object({
+      policy: z.literal("english-per-edition-with-complete-fallback-v1"),
+      availableTranscriptCount: z.number().int().nonnegative(),
+      incompleteTranscriptCount: z.number().int().nonnegative(),
+      skippedEditionCount: z.number().int().nonnegative(),
+      selected: z.array(
+        z.object({
+          transcriptId: videoId,
+          videoEditionId: videoId,
+          language: z.string(),
+          totalChunks: z.number().int().positive(),
+        }),
+      ),
+    })
+    .optional(),
   watchRouteIdentity: z
     .object({
       basis: z.literal("current_catalog_cutoff_fenced"),
@@ -131,7 +147,7 @@ const passageSchema = z.object({
   chunkId: videoId,
   excerpt: z.string().trim().min(8).max(240),
 })
-const evidenceSchema = z.discriminatedUnion("basis", [
+const evidenceSchema = z.union([
   z.object({
     basis: z.literal("transcript"),
     passages: z.array(passageSchema).min(1).max(3),
@@ -139,15 +155,7 @@ const evidenceSchema = z.discriminatedUnion("basis", [
   z.object({
     basis: z.literal("metadata"),
     fields: z
-      .array(
-        z.enum([
-          "title",
-          "description",
-          "keywords",
-          "themes",
-          "bibleCitations",
-        ]),
-      )
+      .array(z.enum(["title", "description", "keywords", "bibleCitations"]))
       .min(1)
       .max(5),
   }),
@@ -159,7 +167,7 @@ export const judgmentSchema = z.object({
         kind: z.enum(["direct", "alternative"]),
         relationship: z.string().trim().min(3).max(80),
         reasonEnglish: z.string().trim().min(12).max(600),
-        addedViewingValueEnglish: z.string().trim().min(12).max(600).optional(),
+        addedViewingValueEnglish: z.string().trim().min(12).max(600).nullable(),
         evidence: evidenceSchema,
         strength: z.number().int().min(0).max(100),
       }),
@@ -183,6 +191,26 @@ class SourceGenerationError extends Error {
   constructor(readonly code: SafeFailureCode) {
     super(code)
   }
+}
+
+export type EvidenceValidationFeedback =
+  | {
+      reason: "metadata_field_unavailable"
+      field: "title" | "description" | "keywords" | "bibleCitations"
+    }
+  | { reason: "transcript_chunk_unavailable"; chunkId: string }
+  | { reason: "transcript_excerpt_not_verbatim"; chunkId: string }
+
+class EvidenceValidationError extends SourceGenerationError {
+  constructor(readonly feedback: EvidenceValidationFeedback) {
+    super("provider_invalid_output")
+  }
+}
+
+export function evidenceValidationFeedback(
+  error: unknown,
+): EvidenceValidationFeedback | null {
+  return error instanceof EvidenceValidationError ? error.feedback : null
 }
 
 class MissingGenerationError extends Error {}
@@ -233,18 +261,29 @@ function assertEvidence(
       description: Boolean(candidate.description),
       keywords: candidate.keywords.length > 0,
       bibleCitations: candidate.bibleCitations.length > 0,
-      themes: false,
     }
-    if (judgment.evidence.fields.some((field) => !available[field]))
-      throw new SourceGenerationError("provider_invalid_output")
+    for (const field of judgment.evidence.fields) {
+      if (!available[field])
+        throw new EvidenceValidationError({
+          reason: "metadata_field_unavailable",
+          field,
+        })
+    }
     return
   }
   const byId = new Map(chunks.map((chunk) => [chunk.id, chunk]))
   for (const passage of judgment.evidence.passages) {
     const chunk = byId.get(passage.chunkId)
-    if (!chunk || !chunk.text.includes(passage.excerpt)) {
-      throw new SourceGenerationError("provider_invalid_output")
-    }
+    if (!chunk)
+      throw new EvidenceValidationError({
+        reason: "transcript_chunk_unavailable",
+        chunkId: passage.chunkId,
+      })
+    if (!chunk.text.includes(passage.excerpt))
+      throw new EvidenceValidationError({
+        reason: "transcript_excerpt_not_verbatim",
+        chunkId: passage.chunkId,
+      })
   }
 }
 
@@ -391,7 +430,10 @@ export function createAdminSourceDependencies(inputCutoff?: string): {
           .parse(
             await postAdmin(catalogUrl, key, {
               action: "catalog",
-              limit: 40,
+              // Heavily translated videos have thousands of related rows.
+              // Smaller transport pages preserve the complete catalog while
+              // keeping Admin's transaction and response bounds intact.
+              limit: 10,
               ...input,
             }),
           )
@@ -930,7 +972,8 @@ export async function runPrecomputedSource(
         kind: judgment.kind,
         relationship: judgment.relationship,
         reasonEnglish: judgment.reasonEnglish,
-        addedViewingValueEnglish: judgment.addedViewingValueEnglish,
+        addedViewingValueEnglish:
+          judgment.addedViewingValueEnglish ?? undefined,
         evidence: judgment.evidence,
       }))
     const rank = { direct: 0, alternative: 0 }

@@ -10,6 +10,7 @@ import type { MouseEvent } from "react"
 import type { Route } from "next"
 import { VideoRecommendations } from "@/components/sections/VideoRecommendations"
 import { RecommendationPersonalizationControl } from "@/components/recommendations/RecommendationPersonalizationControl"
+import { WatchRecommendationVerification } from "@/components/recommendations/WatchRecommendationVerification"
 import { useEligibleRecommendationImpression } from "@/components/recommendations/useEligibleRecommendationImpression"
 import type { ExposureVisibilityCapability } from "@/components/recommendations/useEligibleRecommendationImpression"
 import {
@@ -501,6 +502,15 @@ export function WatchSemanticRecommendations({
     requestKey,
     degraded: false,
   })
+  const [verification, setVerification] = useState<{
+    requestKey: string
+    siteKey: string
+    attempt: number
+  } | null>(null)
+  const verificationTokenHandler = useRef<((token: string) => void) | null>(
+    null,
+  )
+  const verificationFailureHandler = useRef<(() => void) | null>(null)
   const [busyState, setBusyState] = useState<{
     requestKey: string
     itemId: string | null
@@ -562,6 +572,9 @@ export function WatchSemanticRecommendations({
     let controller: AbortController | null = null
     let deliveryRetryTimer: number | null = null
     let deliveryDeadlineAt: number | null = null
+    let verificationTimeoutTimer: number | null = null
+    let pendingTurnstileToken: string | null = null
+    let challengeAttempts = 0
     selectionGenerationRef.current += 1
     selectionAttemptRef.current?.controller.abort()
     selectionAttemptRef.current = null
@@ -569,6 +582,9 @@ export function WatchSemanticRecommendations({
     evidenceLedger.current.requestId = null
     evidenceLedger.current.rendered.clear()
     evidenceLedger.current.impressed.clear()
+    setVerification(null)
+    verificationTokenHandler.current = null
+    verificationFailureHandler.current = null
     // StrictMode replays setup/cleanup before the microtask queue drains. The
     // first setup therefore cancels without issuing a state-creating POST.
     void waitForRecommendationActivation(activationController.signal)
@@ -612,6 +628,8 @@ export function WatchSemanticRecommendations({
                 if (attemptRemainingMs <= 0) {
                   throw new RecommendationRuntimeError("deadline")
                 }
+                const turnstileToken = pendingTurnstileToken
+                pendingTurnstileToken = null
                 return recommendationDeliveryJsonWithDeadline(
                   {
                     method: "POST",
@@ -630,6 +648,7 @@ export function WatchSemanticRecommendations({
                       ...(seedMediaSlug ? { seedMediaSlug } : {}),
                       locale,
                       audioLanguageSlug,
+                      ...(turnstileToken ? { turnstileToken } : {}),
                     }),
                     signal: attemptController.signal,
                   },
@@ -651,6 +670,63 @@ export function WatchSemanticRecommendations({
               const envelope = parseEnvelope(
                 (value as { delivery?: unknown }).delivery,
               )
+              const challenge = value as {
+                verificationRequired?: unknown
+                verificationSiteKey?: unknown
+              }
+              if (
+                challenge.verificationRequired === true &&
+                typeof challenge.verificationSiteKey === "string" &&
+                challenge.verificationSiteKey.length > 0 &&
+                challenge.verificationSiteKey.length <= 256 &&
+                challengeAttempts < 2
+              ) {
+                challengeAttempts += 1
+                deliveryDeadlineAt = null
+                verificationFailureHandler.current = () => {
+                  if (!active) return
+                  if (verificationTimeoutTimer != null) {
+                    window.clearTimeout(verificationTimeoutTimer)
+                    verificationTimeoutTimer = null
+                  }
+                  setVerification(null)
+                  verificationTokenHandler.current = null
+                  if (
+                    envelope?.items.length &&
+                    (envelope.result === "served" ||
+                      envelope.result === "fallback")
+                  ) {
+                    setState({ requestKey, status: "ready", envelope })
+                  } else {
+                    setState({ requestKey, status: "unavailable" })
+                  }
+                }
+                verificationTokenHandler.current = (token) => {
+                  if (!active || !token || token.length > 2_048) return
+                  if (verificationTimeoutTimer != null) {
+                    window.clearTimeout(verificationTimeoutTimer)
+                    verificationTimeoutTimer = null
+                  }
+                  pendingTurnstileToken = token
+                  verificationTokenHandler.current = null
+                  verificationFailureHandler.current = null
+                  setVerification(null)
+                  load(attempt)
+                }
+                setVerification({
+                  requestKey,
+                  siteKey: challenge.verificationSiteKey,
+                  attempt: challengeAttempts,
+                })
+                verificationTimeoutTimer = window.setTimeout(
+                  () => verificationFailureHandler.current?.(),
+                  30_000,
+                )
+                return
+              }
+              setVerification(null)
+              verificationTokenHandler.current = null
+              verificationFailureHandler.current = null
               if (!envelope) {
                 setState({ requestKey, status: "unavailable" })
                 return
@@ -707,6 +783,10 @@ export function WatchSemanticRecommendations({
         window.clearTimeout(deliveryRetryTimer)
       }
       controller?.abort()
+      if (verificationTimeoutTimer != null)
+        window.clearTimeout(verificationTimeoutTimer)
+      verificationTokenHandler.current = null
+      verificationFailureHandler.current = null
     }
   }, [audioLanguageSlug, locale, requestKey, seedMediaId, seedMediaSlug])
 
@@ -1011,7 +1091,16 @@ export function WatchSemanticRecommendations({
         aria-busy="true"
         aria-label="Loading recommended videos"
         className="min-h-48 rounded-xl bg-stone-800/40 p-6"
-      />
+      >
+        {verification?.requestKey === requestKey ? (
+          <WatchRecommendationVerification
+            key={verification.attempt}
+            siteKey={verification.siteKey}
+            onToken={(token) => verificationTokenHandler.current?.(token)}
+            onFailure={() => verificationFailureHandler.current?.()}
+          />
+        ) : null}
+      </section>
     )
   }
   if (

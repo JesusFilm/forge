@@ -3,7 +3,11 @@ import { createHash } from "node:crypto"
 import { GoogleAuth, Impersonated } from "google-auth-library"
 import { z } from "zod"
 
-import { requestGoogleJson } from "../google-auth-client"
+import { env } from "../../config/env"
+import {
+  parseGoogleServiceAccountCredentials,
+  requestGoogleJson,
+} from "../google-auth-client"
 import { GA_WATCH_PROPERTY } from "./ga-watch-history-range"
 import { HistoricalAnalyticsError } from "./historical-analytics"
 import type {
@@ -22,6 +26,8 @@ const WATCH_REFERRER_REGEX =
   "^https?://(www\\.)?jesusfilm\\.org/watch(/[^?#]*)?([?#].*)?$"
 const REPORT_PAGE_SIZE = 1_000
 const SNAPSHOT_PAGE_SIZE = 500
+const COVERAGE_REPORT_TIMEOUT_MS = 50_000
+const DETAILED_REPORT_TIMEOUT_MS = 120_000
 const MAX_REPORT_PAGES = 25
 const EVENT_NAMES = [
   "page_view",
@@ -158,6 +164,28 @@ type TokenProvider = () => Promise<
 
 async function defaultTokenProvider(serviceAccountEmail: string) {
   try {
+    if (env.PRECOMPUTED_GA4_CREDENTIALS_JSON) {
+      const project = serviceAccountEmail.match(
+        /@([a-z0-9-]+)\.iam\.gserviceaccount\.com$/u,
+      )?.[1]
+      const credentials = project
+        ? parseGoogleServiceAccountCredentials(
+            env.PRECOMPUTED_GA4_CREDENTIALS_JSON,
+            project,
+          )
+        : null
+      if (!credentials || credentials.client_email !== serviceAccountEmail)
+        return { ok: false as const }
+      // Explicit deployed identity: never fall back to the operator's ADC or
+      // forward caller-controlled token endpoints from the credential JSON.
+      const token = await new GoogleAuth({
+        credentials,
+        scopes: [GA_SCOPE],
+      }).getAccessToken()
+      return token
+        ? { ok: true as const, accessToken: token }
+        : { ok: false as const }
+    }
     const sourceClient = await new GoogleAuth({
       scopes: ["https://www.googleapis.com/auth/cloud-platform"],
     }).getClient()
@@ -383,7 +411,10 @@ async function requestReportPage(input: {
       offset: String(input.offset),
       returnPropertyQuota: true,
     },
-    timeoutMs: 50_000,
+    timeoutMs:
+      input.kind === "monthly" || input.kind === "identified"
+        ? COVERAGE_REPORT_TIMEOUT_MS
+        : DETAILED_REPORT_TIMEOUT_MS,
     maxResponseBytes: 2_097_152,
     maxAttempts: 2,
     fetchImpl: input.fetchImpl,

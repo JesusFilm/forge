@@ -75,8 +75,9 @@ export const recommendationRuntimeMigrationSql = [
 /** Apply after a runtime fixture has its catalog video authority available.
  * The precomputed migration chain references video, so it cannot be part of
  * the catalog-free runtime chain above. Retention tests must install these
- * real roots before calling the current purge. */
+ * real roots before calling the current purge. Migration numbers are shared
+ * with unrelated features; select this chain by name, not numeric range. */
 export const recommendationPrecomputedMigrationSql = readdirSync(migrationRoot)
-  .filter((name) => /^01(28|29|30|31|32|33|34|35|36|37|38|39)_/.test(name))
+  .filter((name) => /^\d{4}_.*precomputed/.test(name))
   .sort()
   .map(scopedMigrationSql)

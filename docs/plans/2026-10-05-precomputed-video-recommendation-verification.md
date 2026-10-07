@@ -1481,3 +1481,265 @@ Final root verification is committed with normal hooks; the PR records the
 published head and CI run. #2575's code/fixture acceptance is verified, while
 live verifier implementation and real deployment/measurement/capacity inputs
 remain incomplete. #2573–#2575, parent #2565 and feat-590 are not marked complete.
+
+## October 7 continuation: deployed GA identity and one-month decision
+
+The owner requested completion of live verification, the real catalog report,
+and capacity work, with a working local demonstration before production merge.
+One month means a UTC calendar month with day clamping, followed by incumbent
+serving and manual reevaluation. Other numeric thresholds remain unapproved.
+Workers A/B resumed from `5c9f38c6f`; the root owns real-input preparation.
+
+The already-deployed Mastra credential for
+`forge-seo-production@jfplab.iam.gserviceaccount.com` successfully read property
+`320198532` using only `analytics.readonly`, restricted to the two approved
+JesusFilm.org hosts and exact `/watch` plus descendants. The actual GA reader
+then passed its historical coverage read through October 4: 4,006,916 reported
+video starts, complete aggregate pagination and an explicitly missing prefix
+before August 6, 2022. This is reporting coverage, not verified raw-event history.
+No credentials or raw viewer records are in these receipts.
+
+Mastra now accepts optional sealed `PRECOMPUTED_GA4_CREDENTIALS_JSON`, bound to
+the configured service-account email/project. The existing credential parser
+strips arbitrary token endpoints. Malformed or mismatched explicit credentials
+fail closed, without falling back to ADC; absent credentials preserve operator
+impersonation. The focused tests passed 40 cases, the full Mastra suite passed
+3,267 with 44 configured skips, and typecheck/lint passed. A failing credential
+test preceded implementation. Sequential Standards and Spec review against
+`5c9f38c6f` found no remaining defect in this auth change; live readings verify
+the external boundary beyond mocked token transport.
+
+On October 6 at 20:30:58 UTC the three GA configuration values were staged in
+production Mastra using `--skip-deploys`. The credential uses Railway's reference
+to the existing `SEO_GOOGLE_CREDENTIALS_JSON`; read-back verified resolution and
+the exact property/principal. No deployment or experiment activation was
+triggered. The new code still requires the normal reviewed PR deployment.
+
+Capacity readings at 20:19:05 and 20:19:12 UTC measured 26,275,043,007 database
+bytes and 22,404,128,768 free PGDATA bytes on cluster `7655660030928953395`.
+A later 20:31:40 snapshot had 22,398,713,856 free bytes. These point-in-time
+observations are not an approved build projection. The separate storage owner
+reports 86 failed October 6 scheduled retention attempts; its ongoing repair
+remains separate from this work, and no purge/cleanup was triggered here.
+
+Sanitized receipts under `/tmp/forge-feat-590-orchestration`:
+`20261007-existing-runtime-ga-access.json`,
+`20261007-deployed-credential-reader.json`,
+`20261007-ga-staged-configuration.json`,
+`20261007-production-pgdata-capacity.txt`, and
+`20261007-{ga-auth-focused,mastra-typecheck,mastra-full,auth-lint}.log`.
+
+## October 7 real catalog and input-policy verification
+
+The read-only production content snapshot at `2026-10-06T20:48:05.001Z`
+completed export at 20:58:48 UTC and import into the isolated local
+`forge_capacity.catalog_producer_actual_20261007` schema at 21:01:24 UTC.
+It contains public catalog metadata and transcript text, with no viewer data,
+embeddings, or production writes. Its 280,046 stored chunks match the declared
+counts of all 164,639 transcript records. The Admin catalog boundary confirms
+1,031 eligible Videos.
+
+A 40-video transport page repeatedly exceeded the existing five-second
+transaction deadline on translated films, including after local ANALYZE.
+Ten-video pages traversed the same complete catalog successfully without
+widening production deadlines. The producer now requests those smaller pages.
+Seventy-four real chunks exceeded the initial 5,000-character guard (largest:
+8,035); the bounded guard now permits 8,192 characters without truncation.
+A failing native boundary test preceded the change; long-text success and
+oversized rejection both pass.
+
+The owner approved complete English per Video Edition with complete
+non-English fallback. The native boundary test first returned every translation
+and failed, then passed with the new deterministic selection: English first,
+otherwise language and transcript ID in code-point order. Every stored passage
+of a selected transcript is returned. Incomplete transcripts are ineligible,
+and selection identities, counts and skipped editions are explicit. A fresh
+full catalog read selects 1,226 complete transcripts and 2,686 chunks, including
+three non-English fallbacks, with zero skipped editions that have transcript
+records. All 1,031 eligible Videos remain. Six native catalog cases pass.
+
+Sequential Standards and Spec review of the catalog-policy diff found one
+provenance defect: a zero-chunk transcript was excluded but not counted as
+incomplete. A native failing assertion reproduced it; the summary now counts
+it as incomplete and reports its skipped edition. Admin and Mastra typechecks
+and scoped ESLint passed. The review found no remaining standards or spec
+finding in this bounded input-policy change.
+
+The first real two-video source pilot used GA and exact Astra via OpenRouter.
+Summary, history-plan and discovery calls succeeded and reported $0.0827775
+in total. The final judgment was rejected with HTTP 400 because the generated
+evidence schema contains unsupported `oneOf`. The generation is correctly
+failed with no accepted connections. A minimal real request reproduced
+`invalid_json_schema`; this is an implementation defect being fixed, not a
+credential or model-access blocker. These pilot costs are not a full catalog
+cost report, and failed/unknown-cost attempts remain explicit.
+
+Artifacts: `/tmp/forge-feat-590-real-catalog-20261007/{export-receipt,import-receipt,catalog,transcript-dimensions,two-video-pilot}.json`;
+`/tmp/forge-feat-590-orchestration/20261007-{imported-catalog-inspection,selected-catalog-inspection,language-selection-red,language-selection-green,catalog-bounds-final}.log`;
+`20261007-astra-judgment-schema-error.json` in the same orchestration directory.
+
+PR #2578's published `9d2ff9944` checks have 42 successes and three skips;
+only upstream Expo patch drift and its dependent CI gate fail. The separate
+maintenance PR https://github.com/JesusFilm/forge/pull/2599 aligns seven Expo
+packages. Commit `3b2063d60` passed normal hooks and all 26 applicable CI checks,
+including Expo Doctor, Mobile, Auth and TV checks (six configured skips).
+It has not been merged and publishes no Mobile binary.
+
+## October 7 durable real-data pilot and preview recovery
+
+The provider schema correction is integrated as `0636bf861`: evidence uses
+`anyOf`, the strict-schema optional explanation is nullable on the wire, and
+null is normalized before persistence. The old failed source pilot remains
+visible. The new `actual-durable-two-video-pilot-20261007-v1` completed both
+sources with two accepted connections through native Admin durable ingestion.
+Eight model calls reported 14,383 input and 1,394 output tokens, with $0.2494275
+known cost and no unknown model charges. Thirteen GA request receipts have
+unknown byte/cost figures; those are not zero-cost claims. All 29 source rows
+mapped, with three qualified referrer-navigation events. The successful resumed
+session ran from 21:42:54 to 21:47:02 UTC on October 6; durable elapsed time
+includes an earlier authentication interruption.
+
+The full `actual-full-catalog-20261007-v1` manifest includes all 1,031 Videos.
+Its first source saved summary, plan and discovery checkpoints, then two GA
+report calls reached their 50-second deadlines. It remains incomplete with zero
+completed sources; the two successful model calls reported $0.161118. Replaying
+the same request digest later retrieved all 78 rows across two pages in 26.54
+seconds. A bounded offline timeout correction is being validated before resume.
+This is not a completed full-catalog cost or production capacity report.
+
+The local full-build capacity observation at 21:47:50 UTC measured 6,468,198,400
+available PGDATA bytes, a 5 GB reserve and 760,135,680 projected build bytes.
+Its sample is the total physical precomputed relations after two completed
+pilot sources, including shared/empty-table overhead, scaled conservatively.
+It is not an attributable per-generation allocation or production admission.
+
+The real Next Admin preview exposed a PrismaPg boundary defect: `schema=` in
+the database URL did not select the model-query namespace. Native tests of both
+application pools returned null from public instead of the isolated seeded row.
+The adapter now receives the selected schema explicitly, while preserving the
+raw libpq URI and the existing 10/5 pool budgets. The authenticated local pilot
+page then returned HTTP 200 and rendered complete status, both saved connections,
+provider charges, GA qualification and transcript-backed explanations. These
+are HTTP-rendered observations; browser visual verification remains pending
+because the browser surface disconnected at the interruption. The temporary
+loopback-only demo sign-in harness is excluded from commits and deployment.
+
+Receipts are under `/tmp/forge-feat-590-real-catalog-20261007`:
+`pilot-durable-report.json`, `pilot-durable-calls.jsonl`,
+`full-durable-report.json`, `full-durable-calls.jsonl` and capacity observations.
+Native red/green and local server logs are under
+`/tmp/forge-feat-590-orchestration/20261007-*`.
+
+## October 7 GA recovery, strict-evidence failure and host preview
+
+GA timeout source `08f5b05c9` is integrated as `de5a20bf2`. Detailed Watch
+start/referrer reports receive a bounded 120-second timeout with two attempts;
+summary/coverage reports retain 50 seconds. The same failed request digest was
+replayed with all 78 rows. Mastra typecheck, all 3,264 tests, scoped lint/format,
+and normal hooks passed. The resumed actual run got through the former timeout,
+including a separately recorded HTTP 502 retry after approximately 60 seconds.
+
+The first two full-catalog sources subsequently failed `provider_invalid_output`
+after paid candidate judgments returned. This was local strict validation after
+successful transport, not GA access or provider JSON-schema refusal. The durable
+failure records retained the charges but intentionally removed failed source
+checkpoints and provisional choices; the exact invalid field/excerpt is not
+recoverable from those receipts. Bounded repair and compact reason codes are
+being added without relaxing evidence acceptance.
+
+The operator stopped the runner and cancelled `actual-full-catalog-20261007-v1`
+through the authenticated durable service. Its final audit has 34 model call
+reservations, $2.3197855 known cost, one unresolved call with unknown charge,
+30 completed GA HTTP receipts, and no completed source. The unknown call was
+in flight at process stop and is not recorded as free. The saved two-video pilot
+is still complete and unchanged. A future full attempt requires a new generation;
+no failed-source row or cost ledger was reset. The scratch runner now handles
+termination by finishing the current receipt/checkpoint and stopping before
+reserving another model or GA call. No further paid run occurred during diagnosis.
+
+PrismaPg selected-schema regression checks pass 5/5, including both real app
+pools and libpq multi-host URI preservation; integrated as `cb3a62001` with
+normal hooks. Local Watch playback was enriched for the two pilot Videos only
+using six public production HLS URLs, with no model-input timestamp changes or
+production writes. The real route manifest and Watch page then returned 200.
+Authenticated tester exchange and Web-to-Admin GraphQL preview delivery served
+the saved Samaritan Woman choice from Nicodemus. Two warm HTTP API responses
+were 344 and 218 ms. The initial development compile exceeded the preview
+budget and correctly attributed incumbent fallback. These are development HTTP
+observations, not production rendering performance or a visual browser check.
+
+At the owner's request, a temporary gateway exposes only GET review/static-asset
+paths over the existing Tailscale network, checks the connecting Tailscale user,
+and expires after two hours. Its local Admin session stays inside the gateway.
+The remotely addressable review returned 200 with the pilot, charges and target
+visible. No public internet listener, production activation or serving mutation
+was enabled. Browser tooling still has no connected surface; owner visual review
+remains pending.
+
+Additional receipts: `full-durable-stopped-report.json`,
+`full-durable-cancelled-report.json`, `full-resume-code-provenance.json`, and
+`local-playback-enrichment.json` under the real-catalog scratch directory;
+`20261007-local-watch-delivery.jsonl` and `tailnet-preview.html` under the
+orchestration scratch directory. The resume used the tested worker reader with
+an explicit deployed-identity token provider; integration additionally contains
+the sealed-credential default-provider branch, which this runner did not call.
+
+## October 7 durable evidence repair and actual browser walkthrough
+
+Worker A's `0784a97bf` and `0cfa3343f` are integrated as `aeb55b991` and
+`e4ecc23ad`. Unsupported `themes` metadata evidence is no longer advertised.
+Candidate judgment retries once after invalid evidence and supplies only a
+bounded reason plus field or chunk identity. It never rewrites a quote to make
+it pass. Each charged invalid answer remains a separate cost receipt. Root
+review found that the original local attempt counter reset after interruption;
+the follow-up persists its count and feedback atomically with that receipt.
+A resumed candidate consumes its remaining attempt, or makes no further call
+when both attempts were used. Prompt provenance advances to version 3. Existing
+failed generations and their charges remain unchanged.
+
+Worker validation: Mastra 3,266 passed and 44 skipped; Admin native durable-build
+lifecycle 13/13; Admin and Mastra typechecks, focused repair/resume cases, scoped
+lint, formatting and normal commit hooks passed. Root Standards and Spec review
+found no remaining issue in the bounded repair after the durability follow-up.
+
+A read-only throughput audit found 1,031 sources times 26 catalog pages, with
+one analytics-plan and one discovery call per page: at least 53,612 model calls
+before source summaries or candidate judgments. Only two pages have measured
+prompt sizes and latency; those do not establish a full-runtime or cost forecast.
+The next full paid run remains held while existing retrieval is audited. The
+spec permits summaries and retrieval over the eligible catalog and does not
+promise exhaustive all-pairs inference; all eligible sources and complete
+selected source/target transcripts remain required.
+
+The user requested a host-accessible tunnel. Owner-identity-checked Tailscale
+listeners on ports 3315 (Admin) and 3316 (Watch) serve the isolated pilot for two
+hours. Admin permits read-only review and assets; Watch permits the two pilot
+videos and local recommendation/profile/evidence interactions. The local Admin
+session and tester capability stay in gateway memory. The development proxies
+forward static assets and HMR, provide UUID compatibility using browser
+`getRandomValues`, and supply local Fetch Metadata only after checking the
+owner's tailnet identity and exact request Origin. These temporary HTTP-origin
+accommodations are not production human-verification or tracking-loss evidence.
+
+Local headless Chromium inspected both actual application pages. The Watch row
+served generation `actual-durable-two-video-pilot-20261007-v1`, displayed the
+Samaritan Woman card, accepted its selection with HTTP 200, and navigated to
+`/watch/jesus-speaks-to-a-samaritan-woman.html`. No Watch JavaScript exception,
+console error or failed HTTP response occurred in the final click-through run;
+media/telemetry requests aborted by navigation remain visible separately.
+
+The actual pilot exposed a small Admin rendering defect: two excerpts from the
+same transcript chunk shared a React key. Keys now distinguish each immutable
+passage occurrence, preserving all excerpts. The canonical Admin URL then
+rendered without JavaScript/console/network errors or horizontal overflow.
+Development DOMContentLoaded was approximately 792 ms for Admin and 354 ms for
+Watch in these observations; these are local development measurements, not
+production Web Vitals or a comparative production performance guarantee.
+The owner has the links, but their review and production merge remain pending.
+
+Receipts under `/tmp/forge-feat-590-orchestration`:
+`tailnet-browser-report.json`, `tailnet-browser-admin-report.json`,
+`tailnet-browser-watch-report.json`, `tailnet-admin-desktop.png`,
+`tailnet-watch-desktop.png`, and `tailnet-watch-click-destination.png`.
+The scratch gateways, preview session route and demo entry page are excluded
+from commits and deployment.

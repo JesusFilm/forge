@@ -47,6 +47,36 @@ const cursor = z
     candidateIndex: nonnegative.optional(),
   })
   .strict()
+const candidateRepairFeedback = z.discriminatedUnion("reason", [
+  z
+    .object({
+      reason: z.literal("metadata_field_unavailable"),
+      field: z.enum(["title", "description", "keywords", "bibleCitations"]),
+    })
+    .strict(),
+  z
+    .object({ reason: z.literal("transcript_chunk_unavailable"), chunkId: id })
+    .strict(),
+  z
+    .object({
+      reason: z.literal("transcript_excerpt_not_verbatim"),
+      chunkId: id,
+    })
+    .strict(),
+  z
+    .object({
+      reason: z.enum(["schema_invalid", "provider_output_invalid"]),
+    })
+    .strict(),
+])
+const candidateRepair = z
+  .object({
+    candidateId: id,
+    afterChunkId: id.nullable(),
+    attempts: z.number().int().min(1).max(2),
+    feedback: candidateRepairFeedback,
+  })
+  .strict()
 const checkpoint = z
   .object({
     stage: z.string().trim().min(1).max(64),
@@ -55,6 +85,7 @@ const checkpoint = z
     candidateIds: z.array(id).max(40).optional(),
     analyticsCandidateIds: z.array(id).max(40).optional(),
     bestJudgment: provisionalChoice.optional(),
+    repair: candidateRepair.optional(),
     historySummary: z
       .object({
         resultDigest: hex,

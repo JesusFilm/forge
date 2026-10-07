@@ -1,5 +1,6 @@
 import { randomBytes, randomUUID } from "node:crypto"
 import {
+  type Prisma,
   PrismaClient,
   RecommendationDeliveryResult,
   RecommendationRequestState,
@@ -37,7 +38,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await admin.query(migration)
       const url = new URL(env.DATABASE_URL)
       url.searchParams.set("schema", schema)
-      prisma = new PrismaClient({
+      prisma = new PrismaClient<Prisma.PrismaClientOptions>({
         datasources: { db: { url: url.toString() } },
       })
       await prisma.recommendationPrecomputedGeneration.create({

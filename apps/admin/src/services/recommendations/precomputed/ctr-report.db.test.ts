@@ -55,7 +55,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       for (const sql of currentAdminMigrationSql) await admin.query(sql)
       const url = new URL(env.DATABASE_URL)
       url.searchParams.set("schema", schema)
-      prisma = new PrismaClient({
+      prisma = new PrismaClient<Prisma.PrismaClientOptions>({
         datasources: { db: { url: url.toString() } },
       })
       now = new Date()

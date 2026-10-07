@@ -1,6 +1,6 @@
 # Precomputed recommendation orchestration
 
-Updated: 2026-10-06 (Pacific/Auckland).
+Updated: 2026-10-07 (Pacific/Auckland).
 
 Parent: https://github.com/JesusFilm/forge/issues/2565.
 Draft integration PR: https://github.com/JesusFilm/forge/pull/2578.
@@ -13,12 +13,40 @@ describes the private reporting contract and limits.
 
 ## Integration
 
+October 7 continuation: the owner requested completion of the live measurement
+verifier, deployment configuration, actual catalog report and capacity checks.
+The test must stop after one calendar month and return to the incumbent for
+manual reevaluation. A working local demonstration is required before any
+production merge. Numeric winner/health thresholds remain pending; fixture
+settings are not live authority. Workers A/B continued from `5c9f38c6f`. Deployed-identity GA auth is
+`9d2ff9944`; the one-month cutoff and browser-proof verifier are integrated as
+`2069e87f6`. Their remaining live verifier/baseline work is still in progress.
+The real GA/Astra two-video durable pilot is complete: two saved connections,
+eight calls and $0.2494275 known model charges. The full 1,031-video generation
+passed the GA timeout after `de5a20bf2`, then two candidate judgments failed
+strict local evidence validation. That attempt is now cancelled, preserving
+$2.3197855 known model charges and one unresolved call with unknown charge.
+A bounded candidate repair is integrated as `aeb55b991` and `e4ecc23ad`:
+strict evidence checks remain, each invalid response retains its charge, and
+the two-attempt limit plus safe feedback survive checkpoint resume. The next
+full build is held for a retrieval audit: the exhaustive implementation requires
+at least 53,612 plan/discovery model calls before individual judgments. The spec
+permits catalog-wide retrieval without requiring exhaustive all-pairs reasoning.
+The local Admin preview now serves the saved pilot after correcting PrismaPg's
+selected-schema handling. Local Chromium verified the Admin review, Watch card,
+successful selection and navigation to the target. Temporary gateways on the
+existing Tailscale connection let the owner inspect this isolated pilot from
+their host machine; owner review remains pending. No production experiment is active.
+
 - Orchestrator: `01a109d7-dc1c-7600-a2c4-07dee79b4aff`.
 - Initial base: `d661b99939e24ba41834adce53c6bad9262bcee9`.
 - Branch: `codex/precomputed-video-recommendations`.
 - Checkout: `/home/nisal/.codex/worktrees/precomputed-video-recommendations/forge`.
-- Latest verified application integration: `8401049c1` (#2575 control/Watch code
-  and closed-private-report fix); final validation passed, with CI status on the PR.
+- Latest broadly verified integration: `5c9f38c6f`, with real source-build through
+  manual controls and rollback under controlled local measurement. GA auth
+  `9d2ff9944` passed the full Mastra suite and real read-only GA coverage.
+  Follow-on baseline/browser-proof work and real-catalog compatibility fixes
+  still require combined validation.
 - Previous verified application integration: `6b9c9836a44c90983489534355857858ddab0708` (#2574 Mastra `af835cdd0`, Admin `f18768c39`, current-main merge `ae9bc5363`, root verification `6b9c9836a`). Current-main baseline is `1daa80373`; storage CI passed: [run 37419891818](https://github.com/JesusFilm/forge/actions/runs/37419891818), 37 successful jobs, three skipped, no failures.
   #2568 GA ingestion is `084fe3eae`, Admin validation is `58b2aaa18`,
   and the OpenRouter adapter is `b7926faf5`.
@@ -38,9 +66,9 @@ not issue closure. Implemented, integrated, merged, and live are distinct.
 | Issue | Immediate blockers | State                                         | Integrated work                                                                                         |
 | ----- | ------------------ | --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
 | #2566 | None               | Integrated-and-verified                       | `9a984c544`; saved Admin comparison                                                                     |
-| #2567 | #2566              | Integrated-and-verified                       | `c89db0e4e`; bounded producer; OpenRouter transport smoke passed                                        |
+| #2567 | #2566              | Integrated-and-verified                       | `c89db0e4e`, `0636bf861`; exact Astra durable two-video pilot complete                                  |
 | #2568 | #2567              | Integrated-and-verified                       | `084fe3eae`, `58b2aaa18`; real GA pair and Astra judgment passed                                        |
-| #2569 | #2568              | Integrated-and-verified                       | `1298713cc`, `04200cd9f`; 20 connected native cases and 37 Admin cases passed                           |
+| #2569 | #2568              | Code verified; full real build incomplete     | `1298713cc`, `04200cd9f`; 20 connected native cases and 37 Admin cases passed                           |
 | #2570 | #2566              | Integrated-and-verified                       | `0a93244a3`; private Watch serving                                                                      |
 | #2571 | #2570              | Integrated-and-verified                       | `267a65281`, `b69592b6c`, corrections in `a7f36d778`                                                    |
 | #2572 | #2571              | Integrated-and-verified                       | Core `a7f36d778`, UI `af8eba415`                                                                        |
@@ -65,7 +93,15 @@ Worker B, `01a10a28-aa8e-7080-b3d1-c59293f8f4dd`, titled
 manual controls, readiness/audit, migrations, public delivery services,
 report qualification and operator run procedure.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
-branch: `codex/feat-590-2575-admin`.
+branch: `codex/feat-590-2575-live-admin`.
+
+Current continuation ownership: A completed strict candidate-evidence repair and
+is auditing existing retrieval for a practical full build; no paid rerun during
+the audit. B owns conditional live prepare/start readiness,
+fresh append-only launch-capacity evidence, and adapter-backed fixture guards.
+The orchestrator owns local preview/schema selection and actual build resumption.
+The latest integration is `e4ecc23ad`; both chats resumed after the
+October 7 session interruption. The completion notes below record earlier slices.
 
 Both workers have completed their owned implementation and normal-hook commits.
 A source `3112244b7` is integrated as `127b61e1f`; B sources `ac78b3c85` and
@@ -75,8 +111,10 @@ for specific review or CI fixes. B’s follow-up `452fd51dc` is integrated as
 bounded-retention fixture. No additional implementation chat was created.
 Previous branches and integrated work remain saved.
 The orchestrator owns cross-app integration tests, live operator verification,
-shared docs/roadmap, integration and the single PR. No production write/deploy,
-public activation, promotion or schedule is authorized. At most two implementation
+shared docs/roadmap, integration and the single PR. The October 7 instruction
+authorizes necessary deployment preparation; production merge/deployment remains
+behind the requested local demonstration. No public activation, promotion or
+recurring schedule has occurred. At most two implementation
 chats may run. Serialize heavy validation with
 `/tmp/forge-feat590-heavy-validation.lock`.
 

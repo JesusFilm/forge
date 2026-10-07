@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto"
-import { PrismaClient } from "@prisma/client"
+import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
@@ -147,7 +147,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await admin.query(migration)
       const url = new URL(env.DATABASE_URL)
       url.searchParams.set("schema", schema)
-      prisma = new PrismaClient({
+      prisma = new PrismaClient<Prisma.PrismaClientOptions>({
         datasources: { db: { url: url.toString() } },
       })
       await prisma.language.createMany({

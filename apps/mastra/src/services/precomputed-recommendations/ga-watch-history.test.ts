@@ -114,6 +114,37 @@ function provider(
 }
 
 describe("GA Watch history coverage preflight", () => {
+  it("gives detailed Watch snapshot reports a longer bounded timeout than coverage probes", async () => {
+    const fake = provider()
+    const timeoutMs: number[] = []
+    const timeout = vi
+      .spyOn(AbortSignal, "timeout")
+      .mockImplementation((ms) => {
+        timeoutMs.push(ms)
+        return new AbortController().signal
+      })
+    const input = {
+      propertyId: "320198532",
+      serviceAccountEmail:
+        "watch-ga4-readonly@jesusfilm-org-1738781064783.iam.gserviceaccount.com",
+      rangeStart: "2022-06-21",
+      rangeEnd: "2022-10-31",
+      tokenProvider: async () => ({
+        ok: true as const,
+        accessToken: "test-token",
+      }),
+      fetchImpl: fake.fetchImpl,
+    }
+    try {
+      await inspectGaWatchCoverage(input)
+      await readGaWatchStartAggregatePage({ ...input, offset: 0, limit: 1 })
+      await readGaWatchReferrerAggregatePage({ ...input, offset: 0, limit: 1 })
+      expect(timeoutMs).toEqual([50_000, 50_000, 120_000, 120_000])
+    } finally {
+      timeout.mockRestore()
+    }
+  })
+
   it("paginates scoped reports and exposes aggregate gaps without claiming transitions or mappings", async () => {
     const fake = provider()
     const result = await inspectGaWatchCoverage({

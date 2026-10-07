@@ -13,10 +13,26 @@ export const PUSH_TEST_DEVICES_PATH = "/dashboard/push-campaigns/test-devices"
 
 export type PushActionState =
   | { status: "idle" }
-  | { status: "ok"; message: string }
+  /** A save also returns the content version it left stored (KTD15). */
+  | { status: "ok"; message: string; contentVersion?: number }
   | { status: "error"; reason: string }
+  /** R34 — refused, because the stored campaign is at `contentVersion` now. */
+  | { status: "stale"; reason: string; contentVersion: number }
 
 export const PUSH_ACTION_IDLE: PushActionState = { status: "idle" }
+
+/**
+ * A stale refusal is about a version newer than the page. Once the page shows
+ * that version, the refusal no longer applies, so it reads as idle.
+ */
+export function pushActionStateForPage(
+  state: PushActionState,
+  pageContentVersion: number,
+): PushActionState {
+  return state.status === "stale" && state.contentVersion <= pageContentVersion
+    ? PUSH_ACTION_IDLE
+    : state
+}
 
 /**
  * The one spelling of a campaign's own path. `revalidatePath` matches this

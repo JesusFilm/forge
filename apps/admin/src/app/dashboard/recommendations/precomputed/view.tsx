@@ -136,9 +136,9 @@ function ExperimentalCards({ cards }: { cards: ExperimentalCard[] }) {
               <p className="text-[var(--color-text-muted)]">
                 Transcript-backed evidence
               </p>
-              {card.evidence.passages.map((passage) => (
+              {card.evidence.passages.map((passage, passageIndex) => (
                 <blockquote
-                  key={passage.chunkId}
+                  key={`${passage.chunkId}:${passageIndex}`}
                   className="border-l-2 border-[var(--color-hairline)] pl-2"
                 >
                   <span lang={passage.language}>{passage.excerpt}</span>
