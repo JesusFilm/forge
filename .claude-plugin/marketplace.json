@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "jfp-admin",
-      "description": "AI-assisted Jesus Film Admin workflows for locale creation.",
+      "description": "AI-assisted Jesus Film Admin workflows for Experience locales and push campaign drafts.",
       "author": {
         "name": "Jesus Film Project",
         "url": "https://www.jesusfilm.org"

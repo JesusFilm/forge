@@ -149,6 +149,18 @@ export const AUTH_SCOPES = [
     description: "Generate new Experience page drafts with AI.",
   },
   {
+    key: "push:campaign:read",
+    label: "Read push campaigns",
+    description:
+      "Read push campaigns and their reports, languages, destinations, and audience counts.",
+  },
+  {
+    key: "push:campaign:draft",
+    label: "Draft push campaigns",
+    description:
+      "Create and edit push campaign drafts. Cannot test, schedule, or send.",
+  },
+  {
     key: "changelog:read",
     label: "Read Changelog",
     description: "View and filter published Changelog entries.",
