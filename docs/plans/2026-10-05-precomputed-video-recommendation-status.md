@@ -52,8 +52,16 @@ same-title film. The fresh metadata/Amharic generation paused after one charged 
 failed strict page-membership validation ($0.221305 known cost). Worker A committed the bounded, durable two-attempt plan repair as
 `3729a7817`, advancing the historical prompt and generation input digest to v5.
 Combined verification passed 13 native durable cases, 10 Mastra cases and all
-27 connected build-to-Admin cases. The new paid benchmark is prepared but not
-yet started. The older Nicodemus result stays labeled as prior-policy evidence. Both
+27 connected build-to-Admin cases. The new v5 benchmark ran for 16 minutes 38 seconds, then stopped after a
+transcript citation failed exact matching twice. It preserves 43 provisional
+choices, 54 terminal model receipts ($3.7590575 known cost, no unknown model
+charges) and 37 successful GA receipts. No source finalized; the Amharic source
+is still unstarted. Worker A delivered exact model-visible passage selection as `d37bcae2d`.
+Root verification passed 14 Mastra cases and all 28 connected native cases,
+including later-page Amharic evidence. Historical prompt v6 and content prompt
+v5 both enter their generation input digests; Admin evidence/validation is
+unchanged. The next paid benchmark awaits a committed root integration and
+fresh capacity. A is now implementing bounded source concurrency separately. The older Nicodemus result stays labeled as prior-policy evidence. Both
 superseded benchmark generations are now cancelled through the supported Admin
 protocol, releasing capacity reservations while preserving every checkpoint,
 choice and model/GA receipt; before/after digests match. The base catalog and
@@ -153,8 +161,9 @@ now confirms workflow scope. Published checkpoint `3ea71d9a8` passed all 43
 GitHub check runs, with five skipped. The subsequent published identity correction `9bb0ab83b` has 42 successful
 GitHub CheckRuns and five skipped; both separate Railway StatusContexts are
 also successful in the automatic `forge-pr-2578` preview environment.
-The feature PR remains a draft; the next plan-repair publication needs fresh
-checks. No production deployment was issued.
+The subsequent plan-repair integration `9512a6416` also passed all 42 GitHub
+CheckRuns (five skipped) and both Railway preview StatusContexts. The feature
+PR remains a draft. No production deployment was issued.
 The completion notes below record earlier slices.
 
 Both workers have completed their owned implementation and normal-hook commits.

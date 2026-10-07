@@ -45,11 +45,17 @@ import {
   buildCandidateRetrieval,
   CANDIDATE_RETRIEVAL_REVISION,
 } from "./candidate-retrieval"
+import {
+  buildTranscriptSpanOffer,
+  materializeSpanJudgment,
+  spanJudgmentSchema,
+} from "./catalog-evidence-spans"
 
 const id = z.string().trim().min(1).max(191)
 const MAX_CANDIDATE_JUDGMENT_ATTEMPTS = 2
 const MAX_ANALYTICS_PLAN_ATTEMPTS = 2
-const HISTORY_PROMPT_VERSION = "astra-catalog-history-navigation-v5"
+const HISTORY_PROMPT_VERSION = "astra-catalog-history-navigation-v6"
+const CONTENT_PROMPT_VERSION = "astra-catalog-v5"
 export const CatalogGenerationInputSchema = z
   .object({
     generationId: id,
@@ -851,20 +857,39 @@ async function processSource(
       )
     let retryFeedback: CandidateValidationFeedback | undefined =
       savedRepair?.feedback
+    const spanOffer = buildTranscriptSpanOffer(chunks.chunks, {
+      generationInputDigest,
+      inputCutoff: input.inputCutoff,
+      sourceVideoId: source.id,
+      candidateVideoId: candidate.id,
+      catalogIndex,
+      candidateIndex,
+      afterChunkId: checkpoint.cursor.candidateAfterChunkId ?? null,
+    })
     for (
       let attempt = savedRepair?.attempts ?? 0;
       attempt < MAX_CANDIDATE_JUDGMENT_ATTEMPTS;
       attempt += 1
     ) {
       try {
+        let resolvedJudgment: z.output<typeof judgmentSchema> | undefined
+        const resolved = (output: z.output<typeof spanJudgmentSchema>) => {
+          if (!resolvedJudgment) {
+            const materialized = materializeSpanJudgment(output, spanOffer)
+            if (!materialized)
+              throw new CatalogBuildError("provider_invalid_output")
+            resolvedJudgment = materialized
+          }
+          return resolvedJudgment
+        }
         await call(
           "candidate_judgment",
-          judgmentSchema,
+          spanJudgmentSchema,
           {
             source: modelVideo(source),
             sourceSummaryEnglish: checkpoint.sourceSummaryEnglish,
             candidate: modelVideo(candidate),
-            chunks: chunks.chunks,
+            transcriptChunks: spanOffer.promptChunks,
             historicalDefinitions: pageHistory?.definitionsForModel,
             historicalSourceSignal: sourceHistory?.signal(source.id),
             historicalCandidateSignal: pageHistory?.signal(candidate.id),
@@ -873,16 +898,16 @@ async function processSource(
             ...(retryFeedback ? { validationFeedback: retryFeedback } : {}),
             instruction:
               attempt === 1
-                ? "Retry with verified evidence only. Metadata fields must be present on this candidate. A transcript excerpt must be an exact substring of its cited chunk. If you cannot support a connection, return an empty connections array."
+                ? "Retry with verified evidence only. Choose transcript support only by a span ID offered in this candidate's current transcript page; never write an excerpt or choose a foreign ID. Metadata fields must be present on this candidate. If you cannot support a connection, return an empty connections array."
                 : chunks.chunks.length === 0
                   ? "Return zero or one connection. Only metadata evidence is available; do not invent transcript support."
-                  : "Return zero or one connection. If transcript evidence is cited, use exact passages and chunk IDs from this batch. For parent/chapter links, explain added viewing value.",
+                  : "Return zero or one connection. For transcript evidence, select one to three offered span IDs from this candidate's current transcript page; the server will copy their exact text. Do not write excerpts. Explain the connection in English. For parent/chapter links, explain added viewing value.",
           },
           2_048,
-          (output) => nextCandidate(bestOf(output)),
+          (output) => nextCandidate(bestOf(resolved(output))),
           last
             ? (output) => {
-                const best = bestOf(output)
+                const best = bestOf(resolved(output))
                 return best
                   ? {
                       targetVideoId: candidate.id,
@@ -898,7 +923,7 @@ async function processSource(
               }
             : undefined,
           (output) =>
-            output.connections.forEach((connection) =>
+            resolved(output).connections.forEach((connection) =>
               assertEvidence(connection, chunks.chunks, candidate),
             ),
           (feedback) => ({
@@ -1068,6 +1093,9 @@ export async function runPrecomputedCatalog(
     videos,
     input.inputCutoff,
   )
+  const promptVersion = input.historyRequired
+    ? HISTORY_PROMPT_VERSION
+    : CONTENT_PROMPT_VERSION
   const generationInputDigest = digest({
     cutoff: input.inputCutoff,
     historyRequired: input.historyRequired,
@@ -1075,7 +1103,7 @@ export async function runPrecomputedCatalog(
     candidateRetrievalRevision: CANDIDATE_RETRIEVAL_REVISION,
     selectedCorpusDigest: retrieval.selectedCorpusDigest,
     candidatePoolDigest: retrieval.candidatePoolDigest,
-    ...(input.historyRequired ? { promptVersion: HISTORY_PROMPT_VERSION } : {}),
+    promptVersion,
   })
   const inputMode = input.historyRequired
     ? "historical_analytics"
@@ -1087,9 +1115,7 @@ export async function runPrecomputedCatalog(
       protocolVersion: 2,
       generationId: input.generationId,
       modelId: PRECOMPUTED_MODEL_ID,
-      promptVersion: input.historyRequired
-        ? HISTORY_PROMPT_VERSION
-        : "astra-catalog-v4",
+      promptVersion,
       inputMode,
       inputSnapshotMode: "observed_fenced",
       inputDigest: generationInputDigest,

@@ -2207,3 +2207,67 @@ allowlisted `forge_precomputed_control_test` database passed all 27. No
 application change or authority weakening was needed. Both temporary test
 databases were removed. Logs use `20261007-plan-repair-integrated-` in the
 orchestration evidence directory.
+
+## October 7 v5 real benchmark and citation reliability follow-up
+
+Integration `9512a6416` passed
+[forge-ci](https://github.com/JesusFilm/forge/actions/runs/37568251612) and
+[CodeQL](https://github.com/JesusFilm/forge/actions/runs/37568248942): 42 successful
+CheckRuns, five skipped, and successful Web/Manager Railway PR-preview contexts.
+
+The fresh historical-v5 run lasted 16 minutes 38 seconds and stopped safely at
+2026-10-07T04:02:39Z. Both analytics plans and both discovery calls succeeded.
+Candidate evidence repair recovered earlier invalid output, then exhausted its
+two attempts for “Living the Christian Life” (`cmp784tsl03vuqm01ce5oanh7`).
+The candidate has one selected English transcript chunk of 689 ASCII characters.
+Both rejected outputs were schema-valid provider responses but failed exact
+substring matching, costing $0.0468425 and $0.0469800. Their raw excerpts were
+not retained, so paraphrase, punctuation drift or another mismatch cannot be
+distinguished from these receipts. No normalization-based repair is justified
+by this evidence.
+
+The paused source keeps 43 provisional choices (40 transcript and three metadata;
+40 direct and three alternative), with stage `candidate`, catalog index 40,
+candidate index seven, and exhausted repair count two. No source finalized,
+and Amharic remains unstarted. The generation has 54 terminal model receipts
+(49 succeeded, five invalid-output failures), $3.7590575 known charges, and no
+pending or unknown model charge. Seven GA qualification and 30 snapshot receipts
+succeeded; GA bytes, monetary cost and remaining property quota were not captured
+and remain unknown. No manual retry, source reset or full build occurred.
+
+Worker A's source worktree unexpectedly disappeared during the run. A restored
+exact commit `3729a7817` at the same path and relinked existing dependencies;
+the process continued without restart or paid-call replay. The cause is unknown.
+The orchestrator then locked the source and integration worktrees against Git
+cleanup. The source branch was reattached only after the run exited.
+
+The new supplemental archive was restored with the catalog base in an owned
+empty database, which was removed afterward. It contains all catalog records,
+six generations, 204 model receipts, 152 GA receipts, 4,126 build-source rows
+and 98 provisional choices across preserved attempts. The supplement SHA-256 is
+`a28c2aa9ce318c4c646f5e984e942d121626f171fad4463dd7059c9a3fb735e8`.
+Protected restore and worktree-recovery receipts accompany the archive.
+
+The reviewed reliability follow-up offers deterministic IDs for exact visible
+transcript spans. The model must choose supporting spans; the producer resolves
+them to the existing `{chunkId, excerpt}` evidence shape, retaining all selected
+transcript coverage and the final strict validator. Unknown or foreign IDs fail.
+The changed model contract receives a new prompt/input identity; v5 checkpoints
+are never reinterpreted or transferred. Worker A delivered `d37bcae2d`; combined verification passed all 14 focused
+Mastra cases and all 28 connected native cases. The native fixture selects
+exact Amharic support from a second chunk page and reads it back through Admin.
+Unicode tests place surrogate pairs across both window and overlap cuts, prove
+well-formed spans and complete code-unit coverage, and the implementation
+hashes each chunk context once. Mastra and cross-app integration typechecking,
+and scoped lint/format passed manually in the child. Its restored checkout
+lacked generated Husky wrappers, so the child commit did not execute hooks.
+The root integration ran its intact normal hooks successfully. The child then
+restored Husky through `pnpm run prepare`, keeping `.husky/_` configured and
+verifying executable pre-commit/commit-msg wrappers for subsequent commits. Root Standards and
+Spec review found no remaining confirmed defect. Accepted Admin schemas and
+strict final evidence validation are unchanged; no migration or SDL change is
+needed. Historical v6 and content v5 prompt versions both enter the input digest. A later bounded source-concurrency change will isolate GA attribution
+and share request admission; concurrency implementation is the next isolated worker task. The root checkout
+will stay frozen during the next paid span benchmark. No full build has started. The 55,700-pair audit and observed 7.4-second judgment mean indicate a
+possible multi-day serial run, not a measured total forecast: discovery may
+select fewer pairs while chunk paging, repairs and GA reads add work.
