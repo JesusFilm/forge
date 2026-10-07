@@ -591,6 +591,15 @@ async function main() {
     )
     try {
       const m = buildShortManifest(manifest, short)
+      // `--language-vox=<json>`: the language short as a Vox-style explainer
+      // (owner, 2026-10-06), e.g. {"kicker":"ONE WORD","strike":"medical",
+      // "definition":["to save","from danger, harm or suffering"],
+      // "ringOn":"save","swapTo":"saved","finale":"SALVATION"}.
+      if (short.kind === "language" && m.shortFact && arg("language-vox")) {
+        ;(m.shortFact as { vox?: unknown }).vox = JSON.parse(
+          arg("language-vox")!,
+        )
+      }
       if (m.musicFile) {
         // Each short opens on its own part of the bed, looping from there.
         // `--music-<kind>=<file>` gives a short its own bed when the story

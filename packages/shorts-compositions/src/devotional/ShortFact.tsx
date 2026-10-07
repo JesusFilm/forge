@@ -18,6 +18,12 @@ import type { DevotionalCard, DevotionalInputProps } from "./schema"
 import { KineticCaption } from "./KineticCaption"
 import { AnimatedBook, AnimatedScroll } from "./SourceEmblems"
 import { StampLine } from "./StampLine"
+import {
+  VoxBackdropTint,
+  VoxCaption,
+  VoxLanguageLayout,
+  VoxTag,
+} from "./VoxLanguage"
 import { SOURCE_PORTRAIT_URIS, type SourcePortraitId } from "./source-portraits"
 import { loadLiterata, TEASER_FONT_FAMILIES } from "./teaser-fonts"
 import { CARD_TAIL_FRAMES, framesFromDurations } from "./timing"
@@ -157,10 +163,19 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
             muted
             trimBefore={Math.round((props.bgStartOffsetSec ?? 0) * fps)}
             playbackRate={props.bgPlaybackRate ?? 1}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              // The Vox explainer mutes the film so the paper and gold lead.
+              ...(fact?.vox
+                ? { filter: "grayscale(0.8) contrast(1.08) brightness(0.92)" }
+                : {}),
+            }}
           />
         </AbsoluteFill>
       ) : null}
+      {fact?.vox ? <VoxBackdropTint /> : null}
       {/* An even dim, then the Figma's soft dark pool behind the text. */}
       <AbsoluteFill style={{ background: "rgba(0,0,0,0.28)" }} />
       <div
@@ -247,6 +262,20 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
               : undefined
           }
         />
+      ) : language && fact?.vox ? (
+        <>
+          <VoxTag f={f} t={t} text="From the Full Devotional" />
+          <VoxLanguageLayout
+            f={f}
+            t={t}
+            words={words}
+            verse={fact.verse ?? ""}
+            highlight={fact.highlight ?? ""}
+            reference={fact.reference ?? ""}
+            vox={fact.vox}
+          />
+          <VoxCaption f={f} t={t} tokens={captionTokens(words)} />
+        </>
       ) : language ? (
         <LanguageLayout
           f={f}

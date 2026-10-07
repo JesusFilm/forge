@@ -487,6 +487,19 @@ export const devotionalInputPropsSchema = z.object({
       closeCard: z.string().optional(),
       /** Language: the verse's address ("Luke 15:32"). */
       reference: z.string().optional(),
+      /** Language: the Vox-style explainer instead of the plain verse
+       *  (owner, 2026-10-06): kicker, strike, definition, ringOn, swapTo,
+       *  finale (see VoxLanguage.tsx). */
+      vox: z
+        .object({
+          kicker: z.string().optional(),
+          strike: z.string().optional(),
+          definition: z.array(z.string()).optional(),
+          ringOn: z.string().optional(),
+          swapTo: z.string().optional(),
+          finale: z.string().optional(),
+        })
+        .optional(),
     })
     .optional(),
   /** 16:9 film captions with word times: `karaoke` (default) lights the word
