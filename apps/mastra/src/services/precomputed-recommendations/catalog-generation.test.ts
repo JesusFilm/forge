@@ -28,7 +28,7 @@ function catalog(ids: string[]): SourceCatalog {
       return {
         videos: ids.map((id) => ({
           id,
-          coreId: id,
+          coreId: `${id}-core`,
           slug: id,
           locale: null,
           title: `Video ${id}`,

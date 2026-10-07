@@ -171,7 +171,9 @@ async function transcriptSelections(
 
 function compactVideo(video: CatalogVideo, selection: TranscriptSelection) {
   const locale =
-    video.locales.find((row) => row.locale === "en") ?? video.locales[0]
+    video.locales.find((row) => row.locale === "en" && row.title) ??
+    video.locales.find((row) => row.title) ??
+    video.locales[0]
   const description = locale?.description ?? locale?.snippet ?? ""
   return {
     id: video.id,

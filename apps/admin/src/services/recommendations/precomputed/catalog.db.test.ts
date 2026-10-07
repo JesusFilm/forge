@@ -270,6 +270,40 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     })
 
+    it("uses the published titled fallback when English has no title", async () => {
+      const localeId = `empty-en-${spanishVideoId}`
+      await prisma.videoLocale.create({
+        data: {
+          id: localeId,
+          videoId: spanishVideoId,
+          locale: "en",
+          status: "PUBLISHED",
+          title: null,
+        },
+      })
+      try {
+        const result = await readPrecomputedCatalog(
+          prisma,
+          {
+            action: "video",
+            videoId: spanishVideoId,
+            cutoff: new Date(Date.now() + 5_000).toISOString(),
+          },
+          "Bearer preview-test-key",
+        )
+        expect(result).toMatchObject({
+          action: "video",
+          video: {
+            id: spanishVideoId,
+            locale: "es",
+            title: "Historia de esperanza",
+          },
+        })
+      } finally {
+        await prisma.videoLocale.delete({ where: { id: localeId } })
+      }
+    })
+
     it("returns a long multilingual transcript intact instead of losing usable evidence", async () => {
       const chunkId = `chunk-0-${suffix}`
       const original = await prisma.videoTranscriptChunk.findUniqueOrThrow({

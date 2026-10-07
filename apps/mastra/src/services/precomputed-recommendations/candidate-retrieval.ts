@@ -3,7 +3,7 @@ import { createHash } from "node:crypto"
 import type { SourceCatalog, Video } from "./source-generation"
 
 /** Changing the ranking or its reserves creates a different build input. */
-export const CANDIDATE_RETRIEVAL_REVISION = "selected-catalog-lexical-v1"
+export const CANDIDATE_RETRIEVAL_REVISION = "selected-catalog-lexical-v2"
 
 const LEXICAL_DEPTH = 40
 const EXACT_PER_LANE = 12
@@ -125,6 +125,29 @@ function rank(scores: Score, ids: readonly string[], blocked: Set<number>) {
     .filter(([target, score]) => !blocked.has(target) && score > 0)
     .sort((a, b) => b[1] - a[1] || (ids[a[0]] < ids[b[0]] ? -1 : 1))
     .map(([target]) => target)
+}
+
+function duplicateContent(
+  candidate: Video,
+  kept: Video,
+  directlyRelated: boolean,
+): boolean {
+  if (
+    candidate.coreId &&
+    kept.coreId &&
+    (candidate.coreId.startsWith(kept.coreId) ||
+      kept.coreId.startsWith(candidate.coreId))
+  )
+    return !(
+      candidate.coreId !== kept.coreId &&
+      candidate.title &&
+      kept.title &&
+      candidate.title !== kept.title &&
+      directlyRelated
+    )
+  return Boolean(
+    candidate.title && kept.title && candidate.title === kept.title,
+  )
 }
 
 async function readSelectedChunks(
@@ -268,18 +291,17 @@ export async function buildCandidateRetrieval(
       relations[target].add(source)
     }
   })
-  const byCore = new Map<string, number[]>()
-  ordered.forEach((video, index) => {
-    if (!video.coreId) return
-    const group = byCore.get(video.coreId) ?? []
-    group.push(index)
-    byCore.set(video.coreId, group)
-  })
   const candidateIdsBySource = new Map<string, string[]>()
   const poolHash = createHash("sha256").update(CANDIDATE_RETRIEVAL_REVISION)
   ordered.forEach((video, source) => {
-    const blocked = new Set(byCore.get(video.coreId) ?? [])
-    blocked.add(source)
+    const blocked = new Set<number>([source])
+    ordered.forEach((target, index) => {
+      if (
+        index !== source &&
+        duplicateContent(target, video, relations[source].has(index))
+      )
+        blocked.add(index)
+    })
     const lanes = [
       rank(cosine(source, metadataIndex), ids, blocked),
       rank(cosine(source, transcriptIndex), ids, blocked),
@@ -313,8 +335,45 @@ export async function buildCandidateRetrieval(
       if (reserved >= METADATA_ONLY_RESERVE) break
     }
     for (const target of fallback) if (!blocked.has(target)) chosen.add(target)
-    const candidates = orderedTargets
+    // Canonicalize before model scoring. Protected lanes remain unbounded;
+    // lexical depth is only a minimum when duplicate identities are removed.
+    const targetRank = new Map(
+      orderedTargets.map((target, index) => [target, index]),
+    )
+    const structuralPriority = (target: number) =>
+      relations[source].has(target)
+        ? 2
+        : [...relations[target]].some((related) => chosen.has(related))
+          ? 1
+          : 0
+    const preferred = orderedTargets
       .filter((target) => chosen.has(target))
+      .sort(
+        (a, b) =>
+          structuralPriority(b) - structuralPriority(a) ||
+          targetRank.get(a)! - targetRank.get(b)!,
+      )
+    const unique = new Set<number>()
+    const appendUnique = (target: number) => {
+      if (
+        [...unique].some((prior) =>
+          duplicateContent(
+            ordered[target],
+            ordered[prior],
+            relations[target].has(prior),
+          ),
+        )
+      )
+        return
+      unique.add(target)
+    }
+    for (const target of preferred) appendUnique(target)
+    for (const target of orderedTargets) {
+      if (unique.size >= LEXICAL_DEPTH) break
+      appendUnique(target)
+    }
+    const candidates = orderedTargets
+      .filter((target) => unique.has(target))
       .map((target) => ids[target])
     candidateIdsBySource.set(video.id, candidates)
     poolHash.update(JSON.stringify([video.id, candidates]))
