@@ -2,12 +2,7 @@ import { AbsoluteFill, Easing, interpolate } from "remotion"
 
 import { SHORT_FONT_FAMILIES } from "../fonts"
 
-import {
-  PAPER_CLIP_JPG,
-  PAPER_CLIP_MASK,
-  PAPER_ROUGH_JPG,
-  PAPER_ROUGH_MASK,
-} from "./paper-assets"
+import { PAPER_ROUGH_JPG, PAPER_ROUGH_MASK } from "./paper-assets"
 
 /**
  * The language short as a Vox-style explainer (owner, 2026-10-06, on the
@@ -274,6 +269,8 @@ function Arrive({
   style,
   paper,
   pad,
+  flip = false,
+  from,
   children,
 }: {
   f: (n: number) => number
@@ -283,36 +280,48 @@ function Arrive({
   style: React.CSSProperties
   /** The owner's real paper (JPEG + alpha mask), stretched to the content. */
   paper: { jpg: string; mask: string }
+  /** Turn the sheet over (rotated 180deg) so one paper reads as two. */
+  flip?: boolean
+  /** Slide in from this side of the frame, Vox style (owner, 2026-10-07). */
+  from: "left" | "right"
   /** Inner padding, clear of the torn edges. */
   pad: string
   children: React.ReactNode
 }) {
   if (t < at - 0.02) return null
-  const p = interpolate(t, [at, at + 0.5], [0, 1], { ...clamp, easing: SOFT })
+  // In from off the frame's edge in 0.45s, a quick start and a soft landing
+  // with the smallest overshoot, and a few degrees of turn that settle.
+  const p = interpolate(t, [at, at + 0.45], [0, 1], {
+    ...clamp,
+    easing: Easing.bezier(0.16, 1.08, 0.3, 1),
+  })
+  const dir = from === "left" ? -1 : 1
   return (
     <div
       style={{
         position: "absolute",
         ...style,
-        opacity: p,
-        transform: `${style.transform ?? ""} translateY(${((1 - p) * f(-18)).toFixed(2)}px)`,
+        opacity: Math.min(1, p * 4),
+        transform: `translateX(${((1 - p) * dir * f(900)).toFixed(1)}px) ${style.transform ?? ""} rotate(${((1 - p) * dir * 6).toFixed(2)}deg)`,
         // The shadow follows the paper's own torn outline.
         filter: `drop-shadow(0 ${f(12)}px ${f(16)}px rgba(0,0,0,0.45))`,
       }}
     >
-      <div
-        style={{
-          position: "relative",
-          padding: pad,
-          backgroundImage: `url(${paper.jpg})`,
-          backgroundSize: "100% 100%",
-          WebkitMaskImage: `url(${paper.mask})`,
-          maskImage: `url(${paper.mask})`,
-          WebkitMaskSize: "100% 100%",
-          maskSize: "100% 100%",
-        }}
-      >
-        {children}
+      <div style={{ position: "relative", padding: pad }}>
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage: `url(${paper.jpg})`,
+            backgroundSize: "100% 100%",
+            WebkitMaskImage: `url(${paper.mask})`,
+            maskImage: `url(${paper.mask})`,
+            WebkitMaskSize: "100% 100%",
+            maskSize: "100% 100%",
+            transform: flip ? "rotate(180deg)" : undefined,
+          }}
+        />
+        <div style={{ position: "relative" }}>{children}</div>
       </div>
     </div>
   )
@@ -562,8 +571,12 @@ export function VoxLanguageLayout({
             width: f(690),
             transform: "rotate(-0.8deg)",
           }}
-          paper={{ jpg: PAPER_CLIP_JPG, mask: PAPER_CLIP_MASK }}
-          pad={`${f(40)}px ${f(50)}px ${f(56)}px`}
+          // The same rough sheet as the glossary, turned over (owner,
+          // 2026-10-07: the two papers did not go together).
+          paper={{ jpg: PAPER_ROUGH_JPG, mask: PAPER_ROUGH_MASK }}
+          flip
+          from="left"
+          pad={`${f(44)}px ${f(50)}px ${f(44)}px`}
         >
           {reference ? (
             <div
@@ -647,6 +660,7 @@ export function VoxLanguageLayout({
               transform: "rotate(1.2deg)",
             }}
             paper={{ jpg: PAPER_ROUGH_JPG, mask: PAPER_ROUGH_MASK }}
+            from="right"
             pad={`${f(34)}px ${f(44)}px ${f(32)}px`}
           >
             <div
@@ -702,13 +716,7 @@ export function VoxLanguageLayout({
                   }}
                 >
                   not only a{" "}
-                  <Strike
-                    t={t}
-                    at={strikeAt}
-                    id="vox-strike-def"
-                    color={GOLD}
-                    width={14}
-                  >
+                  <Strike t={t} at={strikeAt} id="vox-strike-def">
                     {vox.strike}
                   </Strike>{" "}
                   word
