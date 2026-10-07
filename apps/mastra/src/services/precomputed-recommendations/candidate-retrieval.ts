@@ -22,6 +22,20 @@ type VectorIndex = {
   postings: Map<string, Array<[number, number]>>
 }
 
+class CandidateRetrievalError extends Error {
+  readonly code = "input_stale" as const
+
+  constructor(
+    readonly reason:
+      | "chunk_order_changed"
+      | "cursor_stalled"
+      | "selected_transcript_incomplete"
+      | "duplicate_video",
+  ) {
+    super("input_stale")
+  }
+}
+
 function countWords(counter: Counter, text: string, multiplier = 1): void {
   for (const word of text.toLowerCase().match(/[\p{L}\p{N}_]{2,}/gu) ?? []) {
     if (STOP_WORDS.has(word)) continue
@@ -142,7 +156,7 @@ async function readSelectedChunks(
     })
     for (const chunk of page.chunks) {
       if (lastChunkId && chunk.id <= lastChunkId)
-        throw new Error("candidate_retrieval_chunk_order_changed")
+        throw new CandidateRetrievalError("chunk_order_changed")
       if (selected) {
         const transcript = selected.get(chunk.transcriptId)
         if (
@@ -151,10 +165,10 @@ async function readSelectedChunks(
           chunk.chunkIndex < 0 ||
           chunk.chunkIndex >= transcript.totalChunks
         )
-          throw new Error("candidate_retrieval_selected_transcript_incomplete")
+          throw new CandidateRetrievalError("selected_transcript_incomplete")
         const seen = indices.get(chunk.transcriptId) ?? new Set<number>()
         if (seen.has(chunk.chunkIndex))
-          throw new Error("candidate_retrieval_selected_transcript_incomplete")
+          throw new CandidateRetrievalError("selected_transcript_incomplete")
         seen.add(chunk.chunkIndex)
         indices.set(chunk.transcriptId, seen)
       }
@@ -177,7 +191,7 @@ async function readSelectedChunks(
       countWords(terms, chunk.text)
     }
     if (page.nextCursor && page.nextCursor === afterChunkId)
-      throw new Error("candidate_retrieval_cursor_stalled")
+      throw new CandidateRetrievalError("cursor_stalled")
     afterChunkId = page.nextCursor ?? undefined
   } while (afterChunkId)
   if (selected) {
@@ -189,7 +203,7 @@ async function readSelectedChunks(
           indices.get(id)?.size !== transcript.totalChunks,
       )
     )
-      throw new Error("candidate_retrieval_selected_transcript_incomplete")
+      throw new CandidateRetrievalError("selected_transcript_incomplete")
   }
   return { terms, chunkDigest: hash.digest("hex"), count, hasNonEnglish }
 }
@@ -209,7 +223,7 @@ export async function buildCandidateRetrieval(
   const ids = ordered.map((video) => video.id)
   const byId = new Map(ids.map((id, index) => [id, index]))
   if (byId.size !== ids.length)
-    throw new Error("candidate_retrieval_duplicate_video")
+    throw new CandidateRetrievalError("duplicate_video")
   const selectedCorpusHash = createHash("sha256")
   const transcriptCounters: Counter[] = []
   const metadataOnly = new Set<number>()

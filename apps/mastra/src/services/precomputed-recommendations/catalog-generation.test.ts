@@ -135,7 +135,10 @@ describe("catalog generation boundary", () => {
         ingest,
         model: { generate: vi.fn() },
       }),
-    ).rejects.toThrow("candidate_retrieval_selected_transcript_incomplete")
+    ).rejects.toMatchObject({
+      code: "input_stale",
+      reason: "selected_transcript_incomplete",
+    })
     expect(ingest).not.toHaveBeenCalled()
   })
 
