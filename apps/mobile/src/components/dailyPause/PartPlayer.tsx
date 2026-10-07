@@ -40,10 +40,11 @@ import {
   pauseColors,
   pauseSizes,
   pauseSpacing,
+  pauseType,
 } from "../../lib/dailyPause/theme"
 import { devotionalVideoFrame } from "../../lib/dailyPause/videoFrame"
 import { PartProgressBar } from "./PartProgressBar"
-import type { PauseFont } from "../../lib/dailyPause/fonts"
+import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { PauseButton } from "./PauseFrame"
 
 const CUE_HEIGHT = 44
@@ -110,7 +111,7 @@ function FailedNotice({
 }) {
   return (
     <View style={styles.failed}>
-      <Text style={[styles.failedLabel, font("bodyLight")]}>
+      <Text style={[styles.failedLabel, pauseText(font, pauseType.message)]}>
         This part did not start.
       </Text>
       <PauseButton label="Try again" onPress={onRetry} font={font} />
@@ -485,8 +486,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: pauseSpacing.screenSide,
   },
   failedLabel: {
-    color: pauseColors.ink,
-    fontSize: 18,
+    color: pauseColors.muted,
     textAlign: "center",
   },
 })

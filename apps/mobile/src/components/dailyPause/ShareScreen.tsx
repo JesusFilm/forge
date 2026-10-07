@@ -7,9 +7,13 @@ import { ScrollView, StyleSheet, Text, View } from "react-native"
 import { useDevotionalVideo } from "../../lib/dailyPause/devotionals"
 import { getPauseProgressStore } from "../../lib/dailyPause/progress"
 import { shareDevotionalVideo } from "../../lib/dailyPause/shareVideo"
-import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
+import {
+  pauseColors,
+  pauseSpacing,
+  pauseType,
+} from "../../lib/dailyPause/theme"
 import type { Today } from "../../lib/dailyPause/today"
-import type { PauseFont } from "../../lib/dailyPause/fonts"
+import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { PauseBody, PauseButton } from "./PauseFrame"
 
 const PROMPT =
@@ -54,10 +58,12 @@ export function ShareScreen({ pin, font }: ShareScreenProps) {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.top} />
-        <Text style={[styles.label, font("sansSemiBold")]}>SHARE</Text>
+        <Text style={[styles.label, pauseText(font, pauseType.label)]}>
+          SHARE
+        </Text>
         <Text style={[styles.prompt, font("display")]}>{PROMPT}</Text>
         {video.status === "error" ? (
-          <Text style={[styles.failed, font("bodyLight")]}>
+          <Text style={[styles.failed, pauseText(font, pauseType.message)]}>
             This video could not be loaded.
           </Text>
         ) : null}
@@ -83,8 +89,6 @@ const styles = StyleSheet.create({
   top: { height: pauseSpacing.shareTop },
   label: {
     color: pauseColors.accent,
-    fontSize: 12,
-    letterSpacing: 1.8,
     textAlign: "center",
   },
   prompt: {
@@ -96,7 +100,6 @@ const styles = StyleSheet.create({
   failed: {
     alignSelf: "stretch",
     color: pauseColors.muted,
-    fontSize: 16,
   },
   buttonGap: { height: pauseSpacing.shareButtonGap },
 })

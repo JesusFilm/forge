@@ -18,7 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useSheetListHeight } from "../../hooks/useSheetListHeight"
-import { usePauseFonts } from "../../lib/dailyPause/fonts"
+import { pauseText, usePauseFonts } from "../../lib/dailyPause/fonts"
 import {
   openNotificationSettings,
   turnOnDailyPauseReminders,
@@ -35,6 +35,7 @@ import {
   pauseRadii,
   pauseSizes,
   pauseSpacing,
+  pauseType,
 } from "../../lib/dailyPause/theme"
 import { feedback } from "../../styles/shared"
 
@@ -165,7 +166,7 @@ export function CustomizeSheet({ onDone }: CustomizeSheetProps) {
           >
             {CUSTOMIZE_COPY.title}
           </Text>
-          <Text style={[font("sansSemiBold"), styles.sectionLabel]}>
+          <Text style={[pauseText(font, pauseType.label), styles.sectionLabel]}>
             {CUSTOMIZE_COPY.meditation}
           </Text>
           <View
@@ -390,8 +391,6 @@ const styles = StyleSheet.create({
     color: pauseColors.ink,
   },
   sectionLabel: {
-    fontSize: 11,
-    letterSpacing: 1.3,
     color: pauseColors.accent,
   },
   segments: {

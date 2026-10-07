@@ -13,6 +13,7 @@ import {
   pauseColors,
   pauseSizes,
   pauseSpacing,
+  pauseType,
 } from "../../lib/dailyPause/theme"
 import { CountdownRing } from "./CountdownRing"
 import {
@@ -23,7 +24,7 @@ import {
 } from "./PauseIntro"
 import { Pulse } from "./Pulse"
 import { StepperPills } from "./StepperPills"
-import type { PauseFont } from "../../lib/dailyPause/fonts"
+import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { HeldPauseButton, PauseBody, PauseButton } from "./PauseFrame"
 
 type PrayScreenProps = {
@@ -61,10 +62,10 @@ export function PrayScreen({
           <View style={styles.ringBox}>
             <CountdownRing countdown={countdown} font={font} />
           </View>
-          <Text style={[styles.prompt, font("bodyLightItalic")]}>
+          <Text style={[styles.prompt, pauseText(font, pauseType.reading)]}>
             {devotional.prayerPrompt}
           </Text>
-          <Text style={[styles.attribution, font("bodyItalic")]}>
+          <Text style={[styles.attribution, pauseText(font, pauseType.label)]}>
             {devotional.attribution}
           </Text>
         </IntroContent>
@@ -107,14 +108,10 @@ const styles = StyleSheet.create({
   prompt: {
     alignSelf: "stretch",
     color: pauseColors.ink,
-    fontSize: 24,
-    lineHeight: 34,
   },
   attribution: {
     alignSelf: "stretch",
-    color: pauseColors.muted,
-    fontSize: 13,
-    lineHeight: 20,
+    color: pauseColors.accent,
   },
   buttonGap: { height: pauseSpacing.prayButtonGap },
 })

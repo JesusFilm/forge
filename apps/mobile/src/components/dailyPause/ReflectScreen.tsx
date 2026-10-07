@@ -20,7 +20,11 @@ import {
   PAUSE_TIMERS,
   type MeditationLength,
 } from "../../lib/dailyPause/settings"
-import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
+import {
+  pauseColors,
+  pauseSpacing,
+  pauseType,
+} from "../../lib/dailyPause/theme"
 import {
   IntroContent,
   IntroCovered,
@@ -29,7 +33,7 @@ import {
 } from "./PauseIntro"
 import { Pulse } from "./Pulse"
 import { StepperPills } from "./StepperPills"
-import type { PauseFont } from "../../lib/dailyPause/fonts"
+import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { HeldPauseButton, PauseBody, PauseButton } from "./PauseFrame"
 
 const QUOTE_SIZE = 48
@@ -86,13 +90,13 @@ export function ReflectScreen({
           >
             “
           </Text>
-          <Text style={[styles.verse, font("bodyLightItalic")]}>
+          <Text style={[styles.verse, pauseText(font, pauseType.reading)]}>
             {devotional.verse}
           </Text>
-          <Text style={[styles.label, font("sansSemiBold")]}>
+          <Text style={[styles.label, pauseText(font, pauseType.label)]}>
             {devotional.verseLabel}
           </Text>
-          <Text style={[styles.waiting, font("bodyItalic")]}>
+          <Text style={[styles.waiting, pauseText(font, pauseType.note)]}>
             We’ll give you some time.
           </Text>
         </IntroContent>
@@ -149,18 +153,13 @@ const styles = StyleSheet.create({
   verse: {
     alignSelf: "stretch",
     color: pauseColors.ink,
-    fontSize: 20,
-    lineHeight: 30,
   },
   label: {
     alignSelf: "stretch",
     color: pauseColors.accent,
-    fontSize: 12,
-    letterSpacing: 1.2,
   },
   waiting: {
     alignSelf: "stretch",
     color: pauseColors.muted,
-    fontSize: 16,
   },
 })

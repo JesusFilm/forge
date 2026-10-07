@@ -7,12 +7,13 @@ import {
 } from "react-native"
 
 import { markTodaysDevotionalRead } from "../../lib/announcements"
-import { usePauseFonts } from "../../lib/dailyPause/fonts"
+import { pauseText, usePauseFonts } from "../../lib/dailyPause/fonts"
 import { usePauseDay } from "../../lib/dailyPause/progress"
 import {
   pauseColors,
   pauseRadii,
   pauseSpacing,
+  pauseType,
 } from "../../lib/dailyPause/theme"
 import { useToday } from "../../lib/dailyPause/today"
 import { requestPause } from "../../lib/pauseCurtain"
@@ -51,7 +52,9 @@ export function DailyPauseCard() {
     >
       {ready ? (
         <>
-          <Text style={[styles.eyebrow, font("sansMedium")]}>{EYEBROW}</Text>
+          <Text style={[styles.eyebrow, pauseText(font, pauseType.eyebrow)]}>
+            {EYEBROW}
+          </Text>
           {done ? (
             <View style={styles.doneRow}>
               <Text style={[styles.check, font("sansBold")]}>✓</Text>
@@ -92,8 +95,6 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.85 },
   eyebrow: {
     color: pauseColors.ink,
-    fontSize: 12,
-    letterSpacing: 2.6,
   },
   body: { gap: pauseSpacing.screenGap, alignItems: "flex-start" },
   headline: {

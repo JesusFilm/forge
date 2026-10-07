@@ -17,8 +17,12 @@ import {
   type PauseStep,
 } from "../../lib/dailyPause/progress"
 import type { MeditationLength } from "../../lib/dailyPause/settings"
-import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
-import type { PauseFont } from "../../lib/dailyPause/fonts"
+import {
+  pauseColors,
+  pauseSpacing,
+  pauseType,
+} from "../../lib/dailyPause/theme"
+import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { PauseBody, PauseButton, PauseMasthead } from "./PauseFrame"
 
 const QUESTION_SIZE = 48
@@ -100,7 +104,7 @@ export function OpeningScreen({
         hitSlop={CUSTOMIZE_HIT_SLOP}
         style={({ pressed }) => pressed && styles.pressed}
       >
-        <Text style={[styles.customize, font("sansMedium")]}>
+        <Text style={[styles.customize, pauseText(font, pauseType.label)]}>
           CUSTOMIZE EXPERIENCE
         </Text>
       </Pressable>
@@ -134,8 +138,6 @@ const styles = StyleSheet.create({
   },
   customize: {
     color: pauseColors.muted,
-    fontSize: 12,
-    letterSpacing: 1.6,
     textAlign: "center",
   },
   pressed: { opacity: 0.6 },

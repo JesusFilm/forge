@@ -33,7 +33,7 @@ const TEXT = {
     verseLabel: "LUKE 18:14 · BSB",
     prayerPrompt:
       "Bring your honest need to God right now and ask him for mercy.",
-    attribution: "Adapted from a trusted classic · J.C. Ryle, 1858",
+    attribution: "Adapted from a trusted classic · J.C.\u00a0Ryle, 1858",
   },
   lamp: {
     name: "Lamp",
@@ -45,7 +45,7 @@ const TEXT = {
     verseLabel: "LUKE 8:16",
     prayerPrompt:
       "Ask God to show you one person who needs to see the light he's given you.",
-    attribution: "Adapted from a trusted classic · J.C. Ryle",
+    attribution: "Adapted from a trusted classic · J.C.\u00a0Ryle",
   },
 } as const
 

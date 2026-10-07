@@ -116,13 +116,28 @@ function styleFor(face: PauseFace, state: LoadState): PauseFontStyle {
   }
 }
 
+/** Reads a face's style. Every Pause screen takes one as its `font`. */
+export type PauseFont = (face: PauseFace) => PauseFontStyle
+
+/** One text type of the flow: its face and its size. The color stays with
+ *  each screen. */
+export type PauseTextType = { face: PauseFace } & Pick<
+  TextStyle,
+  "fontSize" | "lineHeight" | "letterSpacing" | "textTransform"
+>
+
+/** The full style of a text type, in the face that `font` gives. */
+export function pauseText(
+  font: PauseFont,
+  { face, ...size }: PauseTextType,
+): TextStyle {
+  return { ...font(face), ...size }
+}
+
 /**
  * Loads the Pass 2 faces. `ready` turns true when the load ends, also on a
  * failure: then `font()` gives a system face, so text never renders blank.
  */
-/** Reads a face's style. Every Pause screen takes one as its `font`. */
-export type PauseFont = (face: PauseFace) => PauseFontStyle
-
 export function usePauseFonts(): {
   ready: boolean
   font: PauseFont

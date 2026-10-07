@@ -4,8 +4,12 @@
 import Ionicons from "@expo/vector-icons/Ionicons"
 import { Pressable, StyleSheet, Text } from "react-native"
 
-import type { PauseFont } from "../../lib/dailyPause/fonts"
-import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
+import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
+import {
+  pauseColors,
+  pauseSpacing,
+  pauseType,
+} from "../../lib/dailyPause/theme"
 import { useTopRowTop, type TopRowPlacement } from "./useTopRowTop"
 
 const TARGET_HEIGHT = 44
@@ -33,7 +37,9 @@ export function DevSkipButton({
       accessibilityLabel="Skip this step (developer)"
       style={({ pressed }) => [styles.skip, { top }, pressed && styles.pressed]}
     >
-      <Text style={[styles.label, font("sansMedium")]}>DEV SKIP</Text>
+      <Text style={[styles.label, pauseText(font, pauseType.label)]}>
+        DEV SKIP
+      </Text>
       <Ionicons
         name="play-skip-forward"
         size={GLYPH_SIZE}
@@ -55,8 +61,6 @@ const styles = StyleSheet.create({
   },
   label: {
     color: pauseColors.muted,
-    fontSize: 12,
-    letterSpacing: 1.2,
   },
   pressed: { opacity: 0.6 },
 })

@@ -20,12 +20,13 @@ import {
   type EdgeInsets,
 } from "react-native-safe-area-context"
 
-import type { PauseFont } from "../../lib/dailyPause/fonts"
+import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import type { MeditationLength } from "../../lib/dailyPause/settings"
 import {
   pauseColors,
   pauseRadii,
   pauseSpacing,
+  pauseType,
 } from "../../lib/dailyPause/theme"
 
 const PRESSED_OPACITY = 0.6
@@ -67,7 +68,7 @@ export function PauseMasthead({
 }) {
   return (
     <>
-      <Text style={[styles.eyebrow, font("sansMedium")]}>
+      <Text style={[styles.eyebrow, pauseText(font, pauseType.eyebrow)]}>
         DAILY BIBLE PAUSE
       </Text>
       <Text style={[styles.minutes, font("sansMedium")]}>
@@ -142,7 +143,7 @@ export function PauseButton({
       style={[
         styles.buttonLabel,
         outline && styles.outlineLabel,
-        font("sansSemiBold"),
+        pauseText(font, pauseType.button),
       ]}
     />
   )
@@ -228,8 +229,6 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     color: pauseColors.ink,
-    fontSize: 12,
-    letterSpacing: 2.6,
     textAlign: "center",
   },
   minutes: {
@@ -271,7 +270,6 @@ const styles = StyleSheet.create({
   widthHolder: { height: 0, opacity: 0 },
   buttonLabel: {
     color: pauseColors.background,
-    fontSize: 18,
     textAlign: "center",
   },
   outlineLabel: { color: pauseColors.ink },

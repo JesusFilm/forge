@@ -1,15 +1,17 @@
 // Pass 2 tokens, copied from the Figma frame "Pass 2 · Dark, pill stepper"
 // (file 0x3kAiEt7C7kSHpg0f4wiD, node 343:2). The devotional uses these, not the
 // app's BG_COLOR (#1c1917), because the frame draws on its own ground.
+import type { PauseTextType } from "./fonts"
 
 export const pauseColors = {
   /** Screen ground; also the text on ink-filled buttons and the active pill. */
   background: "#0c0b0a",
   /** Primary text, button and active-pill fill, the Pray ring stroke. */
   ink: "#f4efe6",
-  /** Minutes line, check marks, scripture reference, section labels, switch on. */
+  /** Minutes line, check marks, verse reference, attribution, section labels,
+   *  switch on. */
   accent: "#f2c46b",
-  /** Secondary text: customize link, waiting line, attribution, row subtitles. */
+  /** Secondary text: customize link, waiting line, row subtitles. */
   muted: "#b7a99a",
   /** The outline of an upcoming pill. */
   pillBorder: "#3a342c",
@@ -82,3 +84,26 @@ export const pauseSizes = {
   prayRingStroke: 5,
   progressBarHeight: 3,
 } as const
+
+/** One style per text type, so a type has the same size on every screen (the
+ *  owner, 2026-10-07). Apply one with `pauseText(font, pauseType.<type>)`. */
+export const pauseType = {
+  /** The Reflect verse and the Pray prayer text. */
+  reading: { face: "bodyLightItalic", fontSize: 22, lineHeight: 32 },
+  /** Small capitals: the verse reference, the attribution, section labels,
+   *  and text links. */
+  label: {
+    face: "sansSemiBold",
+    fontSize: 12,
+    letterSpacing: 1.6,
+    textTransform: "uppercase",
+  },
+  /** "DAILY BIBLE PAUSE" over a screen or a card. */
+  eyebrow: { face: "sansMedium", fontSize: 12, letterSpacing: 2.6 },
+  /** A short line under the reading text. */
+  note: { face: "bodyItalic", fontSize: 16 },
+  /** A message that a video could not load or start. */
+  message: { face: "bodyLight", fontSize: 16 },
+  /** The label of every pill button in a run. */
+  button: { face: "sansSemiBold", fontSize: 18 },
+} as const satisfies Record<string, PauseTextType>
