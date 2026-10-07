@@ -330,6 +330,10 @@ export type HistoricalProvenance = {
   unmappedDigest: string | null
   bytesProcessed: number | null
   costQualification: "usage_only" | "unavailable"
+  captureMode?: "capture_derived_v1"
+  artifactSha256?: string
+  derivedSubsetDigest?: string
+  pageCountKind?: "virtual_validation"
 }
 
 export type HistoricalSnapshot = {

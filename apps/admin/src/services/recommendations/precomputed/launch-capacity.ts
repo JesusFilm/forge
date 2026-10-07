@@ -5,6 +5,7 @@ import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import { ForbiddenError } from "@/services/errors"
 import { capacityMeasurement } from "./durable-build"
+import { hasSealedGaCapture } from "./ga-capture-artifact"
 import type { PrecomputedBaselineReport } from "./incumbent-baseline"
 
 const MIN_RESERVE_BYTES = 5_000_000_000
@@ -100,6 +101,11 @@ export async function attestPrecomputedLaunchCapacity(
             status: true,
             protocolVersion: true,
             capacityPreflight: true,
+            historicalQualification: true,
+            id: true,
+            inputDigest: true,
+            sourceSetDigest: true,
+            inputCutoff: true,
           },
         })
       const baseline = await tx.recommendationPrecomputedBaselineRun.findFirst({
@@ -112,7 +118,12 @@ export async function attestPrecomputedLaunchCapacity(
       const report = baseline?.finalReport as PrecomputedBaselineReport | null
       if (
         generation?.status !== "complete" ||
-        generation.protocolVersion !== 2 ||
+        (generation.protocolVersion !== 2 &&
+          (generation.protocolVersion !== 3 ||
+            !hasSealedGaCapture(
+              generation.historicalQualification,
+              generation,
+            ))) ||
         (generation.capacityPreflight as { status?: string } | null)?.status !==
           "passed" ||
         !baseline ||
@@ -313,7 +324,7 @@ export async function attestPrecomputedLaunchCapacity(
             AND COALESCE(completed_at, failed_at, cancelled_at) >= ${new Date(measurement.measuredAt)}
         ), 0)::bigint AS recent_terminal_bytes
       FROM recommendation_precomputed_generation
-      WHERE id <> ${input.generationId} AND protocol_version = 2
+      WHERE id <> ${input.generationId} AND protocol_version IN (2, 3)
         AND capacity_preflight->>'projectedBytes' IS NOT NULL`
       const calculation = calculateLaunchCapacity({
         verifiedVisits: report.eligibleVisits,

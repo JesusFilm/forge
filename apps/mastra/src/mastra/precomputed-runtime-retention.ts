@@ -108,9 +108,11 @@ function hasRetirementProof(
     "generationId" in proof &&
     proof.generationId === identity.generationId &&
     "generationProtocolVersion" in proof &&
-    [1, 2].includes(proof.generationProtocolVersion as number) &&
-    (identity.workflowName !== "precomputed-catalog-generation" ||
-      proof.generationProtocolVersion === 2) &&
+    (identity.workflowName === "precomputed-catalog-generation"
+      ? proof.generationProtocolVersion === 2 ||
+        (proof.generationProtocolVersion === 3 && identity.historyRequired)
+      : identity.workflowName === "precomputed-source-generation" &&
+        [1, 2].includes(proof.generationProtocolVersion as number)) &&
     "inputCutoff" in proof &&
     proof.inputCutoff === new Date(identity.inputCutoff).toISOString() &&
     "inputMode" in proof &&

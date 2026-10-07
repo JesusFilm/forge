@@ -7,6 +7,7 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 const TABLES = [
   "recommendation_precomputed_generation",
   "recommendation_precomputed_generation_retention_proof",
+  "recommendation_precomputed_ga_capture_artifact",
   "recommendation_precomputed_source",
   "recommendation_precomputed_model_call",
   "recommendation_precomputed_history_call",
@@ -75,6 +76,14 @@ export async function loadPrecomputedStorageCapacityReport(
     Array<{ bytes: bigint; visit_count: bigint }>
   >`SELECT pg_database_size(current_database())::bigint AS bytes,
            (SELECT count(*) FROM recommendation_precomputed_visit)::bigint AS visit_count`
+  const [captureObjects] = await prisma.$queryRaw<
+    Array<{ objects: bigint; bytes: bigint; selected_bytes: bigint }>
+  >`SELECT count(*)::bigint AS objects,
+           COALESCE(sum(artifact_bytes), 0)::bigint AS bytes,
+           COALESCE(sum(artifact_bytes) FILTER (
+             WHERE generation_id = ${input.generationId ?? ""}
+           ), 0)::bigint AS selected_bytes
+     FROM recommendation_precomputed_ga_capture_artifact`
   // pg_stat_wal is a shared-cluster cumulative counter, not bytes caused by
   // this feature or by the selected generation.
   const [wal] = await prisma.$queryRaw<Array<{ bytes: bigint | null }>>`
@@ -164,6 +173,14 @@ export async function loadPrecomputedStorageCapacityReport(
     measuredAt: now.toISOString(),
     relations: normalized,
     databaseBytes: number(database?.bytes),
+    privateGaCaptureObjects: {
+      recordedObjectCount: number(captureObjects?.objects),
+      recordedBytes: number(captureObjects?.bytes),
+      selectedGenerationRecordedBytes: number(captureObjects?.selected_bytes),
+      storageScope: "private_object_store_not_postgresql_pgdata" as const,
+      qualification:
+        "Upload receipts measure retained object bytes, not object-store physical overhead or PostgreSQL WAL.",
+    },
     globalWal: {
       scope: "shared_cluster_cumulative" as const,
       bytes: wal?.bytes == null ? null : number(wal.bytes),

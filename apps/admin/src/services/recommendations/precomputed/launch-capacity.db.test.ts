@@ -269,5 +269,54 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         }),
       ).rejects.toThrow()
     }, 120_000)
+
+    it("charges an active v3 build against a v2 launch reservation", async () => {
+      await prisma.recommendationPrecomputedGeneration.create({
+        data: {
+          id: `v3-overlap-${randomUUID()}`,
+          modelId: "gpt-6-astra",
+          promptVersion: "ga-capture-v1",
+          inputDigest: "e".repeat(64),
+          sourceSetDigest: "f".repeat(64),
+          inputCutoff: now,
+          expectedSourceCount: 1,
+          protocolVersion: 3,
+          inputMode: "historical_analytics",
+          inputSnapshotMode: "ga_aggregate_capture_v1",
+          capacityPreflight: {
+            status: "passed",
+            projectedBytes: 800_000_000,
+            heldProjectionBytes: 800_000_000,
+          },
+        },
+      })
+      const observed = await probe()
+      const result = await attestPrecomputedLaunchCapacity(prisma, {
+        generationId,
+        operator: { id: "native-capacity-operator", role: "ADMIN" },
+        now: new Date(),
+        measurement: {
+          measuredAt: new Date().toISOString(),
+          clusterSystemId: observed.cluster_system_id,
+          observedDbBytes: Number(observed.observed_db_bytes),
+          availableBytes: 6_000_000_000,
+          reserveBytes: 5_000_000_000,
+          projectedBytes: 500_000_000,
+          sampleSourceCount: 1,
+          sampleBytes: 50_000_000,
+          source: "operator_verified_pgdata_df",
+        },
+      })
+      expect(result.status).toBe("insufficient")
+      const receipt =
+        await prisma.recommendationPrecomputedLaunchCapacityReceipt.findUniqueOrThrow(
+          {
+            where: { id: result.id },
+          },
+        )
+      expect(receipt.measurement).toMatchObject({
+        reservedBuildBytes: 800_000_000,
+      })
+    }, 120_000)
   },
 )

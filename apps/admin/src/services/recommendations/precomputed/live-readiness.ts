@@ -34,6 +34,7 @@ export type PrecomputedLiveFacts = {
   generation: {
     status: string
     protocolVersion: number
+    gaCaptureSealed?: boolean
     modelId: string
     inputMode: string
     sourceSetDigest: string
@@ -119,7 +120,8 @@ export function evaluatePrecomputedLiveFacts(
   const generation = facts.generation
   if (
     generation?.status !== "complete" ||
-    generation.protocolVersion !== 2 ||
+    (generation.protocolVersion !== 2 &&
+      (generation.protocolVersion !== 3 || !generation.gaCaptureSealed)) ||
     generation.modelId !== "gpt-6-astra" ||
     generation.inputMode !== "historical_analytics" ||
     !HEX_DIGEST.test(generation.sourceSetDigest) ||

@@ -25,6 +25,30 @@ not a completed build or a deployment of this branch. The
 Admin ingest bearer and Mastra service bearer are separate credentials. Use the
 normal PR-to-main deployment path; this procedure does not deploy code.
 
+For a new historical build, set `snapshotMode: "ga_aggregate_capture_v1"`.
+Protocol v3 captures the complete Watch starts and referrer aggregates before
+source claims or model calls. It requires two matching paginated passes,
+unchanged qualification, reconciled totals and HTTP receipts, then seals a
+private immutable artifact. These are two matching observations, not a
+transactional snapshot guaranteed by GA. Source histories are derived from
+that artifact and labeled `capture_derived_v1`; their virtual page counts do
+not represent new GA calls. No GA credentials or queries are used after seal.
+
+Mastra needs writable staging space at `MASTRA_STORAGE_DIR`; Admin needs its
+existing private `RAILWAY_S3_*` bucket configuration. There is no production
+local-file fallback. The object is capped at 256 MiB, staged compressed pages
+at 104 MiB, and aggregate decompressed data at 1 GiB. Exceeding a limit fails
+the capture; it never samples or silently truncates the history. Measure
+staging, upload, backup and object-storage headroom separately from PGDATA.
+If capture takes over 30 minutes, sealing may finish but model work pauses
+until a genuinely fresh capacity observation is submitted.
+
+Older v2 generations keep their original protocol and qualification. Do not
+add snapshot mode to an existing generation or carry its model decisions into
+a new qualification. Missing or corrupt sealed data fails closed. Before seal,
+an orphan GA reservation can be reconciled only after Admin's 30-minute
+reservation deadline; its outcome remains explicitly unknown.
+
 Before submitting a build, choose a new `generationId` and UTC `inputCutoff`.
 The cutoff and catalog identity remain fixed for that generation. Verify GA
 qualification and the actual model route with read-only/paid smoke checks, then
@@ -55,6 +79,7 @@ Write the request to a private JSON file without credentials:
   "generationId": "catalog-2026-10-06-a",
   "inputCutoff": "2026-10-06T00:00:00.000Z",
   "historyRequired": true,
+  "snapshotMode": "ga_aggregate_capture_v1",
   "capacity": {
     "measuredAt": "2026-10-06T00:10:00.000Z",
     "clusterSystemId": "<observed decimal cluster identifier>",
@@ -94,7 +119,7 @@ Do not infer a refresh budget from fixtures or from known charges while pending
 attempts remain unresolved.
 
 If a process crashes or an external provider is temporarily unavailable, use
-the **same** generation ID, cutoff, and history setting after the existing
+the **same** generation ID, cutoff, history setting and snapshot mode after the existing
 20-minute source lease expires. Obtain a new physical capacity observation and
 resubmit through the same route. Completed checkpoints and provisional choices
 are reused; a genuinely repeated paid call receives a new call ID and charge

@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto"
+import { rm } from "node:fs/promises"
+import { join } from "node:path"
 
 import { z } from "zod"
 
@@ -37,6 +39,25 @@ import {
 } from "./historical-analytics"
 import { createGaWatchHistoryReader } from "./ga-watch-history"
 import {
+  gaCaptureCanonicalJson,
+  gaCaptureDigest,
+  openGaWatchCaptureArtifact,
+  type GaCaptureHeader,
+} from "./ga-watch-capture-artifact"
+import {
+  assertGaCaptureHeaderBinding,
+  captureGaWatchAggregates,
+  createSealedGaWatchHistoryReader,
+  type GaWatchCaptureBinding,
+} from "./ga-watch-capture"
+import {
+  createAdminGaCaptureTransport,
+  parseGaCaptureSnapshotRef,
+  type GaCaptureTransport,
+  type GaCaptureSnapshotRef,
+} from "./ga-watch-capture-transport"
+import type { WatchRouteCatalogVideo } from "./watch-route-identity"
+import {
   GA_WATCH_PROPERTY,
   gaWatchClosedRangeEnd,
 } from "./ga-watch-history-range"
@@ -55,12 +76,14 @@ const id = z.string().trim().min(1).max(191)
 const MAX_CANDIDATE_JUDGMENT_ATTEMPTS = 2
 const MAX_ANALYTICS_PLAN_ATTEMPTS = 2
 const HISTORY_PROMPT_VERSION = "astra-catalog-history-navigation-v6"
+const CAPTURE_HISTORY_PROMPT_VERSION = "astra-catalog-history-capture-v1"
 const CONTENT_PROMPT_VERSION = "astra-catalog-v5"
 export const CatalogGenerationInputSchema = z
   .object({
     generationId: id,
     inputCutoff: z.string().datetime(),
     historyRequired: z.boolean().default(true),
+    snapshotMode: z.literal("ga_aggregate_capture_v1").optional(),
     sourceConcurrency: z.number().int().min(1).max(4).default(1),
     capacity: z
       .object({
@@ -88,6 +111,10 @@ type HistorySummary = {
   unmappedRows: number
   pageCount: number
   queryExecutionCount: number
+  captureBasis?: "capture_derived_v1"
+  artifactSha256?: string
+  derivedSubsetDigest?: string
+  pageCountKind?: "virtual_validation"
   navigationCoverage: NonNullable<
     HistoricalSnapshot["provenance"]["navigationCoverage"]
   >
@@ -132,6 +159,8 @@ type Dependencies = {
       { ok: true; accessToken: string } | { ok: false }
     >
   }
+  gaCaptureTransport: GaCaptureTransport
+  gaCaptureDirectory: string
 }
 type Context = {
   input: CatalogGenerationInput
@@ -223,6 +252,16 @@ const checkpointSchema: z.ZodType<Checkpoint> = z.object({
       unmappedRows: nonnegative,
       pageCount: nonnegative,
       queryExecutionCount: nonnegative,
+      captureBasis: z.literal("capture_derived_v1").optional(),
+      artifactSha256: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/u)
+        .optional(),
+      derivedSubsetDigest: z
+        .string()
+        .regex(/^[a-f0-9]{64}$/u)
+        .optional(),
+      pageCountKind: z.literal("virtual_validation").optional(),
       navigationCoverage: z.object({
         candidateEvents: nonnegative,
         qualifiedEvents: nonnegative,
@@ -274,6 +313,31 @@ const sourceResponseSchema = z.object({
 const qualificationResponseSchema = z.object({
   qualificationDigest: z.string().regex(/^[a-f0-9]{64}$/u),
 })
+const captureStatusSchema = z.object({
+  generationProtocolVersion: z.literal(3),
+  inputSnapshotMode: z.literal("ga_aggregate_capture_v1"),
+  capacityFresh: z.boolean(),
+  historicalQualification: z.unknown().nullish(),
+  historicalQualificationDigest: z
+    .string()
+    .regex(/^[a-f0-9]{64}$/u)
+    .nullish(),
+  historyCallCounts: z.object({
+    pending: nonnegative,
+    succeeded: nonnegative,
+    failed: nonnegative,
+  }),
+  pendingHistoryCalls: z
+    .array(
+      z.object({
+        callId: id,
+        startedAt: z.string().datetime(),
+        reservedAt: z.string().datetime(),
+      }),
+    )
+    .max(100)
+    .optional(),
+})
 
 type CatalogBuildFailureCode =
   | "admin_contract_rejected"
@@ -323,6 +387,51 @@ function parsed<T extends z.ZodType>(schema: T, value: unknown): z.output<T> {
   return checked.data
 }
 
+function assertCaptureRefMatchesHeader(
+  ref: GaCaptureSnapshotRef,
+  header: GaCaptureHeader,
+  headerSha256: string,
+): void {
+  const fields = [
+    "version",
+    "generationId",
+    "generationInputDigest",
+    "sourceSetDigest",
+    "inputCutoff",
+    "selectedCorpusDigest",
+    "candidatePoolDigest",
+    "routeMappingDigest",
+    "querySpecDigest",
+    "sourcePatternTableDigest",
+    "baseQualificationDigest",
+    "propertyId",
+    "propertyTimeZone",
+    "requestedStart",
+    "requestedEnd",
+    "usableStart",
+    "usableEnd",
+    "sourceAvailability",
+    "captureStartedAt",
+    "captureCompletedAt",
+    "verification",
+    "startRows",
+    "referrerRows",
+    "startPages",
+    "referrerPages",
+    "physicalHttpAttempts",
+    "physicalSucceededCalls",
+  ] as const
+  if (
+    ref.headerSha256 !== headerSha256 ||
+    fields.some(
+      (field) =>
+        gaCaptureCanonicalJson(ref[field]) !==
+        gaCaptureCanonicalJson(header[field]),
+    )
+  )
+    throw new HistoricalAnalyticsError("analytics_incomplete")
+}
+
 function isLiveClaimConflict(error: unknown): boolean {
   return (
     error instanceof Error &&
@@ -366,6 +475,15 @@ function sumHistory(
   const observed = p.navigationCoverage
   if (!observed) throw new HistoricalAnalyticsError("analytics_incomplete")
   const previous = prior?.navigationCoverage
+  if (
+    (prior?.artifactSha256 && prior.artifactSha256 !== p.artifactSha256) ||
+    (p.captureMode === "capture_derived_v1" &&
+      (!p.artifactSha256 ||
+        !p.derivedSubsetDigest ||
+        p.queryExecutionCount !== 0 ||
+        p.pageCountKind !== "virtual_validation"))
+  )
+    throw new HistoricalAnalyticsError("analytics_incomplete")
   return {
     resultDigest: digest([prior?.resultDigest ?? null, p.resultDigest]),
     rowCount: (prior?.rowCount ?? 0) + p.rowCount,
@@ -374,6 +492,18 @@ function sumHistory(
     pageCount: (prior?.pageCount ?? 0) + p.pageCount,
     queryExecutionCount:
       (prior?.queryExecutionCount ?? 0) + p.queryExecutionCount,
+    ...(p.captureMode === "capture_derived_v1"
+      ? {
+          captureBasis: "capture_derived_v1" as const,
+          artifactSha256: p.artifactSha256!,
+          pageCountKind: "virtual_validation" as const,
+          derivedSubsetDigest: gaCaptureDigest({
+            version: "ga_watch_source_subsets_v1",
+            previous: prior?.derivedSubsetDigest ?? null,
+            subset: p.derivedSubsetDigest,
+          }),
+        }
+      : {}),
     navigationCoverage: {
       candidateEvents:
         (previous?.candidateEvents ?? 0) + observed.candidateEvents,
@@ -1084,6 +1214,8 @@ export async function runPrecomputedCatalog(
   failedSourceCount: number
 }> {
   const input = CatalogGenerationInputSchema.parse(raw)
+  if (input.snapshotMode && (!input.historyRequired || provided.history))
+    throw new HistoricalAnalyticsError("analytics_unavailable")
   if (
     input.historyRequired &&
     provided.history &&
@@ -1108,8 +1240,11 @@ export async function runPrecomputedCatalog(
     input.inputCutoff,
   )
   const promptVersion = input.historyRequired
-    ? HISTORY_PROMPT_VERSION
+    ? input.snapshotMode
+      ? CAPTURE_HISTORY_PROMPT_VERSION
+      : HISTORY_PROMPT_VERSION
     : CONTENT_PROMPT_VERSION
+  const sourceSetDigest = digest(sourceVideoIds)
   const generationInputDigest = digest({
     cutoff: input.inputCutoff,
     historyRequired: input.historyRequired,
@@ -1118,6 +1253,7 @@ export async function runPrecomputedCatalog(
     selectedCorpusDigest: retrieval.selectedCorpusDigest,
     candidatePoolDigest: retrieval.candidatePoolDigest,
     promptVersion,
+    ...(input.snapshotMode ? { snapshotMode: input.snapshotMode } : {}),
   })
   const inputMode = input.historyRequired
     ? "historical_analytics"
@@ -1126,14 +1262,14 @@ export async function runPrecomputedCatalog(
     stateSchema,
     await ingest({
       action: "start",
-      protocolVersion: 2,
+      protocolVersion: input.snapshotMode ? 3 : 2,
       generationId: input.generationId,
       modelId: PRECOMPUTED_MODEL_ID,
       promptVersion,
       inputMode,
-      inputSnapshotMode: "observed_fenced",
+      inputSnapshotMode: input.snapshotMode ?? "observed_fenced",
       inputDigest: generationInputDigest,
-      sourceSetDigest: digest(sourceVideoIds),
+      sourceSetDigest,
       inputCutoff: input.inputCutoff,
       expectedSourceCount: sourceVideoIds.length,
     }),
@@ -1178,7 +1314,6 @@ export async function runPrecomputedCatalog(
       completedSourceCount: 0,
       failedSourceCount: 0,
     }
-  const model = provided.model ?? createAstraModel()
   let stopped = false
   const assertExternalAdmission = () => {
     if (stopped) throw new CatalogBuildError("admission_stopped")
@@ -1215,10 +1350,14 @@ export async function runPrecomputedCatalog(
   const serviceAccountEmail =
     provided.gaTransport?.serviceAccountEmail ??
     env.PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL
-  const createHistoryReader = (scope?: {
-    sourceVideoId: string
-    leaseToken: string
-  }) => {
+  const createHistoryReader = (
+    scope?: {
+      sourceVideoId: string
+      leaseToken: string
+    },
+    range?: { rangeStart: string; rangeEnd: string },
+    globalStage: "qualification" | "snapshot_page" = "qualification",
+  ) => {
     if (
       (env.PRECOMPUTED_GA4_PROPERTY_ID !== GA_WATCH_PROPERTY.id &&
         !provided.gaTransport) ||
@@ -1229,18 +1368,19 @@ export async function runPrecomputedCatalog(
     return createGaWatchHistoryReader({
       propertyId: GA_WATCH_PROPERTY.id,
       serviceAccountEmail,
-      rangeStart: GA_WATCH_PROPERTY.createdDate,
-      rangeEnd: gaWatchClosedRangeEnd(input.inputCutoff),
+      rangeStart: range?.rangeStart ?? GA_WATCH_PROPERTY.createdDate,
+      rangeEnd: range?.rangeEnd ?? gaWatchClosedRangeEnd(input.inputCutoff),
       ...(provided.gaTransport?.tokenProvider
         ? { tokenProvider: provided.gaTransport.tokenProvider }
         : {}),
       fetchImpl: (url, init) => {
         const requestDigest = digest({ url: String(url), body: init?.body })
-        const stage = !scope
-          ? "qualification"
-          : requestDigest === lastRequestDigest
+        const stage =
+          requestDigest === lastRequestDigest
             ? "retry"
-            : "snapshot_page"
+            : scope
+              ? "snapshot_page"
+              : globalStage
         lastRequestDigest = requestDigest
         return withGaAdmission(() =>
           recordHistoryAttempt({
@@ -1259,167 +1399,351 @@ export async function runPrecomputedCatalog(
       },
     })
   }
-  const history = input.historyRequired
-    ? (provided.history ?? createHistoryReader())
-    : undefined
-  if (input.historyRequired && !history)
-    throw new HistoricalAnalyticsError("analytics_unavailable")
-  const historyDefinition = history
-    ? await readHistoricalDefinition(history, input.inputCutoff)
-    : undefined
-  if (input.historyRequired && historyDefinition?.provider !== "ga_data_api")
-    throw new HistoricalAnalyticsError("analytics_unavailable")
-  const qualificationDigest =
-    historyDefinition?.provider === "ga_data_api"
-      ? parsed(
-          qualificationResponseSchema,
-          await ingest({
-            action: "history_qualification",
-            generationId: input.generationId,
-            generationInputDigest,
-            qualification: historyDefinition.qualification,
-          }),
-        ).qualificationDigest
-      : undefined
-  let completedSourceCount = 0
-  let failedSourceCount = 0
-  let busySourceCount = 0
-  const runSource = async (source: Video) => {
-    let claim: z.output<typeof claimSchema>
-    try {
-      claim = parsed(
-        claimSchema,
+  let history: HistoricalAnalyticsReader | undefined
+  let historyDefinition:
+    | Awaited<ReturnType<typeof readHistoricalDefinition>>
+    | undefined
+  let qualificationDigest: string | undefined
+  let sealedCaptureDirectory: string | undefined
+  if (input.snapshotMode) {
+    const routeCatalog = videos.filter(
+      (video): video is Video & WatchRouteCatalogVideo =>
+        video.watchRouteIdentity?.basis === "current_catalog_cutoff_fenced",
+    )
+    if (routeCatalog.length !== videos.length)
+      throw new HistoricalAnalyticsError("analytics_mapping_unverified")
+    const binding: GaWatchCaptureBinding = {
+      generationId: input.generationId,
+      generationInputDigest,
+      sourceSetDigest,
+      inputCutoff: input.inputCutoff,
+      selectedCorpusDigest: retrieval.selectedCorpusDigest,
+      candidatePoolDigest: retrieval.candidatePoolDigest,
+      routeCatalog,
+      propertyId: GA_WATCH_PROPERTY.id,
+      requestedStart: GA_WATCH_PROPERTY.createdDate,
+      requestedEnd: gaWatchClosedRangeEnd(input.inputCutoff),
+    }
+    const directoryRoot = provided.gaCaptureDirectory ?? env.MASTRA_STORAGE_DIR
+    if (!directoryRoot)
+      throw new HistoricalAnalyticsError("analytics_unavailable")
+    const directory = join(
+      directoryRoot,
+      "precomputed-ga-capture",
+      digest(input.generationId),
+    )
+    const transport =
+      provided.gaCaptureTransport ?? createAdminGaCaptureTransport()
+    const readCaptureStatus = async () =>
+      parsed(
+        captureStatusSchema,
         await ingest({
-          action: "claim",
+          action: "status",
           generationId: input.generationId,
           generationInputDigest,
-          sourceVideoId: source.id,
-          claimId: randomUUID(),
         }),
       )
-    } catch (error) {
-      if (!isLiveClaimConflict(error)) throw error
-      busySourceCount += 1
-      return
+    let status = await readCaptureStatus()
+    if (!status.historicalQualification) {
+      for (let batch = 0; status.historyCallCounts.pending > 0; batch++) {
+        if (batch >= 100 || !status.pendingHistoryCalls?.length)
+          throw new HistoricalAnalyticsError("analytics_incomplete")
+        const due = status.pendingHistoryCalls.filter(
+          (call) => Date.now() - Date.parse(call.reservedAt) >= 30 * 60_000,
+        )
+        if (due.length !== status.pendingHistoryCalls.length)
+          throw new HistoricalAnalyticsError("analytics_incomplete")
+        for (const call of due)
+          await ingest({
+            action: "history_call_reconcile",
+            generationId: input.generationId,
+            generationInputDigest,
+            callId: call.callId,
+          })
+        status = await readCaptureStatus()
+      }
     }
-    if (
-      claim.sourceState === "complete_edges" ||
-      claim.sourceState === "complete_empty"
-    ) {
-      completedSourceCount += 1
-      return
-    }
-    if (claim.sourceState === "failed") {
-      failedSourceCount += 1
-      return
-    }
-    if (!claim.leaseToken || claim.checkpointRevision === undefined)
-      throw new CatalogBuildError("admin_contract_rejected")
-    try {
-      await processSource(
-        {
-          input,
-          generationInputDigest,
-          catalog,
-          ingest,
-          model,
-          videos,
-          candidateIdsBySource: retrieval.candidateIdsBySource,
-          history:
-            provided.history ??
-            (input.historyRequired
-              ? createHistoryReader({
-                  sourceVideoId: source.id,
-                  leaseToken: claim.leaseToken,
-                })
-              : undefined),
-          historyDefinition,
-          qualificationDigest,
-          assertExternalAdmission,
-        },
-        source,
-        claim.leaseToken,
-        claim.checkpoint ?? null,
-        claim.checkpointRevision,
-      )
-      completedSourceCount += 1
-    } catch (error) {
-      const code =
-        error instanceof CatalogBuildError
-          ? error.code
-          : error instanceof HistoricalAnalyticsError
-            ? error.code
-            : error instanceof Error
-              ? error.message
-              : "internal_failure"
+    let ref: GaCaptureSnapshotRef
+    let artifact: Awaited<ReturnType<typeof openGaWatchCaptureArtifact>>
+    if (status.historicalQualification) {
+      if (status.historyCallCounts.pending !== 0)
+        throw new HistoricalAnalyticsError("analytics_incomplete")
+      const stored = status.historicalQualification
       if (
-        ![
-          "provider_invalid_output",
-          "analytics_incomplete",
-          "input_stale",
-        ].includes(code)
+        typeof stored !== "object" ||
+        stored === null ||
+        !("snapshotRef" in stored) ||
+        !status.historicalQualificationDigest
       )
-        throw error
-      await ingest({
-        action: "fail",
+        throw new HistoricalAnalyticsError("analytics_incomplete")
+      ref = parseGaCaptureSnapshotRef(stored.snapshotRef)
+      const path = await transport.download({
         generationId: input.generationId,
         generationInputDigest,
-        sourceVideoId: source.id,
-        leaseToken: claim.leaseToken,
-        failureCode: code,
+        artifactSha256: ref.artifactSha256,
+        artifactBytes: ref.artifactBytes,
+        directory,
       })
-      failedSourceCount += 1
+      artifact = await openGaWatchCaptureArtifact({
+        path,
+        expectedSha256: ref.artifactSha256,
+        expectedBytes: ref.artifactBytes,
+      })
+      if (
+        gaCaptureCanonicalJson(
+          Object.fromEntries(
+            Object.entries(stored).filter(([key]) => key !== "snapshotRef"),
+          ),
+        ) !== gaCaptureCanonicalJson(artifact.header.baseQualification)
+      )
+        throw new HistoricalAnalyticsError("analytics_incomplete")
+      qualificationDigest = status.historicalQualificationDigest
+    } else {
+      if (status.historicalQualificationDigest)
+        throw new HistoricalAnalyticsError("analytics_incomplete")
+      const sealed = await captureGaWatchAggregates({
+        directory,
+        binding,
+        createReader: (rangeStart, rangeEnd, stage) => {
+          const reader = createHistoryReader(
+            undefined,
+            { rangeStart, rangeEnd },
+            stage,
+          )
+          if (!reader)
+            throw new HistoricalAnalyticsError("analytics_unavailable")
+          return reader
+        },
+        historyCallCounts: async () =>
+          (await readCaptureStatus()).historyCallCounts,
+      })
+      ref = await transport.upload({
+        generationId: input.generationId,
+        generationInputDigest,
+        path: sealed.path,
+        artifactSha256: sealed.artifactSha256,
+        artifactBytes: sealed.artifactBytes,
+      })
+      artifact = await openGaWatchCaptureArtifact({
+        path: sealed.path,
+        expectedSha256: sealed.artifactSha256,
+        expectedBytes: sealed.artifactBytes,
+      })
+      assertCaptureRefMatchesHeader(ref, artifact.header, artifact.headerSha256)
+      qualificationDigest = parsed(
+        qualificationResponseSchema,
+        await ingest({
+          action: "history_qualification",
+          generationId: input.generationId,
+          generationInputDigest,
+          qualification: {
+            ...(artifact.header.baseQualification as object),
+            snapshotRef: ref,
+          },
+        }),
+      ).qualificationDigest
     }
+    assertGaCaptureHeaderBinding(artifact.header, binding)
+    assertCaptureRefMatchesHeader(ref, artifact.header, artifact.headerSha256)
+    history = await createSealedGaWatchHistoryReader({
+      artifact,
+      artifactSha256: ref.artifactSha256,
+    })
+    historyDefinition = await readHistoricalDefinition(
+      history,
+      input.inputCutoff,
+    )
+    sealedCaptureDirectory = directory
+  } else {
+    history = input.historyRequired
+      ? (provided.history ?? createHistoryReader())
+      : undefined
+    if (input.historyRequired && !history)
+      throw new HistoricalAnalyticsError("analytics_unavailable")
+    historyDefinition = history
+      ? await readHistoricalDefinition(history, input.inputCutoff)
+      : undefined
+    if (input.historyRequired && historyDefinition?.provider !== "ga_data_api")
+      throw new HistoricalAnalyticsError("analytics_unavailable")
+    qualificationDigest =
+      historyDefinition?.provider === "ga_data_api"
+        ? parsed(
+            qualificationResponseSchema,
+            await ingest({
+              action: "history_qualification",
+              generationId: input.generationId,
+              generationInputDigest,
+              qualification: historyDefinition.qualification,
+            }),
+          ).qualificationDigest
+        : undefined
   }
-  let nextSourceIndex = 0
-  let unexpectedError: unknown
-  const worker = async () => {
-    while (!stopped && nextSourceIndex < videos.length) {
-      const source = videos[nextSourceIndex++]!
-      try {
-        await runSource(source)
-      } catch (error) {
-        stopAdmission()
-        unexpectedError ??= error
+  if (input.snapshotMode) {
+    const status = parsed(
+      captureStatusSchema,
+      await ingest({
+        action: "status",
+        generationId: input.generationId,
+        generationInputDigest,
+      }),
+    )
+    if (!status.capacityFresh) {
+      if (sealedCaptureDirectory)
+        await rm(sealedCaptureDirectory, { recursive: true, force: true })
+      return {
+        state: "incomplete",
+        generationId: input.generationId,
+        completedSourceCount: 0,
+        failedSourceCount: 0,
       }
     }
   }
-  const settledWorkers = await Promise.allSettled(
-    Array.from({ length: input.sourceConcurrency }, () => worker()),
-  )
-  const rejectedWorker = settledWorkers.find(
-    (result): result is PromiseRejectedResult => result.status === "rejected",
-  )
-  if (rejectedWorker) throw rejectedWorker.reason
-  if (stopped) throw unexpectedError
-  if (failedSourceCount > 0)
-    return {
-      state: "failed",
-      generationId: input.generationId,
-      completedSourceCount,
-      failedSourceCount,
+  try {
+    const model = provided.model ?? createAstraModel()
+    let completedSourceCount = 0
+    let failedSourceCount = 0
+    let busySourceCount = 0
+    const runSource = async (source: Video) => {
+      let claim: z.output<typeof claimSchema>
+      try {
+        claim = parsed(
+          claimSchema,
+          await ingest({
+            action: "claim",
+            generationId: input.generationId,
+            generationInputDigest,
+            sourceVideoId: source.id,
+            claimId: randomUUID(),
+          }),
+        )
+      } catch (error) {
+        if (!isLiveClaimConflict(error)) throw error
+        busySourceCount += 1
+        return
+      }
+      if (
+        claim.sourceState === "complete_edges" ||
+        claim.sourceState === "complete_empty"
+      ) {
+        completedSourceCount += 1
+        return
+      }
+      if (claim.sourceState === "failed") {
+        failedSourceCount += 1
+        return
+      }
+      if (!claim.leaseToken || claim.checkpointRevision === undefined)
+        throw new CatalogBuildError("admin_contract_rejected")
+      try {
+        await processSource(
+          {
+            input,
+            generationInputDigest,
+            catalog,
+            ingest,
+            model,
+            videos,
+            candidateIdsBySource: retrieval.candidateIdsBySource,
+            history: input.snapshotMode
+              ? history
+              : (provided.history ??
+                (input.historyRequired
+                  ? createHistoryReader({
+                      sourceVideoId: source.id,
+                      leaseToken: claim.leaseToken,
+                    })
+                  : undefined)),
+            historyDefinition,
+            qualificationDigest,
+            assertExternalAdmission,
+          },
+          source,
+          claim.leaseToken,
+          claim.checkpoint ?? null,
+          claim.checkpointRevision,
+        )
+        completedSourceCount += 1
+      } catch (error) {
+        const code =
+          error instanceof CatalogBuildError
+            ? error.code
+            : error instanceof HistoricalAnalyticsError
+              ? error.code
+              : error instanceof Error
+                ? error.message
+                : "internal_failure"
+        if (
+          ![
+            "provider_invalid_output",
+            "analytics_incomplete",
+            "input_stale",
+          ].includes(code)
+        )
+          throw error
+        await ingest({
+          action: "fail",
+          generationId: input.generationId,
+          generationInputDigest,
+          sourceVideoId: source.id,
+          leaseToken: claim.leaseToken,
+          failureCode: code,
+        })
+        failedSourceCount += 1
+      }
     }
-  if (busySourceCount > 0)
+    let nextSourceIndex = 0
+    let unexpectedError: unknown
+    const worker = async () => {
+      while (!stopped && nextSourceIndex < videos.length) {
+        const source = videos[nextSourceIndex++]!
+        try {
+          await runSource(source)
+        } catch (error) {
+          stopAdmission()
+          unexpectedError ??= error
+        }
+      }
+    }
+    const settledWorkers = await Promise.allSettled(
+      Array.from({ length: input.sourceConcurrency }, () => worker()),
+    )
+    const rejectedWorker = settledWorkers.find(
+      (result): result is PromiseRejectedResult => result.status === "rejected",
+    )
+    if (rejectedWorker) throw rejectedWorker.reason
+    if (stopped) throw unexpectedError
+    if (failedSourceCount > 0)
+      return {
+        state: "failed",
+        generationId: input.generationId,
+        completedSourceCount,
+        failedSourceCount,
+      }
+    if (busySourceCount > 0)
+      return {
+        state: "incomplete",
+        generationId: input.generationId,
+        completedSourceCount,
+        failedSourceCount: 0,
+      }
+    const completion = parsed(
+      stateSchema,
+      await ingest({
+        action: "complete",
+        generationId: input.generationId,
+        generationInputDigest,
+      }),
+    )
+    if (completion.state !== "complete")
+      throw new CatalogBuildError("admin_contract_rejected")
     return {
-      state: "incomplete",
+      state: "complete",
       generationId: input.generationId,
       completedSourceCount,
       failedSourceCount: 0,
     }
-  const completion = parsed(
-    stateSchema,
-    await ingest({
-      action: "complete",
-      generationId: input.generationId,
-      generationInputDigest,
-    }),
-  )
-  if (completion.state !== "complete")
-    throw new CatalogBuildError("admin_contract_rejected")
-  return {
-    state: "complete",
-    generationId: input.generationId,
-    completedSourceCount,
-    failedSourceCount: 0,
+  } finally {
+    if (sealedCaptureDirectory)
+      await rm(sealedCaptureDirectory, { recursive: true, force: true })
   }
 }

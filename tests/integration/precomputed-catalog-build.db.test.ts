@@ -1,4 +1,7 @@
 import { createHash, randomUUID } from "node:crypto"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { WorkflowsPG } from "@mastra/pg"
 import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client, Pool } from "pg"
@@ -37,8 +40,15 @@ import {
   loadDurablePrecomputedBuildReport,
   submitDurablePrecomputedRecommendation,
 } from "../../apps/admin/src/services/recommendations/precomputed/durable-build"
+import { gaCaptureSnapshotRefSchema } from "../../apps/admin/src/services/recommendations/precomputed/ga-capture-artifact"
+import { createProtectedLocalGaCaptureStore } from "../../apps/admin/src/services/recommendations/precomputed/ga-capture-store"
+import {
+  handleGaCaptureGet,
+  handleGaCapturePost,
+} from "../../apps/admin/src/services/recommendations/precomputed/ga-capture-transport"
 // Repository-owned native seam; neither application imports the other.
 import { runPrecomputedCatalog } from "../../apps/mastra/src/services/precomputed-recommendations/catalog-generation"
+import type { GaCaptureTransport } from "../../apps/mastra/src/services/precomputed-recommendations/ga-watch-capture-transport"
 import { prunePrecomputedAbandonedRuntimeSnapshots } from "../../apps/mastra/src/mastra/precomputed-runtime-retention"
 import type { StructuredModel } from "../../apps/mastra/src/services/precomputed-recommendations/astra-provider"
 import type {
@@ -254,6 +264,313 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         source: "operator_verified_pgdata_df" as const,
       }
     }
+
+    it("captures history once and resumes a native v3 build without live GA after a lost model receipt response", async () => {
+      const generationId = `catalog-sealed-resume-${suffix}`
+      const directory = await mkdtemp(join(tmpdir(), "catalog-sealed-native-"))
+      const store = createProtectedLocalGaCaptureStore(
+        join(directory, "objects"),
+      )
+      const connected = dependencies()
+      const ga = gaWatchHistoryFixtureOptions({
+        sourceSlug: `story-0-${suffix}`,
+        targetSlug: `story-1-${suffix}`,
+      })
+      const gaFetch = vi.fn(ga.fetchImpl)
+      const paidRequests: Array<{ task: string; sourceId: string }> = []
+      const controlled = controlledModel(targetId, paidRequests)
+      const model: StructuredModel = {
+        async generate(request) {
+          const generation =
+            await prisma.recommendationPrecomputedGeneration.findUniqueOrThrow({
+              where: { id: generationId },
+            })
+          expect(generation.protocolVersion).toBe(3)
+          expect(generation.historicalQualification).toMatchObject({
+            snapshotRef: { generationId, verification: "two_matching_passes" },
+          })
+          expect(
+            await prisma.recommendationPrecomputedHistoryCall.count({
+              where: { generationId, status: "pending" },
+            }),
+          ).toBe(0)
+          return controlled.generate(request)
+        },
+      }
+      const gaCaptureTransport: GaCaptureTransport = {
+        async upload(input) {
+          const bytes = await readFile(input.path)
+          const response = await handleGaCapturePost(
+            prisma,
+            new Request("https://admin.fixture.test/ga-capture", {
+              method: "POST",
+              headers: {
+                authorization: bearer,
+                "content-type": "application/vnd.forge.ga-capture-v1",
+                "content-length": String(input.artifactBytes),
+                "x-forge-generation-id": input.generationId,
+                "x-forge-input-digest": input.generationInputDigest,
+                "x-forge-artifact-sha256": input.artifactSha256,
+              },
+              body: new Uint8Array(bytes),
+            }),
+            store,
+          )
+          expect(response.status).toBe(201)
+          const envelope: unknown = await response.json()
+          if (
+            !envelope ||
+            typeof envelope !== "object" ||
+            !("snapshotRef" in envelope)
+          )
+            throw new Error("Missing native GA capture reference")
+          return gaCaptureSnapshotRefSchema.parse(envelope.snapshotRef)
+        },
+        async download(input) {
+          const response = await handleGaCaptureGet(
+            prisma,
+            new Request("https://admin.fixture.test/ga-capture", {
+              headers: {
+                authorization: bearer,
+                "x-forge-generation-id": input.generationId,
+                "x-forge-input-digest": input.generationInputDigest,
+              },
+            }),
+            store,
+          )
+          expect(response.status).toBe(200)
+          expect(response.headers.get("x-forge-artifact-sha256")).toBe(
+            input.artifactSha256,
+          )
+          const bytes = Buffer.from(await response.arrayBuffer())
+          expect(bytes.length).toBe(input.artifactBytes)
+          await mkdir(input.directory, { recursive: true, mode: 0o700 })
+          const path = join(input.directory, "native-sealed-resume.bin")
+          await writeFile(path, bytes, { mode: 0o600 })
+          return path
+        },
+      }
+      let loseModelResponse = true
+      const ingest: SourceIngest = async (raw) => {
+        const request = raw as Record<string, unknown>
+        const response = await submitDurablePrecomputedRecommendation(
+          prisma,
+          raw,
+          bearer,
+          { gaCaptureStore: store },
+        )
+        if (
+          loseModelResponse &&
+          request.action === "model_call" &&
+          request.stage === "analytics_query_plan" &&
+          request.status === "succeeded" &&
+          request.sourceVideoId === sourceId
+        ) {
+          loseModelResponse = false
+          throw new Error("Fixture lost response after native model checkpoint")
+        }
+        return response
+      }
+      const input = {
+        generationId,
+        inputCutoff: cutoff,
+        historyRequired: true,
+        snapshotMode: "ga_aggregate_capture_v1" as const,
+        capacity: await fixtureCapacity(),
+      }
+      try {
+        await expect(
+          runPrecomputedCatalog(input, {
+            ...connected,
+            ingest,
+            model,
+            gaCaptureTransport,
+            gaCaptureDirectory: join(directory, "runtime"),
+            gaTransport: {
+              serviceAccountEmail: ga.serviceAccountEmail,
+              tokenProvider: ga.tokenProvider,
+              fetchImpl: gaFetch,
+            },
+          }),
+        ).rejects.toThrow("Fixture lost response after native model checkpoint")
+        expect(gaFetch).toHaveBeenCalled()
+        const gaCallsAfterCapture = gaFetch.mock.calls.length
+        const capturedReceipts =
+          await prisma.recommendationPrecomputedHistoryCall.findMany({
+            where: { generationId },
+            select: {
+              callId: true,
+              requestDigest: true,
+              status: true,
+              sourceVideoId: true,
+            },
+            orderBy: { callId: "asc" },
+          })
+        expect(capturedReceipts).toHaveLength(gaCallsAfterCapture)
+        expect(
+          capturedReceipts.every(
+            (call) =>
+              call.sourceVideoId === null && call.status === "succeeded",
+          ),
+        ).toBe(true)
+        // Simulate natural lease expiry in this isolated native test database.
+        await prisma.recommendationPrecomputedBuildSource.updateMany({
+          where: { generationId, state: "claimed" },
+          data: { leaseExpiresAt: new Date(0) },
+        })
+        const forbiddenGa = vi.fn(async () => {
+          throw new Error("Live GA forbidden after seal")
+        })
+        const forbiddenToken = vi.fn(async () => {
+          throw new Error("GA auth forbidden after seal")
+        })
+        expect(
+          await runPrecomputedCatalog(
+            {
+              ...input,
+              capacity: await fixtureCapacity(),
+            },
+            {
+              ...connected,
+              ingest,
+              model,
+              gaCaptureTransport,
+              gaCaptureDirectory: join(directory, "runtime"),
+              gaTransport: {
+                serviceAccountEmail: ga.serviceAccountEmail,
+                tokenProvider: forbiddenToken,
+                fetchImpl: forbiddenGa,
+              },
+            },
+          ),
+        ).toMatchObject({
+          state: "complete",
+          completedSourceCount: 2,
+          failedSourceCount: 0,
+        })
+        expect(forbiddenGa).not.toHaveBeenCalled()
+        expect(forbiddenToken).not.toHaveBeenCalled()
+        expect(
+          paidRequests.filter(
+            (call) =>
+              call.task === "analytics_query_plan" &&
+              call.sourceId === sourceId,
+          ),
+        ).toHaveLength(1)
+        expect(
+          await prisma.recommendationPrecomputedHistoryCall.findMany({
+            where: { generationId },
+            select: {
+              callId: true,
+              requestDigest: true,
+              status: true,
+              sourceVideoId: true,
+            },
+            orderBy: { callId: "asc" },
+          }),
+        ).toEqual(capturedReceipts)
+        const sources =
+          await prisma.recommendationPrecomputedBuildSource.findMany({
+            where: { generationId },
+          })
+        for (const source of sources)
+          expect(source.historicalProvenance).toMatchObject({
+            captureBasis: "capture_derived_v1",
+            queryExecutionCount: 0,
+            pageCountKind: "virtual_validation",
+          })
+        expect(
+          await loadDurablePrecomputedBuildReport(prisma, {
+            generationId,
+            sourceVideoId: sourceId,
+            reviewer,
+          }),
+        ).toMatchObject({
+          usage: {
+            historyCallCount: gaCallsAfterCapture,
+            historyPendingCount: 0,
+          },
+        })
+        expect(
+          await loadPrecomputedRecommendationComparison(prisma, {
+            generationId,
+            sourceVideoId: sourceId,
+            audioLanguageSlug: "english",
+            reviewer,
+          }),
+        ).toMatchObject({ state: "ready", allAcceptedCount: 1 })
+        const readProof = ({ generationId }: { generationId: string }) =>
+          ingest({
+            action: "retention_status",
+            protocolVersion: 2,
+            generationId,
+          })
+        expect(await readProof({ generationId })).toMatchObject({
+          generationProtocolVersion: 3,
+          inputMode: "historical_analytics",
+          sourceWorkResumable: false,
+        })
+        // A crash can leave a running Mastra row after Admin completed the
+        // generation. Its native v3 proof must permit bounded runtime cleanup.
+        const runtimePool = new Pool({
+          connectionString: env.DATABASE_URL,
+          max: 2,
+        })
+        const workflows = new WorkflowsPG({
+          pool: runtimePool,
+          schemaName: schema,
+        })
+        try {
+          await workflows.init()
+          const runId = `sealed-runtime-${suffix}`
+          const staleAt = new Date(Date.now() - 31 * 86_400_000)
+          const context: Parameters<
+            WorkflowsPG["persistWorkflowSnapshot"]
+          >[0]["snapshot"]["context"] = {}
+          context.input = {
+            generationId,
+            inputCutoff: cutoff,
+            historyRequired: true,
+            snapshotMode: "ga_aggregate_capture_v1",
+          }
+          await workflows.persistWorkflowSnapshot({
+            workflowName: "precomputed-catalog-generation",
+            runId,
+            snapshot: {
+              runId,
+              status: "running",
+              value: {},
+              context,
+              serializedStepGraph: [],
+              activePaths: [],
+              activeStepsPath: {},
+              suspendedPaths: {},
+              resumeLabels: {},
+              waitingPaths: {},
+              timestamp: staleAt.getTime(),
+            },
+            createdAt: staleAt,
+            updatedAt: staleAt,
+          })
+          expect(
+            await prunePrecomputedAbandonedRuntimeSnapshots({
+              pool: runtimePool,
+              schema,
+              readProof,
+            }),
+          ).toMatchObject({
+            examinedRuns: 1,
+            deletedRuns: 1,
+            unresolvedRuns: 0,
+          })
+          expect(await workflows.getWorkflowRunById({ runId })).toBeNull()
+        } finally {
+          await runtimePool.end()
+        }
+      } finally {
+        await rm(directory, { recursive: true, force: true })
+      }
+    })
 
     it("resumes a committed paid step after response loss and publishes the full cohort once", async () => {
       const generationId = initialGenerationId
@@ -1119,9 +1436,15 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const receipts = writes.filter((call) => call.action === "history_call")
       expect(starts).toHaveLength(gaHttpAttempts)
       expect(receipts).toHaveLength(gaHttpAttempts)
-      expect(
-        receipts.map((receipt) => [receipt.callId, receipt.sourceVideoId]),
-      ).toEqual(starts.map((start) => [start.callId, start.sourceVideoId]))
+      // Concurrent requests may finish in either order. Compare every call's
+      // identity and source attribution without imposing completion order.
+      const identities = (calls: typeof writes) =>
+        calls
+          .map(({ callId, sourceVideoId }) => ({ callId, sourceVideoId }))
+          .sort((left, right) =>
+            String(left.callId).localeCompare(String(right.callId)),
+          )
+      expect(identities(receipts)).toEqual(identities(starts))
       expect(receipts.every((receipt) => receipt.status === "succeeded")).toBe(
         true,
       )

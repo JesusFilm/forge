@@ -29,7 +29,10 @@ a catalog build is one long step and may have an old snapshot while it works.
 For an old nonterminal row, Mastra asks Admin's existing authenticated ingest
 endpoint for `retention_status` protocol 2. It requires the immutable
 generation ID, exact UTC input cutoff, generation protocol, digest presence,
-and history mode to match the snapshot, and `sourceWorkResumable: false`. Admin
+and history mode to match the snapshot, and `sourceWorkResumable: false`.
+Catalog workflows accept generation v2 and historical sealed-capture v3;
+single-source workflows retain their v1/v2 contract. The proof envelope remains
+protocol 2. Admin
 fences source writes against retiring/terminal generations under generation
 row locks. The small Admin retirement tombstone keeps proof available after
 generation deletion. A missing, mismatched, expired, or unavailable proof

@@ -69,6 +69,23 @@ describe("contingent public Watch live readiness", () => {
     expect(evaluatePrecomputedLiveFacts(verified())).toEqual([])
   })
 
+  it("requires a sealed capture for protocol 3 before live readiness", () => {
+    const facts = verified()
+    const v3 = {
+      ...facts,
+      generation: { ...facts.generation, protocolVersion: 3 },
+    }
+    expect(evaluatePrecomputedLiveFacts(v3)).toContain(
+      "actual_catalog_build_unverified",
+    )
+    expect(
+      evaluatePrecomputedLiveFacts({
+        ...v3,
+        generation: { ...v3.generation, gaCaptureSealed: true },
+      }),
+    ).toEqual([])
+  })
+
   it("names fixture, Web loss, unknown model cost, and stale capacity independently", () => {
     const facts = verified()
     expect(

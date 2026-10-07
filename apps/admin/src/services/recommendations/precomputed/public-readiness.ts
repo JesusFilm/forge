@@ -15,6 +15,7 @@ import { loadWebWatchMeasurement } from "./web-measurement"
 import { evaluatePrecomputedLiveFacts } from "./live-readiness"
 import { loadPrecomputedFullCatalogSourceSet } from "./catalog"
 import type { CtrPolicySettings } from "./ctr-policy"
+import { hasSealedGaCapture } from "./ga-capture-artifact"
 
 const experimentSelect = {
   id: true,
@@ -58,8 +59,10 @@ export async function loadPrecomputedPublicReadiness(
       take: 20,
       select: {
         id: true,
+        inputDigest: true,
         status: true,
         protocolVersion: true,
+        historicalQualification: true,
         modelId: true,
         inputMode: true,
         inputCutoff: true,
@@ -205,6 +208,10 @@ export async function loadPrecomputedPublicReadiness(
       ? {
           status: latestGeneration.status,
           protocolVersion: latestGeneration.protocolVersion,
+          gaCaptureSealed: hasSealedGaCapture(
+            latestGeneration.historicalQualification,
+            latestGeneration,
+          ),
           modelId: latestGeneration.modelId,
           inputMode: latestGeneration.inputMode,
           sourceSetDigest: latestGeneration.sourceSetDigest,

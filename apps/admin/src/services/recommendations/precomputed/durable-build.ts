@@ -11,6 +11,16 @@ import {
   validatePrecomputedChoices,
 } from "./contract"
 import { assertPrecomputedObservedVersion } from "./catalog"
+import {
+  hasSealedGaCapture,
+  sealedGaCaptureQualificationSchema,
+} from "./ga-capture-artifact"
+import {
+  configuredGaCaptureStore,
+  gaCaptureStorageKey,
+  type GaCaptureStore,
+} from "./ga-capture-store"
+import { verifyBoundGaCapture } from "./ga-capture-transport"
 
 const id = z.string().trim().min(1).max(191)
 const hex = z.string().regex(/^[a-f0-9]{64}$/)
@@ -33,6 +43,13 @@ const navigationCoverage = z
     ambiguousEvents: nonnegative,
   })
   .strict()
+const capturedHistoryFields = {
+  captureBasis: z.literal("capture_derived_v1"),
+  artifactSha256: hex,
+  derivedSubsetDigest: hex,
+  pageCountKind: z.literal("virtual_validation"),
+  queryExecutionCount: z.literal(0),
+}
 const provisionalChoice = precomputedChoiceSchema
   .omit({ rank: true })
   .extend({ strength: z.number().int().min(0).max(100) })
@@ -105,16 +122,30 @@ const checkpoint = z
     repair: candidateRepair.optional(),
     planRepair: planRepair.optional(),
     historySummary: z
-      .object({
-        resultDigest: hex,
-        rowCount: nonnegative,
-        mappedRows: nonnegative,
-        unmappedRows: nonnegative,
-        pageCount: nonnegative,
-        queryExecutionCount: nonnegative,
-        navigationCoverage,
-      })
-      .strict()
+      .union([
+        z
+          .object({
+            resultDigest: hex,
+            rowCount: nonnegative,
+            mappedRows: nonnegative,
+            unmappedRows: nonnegative,
+            pageCount: nonnegative,
+            queryExecutionCount: nonnegative,
+            navigationCoverage,
+          })
+          .strict(),
+        z
+          .object({
+            resultDigest: hex,
+            rowCount: nonnegative,
+            mappedRows: nonnegative,
+            unmappedRows: nonnegative,
+            pageCount: nonnegative,
+            navigationCoverage,
+            ...capturedHistoryFields,
+          })
+          .strict(),
+      ])
       .optional(),
   })
   .strict()
@@ -136,6 +167,12 @@ const sourceHistory = z
     status: z.literal("complete"),
   })
   .strict()
+const sealedSourceHistory = sourceHistory.extend(capturedHistoryFields)
+const sealedGaHistoricalQualification = sealedGaCaptureQualificationSchema
+const durableGaHistoricalQualification = z.union([
+  gaHistoricalQualification,
+  sealedGaHistoricalQualification,
+])
 export const capacityMeasurement = z
   .object({
     measuredAt: z.string().datetime(),
@@ -159,7 +196,7 @@ const failureCode = z.string().regex(/^[a-z][a-z0-9_]{2,63}$/)
 const actionSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("start"),
-    protocolVersion: z.literal(2),
+    protocolVersion: z.union([z.literal(2), z.literal(3)]),
     generationId: id,
     modelId: z.string().trim().min(1).max(100),
     promptVersion: z.string().trim().min(1).max(100),
@@ -168,7 +205,9 @@ const actionSchema = z.discriminatedUnion("action", [
     inputCutoff: z.string().datetime(),
     expectedSourceCount: nonnegative,
     inputMode: z.enum(["content_only", "historical_analytics"]),
-    inputSnapshotMode: z.literal("observed_fenced").optional(),
+    inputSnapshotMode: z
+      .enum(["observed_fenced", "ga_aggregate_capture_v1"])
+      .optional(),
   }),
   base.extend({
     action: z.literal("manifest"),
@@ -183,11 +222,11 @@ const actionSchema = z.discriminatedUnion("action", [
   sourceBase.extend({ action: z.literal("heartbeat") }),
   sourceBase.extend({
     action: z.literal("source_history"),
-    history: sourceHistory,
+    history: z.union([sourceHistory, sealedSourceHistory]),
   }),
   base.extend({
     action: z.literal("history_qualification"),
-    qualification: gaHistoricalQualification,
+    qualification: durableGaHistoricalQualification,
   }),
   sourceBase.extend({
     action: z.literal("checkpoint"),
@@ -251,6 +290,7 @@ const actionSchema = z.discriminatedUnion("action", [
     finishedAt: z.string().datetime(),
   }),
   base.extend({ action: z.literal("status"), sourceVideoId: id.optional() }),
+  base.extend({ action: z.literal("history_call_reconcile"), callId: id }),
   z.object({
     action: z.literal("retention_status"),
     protocolVersion: z.literal(2),
@@ -264,6 +304,7 @@ type Action = z.infer<typeof actionSchema>
 const LEASE_MS = 20 * 60 * 1000
 const CAPACITY_MAX_AGE_MS = 30 * 60 * 1000
 const MIN_RESERVE_BYTES = 5_000_000_000
+const GA_ORPHAN_CALL_DEADLINE_MS = 30 * 60 * 1000
 
 function invalid(message: string): never {
   throw new PrecomputedRecommendationError("invalid", message)
@@ -314,15 +355,20 @@ type LockedGeneration = {
   status: string
   input_digest: string
   protocol_version: number
+  input_mode: string
+  input_snapshot_mode: string
+  historical_qualification: unknown
   capacity_preflight: unknown
 }
 async function generationLock(tx: Tx, generationId: string, exclusive = false) {
   const rows = exclusive
     ? await tx.$queryRaw<LockedGeneration[]>`
-        SELECT id, status, input_digest, protocol_version, capacity_preflight
+        SELECT id, status, input_digest, protocol_version, input_mode,
+               input_snapshot_mode, historical_qualification, capacity_preflight
         FROM recommendation_precomputed_generation WHERE id = ${generationId} FOR UPDATE`
     : await tx.$queryRaw<LockedGeneration[]>`
-        SELECT id, status, input_digest, protocol_version, capacity_preflight
+        SELECT id, status, input_digest, protocol_version, input_mode,
+               input_snapshot_mode, historical_qualification, capacity_preflight
         FROM recommendation_precomputed_generation WHERE id = ${generationId} FOR SHARE`
   const row = rows[0]
   if (!row)
@@ -330,7 +376,7 @@ async function generationLock(tx: Tx, generationId: string, exclusive = false) {
       "not_found",
       "Generation not found",
     )
-  if (row.protocol_version !== 2)
+  if (row.protocol_version !== 2 && row.protocol_version !== 3)
     conflict("Generation uses a different build protocol")
   return row
 }
@@ -497,6 +543,7 @@ export async function submitDurablePrecomputedRecommendation(
   prisma: PrismaClient,
   raw: unknown,
   authorizationHeader: string | null,
+  options?: { gaCaptureStore?: GaCaptureStore },
 ): Promise<Record<string, unknown>> {
   if (!isValidMastraRecommendationIngestBearer(authorizationHeader))
     throw new PrecomputedRecommendationError(
@@ -506,7 +553,30 @@ export async function submitDurablePrecomputedRecommendation(
   const parsed = actionSchema.safeParse(raw)
   if (!parsed.success) invalid("Invalid durable build payload")
   const input: Action = parsed.data
+  let verifiedCapture: Awaited<ReturnType<typeof verifyBoundGaCapture>> | null =
+    null
+  if (
+    input.action === "history_qualification" &&
+    "snapshotRef" in input.qualification
+  ) {
+    try {
+      verifiedCapture = await verifyBoundGaCapture(
+        input.qualification.snapshotRef,
+        options?.gaCaptureStore ?? configuredGaCaptureStore(),
+      )
+    } catch {
+      conflict("Sealed GA capture is unavailable or differs")
+    }
+  }
   if (input.action === "start") {
+    const snapshotMode = input.inputSnapshotMode ?? "observed_fenced"
+    if (
+      (input.protocolVersion === 3 &&
+        (input.inputMode !== "historical_analytics" ||
+          snapshotMode !== "ga_aggregate_capture_v1")) ||
+      (input.protocolVersion === 2 && snapshotMode !== "observed_fenced")
+    )
+      invalid("Generation protocol and snapshot mode differ")
     return prisma.$transaction(async (tx) => {
       const inserted = await tx.recommendationPrecomputedGeneration.createMany({
         data: [
@@ -519,8 +589,8 @@ export async function submitDurablePrecomputedRecommendation(
             inputCutoff: date(input.inputCutoff),
             expectedSourceCount: input.expectedSourceCount,
             inputMode: input.inputMode,
-            inputSnapshotMode: "observed_fenced",
-            protocolVersion: 2,
+            inputSnapshotMode: snapshotMode,
+            protocolVersion: input.protocolVersion,
           },
         ],
         skipDuplicates: true,
@@ -538,7 +608,7 @@ export async function submitDurablePrecomputedRecommendation(
           where: { id: input.generationId },
         })
       if (
-        existing.protocolVersion !== 2 ||
+        existing.protocolVersion !== input.protocolVersion ||
         existing.modelId !== input.modelId ||
         existing.promptVersion !== input.promptVersion ||
         existing.inputDigest !== input.inputDigest ||
@@ -546,7 +616,7 @@ export async function submitDurablePrecomputedRecommendation(
         existing.inputCutoff.getTime() !== date(input.inputCutoff).getTime() ||
         existing.expectedSourceCount !== input.expectedSourceCount ||
         existing.inputMode !== input.inputMode ||
-        existing.inputSnapshotMode !== "observed_fenced"
+        existing.inputSnapshotMode !== snapshotMode
       )
         conflict("Generation identity has different input")
       return {
@@ -621,7 +691,7 @@ export async function submitDurablePrecomputedRecommendation(
         "Generation not found",
       )
     if (
-      generation.protocolVersion !== 2 ||
+      ![2, 3].includes(generation.protocolVersion) ||
       generation.inputDigest !== input.generationInputDigest
     )
       conflict("Generation input digest differs")
@@ -630,6 +700,8 @@ export async function submitDurablePrecomputedRecommendation(
       protocolVersion: 2,
       inputDigest: generation.inputDigest,
       inputCutoff: generation.inputCutoff.toISOString(),
+      generationProtocolVersion: generation.protocolVersion,
+      inputSnapshotMode: generation.inputSnapshotMode,
       sourceWorkResumable: ["incomplete", "capacity_blocked"].includes(
         generation.status,
       ),
@@ -689,6 +761,41 @@ export async function submitDurablePrecomputedRecommendation(
       completeEmptySourceCount: count("complete_empty"),
       failedSourceCount: count("failed"),
       acceptedCount: accepted._sum.acceptedCount ?? 0,
+      historicalQualification: generation.historicalQualification,
+      historicalQualificationDigest: generation.historicalQualificationDigest,
+      historyCallCounts:
+        generation.protocolVersion === 3
+          ? await prisma.recommendationPrecomputedHistoryCall
+              .groupBy({
+                by: ["status"],
+                where: {
+                  generationId: input.generationId,
+                  sourceVideoId: null,
+                },
+                _count: true,
+              })
+              .then((groups) => ({
+                pending:
+                  groups.find((row) => row.status === "pending")?._count ?? 0,
+                succeeded:
+                  groups.find((row) => row.status === "succeeded")?._count ?? 0,
+                failed:
+                  groups.find((row) => row.status === "failed")?._count ?? 0,
+              }))
+          : undefined,
+      pendingHistoryCalls:
+        generation.protocolVersion === 3
+          ? await prisma.recommendationPrecomputedHistoryCall.findMany({
+              where: {
+                generationId: input.generationId,
+                sourceVideoId: null,
+                status: "pending",
+              },
+              orderBy: [{ reservedAt: "asc" }, { callId: "asc" }],
+              take: 100,
+              select: { callId: true, startedAt: true, reservedAt: true },
+            })
+          : undefined,
       capacity: generation.capacityPreflight,
       capacityFresh: (() => {
         const current = generation.capacityPreflight as {
@@ -731,7 +838,7 @@ export async function submitDurablePrecomputedRecommendation(
         : null,
     }
   }
-  return prisma.$transaction(async (tx) => mutate(tx, input), {
+  return prisma.$transaction(async (tx) => mutate(tx, input, verifiedCapture), {
     timeout: 30_000,
   })
 }
@@ -787,7 +894,7 @@ export async function loadDurablePrecomputedBuildReport(
     })
   if (
     !generation ||
-    generation.protocolVersion !== 2 ||
+    ![2, 3].includes(generation.protocolVersion) ||
     generation.status === "retiring"
   )
     return null
@@ -917,7 +1024,9 @@ export async function loadDurablePrecomputedBuildReport(
         : null,
     projectedKnownModelUsd: costEstimate,
     historicalQualification: generation.historicalQualification
-      ? gaHistoricalQualification.parse(generation.historicalQualification)
+      ? durableGaHistoricalQualification.parse(
+          generation.historicalQualification,
+        )
       : null,
     historyTotals: {
       sourceCount: Number(historyTotals[0]?.source_count ?? 0n),
@@ -949,7 +1058,9 @@ export async function loadDurablePrecomputedBuildReport(
           attemptNumber: source.attemptNumber,
           checkpointRevision: source.checkpointRevision,
           historicalProvenance: source.historicalProvenance
-            ? sourceHistory.parse(source.historicalProvenance)
+            ? generation.protocolVersion === 3
+              ? sealedSourceHistory.parse(source.historicalProvenance)
+              : sourceHistory.parse(source.historicalProvenance)
             : null,
           failureCode: source.failureCode,
         }
@@ -1047,6 +1158,7 @@ async function mutate(
     Action,
     { action: "start" | "capacity_probe" | "status" | "retention_status" }
   >,
+  verifiedCapture: Awaited<ReturnType<typeof verifyBoundGaCapture>> | null,
 ): Promise<Record<string, unknown>> {
   const exclusive =
     [
@@ -1058,6 +1170,31 @@ async function mutate(
     ].includes(input.action) ||
     (input.action === "fail" && !input.sourceVideoId)
   const generation = await checkedGeneration(tx, input, exclusive)
+  if (generation.protocol_version === 3) {
+    const sealed =
+      generation.historical_qualification !== null &&
+      typeof generation.historical_qualification === "object" &&
+      "snapshotRef" in generation.historical_qualification
+    if (
+      [
+        "claim",
+        "checkpoint",
+        "choice",
+        "source_history",
+        "model_call_start",
+        "model_call",
+        "source",
+        "complete",
+      ].includes(input.action) &&
+      !sealed
+    )
+      conflict("Sealed GA capture is required before source or model work")
+    if (
+      input.action === "history_call_start" &&
+      (sealed || input.sourceVideoId)
+    )
+      conflict("GA capture is sealed")
+  }
   if (
     [
       "claim",
@@ -1121,7 +1258,6 @@ async function mutate(
     )
     if (meta.inputMode !== "historical_analytics")
       invalid("Generation does not use historical inputs")
-    const qualificationDigest = hash(input.qualification)
     if (meta.historicalQualification) {
       if (!sameJson(meta.historicalQualification, input.qualification))
         conflict("History qualification retry differs")
@@ -1130,6 +1266,106 @@ async function mutate(
         qualificationDigest: meta.historicalQualificationDigest,
         replay: true,
       }
+    }
+    const snapshotRef =
+      "snapshotRef" in input.qualification
+        ? input.qualification.snapshotRef
+        : null
+    if (generation.protocol_version === 3) {
+      if (!snapshotRef || !verifiedCapture)
+        conflict("Sealed GA capture is required")
+      const unsealed: Record<string, unknown> = { ...input.qualification }
+      delete unsealed.snapshotRef
+      const baseQualification = gaHistoricalQualification.parse(unsealed)
+      if (
+        snapshotRef.generationId !== meta.id ||
+        snapshotRef.generationInputDigest !== meta.inputDigest ||
+        snapshotRef.sourceSetDigest !== meta.sourceSetDigest ||
+        snapshotRef.inputCutoff !== meta.inputCutoff.toISOString() ||
+        snapshotRef.storageKey !==
+          gaCaptureStorageKey(meta.id, snapshotRef.artifactSha256) ||
+        !sameJson(
+          baseQualification,
+          verifiedCapture.header.baseQualification,
+        ) ||
+        !sameJson(
+          input.qualification.sourceAvailability,
+          snapshotRef.sourceAvailability,
+        )
+      )
+        conflict("GA capture identity or qualification differs")
+      if (!meta.manifestCommittedAt)
+        conflict("Build manifest must precede GA capture seal")
+      const [pendingWork, modelWork, choices, finalized, sourceScopedCalls] =
+        await Promise.all([
+          tx.recommendationPrecomputedBuildSource.count({
+            where: {
+              generationId: meta.id,
+              OR: [
+                { state: { not: "pending" } },
+                { checkpointRevision: { gt: 0 } },
+              ],
+            },
+          }),
+          tx.recommendationPrecomputedModelCall.count({
+            where: { generationId: meta.id },
+          }),
+          tx.recommendationPrecomputedBuildChoice.count({
+            where: { generationId: meta.id },
+          }),
+          tx.recommendationPrecomputedSource.count({
+            where: { generationId: meta.id },
+          }),
+          tx.recommendationPrecomputedHistoryCall.count({
+            where: { generationId: meta.id, sourceVideoId: { not: null } },
+          }),
+        ])
+      if (pendingWork || modelWork || choices || finalized || sourceScopedCalls)
+        conflict("GA capture cannot be attached after source or model work")
+      const historyCounts =
+        await tx.recommendationPrecomputedHistoryCall.groupBy({
+          by: ["status"],
+          where: { generationId: meta.id, sourceVideoId: null },
+          _count: true,
+        })
+      const count = (status: string) =>
+        historyCounts.find((row) => row.status === status)?._count ?? 0
+      if (
+        count("pending") !== 0 ||
+        snapshotRef.physicalHttpAttempts !==
+          count("succeeded") + count("failed") ||
+        snapshotRef.physicalSucceededCalls !== count("succeeded")
+      )
+        conflict("GA capture receipts differ from sealed artifact")
+    } else if (snapshotRef) {
+      conflict("A v2 qualification cannot attach a GA capture")
+    }
+    const qualificationDigest = hash(input.qualification)
+    if (snapshotRef) {
+      const artifact =
+        await tx.recommendationPrecomputedGaCaptureArtifact.findUnique({
+          where: {
+            generationId_artifactSha256: {
+              generationId: meta.id,
+              artifactSha256: snapshotRef.artifactSha256,
+            },
+          },
+        })
+      if (
+        !artifact ||
+        artifact.storageKey !== snapshotRef.storageKey ||
+        artifact.artifactBytes !== BigInt(snapshotRef.artifactBytes)
+      )
+        conflict("GA capture upload receipt differs")
+      await tx.recommendationPrecomputedGaCaptureArtifact.update({
+        where: {
+          generationId_artifactSha256: {
+            generationId: meta.id,
+            artifactSha256: snapshotRef.artifactSha256,
+          },
+        },
+        data: { boundAt: new Date() },
+      })
     }
     await tx.recommendationPrecomputedGeneration.update({
       where: { id: input.generationId },
@@ -1220,7 +1456,7 @@ async function mutate(
       invalid("Projection is below twice the measured sample extrapolation")
     const [newerAdmission] = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM recommendation_precomputed_generation
-      WHERE id <> ${input.generationId} AND protocol_version = 2
+      WHERE id <> ${input.generationId} AND protocol_version IN (2, 3)
         AND (capacity_preflight->>'lastPassedAt')::timestamptz >= ${date(measurement.measuredAt)}
       LIMIT 1`
     if (newerAdmission)
@@ -1249,7 +1485,7 @@ async function mutate(
         ), 0)::bigint AS recent_terminal_bytes
       FROM recommendation_precomputed_generation
       WHERE id <> ${input.generationId}
-        AND protocol_version = 2
+        AND protocol_version IN (2, 3)
         AND capacity_preflight->>'projectedBytes' IS NOT NULL`
     const reservedBytes = Number(other.active_bytes)
     const recentTerminalProjectedBytes = Number(other.recent_terminal_bytes)
@@ -1493,6 +1729,14 @@ async function mutate(
       pageCount: input.history.pageCount,
       queryExecutionCount: input.history.queryExecutionCount,
       navigationCoverage: input.history.navigationCoverage,
+      ...("captureBasis" in input.history
+        ? {
+            captureBasis: input.history.captureBasis,
+            artifactSha256: input.history.artifactSha256,
+            derivedSubsetDigest: input.history.derivedSubsetDigest,
+            pageCountKind: input.history.pageCountKind,
+          }
+        : {}),
     }
     if (
       input.history.pageCount > 0 &&
@@ -1505,8 +1749,29 @@ async function mutate(
         sourceVideoId: input.sourceVideoId,
       },
     })
-    if (actualCalls < input.history.queryExecutionCount)
+    if (generation.protocol_version === 3) {
+      const qualification = sealedGaHistoricalQualification.safeParse(
+        meta.historicalQualification,
+      )
+      if (
+        !qualification.success ||
+        !("captureBasis" in input.history) ||
+        input.history.artifactSha256 !==
+          qualification.data.snapshotRef.artifactSha256 ||
+        input.history.rangeStart !==
+          qualification.data.sourceAvailability.usableStart ||
+        input.history.rangeEnd !==
+          qualification.data.sourceAvailability.usableEnd ||
+        input.history.queryExecutionCount !== 0 ||
+        actualCalls !== 0
+      )
+        conflict("Derived source history differs from sealed GA capture")
+    } else if (
+      "captureBasis" in input.history ||
+      actualCalls < input.history.queryExecutionCount
+    ) {
       conflict("Source history has fewer HTTP receipts than snapshot queries")
+    }
     if (existing.historicalProvenance) {
       if (!sameJson(existing.historicalProvenance, input.history))
         conflict("Source history retry differs")
@@ -1856,7 +2121,12 @@ async function mutateCallsAndFinish(
         },
       },
     })
-    if (!existing || date(input.finishedAt) < existing.startedAt)
+    if (
+      !existing ||
+      date(input.finishedAt) < existing.startedAt ||
+      (generation.protocol_version === 3 &&
+        date(input.finishedAt) < existing.reservedAt)
+    )
       conflict("History call has no matching reservation")
     const receiptDigest = hash(input)
     if (existing.status !== "pending") {
@@ -1892,6 +2162,64 @@ async function mutateCallsAndFinish(
       generationId: input.generationId,
       callId: input.callId,
       receiptStored: true,
+      replay: false,
+    }
+  }
+  if (input.action === "history_call_reconcile") {
+    if (generation.protocol_version !== 3 || generationStatus !== "incomplete")
+      conflict("Only an incomplete sealed-capture build can reconcile GA calls")
+    await tx.$queryRaw`SELECT call_id FROM recommendation_precomputed_history_call
+      WHERE generation_id = ${input.generationId} AND call_id = ${input.callId} FOR UPDATE`
+    const existing = await tx.recommendationPrecomputedHistoryCall.findUnique({
+      where: {
+        generationId_callId: {
+          generationId: input.generationId,
+          callId: input.callId,
+        },
+      },
+    })
+    if (!existing || existing.sourceVideoId !== null)
+      conflict("Generation-scoped GA call reservation not found")
+    if (existing.status !== "pending")
+      return {
+        generationId: input.generationId,
+        callId: input.callId,
+        state: existing.status,
+        replay: true,
+      }
+    const now = new Date()
+    if (
+      now.getTime() - existing.reservedAt.getTime() <
+      GA_ORPHAN_CALL_DEADLINE_MS
+    )
+      conflict("GA call may still be in flight")
+    const receipt = {
+      action: "history_call_reconcile",
+      generationId: input.generationId,
+      callId: input.callId,
+      status: "failed",
+      errorCode: "outcome_unknown_after_restart",
+      finishedAt: now.toISOString(),
+    }
+    await tx.recommendationPrecomputedHistoryCall.update({
+      where: {
+        generationId_callId: {
+          generationId: input.generationId,
+          callId: input.callId,
+        },
+      },
+      data: {
+        status: "failed",
+        errorCode: receipt.errorCode,
+        finishedAt: now,
+        receiptDigest: hash(receipt),
+      },
+    })
+    return {
+      generationId: input.generationId,
+      callId: input.callId,
+      state: "failed",
+      outcomeUnknown: true,
       replay: false,
     }
   }
@@ -2110,6 +2438,8 @@ async function mutateCallsAndFinish(
         (source) =>
           !["complete_edges", "complete_empty"].includes(source.state),
       ) ||
+      (generation.protocol_version === 3 &&
+        !hasSealedGaCapture(meta.historicalQualification, meta)) ||
       (meta.inputMode === "historical_analytics" &&
         (!meta.historicalQualification ||
           sources.some((source) => !source.historicalProvenance)))

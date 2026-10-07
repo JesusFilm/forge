@@ -71,6 +71,7 @@ export async function POST(request: Request): Promise<Response> {
         : null
     const isDurable =
       payload?.protocolVersion === 2 ||
+      payload?.protocolVersion === 3 ||
       payload?.action === "retention_status" ||
       typeof payload?.generationInputDigest === "string"
     return Response.json({

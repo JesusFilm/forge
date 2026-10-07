@@ -17,7 +17,10 @@ import { purgeExpiredCompositionEvidence } from "./composition/service"
 import { purgeExpiredOwnerReleases } from "./promotion/owner-authority"
 import { purgeExpiredCowatchTrialAuthorities } from "./cowatch/trial-authority.service"
 import { purgeExpiredPrecomputedVisitRoots } from "./precomputed/visit-retention"
-import { purgeExpiredPrecomputedGenerations } from "./precomputed/generation-retention"
+import {
+  purgeExpiredPrecomputedGenerations,
+  purgeRetiredGaCaptureArtifacts,
+} from "./precomputed/generation-retention"
 import { RecommendationConflictError, RecommendationInputError } from "./errors"
 import { lockRetentionRoots } from "./retention-locks"
 
@@ -336,6 +339,20 @@ export async function purgeExpiredRecommendationRequests(
       rowCounts.precomputedGenerationProofsExpired = result.proofsDeleted
       return result
     })
+    // Object-store cleanup is post-commit and retryable. An S3 outage must
+    // never stall the ordinary request/visit retention phases below.
+    try {
+      const gaCapturePurge = await purgeRetiredGaCaptureArtifacts(
+        prisma,
+        now,
+        Math.min(batchSize, 10),
+      )
+      rowCounts.expiredPrecomputedGaCaptureArtifacts = gaCapturePurge.deleted
+      rowCounts.deferredPrecomputedGaCaptureCleanup = 0
+    } catch {
+      rowCounts.expiredPrecomputedGaCaptureArtifacts = 0
+      rowCounts.deferredPrecomputedGaCaptureCleanup = 1
+    }
     await phase(async (tx) => {
       const removed = await purgeExpiredCompositionEvidence(tx, now)
       rowCounts.expiredCompositionObservations = removed.observations

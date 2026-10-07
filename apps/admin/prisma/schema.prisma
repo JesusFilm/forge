@@ -6784,9 +6784,26 @@ model RecommendationPrecomputedGenerationRetentionProof {
   state String
   recordedAt DateTime @map("recorded_at")
   expiresAt DateTime @map("expires_at")
+  snapshotSha256 String? @map("snapshot_sha256") @db.Char(64)
+  artifactDeletedAt DateTime? @map("artifact_deleted_at")
 
   @@index([expiresAt, generationId], map: "precomputed_retention_proof_expiry_idx")
   @@map("recommendation_precomputed_generation_retention_proof")
+}
+
+/// Compact lifecycle receipt for a private immutable GA capture object. No FK
+/// keeps unbound uploads visible to cleanup after generation retirement.
+model RecommendationPrecomputedGaCaptureArtifact {
+  generationId String @map("generation_id")
+  artifactSha256 String @map("artifact_sha256") @db.Char(64)
+  storageKey String @map("storage_key") @db.VarChar(300)
+  artifactBytes BigInt @map("artifact_bytes")
+  createdAt DateTime @default(now()) @map("created_at")
+  boundAt DateTime? @map("bound_at")
+
+  @@id([generationId, artifactSha256])
+  @@index([createdAt, generationId], map: "precomputed_ga_capture_artifact_created_idx")
+  @@map("recommendation_precomputed_ga_capture_artifact")
 }
 
 /// Frozen Watch cohort. Only the separate, explicit public pointer can select it.
@@ -7198,6 +7215,7 @@ model RecommendationPrecomputedHistoryCall {
   receiptDigest String? @map("receipt_digest") @db.Char(64)
   errorCode String? @map("error_code")
   startedAt DateTime @map("started_at")
+  reservedAt DateTime @default(now()) @map("reserved_at")
   finishedAt DateTime? @map("finished_at")
 
   @@id([generationId, callId])

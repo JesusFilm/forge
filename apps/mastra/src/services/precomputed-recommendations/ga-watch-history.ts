@@ -18,6 +18,7 @@ import {
   createWatchRouteMapper,
   type WatchRouteCatalogVideo,
 } from "./watch-route-identity"
+import { gaCaptureDigest } from "./ga-watch-capture-artifact"
 
 const GA_SCOPE = "https://www.googleapis.com/auth/analytics.readonly"
 const WATCH_HOSTS = ["jesusfilm.org", "www.jesusfilm.org"] as const
@@ -957,6 +958,8 @@ export async function readGaWatchReferrerAggregatePage(input: {
   targetPathnames?: readonly string[]
   sourceRouteRegex?: string
   targetRouteRegex?: string
+  /** Capture only: classify exact raw referrer regex membership before discarding it. */
+  captureSourcePatterns?: readonly string[]
   tokenProvider?: TokenProvider
   fetchImpl?: typeof fetch
 }): Promise<{
@@ -969,6 +972,8 @@ export async function readGaWatchReferrerAggregatePage(input: {
     starts: number
     status: ReferrerRowStatus
     rowIdentityDigest: string
+    pagePath?: string
+    sourcePatternIds?: number[]
   }[]
   rowCount: number
   nextOffset: number | null
@@ -1018,17 +1023,29 @@ export async function readGaWatchReferrerAggregatePage(input: {
     page.metadata.timeZone !== GA_WATCH_PROPERTY.timeZone
   )
     throw new HistoricalAnalyticsError("analytics_incomplete")
-  const rows = page.rows.map((row) => ({
-    ...classifyReferrerRow(
-      row.dimensionValues[0]!.value,
-      row.dimensionValues[1]!.value,
-    ),
-    mediaComponentId: row.dimensionValues[2]!.value,
-    starts: count(row.metricValues[0]!.value),
-    rowIdentityDigest: createHash("sha256")
-      .update(JSON.stringify(row.dimensionValues.map(({ value }) => value)))
-      .digest("hex"),
-  }))
+  const captureRegexes = input.captureSourcePatterns?.map(
+    (pattern) => new RegExp(routeRegex("source", [pattern]), "u"),
+  )
+  const rows = page.rows.map((row) => {
+    const referrer = row.dimensionValues[0]!.value
+    const pagePath = row.dimensionValues[1]!.value
+    return {
+      ...classifyReferrerRow(referrer, pagePath),
+      mediaComponentId: row.dimensionValues[2]!.value,
+      starts: count(row.metricValues[0]!.value),
+      rowIdentityDigest: createHash("sha256")
+        .update(JSON.stringify(row.dimensionValues.map(({ value }) => value)))
+        .digest("hex"),
+      ...(captureRegexes
+        ? {
+            pagePath,
+            sourcePatternIds: captureRegexes.flatMap((regex, index) =>
+              regex.test(referrer) ? [index] : [],
+            ),
+          }
+        : {}),
+    }
+  })
   const pageCoverage = {
     candidateEvents: 0,
     homepageEvents: 0,
@@ -1104,7 +1121,7 @@ function* watchRoutes(video: WatchRouteCatalogVideo): Generator<string> {
   }
 }
 
-function routePatterns(video: WatchRouteCatalogVideo): string[] {
+export function routePatterns(video: WatchRouteCatalogVideo): string[] {
   const child = escapedRegex(video.slug)
   return [
     `/watch/${child}\\.html(?:/[a-z0-9-]+\\.html)?`,
@@ -1115,7 +1132,7 @@ function routePatterns(video: WatchRouteCatalogVideo): string[] {
   ]
 }
 
-function routeRegex(
+export function routeRegex(
   kind: "source" | "target",
   patterns: readonly string[],
 ): string {
@@ -1125,7 +1142,7 @@ function routeRegex(
     : `^${path}$`
 }
 
-function patternChunks(
+export function patternChunks(
   kind: "source" | "target",
   patterns: readonly string[],
 ): string[][] {
@@ -1161,7 +1178,84 @@ export function planGaWatchNavigationFilters(
   )
 }
 
-async function readGaNavigationSnapshot(
+export type GaWatchSnapshotPageSource = {
+  artifactSha256: string
+  readStarts(input: {
+    offset: number
+    limit: number
+    patterns: string[]
+    targetRouteRegex: string
+  }): Promise<
+    Pick<
+      Awaited<ReturnType<typeof readGaWatchStartAggregatePage>>,
+      "rows" | "rowCount" | "nextOffset" | "status"
+    >
+  >
+  readReferrers(input: {
+    offset: number
+    limit: number
+    sourcePatterns: string[]
+    targetPatterns: string[]
+    sourceRouteRegex: string
+    targetRouteRegex: string
+  }): Promise<
+    Pick<
+      Awaited<ReturnType<typeof readGaWatchReferrerAggregatePage>>,
+      "rows" | "rowCount" | "nextOffset" | "status"
+    >
+  >
+}
+
+export function gaWatchRouteMappingDigest(
+  routeCatalog: readonly WatchRouteCatalogVideo[],
+): string {
+  return createHash("sha256")
+    .update(
+      JSON.stringify(
+        routeCatalog.map((video) => ({
+          id: video.id,
+          slug: video.slug,
+          watchRouteIdentity: video.watchRouteIdentity,
+        })),
+      ),
+    )
+    .digest("hex")
+}
+
+export function gaWatchCaptureQuerySpec(input: {
+  propertyId: string
+  rangeStart: string
+  rangeEnd: string
+}) {
+  const report = (
+    kind: "startPaths" | "referrerPairs",
+    dimensions: string[],
+  ) => ({
+    dateRanges: [{ startDate: input.rangeStart, endDate: input.rangeEnd }],
+    dimensions: dimensions.map((name) => ({ name })),
+    metrics: [{ name: "eventCount" }],
+    dimensionFilter: watchFilter(kind),
+    orderBys: dimensions.map((dimensionName) => ({
+      dimension: { dimensionName },
+    })),
+    limit: String(SNAPSHOT_PAGE_SIZE),
+    returnPropertyQuota: true,
+  })
+  return {
+    version: "ga_watch_capture_query_v1",
+    propertyId: input.propertyId,
+    reports: [
+      report("startPaths", ["pagePath", "customEvent:mediacomponentid"]),
+      report("referrerPairs", [
+        "pageReferrer",
+        "pagePath",
+        "customEvent:mediacomponentid",
+      ]),
+    ],
+  }
+}
+
+export async function readGaNavigationSnapshot(
   input: {
     propertyId: string
     serviceAccountEmail: string
@@ -1169,6 +1263,7 @@ async function readGaNavigationSnapshot(
     rangeEnd: string
     tokenProvider?: TokenProvider
     fetchImpl?: typeof fetch
+    pageSource?: GaWatchSnapshotPageSource
   } & NavigationSnapshotInput,
 ): Promise<HistoricalSnapshot> {
   const { definition, cutoff } = input
@@ -1233,17 +1328,7 @@ async function readGaNavigationSnapshot(
     ambiguousEvents: 0,
   }
   const usage = new Map<string, number | null>()
-  const mappingDigest = createHash("sha256")
-    .update(
-      JSON.stringify(
-        routeCatalog.map((video) => ({
-          id: video.id,
-          slug: video.slug,
-          watchRouteIdentity: video.watchRouteIdentity,
-        })),
-      ),
-    )
-    .digest("hex")
+  const mappingDigest = gaWatchRouteMappingDigest(routeCatalog)
   const resultHash = createHash("sha256")
   const unmappedHash = createHash("sha256")
   let rowCount = 0
@@ -1307,7 +1392,7 @@ async function readGaNavigationSnapshot(
       )
       .digest("hex")
       .slice(0, 40)}`
-    usage.set(queryId, null)
+    if (!input.pageSource) usage.set(queryId, null)
     let offset = 0
     let expected: number | null = null
     while (true) {
@@ -1339,12 +1424,19 @@ async function readGaNavigationSnapshot(
       patterns,
       [],
       (offset) =>
-        readGaWatchStartAggregatePage({
-          ...usableInput,
-          offset,
-          limit: SNAPSHOT_PAGE_SIZE,
-          targetRouteRegex: routeRegex("target", patterns),
-        }),
+        input.pageSource
+          ? input.pageSource.readStarts({
+              offset,
+              limit: SNAPSHOT_PAGE_SIZE,
+              patterns,
+              targetRouteRegex: routeRegex("target", patterns),
+            })
+          : readGaWatchStartAggregatePage({
+              ...usableInput,
+              offset,
+              limit: SNAPSHOT_PAGE_SIZE,
+              targetRouteRegex: routeRegex("target", patterns),
+            }),
       (row) => {
         const signal = row as Awaited<
           ReturnType<typeof readGaWatchStartAggregatePage>
@@ -1390,13 +1482,22 @@ async function readGaNavigationSnapshot(
         patterns,
         querySourcePatterns,
         (offset) =>
-          readGaWatchReferrerAggregatePage({
-            ...usableInput,
-            offset,
-            limit: SNAPSHOT_PAGE_SIZE,
-            sourceRouteRegex: routeRegex("source", querySourcePatterns),
-            targetRouteRegex: routeRegex("target", patterns),
-          }),
+          input.pageSource
+            ? input.pageSource.readReferrers({
+                offset,
+                limit: SNAPSHOT_PAGE_SIZE,
+                sourcePatterns: querySourcePatterns,
+                targetPatterns: patterns,
+                sourceRouteRegex: routeRegex("source", querySourcePatterns),
+                targetRouteRegex: routeRegex("target", patterns),
+              })
+            : readGaWatchReferrerAggregatePage({
+                ...usableInput,
+                offset,
+                limit: SNAPSHOT_PAGE_SIZE,
+                sourceRouteRegex: routeRegex("source", querySourcePatterns),
+                targetRouteRegex: routeRegex("target", patterns),
+              }),
         (row) => {
           const link = row as Awaited<
             ReturnType<typeof readGaWatchReferrerAggregatePage>
@@ -1469,6 +1570,8 @@ async function readGaNavigationSnapshot(
   const usageDigest = createHash("sha256")
     .update(JSON.stringify([...usage].sort(([a], [b]) => a.localeCompare(b))))
     .digest("hex")
+  const resultDigest = resultHash.digest("hex")
+  const unmappedDigest = unmappedRows > 0 ? unmappedHash.digest("hex") : null
   const provenance: HistoricalSnapshot["provenance"] = {
     provider: "ga_data_api",
     status: "complete",
@@ -1493,10 +1596,31 @@ async function readGaNavigationSnapshot(
     pageCount,
     queryExecutionCount: usage.size,
     queryUsageDigest: usageDigest,
-    resultDigest: resultHash.digest("hex"),
-    unmappedDigest: unmappedRows > 0 ? unmappedHash.digest("hex") : null,
+    resultDigest,
+    unmappedDigest,
     bytesProcessed: null,
     costQualification: "unavailable",
+    ...(input.pageSource
+      ? {
+          captureMode: "capture_derived_v1" as const,
+          artifactSha256: input.pageSource.artifactSha256,
+          pageCountKind: "virtual_validation" as const,
+          derivedSubsetDigest: gaCaptureDigest({
+            version: "ga_watch_derived_subset_v1",
+            artifactSha256: input.pageSource.artifactSha256,
+            sourceVideoId: source.id,
+            selectedVideoIds: input.selectedVideoIds,
+            includeSourceEngagement: input.includeSourceEngagement,
+            mappingDigest,
+            rowCount,
+            mappedRows,
+            unmappedRows,
+            navigationCoverage,
+            resultDigest,
+            unmappedDigest,
+          }),
+        }
+      : {}),
   }
   return {
     provenance,
@@ -1557,6 +1681,7 @@ export function createGaWatchHistoryReader(input: {
     targetPathnames?: readonly string[]
     sourceRouteRegex?: string
     targetRouteRegex?: string
+    captureSourcePatterns?: readonly string[]
   }) => ReturnType<typeof readGaWatchReferrerAggregatePage>
 } {
   let description: Awaited<
@@ -1600,6 +1725,7 @@ export function createGaWatchHistoryReader(input: {
       targetPathnames?: readonly string[]
       sourceRouteRegex?: string
       targetRouteRegex?: string
+      captureSourcePatterns?: readonly string[]
     }) => readGaWatchReferrerAggregatePage({ ...shared, ...page }),
     async describe() {
       if (description) return description

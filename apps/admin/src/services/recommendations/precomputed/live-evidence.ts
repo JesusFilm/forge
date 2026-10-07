@@ -3,6 +3,7 @@ import type { Prisma, PrismaClient } from "@prisma/client"
 import type { CtrPolicySettings } from "./ctr-policy"
 import { loadPrecomputedFullCatalogSourceSet } from "./catalog"
 import { precomputedCtrPolicyDigest } from "./ctr-report"
+import { hasSealedGaCapture } from "./ga-capture-artifact"
 import type { PrecomputedBaselineReport } from "./incumbent-baseline"
 import {
   evaluatePrecomputedLiveFacts,
@@ -214,6 +215,10 @@ export async function loadLiveEvidence(
       ? {
           status: generation.status,
           protocolVersion: generation.protocolVersion,
+          gaCaptureSealed: hasSealedGaCapture(
+            generation.historicalQualification,
+            generation,
+          ),
           modelId: generation.modelId,
           inputMode: generation.inputMode,
           sourceSetDigest: generation.sourceSetDigest,

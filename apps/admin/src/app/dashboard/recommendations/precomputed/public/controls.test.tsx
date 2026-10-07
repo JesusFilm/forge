@@ -38,12 +38,14 @@ function readiness(fixture: boolean): Readiness {
     generations: [
       {
         id: "generation-1",
+        inputDigest: "a".repeat(64),
         status: "complete",
         protocolVersion: 2,
         modelId: "fixture-astra",
         inputMode: "fixture",
         inputCutoff: new Date("2026-10-05T00:00:00.000Z"),
         historicalQualificationDigest: null,
+        historicalQualification: null,
         sourceSetDigest: "b".repeat(64),
         expectedSourceCount: 1,
         capacityPreflight: { status: "passed" },

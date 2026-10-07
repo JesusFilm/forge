@@ -254,6 +254,45 @@ describe.skipIf(!url)("native precomputed runtime snapshot retention", () => {
       expect(await workflows.getWorkflowRunById({ runId })).not.toBeNull()
   })
 
+  it("reclaims a retired historical v3 catalog snapshot but not a v3 source snapshot", async () => {
+    const old = new Date("2026-08-01T00:00:00.000Z")
+    const cutoff = "2026-07-31T00:00:00.000Z"
+    const catalog = await put(
+      "precomputed-catalog-generation",
+      "waiting",
+      old,
+      "v3-catalog",
+      cutoff,
+      true,
+    )
+    const source = await put(
+      "precomputed-source-generation",
+      "running",
+      old,
+      "v3-source",
+      cutoff,
+      true,
+    )
+    const result = await prunePrecomputedAbandonedRuntimeSnapshots({
+      pool,
+      schema,
+      now: new Date("2026-10-06T00:00:00.000Z"),
+      readProof: async ({ generationId }) => ({
+        protocolVersion: 2,
+        generationProtocolVersion: 3,
+        generationId,
+        inputCutoff: cutoff,
+        inputDigest: "a".repeat(64),
+        inputMode: "historical_analytics",
+        state: "retired",
+        sourceWorkResumable: false,
+      }),
+    })
+    expect(result).toMatchObject({ deletedRuns: 1, unresolvedRuns: 1 })
+    expect(await workflows.getWorkflowRunById({ runId: catalog })).toBeNull()
+    expect(await workflows.getWorkflowRunById({ runId: source })).not.toBeNull()
+  })
+
   it("pages past unresolved retirement proofs without starving later artifacts", async () => {
     const cutoff = "2026-07-31T00:00:00.000Z"
     const unresolved = await put(

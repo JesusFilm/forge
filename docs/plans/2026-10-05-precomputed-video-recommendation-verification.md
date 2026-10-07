@@ -2523,3 +2523,60 @@ original mapping/response checks and explicit acquisition usage. This is a
 design in progress, not implemented or qualified live evidence. No old-range
 overwrite, arbitrary shorter lookback, model replay or full-catalog launch is
 authorized by this diagnosis. Both local launch-readiness flags remain false.
+
+## October 7 immutable GA capture integration
+
+Mastra commits `f10ae9611` and `0ace73779`, and Admin commits `3abf2900c`
+and `ca1faf404`, were applied serially from fixed base `afa911729`.
+New historical builds explicitly select `snapshotMode: ga_aggregate_capture_v1`
+and protocol v3. Complete global Watch starts/referrer reports must have two
+matching passes, stable qualification, safe reconciled totals and complete
+generation-level HTTP receipts before Admin seals the private content-addressed
+artifact. Model/source work requires that seal. Resume verifies the object,
+header and immutable catalog/corpus/pool/route identities without GA access.
+The original v2 generation and its saved paid evidence remain unchanged.
+
+The artifact is capped at 256 MiB, cumulative compressed page staging at
+104 MiB and declared aggregate decompressed data at 1 GiB. Admin stores compact
+upload/binding receipts, not raw GA pages, in PostgreSQL. Migration 0141 adds
+v3 checks, server-owned GA reservation time and retryable artifact-retirement
+proof fields. Ordinary request/visit retention continues during an object-store
+failure. Source-derived histories record zero GA calls and explicit virtual
+validation pages. Two matching report passes are not a transactional GA snapshot.
+
+Worker validation includes 3,326 passing Mastra tests (44 skipped), full types
+and lint; Admin native lifecycle, transport, concurrency, capacity and retention
+checks; a 6,715-request storage load; and eight standalone retention cases on a
+fresh database after 143 migrations. Normal hooks passed on all four commits.
+The exact shared format contract SHA-256 is
+`ed2ea641ad2204bd7c0c96c86eebcd4e5a8908e4d8c4fac2c1191d76cad2be6a`.
+
+Root's native regression exercises real Admin upload/get/seal, a persisted model
+checkpoint followed by response loss, lease-expiry resume with throwing GA and
+token providers, unchanged HTTP receipts, one analytics-plan model invocation,
+complete saved recommendations, Admin review/report and stale Mastra cleanup
+using Admin's actual v3 proof. Its first run exposed the report's remaining
+strict-v2 provenance parser; `ca1faf404` fixes that without relaxing v2.
+Sequential Spec review found the v3 runtime-proof cleanup omission, fixed in
+`0ace73779`. Standards review found no outstanding violation in the integrated
+repair. Both follow-ups have focused regressions.
+
+The subsequent full native build-through-Admin suite passed **33/33** cases
+on a newly created, guarded `forge_precomputed_control_test` database, which
+was removed afterward. An earlier harness run used a different disposable name
+and correctly failed the three public-control fixture-authority gates; no
+application guard was weakened. Root scoped ESLint and diff checks passed.
+Logs are under `/tmp/forge-feat-590-orchestration/ga-capture-native-*.log`.
+
+Published CI for the prior docs commit `afa911729` exposed a separate flaky
+assertion: concurrent GA receipts may arrive in a different order from their
+reservations. Root now compares the complete call/source pairs in stable order,
+preserving exact counts, multiplicity and attribution. The full native suite
+passes that corrected case. New integrated CI remains to be observed.
+
+The base catalog and v6 supplement hashes were reverified. Worker read-only
+operator/migration audits identify the remaining versioned capture-only runner,
+reference pool, phase-specific quota gates and object-inclusive restore proof.
+No real GA, model, S3, production or paid-local-data mutation occurred during
+this integration. Live capture, reference comparison and the full 1,031-video
+build remain unstarted under v3, with both existing launch flags disabled.

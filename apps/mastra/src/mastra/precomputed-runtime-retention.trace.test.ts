@@ -197,4 +197,62 @@ describe("native precomputed runtime trace retention", () => {
     ])
       expect(await store.observability.getTrace({ traceId })).not.toBeNull()
   })
+
+  it("accepts retired historical catalog v3 proof without widening source or content-only cleanup", async () => {
+    const cutoff = "2026-07-31T00:00:00.000Z"
+    const metadata = (generationId: string, historyRequired: boolean) => ({
+      precomputedGenerationId: generationId,
+      precomputedInputCutoff: cutoff,
+      precomputedHistoryRequired: historyRequired,
+    })
+    const historicalCatalog = await put(
+      "precomputed-catalog-generation",
+      undefined,
+      metadata("v3-catalog", true),
+    )
+    const source = await put(
+      "precomputed-source-generation",
+      undefined,
+      metadata("v3-source", true),
+    )
+    const contentCatalog = await put(
+      "precomputed-catalog-generation",
+      undefined,
+      metadata("v3-content", false),
+    )
+    const invalidDigest = await put(
+      "precomputed-catalog-generation",
+      undefined,
+      metadata("v3-invalid-digest", true),
+    )
+    const active = await put(
+      "precomputed-catalog-generation",
+      undefined,
+      metadata("v3-active", true),
+    )
+    const result = await prunePrecomputedOrphanRunningTraces({
+      observability: store.observability,
+      now: new Date("2026-10-06T00:00:00.000Z"),
+      readProof: async ({ generationId }) => ({
+        protocolVersion: 2,
+        generationProtocolVersion: 3,
+        generationId,
+        inputCutoff: cutoff,
+        inputDigest:
+          generationId === "v3-invalid-digest" ? "bad" : "a".repeat(64),
+        inputMode:
+          generationId === "v3-content"
+            ? "content_only"
+            : "historical_analytics",
+        state: generationId === "v3-active" ? "incomplete" : "retired",
+        sourceWorkResumable: generationId === "v3-active",
+      }),
+    })
+    expect(result).toMatchObject({ deletedTraces: 1, unresolvedTraces: 4 })
+    expect(
+      await store.observability.getTrace({ traceId: historicalCatalog }),
+    ).toBeNull()
+    for (const traceId of [source, contentCatalog, invalidDigest, active])
+      expect(await store.observability.getTrace({ traceId })).not.toBeNull()
+  })
 })

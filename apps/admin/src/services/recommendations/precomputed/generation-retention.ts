@@ -1,4 +1,14 @@
-import { Prisma } from "@prisma/client"
+import { Prisma, type PrismaClient } from "@prisma/client"
+import {
+  RecommendationInputError,
+  RecommendationInternalStateError,
+} from "../errors"
+import { gaCaptureSnapshotRefSchema } from "./ga-capture-artifact"
+import {
+  configuredGaCaptureStore,
+  gaCaptureStorageKey,
+  type GaCaptureStore,
+} from "./ga-capture-store"
 
 /** Terminal diagnostics remain reviewable for three months. This never alters
  * the request-owned 29-day raw visit lifecycle or fixed-test aggregates. */
@@ -46,6 +56,11 @@ export async function purgeExpiredPrecomputedGenerations(
     WHERE proof.ctid IN (
       SELECT expired.ctid FROM recommendation_precomputed_generation_retention_proof expired
       WHERE expired.expires_at <= ${now}
+        AND (expired.snapshot_sha256 IS NULL OR expired.artifact_deleted_at IS NOT NULL)
+        AND NOT EXISTS (
+          SELECT 1 FROM recommendation_precomputed_ga_capture_artifact artifact
+          WHERE artifact.generation_id = expired.generation_id
+        )
       ORDER BY expired.expires_at, expired.generation_id
       LIMIT ${PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE}
     )
@@ -141,10 +156,11 @@ export async function purgeExpiredPrecomputedGenerations(
       input_cutoff: Date
       input_digest: string
       input_mode: string
+      historical_qualification: unknown
     }>
   >(Prisma.sql`
     SELECT g.id, g.status, g.protocol_version, g.input_cutoff,
-           g.input_digest, g.input_mode
+           g.input_digest, g.input_mode, g.historical_qualification
     FROM recommendation_precomputed_generation g
     WHERE (g.status = 'retiring' OR
       (g.status IN ('complete', 'failed', 'cancelled')
@@ -269,6 +285,10 @@ export async function purgeExpiredPrecomputedGenerations(
       EXISTS (SELECT 1 FROM recommendation_precomputed_history_call WHERE generation_id = ${candidate.id})
       AS has_children
   `)
+  const boundCapture = gaCaptureSnapshotRefSchema.safeParse(
+    (candidate.historical_qualification as { snapshotRef?: unknown } | null)
+      ?.snapshotRef,
+  )
   if (!remaining?.has_children)
     await tx.recommendationPrecomputedGenerationRetentionProof.create({
       data: {
@@ -277,6 +297,9 @@ export async function purgeExpiredPrecomputedGenerations(
         inputCutoff: candidate.input_cutoff,
         inputDigest: candidate.input_digest,
         inputMode: candidate.input_mode,
+        snapshotSha256: boundCapture.success
+          ? boundCapture.data.artifactSha256
+          : null,
         state: "retired",
         recordedAt: now,
         expiresAt: new Date(
@@ -312,4 +335,82 @@ export async function purgeExpiredPrecomputedGenerations(
     // is waiting. Schedule a follow-up page; the empty page ends continuation.
     pageFull: true,
   }
+}
+
+/** Retryable post-commit object cleanup. Objects remain while their generation
+ * can resume or is protected by the ordinary retention rules. The 30-minute
+ * grace also fences an upload that began just before retirement committed. */
+export async function purgeRetiredGaCaptureArtifacts(
+  prisma: PrismaClient,
+  now: Date,
+  limit = 10,
+  store?: GaCaptureStore,
+): Promise<{ deleted: number; bytes: bigint }> {
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 100)
+    throw new RecommendationInputError(
+      "precomputed_ga_capture_purge_invalid_limit",
+    )
+  const cutoff = new Date(now.getTime() - 30 * 60_000)
+  const candidates = await prisma.$queryRaw<
+    Array<{
+      generation_id: string
+      artifact_sha256: string
+      storage_key: string
+      artifact_bytes: bigint
+    }>
+  >(Prisma.sql`
+    SELECT artifact.generation_id, artifact.artifact_sha256,
+           artifact.storage_key, artifact.artifact_bytes
+    FROM recommendation_precomputed_ga_capture_artifact artifact
+    JOIN recommendation_precomputed_generation_retention_proof proof
+      ON proof.generation_id = artifact.generation_id
+    WHERE artifact.created_at <= ${cutoff}
+      AND NOT EXISTS (
+        SELECT 1 FROM recommendation_precomputed_generation generation
+        WHERE generation.id = artifact.generation_id
+      )
+    ORDER BY artifact.created_at, artifact.generation_id, artifact.artifact_sha256
+    LIMIT ${limit}
+  `)
+  if (candidates.length === 0) return { deleted: 0, bytes: 0n }
+  const objectStore = store ?? configuredGaCaptureStore()
+  let deleted = 0
+  let bytes = 0n
+  for (const candidate of candidates) {
+    if (
+      candidate.storage_key !==
+      gaCaptureStorageKey(candidate.generation_id, candidate.artifact_sha256)
+    )
+      throw new RecommendationInternalStateError(
+        "precomputed_ga_capture_cleanup_identity_mismatch",
+      )
+    await objectStore.delete(candidate.storage_key)
+    const removed = await prisma.$transaction(async (tx) => {
+      const count =
+        await tx.recommendationPrecomputedGaCaptureArtifact.deleteMany({
+          where: {
+            generationId: candidate.generation_id,
+            artifactSha256: candidate.artifact_sha256,
+            storageKey: candidate.storage_key,
+          },
+        })
+      if (
+        !(await tx.recommendationPrecomputedGaCaptureArtifact.count({
+          where: { generationId: candidate.generation_id },
+        }))
+      )
+        await tx.recommendationPrecomputedGenerationRetentionProof.updateMany({
+          where: {
+            generationId: candidate.generation_id,
+            snapshotSha256: { not: null },
+            artifactDeletedAt: null,
+          },
+          data: { artifactDeletedAt: now },
+        })
+      return count.count
+    })
+    deleted += removed
+    if (removed) bytes += candidate.artifact_bytes
+  }
+  return { deleted, bytes }
 }

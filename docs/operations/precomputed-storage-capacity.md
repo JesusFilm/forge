@@ -25,11 +25,21 @@ generation enters non-servable `retiring` before any child deletion. Each
 transaction drains at most 100 choices, 100 model calls, 100 history calls,
 20 final source rows, and 20 build source rows. It protects the newest two
 complete generations, every experiment reference, and an explicit rollback
-hold. This applies to both legacy v1 and durable v2 generations. On deletion,
+hold. This applies to legacy v1, durable v2 and sealed-capture v3 generations. On deletion,
 an identity-only proof survives for 365 days so Mastra can safely identify a
 retired runtime snapshot. Unknown identities are not assumed safe to prune.
 An operator who needs a particular rollback generation for longer must set
 its `rollback_retention_hold` before it becomes eligible to retire.
+
+V3 stores GA aggregates in private object storage, with a compact immutable
+reference and upload receipt in PostgreSQL. Raw referrer URLs and query strings
+are excluded. Objects remain while the generation is resumable or protected.
+After generation retirement and the upload grace period, bounded post-commit
+cleanup removes its objects and marks the retention proof. Failed remote
+deletion remains retryable and does not block ordinary request/visit retention.
+Proofs are retained until their object cleanup completes. Storage observations
+report declared object bytes separately; they are not PGDATA allocation or
+proof that an upload completed.
 
 The Admin read-only report is at
 `/dashboard/recommendations/precomputed/storage`. It displays PostgreSQL heap,

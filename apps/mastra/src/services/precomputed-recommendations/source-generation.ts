@@ -295,7 +295,7 @@ function assertEvidence(
   }
 }
 
-function assertPrivateUrl(raw: string): string {
+export function assertPrivateUrl(raw: string): string {
   const url = new URL(raw)
   if (
     url.protocol !== "https:" &&

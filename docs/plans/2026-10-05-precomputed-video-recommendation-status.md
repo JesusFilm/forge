@@ -13,9 +13,18 @@ describes the private reporting contract and limits.
 
 ## Integration
 
-Current checkpoint: application commit `99d7e8a62` has 42 successful CheckRuns,
-with no failed checks. Bounded GA retries and operator quota admission are
-verified. The local preview is accepted and stopped. The bounded Nicodemus
+Current checkpoint: the v3 GA capture repair is integrated from Mastra
+`f10ae9611`/`0ace73779` and Admin `3abf2900c`/`ca1faf404`.
+The native capture, interruption, sealed resume, Admin report and stale-runtime
+cleanup case passes with a GA/token trap proving no post-seal GA calls.
+Worker checks include 3,326 Mastra tests, Admin native lifecycle/retention tests,
+types, lint and normal hooks. The combined integration suite passes all 33 cases.
+The earlier application commit `99d7e8a62` passed all 42 applicable CheckRuns;
+the subsequent docs commit `afa911729` exposed a flaky concurrency assertion
+that compared receipt completion order with reservation order. Root corrected
+that assertion to compare every call/source pair without requiring order.
+The new integrated repair still needs published CI and live capture validation.
+The local preview is accepted and stopped. The bounded Nicodemus
 full-universe reference remains incomplete at 360 of 1,001 discovery targets.
 Its latest recovery completed eight GA requests, then stopped before any source
 claim or new model call because the provider-declared usable history start had
@@ -26,9 +35,10 @@ with $21.3688725 known model cost, matching receipts and no pending calls or
 unknown completed-model charges. Existing artifacts do not contain a complete
 replayable old-range history snapshot, and changed qualification changes model
 inputs; previous choices cannot simply be carried into a new generation.
-Both local launch gates are disabled. Workers A/B are designing the smallest
-generation-scoped aggregate snapshot contract so history can be captured and
-sealed before model work. No provider calls are running. The full 1,031-video
+Both local launch gates are disabled. New historical generations can capture
+and seal complete Watch aggregates before model work; v2 generations are not
+rewritten. Workers A/B are auditing the versioned operator and local migration
+steps without mutating paid data. No provider calls are running. The full 1,031-video
 catalog build remains unstarted. Live baseline/calibration and owner numeric
 policy are still required.
 
@@ -154,9 +164,12 @@ report qualification and operator run procedure.
 Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
 branch: `codex/feat-590-2575-live-admin`.
 
-Current recovery ownership: A owns the Mastra proposal for an immutable GA
-aggregate snapshot; B owns the Admin provenance and retention contract proposal.
-Both are read-only until the contracts agree. Existing reference/full runners
+Current recovery ownership: A delivered the Mastra capture/reader and v3 runtime
+cleanup on `codex/feat-590-2569-ga-capture`; B delivered Admin transport,
+provenance, retention and report compatibility on `codex/feat-590-2574-ga-capture`.
+The agreed contract SHA-256 is
+`ed2ea641ad2204bd7c0c96c86eebcd4e5a8908e4d8c4fac2c1191d76cad2be6a`.
+Their current operator/migration readiness audits are read-only. Existing reference/full runners
 remain disabled, with no active paid process. Root owns integration, evidence
 preservation and the decision to proceed to the full build. Persistent checkpoint
 and call-receipt files are under the protected evidence directory, not `/tmp`.

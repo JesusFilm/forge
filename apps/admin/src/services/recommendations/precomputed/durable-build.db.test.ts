@@ -196,6 +196,150 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     })
 
+    it("starts a sealed GA generation and refuses source work before its capture is bound", async () => {
+      const sealedGenerationId = `sealed-${suffix}`
+      const sealed = {
+        generationId: sealedGenerationId,
+        generationInputDigest,
+      }
+      const started = await submit({
+        action: "start",
+        protocolVersion: 3,
+        ...sealed,
+        modelId: "gpt-6-astra",
+        promptVersion: "ga-capture-v1",
+        inputDigest: generationInputDigest,
+        sourceSetDigest,
+        inputCutoff: new Date(Date.now() + 60_000).toISOString(),
+        expectedSourceCount: 1,
+        inputMode: "historical_analytics",
+        inputSnapshotMode: "ga_aggregate_capture_v1",
+      })
+      expect(started).toMatchObject({ state: "incomplete", replay: false })
+      await submit({
+        action: "manifest",
+        ...sealed,
+        sourceVideoIds: [sourceVideoId],
+      })
+      const probe = await submit({ action: "capacity_probe", ...sealed })
+      await submit({
+        action: "capacity",
+        ...sealed,
+        measurement: {
+          measuredAt: new Date().toISOString(),
+          clusterSystemId: probe.clusterSystemId,
+          observedDbBytes: probe.observedDbBytes,
+          availableBytes: 20_000_000_000,
+          reserveBytes: 5_000_000_000,
+          projectedBytes: 1_000_000,
+          sampleSourceCount: 1,
+          sampleBytes: 100_000,
+          source: "operator_verified_pgdata_df",
+        },
+      })
+      await expect(
+        submit({
+          action: "claim",
+          ...sealed,
+          sourceVideoId,
+          claimId: "before-seal",
+        }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      expect(await submit({ action: "status", ...sealed })).toMatchObject({
+        generationProtocolVersion: 3,
+        inputSnapshotMode: "ga_aggregate_capture_v1",
+        historicalQualification: null,
+        historyCallCounts: { pending: 0, succeeded: 0, failed: 0 },
+      })
+    })
+
+    it("shares build capacity reservations across v2 and v3", async () => {
+      const reserve = async (protocolVersion: 2 | 3) => {
+        const id = `capacity-reserve-v${protocolVersion}-${suffix}`
+        await prisma.recommendationPrecomputedGeneration.create({
+          data: {
+            id,
+            modelId: "gpt-6-astra",
+            promptVersion: "capacity-test",
+            inputDigest: generationInputDigest,
+            sourceSetDigest,
+            inputCutoff: new Date(Date.now() - 60_000),
+            expectedSourceCount: 1,
+            protocolVersion,
+            inputMode:
+              protocolVersion === 3 ? "historical_analytics" : "content_only",
+            inputSnapshotMode:
+              protocolVersion === 3
+                ? "ga_aggregate_capture_v1"
+                : "observed_fenced",
+            capacityPreflight: {
+              status: "passed",
+              measuredAt: new Date(Date.now() - 60_000).toISOString(),
+              lastPassedAt: new Date(Date.now() - 60_000).toISOString(),
+              projectedBytes: 700_000_000,
+              heldProjectionBytes: 700_000_000,
+            },
+          },
+        })
+        return id
+      }
+      const checkBlocked = async (protocolVersion: 2 | 3) => {
+        const target = {
+          generationId: `capacity-target-v${protocolVersion}-${suffix}`,
+          generationInputDigest,
+        }
+        await submit({
+          action: "start",
+          ...target,
+          protocolVersion,
+          modelId: "gpt-6-astra",
+          promptVersion: "capacity-test",
+          inputDigest: generationInputDigest,
+          sourceSetDigest,
+          inputCutoff: new Date(Date.now() + 60_000).toISOString(),
+          expectedSourceCount: 1,
+          inputMode:
+            protocolVersion === 3 ? "historical_analytics" : "content_only",
+          inputSnapshotMode:
+            protocolVersion === 3
+              ? "ga_aggregate_capture_v1"
+              : "observed_fenced",
+        })
+        await submit({
+          action: "manifest",
+          ...target,
+          sourceVideoIds: [sourceVideoId],
+        })
+        const probe = await submit({ action: "capacity_probe", ...target })
+        const result = await submit({
+          action: "capacity",
+          ...target,
+          measurement: {
+            measuredAt: new Date().toISOString(),
+            clusterSystemId: probe.clusterSystemId,
+            observedDbBytes: probe.observedDbBytes,
+            availableBytes: 6_000_000_000,
+            reserveBytes: 5_000_000_000,
+            projectedBytes: 400_000_000,
+            sampleSourceCount: 1,
+            sampleBytes: 100_000,
+            source: "operator_verified_pgdata_df",
+          },
+        })
+        expect(result).toMatchObject({ state: "capacity_blocked" })
+      }
+      const v3 = await reserve(3)
+      await checkBlocked(2)
+      await prisma.recommendationPrecomputedGeneration.delete({
+        where: { id: v3 },
+      })
+      const v2 = await reserve(2)
+      await checkBlocked(3)
+      await prisma.recommendationPrecomputedGeneration.delete({
+        where: { id: v2 },
+      })
+    })
+
     it("keeps a charged stale attempt while fencing its checkpoint and completion", async () => {
       const build = await setupBuild("stale")
       const first = await submit({

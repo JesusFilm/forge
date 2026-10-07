@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import { env } from "@/config/env"
+import { hasSealedGaCapture } from "./ga-capture-artifact"
 import { ForbiddenError } from "@/services/errors"
 import { recommendationManifestDigest } from "../promotion/manifest"
 import {
@@ -458,7 +459,12 @@ export async function startPrecomputedPublicExperiment(
         frozen?.state !== "public_ready" ||
         frozen.configurationDigest !== input.expectedConfigurationDigest ||
         frozen.generation.status !== "complete" ||
-        frozen.generation.protocolVersion !== 2 ||
+        (frozen.generation.protocolVersion !== 2 &&
+          (frozen.generation.protocolVersion !== 3 ||
+            !hasSealedGaCapture(
+              frozen.generation.historicalQualification,
+              frozen.generation,
+            ))) ||
         frozen.generation.sourceSetDigest !== frozen.sourceSetDigest ||
         (frozen.generation.capacityPreflight as { status?: string } | null)
           ?.status !== "passed" ||
