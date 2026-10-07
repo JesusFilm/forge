@@ -41,6 +41,10 @@ import {
   gaWatchClosedRangeEnd,
 } from "./ga-watch-history-range"
 import { env } from "../../config/env"
+import {
+  buildCandidateRetrieval,
+  CANDIDATE_RETRIEVAL_REVISION,
+} from "./candidate-retrieval"
 
 const id = z.string().trim().min(1).max(191)
 const MAX_CANDIDATE_JUDGMENT_ATTEMPTS = 2
@@ -122,6 +126,7 @@ type Context = {
   ingest: SourceIngest
   model: StructuredModel
   videos: Video[]
+  candidateIdsBySource: Map<string, string[]>
   history?: HistoricalAnalyticsReader
   historyDefinition?: Awaited<ReturnType<typeof readHistoricalDefinition>>
   qualificationDigest?: string
@@ -339,11 +344,20 @@ async function processSource(
     ingest,
     catalog,
     videos,
+    candidateIdsBySource,
     model,
     history,
     historyDefinition,
     qualificationDigest,
   } = context
+  const byId = new Map(videos.map((video) => [video.id, video]))
+  const candidateIds = candidateIdsBySource.get(source.id)
+  if (!candidateIds) throw new CatalogBuildError("input_stale")
+  const candidates = candidateIds.map((id) => {
+    const video = byId.get(id)
+    if (!video) throw new CatalogBuildError("input_stale")
+    return video
+  })
   const identity = {
     generationId: input.generationId,
     generationInputDigest,
@@ -558,11 +572,11 @@ async function processSource(
       continue
     }
     const catalogIndex = checkpoint.cursor.catalogIndex ?? 0
-    if (catalogIndex >= videos.length) {
+    if (catalogIndex >= candidates.length) {
       await advance({ ...checkpoint, stage: "done", cursor: {} })
       continue
     }
-    const page = videos.slice(catalogIndex, catalogIndex + 40)
+    const page = candidates.slice(catalogIndex, catalogIndex + 40)
     if (checkpoint.stage === "plan") {
       if (!historyDefinition)
         throw new CatalogBuildError("analytics_incomplete")
@@ -951,10 +965,18 @@ export async function runPrecomputedCatalog(
   // Admin validates sourceSetDigest using JavaScript's default code-unit sort.
   videos.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   const sourceVideoIds = videos.map((video) => video.id)
+  const retrieval = await buildCandidateRetrieval(
+    catalog,
+    videos,
+    input.inputCutoff,
+  )
   const generationInputDigest = digest({
     cutoff: input.inputCutoff,
     historyRequired: input.historyRequired,
     videos,
+    candidateRetrievalRevision: CANDIDATE_RETRIEVAL_REVISION,
+    selectedCorpusDigest: retrieval.selectedCorpusDigest,
+    candidatePoolDigest: retrieval.candidatePoolDigest,
   })
   const inputMode = input.historyRequired
     ? "historical_analytics"
@@ -967,8 +989,8 @@ export async function runPrecomputedCatalog(
       generationId: input.generationId,
       modelId: PRECOMPUTED_MODEL_ID,
       promptVersion: input.historyRequired
-        ? "astra-catalog-history-navigation-v3"
-        : "astra-catalog-v3",
+        ? "astra-catalog-history-navigation-v4"
+        : "astra-catalog-v4",
       inputMode,
       inputSnapshotMode: "observed_fenced",
       inputDigest: generationInputDigest,
@@ -1122,6 +1144,7 @@ export async function runPrecomputedCatalog(
           ingest,
           model,
           videos,
+          candidateIdsBySource: retrieval.candidateIdsBySource,
           history,
           historyDefinition,
           qualificationDigest,

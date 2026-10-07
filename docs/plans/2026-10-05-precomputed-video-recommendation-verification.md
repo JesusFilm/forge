@@ -1919,7 +1919,8 @@ The published `a9cbf8362` CI run exposed main's known Expo compatibility failure
 The integration incorporates the already-reviewed repair from
 [PR #2599](https://github.com/JesusFilm/forge/pull/2599), commits `3b2063d60`,
 `1a847ea1c` and `c4573155d`. That repair's 29 successful/six skipped checks include
-online Expo validation; neither PR has been merged to main. Frozen lockfile-only
+online Expo validation. The maintenance PR subsequently merged separately as
+`89f0f99a6`; the feature PR remains unmerged. Frozen lockfile-only
 validation passes locally without installing another dependency tree. The native
 capacity test's diagnostic payload parameter is now `Prisma.InputJsonObject`,
 matching Prisma's JSON input contract without a type assertion.
@@ -1942,3 +1943,40 @@ There were no deployed precomputed relations. This is a physical snapshot, not a
 launch receipt: actual full-build growth, verified baseline traffic and fresh
 capacity attestation remain required. The protected
 `production-physical-capacity.json` records its timestamp and cluster binding.
+
+## October 7 retrieval integration
+
+Worker A delivered `31dfe6fe6` and `b717ec718`, reviewed against `9055913ed`
+on separate Standards and Spec axes. The catalog workflow now reads every
+complete selected transcript and builds deterministic candidate pools from
+catalog text, direct structural links, exact keyword/Bible overlap and protected
+metadata-only/non-English candidates. All eligible source/target IDs and the
+full GA route catalog remain available. The selected corpus, ordered pools and
+policy revision bind the generation digest; stale transcript identity fails
+before opening a generation. Accepted edges still require Astra judgments and
+the existing strict evidence validation.
+
+Two actual-catalog retrieval runs produced the same digest across 1,031 Videos
+and 2,686 chunks, using at most 310 MiB RSS. The 56,291 candidate pairs require
+4,128 initial plan/discovery calls, versus 53,612 for exhaustive pages. These
+counts exclude judgments, repairs and GA calls. This is a runtime/work forecast,
+not a cost or quality result. An independent 12-source comparison retained
+64/180 top semantic neighbors, 184/184 direct structural pairs, 266/723
+shared-keyword pairs and 236/722 shared-Bible pairs. These are diagnostic proxy
+overlaps; omitted pairs are not negative labels or measured recommendation recall.
+
+Worker validation passed 3,275 Mastra tests (44 skipped), eight focused cases,
+nine connected catalog cases, Mastra typecheck/lint and normal format hooks.
+Root review found no remaining Standards or Spec issue in this slice after the
+typed `input_stale` correction. The bounded real-model comparison remains
+separate from these deterministic checks and precedes the next full build.
+The combined root checkout also passed all eight catalog unit cases and all
+25 native source/catalog integration cases. Logs:
+`20261007-retrieval-integrated-unit.log` and
+`20261007-retrieval-integrated-connected.log`.
+
+The CI repair is committed as `ba0376723`, but GitHub rejected its push because
+the CLI OAuth login lacks the `workflow` scope needed to edit
+`.github/workflows/ci.yml`. A device authorization request is pending with the
+owner. The remote PR still points to the older `a9cbf8362` until publication
+succeeds; no green published-head CI is claimed for these local repairs.

@@ -29,8 +29,9 @@ $2.3197855 known model charges and one unresolved call with unknown charge.
 A bounded candidate repair is integrated as `aeb55b991` and `e4ecc23ad`:
 strict evidence checks remain, each invalid response retains its charge, and
 the two-attempt limit plus safe feedback survive checkpoint resume. The next
-full build is held for a retrieval audit: the exhaustive implementation requires
-at least 53,612 plan/discovery model calls before individual judgments. The spec
+full build awaits the bounded real-model retrieval comparison: the exhaustive
+implementation requires at least 53,612 plan/discovery calls before individual
+judgments, versus 4,128 with the reviewed selected-content retrieval policy. The spec
 permits catalog-wide retrieval without requiring exhaustive all-pairs reasoning.
 The local Admin preview served the saved pilot after correcting PrismaPg's
 selected-schema handling. Local Chromium verified the Admin review, Watch card,
@@ -101,15 +102,22 @@ Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
 branch: `codex/feat-590-2575-live-admin`.
 
 Current continuation ownership: A completed strict candidate-evidence repair and
-the retrieval audit, and is implementing deterministic catalog-wide retrieval
-with a bounded reference comparison before the next full build. B's conditional
+the retrieval audit, and delivered deterministic catalog-wide retrieval in
+`31dfe6fe6` and `b717ec718`. A bounded real-model reference comparison precedes
+the next full build. B's conditional
 live prepare/start readiness and fresh append-only launch-capacity evidence are
-integrated; B now owns experiment-scoped Web attribution telemetry and its Admin
-report reconciliation. Unknown browser/network loss remains explicit.
+integrated; B delivered experiment-scoped Web attribution telemetry and its Admin
+report reconciliation as `cc4e97fd4`, awaiting root integration. B now owns the
+final calibration receipt and evaluator under reserved migration `0140`.
+The trusted independent calibration source/key and owner loss threshold remain
+external inputs; unknown browser/network loss stays explicit.
 The orchestrator owns local preview/schema selection and actual build resumption.
-The latest application integration is `9055913ed`, including current main
-`5bed7ef5b` through merge `3a07547f1`; both chats resumed after the
-October 7 session interruption. The completion notes below record earlier slices.
+The CI repair is committed locally as `ba0376723`. Root is integrating the
+reviewed retrieval commits and main `89f0f99a6`, which contains the separately
+merged Expo maintenance PR. GitHub rejected publication of the CI repair because
+the current OAuth login lacks workflow scope; owner device authorization is
+pending. The remote feature PR remains at `a9cbf8362` and is still a draft.
+The completion notes below record earlier slices.
 
 Both workers have completed their owned implementation and normal-hook commits.
 A source `3112244b7` is integrated as `127b61e1f`; B sources `ac78b3c85` and
