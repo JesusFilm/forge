@@ -205,19 +205,18 @@ function Ring({
             top: "-32%",
             height: "164%",
             overflow: "visible",
-            ...(color === GOLD
-              ? { filter: "drop-shadow(0 1px 1.5px rgba(70,45,10,0.6))" }
-              : {}),
           }}
         >
           <CharcoalDefs id={id} seed={9} />
           <path
-            filter={`url(#${id})`}
+            // Gold is the marker's flat gold: no charcoal grit, no shadow
+            // (owner, 2026-10-07: one yellow everywhere).
+            filter={color === GOLD ? undefined : `url(#${id})`}
             d="M150,10 C190,14 198,48 172,64 C140,82 50,80 18,64 C-6,50 4,18 40,10 C80,2 130,4 168,14"
             fill="none"
             stroke={color}
-            strokeOpacity={0.95}
-            strokeWidth={color === GOLD ? 11 : 9}
+            strokeOpacity={color === GOLD ? 1 : 0.95}
+            strokeWidth={color === GOLD ? 10 : 9}
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
             pathLength={1}
@@ -296,13 +295,18 @@ function Arrive({
     easing: Easing.bezier(0.16, 1.08, 0.3, 1),
   })
   const dir = from === "left" ? -1 : 1
+  // Once in, the sheet floats, text and all (owner, 2026-10-07): a slow
+  // bob and the faintest turn, each sheet on its own rhythm.
+  const phase = from === "left" ? 0 : 1.7
+  const floatY = Math.sin(t * ((2 * Math.PI) / 3.6) + phase) * f(5)
+  const floatR = Math.sin(t * ((2 * Math.PI) / 5.2) + phase * 1.3) * 0.5
   return (
     <div
       style={{
         position: "absolute",
         ...style,
         opacity: Math.min(1, p * 4),
-        transform: `translateX(${((1 - p) * dir * f(900)).toFixed(1)}px) ${style.transform ?? ""} rotate(${((1 - p) * dir * 6).toFixed(2)}deg)`,
+        transform: `translateX(${((1 - p) * dir * f(900)).toFixed(1)}px) translateY(${floatY.toFixed(2)}px) ${style.transform ?? ""} rotate(${((1 - p) * dir * 6 + floatR).toFixed(3)}deg)`,
         // The shadow follows the paper's own torn outline.
         filter: `drop-shadow(0 ${f(12)}px ${f(16)}px rgba(0,0,0,0.45))`,
       }}
