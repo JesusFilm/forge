@@ -24,6 +24,7 @@ export type PushServiceErrorCode =
   | "unknown_destination"
   | "stale_content_version"
   | "too_many_rows"
+  | "not_deletable"
 
 export class PushServiceError extends Error {
   constructor(
@@ -313,6 +314,14 @@ export class PushStaleContentVersionError extends PushServiceError {
     this.currentContentVersion = input.currentContentVersion
     this.lastActorId = input.lastActorId
     this.updatedAt = input.updatedAt
+  }
+}
+
+/** The delete has to wait for a run, a cancel, or a phone's day; the message names which. */
+export class PushCampaignNotDeletableError extends PushServiceError {
+  constructor(message: string) {
+    super("not_deletable", message)
+    this.name = "PushCampaignNotDeletableError"
   }
 }
 

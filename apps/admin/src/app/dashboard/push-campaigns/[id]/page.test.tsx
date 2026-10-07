@@ -223,6 +223,7 @@ describe("push campaign editor page", () => {
       tested: false,
       frozen: false,
       cancellable: false,
+      deletable: true,
       audience: 1234,
       unreachable: 7,
       contentVersion: 4,
@@ -243,6 +244,16 @@ describe("push campaign editor page", () => {
     expect(state.actionsProps[0]).toMatchObject({
       frozen: true,
       cancellable: true,
+      deletable: false,
+    })
+  })
+
+  it("offers delete for a sent campaign, which a cancel no longer applies to", async () => {
+    state.campaign = campaign({ status: "SENT" })
+    await render()
+    expect(state.actionsProps[0]).toMatchObject({
+      cancellable: false,
+      deletable: true,
     })
   })
 

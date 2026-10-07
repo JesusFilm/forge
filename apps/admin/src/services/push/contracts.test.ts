@@ -164,6 +164,26 @@ describe("push audience contract", () => {
     ).toEqual(["SA", "NZ"])
   })
 
+  it("rejects an alias such as UK and names the ISO code", () => {
+    const result = PushAudienceInputSchema.safeParse({
+      scope: "COUNTRIES",
+      countries: ["us", "uk"],
+    })
+    expect(result.success).toBe(false)
+    expect(result.error?.issues.map((issue) => issue.message)).toEqual([
+      "UK is not an ISO country code. Use GB for United Kingdom",
+    ])
+  })
+
+  it("rejects a group code such as EU, which no phone reports", () => {
+    expect(
+      PushAudienceInputSchema.safeParse({
+        scope: "COUNTRIES",
+        countries: ["EU"],
+      }).success,
+    ).toBe(false)
+  })
+
   it("rejects a country code that is not two letters", () => {
     expect(
       PushAudienceInputSchema.safeParse({

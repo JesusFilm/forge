@@ -101,9 +101,9 @@ describe("jfp-admin plugin manifests", () => {
 
   // KTD19 — a client that caches a plugin by version sees a new skill only
   // after the version changes.
-  it("carries version 0.2.1 on both platforms", () => {
+  it("carries version 0.2.2 on both platforms", () => {
     for (const path of manifests) {
-      expect(readJson(path).version, path).toBe("0.2.1")
+      expect(readJson(path).version, path).toBe("0.2.2")
     }
   })
 
@@ -173,6 +173,18 @@ describe("jfp-admin skills", () => {
       "Ask the author one question at a time.",
       "Wait for the answer before you ask the next question.",
       "Do not ask a question that the author already answered.",
+    ]) {
+      expect(skill).toContain(rule)
+    }
+  })
+
+  // Admin refuses alias and group country codes, and no tool cancels or deletes.
+  it("names the country codes admin accepts and the dashboard-only actions", () => {
+    const skill = readText(pushSkillPath)
+
+    for (const rule of [
+      "Use the code that phones report: `GB` for the United Kingdom, never `UK`.",
+      "No tool cancels or deletes a campaign.",
     ]) {
       expect(skill).toContain(rule)
     }

@@ -118,7 +118,7 @@ describe("push campaigns list page", () => {
     expect(markup).toContain("An announcement")
     expect(markup).toContain("Sending")
     expect(markup).toContain("series / jesus")
-    expect(markup).toContain("SA, FR")
+    expect(markup).toContain("Saudi Arabia (SA), France (FR)")
     expect(markup).toContain("2026-10-01 at 09:00 local")
     expect(markup).toContain("/dashboard/push-campaigns/c1")
     expect(markup).not.toContain(page.emptyTitle)
