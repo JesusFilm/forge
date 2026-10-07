@@ -134,8 +134,14 @@ empty-result visits. Exclude bots from both counts and retain card CTR as a
 secondary diagnostic. Require a predeclared stopping rule and support an
 inconclusive result that keeps the incumbent.
 
-The first build has no user-imposed spend or runtime ceiling; report actual
-cost and elapsed time so the user can then choose recurring frequency.
+On October 8 the owner selected reusable complete-content profiles and batched
+Astra decisions through the locally signed-in Codex subscription. This replaces
+the earlier unrestricted API-spend assumption for new build work. Preserve the
+complete catalog, evidence and connection requirements; keep the personal login
+outside Railway and pause on insufficient or unknown allowance without paid API
+fallback. Report tokens, observable subscription usage and elapsed time; do not
+derive a dollar bill from API rates or call an unknown charge zero. See the
+[subscription build plan](../../plans/2026-10-08-precomputed-recommendation-subscription-build.md).
 Include the user's historical GA data, not just Admin's retained logs.
 GA4 property `320198532` has an existing BigQuery link. Browser reads work in
 `jfp-data-warehouse`, but verified copies contain only March–July 2023 totals
@@ -188,7 +194,9 @@ evidence policy; it does not already implement this CTR test.
 - Precompute the experimental connections; do not put model inference in the
   viewer request path.
 - Building experimental results does not activate public serving.
-- Do not equate Codex model labels with verified application API model IDs.
+- Verify exact Astra access through the selected build backend. A successful
+  synthetic subscription probe proves access and output compatibility only,
+  not full-catalog quality, completeness or available allowance.
 - Historical recommendation exposure is observational evidence, not proof of
   causal uplift or a complete record of viewer preferences.
 - Follow existing Video/Dub/Language identities and Admin consumer boundaries.
@@ -196,7 +204,7 @@ evidence policy; it does not already implement this CTR test.
   preserve active/test/rollback requirements and every accepted connection in
   retained generations. Do not use six displayed cards as a storage quota.
 - Measure physical bytes and growth against Railway volume headroom before
-  enabling traffic. Unrestricted first-run model spending does not imply
+  enabling traffic. Subscription-backed inference does not authorize
   unrestricted database storage.
 - Preserve immutable served evidence and raw retention; avoid duplicate telemetry,
   redundant indexes, and full transcript/model-prompt copies in visit records.

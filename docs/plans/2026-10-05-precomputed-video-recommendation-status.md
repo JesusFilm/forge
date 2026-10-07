@@ -13,6 +13,25 @@ describes the private reporting contract and limits.
 
 ## Integration
 
+October 8 current direction: the owner selected the catalog-first architecture
+with reusable complete-content profiles and batched Astra connection decisions,
+using the existing Codex subscription instead of paid API generation. The
+[implementation plan](2026-10-08-precomputed-recommendation-subscription-build.md)
+preserves the accepted product requirements. A synthetic `gpt-6-astra` CLI probe
+completed through enforced ChatGPT auth with valid structured output, no tool
+events and 16,949 input/32 output tokens. This proves access only. Worker B owns
+the isolated operator-adapter slice and offline tests; the full build has not
+started, and no paid API fallback is authorized.
+
+Published integration `0f6d65170d2b39a1b6f39484392e6f946e492448` has 101
+successful and three skipped CheckRuns, with two successful Railway status
+contexts and no production deployment. After reviewed executable pins, lock
+admission and recovery proofs, GA-only capture attempt 6 started on October 8
+at 11:09 NZDT. It remains separate from model generation. At 12:54 NZDT it had
+178 of 305 start pages durably matched and zero of 327 referrer pages matched;
+the journal was unsealed and a subsequent read unresolved. The earlier attempt
+records below are historical, not the current running-state description.
+
 Current checkpoint: the v3 GA capture repair is integrated from Mastra
 `f10ae9611`/`0ace73779` and Admin `3abf2900c`/`ca1faf404`.
 The native capture, interruption, sealed resume, Admin report and stale-runtime

@@ -165,12 +165,16 @@ instruction can promote the experiment. Preserve the incumbent for rollback.
 
 ### Inputs, discovery, and model output
 
-- Use the application API model identifier `gpt-6-astra` for the first build;
-  verify project access before a live run. Do not silently substitute a model.
-  On 2026-10-06 the user requested OpenRouter. Route the same model as
-  `openai/gpt-6-astra` through OpenRouter's Responses API using the existing
-  paid-key preference. Require structured-output support, disable automatic
-  provider fallback and SDK retries, and retain explicit usage accounting.
+- Use exactly `gpt-6-astra` for the first build and verify access through the
+  selected execution backend. Do not silently substitute a model. On October 8
+  the owner selected a local Codex subscription build with reusable content
+  profiles and batched connection decisions. This supersedes the October 6
+  OpenRouter preference for new build work; preserve previous API receipts.
+  Enforce ChatGPT authentication, structured output and explicit usage
+  accounting. Do not fall back to a paid API or transfer the personal login to
+  Railway. Watch continues to serve saved results independently of the build.
+  Implementation slices and validation are in the
+  [subscription build plan](2026-10-08-precomputed-recommendation-subscription-build.md).
 - Treat Video as content identity, distinct from Dub and Video Edition. Use
   canonical source/target identity and existing eligibility rules.
 - Establish a declared catalog/input cutoff. On October 7 the owner approved
@@ -251,10 +255,14 @@ instruction can promote the experiment. Preserve the incumbent for rollback.
   elapsed time, coverage, and storage growth. Label estimated charges when final
   billing is unavailable. Do not confuse a fixture estimate with a completed
   first live catalog build.
-- The first build has no user-imposed spend/runtime ceiling. That does not
-  disable per-request reliability limits or authorize unlimited retained data.
-  Implement a repeatable refresh entry point; leave scheduling disabled until
-  the user chooses cadence after reviewing the first-run report.
+- The October 8 subscription decision supersedes the original unrestricted
+  API-spend assumption. Report subscription token usage and observed allowance
+  separately from API charges; an unavailable dollar cost is not zero. Preserve
+  normal coding allowance and pause safely when fresh usage admission fails.
+  Do not purchase credits, redeem resets or resume paid API builds automatically.
+  Keep per-request reliability and retention limits. Implement a repeatable
+  refresh entry point; leave scheduling disabled until the user chooses cadence
+  after reviewing the first-run report.
 
 ### Admin review and Watch serving
 
