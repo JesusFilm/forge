@@ -597,6 +597,317 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(paidRequests).toHaveLength(3)
     })
 
+    it("replays the live claim and repairs a charged invalid analytics plan once", async () => {
+      const generationId = `catalog-plan-repair-${suffix}`
+      const connected = dependencies()
+      const ga = gaWatchHistoryFixtureOptions({
+        sourceSlug: `story-0-${suffix}`,
+        targetSlug: `story-1-${suffix}`,
+      })
+      const prompts: Array<{
+        task: string
+        untrustedCatalogData: {
+          source: { id: string }
+          validationFeedback?: { reason: string }
+        }
+      }> = []
+      const successful = controlledModel(targetId, [])
+      let firstPlan = true
+      const model: StructuredModel = {
+        async generate(request) {
+          const prompt = JSON.parse(request.prompt) as (typeof prompts)[number]
+          prompts.push(prompt)
+          if (
+            prompt.task === "analytics_query_plan" &&
+            prompt.untrustedCatalogData.source.id === sourceId &&
+            firstPlan
+          ) {
+            firstPlan = false
+            return {
+              output: request.schema.parse({
+                candidateVideoIds: [targetId, targetId],
+              }),
+              usage: { inputTokens: 100, outputTokens: 20, costUsd: 0.01 },
+            }
+          }
+          return successful.generate(request)
+        },
+      }
+      let sourceClaimId: string | undefined
+      let claimReplayCount = 0
+      let loseFirstReceipt = true
+      const ingest: SourceIngest = async (raw) => {
+        let request = raw as Record<string, unknown>
+        if (request.action === "claim" && request.sourceVideoId === sourceId) {
+          if (sourceClaimId) {
+            request = { ...request, claimId: sourceClaimId }
+            claimReplayCount += 1
+          } else sourceClaimId = request.claimId as string
+        }
+        const response = await connected.ingest(request)
+        if (
+          loseFirstReceipt &&
+          request.action === "model_call" &&
+          request.stage === "analytics_query_plan" &&
+          request.status === "failed" &&
+          request.sourceVideoId === sourceId
+        ) {
+          loseFirstReceipt = false
+          throw new Error("Fixture response lost after persisted invalid plan")
+        }
+        return response
+      }
+      const input = {
+        generationId,
+        inputCutoff: cutoff,
+        historyRequired: true,
+        capacity: await fixtureCapacity(),
+      }
+      const gaTransport = {
+        serviceAccountEmail: ga.serviceAccountEmail,
+        tokenProvider: ga.tokenProvider,
+        fetchImpl: ga.fetchImpl,
+      }
+      await expect(
+        runPrecomputedCatalog(input, {
+          ...connected,
+          ingest,
+          model,
+          gaTransport,
+        }),
+      ).rejects.toThrow("Fixture response lost after persisted invalid plan")
+      const first =
+        await prisma.recommendationPrecomputedBuildSource.findUniqueOrThrow({
+          where: {
+            generationId_sourceVideoId: {
+              generationId,
+              sourceVideoId: sourceId,
+            },
+          },
+        })
+      expect(first.state).toBe("claimed")
+      expect(
+        (
+          await prisma.recommendationPrecomputedGeneration.findUniqueOrThrow({
+            where: { id: generationId },
+          })
+        ).promptVersion,
+      ).toBe("astra-catalog-history-navigation-v5")
+      expect(first.checkpoint).toMatchObject({
+        stage: "plan",
+        planRepair: {
+          catalogIndex: 0,
+          attempts: 1,
+          feedback: { reason: "plan_duplicate_ids" },
+        },
+      })
+      expect(
+        await prisma.recommendationPrecomputedModelCall.findMany({
+          where: {
+            generationId,
+            sourceVideoId: sourceId,
+            stage: "analytics_query_plan",
+          },
+          select: { status: true, costUsd: true },
+        }),
+      ).toMatchObject([{ status: "failed", costUsd: expect.anything() }])
+
+      expect(
+        await runPrecomputedCatalog(input, {
+          ...connected,
+          ingest,
+          model,
+          gaTransport,
+        }),
+      ).toMatchObject({ state: "complete", failedSourceCount: 0 })
+      expect(claimReplayCount).toBe(1)
+      const sourcePlans = prompts.filter(
+        (prompt) =>
+          prompt.task === "analytics_query_plan" &&
+          prompt.untrustedCatalogData.source.id === sourceId,
+      )
+      expect(sourcePlans).toHaveLength(2)
+      expect(sourcePlans[0]?.untrustedCatalogData).not.toHaveProperty(
+        "validationFeedback",
+      )
+      expect(sourcePlans[1]?.untrustedCatalogData.validationFeedback).toEqual({
+        reason: "plan_duplicate_ids",
+      })
+      const receipts = await prisma.recommendationPrecomputedModelCall.findMany(
+        {
+          where: {
+            generationId,
+            sourceVideoId: sourceId,
+            stage: "analytics_query_plan",
+          },
+          orderBy: { startedAt: "asc" },
+        },
+      )
+      expect(receipts.map((receipt) => receipt.status)).toEqual([
+        "failed",
+        "succeeded",
+      ])
+      expect(receipts.map((receipt) => Number(receipt.costUsd))).toEqual([
+        0.01, 0.01,
+      ])
+      expect(new Set(receipts.map((receipt) => receipt.callId)).size).toBe(2)
+      expect(
+        (
+          await prisma.recommendationPrecomputedBuildSource.findUniqueOrThrow({
+            where: {
+              generationId_sourceVideoId: {
+                generationId,
+                sourceVideoId: sourceId,
+              },
+            },
+          })
+        ).checkpoint,
+      ).not.toHaveProperty("planRepair")
+      expect(
+        await loadPrecomputedRecommendationComparison(prisma, {
+          generationId,
+          sourceVideoId: sourceId,
+          audioLanguageSlug: "english",
+          reviewer,
+        }),
+      ).toMatchObject({ state: "ready", allAcceptedCount: 1 })
+    })
+
+    it("exhausts two charged invalid analytics plans across a live-claim replay", async () => {
+      const generationId = `catalog-plan-exhaust-${suffix}`
+      const connected = dependencies()
+      const ga = gaWatchHistoryFixtureOptions({
+        sourceSlug: `story-0-${suffix}`,
+        targetSlug: `story-1-${suffix}`,
+      })
+      const planPrompts: Array<{ validationFeedback?: { reason: string } }> = []
+      const successful = controlledModel(targetId, [])
+      let sourceClaimId: string | undefined
+      let sourcePlanCount = 0
+      let loseSecondReceipt = true
+      const model: StructuredModel = {
+        async generate(request) {
+          const prompt = JSON.parse(request.prompt) as {
+            task: string
+            untrustedCatalogData: {
+              source: { id: string }
+              validationFeedback?: { reason: string }
+            }
+          }
+          if (
+            prompt.task === "analytics_query_plan" &&
+            prompt.untrustedCatalogData.source.id === sourceId
+          ) {
+            planPrompts.push(prompt.untrustedCatalogData)
+            sourcePlanCount += 1
+            return {
+              output: request.schema.parse({
+                candidateVideoIds:
+                  sourcePlanCount === 1 ? [sourceId] : ["outside-page-video"],
+              }),
+              usage: { inputTokens: 100, outputTokens: 20, costUsd: 0.01 },
+            }
+          }
+          return successful.generate(request)
+        },
+      }
+      const ingest: SourceIngest = async (raw) => {
+        let request = raw as Record<string, unknown>
+        if (request.action === "claim" && request.sourceVideoId === sourceId) {
+          if (sourceClaimId) request = { ...request, claimId: sourceClaimId }
+          else sourceClaimId = request.claimId as string
+        }
+        const response = await connected.ingest(request)
+        if (
+          loseSecondReceipt &&
+          request.action === "model_call" &&
+          request.stage === "analytics_query_plan" &&
+          request.status === "failed" &&
+          request.sourceVideoId === sourceId &&
+          sourcePlanCount === 2
+        ) {
+          loseSecondReceipt = false
+          throw new Error("Fixture response lost after exhausted plan")
+        }
+        return response
+      }
+      const input = {
+        generationId,
+        inputCutoff: cutoff,
+        historyRequired: true,
+        capacity: await fixtureCapacity(),
+      }
+      const gaTransport = {
+        serviceAccountEmail: ga.serviceAccountEmail,
+        tokenProvider: ga.tokenProvider,
+        fetchImpl: ga.fetchImpl,
+      }
+      await expect(
+        runPrecomputedCatalog(input, {
+          ...connected,
+          ingest,
+          model,
+          gaTransport,
+        }),
+      ).rejects.toThrow("Fixture response lost after exhausted plan")
+      expect(
+        (
+          await prisma.recommendationPrecomputedBuildSource.findUniqueOrThrow({
+            where: {
+              generationId_sourceVideoId: {
+                generationId,
+                sourceVideoId: sourceId,
+              },
+            },
+          })
+        ).checkpoint,
+      ).toMatchObject({
+        stage: "plan",
+        planRepair: {
+          catalogIndex: 0,
+          attempts: 2,
+          feedback: { reason: "plan_outside_page" },
+        },
+      })
+      expect(
+        await runPrecomputedCatalog(input, {
+          ...connected,
+          ingest,
+          model,
+          gaTransport,
+        }),
+      ).toMatchObject({ state: "failed", failedSourceCount: 1 })
+      expect(sourcePlanCount).toBe(2)
+      expect(planPrompts[1]?.validationFeedback).toEqual({
+        reason: "plan_source_id",
+      })
+      const receipts = await prisma.recommendationPrecomputedModelCall.findMany(
+        {
+          where: {
+            generationId,
+            sourceVideoId: sourceId,
+            stage: "analytics_query_plan",
+          },
+          orderBy: { startedAt: "asc" },
+        },
+      )
+      expect(receipts.map((receipt) => receipt.status)).toEqual([
+        "failed",
+        "failed",
+      ])
+      expect(receipts.map((receipt) => Number(receipt.costUsd))).toEqual([
+        0.01, 0.01,
+      ])
+      expect(new Set(receipts.map((receipt) => receipt.callId)).size).toBe(2)
+      expect(
+        await loadDurablePrecomputedBuildReport(prisma, {
+          generationId,
+          sourceVideoId: sourceId,
+          reviewer,
+        }),
+      ).toMatchObject({ failedSourceCount: 1 })
+    })
+
     it("preserves GA navigation qualifications through a complete catalog build and Admin review", async () => {
       const generationId = `catalog-navigation-${suffix}`
       const paidRequests: Array<{ task: string; sourceId: string }> = []

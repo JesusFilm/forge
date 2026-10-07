@@ -48,6 +48,8 @@ import {
 
 const id = z.string().trim().min(1).max(191)
 const MAX_CANDIDATE_JUDGMENT_ATTEMPTS = 2
+const MAX_ANALYTICS_PLAN_ATTEMPTS = 2
+const HISTORY_PROMPT_VERSION = "astra-catalog-history-navigation-v5"
 export const CatalogGenerationInputSchema = z
   .object({
     generationId: id,
@@ -103,6 +105,11 @@ type Checkpoint = {
     afterChunkId: string | null
     attempts: number
     feedback: CandidateValidationFeedback
+  }
+  planRepair?: {
+    catalogIndex: number
+    attempts: number
+    feedback: PlanValidationFeedback
   }
   historySummary?: HistorySummary
 }
@@ -162,6 +169,17 @@ const repairFeedbackSchema = z.discriminatedUnion("reason", [
   }),
   z.object({ reason: z.enum(["schema_invalid", "provider_output_invalid"]) }),
 ])
+const planFeedbackSchema = z
+  .object({
+    reason: z.enum([
+      "schema_invalid",
+      "provider_output_invalid",
+      "plan_source_id",
+      "plan_duplicate_ids",
+      "plan_outside_page",
+    ]),
+  })
+  .strict()
 const checkpointSchema: z.ZodType<Checkpoint> = z.object({
   stage: z.enum(["summary", "plan", "discovery", "candidate", "done"]),
   cursor: z.object({
@@ -180,6 +198,13 @@ const checkpointSchema: z.ZodType<Checkpoint> = z.object({
       afterChunkId: id.nullable(),
       attempts: nonnegative.min(1).max(MAX_CANDIDATE_JUDGMENT_ATTEMPTS),
       feedback: repairFeedbackSchema,
+    })
+    .optional(),
+  planRepair: z
+    .object({
+      catalogIndex: nonnegative,
+      attempts: nonnegative.min(1).max(MAX_ANALYTICS_PLAN_ATTEMPTS),
+      feedback: planFeedbackSchema,
     })
     .optional(),
   historySummary: z
@@ -255,7 +280,7 @@ type CatalogBuildFailureCode =
 class CatalogBuildError extends Error {
   constructor(
     readonly code: CatalogBuildFailureCode,
-    readonly feedback?: CandidateValidationFeedback,
+    readonly feedback?: ModelValidationFeedback,
   ) {
     super(code)
   }
@@ -264,6 +289,24 @@ class CatalogBuildError extends Error {
 type CandidateValidationFeedback =
   | EvidenceValidationFeedback
   | { reason: "schema_invalid" | "provider_output_invalid" }
+type PlanValidationFeedback = z.output<typeof planFeedbackSchema>
+type ModelValidationFeedback =
+  | CandidateValidationFeedback
+  | PlanValidationFeedback
+
+function candidateFeedback(
+  feedback: ModelValidationFeedback | undefined,
+): CandidateValidationFeedback {
+  const checked = repairFeedbackSchema.safeParse(feedback)
+  return checked.success ? checked.data : { reason: "provider_output_invalid" }
+}
+
+function planFeedback(
+  feedback: ModelValidationFeedback | undefined,
+): PlanValidationFeedback {
+  const checked = planFeedbackSchema.safeParse(feedback)
+  return checked.success ? checked.data : { reason: "provider_output_invalid" }
+}
 
 function parsed<T extends z.ZodType>(schema: T, value: unknown): z.output<T> {
   const checked = schema.safeParse(value)
@@ -398,7 +441,7 @@ async function processSource(
     next: (output: z.output<T>) => Checkpoint,
     choice?: (output: z.output<T>) => Record<string, unknown> | undefined,
     validate?: (output: z.output<T>) => void,
-    onInvalidOutput?: (feedback: CandidateValidationFeedback) => Checkpoint,
+    onInvalidOutput?: (feedback: ModelValidationFeedback) => Checkpoint,
   ) {
     const system = input.historyRequired ? HISTORY_SYSTEM : CONTENT_SYSTEM
     const prompt = JSON.stringify({ task: stage, untrustedCatalogData: data })
@@ -423,7 +466,7 @@ async function processSource(
     let output: z.output<T> | undefined
     let usage: ModelUsage = {}
     let failureCode: CatalogBuildFailureCode | undefined
-    let validationFeedback: CandidateValidationFeedback | undefined
+    let validationFeedback: ModelValidationFeedback | undefined
     try {
       const response = await model.generate({
         schema,
@@ -437,6 +480,7 @@ async function processSource(
     } catch (error) {
       usage = { ...usageFromError(error), ...usage }
       validationFeedback =
+        (error instanceof CatalogBuildError ? error.feedback : undefined) ??
         evidenceValidationFeedback(error) ??
         (error instanceof z.ZodError
           ? { reason: "schema_invalid" }
@@ -580,35 +624,91 @@ async function processSource(
     if (checkpoint.stage === "plan") {
       if (!historyDefinition)
         throw new CatalogBuildError("analytics_incomplete")
-      await call(
-        "analytics_query_plan",
-        analyticsQueryPlanSchema,
-        {
-          historicalDefinitions: sourceHistory?.definitionsForModel,
-          source: modelVideo(source),
-          candidates: page.map(modelVideo),
-          instruction:
-            "Select Video IDs in this page whose Watch starts and source-to-candidate referrer navigation you want to inspect. Navigation is not consecutive playback. Missing exposure is unknown, not negative evidence. Select only page Video IDs.",
-        },
-        2_048,
-        (output) => ({
-          ...checkpoint,
-          stage: "discovery",
-          analyticsCandidateIds: output.candidateVideoIds,
-        }),
-        undefined,
-        (output) => {
-          const ids = new Set(page.map((video) => video.id))
-          if (
-            new Set(output.candidateVideoIds).size !==
-              output.candidateVideoIds.length ||
-            output.candidateVideoIds.some(
-              (videoId) => videoId === source.id || !ids.has(videoId),
-            )
+      const savedPlanRepair = checkpoint.planRepair
+      if (savedPlanRepair && savedPlanRepair.catalogIndex !== catalogIndex)
+        throw new CatalogBuildError("admin_contract_rejected")
+      if ((savedPlanRepair?.attempts ?? 0) >= MAX_ANALYTICS_PLAN_ATTEMPTS)
+        throw new CatalogBuildError(
+          "provider_invalid_output",
+          savedPlanRepair?.feedback,
+        )
+      let retryFeedback = savedPlanRepair?.feedback
+      for (
+        let attempt = savedPlanRepair?.attempts ?? 0;
+        attempt < MAX_ANALYTICS_PLAN_ATTEMPTS;
+        attempt += 1
+      ) {
+        try {
+          await call(
+            "analytics_query_plan",
+            analyticsQueryPlanSchema,
+            {
+              historicalDefinitions: sourceHistory?.definitionsForModel,
+              source: modelVideo(source),
+              candidates: page.map(modelVideo),
+              ...(retryFeedback ? { validationFeedback: retryFeedback } : {}),
+              instruction:
+                attempt === 1
+                  ? "Correct the rejected Video ID selection. Return unique IDs from this candidate page only, never the source. Keep useful historical inspection candidates; an empty selection is valid when none qualify."
+                  : "Select Video IDs in this page whose Watch starts and source-to-candidate referrer navigation you want to inspect. Navigation is not consecutive playback. Missing exposure is unknown, not negative evidence. Select only page Video IDs.",
+            },
+            2_048,
+            (output) => ({
+              stage: "discovery",
+              cursor: checkpoint.cursor,
+              sourceSummaryEnglish: checkpoint.sourceSummaryEnglish,
+              analyticsCandidateIds: output.candidateVideoIds,
+              historySummary: checkpoint.historySummary,
+            }),
+            undefined,
+            (output) => {
+              const ids = new Set(page.map((video) => video.id))
+              if (output.candidateVideoIds.includes(source.id))
+                throw new CatalogBuildError("provider_invalid_output", {
+                  reason: "plan_source_id",
+                })
+              if (
+                new Set(output.candidateVideoIds).size !==
+                output.candidateVideoIds.length
+              )
+                throw new CatalogBuildError("provider_invalid_output", {
+                  reason: "plan_duplicate_ids",
+                })
+              if (output.candidateVideoIds.some((videoId) => !ids.has(videoId)))
+                throw new CatalogBuildError("provider_invalid_output", {
+                  reason: "plan_outside_page",
+                })
+            },
+            (feedback) => ({
+              ...checkpoint,
+              planRepair: {
+                catalogIndex,
+                attempts: attempt + 1,
+                feedback: planFeedback(feedback),
+              },
+            }),
           )
-            throw new CatalogBuildError("provider_invalid_output")
-        },
-      )
+          break
+        } catch (error) {
+          if (
+            error instanceof CatalogBuildError &&
+            error.code === "provider_invalid_output"
+          ) {
+            retryFeedback = planFeedback(error.feedback)
+            console.warn(
+              JSON.stringify({
+                event: "precomputed_analytics_plan_rejected",
+                sourceVideoId: source.id,
+                catalogIndex,
+                attempt: attempt + 1,
+                feedback: retryFeedback,
+              }),
+            )
+            if (attempt + 1 < MAX_ANALYTICS_PLAN_ATTEMPTS) continue
+          }
+          throw error
+        }
+      }
       continue
     }
     let pageHistory = pageHistoryCache.get(catalogIndex)
@@ -807,7 +907,7 @@ async function processSource(
               candidateId: candidate.id,
               afterChunkId: checkpoint.cursor.candidateAfterChunkId ?? null,
               attempts: attempt + 1,
-              feedback,
+              feedback: candidateFeedback(feedback),
             },
           }),
         )
@@ -817,9 +917,7 @@ async function processSource(
           error instanceof CatalogBuildError &&
           error.code === "provider_invalid_output"
         ) {
-          retryFeedback = error.feedback ?? {
-            reason: "provider_output_invalid",
-          }
+          retryFeedback = candidateFeedback(error.feedback)
           console.warn(
             JSON.stringify({
               event: "precomputed_candidate_evidence_rejected",
@@ -977,6 +1075,7 @@ export async function runPrecomputedCatalog(
     candidateRetrievalRevision: CANDIDATE_RETRIEVAL_REVISION,
     selectedCorpusDigest: retrieval.selectedCorpusDigest,
     candidatePoolDigest: retrieval.candidatePoolDigest,
+    ...(input.historyRequired ? { promptVersion: HISTORY_PROMPT_VERSION } : {}),
   })
   const inputMode = input.historyRequired
     ? "historical_analytics"
@@ -989,7 +1088,7 @@ export async function runPrecomputedCatalog(
       generationId: input.generationId,
       modelId: PRECOMPUTED_MODEL_ID,
       promptVersion: input.historyRequired
-        ? "astra-catalog-history-navigation-v4"
+        ? HISTORY_PROMPT_VERSION
         : "astra-catalog-v4",
       inputMode,
       inputSnapshotMode: "observed_fenced",
