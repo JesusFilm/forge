@@ -193,6 +193,14 @@ class SourceGenerationError extends Error {
   }
 }
 
+class LiveSourceClaimError extends Error {
+  readonly code = "conflict" as const
+
+  constructor() {
+    super("Source has a live claim")
+  }
+}
+
 export type EvidenceValidationFeedback =
   | {
       reason: "metadata_field_unavailable"
@@ -347,7 +355,18 @@ async function postAdmin(
   if (!response.ok) {
     const reason = (await readBoundedResponse().catch(() => null)) as {
       reason?: unknown
+      error?: unknown
     } | null
+    if (
+      response.status === 409 &&
+      typeof body === "object" &&
+      body !== null &&
+      "action" in body &&
+      body.action === "claim" &&
+      reason?.reason === "conflict" &&
+      reason.error === "Source has a live claim"
+    )
+      throw new LiveSourceClaimError()
     if (
       response.status === 404 &&
       typeof body === "object" &&

@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto"
 import { WorkflowsPG } from "@mastra/pg"
 import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client, Pool } from "pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
 import { env } from "../../apps/admin/src/config/env"
 import { currentAdminMigrationSql } from "../../apps/admin/src/services/recommendations/current-schema.test-fixture"
@@ -1015,6 +1015,131 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         },
       })
     })
+
+    it("interleaves two source-scoped GA attempts with exact native attribution and one completion", async () => {
+      const generationId = `catalog-parallel-ga-${suffix}`
+      const ga = gaWatchHistoryFixtureOptions({
+        sourceSlug: `story-0-${suffix}`,
+        targetSlug: `story-1-${suffix}`,
+      })
+      const connected = dependencies()
+      const writes: Array<Record<string, unknown>> = []
+      const firstAttempts: Array<{ sourceId: string; callId: string }> = []
+      let releaseFirstAttempts: () => void = () => undefined
+      const bothReserved = new Promise<void>((resolve) => {
+        releaseFirstAttempts = resolve
+      })
+      const ingest: SourceIngest = async (raw) => {
+        const call = raw as Record<string, unknown>
+        writes.push(call)
+        const result = await connected.ingest(raw)
+        if (
+          call.action === "history_call_start" &&
+          call.stage === "snapshot_page" &&
+          typeof call.sourceVideoId === "string" &&
+          firstAttempts.length < 2
+        ) {
+          firstAttempts.push({
+            sourceId: call.sourceVideoId,
+            callId: String(call.callId),
+          })
+          if (firstAttempts.length === 2) releaseFirstAttempts()
+          let timeout: ReturnType<typeof setTimeout> | undefined
+          try {
+            await Promise.race([
+              bothReserved,
+              new Promise<void>((_, reject) => {
+                timeout = setTimeout(
+                  () => reject(new Error("Missing concurrent source history")),
+                  5_000,
+                )
+              }),
+            ])
+          } finally {
+            if (timeout) clearTimeout(timeout)
+          }
+        }
+        return result
+      }
+      let activeGa = 0
+      let peakGa = 0
+      let gaHttpAttempts = 0
+      const gaTransport = {
+        serviceAccountEmail: ga.serviceAccountEmail,
+        tokenProvider: ga.tokenProvider,
+        fetchImpl: async (...args: Parameters<typeof fetch>) => {
+          gaHttpAttempts += 1
+          activeGa += 1
+          peakGa = Math.max(peakGa, activeGa)
+          try {
+            await new Promise((resolve) => setTimeout(resolve, 8))
+            return await ga.fetchImpl(...args)
+          } finally {
+            activeGa -= 1
+          }
+        },
+      }
+      const result = await runPrecomputedCatalog(
+        {
+          generationId,
+          inputCutoff: cutoff,
+          historyRequired: true,
+          sourceConcurrency: 2,
+          capacity: await fixtureCapacity(),
+        },
+        {
+          ...connected,
+          ingest,
+          model: controlledModel(targetId, []),
+          gaTransport,
+        },
+      )
+      expect(result).toMatchObject({
+        state: "complete",
+        completedSourceCount: 2,
+        failedSourceCount: 0,
+      })
+      expect(firstAttempts.map((attempt) => attempt.sourceId).sort()).toEqual([
+        sourceId,
+        targetId,
+      ])
+      expect(peakGa).toBe(2)
+      expect(writes.filter((call) => call.action === "complete")).toHaveLength(
+        1,
+      )
+      expect(
+        writes
+          .filter((call) => call.action === "claim")
+          .map((call) => call.sourceVideoId)
+          .sort(),
+      ).toEqual([sourceId, targetId])
+      const starts = writes.filter(
+        (call) => call.action === "history_call_start",
+      )
+      const receipts = writes.filter((call) => call.action === "history_call")
+      expect(starts).toHaveLength(gaHttpAttempts)
+      expect(receipts).toHaveLength(gaHttpAttempts)
+      expect(
+        receipts.map((receipt) => [receipt.callId, receipt.sourceVideoId]),
+      ).toEqual(starts.map((start) => [start.callId, start.sourceVideoId]))
+      expect(receipts.every((receipt) => receipt.status === "succeeded")).toBe(
+        true,
+      )
+      const report = await loadDurablePrecomputedBuildReport(prisma, {
+        generationId,
+        sourceVideoId: sourceId,
+        reviewer,
+      })
+      expect(report).toMatchObject({
+        usage: {
+          historyCallCount: gaHttpAttempts,
+          historyPendingCount: 0,
+          historyUnknownCostCount: gaHttpAttempts,
+          modelPendingCount: 0,
+        },
+      })
+    }, 120_000)
+
     it("retains the latest completed builds while removing superseded producer artifacts", async () => {
       const generations = [
         `catalog-retired-${suffix}`,
@@ -2279,6 +2404,406 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             },
           },
         ],
+      })
+    }, 120_000)
+
+    it("caps four concurrent sources at two actual GA HTTP attempts", async () => {
+      const generationId = `catalog-ga-cap-${suffix}`
+      const runCutoff = new Date().toISOString()
+      const catalogPage = await readPrecomputedCatalog(
+        prisma,
+        { action: "catalog", cutoff: runCutoff, limit: 100 },
+        bearer,
+      )
+      if (catalogPage.action !== "catalog")
+        throw new Error("Wrong catalog response")
+      const expectedSourceIds = catalogPage.videos.map((video) => video.id)
+      expect(expectedSourceIds).toHaveLength(4)
+      const ga = gaWatchHistoryFixtureOptions({
+        sourceSlug: `story-0-${suffix}`,
+        targetSlug: `story-1-${suffix}`,
+      })
+      const connected = dependencies()
+      const writes: Array<Record<string, unknown>> = []
+      const ingest: SourceIngest = async (raw) => {
+        writes.push(raw as Record<string, unknown>)
+        return connected.ingest(raw)
+      }
+      const baseModel = controlledModel(targetId, [])
+      const model: StructuredModel = {
+        async generate(request) {
+          const data = JSON.parse(request.prompt) as { task: string }
+          return data.task === "source_summary"
+            ? {
+                output: request.schema.parse({
+                  summaryEnglish: "A complete summary of this source story.",
+                }),
+                usage: { inputTokens: 20, outputTokens: 4, costUsd: 0.01 },
+              }
+            : baseModel.generate(request)
+        },
+      }
+      let activeGa = 0
+      let peakGa = 0
+      let gaHttpAttempts = 0
+      const result = await runPrecomputedCatalog(
+        {
+          generationId,
+          inputCutoff: runCutoff,
+          historyRequired: true,
+          sourceConcurrency: 4,
+          capacity: await fixtureCapacity(),
+        },
+        {
+          ...connected,
+          ingest,
+          model,
+          gaTransport: {
+            serviceAccountEmail: ga.serviceAccountEmail,
+            tokenProvider: ga.tokenProvider,
+            fetchImpl: async (...args) => {
+              gaHttpAttempts += 1
+              activeGa += 1
+              peakGa = Math.max(peakGa, activeGa)
+              try {
+                await new Promise((resolve) => setTimeout(resolve, 10))
+                return await ga.fetchImpl(...args)
+              } finally {
+                activeGa -= 1
+              }
+            },
+          },
+        },
+      )
+      expect(result).toMatchObject({
+        state: "complete",
+        completedSourceCount: expectedSourceIds.length,
+        failedSourceCount: 0,
+      })
+      expect(peakGa).toBe(2)
+      expect(activeGa).toBe(0)
+      expect(
+        writes
+          .filter((call) => call.action === "claim")
+          .map((call) => call.sourceVideoId)
+          .sort(),
+      ).toEqual(expectedSourceIds)
+      expect(writes.filter((call) => call.action === "complete")).toHaveLength(
+        1,
+      )
+      const starts = writes.filter(
+        (call) => call.action === "history_call_start",
+      )
+      const receipts = writes.filter((call) => call.action === "history_call")
+      expect(starts).toHaveLength(gaHttpAttempts)
+      expect(receipts).toHaveLength(gaHttpAttempts)
+      expect(
+        receipts
+          .filter((call) => typeof call.sourceVideoId === "string")
+          .map((call) => call.sourceVideoId),
+      ).toEqual(expect.arrayContaining(expectedSourceIds))
+      const report = await loadDurablePrecomputedBuildReport(prisma, {
+        generationId,
+        sourceVideoId: sourceId,
+        reviewer,
+      })
+      expect(report).toMatchObject({
+        usage: {
+          historyCallCount: gaHttpAttempts,
+          historyPendingCount: 0,
+          historyUnknownCostCount: gaHttpAttempts,
+          modelPendingCount: 0,
+          modelUnknownCostCount: 0,
+        },
+      })
+    }, 120_000)
+
+    it("cancels queued GA admission after failure while draining both started HTTP receipts", async () => {
+      const generationId = `catalog-ga-stop-${suffix}`
+      const runCutoff = new Date().toISOString()
+      const ga = gaWatchHistoryFixtureOptions({
+        sourceSlug: `story-0-${suffix}`,
+        targetSlug: `story-1-${suffix}`,
+      })
+      const connected = dependencies()
+      const writes: Array<Record<string, unknown>> = []
+      let qualificationComplete = false
+      let claimFailureDelivered = false
+      let scopedFetches = 0
+      const ingest: SourceIngest = async (raw) => {
+        const call = raw as Record<string, unknown>
+        const result = await connected.ingest(raw)
+        writes.push(call)
+        if (call.action === "history_qualification")
+          qualificationComplete = true
+        if (
+          call.action === "claim" &&
+          call.sourceVideoId === `c-catalog-new-${suffix}`
+        ) {
+          await vi.waitFor(
+            () => {
+              expect(scopedFetches).toBe(2)
+              expect(
+                writes.filter((item) => item.action === "claim"),
+              ).toHaveLength(4)
+            },
+            { timeout: 5_000 },
+          )
+          await new Promise((resolve) => setTimeout(resolve, 20))
+          claimFailureDelivered = true
+          throw new Error("Fixture claim response lost")
+        }
+        return result
+      }
+      let releaseFirst: () => void = () => undefined
+      const firstMayFinish = new Promise<void>((resolve) => {
+        releaseFirst = resolve
+      })
+      let releaseSecond: () => void = () => undefined
+      const secondMayFinish = new Promise<void>((resolve) => {
+        releaseSecond = resolve
+      })
+      const gaTransport = {
+        serviceAccountEmail: ga.serviceAccountEmail,
+        tokenProvider: ga.tokenProvider,
+        fetchImpl: async (...args: Parameters<typeof fetch>) => {
+          if (!qualificationComplete) return ga.fetchImpl(...args)
+          scopedFetches += 1
+          if (scopedFetches === 1) {
+            await firstMayFinish
+            return ga.fetchImpl(...args)
+          }
+          if (scopedFetches === 2) {
+            await secondMayFinish
+            return ga.fetchImpl(...args)
+          }
+          throw new Error("Queued GA attempt was admitted after failure")
+        },
+      }
+      const interrupted = runPrecomputedCatalog(
+        {
+          generationId,
+          inputCutoff: runCutoff,
+          historyRequired: true,
+          sourceConcurrency: 4,
+          capacity: await fixtureCapacity(),
+        },
+        {
+          ...connected,
+          ingest,
+          gaTransport,
+          model: {
+            async generate() {
+              throw new Error("No model call should start before GA settles")
+            },
+          },
+        },
+      ).then(
+        (value) => ({ value }),
+        (error: unknown) => ({ error }),
+      )
+      try {
+        await vi.waitFor(
+          () => {
+            expect(scopedFetches).toBe(2)
+            expect(claimFailureDelivered).toBe(true)
+          },
+          { timeout: 5_000 },
+        )
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      } finally {
+        releaseFirst()
+        releaseSecond()
+      }
+      expect(await interrupted).toMatchObject({
+        error: { message: "Fixture claim response lost" },
+      })
+      expect(scopedFetches).toBe(2)
+      const starts = writes.filter(
+        (call) =>
+          call.action === "history_call_start" &&
+          typeof call.sourceVideoId === "string",
+      )
+      const receipts = writes.filter(
+        (call) =>
+          call.action === "history_call" &&
+          typeof call.sourceVideoId === "string",
+      )
+      expect(starts).toHaveLength(2)
+      expect(receipts).toHaveLength(2)
+      expect(receipts.map((receipt) => receipt.status)).toEqual([
+        "succeeded",
+        "succeeded",
+      ])
+      expect(writes.some((call) => call.action === "complete")).toBe(false)
+      const report = await loadDurablePrecomputedBuildReport(prisma, {
+        generationId,
+        sourceVideoId: sourceId,
+        reviewer,
+      })
+      expect(report).toMatchObject({
+        state: "incomplete",
+        usage: { historyPendingCount: 0 },
+      })
+    }, 120_000)
+
+    it("drains an in-flight native receipt, stops admission, and resumes each checkpoint", async () => {
+      const generationId = `catalog-parallel-stop-${suffix}`
+      const runCutoff = new Date().toISOString()
+      const input = {
+        generationId,
+        inputCutoff: runCutoff,
+        historyRequired: false,
+        sourceConcurrency: 2,
+        capacity: await fixtureCapacity(),
+      }
+      const connected = dependencies()
+      const attempted: Array<{ sourceId: string; task: string }> = []
+      let signalSecondStarted: () => void = () => undefined
+      const secondStarted = new Promise<void>((resolve) => {
+        signalSecondStarted = resolve
+      })
+      let releaseSecond: () => void = () => undefined
+      const secondMayFinish = new Promise<void>((resolve) => {
+        releaseSecond = resolve
+      })
+      let firstReceiptCommitted = false
+      const ingest: SourceIngest = async (raw) => {
+        const call = raw as Record<string, unknown>
+        const result = await connected.ingest(raw)
+        if (
+          call.action === "model_call" &&
+          call.sourceVideoId === sourceId &&
+          call.stage === "source_summary" &&
+          call.status === "failed"
+        )
+          firstReceiptCommitted = true
+        return result
+      }
+      const failingModel: StructuredModel = {
+        async generate({ schema, prompt }) {
+          const data = JSON.parse(prompt) as {
+            task: string
+            untrustedCatalogData: { source: { id: string } }
+          }
+          const source = data.untrustedCatalogData.source.id
+          attempted.push({ sourceId: source, task: data.task })
+          if (data.task !== "source_summary")
+            throw new Error("No later model call should be admitted")
+          if (source === sourceId) {
+            await secondStarted
+            throw new Error("fixture first-source provider outage")
+          }
+          if (source !== targetId)
+            throw new Error("A third source was admitted")
+          signalSecondStarted()
+          await secondMayFinish
+          return {
+            output: schema.parse({
+              summaryEnglish: "A complete summary of the second source.",
+            }),
+            usage: { inputTokens: 20, outputTokens: 4, costUsd: 0.01 },
+          }
+        },
+      }
+      const interrupted = runPrecomputedCatalog(input, {
+        ...connected,
+        ingest,
+        model: failingModel,
+      }).then(
+        (value) => ({ value }),
+        (error: unknown) => ({ error }),
+      )
+      try {
+        await vi.waitFor(() => expect(firstReceiptCommitted).toBe(true), {
+          timeout: 5_000,
+        })
+        await new Promise((resolve) => setTimeout(resolve, 10))
+      } finally {
+        releaseSecond()
+      }
+      expect(await interrupted).toMatchObject({
+        error: { code: "provider_unavailable" },
+      })
+      expect(
+        attempted.sort((a, b) => a.sourceId.localeCompare(b.sourceId)),
+      ).toEqual([
+        { sourceId, task: "source_summary" },
+        { sourceId: targetId, task: "source_summary" },
+      ])
+      expect(
+        await connected.ingest({
+          action: "retention_status",
+          protocolVersion: 2,
+          generationId,
+        }),
+      ).toMatchObject({ state: "incomplete", sourceWorkResumable: true })
+      const firstReceipts =
+        await prisma.recommendationPrecomputedModelCall.findMany({
+          where: { generationId },
+          select: { sourceVideoId: true, status: true, costUsd: true },
+        })
+      expect(firstReceipts).toHaveLength(2)
+      expect(firstReceipts).toContainEqual(
+        expect.objectContaining({
+          sourceVideoId: targetId,
+          status: "succeeded",
+          costUsd: expect.anything(),
+        }),
+      )
+      await admin.query(
+        "UPDATE recommendation_precomputed_build_source SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE generation_id=$1 AND state='claimed'",
+        [generationId],
+      )
+      const successful = controlledModel(targetId, [])
+      const resumedTasks: Array<{ sourceId: string; task: string }> = []
+      const resumedModel: StructuredModel = {
+        async generate(request) {
+          const data = JSON.parse(request.prompt) as {
+            task: string
+            untrustedCatalogData: { source: { id: string } }
+          }
+          resumedTasks.push({
+            sourceId: data.untrustedCatalogData.source.id,
+            task: data.task,
+          })
+          return data.task === "source_summary"
+            ? {
+                output: request.schema.parse({
+                  summaryEnglish: "A complete summary for resumed source work.",
+                }),
+                usage: { inputTokens: 20, outputTokens: 4, costUsd: 0.01 },
+              }
+            : successful.generate(request)
+        },
+      }
+      await expect(
+        runPrecomputedCatalog(input, { ...connected, model: resumedModel }),
+      ).resolves.toMatchObject({
+        state: "complete",
+        completedSourceCount: 4,
+        failedSourceCount: 0,
+      })
+      expect(
+        resumedTasks.filter(
+          (task) =>
+            task.sourceId === targetId && task.task === "source_summary",
+        ),
+      ).toHaveLength(0)
+      expect(
+        resumedTasks.filter(
+          (task) =>
+            task.sourceId === sourceId && task.task === "source_summary",
+        ),
+      ).toHaveLength(1)
+      const finalReport = await loadDurablePrecomputedBuildReport(prisma, {
+        generationId,
+        sourceVideoId: sourceId,
+        reviewer,
+      })
+      expect(finalReport).toMatchObject({
+        state: "complete",
+        usage: { modelPendingCount: 0 },
       })
     }, 120_000)
   },

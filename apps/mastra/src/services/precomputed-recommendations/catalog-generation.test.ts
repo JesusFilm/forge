@@ -84,12 +84,27 @@ describe("catalog generation boundary", () => {
       model: { generate: vi.fn() },
     }
     await runPrecomputedCatalog(input, dependencies)
-    await runPrecomputedCatalog(input, dependencies)
+    await runPrecomputedCatalog(
+      { ...input, sourceConcurrency: 4 },
+      dependencies,
+    )
     text = "A changed transcript passage."
     await runPrecomputedCatalog(input, dependencies)
     expect(digests[0]).toBe(digests[1])
     expect(digests[2]).not.toBe(digests[0])
     expect(dependencies.model.generate).not.toHaveBeenCalled()
+  })
+
+  it("rejects source concurrency outside the bounded execution range before ingest", async () => {
+    const ingest = vi.fn()
+    for (const sourceConcurrency of [0, 5, 1.5])
+      await expect(
+        runPrecomputedCatalog(
+          { ...input, sourceConcurrency },
+          { catalog: catalog(["source"]), ingest },
+        ),
+      ).rejects.toBeInstanceOf(z.ZodError)
+    expect(ingest).not.toHaveBeenCalled()
   })
 
   it("rejects selected transcript identity drift before opening a generation", async () => {
@@ -712,5 +727,329 @@ describe("catalog generation boundary", () => {
     expect(
       atLimit.writes.filter((call) => call.action === "fail"),
     ).toMatchObject([{ failureCode: "provider_invalid_output" }])
+  })
+
+  it("processes two claimed sources concurrently and completes only after both receipts", async () => {
+    const ids = ["source-a", "source-b"]
+    const sourceCatalog = catalog(ids)
+    sourceCatalog.chunks = async ({ videoId }) => ({
+      chunks: [
+        {
+          id: `chunk-${videoId}`,
+          transcriptId: `transcript-${videoId}`,
+          language: "en",
+          chunkIndex: 0,
+          text: `A complete passage for ${videoId}.`,
+        },
+      ],
+      nextCursor: null,
+    })
+    const writes: Array<Record<string, unknown>> = []
+    const revisions = new Map<string, number>()
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as Record<string, unknown>
+      writes.push(call)
+      const sourceId = String(call.sourceVideoId)
+      const revision = () => {
+        const next = (revisions.get(sourceId) ?? 0) + 1
+        revisions.set(sourceId, next)
+        return next
+      }
+      switch (call.action) {
+        case "start":
+        case "capacity":
+          return { state: "incomplete" }
+        case "manifest":
+          return { state: "incomplete", pendingSourceCount: ids.length }
+        case "capacity_probe":
+          return {
+            observedDbBytes: 1,
+            clusterSystemId: "1",
+            availableBytes: null,
+          }
+        case "claim":
+          return {
+            sourceState: "claimed",
+            leaseToken: "550e8400-e29b-41d4-a716-446655440000",
+            checkpointRevision: 0,
+            checkpoint: null,
+          }
+        case "heartbeat":
+          return { sourceState: "claimed" }
+        case "model_call_start":
+          return { state: "pending", callId: call.callId }
+        case "model_call":
+          return {
+            receiptStored: true,
+            checkpointApplied: true,
+            staleLease: false,
+            checkpointRevision: revision(),
+          }
+        case "checkpoint":
+          return { checkpointRevision: revision() }
+        case "source":
+          return { sourceState: "complete_empty" }
+        case "fail":
+          throw new Error(`Unexpected failure ${String(call.failureCode)}`)
+        case "complete":
+          return { state: "complete" }
+        default:
+          throw new Error(`Unexpected action ${String(call.action)}`)
+      }
+    })
+    const started: string[] = []
+    const release: Array<() => void> = []
+    const model: StructuredModel = {
+      async generate({ schema, prompt }) {
+        const data = JSON.parse(prompt) as {
+          task: string
+          untrustedCatalogData: { source: { id: string } }
+        }
+        if (data.task === "source_summary") {
+          started.push(data.untrustedCatalogData.source.id)
+          await new Promise<void>((resolve) => release.push(resolve))
+          return {
+            output: schema.parse({
+              summaryEnglish: "A complete summary of this distinct source.",
+            }),
+            usage: { inputTokens: 2, outputTokens: 1, costUsd: 0.01 },
+          }
+        }
+        return {
+          output: schema.parse({ candidateVideoIds: [] }),
+          usage: { inputTokens: 2, outputTokens: 1, costUsd: 0.01 },
+        }
+      },
+    }
+    const result = runPrecomputedCatalog(
+      { ...input, sourceConcurrency: 2 },
+      { catalog: sourceCatalog, ingest, model },
+    ).then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    )
+    try {
+      await vi.waitFor(() => expect(started).toEqual(ids), { timeout: 1_000 })
+      expect(writes.some((call) => call.action === "complete")).toBe(false)
+    } finally {
+      release.forEach((resume) => resume())
+    }
+    expect(await result).toMatchObject({
+      value: {
+        state: "complete",
+        completedSourceCount: 2,
+        failedSourceCount: 0,
+      },
+    })
+    expect(writes.filter((call) => call.action === "complete")).toHaveLength(1)
+    expect(writes.filter((call) => call.action === "source")).toHaveLength(2)
+  })
+
+  it("stops new source and model admission after an unexpected failure while draining a charged call", async () => {
+    const ids = ["source-a", "source-b", "source-c"]
+    const sourceCatalog = catalog(ids)
+    sourceCatalog.chunks = async ({ videoId }) => ({
+      chunks: [
+        {
+          id: `chunk-${videoId}`,
+          transcriptId: `transcript-${videoId}`,
+          language: "en",
+          chunkIndex: 0,
+          text: `A complete passage for ${videoId}.`,
+        },
+      ],
+      nextCursor: null,
+    })
+    const writes: Array<Record<string, unknown>> = []
+    const revisions = new Map<string, number>()
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as Record<string, unknown>
+      writes.push(call)
+      const sourceId = String(call.sourceVideoId)
+      const revision = () => {
+        const next = (revisions.get(sourceId) ?? 0) + 1
+        revisions.set(sourceId, next)
+        return next
+      }
+      switch (call.action) {
+        case "start":
+        case "capacity":
+          return { state: "incomplete" }
+        case "manifest":
+          return { state: "incomplete", pendingSourceCount: ids.length }
+        case "capacity_probe":
+          return {
+            observedDbBytes: 1,
+            clusterSystemId: "1",
+            availableBytes: null,
+          }
+        case "claim":
+          return {
+            sourceState: "claimed",
+            leaseToken: "550e8400-e29b-41d4-a716-446655440000",
+            checkpointRevision: 0,
+            checkpoint: null,
+          }
+        case "heartbeat":
+          return { sourceState: "claimed" }
+        case "model_call_start":
+          return { state: "pending", callId: call.callId }
+        case "model_call":
+          return {
+            receiptStored: true,
+            checkpointApplied: true,
+            staleLease: false,
+            checkpointRevision: revision(),
+          }
+        case "checkpoint":
+          return { checkpointRevision: revision() }
+        case "source":
+          return { sourceState: "complete_empty" }
+        case "complete":
+          return { state: "complete" }
+        default:
+          throw new Error(`Unexpected action ${String(call.action)}`)
+      }
+    })
+    const started: string[] = []
+    const tasks: Array<{ sourceId: string; task: string }> = []
+    const release = new Map<string, () => void>()
+    const model: StructuredModel = {
+      async generate({ schema, prompt }) {
+        const data = JSON.parse(prompt) as {
+          task: string
+          untrustedCatalogData: { source: { id: string } }
+        }
+        const sourceId = data.untrustedCatalogData.source.id
+        tasks.push({ sourceId, task: data.task })
+        if (data.task === "source_summary") {
+          started.push(sourceId)
+          await new Promise<void>((resolve) => release.set(sourceId, resolve))
+          if (sourceId === "source-a")
+            throw new Error("fixture unexpected model failure")
+          return {
+            output: schema.parse({
+              summaryEnglish: "A complete summary of this distinct source.",
+            }),
+            usage: { inputTokens: 2, outputTokens: 1, costUsd: 0.01 },
+          }
+        }
+        return {
+          output: schema.parse({ candidateVideoIds: [] }),
+          usage: { inputTokens: 2, outputTokens: 1, costUsd: 0.01 },
+        }
+      },
+    }
+    const result = runPrecomputedCatalog(
+      { ...input, sourceConcurrency: 2 },
+      { catalog: sourceCatalog, ingest, model },
+    ).then(
+      (value) => ({ value }),
+      (error: unknown) => ({ error }),
+    )
+    try {
+      await vi.waitFor(() => expect(started).toEqual(ids.slice(0, 2)), {
+        timeout: 1_000,
+      })
+      release.get("source-a")!()
+      await vi.waitFor(
+        () =>
+          expect(
+            writes.filter(
+              (call) =>
+                call.action === "model_call" &&
+                call.sourceVideoId === "source-a",
+            ),
+          ).toHaveLength(1),
+        { timeout: 1_000 },
+      )
+    } finally {
+      release.get("source-b")?.()
+    }
+    expect(await result).toMatchObject({
+      error: { code: "provider_unavailable" },
+    })
+    expect(tasks).toEqual([
+      { sourceId: "source-a", task: "source_summary" },
+      { sourceId: "source-b", task: "source_summary" },
+    ])
+    expect(writes.filter((call) => call.action === "claim")).toHaveLength(2)
+    expect(writes.filter((call) => call.action === "model_call")).toMatchObject(
+      [{ status: "failed" }, { status: "succeeded", costUsd: 0.01 }],
+    )
+    expect(writes.some((call) => call.action === "complete")).toBe(false)
+  })
+
+  it("leaves a live foreign claim untouched and reports the generation incomplete", async () => {
+    const sourceCatalog = catalog(["busy", "available"])
+    const writes: Array<Record<string, unknown>> = []
+    let revision = 0
+    const ingest = vi.fn(async (raw: unknown) => {
+      const call = raw as Record<string, unknown>
+      writes.push(call)
+      switch (call.action) {
+        case "start":
+        case "capacity":
+          return { state: "incomplete" }
+        case "manifest":
+          return { state: "incomplete", pendingSourceCount: 2 }
+        case "capacity_probe":
+          return {
+            observedDbBytes: 1,
+            clusterSystemId: "1",
+            availableBytes: null,
+          }
+        case "claim":
+          if (call.sourceVideoId === "busy")
+            throw Object.assign(new Error("Source has a live claim"), {
+              code: "conflict",
+            })
+          return {
+            sourceState: "claimed",
+            leaseToken: "550e8400-e29b-41d4-a716-446655440000",
+            checkpointRevision: 0,
+            checkpoint: null,
+          }
+        case "heartbeat":
+          return { sourceState: "claimed" }
+        case "model_call_start":
+          return { state: "pending", callId: call.callId }
+        case "model_call":
+          return {
+            receiptStored: true,
+            checkpointApplied: true,
+            staleLease: false,
+            checkpointRevision: ++revision,
+          }
+        case "checkpoint":
+          return { checkpointRevision: ++revision }
+        case "source":
+          return { sourceState: "complete_empty" }
+        case "complete":
+          return { state: "complete" }
+        default:
+          throw new Error(`Unexpected action ${String(call.action)}`)
+      }
+    })
+    const model: StructuredModel = {
+      async generate({ schema }) {
+        return { output: schema.parse({ candidateVideoIds: [] }), usage: {} }
+      },
+    }
+    await expect(
+      runPrecomputedCatalog(
+        { ...input, sourceConcurrency: 2 },
+        { catalog: sourceCatalog, ingest, model },
+      ),
+    ).resolves.toMatchObject({
+      state: "incomplete",
+      completedSourceCount: 1,
+      failedSourceCount: 0,
+    })
+    expect(writes.filter((call) => call.action === "claim")).toHaveLength(2)
+    expect(writes.filter((call) => call.action === "source")).toMatchObject([
+      { sourceVideoId: "available" },
+    ])
+    expect(writes.some((call) => call.action === "complete")).toBe(false)
   })
 })

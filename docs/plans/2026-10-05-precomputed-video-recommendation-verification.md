@@ -2271,3 +2271,70 @@ and share request admission; concurrency implementation is the next isolated wor
 will stay frozen during the next paid span benchmark. No full build has started. The 55,700-pair audit and observed 7.4-second judgment mean indicate a
 possible multi-day serial run, not a measured total forecast: discovery may
 select fewer pairs while chunk paging, repairs and GA reads add work.
+
+## Successful real span-evidence cohort and bounded concurrency, October 7
+
+The root-owned generation `actual-retrieval-span-v6-two-source-20261007-v1`
+ran from 04:39:29Z to 04:59:36Z at clean pinned commit `64aaf0848`, with the
+complete frozen 1,031-source manifest and all selected source/target transcript
+inputs. Only the two declared diagnostic sources were claimed through the
+scratch adapter. Both finalized through unchanged Admin validation: Magdalena
+`cmokmpm9m0ofxqsccffdmrpux` accepted 55 recommendations, and Amharic source
+`cmp78ohe30dpqqm01pez2knec` accepted 18. The other 1,029 source rows remain pending;
+the generation was never represented as a completed catalog.
+
+All 85 model receipts succeeded, with 495,444 input tokens, 19,755 output tokens,
+$7.1801625 known model charges and no pending or unknown model charge. The 45 GA
+attempt receipts contain 43 successes and two recovered failures (one 50-second
+transport timeout and one HTTP 502). No GA attempt remains pending. GA monetary
+cost and bytes remain unknown. The two saved histories cover 36 snapshot pages,
+12,628 rows (12,151 mapped and 477 unmapped) and 954 qualified navigation events
+out of 1,002 candidate events. These are referrer navigation observations, not
+proof of watched sequences, human traffic, or exposure-adjusted preference.
+
+Artifacts are under
+`/tmp/forge-feat-590-real-catalog-20261007/retrieval-span-v6-paid-benchmark/`.
+The new transport receipt records sanitized GA quota consumed/remaining values;
+older runs did not retain those values. The prepared full-build runner now
+pauses before new reservations on observed GA rate limits or low headroom,
+letting in-flight receipts settle and preserving checkpoints. It has not run.
+
+Worker A committed `68c47c0c1086be17a272e9f727424752d9c7dd77` on parent
+`d37bcae2d`. Source concurrency defaults to one and is bounded at four, without
+changing semantic generation identity. Each default GA source reader owns its
+attribution and request state; the run admits at most two actual GA attempts
+at once. Unexpected errors stop new admission and drain already admitted calls;
+only complete manifest coverage permits the final generation completion.
+A live foreign claim remains untouched and returns incomplete, including the
+real HTTP transport's exact 409 conflict. Other conflicts remain failures.
+
+The child passed 17 focused Mastra cases, 32 native connected cases, Mastra and
+integration typechecks, scoped lint/format and sequential Standards/Spec review.
+Its restored normal Husky hooks ran successfully, including repo-wide format.
+Root integration passed 19 focused Mastra cases and all 32 native connected cases; the owned test database was removed after success. Root sequential Standards and Spec review found no remaining confirmed issue in the concurrency diff. No Admin
+accepted schema, migration or GraphQL change is included.
+
+At exact span commit `64aaf0848`, CI finished with 42 successful CheckRuns,
+five skipped and no failures. Both published Railway StatusContexts succeeded
+with no deployment needed; there was no Mastra preview deployment context.
+Read-only Datadog metric and aggregate RUM discovery both returned MCP internal
+errors, so no live-verifier evidence was obtained. The existing RUM configuration
+samples sessions at 50%; it cannot be assumed to be a complete independent
+traffic census. No production write, activation or promotion occurred.
+
+The v6 supplement `v6-span-benchmark-precomputed-results-20261007.dump`
+(322,843 bytes, SHA-256
+`ccbeb9da0035b9aa988c34237f9c696979557034ae72a2558c4a6f931f30f699`)
+was restored together with the base catalog in an owned temporary PostgreSQL
+database. The restore retained 1,180 Videos, 164,639 transcripts, 280,046 chunks,
+seven generations, 289 model receipts and 197 GA receipts, including all 85 v6
+model receipts and their exact known charges. The restore database was then
+removed. Protected artifacts are under
+`/home/nisal/.local/share/forge/feat-590-evidence-20261007/`.
+
+At 05:04:09Z the supported Admin cancel operation released the completed cohort's
+diagnostic reservation. Before/after evidence digests match for both finalized
+sources, all 1,031 manifest/checkpoint rows, 85 model receipts and 45 GA receipts.
+No source was relabeled as a full-catalog completion. Cancellation receipt:
+`v6-benchmark-cancellation.json`. The bounded full-universe comparison and full
+catalog generation remain unstarted.

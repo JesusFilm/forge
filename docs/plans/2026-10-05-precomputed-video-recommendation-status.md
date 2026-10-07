@@ -60,12 +60,11 @@ is still unstarted. Worker A delivered exact model-visible passage selection as 
 Root verification passed 14 Mastra cases and all 28 connected native cases,
 including later-page Amharic evidence. Historical prompt v6 and content prompt
 v5 both enter their generation input digests; Admin evidence/validation is
-unchanged. The next paid benchmark awaits a committed root integration and
-fresh capacity. A is now implementing bounded source concurrency separately. The older Nicodemus result stays labeled as prior-policy evidence. Both
+unchanged. The paid v6 benchmark at committed root `64aaf0848` completed both sources: Magdalena saved 55 connections and the Amharic source saved 18. The run took 20 minutes 7 seconds, made 85 successful model calls and recorded $7.1801625 known model cost with no pending or unknown model charge. Its 45 GA attempts include 43 successes and two recovered failures; GA bytes and monetary cost remain unknown. This is a completed two-source cohort within an incomplete 1,031-source generation, not the full build. Worker A delivered bounded source concurrency as `68c47c0c`; root integration passed 19 Mastra and 32 native connected cases. Worker B is preparing a separate one-source full-universe discovery reference with no paid launch yet. The older Nicodemus result stays labeled as prior-policy evidence. Both
 superseded benchmark generations are now cancelled through the supported Admin
 protocol, releasing capacity reservations while preserving every checkpoint,
 choice and model/GA receipt; before/after digests match. The base catalog and
-latest supplemental benchmark backup have both passed an actual restore check. The remaining benchmark and bounded reference
+latest supplemental benchmark backup have both passed an actual restore check. The completed v6 cohort was also restore-verified and its generation cancelled through the supported protocol to release its diagnostic capacity reservation; hashes confirm both finalized sources and all usage/checkpoint evidence were preserved. The remaining benchmark and bounded reference
 comparison still precede the full build.
 The local Admin preview served the saved pilot after correcting PrismaPg's
 selected-schema handling. Local Chromium verified the Admin review, Watch card,
@@ -162,7 +161,7 @@ GitHub check runs, with five skipped. The subsequent published identity correcti
 GitHub CheckRuns and five skipped; both separate Railway StatusContexts are
 also successful in the automatic `forge-pr-2578` preview environment.
 The subsequent plan-repair integration `9512a6416` also passed all 42 GitHub
-CheckRuns (five skipped) and both Railway preview StatusContexts. The feature
+CheckRuns (five skipped) and both Railway preview StatusContexts. The exact span integration `64aaf0848` passed 42 CheckRuns with five skipped and no failures. The two published Railway contexts both reported success with no deployment needed; no Mastra preview deployment result was present. The feature
 PR remains a draft. No production deployment was issued.
 The completion notes below record earlier slices.
 

@@ -61,6 +61,7 @@ export const CatalogGenerationInputSchema = z
     generationId: id,
     inputCutoff: z.string().datetime(),
     historyRequired: z.boolean().default(true),
+    sourceConcurrency: z.number().int().min(1).max(4).default(1),
     capacity: z
       .object({
         measuredAt: z.string().datetime(),
@@ -143,6 +144,7 @@ type Context = {
   history?: HistoricalAnalyticsReader
   historyDefinition?: Awaited<ReturnType<typeof readHistoricalDefinition>>
   qualificationDigest?: string
+  assertExternalAdmission: () => void
 }
 const nonnegative = z.number().int().nonnegative().safe()
 const stateSchema = z.object({
@@ -280,6 +282,7 @@ type CatalogBuildFailureCode =
   | "provider_unavailable"
   | "provider_access_unavailable"
   | "analytics_incomplete"
+  | "admission_stopped"
   | "input_stale"
   | "internal_failure"
 
@@ -318,6 +321,15 @@ function parsed<T extends z.ZodType>(schema: T, value: unknown): z.output<T> {
   const checked = schema.safeParse(value)
   if (!checked.success) throw new CatalogBuildError("admin_contract_rejected")
   return checked.data
+}
+
+function isLiveClaimConflict(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.message === "Source has a live claim" &&
+    "code" in error &&
+    error.code === "conflict"
+  )
 }
 
 function sanitizeUsage(usage: unknown): ModelUsage {
@@ -398,6 +410,7 @@ async function processSource(
     history,
     historyDefinition,
     qualificationDigest,
+    assertExternalAdmission,
   } = context
   const byId = new Map(videos.map((video) => [video.id, video]))
   const candidateIds = candidateIdsBySource.get(source.id)
@@ -455,6 +468,7 @@ async function processSource(
     const callId = randomUUID()
     const startedAt = new Date().toISOString()
     await heartbeat()
+    assertExternalAdmission()
     const reservation = parsed(
       callReservationSchema,
       await ingest({
@@ -1165,52 +1179,88 @@ export async function runPrecomputedCatalog(
       failedSourceCount: 0,
     }
   const model = provided.model ?? createAstraModel()
-  let currentSourceVideoId: string | undefined
-  let currentLeaseToken: string | undefined
-  let lastHistoryRequestDigest: string | undefined
+  let stopped = false
+  const assertExternalAdmission = () => {
+    if (stopped) throw new CatalogBuildError("admission_stopped")
+  }
+  let activeGaAttempts = 0
+  const waitingGaAttempts: Array<{
+    start: () => void
+    reject: (error: Error) => void
+  }> = []
+  const stopAdmission = () => {
+    stopped = true
+    for (const waiting of waitingGaAttempts.splice(0))
+      waiting.reject(new CatalogBuildError("admission_stopped"))
+  }
+  const withGaAdmission = async <T>(attempt: () => Promise<T>): Promise<T> => {
+    assertExternalAdmission()
+    if (activeGaAttempts >= 2)
+      await new Promise<void>((resolve, reject) => {
+        waitingGaAttempts.push({ start: resolve, reject })
+      })
+    else activeGaAttempts += 1
+    try {
+      assertExternalAdmission()
+      return await attempt()
+    } finally {
+      activeGaAttempts -= 1
+      const waiting = waitingGaAttempts.shift()
+      if (waiting && !stopped) {
+        activeGaAttempts += 1
+        waiting.start()
+      }
+    }
+  }
   const serviceAccountEmail =
     provided.gaTransport?.serviceAccountEmail ??
     env.PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL
+  const createHistoryReader = (scope?: {
+    sourceVideoId: string
+    leaseToken: string
+  }) => {
+    if (
+      (env.PRECOMPUTED_GA4_PROPERTY_ID !== GA_WATCH_PROPERTY.id &&
+        !provided.gaTransport) ||
+      !serviceAccountEmail
+    )
+      return undefined
+    let lastRequestDigest: string | undefined
+    return createGaWatchHistoryReader({
+      propertyId: GA_WATCH_PROPERTY.id,
+      serviceAccountEmail,
+      rangeStart: GA_WATCH_PROPERTY.createdDate,
+      rangeEnd: gaWatchClosedRangeEnd(input.inputCutoff),
+      ...(provided.gaTransport?.tokenProvider
+        ? { tokenProvider: provided.gaTransport.tokenProvider }
+        : {}),
+      fetchImpl: (url, init) => {
+        const requestDigest = digest({ url: String(url), body: init?.body })
+        const stage = !scope
+          ? "qualification"
+          : requestDigest === lastRequestDigest
+            ? "retry"
+            : "snapshot_page"
+        lastRequestDigest = requestDigest
+        return withGaAdmission(() =>
+          recordHistoryAttempt({
+            ingest,
+            generationId: input.generationId,
+            generationInputDigest,
+            sourceVideoId: scope?.sourceVideoId,
+            leaseToken: scope?.leaseToken,
+            stage,
+            requestDigest,
+            url,
+            init,
+            fetchImpl: provided.gaTransport?.fetchImpl,
+          }),
+        )
+      },
+    })
+  }
   const history = input.historyRequired
-    ? (provided.history ??
-      ((env.PRECOMPUTED_GA4_PROPERTY_ID === GA_WATCH_PROPERTY.id ||
-        provided.gaTransport) &&
-      serviceAccountEmail
-        ? createGaWatchHistoryReader({
-            propertyId: GA_WATCH_PROPERTY.id,
-            serviceAccountEmail,
-            rangeStart: GA_WATCH_PROPERTY.createdDate,
-            rangeEnd: gaWatchClosedRangeEnd(input.inputCutoff),
-            ...(provided.gaTransport?.tokenProvider
-              ? { tokenProvider: provided.gaTransport.tokenProvider }
-              : {}),
-            fetchImpl: (url, init) => {
-              const requestDigest = digest({
-                url: String(url),
-                body: init?.body,
-              })
-              const stage =
-                requestDigest === lastHistoryRequestDigest
-                  ? "retry"
-                  : currentSourceVideoId
-                    ? "snapshot_page"
-                    : "qualification"
-              lastHistoryRequestDigest = requestDigest
-              return recordHistoryAttempt({
-                ingest,
-                generationId: input.generationId,
-                generationInputDigest,
-                sourceVideoId: currentSourceVideoId,
-                leaseToken: currentLeaseToken,
-                stage,
-                requestDigest,
-                url,
-                init,
-                fetchImpl: provided.gaTransport?.fetchImpl,
-              })
-            },
-          })
-        : undefined))
+    ? (provided.history ?? createHistoryReader())
     : undefined
   if (input.historyRequired && !history)
     throw new HistoricalAnalyticsError("analytics_unavailable")
@@ -1233,33 +1283,38 @@ export async function runPrecomputedCatalog(
       : undefined
   let completedSourceCount = 0
   let failedSourceCount = 0
-  for (const source of videos) {
-    currentSourceVideoId = source.id
-    currentLeaseToken = undefined
-    const claim = parsed(
-      claimSchema,
-      await ingest({
-        action: "claim",
-        generationId: input.generationId,
-        generationInputDigest,
-        sourceVideoId: source.id,
-        claimId: randomUUID(),
-      }),
-    )
+  let busySourceCount = 0
+  const runSource = async (source: Video) => {
+    let claim: z.output<typeof claimSchema>
+    try {
+      claim = parsed(
+        claimSchema,
+        await ingest({
+          action: "claim",
+          generationId: input.generationId,
+          generationInputDigest,
+          sourceVideoId: source.id,
+          claimId: randomUUID(),
+        }),
+      )
+    } catch (error) {
+      if (!isLiveClaimConflict(error)) throw error
+      busySourceCount += 1
+      return
+    }
     if (
       claim.sourceState === "complete_edges" ||
       claim.sourceState === "complete_empty"
     ) {
       completedSourceCount += 1
-      continue
+      return
     }
     if (claim.sourceState === "failed") {
       failedSourceCount += 1
-      continue
+      return
     }
     if (!claim.leaseToken || claim.checkpointRevision === undefined)
       throw new CatalogBuildError("admin_contract_rejected")
-    currentLeaseToken = claim.leaseToken
     try {
       await processSource(
         {
@@ -1270,9 +1325,17 @@ export async function runPrecomputedCatalog(
           model,
           videos,
           candidateIdsBySource: retrieval.candidateIdsBySource,
-          history,
+          history:
+            provided.history ??
+            (input.historyRequired
+              ? createHistoryReader({
+                  sourceVideoId: source.id,
+                  leaseToken: claim.leaseToken,
+                })
+              : undefined),
           historyDefinition,
           qualificationDigest,
+          assertExternalAdmission,
         },
         source,
         claim.leaseToken,
@@ -1308,12 +1371,40 @@ export async function runPrecomputedCatalog(
       failedSourceCount += 1
     }
   }
+  let nextSourceIndex = 0
+  let unexpectedError: unknown
+  const worker = async () => {
+    while (!stopped && nextSourceIndex < videos.length) {
+      const source = videos[nextSourceIndex++]!
+      try {
+        await runSource(source)
+      } catch (error) {
+        stopAdmission()
+        unexpectedError ??= error
+      }
+    }
+  }
+  const settledWorkers = await Promise.allSettled(
+    Array.from({ length: input.sourceConcurrency }, () => worker()),
+  )
+  const rejectedWorker = settledWorkers.find(
+    (result): result is PromiseRejectedResult => result.status === "rejected",
+  )
+  if (rejectedWorker) throw rejectedWorker.reason
+  if (stopped) throw unexpectedError
   if (failedSourceCount > 0)
     return {
       state: "failed",
       generationId: input.generationId,
       completedSourceCount,
       failedSourceCount,
+    }
+  if (busySourceCount > 0)
+    return {
+      state: "incomplete",
+      generationId: input.generationId,
+      completedSourceCount,
+      failedSourceCount: 0,
     }
   const completion = parsed(
     stateSchema,
