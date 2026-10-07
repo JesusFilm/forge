@@ -3,7 +3,7 @@ id: "feat-621"
 title: "Publish the RAG strategy and Source Expansion roadmap"
 owner: "jaco"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-08"
 duration: 1
 depends_on: []
@@ -44,3 +44,10 @@ All requested themes map to actionable tickets; new IDs are globally unique;
 RAG dependencies are reciprocal and acyclic; counts, local links, hidden-lane
 checks and changed-Markdown formatting pass. Deliver a documentation-only draft PR.
 The later dependent ce-code-review is outside this job.
+
+## Resolution
+
+Published the strategy, Source Expansion initiative, follow-up tickets and ID
+reconciliation in [draft Forge PR #2605](https://github.com/JesusFilm/forge/pull/2605).
+Verification and limitations are recorded in the linked J075 report. Only this
+documentation delivery is complete; feat-622–626 remain not started.

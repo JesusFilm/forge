@@ -44,7 +44,20 @@ allocating IDs. No application files or production state were changed.
   The audit finds 190 other pre-existing colliding IDs outside this job's scope.
 - `git diff --check`: passes. No application file changes.
 
-Full repository formatting and final draft PR receipts follow below.
+- `pnpm run format:check`: passes across the repository, including the normal
+  pre-commit hook. Hooks were initialized in this worktree and were not skipped.
+- `ROADMAP_ID_BASE=565f1835b22191ae8475fb03a719b1545c80d4dd node scripts/check-new-roadmap-ids.mjs`:
+  passes with no introduced collision.
+- Final lane counts: 52 total, 35 complete, 1 in progress, 16 not started, 0 blocked.
+  Only the new documentation delivery feat-621 moves to complete.
+
+## Delivery receipt
+
+Draft PR: [#2605](https://github.com/JesusFilm/forge/pull/2605). Branch:
+`docs/j075-rag-strategy`; base: `main`. The PR commit list is the canonical commit
+receipt. All local checks above passed; hosted CI is checked separately and is not
+implied by local success. No remaining question blocks this roadmap publication.
+The future decision gates remain as documented in the strategy.
 No application tests, live checks, legal research, source downloads or ingestion
 are required or claimed for this documentation-only change. The dependent
 ce-code-review remains for the later job as requested.
@@ -56,3 +69,22 @@ including hidden lanes. When an ID collides, repair filename, frontmatter, activ
 links and reciprocal dependencies together; preserve historical evidence paths
 and add an explicit old-to-new mapping. Feature completion, owner acceptance and
 independently observed production behavior must remain separately identifiable.
+
+## Changed files
+
+- `docs/plans/2026-09-30-001-rag-consumer-manual-spec.md`
+- `docs/plans/2026-09-30-002-rag-governed-test-bench-spec.md`
+- `docs/plans/2026-09-30-rag-portal-session-recovery.md`
+- `docs/plans/2026-10-08-j075-rag-strategy.md`
+- `docs/reports/2026-10-08-j075-rag-strategy.md`
+- `docs/roadmap/rag/README.md`
+- `docs/roadmap/rag/feat-576-rag-governed-test-bench.md`
+- `docs/roadmap/rag/feat-619-rag-portal-session-recovery.md`
+- `docs/roadmap/rag/feat-620-rag-consumer-manual.md`
+- `docs/roadmap/rag/feat-621-rag-strategy-roadmap.md`
+- `docs/roadmap/rag/feat-622-rag-source-expansion.md`
+- `docs/roadmap/rag/feat-623-rag-source-quality-gates.md`
+- `docs/roadmap/rag/feat-624-rag-bible-lookup-research.md`
+- `docs/roadmap/rag/feat-625-rag-health-support.md`
+- `docs/roadmap/rag/feat-626-rag-operational-handover.md`
+- `docs/roadmap/rag/strategy.md`
