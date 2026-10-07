@@ -8,6 +8,7 @@ import { env } from "../../apps/admin/src/config/env"
 import { currentAdminMigrationSql } from "../../apps/admin/src/services/recommendations/current-schema.test-fixture"
 import { purgeExpiredPrecomputedGenerations } from "../../apps/admin/src/services/recommendations/precomputed/generation-retention"
 import { readPrecomputedCatalog } from "../../apps/admin/src/services/recommendations/precomputed/catalog"
+import { oneUtcCalendarMonthAfter } from "../../apps/admin/src/services/recommendations/precomputed/cohort-window"
 import {
   loadPrecomputedPublicControl,
   preparePrecomputedPublicExperiment,
@@ -214,6 +215,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
               connections: [
                 {
                   kind: "direct",
+                  addedViewingValueEnglish: null,
                   relationship: "hope_through_hardship",
                   reasonEnglish:
                     "This distinct story adds another perspective on finding hope.",
@@ -933,11 +935,12 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const routing = await readControlRouting(prisma)
       expect(routing).not.toBeNull()
       const now = Date.now()
+      const startsAt = new Date(now - 60_000)
       const prepared = await preparePrecomputedPublicExperiment(prisma, {
         id: experimentId,
         generationId,
-        startsAt: new Date(now - 60_000),
-        endsAt: new Date(now + 2 * 3_600_000),
+        startsAt,
+        endsAt: oneUtcCalendarMonthAfter(startsAt),
         expectedControlRoutingDigest: routing!.routingDigest,
         expectedSourceSetDigest: generation.sourceSetDigest,
         // Explicit synthetic rehearsal values, never the live stopping policy.
@@ -1194,11 +1197,12 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const routing = await readControlRouting(prisma)
       if (!routing) throw new Error("Missing fixture incumbent routing")
       const now = new Date()
-      const endsAt = new Date(now.getTime() + 2 * 3_600_000)
+      const startsAt = new Date(now.getTime() - 60_000)
+      const endsAt = oneUtcCalendarMonthAfter(startsAt)
       const prepared = await preparePrecomputedPublicExperiment(prisma, {
         id: experimentId,
         generationId,
-        startsAt: new Date(now.getTime() - 60_000),
+        startsAt,
         endsAt,
         expectedControlRoutingDigest: routing.routingDigest,
         expectedSourceSetDigest: generation.sourceSetDigest,
@@ -1443,7 +1447,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         ),
       ).resolves.toMatchObject({ state: "complete" })
       expect(await loadPrecomputedPublicControl(prisma)).toEqual(active)
-      const afterRawExpiry = new Date(now.getTime() + 30 * 86_400_000)
+      const afterRawExpiry = new Date(endsAt.getTime() + 7 * 86_400_000)
       await prisma.$transaction((tx) =>
         purgeExpiredPrecomputedVisitRoots(tx, afterRawExpiry, 100),
       )
@@ -1640,11 +1644,12 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         })
       const routing = await readControlRouting(prisma)
       if (!routing) throw new Error("Missing fixture incumbent")
+      const startsAt = new Date(Date.now() - 60_000)
       const prepared = await preparePrecomputedPublicExperiment(prisma, {
         id: experimentId,
         generationId,
-        startsAt: new Date(Date.now() - 60_000),
-        endsAt: new Date(Date.now() + 3_600_000),
+        startsAt,
+        endsAt: oneUtcCalendarMonthAfter(startsAt),
         expectedControlRoutingDigest: routing.routingDigest,
         expectedSourceSetDigest: generation.sourceSetDigest,
         policySettings: {

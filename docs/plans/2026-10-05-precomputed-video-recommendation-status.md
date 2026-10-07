@@ -32,11 +32,16 @@ the two-attempt limit plus safe feedback survive checkpoint resume. The next
 full build is held for a retrieval audit: the exhaustive implementation requires
 at least 53,612 plan/discovery model calls before individual judgments. The spec
 permits catalog-wide retrieval without requiring exhaustive all-pairs reasoning.
-The local Admin preview now serves the saved pilot after correcting PrismaPg's
+The local Admin preview served the saved pilot after correcting PrismaPg's
 selected-schema handling. Local Chromium verified the Admin review, Watch card,
 successful selection and navigation to the target. Temporary gateways on the
 existing Tailscale connection let the owner inspect this isolated pilot from
-their host machine; owner review remains pending. No production experiment is active.
+their host machine. On October 7 the owner confirmed that the preview looks
+fine. The preview servers, gateways and temporary Redis are now stopped at the
+owner's request to recover memory; their links are offline. Approximately
+2.2 GiB of disposable caches and generated preview files were removed, with
+source, selected catalog inputs and paid-build evidence preserved. No production
+experiment is active; preview acceptance does not authorize its activation.
 
 - Orchestrator: `01a109d7-dc1c-7600-a2c4-07dee79b4aff`.
 - Initial base: `d661b99939e24ba41834adce53c6bad9262bcee9`.
@@ -96,11 +101,14 @@ Checkout: `/home/nisal/.codex/worktrees/feat-590-2570/forge`;
 branch: `codex/feat-590-2575-live-admin`.
 
 Current continuation ownership: A completed strict candidate-evidence repair and
-is auditing existing retrieval for a practical full build; no paid rerun during
-the audit. B owns conditional live prepare/start readiness,
-fresh append-only launch-capacity evidence, and adapter-backed fixture guards.
+the retrieval audit, and is implementing deterministic catalog-wide retrieval
+with a bounded reference comparison before the next full build. B's conditional
+live prepare/start readiness and fresh append-only launch-capacity evidence are
+integrated; B now owns experiment-scoped Web attribution telemetry and its Admin
+report reconciliation. Unknown browser/network loss remains explicit.
 The orchestrator owns local preview/schema selection and actual build resumption.
-The latest integration is `e4ecc23ad`; both chats resumed after the
+The latest application integration is `9055913ed`, including current main
+`5bed7ef5b` through merge `3a07547f1`; both chats resumed after the
 October 7 session interruption. The completion notes below record earlier slices.
 
 Both workers have completed their owned implementation and normal-hook commits.
