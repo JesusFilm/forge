@@ -2689,3 +2689,124 @@ This generation therefore retains 500-row reads and all 185 saved pages. It has
 120 first-pass start pages and all 305 second-pass start pages remaining, plus
 both referrer passes and final qualification. No larger-query experiment or
 new generation was launched by the audit.
+
+## October 8 complete first-pass capture and interrupted verification
+
+The reviewed physical transport repair and external adapter were pinned to
+`b430f8c41510b4af99d79ff78ad1171ff614b36d`. Root verified all 32 critical
+executable hashes, the shared CJS provenance module, 25 offline operator cases
+and fresh request/page reconciliation before the capture-only continuation.
+Current published CI is green: 42 successful CheckRuns, seven skipped and both
+Railway status contexts successful. Model and full-catalog phases stayed off.
+
+Attempt 4 finished both first-pass reports: 305 pages / 152,304 start rows and
+327 pages / 163,352 referrer rows, including the 304-row and 352-row tails.
+All 632 compressed/raw hashes match; compressed pages total 16,481,890 bytes
+and raw canonical pages total 93,929,140 bytes. The first-pass journal SHA is
+`f9baf4786fea1febec1250ea0611474af597ad998fd2728af2e4882f2ca7be12`.
+A separate immutable first-pass backup was created before verification ended:
+`/home/nisal/.local/share/forge/feat-590-evidence-20261007/ga-capture-v3-attempt4-first-pass-20261007T190450Z`,
+manifest SHA `b0d742470ba719dd28e89cff48cd085bfe04499ab299cbc2c690354409abad23`.
+It is a first-pass backup, not proof of a verified or sealed capture.
+
+Attempt 4 then stopped after three recorded HTTP 502 failures on the exact
+start-page offset 5,000 request, which succeeded in the first pass. Its 795
+GA calls reconcile individually with protected starts/terminals: 732 succeeded,
+63 failed, zero pending. Ten page requests had successful second responses,
+but no durable verification cursor existed. The stopped proof SHA is
+`4d28978eff1bdf89cfe858f6c0ef348a58b03992e29d4f1a1db08e8be8c5f8ec`.
+The protected final bundle is
+`/home/nisal/.local/share/forge/feat-590-evidence-20261007/ga-capture-v3-attempt4-verification-502-20261007T191010Z`,
+manifest SHA `3f0e147151eb37e259a66d01ccf2aeeb125d2172a2fb1c79cbaf8114f2b7d053`;
+644 files / 18,040,102 bytes. Its final database archive is 611,307 bytes,
+SHA `d3c9bdb4314755affe67531a7d3c58a3adadf293f9cd9bbeecf9aa3c8fbd7e96`.
+
+Root separately reviewed one same-code continuation after stopped reconciliation,
+quota/capacity diagnosis, protected backup and fresh admission. Attempt 5 reused
+both complete downloads and restarted verification at zero. Offset 5,000
+succeeded on retry in the new run. After 188 distinct successful second-read
+page requests, offset 94,000 received three HTTP 502 responses and the run
+stopped at 2026-10-07 21:06:52 UTC. No model calls, source claims, sealed artifact
+or qualification digest occurred. The exit wrapper disabled all launch flags.
+
+The stopped attempt 5 has **1,028 GA calls**: 943 succeeded, 85 failed, zero
+pending. Root reconciled every native/protected call ID, request digest, status
+and error code, rehashed all 632 saved compressed/raw files, checked all pinned
+executables and validated the final archive's bytes, digest and readable custom
+format. This is not a completed restore test. The recovery proof SHA is
+`d6b553892fee2627a8e7833226d818c515f5fd7502d786985dd67b4d60a088ab`;
+protected receipt SHA is
+`c450843bab0c798f2b3d9a88dce2ca3fd2fa0c2120557fe5f5c3996927634a38`.
+The protected bundle is
+`/home/nisal/.local/share/forge/feat-590-evidence-20261007/ga-capture-v3-attempt5-verification-502-20261007T210652Z`,
+manifest SHA `3cd2fbd9d1cc4dde4c7e42e86b7bcf0ff2e4dbe9fc00f855f20505824ce44215`;
+644 files / 18,174,880 bytes. Its final archive is 637,906 bytes, SHA
+`f3a3f10a95b5b378633ef6a41a15f4d4712754748c5e3318c0e825c7987ce0f5`.
+
+No further paid run is admitted. A Mastra-only repair is in progress to checkpoint
+fully matched verification pages and resume their suffix. Existing partial
+HTTP response counts will not be upgraded into verification evidence. The
+independent contract review requires versioned binding to the original preflight
+and ordered pages, durable advancement only after full page validation, duplicate
+checks across the resume boundary, reset on observed drift and fresh qualification
+before sealing. Admin wire/artifact format, GA queries, history, row limits,
+receipt accounting and no-model-before-seal requirements remain unchanged.
+
+## October 8 durable verification prefix and deterministic suite repair
+
+Worker commit `93a9c6dca3b79b09d5421f375cc1dba315e8deb2`, followed by test-only
+`13b21524f696d640ecc465ba294e8c7d972b10ae`, adds a versioned local verification
+checkpoint bound to capture identity, original preflight/query, ordered saved
+page metadata and the matched prefix. The producer revalidates saved pages,
+reconstructs duplicate identities across the skipped prefix and requests only
+its unverified suffix after a settled `analytics_unavailable` interruption.
+
+Before a live second read or qualification it durably records an in-progress
+marker. A complete match advances the checkpoint with the existing atomic
+rename/fsync protocol; a known unavailable response restores the previous ready
+prefix. Observed page/qualification/postflight drift, unknown error or unresolved
+process crash leaves a non-ready marker and requires full second-pass replay.
+This is the accepted conservative liveness limit identified by the independent
+Spec review; it is not a claim that arbitrary process death preserves partial
+verification. A regression exercises the persisted unresolved-read state.
+Malformed/misbound/overadvanced checkpoints fail closed, and a legacy journal
+with no verification marker starts at zero. The real attempt-5 journal remains
+legacy: its 188 successful repeat responses are not upgraded into evidence.
+
+Both complete matching reports, fresh postflight, global totals, zero pending
+receipts and every artifact/Admin seal check remain required. The strict v1
+artifact/header, query bodies, 500-row pages, data interval and model gate are
+unchanged. The diagnostic continuation must hold a dedicated OS lock across
+its entire capture lifecycle; the journal itself is not an interprocess lease.
+
+The initial full-suite run exposed an unrelated stale-manifest test using the
+real route probe for an existing open alert. A focused run at unchanged base
+`b430f8c41` passed in 1,926 ms, while the worker had timed out at both five and
+15 seconds. Inspection confirmed unmocked DNS/HTTP to the public Watch path.
+The test-only follow-up supplies a deterministic probe and asserts the existing
+open-alert reprobe; production behavior and timeouts are unchanged.
+
+Validation: worker full Mastra suite after the probe stub passed **293 files /
+3,348 tests**, with 15 files / 45 tests skipped. The subsequently added unknown-
+interruption regression passed with both affected files (**28 cases**); the
+broad suite was not needlessly repeated for that assertion. Worker types,
+scoped ESLint/Prettier/diff checks and normal commit hooks passed. Root reviewed
+both commits sequentially against Standards and Spec, accepted the explicit
+conservative-crash limitation, and passed **49 focused tests** across capture,
+artifact, transport, physical receipts and route-alert files. Root also passed
+the native PostgreSQL capture/sealed-resume case (one selected case; 16 unrelated
+cases skipped), including the no-live-GA trap after a lost model receipt response.
+No actual analytics/model provider or production database action was used by
+these checks. A disposable test database was created and removed by its guarded
+fixture script; the owned real-data schema was not migrated or mutated.
+
+Logs: `/tmp/forge-feat-590-orchestration/20261008-verification-resume-root-final-focused.log`,
+`/tmp/forge-feat-590-orchestration/20261008-verification-resume-root-native-run.log`,
+`/tmp/forge-feat-590-orchestration/20261008-ga-resume-mastra-full-after-stub.log`, and
+`/tmp/forge-feat-590-orchestration/20261008-ga-resume-final-focused.log`.
+Before operator repinning, the exact disabled b430 executable bundle and capture
+source were preserved at
+`/home/nisal/.local/share/forge/feat-590-evidence-20261007/ga-capture-v3-b430-executables-before-verification-resume`,
+manifest SHA `90f54ce3764850c835f3db1053cb8a80cad184aa6101b9fa36a7b1baffa69966`.
+The next operator inventory must include `ga-watch-capture.ts` explicitly. No new
+paid phase is admitted by this test record.

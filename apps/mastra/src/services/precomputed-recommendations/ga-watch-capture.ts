@@ -380,6 +380,18 @@ type ReportJournal = {
   complete: boolean
   pages: GaCapturePageFile[]
 }
+const verificationCheckpointSchema = z
+  .object({
+    version: z.literal("ga_watch_capture_verification_v1"),
+    bindingDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+    savedPagesDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+    startsVerifiedPages: z.number().int().nonnegative().safe(),
+    referrersVerifiedPages: z.number().int().nonnegative().safe(),
+    prefixDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+    state: z.enum(["ready", "reading", "qualification", "postflight"]),
+  })
+  .strict()
+type VerificationCheckpoint = z.infer<typeof verificationCheckpointSchema>
 type CaptureJournal = {
   version: "ga_watch_capture_journal_v1"
   bindingDigest: string
@@ -387,6 +399,7 @@ type CaptureJournal = {
   preflight: Preflight
   starts: ReportJournal
   referrers: ReportJournal
+  verification?: VerificationCheckpoint
   sealed?: {
     artifactSha256: string
     artifactBytes: number
@@ -404,6 +417,125 @@ function captureBindingDigest(binding: GaWatchCaptureBinding): string {
       watchRouteIdentity: video.watchRouteIdentity,
     })),
   })
+}
+
+function savedPagesDigest(journal: CaptureJournal, propertyId: string): string {
+  const report = (value: ReportJournal) => ({
+    expectedTotal: value.expectedTotal,
+    complete: value.complete,
+    pages: value.pages.map((page) => ({
+      kind: page.kind,
+      pageOffset: page.pageOffset,
+      rowCount: page.rowCount,
+      compressedBytes: page.compressedBytes,
+      compressedSha256: page.compressedSha256,
+      rawBytes: page.rawBytes,
+      rawSha256: page.rawSha256,
+    })),
+  })
+  return gaCaptureDigest({
+    version: "ga_watch_capture_saved_pages_v1",
+    bindingDigest: journal.bindingDigest,
+    preflight: journal.preflight,
+    querySpecDigest: gaCaptureDigest(
+      gaWatchCaptureQuerySpec({
+        propertyId,
+        rangeStart: journal.preflight.definition.rangeStart,
+        rangeEnd: journal.preflight.definition.rangeEnd,
+      }),
+    ),
+    starts: report(journal.starts),
+    referrers: report(journal.referrers),
+  })
+}
+
+function verificationPrefixDigest(
+  journal: CaptureJournal,
+  savedDigest: string,
+  startsVerifiedPages: number,
+  referrersVerifiedPages: number,
+): string {
+  const prefix = (pages: GaCapturePageFile[], count: number) =>
+    pages.slice(0, count).map((page) => ({
+      kind: page.kind,
+      pageOffset: page.pageOffset,
+      rowCount: page.rowCount,
+      rawSha256: page.rawSha256,
+    }))
+  return gaCaptureDigest({
+    version: "ga_watch_capture_verification_prefix_v1",
+    bindingDigest: journal.bindingDigest,
+    savedPagesDigest: savedDigest,
+    startsVerifiedPages,
+    referrersVerifiedPages,
+    starts: prefix(journal.starts.pages, startsVerifiedPages),
+    referrers: prefix(journal.referrers.pages, referrersVerifiedPages),
+  })
+}
+
+function verifiedPageCounts(
+  journal: CaptureJournal,
+  propertyId: string,
+): {
+  starts: number
+  referrers: number
+} {
+  if (journal.verification === undefined) return { starts: 0, referrers: 0 }
+  const parsed = verificationCheckpointSchema.safeParse(journal.verification)
+  if (
+    !parsed.success ||
+    !journal.starts.complete ||
+    !journal.referrers.complete
+  )
+    throw new HistoricalAnalyticsError("analytics_incomplete")
+  const checkpoint = parsed.data
+  if (
+    checkpoint.bindingDigest !== journal.bindingDigest ||
+    checkpoint.savedPagesDigest !== savedPagesDigest(journal, propertyId) ||
+    checkpoint.startsVerifiedPages > journal.starts.pages.length ||
+    checkpoint.referrersVerifiedPages > journal.referrers.pages.length ||
+    (checkpoint.referrersVerifiedPages > 0 &&
+      checkpoint.startsVerifiedPages !== journal.starts.pages.length) ||
+    checkpoint.prefixDigest !==
+      verificationPrefixDigest(
+        journal,
+        checkpoint.savedPagesDigest,
+        checkpoint.startsVerifiedPages,
+        checkpoint.referrersVerifiedPages,
+      )
+  )
+    throw new HistoricalAnalyticsError("analytics_incomplete")
+  if (checkpoint.state !== "ready") return { starts: 0, referrers: 0 }
+  return {
+    starts: checkpoint.startsVerifiedPages,
+    referrers: checkpoint.referrersVerifiedPages,
+  }
+}
+
+async function advanceVerification(
+  directory: string,
+  journal: CaptureJournal,
+  propertyId: string,
+  startsVerifiedPages: number,
+  referrersVerifiedPages: number,
+  state: VerificationCheckpoint["state"],
+): Promise<void> {
+  const digest = savedPagesDigest(journal, propertyId)
+  journal.verification = {
+    version: "ga_watch_capture_verification_v1",
+    bindingDigest: journal.bindingDigest,
+    savedPagesDigest: digest,
+    startsVerifiedPages,
+    referrersVerifiedPages,
+    prefixDigest: verificationPrefixDigest(
+      journal,
+      digest,
+      startsVerifiedPages,
+      referrersVerifiedPages,
+    ),
+    state,
+  }
+  await writeJournal(directory, journal)
 }
 
 async function writeJournal(directory: string, journal: CaptureJournal) {
@@ -630,35 +762,68 @@ async function verifyReport(input: {
   report: ReportJournal
   reader: LiveReader
   sourcePatterns: string[]
+  verifiedPages: number
+  beforeRead: () => Promise<void>
+  afterMatch: (count: number) => Promise<void>
+  afterTransportFailure: () => Promise<void>
 }): Promise<void> {
   let offset = 0
   const seen = new Set<string>()
-  for (const saved of input.report.pages) {
-    const page =
-      input.kind === "start_page"
-        ? await input.reader.readWatchStartsPage({ offset, limit: 500 })
-        : await input.reader.readWatchReferrerPage({
-            offset,
-            limit: 500,
-            captureSourcePatterns: input.sourcePatterns,
-          })
-    const rows = validRows<StartRow | ReferrerRow>(
-      normalizedRows(input.kind, page.rows),
-      input.kind,
-    )
-    const rawSha256 = createHash("sha256")
-      .update(gaCaptureCanonicalJson(rows))
-      .digest("hex")
-    if (
-      page.status !== "unqualified" ||
-      page.reportLimitations.length > 0 ||
-      page.rowCount !== input.report.expectedTotal ||
-      saved.pageOffset !== offset ||
-      saved.rowCount !== rows.length ||
-      saved.rawSha256 !== rawSha256 ||
-      page.nextOffset !==
-        (offset + rows.length < page.rowCount ? offset + rows.length : null)
-    )
+  const observedPages: Pick<
+    GaCapturePageFile,
+    "pageOffset" | "rowCount" | "rawSha256"
+  >[] = []
+  for (const [index, saved] of input.report.pages.entries()) {
+    let rows: StartRow[] | ReferrerRow[]
+    let rawSha256 = saved.rawSha256
+    if (index < input.verifiedPages) {
+      rows = validRows<StartRow | ReferrerRow>(
+        await readStagedGaWatchCapturePage(saved),
+        input.kind,
+      )
+    } else {
+      await input.beforeRead()
+      let page:
+        | Awaited<ReturnType<LiveReader["readWatchStartsPage"]>>
+        | Awaited<ReturnType<LiveReader["readWatchReferrerPage"]>>
+      try {
+        page =
+          input.kind === "start_page"
+            ? await input.reader.readWatchStartsPage({ offset, limit: 500 })
+            : await input.reader.readWatchReferrerPage({
+                offset,
+                limit: 500,
+                captureSourcePatterns: input.sourcePatterns,
+              })
+      } catch (error) {
+        if (
+          error instanceof HistoricalAnalyticsError &&
+          error.code === "analytics_unavailable"
+        )
+          await input.afterTransportFailure()
+        throw error
+      }
+      rows = validRows<StartRow | ReferrerRow>(
+        normalizedRows(input.kind, page.rows),
+        input.kind,
+      )
+      if (rows.some((row) => seen.has(row.rowIdentityDigest)))
+        throw new HistoricalAnalyticsError("analytics_incomplete")
+      rawSha256 = createHash("sha256")
+        .update(gaCaptureCanonicalJson(rows))
+        .digest("hex")
+      if (
+        page.status !== "unqualified" ||
+        page.reportLimitations.length > 0 ||
+        page.rowCount !== input.report.expectedTotal ||
+        saved.rowCount !== rows.length ||
+        saved.rawSha256 !== rawSha256 ||
+        page.nextOffset !==
+          (offset + rows.length < page.rowCount ? offset + rows.length : null)
+      )
+        throw new HistoricalAnalyticsError("analytics_incomplete")
+    }
+    if (saved.pageOffset !== offset || saved.rowCount !== rows.length)
       throw new HistoricalAnalyticsError("analytics_incomplete")
     for (const row of rows) {
       if (seen.has(row.rowIdentityDigest))
@@ -666,9 +831,22 @@ async function verifyReport(input: {
       seen.add(row.rowIdentityDigest)
     }
     offset += rows.length
+    observedPages.push({
+      pageOffset: saved.pageOffset,
+      rowCount: rows.length,
+      rawSha256,
+    })
+    if (index >= input.verifiedPages && index + 1 < input.report.pages.length)
+      await input.afterMatch(index + 1)
   }
-  if (offset !== input.report.expectedTotal)
+  if (
+    offset !== input.report.expectedTotal ||
+    gaCaptureContentDigest(input.kind, observedPages) !==
+      gaCaptureContentDigest(input.kind, input.report.pages)
+  )
     throw new HistoricalAnalyticsError("analytics_incomplete")
+  if (input.verifiedPages < input.report.pages.length)
+    await input.afterMatch(input.report.pages.length)
 }
 
 async function reconcileCaptureTotals(journal: CaptureJournal): Promise<void> {
@@ -743,8 +921,10 @@ export async function captureGaWatchAggregates(input: {
   const bindingDigest = captureBindingDigest(binding)
   const path = join(directory, "journal.json")
   let journal: CaptureJournal
+  let resumed = false
   try {
     journal = JSON.parse(await readFile(path, "utf8")) as CaptureJournal
+    resumed = true
     if (
       journal.version !== "ga_watch_capture_journal_v1" ||
       journal.bindingDigest !== bindingDigest
@@ -775,6 +955,41 @@ export async function captureGaWatchAggregates(input: {
       headerSha256: artifact.headerSha256,
       ...journal.sealed,
     }
+  }
+  const verified = verifiedPageCounts(journal, binding.propertyId)
+  let startsVerifiedPages = verified.starts
+  let referrersVerifiedPages = verified.referrers
+  const checkpoint = (state: VerificationCheckpoint["state"]) =>
+    advanceVerification(
+      directory,
+      journal,
+      binding.propertyId,
+      startsVerifiedPages,
+      referrersVerifiedPages,
+      state,
+    )
+  if (resumed) {
+    if (journal.verification?.state === "ready")
+      await checkpoint("qualification")
+    let fresh: Preflight
+    try {
+      fresh = await qualifyCapture(binding, input.createReader)
+    } catch (error) {
+      if (
+        journal.verification?.state === "qualification" &&
+        error instanceof HistoricalAnalyticsError &&
+        error.code === "analytics_unavailable"
+      )
+        await checkpoint("ready")
+      throw error
+    }
+    if (
+      gaCaptureCanonicalJson(fresh) !==
+      gaCaptureCanonicalJson(journal.preflight)
+    )
+      throw new HistoricalAnalyticsError("analytics_incomplete")
+    if (journal.verification?.state === "qualification")
+      await checkpoint("ready")
   }
   const committedPageFiles = new Set(
     [...journal.starts.pages, ...journal.referrers.pages].map((page) =>
@@ -845,14 +1060,39 @@ export async function captureGaWatchAggregates(input: {
     report: journal.starts,
     reader: verificationReader,
     sourcePatterns,
+    verifiedPages: startsVerifiedPages,
+    beforeRead: () => checkpoint("reading"),
+    afterMatch: async (count) => {
+      startsVerifiedPages = count
+      await checkpoint("ready")
+    },
+    afterTransportFailure: () => checkpoint("ready"),
   })
   await verifyReport({
     kind: "referrer_page",
     report: journal.referrers,
     reader: verificationReader,
     sourcePatterns,
+    verifiedPages: referrersVerifiedPages,
+    beforeRead: () => checkpoint("reading"),
+    afterMatch: async (count) => {
+      referrersVerifiedPages = count
+      await checkpoint("ready")
+    },
+    afterTransportFailure: () => checkpoint("ready"),
   })
-  const postflight = await qualifyCapture(binding, input.createReader)
+  await checkpoint("postflight")
+  let postflight: Preflight
+  try {
+    postflight = await qualifyCapture(binding, input.createReader)
+  } catch (error) {
+    if (
+      error instanceof HistoricalAnalyticsError &&
+      error.code === "analytics_unavailable"
+    )
+      await checkpoint("ready")
+    throw error
+  }
   if (
     gaCaptureCanonicalJson(postflight) !==
     gaCaptureCanonicalJson(journal.preflight)

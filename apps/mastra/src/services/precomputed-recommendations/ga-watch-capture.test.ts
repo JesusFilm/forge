@@ -1,4 +1,12 @@
-import { mkdtemp, readFile, rm, unlink, writeFile } from "node:fs/promises"
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rename,
+  rm,
+  unlink,
+  writeFile,
+} from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
@@ -6,6 +14,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { captureGaWatchAggregates } from "./ga-watch-capture"
 import { createGaWatchHistoryReader } from "./ga-watch-history"
+import { HistoricalAnalyticsError } from "./historical-analytics"
 
 const source = {
   id: "source",
@@ -301,6 +310,619 @@ describe("GA Watch aggregate capture", () => {
         return body.dimensions[0]?.name === "pagePath" && body.limit === "500"
       })
       expect(startCaptureCalls).toHaveLength(2)
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("resumes a late second-read interruption from the next matched page", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "ga-capture-verify-resume-"))
+    const base = captureInput(directory, gaFixtureFetch())
+    const startOffsets: number[] = []
+    let interrupt = true
+    const input = {
+      ...base,
+      createReader: (
+        rangeStart: string,
+        rangeEnd: string,
+        stage: "qualification" | "snapshot_page",
+      ) => {
+        const reader = base.createReader(rangeStart, rangeEnd)
+        if (stage !== "snapshot_page") return reader
+        return {
+          ...reader,
+          async readWatchStartsPage(page: { offset: number; limit: number }) {
+            startOffsets.push(page.offset)
+            if (
+              interrupt &&
+              page.offset === 1_000 &&
+              startOffsets.filter((offset) => offset === 1_000).length === 2
+            )
+              throw new HistoricalAnalyticsError("analytics_unavailable")
+            const rows = Array.from(
+              { length: Math.min(page.limit, 1_001 - page.offset) },
+              (_, index) => {
+                const identity = page.offset + index
+                return {
+                  pagePath: `/watch/target-${identity}.html/english.html`,
+                  mediaComponentId: "media",
+                  starts: identity === 0 ? 3 : 0,
+                  rowIdentityDigest: identity.toString(16).padStart(64, "0"),
+                }
+              },
+            )
+            return {
+              provider: "ga_data_api" as const,
+              status: "unqualified" as const,
+              propertyId: "320198532",
+              rangeStart,
+              rangeEnd,
+              rows,
+              rowCount: 1_001,
+              nextOffset:
+                page.offset + rows.length < 1_001
+                  ? page.offset + rows.length
+                  : null,
+              requestCount: 1,
+              propertyTimeZone: "America/New_York",
+              reportLimitations: [],
+              sourceAvailableAfter: null,
+              truncatedDateRanges: [],
+              truncationTypes: [],
+              canonicalMapping: "unverified" as const,
+              orderedTransitions: "unavailable" as const,
+              botFiltering: "unknown" as const,
+              snapshotConsistency: "not_frozen" as const,
+            }
+          },
+        }
+      },
+    }
+    try {
+      await expect(captureGaWatchAggregates(input)).rejects.toMatchObject({
+        code: "analytics_unavailable",
+      })
+      const interrupted = JSON.parse(
+        await readFile(join(directory, "journal.json"), "utf8"),
+      ) as { verification?: { startsVerifiedPages: number } }
+      expect(interrupted.verification?.startsVerifiedPages).toBe(2)
+      expect(startOffsets).toEqual([0, 500, 1_000, 0, 500, 1_000])
+
+      interrupt = false
+      startOffsets.length = 0
+      const sealed = await captureGaWatchAggregates(input)
+      expect(startOffsets).toEqual([1_000])
+      expect(sealed.header).toMatchObject({
+        verification: "two_matching_passes",
+        startPages: 3,
+        referrerPages: 1,
+      })
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("repeats the whole second pass after a matching prefix meets postflight drift", async () => {
+    const directory = await mkdtemp(
+      join(tmpdir(), "ga-capture-postflight-drift-"),
+    )
+    const base = captureInput(directory, gaFixtureFetch())
+    let requestedQualifications = 0
+    let driftPostflight = true
+    const pageReads: string[] = []
+    const input = {
+      ...base,
+      createReader: (
+        rangeStart: string,
+        rangeEnd: string,
+        stage: "qualification" | "snapshot_page",
+      ) => {
+        const reader = base.createReader(rangeStart, rangeEnd)
+        if (stage === "qualification") {
+          if (rangeStart === base.binding.requestedStart)
+            requestedQualifications += 1
+          if (driftPostflight && requestedQualifications === 2)
+            return {
+              ...reader,
+              inspectCoverage: async () => ({
+                ...(await reader.inspectCoverage()),
+                resultDigest: "f".repeat(64),
+              }),
+            }
+          return reader
+        }
+        return {
+          ...reader,
+          readWatchStartsPage: async (
+            page: Parameters<typeof reader.readWatchStartsPage>[0],
+          ) => {
+            pageReads.push(`start:${page.offset}`)
+            return reader.readWatchStartsPage(page)
+          },
+          readWatchReferrerPage: async (
+            page: Parameters<typeof reader.readWatchReferrerPage>[0],
+          ) => {
+            pageReads.push(`referrer:${page.offset}`)
+            return reader.readWatchReferrerPage(page)
+          },
+        }
+      },
+    }
+    try {
+      await expect(captureGaWatchAggregates(input)).rejects.toMatchObject({
+        code: "analytics_incomplete",
+      })
+      const interrupted = JSON.parse(
+        await readFile(join(directory, "journal.json"), "utf8"),
+      ) as {
+        verification?: {
+          startsVerifiedPages: number
+          referrersVerifiedPages: number
+          state: string
+        }
+      }
+      expect(interrupted.verification).toMatchObject({
+        startsVerifiedPages: 1,
+        referrersVerifiedPages: 1,
+        state: "postflight",
+      })
+      driftPostflight = false
+      pageReads.length = 0
+      const sealed = await captureGaWatchAggregates(input)
+      expect(pageReads).toEqual(["start:0", "referrer:0"])
+      expect(sealed.header.verification).toBe("two_matching_passes")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects corrupt checkpoint prefixes and starts a legacy journal at zero", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "ga-capture-checkpoint-"))
+    const base = captureInput(directory, gaFixtureFetch())
+    let referrerReads = 0
+    let startReads = 0
+    let interrupt = true
+    const input = {
+      ...base,
+      createReader: (
+        rangeStart: string,
+        rangeEnd: string,
+        stage: "qualification" | "snapshot_page",
+      ) => {
+        const reader = base.createReader(rangeStart, rangeEnd)
+        if (stage !== "snapshot_page") return reader
+        return {
+          ...reader,
+          readWatchStartsPage: async (
+            page: Parameters<typeof reader.readWatchStartsPage>[0],
+          ) => {
+            startReads += 1
+            return reader.readWatchStartsPage(page)
+          },
+          readWatchReferrerPage: async (
+            page: Parameters<typeof reader.readWatchReferrerPage>[0],
+          ) => {
+            referrerReads += 1
+            if (interrupt && referrerReads === 2)
+              throw new HistoricalAnalyticsError("analytics_unavailable")
+            return reader.readWatchReferrerPage(page)
+          },
+        }
+      },
+    }
+    const journalPath = join(directory, "journal.json")
+    try {
+      await expect(captureGaWatchAggregates(input)).rejects.toMatchObject({
+        code: "analytics_unavailable",
+      })
+      const original = JSON.parse(await readFile(journalPath, "utf8")) as {
+        bindingDigest: string
+        starts: { pages: { rawSha256: string }[] }
+        verification?: {
+          bindingDigest: string
+          savedPagesDigest: string
+          startsVerifiedPages: number
+        }
+      }
+      expect(original.verification?.startsVerifiedPages).toBe(1)
+      for (const mutate of [
+        (journal: typeof original) => {
+          journal.verification!.bindingDigest = "0".repeat(64)
+        },
+        (journal: typeof original) => {
+          journal.verification!.savedPagesDigest = "0".repeat(64)
+        },
+        (journal: typeof original) => {
+          journal.verification!.startsVerifiedPages = 2
+        },
+        (journal: typeof original) => {
+          journal.starts.pages[0]!.rawSha256 = "0".repeat(64)
+        },
+      ]) {
+        const damaged = structuredClone(original)
+        mutate(damaged)
+        await writeFile(journalPath, JSON.stringify(damaged))
+        await expect(
+          captureGaWatchAggregates({
+            ...input,
+            createReader: () => {
+              throw new Error("provider_called_before_checkpoint_rejection")
+            },
+          }),
+        ).rejects.toMatchObject({ code: "analytics_incomplete" })
+      }
+
+      const legacy = structuredClone(original)
+      delete legacy.verification
+      await writeFile(journalPath, JSON.stringify(legacy))
+      interrupt = false
+      referrerReads = 0
+      startReads = 0
+      const sealed = await captureGaWatchAggregates(input)
+      expect([startReads, referrerReads]).toEqual([1, 1])
+      expect(sealed.header.verification).toBe("two_matching_passes")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("invalidates a matching prefix after an observed second-read page drift", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "ga-capture-page-drift-"))
+    const base = captureInput(directory, gaFixtureFetch())
+    let startReads = 0
+    let referrerReads = 0
+    let drift = true
+    const input = {
+      ...base,
+      createReader: (
+        rangeStart: string,
+        rangeEnd: string,
+        stage: "qualification" | "snapshot_page",
+      ) => {
+        const reader = base.createReader(rangeStart, rangeEnd)
+        if (stage !== "snapshot_page") return reader
+        return {
+          ...reader,
+          readWatchStartsPage: async (
+            page: Parameters<typeof reader.readWatchStartsPage>[0],
+          ) => {
+            startReads += 1
+            return reader.readWatchStartsPage(page)
+          },
+          readWatchReferrerPage: async (
+            page: Parameters<typeof reader.readWatchReferrerPage>[0],
+          ) => {
+            referrerReads += 1
+            const result = await reader.readWatchReferrerPage(page)
+            if (drift && referrerReads === 2)
+              return {
+                ...result,
+                rows: result.rows.map((row) => ({ ...row, starts: 4 })),
+              }
+            return result
+          },
+        }
+      },
+    }
+    try {
+      await expect(captureGaWatchAggregates(input)).rejects.toMatchObject({
+        code: "analytics_incomplete",
+      })
+      const interrupted = JSON.parse(
+        await readFile(join(directory, "journal.json"), "utf8"),
+      ) as { verification?: { state: string; startsVerifiedPages: number } }
+      expect(interrupted.verification).toMatchObject({
+        state: "reading",
+        startsVerifiedPages: 1,
+      })
+      drift = false
+      startReads = 0
+      referrerReads = 0
+      const sealed = await captureGaWatchAggregates(input)
+      expect(startReads).toBe(1)
+      expect(referrerReads).toBe(1)
+      expect(sealed.header.verification).toBe("two_matching_passes")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("rejects a duplicate identity crossing the resumed verification boundary", async () => {
+    const directory = await mkdtemp(
+      join(tmpdir(), "ga-capture-resume-duplicate-"),
+    )
+    const base = captureInput(directory, gaFixtureFetch())
+    const offsets: number[] = []
+    let interrupt = true
+    let duplicate = false
+    const input = {
+      ...base,
+      createReader: (
+        rangeStart: string,
+        rangeEnd: string,
+        stage: "qualification" | "snapshot_page",
+      ) => {
+        const reader = base.createReader(rangeStart, rangeEnd)
+        if (stage !== "snapshot_page") return reader
+        return {
+          ...reader,
+          async readWatchStartsPage(page: { offset: number; limit: number }) {
+            offsets.push(page.offset)
+            if (
+              interrupt &&
+              page.offset === 500 &&
+              offsets.filter((offset) => offset === 500).length === 2
+            )
+              throw new HistoricalAnalyticsError("analytics_unavailable")
+            const rows = Array.from(
+              { length: Math.min(page.limit, 501 - page.offset) },
+              (_, index) => {
+                const identity = page.offset + index
+                return {
+                  pagePath: `/watch/target-${identity}.html/english.html`,
+                  mediaComponentId: "media",
+                  starts: identity === 0 ? 3 : 0,
+                  rowIdentityDigest:
+                    duplicate && identity === 500
+                      ? "0".repeat(64)
+                      : identity.toString(16).padStart(64, "0"),
+                }
+              },
+            )
+            return {
+              provider: "ga_data_api" as const,
+              status: "unqualified" as const,
+              propertyId: "320198532",
+              rangeStart,
+              rangeEnd,
+              rows,
+              rowCount: 501,
+              nextOffset:
+                page.offset + rows.length < 501
+                  ? page.offset + rows.length
+                  : null,
+              requestCount: 1,
+              propertyTimeZone: "America/New_York",
+              reportLimitations: [],
+              sourceAvailableAfter: null,
+              truncatedDateRanges: [],
+              truncationTypes: [],
+              canonicalMapping: "unverified" as const,
+              orderedTransitions: "unavailable" as const,
+              botFiltering: "unknown" as const,
+              snapshotConsistency: "not_frozen" as const,
+            }
+          },
+        }
+      },
+    }
+    try {
+      await expect(captureGaWatchAggregates(input)).rejects.toMatchObject({
+        code: "analytics_unavailable",
+      })
+      interrupt = false
+      duplicate = true
+      offsets.length = 0
+      await expect(captureGaWatchAggregates(input)).rejects.toMatchObject({
+        code: "analytics_incomplete",
+      })
+      expect(offsets).toEqual([500])
+      const interrupted = JSON.parse(
+        await readFile(join(directory, "journal.json"), "utf8"),
+      ) as { verification?: { state: string } }
+      expect(interrupted.verification?.state).toBe("reading")
+      duplicate = false
+      offsets.length = 0
+      const sealed = await captureGaWatchAggregates(input)
+      expect(offsets).toEqual([0, 500])
+      expect(sealed.header.verification).toBe("two_matching_passes")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("does not seal when a matched page checkpoint cannot be persisted", async () => {
+    const directory = await mkdtemp(
+      join(tmpdir(), "ga-capture-checkpoint-write-"),
+    )
+    const journalPath = join(directory, "journal.json")
+    const backupPath = join(directory, "journal.backup")
+    const base = captureInput(directory, gaFixtureFetch())
+    let blockCheckpoint = true
+    let referrerReads = 0
+    let startReads = 0
+    const input = {
+      ...base,
+      createReader: (
+        rangeStart: string,
+        rangeEnd: string,
+        stage: "qualification" | "snapshot_page",
+      ) => {
+        const reader = base.createReader(rangeStart, rangeEnd)
+        if (stage !== "snapshot_page") return reader
+        return {
+          ...reader,
+          readWatchStartsPage: async (
+            page: Parameters<typeof reader.readWatchStartsPage>[0],
+          ) => {
+            startReads += 1
+            return reader.readWatchStartsPage(page)
+          },
+          readWatchReferrerPage: async (
+            page: Parameters<typeof reader.readWatchReferrerPage>[0],
+          ) => {
+            referrerReads += 1
+            const result = await reader.readWatchReferrerPage(page)
+            if (blockCheckpoint && referrerReads === 2) {
+              await rename(journalPath, backupPath)
+              await mkdir(journalPath)
+              blockCheckpoint = false
+            }
+            return result
+          },
+        }
+      },
+    }
+    try {
+      await expect(captureGaWatchAggregates(input)).rejects.toThrow()
+      await expect(
+        readFile(join(directory, "artifact.bin")),
+      ).rejects.toMatchObject({
+        code: "ENOENT",
+      })
+      await rm(journalPath, { recursive: true })
+      await rename(backupPath, journalPath)
+      const checkpoint = JSON.parse(await readFile(journalPath, "utf8")) as {
+        verification?: { startsVerifiedPages: number; state: string }
+      }
+      expect(checkpoint.verification).toMatchObject({
+        startsVerifiedPages: 1,
+        state: "reading",
+      })
+      startReads = 0
+      referrerReads = 0
+      const sealed = await captureGaWatchAggregates(input)
+      expect([startReads, referrerReads]).toEqual([1, 1])
+      expect(sealed.header.verification).toBe("two_matching_passes")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("replays a verified prefix after an unclassified interrupted read", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "ga-capture-unknown-read-"))
+    const base = captureInput(directory, gaFixtureFetch())
+    const reads: string[] = []
+    let referrerReads = 0
+    let interrupt = true
+    const input = {
+      ...base,
+      createReader: (
+        rangeStart: string,
+        rangeEnd: string,
+        stage: "qualification" | "snapshot_page",
+      ) => {
+        const reader = base.createReader(rangeStart, rangeEnd)
+        if (stage !== "snapshot_page") return reader
+        return {
+          ...reader,
+          readWatchStartsPage: async (
+            page: Parameters<typeof reader.readWatchStartsPage>[0],
+          ) => {
+            reads.push(`start:${page.offset}`)
+            return reader.readWatchStartsPage(page)
+          },
+          readWatchReferrerPage: async (
+            page: Parameters<typeof reader.readWatchReferrerPage>[0],
+          ) => {
+            reads.push(`referrer:${page.offset}`)
+            referrerReads += 1
+            if (interrupt && referrerReads === 2)
+              throw new Error("reader_interrupted")
+            return reader.readWatchReferrerPage(page)
+          },
+        }
+      },
+    }
+    try {
+      await expect(captureGaWatchAggregates(input)).rejects.toThrow(
+        "reader_interrupted",
+      )
+      const journal = JSON.parse(
+        await readFile(join(directory, "journal.json"), "utf8"),
+      ) as {
+        verification?: {
+          startsVerifiedPages: number
+          referrersVerifiedPages: number
+          state: string
+        }
+      }
+      expect(journal.verification).toMatchObject({
+        startsVerifiedPages: 1,
+        referrersVerifiedPages: 0,
+        state: "reading",
+      })
+
+      interrupt = false
+      reads.length = 0
+      const sealed = await captureGaWatchAggregates(input)
+      expect(reads).toEqual(["start:0", "referrer:0"])
+      expect(sealed.header.verification).toBe("two_matching_passes")
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it("restarts verification after fresh continuation qualification drifts", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "ga-capture-fresh-drift-"))
+    const base = captureInput(directory, gaFixtureFetch())
+    let requestedQualifications = 0
+    let driftFresh = false
+    let interrupt = true
+    let startReads = 0
+    let referrerReads = 0
+    const input = {
+      ...base,
+      createReader: (
+        rangeStart: string,
+        rangeEnd: string,
+        stage: "qualification" | "snapshot_page",
+      ) => {
+        const reader = base.createReader(rangeStart, rangeEnd)
+        if (stage === "qualification") {
+          if (rangeStart === base.binding.requestedStart)
+            requestedQualifications += 1
+          if (driftFresh && requestedQualifications === 2)
+            return {
+              ...reader,
+              inspectCoverage: async () => ({
+                ...(await reader.inspectCoverage()),
+                resultDigest: "f".repeat(64),
+              }),
+            }
+          return reader
+        }
+        return {
+          ...reader,
+          readWatchStartsPage: async (
+            page: Parameters<typeof reader.readWatchStartsPage>[0],
+          ) => {
+            startReads += 1
+            return reader.readWatchStartsPage(page)
+          },
+          readWatchReferrerPage: async (
+            page: Parameters<typeof reader.readWatchReferrerPage>[0],
+          ) => {
+            referrerReads += 1
+            if (interrupt && referrerReads === 2)
+              throw new HistoricalAnalyticsError("analytics_unavailable")
+            return reader.readWatchReferrerPage(page)
+          },
+        }
+      },
+    }
+    try {
+      await expect(captureGaWatchAggregates(input)).rejects.toMatchObject({
+        code: "analytics_unavailable",
+      })
+      interrupt = false
+      driftFresh = true
+      const readsBeforeDrift = [startReads, referrerReads]
+      await expect(captureGaWatchAggregates(input)).rejects.toMatchObject({
+        code: "analytics_incomplete",
+      })
+      expect([startReads, referrerReads]).toEqual(readsBeforeDrift)
+      const journal = JSON.parse(
+        await readFile(join(directory, "journal.json"), "utf8"),
+      ) as { verification?: { state: string } }
+      expect(journal.verification?.state).toBe("qualification")
+
+      driftFresh = false
+      startReads = 0
+      referrerReads = 0
+      const sealed = await captureGaWatchAggregates(input)
+      expect([startReads, referrerReads]).toEqual([1, 1])
+      expect(sealed.header.verification).toBe("two_matching_passes")
     } finally {
       await rm(directory, { recursive: true, force: true })
     }

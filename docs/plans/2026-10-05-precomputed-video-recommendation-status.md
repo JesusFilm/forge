@@ -24,28 +24,47 @@ the subsequent docs commit `afa911729` exposed a flaky concurrency assertion
 that compared receipt completion order with reservation order. Root corrected
 that assertion to compare every call/source pair without requiring order.
 Integrated repair `c7e2768e3` passed published CI, including the final CI gate.
-Its real v3 capture remains incomplete after three attempts: 244 GA requests
-are settled (225 successful, 19 failed), with 185 pages / 92,500 start rows
-saved out of the provider-declared 152,304. There are no pending calls, model
-calls or source claims. The third attempt recovered the prior failed page and
-eight HTTP 502 failures, then stopped on a physical `TypeError: fetch failed`
-at offset 92,500. The retained error does not identify its underlying native
-cause. Referrer capture and the complete second verification pass have not
-started. The last quota probe remained above the admission floors.
-Integrated worker fix `4ac6ffa14` records bounded HTTP status or a proven request timeout
-without changing retries, queries or input identities. Its regression resumes
-after 107 saved pages and rejects corruption and verification drift. Root's 18
-focused tests and native PostgreSQL capture/resume regression pass. Root commit
-`0b60a5ac6` passed all 42 applicable CheckRuns and both Railway status contexts.
-The operator's 25 offline cases and reference-policy check passed with the same
-generation, query, corpus, pool and route identities before the third attempt.
-All paid launch flags are disabled after its terminal checkpoint. Worker repair
-`13b4fd853` permits retries only for marked physical fetch failures with a known
-transient native cause and a persisted terminal receipt, within the existing
-three-attempt/600-second budget. Root's 54 focused cases and native PostgreSQL
-capture/resume regression pass; the external adapter still needs its reviewed
-physical-fetch binding and refreshed code pins before continuation. The pagination audit confirms that this generation
-must retain its 500-row query/artifact contract to preserve the 185 saved pages.
+The transport repair is integrated as `b430f8c41`: only proven transient
+physical failures with settled terminal receipts may use the existing
+three-attempt/600-second retry budget. Root's 54 focused cases and native
+PostgreSQL capture/resume regression pass; that published commit passed 42
+CheckRuns, with seven skipped and both Railway statuses successful. The
+external adapter's physical-fetch binding, 25 offline cases, shared module
+provenance check and 32 executable hashes were verified before continuation.
+
+The real v3 first pass is complete: **152,304 start rows and 163,352 referrer
+rows**, across 305 and 327 pages. All 632 compressed/raw page hashes match,
+with 16,481,890 compressed bytes and 93,929,140 raw bytes. The second pass is
+still incomplete. Attempt 4 stopped after three HTTP 502 responses on start
+page offset 5,000. Attempt 5 recovered that page, then stopped on three HTTP
+502 responses at offset 94,000 after 188 of 632 successful verification reads.
+The existing verifier restarts at zero after interruption, so these partial
+reads cannot be treated as completed or checkpointed verification.
+
+All **1,028 GA requests** reconcile between native and protected records:
+943 succeeded, 85 failed, none pending. No model calls, source claims, sealed
+artifacts or qualification digest exist for this generation. Both attempts'
+final checkpoints, records and complete first-pass pages have protected
+backups. All paid launch flags are disabled; no further retry is running.
+The verification-resume repair is integrated from worker commits `93a9c6dca`
+and `13b21524f`. Only fully matched and fsynced second-pass pages may be reused
+after a recorded `analytics_unavailable` outage. Legacy journals start
+verification at zero; observed drift, an unresolved crash or an unknown error
+forces a full second-pass replay. Durable reading/qualification/postflight
+markers prevent a failed invalidation write from silently accepting prior
+progress. The same complete-pass, fresh qualification, total and receipt gates
+still precede sealing; the prior 188 uncheckpointed reads are not adopted.
+Queries, usable history, 500-row pages and Admin's artifact contract are unchanged.
+
+Root passed 49 focused tests and the native PostgreSQL capture/sealed-resume
+case. The worker's full Mastra suite passed 3,348 tests (45 skipped) after fixing
+an unrelated test's unmocked public route probe; a later unknown-interruption
+regression passed with the two affected files (28 cases). Types, scoped lint,
+format and sequential Standards/Spec review passed. The conservative unresolved-
+crash replay remains an explicit liveness tradeoff, not a full crash-prefix
+resume claim. Continued capture requires green CI, reviewed executable pins
+including `ga-watch-capture.ts`, a dedicated single-writer process lock and fresh
+quota/capacity admission. Model and full-catalog phases remain disabled.
 The local preview is accepted and stopped. The bounded Nicodemus
 full-universe reference remains incomplete at 360 of 1,001 discovery targets.
 Its latest recovery completed eight GA requests, then stopped before any source
@@ -61,9 +80,9 @@ New historical generations can capture
 and seal complete Watch aggregates before model work; v2 generations are not
 rewritten. The owned local database has migrations 0139–0141 after a successful
 disposable-clone rehearsal and protected backup; old evidence digests match.
-All three incomplete capture attempts and their staged pages have protected backups.
-Root verified every saved page hash and every settled request before preserving
-the third attempt. Cleanup recovered another 1,028,755,456 bytes from an
+All five incomplete capture attempts have protected recovery evidence. Root
+verified all 632 first-pass page hashes and every settled request before
+preserving the latest final checkpoint. Cleanup recovered another 1,028,755,456 bytes from an
 integrated telemetry worktree and retired worker dependencies; source branches,
 shared runtime dependencies and the historical browser timing artifact remain.
 No provider calls are running. The full 1,031-video
