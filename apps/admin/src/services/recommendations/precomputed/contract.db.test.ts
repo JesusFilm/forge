@@ -817,17 +817,42 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       createdGenerationIds.push(generation)
       const chapterId = await createTarget(15)
       const duplicateId = await createTarget(16)
+      const unrelatedPrefixId = await createTarget(17)
+      const sameTitleChildId = await createTarget(18)
+      await prisma.videoLocale.create({
+        data: {
+          id: `locale-${sourceVideoId}`,
+          videoId: sourceVideoId,
+          locale: "en",
+          status: "PUBLISHED",
+          title: "Full film",
+        },
+      })
+      await prisma.video.update({
+        where: { id: chapterId },
+        data: { coreId: `preview-core-${suffix}-chapter-15` },
+      })
+      for (const [id, coreId] of [
+        [unrelatedPrefixId, `preview-core-${suffix}-other`],
+        [sameTitleChildId, `preview-core-${suffix}-copy`],
+      ])
+        await prisma.video.update({ where: { id }, data: { coreId } })
       await prisma.videoLocale.update({
         where: { id: `locale-${duplicateId}` },
         data: { title: "Distinct target 15" },
       })
-      await prisma.videoRelation.create({
-        data: {
-          id: `relation-${suffix}`,
-          parentId: sourceVideoId,
-          childId: chapterId,
-        },
+      await prisma.videoLocale.update({
+        where: { id: `locale-${sameTitleChildId}` },
+        data: { title: "Full film" },
       })
+      for (const childId of [chapterId, sameTitleChildId])
+        await prisma.videoRelation.create({
+          data: {
+            id: `relation-${childId}`,
+            parentId: sourceVideoId,
+            childId,
+          },
+        })
       await submitPrecomputedRecommendation(prisma, {
         action: "start",
         generationId: generation,
@@ -860,7 +885,22 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           sourceVideoId,
           choices: [{ ...base, targetVideoId: chapterId }],
         }),
-      ).rejects.toMatchObject({ code: "invalid" })
+      ).rejects.toMatchObject({
+        code: "invalid",
+        message: "Parent or chapter needs additional viewing value",
+      })
+      for (const targetVideoId of [unrelatedPrefixId, sameTitleChildId])
+        await expect(
+          submitPrecomputedRecommendation(prisma, {
+            action: "source",
+            generationId: generation,
+            sourceVideoId,
+            choices: [{ ...base, targetVideoId }],
+          }),
+        ).rejects.toMatchObject({
+          code: "invalid",
+          message: "Duplicate Video content",
+        })
       await expect(
         submitPrecomputedRecommendation(prisma, {
           action: "source",
@@ -876,7 +916,10 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             { ...base, targetVideoId: duplicateId, rank: 2 },
           ],
         }),
-      ).rejects.toMatchObject({ code: "invalid" })
+      ).rejects.toMatchObject({
+        code: "invalid",
+        message: "Duplicate Video content",
+      })
       await submitPrecomputedRecommendation(prisma, {
         action: "source",
         generationId: generation,
@@ -909,6 +952,64 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             "This focused chapter offers details absent from the full film.",
         },
       ])
+    })
+
+    it("keeps distinct film and chapter targets when their core IDs share a prefix", async () => {
+      const generation = `target-chapter-${suffix}`
+      createdGenerationIds.push(generation)
+      const filmId = await createTarget(20)
+      const chapterId = await createTarget(21)
+      await prisma.video.update({
+        where: { id: filmId },
+        data: { coreId: `other-film-${suffix}` },
+      })
+      await prisma.video.update({
+        where: { id: chapterId },
+        data: { coreId: `other-film-${suffix}-chapter` },
+      })
+      await prisma.videoRelation.create({
+        data: {
+          id: `relation-${filmId}-${chapterId}`,
+          parentId: filmId,
+          childId: chapterId,
+        },
+      })
+      await submitPrecomputedRecommendation(prisma, {
+        action: "start",
+        generationId: generation,
+        modelId: "fixture",
+        promptVersion: "preview-fixture-v1",
+        inputDigest: "4".repeat(64),
+        sourceSetDigest,
+        inputCutoff: "2026-10-05T00:00:00.000Z",
+        expectedSourceCount: 1,
+      })
+      await submitPrecomputedRecommendation(prisma, {
+        action: "source",
+        generationId: generation,
+        sourceVideoId,
+        choices: [filmId, chapterId].map((targetVideoId, index) => ({
+          targetVideoId,
+          kind: "direct" as const,
+          rank: index + 1,
+          relationship: "useful_next_watch",
+          reasonEnglish: "This adds a distinct view of the story.",
+          evidence: { basis: "metadata" as const, fields: ["title"] },
+        })),
+      })
+      await submitPrecomputedRecommendation(prisma, {
+        action: "complete",
+        generationId: generation,
+      })
+      expect(
+        (
+          await loadPrecomputedRecommendationComparison(prisma, {
+            generationId: generation,
+            sourceVideoId,
+            audioLanguageSlug,
+          })
+        ).experimental.map((item) => item.targetVideoId),
+      ).toEqual([filmId, chapterId])
     })
 
     it("accepts an identical source retry after the target catalog row disappears", async () => {
