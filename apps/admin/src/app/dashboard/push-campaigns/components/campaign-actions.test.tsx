@@ -4,9 +4,12 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { adminMessages } from "@/i18n/messages"
 import type { PushTestSendOutcome } from "@/services/push/campaign.service"
 
-type ActionState = { status: "idle" }
+import type { PushActionState } from "./action-state"
+
+type ActionState = PushActionState
 type Action = (
   previous: ActionState,
   formData: FormData,
@@ -15,9 +18,15 @@ type Action = (
 const idle: ActionState = { status: "idle" }
 const sendNowAction = vi.fn<Action>(async () => idle)
 const cancelCampaignAction = vi.fn<Action>(async () => idle)
+const sendTestAction = vi.fn<Action>(async () => idle)
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}))
 
 vi.mock("../actions", () => ({
-  sendTestAction: vi.fn<Action>(async () => idle),
+  sendTestAction: (previous: ActionState, formData: FormData) =>
+    sendTestAction(previous, formData),
   scheduleCampaignAction: vi.fn<Action>(async () => idle),
   sendNowAction: (previous: ActionState, formData: FormData) =>
     sendNowAction(previous, formData),
@@ -38,6 +47,9 @@ type Props = Parameters<typeof CampaignActions>[0]
 function props(overrides: Partial<Props> = {}): Props {
   return {
     campaignId: "c1",
+    contentVersion: 4,
+    lastTestContentVersion: null,
+    messages: adminMessages.en.pages.pushCampaigns.review,
     tested: true,
     frozen: false,
     cancellable: false,
@@ -77,6 +89,8 @@ function render(next: Props) {
 beforeEach(() => {
   sendNowAction.mockClear()
   cancelCampaignAction.mockClear()
+  sendTestAction.mockReset()
+  sendTestAction.mockResolvedValue(idle)
   container = document.createElement("div")
   document.body.append(container)
   act(() => {
@@ -159,6 +173,75 @@ describe("CampaignActions gating", () => {
 })
 
 describe("CampaignActions test-send outcome", () => {
+  it("posts the version the page loaded with the test send (KTD5)", () => {
+    render(props({ contentVersion: 7 }))
+    const field = container
+      .querySelector('[data-testid="push-send-test"]')
+      ?.closest("form")
+      ?.querySelector<HTMLInputElement>(
+        'input[type="hidden"][name="contentVersion"]',
+      )
+    expect(field?.value).toBe("7")
+  })
+
+  it("says the test results are for an earlier version when the copy changed after the test (R35)", () => {
+    render(
+      props({
+        contentVersion: 5,
+        lastTestContentVersion: 4,
+        testOutcome: [outcome()],
+      }),
+    )
+    expect(
+      container.querySelector('[data-testid="push-test-results-stale"]')
+        ?.textContent,
+    ).toBe("These results are for an earlier version. Send a new test.")
+  })
+
+  it.each([
+    ["the test carried this version", 4],
+    ["no test has run", null],
+  ] as const)(
+    "shows no earlier-version notice when %s",
+    (_label, lastTestContentVersion) => {
+      render(
+        props({
+          contentVersion: 4,
+          lastTestContentVersion,
+          testOutcome: [outcome()],
+        }),
+      )
+      expect(
+        container.querySelector('[data-testid="push-test-results-stale"]'),
+      ).toBeNull()
+    },
+  )
+
+  it("names the newer change and offers the latest version when a test send is stale (R34)", async () => {
+    sendTestAction.mockResolvedValue({
+      status: "stale",
+      reason:
+        "This campaign changed after you loaded it. The last change was by Bob Editor at 2026-10-06 10:05 UTC. Load the latest version, then try again.",
+      contentVersion: 5,
+    })
+    render(props({ contentVersion: 4 }))
+
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('[data-testid="push-send-test"]')
+        ?.click()
+    })
+
+    expect(sendTestAction).toHaveBeenCalledTimes(1)
+    expect(
+      container.querySelector('[data-testid="push-action-feedback"]')
+        ?.textContent,
+    ).toContain("Bob Editor")
+    expect(
+      container.querySelector('[data-testid="push-load-latest"]'),
+    ).not.toBeNull()
+  })
+
   it("says no test send has run, which is not the same as a failed one", () => {
     render(props({ tested: false }))
     expect(

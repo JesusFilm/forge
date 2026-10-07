@@ -18,9 +18,12 @@ import {
   type WorkflowWorkerStatusRow,
 } from "@/services/workflow-worker-heartbeat.service"
 
+import { pushCampaignAiMarkerOf } from "./campaign-content.service"
 import {
   pushExperienceDestinationWhere,
+  pushExperienceSearchWhere,
   pushVideoDestinationWhere,
+  pushVideoSearchWhere,
 } from "./destinations"
 import { PUSH_ENGLISH_LANGUAGE_SLUG } from "./language-resolution"
 
@@ -111,12 +114,45 @@ export type PushCampaignCopyRow = Readonly<{
   body: string
 }>
 
+/** R22 and KTD6 — the most recent MCP write, with the person's name. */
+export type PushCampaignAiMarkerDetail = Readonly<{
+  actorId: string
+  actorName: string
+  writtenAt: Date
+}>
+
 export type PushCampaignDetail = PushCampaignListRow &
   Readonly<{
     copies: readonly PushCampaignCopyRow[]
     lastError: string | null
+    /** R34 — the version this page shows; a save from it carries this back. */
+    contentVersion: number
+    /** R35 — the version the last test send carried; null before any test. */
+    lastTestContentVersion: number | null
+    /** A later hand edit keeps it: an agent changed the campaign, not all of it. */
+    aiMarker: PushCampaignAiMarkerDetail | null
     createdAt: Date
   }>
+
+/**
+ * KTD6 — the name a page shows for each actor id: the user's name, then the
+ * email, then the id itself when no user row has it.
+ */
+export async function readPushActorNames(
+  prisma: PrismaClient,
+  ids: readonly (string | null)[],
+): Promise<Map<string, string>> {
+  const wanted = [...new Set(ids.filter((id): id is string => Boolean(id)))]
+  if (wanted.length === 0) return new Map()
+  const users = await prisma.user.findMany({
+    where: { id: { in: wanted } },
+    select: { id: true, name: true, email: true },
+  })
+  const found = new Map(
+    users.map((user) => [user.id, user.name.trim() || user.email]),
+  )
+  return new Map(wanted.map((id) => [id, found.get(id) ?? id]))
+}
 
 /** What the editor and the send-now confirmation both read. */
 export async function readPushCampaignDetail(
@@ -140,6 +176,10 @@ export async function readPushCampaignDetail(
       sendingStartedAt: true,
       completedAt: true,
       lastError: true,
+      contentVersion: true,
+      lastTestContentVersion: true,
+      aiLastActorId: true,
+      aiLastWrittenAt: true,
       createdAt: true,
       updatedAt: true,
       copies: {
@@ -149,6 +189,17 @@ export async function readPushCampaignDetail(
     },
   })
   if (row === null) return null
+
+  const marker = pushCampaignAiMarkerOf(row)
+  let aiMarker: PushCampaignAiMarkerDetail | null = null
+  if (marker) {
+    const names = await readPushActorNames(prisma, [marker.actorId])
+    aiMarker = {
+      actorId: marker.actorId,
+      actorName: names.get(marker.actorId) ?? marker.actorId,
+      writtenAt: marker.writtenAt,
+    }
+  }
 
   const english = row.copies.find(
     (copy) => copy.languageSlug === PUSH_ENGLISH_LANGUAGE_SLUG,
@@ -170,6 +221,9 @@ export async function readPushCampaignDetail(
     sendingStartedAt: row.sendingStartedAt,
     completedAt: row.completedAt,
     lastError: row.lastError,
+    contentVersion: row.contentVersion,
+    lastTestContentVersion: row.lastTestContentVersion,
+    aiMarker,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
     // English first, so the required row is always the top row in the editor.
@@ -338,14 +392,7 @@ export async function searchPushDestinations(
     const rows = await prisma.experienceLocale.findMany({
       where: {
         ...pushExperienceDestinationWhere(),
-        ...(query
-          ? {
-              OR: [
-                { slug: { contains: query, mode: "insensitive" } },
-                { title: { contains: query, mode: "insensitive" } },
-              ],
-            }
-          : {}),
+        ...pushExperienceSearchWhere(query),
       },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
       take,
@@ -364,18 +411,7 @@ export async function searchPushDestinations(
       // Published and not watch-restricted: a draft picked here would open the
       // not-found screen on every phone the campaign reaches.
       ...pushVideoDestinationWhere(input.kind),
-      ...(query
-        ? {
-            OR: [
-              { slug: { contains: query, mode: "insensitive" } },
-              {
-                locales: {
-                  some: { title: { contains: query, mode: "insensitive" } },
-                },
-              },
-            ],
-          }
-        : {}),
+      ...pushVideoSearchWhere(query),
     },
     orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
     take,

@@ -58,6 +58,11 @@ topics or languages stays in your loop; there is no bulk operation server-side).
 - If a video has no acceptable target-language version, search for a replacement.
 - If no replacement fits, recommend hiding/removing that block instead of silently keeping broken content.
 
+## Push Campaign Tools
+
+- Never call a `push.*` tool that writes: `push.campaign.create` or `push.campaign.update`.
+- For push campaign work, use the `forge-push-campaign-drafts` skill.
+
 ## Output
 
 End every run with a short report:

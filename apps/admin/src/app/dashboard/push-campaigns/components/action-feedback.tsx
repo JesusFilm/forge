@@ -11,7 +11,7 @@ export function ActionFeedback({
   className?: string
 }) {
   if (state.status === "idle") return null
-  const failed = state.status === "error"
+  const failed = state.status !== "ok"
   return (
     <p
       role="status"
@@ -25,7 +25,7 @@ export function ActionFeedback({
         className,
       )}
     >
-      {failed ? state.reason : state.message}
+      {state.status === "ok" ? state.message : state.reason}
     </p>
   )
 }
