@@ -70,6 +70,50 @@ No person can review the translations (owner, 2026-10-06). Web's contract checks
 8. Known-error test: put known errors into copies of some answer files (a wrong meaning, a negation, English text, the wrong language), and count what layer 1 finds in each language group. Record the result here. It decides whether layers 2 and 3 are needed.
 9. Open one PR with the catalogs, `i18n/source-record.json`, `i18n/translation-provenance.json`, and the catalog index.
 
+### U16 result (2026-10-07)
+
+- Claude subagents (`claude-opus-5-5`) translated 179 of the 222 exported locales. They declined 43 locales because the text would be invented words or a related language.
+- The owner put the 43 declined locales and the 13 with the lowest confidence on `englishOnlyLocales`. The import finished the other 166 locales, with 0 pending keys.
+- Each same-language pair now has the same text: `no` is a copy of `nb`, `tl` is a copy of `fil`, `zh` is a copy of `zh-Hans`, and `sr-Latn` is `sr` in Latin letters.
+- `evaluate-translations.mjs --catalogs` gives 3 errors, and each one is a false alarm. GlotLID reads `bs-Cyrl` as Serbian (a close pair), and `hak-Hant` and `nan-Hant` as Mandarin, although they use Hakka and Hokkien grammar words. No catalog has English left in it.
+
+Known-error test (step 8): 15 answer files in 6 language groups, with 4 known errors each. The table counts the errors that layer 1 found as a warning or an error.
+
+| Group                                      | Wrong meaning | Negation removed | English sentence added | Neighbor language |
+| ------------------------------------------ | ------------- | ---------------- | ---------------------- | ----------------- |
+| Latin, high resource (`es` `de` `fr`)      | 0/3           | 0/3              | 3/3                    | 2/3               |
+| Cyrillic (`ru` `uk`)                       | 0/2           | 0/2              | 2/2                    | 2/2               |
+| Arabic script (`ar` `fa`)                  | 0/2           | 0/2              | 2/2                    | 1/2               |
+| Han and Japanese (`zh-Hans` `ja`)          | 0/2           | 0/2              | 2/2                    | 1/2               |
+| Indic (`hi` `bn`)                          | 0/2           | 0/2              | 2/2                    | 2/2               |
+| Latin, low resource (`sw` `ht` `haw` `yo`) | 0/4           | 0/4              | 4/4                    | 4/4               |
+| Total                                      | 0/15          | 0/15             | 15/15                  | 12/15             |
+
+- Layer 1 finds errors of form: English text and most wrong-language text. It finds no error of meaning, so a wrong meaning or a lost negation ships unless a person, layer 2, or layer 3 finds it. The owner decides if layers 2 and 3 are needed.
+- The three missed neighbor-language cases are Portuguese in `es`, Arabic in `fa`, and Chinese in `ja`. GlotLID read the Arabic message as Arabic at 0.79, below the warning threshold.
+
+Bundle size (open check, measured 2026-10-07 with `EXPO_NO_DOTENV=1 npx expo export --platform ios --platform android` on `main` 50215a880 and on the U16 branch):
+
+| Bundle         | `main`  | U16      | Change          |
+| -------------- | ------- | -------- | --------------- |
+| iOS `.hbc`     | 8.30 MB | 14.75 MB | +6.45 MB (+78%) |
+| iOS gzip       | 3.68 MB | 5.83 MB  | +2.15 MB        |
+| Android `.hbc` | 8.54 MB | 15.00 MB | +6.46 MB (+76%) |
+| Android gzip   | 3.81 MB | 5.96 MB  | +2.16 MB        |
+
+The store download and each over-the-air update grow by about 2 MB, because of the 166 translated catalogs. The 58 English-only copies of `en.json` add almost nothing: Hermes stores each string once, and a `hermesc` test measured 5.5 KB of `.hbc` for 58 extra copies. Cold launch stays open: it needs a release build.
+
+Code review (ce-code-review run `20261007-222147-4fcf51fa`, "Ready with fixes"): the runtime treated an English-only copy as its own language. So `ks` showed English right-to-left, 14 English-only tags used another language's plural rules ("1 episodes" on `sg`), and a phone set to `ff` then `fr` showed English, not French. Fixed in the U16 PR (owner decisions, 2026-10-08):
+
+- The generator writes `ENGLISH_ONLY_TAGS` from the policy and gives those tags English plural data. The store resolves the phone over the other catalogs only, so an English-only language acts as a language with no catalog. It also never shows the "A translation is wrong" tile.
+- The resolver skips a bare-language catalog in another script, so `pa-PK` and `pa-Arab-PK` phones read English, not the Gurmukhi `pa` catalog.
+- New tests: every English-only catalog equals `en.json`; provenance and `englishOnlyLocales` split the catalogs with no overlap; the generated list matches the policy; real-index resolution for `ks`, `sg`, `ff`, `[ff-SN, fr-SN]`, and `pa-PK`. Each new guard was broken once by hand, and the right test failed.
+
+Follow-ups from U16:
+
+- `BibleReaderSettings.textSizeAriaUnit` and `lineSpacingAriaUnit` are fixed unit words after a number, so they cannot agree with every number (`gd`, `hr`, `lt`, `pl`, `sk`, `sr-Latn`). Make each one a plural message that holds the number.
+- Many web catalogs have wrong words. The U16 PR lists them for the web owner. For example, `st` uses one word for Cancel and Delete.
+
 ### Open checks (device or release build)
 
 | Check                             | How                                                                                                           |

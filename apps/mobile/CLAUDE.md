@@ -2414,8 +2414,23 @@ the KD, KTD, R, and U numbers that the source cites.
   Read text with `useT("<Namespace>")`, or `getT` outside React. After a
   catalog file is added or removed, run
   `node scripts/i18n/generate-catalog-index.mjs`; its `--check` guard fails on
-  drift. `crk` and `mey-Latn` are English-only, as on web: their catalogs are
-  copies of `en.json`, and they never go to the translator.
+  drift. The `englishOnlyLocales` in `i18n/translation-policy.json` are
+  English-only: their catalogs are copies of `en.json`, and they never go to
+  the translator. The list holds web's two English-only tags (`crk`,
+  `mey-Latn`) and the 56 tags that U16 left in English (feat-604): 43 that
+  Claude could not write reliably, and 13 with the lowest confidence. Web
+  translates the 56, so `translationPolicy.test.ts` requires only that mobile
+  keeps every English-only tag of web. The generator reads the list into
+  `ENGLISH_ONLY_TAGS` and gives these tags English plural data. The store
+  resolves the phone over the other catalogs only, so an English-only
+  language acts as a language with no catalog: the next phone language wins,
+  then `en`. To translate one of the 56, remove it from the list, run the
+  generator, then export and import it.
+- **Script match.** The resolver skips a bare-language catalog when the
+  phone's script (sent, or inferred from the region) differs from the script
+  of that catalog (`CATALOG_SCRIPT` in `src/i18n/resolveLocale.ts`). So a
+  `pa-PK` phone, which reads Shahmukhi, gets English and not the Gurmukhi `pa`
+  catalog.
 - **Start-up.** `startLocaleSync()` runs at module scope in the guarded
   `require` block of `app/_layout.tsx`, next to
   `preventNativeSplashAutoHide()`. So the first frame and the first Admin
@@ -2449,9 +2464,9 @@ the KD, KTD, R, and U numbers that the source cites.
   enforces this, and the sheet says so (`translationLanguageNotice`), and its
   "What this sends" list shows an "App language" row. `feedbackUiLocale` gives
   both the row and the request their value, so they cannot differ. Admin
-  writes the tag in the Linear ticket as "App language". The English-only
-  catalogs (`crk`, `mey-Latn`) also show the kind, because their tag is not
-  `en`. Admin must deploy the kind before a build sends it. An older admin
+  writes the tag in the Linear ticket as "App language". An English-only
+  catalog never becomes the catalog in use, so it never shows the kind.
+  Admin must deploy the kind before a build sends it. An older admin
   does not know `TRANSLATION` or `uiLocale`, so the request fails GraphQL
   variable coercion before the resolver runs. Document validation passes,
   because the new values travel in the variables. Admin then writes no
