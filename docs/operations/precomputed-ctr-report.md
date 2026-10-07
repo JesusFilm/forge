@@ -1,6 +1,6 @@
-# Private precomputed recommendation CTR report
+# Precomputed recommendation CTR report
 
-The private Watch experiment's durable report is available in Admin at
+The Watch experiment's durable report is available in Admin at
 `/dashboard/recommendations/precomputed/visits`. Select an experiment to see
 its frozen cohort and latest revision; revision links open immutable earlier
 results. The older visit/click panels read the ordinary raw lifecycle and can
@@ -33,12 +33,34 @@ browser and uses a fixed-horizon cluster delta-method interval with a
 tabulated conservative Student-t critical value. The interval is an
 approximation, not an exact small-sample coverage guarantee.
 
-The current report always says **inconclusive**: bot eligibility is not
+The private report always says **inconclusive**: bot eligibility is not
 verified, browser event loss is unobservable, and fixture settings are not a
-measured human baseline or an agreed live stopping policy. No result from
-this private path activates public serving. Before a live A/B test, agree
-numeric thresholds from a measured human baseline, verify traffic and loss
-qualification, and establish separate launch authority.
+measured human baseline or an agreed live stopping policy. No report read or
+evaluation activates public serving.
+
+A live report additionally reads Web's authenticated, experiment-scoped hourly
+counters over the frozen cohort and late-click cutoff. Web counts attributed
+delivery attempts only after Admin identifies the experiment, and counts
+click attempts, acknowledgements, and failures only when a short signed
+measurement ticket binds the request to that experiment. These are **request
+attempts**, so retries may exceed the durable distinct visits and accepted
+selections. The report marks missing Redis hours, unbalanced attempt/outcome
+hours, and any observed shortfall against durable Admin rows. A zero-counter
+hour is not inferred from a missing Redis hash. The global Watch counters are
+diagnostic and cannot substitute for these scoped counters.
+
+The report separately labels client/network loss **unobservable**: a browser
+that never reaches Web, or a lost Web response after an Admin commit, cannot
+be proved absent by either server store. A scoped result of “no observed
+shortfall” is not a verified loss rate or a live winner. To qualify a live
+result later, collect an independent production browser/edge calibration of
+initiated Watch delivery and click attempts against the same frozen cohort and
+hour range, include deliberately dropped/retried requests, record its measured
+loss and uncertainty, and obtain the owner's numeric acceptable-loss limit
+before versioning an immutable qualification receipt. Do not use a fixture or
+global counter surplus to fill a scoped or client-side gap. Until that receipt
+is implemented and reviewed, final live reports remain inconclusive and
+manual promotion stays closed.
 
 Ordinary retention archives each expired raw visit exactly once into compact
 per-browser clusters and per-arm totals, keeping a UUID marker to reject

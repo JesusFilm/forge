@@ -4,6 +4,17 @@ const HOUR_MS = 3_600_000
 const MAX_HOURS_PER_READ = 840
 const MAX_RESPONSE_BYTES = 2_000_000
 export const WEB_WATCH_MEASUREMENT_CONTRACT = "watch-public-measurement-v1"
+export const WEB_EXPERIMENT_MEASUREMENT_CONTRACT =
+  "watch-experiment-measurement-v1"
+export const WEB_EXPERIMENT_COUNTERS = [
+  "delivery_attempt",
+  "delivery_eligible",
+  "delivery_not_eligible",
+  "delivery_response_failed",
+  "click_attempt",
+  "click_ack",
+  "click_unavailable",
+] as const
 export const WEB_WATCH_COUNTERS = [
   "delivery_attempt",
   "delivery_excluded",
@@ -40,6 +51,21 @@ export type WebWatchMeasurement = {
 export type WebWatchMeasurementRead =
   | WebWatchMeasurement
   | { status: "unavailable"; reason: string }
+export type WebExperimentCounters = Record<
+  (typeof WEB_EXPERIMENT_COUNTERS)[number],
+  number
+>
+export type WebExperimentMeasurement = Omit<
+  WebWatchMeasurement,
+  "contractVersion" | "counters"
+> & {
+  contractVersion: typeof WEB_EXPERIMENT_MEASUREMENT_CONTRACT
+  experimentId: string
+  counters: WebExperimentCounters
+}
+export type WebExperimentMeasurementRead =
+  | WebExperimentMeasurement
+  | { status: "unavailable"; reason: string }
 
 type MeasurementTransport = (
   url: string,
@@ -52,19 +78,20 @@ type ReadOptions = {
   now?: Date
 }
 
-const terminalDeliveryCounters = WEB_WATCH_COUNTERS.filter(
-  (key) => key.startsWith("delivery_") && key !== "delivery_attempt",
-)
 const HOUR_KEY = /^\d{10}$/
+const EXPERIMENT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,190}$/
+type MeasurementScope = {
+  contractVersion: string
+  counters: readonly string[]
+  experimentId?: string
+}
 
 function hourKey(date: Date): string {
   return date.toISOString().slice(0, 13).replaceAll("-", "").replace("T", "")
 }
 
-function emptyCounters(): WebWatchCounters {
-  return Object.fromEntries(
-    WEB_WATCH_COUNTERS.map((key) => [key, 0]),
-  ) as WebWatchCounters
+function emptyCounters(keys: readonly string[]): Record<string, number> {
+  return Object.fromEntries(keys.map((key) => [key, 0]))
 }
 
 function isoHour(value: unknown): value is string {
@@ -101,7 +128,7 @@ function endpoint(value: string): URL | null {
   }
 }
 
-type ParsedHour = { hour: string; counters: WebWatchCounters | null }
+type ParsedHour = { hour: string; counters: Record<string, number> | null }
 type ParsedPage = {
   observedAt: string
   requestedHours: number
@@ -115,6 +142,7 @@ function parsePage(
   start: Date,
   end: Date,
   now: Date,
+  scope: MeasurementScope,
 ): ParsedPage | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null
   const row = value as Record<string, unknown>
@@ -127,10 +155,12 @@ function parsePage(
     "coveredHours",
     "missingHours",
     "hours",
+    ...(scope.experimentId ? ["experimentId"] : []),
   ]
   if (
     Object.keys(row).sort().join(",") !== expectedKeys.sort().join(",") ||
-    row.contractVersion !== WEB_WATCH_MEASUREMENT_CONTRACT ||
+    row.contractVersion !== scope.contractVersion ||
+    (scope.experimentId && row.experimentId !== scope.experimentId) ||
     row.startHour !== start.toISOString() ||
     row.endHourExclusive !== end.toISOString() ||
     !isoHour(row.startHour) ||
@@ -183,16 +213,17 @@ function parsePage(
       observedKeys.length === 0 ||
       observedKeys.some(
         (key) =>
-          !WEB_WATCH_COUNTERS.includes(key as WebWatchCounter) ||
+          !scope.counters.includes(key) ||
           typeof counters[key] !== "number" ||
           !Number.isSafeInteger(counters[key]) ||
           (counters[key] as number) < 0,
       )
     )
       return null
+    const validatedCounters = counters as Record<string, number>
     hours.push({
       hour: expectedHour,
-      counters: { ...emptyCounters(), ...counters } as WebWatchCounters,
+      counters: { ...emptyCounters(scope.counters), ...validatedCounters },
     })
   }
   if (
@@ -212,11 +243,19 @@ function parsePage(
 
 /** Read complete UTC hours only. A one-month trial plus late cutoff is split
  * into at most 35-day authenticated reads; missing Redis buckets stay missing. */
-export async function loadWebWatchMeasurement(
+async function loadMeasurement(
   startHour: Date,
   endHourExclusive: Date,
+  scope: MeasurementScope,
   options: ReadOptions = {},
-): Promise<WebWatchMeasurementRead> {
+): Promise<
+  | (Omit<WebWatchMeasurement, "contractVersion" | "counters"> & {
+      contractVersion: string
+      experimentId?: string
+      counters: Record<string, number>
+    })
+  | { status: "unavailable"; reason: string }
+> {
   const now = options.now ?? new Date()
   const completedThrough = Math.floor(now.getTime() / HOUR_MS) * HOUR_MS
   if (
@@ -240,7 +279,10 @@ export async function loadWebWatchMeasurement(
   const transport = options.transport ?? fetch
   const missingHours: string[] = []
   const imbalancedHours: string[] = []
-  const totals = emptyCounters()
+  const totals = emptyCounters(scope.counters)
+  const terminalDeliveryCounters = scope.counters.filter(
+    (key) => key.startsWith("delivery_") && key !== "delivery_attempt",
+  )
   let coveredHours = 0
   let observedAt = new Date(0).toISOString()
   for (
@@ -256,6 +298,8 @@ export async function loadWebWatchMeasurement(
     const requestUrl = new URL(url)
     requestUrl.searchParams.set("startHour", start.toISOString())
     requestUrl.searchParams.set("endHourExclusive", end.toISOString())
+    if (scope.experimentId)
+      requestUrl.searchParams.set("experimentId", scope.experimentId)
     let response: Response
     try {
       response = await transport(requestUrl.toString(), {
@@ -297,7 +341,7 @@ export async function loadWebWatchMeasurement(
     } catch {
       return { status: "unavailable", reason: "measurement_contract_invalid" }
     }
-    const page = parsePage(json, start, end, now)
+    const page = parsePage(json, start, end, now, scope)
     if (!page)
       return { status: "unavailable", reason: "measurement_contract_invalid" }
     observedAt = page.observedAt > observedAt ? page.observedAt : observedAt
@@ -305,7 +349,7 @@ export async function loadWebWatchMeasurement(
     missingHours.push(...page.missingHours)
     for (const hour of page.hours) {
       if (!hour.counters) continue
-      for (const key of WEB_WATCH_COUNTERS) {
+      for (const key of scope.counters) {
         totals[key] += hour.counters[key]
         if (!Number.isSafeInteger(totals[key]))
           return {
@@ -331,7 +375,8 @@ export async function loadWebWatchMeasurement(
   return {
     status:
       missingHours.length || imbalancedHours.length ? "incomplete" : "complete",
-    contractVersion: WEB_WATCH_MEASUREMENT_CONTRACT,
+    contractVersion: scope.contractVersion,
+    ...(scope.experimentId ? { experimentId: scope.experimentId } : {}),
     startHour: startHour.toISOString(),
     endHourExclusive: endHourExclusive.toISOString(),
     observedAt,
@@ -342,4 +387,40 @@ export async function loadWebWatchMeasurement(
     counters: totals,
     counterUnit: "web_request_attempts_not_distinct_visits",
   }
+}
+
+export async function loadWebWatchMeasurement(
+  startHour: Date,
+  endHourExclusive: Date,
+  options: ReadOptions = {},
+): Promise<WebWatchMeasurementRead> {
+  return (await loadMeasurement(
+    startHour,
+    endHourExclusive,
+    {
+      contractVersion: WEB_WATCH_MEASUREMENT_CONTRACT,
+      counters: WEB_WATCH_COUNTERS,
+    },
+    options,
+  )) as WebWatchMeasurementRead
+}
+
+export async function loadWebExperimentMeasurement(
+  experimentId: string,
+  startHour: Date,
+  endHourExclusive: Date,
+  options: ReadOptions = {},
+): Promise<WebExperimentMeasurementRead> {
+  if (!EXPERIMENT_ID.test(experimentId))
+    return { status: "unavailable", reason: "invalid_experiment" }
+  return (await loadMeasurement(
+    startHour,
+    endHourExclusive,
+    {
+      contractVersion: WEB_EXPERIMENT_MEASUREMENT_CONTRACT,
+      counters: WEB_EXPERIMENT_COUNTERS,
+      experimentId,
+    },
+    options,
+  )) as WebExperimentMeasurementRead
 }

@@ -40,6 +40,16 @@ const OBSERVATION_FIELDS = new Set<WatchPublicObservation>([
   "click_ack",
   "click_unavailable",
 ])
+const EXPERIMENT_FIELDS = new Set<WatchExperimentObservation>([
+  "delivery_attempt",
+  "delivery_eligible",
+  "delivery_not_eligible",
+  "delivery_response_failed",
+  "click_attempt",
+  "click_ack",
+  "click_unavailable",
+])
+const EXPERIMENT_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,190}$/
 
 export type WatchPublicObservation =
   | "delivery_attempt"
@@ -54,6 +64,15 @@ export type WatchPublicObservation =
   | "delivery_private"
   | "delivery_unavailable"
   | "delivery_rejected"
+  | "click_attempt"
+  | "click_ack"
+  | "click_unavailable"
+
+export type WatchExperimentObservation =
+  | "delivery_attempt"
+  | "delivery_eligible"
+  | "delivery_not_eligible"
+  | "delivery_response_failed"
   | "click_attempt"
   | "click_ack"
   | "click_unavailable"
@@ -128,18 +147,21 @@ function observationKey(hour: string) {
   return `recommendation:public-watch-observation:v1:${hour}`
 }
 
-export async function recordWatchPublicObservation(
-  outcome: WatchPublicObservation,
-  hour = watchPublicObservationHour(),
+function experimentObservationKey(experimentId: string, hour: string) {
+  return `recommendation:experiment-watch-observation:v1:${experimentId}:${hour}`
+}
+
+async function recordObservation(
+  key: string,
+  outcome: WatchPublicObservation | WatchExperimentObservation,
   redis?: ObservationRedis | null,
 ): Promise<boolean> {
-  if (!/^\d{10}$/.test(hour)) return false
   const target = redis === undefined ? await redisClient() : redis
   if (!target) return false
   try {
     const result = await bounded(
       target.eval(INCREMENT, {
-        keys: [observationKey(hour)],
+        keys: [key],
         arguments: [outcome, String(RETENTION_SECONDS)],
       }),
     )
@@ -160,12 +182,38 @@ export async function recordWatchPublicObservation(
   }
 }
 
-export async function readWatchPublicObservationHours(
+export function recordWatchPublicObservation(
+  outcome: WatchPublicObservation,
+  hour = watchPublicObservationHour(),
+  redis?: ObservationRedis | null,
+): Promise<boolean> {
+  if (!/^\d{10}$/.test(hour)) return Promise.resolve(false)
+  return recordObservation(observationKey(hour), outcome, redis)
+}
+
+export function recordWatchExperimentObservation(
+  experimentId: string,
+  outcome: WatchExperimentObservation,
+  hour = watchPublicObservationHour(),
+  redis?: ObservationRedis | null,
+): Promise<boolean> {
+  if (!EXPERIMENT_ID.test(experimentId) || !/^\d{10}$/.test(hour))
+    return Promise.resolve(false)
+  return recordObservation(
+    experimentObservationKey(experimentId, hour),
+    outcome,
+    redis,
+  )
+}
+
+async function readObservationHours<T extends string>(
   hours: readonly string[],
+  key: (hour: string) => string,
+  fields: ReadonlySet<T>,
   redis?: ObservationRedis | null,
 ): Promise<Array<{
   hour: string
-  counters: Partial<Record<WatchPublicObservation, number>> | null
+  counters: Partial<Record<T, number>> | null
 }> | null> {
   if (
     hours.length === 0 ||
@@ -178,7 +226,7 @@ export async function readWatchPublicObservationHours(
   try {
     const result = await bounded(
       target.eval(READ_HOURS, {
-        keys: hours.map(observationKey),
+        keys: hours.map(key),
         arguments: [],
       }),
       READ_TIMEOUT_MS,
@@ -188,19 +236,19 @@ export async function readWatchPublicObservationHours(
       if (!Array.isArray(pairs) || pairs.length % 2 !== 0) {
         throw new Error("invalid_observation")
       }
-      const counters: Partial<Record<WatchPublicObservation, number>> = {}
+      const counters: Partial<Record<T, number>> = {}
       for (let i = 0; i < pairs.length; i += 2) {
         const field = pairs[i]
         const value = pairs[i + 1]
         if (
           typeof field !== "string" ||
-          !OBSERVATION_FIELDS.has(field as WatchPublicObservation) ||
+          !fields.has(field as T) ||
           typeof value !== "string" ||
           !/^\d+$/.test(value) ||
           !Number.isSafeInteger(Number(value))
         )
           throw new Error("invalid_observation")
-        counters[field as WatchPublicObservation] = Number(value)
+        counters[field as T] = Number(value)
       }
       return {
         hour: hours[index]!,
@@ -210,6 +258,27 @@ export async function readWatchPublicObservationHours(
   } catch {
     return null
   }
+}
+
+export function readWatchPublicObservationHours(
+  hours: readonly string[],
+  redis?: ObservationRedis | null,
+) {
+  return readObservationHours(hours, observationKey, OBSERVATION_FIELDS, redis)
+}
+
+export function readWatchExperimentObservationHours(
+  experimentId: string,
+  hours: readonly string[],
+  redis?: ObservationRedis | null,
+) {
+  if (!EXPERIMENT_ID.test(experimentId)) return Promise.resolve(null)
+  return readObservationHours(
+    hours,
+    (hour) => experimentObservationKey(experimentId, hour),
+    EXPERIMENT_FIELDS,
+    redis,
+  )
 }
 
 export async function closeWatchPublicObservationRedisForTests() {

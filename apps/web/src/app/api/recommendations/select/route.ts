@@ -31,9 +31,11 @@ import {
 } from "@/lib/recommendation-session"
 import { RECOMMENDATION_EVIDENCE_CONTRACT } from "@/lib/recommendation-contracts"
 import {
+  recordWatchExperimentObservation,
   recordWatchPublicObservation,
   watchPublicObservationHour,
 } from "@/lib/recommendation-public-observation"
+import { readWatchExperimentMeasurementTicket } from "@/lib/recommendation-experiment-measurement-ticket"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -48,6 +50,7 @@ const SelectionInput = z
     occurredAt: z.string().datetime({ offset: true }),
     tabNonce: z.string().min(1).max(191),
     claimNonce: z.string().min(16).max(191),
+    measurementTicket: z.string().min(1).max(850).optional(),
   })
   .strict()
 
@@ -57,6 +60,8 @@ export async function POST(request: Request) {
     (env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET?.length ?? 0) >= 32
       ? recordWatchPublicObservation("click_attempt", observationHour)
       : Promise.resolve(false)
+  let scopedExperimentId: string | null = null
+  let scopedAttemptObserved = false
   try {
     assertRecommendationHumanAdmission(request)
     const raw = await readStrictRecommendationJson(request, {
@@ -66,6 +71,19 @@ export async function POST(request: Request) {
     const parsed = SelectionInput.safeParse(raw)
     if (!parsed.success) {
       throw new RecommendationRouteError(400, "invalid_body")
+    }
+    const scoped = readWatchExperimentMeasurementTicket(
+      env.WATCH_RECOMMENDATION_TESTER_SECRET,
+      parsed.data.measurementTicket,
+      parsed.data.requestId,
+    )
+    if (scoped && (await observationAttempt)) {
+      scopedExperimentId = scoped.experimentId
+      scopedAttemptObserved = await recordWatchExperimentObservation(
+        scopedExperimentId,
+        "click_attempt",
+        observationHour,
+      )
     }
     const session = readRecommendationSession(request)
     if (!session) {
@@ -123,6 +141,12 @@ export async function POST(request: Request) {
     observeEvidenceResponse(request, "select", 200, undefined, [selection])
     if (await observationAttempt)
       await recordWatchPublicObservation("click_ack", observationHour)
+    if (scopedAttemptObserved && scopedExperimentId)
+      await recordWatchExperimentObservation(
+        scopedExperimentId,
+        "click_ack",
+        observationHour,
+      )
     return recommendationJson({
       claimNonce: selection.claimNonce,
       canonicalHref: selection.canonicalHref,
@@ -132,6 +156,12 @@ export async function POST(request: Request) {
     const response = recommendationError(error)
     if (await observationAttempt)
       await recordWatchPublicObservation("click_unavailable", observationHour)
+    if (scopedAttemptObserved && scopedExperimentId)
+      await recordWatchExperimentObservation(
+        scopedExperimentId,
+        "click_unavailable",
+        observationHour,
+      )
     observeEvidenceResponse(request, "select", response.status, error)
     return response
   }

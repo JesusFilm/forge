@@ -1977,6 +1977,39 @@ The combined root checkout also passed all eight catalog unit cases and all
 
 The CI repair is committed as `ba0376723`, but GitHub rejected its push because
 the CLI OAuth login lacks the `workflow` scope needed to edit
-`.github/workflows/ci.yml`. A device authorization request is pending with the
-owner. The remote PR still points to the older `a9cbf8362` until publication
+`.github/workflows/ci.yml`. The first device authorization code expired; fresh
+owner authorization is required. The remote PR still points to the older `a9cbf8362` until publication
 succeeds; no green published-head CI is claimed for these local repairs.
+
+## October 7 experiment-scoped server measurement integration
+
+Worker B's `cc4e97fd4` adds bounded hourly delivery/selection attempt counters
+bound to the experiment. A signed, request-bound measurement ticket is carried
+in the existing delivery and selection payloads. Admin reconciles these counts
+with distinct durable visits and accepted selections, preserving retries and
+unobservable browser/network events as separate facts. A server count surplus
+cannot certify complete tracking. Final live calibration qualification remains
+under implementation, and public promotion stays unavailable without it.
+
+The combined root checkout passed all 123 precomputed/producer cases, all 25
+connected source/catalog cases and all 12 native Redis cases. The loaded
+retention fixture was included. The owned temporary database and Redis instance
+were removed after the checks. Worker validation additionally passed 20 native
+CTR/control/capacity cases, eight focused Admin cases, 66 Web cases plus the
+14-case hour-boundary/baseline follow-up, both full application typechecks and
+normal hooks. Root reviewed Standards and Spec separately with no unresolved
+finding in this server-observed slice. Logs: `20261007-scoped-integrated-`
+`precomputed-native.log`, `precomputed-connected.log` and
+`web-measurement-native.log` in the orchestration evidence directory.
+
+The Watch change adds no eager client fetch or SDK import: the existing
+response carries at most an 850-character ticket, echoed in the existing
+selection POST. Admin renders the existing report JSON. Each affected server
+route adds at most two sequential scoped Redis operations with a 250 ms bound
+each, so roughly 500 ms additional latency is possible on a hung Redis path.
+This is a known server-side bound, not a production latency measurement.
+
+The clean Expo repair worktree was removed after its commit was integrated
+and its separate PR merged, freeing approximately 203 MiB beyond the earlier
+2.2 GiB cache cleanup. Its branch and shared dependencies were preserved.
+The catalog database remains in use by the bounded real-model benchmark.

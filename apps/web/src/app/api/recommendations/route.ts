@@ -42,10 +42,12 @@ import {
   WATCH_RECOMMENDATION_TURNSTILE_TEST_SITE_KEY,
 } from "@/lib/recommendation-turnstile"
 import {
+  recordWatchExperimentObservation,
   recordWatchPublicObservation,
   watchPublicObservationHour,
   type WatchPublicObservation,
 } from "@/lib/recommendation-public-observation"
+import { issueWatchExperimentMeasurementTicket } from "@/lib/recommendation-experiment-measurement-ticket"
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
   RECOMMENDATION_DELIVERY_CLIENT_VERSION,
@@ -120,6 +122,8 @@ export async function POST(request: Request) {
   const attemptObserved = liveObservationEnabled
     ? await recordWatchPublicObservation("delivery_attempt", observationHour)
     : null
+  let scopedExperimentId: string | null = null
+  let scopedAttemptObserved = false
   try {
     const raw = await readStrictRecommendationJson(request, {
       expectedOrigin: WATCH_CANONICAL_ORIGIN,
@@ -352,6 +356,18 @@ export async function POST(request: Request) {
         upstreamAcknowledged = false
       }
     }
+    if (
+      attemptObserved &&
+      publicVisit?.disposition === "ab" &&
+      publicVisit.experimentId
+    ) {
+      scopedExperimentId = publicVisit.experimentId
+      scopedAttemptObserved = await recordWatchExperimentObservation(
+        scopedExperimentId,
+        "delivery_attempt",
+        observationHour,
+      )
+    }
     let previewDelivery: Awaited<
       ReturnType<typeof getPrecomputedWatchPreviewDelivery>
     > | null = null
@@ -461,6 +477,21 @@ export async function POST(request: Request) {
         : semanticDelivery
     const delivery = {
       ...admittedDelivery,
+      ...(publicEligible &&
+      publicVisit?.disposition === "ab" &&
+      publicVisit.experimentId &&
+      admittedDelivery.requestId &&
+      admittedDelivery.items.length > 0
+        ? {
+            measurementTicket: issueWatchExperimentMeasurementTicket(
+              env.WATCH_RECOMMENDATION_TESTER_SECRET,
+              {
+                experimentId: publicVisit.experimentId,
+                requestId: admittedDelivery.requestId,
+              },
+            ),
+          }
+        : {}),
       ...(previewTester
         ? {
             previewAttribution: {
@@ -639,6 +670,12 @@ export async function POST(request: Request) {
         observationHour,
       )
     }
+    if (scopedAttemptObserved && scopedExperimentId)
+      await recordWatchExperimentObservation(
+        scopedExperimentId,
+        publicEligible ? "delivery_eligible" : "delivery_not_eligible",
+        observationHour,
+      )
     observeRecommendationDelivery({
       endpoint: "seeded",
       trafficCategory,
@@ -671,6 +708,12 @@ export async function POST(request: Request) {
     return response
   } catch (error) {
     const response = recommendationError(error)
+    if (scopedAttemptObserved && scopedExperimentId)
+      await recordWatchExperimentObservation(
+        scopedExperimentId,
+        "delivery_response_failed",
+        observationHour,
+      )
     const outcomeObserved = attemptObserved
       ? await recordWatchPublicObservation("delivery_rejected", observationHour)
       : false

@@ -107,16 +107,17 @@ the retrieval audit, and delivered deterministic catalog-wide retrieval in
 the next full build. B's conditional
 live prepare/start readiness and fresh append-only launch-capacity evidence are
 integrated; B delivered experiment-scoped Web attribution telemetry and its Admin
-report reconciliation as `cc4e97fd4`, awaiting root integration. B now owns the
+report reconciliation as `cc4e97fd4`, now integrated and locally verified. B owns the
 final calibration receipt and evaluator under reserved migration `0140`.
 The trusted independent calibration source/key and owner loss threshold remain
 external inputs; unknown browser/network loss stays explicit.
 The orchestrator owns local preview/schema selection and actual build resumption.
-The CI repair is committed locally as `ba0376723`. Root is integrating the
-reviewed retrieval commits and main `89f0f99a6`, which contains the separately
+The CI repair is committed locally as `ba0376723`. Retrieval integration
+`16cce70f4` includes the reviewed worker commits and main `89f0f99a6`, which contains the separately
 merged Expo maintenance PR. GitHub rejected publication of the CI repair because
-the current OAuth login lacks workflow scope; owner device authorization is
-pending. The remote feature PR remains at `a9cbf8362` and is still a draft.
+the current OAuth login lacks workflow scope. The first device code expired;
+fresh owner authorization is still required. The remote feature PR remains
+at `a9cbf8362` and is still a draft.
 The completion notes below record earlier slices.
 
 Both workers have completed their owned implementation and normal-hook commits.

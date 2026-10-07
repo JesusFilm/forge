@@ -22,6 +22,7 @@ import {
   loadPrivatePrecomputedCtrReport,
 } from "./ctr-report"
 import {
+  loadWebExperimentMeasurement,
   loadWebWatchMeasurement,
   WEB_WATCH_COUNTERS,
   type WebWatchCounters,
@@ -30,6 +31,7 @@ import {
 vi.mock("./web-measurement", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./web-measurement")>()),
   loadWebWatchMeasurement: vi.fn(),
+  loadWebExperimentMeasurement: vi.fn(),
 }))
 
 const operator = { id: "ctr-fixture-operator", role: "ADMIN" as const }
@@ -775,7 +777,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     })
 
-    it("closes a live cohort inconclusive even when global Web counters exceed its durable visits and clicks", async () => {
+    it("keeps a live result inconclusive when scoped Web requests reconcile but browser response loss remains unknown", async () => {
       const prior =
         await prisma.recommendationPrecomputedExperiment.findUniqueOrThrow({
           where: { id: experimentId },
@@ -852,8 +854,69 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const counters = Object.fromEntries(
         WEB_WATCH_COUNTERS.map((counter) => [counter, 0]),
       ) as WebWatchCounters
+      counters.delivery_attempt = 1_002
       counters.delivery_qualified = 1_000
+      counters.delivery_unavailable = 1
+      counters.delivery_rejected = 1
+      counters.click_attempt = 1_004
       counters.click_ack = 1_000
+      counters.click_unavailable = 4
+      const provisionalAt = new Date(end.getTime() + 12 * 3_600_000)
+      const provisionalEnd = provisionalAt.toISOString()
+      vi.mocked(loadWebWatchMeasurement).mockResolvedValueOnce({
+        status: "complete",
+        contractVersion: "watch-public-measurement-v1",
+        startHour: start.toISOString(),
+        endHourExclusive: provisionalEnd,
+        observedAt: provisionalAt.toISOString(),
+        requestedHours: (provisionalAt.getTime() - start.getTime()) / 3_600_000,
+        coveredHours: (provisionalAt.getTime() - start.getTime()) / 3_600_000,
+        missingHours: [],
+        imbalancedHours: [],
+        counters,
+        counterUnit: "web_request_attempts_not_distinct_visits",
+      })
+      vi.mocked(loadWebExperimentMeasurement).mockResolvedValueOnce({
+        status: "incomplete",
+        contractVersion: "watch-experiment-measurement-v1",
+        experimentId: liveId,
+        startHour: start.toISOString(),
+        endHourExclusive: provisionalEnd,
+        observedAt: provisionalAt.toISOString(),
+        requestedHours: (provisionalAt.getTime() - start.getTime()) / 3_600_000,
+        coveredHours:
+          (provisionalAt.getTime() - start.getTime()) / 3_600_000 - 1,
+        missingHours: ["2026100601"],
+        imbalancedHours: [],
+        counters: {
+          delivery_attempt: 1,
+          delivery_eligible: 1,
+          delivery_not_eligible: 0,
+          delivery_response_failed: 0,
+          click_attempt: 0,
+          click_ack: 0,
+          click_unavailable: 0,
+        },
+        counterUnit: "web_request_attempts_not_distinct_visits",
+      })
+      const provisional = await evaluatePublicPrecomputedCtr(prisma, {
+        experimentId: liveId,
+        operator,
+        now: provisionalAt,
+      })
+      expect(provisional).toMatchObject({
+        status: "available",
+        report: {
+          isFinal: false,
+          outcome: "inconclusive",
+          measurementHealth: {
+            experimentRequestHealth: { reconciliation: "incomplete" },
+          },
+          reasons: expect.arrayContaining([
+            "experiment_scoped_tracking_loss_unverified",
+          ]),
+        },
+      })
       vi.mocked(loadWebWatchMeasurement).mockResolvedValueOnce({
         status: "complete",
         contractVersion: "watch-public-measurement-v1",
@@ -867,6 +930,30 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         counters,
         counterUnit: "web_request_attempts_not_distinct_visits",
       })
+      vi.mocked(loadWebExperimentMeasurement).mockResolvedValueOnce({
+        status: "complete",
+        contractVersion: "watch-experiment-measurement-v1",
+        experimentId: liveId,
+        startHour: start.toISOString(),
+        endHourExclusive: finalAt.toISOString(),
+        observedAt: now.toISOString(),
+        requestedHours: (finalAt.getTime() - start.getTime()) / 3_600_000,
+        coveredHours: (finalAt.getTime() - start.getTime()) / 3_600_000,
+        missingHours: [],
+        imbalancedHours: [],
+        counters: {
+          delivery_attempt: 62,
+          delivery_eligible: 60,
+          delivery_not_eligible: 1,
+          delivery_response_failed: 1,
+          click_attempt: 25,
+          click_ack: 21,
+          click_unavailable: 4,
+        },
+        counterUnit: "web_request_attempts_not_distinct_visits",
+      })
+      // Web can acknowledge every Admin commit while its response to the
+      // browser is lost. Server counters cannot certify that final hop.
       const result = await evaluatePublicPrecomputedCtr(prisma, {
         experimentId: liveId,
         operator,
@@ -883,14 +970,27 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             trackingLoss: "unobservable",
             endToEndClientEventCompleteness: "unverified",
             webRequestHealth: { status: "complete" },
+            experimentRequestHealth: {
+              status: "complete",
+              reconciliation: "no_observed_shortfall",
+              attributedDeliveryAttempts: 62,
+              acceptedVisitAttempts: 60,
+              clickAttempts: 25,
+              clickAcknowledgements: 21,
+              clickUnavailable: 4,
+              clientNetworkLoss: "unobservable",
+            },
           },
           reasons: expect.arrayContaining([
-            "experiment_scoped_tracking_loss_unverified",
             "tracking_loss_unobservable",
+            "end_to_end_client_loss_unverified",
           ]),
         },
       })
       if (result.status !== "available") throw new Error("Missing live report")
+      expect(result.report.reasons).not.toContain(
+        "experiment_scoped_tracking_loss_unverified",
+      )
       expect(result.report.uncertainty.lowerBound).toBeGreaterThan(0)
     })
   },
