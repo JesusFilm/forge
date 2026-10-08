@@ -91,7 +91,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Card/poster art comes from `pickCardImage` in `src/lib/cardImage.ts` (SYNC with `apps/tv`) — never hand-roll a field chain. A record's bare `images[].url` is the variant-less Cloudflare delivery base and 400s, so it ranks LAST; the scan is field-major so a `videoStill`-first entry falls through to a sibling's cinematic art. Any query selecting `images` must select `videoStill` too.
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
-- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`, asking `passage(languageSlug:)` with the screen's captured text slug plus an `englishPassage`; with no passage in the UI language the card shows the English one with an English language mark), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
+- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** One exception (feat-667): where admin's passage would be English, or admin gives the card no passage, and the viewer's Bible reader translation is not English, the card shows that translation's verse. It reads that verse only through the reader's own data layer, with the reader's catalog credit; see "Bible reader (feat-553)". This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`, asking `passage(languageSlug:)` with the screen's captured text slug plus an `englishPassage`; with no passage in the UI language the card shows the English one with an English language mark), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
 
 ## Admin endpoint resolution (feat-339)
 
@@ -2092,11 +2092,45 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
 
 - **The reader's text is not admin's Bible Passage.** The reader shows text
   from the Free Use Bible API at `bible.helloao.org`, and BSB ships inside the
-  app. The quote card still shows admin's resolved passage (see
-  "Conventions"). A "Read full passage" tap pushes `readerHref(ref, "quote")`
+  app. The quote card still shows admin's resolved passage, except in the
+  English gap of the next bullet (see "Conventions"). A "Read full passage"
+  tap pushes `readerHref(ref, "quote")`
   at the first cited verse, in BSB numbering. The tap no longer opens
   `bible.com`, and it does not pause the video. The accessibility label stays
   "Read full passage", so the Datadog RUM tap series continues (KD17).
+- **A quote card can show the reader's translation (feat-667).** The design
+  record is
+  `docs/plans/2026-10-08-1419-feat-mobile-bible-quotes-reader-translation-plan.md`;
+  it defines the R, AE, and KTD numbers that the source cites.
+  - A card uses the reader's translation only when admin's passage is English
+    or absent, and that translation is not English (R1). Admin answers every
+    language it does not map with its English version (3034), and the card
+    already marks such a passage `en`. Every other card shows admin's passage.
+  - `src/lib/bible/quotes/cardQuote.ts` finds each card's translation with the
+    reader's own `resolveShownTranslation` and inputs, with `offline: false`,
+    after the position store's hydrate and the downloads check (KTD2). So
+    "Read full passage" opens the translation that the card shows, with no
+    route parameter. `app/watch/__tests__/bibleQuotesReader.guard.test.js`
+    pins that both call sites use that resolver (KTD12). A hydrate that misses
+    storage (`hydrate()` gives `missed`) keeps admin's card (KTD8).
+  - The verses convert through the reader's versification. Each end must
+    round-trip exactly and land on a verse, not a gap. A quote over more than
+    2 translation chapters keeps admin's card (KTD6).
+  - `useBibleVerses` starts admin's read and the device-only reads
+    (`readOnDevice`) together. A network chapter read starts only after admin
+    settles, only for such a card, and only inside the 8 s budget. The
+    cooldown path reads only the device. Each card stays loading until it
+    settles, so it never shows English and then the local text (R12).
+  - A return to the watch screen, a new pick in the reader, or a new dub
+    resolves the cards again. Only a card whose reader translation changed
+    reloads, with its own budget (KTD11). The route passes the dub preference
+    and its focus into the hook (KTD3).
+  - A local card sets `verseDirection` and `verseLang`. The verse, the
+    reference, and the translation name take the catalog's direction; the
+    credit stays English and left to right (KTD7).
+  - Card reads share the reader's repository, so they fill its kept-chapter
+    cache. `bible_quotes.reader_translation` logs one event per settle, with
+    the count of local cards, admin's cards, and each fallback reason (KTD10).
 - **One build script makes every bundled Bible file (KTD1).**
   `scripts/build-bible-data.mjs` writes 66 BSB book files as `.bible` Metro
   assets under `assets/bible/bsb/`, the catalog snapshot
@@ -2384,9 +2418,11 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
     `reader_reason`, `reader_download_bytes`) comes from `runDownloadAction`
     when the download ends. The bytes are the catalog size.
   - `bible_reader.chapter_fetch_failed` (`reader_translation_id`,
-    `reader_book`, `reader_chapter`, `reader_reason`, `reader_http_status`)
-    comes from the fetch binding in `downloadRuntime.ts`, once per network
-    fetch. The repository shares one fetch between the two hosts.
+    `reader_book`, `reader_chapter`, `reader_reason`, `reader_http_status`,
+    `reader_fetch_source`) comes from the fetch binding in
+    `downloadRuntime.ts`, once per network fetch. The repository shares one
+    fetch between the two hosts. `reader_fetch_source` is `quote` for a quote
+    card's read (feat-667) and `reader` for the reader's own.
   - `bible_reader.versification_mismatch` (`reader_translation_id`,
     `reader_book`, `reader_chapter`, `reader_system`,
     `reader_mapped_last_verse`, `reader_actual_last_verse`) fires once per
