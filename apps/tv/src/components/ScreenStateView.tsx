@@ -2,11 +2,13 @@
 // inline copies). Screens keep their shell (background, top bar, header); this
 // renders the centered content and owns the text/retry treatment.
 
-import { ActivityIndicator, StyleSheet, Text, View } from "react-native"
+import { StyleSheet, Text, View } from "react-native"
 
 import { scale } from "../lib/scale"
 import { RetryButton } from "./RetryButton"
 import { WATCH_THEME } from "./watch/watchDetailTheme"
+import { LogoAnimation } from "./LogoAnimation"
+import { useWatchPreferences } from "../contexts/WatchPreferencesProvider"
 
 type ScreenStateViewProps = {
   kind: "loading" | "error" | "empty"
@@ -35,15 +37,18 @@ export function ScreenStateView({
   retryAutoFocus = true,
   accent = WATCH_THEME.accent,
 }: ScreenStateViewProps) {
+  const { loadingAnimationId } = useWatchPreferences()
   return (
     <View style={styles.centered}>
       {kind === "loading" ? (
         <>
-          <ActivityIndicator
-            size="large"
-            color={accent}
+          <View
+            accessible
             accessibilityLabel={message ?? "Loading"}
-          />
+            accessibilityState={{ busy: true }}
+          >
+            <LogoAnimation id={loadingAnimationId} size={400} />
+          </View>
           {message != null ? (
             <Text style={styles.message} accessibilityLiveRegion="polite">
               {message}
