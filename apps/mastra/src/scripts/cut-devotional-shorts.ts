@@ -535,6 +535,9 @@ async function main() {
             ...(arg("film-open-extra")
               ? { openExtraSec: Number(arg("film-open-extra")) }
               : {}),
+            ...(arg("film-open-overlap")
+              ? { openOverlapSec: Number(arg("film-open-overlap")) }
+              : {}),
           },
         }
       : {}),

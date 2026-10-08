@@ -1631,7 +1631,6 @@ function PaperStripsOpen({
   t,
   f,
   top = 506,
-  lefts = [147, 263],
 }: {
   lines: string[]
   mark?: string
@@ -1642,9 +1641,6 @@ function PaperStripsOpen({
   f: (n: number) => number
   /** Figma y of the first strip (the second sits 137 below it). */
   top?: number
-  /** Figma x of the two strips. The close line keeps both clear of the
-   *  platform's action rail on the right (owner, 2026-10-08). */
-  lefts?: [number, number]
 }) {
   if (t < fromSec - 0.6 || (toSec != null && t > toSec + 0.05)) return null
   const clampBoth = {
@@ -1654,11 +1650,15 @@ function PaperStripsOpen({
   const out =
     toSec == null ? 1 : interpolate(t, [toSec - 0.3, toSec], [1, 0], clampBoth)
   const local = t - fromSec
-  // Figma: strip 1 at x 147 y 506 (+1.5 deg), strip 2 at x 263 y 643 (-2 deg).
-  const spots = [
-    { left: lefts[0], top, rot: 1.5 },
-    { left: lefts[1], top: top + 137, rot: -2 },
-  ]
+  // Strips stacked down from `top`, 137 apart, alternating tilt, each
+  // centred on the frame (owner, 2026-10-08: centred to each other; the
+  // Figma's offset pair read as unaligned). A centred strip stays clear of
+  // the action rail while it is under 634 units wide.
+  const tiltsDeg = [1.5, -2, 1.2, -1.5]
+  const spots = lines.map((_, i) => ({
+    top: top + 137 * i,
+    rot: tiltsDeg[i % tiltsDeg.length],
+  }))
   let at = 0
   const strips = lines.map((line, i) => {
     const start = at
@@ -1689,10 +1689,10 @@ function PaperStripsOpen({
             key={i}
             style={{
               position: "absolute",
-              left: f(spot.left),
+              left: "50%",
               top: f(spot.top),
-              transform: `translateY(${floatY.toFixed(2)}px) rotate(${(spot.rot + floatR).toFixed(3)}deg) scale(${(0.94 + 0.06 * pop).toFixed(4)})`,
-              transformOrigin: "left center",
+              transform: `translateX(-50%) translateY(${floatY.toFixed(2)}px) rotate(${(spot.rot + floatR).toFixed(3)}deg) scale(${(0.94 + 0.06 * pop).toFixed(4)})`,
+              transformOrigin: "center center",
               opacity: pop,
               background: "#ece6d8",
               padding: `${f(21)}px ${f(35)}px`,
@@ -1789,7 +1789,7 @@ function ShortQuestionCards({
             justifyContent: "center",
             alignItems: "center",
             // Room under the turn for the paper strips.
-            ...(sub && subStrips ? { paddingBottom: f(300) } : {}),
+            ...(sub && subStrips ? { paddingBottom: f(420) } : {}),
           }}
         >
           <div style={{ width: f(640) }}>
@@ -1908,8 +1908,7 @@ function ShortQuestionCards({
           toSec={null}
           t={t}
           f={f}
-          top={cards.close.text ? 880 : 700}
-          lefts={[64, 104]}
+          top={cards.close.text ? 800 : 700}
         />
       ) : null}
     </>

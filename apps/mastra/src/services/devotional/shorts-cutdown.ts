@@ -136,6 +136,8 @@ export type ShortPlan = {
     closeSubStrips?: boolean
     /** Extra reading time for the opening card (s). */
     openExtraSec?: number
+    /** Keep the opening card this long after the scene starts speaking. */
+    openOverlapSec?: number
   }
   durationSec: number
   /** One line on why this stretch, for shorts.md. */
@@ -170,6 +172,8 @@ export type CutdownOverrides = {
     closeSubStrips?: boolean
     /** Extra reading time for the opening card (s). */
     openExtraSec?: number
+    /** Keep the opening card this long after the scene starts speaking. */
+    openOverlapSec?: number
   }
   /** film-verse: the scene window on the film card (s), chosen by hand when
    *  the short should stop before the quoted verse (owner, 2026-10-08). */
@@ -1132,6 +1136,8 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
           closeSubStrips?: boolean
           /** Extra reading time for the opening card (s). */
           openExtraSec?: number
+          /** Keep the opening card this long after the scene starts speaking. */
+          openOverlapSec?: number
         }
       })
     | undefined
@@ -1159,7 +1165,10 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
               // After the composition's 0.6s fade from black: a stamp that
               // lands during the fade reads grey and soft.
               fromSec: 0.62,
-              toSec: Math.max(1.2, first - 0.55),
+              toSec:
+                filmCard.__cards.openOverlapSec != null
+                  ? first + filmCard.__cards.openOverlapSec
+                  : Math.max(1.2, first - 0.55),
             },
           }
         : {}),
