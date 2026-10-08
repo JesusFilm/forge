@@ -600,6 +600,16 @@ async function main() {
           arg("language-vox")!,
         )
       }
+      // `--history-vox=<json>`: the history short as a Vox explainer, design B
+      // newspaper clipping (owner, 2026-10-08), e.g. {"verse":"…who sent him
+      // into his fields to feed pigs.","reference":"Luke 15:15","ringOn":
+      // "pigs","headline":"…","body":"…","markOn":"unclean","strike":
+      // "farm job","swapTo":"rock bottom","source":"…","finale":"Fallen"}.
+      if (short.kind === "history" && m.shortFact && arg("history-vox")) {
+        ;(m.shortFact as { voxHistory?: unknown }).voxHistory = JSON.parse(
+          arg("history-vox")!,
+        )
+      }
       if (m.musicFile) {
         // Each short opens on its own part of the bed, looping from there.
         // `--music-<kind>=<file>` gives a short its own bed when the story

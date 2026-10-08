@@ -494,6 +494,9 @@ export const devotionalInputPropsSchema = z.object({
        *  (VoxExplainer.tsx owns its scenes, narration clips and timing; the
        *  manifest's single card only sets the length). Validated there. */
       explainer: z.any().optional(),
+      /** History: the Vox explainer, design B newspaper clipping (owner,
+       *  2026-10-08). Shape in VoxHistory.tsx (VoxHistorySpec). */
+      voxHistory: z.any().optional(),
       vox: z
         .object({
           kicker: z.string().optional(),

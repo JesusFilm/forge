@@ -56,7 +56,7 @@ export type VoxSpec = {
   strikeAfter?: string
 }
 
-type TimedWord = {
+export type TimedWord = {
   word: string
   startSec: number
   endSec: number
@@ -67,7 +67,7 @@ type TimedWord = {
 const bare = (w: string) => w.toLowerCase().replace(/[^\p{L}']/gu, "")
 
 /** When the voice first says `word` (from card `from` on), else `fallback`. */
-function said(
+export function said(
   words: ReadonlyArray<TimedWord>,
   word: string | undefined,
   fallback: number,
@@ -112,7 +112,7 @@ function CharcoalDefs({ id, seed }: { id: string; seed: number }) {
 }
 
 /** A charcoal stroke drawn through a word as it is said: two rough passes. */
-function Strike({
+export function Strike({
   t,
   at,
   children,
@@ -161,7 +161,8 @@ function Strike({
             }}
           >
             <CharcoalDefs id={id} seed={4} />
-            <g filter={`url(#${id})`}>
+            {/* Charcoal is gritty; an accent colour is a flat marker line. */}
+            <g filter={color === CHAR ? `url(#${id})` : undefined}>
               {["M2,12 C30,8 60,14 98,7", "M4,14 C34,10 62,15 96,10"].map(
                 (d, i) => (
                   <path
@@ -185,19 +186,23 @@ function Strike({
 }
 
 /** A loose charcoal ring around a phrase, drawn in 0.6s. */
-function Ring({
+export function Ring({
   t,
   at,
   children,
   id,
   color = CHAR,
+  strokeWidth,
 }: {
   t: number
   at: number
   children: React.ReactNode
   id: string
   color?: string
+  /** Line weight; default 9 for charcoal, 10 for a flat colour. */
+  strokeWidth?: number
 }) {
+  const flat = color !== CHAR
   const p = interpolate(t, [at, at + 0.6], [0, 1], {
     ...clamp,
     easing: Easing.bezier(0.5, 0, 0.3, 1),
@@ -222,12 +227,12 @@ function Ring({
           <path
             // Gold is the marker's flat gold: no charcoal grit, no shadow
             // (owner, 2026-10-07: one yellow everywhere).
-            filter={color === GOLD ? undefined : `url(#${id})`}
+            filter={flat ? undefined : `url(#${id})`}
             d="M150,10 C190,14 198,48 172,64 C140,82 50,80 18,64 C-6,50 4,18 40,10 C80,2 130,4 168,14"
             fill="none"
             stroke={color}
-            strokeOpacity={color === GOLD ? 1 : 0.95}
-            strokeWidth={color === GOLD ? 10 : 9}
+            strokeOpacity={flat ? 1 : 0.95}
+            strokeWidth={strokeWidth ?? (flat ? 10 : 9)}
             strokeLinecap="round"
             vectorEffect="non-scaling-stroke"
             pathLength={1}
@@ -272,7 +277,7 @@ function Marker({
 }
 
 /** A newspaper element arriving softly: down a few units and in. */
-function Arrive({
+export function Arrive({
   f,
   t,
   at,
@@ -281,6 +286,7 @@ function Arrive({
   pad,
   flip = false,
   from,
+  background,
   children,
 }: {
   f: (n: number) => number
@@ -288,8 +294,10 @@ function Arrive({
   at: number
   /** Placement: top, left, width, transform. */
   style: React.CSSProperties
-  /** The owner's real paper (JPEG + alpha mask), stretched to the content. */
-  paper: { jpg: string; mask: string }
+  /** The owner's real paper (JPEG + alpha mask), stretched to the content;
+   *  without it the sheet is a plain `background` (a newsprint strip). */
+  paper?: { jpg: string; mask: string }
+  background?: string
   /** Turn the sheet over (rotated 180deg) so one paper reads as two. */
   flip?: boolean
   /** Slide in from this side of the frame, Vox style (owner, 2026-10-07). */
@@ -327,15 +335,24 @@ function Arrive({
           style={{
             position: "absolute",
             inset: 0,
-            backgroundImage: `url(${paper.jpg})`,
-            backgroundSize: "100% 100%",
-            WebkitMaskImage: `url(${paper.mask})`,
-            maskImage: `url(${paper.mask})`,
-            WebkitMaskSize: "100% 100%",
-            maskSize: "100% 100%",
-            transform: flip ? "rotate(180deg)" : undefined,
+            ...(paper ? {} : { background }),
           }}
         />
+        {paper ? (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage: `url(${paper.jpg})`,
+              backgroundSize: "100% 100%",
+              WebkitMaskImage: `url(${paper.mask})`,
+              maskImage: `url(${paper.mask})`,
+              WebkitMaskSize: "100% 100%",
+              maskSize: "100% 100%",
+              transform: flip ? "rotate(180deg)" : undefined,
+            }}
+          />
+        ) : null}
         <div style={{ position: "relative" }}>{children}</div>
       </div>
     </div>
@@ -399,16 +416,18 @@ function GoldBar({
 
 /** The last word as a rubber stamp in the middle of the frame (owner,
  *  2026-10-07): gold ink, a double border, worn texture, a firm press. */
-function Stamp({
+export function Stamp({
   f,
   t,
   at,
   text,
+  color = GOLD,
 }: {
   f: (n: number) => number
   t: number
   at: number
   text: string
+  color?: string
 }) {
   if (t < at - 0.02) return null
   const p = interpolate(t, [at, at + 0.22], [0, 1], {
@@ -457,11 +476,11 @@ function Stamp({
           transform: `rotate(-8deg) scale(${scale.toFixed(4)})`,
           opacity: Math.min(1, p * 2),
           filter: "url(#vox-stamp-wear)",
-          border: `${f(7)}px solid ${GOLD}`,
-          outline: `${f(3)}px solid ${GOLD}`,
+          border: `${f(7)}px solid ${color}`,
+          outline: `${f(3)}px solid ${color}`,
           outlineOffset: f(6),
           padding: `${f(14)}px ${f(30)}px`,
-          color: GOLD,
+          color,
           fontFamily: SANS,
           fontWeight: 900,
           fontSize: f(104),

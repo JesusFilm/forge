@@ -20,6 +20,12 @@ import { AnimatedBook, AnimatedScroll } from "./SourceEmblems"
 import { StampLine } from "./StampLine"
 import { type ExplainerSpec, VoxExplainer } from "./VoxExplainer"
 import {
+  type VoxHistorySpec,
+  VoxHistoryLayout,
+  VoxHistoryTag,
+  VOX_ORANGE,
+} from "./VoxHistory"
+import {
   VoxCaption,
   VoxHalftone,
   VoxLanguageLayout,
@@ -177,6 +183,12 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
   }
   const language = fact?.layout === "language"
   const reflection = fact?.layout === "reflection"
+  // The history short as a Vox explainer (owner, 2026-10-08: design B).
+  const voxHistory =
+    fact?.layout === "history"
+      ? (fact.voxHistory as VoxHistorySpec | undefined)
+      : undefined
+  const vox = Boolean(fact?.vox || voxHistory)
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
@@ -198,7 +210,11 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
               </AbsoluteFill>
             )
             // The Vox explainer prints the film as a newspaper halftone.
-            return fact?.vox ? <VoxHalftone f={f}>{film}</VoxHalftone> : film
+            return fact?.vox || voxHistory ? (
+              <VoxHalftone f={f}>{film}</VoxHalftone>
+            ) : (
+              film
+            )
           })()
         : null}
       {/* An even dim, then the Figma's soft dark pool behind the text. */}
@@ -222,21 +238,21 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
           background: `radial-gradient(${f(490.7)}px ${f(413.8)}px at 50% 50%, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0) 100%)`,
         }}
       />
-      {language ? (
+      {language || voxHistory ? (
         // A quiet film grain on the picture only, under the text (owner,
         // 2026-10-06: the language short wanted grain, but it already has a
         // lot on screen, so it must not draw the eye). Fine, low, and moving:
         // the tile jumps every other frame like real grain.
         <AbsoluteFill
           style={{
-            backgroundImage: fact?.vox ? VOX_GRAIN_URL : SHORT_GRAIN_URL,
-            backgroundSize: fact?.vox
+            backgroundImage: vox ? VOX_GRAIN_URL : SHORT_GRAIN_URL,
+            backgroundSize: vox
               ? `${f(140)}px ${f(140)}px`
               : `${f(220)}px ${f(220)}px`,
             backgroundPosition: `${(((Math.floor(frame / 2) * 73) % 220) * width) / 900}px ${(((Math.floor(frame / 2) * 131) % 220) * width) / 900}px`,
             mixBlendMode: "overlay",
             // The black-and-white Vox film carries a heavier grain.
-            opacity: fact?.vox ? 0.55 : LANGUAGE_GRAIN_OPACITY,
+            opacity: vox ? 0.55 : LANGUAGE_GRAIN_OPACITY,
             pointerEvents: "none",
           }}
         />
@@ -290,6 +306,17 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
               : undefined
           }
         />
+      ) : voxHistory ? (
+        <>
+          <VoxHistoryTag
+            f={f}
+            t={t}
+            accent={voxHistory.accent ?? VOX_ORANGE}
+            text="From the Full Devotional"
+          />
+          <VoxHistoryLayout f={f} t={t} words={words} spec={voxHistory} />
+          <VoxCaption f={f} t={t} tokens={captionTokens(words)} />
+        </>
       ) : language && fact?.vox ? (
         <>
           <VoxTag

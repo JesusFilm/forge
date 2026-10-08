@@ -505,3 +505,25 @@ History short in this look: NOT built yet. Port the same pieces (papers,
 gold marks, charcoal strikes, stamp) with a history layout, e.g. the verse
 on the top sheet and the context as a newspaper note on the bottom sheet,
 mock it in Figma first, then render with stills before a full cut.
+
+## Revisions 2026-10-08 (owner): rotate the insight designs, try orange
+
+- The insight shorts (language, history) ROTATE three paper designs from
+  story to story so they never all look the same: the original rough paper
+  (Bartimaeus `language-vox.mp4`), **B newspaper clipping** and **C notebook
+  explainer** (Figma section "Vox · History paper variants", 455-2; the
+  owner's orange copies under it, 457-2825 for B, 457-2869 for C).
+- Accent colour: the owner is trying **orange #ff7f53** (close to the brand
+  colour) so the shorts do not lean on the Vox yellow. The label tab is a
+  diagonal gradient #ff7544 to #c64837 with newsprint text (#ece6d8); ring,
+  marker band (lower half of the word, 80%), strike, verse tape (30%) and
+  stamp are orange; the handwriting stays ink.
+- B is built: `VoxHistory.tsx`, `--history-vox=<json>` on
+  `cut-devotional-shorts.ts --only=history` (spec fields in the file:
+  verse, reference, ringOn, headline, body, markOn, strikeBefore, strike,
+  strikeOn, swapTo, source, finale, finaleOn, accent). First render: Prodigal
+  `history-vox.mp4` (13.5 s, under the 15 s floor; the old card close is not
+  used). Headline and body set in Source Serif 4 (Figma: Playfair Display
+  Black + Libre Caslon, not embedded; swap only with the owner's OK to
+  download them).
+- C (notebook) is not built yet.
