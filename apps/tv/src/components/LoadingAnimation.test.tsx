@@ -5,6 +5,10 @@ import { LogoAnimation } from "./LogoAnimation"
 import { LoadingAnimation } from "./LoadingAnimation"
 import { LOGO_ANIMATIONS } from "../lib/logoAnimations"
 
+jest.mock("./LogoAnimation", () => ({
+  LogoAnimation: jest.fn(() => null),
+}))
+
 jest.mock("../hooks/useReduceMotion", () => ({
   useReduceMotion: jest.fn(() => false),
 }))
