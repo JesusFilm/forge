@@ -2622,7 +2622,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     const header = document.querySelector('[data-testid="floating-header"]')
     const languageButton = document.querySelector(
       '[data-testid="floating-header-language-button"]',
-    )
+    ) as HTMLButtonElement | null
     expect(header?.className).toContain("opacity-0")
     expect(header?.className).toContain("-translate-y-[calc(100%+2rem)]")
     expect(languageButton).not.toBeNull()
@@ -2649,7 +2649,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     const header = document.querySelector('[data-testid="floating-header"]')
     const languageButton = document.querySelector(
       '[data-testid="floating-header-language-button"]',
-    )
+    ) as HTMLButtonElement | null
     expect(header?.className).toContain("opacity-30")
     expect(header?.className).not.toContain("pointer-events-none")
     expect(languageButton).not.toBeNull()
@@ -4785,7 +4785,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     )
     const languageButton = document.querySelector(
       '[data-testid="floating-header-language-button"]',
-    )
+    ) as HTMLButtonElement | null
     const logo = document.querySelector('[data-testid="floating-header-logo"]')
     const headerTrailingControls = document.querySelector(
       '[data-testid="floating-header-trailing-controls"]',
@@ -4812,6 +4812,9 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(pageWrapper?.className).toContain("blur-[12px]")
     expect(pageWrapper?.className).not.toContain("brightness-50")
     expect(overlay?.contains(close)).toBe(false)
+    expect(close?.getAttribute("aria-label")).toBe("Close search")
+    expect(languageButton?.className).toContain("invisible")
+    expect(languageButton?.tabIndex).toBe(-1)
     expect(overlay?.className).toContain("h-dvh")
     expect(overlay?.className).toContain("min-h-dvh")
     expect(overlay?.style.zIndex).toBe("45")

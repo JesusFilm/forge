@@ -965,11 +965,8 @@ export function FloatingSearchProvider({
                 onClick={headerLanguageClick}
                 inert={modalChromeHidden || undefined}
                 aria-hidden={modalChromeHidden || undefined}
-                aria-busy={headerLanguageBusy}
-                disabled={headerLanguageBusy}
-                aria-label={globalLanguageLabel}
-                title={globalLanguageLabel}
-                className={`pointer-events-auto inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
+                tabIndex={modalChromeHidden ? -1 : undefined}
+                className={`${modalChromeHidden ? "invisible" : ""} pointer-events-auto inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
                   modalChromeHidden
                     ? FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS
                     : ""
@@ -978,6 +975,10 @@ export function FloatingSearchProvider({
                     ? `${modalChromeHidden ? "" : "-mr-[18.25px]"} w-auto min-w-[4.25rem] gap-1.5 px-2 md:w-auto md:min-w-[4.75rem]`
                     : ""
                 }`}
+                aria-busy={headerLanguageBusy}
+                disabled={headerLanguageBusy}
+                aria-label={globalLanguageLabel}
+                title={globalLanguageLabel}
               >
                 <Globe
                   aria-hidden

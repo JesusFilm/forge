@@ -1137,19 +1137,17 @@ export function SearchOverlay() {
           )}
         </div>
         <div
-          aria-hidden="true"
           data-testid="search-overlay-trailing-controls-spacer"
           className={FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS}
         >
-          {headerLanguageSwitcherVisible ? (
-            <div
-              className={`${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS} ${
-                headerLanguageCode
-                  ? "w-auto min-w-[4.25rem] px-2 md:w-auto md:min-w-[4.75rem]"
-                  : ""
-              }`}
-            />
-          ) : null}
+          <div
+            className={`${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS} ${
+              headerLanguageSwitcherVisible && headerLanguageCode
+                ? "w-auto min-w-[4.25rem] px-2 md:w-auto md:min-w-[4.75rem]"
+                : ""
+            }`}
+            aria-hidden="true"
+          />
           <button
             type="button"
             aria-label={closeSearchLabel}
