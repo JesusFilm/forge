@@ -2513,6 +2513,10 @@ function ClipIntro({
                     // 360 unit, the video 390).
                     px={(n) => px((n * 390) / 360)}
                     side={side}
+                    // The hero shrinks to stay inside the frame: «ВСЁ ДЕЛАЛА
+                    // ПРАВИЛЬНО» ran off the right edge on the Russian Martha
+                    // (2026-10-08); the 16:9 stack had no width limit at all.
+                    maxWidth={frameWidth - 2 * px((46 * 390) / 360)}
                   />
                 </AbsoluteFill>
               )

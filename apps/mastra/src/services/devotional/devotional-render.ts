@@ -76,7 +76,7 @@ import {
   type DevotionalLocale,
 } from "./devotional-locale"
 import { localizeDevotional } from "./localize-devotional"
-import { applyStressOverrides } from "./speakify-tts"
+import { applyStressOverrides, ruUnmarkedHomographs } from "./speakify-tts"
 import {
   arclightMediaInfo,
   findActBreak,
@@ -4064,6 +4064,29 @@ export async function prepareAndRenderDevotional(
         translateLlm: input.translateLlm,
       })
       await saveCachedDevo(cacheDir, devo)
+    }
+  }
+
+  // Stress homographs the voice may read the wrong way (дома/дома́): report
+  // them before any audio is made, so the override is added first.
+  if (lang === "ru") {
+    const spokenParts = [
+      ...(devo.reflection.paragraphs ?? []).map((p) => p.text),
+      devo.conclusion,
+      devo.question,
+      devo.prayer,
+      input.hookLine ?? "",
+    ]
+    for (const part of spokenParts) {
+      const spoken = applyStressOverrides(
+        part ?? "",
+        locale.stressOverrides ?? [],
+      )
+      const words = ruUnmarkedHomographs(spoken)
+      if (words.length)
+        log(
+          `⚠️  stress: ${words.map((w) => `«${w}»`).join(", ")} in “${(part ?? "").slice(0, 70)}…” has two readings; add a stressOverride if the voice must pick one`,
+        )
     }
   }
 

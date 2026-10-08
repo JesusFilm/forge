@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 
-import { applyStressOverrides } from "./speakify-tts"
+import { applyStressOverrides, ruUnmarkedHomographs } from "./speakify-tts"
 
 describe("applyStressOverrides", () => {
   const overrides = [
@@ -29,5 +29,22 @@ describe("applyStressOverrides", () => {
     expect(applyStressOverrides("Он не стоит в стороне.", [])).toBe(
       "Он не стоит в стороне.",
     )
+  })
+})
+
+describe("ruUnmarkedHomographs", () => {
+  it("reports a homograph the overrides left unmarked", () => {
+    expect(ruUnmarkedHomographs("Дома переходят в чужие руки.")).toEqual([
+      "дома",
+    ])
+  })
+  it("is quiet once the override marked it", () => {
+    expect(
+      ruUnmarkedHomographs(
+        applyStressOverrides("Дома переходят в чужие руки.", [
+          ["Дома переходят", "Дома́ переходят"],
+        ]),
+      ),
+    ).toEqual([])
   })
 })
