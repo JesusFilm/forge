@@ -1,5 +1,5 @@
 ---
-id: "feat-630"
+id: "feat-631"
 title: "Gate Watch home hero CTA and category rail prefetch on touch"
 owner: "vlad"
 priority: "P2"
