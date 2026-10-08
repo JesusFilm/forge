@@ -13,6 +13,7 @@ import {
   readStrictRecommendationJson,
 } from "@/lib/recommendation-route-policy"
 import { assertRecommendationMutationAdmission } from "@/lib/recommendation-mutation-admission"
+import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 import {
   recommendationError,
   recommendationJson,
@@ -242,6 +243,24 @@ export async function POST(request: Request) {
     }
     return response
   } catch (error) {
-    return recommendationError(error)
+    const response = recommendationError(error)
+    if (response.status === 503) {
+      const reason =
+        error instanceof RecommendationRuntimeError
+          ? error.code
+          : error instanceof RecommendationRouteError &&
+              error.status === 503 &&
+              error.code === "admission_unavailable"
+            ? "admission_unavailable"
+            : error instanceof TypeError
+              ? "type_error"
+              : error instanceof Error
+                ? "error"
+                : "non_error_throw"
+      console.error(
+        `[watch] event=recommendation.profile.unclassified reason=${reason}`,
+      )
+    }
+    return response
   }
 }
