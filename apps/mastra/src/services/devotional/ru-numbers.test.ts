@@ -39,3 +39,11 @@ describe("ruSpokenReference", () => {
     expect(ruSpokenReference("Псалом")).toBe("Псалом")
   })
 })
+
+describe("ruSpokenReference for a psalm", () => {
+  it("reads a psalm by its number, without a chapter", () => {
+    expect(ruSpokenReference("Псалом 26:4")).toBe(
+      "Псалом двадцать шесть, стих четыре",
+    )
+  })
+})

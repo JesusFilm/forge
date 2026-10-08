@@ -51,7 +51,9 @@ export function ruCardinal(n: number): string {
   if (n < 20) return TEENS[n - 10]
   if (n < 100) {
     const u = n % 10
-    return u ? `${TENS[Math.floor(n / 10)]} ${UNITS[u]}` : TENS[Math.floor(n / 10)]
+    return u
+      ? `${TENS[Math.floor(n / 10)]} ${UNITS[u]}`
+      : TENS[Math.floor(n / 10)]
   }
   const rest = n - 100
   return rest ? `сто ${ruCardinal(rest)}` : "сто"
@@ -111,5 +113,8 @@ export function ruSpokenReference(reference: string): string {
   const verses = m[4]
     ? `стихи ${ruCardinal(Number(m[3]))}–${ruCardinal(Number(m[4]))}`
     : `стих ${ruCardinal(Number(m[3]))}`
+  // A psalm has no chapters: "Псалом двадцать шесть, стих четыре", not
+  // "Псалом, глава двадцать шесть" (heard on Martha and Mary, 2026-10-08).
+  if (/^псал/i.test(book)) return `Псалом ${chapter}, ${verses}`
   return `${book}, глава ${chapter}, ${verses}`
 }

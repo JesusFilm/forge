@@ -128,7 +128,9 @@ function measureCaps(
   document.body.appendChild(probe)
   let w = 0
   for (const word of words) {
-    probe.textContent = word.replace(/[.,;:!?]+$/, "")
+    probe.textContent = word
+      .replace(/^[«“"„‘']+/, "")
+      .replace(/[.,;:!?»”"’']+$/, "")
     w += probe.getBoundingClientRect().width + gap
   }
   probe.remove()
@@ -186,7 +188,9 @@ function Word({
         whiteSpace: "nowrap",
       }}
     >
-      {t.word.replace(/[.,;:!?]+$/, "")}
+      {/* Quote marks stay off the poster words: «МАРФА read as a stray
+          bracket on the Russian Martha opening (2026-10-08). */}
+      {t.word.replace(/^[«“"„‘']+/, "").replace(/[.,;:!?»”"’']+$/, "")}
     </span>
   )
 }
