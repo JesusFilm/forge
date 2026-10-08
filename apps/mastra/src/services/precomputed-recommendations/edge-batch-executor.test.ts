@@ -263,6 +263,14 @@ describe("shared edge batch candidate pages", () => {
       },
       persistence: {
         async status(input) {
+          expect(Object.keys(input).sort()).toEqual(
+            [
+              "action",
+              "generationId",
+              "generationInputDigest",
+              "sourceVideoId",
+            ].sort(),
+          )
           actions.push(`status:${input.sourceVideoId}`)
           return {
             generationId: input.generationId,
@@ -740,6 +748,15 @@ describe("source page finalization", () => {
     let finalized = 0
     const port = {
       async status(input: { afterCallId?: string }) {
+        expect(Object.keys(input).sort()).toEqual(
+          [
+            "action",
+            "generationId",
+            "generationInputDigest",
+            "sourceVideoId",
+            ...(input.afterCallId ? ["afterCallId"] : []),
+          ].sort(),
+        )
         const pageCalls = input.afterCallId ? calls.slice(1) : calls.slice(0, 1)
         return {
           generationId: identity.generationId,

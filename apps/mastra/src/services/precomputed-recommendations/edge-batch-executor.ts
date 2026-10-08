@@ -389,7 +389,8 @@ async function readFullStatus(
   for (let page = 0; page < 9; page++) {
     const response = await persistence.status({
       action: "edge_batch_status",
-      ...scope,
+      generationId: scope.generationId,
+      generationInputDigest: scope.generationInputDigest,
       sourceVideoId,
       ...(afterCallId ? { afterCallId } : {}),
     })
