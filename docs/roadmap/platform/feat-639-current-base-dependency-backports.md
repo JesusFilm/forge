@@ -1,9 +1,9 @@
 ---
-id: "feat-636"
+id: "feat-639"
 title: "Refresh held dependency backports on October default"
 owner: "tataihono"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-08"
 duration: 1
 depends_on: []
@@ -38,3 +38,7 @@ No infrastructure changes, manual deployment, merging, force pushes or check wea
 `pnpm install --frozen-lockfile`, `node scripts/check-patched-deps.mjs`, `pnpm --filter @forge/auth test`, typecheck and lint; regenerate both schema artifacts and assert no drift. Inspect exact-head `ci-gate`. Staging healthcheck failure remains a distinct provider hold.
 
 Native source qualification: frozen install, schema/introspection no-drift, auth unit/types/lint and production build pass. The real PostgreSQL cold-start contract passes. Under concurrent worker load, 5-second Changelog integration timeouts precede cleanup overlap; retain this failure and retry serially. Hosted current-base integration and the staging 503 remain explicit coordinator acceptance conditions.
+
+All four dependency candidates now include verified default `d30d461c47c5953d8a4a9ab93efdce54786a416d` and pass exact-candidate frozen installation, patch guards, auth units/types/lint/build and schema/introspection no-drift checks. Existing PR branches were updated with ordinary fast-forward pushes. Hono and xmldom fresh full CI passes. Babel and NestJS final-head CI remains an explicit qualification condition; pending CI and staging provider acceptance do not count as an integrated fix. Implementation and diagnosis are complete; the coordinator owns normal merge and provider reconciliation.
+
+The initial tracking ID 636 became reserved by human PR #2616 during qualification. This ticket moves to the next unreserved ID 639, after human PRs #2617/#2618 reserve 637/638. No application behavior or dependency graph changes accompany the relocation.
