@@ -11,7 +11,7 @@ preserves exact source/integration commits, checks, browser artifacts, review
 findings, and recovery history. The [CTR operations note](../operations/precomputed-ctr-report.md)
 describes the private reporting contract and limits.
 
-## Current checkpoint — October 8, 18:15 NZDT
+## Current checkpoint — October 8, 18:37 NZDT
 
 The GA-only capture is sealed and independently verified. All 305 video-start
 pages (152,304 rows) and 327 referrer pages (163,352 rows) matched across the
@@ -108,6 +108,27 @@ after adding the missing Zod dependency alias. All 34 connected cases pass witho
 is closed, all 1,031 sources remain pending, and no subscription catalog model
 call or destination GA request has occurred. A fresh manual-resume configuration
 is prepared but has not been executed.
+
+The ensuing explicit resume passed capacity but stopped before import/model work
+with Admin unavailable. Read-only diagnosis reproduced Prisma `P2028`: the
+catalog's default five-second repeatable-read transaction expired. With a bounded
+30-second transaction, the full 1,031-video identity derivation succeeds in
+50.110 seconds over 1,049 catalog transactions and preserves the original corpus
+digest. This also exceeds the caller's prior 30-second request deadline.
+
+The narrow fix extends only `ga_import_prepare_v1` HTTP requests to 120 seconds
+and sets catalog transactions to 30 seconds, retaining the snapshot, cutoff,
+version and pagination fences. Ordinary requests remain limited to 30 seconds;
+no retry is added. The real-lock native regression fails with the old bound and
+passes with the new one. Mastra's 35 focused checks, full 3,513-test suite (45
+existing gated skips), typecheck and lint pass; all 34 connected PostgreSQL 18
+cases pass. The first Admin test fixture used an incompatible extended Prisma
+client; it now uses a real PostgreSQL table lock with the original client, and
+the configured 8 GiB Admin typecheck and all eight native catalog cases pass on
+PostgreSQL 18, including the 6.5-second lock case. The owned idle bridge
+was stopped for the code update, freeing memory. Its clone and sealed artifact
+remain intact. No subscription catalog inference or destination GA request has
+run yet; the next manual resume has not been executed.
 
 Public A/B remains off. Required work still includes the representative subscription
 pilot, complete catalog and current capacity evidence, live baseline/calibration,

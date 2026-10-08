@@ -270,6 +270,33 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     })
 
+    it("completes a fenced catalog page when a source read takes longer than five seconds", async () => {
+      await admin.query("BEGIN")
+      let lockHeld = true
+      try {
+        await admin.query('LOCK TABLE "video" IN ACCESS EXCLUSIVE MODE')
+        const outcome = readPrecomputedCatalog(
+          prisma,
+          { action: "catalog", cutoff, limit: 1 },
+          "Bearer preview-test-key",
+        ).then(
+          (page) => ({ page }),
+          (error: unknown) => ({ error }),
+        )
+        await new Promise((resolve) => setTimeout(resolve, 6_500))
+        await admin.query("ROLLBACK")
+        lockHeld = false
+        const result = await outcome
+        if ("error" in result) throw result.error
+        expect(result.page).toMatchObject({
+          action: "catalog",
+          videos: [{ id: sourceVideoId }],
+        })
+      } finally {
+        if (lockHeld) await admin.query("ROLLBACK")
+      }
+    }, 20_000)
+
     it("uses the published titled fallback when English has no title", async () => {
       const localeId = `empty-en-${spanishVideoId}`
       await prisma.videoLocale.create({

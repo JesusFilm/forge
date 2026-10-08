@@ -13,9 +13,86 @@ import { createAdminSourceDependencies, type Video } from "./source-generation"
 import { buildCandidateRetrieval } from "./candidate-retrieval"
 import { manualGenerationInputDigest } from "./manual-subscription-catalog"
 
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+  vi.useRealTimers()
+})
+
+function delayedAdminResponse(delayMs: number) {
+  vi.useFakeTimers()
+  // Node's native timeout uses an internal timer; use the controllable clock
+  // while retaining abort behavior at the actual fetch boundary.
+  vi.spyOn(AbortSignal, "timeout").mockImplementation((milliseconds) => {
+    const controller = new AbortController()
+    setTimeout(
+      () => controller.abort(new DOMException("Timed out", "TimeoutError")),
+      milliseconds,
+    )
+    return controller.signal
+  })
+  const fetchImpl = vi.fn(
+    (_url: string | URL | Request, options?: RequestInit) =>
+      new Promise<Response>((resolve, reject) => {
+        const signal = options?.signal
+        if (!signal) throw new Error("Request has no deadline")
+        const timer = setTimeout(() => {
+          signal.removeEventListener("abort", abort)
+          resolve(Response.json({ result: { state: "prepared" } }))
+        }, delayMs)
+        function abort() {
+          clearTimeout(timer)
+          reject(signal?.reason)
+        }
+        signal.addEventListener("abort", abort, { once: true })
+      }),
+  )
+  vi.stubGlobal("fetch", fetchImpl)
+  return fetchImpl
+}
 
 describe("Admin producer transport", () => {
+  it("allows a full-catalog import preparation to finish after thirty seconds", async () => {
+    const fetchImpl = delayedAdminResponse(50_000)
+    const result = createAdminSourceDependencies()
+      .ingest({ action: "ga_import_prepare_v1" })
+      .then(
+        (value) => ({ value }),
+        (error: unknown) => ({ error }),
+      )
+    await vi.advanceTimersByTimeAsync(50_000)
+    expect(await result).toEqual({ value: { state: "prepared" } })
+    expect(fetchImpl).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    ["ga_import_prepare_v1", 120_000],
+    ["ga_import_status_v1", 30_000],
+    ["capacity", 30_000],
+  ])(
+    "bounds %s without retrying a timed-out request",
+    async (action, deadline) => {
+      const fetchImpl = delayedAdminResponse(180_000)
+      let settled = false
+      const result = createAdminSourceDependencies()
+        .ingest({ action })
+        .then(
+          () => ({ succeeded: true }),
+          (error: unknown) => ({ error }),
+        )
+        .finally(() => {
+          settled = true
+        })
+      await vi.advanceTimersByTimeAsync(deadline - 1)
+      expect(settled).toBe(false)
+      await vi.advanceTimersByTimeAsync(1)
+      expect(await result).toMatchObject({
+        error: { name: "TimeoutError" },
+      })
+      expect(fetchImpl).toHaveBeenCalledOnce()
+    },
+  )
+
   it("retains a sealed catalog identity when transcript descriptors cross HTTP", async () => {
     const cutoff = "2026-10-06T00:00:00.000Z"
     const video: Video = {

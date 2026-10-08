@@ -596,6 +596,8 @@ export async function readPrecomputedCatalog(
         nextCursor: hasMore ? page.at(-1)!.id : null,
       }
     },
-    { isolationLevel: "RepeatableRead" },
+    // Full catalog pages may outlast Prisma's 5s default while checking
+    // observed child versions. Keep the fenced snapshot with a bounded limit.
+    { isolationLevel: "RepeatableRead", timeout: 30_000 },
   )
 }
