@@ -220,6 +220,11 @@ export function WatchHomeCategoryRail({
                     data-testid="watch-home-category-grain"
                     className={TILE_GRAIN_CLASSES}
                   />
+                  <span
+                    aria-hidden
+                    data-testid="watch-home-category-label-scrim"
+                    className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/60 to-transparent"
+                  />
                   <Icon
                     aria-hidden
                     className={cn(
