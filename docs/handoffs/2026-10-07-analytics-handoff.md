@@ -33,8 +33,11 @@ Confirmed by Lyuba on 2026-10-07 (Shorts are never advertised):
 
 - Long "She wept at his feet in a room that knew her past | Luke 7" (≈470 views)
 - Long "Are You Hiding Your Light? | Luke 8" (≈210)
-- Long "The Prodigal Son: Can Grace Feel Unfair? | Luke 15" (ad just started on
-  2026-10-07, ≈50 views; expect it to jump)
+- Long "The Prodigal Son: Can Grace Feel Unfair? | Luke 15" (ad started on
+  2026-10-05, confirmed by Lyuba 2026-10-08). Only the 13 views of Sep 30 – Oct 2
+  are organic (≈30% viewed); from Oct 5 External + Direct views leave in 2–7 s.
+  Studio's retention chart lags the public view counter by a day or two, so a
+  chart read "at 51 views" may still reflect only the organic viewers.
 
 Ask Lyuba whenever a new video starts getting ads and add it here.
 
