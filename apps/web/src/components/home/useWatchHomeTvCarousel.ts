@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  useLayoutEffect,
 } from "react"
 import {
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
@@ -72,6 +73,25 @@ function getClientHydrationSnapshot() {
 }
 
 function getServerHydrationSnapshot() {
+  return false
+}
+
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)"
+
+function subscribeToReducedMotion(callback: () => void) {
+  if (typeof window.matchMedia !== "function") return () => undefined
+  const mediaQuery = window.matchMedia(REDUCED_MOTION_QUERY)
+  mediaQuery.addEventListener("change", callback)
+  return () => mediaQuery.removeEventListener("change", callback)
+}
+
+function getClientReducedMotionSnapshot() {
+  return typeof window.matchMedia === "function"
+    ? window.matchMedia(REDUCED_MOTION_QUERY).matches
+    : false
+}
+
+function getServerReducedMotionSnapshot() {
   return false
 }
 
@@ -240,6 +260,11 @@ export function useWatchHomeTvCarousel(
     getClientHydrationSnapshot,
     getServerHydrationSnapshot,
   )
+  const prefersReducedMotion = useSyncExternalStore(
+    subscribeToReducedMotion,
+    getClientReducedMotionSnapshot,
+    getServerReducedMotionSnapshot,
+  )
   const [prefetchedQueue, setPrefetchedQueue] = useState<{
     sequenceKey: string
     videos: WatchHomeTvCarouselVideoSlide[]
@@ -366,8 +391,9 @@ export function useWatchHomeTvCarousel(
     displaySlides[0] ??
     null
   const autoAdvancePaused =
-    activeSlide != null &&
-    activeSlide.id === options.autoAdvancePausedForSlideId
+    prefersReducedMotion ||
+    (activeSlide != null &&
+      activeSlide.id === options.autoAdvancePausedForSlideId)
   // Only a video slide can be waiting on bytes; an image slide is fully on
   // screen the moment it is chosen.
   const isBuffering = Boolean(activeSlide?.src) && isBufferingMedia
@@ -375,7 +401,7 @@ export function useWatchHomeTvCarousel(
   // holds its turn the same way a buffering one does. The two are kept
   // separate for the ring: only buffering is a stall worth explaining.
   const isMediaHeld = Boolean(activeSlide?.src) && isMediaPaused
-  const isTurnHeld = isBuffering || isMediaHeld
+  const isTurnHeld = isBuffering || isMediaHeld || prefersReducedMotion
   // One resolved duration feeds both the ring and the backstop, so the two
   // cannot drift apart. The measurement only counts for the slide it was read
   // from.
@@ -397,6 +423,7 @@ export function useWatchHomeTvCarousel(
       )
     : 0
   const autoAdvancePausedRef = useRef(autoAdvancePaused)
+  const prefersReducedMotionRef = useRef(prefersReducedMotion)
   const randomSourceRef = useRef(options.randomSource ?? Math.random)
   const randomStartAppliedRef = useRef(false)
   const pendingRandomHeroIdRef = useRef<string | null>(null)
@@ -541,12 +568,16 @@ export function useWatchHomeTvCarousel(
             // A detached or not-yet-seekable element throws here; the replay
             // below is still worth attempting.
           }
-          const refusedForTurn = turnTokenRef.current
-          startPlayback(video, () => {
-            if (turnTokenRef.current !== refusedForTurn) return
-            if (videoRef.current !== video) return
-            setIsBufferingMedia(true)
-          })
+          if (autoAdvancePausedRef.current) {
+            video.pause()
+          } else {
+            const refusedForTurn = turnTokenRef.current
+            startPlayback(video, () => {
+              if (turnTokenRef.current !== refusedForTurn) return
+              if (videoRef.current !== video) return
+              setIsBufferingMedia(true)
+            })
+          }
         }
       }
     },
@@ -556,6 +587,7 @@ export function useWatchHomeTvCarousel(
       clearVideoPosterHold,
       displaySlides,
       options.suppressLeavingSlide,
+      autoAdvancePausedRef,
     ],
   )
 
@@ -700,12 +732,36 @@ export function useWatchHomeTvCarousel(
   }, [])
 
   const handlePlay = useCallback(() => {
+    if (prefersReducedMotionRef.current) {
+      videoRef.current?.pause()
+      return
+    }
     setIsMediaPaused(false)
   }, [])
 
-  useEffect(() => {
+  const handleEnded = useCallback(() => {
+    if (prefersReducedMotionRef.current) return
+    advanceRef.current?.()
+  }, [])
+
+  useLayoutEffect(() => {
     autoAdvancePausedRef.current = autoAdvancePaused
-  }, [autoAdvancePaused])
+    prefersReducedMotionRef.current = prefersReducedMotion
+    const video = videoRef.current
+    if (!video || !mediaReadyRef.current) return
+    if (autoAdvancePaused) {
+      video.pause()
+      return
+    }
+    if (video.paused) {
+      const refusedForTurn = turnTokenRef.current
+      startPlayback(video, () => {
+        if (turnTokenRef.current !== refusedForTurn) return
+        if (videoRef.current !== video) return
+        setIsBufferingMedia(true)
+      })
+    }
+  }, [autoAdvancePaused, prefersReducedMotion])
 
   useEffect(() => {
     isMutedRef.current = isMuted
@@ -940,7 +996,7 @@ export function useWatchHomeTvCarousel(
       // reinterpreting a running one.
       ringAnimationKey: `${activeSlide?.id ?? "none"}:${advanceDurationSeconds}:${restartCount}`,
       handleCanPlay,
-      handleEnded: advance,
+      handleEnded,
       handleLoadedMetadata,
       handlePause,
       handlePlay,
@@ -966,6 +1022,7 @@ export function useWatchHomeTvCarousel(
       advanceDurationSeconds,
       restartCount,
       handleCanPlay,
+      handleEnded,
       handleLoadedMetadata,
       handlePause,
       handlePlay,

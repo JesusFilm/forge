@@ -539,6 +539,33 @@ describe("WatchHomePage", () => {
   })
 
   describe("playing a slide to its natural end", () => {
+    function mockReducedMotion(initial: boolean) {
+      let matches = initial
+      const listeners = new Set<() => void>()
+      const originalMatchMedia = window.matchMedia
+      window.matchMedia = ((query: string) => ({
+        matches,
+        media: query,
+        onchange: null,
+        addEventListener: (_type: string, listener: EventListener) =>
+          listeners.add(listener as unknown as () => void),
+        removeEventListener: (_type: string, listener: EventListener) =>
+          listeners.delete(listener as unknown as () => void),
+        addListener: (listener: () => void) => listeners.add(listener),
+        removeListener: (listener: () => void) => listeners.delete(listener),
+        dispatchEvent: () => true,
+      })) as typeof window.matchMedia
+      return {
+        restore: () => {
+          window.matchMedia = originalMatchMedia
+        },
+        set: (next: boolean) => {
+          matches = next
+          listeners.forEach((listener) => listener())
+        },
+      }
+    }
+
     async function startFirstSlide(model: WatchHomeModel) {
       vi.spyOn(Math, "random").mockReturnValue(0)
       await act(async () => {
@@ -568,6 +595,67 @@ describe("WatchHomePage", () => {
         value: seconds,
       })
     }
+
+    it("holds the poster and rotation when reduced motion is enabled", async () => {
+      vi.useFakeTimers()
+      const motion = mockReducedMotion(true)
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const openingTitle = carouselLabel()
+        await act(async () => {
+          vi.advanceTimersByTime(20_000)
+        })
+        expect(video.play).not.toHaveBeenCalled()
+        expect(carouselLabel()).toBe(openingTitle)
+        expect(
+          container
+            .querySelector(
+              '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+            )
+            ?.getAttribute("data-paused"),
+        ).toBe("true")
+      } finally {
+        motion.restore()
+        vi.useRealTimers()
+      }
+    })
+
+    it("pauses a playing hero when reduced motion becomes active", async () => {
+      vi.useFakeTimers()
+      const motion = mockReducedMotion(false)
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const pauseMedia = vi.fn()
+        video.pause = pauseMedia
+        await act(async () => {
+          vi.advanceTimersByTime(1_500)
+        })
+        expect(video.play).toHaveBeenCalled()
+        const openingTitle = carouselLabel()
+        await act(async () => {
+          motion.set(true)
+        })
+        expect(pauseMedia).toHaveBeenCalled()
+        await act(async () => {
+          video.dispatchEvent(new Event("play", { bubbles: true }))
+        })
+        expect(pauseMedia).toHaveBeenCalledTimes(2)
+        await act(async () => {
+          video.dispatchEvent(new Event("ended", { bubbles: true }))
+        })
+        await act(async () => {
+          vi.advanceTimersByTime(20_000)
+        })
+        expect(carouselLabel()).toBe(openingTitle)
+        await act(async () => {
+          motion.set(false)
+        })
+        expect(video.play).toHaveBeenCalledTimes(2)
+      } finally {
+        motion.restore()
+        vi.useRealTimers()
+      }
+    })
 
     // The ticket's own regression. Fails against the 30-second cap this change
     // removes.
