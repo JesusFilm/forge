@@ -248,6 +248,7 @@ function WatchHomeTvMedia({
   onSubtitleCueTextChange,
   onTimeUpdate,
   onWaiting,
+  playbackEnabled,
   videoRef,
   wrapperRef,
 }: {
@@ -265,6 +266,8 @@ function WatchHomeTvMedia({
   onSubtitleCueTextChange: (cueText: string | null) => void
   onTimeUpdate: () => void
   onWaiting: () => void
+  /** False on Save-Data or a slow connection: the slide stays poster-only. */
+  playbackEnabled: boolean
   videoRef: MutableRefObject<HTMLVideoElement | null>
   wrapperRef: RefObject<HTMLDivElement | null>
 }) {
@@ -290,16 +293,17 @@ function WatchHomeTvMedia({
   )
   // One seam covers both slide builders. Memoized so the mounted element is
   // never handed a fresh string: a `src` swap reloads HLS from zero while the
-  // advance clock keeps counting.
+  // advance clock keeps counting. A gated connection gets no `src` at all, so
+  // no manifest or segment is ever requested.
   const previewSrc = useMemo(
     () =>
-      activeSlide.src
+      playbackEnabled && activeSlide.src
         ? applyMuxMaxResolution(
             activeSlide.src,
             WATCH_HOME_INTRO_MAX_RESOLUTION,
           )
         : null,
-    [activeSlide.src],
+    [activeSlide.src, playbackEnabled],
   )
   return (
     <div
@@ -545,6 +549,7 @@ function WatchHomeTvOverlay({
   leavingSlide,
   onSelectSlide,
   onToggleMuted,
+  playbackEnabled,
   playbackTimeSeconds,
   slides,
   ringAnimationKey,
@@ -560,6 +565,7 @@ function WatchHomeTvOverlay({
   leavingSlide: WatchHomeTvCarouselSlide | null
   onSelectSlide: (slideId: string) => void
   onToggleMuted: () => void
+  playbackEnabled: boolean
   playbackTimeSeconds: number
   ringAnimationKey: string
   slides: readonly WatchHomeTvCarouselSlide[]
@@ -618,25 +624,29 @@ function WatchHomeTvOverlay({
               slide={activeSlide}
               playbackTimeSeconds={playbackTimeSeconds}
             />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label={isMuted ? t("unmutePreview") : t("mutePreview")}
-              onClick={onToggleMuted}
-              className="group/mute relative isolate h-11 w-11 overflow-hidden rounded-full border-0 bg-black/55 text-white shadow-lg shadow-black/30 ring-0 hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:bg-black/70 focus-visible:text-white focus-visible:ring-2 focus-visible:ring-white/80 active:scale-95 md:h-13 md:w-13"
-            >
-              {isMuted ? (
-                <VolumeX className="relative z-10 size-7" aria-hidden />
-              ) : (
-                <Volume2 className="relative z-10 size-7" aria-hidden />
-              )}
-              <span
-                aria-hidden
-                data-testid="watch-home-mute-bevel"
-                className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] mix-blend-overlay shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)] transition-shadow duration-200 group-hover/mute:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.48)]"
-              />
-            </Button>
+            {/* Nothing plays on a gated connection, so there is nothing to
+                unmute — and unmuting would still grow the frame. */}
+            {playbackEnabled ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={isMuted ? t("unmutePreview") : t("mutePreview")}
+                onClick={onToggleMuted}
+                className="group/mute relative isolate h-11 w-11 overflow-hidden rounded-full border-0 bg-black/55 text-white shadow-lg shadow-black/30 ring-0 hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:bg-black/70 focus-visible:text-white focus-visible:ring-2 focus-visible:ring-white/80 active:scale-95 md:h-13 md:w-13"
+              >
+                {isMuted ? (
+                  <VolumeX className="relative z-10 size-7" aria-hidden />
+                ) : (
+                  <Volume2 className="relative z-10 size-7" aria-hidden />
+                )}
+                <span
+                  aria-hidden
+                  data-testid="watch-home-mute-bevel"
+                  className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] mix-blend-overlay shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)] transition-shadow duration-200 group-hover/mute:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.48)]"
+                />
+              </Button>
+            ) : null}
             <div className="ml-auto flex shrink-0 items-center text-white sm:hidden">
               <WatchHomeVideoTimeline
                 activeIndex={activeIndex}
@@ -1092,6 +1102,7 @@ export function WatchHomeTvCarousel({
     isMuted,
     leavingSlide,
     mediaReady,
+    playbackEnabled,
     playbackTimeSeconds,
     ringAnimationKey,
     selectSlide,
@@ -1181,6 +1192,7 @@ export function WatchHomeTvCarousel({
           onSubtitleCueTextChange={setSubtitleCueText}
           onTimeUpdate={handleTimeUpdate}
           onWaiting={handleWaiting}
+          playbackEnabled={playbackEnabled}
           videoRef={videoRef}
           wrapperRef={wrapperRef}
         />
@@ -1194,6 +1206,7 @@ export function WatchHomeTvCarousel({
           leavingSlide={leavingSlide}
           onSelectSlide={selectSlide}
           onToggleMuted={toggleMuted}
+          playbackEnabled={playbackEnabled}
           playbackTimeSeconds={playbackTimeSeconds}
           ringAnimationKey={ringAnimationKey}
           slides={timelineSlides}
