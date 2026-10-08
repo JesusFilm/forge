@@ -2123,9 +2123,10 @@
   animation: watch-home-player-enter 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 /* The duration is always supplied inline from the slide's resolved length.
-   The fallback only covers a ring rendered before that value lands; it is
-   deliberately not the old 30s preview cap, which no longer exists. */
+   A fixed arc travels around the ring to mark the slide's progress. */
 .watch-home-progress-ring {
+  transform-box: fill-box;
+  transform-origin: center;
   animation: watch-home-progress-ring var(--watch-home-progress-duration, 10s)
     linear forwards;
 }
@@ -2522,7 +2523,7 @@
 
 @keyframes watch-home-progress-ring {
   to {
-    stroke-dashoffset: 0;
+    transform: rotate(360deg);
   }
 }
 
@@ -2544,11 +2545,9 @@
 @keyframes watch-home-progress-ring-reset {
   0% {
     opacity: 1;
-    stroke-dashoffset: 0;
   }
   100% {
-    opacity: 0.72;
-    stroke-dashoffset: var(--watch-home-progress-circumference);
+    opacity: 0;
   }
 }
 

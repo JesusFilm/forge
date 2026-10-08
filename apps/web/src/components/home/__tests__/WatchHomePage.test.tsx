@@ -929,20 +929,31 @@ describe("WatchHomePage", () => {
         ).length
 
       expect(readRing().style.animationPlayState).toBe("running")
+      expect(readRing().getAttribute("stroke-dashoffset")).toBe("0")
+      const progressDash = readRing()
+        .getAttribute("stroke-dasharray")
+        ?.split(" ")
+        .map(Number)
+      expect(progressDash).toHaveLength(2)
+      expect(progressDash?.[0]).toBeLessThan(progressDash?.[1] ?? 0)
       expect(loaderCount()).toBe(0)
 
       await act(async () => {
         video.dispatchEvent(new Event("pause", { bubbles: true }))
       })
       expect(readRing().style.animationPlayState).toBe("paused")
-      expect(readRing().style.opacity).toBe("1")
+      expect(readRing().parentElement?.getAttribute("style")).toContain(
+        "opacity: 1",
+      )
       expect(loaderCount()).toBe(0)
 
       await act(async () => {
         video.dispatchEvent(new Event("waiting", { bubbles: true }))
       })
       expect(readRing().style.animationPlayState).toBe("paused")
-      expect(readRing().style.opacity).toBe("0.4")
+      expect(readRing().parentElement?.getAttribute("style")).toContain(
+        "opacity: 0.4",
+      )
       expect(loaderCount()).toBeGreaterThan(0)
     })
 
@@ -2573,6 +2584,16 @@ describe("WatchHomePage", () => {
       expect(
         container.querySelectorAll('[data-testid="watch-home-progress-reset"]'),
       ).toHaveLength(2)
+      expect(
+        container
+          .querySelector('[data-testid="watch-home-progress-reset"]')
+          ?.getAttribute("stroke-dashoffset"),
+      ).toBe("0")
+      expect(
+        container
+          .querySelector('[data-testid="watch-home-progress-reset"]')
+          ?.getAttribute("stroke-dasharray"),
+      ).toBeTruthy()
 
       await act(async () => {
         vi.advanceTimersByTime(950)

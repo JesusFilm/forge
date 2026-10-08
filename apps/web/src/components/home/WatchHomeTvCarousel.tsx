@@ -805,31 +805,28 @@ function WatchHomePlaybackProgressRing({
         stroke="rgba(255,255,255,0.18)"
         strokeWidth="3"
       />
-      <circle
-        key={animationKey}
-        cx={center}
-        cy={center}
-        r={radius}
-        fill="none"
-        stroke="rgba(255,255,255,0.9)"
-        strokeLinecap="round"
-        strokeWidth="3"
-        className="watch-home-progress-ring"
-        data-paused={paused ? "true" : "false"}
-        strokeDasharray={circumference}
-        strokeDashoffset={circumference}
-        style={
-          {
-            "--watch-home-progress-duration": `${advanceDurationSeconds}s`,
-            animationPlayState: paused ? "paused" : "running",
-            // Held progress stays readable — a stall at 60% still shows where
-            // it stopped — but steps back so the spinner reads as the live
-            // element of the two arcs. Only a STALL dims it; a deliberate
-            // pause leaves the arc at full strength.
-            opacity: buffering ? 0.4 : 1,
-          } as CSSProperties
-        }
-      />
+      <g style={{ opacity: buffering ? 0.4 : 1 }}>
+        <circle
+          key={animationKey}
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.9)"
+          strokeLinecap="round"
+          strokeWidth="3"
+          className="watch-home-progress-ring"
+          data-paused={paused ? "true" : "false"}
+          strokeDasharray={`${circumference * 0.22} ${circumference}`}
+          strokeDashoffset={0}
+          style={
+            {
+              "--watch-home-progress-duration": `${advanceDurationSeconds}s`,
+              animationPlayState: paused ? "paused" : "running",
+            } as CSSProperties
+          }
+        />
+      </g>
       {/* The loading state belongs on the ring itself: this circle is what
           promised the viewer that something was playing, so it is where the
           correction has to appear. The group carries a CSS-delayed fade so a
@@ -866,11 +863,6 @@ function WatchHomePlaybackProgressRing({
           className="watch-home-progress-ring-reset"
           strokeDasharray={circumference}
           strokeDashoffset={0}
-          style={
-            {
-              "--watch-home-progress-circumference": circumference,
-            } as CSSProperties
-          }
         />
       ) : null}
     </svg>
