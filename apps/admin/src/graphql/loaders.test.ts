@@ -59,6 +59,7 @@ describe("createLoaders", () => {
       "videoParentsByChildId",
       "videoPrimaryDubDurationById",
       "videoStudyQuestionsByVideoIdAndFilter",
+      "watchCollectionCardMetadataByVideoId",
     ])
   })
 
@@ -75,6 +76,43 @@ describe("createLoaders", () => {
     expect((rows[0] as { id: string } | null)?.id).toBe("x1")
     expect(rows[1]).toBeNull()
     expect((rows[2] as { id: string } | null)?.id).toBe("x3")
+  })
+
+  it("batches collection-card metadata across block resolvers", async () => {
+    const loadMetadata = vi.fn(async (videoIds: readonly string[]) =>
+      videoIds
+        .filter((videoId) => videoId !== "missing")
+        .map((videoId) => ({
+          videoId,
+          episodeCount: videoId === "series" ? 8 : 0,
+          audioLanguageCount: videoId === "series" ? 12 : 3,
+          subtitleLanguageCount: videoId === "series" ? 4 : 2,
+        })),
+    )
+    const loaders = createLoaders(makeFakePrisma({}), loadMetadata)
+    const values = await Promise.all([
+      loaders.watchCollectionCardMetadataByVideoId.load("series"),
+      loaders.watchCollectionCardMetadataByVideoId.load("film"),
+      loaders.watchCollectionCardMetadataByVideoId.load("missing"),
+    ])
+
+    expect(loadMetadata).toHaveBeenCalledOnce()
+    expect(loadMetadata).toHaveBeenCalledWith(["series", "film", "missing"])
+    expect(values).toEqual([
+      {
+        videoId: "series",
+        episodeCount: 8,
+        audioLanguageCount: 12,
+        subtitleLanguageCount: 4,
+      },
+      {
+        videoId: "film",
+        episodeCount: 0,
+        audioLanguageCount: 3,
+        subtitleLanguageCount: 2,
+      },
+      null,
+    ])
   })
 
   it("each createLoaders() call is independent (no cross-request leakage)", async () => {

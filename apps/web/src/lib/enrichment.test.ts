@@ -20,6 +20,21 @@ const base = {
 }
 
 describe("enrichMediaItem image resolution", () => {
+  it("carries runtime, episode, audio-language, and subtitle metadata", () => {
+    const result = enrichMediaItem({
+      ...base,
+      videoDub: { duration: 540, muxVideo: { playbackId: null } },
+      episodeCount: 8,
+      audioLanguageCount: 12,
+      subtitleLanguageCount: 4,
+    })
+
+    expect(result.durationSeconds).toBe(540)
+    expect(result.episodeCount).toBe(8)
+    expect(result.audioLanguageCount).toBe(12)
+    expect(result.subtitleLanguageCount).toBe(4)
+  })
+
   it("uses the image asset preview URL when set", () => {
     const result = enrichMediaItem({
       ...base,

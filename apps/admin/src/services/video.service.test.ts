@@ -857,6 +857,47 @@ describe("VideoService", () => {
     })
   })
 
+  describe("getWatchCollectionCardMetadataByVideoIds", () => {
+    it("skips empty requests and returns batched card metadata", async () => {
+      await expect(
+        service.getWatchCollectionCardMetadataByVideoIds({
+          videoIds: [],
+          user: null,
+        }),
+      ).resolves.toEqual([])
+      expect(prisma.$transaction).not.toHaveBeenCalled()
+
+      prisma.tx.$queryRaw.mockResolvedValueOnce([
+        {
+          videoId: "video-1",
+          episodeCount: 6,
+          audioLanguageCount: 12,
+          subtitleLanguageCount: 3,
+        },
+      ])
+      await expect(
+        service.getWatchCollectionCardMetadataByVideoIds({
+          videoIds: ["video-1", "video-1"],
+          user: null,
+        }),
+      ).resolves.toEqual([
+        {
+          videoId: "video-1",
+          episodeCount: 6,
+          audioLanguageCount: 12,
+          subtitleLanguageCount: 3,
+        },
+      ])
+
+      const [, ...values] = prisma.tx.$queryRaw.mock.calls[0] as [
+        TemplateStringsArray,
+        string[],
+      ]
+      expect(values[0]).toEqual(["video-1"])
+      expect(prisma.$transaction).toHaveBeenCalledOnce()
+    })
+  })
+
   describe("getWatchLanguageInventory", () => {
     it("returns empty buckets when the requested language slug is unknown", async () => {
       prisma.language.findFirst.mockResolvedValueOnce(null)

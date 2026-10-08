@@ -14,6 +14,7 @@ import { useTranslations } from "next-intl"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import type { EnrichedMediaItem } from "@/lib/enrichment"
 import { enrichMediaItem } from "@/lib/enrichment"
+import { formatDuration } from "@/lib/format-duration"
 import {
   CONTENT_WIDTH_ALIGN_CLASSES,
   WATCH_PAGE_CONTENT_CLASSES,
@@ -806,6 +807,8 @@ function VideoCard({
   onHover?: () => void
 }) {
   const t = useTranslations("WatchHome")
+  const cardT = useTranslations("SearchResultCard")
+  const languageT = useTranslations("LanguagePickerModal")
   // `next/link` prepends the `/watch` basePath itself, so this stays
   // base-path-relative — hand-prefixing it here renders `/watch/watch/...`.
   // Prefer the resolved item dub language; fall back to the current page
@@ -995,6 +998,43 @@ function VideoCard({
             >
               {item.title}
             </VideoThumbnailTitle>
+          ) : null}
+          {item.durationSeconds != null ||
+          item.episodeCount != null ||
+          item.audioLanguageCount != null ||
+          item.subtitleLanguageCount != null ? (
+            <div
+              data-testid="media-collection-card-metadata"
+              className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[0.7rem] leading-tight text-white/80"
+            >
+              {item.durationSeconds != null ? (
+                <span data-testid="media-collection-card-runtime">
+                  {formatDuration(item.durationSeconds)}
+                </span>
+              ) : null}
+              {item.episodeCount != null ? (
+                <span data-testid="media-collection-card-episode-count">
+                  {cardT("episodeCount", { count: item.episodeCount })}
+                </span>
+              ) : null}
+              {item.audioLanguageCount != null ? (
+                <span data-testid="media-collection-card-language-count">
+                  {languageT("languageCount", {
+                    count: item.audioLanguageCount,
+                  })}
+                </span>
+              ) : null}
+              {item.subtitleLanguageCount != null ? (
+                <span
+                  aria-label={languageT("subtitlesHeading")}
+                  title={languageT("subtitlesHeading")}
+                  data-testid="media-collection-card-captions"
+                  className="rounded-sm border border-white/55 px-1 py-px text-[0.6rem] font-semibold tracking-wide text-white"
+                >
+                  CC
+                </span>
+              ) : null}
+            </div>
           ) : null}
         </VideoThumbnailCaption>
       </div>

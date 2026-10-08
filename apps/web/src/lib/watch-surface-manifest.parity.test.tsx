@@ -187,6 +187,10 @@ describe("source manifests mirror actual renderer output", () => {
           videoSlug: "birth",
           languageSlug: "spanish-castilian",
           muxPlaybackId: null,
+          durationSeconds: null,
+          episodeCount: null,
+          audioLanguageCount: null,
+          subtitleLanguageCount: null,
         },
       ],
     }

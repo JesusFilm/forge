@@ -1453,6 +1453,7 @@ function normalizeRelatedRouteItems(
         slug: child.slug,
         label: child.label,
         muxPlaybackId: child.muxPlaybackId,
+        durationSeconds: child.durationSeconds,
         images: child.images.map((img) => ({
           url: img.url,
           blurDataUrl: img.blurDataUrl,

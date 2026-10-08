@@ -39,8 +39,31 @@ import {
 
 export type Loaders = ReturnType<typeof createLoaders>
 
-export function createLoaders(prisma: PrismaClient) {
+export type WatchCollectionCardMetadataRow = {
+  videoId: string
+  episodeCount: number
+  audioLanguageCount: number
+  subtitleLanguageCount: number
+}
+
+export function createLoaders(
+  prisma: PrismaClient,
+  loadWatchCollectionCardMetadata?: (
+    videoIds: readonly string[],
+  ) => Promise<WatchCollectionCardMetadataRow[]>,
+) {
   return {
+    watchCollectionCardMetadataByVideoId: new DataLoader<
+      string,
+      WatchCollectionCardMetadataRow | null
+    >(async (videoIds) => {
+      if (!loadWatchCollectionCardMetadata) {
+        return videoIds.map(() => null)
+      }
+      const rows = await loadWatchCollectionCardMetadata(videoIds)
+      const byVideoId = new Map(rows.map((row) => [row.videoId, row]))
+      return videoIds.map((videoId) => byVideoId.get(videoId) ?? null)
+    }),
     selectedBlockVideoDub: new DataLoader<
       SelectedBlockVideoDubIdentity & { query: object },
       VideoDubRow | null,

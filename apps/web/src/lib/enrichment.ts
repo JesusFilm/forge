@@ -8,6 +8,7 @@ type MediaItem = {
   coreId?: string | null
   videoSlug?: string | null
   videoDub?: {
+    duration?: number | null
     language?: {
       slug?: string | null
     } | null
@@ -16,6 +17,9 @@ type MediaItem = {
     } | null
   } | null
   languageSlug?: string | null
+  episodeCount?: number | null
+  audioLanguageCount?: number | null
+  subtitleLanguageCount?: number | null
   videoImage?: {
     previewUrl?: string | null
     blurDataUrl?: string | null
@@ -119,6 +123,7 @@ type RouteRelatedVideo = {
   slug: string | null
   label: string | null
   muxPlaybackId: string | null
+  durationSeconds?: number | null
   images:
     | ({
         url: string | null
@@ -140,6 +145,10 @@ export type EnrichedMediaItem = {
   videoSlug: string
   languageSlug: string | null
   muxPlaybackId: string | null
+  durationSeconds: number | null
+  episodeCount: number | null
+  audioLanguageCount: number | null
+  subtitleLanguageCount: number | null
 }
 
 export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
@@ -205,6 +214,23 @@ export function enrichMediaItem(item: MediaItem): EnrichedMediaItem {
     videoSlug,
     languageSlug,
     muxPlaybackId: item.videoDub?.muxVideo?.playbackId ?? null,
+    durationSeconds:
+      typeof item.videoDub?.duration === "number" && item.videoDub.duration > 0
+        ? item.videoDub.duration
+        : null,
+    episodeCount:
+      typeof item.episodeCount === "number" && item.episodeCount > 0
+        ? item.episodeCount
+        : null,
+    audioLanguageCount:
+      typeof item.audioLanguageCount === "number" && item.audioLanguageCount > 0
+        ? item.audioLanguageCount
+        : null,
+    subtitleLanguageCount:
+      typeof item.subtitleLanguageCount === "number" &&
+      item.subtitleLanguageCount > 0
+        ? item.subtitleLanguageCount
+        : null,
   }
 }
 
@@ -226,5 +252,9 @@ export function enrichRouteRelatedVideo(
     videoSlug,
     languageSlug: null,
     muxPlaybackId: video.muxPlaybackId ?? null,
+    durationSeconds: video.durationSeconds ?? null,
+    episodeCount: null,
+    audioLanguageCount: null,
+    subtitleLanguageCount: null,
   }
 }
