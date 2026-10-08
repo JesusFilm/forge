@@ -2,7 +2,8 @@ import { createHash, randomUUID } from "node:crypto"
 
 import { z } from "zod"
 
-import type { ModelUsage, StructuredModel } from "./astra-provider"
+import type { ModelUsage } from "./astra-provider"
+import type { ReservationAwareStructuredModel } from "./codex-subscription-astra"
 import {
   planContentProfile,
   type ContentProfilePlan,
@@ -478,7 +479,7 @@ export async function runContentProfile(input: {
   promptVersion: string
   schemaVersion: string
   maxPartBytes: number
-  model: StructuredModel
+  model: ReservationAwareStructuredModel
   persistence: ProfilePersistencePort
 }): Promise<{
   state: "ready"
@@ -655,29 +656,40 @@ export async function runContentProfile(input: {
         ? { partIndex: part.input.partIndex }
         : { childCallIds: children!.map((child) => child.callId) }),
     }
-    const reservation = await input.persistence.callStart({
-      ...callBase,
-      action: "profile_call_start",
-      startedAt: new Date().toISOString(),
-    })
-    if (
-      reservation.generationId !== scope.generationId ||
-      reservation.cacheKey !== scope.cacheKey ||
-      reservation.callId !== callId ||
-      reservation.state !== "pending" ||
-      reservation.replay
-    )
-      throw new ContentProfileExecutionError("profile_unavailable")
+    let reservationAccepted = false
+    const reserve = async () => {
+      const reservation = await input.persistence.callStart({
+        ...callBase,
+        action: "profile_call_start",
+        startedAt: new Date().toISOString(),
+      })
+      if (
+        reservation.generationId !== scope.generationId ||
+        reservation.cacheKey !== scope.cacheKey ||
+        reservation.callId !== callId ||
+        reservation.state !== "pending" ||
+        reservation.replay
+      )
+        throw new ContentProfileExecutionError("profile_unavailable")
+      reservationAccepted = true
+      return { kind: "dispatch" as const, reservation }
+    }
     let output: CompactProfile
     let usage: ReturnType<typeof observedUsage>
     try {
       if (part) {
-        const response = await input.model.generate({
-          schema: mapProfileSchema,
-          system,
-          prompt,
-          maxOutputTokens: 2_048,
-        })
+        const invocation = await input.model.generateReserved(
+          {
+            schema: mapProfileSchema,
+            system,
+            prompt,
+            maxOutputTokens: 2_048,
+          },
+          reserve,
+        )
+        if (invocation.kind !== "dispatched")
+          throw new ContentProfileExecutionError("profile_unavailable")
+        const response = invocation.response
         usage = observedUsage(response.usage)
         output = materializeMapProfile(
           mapProfileSchema.parse(response.output),
@@ -685,12 +697,18 @@ export async function runContentProfile(input: {
           input.video.id,
         )
       } else {
-        const response = await input.model.generate({
-          schema: compactProfileSchema,
-          system,
-          prompt,
-          maxOutputTokens: 2_048,
-        })
+        const invocation = await input.model.generateReserved(
+          {
+            schema: compactProfileSchema,
+            system,
+            prompt,
+            maxOutputTokens: 2_048,
+          },
+          reserve,
+        )
+        if (invocation.kind !== "dispatched")
+          throw new ContentProfileExecutionError("profile_unavailable")
+        const response = invocation.response
         usage = observedUsage(response.usage)
         output = compactProfileSchema.parse(response.output)
       }
@@ -705,6 +723,7 @@ export async function runContentProfile(input: {
       )
       if (!usage) throw new ContentProfileExecutionError("usage_unknown")
     } catch (error) {
+      if (!reservationAccepted) throw error
       const reported =
         error && typeof error === "object" && "usage" in error
           ? (error.usage as ModelUsage | undefined)

@@ -2,7 +2,8 @@ import { createHash } from "node:crypto"
 
 import { z } from "zod"
 
-import type { ModelUsage, StructuredModel } from "./astra-provider"
+import type { ModelUsage } from "./astra-provider"
+import type { ReservationAwareStructuredModel } from "./codex-subscription-astra"
 import {
   compactProfileSchema,
   type CompactProfile,
@@ -373,7 +374,7 @@ export type EdgeBatchInput = Scope & {
   schemaVersion: string
   members: readonly EdgeMemberInput[]
   catalog: SourceCatalog
-  model: StructuredModel
+  model: ReservationAwareStructuredModel
   persistence: EdgeBatchPersistencePort
   historical?: HistoricalSnapshot
 }
@@ -1085,41 +1086,41 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
     EDGE_SYSTEM,
     prompt,
   ])
-  const started = await input.persistence.start({
-    action: "edge_batch_start",
-    generationId: input.generationId,
-    generationInputDigest: input.generationInputDigest,
-    attemptId: input.attemptId,
-    callId: input.callId,
-    modelId: input.modelId,
-    backend: input.backend,
-    promptVersion: input.promptVersion,
-    schemaVersion: input.schemaVersion,
-    inputDigest,
-    membershipDigest,
-    selectedCorpusDigest: input.selectedCorpusDigest,
-    candidatePoolDigest: input.candidatePoolDigest,
-    captureRefDigest: input.captureRefDigest,
-    spanOfferDigest,
-    startedAt: previousStart ?? new Date().toISOString(),
-    members: reservations,
-    spanOffers,
-  })
-  if (
-    started.generationId !== input.generationId ||
-    started.callId !== input.callId
-  )
-    throw new EdgeBatchExecutionError("batch_unavailable")
-  assertMemberReceipts(started.members, members)
-  if (started.replay || started.state !== "pending") {
-    if (started.state === "pending")
-      throw new EdgeBatchExecutionError("usage_unknown")
-    return {
-      state: started.state,
-      replay: true,
-      pages: planned,
-      members: started.members,
+  let reservationAccepted = false
+  const reserve = async () => {
+    const started = await input.persistence.start({
+      action: "edge_batch_start",
+      generationId: input.generationId,
+      generationInputDigest: input.generationInputDigest,
+      attemptId: input.attemptId,
+      callId: input.callId,
+      modelId: input.modelId,
+      backend: input.backend,
+      promptVersion: input.promptVersion,
+      schemaVersion: input.schemaVersion,
+      inputDigest,
+      membershipDigest,
+      selectedCorpusDigest: input.selectedCorpusDigest,
+      candidatePoolDigest: input.candidatePoolDigest,
+      captureRefDigest: input.captureRefDigest,
+      spanOfferDigest,
+      startedAt: previousStart ?? new Date().toISOString(),
+      members: reservations,
+      spanOffers,
+    })
+    if (
+      started.generationId !== input.generationId ||
+      started.callId !== input.callId
+    )
+      throw new EdgeBatchExecutionError("batch_unavailable")
+    assertMemberReceipts(started.members, members)
+    if (started.replay || started.state !== "pending") {
+      if (started.state === "pending")
+        throw new EdgeBatchExecutionError("usage_unknown")
+      return { kind: "skip" as const, reservation: started }
     }
+    reservationAccepted = true
+    return { kind: "dispatch" as const, reservation: started }
   }
   const finishBase = {
     generationId: input.generationId,
@@ -1132,13 +1133,26 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
   }
   let usage: ReturnType<typeof observedUsage>
   let results: Array<{ sourceVideoId: string; choices: EdgeStoredChoice[] }>
+  let started: Awaited<ReturnType<typeof reserve>>["reservation"]
   try {
-    const response = await input.model.generate({
-      schema: edgeBatchModelOutputSchema,
-      system: EDGE_SYSTEM,
-      prompt,
-      maxOutputTokens: 8_192,
-    })
+    const invocation = await input.model.generateReserved(
+      {
+        schema: edgeBatchModelOutputSchema,
+        system: EDGE_SYSTEM,
+        prompt,
+        maxOutputTokens: 8_192,
+      },
+      reserve,
+    )
+    started = invocation.reservation
+    if (invocation.kind === "skipped")
+      return {
+        state: started.state,
+        replay: true,
+        pages: planned,
+        members: started.members,
+      }
+    const response = invocation.response
     usage = observedUsage(response.usage)
     const output = edgeBatchModelOutputSchema.parse(response.output)
     if (Buffer.byteLength(JSON.stringify(output), "utf8") > MAX_OUTPUT_BYTES)
@@ -1146,6 +1160,7 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
     results = materializeResults(output, members, planned, offered)
     if (!usage) throw new EdgeBatchExecutionError("usage_unknown")
   } catch (error) {
+    if (!reservationAccepted) throw error
     const reported =
       error && typeof error === "object" && "usage" in error
         ? (error.usage as ModelUsage | undefined)

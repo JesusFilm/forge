@@ -5,14 +5,37 @@ import { z } from "zod"
 import {
   profileCoverageDigest,
   profileJsonBudget,
-  runContentProfile,
+  runContentProfile as runContentProfileActual,
   type CompactProfile,
   type ProfilePersistencePort,
   type ProfileState,
 } from "./content-profile-executor"
 import { planContentProfile } from "./content-profile-plan"
 import type { StructuredModel } from "./astra-provider"
+import type { ReservationAwareStructuredModel } from "./codex-subscription-astra"
 import type { Chunk, SourceCatalog, Video } from "./source-generation"
+
+// Existing executor fixtures supply deterministic model output. Adapt them at
+// the reservation seam so their receipt and replay assertions remain intact.
+function runContentProfile(
+  input: Omit<Parameters<typeof runContentProfileActual>[0], "model"> & {
+    model: StructuredModel
+  },
+) {
+  const model: ReservationAwareStructuredModel = {
+    async generateReserved(request, reserve) {
+      const decision = await reserve()
+      if (decision.kind === "skip")
+        return { kind: "skipped", reservation: decision.reservation }
+      return {
+        kind: "dispatched",
+        reservation: decision.reservation,
+        response: await input.model.generate(request),
+      }
+    },
+  }
+  return runContentProfileActual({ ...input, model })
+}
 
 const identity = {
   generationId: "generation-one",
@@ -235,6 +258,62 @@ describe("complete content profile execution", () => {
       }),
     ).rejects.toMatchObject({ code: "profile_invalid" })
     expect(actions).toEqual(["profile_register"])
+  })
+
+  it("propagates pre-dispatch admission refusal without starting a profile call", async () => {
+    let coverageDigest = ""
+    let starts = 0
+    await expect(
+      runContentProfileActual({
+        ...identity,
+        video: transcriptVideo(),
+        catalog: transcriptCatalog(),
+        model: {
+          async generateReserved(): Promise<never> {
+            throw Object.assign(new Error("allowance insufficient"), {
+              code: "allowance_insufficient",
+            })
+          },
+        },
+        persistence: {
+          async register(input) {
+            coverageDigest = input.coverageDigest
+            return {
+              generationId: input.generationId,
+              cacheKey: input.cacheKey,
+              kind: "transcript" as const,
+              state: "planned" as const,
+              replay: false,
+            }
+          },
+          async status(input) {
+            return {
+              generationId: input.generationId,
+              cacheKey: input.cacheKey,
+              profile: {
+                state: "planned" as const,
+                kind: "transcript" as const,
+                profileJson: null,
+                finalCallId: null,
+                coverageDigest,
+              },
+              calls: [],
+            }
+          },
+          async callStart(): Promise<never> {
+            starts++
+            throw new Error("profile must not be reserved")
+          },
+          async callFinish(): Promise<never> {
+            throw new Error("no receipt expected")
+          },
+          async finalize(): Promise<never> {
+            throw new Error("no finalization expected")
+          },
+        },
+      }),
+    ).rejects.toMatchObject({ code: "allowance_insufficient" })
+    expect(starts).toBe(0)
   })
 
   it("persists a verified one-part map receipt before finalizing the profile", async () => {
@@ -1014,12 +1093,13 @@ describe("complete content profile execution", () => {
       errorCode?: string
     }> = []
     await expect(
-      runContentProfile({
+      runContentProfileActual({
         ...identity,
         video: transcriptVideo(),
         catalog: transcriptCatalog(),
         model: {
-          async generate(): Promise<never> {
+          async generateReserved(_request, reserve): Promise<never> {
+            await reserve()
             throw Object.assign(
               new Error("provider stopped after completion"),
               {

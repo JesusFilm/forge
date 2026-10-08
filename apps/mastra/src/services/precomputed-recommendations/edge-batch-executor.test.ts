@@ -4,11 +4,31 @@ import { createHash } from "node:crypto"
 import {
   finalizeEdgeSource,
   planEdgeMemberPage,
-  runEdgeBatch,
+  runEdgeBatch as runEdgeBatchActual,
   type EdgeBatchInput,
 } from "./edge-batch-executor"
 import type { Video } from "./source-generation"
 import type { HistoricalSnapshot } from "./historical-analytics"
+import type { StructuredModel } from "./astra-provider"
+import type { ReservationAwareStructuredModel } from "./codex-subscription-astra"
+
+type FixtureInput = Omit<EdgeBatchInput, "model"> & { model: StructuredModel }
+
+function runEdgeBatch(input: FixtureInput) {
+  const model: ReservationAwareStructuredModel = {
+    async generateReserved(request, reserve) {
+      const decision = await reserve()
+      if (decision.kind === "skip")
+        return { kind: "skipped", reservation: decision.reservation }
+      return {
+        kind: "dispatched",
+        reservation: decision.reservation,
+        response: await input.model.generate(request),
+      }
+    },
+  }
+  return runEdgeBatchActual({ ...input, model })
+}
 
 function video(id: string): Video {
   return {
@@ -899,7 +919,7 @@ function oneMemberBatch(output: unknown) {
   let modelCalls = 0
   const source = video("source-one")
   const target = video("target-one")
-  const input: EdgeBatchInput = {
+  const input: FixtureInput = {
     ...identity,
     members: [
       {
@@ -1365,6 +1385,62 @@ describe("shared edge batch rejection and replay", () => {
       status: "failed",
       usage: { inputTokens: 100, outputTokens: 0 },
     })
+  })
+
+  it("propagates pre-dispatch refusal without reserving a batch", async () => {
+    const harness = oneMemberBatch(null)
+    let reservations = 0
+    harness.input.persistence.start = async (): Promise<never> => {
+      reservations++
+      throw new Error("batch must not be reserved")
+    }
+    await expect(
+      runEdgeBatchActual({
+        ...harness.input,
+        model: {
+          async generateReserved(): Promise<never> {
+            throw Object.assign(new Error("allowance insufficient"), {
+              code: "allowance_insufficient",
+            })
+          },
+        },
+      }),
+    ).rejects.toMatchObject({ code: "allowance_insufficient" })
+    expect(reservations).toBe(0)
+    expect(harness.finishes).toEqual([])
+  })
+
+  it("writes exactly one known-usage failure receipt after a reserved call", async () => {
+    const harness = oneMemberBatch(null)
+    let reservations = 0
+    const originalStart = harness.input.persistence.start
+    harness.input.persistence.start = async (request) => {
+      reservations++
+      return originalStart(request)
+    }
+    await expect(
+      runEdgeBatchActual({
+        ...harness.input,
+        model: {
+          async generateReserved(_request, reserve): Promise<never> {
+            const decision = await reserve()
+            expect(decision.kind).toBe("dispatch")
+            throw Object.assign(new Error("account changed after call"), {
+              code: "identity_mismatch",
+              usage: { inputTokens: 100, outputTokens: 20 },
+              consumptionUnknown: false,
+            })
+          },
+        },
+      }),
+    ).rejects.toMatchObject({ code: "identity_mismatch" })
+    expect(reservations).toBe(1)
+    expect(harness.finishes).toEqual([
+      expect.objectContaining({
+        status: "failed",
+        usage: { inputTokens: 100, outputTokens: 20 },
+      }),
+    ])
   })
 
   it("does not reserve behind an unresolved call from source status", async () => {

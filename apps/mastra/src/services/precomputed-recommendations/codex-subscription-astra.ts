@@ -6,17 +6,14 @@ import { StringDecoder } from "node:string_decoder"
 
 import { z } from "zod"
 
-import {
-  PRECOMPUTED_MODEL_ID,
-  type ModelUsage,
-  type StructuredModel,
-} from "./astra-provider"
+import { PRECOMPUTED_MODEL_ID, type ModelUsage } from "./astra-provider"
 
 const MAX_PROMPT_BYTES = 2_000_000
 const MAX_EVENT_BYTES = 512_000
 const MAX_SCHEMA_BYTES = 128_000
 const MAX_EVENT_COUNT = 256
 const MAX_ALLOWANCE_AGE_MS = 60_000
+const MAX_RESERVATION_DELAY_MS = 15_000
 const DEFAULT_TIMEOUT_MS = 180_000
 const MIN_REMAINING_PERCENT = 25
 
@@ -47,7 +44,33 @@ export type CodexOperatorProvenance = {
   modelId: string
 }
 
-export type CodexSubscriptionAstraModel = StructuredModel & {
+type GenerateRequest<T extends z.ZodType> = {
+  schema: T
+  system: string
+  prompt: string
+  maxOutputTokens: number
+}
+
+export type ReservationDecision<R> =
+  | { kind: "dispatch"; reservation: R }
+  | { kind: "skip"; reservation: R }
+
+export type ReservedGeneration<T extends z.ZodType, R> =
+  | {
+      kind: "dispatched"
+      reservation: R
+      response: { output: z.output<T>; usage: ModelUsage }
+    }
+  | { kind: "skipped"; reservation: R }
+
+export type ReservationAwareStructuredModel = {
+  generateReserved<T extends z.ZodType, R>(
+    request: GenerateRequest<T>,
+    reserve: () => Promise<ReservationDecision<R>>,
+  ): Promise<ReservedGeneration<T, R>>
+}
+
+export type CodexSubscriptionAstraModel = ReservationAwareStructuredModel & {
   /** Current verified binding; absent after identity reattestation fails. */
   getOperatorProvenance(): CodexOperatorProvenance | undefined
 }
@@ -69,6 +92,8 @@ export class CodexSubscriptionAstraError extends Error {
       | "schema_unsupported"
       | "input_invalid"
       | "input_too_large"
+      | "local_preparation_failed"
+      | "reservation_uncertain"
       | "provider_invalid_output"
       | "provider_unavailable"
       | "unexpected_tool_event",
@@ -102,9 +127,14 @@ function fresh(observedAt: string): boolean {
   return Number.isFinite(age) && age >= 0 && age <= MAX_ALLOWANCE_AGE_MS
 }
 
-async function requireIdentity(
-  options: Options,
-): Promise<Omit<CodexOperatorProvenance, "allowanceAdmissionBasis">> {
+type AttestedIdentity = Omit<
+  CodexOperatorProvenance,
+  "allowanceAdmissionBasis"
+> & {
+  observedAt: string
+}
+
+async function requireIdentity(options: Options): Promise<AttestedIdentity> {
   let identity: CodexOperatorIdentitySnapshot
   try {
     identity = await options.readOperatorIdentity()
@@ -127,13 +157,14 @@ async function requireIdentity(
     authMethod: "chatgpt",
     execution: "manual_local_operator",
     modelId: PRECOMPUTED_MODEL_ID,
+    observedAt: identity.observedAt,
   }
 }
 
 async function requireAllowance(
   read: Options["readAllowance"],
   accountRef: string,
-): Promise<void> {
+): Promise<CodexAllowanceSnapshot> {
   let snapshot: CodexAllowanceSnapshot
   try {
     snapshot = await read()
@@ -163,6 +194,16 @@ async function requireAllowance(
       fiveHour.remainingPercent <= MIN_REMAINING_PERCENT)
   )
     throw new CodexSubscriptionAstraError("allowance_insufficient")
+  return snapshot
+}
+
+function reservationFresh(observedAt: string): boolean {
+  const age = Date.now() - Date.parse(observedAt)
+  return (
+    Number.isFinite(age) &&
+    age >= 0 &&
+    age <= MAX_ALLOWANCE_AGE_MS - MAX_RESERVATION_DELAY_MS
+  )
 }
 
 function childEnvironment(): NodeJS.ProcessEnv {
@@ -269,136 +310,149 @@ function processEvent(raw: string, state: CodexEvents): void {
       : "unexpected_tool_event"
 }
 
+async function prepareCodex(
+  schema: unknown,
+): Promise<{ directory: string; schemaPath: string }> {
+  let directory: string
+  try {
+    directory = await mkdtemp(join(tmpdir(), "forge-codex-astra-"))
+  } catch {
+    throw new CodexSubscriptionAstraError("local_preparation_failed")
+  }
+  const schemaPath = join(directory, "output-schema.json")
+  try {
+    await writeFile(schemaPath, JSON.stringify(schema), { mode: 0o600 })
+  } catch {
+    await rm(directory, { recursive: true, force: true }).catch(() => {})
+    throw new CodexSubscriptionAstraError("local_preparation_failed")
+  }
+  return { directory, schemaPath }
+}
+
 async function runCodex(input: {
   executable: string
-  schema: unknown
+  directory: string
+  schemaPath: string
   prompt: string
   timeoutMs: number
 }): Promise<{ output: string; usage: ModelUsage }> {
-  const directory = await mkdtemp(join(tmpdir(), "forge-codex-astra-"))
-  try {
-    const schemaPath = join(directory, "output-schema.json")
-    await writeFile(schemaPath, JSON.stringify(input.schema), { mode: 0o600 })
-    const args = [
-      "exec",
-      "--ignore-user-config",
-      "--ephemeral",
-      "--skip-git-repo-check",
-      "--sandbox",
-      "read-only",
-      "--model",
-      PRECOMPUTED_MODEL_ID,
-      "--json",
-      "--output-schema",
-      schemaPath,
-      "-C",
-      directory,
-      "-c",
-      'forced_login_method="chatgpt"',
-      "-c",
-      'model_provider="openai"',
-      "-c",
-      'web_search="disabled"',
-      "-c",
-      "features.shell_tool=false",
-      "-c",
-      "features.unified_exec=false",
-      "-c",
-      "features.apps=false",
-      "-c",
-      "project_doc_max_bytes=0",
-      "-",
-    ]
-    const state: CodexEvents = { phase: "initial" }
-    let bytes = 0
-    let lines = 0
-    let remainder = ""
-    const decoder = new StringDecoder("utf8")
-    let timedOut = false
-    let oversized = false
-    let spawnFailed = false
-    const child = spawn(input.executable, args, {
-      cwd: directory,
-      env: childEnvironment(),
-      stdio: ["pipe", "pipe", "pipe"],
-      shell: false,
-      // npm's Codex launcher spawns a native child. Own a fresh POSIX process
-      // group so a timeout/tool violation stops the whole invocation.
-      detached: true,
-    })
-    const terminateOwnedGroup = () => {
-      if (child.pid !== undefined) {
-        try {
-          process.kill(-child.pid, "SIGKILL")
-          return
-        } catch {
-          // The group may already have exited. TERM lets the npm launcher
-          // forward to its native child if group signalling was unavailable.
-        }
+  const { directory, schemaPath } = input
+  const args = [
+    "exec",
+    "--ignore-user-config",
+    "--ephemeral",
+    "--skip-git-repo-check",
+    "--sandbox",
+    "read-only",
+    "--model",
+    PRECOMPUTED_MODEL_ID,
+    "--json",
+    "--output-schema",
+    schemaPath,
+    "-C",
+    directory,
+    "-c",
+    'forced_login_method="chatgpt"',
+    "-c",
+    'model_provider="openai"',
+    "-c",
+    'web_search="disabled"',
+    "-c",
+    "features.shell_tool=false",
+    "-c",
+    "features.unified_exec=false",
+    "-c",
+    "features.apps=false",
+    "-c",
+    "project_doc_max_bytes=0",
+    "-",
+  ]
+  const state: CodexEvents = { phase: "initial" }
+  let bytes = 0
+  let lines = 0
+  let remainder = ""
+  const decoder = new StringDecoder("utf8")
+  let timedOut = false
+  let oversized = false
+  let spawnFailed = false
+  const child = spawn(input.executable, args, {
+    cwd: directory,
+    env: childEnvironment(),
+    stdio: ["pipe", "pipe", "pipe"],
+    shell: false,
+    // npm's Codex launcher spawns a native child. Own a fresh POSIX process
+    // group so a timeout/tool violation stops the whole invocation.
+    detached: true,
+  })
+  const terminateOwnedGroup = () => {
+    if (child.pid !== undefined) {
+      try {
+        process.kill(-child.pid, "SIGKILL")
+        return
+      } catch {
+        // The group may already have exited. TERM lets the npm launcher
+        // forward to its native child if group signalling was unavailable.
       }
-      child.kill("SIGTERM")
     }
-    const timer = setTimeout(() => {
-      timedOut = true
+    child.kill("SIGTERM")
+  }
+  const timer = setTimeout(() => {
+    timedOut = true
+    terminateOwnedGroup()
+  }, input.timeoutMs)
+  child.stdin.on("error", () => {})
+  child.stdin.end(input.prompt)
+  child.stdout.on("data", (chunk: Buffer) => {
+    bytes += chunk.length
+    if (bytes > MAX_EVENT_BYTES) {
+      oversized = true
       terminateOwnedGroup()
-    }, input.timeoutMs)
-    child.stdin.on("error", () => {})
-    child.stdin.end(input.prompt)
-    child.stdout.on("data", (chunk: Buffer) => {
-      bytes += chunk.length
-      if (bytes > MAX_EVENT_BYTES) {
+      return
+    }
+    remainder += decoder.write(chunk)
+    let newline = remainder.indexOf("\n")
+    while (newline !== -1) {
+      const line = remainder.slice(0, newline)
+      remainder = remainder.slice(newline + 1)
+      if (++lines > MAX_EVENT_COUNT) {
         oversized = true
         terminateOwnedGroup()
         return
       }
-      remainder += decoder.write(chunk)
-      let newline = remainder.indexOf("\n")
-      while (newline !== -1) {
-        const line = remainder.slice(0, newline)
-        remainder = remainder.slice(newline + 1)
-        if (++lines > MAX_EVENT_COUNT) {
-          oversized = true
-          terminateOwnedGroup()
-          return
-        }
-        if (line) processEvent(line, state)
-        if (state.failed === "unexpected_tool_event") terminateOwnedGroup()
-        newline = remainder.indexOf("\n")
-      }
+      if (line) processEvent(line, state)
+      if (state.failed === "unexpected_tool_event") terminateOwnedGroup()
+      newline = remainder.indexOf("\n")
+    }
+  })
+  // Stderr may include catalog text or credentials. Drain it but never retain it.
+  child.stderr.on("data", () => {})
+  const exitCode = await new Promise<number | null>((resolve) => {
+    child.on("error", () => {
+      spawnFailed = true
     })
-    // Stderr may include catalog text or credentials. Drain it but never retain it.
-    child.stderr.on("data", () => {})
-    const exitCode = await new Promise<number | null>((resolve) => {
-      child.on("error", () => {
-        spawnFailed = true
-      })
-      child.on("close", resolve)
+    child.on("close", resolve)
+  })
+  clearTimeout(timer)
+  remainder += decoder.end()
+  if (remainder && !oversized) processEvent(remainder, state)
+  const usage = state.usage
+  const unknown = usage === undefined
+  if (state.failed)
+    throw new CodexSubscriptionAstraError(state.failed, {
+      usage,
+      consumptionUnknown: unknown,
     })
-    clearTimeout(timer)
-    remainder += decoder.end()
-    if (remainder && !oversized) processEvent(remainder, state)
-    const usage = state.usage
-    const unknown = usage === undefined
-    if (state.failed)
-      throw new CodexSubscriptionAstraError(state.failed, {
-        usage,
-        consumptionUnknown: unknown,
-      })
-    if (timedOut || oversized || spawnFailed || exitCode !== 0)
-      throw new CodexSubscriptionAstraError("provider_unavailable", {
-        usage,
-        consumptionUnknown: unknown,
-      })
-    if (state.phase !== "completed" || !state.output || !usage)
-      throw new CodexSubscriptionAstraError("provider_invalid_output", {
-        usage,
-        consumptionUnknown: unknown,
-      })
-    return { output: state.output, usage }
-  } finally {
-    // A cleanup failure must not replace a potentially charged call's usage.
-    await rm(directory, { recursive: true, force: true }).catch(() => {})
-  }
+  if (timedOut || oversized || spawnFailed || exitCode !== 0)
+    throw new CodexSubscriptionAstraError("provider_unavailable", {
+      usage,
+      consumptionUnknown: unknown,
+    })
+  if (state.phase !== "completed" || !state.output || !usage)
+    throw new CodexSubscriptionAstraError("provider_invalid_output", {
+      usage,
+      consumptionUnknown: unknown,
+    })
+  return { output: state.output, usage }
 }
 
 /** Explicitly constructed by a local operator; never imported by a service route. */
@@ -421,55 +475,83 @@ export function createCodexSubscriptionAstraModel(
   let tail: Promise<unknown> = Promise.resolve()
   let paused = false
   let provenance: CodexOperatorProvenance | undefined
-  return {
-    getOperatorProvenance: () => provenance && { ...provenance },
-    generate<T extends z.ZodType>(request: {
-      schema: T
-      system: string
-      prompt: string
-      maxOutputTokens: number
-    }): Promise<{ output: z.output<T>; usage: ModelUsage }> {
-      const task = tail.then(async () => {
-        if (paused) throw new CodexSubscriptionAstraError("adapter_paused")
-        if (
-          !Number.isSafeInteger(request.maxOutputTokens) ||
-          request.maxOutputTokens < 1 ||
-          typeof request.system !== "string" ||
-          typeof request.prompt !== "string"
-        )
-          throw new CodexSubscriptionAstraError("input_invalid")
-        const identity = await requireIdentity(options)
-        await requireAllowance(options.readAllowance, identity.accountRef)
-        provenance = {
-          ...identity,
-          allowanceAdmissionBasis: "included_subscription",
-        }
-        let schema: unknown
-        try {
-          schema = z.toJSONSchema(request.schema, {
-            target: "draft-07",
-            unrepresentable: "throw",
-          })
-        } catch {
-          throw new CodexSubscriptionAstraError("schema_unsupported")
-        }
-        if (
-          Buffer.byteLength(JSON.stringify(schema), "utf8") > MAX_SCHEMA_BYTES
-        )
-          throw new CodexSubscriptionAstraError("schema_unsupported")
-        const prompt = JSON.stringify({
-          instructions: request.system,
-          untrustedCatalogData: request.prompt,
-          response:
-            "Return only the JSON object required by the provided output schema. Do not call tools.",
+  function queue<T extends z.ZodType, R>(
+    request: GenerateRequest<T>,
+    reserve: () => Promise<ReservationDecision<R>>,
+  ): Promise<ReservedGeneration<T, R>> {
+    const task = tail.then(async (): Promise<ReservedGeneration<T, R>> => {
+      if (paused) throw new CodexSubscriptionAstraError("adapter_paused")
+      if (
+        !Number.isSafeInteger(request.maxOutputTokens) ||
+        request.maxOutputTokens < 1 ||
+        typeof request.system !== "string" ||
+        typeof request.prompt !== "string"
+      )
+        throw new CodexSubscriptionAstraError("input_invalid")
+      const { observedAt: identityObservedAt, ...identity } =
+        await requireIdentity(options)
+      const allowance = await requireAllowance(
+        options.readAllowance,
+        identity.accountRef,
+      )
+      provenance = {
+        ...identity,
+        allowanceAdmissionBasis: "included_subscription",
+      }
+      let schema: unknown
+      try {
+        schema = z.toJSONSchema(request.schema, {
+          target: "draft-07",
+          unrepresentable: "throw",
         })
-        if (Buffer.byteLength(prompt, "utf8") > MAX_PROMPT_BYTES)
-          throw new CodexSubscriptionAstraError("input_too_large")
+      } catch {
+        throw new CodexSubscriptionAstraError("schema_unsupported")
+      }
+      if (Buffer.byteLength(JSON.stringify(schema), "utf8") > MAX_SCHEMA_BYTES)
+        throw new CodexSubscriptionAstraError("schema_unsupported")
+      const prompt = JSON.stringify({
+        instructions: request.system,
+        untrustedCatalogData: request.prompt,
+        response:
+          "Return only the JSON object required by the provided output schema. Do not call tools.",
+      })
+      if (Buffer.byteLength(prompt, "utf8") > MAX_PROMPT_BYTES)
+        throw new CodexSubscriptionAstraError("input_too_large")
+      const prepared = await prepareCodex(schema)
+      try {
+        if (!reservationFresh(identityObservedAt))
+          throw new CodexSubscriptionAstraError("identity_stale")
+        if (!reservationFresh(allowance.observedAt))
+          throw new CodexSubscriptionAstraError("allowance_stale")
+        let reservationTimer: ReturnType<typeof setTimeout> | undefined
+        let decision: ReservationDecision<R>
+        try {
+          // A crash or lost reply can leave a durable pending row without a
+          // spawn. Never infer that it is safe to clear or retry that row.
+          decision = await Promise.race([
+            reserve(),
+            new Promise<never>((_resolve, reject) => {
+              reservationTimer = setTimeout(
+                () =>
+                  reject(
+                    new CodexSubscriptionAstraError("reservation_uncertain"),
+                  ),
+                MAX_RESERVATION_DELAY_MS,
+              )
+            }),
+          ])
+        } finally {
+          if (reservationTimer) clearTimeout(reservationTimer)
+        }
+        if (decision.kind === "skip")
+          return { kind: "skipped", reservation: decision.reservation }
+        if (decision.kind !== "dispatch")
+          throw new CodexSubscriptionAstraError("reservation_uncertain")
         let response: { output: string; usage: ModelUsage }
         try {
           response = await runCodex({
             executable: options.codexExecutable,
-            schema,
+            ...prepared,
             prompt,
             timeoutMs,
           })
@@ -498,20 +580,35 @@ export function createCodexSubscriptionAstraModel(
           throw new CodexSubscriptionAstraError("provider_invalid_output", {
             usage: response.usage,
           })
-        let parsed: unknown
         try {
-          parsed = JSON.parse(response.output)
-          return { output: request.schema.parse(parsed), usage: response.usage }
+          const parsed: unknown = JSON.parse(response.output)
+          return {
+            kind: "dispatched",
+            reservation: decision.reservation,
+            response: {
+              output: request.schema.parse(parsed),
+              usage: response.usage,
+            },
+          }
         } catch {
           throw new CodexSubscriptionAstraError("provider_invalid_output", {
             usage: response.usage,
           })
         }
-      })
-      tail = task.catch(() => {
-        paused = true
-      })
-      return task
-    },
+      } finally {
+        // Cleanup failure must not replace a potentially charged call's usage.
+        await rm(prepared.directory, { recursive: true, force: true }).catch(
+          () => {},
+        )
+      }
+    })
+    tail = task.catch(() => {
+      paused = true
+    })
+    return task
+  }
+  return {
+    getOperatorProvenance: () => provenance && { ...provenance },
+    generateReserved: (request, reserve) => queue(request, reserve),
   }
 }
