@@ -2596,6 +2596,30 @@ describe("Catch-all routing — series branch (2-seg)", () => {
 })
 
 describe("Catch-all routing — video precedence (2-seg)", () => {
+  it.each([
+    ["my-last-day", "My Last Day"],
+    ["çoğu-çay-mostly-tea", "Çoğu Çay (Mostly Tea)"],
+  ])("resolves the English standalone Watch route for %s", async (slug, title) => {
+    const result = makeWatchVideoResult("shortFilm")
+    result.video.slug = slug
+    result.video.title = title
+    mockRouteVideo(result)
+
+    await render2Seg(`${encodeURIComponent(slug)}.html`, "english.html")
+
+    expect(resolveWatchRouteBySlugMock).toHaveBeenCalledWith(slug, "english")
+    expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+    expect(watchPageClientMock.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        video: expect.objectContaining({ slug, title }),
+        variant: expect.objectContaining({
+          hls: "https://cdn.example/storyclubs.m3u8",
+          muxVideo: { playbackId: "pb1" },
+        }),
+      }),
+    )
+  })
+
   it("passes a validated subtitle intent into route resolution", async () => {
     mockRouteVideo(makeWatchVideoResult("featureFilm"))
 
