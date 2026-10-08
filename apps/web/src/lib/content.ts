@@ -1558,25 +1558,18 @@ const fetchResolvedWatchPage = unstable_cache(
     locale: string,
     slugOrNull: string | null,
   ): Promise<WatchPageResult> => {
-    try {
-      const resolved =
-        slugOrNull === null
-          ? await resolveHomepage(locale)
-          : await resolveSlugPage(locale, slugOrNull)
+    const resolved =
+      slugOrNull === null
+        ? await resolveHomepage(locale)
+        : await resolveSlugPage(locale, slugOrNull)
 
-      if (!resolved) {
-        return { data: null, error: missingExperienceError() }
-      }
+    if (!resolved) {
+      return { data: null, error: missingExperienceError() }
+    }
 
-      return {
-        data: JSON.parse(JSON.stringify(resolved)) as ResolvedWatchPage,
-        error: null,
-      }
-    } catch (error) {
-      return {
-        data: null,
-        error: error instanceof Error ? error : new Error(String(error)),
-      }
+    return {
+      data: JSON.parse(JSON.stringify(resolved)) as ResolvedWatchPage,
+      error: null,
     }
   },
   ["watch-page", "v6-category-rail-copy"],
@@ -1594,33 +1587,33 @@ const fetchResolvedWatchPage = unstable_cache(
 /** Shared watch-page resolver for page rendering and metadata generation. */
 export const resolveWatchPage = cache(
   async (locale: string, slug?: string): Promise<WatchPageResult> => {
-    return fetchResolvedWatchPage(locale, slug ?? null)
-  },
-)
-
-const fetchResolvedWatchExperiencePage = unstable_cache(
-  async (locale: string, slug: string): Promise<WatchPageResult> => {
     try {
-      const experience = await getExperienceBySlug(locale, slug)
-      if (!experience) {
-        return { data: null, error: missingExperienceError() }
-      }
-
-      return {
-        data: JSON.parse(
-          JSON.stringify({
-            kind: "experience",
-            experience,
-            watchHomeCategoryRailCompatibility: "supported",
-          }),
-        ) as ResolvedWatchPage,
-        error: null,
-      }
+      return await fetchResolvedWatchPage(locale, slug ?? null)
     } catch (error) {
       return {
         data: null,
         error: error instanceof Error ? error : new Error(String(error)),
       }
+    }
+  },
+)
+
+const fetchResolvedWatchExperiencePage = unstable_cache(
+  async (locale: string, slug: string): Promise<WatchPageResult> => {
+    const experience = await getExperienceBySlug(locale, slug)
+    if (!experience) {
+      return { data: null, error: missingExperienceError() }
+    }
+
+    return {
+      data: JSON.parse(
+        JSON.stringify({
+          kind: "experience",
+          experience,
+          watchHomeCategoryRailCompatibility: "supported",
+        }),
+      ) as ResolvedWatchPage,
+      error: null,
     }
   },
   ["watch-experience-page", "v3-category-rail-copy"],
@@ -1634,7 +1627,14 @@ const fetchResolvedWatchExperiencePage = unstable_cache(
  */
 export const resolveWatchExperiencePage = cache(
   async (locale: string, slug: string): Promise<WatchPageResult> => {
-    return fetchResolvedWatchExperiencePage(locale, slug)
+    try {
+      return await fetchResolvedWatchExperiencePage(locale, slug)
+    } catch (error) {
+      return {
+        data: null,
+        error: error instanceof Error ? error : new Error(String(error)),
+      }
+    }
   },
 )
 
