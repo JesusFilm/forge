@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest"
 import { createHash } from "node:crypto"
+import { z } from "zod"
 
 import {
+  edgeBatchModelOutputSchema,
   finalizeEdgeSource,
   planEdgeMemberPage,
   runEdgeBatch as runEdgeBatchActual,
@@ -13,6 +15,54 @@ import type { StructuredModel } from "./astra-provider"
 import type { ReservationAwareStructuredModel } from "./codex-subscription-astra"
 
 type FixtureInput = Omit<EdgeBatchInput, "model"> & { model: StructuredModel }
+
+it("emits a supported nested union for the Codex edge output schema", () => {
+  const schema = z.toJSONSchema(edgeBatchModelOutputSchema, {
+    target: "draft-07",
+    unrepresentable: "throw",
+  })
+  const json = JSON.stringify(schema)
+  expect(json.includes('"oneOf"')).toBe(false)
+  expect(json.includes('"evidence":{"anyOf"')).toBe(true)
+})
+
+it("keeps transcript and metadata evidence variants exclusive", () => {
+  const edge = {
+    targetVideoId: "target-one",
+    kind: "direct",
+    relationship: "shared theme",
+    reasonEnglish: "Both films discuss the same theme.",
+    addedViewingValueEnglish: null,
+    strength: 80,
+  }
+  const result = (evidence: unknown) => ({
+    results: [{ sourceVideoId: "source-one", edges: [{ ...edge, evidence }] }],
+  })
+  expect(
+    edgeBatchModelOutputSchema.safeParse(
+      result({ basis: "transcript", spanIds: ["a".repeat(32)] }),
+    ).success,
+  ).toBe(true)
+  expect(
+    edgeBatchModelOutputSchema.safeParse(
+      result({ basis: "metadata", fields: ["title"] }),
+    ).success,
+  ).toBe(true)
+  expect(
+    edgeBatchModelOutputSchema.safeParse(
+      result({ basis: "transcript", fields: ["title"] }),
+    ).success,
+  ).toBe(false)
+  expect(
+    edgeBatchModelOutputSchema.safeParse(
+      result({
+        basis: "metadata",
+        fields: ["title"],
+        spanIds: ["a".repeat(32)],
+      }),
+    ).success,
+  ).toBe(false)
+})
 
 function runEdgeBatch(input: FixtureInput) {
   const model: ReservationAwareStructuredModel = {

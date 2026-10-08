@@ -230,6 +230,13 @@ function token(value: unknown): number | undefined {
     : undefined
 }
 
+function hasOneOf(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasOneOf)
+  if (!value || typeof value !== "object") return false
+  const object = value as Record<string, unknown>
+  return Array.isArray(object.oneOf) || Object.values(object).some(hasOneOf)
+}
+
 type CodexEvents = {
   output?: string
   usage?: ModelUsage
@@ -507,6 +514,11 @@ export function createCodexSubscriptionAstraModel(
       } catch {
         throw new CodexSubscriptionAstraError("schema_unsupported")
       }
+      // Codex's structured output route supports nested anyOf, not oneOf.
+      // Reject it before the durable reservation rather than leaving a
+      // pending call after a fast provider-side schema refusal.
+      if (hasOneOf(schema))
+        throw new CodexSubscriptionAstraError("schema_unsupported")
       if (Buffer.byteLength(JSON.stringify(schema), "utf8") > MAX_SCHEMA_BYTES)
         throw new CodexSubscriptionAstraError("schema_unsupported")
       const prompt = JSON.stringify({

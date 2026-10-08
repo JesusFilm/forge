@@ -248,6 +248,34 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     })
   })
 
+  it("rejects a nested oneOf schema before reservation or CLI spawn", async () => {
+    const cli = await fakeCli(events(summary))
+    const reserve = vi.fn(async () => ({
+      kind: "dispatch" as const,
+      reservation: "id",
+    }))
+    const evidence = z.discriminatedUnion("basis", [
+      z.object({
+        basis: z.literal("transcript"),
+        spanIds: z.array(z.string()),
+      }),
+      z.object({ basis: z.literal("metadata"), fields: z.array(z.string()) }),
+    ])
+    await expect(
+      model(cli.executable).generateReserved(
+        { ...input, schema: z.object({ evidence }) },
+        reserve,
+      ),
+    ).rejects.toMatchObject({
+      code: "schema_unsupported",
+      consumptionUnknown: false,
+    })
+    expect(reserve).not.toHaveBeenCalled()
+    await expect(readFile(cli.capture)).rejects.toMatchObject({
+      code: "ENOENT",
+    })
+  })
+
   it("reserves after preparation and before one spawn; terminal replay skips the spawn", async () => {
     const cli = await fakeCli(events(summary))
     const reserve = vi.fn(async () => {

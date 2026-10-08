@@ -38,7 +38,7 @@ const modelEdgeSchema = z
     reasonEnglish: boundedText(12, 600),
     addedViewingValueEnglish: boundedText(12, 600).nullable(),
     strength: z.number().int().min(0).max(100),
-    evidence: z.discriminatedUnion("basis", [
+    evidence: z.union([
       z
         .object({
           basis: z.literal("transcript"),
