@@ -1463,6 +1463,13 @@ describe("useBibleVerses reader-translation cards", () => {
       chapterStart: 1,
     },
   }
+  const SPANISH_JOHN: CardQuote = {
+    ...KOREAN_JOHN,
+    text: "Porque Dios amó tanto al mundo",
+    reference: { ...KOREAN_JOHN.reference, bookName: "Juan" },
+    translationName: "La Biblia en Español Sencillo",
+    languageTag: "es",
+  }
   const RUSSIAN_JOHN: CardQuote = {
     ...KOREAN_JOHN,
     text: "Ибо так возлюбил Бог мир",
@@ -1940,6 +1947,212 @@ describe("useBibleVerses reader-translation cards", () => {
       text: "English text",
       loading: false,
     })
+  })
+
+  // Review #2 (KTD4): a restart for the payload is part of the open.
+  it("keeps the open's budget when the payload settles late", async () => {
+    jest.useFakeTimers()
+    mockGetClient.mockReturnValue({ query: englishGaps(["c1"]) })
+    const network = deferred<ReadonlyMap<string, CardQuoteResult>>()
+    mockResolveCardQuotes.mockImplementation(async (_services, input) =>
+      input.reach === "network"
+        ? network.promise
+        : quoteResults(input, () => ({
+            status: "network",
+            translationId: "kor_old",
+          })),
+    )
+    const hook = renderHook({
+      slug: "jesus",
+      citations: [cited("c1")],
+      art: { ...NO_ART, payloadSettled: false },
+      forms: KO,
+    })
+    await flush()
+
+    await act(async () => {
+      jest.advanceTimersByTime(5000)
+    })
+    hook.rerender({ slug: "jesus", citations: [cited("c1")], forms: KO })
+    await flush()
+    await act(async () => {
+      jest.advanceTimersByTime(PASSAGE_FETCH_DEADLINE_MS - 5000)
+    })
+    await flush()
+
+    expect(verseCards(hook.latest())[0]).toMatchObject({
+      text: "English text",
+      loading: false,
+    })
+  })
+
+  // Review #4 (R1): admin's stall is "no passage", not a reason to drop a
+  // verse that the device already holds.
+  it("keeps an on-device verse when admin's read stalls", async () => {
+    jest.useFakeTimers()
+    mockGetClient.mockReturnValue({
+      query: jest.fn(() => new Promise(() => {})),
+    })
+    mockResolveCardQuotes.mockImplementation(async (_services, input) =>
+      quoteResults(input, () => local("kor_old", KOREAN_JOHN)),
+    )
+    const hook = renderHook({
+      slug: "jesus",
+      citations: [cited("c1")],
+      forms: KO,
+    })
+    await flush()
+
+    await act(async () => {
+      jest.advanceTimersByTime(PASSAGE_FETCH_DEADLINE_MS)
+    })
+    await flush()
+
+    expect(verseCards(hook.latest())[0]).toMatchObject({
+      text: KOREAN_JOHN.text,
+      loading: false,
+    })
+  })
+
+  // Review #5 (R14).
+  it("resolves the cards again when the dub changes", async () => {
+    mockGetClient.mockReturnValue({ query: englishGaps(["c1"]) })
+    mockResolveCardQuotes.mockImplementation(async (_services, input) =>
+      input.audioLanguage === "spa"
+        ? quoteResults(input, () => local("spa_bes", SPANISH_JOHN))
+        : englishReader(input),
+    )
+    const hook = renderHook({
+      slug: "jesus",
+      citations: [cited("c1")],
+      forms: KO,
+    })
+    await flush()
+    expect(verseCards(hook.latest())[0]?.text).toBe("English text")
+
+    hook.rerender({
+      slug: "jesus",
+      citations: [cited("c1")],
+      forms: KO,
+      reader: { ...READER_DEFAULTS, audioLanguage: "spa" },
+    })
+    await flush()
+
+    expect(verseCards(hook.latest())[0]).toMatchObject({
+      text: SPANISH_JOHN.text,
+      verseLang: "es",
+      loading: false,
+    })
+  })
+
+  it("leaves a card as it was when a dub change is undone mid-read", async () => {
+    mockGetClient.mockReturnValue({ query: englishGaps(["c1"]) })
+    const network = deferred<ReadonlyMap<string, CardQuoteResult>>()
+    mockResolveCardQuotes.mockImplementation(async (_services, input) => {
+      if (input.reach === "network") return network.promise
+      return quoteResults(input, () =>
+        input.audioLanguage === "spa"
+          ? { status: "network", translationId: "spa_bes" }
+          : local("kor_old", KOREAN_JOHN),
+      )
+    })
+    const hook = renderHook({
+      slug: "jesus",
+      citations: [cited("c1")],
+      forms: KO,
+    })
+    await flush()
+
+    hook.rerender({
+      slug: "jesus",
+      citations: [cited("c1")],
+      forms: KO,
+      reader: { ...READER_DEFAULTS, audioLanguage: "spa" },
+    })
+    await flush()
+    expect(verseCards(hook.latest())[0]?.loading).toBe(true)
+
+    hook.rerender({ slug: "jesus", citations: [cited("c1")], forms: KO })
+    await flush()
+
+    expect(verseCards(hook.latest())[0]).toMatchObject({
+      text: KOREAN_JOHN.text,
+      loading: false,
+    })
+  })
+
+  // R12: only the viewer's own change may replace a settled card's text.
+  it("keeps a fallback card when the payload settles later", async () => {
+    mockGetClient.mockReturnValue({ query: englishGaps(["c1"]) })
+    mockResolveCardQuotes.mockImplementation(async (_services, input) =>
+      quoteResults(input, () => ({
+        status: "fallback",
+        translationId: null,
+        reason: "unknown-translation",
+      })),
+    )
+    const hook = renderHook({
+      slug: "jesus",
+      citations: [cited("c1")],
+      art: { ...NO_ART, payloadSettled: false },
+      forms: KO,
+    })
+    await flush()
+    expect(verseCards(hook.latest())[0]?.text).toBe("English text")
+
+    mockResolveCardQuotes.mockImplementation(async (_services, input) =>
+      quoteResults(input, () => local("kor_old", KOREAN_JOHN)),
+    )
+    hook.rerender({ slug: "jesus", citations: [cited("c1")], forms: KO })
+    await flush()
+
+    expect(verseCards(hook.latest())[0]).toMatchObject({
+      text: "English text",
+      loading: false,
+    })
+  })
+
+  it("waits for the return to the screen before it reads a new pick", async () => {
+    mockGetClient.mockReturnValue({ query: englishGaps(["c1"]) })
+    mockResolveCardQuotes.mockImplementation(async (_services, input) =>
+      quoteResults(input, () => local("kor_old", KOREAN_JOHN)),
+    )
+    const hook = renderHook({
+      slug: "jesus",
+      citations: [cited("c1")],
+      forms: KO,
+    })
+    await flush()
+    hook.rerender({
+      slug: "jesus",
+      citations: [cited("c1")],
+      forms: KO,
+      reader: { ...READER_DEFAULTS, focused: false },
+    })
+    await flush()
+    const callsBeforePick = mockResolveCardQuotes.mock.calls.length
+
+    mockResolveCardQuotes.mockImplementation(async (_services, input) =>
+      englishReader(input),
+    )
+    mockPick = { translationId: "BSB" }
+    act(() => {
+      for (const listener of pickListeners) listener()
+    })
+    await flush()
+    expect(mockResolveCardQuotes.mock.calls.length).toBe(callsBeforePick)
+
+    hook.rerender({ slug: "jesus", citations: [cited("c1")], forms: KO })
+    await flush()
+    expect(verseCards(hook.latest())[0]).toMatchObject({
+      text: "English text",
+      loading: false,
+    })
+  })
+
+  it("does not read the reading position for a video with no citations", () => {
+    renderHook({ slug: "jesus", citations: [], forms: KO })
+    expect(pickListeners.size).toBe(0)
   })
 
   it("waits for the dub preference before it settles", async () => {

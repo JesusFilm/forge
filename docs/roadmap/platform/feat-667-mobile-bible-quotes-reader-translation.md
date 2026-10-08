@@ -51,7 +51,7 @@ Built in this ticket's PR (U1 to U5 of the plan):
 
 Remaining before `status: "complete"`:
 
-- The device check in the plan's Verification Contract: Korean (AE1, AE11), Russian (AE10), Persian (`pes_pbs`, right to left), Burmese (`mya_jvb`, a tall script), and Hausa (AE8) on the iOS simulator, plus one offline run with the Korean Bible downloaded (AE6).
+- The device check in the plan's Verification Contract, on the iOS simulator. The phone languages are Korean (AE1, AE11), Russian (AE10), Persian (`pes_pbs`, right to left), Burmese (`mya_jvb`, a tall script), and Hausa (AE8). One more run is offline, with the Korean Bible downloaded (AE6).
 - The page-load check: time to first frame and time to the cards' settle, `main` against the branch, for an English viewer and a Korean viewer.
 
 ## Constraints

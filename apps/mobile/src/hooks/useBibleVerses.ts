@@ -328,9 +328,13 @@ export type ReaderTranslationInputs = {
   focused: boolean
 }
 
-/** A card's source on this open: its reader translation, and the verse from
- *  that translation, or null for admin's card. */
-type SettledCard = { translationId: string | null; quote: CardQuote | null }
+/** A card's source on this open: its reader translation, the verse from that
+ *  translation (null for admin's card), and the reader inputs it settled under. */
+type SettledCard = {
+  translationId: string | null
+  quote: CardQuote | null
+  readerKey: string
+}
 
 type ReaderCards = {
   slug: string
@@ -357,25 +361,18 @@ type AdminOutcome = {
 /** One admin read. `outcome` never rejects, and an abort leaves it pending. */
 type AdminRead = {
   startedAt: number
-  settled: boolean
   outcome: Promise<AdminOutcome>
   settle: (outcome: AdminOutcome) => void
+  /** The budget of this open's runs, renewed when the reader inputs change. */
+  budget: { readerKey: string; startedAt: number } | null
 }
 
 function startAdminRead(): AdminRead {
-  let resolve: (outcome: AdminOutcome) => void = () => {}
-  const read: AdminRead = {
-    startedAt: Date.now(),
-    settled: false,
-    outcome: new Promise<AdminOutcome>((settle) => {
-      resolve = settle
-    }),
-    settle(outcome) {
-      read.settled = true
-      resolve(outcome)
-    },
-  }
-  return read
+  let settle: (outcome: AdminOutcome) => void = () => {}
+  const outcome = new Promise<AdminOutcome>((resolve) => {
+    settle = resolve
+  })
+  return { startedAt: Date.now(), outcome, settle, budget: null }
 }
 
 /** Why a card that could have shown its reader translation shows admin's. */
@@ -411,6 +408,10 @@ type RunInput = {
   audioLanguage: string | null
   payloadSettled: boolean
   admin: AdminRead
+  /** The time at which the run's budget ends (KTD4, KTD11). */
+  deadline: number
+  /** The viewer's inputs: pick, dub, and focus epoch (KTD11). */
+  readerKey: string
   /** The cards this open already settled, by `cardQuoteKey`. */
   previous: ReadonlyMap<string, SettledCard>
   signal: AbortSignal
@@ -434,13 +435,15 @@ function within<T>(
  */
 async function runReaderCards(input: RunInput): Promise<RunResult | null> {
   const { services, citations, audioLanguage, admin, previous, signal } = input
+  const { readerKey } = input
   const result = emptyRun()
   const settle = (
     key: string,
-    card: SettledCard,
+    translationId: string | null,
+    quote: CardQuote | null,
     reason: SettleReason | "admin" | "local",
   ) => {
-    result.settled.set(key, card)
+    result.settled.set(key, { translationId, quote, readerKey })
     if (reason === "local") result.local += 1
     else if (reason === "admin") result.admin += 1
     else result.fallbacks[reason] += 1
@@ -448,8 +451,7 @@ async function runReaderCards(input: RunInput): Promise<RunResult | null> {
   const settleNew = (reason: SettleReason) => {
     for (const citation of citations) {
       const key = cardQuoteKey(citation)
-      if (!previous.has(key))
-        settle(key, { translationId: null, quote: null }, reason)
+      if (!previous.has(key)) settle(key, null, null, reason)
     }
   }
   /** Settles an answer that names the card's source; false when it does not. */
@@ -458,22 +460,18 @@ async function runReaderCards(input: RunInput): Promise<RunResult | null> {
     translationId: string | null,
     found: CardQuoteResult,
   ): boolean => {
-    const adminCard = { translationId, quote: null }
     if (found.status === "local") {
-      settle(key, { translationId, quote: found.quote }, "local")
+      settle(key, translationId, found.quote, "local")
     } else if (found.status === "fallback") {
-      settle(key, adminCard, found.reason)
-    } else if (found.status === "admin") settle(key, adminCard, "admin")
+      settle(key, translationId, null, found.reason)
+    } else if (found.status === "admin")
+      settle(key, translationId, null, "admin")
     else return false
     return true
   }
 
   try {
-    // KTD4: the open's one budget, shared with admin's read. A run after admin
-    // settled (a return, a new pick) gets its own (KTD11).
-    const deadline =
-      (admin.settled ? Date.now() : admin.startedAt) + PASSAGE_FETCH_DEADLINE_MS
-    const left = () => deadline - Date.now()
+    const left = () => input.deadline - Date.now()
     const device = await within(
       resolveCardQuotes(services, {
         citations,
@@ -485,10 +483,13 @@ async function runReaderCards(input: RunInput): Promise<RunResult | null> {
     )
     const adminOutcome = await within(admin.outcome, left(), signal)
     if (signal.aborted) return null
-    if (device == null || adminOutcome == null) {
+    if (device == null) {
       settleNew("timeout")
       return result
     }
+    // An admin read out of time gives no passage (R1), so a verse on the
+    // device still shows; the spent budget leaves no network read.
+    const passages = adminOutcome?.passages ?? NO_PASSAGES
 
     const network: {
       citation: WatchBibleCitation
@@ -500,19 +501,34 @@ async function runReaderCards(input: RunInput): Promise<RunResult | null> {
       if (found == null || found.status === "pending") {
         // KTD9: a book still unknown waits for the payload.
         if (input.payloadSettled && !previous.has(key)) {
-          settle(key, { translationId: null, quote: null }, "no-verse")
+          settle(key, null, null, "no-verse")
         }
         continue
       }
       const { translationId } = found
-      const entry = adminOutcome.passages.get(citation.documentId)
+      const entry = passages.get(citation.documentId)
       const gap = entry == null || entry.lang === ENGLISH_TEXT_LANG
+      // KTD11: only the viewer's new inputs reload a settled card, and only
+      // when its reader translation changed (R12 keeps the rest).
       const known = previous.get(key)
-      if (known && (!gap || known.translationId === translationId)) continue
-      if (!gap) settle(key, { translationId, quote: null }, "admin")
+      if (
+        known &&
+        (known.readerKey === readerKey ||
+          !gap ||
+          known.translationId === translationId)
+      ) {
+        continue
+      }
+      if (!gap) settle(key, translationId, null, "admin")
       else if (!settleFound(key, translationId, found)) {
-        if (adminOutcome.network) network.push({ citation, translationId })
-        else settle(key, { translationId, quote: null }, "no-network")
+        if (adminOutcome?.network) network.push({ citation, translationId })
+        else
+          settle(
+            key,
+            translationId,
+            null,
+            adminOutcome ? "no-network" : "timeout",
+          )
       }
     }
     if (network.length === 0) return result
@@ -536,10 +552,9 @@ async function runReaderCards(input: RunInput): Promise<RunResult | null> {
     for (const { citation, translationId } of network) {
       const key = cardQuoteKey(citation)
       const found = read?.get(key)
-      if (found == null) {
-        settle(key, { translationId, quote: null }, "timeout")
-      } else if (!settleFound(key, translationId, found)) {
-        settle(key, { translationId, quote: null }, "read-failed")
+      if (found == null) settle(key, translationId, null, "timeout")
+      else if (!settleFound(key, translationId, found)) {
+        settle(key, translationId, null, "read-failed")
       }
     }
     return result
@@ -554,6 +569,10 @@ async function runReaderCards(input: RunInput): Promise<RunResult | null> {
 /** The viewer's pick, the one part of the reading position a card reads. */
 function readerPickKey(position: ReadingPositionSnapshot): string {
   return `${position.translationId ?? ""}|${position.sessionTranslationId ?? ""}`
+}
+
+function subscribeToNothing(): () => void {
+  return () => {}
 }
 
 /**
@@ -692,9 +711,10 @@ export function useBibleVerses(
   // ── Cards from the reader's translation (plan 2026-10-08, KTD3, KTD11) ──
   const quoteServices = getCardQuoteServices()
   const { positionStore } = quoteServices
+  // A video with no citations leaves the store alone, so its read stays lazy.
   const pickKey = useSyncExternalStore(
-    positionStore.subscribe,
-    () => readerPickKey(positionStore.getSnapshot()),
+    hasCitations ? positionStore.subscribe : subscribeToNothing,
+    () => (hasCitations ? readerPickKey(positionStore.getSnapshot()) : ""),
     () => "",
   )
   // Each return to the screen starts a new epoch, and so a new run.
@@ -707,6 +727,8 @@ export function useBibleVerses(
   }
   const { audioLanguage, audioReady } = reader
   const [readerCards, setReaderCards] = useState<ReaderCards>(NO_READER_CARDS)
+  // The viewer's inputs. A change is a re-resolve with its own budget (KTD11).
+  const readerKey = [pickKey, audioLanguage ?? "", focus.epoch].join("¦")
   // Every input of a run, so the effect below starts one per change. It names
   // the passage read's inputs too, so both effects re-run in one commit.
   const runKey = [
@@ -715,14 +737,21 @@ export function useBibleVerses(
     uiLang,
     citations.map(cardQuoteKey).join("~"),
     payloadSettled,
-    audioLanguage ?? "",
-    pickKey,
-    focus.epoch,
+    readerKey,
   ].join("¦")
 
   useEffect(() => {
     const admin = adminRef.current
     if (!slug || !hasCitations || !audioReady || admin == null) return
+    const previous =
+      readerCards.slug === slug ? readerCards.settled : NO_SETTLED
+    // A pick made in the reader waits for the return, which runs once.
+    if (!reader.focused && previous.size > 0) return
+    // KTD4: one budget per open; a payload or citation restart keeps it.
+    if (admin.budget?.readerKey !== readerKey) {
+      const startedAt = admin.budget ? Date.now() : admin.startedAt
+      admin.budget = { readerKey, startedAt }
+    }
     const controller = new AbortController()
     const { signal } = controller
     void runReaderCards({
@@ -731,7 +760,9 @@ export function useBibleVerses(
       audioLanguage,
       payloadSettled,
       admin,
-      previous: readerCards.slug === slug ? readerCards.settled : NO_SETTLED,
+      deadline: admin.budget.startedAt + PASSAGE_FETCH_DEADLINE_MS,
+      readerKey,
+      previous,
       signal,
       onReloading(keys) {
         if (signal.aborted) return
@@ -880,7 +911,7 @@ export function useBibleVerses(
       const cardLoading =
         passageLoading || source == null || sources.reloading.has(key)
       const quote = cardLoading ? null : (source?.quote ?? null)
-      const art = {
+      const cardBase = {
         attribution: null,
         imageUrl: artCandidates[artIndex] ?? null,
         artCandidates,
@@ -893,7 +924,7 @@ export function useBibleVerses(
       }
       if (quote) {
         return {
-          ...art,
+          ...cardBase,
           reference: formatCitationLabel(quote.reference, t),
           text: quote.text,
           translation: quote.translationName,
@@ -904,7 +935,7 @@ export function useBibleVerses(
         }
       }
       return {
-        ...art,
+        ...cardBase,
         // R10: a citation with no renderable passage keeps its own reference,
         // and so does a loading card, which may yet show another translation.
         reference:

@@ -279,7 +279,13 @@ function quoteOf(
   if (!first || !last || !texts[0]) return null
   const crossChapter = last.chapter !== first.chapter
   const through = verseThrough(last.verse)
-  const whole = plan.wholeChapter !== null
+  const lastVerses = texts[texts.length - 1]?.chapter.verses ?? []
+  // A chapter label fits only stops that fill their chapters: BSB Psalm 10
+  // is Synodal 9:22-39, so it keeps its verse numbers.
+  const whole =
+    plan.wholeChapter !== null &&
+    first.verse === texts[0].chapter.verses[0] &&
+    last.verse === lastVerses[lastVerses.length - 1]
   return {
     text: stops
       .flatMap((stop) => stop.verse.lines.map((line) => line.text))

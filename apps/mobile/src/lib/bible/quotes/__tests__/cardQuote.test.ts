@@ -12,6 +12,8 @@ import arabicJohn3 from "../../text/__tests__/fixtures/arb_vdv-jhn-3.json"
 import t4tJohn4 from "../../text/__tests__/fixtures/eng_t4t-jhn-4.json"
 import japaneseMatthew5 from "../../text/__tests__/fixtures/jpn_loc-mat-5.json"
 import koreanJohn3 from "../../text/__tests__/fixtures/kor_old-jhn-3.json"
+import koreanJohn4 from "../../text/__tests__/fixtures/kor_old-jhn-4.json"
+import synodalPsalm9 from "../../text/__tests__/fixtures/rus_syn-psa-9.json"
 import synodalPsalm50 from "../../text/__tests__/fixtures/rus_syn-psa-50.json"
 import { parseCatalog, type Catalog } from "../../data/catalog"
 import { createReadingPositionStore } from "../../position/store"
@@ -57,6 +59,8 @@ function chapterOf(raw: unknown): ChapterText {
 }
 
 const KOREAN_JOHN_3 = chapterOf(koreanJohn3)
+const KOREAN_JOHN_4 = chapterOf(koreanJohn4)
+const SYNODAL_PSALM_9 = chapterOf(synodalPsalm9)
 const JAPANESE_MATTHEW_5 = chapterOf(japaneseMatthew5)
 const SYNODAL_PSALM_50 = chapterOf(synodalPsalm50)
 const ARABIC_JOHN_3 = chapterOf(arabicJohn3)
@@ -398,6 +402,75 @@ describe("the verses a card shows (KTD6)", () => {
     ).toBe(true)
     expect(
       result.quote.text.endsWith("тогда возложат на алтарь Твой тельцов."),
+    ).toBe(true)
+  })
+
+  it("reads a quote across two chapters", async () => {
+    const services = await servicesOf({
+      phone: "ko",
+      network: [KOREAN_JOHN_3, KOREAN_JOHN_4],
+    })
+
+    const result = await resultFor(
+      services,
+      citation("JHN", 3, 35, { chapterEnd: 4, verseEnd: 2 }),
+    )
+
+    if (result?.status !== "local") throw new Error(String(result?.status))
+    expect(result.quote.reference).toEqual({
+      bookName: "요한복음",
+      chapterStart: 3,
+      chapterEnd: 4,
+      verseStart: 35,
+      verseEnd: 2,
+    })
+    expect(result.quote.text).toBe(
+      [
+        "아버지께서 아들을 사랑하사 만물을 다 그 손에 주셨으니",
+        "아들을 믿는 자는 영생이 있고 아들을 순종치 아니하는 자는 영생을 보지 못하고 도리어 하나님의 진노가 그 위에 머물러 있느니라'",
+        "예수의 제자를 삼고 세례를 주는 것이 요한보다 많다 하는 말을 바리새인들이 들은 줄을 주께서 아신지라",
+        "(예수께서 친히 세례를 주신 것이 아니요 제자들이 준 것이라)",
+      ].join(" "),
+    )
+  })
+
+  it("asks for the network when one of two chapters is not on the device", async () => {
+    const services = await servicesOf({
+      phone: "ko",
+      device: [KOREAN_JOHN_3],
+      network: [KOREAN_JOHN_4],
+    })
+
+    await expect(
+      resultFor(
+        services,
+        citation("JHN", 3, 35, { chapterEnd: 4, verseEnd: 2 }),
+        {
+          reach: "device",
+        },
+      ),
+    ).resolves.toEqual({ status: "network", translationId: "kor_old" })
+  })
+
+  it("labels a whole BSB chapter that is part of a translation chapter by its verses", async () => {
+    const services = await servicesOf({
+      phone: "ru",
+      network: [SYNODAL_PSALM_9],
+    })
+
+    const result = await resultFor(services, citation("PSA", 10, null))
+
+    if (result?.status !== "local") throw new Error(String(result?.status))
+    // BSB Psalm 10 is Synodal Psalm 9:22-39, not the whole of Psalm 9.
+    expect(result.quote.reference).toEqual({
+      bookName: "Псалтырь",
+      chapterStart: 9,
+      chapterEnd: null,
+      verseStart: 22,
+      verseEnd: 39,
+    })
+    expect(
+      result.quote.text.startsWith("Для чего, Господи, стоишь вдали,"),
     ).toBe(true)
   })
 

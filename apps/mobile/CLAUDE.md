@@ -2125,12 +2125,21 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
     resolves the cards again. Only a card whose reader translation changed
     reloads, with its own budget (KTD11). The route passes the dub preference
     and its focus into the hook (KTD3).
+  - A restart for the payload or for new citations keeps the open's budget,
+    and never reloads a card that already settled (R12). A pick made in the
+    reader waits for the return to the watch screen, so it reads once.
+  - When admin's read runs out of time, the cards count it as "no passage".
+    A verse that is already on the device still shows.
   - A local card sets `verseDirection` and `verseLang`. The verse, the
     reference, and the translation name take the catalog's direction; the
     credit stays English and left to right (KTD7).
   - Card reads share the reader's repository, so they fill its kept-chapter
-    cache. `bible_quotes.reader_translation` logs one event per settle, with
-    the count of local cards, admin's cards, and each fallback reason (KTD10).
+    cache. A card's network read also sets the repository's "network
+    answered" signal, which the reader's prefetch reads. Two reads of one
+    chapter share one fetch, and a failure logs the tag of the read that
+    started it, so `reader_fetch_source` is close, not exact.
+  - `bible_quotes.reader_translation` logs one event per settle, with the
+    count of local cards, admin's cards, and each fallback reason (KTD10).
 - **One build script makes every bundled Bible file (KTD1).**
   `scripts/build-bible-data.mjs` writes 66 BSB book files as `.bible` Metro
   assets under `assets/bible/bsb/`, the catalog snapshot
