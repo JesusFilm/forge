@@ -25,6 +25,7 @@ import { WatchExposureBoundary } from "@/components/recommendations/WatchExposur
 import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
+import { WatchDescription } from "@/components/watch/WatchDescription"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
@@ -527,12 +528,11 @@ export function SeriesPageClient({
           >
             {description ? (
               <div className="md:col-span-3">
-                <p
-                  data-testid="series-page-description"
+                <WatchDescription
+                  description={description}
+                  testId="series-page-description"
                   className="text-base leading-relaxed text-stone-200/80 md:text-lg"
-                >
-                  {description}
-                </p>
+                />
               </div>
             ) : (
               // Reserve the left columns so the combobox stays in the right

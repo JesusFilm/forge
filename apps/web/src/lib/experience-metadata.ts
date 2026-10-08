@@ -18,6 +18,10 @@ import {
 import { getSocialConfig } from "@/lib/social-config"
 import { resolvePosterUrl } from "@/lib/url"
 import { stripHtmlSuffix } from "@/lib/url-shape"
+import {
+  parseWatchDescription,
+  toWatchMetadataDescription,
+} from "@/lib/watch-description"
 
 const TITLE_SUFFIX = "| Jesus Film Project"
 const TITLE_SUFFIX_TEXT = "Jesus Film Project"
@@ -210,13 +214,13 @@ export function buildWatchVideoMetadataModel(
   const title =
     trimmedValue(options.video.searchTitle) ?? `${videoTitle} ${TITLE_SUFFIX}`
   const description =
-    trimmedValue(options.video.searchDescription) ??
-    options.video.description ??
-    options.video.snippet ??
-    ""
+    parseWatchDescription(trimmedValue(options.video.searchDescription) ?? "")
+      .editorial ||
+    toWatchMetadataDescription(options.video.description) ||
+    toWatchMetadataDescription(options.video.snippet)
   const structuredDataDescription =
-    options.video.description?.trim() ||
-    options.video.snippet?.trim() ||
+    toWatchMetadataDescription(options.video.description) ||
+    toWatchMetadataDescription(options.video.snippet) ||
     (structuredDataTitle
       ? `Watch ${structuredDataTitle} from Jesus Film Project.`
       : null)
@@ -328,10 +332,11 @@ function toMetadata(
     // routinely below that floor (one-line taglines). Keep snippet as the
     // fallback so videos with no body description still get something.
     const description =
-      trimmedValue(resolvedPage.routeVideo.searchDescription) ??
-      resolvedPage.routeVideo.description ??
-      resolvedPage.routeVideo.snippet ??
-      ""
+      parseWatchDescription(
+        trimmedValue(resolvedPage.routeVideo.searchDescription) ?? "",
+      ).editorial ||
+      toWatchMetadataDescription(resolvedPage.routeVideo.description) ||
+      toWatchMetadataDescription(resolvedPage.routeVideo.snippet)
     const baseTitle = resolvedPage.routeVideo.title || options?.slug || "Watch"
     const title =
       trimmedValue(resolvedPage.routeVideo.searchTitle) ??
@@ -487,7 +492,9 @@ export function generateSeriesMetadata(
   const title =
     (series.title && `${series.title} ${TITLE_SUFFIX}`) ||
     `Watch ${TITLE_SUFFIX}`
-  const description = series.description ?? series.snippet ?? ""
+  const description =
+    toWatchMetadataDescription(series.description) ||
+    toWatchMetadataDescription(series.snippet)
   const posterUrl = resolvePosterUrl(series.images?.[0], null)
   const ogImage = posterUrl
     ? {

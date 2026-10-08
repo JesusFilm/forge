@@ -2,6 +2,7 @@
 
 import { DownloadButton } from "@/components/watch/DownloadButton"
 import { WatchStudyQuestions } from "@/components/watch/WatchStudyQuestions"
+import { WatchDescription } from "@/components/watch/WatchDescription"
 import type { WatchBodyBlock, WatchStudyQuestionsBlock } from "@/lib/content"
 
 export function WatchBody({
@@ -86,12 +87,11 @@ export function WatchBody({
           ) : null}
         </div>
         {video.description ? (
-          <p
-            data-testid="watch-body-description"
+          <WatchDescription
+            description={video.description}
+            testId="watch-body-description"
             className="text-base leading-relaxed font-normal text-stone-200/80 md:mt-6 md:text-lg"
-          >
-            {video.description}
-          </p>
+          />
         ) : null}
       </div>
 

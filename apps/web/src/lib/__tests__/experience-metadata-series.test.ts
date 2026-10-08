@@ -66,6 +66,19 @@ describe("generateSeriesMetadata", () => {
     expect(meta.description).toBeUndefined()
   })
 
+  it("uses bounded editorial text without LUMO social URLs", () => {
+    const meta = generateSeriesMetadata("en", {
+      series: makeSeries({
+        description:
+          "The Gospel of John. For more information please visit - https://www.lumoproject.com Follow us on Facebook - https://www.facebook.com/thelumoproject Follow us on Twitter - https://twitter.com/TheLumoProject Follow us on Instagram - https://www.instagram.com/lumo.project",
+      }),
+      pathLocale: "en",
+    })
+    expect(meta.description).toBe("The Gospel of John.")
+    expect(meta.openGraph?.description).toBe("The Gospel of John.")
+    expect(meta.twitter?.description).toBe("The Gospel of John.")
+  })
+
   it("constructs the canonical URL in the .html shape via the route builder", () => {
     const meta = generateSeriesMetadata("en", {
       series: makeSeries(),

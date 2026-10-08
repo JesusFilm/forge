@@ -107,6 +107,75 @@ function makeStudyQuestions(values: string[]): WatchStudyQuestionsBlock {
 }
 
 describe("WatchBody — two-column layout", () => {
+  it("renders known LUMO sources as descriptive links", () => {
+    act(() => {
+      root.render(
+        <WatchBody
+          block={makeBlock({
+            description:
+              "The Gospel of John. For more information please visit - https://www.lumoproject.com Follow us on Facebook - https://www.facebook.com/thelumoproject Follow us on Twitter - https://twitter.com/TheLumoProject Follow us on Instagram - https://www.instagram.com/lumo.project",
+          })}
+          studyQuestions={null}
+          onDownloadClick={vi.fn()}
+        />,
+      )
+    })
+    const description = container.querySelector(
+      '[data-testid="watch-body-description"]',
+    )
+    expect(description?.textContent).toContain("The Gospel of John.")
+    expect(description?.textContent).not.toContain("https://")
+    expect(
+      description?.querySelector('a[href="https://www.lumoproject.com"]')
+        ?.textContent,
+    ).toBe("LUMO Project")
+    expect(
+      description?.querySelector('a[href="https://twitter.com/TheLumoProject"]')
+        ?.textContent,
+    ).toBe("X")
+  })
+
+  it("keeps long copy available behind an accessible disclosure", () => {
+    const editorial = "A long episode description with useful detail. ".repeat(
+      12,
+    )
+    act(() => {
+      root.render(
+        <WatchBody
+          block={makeBlock({ description: editorial })}
+          studyQuestions={null}
+          onDownloadClick={vi.fn()}
+        />,
+      )
+    })
+    const disclosure = container.querySelector(
+      '[data-testid="watch-body-description"] details',
+    )
+    expect(
+      disclosure?.querySelector("summary")?.getAttribute("aria-label"),
+    ).toBe("Read more...")
+    expect(
+      disclosure?.querySelector("summary")?.getAttribute("aria-describedby"),
+    ).toBe("watch-body-description-preview")
+    expect(
+      disclosure?.querySelector("summary")?.textContent?.length,
+    ).toBeLessThan(editorial.length)
+    expect(disclosure?.querySelector("summary")?.textContent).toContain(
+      editorial.slice(0, 40),
+    )
+    expect(disclosure?.querySelector("p")).toBeNull()
+    act(() => {
+      if (disclosure instanceof HTMLDetailsElement) disclosure.open = true
+      disclosure?.dispatchEvent(new Event("toggle"))
+    })
+    expect(
+      disclosure?.querySelector("summary")?.getAttribute("aria-label"),
+    ).toBe("Show less")
+    expect(
+      disclosure?.querySelector("summary")?.getAttribute("aria-describedby"),
+    ).toBeNull()
+    expect(disclosure?.querySelector("p")?.textContent).toBe(editorial)
+  })
   it("renders an optimistic title without replacing route-owned description", () => {
     const block = makeBlock({ title: "Current Video" })
 

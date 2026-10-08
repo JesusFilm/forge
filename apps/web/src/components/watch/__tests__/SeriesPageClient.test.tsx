@@ -1008,6 +1008,31 @@ describe("SeriesPageClient — edge cases", () => {
       container.querySelector('[data-testid="series-page-description"]'),
     ).toBeNull()
   })
+
+  it("renders LUMO attribution links on series descriptions", () => {
+    act(() => {
+      root.render(
+        <SeriesPageClient
+          series={makeSeries({
+            description:
+              "A LUMO series. For more information please visit - https://www.lumoproject.com Follow us on Facebook - https://www.facebook.com/thelumoproject Follow us on Twitter - https://twitter.com/TheLumoProject Follow us on Instagram - https://www.instagram.com/lumo.project",
+          })}
+          selectedVariant={null}
+          locale="en"
+        />,
+      )
+    })
+    const description = container.querySelector(
+      '[data-testid="series-page-description"]',
+    )
+    expect(description?.textContent).toContain("A LUMO series.")
+    expect(description?.textContent).not.toContain("https://")
+    expect(
+      description?.querySelector(
+        'a[href="https://www.instagram.com/lumo.project"]',
+      )?.textContent,
+    ).toBe("Instagram")
+  })
 })
 
 describe("SeriesPageClient — header language switcher + language modal", () => {

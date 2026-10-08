@@ -81,6 +81,26 @@ describe("ShareModal — Copy Link", () => {
     expect(input.readOnly).toBe(true)
   })
 
+  it("uses editorial copy without the LUMO footer in the description preview", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="lumo-john-1-1-34"
+          currentLanguageSlug="english"
+          videoDescription={
+            "The opening of John's Gospel. For more information please visit - https://www.lumoproject.com Follow us on Facebook - https://www.facebook.com/thelumoproject Follow us on Twitter - https://twitter.com/TheLumoProject Follow us on Instagram - https://www.instagram.com/lumo.project"
+          }
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const description = $('[data-testid="watch-share-modal-description"]')
+    expect(description?.textContent).toBe("The opening of John's Gospel.")
+    expect(description?.textContent).not.toContain("http")
+  })
+
   it("clicking Copy writes the canonical URL to the clipboard", async () => {
     const writeText = vi.fn<(text: string) => Promise<void>>(() =>
       Promise.resolve(),

@@ -523,6 +523,52 @@ describe("buildWatchVideoMetadataModel", () => {
     expect(model.structuredDataTitle).toBe("Life of Jesus")
   })
 
+  it("cleans LUMO episode metadata while preserving an authored search description", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+    const footer =
+      "For more information please visit - https://www.lumoproject.com Follow us on Facebook - https://www.facebook.com/thelumoproject Follow us on Twitter - https://twitter.com/TheLumoProject Follow us on Instagram - https://www.instagram.com/lumo.project"
+    const searchDescription = `${"A source-backed episode description. ".repeat(7)}${footer}`
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "lumo-john-1-1-34",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        slug: "lumo-john-1-1-34",
+        description: `The opening of John's Gospel. ${footer}`,
+        searchDescription,
+      },
+    })
+
+    expect(model.description).toBe(
+      "A source-backed episode description. ".repeat(7).trim(),
+    )
+    expect(model.description.length).toBeGreaterThan(160)
+    expect(model.structuredDataDescription).toBe(
+      "The opening of John's Gospel.",
+    )
+    expect(model.description).not.toContain("https://")
+  })
+
+  it("falls back to snippet when the description contains only the LUMO footer", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+    const footer =
+      "For more information please visit - https://www.lumoproject.com Follow us on Facebook - https://www.facebook.com/thelumoproject Follow us on Twitter - https://twitter.com/TheLumoProject Follow us on Instagram - https://www.instagram.com/lumo.project"
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "lumo-john-1-1-34",
+      pathLocale: "english",
+      selectedVariant,
+      video: { ...video, description: footer, snippet: "Episode synopsis." },
+    })
+
+    expect(model.description).toBe("Episode synopsis.")
+    expect(model.structuredDataDescription).toBe("Episode synopsis.")
+  })
+
   it("isolates approved search and social overrides from VideoObject fields", async () => {
     const { buildWatchVideoMetadataModel } =
       await import("./experience-metadata")

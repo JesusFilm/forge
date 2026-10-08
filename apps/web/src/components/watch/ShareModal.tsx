@@ -11,6 +11,7 @@ import {
 import Image from "next/image"
 import { Copy, Facebook } from "lucide-react"
 import { useTranslations } from "next-intl"
+import { parseWatchDescription } from "@/lib/watch-description"
 
 // Inline X (formerly Twitter) glyph — lucide-react still ships the legacy
 // blue-bird Twitter icon AND exports its own `XIcon` (the close-button "x"),
@@ -82,6 +83,8 @@ export function ShareModal({
   onShareAction,
   onClose,
 }: ShareModalProps) {
+  const editorialVideoDescription =
+    parseWatchDescription(videoDescription).editorial
   const t = useTranslations("ShareModal")
   const [tab, setTab] = useState<ShareTab>("link")
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle")
@@ -272,12 +275,12 @@ export function ShareModal({
                   {videoTitle}
                 </h3>
               ) : null}
-              {videoDescription ? (
+              {editorialVideoDescription ? (
                 <p
                   data-testid="watch-share-modal-description"
                   className="line-clamp-4 text-base sm:text-sm leading-relaxed font-medium text-stone-300"
                 >
-                  {videoDescription}
+                  {editorialVideoDescription}
                 </p>
               ) : null}
             </div>
