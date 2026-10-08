@@ -214,7 +214,14 @@ export function createDevotionalLlm(options: {
           `devotional model response failed schema validation: ${parsed.error.issues
             .slice(0, 3)
             .map((i) => `${i.path.join(".") || "(root)"}: ${i.message}`)
-            .join("; ")}`,
+            .join("; ")} (returned keys: ${
+            parsedJson && typeof parsedJson === "object"
+              ? Object.keys(parsedJson as object).join(", ")
+              : typeof parsedJson
+          }; finish: ${
+            (payload as { choices?: { finish_reason?: string }[] }).choices?.[0]
+              ?.finish_reason ?? "?"
+          }; ${text.length} chars)`,
           parsed.error,
         )
       }

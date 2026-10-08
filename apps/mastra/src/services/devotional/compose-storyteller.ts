@@ -46,6 +46,8 @@ export type StorytellerInput = {
   scripture: GeneratedDevotional["scripture"]
   classic: { name: string; credit: string; entries: ReflectionEntry[] }
   contextTerms?: string[]
+  /** The owner's leaning for the one insight (see researchBrief). */
+  insightHint?: string
   contextAncient?: string[]
   corpora: ReferenceCorpora
   sequence: number
@@ -229,6 +231,7 @@ export async function composeStoryteller(
       classic: { name: input.classic.name, points },
       ...(input.contextTerms ? { terms: input.contextTerms } : {}),
       ...(input.contextAncient ? { ancient: input.contextAncient } : {}),
+      ...(input.insightHint ? { insightHint: input.insightHint } : {}),
       llm: input.llms.research,
       auditLlm: input.llms.audit,
       log,

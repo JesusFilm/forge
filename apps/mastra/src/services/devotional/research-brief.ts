@@ -213,6 +213,9 @@ export async function researchBrief(input: {
   classic: { name: string; points: string[] }
   terms?: string[]
   ancient?: string[]
+  /** The owner's leaning for this story ("history" / "language"), passed as
+   *  a preference the researcher may overrule with a reason. */
+  insightHint?: string
   llm: DevotionalLlm
   /** Audits claims against their sources (a cheaper model is fine). */
   auditLlm: DevotionalLlm
@@ -258,6 +261,12 @@ export async function researchBrief(input: {
     "",
     'GREEK (osis strong "English" lemma: lexicon entry):',
     greekBlock(input.corpora, input.passage.osisRef),
+    ...(input.insightHint
+      ? [
+          "",
+          `THE OWNER'S LEANING for the insight: ${input.insightHint}. A preference, not an order: follow it when the sources carry it well; if the other kind is clearly stronger here, choose that and say why in the insight sentence.`,
+        ]
+      : []),
   ].join("\n")
   const out = await input.llm.complete({
     system: SYSTEM_PROMPT,

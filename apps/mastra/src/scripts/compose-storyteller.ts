@@ -325,6 +325,9 @@ async function main() {
     // the opening, the history/language notes, the question and the prayer.
     // Voices alternate per devotional (owner, 2026-10-01): `--voices=male-e,female-d`
     // swaps them.
+    // `--insight-hint="history: ..."` passes the owner's leaning for the one
+    // insight to the researcher (a preference it may overrule with a reason).
+    ...(arg("insight-hint") ? { insightHint: arg("insight-hint") } : {}),
     voices: {
       main: voiceArg(0, "female-d"),
       depth: voiceArg(1, "male-e"),
