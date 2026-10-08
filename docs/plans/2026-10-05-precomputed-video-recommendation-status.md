@@ -11,7 +11,42 @@ preserves exact source/integration commits, checks, browser artifacts, review
 findings, and recovery history. The [CTR operations note](../operations/precomputed-ctr-report.md)
 describes the private reporting contract and limits.
 
-## Current checkpoint — October 8, 18:56 NZDT
+## Current checkpoint — October 8, 19:28 NZDT
+
+The real GA import is now **bound** to the clone-only subscription generation.
+Its destination bytes match the sealed origin, with zero new GA requests.
+The first real `gpt-6-astra` profile call consumed **17,739 input / 490 output
+tokens**, then was rejected as `profile_invalid`. Its usage is known and its
+receipt is preserved. No connections or source finalizations have been produced;
+all 1,031 sources remain pending. The attempt is closed and no model call or
+source lease remains active. Public A/B is **off**.
+
+The original receipt does not identify the exact rejection subcause, and the
+ephemeral response was not retained. Diagnostic commit `cfc1ed399` now records
+bounded adapter-output, anchor, node-schema or node-byte rejection codes while
+preserving terminal behavior and usage. Root's 25 focused executor/client checks
+pass. An offline fixture independently proves that materialized citation metadata
+can expand a schema-valid wire answer beyond the unchanged 2,048-byte node cap.
+A budget correction is being developed before another explicit run; this is not
+a retrospective claim about which check rejected the first call.
+
+The bound import and rejected receipt are preserved in a supplemental control
+archive and matching artifact copy. Manifest SHA-256:
+`5321e841292a335ca2593cef8d615d281fa2b5c4d6bbc218049aecdf39e628cf`.
+This supplement has not been restore-tested; the earlier full clone restore
+proof remains distinct. Root retired only the closed, rejected generation in
+the clone through authenticated cancellation. All direct child rows, its usage
+receipt and the sealed origin are unchanged. After-state SHA-256:
+`7397e6503ba26325693e6ca8f324b6aa740ec92d01074dc8feada53f4081785a`.
+Fresh generation admission requires a new capacity measurement.
+
+At published `403b1a438`, 57 CI checks pass and five skip;
+`admin-schema-drift` failed in its native HNSW test after schema generation
+passed, with `ci-gate` failing transitively. The natural failure and bounded
+local investigation are recorded under feat-609; passing local reruns did not
+identify a fix. No production merge, deployment or public start has occurred.
+
+### Earlier validation and recovery checkpoints
 
 The GA-only capture is sealed and independently verified. All 305 video-start
 pages (152,304 rows) and 327 referrer pages (163,352 rows) matched across the
