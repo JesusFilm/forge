@@ -26,6 +26,7 @@ import {
   type SourceIngest,
 } from "../../apps/mastra/src/services/precomputed-recommendations/source-generation"
 import type { StructuredModel } from "../../apps/mastra/src/services/precomputed-recommendations/astra-provider"
+import type { ReservationAwareStructuredModel } from "../../apps/mastra/src/services/precomputed-recommendations/codex-subscription-astra"
 import { runContentProfile } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-executor"
 import { createContentProfilePersistence } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-client"
 import { createEdgeBatchPersistence } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-client"
@@ -36,6 +37,24 @@ import {
 } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-executor"
 import type { HistoricalAnalyticsReader } from "../../apps/mastra/src/services/precomputed-recommendations/historical-analytics"
 import { gaWatchHistoryFixture } from "./fixtures/ga-watch-history"
+
+// Controlled inference still crosses the real Admin reservation boundary.
+function reservedFixtureModel(
+  model: StructuredModel,
+): ReservationAwareStructuredModel {
+  return {
+    async generateReserved(request, reserve) {
+      const decision = await reserve()
+      if (decision.kind === "skip")
+        return { kind: "skipped", reservation: decision.reservation }
+      return {
+        kind: "dispatched",
+        reservation: decision.reservation,
+        response: await model.generate(request),
+      }
+    },
+  }
+}
 
 const bearer = "Bearer preview-test-key"
 const reviewer = { id: "preview-operator", role: "ADMIN" } as const
@@ -342,7 +361,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           promptVersion: "complete-profile-v1",
           schemaVersion: "profile-schema-v1",
           maxPartBytes: 24_576,
-          model: controlled,
+          model: reservedFixtureModel(controlled),
           persistence,
         })
       }
@@ -505,7 +524,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         schemaVersion: "shared-edge-schema-v1",
         members,
         catalog,
-        model: edgeModel,
+        model: reservedFixtureModel(edgeModel),
         persistence: edgePersistence,
       }
       const batch = await runEdgeBatch(batchInput)

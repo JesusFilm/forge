@@ -98,7 +98,7 @@ does not equate subscription allowance with API token charges.
 
 ## Boundaries and verification
 
-Implemented through `4f19a1e6f`: local subscription adapter and account reader,
+Implemented through `baebca593`: local subscription adapter and account reader,
 manual attempt provenance, complete selected-transcript planning, durable
 profile execution, and shared edge batches. The producer chooses exact text;
 code verifies its membership and computes offsets/hashes. One physical
@@ -118,13 +118,19 @@ records available/offered counts. Accepted excerpts are never truncated after
 inference. Concurrent exact retries preserve a single immutable receipt, and
 cross-page duplicate targets are rejected even after an empty result page.
 
-Before real inference, move local identity/allowance/schema/file preparation
-ahead of the durable reservation through a reservation-aware adapter method.
-The current ordering can strand an uncharged pending reservation when local
-admission refuses a call. Genuine unknown consumption still cannot be cleared
-by caller assertion or fabricated zero usage. The manual catalog command,
-compatible GA import, real pilot and full build also remain pending. No real
-catalog inference has run through the subscription adapter.
+The reservation-aware adapter now checks fresh local identity/allowance, validates
+input/schema and prepares local files before invoking the durable reservation
+callback. It dispatches only a newly acknowledged pending call; terminal replay
+skips inference. A crash or lost reply between reservation and process dispatch
+can still leave pending work without known consumption. Caller assertions or
+fabricated zero usage cannot clear that uncertainty.
+
+The GA import client/reader now checks destination intent against Admin's prepared
+identity and verifies unchanged origin bytes under the destination copy identity.
+It preserves the original qualification and exposes zero destination GA requests;
+Admin's schema-normalized qualification digest is an opaque receipt. The Admin
+import service/native proof and manual catalog command are still in progress.
+No real catalog inference has run through the subscription adapter.
 
 - No Compound Engineering skills or agents, directly or indirectly. Reuse the
   exact GPT-6 Sol implementation chats and Matt Pocock implement/TDD/code-review
