@@ -14,6 +14,12 @@ describe("classifyPublicWatchPathname", () => {
     ).toMatchObject({ kind: "page", shape: "one-segment", slug })
   })
 
+  it("accepts lowercase Latin dotless i when UTF-8 encoded canonically", () => {
+    expect(
+      classifyPublicWatchPathname(`/watch/${encodeURI("kılıç")}.html`),
+    ).toMatchObject({ kind: "page", shape: "one-segment", slug: "kılıç" })
+  })
+
   it.each([
     ["/watch", { kind: "page", shape: "home" }],
     ["/watch/", { kind: "page", shape: "home" }],
@@ -113,21 +119,27 @@ describe("classifyPublicWatchPathname", () => {
     "/watch/conversation-starters.html/%E0%A4.html",
     "/watch/%6Aesus.html",
     "/watch/t%c3%bcml%c3%bckden-nura.html",
-    "/watch/иисус.html",
-    "/watch/ı.html",
-    "/watch/𝐚.html",
-    "/watch/jesus١.html",
-    "/watch/ｊｅｓｕｓ.html",
-    "/watch/ᴀlpha.html",
-    "/watch/ʰome.html",
-    "/watch/ɪesus.html",
-    "/watch/ꜱcript.html",
-    "/watch/ﬁlm.html",
     "/watch/%2E%2E/conversation-starters.html",
     "/watch/%C3%9Cber.html",
     "/watch/jesus.html?utm_source=test",
   ])("fails closed for malformed or non-Watch path %s", (pathname) => {
     expect(classifyPublicWatchPathname(pathname).kind).not.toBe("page")
+  })
+
+  it.each([
+    "иисус",
+    "𝐚",
+    "jesus١",
+    "ｊｅｓｕｓ",
+    "ᴀlpha",
+    "ʰome",
+    "ɪesus",
+    "ꜱcript",
+    "ﬁlm",
+  ])("rejects non-canonical lookalike slug characters in %s", (slug) => {
+    expect(
+      classifyPublicWatchPathname(encodeURI(`/watch/${slug}.html`)),
+    ).not.toMatchObject({ kind: "page" })
   })
 
   it("honors an explicit base path without accepting neighboring prefixes", () => {

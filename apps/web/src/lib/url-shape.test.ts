@@ -131,6 +131,7 @@ describe("SAFE_SLUG_PATTERN", () => {
     expect(SAFE_SLUG_PATTERN.test("arabic-modern-standard")).toBe(true)
     expect(SAFE_SLUG_PATTERN.test("magdalena-2")).toBe(true)
     expect(SAFE_SLUG_PATTERN.test("soccer_event_collection")).toBe(true)
+    expect(SAFE_SLUG_PATTERN.test("kılıç")).toBe(true)
   })
 
   it.each([

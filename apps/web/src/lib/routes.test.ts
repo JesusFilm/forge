@@ -52,6 +52,7 @@ describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
     expect(tryAsContentSlug("soccer_event_collection")).toBe(
       "soccer_event_collection",
     )
+    expect(tryAsContentSlug("kılıç")).toBe("kılıç")
     expect(tryAsContentSlug("la-liberté-de-l-interieur-freedom-within")).toBe(
       "la-liberté-de-l-interieur-freedom-within",
     )
