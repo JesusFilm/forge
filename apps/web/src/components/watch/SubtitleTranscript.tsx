@@ -180,9 +180,18 @@ export function SubtitleTranscript({
       return
 
     const controller = new AbortController()
-    const clientRetryTimeout = shouldRetryCollapsedTranscript
-      ? window.setTimeout(() => controller.abort(), 5_000)
-      : undefined
+    const clientRetryTimeout =
+      shouldRetryCollapsedTranscript && !expanded
+        ? window.setTimeout(() => {
+            controller.abort()
+            setLoadedTranscripts((current) => {
+              if (current.has(activeVttSrc)) return current
+              const next = new Map(current)
+              next.set(activeVttSrc, null)
+              return next
+            })
+          }, 5_000)
+        : undefined
     loadInteractiveTranscriptModule()
       .then(({ loadSubtitleCues }) => {
         if (controller.signal.aborted) return []
@@ -296,7 +305,11 @@ export function SubtitleTranscript({
   if (!hasLoadedActiveSource) interactiveStatus = "loading"
   else if (!cues || cues.length === 0) interactiveStatus = "error"
 
-  const collapsedStatus: TranscriptStatus = compactText ? "ready" : "error"
+  const collapsedStatus: TranscriptStatus = compactText
+    ? "ready"
+    : shouldRetryCollapsedTranscript && !hasLoadedActiveSource
+      ? "loading"
+      : "error"
   const status = expanded ? interactiveStatus : collapsedStatus
 
   const loadingContent = (

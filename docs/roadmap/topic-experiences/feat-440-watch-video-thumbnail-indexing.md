@@ -46,8 +46,9 @@ film page has a valid Video item but no indexed video. Linear: FGE-61.
   can be much larger than their card slots.
 - `apps/web/src/lib/watch-transcript.ts` applies a five-second abort deadline
   to optional initial VTT fetches. A timeout follows the existing graceful
-  fallback, logs a redacted reason, and triggers a bounded client retry so
-  transient failures do not leave a cached page without its transcript.
+  fallback, logs a redacted reason, and triggers one bounded browser retry.
+  The failed static response may still omit transcript text until page
+  revalidation; the browser shows a pending state and users can expand to retry.
 - Focused tests cover Mux host validation, responsive URL generation, timeout
   handling, and route rendering.
 

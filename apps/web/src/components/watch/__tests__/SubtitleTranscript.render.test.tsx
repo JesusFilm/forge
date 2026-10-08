@@ -166,6 +166,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
   act(() => {
@@ -230,6 +231,67 @@ describe("SubtitleTranscript rendering", () => {
       englishSubtitle.vttSrc,
       expect.objectContaining({ credentials: "omit" }),
     )
+  })
+
+  it("shows a pending state for the bounded retry and lets expansion retry a timeout", async () => {
+    vi.useFakeTimers()
+    fetchMock.mockImplementationOnce(
+      (_url: string, options: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          options.signal?.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"))
+          })
+        }),
+    )
+    renderTranscript({ compactText: null })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(container.textContent).toContain("loading")
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000)
+    })
+    expect(container.textContent).toContain("unavailable")
+
+    fetchMock.mockResolvedValueOnce({ ok: true, text: async () => serverVtt })
+    await toggleTranscript()
+    expect(
+      container.querySelector('[data-testid="watch-subtitle-cues"]'),
+    ).not.toBeNull()
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("does not apply the collapsed retry deadline after the viewer expands", async () => {
+    vi.useFakeTimers()
+    fetchMock.mockImplementation(() => new Promise(() => undefined))
+    renderTranscript({ compactText: null })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const firstSignal = (fetchMock.mock.calls[0]?.[1] as RequestInit).signal
+    expect(firstSignal).toBeInstanceOf(AbortSignal)
+
+    await act(async () => {
+      getTranscriptToggle().click()
+    })
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    const expandedSignal = (fetchMock.mock.calls[1]?.[1] as RequestInit).signal
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5_000)
+    })
+    expect(firstSignal?.aborted).toBe(true)
+    expect(expandedSignal?.aborted).toBe(false)
+    expect(container.textContent).toContain("loading")
   })
 
   it("clamps the collapsed transcript to about 60% of the viewport and fades its bottom", () => {
