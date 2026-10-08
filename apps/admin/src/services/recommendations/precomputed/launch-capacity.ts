@@ -5,7 +5,7 @@ import type { Principal } from "@/auth/principal"
 import { hasPermission } from "@/auth/permissions"
 import { ForbiddenError } from "@/services/errors"
 import { capacityMeasurement } from "./durable-build"
-import { hasSealedGaCapture } from "./ga-capture-artifact"
+import { hasQualifiedGaCapture } from "./ga-capture-import"
 import type { PrecomputedBaselineReport } from "./incumbent-baseline"
 
 const MIN_RESERVE_BYTES = 5_000_000_000
@@ -102,6 +102,8 @@ export async function attestPrecomputedLaunchCapacity(
             protocolVersion: true,
             capacityPreflight: true,
             historicalQualification: true,
+            historicalQualificationDigest: true,
+            inputMode: true,
             id: true,
             inputDigest: true,
             sourceSetDigest: true,
@@ -119,11 +121,7 @@ export async function attestPrecomputedLaunchCapacity(
       if (
         generation?.status !== "complete" ||
         (generation.protocolVersion !== 2 &&
-          (generation.protocolVersion !== 3 ||
-            !hasSealedGaCapture(
-              generation.historicalQualification,
-              generation,
-            ))) ||
+          !(await hasQualifiedGaCapture(tx, generation))) ||
         (generation.capacityPreflight as { status?: string } | null)?.status !==
           "passed" ||
         !baseline ||

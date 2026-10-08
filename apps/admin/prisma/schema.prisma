@@ -6813,6 +6813,38 @@ model RecommendationPrecomputedGaCaptureArtifact {
   @@map("recommendation_precomputed_ga_capture_artifact")
 }
 
+/// Destination-owned import evidence and cleanup handle. Deliberately no FK:
+/// staged or bound objects remain discoverable after generation retirement.
+model RecommendationPrecomputedGaCaptureImport {
+  destinationGenerationId String @id @map("destination_generation_id")
+  destinationIdentity Json @map("destination_identity") @db.JsonB
+  preparedDigest String @map("prepared_digest") @db.Char(64)
+  originGenerationId String? @map("origin_generation_id")
+  originIdentity Json? @map("origin_identity") @db.JsonB
+  originProofDigest String? @map("origin_proof_digest") @db.Char(64)
+  copyRequestDigest String? @map("copy_request_digest") @db.Char(64)
+  copyAttemptId String? @map("copy_attempt_id") @db.Uuid
+  artifactSha256 String? @map("artifact_sha256") @db.Char(64)
+  artifactBytes BigInt? @map("artifact_bytes")
+  storageKey String? @map("storage_key") @db.VarChar(300)
+  state String
+  copyClaimId String? @map("copy_claim_id") @db.Uuid
+  copyClaimEpoch Int @default(0) @map("copy_claim_epoch")
+  copyLeaseExpiresAt DateTime? @map("copy_lease_expires_at")
+  tempReservedBytes BigInt @default(0) @map("temp_reserved_bytes")
+  stagingDeadlineAt DateTime? @map("staging_deadline_at")
+  confirmedAt DateTime? @map("confirmed_at")
+  boundAt DateTime? @map("bound_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  lastCleanupAt DateTime? @map("last_cleanup_at")
+  cleanedAt DateTime? @map("cleaned_at")
+
+  @@index([state, stagingDeadlineAt], map: "precomputed_ga_import_state_deadline_idx")
+  @@index([originGenerationId, state], map: "precomputed_ga_import_origin_state_idx")
+  @@map("recommendation_precomputed_ga_capture_import")
+}
+
 /// Frozen Watch cohort. Only the separate, explicit public pointer can select it.
 model RecommendationPrecomputedExperiment {
   id String @id @db.VarChar(191)

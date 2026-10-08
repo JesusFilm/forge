@@ -171,5 +171,20 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
       expect(response.status).toBe(413)
     })
+    it("routes import origin probes through the durable bearer and bounds import bodies", async () => {
+      const missing = await post({
+        action: "ga_import_origin_probe_v1",
+        originGenerationId: "missing-origin",
+      })
+      expect(missing.status).toBe(409)
+      expect(await missing.json()).toMatchObject({ reason: "conflict" })
+      const oversized = await post({
+        action: "ga_import_status_v1",
+        generationId: "missing-destination",
+        generationInputDigest: "7".repeat(64),
+        padding: "x".repeat(70_000),
+      })
+      expect(oversized.status).toBe(413)
+    })
   },
 )

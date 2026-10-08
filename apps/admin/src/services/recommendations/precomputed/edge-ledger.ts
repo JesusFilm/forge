@@ -11,6 +11,7 @@ import {
   assertPrecomputedObservedVersion,
   selectedTranscriptSelections,
 } from "./catalog"
+import { verifiedImportedGaCapture } from "./ga-capture-import"
 
 const id = z.string().trim().min(1).max(191)
 const digest = z.string().regex(/^[a-f0-9]{64}$/)
@@ -581,6 +582,20 @@ async function startEdgeBatch(
     input.captureRefDigest !== null
   )
     invalid("Content-only edge call cannot claim historical capture")
+  if (generation.input_mode === "historical_analytics") {
+    const meta = await tx.recommendationPrecomputedGeneration.findUniqueOrThrow(
+      {
+        where: { id: input.generationId },
+      },
+    )
+    const binding = await verifiedImportedGaCapture(tx, meta)
+    if (
+      !binding ||
+      input.captureRefDigest !== binding.bindingDigest ||
+      input.candidatePoolDigest !== binding.destination.candidatePoolDigest
+    )
+      conflict("Historical edge call lacks verified GA import")
+  }
   if (
     hash(input.members.map(({ leaseToken: _leaseToken, ...item }) => item)) !==
     input.membershipDigest
@@ -717,8 +732,14 @@ async function startEdgeBatch(
           edgeSourceProfileKey: true,
           edgeCandidatePoolDigest: true,
           edgeHistoricalRefDigest: true,
+          historicalProvenance: true,
         },
       })
+    if (
+      generation.input_mode === "historical_analytics" &&
+      !frozen.historicalProvenance
+    )
+      conflict("Historical edge source lacks imported provenance")
     if (frozen.edgeSourceCandidateCount === null) {
       await tx.recommendationPrecomputedBuildSource.update({
         where: {
@@ -1273,6 +1294,20 @@ async function finalizeEdgeSource(
         },
       },
     })
+  if (generation.input_mode === "historical_analytics") {
+    const meta = await tx.recommendationPrecomputedGeneration.findUniqueOrThrow(
+      {
+        where: { id: input.generationId },
+      },
+    )
+    const binding = await verifiedImportedGaCapture(tx, meta)
+    if (
+      !binding ||
+      !source.historicalProvenance ||
+      source.edgeCandidatePoolDigest !== binding.destination.candidatePoolDigest
+    )
+      conflict("Historical edge source lacks verified GA import")
+  }
   if (
     source.edgeSourceCandidateCount !== input.sourceCandidateCount ||
     source.edgeSourceCandidateDigest !== input.sourceCandidateDigest ||
@@ -1473,6 +1508,20 @@ async function closeEmptyEdgeSource(
         },
       },
     })
+  if (generation.input_mode === "historical_analytics") {
+    const meta = await tx.recommendationPrecomputedGeneration.findUniqueOrThrow(
+      {
+        where: { id: input.generationId },
+      },
+    )
+    const binding = await verifiedImportedGaCapture(tx, meta)
+    if (
+      !binding ||
+      !source.historicalProvenance ||
+      input.candidatePoolDigest !== binding.destination.candidatePoolDigest
+    )
+      conflict("Historical edge source lacks verified GA import")
+  }
   if (
     source.edgeSourceCandidateCount !== null &&
     (source.edgeSourceCandidateCount !== 0 ||

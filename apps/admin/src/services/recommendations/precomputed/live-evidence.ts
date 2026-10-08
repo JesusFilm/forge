@@ -3,7 +3,7 @@ import type { Prisma, PrismaClient } from "@prisma/client"
 import type { CtrPolicySettings } from "./ctr-policy"
 import { loadPrecomputedFullCatalogSourceSet } from "./catalog"
 import { precomputedCtrPolicyDigest } from "./ctr-report"
-import { hasSealedGaCapture } from "./ga-capture-artifact"
+import { hasQualifiedGaCapture } from "./ga-capture-import"
 import type { PrecomputedBaselineReport } from "./incumbent-baseline"
 import {
   evaluatePrecomputedLiveFacts,
@@ -114,6 +114,35 @@ export async function loadLiveEvidence(
         }),
   ])
   const report = baseline?.finalReport as PrecomputedBaselineReport | null
+  const [profileCalls, edgeCalls, unknownProfileCalls, unknownEdgeCalls] =
+    generation?.protocolVersion === 4
+      ? await Promise.all([
+          db.recommendationPrecomputedProfileCall.count({
+            where: { generationId: input.generationId },
+          }),
+          db.recommendationPrecomputedEdgeBatchCall.count({
+            where: { generationId: input.generationId },
+          }),
+          db.recommendationPrecomputedProfileCall.count({
+            where: {
+              generationId: input.generationId,
+              OR: [{ inputTokens: null }, { outputTokens: null }],
+            },
+          }),
+          db.recommendationPrecomputedEdgeBatchCall.count({
+            where: {
+              generationId: input.generationId,
+              OR: [{ inputTokens: null }, { outputTokens: null }],
+            },
+          }),
+        ])
+      : [0, 0, 0, 0]
+  const actualModelCalls =
+    generation?.protocolVersion === 4 ? profileCalls + edgeCalls : modelCalls
+  const unknownUsageCalls =
+    generation?.protocolVersion === 4
+      ? unknownProfileCalls + unknownEdgeCalls
+      : unknownModelCosts
   const catalog = generation
     ? await loadPrecomputedFullCatalogSourceSet(
         db,
@@ -215,10 +244,7 @@ export async function loadLiveEvidence(
       ? {
           status: generation.status,
           protocolVersion: generation.protocolVersion,
-          gaCaptureSealed: hasSealedGaCapture(
-            generation.historicalQualification,
-            generation,
-          ),
+          gaCaptureSealed: await hasQualifiedGaCapture(db, generation),
           modelId: generation.modelId,
           inputMode: generation.inputMode,
           sourceSetDigest: generation.sourceSetDigest,
@@ -228,8 +254,8 @@ export async function loadLiveEvidence(
           sourceCount,
           catalogSourceCount: catalog?.sourceCount ?? null,
           catalogSourceSetDigest: catalog?.sourceSetDigest ?? null,
-          modelCallCount: modelCalls,
-          unknownModelCostCount: unknownModelCosts,
+          modelCallCount: actualModelCalls,
+          unknownModelCostCount: unknownUsageCalls,
         }
       : null,
     capacity:
@@ -287,8 +313,8 @@ export async function loadLiveEvidence(
     authoritativeCatalogSourceSetDigest: catalog?.sourceSetDigest ?? null,
     historicalQualificationDigest:
       generation?.historicalQualificationDigest ?? null,
-    modelCallCount: modelCalls,
-    unknownModelCostCount: unknownModelCosts,
+    modelCallCount: actualModelCalls,
+    unknownModelCostCount: unknownUsageCalls,
     policyDigest,
     policyAuthority: "prelaunch_agreed",
     webHealthDigest,

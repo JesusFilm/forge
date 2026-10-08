@@ -16,6 +16,7 @@ import { evaluatePrecomputedLiveFacts } from "./live-readiness"
 import { loadPrecomputedFullCatalogSourceSet } from "./catalog"
 import type { CtrPolicySettings } from "./ctr-policy"
 import { hasSealedGaCapture } from "./ga-capture-artifact"
+import { hasQualifiedGaCapture } from "./ga-capture-import"
 
 const experimentSelect = {
   id: true,
@@ -158,6 +159,37 @@ export async function loadPrecomputedPublicReadiness(
           }),
         ])
       : [null, 0, 0, 0]
+  const [profileCalls, edgeCalls, unknownProfileCalls, unknownEdgeCalls] =
+    latestGeneration?.protocolVersion === 4
+      ? await Promise.all([
+          prisma.recommendationPrecomputedProfileCall.count({
+            where: { generationId: latestGeneration.id },
+          }),
+          prisma.recommendationPrecomputedEdgeBatchCall.count({
+            where: { generationId: latestGeneration.id },
+          }),
+          prisma.recommendationPrecomputedProfileCall.count({
+            where: {
+              generationId: latestGeneration.id,
+              OR: [{ inputTokens: null }, { outputTokens: null }],
+            },
+          }),
+          prisma.recommendationPrecomputedEdgeBatchCall.count({
+            where: {
+              generationId: latestGeneration.id,
+              OR: [{ inputTokens: null }, { outputTokens: null }],
+            },
+          }),
+        ])
+      : [0, 0, 0, 0]
+  const actualModelCallCount =
+    latestGeneration?.protocolVersion === 4
+      ? profileCalls + edgeCalls
+      : modelCallCount
+  const unknownUsageCount =
+    latestGeneration?.protocolVersion === 4
+      ? unknownProfileCalls + unknownEdgeCalls
+      : unknownModelCostCount
   const agreedSettings = livePrepared?.ctrPolicy?.settings as
     | CtrPolicySettings
     | undefined
@@ -208,10 +240,13 @@ export async function loadPrecomputedPublicReadiness(
       ? {
           status: latestGeneration.status,
           protocolVersion: latestGeneration.protocolVersion,
-          gaCaptureSealed: hasSealedGaCapture(
-            latestGeneration.historicalQualification,
-            latestGeneration,
-          ),
+          gaCaptureSealed:
+            latestGeneration.protocolVersion === 3
+              ? hasSealedGaCapture(
+                  latestGeneration.historicalQualification,
+                  latestGeneration,
+                )
+              : await hasQualifiedGaCapture(prisma, latestGeneration),
           modelId: latestGeneration.modelId,
           inputMode: latestGeneration.inputMode,
           sourceSetDigest: latestGeneration.sourceSetDigest,
@@ -221,8 +256,8 @@ export async function loadPrecomputedPublicReadiness(
           sourceCount,
           catalogSourceCount: fullCatalog?.sourceCount ?? null,
           catalogSourceSetDigest: fullCatalog?.sourceSetDigest ?? null,
-          modelCallCount,
-          unknownModelCostCount,
+          modelCallCount: actualModelCallCount,
+          unknownModelCostCount: unknownUsageCount,
         }
       : null,
     capacity: latestCapacity

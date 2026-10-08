@@ -5,6 +5,10 @@ import {
 } from "../errors"
 import { gaCaptureSnapshotRefSchema } from "./ga-capture-artifact"
 import {
+  importedGaCaptureQualificationSchema,
+  purgeAbandonedGaCaptureImports,
+} from "./ga-capture-import"
+import {
   configuredGaCaptureStore,
   gaCaptureStorageKey,
   type GaCaptureStore,
@@ -65,6 +69,11 @@ export async function purgeExpiredPrecomputedGenerations(
         AND NOT EXISTS (
           SELECT 1 FROM recommendation_precomputed_ga_capture_artifact artifact
           WHERE artifact.generation_id = expired.generation_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM recommendation_precomputed_ga_capture_import import
+          WHERE import.destination_generation_id = expired.generation_id
+            AND import.state = 'bound'
         )
       ORDER BY expired.expires_at, expired.generation_id
       LIMIT ${PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE}
@@ -189,6 +198,12 @@ export async function purgeExpiredPrecomputedGenerations(
         SELECT 1 FROM recommendation_precomputed_experiment e
         WHERE e.generation_id = g.id
       )
+      AND NOT EXISTS (
+        SELECT 1 FROM recommendation_precomputed_ga_capture_import import
+        WHERE (import.origin_generation_id = g.id OR import.destination_generation_id = g.id)
+          AND import.state = 'copying'
+          AND import.staging_deadline_at > ${now}
+      )
       AND (g.status <> 'complete' OR g.id NOT IN (
         SELECT newest.id FROM recommendation_precomputed_generation newest
         WHERE newest.status = 'complete'
@@ -227,7 +242,7 @@ export async function purgeExpiredPrecomputedGenerations(
   // The NOT EXISTS predicate in the candidate scan can be evaluated before
   // waiting for a row lock held by a concurrent experiment configuration.
   // Recheck the pin under the acquired generation lock before draining rows.
-  const [current, experimentPins] = await Promise.all([
+  const [current, experimentPins, importHolds] = await Promise.all([
     tx.recommendationPrecomputedGeneration.findUnique({
       where: { id: candidate.id },
       select: { rollbackRetentionHold: true },
@@ -235,8 +250,23 @@ export async function purgeExpiredPrecomputedGenerations(
     tx.recommendationPrecomputedExperiment.count({
       where: { generationId: candidate.id },
     }),
+    tx.recommendationPrecomputedGaCaptureImport.count({
+      where: {
+        OR: [
+          { originGenerationId: candidate.id },
+          { destinationGenerationId: candidate.id },
+        ],
+        state: "copying",
+        stagingDeadlineAt: { gt: now },
+      },
+    }),
   ])
-  if (!current || current.rollbackRetentionHold || experimentPins > 0)
+  if (
+    !current ||
+    current.rollbackRetentionHold ||
+    experimentPins > 0 ||
+    importHolds > 0
+  )
     return {
       generationsAbandoned: abandoned ? 1 : 0,
       generationsRetiring: 0,
@@ -399,6 +429,9 @@ export async function purgeExpiredPrecomputedGenerations(
     (candidate.historical_qualification as { snapshotRef?: unknown } | null)
       ?.snapshotRef,
   )
+  const importedCapture = importedGaCaptureQualificationSchema.safeParse(
+    candidate.historical_qualification,
+  )
   if (!remaining?.has_children)
     await tx.recommendationPrecomputedGenerationRetentionProof.create({
       data: {
@@ -409,7 +442,9 @@ export async function purgeExpiredPrecomputedGenerations(
         inputMode: candidate.input_mode,
         snapshotSha256: boundCapture.success
           ? boundCapture.data.artifactSha256
-          : null,
+          : importedCapture.success
+            ? importedCapture.data.importBinding.copy.artifactSha256
+            : null,
         state: "retired",
         recordedAt: now,
         expiresAt: new Date(
@@ -466,6 +501,29 @@ export async function purgeRetiredGaCaptureArtifacts(
       "precomputed_ga_capture_purge_invalid_limit",
     )
   const cutoff = new Date(now.getTime() - 30 * 60_000)
+  const abandonedCutoff = new Date(
+    now.getTime() - PRECOMPUTED_TERMINAL_RETENTION_DAYS * 86_400_000,
+  )
+  const trimImportMetadata = () =>
+    prisma.$executeRaw(Prisma.sql`
+      DELETE FROM recommendation_precomputed_ga_capture_import import
+      WHERE import.ctid IN (
+        SELECT row.ctid FROM recommendation_precomputed_ga_capture_import row
+        WHERE ((row.state = 'prepared' AND row.created_at <= ${cutoff})
+           OR (row.state = 'abandoned' AND row.cleaned_at IS NOT NULL
+               AND row.staging_deadline_at <= ${abandonedCutoff}))
+          AND NOT EXISTS (
+            SELECT 1 FROM recommendation_precomputed_generation generation
+            WHERE generation.id = row.destination_generation_id
+          )
+          AND EXISTS (
+            SELECT 1 FROM recommendation_precomputed_generation_retention_proof proof
+            WHERE proof.generation_id = row.destination_generation_id
+          )
+        ORDER BY row.created_at, row.destination_generation_id
+        LIMIT ${limit}
+      )
+    `)
   const candidates = await prisma.$queryRaw<
     Array<{
       generation_id: string
@@ -487,7 +545,32 @@ export async function purgeRetiredGaCaptureArtifacts(
     ORDER BY artifact.created_at, artifact.generation_id, artifact.artifact_sha256
     LIMIT ${limit}
   `)
-  if (candidates.length === 0) return { deleted: 0, bytes: 0n }
+  const importedCandidates = await prisma.$queryRaw<
+    Array<{
+      destination_generation_id: string
+      artifact_sha256: string
+      storage_key: string
+      artifact_bytes: bigint
+    }>
+  >(Prisma.sql`
+    SELECT import.destination_generation_id, import.artifact_sha256,
+           import.storage_key, import.artifact_bytes
+    FROM recommendation_precomputed_ga_capture_import import
+    JOIN recommendation_precomputed_generation_retention_proof proof
+      ON proof.generation_id = import.destination_generation_id
+    WHERE import.state = 'bound' AND import.bound_at <= ${cutoff}
+      AND NOT EXISTS (
+        SELECT 1 FROM recommendation_precomputed_generation generation
+        WHERE generation.id = import.destination_generation_id
+      )
+    ORDER BY import.bound_at, import.destination_generation_id
+    LIMIT ${Math.max(0, limit - candidates.length)}
+  `)
+  if (candidates.length === 0 && importedCandidates.length === 0) {
+    await purgeAbandonedGaCaptureImports(prisma, now, { store }, limit)
+    await trimImportMetadata()
+    return { deleted: 0, bytes: 0n }
+  }
   const objectStore = store ?? configuredGaCaptureStore()
   let deleted = 0
   let bytes = 0n
@@ -501,6 +584,7 @@ export async function purgeRetiredGaCaptureArtifacts(
       )
     await objectStore.delete(candidate.storage_key)
     const removed = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(590, 145)::text AS held`
       const count =
         await tx.recommendationPrecomputedGaCaptureArtifact.deleteMany({
           where: {
@@ -527,5 +611,49 @@ export async function purgeRetiredGaCaptureArtifacts(
     deleted += removed
     if (removed) bytes += candidate.artifact_bytes
   }
+  for (const candidate of importedCandidates) {
+    if (
+      candidate.storage_key !==
+      gaCaptureStorageKey(
+        candidate.destination_generation_id,
+        candidate.artifact_sha256,
+      )
+    )
+      throw new RecommendationInternalStateError(
+        "precomputed_ga_import_cleanup_identity_mismatch",
+      )
+    await objectStore.delete(candidate.storage_key)
+    const removed = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT pg_advisory_xact_lock(590, 145)::text AS held`
+      const count =
+        await tx.recommendationPrecomputedGaCaptureImport.deleteMany({
+          where: {
+            destinationGenerationId: candidate.destination_generation_id,
+            artifactSha256: candidate.artifact_sha256,
+            storageKey: candidate.storage_key,
+            state: "bound",
+          },
+        })
+      if (count.count)
+        await tx.recommendationPrecomputedGenerationRetentionProof.updateMany({
+          where: {
+            generationId: candidate.destination_generation_id,
+            snapshotSha256: candidate.artifact_sha256,
+            artifactDeletedAt: null,
+          },
+          data: { artifactDeletedAt: now },
+        })
+      return count.count
+    })
+    deleted += removed
+    if (removed) bytes += candidate.artifact_bytes
+  }
+  await purgeAbandonedGaCaptureImports(
+    prisma,
+    now,
+    { store: objectStore },
+    limit,
+  )
+  await trimImportMetadata()
   return { deleted, bytes }
 }

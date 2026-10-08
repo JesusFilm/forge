@@ -8,6 +8,7 @@ const TABLES = [
   "recommendation_precomputed_generation",
   "recommendation_precomputed_generation_retention_proof",
   "recommendation_precomputed_ga_capture_artifact",
+  "recommendation_precomputed_ga_capture_import",
   "recommendation_precomputed_source",
   "recommendation_precomputed_model_call",
   "recommendation_precomputed_execution_attempt",
@@ -89,6 +90,22 @@ export async function loadPrecomputedStorageCapacityReport(
              WHERE generation_id = ${input.generationId ?? ""}
            ), 0)::bigint AS selected_bytes
      FROM recommendation_precomputed_ga_capture_artifact`
+  const [importObjects] = await prisma.$queryRaw<
+    Array<{
+      objects: bigint
+      bytes: bigint
+      selected_bytes: bigint
+      staging_objects: bigint
+      staging_reserved_bytes: bigint
+    }>
+  >`SELECT count(*) FILTER (WHERE state = 'bound')::bigint AS objects,
+           COALESCE(sum(artifact_bytes) FILTER (WHERE state = 'bound'), 0)::bigint AS bytes,
+           COALESCE(sum(artifact_bytes) FILTER (
+             WHERE state = 'bound' AND destination_generation_id = ${input.generationId ?? ""}
+           ), 0)::bigint AS selected_bytes,
+           count(*) FILTER (WHERE state IN ('copying', 'abandoned') AND cleaned_at IS NULL)::bigint AS staging_objects,
+           COALESCE(sum(temp_reserved_bytes), 0)::bigint AS staging_reserved_bytes
+     FROM recommendation_precomputed_ga_capture_import`
   // pg_stat_wal is a shared-cluster cumulative counter, not bytes caused by
   // this feature or by the selected generation.
   const [wal] = await prisma.$queryRaw<Array<{ bytes: bigint | null }>>`
@@ -158,6 +175,8 @@ export async function loadPrecomputedStorageCapacityReport(
              WHERE c.generation_id = g.id)::bigint +
             (SELECT COALESCE(sum(pg_column_size(a)), 0) FROM recommendation_precomputed_execution_attempt a
              WHERE a.generation_id = g.id)::bigint +
+            (SELECT COALESCE(sum(pg_column_size(i)), 0) FROM recommendation_precomputed_ga_capture_import i
+             WHERE i.destination_generation_id = g.id)::bigint +
             (SELECT COALESCE(sum(pg_column_size(p)), 0) FROM recommendation_precomputed_content_profile p
              WHERE p.generation_id = g.id)::bigint +
             (SELECT COALESCE(sum(pg_column_size(c)), 0) FROM recommendation_precomputed_profile_call c
@@ -189,9 +208,17 @@ export async function loadPrecomputedStorageCapacityReport(
     relations: normalized,
     databaseBytes: number(database?.bytes),
     privateGaCaptureObjects: {
-      recordedObjectCount: number(captureObjects?.objects),
-      recordedBytes: number(captureObjects?.bytes),
-      selectedGenerationRecordedBytes: number(captureObjects?.selected_bytes),
+      recordedObjectCount:
+        number(captureObjects?.objects) + number(importObjects?.objects),
+      recordedBytes:
+        number(captureObjects?.bytes) + number(importObjects?.bytes),
+      selectedGenerationRecordedBytes:
+        number(captureObjects?.selected_bytes) +
+        number(importObjects?.selected_bytes),
+      importedBoundObjects: number(importObjects?.objects),
+      importedBoundBytes: number(importObjects?.bytes),
+      importStagingObjects: number(importObjects?.staging_objects),
+      importStagingReservedBytes: number(importObjects?.staging_reserved_bytes),
       storageScope: "private_object_store_not_postgresql_pgdata" as const,
       qualification:
         "Upload receipts measure retained object bytes, not object-store physical overhead or PostgreSQL WAL.",

@@ -54,12 +54,11 @@ async function readJson(request: Request): Promise<unknown | Response> {
       typeof parsed === "object" &&
       typeof (parsed as { action?: unknown }).action === "string" &&
       ((parsed as { action: string }).action.startsWith("profile_") ||
-        (parsed as { action: string }).action.startsWith("edge_"))
+        (parsed as { action: string }).action.startsWith("edge_") ||
+        (parsed as { action: string }).action.startsWith("ga_import_"))
     if (boundedAction && size > 65_536)
       return error(
-        (parsed as { action: string }).action.startsWith("profile_")
-          ? "Profile action body exceeds 64 KiB"
-          : "Edge action body exceeds 64 KiB",
+        `${(parsed as { action: string }).action} body exceeds 64 KiB`,
         413,
       )
     return parsed
@@ -88,6 +87,8 @@ export async function POST(request: Request): Promise<Response> {
       payload?.protocolVersion === 3 ||
       payload?.protocolVersion === 4 ||
       payload?.action === "retention_status" ||
+      (typeof payload?.action === "string" &&
+        payload.action.startsWith("ga_import_")) ||
       typeof payload?.generationInputDigest === "string"
     return Response.json({
       result: isDurable

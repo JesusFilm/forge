@@ -121,7 +121,10 @@ export function evaluatePrecomputedLiveFacts(
   if (
     generation?.status !== "complete" ||
     (generation.protocolVersion !== 2 &&
-      (generation.protocolVersion !== 3 || !generation.gaCaptureSealed)) ||
+      !(
+        [3, 4].includes(generation.protocolVersion) &&
+        generation.gaCaptureSealed
+      )) ||
     generation.modelId !== "gpt-6-astra" ||
     generation.inputMode !== "historical_analytics" ||
     !HEX_DIGEST.test(generation.sourceSetDigest) ||
@@ -134,7 +137,11 @@ export function evaluatePrecomputedLiveFacts(
   )
     reasons.push("actual_catalog_build_unverified")
   if (generation && generation.unknownModelCostCount > 0)
-    reasons.push("model_cost_unknown")
+    reasons.push(
+      generation.protocolVersion === 4
+        ? "model_usage_unknown"
+        : "model_cost_unknown",
+    )
   const capacity = facts.capacity
   if (capacity?.status !== "passed" || !HEX_DIGEST.test(capacity.receiptDigest))
     reasons.push("launch_capacity_unavailable")

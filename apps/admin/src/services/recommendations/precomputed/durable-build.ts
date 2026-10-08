@@ -23,6 +23,11 @@ import {
 import { verifyBoundGaCapture } from "./ga-capture-transport"
 import { submitProfileAction } from "./profile-ledger"
 import { submitEdgeAction } from "./edge-ledger"
+import {
+  submitGaCaptureImport,
+  verifiedImportedGaCapture,
+  type GaImportOptions,
+} from "./ga-capture-import"
 
 const id = z.string().trim().min(1).max(191)
 const hex = z.string().regex(/^[a-f0-9]{64}$/)
@@ -48,6 +53,14 @@ const navigationCoverage = z
   .strict()
 const capturedHistoryFields = {
   captureBasis: z.literal("capture_derived_v1"),
+  artifactSha256: hex,
+  derivedSubsetDigest: hex,
+  pageCountKind: z.literal("virtual_validation"),
+  queryExecutionCount: z.literal(0),
+}
+const importedHistoryFields = {
+  captureMode: z.literal("imported_capture_derived_v1"),
+  importBindingDigest: hex,
   artifactSha256: hex,
   derivedSubsetDigest: hex,
   pageCountKind: z.literal("virtual_validation"),
@@ -148,6 +161,17 @@ const checkpoint = z
             ...capturedHistoryFields,
           })
           .strict(),
+        z
+          .object({
+            resultDigest: hex,
+            rowCount: nonnegative,
+            mappedRows: nonnegative,
+            unmappedRows: nonnegative,
+            pageCount: nonnegative,
+            navigationCoverage,
+            ...importedHistoryFields,
+          })
+          .strict(),
       ])
       .optional(),
   })
@@ -171,6 +195,7 @@ const sourceHistory = z
   })
   .strict()
 const sealedSourceHistory = sourceHistory.extend(capturedHistoryFields)
+const importedSourceHistory = sourceHistory.extend(importedHistoryFields)
 const sealedGaHistoricalQualification = sealedGaCaptureQualificationSchema
 const durableGaHistoricalQualification = z.union([
   gaHistoricalQualification,
@@ -256,7 +281,11 @@ const actionSchema = z.discriminatedUnion("action", [
   sourceBase.extend({ action: z.literal("heartbeat") }),
   sourceBase.extend({
     action: z.literal("source_history"),
-    history: z.union([sourceHistory, sealedSourceHistory]),
+    history: z.union([
+      sourceHistory,
+      sealedSourceHistory,
+      importedSourceHistory,
+    ]),
   }),
   base.extend({
     action: z.literal("history_qualification"),
@@ -761,13 +790,23 @@ export async function submitDurablePrecomputedRecommendation(
   prisma: PrismaClient,
   raw: unknown,
   authorizationHeader: string | null,
-  options?: { gaCaptureStore?: GaCaptureStore },
+  options?: { gaCaptureStore?: GaCaptureStore; gaImport?: GaImportOptions },
 ): Promise<Record<string, unknown>> {
   if (!isValidMastraRecommendationIngestBearer(authorizationHeader))
     throw new PrecomputedRecommendationError(
       "unauthorized",
       "Authorization required",
     )
+  if (
+    raw &&
+    typeof raw === "object" &&
+    typeof (raw as { action?: unknown }).action === "string" &&
+    (raw as { action: string }).action.startsWith("ga_import_")
+  )
+    return submitGaCaptureImport(prisma, raw, authorizationHeader!, {
+      ...options?.gaImport,
+      store: options?.gaImport?.store ?? options?.gaCaptureStore,
+    })
   if (
     raw &&
     typeof raw === "object" &&
@@ -830,7 +869,7 @@ export async function submitDurablePrecomputedRecommendation(
           snapshotMode !== "ga_aggregate_capture_v1")) ||
       (input.protocolVersion === 2 && snapshotMode !== "observed_fenced") ||
       (input.protocolVersion === 4 &&
-        (input.inputMode !== "content_only" ||
+        (!["content_only", "historical_analytics"].includes(input.inputMode) ||
           snapshotMode !== "observed_fenced" ||
           !input.executionAttempt))
     )
@@ -1692,16 +1731,16 @@ async function mutate(
     ([
       "checkpoint",
       "choice",
-      "source_history",
       "model_call_start",
       "model_call",
       "source",
-      "complete",
       "history_qualification",
       "history_call_start",
       "history_call",
       "history_call_reconcile",
     ].includes(input.action) ||
+      (input.action === "complete" &&
+        generation.input_mode !== "historical_analytics") ||
       (input.action === "fail" && Boolean(input.sourceVideoId)))
   )
     conflict("Profile protocol awaits edge and historical readiness")
@@ -2297,6 +2336,15 @@ async function mutate(
             pageCountKind: input.history.pageCountKind,
           }
         : {}),
+      ...("captureMode" in input.history
+        ? {
+            captureMode: input.history.captureMode,
+            importBindingDigest: input.history.importBindingDigest,
+            artifactSha256: input.history.artifactSha256,
+            derivedSubsetDigest: input.history.derivedSubsetDigest,
+            pageCountKind: input.history.pageCountKind,
+          }
+        : {}),
     }
     if (
       input.history.pageCount > 0 &&
@@ -2326,8 +2374,23 @@ async function mutate(
         actualCalls !== 0
       )
         conflict("Derived source history differs from sealed GA capture")
+    } else if (generation.protocol_version === 4) {
+      const binding = await verifiedImportedGaCapture(tx, meta)
+      if (
+        meta.inputMode !== "historical_analytics" ||
+        !binding ||
+        !("captureMode" in input.history) ||
+        input.history.importBindingDigest !== binding.bindingDigest ||
+        input.history.artifactSha256 !== binding.copy.artifactSha256 ||
+        input.history.rangeStart !== binding.destination.usableStart ||
+        input.history.rangeEnd !== binding.destination.usableEnd ||
+        input.history.queryExecutionCount !== 0 ||
+        actualCalls !== 0
+      )
+        conflict("Derived source history differs from verified GA import")
     } else if (
       "captureBasis" in input.history ||
+      "captureMode" in input.history ||
       actualCalls < input.history.queryExecutionCount
     ) {
       conflict("Source history has fewer HTTP receipts than snapshot queries")
@@ -3067,6 +3130,9 @@ async function mutateCallsAndFinish(
       ) ||
       (generation.protocol_version === 3 &&
         !hasSealedGaCapture(meta.historicalQualification, meta)) ||
+      (generation.protocol_version === 4 &&
+        meta.inputMode === "historical_analytics" &&
+        !(await verifiedImportedGaCapture(tx, meta))) ||
       (meta.inputMode === "historical_analytics" &&
         (!meta.historicalQualification ||
           sources.some((source) => !source.historicalProvenance)))

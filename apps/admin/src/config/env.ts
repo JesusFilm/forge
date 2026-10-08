@@ -698,6 +698,24 @@ export const env = createEnv({
     RAILWAY_S3_BUCKET: z.string().min(1).optional(),
     RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .safe()
+      .optional(),
+    GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .safe()
+      .optional(),
+    GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .safe()
+      .optional(),
     // Manager artifacts bucket — admin reads manager-produced artifacts such as
     // {assetId}/transcript.json from apps/manager's S3 bucket via
     // readManagerArtifact() in src/storage/s3.ts. Distinct from
@@ -1288,6 +1306,15 @@ export const env = createEnv({
     ),
     RAILWAY_S3_SECRET_ACCESS_KEY: emptyToUndefined(
       process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
+    ),
+    GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES: emptyToUndefined(
+      process.env.GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES,
+    ),
+    GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES: emptyToUndefined(
+      process.env.GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES,
+    ),
+    GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES: emptyToUndefined(
+      process.env.GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES,
     ),
     MANAGER_ARTIFACTS_S3_ENDPOINT: emptyToUndefined(
       process.env.MANAGER_ARTIFACTS_S3_ENDPOINT,

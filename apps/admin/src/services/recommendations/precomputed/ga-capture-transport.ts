@@ -246,10 +246,14 @@ export async function handleGaCapturePost(
 }
 
 /** Full object check once before immutable qualification commit. */
-export async function verifyBoundGaCapture(
+export async function withVerifiedGaCaptureFile<T>(
   reference: GaCaptureSnapshotRef,
   store: GaCaptureStore,
-) {
+  consume: (
+    path: string,
+    verified: Awaited<ReturnType<typeof verifyGaCaptureFile>>,
+  ) => Promise<T>,
+): Promise<T> {
   const root = await mkdtemp(join(tmpdir(), "forge-ga-capture-verify-"))
   const temp = join(root, "capture.bin")
   let stream: Awaited<ReturnType<GaCaptureStore["open"]>> | undefined
@@ -292,11 +296,22 @@ export async function verifyBoundGaCapture(
       throw new GaCaptureError(
         "GA capture reference differs from stored artifact",
       )
-    return verified
+    return await consume(temp, verified)
   } finally {
     stream?.destroy()
     await rm(root, { recursive: true, force: true })
   }
+}
+
+export async function verifyBoundGaCapture(
+  reference: GaCaptureSnapshotRef,
+  store: GaCaptureStore,
+) {
+  return withVerifiedGaCaptureFile(
+    reference,
+    store,
+    async (_path, verified) => verified,
+  )
 }
 
 export async function handleGaCaptureGet(
@@ -317,19 +332,49 @@ export async function handleGaCaptureGet(
     snapshotRef?: unknown
   } | null
   const reference = gaCaptureSnapshotRefSchema.safeParse(bound?.snapshotRef)
-  if (!generation || !reference.success || generation.status === "retiring")
-    return error("Sealed GA capture is unavailable", 404)
-  if (
-    reference.data.generationId !== generation.id ||
-    reference.data.generationInputDigest !== generation.inputDigest ||
-    reference.data.sourceSetDigest !== generation.sourceSetDigest ||
-    reference.data.inputCutoff !== generation.inputCutoff.toISOString() ||
-    reference.data.storageKey !==
-      gaCaptureStorageKey(generation.id, reference.data.artifactSha256)
-  )
-    return error("GA capture identity differs", 409)
+  let object: {
+    storageKey: string
+    artifactSha256: string
+    artifactBytes: number
+  }
+  if (generation) {
+    if (!reference.success || generation.status === "retiring")
+      return error("Sealed GA capture is unavailable", 404)
+    if (
+      reference.data.generationId !== generation.id ||
+      reference.data.generationInputDigest !== generation.inputDigest ||
+      reference.data.sourceSetDigest !== generation.sourceSetDigest ||
+      reference.data.inputCutoff !== generation.inputCutoff.toISOString() ||
+      reference.data.storageKey !==
+        gaCaptureStorageKey(generation.id, reference.data.artifactSha256)
+    )
+      return error("GA capture identity differs", 409)
+    object = reference.data
+  } else {
+    const importedGeneration =
+      await prisma.recommendationPrecomputedGeneration.findUnique({
+        where: { id: identity.generationId },
+      })
+    if (
+      !importedGeneration ||
+      importedGeneration.inputDigest !== identity.generationInputDigest ||
+      importedGeneration.status === "retiring"
+    )
+      return error("Sealed GA capture is unavailable", 404)
+    const { verifiedImportedGaCapture } = await import("./ga-capture-import")
+    const binding = await verifiedImportedGaCapture(prisma, importedGeneration)
+    if (!binding) return error("Verified GA import is unavailable", 404)
+    object = {
+      storageKey: gaCaptureStorageKey(
+        importedGeneration.id,
+        binding.copy.artifactSha256,
+      ),
+      artifactSha256: binding.copy.artifactSha256,
+      artifactBytes: binding.copy.artifactBytes,
+    }
+  }
   try {
-    const stream = await store.open(reference.data.storageKey)
+    const stream = await store.open(object.storageKey)
     const iterator = stream[Symbol.asyncIterator]()
     let deliveredBytes = 0
     const web = new ReadableStream<Uint8Array>({
@@ -337,7 +382,7 @@ export async function handleGaCaptureGet(
         try {
           const next = await iterator.next()
           if (next.done) {
-            if (deliveredBytes !== reference.data.artifactBytes)
+            if (deliveredBytes !== object.artifactBytes)
               throw new GaCaptureError("Sealed GA capture ended early")
             controller.close()
             stream.destroy()
@@ -345,7 +390,7 @@ export async function handleGaCaptureGet(
           }
           const bytes = Buffer.from(next.value)
           if (
-            deliveredBytes + bytes.length > reference.data.artifactBytes ||
+            deliveredBytes + bytes.length > object.artifactBytes ||
             deliveredBytes + bytes.length > GA_CAPTURE_MAX_BYTES
           )
             throw new GaCaptureError("Sealed GA capture exceeds declared size")
@@ -363,8 +408,8 @@ export async function handleGaCaptureGet(
     return new Response(web, {
       headers: {
         "content-type": GA_CAPTURE_CONTENT_TYPE,
-        "content-length": String(reference.data.artifactBytes),
-        "x-forge-artifact-sha256": reference.data.artifactSha256,
+        "content-length": String(object.artifactBytes),
+        "x-forge-artifact-sha256": object.artifactSha256,
         "cache-control": "private, no-store",
       },
     })
