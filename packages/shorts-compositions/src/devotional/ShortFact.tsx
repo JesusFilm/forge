@@ -292,7 +292,13 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
         />
       ) : language && fact?.vox ? (
         <>
-          <VoxTag f={f} t={t} text="From the Full Devotional" />
+          <VoxTag
+            f={f}
+            t={t}
+            text={
+              isRussian(words) ? "Из полного видео" : "From the Full Devotional"
+            }
+          />
           <VoxLanguageLayout
             f={f}
             t={t}

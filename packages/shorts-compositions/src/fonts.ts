@@ -12,7 +12,11 @@ import {
   MONTSERRAT_CYRILLIC_WOFF2_BASE64,
   MONTSERRAT_LATIN_WOFF2_BASE64,
 } from "./fonts-data"
-import { CAVEAT_BOLD_LATIN_WOFF2_BASE64 } from "./fonts-caveat-data"
+import {
+  CAVEAT_BOLD_CYRILLIC_EXT_WOFF2_BASE64,
+  CAVEAT_BOLD_CYRILLIC_WOFF2_BASE64,
+  CAVEAT_BOLD_LATIN_WOFF2_BASE64,
+} from "./fonts-caveat-data"
 import {
   EB_GARAMOND_LATIN_WOFF2_BASE64,
   EB_GARAMOND_LATIN_ITALIC_WOFF2_BASE64,
@@ -145,10 +149,20 @@ export const FONT_SOURCES: ReadonlyArray<{
     style: "italic",
     unicodeRange: CYRILLIC_EXT_RANGE,
   },
-  // Latin only: English handwriting overlay.
+  // The handwriting overlay, latin and (Russian shorts) cyrillic.
   {
     family: SHORT_FONT_FAMILIES.caveat,
     base64: CAVEAT_BOLD_LATIN_WOFF2_BASE64,
+  },
+  {
+    family: SHORT_FONT_FAMILIES.caveat,
+    base64: CAVEAT_BOLD_CYRILLIC_WOFF2_BASE64,
+    unicodeRange: CYRILLIC_RANGE,
+  },
+  {
+    family: SHORT_FONT_FAMILIES.caveat,
+    base64: CAVEAT_BOLD_CYRILLIC_EXT_WOFF2_BASE64,
+    unicodeRange: CYRILLIC_EXT_RANGE,
   },
 ]
 

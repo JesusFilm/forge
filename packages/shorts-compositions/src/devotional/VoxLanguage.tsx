@@ -41,10 +41,19 @@ export type VoxSpec = {
   swapTo?: string
   /** The last word, stamped in the middle of the frame ("SALVATION"). */
   finale?: string
+  /** The spoken word the stamp waits for when it differs from `finale`
+   *  (Russian: the voice says «спасении», the stamp reads СПАСЕНИЕ). */
+  finaleOn?: string
   /** The glossary headword with its syllables ("heal·ed"); else the word. */
   headword?: string
   /** Its part of speech ("verb"). */
   pos?: string
+  /** The bottom sheet's label (default "The word"; Russian «Слово»). */
+  wordLabel?: string
+  /** The words around the struck one (default "not only a" / "word";
+   *  Russian «не только» / «слово»). */
+  strikeBefore?: string
+  strikeAfter?: string
 }
 
 type TimedWord = {
@@ -54,7 +63,8 @@ type TimedWord = {
   card: number
 }
 
-const bare = (w: string) => w.toLowerCase().replace(/[^a-z']/g, "")
+// Letters of any script (a Russian short, 2026-10-08).
+const bare = (w: string) => w.toLowerCase().replace(/[^\p{L}']/gu, "")
 
 /** When the voice first says `word` (from card `from` on), else `fallback`. */
 function said(
@@ -532,12 +542,16 @@ export function VoxLanguageLayout({
   const strikeAt = said(words, vox.strike, defAt + 2, 2)
   const ringAt = said(words, vox.ringOn, defAt + 4, 3)
   const swapAt = said(words, vox.swapTo, defAt + 8, 4)
-  const finaleAt = said(words, vox.finale, swapAt + 3, 5)
+  const finaleAt = said(words, vox.finaleOn ?? vox.finale, swapAt + 3, 5)
 
   // The verse, split at the highlight so the marker can sit behind it.
   const text = verse.trim()
   const at = highlight
-    ? text.toLowerCase().search(new RegExp(`\\b${highlight.toLowerCase()}\\b`))
+    ? text
+        .toLowerCase()
+        .search(
+          new RegExp(`(?<!\\p{L})${highlight.toLowerCase()}(?!\\p{L})`, "u"),
+        )
     : -1
   const before = at >= 0 ? text.slice(0, at) : text
   const word = at >= 0 ? text.slice(at, at + highlight.length) : ""
@@ -620,11 +634,19 @@ export function VoxLanguageLayout({
             {before}
             {word ? (
               <span style={{ position: "relative", display: "inline-block" }}>
-                <Strike t={t} at={swapAt} width={10} id="vox-strike-swap">
+                {/* Struck only when a new word replaces it: the Russian verse
+                    already says «спасла», so it stays marked, not struck. */}
+                {vox.swapTo ? (
+                  <Strike t={t} at={swapAt} width={10} id="vox-strike-swap">
+                    <Marker t={t} at={markAt}>
+                      <span style={{ fontWeight: 700 }}>{word}</span>
+                    </Marker>
+                  </Strike>
+                ) : (
                   <Marker t={t} at={markAt}>
                     <span style={{ fontWeight: 700 }}>{word}</span>
                   </Marker>
-                </Strike>
+                )}
                 {vox.swapTo && swapP > 0 ? (
                   <span
                     style={{
@@ -681,7 +703,7 @@ export function VoxLanguageLayout({
                 display: "inline-block",
               }}
             >
-              The word
+              {vox.wordLabel ?? "The word"}
             </div>
             <div style={{ paddingTop: f(10) }}>
               <div
@@ -720,11 +742,11 @@ export function VoxLanguageLayout({
                     marginBottom: f(10),
                   }}
                 >
-                  not only a{" "}
+                  {vox.strikeBefore ?? "not only a"}{" "}
                   <Strike t={t} at={strikeAt} id="vox-strike-def">
                     {vox.strike}
                   </Strike>{" "}
-                  word
+                  {vox.strikeAfter ?? "word"}
                 </div>
               ) : null}
               {vox.definition.map((line, i) => (
