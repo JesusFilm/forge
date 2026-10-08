@@ -995,6 +995,7 @@ export async function submitPrecomputedRecommendation(
           Object.entries(existing).filter(
             ([key]) =>
               ![
+                "attemptId",
                 "costUsd",
                 "reservationLeaseToken",
                 "receiptDigest",
