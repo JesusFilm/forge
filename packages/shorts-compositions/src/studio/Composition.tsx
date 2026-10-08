@@ -44,6 +44,7 @@ function compile(source: string) {
 function HlsVideo({
   url,
   start,
+  playbackRate,
   volume,
   holdIfUnready,
   focus,
@@ -52,6 +53,7 @@ function HlsVideo({
   focus?: { x: number; y: number }
   url: string
   start: number
+  playbackRate: number
   volume: number
   holdIfUnready: boolean
   onError?: (message: string) => void
@@ -111,6 +113,7 @@ function HlsVideo({
       ref={ref}
       src={url}
       trimBefore={start}
+      playbackRate={playbackRate}
       volume={volume}
       pauseWhenBuffering={false}
       style={{
@@ -176,7 +179,7 @@ function Layer({
   const Component =
     item.kind === "component" ? compiled[item.componentVersionId] : null
   return (
-    <Remotion.AbsoluteFill style={style}>
+    <Remotion.AbsoluteFill style={style} data-studio-item={item.id}>
       {item.kind === "text" ? (
         <StudioText
           key={item.properties.fontFamily ?? "sans-serif"}
@@ -188,9 +191,10 @@ function Layer({
         mode === "render" ? (
           <Remotion.OffthreadVideo
             src={url}
+            playbackRate={item.playbackRate ?? 1}
             trimBefore={
               ((item.source.startMs - media.sourceStartMs) * fps) / 1000 -
-              presentation.preRoll
+              presentation.preRoll * (item.playbackRate ?? 1)
             }
             volume={globalFrame < item.startFrame ? 0 : item.volume}
             style={{
@@ -203,11 +207,12 @@ function Layer({
         ) : (
           <HlsVideo
             focus={item.focus}
+            playbackRate={item.playbackRate ?? 1}
             url={url}
             holdIfUnready={holdIfUnready}
             start={
               ((item.source.startMs - media.sourceStartMs) * fps) / 1000 -
-              presentation.preRoll
+              presentation.preRoll * (item.playbackRate ?? 1)
             }
             volume={globalFrame < item.startFrame ? 0 : item.volume}
             onError={onError}

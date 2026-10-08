@@ -55,6 +55,10 @@ export function Library({
     [start, setStart] = useState(0),
     [end, setEnd] = useState(10),
     [busy, setBusy] = useState(false),
+    [componentName, setComponentName] = useState("Title card"),
+    [componentCategory, setComponentCategory] = useState<"text" | "video">(
+      "text",
+    ),
     [source, setSource] = useState(template),
     [controls, setControls] = useState(
       '{"title":{"type":"text","maxLength":200},"color":{"type":"color"}}',
@@ -99,7 +103,7 @@ export function Library({
             ...d.tracks,
             {
               id: item.trackId,
-              kind: groupTrackKind[itemGroup(item)],
+              kind: groupTrackKind[itemGroup(item, doc)],
             },
           ],
       durationInFrames: Math.max(
@@ -192,6 +196,8 @@ export function Library({
       const asset: ShortAssetVersion = await res.json()
       const component = studioComponentSchema.parse({
         versionId: crypto.randomUUID(),
+        name: componentName.trim(),
+        category: componentCategory,
         code: asset.reference,
         runtimeVersion: STUDIO_RUNTIME_VERSION,
         dependencies: [
@@ -219,7 +225,9 @@ export function Library({
         ]),
       )
       const item: StudioTimelineItem = {
-        ...base(),
+        ...base(
+          groupTrackKind[componentCategory === "text" ? "Text" : "Video"],
+        ),
         kind: "component",
         componentVersionId: component.versionId,
         properties,
@@ -227,6 +235,17 @@ export function Library({
       session.edit((d) => ({
         ...d,
         components: [...d.components, component],
+        tracks: d.tracks.some((track) => track.id === item.trackId)
+          ? d.tracks
+          : [
+              ...d.tracks,
+              {
+                id: item.trackId,
+                kind: groupTrackKind[
+                  componentCategory === "text" ? "Text" : "Video"
+                ],
+              },
+            ],
         items: [...d.items, item],
         durationInFrames: Math.max(
           d.durationInFrames,
@@ -419,6 +438,26 @@ export function Library({
               isolated preview.
             </p>
             <label>
+              Component name
+              <input
+                value={componentName}
+                maxLength={200}
+                onChange={(e) => setComponentName(e.target.value)}
+              />
+            </label>
+            <label>
+              Timeline section
+              <select
+                value={componentCategory}
+                onChange={(e) =>
+                  setComponentCategory(e.target.value as "text" | "video")
+                }
+              >
+                <option value="text">Text</option>
+                <option value="video">Video</option>
+              </select>
+            </label>
+            <label>
               Component TSX
               <textarea
                 className="nle-code"
@@ -435,7 +474,10 @@ export function Library({
                 onChange={(e) => setControls(e.target.value)}
               />
             </label>
-            <button disabled={busy || !state.editable} onClick={custom}>
+            <button
+              disabled={busy || !state.editable || !componentName.trim()}
+              onClick={custom}
+            >
               <Plus size={14} />
               Add component
             </button>
