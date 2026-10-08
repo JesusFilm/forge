@@ -46,7 +46,7 @@ export function FeedbackLoadNotice({
       role={error ? "alert" : "status"}
       aria-live={error ? "assertive" : "polite"}
       data-testid="feedback-modal-loading"
-      className="fixed bottom-[calc(5.25rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/15 bg-stone-950/95 p-4 pt-16 text-base sm:text-sm text-stone-100 shadow-2xl backdrop-blur-md"
+      className="fixed bottom-[calc(9rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] w-[min(20rem,calc(100vw-2rem))] rounded-2xl border border-white/15 bg-stone-950/95 p-4 pt-16 text-base sm:text-sm text-stone-100 shadow-2xl backdrop-blur-md"
     >
       <WatchModalViewportCloseButton
         open
@@ -236,7 +236,7 @@ export function FeedbackLauncher() {
               variant: "pill",
               className: WATCH_PILL_BUTTON_CLASS,
             }),
-            "group fixed bottom-[calc(1rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] shadow-2xl",
+            "group fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))] left-[calc(1rem+env(safe-area-inset-left,0px))] z-[46] shadow-2xl",
             // `gap-0` on purpose: a flex gap survives a zero-width child,
             // so a collapsed label would still push the icon off-centre.
             // The label carries its own animatable margin instead. The

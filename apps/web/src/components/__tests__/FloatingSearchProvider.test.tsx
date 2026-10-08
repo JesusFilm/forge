@@ -617,7 +617,7 @@ describe("FloatingSearchProvider — header backdrop", () => {
       "h-[calc(4.75rem+env(safe-area-inset-top,0px))]",
     )
     expect(backdrop?.className).toContain(
-      "md:h-[calc(8rem+env(safe-area-inset-top,0px))]",
+      "md:h-[calc(5rem+env(safe-area-inset-top,0px))]",
     )
     expect(backdrop?.className).toContain("backdrop-blur-[14px]")
     expect(backdrop?.className).toContain("bg-[linear-gradient")
@@ -659,8 +659,8 @@ describe("FloatingSearchProvider — header backdrop", () => {
     )
   })
 
-  it("moves the desktop gradient upward in compact header mode", () => {
-    setScrollY(100)
+  it("keeps the header opaque from the first scroll pixel", () => {
+    setScrollY(10)
     act(() => {
       root.render(
         <FloatingSearchProvider>
@@ -673,10 +673,26 @@ describe("FloatingSearchProvider — header backdrop", () => {
       '[data-testid="floating-header-backdrop"]',
     )
     expect(backdrop?.className).toContain("bg-black/72")
-    expect(backdrop?.className).toContain("md:bg-[linear-gradient")
-    expect(backdrop?.className).toContain("md:shadow-none")
-    expect(backdrop?.className).toContain("md:backdrop-blur-none")
-    expect(backdrop?.className).toContain("md:-translate-y-[72%]")
+    expect(backdrop?.className).toContain("md:bg-black/72")
+    expect(backdrop?.className).toContain("md:backdrop-blur-[14px]")
+    expect(backdrop?.className).toContain(
+      "md:h-[calc(5rem+env(safe-area-inset-top,0px))]",
+    )
+    expect(backdrop?.className).not.toContain("mask-image")
+  })
+
+  it("sets root scroll padding below the fixed Watch header", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    expect(document.documentElement.style.scrollPaddingTop).toBe(
+      "calc(5rem + env(safe-area-inset-top, 0px))",
+    )
   })
 
   it("keeps the frosted header backdrop outside preview mode", () => {

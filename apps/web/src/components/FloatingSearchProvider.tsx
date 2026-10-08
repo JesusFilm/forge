@@ -325,6 +325,7 @@ export function FloatingSearchProvider({
   const [headerHovered, setHeaderHovered] = useState(false)
   const [headerScrollVisible, setHeaderScrollVisible] = useState(true)
   const [headerOverHero, setHeaderOverHero] = useState(true)
+  const [hasScrolled, setHasScrolled] = useState(false)
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastScrollYRef = useRef(0)
   const globalLanguageIntentRef = useRef(0)
@@ -426,6 +427,17 @@ export function FloatingSearchProvider({
     }
   }, [open])
 
+  // Keep the root scroll offset aligned with the 80px fixed backdrop band so
+  // keyboard focus and anchor navigation leave targets below the Watch chrome.
+  useEffect(() => {
+    const root = document.documentElement
+    const previousScrollPaddingTop = root.style.scrollPaddingTop
+    root.style.scrollPaddingTop = "calc(5rem + env(safe-area-inset-top, 0px))"
+    return () => {
+      root.style.scrollPaddingTop = previousScrollPaddingTop
+    }
+  }, [])
+
   // Scroll-driven pinned state. Shared between the floating searchbar and
   // the floating logo so they track together. Listener registers only while
   // modal is closed (body scroll lock keeps scrollY fixed while open).
@@ -458,6 +470,7 @@ export function FloatingSearchProvider({
     let frame = 0
     const updateHeaderScrollState = () => {
       const currentY = window.scrollY
+      setHasScrolled(currentY > 0)
       const hero = document.querySelector<HTMLElement>(
         '[data-testid="hero-player-wrapper"], [data-testid="series-hero-static"], [data-testid="watch-home-tv-carousel"]',
       )
@@ -743,7 +756,8 @@ export function FloatingSearchProvider({
   const searchChromeDimmed = headerChromeDimmed
   const headerCanBrightenLocally = playerChromeOpacity <= 0
   const headerPointerRevealAllowed = playerChromeOpacity < 1
-  const headerSurfaceSolid = modalChromeHidden || !headerOverHero || pinned
+  const headerSurfaceSolid =
+    modalChromeHidden || hasScrolled || !headerOverHero || pinned
   const headerTopClass = pinned
     ? FLOATING_HEADER_PINNED_TOP_CLASS
     : FLOATING_HEADER_TOP_CLASS
@@ -760,9 +774,7 @@ export function FloatingSearchProvider({
     ? "-translate-y-[calc(100%+2rem)] opacity-0"
     : !headerScrollVisible
       ? "-translate-y-[calc(100%+2rem)] opacity-100"
-      : headerSurfaceSolid
-        ? "translate-y-0 opacity-100 md:-translate-y-[72%]"
-        : "translate-y-0 opacity-100"
+      : "translate-y-0 opacity-100"
 
   const revealPlayerChromeFromHeader = useCallback(() => {
     if (typeof window === "undefined") return
@@ -835,10 +847,10 @@ export function FloatingSearchProvider({
         <div
           aria-hidden="true"
           data-testid="floating-header-backdrop"
-          className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(4.75rem+env(safe-area-inset-top,0px))] backdrop-blur-[14px] transition-[opacity,background-color,translate,backdrop-filter] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] md:h-[calc(8rem+env(safe-area-inset-top,0px))] md:backdrop-blur-none compact-landscape:h-[calc(4.25rem+env(safe-area-inset-top,0px))] compact-landscape:backdrop-blur-[14px] ${
+          className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(4.75rem+env(safe-area-inset-top,0px))] backdrop-blur-[14px] transition-[opacity,background-color,translate,backdrop-filter] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] md:h-[calc(5rem+env(safe-area-inset-top,0px))] compact-landscape:h-[calc(4.25rem+env(safe-area-inset-top,0px))] compact-landscape:backdrop-blur-[14px] ${
             headerSurfaceSolid
-              ? "bg-black/72 shadow-[0_1px_0_rgba(255,255,255,0.08)] md:bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] md:shadow-none md:[mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
-              : "bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
+              ? "bg-black/72 shadow-[0_1px_0_rgba(255,255,255,0.08)] md:bg-black/72 md:backdrop-blur-[14px]"
+              : "md:backdrop-blur-none bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
           } ${headerBackdropMotionClass}`}
         />
         <div
