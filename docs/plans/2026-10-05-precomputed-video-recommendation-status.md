@@ -19,14 +19,21 @@ using the existing Codex subscription instead of paid API generation. The
 [implementation plan](2026-10-08-precomputed-recommendation-subscription-build.md)
 preserves the accepted product requirements. A synthetic `gpt-6-astra` CLI probe
 completed through enforced ChatGPT auth with valid structured output, no tool
-events and 16,949 input/32 output tokens. This proves access only. Worker B owns
-the isolated operator-adapter slice and offline tests; the full build has not
-started, and no paid API fallback is authorized.
+events and 16,949 input/32 output tokens. This proves access only. The local
+operator adapter and hosted launch guard are integrated at `5c90e8abf`.
+Root's combined adapter/hosted checks pass 34 cases with CI enabled; worker
+Mastra checks pass 3,379 cases with 45 environment-gated skips. The full build
+has not started, and no paid API fallback is authorized.
 
 The owner further required manual-only builds/rebuilds/resumptions using the
-initiating person's own subscription. The operator adapter is incorporating
-fresh identity/allowance admission; the concrete identity reader and durable
-operator provenance are still implementation seams. An Admin login does not
+initiating person's own subscription. The operator adapter requires fresh
+same-account identity/allowance admission and pauses after failure. It isolates
+and terminates the owned CLI process group on timeout or unexpected tools;
+this local adapter supports POSIX hosts and explicitly rejects Windows. Hosted
+source/catalog launch routes return `403 local_manual_operator_required`, and
+neither workflow is registered on the native hosted API. The concrete identity
+reader, manual command and durable operator provenance are still implementation
+seams. An Admin login does not
 select a remote machine's Codex account. Included subscription use has no
 separate model API charge; the report must distinguish consumed allowance,
 subscription fees and possible paid credits instead of labeling tokens free.
@@ -34,8 +41,10 @@ subscription fees and possible paid credits instead of labeling tokens free.
 Manual-run requirements are committed at `21dac9230`. A read-only local Codex
 app-server probe returned a stable ChatGPT account and backend account ID with
 fresh quota windows; only a hashed account reference was retained. Those reads
-do not expose a provider-enforced included-only spending cap. The concrete
-runner and durable provenance still require implementation and verification.
+do not expose a provider-enforced included-only spending cap. Pro's absent
+five-hour window is explicitly not applicable under the current documented plan
+rules, not inferred to be 100% remaining. The concrete runner and durable
+provenance still require implementation and verification.
 
 The subsequent docs CI run at `b25bd89fa` failed the native GA concurrency
 fixture's fixed 10ms overlap assumption (observed peak one, expected two).
@@ -49,8 +58,8 @@ Published integration `0f6d65170d2b39a1b6f39484392e6f946e492448` has 101
 successful and three skipped CheckRuns, with two successful Railway status
 contexts and no production deployment. After reviewed executable pins, lock
 admission and recovery proofs, GA-only capture attempt 6 started on October 8
-at 11:09 NZDT. It remains separate from model generation. At 12:54 NZDT it had
-178 of 305 start pages durably matched and zero of 327 referrer pages matched;
+at 11:09 NZDT. It remains separate from model generation. At 13:36 NZDT it had
+258 of 305 start pages durably matched and zero of 327 referrer pages matched;
 the journal was unsealed and a subsequent read unresolved. The earlier attempt
 records below are historical, not the current running-state description.
 
