@@ -28,13 +28,9 @@ import { WatchRouteSurfaceRegistration } from "@/components/WatchRouteSurfaceReg
 import {
   FLOATING_HEADER_FIELD_WIDTH_CLASS,
   FLOATING_HEADER_LAYOUT_CLASS,
-  FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
   FLOATING_HEADER_PINNED_TOP_CLASS,
   FLOATING_HEADER_TOP_CLASS,
-  FLOATING_HEADER_TRAILING_SLOT_CLASS,
-  FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
   FLOATING_MODAL_HEADER_FIELD_POSITION_CLASS,
-  FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
   FLOATING_MODAL_HEADER_LAYOUT_CLASS,
   FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS,
   FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
@@ -2623,10 +2619,10 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       dispatchChromeVisibility(false)
     })
 
+    const header = document.querySelector('[data-testid="floating-header"]')
     const languageButton = document.querySelector(
       '[data-testid="floating-header-language-button"]',
     )
-    const header = document.querySelector('[data-testid="floating-header"]')
     expect(header?.className).toContain("opacity-0")
     expect(header?.className).toContain("-translate-y-[calc(100%+2rem)]")
     expect(languageButton).not.toBeNull()
@@ -2649,11 +2645,11 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       dispatchChromeVisibility(true, 0.3)
     })
 
+    const logo = document.querySelector('[data-testid="floating-header-logo"]')
+    const header = document.querySelector('[data-testid="floating-header"]')
     const languageButton = document.querySelector(
       '[data-testid="floating-header-language-button"]',
     )
-    const logo = document.querySelector('[data-testid="floating-header-logo"]')
-    const header = document.querySelector('[data-testid="floating-header"]')
     expect(header?.className).toContain("opacity-30")
     expect(header?.className).not.toContain("pointer-events-none")
     expect(languageButton).not.toBeNull()
@@ -4480,9 +4476,6 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const close = document.querySelector(
       '[data-testid="floating-header-search-close"]',
     )
-    const languageButton = document.querySelector(
-      '[data-testid="floating-header-language-button"]',
-    )
     expect(overlayTopBar?.className).toContain("left-5")
     expect(overlayTopBar?.className).toContain("right-5")
     expect(overlayTopBar?.className).toContain(
@@ -4497,12 +4490,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlayFieldShell?.className).not.toContain("col-span-2")
     expect(header?.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
     expect(header?.className).toContain("translate-y-0")
-    expect(languageButton?.className).toContain(
-      FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
-    )
-    expect(close?.className).toContain(
-      FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
-    )
+    expect(close?.closest('[role="dialog"]')).toBeNull()
     expect(
       document.querySelector('[data-testid="floating-header-search-close"]'),
     ).not.toBeNull()
@@ -4600,7 +4588,13 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const input = await openSearchOverlay()
     act(() => {
       setInputValue(input, "jesus")
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Escape",
+          bubbles: true,
+          cancelable: true,
+        }),
+      )
     })
     await act(async () => {
       vi.advanceTimersByTime(220)
@@ -4823,6 +4817,8 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(overlay?.style.zIndex).toBe("45")
     expect(header?.className).toContain("z-50")
     expect(header?.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
+    expect(header?.hasAttribute("inert")).toBe(true)
+    expect(languageButton?.hasAttribute("inert")).toBe(true)
     expect(header?.className).toContain("translate-y-0")
     expect(header?.className).toContain("opacity-100")
     expect(header?.className).not.toContain("-translate-y-[calc(100%+2rem)]")
@@ -4872,12 +4868,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     )
     expect(overlayFieldShell?.className).not.toContain("col-span-2")
     expect(logo?.className).toContain(FLOATING_MODAL_HEADER_LOGO_POSITION_CLASS)
-    expect(languageButton?.className).toContain(
-      FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
-    )
-    expect(close?.className).toContain(
-      FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
-    )
+    expect(languageButton?.hasAttribute("inert")).toBe(true)
     expect(headerTrailingControls?.className).toContain(
       FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
     )
@@ -4894,6 +4885,67 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(close?.className).toContain("md:w-12")
     expect(close?.querySelector("svg")?.getAttribute("class")).toContain("h-6")
     expect(close?.querySelector("svg")?.getAttribute("class")).toContain("w-6")
+  })
+
+  it("traps Tab inside the dialog and restores focus to its opener", async () => {
+    vi.useFakeTimers()
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    await act(async () => {
+      await Promise.resolve()
+    })
+    const opener = document.querySelector(
+      '[data-testid="floating-search-desktop-button"]',
+    ) as HTMLButtonElement
+    opener.focus()
+    await act(async () => {
+      opener.click()
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await flushSearchControllerMount()
+
+    const overlay = document.querySelector('[role="dialog"]') as HTMLElement
+    const close = overlay.querySelector(
+      '[data-testid="floating-header-search-close"]',
+    ) as HTMLButtonElement
+    const focusable = Array.from(
+      overlay.querySelectorAll<HTMLElement>(
+        'input, button, a[href], [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((element) => !element.hasAttribute("disabled"))
+    const firstFocusable = focusable[0]
+    close.focus()
+    close.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Tab",
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+    expect(document.activeElement).toBe(close)
+    firstFocusable?.focus()
+    firstFocusable?.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Tab",
+        shiftKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+    expect(document.activeElement).toBe(firstFocusable)
+
+    close.click()
+    act(() => {
+      vi.advanceTimersByTime(300)
+    })
+    expect(document.activeElement).toBe(opener)
   })
 
   it("uses the pinned header top offset when opened from scrolled desktop chrome", async () => {
@@ -4963,18 +5015,10 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       FLOATING_MODAL_HEADER_TRAILING_GROUP_CLASS,
     )
     expect(overlayTrailingSpacer?.children).toHaveLength(2)
-    expect(overlayTrailingSpacer?.children[0]?.className).toContain(
-      FLOATING_HEADER_LANGUAGE_SLOT_CLASS,
-    )
-    expect(overlayTrailingSpacer?.children[0]?.className).toContain(
-      FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS,
-    )
-    expect(overlayTrailingSpacer?.children[1]?.className).toContain(
-      FLOATING_HEADER_TRAILING_SLOT_CLASS,
-    )
-    expect(overlayTrailingSpacer?.children[1]?.className).toContain(
-      FLOATING_MODAL_HEADER_CLOSE_POSITION_CLASS,
-    )
+    expect(overlayTrailingSpacer?.children[0]?.className).toContain("h-11")
+    expect(
+      overlayTrailingSpacer?.children[1]?.getAttribute("data-testid"),
+    ).toBe("floating-header-search-close")
   })
 })
 

@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type ReactNode,
+  type RefObject,
 } from "react"
 import { createPortal } from "react-dom"
 import type { Route } from "next"
@@ -98,6 +99,7 @@ export type FloatingSearchControllerProps = {
   languageVideosHref?: Route | null
   resetToken?: number
   pendingSubmitIntent?: PendingSearchSubmitIntent | null
+  returnFocusRef?: RefObject<HTMLElement | null>
   onReady?: () => void
   children?: ReactNode
 }
@@ -114,6 +116,7 @@ export function FloatingSearchController({
   languageVideosHref = null,
   resetToken = 0,
   pendingSubmitIntent = null,
+  returnFocusRef,
   onReady,
   children,
 }: FloatingSearchControllerProps) {
@@ -835,6 +838,19 @@ export function FloatingSearchController({
   )
 
   const modalChromeHidden = open || closing
+
+  const wasModalChromeHiddenRef = useRef(false)
+  useEffect(() => {
+    if (modalChromeHidden) {
+      wasModalChromeHiddenRef.current = true
+      return
+    }
+    if (!wasModalChromeHiddenRef.current) return
+    wasModalChromeHiddenRef.current = false
+    const target = returnFocusRef?.current
+    if (returnFocusRef) returnFocusRef.current = null
+    if (target?.isConnected) target.focus({ preventScroll: true })
+  }, [modalChromeHidden, returnFocusRef])
 
   return (
     <FloatingSearchContext.Provider value={value}>

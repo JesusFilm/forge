@@ -331,6 +331,7 @@ export function FloatingSearchProvider({
   const nextSearchSubmitIntentIdRef = useRef(0)
   const globalLanguagePendingRouteRef = useRef<RouteIdentity | null>(null)
   const globalLanguageTriggerRef = useRef<HTMLButtonElement>(null)
+  const searchReturnFocusRef = useRef<HTMLElement | null>(null)
   const pendingPageLanguageOpenRef = useRef<PendingPageLanguageOpen | null>(
     null,
   )
@@ -355,6 +356,16 @@ export function FloatingSearchProvider({
         closingTimerRef.current = null
       }
       if (next) {
+        if (typeof document !== "undefined") {
+          const active = document.activeElement
+          if (
+            active instanceof HTMLElement &&
+            active !== document.body &&
+            !active.closest('[role="dialog"]')
+          ) {
+            searchReturnFocusRef.current = active
+          }
+        }
         pendingPageLanguageOpenRef.current = null
         invalidateGlobalLanguageIntent()
         setClosing(false)
@@ -853,8 +864,8 @@ export function FloatingSearchProvider({
         />
         <header
           data-testid="floating-header"
-          inert={headerChromeHidden || undefined}
-          aria-hidden={headerChromeHidden || undefined}
+          inert={modalChromeHidden || headerChromeHidden || undefined}
+          aria-hidden={modalChromeHidden || headerChromeHidden || undefined}
           className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
             modalChromeHidden
               ? FLOATING_MODAL_HEADER_LAYOUT_CLASS
@@ -952,6 +963,8 @@ export function FloatingSearchProvider({
                 ref={globalLanguageTriggerRef}
                 data-testid="floating-header-language-button"
                 onClick={headerLanguageClick}
+                inert={modalChromeHidden || undefined}
+                aria-hidden={modalChromeHidden || undefined}
                 aria-busy={headerLanguageBusy}
                 disabled={headerLanguageBusy}
                 aria-label={globalLanguageLabel}
@@ -1020,6 +1033,7 @@ export function FloatingSearchProvider({
             languageVideosHref={languageVideosHref}
             resetToken={searchResetToken}
             pendingSubmitIntent={pendingSearchSubmitIntent}
+            returnFocusRef={searchReturnFocusRef}
             onReady={markSearchControllerReady}
           />
         ) : null}
