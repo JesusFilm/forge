@@ -1,7 +1,10 @@
 // The quote card's services are the reader's own singletons (KTD10), so a
 // card read shares the reader's flights and fills its kept-chapter cache.
 import { readPhoneLanguageCode } from "../language/phoneLanguage"
-import { getReadingPositionStore } from "../position/store"
+import {
+  getReadingPositionStore,
+  type ReadingPositionStore,
+} from "../position/store"
 import {
   getChapterRepository,
   getTranslationDownloads,
@@ -9,9 +12,14 @@ import {
 import { loadReaderCatalog } from "../reader/services"
 import type { CardQuoteServices } from "./cardQuote"
 
-let services: CardQuoteServices | null = null
+/** The module's services, plus the pick subscription the hook reads (KTD11). */
+export type CardQuoteRuntime = CardQuoteServices & {
+  positionStore: Pick<ReadingPositionStore, "subscribe">
+}
 
-export function getCardQuoteServices(): CardQuoteServices {
+let services: CardQuoteRuntime | null = null
+
+export function getCardQuoteServices(): CardQuoteRuntime {
   services ??= {
     repository: getChapterRepository(),
     downloads: getTranslationDownloads(),
