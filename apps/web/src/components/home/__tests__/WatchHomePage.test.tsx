@@ -44,7 +44,10 @@ import {
   WATCH_HERO_TITLE_CLASS,
 } from "@/components/watch/WatchHeroOverlay"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
-import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxHeroPosterUrlAtMaxWidth,
+} from "@/lib/url"
 import { WATCH_HERO_BODY_OVERLAP_CSS } from "@/lib/watch-hero-preview-overlap"
 import {
   fitWatchHomeHeroHeight,
@@ -60,6 +63,7 @@ import {
 import { signWatchHomeHeroManifestCatalog } from "@/lib/watch-surface-manifest.server"
 import * as exposureBoundary from "@/components/recommendations/WatchExposureBoundary"
 import { WatchHomePage } from "@/components/home/WatchHomePage"
+import { watchHomeHeroSlidesToTvCarouselSlides } from "@/components/home/WatchHomeTvCarousel"
 
 vi.mock("next/image", () => ({
   default: ({
@@ -3317,6 +3321,22 @@ describe("WatchHomePage", () => {
     expect(poster).toBe(resolveMuxHeroPosterUrlAtMaxWidth("mux-1"))
     expect(poster).not.toContain("cdn.example")
     expect(video.getAttribute("poster")).toBe(poster)
+  })
+
+  it("uses the pinned card-frame recipe for carousel thumbnails", () => {
+    const slides = watchHomeHeroSlidesToTvCarouselSlides([
+      {
+        ...makeCard({ imageUrl: null, playbackId: "mux-thumbnail" }),
+        eyebrow: "Featured",
+      } as WatchHomeModel["heroSlides"][number],
+    ])
+
+    expect(slides[0]?.thumbnailUrl).toBe(
+      resolveMuxFrameThumbnailUrl("mux-thumbnail"),
+    )
+    expect(slides[0]?.posterUrl).toBe(
+      resolveMuxHeroPosterUrlAtMaxWidth("mux-thumbnail"),
+    )
   })
 
   it.each([

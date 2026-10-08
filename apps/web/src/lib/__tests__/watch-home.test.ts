@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
+import { resolveMuxFrameThumbnailUrl } from "@/lib/url"
 
 const { queryMock, unstableCacheCalls } = vi.hoisted(() => ({
   queryMock: vi.fn(),
@@ -519,7 +520,7 @@ describe("buildWatchHomeModelFromVideos", () => {
     })
 
     expect(model.heroSlides[0]?.imageUrl).toBe(
-      "https://image.mux.com/mux-fallback/thumbnail.jpg",
+      resolveMuxFrameThumbnailUrl("mux-fallback"),
     )
     expect(
       model.missingData.some(
