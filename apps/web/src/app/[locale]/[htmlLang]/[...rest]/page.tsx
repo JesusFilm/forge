@@ -736,10 +736,6 @@ async function renderOneSegment(shape: {
       redirect(languageVideosIndexPath(languageSlug))
     }
 
-    if (heroResult.error) {
-      return <ExperienceError message={heroResult.error.message} />
-    }
-
     const builderBlocks =
       pageResult.data?.kind === "experience"
         ? watchExperienceBlocks(pageResult.data.experience)
@@ -755,12 +751,26 @@ async function renderOneSegment(shape: {
       })
     }
 
-    if (!heroResult.data.heroSlides.length && !builderBlocks.length) {
+    if (heroResult.error && !builderBlocks.length) {
+      return <ExperienceError message={heroResult.error.message} />
+    }
+
+    if (
+      !heroResult.error &&
+      !heroResult.data.heroSlides.length &&
+      !builderBlocks.length
+    ) {
       return <ExperienceEmpty />
+    }
+    const heroModel = heroResult.data ?? {
+      heroSlides: [],
+      sections: [],
+      carousel: { pools: [] },
+      missingData: [],
     }
     const localeSlug = tryAsLocaleSlug(slug)
     const visibleContent = projectWatchHomeVisibleContent({
-      model: heroResult.data,
+      model: heroModel,
       blocks: builderBlocks,
       languageSlug: slug,
     })
@@ -776,7 +786,7 @@ async function renderOneSegment(shape: {
       <>
         <WatchStructuredData json={structuredData} />
         <WatchHomeExperiencePage
-          heroModel={heroResult.data}
+          heroModel={heroModel}
           blocks={visibleContent.blocks}
           languageSlug={slug}
           publicDocumentPathname={

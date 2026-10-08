@@ -758,6 +758,42 @@ describe("Catch-all routing — one-segment collection/home branch", () => {
     expect(watchHomeExperiencePageMock).toHaveBeenCalled()
   })
 
+  it("renders localized builder blocks when the localized hero query fails", async () => {
+    const blocks = [{ __typename: "TextBlock", id: "body", text: "Hello" }]
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Admin unavailable"),
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "experience",
+        experience: {
+          id: "home-es",
+          slug: "watch-home",
+          title: "Watch",
+          blocks,
+        },
+      },
+      error: null,
+    })
+
+    await render1Seg("spanish-castilian.html")
+
+    expect(experienceErrorMock).not.toHaveBeenCalled()
+    expect(watchHomeExperiencePageMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        heroModel: {
+          heroSlides: [],
+          sections: [],
+          carousel: { pools: [] },
+          missingData: [],
+        },
+        blocks,
+      }),
+      undefined,
+    )
+  })
+
   it("canonicalizes one-segment language-home metadata to the public language URL", async () => {
     resolveWatchPageMock.mockResolvedValue({
       data: null,

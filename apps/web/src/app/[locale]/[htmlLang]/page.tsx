@@ -93,10 +93,6 @@ export default async function HomePage({ params }: PageProps) {
     </WatchChromeShell>
   )
 
-  if (heroResult.error) {
-    return withMessages(<ExperienceError message={heroResult.error.message} />)
-  }
-
   const builderBlocks =
     pageResult.data?.kind === "experience"
       ? watchExperienceBlocks(pageResult.data.experience)
@@ -112,13 +108,27 @@ export default async function HomePage({ params }: PageProps) {
     })
   }
 
-  if (!heroResult.data.heroSlides.length && !builderBlocks.length) {
+  if (heroResult.error && !builderBlocks.length) {
+    return withMessages(<ExperienceError message={heroResult.error.message} />)
+  }
+
+  if (
+    !heroResult.error &&
+    !heroResult.data.heroSlides.length &&
+    !builderBlocks.length
+  ) {
     return withMessages(<ExperienceEmpty />)
   }
 
+  const heroModel = heroResult.data ?? {
+    heroSlides: [],
+    sections: [],
+    carousel: { pools: [] },
+    missingData: [],
+  }
   const languageSlug = publicWatchHomeLanguageSlugForLocale(locale) ?? "english"
   const visibleContent = projectWatchHomeVisibleContent({
-    model: heroResult.data,
+    model: heroModel,
     blocks: builderBlocks,
     languageSlug,
   })
@@ -134,7 +144,7 @@ export default async function HomePage({ params }: PageProps) {
     <>
       <WatchStructuredData json={structuredData} />
       <WatchHomeExperiencePage
-        heroModel={heroResult.data}
+        heroModel={heroModel}
         blocks={visibleContent.blocks}
         locale={locale}
         languageSlug={languageSlug}

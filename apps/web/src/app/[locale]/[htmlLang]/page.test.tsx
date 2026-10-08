@@ -134,6 +134,53 @@ describe("Watch root homepage", () => {
     })
   })
 
+  it("keeps builder-authored homepage blocks when the hero query fails", async () => {
+    const blocks = [
+      { __typename: "MediaCollectionBlock", t: "mediaCollection" },
+    ]
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Admin unavailable"),
+    })
+    resolveWatchPageMock.mockResolvedValue({
+      data: { kind: "experience", experience: { blocks } },
+      error: null,
+    })
+
+    const element = await HomePage({
+      params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+    })
+
+    expect(experienceErrorMock).not.toHaveBeenCalled()
+    const home = element.props.children.props.children.props.children[1]
+    expect(home.type).toBe(watchHomeExperiencePageMock)
+    expect(home.props).toEqual(
+      expect.objectContaining({
+        heroModel: {
+          heroSlides: [],
+          sections: [],
+          carousel: { pools: [] },
+          missingData: [],
+        },
+        blocks,
+      }),
+    )
+  })
+
+  it("shows the hero error when both the hero and builder body are unavailable", async () => {
+    resolveWatchHomeMock.mockResolvedValue({
+      data: null,
+      error: new Error("Admin unavailable"),
+    })
+
+    const element = await HomePage({
+      params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+    })
+
+    expect(element.props.children.props.children.type).toBe(experienceErrorMock)
+    expect(watchHomeExperiencePageMock).not.toHaveBeenCalled()
+  })
+
   it("keeps the static hero shell when the builder homepage is missing", async () => {
     const element = await HomePage({
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
