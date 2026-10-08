@@ -3049,6 +3049,7 @@ type VideoCarouselItem {
   imageAsset: BlockImageAsset
   imageAssetId: String
   languageId: String
+  resolvedTitle(locale: String!): String
   subtitleOverride: String
   titleOverride: String
   """
@@ -3056,6 +3057,7 @@ type VideoCarouselItem {
   """
   videoDub: VideoDub
   videoId: String
+  videoImage: BlockVideoImage
 }
 
 """

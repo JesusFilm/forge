@@ -29,7 +29,9 @@ vi.mock("@/components/ui/carousel", () => {
 })
 
 vi.mock("next/image", () => ({
-  default: () => null,
+  default: ({ src, alt }: { src: string; alt: string }) => (
+    <span data-testid="mock-image" data-src={src} aria-label={alt} />
+  ),
 }))
 
 import { CarouselVideo } from "@/components/sections/CarouselVideo"
@@ -116,6 +118,35 @@ describe("CarouselVideo", () => {
         'button[data-slot="carousel-next"][aria-label="Next video preview"]',
       ),
     ).not.toBeNull()
+  })
+
+  it("uses Admin localized card copy and cached Mux thumbnail fallbacks", async () => {
+    const data = {
+      ...baseFragment,
+      items: [
+        {
+          ...baseFragment.items[0],
+          titleOverride: null,
+          resolvedTitle: "Título localizado",
+          videoDub: { muxVideo: { playbackId: "playback-id" } },
+        },
+      ],
+    } as Parameters<typeof CarouselVideo>[0]["data"]
+
+    await act(async () => {
+      root.render(<CarouselVideo data={data} />)
+    })
+
+    expect(
+      container.querySelector('[aria-label="Show Título localizado"]'),
+    ).not.toBeNull()
+    expect(
+      container
+        .querySelector('[data-testid="mock-image"]')
+        ?.getAttribute("data-src"),
+    ).toContain(
+      "https://image.mux.com/playback-id/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
   })
 
   it("uses the shared focus frame and preserves selected-state framing", async () => {

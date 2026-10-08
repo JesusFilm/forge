@@ -537,6 +537,8 @@ const BLOCK_SCHEMA_LAG_MESSAGES = [
   /^Unknown type "HomepageRecommendationsBlock"\./,
   /^Unknown type "WatchHomeCategoryRailBlock"\./,
   /^Cannot query field "tiles" on type "WatchHomeCategoryRailBlock"\./,
+  /^Cannot query field "resolvedTitle" on type "VideoCarouselItem"\./,
+  /^Cannot query field "videoImage" on type "VideoCarouselItem"\./,
 ]
 
 const CATEGORY_RAIL_COPY_FIELDS = [
@@ -563,7 +565,7 @@ function isValidationShaped(entry: GraphqlErrorCandidate): boolean {
   return code === undefined || code === "GRAPHQL_VALIDATION_FAILED"
 }
 
-type CategoryRailSchemaLag = "none" | "copy" | "legacy"
+type CategoryRailSchemaLag = "none" | "copy" | "carousel" | "legacy"
 
 function classifyCategoryRailSchemaLag(result: {
   error?: ErrorLike | null
@@ -581,6 +583,11 @@ function classifyCategoryRailSchemaLag(result: {
     CATEGORY_RAIL_COPY_SCHEMA_LAG_MESSAGES.some((pattern) =>
       pattern.test(message),
     )
+  const isCarouselMessage = (message: string) =>
+    /^Cannot query field "(?:resolvedTitle|videoImage)" on type "VideoCarouselItem"\./.test(
+      message,
+    )
+  if (messages.every(isCarouselMessage)) return "carousel"
   if (
     messages.some(isLegacyMessage) &&
     messages.every(
@@ -699,7 +706,7 @@ async function getExperienceBySlug(
     result === null
       ? rejectedLag
       : classifyCategoryRailSchemaLag(resultWithErrors)
-  if (lag === "copy") {
+  if (lag === "copy" || lag === "carousel") {
     return getExperienceBySlug(locale, slug, "pre-copy")
   }
   if (lag === "legacy") {
@@ -741,7 +748,7 @@ async function getWatchSettings(locale: string): Promise<{
     result === null
       ? rejectedLag
       : classifyCategoryRailSchemaLag(resultWithErrors)
-  if (lag === "copy") {
+  if (lag === "copy" || lag === "carousel") {
     let preCopyRejectedLag: CategoryRailSchemaLag = "none"
     const preCopyResult = await client
       .query({
