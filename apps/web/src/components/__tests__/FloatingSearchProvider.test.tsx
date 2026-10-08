@@ -1543,6 +1543,38 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
   })
 
+  it("reveals hidden header chrome on keyboard focus and keeps the focused header accessible", () => {
+    const revealListener = vi.fn()
+    window.addEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => dispatchChromeVisibility(false))
+
+    const header = document.querySelector(
+      '[data-testid="floating-header"]',
+    ) as HTMLElement
+    const logo = document.querySelector(
+      '[data-testid="floating-header-logo"]',
+    ) as HTMLElement
+
+    expect(header.hasAttribute("inert")).toBe(false)
+    expect(header.getAttribute("aria-hidden")).toBeNull()
+
+    act(() => logo.focus())
+
+    expect(document.activeElement).toBe(logo)
+    expect(revealListener).toHaveBeenCalledOnce()
+    expect(header.hasAttribute("inert")).toBe(false)
+    expect(header.getAttribute("aria-hidden")).toBeNull()
+
+    window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+  })
+
   it("slides the header away after scrolling past the hero and restores it when scrolling up", async () => {
     setScrollY(0)
     act(() => {

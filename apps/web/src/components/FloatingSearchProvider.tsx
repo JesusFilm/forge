@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type FocusEvent as ReactFocusEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react"
@@ -323,6 +324,7 @@ export function FloatingSearchProvider({
   const [globalLanguageErrorRoute, setGlobalLanguageErrorRoute] =
     useState<RouteIdentity | null>(null)
   const [headerHovered, setHeaderHovered] = useState(false)
+  const [headerHasKeyboardFocus, setHeaderHasKeyboardFocus] = useState(false)
   const [headerScrollVisible, setHeaderScrollVisible] = useState(true)
   const [headerOverHero, setHeaderOverHero] = useState(true)
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -737,6 +739,10 @@ export function FloatingSearchProvider({
   const headerChromeUnavailable = !modalChromeHidden && headerChromeOpacity <= 0
   const headerChromeHidden =
     headerChromeUnavailable || (!modalChromeHidden && !headerScrollVisible)
+  const headerChromeInert =
+    headerChromeHidden &&
+    !headerHasKeyboardFocus &&
+    (!headerHoverZoneActive || !headerScrollVisible)
   const headerChromeDimmed =
     !modalChromeHidden && !headerChromeHidden && headerChromeOpacity < 1
   const searchChromeVisible = !headerChromeUnavailable
@@ -778,6 +784,27 @@ export function FloatingSearchProvider({
     headerPointerRevealAllowed,
     revealPlayerChromeFromHeader,
   ])
+
+  const handleHeaderFocus = useCallback(() => {
+    setHeaderHasKeyboardFocus(true)
+    if (headerChromeHidden) {
+      setHeaderHovered(headerCanBrightenLocally)
+      revealPlayerChromeFromHeader()
+    }
+  }, [
+    headerCanBrightenLocally,
+    headerChromeHidden,
+    revealPlayerChromeFromHeader,
+  ])
+
+  const handleHeaderBlur = useCallback(
+    (event: ReactFocusEvent<HTMLElement>) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+        setHeaderHasKeyboardFocus(false)
+      }
+    },
+    [],
+  )
 
   useEffect(() => {
     if (!headerHoverZoneActive) {
@@ -853,8 +880,10 @@ export function FloatingSearchProvider({
         />
         <header
           data-testid="floating-header"
-          inert={headerChromeHidden || undefined}
-          aria-hidden={headerChromeHidden || undefined}
+          inert={headerChromeInert || undefined}
+          aria-hidden={headerChromeInert || undefined}
+          onFocusCapture={handleHeaderFocus}
+          onBlurCapture={handleHeaderBlur}
           className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
             modalChromeHidden
               ? FLOATING_MODAL_HEADER_LAYOUT_CLASS
