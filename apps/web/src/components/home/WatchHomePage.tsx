@@ -13,6 +13,7 @@ import { WatchHomeSection } from "@/components/home/WatchHomeSection"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
 import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import type { WatchHomeModel } from "@/lib/watch-home"
+import { encodeWatchHomeCarouselSequence } from "@/lib/watch-home-carousel-sequence-wire"
 
 type WatchHomePageProps = {
   model: WatchHomeModel
@@ -82,7 +83,7 @@ export function WatchHomePage({ model }: WatchHomePageProps) {
               undefined
             }
             slides={model.heroSlides}
-            sequence={model.carousel}
+            sequence={encodeWatchHomeCarouselSequence(model.carousel)}
           />
           <WatchHomeBodyZone>
             {model.sections.map((section) => (
