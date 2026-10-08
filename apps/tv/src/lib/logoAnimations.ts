@@ -12,8 +12,13 @@ export const LOGO_ANIMATIONS = [
 ] as const
 
 export type LogoAnimationId = (typeof LOGO_ANIMATIONS)[number]["id"]
+export const LOADING_ANIMATIONS = [
+  ...LOGO_ANIMATIONS,
+  { id: "dots", name: "Logo + dots" },
+] as const
+export type LoadingAnimationId = (typeof LOADING_ANIMATIONS)[number]["id"]
 export const DEFAULT_STARTUP_ANIMATION: LogoAnimationId = "09"
-export const DEFAULT_LOADING_ANIMATION: LogoAnimationId = "03"
+export const DEFAULT_LOADING_ANIMATION: LoadingAnimationId = "03"
 export const LOGO_PREVIEW_DURATION_MS = 6030
 
 export function parseLogoAnimationId(
@@ -21,4 +26,13 @@ export function parseLogoAnimationId(
   fallback: LogoAnimationId,
 ): LogoAnimationId {
   return LOGO_ANIMATIONS.find((option) => option.id === value)?.id ?? fallback
+}
+
+export function parseLoadingAnimationId(
+  value: unknown,
+  fallback: LoadingAnimationId,
+): LoadingAnimationId {
+  return (
+    LOADING_ANIMATIONS.find((option) => option.id === value)?.id ?? fallback
+  )
 }

@@ -12,11 +12,14 @@ import {
 import { useWatchPreferences } from "../../contexts/WatchPreferencesProvider"
 import {
   LOGO_ANIMATIONS,
+  LOADING_ANIMATIONS,
   LOGO_PREVIEW_DURATION_MS,
-  type LogoAnimationId,
+  parseLogoAnimationId,
+  type LoadingAnimationId,
 } from "../../lib/logoAnimations"
 import { scale } from "../../lib/scale"
 import { LogoAnimation } from "../LogoAnimation"
+import { LoadingAnimation } from "../LoadingAnimation"
 import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { SettingsRow } from "./SettingsScreen"
@@ -39,7 +42,8 @@ export function AnimationSettingsScreen() {
   const [restartFailed, setRestartFailed] = useState(false)
   const selected =
     target === "startup" ? startupAnimationId : loadingAnimationId
-  const option = LOGO_ANIMATIONS.find((item) => item.id === selected)!
+  const options = target === "startup" ? LOGO_ANIMATIONS : LOADING_ANIMATIONS
+  const option = options.find((item) => item.id === selected)!
   const leaveAnimations = useCallback(() => {
     setPreviewing(false)
     setPreviewRevision(0)
@@ -70,8 +74,9 @@ export function AnimationSettingsScreen() {
     )
     return () => clearTimeout(timer)
   }, [previewRevision, selected, target, focused])
-  const choose = (id: LogoAnimationId) => {
-    if (target === "startup") setStartupAnimationId(id)
+  const choose = (id: LoadingAnimationId) => {
+    if (target === "startup")
+      setStartupAnimationId(parseLogoAnimationId(id, startupAnimationId))
     else setLoadingAnimationId(id)
     setPreviewRevision((revision) => revision + 1)
   }
@@ -121,12 +126,14 @@ export function AnimationSettingsScreen() {
           <Text style={styles.label}>
             {target === "startup" ? "Startup effect" : "Loading effect"}
           </Text>
-          {LOGO_ANIMATIONS.map((item) => (
+          {options.map((item) => (
             <SettingsRow
               key={item.id}
               testID={`animation-${target}-${item.id}`}
               icon="sparkles-outline"
-              label={`${item.id}  ${item.name}`}
+              label={
+                item.id === "dots" ? item.name : `${item.id}  ${item.name}`
+              }
               selected={selected === item.id}
               disabled={!hydrated}
               onPress={() => choose(item.id)}
@@ -137,14 +144,25 @@ export function AnimationSettingsScreen() {
           <Text style={styles.label}>
             {target === "startup" ? "Startup preview" : "Loading preview"}
           </Text>
-          <LogoAnimation
-            key={`${target}-${selected}-${previewRevision}`}
-            id={selected}
-            active={focused && previewing}
-            size={480}
-          />
+          {target === "startup" ? (
+            <LogoAnimation
+              key={`${target}-${selected}-${previewRevision}`}
+              id={startupAnimationId}
+              active={focused && previewing}
+              size={480}
+            />
+          ) : (
+            <LoadingAnimation
+              key={`${target}-${selected}-${previewRevision}`}
+              id={loadingAnimationId}
+              active={focused && previewing}
+              size={480}
+            />
+          )}
           <Text style={styles.name}>
-            {option.id} · {option.name}
+            {option.id === "dots"
+              ? option.name
+              : `${option.id} · ${option.name}`}
           </Text>
           <Text style={styles.note}>
             {previewing
