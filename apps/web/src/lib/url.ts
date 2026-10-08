@@ -83,6 +83,18 @@ export function resolveMuxFrameThumbnailUrl(
   return `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2`
 }
 
+/**
+ * Portrait smartcrop for Watch surfaces with a 2:3 frame. This exact derivative
+ * is rendered on demand by Mux rather than among the admin's warmed variants.
+ */
+export function resolveMuxPortraitThumbnailUrl(
+  muxPlaybackId: string | null | undefined,
+): string | null {
+  const playbackId = muxPlaybackId?.trim()
+  if (!playbackId) return null
+  return `https://image.mux.com/${encodeURIComponent(playbackId)}/thumbnail.jpg?width=448&height=672&fit_mode=smartcrop&time=2`
+}
+
 function resolveDownloadEditorialPosterUrl(url: string): string {
   try {
     const parsed = new URL(url)

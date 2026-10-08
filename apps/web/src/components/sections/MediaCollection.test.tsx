@@ -651,6 +651,46 @@ describe("MediaCollection VideoCard href", () => {
     expect(grid?.className).toContain("md:grid-cols-4")
     expect(cardImage?.className).toContain("aspect-[2/3]")
     expect(cardImage?.className).not.toContain("aspect-video")
+
+    const image = container.querySelector<HTMLImageElement>(
+      '[data-testid="VideoCard"] img',
+    )
+    expect(image?.getAttribute("src")).toContain(
+      encodeURIComponent(
+        "https://image.mux.com/mux-route-child/thumbnail.jpg?width=448&height=672&fit_mode=smartcrop&time=2",
+      ),
+    )
+    expect(image?.getAttribute("sizes")).toContain("46vw")
+  })
+
+  it("keeps authored art ahead of a vertical Mux crop", () => {
+    const authoredUrl = "https://cdn.example/authored.jpg"
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "grid",
+            thumbnailOrientation: "vertical",
+          })}
+          routeVideo={{
+            ...makeRouteVideo("the-gospel-of-john"),
+            relatedItems: [
+              {
+                ...makeRouteVideo("the-gospel-of-john").relatedItems[0],
+                imageUrl: authoredUrl,
+              },
+            ],
+          }}
+        />,
+      )
+    })
+
+    const image = container.querySelector<HTMLImageElement>(
+      '[data-testid="VideoCard"] img',
+    )
+    expect(image?.getAttribute("src")).toContain(
+      encodeURIComponent(authoredUrl),
+    )
   })
 
   it.each([

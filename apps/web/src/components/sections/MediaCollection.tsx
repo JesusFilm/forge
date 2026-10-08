@@ -32,7 +32,10 @@ import {
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { resolveMediaImageUrl } from "@/lib/media-image-url"
 import { hexToRgb, readableScrimRgb } from "@/lib/readable-scrim-color"
-import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
+import {
+  resolveMuxAnimatedPreviewUrl,
+  resolveMuxPortraitThumbnailUrl,
+} from "@/lib/url"
 import { cn } from "@/lib/utils"
 import { normalizeWatchRootHref } from "@/lib/watch-paths"
 import { resolveWatchShareUrlFromPathname } from "@/lib/share"
@@ -841,10 +844,16 @@ function VideoCard({
         onHover?.()
       }
     : undefined
-  const imageSrc = resolveMediaImageUrl(mediaItemDisplayImageUrl(item))
-  const blurDataUrl = item.blurDataUrl ?? undefined
+  const authoredImageSrc = resolveMediaImageUrl(mediaItemDisplayImageUrl(item))
   const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(item.muxPlaybackId)
   const isVertical = orientation === "vertical"
+  const portraitMuxImageSrc = isVertical
+    ? resolveMuxPortraitThumbnailUrl(item.muxPlaybackId)
+    : null
+  const imageSrc = authoredImageSrc ?? portraitMuxImageSrc
+  const blurDataUrl = authoredImageSrc
+    ? (item.blurDataUrl ?? undefined)
+    : undefined
   const compactOnMobile = compactImageSizes != null
   const compactFrameSizeClasses = isVertical
     ? "aspect-[2/3] min-h-0 md:min-h-[16rem]"

@@ -46,7 +46,10 @@ import {
   WATCH_HERO_PRIMARY_ACTION_CLASS,
   WatchHeroOverlay,
 } from "@/components/watch/WatchHeroOverlay"
-import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxHeroPosterUrlAtMaxWidth,
+} from "@/lib/url"
 import {
   applyMuxMaxResolution,
   type MuxMaxResolution,
@@ -142,12 +145,6 @@ function muxStreamUrl(playbackId: string | null) {
   return playbackId ? `https://stream.mux.com/${playbackId}.m3u8` : null
 }
 
-function muxThumbnailUrl(playbackId: string | null, width = 1280) {
-  return playbackId
-    ? `https://image.mux.com/${playbackId}/thumbnail.jpg?width=${width}&height=720&fit_mode=smartcrop`
-    : null
-}
-
 function appendAutoplaySignal(href: string, playbackTimeSeconds = 0): string {
   try {
     const url = new URL(href, "http://watch.local")
@@ -176,7 +173,6 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
   return slides
     .filter((slide) => isWatchHomeIntroEligibleVideoLabel(slide.videoLabel))
     .map((slide) => {
-      const muxThumbnail = muxThumbnailUrl(slide.playbackId)
       // Frame-first for the hero, authored-first for the card below. The admin
       // library holds only mobile derivatives for these videos (measured 640x300
       // for `mobileCinematicHigh`), which a full-bleed intro upscales about
@@ -188,7 +184,7 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
       const posterUrl =
         resolveMuxHeroPosterUrlAtMaxWidth(slide.playbackId) ||
         slide.imageUrl ||
-        muxThumbnail
+        null
 
       return {
         kind: "video",
@@ -198,7 +194,9 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
         href: slide.href,
         posterUrl,
         thumbnailUrl:
-          slide.imageUrl ?? muxThumbnailUrl(slide.playbackId, 640) ?? posterUrl,
+          resolveMuxFrameThumbnailUrl(slide.playbackId) ||
+          slide.imageUrl ||
+          posterUrl,
         imageAlt: slide.imageAlt,
         src: slide.hls ?? muxStreamUrl(slide.playbackId),
         playbackId: slide.playbackId,
