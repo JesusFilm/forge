@@ -19,6 +19,7 @@ const manifest: WatchSeoManifest = {
   videoRouteGroups: [
     {
       contentSlug: "jesus",
+      languageSlugs: ["english", "spanish-castilian", "spanish-latin-american"],
       alternates: [
         { hreflang: "en", languageSlug: "english" },
         { hreflang: "es", languageSlug: "spanish-castilian" },
@@ -67,10 +68,10 @@ const expectedHomepageAlternates = [
 ]
 
 describe("watch sitemap rendering", () => {
-  it("expands route groups into one self-inclusive entry per alternate URL", () => {
+  it("emits every language route while keeping one alternate per hreflang", () => {
     const entries = createWatchSitemapEntries(manifest)
 
-    expect(entries).toHaveLength(5)
+    expect(entries).toHaveLength(6)
     expect(entries[0]).toEqual({
       loc: "https://www.jesusfilm.org/watch/jesus.html",
       alternates: [
@@ -87,6 +88,10 @@ describe("watch sitemap rendering", () => {
       ],
     })
     expect(entries[2]?.loc).toBe(
+      "https://www.jesusfilm.org/watch/jesus.html/spanish-latin-american.html",
+    )
+    expect(entries[2]?.alternates).toEqual([])
+    expect(entries[3]?.loc).toBe(
       "https://www.jesusfilm.org/watch/wedding-in-cana.html",
     )
     expect(entries.map(({ loc }) => loc)).not.toContain(
@@ -192,7 +197,7 @@ describe("watch sitemap rendering", () => {
   })
 
   it("splits chunks by URL count and serialized byte limits", () => {
-    expect(getWatchSitemapChunks(manifest, { maxUrls: 1 })).toHaveLength(5)
+    expect(getWatchSitemapChunks(manifest, { maxUrls: 1 })).toHaveLength(6)
     const byteChunks = getWatchSitemapChunks(manifest, { maxBytes: 600 })
     expect(byteChunks.length).toBeGreaterThan(1)
     expect(byteChunks.every((chunk) => chunk.bytes <= 600)).toBe(true)
@@ -279,6 +284,7 @@ describe("watch sitemap rendering", () => {
     )
 
     for (const [loc, alternates] of alternatesByLoc) {
+      if (alternates.length === 0) continue
       expect(alternates).toContain(loc)
       for (const alternate of alternates) {
         expect(alternatesByLoc.get(alternate)).toEqual(alternates)

@@ -502,7 +502,7 @@ export class WatchSitemapAuditSession {
             ),
           )
         }
-        if (!hrefs.includes(loc)) {
+        if (alternates.length > 0 && !hrefs.includes(loc)) {
           this.issues.push(
             documentIssue(
               "missing_self_alternate",

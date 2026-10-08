@@ -63,8 +63,14 @@ support. The manifest is separate from the route manifest:
 
 The generator accepts only Google-supported hreflang values in the simple
 language or language-region shape, such as `en` or `pt-BR`. Unsupported script
-or numeric-region tags, missing tags, and duplicate normalized hreflang values
-are skipped and counted instead of emitted.
+or numeric-region tags and missing tags are skipped and counted instead of
+emitted. When multiple public language slugs normalize to one code, the
+manifest keeps every valid slug in its route inventory while emitting one
+annotation for that code. The holder is the language with the greatest summed
+Core country speaker count, with the slug as a stable tie-breaker. Other
+colliding candidates are counted in the skipped-value summary and emit a
+standalone canonical `<loc>` without hreflang annotations, because assigning
+the repeated code to both routes would make the annotation graph ambiguous.
 
 Web reads the SEO manifest through `src/lib/watch-seo-manifest.ts`, keeps a
 short process-local cache, and renders:
@@ -114,8 +120,9 @@ Release proof should include one rendered video URL and one episode URL:
 - Canonical locations are unique across children, include themselves in their
   alternate set, and publish the same reciprocal set as every alternate
   target.
-- Unsupported and duplicate hreflang values are absent from XML and visible in
-  skipped summary counts.
+- Unsupported hreflang values and duplicate annotations are absent from XML
+  and visible in skipped summary counts. Every valid colliding language route
+  still appears once as a canonical `<loc>`.
 
 ## Prevention
 

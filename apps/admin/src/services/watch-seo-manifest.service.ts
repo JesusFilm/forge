@@ -9,12 +9,14 @@ const LanguageAlternateSchema = z.object({
 
 const VideoRouteGroupSchema = z.object({
   contentSlug: z.string().min(1),
+  languageSlugs: z.array(z.string().min(1)).optional(),
   alternates: z.array(LanguageAlternateSchema),
 })
 
 const EpisodeRouteGroupSchema = z.object({
   parentSlug: z.string().min(1),
   childSlug: z.string().min(1),
+  languageSlugs: z.array(z.string().min(1)).optional(),
   alternates: z.array(LanguageAlternateSchema),
 })
 
@@ -22,6 +24,7 @@ const ContentLanguageRowSchema = z.object({
   contentSlug: z.string().min(1),
   languageSlug: z.string().min(1),
   bcp47: z.string().nullable(),
+  hreflangPriority: z.number().finite().nonnegative(),
 })
 
 const EpisodeLanguageRowSchema = z.object({
@@ -29,6 +32,7 @@ const EpisodeLanguageRowSchema = z.object({
   childSlug: z.string().min(1),
   languageSlug: z.string().min(1),
   bcp47: z.string().nullable(),
+  hreflangPriority: z.number().finite().nonnegative(),
 })
 
 export const WatchSeoManifestSchema = z.object({
@@ -118,11 +122,19 @@ export class WatchSeoManifestService {
 
   private async loadContentLanguageRows(): Promise<ContentLanguageRow[]> {
     const rows = await this.prisma.$queryRaw<unknown[]>`
-      WITH playable_video_audio AS (
+      WITH language_audience AS (
+        SELECT
+          "language_id",
+          SUM(GREATEST(COALESCE(speakers, 0), 0))::double precision AS "hreflangPriority"
+        FROM "country_language"
+        WHERE "deleted_at" IS NULL
+        GROUP BY "language_id"
+      ), playable_video_audio AS (
         SELECT DISTINCT
           v.slug AS "contentSlug",
           lang.slug AS "languageSlug",
-          lang.bcp47 AS "bcp47"
+          lang.bcp47 AS "bcp47",
+          COALESCE(language_audience."hreflangPriority", 0) AS "hreflangPriority"
         FROM "video" v
         JOIN "video_locale" vl
           ON vl."video_id" = v.id
@@ -139,6 +151,8 @@ export class WatchSeoManifestService {
           AND lang."deleted_at" IS NULL
           AND lang.slug IS NOT NULL
           AND lang.slug <> ''
+        LEFT JOIN language_audience
+          ON language_audience."language_id" = lang.id
         WHERE v."deleted_at" IS NULL
           AND v.slug <> ''
       ),
@@ -146,7 +160,8 @@ export class WatchSeoManifestService {
         SELECT DISTINCT
           parent.slug AS "contentSlug",
           child_lang.slug AS "languageSlug",
-          child_lang.bcp47 AS "bcp47"
+          child_lang.bcp47 AS "bcp47",
+          COALESCE(language_audience."hreflangPriority", 0) AS "hreflangPriority"
         FROM "video" parent
         JOIN "video_locale" parent_locale
           ON parent_locale."video_id" = parent.id
@@ -173,13 +188,15 @@ export class WatchSeoManifestService {
           AND child_lang."deleted_at" IS NULL
           AND child_lang.slug IS NOT NULL
           AND child_lang.slug <> ''
+        LEFT JOIN language_audience
+          ON language_audience."language_id" = child_lang.id
         WHERE parent."deleted_at" IS NULL
           AND parent.slug <> ''
       )
-      SELECT "contentSlug", "languageSlug", "bcp47" FROM playable_video_audio
+      SELECT "contentSlug", "languageSlug", "bcp47", "hreflangPriority" FROM playable_video_audio
       UNION
-      SELECT "contentSlug", "languageSlug", "bcp47" FROM parent_video_audio
-      ORDER BY "contentSlug" ASC, "bcp47" ASC NULLS LAST, "languageSlug" ASC
+      SELECT "contentSlug", "languageSlug", "bcp47", "hreflangPriority" FROM parent_video_audio
+      ORDER BY "contentSlug" ASC, "bcp47" ASC NULLS LAST, "hreflangPriority" DESC, "languageSlug" ASC
     `
 
     return ContentLanguageRowSchema.array().parse(rows)
@@ -187,11 +204,20 @@ export class WatchSeoManifestService {
 
   private async loadEpisodeLanguageRows(): Promise<EpisodeLanguageRow[]> {
     const rows = await this.prisma.$queryRaw<unknown[]>`
+      WITH language_audience AS (
+        SELECT
+          "language_id",
+          SUM(GREATEST(COALESCE(speakers, 0), 0))::double precision AS "hreflangPriority"
+        FROM "country_language"
+        WHERE "deleted_at" IS NULL
+        GROUP BY "language_id"
+      )
       SELECT DISTINCT
         parent.slug AS "parentSlug",
         child.slug AS "childSlug",
         child_lang.slug AS "languageSlug",
-        child_lang.bcp47 AS "bcp47"
+        child_lang.bcp47 AS "bcp47",
+        COALESCE(language_audience."hreflangPriority", 0) AS "hreflangPriority"
       FROM "video_relation" relation
       JOIN "video" parent
         ON parent.id = relation."parent_id"
@@ -220,7 +246,9 @@ export class WatchSeoManifestService {
         AND child_lang."deleted_at" IS NULL
         AND child_lang.slug IS NOT NULL
         AND child_lang.slug <> ''
-      ORDER BY parent.slug ASC, child.slug ASC, child_lang.bcp47 ASC NULLS LAST, child_lang.slug ASC
+      LEFT JOIN language_audience
+        ON language_audience."language_id" = child_lang.id
+      ORDER BY parent.slug ASC, child.slug ASC, child_lang.bcp47 ASC NULLS LAST, "hreflangPriority" DESC, child_lang.slug ASC
     `
 
     return EpisodeLanguageRowSchema.array().parse(rows)
@@ -233,21 +261,18 @@ function assertEpisodeCanonicalCoverage(
 ): void {
   const canonicalPairs = new Set(
     videoRouteGroups.flatMap((group) =>
-      group.alternates.map(
-        (alternate) => `${group.contentSlug}\u0000${alternate.languageSlug}`,
-      ),
+      (
+        group.languageSlugs ??
+        group.alternates.map(({ languageSlug }) => languageSlug)
+      ).map((languageSlug) => `${group.contentSlug}\u0000${languageSlug}`),
     ),
   )
 
   for (const group of episodeRouteGroups) {
-    for (const alternate of group.alternates) {
-      if (
-        !canonicalPairs.has(`${group.childSlug}\u0000${alternate.languageSlug}`)
-      ) {
-        throw new WatchSeoManifestCoverageError(
-          group.childSlug,
-          alternate.languageSlug,
-        )
+    for (const languageSlug of group.languageSlugs ??
+      group.alternates.map(({ languageSlug }) => languageSlug)) {
+      if (!canonicalPairs.has(`${group.childSlug}\u0000${languageSlug}`)) {
+        throw new WatchSeoManifestCoverageError(group.childSlug, languageSlug)
       }
     }
   }
@@ -258,6 +283,10 @@ function incrementSkipped(
   key: string,
 ): void {
   skippedHreflangValues[key] = (skippedHreflangValues[key] ?? 0) + 1
+}
+
+function compareLanguageSlugs(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0
 }
 
 export function normalizeGoogleHreflang(value: string | null): string | null {
@@ -274,31 +303,54 @@ export function normalizeGoogleHreflang(value: string | null): string | null {
   return `${language}-${region}`
 }
 
-function toAlternates(
-  rows: Array<{ bcp47: string | null; languageSlug: string }>,
+function toLanguageRoutes(
+  rows: Array<{
+    bcp47: string | null
+    hreflangPriority: number
+    languageSlug: string
+  }>,
   skippedHreflangValues: Record<string, number>,
-): LanguageAlternate[] {
-  const byHreflang = new Map<string, LanguageAlternate>()
+): { alternates: LanguageAlternate[]; languageSlugs: string[] } {
+  const validRows: Array<{
+    hreflang: string
+    hreflangPriority: number
+    languageSlug: string
+  }> = []
   for (const row of rows) {
     const hreflang = normalizeGoogleHreflang(row.bcp47)
     if (!hreflang) {
       incrementSkipped(skippedHreflangValues, row.bcp47 ?? "missing_bcp47")
       continue
     }
-    if (byHreflang.has(hreflang)) {
-      incrementSkipped(skippedHreflangValues, `duplicate:${hreflang}`)
+    validRows.push({ ...row, hreflang })
+  }
+
+  const byHreflang = new Map<string, LanguageAlternate>()
+  for (const row of [...validRows].sort(
+    (a, b) =>
+      b.hreflangPriority - a.hreflangPriority ||
+      compareLanguageSlugs(a.languageSlug, b.languageSlug),
+  )) {
+    if (byHreflang.has(row.hreflang)) {
+      incrementSkipped(skippedHreflangValues, `duplicate:${row.hreflang}`)
       continue
     }
-    byHreflang.set(hreflang, {
-      hreflang,
+    byHreflang.set(row.hreflang, {
+      hreflang: row.hreflang,
       languageSlug: row.languageSlug,
     })
   }
-  return [...byHreflang.values()].sort(
-    (a, b) =>
-      a.hreflang.localeCompare(b.hreflang) ||
-      a.languageSlug.localeCompare(b.languageSlug),
-  )
+
+  return {
+    alternates: [...byHreflang.values()].sort(
+      (a, b) =>
+        a.hreflang.localeCompare(b.hreflang) ||
+        a.languageSlug.localeCompare(b.languageSlug),
+    ),
+    languageSlugs: [
+      ...new Set(validRows.map(({ languageSlug }) => languageSlug)),
+    ].sort(),
+  }
 }
 
 function toVideoRouteGroups(
@@ -315,7 +367,7 @@ function toVideoRouteGroups(
   return [...byContent.entries()]
     .map(([contentSlug, contentRows]) => ({
       contentSlug,
-      alternates: toAlternates(contentRows, skippedHreflangValues),
+      ...toLanguageRoutes(contentRows, skippedHreflangValues),
     }))
     .filter((group) => group.alternates.length > 0)
     .sort((a, b) => a.contentSlug.localeCompare(b.contentSlug))
@@ -339,7 +391,7 @@ function toEpisodeRouteGroups(
       return {
         parentSlug,
         childSlug,
-        alternates: toAlternates(episodeRows, skippedHreflangValues),
+        ...toLanguageRoutes(episodeRows, skippedHreflangValues),
       }
     })
     .filter((group) => group.alternates.length > 0)

@@ -7,12 +7,14 @@ export type WatchSeoManifestAlternate = {
 
 export type WatchSeoManifestVideoRouteGroup = {
   contentSlug: string
+  languageSlugs?: string[]
   alternates: WatchSeoManifestAlternate[]
 }
 
 export type WatchSeoManifestEpisodeRouteGroup = {
   parentSlug: string
   childSlug: string
+  languageSlugs?: string[]
   alternates: WatchSeoManifestAlternate[]
 }
 
@@ -66,7 +68,13 @@ function isVideoRouteGroup(
 ): value is WatchSeoManifestVideoRouteGroup {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
   const record = value as Record<string, unknown>
-  return isString(record.contentSlug) && isAlternateArray(record.alternates)
+  return (
+    isString(record.contentSlug) &&
+    (record.languageSlugs === undefined ||
+      (Array.isArray(record.languageSlugs) &&
+        record.languageSlugs.every(isString))) &&
+    isAlternateArray(record.alternates)
+  )
 }
 
 function isEpisodeRouteGroup(
@@ -77,6 +85,9 @@ function isEpisodeRouteGroup(
   return (
     isString(record.parentSlug) &&
     isString(record.childSlug) &&
+    (record.languageSlugs === undefined ||
+      (Array.isArray(record.languageSlugs) &&
+        record.languageSlugs.every(isString))) &&
     isAlternateArray(record.alternates)
   )
 }
