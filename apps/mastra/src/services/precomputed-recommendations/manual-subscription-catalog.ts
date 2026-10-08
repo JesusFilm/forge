@@ -634,11 +634,20 @@ export async function runManualSubscriptionCatalog(
         })
   if (
     input.invocation === "resume" &&
-    (!("state" in importState) || importState.state !== "bound")
+    (!("state" in importState) ||
+      (importState.state !== "bound" && importState.state !== "absent"))
   )
     throw new ManualSubscriptionCatalogError("import_unavailable")
-  if (input.invocation === "start" && "origin" in importState) {
-    const origin = importState.origin
+  const originProof =
+    "origin" in importState
+      ? importState
+      : importState.state === "absent"
+        ? await ports.importClient.probeOrigin({
+            originGenerationId: input.originGenerationId,
+          })
+        : null
+  if (originProof) {
+    const origin = originProof.origin
     const destination = input.destination
     if (
       origin.generationId !== input.originGenerationId ||
@@ -777,7 +786,7 @@ export async function runManualSubscriptionCatalog(
         throw new ManualSubscriptionCatalogError("admin_unavailable")
     }
     await refreshCapacity(true)
-    if (input.invocation === "start" && "origin" in importState) {
+    if (originProof) {
       await ports.importClient.prepare({
         destination: input.destination,
         attemptId: input.attemptId,
@@ -785,8 +794,8 @@ export async function runManualSubscriptionCatalog(
       const bound = await ports.importClient.copyBind({
         destination: input.destination,
         attemptId: input.attemptId,
-        origin: importState.origin,
-        originProofDigest: importState.originProofDigest,
+        origin: originProof.origin,
+        originProofDigest: originProof.originProofDigest,
       })
       if (bound.state !== "bound")
         throw new ManualSubscriptionCatalogError("import_unavailable")

@@ -11,7 +11,7 @@ preserves exact source/integration commits, checks, browser artifacts, review
 findings, and recovery history. The [CTR operations note](../operations/precomputed-ctr-report.md)
 describes the private reporting contract and limits.
 
-## Current checkpoint — October 8, 17:55 NZDT
+## Current checkpoint — October 8, 18:15 NZDT
 
 The GA-only capture is sealed and independently verified. All 305 video-start
 pages (152,304 rows) and 327 referrer pages (163,352 rows) matched across the
@@ -85,6 +85,29 @@ identities. The sealed artifact, reviewed configuration and hash algorithms are
 unchanged. The 18 focused checks, Mastra typecheck and full suite (3,502 passed,
 45 existing gated skips) pass. The rejected attempt is protected separately; no
 API fallback ran.
+
+The decoder correction is published as `204a9b44b`; the preceding integration
+`ff179a669` passed 57 CI checks with five skips. The next explicit pilot passed
+catalog preflight and created its v4 generation, then stopped before import or
+model work at the capacity gate. The restored clone had two older incomplete
+build reservations. Through the authenticated cancellation lifecycle, root
+retired only the abandoned v2 reference in that clone; its child evidence,
+the sealed v3 origin, protected backups and original database remain unchanged.
+Fresh capacity retains the 5 GB reserve and both 634,068,992-byte origin/new-build
+projections, leaving 208,440,832 bytes of margin. Protected retirement manifest
+SHA-256 is `9cb11ed28a345786a1b6d65de532353c9b3e5ace766d24e1d5c809e34f5e50b5`.
+
+A new native regression reproduces the remaining recovery bug: resuming after
+this pre-import capacity stop rejects the legitimately absent import. The narrow
+correction is integrated from `8952a3c98`: it re-verifies the sealed origin and
+requires a fresh active attempt and passed capacity before preparing the import.
+Bound imports retain their reuse path; ambiguous partial imports still refuse.
+The native regression went red then green and the integration typecheck passes
+after adding the missing Zod dependency alias. All 34 connected cases pass without skips, and the full Mastra suite passes
+3,509 cases with 45 existing gated skips. The destination attempt
+is closed, all 1,031 sources remain pending, and no subscription catalog model
+call or destination GA request has occurred. A fresh manual-resume configuration
+is prepared but has not been executed.
 
 Public A/B remains off. Required work still includes the representative subscription
 pilot, complete catalog and current capacity evidence, live baseline/calibration,

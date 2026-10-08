@@ -57,6 +57,8 @@ import { createEdgeBatchPersistence } from "../../apps/mastra/src/services/preco
 import {
   manualGenerationInputDigest,
   runManualSubscriptionCatalog,
+  type ManualSubscriptionCatalogInput,
+  type ManualSubscriptionCatalogPorts,
 } from "../../apps/mastra/src/services/precomputed-recommendations/manual-subscription-catalog"
 import { buildCandidateRetrieval } from "../../apps/mastra/src/services/precomputed-recommendations/candidate-retrieval"
 import { gaCaptureDigest } from "../../apps/mastra/src/services/precomputed-recommendations/ga-watch-capture-artifact"
@@ -844,118 +846,136 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           }),
         }
         let subscriptionCalls = 0
-        const manual = await runManualSubscriptionCatalog(
-          {
-            invocation: "start",
-            generationId: manualDestination.generationId,
-            generationInputDigest: manualDestination.generationInputDigest,
-            attemptId: randomUUID(),
-            inputCutoff: cutoff,
-            initiatingAccountRef: "native-manual-account",
-            reviewed: {
-              sourceVideoIds: videoIds,
-              sourceSetDigest: destination.sourceSetDigest,
-              selectedCorpusDigest: retrieval.selectedCorpusDigest,
-              candidatePoolDigest: retrieval.candidatePoolDigest,
-            },
-            destination: manualDestination,
-            originGenerationId: generationId,
-            work: { mode: "full" },
+        let capacityAvailable = false
+        const manualInput: ManualSubscriptionCatalogInput = {
+          invocation: "start",
+          generationId: manualDestination.generationId,
+          generationInputDigest: manualDestination.generationInputDigest,
+          attemptId: randomUUID(),
+          inputCutoff: cutoff,
+          initiatingAccountRef: "native-manual-account",
+          reviewed: {
+            sourceVideoIds: videoIds,
+            sourceSetDigest: destination.sourceSetDigest,
+            selectedCorpusDigest: retrieval.selectedCorpusDigest,
+            candidatePoolDigest: retrieval.candidatePoolDigest,
           },
-          {
-            catalog: connected.catalog,
-            ingest,
-            importClient,
-            profilePersistence: createContentProfilePersistence(ingest),
-            edgePersistence: createEdgeBatchPersistence(ingest),
-            loadImport: (destination) =>
-              loadImportedGaWatchHistory({
-                destination,
-                client: importClient,
-                transport: gaCaptureTransport,
-                directory,
-              }),
-            async measureCapacity(probe) {
-              return {
-                ...probe,
-                measuredAt: new Date().toISOString(),
-                availableBytes: 20_000_000_000,
-                reserveBytes: 5_000_000_000,
-                projectedBytes: 1_000_000,
-                sampleSourceCount: 2,
-                sampleBytes: 100_000,
-                source: "operator_verified_pgdata_df",
-              }
-            },
-            async readAttestation() {
-              return {
-                identity: {
-                  observedAt: new Date().toISOString(),
-                  accountRef: "native-manual-account",
-                  authMethod: "chatgpt",
-                },
-                allowance: {
-                  observedAt: new Date().toISOString(),
-                  accountRef: "native-manual-account",
-                  billingBasis: "included_subscription",
-                  weeklyRemainingPercent: 70,
-                  fiveHour: { kind: "limited", remainingPercent: 70 },
-                },
-                modelId: "gpt-6-astra",
-                plan: "plus",
-                admission: "admitted",
-              }
-            },
-            model: {
-              async generateReserved(request, reserve) {
-                const decision = await reserve()
-                if (decision.kind === "skip")
-                  return { kind: "skipped", reservation: decision.reservation }
-                subscriptionCalls++
-                const prompt = z
-                  .object({
-                    members: z.array(
-                      z.object({
-                        source: z.object({
+          destination: manualDestination,
+          originGenerationId: generationId,
+          work: { mode: "full" },
+        }
+        const manualPorts: ManualSubscriptionCatalogPorts = {
+          catalog: connected.catalog,
+          ingest,
+          importClient,
+          profilePersistence: createContentProfilePersistence(ingest),
+          edgePersistence: createEdgeBatchPersistence(ingest),
+          loadImport: (destination) =>
+            loadImportedGaWatchHistory({
+              destination,
+              client: importClient,
+              transport: gaCaptureTransport,
+              directory,
+            }),
+          async measureCapacity(probe) {
+            return {
+              ...probe,
+              measuredAt: new Date().toISOString(),
+              availableBytes: capacityAvailable ? 20_000_000_000 : 1,
+              reserveBytes: 5_000_000_000,
+              projectedBytes: 1_000_000,
+              sampleSourceCount: 2,
+              sampleBytes: 100_000,
+              source: "operator_verified_pgdata_df",
+            }
+          },
+          async readAttestation() {
+            return {
+              identity: {
+                observedAt: new Date().toISOString(),
+                accountRef: "native-manual-account",
+                authMethod: "chatgpt",
+              },
+              allowance: {
+                observedAt: new Date().toISOString(),
+                accountRef: "native-manual-account",
+                billingBasis: "included_subscription",
+                weeklyRemainingPercent: 70,
+                fiveHour: { kind: "limited", remainingPercent: 70 },
+              },
+              modelId: "gpt-6-astra",
+              plan: "plus",
+              admission: "admitted",
+            }
+          },
+          model: {
+            async generateReserved(request, reserve) {
+              const decision = await reserve()
+              if (decision.kind === "skip")
+                return { kind: "skipped", reservation: decision.reservation }
+              subscriptionCalls++
+              const prompt = z
+                .object({
+                  members: z.array(
+                    z.object({
+                      source: z.object({
+                        metadata: z.object({ videoId: z.string() }),
+                      }),
+                      candidates: z.array(
+                        z.object({
                           metadata: z.object({ videoId: z.string() }),
                         }),
-                        candidates: z.array(
-                          z.object({
-                            metadata: z.object({ videoId: z.string() }),
-                          }),
-                        ),
-                      }),
-                    ),
-                  })
-                  .parse(JSON.parse(request.prompt))
-                return {
-                  kind: "dispatched",
-                  reservation: decision.reservation,
-                  response: {
-                    output: request.schema.parse({
-                      results: prompt.members.map((member) => ({
-                        sourceVideoId: member.source.metadata.videoId,
-                        edges: member.candidates.map((candidate) => ({
-                          targetVideoId: candidate.metadata.videoId,
-                          kind: "direct",
-                          strength: 80,
-                          relationship: "hope_through_hardship",
-                          reasonEnglish:
-                            "This distinct story adds another perspective on finding hope.",
-                          addedViewingValueEnglish: null,
-                          evidence: {
-                            basis: "metadata",
-                            fields: ["title", "description"],
-                          },
-                        })),
-                      })),
+                      ),
                     }),
-                    usage: { inputTokens: 200, outputTokens: 40 },
-                  },
-                }
-              },
+                  ),
+                })
+                .parse(JSON.parse(request.prompt))
+              return {
+                kind: "dispatched",
+                reservation: decision.reservation,
+                response: {
+                  output: request.schema.parse({
+                    results: prompt.members.map((member) => ({
+                      sourceVideoId: member.source.metadata.videoId,
+                      edges: member.candidates.map((candidate) => ({
+                        targetVideoId: candidate.metadata.videoId,
+                        kind: "direct",
+                        strength: 80,
+                        relationship: "hope_through_hardship",
+                        reasonEnglish:
+                          "This distinct story adds another perspective on finding hope.",
+                        addedViewingValueEnglish: null,
+                        evidence: {
+                          basis: "metadata",
+                          fields: ["title", "description"],
+                        },
+                      })),
+                    })),
+                  }),
+                  usage: { inputTokens: 200, outputTokens: 40 },
+                },
+              }
             },
           },
+        }
+        const blocked = await runManualSubscriptionCatalog(
+          manualInput,
+          manualPorts,
+        )
+        expect(blocked).toMatchObject({
+          state: "stopped",
+          reason: "capacity_stopped",
+          knownUsage: { profileCallCount: 0, edgeBatchCallCount: 0 },
+        })
+        expect(subscriptionCalls).toBe(0)
+        expect(
+          await importClient.status({ destination: manualDestination }),
+        ).toMatchObject({ state: "absent" })
+        expect(gaFetch).toHaveBeenCalledTimes(gaCallsAfterCapture)
+        capacityAvailable = true
+        const manual = await runManualSubscriptionCatalog(
+          { ...manualInput, invocation: "resume", attemptId: randomUUID() },
+          manualPorts,
         )
         expect(manual).toMatchObject({
           state: "completed",
