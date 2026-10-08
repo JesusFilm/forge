@@ -302,7 +302,6 @@ export function WatchHomeExperiencePage({
               src={backdrop.url}
               alt={backdrop.alt}
               fill
-              priority
               sizes="100vw"
               className="scale-110 object-cover opacity-45 blur-sm"
             />
