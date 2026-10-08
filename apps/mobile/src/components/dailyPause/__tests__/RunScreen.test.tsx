@@ -309,14 +309,6 @@ function pills(): string[] {
     .map((node) => node.props.accessibilityLabel as string)
 }
 
-/** What VoiceOver reads on the countdown ring. */
-function timeLeft(): string | undefined {
-  return renderer!.root.findAll(
-    (node) =>
-      typeof node.type === "string" && node.props.accessibilityRole === "timer",
-  )[0]?.props.accessibilityLabel
-}
-
 function closeTop(): number {
   const [close] = renderer!.root.findAll(
     (node: RenderedNode) =>
@@ -525,44 +517,6 @@ it("offers Try again when a part never starts, and the close stays reachable", a
   expect(buttons()).toEqual(["Try again", "Close", DEV_SKIP])
   await tap("Close")
   expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
-})
-
-describe("the stepper pills (the owner, 2026-10-08)", () => {
-  it("goes back to an earlier section, and the saved step follows", async () => {
-    await seedDay("prayScreen")
-    await open()
-    await tap("Resume")
-    expect(pills()).toEqual(PRAY)
-    await tap("Watch, done")
-    await expectShows("watchScreen", "DAILY BIBLE PAUSE")
-    expect(pills()).toEqual(WATCH)
-    expect(savedDay().step).toBe("watchScreen")
-  })
-
-  it("jumps ahead past the videos and the Reflect pause", async () => {
-    await open()
-    await tap("Begin Devotional")
-    await tap("Pray, upcoming")
-    await expectShows("prayScreen", DEVOTIONALS.pharisee.attribution)
-    expect(pills()).toEqual(PRAY)
-    expect(savedDay().step).toBe("prayScreen")
-  })
-
-  it("starts the current section again, with its timer", async () => {
-    await seedDay("reflectScreen")
-    await open()
-    await tap("Resume")
-    const steps = (PAUSE_INTRO_MS + 10_000) / 250 + 4
-    for (let i = 0; i < steps; i += 1) {
-      await act(async () => {
-        jest.advanceTimersByTime(250)
-      })
-    }
-    expect(timeLeft()).not.toBe("45 seconds left")
-    await tap("Reflect, current step")
-    expect(timeLeft()).toBe("45 seconds left")
-    expect(savedDay().step).toBe("reflectScreen")
-  })
 })
 
 describe("the developer Skip", () => {

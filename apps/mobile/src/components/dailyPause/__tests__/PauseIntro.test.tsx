@@ -69,9 +69,9 @@ const SCREENS = [
       />
     ),
     timer: (root: TestInstance) =>
-      labelsOf(root).find((label) => label.endsWith("left")),
-    full: "45 seconds left",
-    oneDown: "44 seconds left",
+      labelsOf(root).find((label) => label.startsWith("Continue")),
+    full: "Continue, 45 seconds left",
+    oneDown: "Continue, 44 seconds left",
   },
   {
     name: "Pray",

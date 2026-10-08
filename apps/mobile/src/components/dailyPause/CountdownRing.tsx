@@ -1,6 +1,6 @@
-// The countdown ring of Reflect and Pray (R16, KTD18): a circle 114 across
-// (the frame's 114 x 109 ellipse is a circle out of shape) that empties
-// clockwise from 12. With no SVG, two half rings turn in half-width clips.
+// The Pray ring (R16, KTD18). The frame draws a 114 x 109 ellipse, a circle
+// out of shape, so this draws a circle 114 across that empties clockwise from
+// 12 o'clock. The app has no SVG, so two half rings turn in half-width clips.
 import { memo, useEffect, useState } from "react"
 import { Animated, Easing, StyleSheet, Text, View } from "react-native"
 
@@ -9,7 +9,7 @@ import { spokenTimeLeft, type Countdown } from "../../lib/dailyPause/countdown"
 import { pauseColors, pauseSizes } from "../../lib/dailyPause/theme"
 import type { PauseFont } from "../../lib/dailyPause/fonts"
 
-const SIZE = pauseSizes.ringWidth
+const SIZE = pauseSizes.prayRingWidth
 const RADIUS = SIZE / 2
 const NUMERAL_SIZE = 48
 /** The ring does not grow with the text, so the numeral stops at this scale
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     width: SIZE,
     height: SIZE,
     borderRadius: RADIUS,
-    borderWidth: pauseSizes.ringStroke,
+    borderWidth: pauseSizes.prayRingStroke,
     borderTopColor: pauseColors.ink,
     borderRightColor: pauseColors.ink,
     borderBottomColor: "transparent",

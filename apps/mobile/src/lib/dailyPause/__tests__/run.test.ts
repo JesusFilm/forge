@@ -103,19 +103,6 @@ describe("runReducer (R10)", () => {
     )
   })
 
-  it("jumps to any step of the same run, back or ahead, but not from the Opening", () => {
-    const reflecting: RunState = { step: "reflectScreen", pin: MONDAY }
-    expect(
-      runReducer(reflecting, { type: "jump", step: "watchScreen" }),
-    ).toEqual({ step: "watchScreen", pin: MONDAY })
-    expect(
-      runReducer(reflecting, { type: "jump", step: "prayScreen" }),
-    ).toEqual({ step: "prayScreen", pin: MONDAY })
-    expect(runReducer(RUN_START, { type: "jump", step: "prayScreen" })).toBe(
-      RUN_START,
-    )
-  })
-
   it("goes back to the Opening and drops the pinned day on a reset", () => {
     const reflecting: RunState = { step: "reflectScreen", pin: MONDAY }
     expect(runReducer(reflecting, { type: "reset" })).toBe(RUN_START)

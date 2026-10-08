@@ -1,12 +1,11 @@
-// The Reflect screen (U10, R11, R16, R17, R18, R26, R30). The ring counts the
-// pause down while Continue shows grey and ignores taps; as the ring fades at
-// zero, Continue turns cream (the owner, 2026-10-08).
+// The Reflect screen (U10, R11, R16, R17, R18, R26, R30). The timer counts
+// down in the button, which ignores taps until 0:00 and then reads Continue.
 import { StrictMode, act } from "react"
 import {
   AppState,
   StyleSheet,
   type AppStateStatus,
-  type ViewStyle,
+  type TextStyle,
 } from "react-native"
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
@@ -25,17 +24,11 @@ import {
   pauseTestFont as font,
   pulses,
 } from "../../../test-utils/dailyPause"
-import { BUTTON_FROM_MS } from "../PauseFinish"
 import { PAUSE_INTRO_MS } from "../PauseIntro"
 import { ReflectScreen } from "../ReflectScreen"
 
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 62, bottom: 34, left: 0, right: 0 }),
-}))
-// The OS read lands after mount; the hook reads it from the first render here.
-let mockReduceMotion = false
-jest.mock("../../../hooks/useReduceMotion", () => ({
-  useReduceMotion: () => mockReduceMotion,
 }))
 
 const onContinue = jest.fn()
@@ -91,14 +84,8 @@ function appState(state: AppStateStatus) {
   })
 }
 
-/** Every control a person can reach: a button with a press handler. A
- *  component's own onPress prop is not one. */
 function pressables(root: TestInstance): RenderedNode[] {
-  return root.root.findAll(
-    (node) =>
-      typeof node.props.onPress === "function" &&
-      node.props.accessibilityRole === "button",
-  )
+  return root.root.findAll((node) => typeof node.props.onPress === "function")
 }
 
 function pressableHost(root: TestInstance): RenderedNode | undefined {
@@ -146,85 +133,88 @@ it("shows the verse and the reference label of the devotional it gets (R18)", as
   expect(hasText(root, "We’ll give you some time.")).toBe(true)
 })
 
-/** A text node that reads exactly this, not a longer text that contains it. */
-function hasExactText(root: TestInstance, text: string): boolean {
-  return (
-    root.root.findAll(
-      (node) => typeof node.type === "string" && node.props.children === text,
-    ).length > 0
-  )
-}
-
-/** VoiceOver reads the ring as one element that says the time left. */
-function ringLabel(root: TestInstance): string | undefined {
-  return root.root.findAll(
-    (node) =>
-      typeof node.type === "string" && node.props.accessibilityRole === "timer",
-  )[0]?.props.accessibilityLabel
-}
-
-function host(root: TestInstance, testID: string): RenderedNode {
-  const [node] = root.root.findAll(
-    (one) => typeof one.type === "string" && one.props.testID === testID,
-  )
-  return node!
-}
-
-function opacityOf(node: RenderedNode): number {
-  return Number(StyleSheet.flatten(node.props.style as ViewStyle).opacity)
-}
-
-/** Continue: the grey over it (1 grey, 0 cream), and whether it takes a tap. */
-function continueState(root: TestInstance) {
-  return {
-    grey: opacityOf(host(root, "pause-button-grey")),
-    disabled: findHeld(root) != null,
-  }
-}
-
-it.each<[MeditationLength, string, string]>([
-  [1, "20", "20 seconds left"],
-  [3, "45", "45 seconds left"],
-  [5, "90", "1 minute 30 seconds left"],
+it.each<[MeditationLength, string]>([
+  [1, "0:20"],
+  [3, "0:45"],
+  [5, "1:30"],
 ])(
-  "starts the ring by Meditation length (%i min → %s, AE4)",
-  async (length, numeral, spoken) => {
+  "starts the timer by Meditation length (%i min → %s, AE4)",
+  async (length, clock) => {
     const root = await render(length)
-    expect(hasExactText(root, numeral)).toBe(true)
-    expect(ringLabel(root)).toBe(spoken)
+    expect(hasText(root, clock)).toBe(true)
+    expect(pressableHost(root)).toBeUndefined()
   },
 )
 
-it("counts down in the ring, and VoiceOver reads the time left", async () => {
+// The owner (2026-10-06): the button keeps one width from the first count to
+// Continue. Jest has no layout, so this pins the parts that hold the width.
+it("holds the button at the width of Continue for every count and for Continue", async () => {
+  const root = await render(3)
+  const holders = () =>
+    root.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "pause-button-width",
+    )
+  const expectHeld = () => {
+    const [holder] = holders()
+    expect(holders()).toHaveLength(1)
+    expect(holder!.props.children).toBe("Continue")
+    expect(holder!.props.accessibilityElementsHidden).toBe(true)
+    expect(StyleSheet.flatten(holder!.props.style as TextStyle)).toMatchObject({
+      height: 0,
+      opacity: 0,
+    })
+  }
+  expectHeld()
+  const [clock] = root.root.findAll(
+    (node) => typeof node.type === "string" && node.props.children === "0:45",
+  )
+  expect(
+    StyleSheet.flatten(clock!.props.style as TextStyle).fontVariant,
+  ).toEqual(["tabular-nums"])
+
+  advance(PAUSE_INTRO_MS)
+  advance(45_000)
+  expect(pressableHost(root)).toBeDefined()
+  expectHeld()
+})
+
+it("counts down in the button and VoiceOver reads the time left", async () => {
   const root = await render(3)
   advance(PAUSE_INTRO_MS)
-  expect(ringLabel(root)).toBe("45 seconds left")
+  expect(findHeld(root)?.props.accessibilityLabel).toBe(
+    "Continue, 45 seconds left",
+  )
   advance(15_000)
-  expect(hasExactText(root, "30")).toBe(true)
-  expect(ringLabel(root)).toBe("30 seconds left")
+  expect(hasText(root, "0:30")).toBe(true)
+  expect(findHeld(root)?.props.accessibilityLabel).toBe(
+    "Continue, 30 seconds left",
+  )
 })
 
 it("lets no control skip the countdown before zero (R16)", async () => {
   const root = await render(3)
   advance(PAUSE_INTRO_MS)
   advance(44_000)
-  expect(ringLabel(root)).toBe("1 second left")
+  expect(hasText(root, "0:01")).toBe(true)
   for (const node of pressables(root)) await press(node)
   expect(onContinue).not.toHaveBeenCalled()
-  // The owner (2026-10-08): Continue shows grey and disabled until the ring goes.
-  expect(continueState(root)).toEqual({ grey: 1, disabled: true })
+  expect(
+    root.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === "Continue" &&
+        typeof node.props.onPress === "function",
+    ),
+  ).toHaveLength(0)
 })
 
-it("turns Continue cream as the ring fades, and moves on only at the tap (R17, AE1)", async () => {
+it("shows Continue at 0:00 and moves on only at the tap (R17, AE1)", async () => {
   const root = await render(3)
   advance(PAUSE_INTRO_MS)
   expect(pulses(root)).toHaveLength(0)
   advance(45_000)
-  expect(host(root, "pause-ring-fade").props.accessibilityElementsHidden).toBe(
-    true,
-  )
-  expect(continueState(root).disabled).toBe(true)
-  advance(BUTTON_FROM_MS)
+  expect(hasText(root, "Continue")).toBe(true)
   expect(findHeld(root)).toBeUndefined()
   // The owner (2026-10-06): Continue pulses every two seconds to ask for a tap.
   expect(pulses(root)).toHaveLength(1)
@@ -245,26 +235,7 @@ it("holds the timer while the app is away and continues on return (R26)", async 
   appState("background")
   advance(90_000)
   appState("active")
-  expect(ringLabel(root)).toBe("30 seconds left")
+  expect(hasText(root, "0:30")).toBe(true)
   advance(1_000)
-  expect(ringLabel(root)).toBe("29 seconds left")
-})
-
-describe("under Reduce Motion", () => {
-  beforeEach(() => {
-    mockReduceMotion = true
-  })
-
-  afterEach(() => {
-    mockReduceMotion = false
-  })
-
-  it("hides the ring and turns Continue cream at once at zero", async () => {
-    const root = await render(3)
-    advance(44_000)
-    expect(continueState(root)).toEqual({ grey: 1, disabled: true })
-    advance(1_000)
-    expect(opacityOf(host(root, "pause-ring-fade"))).toBe(0)
-    expect(continueState(root)).toEqual({ grey: 0, disabled: false })
-  })
+  expect(hasText(root, "0:29")).toBe(true)
 })

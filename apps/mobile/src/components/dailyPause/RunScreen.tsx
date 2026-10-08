@@ -3,17 +3,13 @@
 // screen awake on every step except Share (KTD10, R25).
 import { useIsFocused, useRouter } from "expo-router"
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
+import { useEffect, useRef, type ReactNode } from "react"
 import { StyleSheet, View } from "react-native"
 
 import type { DevotionalPart } from "../../lib/dailyPause/devotionals"
 import { usePauseFonts } from "../../lib/dailyPause/fonts"
 import { usePauseDay, type PauseStep } from "../../lib/dailyPause/progress"
-import {
-  isVideoPart,
-  useDailyPauseRun,
-  type RunStep,
-} from "../../lib/dailyPause/run"
+import { isVideoPart, useDailyPauseRun } from "../../lib/dailyPause/run"
 import { usePauseSettings } from "../../lib/dailyPause/settings"
 import { pauseColors } from "../../lib/dailyPause/theme"
 import { localDay, useToday } from "../../lib/dailyPause/today"
@@ -26,7 +22,6 @@ import { PartPlayer } from "./PartPlayer"
 import { PrayScreen } from "./PrayScreen"
 import { ReflectScreen } from "./ReflectScreen"
 import { ShareScreen } from "./ShareScreen"
-import type { StepperStage } from "./StepperPills"
 import { WatchScreen } from "./WatchScreen"
 
 const KEEP_AWAKE_TAG = "daily-pause-run"
@@ -39,13 +34,6 @@ const TIMED_STEPS: ReadonlySet<PauseStep> = new Set([
   "prayer",
   "prayScreen",
 ])
-
-/** The screen that opens each section, where its pill animation plays. */
-const SECTION_STEPS: Readonly<Record<StepperStage, RunStep>> = {
-  watch: "watchScreen",
-  reflect: "reflectScreen",
-  pray: "prayScreen",
-}
 
 /** A keep-awake failure leaves the phone's own sleep timer; nothing to undo. */
 function ignore() {}
@@ -73,17 +61,6 @@ export function RunScreen() {
   const { ready: fontsReady, font } = usePauseFonts()
   const run = useDailyPauseRun()
   const { state } = run
-
-  // Each tap mounts the section's screen anew, also for the current section,
-  // so its pill animation plays again and its timer starts over.
-  const [visit, setVisit] = useState(0)
-  const jumpTo = useCallback(
-    (stage: StepperStage) => {
-      run.jump(SECTION_STEPS[stage])
-      setVisit((count) => count + 1)
-    },
-    [run],
-  )
 
   // An entry point names today. A run pinned to an earlier day, such as one
   // left open overnight, goes back to the Opening and today's devotional.
@@ -132,33 +109,27 @@ export function RunScreen() {
   } else if (state.step === "watchScreen") {
     content = (
       <WatchScreen
-        key={visit}
         meditationLength={settings.meditationLength}
         font={font}
         onContinue={run.advance}
-        onJump={jumpTo}
       />
     )
   } else if (state.step === "reflectScreen") {
     content = (
       <ReflectScreen
-        key={visit}
         devotional={state.pin.devotional}
         meditationLength={settings.meditationLength}
         font={font}
         onContinue={run.advance}
-        onJump={jumpTo}
       />
     )
   } else if (state.step === "prayScreen") {
     content = (
       <PrayScreen
-        key={visit}
         devotional={state.pin.devotional}
         meditationLength={settings.meditationLength}
         font={font}
         onContinue={run.advance}
-        onJump={jumpTo}
       />
     )
   } else if (state.step === "share") {

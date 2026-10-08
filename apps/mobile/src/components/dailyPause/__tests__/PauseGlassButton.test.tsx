@@ -91,6 +91,7 @@ function textIn(root: TestInstance, glass: RenderedNode): string {
     (node) =>
       typeof node.type === "string" &&
       typeof node.props.children === "string" &&
+      node.props.testID !== "pause-button-width" &&
       isInside(node, glass),
   )
   return texts.map((node) => node.props.children as string).join("")
@@ -149,9 +150,9 @@ it("draws the Watch screen's Continue in Liquid Glass, with no fading ancestor",
   expect(opacitiesAbove(glass!)).toEqual([])
 })
 
-it("draws Reflect's Continue in Liquid Glass before and after zero, with no fading ancestor", async () => {
+it("draws Reflect's timer and then its Continue in Liquid Glass, with no fading ancestor", async () => {
   const root = await render(reflect())
-  expect(glassLabels(root)).toEqual(["Continue"])
+  expect(glassLabels(root)).toEqual(["0:45"])
   expect(opacitiesAbove(glasses(root)[0]!)).toEqual([])
 
   advance(PAUSE_INTRO_MS)

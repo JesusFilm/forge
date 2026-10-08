@@ -6,7 +6,15 @@ import {
   isLiquidGlassAvailable,
 } from "expo-glass-effect"
 import type { ReactNode } from "react"
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type TextStyle,
+} from "react-native"
 import {
   useSafeAreaInsets,
   type EdgeInsets,
@@ -76,6 +84,36 @@ type PauseButtonProps = {
   font: PauseFont
   /** The outline is the frame's upcoming pill, for a second choice. */
   variant?: "primary" | "outline"
+  /** The button keeps this label's width when its own label is narrower, so
+   *  a changing label never moves its edges (the owner, 2026-10-06). */
+  widthLabel?: string
+}
+
+/** The label, and an invisible copy of `widthLabel` with no height that holds
+ *  the width. The width follows the font and its size. */
+function ButtonLabel({
+  label,
+  widthLabel,
+  style,
+}: {
+  label: string
+  widthLabel?: string
+  style: StyleProp<TextStyle>
+}) {
+  if (widthLabel == null) return <Text style={style}>{label}</Text>
+  return (
+    <View style={styles.labelBox}>
+      <Text style={[style, styles.steadyDigits]}>{label}</Text>
+      <Text
+        testID="pause-button-width"
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[style, styles.widthHolder]}
+      >
+        {widthLabel}
+      </Text>
+    </View>
+  )
 }
 
 /** iOS 26 Liquid Glass. isGlassEffectAPIAvailable guards iOS 26 betas that
@@ -95,18 +133,19 @@ export function PauseButton({
   onPress,
   font,
   variant = "primary",
+  widthLabel,
 }: PauseButtonProps) {
   const outline = variant === "outline"
   const labelNode = (
-    <Text
+    <ButtonLabel
+      label={label}
+      widthLabel={widthLabel}
       style={[
         styles.buttonLabel,
         outline && styles.outlineLabel,
         pauseText(font, pauseType.button),
       ]}
-    >
-      {label}
-    </Text>
+    />
   )
   if (liquidGlass()) {
     // No ancestor may fade this button: GlassView draws nothing there.
@@ -152,6 +191,7 @@ type HeldPauseButtonProps = {
   label: string
   spokenLabel: string
   font: PauseFont
+  widthLabel?: string
 }
 
 /** The frame's button while a pause timer runs. It looks the same, takes no
@@ -160,6 +200,7 @@ export function HeldPauseButton({
   label,
   spokenLabel,
   font,
+  widthLabel,
 }: HeldPauseButtonProps) {
   return (
     <View
@@ -169,7 +210,12 @@ export function HeldPauseButton({
       accessibilityState={{ disabled: true }}
       pointerEvents="none"
     >
-      <PauseButton label={label} onPress={ignoreTap} font={font} />
+      <PauseButton
+        label={label}
+        onPress={ignoreTap}
+        font={font}
+        widthLabel={widthLabel}
+      />
     </View>
   )
 }
@@ -218,6 +264,10 @@ const styles = StyleSheet.create({
     borderRadius: pauseRadii.button,
     overflow: "hidden",
   },
+  labelBox: { alignItems: "center" },
+  // Equal-width digits, so a count does not move inside the button.
+  steadyDigits: { fontVariant: ["tabular-nums"] },
+  widthHolder: { height: 0, opacity: 0 },
   buttonLabel: {
     color: pauseColors.background,
     textAlign: "center",
