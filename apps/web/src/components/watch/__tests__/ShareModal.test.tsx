@@ -449,6 +449,9 @@ describe("ShareModal — local origin fallback", () => {
 describe("ShareModal — clipboard failure", () => {
   it("shows the 'Select and copy manually' hint when clipboard rejects", async () => {
     setClipboard(() => Promise.reject(new Error("denied")))
+    // `onShareAction` is the committed-share boundary that WatchPageClient
+    // turns into `share_completed` (R16); a failed copy must not cross it.
+    const onShareAction = vi.fn()
 
     act(() => {
       root.render(
@@ -456,6 +459,7 @@ describe("ShareModal — clipboard failure", () => {
           open
           videoSlug="v"
           currentLanguageSlug="english"
+          onShareAction={onShareAction}
           onClose={vi.fn()}
         />,
       )
@@ -476,6 +480,7 @@ describe("ShareModal — clipboard failure", () => {
     const hint = $('[data-testid="watch-share-modal-link-fallback"]')
     expect(hint).not.toBeNull()
     expect(hint?.textContent ?? "").toContain("manually")
+    expect(onShareAction).not.toHaveBeenCalled()
 
     const status = $('[data-testid="watch-share-modal-copy-status"]')
     expect(status?.getAttribute("role")).toBe("status")

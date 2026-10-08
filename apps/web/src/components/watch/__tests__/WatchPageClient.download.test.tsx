@@ -28,6 +28,22 @@ const {
   shouldRefreshCachedWatchLanguageOptionsMock: vi.fn(),
 }))
 
+// Only the v2 analytics flag is overridden; every other env value is real.
+const envOverrides = vi.hoisted(
+  () => ({}) as { NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2?: boolean },
+)
+vi.mock("@/env", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/env")>()
+  return {
+    env: new Proxy(actual.env, {
+      get: (target, key, receiver) =>
+        Object.prototype.hasOwnProperty.call(envOverrides, key)
+          ? envOverrides[key as keyof typeof envOverrides]
+          : Reflect.get(target, key, receiver),
+    }),
+  }
+})
+
 vi.mock("next/dynamic", () => {
   let callIndex = 0
   return {
@@ -163,6 +179,10 @@ vi.mock("@/lib/watch-interaction-loader", () => ({
 }))
 
 import { WatchPageClient } from "@/components/watch/WatchPageClient"
+import {
+  resetWatchAnalyticsEmitState,
+  setWatchAnalyticsFrameScheduler,
+} from "@/lib/watch-analytics-contract"
 
 let container: HTMLDivElement
 let root: Root
@@ -189,6 +209,7 @@ beforeEach(() => {
   shouldRefreshCachedWatchLanguageOptionsMock.mockReset()
   shouldRefreshCachedWatchLanguageOptionsMock.mockReturnValue(false)
   window.gtag = undefined
+  delete envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2
 })
 
 afterEach(() => {
@@ -1178,3 +1199,168 @@ function deferred<T>() {
   })
   return { promise, reject, resolve }
 }
+
+// v2 (U5). The flag is ON and `window.gtag` is defined in every case, so an
+// absence assertion cannot pass because another gate was closed. Assertions
+// are captured at the `window.gtag` spy with the real contract in the path.
+describe("WatchPageClient — v2 Watch intents and share outcome", () => {
+  let gtag: ReturnType<typeof vi.fn>
+  let frames: Array<() => void>
+
+  function runFrames() {
+    for (const callback of frames.splice(0, frames.length)) callback()
+  }
+
+  function events(): Array<[string, Record<string, unknown>]> {
+    return gtag.mock.calls
+      .filter(([command]) => command === "event")
+      .map(([, name, params]) => [
+        name as string,
+        params as Record<string, unknown>,
+      ])
+  }
+
+  type ShareProps = {
+    onShareAction?: (
+      detail: "link_copy" | "embed_copy" | "facebook_intent" | "x_intent",
+    ) => void
+  }
+
+  async function openShare(): Promise<ShareProps> {
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>('[data-testid="watch-share-button"]')
+        ?.click()
+    })
+    return shareModalProps[shareModalProps.length - 1] as ShareProps
+  }
+
+  beforeEach(() => {
+    envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = true
+    resetWatchAnalyticsEmitState()
+    gtag = vi.fn()
+    window.gtag = gtag
+    frames = []
+    setWatchAnalyticsFrameScheduler((callback) => {
+      frames.push(callback)
+    })
+    // recordWatchShareAction is best-effort recommendation telemetry.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(null, { status: 204 })),
+    )
+  })
+
+  afterEach(() => {
+    setWatchAnalyticsFrameScheduler(null)
+    vi.unstubAllGlobals()
+  })
+
+  it("emits the legacy intent wire names through the contract, without the v1 identifiers", async () => {
+    checkDownloadSessionMock.mockResolvedValueOnce({
+      ok: true,
+      accountGateEnabled: false,
+      authenticated: true,
+    })
+    loadWatchLanguageOptionsMock.mockResolvedValueOnce([])
+    renderWatchPage()
+
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-download-button"]',
+        )
+        ?.click()
+    })
+    await act(async () => {
+      document
+        .querySelector<HTMLButtonElement>(
+          '[data-testid="watch-language-button"]',
+        )
+        ?.click()
+      document
+        .querySelector<HTMLButtonElement>('[data-testid="watch-share-button"]')
+        ?.click()
+      await Promise.resolve()
+    })
+    // Intents yield to paint (R28).
+    expect(gtag).not.toHaveBeenCalled()
+    runFrames()
+
+    expect(events().map(([name]) => name)).toEqual([
+      "download_intent",
+      "language_picker_opened",
+      "share_opened",
+    ])
+    for (const [, params] of events()) {
+      expect(params).toMatchObject({
+        event_contract_version: 2,
+        page_path: "/watch/jesus-is-brought-to-pilate.html",
+        watch_route_variant: "explicit_language_compatibility",
+      })
+      // v1's free-form identifiers do not ride along under v2.
+      expect(params).not.toHaveProperty("video_slug")
+      expect(params).not.toHaveProperty("language_slug")
+    }
+    expect(events()[0]?.[1]).toMatchObject({
+      watch_download_language_class: "english",
+      watch_content_id: "video-1",
+    })
+    expect(events()[1]?.[1]).toMatchObject({
+      watch_picker_language_class: "english",
+    })
+  })
+
+  it("emits one share_completed per committed action, immediate only for social targets", async () => {
+    renderWatchPage()
+    const share = await openShare()
+    runFrames()
+    gtag.mockClear()
+
+    share.onShareAction?.("link_copy")
+    share.onShareAction?.("embed_copy")
+    // Copies complete in place: deferred.
+    expect(gtag).not.toHaveBeenCalled()
+    runFrames()
+
+    share.onShareAction?.("facebook_intent")
+    share.onShareAction?.("x_intent")
+    // Social targets open a new tab: immediate, no frame needed.
+
+    expect(
+      events().map(([name, params]) => [name, params.watch_share_method]),
+    ).toEqual([
+      ["share_completed", "copy_link"],
+      ["share_completed", "copy_embed"],
+      ["share_completed", "facebook"],
+      ["share_completed", "x"],
+    ])
+  })
+
+  it("emits only the open event when the share modal is opened and closed (AE5)", async () => {
+    renderWatchPage()
+    const share = (await openShare()) as ShareProps & { onClose: () => void }
+    await act(async () => {
+      share.onClose()
+    })
+    runFrames()
+
+    expect(events().map(([name]) => name)).toEqual(["share_opened"])
+  })
+
+  it("emits no outcome and the v1 intents when the flag is off", async () => {
+    envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = false
+    renderWatchPage()
+    const share = await openShare()
+    share.onShareAction?.("link_copy")
+    share.onShareAction?.("facebook_intent")
+    runFrames()
+
+    expect(events().map(([name]) => name)).toEqual(["share_opened"])
+    expect(events()[0]?.[1]).toEqual({
+      language_slug: "english",
+      video_id: "video-1",
+      video_slug: "jesus-is-brought-to-pilate",
+    })
+  })
+})

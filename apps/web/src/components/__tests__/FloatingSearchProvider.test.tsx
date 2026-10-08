@@ -73,6 +73,10 @@ import {
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import { WATCH_UNAVAILABLE_RECOVERY_STORAGE_KEY } from "@/lib/watch-unavailable-recovery-context"
+import {
+  resetWatchAnalyticsEmitState,
+  setWatchAnalyticsFrameScheduler,
+} from "@/lib/watch-analytics-contract"
 
 const navigationMocks = vi.hoisted(() => ({
   pathname: "/",
@@ -163,6 +167,22 @@ vi.mock("@/components/watch/GlobalLanguagePickerModal", () => ({
     ) : null
   },
 }))
+
+// Only the v2 analytics flag is overridden; every other env value is real.
+const envOverrides = vi.hoisted(
+  () => ({}) as { NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2?: boolean },
+)
+vi.mock("@/env", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/env")>()
+  return {
+    env: new Proxy(actual.env, {
+      get: (target, key, receiver) =>
+        Object.prototype.hasOwnProperty.call(envOverrides, key)
+          ? envOverrides[key as keyof typeof envOverrides]
+          : Reflect.get(target, key, receiver),
+    }),
+  }
+})
 
 let container: HTMLDivElement
 let root: Root
@@ -5555,5 +5575,187 @@ describe("FloatingSearchProvider — search pagination", () => {
         }),
       }),
     )
+  })
+})
+
+// v2 (U5, R13, AE4). The flag is ON and `window.gtag` is defined in every
+// case, so an absence assertion cannot pass because another gate was closed.
+describe("FloatingSearchController — v2 search_completed", () => {
+  const EMAIL_QUERY = "viewer@example.test jesus"
+  const SECRET_TITLE = "Unique Title viewer@example.test"
+  const SECRET_ID = "result-id-sentinel-7f3a"
+  const SECRET_REQUEST_ID = "search-request-sentinel-91c2"
+  let gtag: ReturnType<typeof vi.fn>
+  let frames: Array<() => void>
+
+  function SentinelSearchHarness() {
+    const { search, loadMore } = useFloatingSearch()
+    return (
+      <div>
+        <button
+          type="button"
+          data-testid="sentinel-search"
+          onClick={() => void search(EMAIL_QUERY)}
+        >
+          Search
+        </button>
+        <button
+          type="button"
+          data-testid="sentinel-load-more"
+          onClick={() => void loadMore()}
+        >
+          Load more
+        </button>
+      </div>
+    )
+  }
+
+  async function click(testId: string) {
+    await act(async () => {
+      ;(
+        document.querySelector(`[data-testid="${testId}"]`) as HTMLButtonElement
+      ).click()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await flushResolvedSearch()
+    await flushResolvedSearch()
+  }
+
+  function completedEvents(): Array<Record<string, unknown>> {
+    for (const callback of frames.splice(0, frames.length)) callback()
+    return gtag.mock.calls
+      .filter(
+        ([command, name]) => command === "event" && name === "search_completed",
+      )
+      .map(([, , params]) => params as Record<string, unknown>)
+  }
+
+  async function renderHarness() {
+    act(() =>
+      root.render(
+        <SearchControllerTestShell>
+          <SentinelSearchHarness />
+        </SearchControllerTestShell>,
+      ),
+    )
+    await flushSearchControllerMount()
+  }
+
+  beforeEach(() => {
+    envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = true
+    resetWatchAnalyticsEmitState()
+    gtag = vi.fn()
+    window.gtag = gtag
+    frames = []
+    setWatchAnalyticsFrameScheduler((callback) => {
+      frames.push(callback)
+    })
+  })
+
+  afterEach(() => {
+    delete envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2
+    setWatchAnalyticsFrameScheduler(null)
+    window.gtag = undefined
+  })
+
+  it("reports results with a bucket and no query, title, id, or request id (AE4)", async () => {
+    mockedRunSearch.mockResolvedValueOnce(
+      searchResult("watch-search", {
+        results: [
+          { ...videoResult(SECRET_ID), title: SECRET_TITLE },
+          videoResult("second"),
+        ],
+        hasMore: true,
+        requestId: SECRET_REQUEST_ID,
+      }),
+    )
+    await renderHarness()
+    await click("sentinel-search")
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+    expect(completedEvents()).toEqual([
+      expect.objectContaining({
+        event_contract_version: 2,
+        watch_search_outcome: "results",
+        watch_result_count_bucket: "1-3",
+        watch_search_request_type: "search",
+      }),
+    ])
+    const wire = JSON.stringify(gtag.mock.calls)
+    for (const forbidden of [
+      "viewer@example.test",
+      "jesus",
+      SECRET_TITLE,
+      SECRET_ID,
+      SECRET_REQUEST_ID,
+      "English",
+    ]) {
+      expect(wire).not.toContain(forbidden)
+    }
+  })
+
+  it("distinguishes no results, load more, and failures", async () => {
+    mockedRunSearch
+      .mockResolvedValueOnce(
+        searchResult("watch-search", {
+          results: [videoResult("first")],
+          hasMore: true,
+        }),
+      )
+      .mockResolvedValueOnce(
+        searchResult("watch-search", { results: [], hasMore: false }),
+      )
+      .mockRejectedValueOnce(
+        Object.assign(new Error("boom"), { kind: "network" }),
+      )
+      .mockResolvedValueOnce(
+        searchResult("watch-search", { results: [], hasMore: false }),
+      )
+    await renderHarness()
+
+    // A re-search over visible results first plays a real 200ms exit
+    // animation, so wait for each attempt to settle before the next one.
+    const settle = async (count: number) => {
+      await vi.waitFor(async () => {
+        await flushResolvedSearch()
+        expect(completedEvents()).toHaveLength(count)
+      })
+    }
+    await click("sentinel-search")
+    await settle(1)
+    await click("sentinel-load-more")
+    await settle(2)
+    // A new search fails, then a retry settles with nothing found.
+    await click("sentinel-search")
+    await settle(3)
+    await click("sentinel-search")
+    await settle(4)
+
+    expect(
+      completedEvents().map((params) => [
+        params.watch_search_request_type,
+        params.watch_search_outcome,
+        params.watch_result_count_bucket ?? null,
+      ]),
+    ).toEqual([
+      ["search", "results", "1-3"],
+      ["load_more", "no_results", "0"],
+      ["search", "failed", null],
+      ["search", "no_results", "0"],
+    ])
+  })
+
+  it("emits nothing with the flag off", async () => {
+    envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = false
+    mockedRunSearch.mockResolvedValueOnce(
+      searchResult("watch-search", { results: [videoResult("first")] }),
+    )
+    await renderHarness()
+    await click("sentinel-search")
+
+    expect(mockedRunSearch).toHaveBeenCalledTimes(1)
+    expect(completedEvents()).toEqual([])
+    expect(gtag).not.toHaveBeenCalled()
   })
 })

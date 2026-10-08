@@ -102,7 +102,7 @@ name:
 | --------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apps/web/src/components/__tests__/GoogleAnalytics.test.tsx`                | bootstrap shape, absence of `send_page_view`, SPA `config` call count and dedupe, prefix stripping, primitive filtering, the four legacy wire names |
 | `apps/web/src/components/__tests__/DatadogRum.test.tsx`                     | RUM init contract, the GA allowlist projection, unregistered-action GA silence                                                                      |
-| `apps/web/src/components/watch/__tests__/WatchEventRecorder.test.tsx`       | player start/progress/milestone/completion counts under repeated events                                                                             |
+| `apps/web/src/components/watch/__tests__/WatchEventRecorder.test.tsx`       | player start/progress/milestone/completion counts under repeated events, and the v1 terminal pause before completion                                |
 | `apps/web/src/components/watch/__tests__/WatchPageClient.download.test.tsx` | modal intent wire names, parameters, and counts                                                                                                     |
 
 ---
@@ -222,7 +222,177 @@ Confirming that it has is the verification that the fix landed.
 
 ---
 
-## 5. After v2 enablement
+## 5. The v2 contract as implemented
+
+Source of truth: `apps/web/src/lib/watch-analytics-contract.ts`. Everything
+below is behind `NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2` (default off). With
+the flag off, section 2 is exactly what ships.
+
+### Common parameters on every v2 event
+
+`event_contract_version=2`, `watch_route_type`, `watch_route_variant`,
+`watch_language_class`, `watch_entry_intent`, and the standard `page_path`
+(canonical, query-free), `page_location` (canonical origin + canonical path +
+allowlisted campaign values), and `page_referrer` (origin + canonical path, or
+`(suppressed)`). Payload-only detail (R21, never register by default):
+`watch_raw_path`, `watch_content_slug`, `watch_series_slug`,
+`watch_language_slug`.
+
+`page_referrer` on the first page view is the sanitized browser referrer.
+Every later page view in the same document uses the previous canonical Watch
+location, because `document.referrer` does not change on an App Router
+navigation.
+
+### Events
+
+| Wire event                       | Fires when                                                           | Mode                               | Event parameters                                                                                                   |
+| -------------------------------- | -------------------------------------------------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `page_view`                      | Each committed route key (`GoogleAnalytics.tsx`)                     | Same turn (bypasses the seam)      | common only                                                                                                        |
+| `videostarts`                    | First play per (video, dub) identity                                 | Deferred                           | `watch_duration_seconds`, `watch_position_seconds=0`, `watch_content_id`, `watch_dub_id`                           |
+| `videoplay`                      | Every real play transition                                           | Deferred                           | `watch_duration_seconds`, `watch_position_seconds`                                                                 |
+| `video_pause`                    | Every real pause, **except** the browser's terminal pause at `ended` | Deferred                           | `watch_duration_seconds`, `watch_position_seconds`, `watch_progress_percent`                                       |
+| `a_media_progress10/25/50/75/90` | First crossing per milestone per identity; a seek fires each crossed | Deferred                           | `watch_progress_percent`, `watch_duration_seconds`, `watch_position_seconds`                                       |
+| `video_progress`                 | First of 30 s or 25% per identity                                    | Deferred                           | `watch_duration_seconds`, `watch_position_seconds`, `watch_progress_percent`                                       |
+| `videocomplete`                  | First `ended` per identity                                           | Deferred                           | `watch_progress_percent=100`, `watch_duration_seconds`                                                             |
+| `search_completed`               | A current (not superseded) search or load-more settles               | Deferred                           | `watch_search_outcome` (`results`/`no_results`/`failed`), `watch_result_count_bucket`, `watch_search_request_type` |
+| `search_result_clicked`          | First click per result window (via the RUM projection)               | Deferred                           | `watch_result_position_bucket`, `watch_result_type`, `watch_result_source`                                         |
+| `language_picker_opened`         | Language modal opens                                                 | Deferred                           | `watch_picker_language_class`                                                                                      |
+| `language_applied`               | Apply commits a different audio language, before navigation          | Deferred                           | `watch_from_language_class`, `watch_to_language_class`, `watch_destination_route_variant`                          |
+| `subtitle_applied`               | Apply turns subtitles on/off, or switches language while on          | Deferred                           | `watch_subtitle_enabled`, `watch_subtitle_language_class`                                                          |
+| `download_intent`                | Download entry control activates                                     | Deferred                           | `watch_download_language_class`, `watch_content_id`                                                                |
+| `download_started`               | Same-origin handoff accepted and the browser download invoked        | Immediate                          | `watch_quality_tier` (`low`/`high`/`highest`), `watch_access_outcome` (`open`/`granted`)                           |
+| `share_opened`                   | Share modal opens                                                    | Deferred                           | common only                                                                                                        |
+| `share_completed`                | Copy succeeds, or a Facebook/X target activates                      | Copy deferred; social immediate    | `watch_share_method` (`copy_link`/`copy_embed`/`facebook`/`x`)                                                     |
+| `watch_cta_clicked`              | An allowlisted mission CTA activates                                 | Immediate when the CTA is outbound | `watch_cta_id`, `watch_destination_class`                                                                          |
+
+Allowlisted CTAs (`WATCH_ANALYTICS_CTA_DESTINATIONS`): `study_ask_yours`,
+`study_chat_with_person`, `study_ask_bible_question`, all outbound. An id
+outside that map emits nothing. Adding one is a reviewed contract change.
+
+Opening and closing a modal emits only its open/intent event. A denied or
+failed download session, a failed clipboard copy, and an unchanged language
+or subtitle selection emit no outcome.
+
+### v1 → v2 parameter names change
+
+Event **names** are unchanged (R25). Parameter **names are not**: v1 sent
+`video_id`, `video_dub_id`, `video_slug`, `language_slug`, `duration_seconds`,
+`position_seconds`, `progress_percent`, and `result_position`/`result_source`/
+`result_type`. v2 sends the `watch_*` names above, and drops `video_slug` and
+`language_slug` from the modal intents. Any custom definition registered on a
+v1 parameter name reads `(not set)` for v2 traffic. The section 3 custom-
+definitions export must list every such registration, and the owner must
+decide before enablement whether to register the matching v2 name.
+
+### Dispatch timing (R28)
+
+Deferred events wait for one animation frame. Pending events flush on
+`visibilitychange` to hidden and on `pagehide`, so a backgrounded tab does not
+lose them. Immediate events go out in the same handler, because the document
+or tab may be gone before a frame runs.
+
+---
+
+## 6. Enablement runbook
+
+Owner: the analytics owner on FGE-115. Every step below happens outside this
+repository; none of it has been performed.
+
+### Before enabling
+
+1. Complete section 3 (property export) and section 4 (privacy audit) and
+   attach both to FGE-115.
+2. Count registered event-scoped custom dimensions against the standard
+   property limit (50 event-scoped, 25 user-scoped, 30 key events) and record
+   the remaining budget.
+3. Register only R20 low-cardinality parameters before enablement — at least
+   `watch_route_variant` and `event_contract_version`, which the `contract`
+   reconciliation grain needs. Registration is not retroactive. Do **not**
+   register `watch_raw_path`, `watch_content_slug`, `watch_series_slug`,
+   `watch_language_slug`, `watch_content_id`, or `watch_dub_id`; read those
+   from the BigQuery export.
+4. Prove on a non-production build that the v2 observer emits one initial
+   and one SPA `page_view` for representative **non-Watch** routes with their
+   current page-path semantics. Enhanced Measurement's history setting is
+   property-wide.
+5. With v2 off, capture the network and DebugView baseline for direct
+   `/watch/jesus.html` and `/watch/jesus.html/english.html` loads plus one
+   client navigation.
+
+### Enabling
+
+1. Set `NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2=true` on the Web Railway
+   service and ship it through the normal merge-to-`main` deploy. It is a
+   build-time value, so it needs a rebuild.
+2. In the same window, disable only Enhanced Measurement → Page views →
+   _Page changes based on browser history events_. Leave outbound clicks and
+   file downloads on.
+3. Annotate the release in GA4 with the date and commit.
+
+### Validation journeys (DebugView + network)
+
+Run each and match every request to the section 5 table: canonical English,
+explicit-English compatibility, Urdu, a contextual episode; play, pause, seek
+across milestones, complete; search with results, no results, and a forced
+failure, then a result click; language apply and subtitle apply; download
+denied and success; share copy failure and success, Facebook, X; each study
+CTA. Read base-ui modal state from `data-open` / `data-closed`, not element
+presence.
+
+Search every captured payload for: an email sentinel, a credential sentinel,
+query text, a result title or id, a search request id, a viewer/session id,
+an auth-state id, GraphQL data, a recommendation delivery or episode
+capability, the tab correlation/claim nonce, a filename, a raw media URL, an
+arbitrary query value, and a full referrer. Any match blocks enablement.
+
+Confirm in DebugView that `page_view` and `video_progress` (both on Google's
+reserved list) are collected rather than dropped.
+
+### Reconciliation readout
+
+`queryWatchMeasurementReconciliation` in
+`apps/mastra/src/services/google-analytics-client.ts` is the read-only Data API
+query for this readout. It accepts only an allowlisted property, the section 5
+event names, and up to 20 exact `/watch/` page paths, and returns per
+(page path, event) totals with a route-variant breakdown. Use `grain:
+"standard"` for the v1 baseline and `grain: "contract"` once the two custom
+dimensions are registered. It is a service function only: no agent tool or
+workflow calls it yet. A result with `complete: false` carries caveats
+(thresholding, other-row loss, row cap, request budget, unattributed rows)
+and must not support a definitive behavioral conclusion.
+
+### Checkpoints and stop conditions
+
+- **Seven days after enablement:** duplicate page views ≤ 1%, unknown route
+  context ≤ 5%, canonical totals reconcile with raw variants within 1%, no
+  privacy sentinel in GA. Missing any one is a stop.
+- **28 days after enablement:** segment canonical JESUS by route variant,
+  channel, device, and event name, then classify the JESUS ratio as
+  instrumentation, acquisition mix, behavior, or inconclusive (plan, Measurement
+  Decision Matrix).
+
+### Key-event candidates (R27) — do not mark yet
+
+Candidates: `video_progress`, `videocomplete`, `download_started`,
+`share_completed`, `language_applied`, and `watch_cta_clicked` per CTA id.
+Opens and intents (`language_picker_opened`, `share_opened`,
+`download_intent`) and `search_result_clicked` are not promoted by default.
+Marking happens only after the section 3 export and verified v2 outcomes.
+
+### Rollback
+
+- **Normal:** set `NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2=false` and ship
+  through the normal deploy. This restores section 2 exactly, keeps the GA
+  measurement ID and every route unchanged, and leaves Datadog RUM active.
+  Re-enable Enhanced Measurement's history page changes at the same time, or
+  v1 SPA page views stop counting.
+- **Privacy emergency:** the instant operator stop is pausing or unlinking the
+  GA4 web data stream in the property admin; a flag flip still costs a
+  rebuild.
+
+---
+
+## 7. After v2 enablement
 
 - Re-run the section 1 provider-receipt checks.
 - Confirm GA4 DebugView shows exactly one `page_view` per committed route on a

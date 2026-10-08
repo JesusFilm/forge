@@ -145,9 +145,60 @@ export type WatchAnalyticsShareMethod =
   | "copy_embed"
   | "facebook"
   | "x"
-export type WatchAnalyticsQualityTier = "low" | "standard" | "high"
-export type WatchAnalyticsAccessOutcome = "open" | "granted" | "gated"
+/**
+ * Download quality tiers. Deliberately the SAME vocabulary as the download
+ * modal's tier selector (`DownloadTier` in `download-options.ts`) so the call
+ * site passes its own value through rather than inventing a translation table.
+ */
+export type WatchAnalyticsQualityTier = "low" | "high" | "highest"
+/**
+ * How the download handoff was admitted. `open` — no account gate applied;
+ * `granted` — the account gate applied and the session passed it. A denied
+ * gate is not a value because a denial emits no `download_started` at all.
+ */
+export type WatchAnalyticsAccessOutcome = "open" | "granted"
 export type WatchAnalyticsDestinationClass = "internal" | "outbound"
+
+/**
+ * THE mission-CTA allowlist (R16). Each identifier maps to its destination
+ * class, so a call site names a CTA and can never supply an href, a label, or
+ * its own destination class. An identifier absent from this map emits nothing.
+ *
+ * Adding an entry is the deliberate act of putting a new CTA on the GA wire.
+ */
+export const WATCH_ANALYTICS_CTA_DESTINATIONS = {
+  /** "Ask yours" header pill in the study-questions section. */
+  study_ask_yours: "outbound",
+  /** "Chat with a person" pill in an expanded study question. */
+  study_chat_with_person: "outbound",
+  /** "Ask a Bible question" pill in an expanded study question. */
+  study_ask_bible_question: "outbound",
+} as const satisfies Record<string, WatchAnalyticsDestinationClass>
+
+export type WatchAnalyticsCtaId = keyof typeof WATCH_ANALYTICS_CTA_DESTINATIONS
+
+function ctaDestinationClass(
+  ctaId: unknown,
+): WatchAnalyticsDestinationClass | undefined {
+  if (typeof ctaId !== "string") return undefined
+  return Object.prototype.hasOwnProperty.call(
+    WATCH_ANALYTICS_CTA_DESTINATIONS,
+    ctaId,
+  )
+    ? WATCH_ANALYTICS_CTA_DESTINATIONS[ctaId as WatchAnalyticsCtaId]
+    : undefined
+}
+
+/**
+ * R28 for `watch_cta_clicked`: immediate only when the resolved destination
+ * is outbound (the document or tab may be gone before a paint yield runs),
+ * deferred otherwise.
+ */
+export function watchAnalyticsCtaDispatchMode(
+  ctaId: WatchAnalyticsCtaId,
+): WatchAnalyticsDispatchMode {
+  return ctaDestinationClass(ctaId) === "outbound" ? "immediate" : "deferred"
+}
 
 /**
  * The declared event inputs (R9). Anything not in this union cannot reach the
@@ -233,8 +284,8 @@ export type WatchAnalyticsEventInput =
   | { type: "share_completed"; method: WatchAnalyticsShareMethod }
   | {
       type: "watch_cta_clicked"
-      ctaId: string
-      destinationClass: WatchAnalyticsDestinationClass
+      /** Destination class is resolved from the allowlist, never supplied. */
+      ctaId: WatchAnalyticsCtaId
     }
 
 export type WatchAnalyticsDispatchOptions = {
@@ -671,10 +722,15 @@ function mapEvent(
       assign(params, "watch_share_method", input.method)
       return { key: "share_completed", params }
 
-    case "watch_cta_clicked":
+    case "watch_cta_clicked": {
+      // Allowlisted identifiers only: arbitrary hrefs or label text reach
+      // nothing, rather than a `watch_cta_clicked` with a dropped id.
+      const destinationClass = ctaDestinationClass(input.ctaId)
+      if (destinationClass == null) return null
       assign(params, "watch_cta_id", input.ctaId)
-      assign(params, "watch_destination_class", input.destinationClass)
+      assign(params, "watch_destination_class", destinationClass)
       return { key: "watch_cta_clicked", params }
+    }
 
     default:
       // An undeclared event reaches nothing. Exhaustive over the union, so
@@ -880,10 +936,16 @@ export function emitWatchAnalyticsPageView(
 
   const params = commonParams(context)
   if (options.referrer !== undefined) {
+    // The browser referrer describes how the DOCUMENT was reached, so it only
+    // applies to the first page view. `document.referrer` does not change on
+    // an App Router navigation; once a page view has been emitted, the
+    // previous canonical Watch location is the referrer (GA4's SPA
+    // convention), and repeating the external referrer would credit every
+    // in-session navigation to the original source.
     assignRequired(
       params,
       "page_referrer",
-      resolveReferrerForEmit(options.referrer),
+      lastEmittedCanonicalLocation ?? resolveReferrerForEmit(options.referrer),
       WATCH_ANALYTICS_SUPPRESSED_VALUE,
     )
   }

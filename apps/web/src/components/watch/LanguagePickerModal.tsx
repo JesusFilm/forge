@@ -44,6 +44,11 @@ import {
   watchVideoPath,
 } from "@/lib/routes"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
+import { dispatchWatchAnalyticsEvent } from "@/lib/watch-analytics-contract"
+import {
+  resolveWatchAnalyticsRoute,
+  watchAnalyticsLanguageClassForSlug,
+} from "@/lib/watch-analytics-route"
 import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
 export type LanguagePickerVariant = WatchLanguagePickerVariant
@@ -413,6 +418,24 @@ export function LanguagePickerModal({
 
     if (subtitleDirty) {
       onSubtitleChange?.(draftSubtitleEnabled, draftSubtitleSlug)
+      // R14: only a change the viewer can observe is an outcome — switching
+      // subtitles on/off, or to another language while on. A slug change
+      // under "off" commits nothing visible.
+      if (
+        draftSubtitleEnabled !== currentSubtitleEnabled ||
+        (draftSubtitleEnabled && draftSubtitleSlug !== currentSubtitleSlug)
+      ) {
+        dispatchWatchAnalyticsEvent(
+          {
+            type: "subtitle_applied",
+            enabled: draftSubtitleEnabled,
+            languageClass: draftSubtitleEnabled
+              ? watchAnalyticsLanguageClassForSlug(draftSubtitleSlug)
+              : "none",
+          },
+          { mode: "deferred" },
+        )
+      }
     }
 
     if (languageDirty) {
@@ -425,6 +448,22 @@ export function LanguagePickerModal({
       const targetPath = buildTargetPath(draftSlug)
       if (targetPath) {
         navigatingRef.current.inFlight = true
+        // R14: one outcome per apply intent, emitted before navigation so it
+        // carries the source route context. The in-flight guard above makes a
+        // double activation a no-op. Deferred: an App Router push keeps this
+        // document, so the paint yield still runs (R28).
+        dispatchWatchAnalyticsEvent(
+          {
+            type: "language_applied",
+            fromLanguageClass:
+              watchAnalyticsLanguageClassForSlug(currentLanguageSlug),
+            toLanguageClass: watchAnalyticsLanguageClassForSlug(draftSlug),
+            destinationRouteVariant: resolveWatchAnalyticsRoute({
+              pathname: targetPath,
+            }).routeVariant,
+          },
+          { mode: "deferred" },
+        )
         // Commit the visible pending state before starting App Router
         // navigation. Otherwise React may batch the state update with
         // router.push, which is exactly the "nothing happened" feeling
@@ -439,6 +478,9 @@ export function LanguagePickerModal({
     onClose()
   }, [
     buildTargetPath,
+    currentLanguageSlug,
+    currentSubtitleEnabled,
+    currentSubtitleSlug,
     draftSlug,
     draftSubtitleEnabled,
     draftSubtitleSlug,
