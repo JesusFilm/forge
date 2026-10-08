@@ -113,7 +113,8 @@ export function applyOperations(
         item.source.startMs = op.startMs
         item.source.endMs = op.endMs
         item.durationInFrames = Math.round(
-          ((op.endMs - op.startMs) * doc.fps) / 1000,
+          ((op.endMs - op.startMs) * doc.fps) /
+            (1000 * (item.playbackRate ?? 1)),
         )
         break
     }
