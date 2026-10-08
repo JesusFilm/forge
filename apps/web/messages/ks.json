@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} ویڈیو تام سکرول کرو",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "اصل مواد پیٹھ گژھیو"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ہوم",
     "navigation": "فوٹر نیویگیشن",

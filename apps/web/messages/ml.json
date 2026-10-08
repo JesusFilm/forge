@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} വീഡിയോയിലേക്ക് സ്ക്രോൾ ചെയ്യുക",
     "forYou": "നിങ്ങൾക്കായി"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "പ്രധാന ഉള്ളടക്കത്തിലേക്ക് പോകുക"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ഹോം",
     "navigation": "ഫൂട്ടർ നാവിഗേഷൻ",

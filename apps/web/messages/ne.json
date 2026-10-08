@@ -395,6 +395,9 @@
     "backToWatch": "Watch मा फर्कनुहोस्",
     "browseVideos": "भिडियोहरू ब्राउज गर्नुहोस्"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "मुख्य सामग्रीमा जानुहोस्"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project गृहपृष्ठ",
     "navigation": "फुटर नेभिगेसन",

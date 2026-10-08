@@ -530,6 +530,9 @@
     "scrollToVideo": "Yí lọ sí fídíò {title}",
     "forYou": "Fún ọ"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Fò lọ sí àkóónú pàtàkì"
+  },
   "WatchFooter": {
     "home": "Ojú-ìbẹ̀rẹ̀ Jesus Film Project",
     "navigation": "Ìrìnàjò àtẹ̀lẹwọ́",

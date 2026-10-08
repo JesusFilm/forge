@@ -530,6 +530,9 @@
     "scrollToVideo": "Skrolela kwividiyo ethi {title}",
     "forYou": "Eyakho"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Tsiba uye kumxholo ophambili"
+  },
   "WatchFooter": {
     "home": "Ikhaya leJesus Film Project",
     "navigation": "Ukuhamba ezantsi kwephepha",

@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} videosuna sürüşdürün",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Әсас мәзмуна кеч"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ana səhifəsi",
     "navigation": "Altbilgi naviqasiyası",

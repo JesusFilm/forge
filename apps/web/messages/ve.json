@@ -530,6 +530,9 @@
     "scrollToVideo": "Iḓani kha video ya {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Fhirela kha zwi re ngomu zwa ndeme"
+  },
   "WatchFooter": {
     "home": "Muhuri wa Jesus Film Project",
     "navigation": "U tshimbila ha footer",

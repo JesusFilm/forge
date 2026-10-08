@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видео шоры шорыты",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Хъунмасса макьаллайн лавгьуну"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project шоры",
     "navigation": "Сайтын навигация",

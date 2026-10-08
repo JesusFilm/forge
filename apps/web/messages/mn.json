@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеон руу очих",
     "forYou": "Танд зориулсан"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Үндсэн агуулга руу шилжих"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project нүүр хуудас",
     "navigation": "Хөл хэсгийн навигаци",

@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеоһына тиклем һөрөтөп барығыҙ",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Төп йөкмәткегә күсергә"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project баш бите",
     "navigation": "Аҫҡы навигация",

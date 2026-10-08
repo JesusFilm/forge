@@ -530,6 +530,9 @@
     "scrollToVideo": "Померите се до видеа {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Пређи на главни садржај"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project почетна",
     "navigation": "Навигација у подножју",

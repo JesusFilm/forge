@@ -576,6 +576,32 @@ function SearchControllerTestShell({
 }
 
 describe("FloatingSearchProvider — header backdrop", () => {
+  it("puts the floating header before focusable page content", () => {
+    act(() => {
+      root.render(
+        <FloatingSearchProvider>
+          <main>
+            <button type="button" data-testid="first-rail-item">
+              First rail item
+            </button>
+          </main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const header = container.querySelector('[data-testid="floating-header"]')
+    const firstRailLink = container.querySelector(
+      '[data-testid="first-rail-item"]',
+    )
+
+    expect(header?.compareDocumentPosition(firstRailLink as Node)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    )
+    expect(
+      container.querySelector("#watch-main-content")?.getAttribute("tabindex"),
+    ).toBe("-1")
+  })
+
   it("catches the initial watch preview state published by a child on mount", () => {
     act(() => {
       root.render(
@@ -4781,7 +4807,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const close = document.querySelector(
       '[data-testid="floating-header-search-close"]',
     ) as HTMLButtonElement | null
-    const pageWrapper = document.querySelector("[inert]")
+    const pageWrapper = document.querySelector("#watch-main-content")
     const topBar = document.querySelector(
       '[data-testid="search-overlay-top-bar"]',
     )

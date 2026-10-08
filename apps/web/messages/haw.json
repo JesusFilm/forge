@@ -530,6 +530,9 @@
     "scrollToVideo": "ʻAu i ka wikiō {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Lele i ka ʻike nui"
+  },
   "WatchFooter": {
     "home": "ʻAoʻao home o Jesus Film Project",
     "navigation": "Nā loulou ma lalo",

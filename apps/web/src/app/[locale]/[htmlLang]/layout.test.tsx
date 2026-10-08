@@ -99,6 +99,27 @@ describe("Watch root layout <html lang>/<dir> (FGE-170 / W-082)", () => {
 })
 
 describe("Watch root layout", () => {
+  it("renders a localized skip link as the first body child", async () => {
+    const layout = await RootLayout({
+      children: <main id="watch-main-content">Watch page</main>,
+      params: Promise.resolve({ locale: "en", htmlLang: "english" }),
+    })
+    const body = findElement(layout, "body") as ReactElement<{
+      children?: ReactNode
+    }> | null
+    const firstBodyChild = Children.toArray(body?.props.children)[0]
+
+    expect(isValidElement(firstBodyChild)).toBe(true)
+    if (
+      !isValidElement<{ href?: string; "data-testid"?: string }>(firstBodyChild)
+    ) {
+      throw new Error("Expected the first body child to be a link")
+    }
+    expect(firstBodyChild.type).toBe("a")
+    expect(firstBodyChild.props.href).toBe("#watch-main-content")
+    expect(firstBodyChild.props["data-testid"]).toBe("watch-skip-to-main")
+  })
+
   it("mounts both environment-configured analytics integrations", async () => {
     const layout = await RootLayout({
       children: <main>Watch page</main>,

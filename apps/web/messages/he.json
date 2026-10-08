@@ -530,6 +530,9 @@
     "scrollToVideo": "גללו לסרטון {title}",
     "forYou": "בשבילך"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "דילוג לתוכן הראשי"
+  },
   "WatchFooter": {
     "home": "דף הבית של Jesus Film Project",
     "navigation": "ניווט תחתון",

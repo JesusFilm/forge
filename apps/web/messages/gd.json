@@ -530,6 +530,9 @@
     "scrollToVideo": "Sgrolaich gu bhidio {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Leum gun phrìomh-shusbaint"
+  },
   "WatchFooter": {
     "home": "Duilleag-dhachaigh Jesus Film Project",
     "navigation": "Seòladh coise",

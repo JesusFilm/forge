@@ -530,6 +530,9 @@
     "scrollToVideo": "I-scroll ngadto ha {title} nga video",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Lumaktaw pa kontint mahalaga"
+  },
   "WatchFooter": {
     "home": "Homan han Jesus Film Project",
     "navigation": "Pag-navigate ha footer",

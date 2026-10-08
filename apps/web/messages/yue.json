@@ -530,6 +530,9 @@
     "scrollToVideo": "捲去 {title} 影片",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "跳到主要內容"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project 首頁",
     "navigation": "頁尾導覽",

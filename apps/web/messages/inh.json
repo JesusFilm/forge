@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеога д1ахьа",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Коьрта чулоацаме дехьа довла"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project хана",
     "navigation": "Футер навигация",

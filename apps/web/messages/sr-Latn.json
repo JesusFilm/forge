@@ -530,6 +530,9 @@
     "scrollToVideo": "Pomeri na video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Pređi na glavni sadržaj"
+  },
   "WatchFooter": {
     "home": "Početna stranica Jesus Film Project",
     "navigation": "Navigacija u podnožju",

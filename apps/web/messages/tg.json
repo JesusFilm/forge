@@ -530,6 +530,9 @@
     "scrollToVideo": "Ба видеои {title} гузаред",
     "forYou": "Барои шумо"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Гузариш ба мундариҷаи асосӣ"
+  },
   "WatchFooter": {
     "home": "Саҳифаи асосии Jesus Film Project",
     "navigation": "Навигатсияи поёнӣ",

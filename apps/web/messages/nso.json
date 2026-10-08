@@ -530,6 +530,9 @@
     "scrollToVideo": "Phetlela video ya {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Tlolela go diteng tše bohlokwa"
+  },
   "WatchFooter": {
     "home": "Legae la Jesus Film Project",
     "navigation": "Tsela ya go sepelasepela ya fase",

@@ -530,6 +530,9 @@
     "scrollToVideo": "رفتن به ویدیوی {title}",
     "forYou": "برای شما"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "رفتن به محتوای اصلی"
+  },
   "WatchFooter": {
     "home": "صفحهٔ اصلی Jesus Film Project",
     "navigation": "ناوبری پابرگ",

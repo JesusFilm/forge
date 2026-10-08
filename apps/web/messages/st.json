@@ -530,6 +530,9 @@
     "scrollToVideo": "Tsamaisetsa ho video ea {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Tlolela dikahare tse ka sehloohong"
+  },
   "WatchFooter": {
     "home": "Lehae la Jesus Film Project",
     "navigation": "Tsamaiso ea maoto",

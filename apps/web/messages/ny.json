@@ -530,6 +530,9 @@
     "scrollToVideo": "Pitani ku vidiyo ya {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Dumphani kupita ku zinthu zazikulu"
+  },
   "WatchFooter": {
     "home": "Tsamba loyambira la Jesus Film Project",
     "navigation": "Kuyenda pansi pa tsamba",

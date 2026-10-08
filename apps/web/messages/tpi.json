@@ -530,6 +530,9 @@
     "scrollToVideo": "Rausim piksa i go long {title} video",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Kalap i go long namba wan hap"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project hom pes",
     "navigation": "Ol link long futa",

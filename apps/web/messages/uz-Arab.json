@@ -530,6 +530,9 @@
     "scrollToVideo": "به ویدیوی {title} بروید",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "اساسی مضمونگه اۉتیش"
+  },
   "WatchFooter": {
     "home": "صفحهٔ اصلی Jesus Film Project",
     "navigation": "پیمایش پاصفحه",

@@ -530,6 +530,9 @@
     "scrollToVideo": "Liyang gi video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Falak i prinsipåt na kontenido"
+  },
   "WatchFooter": {
     "home": "Home gi Jesus Film Project",
     "navigation": "Navigation gi footer",

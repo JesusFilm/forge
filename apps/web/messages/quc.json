@@ -530,6 +530,9 @@
     "scrollToVideo": "Tz'ilon pa {title} video",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Skip to main content"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project rupalaj q'ij",
     "navigation": "Rupalaj q'ij richin navigation",

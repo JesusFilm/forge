@@ -530,6 +530,9 @@
     "scrollToVideo": "Sgrolio i fideo {title}",
     "forYou": "I chi"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Neidio i'r prif gynnwys"
+  },
   "WatchFooter": {
     "home": "Hafan Jesus Film Project",
     "navigation": "Llywio’r troedyn",

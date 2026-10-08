@@ -530,6 +530,9 @@
     "scrollToVideo": "Rarangi nakon te video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Skip to main content"
+  },
   "WatchFooter": {
     "home": "Moan iteran Jesus Film Project",
     "navigation": "Navigation n te footer",

@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} වීඩියෝවට පහළට යන්න",
     "forYou": "ඔබ වෙනුවෙන්"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "ප්‍රධාන අන්තර්ගතයට යන්න"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project මුල් පිටුව",
     "navigation": "පාදක සැරිසැරීම",

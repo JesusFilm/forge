@@ -530,6 +530,9 @@
     "scrollToVideo": "Keri video {title} juurde",
     "forYou": "Sulle"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Liigu põhisisu juurde"
+  },
   "WatchFooter": {
     "home": "Jesus Film Projecti avaleht",
     "navigation": "Jaluse navigeerimine",

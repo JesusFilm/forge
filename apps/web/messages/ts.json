@@ -530,6 +530,9 @@
     "scrollToVideo": "Fambisa tluka u ya eka vhidiyo ya {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Tlulela eka leswi nga endzeni swa nkoka"
+  },
   "WatchFooter": {
     "home": "Tluka ra le kaya ra Jesus Film Project",
     "navigation": "Ku famba eka footer",

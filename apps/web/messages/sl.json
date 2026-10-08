@@ -530,6 +530,9 @@
     "scrollToVideo": "Pomakni se do videoposnetka {title}",
     "forYou": "Za vas"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Preskoči na glavno vsebino"
+  },
   "WatchFooter": {
     "home": "Domača stran Jesus Film Project",
     "navigation": "Krmarjenje v nogi strani",
