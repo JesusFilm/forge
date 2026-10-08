@@ -48,6 +48,23 @@ pending and block redispatch. No reconciliation endpoint claims that a caller's
 digest proves non-dispatch. The migration was tested only in owned disposable
 databases; the running GA capture schema remains unchanged.
 
+Complete-content profile execution and persistence are integrated at `b662143ea`
+(Mastra `9b912dc68`/`9ef94dcba`, Admin migration 0143). Root passes 26
+planner/executor checks, all 34 connected build-through-Admin tests, and all 163
+Admin precomputed tests on PostgreSQL 18, with no environment skips. The new
+connected test uses the real Admin ledger: a complete selected non-English
+transcript yields a verified profile, replay and metadata-only input make no
+extra model call, and the report records one physical 120/30-token fixture
+receipt with unknown USD cost. These are controlled outputs, not real Astra
+inference. Worker Mastra checks pass 3,423 with 45 existing smoke skips; Admin
+passes 41 adjacent native PostgreSQL 18 cases and type/lint/schema checks.
+The producer selects verbatim text while code resolves offsets and hashes.
+Late or capacity-expired receipts retain usage but cannot become applied nodes
+through reduction, finalization or a later execution attempt. JSONB storage
+ceilings account for its extra whitespace while compact wire limits remain
+strict. Both existing Sol chats now own the separate shared edge-batch slice;
+the full build and public experiment remain unstarted.
+
 The owner further required manual-only builds/rebuilds/resumptions using the
 initiating person's own subscription. The operator adapter requires fresh
 same-account identity/allowance admission and pauses after failure. It isolates
@@ -57,8 +74,9 @@ source/catalog launch routes return `403 local_manual_operator_required`, and
 neither workflow is registered on the native hosted API. The concrete identity
 reader uses fresh local app-server processes and read-only account/quota RPCs;
 it validates the named Codex allowance and an opaque backend account binding.
-The manual build command, producer propagation of the active attempt ID, and
-distinct profile/shared-batch receipts remain implementation seams. An Admin
+The manual build command, complete catalog attempt propagation, and distinct
+shared-batch receipts remain implementation seams. Profile execution now carries
+the active attempt and stores separate physical receipts. An Admin
 login does not select a remote machine's Codex account.
 Included subscription use has no
 separate model API charge; the report must distinguish consumed allowance,
@@ -91,13 +109,19 @@ applies only to its named application commit; the latest head is not yet claimed
 CI-green. A subsequent run at `5c90e8abf` exposed a non-conventional hosted-guard
 commit subject. A message-only reword, published as `15fc322ef`, preserves the
 exact pre-rewrite tree and passes normal hooks and local commit lint.
+CI at `69144ebd0` exposed a legacy model-call replay comparison that accidentally
+included the new nullable attempt ID. Repair `c2a4d41e1` excludes that field from
+the legacy comparison. Root reproduced the failure, then passed all 15 contract
+tests and all 152 pre-profile Admin precomputed tests on PostgreSQL 18; normal
+hooks and full formatting passed. This does not weaken subscription attempt
+fences. Newer profile integration has its own verification above.
 
 Published integration `0f6d65170d2b39a1b6f39484392e6f946e492448` has 101
 successful and three skipped CheckRuns, with two successful Railway status
 contexts and no production deployment. After reviewed executable pins, lock
 admission and recovery proofs, GA-only capture attempt 6 started on October 8
-at 11:09 NZDT. It remains separate from model generation. At 13:36 NZDT it had
-258 of 305 start pages durably matched and zero of 327 referrer pages matched;
+at 11:09 NZDT. It remains separate from model generation. At 15:20 NZDT it had
+all 305 start pages durably matched and 152 of 327 referrer pages matched;
 the journal was unsealed and a subsequent read unresolved. The earlier attempt
 records below are historical, not the current running-state description.
 

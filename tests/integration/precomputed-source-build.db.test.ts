@@ -1,4 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client"
+import { createHash, randomUUID } from "node:crypto"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 
@@ -13,6 +14,10 @@ import {
   PrecomputedRecommendationError,
   submitPrecomputedRecommendation,
 } from "../../apps/admin/src/services/recommendations/precomputed/contract"
+import {
+  loadDurablePrecomputedBuildReport,
+  submitDurablePrecomputedRecommendation,
+} from "../../apps/admin/src/services/recommendations/precomputed/durable-build"
 // Repository-level integration harness. Neither app imports the other.
 import {
   runPrecomputedSource,
@@ -20,6 +25,10 @@ import {
   type SourceIngest,
 } from "../../apps/mastra/src/services/precomputed-recommendations/source-generation"
 import type { StructuredModel } from "../../apps/mastra/src/services/precomputed-recommendations/astra-provider"
+import {
+  runContentProfile,
+  type ProfilePersistencePort,
+} from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-executor"
 import type { HistoricalAnalyticsReader } from "../../apps/mastra/src/services/precomputed-recommendations/historical-analytics"
 import { gaWatchHistoryFixture } from "./fixtures/ga-watch-history"
 
@@ -233,6 +242,179 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
         await admin.end()
       }
+    })
+
+    it("builds and reuses complete subscription profiles through Admin without completing a generation", async () => {
+      const generationId = `subscription-profile-${suffix}`
+      const generationInputDigest = "a".repeat(64)
+      const attemptId = randomUUID()
+      const base = { generationId, generationInputDigest }
+      const sourceVideoIds = [sourceId, metadataId].sort()
+      const submit = (input: unknown) =>
+        submitDurablePrecomputedRecommendation(prisma, input, bearer)
+      await submit({
+        action: "start",
+        generationId,
+        protocolVersion: 4,
+        modelId: "gpt-6-astra",
+        promptVersion: "subscription-profile-native-v1",
+        inputDigest: generationInputDigest,
+        sourceSetDigest: createHash("sha256")
+          .update(JSON.stringify(sourceVideoIds))
+          .digest("hex"),
+        inputCutoff: cutoff,
+        expectedSourceCount: sourceVideoIds.length,
+        inputMode: "content_only",
+        executionAttempt: {
+          attemptId,
+          invocation: "start",
+          accountRef: "native-profile-account",
+          backend: "codex_chatgpt_subscription",
+          billingBasis: "included_subscription",
+          authMethod: "chatgpt",
+          modelId: "gpt-6-astra",
+          identityObservedAt: new Date().toISOString(),
+          allowanceObservedAt: new Date().toISOString(),
+          weeklyRemainingPercent: 50,
+          fiveHour: { kind: "limited", remainingPercent: 50 },
+        },
+      })
+      await submit({ action: "manifest", ...base, attemptId, sourceVideoIds })
+      const probe = await submit({ action: "capacity_probe", ...base })
+      await submit({
+        action: "capacity",
+        ...base,
+        attemptId,
+        measurement: {
+          measuredAt: new Date().toISOString(),
+          clusterSystemId: probe.clusterSystemId,
+          observedDbBytes: probe.observedDbBytes,
+          availableBytes: 20_000_000_000,
+          reserveBytes: 5_000_000_000,
+          projectedBytes: 1_000_000,
+          sampleSourceCount: 2,
+          sampleBytes: 100_000,
+          source: "operator_verified_pgdata_df",
+        },
+      })
+      // Exercise the real producer/consumer wire through the repository-owned
+      // integration seam. The executor validates the returned identities/state.
+      const persistence: ProfilePersistencePort = {
+        register: (input) =>
+          submit(input) as ReturnType<ProfilePersistencePort["register"]>,
+        status: (input) =>
+          submit(input) as ReturnType<ProfilePersistencePort["status"]>,
+        callStart: (input) =>
+          submit(input) as ReturnType<ProfilePersistencePort["callStart"]>,
+        callFinish: (input) =>
+          submit(input) as ReturnType<ProfilePersistencePort["callFinish"]>,
+        finalize: (input) =>
+          submit(input) as ReturnType<ProfilePersistencePort["finalize"]>,
+      }
+      let modelCalls = 0
+      const controlled: StructuredModel = {
+        async generate({ schema }) {
+          modelCalls += 1
+          return {
+            output: schema.parse({
+              version: "complete_profile_v1",
+              summaryEnglish: "A Spanish story of hope during difficult times.",
+              themes: ["hope"],
+              people: [],
+              places: [],
+              citations: [],
+              anchors: [
+                {
+                  chunkId: `chunk-source-${suffix}`,
+                  fragmentIndex: 0,
+                  excerpt,
+                  claimEnglish: "The passage offers hope to everyone.",
+                },
+              ],
+            }),
+            usage: { inputTokens: 120, outputTokens: 30 },
+          }
+        },
+      }
+      const run = async (videoId: string) => {
+        const video = await catalog.video({ videoId, cutoff })
+        if (!video) throw new Error("Missing native profile fixture")
+        return runContentProfile({
+          ...base,
+          attemptId,
+          inputCutoff: cutoff,
+          video,
+          catalog,
+          modelId: "gpt-6-astra",
+          backend: "codex_chatgpt_subscription",
+          promptVersion: "complete-profile-v1",
+          schemaVersion: "profile-schema-v1",
+          maxPartBytes: 24_576,
+          model: controlled,
+          persistence,
+        })
+      }
+      const transcriptProfile = await run(sourceId)
+      expect(transcriptProfile).toMatchObject({
+        state: "ready",
+        kind: "transcript",
+        profile: {
+          anchors: [
+            {
+              videoId: sourceId,
+              chunkId: `chunk-source-${suffix}`,
+              language: "es",
+              startChar: 0,
+              endChar: excerpt.length,
+              textSha256: createHash("sha256").update(excerpt).digest("hex"),
+            },
+          ],
+        },
+      })
+      expect(await run(sourceId)).toEqual(transcriptProfile)
+      expect(await run(metadataId)).toMatchObject({
+        state: "ready",
+        kind: "metadata_only",
+        profile: null,
+      })
+      expect(modelCalls).toBe(1)
+      const stored = await persistence.status({
+        action: "profile_status",
+        ...base,
+        cacheKey: transcriptProfile.cacheKey,
+      })
+      expect(stored.profile.state).toBe("ready")
+      expect(stored.calls).toHaveLength(1)
+      expect(stored.calls[0]).toMatchObject({
+        status: "succeeded",
+        nodeApplied: true,
+      })
+      expect(JSON.stringify(stored)).not.toContain(excerpt)
+      await expect(
+        submit({ action: "complete", ...base, attemptId }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      const report = await loadDurablePrecomputedBuildReport(prisma, {
+        generationId,
+        reviewer,
+      })
+      expect(report).toMatchObject({
+        state: "incomplete",
+        profileLedger: {
+          profiles: [{ state: "ready", count: 2 }],
+          calls: [
+            {
+              status: "succeeded",
+              count: 1,
+              inputTokens: 120,
+              outputTokens: 30,
+              cachedInputTokens: null,
+            },
+          ],
+          pendingCalls: [],
+          billingBasis: "included_subscription",
+          usdCharge: null,
+        },
+      })
     })
 
     function model(

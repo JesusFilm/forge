@@ -98,6 +98,17 @@ does not equate subscription allowance with API token charges.
 
 ## Boundaries and verification
 
+Implemented through `b662143ea`: local subscription adapter and account reader,
+manual attempt provenance, complete selected-transcript planning, and durable
+profile execution. The producer chooses exact text; code verifies its membership
+and computes offsets/hashes. One physical profile invocation has one observed
+usage receipt. Closed-attempt or expired-capacity results retain usage without
+becoming usable profiles. A connected PostgreSQL test proves transcript and
+metadata-only behavior, replay, reporting and the incomplete-generation gate.
+Shared edge batches, the manual catalog command, compatible GA import, the real
+pilot and full build remain pending. No real catalog inference has run through
+the subscription adapter.
+
 - No Compound Engineering skills or agents, directly or indirectly. Reuse the
   exact GPT-6 Sol implementation chats and Matt Pocock implement/TDD/code-review
   workflow. Review Standards and Spec sequentially.
