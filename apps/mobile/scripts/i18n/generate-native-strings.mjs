@@ -6,13 +6,13 @@
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 import fs from "node:fs"
+import { catalogTagsIn } from "./lib/catalogChecks.js"
+import { renderJson, SOURCE_LOCALE } from "./lib/catalogOps.js"
 import { formatWithPrettier } from "./lib/scriptFormat.js"
 
 const HERE = path.dirname(fileURLToPath(import.meta.url))
 const MOBILE = path.resolve(HERE, "../..")
 const REPO = path.resolve(MOBILE, "../..")
-
-const DEFAULT_TAG = "en"
 
 // Catalog key to the Info.plist key that iOS reads before any JS runs.
 const NATIVE_STRINGS = {
@@ -67,13 +67,8 @@ function lookup(catalog, dottedKey) {
 // Each catalog's translated Info.plist values. A value that equals English (a
 // pending key, or an English-only catalog) falls back to Info.plist.
 function localeValues({ messagesDir }) {
-  const english = readJson(path.join(messagesDir, `${DEFAULT_TAG}.json`))
-  const tags = fs
-    .readdirSync(messagesDir)
-    .filter((name) => name.endsWith(".json"))
-    .map((name) => name.slice(0, -".json".length))
-    .filter((tag) => tag !== DEFAULT_TAG)
-    .sort()
+  const english = readJson(path.join(messagesDir, `${SOURCE_LOCALE}.json`))
+  const tags = catalogTagsIn(messagesDir).filter((tag) => tag !== SOURCE_LOCALE)
   const byTag = {}
   for (const tag of tags) {
     const catalog = readJson(path.join(messagesDir, `${tag}.json`))
@@ -99,7 +94,7 @@ function localeValues({ messagesDir }) {
 }
 
 async function formatJson(value, configFile) {
-  return formatWithPrettier(`${JSON.stringify(value, null, 2)}\n`, {
+  return formatWithPrettier(renderJson(value), {
     repoDir: REPO,
     configFile,
     options: { parser: "json" },
@@ -111,14 +106,14 @@ async function expectedOutputs(options) {
   const byTag = localeValues(options)
   const outputs = new Map()
   const locales = {}
-  const fromAppJson = path
+  const outDirFromAppJson = path
     .relative(path.dirname(options.appJson), options.outDir)
     .split(path.sep)
     .join("/")
   for (const [tag, content] of Object.entries(byTag)) {
     const file = path.join(options.outDir, `${tag}.json`)
     outputs.set(file, await formatJson(content, file))
-    locales[tag] = `./${fromAppJson}/${tag}.json`
+    locales[tag] = `./${outDirFromAppJson}/${tag}.json`
   }
   const config = readJson(options.appJson)
   if (Object.keys(locales).length > 0) config.expo.locales = locales
