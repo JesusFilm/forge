@@ -270,6 +270,17 @@ describe("getWatchPageMetadata", () => {
     expect(metadata.openGraph).toMatchObject({
       title: "Life of Jesus (Gospel of John) | Jesus Film Project",
       url: "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html",
+      type: "video.movie",
+      duration: 7200,
+      videos: [
+        {
+          url: "https://player.mux.com/mux-en",
+          secureUrl: "https://player.mux.com/mux-en",
+          type: "text/html",
+          width: 1280,
+          height: 720,
+        },
+      ],
       images: [
         {
           url: "https://image.mux.com/mux-en/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
@@ -280,8 +291,17 @@ describe("getWatchPageMetadata", () => {
       ],
     })
     expect(metadata.twitter).toMatchObject({
+      card: "player",
       title: "Life of Jesus (Gospel of John) | Jesus Film Project",
       description: "Watch the life of Jesus from the Gospel of John.",
+      players: [
+        {
+          playerUrl: "https://player.mux.com/mux-en",
+          streamUrl: "https://cdn.example/jesus-en.m3u8",
+          width: 1280,
+          height: 720,
+        },
+      ],
       images: [
         {
           url: "https://image.mux.com/mux-en/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
@@ -404,6 +424,8 @@ describe("getWatchPageMetadata", () => {
         alt: "Jesus",
       }),
     ])
+    expect(metadata.openGraph).toMatchObject({ type: "video.movie" })
+    expect(metadata.twitter).toMatchObject({ card: "player" })
   })
 
   it("keeps the editorial still when no selected Mux playback id exists", async () => {
@@ -466,6 +488,9 @@ describe("getWatchPageMetadata", () => {
         alt: "Jesus teaching outside",
       }),
     ])
+    expect(metadata.openGraph).toMatchObject({ type: "website" })
+    expect(metadata.openGraph).not.toHaveProperty("videos")
+    expect(metadata.twitter).toMatchObject({ card: "summary_large_image" })
   })
 })
 
@@ -508,6 +533,25 @@ describe("buildWatchVideoMetadataModel", () => {
     studyQuestions: [],
     bibleCitations: [],
   }
+
+  it("uses episode metadata and a Mux player URL for nested episode routes", async () => {
+    const { buildWatchVideoMetadataModel, generateWatchVideoMetadata } =
+      await import("./experience-metadata")
+    const options = {
+      routeSlug: "episode-one",
+      pathLocale: "english",
+      seriesSlug: "the-series",
+      selectedVariant,
+      video,
+    }
+
+    const model = buildWatchVideoMetadataModel(options)
+    const metadata = generateWatchVideoMetadata("en", options)
+
+    expect(model.embedUrl).toBe("https://player.mux.com/mux-life")
+    expect(metadata.openGraph).toMatchObject({ type: "video.episode" })
+    expect(metadata.twitter).toMatchObject({ card: "player" })
+  })
 
   it("uses a trimmed resolved video title for structured data", async () => {
     const { buildWatchVideoMetadataModel } =

@@ -31,6 +31,8 @@ const completeVideo: WatchVideoMetadataModel = {
   inLanguage: "en",
   durationSeconds: 91.4,
   contentUrl: " https://stream.mux.com/life.m3u8\n",
+  embedUrl: "https://player.mux.com/life",
+  openGraphVideoType: "video.movie",
   uploadDate: "2026-06-01",
   captions: [
     {
@@ -57,6 +59,7 @@ describe("watchVideoStructuredDataJson", () => {
       description: "A page-specific story with <script> content.",
       url: "https://www.jesusfilm.org/watch/life.html",
       contentUrl: "https://stream.mux.com/life.m3u8",
+      embedUrl: "https://player.mux.com/life",
       thumbnailUrl: ["https://image.mux.com/pb/thumbnail.jpg?width=1200"],
       inLanguage: "en",
       uploadDate: "2026-06-01T00:00:00.000Z",
@@ -82,7 +85,7 @@ describe("watchVideoStructuredDataJson", () => {
         "startOffset-input": "required name=seek_to_second_number",
       },
     })
-    expect(json).not.toContain("embedUrl")
+    expect(json).toContain('"embedUrl":"https://player.mux.com/life"')
     expect(json).not.toContain("BreadcrumbList")
   })
 
@@ -107,6 +110,17 @@ describe("watchVideoStructuredDataJson", () => {
     expect(international.url).toBe(
       "https://www.jesusfilm.org/watch/life.html/romanian.html",
     )
+  })
+
+  it("omits non-Mux embed URLs from VideoObject data", () => {
+    const payload = JSON.parse(
+      watchVideoStructuredDataJson({
+        ...completeVideo,
+        embedUrl: "https://attacker.example/player",
+      })!,
+    )
+
+    expect(payload).not.toHaveProperty("embedUrl")
   })
 
   it.each([

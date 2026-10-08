@@ -188,8 +188,18 @@ export type WatchVideoMetadataModel = {
   inLanguage: string | null
   durationSeconds: number | null
   contentUrl: string | null
+  embedUrl?: string | null
+  openGraphVideoType?: "video.movie" | "video.episode"
   uploadDate: string | null
   captions: WatchStructuredDataCaption[]
+}
+
+const MUX_PLAYER_WIDTH = 1280
+const MUX_PLAYER_HEIGHT = 720
+
+function buildMuxEmbedUrl(playbackId: string | null | undefined) {
+  const id = trimmedValue(playbackId)
+  return id ? `https://player.mux.com/${encodeURIComponent(id)}` : null
 }
 
 type WatchVideoMetadataOptions = {
@@ -226,6 +236,9 @@ export function buildWatchVideoMetadataModel(
     options.selectedVariant.muxVideo?.playbackId,
     imageAlt,
   )
+  const embedUrl = buildMuxEmbedUrl(
+    options.selectedVariant.muxVideo?.playbackId,
+  )
   const managedSocialImage = buildManagedSocialImage(
     options.video.socialImage,
     imageAlt,
@@ -260,6 +273,8 @@ export function buildWatchVideoMetadataModel(
     inLanguage: options.selectedVariant.language?.bcp47?.trim() || null,
     durationSeconds: options.selectedVariant.duration ?? null,
     contentUrl: options.selectedVariant.hls?.trim() || null,
+    embedUrl,
+    openGraphVideoType: options.seriesSlug ? "video.episode" : "video.movie",
     uploadDate: firstValidDate(
       options.video.publishedAt,
       options.video.localePublishedAt,
@@ -287,11 +302,28 @@ export function generateWatchVideoMetadata(
       url: model.canonicalUrl,
       siteName: "Jesus Film Project",
       locale: getOgLocale(locale),
-      type: "website" as const,
+      type: model.embedUrl
+        ? (model.openGraphVideoType ?? "video.movie")
+        : "website",
       images: [model.image],
+      ...(model.embedUrl && {
+        videos: [
+          {
+            url: model.embedUrl,
+            secureUrl: model.embedUrl,
+            type: "text/html",
+            width: MUX_PLAYER_WIDTH,
+            height: MUX_PLAYER_HEIGHT,
+          },
+        ],
+        ...(model.durationSeconds != null && {
+          duration: Math.floor(model.durationSeconds),
+        }),
+      }),
     },
     twitter: {
-      card: "summary_large_image" as const,
+      card:
+        model.embedUrl && model.contentUrl ? "player" : "summary_large_image",
       site: "@JesusFilm",
       creator: "@JesusFilm",
       title: model.title,
@@ -302,6 +334,18 @@ export function generateWatchVideoMetadata(
           alt: model.image.alt,
         },
       ],
+      ...(model.embedUrl && model.contentUrl
+        ? {
+            players: [
+              {
+                playerUrl: model.embedUrl,
+                streamUrl: model.contentUrl,
+                width: MUX_PLAYER_WIDTH,
+                height: MUX_PLAYER_HEIGHT,
+              },
+            ],
+          }
+        : {}),
     },
     robots: model.noIndex
       ? { index: false, follow: false }
