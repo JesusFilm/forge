@@ -3,7 +3,7 @@ id: "feat-627"
 title: "Translate the iOS Local Network permission prompt"
 owner: "urim"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-09"
 duration: 2
 depends_on: []

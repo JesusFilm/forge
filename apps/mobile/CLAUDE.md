@@ -2487,7 +2487,10 @@ the KD, KTD, R, and U numbers that the source cites.
    `node scripts/i18n/translate-catalogs.mjs` with no mode flag. The command is
    not a `package.json` script, because a new script entry moves the
    fingerprint runtime version.
-3. Commit `en.json`, the changed catalogs, and `i18n/*.json` in the same PR as
+3. After a change to a `NativePermissions` key, run
+   `node scripts/i18n/generate-native-strings.mjs` (see "Native
+   configuration"). A change to its English also goes into `app.json`.
+4. Commit `en.json`, the changed catalogs, and `i18n/*.json` in the same PR as
    the code (KD6).
 
 **Until the first full translation run (U16), no locale catalog exists.** Use
@@ -2618,7 +2621,9 @@ real script still checks every answer and writes every catalog. The code is
    the answer files and run the import again until every locale finishes. The
    command exits 1 while a locale is not finished.
 6. When the export made a new catalog file, run
-   `node scripts/i18n/generate-catalog-index.mjs`. Then run the CI suites.
+   `node scripts/i18n/generate-catalog-index.mjs`. When the run translated a
+   `NativePermissions` key, run `node scripts/i18n/generate-native-strings.mjs`.
+   Then run the CI suites.
 
 **Large runs.** A request file for a full catalog is about 280 KB, which is
 more than one file read shows. Read it in parts with `jq`:
@@ -2757,6 +2762,24 @@ runs the pre-install hook before `pnpm install`.
   drop library translations in region folders, such as the Cast framework's
   `values-zh-rCN`. The Info.plist key makes iOS always show the per-app
   language row.
+- **Text in iOS permission alerts (feat-627).** iOS reads the Local Network
+  sentence (`NSLocalNetworkUsageDescription`) from `Info.plist`, or from
+  `<tag>.lproj/InfoPlist.strings`, before any JS runs. So the catalogs alone
+  cannot translate it. The source is `NativePermissions.localNetworkUsageDescription`
+  in `messages/en.json`, and it must equal the `ios.infoPlist` value in
+  `app.json`. `node scripts/i18n/generate-native-strings.mjs [--check]` writes
+  `i18n/native/<tag>.json` and the `expo.locales` map in `app.json`, and
+  prebuild turns each file into `InfoPlist.strings`.
+  - A catalog whose text equals English (pending, or English-only) gets no
+    file, so iOS shows the English text from `Info.plist`.
+  - Each file keeps the key under `ios`. Expo also gives top-level keys to
+    Android as string resources.
+  - Expo writes the text into `InfoPlist.strings` with no escaping, so the
+    script refuses a `"`, a `\`, or a line break.
+  - `src/i18n/__tests__/nativeStrings.guard.test.js` runs `--check`, compares
+    the English with `app.json`, and reads the files through Expo's own
+    locale resolver. Only a native build carries this text; an over-the-air
+    update cannot change it.
 - **Never add a `forcesRTL` key to the plugin options, not even `false`.** The
   plugin writes the key for any non-null value, and iOS then forces
   right-to-left on an Arabic, Farsi, or Urdu phone. The guard rejects it. With

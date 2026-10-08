@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Aplikacija uporablja vaše lokalno omrežje za iskanje naprav za pretakanje, da lahko predvajate videoposnetke na svojem televizorju."
+  }
+}
