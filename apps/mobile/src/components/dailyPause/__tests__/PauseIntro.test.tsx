@@ -33,8 +33,10 @@ jest.mock("../../../hooks/useReduceMotion", () => ({
 
 /** iPhone 17 Pro, in points. */
 const WINDOW = { width: 402, height: 874, scale: 3, fontScale: 1 }
-/** The body is 874 - 62 - 36 = 776 tall, and the stepper is 220 tall. */
-const CENTERED_SHIFT = (776 - 220) / 2
+/** The stepper rests below the close's row: 62 + 44 + 8 - 62 = 52 pt into the
+ *  body. The body is 874 - 62 - 36 = 776 tall, and the stepper row is 30. */
+const STEPPER_TOP = 52
+const CENTERED_SHIFT = (776 - 30) / 2 - STEPPER_TOP
 
 let renderer: TestInstance | null = null
 
@@ -150,6 +152,8 @@ describe.each(SCREENS)("the $name screen", (screen) => {
   it("starts the stepper at the center of the screen, with the content hidden", async () => {
     const root = await render(screen)
     expect(stepperShift(root)).toBe(CENTERED_SHIFT)
+    const [stepper] = hosts(root, "pause-intro-stepper")
+    expect(style(stepper!).paddingTop).toBe(STEPPER_TOP)
     const { row, cover } = buttonRow(root)
     expect(style(content(root)).opacity).toBe(0)
     expect(cover).toBe(1)
@@ -174,7 +178,7 @@ describe.each(SCREENS)("the $name screen", (screen) => {
     act(() => {
       onLayout({ nativeEvent: { layout: { height: 300 } } })
     })
-    expect(stepperShift(root)).toBe(300 - 220)
+    expect(stepperShift(root)).toBe(300 - STEPPER_TOP - 30)
   })
 
   it("holds the pause timer until the content shows, then starts it", async () => {

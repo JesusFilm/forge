@@ -61,7 +61,7 @@ export function PrayScreen({
         <IntroStepper intro={intro}>
           <StepperPills arrival="pray" font={font} onSelect={onJump} />
         </IntroStepper>
-        <View style={styles.ringGap} />
+        <View style={styles.spacer} />
         <IntroContent intro={intro} style={styles.content}>
           <FinishRing countdown={countdown} finish={finish} font={font} />
           <Text style={[styles.prompt, pauseText(font, pauseType.reading)]}>
@@ -71,7 +71,6 @@ export function PrayScreen({
             {devotional.attribution}
           </Text>
         </IntroContent>
-        <View style={styles.buttonGap} />
       </ScrollView>
       <IntroCovered intro={intro} style={styles.buttonRow}>
         <FinishButton
@@ -86,20 +85,28 @@ export function PrayScreen({
 }
 
 const styles = StyleSheet.create({
-  // It takes its content's height, and it shrinks and scrolls only when the
-  // content does not fit, so the free space stays below Amen as in the frame.
-  scroll: { flexGrow: 0, alignSelf: "stretch" },
+  // Reflect's layout, so Amen sits where Continue does (the owner,
+  // 2026-10-08): the spacer pushes the prayer down onto the button.
+  scroll: { flex: 1, alignSelf: "stretch" },
   scrollContent: {
+    flexGrow: 1,
     alignItems: "center",
     gap: pauseSpacing.screenGap,
   },
+  spacer: { flex: 1 },
   content: {
     alignSelf: "stretch",
     alignItems: "center",
     gap: pauseSpacing.screenGap,
   },
-  buttonRow: { alignSelf: "stretch", alignItems: "center" },
-  ringGap: { height: pauseSpacing.prayRingGap },
+  // The body's own gap already sits above the button, so the margin adds
+  // only the rest of the gap.
+  buttonRow: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    marginTop: pauseSpacing.pauseButtonGap - pauseSpacing.screenGap,
+    marginBottom: pauseSpacing.pauseButtonLift,
+  },
   prompt: {
     alignSelf: "stretch",
     color: pauseColors.ink,
@@ -108,5 +115,4 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     color: pauseColors.accent,
   },
-  buttonGap: { height: pauseSpacing.prayButtonGap },
 })

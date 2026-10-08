@@ -10,9 +10,13 @@ import {
   pauseSpacing,
   pauseType,
 } from "../../lib/dailyPause/theme"
-import { useTopRowTop, type TopRowPlacement } from "./useTopRowTop"
+import {
+  TOP_ROW_HEIGHT,
+  useTopRowTop,
+  type TopRowPlacement,
+} from "./useTopRowTop"
 
-const TARGET_HEIGHT = 44
+const TARGET_HEIGHT = TOP_ROW_HEIGHT
 const GLYPH_SIZE = 16
 const SIDE_PADDING = 10
 

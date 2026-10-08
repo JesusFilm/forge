@@ -132,8 +132,8 @@ const styles = StyleSheet.create({
   buttonRow: {
     alignSelf: "stretch",
     alignItems: "center",
-    marginTop: pauseSpacing.reflectButtonGap - pauseSpacing.screenGap,
-    marginBottom: pauseSpacing.reflectButtonLift,
+    marginTop: pauseSpacing.pauseButtonGap - pauseSpacing.screenGap,
+    marginBottom: pauseSpacing.pauseButtonLift,
   },
   quote: {
     color: pauseColors.accent,
