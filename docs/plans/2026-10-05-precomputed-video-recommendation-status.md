@@ -31,6 +31,20 @@ select a remote machine's Codex account. Included subscription use has no
 separate model API charge; the report must distinguish consumed allowance,
 subscription fees and possible paid credits instead of labeling tokens free.
 
+Manual-run requirements are committed at `21dac9230`. A read-only local Codex
+app-server probe returned a stable ChatGPT account and backend account ID with
+fresh quota windows; only a hashed account reference was retained. Those reads
+do not expose a provider-enforced included-only spending cap. The concrete
+runner and durable provenance still require implementation and verification.
+
+The subsequent docs CI run at `b25bd89fa` failed the native GA concurrency
+fixture's fixed 10ms overlap assumption (observed peak one, expected two).
+The fixture now waits for a second source request after qualification, retaining
+the exact concurrency and durable-receipt assertions. All 33 native PostgreSQL
+build-through-Admin cases pass locally with this repair. Earlier green CI below
+applies only to its named application commit; the latest head is not yet claimed
+CI-green.
+
 Published integration `0f6d65170d2b39a1b6f39484392e6f946e492448` has 101
 successful and three skipped CheckRuns, with two successful Railway status
 contexts and no production deployment. After reviewed executable pins, lock

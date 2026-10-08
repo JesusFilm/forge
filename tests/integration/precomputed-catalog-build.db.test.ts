@@ -2748,9 +2748,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
       const connected = dependencies()
       const writes: Array<Record<string, unknown>> = []
+      let qualificationComplete = false
       const ingest: SourceIngest = async (raw) => {
         writes.push(raw as Record<string, unknown>)
-        return connected.ingest(raw)
+        const result = await connected.ingest(raw)
+        if ((raw as Record<string, unknown>).action === "history_qualification")
+          qualificationComplete = true
+        return result
       }
       const baseModel = controlledModel(targetId, [])
       const model: StructuredModel = {
@@ -2789,7 +2793,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
               activeGa += 1
               peakGa = Math.max(peakGa, activeGa)
               try {
-                await new Promise((resolve) => setTimeout(resolve, 10))
+                // Hold the first source request until another is admitted.
+                // A fixed sleep races slower PostgreSQL source claims in CI.
+                // Qualification requests are sequential and must pass first.
+                if (qualificationComplete && peakGa < 2)
+                  await vi.waitFor(() => expect(peakGa).toBe(2), {
+                    timeout: 5_000,
+                  })
                 return await ga.fetchImpl(...args)
               } finally {
                 activeGa -= 1
