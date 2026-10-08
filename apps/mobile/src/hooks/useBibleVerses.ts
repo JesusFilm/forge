@@ -4,6 +4,7 @@ import type { AdminLanguageForms } from "../i18n/adminLanguage"
 import { useT } from "../i18n/useT"
 import { getApolloClient } from "../lib/apolloClient"
 import { isBsbVerseRef } from "../lib/bible/position/snapshot"
+import type { TextDirection } from "../lib/bible/text/types"
 import type { VerseRef } from "../lib/bible/versification/convert"
 import { deriveBibleCardArt, type BibleCardArt } from "../lib/bibleCardArt"
 import {
@@ -100,6 +101,12 @@ export type BibleQuoteBlock = {
   /** The language of the verse, translation, and copyright: the UI's, or `en`
    *  for the English passage (R10). Null when the card shows no passage. */
   textLang: string | null
+  /** A card from the reader's translation: the catalog's direction for the
+   *  verse, reference, and name (KTD7). Null on admin's cards. */
+  verseDirection: TextDirection | null
+  /** A card from the reader's translation: its BCP-47 tag, for the screen
+   *  reader and the reference's upper case (KTD7). Null on admin's cards. */
+  verseLang: string | null
   /** Where "Read full passage" opens the reader, in BSB numbering (KTD17).
    *  Named like `artCandidates`. Null shows no button, whatever the passage. */
   citationStart: VerseRef | null
@@ -516,6 +523,8 @@ export function useBibleVerses(
         translation: passage?.versionTitle ?? null,
         copyright: passage?.copyright ?? null,
         textLang: entry?.lang ?? null,
+        verseDirection: null,
+        verseLang: null,
         citationStart: citationReaderStart(citation),
         loading,
       }
@@ -537,6 +546,8 @@ export function useBibleVerses(
       translation: null,
       copyright: null,
       textLang: null,
+      verseDirection: null,
+      verseLang: null,
       citationStart: null,
       loading: false,
     })

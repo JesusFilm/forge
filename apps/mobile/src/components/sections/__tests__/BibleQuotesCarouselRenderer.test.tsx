@@ -279,6 +279,108 @@ describe("BibleQuotesCarouselRenderer — the passage language", () => {
   })
 })
 
+// Plan 2026-10-08 (KTD7, KTD13): a card from the reader's translation takes
+// its marks from the catalog, not from the UI or `textLang`.
+describe("BibleQuotesCarouselRenderer — a reader-translation card", () => {
+  const KOREAN_CARD: Quote = {
+    ...PASSAGE_QUOTE,
+    reference: "요한복음 3:16",
+    text: "하나님이 세상을 이처럼 사랑하사 독생자를 주셨으니",
+    translation: "한국어 성경",
+    copyright: "public domain",
+    textLang: "ko",
+    verseDirection: "ltr",
+    verseLang: "ko",
+    citationStart: { book: "JHN", chapter: 3, verse: 16 },
+  }
+  const ARABIC_CARD: Quote = {
+    ...KOREAN_CARD,
+    reference: "يُوحَنّا 3:16",
+    text: "لِأَنَّهُ هَكَذَا أَحَبَّ ٱللهُ ٱلْعَالَمَ",
+    translation: "الكتاب المقدس باللغة العربية، فان دايك",
+    textLang: "ar",
+    verseDirection: "rtl",
+    verseLang: "ar",
+  }
+
+  function direction(renderer: TestInstance, needle: string) {
+    const style = flatStyle(findText(renderer, needle))
+    return [style.writingDirection, style.direction]
+  }
+
+  function cardLanguage(renderer: TestInstance, label: string): unknown[] {
+    const cards = renderer.root.findAll(
+      (node) =>
+        node.props.accessible === true &&
+        typeof node.props.accessibilityLabel === "string" &&
+        node.props.accessibilityLabel.startsWith(label),
+    )
+    expect(cards.length).toBeGreaterThan(0)
+    return [...new Set(cards.map((node) => node.props.accessibilityLanguage))]
+  }
+
+  afterEach(() => {
+    mockUiTag = "en"
+  })
+
+  it("marks a Korean card ltr on a Korean UI, read as Korean", () => {
+    mockUiTag = "ko"
+    const renderer = render([KOREAN_CARD])
+
+    for (const needle of ["요한복음 3:16", "하나님이 세상을", "한국어 성경"]) {
+      expect(direction(renderer, needle)).toEqual(["ltr", "ltr"])
+    }
+    expect(cardLanguage(renderer, "요한복음 3:16")).toEqual(["ko"])
+  })
+
+  it("marks an Arabic card rtl on an English UI, with an ltr credit", () => {
+    const renderer = render([ARABIC_CARD])
+
+    for (const needle of [
+      "يُوحَنّا 3:16",
+      "لِأَنَّهُ هَكَذَا",
+      "الكتاب المقدس باللغة العربية",
+    ]) {
+      expect(direction(renderer, needle)).toEqual(["rtl", "rtl"])
+    }
+    expect(direction(renderer, "public domain")).toEqual(["ltr", "ltr"])
+    expect(cardLanguage(renderer, "يُوحَنّا 3:16")).toEqual(["ar"])
+  })
+
+  it("upper-cases a Turkish reference with a dotted capital İ", () => {
+    const renderer = render([
+      {
+        ...KOREAN_CARD,
+        reference: "Elçilerin İşleri 2:38",
+        textLang: "tr",
+        verseLang: "tr",
+      },
+    ])
+
+    expect(findText(renderer, "ELÇİLERİN İŞLERİ 2:38")).toBeDefined()
+  })
+
+  it("caps a long name and credit at 2 lines and keeps the verse", () => {
+    const renderer = render([
+      {
+        ...KOREAN_CARD,
+        translation: "N".repeat(140),
+        copyright: "C".repeat(121),
+      },
+    ])
+
+    expect(findText(renderer, "N".repeat(140))?.props.numberOfLines).toBe(
+      TRANSLATION_MAX_LINES,
+    )
+    expect(findText(renderer, "C".repeat(121))?.props.numberOfLines).toBe(
+      COPYRIGHT_MAX_LINES,
+    )
+    expect(
+      findText(renderer, "하나님이 세상을")?.props.numberOfLines,
+    ).toBeGreaterThan(0)
+  })
+})
+
 describe("BibleQuotesCarouselRenderer — passage cards", () => {
   it("renders the verse, the translation, the copyright and the link", () => {
     const renderer = render([PASSAGE_QUOTE])
