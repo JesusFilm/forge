@@ -6,10 +6,10 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 6, 2026)
 
-- **Total tickets:** 784
+- **Total tickets:** 785
 - **Complete:** 590
 - **Cancelled:** 39
-- **In progress:** 56
+- **In progress:** 57
 - **Not started:** 42
 - **Blocked:** 57
 - **Overdue and open:** 137
@@ -661,6 +661,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-599](platform/feat-599-roadmap-cancelled-status.md)                              | Represent cancelled roadmap work as terminal                                       | nisal      | P1       | 2026-10-02 | 1    | 2026-10-02 | complete    |
 | [feat-604](platform/feat-604-mobile-ui-translation-run-and-device-checks.md)           | Mobile UI first translation run (U16) and open device checks                       | urim       | P1       | 2026-10-06 | 7    | 2026-10-12 | not-started |
 | [feat-611](platform/feat-611-renovate-google-maven-lookup.md)                          | Resolve Android dependencies in Renovate                                           | tataihono  | P1       | 2026-10-06 | 1    | 2026-10-06 | complete    |
+| [feat-633](platform/feat-633-watch-permanent-legacy-url-redirects.md)                  | Return 308 for permanent Watch legacy-URL normalizations                           | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

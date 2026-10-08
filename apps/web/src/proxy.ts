@@ -23,7 +23,10 @@ import {
 } from "@/lib/routes"
 import { getWatchHomepageAvailability } from "@/lib/watch-home-route-admission"
 import { resolveLegacyWatchEpisodeAlias } from "@/lib/watch-route-aliases"
-import { canonicalizeWatchPath } from "@/lib/url-canonicalize"
+import {
+  canonicalizeWatchPath,
+  type CanonicalizeResult,
+} from "@/lib/url-canonicalize"
 import {
   RESERVED_PREFIXES,
   SAFE_SLUG_PATTERN,
@@ -61,6 +64,14 @@ export type ProxyRequest = {
 }
 
 const REDIRECT_CACHE_CONTROL = "private, max-age=0"
+// A PERMANENT legacy-URL normalization (`cache: "long"` from
+// `canonicalizeWatchPath`) is a pure function of the path, so browsers and the
+// edge may share it. The lifetime is deliberately bounded (1 h browser, 1 day
+// shared) so a mistaken normalization drains without a cache purge; the 308
+// status, not this header, is what tells crawlers the move is permanent. Every
+// other redirect — manifest admission, missing homepage, deprecated search,
+// visible internal prefixes, and Rule 5's temporary 307 — stays uncacheable.
+const PERMANENT_REDIRECT_CACHE_CONTROL = "public, max-age=3600, s-maxage=86400"
 const MAX_PATH_LEN = 2048
 const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
 const DEMO_PREFIXES = new Set([
@@ -155,10 +166,22 @@ function splitPath(pathname: string): string[] {
   return pathname.split("/").filter(Boolean)
 }
 
-function buildRedirect(url: URL, status: 301 | 307 | 308): NextResponse {
+function buildRedirect(
+  url: URL,
+  status: 301 | 307 | 308,
+  cacheControl: string = REDIRECT_CACHE_CONTROL,
+): NextResponse {
   const response = NextResponse.redirect(url, status)
-  response.headers.set("Cache-Control", REDIRECT_CACHE_CONTROL)
+  response.headers.set("Cache-Control", cacheControl)
   return response
+}
+
+function canonicalizeCacheControl(
+  cache: Extract<CanonicalizeResult, { kind: "redirect" }>["cache"],
+): string {
+  return cache === "long"
+    ? PERMANENT_REDIRECT_CACHE_CONTROL
+    : REDIRECT_CACHE_CONTROL
 }
 
 function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
@@ -839,7 +862,11 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   if (canonical.kind === "redirect") {
     const url = request.nextUrl.clone()
     url.pathname = canonical.pathname
-    return buildRedirect(url, canonical.status)
+    return buildRedirect(
+      url,
+      canonical.status,
+      canonicalizeCacheControl(canonical.cache),
+    )
   }
 
   if (pathname === "/search") return redirectDeprecatedSearch(request)

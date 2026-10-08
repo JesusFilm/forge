@@ -169,15 +169,16 @@ describe("proxy — Experience draft preview", () => {
 
 // ---------------------------------------------------------------------------
 // Phase 3 canonicalize integration — every row from research §5.4 must
-// produce the exact (status, Location) tuple, AND every redirect must
-// emit Cache-Control: private, max-age=0 for the cutover window.
+// produce the exact (status, Location) tuple. Permanent normalizations are
+// 308 with a bounded public cache; the temporary Rule 5 hop stays a
+// private, max-age=0 307 (FGE-198 / W-069).
 // ---------------------------------------------------------------------------
 
 describe("proxy — canonicalize integration (§5.4)", () => {
-  it("strips trailing slash on /watch root variant → 308", async () => {
+  it("keeps a trailing-slash strip temporary when Rule 5 also fires → 307", async () => {
     const response = await proxy(makeRequest("/foo/"))
-    // /foo/ → Rule 1 (trailing slash) THEN Rule 4 (.html append)
-    // Net redirect; one hop; 307 (not just trailing-slash) because Rule 4 fired.
+    // /foo/ → Rule 1 (trailing slash) THEN Rule 5 (single-segment duplicate).
+    // Net redirect; one hop; 307 because the temporary Rule 5 took part.
     expect(response.status).toBe(307)
     expect(response.headers.get("location")).toContain("/foo.html/foo.html")
   })
@@ -196,9 +197,9 @@ describe("proxy — canonicalize integration (§5.4)", () => {
     )
   })
 
-  it("lowercases uppercase .HTML → 307", async () => {
+  it("lowercases uppercase .HTML → 308", async () => {
     const response = await proxy(makeRequest("/jesus.HTML/english.html"))
-    expect(response.status).toBe(307)
+    expect(response.status).toBe(308)
     expect(response.headers.get("location")).toContain(
       "/jesus.html/english.html",
     )
@@ -206,15 +207,15 @@ describe("proxy — canonicalize integration (§5.4)", () => {
 
   it("canonicalizes language video indexes without suffixing /videos", async () => {
     const response = await proxy(makeRequest("/spanish-latin-american/videos"))
-    expect(response.status).toBe(307)
+    expect(response.status).toBe(308)
     expect(response.headers.get("location")).toContain(
       "/spanish-latin-american.html/videos",
     )
   })
 
-  it("appends missing .html on bare locale segment → 307", async () => {
+  it("appends missing .html on bare locale segment → 308", async () => {
     const response = await proxy(makeRequest("/jesus.html/english"))
-    expect(response.status).toBe(307)
+    expect(response.status).toBe(308)
     expect(response.headers.get("location")).toContain(
       "/jesus.html/english.html",
     )
@@ -226,19 +227,19 @@ describe("proxy — canonicalize integration (§5.4)", () => {
     expect(response.headers.get("location")).toContain("/jesus.html/jesus.html")
   })
 
-  it("appends .html per-segment on two-segment bare → 307", async () => {
+  it("appends .html per-segment on two-segment bare → 308", async () => {
     const response = await proxy(makeRequest("/jesus/english"))
-    expect(response.status).toBe(307)
+    expect(response.status).toBe(308)
     expect(response.headers.get("location")).toContain(
       "/jesus.html/english.html",
     )
   })
 
-  it("resolves chinese-mandarin alias → mandarin-china → 307", async () => {
+  it("resolves chinese-mandarin alias → mandarin-china → 308", async () => {
     const response = await proxy(
       makeRequest("/jesus.html/chinese-mandarin.html"),
     )
-    expect(response.status).toBe(307)
+    expect(response.status).toBe(308)
     expect(response.headers.get("location")).toContain(
       "/jesus.html/mandarin-china.html",
     )
@@ -254,21 +255,54 @@ describe("proxy — canonicalize integration (§5.4)", () => {
     expectNotFoundRewrite(response)
   })
 
-  it("rewrites legacy 4-segment episode shape into canonical 3-segment → 307", async () => {
+  it("rewrites legacy 4-segment episode shape into canonical 3-segment → 308", async () => {
     const response = await proxy(
       makeRequest("/lumo-the-gospel-of-john/wedding-in-cana.html/english.html"),
     )
-    expect(response.status).toBe(307)
+    expect(response.status).toBe(308)
     expect(response.headers.get("location")).toContain(
       "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
     )
   })
 
-  it("emits Cache-Control: private, max-age=0 on every canonicalize redirect", async () => {
-    const response = await proxy(makeRequest("/jesus/english"))
-    expect(response.status).toBe(307)
-    expect(response.headers.get("cache-control")).toBe("private, max-age=0")
+  it.each([
+    ["/jesus.html/", "trailing-slash strip"],
+    ["/videos", "legacy /videos index"],
+    ["/jesus.HTML/english.html", "suffix lowercase"],
+    [
+      "/lumo-the-gospel-of-john/wedding-in-cana.html/english.html",
+      "legacy episode shape",
+    ],
+    ["/jesus/english", "per-segment .html append"],
+    ["/jesus.html/the-beginning.html/english.html", "episode-bare contract"],
+    ["/jesus.html/chinese-mandarin.html", "language alias"],
+  ])(
+    "emits a bounded public cache on the permanent %s redirect (%s)",
+    async (path) => {
+      const response = await proxy(makeRequest(path))
+      expect(response.status).toBe(308)
+      expect(response.headers.get("cache-control")).toBe(
+        "public, max-age=3600, s-maxage=86400",
+      )
+    },
+  )
+
+  it("keeps the query string on a long-cached permanent redirect", async () => {
+    const response = await proxy(makeRequest("/jesus/english?utm_source=x"))
+    expect(response.status).toBe(308)
+    const location = new URL(response.headers.get("location") ?? "")
+    expect(location.pathname).toBe("/jesus.html/english.html")
+    expect(location.search).toBe("?utm_source=x")
   })
+
+  it.each(["/jesus", "/foo/", "/chinese-mandarin"])(
+    "keeps the temporary Rule 5 redirect for %s uncacheable",
+    async (path) => {
+      const response = await proxy(makeRequest(path))
+      expect(response.status).toBe(307)
+      expect(response.headers.get("cache-control")).toBe("private, max-age=0")
+    },
+  )
 
   it("reaches a terminal canonical in one hop (idempotence)", async () => {
     // /jesus → /jesus.html/jesus.html (first hop). Re-feeding the output
@@ -485,7 +519,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
 
   it("redirects legacy /videos to /languages", async () => {
     const response = await proxy(makeRequest("/videos"))
-    expect(response.status).toBe(307)
+    expect(response.status).toBe(308)
     expect(response.headers.get("location")).toContain("/languages")
     expect(rewritePath(response)).toBeNull()
   })
@@ -498,6 +532,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     const location = new URL(response.headers.get("location") ?? "")
     expect(location.pathname).toBe("/")
     expect(location.search).toBe("?utm=campaign")
+    expect(response.headers.get("cache-control")).toBe("private, max-age=0")
     expect(rewritePath(response)).toBeNull()
   })
 
@@ -850,7 +885,7 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
   it("never treats a tag-shaped non-language as an internal prefix", async () => {
     const response = await proxy(makeRequest("/en/xyz/videos"))
     expect(rewritePath(response)).toBeNull()
-    expect(response.status).toBe(307)
+    expect(response.status).toBe(308)
   })
 
   // The mirror image of FGE-170: the 404 sentinel renders chrome-language
@@ -1487,12 +1522,14 @@ describe("proxy — visible internal-prefix policy", () => {
       const response = await proxy(makeRequest(visible))
       expect(response.status).toBe(308)
       expect(response.headers.get("location")).toContain(canonical)
+      // Not a canonicalize normalization: stays out of the long-cache tier.
+      expect(response.headers.get("cache-control")).toBe("private, max-age=0")
     }
   })
 
   it("does not misclassify slug-form public URLs as internal prefixes", async () => {
     const response = await proxy(makeRequest("/en/english"))
-    expect(response.status).toBe(307)
+    expect(response.status).toBe(308)
     expect(response.headers.get("location")).toContain("/en.html/english.html")
   })
 
