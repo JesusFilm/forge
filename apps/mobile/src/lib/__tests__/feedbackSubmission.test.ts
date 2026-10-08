@@ -60,6 +60,7 @@ import {
   FEEDBACK_NAME_MAX_LENGTH,
   FEEDBACK_VIDEO_TITLE_MAX_LENGTH,
   buildFeedbackSubmissionInput,
+  feedbackUiLocale,
   classifyFeedbackResult,
   createFeedbackSubmission,
   sendFeedback,
@@ -372,6 +373,47 @@ describe("buildFeedbackSubmissionInput", () => {
       "submissionId",
       "video",
     ])
+  })
+
+  // The sheet says that a translation report sends the app language, and no
+  // other kind says so.
+  it("sends the app language with a translation report only", () => {
+    const translation = buildFeedbackSubmissionInput({
+      ...base,
+      draft: draft({ kind: "TRANSLATION" }),
+      uiLocale: " zh-Hans ",
+    })
+    expect(translation.uiLocale).toBe("zh-Hans")
+
+    for (const kind of ["BROKEN", "IDEA", "OTHER"] as const) {
+      const other = buildFeedbackSubmissionInput({
+        ...base,
+        draft: draft({ kind }),
+        uiLocale: "zh-Hans",
+      })
+      expect("uiLocale" in other).toBe(false)
+    }
+  })
+
+  it("gives the sheet's list the same app language the wire carries", () => {
+    expect(feedbackUiLocale("TRANSLATION", " zh-Hans ")).toBe("zh-Hans")
+    expect(feedbackUiLocale("TRANSLATION", "zh_Hans")).toBeUndefined()
+    expect(feedbackUiLocale("OTHER", "zh-Hans")).toBeUndefined()
+  })
+
+  it.each([
+    ["an underscore", "zh_Hans"],
+    ["markdown", "en](x)"],
+    ["37 characters", "abcdefgh-abcdefgh-abcdefgh-abcdefgh-a"],
+    ["a blank tag", "  "],
+  ])("drops an app language with %s, as admin would refuse it", (_l, tag) => {
+    const input = buildFeedbackSubmissionInput({
+      ...base,
+      draft: draft({ kind: "TRANSLATION" }),
+      uiLocale: tag,
+    })
+    expect("uiLocale" in input).toBe(false)
+    expect(input.message).toBe(VALID_MESSAGE)
   })
 })
 

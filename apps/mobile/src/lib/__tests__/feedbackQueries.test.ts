@@ -52,6 +52,6 @@ describe("SUBMIT_FEEDBACK document", () => {
 // schema, so a lowercase literal cannot compile in the first place.
 describe("FEEDBACK_KINDS", () => {
   it("carries admin's uppercase spellings in tile order", () => {
-    expect(FEEDBACK_KINDS).toEqual(["BROKEN", "IDEA", "OTHER"])
+    expect(FEEDBACK_KINDS).toEqual(["BROKEN", "TRANSLATION", "IDEA", "OTHER"])
   })
 })

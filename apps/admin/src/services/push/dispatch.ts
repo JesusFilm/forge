@@ -30,6 +30,7 @@ import { runPushCampaign } from "@/workflows/pushCampaign"
 import {
   cancelPushCampaign,
   confirmPushSendNow,
+  pinPushTestContentVersion,
   recordPushTestSend,
   schedulePushCampaign,
 } from "./campaign.service"
@@ -44,6 +45,10 @@ import {
   markPushCampaignZonesMissed,
   pausePushCampaignAfterRun,
 } from "./recovery"
+import {
+  formatPushTestRunRefusal,
+  readPushTestRunState,
+} from "./test-run-state"
 import { resolvePushSendConfig } from "./transport"
 import {
   isPushZoneLate,
@@ -155,7 +160,11 @@ async function refuseSecondRun(
     (ledger.status === WorkflowRunStatus.QUEUED ||
       ledger.status === WorkflowRunStatus.RUNNING)
   ) {
-    throw new PushRunAlreadyActiveError(ledger.id)
+    const test = await readPushTestRunState(prisma, campaignId)
+    throw new PushRunAlreadyActiveError(
+      ledger.id,
+      test.running ? formatPushTestRunRefusal(test.receiptsUntil) : undefined,
+    )
   }
 }
 
@@ -199,10 +208,17 @@ export async function dispatchPushCampaignRun(
     },
     prisma,
   )
-  await prisma.pushCampaign.updateMany({
+  // A campaign deleted after the caller's checks has no row to link, so no run
+  // starts for it and the ledger row closes as failed.
+  const { count: linked } = await prisma.pushCampaign.updateMany({
     where: { id: input.campaignId },
     data: { workflowRunLogId: ledger.id },
   })
+  if (linked !== 1) {
+    const missing = new PushNotFoundError("That campaign no longer exists")
+    await markWorkflowRunFailed(ledger.id, missing, prisma).catch(() => {})
+    throw missing
+  }
 
   try {
     const run = await startRun(runPushCampaign, [
@@ -292,14 +308,27 @@ export async function sendPushCampaignNowRun(
   )
 }
 
-/** R10 — the test send that has to precede every real send. */
+/**
+ * R10 and KTD5 — the test send that has to precede every real send, pinned to
+ * the content version the editor's page showed.
+ */
 export async function sendPushCampaignTestRun(
-  input: { campaignId: string; actorId: string },
+  input: {
+    campaignId: string
+    actorId: string
+    expectedContentVersion: number
+  },
   deps?: Deps,
 ): Promise<PushDispatchResult> {
   requireCampaignsEnabled(deps)
   const prisma = client(deps)
   await refuseSecondRun(prisma, input.campaignId)
+  // After the second-run check, so a refused send never moves the pin of the
+  // run already in flight.
+  await pinPushTestContentVersion(prisma, {
+    campaignId: input.campaignId,
+    expectedContentVersion: input.expectedContentVersion,
+  })
   return dispatchPushCampaignRun(
     { campaignId: input.campaignId, actorId: input.actorId, kind: "TEST" },
     deps,

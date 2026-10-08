@@ -45,6 +45,21 @@ const REGION_SCRIPT: Readonly<Record<string, string>> = {
   "ms-CC": "Arab",
 }
 
+// The script of the bare-language catalog, for languages that phones also
+// send in another script. A phone in a different script skips that catalog,
+// so a `pa-PK` (Shahmukhi) phone reads English, not Gurmukhi.
+const CATALOG_SCRIPT: Readonly<Record<string, string>> = {
+  az: "Latn",
+  bs: "Latn",
+  mn: "Cyrl",
+  ms: "Latn",
+  pa: "Guru",
+  sd: "Arab",
+  sr: "Cyrl",
+  uz: "Latn",
+  zh: "Hans",
+}
+
 const RTL_SCRIPTS = new Set(["Arab", "Hebr", "Thaa", "Syrc", "Nkoo", "Adlm"])
 
 // Languages whose default script is right-to-left. A script subtag wins over
@@ -88,7 +103,8 @@ function parseTag(raw: string): ParsedTag | null {
 }
 
 // The first phone entry that matches any catalog wins. Per entry: the exact
-// tag, its script, an inferred script, then the language. No match gives en.
+// tag, its script, an inferred script, then the language unless the scripts
+// differ (CATALOG_SCRIPT). No match gives en.
 export function resolveLocale(
   preferred: readonly string[],
   available: readonly string[],
@@ -103,15 +119,18 @@ export function resolveLocale(
     const { language, script, region } = parsed
     const full = [language, script, region].filter(Boolean).join("-")
     const candidates: [string, LocaleMatch][] = [[full, "exact"]]
+    const inferred =
+      !script && region ? REGION_SCRIPT[`${language}-${region}`] : undefined
     if (script) {
       candidates.push([`${language}-${script}`, "script"])
-    } else if (region) {
-      const inferred = REGION_SCRIPT[`${language}-${region}`]
-      if (inferred) {
-        candidates.push([`${language}-${inferred}`, "inferred_script"])
-      }
+    } else if (inferred) {
+      candidates.push([`${language}-${inferred}`, "inferred_script"])
     }
-    candidates.push([language, "language"])
+    const phoneScript = script ?? inferred
+    const catalogScript = CATALOG_SCRIPT[language]
+    if (!phoneScript || !catalogScript || phoneScript === catalogScript) {
+      candidates.push([language, "language"])
+    }
     for (const [candidate, match] of candidates) {
       const tag = lookup(candidate)
       if (tag) return { tag, match, matchedIndex: index }

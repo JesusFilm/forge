@@ -12,12 +12,15 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 import { prisma } from "@/db/client"
+import { getAdminMessages } from "@/i18n/server"
 import { countPushAudience } from "@/services/push/audience.service"
 import {
   createPushCampaignDraft,
+  deletePushCampaign,
   updatePushCampaign,
 } from "@/services/push/campaign.service"
 import {
+  readPushActorNames,
   readPushCampaignDetail,
   searchPushDestinations,
   type PushDestinationOption,
@@ -28,7 +31,11 @@ import {
   sendPushCampaignNowRun,
   sendPushCampaignTestRun,
 } from "@/services/push/dispatch"
-import { PushServiceError } from "@/services/push/errors"
+import {
+  PushNotFoundError,
+  PushServiceError,
+  PushStaleContentVersionError,
+} from "@/services/push/errors"
 import {
   addPushTestDevice,
   removePushTestDevice,
@@ -40,13 +47,16 @@ import {
   pushCampaignPath,
   type PushActionState,
 } from "./components/action-state"
+import { formatPushActorMessage } from "./components/campaign-view"
 import { requirePushPrincipal } from "./access"
 
 const DESTINATION_KINDS = ["VIDEO", "SERIES", "EXPERIENCE"] as const
 type PushDestinationKindInput = (typeof DESTINATION_KINDS)[number]
 
-function ok(message: string): PushActionState {
-  return { status: "ok", message }
+function ok(message: string, contentVersion?: number): PushActionState {
+  return contentVersion === undefined
+    ? { status: "ok", message }
+    : { status: "ok", message, contentVersion }
 }
 
 function refuse(reason: string): PushActionState {
@@ -67,6 +77,54 @@ async function requirePushActor(): Promise<string> {
 function toRefusal(error: unknown): PushActionState {
   if (error instanceof PushServiceError) return refuse(error.message)
   throw error
+}
+
+/**
+ * R34 and KTD15 — names the newer change: who made the last change and when,
+ * then the agent write when there is one. It returns a state, not a throw,
+ * because a production server action hides a thrown error's message.
+ */
+async function toStaleRefusal(
+  campaignId: string,
+  error: PushStaleContentVersionError,
+): Promise<PushActionState> {
+  const [messages, current, names] = await Promise.all([
+    getAdminMessages(),
+    readPushCampaignDetail(prisma, campaignId),
+    readPushActorNames(prisma, [error.lastActorId]),
+  ])
+  const review = messages.pages.pushCampaigns.review
+  const lastActor =
+    (error.lastActorId && names.get(error.lastActorId)) || review.unknownPerson
+  const marker = current?.aiMarker
+  const sentences = [
+    formatPushActorMessage(review.staleChange, lastActor, error.updatedAt),
+    ...(marker
+      ? [
+          formatPushActorMessage(
+            review.aiMarker,
+            marker.actorName,
+            marker.writtenAt,
+          ),
+        ]
+      : []),
+    review.staleNextStep,
+  ]
+  return {
+    status: "stale",
+    reason: sentences.join(" "),
+    contentVersion: error.currentContentVersion,
+  }
+}
+
+async function toWriteRefusal(
+  campaignId: string,
+  error: unknown,
+): Promise<PushActionState> {
+  if (error instanceof PushStaleContentVersionError) {
+    return toStaleRefusal(campaignId, error)
+  }
+  return toRefusal(error)
 }
 
 function text(formData: FormData, name: string): string {
@@ -107,6 +165,12 @@ function readCopies(formData: FormData) {
   return copies
 }
 
+/** R34 — the content version the page loaded, or null when the form has none. */
+function readContentVersion(formData: FormData): number | null {
+  const value = text(formData, "contentVersion")
+  return /^\d+$/.test(value) ? Number(value) : null
+}
+
 function readDestinationKind(value: string): PushDestinationKindInput | null {
   return (DESTINATION_KINDS as readonly string[]).includes(value)
     ? (value as PushDestinationKindInput)
@@ -138,10 +202,9 @@ export async function createCampaignAction(): Promise<void> {
 }
 
 /**
- * R6 to R8 — the words, the destination, and the audience in one save.
- *
- * Copy rows are replaced wholesale, so a row the editor removed is deleted by
- * arriving absent. A tested campaign returns to draft inside the service.
+ * R6 to R8 — one save of the words, destination, and audience. The copy rows are a
+ * set, so a removed row is deleted. A real change returns TESTED to DRAFT, a no-op
+ * keeps the status (R36), and a save from an older page is refused (R34).
  */
 export async function saveCampaignAction(
   _previous: PushActionState,
@@ -150,6 +213,10 @@ export async function saveCampaignAction(
   const actorId = await requirePushActor()
   const campaignId = text(formData, "campaignId")
   if (!campaignId) return refuse("This form carries no campaign")
+  const expectedContentVersion = readContentVersion(formData)
+  if (expectedContentVersion === null) {
+    return refuse("This form carries no campaign version. Reload the page.")
+  }
 
   const copies = readCopies(formData)
   if (copies.length === 0) return refuse("Write the English copy first")
@@ -158,10 +225,13 @@ export async function saveCampaignAction(
   const destinationSlug = text(formData, "destinationSlug")
   const byCountry = text(formData, "audienceScope") === "COUNTRIES"
 
+  let written: boolean
+  let contentVersion: number
   try {
-    await updatePushCampaign(prisma, {
+    const result = await updatePushCampaign(prisma, {
       campaignId,
       actorId,
+      expectedContentVersion,
       update: {
         copies,
         ...(destinationKind && destinationSlug
@@ -174,17 +244,25 @@ export async function saveCampaignAction(
         },
       },
     })
+    written = result.written
+    contentVersion = result.after.contentVersion
   } catch (error) {
-    return toRefusal(error)
+    return toWriteRefusal(campaignId, error)
   }
 
   revalidateCampaign(campaignId)
   return ok(
-    "Saved. This campaign is a draft again, so test it before you send it.",
+    written
+      ? "Saved. This campaign is a draft again, so test it before you send it."
+      : "Nothing changed, so the campaign keeps its status.",
+    contentVersion,
   )
 }
 
-/** R10 — the test send that has to precede every real send. */
+/**
+ * R10 — the test send that has to precede every real send. It carries the
+ * version the page loaded, so a test from a stale page is refused (KTD5).
+ */
 export async function sendTestAction(
   _previous: PushActionState,
   formData: FormData,
@@ -192,11 +270,19 @@ export async function sendTestAction(
   const actorId = await requirePushActor()
   const campaignId = text(formData, "campaignId")
   if (!campaignId) return refuse("This form carries no campaign")
+  const expectedContentVersion = readContentVersion(formData)
+  if (expectedContentVersion === null) {
+    return refuse("This form carries no campaign version. Reload the page.")
+  }
 
   try {
-    await sendPushCampaignTestRun({ campaignId, actorId })
+    await sendPushCampaignTestRun({
+      campaignId,
+      actorId,
+      expectedContentVersion,
+    })
   } catch (error) {
-    return toRefusal(error)
+    return toWriteRefusal(campaignId, error)
   }
 
   revalidateCampaign(campaignId)
@@ -298,6 +384,28 @@ export async function cancelCampaignAction(
   return ok(
     `Cancelled. ${zonesCancelled} zone(s) that had not started are not sent.`,
   )
+}
+
+/**
+ * Deletes the campaign and its report, then opens the list. A campaign that is
+ * already gone counts as deleted, so a second tab lands on the list too.
+ */
+export async function deleteCampaignAction(
+  _previous: PushActionState,
+  formData: FormData,
+): Promise<PushActionState> {
+  const actorId = await requirePushActor()
+  const campaignId = text(formData, "campaignId")
+  if (!campaignId) return refuse("This form carries no campaign")
+
+  try {
+    await deletePushCampaign(prisma, { campaignId, actorId })
+  } catch (error) {
+    if (!(error instanceof PushNotFoundError)) return toRefusal(error)
+  }
+
+  revalidateCampaign(campaignId)
+  redirect(PUSH_CAMPAIGNS_PATH)
 }
 
 /** The report re-aggregates on every read, so a refresh is a revalidation. */

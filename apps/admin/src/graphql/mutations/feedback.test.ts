@@ -142,7 +142,12 @@ describe("schema surface", () => {
         .getValues()
         .map((value) => value.name)
         .sort()
-    expect(names("FeedbackKind")).toEqual(["BROKEN", "IDEA", "OTHER"])
+    expect(names("FeedbackKind")).toEqual([
+      "BROKEN",
+      "IDEA",
+      "OTHER",
+      "TRANSLATION",
+    ])
     expect(names("FeedbackPlatform")).toEqual(["ANDROID", "IOS"])
     // DAILY_CAP is a SEPARATE value from RATE_LIMITED on purpose (KD10): the
     // phone renders one message for both, so collapsing them here would leave
@@ -231,6 +236,24 @@ describe("accepting a submission", () => {
       },
     })
   })
+
+  it("carries a translation report and its app language through, trimmed", async () => {
+    expect(
+      await answer({
+        ...VALID_INPUT,
+        kind: "TRANSLATION",
+        uiLocale: " zh-Hans ",
+      }),
+    ).toEqual({ accepted: true, refusal: null })
+
+    expect(createLinearFeedbackIssueMock).toHaveBeenCalledWith({
+      submissionId: VALID_INPUT.submissionId,
+      kind: "TRANSLATION",
+      message: MESSAGE,
+      platform: "IOS",
+      uiLocale: "zh-Hans",
+    })
+  })
 })
 
 describe("input bounds (KTD7, AE14)", () => {
@@ -242,6 +265,13 @@ describe("input bounds (KTD7, AE14)", () => {
     ["a malformed email", { email: "ana@@example" }],
     ["a 255-character email", { email: `${"a".repeat(246)}@mail.com` }],
     ["a malformed submission id", { submissionId: "not-a-uuid" }],
+    ["a ui locale with an underscore", { uiLocale: "zh_Hans" }],
+    ["a ui locale that carries markdown", { uiLocale: "en](x)" }],
+    // Matches the tag shape, so only the length bound refuses it.
+    [
+      "a 37-character ui locale",
+      { uiLocale: "abcdefgh-abcdefgh-abcdefgh-abcdefgh-a" },
+    ],
     ["a negative position", { video: { title: "Jesus", positionSeconds: -1 } }],
     ["a 201-character video title", { video: { title: "t".repeat(201) } }],
     [

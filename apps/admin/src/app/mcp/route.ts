@@ -10,6 +10,7 @@ import { getAdminMcpResourceUrl } from "@/mcp/admin-mcp-metadata"
 import { ADMIN_MCP_TOOLS, findAdminMcpTool } from "@/mcp/admin-mcp-tools"
 import { ExperienceLocaleMcpService } from "@/services/experience-locale-mcp.service"
 import { ExperienceMcpService } from "@/services/experience-mcp.service"
+import { PushCampaignMcpService } from "@/services/push-campaign-mcp.service"
 import {
   ConcurrentModificationError,
   ExperienceDuplicationError,
@@ -109,6 +110,7 @@ async function handleJsonRpc(request: JsonRpcRequest, user: Principal) {
           name: tool.name,
           description: tool.description,
           inputSchema: tool.inputSchema,
+          annotations: tool.annotations,
         })),
       },
     }
@@ -122,6 +124,7 @@ async function handleJsonRpc(request: JsonRpcRequest, user: Principal) {
       const services = {
         locale: new ExperienceLocaleMcpService(prisma),
         experience: new ExperienceMcpService(prisma),
+        push: new PushCampaignMcpService(prisma),
       }
       const result = await callAdminMcpTool(services, tool.name, {
         input: getToolArguments(request.params),
@@ -148,6 +151,7 @@ async function callAdminMcpTool(
   services: {
     locale: ExperienceLocaleMcpService
     experience: ExperienceMcpService
+    push: PushCampaignMcpService
   },
   name: string,
   args: { input: unknown; user: Principal },
@@ -183,6 +187,21 @@ async function callAdminMcpTool(
   }
   if (name === "experience.generate") {
     return services.experience.generateExperience(args)
+  }
+  if (name === "push.language.search") {
+    return services.push.searchLanguages(args)
+  }
+  if (name === "push.destination.search") {
+    return services.push.searchDestinations(args)
+  }
+  if (name === "push.audience.count") return services.push.countAudience(args)
+  if (name === "push.campaign.list") return services.push.listCampaigns(args)
+  if (name === "push.campaign.read") return services.push.readCampaign(args)
+  if (name === "push.campaign.create") {
+    return services.push.createCampaign(args)
+  }
+  if (name === "push.campaign.update") {
+    return services.push.updateCampaign(args)
   }
   throw new Error("not_implemented")
 }

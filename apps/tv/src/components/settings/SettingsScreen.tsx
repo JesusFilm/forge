@@ -5,11 +5,14 @@ import { useFocusEffect, useRouter } from "expo-router"
 import { useCallback, useMemo, useRef } from "react"
 import {
   Animated,
+  BackHandler,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
+  ScrollView,
+  TVEventControl,
 } from "react-native"
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -28,6 +31,22 @@ const ICON_SIZE = Math.round(scale(26))
 
 export function SettingsScreen() {
   const router = useRouter()
+  const leaveSettings = useCallback(() => router.dismissTo("/"), [router])
+  useFocusEffect(
+    useCallback(() => {
+      const back = BackHandler.addEventListener("hardwareBackPress", () => {
+        leaveSettings()
+        return true
+      })
+      if (Platform.OS === "ios" && Platform.isTV)
+        TVEventControl.enableTVMenuKey()
+      return () => {
+        back.remove()
+        if (Platform.OS === "ios" && Platform.isTV)
+          TVEventControl.disableTVMenuKey()
+      }
+    }, [leaveSettings]),
+  )
   const { prefs, hydrated, setAutoStart } = useShowcasePrefs()
   const {
     androidPlayerVariant,
@@ -75,8 +94,26 @@ export function SettingsScreen() {
   }, [prefs.autoStart, setAutoStart])
 
   return (
-    <View style={styles.screen}>
+    <ScrollView contentContainerStyle={styles.screen}>
       <Text style={styles.title}>Settings</Text>
+
+      <SettingsRow
+        testID="settings-back-home"
+        icon="chevron-back"
+        label="Back to Home"
+        onPress={leaveSettings}
+        onFocusNode={captureFocusedNode}
+      />
+      <View style={styles.section}>
+        <Text style={styles.sectionHeading}>Watch animations</Text>
+        <SettingsRow
+          testID="settings-animations"
+          icon="sparkles-outline"
+          label="Animations"
+          onPress={() => router.push("/settings/animations")}
+          onFocusNode={captureFocusedNode}
+        />
+      </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionHeading}>Showcase Mode</Text>
@@ -179,7 +216,7 @@ export function SettingsScreen() {
           />
         </View>
       ) : null}
-    </View>
+    </ScrollView>
   )
 }
 
@@ -200,7 +237,7 @@ type SettingsRowProps = {
   hasTVPreferredFocus?: boolean
 }
 
-function SettingsRow({
+export function SettingsRow({
   testID,
   icon,
   label,
@@ -298,10 +335,11 @@ function SettingsRow({
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: WATCH_THEME.below,
     paddingHorizontal: scale(80),
     paddingTop: scale(78),
+    paddingBottom: scale(80),
   },
   title: {
     fontFamily: "System",

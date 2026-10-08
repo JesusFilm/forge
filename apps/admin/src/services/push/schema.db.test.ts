@@ -419,6 +419,29 @@ describe.skipIf(env.PUSH_DB_TEST !== "1")(
         },
       ])
     })
+
+    it("starts a new campaign at content version 0 with no test pin or AI marker", async () => {
+      await prisma.pushCampaign.create({
+        data: { id: `${PREFIX}campaign_new` },
+      })
+
+      expect(
+        await prisma.pushCampaign.findUnique({
+          where: { id: `${PREFIX}campaign_new` },
+          select: {
+            contentVersion: true,
+            lastTestContentVersion: true,
+            aiLastActorId: true,
+            aiLastWrittenAt: true,
+          },
+        }),
+      ).toEqual({
+        contentVersion: 0,
+        lastTestContentVersion: null,
+        aiLastActorId: null,
+        aiLastWrittenAt: null,
+      })
+    })
   },
 )
 

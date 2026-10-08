@@ -95,7 +95,7 @@ export function Inspector({
               session.seek(i.startFrame)
             }}
           >
-            <strong>{itemLabel(i).slice(0, 100)}</strong>
+            <strong>{itemLabel(i, doc).slice(0, 100)}</strong>
             <span>
               {(i.startFrame / doc.fps).toFixed(1)}s ·{" "}
               {(i.durationInFrames / doc.fps).toFixed(1)}s
@@ -228,6 +228,85 @@ export function Inspector({
           </>
         )}
         {item.kind === "video" && (
+          <NumberField
+            label="Clip speed"
+            value={item.playbackRate ?? 1}
+            min={0.25}
+            max={4}
+            step={0.05}
+            onChange={(playbackRate) =>
+              change((d) => {
+                if (playbackRate < 0.25 || playbackRate > 4) return d
+                const durationInFrames = Math.max(
+                  1,
+                  Math.round(
+                    ((item.source.endMs - item.source.startMs) * d.fps) /
+                      (1000 * playbackRate),
+                  ),
+                )
+                return {
+                  ...d,
+                  durationInFrames: Math.max(
+                    d.durationInFrames,
+                    item.startFrame + durationInFrames,
+                  ),
+                  items: d.items.map((i) =>
+                    i.id === item.id
+                      ? { ...item, playbackRate, durationInFrames }
+                      : i,
+                  ),
+                }
+              })
+            }
+          />
+        )}
+        {component && (
+          <>
+            <label>
+              Component name
+              <input
+                aria-label="Component name"
+                maxLength={200}
+                key={component.versionId + (component.name ?? "")}
+                defaultValue={component.name ?? component.versionId}
+                onBlur={(e) => {
+                  const name = e.target.value.trim()
+                  if (name)
+                    change((d) => ({
+                      ...d,
+                      components: d.components.map((c) =>
+                        c.versionId === component.versionId
+                          ? { ...c, name }
+                          : c,
+                      ),
+                    }))
+                }}
+              />
+            </label>
+            <label>
+              Timeline section
+              <select
+                aria-label="Timeline section"
+                value={itemGroup(item, doc) === "Text" ? "text" : "video"}
+                onChange={(e) => {
+                  const category = e.target.value as "text" | "video"
+                  change((d) => ({
+                    ...d,
+                    components: d.components.map((c) =>
+                      c.versionId === component.versionId
+                        ? { ...c, category }
+                        : c,
+                    ),
+                  }))
+                }}
+              >
+                <option value="text">Text</option>
+                <option value="video">Video</option>
+              </select>
+            </label>
+          </>
+        )}
+        {item.kind === "video" && (
           <TransitionControls
             item={item}
             document={doc}
@@ -330,16 +409,16 @@ export function Inspector({
               .filter(
                 (t) =>
                   t.id === item.trackId ||
-                  t.kind === groupTrackKind[itemGroup(item)] ||
+                  t.kind === groupTrackKind[itemGroup(item, doc)] ||
                   doc.items.some(
                     (other) =>
                       other.trackId === t.id &&
-                      itemGroup(other) === itemGroup(item),
+                      itemGroup(other, doc) === itemGroup(item, doc),
                   ),
               )
               .map((t, i) => (
                 <option key={t.id} value={t.id}>
-                  {itemGroup(item)} {i + 1}
+                  {itemGroup(item, doc)} {i + 1}
                 </option>
               ))}
           </select>
@@ -363,7 +442,10 @@ export function Inspector({
                     source: {
                       ...i.source,
                       endMs:
-                        i.source.startMs + Math.round((n * 1000) / doc.fps),
+                        i.source.startMs +
+                        Math.round(
+                          (n * 1000 * (i.playbackRate ?? 1)) / doc.fps,
+                        ),
                     },
                   }
                 : { ...i, durationInFrames: n },
@@ -386,7 +468,11 @@ export function Inspector({
                           ...i.source,
                           startMs: Math.round(n * 1000),
                           endMs: Math.round(
-                            n * 1000 + (i.durationInFrames * 1000) / doc.fps,
+                            n * 1000 +
+                              (i.durationInFrames *
+                                1000 *
+                                (i.playbackRate ?? 1)) /
+                                doc.fps,
                           ),
                         },
                       }
@@ -405,7 +491,8 @@ export function Inspector({
                     ? {
                         ...i,
                         durationInFrames: Math.round(
-                          ((n * 1000 - i.source.startMs) * doc.fps) / 1000,
+                          ((n * 1000 - i.source.startMs) * doc.fps) /
+                            (1000 * (i.playbackRate ?? 1)),
                         ),
                         source: { ...i.source, endMs: Math.round(n * 1000) },
                       }

@@ -2,10 +2,14 @@ import "server-only"
 
 import { config } from "./config"
 
-export async function verifyTurnstile(token: string): Promise<boolean> {
+export async function verifyTurnstile(
+  token: string,
+  action = "tv_feedback",
+  required = false,
+): Promise<boolean> {
   const { TURNSTILE_SECRET_KEY: secret, TURNSTILE_HOSTNAMES: hostnames } =
     config()
-  if (!secret) return process.env.NODE_ENV === "development"
+  if (!secret) return !required && process.env.NODE_ENV === "development"
   const allowedHostnames = new Set(
     (hostnames ?? "")
       .split(",")
@@ -32,7 +36,7 @@ export async function verifyTurnstile(token: string): Promise<boolean> {
       "success" in result &&
       result.success === true &&
       "action" in result &&
-      result.action === "tv_feedback" &&
+      result.action === action &&
       "hostname" in result &&
       typeof result.hostname === "string" &&
       allowedHostnames.has(result.hostname)
