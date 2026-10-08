@@ -18,6 +18,22 @@ cost in the API implementation. The US$200/400 figures were illustrative API
 token budgets, not measured forecasts or authorization to resume that spending.
 The earlier US$20 discussion was a feasibility target, not a demonstrated price.
 
+The owner's subsequent clarification makes every new build, rebuild and resumed
+run manually initiated. Do not schedule regeneration or trigger it from deploys,
+content/analytics updates, page views, startup or allowance reset. Each authorized
+operator runs the local command using their own signed-in Codex account and
+subscription. A browser Admin login is not authority to use a shared machine's
+Codex login. Require a matching current local identity before inference, bind the
+run to that identity, and stop if it changes. Record bounded non-secret operator
+provenance. No shared service identity or fallback to the owner's account.
+
+Within included subscription allowance there is no separate model API charge.
+The paid subscription and consumed allowance still have value; existing credits
+or credit-based plans may incur additional charges. Report the billing basis as
+subscription allowance, never simply "$0 tokens." Admission must not count paid
+credits as included allowance. A pre-call meter check is not a verified provider
+spend cap; do not promise zero incremental charges beyond what is established.
+
 Product requirements remain unchanged: exact `gpt-6-astra`; every eligible Video;
 complete English transcript per Video Edition or complete non-English fallback;
 qualified Watch GA referrer and engagement evidence; directed relationships,
@@ -52,6 +68,8 @@ does not equate subscription allowance with API token charges.
    output independently. Bound process time, input and output. Retain usage on
    invalid or interrupted responses without inventing a USD charge. A fresh,
    injected allowance reader must fail closed and reserve normal coding usage.
+   Require fresh initiating-operator identity and explicit included-allowance
+   basis; reject mismatched identity, unknown billing or credit-only allowance.
    Test all existing generation-stage schemas and failure paths offline.
 2. Record subscription backend/billing provenance additively before importing
    results as a durable accepted generation. Use a bounded real-catalog pilot
@@ -76,7 +94,7 @@ does not equate subscription allowance with API token charges.
 6. Run the representative comparison and full coverage/capacity checks, then
    make the completed generation available for private Admin review. Keep the
    accepted one-month experiment, live measurement prerequisites and separate
-   manual launch decision. No refresh schedule is enabled by this plan.
+   manual launch decision. Regeneration and resumption remain manual-only.
 
 ## Boundaries and verification
 
@@ -91,8 +109,14 @@ does not equate subscription allowance with API token charges.
   charges. Do not purchase credits or redeem reset credits automatically.
 - A quota pause is incomplete work, not a valid empty recommendation set.
   Unknown-consumption calls must be visible and reconciled before retry.
+  A later allowance reset or process restart does not restart the run. Each
+  manual resume binds the new execution attempt to the initiating operator's
+  own identity and preserves earlier attempts' provenance. Bounded,
+  accounted retries within an active manually initiated run are separate from
+  an automatic rebuild or restart.
 - Cover schema validity, missing/foreign IDs, rejected evidence, incomplete
-  output, unexpected tools, stale allowance, process timeout, lease fencing,
+  output, unexpected tools, stale allowance, changed operator identity,
+  disallowed automatic starts/resumes, process timeout, lease fencing,
   idempotency, cache invalidation and source coverage with focused tests.
   Use native PostgreSQL for new durable batch/lease/transaction claims.
 - Serialize heavy checks with the established validation lock. Keep the running

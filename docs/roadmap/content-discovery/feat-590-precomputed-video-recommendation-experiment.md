@@ -142,6 +142,12 @@ outside Railway and pause on insufficient or unknown allowance without paid API
 fallback. Report tokens, observable subscription usage and elapsed time; do not
 derive a dollar bill from API rates or call an unknown charge zero. See the
 [subscription build plan](../../plans/2026-10-08-precomputed-recommendation-subscription-build.md).
+Every build, rebuild and paused-run resumption requires explicit manual action
+and the initiating person's own locally signed-in Codex subscription. Do not
+regenerate on a schedule, content/analytics change, deployment, startup or quota
+reset, and do not route another operator's request through a shared owner's
+login. Included allowance has no separate model API charge; subscription fees
+and possible credit billing remain distinct from a claim of "$0 tokens."
 Include the user's historical GA data, not just Admin's retained logs.
 GA4 property `320198532` has an existing BigQuery link. Browser reads work in
 `jfp-data-warehouse`, but verified copies contain only March–July 2023 totals

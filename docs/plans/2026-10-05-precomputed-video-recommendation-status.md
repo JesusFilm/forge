@@ -23,6 +23,14 @@ events and 16,949 input/32 output tokens. This proves access only. Worker B owns
 the isolated operator-adapter slice and offline tests; the full build has not
 started, and no paid API fallback is authorized.
 
+The owner further required manual-only builds/rebuilds/resumptions using the
+initiating person's own subscription. The operator adapter is incorporating
+fresh identity/allowance admission; the concrete identity reader and durable
+operator provenance are still implementation seams. An Admin login does not
+select a remote machine's Codex account. Included subscription use has no
+separate model API charge; the report must distinguish consumed allowance,
+subscription fees and possible paid credits instead of labeling tokens free.
+
 Published integration `0f6d65170d2b39a1b6f39484392e6f946e492448` has 101
 successful and three skipped CheckRuns, with two successful Railway status
 contexts and no production deployment. After reviewed executable pins, lock

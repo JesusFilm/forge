@@ -107,10 +107,11 @@ instruction can promote the experiment. Preserve the incumbent for rollback.
 27. As an operator, I want refreshes to reconsider old Videos when new content
     or analytics arrives, so that new connections can improve the whole catalog.
 28. As an operator, I want actual model usage, warehouse query usage, elapsed
-    time, and storage growth reported for the first build, so that I can choose
-    a refresh cadence from evidence.
-29. As an operator, I want no recurring schedule enabled until I choose its
-    frequency, so that the first build determines future operating cost.
+    time, and storage growth reported for the first build, so that I can decide
+    when a manual refresh is worthwhile.
+29. As an operator, I want builds, rebuilds and resumptions to require my manual
+    action and my own Codex subscription, so that no event or another person's
+    action silently consumes my allowance.
 30. As an analyst, I want a stable 50/50 browser assignment, so that repeated
     visits do not drift between strategies during the same test.
 31. As an analyst, I want a frozen experimental generation and control
@@ -260,9 +261,16 @@ instruction can promote the experiment. Preserve the incumbent for rollback.
   separately from API charges; an unavailable dollar cost is not zero. Preserve
   normal coding allowance and pause safely when fresh usage admission fails.
   Do not purchase credits, redeem resets or resume paid API builds automatically.
-  Keep per-request reliability and retention limits. Implement a repeatable
-  refresh entry point; leave scheduling disabled until the user chooses cadence
-  after reviewing the first-run report.
+  Included usage has no separate model API charge; subscription fees and any
+  credit consumption are separate. Do not advertise "$0 tokens" or admit calls
+  using available paid credits as though they were included allowance.
+- Builds, rebuilds and paused-run resumptions require an explicit manual
+  operator action using that person's own locally signed-in Codex account.
+  Bind execution to verified current operator identity and stop on mismatch or
+  identity change. An Admin browser session alone cannot authorize use of a
+  shared operator machine's subscription. Do not run on a schedule or on deploy,
+  content/analytics change, page view, startup or quota reset. Preserve bounded
+  accounted retries inside an active manual run and all retention limits.
 
 ### Admin review and Watch serving
 
