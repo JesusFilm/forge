@@ -122,6 +122,7 @@
     "WatchHomeCategories.seeAll",
     "WatchHomeCategories.title",
     "WatchNotFound.languageDescription",
+    "CollectionDownloadModal.browserFallback",
     "WatchHome.forYou"
   ],
   "intentionallyLocaleNeutral": [
