@@ -1,8 +1,9 @@
 ---
 title: "Kill-switch reach follows its slowest artifact channel — a flag whose off state needs a regenerated native asset cannot ship over the air"
 date: "2026-09-15"
+last_updated: "2026-10-08"
 category: "architecture-patterns"
-module: "apps/mobile (src/lib/splash/animatedSplashEnabled.ts, src/lib/splash/splashSession.ts, scripts/generate-app-icon.mjs, app.json) — the animated-splash kill switch, PR #2296 (open as of this writing)"
+module: "apps/mobile (src/lib/splash/animatedSplashEnabled.ts, src/lib/splash/splashSession.ts, scripts/generate-app-icon.mjs, app.json) — the animated-splash kill switch, PR #2296 (merged 2026-09-15)"
 problem_type: "architecture_pattern"
 component: "tooling"
 severity: "high"
@@ -43,7 +44,7 @@ tags:
 in #2228). It reached TestFlight build 1.0.0 (7). The product lead then did not
 approve it. The task was to disable the animation without deleting the code, and
 to restore the original JFP logo on the native splash. That work is
-PR #2296 on branch `fix/mobile-disable-animated-splash`, open as of this writing.
+PR #2296 (branch `fix/mobile-disable-animated-splash`), merged 2026-09-15.
 
 The disable looks like one line. The flag file is one line:
 
@@ -57,13 +58,13 @@ animation opens on an empty field, so the native splash it hands over from must
 be flat. Turn the animation off and that flat field becomes a logo-less launch.
 The correct disable therefore also changes a committed PNG,
 `apps/mobile/assets/splash-icon.png`, which `app.json` names as the
-`expo-splash-screen` plugin image (`apps/mobile/app.json:106-114`).
+`expo-splash-screen` plugin image (`apps/mobile/app.json:129-136`).
 
 `apps/mobile` ships through two channels with very different latency. `eas update`
 pushes a JavaScript bundle in minutes (`apps/mobile/package.json:16-17` define
 `update:preview` and `update:production`). `eas build` produces a native binary in
 hours, plus store review. The app sets `runtimeVersion.policy: "fingerprint"`
-(`apps/mobile/app.json:46-48`), and an update only reaches a build that carries the
+(`apps/mobile/app.json:59-61`), and an update only reaches a build that carries the
 same runtime version.
 
 So the flag's two halves travel on different channels at different speeds. Nothing
@@ -102,8 +103,8 @@ one that changes the answer.
 
 Do not infer the channel. For an Expo app on the fingerprint policy, the list of
 hashed inputs is readable code. In `@expo/fingerprint` 0.20.13 — the version
-`expo@57.0.22` depends on, and `apps/mobile/package.json:36` pins `expo` at
-`~57.0.22` — the Expo config sourcer does this. The file is
+the `expo` 57.0 line depends on, and `apps/mobile/package.json` pins `expo` at
+`~57.0.x` — the Expo config sourcer does this. The file is
 `build/sourcer/Expo.js` inside the installed package, not a repo path; on a pnpm
 checkout it resolves under
 `node_modules/.pnpm/@expo+fingerprint@0.20.13/node_modules/@expo/fingerprint/`.
@@ -134,8 +135,8 @@ Name the dark window before you merge. Two facts belong in that statement.
 
 **A success exit code is not a reach report.** `eas update` publishes under the
 runtime version it computes from the branch. It does not check that any installed
-build carries that version. Per this session's conclusion, written into
-`apps/mobile/CLAUDE.md:248-259`, the command still exits 0 and reports success
+build carries that version. Per this session's conclusion, written into the
+"Cold-start splash" section of `apps/mobile/CLAUDE.md`, the command still exits 0 and reports success
 while reaching nobody.
 
 **The dark window is not feature-scoped.** Every unrelated JavaScript hotfix
@@ -145,11 +146,11 @@ cannot see this, because it is not about the feature.
 
 ### 4. Record the reach where the next agent reads it
 
-Put it in the app instruction file, not in the PR description. PR #2296 writes it
-into `apps/mobile/CLAUDE.md:179-259` on its branch. That section states what a cold launch does
+Put it in the app instruction file, not in the PR description. PR #2296 wrote it
+into the "Cold-start splash" section of `apps/mobile/CLAUDE.md`. That section states what a cold launch does
 now, which binaries are affected, the exact steps to reverse the change, and the
 open decision with a named owner and a default posture
-(`apps/mobile/CLAUDE.md:255-259`).
+(the section's "Open decision" sentences).
 
 ### A consequence to state, not to discover
 
@@ -219,7 +220,7 @@ update"
 (`docs/plans/2026-09-09-1059-feat-mobile-animated-splash-plan.md:189`); plan review
 corrected it in the same document, because JavaScript-only changes under
 `apps/mobile/src/` and `apps/mobile/app/` do not move the fingerprint runtime
-version (`:194`, and the same rule at `apps/mobile/CLAUDE.md:319`). Both the blanket "nothing
+version (`:194`, and the same rule in `apps/mobile/CLAUDE.md` "Publishing an EAS Update"). Both the blanket "nothing
 can ship" and the blanket "it's just a flag" are wrong for the same reason: they
 answer for the change instead of for each artifact. Split the surface and the
 answer falls out — the JavaScript half is OTA-deliverable today, the regenerated
@@ -252,8 +253,8 @@ spans a channel boundary.
 
 **For Expo apps on a fingerprint runtime version policy**, "cannot carry" means the
 artifact is a fingerprint input. In `apps/mobile` today that includes any file
-named by the `expo-splash-screen` block (`apps/mobile/app.json:106-114`) or the
-`expo-font` block (`apps/mobile/app.json:84-105`), the app icons, any config plugin
+named by the `expo-splash-screen` block (`apps/mobile/app.json:129-136`) or the
+`expo-font` block (`apps/mobile/app.json:100-120`), the app icons, any config plugin
 module, `app.json` itself, and `eas.json`. Read
 `build/sourcer/Expo.js` in the installed `@expo/fingerprint` package to confirm the
 list for your version, and measure with `npx eas-cli fingerprint:generate` from
@@ -287,8 +288,8 @@ JavaScript flag with no asset change is one act. Ship it.
 
 **Apply in both directions.** Re-enabling has the same split, and it fails the
 other way: the flag turns on while the old native asset still carries the symbol,
-so the launch shows a symbol and then blanks it. `apps/mobile/CLAUDE.md:235-246`
-records the three re-enable steps as one PR for exactly this reason.
+so the launch shows a symbol and then blanks it. the "Cold-start splash" section of
+`apps/mobile/CLAUDE.md` records the three re-enable steps as one PR for exactly this reason.
 
 ## Examples
 
@@ -308,7 +309,7 @@ alone, and ship a native build. The JavaScript never draws the animation, so the
 native splash hands over from a flat `#1c1917` field straight to Home. Users get a
 launch with no logo anywhere.
 
-### After — what PR #2296 ties together on its branch
+### After — what PR #2296 ties together
 
 **One flag, one line, one bare literal.**
 `apps/mobile/src/lib/splash/animatedSplashEnabled.ts:1-4`. The comment above it
@@ -323,28 +324,28 @@ export type SplashSessionDeps = {
   animatedSplashEnabled: boolean
 ```
 
-The branch settles the never-plays snapshot synchronously
-(`apps/mobile/src/lib/splash/splashSession.ts:221-231`), reusing
+The session settles the never-plays snapshot synchronously
+(`apps/mobile/src/lib/splash/splashSession.ts:221-229`), reusing
 `endWithoutPlaying()` (`:142-145`) — the same shape the deep-link launch already
 took. `SplashHost` then lowers the native splash on its first commit
-(`apps/mobile/src/components/splash/SplashHost.tsx:124-126`). The app-wide session
+(`apps/mobile/src/components/splash/SplashHost.tsx:123-126`). The app-wide session
 passes the constant, never a literal (`:276-281`). `apps/mobile/app/_layout.tsx`
 and `apps/mobile/app.json` are unchanged.
 
 **The generator reads the same file with the same pattern.**
 
 ```js
-// apps/mobile/scripts/generate-app-icon.mjs:93-96
+// apps/mobile/scripts/generate-app-icon.mjs:96-99
 const ANIMATED_SPLASH_FLAG = path.join(
   MOBILE,
   "src/lib/splash/animatedSplashEnabled.ts",
 )
 ```
 
-`readAnimatedSplashEnabled()` (`:332-350`) matches
+`readAnimatedSplashEnabled()` (`:335-353`) matches
 `/^export const ANIMATED_SPLASH_ENABLED = (true|false)$/gm` and exits non-zero
 unless it finds exactly one declaration, so a second copy inside a comment cannot
-make the script and the app disagree. The branch at `:400-416` emits
+make the script and the app disagree. The branch at `:410-426` emits
 `flatSvg(SIZE, SPLASH_GROUND)` when the flag is on and
 `markSvg(SIZE, WIDTH_SPLASH)` when it is off.
 
@@ -353,7 +354,7 @@ make the script and the app disagree. The branch at `:400-416` emits
 file's single declaration (`:109-111`), the session call site (`:113-121`), the
 generator's file path and regex (`:123-127`), which emission each half of the
 generator branch calls (`:140-147`), and the committed PNG's md5 and IHDR colour
-type per flag state (`:30-34`, `:149-158`). The committed asset on this branch has the md5
+type per flag state (`:30-34`, `:149-158`). The committed asset has the md5
 checksum `b3b28de172a24275e72f0e6abd3a45cf`, which is the `off` pin. That is
 byte-identical to the asset as it stood before #2216: the pre-#2216 copy is not in
 the working tree, so check it from history with
@@ -363,8 +364,10 @@ same checksum.
 ### The paragraph that is the actual learning
 
 The four artifacts above are all recoverable from the code. The reach is not. This
-is what PR #2296 adds to `apps/mobile/CLAUDE.md:248-259`, and it is the shape to
-copy (quoted from that branch; the PR is open as of this writing):
+is what PR #2296 added to the "Cold-start splash" section of
+`apps/mobile/CLAUDE.md`, and it is the shape to copy. It is quoted as merged on
+2026-09-15; the window it describes is time-bound, so read the live section for
+the current state:
 
 > **Until that native build ships, the production channel is dark.** Every
 > `update:production` from `main` targets a runtime version no installed build
@@ -393,21 +396,20 @@ corpus. They are listed here only so a reader of this doc does not repeat them.
   the simulator kept showing the old asset until
   `npx expo prebuild --platform ios` ran. Every `apps/mobile` binary built between
   2026-09-10 and 2026-09-15 carries the flat field. See
-  `apps/mobile/CLAUDE.md:222-234`.
+  "The symbol reaches a binary only through prebuild" in `apps/mobile/CLAUDE.md`.
 - **A warm dev server is not a bundler check.** A live Metro served a
   byte-identical cached bundle after a statically imported asset was deleted, while
   `npx expo export --platform ios` exited 1 and named the importing file
   (`apps/mobile/src/components/splash/SplashSequence.tsx:13-14`). Assert a
   bundler-resolution claim against `expo export`, never against a running dev
-  server. This belongs as a refresh to
+  server. This is written up in
   `docs/solutions/developer-experience/mobile-dev-build-verification-false-signals.md`.
 
-One corpus doc is now stale on a related point and is a separate refresh candidate:
-`docs/solutions/mobile/eas-update-stakeholder-preview-setup.md:55-70` still
-documents `runtimeVersion.policy: "sdkVersion"` for this app, which
-`apps/mobile/app.json:46-48` has since changed to `"fingerprint"`. Its
-"what needs a rebuild" table is correct in spirit but does not name asset contents
-as an input.
+The stakeholder-preview learning,
+`docs/solutions/mobile/eas-update-stakeholder-preview-setup.md`, was refreshed
+after this was written. It marks its `runtimeVersion.policy: "sdkVersion"`
+snippet as superseded by `"fingerprint"`, names asset contents as a fingerprint
+input, and links back here.
 
 ## Related learnings
 
