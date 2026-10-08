@@ -46,7 +46,10 @@ import {
   WATCH_HERO_PRIMARY_ACTION_CLASS,
   WatchHeroOverlay,
 } from "@/components/watch/WatchHeroOverlay"
-import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxHeroPosterUrlAtMaxWidth,
+} from "@/lib/url"
 import {
   applyMuxMaxResolution,
   type MuxMaxResolution,
@@ -142,12 +145,6 @@ function muxStreamUrl(playbackId: string | null) {
   return playbackId ? `https://stream.mux.com/${playbackId}.m3u8` : null
 }
 
-function muxThumbnailUrl(playbackId: string | null, width = 1280) {
-  return playbackId
-    ? `https://image.mux.com/${playbackId}/thumbnail.jpg?width=${width}&height=720&fit_mode=smartcrop`
-    : null
-}
-
 function appendAutoplaySignal(href: string, playbackTimeSeconds = 0): string {
   try {
     const url = new URL(href, "http://watch.local")
@@ -176,19 +173,19 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
   return slides
     .filter((slide) => isWatchHomeIntroEligibleVideoLabel(slide.videoLabel))
     .map((slide) => {
-      const muxThumbnail = muxThumbnailUrl(slide.playbackId)
+      const frameThumbnail = resolveMuxFrameThumbnailUrl(slide.playbackId)
       // Frame-first for the hero, authored-first for the card below. The admin
       // library holds only mobile derivatives for these videos (measured 640x300
       // for `mobileCinematicHigh`), which a full-bleed intro upscales about
-      // fourfold; the Mux frame is 1280x720 from the same warm derivative the
-      // watch-page hero requests. At card size the authored image has pixels to
-      // spare, so it stays preferred there.
+      // fourfold; the 1280x720 Mux poster uses the warm hero recipe. At card
+      // size the authored image has pixels to spare, so it stays preferred
+      // there and the 448x252 Mux frame is its fallback.
       // `||`, not `??`: a present-but-blank `imageUrl` is a real admin shape,
       // and `??` would both keep it and suppress the Mux tier below it.
       const posterUrl =
         resolveMuxHeroPosterUrlAtMaxWidth(slide.playbackId) ||
         slide.imageUrl ||
-        muxThumbnail
+        frameThumbnail
 
       return {
         kind: "video",
@@ -197,8 +194,7 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
         label: slide.eyebrow || slide.label,
         href: slide.href,
         posterUrl,
-        thumbnailUrl:
-          slide.imageUrl ?? muxThumbnailUrl(slide.playbackId, 640) ?? posterUrl,
+        thumbnailUrl: slide.imageUrl ?? frameThumbnail ?? posterUrl,
         imageAlt: slide.imageAlt,
         src: slide.hls ?? muxStreamUrl(slide.playbackId),
         playbackId: slide.playbackId,

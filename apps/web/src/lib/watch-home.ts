@@ -1,5 +1,8 @@
 import type { ErrorLike } from "@apollo/client"
-import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxHeroPosterUrlAtMaxWidth,
+} from "@/lib/url"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
@@ -299,10 +302,6 @@ function labelText(label: string | null | undefined): string {
   return label ? (LABEL_TEXT[label] ?? "Video") : "Video"
 }
 
-function muxThumbnail(playbackId: string | null): string | null {
-  return playbackId ? `https://image.mux.com/${playbackId}/thumbnail.jpg` : null
-}
-
 function adminImageUrl(image: AdminHomeImage) {
   return (
     image.mobileCinematicHigh ??
@@ -392,7 +391,7 @@ function normalizeCard(args: {
   const adminImage = pickAdminImage(args.video.images ?? [])
   const sourceImageUrl = adminImage
     ? adminImageUrl(adminImage)
-    : muxThumbnail(playbackId)
+    : resolveMuxFrameThumbnailUrl(playbackId)
   const imageBlurDataUrl = adminImage?.blurDataUrl ?? null
   const dominantColor = adminImage?.dominantColor ?? null
   const imageUrl = sourceImageUrl
