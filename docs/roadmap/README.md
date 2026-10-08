@@ -217,6 +217,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-563](content-discovery/feat-563-shadow-evaluation-dispatch-recovery.md)                                  | Atomic and recoverable shadow evaluation dispatch                                               | nisal      | P2       | 2026-09-29 | 3    | 2026-10-01 | complete    |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | cancelled   |
 | [feat-590](content-discovery/feat-590-refresh-recommendation-integration-fixtures.md)                          | Refresh stale recommendation integration test fixtures                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
+| [feat-660](content-discovery/feat-660-watch-language-video-hub-seo-payload.md)                                 | Improve Watch language video hub metadata and structured data                                   | urim       | P2       | 2026-10-08 | 2    | 2026-10-09 | in-progress |
 
 ### Media Generation
 
