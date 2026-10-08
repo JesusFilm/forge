@@ -6770,6 +6770,7 @@ model RecommendationPrecomputedGeneration {
   executionAttempts RecommendationPrecomputedExecutionAttempt[]
   contentProfiles RecommendationPrecomputedContentProfile[]
   profileCalls RecommendationPrecomputedProfileCall[]
+  edgeBatchCalls RecommendationPrecomputedEdgeBatchCall[]
   buildSources RecommendationPrecomputedBuildSource[]
   historyCalls RecommendationPrecomputedHistoryCall[]
   buildBudget RecommendationPrecomputedBuildBudget?
@@ -7189,6 +7190,7 @@ model RecommendationPrecomputedExecutionAttempt {
   endReason String? @map("end_reason")
   modelCalls RecommendationPrecomputedModelCall[]
   profileCalls RecommendationPrecomputedProfileCall[]
+  edgeBatchCalls RecommendationPrecomputedEdgeBatchCall[]
 
   @@id([generationId, attemptId])
   @@map("recommendation_precomputed_execution_attempt")
@@ -7223,6 +7225,7 @@ model RecommendationPrecomputedContentProfile {
   updatedAt DateTime @updatedAt @map("updated_at")
   terminalAt DateTime? @map("terminal_at")
   calls RecommendationPrecomputedProfileCall[]
+  edgeSourceMembers RecommendationPrecomputedEdgeBatchMember[]
 
   @@id([generationId, cacheKey])
   @@index([generationId, videoId], map: "precomputed_content_profile_video_idx")
@@ -7264,6 +7267,67 @@ model RecommendationPrecomputedProfileCall {
   @@map("recommendation_precomputed_profile_call")
 }
 
+/// One physical Astra invocation shared by one or two source members. Usage is
+/// recorded here once, never copied to member rows.
+model RecommendationPrecomputedEdgeBatchCall {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  callId String @map("call_id") @db.Uuid
+  attemptId String @map("attempt_id") @db.Uuid
+  executionAttempt RecommendationPrecomputedExecutionAttempt @relation(fields: [generationId, attemptId], references: [generationId, attemptId], onDelete: Restrict)
+  modelId String @map("model_id")
+  backend String
+  promptVersion String @map("prompt_version")
+  schemaVersion String @map("schema_version")
+  inputDigest String @map("input_digest") @db.Char(64)
+  membershipDigest String @map("membership_digest") @db.Char(64)
+  selectedCorpusDigest String @map("selected_corpus_digest") @db.Char(64)
+  candidatePoolDigest String @map("candidate_pool_digest") @db.Char(64)
+  captureRefDigest String? @map("capture_ref_digest") @db.Char(64)
+  spanOfferDigest String @map("span_offer_digest") @db.Char(64)
+  spanOffers Json @map("span_offers") @db.JsonB
+  requestDigest String @map("request_digest") @db.Char(64)
+  startedAt DateTime @map("started_at")
+  status String
+  outputDigest String? @map("output_digest") @db.Char(64)
+  inputTokens Int? @map("input_tokens")
+  outputTokens Int? @map("output_tokens")
+  cachedInputTokens Int? @map("cached_input_tokens")
+  errorCode String? @map("error_code")
+  finishedAt DateTime? @map("finished_at")
+  receiptDigest String? @map("receipt_digest") @db.Char(64)
+  members RecommendationPrecomputedEdgeBatchMember[]
+
+  @@id([generationId, callId])
+  @@map("recommendation_precomputed_edge_batch_call")
+}
+
+/// A fenced source/page in one shared edge call; it carries no token charge.
+model RecommendationPrecomputedEdgeBatchMember {
+  generationId String @map("generation_id")
+  callId String @map("call_id") @db.Uuid
+  call RecommendationPrecomputedEdgeBatchCall @relation(fields: [generationId, callId], references: [generationId, callId], onDelete: Restrict, map: "precomputed_edge_batch_member_call_fk")
+  sourceVideoId String @map("source_video_id")
+  source RecommendationPrecomputedBuildSource @relation(fields: [generationId, sourceVideoId], references: [generationId, sourceVideoId], onDelete: Restrict, map: "precomputed_edge_batch_member_source_fk")
+  leaseToken String @map("lease_token") @db.Uuid
+  checkpointRevision Int @map("checkpoint_revision")
+  pageIndex Int @map("page_index")
+  sourceProfileKey String @map("source_profile_key") @db.Char(64)
+  sourceProfile RecommendationPrecomputedContentProfile @relation(fields: [generationId, sourceProfileKey], references: [generationId, cacheKey], onDelete: Restrict, map: "precomputed_edge_batch_member_profile_fk")
+  candidates Json @db.JsonB
+  candidatePageDigest String @map("candidate_page_digest") @db.Char(64)
+  sourceCandidateCount Int @map("source_candidate_count")
+  sourceCandidateDigest String @map("source_candidate_digest") @db.Char(64)
+  historicalRefDigest String @map("historical_ref_digest") @db.Char(64)
+  applicationState String @map("application_state")
+  appliedRevision Int? @map("applied_revision")
+  resultChoiceCount Int? @map("result_choice_count")
+
+  @@id([generationId, callId, sourceVideoId])
+  @@index([generationId, sourceVideoId, pageIndex, callId], map: "precomputed_edge_batch_member_source_idx")
+  @@map("recommendation_precomputed_edge_batch_member")
+}
+
 /// Source membership and progress are independent of the final immutable
 /// choice set. Leases fence stale producers without storing transcript text.
 model RecommendationPrecomputedBuildSource {
@@ -7285,6 +7349,12 @@ model RecommendationPrecomputedBuildSource {
   updatedAt DateTime @updatedAt @map("updated_at")
   completedAt DateTime? @map("completed_at")
   choices RecommendationPrecomputedBuildChoice[]
+  edgeBatchMembers RecommendationPrecomputedEdgeBatchMember[]
+  edgeSourceCandidateCount Int? @map("edge_source_candidate_count")
+  edgeSourceCandidateDigest String? @map("edge_source_candidate_digest") @db.Char(64)
+  edgeSourceProfileKey String? @map("edge_source_profile_key") @db.Char(64)
+  edgeCandidatePoolDigest String? @map("edge_candidate_pool_digest") @db.Char(64)
+  edgeHistoricalRefDigest String? @map("edge_historical_ref_digest") @db.Char(64)
 
   @@id([generationId, sourceVideoId])
   @@index([generationId, state], map: "recommendation_precomputed_build_source_state_idx")

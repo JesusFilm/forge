@@ -161,5 +161,15 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
       expect(response.status).toBe(413)
     })
+    it("rejects an edge action above the 64 KiB wire ceiling", async () => {
+      const response = await post({
+        action: "edge_batch_status",
+        generationId: "fixture",
+        generationInputDigest: "7".repeat(64),
+        sourceVideoId: "video",
+        padding: "x".repeat(70_000),
+      })
+      expect(response.status).toBe(413)
+    })
   },
 )

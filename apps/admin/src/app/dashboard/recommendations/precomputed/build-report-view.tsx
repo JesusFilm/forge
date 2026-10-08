@@ -96,7 +96,11 @@ export function DurableBuildReportView({ report }: { report: Report }) {
             input tokens reported. Profile work: {attempt.profileCallCount}{" "}
             calls, {attempt.profileInputTokens} input /{" "}
             {attempt.profileOutputTokens} output tokens; cached input{" "}
-            {attempt.profileCachedInputTokens ?? "unreported"}. Account-wide
+            {attempt.profileCachedInputTokens ?? "unreported"}. Shared edge
+            work: {attempt.edgeBatchCallCount} physical calls,{" "}
+            {attempt.edgeBatchInputTokens} input /{" "}
+            {attempt.edgeBatchOutputTokens} output tokens; cached input{" "}
+            {attempt.edgeBatchCachedInputTokens ?? "unreported"}. Account-wide
             allowance is an observation, not a per-build monetary receipt.
           </p>
         ))}
@@ -133,6 +137,31 @@ export function DurableBuildReportView({ report }: { report: Report }) {
               .map(
                 (call) =>
                   `${call.callId} / ${call.cacheKey} / ${call.stage} / attempt ${call.attemptId}`,
+              )
+              .join("; ")}
+            .
+          </p>
+        ) : null}
+        {report.edgeLedger.calls.length > 0 ? (
+          <p>
+            Shared edge calls:{" "}
+            {report.edgeLedger.calls
+              .map((item) => `${item.status} ${item.count}`)
+              .join(", ")}
+            . Source members:{" "}
+            {report.edgeLedger.members
+              .map((item) => `${item.applicationState} ${item.count}`)
+              .join(", ")}
+            . One usage receipt per physical call; USD charge unavailable.
+          </p>
+        ) : null}
+        {report.edgeLedger.pendingCalls.length > 0 ? (
+          <p>
+            Unresolved shared edge reservations (first 100):{" "}
+            {report.edgeLedger.pendingCalls
+              .map(
+                (call) =>
+                  `${call.callId} / ${call.members.map((member) => member.sourceVideoId).join(", ")} / attempt ${call.attemptId}`,
               )
               .join("; ")}
             .

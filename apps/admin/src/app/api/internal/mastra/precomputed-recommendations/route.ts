@@ -49,14 +49,19 @@ async function readJson(request: Request): Promise<unknown | Response> {
       offset += chunk.byteLength
     }
     const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes))
-    if (
+    const boundedAction =
       parsed &&
       typeof parsed === "object" &&
       typeof (parsed as { action?: unknown }).action === "string" &&
-      (parsed as { action: string }).action.startsWith("profile_") &&
-      size > 65_536
-    )
-      return error("Profile action body exceeds 64 KiB", 413)
+      ((parsed as { action: string }).action.startsWith("profile_") ||
+        (parsed as { action: string }).action.startsWith("edge_"))
+    if (boundedAction && size > 65_536)
+      return error(
+        (parsed as { action: string }).action.startsWith("profile_")
+          ? "Profile action body exceeds 64 KiB"
+          : "Edge action body exceeds 64 KiB",
+        413,
+      )
     return parsed
   } catch {
     return error("Invalid JSON body", 400)
