@@ -7055,7 +7055,7 @@ function StepRowOverlay({
           position: "absolute",
           left: "50%",
           top: px(27.7),
-          width: px(289.3),
+          width: px(392),
           height: px(42),
           transform: "translate(-50%, -50%)",
           borderRadius: px(33),
@@ -7075,7 +7075,10 @@ function StepRowOverlay({
           frame={frame}
           fps={fps}
           px={px}
-          widthPx={px(287)}
+          // As wide as the closing question card's column (L_COL, 390): the
+          // row and the card read as one block, the rails between the steps
+          // longer (owner, 2026-10-08; was 287).
+          widthPx={px(390)}
           opacity={on}
         />
       </div>

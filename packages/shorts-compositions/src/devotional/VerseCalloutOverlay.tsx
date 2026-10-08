@@ -116,14 +116,33 @@ export function VerseCalloutOverlay({
           {at >= 0 ? (
             <>
               {text.slice(0, at)}
+              {/* The word turns white and a gold rule is drawn under it,
+                  left to right, as the voice reaches it; then the rule
+                  breathes a soft glow (owner's Figma variant B, 2026-10-08:
+                  5px at 56px type, square ends, tilted 0.8°). */}
               <span
                 style={{
+                  position: "relative",
+                  display: "inline-block",
                   fontWeight: 500,
-                  color: interpolateColors(lit, [0, 1], [REST, GOLD]),
-                  textShadow: `0 0 ${u(10 + 16 * glow).toFixed(1)}px rgba(242,196,107,${(0.25 + 0.5 * glow).toFixed(3)}), 0 0 ${u(3 + 4 * glow).toFixed(1)}px rgba(242,196,107,${(0.2 + 0.35 * glow).toFixed(3)}), 0 2px 18px rgba(0,0,0,0.55)`,
+                  color: interpolateColors(lit, [0, 1], [REST, "#ffffff"]),
                 }}
               >
                 {word}
+                <span
+                  style={{
+                    position: "absolute",
+                    left: 0,
+                    right: -u(4),
+                    top: "100%",
+                    marginTop: -u(4),
+                    height: u(5),
+                    background: GOLD,
+                    transformOrigin: "left center",
+                    transform: `rotate(-0.8deg) scaleX(${lit.toFixed(4)})`,
+                    boxShadow: `0 0 ${u(6 + 12 * glow).toFixed(1)}px rgba(242,196,107,${(0.2 + 0.45 * glow).toFixed(3)})`,
+                  }}
+                />
               </span>
               {text.slice(at + word.length)}
             </>
