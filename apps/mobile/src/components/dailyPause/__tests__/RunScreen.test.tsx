@@ -309,6 +309,14 @@ function pills(): string[] {
     .map((node) => node.props.accessibilityLabel as string)
 }
 
+/** What VoiceOver reads on the countdown ring. */
+function timeLeft(): string | undefined {
+  return renderer!.root.findAll(
+    (node) =>
+      typeof node.type === "string" && node.props.accessibilityRole === "timer",
+  )[0]?.props.accessibilityLabel
+}
+
 function closeTop(): number {
   const [close] = renderer!.root.findAll(
     (node: RenderedNode) =>
@@ -550,9 +558,9 @@ describe("the stepper pills (the owner, 2026-10-08)", () => {
         jest.advanceTimersByTime(250)
       })
     }
-    expect(buttons()).not.toContain("Continue, 45 seconds left")
+    expect(timeLeft()).not.toBe("45 seconds left")
     await tap("Reflect, current step")
-    expect(buttons()).toContain("Continue, 45 seconds left")
+    expect(timeLeft()).toBe("45 seconds left")
     expect(savedDay().step).toBe("reflectScreen")
   })
 })

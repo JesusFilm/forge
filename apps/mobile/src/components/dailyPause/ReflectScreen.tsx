@@ -1,7 +1,7 @@
-// The Figma "Transition · Reflect" screen (R11, R16-R18, R30). The button
-// counts the pause down, takes no tap before 0:00, and then reads Continue.
-// The verse scrolls at large text sizes, and the button stays on screen.
-// The screen opens with the intro in PauseIntro, and the pause starts after.
+// The Figma "Transition · Reflect" screen (R11, R16-R18, R30). The ring counts
+// the pause down while Continue shows grey and takes no tap; the end is in
+// PauseFinish (the owner, 2026-10-08). The verse scrolls at large text sizes,
+// and the button stays on screen. The intro is in PauseIntro.
 import {
   ScrollView,
   StyleSheet,
@@ -10,11 +10,7 @@ import {
   useWindowDimensions,
 } from "react-native"
 
-import {
-  formatClock,
-  spokenTimeLeft,
-  useCountdown,
-} from "../../lib/dailyPause/countdown"
+import { useCountdown } from "../../lib/dailyPause/countdown"
 import type { Devotional } from "../../lib/dailyPause/devotionals"
 import {
   PAUSE_TIMERS,
@@ -31,17 +27,16 @@ import {
   IntroStepper,
   usePauseIntro,
 } from "./PauseIntro"
-import { Pulse } from "./Pulse"
+import { FinishButton, FinishRing, usePauseFinish } from "./PauseFinish"
 import { StepperPills, type StepperStage } from "./StepperPills"
 import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
-import { HeldPauseButton, PauseBody, PauseButton } from "./PauseFrame"
+import { PauseBody } from "./PauseFrame"
 
 const QUOTE_SIZE = 48
 const QUOTE_LEADING = 36
 /** Source Serif 4's own line height: (ascender 1036 + descender 335) / 1000. */
 const BODY_LINE_RATIO = 1.371
 
-/** The button reads this at 0:00. The timer before it keeps its width. */
 const CONTINUE = "Continue"
 
 type ReflectScreenProps = {
@@ -67,6 +62,7 @@ export function ReflectScreen({
     PAUSE_TIMERS[meditationLength].reflectSec,
     intro.shown,
   )
+  const finish = usePauseFinish(countdown.done)
   // iOS clips a glyph above a line box shorter than the face, so the mark
   // keeps the face's box. Equal negative margins give it the frame's 36 pt.
   const quoteTrim =
@@ -84,6 +80,7 @@ export function ReflectScreen({
         </IntroStepper>
         <View style={styles.spacer} />
         <IntroContent intro={intro} style={styles.content}>
+          <FinishRing countdown={countdown} finish={finish} font={font} />
           <Text
             style={[
               styles.quote,
@@ -105,23 +102,12 @@ export function ReflectScreen({
         </IntroContent>
       </ScrollView>
       <IntroCovered intro={intro} style={styles.buttonRow}>
-        {countdown.done ? (
-          <Pulse>
-            <PauseButton
-              label={CONTINUE}
-              onPress={onContinue}
-              font={font}
-              widthLabel={CONTINUE}
-            />
-          </Pulse>
-        ) : (
-          <HeldPauseButton
-            label={formatClock(countdown.secondsLeft)}
-            spokenLabel={`${CONTINUE}, ${spokenTimeLeft(countdown.secondsLeft)}`}
-            font={font}
-            widthLabel={CONTINUE}
-          />
-        )}
+        <FinishButton
+          label={CONTINUE}
+          finish={finish}
+          font={font}
+          onPress={onContinue}
+        />
       </IntroCovered>
     </PauseBody>
   )

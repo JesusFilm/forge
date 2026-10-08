@@ -19,7 +19,7 @@ export const pauseColors = {
   raised: "#2a2824",
   /** The Customize sheet. */
   sheet: "#171614",
-  /** The Pray ring's seconds numeral, one step off ink in the frame. */
+  /** The countdown ring's seconds numeral, one step off ink in the frame. */
   ringNumeral: "#f4ede4",
   /** The switch-off knob and the played part of the video progress bar. */
   white: "#ffffff",
@@ -78,10 +78,10 @@ export const pauseSizes = {
   switchHeight: 32,
   switchKnob: 26,
   switchKnobInset: 3,
-  /** The Pray ring box spans the column; the ring itself is drawn 114 x 109. */
-  prayRingBoxHeight: 121,
-  prayRingWidth: 114,
-  prayRingStroke: 5,
+  /** The countdown ring's box spans the column; the frame draws 114 x 109. */
+  ringBoxHeight: 121,
+  ringWidth: 114,
+  ringStroke: 5,
   progressBarHeight: 3,
 } as const
 
