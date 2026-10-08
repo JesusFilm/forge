@@ -59,4 +59,4 @@ The Watch language index does not fully honor RTL UI direction or identify the l
 - 17 focused tests passed, including Watch language index rendering, localized search suggestions, locale-separated caches, and the `FloatingSearchController` locale integration (150 tests in its suite).
 - Web typecheck, targeted ESLint, Prettier, and `git diff --check` passed.
 - Claude Code review found no blockers after addressing its accessibility and markup findings.
-- Draft PR: pending creation.
+- Draft PR: [#2670](https://github.com/JesusFilm/forge/pull/2670).
