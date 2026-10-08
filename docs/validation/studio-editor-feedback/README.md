@@ -73,5 +73,5 @@ Do not edit source or regenerate media while collecting final browser evidence.
 - Browser behavior and actual MP4/still speed parity use synthetic media. Arbitrary
   graphic-only custom components use a layer hit fallback rather than per-pixel alpha.
 - No production project was changed or paid render submitted. The reported failed
-  export is still unidentified and is tracked by feat-616; synthetic render success
+  export is still unidentified and is tracked by feat-629; synthetic render success
   does not resolve that incident.

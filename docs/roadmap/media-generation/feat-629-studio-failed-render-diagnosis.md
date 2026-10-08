@@ -1,5 +1,5 @@
 ---
-id: "feat-616"
+id: "feat-629"
 title: "Diagnose Lyuba's failed Studio export"
 owner: "tataihono"
 priority: "P1"
@@ -48,4 +48,4 @@ release flow applies. Do not equate local synthetic export success with incident
 
 Record the exact project/attempt privately, reproduce the observed failure with redacted
 inputs, add a regression at the appropriate seam, and verify the original failure pattern.
-Editor feedback items 2–6 are tracked separately in feat-615.
+Editor feedback items 2–6 are tracked separately in feat-628.

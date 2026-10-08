@@ -21,4 +21,4 @@ with local implementation/review and durable documentation after verification.
 Implementation/review complete for items 2–6. Validation and performance evidence:
 `docs/validation/studio-editor-feedback/README.md`. Durable learning:
 `docs/solutions/ui-bugs/studio-canvas-hit-testing-and-clip-source-time.md`.
-The failed export remains unverified in feat-616 pending project identity.
+The failed export remains unverified in feat-629 pending project identity.
