@@ -20,6 +20,15 @@ and French searches under English UI chrome.
 
 Linear source: FGE-24.
 
+## Progress
+
+PR [#2615](https://github.com/JesusFilm/forge/pull/2615) implements the
+lexical-locale correction, keeps result text in the display locale, scores
+exact hits with the matched-language title, and makes localized row selection
+and ranking ties deterministic. The broader FGE-24 scope remains open for
+generic media-token normalization, canonical/playability boosts, and the full
+multilingual inventory benchmark.
+
 ## Scope
 
 - `apps/admin/src/services/watch-search.service.ts` — derive lexical locale
