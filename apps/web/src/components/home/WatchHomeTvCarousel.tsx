@@ -11,7 +11,9 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type FocusEvent,
   type MutableRefObject,
+  type PointerEvent,
   type ReactNode,
   type RefObject,
 } from "react"
@@ -79,13 +81,24 @@ function WatchHomeTvCarouselRegion({
   activeSlide,
   children,
   pinned,
+  regionRef,
+  onHeroPointerEnter,
+  onHeroPointerLeave,
+  onHeroFocusCapture,
+  onHeroBlurCapture,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
   children: ReactNode
   pinned: boolean
+  regionRef: MutableRefObject<HTMLElement | null>
+  onHeroPointerEnter: (event: PointerEvent<HTMLElement>) => void
+  onHeroPointerLeave: (event: PointerEvent<HTMLElement>) => void
+  onHeroFocusCapture: (event: FocusEvent<HTMLElement>) => void
+  onHeroBlurCapture: (event: FocusEvent<HTMLElement>) => void
 }) {
   return (
     <section
+      ref={regionRef}
       aria-label={activeSlide.title}
       // Pinned, like the watch-page hero: the body scrolls UP over the intro
       // instead of the intro scrolling away, and `z-0` keeps it below the body
@@ -95,6 +108,10 @@ function WatchHomeTvCarouselRegion({
       className={cn("bg-black", pinned ? "sticky top-0 z-0" : "relative")}
       data-testid="watch-home-tv-carousel"
       data-pinned={pinned ? "true" : "false"}
+      onPointerEnter={onHeroPointerEnter}
+      onPointerLeave={onHeroPointerLeave}
+      onFocusCapture={onHeroFocusCapture}
+      onBlurCapture={onHeroBlurCapture}
     >
       {children}
     </section>
@@ -1075,6 +1092,10 @@ export function WatchHomeTvCarousel({
     () => watchHomeHeroSlidesToTvCarouselSlides(slides),
     [slides],
   )
+  const [isPointerOverHero, setIsPointerOverHero] = useState(false)
+  const [isFocusWithinHero, setIsFocusWithinHero] = useState(false)
+  const pauseAdvanceForInteraction = isPointerOverHero || isFocusWithinHero
+  const carouselRegionRef = useRef<HTMLElement | null>(null)
   const {
     activeIndex,
     activeSlide,
@@ -1098,7 +1119,9 @@ export function WatchHomeTvCarousel({
     slides: timelineSlides,
     toggleMuted,
     videoRef,
-  } = useWatchHomeTvCarousel(carouselSlides, sequence)
+  } = useWatchHomeTvCarousel(carouselSlides, sequence, {
+    pauseAdvanceForInteraction,
+  })
   const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   // Separate from wrapperRef: that one is on the media layer, which reaches
@@ -1107,6 +1130,16 @@ export function WatchHomeTvCarousel({
   const heroFrameRef = useRef<HTMLDivElement | null>(null)
   const [player, setPlayer] = useState<MuxPlayerRef | null>(null)
   usePauseForWatchModal(player, activeSlide?.id ?? null)
+  useEffect(() => {
+    if (!isFocusWithinHero) return undefined
+    const timeout = window.setTimeout(() => {
+      const region = carouselRegionRef.current
+      if (region && !region.contains(document.activeElement)) {
+        setIsFocusWithinHero(false)
+      }
+    }, 0)
+    return () => window.clearTimeout(timeout)
+  }, [activeSlide?.id, isFocusWithinHero])
   const fittedHeroHeight = useWatchHomeHeroFittedHeight(pinned && isMuted)
   useWatchHomeHeroScrollPause({
     enabled: pinned,
@@ -1134,7 +1167,28 @@ export function WatchHomeTvCarousel({
   if (!activeSlide) return null
 
   return (
-    <WatchHomeTvCarouselRegion activeSlide={activeSlide} pinned={pinned}>
+    <WatchHomeTvCarouselRegion
+      activeSlide={activeSlide}
+      pinned={pinned}
+      regionRef={carouselRegionRef}
+      onHeroPointerEnter={(event) => {
+        if (event.pointerType === "mouse") setIsPointerOverHero(true)
+      }}
+      onHeroPointerLeave={(event) => {
+        if (event.pointerType === "mouse") setIsPointerOverHero(false)
+      }}
+      onHeroFocusCapture={(event) => {
+        const target = event.target
+        setIsFocusWithinHero(
+          target instanceof HTMLElement && target.matches(":focus-visible"),
+        )
+      }}
+      onHeroBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          setIsFocusWithinHero(false)
+        }
+      }}
+    >
       {/* Two things this frame does NOT do. It has no `overflow-hidden` — the
           media layer below deliberately spans the full viewport width and
           clips itself. And while muted it stands shorter than the 16:9 frame
