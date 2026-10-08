@@ -1225,6 +1225,7 @@ describe("MediaCollection VideoCard href", () => {
     expect(categoryLabel?.parentElement).toBe(titleRow)
     expect(title?.parentElement).toBe(titleRow)
     expect(cta?.parentElement).toBe(titleRow)
+    expect(cta?.classList).toContain("min-h-11")
     expect(categoryLabel?.nextElementSibling).toBe(title)
     expect(title?.nextElementSibling).toBe(cta)
     expect(supportingTitle).not.toBeNull()

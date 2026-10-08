@@ -55,14 +55,14 @@ export function WatchHomeFooter() {
               <a
                 key={link.key}
                 href={link.href}
-                className="min-w-0 break-words text-center leading-tight transition-colors hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
+                className="inline-flex min-h-11 min-w-0 items-center break-words text-center leading-tight transition-colors hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
               >
                 {t(link.key)}
               </a>
             ))}
             <a
               href={giveNowHref}
-              className="inline-flex min-h-9 min-w-0 break-words items-center rounded-full bg-[#d33a43] px-5 py-2 text-center text-base sm:text-sm font-bold leading-tight text-white transition-colors hover:bg-[#b62d35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b] focus-visible:ring-offset-2"
+              className="inline-flex min-h-11 min-w-0 break-words items-center rounded-full bg-[#d33a43] px-5 py-2 text-center text-base sm:text-sm font-bold leading-tight text-white transition-colors hover:bg-[#b62d35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b] focus-visible:ring-offset-2"
             >
               {t("giveNow")}
             </a>
@@ -83,16 +83,16 @@ export function WatchHomeFooter() {
             <br />
             {t("fax")}: (407) 826-2375
           </p>
-          <p className="min-w-0">
+          <p className="flex min-w-0 flex-col">
             <a
               href="https://www.jesusfilm.org/privacy/"
-              className="block hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
+              className="inline-flex min-h-11 items-center hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
             >
               {t("privacyPolicy")}
             </a>
             <a
               href="https://www.jesusfilm.org/legal/"
-              className="block hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
+              className="inline-flex min-h-11 items-center hover:text-[#cb333b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#cb333b]"
             >
               {t("legalStatement")}
             </a>

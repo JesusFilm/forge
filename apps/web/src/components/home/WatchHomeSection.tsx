@@ -263,7 +263,7 @@ export function WatchHomeSection({ section }: WatchHomeSectionProps) {
           </div>
           <Link
             href={ctaHref as Route}
-            className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm sm:text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex min-h-11 w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm sm:text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             <Play className="h-4 w-4 fill-current" aria-hidden />
             {t("watch")}
