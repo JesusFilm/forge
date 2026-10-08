@@ -64,4 +64,4 @@ source.
   linked video data, then legacy data; Mux fallback URLs use the shared cached
   card and hero poster recipes.
 - Regression coverage: Web carousel/content tests and Admin block schema tests.
-- PR: pending.
+- PR: https://github.com/JesusFilm/forge/pull/2611
