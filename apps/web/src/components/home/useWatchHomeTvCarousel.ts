@@ -62,6 +62,10 @@ export const WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS = 120
  */
 export const WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS = 12_000
 export const WATCH_HOME_TV_TIMELINE_FUTURE_COUNT = 3
+export const WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET = 3
+export function shouldStopWatchHomeTvAutoplay(automaticSlidesSeen: number) {
+  return automaticSlidesSeen >= WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET
+}
 
 function subscribeToHydrationStore() {
   return () => undefined
@@ -256,6 +260,7 @@ export function useWatchHomeTvCarousel(
   const [leavingSlide, setLeavingSlide] =
     useState<WatchHomeTvCarouselSlide | null>(null)
   const [mediaReady, setMediaReady] = useState(false)
+  const [autoplayStopped, setAutoplayStopped] = useState(false)
   // Folded into the ring's animation key so a same-slide restart replays the
   // CSS animation instead of leaving it parked at 100%. State, not a ref: the
   // key has to change during a render for the animation to restart.
@@ -297,6 +302,7 @@ export function useWatchHomeTvCarousel(
   // indistinguishable and a stale timer from the first could advance the
   // second.
   const turnTokenRef = useRef(0)
+  const automaticSlidesSeenRef = useRef(1)
   // The media position the backstop last saw. Re-arming requires the media
   // clock to have MOVED since then, so a wedged stream that never emits
   // `waiting` still loses its turn instead of re-arming forever.
@@ -485,7 +491,7 @@ export function useWatchHomeTvCarousel(
   }, [])
 
   const selectIndex = useCallback(
-    (index: number) => {
+    (index: number, userInitiated = true) => {
       if (index < 0 || index >= displaySlides.length) return
       const nextSlide = displaySlides[index] ?? null
       if (
@@ -524,6 +530,10 @@ export function useWatchHomeTvCarousel(
           : { slideId: nextSlide?.id ?? null, seconds: null },
       )
       setActiveSlideId(nextSlide?.id ?? null)
+      if (userInitiated) {
+        setAutoplayStopped(false)
+        automaticSlidesSeenRef.current = 1
+      }
 
       // Re-selecting the only playable slide cannot remount `<MuxVideo>`, so
       // no fresh `canplay` or `ended` would ever arrive. Replay it by hand and
@@ -568,13 +578,33 @@ export function useWatchHomeTvCarousel(
   )
 
   const advance = useCallback(() => {
+    if (autoplayStopped) return
+    if (shouldStopWatchHomeTvAutoplay(automaticSlidesSeenRef.current)) {
+      clearSlideAdvanceTimeout()
+      clearVideoPosterHold()
+      clearMediaWaitTimeout()
+      turnTokenRef.current += 1
+      setIsBufferingMedia(false)
+      setAutoplayStopped(true)
+      return
+    }
+    automaticSlidesSeenRef.current += 1
     const nextIndex = isSequenced
       ? safeActiveIndex + 1 < displaySlides.length
         ? safeActiveIndex + 1
         : 0
       : nextUnplayedWatchHomeTvCarouselIndex(safeActiveIndex, displaySlides)
-    selectIndex(nextIndex)
-  }, [displaySlides, isSequenced, safeActiveIndex, selectIndex])
+    selectIndex(nextIndex, false)
+  }, [
+    autoplayStopped,
+    clearMediaWaitTimeout,
+    clearSlideAdvanceTimeout,
+    clearVideoPosterHold,
+    displaySlides,
+    isSequenced,
+    safeActiveIndex,
+    selectIndex,
+  ])
 
   useEffect(() => {
     advanceRef.current = advance
@@ -780,7 +810,7 @@ export function useWatchHomeTvCarousel(
     // over a slow connection — the ring filled and the hero moved on over a
     // video nobody ever saw. Parking it while buffering keeps the ring (which
     // animates over the same duration) honest by construction.
-    if (autoAdvancePaused || isTurnHeld) return undefined
+    if (autoAdvancePaused || autoplayStopped || isTurnHeld) return undefined
 
     const advanceAfterMs = activeSlide.src
       ? advanceBackstopSeconds * 1000
@@ -848,6 +878,7 @@ export function useWatchHomeTvCarousel(
     advanceBackstopSeconds,
     advanceDurationSeconds,
     autoAdvancePaused,
+    autoplayStopped,
     clearSlideAdvanceTimeout,
     isTurnHeld,
     // A same-slide replay keeps every other dependency identical, so without
@@ -864,7 +895,8 @@ export function useWatchHomeTvCarousel(
     // mid-stall leaves both true, and a ceiling that ignored the pause would
     // force-advance the hero every 12 seconds behind the page -- exactly the
     // behaviour the pause gate exists to stop.
-    if (!isBuffering || isMediaHeld || autoAdvancePaused) return undefined
+    if (!isBuffering || isMediaHeld || autoAdvancePaused || autoplayStopped)
+      return undefined
 
     const armedForTurn = turnTokenRef.current
     mediaWaitTimeoutRef.current = window.setTimeout(() => {
@@ -881,6 +913,7 @@ export function useWatchHomeTvCarousel(
   }, [
     advance,
     autoAdvancePaused,
+    autoplayStopped,
     clearMediaWaitTimeout,
     isBuffering,
     isMediaHeld,
@@ -933,6 +966,7 @@ export function useWatchHomeTvCarousel(
     () => ({
       activeIndex: safeActiveIndex,
       activeSlide,
+      autoplayStopped,
       advance,
       advanceDurationSeconds,
       // Changes when the resolved duration lands late or the same slide is
@@ -962,6 +996,7 @@ export function useWatchHomeTvCarousel(
     [
       safeActiveIndex,
       activeSlide,
+      autoplayStopped,
       advance,
       advanceDurationSeconds,
       restartCount,

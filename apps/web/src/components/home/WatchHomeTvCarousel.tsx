@@ -235,6 +235,7 @@ function PrimaryAction({
 
 function WatchHomeTvMedia({
   activeSlide,
+  autoplayStopped,
   isMuted,
   leavingSlide,
   mediaReady,
@@ -252,6 +253,7 @@ function WatchHomeTvMedia({
   wrapperRef,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
+  autoplayStopped: boolean
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   mediaReady: boolean
@@ -340,7 +342,7 @@ function WatchHomeTvMedia({
         className="watch-home-media-enter z-10"
         priority
       />
-      {previewSrc ? (
+      {previewSrc && !autoplayStopped ? (
         <MuxVideo
           key={activeSlide.id}
           ref={handleVideoRef}
@@ -1078,6 +1080,7 @@ export function WatchHomeTvCarousel({
   const {
     activeIndex,
     activeSlide,
+    autoplayStopped,
     advanceDurationSeconds,
     handleCanPlay,
     handleEnded,
@@ -1168,6 +1171,7 @@ export function WatchHomeTvCarousel({
       >
         <WatchHomeTvMedia
           activeSlide={activeSlide}
+          autoplayStopped={autoplayStopped}
           isMuted={isMuted}
           leavingSlide={leavingSlide}
           mediaReady={mediaReady}

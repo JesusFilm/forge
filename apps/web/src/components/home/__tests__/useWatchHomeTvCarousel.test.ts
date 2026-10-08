@@ -8,12 +8,14 @@ import {
   WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
   WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS,
+  WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET,
   addWatchHomeTvPlayedId,
   firstUnplayedWatchHomeTvCarouselIndex,
   nextUnplayedWatchHomeTvCarouselIndex,
   readWatchHomeTvPlayedIds,
   watchHomeTvAdvanceBackstopSeconds,
   watchHomeTvSlideDurationSeconds,
+  shouldStopWatchHomeTvAutoplay,
 } from "@/components/home/useWatchHomeTvCarousel"
 import type { WatchHomeTvCarouselSlide } from "@/components/home/useWatchHomeTvCarousel"
 
@@ -116,6 +118,12 @@ describe("watch home TV carousel browser storage sequencing", () => {
 })
 
 describe("watch home TV carousel advance duration", () => {
+  it("stops autoplay after the configured number of slides", () => {
+    expect(WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET).toBe(3)
+    expect(shouldStopWatchHomeTvAutoplay(2)).toBe(false)
+    expect(shouldStopWatchHomeTvAutoplay(3)).toBe(true)
+  })
+
   function videoSlide(
     durationSeconds: number | null,
   ): WatchHomeTvCarouselSlide {
