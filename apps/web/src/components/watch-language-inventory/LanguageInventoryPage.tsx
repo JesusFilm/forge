@@ -118,7 +118,7 @@ function isPortraitInventoryVideo(item: InventoryCardOrientation): boolean {
 }
 
 function cardImageUrl(item: InventoryCardImage): string | null {
-  return item.imageUrl ?? resolveMuxFrameThumbnailUrl(item.muxPlaybackId)
+  return item.imageUrl || resolveMuxFrameThumbnailUrl(item.muxPlaybackId)
 }
 
 // Authored artwork from ANY candidate outranks a synthesized frame from any

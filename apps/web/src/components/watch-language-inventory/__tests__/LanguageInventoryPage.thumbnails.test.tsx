@@ -198,6 +198,30 @@ describe("LanguageInventoryPage thumbnail sources", () => {
     ).toBe(true)
   })
 
+  it("falls back to a Mux frame when authored artwork is an empty string", () => {
+    act(() => {
+      root.render(
+        <LanguageInventoryPage
+          inventory={model({
+            audioVideos: [
+              card({
+                id: "blank-artwork-video",
+                imageUrl: "",
+                muxPlaybackId: "mux-blank-artwork",
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    const frame =
+      "https://image.mux.com/mux-blank-artwork/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2"
+    const rendered = sources(container)
+    expect(rendered.length).toBeGreaterThan(0)
+    expect(rendered.every((src) => src === frame)).toBe(true)
+  })
+
   // The page hero previously scanned for the first card with real artwork.
   // Once every card can synthesize a frame, that scan must still prefer the
   // authored image from a LATER card over the first card's frame.
