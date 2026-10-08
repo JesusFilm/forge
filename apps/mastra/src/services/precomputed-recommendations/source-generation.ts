@@ -58,10 +58,12 @@ const videoSchema = z.object({
       skippedEditionCount: z.number().int().nonnegative(),
       selected: z.array(
         z.object({
-          transcriptId: videoId,
-          videoEditionId: videoId,
+          // Preserve Admin's JSONB descriptor serialization: sealed v3 corpus
+          // and build fingerprints already include this exact field order.
           language: z.string(),
           totalChunks: z.number().int().positive(),
+          transcriptId: videoId,
+          videoEditionId: videoId,
         }),
       ),
     })

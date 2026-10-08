@@ -11,7 +11,7 @@ preserves exact source/integration commits, checks, browser artifacts, review
 findings, and recovery history. The [CTR operations note](../operations/precomputed-ctr-report.md)
 describes the private reporting contract and limits.
 
-## Current checkpoint — October 8, 17:42 NZDT
+## Current checkpoint — October 8, 17:55 NZDT
 
 The GA-only capture is sealed and independently verified. All 305 video-start
 pages (152,304 rows) and 327 referrer pages (163,352 rows) matched across the
@@ -71,6 +71,20 @@ rerun passed without code changes. Later local commits are not claimed CI-green.
 The first root Admin typecheck hit the default 4 GiB Node heap limit; its owned
 635 MB crash file was removed and the repository's configured check passed.
 Heavy validation remains serialized to limit memory pressure.
+
+The first real command invocation stopped during read-only preflight with
+`catalog_mismatch`, before generation creation or model calls. All 1,031 videos
+and current selected chunks were unchanged; Zod decoding reordered the four
+selected-transcript descriptor fields, changing order-sensitive legacy digests.
+The narrow decoder fix preserves Admin's existing JSONB serialization. The new
+transport regression went red then green, and the full live HTTP read now recovers
+the original corpus `9fb9ec705c19e0717894700447a13341859b41c8910fb374c4aa81dc14b755db`,
+pool `0780cfd0199c04f88076afcd7869140b56bca02b3253dd5d3c21cd0de4a8797a`,
+and manual input `a488b6b6534db2ca428f6b80c380756399b1c9e7dee0519831689fad7e994c3e`
+identities. The sealed artifact, reviewed configuration and hash algorithms are
+unchanged. The 18 focused checks, Mastra typecheck and full suite (3,502 passed,
+45 existing gated skips) pass. The rejected attempt is protected separately; no
+API fallback ran.
 
 Public A/B remains off. Required work still includes the representative subscription
 pilot, complete catalog and current capacity evidence, live baseline/calibration,
