@@ -115,6 +115,15 @@ export const nextConfig = {
   },
   experimental: {
     optimizePackageImports: ["lucide-react", "@mux/mux-video-react"],
+    // Client router cache lifetimes, in seconds (FGE-209 / feat-634). Next
+    // 16 defaults `dynamic` to 0, so dynamically fetched route data is
+    // dropped at once and the same `?_rsc=` URL is fetched again on every
+    // revisit. 30s lets back-and-forth browsing reuse it. `static` repeats
+    // the 300s default on purpose so the pair is pinned in one place.
+    staleTimes: {
+      dynamic: 30,
+      static: 300,
+    },
     serverActions: {
       // Core's canonical Watch proxy preserves the public Origin, while
       // Railway replaces x-forwarded-host with its upstream hostname.
