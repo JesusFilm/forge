@@ -25,10 +25,8 @@ import {
   type SourceIngest,
 } from "../../apps/mastra/src/services/precomputed-recommendations/source-generation"
 import type { StructuredModel } from "../../apps/mastra/src/services/precomputed-recommendations/astra-provider"
-import {
-  runContentProfile,
-  type ProfilePersistencePort,
-} from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-executor"
+import { runContentProfile } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-executor"
+import { createContentProfilePersistence } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-client"
 import type { HistoricalAnalyticsReader } from "../../apps/mastra/src/services/precomputed-recommendations/historical-analytics"
 import { gaWatchHistoryFixture } from "./fixtures/ga-watch-history"
 
@@ -297,20 +295,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           source: "operator_verified_pgdata_df",
         },
       })
-      // Exercise the real producer/consumer wire through the repository-owned
-      // integration seam. The executor validates the returned identities/state.
-      const persistence: ProfilePersistencePort = {
-        register: (input) =>
-          submit(input) as ReturnType<ProfilePersistencePort["register"]>,
-        status: (input) =>
-          submit(input) as ReturnType<ProfilePersistencePort["status"]>,
-        callStart: (input) =>
-          submit(input) as ReturnType<ProfilePersistencePort["callStart"]>,
-        callFinish: (input) =>
-          submit(input) as ReturnType<ProfilePersistencePort["callFinish"]>,
-        finalize: (input) =>
-          submit(input) as ReturnType<ProfilePersistencePort["finalize"]>,
-      }
+      const persistence = createContentProfilePersistence(submit)
       let modelCalls = 0
       const controlled: StructuredModel = {
         async generate({ schema }) {

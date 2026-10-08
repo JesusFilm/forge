@@ -97,7 +97,7 @@ const mapProfileSchema = compactProfileSchema.omit({ anchors: true }).extend({
     .max(8),
 })
 
-const profileNodeSchema = z
+export const profileNodeSchema = z
   .object({
     profile: compactProfileSchema,
     coveredPartStart: z.number().int().nonnegative().safe(),
