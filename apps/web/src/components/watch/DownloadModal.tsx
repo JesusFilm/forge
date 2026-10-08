@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import Image from "next/image"
+import { shouldBypassNextImageOptimization } from "@/lib/provider-image"
 import {
   Check,
   ChevronDown,
@@ -309,6 +310,7 @@ export function DownloadModal({
           {posterUrl ? (
             <Image
               src={posterUrl}
+              unoptimized={shouldBypassNextImageOptimization(posterUrl)}
               alt={videoTitle ?? t("posterAlt")}
               fill
               sizes="(min-width: 640px) 224px, 100vw"

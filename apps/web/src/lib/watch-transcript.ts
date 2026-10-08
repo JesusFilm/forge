@@ -13,11 +13,13 @@ import {
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 
 const WATCH_TRANSCRIPT_REVALIDATE_SECONDS = 60 * 60
+const WATCH_TRANSCRIPT_FETCH_TIMEOUT_MS = 1_000
 
 const fetchCompactTranscript = unstable_cache(
   async (vttSrc: string): Promise<string> => {
     const response = await fetch(vttSrc, {
       cache: "force-cache",
+      signal: AbortSignal.timeout(WATCH_TRANSCRIPT_FETCH_TIMEOUT_MS),
       next: {
         revalidate: WATCH_TRANSCRIPT_REVALIDATE_SECONDS,
         tags: [WATCH_CACHE_TAGS.video],

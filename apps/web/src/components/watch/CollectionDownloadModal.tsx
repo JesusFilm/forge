@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { Download, LoaderCircle, LogIn, Square } from "lucide-react"
 import Image from "next/image"
+import { shouldBypassNextImageOptimization } from "@/lib/provider-image"
 import { useLocale, useTranslations } from "next-intl"
 
 import { Button } from "@/components/ui/button"
@@ -698,6 +699,9 @@ export function CollectionDownloadModal({
                       {episode.thumbnailUrl ? (
                         <Image
                           src={episode.thumbnailUrl}
+                          unoptimized={shouldBypassNextImageOptimization(
+                            episode.thumbnailUrl,
+                          )}
                           alt=""
                           fill
                           sizes="(min-width: 900px) 224px, (min-width: 500px) 160px, 112px"

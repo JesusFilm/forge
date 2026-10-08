@@ -36,11 +36,24 @@ film page has a valid Video item but no indexed video. Linear: FGE-61.
 - `getInitialSubtitleTranscript`
 - `unoptimized`
 
-## What To Build
+## Implementation Progress
 
-Produce a PR-ready fix plan that separates provider reachability, Cloudflare
-controls, Forge image transformation, and Node hostload. Include the smallest
-code/config changes and crawler-safe verification path.
+- `apps/web/src/lib/provider-image.ts` identifies HTTPS Mux and Cloudflare
+  Images URLs that already encode provider-side image delivery. Watch image
+  surfaces and search result cards pass those URLs directly to the browser
+  rather than routing each request through Next's optimizer.
+- `apps/web/src/lib/watch-transcript.ts` applies a one-second abort deadline to
+  the optional initial VTT fetch. A timeout follows the existing graceful
+  fallback and leaves transcript expansion available for a later retry.
+- Focused tests cover the provider allowlist and route rendering.
+
+## Remaining production verification
+
+Cloudflare cache/rate-limit configuration, replica CPU headroom, monitors,
+synthetics, crawler load tests, 24-hour TCP error observation, and Search
+Console recrawl/indexing evidence require production operator access. Record
+those results in FGE-61 before closing the incident follow-up. Do not claim
+Search Console recrawl latency alone as proof of failure.
 
 ## Constraints
 

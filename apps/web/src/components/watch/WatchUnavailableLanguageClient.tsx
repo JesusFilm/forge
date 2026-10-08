@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { shouldBypassNextImageOptimization } from "@/lib/provider-image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
@@ -113,7 +114,10 @@ export function WatchUnavailableLanguageClient({
             fill
             priority
             sizes="(max-width: 767px) 100vw, 62vw"
-            unoptimized={targetImageUrl == null}
+            unoptimized={
+              targetImageUrl == null ||
+              shouldBypassNextImageOptimization(artworkUrl)
+            }
             className="object-cover object-center opacity-50 md:object-right"
           />
         </div>

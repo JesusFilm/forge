@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import Image from "next/image"
+import { shouldBypassNextImageOptimization } from "@/lib/provider-image"
 import Link from "next/link"
 import type { Route } from "next"
 import { Clock3, Play } from "lucide-react"
@@ -207,6 +208,7 @@ function HistoryRow({ item }: { item: WatchHistoryItem }) {
         {item.imageUrl ? (
           <Image
             src={item.imageUrl}
+            unoptimized={shouldBypassNextImageOptimization(item.imageUrl)}
             alt={item.imageAlt}
             fill
             sizes="(max-width: 640px) 112px, 160px"

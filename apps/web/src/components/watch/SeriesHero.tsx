@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import Image from "next/image"
+import { shouldBypassNextImageOptimization } from "@/lib/provider-image"
 
 import type { ResolvedSeriesBySlug } from "@/lib/content"
 import {
@@ -144,6 +145,7 @@ function SeriesHeroStatic({
           // alt value.
           <Image
             src={posterUrl}
+            unoptimized={shouldBypassNextImageOptimization(posterUrl)}
             alt=""
             fill
             sizes="100vw"
