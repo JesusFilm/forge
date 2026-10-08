@@ -8,6 +8,8 @@ import { AccessibilityInfo, StyleSheet, type ViewStyle } from "react-native"
 import { pauseColors } from "../../../lib/dailyPause/theme"
 import {
   TestRenderer,
+  press,
+  pressableByLabel,
   unmount,
   type RenderedNode,
   type TestInstance,
@@ -31,10 +33,13 @@ afterEach(async () => {
   jest.useRealTimers()
 })
 
-async function render(arrival: StepperStage) {
+async function render(
+  arrival: StepperStage,
+  onSelect?: (stage: StepperStage) => void,
+) {
   await act(async () => {
     renderer = TestRenderer.create(
-      <StepperPills arrival={arrival} font={font} />,
+      <StepperPills arrival={arrival} font={font} onSelect={onSelect} />,
     )
   })
   await act(async () => {})
@@ -203,5 +208,43 @@ describe("the start of each arrival step (motion on)", () => {
     expect(scaleY("stepper-line-0")).toBe(1)
     expect(scaleY("stepper-line-1")).toBe(0)
     expect(STAGES.map(look)).toEqual(["active", "upcoming", "upcoming"])
+  })
+})
+
+describe("pill taps (the owner, 2026-10-08)", () => {
+  function buttons(): RenderedNode[] {
+    return renderer!.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.accessibilityRole === "button",
+    )
+  }
+
+  it("makes no pill a button without onSelect", async () => {
+    await render("reflect")
+    expect(buttons()).toHaveLength(0)
+  })
+
+  it("makes every pill a button that names its section", async () => {
+    const onSelect = jest.fn()
+    await render("reflect", onSelect)
+    expect(
+      buttons().map((node) => [
+        node.props.accessibilityLabel,
+        node.props.accessibilityHint,
+      ]),
+    ).toEqual([
+      ["Watch, done", "Goes to Watch"],
+      ["Reflect, current step", "Starts Reflect again"],
+      ["Pray, upcoming", "Goes to Pray"],
+    ])
+    for (const label of [
+      "Pray, upcoming",
+      "Watch, done",
+      "Reflect, current step",
+    ]) {
+      await press(pressableByLabel(renderer!, label))
+    }
+    expect(onSelect.mock.calls).toEqual([["pray"], ["watch"], ["reflect"]])
   })
 })

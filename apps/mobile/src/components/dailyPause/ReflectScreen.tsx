@@ -32,7 +32,7 @@ import {
   usePauseIntro,
 } from "./PauseIntro"
 import { Pulse } from "./Pulse"
-import { StepperPills } from "./StepperPills"
+import { StepperPills, type StepperStage } from "./StepperPills"
 import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { HeldPauseButton, PauseBody, PauseButton } from "./PauseFrame"
 
@@ -50,6 +50,8 @@ type ReflectScreenProps = {
   meditationLength: MeditationLength
   font: PauseFont
   onContinue: () => void
+  /** Opens a section from a stepper pill. */
+  onJump?: (stage: StepperStage) => void
 }
 
 export function ReflectScreen({
@@ -57,6 +59,7 @@ export function ReflectScreen({
   meditationLength,
   font,
   onContinue,
+  onJump,
 }: ReflectScreenProps) {
   const { fontScale } = useWindowDimensions()
   const intro = usePauseIntro("reflect")
@@ -77,7 +80,7 @@ export function ReflectScreen({
         onLayout={intro.onScrollLayout}
       >
         <IntroStepper intro={intro}>
-          <StepperPills arrival="reflect" font={font} />
+          <StepperPills arrival="reflect" font={font} onSelect={onJump} />
         </IntroStepper>
         <View style={styles.spacer} />
         <IntroContent intro={intro} style={styles.content}>

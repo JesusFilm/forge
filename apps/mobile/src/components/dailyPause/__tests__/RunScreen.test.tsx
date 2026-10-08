@@ -519,6 +519,44 @@ it("offers Try again when a part never starts, and the close stays reachable", a
   expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
 })
 
+describe("the stepper pills (the owner, 2026-10-08)", () => {
+  it("goes back to an earlier section, and the saved step follows", async () => {
+    await seedDay("prayScreen")
+    await open()
+    await tap("Resume")
+    expect(pills()).toEqual(PRAY)
+    await tap("Watch, done")
+    await expectShows("watchScreen", "DAILY BIBLE PAUSE")
+    expect(pills()).toEqual(WATCH)
+    expect(savedDay().step).toBe("watchScreen")
+  })
+
+  it("jumps ahead past the videos and the Reflect pause", async () => {
+    await open()
+    await tap("Begin Devotional")
+    await tap("Pray, upcoming")
+    await expectShows("prayScreen", DEVOTIONALS.pharisee.attribution)
+    expect(pills()).toEqual(PRAY)
+    expect(savedDay().step).toBe("prayScreen")
+  })
+
+  it("starts the current section again, with its timer", async () => {
+    await seedDay("reflectScreen")
+    await open()
+    await tap("Resume")
+    const steps = (PAUSE_INTRO_MS + 10_000) / 250 + 4
+    for (let i = 0; i < steps; i += 1) {
+      await act(async () => {
+        jest.advanceTimersByTime(250)
+      })
+    }
+    expect(buttons()).not.toContain("Continue, 45 seconds left")
+    await tap("Reflect, current step")
+    expect(buttons()).toContain("Continue, 45 seconds left")
+    expect(savedDay().step).toBe("reflectScreen")
+  })
+})
+
 describe("the developer Skip", () => {
   it("shows only on the timed steps, and each tap moves the run on", async () => {
     await open()

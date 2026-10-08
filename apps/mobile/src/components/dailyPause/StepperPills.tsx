@@ -1,8 +1,16 @@
 // The WATCH, REFLECT, and PRAY stepper (R11) as a path down from a top node
 // (the owner, 2026-10-06). Each screen plays one arrival step: a line draws to
-// the next pill, which lights up. Reduce Motion shows the end.
-import { memo } from "react"
-import { Animated, Easing, StyleSheet, Text, View } from "react-native"
+// the next pill, which lights up. Reduce Motion shows the end. With onSelect,
+// each pill is a button that opens its section (the owner, 2026-10-08).
+import { memo, type ReactNode } from "react"
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 
 import type { PauseFont } from "../../lib/dailyPause/fonts"
 import {
@@ -30,6 +38,14 @@ const STATE_WORDS: Readonly<Record<PillLook, string>> = {
   done: "done",
   upcoming: "upcoming",
 }
+
+/** What a pill tap does, for VoiceOver. */
+function hintFor(name: string, current: boolean): string {
+  return current ? `Starts ${name} again` : `Goes to ${name}`
+}
+
+const PRESSED_OPACITY = 0.6
+const PILL_HIT_SLOP = { top: 4, bottom: 4, left: 8, right: 8 }
 
 /** A pause so the viewer sees the start, then the phases of one step, in ms. */
 const LEAD_MS = 250
@@ -107,6 +123,8 @@ type StepperPillsProps = {
   /** The step the path arrives at. */
   arrival: StepperStage
   font: PauseFont
+  /** Makes each pill a button that opens its section. */
+  onSelect?: (stage: StepperStage) => void
 }
 
 /** The Reflect and Pray screens render each second for their timers; the
@@ -114,6 +132,7 @@ type StepperPillsProps = {
 export const StepperPills = memo(function StepperPills({
   arrival,
   font,
+  onSelect,
 }: StepperPillsProps) {
   const plan = planFor(arrival)
   const { progress } = usePauseClock(plan.totalMs)
@@ -150,36 +169,57 @@ export const StepperPills = memo(function StepperPills({
       />
       {STAGES.map(({ stage, label, name }, pill) => {
         const levels = looks(pill)
-        return (
-          <View key={stage} style={styles.slotGroup}>
-            <View
-              accessible
-              accessibilityLabel={`${name}, ${STATE_WORDS[endLook(pill)]}`}
-              style={styles.slot}
-            >
-              {(["upcoming", "done", "active"] as const).map((one) => (
-                <Animated.View
-                  key={one}
-                  testID={`stepper-${stage}-${one}`}
+        const spoken = `${name}, ${STATE_WORDS[endLook(pill)]}`
+        const layers: ReactNode = (
+          <>
+            <PillSizer label={label} font={font} />
+            {(["upcoming", "done", "active"] as const).map((one) => (
+              <Animated.View
+                key={one}
+                testID={`stepper-${stage}-${one}`}
+                style={[styles.pill, pillStyles[one], { opacity: levels[one] }]}
+              >
+                {one === "done" ? (
+                  <Text style={[styles.check, font("sansBold")]}>✓</Text>
+                ) : null}
+                <Text
                   style={[
-                    styles.pill,
-                    pillStyles[one],
-                    { opacity: levels[one] },
+                    one === "active" ? styles.activeLabel : styles.label,
+                    font("sansBold"),
                   ]}
                 >
-                  {one === "done" ? (
-                    <Text style={[styles.check, font("sansBold")]}>✓</Text>
-                  ) : null}
-                  <Text
-                    style={[
-                      one === "active" ? styles.activeLabel : styles.label,
-                      font("sansBold"),
-                    ]}
-                  >
-                    {label}
-                  </Text>
-                </Animated.View>
-              ))}
+                  {label}
+                </Text>
+              </Animated.View>
+            ))}
+          </>
+        )
+        return (
+          <View key={stage} style={styles.slotGroup}>
+            <View style={styles.slot}>
+              {onSelect ? (
+                <Pressable
+                  onPress={() => onSelect(stage)}
+                  accessibilityRole="button"
+                  accessibilityLabel={spoken}
+                  accessibilityHint={hintFor(name, pill === index)}
+                  hitSlop={PILL_HIT_SLOP}
+                  style={({ pressed }) => [
+                    styles.target,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  {layers}
+                </Pressable>
+              ) : (
+                <View
+                  accessible
+                  accessibilityLabel={spoken}
+                  style={styles.target}
+                >
+                  {layers}
+                </View>
+              )}
             </View>
             {pill < STAGES.length - 1 ? (
               <Line
@@ -194,6 +234,20 @@ export const StepperPills = memo(function StepperPills({
     </View>
   )
 })
+
+/** An unseen copy of the current look, the widest. It gives the pill's box,
+ *  and so its tap target, a size; the visible looks lie over it. */
+function PillSizer({ label, font }: { label: string; font: PauseFont }) {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={[styles.pill, styles.sizer]}
+    >
+      <Text style={[styles.activeLabel, font("sansBold")]}>{label}</Text>
+    </View>
+  )
+}
 
 /** The top node: an outline ring, and a disc that fades in over it.
  *  The disc has the ring's own outer edge, so a lit node shows no seam. */
@@ -248,6 +302,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     height: PILL_SLOT_HEIGHT,
   },
+  target: { alignItems: "center", justifyContent: "center" },
+  pressed: { opacity: PRESSED_OPACITY },
+  sizer: { position: "relative", opacity: 0 },
   pill: {
     position: "absolute",
     flexDirection: "row",

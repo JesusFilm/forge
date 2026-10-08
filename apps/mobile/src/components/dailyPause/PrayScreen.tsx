@@ -34,7 +34,7 @@ import {
 } from "./PauseIntro"
 import { Pulse } from "./Pulse"
 import { sampledCurve } from "./sampledCurve"
-import { StepperPills } from "./StepperPills"
+import { StepperPills, type StepperStage } from "./StepperPills"
 import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { HeldPauseButton, PauseBody, PauseButton } from "./PauseFrame"
 import { usePauseClock } from "./usePauseClock"
@@ -89,6 +89,8 @@ type PrayScreenProps = {
   meditationLength: MeditationLength
   font: PauseFont
   onContinue: () => void
+  /** Opens a section from a stepper pill. */
+  onJump?: (stage: StepperStage) => void
 }
 
 export function PrayScreen({
@@ -96,6 +98,7 @@ export function PrayScreen({
   meditationLength,
   font,
   onContinue,
+  onJump,
 }: PrayScreenProps) {
   const intro = usePauseIntro("pray")
   const countdown = useCountdown(
@@ -112,7 +115,7 @@ export function PrayScreen({
         onLayout={intro.onScrollLayout}
       >
         <IntroStepper intro={intro}>
-          <StepperPills arrival="pray" font={font} />
+          <StepperPills arrival="pray" font={font} onSelect={onJump} />
         </IntroStepper>
         <View style={styles.ringGap} />
         <IntroContent intro={intro} style={styles.content}>
