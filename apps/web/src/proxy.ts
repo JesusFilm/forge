@@ -5,10 +5,12 @@ import {
   isLocale,
   isPublicWatchHomeLanguageSlug,
   isPublicWatchLanguageSlug,
+  parseAcceptLanguage,
   publicWatchAudioLanguageSlugForLocale,
   resolveUiLocale,
   resolveWatchLocaleIdentity,
 } from "@/lib/locale"
+import { LANGUAGE_PREFERENCE_COOKIE } from "@/lib/language-preference-constants"
 import {
   asContentSlug,
   asLocaleSlug,
@@ -110,6 +112,7 @@ type RewriteDecision =
     }
   | { kind: "pass" }
   | { kind: "not-found" }
+  | { kind: "redirect"; pathname: string }
 
 type ManifestAdmissionDecision =
   | { kind: "admit"; internalPathname?: string }
@@ -155,10 +158,59 @@ function splitPath(pathname: string): string[] {
   return pathname.split("/").filter(Boolean)
 }
 
+function preferredPublicLanguageSlug(request: ProxyRequest): string | null {
+  const cookieValues = (request.headers.get("cookie") ?? "")
+    .split(";")
+    .map((cookie) => cookie.trim())
+    .filter((cookie) => cookie.startsWith(`${LANGUAGE_PREFERENCE_COOKIE}=`))
+  if (cookieValues.length === 1) {
+    const rawValue = cookieValues[0]?.slice(
+      LANGUAGE_PREFERENCE_COOKIE.length + 1,
+    )
+    try {
+      const value = rawValue ? decodeURIComponent(rawValue) : ""
+      if (isPublicWatchLanguageSlug(value)) {
+        return value === publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+          ? null
+          : value
+      }
+    } catch {
+      // An invalid preference cookie falls back to Accept-Language.
+    }
+  }
+
+  const locale = parseAcceptLanguage(request.headers.get("accept-language"))
+  if (!locale) return null
+  const slug = publicWatchAudioLanguageSlugForLocale(locale)
+  return slug &&
+    isPublicWatchLanguageSlug(slug) &&
+    slug !== publicWatchAudioLanguageSlugForLocale(DEFAULT_LOCALE)
+    ? slug
+    : null
+}
+
+function isLanguageNegotiatedEntryPath(pathname: string): boolean {
+  return (
+    pathname === "/" ||
+    pathname === "/languages" ||
+    pathname === "/history" ||
+    pathname === "/whats-new"
+  )
+}
+
+function applyLanguagePreferenceHeaders(response: NextResponse): NextResponse {
+  response.headers.set("Vary", "Accept-Language, Cookie")
+  return response
+}
+
 function buildRedirect(url: URL, status: 301 | 307 | 308): NextResponse {
   const response = NextResponse.redirect(url, status)
   response.headers.set("Cache-Control", REDIRECT_CACHE_CONTROL)
   return response
+}
+
+function buildLanguagePreferenceRedirect(url: URL): NextResponse {
+  return applyLanguagePreferenceHeaders(buildRedirect(url, 307))
 }
 
 function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
@@ -284,8 +336,18 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
 function classifyRewrite(
   pathname: string,
   manifest: WatchRouteManifest | null,
+  preferredLanguageSlug: string | null = null,
 ): RewriteDecision {
   if (shouldBypassLocaleRewrite(pathname)) return { kind: "pass" }
+  if (preferredLanguageSlug && isLanguageNegotiatedEntryPath(pathname)) {
+    return {
+      kind: "redirect",
+      pathname:
+        pathname === "/"
+          ? `/${preferredLanguageSlug}.html`
+          : `/${preferredLanguageSlug}.html${pathname}`,
+    }
+  }
   if (pathname === "/" || pathname === "") {
     return {
       kind: "rewrite",
@@ -333,7 +395,8 @@ function classifyRewrite(
     if (
       localeSegment === "videos" ||
       localeSegment === "languages" ||
-      localeSegment === "history"
+      localeSegment === "history" ||
+      localeSegment === "whats-new"
     ) {
       if (!hasHtmlSuffix(slugSegment)) return { kind: "not-found" }
       const rawLanguageSlug = stripSafeSlug(slugSegment)
@@ -826,13 +889,21 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     return buildRedirect(url, 308)
   }
 
-  if (pathname === "/history") {
-    return rewriteToInternal(request, {
-      kind: "rewrite",
-      locale: DEFAULT_LOCALE,
-      htmlLang: DEFAULT_LOCALE,
+  const preferredLanguageSlug = isLanguageNegotiatedEntryPath(pathname)
+    ? preferredPublicLanguageSlug(request)
+    : null
+  if (preferredLanguageSlug) {
+    const preferenceDecision = classifyRewrite(
       pathname,
-    })
+      null,
+      preferredLanguageSlug,
+    )
+    if (preferenceDecision.kind === "redirect") {
+      const url = request.nextUrl.clone()
+      url.pathname = preferenceDecision.pathname
+      // Keep query state such as LOCALE_RESOLVED_PARAM intact across the 307.
+      return buildLanguagePreferenceRedirect(url)
+    }
   }
 
   const canonical = canonicalizeWatchPath({ rawPathname: pathname })
@@ -842,6 +913,17 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     return buildRedirect(url, canonical.status)
   }
 
+  if (pathname === "/history") {
+    return applyLanguagePreferenceHeaders(
+      rewriteToInternal(request, {
+        kind: "rewrite",
+        locale: DEFAULT_LOCALE,
+        htmlLang: DEFAULT_LOCALE,
+        pathname,
+      }),
+    )
+  }
+
   if (pathname === "/search") return redirectDeprecatedSearch(request)
 
   // Fetch once (60s in-process cache) and share it between shape
@@ -849,6 +931,11 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
   const manifest = await getWatchRouteManifest()
   const rewrite = classifyRewrite(pathname, manifest)
   if (rewrite.kind === "pass") return NextResponse.next()
+  if (rewrite.kind === "redirect") {
+    const url = request.nextUrl.clone()
+    url.pathname = rewrite.pathname
+    return buildLanguagePreferenceRedirect(url)
+  }
   if (rewrite.kind === "not-found") return buildNotFound(request)
   const admission = await classifyManifestAdmission(rewrite, manifest)
   if (admission.kind === "not-found") {
@@ -862,7 +949,7 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     url.pathname = admission.pathname
     return buildRedirect(url, admission.status ?? 301)
   }
-  return rewriteToInternal(
+  const response = rewriteToInternal(
     request,
     {
       ...rewrite,
@@ -870,6 +957,9 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     },
     manifest,
   )
+  return isLanguageNegotiatedEntryPath(pathname)
+    ? applyLanguagePreferenceHeaders(response)
+    : response
 }
 
 export const config = {

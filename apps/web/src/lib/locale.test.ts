@@ -275,6 +275,14 @@ describe("parseAcceptLanguage", () => {
   it("returns null when no generated catalog is available", () => {
     expect(parseAcceptLanguage("aiw-ET,aiw;q=0.9")).toBeNull()
   })
+
+  it("uses quality order and falls through unsupported or excluded languages", () => {
+    expect(parseAcceptLanguage("aiw-ET,de;q=0.9")).toBe("de")
+    expect(parseAcceptLanguage("en;q=0,es;q=0.8,fr;q=0.9")).toBe("fr")
+    expect(parseAcceptLanguage("de;q=bogus,pt-BR;q=0.7")).toBe("pt")
+    expect(parseAcceptLanguage("zh-TW,zh;q=0.9")).toBe("zh-Hant")
+    expect(parseAcceptLanguage("zh-HK,zh;q=0.9")).toBe("zh-Hant")
+  })
 })
 
 describe("resolveUiLocale (catalog-driven fallback)", () => {

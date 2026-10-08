@@ -25,8 +25,8 @@ import {
 // Cache intent the proxy translates into a Cache-Control header. `long` is
 // reserved for permanent normalizations (trailing-slash strip, eventually
 // alias resolution after stable observation); `short` covers everything else.
-// Add `"no-store"` here when Phase 3 wires cookie-driven redirects through
-// canonicalize — they MUST NOT cache (user-state-dependent).
+// User-state language redirects are handled separately in proxy.ts and use
+// private caching; canonicalization decisions remain URL-only.
 /**
  * Result of `canonicalizeWatchPath`:
  *
@@ -53,11 +53,20 @@ export type CanonicalizeInput = {
 const MAX_PATH_LEN = 2048
 
 // Literals that MUST NOT trigger Rule 5 (single-segment-duplicate).
-// `languages` is a 1-segment index; `whats-new` is the 1-segment Watch
-// product-update page; `search` is a deprecated inbound redirect into the
-// global search modal. None should become a synthetic `.html` watch URL.
-const ONE_SEGMENT_EXEMPT = new Set(["languages", "whats-new", "search"])
-const LOCALIZED_UTILITY_SEGMENTS = new Set(["videos", "languages", "history"])
+// These utility routes have their own public forms and must not become
+// synthetic `.html` watch URLs.
+const ONE_SEGMENT_EXEMPT = new Set([
+  "history",
+  "languages",
+  "whats-new",
+  "search",
+])
+const LOCALIZED_UTILITY_SEGMENTS = new Set([
+  "videos",
+  "languages",
+  "history",
+  "whats-new",
+])
 
 // Origin-invariance + injection guard. Any input that fails MUST short-circuit
 // to `{kind: "canonical"}` (let the route handler 404 it). NEVER emit a
