@@ -94,7 +94,9 @@ describe("generateSeriesMetadata", () => {
       pathLocale: "en",
     })
     const images = meta.openGraph?.images as Array<{ url: string }>
-    expect(images?.[0]?.url).toContain("unsplash.com")
+    expect(images?.[0]?.url).toBe(
+      "https://www.jesusfilm.org/watch/images/watch-social-card.jpg",
+    )
   })
 
   it("sets robots index/follow false when series.noIndex is true", () => {
