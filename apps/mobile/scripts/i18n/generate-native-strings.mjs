@@ -6,7 +6,6 @@
 import { fileURLToPath } from "node:url"
 import path from "node:path"
 import fs from "node:fs"
-import { catalogTagsIn } from "./lib/catalogChecks.js"
 import { renderJson, SOURCE_LOCALE } from "./lib/catalogOps.js"
 import { formatWithPrettier } from "./lib/scriptFormat.js"
 
@@ -20,9 +19,10 @@ const NATIVE_STRINGS = {
     "NSLocalNetworkUsageDescription",
 }
 
-// Expo writes `key = "value";` with no escaping (@expo/config-plugins
-// ios/Locales.js), so a quote, a backslash, or a line break breaks the file.
-const UNSAFE_STRINGS_CHAR = /["\\\p{Cc}]/u
+// Expo writes `key = "value";` unescaped (@expo/config-plugins ios/Locales.js),
+// and the catalog holds ICU source, so these would not show as written: a
+// quote, a backslash, a line break, or the ICU apostrophe escape ''.
+const UNSAFE_STRINGS_TEXT = /["\\\p{Cc}]|''/u
 
 class NativeStringsError extends Error {}
 
@@ -30,11 +30,13 @@ function parseArgs(argv) {
   const options = {
     check: false,
     messagesDir: path.join(MOBILE, "messages"),
+    nativeLocales: path.join(MOBILE, "i18n", "native-locales.json"),
     appJson: path.join(MOBILE, "app.json"),
     outDir: path.join(MOBILE, "i18n", "native"),
   }
   const paths = {
     "--messages-dir=": "messagesDir",
+    "--native-locales=": "nativeLocales",
     "--app-json=": "appJson",
     "--out-dir=": "outDir",
   }
@@ -64,26 +66,33 @@ function lookup(catalog, dottedKey) {
     .reduce((node, part) => (node == null ? undefined : node[part]), catalog)
 }
 
-// Each catalog's translated Info.plist values. A value that equals English (a
-// pending key, or an English-only catalog) falls back to Info.plist.
-function localeValues({ messagesDir }) {
+// One file per native locale, so expo.locales changes only with the native
+// locale list. A later translation then edits only its file, which the
+// fingerprint does not hash, and the catalog can still ship over the air.
+function localeValues({ messagesDir, nativeLocales }) {
+  const declared = readJson(nativeLocales)
+  if (!Array.isArray(declared)) {
+    throw new NativeStringsError(`${nativeLocales}: expected a list of tags.`)
+  }
   const english = readJson(path.join(messagesDir, `${SOURCE_LOCALE}.json`))
-  const tags = catalogTagsIn(messagesDir).filter((tag) => tag !== SOURCE_LOCALE)
   const byTag = {}
-  for (const tag of tags) {
-    const catalog = readJson(path.join(messagesDir, `${tag}.json`))
+  for (const tag of declared.filter((tag) => tag !== SOURCE_LOCALE)) {
+    const catalogFile = path.join(messagesDir, `${tag}.json`)
+    const catalog = fs.existsSync(catalogFile) ? readJson(catalogFile) : {}
     const ios = {}
     for (const [catalogKey, plistKey] of Object.entries(NATIVE_STRINGS)) {
-      const value = lookup(catalog, catalogKey)
-      if (typeof value !== "string" || value === lookup(english, catalogKey)) {
-        continue
-      }
-      const unsafe = value.match(UNSAFE_STRINGS_CHAR)
+      const translated = lookup(catalog, catalogKey)
+      const value =
+        typeof translated === "string"
+          ? translated
+          : lookup(english, catalogKey)
+      if (typeof value !== "string") continue
+      const unsafe = value.match(UNSAFE_STRINGS_TEXT)
       if (unsafe) {
         throw new NativeStringsError(
           `Cannot write InfoPlist.strings for ${tag}: ${catalogKey} holds ` +
-            `${JSON.stringify(unsafe[0])}, which Expo writes unescaped. ` +
-            "Fix the catalog text.",
+            `${JSON.stringify(unsafe[0])}, which the iOS alert would not ` +
+            "show as written. Fix the catalog text.",
         )
       }
       ios[plistKey] = value
@@ -101,43 +110,42 @@ async function formatJson(value, configFile) {
   })
 }
 
-/** Every file this script owns, mapped to its expected content. */
+/** The locale files, mapped to their content, and the expo.locales map. */
 async function expectedOutputs(options) {
-  const byTag = localeValues(options)
-  const outputs = new Map()
+  const files = new Map()
   const locales = {}
   const outDirFromAppJson = path
     .relative(path.dirname(options.appJson), options.outDir)
     .split(path.sep)
     .join("/")
-  for (const [tag, content] of Object.entries(byTag)) {
+  for (const [tag, content] of Object.entries(localeValues(options))) {
     const file = path.join(options.outDir, `${tag}.json`)
-    outputs.set(file, await formatJson(content, file))
+    files.set(file, await formatJson(content, file))
     locales[tag] = `./${outDirFromAppJson}/${tag}.json`
   }
-  const config = readJson(options.appJson)
-  if (Object.keys(locales).length > 0) config.expo.locales = locales
-  else delete config.expo.locales
-  outputs.set(options.appJson, await formatJson(config, options.appJson))
-  return outputs
+  return { files, locales: Object.keys(locales).length > 0 ? locales : null }
 }
 
-function staleFiles(outDir, outputs) {
+function staleFiles(outDir, files) {
   if (!fs.existsSync(outDir)) return []
   return fs
     .readdirSync(outDir)
     .filter((name) => name.endsWith(".json"))
     .map((name) => path.join(outDir, name))
-    .filter((file) => !outputs.has(file))
+    .filter((file) => !files.has(file))
 }
 
 async function main() {
   const options = parseArgs(process.argv.slice(2))
-  const outputs = await expectedOutputs(options)
-  const stale = staleFiles(options.outDir, outputs)
+  const { files, locales } = await expectedOutputs(options)
+  const stale = staleFiles(options.outDir, files)
+  // Compared by value, so a Prettier-clean hand edit elsewhere is not drift.
+  const config = readJson(options.appJson)
+  const appJsonCurrent =
+    JSON.stringify(config.expo.locales ?? null) === JSON.stringify(locales)
 
   if (options.check) {
-    const drifted = [...outputs]
+    const drifted = [...files]
       .filter(
         ([file, expected]) =>
           !fs.existsSync(file) || fs.readFileSync(file, "utf8") !== expected,
@@ -146,6 +154,7 @@ async function main() {
     const problems = [
       ...drifted,
       ...stale.map((file) => `${path.basename(file)} (stale)`),
+      ...(appJsonCurrent ? [] : [path.basename(options.appJson)]),
     ]
     if (problems.length > 0) {
       console.error(
@@ -159,7 +168,12 @@ async function main() {
 
   fs.mkdirSync(options.outDir, { recursive: true })
   for (const file of stale) fs.rmSync(file)
-  for (const [file, content] of outputs) fs.writeFileSync(file, content)
+  for (const [file, content] of files) fs.writeFileSync(file, content)
+  if (!appJsonCurrent) {
+    if (locales) config.expo.locales = locales
+    else delete config.expo.locales
+    fs.writeFileSync(options.appJson, await formatJson(config, options.appJson))
+  }
 }
 
 main().catch((error) => {

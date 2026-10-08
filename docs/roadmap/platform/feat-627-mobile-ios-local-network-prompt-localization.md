@@ -78,6 +78,6 @@ When the prompt shows: `app.json` sets the `react-native-google-cast` plugin opt
 
 - `pnpm --filter @forge/mobile test` passes, including the new guard (English source matches `infoPlist`) and the generator's `--check`.
 - `node scripts/i18n/translate-catalogs.mjs --dry-run` shows 0 requests after the import.
-- `npx expo prebuild --platform ios --no-install`, then `plutil -p ios/forgewatch/es.lproj/InfoPlist.strings` shows the Spanish sentence. Spot-check `ar`, `zh-Hans` and `sr-Latn` too. Delete `ios/` afterwards if it did not exist before.
+- `npx expo prebuild --platform ios --no-install`, then `plutil -p ios/forgewatch/Supporting/es.lproj/InfoPlist.strings` shows the Spanish sentence. Spot-check `ar`, `zh-Hans` and `sr-Latn` too. Delete `ios/` afterwards if it did not exist before.
 - On an iOS simulator with a fresh install (erase the simulator, or use a new one, because iOS keeps the Local Network answer per install), launch with `-AppleLanguages "(es)" -AppleLocale es_ES`, and screenshot the Local Network alert: the middle sentence is Spanish.
 - Repeat with an English-only tag (for example `ff`): the alert shows the English sentence.

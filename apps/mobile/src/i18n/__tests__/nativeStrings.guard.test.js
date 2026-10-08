@@ -36,8 +36,8 @@ const catalog = (sentence) => ({
   NativePermissions: { localNetworkUsageDescription: sentence },
 })
 
-/** A mobile-like dir: catalogs, and an app.json with the English. */
-function fixture(sentences) {
+/** A mobile-like dir: catalogs, native locales, and an app.json. */
+function fixture(sentences, declared = ["en", ...Object.keys(sentences)]) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "native-strings-"))
   tempDirs.push(root)
   const messagesDir = path.join(root, "messages")
@@ -50,11 +50,14 @@ function fixture(sentences) {
       JSON.stringify(catalog(sentence)),
     )
   }
+  const nativeLocales = path.join(root, "native-locales.json")
+  fs.writeFileSync(nativeLocales, JSON.stringify([...declared].sort()))
   const appJson = path.join(root, "app.json")
   const expo = { name: "x", ios: { infoPlist: { [PLIST_KEY]: ENGLISH } } }
   fs.writeFileSync(appJson, `${JSON.stringify({ expo }, null, 2)}\n`)
   const args = [
     `--messages-dir=${messagesDir}`,
+    `--native-locales=${nativeLocales}`,
     `--app-json=${appJson}`,
     `--out-dir=${outDir}`,
   ]
@@ -80,29 +83,80 @@ describe("iOS InfoPlist.strings locale files (feat-627)", () => {
     expect(readJson(APP_JSON).expo.ios.infoPlist[PLIST_KEY]).toBe(english)
   })
 
-  it("writes one iOS-only file per translated catalog and lists it in app.json", () => {
-    const { outDir, appJson, args } = fixture({
-      es: "La app usa tu red local para encontrar dispositivos Cast.",
-      "zh-Hans": "此应用使用你的本地网络查找 Cast 设备。",
-      de: ENGLISH,
-    })
+  it("writes one iOS-only file per native locale and lists it in app.json", () => {
+    const { outDir, appJson, args } = fixture(
+      {
+        es: "La app usa tu red local para encontrar dispositivos Cast.",
+        "zh-Hans": "此应用使用你的本地网络查找 Cast 设备。",
+        de: ENGLISH,
+        it: "L’app usa la tua rete locale.",
+      },
+      ["de", "en", "es", "fr", "zh-Hans"],
+    )
     expect(runGenerator(args).status).toBe(0)
 
-    // en and de (pending or English-only: English text) use Info.plist.
-    expect(outFiles(outDir)).toEqual(["es.json", "zh-Hans.json"])
+    // de (pending) and fr (no catalog) get the English; it is not native yet.
+    expect(outFiles(outDir)).toEqual([
+      "de.json",
+      "es.json",
+      "fr.json",
+      "zh-Hans.json",
+    ])
     expect(readJson(path.join(outDir, "es.json"))).toEqual({
       ios: {
         [PLIST_KEY]:
           "La app usa tu red local para encontrar dispositivos Cast.",
       },
     })
+    for (const tag of ["de", "fr"]) {
+      expect(readJson(path.join(outDir, `${tag}.json`))).toEqual({
+        ios: { [PLIST_KEY]: ENGLISH },
+      })
+    }
     const { expo } = readJson(appJson)
     expect(expo.locales).toEqual({
+      de: "./i18n/native/de.json",
       es: "./i18n/native/es.json",
+      fr: "./i18n/native/fr.json",
       "zh-Hans": "./i18n/native/zh-Hans.json",
     })
     expect(expo.ios.infoPlist[PLIST_KEY]).toBe(ENGLISH)
     expect(runGenerator([...args, "--check"]).status).toBe(0)
+  })
+
+  // app.json moves the fingerprint runtime version; i18n/native/*.json does
+  // not, so a later translation can still ship its catalog over the air.
+  it("keeps app.json unchanged when a native locale gets its translation", () => {
+    const { messagesDir, outDir, appJson, args } = fixture({ de: ENGLISH })
+    expect(runGenerator(args).status).toBe(0)
+    const before = fs.readFileSync(appJson, "utf8")
+
+    const german = "Die App nutzt dein lokales Netzwerk."
+    fs.writeFileSync(
+      path.join(messagesDir, "de.json"),
+      JSON.stringify(catalog(german)),
+    )
+    expect(runGenerator(args).status).toBe(0)
+
+    expect(fs.readFileSync(appJson, "utf8")).toBe(before)
+    expect(readJson(path.join(outDir, "de.json")).ios[PLIST_KEY]).toBe(german)
+  })
+
+  it("ignores a Prettier-clean app.json edit outside expo.locales", () => {
+    const { appJson, args } = fixture({ es: "La app usa tu red local." })
+    expect(runGenerator(args).status).toBe(0)
+    const collapsed = fs
+      .readFileSync(appJson, "utf8")
+      .replace(
+        /"infoPlist": \{\s+("[^"]+": "[^"]+")\s+\}/,
+        '"infoPlist": { $1 }',
+      )
+    expect(collapsed).toContain('"infoPlist": { "')
+    fs.writeFileSync(appJson, collapsed)
+
+    expect(runGenerator([...args, "--check"]).status).toBe(0)
+    expect(runGenerator(args).status).toBe(0)
+    expect(fs.readFileSync(appJson, "utf8")).toBe(collapsed)
   })
 
   it.each([
@@ -147,11 +201,12 @@ describe("iOS InfoPlist.strings locale files (feat-627)", () => {
   })
 
   // Expo writes each value between quotes in InfoPlist.strings with no
-  // escaping, so these characters would break the file.
+  // escaping, and the catalog text is ICU source with '' for an apostrophe.
   it.each([
     ["a double quote", 'La app usa tu "red local".'],
     ["a backslash", "La app usa tu red\\local."],
     ["a line break", "La app usa tu red local.\nY tu TV."],
+    ["an ICU apostrophe escape", "L''app usa la tua rete locale."],
   ])("refuses a translation with %s and writes nothing", (_, sentence) => {
     const { outDir, appJson, args } = fixture({ es: sentence })
     const before = fs.readFileSync(appJson, "utf8")
