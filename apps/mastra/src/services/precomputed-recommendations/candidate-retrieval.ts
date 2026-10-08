@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 
 import type { SourceCatalog, Video } from "./source-generation"
+import { readCompleteSelectedChunks } from "./selected-transcript"
 
 /** Changing the ranking or its reserves creates a different build input. */
 export const CANDIDATE_RETRIEVAL_REVISION = "selected-catalog-lexical-v2"
@@ -150,87 +151,6 @@ function duplicateContent(
   )
 }
 
-async function readSelectedChunks(
-  catalog: SourceCatalog,
-  video: Video,
-  cutoff: string,
-) {
-  const terms: Counter = new Map()
-  const hash = createHash("sha256")
-  const byTranscript = new Map<string, number>()
-  const selected = video.transcriptSelection
-    ? new Map(
-        video.transcriptSelection.selected.map((item) => [
-          item.transcriptId,
-          item,
-        ]),
-      )
-    : null
-  const indices = new Map<string, Set<number>>()
-  let afterChunkId: string | undefined
-  let lastChunkId: string | undefined
-  let count = 0
-  let hasNonEnglish = false
-  do {
-    const page = await catalog.chunks({
-      videoId: video.id,
-      cutoff,
-      afterChunkId,
-    })
-    for (const chunk of page.chunks) {
-      if (lastChunkId && chunk.id <= lastChunkId)
-        throw new CandidateRetrievalError("chunk_order_changed")
-      if (selected) {
-        const transcript = selected.get(chunk.transcriptId)
-        if (
-          !transcript ||
-          transcript.language !== chunk.language ||
-          chunk.chunkIndex < 0 ||
-          chunk.chunkIndex >= transcript.totalChunks
-        )
-          throw new CandidateRetrievalError("selected_transcript_incomplete")
-        const seen = indices.get(chunk.transcriptId) ?? new Set<number>()
-        if (seen.has(chunk.chunkIndex))
-          throw new CandidateRetrievalError("selected_transcript_incomplete")
-        seen.add(chunk.chunkIndex)
-        indices.set(chunk.transcriptId, seen)
-      }
-      lastChunkId = chunk.id
-      count += 1
-      hasNonEnglish ||= chunk.language !== "en"
-      byTranscript.set(
-        chunk.transcriptId,
-        (byTranscript.get(chunk.transcriptId) ?? 0) + 1,
-      )
-      hash.update(
-        JSON.stringify([
-          chunk.id,
-          chunk.transcriptId,
-          chunk.language,
-          chunk.chunkIndex,
-          chunk.text,
-        ]),
-      )
-      countWords(terms, chunk.text)
-    }
-    if (page.nextCursor && page.nextCursor === afterChunkId)
-      throw new CandidateRetrievalError("cursor_stalled")
-    afterChunkId = page.nextCursor ?? undefined
-  } while (afterChunkId)
-  if (selected) {
-    if (
-      selected.size !== byTranscript.size ||
-      [...selected].some(
-        ([id, transcript]) =>
-          byTranscript.get(id) !== transcript.totalChunks ||
-          indices.get(id)?.size !== transcript.totalChunks,
-      )
-    )
-      throw new CandidateRetrievalError("selected_transcript_incomplete")
-  }
-  return { terms, chunkDigest: hash.digest("hex"), count, hasNonEnglish }
-}
-
 export async function buildCandidateRetrieval(
   catalog: SourceCatalog,
   videos: readonly Video[],
@@ -254,12 +174,14 @@ export async function buildCandidateRetrieval(
   for (let start = 0; start < ordered.length; start += READ_CONCURRENCY) {
     const batch = ordered.slice(start, start + READ_CONCURRENCY)
     const results = await Promise.all(
-      batch.map((video) => readSelectedChunks(catalog, video, cutoff)),
+      batch.map((video) => readCompleteSelectedChunks(catalog, video, cutoff)),
     )
     results.forEach((result, offset) => {
       const index = start + offset
-      transcriptCounters[index] = result.terms
-      if (!result.count) metadataOnly.add(index)
+      const terms: Counter = new Map()
+      for (const chunk of result.chunks) countWords(terms, chunk.text)
+      transcriptCounters[index] = terms
+      if (!result.chunks.length) metadataOnly.add(index)
       if (result.hasNonEnglish) fallback.add(index)
       selectedCorpusHash.update(
         JSON.stringify([
