@@ -227,7 +227,7 @@ export async function preflightManualCatalog(
 }
 
 const BUILD_PROMPT_VERSION = "subscription-profile-edge-v1"
-const PROFILE_PROMPT_VERSION = "complete-profile-v1"
+const PROFILE_PROMPT_VERSION = "complete-profile-v2"
 const PROFILE_SCHEMA_VERSION = "complete-profile-schema-v1"
 const EDGE_PROMPT_VERSION = "shared-edge-v1"
 const EDGE_SCHEMA_VERSION = "shared-edge-schema-v1"

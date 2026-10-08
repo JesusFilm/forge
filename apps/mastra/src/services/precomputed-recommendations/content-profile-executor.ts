@@ -137,6 +137,41 @@ export function profileJsonBudget(
   )
 }
 
+/** Maximum JSON byte growth when any accepted map anchor is materialized.
+ * The chunk ID and English claim occur in both shapes and cancel. The wire
+ * excerpt is at least eight encoded bytes; actual IDs are JSON-escaped here,
+ * and both offsets use the largest possible digit count for that fragment. */
+export function profileMapAnchorExpansionBound(
+  fragments: ProfilePart["input"]["fragments"],
+  videoId: string,
+): number {
+  const bytes = (value: unknown) =>
+    Buffer.byteLength(JSON.stringify(value), "utf8")
+  const claimEnglish = "c".repeat(12)
+  let bound = 0
+  for (const fragment of fragments) {
+    const wire = {
+      chunkId: fragment.chunkId,
+      fragmentIndex: fragment.fragmentIndex,
+      excerpt: "e".repeat(8),
+      claimEnglish,
+    }
+    const stored = {
+      videoId,
+      chunkId: fragment.chunkId,
+      transcriptId: fragment.transcriptId,
+      language: fragment.language,
+      chunkIndex: fragment.chunkIndex,
+      startChar: fragment.endChar,
+      endChar: fragment.endChar,
+      textSha256: "0".repeat(64),
+      claimEnglish,
+    }
+    bound = Math.max(bound, bytes(stored) - bytes(wire))
+  }
+  return bound
+}
+
 function materializeMapProfile(
   modelProfile: z.output<typeof mapProfileSchema>,
   part: ProfilePart,
@@ -607,7 +642,13 @@ export async function runContentProfile(input: {
     const profileBudget = profileJsonBudget(start, end, childDigests)
     if (profileBudget <= 0)
       throw new ContentProfileExecutionError("profile_invalid")
-    const system = `${stage === "map" ? MAP_SYSTEM : REDUCE_SYSTEM} The complete stored node, including profile, covered range, and child digests, must be at most 2,048 UTF-8 bytes. The profile JSON budget for this node is ${profileBudget} UTF-8 bytes. Use at most 8 anchors with 12–180-character claims; summaryEnglish at most 600 characters; each themes, people, places, and citations list at most 12 entries of at most 80 characters. Keep the whole answer within that byte budget. Do not rely on truncation.`
+    const mapExpansionBound = part
+      ? profileMapAnchorExpansionBound(part.input.fragments, input.video.id)
+      : 0
+    const budgetInstruction = part
+      ? `The stored profile JSON budget for this node is ${profileBudget} UTF-8 bytes. Verified anchor IDs, language, offsets, and SHA-256 are added locally. The maximum JSON expansion is ${mapExpansionBound} UTF-8 bytes per returned anchor. Keep minified response profile JSON bytes + returned anchor count × ${mapExpansionBound} at or below ${profileBudget} UTF-8 bytes; count JSON escaping and Unicode bytes. Schema field maxima are ceilings, not targets.`
+      : `The profile JSON budget for this node is ${profileBudget} UTF-8 bytes.`
+    const system = `${stage === "map" ? MAP_SYSTEM : REDUCE_SYSTEM} The complete stored node, including profile, covered range, and child digests, must be at most 2,048 UTF-8 bytes. ${budgetInstruction} Use at most 8 anchors with 12–180-character claims; summaryEnglish at most 600 characters; each themes, people, places, and citations list at most 12 entries of at most 80 characters. Keep the whole answer within that byte budget. Do not rely on truncation.`
     const prompt = part
       ? JSON.stringify(part.input)
       : JSON.stringify({

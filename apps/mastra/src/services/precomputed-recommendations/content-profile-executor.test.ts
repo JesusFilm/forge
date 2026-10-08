@@ -5,6 +5,7 @@ import { z } from "zod"
 import {
   profileCoverageDigest,
   profileJsonBudget,
+  profileMapAnchorExpansionBound,
   runContentProfile as runContentProfileActual,
   type CompactProfile,
   type ProfilePersistencePort,
@@ -45,7 +46,7 @@ const identity = {
   inputCutoff: "2026-10-06T20:48:05.001Z",
   modelId: "gpt-6-astra",
   backend: "codex_chatgpt_subscription",
-  promptVersion: "complete-profile-v1",
+  promptVersion: "complete-profile-v2",
   schemaVersion: "complete-profile-schema-v1",
   maxPartBytes: 24_576,
 } as const
@@ -338,7 +339,23 @@ describe("complete content profile execution", () => {
           expect(input.system).not.toContain("compute SHA-256")
           expect(input.system).toContain("2,048 UTF-8 bytes")
           expect(input.system).toContain(
-            `profile JSON budget for this node is ${profileJsonBudget(0, 1, [])} UTF-8 bytes`,
+            `stored profile JSON budget for this node is ${profileJsonBudget(0, 1, [])} UTF-8 bytes`,
+          )
+          expect(input.system).toContain(
+            "minified response profile JSON bytes + returned anchor count ×",
+          )
+          const mapInput = JSON.parse(input.prompt) as {
+            fragments: Parameters<typeof profileMapAnchorExpansionBound>[0]
+          }
+          const expansionBound = profileMapAnchorExpansionBound(
+            mapInput.fragments,
+            "video-one",
+          )
+          expect(input.system).toContain(
+            `returned anchor count × ${expansionBound} at or below ${profileJsonBudget(0, 1, [])} UTF-8 bytes`,
+          )
+          expect(input.system).toContain(
+            "Schema field maxima are ceilings, not targets.",
           )
           return {
             output: input.schema.parse(supportedMapProfile),
@@ -384,7 +401,7 @@ describe("complete content profile execution", () => {
           completedCallId = input.callId
           expect(input.stage).toBe("map")
           expect(input.partIndex).toBe(0)
-          expect(input.stagePromptVersion).toBe("complete-profile-v1:map")
+          expect(input.stagePromptVersion).toBe("complete-profile-v2:map")
           return {
             generationId: input.generationId,
             cacheKey: input.cacheKey,
@@ -623,6 +640,190 @@ describe("complete content profile execution", () => {
     expect(bytes(wire)).toBeLessThan(profileJsonBudget(0, 1, []))
     expect(bytes(node(storedAnchors.slice(0, 6)))).toBeLessThanOrEqual(2_048)
     expect(bytes(node(storedAnchors))).toBeGreaterThan(2_048)
+    const expansionBound = profileMapAnchorExpansionBound(
+      [
+        {
+          chunkId,
+          transcriptId,
+          language: "en",
+          chunkIndex: 0,
+          fragmentIndex: 0,
+          startChar: 0,
+          endChar: 56,
+          text: excerpts.join(""),
+        },
+      ],
+      videoId,
+    )
+    expect(bytes(wire) + excerpts.length * expansionBound).toBeGreaterThan(
+      profileJsonBudget(0, 1, []),
+    )
+  })
+
+  it("bounds materialized anchor bytes for ordinary, escaped, and long identifiers", () => {
+    const bytes = (value: unknown) =>
+      Buffer.byteLength(JSON.stringify(value), "utf8")
+    const common = {
+      version: "complete_profile_v1" as const,
+      summaryEnglish: "A concise source profile.",
+      themes: ["new birth"],
+      people: ["Nicodemus"],
+      places: [],
+      citations: [],
+    }
+    const fixtures = [
+      {
+        videoId: "v".repeat(25),
+        fragment: {
+          chunkId: "c".repeat(36),
+          transcriptId: "t".repeat(25),
+          language: "en",
+          chunkIndex: 0,
+          fragmentIndex: 0,
+          startChar: 0,
+          endChar: 32,
+          text: "quote000quote001quote002quote003",
+        },
+        excerpts: ["quote000", "quote001", "quote002"],
+      },
+      {
+        videoId: 'v"\\🙂\u0000id',
+        fragment: {
+          chunkId: 'c"\\🙂\u0000id',
+          transcriptId: 't"\\🙂\u0000id',
+          language: "fr-🙂",
+          chunkIndex: 12,
+          fragmentIndex: 3,
+          startChar: 9_990,
+          endChar: 10_000,
+          text: 'a🙂"\\\u0000bcde',
+        },
+        excerpts: ['a🙂"\\\u0000bcde'],
+      },
+      {
+        videoId: "v".repeat(191),
+        fragment: {
+          chunkId: "c".repeat(191),
+          transcriptId: "t".repeat(191),
+          language: "l".repeat(64),
+          chunkIndex: Number.MAX_SAFE_INTEGER,
+          fragmentIndex: 9,
+          startChar: Number.MAX_SAFE_INTEGER - 8,
+          endChar: Number.MAX_SAFE_INTEGER,
+          text: "quote000",
+        },
+        excerpts: ["quote000"],
+      },
+    ]
+    for (const { videoId, fragment, excerpts } of fixtures) {
+      const bound = profileMapAnchorExpansionBound([fragment], videoId)
+      const wire = {
+        ...common,
+        anchors: excerpts.map((excerpt) => ({
+          chunkId: fragment.chunkId,
+          fragmentIndex: fragment.fragmentIndex,
+          excerpt,
+          claimEnglish: "A supported claim.",
+        })),
+      }
+      const stored = {
+        ...common,
+        anchors: excerpts.map((excerpt) => {
+          const offset = fragment.text.indexOf(excerpt)
+          expect(offset).toBeGreaterThanOrEqual(0)
+          const startChar = fragment.startChar + offset
+          return {
+            videoId,
+            chunkId: fragment.chunkId,
+            transcriptId: fragment.transcriptId,
+            language: fragment.language,
+            chunkIndex: fragment.chunkIndex,
+            startChar,
+            endChar: startChar + excerpt.length,
+            textSha256: createHash("sha256").update(excerpt).digest("hex"),
+            claimEnglish: "A supported claim.",
+          }
+        }),
+      }
+      expect(bytes(stored)).toBeLessThanOrEqual(
+        bytes(wire) + excerpts.length * bound,
+      )
+      expect(bytes(wire) + excerpts.length * bound).toBeLessThanOrEqual(
+        profileJsonBudget(0, 1, []),
+      )
+    }
+  })
+
+  it("accounts for both offset digit boundaries in the expansion bound", () => {
+    const fragment = {
+      chunkId: "chunk-one",
+      transcriptId: "transcript-one",
+      language: "en",
+      chunkIndex: 0,
+      fragmentIndex: 0,
+      startChar: 9_991,
+      endChar: 9_999,
+      text: "quote000",
+    }
+    const before = profileMapAnchorExpansionBound([fragment], "video-one")
+    const after = profileMapAnchorExpansionBound(
+      [{ ...fragment, startChar: 9_992, endChar: 10_000 }],
+      "video-one",
+    )
+    expect(after).toBe(before + 2)
+  })
+
+  it("uses the largest expansion across different fragments in one part", () => {
+    const short = {
+      chunkId: "short",
+      transcriptId: "first",
+      language: "en",
+      chunkIndex: 0,
+      fragmentIndex: 0,
+      startChar: 0,
+      endChar: 8,
+      text: "quote000",
+    }
+    const long = {
+      chunkId: "long".repeat(30),
+      transcriptId: 'escaped"\\🙂'.repeat(12),
+      language: "l".repeat(64),
+      chunkIndex: 98_765,
+      fragmentIndex: 1,
+      startChar: 99_992,
+      endChar: 100_000,
+      text: "quote001",
+    }
+    const videoId = "video-one"
+    const bound = profileMapAnchorExpansionBound([short, long], videoId)
+    expect(bound).toBe(
+      Math.max(
+        profileMapAnchorExpansionBound([short], videoId),
+        profileMapAnchorExpansionBound([long], videoId),
+      ),
+    )
+    const wireAnchors = [short, long].map((fragment) => ({
+      chunkId: fragment.chunkId,
+      fragmentIndex: fragment.fragmentIndex,
+      excerpt: fragment.text,
+      claimEnglish: "A supported claim.",
+    }))
+    const storedAnchors = [short, long].map((fragment) => ({
+      videoId,
+      chunkId: fragment.chunkId,
+      transcriptId: fragment.transcriptId,
+      language: fragment.language,
+      chunkIndex: fragment.chunkIndex,
+      startChar: fragment.startChar,
+      endChar: fragment.endChar,
+      textSha256: createHash("sha256").update(fragment.text).digest("hex"),
+      claimEnglish: "A supported claim.",
+    }))
+    const bytes = (value: unknown) =>
+      Buffer.byteLength(JSON.stringify(value), "utf8")
+    expect(bytes(storedAnchors)).toBeLessThanOrEqual(
+      bytes(wireAnchors) + wireAnchors.length * bound,
+    )
   })
 
   it.each([
