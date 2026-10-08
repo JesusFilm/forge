@@ -145,9 +145,22 @@ type LocaleWithTextInfo = Intl.Locale & {
   getTextInfo?: () => LocaleTextInfo
 }
 
+// ICU/CLDR resolves the un-scripted Comorian tags `zdj` (Shingazidja) and
+// `swb` (Shimaore) to Arabic script, but both public Watch variants use Latin
+// script. Preserve explicitly supplied scripts and correct only ICU's
+// likely-script default for these two language tags.
+const LATIN_SCRIPT_COMORIAN_LANGUAGE_CODES = new Set(["swb", "zdj"])
+
 export function textDirectionForLocale(locale: string): LocaleTextDirection {
   try {
     const resolvedLocale = new Intl.Locale(locale) as LocaleWithTextInfo
+    if (
+      !resolvedLocale.script &&
+      LATIN_SCRIPT_COMORIAN_LANGUAGE_CODES.has(resolvedLocale.language)
+    ) {
+      return "ltr"
+    }
+
     const textInfo =
       typeof resolvedLocale.getTextInfo === "function"
         ? resolvedLocale.getTextInfo()
