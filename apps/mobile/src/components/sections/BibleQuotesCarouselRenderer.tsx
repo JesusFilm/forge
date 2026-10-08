@@ -42,7 +42,11 @@ import {
 } from "../../lib/bibleCardTreatment"
 import type { VerseRef } from "../../lib/bible/versification/convert"
 import { datadogLog } from "../../lib/datadog"
-import { useTextDirection } from "../../i18n/textDirection"
+import {
+  LTR_STYLE,
+  RTL_STYLE,
+  useTextDirection,
+} from "../../i18n/textDirection"
 import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -124,11 +128,8 @@ const SHARE_URL = "https://www.jesusfilm.org/watch"
 // A second tap while the first push animates would stack two readers.
 export const READER_OPEN_DEBOUNCE_MS = 1000
 
-/** Set on both platforms: Android reads `direction`, iOS `writingDirection`. */
-const EXPLICIT_DIRECTION = {
-  ltr: { direction: "ltr", writingDirection: "ltr" },
-  rtl: { direction: "rtl", writingDirection: "rtl" },
-} as const
+/** A reader-translation card's direction, set even where it matches the UI. */
+const EXPLICIT_DIRECTION = { ltr: LTR_STYLE, rtl: RTL_STYLE } as const
 
 /**
  * The scrim is opaque behind the text stack, so this does NOT carry the

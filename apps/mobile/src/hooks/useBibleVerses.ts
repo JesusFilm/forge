@@ -17,6 +17,7 @@ import {
   resolveCardQuotes,
   type CardQuote,
   type CardQuoteFallbackReason,
+  type CardQuoteResult,
   type CardQuoteServices,
 } from "../lib/bible/quotes/cardQuote"
 import { getCardQuoteServices } from "../lib/bible/quotes/services"
@@ -451,6 +452,21 @@ async function runReaderCards(input: RunInput): Promise<RunResult | null> {
         settle(key, { translationId: null, quote: null }, reason)
     }
   }
+  /** Settles an answer that names the card's source; false when it does not. */
+  const settleFound = (
+    key: string,
+    translationId: string | null,
+    found: CardQuoteResult,
+  ): boolean => {
+    const adminCard = { translationId, quote: null }
+    if (found.status === "local") {
+      settle(key, { translationId, quote: found.quote }, "local")
+    } else if (found.status === "fallback") {
+      settle(key, adminCard, found.reason)
+    } else if (found.status === "admin") settle(key, adminCard, "admin")
+    else return false
+    return true
+  }
 
   try {
     // KTD4: the open's one budget, shared with admin's read. A run after admin
@@ -493,15 +509,11 @@ async function runReaderCards(input: RunInput): Promise<RunResult | null> {
       const gap = entry == null || entry.lang === ENGLISH_TEXT_LANG
       const known = previous.get(key)
       if (known && (!gap || known.translationId === translationId)) continue
-      const adminCard = { translationId, quote: null }
-      if (!gap || found.status === "admin") settle(key, adminCard, "admin")
-      else if (found.status === "local") {
-        settle(key, { translationId, quote: found.quote }, "local")
-      } else if (found.status === "fallback") {
-        settle(key, adminCard, found.reason)
-      } else if (adminOutcome.network) {
-        network.push({ citation, translationId })
-      } else settle(key, adminCard, "no-network")
+      if (!gap) settle(key, { translationId, quote: null }, "admin")
+      else if (!settleFound(key, translationId, found)) {
+        if (adminOutcome.network) network.push({ citation, translationId })
+        else settle(key, { translationId, quote: null }, "no-network")
+      }
     }
     if (network.length === 0) return result
 
@@ -524,14 +536,11 @@ async function runReaderCards(input: RunInput): Promise<RunResult | null> {
     for (const { citation, translationId } of network) {
       const key = cardQuoteKey(citation)
       const found = read?.get(key)
-      const adminCard = { translationId, quote: null }
-      if (found == null) settle(key, adminCard, "timeout")
-      else if (found.status === "local") {
-        settle(key, { translationId, quote: found.quote }, "local")
-      } else if (found.status === "fallback") {
-        settle(key, adminCard, found.reason)
-      } else if (found.status === "admin") settle(key, adminCard, "admin")
-      else settle(key, adminCard, "read-failed")
+      if (found == null) {
+        settle(key, { translationId, quote: null }, "timeout")
+      } else if (!settleFound(key, translationId, found)) {
+        settle(key, { translationId, quote: null }, "read-failed")
+      }
     }
     return result
   } catch {
@@ -681,7 +690,7 @@ export function useBibleVerses(
   }, [slug, hasCitations, textSlug, uiLang])
 
   // ── Cards from the reader's translation (plan 2026-10-08, KTD3, KTD11) ──
-  const [quoteServices] = useState(getCardQuoteServices)
+  const quoteServices = getCardQuoteServices()
   const { positionStore } = quoteServices
   const pickKey = useSyncExternalStore(
     positionStore.subscribe,
@@ -868,9 +877,9 @@ export function useBibleVerses(
       const key = cardQuoteKey(citation)
       const source = sources.settled.get(key)
       // R12: a card shows nothing until both reads settle it.
-      const loading =
+      const cardLoading =
         passageLoading || source == null || sources.reloading.has(key)
-      const quote = loading ? null : (source?.quote ?? null)
+      const quote = cardLoading ? null : (source?.quote ?? null)
       const art = {
         attribution: null,
         imageUrl: artCandidates[artIndex] ?? null,
@@ -880,7 +889,7 @@ export function useBibleVerses(
         ctaLabel: null,
         ctaLink: null,
         citationStart: citationReaderStart(citation),
-        loading,
+        loading: cardLoading,
       }
       if (quote) {
         return {
@@ -899,7 +908,7 @@ export function useBibleVerses(
         // R10: a citation with no renderable passage keeps its own reference,
         // and so does a loading card, which may yet show another translation.
         reference:
-          (loading ? null : passage?.reference) ??
+          (cardLoading ? null : passage?.reference) ??
           formatCitationLabel(citation, t),
         text: passage?.content ?? "",
         translation: passage?.versionTitle ?? null,

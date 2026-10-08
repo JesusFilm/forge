@@ -145,10 +145,11 @@ export function createPersistedRecordStore<T extends Record<string, unknown>>(
         )
       } catch {
         failed = true
-        if (epoch !== epochAtStart || status === "ready") return "missed"
-        // The reader opens with what memory holds; a later call reads again.
-        status = "ready"
-        publish()
+        if (epoch === epochAtStart && status !== "ready") {
+          // The reader opens with what memory holds; a later call reads again.
+          status = "ready"
+          publish()
+        }
         return "missed"
       }
       if (epoch !== epochAtStart) return "missed"

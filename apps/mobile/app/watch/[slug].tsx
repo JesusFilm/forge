@@ -337,13 +337,12 @@ export default function WatchVideoPage() {
   // request for the last one's — and paint its references for a frame.
   const routeCitations =
     video?.slug === decodedSlug ? video.bibleCitations : EMPTY_CITATIONS
+  // The cards' reader translation reads what the reader reads (KTD3, KTD11).
+  const quotesFocused = useIsFocused()
+  const { audioLanguageIso3, isReady: preferencesReady } = useWatchPreferences()
   // Threaded from here: the hook's only call site, and the only place the dubs
   // and authored image are in scope. `loading` is the settled signal — the
   // query returns partial cached data with neither runtime nor playback id.
-  // The dub preference and the focus feed the cards' reader translation, as
-  // they feed the reader itself (plan 2026-10-08, KTD3, KTD11).
-  const quotesFocused = useIsFocused()
-  const { audioLanguageIso3, isReady: preferencesReady } = useWatchPreferences()
   const bibleQuotes = useBibleVerses(
     decodedSlug,
     routeCitations,
