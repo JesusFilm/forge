@@ -2911,7 +2911,10 @@ async function renderInStage(
     ...(introFocus ? { introFocus } : {}),
     ...(options.hookLine
       ? {
-          hookParts: options.hookLine
+          // A montage's `--hook-title` with as many lines as the take is the
+          // ON-SCREEN text over that take (owner, 2026-10-08: new words, old
+          // voice); the manifest spreads its words over the spoken lines.
+          hookParts: montageDisplayText(options)
             .split(/\n\s*\n/)
             .map((part) => part.trim())
             .filter(Boolean),
@@ -4247,4 +4250,17 @@ export async function prepareAndRenderDevotional(
     return { devotional: devo, videoPath: null, previewStageDir: result }
   }
   return { devotional: devo, videoPath: result }
+}
+
+/** The opening's on-screen text: `--hook-title` when a montage gives one
+ *  line for every spoken line, otherwise the spoken `--hook` itself. */
+function montageDisplayText(
+  options: Pick<RenderOptions, "intro" | "hookLine" | "hookTitle">,
+): string {
+  const spoken = options.hookLine ?? ""
+  const shown = options.hookTitle ?? ""
+  const count = (t: string) => t.split(/\n\s*\n/).filter((p) => p.trim()).length
+  return options.intro === "montage" && shown && count(shown) === count(spoken)
+    ? shown
+    : spoken
 }

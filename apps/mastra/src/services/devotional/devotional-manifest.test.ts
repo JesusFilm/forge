@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 
 import {
   buildDevotionalManifest,
+  displayWordTimes,
   type StagedSegment,
 } from "./devotional-manifest"
 import type { GeneratedDevotional } from "./generate-devotional"
@@ -404,5 +405,49 @@ describe("buildDevotionalManifest — clip-first structure", () => {
       unknown
     >
     expect(card.translation).toBeUndefined()
+  })
+})
+
+describe("displayWordTimes", () => {
+  const w = (word: string, startSec: number, endSec: number) => ({
+    word,
+    startSec,
+    endSec,
+  })
+  const spoken = "In this devotional, we look.\n\nLet's watch."
+  const words = [
+    w("In", 0, 0.2),
+    w("this", 0.2, 0.4),
+    w("devotional,", 0.4, 1),
+    w("we", 1, 1.2),
+    w("look.", 1.2, 1.6),
+    w("Let's", 2, 2.3),
+    w("watch.", 2.3, 2.8),
+  ]
+
+  it("spreads a line with a different word count over the spoken line", () => {
+    const out = displayWordTimes(
+      spoken,
+      "In the full devotional, we look.\n\nLet's watch.",
+      words,
+    )
+    expect(out.map((x) => x.word)).toEqual([
+      "In",
+      "the",
+      "full",
+      "devotional,",
+      "we",
+      "look.",
+      "Let's",
+      "watch.",
+    ])
+    expect(out[0].startSec).toBe(0)
+    expect(out[5].endSec).toBeCloseTo(1.28)
+    // The next line still starts where the voice starts it.
+    expect(out[6]).toEqual(w("Let's", 2, 2.3))
+  })
+
+  it("keeps the spoken times when the lines cannot be matched", () => {
+    expect(displayWordTimes(spoken, "One line only.", words)).toEqual(words)
   })
 })

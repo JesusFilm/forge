@@ -420,7 +420,16 @@ function buildClipFirstManifest(
               input.intro === "opening" ||
               input.intro === "montage") &&
             hookSeg?.words?.length
-              ? { words: hookSeg.words }
+              ? {
+                  words:
+                    input.intro === "montage" && input.hookText
+                      ? displayWordTimes(
+                          hookSeg.text ?? "",
+                          input.hookText,
+                          hookSeg.words,
+                        )
+                      : hookSeg.words,
+                }
               : {}),
             // The spoken question doubles as the on-screen title. It comes
             // from the render option, not from the produced segment: a reused
@@ -842,4 +851,53 @@ export function buildDevotionalManifest(
     ...(input.musicFile ? { musicFile: input.musicFile } : {}),
     cards,
   }
+}
+
+/**
+ * `montage`: word times for an on-screen opening that differs from the take
+ * it plays over (owner, 2026-10-08: a short can show new words over the long
+ * form's voice, people watch it muted). Lines are the blank-line paragraphs.
+ * A line with the same word count keeps the spoken times; any other line has
+ * its words spread evenly over the first 80% of the spoken line's span, so every line still
+ * starts, and cuts its shot, exactly where the voice starts it. A different
+ * NUMBER of lines cannot be mapped and keeps the spoken times untouched.
+ */
+export function displayWordTimes(
+  spoken: string,
+  display: string,
+  words: readonly { word: string; startSec: number; endSec: number }[],
+): { word: string; startSec: number; endSec: number }[] {
+  const split = (t: string) =>
+    t
+      .split(/\n\s*\n/)
+      .map((l) => l.split(/\s+/).filter(Boolean))
+      .filter((l) => l.length)
+  const said = split(spoken)
+  const shown = split(display)
+  if (said.length !== shown.length) return [...words]
+  const out: { word: string; startSec: number; endSec: number }[] = []
+  let at = 0
+  said.forEach((line, i) => {
+    const own = words.slice(at, at + line.length)
+    at += line.length
+    const show = shown[i]
+    if (!own.length) return
+    if (own.length === show.length) {
+      show.forEach((w, k) => out.push({ ...own[k], word: w }))
+      return
+    }
+    // Finish the shown line in the first 80% of the spoken one: its last
+    // words appear in time to be read before the next line cuts in.
+    const from = own[0].startSec
+    const to = from + (own[own.length - 1].endSec - from) * 0.8
+    const step = (to - from) / show.length
+    show.forEach((w, k) =>
+      out.push({
+        word: w,
+        startSec: from + k * step,
+        endSec: from + (k + 1) * step,
+      }),
+    )
+  })
+  return out
 }
