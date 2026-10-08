@@ -1,6 +1,6 @@
 # TV system Home rotation: implementation and validation
 
-Branch: `codex/tv-system-home-five-concepts`. Roadmap `feat-603` remains in progress until runtime and release gates complete.
+Historical branch: `codex/tv-system-home-five-concepts`. The donor used `feat-603`; the October 8 integration is tracked as `feat-630` to avoid main's existing mobile-feedback ID. It remains in progress until runtime and release gates complete.
 
 ## Implemented
 

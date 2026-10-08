@@ -1,5 +1,5 @@
 ---
-id: "feat-603"
+id: "feat-630"
 title: "Five-concept TV system Home rotation"
 owner: "ekkasit"
 priority: "P1"
@@ -14,6 +14,8 @@ tags: [tv, tvos, android, discovery]
 ## Problem
 
 Expose five useful content entry concepts on system Home without unstable random changes or unsupported custom OS layouts.
+
+Imported from the donor's `feat-603` TV ticket. Main already assigns that ID to mobile in-app feedback; this integration uses the next globally unique ID, `feat-630`. The donor ticket and mobile ticket are unchanged.
 
 ## Entry Points — Read These First
 

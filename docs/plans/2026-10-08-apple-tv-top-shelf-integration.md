@@ -2,7 +2,7 @@
 
 ## Scope and provenance
 
-Task 2, feat-603. Source: `/Users/up/.codex/worktrees/tv-release-consolidation/forge-dev-container`, branch `codex/tvos27-scene-startup`, committed base `819b4166a` plus tracked and untracked Top Shelf changes. Source remains untouched.
+Task 2, donor feat-603, integrated as feat-630 because main already uses feat-603 for mobile feedback. Source: `/Users/up/.codex/worktrees/tv-release-consolidation/forge-dev-container`, branch `codex/tvos27-scene-startup`, committed base `819b4166a` plus tracked and untracked Top Shelf changes. Source remains untouched.
 
 Integration: reuse the clean Apple TV checkout `/Users/up/.codex/worktrees/tv-startup-pr/forge-dev-container` on `codex/apple-tv-top-shelf-integration`, based on main `77f6563ed`.
 
@@ -19,7 +19,7 @@ Exclude the donor's Android Engage SDK/publisher, Android Home Settings and unre
 
 ## Review and implementation
 
-Follow `docs/roadmap/topic-experiences/feat-603-tv-system-home-five-concept-rotation.md`, `docs/tv-system-home-validation-2026-10-02.md` and `docs/analytics-and-recommendation-policy.md`. Review schema/eligibility, language, publication/playability, privacy generation fencing, extension bounds, route validation, target idempotency and matching app/extension build versions.
+Follow the imported donor ticket at `docs/roadmap/topic-experiences/feat-630-tv-system-home-five-concept-rotation.md`, `docs/tv-system-home-validation-2026-10-02.md` and `docs/analytics-and-recommendation-policy.md`. Review schema/eligibility, language, publication/playability, privacy generation fencing, extension bounds, route validation, target idempotency and matching app/extension build versions.
 
 ## Verification and delivery
 
@@ -57,5 +57,5 @@ Record actual simulator scenes with explanatory narration/captions and label any
 
 - Native carousel fullscreen artwork renders, but its OS Play/More Info buttons could not be reliably focused using Device Hub's directional remote controls. Link semantics and cold/warm destinations are tested; the actual native carousel button interaction remains open.
 - Signed App Group/extension provisioning and a distribution archive/TestFlight processing were not attempted or authorized here. Simulator build 1 is not a store release.
-- Android Engage/Google Home integration and its onboarding/device gates are excluded from this focused PR. Feat-603 stays in progress for those broader gates; the Apple integration milestone is implemented and simulator-verified with the exceptions above.
+- Android Engage/Google Home integration and its onboarding/device gates are excluded from this focused PR. Feat-630 stays in progress for those broader gates; the Apple integration milestone is implemented and simulator-verified with the exceptions above.
 - Source donor, primary checkout, stash and prior startup/loading/navigation changes remain preserved. New PR is for review only; do not merge without user direction.
