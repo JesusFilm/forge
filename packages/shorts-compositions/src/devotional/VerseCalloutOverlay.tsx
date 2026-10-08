@@ -79,6 +79,9 @@ export function VerseCalloutOverlay({
         )
       : -1
     const word = at >= 0 ? text.slice(at, at + c.highlight.length) : ""
+    // Russian takes guillemets, English curly quotes.
+    const cyrillic = /[А-Яа-яЁё]/.test(text)
+    const [open, close] = cyrillic ? ["«", "»"] : ["“", "”"]
     return (
       <div
         style={{
@@ -109,7 +112,7 @@ export function VerseCalloutOverlay({
             textShadow: "0 2px 18px rgba(0,0,0,0.55), 0 0 3px rgba(0,0,0,0.6)",
           }}
         >
-          {"“"}
+          {open}
           {at >= 0 ? (
             <>
               {text.slice(0, at)}
@@ -127,7 +130,7 @@ export function VerseCalloutOverlay({
           ) : (
             text
           )}
-          {"”"}
+          {close}
         </p>
       </div>
     )
