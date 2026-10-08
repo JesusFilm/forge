@@ -32,6 +32,29 @@ Rules:
   sentence, a line to the viewer, one key word through a story), and the
   preview says «В этом видео мы...», never «В этом размышлении».
 
+Owner's corrections on Martha and Mary (2026-10-08), now standing rules:
+
+- Say it the way a Russian speaker would, not word for word: «А Марфа должна
+  работать», not «на ногах и работает»; «это по-настоящему обидно», not
+  «обида настоящая»; «отдаляло», not «оттянуло»; «сердце, полное тревоги и
+  суеты», not «сердце, которое тянут во все стороны».
+- A Ryle-style chain of feelings must be told plainly, step by step, as what
+  the person does and feels («Становится обидно. Обида переходит в
+  раздражение»), not as abstractions («растёт беда, колет совесть»).
+- Scope claims: «опасность в этой истории», «часто», never «опасность не в
+  открытом грехе» or «чаще всего» as a general truth.
+- Drop references to scenes the viewer did not see (the lawyer of the Good
+  Samaritan).
+- Match the film's dub where the reflection quotes the scene: the dub says
+  «Мария выбрала лучшее», so the reflection says «то лучшее», not the
+  Synodal «благая часть».
+- The prayer asks God for what a person can sincerely ask, not for God to do
+  the viewer's part.
+- The takeaway is a step, with no fixed opener («На этой неделе» is not
+  required), and a step someone would really take («сначала побудь с Ним»,
+  not «перед каждым делом читай Писание»).
+- The reflection opens with «Давай подумаем над этой историей.» (locale).
+
 Give the owner the script sheet to read before any voice is recorded.
 
 ## 2. Film

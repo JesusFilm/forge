@@ -192,10 +192,11 @@ export const SYSTEM_PROMPT = [
   "- paragraphs: the reflection, heard after 'Let's look more closely at what",
   "  this story means.' 350 to 500 words in 10 to 16 short paragraphs.",
   "- takeaway: one sentence under 20 words that the viewer can DO and",
-  "  remember all week: one small, concrete step that lives out the message,",
-  "  beginning 'This week,'. Not a summary of the message. Example: 'This",
-  "  week, when God blesses someone else, thank him before you count what",
-  "  you got.'",
+  "  remember all week: one small, concrete step that lives out the message.",
+  "  Not a summary of the message. Open it any natural way; do not start every",
+  "  takeaway with 'This week'. A step a person would really take, not a rule",
+  "  for every moment (not 'read Scripture before every task'). Example: 'When",
+  "  God blesses someone else, thank him before you count what you got.'",
   "- question: spoken after 'First, ask yourself:'. ONE clear question about",
   "  the viewer's OWN life right now, in the second person, that only their",
   "  life can answer: never one a retelling of the story would answer. One",
@@ -247,12 +248,23 @@ export const SYSTEM_PROMPT = [
   "  says what.",
   "- Describe, don't command: no imperatives, no 'we must', 'let us', 'you",
   "  should'. A gentle 'notice' or 'look at' is fine. The one exception is",
-  "  the takeaway's 'This week,' step.",
+  "  the takeaway's one step.",
   "- The audience already follows Jesus: deepen, never evangelize or question",
   "  whether they are saved.",
   "- No denominational polemic, no predestination, no judgement of Judaism or",
   "  the rabbis.",
   "- No Bible references in parentheses; say a verse in words if it matters.",
+  "- Scope every claim to this story: no sweeping or comparative statements",
+  "  ('most of what pulls us from Christ is...', 'the danger is not open sin',",
+  "  'more often than') that are not true in general. Say 'here', 'in this",
+  "  story', or 'often'.",
+  "- Do not point to a scene the viewer did not see (a parable told before",
+  "  this clip, another chapter) unless one clause says what it was; if it",
+  "  needs more than that, leave it out.",
+  "- Plain, everyday words a listener gets at once; no strained images ('a",
+  "  heart pulled in every direction', 'the sting is real').",
+  "- The prayer tells the viewer what to bring to God or ask of him that a",
+  "  person can sincerely ask; never asks God to do the viewer's own part.",
   "- No em dashes or en dashes anywhere.",
   "Return JSON only.",
 ].join("\n")
@@ -480,12 +492,6 @@ export function takeawayQuestionProblems(
   s: Pick<StoryScript, "takeaway" | "question">,
 ): { rule: string; sentence: string; why: string }[] {
   const out: { rule: string; sentence: string; why: string }[] = []
-  if (!/^this week\b/i.test(s.takeaway.trim()))
-    out.push({
-      rule: "takeaway-action",
-      sentence: s.takeaway,
-      why: "the takeaway is one small step for the week, beginning 'This week,'",
-    })
   if (s.takeaway.split(/\s+/).filter(Boolean).length > 20)
     out.push({
       rule: "takeaway-length",
@@ -513,12 +519,12 @@ export function takeawayQuestionProblems(
 export function takeawayVoiceProblems(takeaway: string) {
   return checkReflectionVoice(takeaway, { lang: "en" }).filter(
     (f) =>
-      (f.rule === "command" || f.rule === "appeal") &&
-      !(
-        f.rule === "command" &&
-        /^this week,/i.test(f.sentence.trim()) &&
-        !/\b(we must|let us|let's)\b/i.test(f.sentence)
-      ),
+      // The takeaway is a step the viewer takes, so a plain imperative is
+      // fine there (owner relaxed the "This week," opener, 2026-10-08); a
+      // collective command and an appeal are still caught.
+      f.rule === "appeal" ||
+      (f.rule === "command" &&
+        /\b(we must|we need to|let us|let's)\b/i.test(f.sentence)),
   )
 }
 

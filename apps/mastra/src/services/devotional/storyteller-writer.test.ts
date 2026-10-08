@@ -116,19 +116,17 @@ describe("openingProblems", () => {
 describe("takeawayQuestionProblems", () => {
   const ok = {
     takeaway:
-      "This week, when God blesses someone else, thank him before you count what you got.",
+      "When God blesses someone else, thank him before you count what you got.",
     question: "Who is it hardest for you to be truly glad for right now?",
   }
-  it("passes a weekly step and a personal question", () => {
+  it("passes a step and a personal question, with no fixed opener", () => {
     expect(takeawayQuestionProblems(ok)).toEqual([])
-  })
-  it("flags a takeaway that only restates the message", () => {
-    const rules = takeawayQuestionProblems({
-      ...ok,
-      takeaway:
-        "The Father who runs to the wanderer also comes out to plead with the worker.",
-    }).map((p) => p.rule)
-    expect(rules).toEqual(["takeaway-action"])
+    expect(
+      takeawayQuestionProblems({
+        ...ok,
+        takeaway: "This week, sit with Jesus before you start the work.",
+      }),
+    ).toEqual([])
   })
   it("flags a takeaway too long to remember", () => {
     const rules = takeawayQuestionProblems({
@@ -155,16 +153,16 @@ describe("takeawayQuestionProblems", () => {
 })
 
 describe("takeawayVoiceProblems", () => {
-  it("allows the takeaway's 'This week,' step", () => {
+  it("allows the takeaway's plain imperative step", () => {
     expect(
       takeawayVoiceProblems(
-        "This week, remember to thank God when someone else is blessed.",
+        "Remember to thank God when someone else is blessed.",
       ),
     ).toEqual([])
   })
-  it("still catches a command outside the weekly step", () => {
+  it("still catches a collective command", () => {
     expect(
-      takeawayVoiceProblems("In every storm, remember that Jesus is with you."),
+      takeawayVoiceProblems("Let us remember that Jesus is with us."),
     ).not.toEqual([])
   })
 })
