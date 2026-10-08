@@ -445,7 +445,8 @@ export const RU_LOCALE: DevotionalLocale = {
       watch: () => `Давай посмотрим.`,
       welcome: () => `Добро пожаловать в Daily Bible Pause.`,
       reflect: () => `Подумай над этим.`,
-      reflectAfterClip: () => `Давай подумаем, что значит эта история.`,
+      // Owner, 2026-10-08 (Martha): plainer than "что значит эта история".
+      reflectAfterClip: () => `Давай подумаем над этой историей.`,
       pray: () => `Давай принесём это Богу.`,
     },
   },
