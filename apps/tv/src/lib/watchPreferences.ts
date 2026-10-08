@@ -1,5 +1,11 @@
 import { datadogLog } from "./datadog"
 import { getStorage } from "./safeStorage"
+import {
+  DEFAULT_LOADING_ANIMATION,
+  DEFAULT_STARTUP_ANIMATION,
+  parseLogoAnimationId,
+  type LogoAnimationId,
+} from "./logoAnimations"
 
 /**
  * App-wide watch preference (audio-language only, for now), persisted across
@@ -13,6 +19,8 @@ export type WatchPreferences = {
   androidPlayerVariant: "existing" | "native"
   /** Native A is the Apple TV default; Existing and Native B remain selectable. */
   nativePlayerVariant: "existing" | "native-a" | "native-b"
+  startupAnimationId?: LogoAnimationId
+  loadingAnimationId?: LogoAnimationId
 }
 
 /** Versioned key so a future schema change (subtitles, wifi-only) is a migration,
@@ -68,6 +76,22 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
     androidPlayerVariant:
       parsed.androidPlayerVariant === "existing" ? "existing" : "native",
     nativePlayerVariant,
+    ...(parsed.startupAnimationId !== undefined
+      ? {
+          startupAnimationId: parseLogoAnimationId(
+            parsed.startupAnimationId,
+            DEFAULT_STARTUP_ANIMATION,
+          ),
+        }
+      : {}),
+    ...(parsed.loadingAnimationId !== undefined
+      ? {
+          loadingAnimationId: parseLogoAnimationId(
+            parsed.loadingAnimationId,
+            DEFAULT_LOADING_ANIMATION,
+          ),
+        }
+      : {}),
   }
 }
 
