@@ -62,7 +62,7 @@ export type ProxyRequest = {
 
 const REDIRECT_CACHE_CONTROL = "private, max-age=0"
 const MAX_PATH_LEN = 2048
-const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
+const SAFE_PUBLIC_PATH = /^\/[\p{Ll}\p{Nd}A-Za-z0-9._\-/]+$/u
 const DEMO_PREFIXES = new Set([
   "demo-search",
   "demo-recommendations",
@@ -195,14 +195,33 @@ function shouldBypassLocaleRewrite(pathname: string): boolean {
 function isSafeCanonicalPath(pathname: string): boolean {
   if (pathname === "/") return true
   if (pathname.length > MAX_PATH_LEN) return false
-  if (UNSAFE_PATH_PATTERN.test(pathname)) return false
-  if (pathname.split("/").some((segment) => segment === "..")) return false
-  return SAFE_PUBLIC_PATH.test(pathname)
+  let decodedPathname: string
+  try {
+    // decodeURI preserves encoded separators and reserved URL characters.
+    decodedPathname = decodeURI(pathname)
+  } catch {
+    return false
+  }
+  // Admit one spelling per path so caches and canonical URL checks agree.
+  if (encodeURI(decodedPathname) !== pathname) return false
+  if (UNSAFE_PATH_PATTERN.test(decodedPathname)) return false
+  if (decodedPathname.split("/").some((segment) => segment === "..")) {
+    return false
+  }
+  return SAFE_PUBLIC_PATH.test(decodedPathname)
 }
 
 function stripSafeSlug(segment: string): string | null {
-  const stripped = stripHtmlSuffix(segment)
-  return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
+  let decoded: string
+  try {
+    decoded = decodeURI(segment)
+  } catch {
+    return null
+  }
+  const stripped = stripHtmlSuffix(decoded)
+  return SAFE_SLUG_PATTERN.test(stripped) && stripped === stripped.toLowerCase()
+    ? stripped
+    : null
 }
 
 function internalPrefixDecision(pathname: string): InternalPrefixDecision {
@@ -242,9 +261,11 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
       audioLanguageSlug &&
       isPublicWatchLanguageSlug(audioLanguageSlug)
     ) {
-      canonicalPublicPath = watchVideoPath(
-        asContentSlug(contentSlug),
-        asLocaleSlug(audioLanguageSlug),
+      canonicalPublicPath = encodeURI(
+        watchVideoPath(
+          asContentSlug(contentSlug),
+          asLocaleSlug(audioLanguageSlug),
+        ),
       )
     }
   }
@@ -258,10 +279,12 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
       audioLanguageSlug &&
       isPublicWatchLanguageSlug(audioLanguageSlug)
     ) {
-      canonicalPublicPath = watchEpisodePath(
-        asContentSlug(parentSlug),
-        asContentSlug(childSlug),
-        asLocaleSlug(audioLanguageSlug),
+      canonicalPublicPath = encodeURI(
+        watchEpisodePath(
+          asContentSlug(parentSlug),
+          asContentSlug(childSlug),
+          asLocaleSlug(audioLanguageSlug),
+        ),
       )
     }
   }
@@ -498,7 +521,11 @@ function internalRewritePathname(
   const subtitleSuffix = subtitleLanguageSlug
     ? `/${watchSubtitleIntentSegment(subtitleLanguageSlug)}`
     : ""
-  return `/${decision.locale}/${decision.htmlLang}${suffix}${subtitleSuffix}`
+  const internalPathname = `/${decision.locale}/${decision.htmlLang}${suffix}${subtitleSuffix}`
+  // Keep one URL encoding across direct rewrites and re-entry admission. Some
+  // routes use a decoded manifest slug for their internal target while the
+  // public path arrived percent-encoded.
+  return encodeURI(decodeURI(internalPathname))
 }
 
 function subtitleIntentForRewrite(

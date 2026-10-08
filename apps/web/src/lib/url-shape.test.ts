@@ -133,8 +133,24 @@ describe("SAFE_SLUG_PATTERN", () => {
     expect(SAFE_SLUG_PATTERN.test("soccer_event_collection")).toBe(true)
   })
 
-  it("rejects uppercase, dots, slashes, and host shapes", () => {
+  it.each([
+    "tümlükden-nura",
+    "la-búsqueda-the-search",
+    "la-liberté-de-l-interieur-freedom-within",
+    "jätku-leiba",
+  ])("accepts safe lowercase Latin slugs with diacritics: %s", (slug) => {
+    expect(SAFE_SLUG_PATTERN.test(slug)).toBe(true)
+  })
+
+  it("rejects uppercase, combining marks, dots, slashes, and host shapes", () => {
     expect(SAFE_SLUG_PATTERN.test("English")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("ｊｅｓｕｓ")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("ᴀlpha")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("ʰome")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("ɪesus")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("ꜱcript")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("ﬁlm")).toBe(false)
+    expect(SAFE_SLUG_PATTERN.test("tu\u0308mlukden-nura")).toBe(false)
     expect(SAFE_SLUG_PATTERN.test("jesus.html")).toBe(false)
     expect(SAFE_SLUG_PATTERN.test("a/b")).toBe(false)
     expect(SAFE_SLUG_PATTERN.test("evil.com")).toBe(false)

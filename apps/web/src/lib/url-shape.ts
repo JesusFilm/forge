@@ -83,11 +83,12 @@ export function isUnsafeRedirectPath(path: string): boolean {
   )
 }
 
-// Content-safe ASCII slug: lowercase alphanumerics, hyphen, and underscore.
+// Content-safe slug: lowercase Unicode letters/digits, hyphen, and underscore.
 // Admin content slugs include legacy underscores such as
-// `soccer_event_collection`; public language slugs are still narrowed by
-// locale-specific validators after this shape check.
-export const SAFE_SLUG_PATTERN = /^[a-z0-9_-]+$/
+// `soccer_event_collection`, and some Core titles use native Latin diacritics.
+// Public language slugs are still narrowed by locale-specific validators.
+export const SAFE_SLUG_PATTERN =
+  /^(?:(?=\p{Ll})(?![\u0250-\u02FF\u1D00-\u1D7F\u2100-\u214F\uA700-\uA7FF\uFB00-\uFB4F\uFF00-\uFFEF])\p{Script=Latin}|[0-9_-])+$/u
 
 // One-segment collection landings observed in production. Most collections
 // and all single-video slugs 404 without an explicit language segment, so keep

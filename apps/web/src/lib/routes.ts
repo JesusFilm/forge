@@ -27,11 +27,12 @@ declare const contentSlugBrand: unique symbol
 /** English-name kebab-case language identifier (e.g. `english`, `russian`, `portuguese-brazil`). NOT a bcp47 code. */
 export type LocaleSlug = string & { readonly [localeSlugBrand]: true }
 
-/** Watch-content URL segment (e.g. `jesus`, `soccer_event_collection`). Lowercase ASCII slug shape. */
+/** Watch-content URL segment (e.g. `jesus`, `soccer_event_collection`, `jätku-leiba`). Lowercase letters/digits, hyphens, or underscores. */
 export type ContentSlug = string & { readonly [contentSlugBrand]: true }
 
 const LOCALE_SLUG_PATTERN = /^[a-z0-9-]+$/
-const CONTENT_SLUG_PATTERN = /^[a-z0-9_-]+$/
+const CONTENT_SLUG_PATTERN =
+  /^(?:(?=\p{Ll})(?![\u0250-\u02FF\u1D00-\u1D7F\u2100-\u214F\uA700-\uA7FF\uFB00-\uFB4F\uFF00-\uFFEF])\p{Script=Latin}|[0-9_-])+$/u
 
 /** Throw-on-invalid `LocaleSlug` constructor. Use for pre-validated inputs (env vars, configured constants). Prefer `tryAsLocaleSlug` at user-input boundaries. */
 export function asLocaleSlug(value: string): LocaleSlug {
@@ -43,7 +44,7 @@ export function asLocaleSlug(value: string): LocaleSlug {
 
 /** Throw-on-invalid `ContentSlug` constructor. Use for pre-validated inputs. Prefer `tryAsContentSlug` at user-input boundaries. */
 export function asContentSlug(value: string): ContentSlug {
-  if (!CONTENT_SLUG_PATTERN.test(value)) {
+  if (!CONTENT_SLUG_PATTERN.test(value) || value !== value.toLowerCase()) {
     throw new Error(`invalid ContentSlug: ${value}`)
   }
   return value as ContentSlug
@@ -56,7 +57,9 @@ export function tryAsLocaleSlug(value: string): LocaleSlug | null {
 
 /** Result-shape `ContentSlug` constructor. Returns `null` on invalid input. */
 export function tryAsContentSlug(value: string): ContentSlug | null {
-  return CONTENT_SLUG_PATTERN.test(value) ? (value as ContentSlug) : null
+  return CONTENT_SLUG_PATTERN.test(value) && value === value.toLowerCase()
+    ? (value as ContentSlug)
+    : null
 }
 
 // `reason` documents WHY a resync sentinel is set on the URL. Today the
