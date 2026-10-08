@@ -256,6 +256,10 @@ export const devotionalCardSchema = z.object({
         words: z.array(z.number()).optional(),
         /** The verse the line starts in ("Luke 15:12"), shown under it. */
         verse: z.string().optional(),
+        /** `stack` film captions: the line's large word(s) and its italic
+         *  accents, picked by hand (owner, 2026-10-08). */
+        hero: z.string().optional(),
+        accents: z.array(z.string()).optional(),
       }),
     )
     .optional(),
@@ -512,9 +516,10 @@ export const devotionalInputPropsSchema = z.object({
   /** 16:9 film captions with word times: `karaoke` (default) lights the word
    *  being said; `typewriter` types each word letter by letter as it is said,
    *  every letter gold then white; `ghost` shows the whole line faint and each
-   *  word lights gold as it is said, then stays white. */
+   *  word lights gold as it is said, then stays white; `stack` (9:16 film
+   *  shorts) sets each line as the history short's kinetic block. */
   filmCaptionStyle: z
-    .enum(["karaoke", "typewriter", "ghost", "scroll"])
+    .enum(["karaoke", "typewriter", "ghost", "scroll", "stack"])
     .optional(),
   /** 16:9 source credits: `above` (default) centres the credit over the
    *  text; `side` sets it in a column left of the text behind a vertical

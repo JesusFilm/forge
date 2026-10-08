@@ -838,6 +838,83 @@ function PhraseCaption({
 const FULL_BLEED_CAPTION_INSET_UNITS = 60
 const FULL_BLEED_CAPTION_TOP = "63.5%"
 
+/** Extra dim over the film while its `stack` captions are up. */
+const STACK_FILM_DIM = 0.3
+
+function StackFilmCaptions({
+  cues,
+  t,
+  frameWidth,
+}: {
+  cues: NonNullable<DevotionalCard["subtitles"]>
+  t: number
+  frameWidth: number
+}) {
+  // The teaser's unit, so the type is the approved history-short size.
+  const tpx = (n: number) => ((n * 390) / 360) * (frameWidth / 390)
+  const maxWidth = frameWidth * (920 / 1080) - tpx(28)
+  const first = cues[0]
+  const last = cues[cues.length - 1]
+  const clampBoth = {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  } as const
+  const dim =
+    first && last
+      ? interpolate(
+          t,
+          [
+            first.startSec - 0.5,
+            first.startSec,
+            last.endSec + 0.4,
+            last.endSec + 0.9,
+          ],
+          [0, STACK_FILM_DIM, STACK_FILM_DIM, 0],
+          clampBoth,
+        )
+      : 0
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      <AbsoluteFill style={{ background: "#000", opacity: dim }} />
+      {cues.map((c, i) => {
+        const next = cues[i + 1]?.startSec
+        // A line clears soon after it is said: the silences between lines
+        // (Jesus stopping) play over a clean picture.
+        const to = Math.min(next ?? Infinity, c.endSec + 0.6)
+        if (t < c.startSec - 0.1 || t > to) return null
+        const out = interpolate(t, [to - 0.35, to - 0.02], [1, 0], clampBoth)
+        const words = c.text.split(/\s+/).filter(Boolean)
+        const hero =
+          c.hero ??
+          [...words].sort(
+            (a, b) => b.replace(/\W/g, "").length - a.replace(/\W/g, "").length,
+          )[0] ??
+          ""
+        return (
+          <AbsoluteFill key={i} style={{ opacity: out }}>
+            <KineticCaption
+              line={c.text}
+              hero={hero}
+              accents={c.accents ?? []}
+              starts={(c.words ?? []).map((w) => w - c.startSec)}
+              time={t - c.startSec}
+              layout="stack"
+              px={tpx}
+              side="left"
+              portrait
+              maxWidth={maxWidth}
+              sizes={{ hero: 1.3, accent: 1.4, plain: 1.6 }}
+              accentColor="#f4efe8"
+              bottom="38%"
+              backdrop
+            />
+          </AbsoluteFill>
+        )
+      })}
+    </AbsoluteFill>
+  )
+}
+
 function VideoSubtitles({
   cues,
   px,
@@ -856,7 +933,7 @@ function VideoSubtitles({
   hideBeforeSec = 0,
   karaokeMode = "karaoke",
 }: {
-  karaokeMode?: "karaoke" | "typewriter" | "ghost" | "scroll"
+  karaokeMode?: "karaoke" | "typewriter" | "ghost" | "scroll" | "stack"
   cues: NonNullable<DevotionalCard["subtitles"]>
   style: DevotionalStyle
   captionStyle?: NonNullable<DevotionalCard["captionStyle"]>
@@ -938,6 +1015,14 @@ function VideoSubtitles({
   // ellipse sits behind the whole block so the text reads over bright film.
   // The owner's scrolling-Scripture treatment (Figma 373-2235): the
   // narration as numbered verses under the chapter, scrolling upward.
+  // 9:16 film short in the history short's kinetic "stack" look (owner,
+  // 2026-10-08): each line a left poster block low in the frame, every word
+  // rising with the film's voice, over a slightly darker picture.
+  if (karaokeMode === "stack" && !isLandscape) {
+    return (
+      <StackFilmCaptions cues={cues} t={t} frameWidth={frameWidth ?? 1080} />
+    )
+  }
   if (karaokeMode === "scroll" && isLandscape && !fullBleed) {
     return (
       <ScrollingScripture
@@ -1109,7 +1194,7 @@ function VideoSubtitles({
                   endSec={c.endSec}
                   t={t}
                   restColor="#f4efe8"
-                  mode={karaokeMode}
+                  mode={karaokeMode === "stack" ? "karaoke" : karaokeMode}
                 />
               ) : (
                 c.text
@@ -7786,7 +7871,7 @@ function CardLayer({
   bleedX,
   filmCaptionStyle,
 }: {
-  filmCaptionStyle?: "karaoke" | "typewriter" | "ghost" | "scroll"
+  filmCaptionStyle?: "karaoke" | "typewriter" | "ghost" | "scroll" | "stack"
   card: DevotionalCard
   style: DevotionalStyle
   px: (n: number) => number

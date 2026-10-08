@@ -612,6 +612,35 @@ async function main() {
           arg("history-vox")!,
         )
       }
+      // A film short plays the film's own sound; `--music-film-verse` adds the
+      // bed under its closing card only (owner, 2026-10-08: the Facebook
+      // cliffhanger). The film hushes and the bed rises as the card lands.
+      // `--film-caption-style=stack`: the film's lines as the history short's
+      // kinetic blocks; `--film-kinetic="0=have mercy/David;1=..."` picks each
+      // line's hero and accents by cue index (owner, 2026-10-08).
+      if (short.kind === "film-verse" && arg("film-caption-style")) {
+        ;(m as { filmCaptionStyle?: string }).filmCaptionStyle =
+          arg("film-caption-style")
+        const film = m.cards.find((c) => c.kind === "video") as
+          | { subtitles?: { hero?: string; accents?: string[] }[] }
+          | undefined
+        for (const part of (arg("film-kinetic") ?? "").split(";")) {
+          const mm = /^(\d+)=([^/]+)(?:\/(.*))?$/.exec(part.trim())
+          const cue = mm ? film?.subtitles?.[Number(mm[1])] : undefined
+          if (!mm || !cue) continue
+          cue.hero = mm[2].trim()
+          if (mm[3]) cue.accents = mm[3].split(",").map((x) => x.trim())
+        }
+      }
+      if (short.kind === "film-verse" && arg("music-film-verse")) {
+        const close = (
+          m.shortCards as { close?: { fromSec: number } } | undefined
+        )?.close
+        if (close) {
+          m.musicFile = "music.mp3"
+          ;(m as { ctaMusicAtSec?: number }).ctaMusicAtSec = close.fromSec
+        }
+      }
       if (m.musicFile) {
         // Each short opens on its own part of the bed, looping from there.
         // `--music-<kind>=<file>` gives a short its own bed when the story

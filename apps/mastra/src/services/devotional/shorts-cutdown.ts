@@ -427,7 +427,10 @@ export function planCutdown(
     why: string,
   ) => {
     const len = w.toSec - w.fromSec
-    if (len < SHORT_MIN_SEC || len > SHORT_MAX_SEC) {
+    // A hand-picked film-verse window is the owner's call, short or not
+    // (the Facebook cliffhanger cut ends on a question, 2026-10-08).
+    const handPicked = kind === "film-verse" && overrides.filmVerse != null
+    if (!handPicked && (len < SHORT_MIN_SEC || len > SHORT_MAX_SEC)) {
       skipped.push({ kind, reason: `film window is ${len.toFixed(1)}s` })
     } else {
       shorts.push({ kind, cards: [filmIdx], film: w, durationSec: len, why })
