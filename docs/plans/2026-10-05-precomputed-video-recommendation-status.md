@@ -11,7 +11,7 @@ preserves exact source/integration commits, checks, browser artifacts, review
 findings, and recovery history. The [CTR operations note](../operations/precomputed-ctr-report.md)
 describes the private reporting contract and limits.
 
-## Current checkpoint — October 8, 18:37 NZDT
+## Current checkpoint — October 8, 18:56 NZDT
 
 The GA-only capture is sealed and independently verified. All 305 video-start
 pages (152,304 rows) and 327 referrer pages (163,352 rows) matched across the
@@ -129,6 +129,25 @@ PostgreSQL 18, including the 6.5-second lock case. The owned idle bridge
 was stopped for the code update, freeing memory. Its clone and sealed artifact
 remain intact. No subscription catalog inference or destination GA request has
 run yet; the next manual resume has not been executed.
+
+The next explicit resume committed import preparation, then the copy request
+hit its unchanged 30-second client deadline: copy-bind also re-derives the full
+catalog before reserving storage. The old handler settled with the row exactly
+`prepared`, no copy/lease/staging fields, no destination object, no active query,
+zero model/GA calls and a closed attempt. The read-only full-flow proof has
+SHA-256 `b759ff9168fa9090cec070e5326a2611d91fc6cf40c9f65143d5f84c399f8624`.
+
+Both prepare and copy-bind now have bounded 120-second HTTP deadlines; origin
+probe, status and other requests retain 30 seconds. The manual runner can resume
+an exact prepared digest through a fresh origin check, new active attempt,
+passed capacity, one idempotent preparation replay and one copy-bind. It still
+refuses copying/abandoned states and makes no automatic retry. The native
+regression reproduces the prior prepared-state refusal and then preserves the
+same preparation/destination through recovery, with zero model/GA activity at
+the stopped state. All 34 connected native cases, 3,519 Mastra cases (45 existing
+gated skips), both affected typechecks and scoped lint pass. A fresh manual
+resume is prepared but has not run. Published `859b6cebc` has 57 successful CI
+checks and five skips; this new correction requires its own CI result.
 
 Public A/B remains off. Required work still includes the representative subscription
 pilot, complete catalog and current capacity evidence, live baseline/calibration,

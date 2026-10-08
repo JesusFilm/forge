@@ -317,13 +317,14 @@ async function postAdmin(
   apiKey: string,
   body: unknown,
 ): Promise<unknown> {
-  // Import preparation re-derives the complete catalog identity before writing.
-  // Keep its offline deadline bounded without extending ordinary requests.
+  // Import preparation and copy both re-derive the full catalog before writing.
+  // Bound these offline deadlines without extending ordinary requests.
   const timeoutMs =
     typeof body === "object" &&
     body !== null &&
     "action" in body &&
-    body.action === "ga_import_prepare_v1"
+    (body.action === "ga_import_prepare_v1" ||
+      body.action === "ga_import_copy_bind_v1")
       ? 120_000
       : 30_000
   const response = await fetch(assertPrivateUrl(url), {

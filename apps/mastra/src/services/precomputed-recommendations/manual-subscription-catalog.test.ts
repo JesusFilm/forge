@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest"
 
 import { buildCandidateRetrieval } from "./candidate-retrieval"
 import { gaCaptureDigest } from "./ga-watch-capture-artifact"
+import { gaImportPreparedDigest } from "./ga-capture-import-client"
 import {
   manualGenerationInputDigest,
   preflightManualCatalog,
@@ -779,7 +780,141 @@ describe("manual subscription catalog preflight", () => {
       )
   })
 
-  it.each(["prepared", "copying", "abandoned"] as const)(
+  it("replays a matching prepared import under a fresh resume attempt before model work", async () => {
+    const fixture = await pilotFixture()
+    fixture.input.invocation = "resume"
+    fixture.input.attemptId = "44444444-4444-4444-8444-444444444444"
+    const preparedDigest = gaImportPreparedDigest(fixture.input.destination)
+    let bound = false
+    const status = fixture.ports.importClient.status
+    fixture.ports.importClient.status = async (input) => {
+      if (!bound) {
+        fixture.actions.push("import_status")
+        return {
+          version: "ga_capture_import_v1",
+          state: "prepared",
+          preparedDigest,
+        }
+      }
+      return { ...(await status(input)), preparedDigest }
+    }
+    const prepare = fixture.ports.importClient.prepare
+    const copyBind = fixture.ports.importClient.copyBind
+    const importAttemptIds: string[] = []
+    fixture.ports.importClient.prepare = async (input) => {
+      importAttemptIds.push(input.attemptId)
+      return { ...(await prepare(input)), preparedDigest, replay: true }
+    }
+    fixture.ports.importClient.copyBind = async (input) => {
+      importAttemptIds.push(input.attemptId)
+      const result = await copyBind(input)
+      bound = result.state === "bound"
+      return { ...result, preparedDigest }
+    }
+
+    const result = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+
+    expect(result.reason).toBe("pilot_boundary")
+    expect(importAttemptIds).toEqual([
+      fixture.input.attemptId,
+      fixture.input.attemptId,
+    ])
+    expect(fixture.actions).not.toContain("start")
+    expect(fixture.actions).not.toContain("manifest")
+    for (const [before, after] of [
+      ["import_status", "origin_probe"],
+      ["origin_probe", "resume_attempt"],
+      ["resume_attempt", "capacity_probe"],
+      ["capacity", "import_prepare"],
+      ["import_prepare", "import_copy_bind"],
+      ["import_copy_bind", "profile_register"],
+      ["import_copy_bind", "model_admission"],
+    ])
+      expect(fixture.actions.indexOf(before)).toBeLessThan(
+        fixture.actions.indexOf(after),
+      )
+  })
+
+  it("does not retry a failed prepared copy automatically and needs another explicit attempt", async () => {
+    const fixture = await pilotFixture()
+    fixture.input.invocation = "resume"
+    const firstAttemptId = "44444444-4444-4444-8444-444444444444"
+    const secondAttemptId = "55555555-5555-4555-8555-555555555555"
+    fixture.input.attemptId = firstAttemptId
+    const preparedDigest = gaImportPreparedDigest(fixture.input.destination)
+    let bound = false
+    const status = fixture.ports.importClient.status
+    fixture.ports.importClient.status = async (input) => {
+      if (!bound) {
+        fixture.actions.push("import_status")
+        return {
+          version: "ga_capture_import_v1",
+          state: "prepared",
+          preparedDigest,
+        }
+      }
+      return { ...(await status(input)), preparedDigest }
+    }
+    const copyBind = fixture.ports.importClient.copyBind
+    const copyAttemptIds: string[] = []
+    fixture.ports.importClient.copyBind = async (input) => {
+      copyAttemptIds.push(input.attemptId)
+      if (copyAttemptIds.length === 1)
+        throw new Error("synthetic Admin transport interruption before copy")
+      const result = await copyBind(input)
+      bound = result.state === "bound"
+      return { ...result, preparedDigest }
+    }
+
+    const first = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(first.reason).toBe("admin_unavailable")
+    expect(copyAttemptIds).toEqual([firstAttemptId])
+    expect(fixture.actions).toContain("attempt_close")
+    expect(fixture.actions).not.toContain("profile_register")
+    expect(fixture.actions).not.toContain("model_admission")
+
+    fixture.input.attemptId = secondAttemptId
+    const second = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(second.reason).toBe("pilot_boundary")
+    expect(copyAttemptIds).toEqual([firstAttemptId, secondAttemptId])
+    expect(
+      fixture.actions.filter((action) => action === "import_prepare"),
+    ).toHaveLength(2)
+    expect(
+      fixture.actions.filter((action) => action === "resume_attempt"),
+    ).toHaveLength(2)
+  })
+
+  it("rejects a prepared import with a different destination digest before registering an attempt", async () => {
+    const fixture = await pilotFixture()
+    fixture.input.invocation = "resume"
+    fixture.ports.importClient.status = async () => {
+      fixture.actions.push("import_status")
+      return {
+        version: "ga_capture_import_v1",
+        state: "prepared",
+        preparedDigest: "0".repeat(64),
+      }
+    }
+
+    await expect(
+      runManualSubscriptionCatalog(fixture.input, fixture.ports),
+    ).rejects.toMatchObject({ code: "import_unavailable" })
+    expect(fixture.actions).not.toContain("origin_probe")
+    expect(fixture.actions).not.toContain("resume_attempt")
+    expect(fixture.actions).not.toContain("model_admission")
+  })
+
+  it.each(["copying", "abandoned"] as const)(
     "refuses a %s import on resume before registering an attempt",
     async (state) => {
       const fixture = await pilotFixture()
@@ -808,67 +943,85 @@ describe("manual subscription catalog preflight", () => {
     },
   )
 
-  it("rejects an incompatible origin before registering an absent-import resume", async () => {
-    const fixture = await pilotFixture()
-    fixture.input.invocation = "resume"
-    fixture.ports.importClient.status = async () => {
-      fixture.actions.push("import_status")
-      return { version: "ga_capture_import_v1", state: "absent" }
-    }
-    const probe = fixture.ports.importClient.probeOrigin
-    fixture.ports.importClient.probeOrigin = async (input) => {
-      const response = await probe(input)
-      return {
-        ...response,
-        origin: { ...response.origin, usableStart: "2022-08-09" },
+  it.each(["absent", "prepared"] as const)(
+    "rejects an incompatible origin before registering a %s-import resume",
+    async (state) => {
+      const fixture = await pilotFixture()
+      fixture.input.invocation = "resume"
+      fixture.ports.importClient.status = async () => {
+        fixture.actions.push("import_status")
+        return state === "absent"
+          ? { version: "ga_capture_import_v1", state }
+          : {
+              version: "ga_capture_import_v1",
+              state,
+              preparedDigest: gaImportPreparedDigest(fixture.input.destination),
+            }
       }
-    }
+      const probe = fixture.ports.importClient.probeOrigin
+      fixture.ports.importClient.probeOrigin = async (input) => {
+        const response = await probe(input)
+        return {
+          ...response,
+          origin: { ...response.origin, usableStart: "2022-08-09" },
+        }
+      }
 
-    await expect(
-      runManualSubscriptionCatalog(fixture.input, fixture.ports),
-    ).rejects.toMatchObject({ code: "import_unavailable" })
-    expect(fixture.actions).toEqual(
-      expect.arrayContaining(["account", "import_status", "origin_probe"]),
-    )
-    expect(fixture.actions).not.toContain("resume_attempt")
-    expect(fixture.actions).not.toContain("import_prepare")
-    expect(fixture.actions).not.toContain("model_admission")
-  })
+      await expect(
+        runManualSubscriptionCatalog(fixture.input, fixture.ports),
+      ).rejects.toMatchObject({ code: "import_unavailable" })
+      expect(fixture.actions).toEqual(
+        expect.arrayContaining(["account", "import_status", "origin_probe"]),
+      )
+      expect(fixture.actions).not.toContain("resume_attempt")
+      expect(fixture.actions).not.toContain("import_prepare")
+      expect(fixture.actions).not.toContain("model_admission")
+    },
+  )
 
-  it("keeps an absent import unprepared when resumed capacity cannot pass", async () => {
-    const fixture = await pilotFixture()
-    fixture.input.invocation = "resume"
-    fixture.ports.importClient.status = async () => {
-      fixture.actions.push("import_status")
-      return { version: "ga_capture_import_v1", state: "absent" }
-    }
-    fixture.ports.measureCapacity = async () => {
-      fixture.actions.push("capacity_measure")
-      throw new Error("synthetic PGDATA measurement failure")
-    }
+  it.each(["absent", "prepared"] as const)(
+    "keeps a %s import unchanged when resumed capacity cannot pass",
+    async (state) => {
+      const fixture = await pilotFixture()
+      fixture.input.invocation = "resume"
+      fixture.ports.importClient.status = async () => {
+        fixture.actions.push("import_status")
+        return state === "absent"
+          ? { version: "ga_capture_import_v1", state }
+          : {
+              version: "ga_capture_import_v1",
+              state,
+              preparedDigest: gaImportPreparedDigest(fixture.input.destination),
+            }
+      }
+      fixture.ports.measureCapacity = async () => {
+        fixture.actions.push("capacity_measure")
+        throw new Error("synthetic PGDATA measurement failure")
+      }
 
-    const result = await runManualSubscriptionCatalog(
-      fixture.input,
-      fixture.ports,
-    )
+      const result = await runManualSubscriptionCatalog(
+        fixture.input,
+        fixture.ports,
+      )
 
-    expect(result).toMatchObject({
-      state: "stopped",
-      reason: "capacity_stopped",
-    })
-    expect(fixture.actions).toEqual(
-      expect.arrayContaining([
-        "origin_probe",
-        "resume_attempt",
-        "capacity_probe",
-        "capacity_measure",
-        "attempt_close",
-      ]),
-    )
-    expect(fixture.actions).not.toContain("import_prepare")
-    expect(fixture.actions).not.toContain("import_copy_bind")
-    expect(fixture.actions).not.toContain("model_admission")
-  })
+      expect(result).toMatchObject({
+        state: "stopped",
+        reason: "capacity_stopped",
+      })
+      expect(fixture.actions).toEqual(
+        expect.arrayContaining([
+          "origin_probe",
+          "resume_attempt",
+          "capacity_probe",
+          "capacity_measure",
+          "attempt_close",
+        ]),
+      )
+      expect(fixture.actions).not.toContain("import_prepare")
+      expect(fixture.actions).not.toContain("import_copy_bind")
+      expect(fixture.actions).not.toContain("model_admission")
+    },
+  )
 
   it("continues a bound-import resume without probing or rebinding the origin", async () => {
     const fixture = await pilotFixture()

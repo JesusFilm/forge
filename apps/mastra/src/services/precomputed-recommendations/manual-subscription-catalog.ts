@@ -9,9 +9,10 @@ import {
 import { PRECOMPUTED_MODEL_ID } from "./astra-provider"
 import type { CodexAccountAttestation } from "./codex-local-account"
 import type { ReservationAwareStructuredModel } from "./codex-subscription-astra"
-import type {
-  createGaCaptureImportClient,
-  GaImportDestination,
+import {
+  gaImportPreparedDigest,
+  type GaImportDestination,
+  type createGaCaptureImportClient,
 } from "./ga-capture-import-client"
 import type { loadImportedGaWatchHistory } from "./ga-capture-import-reader"
 import {
@@ -635,13 +636,18 @@ export async function runManualSubscriptionCatalog(
   if (
     input.invocation === "resume" &&
     (!("state" in importState) ||
-      (importState.state !== "bound" && importState.state !== "absent"))
+      (importState.state !== "bound" &&
+        importState.state !== "absent" &&
+        importState.state !== "prepared") ||
+      (importState.state === "prepared" &&
+        importState.preparedDigest !==
+          gaImportPreparedDigest(input.destination)))
   )
     throw new ManualSubscriptionCatalogError("import_unavailable")
   const originProof =
     "origin" in importState
       ? importState
-      : importState.state === "absent"
+      : importState.state === "absent" || importState.state === "prepared"
         ? await ports.importClient.probeOrigin({
             originGenerationId: input.originGenerationId,
           })

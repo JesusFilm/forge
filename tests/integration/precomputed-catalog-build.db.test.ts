@@ -847,6 +847,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         }
         let subscriptionCalls = 0
         let capacityAvailable = false
+        let failCopyBeforeReservation = true
         const manualInput: ManualSubscriptionCatalogInput = {
           invocation: "start",
           generationId: manualDestination.generationId,
@@ -867,7 +868,16 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         const manualPorts: ManualSubscriptionCatalogPorts = {
           catalog: connected.catalog,
           ingest,
-          importClient,
+          importClient: {
+            ...importClient,
+            async copyBind(input) {
+              if (failCopyBeforeReservation) {
+                failCopyBeforeReservation = false
+                throw new Error("Fixture copy stopped before dispatch")
+              }
+              return importClient.copyBind(input)
+            },
+          },
           profilePersistence: createContentProfilePersistence(ingest),
           edgePersistence: createEdgeBatchPersistence(ingest),
           loadImport: (destination) =>
@@ -973,6 +983,21 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         ).toMatchObject({ state: "absent" })
         expect(gaFetch).toHaveBeenCalledTimes(gaCallsAfterCapture)
         capacityAvailable = true
+        const preparedStop = await runManualSubscriptionCatalog(
+          { ...manualInput, invocation: "resume", attemptId: randomUUID() },
+          manualPorts,
+        )
+        expect(preparedStop).toMatchObject({
+          state: "stopped",
+          reason: "admin_unavailable",
+          knownUsage: { profileCallCount: 0, edgeBatchCallCount: 0 },
+        })
+        const preparedImport = await importClient.status({
+          destination: manualDestination,
+        })
+        expect(preparedImport.state).toBe("prepared")
+        expect(subscriptionCalls).toBe(0)
+        expect(gaFetch).toHaveBeenCalledTimes(gaCallsAfterCapture)
         const manual = await runManualSubscriptionCatalog(
           { ...manualInput, invocation: "resume", attemptId: randomUUID() },
           manualPorts,
@@ -989,6 +1014,16 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           },
         })
         expect(subscriptionCalls).toBe(1)
+        const boundImport = await importClient.status({
+          destination: manualDestination,
+        })
+        if (
+          preparedImport.state !== "prepared" ||
+          boundImport.state !== "bound"
+        )
+          throw new Error("Prepared import did not bind on explicit resume")
+        expect(boundImport.preparedDigest).toBe(preparedImport.preparedDigest)
+        expect(boundImport.importBinding.destination).toEqual(manualDestination)
         expect(gaFetch).toHaveBeenCalledTimes(gaCallsAfterCapture)
         expect(
           await loadPrecomputedRecommendationComparison(prisma, {

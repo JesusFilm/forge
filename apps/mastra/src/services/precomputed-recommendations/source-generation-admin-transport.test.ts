@@ -52,21 +52,25 @@ function delayedAdminResponse(delayMs: number) {
 }
 
 describe("Admin producer transport", () => {
-  it("allows a full-catalog import preparation to finish after thirty seconds", async () => {
-    const fetchImpl = delayedAdminResponse(50_000)
-    const result = createAdminSourceDependencies()
-      .ingest({ action: "ga_import_prepare_v1" })
-      .then(
-        (value) => ({ value }),
-        (error: unknown) => ({ error }),
-      )
-    await vi.advanceTimersByTimeAsync(50_000)
-    expect(await result).toEqual({ value: { state: "prepared" } })
-    expect(fetchImpl).toHaveBeenCalledOnce()
-  })
+  it.each(["ga_import_prepare_v1", "ga_import_copy_bind_v1"])(
+    "allows full-catalog validation in %s to finish after thirty seconds",
+    async (action) => {
+      const fetchImpl = delayedAdminResponse(50_000)
+      const result = createAdminSourceDependencies()
+        .ingest({ action })
+        .then(
+          (value) => ({ value }),
+          (error: unknown) => ({ error }),
+        )
+      await vi.advanceTimersByTimeAsync(50_000)
+      expect(await result).toEqual({ value: { state: "prepared" } })
+      expect(fetchImpl).toHaveBeenCalledOnce()
+    },
+  )
 
   it.each([
     ["ga_import_prepare_v1", 120_000],
+    ["ga_import_copy_bind_v1", 120_000],
     ["ga_import_status_v1", 30_000],
     ["capacity", 30_000],
   ])(
