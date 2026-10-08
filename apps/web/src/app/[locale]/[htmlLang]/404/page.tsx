@@ -1,19 +1,26 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import { getTranslations } from "next-intl/server"
+import { getTranslations, setRequestLocale } from "next-intl/server"
 
 type PageProps = {
   params: Promise<{ locale: string }>
 }
+
+export const dynamic = "force-dynamic"
 
 export async function generateMetadata({
   params,
 }: PageProps): Promise<Metadata> {
   const { locale } = await params
   const t = await getTranslations({ locale, namespace: "WatchNotFound" })
-  return { title: t("metadataTitle") }
+  return {
+    title: t("metadataTitle"),
+    robots: { index: false, follow: false },
+  }
 }
 
-export default function WatchNotFoundSentinel() {
+export default async function WatchNotFoundSentinel({ params }: PageProps) {
+  const { locale } = await params
+  setRequestLocale(locale)
   notFound()
 }
