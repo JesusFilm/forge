@@ -69,4 +69,4 @@ On 2026-10-08, production inventory URLs returned HTTP 200 with prerendered HTML
 - `pnpm --filter @forge/web typecheck`, targeted ESLint, Prettier check, `git diff --check`, and `pnpm --filter @forge/web check:language-bcp47-map` passed. Generator check fetched 2,329 map entries with no drift.
 - US Team seat verified as first-party claude.ai / Jesus Film Project / Team. Claude Code review was started but did not return output; personal review and focused verification found no remaining blocker.
 - Production probes on 2026-10-08 confirmed Awadhi and Balanta Naga response language mismatches; see Validation Evidence.
-- Draft PR: pending.
+- Draft PR: https://github.com/JesusFilm/forge/pull/2674 (registered with T3).
