@@ -9,6 +9,10 @@ import {
   resolveWatchSearchInputForRequest,
 } from "@/graphql/queries/watch-search"
 import { schema } from "@/graphql/schema"
+import {
+  WATCH_SEARCH_HARD_TIMEOUT_MS,
+  WatchSearchTimeoutError,
+} from "@/services/watch-search.service"
 
 const { enqueueWatchSearchShadowMock, enqueueWatchSearchTraceMock } =
   vi.hoisted(() => ({
@@ -358,7 +362,9 @@ describe("watchSearch mode routing", () => {
 
     await invoke({ input })
 
-    expect(searchMock).toHaveBeenCalledWith(input)
+    expect(searchMock).toHaveBeenCalledWith(input, {
+      hardTimeoutMs: WATCH_SEARCH_HARD_TIMEOUT_MS,
+    })
     expect(typesenseSearchMock).not.toHaveBeenCalled()
   })
 
@@ -538,7 +544,24 @@ describe("watchSearch resolver", () => {
 
     await invoke({ input })
 
-    expect(searchMock).toHaveBeenCalledWith(input)
+    expect(searchMock).toHaveBeenCalledWith(input, {
+      hardTimeoutMs: WATCH_SEARCH_HARD_TIMEOUT_MS,
+    })
+  })
+
+  it("maps the public default-mode deadline to an HTTP 504 GraphQL error", async () => {
+    searchMock.mockRejectedValueOnce(
+      new WatchSearchTimeoutError("watch_search_deadline_exceeded"),
+    )
+
+    await expect(invoke({ input: { query: "jesus" } })).rejects.toMatchObject({
+      message: "Watch search timed out",
+      extensions: {
+        code: "WATCH_SEARCH_TIMEOUT",
+        http: { status: 504 },
+      },
+    })
+    expect(enqueueWatchSearchTraceMock).not.toHaveBeenCalled()
   })
 
   it("returns the service response unchanged", async () => {

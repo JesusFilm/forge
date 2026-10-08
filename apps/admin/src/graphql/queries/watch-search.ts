@@ -1,4 +1,5 @@
 import { signWatchSearchSurfaceManifest } from "@/services/recommendations/watch-search-surface-manifest"
+import { GraphQLError } from "graphql"
 import { builder } from "@/graphql/builder"
 import { env, resolveWatchSearchRuntimeEnv } from "@/config/env"
 import type {
@@ -11,6 +12,10 @@ import type {
   WatchSearchLanguageInterpretation,
   WatchSearchResponse,
   WatchSearchResult,
+} from "@/services/watch-search.service"
+import {
+  WATCH_SEARCH_HARD_TIMEOUT_MS,
+  WatchSearchTimeoutError,
 } from "@/services/watch-search.service"
 import { enqueueWatchSearchTrace } from "@/services/search-trace.service"
 import { TypesenseWatchSearchUnavailableError } from "@/services/typesense-watch-search.service"
@@ -446,7 +451,23 @@ builder.queryFields((t) => ({
           ? ctx.services.typesenseWatchSearch
           : ctx.services.watchSearch
       if (!service) throw new TypesenseWatchSearchUnavailableError()
-      const response = await service.search(input)
+      let response: WatchSearchResponse
+      try {
+        response =
+          input.mode === "modern"
+            ? await service.search(input)
+            : await ctx.services.watchSearch!.search(input, {
+                hardTimeoutMs: WATCH_SEARCH_HARD_TIMEOUT_MS,
+              })
+      } catch (error) {
+        if (!(error instanceof WatchSearchTimeoutError)) throw error
+        throw new GraphQLError("Watch search timed out", {
+          extensions: {
+            code: "WATCH_SEARCH_TIMEOUT",
+            http: { status: 504 },
+          },
+        })
+      }
       enqueueWatchSearchTrace(
         {
           input,
