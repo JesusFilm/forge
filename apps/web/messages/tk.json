@@ -83,7 +83,7 @@
     "dialogTitle": "Dil",
     "dialogTitleWithSubtitles": "Dil we subtitrler",
     "languageHeading": "Dil",
-    "subtitlesHeading": "Subtitrlər",
+    "subtitlesHeading": "Subtitrler",
     "languageCount": "{count, plural, one {# dil} other {# dil}}",
     "requestSent": "Sorag iberildi",
     "translateWithAi": "AI bilen terjime et",
@@ -230,7 +230,7 @@
     "tapToUnmute": "Ses açmak üçin basyň",
     "nextEpisode": "Soňky bölüm",
     "audioTranslationCount": "{count, plural, one {# dil} other {# dil}}",
-    "subtitleCount": "Subtitrlər: {count, plural, one {# dil} other {# dil}}"
+    "subtitleCount": "Subtitrler: {count, plural, one {# dil} other {# dil}}"
   },
   "ExperienceSkeleton": {
     "loadingContent": "Mazmun ýüklenýär",
@@ -493,7 +493,7 @@
     "subtitlesDescription": "Sözleýiş sesli {language} görnüşi entek elýeterli bolmadyk ýagdaýynda, bu wideolarda {language} subtitrler bolýar.",
     "noSubtitleVideos": "Bu dil üçin entek diňe subtitrli wideo ýok.",
     "dubbed": "Dubly",
-    "subtitles": "Subtitrlər",
+    "subtitles": "Subtitrler",
     "newLabel": "Täze",
     "fromCollection": "{collection}-den",
     "standaloneVideos": "Aýratyn wideolar",

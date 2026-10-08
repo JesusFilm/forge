@@ -48,6 +48,21 @@ const LANGUAGE_PICKER_KEYS = [
 ] as const
 const MAXIMUM_NORMALIZED_SOURCE_COPY_RATIO = 0.05
 
+describe("verified Turkmen subtitle labels", () => {
+  it("uses Turkmen spelling and keeps the subtitle count ICU plural", () => {
+    const turkmen = flattenCatalog("tk")
+
+    expect(turkmen["LanguagePickerModal.subtitlesHeading"]).toBe("Subtitrler")
+    expect(turkmen["HeroPlayer.subtitleCount"]).toBe(
+      "Subtitrler: {count, plural, one {# dil} other {# dil}}",
+    )
+    expect(turkmen["LanguageInventory.subtitles"]).toBe("Subtitrler")
+    expect(
+      Object.values(turkmen).filter((value) => value.includes("ə")),
+    ).toEqual([])
+  })
+})
+
 type MessageTree = {
   [key: string]: string | MessageTree
 }
