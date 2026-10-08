@@ -8,6 +8,7 @@ import {
   RECOMMENDATION_MUTATION_CLIENT_LIMIT,
   resetRecommendationMutationAdmissionForTests,
 } from "@/lib/recommendation-mutation-admission"
+import { RecommendationRouteError } from "@/lib/recommendation-route-policy"
 
 const { mutate } = vi.hoisted(() => ({ mutate: vi.fn() }))
 
@@ -105,6 +106,7 @@ describe("POST /watch/api/recommendations/profile", () => {
   })
 
   it("rejects an unexpected GraphQL receipt typename", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {})
     mutate.mockResolvedValueOnce({
       data: {
         recommendationProfileStatus: {
@@ -114,10 +116,89 @@ describe("POST /watch/api/recommendations/profile", () => {
       },
     })
 
-    const response = await POST(request("status"))
+    try {
+      const response = await POST(request("status"))
 
-    expect(response.status).toBe(502)
-    expect(await response.json()).toEqual({ error: "invalid_admin_response" })
+      expect(response.status).toBe(502)
+      expect(await response.json()).toEqual({ error: "invalid_admin_response" })
+      expect(log).not.toHaveBeenCalled()
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it("logs a bounded reason for unclassified 503 failures without raw details", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {})
+    mutate.mockRejectedValueOnce(
+      new TypeError("token=do-not-log viewer@example.test"),
+    )
+
+    try {
+      const response = await POST(request("status"))
+
+      expect(response.status).toBe(503)
+      expect(log).toHaveBeenCalledExactlyOnceWith(
+        "[watch] event=recommendation.profile.unclassified reason=type_error",
+      )
+      expect(JSON.stringify(log.mock.calls)).not.toContain("do-not-log")
+      expect(JSON.stringify(log.mock.calls)).not.toContain(
+        "viewer@example.test",
+      )
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it("classifies non-Error throws without serializing the thrown value", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {})
+    mutate.mockRejectedValueOnce({ token: "do-not-log" })
+
+    try {
+      const response = await POST(request("status"))
+
+      expect(response.status).toBe(503)
+      expect(log).toHaveBeenCalledExactlyOnceWith(
+        "[watch] event=recommendation.profile.unclassified reason=non_error_throw",
+      )
+      expect(JSON.stringify(log.mock.calls)).not.toContain("do-not-log")
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it("classifies an admission 503 with its bounded reason", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {})
+    mutate.mockRejectedValueOnce(
+      new RecommendationRouteError(503, "admission_unavailable"),
+    )
+
+    try {
+      const response = await POST(request("grant"))
+
+      expect(response.status).toBe(503)
+      expect(log).toHaveBeenCalledExactlyOnceWith(
+        "[watch] event=recommendation.profile.unclassified reason=admission_unavailable",
+      )
+    } finally {
+      log.mockRestore()
+    }
+  })
+
+  it("classifies a profile runtime 503 with its bounded reason", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {})
+    mutate.mockResolvedValueOnce({ error: new Error("private detail") })
+
+    try {
+      const response = await POST(request("status"))
+
+      expect(response.status).toBe(503)
+      expect(log).toHaveBeenCalledExactlyOnceWith(
+        "[watch] event=recommendation.profile.unclassified reason=profile_unavailable",
+      )
+      expect(JSON.stringify(log.mock.calls)).not.toContain("private detail")
+    } finally {
+      log.mockRestore()
+    }
   })
 
   it("issues a protected durable cookie only after explicit grant", async () => {
