@@ -8,6 +8,7 @@ const {
   watchChromeShellMock,
   experienceEmptyMock,
   experienceErrorMock,
+  loadClientMessagesMock,
 } = vi.hoisted(() => ({
   resolveWatchHomeMock: vi.fn(),
   resolveWatchPageMock: vi.fn(),
@@ -15,10 +16,16 @@ const {
   watchChromeShellMock: vi.fn(({ children }) => children),
   experienceEmptyMock: vi.fn(() => null),
   experienceErrorMock: vi.fn(() => null),
+  loadClientMessagesMock: vi.fn(),
 }))
 
 vi.mock("next-intl/server", () => ({
   setRequestLocale: vi.fn(),
+}))
+
+vi.mock("@/i18n/client-messages", () => ({
+  loadClientMessages: loadClientMessagesMock,
+  WATCH_HOME_CLIENT_MESSAGE_NAMESPACES: ["WatchHome"],
 }))
 
 vi.mock("@/lib/watch-home", () => ({
@@ -66,6 +73,8 @@ beforeEach(() => {
   watchHomeExperiencePageMock.mockClear()
   experienceEmptyMock.mockClear()
   experienceErrorMock.mockClear()
+  loadClientMessagesMock.mockReset()
+  loadClientMessagesMock.mockResolvedValue({ WatchHome: {} })
 
   resolveWatchHomeMock.mockResolvedValue({ data: heroModel, error: null })
   resolveWatchPageMock.mockResolvedValue({
@@ -75,6 +84,26 @@ beforeEach(() => {
 })
 
 describe("Watch root homepage", () => {
+  it("handles a rejected client-message promise while other work is pending", async () => {
+    loadClientMessagesMock.mockRejectedValueOnce(
+      new Error("Client messages unavailable"),
+    )
+    const unhandledRejection = vi.fn()
+    process.on("unhandledRejection", unhandledRejection)
+
+    try {
+      await expect(
+        HomePage({
+          params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
+        }),
+      ).rejects.toThrow("Client messages unavailable")
+      await new Promise((resolve) => setImmediate(resolve))
+      expect(unhandledRejection).not.toHaveBeenCalled()
+    } finally {
+      process.off("unhandledRejection", unhandledRejection)
+    }
+  })
+
   it("uses the fixed seeker-focused page and social metadata", async () => {
     const metadata = await generateMetadata({
       params: Promise.resolve({ locale: "en", htmlLang: "english.html" }),
