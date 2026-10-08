@@ -1,7 +1,7 @@
-// The WATCH, REFLECT, and PRAY stepper (R11): one compact row from a start
-// node (the owner, 2026-10-08). Each screen plays one arrival step: a line
-// draws right to the next pill, which lights up. Reduce Motion shows the end.
-// With onSelect, each pill is a button that opens its section.
+// The WATCH, REFLECT, and PRAY stepper (R11) as a path down from a top node
+// (the owner, 2026-10-06). Each screen plays one arrival step: a line draws to
+// the next pill, which lights up. Reduce Motion shows the end. With onSelect,
+// each pill is a button that opens its section (the owner, 2026-10-08).
 import { memo, type ReactNode } from "react"
 import {
   Animated,
@@ -13,7 +13,11 @@ import {
 } from "react-native"
 
 import type { PauseFont } from "../../lib/dailyPause/fonts"
-import { pauseColors } from "../../lib/dailyPause/theme"
+import {
+  pauseColors,
+  pauseRadii,
+  pauseSpacing,
+} from "../../lib/dailyPause/theme"
 import { sampledCurve } from "./sampledCurve"
 import { usePauseClock } from "./usePauseClock"
 
@@ -41,8 +45,7 @@ function hintFor(name: string, current: boolean): string {
 }
 
 const PRESSED_OPACITY = 0.6
-/** The row is low, so the slop brings each pill's target to 44 pt tall. */
-const PILL_HIT_SLOP = { top: 7, bottom: 7, left: 4, right: 4 }
+const PILL_HIT_SLOP = { top: 4, bottom: 4, left: 8, right: 8 }
 
 /** A pause so the viewer sees the start, then the phases of one step, in ms. */
 const LEAD_MS = 250
@@ -50,17 +53,19 @@ const NODE_MS = 250
 const LINE_MS = 400
 const LIGHT_MS = 250
 
-const NODE_SIZE = 8
-const LINE_THICKNESS = 2
-const NODE_LINE_LENGTH = 10
-const PILL_LINE_LENGTH = 10
-const PILL_PADDING_X = 12
-const LABEL_SIZE = 12
-/** The row fits a 375 pt phone at this text scale; VoiceOver reads the
- *  labels at any size. */
-const LABEL_MAX_SCALE = 1.1
-/** The stepper is one row this tall, whatever the look of each pill. */
-export const STEPPER_HEIGHT = 30
+const NODE_SIZE = 18
+const LINE_WIDTH = 3
+const NODE_LINE_LENGTH = 28
+const PILL_LINE_LENGTH = 18
+/** The current pill's frame height. Every pill sits in a slot this tall, so a
+ *  change of look never moves the column. */
+const PILL_SLOT_HEIGHT = 46
+/** Every part has a fixed height, so the stepper's height never changes. */
+export const STEPPER_HEIGHT =
+  NODE_SIZE +
+  NODE_LINE_LENGTH +
+  STAGES.length * PILL_SLOT_HEIGHT +
+  (STAGES.length - 1) * PILL_LINE_LENGTH
 
 type Phase = { from: number; to: number }
 type Plan = {
@@ -156,7 +161,7 @@ export const StepperPills = memo(function StepperPills({
 
   return (
     <View style={styles.stepper}>
-      <Node testID="stepper-node" lit={topNode} />
+      <Node testID="stepper-node-top" lit={topNode} />
       <Line
         testID="stepper-line-0"
         length={NODE_LINE_LENGTH}
@@ -175,18 +180,11 @@ export const StepperPills = memo(function StepperPills({
                 style={[styles.pill, pillStyles[one], { opacity: levels[one] }]}
               >
                 {one === "done" ? (
-                  <Text
-                    maxFontSizeMultiplier={LABEL_MAX_SCALE}
-                    style={[styles.check, font("sansBold")]}
-                  >
-                    ✓
-                  </Text>
+                  <Text style={[styles.check, font("sansBold")]}>✓</Text>
                 ) : null}
                 <Text
-                  maxFontSizeMultiplier={LABEL_MAX_SCALE}
                   style={[
-                    styles.label,
-                    one === "active" && styles.activeLabel,
+                    one === "active" ? styles.activeLabel : styles.label,
                     font("sansBold"),
                   ]}
                 >
@@ -197,26 +195,32 @@ export const StepperPills = memo(function StepperPills({
           </>
         )
         return (
-          <View key={stage} style={styles.group}>
-            {onSelect ? (
-              <Pressable
-                onPress={() => onSelect(stage)}
-                accessibilityRole="button"
-                accessibilityLabel={spoken}
-                accessibilityHint={hintFor(name, pill === index)}
-                hitSlop={PILL_HIT_SLOP}
-                style={({ pressed }) => [
-                  styles.slot,
-                  pressed && styles.pressed,
-                ]}
-              >
-                {layers}
-              </Pressable>
-            ) : (
-              <View accessible accessibilityLabel={spoken} style={styles.slot}>
-                {layers}
-              </View>
-            )}
+          <View key={stage} style={styles.slotGroup}>
+            <View style={styles.slot}>
+              {onSelect ? (
+                <Pressable
+                  onPress={() => onSelect(stage)}
+                  accessibilityRole="button"
+                  accessibilityLabel={spoken}
+                  accessibilityHint={hintFor(name, pill === index)}
+                  hitSlop={PILL_HIT_SLOP}
+                  style={({ pressed }) => [
+                    styles.target,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  {layers}
+                </Pressable>
+              ) : (
+                <View
+                  accessible
+                  accessibilityLabel={spoken}
+                  style={styles.target}
+                >
+                  {layers}
+                </View>
+              )}
+            </View>
             {pill < STAGES.length - 1 ? (
               <Line
                 testID={`stepper-line-${pill + 1}`}
@@ -231,27 +235,16 @@ export const StepperPills = memo(function StepperPills({
   )
 })
 
-/** An unseen copy of the done look, the widest. It sets the slot's width,
- *  so a pill keeps one width in every look and the row never moves. */
+/** An unseen copy of the current look, the widest. It gives the pill's box,
+ *  and so its tap target, a size; the visible looks lie over it. */
 function PillSizer({ label, font }: { label: string; font: PauseFont }) {
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={styles.sizer}
+      style={[styles.pill, styles.sizer]}
     >
-      <Text
-        maxFontSizeMultiplier={LABEL_MAX_SCALE}
-        style={[styles.check, font("sansBold")]}
-      >
-        ✓
-      </Text>
-      <Text
-        maxFontSizeMultiplier={LABEL_MAX_SCALE}
-        style={[styles.label, font("sansBold")]}
-      >
-        {label}
-      </Text>
+      <Text style={[styles.activeLabel, font("sansBold")]}>{label}</Text>
     </View>
   )
 }
@@ -275,7 +268,7 @@ function Node({ testID, lit }: { testID: string; lit: Level }) {
   )
 }
 
-/** One segment of the path. It draws rightward from its left end as it lights. */
+/** One segment of the path. It draws downward from its top as it lights. */
 function Line({
   testID,
   length,
@@ -290,55 +283,53 @@ function Line({
       testID={testID}
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.line, { width: length }]}
+      style={[styles.line, { height: length }]}
     >
       <Animated.View
         testID={`${testID}-fill`}
-        style={[styles.lineFill, { transform: [{ scaleX: level }] }]}
+        style={[styles.lineFill, { transform: [{ scaleY: level }] }]}
       />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  stepper: {
-    alignSelf: "center",
-    flexDirection: "row",
-    alignItems: "center",
-    height: STEPPER_HEIGHT,
-  },
-  group: { flexDirection: "row", alignItems: "center" },
-  slot: { height: STEPPER_HEIGHT },
-  pressed: { opacity: PRESSED_OPACITY },
-  sizer: {
-    flexDirection: "row",
-    alignItems: "center",
-    height: STEPPER_HEIGHT,
-    paddingHorizontal: PILL_PADDING_X,
-    opacity: 0,
-  },
-  // Every look fills the slot, so a pill is as wide in each look.
-  pill: {
-    position: "absolute",
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    flexDirection: "row",
+  stepper: { alignItems: "center", alignSelf: "stretch" },
+  slotGroup: { alignItems: "center", alignSelf: "stretch" },
+  slot: {
+    alignSelf: "stretch",
     alignItems: "center",
     justifyContent: "center",
-    borderRadius: STEPPER_HEIGHT / 2,
+    height: PILL_SLOT_HEIGHT,
   },
-  label: {
-    color: pauseColors.ink,
-    fontSize: LABEL_SIZE,
+  target: { alignItems: "center", justifyContent: "center" },
+  pressed: { opacity: PRESSED_OPACITY },
+  sizer: { position: "relative", opacity: 0 },
+  pill: {
+    position: "absolute",
+    flexDirection: "row",
+    alignItems: "center",
+    maxWidth: "100%",
+    paddingHorizontal: pauseSpacing.pillPaddingX,
+    paddingVertical: pauseSpacing.pillPaddingY,
+    borderRadius: pauseRadii.pill,
+  },
+  activeLabel: {
+    flexShrink: 1,
+    color: pauseColors.background,
+    fontSize: 18,
     letterSpacing: 1.4,
   },
-  activeLabel: { color: pauseColors.background },
+  label: {
+    flexShrink: 1,
+    color: pauseColors.ink,
+    fontSize: 14,
+    letterSpacing: 1.4,
+  },
   check: {
-    marginRight: 5,
+    marginRight: pauseSpacing.pillCheckGap,
     color: pauseColors.accent,
-    fontSize: LABEL_SIZE - 1,
+    fontSize: 14,
   },
   node: { width: NODE_SIZE, height: NODE_SIZE },
   nodeRing: {
@@ -348,7 +339,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: NODE_SIZE / 2,
-    borderWidth: 1.5,
+    borderWidth: 2.5,
     borderColor: pauseColors.ink,
   },
   nodeFill: {
@@ -360,11 +351,11 @@ const styles = StyleSheet.create({
     borderRadius: NODE_SIZE / 2,
     backgroundColor: pauseColors.ink,
   },
-  line: { height: LINE_THICKNESS },
+  line: { width: LINE_WIDTH },
   lineFill: {
     flex: 1,
     backgroundColor: pauseColors.ink,
-    transformOrigin: "left",
+    transformOrigin: "top",
   },
 })
 

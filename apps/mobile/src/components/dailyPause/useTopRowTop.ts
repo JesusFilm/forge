@@ -5,9 +5,6 @@ import { devotionalVideoFrame } from "../../lib/dailyPause/videoFrame"
 
 export type TopRowPlacement = "screen" | "letterbox"
 
-/** The row's height: the 44 pt target of the close and of the developer Skip. */
-export const TOP_ROW_HEIGHT = 44
-
 /** The top of the run's top row (the close and the developer Skip). On a
  *  screen it is the safe area. On a video part the row's bottom edge meets the
  *  video's top edge, so it never covers the picture or its captions (R24). */

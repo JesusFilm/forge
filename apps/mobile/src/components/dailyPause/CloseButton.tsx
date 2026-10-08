@@ -5,13 +5,9 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { Pressable, StyleSheet } from "react-native"
 
 import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
-import {
-  TOP_ROW_HEIGHT,
-  useTopRowTop,
-  type TopRowPlacement,
-} from "./useTopRowTop"
+import { useTopRowTop, type TopRowPlacement } from "./useTopRowTop"
 
-const TARGET_SIZE = TOP_ROW_HEIGHT
+const TARGET_SIZE = 44
 const GLYPH_SIZE = 24
 
 type CloseButtonProps = {

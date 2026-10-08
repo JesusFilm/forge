@@ -22,7 +22,6 @@ import { pauseColors } from "../../lib/dailyPause/theme"
 import { sampledCurve } from "./sampledCurve"
 import { usePauseClock } from "./usePauseClock"
 import { pauseBodyPadding } from "./PauseFrame"
-import { TOP_ROW_HEIGHT } from "./useTopRowTop"
 
 /** The lit pill holds at the center before the stepper moves, in ms. */
 const HOLD_MS = 300
@@ -32,8 +31,6 @@ const CONTENT_LEAD_MS = 150
 const CONTENT_MS = 500
 /** The content rises this far as it shows, in points. */
 const CONTENT_RISE = 12
-/** The stepper rests this far below the close's row. */
-const STEPPER_ROW_GAP = 8
 
 type IntroArrival = Exclude<StepperStage, "watch">
 
@@ -58,19 +55,16 @@ export type PauseIntro = {
   contentRise: Animated.AnimatedInterpolation<number>
   /** The cover over glass content: 1 hides it, 0 shows it. */
   coverLevel: Animated.AnimatedInterpolation<number>
-  /** The stepper's place below the body's top: clear of the close's row. */
-  stepperTop: number
   /** The screen's scroll view, which clips the stepper. */
   onScrollLayout: (event: LayoutChangeEvent) => void
 }
 
 /** The intro clock. The screen's scroll view must be the first child of its
- *  `PauseBody`, with the stepper first in it, so the stepper's place is
- *  `stepperTop` below the top of the body. */
+ *  `PauseBody`, with the stepper first in it, so the stepper's place is the
+ *  top of the body. */
 export function usePauseIntro(arrival: IntroArrival): PauseIntro {
   const window = useWindowDimensions()
-  const insets = useSafeAreaInsets()
-  const padding = pauseBodyPadding(insets)
+  const padding = pauseBodyPadding(useSafeAreaInsets())
   const { moveFrom, contentFrom, totalMs } = introTimes(arrival)
   const { progress, reduceMotion } = usePauseClock(totalMs)
   const [timerDue, setTimerDue] = useState(false)
@@ -84,20 +78,13 @@ export function usePauseIntro(arrival: IntroArrival): PauseIntro {
     return () => clearTimeout(timer)
   }, [reduceMotion, contentFrom])
 
-  const stepperTop = Math.max(
-    0,
-    insets.top + TOP_ROW_HEIGHT + STEPPER_ROW_GAP - padding.top,
-  )
   const bodyHeight = window.height - padding.top - padding.bottom
-  const centered = Math.max(0, (bodyHeight - STEPPER_HEIGHT) / 2 - stepperTop)
+  const centered = Math.max(0, (bodyHeight - STEPPER_HEIGHT) / 2)
   // Past the bottom of the scroll view the stepper would be cut off.
   const shiftFrom =
     scrollHeight == null
       ? centered
-      : Math.min(
-          centered,
-          Math.max(0, scrollHeight - stepperTop - STEPPER_HEIGHT),
-        )
+      : Math.min(centered, Math.max(0, scrollHeight - STEPPER_HEIGHT))
 
   const contentLevel = sampledCurve(progress, {
     fromMs: contentFrom,
@@ -122,7 +109,6 @@ export function usePauseIntro(arrival: IntroArrival): PauseIntro {
       inputRange: [0, 1],
       outputRange: [1, 0],
     }),
-    stepperTop,
     onScrollLayout: (event) => setScrollHeight(event.nativeEvent.layout.height),
   }
 }
@@ -140,10 +126,7 @@ export function IntroStepper({
       testID="pause-intro-stepper"
       style={[
         styles.stepper,
-        {
-          paddingTop: intro.stepperTop,
-          transform: [{ translateY: intro.stepperShift }],
-        },
+        { transform: [{ translateY: intro.stepperShift }] },
       ]}
     >
       {children}

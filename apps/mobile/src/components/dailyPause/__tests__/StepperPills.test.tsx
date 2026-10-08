@@ -1,5 +1,5 @@
-// The WATCH, REFLECT, and PRAY stepper (R11) as one row from a start node
-// (the owner, 2026-10-08). Each screen plays one arrival step. Jest cannot move
+// The WATCH, REFLECT, and PRAY stepper (R11) as a path down from a top node
+// (the owner, 2026-10-06). Each screen plays one arrival step. Jest cannot move
 // a native animation, so these tests pin the start of each step and its end
 // under Reduce Motion.
 import { act } from "react"
@@ -67,11 +67,11 @@ function opacity(testID: string): number {
 }
 
 /** How far a line has drawn, from its fill's scale. */
-function drawn(testID: string): number {
+function scaleY(testID: string): number {
   const transform = (style(`${testID}-fill`).transform ??
     []) as unknown as Record<string, number>[]
-  const entry = transform.find((one) => "scaleX" in one)
-  return Number(entry?.scaleX ?? 1)
+  const entry = transform.find((one) => "scaleY" in one)
+  return Number(entry?.scaleY ?? 1)
 }
 
 /** The look that shows: the layer at full opacity. */
@@ -117,20 +117,20 @@ describe("the end state of each arrival step (Reduce Motion)", () => {
       [1, 1, 1],
     ],
   ])(
-    "after the %s step, shows the pills, the lines, and the start node lit up to it",
+    "after the %s step, shows the pills, the lines, and the top node lit up to it",
     async (arrival, spoken, looks, lines) => {
       await reduceMotion()
       await render(arrival)
 
       expect(labels()).toEqual(spoken)
       expect(STAGES.map(look)).toEqual(looks)
-      expect([0, 1, 2].map((i) => drawn(`stepper-line-${i}`))).toEqual(lines)
-      expect(opacity("stepper-node-fill")).toBe(1)
+      expect([0, 1, 2].map((i) => scaleY(`stepper-line-${i}`))).toEqual(lines)
+      expect(opacity("stepper-node-top-fill")).toBe(1)
     },
   )
 
   // The owner (2026-10-06) found the bottom node strange, floating below PRAY.
-  it("ends the path at PRAY, with no line after it and no end node", async () => {
+  it("ends the path at PRAY, with no line below it and no bottom node", async () => {
     await reduceMotion()
     await render("pray")
     const ids = renderer!.root
@@ -138,11 +138,11 @@ describe("the end state of each arrival step (Reduce Motion)", () => {
         (node) =>
           typeof node.type === "string" &&
           typeof node.props.testID === "string" &&
-          /^stepper-(node|line-\d+)$/.test(node.props.testID),
+          /^stepper-(node|line)-[a-z0-9]+$/.test(node.props.testID),
       )
       .map((node) => node.props.testID as string)
     expect(ids).toEqual([
-      "stepper-node",
+      "stepper-node-top",
       "stepper-line-0",
       "stepper-line-1",
       "stepper-line-2",
@@ -169,7 +169,7 @@ describe("the end state of each arrival step (Reduce Motion)", () => {
   it("draws a lit node as one disc over the outline, edge to edge", async () => {
     await reduceMotion()
     await render("watch")
-    const node = "stepper-node"
+    const node = "stepper-node-top"
     expect(style(node).borderWidth ?? 0).toBe(0)
     expect(style(`${node}-fill`)).toMatchObject({
       position: "absolute",
@@ -185,7 +185,7 @@ describe("the end state of each arrival step (Reduce Motion)", () => {
   it("hides the nodes and the lines from VoiceOver", async () => {
     await reduceMotion()
     await render("watch")
-    for (const testID of ["stepper-node", "stepper-line-0"]) {
+    for (const testID of ["stepper-node-top", "stepper-line-0"]) {
       expect(byId(testID).props.importantForAccessibility).toBe(
         "no-hide-descendants",
       )
@@ -195,18 +195,18 @@ describe("the end state of each arrival step (Reduce Motion)", () => {
 })
 
 describe("the start of each arrival step (motion on)", () => {
-  it("starts the Watch step from an unlit start node, no line, and WATCH unlit", async () => {
+  it("starts the Watch step from an unlit top node, no line, and WATCH unlit", async () => {
     await render("watch")
-    expect(opacity("stepper-node-fill")).toBe(0)
-    expect(drawn("stepper-line-0")).toBe(0)
+    expect(opacity("stepper-node-top-fill")).toBe(0)
+    expect(scaleY("stepper-line-0")).toBe(0)
     expect(look("watch")).toBe("upcoming")
   })
 
   it("starts the Reflect step from WATCH lit and no line to REFLECT", async () => {
     await render("reflect")
-    expect(opacity("stepper-node-fill")).toBe(1)
-    expect(drawn("stepper-line-0")).toBe(1)
-    expect(drawn("stepper-line-1")).toBe(0)
+    expect(opacity("stepper-node-top-fill")).toBe(1)
+    expect(scaleY("stepper-line-0")).toBe(1)
+    expect(scaleY("stepper-line-1")).toBe(0)
     expect(STAGES.map(look)).toEqual(["active", "upcoming", "upcoming"])
   })
 })
