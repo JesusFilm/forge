@@ -20,10 +20,14 @@ using the existing Codex subscription instead of paid API generation. The
 preserves the accepted product requirements. A synthetic `gpt-6-astra` CLI probe
 completed through enforced ChatGPT auth with valid structured output, no tool
 events and 16,949 input/32 output tokens. This proves access only. The local
-operator adapter and hosted launch guard are integrated at `5c90e8abf`.
-Root's combined adapter/hosted checks pass 34 cases with CI enabled; worker
-Mastra checks pass 3,379 cases with 45 environment-gated skips. The full build
-has not started, and no paid API fallback is authorized.
+operator adapter and hosted launch guard are integrated at `a23879bd9`.
+The supported account reader and read-only preflight are integrated at
+`334420825`. Root's reader/adapter/registration checks pass 50 cases with CI
+enabled; the earlier hosted-workflow checks pass another three cases. The
+reader's worker suite passed 3,395 cases with 45 environment-gated skips before
+the final meter refinement, then all 19 reader cases and type/lint checks passed
+on the final code. The full build has not started, and no paid API fallback is
+authorized.
 
 The owner further required manual-only builds/rebuilds/resumptions using the
 initiating person's own subscription. The operator adapter requires fresh
@@ -32,9 +36,11 @@ and terminates the owned CLI process group on timeout or unexpected tools;
 this local adapter supports POSIX hosts and explicitly rejects Windows. Hosted
 source/catalog launch routes return `403 local_manual_operator_required`, and
 neither workflow is registered on the native hosted API. The concrete identity
-reader, manual command and durable operator provenance are still implementation
-seams. An Admin login does not
-select a remote machine's Codex account. Included subscription use has no
+reader uses fresh local app-server processes and read-only account/quota RPCs;
+it validates the named Codex allowance and an opaque backend account binding.
+The manual build command and durable operator provenance remain implementation
+seams. An Admin login does not select a remote machine's Codex account.
+Included subscription use has no
 separate model API charge; the report must distinguish consumed allowance,
 subscription fees and possible paid credits instead of labeling tokens free.
 
@@ -43,8 +49,18 @@ app-server probe returned a stable ChatGPT account and backend account ID with
 fresh quota windows; only a hashed account reference was retained. Those reads
 do not expose a provider-enforced included-only spending cap. Pro's absent
 five-hour window is explicitly not applicable under the current documented plan
-rules, not inferred to be 100% remaining. The concrete runner and durable
-provenance still require implementation and verification.
+rules, not inferred to be 100% remaining. The concrete reader's real preflight
+passed on the same Pro account without model calls. The manual generation
+runner and durable provenance still require implementation and verification.
+
+The October 8 usage snapshot shows 66% of the account-wide weekly allowance
+remaining. With a 25% reserve, this leaves 41 percentage points of admission
+headroom, shared with coding chats. This is not a full-catalog forecast or a
+hard cap on an active call. No representative batched catalog pilot has run;
+the full-build subscription percentage remains unmeasured. Measure complete
+transcript profiles and batched connection judgments, account for rounded
+meters and concurrent coding usage, then extrapolate by catalog strata.
+API token prices cannot be converted into included-subscription percentages.
 
 The subsequent docs CI run at `b25bd89fa` failed the native GA concurrency
 fixture's fixed 10ms overlap assumption (observed peak one, expected two).
@@ -52,7 +68,9 @@ The fixture now waits for a second source request after qualification, retaining
 the exact concurrency and durable-receipt assertions. All 33 native PostgreSQL
 build-through-Admin cases pass locally with this repair. Earlier green CI below
 applies only to its named application commit; the latest head is not yet claimed
-CI-green.
+CI-green. A subsequent run at `5c90e8abf` exposed a non-conventional hosted-guard
+commit subject. A message-only reword, published as `15fc322ef`, preserves the
+exact pre-rewrite tree and passes normal hooks and local commit lint.
 
 Published integration `0f6d65170d2b39a1b6f39484392e6f946e492448` has 101
 successful and three skipped CheckRuns, with two successful Railway status
