@@ -11,40 +11,52 @@ preserves exact source/integration commits, checks, browser artifacts, review
 findings, and recovery history. The [CTR operations note](../operations/precomputed-ctr-report.md)
 describes the private reporting contract and limits.
 
-## Current checkpoint — October 8, 19:28 NZDT
+## Current checkpoint — October 8, 19:57 NZDT
 
-The real GA import is now **bound** to the clone-only subscription generation.
-Its destination bytes match the sealed origin, with zero new GA requests.
-The first real `gpt-6-astra` profile call consumed **17,739 input / 490 output
-tokens**, then was rejected as `profile_invalid`. Its usage is known and its
-receipt is preserved. No connections or source finalizations have been produced;
-all 1,031 sources remain pending. The attempt is closed and no model call or
-source lease remains active. Public A/B is **off**.
+The corrected clone-only pilot has **nine ready content profiles**, produced by
+12 successful exact `gpt-6-astra` calls using **226,862 input / 5,415 output
+tokens**. The real GA import is bound, matches the sealed origin and required
+zero destination GA requests. The first shared connection call was reserved,
+then the command stopped with `usage_uncertain`. That receipt remains pending
+with no reported usage; no connection decision or source finalization has been
+applied. The attempt is closed and the runner exited. Public A/B is **off**.
 
-The original receipt does not identify the exact rejection subcause, and the
-ephemeral response was not retained. Diagnostic commit `cfc1ed399` now records
-bounded adapter-output, anchor, node-schema or node-byte rejection codes while
-preserving terminal behavior and usage. Root's 25 focused executor/client checks
-pass. An offline fixture independently proves that materialized citation metadata
-can expand a schema-valid wire answer beyond the unchanged 2,048-byte node cap.
-A budget correction is being developed before another explicit run; this is not
-a retrospective claim about which check rejected the first call.
+The connection schema contains nested `oneOf`, which is outside the documented
+Structured Outputs composition subset. A narrow supported-schema correction and
+pre-reservation guard are in progress. This is a confirmed schema defect and a
+plausible explanation for the short failure, but the old response was not retained:
+reservation alone proves neither dispatch nor zero consumption. The pending call
+will not be replayed or relabeled as free work without reconciliation.
 
-The bound import and rejected receipt are preserved in a supplemental control
-archive and matching artifact copy. Manifest SHA-256:
-`5321e841292a335ca2593cef8d615d281fa2b5c4d6bbc218049aecdf39e628cf`.
-This supplement has not been restore-tested; the earlier full clone restore
-proof remains distinct. Root retired only the closed, rejected generation in
-the clone through authenticated cancellation. All direct child rows, its usage
-receipt and the sealed origin are unchanged. After-state SHA-256:
-`7397e6503ba26325693e6ca8f324b6aa740ec92d01074dc8feada53f4081785a`.
-Fresh generation admission requires a new capacity measurement.
+Profile correction `572c5da02` accounts for citation metadata expansion in the
+prompt's byte budget and versions it as `complete-profile-v2`. It preserves
+complete selected content, schema maxima and authoritative 2,048-byte node
+validation. All 3,525 Mastra tests pass (45 existing gated skips), plus typecheck,
+scoped lint/format and the native PostgreSQL manual-runner regression. Provider
+schema validity still does not guarantee the model obeys the byte instruction.
 
-At published `403b1a438`, 57 CI checks pass and five skip;
-`admin-schema-drift` failed in its native HNSW test after schema generation
-passed, with `ci-gate` failing transitively. The natural failure and bounded
-local investigation are recorded under feat-609; passing local reruns did not
-identify a fix. No production merge, deployment or public start has occurred.
+The successful profiles, bound artifact and pending edge receipt are protected
+in a supplemental control archive (835,799 bytes), manifest SHA-256
+`130b2b54be2e474f616ab69ae83c6a00eb55e4cb307d2f91055aa8e8984c50f9`.
+This supplement has not been restore-tested. The earlier full clone restore proof
+remains distinct. Both displayed account-wide allowance snapshots were 46%
+remaining; concurrent coding and the rounded meter prevent a pilot-specific
+allowance estimate.
+
+An earlier profile attempt consumed 17,739 input / 490 output tokens and was
+rejected; its exact subcause is unknown. That closed generation was cancelled
+only in the clone, with all child rows, usage and sealed origin preserved.
+Protected retirement/headroom manifest SHA-256:
+`55924cd7cb75412a3fd651d16515bbff39e7e63d4e8950f40421964c54a215db`.
+The original capture database remains unchanged.
+
+At published `572c5da02`, 57 CI checks pass and five skip. The native HNSW gate
+again returned zero candidates after schema generation passed; `ci-gate` failed
+transitively. The natural failures are tracked under feat-609; passing local
+runs have not identified a correction. No production merge/deployment or public
+start has occurred. Current Railway configuration is inaccessible through the
+available signed-out browser/local login, and production Admin controls return
+403; live baseline/calibration readiness is unverified.
 
 ### Earlier validation and recovery checkpoints
 
