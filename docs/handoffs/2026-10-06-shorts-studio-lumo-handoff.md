@@ -151,3 +151,36 @@ logs will name the throw. Owner of #2581: Tataihono.
 
 Once fixed: re-request a render of the pilot (revision 3), inspect, hand the
 review link to the owner.
+
+## 2026-10-08: Bartimaeus LUMO teaser in Studio
+
+Project `bartimaeus-lumo-teaser-fb-20261008` (Facebook/Instagram teaser that
+leads to the LUMO long form). Source `LUMO - Luke 18:9-43` (videoId
+`cmp78pbiq0e20qm0108klwi9w`, the same media as Arclight `6_GOLuke2618`; the
+audio envelope matched our file at lag 0, so film seconds map 1:1). Snapshot
+`fd268749-8702-4e6a-84f4-678f54aa4a6c`, captured 280–313 s, `trackId: null`.
+"Blind Man Healed" (3:38) in search is a different video.
+
+New components (sources in `~/Desktop/devo-data/studio-components/`, compile
+check `check2.cjs`):
+
+- `paper-strips-v1` (abb331a0…): the typed paper strips (Figma 477:2997):
+  `text` with "|" between strips, centred, `top` in 900 x 1600 units,
+  `charsPerSec`, `startDelaySec`, `fadeOutSec`. Special Elite subset is
+  lowercase, digits, `.,?!'-` and capitals H G T Y D J L W only (32 KB
+  limit); any other capital falls back to Courier.
+- `dbp-mark-v1` (e1665210…): Daily Bible Pause book mark + name, `top`,
+  `opacity`, fades.
+- Music asset `1-duduk-pulse.mp3` (6c388d36…).
+
+Differences from the local Remotion teaser: the film plays at 1.0 (local
+×1.05); words do not flash orange (kinetic-question-v2 has no flash); the
+closing question uses close-question-v1 (smaller Inter caps than the local
+stamp).
+
+Renders: revision 1 (attempt `cmuzov4dk87dgkh0su7cc62qt`) SUCCEEDED but the
+closing question (close-question-v1, Inter 36) read too small; revision 2
+(attempt `cmuzp91po8bpvkh0say07rt53`) replaces it with a native Inter 600
+66px text item over a second film-look dim, and adds 1 s at the end so the
+last strip can be read. 25.7 s. Text checked against the safe zone (right
+edge ≤ x 920, nothing below y 1536).
