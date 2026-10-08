@@ -58,6 +58,26 @@ export default defineConfig(
     },
   },
   {
+    files: ["apps/web/src/components/watch/WatchLanguageIndexBrowser.tsx"],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "JSXAttribute[name.name='className'] Literal[value=/(?:^|\\s|:)(?:-?(?:ml|mr|pl|pr)-|left-|right-|text-(?:left|right)(?:\\s|$)|rounded-[lr](?:-|\\s|$))/]",
+          message:
+            "Use logical margin and padding utilities in the Watch language index.",
+        },
+        {
+          selector:
+            "JSXAttribute[name.name='className'] JSXExpressionContainer > TemplateLiteral TemplateElement[value.raw=/(?:^|\\s|:)(?:-?(?:ml|mr|pl|pr)-|left-|right-|text-(?:left|right)(?:\\s|$)|rounded-[lr](?:-|\\s|$))/]",
+          message:
+            "Use logical margin and padding utilities in the Watch language index.",
+        },
+      ],
+    },
+  },
+  {
     // Keep exhaustive-deps enabled here so it matches apps/chat's own
     // next/core-web-vitals config — a directive valid in one lint pass
     // must not be an unknown rule or unused suppression in the other.
