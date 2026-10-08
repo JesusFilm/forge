@@ -114,6 +114,12 @@ const REDUCE_SYSTEM =
 const MAX_PROFILE_PROMPT_BYTES = 65_536
 const MAX_PROFILE_NODE_BYTES = 2_048
 
+type ProfileRejectionCode =
+  | "profile_adapter_output_invalid"
+  | "profile_map_anchor_invalid"
+  | "profile_node_schema_invalid"
+  | "profile_node_bytes_exceeded"
+
 export function profileJsonBudget(
   start: number,
   end: number,
@@ -142,12 +148,11 @@ function materializeMapProfile(
         fragment.chunkId === offered.chunkId &&
         fragment.fragmentIndex === offered.fragmentIndex,
     )
-    if (matches.length !== 1)
-      throw new ContentProfileExecutionError("profile_invalid")
+    if (matches.length !== 1) rejectProfile("profile_map_anchor_invalid")
     const fragment = matches[0]!
     const offset = fragment.text.indexOf(offered.excerpt)
     if (offset < 0 || fragment.text.indexOf(offered.excerpt, offset + 1) !== -1)
-      throw new ContentProfileExecutionError("profile_invalid")
+      rejectProfile("profile_map_anchor_invalid")
     const startChar = fragment.startChar + offset
     return {
       videoId,
@@ -161,7 +166,9 @@ function materializeMapProfile(
       claimEnglish: offered.claimEnglish,
     }
   })
-  return compactProfileSchema.parse({ ...modelProfile, anchors })
+  const parsed = compactProfileSchema.safeParse({ ...modelProfile, anchors })
+  if (!parsed.success) rejectProfile("profile_node_schema_invalid")
+  return parsed.data
 }
 
 function validateMapProfile(
@@ -170,10 +177,10 @@ function validateMapProfile(
   videoId: string,
 ): void {
   if (Buffer.byteLength(JSON.stringify(profile), "utf8") > 2_048)
-    throw new ContentProfileExecutionError("profile_invalid")
+    rejectProfile("profile_node_bytes_exceeded")
   for (const anchor of profile.anchors) {
     if (anchor.videoId !== videoId || anchor.endChar <= anchor.startChar)
-      throw new ContentProfileExecutionError("profile_invalid")
+      rejectProfile("profile_map_anchor_invalid")
     const fragment = part.input.fragments.find(
       (item) =>
         item.chunkId === anchor.chunkId &&
@@ -183,13 +190,13 @@ function validateMapProfile(
         item.startChar <= anchor.startChar &&
         item.endChar >= anchor.endChar,
     )
-    if (!fragment) throw new ContentProfileExecutionError("profile_invalid")
+    if (!fragment) rejectProfile("profile_map_anchor_invalid")
     const text = fragment.text.slice(
       anchor.startChar - fragment.startChar,
       anchor.endChar - fragment.startChar,
     )
     if (textDigest(text) !== anchor.textSha256)
-      throw new ContentProfileExecutionError("profile_invalid")
+      rejectProfile("profile_map_anchor_invalid")
   }
 }
 
@@ -203,7 +210,7 @@ function validateReduceProfile(
     ),
   )
   if (profile.anchors.some((anchor) => !offered.has(JSON.stringify(anchor))))
-    throw new ContentProfileExecutionError("profile_invalid")
+    rejectProfile("profile_node_schema_invalid")
 }
 
 export type ProfileState =
@@ -365,9 +372,14 @@ export class ContentProfileExecutionError extends Error {
       | "profile_conflict"
       | "profile_invalid"
       | "usage_unknown",
+    readonly receiptCode?: ProfileRejectionCode,
   ) {
     super(code)
   }
+}
+
+function rejectProfile(receiptCode: ProfileRejectionCode): never {
+  throw new ContentProfileExecutionError("profile_invalid", receiptCode)
 }
 
 /** Evidence that the exact selected chunks entered the deterministic part plan. */
@@ -450,15 +462,18 @@ function validateNode(
 ): ProfileNode {
   // JSONB does not retain JS object insertion order. Reparse in wire-schema
   // order before checking a persisted node's original output digest.
-  const canonical = profileNodeSchema.parse(node)
+  const parsed = profileNodeSchema.safeParse(node)
+  if (!parsed.success) rejectProfile("profile_node_schema_invalid")
+  const canonical = parsed.data
   if (
     canonical.coveredPartStart !== expected.start ||
     canonical.coveredPartEnd !== expected.end ||
     JSON.stringify(canonical.childNodeDigests) !==
-      JSON.stringify(expected.childDigests) ||
-    Buffer.byteLength(JSON.stringify(canonical), "utf8") > 2_048
+      JSON.stringify(expected.childDigests)
   )
-    throw new ContentProfileExecutionError("profile_invalid")
+    rejectProfile("profile_node_schema_invalid")
+  if (Buffer.byteLength(JSON.stringify(canonical), "utf8") > 2_048)
+    rejectProfile("profile_node_bytes_exceeded")
   const profile = canonical.profile
   if (expected.part)
     validateMapProfile(profile, expected.part, expected.videoId)
@@ -691,11 +706,9 @@ export async function runContentProfile(input: {
           throw new ContentProfileExecutionError("profile_unavailable")
         const response = invocation.response
         usage = observedUsage(response.usage)
-        output = materializeMapProfile(
-          mapProfileSchema.parse(response.output),
-          part,
-          input.video.id,
-        )
+        const parsed = mapProfileSchema.safeParse(response.output)
+        if (!parsed.success) rejectProfile("profile_adapter_output_invalid")
+        output = materializeMapProfile(parsed.data, part, input.video.id)
       } else {
         const invocation = await input.model.generateReserved(
           {
@@ -710,7 +723,9 @@ export async function runContentProfile(input: {
           throw new ContentProfileExecutionError("profile_unavailable")
         const response = invocation.response
         usage = observedUsage(response.usage)
-        output = compactProfileSchema.parse(response.output)
+        const parsed = compactProfileSchema.safeParse(response.output)
+        if (!parsed.success) rejectProfile("profile_adapter_output_invalid")
+        output = parsed.data
       }
       validateNode(
         {
@@ -743,12 +758,21 @@ export async function runContentProfile(input: {
           typeof error === "object" &&
           "code" in error &&
           error.code === "provider_invalid_output")
+      const rejectionCode =
+        error instanceof ContentProfileExecutionError
+          ? (error.receiptCode ?? "profile_invalid")
+          : error &&
+              typeof error === "object" &&
+              "code" in error &&
+              error.code === "provider_invalid_output"
+            ? "profile_adapter_output_invalid"
+            : "profile_invalid"
       await input.persistence.callFinish({
         ...callBase,
         action: "profile_call_finish",
         status: rejected ? "rejected" : "failed",
         usage,
-        errorCode: rejected ? "profile_invalid" : "provider_unavailable",
+        errorCode: rejected ? rejectionCode : "provider_unavailable",
         finishedAt: new Date().toISOString(),
       })
       throw error

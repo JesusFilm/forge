@@ -12,6 +12,7 @@ import {
 } from "./content-profile-executor"
 import { planContentProfile } from "./content-profile-plan"
 import type { StructuredModel } from "./astra-provider"
+import { CodexSubscriptionAstraError } from "./codex-subscription-astra"
 import type { ReservationAwareStructuredModel } from "./codex-subscription-astra"
 import type { Chunk, SourceCatalog, Video } from "./source-generation"
 
@@ -577,28 +578,104 @@ describe("complete content profile execution", () => {
     expect(Buffer.byteLength(JSON.stringify(atLimit), "utf8")).toBe(2_048)
   })
 
+  it("shows that a short schema-shaped map answer can expand past the stored node cap", () => {
+    const videoId = "v".repeat(25)
+    const chunkId = "c".repeat(36)
+    const transcriptId = "t".repeat(25)
+    const excerpts = Array.from({ length: 7 }, (_, index) => `quote00${index}`)
+    const common = {
+      version: "complete_profile_v1" as const,
+      summaryEnglish: "s".repeat(12),
+      themes: [],
+      people: [],
+      places: [],
+      citations: [],
+    }
+    const wire = {
+      ...common,
+      anchors: excerpts.map((excerpt) => ({
+        chunkId,
+        fragmentIndex: 0,
+        excerpt,
+        claimEnglish: "c".repeat(12),
+      })),
+    }
+    const storedAnchors = excerpts.map((excerpt, index) => ({
+      videoId,
+      chunkId,
+      transcriptId,
+      language: "en",
+      chunkIndex: 0,
+      startChar: index * 8,
+      endChar: index * 8 + 8,
+      textSha256: createHash("sha256").update(excerpt).digest("hex"),
+      claimEnglish: "c".repeat(12),
+    }))
+    const node = (anchors: typeof storedAnchors) => ({
+      profile: { ...common, anchors },
+      coveredPartStart: 0,
+      coveredPartEnd: 1,
+      childNodeDigests: [],
+    })
+    const bytes = (value: unknown) =>
+      Buffer.byteLength(JSON.stringify(value), "utf8")
+
+    expect(bytes(wire)).toBeLessThan(profileJsonBudget(0, 1, []))
+    expect(bytes(node(storedAnchors.slice(0, 6)))).toBeLessThanOrEqual(2_048)
+    expect(bytes(node(storedAnchors))).toBeGreaterThan(2_048)
+  })
+
   it.each([
     {
       case: "unsupported excerpt",
       chunkText: passage,
       excerpt: "This sentence is not in the frozen fragment.",
+      errorCode: "profile_map_anchor_invalid",
     },
     {
       case: "ambiguous repeated excerpt",
       chunkText: "Repeated phrase appears. Repeated phrase appears again.",
       excerpt: "Repeated phrase",
+      errorCode: "profile_map_anchor_invalid",
     },
     {
       case: "oversized complete node",
       chunkText: passage,
       excerpt: passage,
       oversized: true,
+      errorCode: "profile_node_bytes_exceeded",
+    },
+    {
+      case: "invalid local node schema",
+      chunkText: passage,
+      excerpt: passage,
+      nodeSchemaFailure: true,
+      errorCode: "profile_node_schema_invalid",
+    },
+    {
+      case: "invalid adapter output",
+      chunkText: passage,
+      excerpt: passage,
+      adapterFailure: true,
+      errorCode: "profile_adapter_output_invalid",
     },
   ])(
     "records observed usage for an $case without finalizing",
-    async ({ chunkText, excerpt, oversized }) => {
+    async ({
+      chunkText,
+      excerpt,
+      oversized,
+      nodeSchemaFailure,
+      adapterFailure,
+      errorCode,
+    }) => {
       let coverageDigest = ""
-      const receipts: Array<{ status: string; inputTokens: number }> = []
+      const receipts: Array<{
+        status: string
+        inputTokens: number
+        outputTokens: number
+        errorCode?: string
+      }> = []
       const badProfile = {
         ...supportedMapProfile,
         ...(oversized
@@ -618,10 +695,34 @@ describe("complete content profile execution", () => {
       await expect(
         runContentProfile({
           ...identity,
-          video: transcriptVideo(),
-          catalog: transcriptCatalog([{ ...oneChunk, text: chunkText }]),
+          video: nodeSchemaFailure
+            ? {
+                ...transcriptVideo(),
+                transcriptSelection: {
+                  ...transcriptVideo().transcriptSelection!,
+                  selected: [
+                    {
+                      ...transcriptVideo().transcriptSelection!.selected[0]!,
+                      language: "x".repeat(65),
+                    },
+                  ],
+                },
+              }
+            : transcriptVideo(),
+          catalog: transcriptCatalog([
+            {
+              ...oneChunk,
+              text: chunkText,
+              language: nodeSchemaFailure ? "x".repeat(65) : "en",
+            },
+          ]),
           model: {
             async generate(input) {
+              if (adapterFailure)
+                throw new CodexSubscriptionAstraError(
+                  "provider_invalid_output",
+                  { usage: { inputTokens: 80, outputTokens: 20 } },
+                )
               return {
                 output: input.schema.parse(badProfile),
                 usage: { inputTokens: 80, outputTokens: 20 },
@@ -666,9 +767,12 @@ describe("complete content profile execution", () => {
               receipts.push({
                 status: input.status,
                 inputTokens: input.usage.inputTokens,
+                outputTokens: input.usage.outputTokens,
+                errorCode: input.errorCode,
               })
               expect(input.node).toBeUndefined()
-              expect(input.errorCode).toBe("profile_invalid")
+              expect(input.outputDigest).toBeUndefined()
+              expect(input.errorCode).toBe(errorCode)
               return {
                 generationId: input.generationId,
                 cacheKey: input.cacheKey,
@@ -684,8 +788,12 @@ describe("complete content profile execution", () => {
             },
           },
         }),
-      ).rejects.toMatchObject({ code: "profile_invalid" })
-      expect(receipts).toEqual([{ status: "rejected", inputTokens: 80 }])
+      ).rejects.toMatchObject({
+        code: adapterFailure ? "provider_invalid_output" : "profile_invalid",
+      })
+      expect(receipts).toEqual([
+        { status: "rejected", inputTokens: 80, outputTokens: 20, errorCode },
+      ])
     },
   )
 
