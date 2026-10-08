@@ -1749,6 +1749,9 @@ export type RenderOptions = {
    *  already at the output path; see render-devotional-video.mjs. */
   audioOnly?: boolean
   hookGapSec?: number
+  /** Teaser: the pause kept between lines (default 0.22s). Longer gives a
+   *  muted viewer time to read each line (owner, 2026-10-08). */
+  teaserLineGapSec?: number
   /** `montage`, vertical: horizontal focus (0..1) per shot, plus one for the
    *  scene after the last cut. */
   introFocus?: number[]
@@ -2034,6 +2037,9 @@ async function renderInStage(
           // Brisker: the pauses inside the kept take shortened.
           const cuts = teaserPauseCuts(
             (await audioSilences(dst)).filter((x) => x.endSec < cut - 0.02),
+            options.teaserLineGapSec != null
+              ? { lineGapSec: options.teaserLineGapSec }
+              : {},
           )
           if (cuts.length) {
             const brisk = path.join(stage, "hook-brisk.mp3")

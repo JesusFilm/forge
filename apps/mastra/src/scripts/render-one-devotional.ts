@@ -157,6 +157,9 @@ async function main() {
       // scene itself starts there. `--intro-captions` puts a caption on chosen
       // lines, by 0-based line number: "1=THEY WORKED ALL DAY;2=ONE HOUR".
       ...(arg("hook-gap") ? { hookGapSec: Number(arg("hook-gap")) } : {}),
+      ...(arg("teaser-line-gap")
+        ? { teaserLineGapSec: Number(arg("teaser-line-gap")) }
+        : {}),
       ...(arg("intro-focus")
         ? { introFocus: arg("intro-focus")!.split(",").map(Number) }
         : {}),
