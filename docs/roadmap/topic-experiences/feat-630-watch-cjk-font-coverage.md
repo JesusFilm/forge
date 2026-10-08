@@ -4,7 +4,7 @@ title: "Measure local CJK font coverage for Watch"
 owner: "vlad"
 priority: "P1"
 status: "not-started"
-start_date: "2026-10-08"
+start_date: "2026-10-07"
 duration: 3
 depends_on: []
 blocks: []
