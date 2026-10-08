@@ -29,6 +29,25 @@ the final meter refinement, then all 19 reader cases and type/lint checks passed
 on the final code. The full build has not started, and no paid API fallback is
 authorized.
 
+Complete-content planning is integrated at `1caad5e80`: root planner/retrieval
+checks pass 15 cases, and worker Mastra checks pass 3,409 with 45 gated skips.
+The offline audit reconstructs all 2,686 selected chunks across the 1,031-video
+catalog and preserves the existing corpus and candidate digests. With a 48 KiB
+part-data ceiling it plans 879 transcript map parts; these counts exclude
+instructions, reduction, judgments, outputs and retries and are not a quota
+estimate. No model call was made for the audit.
+
+Admin attempt provenance is integrated at `749d9875b`, including the
+closed-attempt fence repair. Migration 0142 adds nullable legacy-compatible
+generation/call attribution and bounded manual execution-attempt records. Root
+passed all 30 focused native PostgreSQL 18 tests and all 33 build-through-Admin
+regressions; neither suite skipped a case. Late observed-usage receipts remain
+recordable after closure, while recommendations/checkpoints and direct writes
+require the active matching attempt. Unknown-consumption reservations remain
+pending and block redispatch. No reconciliation endpoint claims that a caller's
+digest proves non-dispatch. The migration was tested only in owned disposable
+databases; the running GA capture schema remains unchanged.
+
 The owner further required manual-only builds/rebuilds/resumptions using the
 initiating person's own subscription. The operator adapter requires fresh
 same-account identity/allowance admission and pauses after failure. It isolates
@@ -38,8 +57,9 @@ source/catalog launch routes return `403 local_manual_operator_required`, and
 neither workflow is registered on the native hosted API. The concrete identity
 reader uses fresh local app-server processes and read-only account/quota RPCs;
 it validates the named Codex allowance and an opaque backend account binding.
-The manual build command and durable operator provenance remain implementation
-seams. An Admin login does not select a remote machine's Codex account.
+The manual build command, producer propagation of the active attempt ID, and
+distinct profile/shared-batch receipts remain implementation seams. An Admin
+login does not select a remote machine's Codex account.
 Included subscription use has no
 separate model API charge; the report must distinguish consumed allowance,
 subscription fees and possible paid credits instead of labeling tokens free.
@@ -51,7 +71,7 @@ do not expose a provider-enforced included-only spending cap. Pro's absent
 five-hour window is explicitly not applicable under the current documented plan
 rules, not inferred to be 100% remaining. The concrete reader's real preflight
 passed on the same Pro account without model calls. The manual generation
-runner and durable provenance still require implementation and verification.
+runner and shared-call accounting still require implementation and verification.
 
 The October 8 usage snapshot shows 66% of the account-wide weekly allowance
 remaining. With a 25% reserve, this leaves 41 percentage points of admission

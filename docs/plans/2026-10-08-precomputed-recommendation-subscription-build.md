@@ -107,6 +107,11 @@ does not equate subscription allowance with API token charges.
 - Report token counts and observable allowance separately. Subscription USD
   cost remains unavailable where no monetary receipt exists; preserve old API
   charges. Do not purchase credits or redeem reset credits automatically.
+- Keep the existing accepted-choice and serving representation, including its
+  bounded validated passage excerpts. Full transcripts, model prompts and raw
+  execution events must not be copied into durable build storage. Compact
+  profile references support offline validation; they do not add live transcript
+  reconstruction to Watch serving.
 - A quota pause is incomplete work, not a valid empty recommendation set.
   Unknown-consumption calls must be visible and reconciled before retry.
   A later allowance reset or process restart does not restart the run. Each
