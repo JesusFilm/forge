@@ -178,14 +178,8 @@ import { seoDailyAuditWorkflow } from "./workflows/seo-daily-audit"
 import { seoExperimentEvaluationWorkflow } from "./workflows/seo-experiment-evaluation"
 import { seoTicketDispatchWorkflow } from "./workflows/seo-ticket-dispatch"
 import { watchRouteAlertsWorkflow } from "./workflows/watch-route-alerts"
-import {
-  handlePrecomputedSourceRouteRequest,
-  precomputedSourceGenerationWorkflow,
-} from "./workflows/precomputed-source-generation"
-import {
-  handlePrecomputedCatalogRouteRequest,
-  precomputedCatalogGenerationWorkflow,
-} from "./workflows/precomputed-catalog-generation"
+import { handlePrecomputedSourceRouteRequest } from "./workflows/precomputed-source-generation"
+import { handlePrecomputedCatalogRouteRequest } from "./workflows/precomputed-catalog-generation"
 import {
   isValidServiceBearer,
   parseServiceApiKeys,
@@ -321,8 +315,6 @@ export const mastra = new Mastra({
     "auto-enrich": buildAutoEnrichAgent(),
   },
   workflows: {
-    precomputedSourceGenerationWorkflow,
-    precomputedCatalogGenerationWorkflow,
     transcriptEmbeddingWorkflow,
     experienceEmbeddingWorkflow,
     evalQueryGenerationWorkflow,

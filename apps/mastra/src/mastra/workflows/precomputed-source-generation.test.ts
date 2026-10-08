@@ -24,52 +24,6 @@ describe("private Astra source route", () => {
     inputCutoff: "2026-10-05T00:00:00.000Z",
   }
 
-  it("authenticates before parsing and only launches structured source inputs", async () => {
-    const launch = vi.fn().mockResolvedValue("run-one")
-    expect(
-      await handlePrecomputedSourceRouteRequest({
-        authHeader: null,
-        serviceKeys: ["secret"],
-        request: request(body),
-        launch,
-      }),
-    ).toMatchObject({ status: 401 })
-    expect(launch).not.toHaveBeenCalled()
-    expect(
-      await handlePrecomputedSourceRouteRequest({
-        authHeader: "Bearer secret",
-        serviceKeys: ["secret"],
-        request: request({
-          ...body,
-          historyRequired: true,
-          sql: "CREATE TABLE exported AS SELECT * FROM events",
-        }),
-        launch,
-      }),
-    ).toMatchObject({ status: 400 })
-    expect(launch).not.toHaveBeenCalled()
-    expect(
-      await handlePrecomputedSourceRouteRequest({
-        authHeader: "Bearer secret",
-        serviceKeys: ["secret"],
-        request: request({ ...body, sourceVideoId: "" }),
-        launch,
-      }),
-    ).toMatchObject({ status: 400 })
-    expect(
-      await handlePrecomputedSourceRouteRequest({
-        authHeader: "Bearer secret",
-        serviceKeys: ["secret"],
-        request: request(body),
-        launch,
-      }),
-    ).toMatchObject({
-      status: 202,
-      body: { runId: "run-one", generationId: "test-generation" },
-    })
-    expect(launch).toHaveBeenCalledOnce()
-  })
-
   it("recognizes project/model access errors without returning raw provider data", () => {
     expect(
       isAstraAccessFailure({
@@ -82,31 +36,43 @@ describe("private Astra source route", () => {
     expect(isAstraAccessFailure({ statusCode: 429 })).toBe(false)
   })
 
-  it("stamps private root-trace identity without retaining trace input or output", async () => {
-    const startAsync = vi.fn().mockResolvedValue({ runId: "run-one" })
+  it("requires a local operator before parsing or creating a hosted workflow", async () => {
     const createRun = vi
       .spyOn(precomputedSourceGenerationWorkflow, "createRun")
-      .mockResolvedValue({ startAsync } as never)
+      .mockRejectedValue(new Error("hosted_workflow_creation_attempted"))
     try {
+      const unauthorized = request(body)
       expect(
         await handlePrecomputedSourceRouteRequest({
-          authHeader: "Bearer secret",
+          authHeader: null,
           serviceKeys: ["secret"],
-          request: request(body),
+          request: unauthorized,
         }),
-      ).toMatchObject({ status: 202 })
-      expect(startAsync).toHaveBeenCalledWith({
-        inputData: { ...body, historyRequired: false },
-        tracingOptions: {
-          hideInput: true,
-          hideOutput: true,
-          metadata: {
-            precomputedGenerationId: body.generationId,
-            precomputedInputCutoff: body.inputCutoff,
-            precomputedHistoryRequired: false,
+      ).toMatchObject({ status: 401 })
+      expect(unauthorized.bodyUsed).toBe(false)
+
+      for (const value of [
+        body,
+        { ...body, manualOperator: true, backend: "codex_subscription" },
+      ]) {
+        const hosted = request(value)
+        expect(
+          await handlePrecomputedSourceRouteRequest({
+            authHeader: "Bearer secret",
+            serviceKeys: ["secret"],
+            request: hosted,
+          }),
+        ).toEqual({
+          status: 403,
+          body: {
+            error: "local_manual_operator_required",
+            message:
+              "Start or resume this generation from a local operator session.",
           },
-        },
-      })
+        })
+        expect(hosted.bodyUsed).toBe(false)
+      }
+      expect(createRun).not.toHaveBeenCalled()
     } finally {
       createRun.mockRestore()
     }
