@@ -9,6 +9,7 @@
     "start": "MASTRA_STUDIO_PATH=.mastra/output/studio node .mastra/output/index.mjs",
     "check:devotional-database-readiness": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/check-devotional-database-readiness.ts",
     "precomputed:subscription:check": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/check-precomputed-subscription.ts",
+    "precomputed:subscription:run-manual": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/run-manual-subscription-catalog.ts",
     "inspect:precomputed-ga-watch": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/inspect-precomputed-ga-watch.ts",
     "smoke:precomputed-ga-watch-navigation": "pnpm --dir ../.. exec tsx apps/mastra/src/scripts/smoke-precomputed-ga-watch-navigation.ts",
     "lint": "eslint .",
