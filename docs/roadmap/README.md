@@ -6,11 +6,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 17, 2026)
 
-- **Total tickets:** 858
+- **Total tickets:** 860
 - **Complete:** 639
 - **Cancelled:** 41
-- **In progress:** 69
-- **Not started:** 52
+- **In progress:** 70
+- **Not started:** 53
 - **Blocked:** 57
 - **Overdue and open:** 0
 
@@ -871,6 +871,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-522](topic-experiences/feat-522-watch-language-search-input-icons.md)                 | Keep Watch language search icons visible above the input                         | vlad          | P1       | —     | 1    | —   | complete    |
 | [feat-615](topic-experiences/feat-615-tv-startup-logo-audio.md)                             | TV fresh-launch logo animation and sound                                         | ekkasit       | P1       | —     | 1    | —   | in-progress |
 | [feat-616](topic-experiences/feat-616-tv-animation-settings.md)                             | Watch startup and loading animation choices                                      | ekkasit       | P1       | —     | 2    | —   | in-progress |
+| [feat-701](topic-experiences/feat-701-watch-script-font-fallbacks.md)                       | Add script-aware Watch font fallbacks                                            | vlad          | P1       | —     | 2    | —   | in-progress |
+| [feat-702](topic-experiences/feat-702-watch-cjk-font-coverage.md)                           | Measure local CJK font coverage for Watch                                        | vlad          | P1       | —     | 3    | —   | not-started |
 | [feat-630](topic-experiences/feat-630-tv-system-home-five-concept-rotation.md)              | Five-concept TV system Home rotation                                             | ekkasit       | P1       | —     | 7    | —   | in-progress |
 | [feat-636](topic-experiences/feat-636-watch-auth-canonical-origin.md)                       | Use an allowlisted origin for Watch authentication                               | vlad          | P1       | —     | 1    | —   | in-progress |
 | [feat-671](topic-experiences/feat-671-watch-home-compositor-progress-ring.md)               | Watch Home compositor progress ring                                              | codex         | P1       | —     | 1    | —   | complete    |

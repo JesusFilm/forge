@@ -4,7 +4,7 @@ title: "Add script-aware Watch font fallbacks"
 owner: "vlad"
 priority: "P1"
 status: "in-progress"
-start_date: "2026-10-08"
+start_date: "2026-10-07"
 duration: 2
 depends_on: []
 blocks: []
