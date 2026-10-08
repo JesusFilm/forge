@@ -12,6 +12,7 @@ import {
   watchSitemapChunkUrl,
 } from "./watch-sitemap"
 import type { WatchSeoManifest } from "./watch-seo-manifest"
+import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
 
 const manifest: WatchSeoManifest = {
   version: "version-1",
@@ -66,17 +67,13 @@ const expectedHomepageAlternates = [
   },
 ]
 
-const inventoryLanguageSlugs = new Set(
-  manifest.videoRouteGroups.flatMap((group) =>
-    group.alternates.map(({ languageSlug }) => languageSlug),
-  ),
-)
+const inventoryLanguageCount = PUBLIC_WATCH_LANGUAGE_SLUGS.size
 
 describe("watch sitemap rendering", () => {
   it("expands route groups into one self-inclusive entry per alternate URL", () => {
     const entries = createWatchSitemapEntries(manifest)
 
-    expect(entries).toHaveLength(5 + inventoryLanguageSlugs.size + 1)
+    expect(entries).toHaveLength(5 + inventoryLanguageCount + 1)
     expect(entries[0]).toEqual({
       loc: "https://www.jesusfilm.org/watch/jesus.html",
       alternates: [
@@ -92,7 +89,7 @@ describe("watch sitemap rendering", () => {
         },
       ],
     })
-    expect(entries.slice(-inventoryLanguageSlugs.size - 1)).toContainEqual({
+    expect(entries.slice(-inventoryLanguageCount - 1)).toContainEqual({
       loc: "https://www.jesusfilm.org/watch/languages",
       alternates: [],
     })
@@ -107,8 +104,8 @@ describe("watch sitemap rendering", () => {
   it("adds reciprocal default and British-English homepage alternates", () => {
     const entries = createWatchSitemapEntries(manifest)
     const homepageEntries = entries.slice(
-      -(inventoryLanguageSlugs.size + 3),
-      -(inventoryLanguageSlugs.size + 1),
+      -(inventoryLanguageCount + 3),
+      -(inventoryLanguageCount + 1),
     )
 
     expect(homepageEntries).toEqual([
@@ -129,7 +126,7 @@ describe("watch sitemap rendering", () => {
       videoRouteGroups: [],
     })
 
-    expect(entries).toHaveLength(3)
+    expect(entries).toHaveLength(2 + inventoryLanguageCount + 1)
     expect(entries.slice(0, 2).map(({ loc }) => loc)).toEqual([
       "https://www.jesusfilm.org/watch",
       "https://www.jesusfilm.org/watch/english-british.html",
@@ -138,11 +135,9 @@ describe("watch sitemap rendering", () => {
       loc: "https://www.jesusfilm.org/watch/languages",
       alternates: [],
     })
-    expect(entries.map(({ loc }) => loc)).toEqual([
-      "https://www.jesusfilm.org/watch",
-      "https://www.jesusfilm.org/watch/english-british.html",
-      "https://www.jesusfilm.org/watch/languages",
-    ])
+    expect(entries.some(({ loc }) => loc.endsWith("/french.html/videos"))).toBe(
+      true,
+    )
   })
 
   it("renders a sitemap index with canonical child sitemap URLs", () => {
@@ -156,7 +151,7 @@ describe("watch sitemap rendering", () => {
       "<loc>https://www.jesusfilm.org/watch/sitemap/1.xml</loc>",
     )
     expect(xml).toContain(
-      `<loc>${watchSitemapChunkUrl(inventoryLanguageSlugs.size + 5)}</loc>`,
+      `<loc>${watchSitemapChunkUrl(inventoryLanguageCount + 5)}</loc>`,
     )
   })
 
@@ -215,7 +210,7 @@ describe("watch sitemap rendering", () => {
 
   it("splits chunks by URL count and serialized byte limits", () => {
     expect(getWatchSitemapChunks(manifest, { maxUrls: 1 })).toHaveLength(
-      5 + inventoryLanguageSlugs.size + 1,
+      5 + inventoryLanguageCount + 1,
     )
     const byteChunks = getWatchSitemapChunks(manifest, { maxBytes: 600 })
     expect(byteChunks.length).toBeGreaterThan(1)

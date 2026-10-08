@@ -144,17 +144,8 @@ function createWatchHomeSitemapEntries(): WatchSitemapEntry[] {
   ]
 }
 
-function createWatchLanguageInventoryEntries(
-  manifest: WatchSeoManifest,
-): WatchSitemapEntry[] {
-  const inventorySlugs = new Set(
-    manifest.videoRouteGroups.flatMap((group) =>
-      group.alternates
-        .map((alternate) => alternate.languageSlug)
-        .filter((slug) => PUBLIC_WATCH_LANGUAGE_SLUGS.has(slug)),
-    ),
-  )
-  return ["", ...inventorySlugs].map((slug) => {
+function createWatchLanguageInventoryEntries(): WatchSitemapEntry[] {
+  return ["", ...PUBLIC_WATCH_LANGUAGE_SLUGS].map((slug) => {
     const locale = slug ? tryAsLocaleSlug(slug) : null
     const path = locale ? languageInventoryPath(locale) : "/languages"
     return { loc: absoluteWatchUrl(path), alternates: [] }
@@ -234,7 +225,7 @@ function createWatchSitemapGroups(
   const homeSitemapGroup = groupForEntries(createWatchHomeSitemapEntries())
   if (homeSitemapGroup) groups.push(homeSitemapGroup)
 
-  for (const entry of createWatchLanguageInventoryEntries(manifest)) {
+  for (const entry of createWatchLanguageInventoryEntries()) {
     groups.push({
       alternateLinksXml: "",
       alternateLinksBytes: 0,
@@ -259,7 +250,7 @@ export function createWatchSitemapEntries(
   }
 
   entries.push(...createWatchHomeSitemapEntries())
-  entries.push(...createWatchLanguageInventoryEntries(manifest))
+  entries.push(...createWatchLanguageInventoryEntries())
 
   return entries
 }

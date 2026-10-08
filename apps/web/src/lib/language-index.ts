@@ -4,7 +4,6 @@ import { adminGraphql } from "@forge/admin-graphql"
 import client from "@/lib/admin-client"
 import { LANGUAGE_BCP47_MAP } from "./language-bcp47-map"
 import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
-import { getWatchSeoManifest } from "./watch-seo-manifest"
 
 import {
   isPublicWatchLanguageSlug,
@@ -133,16 +132,8 @@ for (const slug of PUBLIC_WATCH_LANGUAGE_SLUGS) {
 
 export const getWatchLanguageIndex = cache(
   async (): Promise<WatchLanguageIndex> => {
-    const [metadata, manifest] = await Promise.all([
-      fetchWatchLanguageIndexMetadata(),
-      getWatchSeoManifest(),
-    ])
-    const discoverableLanguageSlugs = new Set(
-      manifest?.videoRouteGroups.flatMap((group) =>
-        group.alternates.map((alternate) => alternate.languageSlug),
-      ) ?? [],
-    )
-    return buildWatchLanguageIndex(metadata, discoverableLanguageSlugs)
+    const metadata = await fetchWatchLanguageIndexMetadata()
+    return buildWatchLanguageIndex(metadata)
   },
 )
 
@@ -156,10 +147,10 @@ export async function getWatchLanguageIndexLanguage(
   )
 }
 
-export function buildWatchLanguageIndex(
-  { languages, countries }: WatchLanguageIndexMetadata,
-  discoverableLanguageSlugs?: ReadonlySet<string>,
-): WatchLanguageIndex {
+export function buildWatchLanguageIndex({
+  languages,
+  countries,
+}: WatchLanguageIndexMetadata): WatchLanguageIndex {
   const metadataByKey = new Map<string, WatchLanguageIndexMetadataLanguage>()
   const regionNamesByKey = new Map<string, Set<string>>()
   const speakerCountByKey = new Map<string, number>()
@@ -258,7 +249,6 @@ export function buildWatchLanguageIndex(
 
   for (const publicSlug of PUBLIC_WATCH_LANGUAGE_SLUGS) {
     if (byPublicSlug.has(publicSlug)) continue
-    if (!discoverableLanguageSlugs?.has(publicSlug)) continue
     const localeSlug = tryAsLocaleSlug(publicSlug)
     if (!localeSlug) continue
     const bcp47 = LANGUAGE_BCP47_MAP[publicSlug] ?? null
