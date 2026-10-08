@@ -470,11 +470,15 @@ describe("WatchHomePage", () => {
     expect(reducedMotionSource?.srcset).toBe(
       "https://cdn.example/queued-one.jpg",
     )
+    const previewSources = Array.from(
+      visualLayer?.querySelectorAll("picture source") ?? [],
+    )
     expect(
-      visualLayer
-        ?.querySelector('source[media="(min-width: 768px)"]')
-        ?.getAttribute("srcset"),
-    ).toContain("width=640&fps=6")
+      previewSources.map((source) => source.getAttribute("media")),
+    ).toEqual(["(prefers-reduced-motion: reduce)", "(min-width: 768px)"])
+    expect(previewSources[1]?.getAttribute("srcset")).toContain(
+      "width=640&fps=6",
+    )
     expect(preview?.getAttribute("data-src")).toContain("width=448")
     await act(async () => {
       const previewSrc = preview?.getAttribute("data-src")
@@ -522,22 +526,32 @@ describe("WatchHomePage", () => {
   })
 
   it("requests playback during the unmute gesture after mounting HLS", async () => {
-    const play = vi
-      .spyOn(HTMLMediaElement.prototype, "play")
-      .mockResolvedValue(undefined)
+    let clickIsActive = false
+    let playWasCalledDuringClick = false
+    let mutedWhenPlayWasCalled: boolean | null = null
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(function (
+      this: HTMLMediaElement,
+    ) {
+      playWasCalledDuringClick = clickIsActive
+      mutedWhenPlayWasCalled = this.muted
+      return Promise.resolve()
+    })
     await act(async () => {
       renderWatchHome(<WatchHomePage model={makeSequencedModel()} />, {
         unmute: false,
       })
     })
 
-    await act(async () => {
+    act(() => {
+      clickIsActive = true
       container
         .querySelector<HTMLButtonElement>('button[aria-label="Unmute preview"]')
         ?.click()
+      clickIsActive = false
     })
 
-    expect(play).toHaveBeenCalledTimes(1)
+    expect(playWasCalledDuringClick).toBe(true)
+    expect(mutedWhenPlayWasCalled).toBe(false)
   })
 
   it("selects singleton authority for the active card from an over-100 catalog without losing timeline focus", async () => {
@@ -1155,7 +1169,9 @@ describe("WatchHomePage", () => {
           '[data-testid="watch-home-tv-video"]',
         ) as HTMLVideoElement
         video.play = vi.fn(() =>
-          Promise.reject(new DOMException("Play prevented", "NotAllowedError")),
+          Promise.reject(
+            new DOMException("Unsupported media", "NotSupportedError"),
+          ),
         ) as unknown as HTMLVideoElement["play"]
 
         await act(async () => {

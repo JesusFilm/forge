@@ -3,7 +3,7 @@ id: "feat-639"
 title: "Bound Watch Home Hero Media Before Playback Intent"
 owner: "vlad"
 priority: "P0"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-08"
 duration: 2
 depends_on: []
@@ -44,8 +44,9 @@ can continue downloading the full-length film while browsing the carousel.
 1. Use a bounded animated Mux preview while the viewer browses muted; use a
    448px/8fps preview on mobile and a 640px/6fps preview on wide screens. Do not
    mount or request HLS before explicit playback intent.
-2. On the first unmute action, mount the existing quality-capped HLS stream.
-   Later mute actions must change sound only and preserve the active stream.
+2. On the first unmute action, mount the existing quality-capped HLS stream and
+   request `play()` synchronously inside the user gesture. Later mute actions
+   must change sound only and preserve the active stream.
 3. Preserve carousel timing, focus, subtitles, slide changes, and fallbacks.
 4. Add focused coverage proving HLS is absent before intent and remains mounted
    when the viewer mutes again after starting playback.
@@ -64,4 +65,6 @@ can continue downloading the full-length film while browsing the carousel.
 - `pnpm --filter @forge/web lint`
 - Scoped Prettier check and `git diff --check`.
 - Review initial muted and post-intent playback behavior at a narrow viewport.
-- Confirm the animated preview asset remains below the 2 MB transfer target.
+- Confirm sampled animated previews remain below the 2 MB transfer target:
+  mobile 448px/8fps and wide 640px/6fps. A full 30-second browser transfer
+  trace is still the final production-shaped check.
