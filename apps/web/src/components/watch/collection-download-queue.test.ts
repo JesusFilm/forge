@@ -47,13 +47,15 @@ describe("collection download queue", () => {
       "two",
       "three",
     ])
-    expect(result.completed).toEqual(items)
+    expect(result.completed).toEqual([])
+    expect(result.requested).toEqual(items)
     expect(result.failed).toEqual([])
     expect(result.authRequired).toBe(false)
     expect(result.deliveryMode).toBe("browser")
     expect(onProgress).toHaveBeenLastCalledWith({
       active: null,
-      completed: items,
+      requested: items,
+      completed: [],
       failed: [],
       total: 3,
     })
@@ -72,10 +74,37 @@ describe("collection download queue", () => {
       triggerDownload,
     })
 
-    expect(result.completed.map((item) => item.id)).toEqual(["one", "three"])
+    expect(result.completed).toEqual([])
+    expect(result.requested.map((item) => item.id)).toEqual(["one", "three"])
     expect(result.failed).toEqual([{ item: items[1], reason: "blocked" }])
     expect(failedCollectionDownloadItems(result)).toEqual([items[1]])
   })
+
+  it.each(["highest", "high", "low"] as const)(
+    "reports ten %s browser handoffs as requests, not completed files",
+    async (tier) => {
+      const batch = Array.from({ length: 10 }, (_, index) => ({
+        id: `${tier}-${index}`,
+        filename: `${tier}-${index}.mp4`,
+        title: `${tier} episode ${index}`,
+        url: `/download/${tier}-${index}`,
+      }))
+      const triggerDownload = vi.fn()
+      const result = await runCollectionDownloadQueue({
+        items: batch,
+        signal: new AbortController().signal,
+        delayMs: 0,
+        prepareDownload: async () => undefined,
+        triggerDownload,
+      })
+
+      // The browser does not expose whether it accepted or saved an anchor click.
+      expect(triggerDownload).toHaveBeenCalledTimes(10)
+      expect(result.requested).toEqual(batch)
+      expect(result.completed).toEqual([])
+      expect(result.failed).toEqual([])
+    },
+  )
 
   it("cancels before starting the next item", async () => {
     const controller = new AbortController()
@@ -93,7 +122,8 @@ describe("collection download queue", () => {
 
     expect(result.canceled).toBe(true)
     expect(triggerDownload).toHaveBeenCalledTimes(1)
-    expect(result.completed).toEqual([items[0]])
+    expect(result.completed).toEqual([])
+    expect(result.requested).toEqual([items[0]])
     expect(result.failed).toEqual([
       { item: items[1], reason: "canceled" },
       { item: items[2], reason: "canceled" },
@@ -124,7 +154,8 @@ describe("collection download queue", () => {
       signal: expect.any(AbortSignal),
     })
     expect(clicks).toEqual(["http://localhost:3000/download/one|one.mp4"])
-    expect(result.completed).toEqual([items[0]])
+    expect(result.completed).toEqual([])
+    expect(result.requested).toEqual([items[0]])
   })
 
   it("records a rejected route response and continues", async () => {
@@ -221,6 +252,7 @@ describe("collection download queue", () => {
     expect(written).toEqual(["one.mp4", "two.mp4", "three.mp4"])
     expect(triggerDownload).not.toHaveBeenCalled()
     expect(result.completed).toEqual(items)
+    expect(result.requested).toEqual([])
     expect(result.failed).toEqual([])
     expect(result.deliveryMode).toBe("directory")
   })
@@ -329,11 +361,8 @@ describe("collection download queue", () => {
       "two",
       "three",
     ])
-    expect(result.completed.map((item) => item.id)).toEqual([
-      "one",
-      "two",
-      "three",
-    ])
+    expect(result.completed.map((item) => item.id)).toEqual(["one"])
+    expect(result.requested.map((item) => item.id)).toEqual(["two", "three"])
     expect(result.deliveryMode).toBe("browser")
   })
 })

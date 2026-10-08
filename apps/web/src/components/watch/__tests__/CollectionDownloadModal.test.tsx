@@ -172,6 +172,22 @@ const threeTierDubs = ["episode-1", "episode-2"].map((videoId, index) => ({
     size: height * 1000,
   })),
 }))
+const tenEpisodeCollection = Array.from({ length: 10 }, (_, index) => ({
+  documentId: `episode-${index + 1}`,
+  slug: `episode-${index + 1}`,
+  title: `Episode ${index + 1}`,
+}))
+const tenEpisodeDubs = tenEpisodeCollection.map((episode, index) => ({
+  documentId: `dub-${index + 1}`,
+  videoId: episode.documentId,
+  downloads: [2160, 1080, 480].map((height) => ({
+    documentId: `download-${index + 1}-${height}`,
+    capability: `capability-${index + 1}-${height}`,
+    height,
+    quality: height >= 1080 ? "high" : "low",
+    size: height * 1000,
+  })),
+}))
 
 function qualityTrigger(): HTMLButtonElement {
   return container.querySelector(
@@ -211,6 +227,64 @@ afterEach(() => {
 })
 
 describe("CollectionDownloadModal", () => {
+  it.each([
+    ["highest", "highest", "2160p"],
+    ["high", "high", "1080p"],
+    ["low", "low", "480p"],
+  ])(
+    "sends all ten %s tier items as browser requests",
+    async (_tier, tier, resolution) => {
+      loadWatchCollectionDownloadsMock.mockResolvedValue({
+        ok: true,
+        dubs: tenEpisodeDubs,
+      })
+      runCollectionDownloadQueueMock.mockImplementationOnce(
+        async ({ items }) => ({
+          active: null,
+          authRequired: false,
+          canceled: false,
+          completed: [],
+          requested: items,
+          deliveryMode: "browser",
+          failed: [],
+          total: items.length,
+        }),
+      )
+      renderModal({ episodes: tenEpisodeCollection })
+      await flush()
+
+      if (tier !== "highest") {
+        await act(async () => qualityTrigger().click())
+        await act(async () => {
+          ;(
+            qualityOptions().find(
+              (option) => option.getAttribute("data-tier") === tier,
+            ) as HTMLButtonElement
+          ).click()
+        })
+      }
+      await act(async () => {
+        ;(
+          container.querySelector(
+            '[data-testid="watch-collection-download-start"]',
+          ) as HTMLButtonElement
+        ).click()
+      })
+
+      const queuedItems = runCollectionDownloadQueueMock.mock.calls[0]?.[0]
+        .items as CollectionDownloadQueueItem[]
+      expect(queuedItems).toHaveLength(10)
+      expect(
+        queuedItems.every((item) => item.filename.includes(resolution)),
+      ).toBe(true)
+      expect(
+        container.querySelector(
+          '[data-testid="watch-collection-download-progress"]',
+        )?.textContent,
+      ).not.toContain("Downloads finished")
+    },
+  )
+
   it("loads the current language and builds the batch in episode order", async () => {
     runCollectionDownloadQueueMock.mockImplementationOnce(
       async ({ items }) => ({
@@ -218,6 +292,7 @@ describe("CollectionDownloadModal", () => {
         authRequired: false,
         canceled: false,
         completed: items,
+        requested: [],
         deliveryMode: "directory",
         failed: [],
         total: items.length,
@@ -262,6 +337,7 @@ describe("CollectionDownloadModal", () => {
         authRequired: false,
         canceled: false,
         completed: items,
+        requested: [],
         deliveryMode: "directory",
         failed: [],
         total: items.length,
@@ -300,7 +376,8 @@ describe("CollectionDownloadModal", () => {
         active: null,
         authRequired: false,
         canceled: false,
-        completed: items,
+        completed: [],
+        requested: items,
         deliveryMode: "browser",
         failed: [],
         total: items.length,
@@ -321,7 +398,12 @@ describe("CollectionDownloadModal", () => {
       container.querySelector(
         '[data-testid="watch-collection-download-progress"]',
       )?.textContent,
-    ).toContain("Your browser will save each file")
+    ).toContain("Your browser manages downloads")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-collection-download-progress"]',
+      )?.textContent,
+    ).not.toContain("Downloads finished")
     expect(
       container.querySelector('[data-testid="watch-collection-download-close"]')
         ?.className,
@@ -344,6 +426,7 @@ describe("CollectionDownloadModal", () => {
         authRequired: false,
         canceled: false,
         completed: items,
+        requested: [],
         failed: [],
         total: items.length,
       }),
@@ -378,6 +461,7 @@ describe("CollectionDownloadModal", () => {
         authRequired: false,
         canceled: false,
         completed: items,
+        requested: [],
         failed: [],
         total: items.length,
       }),
@@ -413,6 +497,7 @@ describe("CollectionDownloadModal", () => {
         authRequired: false,
         canceled: false,
         completed: items,
+        requested: [],
         failed: [],
         total: items.length,
       }),
@@ -576,6 +661,7 @@ describe("CollectionDownloadModal", () => {
         authRequired: false,
         canceled: false,
         completed: items,
+        requested: [],
         failed: [],
         total: items.length,
       }),
@@ -896,7 +982,9 @@ describe("CollectionDownloadModal", () => {
         active: null,
         authRequired: false,
         canceled: false,
-        completed: [items[0]],
+        completed: [],
+        requested: [items[0]],
+        deliveryMode: "browser",
         failed: [{ item: items[1], reason: "http-502" }],
         total: items.length,
       }))
@@ -905,6 +993,8 @@ describe("CollectionDownloadModal", () => {
         authRequired: false,
         canceled: false,
         completed: items,
+        requested: [],
+        deliveryMode: "directory",
         failed: [],
         total: items.length,
       }))
@@ -935,6 +1025,11 @@ describe("CollectionDownloadModal", () => {
         '[data-testid="watch-collection-download-progress"]',
       )?.textContent,
     ).toContain("2 of 2")
+    expect(
+      container.querySelector(
+        '[data-testid="watch-collection-download-progress"]',
+      )?.textContent,
+    ).toContain("Your browser manages downloads")
   })
 
   it("keeps the failed batch summary when retry session preflight is unavailable", async () => {
@@ -951,6 +1046,7 @@ describe("CollectionDownloadModal", () => {
         authRequired: false,
         canceled: false,
         completed: [items[0]],
+        requested: [],
         failed: [{ item: items[1], reason: "http-502" }],
         total: items.length,
       }),
@@ -1001,6 +1097,7 @@ describe("CollectionDownloadModal", () => {
         authRequired: false,
         canceled: false,
         completed: [items[0]],
+        requested: [],
         failed: [{ item: items[1], reason: "http-502" }],
         total: items.length,
       }),
@@ -1115,6 +1212,7 @@ describe("CollectionDownloadModal", () => {
                 authRequired: false,
                 canceled: true,
                 completed: [items[0]],
+                requested: [],
                 deliveryMode: "browser",
                 failed: items
                   .slice(1)
@@ -1190,6 +1288,7 @@ describe("CollectionDownloadModal", () => {
         authRequired: true,
         canceled: false,
         completed: [],
+        requested: [],
         failed: [{ item: items[0], reason: "auth-required" }],
         total: items.length,
       }),
@@ -1235,6 +1334,7 @@ describe("CollectionDownloadModal", () => {
       "forge.watch.collection-download-resume:lumo-luke:english",
       JSON.stringify({
         completed: [],
+        requested: [],
         failed: [
           {
             item: {
@@ -1270,14 +1370,15 @@ describe("CollectionDownloadModal", () => {
       dubs: threeTierDubs,
     })
     window.sessionStorage.setItem(
-      "forge.watch.collection-download-resume.v3:lumo-luke",
+      "forge.watch.collection-download-resume.v4:lumo-luke",
       JSON.stringify({
-        version: 3,
-        canceled: true,
+        version: 4,
+        canceled: false,
         deliveryMode: "directory",
         languageSlug: "spanish",
         tier: "high",
-        completed: [
+        completed: [],
+        requested: [
           { id: "episode-1", filename: "one.mp4", title: "Episode One" },
         ],
         pending: [
@@ -1292,6 +1393,7 @@ describe("CollectionDownloadModal", () => {
         authRequired: false,
         canceled: false,
         completed: items,
+        requested: [],
         deliveryMode: "browser",
         failed: [],
         total: items.length,
@@ -1315,8 +1417,7 @@ describe("CollectionDownloadModal", () => {
     const restoredProgress = container.querySelector(
       '[data-testid="watch-collection-download-progress"]',
     )?.textContent
-    expect(restoredProgress).toContain("Downloads canceled")
-    expect(restoredProgress).not.toContain("Your browser will save each file")
+    expect(restoredProgress).toContain("Your browser manages downloads")
 
     await act(async () => {
       ;(
@@ -1372,6 +1473,7 @@ describe("CollectionDownloadModal", () => {
         authRequired: true,
         canceled: false,
         completed: [items[0]],
+        requested: [],
         deliveryMode: "directory",
         failed: items.slice(1).map((item: CollectionDownloadQueueItem) => ({
           item,
@@ -1384,6 +1486,7 @@ describe("CollectionDownloadModal", () => {
         authRequired: false,
         canceled: false,
         completed: items,
+        requested: [],
         deliveryMode: "directory",
         failed: [],
         total: items.length,

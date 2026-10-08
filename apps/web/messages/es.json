@@ -698,7 +698,7 @@
     "chooseFolder": "Elegir carpeta de descarga",
     "folderSelected": "Guardar en {name}",
     "folderError": "No se pudo abrir la carpeta de descarga.",
-    "browserFallback": "Tu navegador guardará cada archivo según su configuración habitual de descargas. Es posible que te pida permiso para realizar varias descargas.",
+    "browserFallback": "Tu navegador administra las descargas con su configuración habitual. Es posible que te pida permiso para realizar varias descargas.",
     "sessionError": "No se pudo comprobar tu sesión. Inténtalo de nuevo.",
     "downloading": "Descargando {title}",
     "progress": "{completed} de {total}",
