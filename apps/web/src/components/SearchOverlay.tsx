@@ -303,22 +303,30 @@ export function SearchOverlay() {
 
   useFloatingSearchInputAutofocus(open, inputRef)
 
-  const suggestionLanguageSlug =
-    selectedSearchLanguageOption?.publicSlug ??
-    defaultSearchLanguageOption?.publicSlug ??
-    null
   const normalizedSuggestionQuery = normalizeWatchSearchQuery(query)
   const normalizedSubmittedQuery =
     submittedQuery == null ? null : normalizeWatchSearchQuery(submittedQuery)
+  const completedSearchLanguageSlug =
+    searchResultAnalytics?.searchLanguageSlug ?? null
+  const completedQueryMatchesDraft =
+    normalizedSuggestionQuery.length > 0 &&
+    normalizedSuggestionQuery === normalizedSubmittedQuery
+  const inferredCompletedLanguageSlug =
+    selectedSearchLanguageOption == null && completedQueryMatchesDraft
+      ? completedSearchLanguageSlug
+      : null
+  const suggestionLanguageSlug =
+    selectedSearchLanguageOption?.publicSlug ??
+    inferredCompletedLanguageSlug ??
+    defaultSearchLanguageOption?.publicSlug ??
+    null
   const submittedSearchLanguageMatchesSelection =
     searchResultAnalytics != null &&
     (searchResultAnalytics.searchLanguageSlug === suggestionLanguageSlug ||
       (searchResultAnalytics.searchLanguageSlug == null &&
         selectedSearchLanguageOption == null))
   const searchIntentMatchesCompletedResults =
-    normalizedSuggestionQuery.length > 0 &&
-    normalizedSuggestionQuery === normalizedSubmittedQuery &&
-    submittedSearchLanguageMatchesSelection
+    completedQueryMatchesDraft && submittedSearchLanguageMatchesSelection
   const hasUnsubmittedSearchIntent =
     normalizedSuggestionQuery.length > 0 && !searchIntentMatchesCompletedResults
   const suggestionRequestKey =
@@ -924,8 +932,6 @@ export function SearchOverlay() {
     }
     return bySlug
   }, [languageOptions])
-  const completedSearchLanguageSlug =
-    searchResultAnalytics?.searchLanguageSlug ?? null
   const completedSearchLanguageOption = completedSearchLanguageSlug
     ? (semanticLanguageOptionBySlug.get(completedSearchLanguageSlug) ?? null)
     : null
@@ -939,6 +945,7 @@ export function SearchOverlay() {
     : (searchResultAnalytics?.searchLanguageEnglishName ?? null)
   const semanticLanguageComboboxValue =
     selectedSearchLanguageOption?.publicSlug ??
+    inferredCompletedLanguageSlug ??
     defaultSearchLanguageOption?.publicSlug ??
     ""
   const languageContextMessage = t.raw(
@@ -947,7 +954,11 @@ export function SearchOverlay() {
       : "searchInLanguage",
   ) as string
   const semanticLanguageOption =
-    selectedSearchLanguageOption ?? defaultSearchLanguageOption
+    selectedSearchLanguageOption ??
+    (inferredCompletedLanguageSlug
+      ? (semanticLanguageOptionBySlug.get(inferredCompletedLanguageSlug) ??
+        defaultSearchLanguageOption)
+      : defaultSearchLanguageOption)
   const semanticLanguageName = localizedSearchLanguageName(
     semanticLanguageOption,
     uiLocale,
