@@ -523,6 +523,70 @@ describe("buildWatchVideoMetadataModel", () => {
     expect(model.structuredDataTitle).toBe("Life of Jesus")
   })
 
+  it("uses the locale-resolved title and native language descriptor on variant pages", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "jesus",
+      pathLocale: "spanish-latin-american",
+      selectedVariant: {
+        ...selectedVariant,
+        language: {
+          ...selectedVariant.language,
+          slug: "spanish-latin-american",
+          bcp47: "es-419",
+          nativeName: "Español latinoamericano",
+        },
+      },
+      video: { ...video, title: "  JESÚS  " },
+    })
+
+    expect(model.title).toBe(
+      "JESÚS · Español latinoamericano | Jesus Film Project",
+    )
+  })
+
+  it("keeps authored Search titles ahead of variant descriptors", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "jesus",
+      pathLocale: "spanish-latin-american",
+      selectedVariant: {
+        ...selectedVariant,
+        language: {
+          ...selectedVariant.language,
+          slug: "spanish-latin-american",
+          bcp47: "es-419",
+          nativeName: "Español latinoamericano",
+        },
+      },
+      video: {
+        ...video,
+        title: "JESÚS",
+        searchTitle: "JESÚS | Título aprobado",
+      },
+    })
+
+    expect(model.title).toBe("JESÚS | Título aprobado")
+  })
+
+  it("does not label an English playback fallback as the route language", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "jesus",
+      pathLocale: "spanish-latin-american",
+      selectedVariant,
+      video: { ...video, title: "Jesús" },
+    })
+
+    expect(model.title).toBe("Jesús | Jesus Film Project")
+  })
+
   it("isolates approved search and social overrides from VideoObject fields", async () => {
     const { buildWatchVideoMetadataModel } =
       await import("./experience-metadata")
