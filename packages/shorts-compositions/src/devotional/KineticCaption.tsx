@@ -1,4 +1,4 @@
-import { Easing, interpolate } from "remotion"
+import { Easing, interpolate, interpolateColors } from "remotion"
 
 import { SHORT_FONT_FAMILIES } from "../fonts"
 import { TEASER_FONT_FAMILIES } from "./teaser-fonts"
@@ -149,6 +149,7 @@ function Word({
   caps,
   tracking,
   color,
+  flash,
 }: {
   t: Token
   time: number
@@ -159,6 +160,9 @@ function Word({
   caps?: boolean
   tracking?: number
   color: string
+  /** The word lights in this colour as it is said, then cools to `color`
+   *  (owner, 2026-10-08: orange, as the film short's question mark). */
+  flash?: string
 }) {
   const p = interpolate(time, [t.at - 0.05, t.at + 0.45], [0, 1], {
     extrapolateLeft: "clamp",
@@ -175,7 +179,9 @@ function Word({
         fontStyle: italic ? "italic" : "normal",
         textTransform: caps ? "uppercase" : "none",
         letterSpacing: tracking ?? 0,
-        color,
+        color: flash
+          ? interpolateColors(time, [t.at + 0.25, t.at + 0.95], [flash, color])
+          : color,
         opacity: p,
         transform: `translateY(${((1 - p) * size * 0.18).toFixed(2)}px)`,
         filter:
@@ -211,6 +217,7 @@ export function KineticCaption({
   bottom = "27%",
   backdrop = false,
   rightInset,
+  flash,
 }: {
   line: string
   hero: string
@@ -241,6 +248,8 @@ export function KineticCaption({
   /** Portrait, right side: the block's right edge, clear of the platform's
    *  action rail (likes, comments, share) rather than at the frame edge. */
   rightInset?: number
+  /** Each word lights in this colour as it is said (see Word). */
+  flash?: string
 }) {
   const kHero = sizes.hero ?? 1
   const kAccent = sizes.accent ?? 1
@@ -325,7 +334,13 @@ export function KineticCaption({
         {phrases.map((ph, i) => (
           <div key={i} style={{ display: "flex", alignItems: "baseline" }}>
             {ph.map((t, k) => (
-              <Word key={k} t={t} time={time} {...style(t)} />
+              <Word
+                key={k}
+                t={t}
+                time={time}
+                {...style(t)}
+                {...(flash ? { flash } : {})}
+              />
             ))}
           </div>
         ))}

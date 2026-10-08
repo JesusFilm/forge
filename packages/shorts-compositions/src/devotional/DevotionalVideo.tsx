@@ -907,6 +907,8 @@ function StackFilmCaptions({
               accentColor="#f4efe8"
               bottom="38%"
               backdrop
+              // Each word lights orange as it is said (owner, 2026-10-08).
+              flash={STRIP_ORANGE}
             />
           </AbsoluteFill>
         )
@@ -1614,6 +1616,125 @@ function WordReveal({
   )
 }
 
+/** Paper-strip opening (owner's Figma 477:2997, 2026-10-08): the question
+ *  typed on cream strips, one strip then the next, a gentle float, and a
+ *  hand-drawn orange mark that changes its tilt in small jumps, over the
+ *  film in soft black and white. */
+const STRIP_CHARS_PER_SEC = 24
+const STRIP_ORANGE = "#ff7f53"
+
+function PaperStripsOpen({
+  lines,
+  mark,
+  fromSec,
+  toSec,
+  t,
+  f,
+}: {
+  lines: string[]
+  mark?: string
+  fromSec: number
+  toSec: number
+  t: number
+  f: (n: number) => number
+}) {
+  if (t < fromSec - 0.6 || t > toSec + 0.05) return null
+  const clampBoth = {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  } as const
+  const out = interpolate(t, [toSec - 0.3, toSec], [1, 0], clampBoth)
+  const local = t - fromSec
+  // Figma: strip 1 at x 147 y 506 (+1.5 deg), strip 2 at x 263 y 643 (-2 deg).
+  const spots = [
+    { left: 147, top: 506, rot: 1.5 },
+    { left: 263, top: 643, rot: -2 },
+  ]
+  let at = 0
+  const strips = lines.map((line, i) => {
+    const start = at
+    at += line.length / STRIP_CHARS_PER_SEC + 0.25
+    return { line, start, spot: spots[i] ?? spots[spots.length - 1] }
+  })
+  // The mark "boils": a new tilt four times a second, as hand animation does.
+  const tilts = [-9, 5, -3, 8, -6, 2]
+  const step = Math.floor(Math.max(0, t + 0.6) * 4)
+  const tilt = tilts[step % tilts.length]
+  const markIn = interpolate(t, [fromSec - 0.6, fromSec], [0, 1], clampBoth)
+  return (
+    <AbsoluteFill style={{ opacity: out, pointerEvents: "none" }}>
+      <AbsoluteFill
+        style={{
+          backdropFilter: "grayscale(1) contrast(0.92) brightness(0.82)",
+          WebkitBackdropFilter: "grayscale(1) contrast(0.92) brightness(0.82)",
+        }}
+      />
+      {strips.map(({ line, start, spot }, i) => {
+        const shown = local - start
+        if (shown < -0.05) return null
+        const pop = interpolate(shown, [-0.05, 0.2], [0, 1], {
+          ...clampBoth,
+          easing: Easing.bezier(0.16, 1, 0.3, 1),
+        })
+        const chars = Math.floor(
+          Math.max(0, shown - 0.15) * STRIP_CHARS_PER_SEC,
+        )
+        const floatY = Math.sin((t + i * 1.3) * 1.6) * f(5)
+        const floatR = Math.sin((t + i * 0.9) * 1.1) * 0.5
+        return (
+          <div
+            key={i}
+            style={{
+              position: "absolute",
+              left: f(spot.left),
+              top: f(spot.top),
+              transform: `translateY(${floatY.toFixed(2)}px) rotate(${(spot.rot + floatR).toFixed(3)}deg) scale(${(0.94 + 0.06 * pop).toFixed(4)})`,
+              transformOrigin: "left center",
+              opacity: pop,
+              background: "#ece6d8",
+              padding: `${f(21)}px ${f(35)}px`,
+              boxShadow: `0 ${f(6)}px ${f(28)}px rgba(0,0,0,0.35)`,
+              fontFamily: `'${SHORT_FONT_FAMILIES.specialElite}', 'Courier New', monospace`,
+              fontSize: f(41.75),
+              lineHeight: `${f(51)}px`,
+              color: "#191512",
+              whiteSpace: "pre",
+            }}
+          >
+            {[...line].map((ch, k) => (
+              <span key={k} style={{ opacity: k < chars ? 1 : 0 }}>
+                {ch}
+              </span>
+            ))}
+          </div>
+        )
+      })}
+      {mark ? (
+        <div
+          style={{
+            position: "absolute",
+            left: f(338),
+            top: f(760),
+            width: f(178),
+            textAlign: "center",
+            fontFamily: `'${SHORT_FONT_FAMILIES.caveat}', cursive`,
+            fontWeight: 700,
+            fontSize: f(350),
+            lineHeight: 1,
+            color: STRIP_ORANGE,
+            opacity: markIn,
+            transform: `rotate(${tilt}deg) translateY(${(Math.sin(t * 1.4) * f(4)).toFixed(2)}px)`,
+            transformOrigin: "50% 70%",
+            textShadow: `0 ${f(4)}px ${f(20)}px rgba(0,0,0,0.3)`,
+          }}
+        >
+          {mark}
+        </div>
+      ) : null}
+    </AbsoluteFill>
+  )
+}
+
 /** The film short's opening question types in at this pace (quick). */
 const TYPE_CHARS_PER_SEC = 28
 
@@ -1640,6 +1761,7 @@ function ShortQuestionCards({
     key: string,
     sharp = false,
     sub?: string,
+    subSize?: number,
   ) => {
     if (t < fromSec - 0.05 || (toSec != null && t > toSec + 0.05)) return null
     const fade =
@@ -1709,8 +1831,8 @@ function ShortQuestionCards({
                   margin: text ? `${f(28)}px 0 0` : 0,
                   fontFamily: `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`,
                   fontStyle: "italic",
-                  fontSize: f(32),
-                  lineHeight: `${f(50)}px`,
+                  fontSize: f(subSize ?? 32),
+                  lineHeight: `${f((subSize ?? 32) * 1.5)}px`,
                   textAlign: "center",
                   color: "rgba(255,255,255,0.92)",
                   opacity:
@@ -1737,16 +1859,25 @@ function ShortQuestionCards({
   }
   return (
     <>
-      {cards.open
-        ? card(
-            cards.open.text,
-            cards.open.fromSec,
-            cards.open.toSec,
-            "open",
-            // The question hits; the closing turn eases in.
-            true,
-          )
-        : null}
+      {cards.open?.strips ? (
+        <PaperStripsOpen
+          lines={cards.open.text.split("|").map((l) => l.trim())}
+          {...(cards.open.mark ? { mark: cards.open.mark } : {})}
+          fromSec={cards.open.fromSec}
+          toSec={cards.open.toSec}
+          t={t}
+          f={f}
+        />
+      ) : cards.open ? (
+        card(
+          cards.open.text,
+          cards.open.fromSec,
+          cards.open.toSec,
+          "open",
+          // The question hits; the closing turn eases in.
+          true,
+        )
+      ) : null}
       {cards.close
         ? card(
             cards.close.text,
@@ -1755,6 +1886,7 @@ function ShortQuestionCards({
             "close",
             false,
             cards.close.sub,
+            cards.close.subSize,
           )
         : null}
     </>

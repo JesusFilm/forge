@@ -29,6 +29,7 @@ import {
   PT_SERIF_ITALIC_LATIN_WOFF2_BASE64,
   PT_SERIF_LATIN_WOFF2_BASE64,
 } from "./fonts-ptserif-data"
+import { SPECIAL_ELITE_LATIN_WOFF2_BASE64 } from "./fonts-specialelite-data"
 import {
   SOURCE_SERIF_4_LATIN_ITALIC_WOFF2_BASE64,
   SOURCE_SERIF_4_LATIN_WOFF2_BASE64,
@@ -50,6 +51,9 @@ export const SHORT_FONT_FAMILIES = {
   // Handwriting: the word written over a struck one in the vox language short
   // (owner's pick from nine hands mocked up in Figma, 2026-10-07).
   caveat: "Caveat",
+  // Typewriter: the paper strips that open a film short (owner's Figma
+  // 477:2997, 2026-10-08).
+  specialElite: "Special Elite",
 } as const
 
 // Google Fonts unicode-ranges: Cyrillic copy (the devotional is Russian) needs
@@ -163,6 +167,11 @@ export const FONT_SOURCES: ReadonlyArray<{
     family: SHORT_FONT_FAMILIES.caveat,
     base64: CAVEAT_BOLD_CYRILLIC_EXT_WOFF2_BASE64,
     unicodeRange: CYRILLIC_EXT_RANGE,
+  },
+  // Typed paper strips (latin only).
+  {
+    family: SHORT_FONT_FAMILIES.specialElite,
+    base64: SPECIAL_ELITE_LATIN_WOFF2_BASE64,
   },
 ]
 

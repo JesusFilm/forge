@@ -444,7 +444,16 @@ export const devotionalInputPropsSchema = z.object({
   shortCards: z
     .object({
       open: z
-        .object({ text: z.string(), fromSec: z.number(), toSec: z.number() })
+        .object({
+          text: z.string(),
+          fromSec: z.number(),
+          toSec: z.number(),
+          /** Typed paper strips, one per "|"-separated line (owner's Figma
+           *  477:2997, 2026-10-08), over the film in black and white. */
+          strips: z.boolean().optional(),
+          /** A hand-drawn orange mark under the strips ("?"). */
+          mark: z.string().optional(),
+        })
         .optional(),
       close: z
         .object({
@@ -452,6 +461,8 @@ export const devotionalInputPropsSchema = z.object({
           fromSec: z.number(),
           /** A small line under the turn, set like the verse address. */
           sub: z.string().optional(),
+          /** The small line's size in Figma units (default 32). */
+          subSize: z.number().optional(),
         })
         .optional(),
     })

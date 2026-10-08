@@ -517,6 +517,18 @@ async function main() {
             ...(arg("film-close-sub")
               ? { closeSub: arg("film-close-sub")! }
               : {}),
+            ...(arg("film-close-hold")
+              ? { closeDelaySec: Number(arg("film-close-hold")) }
+              : {}),
+            ...(process.argv.includes("--film-open-strips")
+              ? { openStrips: true }
+              : {}),
+            ...(arg("film-open-mark")
+              ? { openMark: arg("film-open-mark")! }
+              : {}),
+            ...(arg("film-close-sub-size")
+              ? { closeSubSize: Number(arg("film-close-sub-size")) }
+              : {}),
           },
         }
       : {}),

@@ -120,7 +120,19 @@ export type ShortPlan = {
     outroSec?: number
   }
   /** Film short: the silent question cards (texts). */
-  questionCards?: { open?: string; close?: string; closeSub?: string }
+  questionCards?: {
+    open?: string
+    close?: string
+    closeSub?: string
+    /** Hold the scene's last line this much longer before the close card. */
+    closeDelaySec?: number
+    /** The opening question as typed paper strips ("line one|line two"). */
+    openStrips?: boolean
+    /** A hand-drawn mark beside the strips ("?"). */
+    openMark?: string
+    /** The close card's small line, in Figma units (default 32). */
+    closeSubSize?: number
+  }
   durationSec: number
   /** One line on why this stretch, for shorts.md. */
   why: string
@@ -138,7 +150,19 @@ export type CutdownOverrides = {
   filmTurn?: { fromSec: number; toSec: number; why?: string }
   /** Film-verse short: a silent question before the scene speaks and a
    *  turn after it ends (owner, 2026-10-02). */
-  filmVerseCards?: { open?: string; close?: string; closeSub?: string }
+  filmVerseCards?: {
+    open?: string
+    close?: string
+    closeSub?: string
+    /** Hold the scene's last line this much longer before the close card. */
+    closeDelaySec?: number
+    /** The opening question as typed paper strips ("line one|line two"). */
+    openStrips?: boolean
+    /** A hand-drawn mark beside the strips ("?"). */
+    openMark?: string
+    /** The close card's small line, in Figma units (default 32). */
+    closeSubSize?: number
+  }
   /** film-verse: the scene window on the film card (s), chosen by hand when
    *  the short should stop before the quoted verse (owner, 2026-10-08). */
   filmVerse?: { fromSec: number; toSec: number }
@@ -552,9 +576,9 @@ export function planCutdown(
           // borrows a quiet stretch of the same scene for the rest, played
           // live, rather than freezing (owner, 2026-10-02).
           if (hasClose(cards) && made.film) {
-            const needs = cards.close
-              ? CLOSE_CARD_NEEDS_SEC
-              : SUB_ONLY_NEEDS_SEC
+            const needs =
+              (cards.close ? CLOSE_CARD_NEEDS_SEC : SUB_ONLY_NEEDS_SEC) +
+              (cards.closeDelaySec ?? 0)
             const lastEnd = w.toSec - 0.5
             const footageEnd = film.durationSec ?? Infinity
             const nextStart = Math.min(
@@ -1079,18 +1103,42 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
   let shortCards: Record<string, unknown> | undefined
   const filmCard = cards.find((c) => c.kind === "video") as
     | (Card & {
-        __cards?: { open?: string; close?: string; closeSub?: string }
+        __cards?: {
+          open?: string
+          close?: string
+          closeSub?: string
+          /** Hold the scene's last line this much longer before the close card. */
+          closeDelaySec?: number
+          /** The opening question as typed paper strips ("line one|line two"). */
+          openStrips?: boolean
+          /** A hand-drawn mark beside the strips ("?"). */
+          openMark?: string
+          /** The close card's small line, in Figma units (default 32). */
+          closeSubSize?: number
+        }
       })
     | undefined
   if (filmCard?.__cards) {
     const subs = filmCard.subtitles ?? []
     const first = subs[0]?.startSec ?? 2
     const last = subs.at(-1)?.endSec ?? (filmCard.durationSec ?? 10) - 2
+    // The scene's last line stays up through the extra hold (owner,
+    // 2026-10-08: "What do you want Me to do for you?" went too fast).
+    const hold = filmCard.__cards.closeDelaySec ?? 0
+    if (hold > 0 && subs.length) {
+      filmCard.subtitles = subs.map((c, i) =>
+        i === subs.length - 1 ? { ...c, endSec: c.endSec + hold } : c,
+      )
+    }
     shortCards = {
       ...(filmCard.__cards.open
         ? {
             open: {
               text: filmCard.__cards.open,
+              ...(filmCard.__cards.openStrips ? { strips: true } : {}),
+              ...(filmCard.__cards.openMark
+                ? { mark: filmCard.__cards.openMark }
+                : {}),
               // After the composition's 0.6s fade from black: a stamp that
               // lands during the fade reads grey and soft.
               fromSec: 0.62,
@@ -1104,7 +1152,10 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
               // Empty: no closing question, only the small line (owner,
               // 2026-10-05).
               text: filmCard.__cards.close ?? "",
-              fromSec: last + 0.6,
+              fromSec: last + 0.6 + (filmCard.__cards.closeDelaySec ?? 0),
+              ...(filmCard.__cards.closeSubSize
+                ? { subSize: filmCard.__cards.closeSubSize }
+                : {}),
               ...(filmCard.__cards.closeSub
                 ? { sub: filmCard.__cards.closeSub }
                 : {}),
