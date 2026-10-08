@@ -67,6 +67,7 @@ vi.mock("@/components/sections", () => ({
     section,
     languageSlug,
     dynamicCollections,
+    windowStaticCollections,
   }: {
     section: {
       __typename?: string | null
@@ -76,6 +77,7 @@ vi.mock("@/components/sections", () => ({
       itemsSource?: string | null
       sectionContent?: Array<Record<string, unknown> | null> | null
     }
+    windowStaticCollections?: boolean
     languageSlug: string
     dynamicCollections?: {
       cacheSignatures?: DynamicCollectionFeedCacheSignatures
@@ -127,6 +129,9 @@ vi.mock("@/components/sections", () => ({
         data-language-slug={languageSlug}
         data-block-marker={section.__typename ?? "unknown"}
         data-items-source={section.itemsSource ?? undefined}
+        data-window-static-collections={
+          windowStaticCollections ? "true" : undefined
+        }
         data-desktop-cache-signature={
           dynamicCollections?.cacheSignatures?.desktop
         }
@@ -458,6 +463,12 @@ describe("WatchHomeExperiencePage", () => {
         section?.parentElement?.hasAttribute("data-watch-home-content-rail"),
       ).toBe(false)
     }
+
+    expect(
+      container.querySelector<HTMLElement>(
+        '[data-section-type="MediaCollectionBlock"]',
+      )?.dataset.windowStaticCollections,
+    ).toBe("true")
 
     expect(
       renderedSections.map((section) => section.dataset.sectionType),

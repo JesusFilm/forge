@@ -169,6 +169,7 @@ function renderAdminBlock(
   languageSlug: string | null | undefined,
   locale: string | null | undefined,
   dynamicCollections: DynamicCollectionsRenderContext | undefined,
+  windowStaticCollections: boolean,
 ): ReactNode {
   switch (block.__typename) {
     case "MediaCollectionBlock":
@@ -192,6 +193,7 @@ function renderAdminBlock(
           }
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          windowOffscreen={windowStaticCollections}
         />
       )
     case "PromoBannerBlock":
@@ -381,12 +383,14 @@ export function ExperienceSectionRenderer({
   languageSlug,
   locale,
   dynamicCollections,
+  windowStaticCollections = false,
 }: {
   section: Section
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
   locale?: string | null
   dynamicCollections?: DynamicCollectionsRenderContext
+  windowStaticCollections?: boolean
 }) {
   // Admin-shape dispatch — content.ts reads from admin now, so every
   // block reaching this renderer carries an admin `*Block` __typename.
@@ -399,6 +403,7 @@ export function ExperienceSectionRenderer({
       languageSlug,
       locale,
       dynamicCollections,
+      windowStaticCollections,
     )
   }
 

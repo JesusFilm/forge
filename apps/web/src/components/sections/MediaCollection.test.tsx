@@ -4,6 +4,7 @@
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
+import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const { emblaApi, emblaHandlers, emblaState, useEmblaCarouselMock } =
@@ -56,9 +57,58 @@ import { MediaCollection } from "./MediaCollection"
 
 let container: HTMLDivElement
 let root: Root
+type IntersectionObserverHarness = {
+  callback: IntersectionObserverCallback
+  disconnect: ReturnType<typeof vi.fn>
+  observe: ReturnType<typeof vi.fn>
+  observed: Element[]
+}
+let intersectionObservers: IntersectionObserverHarness[] = []
+
+class TestIntersectionObserver {
+  private readonly harness: IntersectionObserverHarness
+
+  constructor(callback: IntersectionObserverCallback) {
+    this.harness = {
+      callback,
+      disconnect: vi.fn(),
+      observe: vi.fn(),
+      observed: [],
+    }
+    intersectionObservers.push(this.harness)
+  }
+
+  disconnect() {
+    this.harness.disconnect()
+  }
+
+  observe(target: Element) {
+    this.harness.observed.push(target)
+    this.harness.observe(target)
+  }
+
+  unobserve() {}
+  takeRecords() {
+    return []
+  }
+}
+
+function observerFor(target: Element) {
+  return intersectionObservers.find((observer) =>
+    observer.observed.includes(target),
+  )
+}
+
+class TestResizeObserver {
+  constructor(_callback: ResizeObserverCallback) {}
+  disconnect = vi.fn()
+  observe = vi.fn()
+  unobserve = vi.fn()
+}
 
 beforeEach(() => {
   vi.clearAllMocks()
+  intersectionObservers = []
   vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }))
   emblaState.selectedSnap = 0
   emblaState.snapCount = 3
@@ -175,6 +225,326 @@ function expectSolidWhiteInteractionFrame(outline: HTMLElement | null) {
  * module graph loads.
  */
 describe("MediaCollection VideoCard href", () => {
+  it("keeps headings, CTAs, and card links in server markup when windowing is enabled", () => {
+    const markup = renderToStaticMarkup(
+      <MediaCollection
+        windowOffscreen
+        data={makeData({
+          itemsSource: "manual",
+          items: [makeManualItem()],
+        })}
+      />,
+    )
+
+    expect(markup).toContain("Related")
+    expect(markup).toContain('data-testid="media-collection-cta"')
+    expect(markup).toContain('data-testid="VideoCard"')
+    expect(markup).toMatch(/href="[^"]*episode-one/)
+  })
+
+  it("windows distant authored rows while preserving a focusable named shell", async () => {
+    vi.stubGlobal("IntersectionObserver", TestIntersectionObserver)
+    vi.stubGlobal("ResizeObserver", TestResizeObserver)
+
+    act(() => {
+      root.render(
+        <MediaCollection
+          windowOffscreen
+          data={makeData({
+            itemsSource: "manual",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const section = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-section"]',
+    )
+    const cardsRegion = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-cards-region"]',
+    )
+    expect(section?.querySelector("h2")?.textContent).toBe("Related")
+    expect(
+      section?.querySelector('[data-testid="media-collection-cta"]'),
+    ).not.toBeNull()
+    expect(
+      cardsRegion?.querySelector('[data-testid="VideoCard"]'),
+    ).not.toBeNull()
+    expect(cardsRegion?.dataset.windowState).toBe("mounted")
+
+    vi.spyOn(cardsRegion!, "getBoundingClientRect").mockReturnValue({
+      bottom: 920,
+      height: 620,
+      left: 0,
+      right: 1280,
+      top: 300,
+      width: 1280,
+      x: 0,
+      y: 300,
+      toJSON: () => ({}),
+    })
+    expect(section?.contains(document.activeElement)).toBe(false)
+    expect(cardsRegion?.getBoundingClientRect().height).toBe(620)
+    expect(observerFor(section!)).toBeDefined()
+    await act(async () => {
+      observerFor(section!)?.callback(
+        [
+          {
+            target: section!,
+            isIntersecting: false,
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      )
+    })
+
+    const collapsedCardsRegion = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-cards-region"]',
+    )
+    expect(collapsedCardsRegion?.dataset.windowState).toBe("shell")
+    expect(section?.querySelector("h2")?.textContent).toBe("Related")
+    expect(
+      section?.querySelector('[data-testid="media-collection-cta"]'),
+    ).not.toBeNull()
+    const shell = collapsedCardsRegion?.querySelector<HTMLElement>(
+      '[data-testid="media-collection-window-shell"]',
+    )
+    expect(shell?.style.height).toBe("620px")
+    expect(shell?.getAttribute("role")).toBe("group")
+    expect(shell?.getAttribute("tabindex")).toBe("0")
+    expect(shell?.getAttribute("aria-label")).toBe("Related")
+    expect(
+      collapsedCardsRegion?.querySelector('[data-testid="VideoCard"]'),
+    ).toBeNull()
+
+    vi.spyOn(shell!, "matches").mockReturnValue(true)
+    await act(async () => shell?.focus())
+    const restoredCardsRegion = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-cards-region"]',
+    )
+    expect(restoredCardsRegion?.dataset.windowState).toBe("mounted")
+    expect(
+      restoredCardsRegion?.querySelector('[data-testid="VideoCard"]'),
+    ).not.toBeNull()
+    expect(document.activeElement).toBe(
+      restoredCardsRegion?.querySelector("a[href]"),
+    )
+  })
+
+  it("restores mobile grid scroll position after an authored row remounts", async () => {
+    vi.stubGlobal("IntersectionObserver", TestIntersectionObserver)
+    vi.stubGlobal("ResizeObserver", TestResizeObserver)
+
+    act(() => {
+      root.render(
+        <MediaCollection
+          windowOffscreen
+          data={makeData({
+            itemsSource: "manual",
+            mediaCollectionVariant: "grid",
+            items: [0, 1, 2, 3].map((index) =>
+              makeManualItem({
+                videoId: `scroll-${index}`,
+                videoSlug: `scroll-${index}`,
+                titleOverride: `Scroll video ${index}`,
+              }),
+            ),
+          })}
+        />,
+      )
+    })
+
+    const section = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-section"]',
+    )
+    const cardsRegion = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-cards-region"]',
+    )
+    const mobileCarousel = section?.querySelector<HTMLElement>(
+      '[data-testid="media-collection-mobile-carousel"]',
+    )
+    expect(mobileCarousel).not.toBeNull()
+    mobileCarousel!.scrollLeft = 72
+    vi.spyOn(cardsRegion!, "getBoundingClientRect").mockReturnValue({
+      bottom: 920,
+      height: 620,
+      left: 0,
+      right: 1280,
+      top: 300,
+      width: 1280,
+      x: 0,
+      y: 300,
+      toJSON: () => ({}),
+    })
+
+    await act(async () => {
+      observerFor(section!)?.callback(
+        [
+          {
+            target: section!,
+            isIntersecting: false,
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      )
+    })
+    expect(
+      section?.querySelector('[data-testid="media-collection-window-shell"]'),
+    ).not.toBeNull()
+
+    await act(async () => {
+      observerFor(section!)?.callback(
+        [
+          {
+            target: section!,
+            isIntersecting: true,
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      )
+    })
+    expect(
+      section?.querySelector<HTMLElement>(
+        '[data-testid="media-collection-mobile-carousel"]',
+      )?.scrollLeft,
+    ).toBe(72)
+  })
+
+  it("keeps card content mounted if authored row windowing is turned off", async () => {
+    vi.stubGlobal("IntersectionObserver", TestIntersectionObserver)
+    vi.stubGlobal("ResizeObserver", TestResizeObserver)
+
+    const data = makeData({
+      itemsSource: "manual",
+      items: [makeManualItem()],
+    })
+    act(() => {
+      root.render(<MediaCollection windowOffscreen data={data} />)
+    })
+    const section = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-section"]',
+    )
+    const cardsRegion = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-cards-region"]',
+    )
+    vi.spyOn(cardsRegion!, "getBoundingClientRect").mockReturnValue({
+      bottom: 920,
+      height: 620,
+      left: 0,
+      right: 1280,
+      top: 300,
+      width: 1280,
+      x: 0,
+      y: 300,
+      toJSON: () => ({}),
+    })
+    await act(async () => {
+      observerFor(section!)?.callback(
+        [
+          {
+            target: section!,
+            isIntersecting: false,
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      )
+    })
+    expect(
+      container.querySelector('[data-testid="media-collection-window-shell"]'),
+    ).not.toBeNull()
+
+    act(() => {
+      root.render(<MediaCollection data={data} />)
+    })
+    const restoredCardsRegion = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-cards-region"]',
+    )
+    expect(restoredCardsRegion?.dataset.windowState).toBeUndefined()
+    expect(
+      restoredCardsRegion?.querySelector('[data-testid="VideoCard"]'),
+    ).not.toBeNull()
+  })
+
+  it("keeps distant row content mounted while a card has focus", () => {
+    vi.stubGlobal("IntersectionObserver", TestIntersectionObserver)
+    vi.stubGlobal("ResizeObserver", TestResizeObserver)
+
+    act(() => {
+      root.render(
+        <MediaCollection
+          windowOffscreen
+          data={makeData({
+            itemsSource: "manual",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const section = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-section"]',
+    )
+    const cardsRegion = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-cards-region"]',
+    )
+    const card = section?.querySelector<HTMLElement>(
+      '[data-testid="VideoCard"]',
+    )
+    vi.spyOn(cardsRegion!, "getBoundingClientRect").mockReturnValue({
+      bottom: 920,
+      height: 620,
+      left: 0,
+      right: 1280,
+      top: 300,
+      width: 1280,
+      x: 0,
+      y: 300,
+      toJSON: () => ({}),
+    })
+    act(() => card?.focus())
+    act(() => {
+      observerFor(section!)?.callback(
+        [
+          {
+            target: section!,
+            isIntersecting: false,
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      )
+    })
+
+    expect(cardsRegion?.dataset.windowState).toBe("mounted")
+    expect(
+      cardsRegion?.querySelector('[data-testid="VideoCard"]'),
+    ).not.toBeNull()
+  })
+
+  it("leaves authored rows mounted when browser observers are unavailable", () => {
+    vi.stubGlobal("ResizeObserver", undefined)
+
+    act(() => {
+      root.render(
+        <MediaCollection
+          windowOffscreen
+          data={makeData({
+            itemsSource: "manual",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const cardsRegion = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-cards-region"]',
+    )
+    expect(
+      cardsRegion?.querySelector('[data-testid="VideoCard"]'),
+    ).not.toBeNull()
+    expect(cardsRegion?.dataset.windowState).toBe("mounted")
+  })
+
   it("keeps authored carousel callers on the existing default snap behavior", () => {
     act(() => {
       root.render(
