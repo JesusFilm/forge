@@ -46,7 +46,10 @@ import {
   WATCH_HERO_PRIMARY_ACTION_CLASS,
   WatchHeroOverlay,
 } from "@/components/watch/WatchHeroOverlay"
-import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxHeroPosterUrlAtMaxWidth,
+} from "@/lib/url"
 import {
   applyMuxMaxResolution,
   type MuxMaxResolution,
@@ -189,6 +192,13 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
         resolveMuxHeroPosterUrlAtMaxWidth(slide.playbackId) ||
         slide.imageUrl ||
         muxThumbnail
+      const bareMuxThumbnail = slide.playbackId
+        ? `https://image.mux.com/${slide.playbackId}/thumbnail.jpg`
+        : null
+      const thumbnailUrl =
+        slide.imageUrl && slide.imageUrl !== bareMuxThumbnail
+          ? slide.imageUrl
+          : resolveMuxFrameThumbnailUrl(slide.playbackId)
 
       return {
         kind: "video",
@@ -197,10 +207,9 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
         label: slide.eyebrow || slide.label,
         href: slide.href,
         posterUrl,
-        thumbnailUrl:
-          slide.imageUrl ?? muxThumbnailUrl(slide.playbackId, 640) ?? posterUrl,
+        thumbnailUrl: thumbnailUrl || posterUrl,
         imageAlt: slide.imageAlt,
-        src: slide.hls ?? muxStreamUrl(slide.playbackId),
+        src: slide.hls || muxStreamUrl(slide.playbackId),
         playbackId: slide.playbackId,
         subtitleVttSrc: slide.subtitleVttSrc,
         subtitleLanguageBcp47: slide.subtitleLanguageBcp47,
