@@ -48,7 +48,16 @@ async function readJson(request: Request): Promise<unknown | Response> {
       bytes.set(chunk, offset)
       offset += chunk.byteLength
     }
-    return JSON.parse(new TextDecoder().decode(bytes))
+    const parsed: unknown = JSON.parse(new TextDecoder().decode(bytes))
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      typeof (parsed as { action?: unknown }).action === "string" &&
+      (parsed as { action: string }).action.startsWith("profile_") &&
+      size > 65_536
+    )
+      return error("Profile action body exceeds 64 KiB", 413)
+    return parsed
   } catch {
     return error("Invalid JSON body", 400)
   }
@@ -72,6 +81,7 @@ export async function POST(request: Request): Promise<Response> {
     const isDurable =
       payload?.protocolVersion === 2 ||
       payload?.protocolVersion === 3 ||
+      payload?.protocolVersion === 4 ||
       payload?.action === "retention_status" ||
       typeof payload?.generationInputDigest === "string"
     return Response.json({

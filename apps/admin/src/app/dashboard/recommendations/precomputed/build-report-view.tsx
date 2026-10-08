@@ -93,8 +93,11 @@ export function DurableBuildReportView({ report }: { report: Report }) {
               : "not applicable"}
             . {attempt.callCount} calls, {attempt.inputTokens} input /{" "}
             {attempt.outputTokens} output / {attempt.cachedInputTokens} cached
-            input tokens reported. Account-wide allowance is an observation, not
-            a per-build monetary receipt.
+            input tokens reported. Profile work: {attempt.profileCallCount}{" "}
+            calls, {attempt.profileInputTokens} input /{" "}
+            {attempt.profileOutputTokens} output tokens; cached input{" "}
+            {attempt.profileCachedInputTokens ?? "unreported"}. Account-wide
+            allowance is an observation, not a per-build monetary receipt.
           </p>
         ))}
         {report.pendingModelCalls.length > 0 ? (
@@ -108,6 +111,31 @@ export function DurableBuildReportView({ report }: { report: Report }) {
               .join("; ")}
             . A terminal receipt with observed usage can clear a reservation;
             otherwise the affected source remains blocked.
+          </p>
+        ) : null}
+        {report.profileLedger.profiles.length > 0 ? (
+          <p>
+            Content profiles:{" "}
+            {report.profileLedger.profiles
+              .map((item) => `${item.state} ${item.count}`)
+              .join(", ")}
+            . Physical profile calls:{" "}
+            {report.profileLedger.calls
+              .map((item) => `${item.status} ${item.count}`)
+              .join(", ") || "none"}
+            . Subscription allowance basis; USD charge unavailable.
+          </p>
+        ) : null}
+        {report.profileLedger.pendingCalls.length > 0 ? (
+          <p>
+            Unresolved profile reservations (first 100):{" "}
+            {report.profileLedger.pendingCalls
+              .map(
+                (call) =>
+                  `${call.callId} / ${call.cacheKey} / ${call.stage} / attempt ${call.attemptId}`,
+              )
+              .join("; ")}
+            .
           </p>
         ) : null}
         <p>

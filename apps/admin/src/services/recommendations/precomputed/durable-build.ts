@@ -21,6 +21,7 @@ import {
   type GaCaptureStore,
 } from "./ga-capture-store"
 import { verifyBoundGaCapture } from "./ga-capture-transport"
+import { submitProfileAction } from "./profile-ledger"
 
 const id = z.string().trim().min(1).max(191)
 const hex = z.string().regex(/^[a-f0-9]{64}$/)
@@ -218,7 +219,7 @@ const executionAttempt = z
 const actionSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("start"),
-    protocolVersion: z.union([z.literal(2), z.literal(3)]),
+    protocolVersion: z.union([z.literal(2), z.literal(3), z.literal(4)]),
     generationId: id,
     modelId: z.string().trim().min(1).max(100),
     promptVersion: z.string().trim().min(1).max(100),
@@ -479,7 +480,7 @@ async function generationLock(tx: Tx, generationId: string, exclusive = false) {
       "not_found",
       "Generation not found",
     )
-  if (row.protocol_version !== 2 && row.protocol_version !== 3)
+  if (![2, 3, 4].includes(row.protocol_version))
     conflict("Generation uses a different build protocol")
   return row
 }
@@ -490,12 +491,20 @@ function requireCapacityFresh(generation: LockedGeneration): void {
   } | null
   if (!capacity || capacity.status !== "passed")
     conflict("Measured capacity preflight is required")
-  const age = Date.now() - Date.parse(capacity.measuredAt ?? "")
-  if (!Number.isFinite(age) || age < -60_000 || age > CAPACITY_MAX_AGE_MS)
+  if (!capacityIsFresh(generation))
     throw new PrecomputedRecommendationError(
       "capacity_attestation_expired",
       "Capacity attestation expired; refresh before more work",
     )
+}
+function capacityIsFresh(generation: LockedGeneration): boolean {
+  const capacity = generation.capacity_preflight as {
+    status?: string
+    measuredAt?: string
+  } | null
+  if (capacity?.status !== "passed") return false
+  const age = Date.now() - Date.parse(capacity.measuredAt ?? "")
+  return Number.isFinite(age) && age >= -60_000 && age <= CAPACITY_MAX_AGE_MS
 }
 async function reserveBudget(
   tx: Tx,
@@ -642,7 +651,7 @@ async function usage(prisma: PrismaClient | Tx, generationId: string) {
            COALESCE(sum(cost_usd), 0)::text AS known_cost_usd,
            COALESCE(sum(bytes_processed), 0)::bigint AS known_bytes
     FROM recommendation_precomputed_history_call WHERE generation_id = ${generationId}`
-  const [attempts, attemptUsage] = await Promise.all([
+  const [attempts, attemptUsage, profileAttemptUsage] = await Promise.all([
     prisma.recommendationPrecomputedExecutionAttempt.findMany({
       where: { generationId },
       orderBy: [{ startedAt: "asc" }, { attemptId: "asc" }],
@@ -656,6 +665,12 @@ async function usage(prisma: PrismaClient | Tx, generationId: string) {
         outputTokens: true,
         cachedInputTokens: true,
       },
+    }),
+    prisma.recommendationPrecomputedProfileCall.groupBy({
+      by: ["attemptId"],
+      where: { generationId },
+      _count: true,
+      _sum: { inputTokens: true, outputTokens: true, cachedInputTokens: true },
     }),
   ])
   const [subscriptionCounts] = await prisma.$queryRaw<
@@ -675,6 +690,9 @@ async function usage(prisma: PrismaClient | Tx, generationId: string) {
     modelLegacyUnknownCostCount: Number(subscriptionCounts.legacy_unknown_cost),
     attempts: attempts.map((attempt) => {
       const counts = attemptUsage.find(
+        (item) => item.attemptId === attempt.attemptId,
+      )
+      const profileCounts = profileAttemptUsage.find(
         (item) => item.attemptId === attempt.attemptId,
       )
       return {
@@ -698,6 +716,10 @@ async function usage(prisma: PrismaClient | Tx, generationId: string) {
         inputTokens: counts?._sum.inputTokens ?? 0,
         outputTokens: counts?._sum.outputTokens ?? 0,
         cachedInputTokens: counts?._sum.cachedInputTokens ?? 0,
+        profileCallCount: profileCounts?._count ?? 0,
+        profileInputTokens: profileCounts?._sum.inputTokens ?? 0,
+        profileOutputTokens: profileCounts?._sum.outputTokens ?? 0,
+        profileCachedInputTokens: profileCounts?._sum.cachedInputTokens,
       }
     }),
     inputTokens: Number(models.input_tokens),
@@ -723,6 +745,19 @@ export async function submitDurablePrecomputedRecommendation(
       "unauthorized",
       "Authorization required",
     )
+  if (
+    raw &&
+    typeof raw === "object" &&
+    typeof (raw as { action?: unknown }).action === "string" &&
+    (raw as { action: string }).action.startsWith("profile_")
+  )
+    return submitProfileAction(prisma, raw, {
+      checkedGeneration,
+      requireCapacityFresh,
+      capacityIsFresh,
+      reserveBudget,
+      hasOpenSubscriptionAttempt,
+    })
   const parsed = actionSchema.safeParse(raw)
   if (!parsed.success) invalid("Invalid durable build payload")
   const input: Action = parsed.data
@@ -756,7 +791,11 @@ export async function submitDurablePrecomputedRecommendation(
       (input.protocolVersion === 3 &&
         (input.inputMode !== "historical_analytics" ||
           snapshotMode !== "ga_aggregate_capture_v1")) ||
-      (input.protocolVersion === 2 && snapshotMode !== "observed_fenced")
+      (input.protocolVersion === 2 && snapshotMode !== "observed_fenced") ||
+      (input.protocolVersion === 4 &&
+        (input.inputMode !== "content_only" ||
+          snapshotMode !== "observed_fenced" ||
+          !input.executionAttempt))
     )
       invalid("Generation protocol and snapshot mode differ")
     return prisma.$transaction(async (tx) => {
@@ -885,6 +924,15 @@ export async function submitDurablePrecomputedRecommendation(
           endReason: "interrupted_by_manual_resume",
         },
       })
+      if (generation.protocol_version === 4)
+        await tx.recommendationPrecomputedContentProfile.updateMany({
+          where: {
+            generationId: input.generationId,
+            state: { in: ["planned", "in_progress"] },
+            calls: { some: { status: "pending" } },
+          },
+          data: { state: "blocked_unknown" },
+        })
       await tx.recommendationPrecomputedExecutionAttempt.create({
         data: { generationId: input.generationId, ...requestedAttempt },
       })
@@ -928,6 +976,15 @@ export async function submitDurablePrecomputedRecommendation(
         },
         data: { endedAt: new Date(), endReason: input.reason },
       })
+      if (generation.protocol_version === 4)
+        await tx.recommendationPrecomputedContentProfile.updateMany({
+          where: {
+            generationId: input.generationId,
+            state: { in: ["planned", "in_progress"] },
+            calls: { some: { status: "pending", attemptId: input.attemptId } },
+          },
+          data: { state: "blocked_unknown" },
+        })
       return {
         generationId: input.generationId,
         attemptId: input.attemptId,
@@ -1000,7 +1057,7 @@ export async function submitDurablePrecomputedRecommendation(
         "Generation not found",
       )
     if (
-      ![2, 3].includes(generation.protocolVersion) ||
+      ![2, 3, 4].includes(generation.protocolVersion) ||
       generation.inputDigest !== input.generationInputDigest
     )
       conflict("Generation input digest differs")
@@ -1164,6 +1221,8 @@ async function storedSize(prisma: PrismaClient | Tx, generationId: string) {
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_source t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_model_call t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_execution_attempt t WHERE generation_id = ${generationId}) +
+      (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_content_profile t WHERE generation_id = ${generationId}) +
+      (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_profile_call t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_history_call t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_build_budget t WHERE generation_id = ${generationId})
     )::bigint AS generation_row_bytes,
@@ -1174,6 +1233,8 @@ async function storedSize(prisma: PrismaClient | Tx, generationId: string) {
       pg_total_relation_size('recommendation_precomputed_source') +
       pg_total_relation_size('recommendation_precomputed_model_call') +
       pg_total_relation_size('recommendation_precomputed_execution_attempt') +
+      pg_total_relation_size('recommendation_precomputed_content_profile') +
+      pg_total_relation_size('recommendation_precomputed_profile_call') +
       pg_total_relation_size('recommendation_precomputed_history_call') +
       pg_total_relation_size('recommendation_precomputed_build_budget')
     )::bigint AS tables_physical_bytes`
@@ -1206,7 +1267,7 @@ export async function loadDurablePrecomputedBuildReport(
     })
   if (
     !generation ||
-    ![2, 3].includes(generation.protocolVersion) ||
+    ![2, 3, 4].includes(generation.protocolVersion) ||
     generation.status === "retiring"
   )
     return null
@@ -1220,6 +1281,9 @@ export async function loadDurablePrecomputedBuildReport(
     budget,
     historyTotals,
     accepted,
+    profileStates,
+    profileCalls,
+    pendingProfileCalls,
   ] = await Promise.all([
     prisma.recommendationPrecomputedBuildSource.groupBy({
       by: ["state"],
@@ -1295,6 +1359,29 @@ export async function loadDurablePrecomputedBuildReport(
       where: { generationId: input.generationId, status: "complete" },
       _sum: { acceptedCount: true },
     }),
+    prisma.recommendationPrecomputedContentProfile.groupBy({
+      by: ["state"],
+      where: { generationId: input.generationId },
+      _count: true,
+    }),
+    prisma.recommendationPrecomputedProfileCall.groupBy({
+      by: ["status"],
+      where: { generationId: input.generationId },
+      _count: true,
+      _sum: { inputTokens: true, outputTokens: true, cachedInputTokens: true },
+    }),
+    prisma.recommendationPrecomputedProfileCall.findMany({
+      where: { generationId: input.generationId, status: "pending" },
+      orderBy: [{ startedAt: "asc" }, { callId: "asc" }],
+      take: 100,
+      select: {
+        callId: true,
+        cacheKey: true,
+        stage: true,
+        attemptId: true,
+        startedAt: true,
+      },
+    }),
   ])
   const count = (state: string) =>
     counts.find((item) => item.state === state)?._count ?? 0
@@ -1345,6 +1432,22 @@ export async function loadDurablePrecomputedBuildReport(
     capacityEstimatedConsumedBytes: Number(budget?.consumedBytes ?? 0n),
     usage: knownUsage,
     pendingModelCalls,
+    profileLedger: {
+      profiles: profileStates.map((row) => ({
+        state: row.state,
+        count: row._count,
+      })),
+      calls: profileCalls.map((row) => ({
+        status: row.status,
+        count: row._count,
+        inputTokens: row._sum.inputTokens ?? 0,
+        outputTokens: row._sum.outputTokens ?? 0,
+        cachedInputTokens: row._sum.cachedInputTokens,
+      })),
+      pendingCalls: pendingProfileCalls,
+      billingBasis: "included_subscription" as const,
+      usdCharge: null,
+    },
     storedSize: size,
     elapsedMs,
     projectedElapsedMs:
@@ -1499,6 +1602,26 @@ async function mutate(
     ].includes(input.action) ||
     (input.action === "fail" && !input.sourceVideoId)
   const generation = await checkedGeneration(tx, input, exclusive)
+  if (
+    generation.protocol_version === 4 &&
+    ([
+      "claim",
+      "heartbeat",
+      "checkpoint",
+      "choice",
+      "source_history",
+      "model_call_start",
+      "model_call",
+      "source",
+      "complete",
+      "history_qualification",
+      "history_call_start",
+      "history_call",
+      "history_call_reconcile",
+    ].includes(input.action) ||
+      (input.action === "fail" && Boolean(input.sourceVideoId)))
+  )
+    conflict("Profile protocol awaits edge and historical readiness")
   if (
     generation.execution_backend === "codex_chatgpt_subscription" &&
     ([
@@ -1809,7 +1932,7 @@ async function mutate(
       invalid("Projection is below twice the measured sample extrapolation")
     const [newerAdmission] = await tx.$queryRaw<Array<{ id: string }>>`
       SELECT id FROM recommendation_precomputed_generation
-      WHERE id <> ${input.generationId} AND protocol_version IN (2, 3)
+      WHERE id <> ${input.generationId} AND protocol_version IN (2, 3, 4)
         AND (capacity_preflight->>'lastPassedAt')::timestamptz >= ${date(measurement.measuredAt)}
       LIMIT 1`
     if (newerAdmission)
@@ -1838,7 +1961,7 @@ async function mutate(
         ), 0)::bigint AS recent_terminal_bytes
       FROM recommendation_precomputed_generation
       WHERE id <> ${input.generationId}
-        AND protocol_version IN (2, 3)
+        AND protocol_version IN (2, 3, 4)
         AND capacity_preflight->>'projectedBytes' IS NOT NULL`
     const reservedBytes = Number(other.active_bytes)
     const recentTerminalProjectedBytes = Number(other.recent_terminal_bytes)

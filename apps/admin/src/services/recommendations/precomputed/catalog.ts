@@ -122,7 +122,7 @@ const emptyTranscriptSelection = (): TranscriptSelection => ({
 })
 
 /** Select whole transcripts per edition, not a sample of their passages. */
-async function transcriptSelections(
+export async function selectedTranscriptSelections(
   tx: Prisma.TransactionClient,
   videoIds: string[],
 ): Promise<Map<string, TranscriptSelection>> {
@@ -496,9 +496,9 @@ export async function readPrecomputedCatalog(
         await assertPrecomputedObservedVersion(tx, [video.id], cutoff)
         if (!isWatchable(video))
           throw new PrecomputedCatalogError("not_found", "Video not found")
-        const selection = (await transcriptSelections(tx, [video.id])).get(
-          video.id,
-        )
+        const selection = (
+          await selectedTranscriptSelections(tx, [video.id])
+        ).get(video.id)
         const rows = await tx.videoTranscriptChunk.findMany({
           where: {
             transcriptId: {
@@ -553,9 +553,9 @@ export async function readPrecomputedCatalog(
         await assertWatchRouteIdentityVersions(tx, [video], cutoff)
         if (!isWatchable(video))
           throw new PrecomputedCatalogError("not_found", "Video not found")
-        const selection = (await transcriptSelections(tx, [video.id])).get(
-          video.id,
-        )
+        const selection = (
+          await selectedTranscriptSelections(tx, [video.id])
+        ).get(video.id)
         return {
           action: "video" as const,
           video: compactVideo(video, selection ?? emptyTranscriptSelection()),
@@ -579,7 +579,7 @@ export async function readPrecomputedCatalog(
         cutoff,
       )
       await assertWatchRouteIdentityVersions(tx, page, cutoff)
-      const selections = await transcriptSelections(
+      const selections = await selectedTranscriptSelections(
         tx,
         page.map((video) => video.id),
       )

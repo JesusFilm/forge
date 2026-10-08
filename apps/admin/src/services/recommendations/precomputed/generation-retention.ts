@@ -28,6 +28,8 @@ export type PrecomputedGenerationPurge = Readonly<{
   buildSourcesDeleted: number
   provisionalChoicesDeleted: number
   modelCallsDeleted: number
+  profileCallsDeleted: number
+  profilesDeleted: number
   executionAttemptsDeleted: number
   historyCallsDeleted: number
   provisionalChoicesPruned: number
@@ -84,6 +86,15 @@ export async function purgeExpiredPrecomputedGenerations(
       )
       AND NOT EXISTS (
         SELECT 1 FROM recommendation_precomputed_model_call c
+        WHERE c.generation_id = g.id
+          AND (c.started_at > ${idleCutoff} OR c.finished_at > ${idleCutoff})
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM recommendation_precomputed_content_profile p
+        WHERE p.generation_id = g.id AND p.updated_at > ${idleCutoff}
+      )
+      AND NOT EXISTS (
+        SELECT 1 FROM recommendation_precomputed_profile_call c
         WHERE c.generation_id = g.id
           AND (c.started_at > ${idleCutoff} OR c.finished_at > ${idleCutoff})
       )
@@ -191,6 +202,8 @@ export async function purgeExpiredPrecomputedGenerations(
       buildSourcesDeleted: 0,
       provisionalChoicesDeleted: 0,
       modelCallsDeleted: 0,
+      profileCallsDeleted: 0,
+      profilesDeleted: 0,
       executionAttemptsDeleted: 0,
       historyCallsDeleted: 0,
       provisionalChoicesPruned,
@@ -223,6 +236,8 @@ export async function purgeExpiredPrecomputedGenerations(
       buildSourcesDeleted: 0,
       provisionalChoicesDeleted: 0,
       modelCallsDeleted: 0,
+      profileCallsDeleted: 0,
+      profilesDeleted: 0,
       executionAttemptsDeleted: 0,
       historyCallsDeleted: 0,
       provisionalChoicesPruned,
@@ -257,12 +272,38 @@ export async function purgeExpiredPrecomputedGenerations(
       ORDER BY call.call_id LIMIT ${PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE}
     )
   `)
+  const profileCallsDeleted = await tx.$executeRaw(Prisma.sql`
+    DELETE FROM recommendation_precomputed_profile_call c WHERE c.ctid IN (
+      SELECT call.ctid FROM recommendation_precomputed_profile_call call
+      WHERE call.generation_id = ${candidate.id}
+      ORDER BY call.started_at, call.call_id
+      LIMIT ${PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE}
+    )
+  `)
+  const profilesDeleted = await tx.$executeRaw(Prisma.sql`
+    DELETE FROM recommendation_precomputed_content_profile p WHERE p.ctid IN (
+      SELECT profile.ctid FROM recommendation_precomputed_content_profile profile
+      WHERE profile.generation_id = ${candidate.id}
+        AND NOT EXISTS (
+          SELECT 1 FROM recommendation_precomputed_profile_call call
+          WHERE call.generation_id = profile.generation_id
+            AND call.cache_key = profile.cache_key
+        )
+      ORDER BY profile.cache_key
+      LIMIT ${PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE}
+    )
+  `)
   const executionAttemptsDeleted = await tx.$executeRaw(Prisma.sql`
     DELETE FROM recommendation_precomputed_execution_attempt a WHERE a.ctid IN (
       SELECT attempt.ctid FROM recommendation_precomputed_execution_attempt attempt
       WHERE attempt.generation_id = ${candidate.id}
         AND NOT EXISTS (
           SELECT 1 FROM recommendation_precomputed_model_call call
+          WHERE call.generation_id = attempt.generation_id
+            AND call.attempt_id = attempt.attempt_id
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM recommendation_precomputed_profile_call call
           WHERE call.generation_id = attempt.generation_id
             AND call.attempt_id = attempt.attempt_id
         )
@@ -284,6 +325,9 @@ export async function purgeExpiredPrecomputedGenerations(
         AND NOT EXISTS (SELECT 1 FROM recommendation_precomputed_build_choice choice
                         WHERE choice.generation_id = source.generation_id
                           AND choice.source_video_id = source.source_video_id)
+        AND NOT EXISTS (SELECT 1 FROM recommendation_precomputed_content_profile profile
+                        WHERE profile.generation_id = source.generation_id
+                          AND profile.video_id = source.source_video_id)
       ORDER BY source.source_video_id LIMIT ${SOURCE_PAGE_SIZE}
     )
   `)
@@ -298,6 +342,8 @@ export async function purgeExpiredPrecomputedGenerations(
       EXISTS (SELECT 1 FROM recommendation_precomputed_build_source WHERE generation_id = ${candidate.id}) OR
       EXISTS (SELECT 1 FROM recommendation_precomputed_build_choice WHERE generation_id = ${candidate.id}) OR
       EXISTS (SELECT 1 FROM recommendation_precomputed_model_call WHERE generation_id = ${candidate.id}) OR
+      EXISTS (SELECT 1 FROM recommendation_precomputed_content_profile WHERE generation_id = ${candidate.id}) OR
+      EXISTS (SELECT 1 FROM recommendation_precomputed_profile_call WHERE generation_id = ${candidate.id}) OR
       EXISTS (SELECT 1 FROM recommendation_precomputed_execution_attempt WHERE generation_id = ${candidate.id}) OR
       EXISTS (SELECT 1 FROM recommendation_precomputed_history_call WHERE generation_id = ${candidate.id})
       AS has_children
@@ -344,6 +390,8 @@ export async function purgeExpiredPrecomputedGenerations(
     buildSourcesDeleted,
     provisionalChoicesDeleted,
     modelCallsDeleted,
+    profileCallsDeleted,
+    profilesDeleted,
     executionAttemptsDeleted,
     historyCallsDeleted,
     provisionalChoicesPruned,
