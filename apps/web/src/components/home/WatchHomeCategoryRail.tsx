@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import type { Route } from "next"
+import type { ComponentProps } from "react"
 import { useTranslations } from "next-intl"
 import type { LucideIcon } from "lucide-react"
 import {
@@ -47,6 +48,7 @@ import {
   WATCH_PAGE_CONTENT_CLASSES,
 } from "@/lib/content-width"
 import { languageInventoryPath, tryAsLocaleSlug } from "@/lib/routes"
+import { useTouchGatedPrefetch } from "@/components/home/useTouchGatedPrefetch"
 import { cn } from "@/lib/utils"
 import { WATCH_HOME_CATEGORIES } from "@/lib/watch-home-categories"
 import {
@@ -117,6 +119,28 @@ const TILE_GRAIN_CLASSES =
 
 const DEFAULT_CATEGORY_IDS = WATCH_HOME_CATEGORIES.map(({ id }) => id)
 
+/**
+ * One latch per link, not one per rail: on touch a single tap's focus should
+ * prefetch the tile that was tapped, not all thirteen (W-025).
+ */
+function PrefetchGatedLink(
+  // The gate owns these three; accepting them would silently drop them.
+  props: Omit<
+    ComponentProps<typeof Link>,
+    "prefetch" | "onFocus" | "onPointerMove"
+  >,
+) {
+  const prefetchGate = useTouchGatedPrefetch()
+  return (
+    <Link
+      {...props}
+      prefetch={prefetchGate.prefetch}
+      onFocus={prefetchGate.onFocus}
+      onPointerMove={prefetchGate.onPointerMove}
+    />
+  )
+}
+
 export function WatchHomeCategoryRail({
   languageSlug,
   eyebrow,
@@ -172,7 +196,7 @@ export function WatchHomeCategoryRail({
           <p className="col-start-1 row-start-3 max-w-3xl pt-1 text-base leading-snug font-normal text-stone-100/80 xl:text-lg">
             {resolvedDescription}
           </p>
-          <Link
+          <PrefetchGatedLink
             href={languageInventoryPath(locale)}
             data-testid="watch-home-category-see-all"
             className="col-start-1 row-start-4 mt-4 inline-flex w-fit max-w-full shrink-0 items-center gap-2 self-start rounded-full bg-white px-5 py-3 text-center text-base sm:text-sm font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none md:col-start-2 md:row-start-1 md:row-end-3 md:mt-0 md:self-center md:px-6 md:py-3.5"
@@ -180,7 +204,7 @@ export function WatchHomeCategoryRail({
             <WatchLibraryIcon aria-hidden className="size-5 shrink-0" />
             <span>{resolvedCtaLabel}</span>
             <ChevronRight aria-hidden className="size-5 shrink-0" />
-          </Link>
+          </PrefetchGatedLink>
         </div>
       </div>
 
@@ -254,7 +278,7 @@ export function WatchHomeCategoryRail({
                       {cardChildren}
                     </a>
                   ) : (
-                    <Link
+                    <PrefetchGatedLink
                       // Authored destinations are typed by admins at runtime,
                       // so they cannot satisfy typedRoutes statically. The
                       // shape guarantee comes from `classifyWatchHomeTileHref`
@@ -268,7 +292,7 @@ export function WatchHomeCategoryRail({
                       style={{ backgroundImage: card.gradient }}
                     >
                       {cardChildren}
-                    </Link>
+                    </PrefetchGatedLink>
                   )}
                 </CarouselItem>
               )

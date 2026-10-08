@@ -31,6 +31,7 @@ import type { WatchHomeHeroSlide } from "@/lib/watch-home"
 import type { WatchHomeCarouselSequenceData } from "@/lib/watch-home-carousel-sequence"
 import { isWatchHomeIntroEligibleVideoLabel } from "@/lib/watch-home-carousel-sequence"
 import { cn } from "@/lib/utils"
+import { useTouchGatedPrefetch } from "@/components/home/useTouchGatedPrefetch"
 import {
   WATCH_HOME_TV_TIMELINE_FUTURE_COUNT,
   useWatchHomeTvCarousel,
@@ -217,12 +218,18 @@ function PrimaryAction({
   slide: WatchHomeTvCarouselSlide
 }) {
   const t = useTranslations("WatchHome")
+  // Re-targets on every hero advance, so on touch an ungated viewport
+  // prefetch fetches each slide's page in turn (W-025).
+  const prefetchGate = useTouchGatedPrefetch()
 
   if (!slide.href) return null
 
   return (
     <Link
       href={appendAutoplaySignal(slide.href, playbackTimeSeconds) as Route}
+      prefetch={prefetchGate.prefetch}
+      onFocus={prefetchGate.onFocus}
+      onPointerMove={prefetchGate.onPointerMove}
       // The watch page's primary hero action, so both surfaces show the same
       // pill; `min-w-0 max-w-full` keeps a long title from stretching it.
       className={cn(WATCH_HERO_PRIMARY_ACTION_CLASS, "min-w-0 max-w-full")}
