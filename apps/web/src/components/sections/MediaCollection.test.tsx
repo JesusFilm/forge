@@ -1041,7 +1041,7 @@ describe("MediaCollection VideoCard href", () => {
     ).not.toBeNull()
   })
 
-  it("keeps the watch languages index fallback for mixed or unlinked items", () => {
+  it("uses the language-scoped video inventory when no CTA is authored", () => {
     act(() => {
       root.render(
         <MediaCollection
@@ -1063,9 +1063,11 @@ describe("MediaCollection VideoCard href", () => {
       )
     })
 
-    expect(
-      container.querySelector<HTMLAnchorElement>("a[href='/watch/languages']"),
-    ).not.toBeNull()
+    const cta = container.querySelector<HTMLAnchorElement>(
+      "a[href='/watch/english.html/videos']",
+    )
+    expect(cta).not.toBeNull()
+    expect(cta?.textContent).toContain("See all videos in")
   })
 
   it("prefers an explicitly authored CTA destination", () => {
@@ -1096,6 +1098,85 @@ describe("MediaCollection VideoCard href", () => {
     expect(
       container.querySelector<HTMLAnchorElement>("a[href='/watch/featured']"),
     ).not.toBeNull()
+  })
+
+  it("routes Watch the Full Story to the first full-length item", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          languageSlug="english"
+          data={makeData({
+            itemsSource: "manual",
+            mediaCtaLink:
+              "/watch/creation-to-christ.html/1-the-most-high-god-and-his-creation/english.html",
+            mediaCtaLabel: "Watch the Full Story",
+            items: [
+              makeManualItem({
+                videoSlug: "creation-to-christ-story-full-video",
+                titleOverride: "Creation to Christ",
+              }),
+              makeManualItem({
+                videoId: "v-2",
+                videoSlug: "1-the-most-high-god-and-his-creation",
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    const cta = container.querySelector<HTMLAnchorElement>(
+      "[data-testid='media-collection-cta']",
+    )
+    expect(cta?.getAttribute("href")).toBe(
+      "/watch/creation-to-christ-story-full-video.html",
+    )
+    expect(cta?.textContent).toBe("Watch the Full Story")
+  })
+
+  it("skips the current page CTA and names the video inventory fallback", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          languageSlug="english"
+          currentPathname="/watch"
+          data={makeData({
+            itemsSource: "manual",
+            mediaCtaLink: "/",
+            mediaCtaLabel: "See all",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const cta = container.querySelector<HTMLAnchorElement>(
+      "[data-testid='media-collection-cta']",
+    )
+    expect(cta?.getAttribute("href")).toBe("/watch/english.html/videos")
+    expect(cta?.textContent).toContain("See all videos in")
+  })
+
+  it("labels a language-directory CTA as a language destination", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          languageSlug="english"
+          data={makeData({
+            itemsSource: "manual",
+            mediaCtaLink: "/watch/languages",
+            mediaCtaLabel: "Watch",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const cta = container.querySelector<HTMLAnchorElement>(
+      "[data-testid='media-collection-cta']",
+    )
+    expect(cta?.getAttribute("href")).toBe("/watch/languages")
+    expect(cta?.textContent).toContain("See all languages")
   })
 
   it.each([

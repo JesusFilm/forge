@@ -257,6 +257,17 @@ describe("experience editor block helpers", () => {
     })
   })
 
+  it("starts new media collections without a self-linking or unnamed CTA", () => {
+    const block = createTemplateBlock("mediaCollection", 5)
+
+    // `"/"` rendered as a link back to the Watch home, the page most rails
+    // live on (W-096 / FGE-232). An empty CTA lets the renderer infer the
+    // collection link and a label that names it.
+    expect(block).not.toHaveProperty("ctaLink")
+    expect(block).not.toHaveProperty("ctaLabel")
+    expect(BlockSchema.safeParse(block).success).toBe(true)
+  })
+
   it("creates an infinite collection feed as a valid dynamic media collection", () => {
     const block = createTemplateBlock("dynamicMediaCollection", 6)
 

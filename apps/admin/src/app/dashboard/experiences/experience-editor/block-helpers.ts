@@ -956,8 +956,6 @@ export function createTemplateBlock(
       title: "Media collection",
       subtitle: "Explore the collection",
       description: "Media collection description",
-      ctaLabel: "See all",
-      ctaLink: "/",
       showItemNumbers: false,
       footerText: "",
       items: [],

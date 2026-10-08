@@ -24,9 +24,9 @@ import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import {
   WATCH_BASE_PATH,
   asLocaleSlug,
+  languageInventoryPath,
   tryAsContentSlug,
   tryAsLocaleSlug,
-  videosIndexPath,
   watchVideoPath,
 } from "@/lib/routes"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
@@ -34,8 +34,8 @@ import { resolveMediaImageUrl } from "@/lib/media-image-url"
 import { hexToRgb, readableScrimRgb } from "@/lib/readable-scrim-color"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
-import { normalizeWatchRootHref } from "@/lib/watch-paths"
-import { resolveWatchShareUrlFromPathname } from "@/lib/share"
+import { resolveMediaCollectionCta } from "@/lib/media-collection-cta"
+import { isolateLanguageName, titleCaseSlug } from "@/lib/language-display"
 import {
   Carousel,
   CarouselContent,
@@ -68,6 +68,12 @@ type MediaCollectionProps = {
   data: FragmentOf<typeof mediaCollectionFragment>
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
+  /**
+   * Public pathname of the page rendering this rail. A CTA that would land
+   * back on it is dropped for the next destination (see
+   * `resolveMediaCollectionCta`). Unknown (`null`) skips that check.
+   */
+  currentPathname?: string | null
   initialSelectedSnap?: number
   onSelectedSnapChange?: (snap: number) => void
 }
@@ -167,9 +173,12 @@ export function MediaCollection({
   data,
   routeVideo,
   languageSlug,
+  currentPathname,
   initialSelectedSnap,
   onSelectedSnapChange,
 }: MediaCollectionProps) {
+  const t = useTranslations("WatchHome")
+  const languageT = useTranslations("LanguagePickerModal")
   const {
     id,
     title,
@@ -210,8 +219,17 @@ export function MediaCollection({
   const inferredCtaLink = inferredCollectionSlug
     ? `${WATCH_BASE_PATH}${watchVideoPath(inferredCollectionSlug, resolvedLanguageSlug)}`
     : null
-  const explicitCtaLink =
-    typeof ctaLink === "string" && ctaLink.trim().length > 0 ? ctaLink : null
+  const firstItemSlug = tryAsContentSlug(enrichedItems[0]?.videoSlug ?? "")
+  const cta = resolveMediaCollectionCta({
+    authoredHref: typeof ctaLink === "string" ? ctaLink : null,
+    authoredLabel: ctaLabel,
+    collectionHref: inferredCtaLink,
+    firstItemHref: firstItemSlug
+      ? `${WATCH_BASE_PATH}${watchVideoPath(firstItemSlug, resolvedLanguageSlug)}`
+      : null,
+    inventoryHref: `${WATCH_BASE_PATH}${languageInventoryPath(resolvedLanguageSlug)}`,
+    currentPathname,
+  })
 
   if (
     process.env.NODE_ENV === "development" &&
@@ -232,8 +250,24 @@ export function MediaCollection({
       title={title}
       subtitle={subtitle}
       description={description}
-      ctaLink={explicitCtaLink ?? inferredCtaLink}
-      ctaLabel={ctaLabel}
+      ctaLink={cta?.href ?? null}
+      ctaLabel={
+        cta
+          ? cta.label.kind === "authored"
+            ? cta.label.text
+            : cta.label.kind === "collection"
+              ? t("showVideo", {
+                  title: title?.trim() || t("mediaCollection"),
+                })
+              : cta.label.kind === "languageDirectory"
+                ? languageT("seeAllLanguages")
+                : languageT("seeAllVideosInLanguage", {
+                    language: isolateLanguageName(
+                      titleCaseSlug(resolvedLanguageSlug),
+                    ),
+                  })
+          : null
+      }
       footerText={footerText}
       variant={variant}
       thumbnailOrientation={thumbnailOrientation ?? null}
@@ -335,21 +369,11 @@ function WatchHomeMediaCollection({
   >([])
   const [carouselApi, setCarouselApi] = useState<MediaCollectionCarouselApi>()
   const selectedSnapRef = useRef(initialSelectedSnap ?? 0)
-  const normalizedCtaLink = normalizeWatchRootHref(ctaLink)
-  const standaloneCtaUrl = normalizedCtaLink?.startsWith(`${WATCH_BASE_PATH}/`)
-    ? resolveWatchShareUrlFromPathname({
-        origin: "https://www.jesusfilm.org",
-        pathname: normalizedCtaLink,
-      })
-    : null
-  const watchHref = standaloneCtaUrl
-    ? new URL(standaloneCtaUrl).pathname
-    : (normalizedCtaLink ?? `${WATCH_BASE_PATH}${videosIndexPath()}`)
   const tintStyle = tintOverlayStyle(isRail)
   const titleRowStart = categoryLabel ? "row-start-2" : "row-start-1"
-  const watchCta = (
+  const watchCta = ctaLink ? (
     <a
-      href={watchHref}
+      href={ctaLink}
       data-testid="media-collection-cta"
       className={cn(
         "inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm sm:text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
@@ -357,9 +381,9 @@ function WatchHomeMediaCollection({
       )}
     >
       <PlayIcon />
-      {ctaLabel ?? t("watch")}
+      {ctaLabel}
     </a>
-  )
+  ) : null
   const categoryEyebrow = categoryLabel ? (
     <p className="text-sm font-semibold tracking-eyebrow text-red-100/60 uppercase sm:text-xs xl:text-sm 2xl:text-base">
       {categoryLabel}

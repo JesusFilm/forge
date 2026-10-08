@@ -528,7 +528,7 @@ async function main(): Promise<void> {
         thumbnailOrientation: "vertical",
         title: "The Easter story is a key part of a bigger picture",
         ctaLink: "https://www.jesusfilm.org/watch?utm_source=jesusfilm-watch",
-        ctaLabel: "Watch",
+        ctaLabel: "Explore all videos",
         footerText:
           "Our mission is to introduce people to the Bible through films and videos that faithfully bring the Gospels to life. By visually telling the story of Jesus and God’s love for humanity, we make Scripture more accessible, engaging, and easy to understand.",
         items: [

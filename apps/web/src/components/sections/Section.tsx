@@ -75,6 +75,7 @@ type SectionProps = {
   data: FragmentOf<typeof sectionFragment>
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
+  currentPathname?: string | null
 }
 
 type SectionData = FragmentOf<typeof sectionFragment>
@@ -85,7 +86,12 @@ type AssetBackedSectionData = SectionData & {
   backgroundImageAsset?: { previewUrl?: string | null } | null
 }
 
-export function Section({ data, routeVideo, languageSlug }: SectionProps) {
+export function Section({
+  data,
+  routeVideo,
+  languageSlug,
+  currentPathname,
+}: SectionProps) {
   const { id, sectionKey, backgroundColor, backgroundOpacity, sectionContent } =
     data
   const backgroundImageUrl =
@@ -108,6 +114,7 @@ export function Section({ data, routeVideo, languageSlug }: SectionProps) {
         item={item as SectionContentItem}
         routeVideo={routeVideo}
         languageSlug={languageSlug}
+        currentPathname={currentPathname}
       />
     ) : null,
   )
@@ -201,10 +208,12 @@ function SectionContentRenderer({
   item,
   routeVideo,
   languageSlug,
+  currentPathname,
 }: {
   item: SectionContentItem
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
+  currentPathname?: string | null
 }) {
   if (!item || item.__typename === "Error") return null
   const typename = item.__typename as string
@@ -217,6 +226,7 @@ function SectionContentRenderer({
           data={item as unknown as FragmentOf<typeof containerFragment>}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          currentPathname={currentPathname}
         />
       )
     case "ComponentSectionsVideo":
@@ -246,6 +256,7 @@ function SectionContentRenderer({
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          currentPathname={currentPathname}
         />
       )
     case "ComponentSectionsQuizButton":
@@ -282,6 +293,7 @@ function SectionContentRenderer({
           data={item as unknown as FragmentOf<typeof containerFragment>}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          currentPathname={currentPathname}
         />
       )
     case "VideoBlock":
@@ -329,6 +341,7 @@ function SectionContentRenderer({
           data={item as unknown as FragmentOf<typeof mediaCollectionFragment>}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          currentPathname={currentPathname}
         />
       )
     case "NavigationCarouselBlock":

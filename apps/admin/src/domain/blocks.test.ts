@@ -463,6 +463,45 @@ describe("BlockSchema — all top-level types validate", () => {
     ).toBe(false)
   })
 
+  it.each([" WATCH ", "See all"])(
+    "rejects vague media collection CTA labels at every nesting level: %s",
+    (label) => {
+      const vague = {
+        t: "mediaCollection",
+        variant: "carousel",
+        ctaLabel: label,
+        ctaLink: "/watch/jesus.html",
+      }
+      const topLevel = BlockSchema.safeParse(vague)
+      expect(topLevel.success).toBe(false)
+      expect(topLevel.error?.issues.map((issue) => issue.path)).toContainEqual([
+        "ctaLabel",
+      ])
+      // Each wrapper accepts the same block once the label names a
+      // destination, so the rejection is the label rule, not the nesting.
+      const named = { ...vague, ctaLabel: "Watch the JESUS film" }
+      for (const wrapper of ["section", "container"] as const) {
+        expect(
+          BlockSchema.safeParse({ t: wrapper, content: [named] }).success,
+        ).toBe(true)
+        expect(
+          BlockSchema.safeParse({ t: wrapper, content: [vague] }).success,
+        ).toBe(false)
+      }
+    },
+  )
+
+  it("accepts a media collection CTA label that names its destination", () => {
+    expect(
+      BlockSchema.safeParse({
+        t: "mediaCollection",
+        variant: "carousel",
+        ctaLabel: "Watch the Full Story",
+        ctaLink: "/watch/creation-to-christ-story-full-video.html",
+      }).success,
+    ).toBe(true)
+  })
+
   it("accepts the dynamic database collection source for media collections", () => {
     const result = BlockSchema.safeParse({
       t: "mediaCollection",

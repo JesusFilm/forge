@@ -831,6 +831,7 @@ async function renderOneSegment(shape: {
             languageSlug={
               publicWatchAudioLanguageSlugForLocale(locale) ?? "english"
             }
+            currentPathname={`${WATCH_BASE_PATH}/${slug}.html`}
           />
         )
       })}
@@ -1296,6 +1297,7 @@ async function renderVideo(
             section={block}
             routeVideo={routeVideo}
             languageSlug={rawLocale}
+            currentPathname={route}
           />
         )
       })}
