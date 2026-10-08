@@ -7,9 +7,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (October 8, 2026)
 
 - **Total tickets:** 794
-- **Complete:** 595
+- **Complete:** 596
 - **Cancelled:** 39
-- **In progress:** 61
+- **In progress:** 60
 - **Not started:** 42
 - **Blocked:** 57
 - **Overdue and open:** 142
@@ -665,7 +665,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-604](platform/feat-604-mobile-ui-translation-run-and-device-checks.md)           | Mobile UI first translation run (U16) and open device checks                       | urim       | P1       | 2026-10-06 | 7    | 2026-10-12 | in-progress |
 | [feat-611](platform/feat-611-renovate-google-maven-lookup.md)                          | Resolve Android dependencies in Renovate                                           | tataihono  | P1       | 2026-10-06 | 1    | 2026-10-06 | complete    |
 | [feat-614](platform/feat-614-expo-patch-ci-recovery.md)                                | Align Expo patch versions to restore CI                                            | nisal      | P1       | 2026-10-07 | 1    | 2026-10-07 | complete    |
-| [feat-646](platform/feat-646-watch-language-directory-coverage-and-sitemap.md)         | Expose the public Watch language directory and inventory URLs                      | vlad       | P1       | 2026-10-08 | 2    | 2026-10-09 | in-progress |
+| [feat-646](platform/feat-646-watch-language-directory-coverage-and-sitemap.md)         | Expose the public Watch language directory and inventory URLs                      | vlad       | P1       | 2026-10-08 | 2    | 2026-10-09 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |

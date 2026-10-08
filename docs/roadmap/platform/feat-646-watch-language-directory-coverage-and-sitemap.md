@@ -3,7 +3,7 @@ id: "feat-646"
 title: "Expose the public Watch language directory and inventory URLs"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-08"
 duration: 2
 depends_on: []
