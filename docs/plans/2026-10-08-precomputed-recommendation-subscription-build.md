@@ -129,7 +129,11 @@ The GA import client/reader now checks destination intent against Admin's prepar
 identity and verifies unchanged origin bytes under the destination copy identity.
 It preserves the original qualification and exposes zero destination GA requests;
 Admin's schema-normalized qualification digest is an opaque receipt. The Admin
-import service/native proof and manual catalog command are still in progress.
+import and manual catalog command are integrated. Native testing also covers
+the required imported-history checkpoint and version-specific status/report
+parsing. The real GA capture is sealed, independently verified and restored
+into an isolated clone. A two-source, contiguous-rank pilot is configured against
+that clone; it remains unexecuted while the final connected runner checks finish.
 No real catalog inference has run through the subscription adapter.
 
 - No Compound Engineering skills or agents, directly or indirectly. Reuse the

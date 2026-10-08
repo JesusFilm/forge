@@ -149,6 +149,8 @@ async function pilotFixture(
   const actions: string[] = []
   const ingestInputs: unknown[] = []
   const edgeFinishes: unknown[] = []
+  const checkpoints = new Map<string, { revision: number; value: unknown }>()
+  const histories = new Map<string, unknown>()
   const profileCoverage = new Map<string, string>()
   const profileKeys = new Map<string, string>()
   const snapshot: HistoricalSnapshot = {
@@ -219,7 +221,10 @@ async function pilotFixture(
       const request = raw as {
         action: string
         generationId?: string
-        history?: unknown
+        sourceVideoId?: string
+        history?: Record<string, unknown>
+        checkpoint?: { historySummary?: unknown }
+        expectedRevision?: number
       }
       actions.push(request.action)
       switch (request.action) {
@@ -229,9 +234,56 @@ async function pilotFixture(
         case "complete":
           return { generationId: destination.generationId, state: "complete" }
         case "manifest":
-        case "source_history":
         case "attempt_close":
+        case "resume_attempt":
           return { generationId: destination.generationId }
+        case "checkpoint": {
+          const existing = checkpoints.get(request.sourceVideoId ?? "")
+          if (
+            !request.sourceVideoId ||
+            !request.checkpoint?.historySummary ||
+            request.expectedRevision !== (existing?.revision ?? 0)
+          )
+            throw new Error("checkpoint rejected")
+          const revision = (existing?.revision ?? 0) + 1
+          checkpoints.set(request.sourceVideoId, {
+            revision,
+            value: request.checkpoint,
+          })
+          return {
+            generationId: destination.generationId,
+            checkpointRevision: revision,
+            replay: false,
+          }
+        }
+        case "source_history": {
+          const summary = request.history && {
+            resultDigest: request.history.resultDigest,
+            rowCount: request.history.rowCount,
+            mappedRows: request.history.mappedRows,
+            unmappedRows: request.history.unmappedRows,
+            pageCount: request.history.pageCount,
+            queryExecutionCount: request.history.queryExecutionCount,
+            navigationCoverage: request.history.navigationCoverage,
+            captureMode: request.history.captureMode,
+            importBindingDigest: request.history.importBindingDigest,
+            artifactSha256: request.history.artifactSha256,
+            derivedSubsetDigest: request.history.derivedSubsetDigest,
+            pageCountKind: request.history.pageCountKind,
+          }
+          const current = checkpoints.get(request.sourceVideoId ?? "")
+          if (
+            !current ||
+            JSON.stringify(
+              (current.value as { historySummary: unknown }).historySummary,
+            ) !== JSON.stringify(summary)
+          )
+            throw new Error(
+              "Source history differs from durable page checkpoint",
+            )
+          histories.set(request.sourceVideoId!, request.history)
+          return { generationId: destination.generationId }
+        }
         case "capacity_probe":
           return {
             observedDbBytes: 100,
@@ -243,7 +295,12 @@ async function pilotFixture(
             generationId: destination.generationId,
             sourceState: "claimed",
             leaseToken: "22222222-2222-4222-8222-222222222222",
-            checkpointRevision: 0,
+            checkpointRevision:
+              checkpoints.get(request.sourceVideoId ?? "")?.revision ?? 0,
+            checkpoint:
+              checkpoints.get(request.sourceVideoId ?? "")?.value ?? null,
+            historicalProvenance:
+              histories.get(request.sourceVideoId ?? "") ?? null,
           }
         case "heartbeat":
           return { sourceState: "claimed" }
@@ -253,7 +310,7 @@ async function pilotFixture(
             usage: {
               attempts: [
                 {
-                  attemptId,
+                  attemptId: input.attemptId,
                   profileCallCount: 0,
                   profileInputTokens: 0,
                   profileOutputTokens: 0,
@@ -350,7 +407,8 @@ async function pilotFixture(
           generationId: request.generationId,
           sourceVideoId: request.sourceVideoId,
           sourceState: "claimed",
-          checkpointRevision: 0,
+          checkpointRevision:
+            checkpoints.get(request.sourceVideoId)?.revision ?? 0,
           sourceCandidateCount: null,
           sourceCandidateDigest: null,
           calls: [],
@@ -385,8 +443,8 @@ async function pilotFixture(
             {
               sourceVideoId: "source-one",
               applicationState: "applied_empty",
-              appliedRevision: 1,
-              checkpointRevision: 1,
+              appliedRevision: 2,
+              checkpointRevision: 2,
             },
           ],
         }
@@ -398,7 +456,7 @@ async function pilotFixture(
           sourceVideoId: request.sourceVideoId,
           sourceState: "complete_empty",
           acceptedCount: 0,
-          checkpointRevision: 1,
+          checkpointRevision: 2,
           replay: false,
         }
       },
@@ -621,6 +679,22 @@ describe("manual subscription catalog preflight", () => {
     expect(fixture.actions.indexOf("import_copy_bind")).toBeLessThan(
       fixture.actions.indexOf("model_admission"),
     )
+    expect(fixture.actions.indexOf("checkpoint")).toBeLessThan(
+      fixture.actions.indexOf("source_history"),
+    )
+    expect(fixture.ingestInputs).toContainEqual(
+      expect.objectContaining({
+        action: "checkpoint",
+        attemptId: fixture.input.attemptId,
+        expectedRevision: 0,
+        checkpoint: expect.objectContaining({
+          stage: "subscription_imported_history_ready",
+          historySummary: expect.objectContaining({
+            captureMode: "imported_capture_derived_v1",
+          }),
+        }),
+      }),
+    )
     expect(fixture.actions.indexOf("edge_start")).toBeLessThan(
       fixture.actions.indexOf("model_dispatch"),
     )
@@ -647,6 +721,121 @@ describe("manual subscription catalog preflight", () => {
     expect(fixture.actions).not.toContain("profile_register")
     expect(fixture.actions).not.toContain("edge_start")
     expect(fixture.actions).not.toContain("model_admission")
+  })
+
+  it("reuses matching imported history on resume without rewriting its checkpoint", async () => {
+    const fixture = await pilotFixture()
+    const first = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(first.reason).toBe("pilot_boundary")
+    const initialCheckpointCount = fixture.actions.filter(
+      (action) => action === "checkpoint",
+    ).length
+    const initialHistoryCount = fixture.actions.filter(
+      (action) => action === "source_history",
+    ).length
+    fixture.input.invocation = "resume"
+    fixture.input.attemptId = "44444444-4444-4444-8444-444444444444"
+    const originalStatus = fixture.ports.edgePersistence.status
+    fixture.ports.edgePersistence.status = async (input) => ({
+      ...(await originalStatus(input)),
+      calls: [
+        {
+          callId: "33333333-3333-4333-8333-333333333333",
+          attemptId: fixture.input.attemptId,
+          status: "pending",
+          applicationState: "pending",
+          pageIndex: 0,
+          candidatePageDigest: "0".repeat(64),
+          candidates: [],
+          appliedRevision: null,
+          startedAt: new Date().toISOString(),
+          finishedAt: null,
+          memberSourceVideoIds: ["source-one"],
+        },
+      ],
+    })
+    const resumed = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(resumed.reason).toBe("usage_uncertain")
+    expect(
+      fixture.actions.filter((action) => action === "checkpoint"),
+    ).toHaveLength(initialCheckpointCount)
+    expect(
+      fixture.actions.filter((action) => action === "source_history"),
+    ).toHaveLength(initialHistoryCount)
+  })
+
+  it("accepts Admin's minimal already-complete claim without reopening source work", async () => {
+    const fixture = await pilotFixture()
+    const ingest = fixture.ports.ingest
+    fixture.ports.ingest = async (raw) => {
+      if ((raw as { action?: string }).action === "claim")
+        return {
+          generationId: fixture.input.generationId,
+          sourceState: "complete_edges",
+          leaseToken: null,
+          replay: true,
+        }
+      return ingest(raw)
+    }
+    const result = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(result).toMatchObject({
+      state: "stopped",
+      reason: "pilot_boundary",
+      completedSourceCount: 1,
+    })
+    expect(fixture.actions).not.toContain("checkpoint")
+    expect(fixture.actions).not.toContain("model_admission")
+  })
+
+  it("refuses a changed imported history checkpoint on resume", async () => {
+    const fixture = await pilotFixture()
+    await runManualSubscriptionCatalog(fixture.input, fixture.ports)
+    const checkpointCount = fixture.actions.filter(
+      (action) => action === "checkpoint",
+    ).length
+    const historyCount = fixture.actions.filter(
+      (action) => action === "source_history",
+    ).length
+    fixture.input.invocation = "resume"
+    fixture.input.attemptId = "55555555-5555-4555-8555-555555555555"
+    const ingest = fixture.ports.ingest
+    fixture.ports.ingest = async (raw) => {
+      const reply = await ingest(raw)
+      if ((raw as { action?: string }).action !== "claim") return reply
+      const claimed = reply as {
+        checkpoint: { historySummary: { resultDigest: string } }
+      }
+      return {
+        ...claimed,
+        checkpoint: {
+          ...claimed.checkpoint,
+          historySummary: {
+            ...claimed.checkpoint.historySummary,
+            resultDigest: "0".repeat(64),
+          },
+        },
+      }
+    }
+    const result = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(result.reason).toBe("source_failed")
+    expect(
+      fixture.actions.filter((action) => action === "checkpoint"),
+    ).toHaveLength(checkpointCount)
+    expect(
+      fixture.actions.filter((action) => action === "source_history"),
+    ).toHaveLength(historyCount)
   })
 
   it("rejects a stale local account attestation before destination mutation", async () => {

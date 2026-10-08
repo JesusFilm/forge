@@ -24,6 +24,7 @@ import { verifyBoundGaCapture } from "./ga-capture-transport"
 import { submitProfileAction } from "./profile-ledger"
 import { submitEdgeAction } from "./edge-ledger"
 import {
+  importedGaCaptureQualificationSchema,
   submitGaCaptureImport,
   verifiedImportedGaCapture,
   type GaImportOptions,
@@ -196,6 +197,21 @@ const sourceHistory = z
   .strict()
 const sealedSourceHistory = sourceHistory.extend(capturedHistoryFields)
 const importedSourceHistory = sourceHistory.extend(importedHistoryFields)
+const importedHistoryCheckpoint = z
+  .object({
+    stage: z.literal("subscription_imported_history_ready"),
+    cursor: z.object({}).strict(),
+    historySummary: importedSourceHistory.omit({
+      evidenceKind: true,
+      sourceResource: true,
+      queryId: true,
+      rangeStart: true,
+      rangeEnd: true,
+      qualificationDigest: true,
+      status: true,
+    }),
+  })
+  .strict()
 const sealedGaHistoricalQualification = sealedGaCaptureQualificationSchema
 const durableGaHistoricalQualification = z.union([
   gaHistoricalQualification,
@@ -1580,9 +1596,10 @@ export async function loadDurablePrecomputedBuildReport(
         : null,
     projectedKnownModelUsd: costEstimate,
     historicalQualification: generation.historicalQualification
-      ? durableGaHistoricalQualification.parse(
-          generation.historicalQualification,
-        )
+      ? (generation.protocolVersion === 4
+          ? importedGaCaptureQualificationSchema
+          : durableGaHistoricalQualification
+        ).parse(generation.historicalQualification)
       : null,
     historyTotals: {
       sourceCount: Number(historyTotals[0]?.source_count ?? 0n),
@@ -1614,9 +1631,12 @@ export async function loadDurablePrecomputedBuildReport(
           attemptNumber: source.attemptNumber,
           checkpointRevision: source.checkpointRevision,
           historicalProvenance: source.historicalProvenance
-            ? generation.protocolVersion === 3
-              ? sealedSourceHistory.parse(source.historicalProvenance)
-              : sourceHistory.parse(source.historicalProvenance)
+            ? (generation.protocolVersion === 4
+                ? importedSourceHistory
+                : generation.protocolVersion === 3
+                  ? sealedSourceHistory
+                  : sourceHistory
+              ).parse(source.historicalProvenance)
             : null,
           failureCode: source.failureCode,
         }
@@ -1729,7 +1749,6 @@ async function mutate(
   if (
     generation.protocol_version === 4 &&
     ([
-      "checkpoint",
       "choice",
       "model_call_start",
       "model_call",
@@ -2272,6 +2291,38 @@ async function mutate(
       }
     }
     if (input.action === "checkpoint") {
+      if (generation.protocol_version === 4) {
+        const imported = importedHistoryCheckpoint.safeParse(input.checkpoint)
+        if (!imported.success)
+          conflict("Profile protocol only accepts imported history checkpoints")
+        const meta =
+          await tx.recommendationPrecomputedGeneration.findUniqueOrThrow({
+            where: { id: input.generationId },
+          })
+        const binding = await verifiedImportedGaCapture(tx, meta)
+        const summary = imported.data.historySummary
+        if (
+          !binding ||
+          summary.importBindingDigest !== binding.bindingDigest ||
+          summary.artifactSha256 !== binding.copy.artifactSha256
+        )
+          conflict("History checkpoint differs from verified GA import")
+        const existing =
+          await tx.recommendationPrecomputedBuildSource.findUniqueOrThrow({
+            where: {
+              generationId_sourceVideoId: {
+                generationId: input.generationId,
+                sourceVideoId: input.sourceVideoId,
+              },
+            },
+            select: { checkpoint: true },
+          })
+        if (
+          publicCheckpoint(existing.checkpoint) !== null &&
+          !sameJson(existing.checkpoint, input.checkpoint)
+        )
+          conflict("Imported history checkpoint is immutable")
+      }
       const result = await saveCheckpoint(tx, input, row)
       return { generationId: input.generationId, ...result }
     }

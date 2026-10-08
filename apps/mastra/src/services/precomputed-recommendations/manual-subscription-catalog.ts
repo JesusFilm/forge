@@ -284,6 +284,12 @@ const claimReply = scopeReply.extend({
   leaseToken: z.uuid().nullable(),
   checkpointRevision: z.number().int().nonnegative().optional(),
   leaseExpiresAt: z.string().datetime().optional(),
+  checkpoint: z.unknown().nullable().optional(),
+  historicalProvenance: z.unknown().nullable().optional(),
+})
+const checkpointReply = scopeReply.extend({
+  checkpointRevision: z.number().int().positive(),
+  replay: z.boolean(),
 })
 const statusReply = scopeReply.extend({
   usage: z.object({
@@ -346,6 +352,20 @@ function classify(
   )
     return "import_unavailable"
   return "admin_unavailable"
+}
+
+function sameCanonicalJson(left: unknown, right: unknown): boolean {
+  const canonical = (value: unknown): unknown => {
+    if (Array.isArray(value)) return value.map(canonical)
+    if (value !== null && typeof value === "object")
+      return Object.fromEntries(
+        Object.entries(value)
+          .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+          .map(([key, item]) => [key, canonical(item)]),
+      )
+    return value
+  }
+  return JSON.stringify(canonical(left)) === JSON.stringify(canonical(right))
 }
 
 function combinedHistorical(
@@ -873,7 +893,9 @@ export async function runManualSubscriptionCatalog(
         if (
           claimed.sourceState !== "claimed" ||
           !claimed.leaseToken ||
-          claimed.checkpointRevision === undefined
+          claimed.checkpointRevision === undefined ||
+          claimed.checkpoint === undefined ||
+          claimed.historicalProvenance === undefined
         )
           throw new ManualSubscriptionCatalogError("admin_unavailable")
         activeLeases.set(source.id, claimed.leaseToken)
@@ -898,14 +920,70 @@ export async function runManualSubscriptionCatalog(
           pageCountKind: "virtual_validation",
           status: "complete",
         }
-        await send(scopeReply, {
-          action: "source_history",
-          ...scope,
-          attemptId: input.attemptId,
-          sourceVideoId: source.id,
-          leaseToken: claimed.leaseToken,
-          history,
-        })
+        const historySummary = {
+          resultDigest: history.resultDigest,
+          rowCount: history.rowCount,
+          mappedRows: history.mappedRows,
+          unmappedRows: history.unmappedRows,
+          pageCount: history.pageCount,
+          queryExecutionCount: history.queryExecutionCount,
+          navigationCoverage: history.navigationCoverage,
+          captureMode: history.captureMode,
+          importBindingDigest: history.importBindingDigest,
+          artifactSha256: history.artifactSha256,
+          derivedSubsetDigest: history.derivedSubsetDigest,
+          pageCountKind: history.pageCountKind,
+        }
+        let checkpointRevision = claimed.checkpointRevision
+        if (claimed.checkpoint === null) {
+          if (checkpointRevision !== 0 || claimed.historicalProvenance !== null)
+            throw new ManualSubscriptionCatalogError("source_failed")
+          const checkpoint = await send(checkpointReply, {
+            action: "checkpoint",
+            ...scope,
+            attemptId: input.attemptId,
+            sourceVideoId: source.id,
+            leaseToken: claimed.leaseToken,
+            expectedRevision: checkpointRevision,
+            checkpointId: randomUUID(),
+            checkpoint: {
+              stage: "subscription_imported_history_ready",
+              cursor: {},
+              historySummary,
+            },
+          })
+          if (
+            checkpoint.generationId !== input.generationId ||
+            checkpoint.checkpointRevision !== checkpointRevision + 1
+          )
+            throw new ManualSubscriptionCatalogError("admin_unavailable")
+          checkpointRevision = checkpoint.checkpointRevision
+        } else {
+          const previous = z
+            .object({ historySummary: z.unknown() })
+            .safeParse(claimed.checkpoint)
+          if (
+            checkpointRevision < 1 ||
+            !previous.success ||
+            !sameCanonicalJson(previous.data.historySummary, historySummary)
+          )
+            throw new ManualSubscriptionCatalogError("source_failed")
+        }
+        if (claimed.historicalProvenance !== null) {
+          if (!sameCanonicalJson(claimed.historicalProvenance, history))
+            throw new ManualSubscriptionCatalogError("source_failed")
+        } else {
+          const savedHistory = await send(scopeReply, {
+            action: "source_history",
+            ...scope,
+            attemptId: input.attemptId,
+            sourceVideoId: source.id,
+            leaseToken: claimed.leaseToken,
+            history,
+          })
+          if (savedHistory.generationId !== input.generationId)
+            throw new ManualSubscriptionCatalogError("admin_unavailable")
+        }
         const targetsByVideoId = new Map<
           string,
           { video: Video; profile: ReadyEdgeProfile }
@@ -928,7 +1006,7 @@ export async function runManualSubscriptionCatalog(
           orderedCandidateIds,
           exclusiveEndRank: item.exclusiveEndRank,
           leaseToken: claimed.leaseToken,
-          checkpointRevision: claimed.checkpointRevision,
+          checkpointRevision,
           pageIndex: 0,
           startRank: 0,
           sourceProfile,

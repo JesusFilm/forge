@@ -6,6 +6,7 @@ import { WorkflowsPG } from "@mastra/pg"
 import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client, Pool } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
+import { z } from "zod"
 
 import { env } from "../../apps/admin/src/config/env"
 import { currentAdminMigrationSql } from "../../apps/admin/src/services/recommendations/current-schema.test-fixture"
@@ -49,6 +50,22 @@ import {
 // Repository-owned native seam; neither application imports the other.
 import { runPrecomputedCatalog } from "../../apps/mastra/src/services/precomputed-recommendations/catalog-generation"
 import type { GaCaptureTransport } from "../../apps/mastra/src/services/precomputed-recommendations/ga-watch-capture-transport"
+import { createGaCaptureImportClient } from "../../apps/mastra/src/services/precomputed-recommendations/ga-capture-import-client"
+import { loadImportedGaWatchHistory } from "../../apps/mastra/src/services/precomputed-recommendations/ga-capture-import-reader"
+import { createContentProfilePersistence } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-client"
+import { createEdgeBatchPersistence } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-client"
+import {
+  manualGenerationInputDigest,
+  runManualSubscriptionCatalog,
+} from "../../apps/mastra/src/services/precomputed-recommendations/manual-subscription-catalog"
+import { buildCandidateRetrieval } from "../../apps/mastra/src/services/precomputed-recommendations/candidate-retrieval"
+import { gaCaptureDigest } from "../../apps/mastra/src/services/precomputed-recommendations/ga-watch-capture-artifact"
+import {
+  gaWatchRouteMappingDigest,
+  gaWatchCaptureQuerySpec,
+  routePatterns,
+} from "../../apps/mastra/src/services/precomputed-recommendations/ga-watch-history"
+
 import { prunePrecomputedAbandonedRuntimeSnapshots } from "../../apps/mastra/src/mastra/precomputed-runtime-retention"
 import type { StructuredModel } from "../../apps/mastra/src/services/precomputed-recommendations/astra-provider"
 import type {
@@ -357,7 +374,16 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           prisma,
           raw,
           bearer,
-          { gaCaptureStore: store },
+          {
+            gaCaptureStore: store,
+            gaImport: {
+              store,
+              objectBudgetBytes: 10_000_000,
+              tempBudgetBytes: 10_000_000,
+              tempReserveBytes: 0,
+              availableTempBytes: async () => 10_000_000,
+            },
+          },
         )
         if (
           loseModelResponse &&
@@ -494,6 +520,459 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         expect(
           await loadPrecomputedRecommendationComparison(prisma, {
             generationId,
+            sourceVideoId: sourceId,
+            audioLanguageSlug: "english",
+            reviewer,
+          }),
+        ).toMatchObject({ state: "ready", allAcceptedCount: 1 })
+        // A separately identified subscription generation reuses verified bytes,
+        // while its destination intent is derived independently from the catalog.
+        const importClient = createGaCaptureImportClient(ingest)
+        const originProof = await importClient.probeOrigin({
+          originGenerationId: generationId,
+        })
+        const catalogPage = await connected.catalog.catalog({ cutoff })
+        expect(catalogPage.nextCursor).toBeNull()
+        const videos = catalogPage.videos
+        const videoIds = videos.map((video) => video.id).sort()
+        const retrieval = await buildCandidateRetrieval(
+          connected.catalog,
+          videos,
+          cutoff,
+        )
+        const routes = videos.map((video) => {
+          if (!video.watchRouteIdentity)
+            throw new Error("Missing fixture Watch route")
+          return { ...video, watchRouteIdentity: video.watchRouteIdentity }
+        })
+        const routeMappingDigest = gaWatchRouteMappingDigest(routes)
+        const origin = originProof.origin
+        const destination = {
+          generationId: `catalog-imported-${suffix}`,
+          generationInputDigest: "8".repeat(64),
+          sourceSetDigest: createHash("sha256")
+            .update(JSON.stringify(videoIds))
+            .digest("hex"),
+          inputCutoff: cutoff,
+          selectedCorpusDigest: retrieval.selectedCorpusDigest,
+          // A deliberately distinct declared pool policy is allowed by import.
+          candidatePoolDigest: createHash("sha256")
+            .update("native-import-pool-policy")
+            .digest("hex"),
+          routeMappingDigest,
+          sourcePatternTableDigest: gaCaptureDigest({
+            version: "ga_watch_source_patterns_v1",
+            routeMappingDigest,
+            patterns: [...new Set(routes.flatMap(routePatterns))],
+          }),
+          querySpecDigest: gaCaptureDigest(
+            gaWatchCaptureQuerySpec({
+              propertyId: "320198532",
+              rangeStart: origin.usableStart,
+              rangeEnd: origin.usableEnd,
+            }),
+          ),
+          propertyId: "320198532" as const,
+          propertyTimeZone: "America/New_York" as const,
+          qualificationPolicy: "referrer_navigation_v1" as const,
+          requestedStart: origin.requestedStart,
+          requestedEnd: origin.requestedEnd,
+          usableStart: origin.usableStart,
+          usableEnd: origin.usableEnd,
+          requestedCoverageDigest: origin.requestedCoverageDigest,
+          usableCoverageDigest: origin.usableCoverageDigest,
+        }
+        expect(destination.candidatePoolDigest).not.toBe(
+          origin.candidatePoolDigest,
+        )
+        const attemptId = randomUUID()
+        const destinationBase = {
+          generationId: destination.generationId,
+          generationInputDigest: destination.generationInputDigest,
+        }
+        await ingest({
+          action: "start",
+          generationId: destination.generationId,
+          protocolVersion: 4,
+          modelId: "gpt-6-astra",
+          promptVersion: "subscription-import-native-v1",
+          inputDigest: destination.generationInputDigest,
+          sourceSetDigest: destination.sourceSetDigest,
+          inputCutoff: cutoff,
+          expectedSourceCount: videoIds.length,
+          inputMode: "historical_analytics",
+          inputSnapshotMode: "observed_fenced",
+          executionAttempt: {
+            attemptId,
+            invocation: "start",
+            accountRef: "native-import-account",
+            backend: "codex_chatgpt_subscription",
+            billingBasis: "included_subscription",
+            authMethod: "chatgpt",
+            modelId: "gpt-6-astra",
+            identityObservedAt: new Date().toISOString(),
+            allowanceObservedAt: new Date().toISOString(),
+            weeklyRemainingPercent: 50,
+            fiveHour: { kind: "limited", remainingPercent: 50 },
+          },
+        })
+        await ingest({
+          action: "manifest",
+          ...destinationBase,
+          attemptId,
+          sourceVideoIds: videoIds,
+        })
+        const capacityProbe = await submitDurablePrecomputedRecommendation(
+          prisma,
+          { action: "capacity_probe", ...destinationBase },
+          bearer,
+        )
+        await ingest({
+          action: "capacity",
+          ...destinationBase,
+          attemptId,
+          measurement: {
+            measuredAt: new Date().toISOString(),
+            clusterSystemId: capacityProbe.clusterSystemId,
+            observedDbBytes: capacityProbe.observedDbBytes,
+            availableBytes: 20_000_000_000,
+            reserveBytes: 5_000_000_000,
+            projectedBytes: 1_000_000,
+            sampleSourceCount: videoIds.length,
+            sampleBytes: 100_000,
+            source: "operator_verified_pgdata_df",
+          },
+        })
+        expect(
+          await importClient.prepare({ destination, attemptId }),
+        ).toMatchObject({ state: "prepared" })
+        expect(
+          await importClient.copyBind({
+            destination,
+            attemptId,
+            origin,
+            originProofDigest: originProof.originProofDigest,
+          }),
+        ).toMatchObject({ state: "bound", replay: false })
+        const imported = await loadImportedGaWatchHistory({
+          destination,
+          client: importClient,
+          transport: gaCaptureTransport,
+          directory,
+        })
+        try {
+          const snapshot = await imported.reader.readNavigationSnapshot!({
+            definition: imported.definition,
+            catalog: videos,
+            routeCatalog: videos,
+            sourceVideoId: sourceId,
+            selectedVideoIds: [targetId],
+            includeSourceEngagement: true,
+            cutoff,
+          })
+          expect(snapshot.provenance).toMatchObject({
+            captureMode: "imported_capture_derived_v1",
+            importBindingDigest: imported.importBinding.bindingDigest,
+            artifactSha256: origin.artifactSha256,
+            queryExecutionCount: 0,
+            pageCountKind: "virtual_validation",
+          })
+          expect(snapshot.queryUsage.size).toBe(0)
+          expect(snapshot.navigation?.(sourceId, targetId)).toBeGreaterThan(0)
+          expect(imported.importBinding.destination.generationId).toBe(
+            destination.generationId,
+          )
+          expect(imported.importBinding.origin.generationId).toBe(generationId)
+          const saved =
+            await prisma.recommendationPrecomputedGeneration.findUniqueOrThrow({
+              where: { id: destination.generationId },
+            })
+          expect(saved.historicalQualificationDigest).toBe(
+            imported.qualificationDigest,
+          )
+          expect(
+            await prisma.recommendationPrecomputedHistoryCall.count({
+              where: { generationId: destination.generationId },
+            }),
+          ).toBe(0)
+          expect(gaFetch).toHaveBeenCalledTimes(gaCallsAfterCapture)
+          const claimed = await submitDurablePrecomputedRecommendation(
+            prisma,
+            {
+              action: "claim",
+              ...destinationBase,
+              attemptId,
+              sourceVideoId: sourceId,
+              claimId: randomUUID(),
+            },
+            bearer,
+          )
+          const provenance = snapshot.provenance
+          const historySummary = {
+            resultDigest: provenance.resultDigest,
+            rowCount: provenance.rowCount,
+            mappedRows: provenance.mappedRows,
+            unmappedRows: provenance.unmappedRows,
+            pageCount: provenance.pageCount,
+            queryExecutionCount: 0,
+            navigationCoverage: provenance.navigationCoverage,
+            captureMode: "imported_capture_derived_v1",
+            importBindingDigest: imported.importBinding.bindingDigest,
+            artifactSha256: origin.artifactSha256,
+            derivedSubsetDigest: provenance.derivedSubsetDigest,
+            pageCountKind: "virtual_validation",
+          }
+          const importedCheckpoint = {
+            action: "checkpoint",
+            ...destinationBase,
+            attemptId,
+            sourceVideoId: sourceId,
+            leaseToken: claimed.leaseToken,
+            expectedRevision: claimed.checkpointRevision,
+            checkpointId: randomUUID(),
+            checkpoint: {
+              stage: "subscription_imported_history_ready",
+              cursor: {},
+              historySummary,
+            },
+          }
+          await expect(
+            ingest({
+              ...importedCheckpoint,
+              checkpoint: {
+                ...importedCheckpoint.checkpoint,
+                candidateIds: [targetId],
+              },
+            }),
+          ).rejects.toThrow("only accepts imported history checkpoints")
+          await expect(
+            ingest({
+              ...importedCheckpoint,
+              checkpoint: {
+                ...importedCheckpoint.checkpoint,
+                historySummary: {
+                  ...historySummary,
+                  importBindingDigest: "0".repeat(64),
+                },
+              },
+            }),
+          ).rejects.toThrow("differs from verified GA import")
+          expect(await ingest(importedCheckpoint)).toMatchObject({
+            checkpointRevision: 1,
+            replay: false,
+          })
+          expect(await ingest(importedCheckpoint)).toMatchObject({
+            checkpointRevision: 1,
+            replay: true,
+          })
+          await expect(
+            ingest({
+              ...importedCheckpoint,
+              expectedRevision: 1,
+              checkpointId: randomUUID(),
+              checkpoint: {
+                ...importedCheckpoint.checkpoint,
+                historySummary: {
+                  ...historySummary,
+                  resultDigest: "0".repeat(64),
+                },
+              },
+            }),
+          ).rejects.toThrow("Imported history checkpoint is immutable")
+          await ingest({
+            action: "source_history",
+            ...destinationBase,
+            attemptId,
+            sourceVideoId: sourceId,
+            leaseToken: claimed.leaseToken,
+            history: {
+              ...historySummary,
+              evidenceKind: "referrer_navigation_v1",
+              sourceResource: "properties/320198532",
+              queryId: imported.definition.queryId,
+              rangeStart: imported.definition.rangeStart,
+              rangeEnd: imported.definition.rangeEnd,
+              qualificationDigest: imported.qualificationDigest,
+              status: "complete",
+            },
+          })
+          expect(
+            await ingest({
+              action: "status",
+              ...destinationBase,
+              sourceVideoId: sourceId,
+            }),
+          ).toMatchObject({
+            source: {
+              historicalProvenance: {
+                captureMode: "imported_capture_derived_v1",
+                importBindingDigest: imported.importBinding.bindingDigest,
+                queryExecutionCount: 0,
+              },
+            },
+          })
+          expect(
+            await loadDurablePrecomputedBuildReport(prisma, {
+              generationId: destination.generationId,
+              sourceVideoId: sourceId,
+              reviewer,
+            }),
+          ).toMatchObject({
+            source: {
+              historicalProvenance: {
+                qualificationDigest: imported.qualificationDigest,
+              },
+            },
+          })
+          await expect(
+            ingest({ action: "complete", ...destinationBase, attemptId }),
+          ).rejects.toThrow()
+        } finally {
+          await imported.dispose()
+        }
+        // Run the operator orchestration itself through native Admin contracts.
+        // Only inference/allowance are controlled; storage and import are real.
+        const manualDestination = {
+          ...destination,
+          generationId: `catalog-manual-${suffix}`,
+          candidatePoolDigest: retrieval.candidatePoolDigest,
+          generationInputDigest: manualGenerationInputDigest({
+            inputCutoff: cutoff,
+            videos,
+            selectedCorpusDigest: retrieval.selectedCorpusDigest,
+            candidatePoolDigest: retrieval.candidatePoolDigest,
+          }),
+        }
+        let subscriptionCalls = 0
+        const manual = await runManualSubscriptionCatalog(
+          {
+            invocation: "start",
+            generationId: manualDestination.generationId,
+            generationInputDigest: manualDestination.generationInputDigest,
+            attemptId: randomUUID(),
+            inputCutoff: cutoff,
+            initiatingAccountRef: "native-manual-account",
+            reviewed: {
+              sourceVideoIds: videoIds,
+              sourceSetDigest: destination.sourceSetDigest,
+              selectedCorpusDigest: retrieval.selectedCorpusDigest,
+              candidatePoolDigest: retrieval.candidatePoolDigest,
+            },
+            destination: manualDestination,
+            originGenerationId: generationId,
+            work: { mode: "full" },
+          },
+          {
+            catalog: connected.catalog,
+            ingest,
+            importClient,
+            profilePersistence: createContentProfilePersistence(ingest),
+            edgePersistence: createEdgeBatchPersistence(ingest),
+            loadImport: (destination) =>
+              loadImportedGaWatchHistory({
+                destination,
+                client: importClient,
+                transport: gaCaptureTransport,
+                directory,
+              }),
+            async measureCapacity(probe) {
+              return {
+                ...probe,
+                measuredAt: new Date().toISOString(),
+                availableBytes: 20_000_000_000,
+                reserveBytes: 5_000_000_000,
+                projectedBytes: 1_000_000,
+                sampleSourceCount: 2,
+                sampleBytes: 100_000,
+                source: "operator_verified_pgdata_df",
+              }
+            },
+            async readAttestation() {
+              return {
+                identity: {
+                  observedAt: new Date().toISOString(),
+                  accountRef: "native-manual-account",
+                  authMethod: "chatgpt",
+                },
+                allowance: {
+                  observedAt: new Date().toISOString(),
+                  accountRef: "native-manual-account",
+                  billingBasis: "included_subscription",
+                  weeklyRemainingPercent: 70,
+                  fiveHour: { kind: "limited", remainingPercent: 70 },
+                },
+                modelId: "gpt-6-astra",
+                plan: "plus",
+                admission: "admitted",
+              }
+            },
+            model: {
+              async generateReserved(request, reserve) {
+                const decision = await reserve()
+                if (decision.kind === "skip")
+                  return { kind: "skipped", reservation: decision.reservation }
+                subscriptionCalls++
+                const prompt = z
+                  .object({
+                    members: z.array(
+                      z.object({
+                        source: z.object({
+                          metadata: z.object({ videoId: z.string() }),
+                        }),
+                        candidates: z.array(
+                          z.object({
+                            metadata: z.object({ videoId: z.string() }),
+                          }),
+                        ),
+                      }),
+                    ),
+                  })
+                  .parse(JSON.parse(request.prompt))
+                return {
+                  kind: "dispatched",
+                  reservation: decision.reservation,
+                  response: {
+                    output: request.schema.parse({
+                      results: prompt.members.map((member) => ({
+                        sourceVideoId: member.source.metadata.videoId,
+                        edges: member.candidates.map((candidate) => ({
+                          targetVideoId: candidate.metadata.videoId,
+                          kind: "direct",
+                          strength: 80,
+                          relationship: "hope_through_hardship",
+                          reasonEnglish:
+                            "This distinct story adds another perspective on finding hope.",
+                          addedViewingValueEnglish: null,
+                          evidence: {
+                            basis: "metadata",
+                            fields: ["title", "description"],
+                          },
+                        })),
+                      })),
+                    }),
+                    usage: { inputTokens: 200, outputTokens: 40 },
+                  },
+                }
+              },
+            },
+          },
+        )
+        expect(manual).toMatchObject({
+          state: "completed",
+          completedSourceCount: 2,
+          processedPageCount: 2,
+          knownUsage: {
+            profileCallCount: 0,
+            edgeBatchCallCount: 1,
+            edgeBatchInputTokens: 200,
+            edgeBatchOutputTokens: 40,
+          },
+        })
+        expect(subscriptionCalls).toBe(1)
+        expect(gaFetch).toHaveBeenCalledTimes(gaCallsAfterCapture)
+        expect(
+          await loadPrecomputedRecommendationComparison(prisma, {
+            generationId: manualDestination.generationId,
             sourceVideoId: sourceId,
             audioLanguageSlug: "english",
             reviewer,

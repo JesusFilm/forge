@@ -11,51 +11,71 @@ preserves exact source/integration commits, checks, browser artifacts, review
 findings, and recovery history. The [CTR operations note](../operations/precomputed-ctr-report.md)
 describes the private reporting contract and limits.
 
-## Current checkpoint — October 8, 16:45 NZDT
+## Current checkpoint — October 8, 17:42 NZDT
 
-Reusable complete-content profiles and shared edge batches are integrated through
-`de003f21d`, whose CI passed 59 checks with five skipped. Native proofs cover two
-sources sharing one physical receipt, exact Spanish passage storage, replay
-without inference, and finalization into existing recommendation payloads.
-That checkpoint passed 182 Admin precomputed tests and 34 connected tests without
-skips, plus the full Mastra suite (3,463 passed, 45 existing gated skips).
+The GA-only capture is sealed and independently verified. All 305 video-start
+pages (152,304 rows) and 327 referrer pages (163,352 rows) matched across the
+verification passes. Its 1,835 physical request receipts reconcile to 1,676
+successes, 159 failures and zero pending requests. The 16,674,551-byte artifact
+has SHA-256 `919ac8f73bc4a7e4b57677ca300acd480ff86e232a9c2723f7ab37e38ee9abd6`.
+No catalog model call or source claim occurred in this capture. The wrapper
+exited 143 after saving the sealed result; root separately verified closure,
+disabled its launch flags and preserved an observed-close receipt. This is not
+claimed as a normal wrapper exit.
 
-The verified GA import client and local reader are integrated as `c5db6bf72`.
-They compare independently prepared destination identity, retain the unchanged
-origin identity, verify copied bytes/header/blocks and expose navigation evidence
-with zero destination GA requests. All 22 focused/adjacent cases, typecheck and
-lint pass. The full Mastra suite passes 3,477 cases with 45 existing gated skips
-using two workers. One existing 107-page recovery case exceeded its five-second
-timeout under default parallelism; its isolated rerun and the lower-parallelism
-full suite pass without changed assertions or timeouts. Native Admin import
-integration is still pending migration 0145's worker handoff.
+An isolated PostgreSQL 18 clone was restored from the protected catalog archive
+and final sealed control snapshot. Before migrations it verified all 24 sealed
+control tables, the 1,031-source manifest and the complete request ledger. Only
+0142–0145 were then applied to the clone; the original capture schema is unchanged.
+The current Admin origin probe and artifact GET agree with the original bytes,
+and the catalog reader matches all 1,031 frozen rows. Protected restore-proof
+bundle manifest SHA-256 is
+`ae23b05d338d15f818b652ae032cf0b31731db3b31a15250d8f14a2e7d58a71b`.
 
-The subscription adapter correction is integrated as `baebca593` (worker
-`1fc9ab58a`). Fresh identity/allowance checks and local input/file preparation now
-precede the durable reservation; only a newly acknowledged pending reservation
-can dispatch inference. Unknown consumption cannot be cleared or retried by
-caller assertion. The unavoidable crash/lost-reply gap between reservation and
-external dispatch remains visible as pending. The worker passed 78 focused cases,
-typecheck/lint and 3,464 full-suite cases with 45 gated skips. Root's connected
-profile/shared-edge fixture passes after adapting controlled inference to this
-reservation-aware boundary; the combined adapter/executor/import checks pass 92
-cases and Mastra typecheck passes. These are synthetic proofs, not catalog inference.
+Admin's destination-owned GA import is integrated as `2f2d2013b`. The connected
+Mastra import client/reader copies unchanged origin bytes, verifies destination
+intent and preserves navigation provenance with zero destination GA requests.
+The integrated import passed 184 Admin cases and 34 connected cases without
+skips. Subsequent native tests exposed and fixed the manual runner's missing
+history checkpoint, Admin's v4 checkpoint admission and imported report parsing.
+The v4 checkpoint accepts only the exact imported-history shape under the active
+lease/attempt and verified binding; it cannot rewrite existing evidence or admit
+legacy writes. Full Admin typecheck passes with its configured 8 GiB heap.
 
-The manual subscription catalog command is being implemented in the existing
-GPT-6 Sol chat. The Admin destination-owned GA import is in native testing in the
-other existing chat. No additional implementation chats or Compound Engineering
-workflows are used. Subsequent local commits are not yet claimed CI-green.
+The manual subscription catalog command is integrated as `82205f030`, with the
+worker's checkpoint correction and root native orchestration proof verified.
+Root also fixed the checkpoint request's missing execution-attempt identity. It rechecks the frozen catalog, current operator/allowance and measured
+capacity; imports the sealed capture; prepares complete profiles; and judges
+contiguous candidate pages through shared durable receipts. Every start/resume
+remains manual. No paid API fallback or scheduled rebuild was introduced.
+The two existing GPT-6 Sol implementation chats supplied the work; no Compound
+Engineering workflow or additional implementation chat was used.
 
-GA-only capture attempt 6 remains unsealed. The latest check matched all 305
-video-start pages and 318 of 327 referrer pages; there is no terminal result or
-catalog model call. The latest observed account-wide meter had 56% weekly
-allowance remaining, leaving 31 percentage points above the 25% reserve shared
-with coding. This is not a full-build usage forecast.
+The final combined checks pass all 184 Admin tests, all 34 connected tests and
+3,501 Mastra tests (45 existing gated skips). Both application typechecks pass.
+The native manual command completes two source connections using one shared
+controlled model receipt, reports its 200/40 fixture tokens once, and makes zero
+new GA requests. This is contract evidence, not live Astra quality or usage.
 
-Public A/B remains off. Required work still includes the manual runner, sealed
-compatible GA import, representative subscription pilot, complete catalog and
-capacity evidence, live baseline/calibration, and agreed numeric policy. The
-accepted local preview does not authorize merge, deployment or public start.
+The clone-only two-source pilot configuration and its HTTP bridge have passed
+read-only checks, including bearer rejection, mutation blocking, artifact bytes,
+full catalog equality and actual PGDATA/temp headroom. The capacity projection
+uses an earlier two-source retained-storage sample and is not a bound on v4
+profiles, edges, WAL or production. No real subscription catalog inference has
+run yet. The stopped temporary read-only bridge can be explicitly restarted for
+the pilot; its private credentials remain local.
+
+Published checkpoint `ce5f25975` has 59 successful CI checks and five skips. An
+existing HNSW fixture returned zero candidates on the first run; the failed job
+rerun passed without code changes. Later local commits are not claimed CI-green.
+The first root Admin typecheck hit the default 4 GiB Node heap limit; its owned
+635 MB crash file was removed and the repository's configured check passed.
+Heavy validation remains serialized to limit memory pressure.
+
+Public A/B remains off. Required work still includes the representative subscription
+pilot, complete catalog and current capacity evidence, live baseline/calibration,
+and agreed numeric policy. The accepted local preview does not authorize merge,
+deployment or public start.
 
 ## Integration history
 
