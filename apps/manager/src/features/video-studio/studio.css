@@ -304,7 +304,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 0;
+  container-type: size;
 }
 .nle-canvas {
   position: relative;
@@ -337,37 +338,24 @@
   gap: 10px;
 }
 .nle-canvas-overlay {
-  pointer-events: none;
-  overflow: hidden;
-}
-.nle-canvas-item {
   pointer-events: auto;
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  border-radius: 0 !important;
+  overflow: hidden;
   touch-action: none;
+  cursor: move;
 }
-.nle-canvas-item[aria-pressed="true"] {
-  border: 2px solid var(--ds-panel) !important;
-}
-.nle-canvas-item span {
+.nle-canvas-selection {
   position: absolute;
-  left: 0;
-  bottom: 0;
-  max-width: 85%;
+  pointer-events: none;
+  outline: 2px solid var(--ds-panel);
+}
+.nle-canvas-selection span {
+  position: absolute;
+  bottom: 100%;
+  max-width: 100%;
   font-size: 11px;
   background: var(--ds-panel);
   color: var(--ds-ink);
   padding: 3px 5px;
-  opacity: 0;
-}
-.nle-canvas-item:hover span,
-.nle-canvas-item[aria-pressed="true"] span {
-  opacity: 1;
 }
 .nle-transport {
   display: flex;

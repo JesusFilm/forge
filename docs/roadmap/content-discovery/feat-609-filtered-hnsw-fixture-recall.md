@@ -3,7 +3,7 @@ id: "feat-609"
 title: "Diagnose intermittent filtered HNSW recommendation fixture recall"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-06"
 duration: 2
 depends_on: []
@@ -18,6 +18,8 @@ Post-merge [Forge CI run 37387086276, original job 112023214188](https://github.
 Bounded October 6 investigation on main `0cb08416c`: eight fresh-schema PostgreSQL 18.6 / pgvector 0.8.7 runs passed unchanged. Actual HNSW plans showed eight loops, ten returned rows per loop, and 1,197–1,199 rows removed per loop, with `Filter: ((embedding IS NOT NULL) AND (SubPlan 6))` attached to the index scan. This disproves a blanket filter-outside-index explanation for those passing executions, but not a distinct failed CI plan. Four later attempts failed during setup on local host `ENOSPC`, before ANN execution. The owned container/volume was removed; no speculative source changes remain.
 
 The failed CI diagnostic recorded `force_custom_plan`, `strict_order`, and max scan tuples 20,000. It lacked an actual failed plan, pgvector version, `ef_search`, `scan_mem_multiplier`, `work_mem`, and stop reason. Memory/tuple limits and index reachability remain hypotheses, not established causes. The successful retry and eight local passes do not close this ticket.
+
+October 7 follow-up on main `1daa80373`: an owned PostgreSQL 18.6 / pgvector 0.8.7 database on `/tmp` received the current Admin migrations. Six fresh-schema runs of the complete 16-case delivery file passed (15 executed, one expected opt-in fallback skip each); three targeted HNSW-only runs also passed. The preceding 19-file recommendation migration/service CI command passed 121 tests on that same database, followed without a database reset by another complete delivery-file pass. The HNSW case took 924–1,057 ms in the six initial complete-file runs. None reproduced the ANN-zero result, so these passes establish neither a root cause nor a runtime correction. A failure-only native diagnostic now records actual HNSW rows/loops/filter removals from a same-statement rerun, pgvector and scan settings, and a separate transaction-local 2x scan-memory comparison while preserving the first ANN result as the assertion input and each retrieval deadline. The diagnostic rerun may differ from the first result. Await a natural failure receipt before changing delivery behavior.
 
 ## Entry Points — Read These First
 

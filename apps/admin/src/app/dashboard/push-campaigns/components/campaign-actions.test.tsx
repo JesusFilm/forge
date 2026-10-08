@@ -4,9 +4,12 @@ import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
+import { adminMessages } from "@/i18n/messages"
 import type { PushTestSendOutcome } from "@/services/push/campaign.service"
 
-type ActionState = { status: "idle" }
+import type { PushActionState } from "./action-state"
+
+type ActionState = PushActionState
 type Action = (
   previous: ActionState,
   formData: FormData,
@@ -15,14 +18,23 @@ type Action = (
 const idle: ActionState = { status: "idle" }
 const sendNowAction = vi.fn<Action>(async () => idle)
 const cancelCampaignAction = vi.fn<Action>(async () => idle)
+const deleteCampaignAction = vi.fn<Action>(async () => idle)
+const sendTestAction = vi.fn<Action>(async () => idle)
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+}))
 
 vi.mock("../actions", () => ({
-  sendTestAction: vi.fn<Action>(async () => idle),
+  sendTestAction: (previous: ActionState, formData: FormData) =>
+    sendTestAction(previous, formData),
   scheduleCampaignAction: vi.fn<Action>(async () => idle),
   sendNowAction: (previous: ActionState, formData: FormData) =>
     sendNowAction(previous, formData),
   cancelCampaignAction: (previous: ActionState, formData: FormData) =>
     cancelCampaignAction(previous, formData),
+  deleteCampaignAction: (previous: ActionState, formData: FormData) =>
+    deleteCampaignAction(previous, formData),
 }))
 
 import { CampaignActions } from "./campaign-actions"
@@ -38,9 +50,13 @@ type Props = Parameters<typeof CampaignActions>[0]
 function props(overrides: Partial<Props> = {}): Props {
   return {
     campaignId: "c1",
+    contentVersion: 4,
+    lastTestContentVersion: null,
+    messages: adminMessages.en.pages.pushCampaigns.review,
     tested: true,
     frozen: false,
     cancellable: false,
+    deletable: true,
     campaignsEnabled: true,
     audience: 1234,
     unreachable: 7,
@@ -77,6 +93,10 @@ function render(next: Props) {
 beforeEach(() => {
   sendNowAction.mockClear()
   cancelCampaignAction.mockClear()
+  deleteCampaignAction.mockReset()
+  deleteCampaignAction.mockResolvedValue(idle)
+  sendTestAction.mockReset()
+  sendTestAction.mockResolvedValue(idle)
   container = document.createElement("div")
   document.body.append(container)
   act(() => {
@@ -159,6 +179,75 @@ describe("CampaignActions gating", () => {
 })
 
 describe("CampaignActions test-send outcome", () => {
+  it("posts the version the page loaded with the test send (KTD5)", () => {
+    render(props({ contentVersion: 7 }))
+    const field = container
+      .querySelector('[data-testid="push-send-test"]')
+      ?.closest("form")
+      ?.querySelector<HTMLInputElement>(
+        'input[type="hidden"][name="contentVersion"]',
+      )
+    expect(field?.value).toBe("7")
+  })
+
+  it("says the test results are for an earlier version when the copy changed after the test (R35)", () => {
+    render(
+      props({
+        contentVersion: 5,
+        lastTestContentVersion: 4,
+        testOutcome: [outcome()],
+      }),
+    )
+    expect(
+      container.querySelector('[data-testid="push-test-results-stale"]')
+        ?.textContent,
+    ).toBe("These results are for an earlier version. Send a new test.")
+  })
+
+  it.each([
+    ["the test carried this version", 4],
+    ["no test has run", null],
+  ] as const)(
+    "shows no earlier-version notice when %s",
+    (_label, lastTestContentVersion) => {
+      render(
+        props({
+          contentVersion: 4,
+          lastTestContentVersion,
+          testOutcome: [outcome()],
+        }),
+      )
+      expect(
+        container.querySelector('[data-testid="push-test-results-stale"]'),
+      ).toBeNull()
+    },
+  )
+
+  it("names the newer change and offers the latest version when a test send is stale (R34)", async () => {
+    sendTestAction.mockResolvedValue({
+      status: "stale",
+      reason:
+        "This campaign changed after you loaded it. The last change was by Bob Editor at 2026-10-06 10:05 UTC. Load the latest version, then try again.",
+      contentVersion: 5,
+    })
+    render(props({ contentVersion: 4 }))
+
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('[data-testid="push-send-test"]')
+        ?.click()
+    })
+
+    expect(sendTestAction).toHaveBeenCalledTimes(1)
+    expect(
+      container.querySelector('[data-testid="push-action-feedback"]')
+        ?.textContent,
+    ).toContain("Bob Editor")
+    expect(
+      container.querySelector('[data-testid="push-load-latest"]'),
+    ).not.toBeNull()
+  })
+
   it("says no test send has run, which is not the same as a failed one", () => {
     render(props({ tested: false }))
     expect(
@@ -214,7 +303,7 @@ describe("CampaignActions send-now confirmation", () => {
       '[data-testid="push-send-now-confirm"]',
     )
     expect(modal?.textContent).toContain("1234 device(s)")
-    expect(modal?.textContent).toContain("SA, FR")
+    expect(modal?.textContent).toContain("Saudi Arabia (SA), France (FR)")
     expect(modal?.textContent).toContain("middle of their night")
     expect(modal?.textContent).toContain("7 device(s)")
     expect(
@@ -349,5 +438,92 @@ describe("CampaignActions send-now confirmation", () => {
     expect(
       container.querySelector('[data-testid="push-confirm-input"]'),
     ).toBeNull()
+  })
+})
+
+describe("CampaignActions delete", () => {
+  function openDelete() {
+    act(() =>
+      container
+        .querySelector<HTMLButtonElement>('[data-testid="push-delete-open"]')
+        ?.click(),
+    )
+  }
+
+  it.each([
+    ["a draft", { tested: false }],
+    ["a sent campaign", { frozen: true }],
+  ])("offers delete for %s", (_label, overrides) => {
+    render(props(overrides))
+    expect(
+      container.querySelector('[data-testid="push-delete-open"]'),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="push-delete-unavailable"]'),
+    ).toBeNull()
+  })
+
+  it("asks for a cancel first when the campaign can still send", () => {
+    render(props({ frozen: true, cancellable: true, deletable: false }))
+    expect(
+      container.querySelector('[data-testid="push-delete-open"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="push-delete-unavailable"]')
+        ?.textContent,
+    ).toContain("Cancel this campaign")
+  })
+
+  it("confirms first and says the report goes too", () => {
+    render(props())
+    openDelete()
+    const modal = container.querySelector('[data-testid="push-delete-confirm"]')
+    expect(modal?.textContent).toContain("report")
+    expect(modal?.textContent).toContain("cannot undo")
+    expect(deleteCampaignAction).not.toHaveBeenCalled()
+  })
+
+  it("sends nothing when the editor keeps the campaign", () => {
+    render(props())
+    openDelete()
+    act(() => {
+      ;[...container.querySelectorAll<HTMLButtonElement>("button")]
+        .find((button) => button.textContent === "Keep editing")
+        ?.click()
+    })
+    expect(
+      container.querySelector('[data-testid="push-delete-confirm"]'),
+    ).toBeNull()
+    expect(deleteCampaignAction).not.toHaveBeenCalled()
+  })
+
+  it("dispatches the delete with the campaign id", async () => {
+    render(props())
+    openDelete()
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('[data-testid="push-confirm-submit"]')
+        ?.click()
+    })
+    expect(deleteCampaignAction).toHaveBeenCalledTimes(1)
+    const form = deleteCampaignAction.mock.calls[0]?.[1] as FormData
+    expect(form.get("campaignId")).toBe("c1")
+  })
+
+  it("shows the service's refusal beside the button", async () => {
+    deleteCampaignAction.mockResolvedValue({
+      status: "error",
+      reason: "Delete it after 2026-10-09 12:00 UTC.",
+    })
+    render(props({ frozen: true }))
+    openDelete()
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('[data-testid="push-confirm-submit"]')
+        ?.click()
+    })
+    expect(container.textContent).toContain(
+      "Delete it after 2026-10-09 12:00 UTC.",
+    )
   })
 })

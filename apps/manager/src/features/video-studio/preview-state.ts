@@ -6,9 +6,9 @@ export function previewSignature(document: StudioDocument) {
     ),
   )
   return JSON.stringify({
-    components: document.components.filter((component) =>
-      activeVersions.has(component.versionId),
-    ),
+    components: document.components
+      .filter((component) => activeVersions.has(component.versionId))
+      .map(({ name: _name, category: _category, ...component }) => component),
     media: document.items
       .filter(
         (i) => i.kind === "video" || i.kind === "image" || i.kind === "audio",

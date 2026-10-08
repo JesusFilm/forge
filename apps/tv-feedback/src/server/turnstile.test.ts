@@ -10,6 +10,41 @@ afterEach(() => {
 })
 
 describe("required Turnstile", () => {
+  it("never bypasses signup verification in development", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("TURNSTILE_SECRET_KEY", undefined)
+    expect(await verifyTurnstile("", "tv_beta_signup", true)).toBe(false)
+  })
+
+  it("requires a signup token instead of a feedback token", async () => {
+    vi.stubEnv("TURNSTILE_SECRET_KEY", "configured-secret")
+    vi.stubEnv("TURNSTILE_HOSTNAMES", "signup.example.com")
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              success: true,
+              hostname: "signup.example.com",
+              action: "tv_feedback",
+            }),
+          ),
+        )
+        .mockResolvedValueOnce(
+          new Response(
+            JSON.stringify({
+              success: true,
+              hostname: "signup.example.com",
+              action: "tv_beta_signup",
+            }),
+          ),
+        ),
+    )
+    expect(await verifyTurnstile("token", "tv_beta_signup", true)).toBe(false)
+    expect(await verifyTurnstile("token", "tv_beta_signup", true)).toBe(true)
+  })
   it("rejects production without keys even with enforced device grants", async () => {
     vi.stubEnv("NODE_ENV", "production")
     vi.stubEnv("TURNSTILE_SECRET_KEY", undefined)

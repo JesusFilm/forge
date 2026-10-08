@@ -140,6 +140,10 @@ export const ADMIN_MCP_DEFAULT_SCOPES = [
   "experience:publish",
   "experience:create",
   "experience:generate",
+  // Separate scopes so an operator can remove the push tools for all users
+  // and keep the Experience tools. Neither one implies a test, schedule, or send.
+  "push:campaign:read",
+  "push:campaign:draft",
 ] satisfies AuthScopeKey[]
 
 export const ADMIN_APP_SEED: RegisteredAppSeed = {

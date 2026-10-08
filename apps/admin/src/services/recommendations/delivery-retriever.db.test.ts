@@ -201,8 +201,15 @@ async function installIndexedContractSkew(client: Client): Promise<void> {
 }
 
 type RetrievalPlan = {
+  "Node Type"?: string
   "Index Name"?: string
+  Filter?: string
   "Actual Loops"?: number
+  "Actual Rows"?: number
+  "Rows Removed by Filter"?: number
+  "Shared Hit Blocks"?: number
+  "Shared Read Blocks"?: number
+  "Actual Total Time"?: number
   Plans?: RetrievalPlan[]
 }
 
@@ -1790,22 +1797,52 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                         plan: string
                         iteration: string
                         maxScan: string
+                        efSearch: string
+                        scanMemMultiplier: string
+                        workMem: string
+                        pgvectorVersion: string
                       }>
                     >`
                       SELECT current_setting('plan_cache_mode') AS plan,
                         current_setting('hnsw.iterative_scan') AS iteration,
-                        current_setting('hnsw.max_scan_tuples') AS "maxScan"
+                        current_setting('hnsw.max_scan_tuples') AS "maxScan",
+                        current_setting('hnsw.ef_search') AS "efSearch",
+                        current_setting('hnsw.scan_mem_multiplier') AS "scanMemMultiplier",
+                        current_setting('work_mem') AS "workMem",
+                        (SELECT extversion FROM pg_extension WHERE extname = 'vector') AS "pgvectorVersion"
                     `,
                     explanation: await transaction.$queryRaw<
                       Array<{
-                        "QUERY PLAN": Array<{ Plan: RetrievalPlan }>
+                        "QUERY PLAN": Array<{
+                          Plan: RetrievalPlan
+                          "Execution Time": number
+                        }>
                       }>
-                    >(Prisma.sql`EXPLAIN (FORMAT JSON) ${query}`),
+                    >(
+                      Prisma.sql`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${query}`,
+                    ),
                   }),
                 )
                 const indexNames: string[] = []
+                const hnswScans: RetrievalPlan[] = []
                 const collectIndexNames = (plan: RetrievalPlan): void => {
                   if (plan["Index Name"]) indexNames.push(plan["Index Name"])
+                  if (
+                    plan["Index Name"] ===
+                    "video_transcript_chunk_embedding_hnsw_en"
+                  ) {
+                    hnswScans.push({
+                      "Node Type": plan["Node Type"],
+                      "Index Name": plan["Index Name"],
+                      Filter: plan.Filter,
+                      "Actual Loops": plan["Actual Loops"],
+                      "Actual Rows": plan["Actual Rows"],
+                      "Rows Removed by Filter": plan["Rows Removed by Filter"],
+                      "Shared Hit Blocks": plan["Shared Hit Blocks"],
+                      "Shared Read Blocks": plan["Shared Read Blocks"],
+                      "Actual Total Time": plan["Actual Total Time"],
+                    })
+                  }
                   plan.Plans?.forEach(collectIndexNames)
                 }
                 collectIndexNames(
@@ -1814,9 +1851,41 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                 diagnostic.parameterCount = parameters.length
                 diagnostic.settings = planner.settings[0]
                 diagnostic.indexNames = [...new Set(indexNames)].sort()
+                diagnostic.hnswScans = hnswScans
+                diagnostic.explainExecutionMs =
+                  planner.explanation[0]!["QUERY PLAN"][0]!["Execution Time"]
               }
             } catch (error) {
               diagnostic.probeError =
+                error instanceof Error
+                  ? { name: error.name, message: error.message.slice(0, 200) }
+                  : { name: "unknown" }
+            }
+            try {
+              let expandedScanDiagnostics:
+                | SemanticRetrievalDiagnostics
+                | undefined
+              const expandedScanCandidates =
+                await runRecommendationRetrievalQuery(
+                  instrumented,
+                  Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
+                  async (transaction) => {
+                    await transaction.$queryRaw`
+                      SELECT set_config('hnsw.scan_mem_multiplier', '2', true)
+                    `
+                    return getSemanticDeliveryCandidatePool(transaction, {
+                      ...deterministicInput,
+                      onDiagnostics: (diagnostics) => {
+                        expandedScanDiagnostics = diagnostics
+                      },
+                    })
+                  },
+                )
+              diagnostic.expandedScan = expandedScanDiagnostics
+              diagnostic.expandedScanCandidateCount =
+                expandedScanCandidates.length
+            } catch (error) {
+              diagnostic.expandedScanError =
                 error instanceof Error
                   ? { name: error.name, message: error.message.slice(0, 200) }
                   : { name: "unknown" }

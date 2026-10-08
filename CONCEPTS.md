@@ -26,7 +26,7 @@ It grants no access while unredeemed. A pending preapproval can display as expir
 
 A public OAuth client created at runtime by an MCP host so that each host can establish its own callback metadata and client identity without a pre-seeded credential.
 
-Registering a Dynamic MCP Client identifies the client but grants no application access; authorization still depends on an applicable Application Grant, and the companion MCP resource implementation independently enforces the issued token.
+Registering a Dynamic MCP Client identifies the client but grants no application access; authorization still depends on an applicable Application Grant, and the companion MCP resource implementation independently enforces the issued token. The scopes a Dynamic MCP Client may request are fixed when it registers and do not follow later changes to the defaults. A request that names a scope outside that set is refused as a whole, so the client cannot sign in at all; a scope the MCP resource begins to require must first be added to every existing Dynamic MCP Client.
 
 ## Relationships
 
@@ -184,10 +184,26 @@ content, translated content, and translation model that produced it. It covers
 the translated portion of a catalog, so Pending Translation Paths do not claim
 completed-translation provenance.
 
+### English-only Locale
+
+A supported UI locale whose Watch UI Catalog is a deliberate whole copy of the
+English source that never goes to a translator, distinct from a Pending
+Translation Path, which marks single unfinished messages.
+_Avoid:_ provisional locale
+
+An English-only Locale keeps its catalog so the client supports the same
+locales as Web, and it carries no Translation Provenance. On mobile it never
+becomes the UI Locale: a phone that prefers it falls through to its next
+language, then English, so English plural rules and left-to-right text apply.
+A locale joins the list when it cannot be translated reliably, and it leaves
+the list only through a new translation run.
+
 ### UI Locale
 
 The locale of the Watch UI Catalog that a client renders its interface copy
 in. It is always a shipped catalog, or English when no shipped catalog fits.
+On mobile, an English-only Locale does not fit, and neither does a bare
+language catalog that is known to use a different script from the phone's.
 It is distinct from the audio Language, even where one choice sets both: Web
 derives the UI Locale from the public language slug, so Arabic Najdi renders
 English interface copy. Admin content requests derive three language forms
@@ -1736,7 +1752,7 @@ The record also holds the video's title, because a Lapse Reminder names the vide
 
 ### Announcement Campaign
 
-A server-sent message the ministry writes once, per campaign, in one or more languages with English required, and sends to the mobile app's registered devices. It names one catalog destination (a video, a series, or an experience), an audience of chosen countries or everywhere with an optional language filter, and either a date with a local hour or an immediate send. Each device receives the copy for its resolved language: the app language, then the phone language, then English. A campaign is fixed once sending starts; it can be cancelled but not edited. The app never models a campaign: it receives a destination and an opaque campaign identifier.
+A server-sent message the ministry writes once, per campaign, in one or more languages with English required, and sends to the mobile app's registered devices. It names one catalog destination (a video, a series, or an experience), an audience of chosen countries or everywhere with an optional language filter, and either a date with a local hour or an immediate send. Each device receives the copy for its resolved language: the app language, then the phone language, then English. A campaign is fixed once sending starts; it can be cancelled but not edited. A campaign that is not scheduled or sending can be deleted once no run is in flight for it, and the delete removes its report too. The delete waits while any device's local day still depends on the campaign's deliveries, so it never reopens that day to a second announcement. The app never models a campaign: it receives a destination and an opaque campaign identifier.
 
 _Avoid:_ lapse reminder (a local notification the app schedules for itself), notification (too broad; say which kind).
 
@@ -1748,13 +1764,27 @@ The record a device creates with admin when notification permission is granted: 
 
 The delivery of one Announcement Campaign across time zones: each device receives it at the campaign's local hour in its own zone, so a single send spreads over about a day and the report is complete only after the last zone. The wave enforces one announcement per device per local day; when two campaigns collide, the earlier scheduled one wins. "Send now everywhere" is the explicit exception that ignores the local hour.
 
+### Campaign Revision
+
+The number that names one state of an Announcement Campaign's copy, destination, and audience; an AI agent and the dashboard both write against it, so a write made from an older revision is refused instead of overwriting newer work.
+
+_Avoid:_ content version (the same number under its storage name).
+
+Only a real change raises the revision; a save that changes nothing writes nothing. A real change also returns a tested campaign to draft. A test send records the revision it sent, and the campaign counts as tested only while it is still at that revision, so a change made during a test leaves it a draft.
+
+### AI Marker
+
+The campaign-level record that an AI agent created or changed an Announcement Campaign through the JFP Admin MCP. It names the person the agent acted for and the time of the most recent agent write. A later hand edit does not remove it, so it means "an agent changed this campaign", not "an agent wrote all of it". It says nothing about translation quality: the reviewer checks every language.
+
+_Avoid:_ AI-generated campaign (it suggests that the agent wrote all of it).
+
 ## Product feedback
 
 ### Feedback Submission
 
 A message a person sends from inside an app — the Watch feedback form on web, the feedback sheet on mobile — that the receiving server files as one Linear issue under a Feedback label, quoting the message verbatim.
 
-It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates it, and no Ticket Outbox stands between the person and Linear. The server files at once and reports any failure to the person, who keeps their draft. The message is Untrusted Evidence at the ticket boundary, so it is escaped before it is written into the issue. A submission sent from inside the mobile player also names the Video in view, but only a title that came from the resolved Video: the ticket is read where the reporter's context is absent, so a screen that has only a Watch Seed sends no video at all.
+It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates it, and no Ticket Outbox stands between the person and Linear. The server files at once and reports any failure to the person, who keeps their draft. The message is Untrusted Evidence at the ticket boundary, so it is escaped before it is written into the issue. A submission sent from inside the mobile player also names the Video in view, but only a title that came from the resolved Video: the ticket is read where the reporter's context is absent, so a screen that has only a Watch Seed sends no video at all. A mobile report of the translation kind also names the UI Locale that the app showed, and no other kind sends it; the kind shows only when that UI Locale is not English.
 
 ## Flagged ambiguities
 

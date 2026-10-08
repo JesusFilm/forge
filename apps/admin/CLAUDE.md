@@ -2770,8 +2770,8 @@ fields — `whatsNewFeatureVoteTallies`, `castWhatsNewFeatureVote`,
 ## Mobile in-app feedback
 
 `submitFeedback` is a public GraphQL mutation for the mobile app
-(`src/graphql/mutations/feedback.ts`). A person reports a problem, sends an
-idea, or writes something else from the app. Admin files the Linear issue
+(`src/graphql/mutations/feedback.ts`). A person reports a problem or a wrong
+translation, sends an idea, or writes something else from the app. Admin files the Linear issue
 through `src/services/feedback-linear.ts` and then answers. The plan is
 `docs/plans/2026-09-14-1033-feat-mobile-feedback-linear-plan.md`.
 
@@ -2790,6 +2790,11 @@ through `src/services/feedback-linear.ts` and then answers. The plan is
   `RATE_LIMITED`; the cap answers `DAILY_CAP`. A refused call does not spend
   the day. The address comes from `cf-connecting-ip` only, never from the
   spoofable `x-forwarded-for`.
+- **A `TRANSLATION` report carries `uiLocale`** (feat-604): the catalog tag of
+  the language that the app showed. The ticket shows it as "App language",
+  with its English name when `Intl` knows one, such as `Arabic (ar)`. The bound
+  is a BCP 47 shape of 35 characters at most, not a list of tags, so a new
+  catalog never refuses a report. The phone mirrors the bound.
 - **A log line never carries the message, the name, or the email.** Use the
   plain-string `[feedback] event=<name> key=value` format; Railway logsV2 drops
   JSON from a Next.js runtime handler.
@@ -2864,19 +2869,38 @@ JSON through GraphQL.
 ## Admin MCP (JFP Admin MCP — feat-276 + feat-320 + feat-405)
 
 OAuth-protected JSON-RPC MCP surface at `POST /mcp` for AI agents (Claude,
-Codex) operating on Experiences. Onboarding UI at `/dashboard/mcp`; protected-
+Codex) operating on Experiences and, since feat-613, on push campaign drafts.
+Onboarding UI at `/dashboard/mcp`; protected-
 resource metadata at `/.well-known/oauth-protected-resource` (its
 `scopes_supported` derives automatically from the tool registry).
 
-- **Registry:** `src/mcp/admin-mcp-tools.ts` (`ADMIN_MCP_TOOLS`, 15 tools).
+- **Registry:** `src/mcp/admin-mcp-tools.ts` (`ADMIN_MCP_TOOLS`, 24 tools: 17
+  Experience, video, and Bible tools and 7 `push.*` tools).
   New-tool registration is a three-edit change with no framework glue: registry
   entry → `callAdminMcpTool` dispatch branch in `src/app/mcp/route.ts` →
   service method. The route test's registry-dispatch parity loop fails if a
   declared tool has no branch.
-- **Services:** `src/services/experience-locale-mcp.service.ts` (the 12
+- **Annotations (KTD22):** every tool carries MCP annotations, and `tools/list`
+  returns them. A client uses them to decide if it asks before a call. The 10
+  Experience-side reads and the 5 push reads are read-only. The destructive
+  tools are `experience.locale.publish`, `experience.locale.discard`, and
+  `push.campaign.update`.
+- **Services:** `src/services/experience-locale-mcp.service.ts` (the 14
   locale-level tools) and `src/services/experience-mcp.service.ts` (the three
   experience-level tools). Writes delegate to `ExperienceService`; ABAC stays
-  in the service layer.
+  in the service layer. The push tools go through
+  `src/services/push-campaign-mcp.service.ts`, which reads with
+  `src/services/push/agent-reads.service.ts` and
+  `src/services/push/test-run-state.ts`, and writes with
+  `src/services/push/campaign-content.service.ts`.
+- **Push campaign tools (feat-613):** `push.language.search`,
+  `push.destination.search`, `push.audience.count`, `push.campaign.list`, and
+  `push.campaign.read` need scope `push:campaign:read`. `push.campaign.create`
+  and `push.campaign.update` need scope `push:campaign:draft`. Only an EDITOR
+  or ADMIN can call them; any other role gets HTTP 403 `forbidden_role`. The
+  agent saves a DRAFT only. A person tests, schedules, and sends in the
+  dashboard. Results and failures are envelopes in `structuredContent`, as
+  for `experience.generate`.
 - **Auth:** bearer JWT verified against apps/auth JWKS
   (`src/auth/admin-mcp-oauth.ts`); per-tool `requiredScopes` are enforced
   BEFORE dispatch. Insufficient scope is an HTTP **403** with
@@ -2927,10 +2951,55 @@ resource metadata at `/.well-known/oauth-protected-resource` (its
 seed:first-party-apps` (updates the `scope` table + stored client scopes),
   and **users must re-authenticate their MCP clients** to pick up the new
   consent scopes — existing grants do not gain them.
+
+  **Corrected 2026-10-07 (feat-613):** this bullet is not enough for MCP
+  clients that registered before the change. Auth fixes the scope list of a
+  dynamic client at registration, and refuses the whole sign-in with
+  `invalid_scope` when the client requests a scope outside that list. The
+  Experience tools then stop too, and a new sign-in does not help. Add a seed
+  step that adds the new scope to existing dynamic clients, as the push-scope
+  bullet below does. See
+  `docs/solutions/auth/new-mcp-scope-needs-stored-scope-migration-for-dynamic-clients.md`.
+
+- **Deploy order (push scopes, KTD3):** one pull request cannot set this order,
+  because apps/auth and apps/admin autodeploy from `main` in parallel.
+  1. Merge the apps/auth change. Its production start command runs
+     `seed:first-party-apps`, which migrates existing dynamic clients and
+     prints the updated-client count in the deploy log.
+  2. Read the stored scopes of dynamic (non-first-party) client rows in the
+     auth database, and confirm both push scopes. The first-party
+     `jfp_admin_mcp_codex` row is not evidence, because the seed rewrites it
+     on every run.
+  3. Merge the admin change.
+  4. If a re-run is necessary, redeploy auth. A client that registered on the
+     old auth instance during the auth rollout misses the scopes until the
+     next auth boot.
+  5. Sign in again with one Claude Code client and one Codex client that
+     registered before the deploy, and confirm both push scopes.
+  6. Announce the change. Until a user signs in again, a push call gets HTTP
+     403 `insufficient_scope`, and the Experience tools still work.
+- **Removal of the push scopes (reverse order):** if auth removes the scopes
+  first, auth refuses new client registrations and Codex refreshes while admin
+  still advertises the scopes.
+  1. Deploy an admin change that removes the seven `push.*` registry entries.
+     `scopes_supported` stops listing the push scopes, and push calls stop at
+     once.
+  2. Remove the scopes from `ADMIN_MCP_DEFAULT_SCOPES` and deploy auth. The
+     start command runs the seed.
+  3. Tell Codex users to sign in again. The seed rewrites the first-party
+     Codex row without the push scopes, and Better Auth then refuses a refresh
+     token that still carries them. Dynamic client rows keep the push scopes
+     in their stored list, and the resource's `allowedScopes` intersection
+     drops them from new tokens.
 - **Client-side workflow contract:**
   `plugins/jfp-admin/skills/forge-bulk-locale-factory/SKILL.md` (also the
   `resource_documentation` target). Fan-out (many topics/languages) stays in
-  the client agent loop; there are no bulk server operations.
+  the client agent loop; there are no bulk server operations. The push
+  campaign steps are in
+  `plugins/jfp-admin/skills/forge-push-campaign-drafts/SKILL.md`. Each skill
+  forbids the other side's write tools. A skill change bumps the plugin
+  version in both `plugin.json` files, because some clients cache a plugin by
+  version.
 
 ## Subtitle Quality Lab ledger and access operations
 
@@ -3171,6 +3240,105 @@ is `docs/roadmap/platform/feat-524-localized-push-campaigns.md`.
   `PUSH_DB_TEST=1 DATABASE_URL=postgresql://forge@localhost:5432/forge_admin_push_test pnpm --filter @forge/admin exec vitest run src/services/push`.
 - Load proof before a first campaign:
   `CI=1 pnpm --filter @forge/admin exec tsx src/scripts/push-campaign-dry-run.ts --registrations=100000 --groups=40`.
+
+### Agent drafts and the content version (feat-613)
+
+The JFP Admin MCP also writes campaign drafts (see "Admin MCP" above).
+Migration `0138_push_campaign_agent_drafts` adds `content_version`,
+`last_test_content_version`, `ai_last_actor_id`, and `ai_last_written_at` to
+`push_campaign`.
+
+- **One content version.** `contentVersion` is the one revision of a
+  campaign's copy, destination, and audience; the MCP calls it `revision`.
+  Every content writer goes through
+  `src/services/push/campaign-content.service.ts`: the MCP create, the MCP
+  update, and the dashboard save. A real change is one conditional update on
+  the id, an editable status, and the expected version. It raises the version
+  by one and moves a TESTED campaign to DRAFT. A save that changes nothing
+  writes nothing, so a TESTED campaign stays TESTED.
+- **Test pin.** A test send records the content version that it sends in
+  `lastTestContentVersion`. The test records TESTED only when the content
+  version still equals that value. A TEST run in flight at the deploy has no
+  pin and fails closed, so the editor sends a new test.
+- **Dashboard refusals.** The dashboard refuses a save or a test send from a
+  stale form, and the form keeps its input. The message names the newer
+  change.
+- **AI marker.** Only an MCP write sets `ai_last_actor_id` and
+  `ai_last_written_at`. Nothing clears them, so a later hand edit keeps the
+  marker. The marker says nothing about translation quality.
+- **Real-database suites** (`PUSH_DB_TEST=1`, run in CI):
+  `src/services/push/campaign-content.db.test.ts`,
+  `src/services/push/agent-reads.db.test.ts`, and
+  `src/app/mcp/route.push.db.test.ts`. The `src/services/push` command above
+  does not run the route suite, so add its path.
+- **Rollout precondition.** At the admin deploy, `PUSH_CAMPAIGNS_ENABLED` is
+  off or no TEST run is in flight. Deploy when no one edits campaigns: for a
+  short time, an old container can serve a save that does not raise the
+  version.
+
+### Campaign delete
+
+The campaign page deletes a campaign through `deletePushCampaign` in
+`src/services/push/campaign.service.ts`. The delete removes the campaign, its
+copy, its zones, and its delivery, open, and attribution rows. Registrations,
+test devices, and workflow ledger rows stay. The MCP has no delete tool. Any
+user with `write:push-campaigns` can delete, so the delete writes an audit row
+(see below) to keep a sent message traceable.
+
+- **Cancel first.** Admin refuses to delete a scheduled or sending campaign.
+- **No run in flight.** A test run blocks the delete until its receipt window
+  ends. A live ledger row that still reads queued or running blocks it only
+  while the runtime says the run is alive or cannot answer, because a run that
+  died can leave its ledger row running (the recovery sweep pauses its campaign).
+  A ledger row with no runtime run id counts as finished, as in the sweep.
+- **No claim in force (KTD3).** A live row that holds a claim blocks the delete
+  until its local day has ended in every zone (the local date plus 36 hours, in
+  UTC) and the 20-hour zone guard has passed. An earlier delete releases the
+  claim, so a second announcement could reach that phone on the same day.
+- **Bounded statements.** A sent, paused, or cancelled campaign loses its
+  delivery rows in pages of 5,000, ordered by id, before the transaction; no
+  transition leaves these statuses, so no run adds rows. A page that a
+  concurrent delete already took moves 0 rows, and the loop reads again.
+- **Guarded transaction.** The transaction deletes deliveries first (the same
+  lock order as the pages, so two deletes do not deadlock), then any stray opens
+  and attributions. It deletes the campaign only while its status and run id
+  equal the gate's values and its content version equals the snapshot's.
+  Otherwise the transaction rolls back. The pages do not roll back, so a delete
+  that stops partway leaves part of the report, and a second delete finishes
+  it. A delete that loses a race to another reads as not found, so the editor
+  lands on the list.
+- **Audit row.** In the same transaction, the delete writes one
+  `workflow_run` row with key `push-campaign-delete`: the actor, the status,
+  the destination, the audience, the content version, every copy row, the
+  zones with their planned audience counts, and `deliveriesDeleted`. That count
+  covers only the rows this call removed; after a stopped delete, the zones
+  still give the planned reach.
+- **No run for a deleted campaign.** `dispatchPushCampaignRun` refuses to
+  start a run when its link to the campaign moves no row, and closes the
+  ledger row as failed.
+- **Real-database suite:** `src/services/push/campaign-delete.db.test.ts`, in
+  CI's push database step.
+
+### Campaign countries
+
+A campaign country must be an ISO code that a phone can report.
+`src/services/push/country-code.ts` refuses an alias such as `UK` (phones store
+`GB`) and a group code such as `EU` with a message that names the code to use.
+`PushCountryCodeSchema` applies it on the dashboard and MCP paths, and the
+editor applies it before it adds a chip. `XK` (Kosovo) stays valid, because the
+edge reports it. The dashboard shows a name, such as "Mexico (MX)", only for a
+code that passes this check.
+
+- **Fail closed on stored codes.** Every content write checks the whole merged
+  audience (KTD7), so a campaign saved earlier with a refused code fails every
+  save and every MCP update until someone replaces the code. This is
+  deliberate: unlike a stale language slug (KTD8), a refused country reaches no
+  phone. Before a deploy, list the stored codes with
+  `SELECT DISTINCT unnest(countries) FROM push_campaign` and check each one
+  with `checkPushCountryCode`.
+- **ICU decides.** The check reads the runtime's ICU data. `country-code.test.ts`
+  pins all 249 ISO 3166-1 codes from tzdata, so a Node or ICU change that drops
+  one fails in CI.
 
 ### Flags and env
 

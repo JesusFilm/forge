@@ -410,6 +410,8 @@ enum FeedbackKind {
   BROKEN
   IDEA
   OTHER
+  """A translation in the app is wrong. The phone sends `uiLocale` with it."""
+  TRANSLATION
 }
 
 enum FeedbackPlatform {
@@ -434,6 +436,10 @@ input FeedbackSubmissionInput {
   platform: FeedbackPlatform!
   """Client-generated UUID. Carried into the ticket for support."""
   submissionId: String!
+  """
+  The catalog tag of the language that the app showed, such as `zh-Hans`. Sent with a TRANSLATION report.
+  """
+  uiLocale: String
   video: FeedbackVideoContextInput
 }
 

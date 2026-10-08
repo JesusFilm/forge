@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest"
 
 import {
   formatPushAudience,
+  formatPushCountry,
   formatPushDestination,
   formatPushSchedule,
   formatPushUtcDate,
   isPushCampaignCancellable,
+  isPushCampaignDeletable,
   isPushCampaignFrozen,
   isPushCampaignTested,
   normalizePushCountryInput,
@@ -107,7 +109,45 @@ describe("formatPushAudience", () => {
         countries: ["SA", "FR"],
         languageFilter: ["arabic"],
       }),
-    ).toBe("2 country/countries: SA, FR — languages: arabic")
+    ).toBe(
+      "2 country/countries: Saudi Arabia (SA), France (FR) — languages: arabic",
+    )
+  })
+})
+
+describe("formatPushCountry", () => {
+  it("puts the English name first and the code in brackets", () => {
+    expect(formatPushCountry("MX")).toBe("Mexico (MX)")
+    expect(formatPushCountry("SA")).toBe("Saudi Arabia (SA)")
+  })
+
+  it("keeps the bare code when Intl has no name or refuses the value", () => {
+    expect(formatPushCountry("QQ")).toBe("QQ")
+    expect(formatPushCountry("T1")).toBe("T1")
+    expect(formatPushCountry("")).toBe("")
+  })
+
+  // Intl names UK and EU, but no phone stores either code, so a name would make
+  // a target that reaches nobody look valid.
+  it("keeps the bare code for an alias or a group code", () => {
+    expect(formatPushCountry("UK")).toBe("UK")
+    expect(formatPushCountry("EU")).toBe("EU")
+  })
+})
+
+describe("isPushCampaignDeletable", () => {
+  it("offers delete for every status except the two a cancel is for", () => {
+    for (const status of [
+      "DRAFT",
+      "TESTED",
+      "SENT",
+      "PAUSED",
+      "CANCELLED",
+    ] as const) {
+      expect(isPushCampaignDeletable(status)).toBe(true)
+    }
+    expect(isPushCampaignDeletable("SCHEDULED")).toBe(false)
+    expect(isPushCampaignDeletable("SENDING")).toBe(false)
   })
 })
 
@@ -172,5 +212,21 @@ describe("normalizePushCountryInput", () => {
   it("refuses a repeat and names it", () => {
     const result = normalizePushCountryInput("fr", ["FR"])
     expect(result).toEqual({ error: "FR is already on the list." })
+  })
+
+  it("refuses an alias and names the ISO code to use", () => {
+    expect(normalizePushCountryInput("uk", [])).toEqual({
+      error: "UK is not an ISO country code. Use GB for United Kingdom.",
+    })
+  })
+
+  it("refuses a code that names no country", () => {
+    expect(normalizePushCountryInput("eu", [])).toEqual({
+      error: "EU is not a country code that a phone reports.",
+    })
+  })
+
+  it("accepts XK, which the edge reports for Kosovo", () => {
+    expect(normalizePushCountryInput("xk", [])).toEqual({ country: "XK" })
   })
 })

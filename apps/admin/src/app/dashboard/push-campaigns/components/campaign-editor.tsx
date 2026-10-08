@@ -1,13 +1,18 @@
 "use client"
 
 /**
- * R6 to R8 — the campaign's words, destination, and audience in one form.
- *
- * Every cap is checked here before submit, because the service refuses the
- * whole save for one long row and the editor should not have to guess which.
+ * R6 to R8 — one form. Each cap is checked before submit, because the service refuses
+ * the whole save for one long row. KTD15 — the fields are keyed on the content version,
+ * and the save state lives above the key, so its message survives the remount.
  */
 import { Plus, Trash2 } from "lucide-react"
-import { useActionState, useMemo, useState } from "react"
+import {
+  startTransition,
+  useActionState,
+  useMemo,
+  useState,
+  type FormEvent,
+} from "react"
 
 import { PrimaryButton, SecondaryButton, cx } from "@/components/admin-ui"
 import {
@@ -22,9 +27,17 @@ import { PUSH_ENGLISH_LANGUAGE_SLUG } from "@/services/push/language-resolution"
 
 import { saveCampaignAction } from "../actions"
 import { ActionFeedback } from "./action-feedback"
-import { PUSH_ACTION_IDLE } from "./action-state"
-import { normalizePushCountryInput, pushCopyFieldError } from "./campaign-view"
+import { PUSH_ACTION_IDLE, pushActionStateForPage } from "./action-state"
+import {
+  formatPushCountry,
+  normalizePushCountryInput,
+  pushCopyFieldError,
+} from "./campaign-view"
 import { DestinationPicker, type DestinationValue } from "./destination-picker"
+import {
+  LoadLatestVersion,
+  type PushReviewMessages,
+} from "./load-latest-version"
 
 type CopyRow = { languageSlug: string; title: string; body: string }
 
@@ -52,19 +65,61 @@ function FieldError({ message }: { message: string | null }) {
   )
 }
 
+type EditorProps = {
+  campaign: PushCampaignDetail
+  languageOptions: readonly PushLanguageOption[]
+  destinationTitle: string | null
+}
+
 export function CampaignEditor({
   campaign,
   languageOptions,
   destinationTitle,
-}: {
-  campaign: PushCampaignDetail
-  languageOptions: readonly PushLanguageOption[]
-  destinationTitle: string | null
-}) {
+  messages,
+}: EditorProps & { messages: PushReviewMessages }) {
   const [state, formAction, pending] = useActionState(
     saveCampaignAction,
     PUSH_ACTION_IDLE,
   )
+  const feedback = pushActionStateForPage(state, campaign.contentVersion)
+
+  // React resets a form after its own action, and the reset puts a controlled
+  // checkbox or radio back to its first state. This dispatch skips that reset.
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    const data = new FormData(event.currentTarget)
+    startTransition(() => formAction(data))
+  }
+
+  return (
+    <form action={formAction} onSubmit={submit} className="grid gap-6 p-4">
+      <input type="hidden" name="campaignId" value={campaign.id} />
+      <input
+        type="hidden"
+        name="contentVersion"
+        value={campaign.contentVersion}
+      />
+      <CampaignFields
+        key={campaign.contentVersion}
+        campaign={campaign}
+        languageOptions={languageOptions}
+        destinationTitle={destinationTitle}
+        pending={pending}
+      />
+      <ActionFeedback state={feedback} />
+      {feedback.status === "stale" ? (
+        <LoadLatestVersion messages={messages} />
+      ) : null}
+    </form>
+  )
+}
+
+function CampaignFields({
+  campaign,
+  languageOptions,
+  destinationTitle,
+  pending,
+}: EditorProps & { pending: boolean }) {
   const [copies, setCopies] = useState<CopyRow[]>(() => initialCopies(campaign))
   const [addLanguage, setAddLanguage] = useState("")
   const [destination, setDestination] = useState<DestinationValue | null>(
@@ -88,6 +143,12 @@ export function CampaignEditor({
   const labelBySlug = useMemo(
     () => new Map(languageOptions.map((option) => [option.slug, option.label])),
     [languageOptions],
+  )
+  // R37 — a stored filter slug the picker cannot list still posts back, so a
+  // hand save never widens the audience by dropping it.
+  const unlistedFilter = useMemo(
+    () => campaign.languageFilter.filter((slug) => !labelBySlug.has(slug)),
+    [campaign.languageFilter, labelBySlug],
   )
 
   const rowErrors = copies.map((row) => ({
@@ -143,9 +204,7 @@ export function CampaignEditor({
   }
 
   return (
-    <form action={formAction} className="grid gap-6 p-4">
-      <input type="hidden" name="campaignId" value={campaign.id} />
-
+    <>
       <fieldset className="grid gap-3">
         <legend className="text-[13px] font-semibold">
           Copy, one row per language
@@ -343,10 +402,10 @@ export function CampaignEditor({
                           current.filter((entry) => entry !== country),
                         )
                       }
-                      aria-label={`Remove ${country}`}
-                      className="mono-meta inline-flex h-7 cursor-pointer items-center gap-1 rounded-sm border border-[var(--color-hairline)] px-2 hover:border-[var(--color-danger-border)] hover:text-[var(--color-danger)]"
+                      aria-label={`Remove ${formatPushCountry(country)}`}
+                      className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-sm border border-[var(--color-hairline)] px-2 text-[12px] hover:border-[var(--color-danger-border)] hover:text-[var(--color-danger)]"
                     >
-                      {country}
+                      {formatPushCountry(country)}
                       <Trash2 className="h-3 w-3" strokeWidth={1.5} />
                     </button>
                   </li>
@@ -366,7 +425,10 @@ export function CampaignEditor({
             receives.
           </p>
           <div className="mt-2 grid max-h-48 gap-1 overflow-y-auto">
-            {languageOptions.map((option) => (
+            {[
+              ...unlistedFilter.map((slug) => ({ slug, label: slug })),
+              ...languageOptions,
+            ].map((option) => (
               <label
                 key={option.slug}
                 className="flex items-center gap-2 text-[12px]"
@@ -386,8 +448,6 @@ export function CampaignEditor({
         </details>
       </fieldset>
 
-      <ActionFeedback state={state} />
-
       <div className="flex flex-wrap items-center gap-3">
         <PrimaryButton type="submit" disabled={pending || blocked}>
           {pending ? "Saving..." : "Save campaign"}
@@ -401,6 +461,6 @@ export function CampaignEditor({
           </span>
         ) : null}
       </div>
-    </form>
+    </>
   )
 }

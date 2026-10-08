@@ -1,7 +1,7 @@
 ---
 title: Smoke a mobile write path on the simulator through a throwaway fake-admin proxy
 date: 2026-09-17
-last_updated: 2026-10-02
+last_updated: 2026-10-06
 category: developer-experience
 module: apps/mobile
 problem_type: developer_experience
@@ -10,8 +10,8 @@ severity: medium
 root_cause: incomplete_setup
 resolution_type: tooling_addition
 applies_when:
-  - "Verifying an apps/mobile (or apps/tv) write path against Admin GraphQL on a simulator when no development endpoint accepts the feature's bearer"
-  - "A local admin answers every bearer-gated mutation UNAUTHENTICATED because its keyring lacks the production fleet key"
+  - "Verifying an apps/mobile (or apps/tv) write path against Admin GraphQL on a simulator when no development endpoint accepts the feature's bearer, or a local admin answers every bearer-gated mutation UNAUTHENTICATED because its keyring lacks the production fleet key"
+  - "Proving on a device what an older or newer deployed Admin answers to a new enum value or input field (version skew), before the deploy order is settled"
   - "Production must not receive test writes (anonymous viewer identities, playback episodes, evidence receipts)"
   - "Verifying a retry or rate-limit ladder (HTTP 200 with extensions.http.statusCode 429 and Retry-After) on the real Hermes runtime rather than under jest fake timers"
   - "Choosing a port for a throwaway local proxy on a machine that also runs a real local admin dev server on :3003"
@@ -31,7 +31,7 @@ tags:
   - simulator
   - smoke-testing
   - local-dev
-  - verification
+  - version-skew
   - fault-injection
   - recommendations
   - feat-516
@@ -42,7 +42,7 @@ tags:
 ## Context
 
 `feat-516` added the mobile recommendations API client and playback
-attribution (PR #2329, open and unmerged as of 2026-09-17). Its write path
+attribution (PR #2329, merged 2026-09-17). Its write path
 sends four mutations per playback: bootstrap a viewer, issue a playback
 context, claim an episode, then record playback facts in batches. Admin
 requires the fleet bearer on every one of those operations
@@ -93,7 +93,9 @@ app. It does four things, and every one of them is load-bearing:
    `Authorization` header, so Home and the watch page load real content.
 
 An optional fifth behaviour injects one fault through an environment variable,
-so a retry ladder runs on the real runtime.
+so a retry ladder runs on the real runtime. An optional sixth mode answers one
+write through graphql-js and a real `schema.graphql`, so the device sees what a
+given admin version answers (see "Answer one write from a real schema").
 
 ### The proxy
 
@@ -545,6 +547,118 @@ SMOKE_PORT=3010 SMOKE_LOG=/tmp/feat-516-smoke.jsonl SMOKE_LIMIT_ISSUE_ONCE=3 \
 The same env-variable pattern extends to a one-shot `TIMEOUT` (delay the
 answer past the client deadline) or a one-shot `SERVICE_UNAVAILABLE`.
 
+### Answer one write from a real schema (version skew)
+
+The stubs in "The proxy" prove what the app sends. They cannot prove what
+admin's schema does with it. When the question is what an older admin answers
+to a new enum value or input field, answer the one write through graphql-js
+and a real `schema.graphql` instead. `feat-604` used this mode for
+`SubmitFeedback` (PRs #2583 and #2584). The
+[version-skew row](../best-practices/mocked-shape-vs-real-contract-discipline-20260506.md)
+of the META doc explains why no jest suite and no `validate()` check can hold
+that claim.
+
+Get the two schemas. The branch copy is the new admin. Production admin
+deploys from `main`, so `origin/main`'s copy is the deployed admin until the
+admin change merges and its deploy finishes.
+
+```bash
+git fetch --quiet origin main
+git show origin/main:apps/admin/schema.graphql > /tmp/schema-old.graphql
+cp apps/admin/schema.graphql /tmp/schema-new.graphql
+```
+
+Add one branch to the request handler, after the request log line and before
+the `BLOCKED` branch. Load `graphql` through admin's package, so the proxy
+runs admin's version of graphql-js.
+
+```js
+import { readFileSync } from "node:fs"
+import { createRequire } from "node:module"
+
+const require = createRequire(`${process.env.REPO}/apps/admin/package.json`)
+const { buildSchema, graphql } = require("graphql")
+const SDL = process.env.SMOKE_SDL
+const schema = buildSchema(readFileSync(SDL, "utf8"))
+
+// In the handler. graphql() parses, validates and executes, so variable
+// coercion runs. The resolver is a stub: what matters is whether it runs.
+if (body?.operationName === "SubmitFeedback") {
+  const result = await graphql({
+    schema,
+    source: body.query,
+    variableValues: body.variables,
+    rootValue: { submitFeedback: () => ({ accepted: true, refusal: null }) },
+  })
+  const input = body.variables?.input ?? {}
+  log({
+    op: body.operationName,
+    sdl: SDL.split("/").pop(),
+    kind: input.kind,
+    keys: Object.keys(input).sort(),
+    errors: result.errors?.map((e) => e.message) ?? null,
+    data: result.data ?? null,
+  })
+  res.end(JSON.stringify(result))
+  return
+}
+```
+
+Start the proxy with one schema. To change sides, stop it and start it again
+with the other file.
+
+```bash
+REPO=$(git rev-parse --show-toplevel) SMOKE_PORT=3010 \
+  SMOKE_SDL=/tmp/schema-old.graphql SMOKE_LOG=/tmp/skew-old.jsonl \
+  nohup node fake-admin-proxy.mjs > proxy.log 2>&1 < /dev/null &
+```
+
+Read the `SubmitFeedback` lines. Against the new schema, `errors` is null and
+`data` holds the stub's answer. Against the old schema, the `TRANSLATION`
+report got one error for each unknown name, `data` was null, and the sheet
+showed its one failure message:
+
+```text
+Variable "$input" got invalid value "TRANSLATION" at "input.kind"; Value "TRANSLATION" does not exist in "FeedbackKind" enum.
+Variable "$input" got invalid value { submissionId: ..., kind: "TRANSLATION", ... }; Field "uiLocale" is not defined by type "FeedbackSubmissionInput".
+```
+
+Also send a request that the old schema must still accept. For `feat-604`,
+that is an `OTHER` report, which carries no `uiLocale`. On the device,
+`feat-604` sent it only against the new schema, and a script run of
+`execute()` showed that the old schema accepts it too. Send it against the old
+schema on the device as well: it is the request that a skewed admin must keep
+accepting.
+
+A physical phone cannot reach `localhost` on the Mac. Put the Mac's LAN
+address in the override, as `apps/mobile/CLAUDE.md` describes for a phone and
+local admin. The proxy's `listen(PORT)` takes every interface, so the phone
+reaches it. `feat-604` ran this mode on the iPhone 17 Pro Max simulator and on
+a physical iPhone 15 Pro, and both got the same two errors for the
+`TRANSLATION` report against the old schema.
+
+Four limits:
+
+- The answer comes from graphql-js, not from admin's server. The proxy
+  answers HTTP 200 for every result, and a real admin may use another status
+  for the same error. Do not use the proxy to test a branch on the HTTP
+  status. The mode also proves coercion only for enum values, input fields
+  and built-in scalars: `buildSchema` gives a custom scalar such as `JSON` a
+  parser that accepts any value.
+- The stub resolver runs none of admin's own checks: no zod bounds, no rate
+  limit, no Linear call. A pass means that the schema accepts the request,
+  not that admin accepts the report.
+- `origin/main`'s schema is the deployed one only after the latest admin
+  deploy finishes. Check the deploy before you trust the old side.
+- The log holds what the tester typed. The unknown-field error message
+  repeats the whole input value: the message, the name, and any email. Type
+  throwaway text, and delete the log at teardown. In a real skew window, when
+  Datadog is provisioned, the start of that text reaches the phone's RUM
+  error: `reportGraphqlOperationError` (`apps/mobile/src/lib/apolloClient.ts`)
+  sends the joined messages to `reportDatadogError`, which keeps the first 300
+  characters (`apps/mobile/src/lib/datadog.ts`). For `SubmitFeedback`, that cap
+  falls inside the `message` field.
+
 ## Why This Matters
 
 The harness found two defects and confirmed one fix end to end. No jest
@@ -619,6 +733,9 @@ never exercised for real, so budget claims stay claims until the real smoke.
 - Catching host-level defects, such as a double recorder or an event mapped
   to the wrong lifecycle reason, that a per-module suite structurally cannot
   see.
+- Proving what an older or newer deployed admin answers to a new enum value
+  or input field, before the deploy order is settled. Use the real-schema
+  mode.
 
 Do not use it as a substitute for the first real-environment smoke. Do not
 run it from `.env.local`. Do not bind it to 3003. Do not trust a log line
@@ -705,7 +822,9 @@ Keep four claims separate when closing a mobile write surface:
 1. A merged source commit proves the implementation is in the repository.
 2. A device run through this proxy proves the app's request order, payload and
    local navigation on that installed development build. It cannot prove Admin
-   accepted or persisted a write.
+   accepted or persisted a write. In the real-schema mode, it also proves what
+   that schema version's variable coercion answers to the real request. The
+   stub resolver still proves nothing about admin's own checks.
 3. A production Admin ledger with the same surface proves serving occurred,
    but without client attribution it cannot identify a mobile installation.
 4. A build/channel receipt plus an installed-device observation is needed to
@@ -734,4 +853,7 @@ check when the claim being made requires it.
 - [Two predicates for one identity](../logic-errors/session-identity-needs-one-slug-tolerant-predicate.md): the root cause and fix (PR #2376) for the double-issuance anomaly this doc's log exposed, and the diagnostic step it adds to this recipe: read the log's neighbouring queries to spot a stack remount.
 - [A download is one dub](../logic-errors/download-is-one-dub-identity-travels-with-the-file.md): the limit of this instrument. The proxy log carries context issuances and episode lifecycle, so it found the defect above, but it cannot see which audio track the player is actually decoding. Four further defects on the same PR turned on exactly that, and adversarial review found them instead. A proxy smoke is evidence about the requests a surface makes, never about the bytes it plays.
 - [feat-516 ticket](../../roadmap/content-discovery/feat-516-mobile-recommendations-api-client.md): Results carry the timing evidence, the round-2 device check and the close-out checklist that records the double-recorder item as resolved on 2026-09-22.
+- [Retiring a shared contract behind compile shims](../workflow-issues/shared-contract-retirement-compile-shim-invisible-outage.md): its §5 recipe validates operation documents only. That check passes when the drift is a value carried in the variables, which the real-schema mode catches.
+- [Physical Android dev build and local admin](./physical-android-dev-build-local-admin-emulator-alias.md): why a physical Android phone needs the Mac's LAN address in the override (`apps/mobile/CLAUDE.md` gives the iPhone case).
+- [feat-604 ticket](../../roadmap/platform/feat-604-mobile-ui-translation-run-and-device-checks.md): the real-schema mode's first use, for the `TRANSLATION` feedback kind (PRs #2583 and #2584, open as of 2026-10-06).
 - PR #2329 (feat-516), merged 2026-09-17.
