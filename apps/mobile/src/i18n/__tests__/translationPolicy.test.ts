@@ -14,6 +14,7 @@ import {
   REAL_PATHS,
   wordlessKeysNotNeutral,
 } from "../../../scripts/i18n/lib/catalogChecks"
+import { CATALOG_TAGS, ENGLISH_ONLY_TAGS } from "../catalogs.generated"
 
 const { source, catalogs } = readCatalogDir(REAL_PATHS.messagesDir)
 const webTags = catalogTagsIn(REAL_PATHS.webMessagesDir)
@@ -35,13 +36,34 @@ describe("translation-policy.json", () => {
     ).toEqual([])
   })
 
-  it("keeps the same English-only locales as web", () => {
+  // Mobile can add English-only locales that web translates: U16 left a
+  // locale in English when Claude could not write it reliably (feat-604).
+  it("keeps every English-only locale of web", () => {
     const webManifest = readJson(REAL_PATHS.webManifest) as {
       provisionalLocales: string[]
     }
+    expect(webManifest.provisionalLocales.length).toBeGreaterThan(0)
     expect(realPolicy.englishOnlyLocales).toEqual(
-      [...webManifest.provisionalLocales].sort(),
+      expect.arrayContaining(webManifest.provisionalLocales),
     )
+  })
+
+  // translatedCatalogs skips these catalogs, so this is their only content check.
+  it("keeps every English-only catalog an exact copy of en.json", () => {
+    expect(realPolicy.englishOnlyLocales.length).toBeGreaterThan(0)
+    for (const tag of realPolicy.englishOnlyLocales) {
+      expect({ tag, messages: catalogs[tag] }).toEqual({
+        tag,
+        messages: source,
+      })
+    }
+  })
+
+  it("gives the generated index the same English-only tags", () => {
+    expect([...ENGLISH_ONLY_TAGS].sort()).toEqual(
+      [...realPolicy.englishOnlyLocales].sort(),
+    )
+    expect(CATALOG_TAGS).toEqual(expect.arrayContaining([...ENGLISH_ONLY_TAGS]))
   })
 
   it.each([
@@ -231,6 +253,15 @@ describe("translation-provenance.json", () => {
   it("records only machine-translated locales that have a catalog", () => {
     expect(provenanceProblems(provenance, realPolicy)).toEqual([])
     expect(withoutCatalog(provenance, Object.keys(catalogs))).toEqual([])
+  })
+
+  it("records every catalog as translated or English-only, never both", () => {
+    const translated = Object.keys(provenance.machineTranslatedLocales)
+    const englishOnly = realPolicy.englishOnlyLocales
+    expect(translated.filter((tag) => englishOnly.includes(tag))).toEqual([])
+    expect([...translated, ...englishOnly].sort()).toEqual(
+      Object.keys(catalogs).sort(),
+    )
   })
 
   it("names a machine-translated locale that has no catalog", () => {

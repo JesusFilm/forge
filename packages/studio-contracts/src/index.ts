@@ -57,6 +57,8 @@ export const studioPropertiesSchema = z.record(
 export const studioComponentSchema = z
   .object({
     versionId: studioIdSchema,
+    name: z.string().trim().min(1).max(200).optional(),
+    category: z.enum(["text", "video"]).optional(),
     code: studioAssetReferenceSchema,
     runtimeVersion: studioIdSchema,
     dependencies: z
@@ -193,6 +195,7 @@ export const studioTimelineItemSchema = z.discriminatedUnion("kind", [
     .object({
       ...itemBase,
       kind: z.literal("video"),
+      playbackRate: z.number().finite().min(0.25).max(4).optional(),
       focus: studioFocusSchema.optional(),
       source: studioSourceSchema,
       transition: z
@@ -339,7 +342,9 @@ export const studioDocumentSchema = z
         if (
           s.endMs <= s.startMs ||
           Math.abs(
-            ((s.endMs - s.startMs) * doc.fps) / 1000 - item.durationInFrames,
+            ((s.endMs - s.startMs) * doc.fps) /
+              (1000 * (item.playbackRate ?? 1)) -
+              item.durationInFrames,
           ) > 1
         )
           fail("Source trim must match item duration")
