@@ -393,6 +393,7 @@ export const RU_LOCALE: DevotionalLocale = {
     ["стоит идти", "сто́ит идти"],
     // Martha and Mary RU (2026-10-08): "houses", not "at home".
     ["Дома переходят", "Дома́ переходят"],
+    ["стоит делать", "сто́ит делать"],
   ],
   spokenDate(iso) {
     const p = parseIso(iso)
