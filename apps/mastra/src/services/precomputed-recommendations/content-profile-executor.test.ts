@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest"
 import { createHash } from "node:crypto"
+import { z } from "zod"
 
 import {
   profileCoverageDigest,
+  profileJsonBudget,
   runContentProfile,
+  type CompactProfile,
   type ProfilePersistencePort,
   type ProfileState,
 } from "./content-profile-executor"
@@ -115,6 +118,17 @@ const supportedProfile = {
       startChar: 0,
       endChar: passage.length,
       textSha256: createHash("sha256").update(passage).digest("hex"),
+      claimEnglish: "Nicodemus asks about new birth.",
+    },
+  ],
+}
+const supportedMapProfile = {
+  ...supportedProfile,
+  anchors: [
+    {
+      chunkId: "chunk-one",
+      fragmentIndex: 0,
+      excerpt: passage,
       claimEnglish: "Nicodemus asks about new birth.",
     },
   ],
@@ -235,8 +249,19 @@ describe("complete content profile execution", () => {
         async generate(input) {
           actions.push("model")
           expect(input.prompt).toContain(passage)
+          expect(() =>
+            z.toJSONSchema(input.schema, {
+              target: "draft-07",
+              unrepresentable: "throw",
+            }),
+          ).not.toThrow()
+          expect(input.system).not.toContain("compute SHA-256")
+          expect(input.system).toContain("2,048 UTF-8 bytes")
+          expect(input.system).toContain(
+            `profile JSON budget for this node is ${profileJsonBudget(0, 1, [])} UTF-8 bytes`,
+          )
           return {
-            output: input.schema.parse(supportedProfile),
+            output: input.schema.parse(supportedMapProfile),
             usage: {
               inputTokens: 120,
               outputTokens: 32,
@@ -367,90 +392,223 @@ describe("complete content profile execution", () => {
     ])
   })
 
-  it("records observed usage for an unsupported anchor without finalizing", async () => {
-    let coverageDigest = ""
-    const receipts: Array<{ status: string; inputTokens: number }> = []
-    const badProfile = {
-      ...supportedProfile,
-      anchors: [
-        {
-          ...supportedProfile.anchors[0],
-          textSha256: "f".repeat(64),
-        },
-      ],
+  it("materializes UTF-16 offsets and the excerpt hash from frozen text, not model arithmetic", async () => {
+    const text = "🙂🙂 Nicodemus asked about a new birth."
+    const excerpt = "Nicodemus asked about a new birth."
+    const modelProfile = {
+      ...supportedMapProfile,
+      anchors: [{ ...supportedMapProfile.anchors[0], excerpt }],
     }
-    await expect(
-      runContentProfile({
-        ...identity,
-        video: transcriptVideo(),
-        catalog: transcriptCatalog(),
-        model: {
-          async generate(input) {
-            return {
-              output: input.schema.parse(badProfile),
-              usage: { inputTokens: 80, outputTokens: 20 },
-            }
-          },
+    let coverageDigest = ""
+    let finishedProfile: CompactProfile | null = null
+    const result = await runContentProfile({
+      ...identity,
+      video: transcriptVideo(),
+      catalog: transcriptCatalog([{ ...oneChunk, text }]),
+      model: {
+        async generate(input) {
+          expect(input.prompt).toContain(text)
+          return {
+            output: input.schema.parse(modelProfile),
+            usage: { inputTokens: 75, outputTokens: 18 },
+          }
         },
-        persistence: {
-          async register(input) {
-            coverageDigest = input.coverageDigest
-            return {
-              generationId: input.generationId,
-              cacheKey: input.cacheKey,
-              kind: "transcript" as const,
+      },
+      persistence: {
+        async register(input) {
+          coverageDigest = input.coverageDigest
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            kind: "transcript" as const,
+            state: "planned" as const,
+            replay: false,
+          }
+        },
+        async status(input) {
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            profile: {
               state: "planned" as const,
-              replay: false,
-            }
-          },
-          async status(input) {
-            return {
-              generationId: input.generationId,
-              cacheKey: input.cacheKey,
-              profile: {
-                state: "planned" as const,
-                kind: "transcript" as const,
-                profileJson: null,
-                finalCallId: null,
-                coverageDigest,
-              },
-              calls: [],
-            }
-          },
-          async callStart(input) {
-            return {
-              generationId: input.generationId,
-              cacheKey: input.cacheKey,
-              callId: input.callId,
-              state: "pending" as const,
-              replay: false,
-            }
-          },
-          async callFinish(input) {
-            receipts.push({
-              status: input.status,
-              inputTokens: input.usage.inputTokens,
-            })
-            expect(input.node).toBeUndefined()
-            expect(input.errorCode).toBe("profile_invalid")
-            return {
-              generationId: input.generationId,
-              cacheKey: input.cacheKey,
-              callId: input.callId,
-              state: "rejected" as const,
-              receiptStored: true as const,
-              nodeApplied: false,
-              replay: false,
-            }
-          },
-          async finalize() {
-            throw new Error("unsupported profile must not finalize")
-          },
+              kind: "transcript" as const,
+              profileJson: null,
+              finalCallId: null,
+              coverageDigest,
+            },
+            calls: [],
+          }
         },
-      }),
-    ).rejects.toMatchObject({ code: "profile_invalid" })
-    expect(receipts).toEqual([{ status: "rejected", inputTokens: 80 }])
+        async callStart(input) {
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            callId: input.callId,
+            state: "pending" as const,
+            replay: false,
+          }
+        },
+        async callFinish(input) {
+          expect(input.status).toBe("succeeded")
+          const anchor = input.node!.profile.anchors[0]!
+          expect(anchor.startChar).toBe(text.indexOf(excerpt))
+          expect(anchor.startChar).toBe(5)
+          expect(anchor.endChar).toBe(5 + excerpt.length)
+          expect(anchor.textSha256).toBe(
+            createHash("sha256").update(excerpt).digest("hex"),
+          )
+          expect(JSON.stringify(input)).not.toContain(excerpt)
+          finishedProfile = input.node!.profile
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            callId: input.callId,
+            state: "succeeded" as const,
+            receiptStored: true as const,
+            nodeApplied: true,
+            replay: false,
+          }
+        },
+        async finalize(input) {
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            state: "ready" as const,
+            profileJson: finishedProfile,
+            finalCallId: input.finalCallId,
+            replay: false,
+          }
+        },
+      },
+    })
+    expect(result.profile).toEqual(finishedProfile)
   })
+
+  it("preflights the exact complete-node byte budget including child digests", () => {
+    const leaves = profileJsonBudget(0, 1, [])
+    const digests = Array.from({ length: 8 }, () => "a".repeat(64))
+    const reduced = profileJsonBudget(0, 8, digests)
+    expect(reduced).toBeLessThan(leaves)
+    const atLimit = {
+      profile: "x".repeat(reduced - 2),
+      coveredPartStart: 0,
+      coveredPartEnd: 8,
+      childNodeDigests: digests,
+    }
+    expect(Buffer.byteLength(JSON.stringify(atLimit), "utf8")).toBe(2_048)
+  })
+
+  it.each([
+    {
+      case: "unsupported excerpt",
+      chunkText: passage,
+      excerpt: "This sentence is not in the frozen fragment.",
+    },
+    {
+      case: "ambiguous repeated excerpt",
+      chunkText: "Repeated phrase appears. Repeated phrase appears again.",
+      excerpt: "Repeated phrase",
+    },
+    {
+      case: "oversized complete node",
+      chunkText: passage,
+      excerpt: passage,
+      oversized: true,
+    },
+  ])(
+    "records observed usage for an $case without finalizing",
+    async ({ chunkText, excerpt, oversized }) => {
+      let coverageDigest = ""
+      const receipts: Array<{ status: string; inputTokens: number }> = []
+      const badProfile = {
+        ...supportedMapProfile,
+        ...(oversized
+          ? {
+              summaryEnglish: "s".repeat(600),
+              themes: Array.from({ length: 12 }, () => "t".repeat(80)),
+              people: Array.from({ length: 12 }, () => "p".repeat(80)),
+            }
+          : {}),
+        anchors: [
+          {
+            ...supportedMapProfile.anchors[0],
+            excerpt,
+          },
+        ],
+      }
+      await expect(
+        runContentProfile({
+          ...identity,
+          video: transcriptVideo(),
+          catalog: transcriptCatalog([{ ...oneChunk, text: chunkText }]),
+          model: {
+            async generate(input) {
+              return {
+                output: input.schema.parse(badProfile),
+                usage: { inputTokens: 80, outputTokens: 20 },
+              }
+            },
+          },
+          persistence: {
+            async register(input) {
+              coverageDigest = input.coverageDigest
+              return {
+                generationId: input.generationId,
+                cacheKey: input.cacheKey,
+                kind: "transcript" as const,
+                state: "planned" as const,
+                replay: false,
+              }
+            },
+            async status(input) {
+              return {
+                generationId: input.generationId,
+                cacheKey: input.cacheKey,
+                profile: {
+                  state: "planned" as const,
+                  kind: "transcript" as const,
+                  profileJson: null,
+                  finalCallId: null,
+                  coverageDigest,
+                },
+                calls: [],
+              }
+            },
+            async callStart(input) {
+              return {
+                generationId: input.generationId,
+                cacheKey: input.cacheKey,
+                callId: input.callId,
+                state: "pending" as const,
+                replay: false,
+              }
+            },
+            async callFinish(input) {
+              receipts.push({
+                status: input.status,
+                inputTokens: input.usage.inputTokens,
+              })
+              expect(input.node).toBeUndefined()
+              expect(input.errorCode).toBe("profile_invalid")
+              return {
+                generationId: input.generationId,
+                cacheKey: input.cacheKey,
+                callId: input.callId,
+                state: "rejected" as const,
+                receiptStored: true as const,
+                nodeApplied: false,
+                replay: false,
+              }
+            },
+            async finalize() {
+              throw new Error("unsupported profile must not finalize")
+            },
+          },
+        }),
+      ).rejects.toMatchObject({ code: "profile_invalid" })
+      expect(receipts).toEqual([{ status: "rejected", inputTokens: 80 }])
+    },
+  )
 
   it("rejects a gap in planned transcript coverage before a model reservation", () => {
     const plan = planContentProfile({
@@ -508,6 +666,7 @@ describe("complete content profile execution", () => {
           stage: input.stage,
           inputDigest: input.inputDigest,
           status: "pending",
+          nodeApplied: false,
           outputDigest: null,
           node: null,
         }
@@ -635,6 +794,7 @@ describe("complete content profile execution", () => {
           stage: input.stage,
           inputDigest: input.inputDigest,
           status: "succeeded",
+          nodeApplied: true,
           outputDigest: input.outputDigest!,
           node: input.node!,
         })
@@ -727,79 +887,119 @@ describe("complete content profile execution", () => {
     expect(modelCalls).toBe(priorModelCalls)
   })
 
-  it("does not finalize a successful receipt that Admin could not apply", async () => {
+  it("never reuses an unapplied late success, then recomputes under a new attempt", async () => {
     let coverageDigest = ""
     let modelCalls = 0
     let finishCalls = 0
-    await expect(
-      runContentProfile({
-        ...identity,
-        video: transcriptVideo(),
-        catalog: transcriptCatalog(),
-        model: {
-          async generate(input) {
-            modelCalls++
-            return {
-              output: input.schema.parse(supportedProfile),
-              usage: { inputTokens: 50, outputTokens: 10 },
-            }
-          },
+    let profileState: ProfileState = "planned"
+    let finalProfile: CompactProfile | null = null
+    let finalCallId: string | null = null
+    const calls: Awaited<
+      ReturnType<ProfilePersistencePort["status"]>
+    >["calls"] = []
+    const args = {
+      ...identity,
+      video: transcriptVideo(),
+      catalog: transcriptCatalog(),
+      model: {
+        async generate(input: Parameters<StructuredModel["generate"]>[0]) {
+          modelCalls++
+          return {
+            output: input.schema.parse(supportedMapProfile),
+            usage: { inputTokens: 50, outputTokens: 10 },
+          }
         },
-        persistence: {
-          async register(input) {
-            coverageDigest = input.coverageDigest
-            return {
-              generationId: input.generationId,
-              cacheKey: input.cacheKey,
+      } as StructuredModel,
+      persistence: {
+        async register(input) {
+          coverageDigest = input.coverageDigest
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            kind: "transcript" as const,
+            state: profileState,
+            replay: finishCalls > 0,
+          }
+        },
+        async status(input) {
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            profile: {
+              state: profileState,
               kind: "transcript" as const,
-              state: "planned" as const,
-              replay: false,
-            }
-          },
-          async status(input) {
-            return {
-              generationId: input.generationId,
-              cacheKey: input.cacheKey,
-              profile: {
-                state: "planned" as const,
-                kind: "transcript" as const,
-                profileJson: null,
-                finalCallId: null,
-                coverageDigest,
-              },
-              calls: [],
-            }
-          },
-          async callStart(input) {
-            return {
-              generationId: input.generationId,
-              cacheKey: input.cacheKey,
-              callId: input.callId,
-              state: "pending" as const,
-              replay: false,
-            }
-          },
-          async callFinish(input) {
-            finishCalls++
-            expect(input.status).toBe("succeeded")
-            return {
-              generationId: input.generationId,
-              cacheKey: input.cacheKey,
-              callId: input.callId,
-              state: "succeeded" as const,
-              receiptStored: true as const,
-              nodeApplied: false,
-              replay: false,
-            }
-          },
-          async finalize() {
-            throw new Error("closed attempt must not finalize")
-          },
+              profileJson: finalProfile,
+              finalCallId,
+              coverageDigest,
+            },
+            calls,
+          }
         },
-      }),
-    ).rejects.toMatchObject({ code: "profile_unavailable" })
+        async callStart(input) {
+          profileState = "in_progress"
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            callId: input.callId,
+            state: "pending" as const,
+            replay: false,
+          }
+        },
+        async callFinish(input) {
+          finishCalls++
+          expect(input.status).toBe("succeeded")
+          const nodeApplied = finishCalls > 1
+          calls.push({
+            callId: input.callId,
+            nodeKey: input.nodeKey,
+            stage: input.stage,
+            inputDigest: input.inputDigest,
+            status: "succeeded",
+            nodeApplied,
+            outputDigest: input.outputDigest!,
+            node: input.node!,
+          })
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            callId: input.callId,
+            state: "succeeded" as const,
+            receiptStored: true as const,
+            nodeApplied,
+            replay: false,
+          }
+        },
+        async finalize(input) {
+          expect(input.finalCallId).toBe(calls[1]!.callId)
+          expect(input.finalCallId).not.toBe(calls[0]!.callId)
+          profileState = "ready"
+          finalCallId = input.finalCallId
+          finalProfile = calls[1]!.node!.profile
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            state: "ready" as const,
+            profileJson: finalProfile,
+            finalCallId,
+            replay: false,
+          }
+        },
+      } satisfies ProfilePersistencePort,
+    }
+    await expect(runContentProfile(args)).rejects.toMatchObject({
+      code: "profile_unavailable",
+    })
     expect(modelCalls).toBe(1)
     expect(finishCalls).toBe(1)
+    expect(calls[0]!.nodeApplied).toBe(false)
+    const resumed = await runContentProfile({
+      ...args,
+      attemptId: "22222222-2222-4222-8222-222222222222",
+    })
+    expect(resumed.state).toBe("ready")
+    expect(modelCalls).toBe(2)
+    expect(finishCalls).toBe(2)
+    expect(calls[1]!.nodeApplied).toBe(true)
   })
 
   it("records a known provider failure with observed usage and never invents a charge", async () => {
