@@ -569,6 +569,80 @@ describe("WatchHomePage", () => {
       })
     }
 
+    it("pauses media and the advance timer until the viewer resumes", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const pauseMedia = vi.fn()
+        video.pause = pauseMedia
+        const openingTitle = carouselLabel()
+        const pauseButton = container.querySelector<HTMLButtonElement>(
+          '[data-testid="watch-home-tv-pause-toggle"]',
+        )!
+
+        await act(async () => {
+          pauseButton.click()
+        })
+        expect(pauseMedia).toHaveBeenCalled()
+        expect(pauseButton.getAttribute("aria-label")).toBe("Play")
+        expect(
+          window.sessionStorage.getItem("watch-home-tv-carousel-paused"),
+        ).toBe("true")
+        await act(async () => {
+          vi.advanceTimersByTime(20_000)
+        })
+        expect(carouselLabel()).toBe(openingTitle)
+
+        await act(async () => {
+          pauseButton.click()
+        })
+        expect(video.play).toHaveBeenCalled()
+        expect(pauseButton.getAttribute("aria-label")).toBe("Pause")
+        expect(
+          window.sessionStorage.getItem("watch-home-tv-carousel-paused"),
+        ).toBe("false")
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("restores the paused preference without starting playback", async () => {
+      vi.useFakeTimers()
+      try {
+        window.sessionStorage.setItem("watch-home-tv-carousel-paused", "true")
+        const pauseMedia = vi
+          .spyOn(HTMLMediaElement.prototype, "pause")
+          .mockImplementation(() => undefined)
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        expect(pauseMedia).toHaveBeenCalled()
+        expect(video.play).not.toHaveBeenCalled()
+        expect(
+          container
+            .querySelector('[data-testid="watch-home-tv-pause-toggle"]')
+            ?.getAttribute("aria-label"),
+        ).toBe("Play")
+        const openingTitle = carouselLabel()
+        await act(async () => {
+          vi.advanceTimersByTime(20_000)
+        })
+        expect(carouselLabel()).toBe(openingTitle)
+
+        const nextSlide = container.querySelector<HTMLButtonElement>(
+          'button[aria-label="Show Queued Two"]',
+        )!
+        await act(async () => {
+          nextSlide.click()
+        })
+        const selectedTitle = carouselLabel()
+        await act(async () => {
+          vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS * 2)
+        })
+        expect(carouselLabel()).toBe(selectedTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
     // The ticket's own regression. Fails against the 30-second cap this change
     // removes.
     it("keeps a slide longer than 30 seconds on screen past 30 seconds", async () => {
@@ -1506,10 +1580,14 @@ describe("WatchHomePage", () => {
     const actionChildren = Array.from(
       watchNowLink?.parentElement?.children ?? [],
     )
-    expect(actionChildren.slice(0, 2)).toEqual([watchNowLink, muteButton])
-    expect(actionChildren).toHaveLength(3)
+    expect(actionChildren.slice(0, 3)).toEqual([
+      watchNowLink,
+      muteButton,
+      container.querySelector('[data-testid="watch-home-tv-pause-toggle"]'),
+    ])
+    expect(actionChildren).toHaveLength(4)
     expect(
-      actionChildren[2]?.querySelector(
+      actionChildren[3]?.querySelector(
         '[data-testid="watch-home-video-timeline"][data-size="compact"]',
       ),
     ).not.toBeNull()
