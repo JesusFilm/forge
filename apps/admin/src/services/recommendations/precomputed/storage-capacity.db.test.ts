@@ -40,6 +40,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         data: {
           id: generationId,
           protocolVersion: 2,
+          executionBackend: "codex_chatgpt_subscription",
           modelId: "gpt-6-astra",
           promptVersion: "storage-v1",
           inputDigest: "a".repeat(64),
@@ -50,6 +51,26 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           inputSnapshotMode: "observed_fenced",
           status: "complete",
           completedAt: new Date("2026-10-02T00:00:00.000Z"),
+        },
+      })
+      await prisma.recommendationPrecomputedExecutionAttempt.create({
+        data: {
+          generationId,
+          attemptId: randomUUID(),
+          invocation: "start",
+          accountRef: "capacity-account-123",
+          backend: "codex_chatgpt_subscription",
+          billingBasis: "included_subscription",
+          authMethod: "chatgpt",
+          modelId: "gpt-6-astra",
+          identityObservedAt: new Date("2026-10-01T00:00:00.000Z"),
+          allowanceObservedAt: new Date("2026-10-01T00:00:00.000Z"),
+          weeklyRemainingPercent: 50,
+          fiveHourKind: "limited",
+          fiveHourRemainingPercent: 50,
+          startedAt: new Date("2026-10-01T00:00:00.000Z"),
+          endedAt: new Date("2026-10-02T00:00:00.000Z"),
+          endReason: "completed",
         },
       })
       await prisma.recommendationPrecomputedSource.create({
@@ -109,6 +130,11 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         acceptedConnections: 8,
       })
       expect(report.selectedGeneration?.inlineTupleBytes).toBeGreaterThan(0)
+      expect(
+        report.relations.find(
+          (row) => row.table === "recommendation_precomputed_execution_attempt",
+        )?.totalBytes,
+      ).toBeGreaterThan(0)
       expect(
         report.selectedGeneration?.inlineBytesPerConnection,
       ).toBeGreaterThan(0)

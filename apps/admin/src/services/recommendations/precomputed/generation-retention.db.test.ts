@@ -99,6 +99,46 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       )
       const failed = await generation("failed", "failed", null)
       const active = await generation("active", "incomplete", null)
+      await prisma.recommendationPrecomputedGeneration.update({
+        where: { id: expired },
+        data: { executionBackend: "codex_chatgpt_subscription" },
+      })
+      const attemptId = randomUUID()
+      await prisma.recommendationPrecomputedExecutionAttempt.create({
+        data: {
+          generationId: expired,
+          attemptId,
+          invocation: "start",
+          accountRef: "retention-account-123",
+          backend: "codex_chatgpt_subscription",
+          billingBasis: "included_subscription",
+          authMethod: "chatgpt",
+          modelId: "gpt-6-astra",
+          identityObservedAt: old,
+          allowanceObservedAt: old,
+          weeklyRemainingPercent: 50,
+          fiveHourKind: "limited",
+          fiveHourRemainingPercent: 50,
+          startedAt: old,
+          endedAt: old,
+          endReason: "completed",
+        },
+      })
+      await prisma.recommendationPrecomputedModelCall.create({
+        data: {
+          generationId: expired,
+          attemptId,
+          callId: `retained-call-${suffix}`,
+          sourceVideoId,
+          stage: "source_summary",
+          status: "failed",
+          modelId: "gpt-6-astra",
+          inputDigest: "d".repeat(64),
+          errorCode: "provider_unavailable",
+          startedAt: old,
+          finishedAt: old,
+        },
+      })
       await prisma.recommendationPrecomputedBuildSource.create({
         data: {
           generationId: expired,
@@ -135,11 +175,19 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const first = await prisma.$transaction((tx) =>
         purgeExpiredPrecomputedGenerations(tx, now, 1),
       )
-      expect(first).toMatchObject({ generationsDeleted: 1, pageFull: true })
+      expect(first).toMatchObject({
+        generationsDeleted: 1,
+        pageFull: true,
+      })
       const second = await prisma.$transaction((tx) =>
         purgeExpiredPrecomputedGenerations(tx, now, 5),
       )
-      expect(second).toMatchObject({ generationsDeleted: 1, pageFull: true })
+      expect(second).toMatchObject({
+        generationsDeleted: 1,
+        modelCallsDeleted: 1,
+        executionAttemptsDeleted: 1,
+        pageFull: true,
+      })
       expect(
         (
           await prisma.recommendationPrecomputedGeneration.findMany({

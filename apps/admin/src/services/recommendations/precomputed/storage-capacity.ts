@@ -10,6 +10,7 @@ const TABLES = [
   "recommendation_precomputed_ga_capture_artifact",
   "recommendation_precomputed_source",
   "recommendation_precomputed_model_call",
+  "recommendation_precomputed_execution_attempt",
   "recommendation_precomputed_history_call",
   "recommendation_precomputed_build_source",
   "recommendation_precomputed_build_choice",
@@ -151,6 +152,8 @@ export async function loadPrecomputedStorageCapacityReport(
              WHERE s.generation_id = g.id)::bigint +
             (SELECT COALESCE(sum(pg_column_size(c)), 0) FROM recommendation_precomputed_model_call c
              WHERE c.generation_id = g.id)::bigint +
+            (SELECT COALESCE(sum(pg_column_size(a)), 0) FROM recommendation_precomputed_execution_attempt a
+             WHERE a.generation_id = g.id)::bigint +
             (SELECT COALESCE(sum(pg_column_size(c)), 0) FROM recommendation_precomputed_history_call c
              WHERE c.generation_id = g.id)::bigint +
             (SELECT COALESCE(sum(pg_column_size(s)), 0) FROM recommendation_precomputed_build_source s

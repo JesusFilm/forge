@@ -28,6 +28,7 @@ export type PrecomputedGenerationPurge = Readonly<{
   buildSourcesDeleted: number
   provisionalChoicesDeleted: number
   modelCallsDeleted: number
+  executionAttemptsDeleted: number
   historyCallsDeleted: number
   provisionalChoicesPruned: number
   checkpointsCleared: number
@@ -190,6 +191,7 @@ export async function purgeExpiredPrecomputedGenerations(
       buildSourcesDeleted: 0,
       provisionalChoicesDeleted: 0,
       modelCallsDeleted: 0,
+      executionAttemptsDeleted: 0,
       historyCallsDeleted: 0,
       provisionalChoicesPruned,
       checkpointsCleared,
@@ -221,6 +223,7 @@ export async function purgeExpiredPrecomputedGenerations(
       buildSourcesDeleted: 0,
       provisionalChoicesDeleted: 0,
       modelCallsDeleted: 0,
+      executionAttemptsDeleted: 0,
       historyCallsDeleted: 0,
       provisionalChoicesPruned,
       checkpointsCleared,
@@ -254,6 +257,19 @@ export async function purgeExpiredPrecomputedGenerations(
       ORDER BY call.call_id LIMIT ${PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE}
     )
   `)
+  const executionAttemptsDeleted = await tx.$executeRaw(Prisma.sql`
+    DELETE FROM recommendation_precomputed_execution_attempt a WHERE a.ctid IN (
+      SELECT attempt.ctid FROM recommendation_precomputed_execution_attempt attempt
+      WHERE attempt.generation_id = ${candidate.id}
+        AND NOT EXISTS (
+          SELECT 1 FROM recommendation_precomputed_model_call call
+          WHERE call.generation_id = attempt.generation_id
+            AND call.attempt_id = attempt.attempt_id
+        )
+      ORDER BY attempt.started_at, attempt.attempt_id
+      LIMIT ${PRECOMPUTED_RETENTION_CHILD_PAGE_SIZE}
+    )
+  `)
   const historyCallsDeleted = await tx.$executeRaw(Prisma.sql`
     DELETE FROM recommendation_precomputed_history_call c WHERE c.ctid IN (
       SELECT call.ctid FROM recommendation_precomputed_history_call call
@@ -282,6 +298,7 @@ export async function purgeExpiredPrecomputedGenerations(
       EXISTS (SELECT 1 FROM recommendation_precomputed_build_source WHERE generation_id = ${candidate.id}) OR
       EXISTS (SELECT 1 FROM recommendation_precomputed_build_choice WHERE generation_id = ${candidate.id}) OR
       EXISTS (SELECT 1 FROM recommendation_precomputed_model_call WHERE generation_id = ${candidate.id}) OR
+      EXISTS (SELECT 1 FROM recommendation_precomputed_execution_attempt WHERE generation_id = ${candidate.id}) OR
       EXISTS (SELECT 1 FROM recommendation_precomputed_history_call WHERE generation_id = ${candidate.id})
       AS has_children
   `)
@@ -327,6 +344,7 @@ export async function purgeExpiredPrecomputedGenerations(
     buildSourcesDeleted,
     provisionalChoicesDeleted,
     modelCallsDeleted,
+    executionAttemptsDeleted,
     historyCallsDeleted,
     provisionalChoicesPruned,
     checkpointsCleared,

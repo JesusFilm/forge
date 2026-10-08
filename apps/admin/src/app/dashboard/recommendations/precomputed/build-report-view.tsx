@@ -57,12 +57,59 @@ export function DurableBuildReportView({ report }: { report: Report }) {
         ) : null}
         <p>
           Model: {report.usage.modelCallCount} reserved calls,{" "}
-          {report.usage.modelPendingCount} unresolved; known provider charge{" "}
-          {usd(report.usage.modelKnownCostUsd)} with{" "}
-          {report.usage.modelUnknownCostCount} calls whose charge is unknown.{" "}
+          {report.usage.modelPendingCount} unresolved;{" "}
           {report.usage.inputTokens} input / {report.usage.outputTokens} output
           / {report.usage.cachedInputTokens} cached input tokens reported.
+          {report.usage.modelSubscriptionCallCount > 0 ||
+          report.usage.attempts.length > 0 ? (
+            <>
+              {" "}
+              {report.usage.modelSubscriptionCallCount} subscription calls (
+              {report.usage.modelSubscriptionPendingCount} unresolved):
+              subscription allowance basis, USD charge unavailable. Legacy
+              recorded charge {usd(report.usage.modelKnownCostUsd)} with{" "}
+              {report.usage.modelLegacyUnknownCostCount} legacy calls whose
+              charge is unknown.
+            </>
+          ) : (
+            <>
+              {" "}
+              Known provider charge {usd(
+                report.usage.modelKnownCostUsd,
+              )} with {report.usage.modelUnknownCostCount} calls whose charge is
+              unknown.
+            </>
+          )}
         </p>
+        {report.usage.attempts.map((attempt) => (
+          <p key={attempt.attemptId}>
+            Manual {attempt.invocation} at {attempt.startedAt}: runner-reported
+            Codex account {attempt.accountRef}; {attempt.backend},{" "}
+            {attempt.modelId}, {attempt.billingBasis}. Admission allowance
+            observed at {attempt.allowanceObservedAt}: weekly{" "}
+            {attempt.weeklyRemainingPercent}% remaining, five-hour{" "}
+            {attempt.fiveHourKind === "limited"
+              ? `${attempt.fiveHourRemainingPercent}% remaining`
+              : "not applicable"}
+            . {attempt.callCount} calls, {attempt.inputTokens} input /{" "}
+            {attempt.outputTokens} output / {attempt.cachedInputTokens} cached
+            input tokens reported. Account-wide allowance is an observation, not
+            a per-build monetary receipt.
+          </p>
+        ))}
+        {report.pendingModelCalls.length > 0 ? (
+          <p>
+            Unresolved model reservations (first 100):{" "}
+            {report.pendingModelCalls
+              .map(
+                (call) =>
+                  `${call.callId} / ${call.sourceVideoId} / ${call.stage} / attempt ${call.attemptId ?? "legacy_unattributed"}`,
+              )
+              .join("; ")}
+            . A terminal receipt with observed usage can clear a reservation;
+            otherwise the affected source remains blocked.
+          </p>
+        ) : null}
         <p>
           GA: {report.usage.historyCallCount} request reservations, including
           qualification and retries;{" "}

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client } from "pg"
 import { createElement } from "react"
@@ -124,6 +124,252 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
         await admin.end()
       }
+    })
+
+    it("binds a new subscription generation to an explicit local execution attempt", async () => {
+      const id = `subscription-start-${suffix}`
+      const attemptId = randomUUID()
+      const now = new Date().toISOString()
+      const executionAttempt = {
+        attemptId,
+        invocation: "start",
+        accountRef: "local-account-ref-123",
+        backend: "codex_chatgpt_subscription",
+        billingBasis: "included_subscription",
+        authMethod: "chatgpt",
+        modelId: "gpt-6-astra",
+        identityObservedAt: now,
+        allowanceObservedAt: now,
+        weeklyRemainingPercent: 50,
+        fiveHour: { kind: "limited", remainingPercent: 50 },
+      }
+      expect(
+        await submit({
+          action: "start",
+          generationId: id,
+          protocolVersion: 2,
+          modelId: "gpt-6-astra",
+          promptVersion: "durable-v1",
+          inputDigest: generationInputDigest,
+          sourceSetDigest,
+          inputCutoff: new Date(Date.now() + 60_000).toISOString(),
+          expectedSourceCount: 1,
+          inputMode: "content_only",
+          executionAttempt,
+        }),
+      ).toMatchObject({
+        generationId: id,
+        executionBackend: "codex_chatgpt_subscription",
+        attemptId,
+        replay: false,
+      })
+    })
+
+    it("preserves attempts and unresolved receipts across an explicit manual resume", async () => {
+      const id = `subscription-resume-${suffix}`
+      const build = { generationId: id, generationInputDigest }
+      const firstAttemptId = randomUUID()
+      const secondAttemptId = randomUUID()
+      const observedAt = new Date().toISOString()
+      const attempt = (
+        attemptId: string,
+        accountRef: string,
+        invocation: "start" | "resume",
+      ) => ({
+        attemptId,
+        invocation,
+        accountRef,
+        backend: "codex_chatgpt_subscription",
+        billingBasis: "included_subscription",
+        authMethod: "chatgpt",
+        modelId: "gpt-6-astra",
+        identityObservedAt: observedAt,
+        allowanceObservedAt: observedAt,
+        weeklyRemainingPercent: 50,
+        fiveHour: { kind: "limited", remainingPercent: 50 },
+      })
+      await submit({
+        action: "start",
+        generationId: id,
+        protocolVersion: 2,
+        modelId: "gpt-6-astra",
+        promptVersion: "durable-v1",
+        inputDigest: generationInputDigest,
+        sourceSetDigest,
+        inputCutoff: new Date(Date.now() + 60_000).toISOString(),
+        expectedSourceCount: 1,
+        inputMode: "content_only",
+        executionAttempt: attempt(
+          firstAttemptId,
+          "first-account-ref-123",
+          "start",
+        ),
+      })
+      await submit({
+        action: "manifest",
+        ...build,
+        sourceVideoIds: [sourceVideoId],
+      })
+      const probe = await submit({ action: "capacity_probe", ...build })
+      await submit({
+        action: "capacity",
+        ...build,
+        measurement: {
+          measuredAt: new Date().toISOString(),
+          clusterSystemId: probe.clusterSystemId,
+          observedDbBytes: probe.observedDbBytes,
+          availableBytes: 20_000_000_000,
+          reserveBytes: 5_000_000_000,
+          projectedBytes: 1_000_000,
+          sampleSourceCount: 1,
+          sampleBytes: 100_000,
+          source: "operator_verified_pgdata_df",
+        },
+      })
+      const claim = await submit({
+        action: "claim",
+        ...build,
+        sourceVideoId,
+        claimId: "first-subscription-claim",
+      })
+      const leaseToken = claim.leaseToken as string
+      const call = {
+        ...build,
+        sourceVideoId,
+        leaseToken,
+        attemptId: firstAttemptId,
+        callId: randomUUID(),
+        stage: "source_summary",
+        modelId: "gpt-6-astra",
+        inputDigest: "b".repeat(64),
+        startedAt: new Date(Date.now() - 1_000).toISOString(),
+      }
+      await expect(
+        submit({ action: "model_call_start", ...call, attemptId: undefined }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      await expect(
+        submit({
+          action: "model_call_start",
+          ...call,
+          attemptId: randomUUID(),
+        }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      await expect(
+        submit({ action: "model_call_start", ...call, modelId: "gpt-6.1-sol" }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      await submit({ action: "model_call_start", ...call })
+      await expect(
+        submit({ action: "model_call_start", ...call, callId: randomUUID() }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      await expect(
+        submit({
+          action: "model_call",
+          ...call,
+          status: "failed",
+          errorCode: "provider_unavailable",
+          costUsd: 0,
+          finishedAt: new Date().toISOString(),
+        }),
+      ).rejects.toMatchObject({ code: "invalid" })
+      await expect(
+        submit({
+          action: "model_call",
+          ...call,
+          status: "failed",
+          errorCode: "provider_unavailable",
+          inputTokens: 0,
+          outputTokens: 0,
+          finishedAt: new Date().toISOString(),
+        }),
+      ).rejects.toMatchObject({ code: "invalid" })
+      await expect(
+        submit({
+          action: "model_call",
+          ...call,
+          status: "failed",
+          errorCode: "provider_unavailable",
+          finishedAt: new Date().toISOString(),
+        }),
+      ).rejects.toMatchObject({ code: "invalid" })
+      await submit({
+        action: "attempt_close",
+        ...build,
+        attemptId: firstAttemptId,
+        reason: "paused",
+      })
+      await prisma.recommendationPrecomputedBuildSource.update({
+        where: {
+          generationId_sourceVideoId: { generationId: id, sourceVideoId },
+        },
+        data: { leaseExpiresAt: new Date(Date.now() - 1_000) },
+      })
+      await submit({
+        action: "resume_attempt",
+        ...build,
+        executionAttempt: attempt(
+          secondAttemptId,
+          "second-account-ref-456",
+          "resume",
+        ),
+      })
+      const reclaimed = await submit({
+        action: "claim",
+        ...build,
+        sourceVideoId,
+        claimId: "second-subscription-claim",
+      })
+      const nextCall = {
+        ...call,
+        leaseToken: reclaimed.leaseToken as string,
+        attemptId: secondAttemptId,
+        callId: randomUUID(),
+        startedAt: new Date().toISOString(),
+      }
+      await expect(
+        submit({ action: "model_call_start", ...nextCall }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      expect(
+        await submit({
+          action: "model_call",
+          ...call,
+          status: "succeeded",
+          outputDigest: "c".repeat(64),
+          inputTokens: 100,
+          outputTokens: 12,
+          finishedAt: new Date().toISOString(),
+        }),
+      ).toMatchObject({
+        receiptStored: true,
+        checkpointApplied: false,
+        staleLease: true,
+      })
+      await submit({ action: "model_call_start", ...nextCall })
+      await expect(
+        submit({
+          action: "model_call_start",
+          ...nextCall,
+          callId: randomUUID(),
+        }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      const report = await loadDurablePrecomputedBuildReport(prisma, {
+        generationId: id,
+        reviewer: { id: "reviewer", role: "ADMIN" },
+      })
+      expect(report?.usage).toMatchObject({
+        modelSubscriptionCallCount: 2,
+        modelSubscriptionPendingCount: 1,
+        modelKnownCostUsd: 0,
+        modelLegacyUnknownCostCount: 0,
+        attempts: [
+          { accountRef: "first-account-ref-123", callCount: 1 },
+          { accountRef: "second-account-ref-456", callCount: 1 },
+        ],
+      })
+      expect(
+        renderToStaticMarkup(
+          createElement(DurableBuildReportView, { report: report! }),
+        ),
+      ).toContain("subscription allowance basis, USD charge unavailable")
     })
 
     it("requires a measured capacity gate and complete manifest before ready", async () => {

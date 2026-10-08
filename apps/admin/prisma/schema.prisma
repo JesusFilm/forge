@@ -6737,6 +6737,8 @@ model RecommendationPrecomputedGeneration {
   inputCutoff DateTime @map("input_cutoff")
   expectedSourceCount Int @map("expected_source_count")
   protocolVersion Int @default(1) @map("protocol_version")
+  /// Set only when a new generation is explicitly started by the local subscription runner.
+  executionBackend String? @map("execution_backend")
   manifestCommittedAt DateTime? @map("manifest_committed_at")
   /// Physical free-space is externally attested against the PostgreSQL cluster;
   /// Admin cross-checks the cluster and database size, never its own filesystem.
@@ -6764,6 +6766,7 @@ model RecommendationPrecomputedGeneration {
   retiringAt DateTime? @map("retiring_at")
   sources RecommendationPrecomputedSource[]
   modelCalls RecommendationPrecomputedModelCall[]
+  executionAttempts RecommendationPrecomputedExecutionAttempt[]
   buildSources RecommendationPrecomputedBuildSource[]
   historyCalls RecommendationPrecomputedHistoryCall[]
   buildBudget RecommendationPrecomputedBuildBudget?
@@ -7136,6 +7139,8 @@ model RecommendationPrecomputedModelCall {
   generationId String @map("generation_id")
   generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
   callId String @map("call_id")
+  attemptId String? @map("attempt_id") @db.Uuid
+  executionAttempt RecommendationPrecomputedExecutionAttempt? @relation(fields: [generationId, attemptId], references: [generationId, attemptId], onDelete: Restrict)
   sourceVideoId String @map("source_video_id")
   stage String
   status String
@@ -7157,6 +7162,32 @@ model RecommendationPrecomputedModelCall {
   @@id([generationId, callId])
   @@index([generationId, sourceVideoId], map: "recommendation_precomputed_model_call_source_idx")
   @@map("recommendation_precomputed_model_call")
+}
+
+/// One explicit local start/resume, with bounded runner-reported account and
+/// allowance provenance. The producer bearer authenticates writes, not a person.
+model RecommendationPrecomputedExecutionAttempt {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  attemptId String @map("attempt_id") @db.Uuid
+  invocation String
+  accountRef String @map("account_ref")
+  backend String
+  billingBasis String @map("billing_basis")
+  authMethod String @map("auth_method")
+  modelId String @map("model_id")
+  identityObservedAt DateTime @map("identity_observed_at")
+  allowanceObservedAt DateTime @map("allowance_observed_at")
+  weeklyRemainingPercent Decimal @map("weekly_remaining_percent") @db.Decimal(5, 2)
+  fiveHourKind String @map("five_hour_kind")
+  fiveHourRemainingPercent Decimal? @map("five_hour_remaining_percent") @db.Decimal(5, 2)
+  startedAt DateTime @default(now()) @map("started_at")
+  endedAt DateTime? @map("ended_at")
+  endReason String? @map("end_reason")
+  modelCalls RecommendationPrecomputedModelCall[]
+
+  @@id([generationId, attemptId])
+  @@map("recommendation_precomputed_execution_attempt")
 }
 
 /// Source membership and progress are independent of the final immutable

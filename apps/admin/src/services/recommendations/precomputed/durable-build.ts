@@ -193,6 +193,27 @@ const modelStage = z.enum([
   "candidate_judgment",
 ])
 const failureCode = z.string().regex(/^[a-z][a-z0-9_]{2,63}$/)
+const executionAttempt = z
+  .object({
+    attemptId: z.uuid(),
+    invocation: z.enum(["start", "resume"]),
+    accountRef: z.string().regex(/^[A-Za-z0-9:_-]{8,128}$/),
+    backend: z.literal("codex_chatgpt_subscription"),
+    billingBasis: z.literal("included_subscription"),
+    authMethod: z.literal("chatgpt"),
+    modelId: z.literal("gpt-6-astra"),
+    identityObservedAt: z.string().datetime(),
+    allowanceObservedAt: z.string().datetime(),
+    weeklyRemainingPercent: z.number().min(0).max(100),
+    fiveHour: z.discriminatedUnion("kind", [
+      z.object({
+        kind: z.literal("limited"),
+        remainingPercent: z.number().min(0).max(100),
+      }),
+      z.object({ kind: z.literal("not_applicable") }),
+    ]),
+  })
+  .strict()
 const actionSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("start"),
@@ -208,6 +229,16 @@ const actionSchema = z.discriminatedUnion("action", [
     inputSnapshotMode: z
       .enum(["observed_fenced", "ga_aggregate_capture_v1"])
       .optional(),
+    executionAttempt: executionAttempt.optional(),
+  }),
+  base.extend({
+    action: z.literal("resume_attempt"),
+    executionAttempt,
+  }),
+  base.extend({
+    action: z.literal("attempt_close"),
+    attemptId: z.uuid(),
+    reason: z.enum(["completed", "paused"]),
   }),
   base.extend({
     action: z.literal("manifest"),
@@ -237,6 +268,7 @@ const actionSchema = z.discriminatedUnion("action", [
   sourceBase.extend({ action: z.literal("choice"), choice: provisionalChoice }),
   sourceBase.extend({
     action: z.literal("model_call_start"),
+    attemptId: z.uuid().optional(),
     callId: id,
     stage: modelStage,
     modelId: z.string().trim().min(1).max(100),
@@ -245,6 +277,7 @@ const actionSchema = z.discriminatedUnion("action", [
   }),
   sourceBase.extend({
     action: z.literal("model_call"),
+    attemptId: z.uuid().optional(),
     callId: id,
     stage: modelStage,
     status: z.enum(["succeeded", "failed"]),
@@ -349,6 +382,73 @@ function asMoney(value: number | undefined): Prisma.Decimal | null {
 function date(value: string): Date {
   return new Date(value)
 }
+function freshObservation(value: string): boolean {
+  const age = Date.now() - date(value).getTime()
+  return Number.isFinite(age) && age >= -60_000 && age <= 60_000
+}
+function attemptData(input: z.output<typeof executionAttempt>) {
+  return {
+    attemptId: input.attemptId,
+    invocation: input.invocation,
+    accountRef: input.accountRef,
+    backend: input.backend,
+    billingBasis: input.billingBasis,
+    authMethod: input.authMethod,
+    modelId: input.modelId,
+    identityObservedAt: date(input.identityObservedAt),
+    allowanceObservedAt: date(input.allowanceObservedAt),
+    weeklyRemainingPercent: new Prisma.Decimal(input.weeklyRemainingPercent),
+    fiveHourKind: input.fiveHour.kind,
+    fiveHourRemainingPercent:
+      input.fiveHour.kind === "limited"
+        ? new Prisma.Decimal(input.fiveHour.remainingPercent)
+        : null,
+  }
+}
+function requireFreshAttempt(input: z.output<typeof executionAttempt>): void {
+  if (
+    !freshObservation(input.identityObservedAt) ||
+    !freshObservation(input.allowanceObservedAt)
+  )
+    invalid("Local operator observation is stale")
+}
+function sameAttempt(
+  existing: {
+    invocation: string
+    accountRef: string
+    backend: string
+    billingBasis: string
+    authMethod: string
+    modelId: string
+    identityObservedAt: Date
+    allowanceObservedAt: Date
+    weeklyRemainingPercent: Prisma.Decimal
+    fiveHourKind: string
+    fiveHourRemainingPercent: Prisma.Decimal | null
+  },
+  requested: ReturnType<typeof attemptData>,
+): boolean {
+  return (
+    existing.invocation === requested.invocation &&
+    existing.accountRef === requested.accountRef &&
+    existing.backend === requested.backend &&
+    existing.billingBasis === requested.billingBasis &&
+    existing.authMethod === requested.authMethod &&
+    existing.modelId === requested.modelId &&
+    existing.identityObservedAt.getTime() ===
+      requested.identityObservedAt.getTime() &&
+    existing.allowanceObservedAt.getTime() ===
+      requested.allowanceObservedAt.getTime() &&
+    existing.weeklyRemainingPercent.equals(requested.weeklyRemainingPercent) &&
+    existing.fiveHourKind === requested.fiveHourKind &&
+    (existing.fiveHourRemainingPercent === null
+      ? requested.fiveHourRemainingPercent === null
+      : requested.fiveHourRemainingPercent !== null &&
+        existing.fiveHourRemainingPercent.equals(
+          requested.fiveHourRemainingPercent,
+        ))
+  )
+}
 
 type LockedGeneration = {
   id: string
@@ -357,17 +457,19 @@ type LockedGeneration = {
   protocol_version: number
   input_mode: string
   input_snapshot_mode: string
+  execution_backend: string | null
+  model_id: string
   historical_qualification: unknown
   capacity_preflight: unknown
 }
 async function generationLock(tx: Tx, generationId: string, exclusive = false) {
   const rows = exclusive
     ? await tx.$queryRaw<LockedGeneration[]>`
-        SELECT id, status, input_digest, protocol_version, input_mode,
+        SELECT id, status, input_digest, protocol_version, input_mode, model_id, execution_backend,
                input_snapshot_mode, historical_qualification, capacity_preflight
         FROM recommendation_precomputed_generation WHERE id = ${generationId} FOR UPDATE`
     : await tx.$queryRaw<LockedGeneration[]>`
-        SELECT id, status, input_digest, protocol_version, input_mode,
+        SELECT id, status, input_digest, protocol_version, input_mode, model_id, execution_backend,
                input_snapshot_mode, historical_qualification, capacity_preflight
         FROM recommendation_precomputed_generation WHERE id = ${generationId} FOR SHARE`
   const row = rows[0]
@@ -522,11 +624,64 @@ async function usage(prisma: PrismaClient | Tx, generationId: string) {
            COALESCE(sum(cost_usd), 0)::text AS known_cost_usd,
            COALESCE(sum(bytes_processed), 0)::bigint AS known_bytes
     FROM recommendation_precomputed_history_call WHERE generation_id = ${generationId}`
+  const [attempts, attemptUsage] = await Promise.all([
+    prisma.recommendationPrecomputedExecutionAttempt.findMany({
+      where: { generationId },
+      orderBy: [{ startedAt: "asc" }, { attemptId: "asc" }],
+    }),
+    prisma.recommendationPrecomputedModelCall.groupBy({
+      by: ["attemptId"],
+      where: { generationId, attemptId: { not: null } },
+      _count: true,
+      _sum: {
+        inputTokens: true,
+        outputTokens: true,
+        cachedInputTokens: true,
+      },
+    }),
+  ])
+  const [subscriptionCounts] = await prisma.$queryRaw<
+    Array<{ calls: bigint; pending: bigint; legacy_unknown_cost: bigint }>
+  >`
+    SELECT count(*) FILTER (WHERE attempt_id IS NOT NULL)::bigint AS calls,
+           count(*) FILTER (WHERE attempt_id IS NOT NULL AND status = 'pending')::bigint AS pending,
+           count(*) FILTER (WHERE attempt_id IS NULL AND cost_usd IS NULL)::bigint AS legacy_unknown_cost
+    FROM recommendation_precomputed_model_call WHERE generation_id = ${generationId}`
   return {
     modelCallCount: Number(models.calls),
     modelPendingCount: Number(models.pending),
     modelUnknownCostCount: Number(models.unknown_cost),
     modelKnownCostUsd: Number(models.known_cost_usd),
+    modelSubscriptionCallCount: Number(subscriptionCounts.calls),
+    modelSubscriptionPendingCount: Number(subscriptionCounts.pending),
+    modelLegacyUnknownCostCount: Number(subscriptionCounts.legacy_unknown_cost),
+    attempts: attempts.map((attempt) => {
+      const counts = attemptUsage.find(
+        (item) => item.attemptId === attempt.attemptId,
+      )
+      return {
+        attemptId: attempt.attemptId,
+        invocation: attempt.invocation,
+        accountRef: attempt.accountRef,
+        backend: attempt.backend,
+        billingBasis: attempt.billingBasis,
+        modelId: attempt.modelId,
+        startedAt: attempt.startedAt.toISOString(),
+        endedAt: attempt.endedAt?.toISOString() ?? null,
+        identityObservedAt: attempt.identityObservedAt.toISOString(),
+        allowanceObservedAt: attempt.allowanceObservedAt.toISOString(),
+        weeklyRemainingPercent: Number(attempt.weeklyRemainingPercent),
+        fiveHourKind: attempt.fiveHourKind,
+        fiveHourRemainingPercent:
+          attempt.fiveHourRemainingPercent === null
+            ? null
+            : Number(attempt.fiveHourRemainingPercent),
+        callCount: counts?._count ?? 0,
+        inputTokens: counts?._sum.inputTokens ?? 0,
+        outputTokens: counts?._sum.outputTokens ?? 0,
+        cachedInputTokens: counts?._sum.cachedInputTokens ?? 0,
+      }
+    }),
     inputTokens: Number(models.input_tokens),
     outputTokens: Number(models.output_tokens),
     cachedInputTokens: Number(models.cached_input_tokens),
@@ -571,6 +726,15 @@ export async function submitDurablePrecomputedRecommendation(
   if (input.action === "start") {
     const snapshotMode = input.inputSnapshotMode ?? "observed_fenced"
     if (
+      input.executionAttempt &&
+      (input.executionAttempt.invocation !== "start" ||
+        input.modelId !== "gpt-6-astra")
+    )
+      invalid("Subscription start requires exact Astra and a start attempt")
+    const requestedAttempt = input.executionAttempt
+      ? attemptData(input.executionAttempt)
+      : null
+    if (
       (input.protocolVersion === 3 &&
         (input.inputMode !== "historical_analytics" ||
           snapshotMode !== "ga_aggregate_capture_v1")) ||
@@ -591,6 +755,7 @@ export async function submitDurablePrecomputedRecommendation(
             inputMode: input.inputMode,
             inputSnapshotMode: snapshotMode,
             protocolVersion: input.protocolVersion,
+            executionBackend: requestedAttempt?.backend ?? null,
           },
         ],
         skipDuplicates: true,
@@ -616,13 +781,139 @@ export async function submitDurablePrecomputedRecommendation(
         existing.inputCutoff.getTime() !== date(input.inputCutoff).getTime() ||
         existing.expectedSourceCount !== input.expectedSourceCount ||
         existing.inputMode !== input.inputMode ||
-        existing.inputSnapshotMode !== snapshotMode
+        existing.inputSnapshotMode !== snapshotMode ||
+        existing.executionBackend !== (requestedAttempt?.backend ?? null)
       )
         conflict("Generation identity has different input")
+      if (requestedAttempt) {
+        const previous =
+          await tx.recommendationPrecomputedExecutionAttempt.findUnique({
+            where: {
+              generationId_attemptId: {
+                generationId: input.generationId,
+                attemptId: requestedAttempt.attemptId,
+              },
+            },
+          })
+        if (previous) {
+          if (!sameAttempt(previous, requestedAttempt))
+            conflict("Execution attempt retry differs")
+        } else if (inserted.count === 0) {
+          conflict("Generation already has a different execution attempt")
+        } else {
+          if (!input.executionAttempt) invalid("Execution attempt is required")
+          requireFreshAttempt(input.executionAttempt)
+          await tx.recommendationPrecomputedExecutionAttempt.create({
+            data: { generationId: input.generationId, ...requestedAttempt },
+          })
+        }
+      }
       return {
         generationId: existing.id,
         state: existing.status,
+        ...(requestedAttempt
+          ? {
+              executionBackend: requestedAttempt.backend,
+              attemptId: requestedAttempt.attemptId,
+            }
+          : {}),
         replay: inserted.count === 0,
+      }
+    })
+  }
+  if (input.action === "resume_attempt") {
+    if (input.executionAttempt.invocation !== "resume")
+      invalid("Resume requires a resume attempt")
+    const requestedAttempt = attemptData(input.executionAttempt)
+    return prisma.$transaction(async (tx) => {
+      const generation = await checkedGeneration(tx, input, true)
+      if (
+        generation.execution_backend !== requestedAttempt.backend ||
+        generation.model_id !== requestedAttempt.modelId ||
+        !["incomplete", "capacity_blocked"].includes(generation.status)
+      )
+        conflict("Generation is not resumable by subscription")
+      const previous =
+        await tx.recommendationPrecomputedExecutionAttempt.findUnique({
+          where: {
+            generationId_attemptId: {
+              generationId: input.generationId,
+              attemptId: requestedAttempt.attemptId,
+            },
+          },
+        })
+      if (previous) {
+        if (!sameAttempt(previous, requestedAttempt))
+          conflict("Execution attempt retry differs")
+        return {
+          generationId: input.generationId,
+          attemptId: requestedAttempt.attemptId,
+          replay: true,
+        }
+      }
+      const liveLeases = await tx.recommendationPrecomputedBuildSource.count({
+        where: {
+          generationId: input.generationId,
+          state: "claimed",
+          leaseExpiresAt: { gt: new Date() },
+        },
+      })
+      if (liveLeases > 0) conflict("A source lease is still live")
+      requireFreshAttempt(input.executionAttempt)
+      await tx.recommendationPrecomputedExecutionAttempt.updateMany({
+        where: { generationId: input.generationId, endedAt: null },
+        data: {
+          endedAt: new Date(),
+          endReason: "interrupted_by_manual_resume",
+        },
+      })
+      await tx.recommendationPrecomputedExecutionAttempt.create({
+        data: { generationId: input.generationId, ...requestedAttempt },
+      })
+      return {
+        generationId: input.generationId,
+        attemptId: requestedAttempt.attemptId,
+        replay: false,
+      }
+    })
+  }
+  if (input.action === "attempt_close") {
+    return prisma.$transaction(async (tx) => {
+      const generation = await checkedGeneration(tx, input, true)
+      if (generation.execution_backend !== "codex_chatgpt_subscription")
+        conflict("Generation has no subscription attempt")
+      const attempt =
+        await tx.recommendationPrecomputedExecutionAttempt.findUnique({
+          where: {
+            generationId_attemptId: {
+              generationId: input.generationId,
+              attemptId: input.attemptId,
+            },
+          },
+        })
+      if (!attempt) conflict("Execution attempt not found")
+      if (attempt.endedAt) {
+        if (attempt.endReason !== input.reason)
+          conflict("Execution attempt closure differs")
+        return {
+          generationId: input.generationId,
+          attemptId: input.attemptId,
+          replay: true,
+        }
+      }
+      await tx.recommendationPrecomputedExecutionAttempt.update({
+        where: {
+          generationId_attemptId: {
+            generationId: input.generationId,
+            attemptId: input.attemptId,
+          },
+        },
+        data: { endedAt: new Date(), endReason: input.reason },
+      })
+      return {
+        generationId: input.generationId,
+        attemptId: input.attemptId,
+        replay: false,
       }
     })
   }
@@ -752,6 +1043,7 @@ export async function submitDurablePrecomputedRecommendation(
     return {
       ...identity,
       state: generation.status,
+      executionBackend: generation.executionBackend,
       failureCode: generation.failureCode,
       expectedSourceCount: generation.expectedSourceCount,
       manifestCommitted: generation.manifestCommittedAt !== null,
@@ -853,6 +1145,7 @@ async function storedSize(prisma: PrismaClient | Tx, generationId: string) {
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_build_choice t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_source t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_model_call t WHERE generation_id = ${generationId}) +
+      (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_execution_attempt t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_history_call t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_build_budget t WHERE generation_id = ${generationId})
     )::bigint AS generation_row_bytes,
@@ -862,6 +1155,7 @@ async function storedSize(prisma: PrismaClient | Tx, generationId: string) {
       pg_total_relation_size('recommendation_precomputed_build_choice') +
       pg_total_relation_size('recommendation_precomputed_source') +
       pg_total_relation_size('recommendation_precomputed_model_call') +
+      pg_total_relation_size('recommendation_precomputed_execution_attempt') +
       pg_total_relation_size('recommendation_precomputed_history_call') +
       pg_total_relation_size('recommendation_precomputed_build_budget')
     )::bigint AS tables_physical_bytes`
@@ -903,6 +1197,7 @@ export async function loadDurablePrecomputedBuildReport(
     failures,
     source,
     knownUsage,
+    pendingModelCalls,
     size,
     budget,
     historyTotals,
@@ -929,6 +1224,18 @@ export async function loadDurablePrecomputedBuildReport(
         })
       : null,
     usage(prisma, input.generationId),
+    prisma.recommendationPrecomputedModelCall.findMany({
+      where: { generationId: input.generationId, status: "pending" },
+      orderBy: [{ startedAt: "asc" }, { callId: "asc" }],
+      take: 100,
+      select: {
+        callId: true,
+        sourceVideoId: true,
+        stage: true,
+        attemptId: true,
+        startedAt: true,
+      },
+    }),
     storedSize(prisma, input.generationId),
     prisma.recommendationPrecomputedBuildBudget.findUnique({
       where: { generationId: input.generationId },
@@ -982,7 +1289,9 @@ export async function loadDurablePrecomputedBuildReport(
       new Date()
     ).getTime() - generation.createdAt.getTime()
   const costEstimate =
-    finishedSources >= 10 && knownUsage.modelUnknownCostCount === 0
+    finishedSources >= 10 &&
+    knownUsage.modelUnknownCostCount === 0 &&
+    knownUsage.attempts.length === 0
       ? (knownUsage.modelKnownCostUsd * generation.expectedSourceCount) /
         finishedSources
       : null
@@ -993,6 +1302,7 @@ export async function loadDurablePrecomputedBuildReport(
   return {
     generationId: generation.id,
     state: generation.status,
+    executionBackend: generation.executionBackend,
     failureCode: generation.failureCode,
     modelId: generation.modelId,
     promptVersion: generation.promptVersion,
@@ -1016,6 +1326,7 @@ export async function loadDurablePrecomputedBuildReport(
       Date.now() - Date.parse(capacity.measuredAt ?? "") <= CAPACITY_MAX_AGE_MS,
     capacityEstimatedConsumedBytes: Number(budget?.consumedBytes ?? 0n),
     usage: knownUsage,
+    pendingModelCalls,
     storedSize: size,
     elapsedMs,
     projectedElapsedMs:
@@ -1806,6 +2117,23 @@ async function mutateCallsAndFinish(
     if (generationStatus !== "incomplete") conflict("Generation is closed")
     const source = await sourceLock(tx, input.generationId, input.sourceVideoId)
     requireLease(source, input.leaseToken)
+    if (generation.execution_backend === "codex_chatgpt_subscription") {
+      if (!input.attemptId || input.modelId !== generation.model_id)
+        conflict("Subscription call requires its exact model and attempt")
+      const attempt =
+        await tx.recommendationPrecomputedExecutionAttempt.findUnique({
+          where: {
+            generationId_attemptId: {
+              generationId: input.generationId,
+              attemptId: input.attemptId,
+            },
+          },
+        })
+      if (!attempt || attempt.endedAt || attempt.modelId !== input.modelId)
+        conflict("Subscription execution attempt is not active")
+    } else if (input.attemptId) {
+      conflict("Legacy generation cannot use a subscription attempt")
+    }
     const existing = await tx.recommendationPrecomputedModelCall.findUnique({
       where: {
         generationId_callId: {
@@ -1821,7 +2149,8 @@ async function mutateCallsAndFinish(
         existing.modelId !== input.modelId ||
         existing.inputDigest !== input.inputDigest ||
         existing.startedAt.getTime() !== date(input.startedAt).getTime() ||
-        existing.reservationLeaseToken !== input.leaseToken
+        existing.reservationLeaseToken !== input.leaseToken ||
+        existing.attemptId !== (input.attemptId ?? null)
       )
         conflict("Model call reservation retry differs")
       return {
@@ -1831,12 +2160,24 @@ async function mutateCallsAndFinish(
         replay: true,
       }
     }
+    if (generation.execution_backend === "codex_chatgpt_subscription") {
+      const unresolved = await tx.recommendationPrecomputedModelCall.count({
+        where: {
+          generationId: input.generationId,
+          sourceVideoId: input.sourceVideoId,
+          status: "pending",
+        },
+      })
+      if (unresolved > 0)
+        conflict("Unresolved source call blocks a new reservation")
+    }
     await reserveBudget(tx, input.generationId, 384)
     await tx.recommendationPrecomputedModelCall.create({
       data: {
         generationId: input.generationId,
         sourceVideoId: input.sourceVideoId,
         callId: input.callId,
+        attemptId: input.attemptId ?? null,
         stage: input.stage,
         modelId: input.modelId,
         inputDigest: input.inputDigest,
@@ -1853,6 +2194,20 @@ async function mutateCallsAndFinish(
     }
   }
   if (input.action === "model_call") {
+    if (
+      generation.execution_backend === "codex_chatgpt_subscription" &&
+      input.costUsd !== undefined
+    )
+      invalid("Subscription call has no monetary receipt")
+    if (
+      generation.execution_backend === "codex_chatgpt_subscription" &&
+      (input.inputTokens === undefined ||
+        input.inputTokens === 0 ||
+        input.outputTokens === undefined)
+    )
+      invalid(
+        "Subscription call needs observed token usage; unresolved calls remain pending",
+      )
     if (
       (input.status === "succeeded" &&
         (!input.outputDigest || input.errorCode)) ||
@@ -1874,12 +2229,18 @@ async function mutateCallsAndFinish(
       !existing ||
       existing.reservationLeaseToken !== input.leaseToken ||
       existing.sourceVideoId !== input.sourceVideoId ||
+      existing.attemptId !== (input.attemptId ?? null) ||
       existing.stage !== input.stage ||
       existing.modelId !== input.modelId ||
       existing.inputDigest !== input.inputDigest ||
       existing.startedAt.getTime() !== date(input.startedAt).getTime()
     )
       conflict("Model call has no matching reservation")
+    if (
+      (generation.execution_backend === "codex_chatgpt_subscription") !==
+      (input.attemptId !== undefined)
+    )
+      conflict("Model call attempt does not match generation")
     const receiptDigest = hash({
       ...input,
       checkpoint: input.checkpoint,

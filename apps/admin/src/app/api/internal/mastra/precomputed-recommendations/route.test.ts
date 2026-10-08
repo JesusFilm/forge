@@ -1,5 +1,5 @@
 import { PrismaClient, type Prisma } from "@prisma/client"
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
@@ -96,6 +96,58 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const completed = await post({ action: "complete", generationId })
       expect(await completed.json()).toMatchObject({
         result: { state: "complete" },
+      })
+    })
+
+    it("routes a bounded subscription attempt through the existing producer bearer", async () => {
+      const id = `${generationId}-subscription`
+      const now = new Date().toISOString()
+      const attemptId = randomUUID()
+      const started = await post({
+        action: "start",
+        generationId: id,
+        protocolVersion: 2,
+        modelId: "gpt-6-astra",
+        promptVersion: "route-v1",
+        inputDigest: "7".repeat(64),
+        sourceSetDigest: createHash("sha256").update("[]").digest("hex"),
+        inputCutoff: "2026-10-05T00:00:00Z",
+        expectedSourceCount: 0,
+        inputMode: "content_only",
+        executionAttempt: {
+          attemptId,
+          invocation: "start",
+          accountRef: "local-account-ref-123",
+          backend: "codex_chatgpt_subscription",
+          billingBasis: "included_subscription",
+          authMethod: "chatgpt",
+          modelId: "gpt-6-astra",
+          identityObservedAt: now,
+          allowanceObservedAt: now,
+          weeklyRemainingPercent: 50,
+          fiveHour: { kind: "limited", remainingPercent: 50 },
+        },
+      })
+      expect(started.status).toBe(200)
+      expect(await started.json()).toMatchObject({
+        result: {
+          executionBackend: "codex_chatgpt_subscription",
+          attemptId,
+        },
+      })
+      const status = await post({
+        action: "status",
+        generationId: id,
+        generationInputDigest: "7".repeat(64),
+      })
+      expect(status.status).toBe(200)
+      expect(await status.json()).toMatchObject({
+        result: {
+          executionBackend: "codex_chatgpt_subscription",
+          usage: {
+            attempts: [{ accountRef: "local-account-ref-123", callCount: 0 }],
+          },
+        },
       })
     })
   },
