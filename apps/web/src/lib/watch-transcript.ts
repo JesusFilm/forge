@@ -56,6 +56,7 @@ export async function getInitialSubtitleTranscript({
     transcriptSubtitles.find((s) => s.language.slug === selectedSlug) ?? null
   if (!selectedSubtitle) return null
 
+  const startedAt = Date.now()
   try {
     return {
       vttSrc: selectedSubtitle.vttSrc,
@@ -67,6 +68,7 @@ export async function getInitialSubtitleTranscript({
         error instanceof DOMException && error.name === "TimeoutError"
           ? "timeout"
           : "request_failed",
+      elapsedMs: Date.now() - startedAt,
       timeoutMs: WATCH_TRANSCRIPT_FETCH_TIMEOUT_MS,
     })
     return { vttSrc: selectedSubtitle.vttSrc, compactText: null }

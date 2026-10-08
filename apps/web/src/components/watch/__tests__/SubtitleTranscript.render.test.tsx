@@ -86,7 +86,7 @@ let root: Root
 type RenderTranscriptOptions = {
   audioSlug?: string | null
   componentKey?: string
-  compactText?: string
+  compactText?: string | null
   playerRef?: RefObject<MuxPlayerRef | null>
   subtitles?: WatchSubtitle[]
   vttSrc?: string
@@ -209,6 +209,27 @@ describe("SubtitleTranscript rendering", () => {
     // text container again, so nothing focusable unmounts on expansion.
     expect(container.querySelectorAll("button")).toHaveLength(1)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("retries the compact transcript in the browser when the server deadline expired", async () => {
+    renderTranscript({ compactText: null })
+
+    await act(async () => {
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled())
+    })
+    await act(async () => {
+      await vi.waitFor(() => {
+        expect(
+          container.querySelector('[data-testid="watch-subtitle-compact-text"]')
+            ?.textContent,
+        ).toBe(serverCompactText)
+      })
+    })
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      englishSubtitle.vttSrc,
+      expect.objectContaining({ credentials: "omit" }),
+    )
   })
 
   it("clamps the collapsed transcript to about 60% of the viewport and fades its bottom", () => {

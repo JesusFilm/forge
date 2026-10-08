@@ -1,7 +1,11 @@
 "use client"
 
 import Image from "next/image"
-import { isMuxImageUrl, muxImageLoader } from "@/lib/provider-image"
+import {
+  isAdminMuxCardThumbnail,
+  isMuxImageUrl,
+  muxImageLoader,
+} from "@/lib/provider-image"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
@@ -110,12 +114,18 @@ export function WatchUnavailableLanguageClient({
         >
           <Image
             src={artworkUrl}
-            loader={isMuxImageUrl(artworkUrl) ? muxImageLoader : undefined}
+            loader={
+              isMuxImageUrl(artworkUrl) && !isAdminMuxCardThumbnail(artworkUrl)
+                ? muxImageLoader
+                : undefined
+            }
             alt=""
             fill
             priority
             sizes="(max-width: 767px) 100vw, 62vw"
-            unoptimized={targetImageUrl == null}
+            unoptimized={
+              targetImageUrl == null || isAdminMuxCardThumbnail(artworkUrl)
+            }
             className="object-cover object-center opacity-50 md:object-right"
           />
         </div>

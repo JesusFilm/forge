@@ -148,6 +148,9 @@ export function SubtitleTranscript({
   }, [selectedSlug, transcriptSubtitles])
 
   const activeVttSrc = activeSubtitle?.vttSrc ?? null
+  const shouldRetryCollapsedTranscript =
+    initialTranscript?.vttSrc === activeVttSrc &&
+    initialTranscript.compactText === null
   const [loadedTranscripts, setLoadedTranscripts] = useState<
     ReadonlyMap<string, SubtitleCue[] | null>
   >(() => new Map())
@@ -169,9 +172,17 @@ export function SubtitleTranscript({
   }, [cues, expanded, serverCompactText])
 
   useEffect(() => {
-    if (!expanded || !activeVttSrc || hasLoadedActiveSource) return
+    if (
+      (!expanded && !shouldRetryCollapsedTranscript) ||
+      !activeVttSrc ||
+      hasLoadedActiveSource
+    )
+      return
 
     const controller = new AbortController()
+    const clientRetryTimeout = shouldRetryCollapsedTranscript
+      ? window.setTimeout(() => controller.abort(), 5_000)
+      : undefined
     loadInteractiveTranscriptModule()
       .then(({ loadSubtitleCues }) => {
         if (controller.signal.aborted) return []
@@ -199,8 +210,18 @@ export function SubtitleTranscript({
         })
       })
 
-    return () => controller.abort()
-  }, [activeVttSrc, durationSeconds, expanded, hasLoadedActiveSource])
+    return () => {
+      if (clientRetryTimeout !== undefined)
+        window.clearTimeout(clientRetryTimeout)
+      controller.abort()
+    }
+  }, [
+    activeVttSrc,
+    durationSeconds,
+    expanded,
+    hasLoadedActiveSource,
+    shouldRetryCollapsedTranscript,
+  ])
 
   const collapsedTextRef = useRef<HTMLDivElement | null>(null)
   // Defaults to faded: a real transcript overflows the clamp far more often

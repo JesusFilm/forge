@@ -9,7 +9,11 @@ import {
   type KeyboardEvent,
 } from "react"
 import Image from "next/image"
-import { isMuxImageUrl, muxImageLoader } from "@/lib/provider-image"
+import {
+  isAdminMuxCardThumbnail,
+  isMuxImageUrl,
+  muxImageLoader,
+} from "@/lib/provider-image"
 import { Copy, Facebook } from "lucide-react"
 import { useTranslations } from "next-intl"
 
@@ -257,7 +261,13 @@ export function ShareModal({
               {posterUrl ? (
                 <Image
                   src={posterUrl}
-                  loader={isMuxImageUrl(posterUrl) ? muxImageLoader : undefined}
+                  loader={
+                    isMuxImageUrl(posterUrl) &&
+                    !isAdminMuxCardThumbnail(posterUrl)
+                      ? muxImageLoader
+                      : undefined
+                  }
+                  unoptimized={isAdminMuxCardThumbnail(posterUrl)}
                   alt={videoTitle ?? t("posterAlt")}
                   fill
                   sizes="(min-width: 640px) 224px, 100vw"

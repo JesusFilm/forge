@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest"
 
-import { isMuxImageUrl, muxImageLoader } from "./provider-image"
+import {
+  isAdminMuxCardThumbnail,
+  isMuxImageUrl,
+  muxImageLoader,
+} from "./provider-image"
 
 describe("isMuxImageUrl", () => {
   it("accepts only HTTPS image.mux.com URLs", () => {
@@ -47,5 +51,23 @@ describe("muxImageLoader", () => {
         width: 320,
       }),
     ).toBe("https://image.mux.com/playback/thumbnail.webp?width=320")
+  })
+})
+
+describe("isAdminMuxCardThumbnail", () => {
+  it("recognizes Admin's exact pre-generated thumbnail URL", () => {
+    expect(
+      isAdminMuxCardThumbnail(
+        "https://image.mux.com/playback-id/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+      ),
+    ).toBe(true)
+  })
+
+  it("rejects any URL that would create a different Mux render", () => {
+    expect(
+      isAdminMuxCardThumbnail(
+        "https://image.mux.com/playback-id/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=3",
+      ),
+    ).toBe(false)
   })
 })

@@ -40,11 +40,14 @@ film page has a valid Video item but no indexed video. Linear: FGE-61.
 
 - `apps/web/src/lib/provider-image.ts` identifies HTTPS Mux image URLs and
   generates responsive Mux WebP URLs at the width selected by the browser.
+  Admin's exact pre-generated 448×252 card recipe stays byte-for-byte stable,
+  preserving its existing Mux cache entry and blur placeholder.
   Cloudflare Images keep Next optimization because named editorial variants
   can be much larger than their card slots.
 - `apps/web/src/lib/watch-transcript.ts` applies a five-second abort deadline
   to optional initial VTT fetches. A timeout follows the existing graceful
-  fallback and logs a redacted reason so the budget can be tuned.
+  fallback, logs a redacted reason, and triggers a bounded client retry so
+  transient failures do not leave a cached page without its transcript.
 - Focused tests cover Mux host validation, responsive URL generation, timeout
   handling, and route rendering.
 

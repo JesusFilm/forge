@@ -1,7 +1,11 @@
 "use client"
 
 import Image from "next/image"
-import { isMuxImageUrl, muxImageLoader } from "@/lib/provider-image"
+import {
+  isAdminMuxCardThumbnail,
+  isMuxImageUrl,
+  muxImageLoader,
+} from "@/lib/provider-image"
 import Link from "next/link"
 import type { Route } from "next"
 import { FolderOpen, Play } from "lucide-react"
@@ -97,7 +101,13 @@ export function SeriesEpisodeCard({
       {thumbnailUrl ? (
         <Image
           src={thumbnailUrl}
-          loader={isMuxImageUrl(thumbnailUrl) ? muxImageLoader : undefined}
+          loader={
+            isMuxImageUrl(thumbnailUrl) &&
+            !isAdminMuxCardThumbnail(thumbnailUrl)
+              ? muxImageLoader
+              : undefined
+          }
+          unoptimized={isAdminMuxCardThumbnail(thumbnailUrl)}
           alt={episode.title ?? `Episode ${index + 1} thumbnail`}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 20vw"

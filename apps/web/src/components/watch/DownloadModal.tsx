@@ -3,7 +3,11 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import Image from "next/image"
-import { isMuxImageUrl, muxImageLoader } from "@/lib/provider-image"
+import {
+  isAdminMuxCardThumbnail,
+  isMuxImageUrl,
+  muxImageLoader,
+} from "@/lib/provider-image"
 import {
   Check,
   ChevronDown,
@@ -310,7 +314,12 @@ export function DownloadModal({
           {posterUrl ? (
             <Image
               src={posterUrl}
-              loader={isMuxImageUrl(posterUrl) ? muxImageLoader : undefined}
+              loader={
+                isMuxImageUrl(posterUrl) && !isAdminMuxCardThumbnail(posterUrl)
+                  ? muxImageLoader
+                  : undefined
+              }
+              unoptimized={isAdminMuxCardThumbnail(posterUrl)}
               alt={videoTitle ?? t("posterAlt")}
               fill
               sizes="(min-width: 640px) 224px, 100vw"

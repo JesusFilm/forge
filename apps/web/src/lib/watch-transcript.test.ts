@@ -51,13 +51,51 @@ describe("getInitialSubtitleTranscript", () => {
       subtitles[0]!.vttSrc,
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     )
+    expect((fetchSpy.mock.calls[0]?.[1] as RequestInit).signal).toBe(
+      timeoutSpy.mock.results[0]?.value,
+    )
     expect(result).toEqual({
       vttSrc: subtitles[0]!.vttSrc,
       compactText: null,
     })
     expect(logWatchServerEvent).toHaveBeenCalledWith(
       "watch_transcript.fetch.failed",
-      { reason: "timeout", timeoutMs: 5_000 },
+      expect.objectContaining({ reason: "timeout", timeoutMs: 5_000 }),
+    )
+    expect(
+      JSON.stringify(vi.mocked(logWatchServerEvent).mock.calls),
+    ).not.toContain(subtitles[0]!.vttSrc)
+  })
+
+  it("returns the compact transcript when the VTT request succeeds", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => "WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nHello",
+    })
+    vi.stubGlobal("fetch", fetchSpy)
+
+    await expect(
+      getInitialSubtitleTranscript({ subtitles, audioSlug: "english" }),
+    ).resolves.toEqual({
+      vttSrc: subtitles[0]!.vttSrc,
+      compactText: "Hello",
+    })
+    expect(logWatchServerEvent).not.toHaveBeenCalled()
+  })
+
+  it("logs an HTTP failure without retaining the VTT URL", async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: false, status: 503 })
+    vi.stubGlobal("fetch", fetchSpy)
+
+    const result = await getInitialSubtitleTranscript({
+      subtitles,
+      audioSlug: "english",
+    })
+
+    expect(result).toEqual({ vttSrc: subtitles[0]!.vttSrc, compactText: null })
+    expect(logWatchServerEvent).toHaveBeenCalledWith(
+      "watch_transcript.fetch.failed",
+      expect.objectContaining({ reason: "request_failed", timeoutMs: 5_000 }),
     )
     expect(
       JSON.stringify(vi.mocked(logWatchServerEvent).mock.calls),

@@ -8,7 +8,11 @@ import {
   useState,
 } from "react"
 import Image from "next/image"
-import { isMuxImageUrl, muxImageLoader } from "@/lib/provider-image"
+import {
+  isAdminMuxCardThumbnail,
+  isMuxImageUrl,
+  muxImageLoader,
+} from "@/lib/provider-image"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { ArrowLeft, Circle, LoaderCircle, Play } from "lucide-react"
@@ -483,7 +487,12 @@ export function SiblingCarousel({
                 {thumb ? (
                   <Image
                     src={thumb}
-                    loader={isMuxImageUrl(thumb) ? muxImageLoader : undefined}
+                    loader={
+                      isMuxImageUrl(thumb) && !isAdminMuxCardThumbnail(thumb)
+                        ? muxImageLoader
+                        : undefined
+                    }
+                    unoptimized={isAdminMuxCardThumbnail(thumb)}
                     alt={thumbnailAlt}
                     fill
                     sizes="(max-width: 639.98px) 70vw, (max-width: 768px) 36vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, (max-width: 1536px) 20vw, 16vw"
