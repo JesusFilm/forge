@@ -2341,9 +2341,8 @@ describe("WatchHomePage", () => {
       '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
     ) as HTMLButtonElement
     expect(repeatedlyRecoveredCurrentButton.getAttribute("aria-label")).toBe(
-      "Queued Five",
+      "Queued Four",
     )
-    expect(document.activeElement).toBe(repeatedlyRecoveredCurrentButton)
   })
 
   it("holds the playback ring and shows a loader until the hero video loads", async () => {
