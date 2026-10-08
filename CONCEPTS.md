@@ -184,10 +184,26 @@ content, translated content, and translation model that produced it. It covers
 the translated portion of a catalog, so Pending Translation Paths do not claim
 completed-translation provenance.
 
+### English-only Locale
+
+A supported UI locale whose Watch UI Catalog is a deliberate whole copy of the
+English source that never goes to a translator, distinct from a Pending
+Translation Path, which marks single unfinished messages.
+_Avoid:_ provisional locale
+
+An English-only Locale keeps its catalog so the client supports the same
+locales as Web, and it carries no Translation Provenance. On mobile it never
+becomes the UI Locale: a phone that prefers it falls through to its next
+language, then English, so English plural rules and left-to-right text apply.
+A locale joins the list when it cannot be translated reliably, and it leaves
+the list only through a new translation run.
+
 ### UI Locale
 
 The locale of the Watch UI Catalog that a client renders its interface copy
 in. It is always a shipped catalog, or English when no shipped catalog fits.
+On mobile, an English-only Locale does not fit, and neither does a bare
+language catalog that is known to use a different script from the phone's.
 It is distinct from the audio Language, even where one choice sets both: Web
 derives the UI Locale from the public language slug, so Arabic Najdi renders
 English interface copy. Admin content requests derive three language forms

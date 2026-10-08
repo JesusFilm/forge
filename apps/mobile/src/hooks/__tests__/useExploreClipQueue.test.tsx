@@ -1162,24 +1162,24 @@ describe("the UI language (U7)", () => {
     ])
   })
 
-  // R21: `ha` and `yo` have no UI catalog, so only the phone tag changes.
+  // R21: `ha` and `ig` have no UI catalog, so only the phone tag changes.
   it("moves the feed at the next focus after a phone change that keeps the UI catalog", async () => {
     mockPreferences.mockReturnValue({ audioLanguageSlug: null })
     let device = "ha-NG"
     const w = world({
-      inventories: { hausa: ["a"], yoruba: ["x"] },
+      inventories: { hausa: ["a"], igbo: ["x"] },
       deviceLocale: () => device,
     })
     const view = render(w.deps, FOCUSED)
     await flush()
     expect(view.latest().queue.feedLanguageSlug).toBe("hausa")
 
-    device = "yo-NG"
+    device = "ig-NG"
     view.rerender({ focused: false })
     await flush()
     view.rerender({ focused: true })
     await flush()
-    expect(view.latest().queue.feedLanguageSlug).toBe("yoruba")
+    expect(view.latest().queue.feedLanguageSlug).toBe("igbo")
   })
 
   // R9: the empty state names the feed language in the UI locale.
