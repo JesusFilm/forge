@@ -3,11 +3,13 @@ import {
   WATCH_PUBLIC_METADATA_ORIGIN,
   asLocaleSlug,
   localizedHomePath,
+  languageInventoryPath,
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchVideoPath,
 } from "@/lib/routes"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
+import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
 import type {
   WatchSeoManifest,
   WatchSeoManifestAlternate,
@@ -142,6 +144,23 @@ function createWatchHomeSitemapEntries(): WatchSitemapEntry[] {
   ]
 }
 
+function createWatchLanguageInventoryEntries(
+  manifest: WatchSeoManifest,
+): WatchSitemapEntry[] {
+  const inventorySlugs = new Set(
+    manifest.videoRouteGroups.flatMap((group) =>
+      group.alternates
+        .map((alternate) => alternate.languageSlug)
+        .filter((slug) => PUBLIC_WATCH_LANGUAGE_SLUGS.has(slug)),
+    ),
+  )
+  return ["", ...inventorySlugs].map((slug) => {
+    const locale = slug ? tryAsLocaleSlug(slug) : null
+    const path = locale ? languageInventoryPath(locale) : "/languages"
+    return { loc: absoluteWatchUrl(path), alternates: [] }
+  })
+}
+
 function videoHref(contentSlug: string, languageSlug: string): string | null {
   const content = tryAsContentSlug(contentSlug)
   const language = tryAsLocaleSlug(languageSlug)
@@ -215,6 +234,14 @@ function createWatchSitemapGroups(
   const homeSitemapGroup = groupForEntries(createWatchHomeSitemapEntries())
   if (homeSitemapGroup) groups.push(homeSitemapGroup)
 
+  for (const entry of createWatchLanguageInventoryEntries(manifest)) {
+    groups.push({
+      alternateLinksXml: "",
+      alternateLinksBytes: 0,
+      locs: [entry.loc],
+    })
+  }
+
   return groups
 }
 
@@ -232,6 +259,7 @@ export function createWatchSitemapEntries(
   }
 
   entries.push(...createWatchHomeSitemapEntries())
+  entries.push(...createWatchLanguageInventoryEntries(manifest))
 
   return entries
 }

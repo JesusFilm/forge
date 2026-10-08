@@ -222,5 +222,48 @@ describe("buildWatchLanguageIndex", () => {
         aliasOwnerSlug: null,
       }),
     )
+    expect(
+      buildWatchLanguageIndex({ languages: [], countries: [] }, new Set())
+        .languages,
+    ).toEqual([])
+  })
+
+  it("includes public corpus languages missing from Admin in the Other group", () => {
+    const index = buildWatchLanguageIndex(
+      { languages: [], countries: [] },
+      new Set(["english"]),
+    )
+
+    expect(index.languages).toHaveLength(1)
+    expect(index.languages).toContainEqual(
+      expect.objectContaining({
+        publicSlug: "english",
+        href: "/english.html/videos",
+        regionNames: ["Other"],
+        speakerCount: 0,
+      }),
+    )
+    expect(
+      index.regions.find((region) => region.name === "Other")?.countries,
+    ).toEqual([
+      expect.objectContaining({
+        name: "Unassigned",
+        languages: expect.arrayContaining([
+          expect.objectContaining({ publicSlug: "english" }),
+        ]),
+      }),
+    ])
+  })
+
+  it("uses distinct slug labels for fallback languages sharing a BCP-47 tag", () => {
+    const index = buildWatchLanguageIndex(
+      { languages: [], countries: [] },
+      new Set(["cakchiquel-central", "cakchiquel-eastern"]),
+    )
+
+    expect(index.languages.map(({ englishLabel }) => englishLabel)).toEqual([
+      "Cakchiquel Central",
+      "Cakchiquel Eastern",
+    ])
   })
 })

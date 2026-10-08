@@ -2,6 +2,9 @@ import { cache } from "react"
 import { adminGraphql } from "@forge/admin-graphql"
 
 import client from "@/lib/admin-client"
+import { LANGUAGE_BCP47_MAP } from "./language-bcp47-map"
+import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
+import { getWatchSeoManifest } from "./watch-seo-manifest"
 
 import {
   isPublicWatchLanguageSlug,
@@ -121,11 +124,25 @@ const PAGE_SIZE = 500
 const MAX_LANGUAGE_PAGES = 10
 const OTHER_REGION_NAME = "Other"
 const UNASSIGNED_COUNTRY_GROUP_NAME = "Unassigned"
+const FALLBACK_BCP47_COUNTS = new Map<string, number>()
+for (const slug of PUBLIC_WATCH_LANGUAGE_SLUGS) {
+  const tag = LANGUAGE_BCP47_MAP[slug]
+  if (tag)
+    FALLBACK_BCP47_COUNTS.set(tag, (FALLBACK_BCP47_COUNTS.get(tag) ?? 0) + 1)
+}
 
 export const getWatchLanguageIndex = cache(
   async (): Promise<WatchLanguageIndex> => {
-    const metadata = await fetchWatchLanguageIndexMetadata()
-    return buildWatchLanguageIndex(metadata)
+    const [metadata, manifest] = await Promise.all([
+      fetchWatchLanguageIndexMetadata(),
+      getWatchSeoManifest(),
+    ])
+    const discoverableLanguageSlugs = new Set(
+      manifest?.videoRouteGroups.flatMap((group) =>
+        group.alternates.map((alternate) => alternate.languageSlug),
+      ) ?? [],
+    )
+    return buildWatchLanguageIndex(metadata, discoverableLanguageSlugs)
   },
 )
 
@@ -139,10 +156,10 @@ export async function getWatchLanguageIndexLanguage(
   )
 }
 
-export function buildWatchLanguageIndex({
-  languages,
-  countries,
-}: WatchLanguageIndexMetadata): WatchLanguageIndex {
+export function buildWatchLanguageIndex(
+  { languages, countries }: WatchLanguageIndexMetadata,
+  discoverableLanguageSlugs?: ReadonlySet<string>,
+): WatchLanguageIndex {
   const metadataByKey = new Map<string, WatchLanguageIndexMetadataLanguage>()
   const regionNamesByKey = new Map<string, Set<string>>()
   const speakerCountByKey = new Map<string, number>()
@@ -236,6 +253,35 @@ export function buildWatchLanguageIndex({
         ...new Set([...existing.regionNames, ...entry.regionNames]),
       ].sort((a, b) => a.localeCompare(b)),
       flagPngSrc: existing.flagPngSrc ?? entry.flagPngSrc,
+    })
+  }
+
+  for (const publicSlug of PUBLIC_WATCH_LANGUAGE_SLUGS) {
+    if (byPublicSlug.has(publicSlug)) continue
+    if (!discoverableLanguageSlugs?.has(publicSlug)) continue
+    const localeSlug = tryAsLocaleSlug(publicSlug)
+    if (!localeSlug) continue
+    const bcp47 = LANGUAGE_BCP47_MAP[publicSlug] ?? null
+    const uniqueBcp47 =
+      bcp47 && FALLBACK_BCP47_COUNTS.get(bcp47) === 1 ? bcp47 : null
+    const englishLabel = languageDisplayName(publicSlug, uniqueBcp47, "en")
+    const nativeLabel = languageDisplayName(
+      publicSlug,
+      uniqueBcp47,
+      uniqueBcp47 ?? "en",
+    )
+    byPublicSlug.set(publicSlug, {
+      id: `public:${publicSlug}`,
+      coreId: null,
+      englishLabel,
+      nativeLabel,
+      publicSlug,
+      aliasOwnerSlug: null,
+      href: languageVideosIndexPath(localeSlug),
+      bcp47,
+      speakerCount: 0,
+      regionNames: [OTHER_REGION_NAME],
+      flagPngSrc: null,
     })
   }
 
@@ -630,6 +676,27 @@ function localizedName(value: unknown): string | null {
     }
   }
   return null
+}
+
+function languageDisplayName(
+  publicSlug: string,
+  bcp47: string | null,
+  displayLocale: string,
+): string {
+  if (bcp47) {
+    try {
+      const name = new Intl.DisplayNames([displayLocale], {
+        type: "language",
+      }).of(bcp47)
+      if (name && name.toLowerCase() !== bcp47.toLowerCase()) return name
+    } catch {
+      // Fall through to a readable public slug when Intl has no label.
+    }
+  }
+  return publicSlug
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
 }
 
 function compact<T>(
