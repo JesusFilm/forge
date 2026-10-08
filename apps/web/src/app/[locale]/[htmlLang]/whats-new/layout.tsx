@@ -1,5 +1,7 @@
 import type { ReactNode } from "react"
 
+import "@/components/whats-new/whats-new.css"
+
 import { WatchChromeShell } from "@/components/WatchChromeShell"
 
 export default async function WatchWhatsNewLayout({

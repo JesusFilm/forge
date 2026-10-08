@@ -95,7 +95,7 @@ export function WhatsNewAiTrafficChart() {
       {/* The scroll reveal wipes THIS box — the plot and the endpoint
           marker together — not the SVG group alone. That is what keeps
           the marker in step with the line at every width; see
-          `.watch-scroll-trend` in globals.css. */}
+          `.watch-scroll-trend` in whats-new.css. */}
       <div className="watch-scroll-trend relative mt-6 h-48 sm:h-60 lg:h-72">
         <svg
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}

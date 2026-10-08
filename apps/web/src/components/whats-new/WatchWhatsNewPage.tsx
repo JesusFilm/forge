@@ -391,7 +391,7 @@ export function WatchWhatsNewPage({
 
               All of it is CSS scroll-driven (`animation-timeline`) reading
               one named timeline off the stage — see the guarded block in
-              globals.css. Without support, or under prefers-reduced-motion,
+              whats-new.css. Without support, or under prefers-reduced-motion,
               the cards never leave the flow: the whole thing renders as a
               plain vertical list of card-then-beat, fully visible. */}
           <section
@@ -1358,7 +1358,7 @@ export function WatchWhatsNewPage({
                           below its text.
 
                           The layered radials and the slanted foot mask are
-                          in globals.css under `.whats-new-tint-band`; only
+                          in whats-new.css under `.whats-new-tint-band`; only
                           the two stops are set here, on the cell, so they
                           inherit. */}
                       <div
