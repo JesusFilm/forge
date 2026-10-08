@@ -322,10 +322,25 @@ async function runCodex(input: {
       env: childEnvironment(),
       stdio: ["pipe", "pipe", "pipe"],
       shell: false,
+      // npm's Codex launcher spawns a native child. Own a fresh POSIX process
+      // group so a timeout/tool violation stops the whole invocation.
+      detached: true,
     })
+    const terminateOwnedGroup = () => {
+      if (child.pid !== undefined) {
+        try {
+          process.kill(-child.pid, "SIGKILL")
+          return
+        } catch {
+          // The group may already have exited. TERM lets the npm launcher
+          // forward to its native child if group signalling was unavailable.
+        }
+      }
+      child.kill("SIGTERM")
+    }
     const timer = setTimeout(() => {
       timedOut = true
-      child.kill("SIGKILL")
+      terminateOwnedGroup()
     }, input.timeoutMs)
     child.stdin.on("error", () => {})
     child.stdin.end(input.prompt)
@@ -333,7 +348,7 @@ async function runCodex(input: {
       bytes += chunk.length
       if (bytes > MAX_EVENT_BYTES) {
         oversized = true
-        child.kill("SIGKILL")
+        terminateOwnedGroup()
         return
       }
       remainder += decoder.write(chunk)
@@ -343,11 +358,11 @@ async function runCodex(input: {
         remainder = remainder.slice(newline + 1)
         if (++lines > MAX_EVENT_COUNT) {
           oversized = true
-          child.kill("SIGKILL")
+          terminateOwnedGroup()
           return
         }
         if (line) processEvent(line, state)
-        if (state.failed === "unexpected_tool_event") child.kill("SIGKILL")
+        if (state.failed === "unexpected_tool_event") terminateOwnedGroup()
         newline = remainder.indexOf("\n")
       }
     })
@@ -391,6 +406,7 @@ export function createCodexSubscriptionAstraModel(
   options: Options,
 ): CodexSubscriptionAstraModel {
   if (
+    process.platform === "win32" ||
     !isAbsolute(options.codexExecutable) ||
     !/^[A-Za-z0-9:_-]{8,128}$/u.test(options.initiatingAccountRef) ||
     process.env.CI ||

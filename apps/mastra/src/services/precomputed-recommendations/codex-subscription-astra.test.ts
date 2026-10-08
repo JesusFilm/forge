@@ -2,7 +2,7 @@ import { mkdtemp, readFile, rm, writeFile, chmod, stat } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import {
   createCodexSubscriptionAstraModel,
@@ -17,6 +17,13 @@ import {
 import { spanJudgmentSchema } from "./catalog-evidence-spans"
 
 const scratch: string[] = []
+
+beforeEach(() => {
+  // These fake-process cases exercise a local operator invocation, even when
+  // the test runner itself is hosted in CI. The separate CI test keeps the
+  // production constructor guard observable.
+  vi.stubEnv("CI", "")
+})
 
 afterEach(async () => {
   vi.unstubAllEnvs()
@@ -60,6 +67,26 @@ process.stderr.write(${JSON.stringify(options.stderr ?? "")})
   return { executable, capture }
 }
 
+async function fakeNodeLauncher(eventsToEmit: unknown[]) {
+  const directory = await mkdtemp(join(tmpdir(), "forge-codex-launcher-test-"))
+  scratch.push(directory)
+  const executable = join(directory, "wrapper.cjs")
+  const heartbeat = join(directory, "native-heartbeat.txt")
+  const nativeScript = `const fs = require("node:fs"); setInterval(() => fs.appendFileSync(${JSON.stringify(heartbeat)}, "x"), 20); setTimeout(() => process.exit(0), 2200)`
+  const wrapper = `#!/usr/bin/env node
+const { spawn } = require("node:child_process")
+const fs = require("node:fs")
+fs.writeFileSync(${JSON.stringify(heartbeat)}, "")
+spawn(process.execPath, ["-e", ${JSON.stringify(nativeScript)}], { stdio: ["ignore", "inherit", "inherit"] })
+fs.readFileSync(0, "utf8")
+for (const event of ${JSON.stringify(eventsToEmit)}) fs.writeSync(1, JSON.stringify(event) + "\\n")
+setTimeout(() => process.exit(0), 2200)
+`
+  await writeFile(executable, wrapper, { mode: 0o700 })
+  await chmod(executable, 0o700)
+  return { executable, heartbeat }
+}
+
 function events(
   output: unknown,
   usage = { input_tokens: 30, cached_input_tokens: 4, output_tokens: 8 },
@@ -93,12 +120,14 @@ function model(
     accountRef: "initiating-account-123",
     authMethod: "chatgpt" as const,
   }),
+  timeoutMs?: number,
 ) {
   return createCodexSubscriptionAstraModel({
     codexExecutable: executable,
     readAllowance: allowance,
     initiatingAccountRef: "initiating-account-123",
     readOperatorIdentity: identity,
+    timeoutMs,
   })
 }
 
@@ -588,6 +617,36 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     ).rejects.toMatchObject({ code: "provider_unavailable" })
   })
 
+  it.each(["timeout", "tool_event"] as const)(
+    "terminates the owned wrapper and native child on %s",
+    async (mode) => {
+      const emitted =
+        mode === "tool_event"
+          ? [
+              { type: "thread.started", thread_id: "test-thread" },
+              { type: "turn.started" },
+              { type: "item.completed", item: { type: "command_execution" } },
+            ]
+          : [{ type: "thread.started", thread_id: "test-thread" }]
+      const launcher = await fakeNodeLauncher(emitted)
+      const started = Date.now()
+      await expect(
+        model(launcher.executable, undefined, undefined, 100).generate(input),
+      ).rejects.toMatchObject({
+        code:
+          mode === "tool_event"
+            ? "unexpected_tool_event"
+            : "provider_unavailable",
+        consumptionUnknown: true,
+      })
+      expect(Date.now() - started).toBeLessThan(900)
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      const before = await readFile(launcher.heartbeat, "utf8")
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      expect(await readFile(launcher.heartbeat, "utf8")).toBe(before)
+    },
+  )
+
   it("excludes paid API credentials and config overrides from the child", async () => {
     vi.stubEnv("OPENAI_API_KEY", "secret-openai")
     vi.stubEnv("CODEX_API_KEY", "secret-codex")
@@ -606,5 +665,14 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     const cli = await fakeCli(events(summary))
     vi.stubEnv("RAILWAY_ENVIRONMENT", "production")
     expect(() => model(cli.executable)).toThrowError("operator_only")
+  })
+
+  it("refuses construction when the actual invocation is in CI", async () => {
+    const cli = await fakeCli(events(summary))
+    vi.stubEnv("CI", "true")
+    expect(() => model(cli.executable)).toThrowError("operator_only")
+    await expect(readFile(cli.capture)).rejects.toMatchObject({
+      code: "ENOENT",
+    })
   })
 })
