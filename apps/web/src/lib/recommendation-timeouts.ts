@@ -13,3 +13,8 @@ export const RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS = 3_000
 // Leave room for admission, Web execution, and browser-to-edge transit around
 // the upstream budget. The browser deadline must remain the larger boundary.
 export const RECOMMENDATION_PROFILE_BROWSER_DEADLINE_MS = 5_000
+
+// Content actions are idempotent and best-effort. Keep the server's Admin
+// deadline below the browser deadline so a committed write can be acknowledged.
+export const RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS = 500
+export const RECOMMENDATION_CONTENT_ACTION_BROWSER_DEADLINE_MS = 700

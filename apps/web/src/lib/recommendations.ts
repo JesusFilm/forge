@@ -19,6 +19,7 @@ import client from "@/lib/admin-client"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 import {
   RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS,
+  RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS,
 } from "@/lib/recommendation-timeouts"
 
@@ -26,7 +27,6 @@ import {
 // room for admission, serialization, network transit, and bounded retries.
 const DELIVERY_UPSTREAM_TIMEOUT_MS = 3_500
 const SELECTION_UPSTREAM_TIMEOUT_MS = 700
-const CONTENT_ACTION_UPSTREAM_TIMEOUT_MS = 900
 
 export async function issueWatchSurfaceDelivery(
   variables: AdminVariablesOf<typeof adminIssueWatchSurfaceDeliveryOperation>,
@@ -398,7 +398,7 @@ export async function recordRecommendationContentAction(
     mutation: adminRecordRecommendationContentActionOperation,
     variables,
     fetchPolicy: "no-cache",
-    context: upstreamContext(CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
+    context: upstreamContext(RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
   })
   if (result.error || !result.data?.recordRecommendationContentAction) {
     throw new RecommendationRuntimeError("content_action_unavailable")
@@ -413,7 +413,7 @@ export async function recordWatchSurfaceExposure(
     mutation: adminRecordWatchSurfaceExposureOperation,
     variables: { events },
     fetchPolicy: "no-cache",
-    context: upstreamContext(CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
+    context: upstreamContext(RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
   })
   if (result.error || !result.data?.recordWatchSurfaceExposure) {
     throw new RecommendationRuntimeError("evidence_failed")

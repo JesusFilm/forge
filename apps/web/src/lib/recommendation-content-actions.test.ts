@@ -13,6 +13,10 @@ vi.mock("@/lib/recommendation-browser", () => ({
 }))
 
 import { recordWatchShareAction } from "./recommendation-content-actions"
+import {
+  RECOMMENDATION_CONTENT_ACTION_BROWSER_DEADLINE_MS,
+  RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS,
+} from "./recommendation-timeouts"
 
 describe("recordWatchShareAction", () => {
   beforeEach(() => {
@@ -31,7 +35,7 @@ describe("recordWatchShareAction", () => {
         credentials: "same-origin",
         keepalive: true,
       }),
-      700,
+      RECOMMENDATION_CONTENT_ACTION_BROWSER_DEADLINE_MS,
     )
     expect(
       JSON.parse(recommendationFetchWithRetry.mock.calls[0]?.[1]?.body),
@@ -43,6 +47,14 @@ describe("recordWatchShareAction", () => {
       actionKind: "share",
       actionDetail: "link_copy",
     })
+  })
+
+  it("keeps the Admin request timeout below the browser deadline", () => {
+    expect(RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS).toBe(500)
+    expect(RECOMMENDATION_CONTENT_ACTION_BROWSER_DEADLINE_MS).toBe(700)
+    expect(RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS).toBeLessThan(
+      RECOMMENDATION_CONTENT_ACTION_BROWSER_DEADLINE_MS,
+    )
   })
 
   it("does not surface telemetry failure to the completed share action", async () => {
