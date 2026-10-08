@@ -54,6 +54,7 @@
         }
       ],
       "./plugins/withTVInfoPlistFixes",
+      "./plugins/withTVSceneLifecycle",
       "./plugins/withAssistantSearchIntent",
       "./plugins/withTVHardwareFeatures",
       "./plugins/withAndroidStartupLoading",

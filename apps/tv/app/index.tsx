@@ -24,8 +24,8 @@ import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
 import { resolveHomeRailVariant } from "../src/components/home/homeRailVariant"
-import { HomeSkeleton } from "../src/components/home/HomeSkeleton"
 import { BrandedLoading } from "../src/components/BrandedLoading"
+import { useStartupIntroActive } from "../src/contexts/StartupIntroProvider"
 import { ScreenStateView } from "../src/components/ScreenStateView"
 import { AndroidLoadingDialog } from "../src/components/AndroidLoadingDialog"
 import {
@@ -113,6 +113,7 @@ const IS_ANDROID = Platform.OS === "android"
 let autoStartConsumed = false
 
 export default function HomeScreen() {
+  const introActive = useStartupIntroActive()
   const router = useRouter()
   const { model, loading, error, refetch } = useWatchHome()
 
@@ -236,6 +237,7 @@ export default function HomeScreen() {
     useShowcasePrefs()
   const activePath = usePathname()
   useEffect(() => {
+    if (introActive) return
     if (
       !shouldAutoStartShowcase({
         hydrated: showcasePrefsHydrated,
@@ -249,7 +251,13 @@ export default function HomeScreen() {
     autoStartConsumed = true
     // Stamped so RUM can separate an unattended recovery from a human start (AE3).
     router.push(`/showcase?${SHOWCASE_SOURCE_PARAM}=${SHOWCASE_AUTO_SOURCE}`)
-  }, [showcasePrefsHydrated, showcasePrefs.autoStart, activePath, router])
+  }, [
+    introActive,
+    showcasePrefsHydrated,
+    showcasePrefs.autoStart,
+    activePath,
+    router,
+  ])
 
   // ── Showcase state ── First model seeds; refetches re-reconcile, keeping the
   // current pick if its id survives. Only CARDS dispatch focus, so it retains
@@ -577,14 +585,10 @@ export default function HomeScreen() {
         </View>
       )
     }
-    // Non-focusable skeleton (KTD2): no focus claim of its own — the top bar's
-    // Search tab (hasTVPreferredFocus) owns initial focus in this state too.
-    // Shown only when model == null (cold load); a warm re-entry skips straight
-    // to content.
     return (
       <View style={styles.screen}>
+        <BrandedLoading />
         {topBar}
-        <HomeSkeleton />
       </View>
     )
   }

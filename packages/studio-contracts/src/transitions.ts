@@ -34,7 +34,10 @@ export function studioCuts(document: StudioDocument): StudioCut[] {
       // frames and no changes to speech, source-out or other timeline positions.
       frames = Math.min(
         frames,
-        Math.floor((incoming.source.startMs * document.fps) / 1000),
+        Math.floor(
+          (incoming.source.startMs * document.fps) /
+            (1000 * (incoming.playbackRate ?? 1)),
+        ),
       )
     }
     if (frames < 1) return []
@@ -79,7 +82,15 @@ export function studioMediaStartTimes(
       Math.max(
         0,
         starts.get(cut.incomingId)! -
-          Math.ceil((cut.frames * 1000) / document.fps),
+          Math.ceil(
+            (cut.frames *
+              1000 *
+              (document.items.find(
+                (item): item is VideoItem =>
+                  item.id === cut.incomingId && item.kind === "video",
+              )?.playbackRate ?? 1)) /
+              document.fps,
+          ),
       ),
     )
   }

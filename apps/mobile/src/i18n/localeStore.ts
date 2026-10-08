@@ -9,6 +9,7 @@ import { audioSlugForLocaleTag } from "./audioSlug"
 import {
   CATALOG_LOADERS,
   CATALOG_TAGS,
+  ENGLISH_ONLY_TAGS,
   type CatalogTag,
 } from "./catalogs.generated"
 import { PLURAL_DATA_TAG } from "./pluralData.generated"
@@ -185,11 +186,16 @@ function notifyListeners(): void {
   listeners.forEach((listener) => listener())
 }
 
+// An English-only catalog is a copy of en.json, so its language resolves as
+// if it had no catalog: the next phone language wins, then English (feat-604).
+const ENGLISH_ONLY = new Set<string>(ENGLISH_ONLY_TAGS)
+const RESOLVABLE_TAGS = CATALOG_TAGS.filter((tag) => !ENGLISH_ONLY.has(tag))
+
 function resolveFromPhone(
   requested: readonly string[],
 ): Pick<LocaleResolution, "tag" | "match" | "matchedIndex"> {
   if (pseudo) return { tag: ENGLISH, match: "pseudo", matchedIndex: -1 }
-  const result = resolveLocale(requested, CATALOG_TAGS)
+  const result = resolveLocale(requested, RESOLVABLE_TAGS)
   return {
     tag: result.tag as CatalogTag,
     match: result.match,

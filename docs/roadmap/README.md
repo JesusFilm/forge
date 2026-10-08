@@ -4,13 +4,13 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 5, 2026)
+## Status (October 6, 2026)
 
-- **Total tickets:** 783
-- **Complete:** 589
+- **Total tickets:** 784
+- **Complete:** 590
 - **Cancelled:** 39
-- **In progress:** 55
-- **Not started:** 43
+- **In progress:** 56
+- **Not started:** 42
 - **Blocked:** 57
 - **Overdue and open:** 137
 
@@ -182,7 +182,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-579](content-discovery/feat-579-watch-search-catalog-publication.md)                                     | Publish Core catalog changes into the serving Watch search index                                | nisal      | P1       | 2026-09-30 | 5    | 2026-10-04 | complete    |
 | [feat-573](content-discovery/feat-573-sustainable-cowatch-live-refresh.md)                                     | Sustain live co-watch with bounded graph refresh                                                | nisal      | P1       | 2026-10-01 | 3    | 2026-10-03 | complete    |
 | [feat-589](content-discovery/feat-589-recommendation-audio-aware-retrieval-locale-identity.md)                 | Repair recommendation audio-aware retrieval and locale identity                                 | nisal      | P1       | 2026-10-01 | 5    | 2026-10-05 | complete    |
-| [feat-609](content-discovery/feat-609-filtered-hnsw-fixture-recall.md)                                         | Diagnose intermittent filtered HNSW recommendation fixture recall                               | nisal      | P1       | 2026-10-06 | 2    | 2026-10-07 | not-started |
+| [feat-609](content-discovery/feat-609-filtered-hnsw-fixture-recall.md)                                         | Diagnose intermittent filtered HNSW recommendation fixture recall                               | nisal      | P1       | 2026-10-06 | 2    | 2026-10-07 | in-progress |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | cancelled   |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | cancelled   |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | cancelled   |
@@ -660,6 +660,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-582](platform/feat-582-mobile-expo-sdk57-0-26-alignment.md)                      | Align mobile Expo dependencies with the SDK 57.0.26 patch set                      | urim       | P1       | 2026-09-30 | 1    | 2026-09-30 | complete    |
 | [feat-599](platform/feat-599-roadmap-cancelled-status.md)                              | Represent cancelled roadmap work as terminal                                       | nisal      | P1       | 2026-10-02 | 1    | 2026-10-02 | complete    |
 | [feat-604](platform/feat-604-mobile-ui-translation-run-and-device-checks.md)           | Mobile UI first translation run (U16) and open device checks                       | urim       | P1       | 2026-10-06 | 7    | 2026-10-12 | not-started |
+| [feat-611](platform/feat-611-renovate-google-maven-lookup.md)                          | Resolve Android dependencies in Renovate                                           | tataihono  | P1       | 2026-10-06 | 1    | 2026-10-06 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
@@ -761,6 +762,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-008](topic-experiences/feat-008-experience-block-templates.md)                        | Experience Block Template System                                                 | ekkasit    | P0       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
 | [feat-013](topic-experiences/feat-013-bulk-experience-generation.md)                        | Bulk Experience Generation Pipeline                                              | ekkasit    | P0       | 2026-04-14 | 42   | 2026-05-25 | blocked     |
 | [feat-401](topic-experiences/feat-401-tv-stream-url-whitespace-normalization.md)            | TV stream URL whitespace normalization                                           | ekkasit    | P0       | 2026-08-21 | 1    | 2026-08-21 | complete    |
+| [feat-618](topic-experiences/feat-618-tv-search-menu-back-navigation.md)                    | TV search Menu back navigation                                                   | ekkasit    | P0       | 2026-08-27 | 1    | 2026-08-27 | complete    |
 | [feat-047](topic-experiences/feat-047-watch-template-settings-and-single-video-fallback.md) | Watch Template Settings and Single Video Fallback Hardening                      | urim       | P1       | 2026-04-04 | 3    | 2026-04-06 | complete    |
 | [feat-048](topic-experiences/feat-048-cms-text-block-publish-normalization.md)              | Normalize CMS Text Blocks During Experience Publish                              | urim       | P1       | 2026-04-04 | 1    | 2026-04-04 | complete    |
 | [feat-049](topic-experiences/feat-049-single-video-template-related-media-collection.md)    | Single-Video Template Related Media Collection                                   | urim       | P1       | 2026-04-08 | 2    | 2026-04-09 | complete    |

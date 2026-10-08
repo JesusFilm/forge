@@ -88,7 +88,7 @@ and required checks cover each scoped PR; normal Roadmap deployment is verified
 separately from local behavior and page-load checks.
 
 The retention track stays active for platform feat-554: two normal failure-free
-loaded daily retention cycles must be observed. October 2, 3, 4 and 5 failed and
+loaded daily retention cycles must be observed. October 2, 3, 4, 5 and 6 failed and
 do not qualify. Runtime repairs #2550, #2551 and #2553 merged normally. Both
 Admin roles were verified on `e8e7fb3` at October 3 22:05:59 UTC. Natural catch-up
 then produced successful batches as well as two failed attempts; at 22:17:23,
@@ -137,6 +137,34 @@ new proof to the coordinating owner, who completes the scoped evidence PR,
 review/merge, final merged-main inventory and index update. Do not mark the plan
 complete or disable that monitor before the required closure merges.
 
+The October 6 ordinary cycle on actual revision `0cb08416c` recorded 980 durable
+successes, ten `budget_yield` skips and 86 failures by the 19:41 UTC read. Six
+earlier failures were transaction-expiry errors; 80 later request-root deletion
+failures hit the published-profile-child immutability guard, with another
+guard rejection present in a separate 19:44:59 read. The 990 successful workflow
+wrappers include the ten yields, not 990 completed purges. All 21 overdue types
+were clear at 19:41:43, but the latest successful cutoff remained 13:49:56.061
+and the cycle earns no clean credit. Separate capacity reads found
+22,426,816,512 bytes free, 117,440,512 WAL bytes, no lock waiters and an empty
+legacy stage. Read-only schema metadata confirms an eligibility `SET NULL`
+foreign-key action conflicts with the published-child update guard and the
+paired ID/revision check. Isolated native tests reproduced the old rejection and
+rollback, then passed actual FK cleanup with exact purge counters and retained
+evidence after the proposed migration. Direct unlinking, reassignment, mixed
+edits, nested non-FK changes and published-interest edits remain rejected. The
+full five-test standalone-retention suite passed. Independently reviewed PR
+#2594 passed all required checks and merged normally as `2913616a2` at
+October 6 20:23:11 UTC. Migration 0129 applied at 20:32:40.596 with matching
+checksum/guard body; both actual Admin roles were healthy, compact and correctly
+assigned on `2913616a2` by 20:36:58. Eight later naturally scheduled attempts
+succeeded, committing 800 roots and 2,877 items with no failure or yield in the
+20:37:46–20:38:11 window. All 21 overdue types were clear at 20:38:57 and the
+success cutoff advanced to 20:38:08.969. The later release snapshot contains 98
+pre-migration failures, so this is recovery, not a qualifying daily cycle.
+The six timeouts remain a separate unresolved class: rejected calls spanned
+counts and deletions, without proof of the statement that exhausted the budget. Do not broaden timeout budgets or perform a manual
+production purge to accelerate the acceptance gate.
+
 The post-merge HNSW six-card CI assertion failed once and passed the single
 bounded retry; all required post-merge jobs then passed or were expected skipped.
 This pre-existing retrieval fixture failure is separate from retention and the
@@ -146,3 +174,13 @@ plan/settings and correction proof; no assertion, timeout or production behavior
 was weakened. The original 38 paths remain 12 complete / 25 cancelled / one open;
 including feat-609, 39 tracked paths contain two open tickets. Do not claim the
 HNSW issue fixed by a passing retry or transfer feat-554's two-cycle gate to it.
+
+PR #2595 merged as `20f55715c` after independent review and green checks. It adds
+failure-only actual plan/settings diagnostics and a transaction-local scan-memory
+comparison, retaining the original ANN assertion and 1.5-second retrieval budget.
+Seven additional full-file local runs, three targeted runs and 121 preceding
+CI-batch tests passed without reproducing the failure. Feat-609 remains
+in-progress; no runtime fix or production retrieval defect is claimed. Parent
+reconciles the generated index and consolidated release record; the existing
+daily storage monitor retains feat-554's two later ordinary clean, loaded cycles.
+The expired temporary outage monitor stays paused.
