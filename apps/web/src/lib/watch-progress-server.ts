@@ -29,20 +29,25 @@ async function adminFetch(path: string, init: RequestInit): Promise<Response> {
   const bearer = adminBearer()
   const headers = new Headers(init.headers)
   if (bearer) headers.set("Authorization", `Bearer ${bearer}`)
+  const requestTimeout = AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+  const signal = init.signal
+    ? AbortSignal.any([init.signal, requestTimeout])
+    : requestTimeout
   return fetch(`${watchProgressUrl()}${path}`, {
     ...init,
     cache: "no-store",
     headers,
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    signal,
   })
 }
 
 export async function fetchWatchProgressForUser(
   userId: string,
+  signal?: AbortSignal,
 ): Promise<WatchProgressServerEntry[]> {
   const response = await adminFetch(
     `?userId=${encodeURIComponent(userId)}&limit=200`,
-    { method: "GET" },
+    { method: "GET", signal },
   )
   if (!response.ok) return []
   const body = (await response.json()) as { entries?: unknown }

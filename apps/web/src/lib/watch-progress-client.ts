@@ -2,6 +2,12 @@
 
 import { useEffect, useSyncExternalStore } from "react"
 
+import { loadWatchBootstrap } from "@/lib/watch-bootstrap-client"
+import {
+  parseWatchProgressEntries,
+  type WatchBootstrapProgressEntry,
+} from "@/lib/watch-bootstrap-contract"
+
 const STORAGE_KEY_PREFIX = "forge.watch_progress.v1"
 const ANONYMOUS_STORAGE_KEY = `${STORAGE_KEY_PREFIX}.anonymous`
 const CURRENT_USER_STORAGE_KEY = `${STORAGE_KEY_PREFIX}.current_user`
@@ -20,13 +26,7 @@ export type WatchProgressEntry = {
 
 type StoredProgress = Record<string, WatchProgressEntry>
 
-type RemoteWatchProgressEntry = {
-  videoId: string
-  languageSlug?: string | null
-  positionSeconds: number
-  durationSeconds: number
-  updatedAt: string
-}
+type RemoteWatchProgressEntry = WatchBootstrapProgressEntry
 
 type AuthState = "unknown" | "authenticated" | "anonymous"
 
@@ -259,37 +259,15 @@ export async function ensureWatchProgressAuth(): Promise<boolean> {
   if (authState === "anonymous") return false
   if (authRequest) return authRequest
 
-  authRequest = fetch(WATCH_PROGRESS_API_PATH, {
-    cache: "no-store",
-    credentials: "same-origin",
-  })
-    .then(async (response) => {
-      if (!response.ok) return null
-      const body = (await response.json()) as {
-        authenticated?: unknown
-        userId?: unknown
-        entries?: unknown
-      }
-      if (body.authenticated !== true || typeof body.userId !== "string") {
-        return null
-      }
-      const entries = Array.isArray(body.entries)
-        ? body.entries.flatMap((entry): RemoteWatchProgressEntry[] =>
-            entry &&
-            typeof entry === "object" &&
-            typeof (entry as RemoteWatchProgressEntry).videoId === "string" &&
-            typeof (entry as RemoteWatchProgressEntry).positionSeconds ===
-              "number" &&
-            typeof (entry as RemoteWatchProgressEntry).durationSeconds ===
-              "number" &&
-            typeof (entry as RemoteWatchProgressEntry).updatedAt === "string"
-              ? [entry as RemoteWatchProgressEntry]
-              : [],
-          )
-        : []
-      return { userId: body.userId, entries }
+  // The signed-in progress snapshot arrives in the shared post-hydration
+  // bootstrap read; an unavailable section is treated as anonymous, exactly
+  // as a failed `GET /watch/api/watch-progress` was.
+  authRequest = loadWatchBootstrap()
+    .then((bootstrap) => {
+      const progress = bootstrap?.watchProgress
+      if (!progress?.authenticated) return null
+      return { userId: progress.userId, entries: progress.entries }
     })
-    .catch(() => null)
     .then((result) => {
       if (!result) {
         authState = "anonymous"
@@ -461,20 +439,7 @@ export async function loadWatchProgressHistory<TVideo = unknown>(): Promise<{
       return { authenticated: false, entries: [], videos: [] }
     }
 
-    const remoteEntries = Array.isArray(body.entries)
-      ? body.entries.flatMap((entry): RemoteWatchProgressEntry[] =>
-          entry &&
-          typeof entry === "object" &&
-          typeof (entry as RemoteWatchProgressEntry).videoId === "string" &&
-          typeof (entry as RemoteWatchProgressEntry).positionSeconds ===
-            "number" &&
-          typeof (entry as RemoteWatchProgressEntry).durationSeconds ===
-            "number" &&
-          typeof (entry as RemoteWatchProgressEntry).updatedAt === "string"
-            ? [entry as RemoteWatchProgressEntry]
-            : [],
-        )
-      : []
+    const remoteEntries = parseWatchProgressEntries(body.entries)
 
     const key = userStorageKey(body.userId)
     const remoteProgress = Object.fromEntries(

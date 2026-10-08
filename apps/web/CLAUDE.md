@@ -266,9 +266,10 @@ a UX/product rollout gate with a fail-open fallback.
 flag for the global floating beta tester CTA. `false` omits the floating CTA
 while keeping the shared modal provider available to authored beta-tester
 links; `true` renders the floating CTA. Because public Watch routes are
-statically cached, evaluate this flag through the same-origin, no-store
-`/watch/api/beta-tester-cta` endpoint after hydration rather than in a static
-layout. Keep
+statically cached, evaluate this flag after hydration rather than in a static
+layout: the first provider mount reads it from `/watch/api/bootstrap`, and
+each client navigation re-evaluates it through the same-origin, no-store
+`/watch/api/beta-tester-cta` endpoint. Keep
 `FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT=false` unless intentionally testing
 or rolling out the launcher.
 
@@ -300,6 +301,23 @@ and email for targeting. Anonymous requests use `watch-anonymous`; recommendatio
 profile cookies, capabilities, access tokens and viewing history never enter LD.
 The Admin device-agnostic API remains independent of this Web rollout flag.
 `WATCH_FOR_YOU_ENABLED=false` remains the environment kill switch.
+
+### Watch hydration bootstrap
+
+The Watch shell makes ONE per-visitor read after hydration:
+`GET /watch/api/bootstrap` (`watch-bootstrap-v1`, contract in
+`src/lib/watch-bootstrap-contract.ts`, single-flight loader in
+`src/lib/watch-bootstrap-client.ts`). It carries the account session for
+`AccountControl`, the global beta tester CTA flag, and signed-in watch
+progress. The route verifies the session once, is private/no-store, and fails
+each section to `null` independently so a section degrades exactly as its old
+standalone request did. Do not add new mount-time `fetch` calls for visitor
+state; add a section here instead, and never move it into RSC or a static
+layout. The automatic recommendation profile POST in
+`RecommendationConsentShell` waits for `requestIdleCallback` (capped by
+`RECOMMENDATION_PROFILE_IDLE_TIMEOUT_MS`, `src/lib/idle-task.ts`); it is
+deferred, never consent-gated. See
+`docs/roadmap/platform/feat-630-watch-hydration-bootstrap-request.md`.
 
 ### Recommendation admission runtime
 

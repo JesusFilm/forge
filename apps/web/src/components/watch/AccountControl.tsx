@@ -9,32 +9,16 @@ import {
   clearDatadogRumUser,
   identifyDatadogRumUser,
 } from "@/components/DatadogRum"
+import { loadWatchBootstrap } from "@/lib/watch-bootstrap-client"
+import type { WatchAccountUser } from "@/lib/watch-bootstrap-contract"
 
-type AccountUser = {
-  id?: string
-  email?: string
-  name?: string
-  image?: string
-}
+type AccountUser = WatchAccountUser
 
 type AccountState =
   | { status: "loading" }
   | { status: "hidden" }
   | { status: "signed-out" }
   | { status: "signed-in"; user?: AccountUser }
-
-type AccountSession = {
-  accountGateEnabled: boolean
-  authenticated: boolean
-  user?: AccountUser
-}
-
-const ACCOUNT_USER_FIELDS = [
-  "id",
-  "email",
-  "name",
-  "image",
-] as const satisfies readonly (keyof AccountUser)[]
 
 function currentReturnTo(): string {
   if (typeof window === "undefined") return "/watch"
@@ -56,44 +40,30 @@ export function AccountControl() {
 
   useEffect(() => {
     let cancelled = false
-    const callbackURL = currentReturnTo()
-    const url = new URL("/watch/api/auth/session", window.location.origin)
-    url.searchParams.set("callbackURL", callbackURL)
 
-    void fetch(url.toString(), {
-      credentials: "same-origin",
-      headers: { accept: "application/json" },
+    // The account session arrives in the shared post-hydration bootstrap
+    // read; a missing or invalid section fails hidden as before.
+    void loadWatchBootstrap().then((bootstrap) => {
+      if (cancelled) return
+      const session = bootstrap?.account
+      if (!session) {
+        clearDatadogRumUser()
+        setState({ status: "hidden" })
+        return
+      }
+      if (session.authenticated) {
+        identifyDatadogRumUser(session.user)
+      } else {
+        clearDatadogRumUser()
+      }
+      setState(
+        session.authenticated
+          ? { status: "signed-in", user: session.user }
+          : session.accountGateEnabled
+            ? { status: "signed-out" }
+            : { status: "hidden" },
+      )
     })
-      .then(async (response) => {
-        if (!response.ok) throw new Error("Account session request failed")
-
-        const session: unknown = await response.json()
-        if (!isAccountSession(session)) {
-          throw new Error("Invalid account session response")
-        }
-        return session
-      })
-      .then((session) => {
-        if (cancelled) return
-        if (session.authenticated) {
-          identifyDatadogRumUser(session.user)
-        } else {
-          clearDatadogRumUser()
-        }
-        setState(
-          session.authenticated
-            ? { status: "signed-in", user: session.user }
-            : session.accountGateEnabled
-              ? { status: "signed-out" }
-              : { status: "hidden" },
-        )
-      })
-      .catch(() => {
-        if (!cancelled) {
-          clearDatadogRumUser()
-          setState({ status: "hidden" })
-        }
-      })
 
     return () => {
       cancelled = true
@@ -233,28 +203,6 @@ export function AccountControl() {
       ) : null}
     </div>
   )
-}
-
-function isAccountSession(value: unknown): value is AccountSession {
-  if (!isRecord(value)) return false
-  if (typeof value.accountGateEnabled !== "boolean") return false
-  if (typeof value.authenticated !== "boolean") return false
-  if (!value.authenticated && value.user !== undefined) return false
-  if (value.user !== undefined && !isAccountUser(value.user)) return false
-
-  return true
-}
-
-function isAccountUser(value: unknown): value is AccountUser {
-  if (!isRecord(value)) return false
-
-  return ACCOUNT_USER_FIELDS.every(
-    (field) => value[field] === undefined || typeof value[field] === "string",
-  )
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value != null && typeof value === "object" && !Array.isArray(value)
 }
 
 function Avatar({
