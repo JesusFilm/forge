@@ -7,9 +7,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (October 8, 2026)
 
 - **Total tickets:** 794
-- **Complete:** 595
+- **Complete:** 596
 - **Cancelled:** 39
-- **In progress:** 61
+- **In progress:** 60
 - **Not started:** 42
 - **Blocked:** 57
 - **Overdue and open:** 142
@@ -745,7 +745,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-509](platform/feat-509-mobile-export-save-sheet-native-module.md)                | Mobile raw export: iOS Save sheet via an export-mode native module                 | urim       | P2       | 2026-10-01 | 3    | 2026-10-03 | blocked     |
 | [feat-591](platform/feat-591-cowatch-postgresql-regressions-ci.md)                     | Run Co-watch PostgreSQL regressions in CI                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
 | [feat-613](platform/feat-613-push-campaign-mcp-drafts.md)                              | Agents draft push campaigns through the admin MCP, and a person publishes          | urim       | P2       | 2026-10-06 | 7    | 2026-10-12 | complete    |
-| [feat-655](platform/feat-655-watch-portrait-image-crops.md)                            | Crop Watch landscape stills safely for portrait surfaces                           | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
+| [feat-655](platform/feat-655-watch-portrait-image-crops.md)                            | Crop Watch landscape stills safely for portrait surfaces                           | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-627](platform/feat-627-mobile-ios-local-network-prompt-localization.md)          | Translate the iOS Local Network permission prompt                                  | urim       | P2       | 2026-10-09 | 2    | 2026-10-10 | not-started |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                             | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-544](platform/feat-544-mobile-remove-sign-in-gate.md)                            | Remove the mobile sign-in gate when accounts open                                  | urim       | P2       | 2026-11-02 | 1    | 2026-11-02 | blocked     |
