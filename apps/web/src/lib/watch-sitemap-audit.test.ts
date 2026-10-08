@@ -31,16 +31,17 @@ function document(
 }
 
 function indexXml(childUrls: string[] = [CHILD_0, CHILD_1]): string {
-  return `${XML_HEADER}<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${childUrls.map((url) => `<sitemap><loc>${url}</loc></sitemap>`).join("")}</sitemapindex>`
+  return `${XML_HEADER}<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${childUrls.map((url) => `<sitemap><loc>${url}</loc><lastmod>2026-06-12T12:00:00.000Z</lastmod></sitemap>`).join("")}</sitemapindex>`
 }
 
 function childXml(
   entries: Array<{
     alternates: Array<{ href: string; hreflang: string }>
     loc: string
+    lastmod?: string
   }>,
 ): string {
-  return `${XML_HEADER}<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">${entries.map(({ alternates, loc }) => `<url><loc>${loc}</loc>${alternates.map(({ href, hreflang }) => `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${href}" />`).join("")}</url>`).join("")}</urlset>`
+  return `${XML_HEADER}<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">${entries.map(({ alternates, loc, lastmod }) => `<url><loc>${loc}</loc>${lastmod ? `<lastmod>${lastmod}</lastmod>` : ""}${alternates.map(({ href, hreflang }) => `<xhtml:link rel="alternate" hreflang="${hreflang}" href="${href}" />`).join("")}</url>`).join("")}</urlset>`
 }
 
 const reciprocalAlternates = [
@@ -82,6 +83,47 @@ describe("watch sitemap deployed audit", () => {
       { id: 1, locCount: 1 },
     ])
     expect(report.issues).toEqual([])
+  })
+
+  it("rejects an invalid child sitemap lastmod", () => {
+    const report = auditWatchSitemapDocuments(
+      document(
+        INDEX_URL,
+        `${XML_HEADER}<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><sitemap><loc>${CHILD_0}</loc><lastmod>not-a-date</lastmod></sitemap></sitemapindex>`,
+      ),
+      [
+        document(
+          CHILD_0,
+          childXml([{ loc: JESUS_EN, alternates: reciprocalAlternates }]),
+        ),
+      ],
+    )
+
+    expect(report.issues).toContainEqual(
+      expect.objectContaining({ code: "invalid_index" }),
+    )
+  })
+
+  it("rejects an invalid URL lastmod in a child sitemap", () => {
+    const report = auditWatchSitemapDocuments(
+      document(INDEX_URL, indexXml([CHILD_0])),
+      [
+        document(
+          CHILD_0,
+          childXml([
+            {
+              loc: JESUS_EN,
+              alternates: reciprocalAlternates,
+              lastmod: "not-a-date",
+            },
+          ]),
+        ),
+      ],
+    )
+
+    expect(report.issues).toContainEqual(
+      expect.objectContaining({ code: "invalid_xml", url: JESUS_EN }),
+    )
   })
 
   it("rejects eligible explicit-English aliases but allows language-home collisions", () => {

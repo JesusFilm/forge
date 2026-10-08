@@ -14,6 +14,7 @@ const manifest: WatchSeoManifest = {
   videoRouteGroups: [
     {
       contentSlug: "jesus",
+      lastModified: "2026-06-12T11:00:00.000Z",
       alternates: [
         { hreflang: "en", languageSlug: "english" },
         { hreflang: "es", languageSlug: "spanish-castilian" },
