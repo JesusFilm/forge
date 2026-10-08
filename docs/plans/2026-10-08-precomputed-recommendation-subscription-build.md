@@ -98,16 +98,33 @@ does not equate subscription allowance with API token charges.
 
 ## Boundaries and verification
 
-Implemented through `b662143ea`: local subscription adapter and account reader,
-manual attempt provenance, complete selected-transcript planning, and durable
-profile execution. The producer chooses exact text; code verifies its membership
-and computes offsets/hashes. One physical profile invocation has one observed
-usage receipt. Closed-attempt or expired-capacity results retain usage without
-becoming usable profiles. A connected PostgreSQL test proves transcript and
-metadata-only behavior, replay, reporting and the incomplete-generation gate.
-Shared edge batches, the manual catalog command, compatible GA import, the real
-pilot and full build remain pending. No real catalog inference has run through
-the subscription adapter.
+Implemented through `4f19a1e6f`: local subscription adapter and account reader,
+manual attempt provenance, complete selected-transcript planning, durable
+profile execution, and shared edge batches. The producer chooses exact text;
+code verifies its membership and computes offsets/hashes. One physical
+invocation has one usage receipt, including a batch shared by two sources.
+Closed-attempt or expired-capacity results retain usage without applying work.
+The connected PostgreSQL fixture now covers complete non-English profiles,
+metadata-only input, a two-source batch, exact replay without another call,
+verified passage storage and finalization into existing recommendation payloads.
+The generation remains incomplete until the remaining readiness gates exist.
+
+Pages contain contiguous slices of one to eight frozen candidates. Preflight
+can shrink pages before reservation to fit the prompt limit; it retains complete
+compact profiles and full candidate coverage. The whole-source historical digest
+is stable across pages, while page inputs remain distinct. Span offers use a
+bounded deterministic subset of verified source and target anchors; the prompt
+records available/offered counts. Accepted excerpts are never truncated after
+inference. Concurrent exact retries preserve a single immutable receipt, and
+cross-page duplicate targets are rejected even after an empty result page.
+
+Before real inference, move local identity/allowance/schema/file preparation
+ahead of the durable reservation through a reservation-aware adapter method.
+The current ordering can strand an uncharged pending reservation when local
+admission refuses a call. Genuine unknown consumption still cannot be cleared
+by caller assertion or fabricated zero usage. The manual catalog command,
+compatible GA import, real pilot and full build also remain pending. No real
+catalog inference has run through the subscription adapter.
 
 - No Compound Engineering skills or agents, directly or indirectly. Reuse the
   exact GPT-6 Sol implementation chats and Matt Pocock implement/TDD/code-review

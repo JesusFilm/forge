@@ -2,6 +2,7 @@ import { PrismaClient, type Prisma } from "@prisma/client"
 import { createHash, randomUUID } from "node:crypto"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
+import { z } from "zod"
 
 import { env } from "../../apps/admin/src/config/env"
 import { currentAdminMigrationSql } from "../../apps/admin/src/services/recommendations/current-schema.test-fixture"
@@ -27,6 +28,12 @@ import {
 import type { StructuredModel } from "../../apps/mastra/src/services/precomputed-recommendations/astra-provider"
 import { runContentProfile } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-executor"
 import { createContentProfilePersistence } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-client"
+import { createEdgeBatchPersistence } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-client"
+import {
+  finalizeEdgeSource,
+  runEdgeBatch,
+  type EdgeBatchInput,
+} from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-executor"
 import type { HistoricalAnalyticsReader } from "../../apps/mastra/src/services/precomputed-recommendations/historical-analytics"
 import { gaWatchHistoryFixture } from "./fixtures/ga-watch-history"
 
@@ -242,7 +249,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       }
     })
 
-    it("builds and reuses complete subscription profiles through Admin without completing a generation", async () => {
+    it("builds and reuses complete subscription profiles and shared edges through Admin without completing a generation", async () => {
       const generationId = `subscription-profile-${suffix}`
       const generationInputDigest = "a".repeat(64)
       const attemptId = randomUUID()
@@ -357,7 +364,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         },
       })
       expect(await run(sourceId)).toEqual(transcriptProfile)
-      expect(await run(metadataId)).toMatchObject({
+      const metadataProfile = await run(metadataId)
+      expect(metadataProfile).toMatchObject({
         state: "ready",
         kind: "metadata_only",
         profile: null,
@@ -375,6 +383,194 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         nodeApplied: true,
       })
       expect(JSON.stringify(stored)).not.toContain(excerpt)
+      const claimSchema = z.object({
+        leaseToken: z.uuid(),
+        checkpointRevision: z.number().int().nonnegative(),
+      })
+      const members: EdgeBatchInput["members"][number][] = []
+      for (const [videoId, profile, targetId, targetProfile] of [
+        [sourceId, transcriptProfile, metadataId, metadataProfile],
+        [metadataId, metadataProfile, sourceId, transcriptProfile],
+      ] as const) {
+        const source = await catalog.video({ videoId, cutoff })
+        const target = await catalog.video({ videoId: targetId, cutoff })
+        if (!source || !target) throw new Error("Missing shared edge fixture")
+        const claimed = claimSchema.parse(
+          await submit({
+            action: "claim",
+            ...base,
+            attemptId,
+            sourceVideoId: videoId,
+            claimId: randomUUID(),
+          }),
+        )
+        members.push({
+          source,
+          sourceProfile: profile,
+          orderedCandidateIds: [targetId],
+          pageIndex: 0,
+          startRank: 0,
+          pageSize: 1,
+          leaseToken: claimed.leaseToken,
+          checkpointRevision: claimed.checkpointRevision,
+          targetsByVideoId: new Map([
+            [targetId, { video: target, profile: targetProfile }],
+          ]),
+        })
+      }
+      const edgePersistence = createEdgeBatchPersistence(submit)
+      let edgeCalls = 0
+      const edgeModel: StructuredModel = {
+        async generate({ schema, prompt }) {
+          edgeCalls += 1
+          const offered = z
+            .object({
+              spanOffers: z.array(
+                z.object({
+                  spanId: z.string(),
+                  sourceVideoId: z.string(),
+                  targetVideoId: z.string(),
+                  excerpt: z.string(),
+                }),
+              ),
+            })
+            .parse(JSON.parse(prompt))
+            .spanOffers.find(
+              (span) =>
+                span.sourceVideoId === metadataId &&
+                span.targetVideoId === sourceId,
+            )
+          expect(offered?.excerpt).toBe(excerpt)
+          if (!offered) throw new Error("Missing exact Spanish span offer")
+          return {
+            output: schema.parse({
+              results: [
+                {
+                  sourceVideoId: sourceId,
+                  edges: [
+                    {
+                      targetVideoId: metadataId,
+                      kind: "alternative",
+                      strength: 70,
+                      relationship: "Hope through courage",
+                      reasonEnglish:
+                        "This distinct story explores courage through a changed life.",
+                      addedViewingValueEnglish: null,
+                      evidence: {
+                        basis: "metadata",
+                        fields: ["title", "description"],
+                      },
+                    },
+                  ],
+                },
+                {
+                  sourceVideoId: metadataId,
+                  edges: [
+                    {
+                      targetVideoId: sourceId,
+                      kind: "direct",
+                      strength: 90,
+                      relationship: "Hope for everyone",
+                      reasonEnglish:
+                        "The Spanish passage extends the theme of hope to everyone.",
+                      addedViewingValueEnglish: null,
+                      evidence: {
+                        basis: "transcript",
+                        spanIds: [offered.spanId],
+                      },
+                    },
+                  ],
+                },
+              ],
+            }),
+            usage: {
+              inputTokens: 200,
+              outputTokens: 50,
+              cachedInputTokens: 40,
+            },
+          }
+        },
+      }
+      const batchInput: EdgeBatchInput = {
+        ...base,
+        attemptId,
+        callId: randomUUID(),
+        inputCutoff: cutoff,
+        selectedCorpusDigest: "b".repeat(64),
+        candidatePoolDigest: "c".repeat(64),
+        captureRefDigest: null,
+        modelId: "gpt-6-astra",
+        backend: "codex_chatgpt_subscription",
+        promptVersion: "shared-edge-native-v1",
+        schemaVersion: "shared-edge-schema-v1",
+        members,
+        catalog,
+        model: edgeModel,
+        persistence: edgePersistence,
+      }
+      const batch = await runEdgeBatch(batchInput)
+      expect(batch).toMatchObject({
+        state: "succeeded",
+        replay: false,
+        members: [
+          {
+            sourceVideoId: sourceId,
+            applicationState: "applied_edges",
+            appliedRevision: 1,
+          },
+          {
+            sourceVideoId: metadataId,
+            applicationState: "applied_edges",
+            appliedRevision: 1,
+          },
+        ],
+      })
+      expect(await runEdgeBatch(batchInput)).toMatchObject({
+        state: "succeeded",
+        replay: true,
+      })
+      expect(edgeCalls).toBe(1)
+      for (const member of members) {
+        expect(
+          await finalizeEdgeSource({
+            ...base,
+            attemptId,
+            sourceVideoId: member.source.id,
+            leaseToken: member.leaseToken,
+            expectedRevision: 1,
+            sourceProfileKey: member.sourceProfile.cacheKey,
+            orderedCandidateIds: member.orderedCandidateIds,
+            profileKeysByVideoId: new Map(
+              [...member.targetsByVideoId].map(([id, target]) => [
+                id,
+                target.profile.cacheKey,
+              ]),
+            ),
+            persistence: edgePersistence,
+          }),
+        ).toMatchObject({ sourceState: "complete_edges", acceptedCount: 1 })
+      }
+      const persistedSource =
+        await prisma.recommendationPrecomputedSource.findUniqueOrThrow({
+          where: {
+            generationId_sourceVideoId: {
+              generationId,
+              sourceVideoId: metadataId,
+            },
+          },
+        })
+      expect(persistedSource.payload).toMatchObject([
+        {
+          targetVideoId: sourceId,
+          kind: "direct",
+          rank: 1,
+          evidence: {
+            basis: "transcript",
+            passages: [{ chunkId: `chunk-source-${suffix}`, excerpt }],
+          },
+        },
+      ])
+      expect(JSON.stringify(persistedSource.payload)).not.toContain("spanIds")
       await expect(
         submit({ action: "complete", ...base, attemptId }),
       ).rejects.toMatchObject({ code: "conflict" })
@@ -395,6 +591,21 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
               cachedInputTokens: null,
             },
           ],
+          pendingCalls: [],
+          billingBasis: "included_subscription",
+          usdCharge: null,
+        },
+        edgeLedger: {
+          calls: [
+            {
+              status: "succeeded",
+              count: 1,
+              inputTokens: 200,
+              outputTokens: 50,
+              cachedInputTokens: 40,
+            },
+          ],
+          members: [{ applicationState: "applied_edges", count: 2 }],
           pendingCalls: [],
           billingBasis: "included_subscription",
           usdCharge: null,

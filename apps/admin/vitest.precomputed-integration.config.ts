@@ -10,6 +10,7 @@ export default defineConfig({
       "@prisma/client": resolve(__dirname, "node_modules/@prisma/client"),
       pg: resolve(__dirname, "node_modules/pg"),
       vitest: resolve(__dirname, "node_modules/vitest"),
+      zod: resolve(__dirname, "node_modules/zod"),
     },
   },
   test: {

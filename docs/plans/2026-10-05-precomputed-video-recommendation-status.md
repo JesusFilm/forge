@@ -11,7 +11,46 @@ preserves exact source/integration commits, checks, browser artifacts, review
 findings, and recovery history. The [CTR operations note](../operations/precomputed-ctr-report.md)
 describes the private reporting contract and limits.
 
-## Integration
+## Current checkpoint — October 8, 16:10 NZDT
+
+Shared edge batches are integrated as `f8019f75c` (Mastra), `1af47543c`
+(Admin migration 0144), and `4f19a1e6f` (strict status wire repair). Root's
+connected PostgreSQL fixture proves complete selected profiles, two sources
+sharing one physical call, replay without inference, exact Spanish passage
+storage and finalization into the existing accepted recommendation payload.
+Root passes all 182 Admin precomputed tests and all 34 connected build-through-Admin
+tests without skips, plus 33 focused executor/client cases. The full Mastra suite
+passes 3,463 tests with 45 existing environment-gated skips. The connected test exposed extra executor fields leaking
+into a strict status request; the wire repair now sends only its declared fields.
+Concurrent terminal retries and cross-page duplicate targets have native tests.
+
+The published profile-client commit `d79c2d341` passed 59 CI checks with three
+skipped; subsequent local batch integration is not yet claimed CI-green.
+Profile-client integration also passed 3,430 Mastra cases with 45 existing
+environment-gated skips. These tests use controlled models, not real catalog
+inference or evidence of subscription consumption by a catalog build.
+
+The next adapter correction moves fresh local identity/allowance checks, schema
+validation and local file preparation before the durable reservation. Otherwise
+a refusal before dispatch can leave an uncharged reservation permanently pending.
+The new path must still reserve before inference, preserve known terminal usage,
+and never clear genuinely unknown consumption by caller assertion. The manual
+catalog command and destination-owned verified GA import remain unimplemented.
+
+GA-only capture attempt 6 is still running. At this checkpoint, all 305 video-start
+pages and 259 of 327 referrer pages have matched in the verification pass. It is
+unsealed and has no terminal result. No catalog model calls are attached to this
+capture. The latest observed account-wide meter had 58% weekly allowance remaining;
+the 25% reserve leaves 33 percentage points shared with coding, not a build forecast.
+
+Public A/B remains off. Required work still includes the corrected manual runner,
+sealed compatible GA import, representative subscription pilot, complete catalog
+build and capacity evidence, live baseline/calibration, and agreed numeric policy.
+The accepted local preview does not authorize a merge, deployment or public start.
+
+## Integration history
+
+The following records describe earlier checkpoints; current state is above.
 
 October 8 current direction: the owner selected the catalog-first architecture
 with reusable complete-content profiles and batched Astra connection decisions,
