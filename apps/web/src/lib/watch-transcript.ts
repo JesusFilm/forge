@@ -11,9 +11,10 @@ import {
   type InitialSubtitleTranscript,
 } from "@/lib/subtitle-transcript"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
+import { logWatchServerEvent } from "@/lib/watch-observability"
 
 const WATCH_TRANSCRIPT_REVALIDATE_SECONDS = 60 * 60
-const WATCH_TRANSCRIPT_FETCH_TIMEOUT_MS = 1_000
+const WATCH_TRANSCRIPT_FETCH_TIMEOUT_MS = 5_000
 
 const fetchCompactTranscript = unstable_cache(
   async (vttSrc: string): Promise<string> => {
@@ -60,7 +61,14 @@ export async function getInitialSubtitleTranscript({
       vttSrc: selectedSubtitle.vttSrc,
       compactText: await fetchCompactTranscript(selectedSubtitle.vttSrc),
     }
-  } catch {
+  } catch (error) {
+    logWatchServerEvent("watch_transcript.fetch.failed", {
+      reason:
+        error instanceof DOMException && error.name === "TimeoutError"
+          ? "timeout"
+          : "request_failed",
+      timeoutMs: WATCH_TRANSCRIPT_FETCH_TIMEOUT_MS,
+    })
     return { vttSrc: selectedSubtitle.vttSrc, compactText: null }
   }
 }

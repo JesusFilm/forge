@@ -38,14 +38,15 @@ film page has a valid Video item but no indexed video. Linear: FGE-61.
 
 ## Implementation Progress
 
-- `apps/web/src/lib/provider-image.ts` identifies HTTPS Mux and Cloudflare
-  Images URLs that already encode provider-side image delivery. Watch image
-  surfaces and search result cards pass those URLs directly to the browser
-  rather than routing each request through Next's optimizer.
-- `apps/web/src/lib/watch-transcript.ts` applies a one-second abort deadline to
-  the optional initial VTT fetch. A timeout follows the existing graceful
-  fallback and leaves transcript expansion available for a later retry.
-- Focused tests cover the provider allowlist and route rendering.
+- `apps/web/src/lib/provider-image.ts` identifies HTTPS Mux image URLs and
+  generates responsive Mux WebP URLs at the width selected by the browser.
+  Cloudflare Images keep Next optimization because named editorial variants
+  can be much larger than their card slots.
+- `apps/web/src/lib/watch-transcript.ts` applies a five-second abort deadline
+  to optional initial VTT fetches. A timeout follows the existing graceful
+  fallback and logs a redacted reason so the budget can be tuned.
+- Focused tests cover Mux host validation, responsive URL generation, timeout
+  handling, and route rendering.
 
 ## Remaining production verification
 
