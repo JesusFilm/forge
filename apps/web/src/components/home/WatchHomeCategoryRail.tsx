@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef } from "react"
 import Link from "next/link"
 import type { Route } from "next"
 import { useTranslations } from "next-intl"
@@ -8,6 +9,7 @@ import {
   Anchor,
   BookOpen,
   CalendarDays,
+  ChevronLeft,
   ChevronRight,
   CirclePlay,
   Clock,
@@ -30,13 +32,7 @@ import {
   Users,
 } from "lucide-react"
 
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from "@/components/ui/carousel"
+import { Button } from "@/components/ui/button"
 import {
   WATCH_MEDIA_SECTION_VERTICAL_PADDING_CLASS,
   WATCH_SECTION_EYEBROW_CLASS,
@@ -127,6 +123,7 @@ export function WatchHomeCategoryRail({
   tiles,
 }: WatchHomeCategoryRailProps) {
   const t = useTranslations("WatchHomeCategories")
+  const scrollerRef = useRef<HTMLDivElement>(null)
   // A slug that fails the LocaleSlug shape can only arrive through a
   // malformed route param, and every href here needs it — including the
   // heading CTA. No rail beats a rail of broken links.
@@ -184,22 +181,23 @@ export function WatchHomeCategoryRail({
         </div>
       </div>
 
-      {/* Rail geometry mirrors MediaCollection: the content column sets the
-          max width, and the slide list carries the same left padding as the
-          heading so the first card lines up with it while later cards still
-          scroll to the viewport edge. */}
+      {/* Native overflow keeps the rail swipeable before hydration. At wide
+          desktop widths the cards become a two-row grid so every category is
+          visible without horizontal scrolling. */}
       <div className={cn("relative z-[3]", CONTENT_WIDTH_ALIGN_CLASSES)}>
-        <Carousel
+        <div
           aria-label={resolvedTitle}
-          opts={{
-            dragFree: true,
-            containScroll: "trimSnaps",
-            align: "start",
-          }}
-          className="w-full"
+          role="region"
+          className="relative w-full"
           data-testid="watch-home-category-carousel"
         >
-          <CarouselContent className="-ml-4 pl-5 md:pl-16 xl:pl-24">
+          <div
+            ref={scrollerRef}
+            role="list"
+            tabIndex={0}
+            className="flex snap-x snap-mandatory gap-4 overflow-x-auto overscroll-x-contain px-5 py-1 focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none md:px-16 xl:px-24 min-[1440px]:grid min-[1440px]:w-full min-[1440px]:grid-cols-7 min-[1440px]:overflow-visible"
+            data-testid="watch-home-category-scroller"
+          >
             {cards.map((card) => {
               const Icon =
                 ICON_BY_KEY[card.iconKey] ??
@@ -212,7 +210,7 @@ export function WatchHomeCategoryRail({
                   ? t(`categories.${card.titleKey}`)
                   : (card.title ?? "")
               const cardClassName =
-                "beveled group relative flex h-[130px] w-[190px] flex-col justify-end overflow-hidden rounded-lg p-4 transition duration-300 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-white/70"
+                "beveled group relative flex h-[130px] w-[190px] shrink-0 snap-start flex-col justify-end overflow-hidden rounded-lg p-4 transition duration-300 hover:-translate-y-0.5 focus-visible:outline-2 focus-visible:outline-white/70 min-[1440px]:w-full"
               const cardChildren = (
                 <>
                   <span
@@ -234,9 +232,10 @@ export function WatchHomeCategoryRail({
               )
 
               return (
-                <CarouselItem
+                <div
                   key={card.key}
-                  className="basis-auto py-1 pl-4"
+                  role="listitem"
+                  className="min-w-0"
                   data-testid={`watch-home-category-slide-${card.key}`}
                 >
                   {/* An external destination leaves the app entirely, so it
@@ -270,23 +269,59 @@ export function WatchHomeCategoryRail({
                       {cardChildren}
                     </Link>
                   )}
-                </CarouselItem>
+                </div>
               )
             })}
-            {/* Embla's containScroll trims trailing CSS padding, so the
-                right-edge breathing room has to be a real slide. */}
-            <CarouselItem
-              aria-hidden="true"
-              tabIndex={-1}
-              className="basis-auto pl-0"
-              data-testid="watch-home-category-end-spacer"
-            >
-              <div className="w-5 md:w-16 xl:w-24" />
-            </CarouselItem>
-          </CarouselContent>
-          <CarouselPrevious />
-          <CarouselNext />
-        </Carousel>
+          </div>
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-black/80 to-transparent min-[1440px]:hidden"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label={`Scroll ${resolvedTitle} left`}
+            className="absolute top-1/2 left-2 z-20 -translate-y-1/2 opacity-25 transition-opacity hover:opacity-100 focus-visible:opacity-100 min-[1440px]:hidden"
+            onClick={() => {
+              const scroller = scrollerRef.current
+              if (!scroller) return
+              const behavior = window.matchMedia(
+                "(prefers-reduced-motion: reduce)",
+              ).matches
+                ? "auto"
+                : "smooth"
+              scroller.scrollBy({
+                left: -scroller.clientWidth * 0.8,
+                behavior,
+              })
+            }}
+          >
+            <ChevronLeft aria-hidden />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label={`Scroll ${resolvedTitle} right`}
+            className="absolute top-1/2 right-2 z-20 -translate-y-1/2 opacity-25 transition-opacity hover:opacity-100 focus-visible:opacity-100 min-[1440px]:hidden"
+            onClick={() => {
+              const scroller = scrollerRef.current
+              if (!scroller) return
+              const behavior = window.matchMedia(
+                "(prefers-reduced-motion: reduce)",
+              ).matches
+                ? "auto"
+                : "smooth"
+              scroller.scrollBy({
+                left: scroller.clientWidth * 0.8,
+                behavior,
+              })
+            }}
+          >
+            <ChevronRight aria-hidden />
+          </Button>
+        </div>
       </div>
     </section>
   )

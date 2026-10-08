@@ -302,6 +302,24 @@ describe("WatchHomeCategoryRail", () => {
       enMessages.WatchHomeCategories.title,
     )
   })
+
+  it("keeps category cards natively scrollable before hydration and wraps on wide screens", () => {
+    const container = render("english")
+    const scroller = container.querySelector(
+      '[data-testid="watch-home-category-scroller"]',
+    )
+
+    expect(scroller?.getAttribute("tabindex")).toBe("0")
+    expect(scroller?.className).toContain("overflow-x-auto")
+    expect(scroller?.className).toContain("snap-x")
+    expect(scroller?.className).toContain("min-[1440px]:grid-cols-7")
+    expect(
+      container.querySelectorAll('[data-testid^="watch-home-category-slide-"]'),
+    ).toHaveLength(WATCH_HOME_CATEGORIES.length)
+    expect(
+      container.querySelector('[aria-label="Scroll Browse by category right"]'),
+    ).not.toBeNull()
+  })
 })
 
 describe("WATCH_HOME_CATEGORIES config", () => {
