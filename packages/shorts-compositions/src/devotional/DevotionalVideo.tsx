@@ -1618,8 +1618,8 @@ function WordReveal({
 
 /** Paper-strip opening (owner's Figma 477:2997, 2026-10-08): the question
  *  typed on cream strips, one strip then the next, a gentle float, and a
- *  hand-drawn orange mark that changes its tilt in small jumps, over the
- *  film in soft black and white. */
+ *  hand-drawn orange mark that changes its tilt in small jumps. The owner
+ *  dropped the black-and-white film and the mark on review (2026-10-08). */
 const STRIP_CHARS_PER_SEC = 24
 const STRIP_ORANGE = "#ff7f53"
 
@@ -1630,25 +1630,30 @@ function PaperStripsOpen({
   toSec,
   t,
   f,
+  top = 506,
 }: {
   lines: string[]
   mark?: string
   fromSec: number
-  toSec: number
+  /** null: the strips hold to the end of the piece. */
+  toSec: number | null
   t: number
   f: (n: number) => number
+  /** Figma y of the first strip (the second sits 137 below it). */
+  top?: number
 }) {
-  if (t < fromSec - 0.6 || t > toSec + 0.05) return null
+  if (t < fromSec - 0.6 || (toSec != null && t > toSec + 0.05)) return null
   const clampBoth = {
     extrapolateLeft: "clamp",
     extrapolateRight: "clamp",
   } as const
-  const out = interpolate(t, [toSec - 0.3, toSec], [1, 0], clampBoth)
+  const out =
+    toSec == null ? 1 : interpolate(t, [toSec - 0.3, toSec], [1, 0], clampBoth)
   const local = t - fromSec
   // Figma: strip 1 at x 147 y 506 (+1.5 deg), strip 2 at x 263 y 643 (-2 deg).
   const spots = [
-    { left: 147, top: 506, rot: 1.5 },
-    { left: 263, top: 643, rot: -2 },
+    { left: 147, top, rot: 1.5 },
+    { left: 263, top: top + 137, rot: -2 },
   ]
   let at = 0
   const strips = lines.map((line, i) => {
@@ -1663,12 +1668,6 @@ function PaperStripsOpen({
   const markIn = interpolate(t, [fromSec - 0.6, fromSec], [0, 1], clampBoth)
   return (
     <AbsoluteFill style={{ opacity: out, pointerEvents: "none" }}>
-      <AbsoluteFill
-        style={{
-          backdropFilter: "grayscale(1) contrast(0.92) brightness(0.82)",
-          WebkitBackdropFilter: "grayscale(1) contrast(0.92) brightness(0.82)",
-        }}
-      />
       {strips.map(({ line, start, spot }, i) => {
         const shown = local - start
         if (shown < -0.05) return null
@@ -1762,6 +1761,7 @@ function ShortQuestionCards({
     sharp = false,
     sub?: string,
     subSize?: number,
+    subStrips = false,
   ) => {
     if (t < fromSec - 0.05 || (toSec != null && t > toSec + 0.05)) return null
     const fade =
@@ -1781,7 +1781,12 @@ function ShortQuestionCards({
           style={{ background: `rgba(0,0,0,${(text ? 0.4 : 0.25) * dim})` }}
         />
         <AbsoluteFill
-          style={{ justifyContent: "center", alignItems: "center" }}
+          style={{
+            justifyContent: "center",
+            alignItems: "center",
+            // Room under the turn for the paper strips.
+            ...(sub && subStrips ? { paddingBottom: f(300) } : {}),
+          }}
         >
           <div style={{ width: f(640) }}>
             {!text ? null : sharp ? (
@@ -1822,7 +1827,7 @@ function ShortQuestionCards({
             ) : (
               <StampLine text={text} t={t - fromSec} f={f} sharp={false} />
             )}
-            {sub ? (
+            {sub && subStrips ? null : sub ? (
               // Set like the scrolling verses' address ("Luke 15:22-24"):
               // PT Serif italic 32, at 85%; it eases in a beat after the
               // turn so the two never arrive together.
@@ -1887,8 +1892,21 @@ function ShortQuestionCards({
             false,
             cards.close.sub,
             cards.close.subSize,
+            cards.close.subStrips ?? false,
           )
         : null}
+      {cards.close?.sub && cards.close.subStrips ? (
+        // The small line on the opener's paper strips, typed a beat after
+        // the turn lands (owner, 2026-10-08).
+        <PaperStripsOpen
+          lines={cards.close.sub.split("|").map((l) => l.trim())}
+          fromSec={cards.close.fromSec + (cards.close.text ? 0.9 : 0.1)}
+          toSec={null}
+          t={t}
+          f={f}
+          top={cards.close.text ? 880 : 700}
+        />
+      ) : null}
     </>
   )
 }

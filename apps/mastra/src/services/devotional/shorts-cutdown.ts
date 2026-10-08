@@ -132,6 +132,10 @@ export type ShortPlan = {
     openMark?: string
     /** The close card's small line, in Figma units (default 32). */
     closeSubSize?: number
+    /** The small line on paper strips ("|" between strips). */
+    closeSubStrips?: boolean
+    /** Extra reading time for the opening card (s). */
+    openExtraSec?: number
   }
   durationSec: number
   /** One line on why this stretch, for shorts.md. */
@@ -162,6 +166,10 @@ export type CutdownOverrides = {
     openMark?: string
     /** The close card's small line, in Figma units (default 32). */
     closeSubSize?: number
+    /** The small line on paper strips ("|" between strips). */
+    closeSubStrips?: boolean
+    /** Extra reading time for the opening card (s). */
+    openExtraSec?: number
   }
   /** film-verse: the scene window on the film card (s), chosen by hand when
    *  the short should stop before the quoted verse (owner, 2026-10-08). */
@@ -561,7 +569,12 @@ export function planCutdown(
           const subs = film.subtitles ?? []
           const first = subs.find((x) => x.startSec >= win.fromSec)
           const quiet = first ? first.startSec - win.fromSec : 0
-          const lead = cards.open ? Math.max(0, OPEN_CARD_NEEDS_SEC - quiet) : 0
+          const lead = cards.open
+            ? Math.max(
+                0,
+                OPEN_CARD_NEEDS_SEC + (cards.openExtraSec ?? 0) - quiet,
+              )
+            : 0
           if (lead > 0 && made.film) {
             const preroll = quietStretchBefore(subs, win.fromSec, lead)
             made.film = {
@@ -1115,6 +1128,10 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
           openMark?: string
           /** The close card's small line, in Figma units (default 32). */
           closeSubSize?: number
+          /** The small line on paper strips ("|" between strips). */
+          closeSubStrips?: boolean
+          /** Extra reading time for the opening card (s). */
+          openExtraSec?: number
         }
       })
     | undefined
@@ -1156,6 +1173,7 @@ export function buildShortManifest(m: Manifest, plan: ShortPlan): Manifest {
               ...(filmCard.__cards.closeSubSize
                 ? { subSize: filmCard.__cards.closeSubSize }
                 : {}),
+              ...(filmCard.__cards.closeSubStrips ? { subStrips: true } : {}),
               ...(filmCard.__cards.closeSub
                 ? { sub: filmCard.__cards.closeSub }
                 : {}),

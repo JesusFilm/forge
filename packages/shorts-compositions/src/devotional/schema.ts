@@ -463,6 +463,8 @@ export const devotionalInputPropsSchema = z.object({
           sub: z.string().optional(),
           /** The small line's size in Figma units (default 32). */
           subSize: z.number().optional(),
+          /** The small line on paper strips ("|" between strips). */
+          subStrips: z.boolean().optional(),
         })
         .optional(),
     })

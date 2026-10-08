@@ -529,6 +529,12 @@ async function main() {
             ...(arg("film-close-sub-size")
               ? { closeSubSize: Number(arg("film-close-sub-size")) }
               : {}),
+            ...(process.argv.includes("--film-close-sub-strips")
+              ? { closeSubStrips: true }
+              : {}),
+            ...(arg("film-open-extra")
+              ? { openExtraSec: Number(arg("film-open-extra")) }
+              : {}),
           },
         }
       : {}),
@@ -651,6 +657,30 @@ async function main() {
         if (close) {
           m.musicFile = "music.mp3"
           ;(m as { ctaMusicAtSec?: number }).ctaMusicAtSec = close.fromSec
+        }
+      }
+      // `--film-mute-after-cue=K`: the scene keeps playing after line K but
+      // is no longer heard or captioned; the bed takes over there and the
+      // close card follows `--film-close-hold` seconds later (owner,
+      // 2026-10-08: cut on Jesus' question, let the picture run on).
+      if (short.kind === "film-verse" && arg("film-mute-after-cue")) {
+        const k = Number(arg("film-mute-after-cue"))
+        const hold = Number(arg("film-close-hold") ?? 1.5)
+        const film = m.cards.find((c) => c.kind === "video") as
+          | { subtitles?: { startSec: number; endSec: number }[] }
+          | undefined
+        const cue = film?.subtitles?.[k]
+        const close = (
+          m.shortCards as { close?: { fromSec: number } } | undefined
+        )?.close
+        if (film?.subtitles && cue) {
+          const said = cue.endSec
+          film.subtitles = film.subtitles
+            .slice(0, k + 1)
+            .map((c, i) => (i === k ? { ...c, endSec: said + hold } : c))
+          ;(m as { ctaMusicAtSec?: number }).ctaMusicAtSec = said + 0.15
+          if (close) close.fromSec = said + hold + 0.6
+          if (!m.musicFile) m.musicFile = "music.mp3"
         }
       }
       if (m.musicFile) {
