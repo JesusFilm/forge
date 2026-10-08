@@ -28,6 +28,17 @@ const syncSchema = z.object({
   includeVideos: z.boolean().optional(),
 })
 
+const PRIVATE_RESPONSE_HEADERS = {
+  "cache-control": "private, no-store, max-age=0",
+  pragma: "no-cache",
+  expires: "0",
+  vary: "Cookie",
+} as const
+
+function privateJson(body: unknown, status = 200): NextResponse {
+  return NextResponse.json(body, { status, headers: PRIVATE_RESPONSE_HEADERS })
+}
+
 function mergeEntries(
   ...sources: WatchProgressServerEntry[][]
 ): WatchProgressServerEntry[] {
@@ -74,7 +85,7 @@ async function requireSession(request: Request) {
 export async function GET(request: Request): Promise<NextResponse> {
   const session = await requireSession(request)
   if (!session) {
-    return NextResponse.json({
+    return privateJson({
       authenticated: false,
       userId: null,
       entries: [],
@@ -82,7 +93,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
 
   const entries = await fetchWatchProgressForUser(session.userId)
-  return NextResponse.json({
+  return privateJson({
     authenticated: true,
     userId: session.userId,
     entries,
@@ -92,25 +103,19 @@ export async function GET(request: Request): Promise<NextResponse> {
 export async function POST(request: Request): Promise<NextResponse> {
   const session = await requireSession(request)
   if (!session) {
-    return NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 },
-    )
+    return privateJson({ error: "Authentication required" }, 401)
   }
 
   let body: unknown
   try {
     body = await request.json()
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+    return privateJson({ error: "Invalid JSON body" }, 400)
   }
 
   const parsed = syncSchema.safeParse(body)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid watch progress payload" },
-      { status: 400 },
-    )
+    return privateJson({ error: "Invalid watch progress payload" }, 400)
   }
 
   const submittedEntries =
@@ -119,10 +124,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       ? (parsed.data.entries ?? [])
       : []
   if (submittedEntries.length === 0 && parsed.data.includeVideos !== true) {
-    return NextResponse.json(
-      { error: "Invalid watch progress payload" },
-      { status: 400 },
-    )
+    return privateJson({ error: "Invalid watch progress payload" }, 400)
   }
 
   const currentEntries = await fetchWatchProgressForUser(session.userId)
@@ -138,12 +140,12 @@ export async function POST(request: Request): Promise<NextResponse> {
         })
       : []
   if (parsed.data.includeVideos !== true) {
-    return NextResponse.json({ entries })
+    return privateJson({ entries })
   }
 
   const historyEntries = mergeEntries(currentEntries, entries, submittedEntries)
   const videos = await fetchWatchHistoryVideoDetails(historyEntries)
-  return NextResponse.json({
+  return privateJson({
     authenticated: true,
     userId: session.userId,
     entries: historyEntries,
@@ -154,12 +156,9 @@ export async function POST(request: Request): Promise<NextResponse> {
 export async function DELETE(request: Request): Promise<NextResponse> {
   const session = await requireSession(request)
   if (!session) {
-    return NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 },
-    )
+    return privateJson({ error: "Authentication required" }, 401)
   }
 
   const ok = await deleteWatchProgressForUser(session.userId)
-  return NextResponse.json({ ok })
+  return privateJson({ ok })
 }

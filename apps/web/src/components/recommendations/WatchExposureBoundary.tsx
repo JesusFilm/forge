@@ -14,6 +14,7 @@ import { recommendationFetchWithRetry } from "@/lib/recommendation-browser"
 import { waitForRecommendationActivation } from "@/lib/recommendation-activation"
 import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
 import { watchPath } from "@/lib/watch-paths"
+import { reportDatadogRumAction } from "@/components/DatadogRum"
 
 type Surface = {
   surface: "watch-home" | "watch-search" | "watch-video" | "watch-series"
@@ -361,9 +362,18 @@ function ExposureWindow({
       const card = [...cards.current.values()].find(
         (value) => value.key === key,
       )
-      if (card) send(card.card, "eligible", capability)
+      if (card) {
+        send(card.card, "eligible", capability)
+        reportDatadogRumAction("watch_rail.item_impression", {
+          "watch_rail.surface": surface,
+          "watch_rail.block": block,
+          "watch_rail.presentation": presentation,
+          "watch_rail.position": positionBucket(card.card.position),
+          "watch_rail.visibility": capability,
+        })
+      }
     },
-    [send],
+    [send, surface, block, presentation],
   )
   const attach = useEligibleRecommendationImpression({
     envelopeKey: windowId,
@@ -498,10 +508,16 @@ function ExposureWindow({
       const item = cards.current.get(anchor)
       if (item) {
         send(item.card, "selected")
+        reportDatadogRumAction("watch_rail.item_clicked", {
+          "watch_rail.surface": surface,
+          "watch_rail.block": block,
+          "watch_rail.presentation": presentation,
+          "watch_rail.position": positionBucket(item.card.position),
+        })
         flush()
       }
     },
-    [send, flush],
+    [send, flush, surface, block, presentation],
   )
   useEffect(() => {
     const element = root.current
@@ -520,4 +536,15 @@ function ExposureWindow({
       {children}
     </div>
   )
+}
+
+function positionBucket(
+  position: number,
+): "1" | "2-3" | "4-10" | "11-25" | "26+" {
+  const oneBased = position + 1
+  if (oneBased === 1) return "1"
+  if (oneBased <= 3) return "2-3"
+  if (oneBased <= 10) return "4-10"
+  if (oneBased <= 25) return "11-25"
+  return "26+"
 }
