@@ -17,13 +17,17 @@ export type RecordStatus = "loading" | "ready"
 
 export type RecordSnapshot<T> = Readonly<T & { status: RecordStatus }>
 
+/** `reached`: storage answered, even with no record. `missed`: the read hit
+ *  its time limit or failed, so memory may lack the saved values. */
+export type RecordReadOutcome = "reached" | "missed"
+
 export type RecordStore<T> = {
   /** The same object until something changes (useSyncExternalStore). */
   getSnapshot(): RecordSnapshot<T>
   /** Also starts the read, once. */
   subscribe(listener: () => void): () => void
   /** Never rejects. After a failed read, the next call reads again. */
-  hydrate(): Promise<void>
+  hydrate(): Promise<RecordReadOutcome>
   /** Sets the fields in memory now; the save follows the rules above. */
   update(patch: Partial<T>): void
   /** Test-only: back to the defaults, with no read and no listeners. */
@@ -76,7 +80,7 @@ export function createPersistedRecordStore<T extends Record<string, unknown>>(
   let value: T = { ...options.defaults }
   let status: RecordStatus = "loading"
   let snapshot: RecordSnapshot<T> = { ...value, status }
-  let hydration: Promise<void> | null = null
+  let hydration: Promise<RecordReadOutcome> | null = null
   /** True after a read that got an answer; only then may a write save. */
   let readDone = false
   /** Fields a live write set before the good read; that read skips them. */
@@ -127,12 +131,12 @@ export function createPersistedRecordStore<T extends Record<string, unknown>>(
     }
   }
 
-  function hydrate(): Promise<void> {
-    if (readDone) return Promise.resolve()
+  function hydrate(): Promise<RecordReadOutcome> {
+    if (readDone) return Promise.resolve("reached")
     if (hydration != null) return hydration
     const epochAtStart = epoch
     let failed = false
-    const flight = (async () => {
+    const flight = (async (): Promise<RecordReadOutcome> => {
       let raw: string | null
       try {
         raw = await withTimeout(
@@ -141,13 +145,15 @@ export function createPersistedRecordStore<T extends Record<string, unknown>>(
         )
       } catch {
         failed = true
-        if (epoch !== epochAtStart || status === "ready") return
+        if (epoch !== epochAtStart || status === "ready") return "missed"
         // The reader opens with what memory holds; a later call reads again.
         status = "ready"
         publish()
-        return
+        return "missed"
       }
-      if (epoch === epochAtStart) applyRead(raw)
+      if (epoch !== epochAtStart) return "missed"
+      applyRead(raw)
+      return "reached"
     })()
     hydration = flight
     // Registered on the flight, not in its body: a synchronous throw would run
