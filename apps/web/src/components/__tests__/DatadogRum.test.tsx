@@ -47,6 +47,7 @@ import DatadogRum, {
   GOOGLE_ANALYTICS_ACTION_V2_PROJECTORS,
   getDatadogRumInitConfig,
   clearDatadogRumUser,
+  enrichWatchRumEvent,
   identifyDatadogRumUser,
   reportDatadogRumAction,
   reportDatadogRumError,
@@ -97,6 +98,43 @@ afterEach(() => {
 })
 
 describe("DatadogRum", () => {
+  it("enriches the event's own Watch URL while preserving existing context", () => {
+    mockEnv.NEXT_PUBLIC_DATADOG_APPLICATION_ID = "rum-app-id"
+    mockEnv.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN = "rum-client-token"
+    const config = getDatadogRumInitConfig()
+    const event = {
+      view: { url: "https://www.jesusfilm.org/watch/jesus.html" },
+      context: { existing: "kept", watch: { detail: "kept" } },
+    }
+
+    expect(config?.beforeSend).toBe(enrichWatchRumEvent)
+    expect(enrichWatchRumEvent(event)).toBe(true)
+    expect(event.context).toEqual({
+      existing: "kept",
+      watch: { detail: "kept", path_shape: "one-segment" },
+    })
+  })
+
+  it("leaves non-Watch events unchanged and always allows delivery", () => {
+    const event = {
+      view: { url: "https://www.jesusfilm.org/resources" },
+      context: { existing: "kept" },
+    }
+
+    expect(enrichWatchRumEvent(event)).toBe(true)
+    expect(event).toEqual({
+      view: { url: "https://www.jesusfilm.org/resources" },
+      context: { existing: "kept" },
+    })
+  })
+
+  it("contains malformed event URLs and still allows delivery", () => {
+    const event = { view: { url: "not an absolute URL" }, context: {} }
+
+    expect(enrichWatchRumEvent(event)).toBe(true)
+    expect(event.context).toEqual({})
+  })
+
   it("does not initialize RUM when credentials are absent", async () => {
     act(() => {
       root.render(<DatadogRum />)
