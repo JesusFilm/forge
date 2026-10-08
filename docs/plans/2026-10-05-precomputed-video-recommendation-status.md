@@ -11,7 +11,7 @@ preserves exact source/integration commits, checks, browser artifacts, review
 findings, and recovery history. The [CTR operations note](../operations/precomputed-ctr-report.md)
 describes the private reporting contract and limits.
 
-## Current checkpoint — October 8, 19:57 NZDT
+## Current checkpoint — October 8, 20:11 NZDT
 
 The corrected clone-only pilot has **nine ready content profiles**, produced by
 12 successful exact `gpt-6-astra` calls using **226,862 input / 5,415 output
@@ -21,12 +21,17 @@ then the command stopped with `usage_uncertain`. That receipt remains pending
 with no reported usage; no connection decision or source finalization has been
 applied. The attempt is closed and the runner exited. Public A/B is **off**.
 
-The connection schema contains nested `oneOf`, which is outside the documented
-Structured Outputs composition subset. A narrow supported-schema correction and
-pre-reservation guard are in progress. This is a confirmed schema defect and a
+The connection schema contained nested `oneOf`, which is outside the documented
+Structured Outputs composition subset. Correction `9e88810da` uses an equivalent
+strict `anyOf` union and rejects nested `oneOf` before reservation or dispatch.
+All 3,528 Mastra tests pass (45 existing gated skips), plus typecheck, scoped
+lint/format and the native PostgreSQL manual-runner regression. This was a confirmed schema defect and a
 plausible explanation for the short failure, but the old response was not retained:
 reservation alone proves neither dispatch nor zero consumption. The pending call
-will not be replayed or relabeled as free work without reconciliation.
+will not be replayed or relabeled as free work without reconciliation. An explicit
+owner choice is pending on a proposed one-time manual recovery that would keep
+unknown usage visible and authorize one replacement call. That exception has
+not been approved, implemented or executed.
 
 Profile correction `572c5da02` accounts for citation metadata expansion in the
 prompt's byte budget and versions it as `complete-profile-v2`. It preserves
@@ -53,7 +58,9 @@ The original capture database remains unchanged.
 At published `572c5da02`, 57 CI checks pass and five skip. The native HNSW gate
 again returned zero candidates after schema generation passed; `ci-gate` failed
 transitively. The natural failures are tracked under feat-609; passing local
-runs have not identified a correction. No production merge/deployment or public
+runs have not identified a correction. The two owned bridge processes were
+stopped and their loopback port verified closed; databases and evidence remain.
+No production merge/deployment or public
 start has occurred. Current Railway configuration is inaccessible through the
 available signed-out browser/local login, and production Admin controls return
 403; live baseline/calibration readiness is unverified.
