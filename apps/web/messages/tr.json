@@ -395,6 +395,9 @@
     "backToWatch": "Watch'a dön",
     "browseVideos": "Videolara göz at"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Kayıt gerekmez"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ana sayfası",
     "navigation": "Altbilgi gezintisi",

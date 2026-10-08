@@ -395,6 +395,9 @@
     "backToWatch": "Voltar ao Watch",
     "browseVideos": "Procurar vídeos"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Não é necessário criar conta"
+  },
   "WatchFooter": {
     "home": "Página inicial do Jesus Film Project",
     "navigation": "Navegação do rodapé",

@@ -530,6 +530,9 @@
     "scrollToVideo": "بڕۆ بۆ ویدۆی {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "پێویست بە خۆتۆمارکردن ناکات"
+  },
   "WatchFooter": {
     "home": "سەرەکیی Jesus Film Project",
     "navigation": "ڕێبەری پێبەندەکان",

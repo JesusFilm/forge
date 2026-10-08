@@ -530,6 +530,9 @@
     "scrollToVideo": "Sgrolaich gu bhidio {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Chan fheum thu clàradh"
+  },
   "WatchFooter": {
     "home": "Duilleag-dhachaigh Jesus Film Project",
     "navigation": "Seòladh coise",

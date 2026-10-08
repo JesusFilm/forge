@@ -530,6 +530,9 @@
     "scrollToVideo": "Jaltu e video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Alaa ko haaji winnditaade"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project keɓe",
     "navigation": "Fayde footer",

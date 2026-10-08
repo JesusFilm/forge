@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} ویڈیو تام سکرول کرو",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "سائن اپ کرنٕچ ضرورت چھےٚ نہٕ"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ہوم",
     "navigation": "فوٹر نیویگیشن",

@@ -40,8 +40,23 @@ vi.mock("next-intl", () => ({
   // `useLocale` is consumed by the shared Carousel (text direction), which
   // reaches this tree through the category rail under the hero.
   useLocale: () => "en",
-  useTranslations: () => (key: string) =>
-    key === "pageTitle" ? "Jesus Film Project Watch" : key,
+  useTranslations:
+    (namespace: string) =>
+    (key: string, values?: Record<string, string | number>) => {
+      if (namespace === "LanguageInventory" && key === "heroTitle") {
+        return `Free Christian videos in ${values?.language}`
+      }
+      if (namespace === "LanguagePickerModal" && key === "languageCount") {
+        return `${values?.count} languages`
+      }
+      if (namespace === "LanguagePickerModal" && key === "seeAllLanguages") {
+        return "See all languages"
+      }
+      if (namespace === "WatchHomeTrust" && key === "noSignUpRequired") {
+        return "No sign-up required"
+      }
+      return key === "pageTitle" ? "Jesus Film Project Watch" : key
+    },
 }))
 
 vi.mock("@/lib/dynamic-collection-cache-signature", () => ({
@@ -53,13 +68,23 @@ vi.mock("@/components/home/WatchHomeFooter", () => ({
 }))
 
 vi.mock("@/components/home/WatchHomeTvCarousel", () => ({
-  WatchHomeTvCarousel: vi.fn(({ pinned = true }: { pinned?: boolean }) => (
-    <section
-      data-testid="watch-home-hero"
-      data-block-marker="WatchHomeHeroBlock"
-      data-pinned={pinned ? "true" : "false"}
-    />
-  )),
+  WatchHomeTvCarousel: vi.fn(
+    ({
+      heroIntro,
+      pinned = true,
+    }: {
+      heroIntro?: React.ReactNode
+      pinned?: boolean
+    }) => (
+      <section
+        data-testid="watch-home-hero"
+        data-block-marker="WatchHomeHeroBlock"
+        data-pinned={pinned ? "true" : "false"}
+      >
+        {heroIntro}
+      </section>
+    ),
+  ),
 }))
 
 vi.mock("@/components/sections", () => ({
@@ -299,7 +324,7 @@ describe("WatchHomeExperiencePage", () => {
       ).toEqual(["WatchHomeHeroBlock", ...types])
     },
   )
-  it("server-renders one fallback h1 without an authored page heading", () => {
+  it("server-renders the visible translated hero h1 without an authored heading", () => {
     const html = renderToStaticMarkup(
       <WatchHomeExperiencePage
         heroModel={heroModel}
@@ -312,11 +337,24 @@ describe("WatchHomeExperiencePage", () => {
 
     expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
-      "Jesus Film Project Watch",
+      "Free Christian videos in English",
     )
+    expect(
+      serverContainer.querySelector('[data-testid="watch-home-language-count"]')
+        ?.textContent,
+    ).toBe("2329 languages")
+    expect(
+      serverContainer
+        .querySelector('[data-testid="watch-home-find-language"]')
+        ?.getAttribute("href"),
+    ).toBe("/languages")
+    expect(
+      serverContainer.querySelector('[data-testid="watch-home-trust-strip"]')
+        ?.textContent,
+    ).toContain("No sign-up required")
   })
 
-  it("renders the authored page topic as the only hydrated h1", async () => {
+  it("keeps the authored topic below the first-screen h1 in the heading hierarchy", async () => {
     const blocks = [makeNestedPageHeadingBlock()]
     const html = renderToStaticMarkup(
       <WatchHomeExperiencePage
@@ -330,6 +368,9 @@ describe("WatchHomeExperiencePage", () => {
 
     expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
+      "Free Christian videos in English",
+    )
+    expect(serverContainer.querySelector("h2")?.textContent).toBe(
       "Watch free Christian videos, Bible stories, and films",
     )
 
@@ -345,11 +386,11 @@ describe("WatchHomeExperiencePage", () => {
 
     expect(container.querySelectorAll("h1")).toHaveLength(1)
     expect(container.querySelector("h1")?.textContent).toBe(
-      "Watch free Christian videos, Bible stories, and films",
+      "Free Christian videos in English",
     )
   })
 
-  it("keeps the first authored h1 and demotes additional authored h1s", async () => {
+  it("demotes authored h1s below the visible first-screen h1", async () => {
     const blocks = [
       makePageHeadingBlock("Primary page heading", "primary-heading"),
       makeNestedPageHeadingBlock("Secondary page heading", "secondary-heading"),
@@ -366,13 +407,18 @@ describe("WatchHomeExperiencePage", () => {
 
     expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
-      "Primary page heading",
+      "Free Christian videos in English",
     )
     expect(
       Array.from(serverContainer.querySelectorAll("h2")).map(
         (heading) => heading.textContent,
       ),
-    ).toContain("Secondary page heading")
+    ).toEqual(
+      expect.arrayContaining([
+        "Primary page heading",
+        "Secondary page heading",
+      ]),
+    )
 
     await act(async () => {
       root.render(
@@ -386,7 +432,7 @@ describe("WatchHomeExperiencePage", () => {
 
     expect(container.querySelectorAll("h1")).toHaveLength(1)
     expect(container.querySelector("h1")?.textContent).toBe(
-      "Primary page heading",
+      "Free Christian videos in English",
     )
     expect(
       Array.from(container.querySelectorAll("h2")).map(

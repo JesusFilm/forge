@@ -530,6 +530,9 @@
     "scrollToVideo": "د {title} ویډیو ته ولېږئ",
     "forYou": "ستاسو لپاره"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "نوم لیکنې ته اړتیا نشته"
+  },
   "WatchFooter": {
     "home": "د Jesus Film Project کورپاڼه",
     "navigation": "د پاڼې لاندې لټون",

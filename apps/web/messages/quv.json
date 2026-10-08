@@ -530,6 +530,9 @@
     "scrollToVideo": "Desplázate al video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "No sign-up required"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project takya'j",
     "navigation": "Rijb'al footer",

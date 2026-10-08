@@ -530,6 +530,9 @@
     "scrollToVideo": "Desann pou videyo {title} a",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Pa bezwen enskri"
+  },
   "WatchFooter": {
     "home": "Akèy Jesus Film Project",
     "navigation": "Navigasyon pye paj",

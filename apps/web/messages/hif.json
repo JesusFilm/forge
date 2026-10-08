@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} video tak scroll kariye",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Sign-up karne ki zaroorat nahi"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ka home page",
     "navigation": "Footer ke links",

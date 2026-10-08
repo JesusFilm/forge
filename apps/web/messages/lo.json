@@ -530,6 +530,9 @@
     "scrollToVideo": "ເລື່ອນໄປທີ່ວິດີໂອ {title}",
     "forYou": "ສຳລັບທ່ານ"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "ບໍ່ຈຳເປັນຕ້ອງລົງທະບຽນ"
+  },
   "WatchFooter": {
     "home": "ໜ້າຫຼັກ Jesus Film Project",
     "navigation": "ການນຳທາງທ້າຍໜ້າ",

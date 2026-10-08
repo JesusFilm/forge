@@ -530,6 +530,9 @@
     "scrollToVideo": "Skrola uye kuvidiyo ka-{title}",
     "forYou": "Okwakho"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Akudingeki ukubhalisa"
+  },
   "WatchFooter": {
     "home": "Ikhaya le-Jesus Film Project",
     "navigation": "Ukuzulazula kwe-footer",

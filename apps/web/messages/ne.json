@@ -395,6 +395,9 @@
     "backToWatch": "Watch मा फर्कनुहोस्",
     "browseVideos": "भिडियोहरू ब्राउज गर्नुहोस्"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "साइन अप आवश्यक छैन"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project गृहपृष्ठ",
     "navigation": "फुटर नेभिगेसन",

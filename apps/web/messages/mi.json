@@ -530,6 +530,9 @@
     "scrollToVideo": "Panuku ki te ataata {title}",
     "forYou": "Māu"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Kāore he take kia rēhita"
+  },
   "WatchFooter": {
     "home": "Kainga Jesus Film Project",
     "navigation": "Whakatere o raro",

@@ -530,6 +530,9 @@
     "scrollToVideo": "Пракруціць да відэа {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Рэгістрацыя не патрабуецца"
+  },
   "WatchFooter": {
     "home": "Галоўная Jesus Film Project",
     "navigation": "Навігацыя ў ніжнім калантытуле",

@@ -395,6 +395,9 @@
     "backToWatch": "Terug naar Watch",
     "browseVideos": "Video's bekijken"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Geen registratie nodig"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project-startpagina",
     "navigation": "Voeternavigatie",

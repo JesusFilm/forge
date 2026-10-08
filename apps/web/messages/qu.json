@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} video kaqman surkuy",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Mana sutiykita qillqanaykichu"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project wasin",
     "navigation": "Urayman puriy",

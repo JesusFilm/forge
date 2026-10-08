@@ -530,6 +530,9 @@
     "scrollToVideo": "Kɔ video {title} no so",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Wonhia sɛ wokyerɛw wo din"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project fie",
     "navigation": "Ase hɔ akwantu menu",

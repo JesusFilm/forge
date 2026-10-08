@@ -530,6 +530,9 @@
     "scrollToVideo": "Keri video {title} juurde",
     "forYou": "Sulle"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Registreerumine pole vajalik"
+  },
   "WatchFooter": {
     "home": "Jesus Film Projecti avaleht",
     "navigation": "Jaluse navigeerimine",

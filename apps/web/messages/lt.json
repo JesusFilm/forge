@@ -530,6 +530,9 @@
     "scrollToVideo": "Slinkite iki {title} vaizdo įrašo",
     "forYou": "Jums"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Registracija nereikalinga"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project pradžia",
     "navigation": "Poraštės navigacija",

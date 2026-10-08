@@ -395,6 +395,9 @@
     "backToWatch": "Bumalik sa Watch",
     "browseVideos": "Mag-browse ng mga video"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Hindi kailangang mag-sign up"
+  },
   "WatchFooter": {
     "home": "Tahanan ng Jesus Film Project",
     "navigation": "Pag-navigate sa footer",

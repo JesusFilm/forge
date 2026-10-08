@@ -530,6 +530,9 @@
     "scrollToVideo": "Skrol go long {title} video",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Sain ap i no nidim"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project hom",
     "navigation": "Navigation bilong footer",

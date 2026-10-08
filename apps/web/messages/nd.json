@@ -530,6 +530,9 @@
     "scrollToVideo": "Skrolela kuvidiyo ka-{title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Akudingeki ukubhalisa"
+  },
   "WatchFooter": {
     "home": "Ikhasi lasekhaya le-Jesus Film Project",
     "navigation": "Ukuzulazula konyawo lwekhasi",

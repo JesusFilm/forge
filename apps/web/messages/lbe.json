@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видео шоры шорыты",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Регистрация хьхьарасса бакъар"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project шоры",
     "navigation": "Сайтын навигация",

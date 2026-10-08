@@ -530,6 +530,9 @@
     "scrollToVideo": "Zum Video {title} rullen",
     "forYou": "Fir dech"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Keng Umeldung néideg"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project Startsäit",
     "navigation": "Navigatioun am Foussberäich",

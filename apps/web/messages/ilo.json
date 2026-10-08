@@ -530,6 +530,9 @@
     "scrollToVideo": "Igid a {title} a video",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Saan a kasapulan ti agrehistro"
+  },
   "WatchFooter": {
     "home": "Balay ti Jesus Film Project",
     "navigation": "Panagdaliasat iti footer",

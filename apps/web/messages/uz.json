@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} videosiga o‘tish",
     "forYou": "Siz uchun"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Roʻyxatdan oʻtish shart emas"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project bosh sahifasi",
     "navigation": "Pastki navigatsiya",

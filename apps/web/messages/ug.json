@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} سىنىغا سۈرۈش",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "تىزىملىتىش تەلەپ قىلىنمايدۇ"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project باش بېتى",
     "navigation": "پۇت قىسىم يول باشلاش",

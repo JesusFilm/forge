@@ -530,6 +530,9 @@
     "scrollToVideo": "Skroll pa {title} video",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "No ta nesesario pa registrá"
+  },
   "WatchFooter": {
     "home": "Página prome di Jesus Film Project",
     "navigation": "Navigashon di footer",

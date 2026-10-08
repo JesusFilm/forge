@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеон руу очих",
     "forYou": "Танд зориулсан"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Бүртгүүлэх шаардлагагүй"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project нүүр хуудас",
     "navigation": "Хөл хэсгийн навигаци",

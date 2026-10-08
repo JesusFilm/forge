@@ -530,6 +530,9 @@
     "scrollToVideo": "Ба видеои {title} гузаред",
     "forYou": "Барои шумо"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Бақайдгирӣ лозим нест"
+  },
   "WatchFooter": {
     "home": "Саҳифаи асосии Jesus Film Project",
     "navigation": "Навигатсияи поёнӣ",

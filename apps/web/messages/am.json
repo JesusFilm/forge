@@ -530,6 +530,9 @@
     "scrollToVideo": "ወደ {title} ቪዲዮ ይሸብልሉ",
     "forYou": "ለእርስዎ"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "መመዝገብ አያስፈልግም"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project መነሻ",
     "navigation": "የግርጌ አሰሳ",

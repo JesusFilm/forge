@@ -530,6 +530,9 @@
     "scrollToVideo": "Скролувај до видеото {title}",
     "forYou": "За вас"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Не е потребна регистрација"
+  },
   "WatchFooter": {
     "home": "Почетна страница на Jesus Film Project",
     "navigation": "Навигација во подножјето",

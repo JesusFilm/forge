@@ -530,6 +530,9 @@
     "scrollToVideo": "Scorri al video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "No ghe xe bisogno de registrarse"
+  },
   "WatchFooter": {
     "home": "Pagina principal de Jesus Film Project",
     "navigation": "Navigassion del piè de pagina",

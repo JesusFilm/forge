@@ -539,6 +539,9 @@
     "nextVideoPreview": "Next video preview",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "No sign-up required"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project home",
     "navigation": "Footer navigation",

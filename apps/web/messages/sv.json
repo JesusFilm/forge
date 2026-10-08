@@ -530,6 +530,9 @@
     "scrollToVideo": "Bläddra till videon {title}",
     "forYou": "För dig"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Ingen registrering krävs"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project startsida",
     "navigation": "Sidfotsnavigering",

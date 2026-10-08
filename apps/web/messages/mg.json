@@ -530,6 +530,9 @@
     "scrollToVideo": "Tadiavo ny lahatsary {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Tsy mila misoratra anarana"
+  },
   "WatchFooter": {
     "home": "Pejy fandraisana Jesus Film Project",
     "navigation": "Fikarohana ambany pejy",

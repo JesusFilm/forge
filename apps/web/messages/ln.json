@@ -530,6 +530,9 @@
     "scrollToVideo": "Kende na video ya {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Kokoma nkombo esengeli te"
+  },
   "WatchFooter": {
     "home": "Ndako ya Jesus Film Project",
     "navigation": "Kokende na se ya lokasa",

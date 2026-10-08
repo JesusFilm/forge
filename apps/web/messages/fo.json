@@ -530,6 +530,9 @@
     "scrollToVideo": "Rulla til videobrotið {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Eingin tilmelding kravd"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project forsíða",
     "navigation": "Fótmynstrunavigatión",

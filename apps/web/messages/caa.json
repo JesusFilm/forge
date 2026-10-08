@@ -530,6 +530,9 @@
     "scrollToVideo": "Tz'otz' ta video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "No sign-up required"
+  },
   "WatchFooter": {
     "home": "Ruwotot Jesus Film Project",
     "navigation": "Navigation ta footer",

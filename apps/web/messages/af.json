@@ -530,6 +530,9 @@
     "scrollToVideo": "Scroll na die {title}-video",
     "forYou": "Vir jou"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Geen registrasie nodig nie"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project-tuis",
     "navigation": "Voetsjabloonnavigasie",

@@ -530,6 +530,9 @@
     "scrollToVideo": "Scrollaigh go físeán {title}",
     "forYou": "Duitse"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Níl gá le clárú"
+  },
   "WatchFooter": {
     "home": "Baile Jesus Film Project",
     "navigation": "Nascleanúint na buntásca",

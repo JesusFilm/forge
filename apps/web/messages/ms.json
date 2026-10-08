@@ -395,6 +395,9 @@
     "backToWatch": "Kembali ke Watch",
     "browseVideos": "Semak imbas video"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Tidak perlu mendaftar"
+  },
   "WatchFooter": {
     "home": "Laman utama Jesus Film Project",
     "navigation": "Navigasi pengaki",

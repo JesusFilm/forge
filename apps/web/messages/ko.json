@@ -395,6 +395,9 @@
     "backToWatch": "Watch로 돌아가기",
     "browseVideos": "동영상 둘러보기"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "가입 필요 없음"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project 홈",
     "navigation": "바닥글 탐색",

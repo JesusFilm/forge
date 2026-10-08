@@ -530,6 +530,9 @@
     "scrollToVideo": "Lako ki na vidio {title}",
     "forYou": "Me baleti iko"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Sega ni gadrevi me vola na yacamu"
+  },
   "WatchFooter": {
     "home": "Tabana levu ni Jesus Film Project",
     "navigation": "Navigation ni footer",

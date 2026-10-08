@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видео вылӧ скроллить",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Регистрируйтчыны оз ков"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project оланнин",
     "navigation": "Футер навигация",

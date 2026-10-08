@@ -530,6 +530,9 @@
     "scrollToVideo": "Skrollja għall-video {title}",
     "forYou": "Għalik"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Mhux meħtieġ li tirreġistra"
+  },
   "WatchFooter": {
     "home": "Dar Jesus Film Project",
     "navigation": "Navigazzjoni tal-footer",

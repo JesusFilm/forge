@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеоез шоры скроллить",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Регистрация кулэ ӧвӧл"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project шӧр",
     "navigation": "Подвал навигация",

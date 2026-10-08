@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} videosuna sürüşdürün",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Гејдијјат тәләб олунмур"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ana səhifəsi",
     "navigation": "Altbilgi naviqasiyası",

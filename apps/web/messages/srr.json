@@ -530,6 +530,9 @@
     "scrollToVideo": "Wonaa {title} video bi",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Soxlaawul nga bind sa tur"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project kër",
     "navigation": "Navigation bu footer bi",

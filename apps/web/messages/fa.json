@@ -530,6 +530,9 @@
     "scrollToVideo": "رفتن به ویدیوی {title}",
     "forYou": "برای شما"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "نیازی به ثبت‌نام نیست"
+  },
   "WatchFooter": {
     "home": "صفحهٔ اصلی Jesus Film Project",
     "navigation": "ناوبری پابرگ",

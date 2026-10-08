@@ -530,6 +530,9 @@
     "scrollToVideo": "Lëviz te videoja {title}",
     "forYou": "Për ju"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Nuk kërkohet regjistrim"
+  },
   "WatchFooter": {
     "home": "Faqja kryesore e Jesus Film Project",
     "navigation": "Navigimi i faqes së poshtme",

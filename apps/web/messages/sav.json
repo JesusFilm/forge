@@ -530,6 +530,9 @@
     "scrollToVideo": "Dëgmal ba ci vidéo bi {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Soxlaawul nga bind sa tur"
+  },
   "WatchFooter": {
     "home": "Xët wu njëkk bu Jesus Film Project",
     "navigation": "Navigasyon bu footer",

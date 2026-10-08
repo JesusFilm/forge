@@ -64,6 +64,7 @@ import {
 
 type WatchHomeTvCarouselProps = {
   heroManifestCatalog?: WatchHomeHeroManifestCatalog
+  heroIntro?: ReactNode
   exposurePlacement?: string
   slides: WatchHomeHeroSlide[]
   sequence?: WatchHomeCarouselSequenceData | null
@@ -1066,6 +1067,7 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
 
 export function WatchHomeTvCarousel({
   heroManifestCatalog,
+  heroIntro,
   exposurePlacement,
   pinned = true,
   sequence = null,
@@ -1166,6 +1168,9 @@ export function WatchHomeTvCarousel({
             : "h-[66svh] md:h-[min(100svh,56.25vw)]",
         )}
       >
+        {heroIntro ? (
+          <div className="absolute inset-x-0 top-0 z-20">{heroIntro}</div>
+        ) : null}
         <WatchHomeTvMedia
           activeSlide={activeSlide}
           isMuted={isMuted}

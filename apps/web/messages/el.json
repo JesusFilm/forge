@@ -530,6 +530,9 @@
     "scrollToVideo": "Κύλιση στο βίντεο {title}",
     "forYou": "Για εσάς"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Δεν απαιτείται εγγραφή"
+  },
   "WatchFooter": {
     "home": "Αρχική Jesus Film Project",
     "navigation": "Πλοήγηση υποσέλιδου",

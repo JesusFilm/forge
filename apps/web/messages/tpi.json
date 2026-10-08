@@ -530,6 +530,9 @@
     "scrollToVideo": "Rausim piksa i go long {title} video",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "I no gat nid long sain ap"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project hom pes",
     "navigation": "Ol link long futa",

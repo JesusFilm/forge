@@ -530,6 +530,9 @@
     "scrollToVideo": "Mag-scroll sa video na {title}",
     "forYou": "Para sa iyo"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Hindi kailangang mag-sign up"
+  },
   "WatchFooter": {
     "home": "Tahanan ng Jesus Film Project",
     "navigation": "Nabigasyon sa footer",

@@ -530,6 +530,9 @@
     "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Aucune inscription requise"
+  },
   "WatchFooter": {
     "home": "Accueil de Jesus Film Project",
     "navigation": "Navigation du pied de page",

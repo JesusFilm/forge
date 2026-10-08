@@ -7,6 +7,7 @@ import {
   GLOBAL_CLIENT_MESSAGE_NAMESPACES,
   LANGUAGE_INVENTORY_CLIENT_MESSAGE_NAMESPACES,
   WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
+  WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
   pickClientMessages,
 } from "./client-messages"
 
@@ -68,6 +69,18 @@ describe("route-scoped client messages", () => {
     )
     expect(messages.LanguageInventory?.videoCount).toBe(
       "{count, plural, one {# video} other {# videos}}",
+    )
+  })
+
+  it("keeps the Watch home first-screen promise translated", () => {
+    const messages = pickClientMessages(
+      englishMessages,
+      WATCH_HOME_CLIENT_MESSAGE_NAMESPACES,
+    )
+
+    expect(WATCH_HOME_CLIENT_MESSAGE_NAMESPACES).toContain("WatchHomeTrust")
+    expect(messages.WatchHomeTrust?.noSignUpRequired).toBe(
+      "No sign-up required",
     )
   })
 })

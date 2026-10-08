@@ -530,6 +530,9 @@
     "scrollToVideo": "Kɛ scroll ka {title} video",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "No sign-up required"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project kɔnɔ",
     "navigation": "Footer kɔnɔ navigation",

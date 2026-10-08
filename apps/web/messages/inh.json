@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеога д1ахьа",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Регистраци оьшаш яц"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project хана",
     "navigation": "Футер навигация",

@@ -530,6 +530,9 @@
     "scrollToVideo": "I-scroll so video a {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Ag kaukolan so pan-sign up"
+  },
   "WatchFooter": {
     "home": "Home na Jesus Film Project",
     "navigation": "Pag-navigar ed footer",

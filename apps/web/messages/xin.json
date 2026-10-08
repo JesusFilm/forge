@@ -530,6 +530,9 @@
     "scrollToVideo": "Desplazarse hasta el video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "No se requiere registro"
+  },
   "WatchFooter": {
     "home": "Inicio de Jesus Film Project",
     "navigation": "Navegación del pie de página",

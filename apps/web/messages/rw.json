@@ -530,6 +530,9 @@
     "scrollToVideo": "Kanda hasi werekeza kuri video ya {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Nta kwiyandikisha bisabwa"
+  },
   "WatchFooter": {
     "home": "Urupapuro rwa mbere rwa Jesus Film Project",
     "navigation": "Igenzura ryo hasi",

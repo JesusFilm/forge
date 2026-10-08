@@ -395,6 +395,9 @@
     "backToWatch": "Quay lại Watch",
     "browseVideos": "Duyệt video"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Không cần đăng ký"
+  },
   "WatchFooter": {
     "home": "Trang chủ Jesus Film Project",
     "navigation": "Điều hướng chân trang",

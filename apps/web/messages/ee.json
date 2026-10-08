@@ -530,6 +530,9 @@
     "scrollToVideo": "Kɔ video {title} ŋu",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Mehiã be nàŋlɔ ŋkɔ o"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ƒe home",
     "navigation": "Mɔfiafia le afɔ me",

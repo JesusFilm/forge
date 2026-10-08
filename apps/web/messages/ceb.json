@@ -530,6 +530,9 @@
     "scrollToVideo": "I-scroll ngadto sa video nga {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Dili kinahanglan mag-sign up"
+  },
   "WatchFooter": {
     "home": "Panid sa balay sa Jesus Film Project",
     "navigation": "Navigasyon sa footer",

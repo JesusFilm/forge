@@ -530,6 +530,9 @@
     "scrollToVideo": "Fletta að myndbandinu {title}",
     "forYou": "Fyrir þig"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Engin skráning nauðsynleg"
+  },
   "WatchFooter": {
     "home": "Forsíða Jesus Film Project",
     "navigation": "Fótstillingaleiðsögn",

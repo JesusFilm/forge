@@ -395,6 +395,9 @@
     "backToWatch": "Retour à Watch",
     "browseVideos": "Parcourir les vidéos"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Aucune inscription requise"
+  },
   "WatchFooter": {
     "home": "Accueil de Jesus Film Project",
     "navigation": "Navigation du pied de page",

@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеоӧ кужны",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Регистрируйтчыны оз ков"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project главная",
     "navigation": "Футер навигация",

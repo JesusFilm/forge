@@ -395,6 +395,9 @@
     "backToWatch": "ওয়াচে ফিরে যান",
     "browseVideos": "ভিডিও ব্রাউজ করুন"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "সাইন আপ করার প্রয়োজন নেই"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project হোম",
     "navigation": "ফুটার নেভিগেশন",

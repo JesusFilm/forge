@@ -530,6 +530,9 @@
     "scrollToVideo": "Hamutuk ba vídeo {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "La presiza rejistu"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project uma",
     "navigation": "Navigasaun rohan kraik",

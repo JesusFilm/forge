@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} video ne scroll ae",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "No sign-up required"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project home eo",
     "navigation": "Footer navigation eo",

@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеосына күчү",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Теркәлү кирәкми"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project баш бите",
     "navigation": "Аскы навигация",

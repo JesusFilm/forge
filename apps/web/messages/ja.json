@@ -395,6 +395,9 @@
     "backToWatch": "Watch に戻る",
     "browseVideos": "動画を閲覧"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "登録不要"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ホーム",
     "navigation": "フッターナビゲーション",

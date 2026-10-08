@@ -530,6 +530,9 @@
     "scrollToVideo": "Pomičite do videozapisa {title}",
     "forYou": "Za vas"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Registracija nije potrebna"
+  },
   "WatchFooter": {
     "home": "Početna stranica Jesus Film Projecta",
     "navigation": "Navigacija u podnožju",

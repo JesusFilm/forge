@@ -530,6 +530,9 @@
     "scrollToVideo": "Iḓani kha video ya {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "A hu ṱoḓei u ḓiṅwalisa"
+  },
   "WatchFooter": {
     "home": "Muhuri wa Jesus Film Project",
     "navigation": "U tshimbila ha footer",

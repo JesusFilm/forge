@@ -530,6 +530,9 @@
     "scrollToVideo": "Yiyunguruze kuri videwo ya {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Nta kwiyandikisha bikenewe"
+  },
   "WatchFooter": {
     "home": "Urugo rwa Jesus Film Project",
     "navigation": "Imbuga zo hepfo",

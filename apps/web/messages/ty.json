@@ -530,6 +530,9 @@
     "scrollToVideo": "A panuku i te video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Aita e titauhia te tapaʻo i te iʻoa"
+  },
   "WatchFooter": {
     "home": "Te fare Jesus Film Project",
     "navigation": "Te faanahoraa i raro",

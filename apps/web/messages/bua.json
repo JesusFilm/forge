@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеог харуулахаар гүйлгэх",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Бүридхэл хэрэггүй"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project нүүр хуудас",
     "navigation": "Доод талын навигаци",

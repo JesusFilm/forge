@@ -530,6 +530,9 @@
     "scrollToVideo": "Joan {title} bideora",
     "forYou": "Zuretzat"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Ez da izena eman behar"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project hasiera",
     "navigation": "Orri-azpiko nabigazioa",

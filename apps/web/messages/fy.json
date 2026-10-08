@@ -530,6 +530,9 @@
     "scrollToVideo": "Skowje nei de fideo {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Gjin registraasje nedich"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project-startside",
     "navigation": "Foeternavigaasje",

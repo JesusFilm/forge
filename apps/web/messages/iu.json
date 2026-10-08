@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} video-mut ingerlaaruk",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Atiliurnissaq pisariaqanngilaq"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project aallartiffia",
     "navigation": "Quppernerit ingerlaarfii",

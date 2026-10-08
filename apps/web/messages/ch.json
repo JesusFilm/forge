@@ -530,6 +530,9 @@
     "scrollToVideo": "Liyang gi video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Ti nesesita i rehistro"
+  },
   "WatchFooter": {
     "home": "Home gi Jesus Film Project",
     "navigation": "Navigation gi footer",

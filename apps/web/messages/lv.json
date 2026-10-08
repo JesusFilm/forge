@@ -530,6 +530,9 @@
     "scrollToVideo": "Ritināt līdz {title} video",
     "forYou": "Jums"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Reģistrācija nav nepieciešama"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project sākumlapa",
     "navigation": "Kājenes navigācija",

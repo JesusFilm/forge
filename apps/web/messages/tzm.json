@@ -530,6 +530,9 @@
     "scrollToVideo": "Ḍur ɣer tvidyo n {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Ur yettwasra ujerred"
+  },
   "WatchFooter": {
     "home": "Tazwara n Jesus Film Project",
     "navigation": "Amsekkin n ufellah",

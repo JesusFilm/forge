@@ -530,6 +530,9 @@
     "scrollToVideo": "Loloa ki he vitio {title}",
     "forYou": "Maʻau"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "ʻOku ʻikai fiemaʻu ke ke lesisita"
+  },
   "WatchFooter": {
     "home": "Peesi kamata ʻo e Jesus Film Project",
     "navigation": "Fakalaka ʻo e footer",

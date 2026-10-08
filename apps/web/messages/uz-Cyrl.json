@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеосига ўтиш",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Рўйхатдан ўтиш шарт эмас"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project бош саҳифаси",
     "navigation": "Пастки навигация",

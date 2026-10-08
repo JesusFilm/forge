@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} ဗီဒီယိုသို့ ဆင်းကြည့်ပါ",
     "forYou": "သင့်အတွက်"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "စာရင်းသွင်းရန် မလိုအပ်ပါ"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project မူလစာမျက်နှာ",
     "navigation": "အောက်ခြေ လမ်းညွှန်",

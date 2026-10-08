@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеога төнн",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Бэлиэтэнии наадата суох"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project бастыҥ сирэйи",
     "navigation": "Түмүктүүр навигация",

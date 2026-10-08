@@ -530,6 +530,9 @@
     "scrollToVideo": "Sgrolio i fideo {title}",
     "forYou": "I chi"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Dim angen cofrestru"
+  },
   "WatchFooter": {
     "home": "Hafan Jesus Film Project",
     "navigation": "Llywio’r troedyn",

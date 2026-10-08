@@ -530,6 +530,9 @@
     "scrollToVideo": "Rol pa vídeu {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "No sign-up required"
+  },
   "WatchFooter": {
     "home": "Inisiu di Jesus Film Project",
     "navigation": "Navigason di rodapé",

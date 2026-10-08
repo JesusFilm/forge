@@ -530,6 +530,9 @@
     "scrollToVideo": "Sogeza hadi video ya {title}",
     "forYou": "Kwa ajili yako"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Hakuna haja ya kujisajili"
+  },
   "WatchFooter": {
     "home": "Nyumbani kwa Jesus Film Project",
     "navigation": "Urambazaji wa kijachini",

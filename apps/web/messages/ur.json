@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} ویڈیو تک اسکرول کریں",
     "forYou": "آپ کے لیے"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "سائن اپ کی ضرورت نہیں"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ہوم",
     "navigation": "فوٹر نیویگیشن",

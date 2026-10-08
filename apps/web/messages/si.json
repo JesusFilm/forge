@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} වීඩියෝවට පහළට යන්න",
     "forYou": "ඔබ වෙනුවෙන්"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "ලියාපදිංචි වීම අවශ්‍ය නැත"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project මුල් පිටුව",
     "navigation": "පාදක සැරිසැරීම",

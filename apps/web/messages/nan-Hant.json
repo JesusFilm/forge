@@ -530,6 +530,9 @@
     "scrollToVideo": "捲動到 {title} 影片",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "免註冊"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project 首頁",
     "navigation": "頁尾導覽",

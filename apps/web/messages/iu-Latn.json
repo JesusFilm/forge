@@ -530,6 +530,9 @@
     "scrollToVideo": "{title}-mik video-mut qummukarit",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Atiliurnissaq pisariaqanngilaq"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project aallartiffia",
     "navigation": "Aqqusaarnissamut atortoq",

@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеосуна жылдыруу",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Регистрация герек тюгюл"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project баш бети",
     "navigation": "Төмөнкү навигация",

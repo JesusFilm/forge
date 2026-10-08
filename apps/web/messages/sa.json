@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} वीडियों प्रति स्क्रोल् कुर्वन्तु",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "पञ्जीकरणं नापेक्ष्यते"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project गृहपृष्ठम्",
     "navigation": "पादभाग-संचारः",

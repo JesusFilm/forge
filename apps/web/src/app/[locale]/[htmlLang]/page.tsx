@@ -77,7 +77,7 @@ export async function generateMetadata({
 
 export default async function HomePage({ params }: PageProps) {
   const { locale: rawLocale } = await params
-  const { locale } = resolveWatchLocaleIdentity(rawLocale)
+  const { locale, htmlLang } = resolveWatchLocaleIdentity(rawLocale)
   setRequestLocale(locale)
   const [heroResult, pageResult, messages] = await Promise.all([
     resolveWatchHome(locale),
@@ -137,6 +137,7 @@ export default async function HomePage({ params }: PageProps) {
         heroModel={heroResult.data}
         blocks={visibleContent.blocks}
         locale={locale}
+        htmlLang={htmlLang}
         languageSlug={languageSlug}
         publicDocumentPathname={WATCH_BASE_PATH}
         legacyCategoryRailCompatibility={

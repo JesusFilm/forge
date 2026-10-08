@@ -530,6 +530,9 @@
     "scrollToVideo": "Vieritä videoon {title}",
     "forYou": "Sinulle"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Rekisteröitymistä ei vaadita"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project -etusivu",
     "navigation": "Alatunnisteen navigointi",

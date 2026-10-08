@@ -530,6 +530,9 @@
     "scrollToVideo": "Lohj daengz video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchHomeTrust": {
+    "noSignUpRequired": "Mbouj yungh dwk geiq"
+  },
   "WatchFooter": {
     "home": "Homepage Jesus Film Project",
     "navigation": "Navigation footer",
