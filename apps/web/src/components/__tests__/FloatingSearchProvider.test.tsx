@@ -403,7 +403,10 @@ function setInputValue(input: HTMLInputElement, value: string) {
   input.dispatchEvent(new Event("input", { bubbles: true }))
 }
 
-async function openSearchOverlay(locale?: string): Promise<HTMLInputElement> {
+async function openSearchOverlay(
+  locale?: string,
+  focusTrigger = false,
+): Promise<HTMLInputElement> {
   act(() => {
     if (locale) setRequestLocale(locale)
     root.render(
@@ -419,6 +422,7 @@ async function openSearchOverlay(locale?: string): Promise<HTMLInputElement> {
   const searchButton = document.querySelector(
     '[data-testid="floating-search-desktop-button"]',
   ) as HTMLButtonElement
+  if (focusTrigger) searchButton.focus()
   await act(async () => {
     searchButton.click()
     await Promise.resolve()
@@ -4156,6 +4160,7 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
   })
 
   it("keeps no-results copy tied to the last submitted query", async () => {
+    mockedFetchSuggestions.mockResolvedValueOnce([])
     mockedRunSearch.mockResolvedValueOnce(
       searchResult("watch-search", { query: "jesus" }),
     )
@@ -4163,7 +4168,12 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     const input = await openSearchOverlay()
     await submitSearch(input, "jesus")
 
+    expect(
+      document.querySelector('[data-testid="search-suggestions-panel"]'),
+    ).toBeNull()
     expect(document.body.textContent).toContain('No results for "jesus"')
+    expect(window.location.search).toContain("q=jesus")
+    expect(window.location.search).toContain("lang=english")
 
     act(() => {
       setInputValue(input, "an unsubmitted draft")
@@ -4597,7 +4607,10 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
 
   it("resets the search field when Escape closes the modal", async () => {
     vi.useFakeTimers()
-    const input = await openSearchOverlay()
+    const input = await openSearchOverlay(undefined, true)
+    const trigger = document.querySelector(
+      '[data-testid="floating-search-desktop-button"]',
+    ) as HTMLButtonElement
     act(() => {
       setInputValue(input, "jesus")
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }))
@@ -4606,6 +4619,10 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       vi.advanceTimersByTime(220)
       await Promise.resolve()
     })
+    await act(async () => {
+      vi.advanceTimersByTime(20)
+    })
+    expect(document.activeElement).toBe(trigger)
 
     const searchButton = document.querySelector(
       '[aria-label="Search videos"]',
@@ -4619,6 +4636,26 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       'input[aria-label="Search videos by keyword"]',
     ) as HTMLInputElement | null
     expect(reopenedInput?.value).toBe("")
+  })
+
+  it("returns focus to the trigger when the close button is activated", async () => {
+    vi.useFakeTimers()
+    await openSearchOverlay(undefined, true)
+    const trigger = document.querySelector(
+      '[data-testid="floating-search-desktop-button"]',
+    ) as HTMLButtonElement
+    const closeButton = document.querySelector(
+      '[data-testid="floating-header-search-close"]',
+    ) as HTMLButtonElement
+
+    await act(async () => {
+      closeButton.click()
+      vi.advanceTimersByTime(220)
+      await Promise.resolve()
+    })
+    await act(async () => vi.advanceTimersByTime(20))
+
+    expect(document.activeElement).toBe(trigger)
   })
 
   it("closes the loaded search overlay from its backdrop", async () => {
@@ -4678,8 +4715,11 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
     expect(document.body.textContent).not.toContain("Late Result")
   })
 
-  it("ignores direct query URLs on initial render", async () => {
-    window.history.replaceState(null, "", "/?q=jesus")
+  it("rehydrates direct query URLs on initial render", async () => {
+    mockedRunSearch.mockResolvedValueOnce(
+      searchResult("watch-search", { query: "jesus" }),
+    )
+    window.history.replaceState(null, "", "/?q=jesus&lang=english")
 
     act(() => {
       root.render(
@@ -4689,13 +4729,52 @@ describe("FloatingSearchProvider — search overlay chrome", () => {
       )
     })
     await flushSearchControllerMount()
+    await flushResolvedSearch()
 
     expect(
       document.querySelector('[aria-label="Search and browse videos"]'),
-    ).toBeNull()
-    expect(mockedRunSearch).not.toHaveBeenCalled()
-    expect(getSearchLanguageOptions).not.toHaveBeenCalled()
+    ).not.toBeNull()
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ query: "jesus" }),
+    )
     expect(navigationMocks.replace).not.toHaveBeenCalled()
+  })
+
+  it("restores search on history navigation and closes when the query is removed", async () => {
+    mockedRunSearch.mockResolvedValue(
+      searchResult("watch-search", { query: "jesus" }),
+    )
+    const input = await openSearchOverlay()
+    await submitSearch(input, "jesus")
+    expect(window.location.search).toContain("q=jesus")
+
+    const backNavigation = new Promise<void>((resolve) => {
+      window.addEventListener("popstate", () => resolve(), { once: true })
+    })
+    await act(async () => {
+      window.history.back()
+      await backNavigation
+    })
+    await act(
+      async () => new Promise((resolve) => window.setTimeout(resolve, 220)),
+    )
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]'),
+    ).toBeNull()
+
+    const forwardNavigation = new Promise<void>((resolve) => {
+      window.addEventListener("popstate", () => resolve(), { once: true })
+    })
+    await act(async () => {
+      window.history.forward()
+      await forwardNavigation
+    })
+    await flushSearchControllerMount()
+    await flushResolvedSearch()
+    expect(
+      document.querySelector('[aria-label="Search and browse videos"]'),
+    ).not.toBeNull()
+    expect(mockedRunSearch).toHaveBeenCalledTimes(2)
   })
 
   it("focuses the modal search input when the floating field opens", async () => {
@@ -5316,7 +5395,7 @@ describe("FloatingSearchProvider — search pagination", () => {
     expect(recordWatchSearchResultClick).toHaveBeenCalledTimes(1)
   })
 
-  it("keeps the final edited query search without syncing the URL", async () => {
+  it("keeps the final edited query search in the URL", async () => {
     vi.useFakeTimers()
     window.history.replaceState(null, "", "/watch?utm=campaign")
     mockedRunSearch.mockImplementation(({ query }) => {
@@ -5350,7 +5429,7 @@ describe("FloatingSearchProvider — search pagination", () => {
         vi.advanceTimersByTime(360)
       })
 
-      expect(window.location.search).toBe("?utm=campaign")
+      expect(window.location.search).toBe("?utm=campaign&q=jesus&lang=english")
       expect(mockedRunSearch).toHaveBeenCalledTimes(1)
 
       act(() => {
@@ -5370,7 +5449,9 @@ describe("FloatingSearchProvider — search pagination", () => {
       expect(mockedRunSearch).toHaveBeenCalledWith(
         expect.objectContaining({ query: "the bible project" }),
       )
-      expect(window.location.search).toBe("?utm=campaign")
+      expect(window.location.search).toBe(
+        "?utm=campaign&q=the+bible+project&lang=english",
+      )
       expect(replaceState).not.toHaveBeenCalled()
       expect(navigationMocks.replace).not.toHaveBeenCalled()
       expect(document.body.textContent).toContain("Bible Project Result")

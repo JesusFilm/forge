@@ -71,6 +71,7 @@ import {
   tryAsLocaleSlug,
 } from "@/lib/routes"
 import { isOneSegmentCollectionSlug } from "@/lib/url-shape"
+import { readWatchSearchUrl, writeWatchSearchUrl } from "@/lib/watch-search-url"
 import {
   loadWatchInteraction,
   scheduleWatchInteractionWarmup,
@@ -331,6 +332,8 @@ export function FloatingSearchProvider({
   const nextSearchSubmitIntentIdRef = useRef(0)
   const globalLanguagePendingRouteRef = useRef<RouteIdentity | null>(null)
   const globalLanguageTriggerRef = useRef<HTMLButtonElement>(null)
+  const searchReturnFocusRef = useRef<HTMLElement | null>(null)
+  const initialSearchUrlHandledRef = useRef(false)
   const pendingPageLanguageOpenRef = useRef<PendingPageLanguageOpen | null>(
     null,
   )
@@ -360,6 +363,7 @@ export function FloatingSearchProvider({
         setClosing(false)
         setOpenState(true)
       } else {
+        writeWatchSearchUrl("replace", "", null)
         resetSearch()
         setClosing(true)
         closingTimerRef.current = setTimeout(() => {
@@ -396,18 +400,68 @@ export function FloatingSearchProvider({
   }, [])
 
   const openSearch = useCallback(() => {
+    const activeElement = document.activeElement
+    searchReturnFocusRef.current =
+      activeElement instanceof HTMLElement && activeElement !== document.body
+        ? activeElement
+        : null
     enableSearchController()
     setOpen(true)
   }, [enableSearchController, setOpen])
 
-  const submitInstantSearch = useCallback((submittedQuery: string) => {
-    if (submittedQuery.trim().length === 0) return
-    nextSearchSubmitIntentIdRef.current += 1
-    setPendingSearchSubmitIntent({
-      id: nextSearchSubmitIntentIdRef.current,
-      query: submittedQuery,
-    })
-  }, [])
+  const submitInstantSearch = useCallback(
+    (submittedQuery: string) => {
+      if (submittedQuery.trim().length === 0) return
+      writeWatchSearchUrl("push", submittedQuery, headerLanguageSlug)
+      enableSearchController()
+      setOpen(true)
+      nextSearchSubmitIntentIdRef.current += 1
+      setPendingSearchSubmitIntent({
+        id: nextSearchSubmitIntentIdRef.current,
+        query: submittedQuery,
+        languageSlug: headerLanguageSlug,
+        languageSlugIsExplicit: false,
+      })
+    },
+    [enableSearchController, headerLanguageSlug, setOpen],
+  )
+
+  const restoreSearchFromUrl = useCallback(
+    (state: { query: string; languageSlug: string | null }) => {
+      enableSearchController()
+      setQuery(state.query)
+      setOpen(true)
+      setPendingSearchSubmitIntent({
+        id: ++nextSearchSubmitIntentIdRef.current,
+        query: state.query,
+        languageSlug: state.languageSlug,
+      })
+    },
+    [enableSearchController, setOpen],
+  )
+
+  useEffect(() => {
+    const restore = () => {
+      const state = readWatchSearchUrl(window.location.search)
+      if (state) restoreSearchFromUrl(state)
+      else if (open || closing) setOpen(false)
+    }
+    if (!initialSearchUrlHandledRef.current) {
+      initialSearchUrlHandledRef.current = true
+      restore()
+    }
+    window.addEventListener("popstate", restore)
+    return () => window.removeEventListener("popstate", restore)
+  }, [closing, open, restoreSearchFromUrl, setOpen])
+
+  useEffect(() => {
+    if (open || closing) return
+    const target = searchReturnFocusRef.current
+    searchReturnFocusRef.current = null
+    if (target?.isConnected && !target.closest("[inert]")) {
+      window.requestAnimationFrame(() => target.focus({ preventScroll: true }))
+    }
+  }, [closing, open])
 
   const markSearchControllerReady = useCallback(() => {
     setSearchControllerReady(true)
