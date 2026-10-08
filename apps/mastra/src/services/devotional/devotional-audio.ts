@@ -56,6 +56,8 @@ export type NarrationSegment = {
   callout?: VerseCallout
   /** v4 audio tag(s) for a continuous read; never shown. */
   direction?: string
+  /** Extra silence after this segment (its paragraph's last sentence). */
+  pauseAfterSec?: number
 }
 
 export { splitReflection } from "./reflection-split"
@@ -259,17 +261,22 @@ function buildClipFirstSegments(
     mark?: SourceMark
     callout?: VerseCallout
     direction?: string
+    pauseAfterSec?: number
   }
   const chunks: Chunk[] = d.reflection.paragraphs?.length
-    ? d.reflection.paragraphs.flatMap((p) =>
-        splitReflection(p.text.trim()).map((text, j) => ({
+    ? d.reflection.paragraphs.flatMap((p) => {
+        const parts = splitReflection(p.text.trim())
+        return parts.map((text, j) => ({
           text,
           ...(p.voice ? { voice: p.voice } : {}),
           ...(p.mark && j === 0 ? { mark: p.mark } : {}),
           ...(p.callout ? { callout: p.callout } : {}),
           ...(p.direction && j === 0 ? { direction: p.direction } : {}),
-        })),
-      )
+          ...(p.pauseAfterSec && j === parts.length - 1
+            ? { pauseAfterSec: p.pauseAfterSec }
+            : {}),
+        }))
+      })
     : splitReflection(d.reflection.text.trim()).map((text) => ({ text }))
   if (chunks.length > 0) {
     segments.push(
@@ -292,6 +299,7 @@ function buildClipFirstSegments(
       ...(chunk.mark ? { mark: chunk.mark } : {}),
       ...(chunk.callout ? { callout: chunk.callout } : {}),
       ...(chunk.direction ? { direction: chunk.direction } : {}),
+      ...(chunk.pauseAfterSec ? { pauseAfterSec: chunk.pauseAfterSec } : {}),
     })
   })
   if (d.conclusion.trim()) {

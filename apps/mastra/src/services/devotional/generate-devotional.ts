@@ -88,6 +88,9 @@ export type ReflectionParagraph = {
   /** Eleven v4 audio tag(s) that open this paragraph in a continuous read
    *  ("[thoughtful]"): how it is said, never shown (owner, 2026-10-05). */
   direction?: string
+  /** Extra silence (s) after the paragraph's last sentence, to let strong
+   *  words land (owner, 2026-10-08: "…и в жизни, и в смерти."). */
+  pauseAfterSec?: number
 }
 
 export type VerseCallout = {
@@ -260,6 +263,7 @@ export const GeneratedDevotionalSchema = z.object({
             })
             .optional(),
           direction: z.string().optional(),
+          pauseAfterSec: z.number().min(0).max(5).optional(),
         }),
       )
       .optional(),

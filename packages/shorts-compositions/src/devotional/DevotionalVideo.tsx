@@ -6137,7 +6137,18 @@ function Background({
       trimBefore={Math.max(0, Math.round(bgStartFrame))}
       // The social opening may slow its shot a touch so one unbroken take
       // covers the whole read (see `bgRate` in the card schema).
-      playbackRate={card.bgRate ?? bgRate}
+      // The closing cards slow the picture right down (owner, 2026-10-08):
+      // under the verse the film still moves, under the question and prayer
+      // it is only drifting shadows. Each card is its own window into the
+      // clip, so the slower rate never pushes later cards off their frames.
+      playbackRate={
+        card.bgRate ??
+        (card.kind === "scripture"
+          ? bgRate * 0.5
+          : card.kind === "questions"
+            ? bgRate * 0.35
+            : bgRate)
+      }
       // Text-card backgrounds are MUTED (music only) unless bgAudio is on
       // (teasers). Decoupled from videoAudioLevel so a full devo can set the
       // video-card level for balance without un-muting the reflection.
@@ -6485,13 +6496,24 @@ function Background({
           [px(6.5) * blurScale, 0],
           { extrapolateLeft: "clamp", extrapolateRight: "clamp" },
         )
-      : (card.kind === "cover"
-          ? coverBlurPx
-          : soft
-            ? px(8)
-            : medium
-              ? px(15)
-              : heavyBlurPx) * blurScale
+      : // The verse and the closing question blur more, and they get there
+        // gently over the card's first seconds instead of jumping (owner,
+        // 2026-10-08: the footage behind them distracted; questions + prayer
+        // should be only unreadable shadows).
+        card.kind === "scripture" && !soft
+        ? interpolate(frame, [0, Math.round(fps * 1.6)], [heavyBlurPx, px(9)], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+            easing: Easing.inOut(Easing.cubic),
+          }) * blurScale
+        : medium
+          ? interpolate(frame, [0, Math.round(fps * 2.2)], [px(9), px(26)], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+              easing: Easing.inOut(Easing.cubic),
+            }) * blurScale
+          : (card.kind === "cover" ? coverBlurPx : soft ? px(8) : heavyBlurPx) *
+            blurScale
   const wholeScrim =
     card.kind === "quote-intro"
       ? "rgba(6,4,3,0.42)"

@@ -63,6 +63,10 @@ export function VerseCalloutOverlay({
       interpolate(t, [a, b], [0, 1], { ...clamp, easing: EASE })
     const opacity = fade(0.1, 0.9) * (1 - fade(dur - 0.7, dur - 0.1))
     const lit = fade(0.9, 1.6)
+    // Once lit, the word breathes: a soft gold glow that swells and fades on
+    // a slow ~1.8s cycle, visible but never blinking (owner, 2026-10-08).
+    const breath = 0.5 - 0.5 * Math.cos(((t - 1.6) / 1.8) * 2 * Math.PI)
+    const glow = lit * (t > 1.6 ? 0.35 + 0.65 * breath : 0.35 * lit)
     const text = standalone(c.text)
     const at = c.highlight
       ? text.toLowerCase().search(
@@ -113,6 +117,7 @@ export function VerseCalloutOverlay({
                 style={{
                   fontWeight: 500,
                   color: interpolateColors(lit, [0, 1], [REST, GOLD]),
+                  textShadow: `0 0 ${u(10 + 16 * glow).toFixed(1)}px rgba(242,196,107,${(0.25 + 0.5 * glow).toFixed(3)}), 0 0 ${u(3 + 4 * glow).toFixed(1)}px rgba(242,196,107,${(0.2 + 0.35 * glow).toFixed(3)}), 0 2px 18px rgba(0,0,0,0.55)`,
                 }}
               >
                 {word}

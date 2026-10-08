@@ -2843,6 +2843,7 @@ async function renderInStage(
   // looked up by id here. Same builder, same options as the audio used.
   const sourceMarks: Record<string, SourceMark> = {}
   const verseCallouts: Record<string, VerseCallout> = {}
+  const pauseAfter: Record<string, number> = {}
   for (const seg of buildNarrationSegments(devo, locale, {
     suppressOccasion: options.suppressOccasion ?? false,
     ...(options.structure ? { structure: options.structure } : {}),
@@ -2852,6 +2853,7 @@ async function renderInStage(
     // The evidence is for the editor, not the screen: keep it out of the
     // manifest the composition reads.
     if (seg.callout) verseCallouts[seg.id] = seg.callout
+    if (seg.pauseAfterSec) pauseAfter[seg.id] = seg.pauseAfterSec
     if (seg.mark) {
       sourceMarks[seg.id] = {
         label: seg.mark.label,
@@ -2866,6 +2868,7 @@ async function renderInStage(
     segments,
     ...(Object.keys(sourceMarks).length ? { sourceMarks } : {}),
     ...(Object.keys(verseCallouts).length ? { verseCallouts } : {}),
+    ...(Object.keys(pauseAfter).length ? { pauseAfter } : {}),
     ...(options.structure ? { structure: options.structure } : {}),
     clipFile: "clip.mp4",
     clipDurationSec,

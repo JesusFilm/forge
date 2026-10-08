@@ -368,7 +368,8 @@ export const RU_LOCALE: DevotionalLocale = {
   },
   // Verbs in the familiar form, like WATCH / REFLECT / PRAY (owner,
   // 2026-10-06: «посмотри» reads more naturally than «смотри»).
-  stepLabels: ["ПОСМОТРИ", "ПОДУМАЙ", "ПОМОЛИСЬ"],
+  // Owner, 2026-10-08 (Martha RU): nouns, not imperatives.
+  stepLabels: ["ИСТОРИЯ", "РАЗМЫШЛЕНИЕ", "МОЛИТВА"],
   hideTranslationTag: true,
   // No kicker under the Jesus Film mark in Russian (owner, 2026-10-07); the
   // spoken preview says «В этом видео…» itself.
@@ -445,7 +446,7 @@ export const RU_LOCALE: DevotionalLocale = {
     steps: {
       intro: () => `Давай остановимся и послушаем Писание`,
       read: (ref) => `Вот отрывок из Писания.${ref ? ` ${ref}.` : ""}`,
-      watch: () => `Давай посмотрим.`,
+      watch: () => `Давай посмотрим историю.`,
       welcome: () => `Добро пожаловать в Daily Bible Pause.`,
       reflect: () => `Подумай над этим.`,
       // Owner, 2026-10-08 (Martha): plainer than "что значит эта история".

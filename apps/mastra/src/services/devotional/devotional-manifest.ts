@@ -77,6 +77,8 @@ export type DevotionalManifest = {
    *  reflection card whose paragraph uses that source. */
   sourceMarks?: Record<string, SourceMark>
   /** Verse callouts by narration segment id (see VerseCallout). */
+  /** Extra silence (s) after a reflection segment, by segment id. */
+  pauseAfter?: Record<string, number>
   verseCallouts?: Record<
     string,
     { text: string; highlight: string; reference: string }
@@ -185,6 +187,8 @@ export type BuildManifestInput = {
    *  reflection card whose paragraph uses that source. */
   sourceMarks?: Record<string, SourceMark>
   /** Verse callouts by narration segment id (see VerseCallout). */
+  /** Extra silence (s) after a reflection segment, by segment id. */
+  pauseAfter?: Record<string, number>
   verseCallouts?: Record<
     string,
     { text: string; highlight: string; reference: string }
@@ -476,6 +480,9 @@ function buildClipFirstManifest(
           : {}),
       audioFile: seg.file,
       durationSec: seg.durationSec,
+      ...(input.pauseAfter?.[seg.id]
+        ? { holdSec: input.pauseAfter[seg.id] }
+        : {}),
       bgFile: clip,
       ...(seg.words && seg.words.length > 0 ? { words: seg.words } : {}),
     })
