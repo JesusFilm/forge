@@ -114,7 +114,12 @@ const SOURCES: VideoSource[] = [
       path: "video-sources/lumo-luke-15.en.vtt",
       // The Latin American dub reads the NVI word for word (whisper small,
       // corrected against the NVI text, 2026-09-30).
-      byLang: { es: "video-sources/lumo-luke-15.es.vtt" },
+      byLang: {
+        es: "video-sources/lumo-luke-15.es.vtt",
+        // The Russian dub (3934) reads a modern Russian translation; parable
+        // 0.8s to 220.1s, the next story speaks at 223.6s (2026-10-08).
+        ru: "video-sources/lumo-luke-15.ru.vtt",
+      },
     },
   },
   {
@@ -128,14 +133,36 @@ const SOURCES: VideoSource[] = [
     title: "Martha and Mary",
     film: "lumo",
     passage: { reference: "Luke 10:38-42", osisRef: "Luke.10.38-Luke.10.42" },
-    window: { startSec: 418.4, lengthSec: 50.4 },
+    // Seeded wide enough for the Russian dub, whose 10:38 starts at 414.7s
+    // (English 419.1s); each language snaps to its own first cue.
+    window: { startSec: 412, lengthSec: 57 },
     // ~49s of speech ×1.05 → ~47s on screen, plus the closing hold.
     maxVideoCardSec: 52,
     videoSpeed: 1.05,
     filmCaptionStyle: "scroll",
     filmMark: "lumo",
     style: "clean",
-    captions: { kind: "file", path: "video-sources/lumo-luke-10.en.vtt" },
+    captions: {
+      kind: "file",
+      path: "video-sources/lumo-luke-10.en.vtt",
+      byLang: { ru: "video-sources/lumo-luke-10.ru.vtt" },
+    },
+  },
+  {
+    key: "lumo-luke-18",
+    index: 1004,
+    mediaComponentId: "6_GOLuke2618",
+    title: "Healing of the Blind Man",
+    film: "lumo",
+    passage: { reference: "Luke 18:35-43", osisRef: "Luke.18.35-Luke.18.43" },
+    window: { startSec: 260.6, lengthSec: 76 },
+    // ~75s of speech ×1.05 → ~72s on screen, plus the closing hold.
+    maxVideoCardSec: 76,
+    videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
+    filmMark: "lumo",
+    style: "clean",
+    captions: { kind: "file", path: "video-sources/lumo-luke-18.en.vtt" },
   },
 ]
 
