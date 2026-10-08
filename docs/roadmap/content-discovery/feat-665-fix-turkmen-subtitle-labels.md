@@ -42,4 +42,4 @@ Run the focused locale test, Web typecheck, targeted lint/format, and generated 
 
 ## Status
 
-FGE-282 is partially advanced. N25 has a source-backed code correction; N16 and N19 require separate locale-specific source verification before edits. `feat-665` was allocated after coordination for the concurrently active roadmap IDs.
+FGE-282 is partially advanced. N25 has a source-backed code correction in [draft PR #2676](https://github.com/JesusFilm/forge/pull/2676); N16 and N19 require separate locale-specific source verification before edits. `feat-665` was allocated after coordination for the concurrently active roadmap IDs.
