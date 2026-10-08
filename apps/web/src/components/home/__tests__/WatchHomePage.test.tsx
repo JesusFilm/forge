@@ -3,6 +3,7 @@
  */
 
 import { act, StrictMode, useEffect, type ReactNode } from "react"
+import { flushSync } from "react-dom"
 import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
@@ -61,11 +62,17 @@ import { signWatchHomeHeroManifestCatalog } from "@/lib/watch-surface-manifest.s
 import * as exposureBoundary from "@/components/recommendations/WatchExposureBoundary"
 import { WatchHomePage } from "@/components/home/WatchHomePage"
 
+const { imageErrorHandlers } = vi.hoisted(() => ({
+  imageErrorHandlers: new Map<string, () => void>(),
+}))
+
 vi.mock("next/image", () => ({
   default: ({
     alt,
     className,
     loading,
+    onError,
+    onLoad,
     priority,
     sizes,
     src,
@@ -73,6 +80,8 @@ vi.mock("next/image", () => ({
     alt: string
     className?: string
     loading?: "eager" | "lazy"
+    onError?: () => void
+    onLoad?: () => void
     priority?: boolean
     sizes?: string
     src: string
@@ -85,6 +94,10 @@ vi.mock("next/image", () => ({
       data-priority={priority === true ? "true" : "false"}
       data-sizes={sizes}
       data-src={src}
+      ref={() => {
+        if (onError) imageErrorHandlers.set(src, onError)
+      }}
+      onLoad={onLoad}
     />
   ),
 }))
@@ -353,9 +366,11 @@ beforeEach(() => {
   setRequestLocale("en")
   window.localStorage.clear()
   window.sessionStorage.clear()
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue(undefined)
   carouselApi.scrollTo.mockClear()
   muxVideoHlsConfigs.length = 0
   muxVideoRenders.length = 0
+  imageErrorHandlers.clear()
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -369,7 +384,162 @@ afterEach(async () => {
   vi.restoreAllMocks()
 })
 
+function renderWatchHome(
+  children: ReactNode,
+  { unmute = true }: { unmute?: boolean } = {},
+) {
+  flushSync(() => root.render(children))
+  if (!unmute) return
+  const button = container.querySelector<HTMLButtonElement>(
+    'button[aria-label="Unmute preview"]',
+  )
+  if (button) flushSync(() => button.click())
+}
+
 describe("WatchHomePage", () => {
+  it("uses image timing before intent and buffers when intent starts on a later slide", async () => {
+    vi.useFakeTimers()
+    try {
+      await act(async () => {
+        renderWatchHome(<WatchHomePage model={makeSequencedModel()} />, {
+          unmute: false,
+        })
+      })
+      const openingTitle = container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label")
+
+      await act(async () => {
+        vi.advanceTimersByTime(7_000)
+      })
+
+      expect(
+        container
+          .querySelector('[data-testid="watch-home-tv-carousel"]')
+          ?.getAttribute("aria-label"),
+      ).not.toBe(openingTitle)
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBeNull()
+
+      await act(async () => {
+        container
+          .querySelector<HTMLButtonElement>(
+            'button[aria-label="Unmute preview"]',
+          )
+          ?.click()
+      })
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).not.toBeNull()
+      expect(
+        container.querySelector('[data-testid="watch-home-progress-loading"]'),
+      ).not.toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("keeps HLS unmounted until the viewer unmutes the animated preview", async () => {
+    await act(async () => {
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />, {
+        unmute: false,
+      })
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-video"]'),
+    ).toBeNull()
+    const visualLayer = container.querySelector(
+      '[data-testid="watch-home-tv-visual-layer"]',
+    )
+    const images = Array.from(
+      visualLayer?.querySelectorAll('[role="img"]') ?? [],
+    )
+    const preview = images.find((image) =>
+      image.getAttribute("data-src")?.includes("/animated.webp"),
+    )
+    const poster = images.find((image) =>
+      image.getAttribute("data-src")?.includes("queued-one.jpg"),
+    )
+    expect(preview).toBeDefined()
+    expect(poster?.getAttribute("data-priority")).toBe("true")
+    const reducedMotionSource = visualLayer?.querySelector<HTMLSourceElement>(
+      'source[media="(prefers-reduced-motion: reduce)"]',
+    )
+    expect(reducedMotionSource?.srcset).toBe(
+      "https://cdn.example/queued-one.jpg",
+    )
+    expect(
+      visualLayer
+        ?.querySelector('source[media="(min-width: 768px)"]')
+        ?.getAttribute("srcset"),
+    ).toContain("width=640&fps=6")
+    expect(preview?.getAttribute("data-src")).toContain("width=448")
+    await act(async () => {
+      const previewSrc = preview?.getAttribute("data-src")
+      if (previewSrc) imageErrorHandlers.get(previewSrc)?.()
+    })
+    expect(
+      visualLayer?.querySelector(
+        '[data-src="https://cdn.example/queued-one.jpg"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      visualLayer?.querySelector('[data-src*="/animated.webp"]'),
+    ).toBeNull()
+
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Unmute preview"]')
+        ?.click()
+    })
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-video"]'),
+    ).not.toBeNull()
+
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Mute preview"]')
+        ?.click()
+    })
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-video"]'),
+    ).not.toBeNull()
+    const video = container.querySelector<HTMLVideoElement>(
+      '[data-testid="watch-home-tv-video"]',
+    )
+    expect(video).not.toBeNull()
+    await act(async () => {
+      video?.dispatchEvent(new Event("playing", { bubbles: true }))
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Unmute preview"]')
+        ?.click()
+    })
+    expect(
+      container.querySelector('[data-testid="watch-home-progress-loading"]'),
+    ).toBeNull()
+  })
+
+  it("requests playback during the unmute gesture after mounting HLS", async () => {
+    const play = vi
+      .spyOn(HTMLMediaElement.prototype, "play")
+      .mockResolvedValue(undefined)
+    await act(async () => {
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />, {
+        unmute: false,
+      })
+    })
+
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Unmute preview"]')
+        ?.click()
+    })
+
+    expect(play).toHaveBeenCalledTimes(1)
+  })
+
   it("selects singleton authority for the active card from an over-100 catalog without losing timeline focus", async () => {
     const heroWindows: Array<
       Parameters<typeof exposureBoundary.WatchExposureBoundary>[0]
@@ -401,7 +571,7 @@ describe("WatchHomePage", () => {
       },
     })
     await act(async () => {
-      root.render(<WatchHomePage model={model} />)
+      renderWatchHome(<WatchHomePage model={model} />)
     })
     const initial = heroWindows.at(-1)!
     expect(initial.manifest?.manifest.items).toHaveLength(1)
@@ -459,7 +629,7 @@ describe("WatchHomePage", () => {
 
   it("mounts the hero with the bounded intro HLS config", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeModel()} />)
+      renderWatchHome(<WatchHomePage model={makeModel()} />)
     })
 
     expect(lastMuxVideoHlsConfig()).toEqual(WATCH_HOME_INTRO_HLS_CONFIG)
@@ -467,7 +637,7 @@ describe("WatchHomePage", () => {
 
   it("caps the requested rendition on a Mux hero stream", async () => {
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             heroSlides: [
@@ -494,7 +664,7 @@ describe("WatchHomePage", () => {
   // assertion in this file keeps passing untouched.
   it("leaves a non-Mux hero stream byte-identical", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeModel()} />)
+      renderWatchHome(<WatchHomePage model={makeModel()} />)
     })
 
     const video = container.querySelector(
@@ -517,7 +687,7 @@ describe("WatchHomePage", () => {
     })
 
     await act(async () => {
-      root.render(<WatchHomePage model={model} />)
+      renderWatchHome(<WatchHomePage model={model} />)
     })
 
     const firstSrc = (
@@ -527,7 +697,7 @@ describe("WatchHomePage", () => {
     ).getAttribute("src")
 
     await act(async () => {
-      root.render(<WatchHomePage model={model} />)
+      renderWatchHome(<WatchHomePage model={model} />)
     })
 
     const video = container.querySelector(
@@ -542,7 +712,7 @@ describe("WatchHomePage", () => {
     async function startFirstSlide(model: WatchHomeModel) {
       vi.spyOn(Math, "random").mockReturnValue(0)
       await act(async () => {
-        root.render(<WatchHomePage model={model} />)
+        renderWatchHome(<WatchHomePage model={model} />)
       })
       const video = container.querySelector(
         '[data-testid="watch-home-tv-video"]',
@@ -704,7 +874,7 @@ describe("WatchHomePage", () => {
 
       vi.spyOn(Math, "random").mockReturnValue(0)
       await act(async () => {
-        root.render(<WatchHomePage model={makeTimedSequencedModel(null)} />)
+        renderWatchHome(<WatchHomePage model={makeTimedSequencedModel(null)} />)
       })
 
       expect(
@@ -735,7 +905,7 @@ describe("WatchHomePage", () => {
       try {
         vi.spyOn(Math, "random").mockReturnValue(0)
         await act(async () => {
-          root.render(<WatchHomePage model={makeTimedSequencedModel(10)} />)
+          renderWatchHome(<WatchHomePage model={makeTimedSequencedModel(10)} />)
         })
 
         const openingTitle = carouselLabel()
@@ -782,7 +952,9 @@ describe("WatchHomePage", () => {
       try {
         vi.spyOn(Math, "random").mockReturnValue(0)
         await act(async () => {
-          root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
+          renderWatchHome(
+            <WatchHomePage model={makeTimedSequencedModel(123)} />,
+          )
         })
 
         // Height fitting commits on its first animation frame. Settle that
@@ -848,7 +1020,9 @@ describe("WatchHomePage", () => {
       try {
         vi.spyOn(Math, "random").mockReturnValue(0)
         await act(async () => {
-          root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
+          renderWatchHome(
+            <WatchHomePage model={makeTimedSequencedModel(123)} />,
+          )
         })
         const video = container.querySelector(
           '[data-testid="watch-home-tv-video"]',
@@ -973,13 +1147,15 @@ describe("WatchHomePage", () => {
       try {
         vi.spyOn(Math, "random").mockReturnValue(0)
         await act(async () => {
-          root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
+          renderWatchHome(
+            <WatchHomePage model={makeTimedSequencedModel(123)} />,
+          )
         })
         const video = container.querySelector(
           '[data-testid="watch-home-tv-video"]',
         ) as HTMLVideoElement
         video.play = vi.fn(() =>
-          Promise.reject(new DOMException("NotAllowedError")),
+          Promise.reject(new DOMException("Play prevented", "NotAllowedError")),
         ) as unknown as HTMLVideoElement["play"]
 
         await act(async () => {
@@ -995,6 +1171,41 @@ describe("WatchHomePage", () => {
         })
 
         expect(carouselLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("retries an iOS-style unmuted playback refusal as muted", async () => {
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          renderWatchHome(
+            <WatchHomePage model={makeTimedSequencedModel(123)} />,
+          )
+        })
+        const video = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+        const play = vi
+          .fn()
+          .mockRejectedValueOnce(
+            new DOMException("Play prevented", "NotAllowedError"),
+          )
+          .mockResolvedValue(undefined)
+        video.play = play as unknown as HTMLVideoElement["play"]
+
+        await act(async () => {
+          video.dispatchEvent(new Event("canplay", { bubbles: true }))
+          await vi.advanceTimersByTimeAsync(1_500)
+        })
+
+        expect(play).toHaveBeenCalledTimes(2)
+        expect(video.muted).toBe(true)
+        expect(
+          container.querySelector('button[aria-label="Unmute preview"]'),
+        ).not.toBeNull()
       } finally {
         vi.useRealTimers()
       }
@@ -1041,7 +1252,7 @@ describe("WatchHomePage", () => {
     it("replays the only playable slide instead of freezing on its last frame", async () => {
       vi.spyOn(Math, "random").mockReturnValue(0)
       await act(async () => {
-        root.render(
+        renderWatchHome(
           <WatchHomePage
             model={makeModel({
               carousel: {
@@ -1107,7 +1318,7 @@ describe("WatchHomePage", () => {
       try {
         vi.spyOn(Math, "random").mockReturnValue(0)
         await act(async () => {
-          root.render(<WatchHomePage model={makeTimedSequencedModel(10)} />)
+          renderWatchHome(<WatchHomePage model={makeTimedSequencedModel(10)} />)
         })
 
         const first = container.querySelector(
@@ -1154,7 +1365,7 @@ describe("WatchHomePage", () => {
 
         // Now the abandoned turn's promise finally rejects.
         await act(async () => {
-          rejectFirstPlay(new DOMException("NotAllowedError"))
+          rejectFirstPlay(new DOMException("Play prevented", "NotAllowedError"))
           await Promise.resolve()
         })
 
@@ -1212,7 +1423,7 @@ describe("WatchHomePage", () => {
       try {
         vi.spyOn(Math, "random").mockReturnValue(0)
         await act(async () => {
-          root.render(
+          renderWatchHome(
             <WatchHomePage
               model={makeModel({
                 carousel: {
@@ -1331,7 +1542,7 @@ describe("WatchHomePage", () => {
   it("localizes semantic carousel, card, and promo copy in Russian", async () => {
     setRequestLocale("ru")
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             sections: [
@@ -1368,7 +1579,7 @@ describe("WatchHomePage", () => {
   it("labels home rail and grid exposure presentations separately", async () => {
     const rail = makeModel().sections[0]!
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             sections: [
@@ -1392,7 +1603,7 @@ describe("WatchHomePage", () => {
 
   it("renders the hero, configured sections, promo content, and card links", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeModel()} />)
+      renderWatchHome(<WatchHomePage model={makeModel()} />, { unmute: false })
     })
 
     expect(
@@ -1486,6 +1697,11 @@ describe("WatchHomePage", () => {
     ).toContain("xl:grid-cols-6")
     expect(
       container.querySelector('[data-testid="watch-home-tv-video"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="watch-home-tv-visual-layer"] [role="img"]',
+      ),
     ).not.toBeNull()
     expect(
       container.querySelectorAll('[data-testid="watch-home-video-timeline"]'),
@@ -1544,7 +1760,7 @@ describe("WatchHomePage", () => {
     expect(sectionEyebrow?.className).toContain("tracking-eyebrow")
     expect(sectionEyebrow?.className).not.toContain("tracking-wider")
     act(() => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             sections: [
@@ -1588,7 +1804,7 @@ describe("WatchHomePage", () => {
 
   it("renders an unlinked fallback card when href is missing", async () => {
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             heroSlides: [{ ...makeCard({ href: null }), eyebrow: "Featured" }],
@@ -1632,7 +1848,7 @@ describe("WatchHomePage", () => {
 
   it("hides the top-right meta label for collection cards", async () => {
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             sections: [
@@ -1674,7 +1890,7 @@ describe("WatchHomePage", () => {
 
   it("softens section card hover by crossfading the backdrop without clearing between cards", async () => {
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             sections: [
@@ -1849,7 +2065,7 @@ describe("WatchHomePage", () => {
 
   it("carries the hero preview playback time into the watch now link", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeModel()} />)
+      renderWatchHome(<WatchHomePage model={makeModel()} />)
     })
 
     const video = container.querySelector(
@@ -1875,9 +2091,9 @@ describe("WatchHomePage", () => {
     ).toContain("Watch Now")
   })
 
-  it("shows available subtitles while the hero preview is muted", async () => {
+  it("keeps the stream and subtitle track unmounted while the animated preview is muted", async () => {
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             heroSlides: [
@@ -1891,30 +2107,40 @@ describe("WatchHomePage", () => {
             ],
           })}
         />,
+        { unmute: false },
       )
     })
 
-    const video = container.querySelector(
-      '[data-testid="watch-home-tv-video"]',
-    ) as HTMLVideoElement
-    const track = video.querySelector("track[data-subtitle-track]")
-    expect(video.getAttribute("crossorigin")).toBe("anonymous")
-    expect(track?.getAttribute("src")).toBe("https://cdn.example/jesus.vtt")
-    expect(track?.getAttribute("srclang")).toBe("en")
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-video"]'),
+    ).toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-visual-layer"]'),
+    ).not.toBeNull()
 
     await act(async () => {
       container
-        .querySelector('button[aria-label="Unmute preview"]')
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+        .querySelector<HTMLButtonElement>('button[aria-label="Unmute preview"]')
+        ?.click()
     })
+    const video = container.querySelector<HTMLVideoElement>(
+      '[data-testid="watch-home-tv-video"]',
+    )
+    expect(video).not.toBeNull()
+    expect(video?.querySelector("track[data-subtitle-track]")).toBeNull()
 
-    expect(video.querySelector("track[data-subtitle-track]")).toBeNull()
+    await act(async () => {
+      container
+        .querySelector<HTMLButtonElement>('button[aria-label="Mute preview"]')
+        ?.click()
+    })
+    expect(video?.querySelector("track[data-subtitle-track]")).not.toBeNull()
   })
 
   it("advances between pooled library videos with no branded slide in the sequence", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             carousel: {
@@ -2210,7 +2436,7 @@ describe("WatchHomePage", () => {
       handleChromeVisibility,
     )
     await act(async () => {
-      root.render(<WatchHomePage model={makeSequencedModel()} />)
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />)
     })
     window.removeEventListener(
       WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
@@ -2278,7 +2504,7 @@ describe("WatchHomePage", () => {
     const numberWords = ["One", "Two", "Three", "Four", "Five"]
 
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             carousel: {
@@ -2348,7 +2574,7 @@ describe("WatchHomePage", () => {
 
   it("holds the playback ring and shows a loader until the hero video loads", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeModel()} />)
+      renderWatchHome(<WatchHomePage model={makeModel()} />)
     })
 
     const ring = container.querySelector(
@@ -2393,7 +2619,7 @@ describe("WatchHomePage", () => {
 
   it("re-holds the playback ring when playback stalls mid preview", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeModel()} />)
+      renderWatchHome(<WatchHomePage model={makeModel()} />)
     })
 
     const video = container.querySelector(
@@ -2438,7 +2664,7 @@ describe("WatchHomePage", () => {
     try {
       vi.spyOn(Math, "random").mockReturnValue(0)
       await act(async () => {
-        root.render(<WatchHomePage model={makeSequencedModel()} />)
+        renderWatchHome(<WatchHomePage model={makeSequencedModel()} />)
       })
 
       const carousel = container.querySelector(
@@ -2486,7 +2712,7 @@ describe("WatchHomePage", () => {
     try {
       vi.spyOn(Math, "random").mockReturnValue(0)
       await act(async () => {
-        root.render(<WatchHomePage model={makeSequencedModel()} />)
+        renderWatchHome(<WatchHomePage model={makeSequencedModel()} />)
       })
 
       const carousel = container.querySelector(
@@ -2516,7 +2742,7 @@ describe("WatchHomePage", () => {
     try {
       vi.spyOn(Math, "random").mockReturnValue(0)
       await act(async () => {
-        root.render(
+        renderWatchHome(
           <WatchHomePage
             model={makeModel({
               carousel: {
@@ -2605,7 +2831,7 @@ describe("WatchHomePage", () => {
       })
 
       await act(async () => {
-        root.render(
+        renderWatchHome(
           <WatchHomePage
             model={makeModel({
               carousel: {
@@ -2670,7 +2896,7 @@ describe("WatchHomePage", () => {
       vi.spyOn(Math, "random").mockReturnValue(0)
 
       await act(async () => {
-        root.render(<WatchHomePage model={makeSequencedModel()} />)
+        renderWatchHome(<WatchHomePage model={makeSequencedModel()} />)
       })
 
       const carousel = container.querySelector(
@@ -2685,7 +2911,7 @@ describe("WatchHomePage", () => {
       expect(finalUnplayedSrc).toBe("https://stream.example/queued-three.m3u8")
 
       const muteButton = container.querySelector(
-        'button[aria-label="Unmute preview"]',
+        'button[aria-label="Mute preview"]',
       ) as HTMLButtonElement
       muteButton.focus()
       expect(document.activeElement).toBe(muteButton)
@@ -2704,9 +2930,9 @@ describe("WatchHomePage", () => {
       expect(replacementVideo).not.toBe(finalUnplayedVideo)
       expect(replacementVideo.getAttribute("src")).not.toBe(finalUnplayedSrc)
       expect(carousel?.getAttribute("aria-label")).not.toBe("Queued Three")
-      expect(
-        container.querySelector('button[aria-label="Unmute preview"]'),
-      ).toBe(muteButton)
+      expect(container.querySelector('button[aria-label="Mute preview"]')).toBe(
+        muteButton,
+      )
       expect(document.activeElement).toBe(muteButton)
 
       await act(async () => {
@@ -2791,7 +3017,7 @@ describe("WatchHomePage", () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99)
 
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <StrictMode>
           <WatchHomePage model={makeSequencedModel()} />
         </StrictMode>,
@@ -2824,7 +3050,7 @@ describe("WatchHomePage", () => {
       (poolIds.indexOf(heroId ?? "") + 0.5) / poolIds.length,
     )
     await act(async () => {
-      root.render(<WatchHomePage model={model} />)
+      renderWatchHome(<WatchHomePage model={model} />)
     })
 
     expect(
@@ -2877,7 +3103,7 @@ describe("WatchHomePage", () => {
   it("skips a video the browser reports as portrait and never draws it again", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
     await act(async () => {
-      root.render(<WatchHomePage model={verticalPoolModel()} />)
+      renderWatchHome(<WatchHomePage model={verticalPoolModel()} />)
     })
 
     expect(
@@ -2904,7 +3130,7 @@ describe("WatchHomePage", () => {
 
     // A later visit draws from the same pool and must not land on it again.
     await act(async () => {
-      root.render(<WatchHomePage model={verticalPoolModel()} />)
+      renderWatchHome(<WatchHomePage model={verticalPoolModel()} />)
     })
     const secondContainer = document.createElement("div")
     document.body.appendChild(secondContainer)
@@ -2926,7 +3152,7 @@ describe("WatchHomePage", () => {
   it("resumes after a mid-sequence portrait video instead of jumping backwards", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             carousel: {
@@ -2989,7 +3215,7 @@ describe("WatchHomePage", () => {
   it("keeps a landscape video and records nothing", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
     await act(async () => {
-      root.render(<WatchHomePage model={verticalPoolModel()} />)
+      renderWatchHome(<WatchHomePage model={verticalPoolModel()} />)
     })
 
     const video = container.querySelector(
@@ -3012,7 +3238,7 @@ describe("WatchHomePage", () => {
   it("stops skipping when every video in the pool measures portrait", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             carousel: {
@@ -3054,7 +3280,7 @@ describe("WatchHomePage", () => {
 
   it("falls back to the hero slides when the video pools are empty", async () => {
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             carousel: {
@@ -3082,7 +3308,9 @@ describe("WatchHomePage", () => {
   // real browser against the watch-page hero it is matching.
   it("dims the muted intro with the watch-page hero scrim and drops it on unmute", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeSequencedModel()} />)
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />, {
+        unmute: false,
+      })
     })
 
     const backdrop = container.querySelector(
@@ -3125,7 +3353,9 @@ describe("WatchHomePage", () => {
 
   it("reserves room for the categories rail while muted and expands on unmute", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeSequencedModel()} />)
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />, {
+        unmute: false,
+      })
     })
 
     const heroFrame = (
@@ -3201,7 +3431,9 @@ describe("WatchHomePage", () => {
 
     try {
       await act(async () => {
-        root.render(<WatchHomePage model={makeSequencedModel()} />)
+        renderWatchHome(<WatchHomePage model={makeSequencedModel()} />, {
+          unmute: false,
+        })
       })
       // The first measurement is scheduled on a frame, not run synchronously
       // in the effect body (which would cascade a render).
@@ -3266,7 +3498,9 @@ describe("WatchHomePage", () => {
 
     try {
       await act(async () => {
-        root.render(<WatchHomePage model={makeSequencedModel()} />)
+        renderWatchHome(<WatchHomePage model={makeSequencedModel()} />, {
+          unmute: false,
+        })
       })
       await act(async () => {
         await new Promise((resolve) =>
@@ -3299,7 +3533,7 @@ describe("WatchHomePage", () => {
     // makeModel() has no carousel pools, so the component builds its slides
     // through `watchHomeHeroSlidesToTvCarouselSlides` — the path under test.
     await act(async () => {
-      root.render(<WatchHomePage model={makeModel()} />)
+      renderWatchHome(<WatchHomePage model={makeModel()} />)
     })
 
     const poster = (
@@ -3334,7 +3568,7 @@ describe("WatchHomePage", () => {
     "falls the intro poster through to the next tier — %s",
     async (_label, overrides, expectedPrefix) => {
       await act(async () => {
-        root.render(
+        renderWatchHome(
           <WatchHomePage
             model={makeModel({
               heroSlides: [
@@ -3359,7 +3593,7 @@ describe("WatchHomePage", () => {
 
   it("renders no poster at all when every tier is blank or absent", async () => {
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <WatchHomePage
           model={makeModel({
             heroSlides: [
@@ -3390,7 +3624,7 @@ describe("WatchHomePage", () => {
     // else paused this" and walk away — the video would then play, unseen and
     // audible, behind the panel until the next coverage change.
     await act(async () => {
-      root.render(<WatchHomePage model={makeSequencedModel()} />)
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />)
     })
 
     const media = container.querySelector(
@@ -3441,7 +3675,7 @@ describe("WatchHomePage", () => {
     // video the viewer had paused themselves. This suite is the repo's only
     // deterministic detector for that shape.
     await act(async () => {
-      root.render(
+      renderWatchHome(
         <StrictMode>
           <WatchHomePage model={makeSequencedModel()} />
         </StrictMode>,
@@ -3480,7 +3714,7 @@ describe("WatchHomePage", () => {
 
   it("does not pin an intro that is rendered unpinned", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeSequencedModel()} />)
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />)
     })
 
     // The home shell always pins; the unpinned path is the authored hero block
@@ -3494,7 +3728,7 @@ describe("WatchHomePage", () => {
 
   it("dresses the intro copy in the watch page's own hero overlay", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeSequencedModel()} />)
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />)
     })
 
     const title = container.querySelector(
@@ -3523,7 +3757,7 @@ describe("WatchHomePage", () => {
 
   it("gives the hero eyebrow the shared Watch section eyebrow styling", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeSequencedModel()} />)
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />)
     })
 
     const eyebrow = (
@@ -3542,9 +3776,11 @@ describe("WatchHomePage", () => {
     expect(eyebrow.className).not.toContain("tracking-[0.24em]")
   })
 
-  it("runs the muted video on below the frame, behind the panel covering it", async () => {
+  it("runs the animated preview below the frame while muted", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeSequencedModel()} />)
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />, {
+        unmute: false,
+      })
     })
 
     const media = container.querySelector(
@@ -3560,21 +3796,14 @@ describe("WatchHomePage", () => {
     expect(media.className).toContain("top-0")
     expect(media.className).not.toContain("inset-y-0")
 
-    await act(async () => {
-      container
-        .querySelector('button[aria-label="Unmute preview"]')
-        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
-    })
-
-    // Unmuting pulls it back to the frame, the way revealing a hero's chrome
-    // drops its overlap to zero.
-    expect(media.className).toContain("bottom-0")
-    expect(media.className).not.toContain("var(--watch-hero-body-overlap)")
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-video"]'),
+    ).toBeNull()
   })
 
   it("pins the intro and lets the body zone scroll over it", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeSequencedModel()} />)
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />)
     })
 
     const hero = container.querySelector(
@@ -3601,7 +3830,7 @@ describe("WatchHomePage", () => {
 
   it("pauses the pinned intro once the body covers it, and resumes on the way back", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeSequencedModel()} />)
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />)
     })
 
     const hero = container.querySelector(
@@ -3680,7 +3909,7 @@ describe("WatchHomePage", () => {
 
   it("bleeds the intro media past the content rail without clipping ancestors", async () => {
     await act(async () => {
-      root.render(<WatchHomePage model={makeSequencedModel()} />)
+      renderWatchHome(<WatchHomePage model={makeSequencedModel()} />)
     })
 
     const mediaFrame = container.querySelector(
@@ -3726,7 +3955,7 @@ describe("WatchHomePage", () => {
     // `watchHomeHeroSlidesToTvCarouselSlides`.
     it("mounts no media for a feature-film hero slide", async () => {
       await act(async () => {
-        root.render(
+        renderWatchHome(
           <WatchHomePage
             model={makeModel({
               heroSlides: [
@@ -3751,7 +3980,7 @@ describe("WatchHomePage", () => {
 
     it("keeps the eligible slide and drops only the feature film", async () => {
       await act(async () => {
-        root.render(
+        renderWatchHome(
           <WatchHomePage
             model={makeModel({
               heroSlides: [
@@ -3801,7 +4030,7 @@ describe("WatchHomePage", () => {
       // COLLECTIONs — but the guard must degrade to a posterless page rather
       // than throw.
       await act(async () => {
-        root.render(
+        renderWatchHome(
           <WatchHomePage
             model={makeModel({
               heroSlides: [
