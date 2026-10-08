@@ -18,7 +18,7 @@ related_issues:
   - "resolveImageUrl.ts bypassed env validation with raw process.env"
   - "fetchWithTimeout silently dropped caller AbortSignal — fixed by composing signals"
   - "Silent empty-string fallback chain for missing GraphQL URL — replaced with an explicit production-default fallback"
-last_updated: 2026-09-15
+last_updated: 2026-10-08
 ---
 
 # EAS Update for Stakeholder Previews via Expo Go
@@ -42,6 +42,16 @@ Chosen over EAS Build internal distribution (Path B) because:
 - No device UDID registration required
 - ~30 second publish time (JS bundle) vs ~15 min (native build)
 - Free tier sufficient for 10-50 stakeholders
+
+> **Superseded 2026-10-08 — Path A no longer works for `apps/mobile`.** The app
+> cannot run in Expo Go (see the 2026-09-15 note under §1), so a stakeholder
+> preview now takes Path B, an internal-distribution build installed from a
+> link, or TestFlight. The Daily Bible Pause review uses the `pause-preview`
+> profile in `apps/mobile/eas.json`. That route needs an Apple Developer
+> account, a registered device UDID, and an interactive first build. The
+> operator steps are in `docs/operations/daily-bible-pause-preview.md`. What an
+> agent can do without an Apple ID login is in
+> [eas-cli with an App Store Connect API key](../developer-experience/eas-cli-asc-api-key-registers-devices-but-cannot-link-app-groups.md).
 
 ### 1. EAS Project Configuration
 
@@ -70,7 +80,7 @@ Chosen over EAS Build internal distribution (Path B) because:
 **Critical:** `runtimeVersion` must use `{ "policy": "sdkVersion" }` for Expo Go compatibility. A hardcoded string (e.g., `"1.0.0"`) will fail — Expo Go matches updates by SDK version.
 
 > **Superseded 2026-09-15 — the snippet above is no longer this app's config.**
-> `apps/mobile/app.json:46-48` now sets `"runtimeVersion": { "policy": "fingerprint" }`
+> `apps/mobile/app.json` now sets `"runtimeVersion": { "policy": "fingerprint" }`
 > (changed by #1953, 2026-08-18), and the slug is `jesus-film-forge-v2`. The
 > `sdkVersion` rule stays correct **for Expo Go**; `apps/mobile` left that flow.
 > It now needs a development build or an internal-distribution `preview` build:
@@ -205,7 +215,7 @@ const signal = init?.signal
 ```
 
 > **Note added 2026-09-15 — the rule holds, the mechanism changed.**
-> `apps/mobile/src/lib/apolloClient.ts:97-101` now forwards the caller's abort
+> `apps/mobile/src/lib/apolloClient.ts:98-102` now forwards the caller's abort
 > onto the client's own controller rather than composing the two signals:
 > `init.signal.addEventListener("abort", () => controller.abort(), { once: true })`.
 > The caller's signal is still honoured, so Prevention #3 below is unchanged.
@@ -337,3 +347,4 @@ across that boundary costs — it exits 0 and reaches nobody — see
 - [Expo GraphQL Schema Drift](../integration-issues/expo-graphql-schema-drift-and-fragment-validation.md) — Mobile app's local GraphQL queries (not codegen)
 - [Quiz Button WebView Pipeline](../mobile/quiz-button-section-webview-modal-pipeline.md) — References EAS Build vs Update distinction
 - [Expo Env File Handling](../mobile/expo-env-file-handling.md) — Env file priority, device IP detection, and EAS Update CI gotchas
+- [eas-cli with an App Store Connect API key](../developer-experience/eas-cli-asc-api-key-registers-devices-but-cannot-link-app-groups.md) — device registration and first-build credentials for the internal-distribution route (Path B)
