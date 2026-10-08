@@ -1631,6 +1631,7 @@ function PaperStripsOpen({
   t,
   f,
   top = 506,
+  lefts = [147, 263],
 }: {
   lines: string[]
   mark?: string
@@ -1641,6 +1642,9 @@ function PaperStripsOpen({
   f: (n: number) => number
   /** Figma y of the first strip (the second sits 137 below it). */
   top?: number
+  /** Figma x of the two strips. The close line keeps both clear of the
+   *  platform's action rail on the right (owner, 2026-10-08). */
+  lefts?: [number, number]
 }) {
   if (t < fromSec - 0.6 || (toSec != null && t > toSec + 0.05)) return null
   const clampBoth = {
@@ -1652,8 +1656,8 @@ function PaperStripsOpen({
   const local = t - fromSec
   // Figma: strip 1 at x 147 y 506 (+1.5 deg), strip 2 at x 263 y 643 (-2 deg).
   const spots = [
-    { left: 147, top, rot: 1.5 },
-    { left: 263, top: top + 137, rot: -2 },
+    { left: lefts[0], top, rot: 1.5 },
+    { left: lefts[1], top: top + 137, rot: -2 },
   ]
   let at = 0
   const strips = lines.map((line, i) => {
@@ -1905,6 +1909,7 @@ function ShortQuestionCards({
           t={t}
           f={f}
           top={cards.close.text ? 880 : 700}
+          lefts={[64, 104]}
         />
       ) : null}
     </>
