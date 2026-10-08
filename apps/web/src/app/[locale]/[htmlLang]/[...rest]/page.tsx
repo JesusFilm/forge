@@ -1190,12 +1190,35 @@ async function renderVideo(
         ]),
       ).values(),
     ).sort((a, b) => a.name.localeCompare(b.name))
+    const primaryLanguageBcp47 = series.video.primaryLanguage?.bcp47
+    const preferredFallbackLanguageSlug =
+      languageOptions.find(
+        (language) =>
+          primaryLanguageBcp47 &&
+          language.bcp47?.toLowerCase() === primaryLanguageBcp47.toLowerCase(),
+      )?.slug ??
+      languageOptions.find(
+        (language) => language.slug === DEFAULT_WATCH_LANGUAGE_SLUG,
+      )?.slug
     const seriesLanguage = resolveSeriesLanguageIdentity(
       languageOptions,
       rawLocale,
+      null,
+      preferredFallbackLanguageSlug,
     )
-    if (!seriesLanguage || seriesLanguage.slug !== rawLocale) notFound()
+    if (!seriesLanguage) notFound()
     const localeSlug = tryAsLocaleSlug(seriesLanguage?.slug ?? "")
+    if (seriesLanguage.slug !== rawLocale) {
+      if (contentSlug && localeSlug) {
+        redirect(
+          watchVideoPath(contentSlug, localeSlug, {
+            reason: "locale-resolved",
+            subtitleLanguage: subtitleLanguageSlug ?? undefined,
+          }),
+        )
+      }
+      notFound()
+    }
     const visibleSeries = {
       ...series.video,
       childDubLanguages: languageOptions,

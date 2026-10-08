@@ -318,6 +318,10 @@ function makeSeriesResult(slug = "storyclubs") {
       slug,
       title: "StoryClubs",
       label: "collection",
+      primaryLanguage: null as {
+        coreId: string | null
+        bcp47: string | null
+      } | null,
       images: [],
       children: [
         {
@@ -1079,24 +1083,43 @@ describe("Catch-all routing — series branch (2-seg)", () => {
     })
   })
 
-  it("returns not found when the requested series language is unavailable", async () => {
+  it("redirects to the collection's primary language when the requested one is unavailable", async () => {
     const result = makeSeriesResult("storyclubs")
     result.video.childDubLanguages = [
+      { slug: "afrikaans", bcp47: "af", name: "Afrikaans" },
+      { slug: "english", bcp47: "en", name: "English" },
+      { slug: "hindi", bcp47: "hi", name: "Hindi" },
       {
         slug: "spanish-castilian",
         bcp47: "es-ES",
         name: "Spanish, Castilian",
       },
     ]
+    result.video.primaryLanguage = { coreId: "hi", bcp47: "hi" }
+    mockRouteSeries(result)
+
+    await expect(render2Seg("storyclubs", "portuguese-brazil")).rejects.toThrow(
+      "NEXT_REDIRECT:/storyclubs.html/hindi.html?_lr=1",
+    )
+    expect(redirectMock).toHaveBeenCalledWith(
+      "/storyclubs.html/hindi.html?_lr=1",
+    )
+    expect(notFoundMock).not.toHaveBeenCalled()
+    expect(seriesPageClientMock).not.toHaveBeenCalled()
+    expect(
+      container.querySelector('[data-testid="watch-home-footer"]'),
+    ).toBeNull()
+  })
+
+  it("still returns not found when a series has no published language", async () => {
+    const result = makeSeriesResult("storyclubs")
+    result.video.childDubLanguages = []
     mockRouteSeries(result)
 
     await expect(render2Seg("storyclubs", "english")).rejects.toThrow(
       "NEXT_NOT_FOUND",
     )
-    expect(seriesPageClientMock).not.toHaveBeenCalled()
-    expect(
-      container.querySelector('[data-testid="watch-home-footer"]'),
-    ).toBeNull()
+    expect(redirectMock).not.toHaveBeenCalled()
   })
 
   it("hides nested containers that are not admitted in the selected language", async () => {
@@ -2814,6 +2837,18 @@ describe("Catch-all routing — props passed to SeriesPageClient (2-seg)", () =>
     const args = seriesPageClientMock.mock.calls[0]?.[0]
     expect(args?.selectedVariant).toBeNull()
     expect(args?.locale).toBe("english")
+  })
+
+  it("redirects an unavailable collection language to English when there is no matching primary", async () => {
+    const result = makeSeriesResult("christmas")
+    result.video.primaryLanguage = null
+    mockRouteSeries(result)
+
+    await expect(render2Seg("christmas", "spanish-castilian")).rejects.toThrow(
+      "NEXT_REDIRECT:/christmas.html?_lr=1",
+    )
+    expect(redirectMock).toHaveBeenCalledWith("/christmas.html?_lr=1")
+    expect(notFoundMock).not.toHaveBeenCalled()
   })
 
   it("passes raw slug-form locale (spanish-castilian) in trailer-mode, NOT bcp47-normalised", async () => {
