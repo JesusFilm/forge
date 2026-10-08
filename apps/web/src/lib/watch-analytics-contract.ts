@@ -105,6 +105,8 @@ export const WATCH_ANALYTICS_WIRE_NAMES = {
   // --- Search ---
   search_completed: "search_completed",
   search_result_clicked: "search_result_clicked",
+  rail_impression: "rail_impression",
+  rail_item_clicked: "rail_item_clicked",
   // --- Language ---
   language_picker_opened: "language_picker_opened",
   language_applied: "language_applied",
@@ -131,6 +133,26 @@ export type WatchAnalyticsMilestonePercent =
 
 export type WatchAnalyticsSearchOutcome = "results" | "no_results" | "failed"
 export type WatchAnalyticsSearchRequestType = "search" | "load_more"
+export type WatchAnalyticsRailSurface =
+  | "watch-home"
+  | "watch-search"
+  | "watch-video"
+  | "watch-series"
+export type WatchAnalyticsRailBlock =
+  | "hero"
+  | "collections"
+  | "authored"
+  | "results"
+  | "editorial"
+  | "chapters"
+  | "episodes"
+export type WatchAnalyticsRailPresentation =
+  | "hero-card"
+  | "carousel"
+  | "grid"
+  | "result-list"
+  | "authored-block"
+  | "episode-grid"
 /** Finite count buckets (R20). Raw counts are unbounded cardinality. */
 export type WatchAnalyticsCountBucket = "0" | "1-3" | "4-10" | "11-25" | "26+"
 /** Finite 1-based position buckets (R20). `"0"` is not a valid position. */
@@ -254,6 +276,13 @@ export type WatchAnalyticsEventInput =
       resultPosition?: number
       resultType?: string
       resultSource?: string
+    }
+  | {
+      type: "rail_impression" | "rail_item_clicked"
+      railSurface: WatchAnalyticsRailSurface
+      railBlock: WatchAnalyticsRailBlock
+      railPresentation: WatchAnalyticsRailPresentation
+      itemPosition: WatchAnalyticsPositionBucket
     }
   | {
       type: "language_picker_opened"
@@ -683,6 +712,14 @@ function mapEvent(
       assign(params, "watch_result_type", input.resultType)
       assign(params, "watch_result_source", input.resultSource)
       return { key: "search_result_clicked", params }
+
+    case "rail_impression":
+    case "rail_item_clicked":
+      assign(params, "watch_rail_surface", input.railSurface)
+      assign(params, "watch_rail_block", input.railBlock)
+      assign(params, "watch_rail_presentation", input.railPresentation)
+      assign(params, "watch_rail_position", input.itemPosition)
+      return { key: input.type, params }
 
     case "language_picker_opened":
       assign(params, "watch_picker_language_class", input.languageClass)

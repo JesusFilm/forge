@@ -6,6 +6,7 @@ export const RECOMMENDATION_PRIVATE_HEADERS = {
   "cache-control": "private, no-store, max-age=0",
   pragma: "no-cache",
   expires: "0",
+  vary: "Cookie",
 } as const
 
 export function recommendationJson(body: unknown, status = 200): NextResponse {
