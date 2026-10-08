@@ -139,6 +139,9 @@ export type CutdownOverrides = {
   /** Film-verse short: a silent question before the scene speaks and a
    *  turn after it ends (owner, 2026-10-02). */
   filmVerseCards?: { open?: string; close?: string; closeSub?: string }
+  /** film-verse: the scene window on the film card (s), chosen by hand when
+   *  the short should stop before the quoted verse (owner, 2026-10-08). */
+  filmVerse?: { fromSec: number; toSec: number }
   /** History opens on the paragraph's first short line ("Feeding pigs.")
    *  instead of its lead-in: the owner's pick (2026-10-02), so the DEFAULT.
    *  `false` keeps the lead-in. */
@@ -473,6 +476,7 @@ export function planCutdown(
       (subsAll.length ? verseWindowByAddress(subsAll, q.citation) : null) ??
       (subsAll.length && q.verse ? verseWindow(subsAll, q.verse) : null)
     const w =
+      overrides.filmVerse ??
       quotes.map(findWindow).find((x) => x != null) ??
       (subsAll.length && quotes.length
         ? (quotes

@@ -498,9 +498,11 @@ async function main() {
   ) as SourcePackRender
 
   const turn = range("film-turn")
+  const verse = range("film-verse")
   const refl = range("reflection")
   const overrides: CutdownOverrides = {
     ...(turn ? { filmTurn: { fromSec: turn.a, toSec: turn.b } } : {}),
+    ...(verse ? { filmVerse: { fromSec: verse.a, toSec: verse.b } } : {}),
     ...(refl ? { reflection: { from: refl.a, to: refl.b } } : {}),
     // Hook-first is the default; --history-no-hook keeps the lead-in.
     ...(process.argv.includes("--history-no-hook")
