@@ -45,6 +45,9 @@ navigation, custom events, and duplicate initialization.
 - Preserve explicit recommendation personalization, reset, and deletion controls.
 - Keep the restored GA page views, navigation, Watch events, and Datadog RUM in place under `docs/analytics-and-recommendation-policy.md`.
 - Preserve GA's `afterInteractive` loading and the static Watch layout.
+  - **Superseded 2026-10-08 by feat-632 (W-026):** the external Google tag now
+    loads `lazyOnload` to leave the LCP window. The inline bootstrap stays
+    `afterInteractive`, so `window.gtag` still exists early and queues calls.
 - Use the normal PR-to-main production deployment path.
 
 ## Verification
