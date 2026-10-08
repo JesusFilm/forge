@@ -55,4 +55,4 @@ The audit measured the English inventory route at 9,485,550 bytes and attributed
 
 ## Completion Evidence
 
-Open Graph/Twitter images and bounded CollectionPage/ItemList are implemented in the linked PR. Sitemap coverage is supplied by FGE-184 draft PR #2659. The payload criterion remains open pending measurement or pagination.
+Open Graph/Twitter images and bounded CollectionPage/ItemList are implemented in [draft PR #2672](https://github.com/JesusFilm/forge/pull/2672). Sitemap coverage is supplied by FGE-184 draft PR #2659. The payload criterion remains open pending measurement or pagination; keep FGE-226 In Progress until that criterion is addressed.
