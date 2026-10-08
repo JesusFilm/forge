@@ -29,6 +29,7 @@ const money = z.number().finite().nonnegative()
 const base = z.object({
   generationId: id,
   generationInputDigest: hex,
+  attemptId: z.uuid().optional(),
 })
 const sourceBase = base.extend({ sourceVideoId: id, leaseToken: z.uuid() })
 const navigationCoverage = z
@@ -528,6 +529,23 @@ async function checkedGeneration(
   if (row.input_digest !== input.generationInputDigest)
     conflict("Generation input digest differs")
   return row
+}
+
+async function hasOpenSubscriptionAttempt(
+  tx: Tx,
+  generationId: string,
+  attemptId?: string,
+): Promise<boolean> {
+  return Boolean(
+    await tx.recommendationPrecomputedExecutionAttempt.findFirst({
+      where: {
+        generationId,
+        endedAt: null,
+        ...(attemptId ? { attemptId } : {}),
+      },
+      select: { attemptId: true },
+    }),
+  )
 }
 
 async function sourceLock(tx: Tx, generationId: string, sourceVideoId: string) {
@@ -1481,6 +1499,30 @@ async function mutate(
     ].includes(input.action) ||
     (input.action === "fail" && !input.sourceVideoId)
   const generation = await checkedGeneration(tx, input, exclusive)
+  if (
+    generation.execution_backend === "codex_chatgpt_subscription" &&
+    ([
+      "manifest",
+      "capacity",
+      "history_qualification",
+      "claim",
+      "heartbeat",
+      "checkpoint",
+      "choice",
+      "source_history",
+      "history_call_start",
+      "source",
+      "complete",
+    ].includes(input.action) ||
+      (input.action === "fail" && Boolean(input.sourceVideoId))) &&
+    (!input.attemptId ||
+      !(await hasOpenSubscriptionAttempt(
+        tx,
+        input.generationId,
+        input.attemptId,
+      )))
+  )
+    conflict("Subscription attempt is inactive")
   if (generation.protocol_version === 3) {
     const sealed =
       generation.historical_qualification !== null &&
@@ -2249,6 +2291,13 @@ async function mutateCallsAndFinish(
     if (existing.status !== "pending") {
       if (existing.receiptDigest !== receiptDigest)
         conflict("Model call receipt retry differs")
+      const inactiveAttempt =
+        generation.execution_backend === "codex_chatgpt_subscription" &&
+        !(await hasOpenSubscriptionAttempt(
+          tx,
+          input.generationId,
+          input.attemptId,
+        ))
       const currentSource = await sourceLock(
         tx,
         input.generationId,
@@ -2260,6 +2309,7 @@ async function mutateCallsAndFinish(
         receiptStored: true,
         replay: true,
         checkpointApplied: existing.receiptCheckpointApplied ?? false,
+        ...(inactiveAttempt ? { inactiveAttempt: true } : {}),
         staleLease: !leaseCurrent(currentSource, input.leaseToken),
         checkpointRevision: existing.receiptAppliedRevision,
       }
@@ -2284,6 +2334,13 @@ async function mutateCallsAndFinish(
         receiptCheckpointApplied: false,
       },
     })
+    const inactiveAttempt =
+      generation.execution_backend === "codex_chatgpt_subscription" &&
+      !(await hasOpenSubscriptionAttempt(
+        tx,
+        input.generationId,
+        input.attemptId,
+      ))
     const source = await sourceLock(tx, input.generationId, input.sourceVideoId)
     let capacityFresh = true
     try {
@@ -2298,6 +2355,7 @@ async function mutateCallsAndFinish(
     }
     if (
       generationStatus !== "incomplete" ||
+      inactiveAttempt ||
       !capacityFresh ||
       !leaseCurrent(source, input.leaseToken) ||
       !input.checkpoint ||
@@ -2311,6 +2369,7 @@ async function mutateCallsAndFinish(
         receiptStored: true,
         replay: false,
         checkpointApplied: false,
+        ...(inactiveAttempt ? { inactiveAttempt: true } : {}),
         staleLease: !leaseCurrent(source, input.leaseToken),
         capacityBlocked: !capacityFresh,
         checkpointRevision: source.checkpoint_revision,

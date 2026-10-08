@@ -208,12 +208,14 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       await submit({
         action: "manifest",
         ...build,
+        attemptId: firstAttemptId,
         sourceVideoIds: [sourceVideoId],
       })
       const probe = await submit({ action: "capacity_probe", ...build })
       await submit({
         action: "capacity",
         ...build,
+        attemptId: firstAttemptId,
         measurement: {
           measuredAt: new Date().toISOString(),
           clusterSystemId: probe.clusterSystemId,
@@ -229,6 +231,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const claim = await submit({
         action: "claim",
         ...build,
+        attemptId: firstAttemptId,
         sourceVideoId,
         claimId: "first-subscription-claim",
       })
@@ -315,9 +318,30 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const reclaimed = await submit({
         action: "claim",
         ...build,
+        attemptId: secondAttemptId,
         sourceVideoId,
         claimId: "second-subscription-claim",
       })
+      await expect(
+        submit({ action: "complete", ...build, attemptId: firstAttemptId }),
+      ).rejects.toThrow("Subscription attempt is inactive")
+      await expect(
+        submit({
+          action: "choice",
+          ...build,
+          attemptId: firstAttemptId,
+          sourceVideoId,
+          leaseToken: reclaimed.leaseToken,
+          choice: {
+            targetVideoId: `stale-choice-${suffix}`,
+            kind: "direct",
+            relationship: "shared theme",
+            reasonEnglish: "Both videos explore the same theme.",
+            evidence: { basis: "metadata", fields: ["title"] },
+            strength: 70,
+          },
+        }),
+      ).rejects.toThrow("Subscription attempt is inactive")
       const nextCall = {
         ...call,
         leaseToken: reclaimed.leaseToken as string,
@@ -1374,6 +1398,174 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect((await submit({ action: "status", ...build })).elapsedMs).toBe(
         terminalStatus.elapsedMs,
       )
+    })
+
+    it("stores a late subscription receipt without applying work after its attempt closes", async () => {
+      const generationId = `subscription-closed-lease-${suffix}`
+      const build = { generationId, generationInputDigest }
+      const attemptId = randomUUID()
+      const observedAt = new Date().toISOString()
+      await submit({
+        action: "start",
+        generationId,
+        protocolVersion: 2,
+        modelId: "gpt-6-astra",
+        promptVersion: "durable-v1",
+        inputDigest: generationInputDigest,
+        sourceSetDigest,
+        inputCutoff: new Date(Date.now() + 60_000).toISOString(),
+        expectedSourceCount: 1,
+        inputMode: "content_only",
+        executionAttempt: {
+          attemptId,
+          invocation: "start",
+          accountRef: "closed-lease-account-123",
+          backend: "codex_chatgpt_subscription",
+          billingBasis: "included_subscription",
+          authMethod: "chatgpt",
+          modelId: "gpt-6-astra",
+          identityObservedAt: observedAt,
+          allowanceObservedAt: observedAt,
+          weeklyRemainingPercent: 50,
+          fiveHour: { kind: "limited", remainingPercent: 50 },
+        },
+      })
+      await expect(
+        submit({
+          action: "manifest",
+          ...build,
+          sourceVideoIds: [sourceVideoId],
+        }),
+      ).rejects.toThrow("Subscription attempt is inactive")
+      await submit({
+        action: "manifest",
+        ...build,
+        attemptId,
+        sourceVideoIds: [sourceVideoId],
+      })
+      const probe = await submit({ action: "capacity_probe", ...build })
+      await submit({
+        action: "capacity",
+        ...build,
+        attemptId,
+        measurement: {
+          measuredAt: new Date().toISOString(),
+          clusterSystemId: probe.clusterSystemId,
+          observedDbBytes: probe.observedDbBytes,
+          availableBytes: 20_000_000_000,
+          reserveBytes: 5_000_000_000,
+          projectedBytes: 1_000_000,
+          sampleSourceCount: 1,
+          sampleBytes: 100_000,
+          source: "operator_verified_pgdata_df",
+        },
+      })
+      const claim = await submit({
+        action: "claim",
+        ...build,
+        attemptId,
+        sourceVideoId,
+        claimId: "closed-lease-claim",
+      })
+      const leaseToken = claim.leaseToken as string
+      const call = {
+        ...build,
+        sourceVideoId,
+        leaseToken,
+        attemptId,
+        callId: randomUUID(),
+        stage: "candidate_judgment",
+        modelId: "gpt-6-astra",
+        inputDigest: "b".repeat(64),
+        startedAt: new Date(Date.now() - 1_000).toISOString(),
+      }
+      await submit({ action: "model_call_start", ...call })
+      await submit({
+        action: "attempt_close",
+        ...build,
+        attemptId,
+        reason: "paused",
+      })
+      const choice = {
+        targetVideoId: `closed-lease-target-${suffix}`,
+        kind: "direct",
+        relationship: "shared theme",
+        reasonEnglish: "Both videos explore the same theme.",
+        evidence: { basis: "metadata", fields: ["title"] },
+        strength: 70,
+      }
+      const receipt = {
+        action: "model_call",
+        ...call,
+        status: "succeeded",
+        outputDigest: "c".repeat(64),
+        inputTokens: 100,
+        outputTokens: 12,
+        finishedAt: new Date().toISOString(),
+        expectedRevision: 0,
+        checkpointId: `closed-lease-checkpoint-${suffix}`,
+        checkpoint: { stage: "judgment", cursor: { candidateIndex: 1 } },
+        choice,
+      }
+      expect(await submit(receipt)).toMatchObject({
+        receiptStored: true,
+        checkpointApplied: false,
+        staleLease: false,
+        inactiveAttempt: true,
+      })
+      expect(await submit(receipt)).toMatchObject({
+        receiptStored: true,
+        replay: true,
+        checkpointApplied: false,
+      })
+      expect(
+        await prisma.recommendationPrecomputedModelCall.findUniqueOrThrow({
+          where: { generationId_callId: { generationId, callId: call.callId } },
+        }),
+      ).toMatchObject({
+        status: "succeeded",
+        inputTokens: 100,
+        outputTokens: 12,
+      })
+      expect(
+        await prisma.recommendationPrecomputedBuildChoice.count({
+          where: { generationId, sourceVideoId },
+        }),
+      ).toBe(0)
+      expect(
+        await prisma.recommendationPrecomputedBuildSource.findUniqueOrThrow({
+          where: {
+            generationId_sourceVideoId: { generationId, sourceVideoId },
+          },
+        }),
+      ).toMatchObject({ checkpointRevision: 0, state: "claimed" })
+      for (const directWrite of [
+        { action: "heartbeat", ...build, attemptId, sourceVideoId, leaseToken },
+        {
+          action: "checkpoint",
+          ...build,
+          attemptId,
+          sourceVideoId,
+          leaseToken,
+          expectedRevision: 0,
+          checkpointId: randomUUID(),
+          checkpoint: { stage: "judgment", cursor: { candidateIndex: 1 } },
+        },
+        {
+          action: "choice",
+          ...build,
+          attemptId,
+          sourceVideoId,
+          leaseToken,
+          choice,
+        },
+        { action: "source", ...build, attemptId, sourceVideoId, leaseToken },
+        { action: "complete", ...build, attemptId },
+      ]) {
+        await expect(submit(directWrite)).rejects.toThrow(
+          "Subscription attempt is inactive",
+        )
+      }
     })
 
     it("reports a failed source separately from an explicit empty source", async () => {
