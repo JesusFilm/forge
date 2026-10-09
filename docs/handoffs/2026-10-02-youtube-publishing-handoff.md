@@ -132,3 +132,8 @@ Reel, step by step (ask on the first run where marked):
    for her "yes", press Publish or Schedule.
 9. Write the post links into the story's `README.txt`, and the confirmed
    choices into the memory checklist (Meta section).
+
+## Content calendar (added 2026-10-09)
+
+After every publish or schedule, add the post to Lyuba's calendar
+(https://claude.ai/artifact/86K6PKnMHbezT87VTdbt9J). How: `docs/content-calendar/README.md`.
