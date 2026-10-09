@@ -189,6 +189,11 @@ describe("resolveDefaultVariantIndex — no preferences (unchanged)", () => {
 // ── slugToPersistForPick — write seam ───────────────────────────────
 
 describe("slugToPersistForPick", () => {
+  it("does not persist a system-link selection as a user preference", () => {
+    const video = makeVideo([makeVariant({ languageSlug: "english" })])
+    expect(slugToPersistForPick(video, 0, false)).toBeNull()
+    expect(slugToPersistForPick(video, 0)).toBe("english")
+  })
   it("returns the picked variant's languageSlug for a valid index", () => {
     const video = makeVideo([
       makeVariant({ languageSlug: "english" }),

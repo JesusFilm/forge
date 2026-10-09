@@ -7,8 +7,8 @@
 // interchangeable:
 //
 //   FLEET token (`EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN`) — one value baked into
-//     every TV binary. It identifies the FLEET, not a person, and its only job
-//     is to buy a per-device rate-limit bucket on the public `watchSearch`.
+//     every TV binary. It identifies the FLEET, not a person: it authenticates
+//     recommendation lifecycle calls and buys a search rate-limit bucket.
 //
 //   USER access token (feat-322 device grant) — one per signed-in viewer, held
 //     in secure storage, carrying the `web:watch-events:write` scope. It
@@ -55,7 +55,16 @@ export const PROGRESS_UPSERT_OPERATION_NAME = "UpsertMyWatchProgress"
 export const PROGRESS_CLEAR_OPERATION_NAME = "ClearMyWatchProgress"
 
 /** Operations that may carry the baked-in FLEET token. */
-export const FLEET_TOKEN_OPERATIONS: readonly string[] = [SEARCH_OPERATION_NAME]
+export const RECOMMENDATION_OPERATION_NAMES = [
+  "UserRecommendations",
+  "CreateRecommendationViewer",
+  "UpdateRecommendationViewer",
+] as const
+
+export const FLEET_TOKEN_OPERATIONS: readonly string[] = [
+  SEARCH_OPERATION_NAME,
+  ...RECOMMENDATION_OPERATION_NAMES,
+]
 
 /**
  * Operations that may carry the SIGNED-IN USER's access token — the viewer's
@@ -87,9 +96,8 @@ export function overlappingAllowlistOperations(): string[] {
 }
 
 /**
- * Scoped to the search op only. Not an auth requirement (watchSearch is public)
- * — it buys the per-device rate-limit bucket; on other public ops it would pool
- * the whole fleet into one.
+ * Scoped to search and the recommendation lifecycle. Search is public;
+ * recommendations require the fleet bearer and separate installation tokens.
  */
 export function authHeadersForOperation(
   operationName: string | undefined,
@@ -98,13 +106,14 @@ export function authHeadersForOperation(
 ): Record<string, string> {
   // Reads the allowlist rather than comparing against the constant directly, so
   // FLEET_TOKEN_OPERATIONS is the single source of truth both this and the
-  // disjointness invariant consult. Behaviour is unchanged: the list is [search].
+  // disjointness invariant consult.
   if (!operationName) return {}
   if (!FLEET_TOKEN_OPERATIONS.includes(operationName)) return {}
   const headers = buildAuthHeaders(token)
   // x-viewer-id lets admin bucket per-install (CGNAT-immune) instead of per-IP;
   // spoofable, so admin treats it as an availability label only.
-  if (viewerId) headers["x-viewer-id"] = viewerId
+  if (viewerId && operationName === SEARCH_OPERATION_NAME)
+    headers["x-viewer-id"] = viewerId
   return headers
 }
 

@@ -8,6 +8,10 @@ import {
   type LoadingAnimationId,
   type LogoAnimationId,
 } from "./logoAnimations"
+import {
+  parseTopShelfPreviewStyle,
+  type TopShelfPreviewStyle,
+} from "./topShelf/preview"
 
 /**
  * App-wide watch preference (audio-language only, for now), persisted across
@@ -21,6 +25,7 @@ export type WatchPreferences = {
   androidPlayerVariant: "existing" | "native"
   /** Native A is the Apple TV default; Existing and Native B remain selectable. */
   nativePlayerVariant: "existing" | "native-a" | "native-b"
+  topShelfPreviewStyle?: TopShelfPreviewStyle
   startupAnimationId?: LogoAnimationId
   loadingAnimationId?: LoadingAnimationId
 }
@@ -91,6 +96,13 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
           loadingAnimationId: parseLoadingAnimationId(
             parsed.loadingAnimationId,
             DEFAULT_LOADING_ANIMATION,
+          ),
+        }
+      : {}),
+    ...(parsed.topShelfPreviewStyle !== undefined
+      ? {
+          topShelfPreviewStyle: parseTopShelfPreviewStyle(
+            parsed.topShelfPreviewStyle,
           ),
         }
       : {}),
