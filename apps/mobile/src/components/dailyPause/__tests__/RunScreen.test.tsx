@@ -309,6 +309,14 @@ function pills(): string[] {
     .map((node) => node.props.accessibilityLabel as string)
 }
 
+/** What VoiceOver reads on the countdown ring. */
+function timeLeft(): string | undefined {
+  return renderer!.root.findAll(
+    (node) =>
+      typeof node.type === "string" && node.props.accessibilityRole === "timer",
+  )[0]?.props.accessibilityLabel
+}
+
 function closeTop(): number {
   const [close] = renderer!.root.findAll(
     (node: RenderedNode) =>
@@ -379,6 +387,26 @@ it("offers only the close and Share this video on Share (R22)", async () => {
   await next()
   expect(buttons()).toEqual(["Share this video", "Close"])
 })
+
+// v2 plan R11-R13, AE5: Reflect and Pray count down on one ring, and a tap
+// on the held button before zero leaves the run where it is.
+it.each<[PauseStep, string, string, PauseStep]>([
+  ["reflectScreen", "Continue", "45 seconds left", "prayer"],
+  ["prayScreen", "Amen", "30 seconds left", "share"],
+])(
+  "keeps the run on %s until its ring reaches zero, then %s moves it on",
+  async (step, label, full, nextStep) => {
+    await seedDay(step)
+    await open()
+    await tap("Resume")
+    expect(timeLeft()).toBe(full)
+    await tap(label)
+    expect(savedDay().step).toBe(step)
+    await waitOutPause()
+    await tap(label)
+    expect(savedDay().step).toBe(nextStep)
+  },
+)
 
 it("keeps the screen awake from the Opening through Pray, under StrictMode with one tag", async () => {
   await open()
