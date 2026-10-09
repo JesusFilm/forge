@@ -2,6 +2,7 @@
 title: "Centralize mobile typography with responsive useTypography hook"
 category: mobile
 date: 2026-03-26
+last_updated: 2026-10-09
 severity: medium
 tags:
   - react-native
@@ -14,8 +15,7 @@ tags:
 modules:
   - apps/mobile/src/hooks/useTypography.ts
   - apps/mobile/src/components/sections/*Renderer.tsx
-  - apps/mobile/src/screens/WatchHomeScreen.tsx
-  - apps/mobile/src/screens/ExperienceScreen.tsx
+  - apps/mobile/src/components/home/HomeScreen.tsx
 symptoms:
   - Visible text size inconsistencies when sections appear side-by-side in carousels
   - Font sizes did not adapt to different device screen widths
@@ -59,9 +59,11 @@ No shared typography system existed. Every renderer independently defined font s
 import { useMemo } from "react"
 import { type TextStyle, useWindowDimensions } from "react-native"
 
-import type { TextHeadingLevel } from "../lib/sectionModels"
+import { LINE_HEIGHT_REDUCTION } from "../lib/lineHeight"
 
 type TypographyToken = Required<Pick<TextStyle, "fontSize" | "lineHeight">>
+
+type HeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
 
 const BASE_WIDTH = 375
 const MIN_FACTOR = 0.85
@@ -84,7 +86,7 @@ const HEADING_SCALE = {
   h4: { fontSize: 20, lineHeight: 28 },
   h5: { fontSize: 18, lineHeight: 24 },
   h6: { fontSize: 16, lineHeight: 22 },
-} as const satisfies Record<TextHeadingLevel, TypographyToken>
+} as const satisfies Record<HeadingLevel, TypographyToken>
 
 export type TypographyScale = {
   caption: TypographyToken
@@ -94,16 +96,17 @@ export type TypographyScale = {
   titleLarge: TypographyToken
   heading: TypographyToken
   display: TypographyToken
-  headingScale: Record<TextHeadingLevel, TypographyToken>
+  headingScale: Record<HeadingLevel, TypographyToken>
 }
 
 export function computeTypographyScale(screenWidth: number): TypographyScale {
   const raw = screenWidth / BASE_WIDTH
   const factor = Math.min(Math.max(raw, MIN_FACTOR), MAX_FACTOR)
 
+  // Math.round() all values — critical on Android to avoid sub-pixel blur.
   const scale = (token: TypographyToken): TypographyToken => ({
     fontSize: Math.round(token.fontSize * factor),
-    lineHeight: Math.round(token.lineHeight * factor),
+    lineHeight: Math.round(token.lineHeight * factor) - LINE_HEIGHT_REDUCTION,
   })
 
   return {
@@ -136,13 +139,14 @@ Key type decisions:
 - **`Required<Pick<TextStyle, ...>>`** — `TextStyle` defines `fontSize`/`lineHeight` as optional; `Required<>` strips the optionality so tokens are guaranteed `number` values. Without this, consumers need `?? 0` fallbacks everywhere. See [typescript-pick-textstyle-required-wrapper.md](./typescript-pick-textstyle-required-wrapper.md).
 - **`as const satisfies Record<...>`** — preserves literal types from `as const` while validating structure against `TypographyToken`. Catches typos in key names at compile time.
 - **`computeTypographyScale` extracted as a pure function** — separates computation from the React hook, making it directly unit-testable without mocking hooks. The test file tests only this function.
-- **`TextHeadingLevel` imported from `sectionModels.ts`** — heading levels are a CMS domain concept, not a typography concern. The hook consumes the type but does not own it.
+- **`HeadingLevel` is a local union of `h1`–`h6`.** An earlier version imported `TextHeadingLevel` from `sectionModels.ts`; the current hook declares the union itself.
 
 Design decisions:
 
 - **`BASE_WIDTH = 375`** — iPhone 13/14 logical width, most common device.
 - **`MIN_FACTOR = 0.85`, `MAX_FACTOR = 1.15`** — clamps scaling to ±15% so text never becomes unreadably small or absurdly large.
 - **`Math.round()`** — integer rounding avoids sub-pixel font sizes that cause blurry text on Android.
+- **`LINE_HEIGHT_REDUCTION` (2)** — every line height is 2 pt tighter than its token, taken off after scaling so the reduction is the same at every width (added in #2333). A rendered `bodySmall` at 375 pt is 14/18, not 14/20.
 - **`useMemo` keyed on `width`** — recomputes only on rotation or window resize.
 - **`useWindowDimensions()` (not `Dimensions.get()`)** — reactive to orientation changes.
 
@@ -214,7 +218,7 @@ During migration, `fontWeight: "700"` on featured titles was accidentally remove
 1. **Do not remove `fontWeight` during migration.** Typography tokens deliberately exclude `fontWeight` because weight varies by context. Review every migrated style to confirm weight is preserved.
 2. **`Dimensions.get()` at module scope is a time bomb.** Always use `useWindowDimensions()` inside component bodies. Grep for module-scope `Dimensions.get` periodically.
 3. **Not every `fontSize` is typography.** Icons rendered as unicode characters in fixed containers should not scale — verify the element is readable text before migrating.
-4. **`lineHeight` must scale with `fontSize`.** The hook scales both together. Do not set `lineHeight` independently in StyleSheet for migrated text.
+4. **`lineHeight` must scale with `fontSize`.** The hook scales both together. Do not set `lineHeight` independently in StyleSheet for migrated text. One exception: on iOS, a token's fixed line height cuts the tops off Myanmar text, so a Myanmar row drops `lineHeight` and a fixed-height layout budgets the font's own line. See [ios-myanmar-text-clipped-by-fixed-line-height.md](../ui-bugs/ios-myanmar-text-clipped-by-fixed-line-height.md).
 5. **`Math.round()` is required for Android.** Sub-pixel font sizes render as blurry text on Android. All token values must pass through `Math.round()`.
 6. **`display` and `h1` are independent tokens.** They originally shared the same value (32/40) by coincidence, not by design. `display` is purpose-specific (VideoHeroRenderer only), while `h1` is shared (TextRenderer for all CMS content). Do not change them in lockstep. See [typography-token-scope-shared-vs-purpose-specific.md](./typography-token-scope-shared-vs-purpose-specific.md).
 
@@ -230,5 +234,6 @@ During migration, `fontWeight: "700"` on featured titles was accidentally remove
 - [Pick\<TextStyle\> Required wrapper](./typescript-pick-textstyle-required-wrapper.md) — why `Required<Pick<TextStyle, ...>>` is needed instead of bare `Pick`
 - [Full-bleed video hero solution](./full-bleed-video-hero-with-scroll-over-content.md) — documents `useWindowDimensions()` vs `Dimensions.get()` anti-pattern and section renderer architecture
 - [Expo GraphQL schema drift](../integration-issues/expo-graphql-schema-drift-and-fragment-validation.md) — documents section dispatcher/mapper patterns used by all renderers
+- [Myanmar text clipped by a fixed line height](../ui-bugs/ios-myanmar-text-clipped-by-fixed-line-height.md) — the script for which a token's fixed line height is wrong on iOS
 - [Responsive typography requirements](../../brainstorms/2026-03-25-mobile-responsive-typography-requirements.md) — origin brainstorm document
 - [Responsive typography plan](../../plans/2026-03-25-002-feat-mobile-responsive-typography-plan.md) — full implementation plan with token mappings
