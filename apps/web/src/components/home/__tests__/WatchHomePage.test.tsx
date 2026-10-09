@@ -356,6 +356,12 @@ beforeEach(() => {
   carouselApi.scrollTo.mockClear()
   muxVideoHlsConfigs.length = 0
   muxVideoRenders.length = 0
+  // jsdom does not implement media playback. The intro requests playback on a
+  // timer, so an element a test never stubs would otherwise log "Not
+  // implemented" on every turn that outlives the poster hold.
+  vi.spyOn(HTMLMediaElement.prototype, "play").mockImplementation(() =>
+    Promise.resolve(),
+  )
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
@@ -879,6 +885,184 @@ describe("WatchHomePage", () => {
       } finally {
         vi.useRealTimers()
       }
+    })
+
+    // iOS Safari plays Mux HLS natively and buffers only metadata until
+    // `play()` is called, so `canplay` never arrives on its own there.
+    describe("when canplay never arrives before the poster hold ends", () => {
+      async function renderWithoutCanPlay() {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
+        })
+        return currentVideo()
+      }
+
+      function currentVideo() {
+        return container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        ) as HTMLVideoElement
+      }
+
+      function stubPlay(video: HTMLVideoElement) {
+        const play = vi.fn(() => Promise.resolve())
+        video.play = play as unknown as HTMLVideoElement["play"]
+        return play
+      }
+
+      function loaderCount() {
+        return container.querySelectorAll(
+          '[data-testid="watch-home-progress-loading"]',
+        ).length
+      }
+
+      it("requests playback itself once the hold ends", async () => {
+        vi.useFakeTimers()
+        try {
+          const video = await renderWithoutCanPlay()
+          const play = stubPlay(video)
+
+          await act(async () => {
+            vi.advanceTimersByTime(1_499)
+          })
+          expect(play).not.toHaveBeenCalled()
+
+          await act(async () => {
+            vi.advanceTimersByTime(1)
+          })
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("is not cancelled by a loadedmetadata that lands during the hold", async () => {
+        vi.useFakeTimers()
+        try {
+          const video = await renderWithoutCanPlay()
+          const play = stubPlay(video)
+
+          await act(async () => {
+            vi.advanceTimersByTime(500)
+          })
+          await act(async () => {
+            video.dispatchEvent(new Event("loadedmetadata", { bubbles: true }))
+          })
+          await act(async () => {
+            vi.advanceTimersByTime(1_000)
+          })
+
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("reveals the video as soon as it plays, without a second hold or play()", async () => {
+        vi.useFakeTimers()
+        try {
+          const video = await renderWithoutCanPlay()
+          const play = stubPlay(video)
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          expect(video.classList.contains("opacity-0")).toBe(true)
+
+          await act(async () => {
+            video.dispatchEvent(new Event("canplay", { bubbles: true }))
+            video.dispatchEvent(new Event("playing", { bubbles: true }))
+          })
+          expect(video.classList.contains("opacity-100")).toBe(true)
+          expect(loaderCount()).toBe(0)
+
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("keeps a revealed video visible through a late loadedmetadata", async () => {
+        vi.useFakeTimers()
+        try {
+          const video = await renderWithoutCanPlay()
+          stubPlay(video)
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          await act(async () => {
+            video.dispatchEvent(new Event("playing", { bubbles: true }))
+          })
+          expect(video.classList.contains("opacity-100")).toBe(true)
+
+          await act(async () => {
+            video.dispatchEvent(new Event("loadedmetadata", { bubbles: true }))
+          })
+          expect(video.classList.contains("opacity-100")).toBe(true)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("requests playback again on the slide the hero advances to", async () => {
+        vi.useFakeTimers()
+        try {
+          const first = await renderWithoutCanPlay()
+          stubPlay(first)
+          const openingTitle = carouselLabel()
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          await act(async () => {
+            first.dispatchEvent(new Event("playing", { bubbles: true }))
+            first.dispatchEvent(new Event("ended", { bubbles: true }))
+          })
+          expect(carouselLabel()).not.toBe(openingTitle)
+
+          const second = currentVideo()
+          expect(second).not.toBe(first)
+          const play = stubPlay(second)
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("never plays a slide whose turn ended before its hold did", async () => {
+        vi.useFakeTimers()
+        try {
+          const first = await renderWithoutCanPlay()
+          const firstPlay = stubPlay(first)
+          await act(async () => {
+            vi.advanceTimersByTime(500)
+          })
+          await act(async () => {
+            container
+              .querySelector('button[aria-label="Show Queued Two"]')
+              ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+          })
+          const secondPlay = stubPlay(currentVideo())
+
+          await act(async () => {
+            vi.advanceTimersByTime(1_499)
+          })
+          expect(firstPlay).not.toHaveBeenCalled()
+          expect(secondPlay).not.toHaveBeenCalled()
+
+          await act(async () => {
+            vi.advanceTimersByTime(1)
+          })
+          expect(firstPlay).not.toHaveBeenCalled()
+          expect(secondPlay).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
     })
 
     it("holds a paused slide's turn instead of spending it", async () => {

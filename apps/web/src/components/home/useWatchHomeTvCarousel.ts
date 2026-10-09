@@ -283,6 +283,16 @@ export function useWatchHomeTvCarousel(
   const leavingSlideTimeoutRef = useRef<number | null>(null)
   const slideAdvanceTimeoutRef = useRef<number | null>(null)
   const videoPosterHoldTimeoutRef = useRef<number | null>(null)
+  // Requests playback when a turn's poster hold ends before `canplay` does.
+  // iOS Safari plays Mux HLS natively and buffers only metadata until `play()`
+  // is called, so there `canplay` never arrives on its own. Deliberately not
+  // `videoPosterHoldTimeoutRef`: `loadedmetadata`, which iOS does reach, clears
+  // that one.
+  const turnStartPlayTimeoutRef = useRef<number | null>(null)
+  // True once this turn's hold has been served by the timer above, so the
+  // `canplay` / `playing` that follow reveal the video at once instead of
+  // holding the poster a second time.
+  const posterHoldServedRef = useRef(false)
   const mediaWaitTimeoutRef = useRef<number | null>(null)
   // The advance clock is parked while buffering, so the elapsed time has to
   // survive the re-runs that park and restart it.
@@ -470,6 +480,26 @@ export function useWatchHomeTvCarousel(
     }
   }, [])
 
+  const clearTurnStartPlay = useCallback(() => {
+    if (turnStartPlayTimeoutRef.current != null) {
+      window.clearTimeout(turnStartPlayTimeoutRef.current)
+      turnStartPlayTimeoutRef.current = null
+    }
+  }, [])
+
+  // A rejection can land long after this turn ended -- the viewer picks
+  // another slide, the element is replaced -- and the buffering flag is
+  // hook-wide, so an ungated callback would park the slide that REPLACED the
+  // one that issued it.
+  const requestPlayback = useCallback((video: HTMLVideoElement) => {
+    const refusedForTurn = turnTokenRef.current
+    startPlayback(video, () => {
+      if (turnTokenRef.current !== refusedForTurn) return
+      if (videoRef.current !== video) return
+      setIsBufferingMedia(true)
+    })
+  }, [])
+
   const clearMediaWaitTimeout = useCallback(() => {
     if (mediaWaitTimeoutRef.current != null) {
       window.clearTimeout(mediaWaitTimeoutRef.current)
@@ -541,18 +571,14 @@ export function useWatchHomeTvCarousel(
             // A detached or not-yet-seekable element throws here; the replay
             // below is still worth attempting.
           }
-          const refusedForTurn = turnTokenRef.current
-          startPlayback(video, () => {
-            if (turnTokenRef.current !== refusedForTurn) return
-            if (videoRef.current !== video) return
-            setIsBufferingMedia(true)
-          })
+          requestPlayback(video)
         }
       }
     },
     [
       activeSlide,
       clearSlideAdvanceTimeout,
+      requestPlayback,
       clearVideoPosterHold,
       displaySlides,
       options.suppressLeavingSlide,
@@ -603,9 +629,13 @@ export function useWatchHomeTvCarousel(
   }, [activeSlide?.id])
 
   const handleLoadedMetadata = useCallback(() => {
-    clearVideoPosterHold()
-    mediaReadyRef.current = false
-    setMediaReady(false)
+    // iOS can report metadata only after the hold timer has already asked for
+    // playback; hiding the video then would undo a reveal that `playing` made.
+    if (!posterHoldServedRef.current) {
+      clearVideoPosterHold()
+      mediaReadyRef.current = false
+      setMediaReady(false)
+    }
     setPlaybackTime({ seconds: 0, slideId: activeSlide?.id ?? null })
 
     // Before the portrait branch below, which can advance away from this
@@ -643,27 +673,24 @@ export function useWatchHomeTvCarousel(
     if (!video) return
     setIsBufferingMedia(false)
     video.muted = isMutedRef.current
+    clearTurnStartPlay()
     if (mediaReadyRef.current) return
     clearVideoPosterHold()
+    // The hold already ran out and playback was requested: this `canplay` is
+    // that request taking effect, not a reason to hold the poster again.
+    if (posterHoldServedRef.current) {
+      mediaReadyRef.current = true
+      setMediaReady(true)
+      return
+    }
 
     videoPosterHoldTimeoutRef.current = window.setTimeout(() => {
       mediaReadyRef.current = true
       setMediaReady(true)
-      if (!autoAdvancePausedRef.current) {
-        // A rejection can land long after this turn ended -- the viewer picks
-        // another slide, the element is replaced -- and the buffering flag is
-        // hook-wide, so an ungated callback would park the slide that
-        // REPLACED this one.
-        const refusedForTurn = turnTokenRef.current
-        startPlayback(video, () => {
-          if (turnTokenRef.current !== refusedForTurn) return
-          if (videoRef.current !== video) return
-          setIsBufferingMedia(true)
-        })
-      }
+      if (!autoAdvancePausedRef.current) requestPlayback(video)
       videoPosterHoldTimeoutRef.current = null
     }, VIDEO_POSTER_HOLD_MS)
-  }, [clearVideoPosterHold])
+  }, [clearTurnStartPlay, clearVideoPosterHold, requestPlayback])
 
   // A stall after playback has begun is the same situation as one before it:
   // the viewer is watching a still frame, so the ring and the advance clock
@@ -675,7 +702,36 @@ export function useWatchHomeTvCarousel(
   const handlePlaying = useCallback(() => {
     setIsBufferingMedia(false)
     setIsMediaPaused(false)
+    if (posterHoldServedRef.current && !mediaReadyRef.current) {
+      mediaReadyRef.current = true
+      setMediaReady(true)
+    }
   }, [])
+
+  // Every video turn -- the opening slide and the per-visit draw included,
+  // which never pass through `selectIndex` -- gets its poster hold, after
+  // which playback is requested whether or not `canplay` has arrived. Keyed
+  // on the slide id, so a same-slide replay (which plays by hand in
+  // `selectIndex`) arms nothing.
+  useEffect(() => {
+    posterHoldServedRef.current = false
+    if (!activeSlide?.id || !activeSlide.src) return undefined
+
+    const armedForTurn = turnTokenRef.current
+    turnStartPlayTimeoutRef.current = window.setTimeout(() => {
+      turnStartPlayTimeoutRef.current = null
+      if (turnTokenRef.current !== armedForTurn) return
+      if (mediaReadyRef.current || autoAdvancePausedRef.current) return
+      const video = videoRef.current
+      if (!video) return
+      posterHoldServedRef.current = true
+      requestPlayback(video)
+    }, VIDEO_POSTER_HOLD_MS)
+
+    return () => {
+      clearTurnStartPlay()
+    }
+  }, [activeSlide?.id, activeSlide?.src, clearTurnStartPlay, requestPlayback])
 
   const handlePause = useCallback(() => {
     // Browsers fire `pause` immediately before `ended` at natural end of
