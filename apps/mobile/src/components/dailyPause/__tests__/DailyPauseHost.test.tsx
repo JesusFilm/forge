@@ -20,8 +20,12 @@ import {
 import {
   endPause,
   getPausePhase,
+  liftPause,
+  reportLogoDrawn,
   requestPause,
+  requestPauseExit,
   setPauseRunOnTop,
+  type PauseExitTarget,
 } from "../../../lib/pauseCurtain"
 import {
   resetPlaybackTransportForTests,
@@ -39,6 +43,7 @@ import {
 import { PAUSE_LOGO_DRAWN_MS, PauseStage } from "../../PauseStage"
 import {
   DailyPauseHost,
+  PAUSE_EXIT_BACKSTOP_MS,
   PAUSE_HANDOVER_DEADLINE_MS,
   useCloseDailyPause,
 } from "../DailyPauseHost"
@@ -72,14 +77,16 @@ jest.mock("expo-status-bar", () => ({ setStatusBarHidden: () => {} }))
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
 
 const CURTAIN_LABEL = "Daily Bible Pause. Tap to return."
+const EXIT_LABEL = "Daily Bible Pause. Leaving the devotional."
 const READY = { isReady: true, currentSlug: "jesus-film" }
+const QUESTION = "How are we commanded to pray?"
 
 // ── The native animation driver and Android back, modelled ─────────
 
 type Timing = { toValue: number; finish: () => void }
 let timings: Timing[] = []
 let backHandlers: Array<() => boolean> = []
-/** What the viewer would see, in order: the route push and the lift. */
+/** What the viewer would see, in order: the route changes and the lift. */
 let events: string[] = []
 
 const lift = () => timings.find((t) => t.toValue === 0)!
@@ -120,6 +127,9 @@ beforeEach(() => {
   mockSelection = READY
   Object.values(mockRouter).forEach((fn) => fn.mockReset())
   mockRouter.push.mockImplementation(() => events.push("push"))
+  mockRouter.dismissTo.mockImplementation((href: string) =>
+    events.push(`dismissTo ${href}`),
+  )
   jest.spyOn(Animated, "timing").mockImplementation((_value, config) => {
     let callback: Animated.EndCallback | undefined
     const toValue = config.toValue as number
@@ -193,6 +203,30 @@ async function advance(ms: number) {
 
 async function enter() {
   await act(async () => requestPause())
+}
+
+async function leave(target: PauseExitTarget) {
+  await act(async () => requestPauseExit(target))
+}
+
+/** The router moves: the host renders again with the new segments. */
+async function showSegments(
+  renderer: TestInstance,
+  segments: string[],
+  strict = false,
+) {
+  mockSegments = segments
+  await act(async () => renderer.update(tree(strict)))
+}
+
+/** React Native asks the last-added back listener first, then the next. */
+function pressBack(): boolean {
+  return [...backHandlers].reverse().some((handler) => handler())
+}
+
+function bellRead(): boolean {
+  const today = localDay(new Date())
+  return dayFromRecord(getPauseProgressStore().getSnapshot(), today).bellRead
 }
 
 function curtainCount(renderer: TestInstance): number {
@@ -335,6 +369,118 @@ describe("the takeover at entry (KTD6, R46)", () => {
   })
 })
 
+// v2 R17, R18, KTD5: Share's two exits close the curtain over the run, pop
+// to their target under it, and lift once the target shows.
+describe("the exit", () => {
+  it("pops to Home when drawn, lifts only when Home shows, and leaves the player and the bell alone", async () => {
+    mockSegments = ["pause"]
+    floatingWindow()
+    const renderer = await render()
+    await leave({ kind: "home" })
+    await advance(PAUSE_LOGO_DRAWN_MS - 1)
+    expect(events).toEqual([])
+    await advance(1)
+    expect(events).toEqual(["dismissTo /(tabs)"])
+    await advance(PAUSE_EXIT_BACKSTOP_MS - 1)
+    expect(events).toEqual(["dismissTo /(tabs)"])
+
+    await showSegments(renderer, ["(tabs)"])
+    expect(events).toEqual(["dismissTo /(tabs)", "lift"])
+    expect(mockRouter.push).not.toHaveBeenCalled()
+    expect(mockRouter.navigate).not.toHaveBeenCalled()
+    expect(mockRouter.replace).not.toHaveBeenCalled()
+    expect(sessions.getSnapshot().dismissal).toBe("none")
+    expect(ends).toEqual([])
+    expect(rootPlaying).toBe(true)
+    await act(async () => {
+      await getPauseProgressStore().hydrate()
+    })
+    expect(bellRead()).toBe(false)
+    await act(async () => lift().finish())
+    expect(getPausePhase()).toBe("idle")
+    await unmount(renderer)
+  })
+
+  it("pops to the search tab without waiting for the selection, and lifts only when that tab shows", async () => {
+    mockSegments = ["pause"]
+    mockSelection = { isReady: false, currentSlug: null }
+    const renderer = await render()
+    await leave({ kind: "search", question: QUESTION })
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    expect(events).toEqual(["dismissTo /(tabs)/watch"])
+    // iOS native tabs can show Home for one render before the search tab.
+    await showSegments(renderer, ["(tabs)"])
+    expect(events).toEqual(["dismissTo /(tabs)/watch"])
+    await showSegments(renderer, ["(tabs)", "watch"])
+    expect(events).toEqual(["dismissTo /(tabs)/watch", "lift"])
+    await advance(PAUSE_HANDOVER_DEADLINE_MS)
+    expect(mockRouter.push).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+
+  // AE8: the viewer chose to leave, so a tap does not stop the exit.
+  it("goes on to its target after a tap on the closing curtain", async () => {
+    mockSegments = ["pause"]
+    const renderer = await render()
+    await leave({ kind: "home" })
+    await advance(1000)
+    const curtain = renderer.root.findAll(
+      (node) => node.props.accessibilityLabel === EXIT_LABEL,
+    )
+    expect(curtain.length).toBeGreaterThan(0)
+    for (const node of curtain) await press(node)
+    expect(events).toEqual([])
+    expect(getPausePhase()).toBe("closing")
+    await advance(PAUSE_LOGO_DRAWN_MS - 1000)
+    expect(events).toEqual(["dismissTo /(tabs)"])
+    await showSegments(renderer, ["(tabs)"])
+    expect(events).toEqual(["dismissTo /(tabs)", "lift"])
+    await unmount(renderer)
+  })
+
+  it("neither lifts nor closes the run on Android back", async () => {
+    mockSegments = ["pause"]
+    const renderer = await render()
+    await leave({ kind: "search", question: QUESTION })
+    let consumed = false
+    await act(async () => {
+      consumed = pressBack()
+    })
+    expect(consumed).toBe(true)
+    expect(events).toEqual([])
+    expect(getPausePhase()).toBe("closing")
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    expect(events).toEqual(["dismissTo /(tabs)/watch"])
+    await unmount(renderer)
+  })
+
+  it("lifts on the backstop when the segments never show the target", async () => {
+    mockSegments = ["pause"]
+    const renderer = await render()
+    await leave({ kind: "search", question: QUESTION })
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    await advance(PAUSE_EXIT_BACKSTOP_MS - 1)
+    expect(events).toEqual(["dismissTo /(tabs)/watch"])
+    await advance(1)
+    expect(events).toEqual(["dismissTo /(tabs)/watch", "lift"])
+    await act(async () => lift().finish())
+    expect(getPausePhase()).toBe("idle")
+    await unmount(renderer)
+  })
+
+  it("pops and lifts once for one exit under StrictMode", async () => {
+    mockSegments = ["pause"]
+    const renderer = await render(true)
+    await leave({ kind: "home" })
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    await showSegments(renderer, ["(tabs)"], true)
+    await advance(PAUSE_EXIT_BACKSTOP_MS + PAUSE_HANDOVER_DEADLINE_MS)
+    expect(events).toEqual(["dismissTo /(tabs)", "lift"])
+    expect(mockRouter.push).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+})
+
 describe("the close (R21, R22)", () => {
   function CloseButton() {
     const close = useCloseDailyPause()
@@ -352,6 +498,31 @@ describe("the close (R21, R22)", () => {
     expect(mockRouter.push).not.toHaveBeenCalled()
     expect(mockRouter.replace).not.toHaveBeenCalled()
     expect(mockRouter.navigate).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+
+  // v2 KTD5: a screen reader can still reach the close under an exit's
+  // curtain, and a close there would send a search exit to Home.
+  it("does nothing while an exit's curtain is up, and closes at once when it is down", async () => {
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(<CloseButton />)
+    })
+    mounted.push(renderer)
+    await act(async () =>
+      requestPauseExit({ kind: "search", question: QUESTION }),
+    )
+    await press(pressableByLabel(renderer, "Close"))
+    await act(async () => reportLogoDrawn())
+    await press(pressableByLabel(renderer, "Close"))
+    await act(async () => liftPause())
+    await press(pressableByLabel(renderer, "Close"))
+    expect(mockRouter.dismissTo).not.toHaveBeenCalled()
+
+    await act(async () => endPause())
+    await press(pressableByLabel(renderer, "Close"))
+    expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1)
+    expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
     await unmount(renderer)
   })
 

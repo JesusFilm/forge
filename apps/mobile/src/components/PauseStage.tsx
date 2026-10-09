@@ -15,6 +15,7 @@ import {
   endPause,
   liftPause,
   reportLogoDrawn,
+  usePauseDirection,
   usePausePhase,
 } from "../lib/pauseCurtain"
 import { DailyBiblePauseLogo, LOGO_DURATION_MS } from "./DailyBiblePauseLogo"
@@ -64,6 +65,7 @@ export function pauseProgressAt(run: PauseRun, now: number): number {
 export function PauseStage({ children }: { children: ReactNode }) {
   const phase = usePausePhase()
   const paused = phase !== "idle"
+  const exiting = usePauseDirection() === "exit"
   const progress = useRef(new Animated.Value(0)).current
   const runRef = useRef<PauseRun>({ from: 0, to: 0, startedAt: 0, duration: 1 })
 
@@ -109,12 +111,13 @@ export function PauseStage({ children }: { children: ReactNode }) {
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
-        liftPause()
+        // v2 R18: an exit cannot be stopped, so back does nothing until it ends.
+        if (!exiting) liftPause()
         return true
       },
     )
     return () => subscription.remove()
-  }, [paused])
+  }, [paused, exiting])
 
   // A slow push-in with a small upward drift, like a camera dolly.
   const scale = progress.interpolate({
@@ -135,19 +138,17 @@ export function PauseStage({ children }: { children: ReactNode }) {
       >
         {children}
       </Animated.View>
-      {paused ? (
-        <PauseCurtain progress={progress} onResume={liftPause} />
-      ) : null}
+      {paused ? <PauseCurtain progress={progress} exiting={exiting} /> : null}
     </View>
   )
 }
 
 function PauseCurtain({
   progress,
-  onResume,
+  exiting,
 }: {
   progress: Animated.Value
-  onResume: () => void
+  exiting: boolean
 }) {
   const { width, height } = useWindowDimensions()
   // This curtain mounts on every pause, so each pause gets a new pen clock.
@@ -204,11 +205,17 @@ function PauseCurtain({
   }, [height, progress])
 
   return (
+    // v2 R18, KTD5: the viewer chose to leave, so an exit's curtain has no tap
+    // action. It stays a Pressable, so it still blocks touches to the app.
     <Pressable
       style={StyleSheet.absoluteFill}
-      onPress={onResume}
-      accessibilityRole="button"
-      accessibilityLabel="Daily Bible Pause. Tap to return."
+      onPress={exiting ? undefined : liftPause}
+      accessibilityRole={exiting ? undefined : "button"}
+      accessibilityLabel={
+        exiting
+          ? "Daily Bible Pause. Leaving the devotional."
+          : "Daily Bible Pause. Tap to return."
+      }
       accessibilityViewIsModal
     >
       <Animated.View
