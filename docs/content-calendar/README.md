@@ -29,7 +29,11 @@ Copy it into your scratchpad (uploads must come from the working directory or
 the scratchpad), then upload with the Artifact tool:
 `{ url: "https://claude.ai/artifact/86K6PKnMHbezT87VTdbt9J", asset: true, file_path: "<scratchpad>/<name>.jpg" }`.
 The result gives `/_blob/<id>`; that string is the row's `thumb`.
+Thumbnails are vertical for everything except YouTube long forms (Shorts and all
+Facebook / Instagram posts: 270x480 frame); long forms use the 16:9 cover.
 A Meta reel cut from the same file as a YouTube Short reuses the Short's thumb.
+The tile shows only the picture, platform icon, duration, and a clock if scheduled;
+the title appears on hover.
 
 ### 2. Write the row (ArtifactData)
 
@@ -45,9 +49,10 @@ Updating an existing row (schedule moved, now live): `get` it first and pass its
   "platforms": ["yt-en"], // any of yt-en, yt-ru, fb, ig (FB + IG same time = one row)
   "status": "scheduled", // published | scheduled
   "date": "2026-10-07", // Europe/Sofia
-  "time": "13:00", // optional, Europe/Sofia, 24 h
+  "time": "13:00", // optional, Europe/Sofia, 24 h (shown on hover only)
+  "duration": "0:22", // video length m:ss, shown on the tile: ffprobe -v error -show_entries format=duration -of csv=p=0 <file>
   "title": "Martha Was Doing the Right Thing | Luke 10:38–40",
-  "link": "https://youtube.com/shorts/-jIlYPvFJhw", // optional; tile opens it
+  "link": "https://youtube.com/shorts/-jIlYPvFJhw", // the post's own URL; for FB/IG the reel URL (until set, the tile opens the same cut on YouTube)
   "thumb": "/_blob/<asset id>",
   "paid": true // optional; only when the post runs as an ad
 }
