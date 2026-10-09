@@ -109,6 +109,10 @@ export type VoicedRole =
   | "questions"
 
 export type GeneratedDevotional = {
+  /** A localized edition translated from a rewritten English text: that
+   *  English, kept so the backdrop can be matched through it (the cached
+   *  English devotional may be an older, published version). */
+  sourceEnglish?: { paragraphs: ReflectionParagraph[] }
   date: string
   clip: { index: number; id: string; title: string }
   passage: { reference: string; osisRef: string }

@@ -325,7 +325,12 @@ async function localizedBrollPick(input: {
   const en = await loadCachedDevo(
     cacheDirFor(input.devo.clip.index, input.devo.sequence),
   )
-  const enParas = en?.reflection.paragraphs
+  // A localized edition translated from a REWRITTEN English text carries
+  // that English with it: the cached English devotional is the published
+  // one, and its paragraphs no longer line up (Prodigal RU, 2026-10-09: the
+  // fattened-calf line drew the pigs).
+  const enParas =
+    input.devo.sourceEnglish?.paragraphs ?? en?.reflection.paragraphs
   const esParas = input.devo.reflection.paragraphs
   if (!enParas?.length || enParas.length !== esParas?.length) return
   const base = path.join(repoRoot(), "apps/mastra/src/services/devotional")
