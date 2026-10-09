@@ -14,6 +14,12 @@ and 3 to 5 plain-language recommendations. Publishing is a separate session
 - **Read only.** Never publish, edit, delete, boost, reply to comments, or
   change channel, Page, account or ad settings. Never sign in, enter
   passwords or accept terms; verification steps are hers.
+- Lyuba runs the Facebook page, Instagram and YouTube herself. A marketer colleague
+  only runs paid ads, from a separate ad account (the She wept and Prodigal ads). Ask
+  the colleague only about ad settings and spend.
+- Replies on her behalf: allowed only after she approves each message in chat
+  (2026-10-09). Use the channel link @Daily.BiblePause; @dailybiblepause is someone
+  else's channel.
 - Switching between her YouTube channels through the avatar menu (Switch
   account) is fine.
 
