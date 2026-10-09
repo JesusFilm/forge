@@ -17,10 +17,11 @@ import {
   pauseRadii,
   pauseSpacing,
 } from "../../lib/dailyPause/theme"
+import type { StepperStage } from "../../lib/dailyPause/run"
 import { sampledCurve } from "./sampledCurve"
 import { usePauseClock } from "./usePauseClock"
 
-export type StepperStage = "watch" | "reflect" | "pray"
+export type { StepperStage }
 
 type PillLook = "active" | "done" | "upcoming"
 

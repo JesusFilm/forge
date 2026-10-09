@@ -1,6 +1,5 @@
-/** Discover in the UI language: the search language of each generation (U7,
- *  R9, KTD16) and the catalog text, with one tap name per control (U10). Also
- *  the Daily Bible Pause v2 hand-off of a question (R16, KTD6).
+/** Discover in the UI language (U7, R9, KTD16; U10), with one tap name per
+ *  control, and the Daily Bible Pause v2 hand-off of a question (R16, KTD6).
  *  React re-points: "Component render tests". */
 
 jest.mock("react", () => {

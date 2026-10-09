@@ -55,13 +55,12 @@ describe("the search intent store", () => {
     expect(store.peek()).toBe(newer)
   })
 
-  it("gives two puts of the same question two different ids", () => {
+  it("makes two puts of the same question two different intents", () => {
     const store = createSearchIntentStore(() => T0)
     const first = store.put(QUESTION)
     const second = store.put(QUESTION)
 
     expect(second.query).toBe(first.query)
-    expect(second.id).not.toBe(first.id)
     expect(second).not.toBe(first)
   })
 

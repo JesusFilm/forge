@@ -3,7 +3,6 @@
 // key and the devotional, and every step write uses that key until the close.
 import { useEffect, useMemo, useReducer } from "react"
 
-import type { StepperStage } from "../../components/dailyPause/StepperPills"
 import {
   PAUSE_STEPS,
   getPauseProgressStore,
@@ -31,9 +30,12 @@ export const RUN_START: RunState = Object.freeze({
   pin: null,
 })
 
+/** The three sections of a run: the stepper's pills and the video markers. */
+export type StepperStage = "watch" | "reflect" | "pray"
+
 /** The three video parts. The close sits in their letterbox (R24). */
 export function isVideoPart(step: PauseStep): boolean {
-  return step === "film" || step === "teaching" || step === "prayer"
+  return sectionForStep(step) != null
 }
 
 /** The section of a video part, or null on any other step (v2 plan R3). */

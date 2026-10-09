@@ -5,11 +5,12 @@ import { StyleSheet, Text, View } from "react-native"
 
 import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { pauseColors, pauseType } from "../../lib/dailyPause/theme"
+import { TARGET_SIZE as CLOSE_TARGET_SIZE } from "./CloseButton"
 import { STAGES, type StepperStage } from "./StepperPills"
 import { useTopRowTop } from "./useTopRowTop"
 
 /** The close's target height, so the row and the close share one center. */
-const ROW_HEIGHT = 44
+const ROW_HEIGHT = CLOSE_TARGET_SIZE
 const MARKER_GAP = 24
 /** The row does not grow with the text past this scale, so it stays clear of
  *  the close on a narrow phone. VoiceOver reads the section in full. */

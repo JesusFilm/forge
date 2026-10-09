@@ -1,7 +1,7 @@
 // The end of a timed pause on Reflect and Pray (v2 plan R11-R13, KTD3). The
 // ring counts down while the button shows grey and takes no tap. At zero the
 // ring fades out, then the grey fades off the cream button.
-import { useEffect, useState } from "react"
+import { memo, useEffect, useMemo, useState } from "react"
 import { Animated, Easing, StyleSheet, Text, View } from "react-native"
 
 import type { Countdown } from "../../lib/dailyPause/countdown"
@@ -66,7 +66,8 @@ export function usePauseFinish(done: boolean): PauseFinish {
     return () => clearTimeout(timer)
   }, [done, reduceMotion])
 
-  return { ...levels, enabled: done && (reduceMotion || buttonDue) }
+  const enabled = done && (reduceMotion || buttonDue)
+  return useMemo(() => ({ ...levels, enabled }), [levels, enabled])
 }
 
 /** The countdown ring in its box. VoiceOver skips it from zero. */
@@ -96,8 +97,9 @@ export function FinishRing({
 }
 
 /** The button under the ring. Liquid Glass cannot fade its tint, so a grey
- *  pill lies over the cream button and fades off it. It pulses only after. */
-export function FinishButton({
+ *  pill lies over the cream button and fades off it. It pulses only after.
+ *  Memoized, so the countdown's one-second renders skip it. */
+export const FinishButton = memo(function FinishButton({
   label,
   finish,
   font,
@@ -130,7 +132,7 @@ export function FinishButton({
       </Animated.View>
     </View>
   )
-}
+})
 
 const styles = StyleSheet.create({
   ringBox: {

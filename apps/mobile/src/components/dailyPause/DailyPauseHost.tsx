@@ -12,6 +12,7 @@ import { stepTakeover } from "../../lib/explore/takeover"
 import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
 import { routePattern } from "../../lib/miniPlayer/suppression"
 import {
+  getPauseDirection,
   getPauseExitTarget,
   getPausePhase,
   liftPause,
@@ -66,7 +67,7 @@ export function useCloseDailyPause(): () => void {
   return useCallback(() => {
     // v2 KTD5: a screen reader can reach the close under an exit's curtain,
     // and a close there would send an exit to the search tab to Home.
-    if (getPausePhase() !== "idle") return
+    if (getPauseDirection() === "exit") return
     router.dismissTo("/(tabs)")
   }, [router])
 }

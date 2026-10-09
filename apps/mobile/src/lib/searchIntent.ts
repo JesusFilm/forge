@@ -12,9 +12,9 @@ export const SEARCH_INTENT_TTL_MS = 30_000
 /** Who wrote the intent. `watchSearch.ts` picks the query language from it. */
 export type SearchIntentOrigin = "dailyPause"
 
+/** Each put makes a new object, and the store and the tab compare intents by
+ *  identity, so the same question twice is two intents. */
 export type SearchIntent = {
-  /** One per put, so the same question twice is two intents. */
-  id: number
   query: string
   origin: SearchIntentOrigin
   /** Epoch ms of the put. The time limit runs from here. */
@@ -26,16 +26,13 @@ export type SearchIntentStore = ReturnType<typeof createSearchIntentStore>
 /** Holds at most one intent: a newer put outranks an older one. */
 export function createSearchIntentStore(now: () => number = () => Date.now()) {
   let pending: SearchIntent | null = null
-  let sequence = 0
   const listeners = new Set<() => void>()
   const notify = () => listeners.forEach((listener) => listener())
 
   return {
     /** The run is the only writer today. */
     put(query: string): SearchIntent {
-      sequence += 1
       const intent: SearchIntent = {
-        id: sequence,
         query,
         origin: "dailyPause",
         createdAt: now(),
