@@ -44,6 +44,6 @@ Run affected Web tests, shared feature flag tests, typechecks, lint, formatting,
 
 ## Scope and Operational Notes
 
-This ticket covers Watch web. Mobile and TV signup surfaces are outside this PR. The removed Web flag and environment override are no longer evaluated; any remaining LaunchDarkly flag or Railway override can be archived separately after merge.
+This ticket covers Watch web. Mobile and TV signup surfaces are outside this PR and tracked in feat-668. The removed Web flag and environment override are no longer evaluated; any remaining LaunchDarkly flag or Railway override can be archived separately after merge.
 
 Claude Code independently reviewed the complete diff through the authenticated Team seat and found no blocking code findings. Historical documentation now points to this retirement decision.
