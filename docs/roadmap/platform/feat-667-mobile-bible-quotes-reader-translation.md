@@ -3,7 +3,7 @@ id: "feat-667"
 title: "Mobile Bible quote cards in the reader's translation"
 owner: "urim"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-09"
 duration: 3
 depends_on: []
@@ -49,10 +49,23 @@ Built in this ticket's PR (U1 to U5 of the plan):
 - U4: the hook and the route. The route passes `audioLanguageIso3`, its readiness, and `useIsFocused()` into `useBibleVerses`.
 - U5: `CONCEPTS.md`, `apps/mobile/CLAUDE.md`, and this ticket.
 
-Remaining before `status: "complete"`:
+Also built: Myanmar rows. On a Burmese phone, iOS cut the tops off the card's reference, translation name, reader link, and promo button. `cardRow` in `apps/mobile/src/lib/bibleCardFit.ts` removes the fixed line height of a Myanmar row, and the card's fit budgets 2.2 em for it.
 
-- The device check in the plan's Verification Contract, on the iOS simulator. The phone languages are Korean (AE1, AE11), Russian (AE10), Persian (`pes_pbs`, right to left), Burmese (`mya_jvb`, a tall script), and Hausa (AE8). One more run is offline, with the Korean Bible downloaded (AE6).
-- The page-load check: time to first frame and time to the cards' settle, `main` against the branch, for an English viewer and a Korean viewer.
+Results (2026-10-09, iPhone 17 Pro Max simulator, dev client, local admin):
+
+- Device check: Korean (AE1, AE11, R4), Russian (AE10), Persian (right to left), Hausa (AE8), and Burmese pass by screenshot. Burmese passes after the Myanmar-row fix. AE6 (offline) did not run on a device, because the simulator shares the Mac's network and local admin. The hook test "uses only the device inside the cooldown window" covers it.
+- Page load, `main` against the branch: 6 warm deep-link opens of `the-beginning` per configuration, each after an open of `birth-of-jesus`. The times are medians from the open, with the minimum and maximum.
+
+| Viewer  | Measure       | `main`            | Branch            |
+| ------- | ------------- | ----------------- | ----------------- |
+| English | First frame   | 921 ms (742–1429) | 836 ms (751–1412) |
+| English | Cards settled | 306 ms (290–369)  | 298 ms (289–340)  |
+| Korean  | First frame   | 840 ms (743–1551) | 942 ms (801–1073) |
+| Korean  | Cards settled | 294 ms (290–319)  | 390 ms (371–502)  |
+
+The largest change in time to first frame is +102 ms, inside the ±0.5 s noise band. A Korean card settles about 96 ms later, because it reads and converts the local chapter. The warm opens read that chapter from the device cache.
+
+Follow-up: feat-669. Myanmar UI text outside the card (the label above the video title, the carousel heading) still clips.
 
 ## Constraints
 
