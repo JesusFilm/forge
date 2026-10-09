@@ -32,13 +32,17 @@ The result gives `/_blob/<id>`; that string is the row's `thumb`.
 Thumbnails are vertical for everything except YouTube long forms (Shorts and all
 Facebook / Instagram posts: 270x480 frame); long forms use the 16:9 cover.
 A Meta reel cut from the same file as a YouTube Short reuses the Short's thumb.
-The tile shows only the picture, platform icon, duration, and a clock if scheduled;
-the title appears on hover.
+The tile shows only the picture, platform icons, duration, and a clock if scheduled;
+the title appears on hover. Clicking a tile opens an overlay with one button per platform.
 
 ### 2. Write the row (ArtifactData)
 
-`action: "set"`, `url` as above, `collection: "posts"`, `doc_id: "<story>-<kind>-<channel>"`
-(e.g. `martha-short-history-yt-en`, `martha-reel-history-meta`, `prodigal-long-yt-ru`).
+`action: "set"`, `url` as above, `collection: "posts"`.
+Doc id: `<story>-long-<channel>` for long forms, `<story>-<short|reel|post>-<cut>-<channel>`
+for vertical ones (e.g. `prodigal-long-yt-ru`, `martha-short-history-yt-en`,
+`martha-reel-history-meta`). Keep this pattern: vertical rows with the same date and
+the same `<story>`+`<cut>` render as ONE stacked tile with an icon per platform. To
+pair rows whose ids differ, give them the same `group` value.
 Updating an existing row (schedule moved, now live): `get` it first and pass its
 `version` as `if_version`.
 
@@ -52,9 +56,15 @@ Updating an existing row (schedule moved, now live): `get` it first and pass its
   "time": "13:00", // optional, Europe/Sofia, 24 h (shown on hover only)
   "duration": "0:22", // video length m:ss, shown on the tile: ffprobe -v error -show_entries format=duration -of csv=p=0 <file>
   "title": "Martha Was Doing the Right Thing | Luke 10:38–40",
-  "link": "https://youtube.com/shorts/-jIlYPvFJhw", // the post's own URL; for FB/IG the reel URL (until set, the tile opens the same cut on YouTube)
+  "link": "https://youtube.com/shorts/-jIlYPvFJhw", // the post's own URL (matched to a platform by host)
+  "links": {
+    "fb": "https://www.facebook.com/61593746016419/posts/<id>",
+    "ig": "https://www.instagram.com/reel/<code>/"
+  }, // per-platform URLs, read before `link`; for a FB+IG row put the IG URL in links.ig, otherwise Instagram shows "No link yet"
   "thumb": "/_blob/<asset id>",
-  "paid": true // optional; only when the post runs as an ad
+  "paid": true, // optional; a boosted organic post (gold dot)
+  "group": "martha-history", // optional; forces rows into one stacked tile
+  "campaign": true // optional; hides the row (ad-campaign creatives that are not organic posts)
 }
 ```
 
