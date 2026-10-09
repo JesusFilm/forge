@@ -457,6 +457,40 @@ describe("BibleQuotesCarouselRenderer — Myanmar rows", () => {
     expect(myanmar).toBeLessThan(latin)
   })
 
+  // One Myanmar row per case, so dropping any one row's fit input fails here.
+  // At these sizes that row alone costs the John card one verse line.
+  function johnVerseLines(
+    change: Quote,
+    size: { width: number; fontScale: number },
+  ) {
+    const renderer = renderAtSize(
+      [{ ...JOHN_QUOTE, ...change }],
+      size,
+      jest.fn(),
+    )
+    return findText(renderer, "For God so loved")?.props.numberOfLines
+  }
+
+  it.each([
+    ["reference", { reference: "ယောဟန် 3:16-17" }],
+    ["translation name", { translation: "မြန်မာကျမ်းစာ" }],
+  ])("budgets a Myanmar %s by itself", (_row, change) => {
+    const size = { width: 411.43, fontScale: 1.3 }
+
+    expect(johnVerseLines({}, size)).toBe(3)
+    expect(johnVerseLines(change, size)).toBe(2)
+  })
+
+  it("budgets a Burmese reader link by itself", () => {
+    const size = { width: 440, fontScale: 1.5 }
+    expect(johnVerseLines({}, size)).toBe(3)
+
+    mockGetLocales.mockReturnValue(phoneLocales("my-MM"))
+    startLocaleSync()
+
+    expect(johnVerseLines({}, size)).toBe(2)
+  })
+
   it("gives the Burmese reader link no fixed line height", () => {
     mockGetLocales.mockReturnValue(phoneLocales("my-MM"))
     startLocaleSync()

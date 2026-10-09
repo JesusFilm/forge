@@ -15,14 +15,14 @@ tags:
 
 ## Problem
 
-On an iPhone in Burmese, iOS cuts the tops off Myanmar letters in UI text that has a fixed line height. iOS draws Myanmar in Noto Sans Myanmar. Its ascent and descent come to 2.18 em (CoreText, 2026-10-09). The typography tokens give lines of 1.33 to 1.5 em: caption 12/16, bodySmall 14/20, titleLarge 22/28.
+On an iPhone in Burmese, iOS cuts the tops off Myanmar letters in UI text that has a fixed line height. iOS draws Myanmar in Noto Sans Myanmar. Its ascent and descent come to 2.18 em (CoreText, 2026-10-09). `computeTypographyScale` subtracts `LINE_HEIGHT_REDUCTION` (2) from each token, so at a 375 pt width the rendered lines are 1.17 to 1.29 em: caption 12/14, bodySmall 14/18, titleLarge 22/26.
 
 Seen on the iPhone 17 Pro Max simulator on 2026-10-09, phone language `my-MM`, video `the-beginning`:
 
-- The label above the video title (`VideoMetadata`, caption 12/16).
-- The Bible quotes heading above the carousel (`bibleQuotesHeading`, titleLarge 22/28).
+- The label above the video title (`VideoMetadata`, caption).
+- The Bible quotes heading above the carousel (`bibleQuotesHeading`, titleLarge).
 
-feat-667 fixed the quote card only. `cardRow` in `apps/mobile/src/lib/bibleCardFit.ts` removes the fixed line height of a Myanmar reference, translation name, reader link, or promo button, and the card's fit budgets 2.2 em for that row. In the same check, Khmer (1.99 em) did not clip, and the card's Myanmar verse (20/28) did not clip. Android was not checked.
+feat-667 fixed the quote card only. `cardRow` in `apps/mobile/src/lib/bibleCardFit.ts` removes the fixed line height of a Myanmar reference, translation name, reader link, or promo button. The card's fit budgets 2.2 em for the reference, name, and link rows. The promo, Experience, and SDUI cards have no fit, so at a large text size a taller Myanmar row can push their text out of the square. In the same check, Khmer (1.99 em) did not clip, and the card's Myanmar verse (20/28 at 375 pt) did not clip. Android was not checked.
 
 A likely cause, read from the source and not tested: React Native's iOS baseline offset uses the line height of the declared font (the system font), not of the fallback font that draws the letters. See `RCTApplyBaselineOffsetForRange` in `react-native/ReactCommon/react/renderer/textlayoutmanager/platform/ios/react/renderer/textlayoutmanager/RCTAttributedTextUtils.mm`.
 
@@ -45,6 +45,7 @@ A likely cause, read from the source and not tested: React Native's iOS baseline
 - Move the tall-script test out of `bibleCardFit.ts` into a shared module, for example `apps/mobile/src/i18n/tallScript.ts`. Keep `cardRow` on that module.
 - Choose where the rule applies. Option A: when the UI catalog is `my`, UI text drops its fixed line heights. The catalog is known at render, so this is one decision per screen. Option B: a test per text, as `cardRow` does. Admin text (titles, descriptions) needs option B.
 - A surface that budgets a line height (the quote card fit, fixed rows) must budget `fontSize × TALL_SCRIPT_LINE_HEIGHT_RATIO` for a Myanmar row.
+- Give the promo, Experience, and SDUI quote cards a bound for their Myanmar rows (a fit or a line clamp), so a large text size cannot push the eyebrow out of the square.
 - Check Android with the same screens. Android draws Myanmar with Noto Sans Myanmar UI, which has smaller metrics.
 
 ## Constraints

@@ -2137,10 +2137,12 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
     in Noto Sans Myanmar, which is 2.18 em tall, and a fixed line height cuts
     the tops off its letters. `cardRow` in `src/lib/bibleCardFit.ts` removes
     the line height of a Myanmar reference, translation name, reader link, or
-    promo button, and the fit budgets 2.2 em for that row. Khmer (1.99 em)
-    does not clip, so it keeps the token. The verse keeps its line height,
-    because it does not clip. Checked on the iPhone 17 Pro Max simulator on
-    2026-10-09; Android was not checked.
+    promo button. The fit budgets 2.2 em for the reference, name, and link
+    rows. The promo, Experience, and SDUI cards have no fit, so a large text
+    size can still push their text out of the square (feat-669). Khmer
+    (1.99 em) does not clip, so it keeps the token. The verse keeps its line
+    height, because it does not clip. Checked on the iPhone 17 Pro Max
+    simulator on 2026-10-09; Android was not checked.
   - Card reads share the reader's repository, so they fill its kept-chapter
     cache. A card's network read also sets the repository's "network
     answered" signal, which the reader's prefetch reads. Two reads of one
