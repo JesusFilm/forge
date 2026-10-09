@@ -3,20 +3,22 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link
   rel="stylesheet"
-  href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,300;7..72,400&family=Inter:wght@400;500;600&display=swap"
+  href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,300;7..72,400&family=Inter:wght@400;500;600;700&display=swap"
 />
 <style>
-  /* Layout: a month wall of days. Per day: each long video on its own 16:9 row, then one row per channel of vertical shorts/reels (overlapping when more than two). Dark only, by choice. */
+  /* Layout: a month wall of days. Per day: each long video on its own 16:9 row, then one strip of vertical posts.
+     The same cut posted on several platforms the same day is ONE stacked tile with one icon per platform.
+     Click any tile: an overlay with the big thumbnail and one button per platform. Dark only, by choice. */
   :root {
-    --ground: #15100e; /* warm near-black, red bias */
+    --ground: #15100e;
     --cell: #1d1613;
     --cell-off: #181210;
     --line: #2f2420;
     --ink: #f6ece2;
     --muted: #9c8a7f;
     --hover: #2a201c;
-    --flame: #e2583a; /* the Daily Bible Pause mark */
-    --gold: #efd08a; /* today */
+    --flame: #e2583a;
+    --gold: #efd08a;
     --serif: "Literata", Georgia, "Times New Roman", serif;
     --sans:
       "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
@@ -75,8 +77,8 @@
     border: 0;
     color: var(--muted);
     border-radius: 8px;
-    height: 32px;
-    min-width: 32px;
+    height: 34px;
+    min-width: 34px;
     display: inline-grid;
     place-items: center;
     cursor: pointer;
@@ -89,32 +91,59 @@
     color: var(--ink);
   }
   button:focus-visible,
-  a:focus-visible {
+  a:focus-visible,
+  .tile:focus-visible {
     outline: 2px solid var(--gold);
     outline-offset: 2px;
   }
-  .nav,
-  .filters {
+  .nav {
     display: flex;
     gap: 2px;
   }
-  .chip svg {
-    width: 20px;
-    height: 20px;
+
+  /* Filters: click one platform to see only its posts; click it again (or "All") to see everything. */
+  .filters {
+    display: flex;
+    gap: 6px;
+    align-items: center;
   }
-  .chip[aria-pressed="false"] {
-    opacity: 0.3;
+  .fchip {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+    border-radius: 999px;
+    height: 34px;
+    padding: 0 12px 0 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    cursor: pointer;
+    font: 500 13px/1 var(--sans);
   }
-  .lang {
-    position: absolute;
-    right: 2px;
-    bottom: 3px;
-    font: 700 7px/1 var(--sans);
-    letter-spacing: 0.03em;
+  .fchip:hover {
+    background: var(--hover);
+  }
+  .fchip svg {
+    width: 18px;
+    height: 18px;
+    flex: none;
+  }
+  .fchip[aria-pressed="true"] {
     background: var(--ink);
     color: var(--ground);
-    border-radius: 2px;
-    padding: 1px 2px;
+    border-color: var(--ink);
+  }
+  .fchip.all {
+    padding: 0 12px;
+  }
+  .fchip .ru {
+    font: 700 9px/1 var(--sans);
+    background: var(--flame);
+    color: #fff;
+    border-radius: 3px;
+    padding: 2px 3px;
+    margin-left: -3px;
   }
 
   .grid {
@@ -140,7 +169,7 @@
     padding: 8px;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 8px;
     min-width: 0;
   }
   .day.off {
@@ -162,18 +191,26 @@
     padding: 1px 7px;
   }
 
-  /* Tiles: thumbnail only. */
+  /* Tiles */
   .tile {
     position: relative;
     display: block;
-    border-radius: 5px;
-    overflow: hidden;
+    border-radius: 6px;
     background: #000;
     max-width: 100%;
-    transition:
-      transform 0.15s ease,
-      box-shadow 0.15s ease;
+    cursor: pointer;
+    transition: transform 0.15s ease;
     box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+    appearance: none;
+    border: 0;
+    padding: 0;
+  }
+  .tile .face {
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+    overflow: hidden;
+    background: #000;
   }
   .tile.wide {
     aspect-ratio: 16 / 9;
@@ -181,7 +218,7 @@
   }
   .tile.tall {
     aspect-ratio: 9 / 16;
-    flex: 0 0 48%;
+    flex: 0 0 46%;
   }
   .tile img {
     position: absolute;
@@ -190,39 +227,72 @@
     height: 100%;
     object-fit: cover;
   }
-  .tile.noimg {
+  .tile.noimg .face {
     background: linear-gradient(135deg, #3a1d16, #1d1613);
   }
   .tile.scheduled img {
-    opacity: 0.4;
+    opacity: 0.45;
   }
-  .tile.scheduled {
-    background: #0d0a09;
-  }
-  .tile .plat {
+  /* Stack: the same video on 2+ platforms gets cards fanned out behind it. */
+  .tile.stack::before,
+  .tile.stack::after {
+    content: "";
     position: absolute;
-    top: 3px;
-    left: 3px;
-    width: 16px;
-    height: 16px;
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.55);
+    inset: 0;
+    border-radius: 6px;
+    background: #3a2c26;
+    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
+  }
+  .tile.stack::before {
+    transform: translate(5px, -5px);
+    opacity: 0.55;
+  }
+  .tile.stack::after {
+    transform: translate(2.5px, -2.5px);
+    opacity: 0.85;
+  }
+  .tile.stack.three::before {
+    transform: translate(6px, -6px);
+  }
+  .tile .face {
+    z-index: 1;
+  }
+  .plats {
+    position: absolute;
+    z-index: 2;
+    top: 4px;
+    left: 4px;
+    display: flex;
+    gap: 3px;
+  }
+  .badge {
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    background: rgba(0, 0, 0, 0.6);
     display: grid;
     place-items: center;
+    position: relative;
   }
-  .tile .plat svg {
-    width: 12px;
-    height: 12px;
+  .badge svg {
+    width: 14px;
+    height: 14px;
   }
-  .tile .plat .lang {
-    right: -3px;
-    bottom: -3px;
-    font-size: 6px;
+  .badge .ru {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    font: 700 7px/1 var(--sans);
+    background: var(--flame);
+    color: #fff;
+    border-radius: 2px;
+    padding: 1px 2px;
   }
   .tile .clock {
     position: absolute;
-    top: 3px;
-    right: 3px;
+    z-index: 2;
+    top: 4px;
+    right: 4px;
     width: 16px;
     height: 16px;
     color: var(--ink);
@@ -230,8 +300,9 @@
   }
   .tile .dur {
     position: absolute;
-    right: 3px;
-    bottom: 3px;
+    z-index: 2;
+    right: 4px;
+    bottom: 4px;
     font: 600 10px/1 var(--sans);
     font-variant-numeric: tabular-nums;
     background: rgba(0, 0, 0, 0.75);
@@ -241,32 +312,26 @@
   }
   .tile .paid {
     position: absolute;
-    left: 4px;
-    bottom: 4px;
+    z-index: 2;
+    left: 5px;
+    bottom: 5px;
     width: 6px;
     height: 6px;
     border-radius: 50%;
     background: var(--gold);
     box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.6);
   }
-  .tile:hover,
-  .tile:focus-visible {
+  .tile:hover {
     transform: translateY(-2px) scale(1.04);
     z-index: 5;
-    box-shadow:
-      0 6px 18px rgba(0, 0, 0, 0.7),
-      0 0 0 1px var(--muted);
-  }
-  .tile.scheduled:hover img {
-    opacity: 0.75;
   }
 
   .strip {
     display: flex;
+    flex-wrap: wrap;
     align-items: flex-start;
-  }
-  .strip .tile + .tile {
-    margin-left: var(--step, 4%);
+    gap: 10px 8%;
+    padding-top: 6px;
   }
 
   #tip {
@@ -294,6 +359,117 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Overlay */
+  #ov {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(8, 5, 4, 0.82);
+    display: grid;
+    place-items: center;
+    padding: 24px 16px;
+  }
+  .ov-card {
+    display: flex;
+    gap: 22px;
+    align-items: center;
+    max-width: 100%;
+  }
+  .ov-side {
+    display: grid;
+    gap: 10px;
+    width: 230px;
+    min-width: 0;
+  }
+  .ov-side h2 {
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: 18px;
+    line-height: 1.3;
+    margin: 0 0 4px;
+    text-wrap: balance;
+  }
+  .ov-meta {
+    color: var(--muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 6px;
+  }
+  .pbtn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 44px;
+    padding: 0 14px;
+    border-radius: 10px;
+    background: #261d19;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    text-decoration: none;
+    font: 600 14px/1 var(--sans);
+  }
+  .pbtn svg {
+    width: 22px;
+    height: 22px;
+    flex: none;
+  }
+  .pbtn small {
+    margin-left: auto;
+    color: var(--muted);
+    font-weight: 500;
+    font-size: 11px;
+  }
+  a.pbtn:hover {
+    background: #33261f;
+    border-color: var(--muted);
+  }
+  .pbtn.off {
+    opacity: 0.45;
+    cursor: default;
+  }
+  .ov-thumb {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #000;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.7);
+    flex: none;
+  }
+  .ov-thumb.tall {
+    height: min(78vh, 640px);
+    aspect-ratio: 9 / 16;
+  }
+  .ov-thumb.wide {
+    width: min(62vw, 760px);
+    aspect-ratio: 16 / 9;
+  }
+  .ov-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .ov-x {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+  }
+  @media (max-width: 760px) {
+    .ov-card {
+      flex-direction: column-reverse;
+      gap: 14px;
+    }
+    .ov-side {
+      width: min(320px, 100%);
+    }
+    .ov-thumb.tall {
+      height: 52vh;
+    }
+    .ov-thumb.wide {
+      width: min(92vw, 520px);
+    }
+  }
+
   .status {
     color: var(--muted);
     font-size: 12px;
@@ -306,7 +482,6 @@
     text-align: center;
   }
 
-  /* Agenda at phone width */
   .agenda {
     display: none;
     gap: 16px;
@@ -325,7 +500,7 @@
   .agenda h3.today {
     color: var(--gold);
   }
-  .agenda .stack {
+  .agenda .stack-list {
     display: grid;
     gap: 8px;
     max-width: 360px;
@@ -336,6 +511,9 @@
     }
     .agenda {
       display: grid;
+    }
+    .filters .lbl {
+      display: none;
     }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -374,29 +552,32 @@
       <button class="ghost" id="next" aria-label="Next month">›</button>
     </div>
     <div class="spacer"></div>
-    <div class="filters" id="filters"></div>
+    <div
+      class="filters"
+      id="filters"
+      role="group"
+      aria-label="Show only one platform"
+    ></div>
   </header>
   <div class="grid" id="grid"></div>
   <div class="agenda" id="agenda"></div>
   <div class="status" id="status"></div>
 </div>
 <div id="tip" hidden></div>
+<div id="ov" hidden role="dialog" aria-modal="true" aria-label="Post"></div>
 
 <script>
   const ICON = {
-    yt: '<svg viewBox="0 0 24 24"><rect x="1.5" y="5" width="21" height="14" rx="4" fill="#ff0033"/><path d="M10 9v6l5.2-3z" fill="#fff"/></svg>',
-    shorts:
-      '<svg viewBox="0 0 24 24"><path d="M15.6 2.6c1.9-1 4.2-.3 5.2 1.6 1 1.9.3 4.2-1.6 5.2l-1.6.9c1.4.1 2.7.9 3.3 2.2 1 1.9.3 4.2-1.6 5.2l-7.9 4.2c-1.9 1-4.2.3-5.2-1.6-1-1.9-.3-4.2 1.6-5.2l1.6-.9c-1.4-.1-2.7-.9-3.3-2.2-1-1.9-.3-4.2 1.6-5.2z" fill="#ff0033"/><path d="M10 9v6l5.2-3z" fill="#fff"/></svg>',
+    yt: '<svg viewBox="0 0 24 24"><rect x="1" y="4.5" width="22" height="15" rx="4.5" fill="#ff0033"/><path d="M9.8 8.6v6.8l5.9-3.4z" fill="#fff"/></svg>',
     fb: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#0866ff"/><path d="M13.3 23v-8.2h2.6l.4-3h-3v-1.9c0-.9.3-1.5 1.5-1.5h1.6V5.7c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H7.6v3h2.6V23z" fill="#fff"/></svg>',
     ig: '<svg viewBox="0 0 24 24"><defs><linearGradient id="igg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#feda75"/><stop offset=".35" stop-color="#fa7e1e"/><stop offset=".6" stop-color="#d62976"/><stop offset="1" stop-color="#4f5bd5"/></linearGradient></defs><rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="url(#igg)"/><rect x="6" y="6" width="12" height="12" rx="3.6" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="12" cy="12" r="3" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="16.3" cy="7.7" r="1" fill="#fff"/></svg>',
-    meta: '<svg viewBox="0 0 24 24"><circle cx="8" cy="12" r="7" fill="#0866ff"/><rect x="11" y="5" width="12" height="14" rx="4" fill="#d62976"/><circle cx="17" cy="12" r="2.6" fill="none" stroke="#fff" stroke-width="1.6"/></svg>',
     clock:
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9" fill="rgba(0,0,0,.55)"/><path d="M12 7v5l3 2"/></svg>',
   }
-  // A post's platforms: any of yt-en, yt-ru, fb, ig.
-  const CHANNELS = [
-    { key: "yt-en", icon: "yt", lang: "EN", label: "YouTube English" },
-    { key: "yt-ru", icon: "yt", lang: "RU", label: "YouTube Russian" },
+  // A post's platforms: any of yt-en, yt-ru, fb, ig. Shown in this order.
+  const PLATS = [
+    { key: "yt-en", icon: "yt", label: "YouTube" },
+    { key: "yt-ru", icon: "yt", ru: true, label: "YouTube RU" },
     { key: "fb", icon: "fb", label: "Facebook" },
     { key: "ig", icon: "ig", label: "Instagram" },
   ]
@@ -425,12 +606,8 @@
     }
   }
   let posts = []
-  let on = store("dbp-cal-filters") || {
-    "yt-en": true,
-    "yt-ru": true,
-    fb: true,
-    ig: true,
-  }
+  let items = [] // grouped tiles
+  let only = store("dbp-cal-only") || null // null = all platforms
   const now = new Date()
   let view = { y: now.getFullYear(), m: now.getMonth() }
   const pad = (n) => String(n).padStart(2, "0")
@@ -451,105 +628,153 @@
     )
 
   const isTall = (p) => p.kind !== "long"
-  const channelOf = (p) => {
-    const pl = p.platforms || []
-    if (pl.includes("yt-en")) return "yt-en"
-    if (pl.includes("yt-ru")) return "yt-ru"
-    return pl.length > 1 ? "meta" : pl[0] || "other"
-  }
-  function isScheduled(p) {
-    if (p.status !== "scheduled") return false
-    return new Date(p.date + "T" + (p.time || "23:59")) > new Date()
-  }
-  // Meta reels often have no own link yet: open the same cut on YouTube.
-  function linkOf(p) {
-    if (p.link) return p.link
-    const twin = posts.find((q) => q.link && q.thumb && q.thumb === p.thumb)
-    return twin ? twin.link : ""
-  }
-  function platBadge(p) {
-    const ch = channelOf(p)
-    let icon =
-      ch === "meta"
-        ? ICON.meta
-        : ch === "fb"
-          ? ICON.fb
-          : ch === "ig"
-            ? ICON.ig
-            : p.kind === "short"
-              ? ICON.shorts
-              : ICON.yt
+  function isFuture(p) {
     return (
-      '<span class="plat">' +
-      icon +
-      (ch === "yt-ru" ? '<span class="lang">RU</span>' : "") +
+      p.status === "scheduled" &&
+      new Date(p.date + "T" + (p.time || "23:59")) > new Date()
+    )
+  }
+  // "martha-short-history-yt-en" and "martha-reel-history-meta" are the same cut: key "martha|history".
+  function cutKey(p) {
+    if (p.group) return p.group
+    const id = String(p.id || "").replace(/-(yt-en|yt-ru|meta|fb|ig)$/, "")
+    const m = id.match(/^(.*?)-(short|reel|post|story)-(.+)$/)
+    return m ? m[1] + "|" + m[3] : id
+  }
+  // The URL for one platform of one row: links[k] first, else `link` when it belongs to that platform.
+  function urlFor(p, k) {
+    if (p.links && p.links[k]) return p.links[k]
+    if (!p.link) return ""
+    const host = p.link
+    if (k === "fb") return /facebook\.com/.test(host) ? host : ""
+    if (k === "ig") return /instagram\.com/.test(host) ? host : ""
+    if (k === "yt-en" || k === "yt-ru") return /youtu/.test(host) ? host : ""
+    return ""
+  }
+
+  // Merge rows into tiles: same day + same cut + vertical + no shared platform = one stacked tile.
+  function build() {
+    const live = posts.filter((p) => p.date && !p.campaign)
+    const out = []
+    const byKey = {}
+    live.forEach((p) => {
+      if (!isTall(p)) {
+        out.push({ members: [p] })
+        return
+      }
+      const key = p.date + "|" + cutKey(p)
+      const g = byKey[key]
+      const pl = p.platforms || []
+      if (g && !pl.some((k) => g.platforms.has(k))) {
+        g.members.push(p)
+        pl.forEach((k) => g.platforms.add(k))
+      } else {
+        const ng = { members: [p], platforms: new Set(pl) }
+        byKey[key] = ng
+        out.push(ng)
+      }
+    })
+    items = out.map((g) => {
+      const ms = g.members
+      const yt = ms.find((p) =>
+        (p.platforms || []).some((k) => k.startsWith("yt")),
+      )
+      const lead = yt || ms[0]
+      const platforms = PLATS.map((x) => x.key).filter((k) =>
+        ms.some((p) => (p.platforms || []).includes(k)),
+      )
+      const links = {}
+      platforms.forEach((k) => {
+        const m = ms.find((p) => (p.platforms || []).includes(k))
+        links[k] = {
+          url: urlFor(m, k),
+          scheduled: isFuture(m),
+          time: m.time || "",
+        }
+      })
+      const times = ms
+        .map((p) => p.time)
+        .filter(Boolean)
+        .sort()
+      return {
+        date: lead.date,
+        time: times[0] || "",
+        kind: lead.kind,
+        tall: isTall(lead),
+        title: lead.title,
+        thumb: lead.thumb || (ms.find((p) => p.thumb) || {}).thumb || "",
+        duration:
+          lead.duration || (ms.find((p) => p.duration) || {}).duration || "",
+        paid: ms.some((p) => p.paid),
+        scheduled: ms.every(isFuture),
+        platforms,
+        links,
+      }
+    })
+  }
+
+  function badges(it) {
+    return (
+      '<span class="plats">' +
+      it.platforms
+        .map((k) => {
+          const d = PLATS.find((x) => x.key === k)
+          return (
+            '<span class="badge" title="' +
+            d.label +
+            '">' +
+            ICON[d.icon] +
+            (d.ru ? '<span class="ru">RU</span>' : "") +
+            "</span>"
+          )
+        })
+        .join("") +
       "</span>"
     )
   }
-  function tile(p, i) {
-    const sch = isScheduled(p)
-    const href = linkOf(p)
-    const tag = href ? "a" : "div"
-    const attrs = href
-      ? ' href="' + esc(href) + '" target="_blank" rel="noopener"'
-      : ' tabindex="0"'
+  function tile(it) {
+    const i = items.indexOf(it)
+    const n = it.platforms.length
+    const cls = [
+      "tile",
+      it.tall ? "tall" : "wide",
+      n > 1 ? "stack" : "",
+      n > 2 ? "three" : "",
+      it.scheduled ? "scheduled" : "",
+      it.thumb ? "" : "noimg",
+    ].join(" ")
     return (
-      "<" +
-      tag +
-      attrs +
-      ' data-i="' +
+      '<button type="button" data-i="' +
       i +
-      '" class="tile ' +
-      (isTall(p) ? "tall" : "wide") +
-      (sch ? " scheduled" : "") +
-      (p.thumb ? "" : " noimg") +
+      '" class="' +
+      cls +
       '" aria-label="' +
-      esc(p.title) +
+      esc(it.title) +
       '">' +
-      (p.thumb
-        ? '<img src="' + esc(p.thumb) + '" alt="" loading="lazy">'
+      '<span class="face">' +
+      (it.thumb
+        ? '<img src="' + esc(it.thumb) + '" alt="" loading="lazy">'
         : "") +
-      platBadge(p) +
-      (sch ? '<span class="clock">' + ICON.clock + "</span>" : "") +
-      (p.duration ? '<span class="dur">' + esc(p.duration) + "</span>" : "") +
-      (p.paid ? '<span class="paid"></span>' : "") +
-      "</" +
-      tag +
-      ">"
+      "</span>" +
+      badges(it) +
+      (it.scheduled ? '<span class="clock">' + ICON.clock + "</span>" : "") +
+      (it.duration ? '<span class="dur">' + esc(it.duration) + "</span>" : "") +
+      (it.paid ? '<span class="paid" title="Promoted"></span>' : "") +
+      "</button>"
     )
   }
-  function strip(list) {
-    const n = list.length
-    // Two fit side by side; more overlap so one channel never takes more than one row.
-    const step =
-      n > 2 ? "calc((100% - " + n + " * 48%) / " + (n - 1) + ")" : "4%"
-    return (
-      '<div class="strip" style="--step:' +
-      step +
-      '">' +
-      list.map((p) => tile(p, posts.indexOf(p))).join("") +
-      "</div>"
-    )
-  }
-  const CH_ORDER = ["yt-en", "yt-ru", "meta", "fb", "ig", "other"]
   function dayContent(list) {
     const byTime = (a, b) => (a.time || "99").localeCompare(b.time || "99")
-    const longs = list.filter((p) => !isTall(p)).sort(byTime)
-    const groups = {}
-    list
-      .filter(isTall)
-      .sort(byTime)
-      .forEach((p) =>
-        (groups[channelOf(p)] = groups[channelOf(p)] || []).push(p),
-      )
+    const longs = list.filter((it) => !it.tall).sort(byTime)
+    const talls = list.filter((it) => it.tall).sort(byTime)
     return (
-      longs.map((p) => tile(p, posts.indexOf(p))).join("") +
-      CH_ORDER.filter((k) => groups[k])
-        .map((k) => strip(groups[k]))
-        .join("")
+      longs.map(tile).join("") +
+      (talls.length
+        ? '<div class="strip">' + talls.map(tile).join("") + "</div>"
+        : "")
     )
   }
-  const visible = (p) => (p.platforms || []).some((k) => on[k])
+  const visible = (it) => !only || it.platforms.includes(only)
 
   function render() {
     document.getElementById("month").innerHTML =
@@ -561,9 +786,9 @@
     const end = new Date(last)
     end.setDate(last.getDate() + (6 - ((last.getDay() + 6) % 7)))
     const byDay = {}
-    posts
+    items
       .filter(visible)
-      .forEach((p) => (byDay[p.date] = byDay[p.date] || []).push(p))
+      .forEach((it) => (byDay[it.date] = byDay[it.date] || []).push(it))
 
     let html = DOW.map((d) => '<div class="dow">' + d + "</div>").join("")
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -599,7 +824,7 @@
               DOW[(d.getDay() + 6) % 7] +
               " " +
               d.getDate() +
-              '</h3><div class="stack">' +
+              '</h3><div class="stack-list">' +
               dayContent(byDay[k]) +
               "</div></section>"
             )
@@ -609,27 +834,32 @@
   }
 
   function renderFilters() {
-    document.getElementById("filters").innerHTML = CHANNELS.map(
-      (c) =>
-        '<button class="ghost chip" data-k="' +
-        c.key +
-        '" aria-pressed="' +
-        !!on[c.key] +
-        '" aria-label="' +
-        c.label +
-        '" title="' +
-        c.label +
-        '">' +
-        ICON[c.icon] +
-        (c.lang ? '<span class="lang">' + c.lang + "</span>" : "") +
-        "</button>",
-    ).join("")
+    document.getElementById("filters").innerHTML =
+      '<button class="fchip all" data-k="" aria-pressed="' +
+      !only +
+      '">All</button>' +
+      PLATS.map(
+        (c) =>
+          '<button class="fchip" data-k="' +
+          c.key +
+          '" aria-pressed="' +
+          (only === c.key) +
+          '" title="Show only ' +
+          c.label +
+          '">' +
+          ICON[c.icon] +
+          (c.ru ? '<span class="ru">RU</span>' : "") +
+          '<span class="lbl">' +
+          c.label.replace(" RU", "") +
+          "</span></button>",
+      ).join("")
   }
   document.getElementById("filters").addEventListener("click", (e) => {
-    const b = e.target.closest(".chip")
+    const b = e.target.closest(".fchip")
     if (!b) return
-    on[b.dataset.k] = !on[b.dataset.k]
-    store("dbp-cal-filters", on)
+    const k = b.dataset.k || null
+    only = only === k ? null : k
+    store("dbp-cal-only", only)
     renderFilters()
     render()
   })
@@ -654,38 +884,113 @@
     render()
   }
 
-  // Hover / focus: title (and time, if scheduled) in a floating tip.
+  // Overlay: big thumbnail + one button per platform, each with its own link.
+  const ov = document.getElementById("ov")
+  let lastFocus = null
+  function openOverlay(it) {
+    lastFocus = document.activeElement
+    const d = new Date(it.date + "T12:00")
+    const when =
+      DOW[(d.getDay() + 6) % 7] +
+      " " +
+      d.getDate() +
+      " " +
+      MONTHS[d.getMonth()] +
+      (it.time ? ", " + it.time : "") +
+      (it.duration ? " · " + it.duration : "")
+    const btns = it.platforms
+      .map((k) => {
+        const p = PLATS.find((x) => x.key === k)
+        const l = it.links[k] || {}
+        const label =
+          k === "yt-en" || k === "yt-ru"
+            ? (it.kind === "short" ? "YouTube Shorts" : "YouTube") +
+              (p.ru ? " RU" : "")
+            : p.label
+        const note = l.scheduled
+          ? "Scheduled " + (l.time || "")
+          : l.url
+            ? "Open ↗"
+            : "No link yet"
+        return l.url && !l.scheduled
+          ? '<a class="pbtn" href="' +
+              esc(l.url) +
+              '" target="_blank" rel="noopener">' +
+              ICON[p.icon] +
+              label +
+              "<small>" +
+              note +
+              "</small></a>"
+          : '<span class="pbtn off">' +
+              ICON[p.icon] +
+              label +
+              "<small>" +
+              esc(note) +
+              "</small></span>"
+      })
+      .join("")
+    ov.innerHTML =
+      '<button class="ghost ov-x" id="ovx" aria-label="Close">✕</button><div class="ov-card">' +
+      '<div class="ov-side"><h2>' +
+      esc(it.title) +
+      '</h2><div class="ov-meta">' +
+      esc(when) +
+      "</div>" +
+      btns +
+      "</div>" +
+      '<div class="ov-thumb ' +
+      (it.tall ? "tall" : "wide") +
+      '">' +
+      (it.thumb ? '<img src="' + esc(it.thumb) + '" alt="">' : "") +
+      "</div></div>"
+    ov.hidden = false
+    hideTip()
+    document.getElementById("ovx").focus()
+  }
+  function closeOverlay() {
+    ov.hidden = true
+    ov.innerHTML = ""
+    if (lastFocus) lastFocus.focus()
+  }
+  ov.addEventListener("click", (e) => {
+    if (e.target === ov || e.target.closest("#ovx")) closeOverlay()
+  })
+  addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !ov.hidden) closeOverlay()
+  })
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest(".tile")
+    if (t) openOverlay(items[+t.dataset.i])
+  })
+
+  // Hover: title in a floating tip.
   const tip = document.getElementById("tip")
   function showTip(el) {
-    const p = posts[+el.dataset.i]
-    if (!p) return
-    const when = p.time ? (isScheduled(p) ? "Scheduled " : "") + p.time : ""
+    const it = items[+el.dataset.i]
+    if (!it) return
+    const when = it.time ? (it.scheduled ? "Scheduled " : "") + it.time : ""
     tip.innerHTML =
       "<b>" +
-      esc(p.title) +
+      esc(it.title) +
       "</b>" +
       (when ? "<span>" + esc(when) + "</span>" : "")
     tip.hidden = false
     const r = el.getBoundingClientRect()
     const tw = tip.offsetWidth,
       th = tip.offsetHeight
-    let x = Math.min(
-      Math.max(8, r.left + r.width / 2 - tw / 2),
-      innerWidth - tw - 8,
-    )
+    tip.style.left =
+      Math.min(
+        Math.max(8, r.left + r.width / 2 - tw / 2),
+        innerWidth - tw - 8,
+      ) + "px"
     let y = r.top - th - 8
     if (y < 8) y = r.bottom + 8
-    tip.style.left = x + "px"
     tip.style.top = y + "px"
   }
   const hideTip = () => (tip.hidden = true)
   document.addEventListener("mouseover", (e) => {
     const t = e.target.closest(".tile")
-    t ? showTip(t) : hideTip()
-  })
-  document.addEventListener("focusin", (e) => {
-    const t = e.target.closest(".tile")
-    t ? showTip(t) : hideTip()
+    t && ov.hidden ? showTip(t) : hideTip()
   })
   addEventListener("scroll", hideTip, { passive: true })
 
@@ -702,9 +1007,8 @@
     }
     db.collection("posts").onSnapshot(
       (snap) => {
-        posts = snap.docs
-          .map((d) => ({ id: d.id, ...d.data() }))
-          .filter((p) => p.date)
+        posts = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        build()
         status.textContent = posts.length
           ? ""
           : "No posts yet. A Claude session adds them as they go live or get scheduled."
@@ -717,5 +1021,8 @@
     )
   })()
   // Scheduled tiles turn into posted ones once their time passes.
-  setInterval(render, 60000)
+  setInterval(() => {
+    build()
+    render()
+  }, 60000)
 </script>
