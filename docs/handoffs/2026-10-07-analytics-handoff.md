@@ -80,8 +80,21 @@ Short, in Russian, as an artifact or a file in `~/Desktop/Social Media/Analytics
 1. **Week in one line** (organic views, watch time, subscribers; paid separately).
 2. **Top 3 and bottom 3 organic** Shorts and long forms, with the rate metric that explains why.
 3. **Test results** from the table above, only where there is enough data (say so when there is not).
-4. **3 to 5 recommendations** she can act on (titles, hooks, Short type, posting time, covers), each tied to a number.
-5. Keep a running log of findings in `~/Desktop/Social Media/Analytics/log.md` so later weeks build on it.
+4. **Activity** (added 2026-10-09): is anyone talking to us? Compare each line with last week and with the baseline.
+
+   | Metric                                           | Where                                                                                      | Baseline (Sep 9 – Oct 8)                          |
+   | ------------------------------------------------ | ------------------------------------------------------------------------------------------ | ------------------------------------------------- |
+   | YouTube comments                                 | Studio → Analytics → Advanced mode, metric "Comments added", per video                     | 0 on every video                                  |
+   | Real comments on Meta (not just "Amen" or emoji) | Business Suite → Inbox → Facebook / Instagram comments                                     | 2 (both on the "where do I start?" question post) |
+   | Direct messages and how fast the page answered   | Inbox → Messenger + Instagram; Insights → Messaging (response rate)                        | 7 conversations, 0% answered until Oct 9          |
+   | Share of Facebook views from followers           | Insights → Overview → Views → From followers                                               | 0.5%                                              |
+   | Facebook reels watched past 3 s                  | Insights → Content: "3-second views" ÷ "Views"; also "Video average play time"             | 11–40%, average play 4–7 s (17–18 s at best)      |
+   | Clicks from Meta to YouTube                      | Content → "Link clicks"; Story link-sticker taps; YouTube Studio → External → facebook.com | 1 caption-link click since Oct 5                  |
+
+   Once they are live, also count: replies to the pinned YouTube question, votes on Community polls, answers to Instagram Story question/poll stickers, and taps on the DM playlist link (Publishing session is setting up "Amen" replies + a private reply with https://www.youtube.com/playlist?list=PLMfpNwBAfNG4). Watch Meta "Messaging insights" for blocks or spam reports after the DM automation goes on.
+
+5. **3 to 5 recommendations** she can act on (titles, hooks, Short type, posting time, covers), each tied to a number.
+6. Keep a running log of findings in `~/Desktop/Social Media/Analytics/log.md` so later weeks build on it.
 
 Small channels move slowly: don't call a winner on fewer than ~3 comparable
 posts or under ~1,000 organic impressions; say "too early" instead.
