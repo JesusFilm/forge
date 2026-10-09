@@ -1061,10 +1061,11 @@ export function useWatchHomeTvCarousel(
       activeSlide,
       advance,
       advanceDurationSeconds,
-      // Changes when the resolved duration lands late or the same slide is
-      // replayed, so the ring's CSS animation restarts instead of
-      // reinterpreting a running one.
-      ringAnimationKey: `${activeSlide?.id ?? "none"}:${advanceDurationSeconds}:${restartCount}`,
+      // Changes when the resolved duration lands late, the same slide is
+      // replayed, or autoplay is refused, so the ring's CSS animation restarts
+      // instead of reinterpreting a running one. The refusal is keyed on its
+      // own: a seven-second video resolves to the refused turn's duration.
+      ringAnimationKey: `${activeSlide?.id ?? "none"}:${advanceDurationSeconds}:${restartCount}:${isAutoplayRefused ? "refused" : "video"}`,
       handleCanPlay,
       handleEnded: advance,
       handleLoadedMetadata,
@@ -1091,6 +1092,7 @@ export function useWatchHomeTvCarousel(
       advance,
       advanceDurationSeconds,
       restartCount,
+      isAutoplayRefused,
       handleCanPlay,
       handleLoadedMetadata,
       handlePause,

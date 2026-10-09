@@ -1160,6 +1160,45 @@ describe("WatchHomePage", () => {
         }
       })
 
+      // A seven-second video resolves to the same duration as the refused
+      // turn, so the duration alone cannot restart the ring.
+      it("restarts the ring on refusal even when the duration does not change", async () => {
+        vi.useFakeTimers()
+        try {
+          vi.spyOn(Math, "random").mockReturnValue(0)
+          await act(async () => {
+            root.render(
+              <WatchHomePage
+                model={makeTimedSequencedModel(
+                  WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
+                )}
+              />,
+            )
+          })
+          const video = currentVideo()
+          refusePlay(video)
+          await act(async () => {
+            video.dispatchEvent(new Event("canplay", { bubbles: true }))
+          })
+          const readRing = () =>
+            container.querySelector(
+              '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+            )
+          const ringBefore = readRing()
+
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+
+          expect(ringDuration()).toBe(
+            `${WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS}s`,
+          )
+          expect(readRing()).not.toBe(ringBefore)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
       it("is not parked by a stalled or pause event on the refused element", async () => {
         vi.useFakeTimers()
         try {
