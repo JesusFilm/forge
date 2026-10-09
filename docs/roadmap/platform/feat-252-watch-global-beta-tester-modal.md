@@ -7,13 +7,16 @@ status: "complete"
 start_date: "2026-07-13"
 duration: 1
 depends_on: []
-blocks:
-  - "feat-279"
+blocks: []
 tags:
   - "platform"
   - "web"
   - "watch-page"
 ---
+
+## Retirement — 2026-10-08
+
+This completed implementation is retired by feat-667 following the owner’s decision to end Watch beta signup. Historical requirements below do not authorize restoring the program.
 
 ## Problem
 

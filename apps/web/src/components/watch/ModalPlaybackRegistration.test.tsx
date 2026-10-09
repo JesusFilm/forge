@@ -12,10 +12,6 @@ vi.mock("@/components/FloatingSearchProvider", () => ({
   useFloatingSearchPinned: () => ({ pinned: true, searchOpen: false }),
 }))
 
-vi.mock("@/components/watch/BetaTesterModalProvider", () => ({
-  useBetaTesterModal: () => null,
-}))
-
 vi.mock("@/components/ui/dialog", () => ({
   Dialog: ({ children }: { children: ReactNode }) => children,
   DialogClose: ({ children }: { children: ReactNode }) => children,
