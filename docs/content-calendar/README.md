@@ -45,7 +45,7 @@ Updating an existing row (schedule moved, now live): `get` it first and pass its
 ```json
 {
   "story": "Martha",
-  "kind": "short", // long | short | reel | story
+  "kind": "short", // long | short | reel | story | post (carousel/image)
   "platforms": ["yt-en"], // any of yt-en, yt-ru, fb, ig (FB + IG same time = one row)
   "status": "scheduled", // published | scheduled
   "date": "2026-10-07", // Europe/Sofia
@@ -62,9 +62,9 @@ A `scheduled` row turns into a posted tile by itself once its date and time pass
 so there is no need to flip the status afterwards. Delete a row only if the
 post was removed or cancelled.
 
-## Backfill gap
+## Backfill status
 
-Posts before 2026-09-30 (Lamp, Storm, Samaritan, Zaccheus, Temptation, Sinful
-Woman, 5000, Vineyard, Pharisee) and the Prodigal teaser have no dates in their
-READMEs, so they are not on the calendar yet. Add them once the dates are read
-from YouTube Studio / Meta Business Suite.
+Backfilled on 2026-10-09 back to the first post (Instagram, 2026-08-20). Known gaps:
+the five Instagram-only posts of Aug 20–27 have no link (Business Suite does not
+show the permalink). Carousels and ad-set rows have no duration. A few thumbnails
+(Storm "fear", Pharisee "Pride", brand ads) are low-res screenshots.
