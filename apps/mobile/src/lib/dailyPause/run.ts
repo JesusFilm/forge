@@ -1,8 +1,9 @@
-// The run of one Daily Bible Pause (KTD4, KTD11, R5, R6, R10). The steps are
-// states of one reducer, not routes. Begin and Resume pin the day key and the
-// devotional, and every step write uses that pinned key until the close.
+// The run of one Daily Bible Pause (KTD4, KTD11, R5, R6, R10; v2 plan R3).
+// The steps are states of one reducer, not routes. Begin and Resume pin the day
+// key and the devotional, and every step write uses that key until the close.
 import { useEffect, useMemo, useReducer } from "react"
 
+import type { StepperStage } from "../../components/dailyPause/StepperPills"
 import {
   PAUSE_STEPS,
   getPauseProgressStore,
@@ -33,6 +34,20 @@ export const RUN_START: RunState = Object.freeze({
 /** The three video parts. The close sits in their letterbox (R24). */
 export function isVideoPart(step: PauseStep): boolean {
   return step === "film" || step === "teaching" || step === "prayer"
+}
+
+/** The section of a video part, or null on any other step (v2 plan R3). */
+export function sectionForStep(step: PauseStep): StepperStage | null {
+  switch (step) {
+    case "film":
+      return "watch"
+    case "teaching":
+      return "reflect"
+    case "prayer":
+      return "pray"
+    default:
+      return null
+  }
 }
 
 export function runReducer(state: RunState, action: RunAction): RunState {

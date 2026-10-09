@@ -1,6 +1,6 @@
 // The one run screen of the pause route (KTD4). It shows the Opening, then one
-// component per R10 step, with the one close above every step. It keeps the
-// screen awake on every step except Share (KTD10, R25).
+// component per R10 step, under the one close, and keeps the screen awake until
+// Share (KTD10, R25). v2 plan: each video part shows its section (R2, KTD4).
 import { useIsFocused, useRouter } from "expo-router"
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
 import { useEffect, useRef, type ReactNode } from "react"
@@ -9,7 +9,11 @@ import { StyleSheet, View } from "react-native"
 import type { DevotionalPart } from "../../lib/dailyPause/devotionals"
 import { usePauseFonts } from "../../lib/dailyPause/fonts"
 import { usePauseDay, type PauseStep } from "../../lib/dailyPause/progress"
-import { isVideoPart, useDailyPauseRun } from "../../lib/dailyPause/run"
+import {
+  isVideoPart,
+  sectionForStep,
+  useDailyPauseRun,
+} from "../../lib/dailyPause/run"
 import { usePauseSettings } from "../../lib/dailyPause/settings"
 import { pauseColors } from "../../lib/dailyPause/theme"
 import { localDay, useToday } from "../../lib/dailyPause/today"
@@ -21,6 +25,7 @@ import { OpeningScreen } from "./OpeningScreen"
 import { PartPlayer } from "./PartPlayer"
 import { PrayScreen } from "./PrayScreen"
 import { ReflectScreen } from "./ReflectScreen"
+import { SectionMarkers } from "./SectionMarkers"
 import { ShareScreen } from "./ShareScreen"
 import { WatchScreen } from "./WatchScreen"
 
@@ -138,6 +143,8 @@ export function RunScreen() {
 
   const part = loaded && state.pin != null ? partForStep(state.step) : null
   const topRow = isVideoPart(state.step) ? "letterbox" : "screen"
+  // From the step, not the player's part: the prayer part waits behind Reflect.
+  const section = sectionForStep(state.step)
 
   return (
     <View style={styles.screen}>
@@ -154,6 +161,9 @@ export function RunScreen() {
         />
       ) : null}
       {content}
+      {section != null ? (
+        <SectionMarkers section={section} font={font} />
+      ) : null}
       <CloseButton onPress={close} placement={topRow} />
       {__DEV__ && loaded && TIMED_STEPS.has(state.step) ? (
         <DevSkipButton onPress={run.advance} placement={topRow} font={font} />

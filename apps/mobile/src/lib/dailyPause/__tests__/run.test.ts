@@ -11,6 +11,7 @@ import {
 import {
   PAUSE_DAY_STORAGE_KEY,
   PAUSE_DAY_VERSION,
+  PAUSE_STEPS,
   createPauseProgressStore,
   dayFromRecord,
   resumeTarget,
@@ -20,7 +21,9 @@ import {
 } from "../progress"
 import {
   RUN_START,
+  isVideoPart,
   runReducer,
+  sectionForStep,
   useDailyPauseRun,
   type DailyPauseRun,
   type RunState,
@@ -106,6 +109,22 @@ describe("runReducer (R10)", () => {
   it("goes back to the Opening and drops the pinned day on a reset", () => {
     const reflecting: RunState = { step: "reflectScreen", pin: MONDAY }
     expect(runReducer(reflecting, { type: "reset" })).toBe(RUN_START)
+  })
+})
+
+// v2 plan R1, R3, KTD4: each video part belongs to one section, and the
+// step order stays the same.
+describe("sectionForStep (v2 plan R3)", () => {
+  it("maps the film to Watch, the teaching to Reflect, and the prayer to Pray", () => {
+    expect(sectionForStep("film")).toBe("watch")
+    expect(sectionForStep("teaching")).toBe("reflect")
+    expect(sectionForStep("prayer")).toBe("pray")
+  })
+
+  it("gives a section on the video parts only", () => {
+    for (const step of PAUSE_STEPS) {
+      expect(sectionForStep(step) != null).toBe(isVideoPart(step))
+    }
   })
 })
 

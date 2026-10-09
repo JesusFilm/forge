@@ -24,12 +24,17 @@ export type StepperStage = "watch" | "reflect" | "pray"
 
 type PillLook = "active" | "done" | "upcoming"
 
-const STAGES: readonly { stage: StepperStage; label: string; name: string }[] =
-  [
-    { stage: "watch", label: "WATCH", name: "Watch" },
-    { stage: "reflect", label: "REFLECT", name: "Reflect" },
-    { stage: "pray", label: "PRAY", name: "Pray" },
-  ]
+/** The three sections. The video parts' markers show these labels too (v2
+ *  plan KTD4). */
+export const STAGES: readonly {
+  stage: StepperStage
+  label: string
+  name: string
+}[] = [
+  { stage: "watch", label: "WATCH", name: "Watch" },
+  { stage: "reflect", label: "REFLECT", name: "Reflect" },
+  { stage: "pray", label: "PRAY", name: "Pray" },
+]
 
 /** VoiceOver cannot see the fill, so the label says the state. */
 const STATE_WORDS: Readonly<Record<PillLook, string>> = {
