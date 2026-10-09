@@ -44,6 +44,11 @@ class NativeAndroidPlayerModule : Module() {
       appContext.currentActivity?.let { StartupLoadingOverlay.hide(it) }
     }.runOnQueue(Queues.MAIN)
 
+    AsyncFunction("restartAppForPreview") {
+      val activity = requireNotNull(appContext.currentActivity) { "Activity unavailable" }
+      PreviewAppRestart.restart(activity)
+    }.runOnQueue(Queues.MAIN)
+
     AsyncFunction("showLoadingDialog") { requestId: String, message: String, promise: Promise ->
       loadingDialog?.dismiss()
       val activity = requireNotNull(appContext.currentActivity) { "Activity unavailable" }
@@ -51,6 +56,7 @@ class NativeAndroidPlayerModule : Module() {
       loadingDialog = showBrandedLoadingDialog(
         context = activity,
         label = message,
+        transparent = true,
         onDismiss = {
           if (loadingRequestId == requestId) {
             loadingDialog = null

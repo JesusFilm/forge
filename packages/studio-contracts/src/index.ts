@@ -600,6 +600,7 @@ export const studioListSchema = z
   .strict()
 export const studioProjectSummarySchema = z
   .object({
+    canDelete: z.boolean().optional(),
     projectId: studioIdSchema,
     revision: z.number().int().positive(),
     lifecycle: studioLifecycleSchema,

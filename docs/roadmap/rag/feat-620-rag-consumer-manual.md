@@ -1,5 +1,5 @@
 ---
-id: "feat-575"
+id: "feat-620"
 title: "Build the RAG Consumer Manual with database-backed filters and code samples"
 owner: "jaco"
 priority: "P1"
@@ -90,3 +90,9 @@ publishes the spec and roadmap entry only. Live execution is separately tracked
 by [feat-576](feat-576-rag-governed-test-bench.md).
 
 Specs and roadmap publication: [#2485](https://github.com/JesusFilm/forge/pull/2485). The implementation status remains not started.
+
+## ID reconciliation — October 8, 2026
+
+Renumbered from feat-575 to feat-620 to resolve the collision with the other RAG
+ticket and the platform retirement ticket. Status, approved scope, PR history,
+and historical `evidence/feat-575/` paths are preserved.

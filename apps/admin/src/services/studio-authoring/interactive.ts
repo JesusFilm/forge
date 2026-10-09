@@ -131,6 +131,8 @@ export async function executeStudioRpc(
       )
     case "create":
       return commands.create(user, input)
+    case "delete":
+      return commands.delete(user, input)
     case "apply":
       return commands.apply(user, input)
     case "approve":
