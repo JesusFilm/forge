@@ -25,6 +25,10 @@ import {
   type WatchHomeTvCarouselSlide,
   type WatchHomeTvCarouselVideoSlide,
 } from "@/lib/watch-home-carousel-sequence"
+import {
+  isAutoplayBlockedError,
+  isPlaybackAbortError,
+} from "@/lib/autoplay-refusal"
 
 export {
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
@@ -90,10 +94,13 @@ export function nextWatchHomeTvCarouselIndex(
  */
 const MAX_TIMER_DELAY_MS = 2_147_483_647
 
-function startPlayback(video: HTMLVideoElement, onRefused?: () => void) {
+function startPlayback(
+  video: HTMLVideoElement,
+  onRefused?: (error: unknown) => void,
+) {
   const played = video.play()
   if (played && typeof played.then === "function") {
-    played.catch(() => onRefused?.())
+    played.catch((error: unknown) => onRefused?.(error))
   }
 }
 
@@ -117,8 +124,12 @@ function usableSeconds(value: number | null | undefined): number | null {
 export function watchHomeTvSlideDurationSeconds(
   slide: Pick<WatchHomeTvCarouselSlide, "src" | "durationSeconds">,
   measuredSeconds: number | null | undefined,
+  autoplayRefused = false,
 ): number {
-  if (!slide.src) return WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
+  // A refused video slide shows its poster, so it takes an image slide's turn.
+  if (!slide.src || autoplayRefused) {
+    return WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
+  }
   return (
     usableSeconds(measuredSeconds) ??
     usableSeconds(slide.durationSeconds) ??
@@ -134,12 +145,14 @@ export function watchHomeTvSlideDurationSeconds(
 export function watchHomeTvAdvanceBackstopSeconds(
   slide: Pick<WatchHomeTvCarouselSlide, "src" | "durationSeconds">,
   measuredSeconds: number | null | undefined,
+  autoplayRefused = false,
 ): number {
   const durationSeconds = watchHomeTvSlideDurationSeconds(
     slide,
     measuredSeconds,
+    autoplayRefused,
   )
-  if (!slide.src) return durationSeconds
+  if (!slide.src || autoplayRefused) return durationSeconds
   return durationSeconds + WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS
 }
 
@@ -276,6 +289,12 @@ export function useWatchHomeTvCarousel(
   // mount and emits no event there -- which is what keeps the 1500 ms poster
   // hold behaving exactly as it does today.
   const [isMediaPaused, setIsMediaPaused] = useState(false)
+  // The slide whose autoplay the browser refused this turn (iOS Low Power
+  // Mode refuses even muted video). Not buffering and not paused: the poster
+  // stays up and the slide takes an image slide's turn.
+  const [autoplayRefusedSlideId, setAutoplayRefusedSlideId] = useState<
+    string | null
+  >(null)
   const isMutedRef = useRef(isMuted)
   // Read inside `handleCanPlay`, which must stay a stable callback, so the
   // poster-hold arm/skip decision cannot depend on render state.
@@ -293,15 +312,23 @@ export function useWatchHomeTvCarousel(
   // `canplay` / `playing` that follow reveal the video at once instead of
   // holding the poster a second time.
   const posterHoldServedRef = useRef(false)
+  // The slide the current turn belongs to, for callbacks that must stay
+  // stable across slides.
+  const turnSlideIdRef = useRef<string | null>(null)
   const mediaWaitTimeoutRef = useRef<number | null>(null)
   // The advance clock is parked while buffering, so the elapsed time has to
   // survive the re-runs that park and restart it.
-  const advanceClockRef = useRef<{ slideId: string | null; elapsedMs: number }>(
-    {
-      slideId: null,
-      elapsedMs: 0,
-    },
-  )
+  // Keyed on the refusal too: a refusal turns the slide into a fresh image
+  // slide's turn, so time already spent counts toward nothing.
+  const advanceClockRef = useRef<{
+    slideId: string | null
+    autoplayRefused: boolean
+    elapsedMs: number
+  }>({
+    slideId: null,
+    autoplayRefused: false,
+    elapsedMs: 0,
+  })
   // Monotonic per-turn token. A slide id is not enough: a single-playable-slide
   // queue restarts the SAME id, so two consecutive turns would be
   // indistinguishable and a stale timer from the first could advance the
@@ -380,11 +407,15 @@ export function useWatchHomeTvCarousel(
     activeSlide.id === options.autoAdvancePausedForSlideId
   // Only a video slide can be waiting on bytes; an image slide is fully on
   // screen the moment it is chosen.
-  const isBuffering = Boolean(activeSlide?.src) && isBufferingMedia
+  const isAutoplayRefused =
+    activeSlide != null && autoplayRefusedSlideId === activeSlide.id
+  const isBuffering =
+    Boolean(activeSlide?.src) && isBufferingMedia && !isAutoplayRefused
   // A slide's turn is time the viewer spends WATCHING it, so a paused hero
   // holds its turn the same way a buffering one does. The two are kept
   // separate for the ring: only buffering is a stall worth explaining.
-  const isMediaHeld = Boolean(activeSlide?.src) && isMediaPaused
+  const isMediaHeld =
+    Boolean(activeSlide?.src) && isMediaPaused && !isAutoplayRefused
   const isTurnHeld = isBuffering || isMediaHeld
   // One resolved duration feeds both the ring and the backstop, so the two
   // cannot drift apart. The measurement only counts for the slide it was read
@@ -395,10 +426,18 @@ export function useWatchHomeTvCarousel(
       ? measuredDuration.seconds
       : null
   const advanceDurationSeconds = activeSlide
-    ? watchHomeTvSlideDurationSeconds(activeSlide, activeMeasuredSeconds)
+    ? watchHomeTvSlideDurationSeconds(
+        activeSlide,
+        activeMeasuredSeconds,
+        isAutoplayRefused,
+      )
     : WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
   const advanceBackstopSeconds = activeSlide
-    ? watchHomeTvAdvanceBackstopSeconds(activeSlide, activeMeasuredSeconds)
+    ? watchHomeTvAdvanceBackstopSeconds(
+        activeSlide,
+        activeMeasuredSeconds,
+        isAutoplayRefused,
+      )
     : WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
   const safeActiveIndex = activeSlide
     ? Math.max(
@@ -493,11 +532,31 @@ export function useWatchHomeTvCarousel(
   // one that issued it.
   const requestPlayback = useCallback((video: HTMLVideoElement) => {
     const refusedForTurn = turnTokenRef.current
-    startPlayback(video, () => {
+    const slideId = turnSlideIdRef.current
+    const onRejected = (error: unknown) => {
       if (turnTokenRef.current !== refusedForTurn) return
       if (videoRef.current !== video) return
-      setIsBufferingMedia(true)
-    })
+      // A new load or a pause interrupted the request; whatever caused that
+      // owns what happens next.
+      if (isPlaybackAbortError(error)) return
+      if (!isAutoplayBlockedError(error)) {
+        setIsBufferingMedia(true)
+        return
+      }
+      // Unmuting carries sound into later slides, and iOS refuses sound
+      // without a gesture. Muted may still be allowed, so try that once.
+      if (!video.muted) {
+        video.muted = true
+        isMutedRef.current = true
+        setIsMuted(true)
+        startPlayback(video, onRejected)
+        return
+      }
+      mediaReadyRef.current = false
+      setMediaReady(false)
+      setAutoplayRefusedSlideId(slideId)
+    }
+    startPlayback(video, onRejected)
   }, [])
 
   const clearMediaWaitTimeout = useCallback(() => {
@@ -541,12 +600,15 @@ export function useWatchHomeTvCarousel(
       backstopSeenTimeRef.current = 0
       advanceClockRef.current = {
         slideId: nextSlide?.id ?? null,
+        autoplayRefused: false,
         elapsedMs: 0,
       }
+      turnSlideIdRef.current = nextSlide?.id ?? null
       mediaReadyRef.current = false
       setMediaReady(false)
       setIsBufferingMedia(Boolean(nextSlide?.src))
       setIsMediaPaused(false)
+      setAutoplayRefusedSlideId(null)
       setPlaybackTime({ seconds: 0, slideId: nextSlide?.id ?? null })
       setMeasuredDuration((current) =>
         current.slideId === nextSlide?.id
@@ -702,6 +764,8 @@ export function useWatchHomeTvCarousel(
   const handlePlaying = useCallback(() => {
     setIsBufferingMedia(false)
     setIsMediaPaused(false)
+    // It plays after all, so the turn is the video's again.
+    setAutoplayRefusedSlideId(null)
     if (posterHoldServedRef.current && !mediaReadyRef.current) {
       mediaReadyRef.current = true
       setMediaReady(true)
@@ -715,6 +779,7 @@ export function useWatchHomeTvCarousel(
   // `selectIndex`) arms nothing.
   useEffect(() => {
     posterHoldServedRef.current = false
+    turnSlideIdRef.current = activeSlide?.id ?? null
     if (!activeSlide?.id || !activeSlide.src) return undefined
 
     const armedForTurn = turnTokenRef.current
@@ -825,8 +890,12 @@ export function useWatchHomeTvCarousel(
     if (!activeSlide) return
 
     const clock = advanceClockRef.current
-    if (clock.slideId !== activeSlide.id) {
+    if (
+      clock.slideId !== activeSlide.id ||
+      clock.autoplayRefused !== isAutoplayRefused
+    ) {
       clock.slideId = activeSlide.id
+      clock.autoplayRefused = isAutoplayRefused
       clock.elapsedMs = 0
     }
 
@@ -905,6 +974,7 @@ export function useWatchHomeTvCarousel(
     advanceDurationSeconds,
     autoAdvancePaused,
     clearSlideAdvanceTimeout,
+    isAutoplayRefused,
     isTurnHeld,
     // A same-slide replay keeps every other dependency identical, so without
     // this the effect never re-runs and that turn gets NO backstop at all --
