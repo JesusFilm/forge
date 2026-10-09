@@ -1,6 +1,6 @@
 import { StyleSheet, View } from "react-native"
 import { useWatchPreferences } from "../contexts/WatchPreferencesProvider"
-import { LogoAnimation } from "./LogoAnimation"
+import { LoadingAnimation } from "./LoadingAnimation"
 
 export function BrandedLoading({ label = "Loading Home" }: { label?: string }) {
   const { loadingAnimationId } = useWatchPreferences()
@@ -13,7 +13,7 @@ export function BrandedLoading({ label = "Loading Home" }: { label?: string }) {
       accessibilityLabel={label}
       accessibilityState={{ busy: true }}
     >
-      <LogoAnimation id={loadingAnimationId} />
+      <LoadingAnimation id={loadingAnimationId} />
     </View>
   )
 }
