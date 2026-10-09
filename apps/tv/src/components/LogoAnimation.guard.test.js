@@ -47,8 +47,13 @@ test("startup freezes the displayed frame without remounting or swapping the ima
 
 test("settings retain independent saved choices and time-bound silent previews", () => {
   const settings = read("src/components/settings/AnimationSettingsScreen.tsx")
-  expect(settings).toContain("LOGO_ANIMATIONS.map")
-  expect(settings).toContain("setStartupAnimationId(id)")
+  expect(settings).toContain(
+    'target === "startup" ? LOGO_ANIMATIONS : LOADING_ANIMATIONS',
+  )
+  expect(settings).toContain("options.map")
+  expect(settings).toContain(
+    "setStartupAnimationId(parseLogoAnimationId(id, startupAnimationId))",
+  )
   expect(settings).toContain("setLoadingAnimationId(id)")
   expect(settings).toContain("LOGO_PREVIEW_DURATION_MS")
   expect(settings).toContain("active={focused && previewing}")
@@ -61,7 +66,7 @@ test("loading follows existing pending-work branches without artificial waits", 
   const home = read("app/index.tsx")
   expect(home).toMatch(/screenState === "loading"[\s\S]*<BrandedLoading/)
   expect(read("src/components/ScreenStateView.tsx")).toMatch(
-    /kind === "loading"[\s\S]*<LogoAnimation/,
+    /kind === "loading"[\s\S]*<LoadingAnimation/,
   )
   expect(read("src/components/BrandedLoading.tsx")).not.toMatch(
     /setTimeout|play\(/,
@@ -74,11 +79,9 @@ test("loading follows existing pending-work branches without artificial waits", 
   )
 })
 
-test("restart preview waits for the selected preferences to save before reloading the current app", () => {
+test("restart preview is wired to the save-and-restart action", () => {
   const provider = read("src/contexts/WatchPreferencesProvider.tsx")
-  expect(provider).toMatch(
-    /await getStorage\(\)\.setItem\([\s\S]*serializeWatchPreferences\(prefs\)[\s\S]*await reloadAppAsync\("Preview selected startup animation"\)/,
-  )
+  expect(provider).toContain("await restartWatchForPreview(prefs)")
   const settings = read("src/components/settings/AnimationSettingsScreen.tsx")
   expect(settings).toContain('testID="animations-restart"')
   expect(settings).toContain('"Restart app & preview"')

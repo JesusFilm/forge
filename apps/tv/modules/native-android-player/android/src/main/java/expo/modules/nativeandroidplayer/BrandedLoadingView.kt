@@ -13,11 +13,16 @@ import android.os.Build
 import android.view.KeyEvent
 import android.view.View
 import android.view.Window
+import android.view.WindowManager
 import android.view.animation.LinearInterpolator
 import kotlin.math.cos
 
-internal class BrandedLoadingView(context: Context, label: String) : View(context) {
-  private val logo = BitmapFactory.decodeResource(resources, R.drawable.watch_loading_logo)
+internal class BrandedLoadingView(
+  context: Context,
+  label: String,
+  private val transparent: Boolean = false,
+) : View(context) {
+  private val logo by lazy { BitmapFactory.decodeResource(resources, R.drawable.watch_loading_logo) }
   private val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
   private var phase = 0f
   private val pulse = ValueAnimator.ofFloat(0f, 1f).apply {
@@ -28,7 +33,7 @@ internal class BrandedLoadingView(context: Context, label: String) : View(contex
   }
 
   init {
-    setBackgroundColor(Color.rgb(22, 19, 17))
+    setBackgroundColor(if (transparent) Color.TRANSPARENT else Color.rgb(22, 19, 17))
     contentDescription = label
     importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
     isFocusable = true
@@ -37,6 +42,7 @@ internal class BrandedLoadingView(context: Context, label: String) : View(contex
 
   override fun onDraw(canvas: Canvas) {
     super.onDraw(canvas)
+    if (transparent) return
     val unit = width / 1920f
     val size = 320f * unit
     val left = (width - size) / 2f
@@ -53,13 +59,13 @@ internal class BrandedLoadingView(context: Context, label: String) : View(contex
 
   override fun onAttachedToWindow() {
     super.onAttachedToWindow()
-    if (isShown && animationsEnabled()) pulse.start()
+    if (!transparent && isShown && animationsEnabled()) pulse.start()
   }
 
   override fun onVisibilityAggregated(isVisible: Boolean) {
     super.onVisibilityAggregated(isVisible)
     if (!isAttachedToWindow) return
-    if (isVisible && animationsEnabled()) {
+    if (!transparent && isVisible && animationsEnabled()) {
       if (!pulse.isStarted) pulse.start()
     } else pulse.cancel()
   }
@@ -79,15 +85,23 @@ internal class BrandedLoadingView(context: Context, label: String) : View(contex
     else super.dispatchKeyEvent(event)
 }
 
-internal fun showBrandedLoadingDialog(context: Context, label: String, onDismiss: () -> Unit): Dialog {
+internal fun showBrandedLoadingDialog(
+  context: Context,
+  label: String,
+  onDismiss: () -> Unit,
+  transparent: Boolean = false,
+): Dialog {
   val dialog = Dialog(context)
   dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
-  val content = BrandedLoadingView(context, label)
+  val content = BrandedLoadingView(context, label, transparent = transparent)
   dialog.setContentView(content)
   dialog.setCancelable(true)
   dialog.setCanceledOnTouchOutside(false)
   dialog.setOnDismissListener { onDismiss() }
-  dialog.window?.setBackgroundDrawable(ColorDrawable(Color.rgb(22, 19, 17)))
+  dialog.window?.apply {
+    setBackgroundDrawable(ColorDrawable(if (transparent) Color.TRANSPARENT else Color.rgb(22, 19, 17)))
+    if (transparent) clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+  }
   dialog.show()
   dialog.window?.setLayout(-1, -1)
   content.requestFocus()

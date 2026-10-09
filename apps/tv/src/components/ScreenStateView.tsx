@@ -7,7 +7,7 @@ import { StyleSheet, Text, View } from "react-native"
 import { scale } from "../lib/scale"
 import { RetryButton } from "./RetryButton"
 import { WATCH_THEME } from "./watch/watchDetailTheme"
-import { LogoAnimation } from "./LogoAnimation"
+import { LoadingAnimation } from "./LoadingAnimation"
 import { useWatchPreferences } from "../contexts/WatchPreferencesProvider"
 
 type ScreenStateViewProps = {
@@ -47,7 +47,7 @@ export function ScreenStateView({
             accessibilityLabel={message ?? "Loading"}
             accessibilityState={{ busy: true }}
           >
-            <LogoAnimation id={loadingAnimationId} size={400} />
+            <LoadingAnimation id={loadingAnimationId} size={400} />
           </View>
           {message != null ? (
             <Text style={styles.message} accessibilityLiveRegion="polite">

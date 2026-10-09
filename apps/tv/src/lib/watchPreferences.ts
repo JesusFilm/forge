@@ -3,7 +3,9 @@ import { getStorage } from "./safeStorage"
 import {
   DEFAULT_LOADING_ANIMATION,
   DEFAULT_STARTUP_ANIMATION,
+  parseLoadingAnimationId,
   parseLogoAnimationId,
+  type LoadingAnimationId,
   type LogoAnimationId,
 } from "./logoAnimations"
 
@@ -20,7 +22,7 @@ export type WatchPreferences = {
   /** Native A is the Apple TV default; Existing and Native B remain selectable. */
   nativePlayerVariant: "existing" | "native-a" | "native-b"
   startupAnimationId?: LogoAnimationId
-  loadingAnimationId?: LogoAnimationId
+  loadingAnimationId?: LoadingAnimationId
 }
 
 /** Versioned key so a future schema change (subtitles, wifi-only) is a migration,
@@ -86,7 +88,7 @@ export function parseStoredPreferences(raw: string | null): WatchPreferences {
       : {}),
     ...(parsed.loadingAnimationId !== undefined
       ? {
-          loadingAnimationId: parseLogoAnimationId(
+          loadingAnimationId: parseLoadingAnimationId(
             parsed.loadingAnimationId,
             DEFAULT_LOADING_ANIMATION,
           ),

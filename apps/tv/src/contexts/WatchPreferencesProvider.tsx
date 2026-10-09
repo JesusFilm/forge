@@ -7,11 +7,11 @@ import {
 } from "react"
 
 import { usePersistedPrefs } from "../lib/persistedPrefs"
-import { reloadAppAsync } from "expo"
-import { getStorage } from "../lib/safeStorage"
+import { restartWatchForPreview } from "../lib/restartWatchForPreview"
 import {
   DEFAULT_LOADING_ANIMATION,
   DEFAULT_STARTUP_ANIMATION,
+  type LoadingAnimationId,
   type LogoAnimationId,
 } from "../lib/logoAnimations"
 import {
@@ -20,8 +20,6 @@ import {
   mergeWatchPreferences,
   reportWatchPreferencesReadTimeout,
   saveWatchPreferences,
-  serializeWatchPreferences,
-  WATCH_PREFERENCES_STORAGE_KEY,
   type WatchPreferences,
 } from "../lib/watchPreferences"
 
@@ -33,9 +31,9 @@ import {
  */
 type WatchPreferencesContextValue = WatchPreferences & {
   startupAnimationId: LogoAnimationId
-  loadingAnimationId: LogoAnimationId
+  loadingAnimationId: LoadingAnimationId
   setStartupAnimationId: (id: LogoAnimationId) => void
-  setLoadingAnimationId: (id: LogoAnimationId) => void
+  setLoadingAnimationId: (id: LoadingAnimationId) => void
   restartAppForPreview: () => Promise<void>
   setAudioLanguageSlug: (slug: string | null) => void
   setAndroidPlayerVariant: (
@@ -79,15 +77,11 @@ export function WatchPreferencesProvider({
     [setPref],
   )
   const setLoadingAnimationId = useCallback(
-    (id: LogoAnimationId) => setPref("loadingAnimationId", id),
+    (id: LoadingAnimationId) => setPref("loadingAnimationId", id),
     [setPref],
   )
   const restartAppForPreview = useCallback(async () => {
-    await getStorage().setItem(
-      WATCH_PREFERENCES_STORAGE_KEY,
-      serializeWatchPreferences(prefs),
-    )
-    await reloadAppAsync("Preview selected startup animation")
+    await restartWatchForPreview(prefs)
   }, [prefs])
 
   const setNativePlayerVariant = useCallback(
