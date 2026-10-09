@@ -6,7 +6,7 @@ import type { PauseTextType } from "./fonts"
 export const pauseColors = {
   /** Screen ground; also the text on ink-filled buttons and the active pill. */
   background: "#0c0b0a",
-  /** Primary text, button and active-pill fill, the Pray ring stroke. */
+  /** Primary text, button and active-pill fill, the countdown ring stroke. */
   ink: "#f4efe6",
   /** Minutes line, check marks, verse reference, attribution, section labels,
    *  switch on. */
@@ -19,7 +19,7 @@ export const pauseColors = {
   raised: "#2a2824",
   /** The Customize sheet. */
   sheet: "#171614",
-  /** The Pray ring's seconds numeral, one step off ink in the frame. */
+  /** The countdown ring's seconds numeral, one step off ink in the frame. */
   ringNumeral: "#f4ede4",
   /** The switch-off knob and the played part of the video progress bar. */
   white: "#ffffff",
@@ -50,12 +50,13 @@ export const pauseSpacing = {
   buttonPaddingY: 16,
   /** The Opening's fixed gap between the minutes line and the question. */
   openingQuestionGap: 35,
-  /** The Pray screen's fixed gap between the stepper and the ring box. */
-  prayRingGap: 87,
+  /** The Reflect and Pray screens' fixed gap between the stepper and the
+   *  ring box. */
+  ringGap: 87,
   /** The Pray screen's empty box between the attribution and Amen. */
   prayButtonGap: 42,
-  /** The Reflect screen's gap between the verse block and its button, and
-   *  the lift of both off the bottom edge (the owner, 2026-10-07). */
+  /** The Reflect screen's gap between its scroll view and Continue, and the
+   *  lift of Continue off the bottom edge (the owner, 2026-10-07). */
   reflectButtonGap: 32,
   reflectButtonLift: 40,
   /** The Share screen's fixed top spacer and its spacer above the button. */
@@ -78,10 +79,10 @@ export const pauseSizes = {
   switchHeight: 32,
   switchKnob: 26,
   switchKnobInset: 3,
-  /** The Pray ring box spans the column; the ring itself is drawn 114 x 109. */
-  prayRingBoxHeight: 121,
-  prayRingWidth: 114,
-  prayRingStroke: 5,
+  /** The countdown ring's box spans the column; the frame draws 114 x 109. */
+  ringBoxHeight: 121,
+  ringWidth: 114,
+  ringStroke: 5,
   progressBarHeight: 3,
 } as const
 

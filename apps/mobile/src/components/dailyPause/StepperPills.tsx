@@ -1,8 +1,15 @@
-// The WATCH, REFLECT, and PRAY stepper (R11) as a path down from a top node
-// (the owner, 2026-10-06). Each screen plays one arrival step: a line draws to
-// the next pill, which lights up. Reduce Motion shows the end.
+// The stepper (R11 of the 2026-10-02 plan): each screen plays one arrival, and
+// Reduce Motion shows the end. v2 plan: the pills share one width (R6, KTD2),
+// and a tap on a pill button plays the arrival again (R7-R10, KTD1).
 import { memo } from "react"
-import { Animated, Easing, StyleSheet, Text, View } from "react-native"
+import {
+  Animated,
+  Easing,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 
 import type { PauseFont } from "../../lib/dailyPause/fonts"
 import {
@@ -10,19 +17,25 @@ import {
   pauseRadii,
   pauseSpacing,
 } from "../../lib/dailyPause/theme"
+import type { StepperStage } from "../../lib/dailyPause/run"
 import { sampledCurve } from "./sampledCurve"
 import { usePauseClock } from "./usePauseClock"
 
-export type StepperStage = "watch" | "reflect" | "pray"
+export type { StepperStage }
 
 type PillLook = "active" | "done" | "upcoming"
 
-const STAGES: readonly { stage: StepperStage; label: string; name: string }[] =
-  [
-    { stage: "watch", label: "WATCH", name: "Watch" },
-    { stage: "reflect", label: "REFLECT", name: "Reflect" },
-    { stage: "pray", label: "PRAY", name: "Pray" },
-  ]
+/** The three sections. The video parts' markers show these labels too (v2
+ *  plan KTD4). */
+export const STAGES: readonly {
+  stage: StepperStage
+  label: string
+  name: string
+}[] = [
+  { stage: "watch", label: "WATCH", name: "Watch" },
+  { stage: "reflect", label: "REFLECT", name: "Reflect" },
+  { stage: "pray", label: "PRAY", name: "Pray" },
+]
 
 /** VoiceOver cannot see the fill, so the label says the state. */
 const STATE_WORDS: Readonly<Record<PillLook, string>> = {
@@ -30,6 +43,11 @@ const STATE_WORDS: Readonly<Record<PillLook, string>> = {
   done: "done",
   upcoming: "upcoming",
 }
+
+/** The widest label. Every pill takes its width in its two wide looks. */
+const SIZER_LABEL = "REFLECT"
+
+const PRESSED_OPACITY = 0.6
 
 /** A pause so the viewer sees the start, then the phases of one step, in ms. */
 const LEAD_MS = 250
@@ -116,7 +134,7 @@ export const StepperPills = memo(function StepperPills({
   font,
 }: StepperPillsProps) {
   const plan = planFor(arrival)
-  const { progress } = usePauseClock(plan.totalMs)
+  const { progress, run, restart } = usePauseClock(plan.totalMs)
   const index = STAGES.findIndex(({ stage }) => stage === arrival)
 
   const step = (phase: Phase): Level =>
@@ -140,29 +158,38 @@ export const StepperPills = memo(function StepperPills({
     return pill < index ? "done" : pill === index ? "active" : "upcoming"
   }
 
+  // iOS keeps a native-driven view's last values, so each run mounts new
+  // layers (KTD1). The buttons stay mounted, so VoiceOver keeps its focus.
   return (
     <View style={styles.stepper}>
-      <Node testID="stepper-node-top" lit={topNode} />
+      <Node testID="stepper-node-top" lit={topNode} run={run} />
       <Line
         testID="stepper-line-0"
         length={NODE_LINE_LENGTH}
         level={lineLevel(0)}
+        run={run}
       />
       {STAGES.map(({ stage, label, name }, pill) => {
         const levels = looks(pill)
         return (
           <View key={stage} style={styles.slotGroup}>
-            <View
-              accessible
+            <Pressable
+              onPress={restart}
+              accessibilityRole="button"
               accessibilityLabel={`${name}, ${STATE_WORDS[endLook(pill)]}`}
-              style={styles.slot}
+              style={({ pressed }) => [
+                styles.target,
+                pressed && styles.pressed,
+              ]}
             >
+              <PillSizer stage={stage} font={font} />
               {(["upcoming", "done", "active"] as const).map((one) => (
                 <Animated.View
-                  key={one}
+                  key={`${one}-${run}`}
                   testID={`stepper-${stage}-${one}`}
                   style={[
                     styles.pill,
+                    styles.look,
                     pillStyles[one],
                     { opacity: levels[one] },
                   ]}
@@ -180,12 +207,13 @@ export const StepperPills = memo(function StepperPills({
                   </Text>
                 </Animated.View>
               ))}
-            </View>
+            </Pressable>
             {pill < STAGES.length - 1 ? (
               <Line
                 testID={`stepper-line-${pill + 1}`}
                 length={PILL_LINE_LENGTH}
                 level={lineLevel(pill + 1)}
+                run={run}
               />
             ) : null}
           </View>
@@ -195,9 +223,40 @@ export const StepperPills = memo(function StepperPills({
   )
 })
 
+/** Unseen copies of the widest label in its two wide looks. They give each
+ *  pill, and its button, one width that follows the text size (KTD2). */
+function PillSizer({ stage, font }: { stage: StepperStage; font: PauseFont }) {
+  return (
+    <View
+      testID={`stepper-${stage}-sizer`}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.sizer}
+    >
+      <View testID={`stepper-${stage}-sizer-active`} style={styles.pill}>
+        <Text style={[styles.activeLabel, font("sansBold")]}>
+          {SIZER_LABEL}
+        </Text>
+      </View>
+      <View testID={`stepper-${stage}-sizer-done`} style={styles.pill}>
+        <Text style={[styles.check, font("sansBold")]}>✓</Text>
+        <Text style={[styles.label, font("sansBold")]}>{SIZER_LABEL}</Text>
+      </View>
+    </View>
+  )
+}
+
 /** The top node: an outline ring, and a disc that fades in over it.
  *  The disc has the ring's own outer edge, so a lit node shows no seam. */
-function Node({ testID, lit }: { testID: string; lit: Level }) {
+function Node({
+  testID,
+  lit,
+  run,
+}: {
+  testID: string
+  lit: Level
+  run: number
+}) {
   return (
     <View
       testID={testID}
@@ -207,6 +266,7 @@ function Node({ testID, lit }: { testID: string; lit: Level }) {
     >
       <View style={styles.nodeRing} />
       <Animated.View
+        key={run}
         testID={`${testID}-fill`}
         style={[styles.nodeFill, { opacity: lit }]}
       />
@@ -219,10 +279,12 @@ function Line({
   testID,
   length,
   level,
+  run,
 }: {
   testID: string
   length: number
   level: Level
+  run: number
 }) {
   return (
     <View
@@ -232,6 +294,7 @@ function Line({
       style={[styles.line, { height: length }]}
     >
       <Animated.View
+        key={run}
         testID={`${testID}-fill`}
         style={[styles.lineFill, { transform: [{ scaleY: level }] }]}
       />
@@ -242,18 +305,26 @@ function Line({
 const styles = StyleSheet.create({
   stepper: { alignItems: "center", alignSelf: "stretch" },
   slotGroup: { alignItems: "center", alignSelf: "stretch" },
-  slot: {
-    alignSelf: "stretch",
+  /** The pill button: the sizer's width and the slot's full height. */
+  target: {
+    maxWidth: "100%",
+    height: PILL_SLOT_HEIGHT,
     alignItems: "center",
     justifyContent: "center",
-    height: PILL_SLOT_HEIGHT,
   },
+  pressed: { opacity: PRESSED_OPACITY },
+  /** No height, so the sizer gives the button only its width. */
+  sizer: { height: 0, opacity: 0 },
   pill: {
-    position: "absolute",
     flexDirection: "row",
     alignItems: "center",
-    maxWidth: "100%",
     paddingHorizontal: pauseSpacing.pillPaddingX,
+  },
+  look: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    justifyContent: "center",
     paddingVertical: pauseSpacing.pillPaddingY,
     borderRadius: pauseRadii.pill,
   },

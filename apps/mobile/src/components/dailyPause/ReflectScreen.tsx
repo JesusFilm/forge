@@ -1,20 +1,9 @@
-// The Figma "Transition · Reflect" screen (R11, R16-R18, R30). The button
-// counts the pause down, takes no tap before 0:00, and then reads Continue.
-// The verse scrolls at large text sizes, and the button stays on screen.
-// The screen opens with the intro in PauseIntro, and the pause starts after.
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  useWindowDimensions,
-} from "react-native"
+// The Figma "Transition · Reflect" screen (R11, R16-R18, R30; v2 plan R11-R15,
+// KTD3): the stepper, the ring, the verse, its reference, and the pause line.
+// The end is in PauseFinish, and the intro is in PauseIntro.
+import { ScrollView, StyleSheet, Text, View } from "react-native"
 
-import {
-  formatClock,
-  spokenTimeLeft,
-  useCountdown,
-} from "../../lib/dailyPause/countdown"
+import { useCountdown } from "../../lib/dailyPause/countdown"
 import type { Devotional } from "../../lib/dailyPause/devotionals"
 import {
   PAUSE_TIMERS,
@@ -31,17 +20,11 @@ import {
   IntroStepper,
   usePauseIntro,
 } from "./PauseIntro"
-import { Pulse } from "./Pulse"
+import { FinishButton, FinishRing, usePauseFinish } from "./PauseFinish"
 import { StepperPills } from "./StepperPills"
 import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
-import { HeldPauseButton, PauseBody, PauseButton } from "./PauseFrame"
+import { PauseBody } from "./PauseFrame"
 
-const QUOTE_SIZE = 48
-const QUOTE_LEADING = 36
-/** Source Serif 4's own line height: (ascender 1036 + descender 335) / 1000. */
-const BODY_LINE_RATIO = 1.371
-
-/** The button reads this at 0:00. The timer before it keeps its width. */
 const CONTINUE = "Continue"
 
 type ReflectScreenProps = {
@@ -58,16 +41,12 @@ export function ReflectScreen({
   font,
   onContinue,
 }: ReflectScreenProps) {
-  const { fontScale } = useWindowDimensions()
   const intro = usePauseIntro("reflect")
   const countdown = useCountdown(
     PAUSE_TIMERS[meditationLength].reflectSec,
     intro.shown,
   )
-  // iOS clips a glyph above a line box shorter than the face, so the mark
-  // keeps the face's box. Equal negative margins give it the frame's 36 pt.
-  const quoteTrim =
-    ((QUOTE_SIZE * BODY_LINE_RATIO - QUOTE_LEADING) / 2) * fontScale
+  const finish = usePauseFinish(countdown.done)
 
   return (
     <PauseBody>
@@ -79,17 +58,9 @@ export function ReflectScreen({
         <IntroStepper intro={intro}>
           <StepperPills arrival="reflect" font={font} />
         </IntroStepper>
-        <View style={styles.spacer} />
+        <View style={styles.ringGap} />
         <IntroContent intro={intro} style={styles.content}>
-          <Text
-            style={[
-              styles.quote,
-              { marginVertical: -quoteTrim },
-              font("bodyLight"),
-            ]}
-          >
-            “
-          </Text>
+          <FinishRing countdown={countdown} finish={finish} font={font} />
           <Text style={[styles.verse, pauseText(font, pauseType.reading)]}>
             {devotional.verse}
           </Text>
@@ -102,42 +73,35 @@ export function ReflectScreen({
         </IntroContent>
       </ScrollView>
       <IntroCovered intro={intro} style={styles.buttonRow}>
-        {countdown.done ? (
-          <Pulse>
-            <PauseButton
-              label={CONTINUE}
-              onPress={onContinue}
-              font={font}
-              widthLabel={CONTINUE}
-            />
-          </Pulse>
-        ) : (
-          <HeldPauseButton
-            label={formatClock(countdown.secondsLeft)}
-            spokenLabel={`${CONTINUE}, ${spokenTimeLeft(countdown.secondsLeft)}`}
-            font={font}
-            widthLabel={CONTINUE}
-          />
-        )}
+        <FinishButton
+          label={CONTINUE}
+          finish={finish}
+          font={font}
+          onPress={onContinue}
+        />
       </IntroCovered>
     </PauseBody>
   )
 }
 
 const styles = StyleSheet.create({
+  // It fills the body down to Continue, so the free space stays below the
+  // pause line and Continue stays at the bottom (R15).
   scroll: { flex: 1, alignSelf: "stretch" },
-  // The spacer pushes the verse down onto the button, as in the frame.
   scrollContent: {
     flexGrow: 1,
     alignItems: "center",
     gap: pauseSpacing.screenGap,
   },
-  spacer: { flex: 1 },
   content: {
     alignSelf: "stretch",
     alignItems: "center",
     gap: pauseSpacing.screenGap,
   },
+  // Pray's gap when the screen has room. The verse is longer than Pray's text,
+  // so on a 402 x 874 phone the gap shrinks to keep the reference and the pause
+  // line above Continue (v2 R14).
+  ringGap: { flexGrow: 1, maxHeight: pauseSpacing.ringGap },
   // The body's own gap already sits above the button, so the margin adds
   // only the rest of the Reflect gap.
   buttonRow: {
@@ -145,10 +109,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: pauseSpacing.reflectButtonGap - pauseSpacing.screenGap,
     marginBottom: pauseSpacing.reflectButtonLift,
-  },
-  quote: {
-    color: pauseColors.accent,
-    fontSize: QUOTE_SIZE,
   },
   verse: {
     alignSelf: "stretch",

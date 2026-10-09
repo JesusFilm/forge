@@ -6,6 +6,7 @@ import {
   press,
   pressableByLabel,
   unmount,
+  type RenderedNode,
   type TestInstance,
 } from "../../test-utils/rnTestRenderer"
 import {
@@ -14,6 +15,7 @@ import {
   subscribePause,
   liftPause,
   requestPause,
+  requestPauseExit,
 } from "../../lib/pauseCurtain"
 import { LOGO_DURATION_MS } from "../DailyBiblePauseLogo"
 import {
@@ -32,6 +34,7 @@ jest.mock("expo-status-bar", () => ({
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
 
 const CURTAIN_LABEL = "Daily Bible Pause. Tap to return."
+const EXIT_LABEL = "Daily Bible Pause. Leaving the devotional."
 
 type Timing = {
   toValue: number
@@ -102,12 +105,23 @@ function curtainCount(renderer: TestInstance): number {
   ).length
 }
 
+/** Every node that carries the label, the composite and its host view. */
+function curtainNodes(renderer: TestInstance, label: string): RenderedNode[] {
+  return renderer.root.findAll(
+    (node) => node.props.accessibilityLabel === label,
+  )
+}
+
 const fade = () => timings.find((t) => t.toValue === 1 && t.delay === 0)!
 const pen = () => timings.find((t) => t.delay > 0)!
 const lift = () => timings.find((t) => t.toValue === 0)!
 
 async function pause() {
   await act(async () => requestPause())
+}
+
+async function exit() {
+  await act(async () => requestPauseExit({ kind: "home" }))
 }
 
 async function advance(ms: number) {
@@ -282,6 +296,88 @@ describe("PauseStage", () => {
     expect(lift()).toBeDefined()
     await act(async () => lift().finish())
     expect(backHandlers).toHaveLength(0)
+    await unmount(renderer)
+  })
+})
+
+// v2 R18, KTD5: the viewer chose to leave, so nothing on the curtain stops it.
+describe("PauseStage during an exit", () => {
+  it("draws the same close, with no button role and a label that says the viewer is leaving", async () => {
+    const renderer = await render()
+    await exit()
+    expect(fade().duration).toBe(PAUSE_FADE_IN_MS)
+    const curtain = curtainNodes(renderer, EXIT_LABEL)
+    expect(curtain.length).toBeGreaterThan(0)
+    for (const node of curtain) {
+      expect(node.props.accessibilityRole).not.toBe("button")
+      expect(node.props.onPress).toBeUndefined()
+    }
+    expect(curtainNodes(renderer, CURTAIN_LABEL)).toHaveLength(0)
+    await unmount(renderer)
+  })
+
+  // AE8: a tap while the curtain closes does not stop the exit.
+  it("does not lift on a tap while it closes, and still reports the logo drawn", async () => {
+    const renderer = await render()
+    await exit()
+    await advance(1000)
+    const curtain = curtainNodes(renderer, EXIT_LABEL)
+    expect(curtain.length).toBeGreaterThan(0)
+    for (const node of curtain) await press(node)
+    expect(lift()).toBeUndefined()
+    expect(getPausePhase()).toBe("closing")
+    await advance(PAUSE_LOGO_DRAWN_MS - 1000)
+    expect(getPausePhase()).toBe("drawn")
+    await unmount(renderer)
+  })
+
+  it("consumes Android's back button and does not lift", async () => {
+    const renderer = await render()
+    await exit()
+    expect(backHandlers).toHaveLength(1)
+    let consumed = false
+    await act(async () => {
+      consumed = backHandlers[0]!()
+    })
+    expect(consumed).toBe(true)
+    expect(lift()).toBeUndefined()
+    expect(getPausePhase()).toBe("closing")
+    await unmount(renderer)
+  })
+
+  it("lifts when the bridge asks, then takes the curtain down", async () => {
+    const renderer = await render()
+    await exit()
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    await act(async () => liftPause())
+    expect(lift().duration).toBe(PAUSE_FADE_OUT_MS)
+    await act(async () => lift().finish())
+    expect(curtainNodes(renderer, EXIT_LABEL)).toHaveLength(0)
+    expect(getPausePhase()).toBe("idle")
+    await unmount(renderer)
+  })
+
+  it("lets the next entry lift back on a tap and on back after an exit ends", async () => {
+    const renderer = await render()
+    await exit()
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    await act(async () => liftPause())
+    await act(async () => lift().finish())
+    timings = []
+
+    await pause()
+    await advance(1000)
+    await press(pressableByLabel(renderer, CURTAIN_LABEL))
+    expect(lift()).toBeDefined()
+    expect(getPausePhase()).toBe("lifting")
+    await act(async () => lift().finish())
+
+    timings = []
+    await pause()
+    await act(async () => {
+      backHandlers[0]!()
+    })
+    expect(lift()).toBeDefined()
     await unmount(renderer)
   })
 })

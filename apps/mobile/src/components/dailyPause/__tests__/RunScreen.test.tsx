@@ -3,7 +3,12 @@
 // the video player (U9) are modelled. Every render is wrapped in StrictMode.
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { StrictMode, act } from "react"
-import { Dimensions, StyleSheet, type ViewStyle } from "react-native"
+import {
+  Dimensions,
+  StyleSheet,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native"
 
 import {
   DEVOTIONALS,
@@ -26,6 +31,7 @@ import {
   getPauseSettingsStore,
   resetPauseSettingsStoreForTests,
 } from "../../../lib/dailyPause/settings"
+import { pauseColors } from "../../../lib/dailyPause/theme"
 import type { ExpoVideoMock } from "../../../test-utils/expoVideoMock"
 import {
   TestRenderer,
@@ -309,6 +315,14 @@ function pills(): string[] {
     .map((node) => node.props.accessibilityLabel as string)
 }
 
+/** What VoiceOver reads on the countdown ring. */
+function timeLeft(): string | undefined {
+  return renderer!.root.findAll(
+    (node) =>
+      typeof node.type === "string" && node.props.accessibilityRole === "timer",
+  )[0]?.props.accessibilityLabel
+}
+
 function closeTop(): number {
   const [close] = renderer!.root.findAll(
     (node: RenderedNode) =>
@@ -316,6 +330,45 @@ function closeTop(): number {
       node.props.accessibilityLabel === "Close",
   )
   return StyleSheet.flatten(close!.props.style as ViewStyle).top as number
+}
+
+/** The section marker row (v2 plan R2), found by what VoiceOver reads. */
+function markerRows(): RenderedNode[] {
+  return renderer!.root.findAll(
+    (node) =>
+      typeof node.type === "string" &&
+      typeof node.props.accessibilityLabel === "string" &&
+      / section$/.test(node.props.accessibilityLabel),
+  )
+}
+
+/** What VoiceOver reads on the marker row; null without one. */
+function markerLabel(): string | null {
+  const rows = markerRows()
+  expect(rows.length).toBeLessThanOrEqual(1)
+  return rows[0]?.props.accessibilityLabel ?? null
+}
+
+/** The markers that show in gold. */
+function goldMarkers(): string[] {
+  return renderer!.root
+    .findAll(
+      (node) =>
+        node.type === "Text" &&
+        ["WATCH", "REFLECT", "PRAY"].includes(node.props.children as string),
+    )
+    .filter(
+      (node) =>
+        StyleSheet.flatten(node.props.style as TextStyle).color ===
+        pauseColors.accent,
+    )
+    .map((node) => node.props.children as string)
+}
+
+/** The marker row's top edge and height in window points. */
+function markerBox(): { top: number; height: number } {
+  const style = StyleSheet.flatten(markerRows()[0]!.props.style as ViewStyle)
+  return { top: style.top as number, height: style.height as number }
 }
 
 function savedDay() {
@@ -329,29 +382,31 @@ const REFLECT = ["Watch, done", "Reflect, current step", "Pray, upcoming"]
 const PRAY = ["Watch, done", "Reflect, done", "Pray, current step"]
 
 /** Each step after Begin: a text only it shows (none on a video part, which
- *  shows its part instead), and its stepper. */
-const WALK: readonly [PauseStep, string | null, string[]][] = [
-  ["watchScreen", "DAILY BIBLE PAUSE", WATCH],
-  ["film", null, []],
-  ["teaching", null, []],
-  ["reflectScreen", DEVOTIONALS.pharisee.verseLabel, REFLECT],
-  ["prayer", null, []],
-  ["prayScreen", DEVOTIONALS.pharisee.attribution, PRAY],
-  ["share", "SHARE", []],
+ *  shows its part instead), its stepper, and its marker row (v2 plan R2). */
+const WALK: readonly [PauseStep, string | null, string[], string | null][] = [
+  ["watchScreen", "DAILY BIBLE PAUSE", WATCH, null],
+  ["film", null, [], "Watch section"],
+  ["teaching", null, [], "Reflect section"],
+  ["reflectScreen", DEVOTIONALS.pharisee.verseLabel, REFLECT, null],
+  ["prayer", null, [], "Pray section"],
+  ["prayScreen", DEVOTIONALS.pharisee.attribution, PRAY, null],
+  ["share", "SHARE", [], null],
 ]
 
-it("walks from Begin through the R10 steps to Share, with the stepper only on the three screens", async () => {
+it("walks from Begin through the R10 steps to Share, with the stepper only on the three screens and the markers only on the parts", async () => {
   await open()
   expect(buttons()).toEqual([
     "Begin Devotional",
     "Customize experience",
     "Close",
   ])
+  expect(markerLabel()).toBeNull()
   await tap("Begin Devotional")
-  for (const [index, [step, marker, stepper]] of WALK.entries()) {
+  for (const [index, [step, marker, stepper, section]] of WALK.entries()) {
     if (index > 0) await next()
     await expectShows(step, marker)
     expect(pills()).toEqual(stepper)
+    expect(markerLabel()).toBe(section)
     expect(savedDay().step).toBe(step)
   }
   // R7: reaching Share marks the day done.
@@ -372,13 +427,38 @@ it("keeps one part player mounted from the film part to the prayer part (KTD7)",
   expect(mockDownloadAsync.mock.calls.length).toBe(mounts)
 })
 
-it("offers only the close and Share this video on Share (R22)", async () => {
+it("offers Share this video, Browse suggested media, Finish, and the close on Share (v2 R20)", async () => {
   await seedDay("prayScreen")
   await open()
   await tap("Resume")
   await next()
-  expect(buttons()).toEqual(["Share this video", "Close"])
+  expect(buttons()).toEqual([
+    "Share this video",
+    "Browse suggested media",
+    "Finish",
+    "Close",
+  ])
 })
+
+// v2 plan R11-R13, AE5: Reflect and Pray count down on one ring, and a tap
+// on the held button before zero leaves the run where it is.
+it.each<[PauseStep, string, string, PauseStep]>([
+  ["reflectScreen", "Continue", "45 seconds left", "prayer"],
+  ["prayScreen", "Amen", "30 seconds left", "share"],
+])(
+  "keeps the run on %s until its ring reaches zero, then %s moves it on",
+  async (step, label, full, nextStep) => {
+    await seedDay(step)
+    await open()
+    await tap("Resume")
+    expect(timeLeft()).toBe(full)
+    await tap(label)
+    expect(savedDay().step).toBe(step)
+    await waitOutPause()
+    await tap(label)
+    expect(savedDay().step).toBe(nextStep)
+  },
+)
 
 it("keeps the screen awake from the Opening through Pray, under StrictMode with one tag", async () => {
   await open()
@@ -436,7 +516,7 @@ it("lets the screen sleep after the close", async () => {
 
 it.each(WALK.filter(([step]) => step !== "share"))(
   "after a close during the %s step, the Opening resumes at that step (R5, R6)",
-  async (step, marker, stepper) => {
+  async (step, marker, stepper, section) => {
     await open()
     await tap("Begin Devotional")
     const target = WALK.findIndex(([one]) => one === step)
@@ -450,9 +530,11 @@ it.each(WALK.filter(([step]) => step !== "share"))(
       "Customize experience",
       "Close",
     ])
+    expect(markerLabel()).toBeNull()
     await tap("Resume")
     await expectShows(step, marker)
     expect(pills()).toEqual(stepper)
+    expect(markerLabel()).toBe(section)
   },
 )
 
@@ -505,6 +587,77 @@ it("puts the close in the safe area on screens and in the top letterbox on video
   expect(closeTop() + 44).toBeLessThanOrEqual(videoTop)
 })
 
+// v2 plan R2-R5, AE1, KTD4: each part shows its own section in the close's
+// row, and the row never takes the tap that pauses the part.
+describe("the section markers", () => {
+  it.each<[PauseStep, string, string]>([
+    ["film", "WATCH", "Watch section"],
+    ["teaching", "REFLECT", "Reflect section"],
+    ["prayer", "PRAY", "Pray section"],
+  ])(
+    "shows the %s part's own section in gold (R3, AE1)",
+    async (step, gold, label) => {
+      await seedDay(step)
+      await open()
+      await tap("Resume")
+      expect(markerLabel()).toBe(label)
+      expect(goldMarkers()).toEqual([gold])
+    },
+  )
+
+  it("shows the row while a part loads and after it fails", async () => {
+    await open()
+    await tap("Begin Devotional")
+    await tap("Continue")
+    expect(markerLabel()).toBe("Watch section")
+    await act(async () => {
+      jest.advanceTimersByTime(PART_START_BACKSTOP_MS + FRAME_MS)
+    })
+    expect(buttons()).toContain("Try again")
+    expect(markerLabel()).toBe("Watch section")
+  })
+
+  it("leaves the tap to the video: a press pauses the part under the row (R4)", async () => {
+    await seedDay("teaching")
+    await open()
+    await tap("Resume")
+    await videoReady()
+    await frames(1)
+    await tickTo(PARTS.teaching.startSec + 0.2)
+    await frames(1)
+    expect(player.playing).toBe(true)
+    expect(markerRows()[0]!.props.pointerEvents).toBe("none")
+
+    await tap("Pause video")
+    expect(player.playing).toBe(false)
+    expect(buttons()).toContain("Resume video")
+    expect(markerLabel()).toBe("Reflect section")
+  })
+
+  it("centers the row on the close's row on a phone with a top band (R5)", async () => {
+    const videoTop = (WINDOW.height - (WINDOW.width * 1920) / 1080) / 2
+    await seedDay("film")
+    await open()
+    await tap("Resume")
+    const { top, height } = markerBox()
+    expect(top + height / 2).toBeCloseTo(closeTop() + 44 / 2, 5)
+    expect(top + height).toBeLessThanOrEqual(videoTop)
+  })
+
+  it("puts the row at the top edge, over the picture, on an iPhone SE", async () => {
+    const se = { width: 375, height: 667, scale: 2, fontScale: 1 }
+    Dimensions.set({ window: se, screen: se })
+    const videoTop = (se.height - (se.width * 1920) / 1080) / 2
+    await seedDay("film")
+    await open()
+    await tap("Resume")
+    const { top, height } = markerBox()
+    expect(top).toBe(0)
+    expect(top + height).toBeGreaterThan(videoTop)
+    expect(closeTop()).toBe(0)
+  })
+})
+
 it("offers Try again when a part never starts, and the close stays reachable", async () => {
   await open()
   await tap("Begin Devotional")
@@ -538,7 +691,12 @@ describe("the developer Skip", () => {
       await tap(DEV_SKIP)
     }
     expect(savedDay()).toMatchObject({ step: "share", done: true })
-    expect(buttons()).toEqual(["Share this video", "Close"])
+    expect(buttons()).toEqual([
+      "Share this video",
+      "Browse suggested media",
+      "Finish",
+      "Close",
+    ])
   })
 
   it("silences a part that it ends in the middle of playback", async () => {

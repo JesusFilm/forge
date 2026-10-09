@@ -106,8 +106,9 @@ _Avoid:_ devo (conversation shorthand).
 
 Each section pairs a part of the devotional's video with an app screen that
 gives the viewer time to respond, such as the verse held on screen with a
-timer. A day's Daily Bible Pause is done when the viewer reaches Share, and
-the done state ends at local midnight.
+timer. Watch pairs the film part, Reflect pairs the teaching part, and Pray
+pairs the prayer part. A day's Daily Bible Pause is done when the viewer
+reaches Share, and the done state ends at local midnight.
 
 ## Video & media
 

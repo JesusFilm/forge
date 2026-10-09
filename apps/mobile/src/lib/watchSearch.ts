@@ -3,6 +3,7 @@ import { CombinedGraphQLErrors } from "@apollo/client/errors"
 import type { AdminLanguageForms } from "../i18n/adminLanguage"
 import type { UiT } from "../i18n/useT"
 import { isBrowseTopicTerm } from "./browseTopics"
+import type { SearchIntentOrigin } from "./searchIntent"
 
 import type {
   SearchResponse,
@@ -36,15 +37,18 @@ export const ENGLISH_SEARCH_LANGUAGE: SearchLanguage = {
 }
 
 /** KTD9: the mapped text slug (`english` for a catalog with no Admin
- *  language). A browse-topic term is English whatever the UI shows. */
+ *  language). A browse-topic term is English whatever the UI shows, and so is
+ *  a Daily Bible Pause question (v2 R16), whose text is authored in English. */
 export function searchLanguageFor(
   forms: AdminLanguageForms,
   query: string,
+  origin?: SearchIntentOrigin,
 ): SearchLanguage {
   const display = forms.textSlug.trim()
+  const english = origin === "dailyPause" || isBrowseTopicTerm(query)
   return {
     display: display === "" ? SEARCH_LANGUAGE_SLUG : display,
-    query: isBrowseTopicTerm(query) ? SEARCH_LANGUAGE_SLUG : null,
+    query: english ? SEARCH_LANGUAGE_SLUG : null,
   }
 }
 
