@@ -29,6 +29,16 @@ jest.mock("../../../lib/datadog", () => ({
 let mockUiTag = "en"
 jest.mock("../../../hooks/useUiTag", () => ({ useUiTag: () => mockUiTag }))
 
+// Only the Burmese UI case starts the locale store; every other case reads
+// en.json as before.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+
 import { act } from "react"
 import type React from "react"
 import { AccessibilityInfo, Dimensions } from "react-native"
@@ -50,6 +60,11 @@ import {
   verseTypography,
 } from "../../../lib/bibleCardFit"
 import { computeTypographyScale } from "../../../hooks/useTypography"
+import {
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
+import { phoneLocales } from "../../../test-utils/uiLocaleFixture"
 import { readerHref } from "../../../lib/bible/routes/readerRoute"
 import type { VerseRef } from "../../../lib/bible/versification/convert"
 import {
@@ -378,6 +393,92 @@ describe("BibleQuotesCarouselRenderer — a reader-translation card", () => {
     expect(
       findText(renderer, "하나님이 세상을")?.props.numberOfLines,
     ).toBeGreaterThan(0)
+  })
+})
+
+// A fixed line height cuts the tops off Myanmar letters on iOS (simulator,
+// 2026-10-09), so a Myanmar row takes the font's own line height.
+describe("BibleQuotesCarouselRenderer — Myanmar rows", () => {
+  const MYANMAR_CARD: Quote = {
+    ...PASSAGE_QUOTE,
+    reference: "ကမ္ဘာဦးကျမ်း 1:26-27",
+    text: "တဖန် ဘုရားသခင်က၊ ငါတို့ပုံသဏ္ဌာန်နှင့်အညီ လူကိုဖန်ဆင်းကြစို့",
+    translation: "မြန်မာကျမ်းစာ",
+    copyright: "public domain",
+    textLang: "my",
+    verseDirection: "ltr",
+    verseLang: "my",
+  }
+  const typography = computeTypographyScale(Dimensions.get("window").width)
+
+  afterEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+  })
+
+  it("gives the reference and the name no fixed line height", () => {
+    const renderer = render([MYANMAR_CARD])
+
+    const reference = flatStyle(findText(renderer, "ကမ္ဘာဦးကျမ်း"))
+    const name = flatStyle(findText(renderer, "မြန်မာကျမ်းစာ"))
+    expect(reference.fontSize).toBe(typography.bodySmall.fontSize)
+    expect(reference).not.toHaveProperty("lineHeight")
+    expect(name.fontSize).toBe(typography.caption.fontSize)
+    expect(name).not.toHaveProperty("lineHeight")
+    // The verse fits its own line height on the device, so it keeps it.
+    expect(flatStyle(findText(renderer, "တဖန်")).lineHeight).toBe(
+      verseTypography(typography).lineHeight,
+    )
+  })
+
+  it("keeps the fixed line heights on a Latin card", () => {
+    const renderer = render([PASSAGE_QUOTE])
+
+    expect(flatStyle(findText(renderer, "GENESIS 1:26-27")).lineHeight).toBe(
+      typography.bodySmall.lineHeight,
+    )
+    expect(
+      flatStyle(findText(renderer, "World English Bible")).lineHeight,
+    ).toBe(typography.caption.lineHeight)
+  })
+
+  // The fit must budget the taller rows, or the bottom-aligned stack overflows
+  // and the clip takes the reference off the top.
+  it("gives the verse fewer lines than a Latin card at the same size", () => {
+    const size = { width: 411.43, fontScale: 1.3 }
+    const verseLines = (quote: Quote, needle: string) =>
+      findText(renderAtSize([quote], size, jest.fn()), needle)?.props
+        .numberOfLines as number
+
+    const latin = verseLines(JOHN_QUOTE, "For God so loved")
+    const myanmar = verseLines(MYANMAR_CARD, "တဖန်")
+
+    expect(myanmar).toBeGreaterThan(0)
+    expect(myanmar).toBeLessThan(latin)
+  })
+
+  it("gives the Burmese reader link no fixed line height", () => {
+    mockGetLocales.mockReturnValue(phoneLocales("my-MM"))
+    startLocaleSync()
+    const renderer = render([PASSAGE_QUOTE], undefined, jest.fn())
+
+    const link = flatStyle(findText(renderer, "ကျမ်းပိုဒ်"))
+    expect(link.fontSize).toBe(typography.bodySmall.fontSize)
+    expect(link).not.toHaveProperty("lineHeight")
+  })
+
+  it("gives a Burmese promo button no fixed line height", () => {
+    const renderer = render([
+      {
+        ...EXPERIENCE_QUOTE,
+        ctaLabel: "ကျွန်ုပ်တို့၏ ကျမ်းစာလေ့လာမှုတွင် ပါဝင်ပါ",
+        ctaLink: "https://join.bsfinternational.org/",
+      },
+    ])
+
+    const button = flatStyle(findText(renderer, "ကျမ်းစာလေ့လာမှု"))
+    expect(button.fontSize).toBe(typography.bodySmall.fontSize)
+    expect(button).not.toHaveProperty("lineHeight")
   })
 })
 

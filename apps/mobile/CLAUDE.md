@@ -2133,6 +2133,14 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   - A local card sets `verseDirection` and `verseLang`. The verse, the
     reference, and the translation name take the catalog's direction; the
     credit stays English and left to right (KTD7).
+  - **A Myanmar row on a card has no fixed line height.** iOS draws Myanmar
+    in Noto Sans Myanmar, which is 2.18 em tall, and a fixed line height cuts
+    the tops off its letters. `cardRow` in `src/lib/bibleCardFit.ts` removes
+    the line height of a Myanmar reference, translation name, reader link, or
+    promo button, and the fit budgets 2.2 em for that row. Khmer (1.99 em)
+    does not clip, so it keeps the token. The verse keeps its line height,
+    because it does not clip. Checked on the iPhone 17 Pro Max simulator on
+    2026-10-09; Android was not checked.
   - Card reads share the reader's repository, so they fill its kept-chapter
     cache. A card's network read also sets the repository's "network
     answered" signal, which the reader's prefetch reads. Two reads of one

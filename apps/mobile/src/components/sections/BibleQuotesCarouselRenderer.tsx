@@ -28,6 +28,7 @@ import {
   TRANSLATION_MARGIN,
   TRANSLATION_MAX_LINES,
   VERSE_MARGIN,
+  cardRow,
   composeCardLabel,
   fitPassageCardRegions,
   passageCardStackHeight,
@@ -283,6 +284,10 @@ function QuoteCard({
   const reference = readerCard
     ? quote.reference.toLocaleUpperCase(verseLang)
     : quote.reference.toUpperCase()
+  const linkLabel = t("readFullPassage")
+  const referenceRow = cardRow(typography.bodySmall, reference)
+  const translationRow = cardRow(typography.caption, quote.translation)
+  const linkRow = cardRow(typography.bodySmall, linkLabel)
 
   // The card is a fixed square and its content is bottom-aligned, so the drop
   // order has to be decided here rather than left to overflow.
@@ -294,6 +299,9 @@ function QuoteCard({
     hasTranslation: !loading && quote.translation != null,
     hasCopyright: !loading && quote.copyright != null,
     hasLink: !loading && citationStart != null,
+    referenceLineHeight: referenceRow.lineHeight,
+    translationLineHeight: translationRow.lineHeight,
+    linkLineHeight: linkRow.lineHeight,
   }
   const regions = fitPassageCardRegions(fitInput)
 
@@ -420,7 +428,7 @@ function QuoteCard({
         <Text
           style={[
             styles.reference,
-            typography.bodySmall,
+            referenceRow.style,
             readerCard && passageDirection,
           ]}
           // The fit arithmetic budgets exactly REFERENCE_MAX_LINES for this
@@ -456,7 +464,7 @@ function QuoteCard({
         )}
         {regions.translation && quote.translation != null && (
           <Text
-            style={[styles.translation, typography.caption, passageDirection]}
+            style={[styles.translation, translationRow.style, passageDirection]}
             numberOfLines={TRANSLATION_MAX_LINES}
           >
             {quote.translation}
@@ -482,11 +490,11 @@ function QuoteCard({
             disabled={onOpenReader == null}
             onPress={() => onOpenReader?.(citationStart)}
             accessibilityRole="link"
-            accessibilityLabel={t("readFullPassage")}
+            accessibilityLabel={linkLabel}
             {...{ "dd-action-name": READ_PASSAGE_ACTION_NAME }}
           >
-            <Text style={[styles.passageLinkText, typography.bodySmall]}>
-              {t("readFullPassage")}
+            <Text style={[styles.passageLinkText, linkRow.style]}>
+              {linkLabel}
             </Text>
           </Pressable>
         )}
@@ -509,7 +517,12 @@ function QuoteCard({
               accessibilityRole="link"
               accessibilityLabel={ctaLabel}
             >
-              <Text style={[styles.ctaText, typography.bodySmall]}>
+              <Text
+                style={[
+                  styles.ctaText,
+                  cardRow(typography.bodySmall, ctaLabel).style,
+                ]}
+              >
                 {ctaLabel}
               </Text>
             </Pressable>
