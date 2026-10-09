@@ -1,6 +1,6 @@
-// The bridge between the Pause curtain and the router (KTD5; the exit: v2 R17,
-// R18, KTD5). It sits inside the providers that the stage cannot read, beside
-// the experience shell and not in it, because a shell swap remounts its tree.
+// The bridge between the Pause curtain and the router (KTD5; the exit: v2
+// R16-R18, KTD5, KTD6). It sits inside the providers that the stage cannot
+// read, beside the experience shell, because a shell swap remounts the shell.
 
 import { useCallback, useEffect } from "react"
 import { BackHandler } from "react-native"
@@ -21,6 +21,7 @@ import {
   type PauseExitTarget,
 } from "../../lib/pauseCurtain"
 import { beginPlaybackInterruption } from "../../lib/playbackInterruption"
+import { getSearchIntentStore } from "../../lib/searchIntent"
 
 /** How long a drawn curtain waits for the experience selection. The same
  *  bound as `LAPSE_REMINDER_TAP_DEADLINE_MS`, for the same stack remount. */
@@ -111,6 +112,9 @@ export function DailyPauseHost(): null {
   useEffect(() => {
     const target = getPauseExitTarget()
     if (phase !== "drawn" || !exiting || target == null) return
+    // v2 KTD6: the put comes here and not at the tap, so the time limit runs
+    // from the pop. A long time in the background cannot expire it.
+    if (target.kind === "search") getSearchIntentStore().put(target.question)
     router.dismissTo(EXIT_ROUTES[target.kind].href)
     const backstop = setTimeout(liftPause, PAUSE_EXIT_BACKSTOP_MS)
     return () => clearTimeout(backstop)

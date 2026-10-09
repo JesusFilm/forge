@@ -1,7 +1,7 @@
 /**
  * The curtain handover against the REAL curtain store, stage, mini player
- * store, and day record. Only the router, the experience selection, and the
- * native animation driver are modelled.
+ * store, day record, and search intent store. Only the router, the experience
+ * selection, and the native animation driver are modelled.
  */
 
 import { StrictMode, act, type ReactElement } from "react"
@@ -31,6 +31,7 @@ import {
   resetPlaybackTransportForTests,
   setPlaybackTransport,
 } from "../../../lib/playbackInterruption"
+import { getSearchIntentStore } from "../../../lib/searchIntent"
 import {
   TestRenderer,
   press,
@@ -80,6 +81,8 @@ const CURTAIN_LABEL = "Daily Bible Pause. Tap to return."
 const EXIT_LABEL = "Daily Bible Pause. Leaving the devotional."
 const READY = { isReady: true, currentSlug: "jesus-film" }
 const QUESTION = "How are we commanded to pray?"
+/** The event that a put on the search intent store logs. */
+const INTENT = `intent ${QUESTION}`
 
 // ── The native animation driver and Android back, modelled ─────────
 
@@ -107,6 +110,8 @@ const transport = {
 const mounted: TestInstance[] = []
 let ends: MiniPlayerEndEvent[] = []
 let stopEnds: () => void = () => {}
+const intents = getSearchIntentStore()
+let stopIntents: () => void = () => {}
 
 function floatingWindow() {
   sessions.start({
@@ -164,6 +169,11 @@ beforeEach(() => {
   resetPlaybackTransportForTests()
   setPlaybackTransport(transport)
   resetPauseProgressStoreForTests()
+  intents.clear()
+  stopIntents = intents.subscribe(() => {
+    const intent = intents.peek()
+    if (intent != null) events.push(`intent ${intent.query}`)
+  })
 })
 
 afterEach(() => {
@@ -172,6 +182,8 @@ afterEach(() => {
   act(() => endPause())
   setPauseRunOnTop(false)
   stopEnds()
+  stopIntents()
+  intents.clear()
   jest.restoreAllMocks()
   jest.useRealTimers()
 })
@@ -396,6 +408,7 @@ describe("the exit", () => {
       await getPauseProgressStore().hydrate()
     })
     expect(bellRead()).toBe(false)
+    expect(intents.peek()).toBeNull()
     await act(async () => lift().finish())
     expect(getPausePhase()).toBe("idle")
     await unmount(renderer)
@@ -407,12 +420,12 @@ describe("the exit", () => {
     const renderer = await render()
     await leave({ kind: "search", question: QUESTION })
     await advance(PAUSE_LOGO_DRAWN_MS)
-    expect(events).toEqual(["dismissTo /(tabs)/watch"])
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch"])
     // iOS native tabs can show Home for one render before the search tab.
     await showSegments(renderer, ["(tabs)"])
-    expect(events).toEqual(["dismissTo /(tabs)/watch"])
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch"])
     await showSegments(renderer, ["(tabs)", "watch"])
-    expect(events).toEqual(["dismissTo /(tabs)/watch", "lift"])
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch", "lift"])
     await advance(PAUSE_HANDOVER_DEADLINE_MS)
     expect(mockRouter.push).not.toHaveBeenCalled()
     await unmount(renderer)
@@ -450,7 +463,7 @@ describe("the exit", () => {
     expect(events).toEqual([])
     expect(getPausePhase()).toBe("closing")
     await advance(PAUSE_LOGO_DRAWN_MS)
-    expect(events).toEqual(["dismissTo /(tabs)/watch"])
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch"])
     await unmount(renderer)
   })
 
@@ -460,25 +473,57 @@ describe("the exit", () => {
     await leave({ kind: "search", question: QUESTION })
     await advance(PAUSE_LOGO_DRAWN_MS)
     await advance(PAUSE_EXIT_BACKSTOP_MS - 1)
-    expect(events).toEqual(["dismissTo /(tabs)/watch"])
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch"])
     await advance(1)
-    expect(events).toEqual(["dismissTo /(tabs)/watch", "lift"])
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch", "lift"])
     await act(async () => lift().finish())
     expect(getPausePhase()).toBe("idle")
     await unmount(renderer)
   })
 
-  it("pops and lifts once for one exit under StrictMode", async () => {
+  // AE6, KTD6: the put comes at drawn, before the pop, so a long time in the
+  // background before the logo is drawn cannot expire it.
+  it("puts the question before it pops to the search tab, and the tab can read it after the lift (AE6)", async () => {
     mockSegments = ["pause"]
-    const renderer = await render(true)
-    await leave({ kind: "home" })
-    await advance(PAUSE_LOGO_DRAWN_MS)
-    await showSegments(renderer, ["(tabs)"], true)
-    await advance(PAUSE_EXIT_BACKSTOP_MS + PAUSE_HANDOVER_DEADLINE_MS)
-    expect(events).toEqual(["dismissTo /(tabs)", "lift"])
-    expect(mockRouter.push).not.toHaveBeenCalled()
+    const renderer = await render()
+    await leave({ kind: "search", question: QUESTION })
+    await advance(PAUSE_LOGO_DRAWN_MS - 1)
+    expect(events).toEqual([])
+    expect(intents.peek()).toBeNull()
+    await advance(1)
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch"])
+    await showSegments(renderer, ["(tabs)", "watch"])
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch", "lift"])
+    await act(async () => lift().finish())
+    expect(getPausePhase()).toBe("idle")
+    expect(intents.peek()).toMatchObject({
+      query: QUESTION,
+      origin: "dailyPause",
+    })
     await unmount(renderer)
   })
+
+  it.each<[PauseExitTarget, string[], string[]]>([
+    [{ kind: "home" }, ["(tabs)"], ["dismissTo /(tabs)", "lift"]],
+    [
+      { kind: "search", question: QUESTION },
+      ["(tabs)", "watch"],
+      [INTENT, "dismissTo /(tabs)/watch", "lift"],
+    ],
+  ])(
+    "pops and lifts once for one exit to %j under StrictMode",
+    async (target, segments, expected) => {
+      mockSegments = ["pause"]
+      const renderer = await render(true)
+      await leave(target)
+      await advance(PAUSE_LOGO_DRAWN_MS)
+      await showSegments(renderer, segments, true)
+      await advance(PAUSE_EXIT_BACKSTOP_MS + PAUSE_HANDOVER_DEADLINE_MS)
+      expect(events).toEqual(expected)
+      expect(mockRouter.push).not.toHaveBeenCalled()
+      await unmount(renderer)
+    },
+  )
 })
 
 describe("the close (R21, R22)", () => {
@@ -523,6 +568,29 @@ describe("the close (R21, R22)", () => {
     await press(pressableByLabel(renderer, "Close"))
     expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1)
     expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
+    await unmount(renderer)
+  })
+
+  // AE9: only Share's two new buttons take the curtain.
+  it("leaves the run screen for Home at once with no curtain (AE9)", async () => {
+    mockSegments = ["pause"]
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <PauseStage>
+          <CloseButton />
+          <DailyPauseHost />
+        </PauseStage>,
+      )
+    })
+    mounted.push(renderer)
+    await press(pressableByLabel(renderer, "Close"))
+    expect(events).toEqual(["dismissTo /(tabs)"])
+    expect(getPausePhase()).toBe("idle")
+    expect(timings).toHaveLength(0)
+    await advance(PAUSE_LOGO_DRAWN_MS + PAUSE_EXIT_BACKSTOP_MS)
+    expect(events).toEqual(["dismissTo /(tabs)"])
+    expect(timings).toHaveLength(0)
     await unmount(renderer)
   })
 

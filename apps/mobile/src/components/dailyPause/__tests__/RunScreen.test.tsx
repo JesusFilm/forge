@@ -427,12 +427,17 @@ it("keeps one part player mounted from the film part to the prayer part (KTD7)",
   expect(mockDownloadAsync.mock.calls.length).toBe(mounts)
 })
 
-it("offers only the close and Share this video on Share (R22)", async () => {
+it("offers Share this video, Browse suggested media, Finish, and the close on Share (v2 R20)", async () => {
   await seedDay("prayScreen")
   await open()
   await tap("Resume")
   await next()
-  expect(buttons()).toEqual(["Share this video", "Close"])
+  expect(buttons()).toEqual([
+    "Share this video",
+    "Browse suggested media",
+    "Finish",
+    "Close",
+  ])
 })
 
 // v2 plan R11-R13, AE5: Reflect and Pray count down on one ring, and a tap
@@ -686,7 +691,12 @@ describe("the developer Skip", () => {
       await tap(DEV_SKIP)
     }
     expect(savedDay()).toMatchObject({ step: "share", done: true })
-    expect(buttons()).toEqual(["Share this video", "Close"])
+    expect(buttons()).toEqual([
+      "Share this video",
+      "Browse suggested media",
+      "Finish",
+      "Close",
+    ])
   })
 
   it("silences a part that it ends in the middle of playback", async () => {
