@@ -37,6 +37,7 @@ import {
   FLOATING_HEADER_MOBILE_BOUNDARY_HEIGHT_CLASS,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
+import { isAutoplayBlockedError } from "@/lib/autoplay-refusal"
 import { languageCodeFor } from "@/lib/language-code"
 import { useIsFullscreen } from "@/lib/use-is-fullscreen"
 import { dispatchPlaybackNavigationIntent } from "@/lib/playback-navigation-intent"
@@ -319,15 +320,6 @@ function shouldUseFastMobilePreview(windowRef: Window): boolean {
 // Fraction of the visible video that must be obscured by the body section
 // before the scroll listener pauses the player. 0.6 = 60% obscured — past
 // this point the player is no longer the main element on screen.
-
-// `<MuxVideo>` (bare `<video>`) emits a generic error and the autoplay refusal
-// surfaces as a Promise rejection from `play()` with
-// `DOMException("NotAllowedError")`.
-function isAutoplayBlockedError(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false
-  const named = err as { name?: unknown }
-  return named.name === "NotAllowedError" || named.name === "AutoplayNotAllowed"
-}
 
 // Minimum number of playable language variants before the language-switch
 // audio button appears. With only one variant there's nothing to switch to.
