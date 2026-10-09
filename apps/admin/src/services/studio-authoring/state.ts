@@ -36,15 +36,18 @@ export function studioActor(user: Principal | null) {
 export async function lockProject(
   tx: Prisma.TransactionClient,
   projectId: string,
+  includeDeleted = false,
 ) {
   await tx.$queryRaw`SELECT id FROM short WHERE id = ${projectId} FOR UPDATE`
   const project = await tx.short.findUnique({
     where: { id: projectId },
   })
-  if (!project) throw new NotFoundError("Short", projectId)
+  if (!project || (project.deletedAt && !includeDeleted))
+    throw new NotFoundError("Short", projectId)
   return project
 }
 export function assertEditable(project: Short, expectedRevision: number) {
+  if (project.deletedAt) throw new NotFoundError("Short", project.id)
   if (project.firstPublishedAt || project.lifecycle !== "DRAFT")
     throw new StudioCommandError("IMMUTABLE")
   if (project.currentRevision !== expectedRevision)

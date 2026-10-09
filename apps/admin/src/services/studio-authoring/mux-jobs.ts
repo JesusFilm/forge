@@ -64,6 +64,7 @@ export class StudioMuxJobs {
     LEFT JOIN short_mux_job job ON job.attempt_id=attempt.id
     LEFT JOIN short_release release ON release.render_attempt_id=attempt.id
     WHERE attempt.kind='RENDER' AND attempt.status='SUCCEEDED'
+      AND project.deleted_at IS NULL
       AND (job.state IN ('UPLOADING','PROCESSING') OR (
         project.current_revision=attempt.base_revision AND project.first_published_at IS NULL
         AND ((job.id IS NULL AND release.id IS NULL) OR job.state='PENDING' OR (job.state='READY' AND release.id IS NULL))

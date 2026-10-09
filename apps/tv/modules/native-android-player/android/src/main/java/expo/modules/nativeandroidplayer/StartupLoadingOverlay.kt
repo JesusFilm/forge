@@ -1,6 +1,7 @@
 package expo.modules.nativeandroidplayer
 
 import android.app.Activity
+import android.graphics.Color
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
@@ -25,7 +26,7 @@ object StartupLoadingOverlay {
 }
 
 private class StartupLoadingView(private val activity: Activity) : FrameLayout(activity) {
-  private val loading = BrandedLoadingView(activity, "Starting app")
+  private val loading = BrandedLoadingView(activity, "Starting app", transparent = true)
   private var observer: ViewTreeObserver? = null
   private val backCallback = object : OnBackPressedCallback(true) {
     override fun handleOnBackPressed() { activity.finish() }
@@ -35,6 +36,7 @@ private class StartupLoadingView(private val activity: Activity) : FrameLayout(a
   }
 
   init {
+    setBackgroundColor(Color.rgb(22, 19, 17))
     isClickable = true
     addView(loading, LayoutParams(-1, -1))
   }

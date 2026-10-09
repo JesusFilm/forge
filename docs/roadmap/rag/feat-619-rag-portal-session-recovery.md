@@ -1,5 +1,5 @@
 ---
-id: "feat-575"
+id: "feat-619"
 title: "Renew RAG portal sessions and restore the active section"
 owner: "jaco"
 priority: "P1"
@@ -88,3 +88,9 @@ artifacts free of credentials and issued keys.
 ## Resolution
 
 Implemented in Forge [#2499](https://github.com/JesusFilm/forge/pull/2499).
+
+## ID reconciliation — October 8, 2026
+
+Renumbered from feat-575 to feat-619 to resolve the collision with the other RAG
+ticket and the platform retirement ticket. Status, approved scope, PR history,
+and historical `evidence/feat-575/` paths are preserved.
