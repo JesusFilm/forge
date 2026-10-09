@@ -107,7 +107,7 @@ The total alone does not predict a clip: Khmer, at 1.99 em, rendered whole under
 - Keep the ratio at or above the measured 2.18 em. `bibleCardFit.test.ts` pins it with a literal: "budgets at least the Noto Sans Myanmar line".
 - Test each row on its own. `BibleQuotesCarouselRenderer.test.tsx` has one case per row ("budgets a Myanmar reference by itself", "budgets a Myanmar translation name by itself", and "budgets a Burmese reader link by itself"), each at a size where that row alone costs the verse a line. Removing any one fit input made exactly one case fail (falsified by hand on 2026-10-09).
 - Check a new script on the simulator before you add it to `TALL_SCRIPT`, and zoom the screenshot on the tops of the letters.
-- Android was not checked. Android draws Myanmar with its own Noto font and adds font padding, so measure there before you trust the 2.2 em budget.
+- On the Pixel 9a emulator (Android 15, 2026-10-09), the same card rendered every Myanmar row whole under the 2.2 em budget, and the verse got 3 lines. Android's own Myanmar font metrics were not measured, so check the card again after an Android or font change.
 - App-wide Myanmar text (the watch-page label, the carousel heading) still clips; feat-669 tracks it.
 
 ## Related Issues

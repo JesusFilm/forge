@@ -22,7 +22,7 @@ Seen on the iPhone 17 Pro Max simulator on 2026-10-09, phone language `my-MM`, v
 - The label above the video title (`VideoMetadata`, caption).
 - The Bible quotes heading above the carousel (`bibleQuotesHeading`, titleLarge).
 
-feat-667 fixed the quote card only. `cardRow` in `apps/mobile/src/lib/bibleCardFit.ts` removes the fixed line height of a Myanmar reference, translation name, reader link, or promo button. The card's fit budgets 2.2 em for the reference, name, and link rows. The promo, Experience, and SDUI cards have no fit, so at a large text size a taller Myanmar row can push their text out of the square. In the same check, Khmer (1.99 em) did not clip, and the card's Myanmar verse (20/28 at 375 pt) did not clip. Android was not checked.
+feat-667 fixed the quote card only. `cardRow` in `apps/mobile/src/lib/bibleCardFit.ts` removes the fixed line height of a Myanmar reference, translation name, reader link, or promo button. The card's fit budgets 2.2 em for the reference, name, and link rows. The promo, Experience, and SDUI cards have no fit, so at a large text size a taller Myanmar row can push their text out of the square. In the same check, Khmer (1.99 em) did not clip, and the card's Myanmar verse (20/28 at 375 pt) did not clip. On the Pixel 9a emulator (Android 15), the card's Myanmar rows also rendered whole with that fix. Android UI text outside the card was not checked.
 
 A likely cause, read from the source and not tested: React Native's iOS baseline offset uses the line height of the declared font (the system font), not of the fallback font that draws the letters. See `RCTApplyBaselineOffsetForRange` in `react-native/ReactCommon/react/renderer/textlayoutmanager/platform/ios/react/renderer/textlayoutmanager/RCTAttributedTextUtils.mm`.
 
@@ -46,7 +46,7 @@ A likely cause, read from the source and not tested: React Native's iOS baseline
 - Choose where the rule applies. Option A: when the UI catalog is `my`, UI text drops its fixed line heights. The catalog is known at render, so this is one decision per screen. Option B: a test per text, as `cardRow` does. Admin text (titles, descriptions) needs option B.
 - A surface that budgets a line height (the quote card fit, fixed rows) must budget `fontSize × TALL_SCRIPT_LINE_HEIGHT_RATIO` for a Myanmar row.
 - Give the promo, Experience, and SDUI quote cards a bound for their Myanmar rows (a fit or a line clamp), so a large text size cannot push the eyebrow out of the square.
-- Check Android with the same screens. Android draws Myanmar with Noto Sans Myanmar UI, which has smaller metrics.
+- Check the same UI screens on Android. The quote card passed there; the other screens were not checked.
 
 ## Constraints
 
