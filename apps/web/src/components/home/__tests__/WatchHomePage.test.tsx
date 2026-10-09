@@ -1358,7 +1358,8 @@ describe("WatchHomePage", () => {
 
     expect(container.textContent).toContain("Рекомендуем")
     expect(container.textContent).toContain("Полнометражный фильм")
-    expect(container.textContent).toContain(
+    expect(container.textContent).toContain("Создано для всемирной миссии")
+    expect(container.textContent).not.toContain(
       "Помогите создать новое поколение инструментов для миссии",
     )
     expect(container.textContent).not.toContain("Featured")
