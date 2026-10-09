@@ -6,6 +6,9 @@ export class StudioCommandError extends Error {
       | "CONFLICT"
       | "IMMUTABLE"
       | "INVALID"
+      | "PROJECT_BUSY"
+      | "PROJECT_SCHEDULED"
+      | "UNPUBLISH_REQUIRED"
       | "PRODUCTION_DISABLED"
       | StudioPublicationFailure,
   ) {

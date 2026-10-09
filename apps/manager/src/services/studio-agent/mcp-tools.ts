@@ -20,6 +20,15 @@ import {
 import { studioChatSchema } from "@forge/studio-contracts/agent"
 export const STUDIO_MCP_TOOLS = [
   {
+    name: "shorts.deleteProject",
+    description:
+      "Delete an owned project from the workspace only when the user explicitly asks to delete that project. Read its current revision first; send expectedRevision and reuse the same idempotencyKey after a lost response. Retained history and assets remain. Published projects require interactive unpublish first; active work and calendar assignments block deletion. Never delete automatically during cleanup.",
+    scope: "shorts:edit",
+    action: "delete",
+    schema: studioCommandBaseSchema,
+    annotations: { destructiveHint: true, idempotentHint: true },
+  },
+  {
     name: "shorts.inspect",
     description:
       "Inspect bounded sampled images and measured audio statistics from the exact rendered output. Reuses immutable evidence, never rerenders or approves. Report actual supported modalities, unknowns and sampled coverage; at most one automatic repair per handoff. Human approval remains separate.",

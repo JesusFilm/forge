@@ -34,6 +34,7 @@ export const studioRpcSchema = z
       "read",
       "history",
       "create",
+      "delete",
       "apply",
       "approve",
       "unpublish",

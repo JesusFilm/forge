@@ -89,6 +89,14 @@
   color: inherit;
   background: var(--ds-panel);
 }
+.nle-project-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.nle-project-card > button {
+  margin-top: 12px;
+}
 .nle-project-poster {
   height: 140px;
   background: var(--ds-hover);

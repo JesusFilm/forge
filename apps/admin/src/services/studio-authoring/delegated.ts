@@ -28,7 +28,9 @@ export async function executeStudioDelegated(
       ? "shorts:narration"
       : action === "render-request"
         ? "shorts:render"
-        : ["apply", "create", "capture", "asset-upload"].includes(action)
+        : ["apply", "create", "delete", "capture", "asset-upload"].includes(
+              action,
+            )
           ? "shorts:edit"
           : action === "request"
             ? "shorts:chat"
