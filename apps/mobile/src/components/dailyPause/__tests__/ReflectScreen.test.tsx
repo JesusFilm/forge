@@ -12,6 +12,7 @@ import {
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
 import type { MeditationLength } from "../../../lib/dailyPause/settings"
+import { pauseSpacing } from "../../../lib/dailyPause/theme"
 import {
   TestRenderer,
   hasText,
@@ -247,6 +248,34 @@ it("lays the screen out in the v2 order, with no quote mark (R14, R15)", async (
   for (let node = button!.parent; node; node = node.parent) {
     expect(node).not.toBe(scroll)
   }
+})
+
+// Jest has no layout, so this pins the shape only. On the iPhone 17 Pro
+// simulator a fixed 87 pt gap put the reference and the pause line below
+// Continue; the shrinking gap keeps them on screen (v2 R14).
+it("lets the gap above the ring shrink, up to Pray's gap (v2 R14)", async () => {
+  const root = await render()
+  const views = root.root.findAll((node) => typeof node.type === "string")
+  const [scroll] = views.filter(
+    (node) => node.props.contentContainerStyle != null,
+  )
+  expect(StyleSheet.flatten(scroll!.props.contentContainerStyle)).toMatchObject(
+    { flexGrow: 1 },
+  )
+  const gaps = views.filter((node) => {
+    const style = StyleSheet.flatten(node.props.style as ViewStyle) ?? {}
+    return style.maxHeight === pauseSpacing.ringGap
+  })
+  expect(gaps).toHaveLength(1)
+  expect(StyleSheet.flatten(gaps[0]!.props.style as ViewStyle)).toMatchObject({
+    flexGrow: 1,
+  })
+  const fixed = views.filter(
+    (node) =>
+      StyleSheet.flatten(node.props.style as ViewStyle)?.height ===
+      pauseSpacing.ringGap,
+  )
+  expect(fixed).toHaveLength(0)
 })
 
 it.each<[MeditationLength, string, string]>([

@@ -89,6 +89,7 @@ const styles = StyleSheet.create({
   // pause line and Continue stays at the bottom (R15).
   scroll: { flex: 1, alignSelf: "stretch" },
   scrollContent: {
+    flexGrow: 1,
     alignItems: "center",
     gap: pauseSpacing.screenGap,
   },
@@ -97,7 +98,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: pauseSpacing.screenGap,
   },
-  ringGap: { height: pauseSpacing.ringGap },
+  // Pray's gap when the screen has room. The verse is longer than Pray's text,
+  // so on a 402 x 874 phone the gap shrinks to keep the reference and the pause
+  // line above Continue (v2 R14).
+  ringGap: { flexGrow: 1, maxHeight: pauseSpacing.ringGap },
   // The body's own gap already sits above the button, so the margin adds
   // only the rest of the Reflect gap.
   buttonRow: {
