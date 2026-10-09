@@ -53,6 +53,12 @@ import {
   markPlaybackDiscovery,
 } from "../../src/lib/recommendations/playbackDiscovery"
 import { isSeriesSearchResult } from "../../src/lib/isSeriesRecord"
+import {
+  getSearchIntentStore,
+  usePendingSearchIntent,
+  type SearchIntent,
+  type SearchIntentOrigin,
+} from "../../src/lib/searchIntent"
 import { SearchResultCard } from "../../src/components/search/SearchResultCard"
 import { useSearchPreviewCycle } from "../../src/components/search/useSearchPreviewCycle"
 import {
@@ -348,14 +354,14 @@ export default function DiscoverScreen() {
   }, [])
 
   const search = useCallback(
-    async (q: string) => {
+    async (q: string, origin?: SearchIntentOrigin) => {
       const trimmed = q.trim().slice(0, MAX_QUERY_LENGTH)
       // Bump first so an empty/clear query invalidates any in-flight search —
       // otherwise a stale result lands over the browse grid after clearing, and
       // its guarded finally never resets loading.
       const thisRequest = ++requestIdRef.current
       // Read before any await: this generation asks in these languages.
-      const language = searchLanguageFor(currentAdminForms(), trimmed)
+      const language = searchLanguageFor(currentAdminForms(), trimmed, origin)
       // Bumping the generation orphans any in-flight load-more: its guarded
       // finally can no longer fire, so release both flags here or "Load more"
       // stays stuck on "Loading..." for the rest of the session.
@@ -546,11 +552,26 @@ export default function DiscoverScreen() {
 
   // Tapping a browse topic fills the bar and searches immediately, reusing the
   // same stale-guarded search() — no debounce wait, no second fetch path.
-  function handleSelectTopic(term: string) {
+  function handleSelectTopic(term: string, origin?: SearchIntentOrigin) {
     if (timerRef.current) clearTimeout(timerRef.current)
     setQuery(term)
-    void search(term)
+    void search(term, origin)
   }
+
+  // Daily Bible Pause v2 R16, KTD6: a handed-over question searches as a topic
+  // tap does. On iOS this tab is already mounted, so it applies on each store
+  // change, through the latest closure as rerunRef does.
+  const applySearchIntentRef = useRef<(intent: SearchIntent) => void>(() => {})
+  applySearchIntentRef.current = (intent) =>
+    handleSelectTopic(intent.query, intent.origin)
+  const searchIntent = usePendingSearchIntent()
+  useEffect(() => {
+    const intents = getSearchIntentStore()
+    // StrictMode runs this effect twice: only a still-pending intent applies.
+    if (searchIntent == null || intents.peek() !== searchIntent) return
+    applySearchIntentRef.current(searchIntent)
+    intents.consume(searchIntent)
+  }, [searchIntent])
 
   // The search bar's clear (X) button: wipe the input and return to the browse
   // bubbles immediately — search("") resets searched to false, no debounce.

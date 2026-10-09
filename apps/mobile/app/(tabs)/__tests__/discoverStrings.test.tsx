@@ -1,5 +1,6 @@
 /** Discover in the UI language: the search language of each generation (U7,
- *  R9, KTD16) and the catalog text, with one tap name per control (U10).
+ *  R9, KTD16) and the catalog text, with one tap name per control (U10). Also
+ *  the Daily Bible Pause v2 hand-off of a question (R16, KTD6).
  *  React re-points: "Component render tests". */
 
 jest.mock("react", () => {
@@ -27,6 +28,7 @@ const mockTopics: { onSelect: ((term: string) => void) | null } = {
   onSelect: null,
 }
 const mockGetLocales = jest.fn()
+const mockFocus = { value: true }
 // Stable identities, as in the app: a new callback each render would re-render
 // every memoized cell and hide a cell that misses the language change.
 const mockRouter = { push: () => {} }
@@ -76,7 +78,7 @@ jest.mock("../../../src/i18n/pluralData.generated", () => {
 })
 jest.mock("expo-router", () => ({
   useRouter: () => mockRouter,
-  useIsFocused: () => true,
+  useIsFocused: () => mockFocus.value,
 }))
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
@@ -135,6 +137,7 @@ import {
   resetLocaleStoreForTests,
   startLocaleSync,
 } from "../../../src/i18n/localeStore"
+import { getSearchIntentStore } from "../../../src/lib/searchIntent"
 import { recordResultsViewed } from "../../../src/lib/watchSearchEvents"
 import {
   phoneLocales,
@@ -199,16 +202,18 @@ function page(
 
 const mounted: TestInstance[] = []
 
+function screenElement(): React.ReactElement {
+  return createElement(
+    StrictMode,
+    null,
+    createElement(DiscoverScreen),
+  ) as unknown as React.ReactElement
+}
+
 function render(): TestInstance {
   let renderer!: TestInstance
   act(() => {
-    renderer = TestRenderer.create(
-      createElement(
-        StrictMode,
-        null,
-        createElement(DiscoverScreen),
-      ) as unknown as React.ReactElement,
-    )
+    renderer = TestRenderer.create(screenElement())
   })
   mounted.push(renderer)
   return renderer
@@ -289,6 +294,8 @@ beforeEach(() => {
   jest.useFakeTimers()
   mockCalls.length = 0
   mockTopics.onSelect = null
+  mockFocus.value = true
+  getSearchIntentStore().clear()
   startIn("en-US")
   // The results animate on the native driver, which jest does not run.
   jest.spyOn(Animated, "parallel").mockImplementation(
@@ -479,5 +486,96 @@ describe("Discover text (U10)", () => {
     ]
     expect(russian).toEqual(english)
     expect(english).toEqual(["discover-search-clear", "discover-load-more"])
+  })
+})
+
+describe("Daily Bible Pause hand-off (v2 R16, KTD6)", () => {
+  const QUESTION = "How are we commanded to pray?"
+
+  function handOver(question = QUESTION): void {
+    act(() => {
+      getSearchIntentStore().put(question)
+    })
+  }
+
+  function queries(): unknown[] {
+    return mockCalls.map((call) => call.input.query)
+  }
+
+  it("replaces a typed query and its pending debounce with the question (AE7)", async () => {
+    const screen = render()
+    const onChangeText = input(screen).props.onChangeText as (
+      value: string,
+    ) => void
+    act(() => onChangeText("Jesus"))
+    expect(input(screen).props.value).toBe("Jesus")
+
+    handOver()
+    await settle()
+    expect(input(screen).props.value).toBe(QUESTION)
+    expect(queries()).toEqual([QUESTION])
+
+    // The debounce for "Jesus" never fires.
+    await settle(1_000)
+    expect(queries()).toEqual([QUESTION])
+    expect(input(screen).props.value).toBe(QUESTION)
+  })
+
+  it("applies an intent that waits at mount once, under StrictMode", async () => {
+    handOver()
+    const screen = render()
+    await settle(1_000)
+
+    expect(input(screen).props.value).toBe(QUESTION)
+    expect(queries()).toEqual([QUESTION])
+    expect(getSearchIntentStore().peek()).toBeNull()
+  })
+
+  it("runs the search again when the same question comes twice", async () => {
+    const screen = render()
+    handOver()
+    await settle()
+    await answer(mockCalls[0]!, page(videos("english", "a")))
+
+    handOver()
+    await settle()
+    expect(queries()).toEqual([QUESTION, QUESTION])
+    expect(input(screen).props.value).toBe(QUESTION)
+  })
+
+  it("does not apply a consumed intent again on focus or on a new mount", async () => {
+    const screen = render()
+    handOver()
+    await settle()
+    await answer(mockCalls[0]!, page(videos("english", "a")))
+    // The viewer moves on to a query of their own.
+    await type(screen, "Jesus")
+    expect(queries()).toEqual([QUESTION, "Jesus"])
+
+    mockFocus.value = false
+    act(() => screen.update(screenElement()))
+    mockFocus.value = true
+    act(() => screen.update(screenElement()))
+    await settle(1_000)
+    expect(input(screen).props.value).toBe("Jesus")
+
+    const fresh = render()
+    await settle(1_000)
+    expect(input(fresh).props.value).toBe("")
+    expect(queries()).toEqual([QUESTION, "Jesus"])
+  })
+
+  it("asks with English as the query language under a Russian UI", async () => {
+    startIn("ru-RU")
+    render()
+    handOver()
+    await settle()
+
+    expect(mockCalls).toHaveLength(1)
+    expect(mockCalls[0]!.input).toMatchObject({
+      query: QUESTION,
+      displayLanguageSlug: "russian",
+      queryLanguageSlug: "english",
+    })
   })
 })
