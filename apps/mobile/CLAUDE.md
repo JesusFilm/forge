@@ -1541,11 +1541,15 @@ design record is
   `appLanguage.ts` as soon as the preferences hydrate, because the preferences
   provider persists without awaiting and a payload read from storage alone can
   carry the previous pick.
-- **`google-services.json` is NOT committed and Android cannot register without
-  it.** `app.json` references it, and `expo prebuild --platform android` refuses
-  while it is absent — which is the gate that makes the missing Firebase
-  download visible. A placeholder file would build and then fail FCM
-  registration silently on device. iOS is unaffected. The refusal is
+- **`google-services.json` is committed, and Android cannot register without
+  it.** It is the config of the Android app `org.jesusfilm.forgewatch` in the
+  Firebase project `jesus-film-watch-mobile` (added 2026-10-09). It holds no
+  secret. EAS builds use only committed files, so the file must stay in git.
+  `app.json` references it, and `expo prebuild --platform android` refuses
+  while it is absent. Do not replace it with a placeholder: a placeholder
+  builds and then fails FCM registration silently on device. iOS is
+  unaffected. The FCM V1 send key is a different file. Only EAS credentials
+  hold it, and it never goes in the repo. The refusal is
   `setGoogleServicesFile` in `@expo/config-plugins`, which throws "Cannot copy
   google-services.json from …" when the copy fails (read from the installed
   package on 2026-09-21; no prebuild was run).
