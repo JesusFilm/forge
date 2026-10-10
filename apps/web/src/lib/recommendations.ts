@@ -18,9 +18,10 @@ import {
 import client from "@/lib/admin-client"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
 import {
-  RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS,
+  RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS,
   RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS,
+  RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS,
 } from "@/lib/recommendation-timeouts"
 
 // Keep Admin delivery bounded below the browser's 12-second deadline, leaving
@@ -413,7 +414,9 @@ export async function recordWatchSurfaceExposure(
     mutation: adminRecordWatchSurfaceExposureOperation,
     variables: { events },
     fetchPolicy: "no-cache",
-    context: upstreamContext(RECOMMENDATION_CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
+    context: upstreamContext(
+      RECOMMENDATION_SURFACE_EXPOSURE_UPSTREAM_TIMEOUT_MS,
+    ),
   })
   if (result.error || !result.data?.recordWatchSurfaceExposure) {
     throw new RecommendationRuntimeError("evidence_failed")
