@@ -21,7 +21,6 @@ import { markWatchUrlForPlaybackSource } from "@/lib/playback-discovery"
 import { isSeriesRecord } from "@/lib/watch-content-kind"
 import {
   asLocaleSlug,
-  searchPath,
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchVideoPath,
@@ -38,10 +37,13 @@ type VideoCardProps = {
   index?: number
   requestedLanguageSlug?: string | null
   requestedLanguageName?: string | null
+  // A builder returns null when the result has no valid destination. The card
+  // then renders non-interactive instead of linking somewhere misleading.
+  // Custom builders that always return a Route keep working unchanged.
   hrefBuilder?: (
     result: SearchResult,
     requestedLanguageSlug?: string | null,
-  ) => Route
+  ) => Route | null
   onResultClick?: (
     result: SearchResult,
     event: ReactMouseEvent<HTMLAnchorElement>,
@@ -52,30 +54,35 @@ type VideoCardProps = {
 // module scope so the throwing constructor runs once at load, not per render.
 const ENGLISH_LOCALE = asLocaleSlug("english")
 
+// Returns null — never a homepage link — when the result has no valid
+// content-and-language target: malformed/non-routable slug, malformed explicit
+// language, a subtitle-only result missing either language, or an unavailable
+// result with no valid requested language. The card renders those as disabled.
 export const defaultHrefBuilder = (
   result: SearchResult,
   requestedLanguageSlug?: string | null,
-): Route => {
+): Route | null => {
   const slug = tryAsContentSlug(result.slug)
-  const resultLanguage = result.languageSlug
-    ? tryAsLocaleSlug(result.languageSlug)
-    : null
-  const subtitleLanguage = result.subtitleLanguageSlug
-    ? tryAsLocaleSlug(result.subtitleLanguageSlug)
-    : null
-  // On a malformed slug, fall back to the modal-capable watch home rather than
-  // emitting a broken deep link or resurrecting the deprecated /search page.
-  if (!slug) return searchPath()
+  if (!slug) return null
   if (result.availabilityKind === "unavailable") {
     const requestedLanguage = requestedLanguageSlug
       ? tryAsLocaleSlug(requestedLanguageSlug)
       : null
     return requestedLanguage
       ? watchUnavailableLanguagePath(slug, requestedLanguage)
-      : searchPath()
+      : null
   }
+  // A language the result names but we cannot parse is a broken contract, not
+  // an absent one: only a truly absent language defaults to English.
+  const resultLanguage =
+    result.languageSlug != null ? tryAsLocaleSlug(result.languageSlug) : null
+  if (result.languageSlug != null && !resultLanguage) return null
   if (result.availabilityKind === "target_subtitle") {
-    if (!resultLanguage || !subtitleLanguage) return searchPath()
+    const subtitleLanguage =
+      result.subtitleLanguageSlug != null
+        ? tryAsLocaleSlug(result.subtitleLanguageSlug)
+        : null
+    if (!resultLanguage || !subtitleLanguage) return null
     return watchVideoPath(slug, resultLanguage, { subtitleLanguage })
   }
   return watchVideoPath(slug, resultLanguage ?? ENGLISH_LOCALE)
@@ -202,12 +209,17 @@ export function VideoCard({
   const t = useTranslations("SearchResultCard")
   const videoLabels = useTranslations("VideoLabels")
   const isUnavailable = result.availabilityKind === "unavailable"
+  const rawHref = hrefBuilder(result, requestedLanguageSlug)
+  // No valid destination: the card stays visible (result counts are
+  // unchanged) but is inert — no link, hover, preview or play affordance, and
+  // only the generic "Not available" badge (no language name).
+  const isDisabled = rawHref === null
   const muxThumbnailSrc =
     !isUnavailable && result.type === "video" && result.playbackId
       ? muxSearchThumbnail(result.playbackId, result.startSeconds)
       : null
   const muxPreviewUrl =
-    !isUnavailable && result.type === "video"
+    !isUnavailable && !isDisabled && result.type === "video"
       ? resolveMuxAnimatedPreviewUrl(result.playbackId)
       : null
   const thumbnailSrc = result.imageUrl ?? muxThumbnailSrc
@@ -233,36 +245,13 @@ export function VideoCard({
     pill?.kind === "count" && result.childCount != null
       ? t("episodeCount", { count: result.childCount })
       : pill?.text
-  const rawHref = hrefBuilder(result, requestedLanguageSlug)
   const href =
-    !isUnavailable && result.type === "video"
+    rawHref !== null && !isUnavailable && result.type === "video"
       ? (markWatchUrlForPlaybackSource(rawHref, "search") as Route)
       : rawHref
 
-  return (
-    <Link
-      href={href}
-      prefetch={isUnavailable ? false : undefined}
-      onClick={(event) => {
-        if (
-          isUnavailable &&
-          requestedLanguageSlug &&
-          isUnmodifiedPrimaryNavigation(event)
-        ) {
-          writeWatchUnavailableRecoveryContext({
-            target: result,
-            requestedLanguageSlug,
-            requestedLanguageName,
-          })
-        }
-        onResultClick?.(result, event)
-      }}
-      className={cn(
-        "group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-lg transition-shadow hover:shadow-2xl hover:shadow-black/40",
-        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
-      )}
-      style={{ animationDelay: `${index * 50}ms` }}
-    >
+  const body = (
+    <>
       {/* Full-bleed thumbnail */}
       <div
         className="relative aspect-video w-full overflow-hidden bg-stone-800 bg-cover bg-center"
@@ -282,7 +271,9 @@ export function VideoCard({
               "object-cover",
               isUnavailable
                 ? "grayscale brightness-[0.4] contrast-75 saturate-0"
-                : "search-card-hover-zoom transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+                : isDisabled
+                  ? null
+                  : "search-card-hover-zoom transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
             )}
             {...(thumbnailBlurDataURL
               ? {
@@ -294,7 +285,12 @@ export function VideoCard({
         ) : isUnavailable ? null : result.type === "experience" ? (
           <div
             aria-hidden
-            className={`search-card-hover-zoom relative h-full w-full overflow-hidden bg-gradient-to-br transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${gradientForSlug(result.slug)}`}
+            className={cn(
+              "relative h-full w-full overflow-hidden bg-gradient-to-br",
+              !isDisabled &&
+                "search-card-hover-zoom transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]",
+              gradientForSlug(result.slug),
+            )}
           >
             {/* Decorative soft radial glow + diagonal stripes so the
                 placeholder reads as intentional branded artwork rather
@@ -312,7 +308,7 @@ export function VideoCard({
               </VideoThumbnailTitle>
             </div>
           </div>
-        ) : (
+        ) : isDisabled ? null : (
           <div className="flex h-full items-center justify-center text-stone-500">
             <svg
               className="h-12 w-12"
@@ -324,7 +320,7 @@ export function VideoCard({
             </svg>
           </div>
         )}
-        {!isUnavailable ? (
+        {!isUnavailable && !isDisabled ? (
           <MuxHoverPreview
             previewUrl={muxPreviewUrl}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
@@ -337,13 +333,15 @@ export function VideoCard({
 
         {/* Gradient overlay for text legibility */}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/25 to-transparent" />
-        {result.type === "video" && !isUnavailable ? (
+        {result.type === "video" && !isUnavailable && !isDisabled ? (
           <WatchProgressBar videoId={result.id} />
         ) : null}
 
-        {isUnavailable ? (
+        {/* A missing destination is a route failure, not proof about language
+            availability. Keep its label generic, without a language name. */}
+        {isUnavailable || isDisabled ? (
           <UnavailableLanguageBadge
-            requestedLanguageName={requestedLanguageName}
+            requestedLanguageName={isDisabled ? null : requestedLanguageName}
           />
         ) : null}
 
@@ -366,7 +364,7 @@ export function VideoCard({
             data-pill-kind={pill.kind}
             className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-full bg-black/55 px-2.5 py-1 text-sm sm:text-xs font-medium text-white backdrop-blur-sm"
           >
-            {pill.kind === "duration" ? (
+            {pill.kind === "duration" && !isDisabled ? (
               <Play size={10} fill="currentColor" stroke="none" aria-hidden />
             ) : null}
             {pillText}
@@ -397,7 +395,50 @@ export function VideoCard({
           )}
         </VideoThumbnailCaption>
       </div>
-      <VideoThumbnailInteractionFrame data-testid="search-card-hover-outline" />
+      {isDisabled ? null : (
+        <VideoThumbnailInteractionFrame data-testid="search-card-hover-outline" />
+      )}
+    </>
+  )
+
+  if (href === null) {
+    return (
+      <div
+        aria-disabled="true"
+        data-testid="search-card-disabled"
+        className="animate-card-enter relative flex cursor-default flex-col overflow-hidden rounded-lg opacity-70"
+        style={{ animationDelay: `${index * 50}ms` }}
+      >
+        {body}
+      </div>
+    )
+  }
+
+  return (
+    <Link
+      href={href}
+      prefetch={isUnavailable ? false : undefined}
+      onClick={(event) => {
+        if (
+          isUnavailable &&
+          requestedLanguageSlug &&
+          isUnmodifiedPrimaryNavigation(event)
+        ) {
+          writeWatchUnavailableRecoveryContext({
+            target: result,
+            requestedLanguageSlug,
+            requestedLanguageName,
+          })
+        }
+        onResultClick?.(result, event)
+      }}
+      className={cn(
+        "group animate-card-enter relative flex cursor-pointer flex-col overflow-hidden rounded-lg transition-shadow hover:shadow-2xl hover:shadow-black/40",
+        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+      )}
+      style={{ animationDelay: `${index * 50}ms` }}
+    >
+      {body}
     </Link>
   )
 }
