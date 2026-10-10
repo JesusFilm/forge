@@ -7,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import { CTASection } from "@/components/sections/CTASection"
 import type { FragmentOf } from "@/lib/legacy-fragment-types"
 import { ctaSectionFragment } from "@/lib/fragments/cta-section"
-import { BETA_TESTER_URL } from "@/lib/beta-tester"
 
 let container: HTMLDivElement
 let root: Root
@@ -16,9 +15,9 @@ function data(buttonLink: string) {
   return {
     __typename: "ComponentSectionsCtaSection",
     id: "cta",
-    ctaHeading: "Help shape Watch",
-    body: "Join the beta group.",
-    buttonLabel: "Become a beta tester",
+    ctaHeading: "Explore our resources",
+    body: "Find resources to share.",
+    buttonLabel: "Browse resources",
     buttonLink,
   } as unknown as FragmentOf<typeof ctaSectionFragment>
 }
@@ -35,20 +34,24 @@ afterEach(() => {
 })
 
 describe("CTASection", () => {
-  it("uses the provider-safe beta trigger for the exact beta URL", () => {
-    act(() => root.render(<CTASection data={data(BETA_TESTER_URL)} />))
-
-    const link = container.querySelector("a") as HTMLAnchorElement
-    expect(link.getAttribute("href")).toBe(BETA_TESTER_URL)
-    expect(link.target).toBe("_blank")
-    expect(link.rel).toBe("noopener noreferrer nofollow")
+  it.each([
+    "https://mailchi.mp/jesusfilm/beta",
+    "https://mailchi.mp/jesusfilm/beta/?source=watch#signup",
+    "http://mailchi.mp/jesusfilm/beta",
+  ])("hides retired signup sections linking to %s", (url) => {
+    act(() => root.render(<CTASection data={data(url)} />))
+    expect(container.innerHTML).toBe("")
   })
 
-  it("leaves every other authored CTA as an ordinary link", () => {
-    act(() => root.render(<CTASection data={data("https://example.org")} />))
+  it.each([
+    "https://example.org",
+    "https://mailchi.mp/jesusfilm/resources",
+    "https://example.org/jesusfilm/beta",
+  ])("preserves other authored CTA links: %s", (url) => {
+    act(() => root.render(<CTASection data={data(url)} />))
 
     const link = container.querySelector("a") as HTMLAnchorElement
-    expect(link.getAttribute("href")).toBe("https://example.org")
-    expect(link.textContent).toBe("Become a beta tester")
+    expect(link.getAttribute("href")).toBe(url)
+    expect(link.textContent).toBe("Browse resources")
   })
 })
