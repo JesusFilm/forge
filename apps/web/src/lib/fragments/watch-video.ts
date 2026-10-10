@@ -1,3 +1,4 @@
+import { visit } from "graphql"
 import { adminGraphql } from "@forge/admin-graphql"
 
 /**
@@ -281,6 +282,11 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
           coreId
           bcp47
         }
+        requestedLanguage {
+          slug
+          name
+          bcp47
+        }
         parents {
           parent {
             documentId
@@ -489,6 +495,16 @@ export const getWatchVideoRouteSnapshotBySlugOperation = adminGraphql(
       }
     }
   `,
+)
+
+// Admin and Web deploy independently. Keep the prior selection for the brief
+// schema-lag window, derived from the same operation so the projection cannot drift.
+export const getLegacyWatchVideoRouteSnapshotBySlugOperation = visit(
+  getWatchVideoRouteSnapshotBySlugOperation,
+  {
+    Field: (node) =>
+      node.name.value === "requestedLanguage" ? null : undefined,
+  },
 )
 
 export const getWatchLanguagePickerVariantsBySlugOperation = adminGraphql(`
