@@ -124,6 +124,7 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     showSubtitleButton?: boolean
     onLanguageClick?: () => void
     languageCode?: string | null
+    languageName?: string | null
     subtitleLanguageCode?: string | null
     subtitleEnabled?: boolean
   }) {
@@ -152,6 +153,7 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
           showSubtitleButton={props.showSubtitleButton}
           onLanguageClick={props.onLanguageClick}
           languageCode={props.languageCode}
+          languageName={props.languageName}
           subtitleLanguageCode={props.subtitleLanguageCode}
           subtitleEnabled={props.subtitleEnabled}
         />,
@@ -164,7 +166,8 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     const overlayAnchor = renderWith({
       showLanguageButton: true,
       onLanguageClick: () => {},
-      languageCode: "EN",
+      languageCode: "PT-MZ",
+      languageName: "Portuguese, Mozambique",
     })
     const audioButton = overlayAnchor.querySelector(
       '[data-testid="hero-chrome-language"]',
@@ -175,12 +178,12 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
     expect(
       audioButton?.querySelector('[data-testid="hero-chrome-language-code"]')
         ?.textContent,
-    ).toBe("EN")
+    ).toBe("PT-MZ")
     expect(audioButton?.getAttribute("aria-label")).toBe(
-      "Change audio language: EN",
+      "Change audio language: Portuguese, Mozambique (PT-MZ)",
     )
     expect(audioButton?.querySelector('[role="tooltip"]')?.textContent).toBe(
-      "Change audio language: EN",
+      "Change audio language: Portuguese, Mozambique (PT-MZ)",
     )
     expect(audioButton?.querySelector("svg")?.getAttribute("class")).toContain(
       "h-6",
