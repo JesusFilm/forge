@@ -29,7 +29,9 @@ export type SearchLanguageResolutionInput = {
 export type SearchLanguageResolution = {
   targetLanguageSlug: string
   targetLanguageSource: SearchLanguageSignalSource
+  targetLanguageBcp47?: string | null
   queryLanguageSlug: string | null
+  queryLanguageBcp47?: string | null
   queryNamedLanguageSlug: string | null
   displayLanguageSlug: string | null
   displayLanguageBcp47: string | null
@@ -391,7 +393,9 @@ export async function resolveSearchLanguageSignals({
   return {
     targetLanguageSlug: target.slug!,
     targetLanguageSource: target.source,
+    targetLanguageBcp47: bcp47ForCanonicalSlug(target.slug, languages),
     queryLanguageSlug: queryLanguage,
+    queryLanguageBcp47: bcp47ForCanonicalSlug(queryLanguage, languages),
     queryNamedLanguageSlug: queryNamedLanguage,
     displayLanguageSlug: display,
     displayLanguageBcp47: bcp47ForCanonicalSlug(display, languages),

@@ -114,6 +114,7 @@ describe("searchByKeywordWeighted", () => {
         video_core_id: "1_BibleProject",
         video_slug: "bible-project",
         video_title: "The Bible Project",
+        matched_title: "El Proyecto Biblia",
         description: "Animated bible overview",
         rank: 0.42,
       },
@@ -132,6 +133,7 @@ describe("searchByKeywordWeighted", () => {
       videoCoreId: "1_BibleProject",
       videoSlug: "bible-project",
       videoTitle: "The Bible Project",
+      matchedTitle: "El Proyecto Biblia",
       imageUrl: null,
       description: "Animated bible overview",
       rank: 0.42,
@@ -221,6 +223,8 @@ describe("searchByKeywordWeighted", () => {
     expect(joined).toMatch(/vl\.status\s*=\s*'published'/)
     expect(joined).toMatch(/v\.deleted_at IS NULL/)
     expect(joined).toMatch(/v\.no_index = false/)
+    expect(joined).toContain("ORDER BY v.id, rank DESC, vl.id")
+    expect(joined).toContain("ORDER BY sub.rank DESC, sub.video_id ASC")
   })
 })
 
@@ -293,6 +297,8 @@ describe("searchByTrigram", () => {
     // description match (or vice versa) when the same row matches both.
     expect(joined).toMatch(/GREATEST\(\s*similarity\(vl\.title/)
     expect(joined).toMatch(/similarity\(coalesce\(vl\.description/)
+    expect(joined).toContain("ORDER BY v.id, similarity DESC, vl.id")
+    expect(joined).toContain("ORDER BY sub.similarity DESC, sub.video_id ASC")
   })
 
   it("returns rows whose match came via description-side trigram", async () => {
@@ -346,7 +352,8 @@ describe("searchByExactTitle", () => {
 
     const rows = await searchByExactTitle(prisma, {
       query: "the bible project",
-      locale: "en",
+      locale: "es",
+      displayLocale: "en",
       limit: 10,
     })
 
@@ -359,6 +366,18 @@ describe("searchByExactTitle", () => {
       curated: false,
       curationPosition: null,
     })
+    const querySql = (
+      prisma.$queryRaw.mock.calls[0][0] as TemplateStringsArray
+    ).join("?")
+    expect(querySql).toMatch(
+      /video_slug,[\s\S]*?video_title,[\s\S]*?description,[\s\S]*?matched_title,[\s\S]*?title_length/,
+    )
+    expect(querySql).toMatch(
+      /FROM watch_search_curation_alias[\s\S]*?JOIN LATERAL \([\s\S]*?display_candidate\.video_id = v\.id[\s\S]*?ORDER BY display_candidate\.id\s+LIMIT 1/,
+    )
+    expect(querySql.match(/JOIN LATERAL/g)).toHaveLength(2)
+    expect(querySql).toContain("video_locale_id ASC")
+    expect(querySql).toMatch(/video_id ASC\s+LIMIT \?/)
   })
 
   it("returns exact normalized editorial curation targets with their marker", async () => {
@@ -428,16 +447,17 @@ describe("searchByExactTitle", () => {
     expect(prisma.$queryRaw).toHaveBeenCalledOnce()
     // Tagged-template `prisma.$queryRaw\`...\`` passes the cooked
     // strings as the 0th arg and bound values as positional args after.
-    // Our query has five positional bindings:
-    //   ${ilikeChain}  ${locale}  ${locale}  ${normalizedQuery}  ${limit}
+    // Our query has six positional bindings:
+    //   ${displayLocale} ${ilikeChain} ${locale} ${normalizedQuery}
+    //   ${displayLocale} ${limit}
     // — `Prisma.join` collapses the 16 ILIKE clauses into one bound
-    // expression. So the call should have 1 + 5 args total.
+    // expression. So the call should have 1 + 6 args total.
     const callArgs = prisma.$queryRaw.mock.calls[0]
-    expect(callArgs.length - 1).toBe(5)
-    // The first bound positional is the `Prisma.Sql` from `Prisma.join`,
+    expect(callArgs.length - 1).toBe(6)
+    // The second bound positional is the `Prisma.Sql` from `Prisma.join`,
     // which exposes the constituent values. Each of those is one wrapped
     // ILIKE pattern. Cap holds: exactly 16 entries.
-    const ilikeChain = callArgs[1] as { values: string[] }
+    const ilikeChain = callArgs[2] as { values: string[] }
     expect(ilikeChain.values).toHaveLength(MAX_EXACT_TITLE_TOKENS)
     for (const value of ilikeChain.values) {
       expect(value.startsWith("%")).toBe(true)
@@ -455,7 +475,7 @@ describe("searchByExactTitle", () => {
       limit: 10,
     })
     const callArgs = prisma.$queryRaw.mock.calls[0]
-    const ilikeChain = callArgs[1] as { values: string[] }
+    const ilikeChain = callArgs[2] as { values: string[] }
     expect(ilikeChain.values).toEqual(["%the%", "%bible%"])
     const [strings] = callArgs as [TemplateStringsArray]
     expect(strings.join("?")).toMatch(/v\.no_index = false/)
