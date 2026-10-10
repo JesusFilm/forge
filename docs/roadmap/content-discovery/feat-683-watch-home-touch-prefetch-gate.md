@@ -1,8 +1,8 @@
 ---
-id: "feat-631"
+id: "feat-683"
 title: "Gate Watch home hero CTA and category rail prefetch on touch"
 owner: "vlad"
-priority: "P2"
+priority: "P1"
 status: "in-progress"
 start_date: "2026-10-08"
 duration: 1
@@ -17,14 +17,18 @@ linear_issue: "FGE-215"
 
 ## Problem
 
-From the 2026-09-13 `/watch` listing audit, item W-025 (Linear FGE-215). At
-390px on Slow 4G, about 20 speculative `?_rsc=` document prefetches fire in
-the first seconds of the Watch home (`/watch/lumo.html` x7,
-`/watch/jesus.html` x4, `/watch/english.html/videos` x5). The hero "Watch
-Now" `<Link>` has no `prefetch` prop and re-targets on every hero advance, and
-the 13 category-rail tiles plus the rail's "See all" link are also ungated.
-Touch users on slow connections pay for pages they never asked for while the
-intro video is still buffering.
+From the 2026-09-13 `/watch` listing audit, item W-025 (Linear FGE-215). The
+audit counted about 20 speculative `?_rsc=` document prefetches at 390px on
+Slow 4G (`/watch/lumo.html` x7, `/watch/jesus.html` x4,
+`/watch/english.html/videos` x5). That count is not current: on 2026-10-10 a
+touch-profile `next start` run of the pre-change code measured 34-38 `_rsc`
+prefetches in about 35 seconds, of which 3 are the category tiles
+(`english.html/videos`, `jesus.html`, `lumo.html`, once each) and the rest are
+the hero "Watch Now" link re-targeting. The cause is the same: the hero
+`<Link>` has no `prefetch` prop and re-targets on every hero advance, and the
+13 category-rail tiles plus the rail's "See all" link are ungated. Touch users
+on slow connections pay for pages they never asked for while the intro video
+is still buffering.
 
 `MediaCollection`'s card latch (`prefetchArmed`) already does the opposite:
 prefetch stays off until a real intent signal.
@@ -78,10 +82,10 @@ export function useTouchGatedPrefetch(): {
 
 - Once armed (desktop, or after focus on touch), the hero "Watch Now" href
   still carries `t=<whole seconds>` from `appendAutoplaySignal`, so it
-  re-targets about once a second during playback and may schedule a new
-  prefetch each time (Next's prefetch cache key includes the query string).
-  Pre-existing desktop behaviour; confirm with a `next start` network trace
-  before fixing (e.g. a stable href with `t` added at click time).
+  re-targets about once a second during playback and schedules a new prefetch
+  each time. Measured on desktop after this change: 6 hero `?t=` prefetches in
+  the first 16 seconds, identical to before. Desktop href cycling is tracked
+  separately (FGE-139 / PR 2383) and is out of scope here.
 
 ## Verification
 
@@ -89,5 +93,13 @@ export function useTouchGatedPrefetch(): {
 - `apps/web/src/components/home/__tests__/WatchHomeCategoryRail.prefetch.test.tsx`
   and `WatchHomeTvCarousel.prefetch.test.tsx` pin touch-off, desktop-eager,
   focus-arms, touch-move-does-not-arm; each guard was falsified once.
+  `useTouchGatedPrefetch.test.tsx` pins the live `change` subscription and
+  its cleanup on unmount (both mutants falsified).
 - Prefetch is disabled in `next dev`, so any browser check of `?_rsc=`
   requests must run under `next build` + `next start` at a touch viewport.
+- Measured 2026-10-10 (`next build` + `next start`, real Watch data, headless
+  Chromium, 390px touch profile with `hover: none` / `pointer: coarse`
+  forced), PR head vs its merge-base: touch `_rsc` prefetches on load and
+  scroll 34 -> 0; focus on one tile 1 prefetch (that tile only); tap 1
+  prefetch plus the navigation; desktop hover 15 at load before and after.
+  Page-load timing (LCP/TTFB) was not measured.
