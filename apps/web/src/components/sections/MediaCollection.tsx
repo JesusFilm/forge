@@ -352,7 +352,7 @@ function WatchHomeMediaCollection({
       href={watchHref}
       data-testid="media-collection-cta"
       className={cn(
-        "inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm sm:text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
+        "inline-flex min-h-11 w-fit shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-sm sm:text-xs font-bold tracking-wider text-black uppercase transition-colors hover:bg-red-500 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white",
         title && `col-start-2 ${titleRowStart}`,
       )}
     >

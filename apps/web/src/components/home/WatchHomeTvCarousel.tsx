@@ -612,7 +612,7 @@ function WatchHomeTvOverlay({
           <div
             ref={actionsRef}
             data-testid="watch-home-tv-actions"
-            className="mt-3 flex flex-nowrap items-center gap-x-3 sm:mt-4 sm:gap-x-5 compact-landscape:mt-1 compact-landscape:gap-x-3"
+            className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 sm:mt-4 sm:flex-nowrap sm:gap-x-5 compact-landscape:mt-1 compact-landscape:gap-x-3"
           >
             <PrimaryAction
               slide={activeSlide}
@@ -784,9 +784,9 @@ function WatchHomePlaybackProgressRing({
   showResetRing: boolean
   size: "large" | "compact"
 }) {
-  const radius = size === "large" ? 26 : 20
+  const radius = size === "large" ? 26 : 24
   const circumference = 2 * Math.PI * radius
-  const svgSize = size === "large" ? 60 : 46
+  const svgSize = size === "large" ? 60 : 54
   const center = svgSize / 2
   return (
     <svg
@@ -914,8 +914,8 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
   const timelineRef = useRef<HTMLDivElement | null>(null)
   const [showResetRing, setShowResetRing] = useState(false)
   const buttonClassName =
-    size === "large" ? "h-12 w-12 rounded-full" : "h-9 w-9 rounded-full"
-  const imageSize = size === "large" ? "48px" : "36px"
+    size === "large" ? "h-12 w-12 rounded-full" : "h-11 w-11 rounded-full"
+  const imageSize = size === "large" ? "48px" : "44px"
 
   useEffect(() => {
     const focusedSlideId = focusedSlideIdRef.current
@@ -981,7 +981,7 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
       data-testid="watch-home-video-timeline"
       className={cn(
         "flex shrink-0 items-center",
-        size === "large" ? "gap-2.5" : "gap-1.5",
+        size === "large" ? "gap-2.5" : "gap-2",
       )}
     >
       {items.map(({ offset, slide }) => {

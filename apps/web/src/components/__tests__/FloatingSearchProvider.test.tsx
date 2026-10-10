@@ -676,6 +676,7 @@ describe("FloatingSearchProvider — header backdrop", () => {
     expect(backdrop?.className).toContain("md:bg-[linear-gradient")
     expect(backdrop?.className).toContain("md:shadow-none")
     expect(backdrop?.className).toContain("md:backdrop-blur-none")
+    expect(backdrop?.className).toContain("rgba(8,16,24,0.72)")
     expect(backdrop?.className).toContain("md:-translate-y-[72%]")
   })
 

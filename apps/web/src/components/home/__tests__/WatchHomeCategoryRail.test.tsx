@@ -189,6 +189,22 @@ describe("WatchHomeCategoryRail", () => {
     }
   })
 
+  it("adds a dark scrim behind each label for contrast on authored gradients", () => {
+    const container = render("english")
+    const cards = container.querySelectorAll<HTMLElement>(
+      '[data-testid^="watch-home-category-card-"]',
+    )
+
+    expect(cards.length).toBeGreaterThan(0)
+    cards.forEach((card) => {
+      const scrim = card.querySelector<HTMLElement>(
+        '[data-testid="watch-home-category-label-scrim"]',
+      )
+      expect(scrim?.className).toContain("from-black/90")
+      expect(scrim?.className).toContain("via-black/60")
+    })
+  })
+
   it("renders nothing when the audio language slug is unusable", () => {
     // A slug that fails the LocaleSlug shape can reach the homepage only
     // through a malformed route param; an empty rail beats broken hrefs.
