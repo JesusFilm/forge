@@ -105,9 +105,9 @@ export type MediaCollectionCta = {
  * Pick the CTA a Media Collection renders.
  *
  * Destinations are tried in order — a full-story card when the label promises
- * one, the authored link, the collection the rail's items share, then the
- * language's video inventory — and the first one that is not the current page
- * wins. An authored self-link also drops the inferred collection: the editor
+ * one (replacing the authored link), the authored link, the collection the
+ * rail's items share, then the language's video inventory — and the first one
+ * that is not the current page wins. An authored self-link also drops the inferred collection: the editor
  * pointed the rail at this page, so the inventory is the honest fallback. With
  * every candidate a self-link, the rail renders no CTA rather than a button
  * that reloads the page (W-096 / FGE-232: "See all" on the Watch home pointed
@@ -168,7 +168,11 @@ export function resolveMediaCollectionCta({
       : null
   const isLanguageDirectory = (href: string) => {
     const identity = watchPageIdentity(href)
-    return identity != null && /\/watch\/languages(?:\/|$)/i.test(identity)
+    // `/watch/languages` and the language-bearing `/watch/{lang}.html/languages`.
+    return (
+      identity != null &&
+      /^\/watch\/(?:[^/]+\.html\/)?languages(?:\/|$)/i.test(identity)
+    )
   }
   const authoredIsSelfLink = Boolean(
     explicitHref && isSameWatchPage(explicitHref, currentPathname),
@@ -181,7 +185,9 @@ export function resolveMediaCollectionCta({
       label: label ?? { kind: "collection" },
     })
   }
-  if (explicitHref && !authoredIsSelfLink) {
+  // A full-story promise never falls back to the authored link: that link is
+  // the episode the promise was rerouted away from.
+  if (explicitHref && !authoredIsSelfLink && !firstItemForFullStory) {
     candidates.push({
       href: canonicalMediaCollectionCtaHref(explicitHref),
       label:

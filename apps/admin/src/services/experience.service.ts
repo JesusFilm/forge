@@ -372,6 +372,7 @@ export class ExperienceService {
     reason,
     expectedDraftRevision,
     validateBlocks,
+    storedCtaBlocks,
   }: {
     id: string
     patch: Partial<ExperienceLocaleDraftData>
@@ -379,6 +380,12 @@ export class ExperienceService {
     revisedByKind: "USER" | "AI"
     reason: string
     expectedDraftRevision?: string | null
+    /**
+     * Stored blocks whose vague Media Collection CTA labels count as already
+     * present. Defaults to the draft being replaced; a revision restore passes
+     * the revision itself, which is stored content rather than new authoring.
+     */
+    storedCtaBlocks?: readonly unknown[]
     validateBlocks?: (input: {
       prisma: Prisma.TransactionClient
       previousBlocks: readonly unknown[]
@@ -426,7 +433,10 @@ export class ExperienceService {
         })
         assertHomepageBlockPlacement(data.blocks, data.isHomepage)
         if (patch.blocks !== undefined) {
-          assertNoNewVagueMediaCollectionCtaLabels(base.blocks, data.blocks)
+          assertNoNewVagueMediaCollectionCtaLabels(
+            storedCtaBlocks ?? base.blocks,
+            data.blocks,
+          )
           await assertNoNewUnavailableVideoDubs(
             tx,
             canonical.locale,
@@ -1328,6 +1338,7 @@ export class ExperienceService {
       user,
       revisedByKind: "USER",
       reason: `Restored revision ${revision.id} into active draft`,
+      storedCtaBlocks: restoredData.blocks,
     })
     return staged.effective
   }

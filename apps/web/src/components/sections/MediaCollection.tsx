@@ -35,8 +35,12 @@ import { resolveMediaImageUrl } from "@/lib/media-image-url"
 import { hexToRgb, readableScrimRgb } from "@/lib/readable-scrim-color"
 import { resolveMuxAnimatedPreviewUrl } from "@/lib/url"
 import { cn } from "@/lib/utils"
-import { resolveMediaCollectionCta } from "@/lib/media-collection-cta"
+import {
+  resolveMediaCollectionCta,
+  type MediaCollectionCtaLabel,
+} from "@/lib/media-collection-cta"
 import { isolateLanguageName, titleCaseSlug } from "@/lib/language-display"
+import { isPublicWatchHomeLanguageSlug } from "@/lib/locale"
 import {
   Carousel,
   CarouselContent,
@@ -229,12 +233,33 @@ export function MediaCollection({
       ? `${WATCH_BASE_PATH}${watchVideoPath(firstItemSlug, resolvedLanguageSlug)}`
       : null,
     inventoryHref: `${WATCH_BASE_PATH}${languageInventoryPath(resolvedLanguageSlug)}`,
+    // Only a language whose home the router serves; a language published
+    // after the last corpus refresh keeps the root link (the English home)
+    // rather than a link to a home that would 404.
     languageHomeHref:
-      resolvedLanguageSlug === DEFAULT_COLLECTION_LOCALE
-        ? null
-        : `${WATCH_BASE_PATH}${localizedHomePath(resolvedLanguageSlug)}`,
+      resolvedLanguageSlug !== DEFAULT_COLLECTION_LOCALE &&
+      isPublicWatchHomeLanguageSlug(resolvedLanguageSlug)
+        ? `${WATCH_BASE_PATH}${localizedHomePath(resolvedLanguageSlug)}`
+        : null,
     currentPathname,
   })
+
+  const ctaLabelText = (label: MediaCollectionCtaLabel): string => {
+    switch (label.kind) {
+      case "authored":
+        return label.text
+      case "collection":
+        return t("showVideo", { title: title?.trim() || t("mediaCollection") })
+      case "languageDirectory":
+        return languageT("seeAllLanguages")
+      case "inventory":
+        return languageT("seeAllVideosInLanguage", {
+          language: isolateLanguageName(titleCaseSlug(resolvedLanguageSlug)),
+        })
+      default:
+        return label satisfies never
+    }
+  }
 
   if (
     process.env.NODE_ENV === "development" &&
@@ -256,23 +281,7 @@ export function MediaCollection({
       subtitle={subtitle}
       description={description}
       ctaLink={cta?.href ?? null}
-      ctaLabel={
-        cta
-          ? cta.label.kind === "authored"
-            ? cta.label.text
-            : cta.label.kind === "collection"
-              ? t("showVideo", {
-                  title: title?.trim() || t("mediaCollection"),
-                })
-              : cta.label.kind === "languageDirectory"
-                ? languageT("seeAllLanguages")
-                : languageT("seeAllVideosInLanguage", {
-                    language: isolateLanguageName(
-                      titleCaseSlug(resolvedLanguageSlug),
-                    ),
-                  })
-          : null
-      }
+      ctaLabel={cta ? ctaLabelText(cta.label) : null}
       footerText={footerText}
       variant={variant}
       thumbnailOrientation={thumbnailOrientation ?? null}

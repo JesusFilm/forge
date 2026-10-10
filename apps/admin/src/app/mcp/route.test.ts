@@ -914,6 +914,45 @@ describe("Admin MCP route", () => {
     expect(experienceCreate).not.toHaveBeenCalled()
   })
 
+  it("names a rejected vague media collection CTA label and persists nothing", async () => {
+    experienceLocaleFindFirst.mockResolvedValueOnce(null)
+
+    const res = await POST(
+      post({
+        jsonrpc: "2.0",
+        id: 43,
+        method: "tools/call",
+        params: {
+          name: "experience.create",
+          arguments: {
+            locale: "en",
+            slug: "vague-cta",
+            title: "Vague CTA",
+            blocks: [
+              {
+                t: "mediaCollection",
+                variant: "carousel",
+                ctaLabel: "See all",
+                ctaLink: "/watch/jesus.html",
+              },
+            ],
+          },
+        },
+      }),
+    )
+
+    expect(res.status).toBe(200)
+    await expect(res.json()).resolves.toMatchObject({
+      error: {
+        code: -32602,
+        message: expect.stringContaining(
+          '"See all" does not say where it goes',
+        ),
+      },
+    })
+    expect(experienceCreate).not.toHaveBeenCalled()
+  })
+
   it("maps invalid experience.create blocks to -32602 and persists nothing", async () => {
     experienceLocaleFindFirst.mockResolvedValueOnce(null)
 

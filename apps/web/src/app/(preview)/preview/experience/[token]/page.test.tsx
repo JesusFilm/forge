@@ -120,6 +120,23 @@ describe("Experience draft preview page", () => {
     expect(resolveWatchHomePreviewMock).not.toHaveBeenCalled()
   })
 
+  it("resolves rail CTAs against the public path the locale will publish at", async () => {
+    getExperiencePreviewMock.mockResolvedValue(draft)
+
+    const page = await ExperiencePreviewPage({
+      params: Promise.resolve({ token: "capability-token" }),
+    })
+    const [, content] = page.props.children.props.children
+
+    // Same shape the public one-segment route passes, so a self-linking rail
+    // CTA is dropped in the preview exactly as it will be once published.
+    expect(content.props.currentPathname).toBe("/watch/home.html")
+    const rendered = content.type(content.props)
+    for (const section of rendered.props.children) {
+      expect(section.props.currentPathname).toBe("/watch/home.html")
+    }
+  })
+
   it("builds Homepage composition from staged blocks without canonical cache", async () => {
     getExperiencePreviewMock.mockResolvedValue({ ...draft, isHomepage: true })
     const heroModel = {

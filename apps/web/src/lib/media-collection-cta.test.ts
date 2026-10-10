@@ -138,4 +138,90 @@ describe("resolveMediaCollectionCta", () => {
       })
     })
   })
+
+  it("never falls back to the episode link when the full-length card is this page", () => {
+    expect(
+      resolveMediaCollectionCta({
+        authoredHref:
+          "/watch/creation-to-christ.html/1-the-most-high-god-and-his-creation/english.html",
+        authoredLabel: "Watch the Full Story",
+        collectionHref: null,
+        firstItemHref: "/watch/creation-to-christ-story-full-video.html",
+        inventoryHref,
+        currentPathname: "/watch/creation-to-christ-story-full-video.html",
+      }),
+    ).toEqual({ href: inventoryHref, label: { kind: "inventory" } })
+  })
+
+  it("labels the language-bearing languages page as a language action", () => {
+    expect(
+      resolveMediaCollectionCta({
+        authoredHref: "/watch/spanish-latin-american.html/languages",
+        authoredLabel: "Watch",
+        collectionHref: null,
+        inventoryHref,
+        currentPathname: "/watch",
+      }),
+    ).toEqual({
+      href: "/watch/spanish-latin-american.html/languages",
+      label: { kind: "languageDirectory" },
+    })
+  })
+
+  describe("with no authored link", () => {
+    it("keeps a non-vague label on the inferred collection", () => {
+      expect(
+        resolveMediaCollectionCta({
+          authoredHref: null,
+          authoredLabel: "Watch the El Camino series",
+          collectionHref: "/watch/the-way-of-st-james.html",
+          inventoryHref,
+          currentPathname: "/watch",
+        }),
+      ).toEqual({
+        href: "/watch/the-way-of-st-james.html",
+        label: { kind: "authored", text: "Watch the El Camino series" },
+      })
+    })
+
+    it("names the inferred collection when the label is vague", () => {
+      expect(
+        resolveMediaCollectionCta({
+          authoredHref: null,
+          authoredLabel: "Watch",
+          collectionHref: "/watch/the-way-of-st-james.html",
+          inventoryHref,
+          currentPathname: "/watch",
+        }),
+      ).toEqual({
+        href: "/watch/the-way-of-st-james.html",
+        label: { kind: "collection" },
+      })
+    })
+
+    it("skips an inferred collection that is the current page", () => {
+      // A routeVideoChildren rail on its own collection page.
+      expect(
+        resolveMediaCollectionCta({
+          authoredHref: null,
+          authoredLabel: null,
+          collectionHref: "/watch/the-way-of-st-james.html/english.html",
+          inventoryHref,
+          currentPathname: "/watch/the-way-of-st-james.html",
+        }),
+      ).toEqual({ href: inventoryHref, label: { kind: "inventory" } })
+    })
+
+    it("renders no CTA when every destination is the current page", () => {
+      expect(
+        resolveMediaCollectionCta({
+          authoredHref: null,
+          authoredLabel: null,
+          collectionHref: inventoryHref,
+          inventoryHref,
+          currentPathname: inventoryHref,
+        }),
+      ).toBeNull()
+    })
+  })
 })

@@ -2234,6 +2234,44 @@ describe("ExperienceService", () => {
       expect(refreshWatchRouteManifest).not.toHaveBeenCalled()
     })
 
+    it("restores a revision whose rails still carry a legacy vague CTA label", async () => {
+      // The current draft no longer has the rail, so a plain "no new vague
+      // label" check against it would reject this restore of stored content.
+      const legacyRevision = {
+        ...revisionRow,
+        snapshot: {
+          ...revisionRow.snapshot,
+          data: {
+            ...revisionRow.snapshot.data,
+            blocks: [legacyVagueCtaRail("restored-rail")],
+          },
+        },
+      }
+      prisma.contentRevision.findUniqueOrThrow.mockResolvedValueOnce(
+        legacyRevision,
+      )
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+
+      await service.restoreLocaleRevision({
+        input: { revisionId: "rev-1" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(prisma.contentRevision.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            snapshot: expect.objectContaining({
+              data: expect.objectContaining({
+                blocks: [
+                  expect.objectContaining(legacyVagueCtaRail("restored-rail")),
+                ],
+              }),
+            }),
+          }),
+        }),
+      )
+    })
+
     it("does not refresh the public manifest when restoring an already-draft locale", async () => {
       prisma.contentRevision.findUniqueOrThrow.mockResolvedValueOnce(
         revisionRow,

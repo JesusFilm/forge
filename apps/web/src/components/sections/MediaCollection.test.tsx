@@ -1208,6 +1208,30 @@ describe("MediaCollection VideoCard href", () => {
     expect(cta?.textContent).toContain("See all videos in")
   })
 
+  it("keeps a root link for a language whose home the router does not serve", () => {
+    // Shape-valid slug absent from the public language corpus, like a
+    // language Admin published after the last corpus refresh.
+    act(() => {
+      root.render(
+        <MediaCollection
+          languageSlug="unlisted-language"
+          currentPathname="/watch/jesus.html/unlisted-language.html"
+          data={makeData({
+            itemsSource: "manual",
+            mediaCtaLink: "/",
+            mediaCtaLabel: "Back to the Watch home",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const cta = container.querySelector<HTMLAnchorElement>(
+      "[data-testid='media-collection-cta']",
+    )
+    expect(cta?.getAttribute("href")).toBe("/watch")
+  })
+
   it("labels a language-directory CTA as a language destination", () => {
     act(() => {
       root.render(

@@ -36,9 +36,10 @@ authored self-links or verify that each label describes its actual destination.
    stays a plain optional string so stored blocks keep parsing.
 5. `packages/watch-url-policy/src/media-collection-cta.ts` — shared vague-label
    predicate used by Admin and Web.
-6. `apps/web/src/components/home/WatchHomeExperiencePage.tsx` and
-   `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx` — pass the current
-   public path through nested section renderers.
+6. `apps/web/src/components/home/WatchHomeExperiencePage.tsx`,
+   `apps/web/src/app/[locale]/[htmlLang]/[...rest]/page.tsx` and
+   `apps/web/src/app/(preview)/preview/experience/[token]/page.tsx` — pass the
+   current public path through nested section renderers.
 
 ## Grep These
 
@@ -58,9 +59,12 @@ authored self-links or verify that each label describes its actual destination.
    language video inventory (`/watch/{language}.html/videos`).
 3. Resolve a bare relative root link (`/`, `/watch`) to the page language's
    home, so a translated home treats it as a self-link and a translated content
-   page keeps the viewer in their language. Absolute URLs stay as authored.
-4. Route a “Watch the Full Story” CTA to the first item when the authored
-   target points elsewhere.
+   page keeps the viewer in their language. Only languages in the public
+   language-home corpus get this; others keep the root link. Absolute URLs stay
+   as authored.
+4. Route a “Watch the Full Story” CTA to the first item. When that item is the
+   current page, fall back to the collection or inventory, never to the
+   authored episode link the promise was rerouted away from.
 5. Name the destination with existing translated messages only:
    `WatchHome.showVideo` ("Show {title}") for a collection or authored link,
    `See all languages` for the language directory, and
@@ -69,8 +73,12 @@ authored self-links or verify that each label describes its actual destination.
 6. Reject a vague label (`Watch`, `See all`, `View all`, `Read more`, `More`)
    that a write adds. A vague label already stored with the same link may stay
    so editors can save unrelated changes; reads, duplication, previews and
-   revision snapshots keep parsing it.
-7. Remove generic CTA defaults from new Admin MediaCollection templates.
+   revision snapshots keep parsing it, and a revision restore treats the
+   revision's own labels as stored. Admin MCP returns the rejection as
+   `-32602` with the message.
+7. Draft previews of ordinary experiences resolve rail CTAs against the public
+   path the locale will publish at (`/watch/{slug}.html`).
+8. Remove generic CTA defaults from new Admin MediaCollection templates.
 
 ## Constraints
 
@@ -95,8 +103,8 @@ authored self-links or verify that each label describes its actual destination.
 
 ## Verification
 
-- `pnpm --filter @forge/web exec vitest run src/components/sections/MediaCollection.test.tsx src/lib/media-collection-cta.test.ts`
-- `pnpm --filter @forge/admin exec vitest run src/services/experience.service.test.ts src/domain/blocks.test.ts src/app/dashboard/experiences/experience-editor/block-helpers.test.ts`
+- `pnpm --filter @forge/web exec vitest run src/components/sections/MediaCollection.test.tsx src/lib/media-collection-cta.test.ts "src/app/(preview)/preview/experience/[token]/page.test.tsx"`
+- `pnpm --filter @forge/admin exec vitest run src/services/experience.service.test.ts src/domain/blocks.test.ts src/app/dashboard/experiences/experience-editor/block-helpers.test.ts src/app/mcp/route.test.ts`
 - `pnpm --filter @forge/watch-url-policy exec vitest run src/media-collection-cta.test.ts`
 - Web, Admin, and watch-url-policy lint/typecheck; root format check.
 - Confirm no CTA whose normalized href equals the current public route is
