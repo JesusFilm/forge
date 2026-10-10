@@ -8,6 +8,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react"
+import { flushSync } from "react-dom"
 import {
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
   addWatchHomeTvPlayedId,
@@ -90,11 +91,21 @@ export function nextWatchHomeTvCarouselIndex(
  */
 const MAX_TIMER_DELAY_MS = 2_147_483_647
 
-function startPlayback(video: HTMLVideoElement, onRefused?: () => void) {
+function startPlayback(
+  video: HTMLVideoElement,
+  onRefused?: (reason: unknown) => void,
+) {
   const played = video.play()
   if (played && typeof played.then === "function") {
-    played.catch(() => onRefused?.())
+    played.catch((reason: unknown) => onRefused?.(reason))
   }
+}
+
+function playbackErrorName(reason: unknown): string | null {
+  if (typeof reason !== "object" || reason === null || !("name" in reason)) {
+    return null
+  }
+  return typeof reason.name === "string" ? reason.name : null
 }
 
 function usableSeconds(value: number | null | undefined): number | null {
@@ -249,6 +260,7 @@ export function useWatchHomeTvCarousel(
     [],
   )
   const [isMuted, setIsMuted] = useState(true)
+  const [hasPlaybackIntent, setHasPlaybackIntent] = useState(false)
   const [playbackTime, setPlaybackTime] = useState<{
     seconds: number
     slideId: string | null
@@ -365,30 +377,35 @@ export function useWatchHomeTvCarousel(
     displaySlides[defaultActiveIndex] ??
     displaySlides[0] ??
     null
+  const isActiveVideoPlaying = Boolean(activeSlide?.src) && hasPlaybackIntent
   const autoAdvancePaused =
     activeSlide != null &&
     activeSlide.id === options.autoAdvancePausedForSlideId
   // Only a video slide can be waiting on bytes; an image slide is fully on
   // screen the moment it is chosen.
-  const isBuffering = Boolean(activeSlide?.src) && isBufferingMedia
+  const isBuffering = isActiveVideoPlaying && isBufferingMedia
   // A slide's turn is time the viewer spends WATCHING it, so a paused hero
   // holds its turn the same way a buffering one does. The two are kept
   // separate for the ring: only buffering is a stall worth explaining.
-  const isMediaHeld = Boolean(activeSlide?.src) && isMediaPaused
+  const isMediaHeld = isActiveVideoPlaying && isMediaPaused
   const isTurnHeld = isBuffering || isMediaHeld
   // One resolved duration feeds both the ring and the backstop, so the two
   // cannot drift apart. The measurement only counts for the slide it was read
   // from.
   const activeMeasuredSeconds =
+    isActiveVideoPlaying &&
     measuredDuration.slideId != null &&
     measuredDuration.slideId === activeSlide?.id
       ? measuredDuration.seconds
       : null
+  const timedSlide = activeSlide
+    ? { ...activeSlide, src: isActiveVideoPlaying ? activeSlide.src : null }
+    : null
   const advanceDurationSeconds = activeSlide
-    ? watchHomeTvSlideDurationSeconds(activeSlide, activeMeasuredSeconds)
+    ? watchHomeTvSlideDurationSeconds(timedSlide!, activeMeasuredSeconds)
     : WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
   const advanceBackstopSeconds = activeSlide
-    ? watchHomeTvAdvanceBackstopSeconds(activeSlide, activeMeasuredSeconds)
+    ? watchHomeTvAdvanceBackstopSeconds(timedSlide!, activeMeasuredSeconds)
     : WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
   const safeActiveIndex = activeSlide
     ? Math.max(
@@ -515,7 +532,7 @@ export function useWatchHomeTvCarousel(
       }
       mediaReadyRef.current = false
       setMediaReady(false)
-      setIsBufferingMedia(Boolean(nextSlide?.src))
+      setIsBufferingMedia(Boolean(nextSlide?.src) && hasPlaybackIntent)
       setIsMediaPaused(false)
       setPlaybackTime({ seconds: 0, slideId: nextSlide?.id ?? null })
       setMeasuredDuration((current) =>
@@ -555,6 +572,7 @@ export function useWatchHomeTvCarousel(
       clearSlideAdvanceTimeout,
       clearVideoPosterHold,
       displaySlides,
+      hasPlaybackIntent,
       options.suppressLeavingSlide,
     ],
   )
@@ -581,13 +599,49 @@ export function useWatchHomeTvCarousel(
   }, [advance])
 
   const toggleMuted = useCallback(() => {
-    setIsMuted((current) => {
-      const next = !current
+    const nextMuted = !isMuted
+    const startsPlaybackIntent = isMuted && !hasPlaybackIntent
+    if (startsPlaybackIntent && activeSlide?.src) {
+      // Starting playback on an already-visible slide opens a fresh media
+      // turn. Prepare the token and timer state before committing the video so
+      // its loading watchdog is armed for this turn.
+      turnTokenRef.current += 1
+      backstopSeenTimeRef.current = 0
+      advanceClockRef.current = { slideId: activeSlide.id, elapsedMs: 0 }
+      clearSlideAdvanceTimeout()
+      clearVideoPosterHold()
+      mediaReadyRef.current = false
+      // Commit the new <video> inside the user activation, then call play()
+      // before Safari's transient activation expires while HLS is loading.
+      flushSync(() => {
+        setHasPlaybackIntent(true)
+        setIsMuted(false)
+        setMediaReady(false)
+        setIsBufferingMedia(true)
+        setIsMediaPaused(false)
+        setPlaybackTime({ seconds: 0, slideId: activeSlide.id })
+        setMeasuredDuration({ slideId: activeSlide.id, seconds: null })
+      })
       const video = videoRef.current
-      if (video) video.muted = next
-      return next
-    })
-  }, [])
+      if (video) {
+        video.muted = false
+        startPlayback(video)
+      }
+
+      return
+    }
+
+    setIsMuted(nextMuted)
+    if (isMuted) setHasPlaybackIntent(true)
+    const video = videoRef.current
+    if (video) video.muted = nextMuted
+  }, [
+    activeSlide,
+    clearSlideAdvanceTimeout,
+    clearVideoPosterHold,
+    hasPlaybackIntent,
+    isMuted,
+  ])
 
   const handleTimeUpdate = useCallback(() => {
     const video = videoRef.current
@@ -655,9 +709,32 @@ export function useWatchHomeTvCarousel(
         // hook-wide, so an ungated callback would park the slide that
         // REPLACED this one.
         const refusedForTurn = turnTokenRef.current
-        startPlayback(video, () => {
-          if (turnTokenRef.current !== refusedForTurn) return
-          if (videoRef.current !== video) return
+        startPlayback(video, (reason) => {
+          const isCurrentTurn =
+            turnTokenRef.current === refusedForTurn &&
+            videoRef.current === video
+          if (!isCurrentTurn || autoAdvancePausedRef.current) return
+
+          const errorName = playbackErrorName(reason)
+          if (errorName === "AbortError") return
+          if (errorName === "NotAllowedError" && !video.muted) {
+            // Mobile Safari may reject a play() issued after HLS reaches
+            // canplay, outside the original tap. Retry muted and reflect the
+            // state change in the control so the viewer still gets playback.
+            video.muted = true
+            isMutedRef.current = true
+            setIsMuted(true)
+            startPlayback(video, (retryReason) => {
+              const retryIsCurrentTurn =
+                turnTokenRef.current === refusedForTurn &&
+                videoRef.current === video
+              if (!retryIsCurrentTurn || autoAdvancePausedRef.current) return
+              if (playbackErrorName(retryReason) !== "AbortError") {
+                setIsBufferingMedia(true)
+              }
+            })
+            return
+          }
           setIsBufferingMedia(true)
         })
       }
@@ -782,9 +859,10 @@ export function useWatchHomeTvCarousel(
     // animates over the same duration) honest by construction.
     if (autoAdvancePaused || isTurnHeld) return undefined
 
-    const advanceAfterMs = activeSlide.src
-      ? advanceBackstopSeconds * 1000
-      : IMAGE_SLIDE_ADVANCE_MS
+    const advanceAfterMs =
+      activeSlide.src && hasPlaybackIntent
+        ? advanceBackstopSeconds * 1000
+        : IMAGE_SLIDE_ADVANCE_MS
     const startedAt = Date.now()
     const armedForTurn = turnTokenRef.current
 
@@ -850,6 +928,7 @@ export function useWatchHomeTvCarousel(
     autoAdvancePaused,
     clearSlideAdvanceTimeout,
     isTurnHeld,
+    hasPlaybackIntent,
     // A same-slide replay keeps every other dependency identical, so without
     // this the effect never re-runs and that turn gets NO backstop at all --
     // exactly the recovery the replay might need.
@@ -950,6 +1029,7 @@ export function useWatchHomeTvCarousel(
       isBuffering,
       isTurnHeld,
       isMuted,
+      hasPlaybackIntent,
       leavingSlide,
       mediaReady,
       playbackTimeSeconds:
@@ -976,6 +1056,7 @@ export function useWatchHomeTvCarousel(
       isBuffering,
       isTurnHeld,
       isMuted,
+      hasPlaybackIntent,
       leavingSlide,
       mediaReady,
       playbackTime,

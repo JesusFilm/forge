@@ -46,7 +46,10 @@ import {
   WATCH_HERO_PRIMARY_ACTION_CLASS,
   WatchHeroOverlay,
 } from "@/components/watch/WatchHeroOverlay"
-import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  resolveMuxAnimatedPreviewUrl,
+  resolveMuxHeroPosterUrlAtMaxWidth,
+} from "@/lib/url"
 import {
   applyMuxMaxResolution,
   type MuxMaxResolution,
@@ -235,6 +238,7 @@ function PrimaryAction({
 
 function WatchHomeTvMedia({
   activeSlide,
+  hasPlaybackIntent,
   isMuted,
   leavingSlide,
   mediaReady,
@@ -252,6 +256,7 @@ function WatchHomeTvMedia({
   wrapperRef,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
+  hasPlaybackIntent: boolean
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   mediaReady: boolean
@@ -293,13 +298,13 @@ function WatchHomeTvMedia({
   // advance clock keeps counting.
   const previewSrc = useMemo(
     () =>
-      activeSlide.src
+      hasPlaybackIntent && activeSlide.src
         ? applyMuxMaxResolution(
             activeSlide.src,
             WATCH_HOME_INTRO_MAX_RESOLUTION,
           )
         : null,
-    [activeSlide.src],
+    [activeSlide.src, hasPlaybackIntent],
   )
   return (
     <div
@@ -332,6 +337,7 @@ function WatchHomeTvMedia({
           slide={leavingSlide}
           className="watch-home-media-exit z-0"
           priority={false}
+          animatedPreview={!hasPlaybackIntent}
         />
       ) : null}
       <WatchHomeTvVisualLayer
@@ -339,6 +345,7 @@ function WatchHomeTvMedia({
         slide={activeSlide}
         className="watch-home-media-enter z-10"
         priority
+        animatedPreview={!hasPlaybackIntent}
       />
       {previewSrc ? (
         <MuxVideo
@@ -503,14 +510,23 @@ function WatchHomeSubtitleOverlay({ cueText }: { cueText: string }) {
 }
 
 function WatchHomeTvVisualLayer({
+  animatedPreview = false,
   className,
   priority,
   slide,
 }: {
+  animatedPreview?: boolean
   className?: string
   priority: boolean
   slide: WatchHomeTvCarouselSlide
 }) {
+  const [previewFailed, setPreviewFailed] = useState(false)
+  const previewUrl = animatedPreview
+    ? resolveMuxAnimatedPreviewUrl(slide.playbackId)
+    : null
+  const widePreviewUrl = animatedPreview
+    ? resolveMuxAnimatedPreviewUrl(slide.playbackId, 640, 6)
+    : null
   return (
     <div
       className={cn("absolute inset-0", className)}
@@ -528,9 +544,31 @@ function WatchHomeTvVisualLayer({
       ) : (
         <div
           aria-hidden
-          className="h-full w-full bg-[linear-gradient(135deg,#020617,#3f1d2b_48%,#14332c)]"
+          className="absolute inset-0 bg-[linear-gradient(135deg,#020617,#3f1d2b_48%,#14332c)]"
         />
       )}
+      {previewUrl && !previewFailed ? (
+        <picture className="absolute inset-0">
+          {slide.posterUrl ? (
+            <source
+              media="(prefers-reduced-motion: reduce)"
+              srcSet={slide.posterUrl}
+            />
+          ) : null}
+          {widePreviewUrl ? (
+            <source media="(min-width: 768px)" srcSet={widePreviewUrl} />
+          ) : null}
+          <Image
+            src={previewUrl}
+            alt=""
+            fill
+            unoptimized
+            onError={() => setPreviewFailed(true)}
+            sizes="100vw"
+            className="object-cover"
+          />
+        </picture>
+      ) : null}
     </div>
   )
 }
@@ -1087,6 +1125,7 @@ export function WatchHomeTvCarousel({
     handlePlaying,
     handleTimeUpdate,
     handleWaiting,
+    hasPlaybackIntent,
     isBuffering,
     isTurnHeld,
     isMuted,
@@ -1168,6 +1207,7 @@ export function WatchHomeTvCarousel({
       >
         <WatchHomeTvMedia
           activeSlide={activeSlide}
+          hasPlaybackIntent={hasPlaybackIntent}
           isMuted={isMuted}
           leavingSlide={leavingSlide}
           mediaReady={mediaReady}

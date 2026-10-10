@@ -139,10 +139,12 @@ export function resolveDownloadPosterUrl(
 
 export function resolveMuxAnimatedPreviewUrl(
   muxPlaybackId: string | null | undefined,
+  previewWidth = 448,
+  previewFps = 8,
 ): string | null {
   const playbackId = muxPlaybackId?.trim()
   if (!playbackId) return null
-  return `https://image.mux.com/${encodeURIComponent(playbackId)}/animated.webp?start=2&end=6&width=448&fps=8`
+  return `https://image.mux.com/${encodeURIComponent(playbackId)}/animated.webp?start=2&end=6&width=${previewWidth}&fps=${previewFps}`
 }
 
 export function resolveMuxHeroPosterUrl(
