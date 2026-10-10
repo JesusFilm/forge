@@ -120,8 +120,10 @@ describe("getWatchPageMetadata", () => {
       images: [
         {
           url: "https://media.example/jesus-social.jpg",
-          width: 1400,
-          height: 933,
+          // Null authored dimensions fall back to the centralized default
+          // social-card size (1200x630).
+          width: 1200,
+          height: 630,
           alt: "JESUS film still",
           type: "image/png",
         },
@@ -577,6 +579,54 @@ describe("buildWatchVideoMetadataModel", () => {
     expect(structuredData.thumbnailUrl).toEqual([
       "https://image.mux.com/mux-life/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
     ])
+  })
+
+  it("preserves authored social image dimensions that differ from the default card", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        socialImage: {
+          url: "https://media.example/jesus-social.jpg",
+          width: 1600,
+          height: 900,
+          mimeType: "image/jpeg",
+        },
+      },
+    })
+
+    expect(model.image).toMatchObject({
+      url: "https://media.example/jesus-social.jpg",
+      width: 1600,
+      height: 900,
+    })
+  })
+
+  it("fills only the missing authored dimension from the default card", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+
+    const model = buildWatchVideoMetadataModel({
+      routeSlug: "jesus",
+      pathLocale: "english",
+      selectedVariant,
+      video: {
+        ...video,
+        socialImage: {
+          url: "https://media.example/jesus-social.jpg",
+          width: 1600,
+          height: null,
+          mimeType: "image/jpeg",
+        },
+      },
+    })
+
+    expect(model.image).toMatchObject({ width: 1600, height: 630 })
   })
 
   it("falls back field-by-field for blank localized overrides", async () => {

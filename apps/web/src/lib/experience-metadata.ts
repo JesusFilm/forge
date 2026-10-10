@@ -89,10 +89,10 @@ function withTitleSuffix(title: string): string {
 }
 
 const DEFAULT_OG_IMAGE = {
-  url: "https://images.unsplash.com/photo-1482424917728-d82d29662023?w=1400&auto=format&fit=crop&q=60",
-  width: 1400,
-  height: 933,
-  alt: "Jesus Film Project",
+  url: `${WATCH_PUBLIC_METADATA_ORIGIN}${WATCH_BASE_PATH}/images/watch-social-card.jpg`,
+  width: 1200,
+  height: 630,
+  alt: "Jesus teaches a group beside the Sea of Galilee",
   type: "image/jpeg" as const,
 }
 

@@ -10,7 +10,10 @@ vi.mock("@/lib/content", () => ({
   resolveWatchPage: resolveWatchPageMock,
 }))
 
-import { getWatchPageMetadata } from "@/lib/experience-metadata"
+import {
+  getWatchPageMetadata,
+  getWatchRouteFallbackMetadata,
+} from "@/lib/experience-metadata"
 
 describe("getWatchPageMetadata", () => {
   it("brands the resolved watch homepage title", async () => {
@@ -48,6 +51,27 @@ describe("getWatchPageMetadata", () => {
 
     expect(meta.alternates?.canonical).toBe("https://www.jesusfilm.org/watch")
     expect(meta.openGraph?.url).toBe("https://www.jesusfilm.org/watch")
+    expect(meta.openGraph?.images).toContainEqual(
+      expect.objectContaining({
+        url: "https://www.jesusfilm.org/watch/images/watch-social-card.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Jesus teaches a group beside the Sea of Galilee",
+      }),
+    )
+  })
+
+  it("uses the first-party social card when route metadata falls back after an error", () => {
+    const meta = getWatchRouteFallbackMetadata("en", { slug: "jesus" })
+
+    expect(meta.openGraph?.images).toContainEqual(
+      expect.objectContaining({
+        url: "https://www.jesusfilm.org/watch/images/watch-social-card.jpg",
+        width: 1200,
+        height: 630,
+        alt: "Jesus teaches a group beside the Sea of Galilee",
+      }),
+    )
   })
 
   it("uses the public www host for inner watch page canonical and OG URL", async () => {
