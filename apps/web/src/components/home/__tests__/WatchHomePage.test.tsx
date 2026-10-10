@@ -2378,6 +2378,22 @@ describe("WatchHomePage", () => {
   describe("autoplay session budget", () => {
     const numberWords = ["One", "Two", "Three", "Four", "Five"]
 
+    // The production home (WatchHomeExperiencePage) renders the categories
+    // rail under the hero. Without one, the hero's fit measurement re-checks
+    // on every animation frame, so each fake second of playback costs ~62
+    // measure callbacks: the 300 s play below then outran CI's 5 s test
+    // timeout. A stand-in rail ends that retry loop as the real one does.
+    let categoryRail: HTMLElement | null = null
+    beforeEach(() => {
+      categoryRail = document.createElement("div")
+      categoryRail.dataset.testid = "watch-home-category-rail"
+      document.body.appendChild(categoryRail)
+    })
+    afterEach(() => {
+      categoryRail?.remove()
+      categoryRail = null
+    })
+
     function makeBudgetModel(durationSeconds: number | null) {
       return makeModel({
         carousel: {
