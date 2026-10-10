@@ -966,6 +966,7 @@ describe("resolveWatchUnavailableRecoveryTarget", () => {
     expect(target).toEqual({
       contentTitle: "耶稣受难日直播",
       imageUrl: "https://imagedelivery.net/account/cinematic-high.jpg",
+      requestedLanguage: null,
     })
   })
 

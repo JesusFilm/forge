@@ -14,6 +14,7 @@ export {
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
+  getLegacyWatchVideoRouteSnapshotBySlugOperation,
   getWatchVideoShellBySlugOperation,
   watchVideoDubDetailFragment,
   watchVideoLocalizedCopyFragment,

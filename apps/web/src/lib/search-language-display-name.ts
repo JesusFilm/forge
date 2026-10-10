@@ -8,7 +8,10 @@ function primaryLanguage(locale: string): string | null {
   }
 }
 
-export type SearchLanguageNameUsage = "standalone" | "search-prepositional"
+export type SearchLanguageNameUsage =
+  | "standalone"
+  | "search-prepositional"
+  | "catalog-identity"
 
 function russianPrepositionalWord(word: string): string {
   if (/(?:ий|ый|ой)$/u.test(word)) return `${word.slice(0, -2)}ом`
@@ -52,6 +55,26 @@ export function localizedSearchLanguageName(
   fallback: string,
   usage: SearchLanguageNameUsage = "standalone",
 ): string {
+  // Recovery copy names an exact catalog selection. ICU may omit a catalog
+  // qualifier (fra canonicalizes to fr), so compare with its English name
+  // before translating. Keep provider wording when it carries extra identity.
+  // Other usages retain their existing localization behavior.
+  if (usage === "catalog-identity" && option?.englishName && option.bcp47) {
+    try {
+      const canonicalEnglish = new Intl.DisplayNames(["en"], {
+        type: "language",
+      }).of(option.bcp47)
+      const words = (value: string) =>
+        value.toLocaleLowerCase("en").match(/\p{L}+/gu) ?? []
+      const canonicalWords = new Set(words(canonicalEnglish ?? ""))
+      if (words(option.englishName).some((word) => !canonicalWords.has(word))) {
+        return option.englishName
+      }
+    } catch {
+      return option.englishName
+    }
+  }
+
   if (option?.bcp47) {
     try {
       const displayNames = new Intl.DisplayNames([uiLocale], {

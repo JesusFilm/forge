@@ -4,15 +4,15 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 6, 2026)
+## Status (October 9, 2026)
 
-- **Total tickets:** 784
-- **Complete:** 590
+- **Total tickets:** 796
+- **Complete:** 598
 - **Cancelled:** 39
-- **In progress:** 56
+- **In progress:** 60
 - **Not started:** 42
 - **Blocked:** 57
-- **Overdue and open:** 137
+- **Overdue and open:** 144
 
 ## Feature Index
 
@@ -217,6 +217,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-563](content-discovery/feat-563-shadow-evaluation-dispatch-recovery.md)                                  | Atomic and recoverable shadow evaluation dispatch                                               | nisal      | P2       | 2026-09-29 | 3    | 2026-10-01 | complete    |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | cancelled   |
 | [feat-590](content-discovery/feat-590-refresh-recommendation-integration-fixtures.md)                          | Refresh stale recommendation integration test fixtures                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
+| [feat-673](content-discovery/feat-673-watch-unavailable-language-identity.md)                                  | Preserve selected catalog language on unavailable Watch pages                                   | vlad       | P2       | 2026-10-10 | 1    | 2026-10-10 | complete    |
 
 ### Media Generation
 
@@ -307,6 +308,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-586](media-generation/feat-586-studio-external-agent-fast-render-inspection.md)       | Inspect a rendered draft quickly with attributable evidence           | tataihono | P1       | 2026-09-23 | 3    | 2026-09-25 | complete    |
 | [feat-607](media-generation/feat-607-studio-subtitle-free-footage-and-source-focus.md)      | Studio subtitle-free footage, source focus, and MCP diagnostics       | tataihono | P1       | 2026-10-06 | 3    | 2026-10-08 | complete    |
 | [feat-608](media-generation/feat-608-studio-colleague-production-replay.md)                 | Verify colleague LUMO and Shorts MCP feedback in production           | tataihono | P1       | 2026-10-06 | 1    | 2026-10-06 | not-started |
+| [feat-628](media-generation/feat-628-studio-editor-feedback.md)                             | Studio clip speed, named text components, canvas selection and sizing | tataihono | P1       | 2026-10-08 | 3    | 2026-10-10 | complete    |
+| [feat-629](media-generation/feat-629-studio-failed-render-diagnosis.md)                     | Diagnose Lyuba's failed Studio export                                 | tataihono | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
+| [feat-630](media-generation/feat-630-shorts-project-deletion.md)                            | Owner project deletion in Shorts Studio and MCP                       | tataihono | P1       | 2026-10-09 | 1    | 2026-10-09 | complete    |
 | [feat-438](media-generation/feat-438-subtitle-quality-lab-modularization.md)                | Subtitle quality lab modularization                                   | vlad      | P2       | —          | 4    | —          | blocked     |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                      | AI Video Inspiration Platform                                         | vlad      | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)          | Instagram AI Christian discovery workflow                             | vlad      | P2       | 2026-06-10 | 1    | 2026-06-10 | complete    |
@@ -387,6 +391,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-574](platform/feat-574-recommendation-storage-efficiency.md)                     | Reduce recommendation event, served-item and profile storage growth                | nisal      | P0       | 2026-09-30 | 3    | 2026-10-02 | complete    |
 | [feat-575](platform/feat-575-early-legacy-recommendation-retirement.md)                | Retire legacy recommendation trace detail early                                    | nisal      | P0       | 2026-09-30 | 3    | 2026-10-02 | complete    |
 | [feat-592](platform/feat-592-nextjs-september-30-security.md)                          | Apply the September 30 Next.js security patches                                    | tataihono  | P0       | 2026-10-02 | 1    | 2026-10-02 | complete    |
+| [feat-639](platform/feat-639-current-base-dependency-backports.md)                     | Refresh held dependency backports on October default                               | tataihono  | P0       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                        | unassigned | P1       | —          | 2    | —          | not-started |
 | [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit Watch page-not-found telemetry                                                | codex      | P1       | —          | 2    | —          | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                                 | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
@@ -649,6 +654,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-597](platform/feat-597-android-weekly-report-integration.md)                     | Integrate Android TV weekly performance and remote improvements                    | ekkasit    | P1       | 2026-09-25 | 2    | 2026-09-26 | complete    |
 | [feat-598](platform/feat-598-tv-native-a-default-beta-builds.md)                       | Default Apple TV to Native A and distribute TV beta builds                         | ekkasit    | P1       | 2026-09-25 | 1    | 2026-09-25 | complete    |
 | [feat-556](platform/feat-556-mobile-expo-sdk57-patch-alignment.md)                     | Restore CI after Expo patch drift and stale benchmark clock                        | nisal      | P1       | 2026-09-28 | 1    | 2026-09-28 | complete    |
+| [feat-617](platform/feat-617-tv-beta-tester-signup.md)                                 | Protected Android TV beta signup to Google Sheets                                  | ekkasit    | P1       | 2026-09-28 | 1    | 2026-09-28 | complete    |
 | [feat-555](platform/feat-555-recommendation-legacy-trace-reclamation.md)               | Reclaim legacy recommendation trace storage                                        | nisal      | P1       | 2026-09-29 | 3    | 2026-10-01 | complete    |
 | [feat-567](platform/feat-567-changelog-people-directory.md)                            | Serve the shared Changelog People directory from Auth                              | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
 | [feat-570](platform/feat-570-changelog-current-permission.md)                          | Serve current Changelog permissions to protected consumers                         | edmondshen | P1       | 2026-09-29 | 1    | 2026-09-29 | complete    |
@@ -659,8 +665,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-578](platform/feat-578-breaking-point-watch-recovery.md)                         | Recover Breaking Point on Watch after Core sync repair                             | nisal      | P1       | 2026-09-30 | 1    | 2026-09-30 | complete    |
 | [feat-582](platform/feat-582-mobile-expo-sdk57-0-26-alignment.md)                      | Align mobile Expo dependencies with the SDK 57.0.26 patch set                      | urim       | P1       | 2026-09-30 | 1    | 2026-09-30 | complete    |
 | [feat-599](platform/feat-599-roadmap-cancelled-status.md)                              | Represent cancelled roadmap work as terminal                                       | nisal      | P1       | 2026-10-02 | 1    | 2026-10-02 | complete    |
-| [feat-604](platform/feat-604-mobile-ui-translation-run-and-device-checks.md)           | Mobile UI first translation run (U16) and open device checks                       | urim       | P1       | 2026-10-06 | 7    | 2026-10-12 | not-started |
+| [feat-604](platform/feat-604-mobile-ui-translation-run-and-device-checks.md)           | Mobile UI first translation run (U16) and open device checks                       | urim       | P1       | 2026-10-06 | 7    | 2026-10-12 | in-progress |
 | [feat-611](platform/feat-611-renovate-google-maven-lookup.md)                          | Resolve Android dependencies in Renovate                                           | tataihono  | P1       | 2026-10-06 | 1    | 2026-10-06 | complete    |
+| [feat-614](platform/feat-614-expo-patch-ci-recovery.md)                                | Align Expo patch versions to restore CI                                            | nisal      | P1       | 2026-10-07 | 1    | 2026-10-07 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-088](platform/feat-088-internal-tools-branding.md)                               | Internal Tools Branding                                                            | vlad       | P2       | 2026-03-30 | 14   | 2026-04-12 | complete    |
@@ -740,6 +747,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-068](platform/feat-068-partner-publishing-and-user-accounts.md)                  | Partner Publishing and User Accounts                                               | tataihono  | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
 | [feat-509](platform/feat-509-mobile-export-save-sheet-native-module.md)                | Mobile raw export: iOS Save sheet via an export-mode native module                 | urim       | P2       | 2026-10-01 | 3    | 2026-10-03 | blocked     |
 | [feat-591](platform/feat-591-cowatch-postgresql-regressions-ci.md)                     | Run Co-watch PostgreSQL regressions in CI                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
+| [feat-613](platform/feat-613-push-campaign-mcp-drafts.md)                              | Agents draft push campaigns through the admin MCP, and a person publishes          | urim       | P2       | 2026-10-06 | 7    | 2026-10-12 | complete    |
+| [feat-627](platform/feat-627-mobile-ios-local-network-prompt-localization.md)          | Translate the iOS Local Network permission prompt                                  | urim       | P2       | 2026-10-09 | 2    | 2026-10-10 | not-started |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                             | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-544](platform/feat-544-mobile-remove-sign-in-gate.md)                            | Remove the mobile sign-in gate when accounts open                                  | urim       | P2       | 2026-11-02 | 1    | 2026-11-02 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                              | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | not-started |
@@ -811,6 +820,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-445](topic-experiences/feat-445-watch-home-next-video-thumbnail-control.md)           | Watch Home Video Timeline Controls                                               | vlad       | P1       | 2026-09-04 | 1    | 2026-09-04 | complete    |
 | [feat-501](topic-experiences/feat-501-watch-category-rail-editable-copy.md)                 | Editable copy in the Watch category rail block                                   | vlad       | P1       | 2026-09-14 | 1    | 2026-09-14 | complete    |
 | [feat-522](topic-experiences/feat-522-watch-language-search-input-icons.md)                 | Keep Watch language search icons visible above the input                         | vlad       | P1       | 2026-09-17 | 1    | 2026-09-17 | complete    |
+| [feat-615](topic-experiences/feat-615-tv-startup-logo-audio.md)                             | TV fresh-launch logo animation and sound                                         | ekkasit    | P1       | 2026-10-07 | 1    | 2026-10-07 | in-progress |
+| [feat-616](topic-experiences/feat-616-tv-animation-settings.md)                             | Watch startup and loading animation choices                                      | ekkasit    | P1       | 2026-10-07 | 2    | 2026-10-08 | in-progress |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad       | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit    | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim       | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |

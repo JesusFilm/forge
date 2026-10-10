@@ -11,6 +11,49 @@ const russian = {
 }
 
 describe("localizedSearchLanguageName", () => {
+  it("preserves a provider-owned catalog qualifier that ICU drops", () => {
+    const africanFrench = {
+      ...russian,
+      englishName: "French, African",
+      nativeName: null,
+      bcp47: "fra",
+      publicSlug: "french-african",
+    }
+    for (const locale of ["fr", "en", "es", "ru", "zh"]) {
+      expect(
+        localizedSearchLanguageName(
+          africanFrench,
+          locale,
+          "Language",
+          "catalog-identity",
+        ),
+      ).toBe("French, African")
+    }
+    // Search retains its previous behavior; the recovery usage is opt-in.
+    expect(localizedSearchLanguageName(africanFrench, "fr", "Language")).toBe(
+      "français",
+    )
+  })
+
+  it("still localizes plain French and fully represented regional names", () => {
+    expect(
+      localizedSearchLanguageName(
+        { ...russian, englishName: "French", bcp47: "fr" },
+        "fr",
+        "Language",
+        "catalog-identity",
+      ),
+    ).toBe("français")
+    expect(
+      localizedSearchLanguageName(
+        { ...russian, englishName: "Brazilian Portuguese", bcp47: "pt-BR" },
+        "ru",
+        "Language",
+        "catalog-identity",
+      ),
+    ).toBe("бразильский португальский")
+  })
+
   it("uses the interface-localized language name when supported", () => {
     expect(localizedSearchLanguageName(russian, "ru", "Язык поиска")).toBe(
       "русский",

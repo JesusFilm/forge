@@ -385,6 +385,13 @@ export type WatchRouteSnapshot = {
   broadStudyQuestions: WatchRouteSnapshotStudyQuestion[]
   englishStudyQuestions: WatchRouteSnapshotStudyQuestion[]
   playableDubLanguageCount: number
+  /**
+   * Active catalog identity of the requested audio language slug, resolved
+   * independently of dub availability. Null when no language slug was
+   * requested or no active language carries that exact slug. Never derived
+   * from `preferredVariant`, which may be a fallback dub in another language.
+   */
+  requestedLanguage: WatchRouteSnapshotLanguage | null
   preferredVariant: WatchRouteSnapshotPreferredVariant | null
 }
 
@@ -411,6 +418,29 @@ type WatchRouteSnapshotPreferredVariantRow = {
   languageName: Prisma.JsonValue | null
   muxVideoId: string | null
   playbackId: string | null
+}
+
+/**
+ * One row per snapshot root: the preferred playable dub (all dub columns
+ * null when the video has no playable dub) plus the ACTIVE catalog language
+ * named by the requested audio slug. The requested columns come from an
+ * exact-slug join that is independent of the dub ordering, so a fallback dub
+ * can never lend its language identity to the requested language.
+ */
+type WatchRouteSnapshotPreferredVariantQueryRow = Omit<
+  WatchRouteSnapshotPreferredVariantRow,
+  "id"
+> & {
+  id: string | null
+  requestedLanguageCoreId: string | null
+  requestedLanguageBcp47: string | null
+  requestedLanguageSlug: string | null
+  requestedLanguageName: Prisma.JsonValue | null
+}
+
+type WatchRouteSnapshotPreferredVariantLookup = {
+  preferredVariant: WatchRouteSnapshotPreferredVariantRow | null
+  requestedLanguage: WatchRouteSnapshotLanguage | null
 }
 
 type WatchRouteSnapshotCountRow = {
@@ -1297,9 +1327,9 @@ export class VideoService {
     videoId: string,
     languageSlug: string | null,
     subtitleLanguageSlug: string | null,
-  ): Promise<WatchRouteSnapshotPreferredVariantRow | null> {
+  ): Promise<WatchRouteSnapshotPreferredVariantLookup> {
     const rows = await this.prisma.$queryRaw<
-      WatchRouteSnapshotPreferredVariantRow[]
+      WatchRouteSnapshotPreferredVariantQueryRow[]
     >`
       WITH requested AS (
         SELECT
@@ -1317,9 +1347,16 @@ export class VideoService {
         preferred_dub.language_slug AS "languageSlug",
         preferred_dub.language_name AS "languageName",
         preferred_dub.mux_video_id AS "muxVideoId",
-        preferred_dub.playback_id AS "playbackId"
+        preferred_dub.playback_id AS "playbackId",
+        requested_language.core_id AS "requestedLanguageCoreId",
+        requested_language.bcp47 AS "requestedLanguageBcp47",
+        requested_language.slug AS "requestedLanguageSlug",
+        requested_language.name AS "requestedLanguageName"
       FROM "video" v
       CROSS JOIN requested
+      LEFT JOIN "language" requested_language
+        ON requested_language.slug = requested.audio_language_slug
+       AND requested_language.deleted_at IS NULL
       LEFT JOIN LATERAL (
         SELECT
           vd.id,
@@ -1390,7 +1427,29 @@ export class VideoService {
       LIMIT 1
     `
 
-    return rows[0]?.id == null ? null : rows[0]
+    const row = rows[0]
+    if (row == null) return { preferredVariant: null, requestedLanguage: null }
+
+    const {
+      id,
+      requestedLanguageCoreId,
+      requestedLanguageBcp47,
+      requestedLanguageSlug,
+      requestedLanguageName,
+      ...dub
+    } = row
+    return {
+      preferredVariant: id == null ? null : { ...dub, id },
+      requestedLanguage:
+        requestedLanguageSlug == null
+          ? null
+          : {
+              coreId: requestedLanguageCoreId,
+              bcp47: requestedLanguageBcp47,
+              slug: requestedLanguageSlug,
+              name: requestedLanguageName,
+            },
+    }
   }
 
   private async countPlayableDubLanguagesForSnapshot(
@@ -1683,7 +1742,7 @@ export class VideoService {
       fallbackMuxRows,
       durationRows,
       playableDubLanguageCount,
-      preferredVariant,
+      { preferredVariant, requestedLanguage },
     ] = await Promise.all([
       this.prisma.videoImage.findMany({
         where: { videoId: { in: allVideoIds }, deletedAt: null },
@@ -1932,6 +1991,7 @@ export class VideoService {
       ...rootLocaleBuckets,
       ...studyQuestionBucketsForSnapshot(studyQuestionRows, localeArgs),
       playableDubLanguageCount,
+      requestedLanguage,
       preferredVariant: preferredVariant
         ? {
             documentId: preferredVariant.id,
