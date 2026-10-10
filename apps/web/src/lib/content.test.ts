@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { print } from "graphql"
 
-const { queryMock, routeManifestMock, unstableCacheCalls } = vi.hoisted(() => ({
+const {
+  queryMock,
+  routeManifestMock,
+  unstableCacheCalls,
+  unstableCacheResults,
+  cacheUnstableSuccesses,
+} = vi.hoisted(() => ({
   queryMock: vi.fn(),
   // Live watch-route manifest as seen by content.ts. Defaults to "not
   // available" so every existing test runs against the compiled corpus
@@ -12,6 +18,8 @@ const { queryMock, routeManifestMock, unstableCacheCalls } = vi.hoisted(() => ({
     keyParts: unknown[]
     options: { revalidate?: unknown; tags?: unknown }
   }[],
+  unstableCacheResults: new Map<string, unknown>(),
+  cacheUnstableSuccesses: { value: false },
 }))
 
 vi.mock("@/lib/watch-route-manifest", async () => {
@@ -43,7 +51,14 @@ vi.mock("next/cache", () => ({
     options?: { revalidate?: unknown; tags?: unknown },
   ) => {
     unstableCacheCalls.push({ keyParts, options: options ?? {} })
-    return fn
+    return (async (...args: unknown[]) => {
+      if (!cacheUnstableSuccesses.value) return fn(...args)
+      const key = JSON.stringify([keyParts, args])
+      if (unstableCacheResults.has(key)) return unstableCacheResults.get(key)
+      const result = await fn(...args)
+      unstableCacheResults.set(key, result)
+      return result
+    }) as T
   },
 }))
 
@@ -160,6 +175,8 @@ describe("resolveWatchPage", () => {
   afterEach(() => {
     queryMock.mockReset()
     unstableCacheCalls.length = 0
+    unstableCacheResults.clear()
+    cacheUnstableSuccesses.value = false
     vi.resetModules()
   })
 
@@ -239,6 +256,75 @@ describe("resolveWatchPage", () => {
         slug: "home",
       },
     })
+  })
+
+  it("retries a transient homepage failure instead of caching its error", async () => {
+    cacheUnstableSuccesses.value = true
+    queryMock.mockRejectedValueOnce(new Error("Admin temporarily unavailable"))
+    queryMock.mockResolvedValueOnce({
+      data: {
+        watchSetting: {
+          documentId: "watch-settings-1",
+          homepageExperience: {
+            __typename: "ExperienceLocale",
+            id: "exp-home-1",
+            slug: "home",
+            title: "Home",
+          },
+          defaultTemplateExperience: null,
+        },
+      },
+    })
+
+    const { resolveWatchPage } = await import("./content")
+    const failed = await resolveWatchPage("en")
+    const recovered = await resolveWatchPage("en")
+
+    expect(failed).toMatchObject({
+      data: null,
+      error: { message: "Admin temporarily unavailable" },
+    })
+    expect(recovered).toMatchObject({
+      error: null,
+      data: { kind: "experience", experience: { slug: "home" } },
+    })
+    expect(queryMock).toHaveBeenCalledTimes(2)
+
+    await resolveWatchPage("en")
+    expect(queryMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("retries a transient curated Experience failure instead of caching its error", async () => {
+    cacheUnstableSuccesses.value = true
+    queryMock
+      .mockRejectedValueOnce(new Error("Admin temporarily unavailable"))
+      .mockResolvedValueOnce({
+        data: {
+          experienceBySlug: {
+            __typename: "ExperienceLocale",
+            id: "exp-christmas-1",
+            slug: "christmas",
+            title: "Christmas",
+          },
+        },
+      })
+
+    const { resolveWatchExperiencePage } = await import("./content")
+    const failed = await resolveWatchExperiencePage("en", "christmas")
+    const recovered = await resolveWatchExperiencePage("en", "christmas")
+
+    expect(failed).toMatchObject({
+      data: null,
+      error: { message: "Admin temporarily unavailable" },
+    })
+    expect(recovered).toMatchObject({
+      error: null,
+      data: { kind: "experience", experience: { slug: "christmas" } },
+    })
+    expect(queryMock).toHaveBeenCalledTimes(2)
+
+    await resolveWatchExperiencePage("en", "christmas")
+    expect(queryMock).toHaveBeenCalledTimes(2)
   })
 
   const copyLagErrors = ["eyebrow", "title", "description", "ctaLabel"].map(
