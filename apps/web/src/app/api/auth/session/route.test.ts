@@ -13,10 +13,11 @@ function makeRequest(
   return new Request(url)
 }
 
-async function importRoute() {
+async function importRoute(canonicalOrigin = "https://www.jesusfilm.org") {
   vi.resetModules()
   vi.stubEnv("WEB_AUTH_BASE_URL", "http://localhost:3004")
   vi.stubEnv("WEB_BASE_URL", "http://localhost:3000")
+  vi.stubEnv("NEXT_PUBLIC_CANONICAL_ORIGIN", canonicalOrigin)
   vi.stubEnv(
     "WEB_SESSION_SECRET",
     "test-session-secret-at-least-thirty-two-chars",
@@ -41,7 +42,7 @@ describe("GET /watch/api/auth/session", () => {
       accountGateEnabled: false,
       authenticated: false,
       loginUrl:
-        "https://example.test/watch/api/auth/login?returnTo=https%3A%2F%2Fexample.test%2Fwatch",
+        "https://www.jesusfilm.org/watch/api/auth/login?returnTo=https%3A%2F%2Fwww.jesusfilm.org%2Fwatch",
     })
   })
 
@@ -60,17 +61,17 @@ describe("GET /watch/api/auth/session", () => {
     expect(body.accountGateEnabled).toBe(false)
     expect(body.authenticated).toBe(false)
     expect(body.loginUrl).toBe(
-      "https://example.test/watch/api/auth/login?returnTo=http%3A%2F%2Flocalhost%3A3000%2Fwatch%2Fjesus%2Fenglish",
+      "https://www.jesusfilm.org/watch/api/auth/login?returnTo=http%3A%2F%2Flocalhost%3A3000%2Fwatch%2Fjesus%2Fenglish",
     )
     expect(body.loginUrl).not.toContain("stream.mux.com")
   })
 
   it("allows the current request origin as a watch callback origin for preview deployments", async () => {
-    const { GET } = await importRoute()
+    const { GET } = await importRoute("https://preview.example.up.railway.app")
     const response = await GET(
       makeRequest(
-        "https://preview.example.test/watch/jesus/english",
-        "https://preview.example.test/watch/api/auth/session",
+        "https://preview.example.up.railway.app/watch/jesus/english",
+        "https://preview.example.up.railway.app/watch/api/auth/session",
       ),
     )
 
@@ -81,8 +82,38 @@ describe("GET /watch/api/auth/session", () => {
     }
     expect(body.accountGateEnabled).toBe(false)
     expect(body.loginUrl).toBe(
-      "https://preview.example.test/watch/api/auth/login?returnTo=https%3A%2F%2Fpreview.example.test%2Fwatch%2Fjesus%2Fenglish",
+      "https://preview.example.up.railway.app/watch/api/auth/login?returnTo=https%3A%2F%2Fpreview.example.up.railway.app%2Fwatch%2Fjesus%2Fenglish",
     )
+  })
+
+  it("ignores an unapproved forwarded host and uses the canonical origin", async () => {
+    const { GET } = await importRoute("https://www.jesusfilm.org")
+    const request = makeRequest("/watch")
+    request.headers.set("x-forwarded-host", "railway-alias.jesusfilm.org")
+    request.headers.set("x-forwarded-proto", "https")
+
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      loginUrl:
+        "https://www.jesusfilm.org/watch/api/auth/login?returnTo=https%3A%2F%2Fwww.jesusfilm.org%2Fwatch",
+    })
+  })
+
+  it("accepts an explicitly configured forwarded host", async () => {
+    const { GET } = await importRoute("https://watch.railway.app")
+    const request = makeRequest("/watch")
+    request.headers.set("x-forwarded-host", "watch.railway.app")
+    request.headers.set("x-forwarded-proto", "https")
+
+    const response = await GET(request)
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      loginUrl:
+        "https://watch.railway.app/watch/api/auth/login?returnTo=https%3A%2F%2Fwatch.railway.app%2Fwatch",
+    })
   })
 
   it("accepts the new Web-local Auth session as signed in", async () => {

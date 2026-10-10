@@ -29,8 +29,10 @@ vi.mock("@/auth/oauth-state", () => ({
   })),
 }))
 
-async function importRoute() {
+async function importRoute(nodeEnv = "test") {
   vi.resetModules()
+  vi.stubEnv("NODE_ENV", nodeEnv)
+  vi.stubEnv("NEXT_PUBLIC_CANONICAL_ORIGIN", "https://www.jesusfilm.org")
   vi.stubEnv("WEB_AUTH_BASE_URL", "https://auth.example.test")
   vi.stubEnv("WEB_BASE_URL", "http://localhost:3000")
   vi.stubEnv(
@@ -69,6 +71,46 @@ describe("GET /watch/api/auth/login", () => {
     const response = await GET(
       new Request(
         "http://localhost:3102/watch/api/auth/login?returnTo=%2Fwatch%2Fapi%2Fdownload",
+      ),
+    )
+
+    expect(response.status).toBe(307)
+    expect(response.cookies.get(WEB_AUTH_RETURN_TO_COOKIE)?.value).toBe(
+      "http://localhost:3000/watch",
+    )
+  })
+
+  it("resolves a relative returnTo against the canonical origin when the forwarded host is an internal alias", async () => {
+    const { GET } = await importRoute("production")
+    const { WEB_AUTH_RETURN_TO_COOKIE } = await import("@/auth/web-session")
+    const alias = "dd541ea7-e468-4159-af6c-25a59cba326c.jesusfilm.org"
+
+    const response = await GET(
+      new Request(
+        `https://${alias}/watch/api/auth/login?returnTo=%2Fwatch%2Fjesus`,
+        {
+          headers: {
+            "x-forwarded-host": alias,
+            "x-forwarded-proto": "https",
+          },
+        },
+      ),
+    )
+
+    expect(response.status).toBe(307)
+    expect(response.cookies.get(WEB_AUTH_RETURN_TO_COOKIE)?.value).toBe(
+      "https://www.jesusfilm.org/watch/jesus",
+    )
+  })
+
+  it("rejects an absolute returnTo on an attacker-controlled forwarded host", async () => {
+    const { GET } = await importRoute("production")
+    const { WEB_AUTH_RETURN_TO_COOKIE } = await import("@/auth/web-session")
+
+    const response = await GET(
+      new Request(
+        "https://evil.example/watch/api/auth/login?returnTo=https%3A%2F%2Fevil.example%2Fwatch",
+        { headers: { "x-forwarded-host": "evil.example" } },
       ),
     )
 
