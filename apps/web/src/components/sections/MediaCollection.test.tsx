@@ -332,6 +332,58 @@ describe("MediaCollection VideoCard href", () => {
     )
   })
 
+  it("keeps a fractional measured height on the collapsed shell so the page does not grow", async () => {
+    vi.stubGlobal("IntersectionObserver", TestIntersectionObserver)
+    vi.stubGlobal("ResizeObserver", TestResizeObserver)
+
+    act(() => {
+      root.render(
+        <MediaCollection
+          windowOffscreen
+          data={makeData({
+            itemsSource: "manual",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const section = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-section"]',
+    )
+    const cardsRegion = container.querySelector<HTMLElement>(
+      '[data-testid="media-collection-cards-region"]',
+    )
+    vi.spyOn(cardsRegion!, "getBoundingClientRect").mockReturnValue({
+      bottom: 724.4,
+      height: 424.4,
+      left: 0,
+      right: 1280,
+      top: 300,
+      width: 1280,
+      x: 0,
+      y: 300,
+      toJSON: () => ({}),
+    })
+    await act(async () => {
+      observerFor(section!)?.callback(
+        [
+          {
+            target: section!,
+            isIntersecting: false,
+          } as unknown as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      )
+    })
+
+    expect(
+      container.querySelector<HTMLElement>(
+        '[data-testid="media-collection-window-shell"]',
+      )?.style.height,
+    ).toBe("424.4px")
+  })
+
   it("restores mobile grid scroll position after an authored row remounts", async () => {
     vi.stubGlobal("IntersectionObserver", TestIntersectionObserver)
     vi.stubGlobal("ResizeObserver", TestResizeObserver)

@@ -484,9 +484,9 @@ function WatchHomeMediaCollection({
 
     const measureAndWindow = () => {
       if (!windowedContentMountedRef.current) return
-      const height = Math.ceil(
-        cardsRegionRef.current?.getBoundingClientRect().height ?? 0,
-      )
+      // Keep the fractional height: rounding up made every collapsed shell
+      // taller than its cards, so the page grew by up to 1px per row.
+      const height = cardsRegionRef.current?.getBoundingClientRect().height ?? 0
       if (height <= 0) return
       measuredSectionHeightRef.current = height
       setMeasuredSectionHeight((current) =>
