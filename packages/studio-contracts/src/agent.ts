@@ -122,6 +122,7 @@ export const studioDelegatedActions = [
   "history",
   "apply",
   "create",
+  "delete",
   "assets",
   "packs",
   "pack",
@@ -138,6 +139,13 @@ export const studioDelegatedActions = [
   "asset-upload",
   "validate-proposal",
   "generation-read",
+  "narration-plan",
+  "narration-admit",
+  "narration-status",
+  "render-request",
+  "render-status",
+  "render-read",
+  "inspection-context",
 ] as const
 export const studioDelegatedRpcSchema = z
   .object({ action: z.enum(studioDelegatedActions), input: z.unknown() })
@@ -146,5 +154,7 @@ export const studioOAuthScopes = [
   "shorts:read",
   "shorts:edit",
   "shorts:chat",
+  "shorts:narration",
+  "shorts:render",
   "shorts:instructions:read",
 ] as const

@@ -1,0 +1,562 @@
+{
+  "window": {
+    "from": "2026-09-22T22:57:00Z",
+    "to": "2026-09-22T23:57:00Z",
+    "semantics": "half-open UTC"
+  },
+  "release": {
+    "pr": 2388,
+    "revision": "4ec1f98207d42a31187f51410fad3cfad7257746",
+    "adminDeployment": "556baa11-cef1-4fc4-9d6f-b6b620fccaae",
+    "workerDeployment": "96e5f9f9-769e-473b-b14c-48a121bcc4b2",
+    "webRevision": "1cccac03cec7ad4427d0c6f80443dd4d71b942e0",
+    "webDeployment": "7e475679-fd30-4973-b92c-797a183147f3"
+  },
+  "httpMetrics": {
+    "seeded": {
+      "200": 337,
+      "403": 291
+    },
+    "selection": {
+      "200": 10,
+      "400": 2
+    },
+    "playback": {
+      "200": 3625,
+      "403": 310,
+      "401": 1,
+      "409": 3
+    },
+    "evidence": {
+      "200": 1081,
+      "403": 350,
+      "400": 7
+    },
+    "profile": {
+      "200": 502,
+      "403": 688
+    }
+  },
+  "metricQuery": "sum:trace.web.request.hits{service:forge-web,env:prod,resource_name:post_/api/recommendations*} by {resource_name,http.status_code,version}.as_count()",
+  "metricTimeAggregator": "sum",
+  "primaryLogSlices": [
+    {
+      "from": "2026-09-22T22:57:00Z",
+      "to": "2026-09-22T23:45:00Z",
+      "returned": 4558,
+      "unparsed": 0
+    },
+    {
+      "from": "2026-09-22T23:45:00Z",
+      "to": "2026-09-22T23:57:00Z",
+      "returned": 1459,
+      "unparsed": 0
+    }
+  ],
+  "deliveryEnvelopes": [
+    {
+      "status": "200",
+      "result": "fallback",
+      "reason": "cooldown",
+      "count": 1
+    },
+    {
+      "status": "200",
+      "result": "fallback",
+      "reason": "delivery_timeout",
+      "count": 1
+    },
+    {
+      "status": "200",
+      "result": "fallback",
+      "reason": "no_candidates",
+      "count": 26
+    },
+    {
+      "status": "200",
+      "result": "fallback",
+      "reason": "profile_lineage_ineligible",
+      "count": 3
+    },
+    {
+      "status": "200",
+      "result": "fallback",
+      "reason": "seed_embedding_unavailable",
+      "count": 13
+    },
+    {
+      "status": "200",
+      "result": "served",
+      "reason": "none",
+      "count": 293
+    },
+    {
+      "status": "403",
+      "result": "rejected",
+      "reason": "invalid_fetch_metadata",
+      "count": 204
+    },
+    {
+      "status": "403",
+      "result": "rejected",
+      "reason": "invalid_origin",
+      "count": 87
+    }
+  ],
+  "evidenceOutcomes": [
+    {
+      "action": "claim",
+      "status": "200",
+      "outcome": "accepted",
+      "reason": "none",
+      "crawler": "not_recognized",
+      "count": 176
+    },
+    {
+      "action": "claim",
+      "status": "409",
+      "outcome": "rejected",
+      "reason": "invalid_binding",
+      "crawler": "not_recognized",
+      "count": 1
+    },
+    {
+      "action": "context",
+      "status": "200",
+      "outcome": "accepted",
+      "reason": "none",
+      "crawler": "not_recognized",
+      "count": 174
+    },
+    {
+      "action": "evidence",
+      "status": "200",
+      "outcome": "accepted",
+      "reason": "none",
+      "crawler": "not_recognized",
+      "count": 1081
+    },
+    {
+      "action": "evidence",
+      "status": "400",
+      "outcome": "rejected",
+      "reason": "invalid_request",
+      "crawler": "not_recognized",
+      "count": 7
+    },
+    {
+      "action": "evidence",
+      "status": "403",
+      "outcome": "rejected",
+      "reason": "crawler_rejected",
+      "crawler": "recognized",
+      "count": 350
+    },
+    {
+      "action": "facts",
+      "status": "200",
+      "outcome": "accepted",
+      "reason": "none",
+      "crawler": "not_recognized",
+      "count": 3255
+    },
+    {
+      "action": "facts",
+      "status": "200",
+      "outcome": "replay",
+      "reason": "none",
+      "crawler": "not_recognized",
+      "count": 20
+    },
+    {
+      "action": "facts",
+      "status": "401",
+      "outcome": "rejected",
+      "reason": "forbidden",
+      "crawler": "not_recognized",
+      "count": 1
+    },
+    {
+      "action": "facts",
+      "status": "409",
+      "outcome": "rejected",
+      "reason": "invalid_binding",
+      "crawler": "not_recognized",
+      "count": 2
+    },
+    {
+      "action": "playback",
+      "status": "403",
+      "outcome": "rejected",
+      "reason": "crawler_rejected",
+      "crawler": "recognized",
+      "count": 160
+    },
+    {
+      "action": "playback",
+      "status": "403",
+      "outcome": "rejected",
+      "reason": "forbidden",
+      "crawler": "not_recognized",
+      "count": 150
+    },
+    {
+      "action": "select",
+      "status": "200",
+      "outcome": "accepted",
+      "reason": "none",
+      "crawler": "not_recognized",
+      "count": 10
+    },
+    {
+      "action": "select",
+      "status": "400",
+      "outcome": "rejected",
+      "reason": "invalid_request",
+      "crawler": "not_recognized",
+      "count": 2
+    }
+  ],
+  "runtime": {
+    "returned": 4361,
+    "unparsed": 0,
+    "serviceLatency": {
+      "seeded": {
+        "count": 337,
+        "p50Ms": 230.957,
+        "p95Ms": 546.696,
+        "p99Ms": 853.788,
+        "maxMs": 1483.269
+      },
+      "for_you": {
+        "count": 0,
+        "p50Ms": null,
+        "p95Ms": null,
+        "p99Ms": null,
+        "maxMs": null
+      },
+      "selection": {
+        "count": 12,
+        "p50Ms": 61.739,
+        "p95Ms": 94.781,
+        "p99Ms": 94.781,
+        "maxMs": 94.781
+      }
+    },
+    "completedPersistenceLatency": {
+      "count": 336,
+      "p50Ms": 91.299,
+      "p95Ms": 273.301,
+      "p99Ms": 645.273,
+      "maxMs": 1224.266
+    },
+    "completedInsertLatency": {
+      "count": 309,
+      "p50Ms": 39.614,
+      "p95Ms": 184.191,
+      "p99Ms": 581.329,
+      "maxMs": 665.901
+    },
+    "poolSlowAcquisitionLatency": {
+      "count": 465,
+      "p50Ms": 60.696,
+      "p95Ms": 312.516,
+      "p99Ms": 429.314,
+      "maxMs": 492.419
+    },
+    "poolMissingRequestCorrelation": 465,
+    "maxPendingAtAcquisitionStart": 95,
+    "failedCompletion": {
+      "at": "2026-09-22T23:28:54.559697691Z",
+      "level": "info",
+      "event": "recommendation.runtime",
+      "schemaVersion": 1,
+      "operation": "seeded",
+      "phase": "complete",
+      "outcome": "unavailable",
+      "timeoutFallback": true,
+      "elapsedMs": 1483.2693839999847,
+      "poolAcquisitionSamples": 0,
+      "poolPendingMax": null,
+      "loopActiveMs": 661.3898450495908,
+      "loopIdleMs": 821.8703390000155,
+      "recentLoopMaxMs": 22.904831,
+      "loopWindowMs": 1611.603577000089,
+      "omittedTimings": 0,
+      "timings": {
+        "getServingState": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 25.471917999908328,
+          "maxMs": 25.471917999908328,
+          "errors": 0
+        },
+        "transaction.begin": {
+          "calls": 5,
+          "inFlight": 0,
+          "elapsedMs": 18.767313999822363,
+          "maxMs": 6.380671999882907,
+          "errors": 0
+        },
+        "transaction.callback": {
+          "calls": 5,
+          "inFlight": 0,
+          "elapsedMs": 1267.99418300041,
+          "maxMs": 1217.7868050001562,
+          "errors": 1,
+          "errorCode": "deadline"
+        },
+        "db.raw.$queryRaw": {
+          "calls": 14,
+          "inFlight": 0,
+          "elapsedMs": 196.67098399973474,
+          "maxMs": 106.80340900016017,
+          "errors": 0
+        },
+        "db.RecommendationServingControl.findUnique": {
+          "calls": 2,
+          "inFlight": 0,
+          "elapsedMs": 10.21729699964635,
+          "maxMs": 5.87154999980703,
+          "errors": 0
+        },
+        "transaction.commit_ack": {
+          "calls": 4,
+          "inFlight": 0,
+          "elapsedMs": 12.489227999933064,
+          "maxMs": 3.5589690001215786,
+          "errors": 0
+        },
+        "authorizeProfile": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 19.552269000094384,
+          "maxMs": 19.552269000094384,
+          "errors": 0
+        },
+        "retrieve": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 37.18330999999307,
+          "maxMs": 37.18330999999307,
+          "errors": 0
+        },
+        "retrieval": {
+          "calls": 3,
+          "inFlight": 0,
+          "elapsedMs": 189.40054899989627,
+          "maxMs": 127.72247499995865,
+          "errors": 0
+        },
+        "db.RecommendationConsentReceipt.findUnique": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 6.191774999955669,
+          "maxMs": 6.191774999955669,
+          "errors": 0
+        },
+        "db.RecommendationProfileSessionLink.upsert": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 3.576688999775797,
+          "maxMs": 3.576688999775797,
+          "errors": 0
+        },
+        "retrieveProfile": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 127.73145399987698,
+          "maxMs": 127.73145399987698,
+          "errors": 0
+        },
+        "assignProfileExperiment": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 12.010586000047624,
+          "maxMs": 12.010586000047624,
+          "errors": 0
+        },
+        "db.RecommendationExperiment.findMany": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 3.5969389998354018,
+          "maxMs": 3.5969389998354018,
+          "errors": 0
+        },
+        "loadViewingModeAffinity": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 18.13001299998723,
+          "maxMs": 18.13001299998723,
+          "errors": 0
+        },
+        "db.RecommendationProfile.findUnique": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 3.5041509999427944,
+          "maxMs": 3.5041509999427944,
+          "errors": 0
+        },
+        "resolveRecentContext": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 24.51847400004044,
+          "maxMs": 24.51847400004044,
+          "errors": 0
+        },
+        "persistence": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 1224.2664650001097,
+          "maxMs": 1224.2664650001097,
+          "errors": 1,
+          "errorCode": "deadline"
+        },
+        "db.RecommendationRequest.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 19.05058700009249,
+          "maxMs": 19.05058700009249,
+          "errors": 0
+        },
+        "db.RecommendationCandidateRun.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 7.5149129999335855,
+          "maxMs": 7.5149129999335855,
+          "errors": 0
+        },
+        "db.RecommendationPersonalizationDecision.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 3.9504029999952763,
+          "maxMs": 3.9504029999952763,
+          "errors": 0
+        },
+        "candidate_evidence.insert": {
+          "calls": 1,
+          "inFlight": 1,
+          "elapsedMs": 0,
+          "maxMs": 0,
+          "errors": 0,
+          "inputRows": 220
+        },
+        "db.raw.$executeRaw": {
+          "calls": 1,
+          "inFlight": 1,
+          "elapsedMs": 0,
+          "maxMs": 0,
+          "errors": 0
+        },
+        "transaction.rollback_settle": {
+          "calls": 1,
+          "inFlight": 1,
+          "elapsedMs": 0,
+          "maxMs": 0,
+          "errors": 0
+        }
+      }
+    },
+    "lateOperations": [
+      {
+        "at": "2026-09-22T23:28:54.560271391Z",
+        "level": "info",
+        "event": "recommendation.runtime",
+        "schemaVersion": 1,
+        "operation": "seeded",
+        "phase": "late_operation",
+        "label": "transaction.rollback_settle",
+        "elapsedMs": 45.68564499984495,
+        "outcome": "rejected",
+        "errorCode": "deadline"
+      },
+      {
+        "at": "2026-09-22T23:28:54.560289881Z",
+        "level": "info",
+        "event": "recommendation.runtime",
+        "schemaVersion": 1,
+        "operation": "seeded",
+        "phase": "late_operation",
+        "label": "db.raw.$executeRaw",
+        "elapsedMs": 1228.7852079998702,
+        "outcome": "rejected",
+        "errorCode": "P2028"
+      },
+      {
+        "at": "2026-09-22T23:28:54.560292891Z",
+        "level": "info",
+        "event": "recommendation.runtime",
+        "schemaVersion": 1,
+        "operation": "seeded",
+        "phase": "late_operation",
+        "label": "candidate_evidence.insert",
+        "elapsedMs": 1230.4123700000346,
+        "outcome": "rejected",
+        "errorCode": "P2028"
+      }
+    ]
+  },
+  "failureTrace": {
+    "traceId": "6ab30f350000000061e42c90b52d0140",
+    "graphqlSpanId": "6892108129368100931",
+    "transactionAcquisitionMs": 5.967285,
+    "insertDriverMs": 1186.185088,
+    "rollbackDriverMs": 37.312744,
+    "transactionRemainingMs": 1225
+  },
+  "boundedDatabaseWaitSample": {
+    "startedAt": "2026-09-23T00:00:49.529Z",
+    "endedAt": "2026-09-23T00:02:25.286Z",
+    "revision": "4ec1f98207d42a31187f51410fad3cfad7257746",
+    "count": 926,
+    "overheadMs": 3001.7703670000565,
+    "maxMs": 8.775499000010313,
+    "stopped": "overhead",
+    "samples": [
+      {
+        "at": "2026-09-23T00:01:08.585Z",
+        "state": "idle in transaction",
+        "wait_event_type": "Client",
+        "wait_event": "ClientRead",
+        "query_start": "2026-09-23T00:01:08.578Z",
+        "age_ms": 7.154,
+        "blocker_count": 0
+      },
+      {
+        "at": "2026-09-23T00:01:15.102Z",
+        "state": "idle in transaction",
+        "wait_event_type": "Client",
+        "wait_event": "ClientRead",
+        "query_start": "2026-09-23T00:01:15.077Z",
+        "age_ms": 25.029,
+        "blocker_count": 0
+      },
+      {
+        "at": "2026-09-23T00:01:21.722Z",
+        "state": "active",
+        "wait_event_type": "IO",
+        "wait_event": "DataFileRead",
+        "query_start": "2026-09-23T00:01:21.706Z",
+        "age_ms": 16.661,
+        "blocker_count": 0
+      },
+      {
+        "at": "2026-09-23T00:02:08.371Z",
+        "state": "active",
+        "wait_event_type": null,
+        "wait_event": null,
+        "query_start": "2026-09-23T00:02:08.350Z",
+        "age_ms": 20.284,
+        "blocker_count": 0
+      }
+    ]
+  },
+  "limitations": [
+    "No natural timeout reproduced in local paired benchmark.",
+    "Driver wall time is not isolated PostgreSQL execution or storage wait.",
+    "Completed insert percentiles exclude the pending failed insert; failure and late rejection remain separately retained.",
+    "Pool slow events are process-wide, not assigned to recommendation requests.",
+    "One hour and twelve selection observations do not establish sustained recovery.",
+    "No for-you delivery in the fixed window."
+  ]
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Animated,
   FlatList,
@@ -40,9 +40,11 @@ import {
   FROSTED_BLUR_INTENSITY,
   FROSTED_TINT,
 } from "../../lib/bibleCardTreatment"
+import type { VerseRef } from "../../lib/bible/versification/convert"
 import { datadogLog } from "../../lib/datadog"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { PlatformBlur } from "../ui/PlatformBlur"
-import { openPassageSheet } from "../../lib/openPassageSheet"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { validateActionUrl } from "../../lib/validateUrl"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
@@ -76,7 +78,8 @@ type QuoteItem = {
     BibleQuoteBlock,
     | "translation"
     | "copyright"
-    | "passageUrl"
+    | "textLang"
+    | "citationStart"
     | "loading"
     | "artCandidates"
     | "artIndex"
@@ -85,6 +88,8 @@ type QuoteItem = {
 
 export interface BibleQuotesCarouselRendererProps {
   section: AdminBlock
+  /** Pushes the reader at a card's first cited verse (feat-553 KTD17). */
+  onOpenReader?: (start: VerseRef) => void
   /**
    * A card's artwork failed to load; the owning layer advances its rung. An
    * explicit prop, not a passenger on the block bag: the ladder's index lives
@@ -99,6 +104,9 @@ export interface BibleQuotesCarouselRendererProps {
   videoSlug?: string
   /** The header's share button. The video details page turns it off. */
   showShareButton?: boolean
+  /** The language of the heading (KTD13). Absent on the Experience and SDUI
+   *  paths, whose text language is not known. */
+  headingLang?: string | null
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -106,7 +114,13 @@ export interface BibleQuotesCarouselRendererProps {
 const HORIZONTAL_PADDING = 16
 const CARD_GAP = 12
 const FALLBACK_BG = "#292524"
-const READ_PASSAGE_LABEL = "Read full passage"
+// R37: RUM keeps the tap name the label gave before it moved to the catalog. A
+// new name starts a new tap series and breaks the before-and-after count (KD17).
+const READ_PASSAGE_ACTION_NAME = "Read full passage"
+const SHARE_URL = "https://www.jesusfilm.org/watch"
+
+// A second tap while the first push animates would stack two readers.
+export const READER_OPEN_DEBOUNCE_MS = 1000
 
 /**
  * The scrim is opaque behind the text stack, so this does NOT carry the
@@ -191,7 +205,7 @@ function QuoteCard({
   typography,
   fontScale,
   reduceMotion,
-  onOpenPassage,
+  onOpenReader,
   onArtworkFailed,
   onArtworkSettled,
   videoSlug,
@@ -202,7 +216,7 @@ function QuoteCard({
   typography: TypographyScale
   fontScale: number
   reduceMotion: boolean
-  onOpenPassage?: (url: string) => void
+  onOpenReader?: (start: VerseRef) => void
   onArtworkFailed?: (cardIndex: number, failedUrl: string) => void
   onArtworkSettled?: (cardIndex: number) => void
   videoSlug?: string
@@ -213,23 +227,22 @@ function QuoteCard({
   // validated, and the ONLY URL check the Experience and SDUI paths get.
   const imageUrl = resolveImageUrl(quote.imageUrl ?? null)
   const loading = quote.loading === true
+  const t = useT("BibleQuotes")
 
   const artCandidates = quote.artCandidates ?? []
   const artIndex = quote.artIndex ?? 0
   const warnedIndexRef = useRef<number | null>(null)
 
-  const passageUrl =
-    quote.passageUrl != null && validateActionUrl(quote.passageUrl)
-      ? quote.passageUrl
-      : null
+  // KTD17: the button gates on the citation alone, never on admin's text.
+  const citationStart = quote.citationStart ?? null
 
-  // R14: only a passage-fed card has credit to protect, so only it takes the
-  // clamp and the drop order. The Experience and SDUI cards carry none of
-  // these fields and keep today's unclamped verse.
-  const hasPassage =
+  // R14: only a watch-screen card has credit or a reader button to protect, so
+  // only it takes the clamp and the drop order. The Experience and SDUI cards
+  // carry none of these fields and keep today's unclamped verse.
+  const isWatchCard =
     quote.translation != null ||
     quote.copyright != null ||
-    quote.passageUrl != null
+    citationStart != null
 
   // `BibleQuoteItem.text` is nullable in admin's schema and the shared
   // Experience fragment selects it raw, so this card really can be handed null.
@@ -238,6 +251,11 @@ function QuoteCard({
   const verseText = typeof quote.text === "string" ? quote.text : ""
 
   const showVerse = !loading && verseText.length > 0
+
+  // R10: an English passage keeps its language mark. KTD13: the passage takes
+  // its direction from its own language.
+  const englishPassage = quote.textLang === "en"
+  const passageDirection = useTextDirection().text(quote.textLang).style
 
   // The card is a fixed square and its content is bottom-aligned, so the drop
   // order has to be decided here rather than left to overflow.
@@ -248,7 +266,7 @@ function QuoteCard({
     hasVerse: showVerse,
     hasTranslation: !loading && quote.translation != null,
     hasCopyright: !loading && quote.copyright != null,
-    hasLink: !loading && passageUrl != null,
+    hasLink: !loading && citationStart != null,
   }
   const regions = fitPassageCardRegions(fitInput)
 
@@ -296,9 +314,10 @@ function QuoteCard({
       accessible
       accessibilityLabel={
         loading
-          ? `${quote.reference}, loading`
+          ? t("loadingCardAriaLabel", { reference: quote.reference })
           : composeCardLabel(quote.reference, verseText)
       }
+      accessibilityLanguage={englishPassage ? "en" : undefined}
     >
       {imageUrl != null && (
         <Image
@@ -377,7 +396,7 @@ function QuoteCard({
           // region. Without the clamp a long reference wraps past its budget,
           // the bottom-aligned stack overflows, and the clip takes the
           // reference off the TOP — the one region the drop order protects.
-          numberOfLines={hasPassage ? REFERENCE_MAX_LINES : undefined}
+          numberOfLines={isWatchCard ? REFERENCE_MAX_LINES : undefined}
         >
           {quote.reference.toUpperCase()}
         </Text>
@@ -387,25 +406,26 @@ function QuoteCard({
             passing it through would render the verse with NO limit — the exact
             overflow the drop order exists to prevent. The Experience path never
             consults it, so that surface is unchanged. */}
-        {showVerse && (!hasPassage || regions.verseLines > 0) && (
+        {showVerse && (!isWatchCard || regions.verseLines > 0) && (
           <Text
             style={[
               styles.quoteText,
               // Scoped to passage cards. The Experience path has no fit
               // arithmetic behind it, so enlarging its text there would
               // overflow with nothing to catch it (R14 keeps it as it is).
-              hasPassage
+              isWatchCard
                 ? [styles.passageVerse, verseTypography(typography)]
                 : [styles.authoredVerse, typography.body],
+              passageDirection,
             ]}
-            numberOfLines={hasPassage ? regions.verseLines : undefined}
+            numberOfLines={isWatchCard ? regions.verseLines : undefined}
           >
             {verseText}
           </Text>
         )}
         {regions.translation && quote.translation != null && (
           <Text
-            style={[styles.translation, typography.caption]}
+            style={[styles.translation, typography.caption, passageDirection]}
             numberOfLines={TRANSLATION_MAX_LINES}
           >
             {quote.translation}
@@ -413,29 +433,29 @@ function QuoteCard({
         )}
         {regions.copyright && quote.copyright != null && (
           <Text
-            style={[styles.copyright, typography.caption]}
+            style={[styles.copyright, typography.caption, passageDirection]}
             numberOfLines={COPYRIGHT_MAX_LINES}
           >
             {quote.copyright}
           </Text>
         )}
-        {regions.link && passageUrl != null && (
+        {regions.link && citationStart != null && (
           <Pressable
             style={({ pressed }) => [
               styles.passageLink,
-              onOpenPassage == null && styles.passageLinkDisabled,
+              onOpenReader == null && styles.passageLinkDisabled,
               pressed && styles.passageLinkPressed,
             ]}
-            // U6 supplies the handler. A link with no handler must never be
-            // tappable, so the affordance disables itself rather than
-            // depending on landing order.
-            disabled={onOpenPassage == null}
-            onPress={() => onOpenPassage?.(passageUrl)}
+            // The watch route supplies the handler. A link with no handler must
+            // never be tappable, so the affordance disables itself.
+            disabled={onOpenReader == null}
+            onPress={() => onOpenReader?.(citationStart)}
             accessibilityRole="link"
-            accessibilityLabel={READ_PASSAGE_LABEL}
+            accessibilityLabel={t("readFullPassage")}
+            {...{ "dd-action-name": READ_PASSAGE_ACTION_NAME }}
           >
             <Text style={[styles.passageLinkText, typography.bodySmall]}>
-              {READ_PASSAGE_LABEL}
+              {t("readFullPassage")}
             </Text>
           </Pressable>
         )}
@@ -499,12 +519,18 @@ function PaginationDots({
 
 export function BibleQuotesCarouselRenderer({
   section,
+  onOpenReader,
   onArtworkFailed,
   videoSlug,
   showShareButton = true,
+  headingLang,
 }: BibleQuotesCarouselRendererProps) {
   const typography = useTypography()
+  const headingDirection = useTextDirection().text(headingLang)
   const reduceMotion = useReduceMotion()
+  const t = useT("BibleQuotes")
+  const tCommon = useT("Common")
+  const epoch = useLocaleEpoch()
   const { width: screenWidth, fontScale } = useWindowDimensions()
   const flatListRef = useRef<FlatList<QuoteItem>>(null)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -578,14 +604,18 @@ export function BibleQuotesCarouselRenderer({
     void Image.prefetch([url], { cachePolicy: "memory-disk" })
   }, [activeIndex, settledCards, releasedFor, quotes])
 
-  // KTD9: deliberately NOT registered as a non-route sheet id. The floating
-  // window cannot be present on the watch route — `miniPlayerPresentation`
-  // returns the full-player presentation there before it consults sheet
-  // suppression — and a passage-fed card exists only on that route. Registering
-  // an id would be dead code whose device check passed vacuously.
-  const handleOpenPassage = useCallback((url: string) => {
-    void openPassageSheet(url)
-  }, [])
+  // A timestamp, not a latch: a latch would strand the button after back.
+  // KD3: the video keeps playing, so this takes no playback interruption.
+  const lastReaderOpenRef = useRef(Number.NEGATIVE_INFINITY)
+  const handleOpenReader = useMemo(() => {
+    if (onOpenReader == null) return undefined
+    return (start: VerseRef) => {
+      const now = Date.now()
+      if (now - lastReaderOpenRef.current < READER_OPEN_DEBOUNCE_MS) return
+      lastReaderOpenRef.current = now
+      onOpenReader(start)
+    }
+  }, [onOpenReader])
 
   const renderQuoteItem = useCallback(
     ({ item, index }: { item: QuoteItem; index: number }) => (
@@ -597,7 +627,7 @@ export function BibleQuotesCarouselRenderer({
         typography={typography}
         fontScale={fontScale}
         reduceMotion={reduceMotion}
-        onOpenPassage={handleOpenPassage}
+        onOpenReader={handleOpenReader}
         onArtworkFailed={onArtworkFailed}
         onArtworkSettled={handleArtworkSettled}
         videoSlug={videoSlug}
@@ -608,7 +638,7 @@ export function BibleQuotesCarouselRenderer({
       typography,
       fontScale,
       reduceMotion,
-      handleOpenPassage,
+      handleOpenReader,
       onArtworkFailed,
       handleArtworkSettled,
       videoSlug,
@@ -631,14 +661,11 @@ export function BibleQuotesCarouselRenderer({
 
   const handleShare = useCallback(async () => {
     try {
-      await Share.share({
-        message:
-          "Check out the JesusFilm app!\nhttps://www.jesusfilm.org/watch",
-      })
+      await Share.share({ message: t("shareMessage", { url: SHARE_URL }) })
     } catch {
       // User dismissed or share unavailable
     }
-  }, [])
+  }, [t])
 
   if (quotes.length === 0) return null
 
@@ -651,8 +678,10 @@ export function BibleQuotesCarouselRenderer({
               text.sectionHeading,
               styles.localHeading,
               typography.titleLarge,
+              headingDirection.style,
             ]}
             accessibilityRole="header"
+            accessibilityLanguage={headingDirection.accessibilityLanguage}
           >
             {heading}
           </Text>
@@ -662,7 +691,8 @@ export function BibleQuotesCarouselRenderer({
             onPress={handleShare}
             style={[button.iconButton44, styles.localShareButton]}
             accessibilityRole="button"
-            accessibilityLabel="Share"
+            accessibilityLabel={tCommon("shareAriaLabel")}
+            {...{ "dd-action-name": "bible-quotes-share" }}
           >
             <Ionicons name="share-outline" size={22} color={ACCENT} />
           </Pressable>
@@ -672,6 +702,7 @@ export function BibleQuotesCarouselRenderer({
         ref={flatListRef}
         data={quotes}
         renderItem={renderQuoteItem}
+        extraData={epoch}
         keyExtractor={keyExtractor}
         horizontal
         pagingEnabled
@@ -688,13 +719,16 @@ export function BibleQuotesCarouselRenderer({
         onMomentumScrollEnd={handleMomentumScrollEnd}
         accessible
         accessibilityRole="adjustable"
-        accessibilityLabel={`${quotes.length} Bible quotes`}
+        accessibilityLabel={t("quotesAriaLabel", { count: quotes.length })}
         accessibilityValue={{
-          text: `Item ${activeIndex + 1} of ${quotes.length}`,
+          text: t("itemAriaValue", {
+            index: activeIndex + 1,
+            count: quotes.length,
+          }),
         }}
         accessibilityActions={[
-          { name: "increment", label: "Next quote" },
-          { name: "decrement", label: "Previous quote" },
+          { name: "increment", label: t("nextQuoteAriaAction") },
+          { name: "decrement", label: t("previousQuoteAriaAction") },
         ]}
         onAccessibilityAction={(event) => {
           switch (event.nativeEvent.actionName) {

@@ -61,6 +61,15 @@ export type NativeAndroidPlayerViewProps = ViewProps & {
   ) => void
   onFirstFrame?: () => void
   onRebuffer?: () => void
+  feedbackAvailable?: boolean
+  feedbackVisible?: boolean
+  feedbackRows?: string[]
+  feedbackReference?: string
+  feedbackLoading?: boolean
+  feedbackError?: boolean
+  onFeedbackOpen: () => void
+  onFeedbackClose: () => void
+  onFeedbackRetry: () => void
 }
 
 export const NativeAndroidPlayerView =

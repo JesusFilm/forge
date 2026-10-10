@@ -1,3 +1,4 @@
+import { studioMediaStartTimes } from "@forge/studio-contracts/transitions"
 import { randomUUID } from "node:crypto"
 import type { Prisma, PrismaClient } from "@prisma/client"
 import type { StudioDocument } from "@forge/studio-contracts"
@@ -28,7 +29,7 @@ type Selection = {
   dubId: string
   editionId: string
   language: string
-  trackId: string
+  trackId: string | null
   downloadId: string
 }
 export type StudioSourceDownload = (
@@ -93,15 +94,18 @@ async function exactCatalog(db: Prisma.TransactionClient, selected: Selection) {
     },
     include: { video: true, language: true, videoEdition: true },
   })
-  const track = await db.videoSubtitle.findFirst({
-    where: {
-      id: selected.trackId,
-      videoEditionId: selected.editionId,
-      deletedAt: null,
-      language: { slug: selected.language, deletedAt: null },
-      OR: [{ videoId: selected.videoId }, { videoId: null }],
-    },
-  })
+  const track =
+    selected.trackId === null
+      ? null
+      : await db.videoSubtitle.findFirst({
+          where: {
+            id: selected.trackId,
+            videoEditionId: selected.editionId,
+            deletedAt: null,
+            language: { slug: selected.language, deletedAt: null },
+            OR: [{ videoId: selected.videoId }, { videoId: null }],
+          },
+        })
   const download = await db.videoDubDownload.findFirst({
     where: {
       id: selected.downloadId,
@@ -112,7 +116,7 @@ async function exactCatalog(db: Prisma.TransactionClient, selected: Selection) {
   const durationMs = Number(dub?.lengthInMilliseconds ?? 0)
   if (
     !dub?.hls?.trim() ||
-    !track?.vttSrc?.trim() ||
+    (selected.trackId !== null && !track?.vttSrc?.trim()) ||
     !download?.url?.trim() ||
     !Number.isSafeInteger(durationMs) ||
     durationMs <= 0 ||
@@ -124,10 +128,10 @@ async function exactCatalog(db: Prisma.TransactionClient, selected: Selection) {
     exportHeight: download.height,
     hlsUrl: dub.hls,
     downloadUrl: download.url,
-    subtitleUrl: track.vttSrc,
+    subtitleUrl: track?.vttSrc ?? null,
     restrictions: dub.video.restrictViewPlatforms,
-    subtitlePrimary: track.primary,
-    subtitleAiGenerated: track.aiGenerated,
+    subtitlePrimary: track?.primary ?? null,
+    subtitleAiGenerated: track?.aiGenerated ?? null,
     catalogDigest: studioHash({
       selected: {
         videoId: selected.videoId,
@@ -140,11 +144,11 @@ async function exactCatalog(db: Prisma.TransactionClient, selected: Selection) {
       durationMs,
       hls: dub.hls,
       download: download.url,
-      track: track.vttSrc,
+      track: track?.vttSrc ?? null,
       dubVersion: dub.version,
       languageId: dub.languageId,
-      primary: track.primary,
-      aiGenerated: track.aiGenerated,
+      primary: track?.primary ?? null,
+      aiGenerated: track?.aiGenerated ?? null,
       exportHeight: download.height,
     }),
   }
@@ -156,11 +160,13 @@ export async function assertStudioSourceEligible(
 ) {
   const s = snapshot.source
   // Locks prevent a concurrent catalog edit from slipping between eligibility and publication.
-  await tx.$queryRaw`SELECT v.id FROM video v JOIN video_dub d ON d.video_id=v.id JOIN video_edition e ON e.id=d.video_edition_id JOIN video_subtitle t ON t.video_edition_id=e.id JOIN language l ON l.id=d.language_id JOIN video_dub_download dl ON dl.video_dub_id=d.id WHERE v.id=${s.videoId} AND d.id=${s.dubId} AND e.id=${s.editionId} AND t.id=${s.subtitle.trackId} AND dl.id=${snapshot.downloadId} FOR SHARE OF v,d,e,t,l,dl`
+  await tx.$queryRaw`SELECT v.id FROM video v JOIN video_dub d ON d.video_id=v.id JOIN video_edition e ON e.id=d.video_edition_id JOIN language l ON l.id=d.language_id JOIN video_dub_download dl ON dl.video_dub_id=d.id WHERE v.id=${s.videoId} AND d.id=${s.dubId} AND e.id=${s.editionId} AND dl.id=${snapshot.downloadId} FOR SHARE OF v,d,e,l,dl`
+  if (s.subtitle)
+    await tx.$queryRaw`SELECT id FROM video_subtitle WHERE id=${s.subtitle.trackId} AND video_edition_id=${s.editionId} FOR SHARE`
   await tx.$queryRaw`SELECT id FROM video_locale WHERE video_id=${s.videoId} FOR SHARE`
   const current = await exactCatalog(tx, {
     ...s,
-    trackId: s.subtitle.trackId,
+    trackId: s.subtitle?.trackId ?? null,
     downloadId: snapshot.downloadId,
   })
   if (current.catalogDigest !== snapshot.catalogDigest)
@@ -189,10 +195,19 @@ export async function resolveStudioDocumentSources(
         videoId: s.videoId,
         dubId: s.dubId,
         editionId: s.editionId,
-        trackId: s.subtitle.trackId,
+        trackId: s.subtitle?.trackId ?? null,
         AND: [
           { snapshot: { path: ["source", "language"], equals: s.language } },
-          { snapshot: { path: ["source", "subtitle"], equals: s.subtitle } },
+          ...(s.subtitle
+            ? [
+                {
+                  snapshot: {
+                    path: ["source", "subtitle"],
+                    equals: s.subtitle,
+                  },
+                },
+              ]
+            : []),
           { snapshot: { path: ["source", "preview"], equals: s.preview } },
           { snapshot: { path: ["source", "export"], equals: s.export } },
         ],
@@ -208,12 +223,14 @@ export async function resolveStudioDocumentSources(
     )
       throw new NotFoundError("Pinned source/range")
     const eligibility = await assertStudioSourceEligible(tx, snapshot)
-    let bytes = subtitleBytes.get(s.subtitle.asset.digest)
-    if (!bytes) {
-      bytes = await readVerifiedStudioAsset(tx, s.subtitle.asset, 1048576)
-      subtitleBytes.set(s.subtitle.asset.digest, bytes)
+    if (s.subtitle) {
+      let bytes = subtitleBytes.get(s.subtitle.asset.digest)
+      if (!bytes) {
+        bytes = await readVerifiedStudioAsset(tx, s.subtitle.asset, 1048576)
+        subtitleBytes.set(s.subtitle.asset.digest, bytes)
+      }
+      parseStudioVtt(bytes, { startMs: s.startMs, endMs: s.endMs })
     }
-    parseStudioVtt(bytes, { startMs: s.startMs, endMs: s.endMs })
     resolved.push({
       snapshot,
       eligibility,
@@ -250,11 +267,14 @@ export class StudioSourceService {
     const catalog = await exactCatalog(this.db, input)
     if (input.startMs >= input.endMs || input.endMs > catalog.durationMs)
       throw new StudioCommandError("INVALID")
-    const subtitleBytes = await this.download(catalog.subtitleUrl, 1048576)
-    parseStudioVtt(subtitleBytes, {
-      startMs: input.startMs,
-      endMs: input.endMs,
-    })
+    const subtitleBytes = catalog.subtitleUrl
+      ? await this.download(catalog.subtitleUrl, 1048576)
+      : null
+    if (subtitleBytes)
+      parseStudioVtt(subtitleBytes, {
+        startMs: input.startMs,
+        endMs: input.endMs,
+      })
     const sourceBytes = input.retainOriginalBytes
       ? await this.download(catalog.downloadUrl, STUDIO_MAX_ASSET_BYTES)
       : Buffer.from(
@@ -270,18 +290,20 @@ export class StudioSourceService {
       status: "recorded",
       recorded: { selection: input, catalog },
     }
-    const subtitle = await assets.register(
-      user,
-      {
-        filename: "canonical.vtt",
-        mimeType: "text/vtt",
-        role: "subtitle",
-        provenance,
-        idempotencyKey: studioHash({ requestKey, role: "subtitle" }),
-      },
-      subtitleBytes,
-      this.backend,
-    )
+    const subtitle = subtitleBytes
+      ? await assets.register(
+          user,
+          {
+            filename: "canonical.vtt",
+            mimeType: "text/vtt",
+            role: "subtitle",
+            provenance,
+            idempotencyKey: studioHash({ requestKey, role: "subtitle" }),
+          },
+          subtitleBytes,
+          this.backend,
+        )
+      : null
     const source = await assets.register(
       user,
       {
@@ -316,12 +338,14 @@ export class StudioSourceService {
         endMs: input.endMs,
         preview: source.reference,
         export: source.reference,
-        subtitle: {
-          trackId: input.trackId,
-          editionId: input.editionId,
-          language: input.language,
-          asset: subtitle.reference,
-        },
+        subtitle: subtitle
+          ? {
+              trackId: input.trackId,
+              editionId: input.editionId,
+              language: input.language,
+              asset: subtitle.reference,
+            }
+          : null,
       },
     })
     return this.db.$transaction(async (tx) => {
@@ -421,7 +445,7 @@ export class StudioSourceService {
           videoId: snapshot.source.videoId,
           dubId: snapshot.source.dubId,
           editionId: snapshot.source.editionId,
-          trackId: snapshot.source.subtitle.trackId,
+          trackId: snapshot.source.subtitle?.trackId ?? null,
           downloadId: snapshot.downloadId,
           snapshot,
           requestKey,
@@ -456,7 +480,8 @@ export class StudioSourceService {
     const snapshot = await this.read(user, input.sourceSnapshotId)
     if (
       input.language !== snapshot.source.language ||
-      input.language !== snapshot.source.subtitle.language ||
+      (snapshot.source.subtitle !== null &&
+        input.language !== snapshot.source.subtitle.language) ||
       input.startMs < snapshot.source.startMs ||
       input.endMs > snapshot.source.endMs ||
       input.endMs <= input.startMs
@@ -464,12 +489,13 @@ export class StudioSourceService {
       throw new StudioCommandError("INVALID")
     return this.db.$transaction(async (tx) => {
       await assertStudioSourceEligible(tx, snapshot)
-      const bytes = await readVerifiedStudioAsset(
-        tx,
-        snapshot.source.subtitle.asset,
-        1048576,
-      )
-      const all = parseStudioVtt(bytes, input)
+      const subtitle = snapshot.source.subtitle
+      const all = subtitle
+        ? parseStudioVtt(
+            await readVerifiedStudioAsset(tx, subtitle.asset, 1048576),
+            input,
+          )
+        : []
       const page = pageStudioSourceCues(all, input.offset, input.limit)
       return {
         sourceSnapshotId: snapshot.id,
@@ -483,7 +509,9 @@ export class StudioSourceService {
         endMs: input.endMs,
         offset: input.offset,
         ...page,
-        evidenceKind: "untrusted-canonical-subtitle" as const,
+        evidenceKind: subtitle
+          ? ("untrusted-canonical-subtitle" as const)
+          : ("no-subtitle" as const),
         coverage:
           input.offset === 0 && page.nextOffset === null
             ? ("complete" as const)
@@ -514,11 +542,14 @@ export async function assertStudioRenderSources(
   document: StudioDocument,
 ) {
   const sources = await resolveStudioDocumentSources(tx, document)
+  const mediaStarts = studioMediaStartTimes(document)
   for (const source of sources) {
     if (
       source.snapshot.materialization === "descriptor" ||
       !source.snapshot.coveredRanges.some(
-        (r) => r.startMs <= source.startMs && r.endMs >= source.endMs,
+        (r) =>
+          r.startMs <= (mediaStarts.get(source.itemId) ?? source.startMs) &&
+          r.endMs >= source.endMs,
       )
     )
       throw new StudioCommandError("INVALID")

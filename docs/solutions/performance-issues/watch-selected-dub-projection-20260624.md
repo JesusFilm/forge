@@ -1,9 +1,17 @@
 ---
 title: "Keep Watch preferred-dub projections bounded across lists"
 date: "2026-06-24"
-last_updated: "2026-09-14"
+last_updated: "2026-09-23"
 module: "apps/admin Watch GraphQL"
 problem_type: "performance_issue"
+component: "service_object"
+severity: "medium"
+symptoms:
+  - "Cold Watch reads project many dubs to select one playable language"
+  - "Authored settings blocks issue one scalar dub lookup per sibling"
+  - "Concurrent scalar lookups queue unrelated reads behind a shared pool"
+root_cause: "logic_error"
+resolution_type: "code_fix"
 tags:
   - "watch"
   - "dataloader"
@@ -88,3 +96,41 @@ The final loader emits 40 SQL statements per homepage on the measured fixture.
 Bounded concurrent reads substantially reduce queueing but retain multi-second
 tails; they do not prove all playback timeouts are fixed. See
 `docs/operations/watch-runtime-diagnosis-2026-09-14.md` for measured limits.
+
+## Authored block identities are a separate query path
+
+Batching `Video.preferredPlayableDub` does not batch the authored block
+`videoDub` fields. A retained September 23 settings trace contains 62 scalar
+`VideoDub.findFirst` calls through `MediaCollectionItem`, `VideoCarouselItem`,
+`VideoBlock` and `VideoHeroBlock`. Trace the actual consumer operation before
+assuming a previously optimized field covers every playback projection.
+
+The authored policy uses an exact **video/language pair**, with no preferred
+language fallback. It also permits nonnull DASH/share and preserves existing
+blank-HLS eligibility. Reusing the preferred-dub loader would change behavior.
+The dedicated request-local `selectedBlockVideoDub` loader groups by Pothos
+selection and bounds batches at 100. Its service selects at most one winner
+per requested pair before hydrating relations. Preserve PostgreSQL's duration
+DESC null ordering and ID tie-break; recheck publication, deletion, playability
+and the exact identity after hydration. Withdrawal/reassignment returns null.
+
+Actual GraphQL regressions must exercise every affected block field with
+selection-aware mocks; otherwise a correct new loader can remain unwired or
+lose nested fields. Real PostgreSQL parity checks compare the new query with
+the old scalar predicate, including exact-language isolation, ties, null
+durations and unavailable rows. Count emitted SQL as well as queued leases.
+
+The controlled five-request, 62-item workload with a three-millisecond response
+delay models connection contention; it is not proof of a historical natural
+timeout. An ABBA comparison reduced 621 commands per round to 16, peak queued
+calls from 301 to zero, and unrelated-read p95 from 200–311 ms to 7–9 ms.
+Keep that causal result separate from production recovery. See
+`docs/operations/watch-block-dub-fanout-2026-09-23.md` for scope and release gates.
+
+Production verification must compare the full response as well as the query
+shape. The September 23 release preserved English and Spanish settings data
+including all nulls and array order. JSON object-key order changed, so use a
+canonical-key digest for data equivalence and retain the raw digest difference
+honestly. A natural settings trace on revision `911ad0058` shows one raw
+winner-selection call and one hydration method span in place of scalar dub
+calls. Method spans with collapsed children do not establish total SQL count.

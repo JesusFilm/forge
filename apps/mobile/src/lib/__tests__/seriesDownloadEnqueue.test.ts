@@ -23,7 +23,7 @@ function resolvedEpisode(
       size: "1000",
       url: "https://cdn.example/e2.mp4",
     },
-    resolvedTier: "Highest",
+    resolvedTier: "highest",
     subtitleUrl: null,
     seriesEpisodeIndex: 2,
     durationSeconds: 725,
@@ -77,6 +77,24 @@ describe("buildEpisodeRequest — series/ordering metadata (U1)", () => {
     expect(b?.seriesEpisodeIndex).toBe(2)
     expect(a?.seriesSlug).toBe(b?.seriesSlug)
     expect(a?.seriesTitle).toBe(b?.seriesTitle)
+  })
+
+  // U7: the titles were read in the series screen's captured forms.
+  it("records the batch's title locale on a titled episode", () => {
+    const request = buildEpisodeRequest(resolvedEpisode(), {
+      ...ctx,
+      titleLocale: "ru",
+    })
+    expect(request?.titleLocale).toBe("ru")
+  })
+
+  it("records no title locale on an episode with no title, so the refresh fills it", () => {
+    const request = buildEpisodeRequest(resolvedEpisode({ title: null }), {
+      ...ctx,
+      titleLocale: "ru",
+    })
+    expect(request?.title).toBe("")
+    expect(request?.titleLocale).toBeUndefined()
   })
 
   it("returns null for a non-resolved episode without needing ctx's series fields", () => {

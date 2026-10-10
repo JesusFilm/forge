@@ -1,6 +1,7 @@
 ---
 title: "A layout effect's setState lands in the NEXT commit — the render in between needs its own answer"
 date: "2026-08-21"
+last_updated: "2026-09-28"
 category: "logic-errors"
 module: "apps/mobile"
 problem_type: "logic_error"
@@ -44,9 +45,9 @@ and the full-size player shrinks into a floating corner window. Both ends of tha
 transition drew a wrong single frame.
 
 The fix is on branch `fix/mobile-watch-player-clip-routing-language-shrink` and
-is open as PR #1980. It is NOT merged as of this writing. Lint, test and build
-are green; the `expo-doctor` job fails on pre-existing upstream Expo patch drift
-that is unrelated to the diff.
+merged as PR #1980 on 2026-08-21. At review time, lint, test and build were
+green; the `expo-doctor` job failed on pre-existing upstream Expo patch drift
+that was unrelated to the diff.
 
 ## Symptoms
 
@@ -214,6 +215,13 @@ geometry makes that write correct.
   falling through to a value that describes a different state.
 - The park writes the same value to the same node. Only its moment changed, so
   the black-window hazard stays closed.
+  - **Caveat (2026-09-29).** The park is a native-driven `shrink.setValue` in a
+    `useLayoutEffect`. The same shape reached the native side one frame after
+    its commit in the Bible reader (case (b) in
+    [native-animated-stop-report-overwrites-immediate-setvalue.md](../ui-bugs/native-animated-stop-report-overwrites-immediate-setvalue.md)).
+    It is not shown to be a defect here. The post-fix recordings were clean,
+    and the park writes to a mounted node, not to a view that mounts in that
+    commit.
 - The ref-based guard resolves the ordering hazard the deferral creates. Within
   one commit the motion effect runs first and may arm a replacement, and only the
   ref reflects that.
@@ -364,5 +372,14 @@ and to name `departingRect` as the reason the gap needs its own answer.
   — the META home for this doc's testing corollary. New worked instance: a
   synchronous test harness (`act()`) collapses a cross-commit ordering
   difference, so no value assertion can discriminate the fix.
+- [A measure cache keyed wider than its measuring view's React key never gets a height on Android Fabric](measure-cache-keyed-wider-than-view-key-misses-onlayout-on-fabric.md)
+  — another apps/mobile timing defect that a green jest suite could not see.
+- [A setValue reset on a native-driven Animated value lands late](../ui-bugs/native-animated-stop-report-overwrites-immediate-setvalue.md)
+  — the same lesson for a native `setValue`: a reset in a layout effect cannot
+  correct the commit that mounts a view on the stale value. It uses the same
+  frame-capture method.
+  There, a key change with an unchanged native frame sends no `onLayout`; the
+  test move is a synthetic Fabric layout driver that fires one event flush at a
+  time.
 - PR #1962 shipped the mini player (feat-367) and introduced both artifacts.
-- PR #1980 carries this fix and is open, not merged.
+- PR #1980 carries this fix (merged 2026-08-21).

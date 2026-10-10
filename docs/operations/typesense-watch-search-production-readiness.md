@@ -287,7 +287,61 @@ coverage gates.
 PostgreSQL remains authoritative. Typesense documents are disposable,
 rebuildable projections.
 
-### Change capture and worker
+### Core catalog publication
+
+Core imports and executed localized-metadata/relation-order backfills enqueue
+`watch_catalog_publication`. With `WATCH_CATALOG_PUBLICATION_ENABLED=true`,
+the dedicated Admin worker checks pending delivery every 30 seconds and requests
+a reconciliation after 24 hours without an import request. Publication time is
+poll delay plus the catalog build and manifest generation; public profile caching
+adds at most 30 seconds. This is separate from the daily Core import at 07:00 UTC.
+
+The publisher uses the existing repeatable-read projection and validates all
+JSONL rows, collection counts, and an exact-title read. It atomically activates
+an immutable `core-catalog-*` tuple under the existing publication lock. Search,
+suggestions, and private Serving evaluation resolve this tuple only after the
+selected baseline's existing qualification passes. SERVING/EVALUATION pointers
+and qualification evidence remain unchanged. Ordinary catalog refresh is not
+new ranking/embedding qualification. Upstream removals appear after the importer
+has applied them; full-import absent-record deletion guards are unchanged.
+
+Search and route/SEO manifest plus Web-cache acknowledgments have separate
+version counters. A failed delivery retries with backoff up to 15 minutes;
+a successful side is not repeated. Missing webhook configuration remains a
+failure. Failed Core phases and active imports block catalog snapshots. Cleanup
+protects the active generation, retains one recent inactive generation, and
+waits five minutes before retiring older owned collections; shared transcripts
+are never deleted by catalog cleanup.
+
+Runtime configuration:
+
+- Admin and worker: `WATCH_CATALOG_PUBLICATION_ENABLED=true` and matching
+  `WATCH_SEARCH_TYPESENSE_PROFILE`/`WATCH_SEARCH_SERVING_QRELS_REVISION`.
+  Copy the existing `WATCH_SEARCH_TRANSCRIPT_PROJECTION_REVISION` to the worker
+  when serving a legacy transcript collection without a persisted projection row.
+- Worker only: `TYPESENSE_HOST`, `TYPESENSE_OPERATOR_API_KEY`, and the existing
+  `WEB_REVALIDATE_URL`/`WEB_REVALIDATE_TOKEN` from Admin's Web delivery setup.
+- Reader credentials stay on Admin. The worker command removes inherited reader
+  credentials; build/migration commands also remove operator/publication settings.
+- Use normal PR-to-main deployments. Disable the catalog flag on Admin to serve
+  the original qualified baseline; disable it on the worker to stop new builds.
+  Keep the additive tables and immutable generations for inspection. Drain or
+  cancel new `runCoreSyncQueued` workflows before rolling back to an image that
+  does not register them; old `coreSync` registrations remain in the new image.
+
+Inspect lag and retry state without reading credentials:
+
+```sql
+SELECT requested_version, search_version, web_version, generation_id,
+       last_requested_at, last_published_at, attempts, retry_at, last_error
+FROM watch_catalog_publication WHERE id = 'core';
+```
+
+### Future per-video change capture
+
+The following per-video trigger/outbox design remains future work for mutation
+paths beyond Core imports/backfills. The implemented Core path coalesces whole
+catalog snapshots and performs a daily reconciliation instead.
 
 Add a durable PostgreSQL outbox keyed by affected `videoId`. Because catalog
 and transcript state are written through several sync, workflow, and mutation

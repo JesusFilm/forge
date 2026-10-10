@@ -149,7 +149,10 @@ export class RecommendationContentActionService {
               hardUntil: { gte: occurredAt },
               request: { expiresAt: { gt: now } },
             },
-            include: { request: true, item: true },
+            include: {
+              request: { select: { generation: true, expiresAt: true } },
+              item: { select: { candidateGenerator: true } },
+            },
             orderBy: [{ createdAt: "desc" }, { id: "desc" }],
           })
         : null

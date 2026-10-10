@@ -153,6 +153,15 @@ export async function operateChangelogProductionAccess(
       })
       changed = result.count > 0
       if (changed) {
+        // Match management revocation: old approvals cannot restore this access.
+        await tx.changelogPreapproval.updateMany({
+          where: {
+            environmentId: environment.id,
+            email: normalizedEmail,
+            state: "pending",
+          },
+          data: { state: "canceled", version: { increment: 1 } },
+        })
         await tx.authAuditEvent.create({
           data: buildAuditEvent({
             eventType: "changelog_production_access_revoked",

@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import type { Route } from "next"
 import { Plus, Film, ArrowLeft } from "lucide-react"
@@ -7,11 +7,12 @@ import type {
   StudioCommandResult,
   StudioDocument,
 } from "@forge/studio-contracts"
-import { studioCall } from "./client"
+import { StudioClientError, studioCall } from "./client"
 import "./studio.css"
 import { STUDIO_RUNTIME_VERSION } from "@forge/studio-contracts/preview"
 
 type Summary = {
+  canDelete?: boolean
   projectId: string
   revision: number
   lifecycle: string
@@ -46,7 +47,56 @@ export const newDocument = (
 })
 export function StudioProjects() {
   const [rows, setRows] = useState<Summary[] | null>(null),
-    [error, setError] = useState("")
+    [error, setError] = useState(""),
+    [deleting, setDeleting] = useState<string | null>(null)
+  const deleteKeys = useRef(new Map<string, string>())
+  async function deleteProject(project: Summary) {
+    if (
+      deleting ||
+      !window.confirm(
+        `Delete “${project.title}”? It will be removed from your projects. Retained history and media will remain.`,
+      )
+    )
+      return
+    setDeleting(project.projectId)
+    setError("")
+    const identity = `${project.projectId}:${project.revision}`
+    const idempotencyKey =
+      deleteKeys.current.get(identity) ?? crypto.randomUUID()
+    deleteKeys.current.set(identity, idempotencyKey)
+    try {
+      await studioCall<StudioCommandResult>("delete", {
+        projectId: project.projectId,
+        expectedRevision: project.revision,
+        idempotencyKey,
+      })
+      setRows(
+        (current) =>
+          current?.filter((row) => row.projectId !== project.projectId) ?? null,
+      )
+      deleteKeys.current.delete(identity)
+    } catch (e) {
+      const messages: Record<string, string> = {
+        CONFLICT:
+          "This project changed. Refresh the project list before deleting it.",
+        PROJECT_BUSY:
+          "This project has work in progress. Finish or cancel that work before deleting it.",
+        PROJECT_SCHEDULED:
+          "Remove this project from the planning calendar before deleting it.",
+        UNPUBLISH_REQUIRED: "Unpublish this project before deleting it.",
+        FORBIDDEN: "Only the project owner can delete this project.",
+        NOT_FOUND:
+          "This project is no longer available. Refresh the project list.",
+      }
+      setError(
+        e instanceof StudioClientError
+          ? (messages[e.message] ?? "Could not delete project. Try again.")
+          : "Could not delete project. Try again.",
+      )
+    } finally {
+      setDeleting(null)
+    }
+  }
   useEffect(() => {
     let active = true
     studioCall<Summary[]>("list", { limit: 100 })
@@ -62,8 +112,11 @@ export function StudioProjects() {
   }, [])
   return (
     <section className="nle-projects">
-      <nav>
+      <nav className="flex flex-wrap gap-4">
         <Link href="/dashboard/shorts/calendar">Planning calendar</Link>
+        <a href="/shorts-creator.zip" download>
+          Download Claude / Codex skill
+        </a>
       </nav>
       <header>
         <div>
@@ -76,10 +129,9 @@ export function StudioProjects() {
           New project
         </Link>
       </header>
-      {error ? (
-        <p role="alert">{error}</p>
-      ) : rows === null ? (
-        <p>Loading projects…</p>
+      {error && <p role="alert">{error}</p>}
+      {rows === null ? (
+        !error && <p>Loading projects…</p>
       ) : rows.length === 0 ? (
         <div className="nle-empty">
           <Film size={36} />
@@ -90,23 +142,34 @@ export function StudioProjects() {
       ) : (
         <div className="nle-project-grid">
           {rows.map((p) => (
-            <Link
-              key={p.projectId}
-              href={`/dashboard/shorts/${p.projectId}` as Route}
-              className="nle-project-card"
-            >
-              <div className="nle-project-poster">
-                <Film size={36} />
-                <span>
-                  {p.width} × {p.height}
-                </span>
-              </div>
-              <h2>{p.title}</h2>
-              <p>
-                {Math.round(p.durationInFrames / p.fps)} sec · Revision{" "}
-                {p.revision} · {p.lifecycle.toLowerCase()}
-              </p>
-            </Link>
+            <article key={p.projectId} className="nle-project-card">
+              <Link
+                href={`/dashboard/shorts/${p.projectId}` as Route}
+                className="nle-project-link"
+              >
+                <div className="nle-project-poster">
+                  <Film size={36} />
+                  <span>
+                    {p.width} × {p.height}
+                  </span>
+                </div>
+                <h2>{p.title}</h2>
+                <p>
+                  {Math.round(p.durationInFrames / p.fps)} sec · Revision{" "}
+                  {p.revision} · {p.lifecycle.toLowerCase()}
+                </p>
+              </Link>
+              {p.canDelete && (
+                <button
+                  type="button"
+                  disabled={deleting !== null}
+                  aria-label={`Delete ${p.title}`}
+                  onClick={() => void deleteProject(p)}
+                >
+                  {deleting === p.projectId ? "Deleting…" : "Delete project"}
+                </button>
+              )}
+            </article>
           ))}
         </div>
       )}
@@ -132,6 +195,8 @@ export function StudioCreate() {
         idempotencyKey: crypto.randomUUID(),
         document: newDocument(title.trim(), language, width, height),
       })
+      // Load the newly created project from its server route.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign(`/dashboard/shorts/${projectId}`)
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create project")

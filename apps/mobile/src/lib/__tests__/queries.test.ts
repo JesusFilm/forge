@@ -1,7 +1,11 @@
-import { print } from "graphql"
+import { parse, print } from "graphql"
 import type { DocumentNode } from "graphql"
 
+import * as queries from "../queries"
+import { localeQueryVariables } from "../videoText"
 import {
+  EXPLORE_CLIP_CANDIDATES,
+  EXPLORE_INVENTORY,
   GET_SERIES_BY_SLUG,
   GET_VIDEO_BIBLE_PASSAGES,
   GET_VIDEO_BY_SLUG,
@@ -79,6 +83,22 @@ describe("GET_VIDEO_BY_SLUG (watch screen) keeps the full fragment", () => {
 
   // ...and does NOT carry the series-only selections (mirrors the TV
   // "shared fragment stays lean" guard): the watch query must stay focused.
+  // U6: the Bible reader picks its default translation from the audio
+  // language's ISO 639-3 code, and the catalog keys languages by that code.
+  it("SELECTS iso3 on each dub's language", () => {
+    expect(bulkSdl).toMatch(
+      /variants: dubs\s*\{[^}]*language\s*\{[^}]*\biso3\b/,
+    )
+  })
+
+  // feat-553 U12: "Read full passage" opens the native reader at the cited
+  // book, which it keys by USFM code. Admin sends the book as an OSIS id.
+  it("SELECTS osisId and paratextAbbreviation on each citation's book", () => {
+    expect(bulkSdl).toMatch(
+      /bibleCitations\s*\{[^}]*bibleBook\s*\{[^}]*\bosisId\b[^}]*\bparatextAbbreviation\b/,
+    )
+  })
+
   it("EXCLUDES series-only selections (childDubLanguages + top-level children)", () => {
     expect(bulkSdl).not.toContain("childDubLanguages")
     // `children` appears only inside the WatchVideo fragment's parents.parent
@@ -105,7 +125,11 @@ describe("Bible passages stay off the player-gating queries", () => {
   // Positive control. Without it the two negatives above pass vacuously the day
   // the field is renamed on admin's side.
   it("SELECTS passage on the companion operation", () => {
-    expect(passagesSdl).toMatch(/\bpassage\s*\{/)
+    expect(passagesSdl).toMatch(/\bpassage\(languageSlug: \$textSlug\)\s*\{/)
+    // U7: the English passage for R10, skipped under an English UI.
+    expect(passagesSdl).toMatch(
+      /englishPassage: passage\(languageSlug: "english"\) @skip\(if: \$isEnglish\)\s*\{/,
+    )
     expect(passagesSdl).toContain("versionAbbreviation")
   })
 
@@ -118,5 +142,268 @@ describe("Bible passages stay off the player-gating queries", () => {
       /videoBySlug\(slug: \$slug\)\s*\{\s*documentId: id/,
     )
     expect(passagesSdl).toMatch(/bibleCitations\s*\{\s*documentId: id/)
+  })
+})
+
+// ── Explore clips feed (feat-552 U5, KTD6) ──────────────────────────────────
+
+describe("EXPLORE_INVENTORY (the lean candidate pool)", () => {
+  const sdl = asSdl(EXPLORE_INVENTORY)
+
+  it("reads the language inventory with a limit", () => {
+    expect(sdl).toContain("query ExploreInventory")
+    expect(sdl).toContain(
+      "watchLanguageInventory(languageSlug: $languageSlug, limit: $limit)",
+    )
+  })
+
+  it("selects the three buckets and the lean row fields", () => {
+    for (const bucket of [
+      "audioCollections",
+      "audioVideos",
+      "subtitleOnlyVideos",
+    ]) {
+      expect(sdl).toMatch(new RegExp(`${bucket}\\s*\\{`))
+    }
+    for (const field of [
+      "id",
+      "coreId",
+      "slug",
+      "label",
+      "availability",
+      "durationSeconds",
+      "muxPlaybackId",
+      "watchLanguageSlug",
+      "title",
+      "description",
+    ]) {
+      expect(sdl).toMatch(new RegExp(`\\b${field}\\b`))
+    }
+  })
+
+  // U1 measured English at limit 1,000 as 665 KB decoded with exactly the
+  // fields above. `imageUrl` adds 20%, and the veil takes its authored image
+  // from the hydration instead, so the pool never pays for it.
+  it("stays lean: no image URL, no promoted bucket, no parent fields", () => {
+    expect(sdl).not.toMatch(/\bimageUrl\b/)
+    expect(sdl).not.toMatch(/\bpromoted\b/)
+    expect(sdl).not.toMatch(/\bparent(Slug|Title|Order)\b/)
+  })
+})
+
+describe("EXPLORE_CLIP_CANDIDATES (queued-candidate hydration)", () => {
+  const sdl = asSdl(EXPLORE_CLIP_CANDIDATES)
+
+  // One public root field per request: admin counts 60 accesses per minute
+  // per root field, and each alias costs one (U1).
+  it("hydrates several candidates through one watchHomeVideos access", () => {
+    expect(sdl).toContain("query ExploreClipCandidates")
+    expect(sdl).toContain("watchHomeVideos(coreIds: $coreIds)")
+    expect(sdl.match(/watchHomeVideos\(/g)).toHaveLength(1)
+  })
+
+  it("asks for one preferred dub in the candidates' audio language", () => {
+    expect(sdl).toContain(
+      "preferredPlayableDub(languageSlug: $audioLanguageSlug)",
+    )
+  })
+
+  // U21 keys its stored verdicts on the Video Edition id.
+  it("selects the edition id and its subtitle tracks", () => {
+    expect(sdl).toMatch(/videoEdition\s*\{\s*documentId: id/)
+    expect(sdl).toMatch(/subtitles\s*\{/)
+    for (const field of ["vttSrc", "primary", "aiGenerated"]) {
+      expect(sdl).toMatch(new RegExp(`\\b${field}\\b`))
+    }
+  })
+
+  it("never selects dubs in bulk", () => {
+    expect(sdl).not.toMatch(/\bdubs\b/)
+    expect(sdl).not.toMatch(/\bvariants\b/)
+    expect(sdl).not.toMatch(/\bdownloads\b/)
+  })
+
+  it("selects videoStill beside images, and never the bare url", () => {
+    expect(sdl).toMatch(/images\s*\{[^}]*\bvideoStill\b[^}]*\}/)
+    expect(sdl).not.toMatch(/images\s*\{[^}]*\burl\b[^}]*\}/)
+  })
+})
+
+describe("every Explore operation that selects images selects videoStill", () => {
+  it.each([
+    ["EXPLORE_INVENTORY", EXPLORE_INVENTORY],
+    ["EXPLORE_CLIP_CANDIDATES", EXPLORE_CLIP_CANDIDATES],
+  ])("%s", (_name, doc) => {
+    const sdl = asSdl(doc)
+    const blocks = sdl.match(/images\s*\{[^}]*\}/g) ?? []
+    for (const block of blocks) expect(block).toContain("videoStill")
+  })
+})
+
+// ── U6. Video text in the UI locale (KTD10) ─────────────────────────────────
+
+/** Every exported GraphQL document in queries.ts, by export name. */
+function exportedDocuments(): [string, DocumentNode][] {
+  return Object.entries(queries).filter(
+    (entry): entry is [string, DocumentNode] => {
+      const value = entry[1] as { kind?: unknown } | null
+      return value != null && value.kind === "Document"
+    },
+  )
+}
+
+/** A document by export name; fails loudly when the export is missing. */
+function documentNamed(name: string): string {
+  const doc = (queries as Record<string, unknown>)[name]
+  expect({ name, exported: doc != null }).toEqual({ name, exported: true })
+  return asSdl(doc)
+}
+
+describe("the heavy video documents are language-free (KTD10)", () => {
+  // A UI language change must never refetch the ~9.5 MB dub list, so the
+  // player-gating documents take the slug and nothing else.
+  it.each([
+    ["GET_VIDEO_BY_SLUG", bulkSdl],
+    ["GET_SERIES_BY_SLUG", seriesSdl],
+  ])("%s has no language variable and no text rows", (_name, sdl) => {
+    expect(sdl).not.toMatch(/\$locale\b/)
+    expect(sdl).not.toMatch(/\$textSlug\b/)
+    expect(sdl).not.toMatch(/\blocales\s*\(/)
+    // U7: study questions are text, so they moved to the companion.
+    expect(sdl).not.toMatch(/\bstudyQuestions\b/)
+    expect(operationOnly(sdl)).toMatch(/\(\$slug: String!\)/)
+  })
+})
+
+describe("study questions ask by the UI slug, with the English list (U7)", () => {
+  it("GET_VIDEO_TEXT selects both lists", () => {
+    const sdl = documentNamed("GET_VIDEO_TEXT")
+    expect(sdl).toMatch(/\bstudyQuestions\(languageSlug: \$textSlug\)\s*\{/)
+    expect(sdl).toMatch(
+      /englishStudyQuestions: studyQuestions\(languageSlug: "english"\)\s*\{/,
+    )
+  })
+
+  it("no exported document selects study questions with no language", () => {
+    for (const [name, doc] of exportedDocuments()) {
+      const bare = asSdl(doc).match(/\bstudyQuestions\s*\{/g) ?? []
+      expect({ name, bare: bare.length }).toEqual({ name, bare: 0 })
+    }
+  })
+})
+
+describe("GET_VIDEO_TEXT and GET_SERIES_TEXT (the text companions)", () => {
+  it("GET_VIDEO_TEXT reads the video, its parent, and the siblings", () => {
+    const sdl = documentNamed("GET_VIDEO_TEXT")
+    expect(sdl).toContain(
+      "query GetVideoText($slug: String!, $textSlug: String!)",
+    )
+    // documentId at every level, as the Bible passage companion needs it.
+    expect(sdl).toMatch(/videoBySlug\(slug: \$slug\)\s*\{\s*documentId: id/)
+    expect(sdl).toMatch(/parent\s*\{\s*documentId: id/)
+    expect(sdl).toMatch(/child\s*\{\s*documentId: id/)
+    expect(sdl).toContain("...VideoText")
+    expect(sdl.match(/\.\.\.VideoTitleText\b/g)).toHaveLength(2)
+    expect(sdl).not.toMatch(/\bdubs\b/)
+  })
+
+  // The watch read selects `children { child }` on the parent. A text write
+  // with another relation shape would replace that list under it.
+  it("GET_VIDEO_TEXT keeps the watch document's relation shape", () => {
+    const sdl = operationOnly(documentNamed("GET_VIDEO_TEXT"))
+    expect(sdl).toMatch(/parents\s*\{\s*parent\s*\{/)
+    expect(sdl).toMatch(/children\s*\{\s*child\s*\{/)
+    expect(sdl).not.toMatch(/children\s*\{\s*order\b/)
+  })
+
+  it("GET_SERIES_TEXT keeps the series document's `children { order child }`", () => {
+    const sdl = documentNamed("GET_SERIES_TEXT")
+    expect(sdl).toContain(
+      "query GetSeriesText($slug: String!, $textSlug: String!)",
+    )
+    expect(sdl).toMatch(/videoBySlug\(slug: \$slug\)\s*\{\s*documentId: id/)
+    expect(operationOnly(sdl)).toMatch(
+      /children\s*\{\s*order\s*child\s*\{\s*documentId: id/,
+    )
+    expect(operationOnly(sdl)).not.toContain("parents")
+    expect(sdl).not.toMatch(/\bdubs\b/)
+  })
+})
+
+describe("one argument set for every locales(...) selection (KTD10)", () => {
+  const ALLOWED = new Set([
+    "locales(languageSlug: $textSlug)",
+    'locales(languageSlug: "english")',
+  ])
+
+  const localeCalls = (sdl: string) => sdl.match(/\blocales\([^)]*\)/g) ?? []
+
+  it("every exported document spells locales(...) only the two shared ways", () => {
+    const seen = exportedDocuments().flatMap(([, doc]) =>
+      localeCalls(asSdl(doc)),
+    )
+    // Positive control: the scan found the shared fragments.
+    expect(seen.length).toBeGreaterThan(0)
+    expect(seen.filter((call) => !ALLOWED.has(call))).toEqual([])
+  })
+
+  it("aliases the English row as englishLocales wherever the UI row is read", () => {
+    for (const [name, doc] of exportedDocuments()) {
+      const sdl = asSdl(doc)
+      const ui = sdl.match(/\blocales\(languageSlug: \$textSlug\)/g) ?? []
+      const english =
+        sdl.match(/englishLocales: locales\(languageSlug: "english"\)/g) ?? []
+      expect({ name, english: english.length }).toEqual({
+        name,
+        english: ui.length,
+      })
+    }
+  })
+
+  it("flags a hand-built locale pair (negative control)", () => {
+    const sdl = asSdl(
+      parse(
+        "{ video { locales(locale: $locale, languageSlug: $slug) { title } } }",
+      ),
+    )
+    expect(localeCalls(sdl).filter((call) => !ALLOWED.has(call))).toEqual([
+      "locales(locale: $locale, languageSlug: $slug)",
+    ])
+  })
+})
+
+describe("the homepage and Experience documents ask for the UI locale and en", () => {
+  it("GET_WATCH_SETTING asks for both homepages' blocks, skipping en under en", () => {
+    const sdl = documentNamed("GET_WATCH_SETTING")
+    const selectsBlocks = (field: string) =>
+      new RegExp(
+        field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") +
+          String.raw`\s*\{\s*documentId\s+homepageExperience\s*\{\s*\.\.\.AdminLegacyWatchExperience\b`,
+      )
+    expect(sdl).toMatch(selectsBlocks("watchSetting(locale: $locale)"))
+    expect(sdl).toMatch(
+      selectsBlocks(
+        'englishWatchSetting: watchSetting(locale: "en") @skip(if: $isEnglish)',
+      ),
+    )
+  })
+
+  it("GET_EXPERIENCE_BY_SLUG asks for both Experiences, skipping en under en", () => {
+    const sdl = documentNamed("GET_EXPERIENCE_BY_SLUG")
+    expect(sdl).toContain("experienceBySlug(locale: $locale, slug: $slug)")
+    expect(sdl).toContain(
+      'englishExperience: experienceBySlug(locale: "en", slug: $slug) @skip(if: $isEnglish)',
+    )
+  })
+
+  it("localeQueryVariables marks only en as English", () => {
+    expect(localeQueryVariables("en")).toEqual({
+      locale: "en",
+      isEnglish: true,
+    })
+    expect(localeQueryVariables("es")).toEqual({
+      locale: "es",
+      isEnglish: false,
+    })
   })
 })

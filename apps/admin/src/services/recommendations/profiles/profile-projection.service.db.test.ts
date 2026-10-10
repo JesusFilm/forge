@@ -1,10 +1,10 @@
-import { readdirSync, readFileSync } from "node:fs"
-import { randomUUID } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { PrismaPg } from "@prisma/adapter-pg"
-import { Client } from "pg"
+import { Client, Pool } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
+import { recommendationRuntimeMigrationSql } from "../current-schema.test-fixture"
 import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
   ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
@@ -16,10 +16,21 @@ import {
   CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
 } from "@/services/content-embedding-contract"
 import { getUserWatchHistory } from "../user-history.service"
+import { getRecommendationRecentContext } from "../recent-context.service"
+import { RecommendationEpisodeService } from "../episode.service"
+import { RecommendationPlaybackService } from "../playback.service"
+import { RecommendationOutcomeService } from "../outcome.service"
+import { RecommendationIntegrityService } from "../integrity.service"
+import {
+  createRecommendationTokenService,
+  parseRecommendationKeyring,
+} from "../token.service"
 import { getLiveProfileCandidates } from "../candidates/profile-candidate.service"
 import { RecommendationProfileService } from "../profile.service"
 import { createDatabaseRecommendationProfileProjectionService } from "./profile-projection.service"
+import { runRecommendationProfileProjectionJob } from "./job"
 import { seedReconciliationScaleFixture } from "./reconciliation-scale.fixture"
+import { proveProfileVectorSnapshotMigration } from "./profile-vector-snapshot.native-helper"
 import { runRecommendationProfileReconciliationBatch } from "./reconciliation.service"
 import {
   profileIneligibleGenerationIdsSql,
@@ -27,20 +38,7 @@ import {
 } from "./profile-lineage"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
-const migrationRoot = new URL("../../../../prisma/migrations/", import.meta.url)
-const recommendationMigrations = readdirSync(migrationRoot)
-  .filter((name) => {
-    const ordinal = Number(name.slice(0, 4))
-    return (
-      (ordinal >= 52 && ordinal <= 76 && name.includes("recommendation")) ||
-      name === "0082_user_recommendation_identity" ||
-      name === "0098_recommendation_viewing_mode"
-    )
-  })
-  .sort()
-  .map((name) =>
-    readFileSync(new URL(`${name}/migration.sql`, migrationRoot), "utf8"),
-  )
+const recommendationMigrations = recommendationRuntimeMigrationSql
 
 const webCaller = {
   id: "forge-web",
@@ -241,6 +239,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     const schema = `recommendation_profile_learning_${Date.now()}`
     let admin: Client
     let prisma: PrismaClient
+    let prismaPg: PrismaClient
+    let adapterPool: Pool
 
     beforeAll(async () => {
       admin = new Client({ connectionString: env.DATABASE_URL })
@@ -257,14 +257,253 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       prisma = new PrismaClient({
         datasources: { db: { url: fixtureUrl.toString() } },
       })
+      adapterPool = new Pool({
+        connectionString: env.DATABASE_URL,
+        max: 10,
+        options: `-c search_path=${schema},public`,
+      })
+      prismaPg = new PrismaClient({
+        adapter: new PrismaPg(adapterPool, { schema }),
+      })
     })
 
     afterAll(async () => {
       await prisma?.$disconnect()
+      await prismaPg?.$disconnect()
+      await adapterPool?.end()
       if (!admin) return
       await admin.query("RESET search_path")
       await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
       await admin.end()
+    })
+
+    it("keeps a claimed first empty durable run without materializing a generation or pointer", async () => {
+      const previous = env.RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP
+      Object.assign(env, {
+        RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: "true",
+      })
+      try {
+        const now = new Date()
+        const sessionDigest = "e".repeat(64)
+        const profileService = new RecommendationProfileService({
+          prisma: prismaPg,
+          now: () => now,
+          newId: randomUUID,
+          newAuditId: randomUUID,
+        })
+        const grant = await profileService.transition({
+          caller: webCaller,
+          contractVersion: "recommendation-profile-v1",
+          consentContractVersion: "recommendation-consent-v1",
+          action: "grant",
+          consentChoice: "personalization",
+          sessionDigest,
+          existingConsentReceiptDigest: null,
+          proposedConsentReceiptDigest: "f".repeat(64),
+          existingProfileDigest: "1".repeat(64),
+          proposedProfileDigest: "2".repeat(64),
+        })
+        const claimId = randomUUID()
+        const run = await prismaPg.recommendationProfileProjectionRun.create({
+          data: {
+            scope: "DURABLE",
+            profileId: grant.profileId!,
+            privacyGeneration: grant.privacyGeneration!,
+            sessionDigest,
+            state: "CLAIMED",
+            generation: 1,
+            attemptCount: 1,
+            claimId,
+            claimedAt: now,
+            heartbeatAt: now,
+            leaseExpiresAt: new Date(now.getTime() + 60_000),
+            expiresAt: new Date(now.getTime() + 86_400_000),
+            expectedPointerGeneration: 0,
+          },
+        })
+        const projectionService =
+          createDatabaseRecommendationProfileProjectionService(prismaPg)
+        const projectInput = {
+          sessionDigest,
+          profileId: grant.profileId,
+          privacyGeneration: grant.privacyGeneration,
+          now: new Date(now.getTime() + 1_000),
+          expectedPointer: { generationId: null, pointerGeneration: 0 },
+          runFence: { runId: run.id, claimId, generation: 1 },
+        } as const
+        const receipt = await projectionService.project(projectInput)
+        expect(receipt).toEqual({ status: "empty", replay: false })
+        expect(
+          await prismaPg.recommendationProfileProjectionGeneration.count({
+            where: { profileId: grant.profileId! },
+          }),
+        ).toBe(0)
+        expect(
+          await prismaPg.recommendationProfileProjectionPointer.count({
+            where: { profileId: grant.profileId! },
+          }),
+        ).toBe(0)
+        expect(
+          await prismaPg.recommendationProfileProjectionRun.findUniqueOrThrow({
+            where: { id: run.id },
+          }),
+        ).toMatchObject({ state: "CLAIMED", projectionId: null })
+        // Model a crash between publication and completion, then let the real
+        // PrismaPg job reclaim and commit the typed empty result.
+        await prismaPg.recommendationProfileProjectionRun.update({
+          where: { id: run.id },
+          data: {
+            state: "PENDING",
+            claimId: null,
+            leaseExpiresAt: null,
+          },
+        })
+        await expect(
+          runRecommendationProfileProjectionJob(
+            { runId: run.id, expectedGeneration: 1 },
+            prismaPg,
+          ),
+        ).resolves.toEqual({ status: "empty", replay: false })
+        expect(
+          await prismaPg.recommendationProfileProjectionRun.findUniqueOrThrow({
+            where: { id: run.id },
+          }),
+        ).toMatchObject({
+          state: "COMPLETED",
+          projectionId: null,
+          lastTransitionReason: "first_empty_no_evidence",
+          expiresAt: run.expiresAt,
+        })
+        await expect(
+          runRecommendationProfileProjectionJob(
+            { runId: run.id, expectedGeneration: 1 },
+            prismaPg,
+          ),
+        ).resolves.toEqual({ status: "empty", replay: true })
+        const candidateInput = {
+          sessionDigest,
+          profileTokenDigest: "2".repeat(64),
+          context: {
+            surface: "watch-below-player-v1",
+            purpose: "watch",
+            locale: "en",
+            audioLanguageSlug: "english",
+            seedMediaId: null,
+            manifestId: "semantic-profile-hybrid-v1",
+          },
+          now: new Date(now.getTime() + 1_000),
+        } as const
+        expect(
+          await getLiveProfileCandidates(prismaPg, candidateInput),
+        ).toBeNull()
+        Object.assign(env, {
+          RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: "false",
+        })
+        await expect(
+          projectionService.project({
+            sessionDigest,
+            profileId: grant.profileId,
+            privacyGeneration: grant.privacyGeneration,
+            now: candidateInput.now,
+          }),
+        ).resolves.toMatchObject({ status: "published", generation: 1 })
+        expect(
+          await getLiveProfileCandidates(prismaPg, candidateInput),
+        ).toBeNull()
+        Object.assign(env, {
+          RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: "true",
+        })
+        await profileService.transition({
+          caller: webCaller,
+          contractVersion: "recommendation-profile-v1",
+          action: "reset",
+          sessionDigest,
+          existingProfileDigest: "2".repeat(64),
+          proposedProfileDigest: "3".repeat(64),
+        })
+        await expect(
+          projectionService.project(projectInput),
+        ).rejects.toMatchObject({
+          code: "profile_projection_generation_revoked",
+        })
+      } finally {
+        Object.assign(env, {
+          RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: previous,
+        })
+      }
+    })
+
+    it("publishes an empty generation when a claimed run lacks the virgin pointer fence", async () => {
+      const previous = env.RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP
+      Object.assign(env, {
+        RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: "true",
+      })
+      try {
+        const now = new Date()
+        const sessionDigest = "4".repeat(64)
+        const profileService = new RecommendationProfileService({
+          prisma: prismaPg,
+          now: () => now,
+          newId: randomUUID,
+          newAuditId: randomUUID,
+        })
+        const grant = await profileService.transition({
+          caller: webCaller,
+          contractVersion: "recommendation-profile-v1",
+          consentContractVersion: "recommendation-consent-v1",
+          action: "grant",
+          consentChoice: "personalization",
+          sessionDigest,
+          existingConsentReceiptDigest: null,
+          proposedConsentReceiptDigest: "5".repeat(64),
+          existingProfileDigest: "6".repeat(64),
+          proposedProfileDigest: "7".repeat(64),
+        })
+        const claimId = randomUUID()
+        const run = await prismaPg.recommendationProfileProjectionRun.create({
+          data: {
+            scope: "DURABLE",
+            profileId: grant.profileId!,
+            privacyGeneration: grant.privacyGeneration!,
+            sessionDigest,
+            state: "CLAIMED",
+            generation: 1,
+            attemptCount: 1,
+            claimId,
+            claimedAt: now,
+            heartbeatAt: now,
+            leaseExpiresAt: new Date(now.getTime() + 60_000),
+            expiresAt: new Date(now.getTime() + 86_400_000),
+            expectedGenerationId: null,
+            expectedPointerGeneration: null,
+          },
+        })
+        const receipt =
+          await createDatabaseRecommendationProfileProjectionService(
+            prismaPg,
+          ).project({
+            sessionDigest,
+            profileId: grant.profileId,
+            privacyGeneration: grant.privacyGeneration,
+            now: new Date(now.getTime() + 1_000),
+            runFence: { runId: run.id, claimId, generation: 1 },
+          })
+        expect(receipt).toMatchObject({ status: "published", generation: 1 })
+        expect(
+          await prismaPg.recommendationProfileProjectionGeneration.count({
+            where: { profileId: grant.profileId! },
+          }),
+        ).toBe(1)
+        expect(
+          await prismaPg.recommendationProfileProjectionPointer.count({
+            where: { profileId: grant.profileId! },
+          }),
+        ).toBe(1)
+      } finally {
+        Object.assign(env, {
+          RECOMMENDATION_PROFILE_EMPTY_COMPLETION_SKIP: previous,
+        })
+      }
     })
 
     it("projects a qualified consented outcome and uses it in the next profile retrieval", async () => {
@@ -367,6 +606,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         generation: 1,
         replay: false,
       })
+      if (receipt.status !== "published")
+        throw new Error("expected publication")
 
       const [generation, interests, contributions, pointer] = await Promise.all(
         [
@@ -396,6 +637,49 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         contributionCount: 1,
       })
       expect(interests.map((interest) => interest.kind)).toEqual(["DURABLE"])
+      if (env.RECOMMENDATION_PROFILE_VECTOR_SHARING === "true") {
+        expect(interests[0]?.vectorDigest).toMatch(/^[a-f0-9]{64}$/)
+        const [stored] = await prisma.$queryRaw<
+          Array<{ matchesContentVector: boolean; inlineAbsent: boolean }>
+        >(Prisma.sql`
+          SELECT
+            public.vector_send(snapshot.embedding) =
+              public.vector_send(content.embedding) AS "matchesContentVector",
+            interest.embedding IS NULL AS "inlineAbsent"
+          FROM recommendation_profile_interest interest
+          JOIN recommendation_profile_vector_snapshot snapshot
+            ON snapshot.digest = interest.vector_digest
+          JOIN LATERAL (
+            SELECT public.avg(chunk.embedding) AS embedding
+            FROM video_transcript transcript
+            JOIN video_transcript_chunk chunk
+              ON chunk.transcript_id = transcript.id
+            WHERE transcript.video_id = interest.medoid_media_id
+          ) content ON true
+          WHERE interest.id = ${interests[0]!.id}
+        `)
+        expect(stored).toEqual({
+          matchesContentVector: true,
+          inlineAbsent: true,
+        })
+        await expect(
+          admin.query(
+            `UPDATE recommendation_profile_vector_snapshot
+             SET created_at = now()
+             WHERE digest = $1`,
+            [interests[0]!.vectorDigest],
+          ),
+        ).rejects.toThrow(/immutable/)
+        await expect(
+          admin.query(
+            `DELETE FROM recommendation_profile_vector_snapshot
+             WHERE digest = $1`,
+            [interests[0]!.vectorDigest],
+          ),
+        ).rejects.toThrow(/foreign key constraint/)
+      } else {
+        expect(interests[0]?.vectorDigest).toBeNull()
+      }
       expect(contributions.map((contribution) => contribution.kind)).toEqual([
         "QUALIFIED_OUTCOME",
       ])
@@ -467,6 +751,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       ).toBe(true)
       expect(
         await getUserWatchHistory(prisma, {
+          locale: "en",
           sessionDigest,
           profileTokenDigest,
           now: projectAt,
@@ -475,7 +760,10 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         {
           mediaId: "profile-learning-source",
           videoCoreId: "profile-learning-core-0",
+          videoTitle: "Profile learning video 0",
           completed: false,
+          qualified: true,
+          recentlyTried: false,
         },
       ])
 
@@ -576,6 +864,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         generation: 2,
         replay: false,
       })
+      if (replacement.status !== "published")
+        throw new Error("expected replacement publication")
       await expect(
         prisma.recommendationProfileProjectionContribution.count({
           where: { generationId: replacement.generationId },
@@ -621,6 +911,307 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         replay: true,
       })
     })
+
+    it.each([
+      "direct",
+      "search",
+      "share",
+      "acquisition",
+      "editorial",
+      "recommendation",
+    ] as const)(
+      "learns from %s playback without requiring a recommendation impression",
+      async (source) => {
+        const digest = (label: string) =>
+          createHash("sha256").update(`${source}-${label}`).digest("hex")
+        const sessionDigest = digest("session")
+        const profileTokenDigest = digest("profile")
+        let current = new Date()
+        const grant = await new RecommendationProfileService({
+          prisma,
+          now: () => current,
+          newId: randomUUID,
+          newAuditId: randomUUID,
+        }).transition({
+          caller: webCaller,
+          contractVersion: "recommendation-profile-v1",
+          consentContractVersion: "recommendation-consent-v1",
+          action: "grant",
+          consentChoice: "personalization",
+          sessionDigest,
+          existingConsentReceiptDigest: null,
+          proposedConsentReceiptDigest: digest("consent"),
+          existingProfileDigest: null,
+          proposedProfileDigest: profileTokenDigest,
+        })
+        current = new Date(Date.now() + 1_000)
+        const startedAt = current
+        const keyring = parseRecommendationKeyring(
+          JSON.stringify({
+            keys: [
+              {
+                kid: "source-parity",
+                status: "active",
+                key: Buffer.alloc(32, 7).toString("base64url"),
+              },
+            ],
+          }),
+        )
+        const tokenService = {
+          activeKid: keyring.active.kid,
+          ...createRecommendationTokenService({
+            keyring,
+            readRevokedKids: async () => [],
+            now: () => current,
+          }),
+        }
+        const episodes = new RecommendationEpisodeService({
+          prisma,
+          tokenService,
+          now: () => current,
+        })
+        let claimNonce: string
+        if (source === "recommendation") {
+          const id = randomUUID()
+          const expiry = new Date(current.getTime() + 7 * 86_400_000)
+          await admin.query(
+            `INSERT INTO recommendation_strategy_manifest (id, strategy_version, contract_version, surface_version, generator, max_items)
+            VALUES ($1::text, $1::text, 'semantic-recommendation-v1', 'watch-below-player-v1', 'semantic', 6)`,
+            [id],
+          )
+          await admin.query("BEGIN")
+          try {
+            await admin.query(
+              `INSERT INTO recommendation_request (id, contract_version, surface_version, manifest_id, strategy_version, classifier_version,
+            session_digest, seed_media_id, locale, expected_item_count, state, result, delivery_jti, signing_kid, created_at, issued_at, expires_at)
+            VALUES ($1::text, 'semantic-recommendation-v1', 'watch-below-player-v1', $1::text, $1::text, 'legacy-position-v0', $2, 'seed', 'en', 1, 'issued', 'served', $1::text, 'source-parity', $3, $3, $4)`,
+              [id, sessionDigest, current, expiry],
+            )
+            await admin.query(
+              `INSERT INTO recommendation_served_item (id, request_id, position, target_media_id, canonical_href, candidate_generator, candidate_provenance,
+            capability_jti, signing_kid, created_at, expires_at) VALUES ($1::text, $1::text, 0, 'profile-learning-source', '/watch/source.html', 'semantic', '{}', $1::text, 'source-parity', $2, $3)`,
+              [id, current, expiry],
+            )
+            await admin.query("COMMIT")
+          } catch (error) {
+            await admin.query("ROLLBACK")
+            throw error
+          }
+          const capability = await tokenService.signDeliveryCapability({
+            jti: id,
+            requestId: id,
+            itemId: id,
+            sessionDigest,
+            surface: "watch-below-player-v1",
+            manifestId: id,
+          })
+          claimNonce = randomUUID()
+          await episodes.select({
+            caller: webCaller,
+            contractVersion: "recommendation-evidence-v1",
+            capability,
+            requestId: id,
+            itemId: id,
+            sessionDigest,
+            eventId: randomUUID(),
+            occurredAt: current.toISOString(),
+            claimNonce,
+          })
+          expect(
+            await prisma.recommendationSelection.findFirst({
+              where: { requestId: id },
+            }),
+          ).toMatchObject({ attributionEligibleAt: null })
+        } else {
+          claimNonce = (
+            await episodes.issueContext({
+              caller: webCaller,
+              sessionDigest,
+              mediaId: "profile-learning-source",
+              discoverySource: source,
+            })
+          ).claimNonce
+        }
+        const claim = await episodes.claim({
+          caller: webCaller,
+          sessionDigest,
+          mediaId: "profile-learning-source",
+          claimNonce,
+        })
+        const playback = new RecommendationPlaybackService({
+          prisma,
+          tokenService,
+          now: () => current,
+        })
+        const record = {
+          caller: webCaller,
+          contractVersion: "recommendation-evidence-v1",
+          capability: claim.capability,
+          episodeId: claim.episodeId,
+          sessionDigest,
+          mediaId: "profile-learning-source",
+        }
+        current = new Date(startedAt.getTime() + 20_000)
+        await playback.record({
+          ...record,
+          events: [
+            {
+              eventId: "start",
+              kind: "playback_start",
+              occurredAt: startedAt.toISOString(),
+              payload: { positionSeconds: 0 },
+            },
+            {
+              eventId: "short",
+              kind: "playback_active_visible_playing",
+              occurredAt: current.toISOString(),
+              payload: { activeMilliseconds: 20_000, coverage: "complete" },
+            },
+          ],
+        })
+        const history = await getUserWatchHistory(prisma, {
+          locale: "en",
+          sessionDigest,
+          profileTokenDigest,
+          now: current,
+        })
+        expect(history).toEqual([
+          expect.objectContaining({
+            mediaId: "profile-learning-source",
+            recentlyTried: true,
+            qualified: false,
+          }),
+        ])
+        expect(
+          (
+            await getRecommendationRecentContext(prisma, {
+              locale: "en",
+              sessionDigest,
+              profileTokenDigest,
+              allowDurableProfileLinks: true,
+              now: current,
+            })
+          ).videos,
+        ).toContainEqual(
+          expect.objectContaining({
+            targetMediaId: "profile-learning-source",
+            reasonCodes: ["recently_tried"],
+          }),
+        )
+        expect(
+          await prisma.recommendationOutcomeRevision.count({
+            where: { episodeId: claim.episodeId },
+          }),
+        ).toBe(0)
+
+        current = new Date(startedAt.getTime() + 60_000)
+        await playback.record({
+          ...record,
+          events: [
+            {
+              eventId: "long",
+              kind: "playback_active_visible_playing",
+              occurredAt: current.toISOString(),
+              payload: { activeMilliseconds: 40_000, coverage: "complete" },
+            },
+            {
+              eventId: "end",
+              kind: "playback_end",
+              occurredAt: current.toISOString(),
+              payload: {
+                reason: "route_exit",
+                positionSeconds: 60,
+                durationSeconds: 600,
+                progress: 0.1,
+                completed: false,
+              },
+            },
+          ],
+        })
+        await new RecommendationOutcomeService({
+          prisma,
+          now: () => current,
+        }).finalize({
+          episodeId: claim.episodeId,
+          generation: 1,
+          reason: "terminal-fact",
+        })
+        const outcome =
+          await prisma.recommendationOutcomeRevision.findFirstOrThrow({
+            where: {
+              episodeId: claim.episodeId,
+              classifierVersion: "active-watch-proxy-v1",
+            },
+          })
+        expect(outcome).toMatchObject({
+          qualifiedView: true,
+          activePlaybackMilliseconds: 60_000,
+        })
+        expect(
+          await new RecommendationIntegrityService({
+            prisma,
+            now: () => current,
+          }).classifyPlaybackOutcome(outcome.id),
+        ).toMatchObject({
+          state: "eligible",
+          eligibleScopes: expect.arrayContaining(["profile"]),
+        })
+        const projection =
+          await createDatabaseRecommendationProfileProjectionService(
+            prisma,
+          ).project({
+            sessionDigest,
+            profileId: grant.profileId,
+            privacyGeneration: grant.privacyGeneration,
+            now: current,
+          })
+        if (projection.status !== "published")
+          throw new Error("expected publication from playback evidence")
+        expect(
+          await prisma.recommendationProfileProjectionGeneration.findUniqueOrThrow(
+            { where: { id: projection.generationId } },
+          ),
+        ).toMatchObject({
+          state: "PUBLISHED",
+          durableInterestCount: 1,
+          contributionCount: 1,
+          sessionIntentPresent: false,
+        })
+        expect(
+          await prisma.recommendationProfileProjectionContribution.findMany({
+            where: { generationId: projection.generationId },
+          }),
+        ).toEqual([
+          expect.objectContaining({
+            sourceOutcomeId: outcome.id,
+            targetMediaId: "profile-learning-source",
+            kind: "QUALIFIED_OUTCOME",
+          }),
+        ])
+        expect(
+          await getLiveProfileCandidates(prisma, {
+            sessionDigest,
+            profileTokenDigest,
+            context: {
+              surface: "watch-below-player-v1",
+              purpose: "watch",
+              locale: "en",
+              audioLanguageSlug: "english",
+              seedMediaId: null,
+              manifestId: "semantic-profile-hybrid-v1",
+            },
+            now: current,
+          }),
+        ).toMatchObject({
+          projection: { qualifiedInterestCount: 1 },
+          nominations: expect.arrayContaining([
+            expect.objectContaining({
+              targetMediaId: "profile-learning-similar",
+            }),
+          ]),
+        })
+      },
+    )
 
     it("fences a stale first publisher after another run creates the pointer", async () => {
       const projectionService =
@@ -702,30 +1293,44 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
 
     it("keeps the transaction budget under concurrent reads and durable writes", async () => {
       let stopped = false
+      let reconciling = false
       let writes = 0
+      let overlappingWrites = 0
       const workload = (async () => {
         while (!stopped) {
-          await client.query(
+          const read = await client.query(
             `SELECT contribution_count FROM recommendation_profile_projection_generation WHERE id='g-1'`,
           )
-          await client.query(
+          expect(read.rows).toHaveLength(1)
+          const write = await client.query(
             `UPDATE recommendation_profile SET updated_at=updated_at WHERE id='p-1'`,
           )
+          expect(write.rowCount).toBe(1)
           writes++
+          if (reconciling) overlappingWrites++
           await new Promise((resolve) => setTimeout(resolve, 10))
         }
       })()
       try {
-        for (let i = 0; i < 3; i++) {
+        // Keep the load running until it has completed the required work during
+        // reconciliation. A fixed three-pass window makes faster batches fail
+        // merely because the independent writer has less time to finish.
+        for (let i = 0; i < 3 || overlappingWrites <= 10; i++) {
+          const start = performance.now()
+          reconciling = true
           await expect(
             runRecommendationProfileReconciliationBatch({ prisma }, now),
           ).resolves.toMatchObject({ affectedPointers: 0, locked: false })
+          reconciling = false
+          expect(performance.now() - start).toBeLessThan(5_000)
         }
       } finally {
+        reconciling = false
         stopped = true
         await workload
       }
       expect(writes).toBeGreaterThan(10)
+      expect(overlappingWrites).toBeGreaterThan(10)
     }, 20_000)
 
     it("keeps all four canonical lineage rules and selects only unfenced current pointers in order", async () => {
@@ -911,3 +1516,9 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     })
   },
 )
+
+describe.skipIf(!RUN_REAL_DB_TEST)("profile vector snapshot migration", () => {
+  it("preserves legacy rows and exact shared-vector retention invariants", async () => {
+    await proveProfileVectorSnapshotMigration(env.DATABASE_URL)
+  })
+})

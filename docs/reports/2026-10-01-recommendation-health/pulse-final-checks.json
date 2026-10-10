@@ -1,0 +1,215 @@
+[
+  [
+    {
+      "evidence_type": "array",
+      "diagnostic": [],
+      "requests": "16"
+    },
+    {
+      "evidence_type": "array",
+      "diagnostic": [
+        {
+          "rank": 0,
+          "score": 0,
+          "evidence": {
+            "version": "composition-input-availability-v1",
+            "missingTheme": true,
+            "missingSource": false,
+            "selectedCount": 6,
+            "candidateCount": 38,
+            "missingHistory": false,
+            "missingInterest": false,
+            "themedSelectedCount": 3
+          },
+          "generator": "mmr-composition-inputs",
+          "rejectionReason": "composition_required_input_unavailable",
+          "generatorVersion": "composition-input-availability-v1"
+        }
+      ],
+      "requests": "12"
+    },
+    {
+      "evidence_type": "array",
+      "diagnostic": [
+        {
+          "rank": 0,
+          "score": 0,
+          "evidence": {
+            "version": "composition-input-availability-v1",
+            "missingTheme": true,
+            "missingSource": false,
+            "selectedCount": 6,
+            "candidateCount": 36,
+            "missingHistory": false,
+            "missingInterest": false,
+            "themedSelectedCount": 3
+          },
+          "generator": "mmr-composition-inputs",
+          "rejectionReason": "composition_required_input_unavailable",
+          "generatorVersion": "composition-input-availability-v1"
+        }
+      ],
+      "requests": "3"
+    },
+    {
+      "evidence_type": "array",
+      "diagnostic": [
+        {
+          "rank": 0,
+          "score": 0,
+          "evidence": {
+            "version": "composition-input-availability-v1",
+            "missingTheme": true,
+            "missingSource": false,
+            "selectedCount": 6,
+            "candidateCount": 53,
+            "missingHistory": false,
+            "missingInterest": false,
+            "themedSelectedCount": 3
+          },
+          "generator": "mmr-composition-inputs",
+          "rejectionReason": "composition_required_input_unavailable",
+          "generatorVersion": "composition-input-availability-v1"
+        }
+      ],
+      "requests": "2"
+    },
+    {
+      "evidence_type": "array",
+      "diagnostic": [
+        {
+          "rank": 0,
+          "score": 0,
+          "evidence": {
+            "version": "composition-input-availability-v1",
+            "missingTheme": true,
+            "missingSource": false,
+            "selectedCount": 6,
+            "candidateCount": 38,
+            "missingHistory": false,
+            "missingInterest": false,
+            "themedSelectedCount": 4
+          },
+          "generator": "mmr-composition-inputs",
+          "rejectionReason": "composition_required_input_unavailable",
+          "generatorVersion": "composition-input-availability-v1"
+        }
+      ],
+      "requests": "2"
+    },
+    {
+      "evidence_type": "array",
+      "diagnostic": [
+        {
+          "rank": 0,
+          "score": 0,
+          "evidence": {
+            "version": "composition-input-availability-v1",
+            "missingTheme": true,
+            "missingSource": false,
+            "selectedCount": 6,
+            "candidateCount": 36,
+            "missingHistory": false,
+            "missingInterest": false,
+            "themedSelectedCount": 2
+          },
+          "generator": "mmr-composition-inputs",
+          "rejectionReason": "composition_required_input_unavailable",
+          "generatorVersion": "composition-input-availability-v1"
+        }
+      ],
+      "requests": "1"
+    },
+    {
+      "evidence_type": "array",
+      "diagnostic": [
+        {
+          "rank": 0,
+          "score": 0,
+          "evidence": {
+            "version": "composition-input-availability-v1",
+            "missingTheme": true,
+            "missingSource": false,
+            "selectedCount": 6,
+            "candidateCount": 34,
+            "missingHistory": false,
+            "missingInterest": false,
+            "themedSelectedCount": 1
+          },
+          "generator": "mmr-composition-inputs",
+          "rejectionReason": "composition_required_input_unavailable",
+          "generatorVersion": "composition-input-availability-v1"
+        }
+      ],
+      "requests": "1"
+    },
+    {
+      "evidence_type": "array",
+      "diagnostic": [
+        {
+          "rank": 0,
+          "score": 0,
+          "evidence": {
+            "version": "composition-input-availability-v1",
+            "missingTheme": true,
+            "missingSource": false,
+            "selectedCount": 6,
+            "candidateCount": 31,
+            "missingHistory": false,
+            "missingInterest": false,
+            "themedSelectedCount": 2
+          },
+          "generator": "mmr-composition-inputs",
+          "rejectionReason": "composition_required_input_unavailable",
+          "generatorVersion": "composition-input-availability-v1"
+        }
+      ],
+      "requests": "1"
+    }
+  ],
+  [
+    {
+      "surface_version": "watch-for-you-v1",
+      "candidate_generator": "curated",
+      "cohort": "cold_start",
+      "profile_count": "0",
+      "curated_count": "6",
+      "requests": "12"
+    },
+    {
+      "surface_version": "watch-for-you-v1",
+      "candidate_generator": "curated",
+      "cohort": "returning",
+      "profile_count": "0",
+      "curated_count": "6",
+      "requests": "5"
+    },
+    {
+      "surface_version": "watch-for-you-v1",
+      "candidate_generator": "multi-interest-profile",
+      "cohort": "returning",
+      "profile_count": "6",
+      "curated_count": "0",
+      "requests": "4"
+    }
+  ],
+  [
+    {
+      "oldest_expired_request": "2026-09-30T10:40:46.466Z"
+    }
+  ],
+  [
+    {
+      "state": "published",
+      "contributions": "14320",
+      "machine_internal_test": "0",
+      "missing_eligibility_receipt": "0",
+      "unqualified_outcomes": "0"
+    }
+  ],
+  [
+    {
+      "expired_active_profile_projections": "0"
+    }
+  ]
+]

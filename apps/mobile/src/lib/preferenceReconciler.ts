@@ -26,13 +26,13 @@ export const INITIAL_RECONCILER_STATE: ReconcilerState = {
 }
 
 export type ReconcileInput = {
-  /** Preferences store hydrated — gate so the persisted choice applies first. */
+  /** Every store the default reads is hydrated, so a stored choice applies first. */
   ready: boolean
   /** Item identity (video/variant/series documentId); resolve once per value. */
   identity: string | null
   options: LanguageOptions
   primaryBcp47: string | null
-  /** The persisted preference slug matched exactly by resolveDefaultSlug. */
+  /** The slug to prefer (a persisted choice or a download), matched exactly. */
   preferredSlug: string | null
 }
 

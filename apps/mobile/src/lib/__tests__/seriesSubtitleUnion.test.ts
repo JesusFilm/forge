@@ -36,6 +36,7 @@ function variant(
     languageSlug,
     languageName: languageSlug,
     languageNameNative: null,
+    languageIso3: null,
     muxPlaybackId: null,
   }
 }
@@ -47,10 +48,12 @@ function media(subtitles: WatchSubtitle[]): VariantMedia {
 function deps(
   variantsBySlug: Record<string, WatchVariant[]>,
   mediaByDub: Record<string, VariantMedia>,
+  uiTag = "en",
 ): SubtitleUnionDeps {
   return {
     getEpisodeVariants: async (slug) => variantsBySlug[slug] ?? [],
     getDubMedia: async (id) => mediaByDub[id] ?? media([]),
+    uiTag,
   }
 }
 
@@ -90,6 +93,28 @@ describe("resolveSeriesSubtitleUnion", () => {
     expect(result.subtitles.map((s) => s.languageSlug)).toEqual(["fr", "de"])
   })
 
+  // KTD15: one UI tag gives one order on every device. Russian collation puts
+  // Cyrillic first; English puts it last.
+  it("sorts the union by the collation of the UI tag it gets", async () => {
+    const order = async (uiTag: string) => {
+      const d = deps(
+        { e1: [variant("en", "dub-1")] },
+        {
+          "dub-1": media([
+            sub("en", "English"),
+            sub("ru", "Русский"),
+            sub("de", "Deutsch"),
+          ]),
+        },
+        uiTag,
+      )
+      const result = await resolveSeriesSubtitleUnion([{ slug: "e1" }], "en", d)
+      return result.subtitles.map((s) => s.languageSlug)
+    }
+    expect(await order("ru")).toEqual(["ru", "de", "en"])
+    expect(await order("en")).toEqual(["de", "en", "ru"])
+  })
+
   it("skips an episode that lacks the chosen audio language (no error)", async () => {
     const d = deps(
       { e1: [variant("en", "dub-1")], e2: [variant("ru", "dub-2")] },
@@ -115,6 +140,7 @@ describe("resolveSeriesSubtitleUnion", () => {
         return [variant("en", "dub-1")]
       },
       getDubMedia: async () => media([sub("fr", "French")]),
+      uiTag: "en",
     }
     const result = await resolveSeriesSubtitleUnion(
       [{ slug: "ok" }, { slug: "bad" }],
@@ -139,6 +165,7 @@ describe("resolveSeriesSubtitleUnion", () => {
         // Never resolves → the per-episode timeout is the only way it settles.
         getEpisodeVariants: () => new Promise<WatchVariant[]>(() => {}),
         getDubMedia: async () => media([]),
+        uiTag: "en",
       }
       const promise = resolveSeriesSubtitleUnion(
         [{ slug: "slow" }],

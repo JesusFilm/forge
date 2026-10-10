@@ -1,0 +1,14 @@
+{
+  "staged_at": "2026-09-27T23:12:37.634529+00:00",
+  "deployments_triggered": false,
+  "roles": {
+    "web": {
+      "service_id": "bdb15048-1ca9-4217-ae01-ef7cc19ca6f4",
+      "RECOMMENDATION_CANDIDATE_TRACE_FORMAT": "compact"
+    },
+    "worker": {
+      "service_id": "4f805f5d-b98b-4e0d-8a41-194176336d2c",
+      "RECOMMENDATION_CANDIDATE_TRACE_FORMAT": "compact"
+    }
+  }
+}

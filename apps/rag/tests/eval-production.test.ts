@@ -6,11 +6,11 @@ import {
 } from "../scripts/eval-production.js"
 
 const production = {
-  JFRAG_POSTGRESQL_READONLY_DB_URL:
+  FORGE_RAG_POSTGRESQL_READONLY_DB_URL:
     "postgresql://forge_rag_evaluator:secret@prod.example/rag",
-  JFRAG_OPENROUTER_API_KEY: "provider-secret",
-  JFRAG_OPENROUTER_EMBED_MODEL_ID: "model",
-  JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+  OPENROUTER_API_KEY: "provider-secret",
+  FORGE_RAG_EMBED_MODEL_ID: "model",
+  FORGE_RAG_EXPECTED_POSTGRES_HOST: "prod.example",
 }
 
 describe("production eval target", () => {
@@ -23,18 +23,18 @@ describe("production eval target", () => {
       ),
     ).toEqual(["--case-set", "current"])
     expect(environment.DATABASE_URL).toBe(
-      production.JFRAG_POSTGRESQL_READONLY_DB_URL,
+      production.FORGE_RAG_POSTGRESQL_READONLY_DB_URL,
     )
   })
 
   it("rejects generic DATABASE_URL and every other target", () => {
     expect(() =>
       installProductionReadEnvironment(["--target", "production-read"], {
-        DATABASE_URL: production.JFRAG_POSTGRESQL_READONLY_DB_URL,
+        DATABASE_URL: production.FORGE_RAG_POSTGRESQL_READONLY_DB_URL,
         OPENROUTER_API_KEY: "generic",
-        JFRAG_EXPECTED_POSTGRES_HOST: "prod.example",
+        FORGE_RAG_EXPECTED_POSTGRES_HOST: "prod.example",
       }),
-    ).toThrow(/JFRAG_POSTGRESQL_READONLY_DB_URL/)
+    ).toThrow(/FORGE_RAG_POSTGRESQL_READONLY_DB_URL/)
     expect(() =>
       installProductionReadEnvironment(["--target", "production-write"], {
         ...production,
@@ -44,17 +44,17 @@ describe("production eval target", () => {
 
   it("requires the expected host and refuses a mismatched production URL", () => {
     const withoutExpectedHost: NodeJS.ProcessEnv = { ...production }
-    delete withoutExpectedHost.JFRAG_EXPECTED_POSTGRES_HOST
+    delete withoutExpectedHost.FORGE_RAG_EXPECTED_POSTGRES_HOST
     expect(() =>
       installProductionReadEnvironment(
         ["--target", "production-read"],
         withoutExpectedHost,
       ),
-    ).toThrow(/JFRAG_EXPECTED_POSTGRES_HOST/)
+    ).toThrow(/FORGE_RAG_EXPECTED_POSTGRES_HOST/)
     expect(() =>
       installProductionReadEnvironment(["--target", "production-read"], {
         ...production,
-        JFRAG_EXPECTED_POSTGRES_HOST: "other.example",
+        FORGE_RAG_EXPECTED_POSTGRES_HOST: "other.example",
       }),
     ).toThrow(/host/i)
   })
@@ -63,7 +63,7 @@ describe("production eval target", () => {
     expect(() =>
       installProductionReadEnvironment(["--target", "production-read"], {
         ...production,
-        JFRAG_POSTGRESQL_READONLY_DB_URL:
+        FORGE_RAG_POSTGRESQL_READONLY_DB_URL:
           "postgresql://owner:secret@prod.example/rag",
       }),
     ).toThrow(/username must match/)
@@ -85,7 +85,7 @@ describe("production eval target", () => {
 
     expect(
       productionEvaluationErrorMessage(
-        new Error(`failed with ${production.JFRAG_OPENROUTER_API_KEY}`),
+        new Error(`failed with ${production.OPENROUTER_API_KEY}`),
       ),
     ).toBe("production-read evaluation failed (details redacted)")
   })

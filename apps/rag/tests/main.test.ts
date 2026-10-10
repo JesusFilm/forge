@@ -143,7 +143,7 @@ describe("wire", () => {
     ])
     expect(warn).toHaveBeenCalledOnce()
     expect(warn).toHaveBeenCalledWith(
-      "query embed: gateway failed (embeddings failed: 503 Unavailable); falling back to hosted OpenRouter",
+      "query embed: gateway failed (embeddings failed: 503); falling back to hosted OpenRouter",
     )
     await wiring.shutdown()
   })

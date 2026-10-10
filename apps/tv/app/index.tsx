@@ -24,10 +24,14 @@ import { HomeHeroCarousel } from "../src/components/home/HomeHeroCarousel"
 import { resolveHomeCardPath } from "../src/components/home/homeCardRouting"
 import { HomeRail } from "../src/components/home/HomeRail"
 import { resolveHomeRailVariant } from "../src/components/home/homeRailVariant"
-import { HomeSkeleton } from "../src/components/home/HomeSkeleton"
+import { BrandedLoading } from "../src/components/BrandedLoading"
+import { useStartupIntroActive } from "../src/contexts/StartupIntroProvider"
 import { ScreenStateView } from "../src/components/ScreenStateView"
 import { AndroidLoadingDialog } from "../src/components/AndroidLoadingDialog"
-import { isRailActive } from "../src/components/home/homeRailWindow"
+import {
+  homeRailRenderCount,
+  isRailActive,
+} from "../src/components/home/homeRailWindow"
 import {
   isTopBarHidden,
   resolveBrowseState,
@@ -109,6 +113,7 @@ const IS_ANDROID = Platform.OS === "android"
 let autoStartConsumed = false
 
 export default function HomeScreen() {
+  const introActive = useStartupIntroActive()
   const router = useRouter()
   const { model, loading, error, refetch } = useWatchHome()
 
@@ -232,6 +237,7 @@ export default function HomeScreen() {
     useShowcasePrefs()
   const activePath = usePathname()
   useEffect(() => {
+    if (introActive) return
     if (
       !shouldAutoStartShowcase({
         hydrated: showcasePrefsHydrated,
@@ -245,7 +251,13 @@ export default function HomeScreen() {
     autoStartConsumed = true
     // Stamped so RUM can separate an unattended recovery from a human start (AE3).
     router.push(`/showcase?${SHOWCASE_SOURCE_PARAM}=${SHOWCASE_AUTO_SOURCE}`)
-  }, [showcasePrefsHydrated, showcasePrefs.autoStart, activePath, router])
+  }, [
+    introActive,
+    showcasePrefsHydrated,
+    showcasePrefs.autoStart,
+    activePath,
+    router,
+  ])
 
   // ── Showcase state ── First model seeds; refetches re-reconcile, keeping the
   // current pick if its id survives. Only CARDS dispatch focus, so it retains
@@ -295,9 +307,16 @@ export default function HomeScreen() {
   // (homeScrollState.ts) drives deep scrim + top bar hide. Scroll is row-anchored
   // via each shelf's onLayout y, immediate (not debounced) to track traversal.
   const [browseState, setBrowseState] = useState<HomeBrowseState>("top")
-  // Image-windowing: the row that holds focus (hero / top bar = 0). Drives which
-  // rails load card images (isRailActive); cards always mount so focus is safe.
+  // The focused row drives Android rail mounting and nearby image loading.
   const [focusedRow, setFocusedRow] = useState(0)
+  const [mountedRailCount, setMountedRailCount] = useState(2)
+  const sectionCount = renderSections?.length ?? 0
+  const visibleRailCount = homeRailRenderCount(
+    Platform.OS,
+    mountedRailCount,
+    focusedRow,
+    sectionCount,
+  )
   const scrollRef = useRef<ScrollView | null>(null)
   const rowYsRef = useRef<number[]>([])
   // If a row is focused before onLayout measures its y (cold paint / refetch
@@ -335,6 +354,7 @@ export default function HomeScreen() {
       if (IS_ANDROID) {
         if (lastFocusedRowRef.current === rowIndex) return
         lastFocusedRowRef.current = rowIndex
+        setMountedRailCount((count) => Math.max(count, rowIndex + 2))
       }
       focusedRowRef.current = rowIndex
       setBrowseState(resolveBrowseState(rowIndex))
@@ -471,6 +491,10 @@ export default function HomeScreen() {
     router.push("/settings")
   }, [router])
 
+  const handleFeedbackPress = useCallback(() => {
+    router.push({ pathname: "/feedback", params: { screen: "home" } })
+  }, [router])
+
   const handleProfilePress = useCallback(() => {
     router.push("/profile")
   }, [router])
@@ -532,6 +556,11 @@ export default function HomeScreen() {
       hidden={isTopBarHidden(browseState)}
       onSearchPress={handleSearchPress}
       onSettingsPress={handleSettingsPress}
+      onFeedbackPress={
+        process.env.EXPO_PUBLIC_TV_FEEDBACK_URL
+          ? handleFeedbackPress
+          : undefined
+      }
       onProfilePress={
         isProfileSurfaceEnabled() ? handleProfilePress : undefined
       }
@@ -548,7 +577,7 @@ export default function HomeScreen() {
     if (IS_ANDROID) {
       return (
         <View style={styles.screen}>
-          <ScreenStateView kind="loading" message="Loading Home…" />
+          <BrandedLoading />
           <AndroidLoadingDialog
             message="Loading Home…"
             onBack={() => BackHandler.exitApp()}
@@ -556,14 +585,10 @@ export default function HomeScreen() {
         </View>
       )
     }
-    // Non-focusable skeleton (KTD2): no focus claim of its own — the top bar's
-    // Search tab (hasTVPreferredFocus) owns initial focus in this state too.
-    // Shown only when model == null (cold load); a warm re-entry skips straight
-    // to content.
     return (
       <View style={styles.screen}>
+        <BrandedLoading />
         {topBar}
-        <HomeSkeleton />
       </View>
     )
   }
@@ -651,58 +676,64 @@ export default function HomeScreen() {
           </TVFocusGuideView>
         </View>
 
-        {(renderSections ?? []).map((section, sectionIndex) => (
-          <View key={section.id} onLayout={rowLayoutHandlers[sectionIndex + 1]}>
-            <HomeRail
-              rowIndex={sectionIndex + 1}
-              eyebrow={section.eyebrow}
-              title={section.title}
-              cards={section.cards}
-              variant={resolveHomeRailVariant(section)}
-              onCardFocus={handleCardFocus}
-              onRowFocus={handleRowFocus}
-              onCardPress={
-                section.id === CONTINUE_WATCHING_SECTION_ID
-                  ? handleResumeCardPress
-                  : handleCardPress
-              }
-              onCardLongPress={
-                section.id === CONTINUE_WATCHING_SECTION_ID
-                  ? handleResumeCardLongPress
-                  : section.id === MY_LIST_SECTION_ID
-                    ? handleMyListCardLongPress
-                    : undefined
-              }
-              // The topmost rail (sectionIndex 0) sits under the hero, whose CTA
-              // is on the LEFT — wire every card's D-pad-up to the CTA node
-              // rather than letting geometry dead-end under the artwork.
-              upFocusTarget={sectionIndex === 0 ? ctaNode : undefined}
-              // ...and restore its last-focused card on re-entry from ABOVE (Down
-              // off the CTA), but NOT from a rail BELOW: belowTopmost gates autoFocus
-              // off so Up-from-below keeps column-preserving geometry.
-              restoreLastFocus={sectionIndex === 0 && !belowTopmost}
-              // Android only: load images for rails in the focus window (cards
-              // always mount). tvOS loads every rail's images (true) — main.
-              active={
-                IS_ANDROID
-                  ? isRailActive(
-                      sectionIndex + 1,
-                      focusedRow,
-                      RAIL_WINDOW_BUFFER,
-                    )
-                  : true
-              }
-            />
-          </View>
-        ))}
+        {(renderSections ?? [])
+          .slice(0, visibleRailCount)
+          .map((section, sectionIndex) => (
+            <View
+              key={section.id}
+              onLayout={rowLayoutHandlers[sectionIndex + 1]}
+            >
+              <HomeRail
+                rowIndex={sectionIndex + 1}
+                eyebrow={section.eyebrow}
+                title={section.title}
+                cards={section.cards}
+                variant={resolveHomeRailVariant(section)}
+                onCardFocus={handleCardFocus}
+                onRowFocus={handleRowFocus}
+                onCardPress={
+                  section.id === CONTINUE_WATCHING_SECTION_ID
+                    ? handleResumeCardPress
+                    : handleCardPress
+                }
+                onCardLongPress={
+                  section.id === CONTINUE_WATCHING_SECTION_ID
+                    ? handleResumeCardLongPress
+                    : section.id === MY_LIST_SECTION_ID
+                      ? handleMyListCardLongPress
+                      : undefined
+                }
+                // The topmost rail (sectionIndex 0) sits under the hero, whose CTA
+                // is on the LEFT — wire every card's D-pad-up to the CTA node
+                // rather than letting geometry dead-end under the artwork.
+                upFocusTarget={sectionIndex === 0 ? ctaNode : undefined}
+                // ...and restore its last-focused card on re-entry from ABOVE (Down
+                // off the CTA), but NOT from a rail BELOW: belowTopmost gates autoFocus
+                // off so Up-from-below keeps column-preserving geometry.
+                restoreLastFocus={sectionIndex === 0 && !belowTopmost}
+                // Android loads images near focus; tvOS loads every rail.
+                active={
+                  IS_ANDROID
+                    ? isRailActive(
+                        sectionIndex + 1,
+                        focusedRow,
+                        RAIL_WINDOW_BUFFER,
+                      )
+                    : true
+                }
+              />
+            </View>
+          ))}
 
         {/* Mission tail (R15): storytelling cards + beta-signup QR. Its QR wrapper
             is focusable but non-actioning and never dispatches card-focus — the
             showcase keeps the last card (R10) and browse state stays "deep". */}
-        <MissionSection
-          onQrFocus={handleMissionFocus}
-          onFocusNode={captureFocusedNode}
-        />
+        {visibleRailCount === sectionCount ? (
+          <MissionSection
+            onQrFocus={handleMissionFocus}
+            onFocusNode={captureFocusedNode}
+          />
+        ) : null}
       </ScrollView>
     </View>
   )

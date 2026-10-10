@@ -1,12 +1,23 @@
+import { getT } from "../../i18n/useT"
 import {
   DOWNLOAD_DONE_COLOR,
   DOWNLOAD_FAILED_COLOR,
   EXPORT_IN_PROGRESS_COLOR,
-  downloadGlyphInfo,
+  downloadGlyphInfo as glyphInfo,
 } from "../downloadGlyph"
 import { ACCENT_ON_DARK } from "../color"
 import type { OfflineDownloadState } from "../offlineManifest"
 import type { ExportSessionEntry } from "../exportSession"
+
+const t = getT("DownloadButton")
+
+function downloadGlyphInfo(
+  state: OfflineDownloadState | null | undefined,
+  progress: number | null | undefined,
+  exporting?: ExportSessionEntry | null,
+) {
+  return glyphInfo(state, progress, exporting, t)
+}
 
 const exportEntry = (
   overrides: Partial<ExportSessionEntry> = {},

@@ -1,6 +1,7 @@
 import { vi } from "vitest"
 import type { PrismaClient } from "@prisma/client"
 import { UserRecommendationDeliveryService } from "./user-delivery.service"
+import type { UserWatchHistory } from "./user-history.service"
 import {
   makeHarness,
   profileCandidateResult,
@@ -23,6 +24,7 @@ export function video(index: number) {
 export function userDeliveryHarness(
   primaryCount: number,
   prisma?: PrismaClient,
+  servedItemFormat?: "legacy" | "packed",
 ) {
   const h = makeHarness()
   const nominations = Array.from({ length: primaryCount }, (_, index) => {
@@ -47,10 +49,9 @@ export function userDeliveryHarness(
     version: "v1",
     items: Array.from({ length: 30 }, (_, index) => video(index + 10)),
   }))
-  const history = vi.fn(
-    async () => [] as { mediaId: string; completed: boolean }[],
-  )
+  const history = vi.fn(async (): Promise<UserWatchHistory> => [])
   const service = new UserRecommendationDeliveryService({
+    servedItemFormat,
     prisma: prisma ?? (h.prisma as unknown as PrismaClient),
     enabled: true,
     admission: { acquire: h.acquire, release: h.release },

@@ -36,15 +36,18 @@ export function studioActor(user: Principal | null) {
 export async function lockProject(
   tx: Prisma.TransactionClient,
   projectId: string,
+  includeDeleted = false,
 ) {
   await tx.$queryRaw`SELECT id FROM short WHERE id = ${projectId} FOR UPDATE`
   const project = await tx.short.findUnique({
     where: { id: projectId },
   })
-  if (!project) throw new NotFoundError("Short", projectId)
+  if (!project || (project.deletedAt && !includeDeleted))
+    throw new NotFoundError("Short", projectId)
   return project
 }
 export function assertEditable(project: Short, expectedRevision: number) {
+  if (project.deletedAt) throw new NotFoundError("Short", project.id)
   if (project.firstPublishedAt || project.lifecycle !== "DRAFT")
     throw new StudioCommandError("IMMUTABLE")
   if (project.currentRevision !== expectedRevision)
@@ -102,6 +105,21 @@ export async function publicationDependencyHash(
   document: StudioDocument,
   renderAttemptId: string,
 ) {
+  // Delegated draft generation never supplies human script/voice review.
+  if (
+    orderedStudioSpeech(document).some(
+      (item) =>
+        item.speech && !item.speech.suppressed && item.speech.text.length > 0,
+    ) &&
+    !(await tx.shortApproval.findFirst({
+      where: {
+        projectId: project.id,
+        kind: "SCRIPT",
+        dependencyHash: scriptHash(document),
+      },
+    }))
+  )
+    throw new StudioCommandError("APPROVAL_REQUIRED")
   const attempt = await tx.shortAttempt.findUnique({
     where: { id: renderAttemptId },
   })

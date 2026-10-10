@@ -113,9 +113,10 @@ jest.mock("../../lib/exportSweep", () => ({
   applyExportSweep: jest.fn(async () => undefined),
 }))
 
-jest.mock("../../lib/apolloClient", () => ({
-  getApolloClient: () => ({ query: jest.fn() }),
-}))
+jest.mock("../../lib/apolloClient", () => {
+  const query = jest.fn()
+  return { getApolloClient: () => ({ query }), __query: query }
+})
 
 jest.mock("../../lib/datadog", () => ({
   datadogLog: {
@@ -141,18 +142,25 @@ jest.mock("../WatchPreferencesProvider", () => {
   }
 })
 
-import { StrictMode, act } from "react"
+import { StrictMode, act, type ReactNode } from "react"
+import { AppState, type AppStateStatus } from "react-native"
 
-import { DownloadsProvider } from "../DownloadsProvider"
+import {
+  DownloadsProvider,
+  useDownloads,
+  type CommittedCopy,
+} from "../DownloadsProvider"
 import type { ExportStagingNote } from "../../lib/exportSession"
 import type { ExportSweepEffects } from "../../lib/exportSweep"
 import {
   OFFLINE_INDEX_STORAGE_KEY,
   offlineRecordKey,
+  parseOfflineRecord,
   serializeOfflineIndex,
   serializeOfflineRecord,
   type OfflineDownloadRecord,
 } from "../../lib/offlineManifest"
+import { GET_VIDEO_TEXT } from "../../lib/queries"
 import {
   TestRenderer,
   type TestInstance,
@@ -262,8 +270,8 @@ beforeEach(() => {
   fs.listDirectory.mockResolvedValue([])
 })
 
-function element(strict: boolean) {
-  const tree = <DownloadsProvider>{null}</DownloadsProvider>
+function element(strict: boolean, children: ReactNode = null) {
+  const tree = <DownloadsProvider>{children}</DownloadsProvider>
   return strict ? <StrictMode>{tree}</StrictMode> : tree
 }
 
@@ -276,10 +284,13 @@ async function flush() {
   })
 }
 
-async function render(strict = false): Promise<TestInstance> {
+async function render(
+  strict = false,
+  children: ReactNode = null,
+): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
-    renderer = TestRenderer.create(element(strict))
+    renderer = TestRenderer.create(element(strict, children))
   })
   await flush()
   return renderer
@@ -290,6 +301,73 @@ async function unmount(renderer: TestInstance) {
     renderer.unmount()
   })
 }
+
+describe("committedCopyFor", () => {
+  type Out = { copy?: CommittedCopy | null }
+  // The first READY render is the hydrated manifest as written; the launch
+  // reattach that follows may rewrite an in-flight record, so read once.
+  function Probe({ slug, out }: { slug: string; out: Out }) {
+    const { committedCopyFor, isReady } = useDownloads()
+    if (isReady && !("copy" in out)) out.copy = committedCopyFor(slug)
+    return null
+  }
+  async function probe(slug: string): Promise<CommittedCopy | null> {
+    const out: Out = {}
+    const renderer = await render(false, <Probe slug={slug} out={out} />)
+    await unmount(renderer)
+    return out.copy ?? null
+  }
+  const OLD_FILE = "file:///docs/offline-downloads/a/old.mp4"
+
+  it("pairs a downloaded file with the dub its record names", async () => {
+    seedManifest([
+      record({
+        videoSlug: "a",
+        state: "downloaded",
+        committedPath: OLD_FILE,
+        dubDocumentId: "dub-en",
+      }),
+    ])
+    expect(await probe("a")).toEqual({
+      path: OLD_FILE,
+      dubDocumentId: "dub-en",
+      subtitleLanguageSlug: null,
+    })
+  })
+
+  it("answers null for a record that has no file on disk", async () => {
+    seedManifest([
+      record({ videoSlug: "a", state: "downloading", dubDocumentId: "dub-fr" }),
+    ])
+    expect(await probe("a")).toBeNull()
+  })
+
+  it("mid-swap pairs the OLD file with its OWN dub and subtitle, never the incoming ones", async () => {
+    seedManifest([
+      record({
+        videoSlug: "a",
+        state: "downloading",
+        dubDocumentId: "dub-fr",
+        renditionDocumentId: "rend-fr",
+        subtitleLanguageSlug: "french",
+        swapFrom: {
+          committedPath: OLD_FILE,
+          renditionDocumentId: "rend-en",
+          dubDocumentId: "dub-en",
+          qualityLabel: "High",
+          subtitleLanguageSlug: "english",
+          totalBytes: 100,
+          posterPath: null,
+        },
+      }),
+    ])
+    expect(await probe("a")).toEqual({
+      path: OLD_FILE,
+      dubDocumentId: "dub-en",
+      subtitleLanguageSlug: "english",
+    })
+  })
+})
 
 describe("raw-export runtime attachment (R13)", () => {
   it("supplies a record reader that reflects the hydrated manifest", async () => {
@@ -450,6 +528,114 @@ describe("cold-start phases", () => {
     expect(sweep.applyExportSweep.mock.calls[0][0]).toEqual([
       { action: "discard", note: landed, stopTaskId: null },
     ])
+    await unmount(renderer)
+  })
+})
+
+describe("offline title refresh (U7, R4)", () => {
+  const FILE = "file:///docs/offline-downloads/a/media.mp4"
+  const apollo = jest.requireMock("../../lib/apolloClient") as {
+    __query: jest.Mock
+  }
+  type QueryOptions = { query: unknown; variables: { slug?: string } }
+  let foreground: (state: AppStateStatus) => void = () => undefined
+
+  beforeEach(() => {
+    fs.fileExists.mockResolvedValue(true)
+    apollo.__query.mockReset()
+    foreground = () => undefined
+    jest.spyOn(AppState, "addEventListener").mockImplementation(((
+      _type: string,
+      handler: (state: AppStateStatus) => void,
+    ) => {
+      foreground = handler
+      return { remove: () => undefined }
+    }) as typeof AppState.addEventListener)
+  })
+
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  /** The refresh chain is deeper than the mount effects' three turns. */
+  async function settle() {
+    await act(async () => {
+      for (let i = 0; i < 20; i += 1) await Promise.resolve()
+    })
+  }
+
+  function textRequestSlugs(): (string | undefined)[] {
+    return (apollo.__query.mock.calls as [QueryOptions][])
+      .filter(([options]) => options.query === GET_VIDEO_TEXT)
+      .map(([options]) => options.variables.slug)
+  }
+
+  function answerText(answer: (slug: string) => Promise<unknown>) {
+    apollo.__query.mockImplementation(async (options: QueryOptions) =>
+      options.query === GET_VIDEO_TEXT
+        ? answer(options.variables.slug ?? "")
+        : { data: null },
+    )
+  }
+
+  function stored(slug: string): OfflineDownloadRecord | null {
+    return parseOfflineRecord(storage.get(offlineRecordKey(slug)) ?? null)
+  }
+
+  function seedDownloaded(fields: Partial<OfflineDownloadRecord>) {
+    seedManifest([
+      record({
+        videoSlug: "a",
+        state: "downloaded",
+        committedPath: FILE,
+        ...fields,
+      }),
+    ])
+  }
+
+  it("patches a record in another locale once a text request succeeds", async () => {
+    // The UI is English here, and the record was titled under Russian.
+    seedDownloaded({ title: "Русский a", titleLocale: "ru" })
+    answerText(async () => {
+      throw new Error("offline")
+    })
+    const renderer = await render()
+    await settle()
+    expect(textRequestSlugs()).toContain("a")
+    expect(stored("a")).toMatchObject({ title: "Русский a", titleLocale: "ru" })
+
+    answerText(async (slug) => ({
+      data: {
+        videoBySlug: {
+          locales: [],
+          englishLocales: [
+            { languageSlug: "english", title: `English ${slug}` },
+          ],
+        },
+      },
+    }))
+    await act(async () => {
+      foreground("active")
+    })
+    await settle()
+    expect(stored("a")).toMatchObject({
+      title: "English a",
+      titleLocale: "en",
+      state: "downloaded",
+      committedPath: FILE,
+    })
+    await unmount(renderer)
+  })
+
+  it("asks for no text when a record is titled in the UI locale", async () => {
+    seedDownloaded({ titleLocale: "en" })
+    answerText(async () => null)
+    const renderer = await render()
+    await act(async () => {
+      foreground("active")
+    })
+    await settle()
+    expect(textRequestSlugs()).toEqual([])
     await unmount(renderer)
   })
 })

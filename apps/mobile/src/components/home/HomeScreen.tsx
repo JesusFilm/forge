@@ -18,10 +18,14 @@ import {
 } from "react-native"
 import { FlashList } from "@shopify/flash-list"
 import { LinearGradient } from "expo-linear-gradient"
-import { useNavigation, useRouter } from "expo-router"
+import { useNavigation, useRouter, useSegments } from "expo-router"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useGuardedViewabilityCallback } from "../../hooks/useGuardedViewabilityCallback"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
+import { useUiTag } from "../../hooks/useUiTag"
+import { useHomeRecommendations } from "../../hooks/useHomeRecommendations"
 import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { useTypography } from "../../hooks/useTypography"
 import { useWatchHome } from "../../hooks/useWatchHome"
@@ -38,13 +42,25 @@ import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { nextHomeLogoHidden } from "../../lib/homeLogoVisibility"
 import { heroPlaybackPaused } from "../../lib/miniPlayer/heroYield"
 import { openExternalUrl } from "../../lib/openExternalUrl"
+import { getApiToken } from "../../lib/config"
+import { isRecommendationClientEnabled } from "../../lib/recommendations/enabled"
+import {
+  isReturnToHomeFromWatch,
+  routeSegmentsFromKey,
+} from "../../lib/recommendations/homeReturnSignal"
+import { IMPRESSION_VIEWABILITY_CONFIG } from "../../lib/recommendations/impressionDwell"
 import { getSplashSession } from "../../lib/splash/splashSession"
 import {
   buildWatchHomeHeroQueue,
   muxSlideDisplayCopy,
   type WatchHomeSlide,
 } from "../../lib/watchHome/carouselSequence"
-import type { WatchHomeSection } from "../../lib/watchHome/model"
+import {
+  buildHomeFeed,
+  recommendationsShelfVisible,
+  type HomeFeedItem,
+  type RecommendationsGateInput,
+} from "../../lib/watchHome/homeFeed"
 import { slideRouteArgs } from "../../lib/watchHome/slideRouteArgs"
 import { encodeWatchSeed } from "../../lib/watchSeed"
 import { feedback, layout, text } from "../../styles/shared"
@@ -59,13 +75,9 @@ import {
 import { HomeLogo } from "./HomeLogo"
 import { HomeMissionSection } from "./HomeMissionSection"
 import { HomeShelf } from "./HomeShelf"
+import { RecommendationsShelf } from "./RecommendationsShelf"
 
-// ── Types ───────────────────────────────────────────────────────────────────
-
-type HomeFeedItem =
-  | { kind: "selector" }
-  | { kind: "section"; section: WatchHomeSection }
-  | { kind: "mission" }
+// ── Constants ───────────────────────────────────────────────────────────────
 
 // Stable empty queue so the no-model render keeps one slides identity (a new
 // array identity resets the pager to slide 0 by design).
@@ -87,6 +99,9 @@ const HERO_SWIPE_COMMIT_PX = 40
 // ── Component ───────────────────────────────────────────────────────────────
 
 export function HomeScreen() {
+  const t = useT("Home")
+  const epoch = useLocaleEpoch()
+  const uiTag = useUiTag()
   const insets = useSafeAreaInsets()
   const tabBarClearance = useTabBarClearance()
   const navigation = useNavigation()
@@ -96,7 +111,14 @@ export function HomeScreen() {
   // feed padding, and scroll brackets all share it.
   const heroHeight = Math.round(screenWidth * 1.2)
 
-  const { model, loading, refreshing, error, refetch } = useWatchHome()
+  const {
+    model,
+    recommendationsInsertIndex,
+    loading,
+    refreshing,
+    error,
+    refetch,
+  } = useWatchHome()
 
   // The splash draws ABOVE this screen and needs to know whether there is
   // anything to hand over TO. Report only — nothing here waits on the splash.
@@ -146,6 +168,7 @@ export function HomeScreen() {
       playedIds: playedIdsRef.current,
       startPoolIndex: startPoolIndexRef.current,
       sessionSeed: sessionSeedRef.current,
+      uiTag,
     })
     if (queue.wrapped && queue.videos.length > 0) {
       // wrapped=true means every eligible slide was already played and the queue was rebuilt
@@ -156,7 +179,7 @@ export function HomeScreen() {
     return queue.slides
     // playedIdsRef/startPoolIndexRef are stable refs read at build time, not
     // rebuild triggers; memoryHydrated is the rebuild trigger for them.
-  }, [model, memoryHydrated, resetPlayedIds])
+  }, [model, memoryHydrated, resetPlayedIds, uiTag])
 
   const heroVisible = heroSlides.length > 0
 
@@ -226,9 +249,9 @@ export function HomeScreen() {
   const activeInsertAction = useMemo(
     () =>
       activeSlide?.kind === "mux"
-        ? muxSlideDisplayCopy(activeSlide, new Date()).action
+        ? muxSlideDisplayCopy(activeSlide, new Date(), uiTag).action
         : null,
-    [activeSlide],
+    [activeSlide, uiTag],
   )
 
   // ── Hero swipe (capture-phase PanResponder on the screen root) ─────────────
@@ -282,7 +305,9 @@ export function HomeScreen() {
   const [muted, setMuted] = useState(true)
   const handleMuteToggle = useCallback(() => setMuted((m) => !m), [])
 
-  const [focused, setFocused] = useState(true)
+  // Seeded from the navigator: a deep link mounts Home under another route,
+  // and a `true` seed records impressions nobody has looked at (KTD3).
+  const [focused, setFocused] = useState(() => navigation.isFocused())
   // R9: the pop that opens the window fires the focus listener below in the
   // same commit, so the hero's resume is gated on the window as well as focus.
   const windowHoldsVideo = useMiniPlayerHoldsVideo()
@@ -307,14 +332,14 @@ export function HomeScreen() {
 
   const handleWatchNow = useCallback(() => {
     if (activeSlide?.kind !== "video") return
-    const { slug, title, label, imageUrl, playbackId } =
+    const { slug, title, rawLabel, imageUrl, playbackId } =
       slideRouteArgs(activeSlide)
     if (slug == null) return
-    // Same routing rule as HomeCard / Discover (series-shaped label → series
-    // page, else watch page), with a seed for instant paint. navigate (not
-    // push) dedupes a double-tap into one screen.
+    // HomeCard / Discover's routing on the RAW kind, never catalog text ("Serie"
+    // is not "series", KTD15): a series opens the series page, else the watch
+    // page, seeded for instant paint. navigate (not push) dedupes a double-tap.
     const seed = encodeWatchSeed({ slug, title, imageUrl, playbackId })
-    const route = isSeriesLabel(label) ? "series" : "watch"
+    const route = isSeriesLabel(rawLabel) ? "series" : "watch"
     router.navigate(`/${route}/${encodeURIComponent(slug)}?seed=${seed}`)
   }, [activeSlide, router])
 
@@ -350,25 +375,80 @@ export function HomeScreen() {
     [heroHeight],
   )
 
+  // ── Recommendations shelf (feat-517) ───────────────────────────────────────
+
+  // The kill switch and the bearer are fixed for the launch, so this memo only
+  // re-runs when the Experience moves or drops the block.
+  const recommendationsGate = useMemo<RecommendationsGateInput>(
+    () => ({
+      insertIndex: recommendationsInsertIndex,
+      clientEnabled: isRecommendationClientEnabled(),
+      hasBearer: Boolean(getApiToken()),
+    }),
+    [recommendationsInsertIndex],
+  )
+  const recommendations = useHomeRecommendations({
+    gateOpen: recommendationsShelfVisible(recommendationsGate),
+    focused,
+  })
+  const refreshSlate = recommendations.refresh
+
+  // KTD5: return-from-watch is a route-segment transition, not a focus event —
+  // the focus listener and the segment update are two effects of one commit
+  // with no guaranteed order. Key on the joined string; the identity churns.
+  const segmentsKey = useSegments().join("/")
+  const previousSegmentsKeyRef = useRef(segmentsKey)
+  useEffect(() => {
+    const previous = previousSegmentsKeyRef.current
+    previousSegmentsKeyRef.current = segmentsKey
+    const returned = isReturnToHomeFromWatch(
+      routeSegmentsFromKey(previous),
+      routeSegmentsFromKey(segmentsKey),
+    )
+    if (returned) refreshSlate()
+  }, [segmentsKey, refreshSlate])
+
+  // R17, R18: the slate refetches beside the body and keeps its cards while
+  // it loads. The controller holds this one when Home is blurred.
+  const handlePullToRefresh = useCallback(() => {
+    refetch()
+    refreshSlate()
+  }, [refetch, refreshSlate])
+
+  // The callback identity is fixed for the list's life, so the current
+  // controller is reached through this ref (KTD4).
+  const reportShelfVisibleRef = useRef(recommendations.reportShelfVisible)
+  reportShelfVisibleRef.current = recommendations.reportShelfVisible
+  const handleFeedViewableItemsChanged = useGuardedViewabilityCallback<{
+    viewableItems: { item: HomeFeedItem }[]
+  }>("home_feed", ({ viewableItems }) => {
+    reportShelfVisibleRef.current(
+      viewableItems.some((entry) => entry.item.kind === "recommendations"),
+    )
+  })
+
   // ── Feed composition ───────────────────────────────────────────────────────
 
-  const feedItems = useMemo<HomeFeedItem[]>(() => {
-    if (model == null) return []
-    const items: HomeFeedItem[] = []
-    // Selector rail mirrors the pager-chrome rule: multi-slide queues only (AE2).
-    if (heroSlides.length > 1) items.push({ kind: "selector" })
-    for (const section of model.sections) {
-      items.push({ kind: "section", section })
-    }
-    items.push({ kind: "mission" })
-    return items
-  }, [model, heroSlides.length])
+  const feedItems = useMemo<HomeFeedItem[]>(
+    () =>
+      buildHomeFeed({
+        model,
+        // Selector rail mirrors the pager-chrome rule: multi-slide queues only (AE2).
+        showSelector: heroSlides.length > 1,
+        recommendations: recommendationsGate,
+      }),
+    [model, heroSlides.length, recommendationsGate],
+  )
 
   const keyExtractor = useCallback(
     (item: HomeFeedItem) =>
       item.kind === "section" ? `section-${item.section.id}` : item.kind,
     [],
   )
+
+  // Own recycling pool per kind: the shelf's height has nothing in common with
+  // a section's, and FlashList would otherwise reuse one cell for both.
+  const getItemType = useCallback((item: HomeFeedItem) => item.kind, [])
 
   const renderItem = useCallback(
     ({ item, index }: { item: HomeFeedItem; index: number }) => {
@@ -383,6 +463,18 @@ export function HomeScreen() {
           </View>
         ) : item.kind === "section" ? (
           <HomeShelf section={item.section} />
+        ) : item.kind === "recommendations" ? (
+          <RecommendationsShelf
+            status={recommendations.status}
+            slate={recommendations.slate}
+            focused={focused}
+            onShelfMount={recommendations.reportShelfMounted}
+            onCardsVisible={recommendations.reportVisibleCards}
+            onDetached={recommendations.reportShelfDetached}
+            onRecordRender={recommendations.recordRender}
+            onSelect={recommendations.select}
+            onRefresh={refreshSlate}
+          />
         ) : (
           <HomeMissionSection />
         )
@@ -404,7 +496,20 @@ export function HomeScreen() {
         </View>
       )
     },
-    [heroSlides, activeIndex, handleSelectSlide, heroVisible],
+    [
+      heroSlides,
+      activeIndex,
+      handleSelectSlide,
+      heroVisible,
+      recommendations,
+      focused,
+    ],
+  )
+
+  // Recycled feed cells take the new language on a catalog change (KTD5).
+  const feedExtraData = useMemo(
+    () => ({ activeIndex, epoch }),
+    [activeIndex, epoch],
   )
 
   const contentContainerStyle = useMemo(
@@ -423,7 +528,7 @@ export function HomeScreen() {
     return (
       <View style={[layout.centered, { paddingTop: insets.top }]}>
         <ActivityIndicator size="large" color={ACCENT} />
-        <Text style={styles.loadingText}>Loading...</Text>
+        <Text style={styles.loadingText}>{t("loading")}</Text>
       </View>
     )
   }
@@ -431,9 +536,10 @@ export function HomeScreen() {
   if (error != null && model == null) {
     return (
       <View style={[layout.centered, { paddingTop: insets.top }]}>
-        <Text style={text.errorTitle}>Something went wrong</Text>
+        <Text style={text.errorTitle}>{t("loadErrorTitle")}</Text>
+        {/* The hook sets one retryable failure, so its text is the catalog's. */}
         <Text style={[text.errorMessage, styles.errorMessageSpacing]}>
-          {error}
+          {t("loadErrorMessage")}
         </Text>
         <Pressable
           style={({ pressed }) => [
@@ -442,9 +548,10 @@ export function HomeScreen() {
           ]}
           onPress={refetch}
           accessibilityRole="button"
-          accessibilityLabel="Retry loading"
+          accessibilityLabel={t("retryAriaLabel")}
+          {...{ "dd-action-name": "home-load-retry" }}
         >
-          <Text style={styles.retryText}>Retry</Text>
+          <Text style={styles.retryText}>{t("retry")}</Text>
         </Pressable>
       </View>
     )
@@ -455,7 +562,7 @@ export function HomeScreen() {
   if (model == null || (model.sections.length === 0 && !heroVisible)) {
     return (
       <View style={[layout.centered, { paddingTop: insets.top }]}>
-        <Text style={styles.emptyText}>No content available</Text>
+        <Text style={styles.emptyText}>{t("empty")}</Text>
       </View>
     )
   }
@@ -487,7 +594,10 @@ export function HomeScreen() {
         data={feedItems}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
-        extraData={activeIndex}
+        getItemType={getItemType}
+        extraData={feedExtraData}
+        onViewableItemsChanged={handleFeedViewableItemsChanged}
+        viewabilityConfig={IMPRESSION_VIEWABILITY_CONFIG}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         contentContainerStyle={contentContainerStyle}
@@ -496,7 +606,7 @@ export function HomeScreen() {
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
-            onRefresh={refetch}
+            onRefresh={handlePullToRefresh}
             tintColor={TEXT_SECONDARY}
             // RN 0.86: Android's SwipeRefreshLayout host paints opaque by
             // default, which hides the z-0 hero layer under the list.
@@ -552,6 +662,7 @@ const HeroChrome = memo(function HeroChrome({
   onInsertAction,
 }: HeroChromeProps) {
   const typography = useTypography()
+  const t = useT("Home")
 
   return (
     <View
@@ -570,11 +681,13 @@ const HeroChrome = memo(function HeroChrome({
             ]}
             onPress={onWatchNow}
             accessibilityRole="button"
-            accessibilityLabel={`Watch ${slide.title} now`}
+            accessibilityLabel={t("watchNowAriaLabel", { title: slide.title })}
             // Stable RUM action name — the a11y label leaks the title (KTD10).
             {...{ "dd-action-name": "hero-card" }}
           >
-            <Text style={[styles.ctaText, typography.body]}>Watch Now</Text>
+            <Text style={[styles.ctaText, typography.body]}>
+              {t("watchNow")}
+            </Text>
           </Pressable>
         )}
         {slide.kind === "mux" && insertAction != null && (
@@ -586,6 +699,7 @@ const HeroChrome = memo(function HeroChrome({
             onPress={onInsertAction}
             accessibilityRole="link"
             accessibilityLabel={insertAction.label}
+            {...{ "dd-action-name": "hero-insert-action" }}
           >
             <Text style={[styles.ctaText, typography.body]}>
               {insertAction.label}
@@ -600,8 +714,9 @@ const HeroChrome = memo(function HeroChrome({
             pressed && feedback.pressed,
           ]}
           onPress={onToggleMute}
-          accessibilityLabel={muted ? "Unmute video" : "Mute video"}
+          accessibilityLabel={muted ? t("unmuteAriaLabel") : t("muteAriaLabel")}
           accessibilityRole="button"
+          {...{ "dd-action-name": "hero-mute-toggle" }}
         >
           <Ionicons
             name={muted ? "volume-mute" : "volume-high"}

@@ -13,9 +13,31 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
 import { useSheetListHeight } from "../../hooks/useSheetListHeight"
+import { useUiTag } from "../../hooks/useUiTag"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useLocaleEpoch, useT, type UiT } from "../../i18n/useT"
 import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
 import { acceptSheetTap, assembleSheetList } from "../../lib/sheetListLogic"
 import { feedback, HORIZONTAL_PADDING } from "../../styles/shared"
+
+/** The sheet's colors. The Bible reader passes its own theme (KTD12). */
+export type SearchableListSheetColors = {
+  text: string
+  secondaryText: string
+  /** The checkmark on the current row. */
+  accent: string
+  /** The search field and the current row. */
+  surface: string
+}
+
+/** The app's dark look, which every caller without a color set keeps. */
+export const DEFAULT_LIST_SHEET_COLORS: Readonly<SearchableListSheetColors> =
+  Object.freeze({
+    text: TEXT_PRIMARY,
+    secondaryText: TEXT_SECONDARY,
+    accent: ACCENT,
+    surface: "rgba(255, 255, 255, 0.06)",
+  })
 
 export type SearchableListSheetProps<T> = {
   rows: T[]
@@ -25,7 +47,14 @@ export type SearchableListSheetProps<T> = {
   getSelectionId: (item: T) => string
   getKey: (item: T) => string
   getPrimaryLabel: (item: T) => string
+  // The language of the primary label (KTD13). Absent or null: not known.
+  getPrimaryLang?: (item: T) => string | null | undefined
   getSecondaryLabel?: (item: T) => string | null | undefined
+  // A short state line under the labels (e.g. "Downloaded"); read out with the
+  // row's name so a screen reader learns it too.
+  getStatusLabel?: (item: T) => string | null | undefined
+  // A longer line (e.g. a copyright credit), up to two lines. Not read out.
+  getDetailLabel?: (item: T) => string | null | undefined
   getSearchValues: (item: T) => (string | null | undefined)[]
   // Availability guard (e.g. a dub without `hls`): a false row silently ignores
   // taps. Defaults to always-selectable.
@@ -36,6 +65,26 @@ export type SearchableListSheetProps<T> = {
   emptySearchMessage: string
   // Extra header content above the search field (e.g. the subtitle on/off switch).
   headerTop?: ReactNode
+  // Keep `rows` in the caller's order instead of sorting them by name.
+  keepRowOrder?: boolean
+  // A control at the end of the "Current" row (e.g. the Bible reader's
+  // download button). It sits beside the row's label, so a screen reader
+  // reaches it as its own element.
+  renderActiveAccessory?: (item: T) => ReactNode
+  colors?: SearchableListSheetColors
+  // The RUM prefix for the row and clear-search taps. The row label carries
+  // translated text, so Datadog must not name the tap from it (KTD15).
+  actionName?: string
+}
+
+function accessibleName(
+  t: UiT<"ListSheet">,
+  primary: string,
+  status: string | null | undefined,
+): string {
+  return status
+    ? t("rowWithStatusAriaLabel", { name: primary, status })
+    : primary
 }
 
 // Generic searchable list sheet: FlashList + search + "Current" section + 500ms
@@ -47,7 +96,10 @@ export function SearchableListSheet<T>({
   getSelectionId,
   getKey,
   getPrimaryLabel,
+  getPrimaryLang,
   getSecondaryLabel,
+  getStatusLabel,
+  getDetailLabel,
   getSearchValues,
   isSelectable,
   onSelect,
@@ -55,6 +107,10 @@ export function SearchableListSheet<T>({
   searchAccessibilityLabel,
   emptySearchMessage,
   headerTop,
+  keepRowOrder = false,
+  renderActiveAccessory,
+  colors = DEFAULT_LIST_SHEET_COLORS,
+  actionName = "list-sheet",
 }: SearchableListSheetProps<T>) {
   const insets = useSafeAreaInsets()
   const { height: windowHeight } = useWindowDimensions()
@@ -67,6 +123,10 @@ export function SearchableListSheet<T>({
   // Debounce so a fast double-tap can't fire the selection (and router.back())
   // twice and pop the underlying screen.
   const lastSelectRef = useRef(0)
+  const uiTag = useUiTag()
+  const direction = useTextDirection()
+  const t = useT("ListSheet")
+  const epoch = useLocaleEpoch()
 
   const { active, filtered } = useMemo(
     () =>
@@ -77,8 +137,27 @@ export function SearchableListSheet<T>({
         getSelectionId,
         getPrimaryLabel,
         getSearchValues,
+        keepRowOrder,
+        uiTag,
       }),
-    [rows, activeId, query, getSelectionId, getPrimaryLabel, getSearchValues],
+    [
+      rows,
+      activeId,
+      query,
+      getSelectionId,
+      getPrimaryLabel,
+      getSearchValues,
+      keepRowOrder,
+      uiTag,
+    ],
+  )
+
+  const { primaryText, secondaryText } = useMemo(
+    () => ({
+      primaryText: { color: colors.text },
+      secondaryText: { color: colors.secondaryText },
+    }),
+    [colors.text, colors.secondaryText],
   )
 
   const handleSelect = useCallback(
@@ -95,39 +174,92 @@ export function SearchableListSheet<T>({
   const renderItem = useCallback(
     ({ item }: { item: T }) => {
       const secondary = getSecondaryLabel?.(item)
+      const status = getStatusLabel?.(item)
+      const detail = getDetailLabel?.(item)
+      const primaryDirection = direction.text(getPrimaryLang?.(item))
       return (
         <Pressable
           style={({ pressed }) => [styles.listRow, pressed && feedback.pressed]}
           onPress={() => handleSelect(item)}
           accessibilityRole="radio"
           accessibilityState={{ selected: false }}
-          accessibilityLabel={getPrimaryLabel(item)}
+          accessibilityLabel={accessibleName(t, getPrimaryLabel(item), status)}
+          // The mark fits only a label that is the name alone (R10).
+          accessibilityLanguage={
+            status ? undefined : primaryDirection.accessibilityLanguage
+          }
+          {...{ "dd-action-name": `${actionName}-row` }}
         >
           <View style={styles.nameColumn}>
             <Text
-              style={[styles.listRowText, typography.body]}
+              style={[
+                styles.listRowText,
+                typography.body,
+                primaryText,
+                primaryDirection.style,
+              ]}
               numberOfLines={1}
+              accessibilityLanguage={primaryDirection.accessibilityLanguage}
             >
               {getPrimaryLabel(item)}
             </Text>
             {secondary ? (
               <Text
-                style={[styles.nativeText, typography.bodySmall]}
+                style={[styles.nativeText, typography.bodySmall, secondaryText]}
                 numberOfLines={1}
               >
                 {secondary}
+              </Text>
+            ) : null}
+            {status ? (
+              <Text
+                style={[
+                  styles.nativeText,
+                  typography.bodySmall,
+                  secondaryText,
+                  direction.ui,
+                ]}
+                numberOfLines={1}
+              >
+                {status}
+              </Text>
+            ) : null}
+            {detail ? (
+              <Text
+                style={[styles.nativeText, typography.bodySmall, secondaryText]}
+                numberOfLines={2}
+              >
+                {detail}
               </Text>
             ) : null}
           </View>
         </Pressable>
       )
     },
-    [getPrimaryLabel, getSecondaryLabel, handleSelect, typography],
+    [
+      getPrimaryLabel,
+      getPrimaryLang,
+      getSecondaryLabel,
+      getStatusLabel,
+      getDetailLabel,
+      handleSelect,
+      typography,
+      primaryText,
+      secondaryText,
+      t,
+      actionName,
+      direction,
+    ],
   )
 
   const keyExtractor = useCallback((item: T) => getKey(item), [getKey])
 
   const activeSecondary = active ? getSecondaryLabel?.(active) : null
+  const activeStatus = active ? getStatusLabel?.(active) : null
+  const activeDetail = active ? getDetailLabel?.(active) : null
+  const activeDirection = direction.text(
+    active ? getPrimaryLang?.(active) : null,
+  )
 
   // Search + current selection live in the list header so they scroll with the
   // list in one container.
@@ -135,12 +267,18 @@ export function SearchableListSheet<T>({
     <View style={styles.header}>
       {headerTop}
 
-      <View style={styles.searchContainer}>
-        <Ionicons name="search-outline" size={18} color={TEXT_SECONDARY} />
+      <View
+        style={[styles.searchContainer, { backgroundColor: colors.surface }]}
+      >
+        <Ionicons
+          name="search-outline"
+          size={18}
+          color={colors.secondaryText}
+        />
         <TextInput
-          style={[styles.searchInput, typography.body]}
+          style={[styles.searchInput, typography.body, primaryText]}
           placeholder={searchPlaceholder}
-          placeholderTextColor={TEXT_SECONDARY}
+          placeholderTextColor={colors.secondaryText}
           value={query}
           onChangeText={setQuery}
           autoCapitalize="none"
@@ -152,40 +290,102 @@ export function SearchableListSheet<T>({
             onPress={() => setQuery("")}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Clear search"
+            accessibilityLabel={t("clearSearchAriaLabel")}
+            {...{ "dd-action-name": `${actionName}-clear-search` }}
           >
-            <Ionicons name="close-circle" size={18} color={TEXT_SECONDARY} />
+            <Ionicons
+              name="close-circle"
+              size={18}
+              color={colors.secondaryText}
+            />
           </Pressable>
         )}
       </View>
 
       {active && (
         <View style={styles.currentSection}>
-          <Text style={[styles.currentLabel, typography.bodySmall]}>
-            Current
+          <Text
+            style={[
+              styles.currentLabel,
+              typography.bodySmall,
+              secondaryText,
+              direction.ui,
+            ]}
+          >
+            {t("current")}
           </Text>
-          <View style={[styles.listRow, styles.listRowActive]}>
-            <Ionicons name="checkmark" size={18} color={ACCENT} />
-            <View style={styles.nameColumn}>
-              <Text
-                style={[
-                  styles.listRowText,
-                  typography.body,
-                  styles.listRowTextActive,
-                ]}
-                numberOfLines={1}
-              >
-                {getPrimaryLabel(active)}
-              </Text>
-              {activeSecondary ? (
+          <View style={[styles.listRow, { backgroundColor: colors.surface }]}>
+            <View
+              style={styles.activeLabel}
+              // A plain View is not an accessibility element; without this the
+              // label never reaches the native tree and VoiceOver reads the
+              // child texts one by one.
+              accessible
+              accessibilityLabel={accessibleName(
+                t,
+                getPrimaryLabel(active),
+                activeStatus,
+              )}
+              accessibilityLanguage={
+                activeStatus ? undefined : activeDirection.accessibilityLanguage
+              }
+            >
+              <Ionicons name="checkmark" size={18} color={colors.accent} />
+              <View style={styles.nameColumn}>
                 <Text
-                  style={[styles.nativeText, typography.bodySmall]}
-                  numberOfLines={1}
+                  style={[
+                    styles.listRowText,
+                    typography.body,
+                    styles.listRowTextActive,
+                    primaryText,
+                    activeDirection.style,
+                  ]}
+                  // An accessory takes width, so a long name gets a second line.
+                  numberOfLines={renderActiveAccessory ? 2 : 1}
+                  accessibilityLanguage={activeDirection.accessibilityLanguage}
                 >
-                  {activeSecondary}
+                  {getPrimaryLabel(active)}
                 </Text>
-              ) : null}
+                {activeSecondary ? (
+                  <Text
+                    style={[
+                      styles.nativeText,
+                      typography.bodySmall,
+                      secondaryText,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {activeSecondary}
+                  </Text>
+                ) : null}
+                {activeStatus ? (
+                  <Text
+                    style={[
+                      styles.nativeText,
+                      typography.bodySmall,
+                      secondaryText,
+                      direction.ui,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {activeStatus}
+                  </Text>
+                ) : null}
+                {activeDetail ? (
+                  <Text
+                    style={[
+                      styles.nativeText,
+                      typography.bodySmall,
+                      secondaryText,
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {activeDetail}
+                  </Text>
+                ) : null}
+              </View>
             </View>
+            {renderActiveAccessory?.(active)}
           </View>
         </View>
       )}
@@ -199,6 +399,8 @@ export function SearchableListSheet<T>({
           data={filtered}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
+          // Recycled rows redraw on a language change (KTD5).
+          extraData={epoch}
           keyboardShouldPersistTaps="handled"
           // Off by intent: FlashList v2's default maintainVisibleContentPosition
           // (for chat-like lists) makes our list jump when the search swaps data
@@ -212,7 +414,9 @@ export function SearchableListSheet<T>({
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptySearch}>
-              <Text style={[styles.emptySearchText, typography.body]}>
+              <Text
+                style={[styles.emptySearchText, typography.body, secondaryText]}
+              >
                 {emptySearchMessage}
               </Text>
             </View>
@@ -223,6 +427,7 @@ export function SearchableListSheet<T>({
   )
 }
 
+// Colors are not here: they come from the `colors` prop at render time.
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -238,11 +443,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderRadius: 8,
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
   },
   searchInput: {
     flex: 1,
-    color: TEXT_PRIMARY,
     fontFamily: "System",
     padding: 0,
   },
@@ -250,7 +453,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   currentLabel: {
-    color: TEXT_SECONDARY,
     fontFamily: "System",
     marginBottom: 6,
   },
@@ -263,22 +465,24 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     minHeight: 48,
   },
-  listRowActive: {
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
-  },
   nameColumn: {
     flex: 1,
     minWidth: 0,
   },
+  activeLabel: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   listRowText: {
-    color: TEXT_PRIMARY,
     fontFamily: "System",
   },
   listRowTextActive: {
     fontWeight: "600",
   },
   nativeText: {
-    color: TEXT_SECONDARY,
     fontFamily: "System",
     marginTop: 2,
   },
@@ -287,7 +491,6 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
   emptySearchText: {
-    color: TEXT_SECONDARY,
     fontFamily: "System",
   },
 })

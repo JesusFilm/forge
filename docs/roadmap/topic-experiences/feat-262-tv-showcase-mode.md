@@ -55,6 +55,7 @@ Per the plan: a Settings tab + screen (R1-R3); reel sourcing from a CMS-authored
 
 - `pnpm --filter @forge/tv test` green (colocated vitest/jest suites for queue composition, settings persistence, fallback selection).
 - Simulator smoke on tvOS AND Android TV: start mode from Settings tab, observe chapter card → excerpts → interstitial cycle, press any remote key to exit (see `docs/plans/2026-07-15-001-feat-tv-showcase-mode-plan.md` Acceptance Examples AE1-AE6).
+- Release-simulator exit: returning to Settings emits no `FunctionCallException` or `NativeSharedObjectNotFoundException` in captured runtime/OS logs.
 - With no Showcase Experience published: fallback reel plays, no blank/error screen.
 - Multi-hour soak on hardware before office launch: no screensaver, no wedge, stable memory.
 - Showcase Experience authored in the CMS per the plan's KTD-10 (owner: urim until a curator is named) — gates office launch alongside the soak; until authored, office TVs run the fallback reel.

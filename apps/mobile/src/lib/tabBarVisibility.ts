@@ -1,15 +1,8 @@
 import { useSyncExternalStore } from "react"
 
-/**
- * Whether the iOS native tab bar is hidden.
- *
- * NativeTabs has no per-screen `tabBarStyle`; its only bar-hide lever is the
- * navigator-level `hidden` prop. So the Library screen's selection flag has to
- * reach `app/(tabs)/_layout.ios.tsx`, and a context cannot carry it — the
- * layout renders the screen, so it is an ANCESTOR, not a descendant.
- *
- * Android never reads this: its bar still hides through `navigation.setOptions`.
- */
+/** Whether the iOS native tab bar is hidden: NativeTabs' only hide lever is the
+ *  navigator-level `hidden` prop, which a screen's context cannot reach. No
+ *  screen hides the bar since the downloads list moved to a root route. */
 let hidden = false
 const listeners = new Set<() => void>()
 

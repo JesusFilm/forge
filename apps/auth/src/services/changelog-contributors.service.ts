@@ -68,7 +68,17 @@ export async function manageChangelogContributors(
             },
           },
         })
-        if (changed.count)
+        if (changed.count && recipient) {
+          // Cancel unused authority atomically so an old approval cannot
+          // silently restore access after this revocation.
+          await tx.changelogPreapproval.updateMany({
+            where: {
+              environmentId: environment.id,
+              email: recipient.email.trim().toLowerCase(),
+              state: "pending",
+            },
+            data: { state: "canceled", version: { increment: 1 } },
+          })
           await tx.authAuditEvent.create({
             data: buildAuditEvent({
               eventType: "changelog_contributor_revoked",
@@ -81,6 +91,7 @@ export async function manageChangelogContributors(
               },
             }),
           })
+        }
         return { changed: changed.count > 0 }
       }
       return {
@@ -96,15 +107,34 @@ export async function manageChangelogContributors(
 export async function withChangelogAdmin<T>(
   bearer: string | null,
   clientId: string,
-  operation: (context: {
-    tx: Prisma.TransactionClient
-    environment: { id: string; appId: string }
-    actorId: string
-    kind: string
-    grants: Prisma.AppGrantGetPayload<{
-      include: { scopes: { include: { scope: true } }; user: true }
-    }>[]
-  }) => Promise<T>,
+  operation: ChangelogOperation<T>,
+): Promise<T> {
+  return withChangelogAccess(bearer, clientId, true, operation)
+}
+
+export type ChangelogOperation<T> = (context: {
+  tx: Prisma.TransactionClient
+  environment: { id: string; appId: string }
+  actorId: string
+  kind: string
+  grants: Prisma.AppGrantGetPayload<{
+    include: { scopes: { include: { scope: true } }; user: true }
+  }>[]
+}) => Promise<T>
+
+export async function withChangelogViewer<T>(
+  bearer: string | null,
+  clientId: string,
+  operation: ChangelogOperation<T>,
+): Promise<T> {
+  return withChangelogAccess(bearer, clientId, false, operation)
+}
+
+async function withChangelogAccess<T>(
+  bearer: string | null,
+  clientId: string,
+  requireAdmin: boolean,
+  operation: ChangelogOperation<T>,
 ): Promise<T> {
   if (
     ![CHANGELOG_LOCAL_CLIENT_ID, CHANGELOG_PRODUCTION_CLIENT_ID].includes(
@@ -152,7 +182,17 @@ export async function withChangelogAdmin<T>(
           payload["https://jesusfilm.org/claims/app"] !== "changelog" ||
           payload["https://jesusfilm.org/claims/environment"] !== target ||
           typeof payload.scope !== "string" ||
-          !payload.scope.split(" ").includes("changelog:admin") ||
+          !payload.scope
+            .split(" ")
+            .some((scope) =>
+              requireAdmin
+                ? scope === "changelog:admin"
+                : [
+                    "changelog:read",
+                    "changelog:submit",
+                    "changelog:admin",
+                  ].includes(scope),
+            ) ||
           typeof payload.sub !== "string" ||
           typeof payload.sid !== "string"
         )
@@ -178,7 +218,8 @@ export async function withChangelogAdmin<T>(
         session.userId !== actorId ||
         session.expiresAt <= new Date() ||
         session.user.membershipStatus !== "ACTIVE" ||
-        session.user.actorType !== "HUMAN"
+        session.user.actorType !== "HUMAN" ||
+        (session.user.expiresAt && session.user.expiresAt <= new Date())
       ) {
         throw new ContributorManagementError(403, "access-denied")
       }
@@ -206,11 +247,14 @@ export async function withChangelogAdmin<T>(
         },
         include: { scopes: { include: { scope: true } }, user: true },
       })
+      const allowedScopes = requireAdmin
+        ? ["changelog:admin"]
+        : ["changelog:read", "changelog:submit", "changelog:admin"]
       if (
         !grants.some(
           (grant) =>
             grant.userId === actorId &&
-            grant.scopes.some(({ scope }) => scope.key === "changelog:admin"),
+            grant.scopes.some(({ scope }) => allowedScopes.includes(scope.key)),
         )
       ) {
         throw new ContributorManagementError(403, "access-denied")

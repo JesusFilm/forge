@@ -15,6 +15,8 @@ export type StartDownloadRequest = {
   videoSlug: string
   /** Human title stored on the record for the offline library. */
   title: string
+  /** The UI catalog tag the titles are in: the screen's captured forms (U7). */
+  titleLocale?: string
   dubDocumentId: string
   /** The chosen rendition (documentId/quality/size/url) to download. */
   rendition: WatchDownload
@@ -80,6 +82,7 @@ export function buildRequestRecord(
     renditionDocumentId: request.rendition.documentId,
     qualityLabel: request.rendition.quality,
     title: request.title,
+    titleLocale: request.titleLocale,
     subtitleLanguageSlug: request.subtitleLanguageSlug,
     state,
     committedPath: null,
@@ -107,6 +110,7 @@ export function buildReattachRequest(
   return {
     videoSlug: record.videoSlug,
     title: record.title,
+    titleLocale: record.titleLocale,
     dubDocumentId: record.dubDocumentId,
     rendition: {
       documentId: record.renditionDocumentId,
@@ -137,6 +141,10 @@ export function swapRevertFields(
   return {
     state: "downloaded",
     committedPath: swap.committedPath,
+    // A snapshot from before the dub was kept leaves the record's own in place.
+    ...(swap.dubDocumentId != null
+      ? { dubDocumentId: swap.dubDocumentId }
+      : {}),
     renditionDocumentId: swap.renditionDocumentId,
     qualityLabel: swap.qualityLabel,
     subtitleLanguageSlug: swap.subtitleLanguageSlug,
@@ -150,8 +158,9 @@ export function swapRevertFields(
 
 /**
  * Snapshot of the current committed copy taken before a swap begins (U8), the
- * exact fields swapRevertFields restores. committedPath passed separately so the
- * caller's non-null guard carries into the type.
+ * fields swapRevertFields restores (the dub only when the snapshot has one).
+ * committedPath passed separately so the caller's non-null guard carries into
+ * the type.
  */
 export function buildSwapSnapshot(
   existing: OfflineDownloadRecord,
@@ -160,6 +169,7 @@ export function buildSwapSnapshot(
   return {
     committedPath,
     renditionDocumentId: existing.renditionDocumentId,
+    dubDocumentId: existing.dubDocumentId,
     qualityLabel: existing.qualityLabel,
     subtitleLanguageSlug: existing.subtitleLanguageSlug,
     totalBytes: existing.totalBytes,

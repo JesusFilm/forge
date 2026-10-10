@@ -12,8 +12,7 @@ import {
 } from "./heroConfig"
 import { WATCH_HOME_SECTIONS } from "./fallbackConfig"
 
-// The hardcoded home locale pair (KTD-7): query locale + language identity, keyed on languageSlug, never bcp47.
-export const HOME_LOCALE = "en"
+// Home and For You read their languages from the store (U6, U7).
 export const ENGLISH_LANGUAGE_SLUG = "english"
 
 /**

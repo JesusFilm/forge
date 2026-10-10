@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto"
-import { readdirSync, readFileSync } from "node:fs"
 import { PrismaPg } from "@prisma/adapter-pg"
 import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
+import { recommendationRuntimeMigrationSql } from "./current-schema.test-fixture"
 import { RecommendationEpisodeService } from "./episode.service"
 import { RecommendationPlaybackService } from "./playback.service"
 import { RecommendationProfileService } from "./profile.service"
@@ -14,7 +14,6 @@ import {
 } from "./token.service"
 import { loadViewingModeAffinity } from "./viewing-mode.service"
 
-const root = new URL("../../../prisma/migrations/", import.meta.url)
 const caller = {
   id: "forge-web",
   role: "CONSUMER_BEARER" as const,
@@ -54,19 +53,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       await admin.connect()
       await admin.query(`CREATE SCHEMA "${schema}"`)
       await admin.query(`SET search_path TO "${schema}", public`)
-      for (const name of readdirSync(root)
-        .filter(
-          (name) =>
-            (Number(name.slice(0, 4)) >= 52 &&
-              Number(name.slice(0, 4)) <= 82 &&
-              name.includes("recommendation")) ||
-            name === "0082_user_recommendation_identity" ||
-            name === "0098_recommendation_viewing_mode",
-        )
-        .sort()) {
-        await admin.query(
-          readFileSync(new URL(`${name}/migration.sql`, root), "utf8"),
-        )
+      for (const migration of recommendationRuntimeMigrationSql) {
+        await admin.query(migration)
       }
       const url = new URL(env.DATABASE_URL)
       url.searchParams.delete("options")

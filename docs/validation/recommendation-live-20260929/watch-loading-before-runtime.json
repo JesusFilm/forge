@@ -1,0 +1,93 @@
+{
+  "measured_at": "2026-09-29T04:37:08.749062+00:00",
+  "environment": "production",
+  "inventory": [
+    {
+      "service": "@forge/admin",
+      "service_id": "bdb15048-1ca9-4217-ae01-ef7cc19ca6f4",
+      "active": [
+        {
+          "id": "da06ea5a-202d-4ac6-802c-9ecb671b3fd4",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-29T03:34:54.764Z",
+          "commit": "4c0beac5010daedf5b7fc0c740329f7661789831",
+          "image_digest": "sha256:9022805a53a9a50661a968676457a51dd72ebcdad04a585e307f9179d275f790",
+          "config_file": "/apps/admin/railway.toml",
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/api/health"
+          }
+        }
+      ],
+      "latest": {
+        "id": "da06ea5a-202d-4ac6-802c-9ecb671b3fd4",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-29T03:34:54.764Z",
+        "commit": "4c0beac5010daedf5b7fc0c740329f7661789831"
+      }
+    },
+    {
+      "service": "@forge/admin/worker",
+      "service_id": "4f805f5d-b98b-4e0d-8a41-194176336d2c",
+      "active": [
+        {
+          "id": "215a9ce3-3630-450a-a7a4-efddd96b5524",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-29T03:34:54.049Z",
+          "commit": "4c0beac5010daedf5b7fc0c740329f7661789831",
+          "image_digest": "sha256:819bc64607faf81b5481fc12cf9f00792de9c18de3b3b50257e43c2c1959b707",
+          "config_file": "/apps/admin/railway.worker.toml",
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/api/health"
+          }
+        }
+      ],
+      "latest": {
+        "id": "215a9ce3-3630-450a-a7a4-efddd96b5524",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-29T03:34:54.049Z",
+        "commit": "4c0beac5010daedf5b7fc0c740329f7661789831"
+      }
+    },
+    {
+      "service": "@forge/web",
+      "service_id": "23b82451-0da1-4edc-bcde-096a9fd2a687",
+      "active": [
+        {
+          "id": "77d3968b-c786-4a20-b09b-bf14cda67e23",
+          "status": "SUCCESS",
+          "createdAt": "2026-09-29T00:06:52.205Z",
+          "commit": "e2582c77b92ded7891c3b645f6a177bb4cb1a097",
+          "image_digest": "sha256:ead0d5c874b2a837b3172177ac9834aeae4d09924019c4a697c26a30b4eb8fea",
+          "config_file": "/apps/web/railway.toml",
+          "deploy_config": {
+            "numReplicas": 1,
+            "multiRegionConfig": {
+              "us-west2": {
+                "numReplicas": 1
+              }
+            },
+            "healthcheckPath": "/watch"
+          }
+        }
+      ],
+      "latest": {
+        "id": "77d3968b-c786-4a20-b09b-bf14cda67e23",
+        "status": "SUCCESS",
+        "createdAt": "2026-09-29T00:06:52.205Z",
+        "commit": "e2582c77b92ded7891c3b645f6a177bb4cb1a097"
+      }
+    }
+  ]
+}

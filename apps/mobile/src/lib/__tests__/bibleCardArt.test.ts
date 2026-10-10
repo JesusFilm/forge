@@ -21,6 +21,7 @@ function variant(fields: Partial<WatchVariant> = {}): WatchVariant {
     languageSlug: null,
     languageName: null,
     languageNameNative: null,
+    languageIso3: null,
     muxPlaybackId: "playbackA",
     ...fields,
   }
@@ -33,6 +34,7 @@ function citation(
     documentId: "cit-1",
     osisId: null,
     bookName: "Hebrews",
+    bookUsfm: "HEB",
     chapterStart: 1,
     chapterEnd: null,
     verseStart: 1,
@@ -114,6 +116,16 @@ describe("deriveBibleCardArt — still selection", () => {
 
     expect(forward.candidates).toEqual(shuffled.candidates)
     expect(forward.candidates[0]?.[0]).toContain("/playbackA/")
+  })
+
+  it("pins by code unit, so the device language cannot change the dub (KTD15)", () => {
+    // A collator puts "alpha" first; a code-unit compare puts "Zeta" first.
+    const upper = variant({ documentId: "Zeta", muxPlaybackId: "playbackZ" })
+    const lower = variant({ documentId: "alpha", muxPlaybackId: "playbackA" })
+
+    const result = deriveBibleCardArt(input({ variants: [lower, upper] }))
+
+    expect(result.candidates[0]?.[0]).toContain("/playbackZ/")
   })
 
   it("does not follow the active dub: a second dub never changes the URLs (R4)", () => {

@@ -11,9 +11,12 @@ import AsyncStorage from "@react-native-async-storage/async-storage"
 import { datadogLog } from "../lib/datadog"
 
 import {
+  audioIso3BackfillPatch,
+  audioLanguagePatch,
   DEFAULT_WATCH_PREFERENCES,
   parseStoredPreferences,
   serializeWatchPreferences,
+  subtitleNamePatch,
   WATCH_PREFERENCES_STORAGE_KEY,
   type WatchPreferences,
 } from "../lib/watchPreferences"
@@ -24,11 +27,18 @@ import {
  * + app restart. Mirrors {@link ExperienceSelectionProvider}: best-effort async.
  */
 type WatchPreferencesContextValue = WatchPreferences & {
-  setPreferredAudioLanguage: (slug: string | null) => void
+  /** Writes the slug and its ISO 639-3 code together (see audioLanguagePatch). */
+  setPreferredAudioLanguage: (slug: string | null, iso3: string | null) => void
+  /** Fills a missing code; ignored unless `slug` is still the stored slug. */
+  backfillAudioLanguageIso3: (slug: string, iso3: string) => void
   setPreferredSubtitleLanguage: (slug: string | null) => void
-  setPreferredSubtitleName: (name: string | null) => void
+  /** `locale` is the UI tag the name is in; the current tag when absent. A
+   *  screen that kept its captured language passes that tag (KTD16). */
+  setPreferredSubtitleName: (name: string | null, locale?: string) => void
   setSubtitlesEnabled: (enabled: boolean) => void
   setLongPressHintSeen: (seen: boolean) => void
+  /** Explore's saved mute choice (R11). The watch page never reads it. */
+  setExploreMuted: (muted: boolean) => void
   /** False until the persisted blob has been read from AsyncStorage. */
   isReady: boolean
 }
@@ -91,8 +101,18 @@ export function WatchPreferencesProvider({
     })
   }, [])
 
+  // Both read prefsRef, not render state, so a pick and a fill in one tick
+  // see each other and a fill for a replaced slug is dropped.
   const setPreferredAudioLanguage = useCallback(
-    (slug: string | null) => persist({ audioLanguageSlug: slug }),
+    (slug: string | null, iso3: string | null) =>
+      persist(audioLanguagePatch(prefsRef.current, slug, iso3)),
+    [persist],
+  )
+  const backfillAudioLanguageIso3 = useCallback(
+    (slug: string, iso3: string) => {
+      const patch = audioIso3BackfillPatch(prefsRef.current, slug, iso3)
+      if (patch) persist(patch)
+    },
     [persist],
   )
   const setPreferredSubtitleLanguage = useCallback(
@@ -100,7 +120,8 @@ export function WatchPreferencesProvider({
     [persist],
   )
   const setPreferredSubtitleName = useCallback(
-    (name: string | null) => persist({ subtitleLanguageName: name }),
+    (name: string | null, locale?: string) =>
+      persist(subtitleNamePatch(name, locale)),
     [persist],
   )
   const setSubtitlesEnabled = useCallback(
@@ -111,16 +132,24 @@ export function WatchPreferencesProvider({
     (seen: boolean) => persist({ longPressHintSeen: seen }),
     [persist],
   )
+  const setExploreMuted = useCallback(
+    (muted: boolean) => persist({ exploreMuted: muted }),
+    [persist],
+  )
 
+  // The name stays raw: each screen gates it on the tag it captured (KTD16),
+  // because a live Android change leaves an open screen in its old language.
   return (
     <WatchPreferencesContext.Provider
       value={{
         ...prefs,
         setPreferredAudioLanguage,
+        backfillAudioLanguageIso3,
         setPreferredSubtitleLanguage,
         setPreferredSubtitleName,
         setSubtitlesEnabled,
         setLongPressHintSeen,
+        setExploreMuted,
         isReady,
       }}
     >

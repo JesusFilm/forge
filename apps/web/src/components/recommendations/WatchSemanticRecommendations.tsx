@@ -1,11 +1,17 @@
 "use client"
 
+import {
+  waitForRecommendationActivation,
+  isDeferredRecommendationResponse,
+} from "@/lib/recommendation-activation"
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { MouseEvent } from "react"
 import type { Route } from "next"
 import { VideoRecommendations } from "@/components/sections/VideoRecommendations"
 import { RecommendationPersonalizationControl } from "@/components/recommendations/RecommendationPersonalizationControl"
 import { useEligibleRecommendationImpression } from "@/components/recommendations/useEligibleRecommendationImpression"
+import type { ExposureVisibilityCapability } from "@/components/recommendations/useEligibleRecommendationImpression"
 import {
   randomRecommendationNonce,
   recommendationEventId,
@@ -20,6 +26,7 @@ import type { SceneRecommendation } from "@/lib/recommendations"
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
   RECOMMENDATION_DELIVERY_CLIENT_VERSION,
+  COWATCH_MMR_CLIENT_DELIVERY_CONTRACT,
   RECOMMENDATION_EVIDENCE_CONTRACT,
   RECOMMENDATION_TAB_CORRELATION_KEY,
   SEMANTIC_RECOMMENDATION_CONTRACT,
@@ -74,7 +81,11 @@ type SemanticRecommendationItem = SceneRecommendation & {
   position: number
   targetMediaId: string
   canonicalHref: string
-  candidateGenerator: "semantic" | "multi-interest-profile" | "curated"
+  candidateGenerator:
+    | "semantic"
+    | "multi-interest-profile"
+    | "directional-cowatch"
+    | "curated"
   contributors: Array<{
     generator: string
     generatorVersion: string
@@ -108,6 +119,7 @@ type SemanticEnvelope = {
       | "semantic_contextual"
       | "hybrid_personalized"
       | "viewing_mode_personalized"
+      | "cowatch_mmr_personalized"
       | "semantic_fallback"
       | "curated_fallback"
       | null
@@ -189,6 +201,7 @@ function parseItem(value: unknown): SemanticRecommendationItem | null {
     !isCanonicalWatchRecommendationHref(item.canonicalHref) ||
     (item.candidateGenerator !== "semantic" &&
       item.candidateGenerator !== "multi-interest-profile" &&
+      item.candidateGenerator !== "directional-cowatch" &&
       item.candidateGenerator !== "curated") ||
     !nonEmptyString(item.capability) ||
     !nonEmptyString(item.videoSlug, 191) ||
@@ -365,6 +378,7 @@ function parsePersonalization(
       profile.executionMode !== "semantic_contextual" &&
       profile.executionMode !== "hybrid_personalized" &&
       profile.executionMode !== "viewing_mode_personalized" &&
+      profile.executionMode !== "cowatch_mmr_personalized" &&
       profile.executionMode !== "semantic_fallback" &&
       profile.executionMode !== "curated_fallback") ||
     !nonEmptyString(profile.effectiveManifestId, 191) ||
@@ -391,6 +405,7 @@ function parsePersonalization(
         profile.executionMode === "semantic_contextual") ||
       (profile.lane === "profile_challenger" &&
         (profile.executionMode === "hybrid_personalized" ||
+          profile.executionMode === "cowatch_mmr_personalized" ||
           profile.executionMode === "viewing_mode_personalized")) ||
       (profile.lane === "semantic_fallback" &&
         (profile.executionMode === "semantic_fallback" ||
@@ -513,16 +528,29 @@ export function WatchSemanticRecommendations({
       if (selectionAttemptRef.current || navigationStartedRef.current) return
       setProfileRevision((revision) => revision + 1)
     }
+    const restore = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        navigationStartedRef.current = false
+        selectionAttemptRef.current?.controller.abort()
+        selectionAttemptRef.current = null
+        setProfileRevision((revision) => revision + 1)
+      }
+    }
+    window.addEventListener("pageshow", restore)
     window.addEventListener("forge:recommendation-profile-changed", refresh)
-    return () =>
+    return () => {
+      window.removeEventListener("pageshow", restore)
       window.removeEventListener(
         "forge:recommendation-profile-changed",
         refresh,
       )
+    }
   }, [])
 
   useEffect(() => {
     let active = true
+    const activationController = new AbortController()
+    let recoveredDeferredResponse = false
     let controller: AbortController | null = null
     let deliveryRetryTimer: number | null = null
     let deliveryDeadlineAt: number | null = null
@@ -535,120 +563,137 @@ export function WatchSemanticRecommendations({
     evidenceLedger.current.impressed.clear()
     // StrictMode replays setup/cleanup before the microtask queue drains. The
     // first setup therefore cancels without issuing a state-creating POST.
-    queueMicrotask(() => {
-      if (!active) return
-      setState({ requestKey, status: "loading" })
-      const scheduleRetry = (attempt: number, delayMs: number) => {
-        if (
-          !active ||
-          attempt + 1 >= DELIVERY_MAX_ATTEMPTS ||
-          (deliveryDeadlineAt != null &&
-            Date.now() + delayMs >= deliveryDeadlineAt)
-        ) {
-          return false
-        }
-        deliveryRetryTimer = window.setTimeout(() => {
-          deliveryRetryTimer = null
-          load(attempt + 1)
-        }, delayMs)
-        return true
-      }
-      const load = (attempt: number) => {
+    void waitForRecommendationActivation(activationController.signal)
+      .then(() => {
         if (!active) return
-        if (
-          deliveryDeadlineAt != null &&
-          deliveryDeadlineAt - Date.now() <= 0
-        ) {
-          setState({ requestKey, status: "unavailable" })
-          return
+        setState({ requestKey, status: "loading" })
+        const scheduleRetry = (attempt: number, delayMs: number) => {
+          if (
+            !active ||
+            attempt + 1 >= DELIVERY_MAX_ATTEMPTS ||
+            (deliveryDeadlineAt != null &&
+              Date.now() + delayMs >= deliveryDeadlineAt)
+          ) {
+            return false
+          }
+          deliveryRetryTimer = window.setTimeout(() => {
+            deliveryRetryTimer = null
+            load(attempt + 1)
+          }, delayMs)
+          return true
         }
-        const attemptController = new AbortController()
-        controller = attemptController
-        void waitForRecommendationConsentBootstrap()
-          .then(() =>
-            withRecommendationConsentLock(async () => {
-              if (!active || attemptController.signal.aborted) {
-                throw new RecommendationRuntimeError("deadline")
-              }
-              deliveryDeadlineAt ??= Date.now() + DELIVERY_DEADLINE_MS
-              const attemptRemainingMs = deliveryDeadlineAt - Date.now()
-              if (attemptRemainingMs <= 0) {
-                throw new RecommendationRuntimeError("deadline")
-              }
-              return recommendationDeliveryJsonWithDeadline(
-                {
-                  method: "POST",
-                  cache: "no-store",
-                  credentials: "same-origin",
-                  headers: {
-                    "content-type": "application/json",
-                    "x-forge-recommendation-client":
-                      RECOMMENDATION_DELIVERY_CLIENT_VERSION,
+        const load = (attempt: number) => {
+          if (!active) return
+          if (
+            deliveryDeadlineAt != null &&
+            deliveryDeadlineAt - Date.now() <= 0
+          ) {
+            setState({ requestKey, status: "unavailable" })
+            return
+          }
+          const attemptController = new AbortController()
+          controller = attemptController
+          void waitForRecommendationConsentBootstrap()
+            .then(() =>
+              withRecommendationConsentLock(async () => {
+                if (!active || attemptController.signal.aborted) {
+                  throw new RecommendationRuntimeError("deadline")
+                }
+                deliveryDeadlineAt ??= Date.now() + DELIVERY_DEADLINE_MS
+                const attemptRemainingMs = deliveryDeadlineAt - Date.now()
+                if (attemptRemainingMs <= 0) {
+                  throw new RecommendationRuntimeError("deadline")
+                }
+                return recommendationDeliveryJsonWithDeadline(
+                  {
+                    method: "POST",
+                    cache: "no-store",
+                    credentials: "same-origin",
+                    headers: {
+                      "content-type": "application/json",
+                      "x-forge-recommendation-client":
+                        RECOMMENDATION_DELIVERY_CLIENT_VERSION,
+                      "x-forge-recommendation-delivery-contract":
+                        COWATCH_MMR_CLIENT_DELIVERY_CONTRACT,
+                    },
+                    body: JSON.stringify({
+                      seedMediaId,
+                      ...(seedMediaSlug ? { seedMediaSlug } : {}),
+                      locale,
+                      audioLanguageSlug,
+                    }),
+                    signal: attemptController.signal,
                   },
-                  body: JSON.stringify({
-                    seedMediaId,
-                    ...(seedMediaSlug ? { seedMediaSlug } : {}),
-                    locale,
-                    audioLanguageSlug,
-                  }),
-                  signal: attemptController.signal,
-                },
-                attemptRemainingMs,
-              )
-            }),
-          )
-          .then((value) => {
-            if (!active || !value || typeof value !== "object") return
-            const envelope = parseEnvelope(
-              (value as { delivery?: unknown }).delivery,
+                  attemptRemainingMs,
+                )
+              }),
             )
-            if (!envelope) {
-              setState({ requestKey, status: "unavailable" })
-              return
-            }
-            if (
-              (envelope.result === "served" ||
-                envelope.result === "fallback") &&
-              envelope.items.length > 0
-            ) {
-              setState({ requestKey, status: "ready", envelope })
-            } else if (envelope.result === "empty") {
-              setState({ requestKey, status: "empty" })
-            } else if (
-              envelope.result === "unavailable" &&
-              attempt + 1 < DELIVERY_MAX_ATTEMPTS &&
-              (envelope.reason === "cooldown" ||
-                envelope.reason === "in_flight" ||
-                envelope.reason === "delivery_unavailable" ||
-                envelope.reason === "delivery_timeout")
-            ) {
-              const retryMs =
-                envelope.reason === "cooldown" ||
-                envelope.reason === "in_flight"
-                  ? DELIVERY_COOLDOWN_MS
-                  : DELIVERY_RETRY_MS
-              if (!scheduleRetry(attempt, retryMs)) {
+            .then((value) => {
+              if (!active || !value || typeof value !== "object") return
+              if (isDeferredRecommendationResponse(value)) {
+                if (recoveredDeferredResponse) {
+                  setState({ requestKey, status: "unavailable" })
+                  return
+                }
+                recoveredDeferredResponse = true
+                load(attempt)
+                return
+              }
+              const envelope = parseEnvelope(
+                (value as { delivery?: unknown }).delivery,
+              )
+              if (!envelope) {
+                setState({ requestKey, status: "unavailable" })
+                return
+              }
+              if (
+                (envelope.result === "served" ||
+                  envelope.result === "fallback") &&
+                envelope.items.length > 0
+              ) {
+                setState({ requestKey, status: "ready", envelope })
+              } else if (envelope.result === "empty") {
+                setState({ requestKey, status: "empty" })
+              } else if (
+                envelope.result === "unavailable" &&
+                attempt + 1 < DELIVERY_MAX_ATTEMPTS &&
+                (envelope.reason === "cooldown" ||
+                  envelope.reason === "in_flight" ||
+                  envelope.reason === "delivery_unavailable" ||
+                  envelope.reason === "delivery_timeout")
+              ) {
+                const retryMs =
+                  envelope.reason === "cooldown" ||
+                  envelope.reason === "in_flight"
+                    ? DELIVERY_COOLDOWN_MS
+                    : DELIVERY_RETRY_MS
+                if (!scheduleRetry(attempt, retryMs)) {
+                  setState({ requestKey, status: "unavailable" })
+                }
+              } else {
                 setState({ requestKey, status: "unavailable" })
               }
-            } else {
+            })
+            .catch((error) => {
+              if (!active) return
+              const transientFailure =
+                !(error instanceof RecommendationRuntimeError) ||
+                error.code === "delivery_unavailable"
+              if (
+                transientFailure &&
+                scheduleRetry(attempt, DELIVERY_RETRY_MS)
+              ) {
+                return
+              }
               setState({ requestKey, status: "unavailable" })
-            }
-          })
-          .catch((error) => {
-            if (!active) return
-            const transientFailure =
-              !(error instanceof RecommendationRuntimeError) ||
-              error.code === "delivery_unavailable"
-            if (transientFailure && scheduleRetry(attempt, DELIVERY_RETRY_MS)) {
-              return
-            }
-            setState({ requestKey, status: "unavailable" })
-          })
-      }
-      load(0)
-    })
+            })
+        }
+        load(0)
+      })
+      .catch(() => undefined)
     return () => {
       active = false
+      activationController.abort()
       if (deliveryRetryTimer != null) {
         window.clearTimeout(deliveryRetryTimer)
       }
@@ -695,7 +740,11 @@ export function WatchSemanticRecommendations({
   )
 
   const sendEvidence = useCallback(
-    async (item: SemanticRecommendationItem, kind: "render" | "impression") => {
+    async (
+      item: SemanticRecommendationItem,
+      kind: "render" | "impression",
+      visibilityCapability: ExposureVisibilityCapability = "unknown",
+    ) => {
       if (
         !requestId ||
         item.capability === CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY
@@ -724,7 +773,10 @@ export function WatchSemanticRecommendations({
                 occurredAt: new Date().toISOString(),
                 payload:
                   kind === "impression"
-                    ? { visibilityPolicy: WATCH_RECOMMENDATION_SURFACE }
+                    ? {
+                        visibilityPolicy: WATCH_RECOMMENDATION_SURFACE,
+                        visibilityCapability,
+                      }
                     : { surfacePolicy: WATCH_RECOMMENDATION_SURFACE },
               },
             ],
@@ -797,10 +849,12 @@ export function WatchSemanticRecommendations({
   }, [claimEvidence, items, markInstrumentationDegraded, sendEvidence])
 
   const onEligible = useCallback(
-    (itemId: string) => {
+    (itemId: string, capability: ExposureVisibilityCapability) => {
       const item = itemById.get(itemId)
       if (item && claimEvidence("impression", item.id)) {
-        void sendEvidence(item, "impression").catch(markInstrumentationDegraded)
+        void sendEvidence(item, "impression", capability).catch(
+          markInstrumentationDegraded,
+        )
       }
     },
     [claimEvidence, itemById, markInstrumentationDegraded, sendEvidence],
@@ -992,6 +1046,8 @@ function viewerRecommendationExplanation(envelope: SemanticEnvelope) {
   if (mode === "curated_fallback") return "Selected videos to explore."
   if (mode === "viewing_mode_personalized")
     return "Recommended from this video and how you watch."
+  if (mode === "cowatch_mmr_personalized")
+    return "Recommended from this video and your interests."
   if (mode === "hybrid_personalized") {
     return "Recommended from this video and interests you chose to remember."
   }

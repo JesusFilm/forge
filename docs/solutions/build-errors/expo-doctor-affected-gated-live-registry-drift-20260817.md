@@ -1,6 +1,7 @@
 ---
 title: "Affected-gated expo-doctor bills upstream Expo patch drift to the first PR that wakes it"
 date: "2026-08-17"
+last_updated: "2026-09-30"
 category: build-errors
 module: mobile
 problem_type: build_error
@@ -11,6 +12,7 @@ symptoms:
   - "main is green for the same tree state"
   - "gh run rerun --failed fails identically (not flake)"
   - "after bumping only the named packages, doctor names MORE packages plus a duplicate-native-module failure"
+  - "the failing CI job is named expo-doctor, but the step that fails is `npx expo install --check`"
 root_cause: environment_config
 resolution_type: dependency_update
 related_components:
@@ -40,9 +42,19 @@ green on the same manifest state.
    `@forge/mobile` is in the affected set
    (`contains(fromJson(needs.affected.outputs.services), '@forge/mobile')` in
    `.github/workflows/ci.yml`). Most PRs never run it.
-2. **The check validates against LIVE external state.** `expo-doctor` compares
-   installed versions to what the Expo SDK currently expects **per the npm
-   registry today**, not to anything in the repo.
+2. **The check validates against LIVE external state.** The job's first check,
+   `npx expo install --check` (`.github/workflows/ci.yml:504-506`), compares
+   installed versions to what Expo's servers expect for the SDK **today**, not
+   to anything in the repo. The Expo CLI fetches `sdks/<sdk>/native-modules`
+   from the Expo API (`@expo/cli` 57.0.26,
+   `build/src/api/getNativeModuleVersions.js:19`). It uses the installed
+   `expo/bundledNativeModules.json` only when `EXPO_OFFLINE` is set or the
+   API cannot be reached
+   (`build/src/start/doctor/dependencies/bundledNativeModules.js:83-97`). The
+   pinned `expo-doctor` step after it runs with
+   `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1`, so the version failure always
+   comes from the first step, even though the job is named `expo-doctor`.
+   (Corrected 2026-09-28: this item first said "per the npm registry".)
 
 So when Expo published patch releases (`expo 57.0.13`, `@expo/metro-runtime
 57.0.10`, …), no CI noticed — until the first PR whose blast radius reached
@@ -64,6 +76,11 @@ the drift.
    proves nothing about the registry state your run saw.
 4. Read the job log's mismatch table (`expected` vs `found` columns) — it names
    the moved packages outright.
+5. Run the check both ways from `apps/mobile`. If `npx expo install --check`
+   fails and `EXPO_OFFLINE=1 npx expo install --check` passes, the installed
+   packages still match the installed SDK's own list, and the drift is
+   upstream. (Verified 2026-09-28: online, seven packages failed; offline, the
+   same tree reported "Dependencies are up to date".)
 
 ## Fix
 
@@ -85,7 +102,7 @@ cd apps/mobile
 npx expo-doctor@<CI-pinned-version>   # verify 20/20 — use CI's exact version
 ```
 
-Result here: nine patch bumps within the SDK 54 line (Expo's patch releases are
+Result here: nine patch bumps within the SDK 57 line (Expo's patch releases are
 bug/security fixes only — no minors, no new packages), doctor 20/20, mobile
 suite and typecheck green, full CI matrix green.
 
@@ -114,7 +131,8 @@ suite and typecheck green, full CI matrix green.
 PR #2311 changed Web's Redis cache-handler patch and woke the Mobile check through
 the workspace lockfile. All other PR checks passed, but existing `expo` 57.0.22
 and `expo-build-properties` 57.0.17 failed the current patch recommendations.
-The same failure reproduced in untouched, previously merged d9dce17.
+The same failure reproduced on an earlier, untouched `main` commit (a
+docs-only commit of 2026-09-15).
 
 Merging a scoped fix with a documented baseline failure did **not** make its
 Web rollout ready: the production Railway Web trigger has `checkSuites: true`.
@@ -131,10 +149,36 @@ checks: `pnpm --filter @forge/mobile deploy --prod <temp>` followed by the pinne
 Doctor with `EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK=1`. That setting belongs
 only to the isolated second check; the preceding version check remains enabled.
 
+## Recurrence record: plan for the next one
+
+Expo publishes SDK 57 patch releases often, so this check goes red about
+every one or two weeks. Each row is one alignment (or one open failure):
+
+| Date (UTC) | Pull request       | What happened                                                                                                                                                            |
+| ---------- | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-08-17 | #1945              | The first recorded case (above). A TV PR woke the check through `packages/admin-graphql`.                                                                                |
+| 2026-08-21 | #1986              | A scoped alignment of nine Expo packages, split out of the Better Auth upgrade.                                                                                          |
+| 2026-08-28 | #2097              | The check went red on `main`. Railway's wait-for-CI gate then blocked every service's deploy, and a web page stayed a 404 until the bump merged.                         |
+| 2026-09-15 | #2312 (`feat-510`) | The September 16 recurrence above.                                                                                                                                       |
+| 2026-09-21 | #2355 (`feat-524`) | An alignment to the 57.0.24 patch set.                                                                                                                                   |
+| 2026-09-26 | #2427 (open)       | `expo` 57.0.25 and six siblings were published 2026-09-24T10:13Z. As of 2026-09-28, no alignment PR exists, so every PR that wakes the check fails it.                   |
+| 2026-09-28 | #2432 (`feat-556`) | An alignment of seven packages to the 57.0.25 patch set.                                                                                                                 |
+| 2026-09-30 | #2509 (`feat-582`) | `expo` 57.0.26 and three siblings were published 2026-09-29T10:57Z. PR #2466 woke the check, then merged with it red, so `main` went red. An alignment of four packages. |
+
+Two things follow for the next agent:
+
+- **Expect it, and split it out.** When the check fails on a PR with no
+  dependency change, do not fix it in that PR. Open the separate alignment PR
+  from `main` that the Fix section describes, and say in the feature PR that
+  the failure is upstream drift.
+- **The structural cause is still open.** #2097 proposed two fixes: make the
+  version check non-blocking for `ci-gate`, or scope the Railway deploy gate
+  to each service. As of 2026-09-28, no roadmap ticket tracks either one.
+
 ## Cross-references
 
 - `docs/solutions/build-errors/expo-doctor-sdk54-health-checks-mobile-v2-20260409.md`
   — different expo-doctor failure mode (accumulated project-config health issues
   when the check was first introduced). Together they cover both ways this job
   goes red: config debt vs. upstream registry drift.
-- Fixed in commit `551a12f9` on `feat/tv-combined` (PR #1945).
+- Fixed in PR #1945 (`feat/tv-combined`, squash-merged 2026-08-17).

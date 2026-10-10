@@ -45,6 +45,19 @@ describe("parseOfflineRecord", () => {
     expect(parseOfflineRecord(serializeOfflineRecord(RECORD))).toEqual(RECORD)
   })
 
+  // U7 (R4): the language of the stored titles. A record from before U7 has
+  // none (the round trip above), and the title refresh reads that as `en`.
+  it("keeps the titles' locale, and drops one that is not a string", () => {
+    const stamped = { ...RECORD, titleLocale: "ru" }
+    expect(
+      parseOfflineRecord(serializeOfflineRecord(stamped))?.titleLocale,
+    ).toBe("ru")
+    expect(
+      parseOfflineRecord(JSON.stringify({ ...RECORD, titleLocale: 7 }))
+        ?.titleLocale,
+    ).toBeUndefined()
+  })
+
   it("round-trips a mid-swap record's swapFrom snapshot", () => {
     const swapping: OfflineDownloadRecord = {
       ...RECORD,
@@ -53,6 +66,7 @@ describe("parseOfflineRecord", () => {
       swapFrom: {
         committedPath: "file:///docs/downloads/x/old.mp4",
         renditionDocumentId: "rend-low-1",
+        dubDocumentId: "dub-old",
         qualityLabel: "Low",
         subtitleLanguageSlug: null,
         totalBytes: 100,
@@ -62,6 +76,27 @@ describe("parseOfflineRecord", () => {
     expect(parseOfflineRecord(serializeOfflineRecord(swapping))).toEqual(
       swapping,
     )
+  })
+
+  it("reads a swapFrom written before the dub was kept as an unknown dub", () => {
+    const out = parseOfflineRecord(
+      JSON.stringify({
+        ...RECORD,
+        swapFrom: {
+          committedPath: "file:///docs/downloads/x/old.mp4",
+          renditionDocumentId: "rend-low-1",
+        },
+      }),
+    )
+    expect(out?.swapFrom).toEqual({
+      committedPath: "file:///docs/downloads/x/old.mp4",
+      renditionDocumentId: "rend-low-1",
+      dubDocumentId: null,
+      qualityLabel: "",
+      subtitleLanguageSlug: null,
+      totalBytes: 0,
+      posterPath: null,
+    })
   })
 
   it("drops a malformed swapFrom (no identity) to null", () => {

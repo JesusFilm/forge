@@ -1,6 +1,7 @@
 ---
 title: "Retiring a shared contract while leaving consumers as compile shims produces an invisible outage"
 date: "2026-07-23"
+last_updated: "2026-10-07"
 category: "workflow-issues"
 module: "apps/mobile + apps/tv + apps/admin + packages/admin-graphql"
 problem_type: "workflow_issue"
@@ -35,17 +36,18 @@ tags:
 
 Admin PR #1622 retired the GraphQL field `Query.search` and replaced it with a
 richer multilingual field. In the current schema only the replacement exists —
-`watchSearch(input: WatchSearchInput!): WatchSearchResponse`
-(`apps/admin/schema.graphql:1042`, input type at `:1967`); `Query.search` is
+`watchSearch(input: WatchSearchInput!): WatchSearchResponse` on `Query`, with
+`input WatchSearchInput`, in `apps/admin/schema.graphql`; `Query.search` is
 gone.
 
 `apps/web` was migrated in that same PR. `apps/mobile` and `apps/tv` were not.
 Both were left as **compile shims**: the network call was deleted, the
 surrounding hook contract was kept, and a hardcoded empty value was substituted
-for the response. The TV shim is still in the tree today:
+for the response. TV kept its shim until PR #1701 restored TV search on
+2026-07-23, the day this doc was written:
 
 ```ts
-// apps/tv/src/lib/search.ts:200-205
+// git show 701dfeb42^:apps/tv/src/lib/search.ts, lines 200-205 (before PR #1701)
 // TODO(feat-254): Temporary non-P0 compile shim. TV keeps the search
 // hook contract while Admin replaces the legacy Query.search surface
 // for Watch web first.
@@ -55,10 +57,10 @@ const items: SearchResult[] = []
 ```
 
 That empty array flows straight into the hook's ordinary success path — the
-`items.length === 0` branch sets state to `"empty"`
-(`apps/tv/src/lib/search.ts:231-233`), which is the same state a genuine
-zero-result query produces. TV search returns "no results" for every query ever
-typed, and reports it as a normal empty search.
+`items.length === 0` branch sets state to `"empty"` (line 231 of the same
+file), which is the same state a genuine zero-result query produces. TV search
+returned "no results" for every query typed, and reported it as a normal empty
+search.
 
 Mobile had the same shim in its Watch tab
 (`git show b99e7ae6:"apps/mobile/app/(tabs)/watch.tsx"`, lines 214-218):
@@ -71,9 +73,9 @@ if (requestIdRef.current !== thisRequest) return
 setResults([])
 ```
 
-Mobile is fixed on this branch (`apps/mobile/src/lib/queries.ts:44` defines the
-`WatchSearch` operation; `apps/mobile/app/(tabs)/watch.tsx:295` and `:418` call
-it). **TV is not.**
+Mobile was fixed first: `apps/mobile/src/lib/queries.ts` defines the
+`WatchSearch` operation, and `apps/mobile/app/(tabs)/watch.tsx` sends it
+(`query: WATCH_SEARCH`). TV followed in PR #1701 (merged 2026-07-23).
 
 Three things made the damage larger than "one screen is broken":
 
@@ -89,7 +91,8 @@ Three things made the damage larger than "one screen is broken":
    }
    ```
 
-   All six browse categories (`apps/mobile/src/lib/browseTopics.ts:15-45`)
+   All six browse categories (`BROWSE_TOPICS` in
+   `apps/mobile/src/lib/browseTopics.ts`)
    silently lost their artwork. The search screen was the surface everyone was
    thinking about; the thumbnails were collateral, and nothing pointed at them.
 
@@ -97,8 +100,8 @@ Three things made the damage larger than "one screen is broken":
    `feat-254`. That ticket is `status: "complete"`
    (`docs/roadmap/platform/feat-254-watch-universal-multilingual-search.md:6`)
    and explicitly scoped mobile and TV out: _"Do not require mobile or TV
-   adoption in P0."_ (`:68`). The ticket the shims are waiting on has been done
-   for days, and no follow-up ticket exists.
+   adoption in P0."_ (`:70`). When this doc was written, the ticket the shims
+   were waiting on had been done for days, and no follow-up ticket existed.
 
 3. **Rewiring later lost a detail the original had earned.** When mobile was
    rewired, the obvious input hardcoded `displayLanguageSlug: "en"`. Admin wants
@@ -154,11 +157,20 @@ watchSearch`) and cite _that_, and add it to the retiring ticket's `blocks`; or
 
 ### 5. Validate every client operation against the real schema in CI
 
-This is the check that catches schema drift in a client query. CI today
-regenerates artifacts and diffs them — `admin-graphql-generate`
-(`.github/workflows/ci.yml:78`), `admin-schema-drift` (`:97`) — and runs
-per-service `typecheck` (`:178`). None of those validate a client _operation_
-against the SDL, and typecheck does not do it either (see §Why This Matters).
+This is the check that catches schema drift in a client query's document. CI
+regenerates artifacts and diffs them — the `admin-graphql-generate` and
+`admin-schema-drift` jobs in `.github/workflows/ci.yml` — and runs the
+per-service `Typecheck` step of the `lint` job. None of those validate a client
+_operation_ against the SDL, and typecheck does not do it either (see §Why This
+Matters).
+
+Since this doc was written, mobile has added two scoped jest guards that run in
+the CI test job and validate their own documents against the committed SDL:
+`apps/mobile/src/lib/recommendations/__tests__/operations.contract.guard.test.js`
+(the recommendation and push documents, PR #2329) and
+`apps/mobile/src/lib/__tests__/videoTextDocuments.contract.guard.test.js` (the
+UI-locale documents, PR #2510). They cover only the documents they list, and
+like the recipe below they call `validate()` only.
 
 Recipe, verified working against this tree:
 
@@ -228,6 +240,20 @@ Four details are load-bearing:
   revert. Without it you cannot tell a passing check from a check that scanned
   nothing.
 
+**What `validate()` cannot see (added 2026-10-07).** It reads the document
+only. A value carried in the variables, such as a new or retired enum value or
+a new or removed input field sent through `$input`, passes `validate()` against
+a schema that rejects it at variable coercion. Verified by hand 2026-10-06,
+graphql@16.13.1: the mobile `SubmitFeedback` operation with `kind: TRANSLATION`
+and `uiLocale` validated with 0 errors against `origin/main`'s
+`apps/admin/schema.graphql`, and `execute()` with the same variables gave two
+coercion errors. To hold that class, execute the operation with real variables
+against the target schema. The
+[version-skew row](../best-practices/mocked-shape-vs-real-contract-discipline-20260506.md)
+of the mocked-vs-real doc records that case, and the
+[fake-admin proxy](../developer-experience/mobile-write-path-smoke-via-fake-admin-proxy.md)
+has a real-schema mode that runs it on a device.
+
 ### 6. When you finally rewire, port the details — don't rewrite from the signature
 
 Read what the deleted call actually sent. If the original is already gone, treat
@@ -236,7 +262,8 @@ pin whatever you learn with a guard test.
 `apps/mobile/src/lib/__tests__/watchSearchInput.guard.test.js` is the shape: a
 source scan asserting the language-input keys appear only inside
 `buildWatchSearchInput` (`ALLOWED` at `:13`), with a positive-control case
-proving the detector flags real violations (`:63-98`).
+proving the detector flags real violations ("positive control: the detector
+flags a real violation", `:72`).
 
 ## Why This Matters
 
@@ -283,12 +310,13 @@ The economics are what make it expensive. The shim is a two-minute edit during a
 PR that is already large, taken to keep CI green. What it buys is an outage with
 no detector, no owner, and no clock: mobile search returned nothing for every
 query, six browse categories lost their artwork with no one aware they were
-connected to search at all, and TV is _still_ in that state while the ticket both
-shims cite reads `complete`.
+connected to search at all, and TV stayed in that state, with the ticket both
+shims cite reading `complete`, until PR #1701.
 
 Note the asymmetry in what §5 can catch. The validator catches a **stale**
 operation — a query the client still sends that the schema no longer accepts. It
-cannot catch a **deleted** one, because there is nothing left to validate. That
+cannot catch a **deleted** one, because there is nothing left to validate, and
+it cannot catch drift in a variable value (see §5). That
 is the argument for §2 stated precisely: keeping the broken call is _detectable_;
 shimming it away removes the only artifact a machine could have checked. The
 complementary control for shims is human: a grep-able marker plus an owned
@@ -311,7 +339,8 @@ ticket (§4).
 
 ## Examples
 
-**Shim (do not do this)** — `apps/tv/src/lib/search.ts:200-205`, still live:
+**Shim (do not do this)** — `apps/tv/src/lib/search.ts:200-205` before PR #1701
+(`git show 701dfeb42^:apps/tv/src/lib/search.ts`):
 
 ```ts
 // TODO(feat-254): Temporary non-P0 compile shim. TV keeps the search
@@ -342,7 +371,9 @@ docstring says "Temporarily no-ops while Watch search is rebuilt for web first",
 and the body writes `null` for every topic. Nothing in the browse UI is named
 "search", so nobody connected the blank cards to the retirement.
 
-**Running the validator** against this tree:
+**Running the validator** against the tree on 2026-07-23. A re-run on
+2026-10-07 found 14 operations, 36 fragments and 0 errors, and the same
+negative control still failed:
 
 ```
 $ node validate-ops.mjs ../admin/schema.graphql \
@@ -369,4 +400,7 @@ INVALID src/lib/queries.ts [WatchSearch]: Cannot query field
   §4 here is the same idea for the consumer side of a retirement.
 - `docs/roadmap/platform/feat-254-watch-universal-multilingual-search.md` — the
   retiring ticket, `status: complete` with mobile/TV explicitly out of P0 scope
-  (`:68`).
+  (`:70`).
+- `docs/solutions/developer-experience/mobile-write-path-smoke-via-fake-admin-proxy.md`
+  — its real-schema mode executes one write against the branch or `origin/main`
+  schema, which catches the variable-value drift that §5 cannot.

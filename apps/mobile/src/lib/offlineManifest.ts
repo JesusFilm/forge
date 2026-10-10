@@ -40,6 +40,8 @@ const VALID_STATES: ReadonlySet<string> = new Set<OfflineDownloadState>([
 export type SwapFrom = {
   committedPath: string
   renditionDocumentId: string
+  /** The dub the old file holds; null on a snapshot written before it was kept. */
+  dubDocumentId: string | null
   qualityLabel: string
   subtitleLanguageSlug: string | null
   totalBytes: number
@@ -58,6 +60,9 @@ export type OfflineDownloadRecord = {
   qualityLabel: string
   /** Human title for the offline library; an empty value falls back to slug. */
   title: string
+  /** The UI catalog tag `title` and `seriesTitle` are in (U7). Absent on a
+   *  record from before U7, which the title refresh reads as `en`. */
+  titleLocale?: string
   /** Chosen subtitle language slug, or null for "No subtitles". */
   subtitleLanguageSlug: string | null
   state: OfflineDownloadState
@@ -115,6 +120,7 @@ function parseSwapFrom(value: unknown): SwapFrom | null {
   return {
     committedPath,
     renditionDocumentId,
+    dubDocumentId: asString(o.dubDocumentId),
     qualityLabel: asString(o.qualityLabel) ?? "",
     subtitleLanguageSlug: asString(o.subtitleLanguageSlug),
     totalBytes: asFiniteNumber(o.totalBytes),
@@ -157,6 +163,7 @@ export function parseOfflineRecord(
     renditionDocumentId,
     qualityLabel: asString(obj.qualityLabel) ?? "",
     title: asString(obj.title) ?? "",
+    titleLocale: asOptionalString(obj.titleLocale),
     subtitleLanguageSlug: asString(obj.subtitleLanguageSlug),
     state: state as OfflineDownloadState,
     committedPath: asString(obj.committedPath),

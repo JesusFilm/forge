@@ -34,6 +34,14 @@ import {
   ProfileEligibilityReconciliation,
   PromotionDecision,
 } from "./recommendation-evaluation-sections"
+import {
+  WatchExposureInspection,
+  resolveWatchExposureInspectionFilter,
+} from "./watch-exposure-inspection"
+import {
+  loadWatchExposureBreakdown,
+  loadAnonymousWatchExposureBreakdown,
+} from "@/services/recommendations/admin-ops/watch-exposure.service"
 
 type RecommendationsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>
@@ -104,12 +112,17 @@ export default async function RecommendationsPage({
     redirect("/dashboard")
   }
   const params = (await searchParams) ?? {}
+  const exposureSelection = resolveWatchExposureInspectionFilter(
+    params.exposure,
+    params.exposurePlacement,
+    params.exposurePolicy,
+  )
   const canReadTraces = hasPermission(principal, "read:recommendation-traces")
   const canOperatePromotion = hasPermission(
     principal,
     "operate:recommendation-experiments",
   )
-  const [overview, traces, playback] = await Promise.all([
+  const [overview, traces, playback, watchExposures] = await Promise.all([
     loadRecommendationOverview(prisma, {
       window: params.window,
     }),
@@ -127,6 +140,25 @@ export default async function RecommendationsPage({
           () => null,
         )
       : null,
+    exposureSelection.invalid
+      ? null
+      : Promise.all([
+          loadWatchExposureBreakdown(
+            prisma,
+            params.window,
+            exposureSelection.filter,
+          ),
+          loadAnonymousWatchExposureBreakdown(
+            prisma,
+            params.window,
+            exposureSelection.filter,
+          ),
+        ])
+          .then(([signed, anonymous]) => ({
+            rows: [...signed, ...anonymous.rows],
+            truncated: anonymous.truncated,
+          }))
+          .catch(() => null),
   ])
 
   return (
@@ -138,6 +170,21 @@ export default async function RecommendationsPage({
         action={<WindowPicker selected={overview.window.preset} />}
       />
 
+      <PageSection
+        title="Directional co-watch"
+        meta="SHADOW ONLY / NO PROMOTION"
+      >
+        <div className="p-4 text-[13px] text-[var(--color-text-secondary)]">
+          Inspect directional population edges, profile-selected anchors, source
+          health, and the terminal no-promotion decision.{" "}
+          <Link
+            href="/dashboard/recommendations/cowatch"
+            className="underline underline-offset-4"
+          >
+            Open co-watch evidence
+          </Link>
+        </div>
+      </PageSection>
       <HealthSummary overview={overview} />
       <PromotionDecision overview={overview} canOperate={canOperatePromotion} />
       <ControlReadiness overview={overview} canReadTraces={canReadTraces} />
@@ -146,6 +193,13 @@ export default async function RecommendationsPage({
       <ProfileEligibilityReconciliation overview={overview} />
       <PlaybackEvidence playback={playback} canReadTraces={canReadTraces} />
       <Funnel overview={overview} />
+      <WatchExposureInspection
+        rows={watchExposures?.rows ?? null}
+        truncated={watchExposures?.truncated ?? false}
+        replays={overview.counts?.replays ?? null}
+        window={overview.window.preset}
+        selection={exposureSelection}
+      />
       <OperationalTruth overview={overview} />
       <EligibilityTruth overview={overview} />
       <PrivacyTruth overview={overview} />
@@ -213,6 +267,99 @@ function PlaybackEvidence({
           label="Outcome revisions"
           value={formatCount(playback.counts.outcomes)}
         />
+      </div>
+      <div className="border-t border-[var(--color-hairline)] px-4 py-3 text-[12px] text-[var(--color-text-secondary)]">
+        <div className="label-text">
+          Navigation and QoE · full {playback.window.preset} snapshot
+        </div>
+        {playback.observationSnapshot.windowStart &&
+          playback.observationSnapshot.windowEnd &&
+          playback.observationSnapshot.computedAt && (
+            <p className="mt-1 text-[var(--color-text-muted)]">
+              Exact window{" "}
+              {playback.observationSnapshot.windowStart.toISOString()} to{" "}
+              {playback.observationSnapshot.windowEnd.toISOString()} · computed{" "}
+              {playback.observationSnapshot.computedAt.toISOString()}
+              {playback.observationSnapshot.stale
+                ? " · stale"
+                : " · current daily snapshot"}
+              . Headline counts above use the live selected window.
+            </p>
+          )}
+        {playback.observationSnapshot.refreshFailed && (
+          <p className="mt-1 text-[var(--color-text-muted)]">
+            The latest snapshot refresh failed. The last successful snapshot is
+            retained when available.
+          </p>
+        )}
+        {playback.observationWindow ? (
+          <>
+            <p className="mt-2">
+              Episodes {playback.observationWindow.episodes} · attempts{" "}
+              {playback.observationWindow.attempts} · starts{" "}
+              {playback.observationWindow.starts} · finalized{" "}
+              {playback.observationWindow.finalized} · outcomes{" "}
+              {playback.observationWindow.outcomes} · v2 summaries{" "}
+              {playback.observationWindow.v2Summaries}
+            </p>
+            <p className="mt-1">
+              Navigation observed / partial / missing{" "}
+              {playback.observationWindow.navigation.observed} /{" "}
+              {playback.observationWindow.navigation.partial} /{" "}
+              {playback.observationWindow.navigation.missing} · v2{" "}
+              {playback.observationWindow.navigation.v2Observed} · manual skips{" "}
+              {playback.observationWindow.navigation.manualSkips} · user pauses{" "}
+              {playback.observationWindow.navigation.userPauses}
+            </p>
+            <p className="mt-1">
+              QoE observed / partial / missing{" "}
+              {playback.observationWindow.qoe.observed} /{" "}
+              {playback.observationWindow.qoe.partial} /{" "}
+              {playback.observationWindow.qoe.missing} · v2{" "}
+              {playback.observationWindow.qoe.v2Observed} · startup timeouts{" "}
+              {playback.observationWindow.qoe.startupTimeouts} · fatal errors{" "}
+              {playback.observationWindow.qoe.fatalErrors}
+            </p>
+            <div className="mt-2 text-[var(--color-text-muted)]">
+              {playback.observationWindow.breakdowns.map((breakdown) => (
+                <p key={`${breakdown.deviceClass}:${breakdown.networkClass}`}>
+                  {breakdown.deviceClass} / {breakdown.networkClass}:{" "}
+                  {breakdown.episodes < 5
+                    ? "small cohort suppressed"
+                    : `${breakdown.episodes} episodes · navigation ${breakdown.navigationObserved} observed · QoE ${breakdown.qoeObserved} observed`}
+                </p>
+              ))}
+            </div>
+          </>
+        ) : (
+          <p className="mt-2 text-[var(--color-text-muted)]">
+            No full-window observation snapshot is available yet. The durable
+            refresh runs after deployment and daily; episode detail and
+            persisted readiness remain available.
+          </p>
+        )}
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {(["navigation", "qoe"] as const).map((family) => {
+            const evaluation = playback.signalReadiness[family]
+            return (
+              <div
+                key={family}
+                className="border border-[var(--color-hairline)] p-3"
+              >
+                <div className="label-text">{family} readiness</div>
+                <p className="mt-1">
+                  {evaluation?.decision ?? "inconclusive"} · health{" "}
+                  {evaluation?.ingestionHealth ?? "unknown"}
+                </p>
+                <p className="mt-1 text-[var(--color-text-muted)]">
+                  {evaluation
+                    ? `${evaluation.observedCount}/${evaluation.episodeCount} observed · ${evaluation.v2SummaryCount} v2 summaries · ${evaluation.reasonCodes.join(", ")} · window ${evaluation.windowStart.toISOString().slice(0, 10)} to ${evaluation.windowEnd.toISOString().slice(0, 10)} · ${evaluation.reevaluationCondition}`
+                    : "No persisted evaluation yet; next daily mature-window run will assess this family."}
+                </p>
+              </div>
+            )
+          })}
+        </div>
       </div>
       <div className="border-t border-[var(--color-hairline)] px-4 py-3 text-[12px] text-[var(--color-text-secondary)]">
         <div className="label-text">

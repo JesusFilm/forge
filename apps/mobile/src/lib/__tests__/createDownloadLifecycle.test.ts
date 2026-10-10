@@ -188,6 +188,19 @@ function makeHarness(options: HarnessOptions = {}) {
   }
 }
 
+// U7 (R4): the offline title refresh writes through the lifecycle. The field
+// merge over the current record is pinned in offlineTitleRefresh.test.ts.
+describe("patchTitles", () => {
+  it("writes nothing for a record that is gone", async () => {
+    const h = makeHarness()
+    await h.lifecycle.patchTitles("washi-gospel-1", {
+      title: "Новое",
+      titleLocale: "ru",
+    })
+    expect(h.writes).toHaveLength(0)
+  })
+})
+
 describe("start", () => {
   it("refuses a live non-placeholder record with `exists`", async () => {
     const h = makeHarness({ records: [makeRecord()] })
@@ -341,10 +354,46 @@ describe("swap", () => {
     expect(midSwap.swapFrom).toEqual({
       committedPath: existing.committedPath,
       renditionDocumentId: "rend-1",
+      dubDocumentId: "dub-1",
       qualityLabel: "High",
       subtitleLanguageSlug: null,
       totalBytes: 1000,
       posterPath: null,
+    })
+  })
+
+  // The sheet sends the ACTIVE dub, so a swap can change language. Before this
+  // the record kept the old dub while fetching the new dub's file.
+  it("a language swap names the request's dub on the record and keeps the old one for a revert", async () => {
+    const h = makeHarness({ records: [makeRecord()] })
+    const request = makeRequest({ dubDocumentId: "dub-2" })
+    request.rendition = { ...request.rendition, documentId: "rend-2" }
+    expect(await h.lifecycle.swap(request)).toEqual({ ok: true })
+    const midSwap = h.writes[0]
+    expect(midSwap.dubDocumentId).toBe("dub-2")
+    expect(midSwap.swapFrom?.dubDocumentId).toBe("dub-1")
+  })
+
+  // U7: a title and its locale are one pair, so a swap writes both or neither.
+  it.each([
+    [
+      "with a new title stores that title's locale",
+      { title: "English title", titleLocale: "en" },
+      { title: "Русское название", titleLocale: "ru" },
+    ],
+    [
+      "without a title keeps the old title and its locale",
+      { title: "Русское название", titleLocale: "ru" },
+      { title: "", titleLocale: "en" },
+    ],
+  ])("a swap %s", async (_case, stored, requested) => {
+    const h = makeHarness({ records: [makeRecord(stored)] })
+    const request = makeRequest(requested)
+    request.rendition = { ...request.rendition, documentId: "rend-2" }
+    expect(await h.lifecycle.swap(request)).toEqual({ ok: true })
+    expect(h.writes[0]).toMatchObject({
+      title: "Русское название",
+      titleLocale: "ru",
     })
   })
 
@@ -789,6 +838,7 @@ describe("native handlers", () => {
     const existing = makeRecord({ renditionDocumentId: "rend-old" })
     const h = makeHarness({ records: [existing] })
     const request = makeRequest({
+      dubDocumentId: "dub-2",
       subtitleLanguageSlug: "korean",
       subtitleUrl: null,
     })
@@ -801,6 +851,8 @@ describe("native handlers", () => {
     const record = h.records.get("washi-gospel-1")
     expect(record?.state).toBe("downloaded")
     expect(record?.renditionDocumentId).toBe("rend-old")
+    // The old file is the old dub's audio, so the revert names it again.
+    expect(record?.dubDocumentId).toBe("dub-1")
     expect(record?.swapFrom).toBeNull()
   })
 

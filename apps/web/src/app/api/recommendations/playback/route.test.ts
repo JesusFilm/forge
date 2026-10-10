@@ -313,6 +313,74 @@ describe("POST /watch/api/recommendations/playback", () => {
     },
   )
 
+  it("accepts v2 optional facts before the browser collector emits them", async () => {
+    const events = [
+      {
+        eventId: "observation-v2",
+        kind: "playback_observation",
+        occurredAt: "2026-08-19T03:00:00.000Z",
+        payload: {
+          version: "playback-observations-v2",
+          elapsedMilliseconds: 3000,
+          visibility: "visible",
+          playerState: "paused",
+          startObserved: true,
+          errorObserved: false,
+          seekCount: 0,
+          navigationCount: 1,
+          qoeCount: 1,
+          deviceClass: "mobile",
+          networkClass: "4g",
+        },
+      },
+      {
+        eventId: "manual-skip",
+        kind: "playback_navigation",
+        occurredAt: "2026-08-19T03:00:01.000Z",
+        payload: {
+          action: "manual_skip",
+          cause: "user",
+          positionSeconds: 3,
+        },
+      },
+      {
+        eventId: "startup-timeout",
+        kind: "playback_qoe",
+        occurredAt: "2026-08-19T03:00:02.000Z",
+        payload: {
+          action: "startup_timeout",
+          cause: "unknown",
+          positionSeconds: 0,
+        },
+      },
+    ]
+    const receipts = events.map((event, index) => ({
+      eventId: event.eventId,
+      status: "accepted",
+      sequence: index + 1,
+    }))
+    mutate.mockResolvedValueOnce({
+      data: { recordSemanticRecommendationPlayback: receipts },
+    })
+
+    const response = await POST(
+      request(
+        JSON.stringify({
+          action: "facts",
+          contractVersion: "recommendation-evidence-v1",
+          capability: "episode-capability-secret",
+          episodeId: "episode-1",
+          mediaId: "media-1",
+          events,
+        }),
+      ),
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ receipts })
+    expect(mutate.mock.calls[0]?.[0]?.variables.events).toEqual(events)
+  })
+
   describe.each([
     "Mozilla/5.0 (compatible; Applebot/0.1)",
     "meta-externalagent/1.1",

@@ -1,0 +1,49 @@
+{
+  "window": {
+    "begin": "2026-09-23T04:30:00Z",
+    "endExclusive": "2026-09-23T06:30:00Z"
+  },
+  "source": "Datadog retained RUM resources",
+  "scope": {
+    "service": "forge-web",
+    "urlHost": "www.jesusfilm.org",
+    "path": "/watch/api/recommendations/playback",
+    "versionFilter": "none"
+  },
+  "count": 1933,
+  "counts": [
+    {
+      "status": 200,
+      "requests": 1871
+    },
+    {
+      "status": 403,
+      "requests": 30
+    },
+    {
+      "status": 0,
+      "requests": 28
+    },
+    {
+      "status": 204,
+      "requests": 2
+    },
+    {
+      "status": 400,
+      "requests": 1
+    },
+    {
+      "status": 503,
+      "requests": 1
+    }
+  ],
+  "missingStatus": 0,
+  "terminal409SearchCount": 0,
+  "limitations": [
+    "Sampled browser resources are not a complete origin-request denominator.",
+    "Two primary Railway terminal 409 responses lack retained RUM resources; this window cannot prove their browser retry disposition.",
+    "Status 0 is a browser transport observation, not an HTTP status.",
+    "One HTTP 503 has no trusted join to Railway origin records; the separately recorded interim discrepancy remains unresolved.",
+    "Two HTTP 204 browser observations have no matching primary POST HTTP group; no request-level explanation is established."
+  ]
+}

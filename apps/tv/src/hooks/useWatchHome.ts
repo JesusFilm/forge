@@ -4,6 +4,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import AsyncStorage from "@react-native-async-storage/async-storage"
+import { Platform } from "react-native"
 
 import { getApolloClient } from "../lib/apolloClient"
 import {
@@ -38,7 +39,7 @@ import {
   parseStoredHomeSnapshot,
   serializeHomeSnapshotFromVideosJson,
 } from "../lib/watchHome/homeSnapshot"
-import { fetchTopUpVideos, type FetchPolicy } from "../lib/watchHome/topUpFetch"
+import { fetchTopUpVideos, homeFetchPolicy } from "../lib/watchHome/topUpFetch"
 import { withTimeout } from "../lib/withTimeout"
 
 // Errors surface as a retryable message (never a throw) so the screen renders
@@ -110,9 +111,7 @@ export function useWatchHome(): WatchHomeState {
     setError(null)
 
     const client = getApolloClient()
-    // Initial load reuses the cache; explicit refetch forces the network.
-    const fetchPolicy: FetchPolicy =
-      mode === "initial" ? "cache-first" : "network-only"
+    const fetchPolicy = homeFetchPolicy(Platform.OS, mode)
 
     try {
       const [videosOutcome, experienceOutcome] = await Promise.allSettled([
@@ -269,7 +268,18 @@ export function useWatchHome(): WatchHomeState {
   }, [])
 
   useEffect(() => {
-    void fetchHome("initial")
+    if (Platform.OS !== "android") {
+      void fetchHome("initial")
+      return
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const frame = requestAnimationFrame(() => {
+      timer = setTimeout(() => void fetchHome("initial"), 0)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      if (timer != null) clearTimeout(timer)
+    }
   }, [fetchHome])
 
   // Snapshot paint, concurrent with the initial fetch. The disk read + model

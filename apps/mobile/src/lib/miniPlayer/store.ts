@@ -10,6 +10,7 @@
  * native module, while the app reads one store.
  */
 
+import type { AdminLanguageForms } from "../../i18n/adminLanguage"
 import type { AuthSessionSnapshot } from "../authSession"
 import type { VideoQoeReason } from "../videoQoe"
 
@@ -44,6 +45,10 @@ export type MiniPlayerSession = {
   durationSeconds: number
   phase: MiniPlayerPhase
   endedCause: MiniPlayerEndedCause | null
+  /** KTD16: the Admin language forms the session's screen read its text
+   *  with. An expand of the same video reads them back, so a live language
+   *  change does not move that screen's text. Null when no screen noted any. */
+  adminForms: AdminLanguageForms | null
 }
 
 export type MiniPlayerSessionInput = {
@@ -55,6 +60,7 @@ export type MiniPlayerSessionInput = {
   originPattern?: string | null
   positionSeconds?: number
   durationSeconds?: number
+  adminForms?: AdminLanguageForms | null
   /** The caller verified unfinished playback for this content. A merge onto an
    *  ended session then resets the phase — a full-view replay is watching again,
    *  and a window mounted "ended" over live audio releases its surface (R27). */
@@ -98,22 +104,44 @@ const EMPTY_SNAPSHOT: MiniPlayerStoreSnapshot = {
   pipHold: false,
 }
 
-/**
- * Identity of the content a session carries. A dub or subtitle change is the
- * same content, so it must not read as a replacement (R12 is about a different
- * video taking the window over).
- */
-export function sessionIdentityKey(
-  session: Pick<MiniPlayerSession, "videoId" | "videoSlug">,
-): string {
-  return session.videoId ? `id:${session.videoId}` : `slug:${session.videoSlug}`
+/** Same content by whichever key each side carries: a remounted screen names
+ *  a video by slug before its record lands and by id after, so an id-only
+ *  compare reads one video as two and ends its session on every expand. */
+export function sameSessionContent(
+  a: Pick<MiniPlayerSession, "videoId" | "videoSlug">,
+  b: Pick<MiniPlayerSession, "videoId" | "videoSlug">,
+): boolean {
+  if (a.videoId != null && b.videoId != null) return a.videoId === b.videoId
+  return a.videoSlug === b.videoSlug
 }
+
+/** KTD16: the forms a media screen for `videoSlug` reads at mount: the
+ *  session's when it plays that video (an expand keeps its text), else the
+ *  current ones. A screen knows only its slug at mount, hence the key. */
+export function screenAdminForms(
+  session: Pick<MiniPlayerSession, "videoSlug" | "adminForms"> | null,
+  videoSlug: string,
+  current: AdminLanguageForms,
+): AdminLanguageForms {
+  if (session != null && session.videoSlug === videoSlug && session.adminForms)
+    return session.adminForms
+  return current
+}
+
+// Enough for a stack of open watch screens; older notes are never read.
+const NOTED_SCREEN_FORMS_MAX = 16
 
 export function createMiniPlayerStore() {
   let snapshot: MiniPlayerStoreSnapshot = EMPTY_SNAPSHOT
   const listeners = new Set<() => void>()
   const endListeners = new Set<(event: MiniPlayerEndEvent) => void>()
   let auth: MiniPlayerAuthSource | null = null
+  // Set by the dismissal that armed the current exit, so a deferred exit keeps
+  // the choice made when the viewer closed the window.
+  let exitReports = true
+  // KTD16: the forms each open media screen read with, by slug. The session
+  // starts from the playback request, which does not carry them.
+  const notedScreenForms = new Map<string, AdminLanguageForms>()
 
   function currentAccountId(): string | null {
     const authSnapshot = auth?.getSnapshot()
@@ -157,7 +185,17 @@ export function createMiniPlayerStore() {
     const session = snapshot.session
     if (!session) return
     commit({ ...snapshot, dismissal: "exiting" })
-    reportEnd(session, "dismissed")
+    if (exitReports) reportEnd(session, "dismissed")
+  }
+
+  function dismiss(reports: boolean) {
+    if (!snapshot.session || snapshot.dismissal !== "none") return
+    exitReports = reports
+    if (snapshot.pipHold) {
+      commit({ ...snapshot, dismissal: "deferred" })
+      return
+    }
+    beginExit()
   }
 
   return {
@@ -188,13 +226,14 @@ export function createMiniPlayerStore() {
      */
     start(input: MiniPlayerSessionInput): void {
       const previous = snapshot.session
-      const merging =
-        previous != null &&
-        sessionIdentityKey(previous) === sessionIdentityKey(input)
+      const merging = previous != null && sameSessionContent(previous, input)
       const session: MiniPlayerSession = {
-        videoId: input.videoId,
+        // A slug-only re-start must not drop the id, or the dub, the window
+        // already knows: a remounted screen re-reads the dub from here.
+        videoId: input.videoId ?? (merging ? previous.videoId : null),
         videoSlug: input.videoSlug,
-        languageSlug: input.languageSlug ?? null,
+        languageSlug:
+          input.languageSlug ?? (merging ? previous.languageSlug : null),
         title: input.title,
         posterUrl: input.posterUrl ?? null,
         accountId: merging ? previous.accountId : currentAccountId(),
@@ -206,6 +245,12 @@ export function createMiniPlayerStore() {
           input.durationSeconds ?? (merging ? previous.durationSeconds : 0),
         phase: merging && !input.playbackLive ? previous.phase : "playing",
         endedCause: merging && !input.playbackLive ? previous.endedCause : null,
+        // A merge keeps the forms the video first played with (KTD16).
+        adminForms:
+          input.adminForms ??
+          (merging ? previous.adminForms : null) ??
+          notedScreenForms.get(input.videoSlug) ??
+          null,
       }
       commit({
         session,
@@ -213,6 +258,17 @@ export function createMiniPlayerStore() {
         pipHold: snapshot.pipHold,
       })
       if (previous && !merging) reportEnd(previous, "replaced")
+    },
+
+    /** KTD16: a media screen notes the forms it read its text with. A session
+     *  that starts for that slug takes them; a note changes no snapshot. */
+    noteScreenAdminForms(videoSlug: string, forms: AdminLanguageForms): void {
+      notedScreenForms.delete(videoSlug)
+      notedScreenForms.set(videoSlug, forms)
+      if (notedScreenForms.size > NOTED_SCREEN_FORMS_MAX) {
+        const oldest = notedScreenForms.keys().next().value
+        if (oldest !== undefined) notedScreenForms.delete(oldest)
+      }
     },
 
     /**
@@ -273,12 +329,14 @@ export function createMiniPlayerStore() {
      * picture-in-picture hold is set (R6, R24).
      */
     requestDismiss(): void {
-      if (!snapshot.session || snapshot.dismissal !== "none") return
-      if (snapshot.pipHold) {
-        commit({ ...snapshot, dismissal: "deferred" })
-        return
-      }
-      beginExit()
+      dismiss(true)
+    },
+
+    /** feat-553 KTD10: a window closed over the reader exits as usual but ends
+     *  with no report, so the quality session, the recommendation episode and
+     *  the settings survive for the return. */
+    dismissWithoutReport(): void {
+      dismiss(false)
     },
 
     /**
@@ -299,6 +357,13 @@ export function createMiniPlayerStore() {
       if (!session) return
       commit({ session: null, dismissal: "none", pipHold: snapshot.pipHold })
       reportEnd(session, reason)
+    },
+
+    /** feat-553 KTD10: the reader cover's return. The viewer never ended this
+     *  session, so the screen goes back to its state before the cover. */
+    clearWithoutReport(): void {
+      if (!snapshot.session) return
+      commit({ session: null, dismissal: "none", pipHold: snapshot.pipHold })
     },
 
     /** The picture-in-picture latch (KTD12), fed from the video view's own

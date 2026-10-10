@@ -11,12 +11,12 @@ from the main DS Year 1 roadmap.
 > index, and nothing regenerates or overwrites it. See `CLAUDE.md` in this
 > folder for the maintenance rules and why the lane is unregistered.
 
-## Status (September 10, 2026)
+## Status (October 5, 2026)
 
-- **Total tickets:** 65
-- ✅ **Complete:** 57
-- 🟡 **In progress:** 2
-- 🔵 **Not started:** 6
+- **Total tickets:** 67
+- ✅ **Complete:** 58
+- 🟡 **In progress:** 1
+- 🔵 **Not started:** 8
 - 🔴 **Blocked:** 0
 
 ## Feature Index
@@ -44,7 +44,7 @@ from the main DS Year 1 roadmap.
 | [feat-239](feat-239-chat-seeker-env-allowlist-gate.md)                        | Replace the chat seeker LaunchDarkly gate with an env-var email allowlist    | jian wei | P1       | 2026-07-08 | 1    | ✅ complete    | [#1498](https://github.com/JesusFilm/forge/pull/1498)                                                        |
 | [feat-240](feat-240-chat-sign-out-force-login.md)                             | Chat sign-out force-login marker (no silent re-auth)                         | jian wei | P2       | 2026-07-15 | 1    | ✅ complete    | [#1539](https://github.com/JesusFilm/forge/pull/1539)                                                        |
 | [feat-241](feat-241-chat-server-history-sidebar.md)                           | Chat server-side conversation history + sidebar hydration                    | jian wei | P2       | 2026-07-20 | 3    | ✅ complete    | [#1552](https://github.com/JesusFilm/forge/pull/1552)                                                        |
-| [feat-247](feat-247-chat-history-management.md)                               | Chat conversation delete                                                     | jian wei | P2       | 2026-09-08 | 7    | 🟡 in-progress | —                                                                                                            |
+| [feat-247](feat-247-chat-history-management.md)                               | Chat conversation delete — stub                                              | jian wei | P2       | 2026-09-08 | 2    | 🔵 not-started | —                                                                                                            |
 | [feat-248](feat-248-chat-anon-thread-migration.md)                            | Anonymous-to-account conversation migration — stub, future consideration     | jian wei | P2       | 2026-09-15 | 3    | 🔵 not-started | —                                                                                                            |
 | [feat-250](feat-250-seeker-route-lane-key-migration.md)                       | Migrate /forge-seeker onto the ai-chat lane service key                      | jian wei | P2       | 2026-08-03 | 1    | ✅ complete    | [#1554](https://github.com/JesusFilm/forge/pull/1554)                                                        |
 | [feat-267](feat-267-chat-ui-quick-wins.md)                                    | Chat UI quick wins: cursor, focus ring, tab identity, mobile hint            | jian wei | P2       | 2026-07-15 | 1    | ✅ complete    | [#1617](https://github.com/JesusFilm/forge/pull/1617)                                                        |
@@ -88,3 +88,5 @@ from the main DS Year 1 roadmap.
 | [feat-440](feat-440-gateway-chat-base-url-host-allowlist.md)                  | Host allowlist for the gateway chat base URL                                 | jian wei | P2       | 2026-09-15 | 1    | ✅ complete    | [#2115](https://github.com/JesusFilm/forge/pull/2115)                                                        |
 | [feat-450](feat-450-chat-conversation-rename.md)                              | Chat conversation rename                                                     | jian wei | P2       | 2026-09-08 | 2    | ✅ complete    | [#2179](https://github.com/JesusFilm/forge/pull/2179), [#2181](https://github.com/JesusFilm/forge/pull/2181) |
 | [feat-464](feat-464-retire-ai-chat-memory-override.md)                        | Retire the AI-chat memory override                                           | jian wei | P2       | 2026-09-08 | 2    | ✅ complete    | [#2203](https://github.com/JesusFilm/forge/pull/2203)                                                        |
+| [feat-601](feat-601-apologist-chat-comparison.md)                             | Temporary Apologist comparison in Forge Chat                                 | jian wei | P2       | 2026-09-24 | 3    | ✅ complete    | [#2548](https://github.com/JesusFilm/forge/pull/2548), [#2577](https://github.com/JesusFilm/forge/pull/2577) |
+| [feat-602](feat-602-remove-apologist-comparison.md)                           | Remove temporary Apologist comparison before public Chat release             | jian wei | P1       | 2026-10-02 | 1    | 🔵 not-started | —                                                                                                            |

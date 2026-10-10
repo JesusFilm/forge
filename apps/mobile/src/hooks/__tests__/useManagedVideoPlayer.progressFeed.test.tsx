@@ -59,16 +59,28 @@ jest.mock("../../lib/videoQoe", () => ({
   createVideoQoeSession: () => mockQoe,
   shouldCountRebuffer: () => false,
 }))
+// The hold cases own the session to reach the dismiss flush; the episode
+// recorder that ownership also creates is not what they measure.
+jest.mock("../../lib/recommendations/playbackRecorderClient", () => ({
+  createPlaybackRecorderForMedia: () => null,
+}))
 
 import { StrictMode, act, type ReactElement } from "react"
 import { AppState, type AppStateStatus } from "react-native"
 
-import { useManagedVideoPlayer } from "../useManagedVideoPlayer"
+import {
+  useManagedVideoPlayer,
+  type ProgressHold,
+} from "../useManagedVideoPlayer"
+import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
 import type {
   createProgressRecorder,
   ProgressIdentity,
 } from "../../lib/watchProgress/recorder"
-import { bufferProgressIntent } from "../../lib/watchProgress/store"
+import {
+  applyLocalProgress,
+  bufferProgressIntent,
+} from "../../lib/watchProgress/store"
 import {
   TestRenderer,
   type NodePath,
@@ -139,16 +151,22 @@ type HarnessProps = {
   castActive: boolean
   identity: ProgressIdentity | null
   sourceUrl?: string
+  progressHold?: ProgressHold | null
+  ownsSession?: boolean
 }
 
 function Harness({
   castActive,
   identity,
   sourceUrl = "https://stream.mux.com/abc123.m3u8",
+  progressHold = null,
+  ownsSession = false,
 }: HarnessProps) {
   latest = useManagedVideoPlayer(sourceUrl, undefined, {
     progress: identity,
     castActive,
+    progressHold,
+    ownsSession,
   })
   return null
 }
@@ -179,6 +197,7 @@ async function update(renderer: UpdatableRenderer, props: HarnessProps) {
 
 const IDENTITY: ProgressIdentity = { videoId: "v1", languageSlug: "en" }
 const bufferIntentMock = bufferProgressIntent as jest.Mock
+const applyLocalMock = applyLocalProgress as jest.Mock
 
 beforeEach(() => {
   mockIsPlaying = false
@@ -187,6 +206,8 @@ beforeEach(() => {
   createdRecorders.length = 0
   playerListeners.clear()
   latest = null
+  getMiniPlayerStore().setPipHold(false)
+  getMiniPlayerStore().end("abandoned")
   jest.clearAllMocks()
   jest
     .spyOn(AppState, "addEventListener")
@@ -354,6 +375,228 @@ describe("castActive local-tick gating (KTD6)", () => {
     await act(async () => firePlayerEvent("playToEnd"))
 
     expect(recorder.flush).toHaveBeenCalledWith("end")
+    await act(async () => renderer.unmount())
+  })
+})
+
+// KTD12 / AE6: the watch page after "Keep watching" plays from the clip's tap
+// point, and admin keeps the NEWEST write, so any write during the offer would
+// replace the viewer's real saved position. Real recorder throughout.
+describe("progress hold (KTD12)", () => {
+  const HOLD: ProgressHold = { id: "keep-watching-1", durationMs: 8_000 }
+  const NO_WRITES = { buffered: 0, local: 0, drains: 0 }
+  // These adapters own the session, so one left mounted by a failed case would
+  // flush into the next case's dismiss. A second unmount is a no-op.
+  const renderers: UpdatableRenderer[] = []
+
+  afterEach(async () => {
+    for (const renderer of renderers.splice(0)) {
+      await act(async () => renderer.unmount())
+    }
+  })
+
+  async function renderHeld(props: HarnessProps) {
+    const renderer = await render(props)
+    renderers.push(renderer)
+    return renderer
+  }
+
+  function held(overrides: Partial<HarnessProps> = {}): HarnessProps {
+    return {
+      castActive: false,
+      identity: IDENTITY,
+      progressHold: HOLD,
+      ownsSession: true,
+      ...overrides,
+    }
+  }
+
+  /** Labelled, so a failure names the write path that leaked. */
+  function writesAt(step: string) {
+    return {
+      step,
+      buffered: bufferIntentMock.mock.calls.length,
+      local: applyLocalMock.mock.calls.length,
+      drains: mockDrainIntents.mock.calls.length,
+    }
+  }
+
+  function clearWrites() {
+    bufferIntentMock.mockClear()
+    applyLocalMock.mockClear()
+    mockDrainIntents.mockClear()
+  }
+
+  function writtenVideoIds(): unknown[] {
+    return bufferIntentMock.mock.calls.map(
+      ([intent]) => (intent as { videoId?: string }).videoId,
+    )
+  }
+
+  async function advance(ms: number) {
+    await act(async () => {
+      jest.advanceTimersByTime(ms)
+    })
+  }
+
+  function startSession() {
+    getMiniPlayerStore().start({
+      videoId: "v1",
+      videoSlug: "v1-slug",
+      title: "Video 1",
+    })
+  }
+
+  it("holds the batched write, the pause flush and the dismiss flush", async () => {
+    jest.useFakeTimers()
+    mockIsPlaying = true
+    const renderer = await renderHeld(held())
+    startSession()
+
+    await advance(3_100)
+    expect(writesAt("batched")).toEqual({ step: "batched", ...NO_WRITES })
+
+    mockIsPlaying = false
+    await update(renderer, held())
+    expect(writesAt("pause")).toEqual({ step: "pause", ...NO_WRITES })
+
+    await act(async () => fireAppState("background"))
+    expect(writesAt("background")).toEqual({
+      step: "background",
+      ...NO_WRITES,
+    })
+
+    latest!.progressFeed.onTick(1200, 3600)
+    latest!.progressFeed.flush("pause")
+    expect(writesAt("cast feed")).toEqual({ step: "cast feed", ...NO_WRITES })
+
+    await act(async () => getMiniPlayerStore().requestDismiss())
+    expect(writesAt("dismiss")).toEqual({ step: "dismiss", ...NO_WRITES })
+
+    await act(async () => renderer.unmount())
+    expect(writesAt("unmount")).toEqual({ step: "unmount", ...NO_WRITES })
+  })
+
+  it("starts its clock at the first frame, so a slow load keeps the whole hold", async () => {
+    jest.useFakeTimers()
+    const renderer = await renderHeld(held())
+    // A load longer than the hold itself: a clock started on arrival would
+    // already have run out by the first frame.
+    await advance(10_000)
+
+    mockIsPlaying = true
+    await update(renderer, held())
+    await advance(7_900)
+    expect(writesAt("inside the hold")).toEqual({
+      step: "inside the hold",
+      ...NO_WRITES,
+    })
+
+    await advance(1_200)
+    expect(writtenVideoIds()).toContain("v1")
+    await act(async () => renderer.unmount())
+  })
+
+  it("resumes every write at its deadline while the request still carries it", async () => {
+    jest.useFakeTimers()
+    mockIsPlaying = true
+    const renderer = await renderHeld(held())
+    startSession()
+
+    await advance(7_900)
+    expect(writesAt("inside the hold")).toEqual({
+      step: "inside the hold",
+      ...NO_WRITES,
+    })
+    await advance(1_200)
+    expect(writtenVideoIds()).toContain("v1")
+
+    // A screen reader keeps the offer up for minutes, so the page republishes
+    // the same hold (a fresh object) long after its deadline.
+    clearWrites()
+    await update(renderer, held({ progressHold: { ...HOLD } }))
+    await advance(5 * 60_000)
+    expect(writtenVideoIds()).toContain("v1")
+
+    clearWrites()
+    mockIsPlaying = false
+    await update(renderer, held({ progressHold: { ...HOLD } }))
+    expect(writtenVideoIds()).toEqual(["v1"])
+
+    clearWrites()
+    await act(async () => getMiniPlayerStore().requestDismiss())
+    expect(writtenVideoIds()).toEqual(["v1"])
+    await act(async () => renderer.unmount())
+  })
+
+  it("ends at once when the request drops it (an offer choice)", async () => {
+    jest.useFakeTimers()
+    mockIsPlaying = true
+    const renderer = await renderHeld(held())
+    await advance(3_100)
+    expect(writesAt("inside the hold")).toEqual({
+      step: "inside the hold",
+      ...NO_WRITES,
+    })
+
+    await update(renderer, held({ progressHold: null }))
+    await advance(2_100)
+
+    expect(writtenVideoIds()).toContain("v1")
+    await act(async () => renderer.unmount())
+  })
+
+  // The departing recorder flushes in its effect cleanup, which runs BEFORE
+  // the commit that no longer carries the hold is applied. That flush is the
+  // tap-point position the hold exists to keep out of admin.
+  it("keeps the departing video's last flush held when the next request carries none", async () => {
+    jest.useFakeTimers()
+    mockIsPlaying = true
+    const renderer = await renderHeld(held())
+    await advance(3_100)
+
+    await update(
+      renderer,
+      held({
+        identity: { videoId: "v2", languageSlug: "en" },
+        progressHold: null,
+      }),
+    )
+    await advance(2_100)
+
+    expect(writtenVideoIds()).not.toContain("v1")
+    expect(writtenVideoIds()).toContain("v2")
+    await act(async () => renderer.unmount())
+  })
+
+  it("never restarts the same hold's clock, and arms a new hold afresh", async () => {
+    jest.useFakeTimers()
+    mockIsPlaying = true
+    const renderer = await renderHeld(held())
+    await advance(9_100)
+    expect(writtenVideoIds()).toContain("v1")
+
+    // The same hold leaving and coming back (a stacked page popping back into
+    // ownership) keeps its first, spent clock.
+    await update(renderer, held({ progressHold: null }))
+    await update(renderer, held())
+    clearWrites()
+    await advance(2_100)
+    expect(writtenVideoIds()).toContain("v1")
+
+    // A new hold is a new offer: its clock starts on the next frame.
+    await update(
+      renderer,
+      held({ progressHold: { id: "keep-watching-2", durationMs: 8_000 } }),
+    )
+    clearWrites()
+    await advance(7_000)
+    expect(writesAt("inside the new hold")).toEqual({
+      step: "inside the new hold",
+      ...NO_WRITES,
+    })
+    await advance(3_100)
+    expect(writtenVideoIds()).toContain("v1")
     await act(async () => renderer.unmount())
   })
 })

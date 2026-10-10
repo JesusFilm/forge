@@ -1,8 +1,11 @@
-import { readFileSync } from "node:fs"
+import { once } from "node:events"
+import { randomBytes } from "node:crypto"
 import { Prisma, PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
+import { recommendationRuntimeMigrationSql } from "./current-schema.test-fixture"
+import { getRedisClient } from "@/infra/redis"
 import { VideoNotFoundError } from "@/services/scene-recommendations.service"
 import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
@@ -34,44 +37,15 @@ import {
 } from "./orchestration"
 import { HYBRID_PERSONALIZED_MANIFEST_ID } from "./promotion/manifest"
 import { getRecommendationRecentContext } from "./recent-context.service"
+import { createRecommendationDeliveryDependencies } from "./delivery.factory"
 import { createRecommendationTokenService } from "./token.service"
+import { getEligibleRecommendationVideoIds } from "@/services/scene-recommendations-retriever"
+import type { SemanticRetrievalDiagnostics } from "./delivery-diagnostics"
+import { loadCowatchPlayableRows } from "./cowatch/candidate.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
 const DELIVERY_FIXTURE_MODE = env.RECOMMENDATION_DELIVERY_DB_FIXTURE
-const recommendationMigrationSql = [
-  "0052_production_semantic_recommendation_tracer",
-  "0053_recommendation_active_playback_proxy",
-  "0054_recommendation_mission_value_actions",
-  "0055_recommendation_integrity_eligibility",
-  "0056_consent_aware_recommendation_profile",
-  "0057_semantic_control_readiness",
-  "0058_recommendation_candidate_platform",
-  "0059_recommendation_shadow_candidate_evaluation",
-  "0060_recommendation_experiment_spine",
-  "0061_recommendation_hybrid_promotion",
-  "0062_recommendation_multi_interest_profile_shadow",
-  "0063_recommendation_live_profile_pilot",
-  "0064_recommendation_governance_review_guards",
-  "0065_recommendation_strategy_manifest_immutability",
-  "0066_recommendation_playback_finalization_repair",
-  "0067_recommendation_episode_submission_budget_repair",
-  "0068_recommendation_trace_actor_digest_repair",
-  "0069_recommendation_hybrid_composition",
-  "0070_recommendation_consent_receipts",
-  "0071_recommendation_assignment_generation_key",
-  "0072_recommendation_source_neutral_playback_episodes",
-  "0075_recommendation_selection_attribution_eligibility",
-  "0076_recommendation_profile_eligibility_reconciliation",
-  "0082_user_recommendation_identity",
-].map((migration) =>
-  readFileSync(
-    new URL(
-      `../../../prisma/migrations/${migration}/migration.sql`,
-      import.meta.url,
-    ),
-    "utf8",
-  ),
-)
+const recommendationMigrationSql = recommendationRuntimeMigrationSql
 
 function vectorAt(index: number): string {
   const values = Array.from({ length: 1536 }, () => 0)
@@ -134,6 +108,53 @@ async function installIncompatibleNearerChunks(client: Client): Promise<void> {
   )
 }
 
+async function installWrongAudioNearerChunks(client: Client): Promise<void> {
+  // These 64 chunks have valid active-contract provenance and published text,
+  // but only a Spanish dub. All are nearer than the 12 exact-English targets
+  // to every seed, so filtering audio after the neighbor cap empties the pool.
+  const nearerVector = `[${Array.from({ length: 1536 }, (_, index) =>
+    index < 8 ? 1 : 0,
+  ).join(",")}]`
+  await client.query(`
+    INSERT INTO video (id, slug, core_id)
+      VALUES ('wrong-audio-video', 'wrong-audio', 'wrong-audio-core');
+    INSERT INTO video_locale (id, video_id, locale, status, title)
+      VALUES ('wrong-audio-locale', 'wrong-audio-video', 'en', 'published',
+        'Nearer video without requested audio');
+    INSERT INTO language (id, slug, bcp47)
+      VALUES ('language-es', 'spanish-castilian', 'es');
+    INSERT INTO mux_video (id, playback_id)
+      VALUES ('wrong-audio-mux', 'wrong-audio-playback');
+    INSERT INTO video_dub (
+      id, video_edition_id, language_id, mux_video_id, published
+    ) VALUES (
+      'wrong-audio-dub', 'wrong-audio-edition', 'language-es',
+      'wrong-audio-mux', true
+    );
+    INSERT INTO video_transcript (
+      id, video_id, video_edition_id, language, embedding_provider, model,
+      dimensions, embedding_native_dimensions, embedding_transform_version
+    )
+    SELECT 'wrong-audio-transcript', 'wrong-audio-video', 'wrong-audio-edition',
+      language, embedding_provider, model, dimensions,
+      embedding_native_dimensions, embedding_transform_version
+    FROM video_transcript WHERE id = 'target-transcript-0';
+  `)
+  await client.query(
+    `INSERT INTO video_transcript_chunk (
+      id, transcript_id, chunk_index, language, model, dimensions, text,
+      start_seconds, end_seconds, embedding
+    )
+    SELECT 'wrong-audio-chunk-' || ordinal, transcript.id, ordinal,
+      transcript.language, transcript.model, transcript.dimensions,
+      'Valid transcript without requested audio', 0, 30, $1::vector
+    FROM video_transcript transcript
+    CROSS JOIN generate_series(0, 63) AS ordinal
+    WHERE transcript.id = 'wrong-audio-transcript'`,
+    [nearerVector],
+  )
+}
+
 async function installIndexedContractSkew(client: Client): Promise<void> {
   // Continuous, distinct directions avoid disconnected duplicate-vector
   // clusters. Incompatible chunks are closer than the valid targets, with
@@ -164,7 +185,8 @@ async function installIndexedContractSkew(client: Client): Promise<void> {
       || array_fill(0::real, ARRAY[1534]))::vector
     FROM (
       SELECT id, row_number() OVER (ORDER BY id) AS ordinal
-      FROM video_transcript_chunk WHERE id LIKE 'incompatible-%'
+      FROM video_transcript_chunk
+      WHERE id LIKE 'incompatible-%' OR id LIKE 'wrong-audio-chunk-%'
     ) numbered
     WHERE chunk.id = numbered.id;
     CREATE INDEX video_transcript_chunk_embedding_hnsw_en
@@ -179,8 +201,15 @@ async function installIndexedContractSkew(client: Client): Promise<void> {
 }
 
 type RetrievalPlan = {
+  "Node Type"?: string
   "Index Name"?: string
+  Filter?: string
   "Actual Loops"?: number
+  "Actual Rows"?: number
+  "Rows Removed by Filter"?: number
+  "Shared Hit Blocks"?: number
+  "Shared Read Blocks"?: number
+  "Actual Total Time"?: number
   Plans?: RetrievalPlan[]
 }
 
@@ -680,6 +709,7 @@ async function prepareExplicitDeliveryFixture(
     }
     await installHybridDeliveryAuthority(client)
     await installIncompatibleNearerChunks(client)
+    await installWrongAudioNearerChunks(client)
     const fixtureUrl = new URL(databaseUrl)
     fixtureUrl.searchParams.delete("options")
     fixtureUrl.searchParams.set("schema", fixtureSchema)
@@ -703,11 +733,23 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
   "semantic delivery retriever against the approved snapshot",
   () => {
     let prisma: PrismaClient
+    let drillRedis: ReturnType<typeof getRedisClient> = null
     let fixtureSchema: string | null = null
     let fixtureKind: "production_snapshot" | "deterministic_fixture"
     let databaseUrl: string
 
     beforeAll(async () => {
+      if (process.env.RECOMMENDATION_FALLBACK_DB_TEST === "1") {
+        const host = new URL(env.DATABASE_URL).hostname
+        if (
+          !["127.0.0.1", "localhost"].includes(host) ||
+          !["127.0.0.1", "localhost"].includes(env.REDIS_HOST ?? "")
+        ) {
+          throw new Error(
+            "The fallback drill requires local PostgreSQL and Redis",
+          )
+        }
+      }
       if (!DELIVERY_FIXTURE_MODE) {
         throw new Error(
           "Set RECOMMENDATION_DELIVERY_DB_FIXTURE=production_snapshot for release proof or =deterministic for isolated CI; no implicit fallback is allowed.",
@@ -727,6 +769,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
 
     afterAll(async () => {
       await prisma?.$disconnect()
+      drillRedis?.disconnect()
       if (fixtureSchema) {
         const client = new Client({
           connectionString: env.DATABASE_URL,
@@ -836,6 +879,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
 
       expect(cold.response.result).toBe("served")
       expect(warm.response.result).toBe("served")
+      expect(cold.response.items).toHaveLength(6)
+      expect(warm.response.items).toHaveLength(6)
       expect(cold.response.items.map((item) => item.targetMediaId)).toEqual(
         baseline.map((item) => item.videoId),
       )
@@ -845,6 +890,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       if (fixtureKind === "deterministic_fixture") {
         for (const item of cold.response.items) {
           const targetIndex = Number(item.targetMediaId.split("-").at(-1))
+          expect(item.playbackId).toBe(`playback-${targetIndex}`)
           expect(item.durationSeconds).toBe(
             targetIndex % 2 === 0 ? 240 + targetIndex : 300 + targetIndex,
           )
@@ -868,6 +914,121 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       )
     })
 
+    it.skipIf(process.env.RECOMMENDATION_FALLBACK_DB_TEST !== "1")(
+      "persists last-known-good recovery through the real dependency factory",
+      async () => {
+        expect(fixtureKind).toBe("deterministic_fixture")
+        expect(env.RECOMMENDATION_SEMANTIC_SERVING_ENABLED).toBe("true")
+        expect(env.RECOMMENDATION_CAPABILITY_KEYRING).toBeTruthy()
+        const redis = getRedisClient()
+        drillRedis = redis
+        expect(redis).not.toBeNull()
+        if (!redis) return
+        if (redis.status !== "ready") {
+          await once(redis, "ready", { signal: AbortSignal.timeout(3_000) })
+        }
+        await redis.ping()
+
+        await prisma.$executeRaw`
+        UPDATE recommendation_serving_control
+        SET enabled = true,
+            manifest_id = 'semantic-candidate-platform-v1',
+            reason_code = 'isolated_fallback_drill'
+        WHERE id = 'recommendation-serving-control'
+      `
+        await prisma.$executeRaw`
+        INSERT INTO recommendation_retention_run (
+          id, status, batch_size, roots_deleted, row_counts,
+          started_at, completed_at, expires_at
+        ) VALUES (
+          'isolated-fallback-retention',
+          'succeeded'::"RecommendationRetentionRunStatus", 500, 0,
+          '{}'::jsonb, now(), now(), now() + interval '90 days'
+        )
+      `
+
+        const deps = createRecommendationDeliveryDependencies(prisma)
+        expect(deps.tokenService).not.toBeNull()
+        const [seed] = await prisma.$queryRaw<Array<{ id: string }>>`
+        SELECT id FROM video WHERE slug = 'jesus' AND deleted_at IS NULL LIMIT 1
+      `
+        expect(seed).toBeDefined()
+        const deliver = (service: RecommendationDeliveryService) =>
+          service.deliver({
+            caller: {
+              id: null,
+              role: "CONSUMER_BEARER",
+              fleet: false,
+              rateLimitBucketKey: "isolated-fallback-drill",
+            },
+            seedMediaId: seed!.id,
+            locale: "en",
+            audioLanguageSlug: "english",
+            sessionDigest: randomBytes(32).toString("hex"),
+          })
+
+        const control = await deliver(new RecommendationDeliveryService(deps))
+        expect(control).toMatchObject({ result: "served", reason: null })
+        expect(control.items).toHaveLength(6)
+        const controlRun = await prisma.recommendationCandidateRun.findUnique({
+          where: { requestId: control.requestId! },
+        })
+        expect(controlRun).toMatchObject({
+          candidateEligibilityParity: "passed",
+          rankerParity: "passed",
+          evidenceComplete: true,
+        })
+
+        const fallback = await deliver(
+          new RecommendationDeliveryService({
+            ...deps,
+            orchestrate: () => {
+              throw new Error("isolated candidate-platform fault")
+            },
+          }),
+        )
+        expect(fallback).toMatchObject({
+          result: "fallback",
+          reason: "last_known_good_semantic_fallback",
+        })
+        expect(fallback.items).toHaveLength(6)
+        expect(
+          new Set(fallback.items.map((item) => item.targetMediaId)).size,
+        ).toBe(6)
+        expect(
+          fallback.items.every((item) => item.playbackId && item.imageUrl),
+        ).toBe(true)
+
+        const saved = await prisma.recommendationRequest.findUniqueOrThrow({
+          where: { id: fallback.requestId! },
+          include: {
+            items: true,
+            candidateRun: true,
+            personalizationDecision: true,
+          },
+        })
+        expect(saved).toMatchObject({
+          state: "ISSUED",
+          result: "FALLBACK",
+          fallbackReason: "last_known_good_semantic_fallback",
+          manifestId: "semantic-candidate-platform-v1",
+          experimentAssignmentId: null,
+          candidateRun: {
+            fallbackReason: "candidate_platform_unavailable",
+            evidenceComplete: false,
+            composedCount: 6,
+          },
+          personalizationDecision: {
+            effectiveManifestId: "semantic-candidate-platform-v1",
+          },
+        })
+        expect(saved.items).toHaveLength(6)
+        console.info(
+          `[recommendations] event=isolated_last_known_good_drill fixture=${fixtureKind} result=${fallback.result} items=${saved.items.length} candidate_reason=${saved.candidateRun?.fallbackReason}`,
+        )
+      },
+    )
+
     it("keeps complete hybrid retrieval, composition, signing, persistence, and serialization inside 1.5s", async () => {
       expect(fixtureKind).toBe(
         DELIVERY_FIXTURE_MODE === "production_snapshot"
@@ -878,7 +1039,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         SELECT id FROM video WHERE slug = 'jesus' AND deleted_at IS NULL LIMIT 1
       `
       expect(seed[0]).toBeDefined()
-      const benchmarkNow = new Date("2026-08-27T00:05:00.000Z")
+      // Persistence uses the database clock for created_at, so keep the service clock aligned.
+      const benchmarkNow = new Date()
       const signingKey = {
         kid: "delivery-benchmark-kid",
         status: "active" as const,
@@ -986,6 +1148,7 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
                 sessionDigest: input.sessionDigest,
                 profileTokenDigest: input.profileTokenDigest,
                 allowDurableProfileLinks: input.allowDurableProfileLinks,
+                locale: input.locale,
                 now: input.now,
               }),
           ),
@@ -1118,7 +1281,193 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
     ).sort()
 
     it.skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")(
-      "fills the eligible pool despite more than 48 nearer incompatible chunks",
+      "retrieves zh transcripts with the explicit published Chinese script and exact Mandarin audio",
+      async () => {
+        const rollback = new Error("rollback Chinese fixture")
+        await expect(
+          prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`CREATE TABLE video_edition AS SELECT DISTINCT video_edition_id AS id, NULL::timestamptz AS deleted_at FROM video_transcript`
+            await tx.$executeRaw`ALTER TABLE video_dub ADD COLUMN video_id text`
+            await tx.$executeRaw`UPDATE video_dub dub SET video_id = transcript.video_id FROM video_transcript transcript WHERE transcript.video_edition_id = dub.video_edition_id`
+            await tx.$executeRaw`UPDATE video_transcript SET language = 'zh' WHERE language = 'en'`
+            await tx.$executeRaw`UPDATE video_transcript_chunk SET language = 'zh' WHERE language = 'en'`
+            await tx.$executeRaw`UPDATE language SET slug = 'mandarin-china' WHERE id = 'language-en'`
+            await tx.$executeRaw`
+            INSERT INTO video_locale (id, video_id, locale, status, title, language_slug)
+            SELECT original.id || '-' || script, original.video_id, script, original.status,
+              script || ' ' || original.title, script
+            FROM video_locale original CROSS JOIN unnest(ARRAY['zh-hans', 'zh-hant']) script
+            WHERE original.locale = 'en'
+          `
+            for (const [requested, display] of [
+              ["zh", "zh-hans"],
+              ["zh-Hans", "zh-hans"],
+              ["zh-Hant", "zh-hant"],
+            ]) {
+              const diagnostics: SemanticRetrievalDiagnostics[] = []
+              const candidates = await getSemanticDeliveryCandidatePool(tx, {
+                ...deterministicInput,
+                locale: requested!,
+                audioLanguageSlug: "mandarin-china",
+                onDiagnostics: (value) => diagnostics.push(value),
+              })
+              expect(candidates.map((item) => item.videoId)).toEqual(
+                expectedTargetIds,
+              )
+              expect(
+                candidates.every(
+                  (item) =>
+                    item.locale === display &&
+                    item.videoTitle.startsWith(display!) &&
+                    item.audioLanguageSlug === "mandarin-china",
+                ),
+              ).toBe(true)
+              expect(diagnostics[0]).toMatchObject({
+                seed: "available",
+                presentationAvailable: true,
+                exactAudioAvailable: true,
+                eligibleVideos: 12,
+                returnedCandidates: 12,
+              })
+              expect(
+                await getEligibleRecommendationVideoIds(
+                  tx,
+                  expectedTargetIds,
+                  display!,
+                  "mandarin-china",
+                ),
+              ).toEqual(new Set(expectedTargetIds))
+              const cowatchRows = await loadCowatchPlayableRows(
+                tx,
+                expectedTargetIds,
+                { locale: display!, audioLanguageSlug: "mandarin-china" },
+              )
+              expect(cowatchRows).toHaveLength(12)
+              expect(cowatchRows.every((row) => row.themes?.length)).toBe(true)
+            }
+            await tx.$executeRaw`DELETE FROM video_locale WHERE locale = 'zh-hant'`
+            const missing: SemanticRetrievalDiagnostics[] = []
+            await expect(
+              getSemanticDeliveryCandidatePool(tx, {
+                ...deterministicInput,
+                locale: "zh-hant",
+                audioLanguageSlug: "mandarin-china",
+                onDiagnostics: (value) => missing.push(value),
+              }),
+            ).resolves.toEqual([])
+            expect(missing[0]).toMatchObject({
+              seed: "available",
+              presentationAvailable: false,
+              exactAudioAvailable: true,
+              eligibleVideos: 0,
+            })
+            // Existing Simplified publication cannot satisfy an explicit Traditional request.
+            expect(
+              await getEligibleRecommendationVideoIds(
+                tx,
+                expectedTargetIds,
+                "zh-hant",
+                "mandarin-china",
+              ),
+            ).toEqual(new Set())
+            await tx.$executeRaw`UPDATE video_transcript SET model = 'inactive-model' WHERE video_id = 'target-video-0'`
+            const incompatible = await loadCowatchPlayableRows(
+              tx,
+              ["target-video-0"],
+              { locale: "zh-hans", audioLanguageSlug: "mandarin-china" },
+            )
+            expect(incompatible).toHaveLength(1)
+            expect(incompatible[0]?.themes).toBeNull()
+            throw rollback
+          }),
+        ).rejects.toBe(rollback)
+      },
+    )
+
+    it.skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")(
+      "distinguishes absent transcripts, incompatible seed embeddings and absent exact audio",
+      async () => {
+        const evidence: SemanticRetrievalDiagnostics[] = []
+        const record = (value: SemanticRetrievalDiagnostics) =>
+          evidence.push(value)
+        await expect(
+          getSemanticDeliveryCandidatePool(prisma, {
+            ...deterministicInput,
+            seedMediaId: "no-transcript",
+            onDiagnostics: record,
+          }),
+        ).rejects.toBeInstanceOf(VideoNotFoundError)
+        expect(evidence.at(-1)?.seed).toBe("missing_transcript")
+        await expect(
+          getSemanticDeliveryCandidatePool(prisma, {
+            ...deterministicInput,
+            audioLanguageSlug: "no-such-audio",
+            onDiagnostics: record,
+          }),
+        ).resolves.toEqual([])
+        expect(evidence.at(-1)).toMatchObject({
+          seed: "available",
+          exactAudioAvailable: false,
+          nearestChunks: 0,
+          returnedCandidates: 0,
+        })
+        const rollback = new Error("rollback seed fixture")
+        await expect(
+          prisma.$transaction(async (tx) => {
+            await tx.$executeRaw`UPDATE video_transcript SET model = 'inactive-model' WHERE id = 'seed-transcript'`
+            await expect(
+              getSemanticDeliveryCandidatePool(tx, {
+                ...deterministicInput,
+                onDiagnostics: record,
+              }),
+            ).rejects.toBeInstanceOf(VideoNotFoundError)
+            expect(evidence.at(-1)?.seed).toBe(
+              "compatible_embedding_unavailable",
+            )
+            throw rollback
+          }),
+        ).rejects.toBe(rollback)
+      },
+    )
+
+    it
+      .skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")
+      .each(["no chunks", "only NULL embeddings"])(
+      "reports compatible embeddings unavailable for a seed with %s",
+      async (state) => {
+        const evidence: SemanticRetrievalDiagnostics[] = []
+        const rollback = new Error("rollback unembedded seed fixture")
+        await expect(
+          prisma.$transaction(async (tx) => {
+            if (state === "no chunks") {
+              await tx.$executeRaw`DELETE FROM video_transcript_chunk WHERE transcript_id = 'seed-transcript'`
+            } else {
+              await tx.$executeRaw`UPDATE video_transcript_chunk SET embedding = NULL WHERE transcript_id = 'seed-transcript'`
+            }
+            await expect(
+              getSemanticDeliveryCandidatePool(tx, {
+                ...deterministicInput,
+                onDiagnostics: (value) => evidence.push(value),
+              }),
+            ).rejects.toBeInstanceOf(VideoNotFoundError)
+            expect(evidence).toEqual([
+              {
+                seed: "compatible_embedding_unavailable",
+                presentationAvailable: true,
+                exactAudioAvailable: true,
+                nearestChunks: 0,
+                eligibleVideos: 0,
+                returnedCandidates: 0,
+              },
+            ])
+            throw rollback
+          }),
+        ).rejects.toBe(rollback)
+      },
+    )
+
+    it.skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")(
+      "fills six exact-audio cards despite 64 nearer wrong-audio chunks and incompatible chunks",
       async () => {
         const candidates = await getSemanticDeliveryCandidatePool(
           prisma,
@@ -1128,6 +1477,13 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
           expectedTargetIds,
         )
         expect(candidates.every((item) => item.sceneIndex === 0)).toBe(true)
+        expect(
+          candidates.every(
+            (item) =>
+              item.audioLanguageSlug === "english" &&
+              item.playbackId === `playback-${item.videoId.split("-").at(-1)}`,
+          ),
+        ).toBe(true)
         const slate = await getSemanticDeliveryRecommendations(
           prisma,
           deterministicInput,
@@ -1135,6 +1491,87 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         expect(slate.map((item) => item.videoId)).toEqual(
           Array.from({ length: 6 }, (_, index) => `target-video-${index}`),
         )
+      },
+    )
+
+    it.skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")(
+      "preserves genuinely partial and empty exact-audio supply",
+      async () => {
+        await prisma.$transaction(async (transaction) => {
+          await transaction.$executeRaw`
+            UPDATE video_dub SET deleted_at = now()
+            WHERE language_id = 'language-en' AND id NOT IN ('dub-0', 'dub-1')
+          `
+          const partial = await getSemanticDeliveryRecommendations(
+            transaction,
+            deterministicInput,
+          )
+          expect(partial.map((item) => item.videoId)).toEqual([
+            "target-video-0",
+            "target-video-1",
+          ])
+          expect(partial.map((item) => item.playbackId)).toEqual([
+            "playback-0",
+            "playback-1",
+          ])
+          await transaction.$executeRaw`
+            UPDATE video_dub SET deleted_at = now()
+            WHERE language_id = 'language-en'
+          `
+          await expect(
+            getSemanticDeliveryCandidatePool(transaction, deterministicInput),
+          ).resolves.toEqual([])
+          await transaction.$executeRaw`
+            UPDATE video_dub SET deleted_at = NULL
+            WHERE language_id = 'language-en'
+          `
+        })
+      },
+    )
+
+    it.skipIf(DELIVERY_FIXTURE_MODE !== "deterministic")(
+      "retains published-display and playable-dub eligibility after audio filtering",
+      async () => {
+        await prisma.$transaction(async (transaction) => {
+          await transaction.$executeRaw`
+            UPDATE video_locale SET status = 'draft'
+            WHERE video_id = 'target-video-0'
+          `
+          await transaction.$executeRaw`
+            UPDATE video_dub SET deleted_at = now() WHERE id = 'dub-1'
+          `
+          await transaction.$executeRaw`
+            UPDATE mux_video SET playback_id = NULL WHERE id = 'mux-2'
+          `
+          await transaction.$executeRaw`
+            UPDATE video_dub SET video_edition_id = 'seed-edition'
+            WHERE id = 'dub-3'
+          `
+          const candidates = await getSemanticDeliveryCandidatePool(
+            transaction,
+            deterministicInput,
+          )
+          expect(candidates.map((item) => item.videoId)).toEqual(
+            expectedTargetIds.filter(
+              (id) =>
+                ![0, 1, 2, 3].some((index) => id === `target-video-${index}`),
+            ),
+          )
+          await transaction.$executeRaw`
+            UPDATE video_locale SET status = 'published'
+            WHERE video_id = 'target-video-0'
+          `
+          await transaction.$executeRaw`
+            UPDATE video_dub SET deleted_at = NULL WHERE id = 'dub-1'
+          `
+          await transaction.$executeRaw`
+            UPDATE mux_video SET playback_id = 'playback-2' WHERE id = 'mux-2'
+          `
+          await transaction.$executeRaw`
+            UPDATE video_dub SET video_edition_id = 'target-edition-3'
+            WHERE id = 'dub-3'
+          `
+        })
       },
     )
 
@@ -1303,12 +1740,162 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         try {
           await client.query(`SET search_path TO "${fixtureSchema}", public`)
           await installIndexedContractSkew(client)
+          let annDiagnostics: SemanticRetrievalDiagnostics | undefined
           const candidates = await runRecommendationRetrievalQuery(
             instrumented,
             Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
             (transaction) =>
-              getSemanticDeliveryCandidatePool(transaction, deterministicInput),
+              getSemanticDeliveryCandidatePool(transaction, {
+                ...deterministicInput,
+                onDiagnostics: (diagnostics) => {
+                  annDiagnostics = diagnostics
+                },
+              }),
           )
+          if (candidates.length < 6) {
+            const annStatement = retrievalQuery
+            const diagnostic: Record<string, unknown> = {
+              ann: annDiagnostics,
+              annCandidateCount: candidates.length,
+            }
+            console.error(
+              "[recommendations] event=hnsw_fixture_failure_initial",
+              JSON.stringify(diagnostic),
+            )
+            try {
+              let exactDiagnostics: SemanticRetrievalDiagnostics | undefined
+              const exactCandidates = await runRecommendationRetrievalQuery(
+                instrumented,
+                Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
+                async (transaction) => {
+                  await transaction.$queryRaw`
+                    SELECT set_config('enable_indexscan', 'off', true),
+                      set_config('enable_bitmapscan', 'off', true)
+                  `
+                  return getSemanticDeliveryCandidatePool(transaction, {
+                    ...deterministicInput,
+                    onDiagnostics: (diagnostics) => {
+                      exactDiagnostics = diagnostics
+                    },
+                  })
+                },
+              )
+              diagnostic.exact = exactDiagnostics
+              diagnostic.exactCandidateCount = exactCandidates.length
+              if (annStatement) {
+                const parameters: unknown[] = JSON.parse(annStatement.params)
+                const query = Prisma.sql(
+                  annStatement.query.split(/\$\d+\b/),
+                  ...parameters,
+                )
+                const planner = await runRecommendationRetrievalQuery(
+                  instrumented,
+                  Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
+                  async (transaction) => ({
+                    settings: await transaction.$queryRaw<
+                      Array<{
+                        plan: string
+                        iteration: string
+                        maxScan: string
+                        efSearch: string
+                        scanMemMultiplier: string
+                        workMem: string
+                        pgvectorVersion: string
+                      }>
+                    >`
+                      SELECT current_setting('plan_cache_mode') AS plan,
+                        current_setting('hnsw.iterative_scan') AS iteration,
+                        current_setting('hnsw.max_scan_tuples') AS "maxScan",
+                        current_setting('hnsw.ef_search') AS "efSearch",
+                        current_setting('hnsw.scan_mem_multiplier') AS "scanMemMultiplier",
+                        current_setting('work_mem') AS "workMem",
+                        (SELECT extversion FROM pg_extension WHERE extname = 'vector') AS "pgvectorVersion"
+                    `,
+                    explanation: await transaction.$queryRaw<
+                      Array<{
+                        "QUERY PLAN": Array<{
+                          Plan: RetrievalPlan
+                          "Execution Time": number
+                        }>
+                      }>
+                    >(
+                      Prisma.sql`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${query}`,
+                    ),
+                  }),
+                )
+                const indexNames: string[] = []
+                const hnswScans: RetrievalPlan[] = []
+                const collectIndexNames = (plan: RetrievalPlan): void => {
+                  if (plan["Index Name"]) indexNames.push(plan["Index Name"])
+                  if (
+                    plan["Index Name"] ===
+                    "video_transcript_chunk_embedding_hnsw_en"
+                  ) {
+                    hnswScans.push({
+                      "Node Type": plan["Node Type"],
+                      "Index Name": plan["Index Name"],
+                      Filter: plan.Filter,
+                      "Actual Loops": plan["Actual Loops"],
+                      "Actual Rows": plan["Actual Rows"],
+                      "Rows Removed by Filter": plan["Rows Removed by Filter"],
+                      "Shared Hit Blocks": plan["Shared Hit Blocks"],
+                      "Shared Read Blocks": plan["Shared Read Blocks"],
+                      "Actual Total Time": plan["Actual Total Time"],
+                    })
+                  }
+                  plan.Plans?.forEach(collectIndexNames)
+                }
+                collectIndexNames(
+                  planner.explanation[0]!["QUERY PLAN"][0]!.Plan,
+                )
+                diagnostic.parameterCount = parameters.length
+                diagnostic.settings = planner.settings[0]
+                diagnostic.indexNames = [...new Set(indexNames)].sort()
+                diagnostic.hnswScans = hnswScans
+                diagnostic.explainExecutionMs =
+                  planner.explanation[0]!["QUERY PLAN"][0]!["Execution Time"]
+              }
+            } catch (error) {
+              diagnostic.probeError =
+                error instanceof Error
+                  ? { name: error.name, message: error.message.slice(0, 200) }
+                  : { name: "unknown" }
+            }
+            try {
+              let expandedScanDiagnostics:
+                | SemanticRetrievalDiagnostics
+                | undefined
+              const expandedScanCandidates =
+                await runRecommendationRetrievalQuery(
+                  instrumented,
+                  Date.now() + DELIVERY_RETRIEVAL_BUDGET_MS,
+                  async (transaction) => {
+                    await transaction.$queryRaw`
+                      SELECT set_config('hnsw.scan_mem_multiplier', '2', true)
+                    `
+                    return getSemanticDeliveryCandidatePool(transaction, {
+                      ...deterministicInput,
+                      onDiagnostics: (diagnostics) => {
+                        expandedScanDiagnostics = diagnostics
+                      },
+                    })
+                  },
+                )
+              diagnostic.expandedScan = expandedScanDiagnostics
+              diagnostic.expandedScanCandidateCount =
+                expandedScanCandidates.length
+            } catch (error) {
+              diagnostic.expandedScanError =
+                error instanceof Error
+                  ? { name: error.name, message: error.message.slice(0, 200) }
+                  : { name: "unknown" }
+            }
+            // Aggregate synthetic-fixture facts only; never replace the gate.
+            console.error(
+              "[recommendations] event=hnsw_fixture_failure_diagnostic",
+              JSON.stringify(diagnostic),
+            )
+          }
           expect(candidates.length).toBeGreaterThanOrEqual(6)
           expect(
             candidates.every(

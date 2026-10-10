@@ -69,11 +69,18 @@ const VIDEOS_QUERY = `
       children { id }
       locked
       noIndex
-      restrictViewPlatforms
       updatedAt
     }
   }
 `
+// Never select Core's publisher-gated Video fields here
+// (`restrictViewPlatforms`, `restrictDownloadPlatforms` —
+// `t.withAuth({ isPublisher: true })` in api-media). The sync runs without a
+// publisher credential, so Core rejects the whole page with "Not authorized
+// to resolve Video.<field>" and the videos phase fails every run. Core already
+// drops watch-restricted videos, children, and parents for our
+// `x-graphql-client-name: watch` header. Pinned by
+// sync-videos.core-auth.test.ts.
 
 type CoreVideo = {
   id: string
@@ -124,7 +131,6 @@ type CoreVideo = {
   children: Array<{ id: string }>
   locked: boolean
   noIndex: boolean
-  restrictViewPlatforms: string[]
   updatedAt: string
 }
 
@@ -302,6 +308,11 @@ export async function syncVideos({
   let offset = 0
   let firstPageCount = 0
   const seenCoreIds = new Set<string>()
+  const deferredRelations: Array<{
+    parentId: string
+    childCoreId: string
+    order: number
+  }> = []
 
   while (true) {
     const result = await coreQuery<{ videos: CoreVideo[] }>(VIDEOS_QUERY, {
@@ -350,6 +361,7 @@ export async function syncVideos({
         async () => {
           let pageUpdated = 0
           let pageErrors = 0
+          const unresolved: typeof deferredRelations = []
           await prisma.$transaction(async (tx) => {
             const pageCoreIds = videos.map((video) => video.id)
             const existingVideos = await tx.video.findMany({
@@ -394,7 +406,9 @@ export async function syncVideos({
                     : null,
                   locked: video.locked,
                   noIndex: video.noIndex,
-                  restrictViewPlatforms: video.restrictViewPlatforms,
+                  // restrictViewPlatforms is deliberately omitted (see
+                  // VIDEOS_QUERY): create takes the schema default `[]`,
+                  // update leaves the stored value untouched.
                   aiMetadata: false,
                   source: "CORE",
                   primaryLanguageId,
@@ -411,7 +425,6 @@ export async function syncVideos({
                     : null,
                   locked: video.locked,
                   noIndex: video.noIndex,
-                  restrictViewPlatforms: video.restrictViewPlatforms,
                   primaryLanguageId,
                   originId,
                   updatedAt: new Date(video.updatedAt),
@@ -565,6 +578,7 @@ export async function syncVideos({
               )
               const videoRelationRows = pendingRelations.flatMap((relation) => {
                 const childId = childIdByCoreId.get(relation.childCoreId)
+                if (!childId) unresolved.push(relation)
                 return childId
                   ? [
                       {
@@ -604,10 +618,11 @@ export async function syncVideos({
             }
           }, CORE_SYNC_TRANSACTION_OPTIONS)
 
-          return { errors: pageErrors, updated: pageUpdated }
+          return { errors: pageErrors, updated: pageUpdated, unresolved }
         },
         { operation: `core-sync.videos.page.${offset}` },
       )
+      deferredRelations.push(...pageResult.unresolved)
       stats.updated += pageResult.updated
       stats.errors += pageResult.errors
     } catch (err) {
@@ -625,6 +640,48 @@ export async function syncVideos({
 
     if (videos.length < PAGE_SIZE) break
     offset += PAGE_SIZE
+  }
+
+  // Parents can precede newly-created children on another Core page. Resolve
+  // those links after every successful page has committed, in source order.
+  if (stats.errors === 0 && deferredRelations.length > 0) {
+    try {
+      const children = await prisma.video.findMany({
+        where: {
+          coreId: {
+            in: [...new Set(deferredRelations.map((row) => row.childCoreId))],
+          },
+          deletedAt: null,
+        },
+        select: { id: true, coreId: true },
+      })
+      const childIds = new Map(
+        children.map((child) => [child.coreId, child.id]),
+      )
+      const rows = deferredRelations.flatMap((row) => {
+        const childId = childIds.get(row.childCoreId)
+        return childId
+          ? [{ parentId: row.parentId, childId, order: row.order }]
+          : []
+      })
+      if (rows.length > 0)
+        await withPrismaPoolTimeoutRetry(
+          () =>
+            prisma.videoRelation.createMany({
+              data: rows,
+              skipDuplicates: true,
+            }),
+          { operation: "core-sync.videos.deferred-relations" },
+        )
+    } catch (error) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video.relations-error",
+          error: error instanceof Error ? error.name : "UnknownError",
+        }),
+      )
+    }
   }
 
   if (!since && firstPageCount === 0) {

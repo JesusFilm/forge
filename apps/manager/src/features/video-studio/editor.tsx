@@ -1,11 +1,5 @@
 "use client"
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react"
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react"
 import dynamic from "next/dynamic"
 import Link from "next/link"
 import {
@@ -16,7 +10,6 @@ import {
   Undo2,
   Redo2,
   History,
-  SkipBack,
   Maximize2,
 } from "lucide-react"
 import {
@@ -29,8 +22,9 @@ import {
 } from "@forge/studio-contracts"
 import { studioCall } from "./client"
 import { EditorSession } from "./editor-session"
-import { Inspector, defaultTransform } from "./inspector"
-import { Timeline, itemLabel } from "./timeline"
+import { Inspector } from "./inspector"
+import { Timeline } from "./timeline"
+import { CanvasSelection } from "./canvas-selection"
 import { Library } from "./library"
 import "./studio.css"
 const RenderPanel = dynamic(() => import("./render-panel"), { ssr: false })
@@ -45,7 +39,13 @@ const Preview = dynamic(() => import("./preview"), {
   ssr: false,
   loading: () => <div className="nle-preview-message">Loading preview…</div>,
 })
-export function StudioEditor({ projectId }: { projectId: string }) {
+export function StudioEditor({
+  projectId,
+  handoff,
+}: {
+  projectId: string
+  handoff?: import("./render-review-state").RenderHandoff
+}) {
   const [session, setSession] = useState<EditorSession | null>(null),
     [error, setError] = useState("")
   useEffect(() => {
@@ -90,7 +90,7 @@ export function StudioEditor({ projectId }: { projectId: string }) {
       </section>
     )
   return session ? (
-    <Editor projectId={projectId} session={session} />
+    <Editor projectId={projectId} session={session} handoff={handoff} />
   ) : (
     <p className="nle-empty">Opening project…</p>
   )
@@ -98,9 +98,11 @@ export function StudioEditor({ projectId }: { projectId: string }) {
 function Editor({
   session,
   projectId,
+  handoff,
 }: {
   session: EditorSession
   projectId: string
+  handoff?: import("./render-review-state").RenderHandoff
 }) {
   const state = useSyncExternalStore(
       session.subscribe,
@@ -113,16 +115,9 @@ function Editor({
     [history, setHistory] = useState<StudioRevision[] | null>(null),
     [selectCanvas, setSelectCanvas] = useState(true),
     [agentOpen, setAgentOpen] = useState(false),
-    [renderOpen, setRenderOpen] = useState(false),
+    [renderOpen, setRenderOpen] = useState(Boolean(handoff)),
     [productionOpen, setProductionOpen] = useState(false),
     [generationOpen, setGenerationOpen] = useState(false)
-  const canvas = useRef<HTMLDivElement>(null),
-    drag = useRef<{
-      id: string
-      x: number
-      y: number
-      original: typeof defaultTransform
-    } | null>(null)
   const report = useCallback((s: string) => setError(s), [])
   useEffect(() => {
     try {
@@ -161,7 +156,6 @@ function Editor({
     window.addEventListener("keydown", key)
     return () => window.removeEventListener("keydown", key)
   }, [session])
-  const selected = doc.items.find((i) => i.id === state.selection)
   async function showHistory() {
     try {
       setHistory(await studioCall("history", { projectId }))
@@ -282,9 +276,12 @@ function Editor({
           </div>
           <div className="nle-canvas-space">
             <div
-              ref={canvas}
               className="nle-canvas"
-              style={{ aspectRatio: `${doc.width}/${doc.height}` }}
+              style={{
+                aspectRatio: `${doc.width}/${doc.height}`,
+                width: `min(100cqw, ${(100 * doc.width) / doc.height}cqh)`,
+                height: `min(100cqh, ${(100 * doc.height) / doc.width}cqw)`,
+              }}
             >
               <Preview
                 projectId={projectId}
@@ -294,108 +291,33 @@ function Editor({
                 onPlaying={setPlaying}
               />
               {selectCanvas && (
-                <div className="nle-canvas-overlay">
-                  {doc.items
-                    .filter(
-                      (i) =>
-                        i.kind !== "audio" &&
-                        state.playhead >= i.startFrame &&
-                        state.playhead < i.startFrame + i.durationInFrames,
-                    )
-                    .map((i) => {
-                      const t = i.transform ?? defaultTransform
-                      return (
-                        <button
-                          aria-label={`Select ${itemLabel(i)}`}
-                          key={i.id}
-                          className="nle-canvas-item"
-                          aria-pressed={selected?.id === i.id}
-                          style={{
-                            transform: `translate(${(t.x / doc.width) * 100}%,${(t.y / doc.height) * 100}%) rotate(${t.rotation}deg) scale(${t.scaleX},${t.scaleY})`,
-                          }}
-                          onClick={() => session.select(i.id)}
-                          onPointerDown={(e) => {
-                            if (!state.editable) return
-                            session.select(i.id)
-                            e.currentTarget.setPointerCapture(e.pointerId)
-                            drag.current = {
-                              id: i.id,
-                              x: e.clientX,
-                              y: e.clientY,
-                              original: t,
-                            }
-                          }}
-                          onPointerMove={(e) => {
-                            if (!drag.current) return
-                            e.currentTarget.style.translate = `${e.clientX - drag.current.x}px ${e.clientY - drag.current.y}px`
-                          }}
-                          onPointerUp={(e) => {
-                            const a = drag.current
-                            drag.current = null
-                            e.currentTarget.style.translate = ""
-                            if (!a || !canvas.current) return
-                            const scale =
-                              doc.width /
-                              canvas.current.getBoundingClientRect().width
-                            session.edit((d) => ({
-                              ...d,
-                              items: d.items.map((x) =>
-                                x.id === a.id
-                                  ? {
-                                      ...x,
-                                      transform: {
-                                        ...a.original,
-                                        x:
-                                          a.original.x +
-                                          (e.clientX - a.x) * scale,
-                                        y:
-                                          a.original.y +
-                                          (e.clientY - a.y) * scale,
-                                      },
-                                    }
-                                  : x,
-                              ),
-                            }))
-                          }}
-                          onPointerCancel={() => {
-                            drag.current = null
-                          }}
-                        >
-                          <span>{itemLabel(i).slice(0, 36)}</span>
-                        </button>
-                      )
-                    })}
+                <div onPointerDownCapture={() => setPlaying(false)}>
+                  <CanvasSelection
+                    session={session}
+                    state={state}
+                    onError={report}
+                  />
                 </div>
               )}
             </div>
           </div>
           <div className="nle-transport">
-            <button title="Go to start" onClick={() => session.seek(0)}>
-              <SkipBack size={16} />
-            </button>
             <button
               aria-label={playing ? "Pause" : "Play"}
               onClick={() => setPlaying((v) => !v)}
             >
               {playing ? <Pause size={20} /> : <Play size={20} />}
             </button>
-            <output>
-              {(state.playhead / doc.fps).toFixed(2)} /{" "}
-              {(doc.durationInFrames / doc.fps).toFixed(2)}s
-            </output>
-            <input
-              type="range"
-              aria-label="Playhead"
-              min={0}
-              max={doc.durationInFrames - 1}
-              value={state.playhead}
-              onChange={(e) => session.seek(+e.target.value)}
-            />
           </div>
         </section>
         <Inspector session={session} state={state} onError={report} />
       </div>
-      <Timeline session={session} state={state} onError={report} />
+      <Timeline
+        session={session}
+        state={state}
+        onError={report}
+        onScrub={() => setPlaying(false)}
+      />
       {generationOpen && (
         <GenerationPanel
           session={session}
@@ -405,6 +327,7 @@ function Editor({
       )}
       {renderOpen && (
         <RenderPanel
+          handoff={handoff}
           session={session}
           projectId={projectId}
           onClose={() => setRenderOpen(false)}

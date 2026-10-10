@@ -281,6 +281,10 @@ is redundant and loses the plugin's column-pruning.
 ## Conventions (Unit 1 baseline — expands with each unit)
 
 - Env vars validated at startup via `src/config/env.ts`. Never read `process.env` directly.
+  Standalone migration deploy/recovery scripts may read required database and
+  retry settings before application auth configuration exists; validate the
+  inputs and never print connection strings. This exception does not apply to
+  application services or other operator scripts.
 - Env vars managed by Doppler (project: `forge-admin`). Use `pnpm fetch-secrets` for local dev.
 - Tests colocated as `*.test.ts` / `*.test.tsx` beside source files.
 - Next production builds use `tsconfig.build.json` to exclude colocated tests
@@ -330,10 +334,12 @@ network, timeout) and is called via `void` so admin's publish UX never
 blocks on web. Wired into `ExperienceService.publishLocale`,
 `updateLocale` (only when `status === "PUBLISHED"`), and `archive`.
 
-Env vars on the `forge-admin` Doppler project (both `.optional()` so
+Env vars on the production Admin Railway service (both `.optional()` so
 admin still boots in environments without web wired up):
 
-- `WEB_REVALIDATE_URL` — e.g. `https://web.jesusfilm.org/api/revalidate`
+- `WEB_REVALIDATE_URL` — `https://www.jesusfilm.org/watch/api/revalidate`
+  in production. The legacy `watch.jesusfilm.org` host redirects POST with 301;
+  the redirected request becomes GET and the receiver returns 405.
 - `WEB_REVALIDATE_TOKEN` — must hold the SAME value web sets in
   `REVALIDATION_SECRET`
 
@@ -605,11 +611,12 @@ vars configured; dev/staging should not need those S3 credentials.
 
 ### Search trace retention and sampling
 
-Admin is the live search authority. REST `/api/search`, GraphQL `Query.search`,
+Admin is the live search authority. GraphQL `Query.watchSearch`,
 query embedding generation, pgvector retrieval, production trace storage,
 rollups, and retention all stay inside `apps/admin`. Mastra must not enter the
 live request path and must not import Admin code or read Admin Postgres for eval
-sampling; later eval jobs use Admin's internal HTTP contract only.
+sampling; later eval jobs use Admin's internal HTTP contract only. #1622
+removed REST `/api/search` and GraphQL `Query.search` on 2026-07-20.
 
 Production search tracing writes two records:
 
@@ -626,10 +633,13 @@ Production search tracing writes two records:
   source/version dimensions so future rule changes do not mix incompatible
   cohorts.
 
-Trace writes are bounded best-effort. `recordSearchTraceSafely` is awaited
-behind a short timeout and every write/timeout failure is swallowed from the
-live search caller's perspective. Failures increment safe process-local
-counters and log `[search] event=trace_record_* ...` without raw query text.
+Trace writes are bounded best-effort. `Query.watchSearch` puts each trace on a
+bounded per-process queue (`enqueueWatchSearchTrace`) that runs
+`recordSearchTraceSafely` after the response. A full queue drops the trace and
+logs `[search] event=trace_queue_full`. `recordSearchTraceSafely` runs behind a
+short timeout, and every write or timeout failure is swallowed from the
+caller's perspective. Failures increment safe process-local counters and log
+`[search] event=trace_record_* ...` without raw query text.
 Experience-editor video library server-action searches use
 `recordAdminVideoLibrarySearchTraceSafely`; their raw traces set
 `requestedMode` to a closed client label such as
@@ -701,16 +711,22 @@ Query labeling model:
 
 The optional OpenRouter classifier lives at
 `src/services/search-trace-query-classifier.ts` and is for ambiguous or
-high-impact samples only. REST `/api/search` and GraphQL `Query.search` must
-not call it, must not route through Mastra, and must not use labels to censor
-or alter live results.
+high-impact samples only. The live search path, GraphQL `Query.watchSearch`,
+must not call it, must not route through Mastra, and must not use labels to
+censor or alter live results.
 
 The Admin worker starts `src/workflows/searchTraceRetention.ts` when
 `WORKFLOW_RUNNER_ENABLED=true` and
 `WORKFLOW_TARGET_WORLD=@workflow/world-postgres`. The scheduler runs one purge
 immediately, then daily at 10:00 UTC. `/api/search/health` reports retention
-health and trace capture counters; in production, raw trace capture is disabled
-when the retention scheduler or recent purge heartbeat cannot be confirmed.
+health and trace capture counters. In production, when that health is not
+healthy, the trace writer runs `purgeExpiredSearchTraces` inline, logs
+`[search] event=trace_retention_inline_purge`, and then stores the raw row
+(feat-272). Only an explicit `retentionHealthy: false` input disables raw
+capture. The health reads the scheduler heartbeat and the last successful
+purge, not the runtime status of the scheduler run, so a fresh heartbeat
+does not prove a live run. See
+`docs/solutions/platform/admin-search-trace-retention-pattern.md`.
 The purge also removes trace-derived generated eval candidates whose
 `retentionExpiresAt` has passed while they remain `generated`, keeping
 unpromoted trace candidates inside the raw trace retention window.
@@ -1488,6 +1504,14 @@ AND embedding IS NOT NULL` grows as expected.
 
 ## Hybrid search (R4 of admin migration playbook)
 
+> **Superseded 2026-07-20 by #1622 (noted 2026-09-30).** #1622 removed
+> `HybridSearchService`, REST `GET /api/search`, and GraphQL `Query.search`.
+> The live search surface is `Query.watchSearch`
+> (`src/graphql/queries/watch-search.ts`), and `GET /api/search/health`
+> remains. Some retriever, fusion, and SQL modules named below still serve
+> `src/services/watch-search.service.ts`. Read this section as history, and
+> verify each named file before you act on it.
+
 Admin owns public hybrid search — semantic + keyword retrieval fused via
 Reciprocal Rank Fusion — over the `Video`/`VideoLocale` transcript-backed video
 semantic corpus and `Experience`/`ExperienceLocale` corpora. It originally
@@ -1633,6 +1657,10 @@ recommendations consume one implementation. `deduplicateResults` below
 is a thin `FusedResult`-typed wrapper.
 
 ## Hybrid search keyword-first mode (R4 extension)
+
+> **Superseded 2026-07-20 by #1622 (noted 2026-09-30).** The `mode` argument
+> went away with REST `/api/search` and `Query.search`. See the note at the
+> top of the R4 section.
 
 Opt-in `mode="keyword-first"` argument on the same `HybridSearchService`
 that R4 ships. Adds three lexical retrievers + a post-fusion semantic-
@@ -2306,6 +2334,15 @@ operator instructions.
 
 ## Search API authentication (Plan 002 + Plan 003)
 
+> **Superseded 2026-07-20 by #1622 (noted 2026-09-30).** #1622 removed the
+> two routes this section gates, REST `GET /api/search` and GraphQL
+> `Query.search`, and the bearer composer `isAnyKnownBearer`. The
+> `SEARCH_AUTH_REQUIRED` flag no longer exists, and `Query.watchSearch` is
+> public. The consumer bearer and the fleet-aware rate-limit bucketing below
+> still apply through `src/graphql/context.ts` and
+> `src/graphql/plugins/rate-limit.ts`. Verify each named file before you act
+> on the rest of this section.
+
 Admin's public search surface — `GET /api/search` REST + `Query.search`
 GraphQL twin — is gated by a bearer-key passport. Phase 1 (Plan 002)
 shipped in **dual-accept** mode (anonymous + bearer-auth both
@@ -2508,6 +2545,12 @@ See `docs/plans/2026-07-08-002-feat-admin-fleet-aware-rate-limit-bucketing-plan.
   `docs/solutions/architecture-patterns/consumer-bearer-rate-limit-identity-pattern-20260513.md`
 
 ## Partner API key store
+
+> **Superseded 2026-07-20 by #1622 (noted 2026-09-30).** The routes these keys
+> authenticate, `/api/search` and `Query.search`, no longer exist. The
+> `PartnerApiKey` table, the `partner-keys` CLI, and `/dashboard/partner-keys`
+> remain, but no request path checks a partner key. The search trace and
+> search-eval bearers still reject `jfp_search_*`-shaped tokens.
 
 DB-backed external-partner credentials for `/api/search` + `Query.search`.
 Extends Plan 002's bearer-as-passport composer with a fourth branch
@@ -2724,6 +2767,56 @@ fields — `whatsNewFeatureVoteTallies`, `castWhatsNewFeatureVote`,
 - Real-Postgres coverage lives in `whats-new-feature-votes.db.test.ts`, skipped
   unless `WHATS_NEW_VOTE_TEST_DATABASE_URL` is set.
 
+## Mobile in-app feedback
+
+`submitFeedback` is a public GraphQL mutation for the mobile app
+(`src/graphql/mutations/feedback.ts`). A person reports a problem or a wrong
+translation, sends an idea, or writes something else from the app. Admin files the Linear issue
+through `src/services/feedback-linear.ts` and then answers. The plan is
+`docs/plans/2026-09-14-1033-feat-mobile-feedback-linear-plan.md`.
+
+- **The outcome is DATA.** The mutation returns `accepted` and a nullable
+  `refusal` (`INVALID_INPUT`, `RATE_LIMITED`, `DAILY_CAP`, `UNAVAILABLE`,
+  `NOT_CONFIGURED`). Any other error still throws, so a real fault does not
+  reach the phone as a refusal.
+- **`RATE_LIMITED` and `DAILY_CAP` are separate values on the wire.** The phone
+  shows ONE message for every refusal, the fleet-wide daily cap included. Do
+  not collapse the two values into one. The wire value and the
+  `[feedback] event=refused` log line are how an operator tells a busy install
+  apart from the kill switch.
+- **Three counters run before admin calls Linear**
+  (`src/services/feedback-limits.ts`): 5 per install per 10 minutes, 20 per
+  trusted address per hour, and the fleet-wide daily cap. The first two answer
+  `RATE_LIMITED`; the cap answers `DAILY_CAP`. A refused call does not spend
+  the day. The address comes from `cf-connecting-ip` only, never from the
+  spoofable `x-forwarded-for`.
+- **A `TRANSLATION` report carries `uiLocale`** (feat-604): the catalog tag of
+  the language that the app showed. The ticket shows it as "App language",
+  with its English name when `Intl` knows one, such as `Arabic (ar)`. The bound
+  is a BCP 47 shape of 35 characters at most, not a list of tags, so a new
+  catalog never refuses a report. The phone mirrors the bound.
+- **A log line never carries the message, the name, or the email.** Use the
+  plain-string `[feedback] event=<name> key=value` format; Railway logsV2 drops
+  JSON from a Next.js runtime handler.
+
+### Env vars (`forge-admin` Doppler)
+
+Every one is optional, so admin boots in an environment with no Linear
+configuration and nothing else about admin changes.
+
+- `ADMIN_MOBILE_FEEDBACK_LINEAR_API_KEY` and `ADMIN_MOBILE_FEEDBACK_LINEAR_TEAM_ID` — a
+  missing value answers `NOT_CONFIGURED` for every submission.
+- `ADMIN_MOBILE_FEEDBACK_LINEAR_PROJECT_ID` and `ADMIN_MOBILE_FEEDBACK_LINEAR_LABEL_ID` —
+  optional placement of the ticket.
+- `ADMIN_MOBILE_FEEDBACK_DAILY_CAP` — submissions per UTC day, default 200. **A `0`
+  refuses every submission with `DAILY_CAP` and is the operator's kill switch.
+  It never means unlimited** — the opposite of the fleet search ceiling. A
+  change to it needs a redeploy.
+
+`env` skips zod validation whenever `CI` is set, and a skipped validation also
+skips zod DEFAULTS. Read the cap through `feedbackDailyCap()`, never straight
+off `env`.
+
 ## Scripture Passages
 
 Admin owns YouVersion provider access for Watch Bible passage rendering. Keep
@@ -2776,19 +2869,38 @@ JSON through GraphQL.
 ## Admin MCP (JFP Admin MCP — feat-276 + feat-320 + feat-405)
 
 OAuth-protected JSON-RPC MCP surface at `POST /mcp` for AI agents (Claude,
-Codex) operating on Experiences. Onboarding UI at `/dashboard/mcp`; protected-
+Codex) operating on Experiences and, since feat-613, on push campaign drafts.
+Onboarding UI at `/dashboard/mcp`; protected-
 resource metadata at `/.well-known/oauth-protected-resource` (its
 `scopes_supported` derives automatically from the tool registry).
 
-- **Registry:** `src/mcp/admin-mcp-tools.ts` (`ADMIN_MCP_TOOLS`, 15 tools).
+- **Registry:** `src/mcp/admin-mcp-tools.ts` (`ADMIN_MCP_TOOLS`, 24 tools: 17
+  Experience, video, and Bible tools and 7 `push.*` tools).
   New-tool registration is a three-edit change with no framework glue: registry
   entry → `callAdminMcpTool` dispatch branch in `src/app/mcp/route.ts` →
   service method. The route test's registry-dispatch parity loop fails if a
   declared tool has no branch.
-- **Services:** `src/services/experience-locale-mcp.service.ts` (the 12
+- **Annotations (KTD22):** every tool carries MCP annotations, and `tools/list`
+  returns them. A client uses them to decide if it asks before a call. The 10
+  Experience-side reads and the 5 push reads are read-only. The destructive
+  tools are `experience.locale.publish`, `experience.locale.discard`, and
+  `push.campaign.update`.
+- **Services:** `src/services/experience-locale-mcp.service.ts` (the 14
   locale-level tools) and `src/services/experience-mcp.service.ts` (the three
   experience-level tools). Writes delegate to `ExperienceService`; ABAC stays
-  in the service layer.
+  in the service layer. The push tools go through
+  `src/services/push-campaign-mcp.service.ts`, which reads with
+  `src/services/push/agent-reads.service.ts` and
+  `src/services/push/test-run-state.ts`, and writes with
+  `src/services/push/campaign-content.service.ts`.
+- **Push campaign tools (feat-613):** `push.language.search`,
+  `push.destination.search`, `push.audience.count`, `push.campaign.list`, and
+  `push.campaign.read` need scope `push:campaign:read`. `push.campaign.create`
+  and `push.campaign.update` need scope `push:campaign:draft`. Only an EDITOR
+  or ADMIN can call them; any other role gets HTTP 403 `forbidden_role`. The
+  agent saves a DRAFT only. A person tests, schedules, and sends in the
+  dashboard. Results and failures are envelopes in `structuredContent`, as
+  for `experience.generate`.
 - **Auth:** bearer JWT verified against apps/auth JWKS
   (`src/auth/admin-mcp-oauth.ts`); per-tool `requiredScopes` are enforced
   BEFORE dispatch. Insufficient scope is an HTTP **403** with
@@ -2839,10 +2951,55 @@ resource metadata at `/.well-known/oauth-protected-resource` (its
 seed:first-party-apps` (updates the `scope` table + stored client scopes),
   and **users must re-authenticate their MCP clients** to pick up the new
   consent scopes — existing grants do not gain them.
+
+  **Corrected 2026-10-07 (feat-613):** this bullet is not enough for MCP
+  clients that registered before the change. Auth fixes the scope list of a
+  dynamic client at registration, and refuses the whole sign-in with
+  `invalid_scope` when the client requests a scope outside that list. The
+  Experience tools then stop too, and a new sign-in does not help. Add a seed
+  step that adds the new scope to existing dynamic clients, as the push-scope
+  bullet below does. See
+  `docs/solutions/auth/new-mcp-scope-needs-stored-scope-migration-for-dynamic-clients.md`.
+
+- **Deploy order (push scopes, KTD3):** one pull request cannot set this order,
+  because apps/auth and apps/admin autodeploy from `main` in parallel.
+  1. Merge the apps/auth change. Its production start command runs
+     `seed:first-party-apps`, which migrates existing dynamic clients and
+     prints the updated-client count in the deploy log.
+  2. Read the stored scopes of dynamic (non-first-party) client rows in the
+     auth database, and confirm both push scopes. The first-party
+     `jfp_admin_mcp_codex` row is not evidence, because the seed rewrites it
+     on every run.
+  3. Merge the admin change.
+  4. If a re-run is necessary, redeploy auth. A client that registered on the
+     old auth instance during the auth rollout misses the scopes until the
+     next auth boot.
+  5. Sign in again with one Claude Code client and one Codex client that
+     registered before the deploy, and confirm both push scopes.
+  6. Announce the change. Until a user signs in again, a push call gets HTTP
+     403 `insufficient_scope`, and the Experience tools still work.
+- **Removal of the push scopes (reverse order):** if auth removes the scopes
+  first, auth refuses new client registrations and Codex refreshes while admin
+  still advertises the scopes.
+  1. Deploy an admin change that removes the seven `push.*` registry entries.
+     `scopes_supported` stops listing the push scopes, and push calls stop at
+     once.
+  2. Remove the scopes from `ADMIN_MCP_DEFAULT_SCOPES` and deploy auth. The
+     start command runs the seed.
+  3. Tell Codex users to sign in again. The seed rewrites the first-party
+     Codex row without the push scopes, and Better Auth then refuses a refresh
+     token that still carries them. Dynamic client rows keep the push scopes
+     in their stored list, and the resource's `allowedScopes` intersection
+     drops them from new tokens.
 - **Client-side workflow contract:**
   `plugins/jfp-admin/skills/forge-bulk-locale-factory/SKILL.md` (also the
   `resource_documentation` target). Fan-out (many topics/languages) stays in
-  the client agent loop; there are no bulk server operations.
+  the client agent loop; there are no bulk server operations. The push
+  campaign steps are in
+  `plugins/jfp-admin/skills/forge-push-campaign-drafts/SKILL.md`. Each skill
+  forbids the other side's write tools. A skill change bumps the plugin
+  version in both `plugin.json` files, because some clients cache a plugin by
+  version.
 
 ## Subtitle Quality Lab ledger and access operations
 
@@ -3023,3 +3180,221 @@ old processes; process environment is not an instantaneous fleet barrier. See
 operation map, rollout order and external acceptance gates. Local DB fixtures that
 exercise enabled production/publication must explicitly set both flags to `true`;
 do not change default-off production behavior to accommodate tests.
+
+## Localized push campaigns (feat-524)
+
+Admin owns announcement campaigns end to end: copy per language, audience,
+local-hour wave, sending through Expo's push service, and the report. The
+mobile app only registers a token and opens a destination. The plan is
+`docs/plans/2026-09-18-1540-feat-localized-push-campaigns-plan.md`; the ticket
+is `docs/roadmap/platform/feat-524-localized-push-campaigns.md`.
+
+### Seam
+
+- Tables: `push_registration`, `push_test_device`, `push_campaign`,
+  `push_campaign_copy`, `push_campaign_zone`, `push_delivery`, `push_open`,
+  `push_attribution` (migration `0120_push_campaigns`). The recommendation
+  tables do not change. The partial unique index `push_delivery_daily_claim_key`
+  is the "one announcement per device per local day" rule; the claim is one
+  multi-row `INSERT ... ON CONFLICT DO NOTHING` with no conflict target.
+- One registration row is one device, which is one app install. The app mints
+  an install id once and keeps it, and the registration input requires it, so
+  supersession is keyed on that install id and the platform: a token rotation on
+  the same install retires the older row, and another device of the same viewer
+  stays active. A superseded token that
+  registers again with permission granted becomes active. A viewer who has a phone
+  and a tablet receives the announcement on both, and every count the report
+  and the dashboard show is a count of devices, never of viewers.
+- The supersede pass carries an ownership term, because an install id can be
+  restored from a backup or copied between devices. A request retires another
+  row of its install only when there is no definite identity conflict: it
+  retires a candidate whose stored viewer digest is null or equal to the
+  request's verified digest, and a request that carries no digest retires every
+  candidate, because an anonymous install has no evidence of a conflict (KTD7
+  allows an absent handle). A request that carries a digest also counts the
+  candidates it skipped and logs `supersede_skipped=<n>` on the register line,
+  a count only, so a cloned install id is visible to an operator.
+  Two residuals follow. Two anonymous devices that share a restored install id
+  flip each other at each launch, and each recovers at its own next launch. An
+  anonymous caller who knows another device's install id can retire that
+  device's row until that device registers again. A phone whose viewer handle
+  admin refuses retries without one, so it also takes this anonymous path.
+- Services: `src/services/push/`. Public mutations `registerPushDevice` and
+  `reportPushOpen` (`src/graphql/mutations/push-device.ts`) sit behind the push
+  admission predicate (`admission.ts`) and a per-operation ceiling
+  (`ceiling.ts`). The send path is `dispatch.ts` → workflow
+  `src/workflows/pushCampaign.ts` → `batch.ts` / `receipts.ts` → `transport.ts`.
+  Attribution runs in both directions (`attribution.service.ts`); the report is
+  `report.service.ts`. The dashboard is `src/app/dashboard/push-campaigns/`
+  behind the `write:push-campaigns` key (VIEWER tier).
+- Admission refuses a viewer handle that does not verify with its own push
+  code, `viewer_handle_rejected`, under GraphQL `UNAUTHENTICATED`. A missing or
+  unknown bearer and a handle with a missing half keep `admission_denied`. The
+  app answers only `viewer_handle_rejected` by re-checking its handle and
+  retrying without it, so keep the two codes apart. A database fault during
+  the handle check is rethrown as an internal error, not as a refused handle.
+- Never log or persist a push token, a viewer digest, or the provider's message
+  string (it embeds the token). Log lines use the plain-string form
+  `[push] event=name key=value`.
+- Real-database tests gate on `PUSH_DB_TEST=1` and read `DATABASE_URL`:
+  `PUSH_DB_TEST=1 DATABASE_URL=postgresql://forge@localhost:5432/forge_admin_push_test pnpm --filter @forge/admin exec vitest run src/services/push`.
+- Load proof before a first campaign:
+  `CI=1 pnpm --filter @forge/admin exec tsx src/scripts/push-campaign-dry-run.ts --registrations=100000 --groups=40`.
+
+### Agent drafts and the content version (feat-613)
+
+The JFP Admin MCP also writes campaign drafts (see "Admin MCP" above).
+Migration `0138_push_campaign_agent_drafts` adds `content_version`,
+`last_test_content_version`, `ai_last_actor_id`, and `ai_last_written_at` to
+`push_campaign`.
+
+- **One content version.** `contentVersion` is the one revision of a
+  campaign's copy, destination, and audience; the MCP calls it `revision`.
+  Every content writer goes through
+  `src/services/push/campaign-content.service.ts`: the MCP create, the MCP
+  update, and the dashboard save. A real change is one conditional update on
+  the id, an editable status, and the expected version. It raises the version
+  by one and moves a TESTED campaign to DRAFT. A save that changes nothing
+  writes nothing, so a TESTED campaign stays TESTED.
+- **Test pin.** A test send records the content version that it sends in
+  `lastTestContentVersion`. The test records TESTED only when the content
+  version still equals that value. A TEST run in flight at the deploy has no
+  pin and fails closed, so the editor sends a new test.
+- **Dashboard refusals.** The dashboard refuses a save or a test send from a
+  stale form, and the form keeps its input. The message names the newer
+  change.
+- **AI marker.** Only an MCP write sets `ai_last_actor_id` and
+  `ai_last_written_at`. Nothing clears them, so a later hand edit keeps the
+  marker. The marker says nothing about translation quality.
+- **Real-database suites** (`PUSH_DB_TEST=1`, run in CI):
+  `src/services/push/campaign-content.db.test.ts`,
+  `src/services/push/agent-reads.db.test.ts`, and
+  `src/app/mcp/route.push.db.test.ts`. The `src/services/push` command above
+  does not run the route suite, so add its path.
+- **Rollout precondition.** At the admin deploy, `PUSH_CAMPAIGNS_ENABLED` is
+  off or no TEST run is in flight. Deploy when no one edits campaigns: for a
+  short time, an old container can serve a save that does not raise the
+  version.
+
+### Campaign delete
+
+The campaign page deletes a campaign through `deletePushCampaign` in
+`src/services/push/campaign.service.ts`. The delete removes the campaign, its
+copy, its zones, and its delivery, open, and attribution rows. Registrations,
+test devices, and workflow ledger rows stay. The MCP has no delete tool. Any
+user with `write:push-campaigns` can delete, so the delete writes an audit row
+(see below) to keep a sent message traceable.
+
+- **Cancel first.** Admin refuses to delete a scheduled or sending campaign.
+- **No run in flight.** A test run blocks the delete until its receipt window
+  ends. A live ledger row that still reads queued or running blocks it only
+  while the runtime says the run is alive or cannot answer, because a run that
+  died can leave its ledger row running (the recovery sweep pauses its campaign).
+  A ledger row with no runtime run id counts as finished, as in the sweep.
+- **No claim in force (KTD3).** A live row that holds a claim blocks the delete
+  until its local day has ended in every zone (the local date plus 36 hours, in
+  UTC) and the 20-hour zone guard has passed. An earlier delete releases the
+  claim, so a second announcement could reach that phone on the same day.
+- **Bounded statements.** A sent, paused, or cancelled campaign loses its
+  delivery rows in pages of 5,000, ordered by id, before the transaction; no
+  transition leaves these statuses, so no run adds rows. A page that a
+  concurrent delete already took moves 0 rows, and the loop reads again.
+- **Guarded transaction.** The transaction deletes deliveries first (the same
+  lock order as the pages, so two deletes do not deadlock), then any stray opens
+  and attributions. It deletes the campaign only while its status and run id
+  equal the gate's values and its content version equals the snapshot's.
+  Otherwise the transaction rolls back. The pages do not roll back, so a delete
+  that stops partway leaves part of the report, and a second delete finishes
+  it. A delete that loses a race to another reads as not found, so the editor
+  lands on the list.
+- **Audit row.** In the same transaction, the delete writes one
+  `workflow_run` row with key `push-campaign-delete`: the actor, the status,
+  the destination, the audience, the content version, every copy row, the
+  zones with their planned audience counts, and `deliveriesDeleted`. That count
+  covers only the rows this call removed; after a stopped delete, the zones
+  still give the planned reach.
+- **No run for a deleted campaign.** `dispatchPushCampaignRun` refuses to
+  start a run when its link to the campaign moves no row, and closes the
+  ledger row as failed.
+- **Real-database suite:** `src/services/push/campaign-delete.db.test.ts`, in
+  CI's push database step.
+
+### Campaign countries
+
+A campaign country must be an ISO code that a phone can report.
+`src/services/push/country-code.ts` refuses an alias such as `UK` (phones store
+`GB`) and a group code such as `EU` with a message that names the code to use.
+`PushCountryCodeSchema` applies it on the dashboard and MCP paths, and the
+editor applies it before it adds a chip. `XK` (Kosovo) stays valid, because the
+edge reports it. The dashboard shows a name, such as "Mexico (MX)", only for a
+code that passes this check.
+
+- **Fail closed on stored codes.** Every content write checks the whole merged
+  audience (KTD7), so a campaign saved earlier with a refused code fails every
+  save and every MCP update until someone replaces the code. This is
+  deliberate: unlike a stale language slug (KTD8), a refused country reaches no
+  phone. Before a deploy, list the stored codes with
+  `SELECT DISTINCT unnest(countries) FROM push_campaign` and check each one
+  with `checkPushCountryCode`.
+- **ICU decides.** The check reads the runtime's ICU data. `country-code.test.ts`
+  pins all 249 ISO 3166-1 codes from tzdata, so a Node or ICU change that drops
+  one fails in CI.
+
+### Flags and env
+
+Every push var is optional and boots unset. `PUSH_CAMPAIGNS_ENABLED` (default
+off) gates schedule, send now, and the test send, and every batch step re-reads
+it. `EXPO_ACCESS_TOKEN` is a Railway variable on the worker service only, never
+in the shared Doppler config: admin web refuses to boot with it injected in
+production (`assertPushTransportRuntime`), and `railway.worker.toml` unsets it
+in the build and pre-deploy commands. Budgets: `PUSH_BATCH_PAGE_SIZE` 5000,
+`PUSH_STEP_MAX_DURATION_MS` 220000, `PUSH_CHUNK_DEADLINE_MS` 10000,
+`PUSH_PROVIDER_CONCURRENCY` 3, `PUSH_MESSAGES_PER_SECOND` 500,
+`PUSH_RECEIPT_PAGE_SIZE` 10000, `PUSH_FCM_BLOCKED_COUNTRIES` `CN`. Ceilings:
+`PUSH_REGISTRATION_CEILING_PER_MIN` and `PUSH_OPEN_CEILING_PER_MIN` (default
+6000, 0 disables) with `PUSH_CEILING_ENFORCE` (alert-first until `true`).
+
+### Deploy order
+
+1. Merge with `PUSH_CAMPAIGNS_ENABLED` unset. Both admin services run migration 0120. Confirm `prisma migrate status` is clean on both.
+2. **Restart the worker once after the deploy.** U1 added
+   `stepRunPushRetention` inside the durable
+   `runRecommendationRetentionScheduler` loop. At boot, the worker replays the
+   live scheduler run, and the replay fails with `corrupted-event-log`. The boot
+   check `ensureRecommendationRetentionSchedulerStarted` can read the run before
+   it fails, so no scheduler runs until the next worker boot. After the worker
+   deploy succeeds, run `railway restart -e production -s @forge/admin/worker -y`.
+   Then confirm that a new `recommendation-retention-scheduler` ledger row is
+   `running` with a new `runtime_run_id`. The workflows dashboard has no cancel
+   control, and `workflow cancel` refuses a run that is already `failed`. See
+   `docs/solutions/workflow-issues/new-step-in-durable-workflow-loop-needs-worker-restart-after-deploy.md`.
+3. Set the worker's queue concurrency to at least 4 and record it.
+4. Provision the Expo access token on the worker service, then one batched
+   Doppler write of the push vars with the flag on. Schedule must then be
+   refused only by the missing-test-send reason.
+5. Apply the four monitors in `infra/datadog-monitors/push/` after confirming
+   admin logs reach Datadog. The heartbeat monitor is a proxy on
+   `event=zone_missed reason=run_not_alive`.
+
+### Rollback
+
+Turn `PUSH_CAMPAIGNS_ENABLED` off first: the next batch step marks the rest of
+the current group missed and ends the run as paused. Cancel scheduled and
+sending campaigns from the dashboard, then roll the worker back. A run left
+asleep on a worker without the workflow fails when the rolled-back worker
+replays it at boot, and the recovery sweep pauses its campaign at the next
+worker start. Registrations survive a rollback; migration 0120 alters no
+existing table, so a code redeploy needs no data restore. A rollback also
+removes `stepRunPushRetention` from the retention loop, so the replay of the
+live scheduler run fails with `corrupted-event-log` at the boot of the
+rolled-back worker. Restart the worker once after the rollback deploy, as
+deploy step 2 does.
+
+A cancel is not instant once a group has gone out. The runtime cancel event
+makes the run terminal and every later step is refused, so the cancel emits it
+only while no zone is dispatching or dispatched (and closes the ledger row as
+cancelled). After a group is out, the campaign status is the cancel: the run
+wakes at its next zone instant, sends nothing, collects the receipts it owes,
+and finishes with its ledger row cancelled. Until then the campaign page shows
+that run as running. A cancel also retires every reserved row as missed, so no
+device's local day stays held.

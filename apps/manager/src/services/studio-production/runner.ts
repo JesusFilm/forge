@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto"
+import { studioHash } from "@forge/studio-server"
 import { StudioProviderError } from "./provider"
 import type { StudioAssetReference } from "@forge/studio-contracts"
 import type { StudioNarrationIdentity } from "@forge/studio-contracts/assets"
@@ -58,19 +58,7 @@ export class StudioNarrationClaimObserved extends StudioNarrationRunError {}
 /** Only the caller that dispatched and durably finished a failed paid claim owns failure. */
 export class StudioNarrationDispatchFailure extends StudioNarrationRunError {}
 export function narrationInputDigest(identity: StudioNarrationIdentity) {
-  const canonical = (value: unknown): unknown =>
-    Array.isArray(value)
-      ? value.map(canonical)
-      : value && typeof value === "object"
-        ? Object.fromEntries(
-            Object.entries(value)
-              .sort(([a], [b]) => a.localeCompare(b))
-              .map(([key, v]) => [key, canonical(v)]),
-          )
-        : value
-  return createHash("sha256")
-    .update(JSON.stringify(canonical(identity)))
-    .digest("hex")
+  return studioHash(identity)
 }
 export async function runStudioNarration(input: {
   segments: NarrationSegment[]

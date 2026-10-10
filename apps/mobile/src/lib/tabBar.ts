@@ -1,6 +1,8 @@
+import { useMemo } from "react"
 import { Platform, type ViewStyle } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
+import { useT, type UiMessageKey } from "../i18n/useT"
 import { BG_COLOR } from "./color"
 
 /**
@@ -42,12 +44,48 @@ export const TAB_BAR_MATERIAL_TINT = "rgba(0, 0, 0, 0.3)"
  * The tab screens, in the order the navigator declares them.
  * `app/(tabs)/_layout.ios.tsx` builds its triggers from this and
  * `tabBarLensOrder.guard.test.js` pins it against the route FILES — expo-router
- * appends an undeclared `app/(tabs)/*` file as a fifth tab, which a scan of the
- * layout alone cannot see.
+ * appends an undeclared `app/(tabs)/*` file as an extra tab, which a scan of the
+ * layout alone cannot see. The order is the product's (feat-553 R2, KD18), with
+ * Explore second (feat-552). There is no Library tab: the downloads list lives
+ * on the root Downloads screen, which My Watch opens.
  */
-export const TAB_ROUTE_NAMES = ["index", "watch", "library", "profile"] as const
+export const TAB_ROUTE_NAMES = [
+  "index",
+  "explore",
+  "watch",
+  "bible",
+  "profile",
+] as const
 
 export type TabRouteName = (typeof TAB_ROUTE_NAMES)[number]
+
+/**
+ * Every tab's label key in the `Tabs` catalog, for both navigators.
+ * `tabBarSingleSource.guard.test.js` fails if a layout spells a label itself.
+ */
+export const TAB_LABEL_KEYS = {
+  index: "home",
+  explore: "explore",
+  watch: "search",
+  bible: "bible",
+  profile: "myWatch",
+} as const satisfies Record<TabRouteName, UiMessageKey<"Tabs">>
+
+/** The tab labels in the UI language. Both layouts read them at render, so a
+ *  language change relabels the bar without a remount (KTD2). */
+export function useTabLabels(): Record<TabRouteName, string> {
+  const t = useT("Tabs")
+  return useMemo(
+    () => ({
+      index: t(TAB_LABEL_KEYS.index),
+      explore: t(TAB_LABEL_KEYS.explore),
+      watch: t(TAB_LABEL_KEYS.watch),
+      bible: t(TAB_LABEL_KEYS.bible),
+      profile: t(TAB_LABEL_KEYS.profile),
+    }),
+    [t],
+  )
+}
 
 /** The expo-router group the tab screens live in. */
 export const TAB_GROUP_SEGMENT = "(tabs)"
@@ -82,7 +120,7 @@ export function tabBarOccupiedHeightFor(platform: string): number {
 
 export const TAB_BAR_OCCUPIED_HEIGHT = tabBarOccupiedHeightFor(Platform.OS)
 
-/** Android's bar. The Library screen restores exactly this after selection. */
+/** Android's bar, which `app/(tabs)/_layout.tsx` reads through `useTabBarStyle`. */
 export const TAB_BAR_FLAT_STYLE: ViewStyle = {
   backgroundColor: BG_COLOR,
   borderTopColor: "transparent",
@@ -94,11 +132,8 @@ export type TabBarInsets = {
   right: number
 }
 
-/**
- * The navigator's `tabBarStyle`. Android only — iOS is shadowed by
- * `_layout.ios.tsx`, whose UIKit bar takes no style object. Kept as a named
- * export because `library.tsx` writes it back through `setOptions`.
- */
+/** The navigator's `tabBarStyle`, Android only: `_layout.ios.tsx` shadows iOS
+ *  with a UIKit bar that takes no style. Its one reader is `app/(tabs)/_layout.tsx`. */
 export function useTabBarStyle(): ViewStyle {
   return TAB_BAR_FLAT_STYLE
 }

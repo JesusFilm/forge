@@ -6,6 +6,8 @@ const requireSessionMock = vi.fn()
 const loadOverviewMock = vi.fn()
 const loadTracePageMock = vi.fn()
 const loadDetailMock = vi.fn()
+const loadSignedExposureMock = vi.fn()
+const loadAnonymousExposureMock = vi.fn()
 const redirectMock = vi.fn((destination: string) => {
   throw new Error(`REDIRECT:${destination}`)
 })
@@ -15,6 +17,13 @@ vi.mock("@/auth/session", () => ({
 }))
 
 vi.mock("@/db/client", () => ({ prisma: {} }))
+
+vi.mock("@/services/recommendations/admin-ops/watch-exposure.service", () => ({
+  loadWatchExposureBreakdown: (...args: unknown[]) =>
+    loadSignedExposureMock(...args),
+  loadAnonymousWatchExposureBreakdown: (...args: unknown[]) =>
+    loadAnonymousExposureMock(...args),
+}))
 
 vi.mock("@/config/env", () => ({
   env: {
@@ -304,6 +313,8 @@ const overview = {
 describe("Admin Recommendations pages", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    loadSignedExposureMock.mockResolvedValue([])
+    loadAnonymousExposureMock.mockResolvedValue({ rows: [], truncated: false })
     loadOverviewMock.mockResolvedValue(overview)
     loadTracePageMock.mockResolvedValue({
       window: overview.window,
@@ -346,7 +357,135 @@ describe("Admin Recommendations pages", () => {
     await expect(RecommendationsPage()).rejects.toThrow("REDIRECT:/dashboard")
     expect(loadOverviewMock).not.toHaveBeenCalled()
     expect(loadTracePageMock).not.toHaveBeenCalled()
+    expect(loadSignedExposureMock).not.toHaveBeenCalled()
+    expect(loadAnonymousExposureMock).not.toHaveBeenCalled()
   })
+
+  it("scopes both exposure readers without changing overview or trace windows", async () => {
+    requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+    const html = renderToStaticMarkup(
+      await RecommendationsPage({
+        searchParams: Promise.resolve({
+          window: "7d",
+          exposure: "watch-home:hero:hero-card",
+          exposurePlacement: "primary",
+          exposurePolicy: "watch-exposure-v2",
+        }),
+      }),
+    )
+    const filter = {
+      surface: "watch-home",
+      block: "hero",
+      presentation: "hero-card",
+      placement: "primary",
+      policyVersion: "watch-exposure-v2",
+    }
+    expect(loadSignedExposureMock).toHaveBeenCalledWith({}, "7d", filter)
+    expect(loadAnonymousExposureMock).toHaveBeenCalledWith({}, "7d", filter)
+    expect(loadOverviewMock).toHaveBeenCalledWith({}, { window: "7d" })
+    expect(html).toContain('name="exposure"')
+    expect(html).toContain('name="exposurePlacement"')
+    expect(html).toContain('name="exposurePolicy"')
+    expect(html).toContain('value="watch-exposure-v2" selected=""')
+    expect(html).toContain("and policy watch-exposure-v2")
+    expect(html).toContain("Exposure rows are scoped")
+  })
+
+  it.each([
+    {
+      exposure: "watch-home:hero:hero-card",
+      exposurePolicy: "watch-exposure-v1",
+      surface: "watch-home",
+      block: "hero",
+      presentation: "hero-card",
+    },
+    {
+      exposure: "watch-home:for-you:recommendation-list",
+      exposurePolicy: "watch-for-you-v1",
+      surface: "watch-home",
+      block: "for-you",
+      presentation: "recommendation-list",
+    },
+    {
+      exposure: "watch-video:below-player:recommendation-list",
+      exposurePolicy: "watch-below-player-v1",
+      surface: "watch-video",
+      block: "below-player",
+      presentation: "recommendation-list",
+    },
+  ])(
+    "forwards compatible policy selection %j",
+    async ({ exposure, exposurePolicy, surface, block, presentation }) => {
+      requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+      const html = renderToStaticMarkup(
+        await RecommendationsPage({
+          searchParams: Promise.resolve({
+            window: "29d",
+            exposure,
+            exposurePolicy,
+          }),
+        }),
+      )
+      const filter = {
+        surface,
+        block,
+        presentation,
+        policyVersion: exposurePolicy,
+      }
+      expect(loadSignedExposureMock).toHaveBeenCalledWith({}, "29d", filter)
+      expect(loadAnonymousExposureMock).toHaveBeenCalledWith({}, "29d", filter)
+      expect(loadOverviewMock).toHaveBeenCalledWith({}, { window: "29d" })
+      expect(html).toContain(
+        "Overview and replay counts retain the selected time window",
+      )
+    },
+  )
+
+  it.each([
+    { exposurePolicy: "watch-exposure-v2" },
+    {
+      exposure: "watch-home:hero:hero-card",
+      exposurePolicy: ["watch-exposure-v1", "watch-exposure-v2"],
+    },
+    { exposure: "watch-home:hero:hero-card", exposurePolicy: "unknown-policy" },
+    {
+      exposure: "watch-home:hero:hero-card",
+      exposurePolicy: "watch-for-you-v1",
+    },
+    {
+      exposure: "watch-home:for-you:recommendation-list",
+      exposurePolicy: "watch-exposure-v2",
+    },
+    {
+      exposure: "watch-home:for-you:recommendation-list",
+      exposurePolicy: "watch-below-player-v1",
+    },
+    { exposure: "watch-home:unknown:hero-card" },
+    {
+      exposure: [
+        "watch-home:hero:hero-card",
+        "watch-search:results:result-list",
+      ],
+    },
+    { exposurePlacement: "primary" },
+    {
+      exposure: "watch-home:hero:hero-card",
+      exposurePlacement: "invalid placement",
+    },
+  ])(
+    "withholds exposure on invalid or ambiguous filters %j",
+    async (params) => {
+      requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })
+      const html = renderToStaticMarkup(
+        await RecommendationsPage({ searchParams: Promise.resolve(params) }),
+      )
+      expect(loadSignedExposureMock).not.toHaveBeenCalled()
+      expect(loadAnonymousExposureMock).not.toHaveBeenCalled()
+      expect(html).toContain("Choose a registered entry")
+      expect(html).toContain("Counts are withheld")
+      expect(loadOverviewMock).toHaveBeenCalledOnce()
+    },
+  )
 
   it("renders aggregate truth for EDITOR without requesting or leaking trace data", async () => {
     requireSessionMock.mockResolvedValue({ id: "editor-1", role: "EDITOR" })

@@ -1,5 +1,7 @@
 "use client"
 
+import { waitForRecommendationActivation } from "@/lib/recommendation-activation"
+
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslations } from "next-intl"
 import { recommendationJsonWithDeadline } from "@/lib/recommendation-browser"
@@ -122,6 +124,12 @@ export function RecommendationConsentShell() {
     const generation = ++operationGenerationRef.current
     let grantAttempted = false
     try {
+      await waitForRecommendationActivation(controller.signal)
+      if (
+        generation !== operationGenerationRef.current ||
+        controller.signal.aborted
+      )
+        return null
       return await withRecommendationConsentLock(async () => {
         let observed = await request("status", controller.signal)
         if (generation !== operationGenerationRef.current || busyRef.current) {
@@ -184,6 +192,7 @@ export function RecommendationConsentShell() {
         return observed
       })
     } catch {
+      if (controller.signal.aborted) return null
       if (generation === operationGenerationRef.current && !busyRef.current) {
         if (!withdrawalPendingRef.current) {
           setState({

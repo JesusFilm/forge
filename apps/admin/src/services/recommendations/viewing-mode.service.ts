@@ -1,3 +1,4 @@
+import { ownerReleaseInfluenceAllowedSql } from "./promotion/owner-influence"
 import { Prisma, type RecommendationPlaybackEpisode } from "@prisma/client"
 import { RECOMMENDATION_REPLAY_QUARANTINE_THRESHOLD } from "./integrity-policy"
 import {
@@ -105,6 +106,7 @@ function eligibleModeSql(now: Date): Prisma.Sql {
     AND NOT EXISTS (SELECT 1 FROM recommendation_playback_fact invalid WHERE invalid.episode_id = episode.id
       AND (invalid.late = true OR invalid.kind = 'playback_error'))
     AND NOT EXISTS (SELECT 1 FROM recommendation_promotion_slate_fence fence WHERE fence.request_id = episode.request_id)
+    AND ${ownerReleaseInfluenceAllowedSql(Prisma.sql`episode.request_id`)}
   `
 }
 

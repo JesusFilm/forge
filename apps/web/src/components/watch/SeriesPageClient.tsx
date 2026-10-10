@@ -21,6 +21,7 @@ import {
 } from "@/components/watch/LanguagePickerModal"
 import { buildSubtitleProxyUrl } from "@/components/watch/download-link"
 import { SeriesEpisodesGrid } from "@/components/watch/SeriesEpisodesGrid"
+import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { SERIES_CONTENT_GLASS_CLASS_NAME } from "@/components/watch/series-page-styles"
 import { SeriesHero } from "@/components/watch/SeriesHero"
 import { ShareModal } from "@/components/watch/ShareModal"
@@ -67,7 +68,10 @@ const SERVER_GUARANTEED_PLAYABLE = "server-guaranteed-playable"
 
 type SeriesModalState = "none" | "download" | "share" | "language"
 
+import type { SignedWatchSurfaceManifest } from "@/lib/watch-surface-manifest"
+
 type SeriesPageClientProps = {
+  surfaceManifest?: SignedWatchSurfaceManifest
   series: ResolvedSeriesBySlug["video"]
   selectedVariant: ResolvedSeriesBySlug["selectedVariant"]
   locale: string
@@ -77,6 +81,7 @@ type SeriesPageClientProps = {
 }
 
 export function SeriesPageClient({
+  surfaceManifest,
   series,
   selectedVariant,
   locale,
@@ -566,11 +571,21 @@ export function SeriesPageClient({
           The grid owns its full-bleed section and repeats the metadata
           band's stone glass treatment so the lower page remains visually
           continuous. */}
-      <SeriesEpisodesGrid
-        episodes={episodes}
-        languageSlug={currentLanguageSlug}
-        parentSlug={series.slug ?? ""}
-      />
+      <WatchExposureBoundary
+        manifest={surfaceManifest}
+        config={{
+          surface: "watch-series",
+          block: "episodes",
+          presentation: "episode-grid",
+          placement: "series-episodes",
+        }}
+      >
+        <SeriesEpisodesGrid
+          episodes={episodes}
+          languageSlug={currentLanguageSlug}
+          parentSlug={series.slug ?? ""}
+        />
+      </WatchExposureBoundary>
 
       {modalState === "download" ? (
         <CollectionDownloadModal

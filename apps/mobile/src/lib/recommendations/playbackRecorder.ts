@@ -14,7 +14,7 @@ import {
   rateLimitDelayMs,
   toRecommendationClientError,
 } from "./errors"
-import type { PlaybackDiscovery } from "./playbackDiscovery"
+import { DIRECT_DISCOVERY, type PlaybackDiscovery } from "./playbackDiscovery"
 import {
   CLAIM_RETRY_BACKOFF_MS,
   FACT_RETRY_BACKOFF_MS,
@@ -43,6 +43,7 @@ import {
   type PlaybackQoeAction,
 } from "./playbackFacts"
 import { randomEventId } from "./random"
+import type { PendingRecommendationClaim } from "./selection"
 import { reportRecommendationPlaybackDegraded } from "./telemetry"
 import type {
   RecommendationIdentity,
@@ -55,11 +56,18 @@ export type PlaybackFactReceipt = {
   sequence: number
 }
 
+/** `clip` records one Explore clip (KTD9): an automatic attempt, a direct
+ *  context, and one rate-limit window per facts batch. */
+export type PlaybackRecorderMode = "watch" | "clip"
+
 export type PlaybackRecorderDeps = {
+  /** Default `watch`. A `clip` never takes a nonce or a discovery mark. */
+  mode?: PlaybackRecorderMode
   mediaId: string
   /** Keys a surface may have marked the discovery under (slug, media id). */
   discoveryKeys: ReadonlyArray<string | null | undefined>
   takePendingNonce: (mediaId: string) => string | null
+  restorePendingNonce: (claim: PendingRecommendationClaim) => void
   takeDiscovery: (
     keys: ReadonlyArray<string | null | undefined>,
   ) => PlaybackDiscovery
@@ -99,6 +107,14 @@ const MAX_PENDING_REGULAR_FACTS = MAX_PENDING_CLAIM_FACTS - 1
  *  facts while the claim is still pending. */
 const PENDING_OBSERVATION_CEILING = 8
 
+/** A clip batch waits one limiter window, then drops, so the shared bucket
+ *  stays free for the watch page. */
+export const CLIP_FACT_RATE_LIMIT_DEFERRALS = 1
+
+/** Ticks this soon after a loop can still show the old playhead; the feed
+ *  players wait `LOOP_SEEK_SETTLE_MS` (useFeedPlayers.ts) for the same reason. */
+export const LOOP_REBASE_SETTLE_MS = 1_000
+
 function parseReceipts(value: unknown): PlaybackFactReceipt[] | null {
   if (!Array.isArray(value)) return null
   const receipts: PlaybackFactReceipt[] = []
@@ -132,6 +148,10 @@ export function createRecommendationPlaybackRecorder(
     ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)))
   const report = deps.report ?? reportRecommendationPlaybackDegraded
   const iso = (ms: number) => new Date(ms).toISOString()
+  const clip = deps.mode === "clip"
+  const maxFactRateLimitDeferrals = clip
+    ? CLIP_FACT_RATE_LIMIT_DEFERRALS
+    : MAX_FACT_RATE_LIMIT_DEFERRALS
 
   let identity: RecommendationIdentity | null = null
   let episode: PlaybackEpisode | null = null
@@ -150,6 +170,7 @@ export function createRecommendationPlaybackRecorder(
   const counts = { seek: 0, navigation: 0, qoe: 0 }
   let draining = false
   let drainRequested = false
+  let drainQueued = false
   let claimRateLimitDeferrals = 0
   let factRateLimitDeferrals = 0
 
@@ -165,6 +186,7 @@ export function createRecommendationPlaybackRecorder(
   let lastDuration: number | null = null
   let lastTickAt: number | null = null
   let lastTickPosition: number | null = null
+  let loopSettleUntil = Number.NEGATIVE_INFINITY
 
   function fact<T extends PlaybackFact>(
     value: Omit<T, "eventId" | "occurredAt">,
@@ -303,7 +325,7 @@ export function createRecommendationPlaybackRecorder(
                 (attempts.get(entry.eventId) ?? 1) - 1,
               )
             }
-            if (factRateLimitDeferrals >= MAX_FACT_RATE_LIMIT_DEFERRALS) {
+            if (factRateLimitDeferrals >= maxFactRateLimitDeferrals) {
               const ids = new Set(events.map((entry) => entry.eventId))
               outbound = outbound.filter((entry) => !ids.has(entry.eventId))
               for (const id of ids) attempts.delete(id)
@@ -390,7 +412,22 @@ export function createRecommendationPlaybackRecorder(
     factCount += 1
     kindCounts[next.kind] = kindCount + 1
     outbound.push(next)
-    void drain()
+    requestDrain()
+  }
+
+  function requestDrain() {
+    if (!clip) {
+      void drain()
+      return
+    }
+    // A clip closes with three facts in one tick; one batch spends one
+    // mutation of the shared bucket instead of two.
+    if (drainQueued) return
+    drainQueued = true
+    void Promise.resolve().then(() => {
+      drainQueued = false
+      void drain()
+    })
   }
 
   // ---- claim --------------------------------------------------------------
@@ -402,11 +439,28 @@ export function createRecommendationPlaybackRecorder(
     release()
   }
 
+  /**
+   * `fallback` is the discovery mark held for a context fallback. It is set
+   * on the selection-nonce path only, which is also the only path whose
+   * nonce came from the pending store and can be put back.
+   */
   async function attemptClaim(
     claimNonce: string,
     attempt: number,
-    allowContextFallback: boolean,
+    fallback: PlaybackDiscovery | null,
   ): Promise<void> {
+    const abandonDisposed = () => {
+      if (fallback) {
+        // The store keeps this nonce's own selection time: the ten-minute
+        // bound runs from the tap, not from the put-back.
+        deps.restorePendingNonce({
+          mediaId: deps.mediaId,
+          claimNonce,
+          selectedAt: now(),
+        })
+      }
+      return abandon("disposed")
+    }
     if (!identity || closed) return abandon()
     try {
       const claimed = parsePlaybackEpisode(
@@ -425,13 +479,14 @@ export function createRecommendationPlaybackRecorder(
         await deps.invalidateIdentity()
         return abandon()
       }
-      if (disposed) return abandon("disposed")
       if (failure.definitive) {
-        // A stale or foreign selection nonce still leaves an ordinary
-        // playback to attribute; a rejected context nonce does not.
-        if (allowContextFallback) return claimViaContext()
-        return abandon()
+        // A definitive rejection kills the nonce, so no put-back: a stale or
+        // foreign one still leaves an ordinary playback to attribute, but a
+        // rejected context nonce does not.
+        if (fallback && !disposed) return claimViaContext(1, fallback)
+        return abandon(disposed ? "disposed" : undefined)
       }
+      if (disposed) return abandonDisposed()
       if (failure.code === "RATE_LIMITED") {
         // Not a failed attempt: wait out the limiter's window, once.
         if (claimRateLimitDeferrals >= MAX_CLAIM_RATE_LIMIT_DEFERRALS) {
@@ -440,30 +495,25 @@ export function createRecommendationPlaybackRecorder(
         claimRateLimitDeferrals += 1
         report("rate_limited", "retrying", pending.length)
         await wait(rateLimitDelayMs(failure))
-        if (disposed) return abandon("disposed")
-        return attemptClaim(claimNonce, attempt, allowContextFallback)
+        if (disposed) return abandonDisposed()
+        return attemptClaim(claimNonce, attempt, fallback)
       }
       if (attempt < MAX_CLAIM_ATTEMPTS) {
         await wait(CLAIM_RETRY_BACKOFF_MS)
-        if (disposed) return abandon("disposed")
-        return attemptClaim(claimNonce, attempt + 1, allowContextFallback)
+        if (disposed) return abandonDisposed()
+        return attemptClaim(claimNonce, attempt + 1, fallback)
       }
       abandon()
     }
   }
 
   async function claimViaContext(
-    attempt = 1,
-    discovery?: PlaybackDiscovery,
+    attempt: number,
+    discovery: PlaybackDiscovery,
   ): Promise<void> {
     if (!identity || closed) return abandon()
-    // A disposed recorder must not take the discovery mark a replacement
-    // recorder for the same media will need.
-    if (disposed) return abandon("disposed")
-    // Taken once: a retry issues again under the same discovery.
-    const marked = discovery ?? deps.takeDiscovery(deps.discoveryKeys)
     try {
-      const issued = await deps.issueContext(identity, deps.mediaId, marked)
+      const issued = await deps.issueContext(identity, deps.mediaId, discovery)
       const claimNonce =
         issued && typeof issued === "object"
           ? (issued as { claimNonce?: unknown }).claimNonce
@@ -478,7 +528,7 @@ export function createRecommendationPlaybackRecorder(
       // Issuance is part of the claim (plan KD7): one attempt budget and one
       // window deferral cover both steps, and a context that settles after
       // dispose() still claims once, like a nonce claim in flight.
-      return attemptClaim(claimNonce, attempt, false)
+      return attemptClaim(claimNonce, attempt, null)
     } catch (error) {
       const failure = toRecommendationClientError(error)
       if (failure.code === "UNAUTHENTICATED") {
@@ -495,12 +545,12 @@ export function createRecommendationPlaybackRecorder(
         report("rate_limited", "retrying", pending.length)
         await wait(rateLimitDelayMs(failure))
         if (disposed) return abandon("disposed")
-        return claimViaContext(attempt, marked)
+        return claimViaContext(attempt, discovery)
       }
       if (attempt < MAX_CLAIM_ATTEMPTS) {
         await wait(CLAIM_RETRY_BACKOFF_MS)
         if (disposed) return abandon("disposed")
-        return claimViaContext(attempt + 1, marked)
+        return claimViaContext(attempt + 1, discovery)
       }
       abandon()
     }
@@ -513,9 +563,14 @@ export function createRecommendationPlaybackRecorder(
     // recorder that will actually attribute this media.
     if (disposed) return abandon("disposed")
     identity = result.identity
+    // A Home nonce or a search mark for this video belongs to the watch page.
+    if (clip) return claimViaContext(1, DIRECT_DISCOVERY)
     const nonce = deps.takePendingNonce(deps.mediaId)
-    if (nonce) return attemptClaim(nonce, 1, true)
-    return claimViaContext()
+    // Taken once, on both paths: a mark left behind would label the next
+    // open of this media, which the viewer reached some other way.
+    const discovery = deps.takeDiscovery(deps.discoveryKeys)
+    if (nonce) return attemptClaim(nonce, 1, discovery)
+    return claimViaContext(1, discovery)
   }
 
   // ---- playback state -------------------------------------------------------
@@ -525,7 +580,10 @@ export function createRecommendationPlaybackRecorder(
     attemptedAt = now()
     enqueue(
       fact<Extract<PlaybackFact, { kind: "playback_attempt" }>>(
-        { kind: "playback_attempt", payload: { initiation: "manual" } },
+        {
+          kind: "playback_attempt",
+          payload: { initiation: clip ? "automatic" : "manual" },
+        },
         attemptedAt,
       ),
     )
@@ -686,11 +744,12 @@ export function createRecommendationPlaybackRecorder(
     onTick(positionSeconds: number, durationSeconds: number): void {
       if (terminal) return
       const at = now()
-      const current = position(positionSeconds)
-      lastDuration = durationSeconds
+      const current = boundedPosition(positionSeconds)
       if (started && lastTickAt != null && lastTickPosition != null) {
         const expected = lastTickPosition + (at - lastTickAt) / 1_000
         if (Math.abs(current - expected) > SEEK_JUMP_THRESHOLD_S) {
+          // A stale tick from before the loop: the loop target stays the base.
+          if (at < loopSettleUntil) return
           enqueue(
             fact<Extract<PlaybackFact, { kind: "playback_seek" }>>({
               kind: "playback_seek",
@@ -699,6 +758,8 @@ export function createRecommendationPlaybackRecorder(
           )
         }
       }
+      position(current)
+      lastDuration = durationSeconds
       lastTickAt = at
       lastTickPosition = current
       if (
@@ -723,6 +784,15 @@ export function createRecommendationPlaybackRecorder(
           },
         }),
       )
+    },
+
+    /** A clip loop jumped back to the window start: a rebase, not a seek. */
+    onLoop(positionSeconds: number): void {
+      if (terminal) return
+      const at = now()
+      lastTickAt = at
+      lastTickPosition = position(positionSeconds)
+      loopSettleUntil = at + LOOP_REBASE_SETTLE_MS
     },
 
     onBuffering(action: "waiting" | "stalled", positionSeconds?: number): void {

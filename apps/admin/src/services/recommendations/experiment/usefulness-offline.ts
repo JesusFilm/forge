@@ -13,7 +13,7 @@ export type UsefulnessSnapshot = {
   enrollmentEnd: string
   capturedAt: string
   plannedAssignmentsPerArm: number
-  minimumUsefulDelta: number
+  minimumUsefulDelta: number | null
   health: {
     assignmentLedgerCount: number
     claimedEpisodes: number
@@ -49,7 +49,19 @@ class UsefulnessInputError extends Error {
 
 /** Offline only: accepts a reconciled snapshot; never reads or changes serving. */
 export function evaluateUsefulnessSnapshot(input: UsefulnessSnapshot) {
-  validateSnapshot(input)
+  return evaluateSnapshot(input, "efficacy")
+}
+
+/** Calibration publishes rates/variance and collection validity, never efficacy. */
+export function evaluateUsefulnessCalibration(input: UsefulnessSnapshot) {
+  return evaluateSnapshot(input, "calibration")
+}
+
+function evaluateSnapshot(
+  input: UsefulnessSnapshot,
+  mode: "calibration" | "efficacy",
+) {
+  validateSnapshot(input, mode)
   const inputDigest = createHash("sha256")
     .update(JSON.stringify(input))
     .digest("hex")
@@ -147,6 +159,15 @@ export function evaluateUsefulnessSnapshot(input: UsefulnessSnapshot) {
       uncertainty: null,
     }
 
+  if (mode === "calibration")
+    return {
+      ...base,
+      decision: "calibration_pass",
+      reasonCodes: ["calibration_only_no_efficacy_authority"],
+      uncertainty: null,
+    }
+  const margin = input.minimumUsefulDelta
+  if (margin === null) throw new UsefulnessInputError()
   const values = [control, challenger].map((units) =>
     units.map((unit) => unit.qualifiedViews),
   )
@@ -164,11 +185,7 @@ export function evaluateUsefulnessSnapshot(input: UsefulnessSnapshot) {
   const lower = differences[Math.floor(BOOTSTRAP_REPLICATES * 0.025)]
   const upper = differences[Math.ceil(BOOTSTRAP_REPLICATES * 0.975) - 1]
   const decision =
-    lower > input.minimumUsefulDelta
-      ? "improve"
-      : upper < input.minimumUsefulDelta
-        ? "no_benefit"
-        : "inconclusive"
+    lower > margin ? "improve" : upper < margin ? "no_benefit" : "inconclusive"
   return {
     ...base,
     decision,
@@ -204,7 +221,10 @@ function seededRandom(seed: number) {
   }
 }
 
-function validateSnapshot(value: unknown): asserts value is UsefulnessSnapshot {
+function validateSnapshot(
+  value: unknown,
+  mode: "calibration" | "efficacy" = "efficacy",
+): asserts value is UsefulnessSnapshot {
   const fail = () => {
     throw new UsefulnessInputError()
   }
@@ -234,9 +254,12 @@ function validateSnapshot(value: unknown): asserts value is UsefulnessSnapshot {
       14 * DAY_MS ||
     !count(value.plannedAssignmentsPerArm) ||
     value.plannedAssignmentsPerArm < 200 ||
-    typeof value.minimumUsefulDelta !== "number" ||
-    !Number.isFinite(value.minimumUsefulDelta) ||
-    value.minimumUsefulDelta <= 0 ||
+    (mode === "calibration"
+      ? value.minimumUsefulDelta !== null ||
+        value.schemaVersion !== "recommendation-usefulness-offline-v2"
+      : typeof value.minimumUsefulDelta !== "number" ||
+        !Number.isFinite(value.minimumUsefulDelta) ||
+        value.minimumUsefulDelta <= 0) ||
     !record(value.health) ||
     !Array.isArray(value.units)
   )

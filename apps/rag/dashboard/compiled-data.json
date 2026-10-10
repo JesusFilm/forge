@@ -2,9 +2,9 @@
   "schema_version": 1,
   "provenance": {
     "target": "production-read",
-    "fetched_at": "2026-08-28T01:43:58.992Z",
-    "source_commit": "cd49dfc1f8825b12ba3b0c6aa1874016608fa7d7",
-    "schema_digest": "sha256:2c01e06bb77a38c68db5b698b6a120727757a2398cffdab4984b0d9227174845"
+    "fetched_at": "2026-09-22T03:52:08.959Z",
+    "source_commit": "0f7bbe19586df2456942ce929b62a8cef5792377",
+    "schema_digest": "sha256:927d92d32167d9668b40c8c05f99f3eb8c735aa2e4584aa33d6a9774a4da18e6"
   },
   "sources": [
     {
@@ -812,6 +812,18 @@
       "note": null
     },
     {
+      "source": "GotQuestions",
+      "key": "gotquestions",
+      "host": "www.gotquestions.org",
+      "language": "is",
+      "acquire": true,
+      "ingest": true,
+      "evaluate": true,
+      "embedded_doc_count": 51,
+      "row_status": "done",
+      "note": null
+    },
+    {
       "source": "Jesus Film Project",
       "key": "jesusfilm-org",
       "host": "www.jesusfilm.org",
@@ -912,6 +924,13 @@
           "detail": null
         },
         {
+          "label": "is",
+          "language": "is",
+          "state": "evaluated",
+          "embedded_doc_count": 51,
+          "detail": null
+        },
+        {
           "label": "ber",
           "language": "ber",
           "state": "ingested",
@@ -940,7 +959,7 @@
           "detail": "~214 languages"
         }
       ],
-      "docs_in_prod": 10558,
+      "docs_in_prod": 10609,
       "missing": "English is acquired, ingested, retrieved, and evaluated. The remaining translated sections stay under the same source key and are deferred to the resumable, count-batched campaign recorded in docs/slices/gotquestions-multilingual.md."
     },
     {

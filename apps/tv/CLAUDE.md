@@ -116,6 +116,12 @@ restart to take effect.
 
 ## Test builds & distribution
 
+Profile is temporarily hidden on both Apple TV and Android TV by
+`src/lib/auth/profileFlagState.ts` (feat-596), including development builds and
+builds with the old `EXPO_PUBLIC_TV_PROFILE_ENABLED` flag. The sign-in code is
+retained but direct `/profile` visits return Home. Do not re-enable Profile by
+changing EAS variables alone.
+
 - EAS profiles live in `apps/tv/eas.json`; every profile sets `EXPO_TV: "1"` so the
   managed prebuild produces a TV target (native dirs are gitignored).
 - Getting stakeholder test builds onto real Apple TV / Android TV: see `DISTRIBUTION.md`
@@ -207,6 +213,7 @@ the `TvDatadogProvider` wrapper lives in `src/components/DatadogRum.tsx` and is 
 
 ## Common Pitfalls
 
+- After adding or changing a pnpm patch for a native dependency, rerun `EXPO_TV=1 REACT_NATIVE_OVERRIDE_NIGHTLY_BUILD_VERSION=0.81.5 pod install --no-repo-update` in `apps/tv/ios` before a local build. Verify the generated Pods project and build log reference the patched package path: the app's node_modules symlink alone is insufficient. On October 8, stale ExpoTvosSearch Pods linked unpatched Swift and Search Back still exited to the launcher until Pods were refreshed. Keep the Hermes override aligned with the installed react-native-tvos core version.
 - **A sibling app's React Native version can break TV's `pod install`.** `hermes-engine.podspec` resolves its `react_native_path` with `require.resolve("react-native", { paths: [<hermes dir>] })`; under pnpm that escapes the react-native-tvos package and lands on whatever core `react-native` is hoisted into `node_modules/.pnpm/node_modules` — apps/mobile's. While mobile sat on RN 0.81.5 that matched TV's core version by coincidence; PR #1926 (mobile → Expo SDK 57 / RN 0.86.2) made the podspec compute core version 0.86.2, whose hermes-ios tarball 404s on Maven Central, so it fell through to `BUILD_FROM_GITHUB_MAIN`, which needs `cmake` — absent on EAS workers. Every tvOS EAS build (6, 7, 8) died in "Install pods" with `Unable to locate the executable 'cmake'`; nothing in apps/tv had changed. Pinned via `REACT_NATIVE_OVERRIDE_NIGHTLY_BUILD_VERSION` (RN-tvOS's own escape hatch for this computation) in every `eas.json` profile, held by `scripts/hermesCoreVersion.guard.test.js` — a stale pin does NOT fail the build, it silently downloads the wrong Hermes, which is why the value is asserted rather than commented. Re-derive it on any react-native-tvos bump; local `pod install` outside EAS needs the same variable exported.
 - tvOS silently drops a `player.currentTime` seek issued right after `expo-video`'s `replaceAsync` resolves (item not yet seekable) — no error, playback just starts at 0:00. Any mid-video start needs the self-healing re-seek, now at TWO sites in `reelPlayerGate.ts`: re-issued at the `readyToPlay` status event (the first guaranteed-seekable point, `windowStartSeekOnReady` — deliberately NOT gated on the confirmed token, which is unset that early) and backstopped at the `timeUpdate` choke point (`needsWindowStartSeek`); see `docs/solutions/integration-issues/expo-video-replaceasync-seek-silently-dropped-tvos.md`.
 - `replaceAsync` blanks the video surface for the whole HLS re-init on tvOS — no single-player mask can make a mid-play source swap seamless. The showcase reel's language hops therefore run TWO long-lived players (`ReelPlayer.tsx` + `hopHandoff.ts`): standby preloads the next dub (gate readiness on `status === "readyToPlay"` — position/buffer read plausibly off an item wedged in `loading`), the outgoing ROLLS past its window end as the motion cover, and views crossfade only on CONFIRMED playback (event + poll + re-issued `play()`, which tvOS can swallow after a fresh seek). The KTD-2 leak law forbids player/view CHURN, not a second fixed instance. Telemetry: `showcase_hop_handoff` mode=flip\|fallback, `showcase_hop_preload_failed`.

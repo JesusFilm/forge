@@ -300,3 +300,9 @@ lying about a video with no subtitles at all.
   union; its `normalizeDubMedia` loaded-empty `{ subtitles: [] }` is exactly Rule 2's `[]` signal.
 - [Apollo InMemoryCache frozen-array sort crash](../runtime-errors/apollo-inmemorycache-frozen-array-sort-crash-20260616.md)
   — when merging/sorting cached track arrays in the union, clone first (`[...arr].sort()`).
+- [A download is one dub](../logic-errors/download-is-one-dub-identity-travels-with-the-file.md)
+  — since PR #2376 the offline caption branch keys on the source that actually plays, derived
+  from the resolved player source, rather than on the mere presence of a downloaded file. A
+  downloaded video whose viewer picks another dub now streams that dub, so the bundled caption
+  is no longer the right track for it; the offline subtitle and its file are read together from
+  one accessor for the same reason the audio is.

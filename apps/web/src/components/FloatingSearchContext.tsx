@@ -17,6 +17,15 @@ export type FloatingSearchResultAnalyticsContext = Omit<
   "position"
 >
 
+export type FloatingSearchResultPage = {
+  key: string
+  startIndex: number
+  results: SearchResult[]
+  surfaceManifest:
+    | import("@/lib/watch-surface-manifest").SignedWatchSurfaceManifest
+    | null
+}
+
 export type FloatingSearchContextValue = {
   open: boolean
   closing: boolean
@@ -24,6 +33,7 @@ export type FloatingSearchContextValue = {
   submittedQuery: string | null
   results: SearchResult[]
   displayResults: SearchResult[]
+  displayResultPages: FloatingSearchResultPage[]
   exiting: boolean
   resultsKey: number
   hasMore: boolean

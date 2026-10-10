@@ -44,7 +44,7 @@ componentWillUpdate or componentDidUpdate.`
 
 The mini-player feature (feat-367) hoists the app's one `expo-video` player out of the routes. A
 single host, `apps/mobile/src/components/watch/PlaybackHost.tsx`, mounts as a sibling of the
-navigation shell that holds the `<Stack>` (`apps/mobile/app/_layout.tsx:365`). A route that wants
+navigation shell that holds the `<Stack>` (`apps/mobile/app/_layout.tsx:467`). A route that wants
 video renders `PlayerSlot` instead of a player. `PlayerSlot` is a transparent box that measures
 itself in window coordinates and publishes a `PlaybackRequest` into a module-scope store
 (`apps/mobile/src/lib/miniPlayer/playbackRequest.ts`). The host draws its one video view into the
@@ -64,7 +64,7 @@ useEffect(() => {
 
 The only thing that keeps that effect quiet is the store's comparator. `updateSlot` returns before
 it commits when the new request equals the old one
-(`apps/mobile/src/lib/miniPlayer/playbackRequest.ts:418-424`):
+(`apps/mobile/src/lib/miniPlayer/playbackRequest.ts:425-431`):
 
 ```ts
 updateSlot(id: number, request: PlaybackRequest): void {
@@ -102,7 +102,7 @@ Its `playback` member is also fresh on every render. `useCastPlayback` ends with
 literal and no `useMemo` (`apps/mobile/src/hooks/useCastPlayback.ts:260-273`).
 
 The edge that closes the cycle is that the SCREEN subscribes to the same store. The watch screen
-calls `usePlaybackFrameVisible()` at `apps/mobile/app/watch/[slug].tsx:116`, and that hook reads the
+calls `usePlaybackFrameVisible()` at `apps/mobile/app/watch/[slug].tsx:131`, and that hook reads the
 store through `useSyncExternalStore` (`apps/mobile/src/hooks/usePlaybackFrame.ts:13-17`).
 
 The loop therefore runs like this:
@@ -155,8 +155,8 @@ Only the LEAF values inside `playback` are stable, which the source confirms:
   (`useCastPlayback.ts:207, 234, 238, 242, 251, 256`).
 
 The screen's own three siblings are stable for the same class of reason: `resolveCastMediaAt` and
-`handleCastPress` are `useCallback` (`apps/mobile/app/watch/[slug].tsx:340, 356`), and
-`castRecovery` is `useMemo` (`apps/mobile/app/watch/[slug].tsx:397`).
+`handleCastPress` are `useCallback` (`apps/mobile/app/watch/[slug].tsx:376, 405`), and
+`castRecovery` is `useMemo` (`apps/mobile/app/watch/[slug].tsx:446`).
 
 **Memoizing the whole return value inside `useCastPlayback`.** This would work, but it moves the
 guarantee to the wrong place. The store would still trust identity, and every future member added to
@@ -202,7 +202,7 @@ Before:
     a.cast === b.cast &&
 ```
 
-After (`apps/mobile/src/lib/miniPlayer/playbackRequest.ts:216-239, 257-258`):
+After (`apps/mobile/src/lib/miniPlayer/playbackRequest.ts:211-234, 252-253`):
 
 ```ts
 /**
@@ -239,8 +239,8 @@ function sameCast(
 ```
 
 The precedent it copies sits 25 lines below it in the same file
-(`apps/mobile/src/lib/miniPlayer/playbackRequest.ts:264-277`). `session` is the request's OTHER
-inline literal, published by the same screen (`apps/mobile/app/watch/[slug].tsx:660-667`):
+(`apps/mobile/src/lib/miniPlayer/playbackRequest.ts:259-272`). `session` is the request's OTHER
+inline literal, published by the same screen (`apps/mobile/app/watch/[slug].tsx:719-729`):
 
 ```ts
 function sameSession(
@@ -259,9 +259,9 @@ function sameSession(
 }
 ```
 
-`castActive` stays a plain value comparison (`playbackRequest.ts:257`). It is a boolean, and it is
+`castActive` stays a plain value comparison (`playbackRequest.ts:252`). It is a boolean, and it is
 the one cast fact the session-admission predicate reads
-(`playbackRequest.ts:146`, called at `playbackRequest.ts:465`).
+(`playbackRequest.ts:142`, called at `playbackRequest.ts:468`).
 
 **Verification.**
 
@@ -295,7 +295,7 @@ Every leaf `sameCast` reads is stable across a render that no cast event caused.
 keeps its reference until a dispatch. The command callbacks keep theirs until the cast client
 changes. The scalars are compared by value. So a render caused by scrolling, by a layout pass, or by
 the store's own notification produces an equal request, `updateSlot` returns early at
-`playbackRequest.ts:421`, `commit()` never runs, and no listener is notified. Step 4 of the cycle
+`playbackRequest.ts:428`, `commit()` never runs, and no listener is notified. Step 4 of the cycle
 disappears, and the cycle has no other closure.
 
 The chrome still follows the receiver, because the receiver's ~1Hz position report changes
@@ -354,8 +354,8 @@ asserts that changing each key in turn republishes. That test would fail the day
 without a comparison.
 
 **The same hazard class is still present in one other field, and is safe only by accident of its
-producer.** `progressFeedRef` is identity-compared at `playbackRequest.ts:259`. It is safe today
-because the screen builds it with `useRef` (`apps/mobile/app/watch/[slug].tsx:385`). That safety is
+producer.** `progressFeedRef` is identity-compared at `playbackRequest.ts:254`. It is safe today
+because the screen builds it with `useRef` (`apps/mobile/app/watch/[slug].tsx:434`). That safety is
 a property of the caller, not of the store, and a second caller that passes an inline
 `{ current: … }` object reopens the identical loop. Record the requirement where the field is
 declared, so a future caller reads it before publishing.
@@ -382,3 +382,7 @@ has not been measured.
   wedge from cleanup-mutated refs, rather than a runaway notify loop.
 - [`docs/solutions/design-patterns/mobile-auto-hide-overlay-fade-race-ref-sync.md`](../design-patterns/mobile-auto-hide-overlay-fade-race-ref-sync.md)
   — sibling state-management pitfall in the same watch-player chrome, different root cause.
+- [`docs/solutions/logic-errors/session-identity-needs-one-slug-tolerant-predicate.md`](../logic-errors/session-identity-needs-one-slug-tolerant-predicate.md)
+  — the session-identity predicate that now governs replacement, merge, and adoption in the same
+  slot-to-host channel. This doc compares one descriptor field by reference. The new doc reconciles
+  two identity predicates that disagreed.

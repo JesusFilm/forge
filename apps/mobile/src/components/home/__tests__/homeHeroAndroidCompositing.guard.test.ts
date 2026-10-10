@@ -99,6 +99,14 @@ describe("Android VideoViews opt into textureView", () => {
     )
     expect(videoViewElement(source)).toContain(SURFACE_TYPE)
   })
+
+  // KTD2: both of Explore's feed players draw through this one view, which the
+  // feed's overlay and captions sit above.
+  it("the Explore feed's single VideoView carries the platform-conditional surfaceType", () => {
+    const source = readSource("..", "..", "explore", "FeedVideoView.tsx")
+    expect(videoViewElement(source)).toContain(SURFACE_TYPE)
+    expect(source.split("<VideoView")).toHaveLength(2)
+  })
 })
 
 describe("Home RefreshControl stays transparent over the z-0 hero layer", () => {

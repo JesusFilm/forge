@@ -1,9 +1,11 @@
-import { memo, useCallback, useState } from "react"
+import { memo, useCallback, useEffect, useState } from "react"
 import { Pressable, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
 import { useTypography } from "../../hooks/useTypography"
 import {
   STATUS_FAILED_COLOR,
@@ -39,6 +41,10 @@ export interface SeriesGroupCardProps {
   selected?: ReadonlySet<string>
   onToggleSeries?: (episodeSlugs: readonly string[]) => void
   onLongPress?: (episodeSlugs: readonly string[]) => void
+  /** Opens the card with no animation, at mount or when this turns true later. */
+  initiallyExpanded?: boolean
+  /** Reports the card's y in its parent, so the Downloads screen can scroll to it. */
+  onCardLayout?: (seriesSlug: string, y: number) => void
 }
 
 // buildLibraryViewModel rebuilds every group WRAPPER on each records tick, so
@@ -56,11 +62,13 @@ function arePropsEqual(
     prev.selected === next.selected &&
     prev.onToggleSeries === next.onToggleSeries &&
     prev.onLongPress === next.onLongPress &&
+    prev.initiallyExpanded === next.initiallyExpanded &&
+    prev.onCardLayout === next.onCardLayout &&
     seriesGroupContentEqual(prev.group, next.group)
   )
 }
 
-/** Collapsible series card (R4). Defaults collapsed; tapping the header toggles expansion. */
+/** Collapsible series card (R4). Collapsed unless `initiallyExpanded`; a header tap toggles it. */
 export const SeriesGroupCard = memo(function SeriesGroupCard({
   group,
   onRowPress,
@@ -70,9 +78,18 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
   selected = EMPTY_SELECTION,
   onToggleSeries,
   onLongPress,
+  initiallyExpanded = false,
+  onCardLayout,
 }: SeriesGroupCardProps) {
   const typography = useTypography()
-  const [expanded, setExpanded] = useState(false)
+  // Its own subscription, so the memoized card takes a new UI language too.
+  const t = useT("Library")
+  const uiDirection = useTextDirection().ui
+  const [expanded, setExpanded] = useState(initiallyExpanded)
+  // A reused Downloads screen can name this series after the card mounted.
+  useEffect(() => {
+    if (initiallyExpanded) setExpanded(true)
+  }, [initiallyExpanded])
   const posterPath = group.episodes[0]?.posterPath ?? null
   const episodeSlugs = group.episodes.map((episode) => episode.videoSlug)
   const seriesState: SeriesSelectionState = selecting
@@ -102,13 +119,23 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
   )
 
   return (
-    <View style={styles.card}>
+    <View
+      style={styles.card}
+      onLayout={
+        onCardLayout &&
+        ((event) => onCardLayout(group.seriesSlug, event.nativeEvent.layout.y))
+      }
+    >
       <Pressable
         onPress={handleToggle}
         onLongPress={() => onLongPress?.(episodeSlugs)}
         style={({ pressed }) => [styles.header, pressed && feedback.pressed]}
         accessibilityRole="button"
-        accessibilityLabel={`${group.seriesTitle}, ${group.episodeCount} videos`}
+        accessibilityLabel={t("seriesAriaLabel", {
+          title: group.seriesTitle,
+          count: group.episodeCount,
+        })}
+        {...{ "dd-action-name": "library-series-card" }}
         accessibilityState={
           // R11: expose the tri-state header checkbox ("mixed" for partial)
           // the same way DownloadRow exposes per-row selection.
@@ -142,16 +169,21 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
         </View>
 
         <View style={styles.info}>
-          <Text style={[styles.title, typography.titleSmall]} numberOfLines={1}>
+          <Text style={[styles.title, typography.body]} numberOfLines={1}>
             {group.seriesTitle}
           </Text>
-          <Text style={[styles.meta, typography.caption]} numberOfLines={1}>
-            {group.episodeCount} videos ·{" "}
-            {formatLibraryBytes(group.combinedBytes)}
+          <Text
+            style={[styles.meta, typography.caption, uiDirection]}
+            numberOfLines={1}
+          >
+            {t("seriesMeta", {
+              count: group.episodeCount,
+              size: formatLibraryBytes(group.combinedBytes),
+            })}
             {group.failedEpisodeCount > 0 && (
               <Text style={styles.metaFailed}>
                 {" "}
-                · {group.failedEpisodeCount} failed
+                {t("failedCount", { count: group.failedEpisodeCount })}
               </Text>
             )}
           </Text>
@@ -161,8 +193,12 @@ export const SeriesGroupCard = memo(function SeriesGroupCard({
           onPress={handleExpandToggle}
           hitSlop={12}
           accessibilityRole="button"
-          accessibilityLabel={`${expanded ? "Collapse" : "Expand"} ${group.seriesTitle}`}
+          accessibilityLabel={t(
+            expanded ? "collapseAriaLabel" : "expandAriaLabel",
+            { title: group.seriesTitle },
+          )}
           accessibilityState={{ expanded }}
+          {...{ "dd-action-name": "library-series-expand" }}
           style={({ pressed }) => [
             styles.chevronButton,
             pressed && feedback.pressed,
@@ -230,7 +266,7 @@ const styles = StyleSheet.create({
   title: {
     color: TEXT_PRIMARY,
     fontFamily: "System",
-    fontWeight: "700",
+    fontWeight: "600",
   },
   meta: {
     marginTop: 3,

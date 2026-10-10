@@ -166,6 +166,7 @@ describe("swap snapshot + revert round-trip (AE2)", () => {
     expect(buildSwapSnapshot(existing, existing.committedPath!)).toEqual({
       committedPath: "/root/washi-gospel-1/media.rend-old.mp4",
       renditionDocumentId: "rend-old",
+      dubDocumentId: "dub-1",
       qualityLabel: "Low",
       subtitleLanguageSlug: null,
       totalBytes: 900,
@@ -177,6 +178,8 @@ describe("swap snapshot + revert round-trip (AE2)", () => {
     const swap: SwapFrom = buildSwapSnapshot(existing, existing.committedPath!)
     const midSwap: OfflineDownloadRecord = {
       ...existing,
+      // A language swap names the incoming dub; the revert must restore dub-1.
+      dubDocumentId: "dub-2",
       renditionDocumentId: "rend-new",
       qualityLabel: "High",
       subtitleLanguageSlug: "korean",
@@ -194,6 +197,14 @@ describe("swap snapshot + revert round-trip (AE2)", () => {
       bytesWritten: 900,
       swapFrom: null,
     })
+  })
+
+  it("a snapshot written before the dub was kept leaves the record's own dub", () => {
+    const swap: SwapFrom = {
+      ...buildSwapSnapshot(existing, existing.committedPath!),
+      dubDocumentId: null,
+    }
+    expect(swapRevertFields(swap)).not.toHaveProperty("dubDocumentId")
   })
 
   // A12: swapRevertFields' explicit field list omits seriesSlug — it survives

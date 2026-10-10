@@ -33,10 +33,11 @@ tags:
 
 # Two layers that hide the same control must share one predicate — a residual layer is a closed gate under a different name
 
-All code in this document is on PR #1972
-(`fix/mobile-sdui-autostart-and-hardening`). **The PR is open and not merged at
-the time of writing.** Cite the PR, not a SHA: the fix landed on the branch as
-`90b466ff2`, but the repo squash-merges, so that SHA will not exist on `main`.
+All code in this document is from PR #1972
+(`fix/mobile-sdui-autostart-and-hardening`), which merged to `main` on
+2026-08-20. Cite the PR, not a SHA: the fix landed on the branch as
+`90b466ff2`, but the repo squash-merges, so that SHA is not on `main`. The line
+numbers were refreshed on 2026-09-29.
 
 This is a second instance of the law in
 [`mobile-watch-autostart-veil-gate-missing-release-path.md`](mobile-watch-autostart-veil-gate-missing-release-path.md).
@@ -98,13 +99,13 @@ while `hasStarted` is still false. The veil lifts. The poster stays.
 
 The poster is opaque, it is `StyleSheet.absoluteFill`, and it is a sibling
 rendered AFTER the `VideoView` in the same parent
-(`apps/mobile/app/video/[sectionKey].tsx:151-181`,
-`apps/mobile/app/collection/[sectionKey].tsx:368-396`). Both routes set
-`nativeControls` (`apps/mobile/app/video/[sectionKey].tsx:154`,
-`apps/mobile/app/collection/[sectionKey].tsx:371`), so the transport belongs to expo-video
+(`apps/mobile/app/video/[sectionKey].tsx:157-187`,
+`apps/mobile/app/collection/[sectionKey].tsx:381-409`). Both routes set
+`nativeControls` (`apps/mobile/app/video/[sectionKey].tsx:160`,
+`apps/mobile/app/collection/[sectionKey].tsx:384`), so the transport belongs to expo-video
 and lives INSIDE that video view. Both routes also set
-`surfaceType="textureView"` on Android (`apps/mobile/app/video/[sectionKey].tsx:158-160`,
-`apps/mobile/app/collection/[sectionKey].tsx:375`), which is what makes the video composite
+`surfaceType="textureView"` on Android (`apps/mobile/app/video/[sectionKey].tsx:164-166`,
+`apps/mobile/app/collection/[sectionKey].tsx:388`), which is what makes the video composite
 inside the RN tree so a later sibling can draw over it. The poster is that later
 sibling. It covers the native controls on both platforms.
 
@@ -114,8 +115,8 @@ no release path at all: `hasStarted` never resets by design
 (`useAutostartPlayback.ts:36-38`), so on a failed load the poster is permanent
 for the life of the screen.
 
-`pointerEvents="none"` on the poster (`apps/mobile/app/video/[sectionKey].tsx:176`,
-`apps/mobile/app/collection/[sectionKey].tsx:391`) is what made this survive review, mine
+`pointerEvents="none"` on the poster (`apps/mobile/app/video/[sectionKey].tsx:182`,
+`apps/mobile/app/collection/[sectionKey].tsx:404`) is what made this survive review, mine
 included. It is true, and it is not the point. It makes the controls reachable
 by touch. It does not make them visible. A viewer cannot press a control that is
 not there.
@@ -126,13 +127,13 @@ not there.
 matters, so both halves are quoted.
 
 The divergence is real and it is verbatim. The poster gate
-(`apps/mobile/src/components/watch/VideoPlayer.tsx:675`):
+(`apps/mobile/src/components/watch/VideoPlayer.tsx:716`):
 
 ```tsx
 {(!hasStarted || castRemoteActive || ended) && resolvedPoster != null && (
 ```
 
-The veil gate, fourteen lines later (`VideoPlayer.tsx:689`). This fence is
+The veil gate, fourteen lines later (`VideoPlayer.tsx:730`). This fence is
 `text`, not `tsx`, so the formatter cannot reflow a line quoted verbatim:
 
 ```text
@@ -145,22 +146,22 @@ whole story, `/watch/[slug]` would be broken too.
 It is not broken, because its recovery affordance sits ABOVE the poster instead
 of below it. Three lines carry that:
 
-1. `VideoPlayer.tsx:238` mounts the chrome on exactly the paths that lift the
+1. `VideoPlayer.tsx:279` mounts the chrome on exactly the paths that lift the
    veil: `const chromeMounted = controls.mounted && !awaitingAutostart`.
    `controls.mounted` starts true
    (`apps/mobile/src/hooks/useControlsVisibility.ts:41`), so an error or a
    timeout mounts the chrome in the same commit that clears the veil.
 2. The chrome renders LATER in the same `StyleSheet.absoluteFill` parent that
-   holds the poster — the scrim at `VideoPlayer.tsx:755` and `PlayerControls` at
-   `VideoPlayer.tsx:790`, against the poster at `VideoPlayer.tsx:675`. No layer
+   holds the poster — the scrim at `VideoPlayer.tsx:796` and `PlayerControls` at
+   `VideoPlayer.tsx:836`, against the poster at `VideoPlayer.tsx:716`. No layer
    in that parent sets `zIndex`, so paint order is tree order. The controls draw
    over the residual poster.
 3. The host's video view sets `nativeControls={false}`
-   (`apps/mobile/src/components/watch/PlaybackHost.tsx:1100`). There is no native
+   (`apps/mobile/src/components/watch/PlaybackHost.tsx:1908`). There is no native
    transport inside the video view for a React sibling to cover.
 
 `VideoPlayer` also keeps the route buttons live underneath the veil
-(`VideoPlayer.tsx:730-737`), and its poster layer is deliberately shared with two
+(`VideoPlayer.tsx:769-778`), and its poster layer is deliberately shared with two
 other states — a cast session and ended playback — which is why its predicate is
 `(!hasStarted || castRemoteActive || ended)` rather than the gate.
 
@@ -203,13 +204,13 @@ Each item below looked like cover. None of it was.
   routes the chrome draws below it, so `hasStarted` names a state with no exit.
 - **"The copied surface proves the pattern is safe."** `VideoPlayer.tsx` gates
   its poster on `!hasStarted` and is correct. The property that makes it correct
-  is its layer order (`VideoPlayer.tsx:238`, `:675`, `:755`, `:790`), not its
+  is its layer order (`VideoPlayer.tsx:279`, `:716`, `:796`, `:836`), not its
   predicate. I carried the visible half of the pattern across and left the
   load-bearing half behind.
 - **"The existing render tests cover the autostart path."** This is the sharpest
   one, because the tests covered more than "the happy path" and were blind
   anyway. Two tests existed before the fix. The success-path test
-  (`apps/mobile/app/video/__tests__/sduiSectionPlayers.test.tsx:294-305`) stays
+  (`apps/mobile/app/video/__tests__/sduiSectionPlayers.test.tsx:306-317`) stays
   GREEN with the defect restored, which is unremarkable — success is the one
   path where the two predicates agree.
 
@@ -229,7 +230,7 @@ One change, applied identically to both routes on PR #1972, commit `90b466ff2`.
 
 ### Both layers now read one predicate
 
-`apps/mobile/app/video/[sectionKey].tsx:167-181`:
+`apps/mobile/app/video/[sectionKey].tsx:173-187`:
 
 ```tsx
 {/* Poster and veil share ONE predicate. Gating the poster on
@@ -242,13 +243,13 @@ One change, applied identically to both routes on PR #1972, commit `90b466ff2`.
 {awaitingAutostart && <PlayerLoadingVeil />}
 ```
 
-`apps/mobile/app/collection/[sectionKey].tsx:382-396` carries the same comment and the same
+`apps/mobile/app/collection/[sectionKey].tsx:395-409` carries the same comment and the same
 pair. Neither route destructures `hasStarted` any more
-(`apps/mobile/app/video/[sectionKey].tsx:133`, `apps/mobile/app/collection/[sectionKey].tsx:169`).
+(`apps/mobile/app/video/[sectionKey].tsx:139`, `apps/mobile/app/collection/[sectionKey].tsx:182`).
 
 ### A regression test that fails on the error path
 
-`apps/mobile/app/video/__tests__/sduiSectionPlayers.test.tsx:310-321` runs against BOTH
+`apps/mobile/app/video/__tests__/sduiSectionPlayers.test.tsx:322-333` runs against BOTH
 screens through `describe.each`:
 
 ```tsx
@@ -267,7 +268,7 @@ it("clears the POSTER too when the source fails, not just the veil", async () =>
 ```
 
 `posterShown` keys on the `recyclingKey` prefix `sdui-…-poster-`
-(`sduiSectionPlayers.test.tsx:196-205`), which the playlist thumbnails
+(`sduiSectionPlayers.test.tsx:208-217`), which the playlist thumbnails
 (`coll-thumb-*`) cannot match by accident. `labelled(renderer, "Loading video")`
 reads the veil's own accessibility label
 (`apps/mobile/src/components/watch/PlayerLoadingVeil.tsx:16-17`). The test
@@ -281,9 +282,10 @@ Review found three statements that were wrong, and all three were mine:
   `video/[sectionKey]` did; `collection/[sectionKey]` had no poster at all
   (`useAutostartPlayback.ts:9-15`).
 - `apps/mobile/CLAUDE.md` said "if you add a third player surface" when three
-  already existed. It now says fourth (`apps/mobile/CLAUDE.md:409`).
-- `apps/mobile/CLAUDE.md:416-431` gained the rule itself, stated as a rule
-  rather than as a description of the current code.
+  already existed. The fix changed it to fourth. It now says "another player
+  surface" and names Explore as the exception (`apps/mobile/CLAUDE.md:1095`).
+- `apps/mobile/CLAUDE.md` gained the rule itself, stated as a rule rather than
+  as a description of the current code (`apps/mobile/CLAUDE.md:1120-1135`).
 
 ## Why This Works
 
@@ -309,7 +311,7 @@ Tests: 1 failed, 9 passed, 10 total
 Two facts in that output matter. Exactly the reverted route went red, so the test
 discriminates per screen rather than passing on a shared mock. And
 `autostarts once the source is applied, then clears poster and veil`
-(`sduiSectionPlayers.test.tsx:294-305`) stayed GREEN with the defect present.
+(`sduiSectionPlayers.test.tsx:306-317`) stayed GREEN with the defect present.
 That is the direct measurement of why the original suite could not catch this:
 the happy path is the one path where the two predicates cannot disagree. The tree
 was restored with `git checkout` afterwards.
@@ -347,7 +349,7 @@ seen from two sides, and a fix for the first does not imply a fix for the second
 3. **When you port a gate between surfaces, port the reason, not the
    expression.** `VideoPlayer.tsx` gates its poster on
    `(!hasStarted || castRemoteActive || ended)` correctly
-   BECAUSE its chrome renders at `:755` and `:790`, after the poster at `:675`.
+   BECAUSE its chrome renders at `:796` and `:836`, after the poster at `:716`.
    Name the property that makes the source correct, then check that the property
    holds at the destination. If it does not hold, the expression is wrong even
    though it is identical. This is the same discipline the repo applies to
@@ -366,7 +368,7 @@ seen from two sides, and a fix for the first does not imply a fix for the second
 6. **Leave no unused predicate on the shared hook's surface.**
    `useAutostartPlayback` still returns `hasStarted`
    (`useAutostartPlayback.ts:97`), and no production caller reads it
-   (`apps/mobile/app/video/[sectionKey].tsx:133`, `apps/mobile/app/collection/[sectionKey].tsx:169`). It
+   (`apps/mobile/app/video/[sectionKey].tsx:139`, `apps/mobile/app/collection/[sectionKey].tsx:182`). It
    remains available to any future route that wants a poster gate, which is the
    exact re-introduction surface this fix closed. Either narrow the return type
    or state at the declaration that the field is not a render gate.
@@ -382,6 +384,13 @@ seen from two sides, and a fix for the first does not imply a fix for the second
   — the direct parent. That doc gives the gate three release operands; this one
   finds that a second layer ignored all three. Read them together: the release
   set and the layer set are two different completeness questions about one gate.
+- [A first-frame veil hold must latch per player and source, and release on failure](first-frame-veil-hold-needs-per-source-latch-and-failure-release.md)
+  — a layer that outlives the gate on purpose. Explore's `ClipVeil` keeps the
+  poster after the gate lifts, until the first frame. This is safe only because
+  the chrome and the failure message render after it (the `VideoPlayer.tsx`
+  side of the paint-order line), a time cap bounds it, and a failure releases it
+  at once. Its first version had no failure release: the spinner and its
+  "Loading video" label stayed under the failure message.
 - [Liveness watchdog armed on the success of the fault it detects](liveness-watchdog-armed-on-success-and-unpaired-latch-heartbeat.md)
   — the same family. There the backstop never armed; here it armed, fired, and
   cleared only one of two obstructions.

@@ -394,15 +394,13 @@ export function parseWatchPath(pathname: string): ParsedWatchPath {
 // WATCH_PUBLIC_METADATA_ORIGIN when the configured origin is not public.
 export const WATCH_CANONICAL_ORIGIN = env.NEXT_PUBLIC_CANONICAL_ORIGIN
 
-// The indexed public website host used by SEO/social metadata and as the Share
-// fallback for local/private app origins.
-export const WATCH_PUBLIC_METADATA_ORIGIN = "https://www.jesusfilm.org"
-
-// Re-exported from the shared watch-base-path.mjs module that
-// next.config.mjs also imports. Single source of truth so a basePath
-// change in next.config can't desync from the URL builders here.
-import { WATCH_BASE_PATH } from "../../watch-base-path.mjs"
-export { WATCH_BASE_PATH }
+// Keep the public constants available through the established routes API.
+// The neutral module also serves browser helpers without route initialization.
+import {
+  WATCH_BASE_PATH,
+  WATCH_PUBLIC_METADATA_ORIGIN,
+} from "./watch-public-url"
+export { WATCH_BASE_PATH, WATCH_PUBLIC_METADATA_ORIGIN }
 
 /**
  * Validate the stored Admin target against the same canonical builder used by

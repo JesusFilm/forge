@@ -1,0 +1,92 @@
+{
+  "kind": "isolated_local_actual_prisma_nested_create",
+  "createdAt": "2026-09-29T20:15:14.325Z",
+  "source": "representative fixture from forge_storage_benchmark, read-only",
+  "constraints": "deferred request/item payload integrity triggers; cloned parent/child indexes; no cloned foreign keys",
+  "results": [
+    {
+      "format": "legacy",
+      "itemsPerRequest": 1,
+      "requests": 100,
+      "items": 100,
+      "parentBytes": 196608,
+      "childBytes": 294912,
+      "totalBytes": 491520,
+      "walBytes": 298384,
+      "writeMedianMs": 4.482874000000038,
+      "writeP95Ms": 5.501332000000048,
+      "writeTotalMs": 554.7613249999998,
+      "missingSnapshots": 0
+    },
+    {
+      "format": "packed",
+      "itemsPerRequest": 1,
+      "requests": 100,
+      "items": 100,
+      "parentBytes": 368640,
+      "childBytes": 147456,
+      "totalBytes": 516096,
+      "walBytes": 310104,
+      "writeMedianMs": 4.623968999999988,
+      "writeP95Ms": 5.557362000000012,
+      "writeTotalMs": 505.84695600000055,
+      "missingSnapshots": 0
+    },
+    {
+      "format": "legacy",
+      "itemsPerRequest": 6,
+      "requests": 100,
+      "items": 600,
+      "parentBytes": 196608,
+      "childBytes": 1253376,
+      "totalBytes": 1449984,
+      "walBytes": 1260128,
+      "writeMedianMs": 6.659773000000314,
+      "writeP95Ms": 8.234338000000207,
+      "writeTotalMs": 720.7085699999989,
+      "missingSnapshots": 0
+    },
+    {
+      "format": "packed",
+      "itemsPerRequest": 6,
+      "requests": 100,
+      "items": 600,
+      "parentBytes": 368640,
+      "childBytes": 360448,
+      "totalBytes": 729088,
+      "walBytes": 884448,
+      "writeMedianMs": 7.509855000000243,
+      "writeP95Ms": 9.211968999999954,
+      "writeTotalMs": 800.3244319999994,
+      "missingSnapshots": 0
+    },
+    {
+      "format": "legacy",
+      "itemsPerRequest": 20,
+      "requests": 100,
+      "items": 2000,
+      "parentBytes": 196608,
+      "childBytes": 3956736,
+      "totalBytes": 4153344,
+      "walBytes": 4076696,
+      "writeMedianMs": 12.263176999999814,
+      "writeP95Ms": 15.074471000000813,
+      "writeTotalMs": 1291.7482709999945,
+      "missingSnapshots": 0
+    },
+    {
+      "format": "packed",
+      "itemsPerRequest": 20,
+      "requests": 100,
+      "items": 2000,
+      "parentBytes": 638976,
+      "childBytes": 974848,
+      "totalBytes": 1613824,
+      "walBytes": 1882904,
+      "writeMedianMs": 25.12696599999981,
+      "writeP95Ms": 30.177787999999964,
+      "writeTotalMs": 2607.6438869999956,
+      "missingSnapshots": 0
+    }
+  ]
+}

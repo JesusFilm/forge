@@ -1,3 +1,39 @@
+// Two fixture catalogs join the real set, so a test can put the label text in
+// another language. `fr` is SYNTHETIC: no real catalog maps a feature film to
+// "Short film"; it proves the pool never reads display text.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+jest.mock("../../i18n/catalogs.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixtureCatalogs(jest.requireActual("../../i18n/catalogs.generated"), {
+      es: {
+        VideoLabel: { shortFilm: "Cortometraje", featureFilm: "Película" },
+      },
+      fr: {
+        VideoLabel: { shortFilm: "Court métrage", featureFilm: "Short film" },
+      },
+    }),
+)
+jest.mock("../../i18n/pluralData.generated", () =>
+  jest
+    .requireActual("../../test-utils/uiLocaleFixture")
+    .withFixturePluralData(
+      jest.requireActual("../../i18n/pluralData.generated"),
+      ["es", "fr"],
+    ),
+)
+
+import {
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../i18n/localeStore"
+import { phoneLocales } from "../../test-utils/uiLocaleFixture"
 import {
   WATCH_HOME_COLLECTION_BLACKLIST,
   WATCH_HOME_SECTIONS,
@@ -339,6 +375,40 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(shortFilms?.videos.map((video) => video.id)).toEqual([
       "standalone-short",
     ])
+  })
+})
+
+// KTD15: the pool classifies on the raw label kind, so the catalog in use
+// cannot empty it or fill it.
+describe("short-film pool under another UI language", () => {
+  beforeEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+  })
+  afterAll(() => resetLocaleStoreForTests())
+
+  function shortFilmPool(tag: string) {
+    mockGetLocales.mockReturnValue(phoneLocales(tag))
+    startLocaleSync()
+    const model = buildWatchHomeModelFromVideos({
+      videos: [
+        videoInput("standalone-short", { label: "SHORT_FILM" }),
+        videoInput("standalone-feature", { label: "FEATURE_FILM" }),
+      ],
+    })
+    return model.carousel.pools.find((pool) => pool.id === "shortFilms")
+  }
+
+  // es: a text compare on "Short film" would empty the pool. fr: the feature
+  // film's text reads "Short film", so a text compare would admit it.
+  it.each([
+    ["es-ES", "Cortometraje"],
+    ["fr-FR", "Court métrage"],
+    ["en-US", "Short film"],
+  ])("holds only the short film under %s, labeled %s", (tag, label) => {
+    const pool = shortFilmPool(tag)
+    expect(pool?.videos.map((video) => video.id)).toEqual(["standalone-short"])
+    expect(pool?.videos.map((video) => video.label)).toEqual([label])
   })
 })
 

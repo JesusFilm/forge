@@ -1,9 +1,27 @@
-import { BROWSE_TOPICS } from "../browseTopics"
+import { BROWSE_TOPICS, isBrowseTopicTerm } from "../browseTopics"
+import { getT } from "../../i18n/useT"
+
+describe("isBrowseTopicTerm", () => {
+  it("knows every topic's search term, in any case and with spaces", () => {
+    for (const topic of BROWSE_TOPICS) {
+      expect(isBrowseTopicTerm(topic.searchTerm)).toBe(true)
+      expect(isBrowseTopicTerm(` ${topic.searchTerm.toUpperCase()} `)).toBe(
+        true,
+      )
+    }
+  })
+
+  it("rejects a typed query that only contains a term", () => {
+    expect(isBrowseTopicTerm("family movies")).toBe(false)
+    expect(isBrowseTopicTerm("")).toBe(false)
+  })
+})
 
 describe("BROWSE_TOPICS", () => {
   it("has exactly six topics in the web-parity order", () => {
     expect(BROWSE_TOPICS).toHaveLength(6)
-    expect(BROWSE_TOPICS.map((t) => t.label)).toEqual([
+    const label = getT("BrowseTopics")
+    expect(BROWSE_TOPICS.map((t) => label(t.labelKey))).toEqual([
       "Bible Stories",
       "Parables",
       "Animated",

@@ -33,7 +33,7 @@ export function requireGeneratedPassword(value: string | undefined): string {
   const password = value?.trim()
   if (!password || !GENERATED_PASSWORD.test(password))
     throw new Error(
-      "read-only role provisioning refused: JFRAG_READONLY_PASSWORD must be 64 lowercase hexadecimal characters",
+      "read-only role provisioning refused: FORGE_RAG_READONLY_PASSWORD must be 64 lowercase hexadecimal characters",
     )
   return password
 }

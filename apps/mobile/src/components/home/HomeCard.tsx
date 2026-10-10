@@ -29,6 +29,8 @@ import { isSeriesSearchResult } from "../../lib/isSeriesRecord"
 import type { WatchHomeCard } from "../../lib/watchHome/model"
 import { prefetchHeroStream } from "../../hooks/useHeroStream"
 import { useTypography } from "../../hooks/useTypography"
+import { useTextDirection } from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
 import { card as cardStyle, feedback } from "../../styles/shared"
 
 // ── Types ───────────────────────────────────────────────────────────────────
@@ -38,7 +40,17 @@ export type HomeCardVariant = "landscape" | "portrait"
 export type HomeCardProps = {
   card: WatchHomeCard
   variant: HomeCardVariant
+  /**
+   * Replaces the NAVIGATION only (feat-517 KTD8). The press-in prefetch, the
+   * routing label and the progress bar are untouched.
+   */
+  onPressOverride?: () => void
+  /** Stable, low-cardinality RUM action name for the overriding surface. */
+  actionName?: string
 }
+
+/** The RUM action name every un-overridden Home card reports under. */
+const HOME_CARD_ACTION_NAME = "home-card"
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
@@ -58,6 +70,17 @@ const CARD_EXTRA_WIDTH: Record<HomeCardVariant, number> = {
 const CARD_ASPECT: Record<HomeCardVariant, number> = {
   landscape: 16 / 9,
   portrait: 3 / 4,
+}
+
+/**
+ * Rendered card height for a variant. Exported so a row's placeholder reserves
+ * the height its real cards will take, from these same constants.
+ */
+export function homeCardHeight(
+  variant: HomeCardVariant,
+  screenWidth: number,
+): number {
+  return homeCardWidth(variant, screenWidth) / CARD_ASPECT[variant]
 }
 
 const GRADIENT_COLORS: [string, string] = [
@@ -84,9 +107,13 @@ export function homeCardWidth(
 export const HomeCard = memo(function HomeCard({
   card,
   variant,
+  onPressOverride,
+  actionName = HOME_CARD_ACTION_NAME,
 }: HomeCardProps) {
   const router = useRouter()
   const typography = useTypography()
+  const t = useT("Home")
+  const tWatch = useT("Watch")
   const { width: screenWidth } = useWindowDimensions()
 
   const width = homeCardWidth(variant, screenWidth)
@@ -113,9 +140,15 @@ export const HomeCard = memo(function HomeCard({
   // never matches a store entry, which would silently drop progress from the
   // accessibility label while the visible bar rendered correctly.
   const progressEntry = useWatchProgressEntry(card.videoId)
+  const progressText = progressAccessibilityText(progressEntry, tWatch)
+  const titleDirection = useTextDirection().text(card.titleLang)
 
   const handlePress = () => {
     if (!card.slug) return
+    if (onPressOverride) {
+      onPressOverride()
+      return
+    }
     // Carry seed data forward so the detail screen paints instantly.
     const seed = encodeWatchSeed({
       slug: card.slug,
@@ -142,17 +175,19 @@ export const HomeCard = memo(function HomeCard({
       onPressIn={interactive ? handlePressIn : undefined}
       onPress={interactive ? handlePress : undefined}
       accessibilityRole={interactive ? "button" : "image"}
-      accessibilityLabel={[card.title, progressAccessibilityText(progressEntry)]
-        .filter(Boolean)
-        .join(", ")}
+      accessibilityLabel={[card.title, progressText].filter(Boolean).join(", ")}
+      // The mark fits only a label that is the title alone (R10).
+      accessibilityLanguage={
+        progressText ? undefined : titleDirection.accessibilityLanguage
+      }
       // Stable, low-cardinality RUM action name (auto-tracker would leak the
       // title from accessibilityLabel) — KTD10. Spread: Pressable omits the type.
-      {...{ "dd-action-name": "home-card" }}
+      {...{ "dd-action-name": actionName }}
       accessibilityHint={
         interactive
           ? isSeries
-            ? "Opens this series"
-            : "Opens this video"
+            ? t("opensSeriesAriaHint")
+            : t("opensVideoAriaHint")
           : undefined
       }
     >
@@ -186,8 +221,9 @@ export const HomeCard = memo(function HomeCard({
       )}
       <View style={styles.textContent} pointerEvents="none">
         <Text
-          style={[styles.cardTitle, typography.bodySmall]}
+          style={[styles.cardTitle, typography.bodySmall, titleDirection.style]}
           numberOfLines={2}
+          accessibilityLanguage={titleDirection.accessibilityLanguage}
         >
           {card.title}
         </Text>

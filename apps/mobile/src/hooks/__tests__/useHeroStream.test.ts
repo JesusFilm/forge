@@ -217,3 +217,20 @@ describe("prefetchHeroStream cooldown seam", () => {
     ).toBe(false)
   })
 })
+
+// KTD10: the warm-up reads the language-free document, so its variables are
+// the slug alone and its dedupe is the slug alone.
+describe("prefetchHeroStream variables (U6)", () => {
+  it("asks for the video document by slug, with no language", async () => {
+    const query = jest.fn().mockResolvedValue({ data: {} })
+    mockGetClient.mockReturnValue({ query })
+
+    prefetchHeroStream("pf-language-free")
+    await flushMicrotasks()
+
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(query.mock.calls[0][0].variables).toEqual({
+      slug: "pf-language-free",
+    })
+  })
+})

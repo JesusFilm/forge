@@ -209,6 +209,9 @@ const requestStore = getPlaybackRequestStore()
 const recorderClient = jest.requireMock(
   "../../lib/recommendations/playbackRecorderClient",
 ) as RecorderClientMock
+const progressRecorders = jest.requireMock(
+  "../../lib/watchProgress/recorder",
+) as { createProgressRecorder: jest.Mock }
 
 const URL_A = "https://stream.mux.com/assetAAA111.m3u8"
 const URL_B = "https://stream.mux.com/assetBBB222.m3u8"
@@ -590,5 +593,166 @@ describe("useManagedVideoPlayer — recommendation episode recorder wiring", () 
     const recorder = latestRecorder()
     await unmountPlayer(renderer)
     expect(recorder.dispose).toHaveBeenCalledTimes(1)
+  })
+
+  // The feat-516 smoke's double recorder (2026-09-16): a screen mounting onto
+  // the floating video publishes BEFORE its record lands, which follows a
+  // commit later. One video, one playback, one episode.
+  describe("a watch screen remounting onto its floating video", () => {
+    /** Plays, then leaves for Home so the store originates the session. */
+    async function floatTheVideo() {
+      await renderPlayer()
+      const first = latestRecorder()
+      await act(async () => {
+        video.__player.play()
+      })
+      video.__player.currentTime = 30
+      await act(async () => {
+        if (slotId != null) requestStore.detachSlot(slotId)
+      })
+      expect(getMiniPlayerStore().getSnapshot().session?.videoId).toBe(
+        "video-a",
+      )
+      return {
+        first,
+        progressRecordersBefore:
+          progressRecorders.createProgressRecorder.mock.calls.length,
+      }
+    }
+
+    async function attachSlotWith(published: PlaybackRequest) {
+      await act(async () => {
+        slotId = requestStore.attachSlot(published)
+        requestStore.setSlotRect(slotId, SLOT_RECT)
+      })
+    }
+
+    function expectOneEpisode(input: {
+      first: FakeRecorder
+      progressRecordersBefore: number
+    }) {
+      expect(getMiniPlayerStore().getSnapshot().session?.videoId).toBe(
+        "video-a",
+      )
+      expect(
+        recorderClient.createPlaybackRecorderForMedia,
+      ).toHaveBeenCalledTimes(1)
+      expect(input.first.onEnd).not.toHaveBeenCalled()
+      expect(input.first.dispose).not.toHaveBeenCalled()
+      expect(progressRecorders.createProgressRecorder).toHaveBeenCalledTimes(
+        input.progressRecordersBefore,
+      )
+      expect(video.__player.currentTime).toBe(30)
+    }
+
+    it("keeps one recorder across the id-less first publish, the record, and the dub", async () => {
+      const floating = await floatTheVideo()
+      // The screen's first render: a session descriptor by slug alone, and
+      // no progress identity at all (no record, no download).
+      const idLess = request(URL_A, {
+        videoSlug: "video-a-slug",
+        languageSlug: null,
+      })
+      await attachSlotWith({ ...idLess, progressVideoSlug: null })
+      await rerender(URL_A, {
+        videoId: "video-a",
+        videoSlug: "video-a-slug",
+        languageSlug: null,
+      })
+      await rerender(URL_A, IDENTITY_A)
+      expectOneEpisode(floating)
+    })
+
+    it("keeps one recorder when the remount publishes by slug over an id the host already resolved", async () => {
+      const floating = await floatTheVideo()
+      // A slug-only publish (a download's key) over a known id names the same
+      // video by its weaker key.
+      await attachSlotWith(
+        request(URL_A, { videoSlug: "video-a-slug", languageSlug: null }),
+      )
+      await rerender(URL_A, IDENTITY_A)
+      expectOneEpisode(floating)
+    })
+
+    // A genuine download: no Admin id on either side, so no recommendation
+    // recorder exists to keep, and the slug-keyed progress identity must hold.
+    it("keeps the slug-keyed identity when a downloaded video's remount publishes before its record lands", async () => {
+      await renderPlayer(URL_A, {
+        videoSlug: "video-a-slug",
+        languageSlug: null,
+      })
+      await act(async () => {
+        video.__player.play()
+      })
+      await act(async () => {
+        if (slotId != null) requestStore.detachSlot(slotId)
+      })
+      expect(getMiniPlayerStore().getSnapshot().session?.videoSlug).toBe(
+        "video-a-slug",
+      )
+      const progressRecordersBefore =
+        progressRecorders.createProgressRecorder.mock.calls.length
+
+      await attachSlotWith(
+        request(URL_A, { videoSlug: "video-a-slug", languageSlug: null }),
+      )
+
+      expect(getMiniPlayerStore().getSnapshot().session?.videoSlug).toBe(
+        "video-a-slug",
+      )
+      expect(
+        recorderClient.createPlaybackRecorderForMedia,
+      ).not.toHaveBeenCalled()
+      expect(progressRecorders.createProgressRecorder).toHaveBeenCalledTimes(
+        progressRecordersBefore,
+      )
+    })
+
+    // The hold is scoped to the slug: a DIFFERENT video's id-less first publish
+    // must not inherit the floating video's identity.
+    it("re-keys onto a different video whose remount publishes before its record lands", async () => {
+      const { first } = await floatTheVideo()
+      const idLessB = request(URL_B, {
+        videoSlug: "video-b-slug",
+        languageSlug: null,
+      })
+      await attachSlotWith({ ...idLessB, progressVideoSlug: null })
+
+      expect(first.dispose).toHaveBeenCalledTimes(1)
+      expect(
+        recorderClient.createPlaybackRecorderForMedia,
+      ).toHaveBeenCalledTimes(1)
+
+      await rerender(URL_B, IDENTITY_B)
+
+      expect(latestRecorder().input.mediaId).toBe("video-b")
+      expect(
+        recorderClient.createPlaybackRecorderForMedia,
+      ).toHaveBeenCalledTimes(2)
+    })
+
+    // The hold keeps a known dub only over a null one: a real dub switch still
+    // re-keys the progress recorder, while the episode recorder stays.
+    it("re-keys the progress recorder on a real dub switch after the hold", async () => {
+      const floating = await floatTheVideo()
+      const idLess = request(URL_A, {
+        videoSlug: "video-a-slug",
+        languageSlug: null,
+      })
+      await attachSlotWith({ ...idLess, progressVideoSlug: null })
+      await rerender(URL_A, IDENTITY_A)
+      const progressRecordersAfterRemount =
+        progressRecorders.createProgressRecorder.mock.calls.length
+
+      await rerender(URL_B, { ...IDENTITY_A, languageSlug: "french" })
+
+      expect(progressRecorders.createProgressRecorder).toHaveBeenCalledTimes(
+        progressRecordersAfterRemount + 1,
+      )
+      expect(floating.first.dispose).not.toHaveBeenCalled()
+      expect(
+        recorderClient.createPlaybackRecorderForMedia,
+      ).toHaveBeenCalledTimes(1)
+    })
   })
 })

@@ -98,6 +98,15 @@ describe("watchSearch language input stays behind the builder", () => {
         content: "displayLanguageSlug: SEARCH_LANGUAGE_SLUG,",
       },
       {
+        // U7: browse topics send queryLanguageSlug, from the builder only.
+        relative: "src/lib/watchSearch.ts",
+        content: "queryLanguageSlug: language.query",
+      },
+      {
+        relative: "src/components/search/TopicQueryLanguage.tsx",
+        content: '  queryLanguageSlug: "english",',
+      },
+      {
         // Tolerated: the event mutation's wire variable, not a search input.
         relative: "src/lib/watchSearchEvents.ts",
         content: "  routeLanguageSlug: null,",
@@ -113,6 +122,7 @@ describe("watchSearch language input stays behind the builder", () => {
       "src/components/search/Rogue.tsx",
       "src/components/search/Shorthand.tsx",
       "src/components/search/Spread.tsx",
+      "src/components/search/TopicQueryLanguage.tsx",
       "src/lib/queries.ts",
     ])
   })

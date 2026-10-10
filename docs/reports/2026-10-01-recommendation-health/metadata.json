@@ -1,0 +1,23 @@
+{
+  "source": "Verified Forge Railway production Admin PostgreSQL",
+  "deployed_admin_commit": "99554c8b0759ca4d88d02a0d63bf518e0a89b4cf",
+  "deployment_id": "f6f2a1cd-95a7-425e-b049-b44e55e7d5c0",
+  "state_observed_at": "2026-09-30T19:01:21.556Z",
+  "window_start": "2026-09-29T18:42:00Z",
+  "window_end_exclusive": "2026-09-30T18:42:00Z",
+  "previous_window_start": "2026-09-28T18:42:00Z",
+  "display_timezone": "Pacific/Auckland",
+  "trailing_buffer_minutes_at_initial_verification": 15,
+  "read_only": true,
+  "statement_timeout_ms": 25000,
+  "lock_timeout_ms": 2000,
+  "database_and_client_timezone": "UTC",
+  "notes": [
+    "Serial read-only transactions; current-state results are successive snapshots, not one atomic snapshot.",
+    "SQL timestamp bounds are UTC; timestamp-without-time-zone fields were parsed with the client process forced to UTC.",
+    "Request-cohort engagement includes only evidence received before the common cutoff; equal maturation time was not imposed.",
+    "Retained evidence may be pruned or revised after collection; reruns can differ.",
+    "No exported viewer identifiers, credentials, raw vectors or viewing histories. Internal schema column names are metadata.",
+    "Production settings, serving authority, data, and deployments were not changed."
+  ]
+}

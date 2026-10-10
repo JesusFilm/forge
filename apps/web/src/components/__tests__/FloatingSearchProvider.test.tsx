@@ -490,6 +490,7 @@ function PlaybackStatePublisher({
 function SearchModeHarness() {
   const {
     displayResults,
+    displayResultPages,
     error,
     errorKind,
     loadMore,
@@ -502,6 +503,16 @@ function SearchModeHarness() {
   return (
     <div>
       <span data-testid="search-result-count">{displayResults.length}</span>
+      <span data-testid="search-result-pages">
+        {JSON.stringify(
+          displayResultPages.map((page) => ({
+            key: page.key,
+            startIndex: page.startIndex,
+            ids: page.results.map((result) => result.id),
+            sourceVersion: page.surfaceManifest?.manifest.sourceVersion ?? null,
+          })),
+        )}
+      </span>
       <span data-testid="search-error">
         {error == null ? "" : `${errorKind ?? "unknown"}:${error}`}
       </span>
@@ -695,6 +706,84 @@ describe("FloatingSearchProvider — header backdrop", () => {
 })
 
 describe("FloatingSearchProvider — search mode", () => {
+  it("retains immutable per-page sources across append and clears them with result reset", async () => {
+    vi.useFakeTimers()
+    const source = (
+      slug: string,
+      version: string,
+    ): NonNullable<SearchResponse["surfaceManifest"]> => ({
+      manifest: {
+        surface: "watch-search",
+        block: "results",
+        presentation: "result-list",
+        placement: "search-results",
+        policyVersion: "watch-exposure-v2",
+        sourceVersion: version.repeat(64),
+        expiresAt: "2026-10-01T00:00:00.000Z",
+        items: [{ position: 0, itemPath: `/watch/${slug}.html` }],
+      },
+      signature: "a".repeat(43),
+    })
+    mockedRunSearch
+      .mockResolvedValueOnce(
+        searchResult("watch-search", {
+          results: [videoResult("first")],
+          hasMore: true,
+          surfaceManifest: source("first", "a"),
+        }),
+      )
+      .mockResolvedValueOnce(
+        searchResult("watch-search", {
+          results: [videoResult("second")],
+          hasMore: false,
+          surfaceManifest: source("second", "b"),
+        }),
+      )
+    act(() =>
+      root.render(
+        <SearchControllerTestShell>
+          <SearchModeHarness />
+        </SearchControllerTestShell>,
+      ),
+    )
+    await flushSearchControllerMount()
+    const click = async (testId: string) => {
+      await act(async () => {
+        const button = document.querySelector(
+          `[data-testid="${testId}"]`,
+        ) as HTMLButtonElement
+        button.click()
+        await Promise.resolve()
+        await Promise.resolve()
+      })
+      await flushResolvedSearch()
+    }
+    const pages = () =>
+      JSON.parse(
+        document.querySelector('[data-testid="search-result-pages"]')
+          ?.textContent ?? "[]",
+      )
+    await click("search-mode-harness-button")
+    const first = pages()[0]
+    expect(first).toMatchObject({
+      ids: ["first"],
+      startIndex: 0,
+      sourceVersion: "a".repeat(64),
+    })
+    await click("search-mode-harness-load-more-button")
+    expect(pages()[0]).toEqual(first)
+    expect(pages()[1]).toMatchObject({
+      ids: ["second"],
+      startIndex: 1,
+      sourceVersion: "b".repeat(64),
+    })
+    await click("search-mode-harness-clear-button")
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250)
+    })
+    expect(pages()).toEqual([])
+  })
+
   it("does not search an instant-shell draft when the controller mounts", async () => {
     act(() => {
       root.render(
@@ -1141,13 +1230,34 @@ describe("FloatingSearchProvider — search mode", () => {
     expect(skeleton?.textContent).toBe("true")
 
     await act(async () => {
-      resolveFirstSearch(searchResult("watch-search"))
+      resolveFirstSearch(
+        searchResult("watch-search", {
+          results: [videoResult("stale-source")],
+          surfaceManifest: {
+            manifest: {
+              surface: "watch-search",
+              block: "results",
+              presentation: "result-list",
+              placement: "search-results",
+              policyVersion: "watch-exposure-v2",
+              sourceVersion: "c".repeat(64),
+              expiresAt: "2026-10-01T00:00:00.000Z",
+              items: [{ position: 0, itemPath: "/watch/stale-source.html" }],
+            },
+            signature: "a".repeat(43),
+          },
+        }),
+      )
       await firstSearch
       await Promise.resolve()
     })
 
     expect(loading?.textContent).toBe("true")
     expect(skeleton?.textContent).toBe("true")
+    expect(
+      document.querySelector('[data-testid="search-result-pages"]')
+        ?.textContent,
+    ).toBe("[]")
   })
 
   it("leaves the browser URL unchanged when the submitted search query changes", async () => {

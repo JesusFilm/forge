@@ -10,7 +10,6 @@ vi.mock("@/lib/admin-client", () => ({
 }))
 
 import {
-  getContextualSceneRecommendations,
   getSemanticRecommendationDelivery,
   getRecommendationProfileStatus,
   transitionRecommendationProfile,
@@ -24,7 +23,7 @@ afterEach(() => {
 })
 
 describe("semantic recommendation delivery timeout", () => {
-  it("keeps semantic and contextual upstream budgets within ten seconds", async () => {
+  it("bounds semantic delivery to 3.5 seconds without a recovery request", async () => {
     const timeoutSpy = vi.spyOn(AbortSignal, "timeout")
     const semanticDelivery = {
       contractVersion: "semantic-recommendation-v1",
@@ -50,14 +49,7 @@ describe("semantic recommendation delivery timeout", () => {
     )
     expect(queryMock).toHaveBeenCalledOnce()
 
-    queryMock.mockResolvedValueOnce({ data: { sceneRecommendations: [] } })
-    await expect(
-      getContextualSceneRecommendations("timeout-budget-seed", "en", 6),
-    ).resolves.toEqual([])
-
-    expect(timeoutSpy).toHaveBeenNthCalledWith(1, 3_500)
-    expect(timeoutSpy).toHaveBeenNthCalledWith(2, 6_500)
-    expect(queryMock).toHaveBeenCalledTimes(2)
+    expect(timeoutSpy).toHaveBeenCalledExactlyOnceWith(3_500)
   })
 
   it("does not retry an explicit Admin GraphQL error", async () => {

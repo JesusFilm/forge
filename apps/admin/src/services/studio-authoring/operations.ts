@@ -84,6 +84,10 @@ export function applyOperations(
         item.durationInFrames = op.durationInFrames
         item.timingLocked = op.timingLocked
         break
+      case "set-source-focus":
+        if (item.kind !== "video") throw new StudioCommandError("INVALID")
+        item.focus = op.focus
+        break
       case "set-transform":
         item.transform = op.transform
         break
@@ -109,7 +113,8 @@ export function applyOperations(
         item.source.startMs = op.startMs
         item.source.endMs = op.endMs
         item.durationInFrames = Math.round(
-          ((op.endMs - op.startMs) * doc.fps) / 1000,
+          ((op.endMs - op.startMs) * doc.fps) /
+            (1000 * (item.playbackRate ?? 1)),
         )
         break
     }

@@ -1,3 +1,5 @@
+import { StudioInspectionService } from "./inspection"
+import { StudioDelegatedNarrationService } from "./delegated-narration"
 import { StudioPublicationReadinessResolver } from "./publication-readiness-resolver"
 import { readStudioRenderState } from "./render-state"
 import { StudioRenderJobs } from "./render-jobs"
@@ -65,6 +67,8 @@ export async function executeStudioRpc(
     packs = new ContentPackService(db),
     transfers = new StudioTransferService(db)
   switch (action) {
+    case "inspection-context":
+      return new StudioInspectionService(db).context(user, input)
     case "publication-candidate":
       return new StudioPublicationReadinessResolver(db).candidate(user, input)
     case "render-state":
@@ -86,6 +90,10 @@ export async function executeStudioRpc(
       return new StudioGenerationService(db).read(user, input)
     case "validate-proposal":
       return new StudioGenerationService(db).validate(user, input)
+    case "narration-authorize":
+      return new StudioDelegatedNarrationService(db).authorize(user, input)
+    case "narration-status":
+      return new StudioDelegatedNarrationService(db).status(user, input)
     case "narration-plan":
       return new StudioNarrationService(db).plan(user, input)
     case "request":
@@ -123,6 +131,8 @@ export async function executeStudioRpc(
       )
     case "create":
       return commands.create(user, input)
+    case "delete":
+      return commands.delete(user, input)
     case "apply":
       return commands.apply(user, input)
     case "approve":
@@ -246,7 +256,10 @@ export async function executeStudioRpc(
       return dubs
         .filter(
           (d) =>
-            d.hls && d.downloads.length && d.videoEdition?.subtitles.length,
+            d.hls?.trim() &&
+            d.downloads.some((x) => x.url?.trim()) &&
+            d.videoEdition &&
+            Number(d.lengthInMilliseconds) > 0,
         )
         .map((d) => ({
           videoId: d.videoId,
@@ -255,17 +268,25 @@ export async function executeStudioRpc(
           language: v.language,
           title: d.video.locales[0]?.title ?? d.videoId,
           durationMs: Number(d.lengthInMilliseconds),
-          tracks: d.videoEdition!.subtitles.map((t) => ({
-            id: t.id,
-            primary: t.primary,
-            aiGenerated: t.aiGenerated,
-          })),
-          downloads: d.downloads.map((x) => ({
-            id: x.id,
-            width: x.width,
-            height: x.height,
-            quality: x.quality,
-          })),
+          tracks: d
+            .videoEdition!.subtitles.filter(
+              (t) =>
+                t.vttSrc?.trim() &&
+                (t.videoId === null || t.videoId === d.videoId),
+            )
+            .map((t) => ({
+              id: t.id,
+              primary: t.primary,
+              aiGenerated: t.aiGenerated,
+            })),
+          downloads: d.downloads
+            .filter((x) => x.url?.trim())
+            .map((x) => ({
+              id: x.id,
+              width: x.width,
+              height: x.height,
+              quality: x.quality,
+            })),
         }))
     }
   }

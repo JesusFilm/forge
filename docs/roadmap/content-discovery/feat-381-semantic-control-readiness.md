@@ -3,20 +3,11 @@ id: "feat-381"
 title: "Semantic recommendation control readiness"
 owner: "nisal"
 priority: "P0"
-status: "not-started"
+status: "cancelled"
 start_date: ""
 duration: 4
-depends_on:
-  - "feat-368"
-  - "feat-369"
-  - "feat-372"
-  - "feat-376"
-  - "feat-459"
-blocks:
-  - "feat-505"
-  - "feat-382"
-  - "feat-383"
-  - "feat-384"
+depends_on: []
+blocks: []
 tags:
   - "admin"
   - "recommendations"
@@ -24,6 +15,17 @@ tags:
   - "evaluation"
   - "readiness"
 ---
+
+## October 2, 2026 scope decision
+
+Cancelled semantic-control readiness as a required experiment gate. Admin already
+has a versioned `control-readiness` policy, evaluation service/job, tests and a
+readiness panel; that implementation is retained, but this ticket does not claim
+a current production `ready` evaluation or a causal benefit result. The selected
+co-watch/MMR activation no longer depends on a controlled usefulness study, so
+forcing a semantic-only control evaluation is obsolete. Delivery reliability,
+eligibility, privacy and refresh authority remain independently required under
+the [delivery policy](../../analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage).
 
 ## Problem
 
@@ -71,3 +73,10 @@ The ticket is not complete until this result is visible and reconcilable in the 
 - Reconcile input rows and readiness explanations in Admin.
 - Run affected application checks: `pnpm --filter @forge/admin test`, `pnpm --filter @forge/admin lint`, and `pnpm --filter @forge/admin typecheck`.
 - Run `pnpm --filter roadmap lint` after updating roadmap metadata.
+
+## September 24 operational gate transfer
+
+Feat-464 and feat-459 now close the verified recovery/integrity scope. Their
+remaining monitoring and telemetry acceptance requirements are preserved in
+[feat-545](feat-545-recommendation-monitoring-and-telemetry-closeout.md), now an
+explicit dependency. This metadata change does not activate runtime features.

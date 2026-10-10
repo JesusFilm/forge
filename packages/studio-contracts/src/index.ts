@@ -57,6 +57,8 @@ export const studioPropertiesSchema = z.record(
 export const studioComponentSchema = z
   .object({
     versionId: studioIdSchema,
+    name: z.string().trim().min(1).max(200).optional(),
+    category: z.enum(["text", "video"]).optional(),
     code: studioAssetReferenceSchema,
     runtimeVersion: studioIdSchema,
     dependencies: z
@@ -94,12 +96,16 @@ export const studioSourceSchema = z
         language: studioIdSchema,
         asset: studioAssetReferenceSchema,
       })
-      .strict(),
+      .strict()
+      .nullable(),
     preview: studioAssetReferenceSchema,
     export: studioAssetReferenceSchema,
     startMs: z.number().int().nonnegative().max(86_400_000),
     endMs: z.number().int().positive().max(86_400_000),
   })
+  .strict()
+export const studioFocusSchema = z
+  .object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) })
   .strict()
 export const studioTransformSchema = z
   .object({
@@ -142,6 +148,20 @@ export const studioTextPropertiesSchema = z
     fontFamily: studioIdSchema.optional(),
     fontWeight: z.number().int().min(100).max(900).optional(),
     align: z.enum(["left", "center", "right"]).optional(),
+    shadow: z.boolean().optional(),
+    shadowBlur: z.number().min(0).max(100).optional(),
+    shadowOffset: z.number().min(0).max(100).optional(),
+    strokeWidth: z.number().min(0).max(20).optional(),
+    strokeColor: z
+      .string()
+      .regex(/^#[a-fA-F0-9]{6}$/)
+      .optional(),
+    scrimOpacity: z.number().min(0).max(1).optional(),
+    scrimPadding: z.number().min(0).max(200).optional(),
+    entrance: z.enum(["none", "fade", "slide"]).optional(),
+    exit: z.enum(["none", "fade", "slide"]).optional(),
+    entranceFrames: z.number().int().min(1).max(300).optional(),
+    exitFrames: z.number().int().min(1).max(300).optional(),
   })
   .strict()
 const itemBase = {
@@ -175,7 +195,16 @@ export const studioTimelineItemSchema = z.discriminatedUnion("kind", [
     .object({
       ...itemBase,
       kind: z.literal("video"),
+      playbackRate: z.number().finite().min(0.25).max(4).optional(),
+      focus: studioFocusSchema.optional(),
       source: studioSourceSchema,
+      transition: z
+        .object({
+          type: z.enum(["crossfade", "fade-black"]),
+          durationInFrames: z.number().int().min(1).max(300),
+        })
+        .strict()
+        .optional(),
       volume: z.number().min(0).max(2),
     })
     .strict(),
@@ -305,14 +334,17 @@ export const studioDocumentSchema = z
         const s = item.source
         if (
           s.language !== doc.language ||
-          s.subtitle.language !== doc.language ||
-          s.subtitle.editionId !== s.editionId
+          (s.subtitle !== null &&
+            (s.subtitle.language !== doc.language ||
+              s.subtitle.editionId !== s.editionId))
         )
           fail("Exact source language and subtitle edition required")
         if (
           s.endMs <= s.startMs ||
           Math.abs(
-            ((s.endMs - s.startMs) * doc.fps) / 1000 - item.durationInFrames,
+            ((s.endMs - s.startMs) * doc.fps) /
+              (1000 * (item.playbackRate ?? 1)) -
+              item.durationInFrames,
           ) > 1
         )
           fail("Source trim must match item duration")
@@ -362,6 +394,13 @@ export const studioOperationSchema = z.discriminatedUnion("kind", [
       kind: z.literal("set-transform"),
       itemId: studioIdSchema,
       transform: studioTransformSchema,
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal("set-source-focus"),
+      itemId: studioIdSchema,
+      focus: studioFocusSchema,
     })
     .strict(),
   z
@@ -561,6 +600,7 @@ export const studioListSchema = z
   .strict()
 export const studioProjectSummarySchema = z
   .object({
+    canDelete: z.boolean().optional(),
     projectId: studioIdSchema,
     revision: z.number().int().positive(),
     lifecycle: studioLifecycleSchema,

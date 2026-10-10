@@ -13,6 +13,10 @@ import {
   type ExportReportRecord,
   type ExportReportSignal,
 } from "../exportReport"
+import { getT } from "../../i18n/useT"
+
+// English, from the real catalog: no case changes the UI language here.
+const t = getT("ExportReport")
 
 const NOW = 1_000_000
 
@@ -72,8 +76,8 @@ describe("folding a run into one report", () => {
 
     expect(Object.keys(record.outcomes)).toHaveLength(12)
     expect(record.runSize).toBe(12)
-    expect(viewFor(record).headline).toBe("Saved 10 of 12 episodes.")
-    expect(viewFor(record).detail).toBe("2 did not save.")
+    expect(viewFor(record, t).headline).toBe("Saved 10 of 12 episodes.")
+    expect(viewFor(record, t).detail).toBe("2 did not save.")
   })
 
   it("counts a re-published episode once", () => {
@@ -83,8 +87,8 @@ describe("folding a run into one report", () => {
       episode("episode-0", "saved", { runSize: 3 }),
     ])
 
-    expect(viewFor(record).headline).toBe("Saved 1 of 3 episodes.")
-    expect(viewFor(record).detail).toBeNull()
+    expect(viewFor(record, t).headline).toBe("Saved 1 of 3 episodes.")
+    expect(viewFor(record, t).detail).toBeNull()
   })
 
   it("keeps two runs apart by run id", () => {
@@ -116,7 +120,7 @@ describe("folding a run into one report", () => {
     ])
 
     expect(record.runSize).toBe(5)
-    expect(viewFor(record).headline).toBe("Saved 1 of 5 episodes.")
+    expect(viewFor(record, t).headline).toBe("Saved 1 of 5 episodes.")
   })
 
   it("keeps the title and the folder name a later signal omits", () => {
@@ -152,29 +156,35 @@ describe("the worst outcome wins for a single export", () => {
       { ...single(second), target: "the-story-of-jesus" },
     ])
 
-    expect(viewFor(record).headline).toBe(headline)
+    expect(viewFor(record, t).headline).toBe(headline)
   })
 
   it("reports a lone saved export as saved", () => {
-    expect(viewFor(only([single("saved")])).headline).toBe("Saved to Files.")
+    expect(viewFor(only([single("saved")]), t).headline).toBe("Saved to Files.")
   })
 })
 
 describe("the run size splits the single view from the series view", () => {
   it("reads a signal with no run size as a single export", () => {
-    const view = viewFor(only([single("saved", { folderName: "Downloads" })]))
+    const view = viewFor(
+      only([single("saved", { folderName: "Downloads" })]),
+      t,
+    )
 
     expect(view.headline).toBe("Saved to Downloads.")
   })
 
   it("reads a run size of one as a single export", () => {
-    const view = viewFor(only([single("failed", { runSize: 1 })]))
+    const view = viewFor(only([single("failed", { runSize: 1 })]), t)
 
     expect(view.headline).toBe("The video did not save.")
   })
 
   it("reads a run size of two as a series, even after one episode", () => {
-    const view = viewFor(only([episode("episode-0", "saved", { runSize: 2 })]))
+    const view = viewFor(
+      only([episode("episode-0", "saved", { runSize: 2 })]),
+      t,
+    )
 
     expect(view.headline).toBe("Saved 1 of 2 episodes.")
   })
@@ -182,19 +192,22 @@ describe("the run size splits the single view from the series view", () => {
 
 describe("the saved headline names where the video landed", () => {
   it("names the folder the viewer picked", () => {
-    const view = viewFor(only([single("saved", { folderName: "Downloads" })]))
+    const view = viewFor(
+      only([single("saved", { folderName: "Downloads" })]),
+      t,
+    )
 
     expect(view.headline).toBe("Saved to Downloads.")
   })
 
   it("names Files when the folder name could not be read from the uri", () => {
-    const view = viewFor(only([single("saved", { folderName: null })]))
+    const view = viewFor(only([single("saved", { folderName: null })]), t)
 
     expect(view.headline).toBe("Saved to Files.")
   })
 
   it("names Files when no folder name reached the report", () => {
-    expect(viewFor(only([single("saved")])).headline).toBe("Saved to Files.")
+    expect(viewFor(only([single("saved")]), t).headline).toBe("Saved to Files.")
   })
 })
 
@@ -204,7 +217,7 @@ describe("the series detail names every outcome the run reached", () => {
       episode("episode-0", "saved", { runSize: 5 }),
       episode("episode-1", "cancelled", { runSize: 5 }),
     ])
-    const view = viewFor(record)
+    const view = viewFor(record, t)
 
     expect(view.headline).toBe("Saved 1 of 5 episodes.")
     expect(view.detail).toBe("Export cancelled.")
@@ -215,12 +228,15 @@ describe("the series detail names every outcome the run reached", () => {
     const record = only([
       episode("episode-0", "saved", { runSize: 4 }),
       episode("episode-1", "failed", { runSize: 4 }),
-      episode("episode-2", "blocked", { runSize: 4 }),
-      episode("episode-3", "abandoned", { runSize: 4, detail: "No space." }),
+      episode("episode-2", "blocked", {
+        runSize: 4,
+        blockReason: "insufficient-storage",
+      }),
+      episode("episode-3", "abandoned", { runSize: 4 }),
     ])
 
-    expect(viewFor(record).detail).toBe(
-      "1 did not save. 1 did not start. 1 did not finish. No space.",
+    expect(viewFor(record, t).detail).toBe(
+      "1 did not save. 1 did not start. 1 did not finish. There is not enough free space on this device.",
     )
   })
 
@@ -229,7 +245,7 @@ describe("the series detail names every outcome the run reached", () => {
       episode("episode-0", "saved", { runSize: 2 }),
       episode("episode-1", "saved", { runSize: 2 }),
     ])
-    const view = viewFor(record)
+    const view = viewFor(record, t)
 
     expect(view.detail).toBeNull()
     expect(view.icon).toBe("checkmark-circle")
@@ -270,7 +286,7 @@ describe("a run's report waits for its next episode", () => {
       later,
     )
     expect(next).toHaveLength(1)
-    expect(viewFor(next[0]).headline).toBe("Saved 2 of 5 episodes.")
+    expect(viewFor(next[0], t).headline).toBe("Saved 2 of 5 episodes.")
   })
 
   it("takes the ordinary dismissal once every episode has reported", () => {
@@ -328,7 +344,7 @@ describe("the title names the episode the run is on", () => {
     ])
 
     expect(record.title).toBe("What are Humans?")
-    expect(viewFor(record).title).toBe("What are Humans?")
+    expect(viewFor(record, t).title).toBe("What are Humans?")
   })
 
   it("keeps the title a later signal omits", () => {
@@ -361,6 +377,7 @@ describe("the series icon reports problems, not completeness", () => {
         episode("episode-0", "saved", { runSize: 5 }),
         episode("episode-1", "saved", { runSize: 5 }),
       ]),
+      t,
     )
 
     expect(view.headline).toBe("Saved 2 of 5 episodes.")
@@ -377,6 +394,7 @@ describe("the series icon reports problems, not completeness", () => {
         episode("episode-1", "saved", { runSize: 5 }),
         episode("episode-2", "failed", { runSize: 5 }),
       ]),
+      t,
     )
 
     expect(view.headline).toBe("Saved 2 of 5 episodes.")
@@ -392,6 +410,7 @@ describe("the series icon reports problems, not completeness", () => {
           episode("episode-0", "saved", { runSize: 3 }),
           episode("episode-1", outcome, { runSize: 3 }),
         ]),
+        t,
       )
 
       expect(view.icon).toBe("alert-circle")
@@ -404,6 +423,7 @@ describe("the series icon reports problems, not completeness", () => {
         episode("episode-0", "saved", { runSize: 2 }),
         episode("episode-1", "saved", { runSize: 2 }),
       ]),
+      t,
     )
 
     expect(view.icon).toBe("checkmark-circle")
@@ -415,17 +435,27 @@ describe("the series icon reports problems, not completeness", () => {
   })
 })
 
-describe("a detail the host cannot derive rides the report", () => {
-  it("prefers the published detail over the derived one", () => {
-    const view = viewFor(
-      only([single("abandoned", { detail: "The app was closed." })]),
-    )
+describe("a block reason the host cannot derive rides the report", () => {
+  it.each([
+    ["insufficient-storage", "There is not enough free space on this device."],
+    [
+      "unreadable-free",
+      "The app could not read the free space on this device.",
+    ],
+    [
+      "wifi-only-on-cellular",
+      "Wi-Fi only is on and this device is on mobile data.",
+    ],
+    ["invalid-url", "This video's download address could not be used."],
+  ] as const)("names the %s gate at render", (blockReason, text) => {
+    const view = viewFor(only([single("blocked", { blockReason })]), t)
 
-    expect(view.detail).toBe("The app was closed.")
+    expect(view.headline).toBe("The export did not start.")
+    expect(view.detail).toBe(text)
   })
 
   it("derives a detail for an abandoned export that carried none", () => {
-    expect(viewFor(only([single("abandoned")])).detail).toBe(
+    expect(viewFor(only([single("abandoned")]), t).detail).toBe(
       "Start it again to keep a copy.",
     )
   })

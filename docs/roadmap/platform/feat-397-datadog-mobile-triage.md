@@ -112,6 +112,11 @@ at the dispatcher and repository layers.
 
 ## Remaining Operator Work
 
+The [2026-09-29 configuration recovery audit](../../runbooks/evidence/mastra-variable-recovery-2026-09-29.md)
+records restoration of an accidentally committed three-variable credential
+patch to the running-deployment baseline and its return to pending review.
+It does not complete or authorize the rollout steps below.
+
 None of this can be done by a merged PR. The feature is inert until it is done.
 
 1. Create the dedicated mobile-triage Linear project in the FGE team.

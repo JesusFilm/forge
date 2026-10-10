@@ -1,22 +1,16 @@
 import { observeRecommendationDelivery } from "@/lib/recommendation-delivery-observability"
-import { isEligibleHumanRequest } from "@/lib/recommendation-human-admission"
+import {
+  classifyRecommendationTraffic,
+  recommendationTrafficExcluded,
+  recommendationDeliveryDisposition,
+} from "@/lib/recommendation-human-admission"
 import { z } from "zod"
-import {
-  asLocaleSlug,
-  tryAsContentSlug,
-  watchEpisodePath,
-  watchVideoPath,
-  WATCH_BASE_PATH,
-  WATCH_CANONICAL_ORIGIN,
-} from "@/lib/routes"
-import {
-  getContextualSceneRecommendations,
-  getContextualCollectionRecommendations,
-  getSemanticRecommendationDelivery,
-} from "@/lib/recommendations"
+import { tryAsContentSlug, WATCH_CANONICAL_ORIGIN } from "@/lib/routes"
+import { getSemanticRecommendationDelivery } from "@/lib/recommendations"
 import {
   CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
   RECOMMENDATION_DELIVERY_CLIENT_VERSION,
+  COWATCH_MMR_CLIENT_DELIVERY_CONTRACT,
   SEMANTIC_RECOMMENDATION_CONTRACT,
   WATCH_RECOMMENDATION_SURFACE,
 } from "@/lib/recommendation-contracts"
@@ -74,104 +68,10 @@ function unavailableSemanticDelivery() {
   }
 }
 
-async function recoverContextualDelivery(
-  delivery:
-    | Awaited<ReturnType<typeof getSemanticRecommendationDelivery>>
-    | ReturnType<typeof unavailableSemanticDelivery>,
-  input: z.infer<typeof DeliveryInput>,
-) {
-  if (delivery.result !== "unavailable" && delivery.result !== "empty") {
-    return delivery
-  }
-  const scenePromise = getContextualSceneRecommendations(
-    input.seedMediaId,
-    input.locale,
-    6,
-  ).catch(() => [])
-  const collectionPromise = input.seedMediaSlug
-    ? getContextualCollectionRecommendations(
-        input.seedMediaSlug,
-        input.locale,
-        input.audioLanguageSlug,
-        6,
-      ).catch(() => [])
-    : Promise.resolve([])
-  const [sceneRecommendations, collectionRecommendations] = await Promise.all([
-    scenePromise,
-    collectionPromise,
-  ])
-  const recommendations =
-    sceneRecommendations.length > 0
-      ? sceneRecommendations
-      : collectionRecommendations
-  const seenTargets = new Set<string>()
-  const seenHrefs = new Set<string>()
-  const items = recommendations.flatMap((recommendation) => {
-    const slug = tryAsContentSlug(recommendation.videoSlug)
-    if (!slug || seenTargets.has(recommendation.videoId)) return []
-    const languageSlug = asLocaleSlug(input.audioLanguageSlug)
-    const collectionSlug = recommendation.collectionSlug
-      ? tryAsContentSlug(recommendation.collectionSlug)
-      : null
-    const canonicalHref = `${WATCH_BASE_PATH}${
-      collectionSlug
-        ? watchEpisodePath(collectionSlug, slug, languageSlug)
-        : watchVideoPath(slug, languageSlug)
-    }`
-    if (seenHrefs.has(canonicalHref)) return []
-    const position = seenTargets.size
-    if (position >= 6) return []
-    seenTargets.add(recommendation.videoId)
-    seenHrefs.add(canonicalHref)
-    return [
-      {
-        ...recommendation,
-        id: `contextual-${position}`,
-        position,
-        targetMediaId: recommendation.videoId,
-        canonicalHref,
-        candidateGenerator: "semantic" as const,
-        contributors: [],
-        capability: CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY,
-      },
-    ]
-  })
-  if (items.length === 0) return delivery
-  const collectionFallback = recommendations.some(
-    (recommendation) => recommendation.collectionSlug != null,
-  )
-  return {
-    ...delivery,
-    strategyVersion: collectionFallback
-      ? "collection-siblings-contextual-v1"
-      : "scene-recommendations-contextual-v1",
-    classifierVersion: "contextual-fallback-v1",
-    requestId: null,
-    result: "fallback" as const,
-    expiresAt: null,
-    requestedCount: 6,
-    composedCount: items.length,
-    shortfallReason:
-      items.length < 6 ? ("insufficient_candidates" as const) : null,
-    items,
-    personalization: {
-      contractVersion: "anonymous-profile-personalization-v1" as const,
-      lane: "semantic_fallback" as const,
-      executionMode: "semantic_fallback" as const,
-      effectiveManifestId: collectionFallback
-        ? "collection-siblings-contextual-v1"
-        : "scene-recommendations-contextual-v1",
-      profileState: null,
-      projectionVersion: null,
-      projectionGeneration: null,
-      interestCount: 0,
-      sessionIntentPresent: false,
-      reason: delivery.reason,
-    },
-  }
-}
-
 export async function POST(request: Request) {
+  const trafficCategory = classifyRecommendationTraffic(request)
+  const excluded = recommendationTrafficExcluded(trafficCategory)
+  const deliveryDisposition = recommendationDeliveryDisposition(trafficCategory)
   try {
     const raw = await readStrictRecommendationJson(request, {
       expectedOrigin: WATCH_CANONICAL_ORIGIN,
@@ -182,51 +82,69 @@ export async function POST(request: Request) {
       throw new RecommendationRouteError(400, "invalid_body")
     }
     await assertRecommendationMutationAdmission(request.headers, "delivery")
-    const session = ensureRecommendationSession(request)
-    const profile = readRecommendationProfileCookie(request)
-    const consent = readRecommendationConsentCookie(request)
+    const session = excluded ? null : ensureRecommendationSession(request)
+    const profile = excluded ? null : readRecommendationProfileCookie(request)
+    const consent = excluded ? null : readRecommendationConsentCookie(request)
     const withdrawalPending = requestHasRecommendationWithdrawalPending(request)
     const consentReceiptDigest =
-      !withdrawalPending && consent.kind === "valid" ? consent.digest : null
+      !withdrawalPending && consent?.kind === "valid" ? consent.digest : null
     const semanticInput = {
       seedMediaId: parsed.data.seedMediaId,
       locale: parsed.data.locale,
       audioLanguageSlug: parsed.data.audioLanguageSlug,
     }
+    let upstreamAcknowledged = true
     const semanticDelivery = await getSemanticRecommendationDelivery({
       ...semanticInput,
-      sessionDigest: session.digest,
+      sessionDigest: session?.digest ?? "0".repeat(64),
       consentReceiptDigest,
       profileTokenDigest:
-        consentReceiptDigest != null && profile.kind === "valid"
+        consentReceiptDigest != null && profile?.kind === "valid"
           ? profile.digest
           : null,
-      eligibleHuman: isEligibleHumanRequest(request),
-    }).catch(() => unavailableSemanticDelivery())
-    const recoveredDelivery = await recoverContextualDelivery(
-      semanticDelivery,
-      parsed.data,
-    )
+      eligibleHuman: !excluded,
+      clientDeliveryContract:
+        request.headers.get("x-forge-recommendation-delivery-contract") ===
+        COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
+          ? COWATCH_MMR_CLIENT_DELIVERY_CONTRACT
+          : null,
+      trafficCategory,
+    }).catch(() => {
+      upstreamAcknowledged = false
+      return unavailableSemanticDelivery()
+    })
+    // Admin owns exact-audio and published-presentation eligibility. Legacy
+    // scene and collection APIs cannot attest those facts, so their cards
+    // must not replace an empty or unavailable delivery.
+    const admittedDelivery =
+      deliveryDisposition === "deferred"
+        ? { ...unavailableSemanticDelivery(), reason: "traffic_deferred" }
+        : semanticDelivery
     const delivery = {
-      ...recoveredDelivery,
+      ...admittedDelivery,
+      ...(excluded ? { requestId: null, expiresAt: null } : {}),
       // Older open tabs strictly validate execution modes. Preserve their
       // cards and attribution without mislabeling the new mode as topic fit.
-      personalization:
-        recoveredDelivery.personalization?.executionMode ===
-          "viewing_mode_personalized" &&
-        request.headers.get("x-forge-recommendation-client") !==
-          RECOMMENDATION_DELIVERY_CLIENT_VERSION
+      personalization: excluded
+        ? null
+        : admittedDelivery.personalization?.executionMode ===
+              "viewing_mode_personalized" &&
+            request.headers.get("x-forge-recommendation-client") !==
+              RECOMMENDATION_DELIVERY_CLIENT_VERSION
           ? null
-          : recoveredDelivery.personalization,
-      items: recoveredDelivery.items.map((item) => ({
+          : admittedDelivery.personalization,
+      items: admittedDelivery.items.map((item) => ({
         ...item,
+        ...(excluded
+          ? { capability: CONTEXTUAL_RECOMMENDATION_FALLBACK_CAPABILITY }
+          : {}),
         imageUrl: resolvePosterUrl(
           { thumbnail: item.imageUrl },
           item.playbackId,
         ),
       })),
     }
-    const serialized = JSON.stringify({ delivery })
+    const serialized = JSON.stringify({ delivery, deliveryDisposition })
     if (
       new TextEncoder().encode(serialized).byteLength >
       RECOMMENDATION_DELIVERY_RESPONSE_BYTES
@@ -234,9 +152,19 @@ export async function POST(request: Request) {
       throw new RecommendationRouteError(502, "invalid_admin_response")
     }
     const response = recommendationSerializedJson(serialized)
-    attachRecommendationSession(response, session)
+    if (session) attachRecommendationSession(response, session)
     observeRecommendationDelivery({
       endpoint: "seeded",
+      trafficCategory,
+      persistenceDisposition: !upstreamAcknowledged
+        ? "not_observed"
+        : excluded
+          ? semanticDelivery.requestId
+            ? "unexpected_commit"
+            : "avoided"
+          : semanticDelivery.requestId
+            ? "committed"
+            : "not_committed",
       httpStatus: response.status,
       delivery,
       upstreamResult: semanticDelivery.result,
@@ -246,6 +174,8 @@ export async function POST(request: Request) {
     const response = recommendationError(error)
     observeRecommendationDelivery({
       endpoint: "seeded",
+      trafficCategory,
+      persistenceDisposition: "not_observed",
       httpStatus: response.status,
       error,
     })

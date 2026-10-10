@@ -31,11 +31,48 @@ import {
   getPreferredPlayableDubs,
   PREFERRED_PLAYABLE_DUB_BATCH_SIZE,
 } from "@/services/preferred-playable-dub.service"
+import {
+  getSelectedBlockVideoDubs,
+  SELECTED_BLOCK_VIDEO_DUB_BATCH_SIZE,
+  type SelectedBlockVideoDubIdentity,
+} from "@/services/selected-block-video-dub.service"
 
 export type Loaders = ReturnType<typeof createLoaders>
 
 export function createLoaders(prisma: PrismaClient) {
   return {
+    selectedBlockVideoDub: new DataLoader<
+      SelectedBlockVideoDubIdentity & { query: object },
+      VideoDubRow | null,
+      string
+    >(
+      async (keys) => {
+        const groups = new Map<string, Array<(typeof keys)[number]>>()
+        for (const key of keys) {
+          const selection = JSON.stringify(key.query)
+          const group = groups.get(selection) ?? []
+          group.push(key)
+          groups.set(selection, group)
+        }
+        const results = new Map<(typeof keys)[number], VideoDubRow | null>()
+        await Promise.all(
+          Array.from(groups.values()).map(async (group) => {
+            const rows = await getSelectedBlockVideoDubs(
+              prisma,
+              group,
+              group[0]!.query,
+            )
+            group.forEach((key, index) => results.set(key, rows[index] ?? null))
+          }),
+        )
+        return keys.map((key) => results.get(key) ?? null)
+      },
+      {
+        cacheKeyFn: (key) =>
+          JSON.stringify([key.videoId, key.languageId, key.query]),
+        maxBatchSize: SELECTED_BLOCK_VIDEO_DUB_BATCH_SIZE,
+      },
+    ),
     /** Preserve nested Pothos selections while batching sibling dub lookups. */
     preferredPlayableDub: new DataLoader<
       PreferredPlayableDubKey,

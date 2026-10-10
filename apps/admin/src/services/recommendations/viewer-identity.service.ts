@@ -12,6 +12,10 @@ import {
   RecommendationProfileService,
   RECOMMENDATION_CONSENT_CONTRACT,
 } from "./profile.service"
+import {
+  unlinkPushViewerIdentities,
+  type PushIdentityUnlinkResult,
+} from "@/services/push/identity-unlink.service"
 import { dispatchRecommendationProfileProjection } from "./profiles/job"
 
 const TOKEN = /^[A-Za-z0-9_-]{43}$/
@@ -118,6 +122,7 @@ export class RecommendationViewerService {
       input.sessionToken,
     )
     const service = createRecommendationProfileService(this.prisma)
+    let pushUnlink: PushIdentityUnlinkResult | null = null
     const receipt =
       input.action === "status"
         ? await service.status({
@@ -165,8 +170,23 @@ export class RecommendationViewerService {
                 consentReceiptDigest: proposedConsentReceiptDigest,
               },
             })
+            // A deletion is an erasure, so the push link ends with it. A
+            // withdrawal is a consent choice and leaves every push row alone.
+            if (input.action === "delete") {
+              pushUnlink = await unlinkPushViewerIdentities(tx, [
+                current.tokenDigest,
+              ])
+            }
             return result
           })
+    // Logged after the transaction commits, and with counts only: a digest is
+    // an identifier and never reaches a log line.
+    if (pushUnlink) {
+      const unlinked: PushIdentityUnlinkResult = pushUnlink
+      console.info(
+        `[push] event=identity_unlinked reason=viewer_delete registrations=${unlinked.registrationsUnlinked} opens=${unlinked.opensDeleted} attributions=${unlinked.attributionsDeleted}`,
+      )
+    }
     if (receipt.profileId && receipt.erasureGeneration != null) {
       void service
         .completeErasure({
