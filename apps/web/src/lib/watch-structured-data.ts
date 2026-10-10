@@ -81,6 +81,11 @@ function watchAbsoluteUrl(value: string | null | undefined): string | null {
       url.pathname === WATCH_BASE_PATH
         ? "/"
         : url.pathname.slice(WATCH_BASE_PATH.length)
+    // Per-language inventory hubs use a public `/watch/{language}.html/videos`
+    // canonical, which is a collection page rather than a video route.
+    if (/^\/[a-z0-9-]+\.html\/videos$/.test(watchPathname)) {
+      return `${url.origin}${url.pathname}`
+    }
     const parsed = parseWatchPath(watchPathname)
     if (parsed.kind === "video" || parsed.kind === "episode") {
       return resolveWatchShareUrlFromPathname({
@@ -200,6 +205,28 @@ function collectionPageJson({
 }
 
 export function watchHomeCollectionStructuredDataJson({
+  destinations,
+  canonicalUrl,
+  inLanguage,
+  name,
+  description,
+}: {
+  destinations: readonly WatchHomeVisibleDestination[]
+  canonicalUrl: string
+  inLanguage: string | null
+  name: string
+  description?: string | null
+}): string | null {
+  return collectionPageJson({
+    canonicalUrl,
+    name,
+    description,
+    inLanguage,
+    items: destinations,
+  })
+}
+
+export function watchLanguageInventoryStructuredDataJson({
   destinations,
   canonicalUrl,
   inLanguage,

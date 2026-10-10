@@ -214,6 +214,15 @@ describe("/{language}.html/videos route", () => {
     expect(pageMetadata.alternates?.canonical).toBe(
       "https://www.jesusfilm.org/watch/spanish-latin-american.html/videos",
     )
+    expect(pageMetadata.openGraph?.images).toEqual([
+      {
+        url: "https://imagedelivery.net/test/collection-story/public",
+        alt: "Espanol latinoamericano",
+      },
+    ])
+    expect(pageMetadata.twitter?.images).toEqual([
+      "https://imagedelivery.net/test/collection-story/public",
+    ])
   })
 
   it("declares Russian SEO metadata through the requested catalog", async () => {
@@ -288,13 +297,30 @@ describe("/{language}.html/videos route", () => {
     expect(html).not.toContain('href="#sports"')
     expect(html).not.toContain('href="#audio-collections"')
     expect(html).not.toContain('href="#subtitles-only"')
-    // The filter bar's shell now sits between the hero and the catalog, and the
-    // catalog lives inside it.
+    // The filter shell wraps the inventory so its DOM filtering stays scoped
+    // to the server-rendered catalog.
     const filterShell = document.querySelector(
       '[data-testid="language-inventory-filters-root"]',
     )
     expect(hero?.nextElementSibling).toBe(filterShell)
     expect(filterShell?.contains(dubbedCatalog ?? null)).toBe(true)
+    const structuredData = document.querySelector(
+      'script[type="application/ld+json"]',
+    )
+    const structuredPayload = JSON.parse(
+      structuredData?.textContent ?? "{}",
+    ) as {
+      "@type"?: string
+      inLanguage?: string
+      mainEntity?: { itemListElement?: Array<{ url?: string }> }
+    }
+    expect(structuredPayload).toMatchObject({
+      "@type": "CollectionPage",
+      inLanguage: "es-419",
+    })
+    expect(structuredPayload.mainEntity?.itemListElement?.[0]?.url).toBe(
+      "https://www.jesusfilm.org/watch/the-story-of-jesus.html/spanish-latin-american.html",
+    )
     // This fixture has no subtitle-only videos, so that section removes itself.
     // Asserting `dubbedCatalog.nextElementSibling === subtitleCatalog` here was
     // passing only because BOTH sides were null.

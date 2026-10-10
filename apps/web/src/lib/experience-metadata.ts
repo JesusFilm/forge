@@ -96,6 +96,8 @@ const DEFAULT_OG_IMAGE = {
   type: "image/jpeg" as const,
 }
 
+export const WATCH_DEFAULT_OG_IMAGE = DEFAULT_OG_IMAGE
+
 type WatchMetadataImage = {
   url: string
   width: number
