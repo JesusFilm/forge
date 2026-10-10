@@ -6,6 +6,7 @@ import type { Route } from "next"
 import type {
   ComponentProps,
   CSSProperties,
+  FocusEvent as ReactFocusEvent,
   PointerEvent as ReactPointerEvent,
   ReactNode,
 } from "react"
@@ -70,6 +71,7 @@ type MediaCollectionProps = {
   languageSlug?: string | null
   initialSelectedSnap?: number
   onSelectedSnapChange?: (snap: number) => void
+  windowOffscreen?: boolean
 }
 
 type MediaCollectionCarouselApi = Parameters<
@@ -169,6 +171,7 @@ export function MediaCollection({
   languageSlug,
   initialSelectedSnap,
   onSelectedSnapChange,
+  windowOffscreen = false,
 }: MediaCollectionProps) {
   const {
     id,
@@ -242,6 +245,7 @@ export function MediaCollection({
       fallbackLanguageSlug={resolvedLanguageSlug}
       initialSelectedSnap={initialSelectedSnap}
       onSelectedSnapChange={onSelectedSnapChange}
+      windowOffscreen={windowOffscreen}
     />
   )
 }
@@ -282,6 +286,7 @@ function WatchHomeMediaCollection({
   fallbackLanguageSlug,
   initialSelectedSnap,
   onSelectedSnapChange,
+  windowOffscreen,
 }: {
   id: string
   categoryLabel: string | null
@@ -298,6 +303,7 @@ function WatchHomeMediaCollection({
   fallbackLanguageSlug: ReturnType<typeof asLocaleSlug>
   initialSelectedSnap?: number
   onSelectedSnapChange?: (snap: number) => void
+  windowOffscreen: boolean
 }) {
   const t = useTranslations("WatchHome")
   const isRail = variant === "carousel"
@@ -335,6 +341,82 @@ function WatchHomeMediaCollection({
   >([])
   const [carouselApi, setCarouselApi] = useState<MediaCollectionCarouselApi>()
   const selectedSnapRef = useRef(initialSelectedSnap ?? 0)
+  const sectionRef = useRef<HTMLElement | null>(null)
+  const cardsRegionRef = useRef<HTMLDivElement | null>(null)
+  const sectionNearViewportRef = useRef(true)
+  const measuredSectionHeightRef = useRef<number | null>(null)
+  const windowedContentMountedRef = useRef(true)
+  const restoreCardFocusRef = useRef(false)
+  const mobileCarouselScrollLeftRef = useRef(0)
+  const hasSavedMobileCarouselScrollRef = useRef(false)
+  const [windowedContentMounted, setWindowedContentMounted] = useState(true)
+  const [measuredSectionHeight, setMeasuredSectionHeight] = useState<
+    number | null
+  >(null)
+  const [viewportSize, setViewportSize] = useState<{
+    width: number
+    height: number
+  } | null>(null)
+
+  function rememberMobileCarouselScrollPosition() {
+    const mobileCarousel = sectionRef.current?.querySelector<HTMLElement>(
+      '[data-testid="media-collection-mobile-carousel"]',
+    )
+    if (mobileCarousel) {
+      mobileCarouselScrollLeftRef.current = mobileCarousel.scrollLeft
+      hasSavedMobileCarouselScrollRef.current = true
+    }
+  }
+
+  function collapseWindowedContent() {
+    if (
+      windowOffscreen &&
+      !sectionNearViewportRef.current &&
+      !sectionRef.current?.contains(document.activeElement) &&
+      measuredSectionHeightRef.current != null
+    ) {
+      rememberMobileCarouselScrollPosition()
+      setWindowedContentMounted(false)
+    }
+  }
+
+  useEffect(() => {
+    windowedContentMountedRef.current = windowedContentMounted
+  }, [windowedContentMounted])
+  useEffect(() => {
+    if (!windowOffscreen) return
+    const updateViewportSize = () => {
+      const nextSize = { width: window.innerWidth, height: window.innerHeight }
+      setViewportSize((current) =>
+        current?.width === nextSize.width && current.height === nextSize.height
+          ? current
+          : nextSize,
+      )
+      measuredSectionHeightRef.current = null
+      setMeasuredSectionHeight(null)
+      setWindowedContentMounted(true)
+    }
+    updateViewportSize()
+    window.addEventListener("resize", updateViewportSize)
+    return () => window.removeEventListener("resize", updateViewportSize)
+  }, [windowOffscreen])
+  useEffect(() => {
+    if (!windowedContentMounted) return
+    const mobileCarousel = sectionRef.current?.querySelector<HTMLElement>(
+      '[data-testid="media-collection-mobile-carousel"]',
+    )
+    if (mobileCarousel && hasSavedMobileCarouselScrollRef.current) {
+      mobileCarousel.scrollLeft = mobileCarouselScrollLeftRef.current
+      hasSavedMobileCarouselScrollRef.current = false
+    }
+    if (!restoreCardFocusRef.current) return
+    restoreCardFocusRef.current = false
+    cardsRegionRef.current
+      ?.querySelector<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )
+      ?.focus()
+  }, [windowedContentMounted])
   const normalizedCtaLink = normalizeWatchRootHref(ctaLink)
   const standaloneCtaUrl = normalizedCtaLink?.startsWith(`${WATCH_BASE_PATH}/`)
     ? resolveWatchShareUrlFromPathname({
@@ -388,6 +470,80 @@ function WatchHomeMediaCollection({
       ) : null}
     </>
   )
+
+  useEffect(() => {
+    if (!windowOffscreen) return
+    const section = sectionRef.current
+    if (
+      !section ||
+      typeof IntersectionObserver === "undefined" ||
+      typeof ResizeObserver === "undefined"
+    ) {
+      return
+    }
+
+    const measureAndWindow = () => {
+      if (!windowedContentMountedRef.current) return
+      // Keep the fractional height: rounding up made every collapsed shell
+      // taller than its cards, so the page grew by up to 1px per row.
+      const height = cardsRegionRef.current?.getBoundingClientRect().height ?? 0
+      if (height <= 0) return
+      measuredSectionHeightRef.current = height
+      setMeasuredSectionHeight((current) =>
+        current === height ? current : height,
+      )
+      if (
+        !sectionNearViewportRef.current &&
+        !section.contains(document.activeElement)
+      ) {
+        rememberMobileCarouselScrollPosition()
+        setWindowedContentMounted(false)
+      }
+    }
+
+    const resizeObserver = new ResizeObserver(measureAndWindow)
+    resizeObserver.observe(section)
+    const viewportMargin = Math.max(
+      viewportSize?.height ?? window.innerHeight,
+      1,
+    )
+    const intersectionObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.target !== section) continue
+          sectionNearViewportRef.current = entry.isIntersecting
+          if (entry.isIntersecting) {
+            setWindowedContentMounted(true)
+          } else {
+            measureAndWindow()
+          }
+        }
+      },
+      { rootMargin: `${viewportMargin}px 0px ${viewportMargin}px` },
+    )
+    intersectionObserver.observe(section)
+
+    return () => {
+      intersectionObserver.disconnect()
+      resizeObserver.disconnect()
+      sectionNearViewportRef.current = true
+    }
+  }, [windowOffscreen, viewportSize])
+
+  function restoreWindowedContent() {
+    if (windowOffscreen) setWindowedContentMounted(true)
+  }
+
+  function releaseWindowedContent(event: ReactFocusEvent<HTMLElement>) {
+    if (event.currentTarget.contains(event.relatedTarget as Node | null)) return
+    if (
+      windowOffscreen &&
+      !sectionNearViewportRef.current &&
+      measuredSectionHeightRef.current != null
+    ) {
+      collapseWindowedContent()
+    }
+  }
 
   function updateHoverBackground(imageUrl: string | null) {
     if (imageUrl) {
@@ -475,21 +631,37 @@ function WatchHomeMediaCollection({
 
   return (
     <section
+      ref={sectionRef}
       id={id}
       data-testid="media-collection-section"
-      onPointerEnter={() => setIsSectionActive(true)}
+      onPointerEnter={() => {
+        restoreWindowedContent()
+        setIsSectionActive(true)
+      }}
       onPointerLeave={() => {
         settleLatestHoveredBackground()
         setIsSectionActive(false)
         updateHoverBackground(null)
+        collapseWindowedContent()
       }}
-      onFocus={() => setIsSectionActive(true)}
+      onFocus={(event) => {
+        if (
+          event.target instanceof HTMLElement &&
+          event.target.dataset.testid === "media-collection-window-shell" &&
+          event.target.matches(":focus-visible")
+        ) {
+          restoreCardFocusRef.current = true
+        }
+        restoreWindowedContent()
+        setIsSectionActive(true)
+      }}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           settleLatestHoveredBackground()
           setIsSectionActive(false)
           updateHoverBackground(null)
         }
+        releaseWindowedContent(event)
       }}
       className={cn(
         "scroll-mt-24 relative overflow-hidden text-white",
@@ -590,122 +762,154 @@ function WatchHomeMediaCollection({
         </div>
       </div>
 
-      {isRail ? (
-        <div className={cn("relative z-[3]", CONTENT_WIDTH_ALIGN_CLASSES)}>
-          <Carousel
-            aria-label={title ?? t("mediaCollection")}
-            data-testid="media-collection-carousel"
-            opts={{
-              align: "start",
-              dragFree: true,
-              containScroll: "trimSnaps",
-              ...(initialSelectedSnap == null
-                ? null
-                : { startIndex: Math.max(Math.trunc(initialSelectedSnap), 0) }),
-              watchDrag: (api) => api.scrollSnapList().length > 1,
-            }}
-            setApi={
-              initialSelectedSnap == null && onSelectedSnapChange == null
-                ? undefined
-                : setCarouselApi
-            }
-            className="w-full"
-          >
-            <CarouselContent
-              data-testid="media-collection-carousel-content"
-              className="-ml-5 pl-5 md:pl-16 xl:pl-24"
-            >
-              {items.map((item: EnrichedMediaItem, index: number) => (
-                <CarouselItem
-                  key={`${item.id}-${index}`}
-                  data-testid="media-collection-carousel-item"
-                  className={cn(
-                    "py-1 pl-5",
-                    isVertical ? "max-w-[200px]" : "max-w-[360px]",
-                  )}
+      <div
+        ref={cardsRegionRef}
+        data-testid="media-collection-cards-region"
+        data-window-state={
+          windowOffscreen
+            ? windowedContentMounted
+              ? "mounted"
+              : "shell"
+            : undefined
+        }
+      >
+        {windowedContentMounted || !windowOffscreen ? (
+          isRail ? (
+            <div className={cn("relative z-[3]", CONTENT_WIDTH_ALIGN_CLASSES)}>
+              <Carousel
+                aria-label={title ?? t("mediaCollection")}
+                data-testid="media-collection-carousel"
+                opts={{
+                  align: "start",
+                  dragFree: true,
+                  containScroll: "trimSnaps",
+                  ...(initialSelectedSnap == null
+                    ? null
+                    : {
+                        startIndex: Math.max(
+                          Math.trunc(initialSelectedSnap),
+                          0,
+                        ),
+                      }),
+                  watchDrag: (api) => api.scrollSnapList().length > 1,
+                }}
+                setApi={
+                  !windowOffscreen &&
+                  initialSelectedSnap == null &&
+                  onSelectedSnapChange == null
+                    ? undefined
+                    : setCarouselApi
+                }
+                className="w-full"
+              >
+                <CarouselContent
+                  data-testid="media-collection-carousel-content"
+                  className="-ml-5 pl-5 md:pl-16 xl:pl-24"
                 >
+                  {items.map((item: EnrichedMediaItem, index: number) => (
+                    <CarouselItem
+                      key={`${item.id}-${index}`}
+                      data-testid="media-collection-carousel-item"
+                      className={cn(
+                        "py-1 pl-5",
+                        isVertical ? "max-w-[200px]" : "max-w-[360px]",
+                      )}
+                    >
+                      <VideoCard
+                        item={item}
+                        index={index}
+                        orientation={orientation}
+                        showItemNumbers={showItemNumbers}
+                        fallbackLanguageSlug={fallbackLanguageSlug}
+                        onHover={() =>
+                          updateHoverBackground(mediaItemBackdropImageUrl(item))
+                        }
+                      />
+                    </CarouselItem>
+                  ))}
+                  <CarouselItem
+                    aria-hidden="true"
+                    tabIndex={-1}
+                    data-testid="media-collection-carousel-end-spacer"
+                    className="basis-auto pl-0"
+                  >
+                    <div className="w-5 md:w-16 xl:w-24" />
+                  </CarouselItem>
+                </CarouselContent>
+                <CarouselPrevious label={t("previousVideoPreview")} />
+                <CarouselNext label={t("nextVideoPreview")} />
+              </Carousel>
+            </div>
+          ) : (
+            <div
+              data-testid={
+                usesMobileCarousel
+                  ? "media-collection-mobile-carousel"
+                  : undefined
+              }
+              role={usesMobileCarousel ? "region" : undefined}
+              tabIndex={needsKeyboardScrollableCarousel ? 0 : undefined}
+              aria-label={
+                usesMobileCarousel ? (title ?? t("mediaCollection")) : undefined
+              }
+              className={cn(
+                "relative z-[3]",
+                usesMobileCarousel
+                  ? // scroll-pl-5 mirrors the inner grid's px-5: without it, mandatory
+                    // snapping aligns the first card's snap-start edge to the bare
+                    // scrollport on load, pulling scrollLeft past the content inset so
+                    // the first card sits flush with the viewport edge. Snapping is
+                    // mobile-only (md:snap-none), so only the px-5 tier needs a mirror.
+                    `${CONTENT_WIDTH_ALIGN_CLASSES} snap-x snap-mandatory scroll-pl-5 overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80 md:snap-none md:overflow-visible [&::-webkit-scrollbar]:hidden`
+                  : WATCH_PAGE_CONTENT_CLASSES,
+              )}
+            >
+              <div
+                data-testid="media-collection-grid"
+                className={cn(
+                  "grid",
+                  usesMobileCarousel
+                    ? "grid-flow-col px-5 pb-1 md:grid-flow-row md:auto-cols-auto md:px-16 xl:px-24"
+                    : null,
+                  usesMobileCarousel
+                    ? mobileCarouselLayout.columns
+                    : staticGridColumns,
+                  desktopGridColumns,
+                )}
+              >
+                {items.map((item: EnrichedMediaItem, index: number) => (
                   <VideoCard
+                    key={`${item.id}-${index}`}
                     item={item}
                     index={index}
                     orientation={orientation}
                     showItemNumbers={showItemNumbers}
                     fallbackLanguageSlug={fallbackLanguageSlug}
+                    compactImageSizes={
+                      usesMobileCarousel
+                        ? mobileCarouselLayout.imageSizes
+                        : undefined
+                    }
+                    className={usesMobileCarousel ? "snap-start" : undefined}
                     onHover={() =>
                       updateHoverBackground(mediaItemBackdropImageUrl(item))
                     }
                   />
-                </CarouselItem>
-              ))}
-              <CarouselItem
-                aria-hidden="true"
-                tabIndex={-1}
-                data-testid="media-collection-carousel-end-spacer"
-                className="basis-auto pl-0"
-              >
-                <div className="w-5 md:w-16 xl:w-24" />
-              </CarouselItem>
-            </CarouselContent>
-            <CarouselPrevious label={t("previousVideoPreview")} />
-            <CarouselNext label={t("nextVideoPreview")} />
-          </Carousel>
-        </div>
-      ) : (
-        <div
-          data-testid={
-            usesMobileCarousel ? "media-collection-mobile-carousel" : undefined
-          }
-          role={usesMobileCarousel ? "region" : undefined}
-          tabIndex={needsKeyboardScrollableCarousel ? 0 : undefined}
-          aria-label={
-            usesMobileCarousel ? (title ?? t("mediaCollection")) : undefined
-          }
-          className={cn(
-            "relative z-[3]",
-            usesMobileCarousel
-              ? // scroll-pl-5 mirrors the inner grid's px-5: without it, mandatory
-                // snapping aligns the first card's snap-start edge to the bare
-                // scrollport on load, pulling scrollLeft past the content inset so
-                // the first card sits flush with the viewport edge. Snapping is
-                // mobile-only (md:snap-none), so only the px-5 tier needs a mirror.
-                `${CONTENT_WIDTH_ALIGN_CLASSES} snap-x snap-mandatory scroll-pl-5 overflow-x-auto overscroll-x-contain scroll-smooth [scrollbar-width:none] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/80 md:snap-none md:overflow-visible [&::-webkit-scrollbar]:hidden`
-              : WATCH_PAGE_CONTENT_CLASSES,
-          )}
-        >
+                ))}
+              </div>
+            </div>
+          )
+        ) : (
           <div
-            data-testid="media-collection-grid"
-            className={cn(
-              "grid",
-              usesMobileCarousel
-                ? "grid-flow-col px-5 pb-1 md:grid-flow-row md:auto-cols-auto md:px-16 xl:px-24"
-                : null,
-              usesMobileCarousel
-                ? mobileCarouselLayout.columns
-                : staticGridColumns,
-              desktopGridColumns,
-            )}
-          >
-            {items.map((item: EnrichedMediaItem, index: number) => (
-              <VideoCard
-                key={`${item.id}-${index}`}
-                item={item}
-                index={index}
-                orientation={orientation}
-                showItemNumbers={showItemNumbers}
-                fallbackLanguageSlug={fallbackLanguageSlug}
-                compactImageSizes={
-                  usesMobileCarousel
-                    ? mobileCarouselLayout.imageSizes
-                    : undefined
-                }
-                className={usesMobileCarousel ? "snap-start" : undefined}
-                onHover={() =>
-                  updateHoverBackground(mediaItemBackdropImageUrl(item))
-                }
-              />
-            ))}
-          </div>
-        </div>
-      )}
+            data-testid="media-collection-window-shell"
+            data-window-state="shell"
+            role="group"
+            tabIndex={0}
+            aria-label={title ?? categoryLabel ?? t("mediaCollection")}
+            style={{ height: measuredSectionHeight ?? 0 }}
+          />
+        )}
+      </div>
 
       {footerText ? (
         <div className={cn("relative z-[3]", WATCH_PAGE_CONTENT_CLASSES)}>

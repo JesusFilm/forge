@@ -235,6 +235,7 @@ export function WatchHomeExperiencePage({
         locale={locale}
         languageSlug={languageSlug}
         dynamicCollections={dynamicCollections}
+        windowStaticCollections
       />
     )
     const typename = (block as { readonly __typename?: string | null })
