@@ -1575,6 +1575,216 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
     window.removeEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
   })
 
+  describe("keyboard focus inside the header", () => {
+    const HEADER_HIDDEN_CLASS = "-translate-y-[calc(100%+2rem)]"
+
+    function renderProvider() {
+      act(() => {
+        root.render(
+          <FloatingSearchProvider>
+            <main>
+              <button type="button" data-testid="outside-control">
+                Outside
+              </button>
+            </main>
+          </FloatingSearchProvider>,
+        )
+      })
+    }
+
+    function headerElement() {
+      return document.querySelector(
+        '[data-testid="floating-header"]',
+      ) as HTMLElement
+    }
+
+    function expectHeaderRevealed(header: HTMLElement) {
+      expect(header.className).toContain("translate-y-0")
+      expect(header.className).toContain("opacity-100")
+      expect(header.className).not.toContain(HEADER_HIDDEN_CLASS)
+      expect(header.className).not.toContain("opacity-0")
+      expect(header.hasAttribute("inert")).toBe(false)
+      expect(header.getAttribute("aria-hidden")).toBeNull()
+    }
+
+    it("stays revealed through the player chrome fading again while focus remains in the header", () => {
+      renderProvider()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const searchButton = document.querySelector(
+        '[data-testid="floating-search-desktop-button"]',
+      )
+
+      act(() => dispatchChromeVisibility(false))
+      expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+
+      act(() => logo.focus())
+      expect(document.activeElement).toBe(logo)
+      expectHeaderRevealed(header)
+
+      // The player re-announces its chrome after the reveal request and then
+      // idles back out: dimmed first, then fully hidden.
+      act(() => dispatchChromeVisibility(true, 1))
+      act(() => dispatchChromeVisibility(true, 0.3))
+      expectHeaderRevealed(header)
+      act(() => dispatchChromeVisibility(false, 0))
+
+      expect(document.activeElement).toBe(logo)
+      expectHeaderRevealed(header)
+      expect(searchButton?.className).toContain("opacity-100")
+    })
+
+    it("stays revealed while focus moves between header controls and the chrome fades", () => {
+      renderProvider()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const languageButton = document.querySelector(
+        '[data-testid="floating-header-language-button"]',
+      ) as HTMLElement
+
+      act(() => dispatchChromeVisibility(false))
+      act(() => logo.focus())
+      act(() => languageButton.focus())
+      act(() => dispatchChromeVisibility(false, 0))
+
+      expect(document.activeElement).toBe(languageButton)
+      expectHeaderRevealed(header)
+    })
+
+    it("lets the fade resume once focus leaves the header", () => {
+      renderProvider()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const outside = document.querySelector(
+        '[data-testid="outside-control"]',
+      ) as HTMLElement
+      const searchButton = document.querySelector(
+        '[data-testid="floating-search-desktop-button"]',
+      )
+
+      act(() => dispatchChromeVisibility(false))
+      act(() => logo.focus())
+      act(() => dispatchChromeVisibility(false, 0))
+      expectHeaderRevealed(header)
+
+      act(() => outside.focus())
+
+      expect(document.activeElement).toBe(outside)
+      expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+      expect(header.className).toContain("opacity-0")
+      expect(searchButton?.className).toContain("opacity-0")
+    })
+
+    it("keeps a focused header on screen when the page scrolls away from the hero, then lets it slide off after blur", async () => {
+      setScrollY(0)
+      act(() => {
+        root.render(
+          <FloatingSearchProvider>
+            <main>
+              <section data-testid="hero-player-wrapper">Hero</section>
+              <button type="button" data-testid="outside-control">
+                Outside
+              </button>
+            </main>
+          </FloatingSearchProvider>,
+        )
+      })
+      const hero = document.querySelector(
+        '[data-testid="hero-player-wrapper"]',
+      ) as HTMLElement
+      Object.defineProperty(hero, "offsetTop", { configurable: true, value: 0 })
+      Object.defineProperty(hero, "offsetHeight", {
+        configurable: true,
+        value: 600,
+      })
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const outside = document.querySelector(
+        '[data-testid="outside-control"]',
+      ) as HTMLElement
+      await dispatchScrollAndFlush()
+
+      act(() => logo.focus())
+      setScrollY(700)
+      await dispatchScrollAndFlush()
+
+      expect(document.activeElement).toBe(logo)
+      expectHeaderRevealed(header)
+
+      act(() => outside.focus())
+
+      expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+    })
+
+    it("does not pin the header open for pointer-driven focus", () => {
+      // jsdom reports every programmatic focus as :focus-visible, so stand in
+      // for a mouse click on a header control by reporting it as not
+      // focus-visible, as browsers do. The real-browser contract is covered by
+      // the headless Chromium run recorded on the PR.
+      const originalMatches = Element.prototype.matches
+      vi.spyOn(Element.prototype, "matches").mockImplementation(function (
+        this: Element,
+        selector: string,
+      ) {
+        return selector === ":focus-visible"
+          ? false
+          : originalMatches.call(this, selector)
+      })
+      renderProvider()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+
+      act(() => dispatchChromeVisibility(false))
+      act(() => logo.focus())
+      act(() => dispatchChromeVisibility(false, 0))
+
+      // Focus is not dropped (no inert), but the header is not forced open.
+      expect(document.activeElement).toBe(logo)
+      expect(header.hasAttribute("inert")).toBe(false)
+      expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+      expect(header.className).toContain("opacity-0")
+    })
+
+    it("leaves modal containment unchanged when focus is in the header", async () => {
+      const revealListener = vi.fn()
+      await openSearchOverlay()
+      const header = headerElement()
+      const logo = document.querySelector(
+        '[data-testid="floating-header-logo"]',
+      ) as HTMLElement
+      const pageWrapper = document.querySelector("[inert]") as HTMLElement
+
+      expect(header.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
+      expect(header.className).toContain("pointer-events-none")
+      expect(pageWrapper.getAttribute("aria-hidden")).toBe("true")
+
+      window.addEventListener(WATCH_PLAYER_CHROME_REVEAL_EVENT, revealListener)
+      act(() => logo.focus())
+      act(() => dispatchChromeVisibility(false, 0))
+
+      expect(header.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
+      expect(header.className).toContain("pointer-events-none")
+      expect(header.className).toContain("translate-y-0 opacity-100")
+      expect(header.hasAttribute("inert")).toBe(false)
+      expect(document.querySelector("[inert]")).toBe(pageWrapper)
+      expect(revealListener).not.toHaveBeenCalled()
+      window.removeEventListener(
+        WATCH_PLAYER_CHROME_REVEAL_EVENT,
+        revealListener,
+      )
+    })
+  })
+
   it("slides the header away after scrolling past the hero and restores it when scrolling up", async () => {
     setScrollY(0)
     act(() => {

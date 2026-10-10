@@ -137,6 +137,20 @@ type WatchRouteSurfaceRegistrationState = {
 
 type ParsedWatchPath = ReturnType<typeof parseWatchPath>
 
+type HeaderFocusSource = "none" | "pointer" | "keyboard"
+
+// `:focus-visible` is the browser's own keyboard-versus-pointer focus signal.
+// Where it cannot be evaluated, treat focus as keyboard focus: showing the
+// header is the safe direction for an accessibility affordance.
+function isKeyboardFocus(target: EventTarget): boolean {
+  if (!(target instanceof Element)) return true
+  try {
+    return target.matches(":focus-visible")
+  } catch {
+    return true
+  }
+}
+
 function fallbackWatchRouteSurface(
   parsed: ParsedWatchPath,
 ): WatchRouteSurface | null {
@@ -324,7 +338,8 @@ export function FloatingSearchProvider({
   const [globalLanguageErrorRoute, setGlobalLanguageErrorRoute] =
     useState<RouteIdentity | null>(null)
   const [headerHovered, setHeaderHovered] = useState(false)
-  const [headerHasKeyboardFocus, setHeaderHasKeyboardFocus] = useState(false)
+  const [headerFocusSource, setHeaderFocusSource] =
+    useState<HeaderFocusSource>("none")
   const [headerScrollVisible, setHeaderScrollVisible] = useState(true)
   const [headerOverHero, setHeaderOverHero] = useState(true)
   const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -734,15 +749,25 @@ export function FloatingSearchProvider({
     !modalChromeHidden &&
     (playerPlayingWithSound || playerChromeOpacity < 1 || !playerChromeVisible)
   const effectiveHeaderHovered = headerHoverZoneActive && headerHovered
-  const headerChromeOpacity =
-    effectiveHeaderHovered && playerChromeOpacity <= 0 ? 1 : playerChromeOpacity
+  // Keyboard focus inside the header keeps it revealed through every later
+  // player-chrome fade and scroll-away until focus leaves, so a focused control
+  // is never transparent or off-screen. Pointer-driven focus (a click) does not
+  // pin the header, it only keeps the header from going inert under that focus.
+  const headerKeyboardRevealed =
+    !modalChromeHidden && headerFocusSource === "keyboard"
+  const headerScrollRevealed = headerScrollVisible || headerKeyboardRevealed
+  const headerChromeOpacity = headerKeyboardRevealed
+    ? 1
+    : effectiveHeaderHovered && playerChromeOpacity <= 0
+      ? 1
+      : playerChromeOpacity
   const headerChromeUnavailable = !modalChromeHidden && headerChromeOpacity <= 0
   const headerChromeHidden =
-    headerChromeUnavailable || (!modalChromeHidden && !headerScrollVisible)
+    headerChromeUnavailable || (!modalChromeHidden && !headerScrollRevealed)
   const headerChromeInert =
     headerChromeHidden &&
-    !headerHasKeyboardFocus &&
-    (!headerHoverZoneActive || !headerScrollVisible)
+    headerFocusSource === "none" &&
+    (!headerHoverZoneActive || !headerScrollRevealed)
   const headerChromeDimmed =
     !modalChromeHidden && !headerChromeHidden && headerChromeOpacity < 1
   const searchChromeVisible = !headerChromeUnavailable
@@ -757,14 +782,14 @@ export function FloatingSearchProvider({
     ? "pointer-events-none translate-y-0 opacity-100"
     : headerChromeUnavailable
       ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-0"
-      : !headerScrollVisible
+      : !headerScrollRevealed
         ? "pointer-events-none -translate-y-[calc(100%+2rem)] opacity-100"
         : headerChromeDimmed
           ? "pointer-events-auto translate-y-0 opacity-30"
           : "pointer-events-auto translate-y-0 opacity-100"
   const headerBackdropMotionClass = headerChromeUnavailable
     ? "-translate-y-[calc(100%+2rem)] opacity-0"
-    : !headerScrollVisible
+    : !headerScrollRevealed
       ? "-translate-y-[calc(100%+2rem)] opacity-100"
       : headerSurfaceSolid
         ? "translate-y-0 opacity-100 md:-translate-y-[72%]"
@@ -785,22 +810,27 @@ export function FloatingSearchProvider({
     revealPlayerChromeFromHeader,
   ])
 
-  const handleHeaderFocus = useCallback(() => {
-    setHeaderHasKeyboardFocus(true)
-    if (headerChromeHidden) {
-      setHeaderHovered(headerCanBrightenLocally)
-      revealPlayerChromeFromHeader()
-    }
-  }, [
-    headerCanBrightenLocally,
-    headerChromeHidden,
-    revealPlayerChromeFromHeader,
-  ])
+  const handleHeaderFocus = useCallback(
+    (event: ReactFocusEvent<HTMLElement>) => {
+      setHeaderFocusSource(
+        isKeyboardFocus(event.target) ? "keyboard" : "pointer",
+      )
+      if (headerChromeHidden) {
+        setHeaderHovered(headerCanBrightenLocally)
+        revealPlayerChromeFromHeader()
+      }
+    },
+    [
+      headerCanBrightenLocally,
+      headerChromeHidden,
+      revealPlayerChromeFromHeader,
+    ],
+  )
 
   const handleHeaderBlur = useCallback(
     (event: ReactFocusEvent<HTMLElement>) => {
       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-        setHeaderHasKeyboardFocus(false)
+        setHeaderFocusSource("none")
       }
     },
     [],
