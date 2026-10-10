@@ -234,6 +234,21 @@ describe("textDirectionForLocale", () => {
     },
   )
 
+  it.each([
+    ["comorian-shingazidja", "zdj"],
+    ["shimaore", "swb"],
+  ])("keeps the Latin-script Watch language %s left-to-right", (slug, tag) => {
+    const identity = resolveWatchLocaleIdentity(slug)
+
+    expect(identity.htmlLang).toBe(tag)
+    expect(textDirectionForLocale(identity.htmlLang)).toBe("ltr")
+  })
+
+  it("honors an explicit non-Latin script for Comorian tags", () => {
+    expect(textDirectionForLocale("zdj-Arab")).toBe("rtl")
+    expect(textDirectionForLocale("swb-Arab")).toBe("rtl")
+  })
+
   it("falls back to the primary language for extlang-style Arabic tags", () => {
     expect(textDirectionForLocale("ar-mey")).toBe("rtl")
     expect(textDirectionForLocale("ar-arz")).toBe("rtl")
