@@ -27,13 +27,16 @@ Build auth URLs from an explicitly configured origin and ignore unapproved forwa
 
 ## Constraints
 
-- Accept forwarded hosts only when they exactly match `NEXT_PUBLIC_CANONICAL_ORIGIN` or `WEB_BASE_URL`.
-- Fall back to `NEXT_PUBLIC_CANONICAL_ORIGIN` when the forwarded host is missing or unapproved.
+- Treat the inbound host (`x-forwarded-host`, then `Host`, then the request URL) as untrusted. Honour it only when it exactly matches an approved origin: `NEXT_PUBLIC_CANONICAL_ORIGIN`, `WEB_BASE_URL`, or a shared Watch callback origin (`@forge/watch-url-policy/callbacks`).
+- Outside production only, also honour loopback hosts (`localhost`, `127.0.0.1`, `[::1]`) on any port so local dev and preview proxies keep working.
+- Take the scheme from the approved origin, never from `x-forwarded-proto`.
+- Fall back to `NEXT_PUBLIC_CANONICAL_ORIGIN` for anything else, including the production internal alias host.
 - Keep explicitly configured preview origins working.
 
 ## Verification
 
-- Auth-session tests cover canonical fallback for an internal Railway alias and acceptance of an explicitly configured host.
+- `apps/web/src/auth/request-origin.test.ts` covers the internal alias, hostile and lookalike hosts, shared Watch origins, `WEB_BASE_URL`, preview origins, scheme handling, and loopback hosts in and out of production.
+- Auth-session and auth-login route tests cover the canonical fallback and relative `returnTo`.
 - Web typecheck and lint.
 
 ## Tracking
