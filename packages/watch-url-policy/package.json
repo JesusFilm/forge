@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./callbacks": "./src/callbacks.ts",
     "./download": "./src/download.ts",
+    "./media-collection-cta": "./src/media-collection-cta.ts",
     "./not-found-titles": "./src/not-found-titles.ts",
     "./routes": "./src/routes.ts",
     "./watch-home-categories": "./src/watch-home-categories.ts",

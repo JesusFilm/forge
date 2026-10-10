@@ -463,6 +463,38 @@ describe("BlockSchema — all top-level types validate", () => {
     ).toBe(false)
   })
 
+  it.each([" WATCH ", "See all"])(
+    "still parses a stored vague media collection CTA label at every nesting level: %s",
+    (label) => {
+      // Stored blocks carry these labels (W-096 / FGE-232), and this schema
+      // also parses stored drafts, revisions and duplicates. New vague labels
+      // are rejected by ExperienceService, not here.
+      const legacy = {
+        t: "mediaCollection",
+        variant: "carousel",
+        ctaLabel: label,
+        ctaLink: "/watch/jesus.html",
+      }
+      expect(BlockSchema.safeParse(legacy).success).toBe(true)
+      for (const wrapper of ["section", "container"] as const) {
+        expect(
+          BlockSchema.safeParse({ t: wrapper, content: [legacy] }).success,
+        ).toBe(true)
+      }
+    },
+  )
+
+  it("accepts a media collection CTA label that names its destination", () => {
+    expect(
+      BlockSchema.safeParse({
+        t: "mediaCollection",
+        variant: "carousel",
+        ctaLabel: "Watch the Full Story",
+        ctaLink: "/watch/creation-to-christ-story-full-video.html",
+      }).success,
+    ).toBe(true)
+  })
+
   it("accepts the dynamic database collection source for media collections", () => {
     const result = BlockSchema.safeParse({
       t: "mediaCollection",

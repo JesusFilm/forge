@@ -11,6 +11,7 @@ import {
   WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
 } from "@/i18n/client-messages"
 import { getExperiencePreview } from "@/lib/experience-preview"
+import { WATCH_BASE_PATH } from "@/lib/routes"
 import {
   DEFAULT_LOCALE,
   publicWatchAudioLanguageSlugForLocale,
@@ -69,9 +70,12 @@ function DraftPreviewBanner({ locale }: { locale: string }) {
 function OrdinaryExperiencePreview({
   blocks,
   languageSlug,
+  currentPathname,
 }: {
   blocks: readonly Section[]
   languageSlug: string
+  /** The public path the published locale renders at; see `MediaCollection`. */
+  currentPathname: string | null
 }) {
   return (
     <main className="min-h-screen bg-stone-900">
@@ -86,6 +90,7 @@ function OrdinaryExperiencePreview({
             key={key}
             section={block}
             languageSlug={languageSlug}
+            currentPathname={currentPathname}
           />
         )
       })}
@@ -113,8 +118,14 @@ export default async function ExperiencePreviewPage({
     WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
   )
 
+  // Mirror the public one-segment route so rail CTAs resolve exactly as they
+  // will once published (a self-link is dropped in both places).
   let content = (
-    <OrdinaryExperiencePreview blocks={blocks} languageSlug={languageSlug} />
+    <OrdinaryExperiencePreview
+      blocks={blocks}
+      languageSlug={languageSlug}
+      currentPathname={`${WATCH_BASE_PATH}/${preview.slug}.html`}
+    />
   )
 
   if (preview.isHomepage) {

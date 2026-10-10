@@ -24,6 +24,11 @@ import {
 } from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
+import {
+  WATCH_BASE_PATH,
+  localizedHomePath,
+  tryAsLocaleSlug,
+} from "@/lib/routes"
 
 type WatchHomeExperiencePageProps = {
   heroModel: WatchHomeModel
@@ -202,6 +207,15 @@ export function WatchHomeExperiencePage({
     />
   ) : null
 
+  // A rail CTA that points back at this home page is dropped for the next
+  // destination (W-096 / FGE-232), so the rails need the page they render on.
+  const homeLanguageSlug = tryAsLocaleSlug(languageSlug)
+  const homePathname =
+    publicDocumentPathname ??
+    (homeLanguageSlug
+      ? `${WATCH_BASE_PATH}${localizedHomePath(homeLanguageSlug)}`
+      : null)
+
   const renderBlock = (block: Section, index: number) => {
     const blockKey =
       (block as { sectionKey?: string | null }).sectionKey ?? index
@@ -235,6 +249,7 @@ export function WatchHomeExperiencePage({
         locale={locale}
         languageSlug={languageSlug}
         dynamicCollections={dynamicCollections}
+        currentPathname={homePathname}
       />
     )
     const typename = (block as { readonly __typename?: string | null })

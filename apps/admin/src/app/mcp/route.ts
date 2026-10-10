@@ -10,6 +10,7 @@ import { getAdminMcpResourceUrl } from "@/mcp/admin-mcp-metadata"
 import { ADMIN_MCP_TOOLS, findAdminMcpTool } from "@/mcp/admin-mcp-tools"
 import { ExperienceLocaleMcpService } from "@/services/experience-locale-mcp.service"
 import { ExperienceMcpService } from "@/services/experience-mcp.service"
+import { ExperienceVagueMediaCollectionCtaLabelError } from "@/services/experience.service"
 import { PushCampaignMcpService } from "@/services/push-campaign-mcp.service"
 import {
   ConcurrentModificationError,
@@ -258,6 +259,10 @@ function toolError(id: unknown, error: unknown) {
   }
   if (error instanceof NotFoundError) {
     return jsonRpcError(id, -32004, error.message)
+  }
+  if (error instanceof ExperienceVagueMediaCollectionCtaLabelError) {
+    // The message names the rejected label and how to fix it.
+    return jsonRpcError(id, -32602, error.message)
   }
   if (error instanceof ExperienceDuplicationError) {
     return jsonRpcError(id, -32000, error.message)

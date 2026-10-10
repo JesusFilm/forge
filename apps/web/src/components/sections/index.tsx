@@ -169,6 +169,7 @@ function renderAdminBlock(
   languageSlug: string | null | undefined,
   locale: string | null | undefined,
   dynamicCollections: DynamicCollectionsRenderContext | undefined,
+  currentPathname: string | null | undefined,
 ): ReactNode {
   switch (block.__typename) {
     case "MediaCollectionBlock":
@@ -192,6 +193,7 @@ function renderAdminBlock(
           }
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          currentPathname={currentPathname}
         />
       )
     case "PromoBannerBlock":
@@ -266,6 +268,7 @@ function renderAdminBlock(
           data={block as unknown as Parameters<typeof Container>[0]["data"]}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          currentPathname={currentPathname}
         />
       )
     case "SectionBlock":
@@ -274,6 +277,7 @@ function renderAdminBlock(
           data={block as unknown as Parameters<typeof SectionBlock>[0]["data"]}
           routeVideo={routeVideo}
           languageSlug={languageSlug}
+          currentPathname={currentPathname}
         />
       )
     case "RelatedQuestionsBlock":
@@ -381,12 +385,15 @@ export function ExperienceSectionRenderer({
   languageSlug,
   locale,
   dynamicCollections,
+  currentPathname,
 }: {
   section: Section
   routeVideo?: RouteVideo | null
   languageSlug?: string | null
   locale?: string | null
   dynamicCollections?: DynamicCollectionsRenderContext
+  /** Public pathname of the rendering page; see `MediaCollection`. */
+  currentPathname?: string | null
 }) {
   // Admin-shape dispatch — content.ts reads from admin now, so every
   // block reaching this renderer carries an admin `*Block` __typename.
@@ -399,6 +406,7 @@ export function ExperienceSectionRenderer({
       languageSlug,
       locale,
       dynamicCollections,
+      currentPathname,
     )
   }
 

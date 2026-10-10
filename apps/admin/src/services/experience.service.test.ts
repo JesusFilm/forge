@@ -4,6 +4,7 @@ import type { Principal } from "@/auth/principal"
 import {
   ExperienceDynamicCollectionPlacementError,
   ExperienceService,
+  ExperienceVagueMediaCollectionCtaLabelError,
   ExperienceWatchHomeCategoryRailPlacementError,
   localeDraftRevision,
 } from "./experience.service"
@@ -106,6 +107,20 @@ function dynamicCollectionBlock(sectionKey: string) {
     variant: "carousel" as const,
     itemsSource: "dynamicCollections" as const,
     showItemNumbers: false,
+    items: [],
+  }
+}
+
+// Production shape before W-096 / FGE-232: rails stored with a bare "Watch" or
+// "See all" label. Writes may no longer add these, but stored ones must still
+// load, save, and duplicate.
+function legacyVagueCtaRail(sectionKey: string, ctaLink = "/watch/languages") {
+  return {
+    t: "mediaCollection" as const,
+    sectionKey,
+    variant: "carousel" as const,
+    ctaLabel: "Watch",
+    ctaLink,
     items: [],
   }
 }
@@ -339,6 +354,20 @@ describe("ExperienceService", () => {
       ).rejects.toThrow()
     })
 
+    it("rejects a vague media collection CTA label on a new experience", async () => {
+      await expect(
+        service.create({
+          input: {
+            locale: "en",
+            slug: "hello-world",
+            blocks: [legacyVagueCtaRail("rail")],
+          },
+          user: ADMIN,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceVagueMediaCollectionCtaLabelError)
+      expect(prisma.experience.create).not.toHaveBeenCalled()
+    })
+
     it("rejects the Watch category rail because new experiences are not homepages", async () => {
       await expect(
         service.create({
@@ -564,6 +593,64 @@ describe("ExperienceService", () => {
         }),
       )
       expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+    })
+
+    it("duplicates saved and drafted blocks that carry a legacy vague CTA label", async () => {
+      prisma.experience.findFirst.mockResolvedValueOnce({
+        id: "exp-source",
+        isTemplate: false,
+        archivedAt: null,
+        locales: [
+          {
+            id: "loc-en",
+            experienceId: "exp-source",
+            locale: "en",
+            slug: "watch",
+            isHomepage: true,
+            pathSegment: null,
+            title: "Watch",
+            metaDescription: null,
+            ogTitle: null,
+            ogDescription: null,
+            ogImageUrl: null,
+            blocks: [legacyVagueCtaRail("canonical-rail")],
+            status: "PUBLISHED",
+            publishedAt: new Date("2026-08-20T12:00:00.000Z"),
+          },
+        ],
+      })
+      prisma.contentRevision.findMany.mockResolvedValueOnce([
+        {
+          entityId: "loc-en",
+          snapshot: {
+            v: 1,
+            data: { blocks: [legacyVagueCtaRail("draft-rail")] },
+          },
+        },
+      ])
+      prisma.experienceLocale.findMany.mockResolvedValueOnce([])
+      prisma.experience.create.mockResolvedValueOnce({
+        id: "exp-copy",
+        locales: [],
+      })
+
+      await service.duplicate({ input: { id: "exp-source" }, user: ADMIN })
+
+      expect(prisma.experience.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            locales: {
+              create: [
+                expect.objectContaining({
+                  blocks: [
+                    expect.objectContaining(legacyVagueCtaRail("draft-rail")),
+                  ],
+                }),
+              ],
+            },
+          }),
+        }),
+      )
     })
 
     it("allows an ADMIN to duplicate an archived Experience", async () => {
@@ -795,6 +882,21 @@ describe("ExperienceService", () => {
           user: EDITOR_BOB,
         }),
       ).rejects.toThrow("Forbidden")
+    })
+
+    it("rejects a vague media collection CTA label on a new locale", async () => {
+      prisma.experience.findUniqueOrThrow.mockResolvedValueOnce({
+        ownerId: "alice",
+        archivedAt: null,
+      })
+
+      await expect(
+        service.createLocale({
+          input: { ...input, blocks: [legacyVagueCtaRail("rail")] },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceVagueMediaCollectionCtaLabelError)
+      expect(prisma.experienceLocale.create).not.toHaveBeenCalled()
     })
 
     it("rejects the Watch category rail for a non-homepage locale", async () => {
@@ -1046,6 +1148,90 @@ describe("ExperienceService", () => {
       ).rejects.toThrow("1 newly selected audio language is unavailable")
 
       expect(optionalValidator).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.create).not.toHaveBeenCalled()
+      expect(prisma.contentRevision.update).not.toHaveBeenCalled()
+    })
+
+    it("saves unrelated edits to a locale whose stored rails carry a legacy vague CTA label", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce({
+        ...localeRow,
+        blocks: [legacyVagueCtaRail("rail-a")],
+      })
+
+      const result = await service.updateLocale({
+        input: { id: "loc-1", title: "Updated" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(result.title).toBe("Updated")
+      expect(result.blocks).toEqual([
+        expect.objectContaining({ sectionKey: "rail-a", ctaLabel: "Watch" }),
+      ])
+      expect(prisma.contentRevision.create).toHaveBeenCalledTimes(1)
+    })
+
+    it("keeps an existing vague CTA label when the rails are edited and reordered", async () => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce({
+        ...localeRow,
+        blocks: [
+          legacyVagueCtaRail("rail-a"),
+          {
+            t: "section",
+            sectionKey: "wrapper",
+            content: [legacyVagueCtaRail("rail-b", "/watch/jesus.html")],
+          },
+        ],
+      })
+
+      await service.updateLocale({
+        input: {
+          id: "loc-1",
+          blocks: [
+            {
+              ...legacyVagueCtaRail("rail-b", "/watch/jesus.html"),
+              title: "Edited title",
+            },
+            legacyVagueCtaRail("rail-a"),
+          ],
+        },
+        user: EDITOR_ALICE,
+      })
+
+      expect(prisma.contentRevision.create).toHaveBeenCalledTimes(1)
+    })
+
+    it.each([
+      {
+        name: "adds another rail with the same vague label",
+        blocks: [legacyVagueCtaRail("rail-a"), legacyVagueCtaRail("rail-b")],
+      },
+      {
+        name: "points the vague CTA at a new destination",
+        blocks: [legacyVagueCtaRail("rail-a", "/watch/jesus.html")],
+      },
+      {
+        name: "nests a new vague CTA inside a section",
+        blocks: [
+          legacyVagueCtaRail("rail-a"),
+          {
+            t: "section",
+            sectionKey: "wrapper",
+            content: [{ ...legacyVagueCtaRail("rail-b"), ctaLabel: "See all" }],
+          },
+        ],
+      },
+    ])("rejects a write that $name", async ({ blocks }) => {
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce({
+        ...localeRow,
+        blocks: [legacyVagueCtaRail("rail-a")],
+      })
+
+      await expect(
+        service.updateLocale({
+          input: { id: "loc-1", blocks },
+          user: EDITOR_ALICE,
+        }),
+      ).rejects.toBeInstanceOf(ExperienceVagueMediaCollectionCtaLabelError)
       expect(prisma.contentRevision.create).not.toHaveBeenCalled()
       expect(prisma.contentRevision.update).not.toHaveBeenCalled()
     })
@@ -2046,6 +2232,44 @@ describe("ExperienceService", () => {
       )
       expect(prisma.experienceLocale.update).not.toHaveBeenCalled()
       expect(refreshWatchRouteManifest).not.toHaveBeenCalled()
+    })
+
+    it("restores a revision whose rails still carry a legacy vague CTA label", async () => {
+      // The current draft no longer has the rail, so a plain "no new vague
+      // label" check against it would reject this restore of stored content.
+      const legacyRevision = {
+        ...revisionRow,
+        snapshot: {
+          ...revisionRow.snapshot,
+          data: {
+            ...revisionRow.snapshot.data,
+            blocks: [legacyVagueCtaRail("restored-rail")],
+          },
+        },
+      }
+      prisma.contentRevision.findUniqueOrThrow.mockResolvedValueOnce(
+        legacyRevision,
+      )
+      prisma.experienceLocale.findUniqueOrThrow.mockResolvedValueOnce(localeRow)
+
+      await service.restoreLocaleRevision({
+        input: { revisionId: "rev-1" },
+        user: EDITOR_ALICE,
+      })
+
+      expect(prisma.contentRevision.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            snapshot: expect.objectContaining({
+              data: expect.objectContaining({
+                blocks: [
+                  expect.objectContaining(legacyVagueCtaRail("restored-rail")),
+                ],
+              }),
+            }),
+          }),
+        }),
+      )
     })
 
     it("does not refresh the public manifest when restoring an already-draft locale", async () => {

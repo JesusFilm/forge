@@ -274,6 +274,10 @@ export const MediaCollectionBlockSchema = z
     subtitle: z.string().optional(),
     description: z.string().optional(),
     ctaLink: z.string().optional(),
+    // Stays permissive: stored blocks already carry vague labels ("Watch",
+    // "See all"), and this schema also parses stored drafts, revisions and
+    // duplicates. `ExperienceService` rejects a vague label a write adds
+    // (W-096 / FGE-232); the web renderer replaces stored ones.
     ctaLabel: z.string().optional(),
     showItemNumbers: z.boolean().default(false),
     footerText: z.string().optional(),

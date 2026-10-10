@@ -23,6 +23,7 @@ import {
   NotFoundError,
 } from "./errors"
 import { BlocksSchema } from "@/domain/blocks"
+import { isVagueMediaCollectionCtaLabel } from "@forge/watch-url-policy/media-collection-cta"
 import {
   boundedAuthoredVideoDubSelectors,
   extractAuthoredVideoDubSelectors,
@@ -82,6 +83,66 @@ async function assertNoNewUnavailableVideoDubs(
     throw new Error(
       `${newlyUnavailable.length} newly selected audio ${newlyUnavailable.length === 1 ? "language is" : "languages are"} unavailable. Choose an available language before saving.`,
     )
+  }
+}
+
+export class ExperienceVagueMediaCollectionCtaLabelError extends Error {
+  constructor(label: string) {
+    super(
+      `Media collection CTA label "${label.trim()}" does not say where it goes. Name the destination (for example "Watch the full story") or leave the label empty.`,
+    )
+    this.name = "ExperienceVagueMediaCollectionCtaLabelError"
+  }
+}
+
+function vagueMediaCollectionCtaKeys(blocks: readonly unknown[]): string[] {
+  const keys: string[] = []
+  const visit = (value: unknown) => {
+    if (!value || typeof value !== "object") return
+    if (Array.isArray(value)) {
+      for (const item of value) visit(item)
+      return
+    }
+    const record = value as Record<string, unknown>
+    if (
+      record.t === "mediaCollection" &&
+      isVagueMediaCollectionCtaLabel(record.ctaLabel)
+    ) {
+      const link = typeof record.ctaLink === "string" ? record.ctaLink : ""
+      keys.push(`${record.ctaLabel as string}\u0000${link.trim()}`)
+    }
+    for (const child of Object.values(record)) {
+      if (Array.isArray(child)) visit(child)
+    }
+  }
+  visit(blocks)
+  return keys
+}
+
+/**
+ * Reject a vague Media Collection CTA label ("Watch", "See all") that a write
+ * adds (W-096 / FGE-232). Stored blocks already carry such labels, so one
+ * that was there before — same label, same link — may stay: editors can still
+ * save unrelated changes, and the web renderer replaces it with a label that
+ * names the destination. Changing a vague CTA's link, or adding another, is
+ * new authoring and must name the destination.
+ */
+function assertNoNewVagueMediaCollectionCtaLabels(
+  previousBlocks: readonly unknown[],
+  nextBlocks: readonly unknown[],
+): void {
+  const remaining = new Map<string, number>()
+  for (const key of vagueMediaCollectionCtaKeys(previousBlocks)) {
+    remaining.set(key, (remaining.get(key) ?? 0) + 1)
+  }
+  for (const key of vagueMediaCollectionCtaKeys(nextBlocks)) {
+    const count = remaining.get(key) ?? 0
+    if (count === 0) {
+      throw new ExperienceVagueMediaCollectionCtaLabelError(
+        key.slice(0, key.indexOf("\u0000")),
+      )
+    }
+    remaining.set(key, count - 1)
   }
 }
 
@@ -311,6 +372,7 @@ export class ExperienceService {
     reason,
     expectedDraftRevision,
     validateBlocks,
+    storedCtaBlocks,
   }: {
     id: string
     patch: Partial<ExperienceLocaleDraftData>
@@ -318,6 +380,12 @@ export class ExperienceService {
     revisedByKind: "USER" | "AI"
     reason: string
     expectedDraftRevision?: string | null
+    /**
+     * Stored blocks whose vague Media Collection CTA labels count as already
+     * present. Defaults to the draft being replaced; a revision restore passes
+     * the revision itself, which is stored content rather than new authoring.
+     */
+    storedCtaBlocks?: readonly unknown[]
     validateBlocks?: (input: {
       prisma: Prisma.TransactionClient
       previousBlocks: readonly unknown[]
@@ -365,6 +433,10 @@ export class ExperienceService {
         })
         assertHomepageBlockPlacement(data.blocks, data.isHomepage)
         if (patch.blocks !== undefined) {
+          assertNoNewVagueMediaCollectionCtaLabels(
+            storedCtaBlocks ?? base.blocks,
+            data.blocks,
+          )
           await assertNoNewUnavailableVideoDubs(
             tx,
             canonical.locale,
@@ -520,6 +592,7 @@ export class ExperienceService {
     }
 
     assertHomepageBlockPlacement(input.blocks, false)
+    assertNoNewVagueMediaCollectionCtaLabels([], input.blocks)
     boundedAuthoredVideoDubSelectors(input.blocks)
 
     return this.prisma.$transaction(
@@ -737,6 +810,7 @@ export class ExperienceService {
     }
 
     assertHomepageBlockPlacement(input.blocks, input.isHomepage ?? false)
+    assertNoNewVagueMediaCollectionCtaLabels([], input.blocks)
     boundedAuthoredVideoDubSelectors(input.blocks)
 
     const { experienceId, ...data } = input
@@ -1264,6 +1338,7 @@ export class ExperienceService {
       user,
       revisedByKind: "USER",
       reason: `Restored revision ${revision.id} into active draft`,
+      storedCtaBlocks: restoredData.blocks,
     })
     return staged.effective
   }
