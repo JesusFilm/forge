@@ -179,11 +179,54 @@ function groupEntries(
   }))
 }
 
-function groupForAlternates(
+function groupForLanguageRoutes(
   alternates: WatchSeoManifestAlternate[],
+  languageSlugs: string[] | undefined,
   hrefForLanguage: (languageSlug: string) => string | null,
-): ResolvedSitemapGroup | null {
-  return groupForEntries(groupEntries(alternates, hrefForLanguage))
+): ResolvedSitemapGroup[] {
+  const alternateEntries = groupEntries(alternates, hrefForLanguage)
+  const group = groupForEntries(alternateEntries)
+  const routeSlugs =
+    languageSlugs ?? alternates.map(({ languageSlug }) => languageSlug)
+  const routeHrefs = [...new Set(routeSlugs)]
+    .map(hrefForLanguage)
+    .filter((href): href is string => href !== null)
+  const annotatedLocs = new Set(alternateEntries.map(({ loc }) => loc))
+  const annotationFreeLocs = routeHrefs.filter(
+    (href) => !annotatedLocs.has(href),
+  )
+
+  return [
+    ...(group ? [group] : []),
+    ...(annotationFreeLocs.length > 0
+      ? [
+          {
+            alternateLinksXml: "",
+            alternateLinksBytes: 0,
+            locs: annotationFreeLocs,
+          },
+        ]
+      : []),
+  ]
+}
+
+function entriesForLanguageRoutes(
+  alternates: WatchSeoManifestAlternate[],
+  languageSlugs: string[] | undefined,
+  hrefForLanguage: (languageSlug: string) => string | null,
+): WatchSitemapEntry[] {
+  const alternateEntries = groupEntries(alternates, hrefForLanguage)
+  const resolvedAlternates = alternateEntries[0]?.alternates
+  const routeSlugs =
+    languageSlugs ?? alternates.map(({ languageSlug }) => languageSlug)
+  const annotatedLocs = new Set(alternateEntries.map(({ loc }) => loc))
+  return [...new Set(routeSlugs)]
+    .map(hrefForLanguage)
+    .filter((href): href is string => href !== null)
+    .map((loc) => ({
+      loc,
+      alternates: annotatedLocs.has(loc) ? (resolvedAlternates ?? []) : [],
+    }))
 }
 
 function groupForEntries(
@@ -206,10 +249,12 @@ function createWatchSitemapGroups(
   const groups: ResolvedSitemapGroup[] = []
 
   for (const group of manifest.videoRouteGroups) {
-    const sitemapGroup = groupForAlternates(group.alternates, (languageSlug) =>
-      videoHref(group.contentSlug, languageSlug),
+    const sitemapGroups = groupForLanguageRoutes(
+      group.alternates,
+      group.languageSlugs,
+      (languageSlug) => videoHref(group.contentSlug, languageSlug),
     )
-    if (sitemapGroup) groups.push(sitemapGroup)
+    groups.push(...sitemapGroups)
   }
 
   const homeSitemapGroup = groupForEntries(createWatchHomeSitemapEntries())
@@ -225,8 +270,10 @@ export function createWatchSitemapEntries(
 
   for (const group of manifest.videoRouteGroups) {
     entries.push(
-      ...groupEntries(group.alternates, (languageSlug) =>
-        videoHref(group.contentSlug, languageSlug),
+      ...entriesForLanguageRoutes(
+        group.alternates,
+        group.languageSlugs,
+        (languageSlug) => videoHref(group.contentSlug, languageSlug),
       ),
     )
   }

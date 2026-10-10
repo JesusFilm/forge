@@ -42,31 +42,43 @@ describe("WatchSeoManifestService.generate", () => {
           contentSlug: "jesus",
           languageSlug: "english",
           bcp47: "en",
+          hreflangPriority: 100,
         },
         {
           contentSlug: "jesus",
           languageSlug: "spanish-castilian",
           bcp47: "es",
+          hreflangPriority: 100,
         },
         {
           contentSlug: "jesus",
           languageSlug: "spanish-latin-american",
           bcp47: "es",
+          hreflangPriority: 500,
+        },
+        {
+          contentSlug: "jesus",
+          languageSlug: "spanish-mexican",
+          bcp47: "es",
+          hreflangPriority: 500,
         },
         {
           contentSlug: "jesus",
           languageSlug: "bad-script",
           bcp47: "zh-Hans",
+          hreflangPriority: 10,
         },
         {
           contentSlug: "pentecost",
           languageSlug: "english",
           bcp47: "en",
+          hreflangPriority: 100,
         },
         {
           contentSlug: "pentecost",
           languageSlug: "portuguese-brazil",
           bcp47: "pt-BR",
+          hreflangPriority: 500,
         },
       ])
       .mockResolvedValueOnce([
@@ -75,12 +87,14 @@ describe("WatchSeoManifestService.generate", () => {
           childSlug: "pentecost",
           languageSlug: "english",
           bcp47: "en",
+          hreflangPriority: 100,
         },
         {
           parentSlug: "book-of-acts",
           childSlug: "pentecost",
           languageSlug: "portuguese-brazil",
           bcp47: "pt-BR",
+          hreflangPriority: 500,
         },
       ])
 
@@ -96,13 +110,20 @@ describe("WatchSeoManifestService.generate", () => {
       videoRouteGroups: [
         {
           contentSlug: "jesus",
+          languageSlugs: [
+            "english",
+            "spanish-castilian",
+            "spanish-latin-american",
+            "spanish-mexican",
+          ],
           alternates: [
             { hreflang: "en", languageSlug: "english" },
-            { hreflang: "es", languageSlug: "spanish-castilian" },
+            { hreflang: "es", languageSlug: "spanish-latin-american" },
           ],
         },
         {
           contentSlug: "pentecost",
+          languageSlugs: ["english", "portuguese-brazil"],
           alternates: [
             { hreflang: "en", languageSlug: "english" },
             { hreflang: "pt-BR", languageSlug: "portuguese-brazil" },
@@ -113,6 +134,7 @@ describe("WatchSeoManifestService.generate", () => {
         {
           parentSlug: "book-of-acts",
           childSlug: "pentecost",
+          languageSlugs: ["english", "portuguese-brazil"],
           alternates: [
             { hreflang: "en", languageSlug: "english" },
             { hreflang: "pt-BR", languageSlug: "portuguese-brazil" },
@@ -120,7 +142,7 @@ describe("WatchSeoManifestService.generate", () => {
         },
       ],
       skippedHreflangValues: {
-        "duplicate:es": 1,
+        "duplicate:es": 2,
         "zh-Hans": 1,
       },
     })
@@ -128,7 +150,7 @@ describe("WatchSeoManifestService.generate", () => {
       videoRouteGroups: 2,
       episodeRouteGroups: 1,
       alternateLinks: 6,
-      skippedHreflangValues: 2,
+      skippedHreflangValues: 3,
     })
   })
 
@@ -146,6 +168,8 @@ describe("WatchSeoManifestService.generate", () => {
     expect(allSql).toContain("hls IS NOT NULL")
     expect(allSql).toContain("parent_video_audio")
     expect(allSql).toContain("child_lang.bcp47")
+    expect(allSql).toContain('"hreflangPriority"')
+    expect(allSql).toContain('FROM "country_language"')
   })
 
   it("rejects malformed query rows instead of emitting a partial manifest", async () => {
@@ -173,6 +197,7 @@ describe("WatchSeoManifestService.generate", () => {
           contentSlug: "pentecost",
           languageSlug: "english",
           bcp47: "en",
+          hreflangPriority: 100,
         },
       ])
       .mockResolvedValueOnce([
@@ -181,6 +206,7 @@ describe("WatchSeoManifestService.generate", () => {
           childSlug: "pentecost",
           languageSlug: "portuguese-brazil",
           bcp47: "pt-BR",
+          hreflangPriority: 500,
         },
       ])
     const service = new WatchSeoManifestService(prisma)

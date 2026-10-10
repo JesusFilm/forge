@@ -223,6 +223,16 @@ describe("watch sitemap deployed audit", () => {
     )
   })
 
+  it("accepts an indexed canonical route without hreflang annotations", () => {
+    const report = auditWatchSitemapDocuments(
+      document(INDEX_URL, indexXml([CHILD_0])),
+      [document(CHILD_0, childXml([{ loc: JESUS_ES, alternates: [] }]))],
+    )
+
+    expect(report.ok).toBe(true)
+    expect(report.issues).toEqual([])
+  })
+
   it("fails duplicate canonicals, missing self-links, and reciprocity drift", () => {
     const report = auditWatchSitemapDocuments(document(INDEX_URL, indexXml()), [
       document(
