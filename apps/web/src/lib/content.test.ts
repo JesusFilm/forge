@@ -463,6 +463,48 @@ describe("resolveWatchPage", () => {
     })
   })
 
+  it("drops only carousel fields when Admin has an older VideoCarouselItem schema", async () => {
+    const validationError = Object.assign(
+      new Error('Cannot query field "videoImage" on type "VideoCarouselItem".'),
+      {
+        errors: [
+          {
+            message:
+              'Cannot query field "videoImage" on type "VideoCarouselItem".',
+            extensions: { code: "GRAPHQL_VALIDATION_FAILED" },
+          },
+        ],
+      },
+    )
+    queryMock.mockRejectedValueOnce(validationError).mockResolvedValueOnce({
+      data: {
+        watchSetting: {
+          documentId: "watch-settings-1",
+          homepageExperience: {
+            __typename: "ExperienceLocale",
+            id: "exp-home-1",
+            slug: "home",
+            title: "Home",
+            blocks: [],
+          },
+          defaultTemplateExperience: null,
+        },
+      },
+    })
+
+    const { resolveWatchPage } = await import("./content")
+    const result = await resolveWatchPage("en")
+
+    expect(queryMock).toHaveBeenCalledTimes(2)
+    const primary = print(queryMock.mock.calls[0][0].query)
+    const fallback = print(queryMock.mock.calls[1][0].query)
+    expect(primary).toContain("videoImage")
+    expect(fallback).not.toContain("WatchVideoCarouselTitles")
+    expect(fallback).toContain("WatchHomeCategoryRailBlock")
+    expect(fallback).toContain("HomepageRecommendationsBlock")
+    expect(result.error).toBeNull()
+  })
+
   it("does not treat an unrelated field validation error as category-rail schema lag", async () => {
     const unrelated = Object.assign(
       new Error('Cannot query field "tiles" on type "PromoBannerBlock".'),

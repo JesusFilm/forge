@@ -6,6 +6,7 @@ import {
 } from "@forge/admin-graphql/fragments"
 
 import { watchMediaCollectionTitlesFragment } from "./watch-media-collection-titles"
+import { watchVideoCarouselTitlesFragment } from "./watch-video-carousel-titles"
 
 // Compose Web's locale-aware media collection titles over the canonical Watch
 // Experience projection. The extension stays local so native consumers retain
@@ -15,9 +16,14 @@ export const watchExperienceFragment = adminGraphql(
     fragment WatchExperience on ExperienceLocale @_unmask {
       ...AdminWatchExperience
       ...WatchMediaCollectionTitles
+      ...WatchVideoCarouselTitles
     }
   `,
-  [adminWatchExperienceFragment, watchMediaCollectionTitlesFragment],
+  [
+    adminWatchExperienceFragment,
+    watchMediaCollectionTitlesFragment,
+    watchVideoCarouselTitlesFragment,
+  ],
 )
 
 export const preCopyWatchExperienceFragment = adminGraphql(

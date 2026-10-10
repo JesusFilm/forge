@@ -449,7 +449,7 @@ InfoBlockItemRef.implement({
  * close.
  */
 async function resolveItemTitle(
-  row: MediaCollectionItem,
+  row: { videoId?: string | null; titleOverride?: string | null },
   locale: string | null,
   ctx: ContextShape,
 ): Promise<string | null> {
@@ -629,6 +629,21 @@ VideoCarouselItemRef.implement({
       nullable: true,
       resolve: (row, _args, ctx) =>
         resolveBlockImageAsset(row, ctx, "imageAssetId"),
+    }),
+    videoImage: t.field({
+      type: BlockVideoImageRef,
+      nullable: true,
+      resolve: (row, _args, ctx) => {
+        const videoId = optionalString(row.videoId)
+        return videoId
+          ? resolveMediaCollectionVideoImageMetadata(videoId, ctx)
+          : null
+      },
+    }),
+    resolvedTitle: t.string({
+      nullable: true,
+      args: { locale: t.arg.string({ required: true }) },
+      resolve: (row, args, ctx) => resolveItemTitle(row, args.locale, ctx),
     }),
     titleOverride: t.exposeString("titleOverride", { nullable: true }),
     subtitleOverride: t.exposeString("subtitleOverride", { nullable: true }),

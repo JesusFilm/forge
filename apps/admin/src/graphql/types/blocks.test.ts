@@ -1197,6 +1197,13 @@ describe("MediaCollectionItem.coreId resolver", () => {
 })
 
 describe("Edge cases", () => {
+  it("exposes localized title and linked poster fields on VideoCarouselItem", () => {
+    const type = schema.getType("VideoCarouselItem")
+    const fields = type && "getFields" in type ? type.getFields() : null
+    expect(fields?.resolvedTitle).toBeDefined()
+    expect(fields?.videoImage).toBeDefined()
+  })
+
   it("exposes videoSlug and image objects on MediaCollectionItem for authored card links and posters", () => {
     const type = schema.getType("MediaCollectionItem")
     const fields = type && "getFields" in type ? type.getFields() : null
