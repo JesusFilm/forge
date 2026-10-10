@@ -62,32 +62,100 @@ export function sortDownloadsByQuality(
   })
 }
 
-// Surface as many tier options as there are distinct downloads, up to three.
+// Legacy distribution-origin rows (`distroHigh` / `distroSd` / `distroLow`).
+// They stay in the catalog but are never a user-facing tier: they point at a
+// different (older, lower-fidelity) origin than the Mux renditions, and their
+// sizes are not comparable with them. Matched by quality KEY only; no URL or
+// host is inspected here, the proxy keeps owning target validation.
+const LEGACY_DISTRO_QUALITY = /^distro/i
+
+function isUserFacingDownload(download: WatchDownloadOption): boolean {
+  return !LEGACY_DISTRO_QUALITY.test(download.quality)
+}
+
+// Distinct downloads by opaque id, first (highest-ranked) occurrence wins.
+function distinctByDocumentId(
+  downloads: WatchDownloadOption[],
+): WatchDownloadOption[] {
+  const seen = new Set<string>()
+  return downloads.filter((download) => {
+    if (seen.has(download.documentId)) return false
+    seen.add(download.documentId)
+    return true
+  })
+}
+
+// Tier ranking: known quality priority first; size only breaks ties inside one
+// quality; unknown qualities rank after every known one (size, then input
+// order). Unlike `sortDownloadsByQuality`, a size can never promote a row past
+// a higher quality, so an inflated `low` cannot become Highest.
+function rankForTiers(downloads: WatchDownloadOption[]): WatchDownloadOption[] {
+  const unknownRank = QUALITY_PRIORITY.length
+  const positiveSize = (d: WatchDownloadOption) =>
+    d.size != null && d.size > 0 ? d.size : 0
+  return [...downloads].sort((a, b) => {
+    const rankA = QUALITY_PRIORITY.indexOf(a.quality)
+    const rankB = QUALITY_PRIORITY.indexOf(b.quality)
+    const byQuality =
+      (rankA === -1 ? unknownRank : rankA) -
+      (rankB === -1 ? unknownRank : rankB)
+    return byQuality !== 0 ? byQuality : positiveSize(b) - positiveSize(a)
+  })
+}
+
+// Only the `fhd` / `highest` pair is treated as an alias. The catalog carries
+// both under separate opaque ids for the same 1080p rendition on the JESUS
+// film; that is a heuristic about those two keys, not proof two ids are the
+// same asset elsewhere, and equal height alone is NOT treated as equivalence
+// (codecs and encodes can differ).
+function isHighestAlias(
+  reference: WatchDownloadOption,
+  candidate: WatchDownloadOption,
+): boolean {
+  const pair = new Set([reference.quality, candidate.quality])
+  return pair.size === 2 && pair.has("fhd") && pair.has("highest")
+}
+
+// Surface as many tier options as there are distinct non-distro downloads, up
+// to three. Quality decides tiers; size never does.
 //   1 download  -> [Highest]
 //   2 downloads -> [Highest, Low]
-//   3+ downloads -> [Highest, High, Low] picked at evenly-spaced positions.
+//   3+ downloads -> [Highest, High, Low]
+// Highest is the highest-quality row. Low is the `low` row and High is the
+// `high` row. When one is missing (or `high` is already Highest) the tier
+// degrades to a real lower supported quality instead of vanishing: Low takes
+// the lowest remaining row, High takes the best remaining row. Fallbacks
+// prefer another quality (e.g. `sd`) over the `fhd`/`highest` alias of the
+// Highest row; the alias is used only as a last resort
+// so up to three distinct downloads are still preserved.
 export function bucketDownloads(
   downloads: WatchDownloadOption[],
 ): DownloadTierOption[] {
-  const sorted = sortDownloadsByQuality(downloads)
-  if (sorted.length === 0) return []
-  const head = sorted[0] as WatchDownloadOption
-  if (sorted.length === 1) {
-    return [{ tier: "highest", label: "Highest", download: head }]
-  }
-  const tail = sorted[sorted.length - 1] as WatchDownloadOption
-  if (sorted.length === 2) {
-    return [
-      { tier: "highest", label: "Highest", download: head },
-      { tier: "low", label: "Low", download: tail },
-    ]
-  }
-  const middle = sorted[Math.floor(sorted.length / 2)] as WatchDownloadOption
-  return [
-    { tier: "highest", label: "Highest", download: head },
-    { tier: "high", label: "High", download: middle },
-    { tier: "low", label: "Low", download: tail },
+  const ranked = distinctByDocumentId(
+    rankForTiers(downloads.filter(isUserFacingDownload)),
+  )
+  const [highest, ...rest] = ranked
+  if (!highest) return []
+  const options: DownloadTierOption[] = [
+    { tier: "highest", label: "Highest", download: highest },
   ]
+  if (rest.length === 0) return options
+
+  const distinctRest = rest.filter((d) => !isHighestAlias(highest, d))
+  const aliasRest = rest.filter((d) => isHighestAlias(highest, d))
+  const lowDownload =
+    rest.find((d) => d.quality === "low") ??
+    distinctRest[distinctRest.length - 1] ??
+    (aliasRest[aliasRest.length - 1] as WatchDownloadOption)
+  const middle = [...distinctRest, ...aliasRest].filter(
+    (d) => d !== lowDownload,
+  )
+  const highDownload = middle.find((d) => d.quality === "high") ?? middle[0]
+  if (highDownload) {
+    options.push({ tier: "high", label: "High", download: highDownload })
+  }
+  options.push({ tier: "low", label: "Low", download: lowDownload })
+  return options
 }
 
 export function selectDefaultDownloadTier(

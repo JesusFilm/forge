@@ -253,4 +253,123 @@ describe("collection download options", () => {
       "Three_English_eng_720p.mp4",
     ])
   })
+
+  describe("legacy distro rows", () => {
+    const dl = (id: string, quality: string, height: number, size: number) => ({
+      documentId: id,
+      capability: `cap-${id}`,
+      height,
+      quality,
+      size,
+    })
+    // Exact production catalog (JESUS film, English) sans documentIds, which
+    // are prefixed per episode. Distro rows carry misleading sizes (distroSd is
+    // larger than `low`; distroHigh is larger than `sd` and `low`).
+    const productionDownloads = (key: string) => [
+      dl(`${key}-low`, "low", 270, 585287114),
+      dl(`${key}-high`, "high", 720, 2962849007),
+      dl(`${key}-distroHigh`, "distroHigh", 720, 2358523707),
+      dl(`${key}-fhd`, "fhd", 1080, 5521959728),
+      dl(`${key}-highest`, "highest", 1080, 5521959728),
+      dl(`${key}-sd`, "sd", 360, 658922306),
+      dl(`${key}-distroLow`, "distroLow", 240, 207141494),
+      dl(`${key}-distroSd`, "distroSd", 480, 1561752518),
+    ]
+
+    it("maps every tier to a real row per episode and queues opaque ids + capabilities", () => {
+      const options = buildCollectionDownloadOptions(episodes.slice(0, 2), [
+        {
+          documentId: "dub-1",
+          videoId: "v1",
+          downloads: productionDownloads("a"),
+        },
+        {
+          documentId: "dub-2",
+          videoId: "v2",
+          downloads: productionDownloads("b"),
+        },
+      ])
+
+      expect(options.commonTiers).toEqual(["highest", "high", "low"])
+      expect(
+        options.candidates.map((c) =>
+          Object.values(c.tiers).map((d) => d.quality),
+        ),
+      ).toEqual([
+        ["fhd", "high", "low"],
+        ["fhd", "high", "low"],
+      ])
+
+      const queueFor = (tier: "highest" | "high" | "low") =>
+        buildCollectionDownloadQueue({
+          candidates: options.candidates,
+          tier,
+          languageCode: "eng",
+          languageName: "English",
+          languageSlug: "english",
+        })
+      const high = queueFor("high")
+      expect(high.map(({ filename }) => filename)).toEqual([
+        "01_One_English_eng_720p.mp4",
+        "02_Two_English_eng_720p.mp4",
+      ])
+      expect(high[0]?.url).toContain("downloadId=a-high&")
+      expect(high[0]?.url).toContain("capability=cap-a-high")
+      expect(high[0]?.url).toContain("variantId=dub-1")
+      const low = queueFor("low")
+      expect(low[1]?.url).toContain("downloadId=b-low&")
+      expect(low[1]?.url).toContain("capability=cap-b-low")
+      for (const item of [...high, ...low, ...queueFor("highest")]) {
+        expect(item.url).not.toContain("distro")
+        expect(item.url).not.toMatch(/https?%3A|https?:\/\/(?!$)/)
+      }
+    })
+
+    it("skips an episode whose only downloads are distro rows", () => {
+      const options = buildCollectionDownloadOptions(episodes.slice(0, 2), [
+        {
+          documentId: "dub-1",
+          videoId: "v1",
+          downloads: productionDownloads("a"),
+        },
+        {
+          documentId: "dub-2",
+          videoId: "v2",
+          downloads: [
+            dl("b-distroHigh", "distroHigh", 720, 2358523707),
+            dl("b-distroLow", "distroLow", 240, 207141494),
+          ],
+        },
+      ])
+
+      expect(options.candidates.map((c) => c.documentId)).toEqual(["v1"])
+      expect(options.skipped.map((c) => c.documentId)).toEqual(["v2"])
+      expect(options.commonTiers).toEqual(["highest", "high", "low"])
+    })
+
+    it("only offers tiers every episode can satisfy after distro rows are dropped", () => {
+      const options = buildCollectionDownloadOptions(episodes.slice(0, 2), [
+        {
+          documentId: "dub-1",
+          videoId: "v1",
+          downloads: productionDownloads("a"),
+        },
+        {
+          documentId: "dub-2",
+          videoId: "v2",
+          // Four rows today, but only two are real: distros must not count
+          // toward the "three distinct downloads" budget.
+          downloads: [
+            dl("b-high", "high", 720, 2962849007),
+            dl("b-distroSd", "distroSd", 480, 1561752518),
+            dl("b-distroHigh", "distroHigh", 720, 2358523707),
+            dl("b-low", "low", 270, 585287114),
+          ],
+        },
+      ])
+
+      expect(options.commonTiers).toEqual(["highest", "low"])
+      expect(options.candidates[1]?.tiers.high).toBeUndefined()
+    })
+  })
 })
