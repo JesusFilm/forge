@@ -134,6 +134,26 @@ export function normalizeBcp47Tag(tag: string): string {
     .join("-")
 }
 
+function canonicalizeKnownBcp47Tag(tag: string): string {
+  let extensionStarted = false
+  return tag
+    .split("-")
+    .map((part, index) => {
+      const lower = part.toLowerCase()
+      if (index === 0 || extensionStarted) return lower
+      if (part.length === 1) {
+        extensionStarted = true
+        return lower
+      }
+      if (/^[a-z]{4}$/i.test(part)) {
+        return part[0]?.toUpperCase() + part.slice(1).toLowerCase()
+      }
+      if (/^[a-z]{2}$/i.test(part)) return part.toUpperCase()
+      return lower
+    })
+    .join("-")
+}
+
 type LocaleTextDirection = "ltr" | "rtl"
 
 type LocaleTextInfo = Readonly<{
@@ -446,4 +466,29 @@ export function resolveWatchLocaleIdentity(
   // shape-only match on an unknown slug all fall back to `locale`.
   const htmlLang = tag && isDeclarableHtmlLangTag(tag) ? tag : locale
   return { locale, htmlLang }
+}
+
+/**
+ * Resolve the internal [htmlLang] route segment as a known language tag.
+ * Public language slugs take precedence in `resolveWatchLocaleIdentity`, but
+ * an internal tag can also equal a public slug with a different mapping (for
+ * example `awa` is Awadhi's tag and the public slug for Awa (China)). Private-
+ * use tags such as `ble-x-Naga` also need to be accepted from the generated
+ * map even when they are not covered by the permissive tag-shape expression.
+ */
+export function resolveWatchHtmlLangIdentity(
+  htmlLangSegment: string | null | undefined,
+): WatchLocaleIdentity {
+  if (!htmlLangSegment) return resolveWatchLocaleIdentity(htmlLangSegment)
+
+  const tag = normalizeBcp47Tag(htmlLangSegment)
+  if (isDeclarableHtmlLangTag(tag)) {
+    const canonicalTag = canonicalizeKnownBcp47Tag(tag)
+    return {
+      locale: resolveUiLocale(canonicalTag) ?? DEFAULT_LOCALE,
+      htmlLang: canonicalTag,
+    }
+  }
+
+  return resolveWatchLocaleIdentity(htmlLangSegment)
 }

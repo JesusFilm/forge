@@ -7,7 +7,7 @@ import { hasUiLocale } from "@/i18n/locales"
 import { cn } from "@/lib/utils"
 import {
   DEFAULT_LOCALE,
-  resolveWatchLocaleIdentity,
+  resolveWatchHtmlLangIdentity,
   textDirectionForLocale,
   type UiLocale,
 } from "@/lib/locale"
@@ -47,7 +47,7 @@ export default async function RootLayout({
 }: RootLayoutProps) {
   const { locale: rawLocale, htmlLang: rawHtmlLang } = await params
   const locale = boundedUiLocale(rawLocale)
-  const htmlLangIdentity = resolveWatchLocaleIdentity(rawHtmlLang)
+  const htmlLangIdentity = resolveWatchHtmlLangIdentity(rawHtmlLang)
   const htmlLang =
     htmlLangIdentity.locale === locale ? htmlLangIdentity.htmlLang : locale
   const textDirection = textDirectionForLocale(htmlLang)
