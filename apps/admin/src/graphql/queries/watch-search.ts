@@ -453,12 +453,12 @@ builder.queryFields((t) => ({
       if (!service) throw new TypesenseWatchSearchUnavailableError()
       let response: WatchSearchResponse
       try {
-        response =
-          input.mode === "modern"
-            ? await service.search(input)
-            : await ctx.services.watchSearch!.search(input, {
-                hardTimeoutMs: WATCH_SEARCH_HARD_TIMEOUT_MS,
-              })
+        // Both primaries share one request-start-derived deadline. Shadow,
+        // offline evaluation, and agent callers reach the services directly
+        // and stay unbounded.
+        response = await service.search(input, {
+          hardTimeoutMs: WATCH_SEARCH_HARD_TIMEOUT_MS,
+        })
       } catch (error) {
         if (!(error instanceof WatchSearchTimeoutError)) throw error
         throw new GraphQLError("Watch search timed out", {

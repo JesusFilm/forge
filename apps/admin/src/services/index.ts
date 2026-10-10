@@ -35,6 +35,8 @@ import {
 import { resolveCurrentWatchSearchTranscriptProjectionWithFallback } from "@/services/typesense-watch-search-current-transcript-projection"
 import {
   createTypesenseWatchSearchService,
+  searchResolvedTypesenseWatchSearch,
+  TYPESENSE_WATCH_SEARCH_REQUEST_TIMEOUT_MS,
   TypesenseWatchSearchService,
 } from "@/services/typesense-watch-search.service"
 import { WatchSettingService } from "@/services/watch-setting.service"
@@ -95,7 +97,7 @@ function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
         const typesense = new TypesenseClient({
           host,
           apiKey,
-          timeoutMs: 2_000,
+          timeoutMs: TYPESENSE_WATCH_SEARCH_REQUEST_TIMEOUT_MS,
         })
         const generations = new TypesenseWatchSearchCandidateGenerationService(
           prisma,
@@ -128,9 +130,8 @@ function createServingTypesenseWatchSearchService(prisma: PrismaClient) {
   return {
     getLexicalCollection: async () =>
       (await resolveService()).getLexicalCollection(),
-    search: async (
-      ...args: Parameters<TypesenseWatchSearchService["search"]>
-    ) => (await resolveService()).search(...args),
+    search: (...args: Parameters<TypesenseWatchSearchService["search"]>) =>
+      searchResolvedTypesenseWatchSearch(resolveService, ...args),
   }
 }
 
