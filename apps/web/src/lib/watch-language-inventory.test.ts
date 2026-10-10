@@ -223,6 +223,38 @@ describe("resolveWatchLanguageSwitcherOptions", () => {
     }
   })
 
+  it("declares nativeNameLang only for a proven own-language entry (FGE-50)", async () => {
+    queryMock.mockResolvedValue({
+      data: {
+        languages: [
+          {
+            slug: "russian",
+            bcp47: "ru",
+            name: { de: "Russisch", en: "Russian", ru: "Русский" },
+          },
+          // Label via the legacy `native` key: shown, never declared.
+          {
+            slug: "french",
+            bcp47: "fr",
+            name: { en: "French", native: "Français" },
+          },
+          { slug: "english", bcp47: "en", name: { en: "English" } },
+        ],
+      },
+    })
+
+    const options = await resolveWatchLanguageSwitcherOptions("english")
+    const bySlug = new Map(options.map((option) => [option.slug, option]))
+
+    expect(bySlug.get("russian")).toMatchObject({
+      nativeName: "Русский",
+      nativeNameLang: "ru",
+    })
+    expect(bySlug.get("french")?.nativeName).toBe("Français")
+    expect(bySlug.get("french")).not.toHaveProperty("nativeNameLang")
+    expect(bySlug.get("english")).not.toHaveProperty("nativeNameLang")
+  })
+
   it("degrades to the current language when Admin is unreachable", async () => {
     // The /whats-new page is otherwise data-free and statically rendered.
     // A throwing switcher fetch must not take the whole page down with it.

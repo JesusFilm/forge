@@ -191,6 +191,9 @@ export function GlobalLanguagePickerModal({
         searchAliasSlug: option.aliasOwnerSlug,
         name: option.englishName,
         nativeName: option.nativeName,
+        // Verified by the search provider; absent for guessed/unproven labels.
+        nativeNameLang: option.nativeNameLang,
+        bcp47: option.bcp47,
       })),
     [options],
   )

@@ -106,13 +106,23 @@ export function LanguagePickerModal({
       variants
         .filter(isPlayableLanguageVariant)
         .map((v) => {
-          const display = deriveLanguageDisplay(
-            v.language.slug,
-            v.language.name,
-          )
+          const display =
+            v.language.nameLang === "en" && v.language.name
+              ? {
+                  slug: v.language.slug,
+                  name: v.language.name,
+                  nativeName: null,
+                }
+              : deriveLanguageDisplay(v.language.slug, v.language.name)
           return {
             ...display,
+            ...(v.language.nameLang ? { nameLang: v.language.nameLang } : {}),
             nativeName: display.nativeName ?? v.language.nativeName ?? null,
+            // `display.nativeName` is a slug heuristic, never declared; only
+            // the source-selected own-language name carries a verified tag.
+            nativeNameLang: display.nativeName
+              ? null
+              : (v.language.nativeNameLang ?? null),
             bcp47: v.language.bcp47 ?? null,
           }
         })
@@ -230,8 +240,12 @@ export function LanguagePickerModal({
     () =>
       subtitles
         .map((s) => ({
-          ...deriveLanguageDisplay(s.language.slug, s.language.name),
+          ...(s.language.nameLang === "en"
+            ? { slug: s.language.slug, name: s.language.name, nativeName: null }
+            : deriveLanguageDisplay(s.language.slug, s.language.name)),
+          ...(s.language.nameLang ? { nameLang: s.language.nameLang } : {}),
           nativeName: s.language.nativeName ?? null,
+          nativeNameLang: s.language.nativeNameLang ?? null,
           bcp47: s.language.bcp47 ?? null,
         }))
         .sort((a, b) => a.name.localeCompare(b.name)),
@@ -268,10 +282,16 @@ export function LanguagePickerModal({
       return {
         slug: currentLanguageSlug,
         name: currentLanguageDisplay.name,
+        ...(currentLanguageOption?.nameLang
+          ? { nameLang: currentLanguageOption.nameLang }
+          : {}),
         nativeName:
           currentLanguageOption?.nativeName ??
           currentLanguageDisplay.nativeName ??
           null,
+        nativeNameLang: currentLanguageOption?.nativeName
+          ? (currentLanguageOption.nativeNameLang ?? null)
+          : null,
         bcp47: currentLanguageOption?.bcp47 ?? null,
         disabled: true,
         chipLabel: t("notAvailable"),
