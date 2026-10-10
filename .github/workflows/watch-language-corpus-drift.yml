@@ -45,7 +45,7 @@ jobs:
           # push an empty commit or close/reopen the PR to start CI.
           token: ${{ secrets.WATCH_CORPUS_REFRESH_TOKEN || github.token }}
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
