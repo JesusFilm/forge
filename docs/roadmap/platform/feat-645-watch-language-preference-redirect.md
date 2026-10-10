@@ -55,3 +55,20 @@ English even when a visitor has a saved Watch language or sends a supported
 - Focused proxy tests cover cookie precedence, Accept-Language redirects,
   query preservation, `Vary`, cache policy, and existing localized routes.
 - Web typecheck, focused lint, and formatting checks pass.
+
+## Production Routing Verification (2026-10-10)
+
+- The exact `/watch` basePath root must have its own `/` proxy matcher; the
+  generic exclusion matcher requires a slash and otherwise skips the root.
+- `src/proxy-matcher.test.ts` exercises Next's compiled basePath matcher;
+  removing the root matcher fails the regression. `e2e/watch-entry-language.spec.ts`
+  checks actual Next HTTP redirects, cookie precedence, query preservation,
+  private redirect caching, and explicit English controls.
+- Production-build HTTP/browser checks confirmed Spanish and Arabic entry
+  redirects, explicit English preference and deep-URL isolation. Default root
+  rendering does not wait for the route manifest and retains the existing ISR
+  page/cache policy.
+- Next overwrites the proxy's `Vary` on default English ISR `200` responses.
+  Preference redirects retain `Vary: Accept-Language, Cookie` and private
+  caching. Current Cloudflare Watch HTML is `DYNAMIC`; any future shared HTML
+  cache rule must preserve entry negotiation before serving cached responses.

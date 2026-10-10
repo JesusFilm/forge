@@ -105,10 +105,9 @@ export const nextConfig = {
   async rewrites() {
     return {
       beforeFiles: [
-        // Next does not run proxy() for the exact basePath root in dev/prod
-        // routing, so /watch needs a config-level internal rewrite to reach
-        // the static locale tree. Visible /watch/en/en is still guarded by
-        // proxy.ts's direct-prefix policy.
+        // Keep the default static root renderer as a routing fallback. The
+        // explicit root proxy matcher negotiates entry language first.
+        // Visible /watch/en/en remains guarded by the direct-prefix policy.
         { source: "/", destination: "/en/en" },
       ],
     }

@@ -913,7 +913,9 @@ export async function proxy(request: ProxyRequest): Promise<NextResponse> {
     return buildRedirect(url, canonical.status)
   }
 
-  if (pathname === "/history") {
+  // Default root rendering has no manifest admission requirement. Keep it
+  // independent of Admin latency, as the config-level root rewrite was.
+  if (pathname === "/" || pathname === "/history") {
     return applyLanguagePreferenceHeaders(
       rewriteToInternal(request, {
         kind: "rewrite",
@@ -968,5 +970,8 @@ export const config = {
     // canonicalize/rewrite pipeline. Demo surfaces live in a route group and
     // keep public paths such as /demo-search without the watch locale rewrite.
     "/((?!(?:api|assets|images|fonts|sitemap|demo-search|demo-recommendations|language-globe|\\.well-known)(?:/|$)|_next/(?:static|image|data|webpack-hmr)(?:/|$)|favicon\\.ico$|manifest\\.webmanifest$|robots\\.txt$|sitemap(?:\\.xml)?$).*)",
+    // The generic matcher requires a slash after basePath. Explicitly admit
+    // bare /watch so entry-language negotiation runs before static rewrites.
+    "/",
   ],
 }

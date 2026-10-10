@@ -436,6 +436,19 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
     expect(response.headers.get("cache-control")).toContain("private")
   })
 
+  it("keeps default homepage rendering independent of manifest availability", async () => {
+    const manifestSource = vi.fn(async () => {
+      throw new Error("manifest unavailable")
+    })
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(manifestSource)
+
+    const response = await proxy(makeRequest("/", { acceptLanguage: "en" }))
+
+    expect(rewritePath(response)).toBe("/en/en")
+    expect(manifestSource).not.toHaveBeenCalled()
+  })
+
   it("keeps the English default when the saved cookie selects English", async () => {
     const response = await proxy(
       makeRequest("/", {
