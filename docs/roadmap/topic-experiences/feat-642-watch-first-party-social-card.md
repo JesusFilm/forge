@@ -3,7 +3,7 @@ id: "feat-642"
 title: "Use a first-party Watch social card"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-08"
 duration: 1
 depends_on: []
