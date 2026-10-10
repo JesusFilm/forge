@@ -199,7 +199,7 @@ export function HeroPlayerControls({
   const playLabel = playing ? t("pause") : t("play")
   const muteLabel = muted || volume === 0 ? t("unmute") : t("mute")
   const audioLanguageLabel = languageCode
-    ? `${t("changeAudioLanguage")}: ${languageName || languageCode}`
+    ? `${t("changeAudioLanguage")}: ${languageName && languageName !== languageCode ? `${languageName} (${languageCode})` : languageCode}`
     : t("changeAudioLanguage")
   const fullscreenLabel = isFullscreen
     ? t("exitFullscreen")

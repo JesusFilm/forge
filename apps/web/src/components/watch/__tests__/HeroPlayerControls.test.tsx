@@ -180,10 +180,10 @@ describe("HeroPlayerControls — in-chrome language controls", () => {
         ?.textContent,
     ).toBe("PT-MZ")
     expect(audioButton?.getAttribute("aria-label")).toBe(
-      "Change audio language: Portuguese, Mozambique",
+      "Change audio language: Portuguese, Mozambique (PT-MZ)",
     )
     expect(audioButton?.querySelector('[role="tooltip"]')?.textContent).toBe(
-      "Change audio language: Portuguese, Mozambique",
+      "Change audio language: Portuguese, Mozambique (PT-MZ)",
     )
     expect(audioButton?.querySelector("svg")?.getAttribute("class")).toContain(
       "h-6",

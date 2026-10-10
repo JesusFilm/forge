@@ -746,9 +746,14 @@ export function FloatingSearchProvider({
           ? currentLanguageName
           : headerLanguageCode))
       : currentLanguageName
+  const globalLanguageDescription = headerLanguageCode
+    ? globalLanguageName && globalLanguageName !== headerLanguageCode
+      ? `${globalLanguageName} (${headerLanguageCode})`
+      : headerLanguageCode
+    : null
   const globalLanguageLabel = globalLanguageLoadFailed
-    ? `${t("changeAudioLanguage")}${globalLanguageName ? `: ${globalLanguageName}` : ""}. ${searchT("connectionHint")}`
-    : `${t("changeAudioLanguage")}${globalLanguageName ? `: ${globalLanguageName}` : ""}`
+    ? `${t("changeAudioLanguage")}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}. ${searchT("connectionHint")}`
+    : `${t("changeAudioLanguage")}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}`
   const headerHoverZoneActive =
     !modalChromeHidden &&
     (playerPlayingWithSound || playerChromeOpacity < 1 || !playerChromeVisible)

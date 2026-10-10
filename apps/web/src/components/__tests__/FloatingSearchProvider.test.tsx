@@ -1633,6 +1633,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
           '[data-testid="floating-header-language-code"]',
         )?.textContent,
       ).toBe(expectedCode)
+      expect(languageButtons[0]?.getAttribute("aria-label")).toContain(
+        expectedCode,
+      )
     },
   )
 
@@ -1706,7 +1709,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       )?.textContent,
     ).toBe("PT-MZ")
     expect(languageButton?.getAttribute("aria-label")).toBe(
-      "Change audio language: Portuguese, Mozambique",
+      "Change audio language: Portuguese, Mozambique (PT-MZ)",
     )
   })
 
@@ -1729,7 +1732,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       '[data-testid="floating-header-language-button"]',
     ) as HTMLButtonElement
     expect(languageButton.getAttribute("aria-label")).toBe(
-      "Change audio language: English",
+      "Change audio language: English (EN)",
     )
     expect(languageButton.className).toContain("focus-visible:ring-2")
 
@@ -1777,7 +1780,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       )?.textContent,
     ).toBe("PT-MZ")
     expect(languageButton?.getAttribute("aria-label")).toBe(
-      "Change audio language: Portuguese Mozambique",
+      "Change audio language: Portuguese Mozambique (PT-MZ)",
     )
   })
 
