@@ -3,7 +3,7 @@ id: "feat-653"
 title: "Verify My Last Day and Mostly Tea Watch availability"
 owner: "vlad"
 priority: "P1"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-08"
 duration: 1
 depends_on:
@@ -78,6 +78,27 @@ support in `feat-649`.
   `https://www.jesusfilm.org/watch/%C3%A7o%C4%9Fu-%C3%A7ay-mostly-tea.html`
   still renders the native 404 page. The catalog's two published media languages
   do not establish playback availability through the current production route.
-- Keep this ticket in progress and PR #2667 in draft until #2662 reaches
-  production and Mostly Tea can be verified end to end. No production deployment
-  was performed during validation.
+  The production 404 is expected until #2662 deploys.
+
+## Local production-build acceptance — 2026-10-10 UTC
+
+- A clean `next build` + `next start` of the PR #2667 head (`3cb3e59d`, Node
+  24.19.0) served read-only production Admin data. Its application code matches
+  #2662; this PR changes only tests and docs.
+- Headless Chromium clicked the My Last Day and Mostly Tea cards on
+  Conversation Starters. Each reached
+  `/watch/conversation-starters.html/<slug>.html` with the correct title, kept
+  English, and streamed the English variant (`readyState=4`, no media error,
+  `currentTime` advancing about 8 seconds over 8 seconds of muted hero preview).
+- A T3 browser on the same build clicked "Watch now" for Mostly Tea:
+  `currentTime` advanced from 8.51 to 23.81 seconds, duration 204.67 seconds,
+  no media error.
+- On current `main` (`07d5aaf7`) the Mostly Tea card has no link and its URL
+  returns 404, which confirms the dependency on `feat-649`.
+
+## Remaining acceptance
+
+Implementation, regression coverage, and local runtime acceptance are complete.
+Production acceptance is still pending: after #2662 and #2667 deploy through the
+normal PR merge path, re-check the canonical Mostly Tea URL and its playback.
+Linear FGE-80 stays open until that production check passes.
