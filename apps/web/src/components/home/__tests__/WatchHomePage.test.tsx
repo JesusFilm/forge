@@ -35,6 +35,7 @@ import {
   type WatchPlayerChromeVisibilityDetail,
 } from "@/lib/watch-player-chrome-events"
 import {
+  WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET,
   WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS,
   WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS,
   WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS,
@@ -2326,10 +2327,38 @@ describe("WatchHomePage", () => {
     expect(currentButton.getAttribute("aria-label")).toBe("Queued Three")
     expect(document.activeElement).toBe(currentButton)
 
+    // Three -> Four: the focused circle slides into the past position and
+    // keeps focus; nothing was removed, so nothing moves it.
     await act(async () => {
       container
         .querySelector('[data-testid="watch-home-tv-video"]')
         ?.dispatchEvent(new Event("ended", { bubbles: true }))
+    })
+    expect(document.activeElement).toBe(currentButton)
+    expect(
+      currentButton.closest('[data-testid="watch-home-video-circle"]'),
+    ).toHaveProperty("dataset.offset", "-1")
+
+    // Four was the third automatic slide since the viewer picked Two, so its
+    // end spends the slide budget instead of advancing. The stop must not
+    // move focus either.
+    await act(async () => {
+      container
+        .querySelector('[data-testid="watch-home-tv-video"]')
+        ?.dispatchEvent(new Event("ended", { bubbles: true }))
+    })
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-video"]'),
+    ).toBeNull()
+    expect(document.activeElement).toBe(currentButton)
+
+    // Resuming the current slide starts a fresh session, so the next end
+    // advances again -- and that advance removes the focused circle, which is
+    // the recovery this test exists for.
+    await act(async () => {
+      container
+        .querySelector('button[aria-label="Show Queued Four"]')
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
     })
     await act(async () => {
       container
@@ -2341,8 +2370,321 @@ describe("WatchHomePage", () => {
       '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
     ) as HTMLButtonElement
     expect(repeatedlyRecoveredCurrentButton.getAttribute("aria-label")).toBe(
-      "Queued Four",
+      "Queued Five",
     )
+    expect(document.activeElement).toBe(repeatedlyRecoveredCurrentButton)
+  })
+
+  describe("autoplay session budget", () => {
+    const numberWords = ["One", "Two", "Three", "Four", "Five"]
+
+    function makeBudgetModel(durationSeconds: number | null) {
+      return makeModel({
+        carousel: {
+          pools: [
+            {
+              id: "pool-a",
+              collectionIds: ["pool-a"],
+              videos: numberWords.map((word, index) =>
+                makeCarouselSlide({
+                  id: `queued-${index + 1}`,
+                  title: `Queued ${word}`,
+                  href: `/queued-${index + 1}.html/english.html`,
+                  src: `https://stream.example/queued-${index + 1}.m3u8`,
+                  subtitleVttSrc: `https://cdn.example/queued-${index + 1}.vtt`,
+                  subtitleLanguageBcp47: "en",
+                  durationSeconds,
+                }),
+              ),
+            },
+          ],
+        },
+      })
+    }
+
+    function currentVideo() {
+      return container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement | null
+    }
+
+    function carouselLabel() {
+      return container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label")
+    }
+
+    function currentCircleButton() {
+      return container.querySelector(
+        '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
+      ) as HTMLButtonElement
+    }
+
+    function ring() {
+      return container.querySelector(
+        '[data-testid="watch-home-video-timeline"][data-size="large"] .watch-home-progress-ring',
+      ) as SVGCircleElement
+    }
+
+    function setMediaTime(video: HTMLVideoElement, seconds: number) {
+      Object.defineProperty(video, "currentTime", {
+        configurable: true,
+        writable: true,
+        value: seconds,
+      })
+    }
+
+    // Brings the mounted video through canplay and the poster hold, so it is
+    // playing the way a real one would be. Returns the play() spy.
+    async function startPlaying(video: HTMLVideoElement) {
+      const play = vi.fn(() => Promise.resolve())
+      video.play = play as unknown as HTMLVideoElement["play"]
+      await act(async () => {
+        video.dispatchEvent(new Event("canplay", { bubbles: true }))
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(1_500)
+      })
+      await act(async () => {
+        video.dispatchEvent(new Event("playing", { bubbles: true }))
+      })
+      return play
+    }
+
+    // Real playback: the media clock and the wall clock move together, with
+    // a `timeupdate` per second.
+    async function play(video: HTMLVideoElement, seconds: number) {
+      for (let step = 0; step < seconds; step++) {
+        await act(async () => {
+          vi.advanceTimersByTime(1_000)
+          setMediaTime(video, video.currentTime + 1)
+          video.dispatchEvent(new Event("timeupdate", { bubbles: true }))
+        })
+      }
+    }
+
+    async function renderBudgetPage(
+      durationSeconds: number | null,
+      { strict = false }: { strict?: boolean } = {},
+    ) {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      const page = <WatchHomePage model={makeBudgetModel(durationSeconds)} />
+      await act(async () => {
+        root.render(strict ? <StrictMode>{page}</StrictMode> : page)
+      })
+      const video = currentVideo()!
+      setMediaTime(video, 0)
+      return video
+    }
+
+    function expectStopped(title: string) {
+      expect(currentVideo()).toBeNull()
+      expect(carouselLabel()).toBe(title)
+      // The poster and the timeline stay; the ring freezes where it stopped
+      // and no loading state is left behind.
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-visual-layer"]'),
+      ).not.toBeNull()
+      expect(
+        container.querySelector('[data-testid="watch-home-video-timeline"]'),
+      ).not.toBeNull()
+      expect(ring().dataset.paused).toBe("true")
+      expect(
+        container.querySelector('[data-testid="watch-home-progress-loading"]'),
+      ).toBeNull()
+      expect(currentCircleButton().getAttribute("aria-label")).toBe(
+        `Show ${title}`,
+      )
+      expect(currentCircleButton().getAttribute("aria-disabled")).toBeNull()
+    }
+
+    // Ends `turns` automatic turns through the media's own `ended` event.
+    async function endTurns(turns: number) {
+      for (let turn = 0; turn < turns; turn++) {
+        await act(async () => {
+          currentVideo()!.dispatchEvent(new Event("ended", { bubbles: true }))
+        })
+      }
+    }
+
+    it("pins the session budget to the ticket's 3 slides", () => {
+      expect(WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET).toBe(3)
+    })
+
+    it("stops when the third automatic slide's turn ends", async () => {
+      vi.useFakeTimers()
+      try {
+        await renderBudgetPage(10)
+        const titles = [carouselLabel()]
+        for (let turn = 1; turn < WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET; turn++) {
+          await endTurns(1)
+          titles.push(carouselLabel())
+        }
+        expect(new Set(titles).size).toBe(WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET)
+        expect(currentVideo()).not.toBeNull()
+
+        await endTurns(1)
+        expectStopped(titles.at(-1)!)
+
+        // Every pending wait went with the video: well past the 15 s backstop
+        // and the 12 s dead-stream ceiling, the hero is still parked.
+        await act(async () => {
+          vi.advanceTimersByTime(60_000)
+        })
+        expectStopped(titles.at(-1)!)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // Play-to-end (#2287, R2) is a settled decision: the budget counts turns
+    // and never cuts the slide that spends it.
+    it("lets the last budgeted slide play to its natural end", async () => {
+      vi.useFakeTimers()
+      try {
+        await renderBudgetPage(600)
+        await endTurns(WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET - 1)
+        const video = currentVideo()!
+        const title = carouselLabel()
+        await startPlaying(video)
+        await play(video, 300)
+        expect(currentVideo()).toBe(video)
+        expect(carouselLabel()).toBe(title)
+
+        await act(async () => {
+          video.dispatchEvent(new Event("ended", { bubbles: true }))
+        })
+        expectStopped(title!)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("counts a backstop turn toward the budget", async () => {
+      vi.useFakeTimers()
+      try {
+        await renderBudgetPage(10)
+        await endTurns(WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET - 1)
+        const video = currentVideo()!
+        const title = carouselLabel()!
+        await startPlaying(video)
+
+        // `ended` never arrives and the media clock never moves.
+        await act(async () => {
+          vi.advanceTimersByTime(
+            (10 + WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS) * 1000 + 1,
+          )
+        })
+        expectStopped(title)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // The dead-stream ceiling spends a turn like `ended` does, and the stop
+    // must clear the buffering state it fired from.
+    it("counts a dead-stream turn and clears its loading state on stop", async () => {
+      vi.useFakeTimers()
+      try {
+        await renderBudgetPage(10)
+        await endTurns(WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET - 1)
+        const lastTitle = carouselLabel()!
+        expect(
+          container.querySelector(
+            '[data-testid="watch-home-progress-loading"]',
+          ),
+        ).not.toBeNull()
+
+        await act(async () => {
+          vi.advanceTimersByTime(WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS + 1)
+        })
+        expectStopped(lastTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // Same-slide resume: the stop unmounted the video, so the remounted one
+    // has to go through its own canplay -> poster hold -> play(). The
+    // in-place replay path would mark the media ready up front and the
+    // remounted video would never be asked to play.
+    it.each([
+      ["", false],
+      [" under StrictMode", true],
+    ])(
+      "resumes the current slide on a fresh budget%s",
+      async (_label, strict) => {
+        vi.useFakeTimers()
+        try {
+          await renderBudgetPage(10, { strict })
+          await endTurns(WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET)
+          const title = carouselLabel()!
+          expectStopped(title)
+
+          await act(async () => {
+            currentCircleButton().dispatchEvent(
+              new MouseEvent("click", { bubbles: true }),
+            )
+          })
+
+          const resumed = currentVideo()!
+          expect(resumed).not.toBeNull()
+          expect(carouselLabel()).toBe(title)
+          expect(currentCircleButton().getAttribute("aria-label")).toBe(title)
+          expect(currentCircleButton().getAttribute("aria-disabled")).toBe(
+            "true",
+          )
+          // The muted subtitle track follows the element, not the slide id.
+          expect(
+            resumed.querySelector("track[data-subtitle-track]"),
+          ).not.toBeNull()
+          // Not ready until the remounted video says so.
+          expect(resumed.className).toContain("opacity-0")
+          expect(ring().dataset.paused).toBe("true")
+
+          setMediaTime(resumed, 0)
+          const resumedPlay = await startPlaying(resumed)
+          expect(resumedPlay).toHaveBeenCalledTimes(1)
+          expect(resumed.className).toContain("opacity-100")
+          expect(ring().dataset.paused).toBe("false")
+
+          // A fresh session: the resumed slide is the first of three again.
+          await endTurns(WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET - 1)
+          expect(currentVideo()).not.toBeNull()
+          expect(carouselLabel()).not.toBe(title)
+          await endTurns(1)
+          expect(currentVideo()).toBeNull()
+        } finally {
+          vi.useRealTimers()
+        }
+      },
+    )
+
+    it("resumes on a different slide with a fresh budget", async () => {
+      vi.useFakeTimers()
+      try {
+        await renderBudgetPage(10)
+        await endTurns(WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET)
+        expect(currentVideo()).toBeNull()
+
+        const next = container.querySelector(
+          '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="1"] button',
+        ) as HTMLButtonElement
+        const nextTitle = next.getAttribute("aria-label")!.replace("Show ", "")
+        await act(async () => {
+          next.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+        })
+
+        expect(carouselLabel()).toBe(nextTitle)
+        expect(currentVideo()).not.toBeNull()
+        await endTurns(WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET - 1)
+        expect(currentVideo()).not.toBeNull()
+        await endTurns(1)
+        expect(currentVideo()).toBeNull()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 
   it("holds the playback ring and shows a loader until the hero video loads", async () => {

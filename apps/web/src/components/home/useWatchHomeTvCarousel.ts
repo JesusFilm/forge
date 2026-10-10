@@ -62,7 +62,25 @@ export const WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS = 120
  */
 export const WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS = 12_000
 export const WATCH_HOME_TV_TIMELINE_FUTURE_COUNT = 3
+
+/**
+ * The autoplay session budget (FGE-144 / W-007: "about 3 slides or 90 s").
+ * Autoplay stops when the turn of the third automatically shown slide ends.
+ * The slide a session opens on counts as the first, and every way a turn ends
+ * counts -- `ended`, the backstop, the dead-stream ceiling, the portrait skip.
+ * A slide is never cut short to meet the budget: slides play to their natural
+ * end (#2287, R2), so the stop always lands between turns.
+ *
+ * On stop the hero unmounts its video (`<mux-video>` unloads its stream on
+ * disconnect), keeps the slide's poster and the timeline, and freezes the
+ * ring. No timer armed before the stop can advance the hero afterwards.
+ *
+ * Resume rule: any explicit timeline selection -- including the current
+ * circle, which becomes selectable once autoplay has stopped -- starts a new
+ * session: the budget resets and autoplay resumes from that slide.
+ */
 export const WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET = 3
+
 export function shouldStopWatchHomeTvAutoplay(automaticSlidesSeen: number) {
   return automaticSlidesSeen >= WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET
 }
@@ -302,7 +320,14 @@ export function useWatchHomeTvCarousel(
   // indistinguishable and a stale timer from the first could advance the
   // second.
   const turnTokenRef = useRef(0)
+  // The autoplay session budget (see WATCH_HOME_TV_AUTOPLAY_SLIDE_BUDGET).
+  // Refs, not state, and no cleanup mutates them, so a StrictMode remount
+  // cannot poison them. `autoplayStoppedRef` mirrors the state flag
+  // synchronously: `selectIndex` has to know whether it is resuming from a
+  // stop before the state update lands, and an `ended` racing the stop's
+  // commit must not stop twice.
   const automaticSlidesSeenRef = useRef(1)
+  const autoplayStoppedRef = useRef(false)
   // The media position the backstop last saw. Re-arming requires the media
   // clock to have MOVED since then, so a wedged stream that never emits
   // `waiting` still loses its turn instead of re-arming forever.
@@ -490,10 +515,27 @@ export function useWatchHomeTvCarousel(
     }
   }, [])
 
+  // Ends the autoplay session. The caller's render then unmounts the video --
+  // `<mux-video>` unloads its stream on disconnect -- leaving the poster and
+  // the timeline. Every pending wait is cleared and the turn token moves on,
+  // so no timer armed before the stop can advance the hero afterwards.
+  const stopAutoplay = useCallback(() => {
+    if (autoplayStoppedRef.current) return
+    autoplayStoppedRef.current = true
+    clearSlideAdvanceTimeout()
+    clearVideoPosterHold()
+    clearMediaWaitTimeout()
+    turnTokenRef.current += 1
+    setIsBufferingMedia(false)
+    setIsMediaPaused(false)
+    setAutoplayStopped(true)
+  }, [clearMediaWaitTimeout, clearSlideAdvanceTimeout, clearVideoPosterHold])
+
   const selectIndex = useCallback(
     (index: number, userInitiated = true) => {
       if (index < 0 || index >= displaySlides.length) return
       const nextSlide = displaySlides[index] ?? null
+      const resumingFromStop = userInitiated && autoplayStoppedRef.current
       if (
         activeSlide &&
         nextSlide?.id !== activeSlide.id &&
@@ -530,15 +572,25 @@ export function useWatchHomeTvCarousel(
           : { slideId: nextSlide?.id ?? null, seconds: null },
       )
       setActiveSlideId(nextSlide?.id ?? null)
+      // Resume rule: an explicit selection starts a new autoplay session.
       if (userInitiated) {
-        setAutoplayStopped(false)
+        autoplayStoppedRef.current = false
         automaticSlidesSeenRef.current = 1
+        setAutoplayStopped(false)
       }
 
-      // Re-selecting the only playable slide cannot remount `<MuxVideo>`, so
-      // no fresh `canplay` or `ended` would ever arrive. Replay it by hand and
-      // restart the ring, rather than leaving the hero on a frozen last frame.
-      if (isSameSlide) {
+      if (isSameSlide && resumingFromStop) {
+        // The stop unmounted the video, so resuming the SAME slide mounts a
+        // fresh element that emits its own `canplay`. The in-place replay
+        // below would mark the media ready with no element to play, and
+        // `handleCanPlay` would then skip `play()` and leave the remounted
+        // video parked on its first frame. Only the ring needs restarting.
+        setRestartCount((count) => count + 1)
+      } else if (isSameSlide) {
+        // Re-selecting the only playable slide cannot remount `<MuxVideo>`, so
+        // no fresh `canplay` or `ended` would ever arrive. Replay it by hand
+        // and restart the ring, rather than leaving the hero on a frozen last
+        // frame.
         setRestartCount((count) => count + 1)
         const video = videoRef.current
         setIsBufferingMedia(false)
@@ -578,14 +630,9 @@ export function useWatchHomeTvCarousel(
   )
 
   const advance = useCallback(() => {
-    if (autoplayStopped) return
+    if (autoplayStoppedRef.current) return
     if (shouldStopWatchHomeTvAutoplay(automaticSlidesSeenRef.current)) {
-      clearSlideAdvanceTimeout()
-      clearVideoPosterHold()
-      clearMediaWaitTimeout()
-      turnTokenRef.current += 1
-      setIsBufferingMedia(false)
-      setAutoplayStopped(true)
+      stopAutoplay()
       return
     }
     automaticSlidesSeenRef.current += 1
@@ -595,16 +642,7 @@ export function useWatchHomeTvCarousel(
         : 0
       : nextUnplayedWatchHomeTvCarouselIndex(safeActiveIndex, displaySlides)
     selectIndex(nextIndex, false)
-  }, [
-    autoplayStopped,
-    clearMediaWaitTimeout,
-    clearSlideAdvanceTimeout,
-    clearVideoPosterHold,
-    displaySlides,
-    isSequenced,
-    safeActiveIndex,
-    selectIndex,
-  ])
+  }, [displaySlides, isSequenced, safeActiveIndex, selectIndex, stopAutoplay])
 
   useEffect(() => {
     advanceRef.current = advance

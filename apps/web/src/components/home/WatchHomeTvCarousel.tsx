@@ -277,6 +277,7 @@ function WatchHomeTvMedia({
 
   useWatchHomeMutedSubtitles({
     activeSlideId: activeSlide.id,
+    autoplayStopped,
     onCueTextChange: onSubtitleCueTextChange,
     subtitleLanguageBcp47,
     subtitleVttSrc,
@@ -411,12 +412,19 @@ function WatchHomeTvMedia({
 
 function useWatchHomeMutedSubtitles({
   activeSlideId,
+  autoplayStopped,
   onCueTextChange,
   subtitleLanguageBcp47,
   subtitleVttSrc,
   videoRef,
 }: {
   activeSlideId: string
+  /**
+   * The autoplay stop unmounts the video and a resume mounts a new one under
+   * the SAME slide id, so the track has to follow the element: drop the last
+   * cue when the video goes, attach a fresh track when it comes back.
+   */
+  autoplayStopped: boolean
   onCueTextChange: (cueText: string | null) => void
   subtitleLanguageBcp47: string | null
   subtitleVttSrc: string | null
@@ -484,6 +492,7 @@ function useWatchHomeMutedSubtitles({
     }
   }, [
     activeSlideId,
+    autoplayStopped,
     onCueTextChange,
     subtitleLanguageBcp47,
     subtitleVttSrc,
@@ -541,6 +550,7 @@ function WatchHomeTvOverlay({
   activeIndex,
   activeSlide,
   advanceDurationSeconds,
+  autoplayStopped,
   isBuffering,
   isTurnHeld,
   isMuted,
@@ -556,6 +566,7 @@ function WatchHomeTvOverlay({
   activeIndex: number
   activeSlide: WatchHomeTvCarouselSlide
   advanceDurationSeconds: number
+  autoplayStopped: boolean
   isBuffering: boolean
   isTurnHeld: boolean
   isMuted: boolean
@@ -644,9 +655,10 @@ function WatchHomeTvOverlay({
                 activeIndex={activeIndex}
                 advanceDurationSeconds={advanceDurationSeconds}
                 animationKey={ringAnimationKey}
+                autoplayStopped={autoplayStopped}
                 buffering={isBuffering}
                 onSelectSlide={onSelectSlide}
-                paused={isTurnHeld}
+                paused={isTurnHeld || autoplayStopped}
                 size="compact"
                 slides={slides}
               />
@@ -659,9 +671,10 @@ function WatchHomeTvOverlay({
           activeIndex={activeIndex}
           advanceDurationSeconds={advanceDurationSeconds}
           animationKey={ringAnimationKey}
+          autoplayStopped={autoplayStopped}
           buffering={isBuffering}
           onSelectSlide={onSelectSlide}
-          paused={isTurnHeld}
+          paused={isTurnHeld || autoplayStopped}
           size="large"
           slides={slides}
         />
@@ -883,6 +896,7 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
   activeIndex,
   advanceDurationSeconds,
   animationKey,
+  autoplayStopped,
   buffering,
   onSelectSlide,
   paused,
@@ -892,6 +906,11 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
   activeIndex: number
   advanceDurationSeconds: number
   animationKey: string
+  /**
+   * Autoplay spent its session budget. The current circle then becomes the
+   * way to resume the slide on screen, so it is enabled like any other.
+   */
+  autoplayStopped: boolean
   buffering: boolean
   onSelectSlide: (slideId: string) => void
   paused: boolean
@@ -988,6 +1007,7 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
     >
       {items.map(({ offset, slide }) => {
         const isCurrent = offset === 0
+        const isSelectable = !isCurrent || autoplayStopped
         const thumbnailUrl = slide.thumbnailUrl || slide.posterUrl
 
         return (
@@ -1012,9 +1032,11 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
               variant="ghost"
               size="icon"
               aria-current={isCurrent ? "true" : undefined}
-              aria-disabled={isCurrent ? "true" : undefined}
+              aria-disabled={isSelectable ? undefined : "true"}
               aria-label={
-                isCurrent ? slide.title : t("showVideo", { title: slide.title })
+                isSelectable
+                  ? t("showVideo", { title: slide.title })
+                  : slide.title
               }
               onBlur={() => {
                 focusedSlideIdRef.current = null
@@ -1023,7 +1045,7 @@ const WatchHomeVideoTimeline = memo(function WatchHomeVideoTimeline({
                 focusedSlideIdRef.current = slide.id
               }}
               onClick={() => {
-                if (!isCurrent) onSelectSlide(slide.id)
+                if (isSelectable) onSelectSlide(slide.id)
               }}
               className={cn(
                 buttonClassName,
@@ -1192,6 +1214,7 @@ export function WatchHomeTvCarousel({
           activeIndex={activeIndex}
           activeSlide={activeSlide}
           advanceDurationSeconds={advanceDurationSeconds}
+          autoplayStopped={autoplayStopped}
           isBuffering={isBuffering}
           isTurnHeld={isTurnHeld}
           isMuted={isMuted}
