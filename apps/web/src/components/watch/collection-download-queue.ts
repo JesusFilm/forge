@@ -6,6 +6,7 @@ import {
 
 export type CollectionDownloadProgress = {
   active: CollectionDownloadQueueItem | null
+  requested: CollectionDownloadQueueItem[]
   completed: CollectionDownloadQueueItem[]
   failed: Array<{ item: CollectionDownloadQueueItem; reason: string }>
   total: number
@@ -205,6 +206,7 @@ export async function runCollectionDownloadQueue(input: {
   onProgress?: (progress: CollectionDownloadProgress) => void
 }): Promise<CollectionDownloadQueueResult> {
   const completed: CollectionDownloadQueueItem[] = []
+  const requested: CollectionDownloadQueueItem[] = []
   const failed: Array<{ item: CollectionDownloadQueueItem; reason: string }> =
     []
   const delay = input.delay ?? defaultDelay
@@ -221,6 +223,7 @@ export async function runCollectionDownloadQueue(input: {
   const report = (active: CollectionDownloadQueueItem | null) =>
     input.onProgress?.({
       active,
+      requested: [...requested],
       completed: [...completed],
       failed: [...failed],
       total: input.items.length,
@@ -253,14 +256,14 @@ export async function runCollectionDownloadQueue(input: {
           await prepareDownload(item, input.signal)
           triggerDownload(item)
           browserHandoffCompleted = true
-          completed.push(item)
+          requested.push(item)
           await delay(delayMs, input.signal)
         }
       } else {
         await prepareDownload(item, input.signal)
         triggerDownload(item)
         browserHandoffCompleted = true
-        completed.push(item)
+        requested.push(item)
         await delay(delayMs, input.signal)
       }
     } catch (error) {
@@ -302,6 +305,7 @@ export async function runCollectionDownloadQueue(input: {
   report(null)
   return {
     active: null,
+    requested,
     authRequired,
     canceled,
     completed,

@@ -734,7 +734,7 @@
     "chooseFolder": "Choose download folder",
     "folderSelected": "Save to {name}",
     "folderError": "The download folder could not be opened.",
-    "browserFallback": "Your browser will save each file using its normal download settings. It may ask you to allow multiple downloads.",
+    "browserFallback": "Your browser manages downloads using its normal settings. It may ask you to allow multiple downloads.",
     "sessionError": "Unable to check your session. Please try again.",
     "downloading": "Downloading {title}",
     "progress": "{completed} of {total}",

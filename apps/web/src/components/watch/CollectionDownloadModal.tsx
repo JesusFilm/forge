@@ -61,16 +61,17 @@ type StoredCollectionDownloadItem = Pick<
 type StoredCollectionDownloadResume = {
   canceled: boolean
   completed: StoredCollectionDownloadItem[]
+  requested: StoredCollectionDownloadItem[]
   deliveryMode: CollectionDownloadQueueResult["deliveryMode"]
   languageSlug: string
   pending: StoredCollectionDownloadItem[]
   tier: DownloadTier
   total: number
-  version: 3
+  version: 4
 }
 
 const COLLECTION_DOWNLOAD_RESUME_KEY =
-  "forge.watch.collection-download-resume.v3"
+  "forge.watch.collection-download-resume.v4"
 const COLLECTION_THUMBNAIL_STACK_CLASSES = [
   "top-7 w-28 border-2 border-stone-950 min-[500px]:w-40 min-[900px]:top-10 min-[900px]:w-56",
   "top-6 w-[6.625rem] border border-black/70 brightness-[0.64] saturate-[0.55] min-[500px]:w-[9.5rem] min-[900px]:top-[2.1875rem] min-[900px]:w-[13.25rem]",
@@ -116,18 +117,23 @@ function readCollectionDownloadResume(
     if (!raw) return null
     const stored = JSON.parse(raw) as Partial<StoredCollectionDownloadResume>
     if (
-      stored.version !== 3 ||
+      stored.version !== 4 ||
       typeof stored.languageSlug !== "string" ||
       typeof stored.canceled !== "boolean" ||
       !["browser", "directory"].includes(stored.deliveryMode ?? "") ||
       !["highest", "high", "low"].includes(stored.tier ?? "") ||
       !Array.isArray(stored.completed) ||
       !stored.completed.every(isStoredQueueItem) ||
+      !Array.isArray(stored.requested) ||
+      !stored.requested.every(isStoredQueueItem) ||
       !Array.isArray(stored.pending) ||
       !stored.pending.every(isStoredQueueItem) ||
       typeof stored.total !== "number" ||
       !Number.isInteger(stored.total) ||
-      stored.total < stored.completed.length + stored.pending.length
+      stored.total <
+        stored.completed.length +
+          stored.requested.length +
+          stored.pending.length
     ) {
       return null
     }
@@ -151,6 +157,11 @@ function writeCollectionDownloadResume(
         id,
         title,
       })),
+      requested: result.requested.map(({ filename, id, title }) => ({
+        filename,
+        id,
+        title,
+      })),
       deliveryMode: result.deliveryMode,
       languageSlug,
       pending: result.failed.map(({ item: { filename, id, title } }) => ({
@@ -160,7 +171,7 @@ function writeCollectionDownloadResume(
       })),
       tier,
       total: result.total,
-      version: 3,
+      version: 4,
     }
     window.sessionStorage.setItem(
       collectionDownloadResumeKey(collectionSlug),
@@ -340,7 +351,9 @@ export function CollectionDownloadModal({
         authRequired: false,
         canceled: restored.canceled,
         completed: restored.completed.map(restoreItem),
-        deliveryMode: restored.deliveryMode,
+        requested: restored.requested.map(restoreItem),
+        deliveryMode:
+          restored.requested.length > 0 ? "browser" : restored.deliveryMode,
         failed: restored.pending.map((item) => ({
           item: restoreItem(item),
           reason: itemById.has(item.id) ? "retry-pending" : "unavailable",
@@ -523,11 +536,13 @@ export function CollectionDownloadModal({
       previousResult?.failed.filter(({ item }) => !freshItemIds.has(item.id)) ??
       []
     const completedBeforeRetry = previousResult?.completed ?? []
+    const requestedBeforeRetry = previousResult?.requested ?? []
     const total = previousResult?.total ?? items.length
     const mergeProgress = (
       nextProgress: CollectionDownloadProgress,
     ): CollectionDownloadProgress => ({
       ...nextProgress,
+      requested: [...requestedBeforeRetry, ...nextProgress.requested],
       completed: [...completedBeforeRetry, ...nextProgress.completed],
       total,
     })
@@ -535,6 +550,7 @@ export function CollectionDownloadModal({
     controllerRef.current = controller
     setProgress({
       active: items[0] ?? null,
+      requested: requestedBeforeRetry,
       completed: completedBeforeRetry,
       failed: [],
       total,
@@ -546,7 +562,7 @@ export function CollectionDownloadModal({
       onProgress: (nextProgress) => setProgress(mergeProgress(nextProgress)),
     })
     const completedRetryIds = new Set(
-      nextResult.completed.map((item) => item.id),
+      [...nextResult.completed, ...nextResult.requested].map((item) => item.id),
     )
     const retryFailureById = new Map(
       nextResult.failed.map((failure) => [failure.item.id, failure]),
@@ -575,6 +591,11 @@ export function CollectionDownloadModal({
     const mergedResult: CollectionDownloadQueueResult = {
       ...nextResult,
       completed: [...completedBeforeRetry, ...nextResult.completed],
+      requested: [...requestedBeforeRetry, ...nextResult.requested],
+      deliveryMode:
+        requestedBeforeRetry.length + nextResult.requested.length > 0
+          ? "browser"
+          : nextResult.deliveryMode,
       failed,
       total,
     }
@@ -606,8 +627,11 @@ export function CollectionDownloadModal({
     }
   }
 
-  const completedCount =
-    progress?.completed.length ?? result?.completed.length ?? 0
+  const completedCount = progress
+    ? progress.completed.length + progress.requested.length
+    : result
+      ? result.completed.length + result.requested.length
+      : 0
   const totalCount =
     progress?.total ?? result?.total ?? options?.candidates.length ?? 0
   const showDownloadAgain =
@@ -615,7 +639,7 @@ export function CollectionDownloadModal({
     !result.authRequired &&
     !result.canceled &&
     result.failed.length === 0 &&
-    result.completed.length === result.total
+    result.completed.length + result.requested.length === result.total
 
   return (
     <Dialog open={open} onOpenChange={(next) => !next && close()}>
@@ -826,7 +850,7 @@ export function CollectionDownloadModal({
                 </div>
               ) : null}
 
-              {directory?.name || !directoryPickerSupported ? (
+              {directory?.name || (!result && !directoryPickerSupported) ? (
                 <p className="text-sm sm:text-xs leading-5 text-stone-400">
                   {directory?.name
                     ? t("folderSelected", { name: directory.name })

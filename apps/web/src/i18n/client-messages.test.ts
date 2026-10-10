@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import arabicMessages from "../../messages/ar.json"
 import englishMessages from "../../messages/en.json"
+import spanishMessages from "../../messages/es.json"
 import russianMessages from "../../messages/ru.json"
 import chineseMessages from "../../messages/zh.json"
 import {
@@ -68,6 +69,20 @@ describe("route-scoped client messages", () => {
     )
     expect(messages.LanguageInventory?.videoCount).toBe(
       "{count, plural, one {# video} other {# videos}}",
+    )
+  })
+
+  it("explains browser-managed collection downloads in Spanish", () => {
+    const messages = pickClientMessages(
+      spanishMessages,
+      WATCH_CONTENT_CLIENT_MESSAGE_NAMESPACES,
+    )
+
+    expect(messages.CollectionDownloadModal?.browserFallback).toContain(
+      "administra las descargas",
+    )
+    expect(messages.CollectionDownloadModal?.browserFallback).toContain(
+      "varias descargas",
     )
   })
 })
