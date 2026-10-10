@@ -80,6 +80,9 @@ the same serialized entries at 35,000,000 bytes produces 28 shards with a
 - KTD4. **Keep alternate sets attached to individual canonical entries.** A
   shard boundary may fall between canonical entries from the same route group,
   but each entry retains the full self-inclusive reciprocal set.
+  **Superseded in part 2026-09-22 (feat-533 / FGE-183):** this still binds every
+  entry inside a hreflang cluster, but a canonical entry for a language with no
+  Google-valid hreflang now belongs to no cluster and carries no alternates.
 - KTD5. **Reuse the existing Watch server-event logger.** Generation failures
   need a stable event name and bounded fields such as error code, manifest
   version, and chunk id; sitemap URLs and alternate payloads do not belong in

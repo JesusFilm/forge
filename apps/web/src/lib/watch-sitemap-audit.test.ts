@@ -12,6 +12,7 @@ const CHILD_1 = "https://www.jesusfilm.org/watch/sitemap/1.xml"
 const JESUS_EN = "https://www.jesusfilm.org/watch/jesus.html"
 const JESUS_ES =
   "https://www.jesusfilm.org/watch/jesus.html/spanish-castilian.html"
+const JESUS_CEB = "https://www.jesusfilm.org/watch/jesus.html/cebuano.html"
 const CONTEXTUAL_EN =
   "https://www.jesusfilm.org/watch/lumo-the-gospel-of-john.html/wedding-in-cana/english.html"
 
@@ -220,6 +221,71 @@ describe("watch sitemap deployed audit", () => {
     expect(report.ok).toBe(false)
     expect(report.issues).toContainEqual(
       expect.objectContaining({ code: "invalid_index" }),
+    )
+  })
+
+  it("accepts an unannotated canonical entry beside a reciprocal cluster", () => {
+    // Long-tail Watch languages have no Google-valid hreflang, so their
+    // canonical URL ships with no `<xhtml:link>` at all. That is not a missing
+    // self-link — it is a URL that belongs to no hreflang cluster.
+    const report = auditWatchSitemapDocuments(document(INDEX_URL, indexXml()), [
+      document(
+        CHILD_0,
+        childXml([{ loc: JESUS_EN, alternates: reciprocalAlternates }]),
+      ),
+      document(
+        CHILD_1,
+        childXml([
+          { loc: JESUS_ES, alternates: reciprocalAlternates },
+          { loc: JESUS_CEB, alternates: [] },
+        ]),
+      ),
+    ])
+
+    expect(report.issues).toEqual([])
+    expect(report.ok).toBe(true)
+    expect(report.totals).toMatchObject({ hreflang: 4, locs: 3 })
+  })
+
+  it("fails a sitemap that publishes canonical entries with no hreflang at all", () => {
+    // The per-entry `missing_self_alternate` rule can no longer tell a
+    // legitimately unannotated long-tail URL from a cluster whose
+    // `<xhtml:link>` block a bug stripped -- the XML is identical. This
+    // aggregate is what still catches the wipeout.
+    const report = auditWatchSitemapDocuments(
+      document(INDEX_URL, indexXml([CHILD_0])),
+      [
+        document(
+          CHILD_0,
+          childXml([
+            { loc: JESUS_EN, alternates: [] },
+            { loc: JESUS_CEB, alternates: [] },
+          ]),
+        ),
+      ],
+    )
+
+    expect(report.issues.map((issue) => issue.code)).toContain(
+      "no_hreflang_annotations",
+    )
+    expect(report.ok).toBe(false)
+  })
+
+  it("still fails a canonical entry that annotates without listing itself", () => {
+    const report = auditWatchSitemapDocuments(
+      document(INDEX_URL, indexXml([CHILD_0])),
+      [
+        document(
+          CHILD_0,
+          childXml([
+            { loc: JESUS_EN, alternates: [{ href: JESUS_ES, hreflang: "es" }] },
+          ]),
+        ),
+      ],
+    )
+
+    expect(report.issues.map((issue) => issue.code)).toContain(
+      "missing_self_alternate",
     )
   })
 
