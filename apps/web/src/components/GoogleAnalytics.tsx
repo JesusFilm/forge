@@ -212,17 +212,30 @@ export function GoogleAnalyticsScripts({
 }: {
   measurementId: string
 }) {
+  // v1 pins the page fields at call time. With the tag loading late, gtag.js
+  // replays this queued `config` after the reader may have navigated, and it
+  // would read `document.location` and `document.title` then — reporting the
+  // landing page view (and events queued on it) under the later page. These
+  // are the same values gtag.js read when it was already loaded. v2 page views
+  // pin their own fields, so its bootstrap stays as it was.
   const configOptions = isWatchAnalyticsContractV2Enabled()
     ? `, ${JSON.stringify({ send_page_view: false })}`
-    : ""
+    : ", { page_location: window.location.href, page_title: document.title }"
 
+  // W-026: the Google tag loads `lazyOnload` so it stays out of the LCP
+  // window. `afterInteractive` makes Next emit a default-priority
+  // `<link rel="preload">` for it in the head; `lazyOnload` emits none and
+  // fetches after `load` + idle. Nothing is lost while it waits: the bootstrap
+  // stays `afterInteractive`, so `window.gtag` exists early and every call
+  // (config, page views, events) queues in `dataLayer`, which the tag replays
+  // on arrival.
   return (
     <>
       <Script
         src={`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(
           measurementId,
         )}`}
-        strategy="afterInteractive"
+        strategy="lazyOnload"
       />
       <Script id="google-analytics-init" strategy="afterInteractive">
         {`
@@ -238,9 +251,10 @@ window.gtag('config', ${JSON.stringify(measurementId)}${configOptions});
 }
 
 /**
- * How long the observer keeps retrying while the Google tag is still loading.
- * `afterInteractive` scripts can land well after hydration, and an ad blocker
- * may mean they never do — hence a bounded retry rather than an open loop.
+ * How long the observer keeps retrying while `window.gtag` is not defined yet.
+ * The `afterInteractive` bootstrap that defines it can land after hydration,
+ * and a blocker may mean it never does — hence a bounded retry rather than an
+ * open loop.
  */
 const GOOGLE_TAG_READINESS_POLL_MS = 200
 const GOOGLE_TAG_READINESS_MAX_ATTEMPTS = 50
@@ -331,7 +345,13 @@ function GoogleAnalyticsRouteChanges({
     if (previousPagePath.current === pagePath) return
     if (typeof window.gtag !== "function") return
 
-    window.gtag("config", measurementId, { page_path: pagePath })
+    // Location and title captured now, not when a late tag replays this
+    // call (see `GoogleAnalyticsScripts`).
+    window.gtag("config", measurementId, {
+      page_path: pagePath,
+      page_location: window.location.href,
+      page_title: document.title,
+    })
     previousPagePath.current = pagePath
   }, [measurementId, pathname, queryString])
 
