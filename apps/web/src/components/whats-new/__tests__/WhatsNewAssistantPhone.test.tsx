@@ -83,7 +83,7 @@ describe("WhatsNewAssistantPhone", () => {
 
     it("times every step in the same unit", () => {
       // One mixed unit is all it takes. The reel's own scroll lived in
-      // globals.css as a PERCENTAGE while these became lengths, and once
+      // the stylesheet as a PERCENTAGE while these became lengths, and once
       // the phone started sticking for the length of the whole argument
       // that put the two roughly 800px apart: the citation card appeared
       // and then sat clipped off the bottom of the screen until a scroll

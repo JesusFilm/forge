@@ -6,7 +6,18 @@ import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
-const css = readFileSync(join(__dirname, "globals.css"), "utf-8")
+const globalsCss = readFileSync(join(__dirname, "globals.css"), "utf-8")
+/**
+ * What's New-only rules live in their own sheet, linked only by the
+ * /whats-new layout (FGE-206 / feat-635). Read both in cascade order — the
+ * root layout's globals first — so the assertions below see exactly what
+ * that route sees, while the shared tokens stay authored in globals.css.
+ */
+const whatsNewCss = readFileSync(
+  join(__dirname, "../components/whats-new/whats-new.css"),
+  "utf-8",
+)
+const css = `${globalsCss}\n${whatsNewCss}`
 
 /** Return the body of the first block whose header contains `needle`. */
 function blockBody(source: string, needle: string): string {
@@ -107,7 +118,7 @@ describe("scroll-driven timeline choreography", () => {
   })
 
   it("stops every grain layer under reduced motion, texture intact", () => {
-    const reduced = blockBody(css, "prefers-reduced-motion: reduce")
+    const reduced = blockBody(whatsNewCss, "prefers-reduced-motion: reduce")
     const grainRule = blockBody(reduced, ".watch-grain,")
 
     // All three layers, not just the first — a layer added later that is
@@ -1030,5 +1041,42 @@ describe("the audiences stage", () => {
     // at ~30svh the dwell was ~280px at 900, which was not enough scroll to
     // drag in; hence a floor comfortably above it.
     expect(svh(100 - quiz[1])).toBeGreaterThanOrEqual(40)
+  })
+})
+
+describe("What's New stylesheet split", () => {
+  // Every listing, series and video route links globals.css. The /whats-new
+  // choreography, pin board, grain and tint band are ~20KB of rules no other
+  // route renders, so they must not drift back into the shared sheet.
+  const whatsNewOnly =
+    /\.(watch-(scroll|chat|quiz|sticker|audience|bokeh|grain|ambient|corkroom|note|fan)|whats-new-)[\w-]*/
+
+  it("keeps What's New-only selectors out of the shared sheet", () => {
+    expect(globalsCss).not.toMatch(whatsNewOnly)
+    expect(globalsCss).not.toMatch(
+      /@keyframes watch-(scroll|chat|grain|note|fan|sticker|quiz|audience|ambient)/,
+    )
+    expect(globalsCss).not.toMatch(/@property --era-zoom/)
+  })
+
+  it("keeps the shared grain and sticker tokens global", () => {
+    const root = blockBody(globalsCss, ":root {")
+    expect(root).toContain("--watch-grain-image:")
+    expect(root).toContain("--watch-grain-image-fine:")
+    expect(root).toContain("--watch-sticker-stuck:")
+  })
+
+  it("is linked by the /whats-new layout only", () => {
+    const layout = readFileSync(
+      join(__dirname, "[locale]/[htmlLang]/whats-new/layout.tsx"),
+      "utf-8",
+    )
+    expect(layout).toMatch(
+      /import ["']@\/components\/whats-new\/whats-new\.css["']/,
+    )
+    expect(whatsNewCss).toMatch(whatsNewOnly)
+    // Plain CSS: a Tailwind directive here would make the sheet emit its own
+    // copy of the utilities and override the shared ones out of order.
+    expect(whatsNewCss).not.toMatch(/@(import|tailwind|apply|theme|source)\b/)
   })
 })
