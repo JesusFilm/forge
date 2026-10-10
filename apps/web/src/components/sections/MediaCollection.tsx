@@ -25,6 +25,7 @@ import {
   WATCH_BASE_PATH,
   asLocaleSlug,
   languageInventoryPath,
+  localizedHomePath,
   tryAsContentSlug,
   tryAsLocaleSlug,
   watchVideoPath,
@@ -228,6 +229,10 @@ export function MediaCollection({
       ? `${WATCH_BASE_PATH}${watchVideoPath(firstItemSlug, resolvedLanguageSlug)}`
       : null,
     inventoryHref: `${WATCH_BASE_PATH}${languageInventoryPath(resolvedLanguageSlug)}`,
+    languageHomeHref:
+      resolvedLanguageSlug === DEFAULT_COLLECTION_LOCALE
+        ? null
+        : `${WATCH_BASE_PATH}${localizedHomePath(resolvedLanguageSlug)}`,
     currentPathname,
   })
 

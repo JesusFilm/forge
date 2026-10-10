@@ -464,29 +464,22 @@ describe("BlockSchema — all top-level types validate", () => {
   })
 
   it.each([" WATCH ", "See all"])(
-    "rejects vague media collection CTA labels at every nesting level: %s",
+    "still parses a stored vague media collection CTA label at every nesting level: %s",
     (label) => {
-      const vague = {
+      // Stored blocks carry these labels (W-096 / FGE-232), and this schema
+      // also parses stored drafts, revisions and duplicates. New vague labels
+      // are rejected by ExperienceService, not here.
+      const legacy = {
         t: "mediaCollection",
         variant: "carousel",
         ctaLabel: label,
         ctaLink: "/watch/jesus.html",
       }
-      const topLevel = BlockSchema.safeParse(vague)
-      expect(topLevel.success).toBe(false)
-      expect(topLevel.error?.issues.map((issue) => issue.path)).toContainEqual([
-        "ctaLabel",
-      ])
-      // Each wrapper accepts the same block once the label names a
-      // destination, so the rejection is the label rule, not the nesting.
-      const named = { ...vague, ctaLabel: "Watch the JESUS film" }
+      expect(BlockSchema.safeParse(legacy).success).toBe(true)
       for (const wrapper of ["section", "container"] as const) {
         expect(
-          BlockSchema.safeParse({ t: wrapper, content: [named] }).success,
+          BlockSchema.safeParse({ t: wrapper, content: [legacy] }).success,
         ).toBe(true)
-        expect(
-          BlockSchema.safeParse({ t: wrapper, content: [vague] }).success,
-        ).toBe(false)
       }
     },
   )

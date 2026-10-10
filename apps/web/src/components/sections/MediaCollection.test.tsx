@@ -1157,6 +1157,57 @@ describe("MediaCollection VideoCard href", () => {
     expect(cta?.textContent).toContain("See all videos in")
   })
 
+  it("names the rail when it replaces a vague label on a collection link", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          languageSlug="english"
+          currentPathname="/watch"
+          data={makeData({
+            title: "The Acts of the Apostles",
+            itemsSource: "manual",
+            mediaCtaLink: "/watch/lumo-acts-of-the-apostles.html",
+            mediaCtaLabel: "Watch",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const cta = container.querySelector<HTMLAnchorElement>(
+      "[data-testid='media-collection-cta']",
+    )
+    expect(cta?.getAttribute("href")).toBe(
+      "/watch/lumo-acts-of-the-apostles.html",
+    )
+    expect(cta?.textContent).toBe("Show The Acts of the Apostles")
+  })
+
+  it("does not link a translated home's rail back to the English home", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          languageSlug="spanish-latin-american"
+          currentPathname="/watch/spanish-latin-american.html"
+          data={makeData({
+            itemsSource: "manual",
+            mediaCtaLink: "/",
+            mediaCtaLabel: "See all",
+            items: [makeManualItem()],
+          })}
+        />,
+      )
+    })
+
+    const cta = container.querySelector<HTMLAnchorElement>(
+      "[data-testid='media-collection-cta']",
+    )
+    expect(cta?.getAttribute("href")).toBe(
+      "/watch/spanish-latin-american.html/videos",
+    )
+    expect(cta?.textContent).toContain("See all videos in")
+  })
+
   it("labels a language-directory CTA as a language destination", () => {
     act(() => {
       root.render(

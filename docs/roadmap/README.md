@@ -745,7 +745,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                              | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | not-started |
 | [feat-067](platform/feat-067-doctrinal-validation-engine.md)                           | Doctrinal Validation Engine                                                        | vlad       | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
 | [feat-070](platform/feat-070-public-ai-entry-point.md)                                 | Public AI Entry Point                                                              | tataihono  | P2       | 2026-12-01 | 31   | 2026-12-31 | blocked     |
-| [feat-628](platform/feat-628-watch-rail-cta-destinations-and-validation.md)            | Watch rail CTA destinations and validation                                         | vlad       | P2       | 2026-10-08 | 2    | 2026-10-09 | in-progress |
+| [feat-670](platform/feat-670-watch-rail-cta-destinations-and-validation.md)            | Watch rail CTA destinations and validation                                         | vlad       | P2       | 2026-10-08 | 2    | 2026-10-09 | complete    |
 
 ### Topic Experiences
 

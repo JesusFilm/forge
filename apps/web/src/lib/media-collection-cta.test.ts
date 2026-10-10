@@ -65,4 +65,77 @@ describe("resolveMediaCollectionCta", () => {
       label: { kind: "languageDirectory" },
     })
   })
+
+  it("keeps a non-vague authored label on a language-directory link", () => {
+    expect(
+      resolveMediaCollectionCta({
+        authoredHref: "/watch/languages",
+        authoredLabel: "Find the JESUS film in your language",
+        collectionHref: null,
+        inventoryHref,
+        currentPathname: "/watch",
+      }),
+    ).toEqual({
+      href: "/watch/languages",
+      label: { kind: "authored", text: "Find the JESUS film in your language" },
+    })
+  })
+
+  describe("a bare Watch-root link on a non-English page", () => {
+    const spanish = {
+      inventoryHref: "/watch/spanish-latin-american.html/videos",
+      languageHomeHref: "/watch/spanish-latin-american.html",
+    }
+
+    it.each(["/", "/watch", "/watch/"])(
+      "treats %j as the current translated home and falls back to its inventory",
+      (authoredHref) => {
+        expect(
+          resolveMediaCollectionCta({
+            ...spanish,
+            authoredHref,
+            authoredLabel: "See all",
+            collectionHref:
+              "/watch/jesus-films.html/spanish-latin-american.html",
+            currentPathname: "/watch/spanish-latin-american.html",
+          }),
+        ).toEqual({
+          href: "/watch/spanish-latin-american.html/videos",
+          label: { kind: "inventory" },
+        })
+      },
+    )
+
+    it("links a translated content page to its own language home", () => {
+      expect(
+        resolveMediaCollectionCta({
+          ...spanish,
+          authoredHref: "/",
+          authoredLabel: "Volver al inicio",
+          collectionHref: null,
+          currentPathname: "/watch/jesus.html/spanish-latin-american.html",
+        }),
+      ).toEqual({
+        href: "/watch/spanish-latin-american.html",
+        label: { kind: "authored", text: "Volver al inicio" },
+      })
+    })
+
+    it("leaves an absolute root URL as authored", () => {
+      const authoredHref =
+        "https://www.jesusfilm.org/watch?utm_source=jesusfilm-watch"
+      expect(
+        resolveMediaCollectionCta({
+          ...spanish,
+          authoredHref,
+          authoredLabel: "Explore all videos",
+          collectionHref: null,
+          currentPathname: "/watch/spanish-latin-american.html",
+        }),
+      ).toEqual({
+        href: authoredHref,
+        label: { kind: "authored", text: "Explore all videos" },
+      })
+    })
+  })
 })

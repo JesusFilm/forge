@@ -36,7 +36,6 @@ import {
   WATCH_HOME_TILE_STYLE_KEYS,
   isSafeWatchHomeTileHref,
 } from "@forge/watch-url-policy/watch-home-tiles"
-import { isVagueMediaCollectionCtaLabel } from "@forge/watch-url-policy/media-collection-cta"
 
 // -----------------------------------------------------------------------------
 // Shared primitives
@@ -275,15 +274,11 @@ export const MediaCollectionBlockSchema = z
     subtitle: z.string().optional(),
     description: z.string().optional(),
     ctaLink: z.string().optional(),
-    // Vague labels name no destination (W-096 / FGE-232). The web renderer
-    // also replaces one already stored, so this only guards new writes.
-    ctaLabel: z
-      .string()
-      .refine((label) => !isVagueMediaCollectionCtaLabel(label), {
-        message:
-          'CTA label must name its destination (for example "Watch the full story"), not just "Watch"',
-      })
-      .optional(),
+    // Stays permissive: stored blocks already carry vague labels ("Watch",
+    // "See all"), and this schema also parses stored drafts, revisions and
+    // duplicates. `ExperienceService` rejects a vague label a write adds
+    // (W-096 / FGE-232); the web renderer replaces stored ones.
+    ctaLabel: z.string().optional(),
     showItemNumbers: z.boolean().default(false),
     footerText: z.string().optional(),
     excludedVideoIds: z

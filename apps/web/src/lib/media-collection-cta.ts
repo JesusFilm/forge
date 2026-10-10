@@ -83,6 +83,13 @@ export function isSameWatchPage(
   return target != null && target === watchPageIdentity(currentPathname)
 }
 
+// Bare relative spellings of the Watch root. A URL with a host, query or
+// fragment is left as authored: it may carry campaign parameters the editor
+// chose deliberately.
+function isRelativeWatchRoot(href: string): boolean {
+  return href === "/" || href.replace(/\/+$/, "") === WATCH_BASE_PATH
+}
+
 export type MediaCollectionCtaLabel =
   | { kind: "authored"; text: string }
   | { kind: "collection" }
@@ -99,16 +106,25 @@ export type MediaCollectionCta = {
  *
  * Destinations are tried in order — a full-story card when the label promises
  * one, the authored link, the collection the rail's items share, then the
- * language's video inventory — and the first one that is not the current page wins. With every candidate a self-link, the
- * rail renders no CTA rather than a button that reloads the page (W-096 /
- * FGE-232: "See all" on the Watch home pointed back at `/watch`).
+ * language's video inventory — and the first one that is not the current page
+ * wins. An authored self-link also drops the inferred collection: the editor
+ * pointed the rail at this page, so the inventory is the honest fallback. With
+ * every candidate a self-link, the rail renders no CTA rather than a button
+ * that reloads the page (W-096 / FGE-232: "See all" on the Watch home pointed
+ * back at `/watch`).
+ *
+ * A bare Watch-root link (`"/"`, `/watch`) means "the Watch home", so on a
+ * non-English page it resolves to that language's home (`languageHomeHref`):
+ * on a translated home that is the current page, and elsewhere it keeps the
+ * viewer in their language instead of sending them to the English home.
  *
  * A label always names its destination. An authored label belongs to the
  * authored link, or to the inferred collection when no link was authored; it
  * is never moved onto a fallback, because "Watch the full story" over the
  * video inventory is the misleading CTA this exists to prevent. Vague labels
  * such as "Watch" and "See all" are treated as absent and replaced with a
- * localized label derived from the selected destination.
+ * localized label derived from the selected destination; a language-directory
+ * link without a usable authored label is labelled as a language link.
  */
 export function resolveMediaCollectionCta({
   authoredHref,
@@ -116,6 +132,7 @@ export function resolveMediaCollectionCta({
   collectionHref,
   firstItemHref,
   inventoryHref,
+  languageHomeHref,
   currentPathname,
 }: {
   authoredHref: string | null | undefined
@@ -123,6 +140,8 @@ export function resolveMediaCollectionCta({
   collectionHref: string | null | undefined
   firstItemHref?: string | null
   inventoryHref: string
+  /** Home of the page's language; omit for English, whose home is the root. */
+  languageHomeHref?: string | null
   currentPathname: string | null | undefined
 }): MediaCollectionCta | null {
   const label =
@@ -131,10 +150,14 @@ export function resolveMediaCollectionCta({
     !isVagueMediaCollectionCtaLabel(authoredLabel)
       ? ({ kind: "authored", text: authoredLabel.trim() } as const)
       : null
-  const explicitHref =
+  const trimmedHref =
     typeof authoredHref === "string" && authoredHref.trim().length > 0
       ? authoredHref.trim()
       : null
+  const explicitHref =
+    trimmedHref && languageHomeHref && isRelativeWatchRoot(trimmedHref)
+      ? languageHomeHref
+      : trimmedHref
   const normalizedAuthoredLabel =
     typeof authoredLabel === "string"
       ? authoredLabel.trim().replace(/\s+/g, " ").toLowerCase()
@@ -161,9 +184,11 @@ export function resolveMediaCollectionCta({
   if (explicitHref && !authoredIsSelfLink) {
     candidates.push({
       href: canonicalMediaCollectionCtaHref(explicitHref),
-      label: isLanguageDirectory(explicitHref)
-        ? { kind: "languageDirectory" }
-        : (label ?? { kind: "collection" }),
+      label:
+        label ??
+        (isLanguageDirectory(explicitHref)
+          ? { kind: "languageDirectory" }
+          : { kind: "collection" }),
     })
   }
   if (collectionHref && !authoredIsSelfLink) {
