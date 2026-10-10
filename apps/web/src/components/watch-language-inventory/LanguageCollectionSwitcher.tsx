@@ -62,6 +62,7 @@ export function LanguageCollectionSwitcher({
       slug: language.slug,
       name: language.languageName,
       nativeName: language.nativeName,
+      nativeNameLang: language.nativeNameLang,
       bcp47: language.bcp47,
     }))
   }, [currentLanguageName, currentNativeName, currentSlug, languages])

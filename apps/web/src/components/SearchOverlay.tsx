@@ -910,6 +910,7 @@ export function SearchOverlay() {
                 searchAliasSlug: language.aliasOwnerSlug ?? null,
                 name: language.englishName,
                 nativeName: language.nativeName,
+                nativeNameLang: language.nativeNameLang,
                 bcp47: language.bcp47,
               },
             ]

@@ -174,6 +174,47 @@ describe("buildSearchLanguageOptions", () => {
     )
   })
 
+  it("declares nativeNameLang only for a proven own-language entry (FGE-50)", () => {
+    const { options } = buildSearchLanguageOptions({
+      languages: [
+        {
+          id: "ru",
+          coreId: "3934",
+          name: { de: "Russisch", en: "Russian", ru: "Русский" },
+          bcp47: "ru",
+          slug: "russian",
+        },
+        {
+          // Label comes from the legacy `native` key: shown, never declared.
+          id: "fr",
+          coreId: "496",
+          name: { en: "French", native: "Français" },
+          bcp47: "fr",
+          slug: "french",
+        },
+        {
+          // `ku` is Latin-script; a ku-Arab row shows it untagged.
+          id: "ku",
+          coreId: "1",
+          name: { en: "Kurdish Arab Script", ku: "kurdî" },
+          bcp47: "ku-Arab",
+          slug: "kurdish-arab-script",
+        },
+      ],
+    })
+    const byName = new Map(options.map((o) => [o.englishName, o]))
+    expect(byName.get("Russian")).toMatchObject({
+      nativeName: "Русский",
+      nativeNameLang: "ru",
+    })
+    expect(byName.get("French")?.nativeName).toBe("Français")
+    expect(byName.get("French")).not.toHaveProperty("nativeNameLang")
+    expect(byName.get("Kurdish Arab Script")?.nativeName).toBe("kurdî")
+    expect(byName.get("Kurdish Arab Script")).not.toHaveProperty(
+      "nativeNameLang",
+    )
+  })
+
   it("builds facet-limited language options grouped from country metadata", () => {
     const result = buildSearchLanguageOptions({
       availableLanguageFacets: {

@@ -17,16 +17,29 @@ import {
 import { createPortal } from "react-dom"
 
 import { languageCodeFor, primaryLanguageCode } from "@/lib/language-code"
+import {
+  declaredLanguageAttributes,
+  derivedNativeNameLang,
+} from "@/lib/language-native-name"
+import { NativeLanguageName, PrimaryLanguageName } from "./NativeLanguageName"
 import { cn } from "@/lib/utils"
 import { createWatchLanguageSearchMatcher } from "@/lib/watch-language-search"
 
 export type LanguageComboboxOption = {
   slug: string
   name: string
+  /** `"en"` only when `name` is proven English; absent means untagged. */
+  nameLang?: "en"
   /** Exact source slug for reviewed aliases; `null` disables alias matching. */
   searchAliasSlug?: string | null
   /** Optional native-script name; rendered as a muted subtitle below `name`. */
   nativeName?: string | null
+  /**
+   * Verified declarable BCP 47 tag of `nativeName`, carried from the source
+   * helper (`selectOwnLanguageName`). Absent means the provenance of
+   * `nativeName` is unproven and it renders untagged.
+   */
+  nativeNameLang?: string | null
   /** BCP 47 tag used to show the primary language code when available. */
   bcp47?: string | null
   /** Render as visible context in the list without allowing selection. */
@@ -73,23 +86,39 @@ function capitalizeNativeName(name: string, language: string): string {
   return `${first.toLocaleUpperCase(language)}${name.slice(first.length)}`
 }
 
-function nativeNameForOption(option: LanguageComboboxOption): string | null {
+type OptionNativeName = { text: string; lang: string | null }
+
+function nativeNameForOption(
+  option: LanguageComboboxOption,
+): OptionNativeName | null {
   const normalizedName = option.name.trim().toLocaleLowerCase()
   const explicitNativeName = option.nativeName?.trim()
   if (explicitNativeName) {
-    return explicitNativeName.toLocaleLowerCase() === normalizedName
-      ? null
-      : explicitNativeName
+    if (explicitNativeName.toLocaleLowerCase() === normalizedName) return null
+    // Explicit text is declared only with a source-verified tag; any other
+    // provenance stays untagged.
+    return {
+      text: explicitNativeName,
+      lang: declaredLanguageAttributes(option.nativeNameLang)?.lang ?? null,
+    }
   }
   const language = primaryLanguageCode(option.bcp47)?.toLowerCase()
   if (!language) return null
   try {
+    // Unsupported locales silently fall back to English, which is not an endonym.
+    if (Intl.DisplayNames.supportedLocalesOf([language]).length === 0)
+      return null
     const displayName = new Intl.DisplayNames([language], {
       type: "language",
     }).of(language)
     if (!displayName || displayName.toLowerCase() === language) return null
     if (displayName.toLowerCase() === option.name.toLowerCase()) return null
-    return capitalizeNativeName(displayName, language)
+    // Intl names the PRIMARY language only; derivedNativeNameLang withholds the
+    // tag when the row's script differs (a ku-Arab row is not Latin `kurdî`).
+    return {
+      text: capitalizeNativeName(displayName, language),
+      lang: derivedNativeNameLang(option.bcp47),
+    }
   } catch {
     return null
   }
@@ -207,7 +236,7 @@ export function LanguageCombobox({
           slug: option.slug,
           aliasOwnerSlug: option.searchAliasSlug,
           displayName: option.name,
-          nativeName: nativeNameForOption(option),
+          nativeName: nativeNameForOption(option)?.text,
           disabled: option.disabled,
         }),
       }))
@@ -575,7 +604,14 @@ export function LanguageCombobox({
             )}
             <span className="grid min-w-0 content-center">
               <span className="block truncate leading-tight">
-                {selected?.name ?? resolvedPlaceholder}
+                {selected ? (
+                  <PrimaryLanguageName
+                    text={selected.name}
+                    lang={selected.nameLang}
+                  />
+                ) : (
+                  resolvedPlaceholder
+                )}
               </span>
               {selectedNativeName ? (
                 <span
@@ -584,7 +620,10 @@ export function LanguageCombobox({
                     compact ? "text-xs sm:text-[11px]" : "text-sm sm:text-xs"
                   }`}
                 >
-                  {selectedNativeName}
+                  <NativeLanguageName
+                    text={selectedNativeName.text}
+                    lang={selectedNativeName.lang}
+                  />
                 </span>
               ) : null}
             </span>
@@ -755,14 +794,20 @@ export function LanguageCombobox({
                               <LanguageCodeMarker option={option} />
                               <span className="min-w-0">
                                 <span className="block truncate text-base leading-5 sm:text-sm font-semibold">
-                                  {option.name}
+                                  <PrimaryLanguageName
+                                    text={option.name}
+                                    lang={option.nameLang}
+                                  />
                                 </span>
                                 {nativeName ? (
                                   <span
                                     data-testid="language-combobox-option-native"
                                     className="block truncate text-sm leading-4 sm:text-xs text-stone-400"
                                   >
-                                    {nativeName}
+                                    <NativeLanguageName
+                                      text={nativeName.text}
+                                      lang={nativeName.lang}
+                                    />
                                   </span>
                                 ) : null}
                               </span>
