@@ -13,6 +13,7 @@ vi.mock("@/lib/recommendation-browser", () => ({
 }))
 
 import { recordWatchShareAction } from "./recommendation-content-actions"
+import { RECOMMENDATION_CONTENT_ACTION_BROWSER_DEADLINE_MS } from "./recommendation-timeouts"
 
 describe("recordWatchShareAction", () => {
   beforeEach(() => {
@@ -31,7 +32,7 @@ describe("recordWatchShareAction", () => {
         credentials: "same-origin",
         keepalive: true,
       }),
-      700,
+      RECOMMENDATION_CONTENT_ACTION_BROWSER_DEADLINE_MS,
     )
     expect(
       JSON.parse(recommendationFetchWithRetry.mock.calls[0]?.[1]?.body),
