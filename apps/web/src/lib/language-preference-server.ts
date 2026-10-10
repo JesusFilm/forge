@@ -1,8 +1,7 @@
-// IMPORTANT — current wiring: the production language-preference redirect
-// runs in apps/web/src/proxy.ts (middleware), NOT through these helpers.
-// They were the original implementation but moved to middleware to keep
-// the page route eligible for ISR caching — calling cookies() in a Server
-// Component silently opts the route out of ISR.
+// Public entry language preference redirects run in apps/web/src/proxy.ts,
+// which reads the picker cookie before rewriting the request. These helpers
+// remain available for variant-aware page decisions without duplicating the
+// proxy's public-path redirect policy.
 //
 // This file is retained because:
 //   - `shouldRedirectForPreference` is the variant-aware version of the
@@ -10,8 +9,8 @@
 //     Future variant-aware callers (a paid-feature gate, an admin tool,
 //     or a re-introduced page-level redirect when ISR cost matters less)
 //     can compose against it without re-deriving the rule.
-//   - The tests (`language-preference.test.ts`) lock in the contract so
-//     a future caller doesn't have to re-discover the edge cases.
+//   - The tests (`language-preference.test.ts`) lock in the playable-variant
+//     contract so a future caller doesn't have to re-discover its edge cases.
 //
 // If a future audit shows these helpers are still unused and unlikely to
 // be needed, delete the file + tests rather than leaving dead exports.

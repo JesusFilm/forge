@@ -62,13 +62,51 @@ export function isLocaleSlug(param: string): boolean {
   return /^[a-z][a-z0-9]*(-[a-z0-9]+)+$/.test(param)
 }
 
-/** Parse the primary locale from an Accept-Language header value. */
+/** Resolve the highest-ranked language with a generated Watch UI catalog. */
 export function parseAcceptLanguage(
   acceptLanguage: string | null,
 ): UiLocale | null {
   if (!acceptLanguage) return null
-  const requested = acceptLanguage.split(",")[0]?.trim()
-  return requested ? resolveUiLocale(requested) : null
+
+  const candidates = acceptLanguage
+    .split(",")
+    .map((entry, index) => {
+      const [tagPart, ...parameters] = entry.trim().split(";")
+      const tag = tagPart?.trim()
+      if (!tag || tag === "*") return null
+
+      let quality = 1
+      for (const parameter of parameters) {
+        const match = /^\s*q\s*=\s*(0(?:\.\d{0,3})?|1(?:\.0{0,3})?)\s*$/i.exec(
+          parameter,
+        )
+        if (match) {
+          quality = Number(match[1])
+          break
+        }
+        if (/^\s*q\s*=/i.test(parameter)) return null
+      }
+      if (quality <= 0) return null
+      return { tag, quality, index }
+    })
+    .filter(
+      (candidate): candidate is NonNullable<typeof candidate> =>
+        candidate !== null,
+    )
+    .sort((a, b) => b.quality - a.quality || a.index - b.index)
+
+  for (const candidate of candidates) {
+    const normalizedTag = candidate.tag.toLowerCase()
+    const locale =
+      normalizedTag === "zh-tw" ||
+      normalizedTag.startsWith("zh-tw-") ||
+      normalizedTag === "zh-hk" ||
+      normalizedTag.startsWith("zh-hk-")
+        ? resolveUiLocale("zh-Hant")
+        : resolveUiLocale(candidate.tag)
+    if (locale) return locale
+  }
+  return null
 }
 
 const HTML_LANG_OVERRIDES: Readonly<Record<string, string>> = Object.freeze({
