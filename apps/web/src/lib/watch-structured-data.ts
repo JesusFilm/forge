@@ -65,6 +65,19 @@ function stablePublicMediaUrl(
     : null
 }
 
+function stableMuxEmbedUrl(value: string | null | undefined): string | null {
+  const url = httpsUrl(value)
+  return url &&
+    url.hostname === "player.mux.com" &&
+    !url.username &&
+    !url.password &&
+    !url.search &&
+    !url.hash &&
+    /^\/[^/]+$/.test(url.pathname)
+    ? url.toString()
+    : null
+}
+
 function watchAbsoluteUrl(value: string | null | undefined): string | null {
   const candidate = trimmed(value)
   if (!candidate) return null
@@ -269,6 +282,7 @@ export function watchVideoStructuredDataJson(
   const description = trimmed(model.structuredDataDescription)
   const canonicalUrl = watchAbsoluteUrl(model.canonicalUrl)
   const contentUrl = stablePublicMediaUrl(model.contentUrl, ".m3u8")
+  const embedUrl = stableMuxEmbedUrl(model.embedUrl)
   const thumbnailUrl = httpsUrl(model.structuredDataThumbnailUrl)?.toString()
   const uploadDate = isoDate(model.uploadDate)
   const duration = secondsToIsoDuration(model.durationSeconds)
@@ -312,6 +326,7 @@ export function watchVideoStructuredDataJson(
     description,
     url: canonicalUrl,
     contentUrl,
+    ...(embedUrl && { embedUrl }),
     thumbnailUrl: [thumbnailUrl],
     ...(inLanguage && { inLanguage }),
     uploadDate,

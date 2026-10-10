@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import type { WatchVideoRecord } from "./content"
+import type { WatchVariant, WatchVideoRecord } from "./content"
 
 const { resolveWatchPageMock } = vi.hoisted(() => ({
   resolveWatchPageMock: vi.fn(),
@@ -270,6 +270,17 @@ describe("getWatchPageMetadata", () => {
     expect(metadata.openGraph).toMatchObject({
       title: "Life of Jesus (Gospel of John) | Jesus Film Project",
       url: "https://www.jesusfilm.org/watch/life-of-jesus-gospel-of-john.html",
+      type: "video.movie",
+      duration: 7200,
+      videos: [
+        {
+          url: "https://player.mux.com/mux-en",
+          secureUrl: "https://player.mux.com/mux-en",
+          type: "text/html",
+          width: 1280,
+          height: 720,
+        },
+      ],
       images: [
         {
           url: "https://image.mux.com/mux-en/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
@@ -280,8 +291,17 @@ describe("getWatchPageMetadata", () => {
       ],
     })
     expect(metadata.twitter).toMatchObject({
+      card: "player",
       title: "Life of Jesus (Gospel of John) | Jesus Film Project",
       description: "Watch the life of Jesus from the Gospel of John.",
+      players: [
+        {
+          playerUrl: "https://player.mux.com/mux-en",
+          streamUrl: "https://cdn.example/jesus-en.m3u8",
+          width: 1280,
+          height: 720,
+        },
+      ],
       images: [
         {
           url: "https://image.mux.com/mux-en/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
@@ -404,6 +424,8 @@ describe("getWatchPageMetadata", () => {
         alt: "Jesus",
       }),
     ])
+    expect(metadata.openGraph).toMatchObject({ type: "video.movie" })
+    expect(metadata.twitter).toMatchObject({ card: "player" })
   })
 
   it("keeps the editorial still when no selected Mux playback id exists", async () => {
@@ -466,6 +488,9 @@ describe("getWatchPageMetadata", () => {
         alt: "Jesus teaching outside",
       }),
     ])
+    expect(metadata.openGraph).toMatchObject({ type: "website" })
+    expect(metadata.openGraph).not.toHaveProperty("videos")
+    expect(metadata.twitter).toMatchObject({ card: "summary_large_image" })
   })
 })
 
@@ -508,6 +533,114 @@ describe("buildWatchVideoMetadataModel", () => {
     studyQuestions: [],
     bibleCitations: [],
   }
+
+  it("uses episode metadata and a Mux player URL for nested episode routes", async () => {
+    const { buildWatchVideoMetadataModel, generateWatchVideoMetadata } =
+      await import("./experience-metadata")
+    const options = {
+      routeSlug: "episode-one",
+      pathLocale: "english",
+      seriesSlug: "the-series",
+      selectedVariant,
+      video,
+    }
+
+    const model = buildWatchVideoMetadataModel(options)
+    const metadata = generateWatchVideoMetadata("en", options)
+
+    expect(model.embedUrl).toBe("https://player.mux.com/mux-life")
+    expect(metadata.openGraph).toMatchObject({ type: "video.episode" })
+    expect(metadata.twitter).toMatchObject({ card: "player" })
+  })
+
+  it("derives the embed URL from the selected language's playback id only", async () => {
+    const { buildWatchVideoMetadataModel, generateWatchVideoMetadata } =
+      await import("./experience-metadata")
+    const spanishVariant = {
+      ...selectedVariant,
+      documentId: "dub-es",
+      hls: "https://cdn.example/life-es.m3u8",
+      language: {
+        slug: "spanish-latin-american",
+        bcp47: "es-419",
+        coreId: "21028",
+        name: "Spanish, Latin American",
+        nativeName: "Español",
+      },
+      muxVideo: { playbackId: "mux-life-es" },
+    }
+    const options = {
+      routeSlug: "life-of-jesus",
+      pathLocale: "spanish-latin-american",
+      selectedVariant: spanishVariant,
+      video: { ...video, variants: [selectedVariant, spanishVariant] },
+    }
+
+    const model = buildWatchVideoMetadataModel(options)
+    const metadata = generateWatchVideoMetadata("es", options)
+
+    expect(model.embedUrl).toBe("https://player.mux.com/mux-life-es")
+    expect(model.contentUrl).toBe("https://cdn.example/life-es.m3u8")
+    expect(metadata.openGraph).toMatchObject({
+      videos: [{ url: "https://player.mux.com/mux-life-es" }],
+    })
+    expect(metadata.twitter).toMatchObject({
+      players: [
+        {
+          playerUrl: "https://player.mux.com/mux-life-es",
+          streamUrl: "https://cdn.example/life-es.m3u8",
+        },
+      ],
+    })
+  })
+
+  it.each<{ label: string; muxVideo: WatchVariant["muxVideo"] }>([
+    { label: "null muxVideo", muxVideo: null },
+    { label: "null playback id", muxVideo: { playbackId: null } },
+    { label: "blank playback id", muxVideo: { playbackId: "   " } },
+  ])(
+    "publishes no embed or player card when the selected variant has a $label",
+    async ({ muxVideo }) => {
+      const { buildWatchVideoMetadataModel, generateWatchVideoMetadata } =
+        await import("./experience-metadata")
+      const { watchVideoStructuredDataJson } =
+        await import("./watch-structured-data")
+      const options = {
+        routeSlug: "life-of-jesus",
+        pathLocale: "english",
+        selectedVariant: { ...selectedVariant, muxVideo },
+        video: {
+          ...video,
+          title: "Life of Jesus",
+          // Editorial still keeps VideoObject eligible without a Mux poster.
+          images: [
+            {
+              documentId: "img-1",
+              url: null,
+              thumbnail: "https://cdn.example/life.jpg",
+              mobileCinematicHigh: null,
+              mobileCinematicLow: null,
+            },
+          ],
+        },
+      }
+
+      const model = buildWatchVideoMetadataModel(options)
+      const metadata = generateWatchVideoMetadata("en", options)
+      const structuredData = JSON.parse(watchVideoStructuredDataJson(model)!)
+
+      expect(model.embedUrl).toBeNull()
+      expect(metadata.openGraph).toMatchObject({ type: "website" })
+      expect(metadata.openGraph).not.toHaveProperty("videos")
+      expect(metadata.twitter).toMatchObject({ card: "summary_large_image" })
+      expect(metadata.twitter).not.toHaveProperty("players")
+      // HLS stays the known stream URL; nothing is synthesized in its place.
+      expect(structuredData).toMatchObject({
+        contentUrl: "https://cdn.example/life-en.m3u8",
+      })
+      expect(structuredData).not.toHaveProperty("embedUrl")
+    },
+  )
 
   it("uses a trimmed resolved video title for structured data", async () => {
     const { buildWatchVideoMetadataModel } =

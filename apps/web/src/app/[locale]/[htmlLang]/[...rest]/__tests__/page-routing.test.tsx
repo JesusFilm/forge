@@ -151,7 +151,7 @@ vi.mock("@/lib/watch-route-manifest", async () => {
 import SlugRestPage, {
   generateMetadata,
 } from "@/app/[locale]/[htmlLang]/[...rest]/page"
-import type { WatchVideoRecord } from "@/lib/content"
+import type { WatchVariant, WatchVideoRecord } from "@/lib/content"
 import { resolveWatchLocaleIdentity } from "@/lib/locale"
 import { asLocaleSlug, watchSubtitleIntentSegment } from "@/lib/routes"
 import { stripHtmlSuffix } from "@/lib/url-shape"
@@ -222,11 +222,12 @@ function makeWatchVideoResult(
     bcp47: "en",
     name: "English",
   },
+  muxVideo: WatchVariant["muxVideo"] = { playbackId: "pb1" },
 ) {
   const selectedVariant = {
     documentId: "var1",
     hls: "https://cdn.example/storyclubs.m3u8",
-    muxVideo: { playbackId: "pb1" },
+    muxVideo,
     language: variantLang,
     published: true,
     duration: 30,
@@ -2210,6 +2211,7 @@ describe("Catch-all routing — series branch (2-seg)", () => {
       description: "Story < Clubs description",
       url: "https://www.jesusfilm.org/watch/storyclubs.html",
       contentUrl: "https://cdn.example/storyclubs.m3u8",
+      embedUrl: "https://player.mux.com/pb1",
       thumbnailUrl: [
         "https://image.mux.com/pb1/thumbnail.jpg?width=1200&height=630&fit_mode=smartcrop",
       ],
@@ -2227,8 +2229,55 @@ describe("Catch-all routing — series branch (2-seg)", () => {
         "startOffset-input": "required name=seek_to_second_number",
       },
     })
-    expect(script?.textContent).not.toContain("embedUrl")
   })
+
+  it("embeds the selected-language Mux player in VideoObject JSON-LD", async () => {
+    const watchVideoResult = makeWatchVideoResult("featureFilm", {
+      slug: "xhosa",
+      bcp47: "xh",
+      name: "Xhosa",
+    })
+    watchVideoResult.selectedVariant.muxVideo = { playbackId: "pb-xh" }
+    // A sibling dub with its own playback id must never leak into the embed.
+    const siblingVariant = watchVideoResult.video.variants[1]
+    if (siblingVariant) siblingVariant.muxVideo = { playbackId: "pb-es" }
+    // List the sibling first so "first variant" cannot pass for "selected".
+    watchVideoResult.video.variants.reverse()
+    mockRouteVideo(watchVideoResult)
+
+    await render2Seg("storyclubs", "xhosa")
+
+    expect(jsonLdByType("VideoObject")).toMatchObject({
+      inLanguage: "xh",
+      contentUrl: "https://cdn.example/storyclubs.m3u8",
+      embedUrl: "https://player.mux.com/pb-xh",
+    })
+  })
+
+  it.each<{ label: string; muxVideo: WatchVariant["muxVideo"] }>([
+    { label: "null muxVideo", muxVideo: null },
+    { label: "null", muxVideo: { playbackId: null } },
+    { label: "blank", muxVideo: { playbackId: "  " } },
+  ])(
+    "omits VideoObject embedUrl but keeps the HLS contentUrl when the selected playback id is $label",
+    async ({ muxVideo }) => {
+      const watchVideoResult = makeWatchVideoResult(
+        "featureFilm",
+        undefined,
+        muxVideo,
+      )
+      mockRouteVideo(watchVideoResult)
+
+      await render2Seg("storyclubs", "english")
+
+      const videoObject = jsonLdByType("VideoObject")
+      expect(videoObject).toMatchObject({
+        "@type": "VideoObject",
+        contentUrl: "https://cdn.example/storyclubs.m3u8",
+      })
+      expect(videoObject).not.toHaveProperty("embedUrl")
+    },
+  )
 
   it("includes parsed VideoObject JSON-LD in pre-hydration server HTML", async () => {
     mockRouteVideo(makeWatchVideoResult("featureFilm"))
