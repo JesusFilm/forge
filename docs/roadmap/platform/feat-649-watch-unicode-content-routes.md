@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-10-08"
 duration: 1
 depends_on: []
-blocks: []
+blocks:
+  - "feat-653"
 tags:
   - "platform"
   - "web"

@@ -148,11 +148,14 @@ describe("defaultHrefBuilder", () => {
   it.each([
     ["My Last Day", "my-last-day", "/my-last-day.html"],
     ["Mostly Tea", "çoğu-çay-mostly-tea", "/çoğu-çay-mostly-tea.html"],
-  ])("routes the %s search result to its canonical Watch page", (_title, slug, href) => {
-    expect(
-      defaultHrefBuilder(makeResult({ slug, languageSlug: "english" })),
-    ).toBe(href)
-  })
+  ])(
+    "routes the %s search result to its canonical Watch page",
+    (_title, slug, href) => {
+      expect(
+        defaultHrefBuilder(makeResult({ slug, languageSlug: "english" })),
+      ).toBe(href)
+    },
+  )
 
   it("builds the language-less canonical path for English", () => {
     expect(defaultHrefBuilder(makeResult({ slug: "jesus" }))).toBe(

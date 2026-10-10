@@ -65,3 +65,19 @@ support in `feat-649`.
 - Web typecheck, scoped lint and format checks, and diff check.
 - Recheck the canonical production URLs and playback when the route-support
   dependency is available in production.
+
+## Production validation — 2026-10-10 UTC
+
+- T3 collaborative browser verified the canonical
+  `https://www.jesusfilm.org/watch/my-last-day.html` page renders My Last Day.
+  English playback started, with `readyState=4`, `paused=false`, no media error,
+  and `currentTime` advancing from 42.68 to 57.90 seconds. This part of the
+  historical report is not reproducible now.
+- The exact Mostly Tea catalog slug is `çoğu-çay-mostly-tea` (Core ID
+  `2_0-MostlyTea`, Admin video ID `cmp788a2505m6qm016vbgw620`). Opening
+  `https://www.jesusfilm.org/watch/%C3%A7o%C4%9Fu-%C3%A7ay-mostly-tea.html`
+  still renders the native 404 page. The catalog's two published media languages
+  do not establish playback availability through the current production route.
+- Keep this ticket in progress and PR #2667 in draft until #2662 reaches
+  production and Mostly Tea can be verified end to end. No production deployment
+  was performed during validation.
