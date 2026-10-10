@@ -70,6 +70,7 @@ import {
 import type { CategorySearchTerm } from "@/lib/search-categories"
 import type { SearchLanguageOption } from "@/lib/search-language"
 import { localizedSearchLanguageName } from "@/lib/search-language-display-name"
+import { publicSlugForLocale } from "@/lib/search-language"
 import {
   parseWatchPath,
   tryAsContentSlug,
@@ -80,6 +81,7 @@ import { videoLabelMessageKey } from "@/lib/video-labels"
 import { WATCH_SEARCH_RUM_RESULT_CLICKED_ACTION } from "@/lib/watch-search-analytics-contract"
 import { buildWatchSearchResultClickRumContext } from "@/lib/watch-search-rum"
 import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
+import { writeWatchSearchUrl } from "@/lib/watch-search-url"
 import {
   fetchWatchSearchSuggestions,
   type WatchSearchSuggestion,
@@ -722,6 +724,13 @@ export function SearchOverlay() {
       const submissionKey = `${suggestionLanguageSlug ?? ""}\0${normalizedQuery}`
       if (activeSubmissionKeyRef.current === submissionKey) return
       activeSubmissionKeyRef.current = submissionKey
+      writeWatchSearchUrl(
+        "push",
+        submittedQuery,
+        suggestionLanguageSlug ?? publicSlugForLocale(uiLocale),
+      )
+      setSuggestionPanelVisible(false)
+      setActiveSuggestionIndex(null)
       setSuppressedSuggestionValue(submittedQuery)
       invalidateSuggestionRequest()
       void search(submittedQuery).finally(() => {
@@ -730,7 +739,13 @@ export function SearchOverlay() {
         }
       })
     },
-    [invalidateSuggestionRequest, search, suggestionLanguageSlug],
+    [
+      invalidateSuggestionRequest,
+      search,
+      setSuggestionPanelVisible,
+      suggestionLanguageSlug,
+      uiLocale,
+    ],
   )
 
   const selectSuggestion = useCallback(
@@ -866,9 +881,9 @@ export function SearchOverlay() {
   const handleCategoryClick = useCallback(
     (query: string) => {
       dismissSuggestions()
-      void search(query)
+      handleSearchSubmit(query)
     },
-    [dismissSuggestions, search],
+    [dismissSuggestions, handleSearchSubmit],
   )
 
   const handleSemanticLanguageClick = useCallback(
@@ -888,6 +903,7 @@ export function SearchOverlay() {
 
   const handleClearInput = useCallback(() => {
     activeSubmissionKeyRef.current = null
+    writeWatchSearchUrl("replace", "", null)
     dismissSuggestions()
     void search("")
     inputRef.current?.focus()
