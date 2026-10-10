@@ -4,7 +4,7 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 8, 2026)
+## Status (October 10, 2026)
 
 - **Total tickets:** 794
 - **Complete:** 595
@@ -12,7 +12,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 - **In progress:** 61
 - **Not started:** 42
 - **Blocked:** 57
-- **Overdue and open:** 142
+- **Overdue and open:** 145
 
 ## Feature Index
 
@@ -819,7 +819,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-522](topic-experiences/feat-522-watch-language-search-input-icons.md)                 | Keep Watch language search icons visible above the input                         | vlad       | P1       | 2026-09-17 | 1    | 2026-09-17 | complete    |
 | [feat-615](topic-experiences/feat-615-tv-startup-logo-audio.md)                             | TV fresh-launch logo animation and sound                                         | ekkasit    | P1       | 2026-10-07 | 1    | 2026-10-07 | in-progress |
 | [feat-616](topic-experiences/feat-616-tv-animation-settings.md)                             | Watch startup and loading animation choices                                      | ekkasit    | P1       | 2026-10-07 | 2    | 2026-10-08 | in-progress |
-| [feat-636](topic-experiences/feat-636-watch-home-hero-autoplay-budget.md)                   | Bound Watch home hero autoplay media                                             | vlad       | P1       | 2026-10-08 | 2    | 2026-10-09 | in-progress |
+| [feat-680](topic-experiences/feat-680-watch-home-hero-autoplay-budget.md)                   | Bound Watch home hero autoplay media                                             | vlad       | P1       | 2026-10-08 | 2    | 2026-10-09 | in-progress |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad       | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit    | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim       | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
