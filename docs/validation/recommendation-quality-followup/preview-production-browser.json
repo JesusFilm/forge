@@ -1,0 +1,875 @@
+{
+  "syntheticProbe": true,
+  "url": "https://www.jesusfilm.org/watch/1-the-simple-gospel.html",
+  "stages": [
+    {
+      "stage": "preview_started",
+      "at": "2026-09-16T01:51:06.623Z",
+      "bodyTop": 367,
+      "deliveries": [
+        {
+          "generators": ["semantic"],
+          "itemCount": 6,
+          "mode": "semantic_contextual",
+          "reason": null,
+          "result": "served"
+        }
+      ],
+      "episodeCount": 1,
+      "facts": [],
+      "javascriptErrors": 0,
+      "requests": [
+        {
+          "milliseconds": 707,
+          "path": "/watch/api/recommendations/profile",
+          "status": 200
+        },
+        {
+          "milliseconds": 758,
+          "path": "/watch/api/recommendations",
+          "status": 200
+        },
+        {
+          "milliseconds": 432,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 593,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 596,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 595,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 462,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        }
+      ],
+      "scrollY": 0,
+      "unhandledRejections": 0,
+      "video": {
+        "duration": 199.50233,
+        "muted": true,
+        "paused": false,
+        "readyState": 4,
+        "seconds": 1.198825
+      },
+      "visibility": "visible",
+      "watchNow": true
+    },
+    {
+      "stage": "muted_preview_37s",
+      "at": "2026-09-16T01:51:43.763Z",
+      "bodyTop": 367,
+      "deliveries": [
+        {
+          "generators": ["semantic"],
+          "itemCount": 6,
+          "mode": "semantic_contextual",
+          "reason": null,
+          "result": "served"
+        }
+      ],
+      "episodeCount": 1,
+      "facts": [
+        {
+          "from": 0.005486,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10261,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:15.713Z",
+          "preview": true,
+          "status": 200,
+          "to": 10.288952
+        },
+        {
+          "from": 10.288952,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10076,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:25.807Z",
+          "preview": true,
+          "status": 200,
+          "to": 20.382644
+        },
+        {
+          "from": 20.382644,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10078,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:35.900Z",
+          "preview": true,
+          "status": 200,
+          "to": 30.476474
+        }
+      ],
+      "javascriptErrors": 0,
+      "requests": [
+        {
+          "milliseconds": 707,
+          "path": "/watch/api/recommendations/profile",
+          "status": 200
+        },
+        {
+          "milliseconds": 758,
+          "path": "/watch/api/recommendations",
+          "status": 200
+        },
+        {
+          "milliseconds": 432,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 593,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 596,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 595,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 462,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 480,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 712,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 466,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        }
+      ],
+      "scrollY": 0,
+      "unhandledRejections": 0,
+      "video": {
+        "duration": 199.50233,
+        "muted": true,
+        "paused": false,
+        "readyState": 4,
+        "seconds": 38.339016
+      },
+      "visibility": "visible",
+      "watchNow": true
+    },
+    {
+      "stage": "covered_start",
+      "at": "2026-09-16T01:51:45.976Z",
+      "bodyTop": -633,
+      "deliveries": [
+        {
+          "generators": ["semantic"],
+          "itemCount": 6,
+          "mode": "semantic_contextual",
+          "reason": null,
+          "result": "served"
+        }
+      ],
+      "episodeCount": 1,
+      "facts": [
+        {
+          "from": 0.005486,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10261,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:15.713Z",
+          "preview": true,
+          "status": 200,
+          "to": 10.288952
+        },
+        {
+          "from": 10.288952,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10076,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:25.807Z",
+          "preview": true,
+          "status": 200,
+          "to": 20.382644
+        },
+        {
+          "from": 20.382644,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10078,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:35.900Z",
+          "preview": true,
+          "status": 200,
+          "to": 30.476474
+        },
+        {
+          "from": 30.476474,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 7968,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:43.894Z",
+          "preview": true,
+          "status": 200,
+          "to": 38.458099
+        }
+      ],
+      "javascriptErrors": 0,
+      "requests": [
+        {
+          "milliseconds": 707,
+          "path": "/watch/api/recommendations/profile",
+          "status": 200
+        },
+        {
+          "milliseconds": 758,
+          "path": "/watch/api/recommendations",
+          "status": 200
+        },
+        {
+          "milliseconds": 432,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 593,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 596,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 595,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 462,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 480,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 712,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 466,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 698,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 440,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 446,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 447,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        }
+      ],
+      "scrollY": 1000,
+      "unhandledRejections": 0,
+      "video": {
+        "duration": 199.50233,
+        "muted": true,
+        "paused": true,
+        "readyState": 4,
+        "seconds": 38.458099
+      },
+      "visibility": "visible",
+      "watchNow": true
+    },
+    {
+      "stage": "covered_end",
+      "at": "2026-09-16T01:51:53.108Z",
+      "bodyTop": -633,
+      "deliveries": [
+        {
+          "generators": ["semantic"],
+          "itemCount": 6,
+          "mode": "semantic_contextual",
+          "reason": null,
+          "result": "served"
+        }
+      ],
+      "episodeCount": 1,
+      "facts": [
+        {
+          "from": 0.005486,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10261,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:15.713Z",
+          "preview": true,
+          "status": 200,
+          "to": 10.288952
+        },
+        {
+          "from": 10.288952,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10076,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:25.807Z",
+          "preview": true,
+          "status": 200,
+          "to": 20.382644
+        },
+        {
+          "from": 20.382644,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10078,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:35.900Z",
+          "preview": true,
+          "status": 200,
+          "to": 30.476474
+        },
+        {
+          "from": 30.476474,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 7968,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:43.894Z",
+          "preview": true,
+          "status": 200,
+          "to": 38.458099
+        }
+      ],
+      "javascriptErrors": 0,
+      "requests": [
+        {
+          "milliseconds": 707,
+          "path": "/watch/api/recommendations/profile",
+          "status": 200
+        },
+        {
+          "milliseconds": 758,
+          "path": "/watch/api/recommendations",
+          "status": 200
+        },
+        {
+          "milliseconds": 432,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 593,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 596,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 595,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 462,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 480,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 712,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 466,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 698,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 440,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 446,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 447,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        }
+      ],
+      "scrollY": 1000,
+      "unhandledRejections": 0,
+      "video": {
+        "duration": 199.50233,
+        "muted": true,
+        "paused": true,
+        "readyState": 4,
+        "seconds": 38.458099
+      },
+      "visibility": "visible",
+      "watchNow": true
+    },
+    {
+      "stage": "watch_now_sound_on",
+      "at": "2026-09-16T01:52:11.432Z",
+      "bodyTop": 577,
+      "deliveries": [
+        {
+          "generators": ["semantic"],
+          "itemCount": 6,
+          "mode": "semantic_contextual",
+          "reason": null,
+          "result": "served"
+        }
+      ],
+      "episodeCount": 1,
+      "facts": [
+        {
+          "from": 0.005486,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10261,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:15.713Z",
+          "preview": true,
+          "status": 200,
+          "to": 10.288952
+        },
+        {
+          "from": 10.288952,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10076,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:25.807Z",
+          "preview": true,
+          "status": 200,
+          "to": 20.382644
+        },
+        {
+          "from": 20.382644,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10078,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:35.900Z",
+          "preview": true,
+          "status": 200,
+          "to": 30.476474
+        },
+        {
+          "from": 30.476474,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 7968,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:43.894Z",
+          "preview": true,
+          "status": 200,
+          "to": 38.458099
+        },
+        {
+          "from": 38.514139,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 2854,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:51:56.091Z",
+          "preview": true,
+          "status": 200,
+          "to": 41.374062
+        },
+        {
+          "kind": "playback_attempt",
+          "occurredAt": "2026-09-16T01:51:56.304Z",
+          "status": 200
+        },
+        {
+          "kind": "playback_start",
+          "occurredAt": "2026-09-16T01:51:56.304Z",
+          "status": 200
+        },
+        {
+          "kind": "playback_qoe",
+          "occurredAt": "2026-09-16T01:51:56.329Z",
+          "status": 200
+        },
+        {
+          "kind": "playback_active_visible_playing",
+          "occurredAt": "2026-09-16T01:51:56.329Z",
+          "status": 200
+        },
+        {
+          "kind": "playback_seek",
+          "occurredAt": "2026-09-16T01:51:56.382Z",
+          "status": 200
+        },
+        {
+          "kind": "playback_qoe",
+          "occurredAt": "2026-09-16T01:51:56.383Z",
+          "status": 200
+        },
+        {
+          "kind": "playback_progress",
+          "occurredAt": "2026-09-16T01:52:06.467Z",
+          "status": 200
+        },
+        {
+          "from": 0.003073,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10260,
+          "mode": "sound_on",
+          "occurredAt": "2026-09-16T01:52:06.728Z",
+          "preview": false,
+          "status": 200,
+          "to": 10.284965
+        }
+      ],
+      "javascriptErrors": 0,
+      "requests": [
+        {
+          "milliseconds": 707,
+          "path": "/watch/api/recommendations/profile",
+          "status": 200
+        },
+        {
+          "milliseconds": 758,
+          "path": "/watch/api/recommendations",
+          "status": 200
+        },
+        {
+          "milliseconds": 432,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 593,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 596,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 590,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 595,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 462,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 480,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 712,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 466,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 698,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 440,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 446,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 447,
+          "path": "/watch/api/recommendations/evidence",
+          "status": 200
+        },
+        {
+          "milliseconds": 446,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 464,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 798,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 489,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        }
+      ],
+      "scrollY": 0,
+      "unhandledRejections": 0,
+      "video": {
+        "duration": 199.50233,
+        "muted": false,
+        "paused": false,
+        "readyState": 4,
+        "seconds": 14.988639
+      },
+      "visibility": "visible",
+      "watchNow": false
+    },
+    {
+      "stage": "selected_recommendation_preview_started",
+      "at": "2026-09-16T01:54:01.690Z",
+      "bodyTop": 369,
+      "deliveries": [],
+      "episodeCount": 1,
+      "facts": [],
+      "javascriptErrors": 0,
+      "requests": [
+        {
+          "milliseconds": 483,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 439,
+          "path": "/watch/api/recommendations/profile",
+          "status": 200
+        },
+        {
+          "milliseconds": 404,
+          "path": "/watch/api/recommendations",
+          "status": 400
+        }
+      ],
+      "scrollY": 0,
+      "unhandledRejections": 0,
+      "video": {
+        "duration": 506.324,
+        "muted": true,
+        "paused": false,
+        "readyState": 4,
+        "seconds": 1.226861
+      },
+      "visibility": "visible",
+      "watchNow": true
+    },
+    {
+      "stage": "selected_recommendation_muted_preview_37s",
+      "at": "2026-09-16T01:54:38.816Z",
+      "bodyTop": 369,
+      "deliveries": [],
+      "episodeCount": 1,
+      "facts": [
+        {
+          "from": 0.00257,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10241,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:54:10.729Z",
+          "preview": true,
+          "status": 200,
+          "to": 10.266045
+        },
+        {
+          "from": 10.266045,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10070,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:54:20.823Z",
+          "preview": true,
+          "status": 200,
+          "to": 20.359654
+        },
+        {
+          "from": 20.359654,
+          "kind": "playback_viewing_mode",
+          "milliseconds": 10069,
+          "mode": "sound_off",
+          "occurredAt": "2026-09-16T01:54:30.918Z",
+          "preview": true,
+          "status": 200,
+          "to": 30.455149
+        }
+      ],
+      "javascriptErrors": 0,
+      "requests": [
+        {
+          "milliseconds": 483,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 439,
+          "path": "/watch/api/recommendations/profile",
+          "status": 200
+        },
+        {
+          "milliseconds": 404,
+          "path": "/watch/api/recommendations",
+          "status": 400
+        },
+        {
+          "milliseconds": 983,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 482,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        },
+        {
+          "milliseconds": 489,
+          "path": "/watch/api/recommendations/playback",
+          "status": 200
+        }
+      ],
+      "scrollY": 0,
+      "unhandledRejections": 0,
+      "video": {
+        "duration": 506.324,
+        "muted": true,
+        "paused": false,
+        "readyState": 4,
+        "seconds": 38.353037
+      },
+      "visibility": "visible",
+      "watchNow": true
+    }
+  ]
+}

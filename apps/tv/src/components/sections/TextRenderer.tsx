@@ -1,25 +1,20 @@
 import { StyleSheet, Text, View } from "react-native"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { TextBlockModel } from "../../lib/normalizer"
 import { scale } from "../../lib/scale"
-
-// ── Constants ────────────────────────────────────────────────────────────────
-
-const COLORS = {
-  text: "#F5F5F4",
-  muted: "#A8A29E",
-} as const
+import { WATCH_THEME } from "../watch/watchDetailTheme"
+import { SECTION_HEADING } from "./sectionHeading"
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export interface TextRendererProps {
-  section: NormalizedBlock
+  section: TextBlockModel
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
 
 export function TextRenderer({ section }: TextRendererProps) {
-  const heading = section.textHeading as string | null
+  const heading = section.textHeading
   const rawParagraphs = section.contentParagraphs
 
   // contentParagraphs is a Strapi JSON field that should be string[]
@@ -57,18 +52,15 @@ const styles = StyleSheet.create({
     paddingVertical: scale(32),
   },
   heading: {
-    fontFamily: "System",
-    fontSize: scale(28),
-    fontWeight: "bold",
-    color: COLORS.text,
+    ...SECTION_HEADING,
     marginBottom: scale(16),
   },
   paragraph: {
     fontFamily: "System",
-    fontSize: scale(22),
+    fontSize: Math.round(scale(24)),
     fontWeight: "400",
-    color: COLORS.muted,
-    lineHeight: scale(33),
+    color: WATCH_THEME.text,
+    lineHeight: Math.round(scale(36)),
   },
   paragraphSpacing: {
     marginBottom: scale(16),

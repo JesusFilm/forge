@@ -13,7 +13,7 @@ function props(
       text: "For God so loved the world...",
       attribution: "Jesus",
       backgroundColor: "#2457aa",
-      backgroundImageUrl: "https://example.com/quote.jpg",
+      backgroundImagePreviewUrl: "https://example.com/quote.jpg",
       ctaEnabled: true,
       ctaLabel: "Read more",
       ctaLink: "/watch",
@@ -25,9 +25,9 @@ function props(
     onRemove: vi.fn(),
     onDragStart: vi.fn(),
     onDragEnter: vi.fn(),
+    onChooseImage: vi.fn(),
     onClearDragState: vi.fn(),
     onSetDragHandleState: vi.fn(),
-    onPushToast: vi.fn(),
     ...overrides,
   }
 }
@@ -43,8 +43,9 @@ describe("BibleQuoteCard", () => {
     expect(html).toContain("Edit quote call to action link")
     expect(html).toContain("Toggle quote call to action")
     expect(html).toContain("Choose quote image")
+    expect(html).toContain('aria-pressed="false"')
     expect(html).toContain("Choose quote background color")
-    expect(html).toContain("Remove quote image")
+    expect(html).not.toContain("Remove quote image")
     expect(html).toContain(
       "background-image:url(&quot;https://example.com/quote.jpg&quot;)",
     )

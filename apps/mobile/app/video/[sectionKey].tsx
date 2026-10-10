@@ -1,12 +1,6 @@
+import { useLayoutEffect, useState } from "react"
 import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react"
-import {
-  AppState,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -16,27 +10,27 @@ import {
 } from "react-native"
 import { useLocalSearchParams, useNavigation } from "expo-router"
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { useEvent } from "expo"
 import { Image } from "expo-image"
-import { useVideoPlayer, VideoView } from "expo-video"
+import { VideoView } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+
+import { useManagedVideoPlayer } from "../../src/hooks/useManagedVideoPlayer"
+import { useAutostartPlayback } from "../../src/hooks/useAutostartPlayback"
+import { blockStreamingUrl } from "../../src/lib/blockVideoDub"
 
 import { useSectionByKey } from "../../src/contexts/ExperienceProvider"
 import { ContentDispatcher } from "../../src/components/sections/ContentDispatcher"
-import {
-  ACCENT,
-  BLACK,
-  SURFACE_COLOR,
-  TEXT_BODY,
-  TEXT_ON_OVERLAY,
-} from "../../src/lib/color"
-import { layout, text, overlay, button } from "../../src/styles/shared"
+import { PlayerLoadingVeil } from "../../src/components/watch/PlayerLoadingVeil"
+import { ACCENT, BLACK, SURFACE_COLOR, TEXT_BODY } from "../../src/lib/color"
+import { layout, text, button } from "../../src/styles/shared"
+import { useEndSessionOnViewerInitiatedPlayback } from "../../src/hooks/useEndSessionOnViewerInitiatedPlayback"
+import { pictureInPictureViewProps } from "../../src/lib/miniPlayer/pictureInPicture"
 import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
 import { validateStreamingUrl } from "../../src/lib/validateUrl"
 import { useTypography } from "../../src/hooks/useTypography"
-import type { NormalizedBlock } from "../../src/lib/normalizer"
-import { pickThumbnailUrl } from "../../src/lib/types"
-import type { VideoRef } from "../../src/lib/types"
+import { useT } from "../../src/i18n/useT"
+import type { AdminBlock } from "../../src/lib/queries"
+import { deriveMuxThumbnailUrl } from "../../src/lib/muxThumbnail"
 import { parseSectionKey } from "../../src/lib/parseSectionKey"
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -45,6 +39,7 @@ export default function VideoDetailScreen() {
   const { sectionKey } = useLocalSearchParams<{ sectionKey: string }>()
   const insets = useSafeAreaInsets()
   const typography = useTypography()
+  const t = useT("Sections")
 
   const decodedKey = parseSectionKey(sectionKey)
 
@@ -53,11 +48,11 @@ export default function VideoDetailScreen() {
   if (decodedKey == null || section == null) {
     return (
       <View style={[layout.centered, { paddingTop: insets.top + 44 }]}>
-        <Text style={text.errorTitle}>Video not found</Text>
+        <Text style={text.errorTitle}>{t("videoNotFoundTitle")}</Text>
         <Text style={text.errorMessage}>
           {decodedKey == null
-            ? "Invalid video identifier."
-            : `No section found for "${decodedKey}".`}
+            ? t("invalidVideoId")
+            : t("sectionNotFound", { key: decodedKey })}
         </Text>
       </View>
     )
@@ -72,114 +67,84 @@ function VideoDetailContent({
   section,
   typography,
 }: {
-  section: NormalizedBlock
+  section: AdminBlock
   typography: ReturnType<typeof useTypography>
 }) {
-  const streamingUrl = section.streamingUrl as string | null
+  const t = useT("Sections")
+  const tCommon = useT("Common")
+  const s = section as Record<string, unknown>
+  // Admin exposes no `streamingUrl` on a block — it resolves the playable dub
+  // live into `videoDub`. Reading the bare field yielded undefined on every
+  // load, so this route never mounted a player at all.
+  const streamingUrl = blockStreamingUrl(
+    s as Parameters<typeof blockStreamingUrl>[0],
+  )
+  const blockVideoId =
+    typeof s.videoId === "string" && s.videoId.length > 0
+      ? s.videoId
+      : undefined
   const hasValidStream = validateStreamingUrl(streamingUrl)
 
-  const videoRef = section.videoRef as VideoRef | null | undefined
+  const title = (s.title as string | null) ?? tCommon("untitled")
+  const thumbnailUrl = resolveImageUrl(deriveMuxThumbnailUrl(streamingUrl))
 
-  const title =
-    (section.videoTitle as string | null) ??
-    videoRef?.title ??
-    (section.title as string | null)
-  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(videoRef?.images))
-
-  // Set up share button in the navigation header with actual video context
   const navigation = useNavigation()
-  const slug = videoRef?.slug
   useLayoutEffect(() => {
-    const displayTitle = title ?? "this video"
-    const shareUrl =
-      slug != null ? `https://www.jesusfilm.org/watch/${slug}.html` : null
     navigation.setOptions({
       headerTitle: title ?? "",
       headerRight: () => (
         <Pressable
           onPress={() => {
-            const parts = [`Check out "${displayTitle}" on JesusFilm!`]
-            if (shareUrl != null) parts.push(shareUrl)
-            Share.share({ message: parts.join("\n") })
+            Share.share({ message: t("shareVideoMessage", { title }) })
           }}
           accessibilityRole="button"
-          accessibilityLabel="Share"
+          accessibilityLabel={tCommon("shareAriaLabel")}
           style={[button.iconButton44, styles.shareExtra]}
+          {...{ "dd-action-name": "sdui-video-share" }}
         >
           <Ionicons name="share-outline" size={22} color={ACCENT} />
         </Pressable>
       ),
     })
-  }, [navigation, title, slug])
+  }, [navigation, title, t, tCommon])
 
-  // Sibling content from parent sectionWrapper (attached during indexing)
-  const siblings =
-    (section.siblingContent as NormalizedBlock[] | undefined) ?? []
-  // Filter out the current video — keep other siblings (including other videos)
-  const currentKey = section.sectionKey as string | undefined
+  const siblings = (s.siblingContent as AdminBlock[] | undefined) ?? []
+  const currentKey = s.sectionKey as string | undefined
   const nestedContent = siblings.filter(
     (c) =>
-      (c.sectionKey as string | undefined) !== currentKey &&
-      c.kind !== "navigationCarousel",
+      ("sectionKey" in c ? (c.sectionKey as string | undefined) : undefined) !==
+        currentKey && c.__typename !== "NavigationCarouselBlock",
   )
 
-  const rawParagraphs = section.contentParagraphs
+  const rawParagraphs = s.contentParagraphs
   const contentParagraphs = Array.isArray(rawParagraphs)
     ? rawParagraphs.filter((p): p is string => typeof p === "string")
     : []
   const description =
     contentParagraphs.length > 0 ? contentParagraphs.join(" ") : null
 
-  const [hasStarted, setHasStarted] = useState(false)
   const [showFullDescription, setShowFullDescription] = useState(false)
-  const appActiveRef = useRef(true)
 
-  const player = useVideoPlayer(hasValidStream ? streamingUrl : null, (p) => {
-    p.muted = false
-    p.loop = false
-  })
+  // Shared lifecycle adapter (todo 016). Deliberate convergence: foreground now
+  // resumes only if playback was active at background — the old inline handler
+  // called play() unconditionally, starting videos the user paused/never played.
+  const { player, isPlaying } = useManagedVideoPlayer(
+    hasValidStream ? streamingUrl : null,
+    undefined,
+    // KTD5 opt-in: this SDUI block carries the admin video id.
+    { progress: blockVideoId ? { videoId: blockVideoId } : null },
+  )
 
-  // Defensive cleanup
-  useEffect(() => {
-    return () => {
-      try {
-        player.pause()
-      } catch {
-        // Already released
-      }
-    }
-  }, [player])
+  // Autostarts behind a poster + spinner, the same as every other player
+  // surface. Opening this screen IS the viewer asking to watch, so it must not
+  // sit on a play button waiting for a second tap.
+  const { awaitingAutostart } = useAutostartPlayback(
+    player,
+    hasValidStream ? streamingUrl : null,
+    isPlaying,
+  )
 
-  const { isPlaying } = useEvent(player, "playingChange", {
-    isPlaying: player.playing,
-  })
-
-  useEffect(() => {
-    if (isPlaying && !hasStarted) {
-      setHasStarted(true)
-    }
-  }, [isPlaying, hasStarted])
-
-  // AppState handling
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (nextState) => {
-      appActiveRef.current = nextState === "active"
-      if (appActiveRef.current) {
-        player.play()
-      } else {
-        try {
-          player.pause()
-        } catch {
-          // Released
-        }
-      }
-    })
-    return () => subscription.remove()
-  }, [player])
-
-  const handlePlay = useCallback(() => {
-    player.play()
-  }, [player])
+  useEndSessionOnViewerInitiatedPlayback(isPlaying)
 
   return (
     <ScrollView
@@ -195,46 +160,40 @@ function VideoDetailContent({
               player={player}
               style={StyleSheet.absoluteFill}
               nativeControls
-              allowsFullscreen
-              allowsPictureInPicture
+              fullscreenOptions={{ enable: true }}
+              // Android SurfaceView composites outside the RN tree and punches
+              // through the poster and veil below. No-op on iOS.
+              surfaceType={
+                Platform.OS === "android" ? "textureView" : undefined
+              }
+              // Native controls carry a picture-in-picture button on iOS, so
+              // this view feeds the same latch the host does. `automatic` is
+              // the host's alone — expo-video elects only one view.
+              {...pictureInPictureViewProps({ automatic: false })}
               contentFit="contain"
             />
-            {!hasStarted && thumbnailUrl != null && (
-              <Pressable
+            {/* Poster and veil share ONE predicate. Gating the poster on
+                `!hasStarted` instead would leave it covering the native
+                controls after a failed or timed-out load — visible controls
+                are the recovery affordance, so both must clear together. */}
+            {awaitingAutostart && thumbnailUrl != null && (
+              <Image
+                source={thumbnailUrl}
                 style={StyleSheet.absoluteFill}
-                onPress={handlePlay}
-                accessibilityRole="button"
-                accessibilityLabel="Play video"
-              >
-                <Image
-                  source={thumbnailUrl}
-                  style={StyleSheet.absoluteFill}
-                  contentFit="cover"
-                  accessibilityLabel={
-                    videoRef?.imageAlt ?? title ?? "Video thumbnail"
-                  }
-                />
-                <View style={overlay.playOverlay}>
-                  <View style={styles.playCircle}>
-                    <Ionicons
-                      name="play"
-                      size={28}
-                      color={TEXT_ON_OVERLAY}
-                      style={{ marginLeft: 4 }}
-                    />
-                  </View>
-                </View>
-              </Pressable>
+                contentFit="cover"
+                pointerEvents="none"
+                recyclingKey={`sdui-video-poster-${currentKey ?? title}`}
+                accessibilityLabel={title}
+              />
             )}
+            {awaitingAutostart && <PlayerLoadingVeil />}
           </>
         ) : thumbnailUrl != null ? (
           <Image
             source={thumbnailUrl}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
-            accessibilityLabel={
-              videoRef?.imageAlt ?? title ?? "Video thumbnail"
-            }
+            accessibilityLabel={title}
           />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.fallback]} />
@@ -255,11 +214,18 @@ function VideoDetailContent({
               onPress={() => setShowFullDescription((prev) => !prev)}
               accessibilityRole="button"
               accessibilityLabel={
-                showFullDescription ? "Show less" : "Read more"
+                showFullDescription ? tCommon("showLess") : tCommon("readMore")
               }
+              {...{
+                "dd-action-name": showFullDescription
+                  ? "sdui-video-less"
+                  : "sdui-video-more",
+              }}
             >
               <Text style={[text.accentLinkText, styles.readMoreExtra]}>
-                {showFullDescription ? "Show less" : "Read more"}
+                {showFullDescription
+                  ? tCommon("showLess")
+                  : tCommon("readMore")}
               </Text>
             </Pressable>
           )}
@@ -284,17 +250,6 @@ const styles = StyleSheet.create({
   },
   fallback: {
     backgroundColor: SURFACE_COLOR,
-  },
-  // Accent-colored play button per iOS Video Detail (HIG) mockup.
-  // Home feed cards use dark play buttons (VideoCardRenderer).
-  // Fully opaque for reliable 3:1+ contrast against arbitrary thumbnails.
-  playCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: ACCENT,
-    justifyContent: "center",
-    alignItems: "center",
   },
   descriptionArea: {
     paddingHorizontal: 16,

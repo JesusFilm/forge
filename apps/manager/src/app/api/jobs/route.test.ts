@@ -116,7 +116,30 @@ describe("GET /api/jobs", () => {
       total: 2,
     })
     expect(listJobSummariesMock).toHaveBeenCalledTimes(1)
-    expect(countJobsMock).not.toHaveBeenCalled()
+    expect(listJobSummariesMock).toHaveBeenCalledWith({
+      limit: 50,
+      offset: 0,
+    })
+    expect(countJobsMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("preserves limit, offset, and total semantics for summary pages", async () => {
+    listJobSummariesMock.mockResolvedValueOnce([buildJob("job-3")])
+    countJobsMock.mockResolvedValueOnce(300)
+
+    const response = await GET(
+      new Request("http://example.test/api/jobs?limit=25&offset=100"),
+    )
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toMatchObject({
+      jobs: [expect.objectContaining({ id: "job-3" })],
+      total: 300,
+    })
+    expect(listJobSummariesMock).toHaveBeenCalledWith({
+      limit: 25,
+      offset: 100,
+    })
   })
 
   it("returns the count envelope when requested", async () => {
@@ -128,6 +151,30 @@ describe("GET /api/jobs", () => {
     await expect(response.json()).resolves.toEqual({ total: 2 })
     expect(countJobsMock).toHaveBeenCalledTimes(1)
     expect(listJobSummariesMock).not.toHaveBeenCalled()
+  })
+
+  it("returns 502 when the job list cannot be loaded", async () => {
+    listJobSummariesMock.mockRejectedValueOnce(new Error("admin down"))
+
+    const response = await GET(new Request("http://example.test/api/jobs"))
+
+    expect(response.status).toBe(502)
+    await expect(response.json()).resolves.toEqual({
+      error: "Failed to load jobs",
+    })
+  })
+
+  it("returns 502 when the job count cannot be loaded", async () => {
+    countJobsMock.mockRejectedValueOnce(new Error("admin down"))
+
+    const response = await GET(
+      new Request("http://example.test/api/jobs?view=count"),
+    )
+
+    expect(response.status).toBe(502)
+    await expect(response.json()).resolves.toEqual({
+      error: "Failed to load jobs",
+    })
   })
 })
 

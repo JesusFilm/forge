@@ -1,0 +1,33 @@
+{
+  "sqlSha256": "d5e9b6ea9ed8d1625cf0250a645376dd85953b20ca04a6f8a16c743d86e41bd4",
+  "transportExitCode": 0,
+  "rawOutputRetained": false,
+  "records": [
+    {
+      "probe": "cowatch_digest_aggregate",
+      "readOnly": true,
+      "runtimeCommit": "99554c8b0759ca4d88d02a0d63bf518e0a89b4cf",
+      "observedAt": "2026-09-30T19:35:59.341Z",
+      "observedSources": "6680",
+      "observedSuccessors": "23",
+      "groups": {
+        "near_60s": {
+          "compared": 12,
+          "currentFormatMatchesSuccessor": 12,
+          "currentFormatWithOldMeasuresMatchesCaptured": 0,
+          "legacyWithoutDirectInfluenceMatchesCaptured": 8,
+          "legacyWithoutDirectInfluenceMatchesSuccessor": 0,
+          "neitherCapturedFormatMatches": 4
+        },
+        "later": {
+          "compared": 11,
+          "currentFormatMatchesSuccessor": 9,
+          "currentFormatWithOldMeasuresMatchesCaptured": 0,
+          "legacyWithoutDirectInfluenceMatchesCaptured": 8,
+          "legacyWithoutDirectInfluenceMatchesSuccessor": 0,
+          "neitherCapturedFormatMatches": 3
+        }
+      }
+    }
+  ]
+}

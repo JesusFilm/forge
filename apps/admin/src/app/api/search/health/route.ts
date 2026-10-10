@@ -14,13 +14,16 @@
  */
 
 import { rateLimitAuthRoute } from "@/auth/rate-limit"
-import { generateExperienceEmbedding } from "@/services/embeddings.service"
+import { prisma } from "@/db/client"
+import { generateCurrentContentQueryEmbedding } from "@/services/embeddings.service"
 import {
   getStats,
   recordAttempt,
   recordFailure,
   withTimeout,
 } from "@/services/hybrid-search-health"
+import { getSearchTraceCaptureStats } from "@/services/search-trace.service"
+import { readSearchTraceRetentionHealth } from "@/services/search-trace-retention.service"
 
 const RATE_LIMIT_MAX = 5
 const RATE_LIMIT_WINDOW_MS = 60_000
@@ -36,6 +39,24 @@ function tooManyRequests(): Response {
   return Response.json({ error: "Too many requests" }, { status: 429 })
 }
 
+async function loadRetentionHealth() {
+  try {
+    return await readSearchTraceRetentionHealth(prisma)
+  } catch (error) {
+    const errorClass =
+      error instanceof Error ? error.constructor.name : "UnknownError"
+    console.error(
+      `[search] event=trace_retention_health_failed error_class=${errorClass}`,
+    )
+    return {
+      healthy: false,
+      reason: "missing" as const,
+      latestPurgeAt: null,
+      activeSchedulerRunId: null,
+    }
+  }
+}
+
 export async function GET(request: Request): Promise<Response> {
   const limit = await rateLimitAuthRoute({
     request,
@@ -48,15 +69,23 @@ export async function GET(request: Request): Promise<Response> {
   recordAttempt()
   try {
     await withTimeout(
-      generateExperienceEmbedding(HEALTH_PROBE_INPUT),
+      generateCurrentContentQueryEmbedding(prisma, HEALTH_PROBE_INPUT),
       HEALTH_PROBE_TIMEOUT_MS,
     )
+    const retention = await loadRetentionHealth()
     return Response.json(
-      { status: "ok", error: null, ...getStats() },
+      {
+        status: retention.healthy ? "ok" : "degraded",
+        error: retention.healthy ? null : "search trace retention unhealthy",
+        ...getStats(),
+        traceCapture: getSearchTraceCaptureStats(),
+        retention,
+      },
       { status: 200 },
     )
   } catch (error) {
     recordFailure(error)
+    const retention = await loadRetentionHealth()
     const errorClass =
       error instanceof Error ? error.constructor.name : "UnknownError"
     const message = error instanceof Error ? error.message : String(error)
@@ -65,7 +94,13 @@ export async function GET(request: Request): Promise<Response> {
       `[search] event=health_probe_failed error_class=${errorClass} message=${message}`,
     )
     return Response.json(
-      { status: "degraded", error: message, ...getStats() },
+      {
+        status: "degraded",
+        error: message,
+        ...getStats(),
+        traceCapture: getSearchTraceCaptureStats(),
+        retention,
+      },
       { status: 200 },
     )
   }

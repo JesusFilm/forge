@@ -1,0 +1,723 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  ActionSheetIOS,
+  Alert,
+  Platform,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
+import { Image } from "expo-image"
+import { StatusBar } from "expo-status-bar"
+import { useLocalSearchParams, useRouter } from "expo-router"
+import { useQuery } from "@apollo/client/react"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+
+import { GET_SERIES_BY_SLUG, GET_SERIES_TEXT } from "../../src/lib/queries"
+import {
+  normalizeSeries,
+  type VideoTextInput,
+  type WatchEpisode,
+} from "../../src/lib/normalizeVideo"
+import { useScreenAdminForms } from "../../src/i18n/useScreenAdminForms"
+import { useTextDirection } from "../../src/i18n/textDirection"
+import { useT } from "../../src/i18n/useT"
+import { videoTextVariables } from "../../src/lib/videoText"
+import { decodeWatchSeed, encodeWatchSeed } from "../../src/lib/watchSeed"
+import {
+  discoverySourceFromParam,
+  markPlaybackDiscovery,
+} from "../../src/lib/recommendations/playbackDiscovery"
+import { resolveImageUrl } from "../../src/lib/resolveImageUrl"
+import { ACCENT, SURFACE_COLOR } from "../../src/lib/color"
+import { layout, text } from "../../src/styles/shared"
+import { useTypography } from "../../src/hooks/useTypography"
+import { PlayerSlot } from "../../src/components/watch/PlayerSlot"
+import { useFullscreenPresentation } from "../../src/hooks/useFullscreenPresentation"
+import { usePlaybackFrameVisible } from "../../src/hooks/usePlaybackFrame"
+import { BACK_BUTTON_PROPS } from "../../src/lib/playerLayout"
+import { buildWatchShareUrl } from "../../src/lib/watchShareUrl"
+import { VideoDetailSkeleton } from "../../src/components/watch/VideoDetailSkeleton"
+import { VideoMetadata } from "../../src/components/watch/VideoMetadata"
+import { VideoDescription } from "../../src/components/watch/VideoDescription"
+import { SeriesActionRow } from "../../src/components/watch/SeriesActionRow"
+import { SeriesEpisodesGrid } from "../../src/components/series/SeriesEpisodesGrid"
+import { FloatingBackButton } from "../../src/components/ui/FloatingBackButton"
+import { Snackbar } from "../../src/components/ui/Snackbar"
+import { useSeriesSession } from "../../src/contexts/SeriesSessionProvider"
+import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
+import { cachedSubtitleName } from "../../src/lib/watchPreferences"
+import { useDownloads } from "../../src/contexts/DownloadsProvider"
+import {
+  deriveEpisodeBadges,
+  deriveSeriesDownloadState,
+  seriesAllDownloaded,
+} from "../../src/lib/seriesDownloadAggregate"
+import { resolveSeriesSubtitleLabel } from "../../src/lib/subtitleSelection"
+import { useSeriesSubtitleUnion } from "../../src/hooks/useSeriesSubtitleUnion"
+import {
+  useScopedExportSession,
+  useSeriesExportProgress,
+} from "../../src/hooks/useExportSession"
+import { getExportSessionStore } from "../../src/lib/exportSession"
+import { requestSeriesExportCancel } from "../../src/lib/seriesExportProgress"
+import { presentActionMenu } from "../../src/lib/actionMenu"
+import { rawModeLabel } from "../../src/lib/rawModeLabel"
+import { RAW_EXPORT_ENABLED } from "../../src/lib/rawExportConstants"
+
+const EMPTY_EPISODES: WatchEpisode[] = []
+
+// Series detail screen. A trailer plays in a VideoPlayer PINNED at the route root
+// (outside the list) so fullscreen never reparents and scrolling can't obscure it.
+// A poster-only hero instead scrolls away in the grid header.
+export default function SeriesScreen() {
+  const {
+    slug,
+    seed: seedParam,
+    from: fromParam,
+  } = useLocalSearchParams<{
+    slug: string
+    seed?: string
+    from?: string
+  }>()
+  const decodedSlug = slug ? decodeURIComponent(slug) : ""
+  // How this LIST was reached (a search result carries `from=search`); the
+  // episode tap below marks the episode with it for playback attribution.
+  const discoverySource = discoverySourceFromParam(fromParam)
+
+  const router = useRouter()
+  const { isFullscreen, toggleFullscreen } = useFullscreenPresentation()
+  const playerFrameVisible = usePlaybackFrameVisible()
+  const typography = useTypography()
+  const insets = useSafeAreaInsets()
+  const t = useT("Series")
+  const tSheet = useT("DownloadSheet")
+  const uiDirection = useTextDirection().ui
+
+  const { series, setSeries, languages, selectedLanguageSlug } =
+    useSeriesSession()
+  // KTD16: captured at mount, so a live language change moves no text here.
+  const adminForms = useScreenAdminForms(decodedSlug)
+  const {
+    downloadedSlugs,
+    offlineRecords,
+    pendingSwapSlugs,
+    getRecord,
+    deleteDownload,
+    pauseDownload,
+    resumeDownload,
+    cancelDownload,
+  } = useDownloads()
+  const watchPreferences = useWatchPreferences()
+  const { subtitleLanguageSlug, subtitlesEnabled } = watchPreferences
+  const subtitleLanguageName = cachedSubtitleName(
+    watchPreferences,
+    adminForms.catalogTag,
+  )
+
+  // Reconcile the persisted subtitle pref against what this series offers — an
+  // unsupported pref falls back. Fetched only when a subtitle is set; the pill
+  // paints the cached name optimistically until the union lands.
+  const { subtitles: subtitleUnion, error: subtitleUnionError } =
+    useSeriesSubtitleUnion(
+      series?.episodes ?? null,
+      selectedLanguageSlug,
+      subtitlesEnabled && subtitleLanguageSlug != null,
+      adminForms,
+    )
+  const subtitleActionLabel = resolveSeriesSubtitleLabel(
+    subtitlesEnabled,
+    subtitleLanguageSlug,
+    subtitleLanguageName,
+    subtitleUnion,
+    series?.primaryLanguageBcp47 ?? null,
+  )
+  // Bright only when subtitles are on, a language is set, the union didn't error,
+  // and the series has tracks — otherwise the pill reads "Off"/placeholder, muted.
+  const subtitleActive =
+    subtitlesEnabled &&
+    subtitleLanguageSlug != null &&
+    !subtitleUnionError &&
+    (subtitleUnion == null || subtitleUnion.length > 0)
+
+  // Scoped to THIS series' episodes: the raw snapshot changes identity on every
+  // progress tick of every export in the app, which would re-run the aggregate
+  // and repaint the row once a second for a download the screen never shows.
+  const episodeSlugs = useMemo(
+    () => series?.episodes.map((episode) => episode.slug) ?? [],
+    [series?.episodes],
+  )
+  const exportSession = useScopedExportSession(episodeSlugs)
+  const exportRunProgress = useSeriesExportProgress(series?.slug)
+  const downloadState = useMemo(
+    () =>
+      deriveSeriesDownloadState(
+        episodeSlugs,
+        downloadedSlugs,
+        offlineRecords,
+        pendingSwapSlugs,
+        exportSession,
+        exportRunProgress,
+      ),
+    [
+      episodeSlugs,
+      downloadedSlugs,
+      offlineRecords,
+      pendingSwapSlugs,
+      exportSession,
+      exportRunProgress,
+    ],
+  )
+  const seriesFullyDownloaded = seriesAllDownloaded(downloadState)
+
+  // Toast a genuine series-completion: sawDownloadActivityRef skips a fresh mount
+  // of an already-saved series; cancellingRef skips a cancel-revert (also lands
+  // fully-downloaded). `queued` keeps inProgress true between sequential episodes.
+  const [seriesSnackbar, setSeriesSnackbar] = useState(false)
+  const sawDownloadActivityRef = useRef(false)
+  const cancellingRef = useRef(false)
+  useEffect(() => {
+    if (downloadState.inProgress) {
+      sawDownloadActivityRef.current = true
+      return
+    }
+    if (!sawDownloadActivityRef.current) return
+    // Activity ended: consume both latches; toast only a genuine completion.
+    sawDownloadActivityRef.current = false
+    const wasCancelling = cancellingRef.current
+    cancellingRef.current = false
+    if (!wasCancelling && seriesFullyDownloaded) {
+      setSeriesSnackbar(true)
+    }
+  }, [downloadState.inProgress, seriesFullyDownloaded])
+
+  // Keyed on export MEMBERSHIP, never the whole snapshot. The snapshot changes
+  // identity once a second while any export runs, and this map is FlatList's
+  // `extraData` — so every visible episode row would repaint for no reason.
+  const exportingTargets = exportSession.targets
+  const pausedExportTargets = exportSession.pausedTargets
+  const badgeBySlug = useMemo(
+    () =>
+      deriveEpisodeBadges(
+        series?.episodes.map((episode) => episode.slug) ?? [],
+        offlineRecords,
+        exportingTargets,
+        pausedExportTargets,
+      ),
+    [series?.episodes, offlineRecords, exportingTargets, pausedExportTargets],
+  )
+
+  // KTD10: language-free; the text comes from GET_SERIES_TEXT beside it.
+  const { data, loading, error, refetch } = useQuery(GET_SERIES_BY_SLUG, {
+    variables: { slug: decodedSlug },
+    skip: !decodedSlug,
+    fetchPolicy: "cache-first",
+    returnPartialData: true,
+  })
+  const {
+    data: textData,
+    dataState: textDataState,
+    error: textError,
+    refetch: refetchText,
+  } = useQuery(GET_SERIES_TEXT, {
+    variables: { slug: decodedSlug, ...videoTextVariables(adminForms) },
+    skip: !decodedSlug,
+    fetchPolicy: "cache-first",
+    returnPartialData: true,
+  })
+  // A failed load keeps a partial cached row, so the text is missing unless
+  // the data is complete.
+  const textFailed = textError != null && textDataState !== "complete"
+
+  const normalized = useMemo(
+    // returnPartialData widens videoBySlug to a deep-partial type; normalizeSeries
+    // tolerates missing fields (returns null without a documentId).
+    () =>
+      normalizeSeries(
+        (data?.videoBySlug ?? null) as Parameters<typeof normalizeSeries>[0],
+        adminForms,
+        (textData?.videoBySlug ?? null) as VideoTextInput | null,
+      ),
+    [data, textData, adminForms],
+  )
+
+  useEffect(() => {
+    if (normalized) setSeries(normalized)
+  }, [normalized, setSeries])
+
+  const seed = useMemo(() => decodeWatchSeed(seedParam), [seedParam])
+
+  const displayTitle = series?.title ?? seed?.title ?? null
+  const displayPoster = resolveImageUrl(
+    series?.posterUrl ?? seed?.imageUrl ?? null,
+  )
+
+  // Trailer follows the selected language (series' dub for it, else first playable
+  // dub). Resolved only from the loaded series, never the seed, so a series with
+  // no trailer never mounts a player.
+  const trailerHls = useMemo(() => {
+    if (!series) return null
+    const forLanguage = series.variants.find(
+      (v) =>
+        v.languageSlug === selectedLanguageSlug &&
+        v.hls != null &&
+        v.hls !== "",
+    )
+    return forLanguage?.hls ?? series.streamingUrl
+  }, [series, selectedLanguageSlug])
+
+  const hasSeries = series != null
+  const hasTrailer = trailerHls != null
+
+  const handleShare = useCallback(() => {
+    if (!series) return
+    // Share.share rejects when the OS share sheet is dismissed/unavailable;
+    // swallow it so it never surfaces as an unhandled rejection.
+    void Share.share({
+      message: buildWatchShareUrl(series.slug, selectedLanguageSlug),
+      title: series.title ?? undefined,
+    }).catch(() => {})
+  }, [series, selectedLanguageSlug])
+
+  const openDownloadSheet = useCallback(
+    () => router.push("/series/download"),
+    [router],
+  )
+  // R33's switch removes the whole export feature, so the entry point goes with
+  // it. It opens the sheet rather than exporting straight away, because the
+  // Terms gate is the consent surface and lives there.
+  const openRawExportSheet = useCallback(
+    () => router.push("/series/download?mode=raw"),
+    [router],
+  )
+
+  // Manage control once the whole series is saved — mirrors the single-video
+  // manage flow (app/watch/[slug]) as a native iOS action sheet (HIG: a menu, not
+  // an alert), offering change-quality/subtitles, save-to-Files and remove-all.
+  const handleManageDownloads = useCallback(() => {
+    const savedSlugs = (series?.episodes ?? [])
+      .map((episode) => episode.slug)
+      .filter((slug) => getRecord(slug) != null)
+    const seriesTitle = series?.title ?? t("thisSeries")
+
+    const confirmRemoveAll = () => {
+      Alert.alert(
+        t("removeDownloadsTitle"),
+        t("removeDownloadsMessage", {
+          count: savedSlugs.length,
+          title: seriesTitle,
+        }),
+        [
+          { text: t("cancel"), style: "cancel" },
+          {
+            text: t("remove"),
+            style: "destructive",
+            onPress: () => {
+              // Sequential so the manifest index isn't raced across writes.
+              void (async () => {
+                for (const slug of savedSlugs) await deleteDownload(slug)
+              })()
+            },
+          },
+        ],
+      )
+    }
+
+    // The download sheet changes quality + subtitles for the current audio
+    // language (audio language is set via the language pill, not here). Same-
+    // language quality/subtitle re-download is a known no-op (decideEpisodeAction).
+    const savedCount = downloadState.total
+    presentActionMenu({
+      title: seriesTitle,
+      message: t("savedForOffline", { count: savedCount }),
+      actions: [
+        { text: t("changeQualityOrSubtitles"), onPress: openDownloadSheet },
+        ...(RAW_EXPORT_ENABLED
+          ? [
+              {
+                text: rawModeLabel(Platform.OS, tSheet),
+                onPress: openRawExportSheet,
+              },
+            ]
+          : []),
+        {
+          text: t("removeAllDownloads"),
+          style: "destructive" as const,
+          onPress: confirmRemoveAll,
+        },
+        { text: t("cancel"), style: "cancel" as const },
+      ],
+    })
+  }, [
+    series?.episodes,
+    series?.title,
+    downloadState.total,
+    getRecord,
+    deleteDownload,
+    openDownloadSheet,
+    openRawExportSheet,
+    t,
+    tSheet,
+  ])
+
+  // Downloading → the ring's pause glyph pauses the active transfer (the pump
+  // then holds, so the whole batch pauses).
+  const handlePauseAll = useCallback(() => {
+    downloadState.inFlightSlugs.forEach((slug) => void pauseDownload(slug))
+  }, [downloadState.inFlightSlugs, pauseDownload])
+
+  // Running → the ring's pause glyph suspends every exporting episode. The
+  // bytes and the staged files survive (owner decision 2026-09-10; supersedes
+  // R24's cancel-only control).
+  const handlePauseExport = useCallback(() => {
+    const store = getExportSessionStore()
+    downloadState.exportingSlugs.forEach((slug) => store.requestPause(slug))
+  }, [downloadState.exportingSlugs])
+
+  // Paused → resume, or stop.
+  //
+  // The MESSAGE carries the consequence, not the button. A series exports one
+  // episode at a time, so `exportingSlugs` always holds exactly one — a count
+  // in the label would read "Stop Download" however many episodes remain,
+  // while stopping actually ends the whole run (runSeriesRawExport breaks on a
+  // cancelled episode). Verified on the simulator 2026-09-10: stopping the
+  // second episode returned the row to its offline state with three unexported.
+  // R22 keeps every episode already written to the library.
+  const handleResumeExport = useCallback(() => {
+    const store = getExportSessionStore()
+    const slugs = downloadState.exportingSlugs
+    const resumeAll = () => slugs.forEach((slug) => store.requestResume(slug))
+    const stopAll = () => {
+      // The run-level latch first: the per-episode flags below are deleted as
+      // each episode finishes, so alone they cannot stop the whole run.
+      requestSeriesExportCancel(series?.slug ?? "")
+      slugs.forEach((slug) => store.requestCancel(slug))
+    }
+    const MESSAGE = t("exportPausedMessage")
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: t("savingToFiles"),
+          message: MESSAGE,
+          options: [t("stopDownload"), t("resume"), t("cancel")],
+          destructiveButtonIndex: 0,
+          cancelButtonIndex: 2,
+          userInterfaceStyle: "dark",
+        },
+        (index) => {
+          if (index === 0) stopAll()
+          else if (index === 1) resumeAll()
+        },
+      )
+    } else {
+      Alert.alert(t("savingToFiles"), MESSAGE, [
+        { text: t("stopDownload"), style: "destructive", onPress: stopAll },
+        { text: t("resume"), onPress: resumeAll },
+        { text: t("cancel"), style: "cancel" },
+      ])
+    }
+  }, [downloadState.exportingSlugs, t])
+
+  // Paused → the ring's play glyph opens a sheet: resume, or cancel the batch
+  // (keeping existing copies). Replaces the old always-on batch bar.
+  const handlePausedTap = useCallback(() => {
+    const resumeAll = () =>
+      downloadState.inFlightSlugs.forEach((slug) => void resumeDownload(slug))
+    const cancelAll = () => {
+      // Cancelling reverts episodes to their saved copies (series reads
+      // fully-downloaded again) — suppress the false completion toast.
+      cancellingRef.current = true
+      ;(series?.episodes ?? []).forEach(
+        (episode) => void cancelDownload(episode.slug),
+      )
+    }
+    const RESUME = t("resume")
+    const CANCEL_ALL = t("cancelAllDownloads")
+    if (Platform.OS === "ios") {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [CANCEL_ALL, RESUME, t("cancel")],
+          destructiveButtonIndex: 0,
+          cancelButtonIndex: 2,
+          userInterfaceStyle: "dark",
+        },
+        (index) => {
+          if (index === 0) cancelAll()
+          else if (index === 1) resumeAll()
+        },
+      )
+    } else {
+      Alert.alert(t("downloadsPaused"), undefined, [
+        { text: CANCEL_ALL, style: "destructive", onPress: cancelAll },
+        { text: RESUME, onPress: resumeAll },
+        { text: t("cancel"), style: "cancel" },
+      ])
+    }
+  }, [
+    downloadState.inFlightSlugs,
+    series?.episodes,
+    resumeDownload,
+    cancelDownload,
+    t,
+  ])
+
+  // Tap an episode → its detail page. Language carries via the persisted
+  // WatchPreferences audio slug (the watch screen resolves its dub from it), so
+  // it's not threaded through nav params. The seed paints the hero instantly.
+  const handleSelectEpisode = useCallback(
+    (episode: WatchEpisode) => {
+      const seed = encodeWatchSeed({
+        slug: episode.slug,
+        title: episode.title,
+        imageUrl: episode.posterUrl,
+        playbackId: null,
+      })
+      if (discoverySource) markPlaybackDiscovery(episode.slug, discoverySource)
+      router.push(`/watch/${encodeURIComponent(episode.slug)}?seed=${seed}`)
+    },
+    [router, discoverySource],
+  )
+
+  // Cold deep link with nothing to paint yet → skeleton, not a blank spinner.
+  // Match the loaded hero's dock (top safe edge, full-bleed) so it doesn't jump.
+  if (!hasSeries && seed == null && loading) {
+    return (
+      <View style={layout.screenContainer}>
+        <StatusBar style="light" />
+        <VideoDetailSkeleton playerTopInset={insets.top} />
+        <FloatingBackButton {...BACK_BUTTON_PROPS} />
+      </View>
+    )
+  }
+
+  // No series, no seed, not loading → genuinely nothing to show. screenContainer
+  // hosts the absolute back button; the centered error lives in an inner view.
+  if (!hasSeries && seed == null) {
+    return (
+      <View style={layout.screenContainer}>
+        <StatusBar style="light" />
+        <View style={layout.centered}>
+          <Text style={text.errorTitle}>{t("notFoundTitle")}</Text>
+          <Text style={text.errorMessage}>{t("loadError")}</Text>
+          <Text
+            style={styles.retryLink}
+            onPress={() => {
+              void refetch()
+              void refetchText()
+            }}
+            accessibilityRole="button"
+            {...{ "dd-action-name": "series-load-retry" }}
+          >
+            {t("retry")}
+          </Text>
+        </View>
+        <FloatingBackButton {...BACK_BUTTON_PROPS} />
+      </View>
+    )
+  }
+
+  // Hero dock: top safe edge, full-bleed like the /watch player (2026-08-18).
+  // Shared by the pinned trailer player and the poster-only hero.
+  const heroDock = {
+    paddingTop: insets.top,
+    // The flush scrubber thumb straddles the trailer's bottom edge; without
+    // the lift the later-painted episode grid covers its lower half.
+    zIndex: 1,
+  }
+
+  // A poster-only hero (no trailer) scrolls away with the list — rendered as the
+  // grid header's first element below. A playing trailer stays PINNED here so
+  // scrolling never obscures it (the original decoder-safe layout).
+  const posterHero = (
+    <View
+      style={heroDock}
+      accessible={true}
+      accessibilityRole="image"
+      accessibilityLabel={
+        displayTitle
+          ? t("posterAriaLabel", { title: displayTitle })
+          : t("seriesPosterAriaLabel")
+      }
+    >
+      <View style={styles.posterHero}>
+        {displayPoster != null && (
+          <Image
+            source={{ uri: displayPoster }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            recyclingKey={series?.documentId ?? decodedSlug}
+          />
+        )}
+      </View>
+    </View>
+  )
+
+  return (
+    <View style={layout.screenContainer}>
+      <StatusBar style="light" hidden={isFullscreen} />
+
+      {/* Trailer plays → pin the player at the top so scrolling the list never
+          obscures playback. Fullscreen lifts the dock above the grid via zIndex
+          (RN zIndex is sibling-scoped, so the player's own can't clear it). */}
+      {hasSeries && hasTrailer && (
+        <View style={isFullscreen ? styles.heroDockFullscreen : heroDock}>
+          {/* No `session`: a trailer never originates a mini-player session,
+              and it yields the root player to one that is already live (AE14). */}
+          <PlayerSlot
+            streamingUrl={trailerHls}
+            posterUrl={displayPoster}
+            fullscreen={isFullscreen}
+            onToggleFullscreen={toggleFullscreen}
+            autostart
+          />
+        </View>
+      )}
+
+      <SeriesEpisodesGrid
+        episodes={hasSeries ? series.episodes : EMPTY_EPISODES}
+        onSelect={handleSelectEpisode}
+        badgeBySlug={badgeBySlug}
+        header={
+          <>
+            {!hasTrailer && posterHero}
+            <VideoMetadata
+              label={series?.label ?? "SERIES"}
+              title={displayTitle}
+              titleLang={series?.title != null ? series.titleLang : null}
+              subtitle={null}
+            />
+
+            {hasSeries ? (
+              <>
+                {textFailed && (
+                  <View style={styles.inlineError}>
+                    <Text style={text.errorMessage}>
+                      {t("detailsLoadError")}
+                    </Text>
+                    <Text
+                      style={styles.retryLink}
+                      onPress={() => void refetchText()}
+                      accessibilityRole="button"
+                      {...{ "dd-action-name": "series-text-retry" }}
+                    >
+                      {t("retry")}
+                    </Text>
+                  </View>
+                )}
+                <SeriesActionRow
+                  onLanguage={() => router.push("/series/language")}
+                  onSubtitles={() => router.push("/series/subtitle")}
+                  onPauseExport={handlePauseExport}
+                  onResumeExport={handleResumeExport}
+                  // The single download control carries every state: paused →
+                  // resume/cancel sheet; downloading → pause; saved → manage
+                  // sheet; idle → the download picker. (No separate batch bar.)
+                  onDownload={
+                    downloadState.pausedAggregate
+                      ? handlePausedTap
+                      : downloadState.inProgress
+                        ? handlePauseAll
+                        : seriesFullyDownloaded
+                          ? handleManageDownloads
+                          : openDownloadSheet
+                  }
+                  onShare={handleShare}
+                  languageLabel={
+                    languages.find((l) => l.slug === selectedLanguageSlug)
+                      ?.name ?? null
+                  }
+                  subtitleLabel={subtitleActionLabel}
+                  subtitleActive={subtitleActive}
+                  downloadState={downloadState}
+                />
+                <VideoDescription
+                  description={series.description}
+                  descriptionLang={series.descriptionLang}
+                />
+                {series.episodes.length > 0 && (
+                  <Text
+                    style={[
+                      text.sectionHeadingPadded,
+                      typography.titleLarge,
+                      styles.gridHeading,
+                      uiDirection,
+                    ]}
+                  >
+                    {t("videosHeading")}
+                  </Text>
+                )}
+              </>
+            ) : (
+              <>
+                {error != null && (
+                  <View style={styles.inlineError}>
+                    <Text style={text.errorMessage}>
+                      {t("detailsLoadError")}
+                    </Text>
+                    <Text
+                      style={styles.retryLink}
+                      onPress={() => {
+                        void refetch()
+                        void refetchText()
+                      }}
+                      accessibilityRole="button"
+                      {...{ "dd-action-name": "series-details-retry" }}
+                    >
+                      {t("retry")}
+                    </Text>
+                  </View>
+                )}
+                <VideoDetailSkeleton variant="sections" />
+              </>
+            )}
+          </>
+        }
+      />
+
+      {/* Floating back button overlaid on the hero's top-left corner — replaces
+          the native header back. Hidden in fullscreen (the player owns chrome),
+          and while the playback host draws over this dock: the host paints above
+          the stack, so it renders this button. */}
+      {!isFullscreen && !playerFrameVisible && (
+        <FloatingBackButton {...BACK_BUTTON_PROPS} />
+      )}
+
+      <Snackbar
+        message={seriesSnackbar ? t("seriesDownloaded") : ""}
+        visible={seriesSnackbar}
+        onDismiss={() => setSeriesSnackbar(false)}
+      />
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  // Lifts the hero dock (incl. the absolutely-positioned fullscreen player)
+  // above the later-painted episodes grid; zIndex is sibling-scoped in RN.
+  heroDockFullscreen: {
+    zIndex: 1000,
+  },
+  posterHero: {
+    width: "100%",
+    aspectRatio: 16 / 9,
+    backgroundColor: SURFACE_COLOR,
+  },
+  gridHeading: {
+    marginTop: 12,
+    marginBottom: 2,
+  },
+  inlineError: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  retryLink: {
+    color: ACCENT,
+    fontFamily: "System",
+    fontSize: 15,
+    fontWeight: "600",
+    marginTop: 12,
+    textAlign: "center",
+  },
+})

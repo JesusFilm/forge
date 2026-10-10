@@ -4,15 +4,25 @@ export type SyncPhase =
   | "languages"
   | "countries"
   | "keywords"
+  | "video-origins"
   | "videos"
+  | "video-images"
+  | "video-editions"
+  | "video-subtitles"
   | "video-dubs"
+  | "video-dub-downloads"
 
 export const PHASE_ORDER: SyncPhase[] = [
   "languages",
   "countries",
   "keywords",
+  "video-origins",
   "videos",
+  "video-images",
+  "video-editions",
+  "video-subtitles",
   "video-dubs",
+  "video-dub-downloads",
 ]
 
 export type SyncStats = {
@@ -25,6 +35,13 @@ export type SyncStats = {
 export type ProgressReporter = {
   setTotal: (total: number) => void
   increment: (count?: number) => void
+}
+
+export type SyncPhaseProgress = {
+  phase: SyncPhase
+  completed: number
+  total: number
+  elapsedMs: number
 }
 
 export type PhaseRunner = (opts: {

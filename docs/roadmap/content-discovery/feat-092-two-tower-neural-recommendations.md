@@ -3,7 +3,7 @@ id: "feat-092"
 title: "Two-Tower Neural Recommendation Model"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-05-24"
 duration: 21
 depends_on:
@@ -18,6 +18,14 @@ tags:
   - "personalization"
   - "pgvector"
 ---
+
+## Closure Decision
+
+Cancelled on 2026-07-21. The proposed Two-Tower/ONNX pipeline was never adopted
+and depends on the superseded `feat-090` anonymous session architecture. A
+future learned recommender should begin with current Admin-owned Watch events,
+catalog embeddings, and an explicit evaluation and serving design rather than
+implement this historical model contract.
 
 ## Problem
 

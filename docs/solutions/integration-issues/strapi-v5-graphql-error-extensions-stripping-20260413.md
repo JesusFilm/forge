@@ -30,6 +30,16 @@ github_prs:
 
 Custom error classes thrown from Strapi v5 GraphQL resolvers lose their `extensions` property — the client receives a generic `"Internal Server Error"` with code `INTERNAL_SERVER_ERROR` instead of the intended machine-readable error code and metadata. Resolver-level unit tests pass, but the bug ships undetected because the tests bypass Strapi's Apollo Server error formatting pipeline.
 
+> **Still applies after the Strapi retirement (2026-07-23).** Strapi is gone, but
+> this is a GraphQL-server behaviour, not a Strapi one, and admin reproduces it
+> today: `WatchSearchValidationError extends Error`
+> (`apps/admin/src/services/watch-search.service.ts:197`) is thrown from the
+> `watchSearch` resolver path (`:246`, `:273`) carrying no `extensions`, so
+> graphql-yoga masks it to `INTERNAL_SERVER_ERROR`. A mobile client branching on
+> `extensions.code` therefore never matches, which is exactly how
+> `parseSearchError` in apps/mobile ended up with three unreachable branches.
+> Read the lesson as backend-agnostic; ignore the Strapi-specific mechanics.
+
 ## Symptoms
 
 **Expected response** (agents can branch on `extensions.code` and back off using `retryAfterSeconds`):

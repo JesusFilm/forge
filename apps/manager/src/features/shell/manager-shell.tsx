@@ -13,29 +13,41 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react"
 import type { LucideIcon } from "lucide-react"
 import {
   BarChart2,
+  Beaker,
   Bell,
   Bot,
   Building2,
   Captions,
   ChevronDown,
   ChevronRight,
+  Clapperboard,
+  Crop,
   ExternalLink,
   FileAudio2,
   FileJson2,
   KeyRound,
   ListChecks,
   LogOut,
+  Moon,
   PanelLeft,
+  SearchCheck,
   Settings2,
   ShieldCheck,
+  Sun,
   UserRound,
 } from "lucide-react"
 import { apiFetch } from "@/lib/api-fetch"
+import {
+  MANAGER_THEME_STORAGE_KEY,
+  resolveManagerTheme,
+  type ManagerTheme,
+} from "@/lib/manager-theme"
 import { cn } from "@/lib/utils"
 
 export type ManagerShellUser = {
@@ -66,6 +78,148 @@ const TOPBAR_ICON_BUTTON_CLASS =
 const REPORT_STORAGE_KEY = "forge-coverage-report"
 
 const ManagerShellContext = createContext<ManagerShellContextValue | null>(null)
+
+const MANAGER_THEME_CHANGE_EVENT = "manager-theme-change"
+
+function subscribeToManagerTheme(onStoreChange: () => void): () => void {
+  const systemTheme = window.matchMedia("(prefers-color-scheme: dark)")
+
+  const readStoredTheme = (): ManagerTheme | null => {
+    try {
+      const storedTheme = window.localStorage.getItem(MANAGER_THEME_STORAGE_KEY)
+      return storedTheme === "dark" || storedTheme === "light"
+        ? storedTheme
+        : null
+    } catch {
+      return null
+    }
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key !== MANAGER_THEME_STORAGE_KEY) {
+      return
+    }
+
+    const hasExplicitTheme =
+      event.newValue === "dark" || event.newValue === "light"
+    document.documentElement.dataset.theme = resolveManagerTheme(
+      event.newValue,
+      systemTheme.matches,
+    )
+    document.documentElement.dataset.themeSource = hasExplicitTheme
+      ? "user"
+      : "system"
+    onStoreChange()
+  }
+
+  const handleSystemThemeChange = (event: MediaQueryListEvent) => {
+    if (document.documentElement.dataset.themeSource === "user") {
+      return
+    }
+
+    document.documentElement.dataset.theme = resolveManagerTheme(
+      null,
+      event.matches,
+    )
+    onStoreChange()
+  }
+
+  if (document.documentElement.dataset.themeSource !== "user") {
+    const storedTheme = readStoredTheme()
+    document.documentElement.dataset.theme = resolveManagerTheme(
+      storedTheme,
+      systemTheme.matches,
+    )
+    document.documentElement.dataset.themeSource = storedTheme
+      ? "user"
+      : "system"
+  }
+
+  window.addEventListener("storage", handleStorage)
+  window.addEventListener(MANAGER_THEME_CHANGE_EVENT, onStoreChange)
+  systemTheme.addEventListener("change", handleSystemThemeChange)
+
+  return () => {
+    window.removeEventListener("storage", handleStorage)
+    window.removeEventListener(MANAGER_THEME_CHANGE_EVENT, onStoreChange)
+    systemTheme.removeEventListener("change", handleSystemThemeChange)
+  }
+}
+
+function getManagerThemeSnapshot(): ManagerTheme {
+  return document.documentElement.dataset.theme === "dark" ? "dark" : "light"
+}
+
+export function StudioThemeSync() {
+  useSyncExternalStore(
+    subscribeToManagerTheme,
+    getManagerThemeSnapshot,
+    () => "light",
+  )
+
+  return null
+}
+
+export function StudioThemeSwitch() {
+  const theme = useSyncExternalStore(
+    subscribeToManagerTheme,
+    getManagerThemeSnapshot,
+    () => "light",
+  )
+
+  const isDark = theme === "dark"
+  const nextTheme: ManagerTheme = isDark ? "light" : "dark"
+
+  return (
+    <button
+      type="button"
+      role="menuitemcheckbox"
+      className="group flex min-h-[58px] w-full cursor-pointer select-none items-center gap-3 rounded-xl border-0 bg-transparent px-2.5 py-1.5 text-left transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:bg-[color:color-mix(in_srgb,var(--ds-black)_9%,transparent)]"
+      aria-label={`Switch to ${nextTheme} mode`}
+      aria-checked={isDark}
+      onClick={() => {
+        document.documentElement.dataset.theme = nextTheme
+        document.documentElement.dataset.themeSource = "user"
+        try {
+          window.localStorage.setItem(MANAGER_THEME_STORAGE_KEY, nextTheme)
+        } catch {
+          // The in-memory choice still applies when storage is unavailable.
+        }
+        window.dispatchEvent(new Event(MANAGER_THEME_CHANGE_EVENT))
+      }}
+    >
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[color:color-mix(in_srgb,var(--ds-black)_5%,transparent)] text-[color:var(--ds-ink)] transition-colors duration-75 group-hover:bg-[color:color-mix(in_srgb,var(--ds-black)_8%,transparent)]">
+        {isDark ? (
+          <Moon size={17} strokeWidth={2} aria-hidden="true" />
+        ) : (
+          <Sun size={17} strokeWidth={2} aria-hidden="true" />
+        )}
+      </span>
+      <span className="flex min-w-0 flex-1 flex-col justify-center gap-px">
+        <span className="truncate text-sm font-semibold leading-[1.05] text-[color:var(--ds-ink)]">
+          Dark mode
+        </span>
+        <span className="truncate text-xs font-medium leading-[1.05] text-[color:var(--ds-muted)]">
+          Use a darker appearance
+        </span>
+      </span>
+      <span
+        className={cn(
+          "relative h-6 w-11 shrink-0 rounded-full border border-[color:var(--ds-line-strong)] bg-[color:var(--ds-panel-muted)] transition-colors duration-150",
+          isDark && "border-[color:var(--ds-black)] bg-[color:var(--ds-black)]",
+        )}
+        aria-hidden="true"
+      >
+        <span
+          className={cn(
+            "absolute left-0.5 top-0.5 h-[18px] w-[18px] rounded-full bg-[color:var(--ds-panel)] shadow-[0_1px_4px_rgba(17,17,17,0.24)] transition-transform duration-150",
+            isDark && "translate-x-5",
+          )}
+        />
+      </span>
+    </button>
+  )
+}
 
 const reportOptions: Array<{
   icon: LucideIcon
@@ -112,12 +266,46 @@ const navItems: Array<{
     icon: ListChecks,
   },
   {
+    key: "subtitle-lab",
+    href: "/dashboard/subtitle-lab" as Route,
+    label: "Subtitle Lab",
+    icon: Beaker,
+  },
+  {
+    key: "smart-crop",
+    href: "/dashboard/smart-crop",
+    label: "Smart Crop",
+    icon: Crop,
+  },
+  {
+    key: "shorts",
+    href: "/dashboard/shorts",
+    label: "Shorts",
+    icon: Clapperboard,
+  },
+  {
+    key: "seo",
+    href: "/dashboard/seo",
+    label: "SEO",
+    icon: SearchCheck,
+  },
+  {
+    key: "alerts",
+    href: "/dashboard/alerts",
+    label: "Alerts",
+    icon: Bell,
+  },
+  {
     key: "agents",
     href: "/dashboard/agents",
     label: "Agents",
     icon: Bot,
   },
 ]
+
+export function getManagerShellNavigation() {
+  return navItems
+}
 
 function readStoredReportType(): ManagerShellReportType {
   if (typeof window === "undefined") {
@@ -151,6 +339,10 @@ function isActiveRoute(pathname: string, href: string): boolean {
 }
 
 function getBreadcrumbs(pathname: string): string[] {
+  if (pathname === "/design") {
+    return ["Studio", "Design system"]
+  }
+
   if (pathname.startsWith("/dashboard/jobs/")) {
     return ["Studio", "Jobs", "Job detail"]
   }
@@ -161,6 +353,50 @@ function getBreadcrumbs(pathname: string): string[] {
 
   if (pathname.startsWith("/dashboard/agents")) {
     return ["Studio", "Agents"]
+  }
+
+  if (pathname.startsWith("/dashboard/seo")) {
+    return ["Studio", "SEO"]
+  }
+
+  if (pathname.startsWith("/dashboard/subtitle-lab/assignments/")) {
+    return ["Studio", "Subtitle Lab", "Assignment evidence"]
+  }
+
+  if (pathname.startsWith("/dashboard/subtitle-lab/comparisons/")) {
+    return ["Studio", "Subtitle Lab", "Comparison"]
+  }
+
+  if (pathname.startsWith("/dashboard/subtitle-lab/runs/")) {
+    return ["Studio", "Subtitle Lab", "Run report"]
+  }
+
+  if (pathname.startsWith("/dashboard/subtitle-lab")) {
+    return ["Studio", "Subtitle Lab"]
+  }
+
+  if (pathname.startsWith("/dashboard/alerts")) {
+    return ["Studio", "Alerts"]
+  }
+
+  if (pathname.startsWith("/dashboard/smart-crop")) {
+    return ["Studio", "Smart Crop"]
+  }
+
+  if (pathname.startsWith("/dashboard/shorts/new")) {
+    return ["Studio", "Shorts", "New project"]
+  }
+
+  if (pathname === "/dashboard/shorts/calendar") {
+    return ["Studio", "Shorts", "Planning calendar"]
+  }
+
+  if (pathname.startsWith("/dashboard/shorts/")) {
+    return ["Studio", "Shorts", "Project"]
+  }
+
+  if (pathname.startsWith("/dashboard/shorts")) {
+    return ["Studio", "Shorts"]
   }
 
   return ["Studio", "Coverage"]
@@ -445,7 +681,7 @@ export function StudioUserMenuPanel({
           <button
             type="button"
             role="menuitem"
-            className="inline-flex h-10 shrink-0 cursor-pointer select-none items-center gap-2 rounded-xl border border-[color:var(--ds-black)] bg-[color:var(--ds-black)] px-4 text-sm font-semibold text-white shadow-[0_8px_18px_rgba(17,17,17,0.16)] transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_88%,white)] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:translate-y-px"
+            className="inline-flex h-10 shrink-0 cursor-pointer select-none items-center gap-2 rounded-xl border border-[color:var(--ds-black)] bg-[color:var(--ds-black)] px-4 text-sm font-semibold text-[color:var(--ds-panel)] shadow-[0_8px_18px_rgba(17,17,17,0.16)] transition-colors duration-75 hover:bg-[color:color-mix(in_srgb,var(--ds-black)_88%,var(--ds-panel))] focus-visible:outline-none focus-visible:ring-[0.5px] focus-visible:ring-[color:var(--ds-black)] active:translate-y-px"
           >
             <Building2 size={17} strokeWidth={2} aria-hidden="true" />
             Workspace
@@ -458,6 +694,15 @@ export function StudioUserMenuPanel({
       </div>
       <div className="grid gap-0.5">
         {userMenuRows.slice(0, 3).map(renderMenuRow)}
+      </div>
+
+      <div className="my-2.5 h-px bg-[color:var(--ds-line)]" />
+
+      <div className="px-2.5 pb-1 text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--ds-muted)]">
+        Appearance
+      </div>
+      <div className="grid gap-0.5">
+        <StudioThemeSwitch />
       </div>
 
       <div className="my-2.5 h-px bg-[color:var(--ds-line)]" />
@@ -609,6 +854,7 @@ export function ManagerDashboardShell({
 
   return (
     <ManagerShellContext.Provider value={contextValue}>
+      <StudioThemeSync />
       <main className="design-system-eleven studio-dashboard-shell">
         <section
           className="design-system-shell"
@@ -635,7 +881,22 @@ export function ManagerDashboardShell({
             </div>
 
             <div className="design-system-sidebar-content">
-              <StudioReportSwitcher />
+              {pathname.startsWith("/dashboard/shorts") ? (
+                <Link
+                  href="/dashboard/shorts"
+                  className="design-system-workspace-button"
+                >
+                  <span className="design-system-avatar design-system-avatar--report">
+                    <Clapperboard size={18} />
+                  </span>
+                  <span className="design-system-workspace-copy">
+                    <strong>Shorts</strong>
+                    <small>Standalone projects</small>
+                  </span>
+                </Link>
+              ) : (
+                <StudioReportSwitcher />
+              )}
 
               <nav className="design-system-shell-nav" aria-label="Primary">
                 {navItems.map((item) => {
@@ -646,6 +907,7 @@ export function ManagerDashboardShell({
                     <Link
                       key={item.key}
                       href={item.href}
+                      aria-label={item.label}
                       className={isActive ? "is-active" : undefined}
                       {...(isActive ? { "aria-current": "page" as const } : {})}
                     >

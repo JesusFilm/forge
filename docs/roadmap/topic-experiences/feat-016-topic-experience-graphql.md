@@ -3,7 +3,7 @@ id: "feat-016"
 title: "Topic / Experience GraphQL Wiring"
 owner: "nisal"
 priority: "P1"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-05-07"
 duration: 28
 depends_on:

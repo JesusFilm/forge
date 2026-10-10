@@ -1,0 +1,216 @@
+{
+  "runtime": [
+    {
+      "operation": "seeded",
+      "outcome": "empty",
+      "timeoutFallback": false,
+      "count": 67,
+      "p50Ms": 183.083,
+      "p95Ms": 375.952,
+      "maxMs": 506.282
+    },
+    {
+      "operation": "seeded",
+      "outcome": "fallback",
+      "timeoutFallback": false,
+      "count": 20,
+      "p50Ms": 459.663,
+      "p95Ms": 689.61,
+      "maxMs": 771.14
+    },
+    {
+      "operation": "seeded",
+      "outcome": "served",
+      "timeoutFallback": false,
+      "count": 403,
+      "p50Ms": 244.693,
+      "p95Ms": 455.381,
+      "maxMs": 1402.637
+    },
+    {
+      "operation": "seeded",
+      "outcome": "unavailable",
+      "timeoutFallback": false,
+      "count": 20,
+      "p50Ms": 6.767,
+      "p95Ms": 8.719,
+      "maxMs": 9.173
+    },
+    {
+      "operation": "selection",
+      "outcome": "rejected",
+      "timeoutFallback": false,
+      "errorCode": "unknown",
+      "count": 1,
+      "p50Ms": 7.624,
+      "p95Ms": 7.624,
+      "maxMs": 7.624
+    },
+    {
+      "operation": "selection",
+      "outcome": "resolved",
+      "timeoutFallback": false,
+      "count": 13,
+      "p50Ms": 75.343,
+      "p95Ms": 147.195,
+      "maxMs": 147.195
+    }
+  ],
+  "runtimeMissingElapsed": 0,
+  "service": "admin",
+  "deployment": "05d2971e-d42a-4f32-b91a-3c552cb44353",
+  "begin": "2026-09-23T04:30:00Z",
+  "end": "2026-09-23T06:30:00Z",
+  "messages": 4511,
+  "evidence": [
+    {
+      "source": "admin",
+      "action": "claim",
+      "outcome": "accepted",
+      "count": 256
+    },
+    {
+      "source": "admin",
+      "action": "claim",
+      "outcome": "rejected",
+      "reason": "invalid_binding",
+      "retryDisposition": "terminal",
+      "count": 1
+    },
+    {
+      "source": "admin",
+      "action": "facts",
+      "outcome": "accepted",
+      "reason": "none",
+      "retryDisposition": "none",
+      "count": 3521
+    },
+    {
+      "source": "admin",
+      "action": "facts",
+      "outcome": "failed",
+      "reason": "transaction_busy",
+      "retryDisposition": "retryable",
+      "retryAttempt": "1",
+      "count": 46
+    },
+    {
+      "source": "admin",
+      "action": "facts",
+      "outcome": "failed",
+      "reason": "transaction_busy",
+      "retryDisposition": "retryable",
+      "retryAttempt": "2",
+      "count": 6
+    },
+    {
+      "source": "admin",
+      "action": "facts",
+      "outcome": "rejected",
+      "reason": "invalid_binding",
+      "retryDisposition": "terminal",
+      "count": 1
+    },
+    {
+      "source": "admin",
+      "action": "facts",
+      "outcome": "replay",
+      "reason": "none",
+      "retryDisposition": "idempotent_replay",
+      "count": 8
+    }
+  ],
+  "delivery": [],
+  "heartbeats": [],
+  "failurePatterns": {
+    "invalid_binding": 2
+  },
+  "slices": [
+    {
+      "start": "2026-09-23T04:30:00Z",
+      "end": "2026-09-23T04:40:00Z",
+      "returned": 802,
+      "included": 802,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T04:40:00Z",
+      "end": "2026-09-23T04:50:00Z",
+      "returned": 563,
+      "included": 563,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T04:50:00Z",
+      "end": "2026-09-23T05:00:00Z",
+      "returned": 352,
+      "included": 352,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:00:00Z",
+      "end": "2026-09-23T05:10:00Z",
+      "returned": 520,
+      "included": 520,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:10:00Z",
+      "end": "2026-09-23T05:20:00Z",
+      "returned": 336,
+      "included": 336,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:20:00Z",
+      "end": "2026-09-23T05:30:00Z",
+      "returned": 215,
+      "included": 215,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:30:00Z",
+      "end": "2026-09-23T05:40:00Z",
+      "returned": 263,
+      "included": 263,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:40:00Z",
+      "end": "2026-09-23T05:50:00Z",
+      "returned": 202,
+      "included": 202,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T05:50:00Z",
+      "end": "2026-09-23T06:00:00Z",
+      "returned": 403,
+      "included": 403,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:00:00Z",
+      "end": "2026-09-23T06:10:00Z",
+      "returned": 223,
+      "included": 223,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:10:00Z",
+      "end": "2026-09-23T06:20:00Z",
+      "returned": 266,
+      "included": 266,
+      "belowLimit": true
+    },
+    {
+      "start": "2026-09-23T06:20:00Z",
+      "end": "2026-09-23T06:30:00Z",
+      "returned": 366,
+      "included": 366,
+      "belowLimit": true
+    }
+  ],
+  "collectionComplete": true,
+  "filter": "all deployment logs; only approved aggregates exported"
+}

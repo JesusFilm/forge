@@ -192,10 +192,10 @@ describe("cms gateway auth foundation", () => {
   })
 
   it("normalizes env mode values", () => {
-    expect(readModeFromEnv(undefined)).toBe("live")
-    expect(readModeFromEnv("live")).toBe("live")
+    expect(readModeFromEnv(undefined)).toBe("admin")
+    expect(readModeFromEnv("live")).toBe("admin")
     expect(readModeFromEnv("mock")).toBe("mock")
-    expect(readModeFromEnv("unexpected")).toBe("live")
+    expect(readModeFromEnv("unexpected")).toBe("admin")
   })
 
   it("derives different mock video coverage for different selected languages", async () => {

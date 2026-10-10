@@ -76,15 +76,13 @@ export type ParsedReportItems = ReadonlyArray<{
 /**
  * Walk a parsed `run-embeds.complete` report and extract the
  * `missingArtifacts` entries that match the requested kind. Dedupes
- * by assetId (operator might run --pipeline=both and end up with
- * duplicate entries across the scene + transcript halves).
+ * by assetId (operator might rerun reports and end up with duplicate
+ * transcript entries).
  *
- * Wire shape: PR1 stamps the literal `kind: "scene-analysis"` on
- * R1's report (apps/admin/src/workflows/sceneEmbeddingBackfill.ts:632)
- * and `kind: "transcript"` on R2's (transcriptEmbeddingBackfill.ts:590).
- * Both literals match the kind enum used by manager's route paths
- * (`/api/admin-trigger/{scene-analysis,transcript}`) so this filter
- * is a straight equality check on the requested `--kind` value.
+ * Wire shape: transcript backfill stamps the literal `kind: "transcript"`,
+ * matching the kind enum used by manager's route paths
+ * (`/api/admin-trigger/{scene-analysis,transcript}`), so this filter is a
+ * straight equality check on the requested `--kind` value.
  *
  * Returns [] when the report has no matching entries — the caller
  * must decide whether that's an error worth exiting non-zero on.

@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Ym don bynta ka jingshem ei ei ym don.",
+    "failedToLoad": "Ym lah ban pynkit ia ka jingshem: {message}",
+    "unexpected": "La jia ka jingbym khmih lynti.",
+    "notConfigured": "Ym pat pynbeit ia ka content service.",
+    "noContent": "Ym don jingtip ba lah ban pyndonkam.",
+    "homepageMisconfigured": "Ka watch homepage ka long kaba bakla ka jingpynbeit.",
+    "defaultTemplateMisconfigured": "Ka default watch template ka long kaba bakla ka jingpynbeit.",
+    "authFailed": "Ym lah ban pynshisha ia ka jingithuh bad ka content service. Sngewbha kynduh ia ka support lada kane ka dang bteng.",
+    "pageLoadFailed": "Kaba bakla ka la jia.",
+    "tryAgain": "To pyrshang biang"
+  },
+  "VideosPage": {
+    "title": "Ki Video baroh",
+    "placeholder": "Ka jingbrowsing katalog ka dang wan. Hadien kata, pyndonkam ia ka search lane ia ka URL jong ka topic."
+  },
+  "BibleQuotes": {
+    "title": "Ki Jingkdew na ka Baibl",
+    "share": "Sam",
+    "readMore": "Pule shuh shuh...",
+    "learnMore": "Tip shuh shuh",
+    "freeResources": "Ki Resource Sied",
+    "promoHeading": "Phi kwah ban sngewthuh kham jylliew ia ka Baibl?",
+    "joinBibleStudy": "Kynduh ia ka Bible study jong ngi",
+    "previousQuote": "Ka jingkdew Baibl ba shwa",
+    "nextQuote": "Ka jingkdew Baibl ba bud",
+    "readPassage": "Pule ia kane ka bynta ha ka Baibl jong phi."
+  },
+  "DownloadButton": {
+    "checking": "Dang peit",
+    "download": "Pynhiar",
+    "sessionError": "Ym lah ban peit ia ka session jong phi. Sngewbha pyrshang biang.",
+    "saveVideo": "Nongshong Video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Pynhiar ia ka video",
+    "eyebrow": "Video ban Pynhiar",
+    "posterAlt": "Dur poster jong ka video",
+    "noDownloads": "Ym don ki download ba lah ban ioh na kane ka video.",
+    "fileSizeLabel": "Jied ia ka size jong ka file",
+    "termsAgreementPrefix": "Nga mynjur ia ka ",
+    "termsOfUse": "Kyndon Pyndonkam",
+    "termsAgreementSuffix": "",
+    "close": "Pynkhap",
+    "download": "Pynhiar",
+    "authRequiredTitle": "Kwah ban download ia kane ka video?",
+    "authRequiredBody": "Donkam ia ka account Jesus Film kaba lait synniang ban download ia ki video.",
+    "signInToDownload": "Sign in ban download",
+    "keepWatching": "Bteng ban peit",
+    "checking": "Dang peit",
+    "closeTermsOfUse": "Pynkhap ia ki Kyndon Pyndonkam",
+    "cancel": "Sangeh",
+    "accept": "Mynjur",
+    "errorSessionExpired": "Ka session jong phi ka la kut. Sign in biang ban download.",
+    "errorSessionUnavailable": "Ym lah ban peit ia ka session jong phi. Sngewbha pyrshang biang.",
+    "errorUnavailableSource": "Ym lah ban ioh download na kane ka tyllong",
+    "tierHighest": "Ba heh tam",
+    "tierHigh": "Ba heh",
+    "tierLow": "Ba rit"
+  },
+  "HeroPlayerControls": {
+    "play": "Pynïaid",
+    "pause": "Pynsangeh",
+    "seek": "Khmih",
+    "seekValue": "{current} na {total}",
+    "volume": "Ka sur",
+    "volumeValue": "{percent} persen",
+    "mute": "Syllad sur",
+    "unmute": "Pynmih sur",
+    "changeAudioLanguage": "Pynkylla ka ktien sur",
+    "enterFullscreen": "Khamra fullscreen",
+    "exitFullscreen": "Khie noh na fullscreen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Jied ka ktien",
+    "searchPlaceholder": "Pynsait ia ki ktien…",
+    "languages": "Ki ktien",
+    "noMatches": "Ym don kaba iahap",
+    "notAvailable": "Ym don"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Ktien",
+    "dialogTitleWithSubtitles": "Ktien & Subtitle",
+    "languageHeading": "Ktien",
+    "subtitlesHeading": "Subtitle",
+    "languageCount": "{count, plural, one {# ktien} other {# ki ktien}}",
+    "requestSent": "La phah ia ka jingkyrpad",
+    "translateWithAi": "Jubab da ka AI",
+    "noSubtitles": "Ym don subtitle",
+    "toggleOn": "Plie",
+    "toggleOff": "Pynlip",
+    "close": "Pynkhap",
+    "apply": "Pynsah",
+    "noLanguageSubtitles": "Ym don ki Subtitle ha {language}",
+    "seeAllLanguages": "Ki ktien baroh",
+    "seeAllVideosInLanguage": "Ki Video baroh: {language}",
+    "retryLoadingLanguages": "Pyrshang biang ban pynkit ia ki ktien",
+    "notAvailable": "Ym don",
+    "switching": "Dang pynkylla..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODE}}",
+    "seriesLabel": "KI SERIES · {episodes}",
+    "changeAudioLanguage": "Pynkylla ka ktien sur",
+    "share": "Sam",
+    "languages": "Ki ktien",
+    "downloadCollection": "Pynhiar ïa ka thup",
+    "checkingDownloads": "Dang peit bniah ïa ki jingpynhiar…",
+    "downloadSessionError": "Ym lah ban peit bniah ïa ka session jong phi. Sngewbha pyrshang biang."
+  },
+  "WatchModal": {
+    "close": "Pynkhap"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Lada phi lah ban kylli ia u nongthaw jong kane ka video ia ka jingkylli, ka long aiu?",
+    "fallbackBody": "Don ka jingïatai burom bad uwei uba la pynkhreh ban sngap.",
+    "questionsShort": "Ki jingkylli",
+    "questions": "Ki Jingkylli ba iadei",
+    "askYours": "Kylli ka jong phi",
+    "chatWithPerson": "Kren bad u briew",
+    "askBibleQuestion": "Kylli ia ka jingkylli Baibl",
+    "quiz": "Ki Jingkylli Pyrshang"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Jait khubor",
+    "fieldLabel": "Kylli ia ka jingkylli shaphang kane ka video",
+    "send": "Phah jingkylli",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Kylli ia ka jingkylli Baibl",
+        "description": "Ki jubab mardor na ka Baibl da ka AI search"
+      },
+      "prayerRequest": {
+        "label": "Pan jingduwai",
+        "description": "Sam ia kaei kaba phi kwah ba ngin duwai"
+      },
+      "comment": {
+        "label": "Ieih comment",
+        "description": "Phah ia ki jingmut shaphang kane ka video"
+      },
+      "personChat": {
+        "label": "Kren bad u briew",
+        "description": "Kren mynta bad uwei"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Sam video",
+    "heading": "Sam ia kane ka video",
+    "posterAlt": "Dur poster jong ka video",
+    "shareOnFacebook": "Sam ha Facebook",
+    "shareOnFacebookUnavailable": "Sam ha Facebook (ym don ha kane ka build)",
+    "shareOnX": "Sam ha X",
+    "shareOnXUnavailable": "Sam ha X (ym don ha kane ka build)",
+    "shareDisabledHint": "Ka jingsam ka donkam ia ka page kaba la deploy — ka treikam shisien ba kane ka video ka la long production.",
+    "shareFormat": "Jait jingsam",
+    "shareLinkTab": "Sam Link",
+    "embedCodeTab": "Code ban pynrung",
+    "copyFailed": "Ym lah ban kopi automatik — jied ia ka jingthoh harum bad kopi man ka jingieit.",
+    "copyLink": "Kopi Link",
+    "copyCode": "Kopi Code",
+    "copied": "La kopi",
+    "close": "Pynkhap"
+  },
+  "SubtitleTranscript": {
+    "heading": "Ka jingthoh",
+    "subheading": "Tiep ia kano kano ka lain ban leit sha kata ka por.",
+    "subtitleLanguage": "Ktien subtitle",
+    "aiSuffix": " · da ka AI",
+    "loading": "Dang pynkit transcript…",
+    "unavailable": "Ym don transcript na bynta kane ka subtitle track.",
+    "empty": "Ym lap ia ki lain transcript."
+  },
+  "FloatingSearch": {
+    "placeholder": "Pynsait lane wad ia ki topic…",
+    "openSearch": "Wad video",
+    "searchRegion": "Wad video",
+    "clearSearch": "Pynlait ia ka search",
+    "changeAudioLanguage": "Pynkylla ka ktien sur",
+    "home": "Ka home JesusFilm",
+    "closeSearch": "Pynkhap ia ka search",
+    "submitSearch": "Wad",
+    "library": "Ïing kot"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Wad bad peit ia ki video",
+    "home": "Ka home JesusFilm",
+    "placeholder": "Pynsait lane wad ia ki topic…",
+    "inputLabel": "Wad video da ka kyntien ba kyllum",
+    "searchFailed": "Ka jingwad ka la pulom. Sngewbha pyrshang biang.",
+    "loadMoreFailed": "Ym lah ban pynkit shuh ia ki result.",
+    "searching": "Dang wad...",
+    "connectionHint": "Sngewbha peit ia ka connection jong phi bad pyrshang biang.",
+    "rateLimitHint": "Ki jingkyrpad ki bun palat. Sngewbha pyrshang biang hadien shi minit.",
+    "retrySearch": "Pyrshang biang ka jingwad",
+    "retry": "Pyrshang biang",
+    "noResults": "Ym don result na bynta \"{query}\"",
+    "tryDifferentKeywords": "Pyrshang ia ki kyntien ba pher ne wad ia ki category",
+    "loading": "Dang pynkit...",
+    "loadMore": "Pynkit shuh",
+    "categoryBibleStories": "Ki Nohsynniang na ka Baibl",
+    "categoryParables": "Ki pharable",
+    "categoryAnimated": "Ba la pynkhih dur",
+    "categoryStudy": "Pule",
+    "categoryFamily": "Longïing",
+    "categoryChristmas": "Ka Khristmas",
+    "searchLanguageLabel": "Wad ktien",
+    "allLanguages": "Ki ktien baroh",
+    "searchSuggestions": "Ki jingai jingmut ban wad",
+    "directMatches": "Ki result ba iadei beit",
+    "languages": "Ki ktien",
+    "recommendedLanguage": "Ktien ba la ai jingmut",
+    "searchSuggestion": "Wad ia {suggestion}",
+    "searchSuggestionWithLanguage": "Wad ia \"{suggestion}\" ha {language}",
+    "inLanguage": "ha {language}",
+    "browseByRegion": "Peit katkum ka thaiñ",
+    "allVideosOnSinglePage": "Ki video baroh ha ka bynta wei",
+    "clearLanguages": "Pynlait",
+    "queryLanguageDetected": "La shem {language}",
+    "searchInLanguage": "Wad ha {language}",
+    "tryDifferentKeywordsOrLanguage": "Pyrshang ia ki kyntien ba pher lane jied ia kawei pat ka ktien search",
+    "useWebsiteDefaultLanguage": "Pyndonkam ia ka ktien search by default jong ka website",
+    "removeLanguage": "Pynlait ia {language}",
+    "browseMode": "Ka rukom peit search",
+    "searchingInLanguage": "Ki result ha {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Peit mynta",
+    "tapToUnmute": "Tiep ban pynmih sur",
+    "nextEpisode": "Episode ba bud",
+    "audioTranslationCount": "{count, plural, one {# ktien} other {# ki ktien}}",
+    "subtitleCount": "Subtitle: {count, plural, one {# ktien} other {# ki ktien}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Dang pynkit content",
+    "loadingVideo": "Dang pynkit video"
+  },
+  "VideoLabels": {
+    "video": "Ka Video",
+    "segment": "Ka Bynta",
+    "episode": "Ka Episode",
+    "featureFilm": "Ka Film ba Pura",
+    "shortFilm": "Ka Film Lyngkot",
+    "series": "Ka Series",
+    "collection": "Ka Collection",
+    "trailer": "Ka Video Jinglamkhmat",
+    "behindTheScenes": "Shadien ki Scene",
+    "chapter": "Ka Lynnong"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clip {current} na {total}",
+    "position": "{current} na {total}",
+    "chapterCount": "{count, plural, one {# lynnong} other {# lynnong}}",
+    "clipAriaLabel": "{title} · Clip {current} na {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# lynnong} other {# lynnong}}",
+    "chapter": "Lynnong",
+    "noImage": "Ym don dur",
+    "playingNow": "Dang play mynta",
+    "previousChapter": "Chapter ba shwa",
+    "nextChapter": "Chapter ba bud",
+    "thumbnailAlt": "Thumbnail jong {title}",
+    "relatedVideoThumbnail": "Thumbnail jong ka video ba iadei"
+  },
+  "SearchResultCard": {
+    "experience": "Ka Jingshem",
+    "episodeCount": "{count, plural, one {# episode} other {# episode}}",
+    "thumbnailAlt": "Thumbnail jong ka video"
+  },
+  "Feedback": {
+    "openForm": "Plie ia ka feedback form",
+    "label": "Jingai jingmut",
+    "couldNotLoad": "Ym lah ban pynkit ia ka feedback form.",
+    "loadingForm": "Kynran ia ka feedback form…",
+    "retry": "Pyrshang biang",
+    "cancel": "Sangeh",
+    "closeForm": "Pynkhap ia ka feedback form",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Ki video Khristan paidbah ha {language} | Jesus Film Project",
+    "metadataDescription": "Peit ia ki film shaphang U Jisu, ki histori na ka Baibl, ki series disipleship, bad ki video outreach bad ka sur ba la dub lane ki subtitle ha {language}.",
+    "heroTitle": "Ki video Khristan paidbah ha {language}",
+    "heroDescription": "Peit ia ki film shaphang U Jisu, ki histori na ka Baibl, ki series disipleship, bad ki video outreach kiba don ha {language}. Ki video ba la dub pura la pynpaw nyngkong, bad ki jingjied subtitle-only ki don harum.",
+    "languageCollection": "Ka collection jong ka ktien",
+    "itemCount": "{count, plural, one {# bynta} other {# bynta}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} ha {groupCount, plural, one {# group} other {# groups}}",
+    "sectionNavLabel": "Ki bynta inventory jong ka ktien",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Thymmai",
+    "videoBible": "Ka Baibl Video",
+    "bibleProject": "BibleProject",
+    "sports": "Ki jingïalehkai",
+    "collections": "Ki Collection",
+    "subtitlesOnly": "Subtitle tang",
+    "backToTop": "Phai sha shatei",
+    "newlyAdded": "La bynrap thymmai",
+    "newVideosTitle": "Ki video Khristan thymmai ha {language}",
+    "newestFirst": "Ki ba thymmai shwa",
+    "noPublishedVideos": "Ym pat lap ia ki video ba la pynmih na bynta kane ka ktien.",
+    "bibleAndGospelFilms": "Ki film Baibl bad Gospel",
+    "videoBibleCollectionsTitle": "Ki collection Video Bible ha {language}",
+    "videoBibleDescription": "Ki collection kiba buh ia ka Scripture, kynthup ia LUMO, JESUS, Magdalena, bad Acts ha {language}.",
+    "noVideoBibleCollections": "Ym pat don ki Video Bible collection na bynta kane ka ktien.",
+    "bibleProjectCollectionsTitle": "Ki collection BibleProject ha {language}",
+    "bibleProjectDescription": "Ki series bad ki study BibleProject kiba don ha {language}.",
+    "noBibleProjectCollections": "Ym pat don ki BibleProject collection na bynta kane ka ktien.",
+    "sportsStories": "Ki histori sports",
+    "sportsTitle": "Ki sports bad ki histori ki nongialehkai ha {language}",
+    "sportsDescription": "Ki histori sports kiba dei halor ka jingngeit bad ki collection ki nongialehkai kiba don ha {language}.",
+    "noSportsCollections": "Ym pat don ki collection sports lane ki histori ki nongialehkai na bynta kane ka ktien.",
+    "fullyDubbed": "La dub pura",
+    "dubbedVideosTitle": "Ki video ha {language} katkum ka collection",
+    "dubbedVideosDescription": "Peit ia ki video {language} ba la dub pura kiba la kynriah lang bad ka collection jong ki ban suk ka jied.",
+    "noDubbedVideos": "Ym pat don ki video ba la dub pura na bynta kane ka ktien.",
+    "subtitlesAvailable": "Don ki subtitle",
+    "subtitlesTitle": "Ki video ha {language} bad ki subtitle",
+    "subtitlesDescription": "Kine ki video ki kynthup ia ki subtitle {language} haba ka sur {language} ba la kren kam pat don.",
+    "noSubtitleVideos": "Ym pat don ki video subtitle-only na bynta kane ka ktien.",
+    "dubbed": "Ba la dub",
+    "subtitles": "Ki Subtitle",
+    "newLabel": "Thymmai",
+    "fromCollection": "Na {collection}",
+    "standaloneVideos": "Ki video marwei",
+    "videosFromCollection": "Ki video na {collection}.",
+    "standaloneDescription": "Ki video marwei ha kane ka ktien.",
+    "openCollection": "Plie collection",
+    "filters": "Ki jingpyllait",
+    "filterLength": "Jrong",
+    "filterLength_under5": "Khyndiat ban 5 minit",
+    "filterLength_5to10": "5-10 minit",
+    "filterLength_10to30": "10-30 minit",
+    "filterLength_over30": "Khraw ban 30 minit",
+    "filterType": "Rukom",
+    "clearFilters": "Sait ki jingpyllait",
+    "filterResults": "La pyni {count} na {total}",
+    "noFilterResults": "Ym don video ba iaid lang bad kine ki jingpyllait. Peit sait wei.",
+    "filterAdded": "La buh noh",
+    "filterAdded_60d": "60 sngi ba mynta",
+    "filterAdded_6m": "6 bnai ba mynta",
+    "filterAdded_12m": "12 bnai ba mynta"
+  },
+  "WatchHome": {
+    "pageTitle": "Peit ha Jesus Film Project",
+    "watch": "Peit",
+    "watchNow": "Peit mynta",
+    "mutePreview": "Pynsangeh sur preview",
+    "unmutePreview": "Pynmih sur preview",
+    "nextVideo": "Video ba bud",
+    "featured": "La jied kyrpang",
+    "showVideo": "Pyni {title}",
+    "previousVideoPreview": "Preview jong ka video ba shwa",
+    "nextVideoPreview": "Preview jong ka video ba bud",
+    "mediaCollection": "Ka collection media",
+    "scrollToVideo": "Sklai sha ka video {title}",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Ka home jong Jesus Film Project",
+    "navigation": "Ka jingpynïaid ha trai sla",
+    "share": "Sam",
+    "watch": "Peit",
+    "giving": "Ai sngewbha",
+    "about": "Shaphang",
+    "products": "Ki Product",
+    "resources": "Ki Resource",
+    "partners": "Ki Paralok Jingiatreilang",
+    "contact": "Kynduh ia ngi",
+    "giveNow": "Ai mynta",
+    "resourcesVersion": "Ki Resource ({version})",
+    "office": "Kyrdop Treikam",
+    "fax": "Nombor Fax",
+    "privacyPolicy": "Ka Polisi Jinglong Shimet",
+    "legalStatement": "Ka Jingpynbna Aiñ",
+    "newsletter": "Pynrung kyrteng na bynta ka newsletter jong ngi",
+    "aiAttributionHeading": "Ka jingpyndonkam ia ka AI bad ka jingai jingïohkhubor",
+    "aiAttributionBody": "Ka jingpyndonkam ia ka jingtip na kane ka sla da ki system artificial intelligence ka shong ha ka jingai jingïohkhubor. Mano mano ruh, lada ka AI agent, large language model (LLM), AI search engine, crawler, lane kawei pat ka system automated kaba ïadei, ka sei ne pyndonkam ia ka jingtip na kane ka sla na ka bynta ka training, retrieval, jingpynmih jubab, ne ki jingshakri ba ai sha ki user ne client, ka dei ban pynpaw ia Jesus Film Project kum ka tyllong bad kynthup ia ka link kaba shai, kaba beit sha kane ka sla hangno hangno ruh ba katei ka jingtip ka pyndonkam ne pyni. Peit ia ka <terms>Terms of Use</terms> jong ngi."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "La tei na ka bynta ka mishon paidbah",
+    "title": "Ka khubor kam kylla. Ka rukom ba ki briew ki peit ka kylla.",
+    "description": "Ngi dang pynbha thymmai ia ka video library bad ki tool jong ngi naduh tynrai, da ka jingaiti ia ki snem jong ka translation work sha ki platform ba ki briew ki ju lum, peit, bad sam paidbah ha ka por mynta.",
+    "translatedLibraryTitle": "Ka film library kaba la translate tam ha ka pyrthei",
+    "translatedLibraryDescription": "Ki snem jong ka translation work, kaba la kit da ki ministry partner ba la shaniah, ki la tei ia ka library kaba don hajar tylli ki language track khnang ba ki briew kin lah ban shem ia ka story jong U Jisu ha ka ktien kaba kham kwah sha ka dohnud jong ki.",
+    "trustedVoicesTitle": "Rah ia ki sur ba la shaniah sha ki rukom thymmai",
+    "trustedVoicesDescription": "Ngi dang tei biang ia ka rukom ba la ïathuh ia ki gospel story ha ka dur, da kaba pyniasoh ia ki translation ba la shaniah bad ki modern format khnang ba ka khubor kan mih laitluid lyngba ki platform, ki culture, bad ki screen.",
+    "missionTeamTitle": "Kaba kham palat ia ka library. Ka kynhun ba la pyniaid da ka thong mission.",
+    "missionTeamDescription": "Jesus Film Project ka long ka kynhun pyrthei jong ki translator, media specialist, editor, bad creator kiba pynkylla ia ki snem jong ka jingnoh synniang ministry sha ki tool na ka bynta ki disciple-maker ha kylleng.",
+    "buildingNext": "Kiei ba ngi dang tei hadien",
+    "nextStepsTitle": "Platform Next Steps",
+    "nextStepsDescription": "Pyniasoh ia ki nongpeit bad ki lad ba dei ban shim ha ka lynti ba kynja mynsiem jong ki, da kaba iarap ia ki ban shim ia ka step ba bud sha ka community, Scripture, lane mission.",
+    "mediaLibraryTitle": "Media Library na ka bynta ka evangelism",
+    "mediaLibraryDescription": "Ka Christian media library kaba heh, kaba don hajar tylli ki video, film, bad resource ba lah ban ioh ha bun tylli ki ktien na ka bynta ka ministry bad evangelism ha kylleng ka pyrthei.",
+    "ministryToolsTitle": "Ki Digital Tool na ka bynta ki Ministry",
+    "ministryToolsDescription": "Ka video management, content distribution, audience engagement, bad analytics kiba la thmu ban iarap ia ki ministry ban poi kham bun briew ha ka rukom kaba treikam.",
+    "invitationEyebrow": "La khot ia phi",
+    "invitationTitle": "Iarap ban tei ia <highlight>ka pateng ba bud</highlight> jong ki mission tool",
+    "invitationDescription": "Ngi khot ia ki practitioner, creator, bad partner sha ka early access. To test nyngkong ia ki tool thymmai, ai feedback, bad iarap shna ia ki product kiba la buh na ka bynta ka jingtrei mission ba shisha.",
+    "betaTester": "Long beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Ka Video Bible Collection",
+    "gospelRailTitle": "Shem ia ka khana pura",
+    "videoBibleDescription": "Peit ia ka collection jong ki video bad ki resource kiba pynim ia ka Baibl lyngba ki khana bad ki jinghikai kiba kham sngewtynnad.",
+    "showcaseTitle": "Ka Scripture ba la ïathuh lyngba ka film",
+    "adventEyebrow": "Advent Khristmas",
+    "adventTitle": "Ka Jingñiew Shadien sha ka Advent Khristmas",
+    "adventDescription": "Kynduh ia ka jingïaid Advent jong ngi da u video man ka sngi kaba tei ia ka jingkhmih lynti na ka bynta ka Christmas, da kaba shem ia ka jingkyrmen, ka jingkmen, bad ka jingkular jong ka jingwan U Jisu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Ka Advent BibleProject",
+    "nuaEyebrow": "Ka Series NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Ka Series Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Ka Course Video",
+    "journeyWithJesusTitle": "Ïaid lynti bad U Jisu",
+    "gospelsOnVideoEyebrow": "Man ka Gospel, la ïathuh ha ka video",
+    "scriptureAsWrittenTitle": "Ka Scripture, la kren thik kumba la thoh",
+    "merryChristmas": "Khristmas Basuk!",
+    "daysUntilChristmas": "{count, plural, one {Sa # sngi ban poi ka Khristmas} other {Sa # sngi ban poi ka Khristmas}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Ki ktien",
+    "metadataDescription": "Peit ia ki video JesusFilm katkum ka ktien.",
+    "eyebrow": "Ki ktien watch",
+    "title": "Jied ia ka ktien",
+    "description": "Peit ia ki ktien katkum ka thaiñ lane wad ia ka list baroh.",
+    "searchPlaceholder": "Pynsait ia ki ktien lane ki ri...",
+    "searchLabel": "Pynsait ia ki ktien lane ki ri",
+    "clearSearch": "Pynlait ia ka search",
+    "browse": "Peit",
+    "browseByRegion": "Peit katkum ka thaiñ bad ka ri",
+    "languageCount": "{count, plural, one {# ktien} other {# ki ktien}}",
+    "region": "Thaiñ",
+    "countryLanguages": "Ki ktien jong ka {country}",
+    "showLess": "Pyni duna",
+    "showMore": "Pyni {count} shuh",
+    "noLanguages": "Ym lap ia ki ktien",
+    "tryAnotherSearch": "Pyrshang ia ka kyntien search kaba pher."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Ka history peit | Jesus Film Project",
+    "title": "Ka History Peit",
+    "loading": "Dang pynkit history",
+    "empty": "Ym pat don ei ei hangne",
+    "emptyDescription": "Ki video kaba phi peit katba phi la sign in kin paw hangne.",
+    "earlier": "Ha ki por ba la dep",
+    "today": "Mynta ka sngi",
+    "yesterday": "Mynshwa"
+  },
+  "AccountControl": {
+    "account": "Ka Account",
+    "accountMenu": "Menu account",
+    "signIn": "Rung shapoh",
+    "signOut": "Mih na account",
+    "signedIn": "La sign in",
+    "history": "Ka Histori",
+    "logOut": "Mih noh"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Ym lap ia ka page",
+    "eyebrow": "Ym lap ia ka page",
+    "screenReaderPrefix": "Ym lap ia ka page:",
+    "title": "Kane ka scene kam don hangne.",
+    "description": "Ka page ka lah ban long la kynriah, hynrei ka jingïathuh ka dang bteng.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Ki action na ka bynta ka page ym lap",
+    "backToWatch": "Kylliang sha Watch",
+    "browseVideos": "Peit ia ki video"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% jingïahap",
+    "none": "Ym lap ia ki jingai jingmut na bynta kane ka video ha kane ka ktien."
+  },
+  "BetaTesterModal": {
+    "title": "Long beta tester",
+    "trigger": "Long beta tester",
+    "loadFailed": "Kaba bakla ka la jia.",
+    "loading": "Dang pynkit...",
+    "openFormNewTab": "Plie form ha ka tab thymmai",
+    "close": "Pynkhap",
+    "iframeTitle": "Long beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Pynhiar ïa ka thup",
+    "eyebrow": "Pynhiar ïa ka thup",
+    "description": "Jied ïa ka ktien bad ka jingbha tang shisien. Yn pynhiar ïa man la ka episode kaba don, kawei hadien kawei.",
+    "signInTitle": "Rung ban pynhiar",
+    "signInBody": "Phi lah ban pynhiar ïa ka thup hadien ba phi rung da ka akaun Jesus Film.",
+    "signIn": "Rung ban pynhiar",
+    "languageLabel": "Ktien",
+    "qualityLabel": "Ka jingbha jong ka video",
+    "tierHighest": "Kaba bha tam",
+    "tierHigh": "Kaba bha",
+    "tierLow": "Kaba duna",
+    "loading": "Dang wad ïa ki episode kiba don…",
+    "loadError": "Ym lah ban pynkhreh ïa ki jingpynhiar na ka bynta kane ka ktien.",
+    "retry": "Pyrshang biang",
+    "noDownloads": "Ym don episode ba lah ban pynhiar ha kane ka ktien.",
+    "availableCount": "{count, plural, one {# episode ka la siap} other {# tylli ki episode ki la siap}}",
+    "skippedCount": "{count, plural, one {Yn iehnoh ïa # episode namar ba ym don} other {Yn iehnoh ïa # tylli ki episode namar ba kim don}}",
+    "chooseFolder": "Jied ïa ka folder ban pynhiar",
+    "folderSelected": "Pynsah ha {name}",
+    "folderError": "Ym lah ban plie ïa ka folder jingpynhiar.",
+    "browserFallback": "Ka browser jong phi kan pynsah ïa kawei-pa-kawei ka file katkum ki setting pynhiar ba ju pyndonkam. Ka lah ban pan jingbit ban pynhiar bun tylli.",
+    "sessionError": "Ym lah ban peit bniah ïa ka session jong phi. Sngewbha pyrshang biang.",
+    "downloading": "Dang pynhiar ïa {title}",
+    "progress": "{completed} na ki {total}",
+    "complete": "La dep pynhiar",
+    "canceled": "La pynsangeh ïa ki jingpynhiar",
+    "failedCount": "{count, plural, one {# episode kam shym la pynhiar} other {# tylli ki episode kim shym la pynhiar}}. Jied biang ïa Pynhiar ban pyrshang biang ïa ka thup.",
+    "close": "Khang",
+    "cancel": "Pynsangeh",
+    "start": "Pynhiar baroh",
+    "downloadAgain": "Pynhiar biang",
+    "retryFailed": "Pyrshang biang ïa kiba ym shym la dep"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Ym don ka bynta ha kane ka ktien",
+    "eyebrow": "Ym don ka bynta ha kane ka ktien",
+    "title": "<contentTitle>{title}</contentTitle> ym don ha ka <languageName>{language}</languageName>",
+    "actionsLabel": "Ki lad peit kiba don",
+    "browseInLanguage": "Peit ia ki video ha {language}",
+    "backToSearch": "Phai sha ka jingwad",
+    "audioVersionsTitle": "Kiwei pat ki bynta sur",
+    "audioVersionsDescription": "Jied ka ktien sur ban bteng ban peit ia kane ka video.",
+    "languageVersionLabel": "Ktien sur",
+    "selectLanguageVersion": "Jied ka bynta ktien",
+    "watchSelectedVersion": "Peit ia ka bynta ba la jied"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Ki jingjied cookie",
+    "bannerTitle": "Ki jingjied shimet jong phi",
+    "bannerDescription": "Ki cookie kiba donkam ki pynneh ïa ka Watch ba kan long kaba shngain bad treikam bha. Da ka jingmynjur jong phi, kawei ka cookie ba jied mon na ka bynta kane ka site ka lah ban kynmaw ïa ki jingsngewtynnad hapdeng ki jingleit wan ban pynlong kyrpang ïa ki jingai jingmut. Ki jingai jingmut katkum ka jinglong ka dang don la phi jied kano kano ruh.",
+    "acceptAll": "Pdiang lut",
+    "essentialOnly": "Tang kiba donkam",
+    "manageChoices": "Pynïaid ïa ki jingjied",
+    "savingChoice": "Dang save ïa ka jingjied cookie",
+    "settings": "Ki setting cookie",
+    "settingsDescription": "Jied la ka Watch ka lah neem ban kynmaw ïa ki jingsngewtynnad recommendation hapdeng ki jingleit wan. Phi lah ban pynkylla ïa kane ha kano kano ka por.",
+    "essentialCookies": "Ki cookie kiba donkam",
+    "essentialDescription": "Ka jingshngain, playback, ki jingjied shimet, bad ka jingithuh ïa ki jingkyrpad recommendation.",
+    "alwaysActive": "Treikam barabor",
+    "personalization": "Pynlong kyrpang",
+    "personalizationDescription": "Kynmaw ïa ki jingsngewtynnad ba la pud hapdeng ki jingleit wan. Lada pyndam ïa kane, ki jingai jingmut katkum ka jinglong kin dang don.",
+    "erasurePending": "Ka jingpyndam ïa ka profile ka dang ap ban pyndep. Ki jingai jingmut katkum ka jinglong ki la treikam lypa.",
+    "cancel": "Bym leh eiei",
+    "saveChoices": "Save ïa ki jingjied",
+    "saving": "Dang save…",
+    "loadError": "Ym shym la lah ban load ïa ka jingjied jong phi. Phi dang lah ban jied hapoh.",
+    "grantError": "Ym shym la lah ban pynïaid ïa ka personalization. Tang kiba donkam ki dang don.",
+    "saveError": "Ym shym la lah ban save ïa ka jingjied jong phi. Sngewbha pyrshang biang."
+  }
+}

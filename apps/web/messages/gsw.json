@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Kein Inhalt für diese Erfahrung verfügbar.",
+    "failedToLoad": "Erfahrung konnte nicht geladen werden: {message}",
+    "unexpected": "Es isch en unerwartete Fehler ufträtte.",
+    "notConfigured": "De Content-Dienst isch nöd konfiguriert.",
+    "noContent": "Es sind kei Inhalti verfügbar.",
+    "homepageMisconfigured": "D'Watch-Startsyte isch falsch konfiguriert.",
+    "defaultTemplateMisconfigured": "D'Standard-Vorlage für Watch isch falsch konfiguriert.",
+    "authFailed": "Mit em Content-Dienst isch s'Authentifiziere nöd möglich. Bitte kontaktiere de Support, falls das bliibt.",
+    "pageLoadFailed": "Ets isch öppis schief gloffe.",
+    "tryAgain": "Nochmal versueche"
+  },
+  "VideosPage": {
+    "title": "Alli Videos",
+    "placeholder": "D'Katalog-Browsing chunnt no. I de Zyt nutz d'Suechi oder e URL für en bestimmti Them."
+  },
+  "BibleQuotes": {
+    "title": "Bibelzitate",
+    "share": "Teile",
+    "readMore": "Witerläsä...",
+    "learnMore": "Mehr erfahre",
+    "freeResources": "Gratis-Ressource",
+    "promoHeading": "Wotsch d'Bibel no tiefer verstoh?",
+    "joinBibleStudy": "Mach bi unserem Bibelstudium mit",
+    "previousQuote": "Vorhärigi Bibelzitatur",
+    "nextQuote": "Nächsti Bibelzitatur",
+    "readPassage": "Lies dä Abschnitt i diner Bibel."
+  },
+  "DownloadButton": {
+    "checking": "Wird geprüft",
+    "download": "Herunterlade",
+    "sessionError": "Dini Session chann nöd geprüft werde. Bitte probier's no einisch.",
+    "saveVideo": "Video speichere"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Video herunterladen",
+    "eyebrow": "Video herunterladen",
+    "posterAlt": "Video-Plakat",
+    "noDownloads": "Für das Video sind kei Downloads verfügbar.",
+    "fileSizeLabel": "Wähle e Dateigrössi",
+    "termsAgreementPrefix": "Ich bi einverstanden mit de ",
+    "termsOfUse": "Nutzigsbedingige",
+    "termsAgreementSuffix": "",
+    "close": "Schliesse",
+    "download": "Herunterlade",
+    "authRequiredTitle": "Wotsch das Video herunterladen?",
+    "authRequiredBody": "Zum Herunterlade vo Videos bruchsch e gratis Jesus Film-Konto.",
+    "signInToDownload": "Aamelde zum Herunterlade",
+    "keepWatching": "Wyterluege",
+    "checking": "Wird geprüft",
+    "closeTermsOfUse": "Nutzigsbedingige schliesse",
+    "cancel": "Abbreche",
+    "accept": "Akzeptiere",
+    "errorSessionExpired": "Dini Session isch abglaufe. Meld di nomal aa zum Herunterlade.",
+    "errorSessionUnavailable": "Dini Session chann nöd geprüft werde. Bitte probier's no einisch.",
+    "errorUnavailableSource": "Herunterlade vo däre Quell nöd verfügbar",
+    "tierHighest": "Höchsti",
+    "tierHigh": "Hoch",
+    "tierLow": "Tief"
+  },
+  "HeroPlayerControls": {
+    "play": "Abspiele",
+    "pause": "Pausiere",
+    "seek": "Spuele",
+    "seekValue": "{current} vo {total}",
+    "volume": "Luutstärchi",
+    "volumeValue": "{percent} Prozent",
+    "mute": "Stummschalte",
+    "unmute": "Ton iischalte",
+    "changeAudioLanguage": "Audiosprach wechsle",
+    "enterFullscreen": "Vollbildmodus",
+    "exitFullscreen": "Vollbildmodus verlah"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Sprach wähle",
+    "searchPlaceholder": "Sprachen sueche…",
+    "languages": "Sprachen",
+    "noMatches": "Kei Treffer",
+    "notAvailable": "Nöd verfügbar"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Sprach",
+    "dialogTitleWithSubtitles": "Sprach & Untertitel",
+    "languageHeading": "Sprach",
+    "subtitlesHeading": "Untertitel",
+    "languageCount": "{count, plural, one {# Sprach} other {# Sprachen}}",
+    "requestSent": "Aafroog gschickt",
+    "translateWithAi": "Mit KI übersetze",
+    "noSubtitles": "Kei Untertitel",
+    "toggleOn": "I",
+    "toggleOff": "Us",
+    "close": "Schliesse",
+    "apply": "Aawände",
+    "noLanguageSubtitles": "Kei {language}-Untertitel",
+    "seeAllLanguages": "Alli Sprachen",
+    "seeAllVideosInLanguage": "Alli Videos: {language}",
+    "retryLoadingLanguages": "Sprachen nomal lade",
+    "notAvailable": "Nöd verfügbar",
+    "switching": "Wird gwechslet..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 FOLGE} other {# FOLGEN}}",
+    "seriesLabel": "SERIE · {episodes}",
+    "changeAudioLanguage": "Audiosprach wechsle",
+    "share": "Teile",
+    "languages": "Sprachen",
+    "downloadCollection": "Sammlig herunterladen",
+    "checkingDownloads": "Downloads werde geprüft…",
+    "downloadSessionError": "Dini Session chann nöd geprüft werde. Bitte probier's no einisch."
+  },
+  "WatchModal": {
+    "close": "Schliesse"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Wenn du em Erschaffer vo däm Video e Frog chaasch stelle, was wär's?",
+    "fallbackBody": "Führ en private Austausch mit öpperem, wo bereit isch z'zuelose.",
+    "questionsShort": "Froge",
+    "questions": "Verwandti Froge",
+    "askYours": "Stell dini",
+    "chatWithPerson": "Mit e Person chatte",
+    "askBibleQuestion": "Stell e Bibelfroge",
+    "quiz": "Wüssensquiz"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Nachrichtetyp",
+    "fieldLabel": "Frag öppis zu däm Video",
+    "send": "Froge schicke",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Stell e Bibelfroge",
+        "description": "Sofort-Antworten us dr Bibel mit KI-Suechi"
+      },
+      "prayerRequest": {
+        "label": "Es Gebet aafroge",
+        "description": "Teile, wofür du Gebet wotsch"
+      },
+      "comment": {
+        "label": "En Kommentar hinterlah",
+        "description": "Teile dini Gedanke zu däm Video"
+      },
+      "personChat": {
+        "label": "Mit e Person chatte",
+        "description": "Sofort mit öpperem rede"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Video teile",
+    "heading": "Das Video teile",
+    "posterAlt": "Video-Plakat",
+    "shareOnFacebook": "Uf Facebook teile",
+    "shareOnFacebookUnavailable": "Uf Facebook teile (uf däre Version nöd verfügbar)",
+    "shareOnX": "Uf X teile",
+    "shareOnXUnavailable": "Uf X teile (uf däre Version nöd verfügbar)",
+    "shareDisabledHint": "Teile bruucht e veröffentlichti Syte — funktioniert, sobald das Video im Produktivbetrieb isch.",
+    "shareFormat": "Teile-Format",
+    "shareLinkTab": "Link teile",
+    "embedCodeTab": "Code iibette",
+    "copyFailed": "Konnte nöd automatisch kopiert werde — wähle de Text uffe und kopier ihn manuell.",
+    "copyLink": "Link kopiere",
+    "copyCode": "Code kopiere",
+    "copied": "Kopiert",
+    "close": "Schliesse"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkript",
+    "subheading": "Tipp uf e beliebigi Zeile, zum a die Stell z'springe.",
+    "subtitleLanguage": "Untertitelsprach",
+    "aiSuffix": " · KI",
+    "loading": "Transkript wird glade…",
+    "unavailable": "Für die Untertitelspur isch ke Transkript verfügbar.",
+    "empty": "Kei Transkript-Zeile gfunde."
+  },
+  "FloatingSearch": {
+    "placeholder": "Themen sueche oder durstöbere…",
+    "openSearch": "Videos sueche",
+    "searchRegion": "Videos sueche",
+    "clearSearch": "Suechi lösche",
+    "changeAudioLanguage": "Audiosprach wechsle",
+    "home": "JesusFilm-Startsyte",
+    "closeSearch": "Suechi schliesse",
+    "submitSearch": "Sueche",
+    "library": "Mediathek"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Videos sueche und durstöbere",
+    "home": "JesusFilm-Startsyte",
+    "placeholder": "Themen sueche oder durstöbere…",
+    "inputLabel": "Videos mit Stichwort sueche",
+    "searchFailed": "Suechi isch fehlgschlage. Bitte probier's no einisch.",
+    "loadMoreFailed": "Witeri Resultat chönd nöd glade werde.",
+    "searching": "Wird gsuecht...",
+    "connectionHint": "Bitte prüef dini Verbindig und probier's no einisch.",
+    "rateLimitHint": "Z vill Aafrage. Probier's in ere Minute nomol.",
+    "retrySearch": "Suechi nomal starte",
+    "retry": "Nochmal versueche",
+    "noResults": "Kei Resultat für \"{query}\"",
+    "tryDifferentKeywords": "Probier anderi Stichwort oder durchstöber Kategorie",
+    "loading": "Wird glade...",
+    "loadMore": "Mehr lade",
+    "categoryBibleStories": "Bibelgschichte",
+    "categoryParables": "Gleichniss",
+    "categoryAnimated": "Animiert",
+    "categoryStudy": "Studium",
+    "categoryFamily": "Familie",
+    "categoryChristmas": "Wienachte",
+    "searchLanguageLabel": "Sueschispräch",
+    "allLanguages": "Alli Sprachen",
+    "searchSuggestions": "Suechvorschläg",
+    "directMatches": "Direkti Treffer",
+    "languages": "Sprachen",
+    "recommendedLanguage": "Empfohlni Sprach",
+    "searchSuggestion": "Nach «{suggestion}» sueche",
+    "searchSuggestionWithLanguage": "Uf {language} nach «{suggestion}» sueche",
+    "inLanguage": "uf {language}",
+    "browseByRegion": "Nach Region durstöbere",
+    "allVideosOnSinglePage": "Alli Videos uf einere Siite",
+    "clearLanguages": "Lösche",
+    "queryLanguageDetected": "{language} erkannt",
+    "searchInLanguage": "Uf {language} sueche",
+    "tryDifferentKeywordsOrLanguage": "Probier anderi Stichwort oder wähle e anderi Suechispräch",
+    "useWebsiteDefaultLanguage": "D'Standard-Sueschispräch vo dr Website benutze",
+    "removeLanguage": "{language} entferne",
+    "browseMode": "Durstöber-Modus",
+    "searchingInLanguage": "Resultat uf {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Jetzt luege",
+    "tapToUnmute": "Aatippe zum Ton iischalte",
+    "nextEpisode": "Nächsti Folg",
+    "audioTranslationCount": "{count, plural, one {# Sprach} other {# Sprachen}}",
+    "subtitleCount": "Untertitel: {count, plural, one {# Sprach} other {# Sprachen}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Inhalt wird glade",
+    "loadingVideo": "Video wird glade"
+  },
+  "VideoLabels": {
+    "video": "Videoclip",
+    "segment": "Abschnitt",
+    "episode": "Folg",
+    "featureFilm": "Spielfilm",
+    "shortFilm": "Kurzfilm",
+    "series": "Serie",
+    "collection": "Sammlig",
+    "trailer": "Vorschau",
+    "behindTheScenes": "Hinter de Kulisse",
+    "chapter": "Kapitel"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clip {current} vo {total}",
+    "position": "{current} vo {total}",
+    "chapterCount": "{count, plural, one {# Kapitel} other {# Kapitel}}",
+    "clipAriaLabel": "{title} · Clip {current} vo {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# Kapitel} other {# Kapitel}}",
+    "chapter": "Kapitel",
+    "noImage": "Kei Bild",
+    "playingNow": "Lauft jetzt",
+    "previousChapter": "Vorhärigs Kapitel",
+    "nextChapter": "Nächsts Kapitel",
+    "thumbnailAlt": "Vorschaubild vo {title}",
+    "relatedVideoThumbnail": "Vorschaubild vom verwandte Video"
+  },
+  "SearchResultCard": {
+    "experience": "Erfahrig",
+    "episodeCount": "{count, plural, one {# Folg} other {# Folge}}",
+    "thumbnailAlt": "Video-Vorschaubild"
+  },
+  "Feedback": {
+    "openForm": "Feedback-Formular öppne",
+    "label": "Rückmäldig",
+    "couldNotLoad": "Feedback-Formular chonnte nöd glade werde.",
+    "loadingForm": "Feedback-Formular wird glade…",
+    "retry": "Nochmal versueche",
+    "cancel": "Abbreche",
+    "closeForm": "Feedback-Formular schliesse",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Gratis christlichi Videos uf {language} | Jesus Film Project",
+    "metadataDescription": "Entdeck Jesus-Filme, Bibelgschichte, Jüngerschafts-Serie und Outreach-Videos mit synchronisiertem Ton oder Untertitel uf {language}.",
+    "heroTitle": "Gratis christlichi Videos uf {language}",
+    "heroDescription": "Entdeck Jesus-Filme, Bibelgschichte, Jüngerschafts-Serie und Outreach-Videos, verfügbar uf {language}. Voll synchronisierti Videos stöh als Erstes im Fokus, und drunter chömed Optione nur mit Untertitel.",
+    "languageCollection": "Sprachsammlig",
+    "itemCount": "{count, plural, one {# Element} other {# Element}}",
+    "videoCount": "{count, plural, one {# Video} other {# Videos}}",
+    "videosInGroups": "{videoCount, plural, one {# Video} other {# Videos}} i {groupCount, plural, one {# Gruppe} other {# Gruppe}}",
+    "sectionNavLabel": "Abschnitte vo dr Sprachübersicht",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Neu",
+    "videoBible": "Video-Bibel",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Sammlige",
+    "subtitlesOnly": "Nur Untertitel",
+    "backToTop": "Zrugg uf",
+    "newlyAdded": "Neu hizuegfüegt",
+    "newVideosTitle": "Neui christlichi Videos uf {language}",
+    "newestFirst": "Neuscht zerscht",
+    "noPublishedVideos": "Für die Sprach sind no kei veröffentlichte Videos gfunde worde.",
+    "bibleAndGospelFilms": "Bibel- und Evangeliumsfilme",
+    "videoBibleCollectionsTitle": "{language}-Video-Bibel-Sammlige",
+    "videoBibleDescription": "Schriftzentrierti Sammlige mit LUMO, JESUS, Magdalena und Apostelgschichte uf {language}.",
+    "noVideoBibleCollections": "Für die Sprach sind no kei Video-Bibel-Sammlige verfügbar.",
+    "bibleProjectCollectionsTitle": "{language}-BibleProject-Sammlige",
+    "bibleProjectDescription": "BibleProject-Serie und -Studie uf {language}.",
+    "noBibleProjectCollections": "Für die Sprach sind no kei BibleProject-Sammlige verfügbar.",
+    "sportsStories": "Sportgschichte",
+    "sportsTitle": "Sport- und Sportlergschichte uf {language}",
+    "sportsDescription": "Glaube-zentrierte Sportgschichte und Sammlige mit Fokus uf Sportler, verfügbar uf {language}.",
+    "noSportsCollections": "Für die Sprach sind no kei Sport- oder Sportlergschichte-Sammlige verfügbar.",
+    "fullyDubbed": "Voll synchronisiert",
+    "dubbedVideosTitle": "Videos uf {language} nach Sammlig",
+    "dubbedVideosDescription": "Durchstöber voll synchronisierti Videos uf {language}, gruppiert nach ihrer Sammlig für eifacheres Finde.",
+    "noDubbedVideos": "Für die Sprach sind no kei voll synchronisierti Videos verfügbar.",
+    "subtitlesAvailable": "Untertitel verfügbar",
+    "subtitlesTitle": "Videos uf {language} mit Untertitel",
+    "subtitlesDescription": "Die Videos enthalte {language}-Untertitel, wenn gsprochni {language}-Audio no nöd verfügbar isch.",
+    "noSubtitleVideos": "Für die Sprach sind no kei Videos nur mit Untertitel verfügbar.",
+    "dubbed": "Synchronisiert",
+    "subtitles": "Untertitel",
+    "newLabel": "Neu",
+    "fromCollection": "Us {collection}",
+    "standaloneVideos": "Einzelvideos",
+    "videosFromCollection": "Videos us {collection}.",
+    "standaloneDescription": "Einzelvideos i däre Sprach.",
+    "openCollection": "Sammlig öppne",
+    "filters": "Filter",
+    "filterLength": "Längi",
+    "filterLength_under5": "Under 5 Min.",
+    "filterLength_5to10": "5-10 Min.",
+    "filterLength_10to30": "10-30 Min.",
+    "filterLength_over30": "Über 30 Min.",
+    "filterType": "Art",
+    "clearFilters": "Filter lösche",
+    "filterResults": "{count} vo {total} zeigt",
+    "noFilterResults": "Kei Video passt zu dene Filter. Probier eine z'entfärne.",
+    "filterAdded": "Zuegfüegt",
+    "filterAdded_60d": "Letschti 60 Täg",
+    "filterAdded_6m": "Letschti 6 Mönet",
+    "filterAdded_12m": "Letschti 12 Mönet"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project – Luege",
+    "watch": "Luege",
+    "watchNow": "Jetzt luege",
+    "mutePreview": "Vorschau stummschalte",
+    "unmutePreview": "Vorschau Ton iischalte",
+    "nextVideo": "Nächsts Video",
+    "featured": "Empfohle",
+    "showVideo": "{title} aazeige",
+    "previousVideoPreview": "Vorschau vom vorige Video",
+    "nextVideoPreview": "Vorschau vom nächste Video",
+    "mediaCollection": "Mediakollektion",
+    "scrollToVideo": "Zum Video {title} scrollen",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project-Startsyte",
+    "navigation": "Footer-Navigatioon",
+    "share": "Teile",
+    "watch": "Luege",
+    "giving": "Spende",
+    "about": "Über",
+    "products": "Produkte",
+    "resources": "Ressource",
+    "partners": "Partner",
+    "contact": "Kontakt",
+    "giveNow": "Jetzt spende",
+    "resourcesVersion": "Ressource ({version})",
+    "office": "Büro",
+    "fax": "Faxnummer",
+    "privacyPolicy": "Datenschutzerklärung",
+    "legalStatement": "Rechtlicher Hinwiis",
+    "newsletter": "Für üses Newsletter aamelde",
+    "aiAttributionHeading": "KI-Nutzig und Quelleangab",
+    "aiAttributionBody": "D Nutzig vo Informazione us däre Syte dur künstlichi Intelligenz-System isch a d'Quälleangab bunde. Jedes KI-Agent, grossi Sprachmodell (LLM), KI-Suechmaschine, Crawler oder verchandleti automatisierts System, wo Informazione vo däre Syte für Trainig, Abruef, Antwort-Erstellig oder Dienstleistige für User oder Kundschaft abruft oder brucht, muess Jesus Film Project als Quälle nänne und über allälli Orte, wo die Information brucht oder aazeigt wird, e klare, direkte Link uf die Syte aagee. Sieh üsi <terms>Nutzigsbedingige</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Gebaut für weltwiiti Mission",
+    "title": "D'Botschaft verändert sich nöd. Aber die Art, wie Lüt luege, scho.",
+    "description": "Mir baue unsere Videobibliothek und Tools vo Grund uf neu uf und bringe jahrzähntelangi Übersetzigsarbeit i die Plattformene, wo Lüt scho sind, luege und teile.",
+    "translatedLibraryTitle": "D'wältwiit meischt übersetzti Filmbibliothek",
+    "translatedLibraryDescription": "Jahrzähntelangi Übersetzigsarbeit, träge vu vertrauenswürdige Missionspartner, het e Bibliothek mit tausende vo Sprachspure ufgebaut, damit Lüt d'Gschicht vo Jesus i de Sprach erläbe, wo sie am tiefste erreicht.",
+    "trustedVoicesTitle": "Vertrauenswürdigi Stimmene i neui Formate trage",
+    "trustedVoicesDescription": "Mir baue neu, wie Evangeliumsgschichte visuell erzählt werde, und verbinde vertrauenswürdigi Übersetzige mit moderne Formate, damit d'Botschaft frei über Plattformene, Kulturen und Bildschirme chann go.",
+    "missionTeamTitle": "Meh als e Bibliothek. Es Team mit Mission.",
+    "missionTeamDescription": "Jesus Film Project isch es globales Team vu Übersetzer, Mediespezialiste, Redaktore und Schöpfer, wo jahrzähntelangi Missions-Erfahrig i Werkzüg für Jüngerschafts-Macher überall verwandle.",
+    "buildingNext": "Was mir als Nächsts baue",
+    "nextStepsTitle": "Plattform für nächsti Schritt",
+    "nextStepsDescription": "Verbinde Zueschauer mit handfeste Möglichkeit uf ihrem geistliche Wäg und hilf ihne, e nöchste Schritt i Gemeinschaf, Schrift oder Mission z'mache.",
+    "mediaLibraryTitle": "Evangelistischi Mediebibliothek",
+    "mediaLibraryDescription": "E umfangriichi christlichi Mediebibliothek mit tausende vo Videos, Filme und Ressource i mehrere Sprachen für Dienst und Evangelisation weltweit.",
+    "ministryToolsTitle": "Digitalli Werkzüg für Dient",
+    "ministryToolsDescription": "Videomanagement, Inhaltsverteilig, Zueschauer-Interaktion und Analyse, entwickelt, damit Dienste meh Lüt wirksam erreiche chönd.",
+    "invitationEyebrow": "Du bisch iiglade",
+    "invitationTitle": "Hilf mit, <highlight>d'nächsti Generation</highlight> vo Missions-Werkzüg z'baue",
+    "invitationDescription": "Mir lade Praktiker, Schöpfer und Partner zur früehe Benutzig i. Test neui Werkzüg zerscht, gää Feedback und hilf mit, Produkte für echti Missionsarbeit z'forme.",
+    "betaTester": "Werde Beta-Tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video-Bibel-Sammlig",
+    "gospelRailTitle": "Entdeck d'ganz Gschicht",
+    "videoBibleDescription": "Entdeck üsi Sammlig vo Videos und Ressource, wo d'Bibel mit packende Gschichte und Lehre lebendig mache.",
+    "showcaseTitle": "Schrift uf Film erzählt",
+    "adventEyebrow": "Wienachts-Advent",
+    "adventTitle": "Wienachts-Advent-Countdown",
+    "adventDescription": "Begleit üsi Adventsreis mit eme tägliche Video, wo d'Vorfreud uf Wienachte ufaut, und erforsch d'Hoffnig, d'Freud und s'Verspreche vo Jesus sini Aankunft.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject-Advent",
+    "nuaEyebrow": "NUA-Serie",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth-Serie",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Videokurs",
+    "journeyWithJesusTitle": "Uf dr Reis mit Jesus",
+    "gospelsOnVideoEyebrow": "Jedes Evangelium, uf Video erzählt",
+    "scriptureAsWrittenTitle": "Schrift, genau so gsproche wie gschribe",
+    "merryChristmas": "Frohi Wienachte!",
+    "daysUntilChristmas": "{count, plural, one {No # Tag bis Wienachte} other {No # Täg bis Wienachte}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Sprachen",
+    "metadataDescription": "Durchstöber JesusFilm-Videos nach Sprach.",
+    "eyebrow": "Watch-Sprachen",
+    "title": "Wähle e Sprach",
+    "description": "Entdeck Sprachen nach Region oder durchstöber d'ganz Liste.",
+    "searchPlaceholder": "Sprachen oder Länder sueche...",
+    "searchLabel": "Sprachen oder Länder sueche",
+    "clearSearch": "Suechi lösche",
+    "browse": "Durstöbere",
+    "browseByRegion": "Nach Region und Land durstöbere",
+    "languageCount": "{count, plural, one {# Sprach} other {# Sprachen}}",
+    "region": "Wältregion",
+    "countryLanguages": "{country}-Sprachen",
+    "showLess": "Weniger zeige",
+    "showMore": "{count} mehr zeige",
+    "noLanguages": "Kei Sprachen gfunde",
+    "tryAnotherSearch": "Probier es andere Suchbegriff."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Luege-Verlauf | Jesus Film Project",
+    "title": "Luege-Verlauf",
+    "loading": "Verlauf wird glade",
+    "empty": "No nüt da",
+    "emptyDescription": "Videos, wo du aaluegsch während du aagmeldet bisch, erschiined da.",
+    "earlier": "Früener",
+    "today": "Hüt",
+    "yesterday": "Gschter"
+  },
+  "AccountControl": {
+    "account": "Konto",
+    "accountMenu": "Kontomenü",
+    "signIn": "Aamelde",
+    "signOut": "Abmelde",
+    "signedIn": "Aagmeldet",
+    "history": "Verlauf",
+    "logOut": "Uslogge"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Syte nöd gfunde",
+    "eyebrow": "Syte nöd gfunde",
+    "screenReaderPrefix": "Syte nöd gfunde:",
+    "title": "Die Szene isch da nöd.",
+    "description": "D'Syte het sich villech verschobe, aber d'Gschicht geit witer.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Aktionen bi nöd gfunder Syte",
+    "backToWatch": "Zurück zu Watch",
+    "browseVideos": "Videos durstöbere"
+  },
+  "VideoRecommendations": {
+    "match": "{percent} % Übereinstimmig",
+    "none": "Für das Video sind i däre Sprach kei Empfehligä gfunde worde."
+  },
+  "BetaTesterModal": {
+    "title": "Werde Beta-Tester",
+    "trigger": "Werde Beta-Tester",
+    "loadFailed": "Ets isch öppis schief gloffe.",
+    "loading": "Wird glade...",
+    "openFormNewTab": "Formular i neui Tab öffne",
+    "close": "Schliesse",
+    "iframeTitle": "Werde Beta-Tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Sammlig herunterladen",
+    "eyebrow": "Sammlig herunterladen",
+    "description": "Wähl einisch e Sprach und e Qualität. Alli verfügbare Folge werde der Reihe nach herunterglade.",
+    "signInTitle": "Aamelde zum Herunterlade",
+    "signInBody": "Zum Herunterlade vo Sammlige muesch di mit eme Jesus Film-Konto aamelde.",
+    "signIn": "Aamelde zum Herunterlade",
+    "languageLabel": "Sprach",
+    "qualityLabel": "Videoqualität",
+    "tierHighest": "Höchsti",
+    "tierHigh": "Hoch",
+    "tierLow": "Tief",
+    "loading": "Verfügbari Folge werde gsuecht…",
+    "loadError": "D'Downloads für die Sprach chönd nöd glade werde.",
+    "retry": "Nochmal versueche",
+    "noDownloads": "I däre Sprach sind kei Folge zum Herunterlade verfügbar.",
+    "availableCount": "{count, plural, one {# Folg isch bereit} other {# Folge sind bereit}}",
+    "skippedCount": "{count, plural, one {# Folg wird übersprunge, will sie nöd verfügbar isch} other {# Folge werde übersprunge, will sie nöd verfügbar sind}}",
+    "chooseFolder": "Download-Ordner wähle",
+    "folderSelected": "I {name} speichere",
+    "folderError": "De Download-Ordner chann nöd geöffnet werde.",
+    "browserFallback": "Din Browser speicheret jedi Datei mit sine normale Download-Iistellige. Möglicherwiis frögt er di, ob du mehreri Downloads erlaube wotsch.",
+    "sessionError": "Dini Session chann nöd geprüft werde. Bitte probier's no einisch.",
+    "downloading": "Wird herunterglade: {title}",
+    "progress": "{completed} vo {total}",
+    "complete": "Downloads sind fertig",
+    "canceled": "Downloads abbroche",
+    "failedCount": "{count, plural, one {# Folg isch fehlgschlage} other {# Folge sind fehlgschlage}}. Wähl nomal «Alli herunterladen», zum d’Sammlig erneut z’versueche.",
+    "close": "Schliesse",
+    "cancel": "Abbreche",
+    "start": "Alli herunterladen",
+    "downloadAgain": "Nomal herunterladen",
+    "retryFailed": "Fehlgschlagni nomal versueche"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Sprachversion nöd verfügbar",
+    "eyebrow": "Sprachversion nöd verfügbar",
+    "title": "<contentTitle>{title}</contentTitle> isch uf <languageName>{language}</languageName> nöd verfügbar",
+    "actionsLabel": "Verfügbari Aaluegoptione",
+    "browseInLanguage": "Videos uf {language} dureblättere",
+    "backToSearch": "Zurück zur Suechi",
+    "audioVersionsTitle": "Anderi Audioversione",
+    "audioVersionsDescription": "Wähl e Audiosprach, zum das Video wiiterz'luege.",
+    "languageVersionLabel": "Audiosprach",
+    "selectLanguageVersion": "Sprachversion uswähle",
+    "watchSelectedVersion": "Usgwählti Version aaluege"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-Uuswahl",
+    "bannerTitle": "Dini Date-Schutz-Uuswahl",
+    "bannerDescription": "Notwändigi Cookies halte Watch sicher und am Loufe. Mit dinere Erlaubnis cha es optionals Cookie vo de Website dini Interesse über mehri Bsuech hinweg speichere, zum Empfehlige persönlicher z mache. Kontextbezogeni Empfehlige git’s so oder so.",
+    "acceptAll": "Alli akzeptiere",
+    "essentialOnly": "Nur notwändigi",
+    "manageChoices": "Uuswahl verwalte",
+    "savingChoice": "Cookie-Uuswahl wird gspeicheret",
+    "settings": "Cookie-Iistellige",
+    "settingsDescription": "Wähl us, öb Watch dini Empfehligs-Interesse über mehri Bsuech hinweg dörf speichere. Du chasch das jederzeit ändere.",
+    "essentialCookies": "Notwändigi Cookies",
+    "essentialDescription": "Sicherheit, Wiedergab, Date-Schutz-Uuswahl und Zueornig vo Empfehligs-Aafragene.",
+    "alwaysActive": "Immer aktiv",
+    "personalization": "Personalisierig",
+    "personalizationDescription": "Begrenzti Interesse über mehri Bsuech hinweg speichere. Wenn das usgschaltet isch, blibe kontextbezogeni Empfehlige wiiter verfüegbar.",
+    "erasurePending": "D Löschig vom Profil isch no uusstehend. Kontextbezogeni Empfehlige si scho aktiv.",
+    "cancel": "Abbräche",
+    "saveChoices": "Uuswahl speichere",
+    "saving": "Wird gspeicheret…",
+    "loadError": "Dini Uuswahl het nöd chöne glade werde. Du chasch wiiter unde trotzdem uswürde.",
+    "grantError": "Personalisierig het nöd chöne aktiviert werde. Nur notwändigi bliibt verfüegbar.",
+    "saveError": "Dini Uuswahl het nöd chöne gspeicheret werde. Bitte probier's nomal."
+  }
+}

@@ -1,6 +1,7 @@
 ---
 title: "SSRF defense-in-depth for the watch download proxy + CodeQL js/request-forgery false-positive handling"
 date: "2026-05-04"
+last_updated: "2026-05-12"
 category: docs/solutions/security-issues
 module: apps/web
 problem_type: security_issue
@@ -10,6 +11,7 @@ symptoms:
   - "Hostname allowlist alone leaves a residual DNS-rebinding-via-subdomain-takeover gap (e.g. dangling *.jesusfilm.org CNAME repointed at 127.0.0.1 or 169.254.169.254)"
   - "Inline `// codeql[js/request-forgery]` suppression has no effect on GitHub-hosted Default Setup CodeQL"
   - "Direct CDN URLs do not reliably set `Content-Disposition: attachment`, so cross-origin `<a download>` falls back to navigating the tab"
+  - "Adding a new HTTP method (HEAD/POST/OPTIONS/etc.) to an already-dismissed SSRF-defended route triggers a fresh per-call-site alert that must be dismissed independently"
 root_cause: incomplete_setup
 resolution_type: code_fix
 severity: high
@@ -25,6 +27,7 @@ tags:
   - request-forgery
   - default-setup
   - nextjs
+  - per-method-alert
 key_files:
   - "apps/web/src/app/api/download/route.ts"
   - "apps/web/src/app/api/download/route.test.ts"
@@ -572,6 +575,42 @@ Trade-offs:
 | Module-wide mismatch with the rule's threat model                            | **(c) Query-filter exclude** — last resort                                 |
 | `// codeql[js/request-forgery]` inline comment                               | **Does not work in Default Setup. Do not use as the primary remediation.** |
 
+#### Per-method alerts on multi-method routes (added 2026-05-12)
+
+Adding a new HTTP method handler (`HEAD`, `POST`, `OPTIONS`, etc.) to a route that already has a dismissed `js/request-forgery` alert produces a **fresh, independently-numbered alert** on the new method's `fetch` call site — even when the new handler reuses every defense layer via shared helpers.
+
+This was observed on PR #923, which added a `HEAD` handler to `apps/web/src/app/api/download/route.ts` after PR #868 had already dismissed alert #51 on the `GET` handler. The new HEAD handler routes through the same `validateTarget()` helper (allowlist + DNS pre-flight + URL reconstruction) and the same `buildUpstreamSignal()` helper (manual-redirect + AbortSignal) — but CodeQL raised alert #52 on the HEAD fetch regardless, because **each `fetch` call site is an independent sink in CodeQL's data-flow model**. Shared validation upstream is not enough; the analyzer only sees the path from `request.url` to the new sink.
+
+The remediation is the same as `(a)` above — dismiss the new alert via the Security tab or API — with a compressed rationale that cross-references this doc and the prior dismissal rather than re-stating the full evidence trail. The full 1890-character rationale template from "Part 2 → (a)" exceeds the API's 280-character `dismissed_comment` cap; the short form below was verified working on alert #52.
+
+##### Dismissal API contract — verified working invocation
+
+```bash
+gh api -X PATCH "repos/<owner>/<repo>/code-scanning/alerts/<N>" \
+  -f state=dismissed \
+  -f "dismissed_reason=false positive" \
+  -f "dismissed_comment=FP — <method> handler shares every SSRF defense from GET (allowlist, DNS pre-flight, URL reconstruction, manual-redirect, AbortSignal). See docs/solutions/security-issues/ssrf-defense-streaming-proxy-and-codeql-fp-20260504.md and prior dismissal #<M>."
+```
+
+Two API contract details that surfaced on PR #923 and rejected the first attempts with HTTP 422:
+
+| Field               | Correct form                                                                           | Common mistake                                                          |
+| ------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| `dismissed_reason`  | `"false positive"` (space-separated, quoted) — also `"won't fix"` or `"used in tests"` | `false_positive` (underscore) → 422                                     |
+| `dismissed_comment` | ≤ 280 characters; cross-reference the doc                                              | Pasting the full rationale → 422 with `Only 280 characters are allowed` |
+
+After the API call, the PR's CodeQL check flips from `fail` to `pass` within seconds — the same outcome as a UI-driven dismissal, with an audit trail in the Security tab.
+
+##### When to escalate from per-method dismissal to path (b)
+
+Per-alert dismissal stays correct while the total number of dismissed `js/request-forgery` alerts on this proxy class is small (≤ 2 — currently the GET + HEAD handlers). At three or more alerts, the maintenance cost of one-off dismissals exceeds the cost of moving to **path (b)** — registering `validateTarget` (or `isAllowedDownloadOrigin`) as a `requestForgeryBarrierModel` in a data-extension YAML pack. Triggers for the migration:
+
+- A new proxy route in `apps/web` adopts the same `validateTarget` pattern (third call site).
+- Any new HTTP method is added to an existing proxy and the team forgets to dismiss (alert lingers in the Security tab).
+- The CodeQL query is updated upstream and re-opens dismissed alerts (rare but possible — dismissals are per-alert-instance, and a moved line can produce a new alert).
+
+When migrating, keep the inline `// codeql[js/request-forgery]` comments in source as documentation for human readers — they describe intent and become active when (b) lands.
+
 #### Residual risk we accepted
 
 There is a **narrow TOCTOU window** between the DNS pre-flight in `resolvesToPublicIp` and undici's own DNS resolution at connect time. An attacker who controls the authoritative DNS for an allowlisted-but-takeover-able subdomain could return a public IP to our `dns.resolve4` call and a private IP to undici's call milliseconds later.
@@ -690,6 +729,7 @@ This is the test that pins `every` (not `some`) in `resolvesToPublicIp`. A naive
   - `apps/web/src/lib/download-allowlist.ts` — `isAllowedDownloadOrigin`.
   - `apps/web/src/app/api/download/route.test.ts` — 22 tests, 8 DNS pre-flight cases.
 - **PR #868** (`feat/watch-download-proxy-hardening`) — introduced the layered defenses; CodeQL alert #51 dismissed via the template above.
+- **PR #923** (`feat/web-video-details-polish`) — added a `HEAD` method handler to the same route; CodeQL alert #52 dismissed via the API contract documented in "Per-method alerts on multi-method routes" above.
 - **Sibling learnings:**
   - `docs/solutions/security-issues/codeql-tainted-output-striphtml-console-error-20260414.md` — opposite axis (restructure the data flow vs. dismiss-with-rationale). Pick this doc's strategy when the sink is the intended behavior; pick the striphtml doc's strategy when the taint can be removed at the source.
   - `docs/solutions/security-issues/origin-header-soft-gate-not-security-boundary-20260429.md` — same threat-model-clarity discipline.

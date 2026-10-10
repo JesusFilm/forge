@@ -1,0 +1,119 @@
+{
+  "event": "run-embeds.complete",
+  "pipeline": "both",
+  "wallClockMs": 91461,
+  "reports": {
+    "scene": {
+      "mappingGeneratedAt": "2026-04-27T21:40:47.352Z",
+      "totalTargets": 3,
+      "localeFilter": ["pt"],
+      "outcomes": [
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o640x0zqsl3fp58swue",
+            "videoEditionId": "cmoqa8ay91zwxqsl3buiu1rg9",
+            "coreId": "1_0-TrainV_4Download",
+            "cmsVideoId": 525,
+            "locale": "pt"
+          },
+          "locale": "pt",
+          "scenesIndexed": 4,
+          "embeddingsWritten": 4,
+          "durationMs": 13385
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o6l0x1mqsl313qbd4l1",
+            "videoEditionId": "cmoqa7o6z0x23qsl3qlmqkhfh",
+            "coreId": "11_Advent0104",
+            "cmsVideoId": 528,
+            "locale": "pt"
+          },
+          "locale": "pt",
+          "scenesIndexed": 7,
+          "embeddingsWritten": 7,
+          "durationMs": 23461
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o720x2bqsl3sxi1rvir",
+            "videoEditionId": "cmoqa7o7e0x2qqsl3sqwxcjan",
+            "coreId": "11_Advent0204",
+            "cmsVideoId": 529,
+            "locale": "pt"
+          },
+          "locale": "pt",
+          "scenesIndexed": 6,
+          "embeddingsWritten": 6,
+          "durationMs": 19540
+        }
+      ],
+      "succeeded": 3,
+      "skipped": 0,
+      "failed": 0,
+      "missingArtifacts": [],
+      "retrySelection": null,
+      "groupedFailures": []
+    },
+    "transcript": {
+      "mappingGeneratedAt": "2026-04-27T21:40:47.352Z",
+      "totalTargets": 3,
+      "languageFilter": ["pt"],
+      "outcomes": [
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o640x0zqsl3fp58swue",
+            "videoEditionId": "cmoqa8ay91zwxqsl3buiu1rg9",
+            "coreId": "1_0-TrainV_4Download",
+            "cmsVideoId": 525,
+            "language": "pt"
+          },
+          "language": "pt",
+          "chunksIndexed": 2,
+          "embeddingsWritten": 2,
+          "chunksPruned": 0,
+          "durationMs": 6915
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o6l0x1mqsl313qbd4l1",
+            "videoEditionId": "cmoqa7o6z0x23qsl3qlmqkhfh",
+            "coreId": "11_Advent0104",
+            "cmsVideoId": 528,
+            "language": "pt"
+          },
+          "language": "pt",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10151
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7o720x2bqsl3sxi1rvir",
+            "videoEditionId": "cmoqa7o7e0x2qqsl3sqwxcjan",
+            "coreId": "11_Advent0204",
+            "cmsVideoId": 529,
+            "language": "pt"
+          },
+          "language": "pt",
+          "chunksIndexed": 3,
+          "embeddingsWritten": 3,
+          "chunksPruned": 0,
+          "durationMs": 10117
+        }
+      ],
+      "succeeded": 3,
+      "skipped": 0,
+      "failed": 0,
+      "missingArtifacts": []
+    }
+  },
+  "contentBackfillGateBypass": null
+}

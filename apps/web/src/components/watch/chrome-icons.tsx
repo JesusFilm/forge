@@ -1,10 +1,10 @@
 // Inline SVG icons for the HeroPlayer chrome.
 //
 // Two visual families:
-//   - Chrome controls (Play, Pause, Volume, Muted, Fullscreen) use a 20px
-//     fill-based glyph styled by the parent button's text color.
-//   - The pre-reveal Play with Sound / Tap to Unmute pill uses larger 22px
-//     stroke-based speakers that match the pill's lock-up.
+//   - Chrome controls and the pre-reveal Watch now pill use 24px fill-based glyphs
+//     styled by the parent button's text color.
+//   - The Tap to Unmute recovery pill uses a larger 22px stroke-based speaker
+//     that matches the pill's lock-up.
 
 type GlyphProps = { path: string }
 
@@ -12,8 +12,8 @@ function ChromeGlyph({ path }: GlyphProps) {
   return (
     <svg
       aria-hidden="true"
-      width={20}
-      height={20}
+      width={24}
+      height={24}
       viewBox="0 0 24 24"
       fill="currentColor"
     >
@@ -36,6 +36,27 @@ export function ChromeVolumeIcon() {
   )
 }
 
+export function AudioLanguagesIcon() {
+  return (
+    <svg
+      aria-hidden="true"
+      viewBox="0 0 24 24"
+      width={14}
+      height={14}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+    >
+      <line x1="3" y1="10" x2="3" y2="14" />
+      <line x1="7.5" y1="6" x2="7.5" y2="18" />
+      <line x1="12" y1="3" x2="12" y2="21" />
+      <line x1="16.5" y1="6" x2="16.5" y2="18" />
+      <line x1="21" y1="10" x2="21" y2="14" />
+    </svg>
+  )
+}
+
 export function ChromeMutedIcon() {
   return (
     <ChromeGlyph path="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zM4.27 3 3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4 9.91 6.09 12 8.18V4z" />
@@ -51,26 +72,6 @@ export function EnterFullscreenIcon() {
 export function ExitFullscreenIcon() {
   return (
     <ChromeGlyph path="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
-  )
-}
-
-export function UnmutedSpeakerIcon() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      width={22}
-      height={22}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="M11 5 6 9H2v6h4l5 4V5z" />
-      <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
-      <path d="M19.07 4.93a10 10 0 0 1 0 14.14" />
-    </svg>
   )
 }
 

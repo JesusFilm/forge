@@ -1,9 +1,6 @@
 import { TextDecoder } from "node:util"
-import { graphql } from "@forge/graphql"
-import getClient from "@/cms/client"
 import { getCmsGateway, readMockCmsState } from "@/cms/gateway"
 import { buildJobArtifactHref } from "@/lib/job-artifacts"
-import { resolveCmsLanguageCode } from "@/lib/mux-language"
 import { getPlaybackUrl, listMuxSubtitleTracks } from "@/services/mux"
 import { readArtifact } from "@/services/storage"
 import type { JobRecord } from "@/types/job"
@@ -13,35 +10,12 @@ import type {
   ReviewChapterTrack,
   ReviewMetadataDomain,
   ReviewMetadataValue,
+  ReviewSubtitleValidationArtifact,
+  ReviewSubtitleValidationDomain,
+  ReviewTranscriptCorrectionArtifact,
+  ReviewTranscriptCorrectionDomain,
   ReviewTextTrack,
 } from "./review-player-types"
-
-const GET_VIDEO_REVIEW_SOURCE = graphql(`
-  query GetVideoReviewSource($documentId: ID!) {
-    video(documentId: $documentId) {
-      documentId
-      title
-      description
-      primaryLanguage {
-        coreId
-        name
-        bcp47
-        iso3
-      }
-      subtitles(pagination: { limit: -1 }) {
-        aiGenerated
-        primary
-        vttSrc
-        language {
-          coreId
-          name
-          bcp47
-          iso3
-        }
-      }
-    }
-  }
-`)
 
 const TRUSTED_SUBTITLE_HOSTS = new Set(["stream.mux.com"])
 const TRUSTED_JESUSFILM_SUBTITLE_HOSTS = ["jesusfilm.org"] as const
@@ -140,52 +114,7 @@ async function defaultLoadVideoReviewSource(
     return mockState.readModels.reviewSources[videoDocumentId] ?? null
   }
 
-  const client = getClient()
-  const result = await client.query({
-    query: GET_VIDEO_REVIEW_SOURCE,
-    variables: { documentId: videoDocumentId },
-    fetchPolicy: "no-cache",
-  })
-
-  const video = result.data?.video
-  if (!video) {
-    return null
-  }
-
-  const fallbackLanguageCode = resolveCmsLanguageCode(video.primaryLanguage)
-  const subtitles = (video.subtitles ?? [])
-    .filter(
-      (subtitle): subtitle is NonNullable<typeof subtitle> => subtitle != null,
-    )
-    .map((subtitle): ReviewTextTrack | null => {
-      const src = trimNonBlank(subtitle.vttSrc)
-      const languageCode =
-        resolveCmsLanguageCode(subtitle.language) ?? fallbackLanguageCode
-
-      if (!src || !languageCode) {
-        return null
-      }
-
-      return {
-        languageCode,
-        label:
-          trimNonBlank(subtitle.language?.name) ?? languageCode.toUpperCase(),
-        src,
-        source: "cms" as const,
-        isGenerated: Boolean(subtitle.aiGenerated),
-      }
-    })
-    .filter((track): track is NonNullable<typeof track> => track != null)
-
-  return {
-    title: trimNonBlank(video.title),
-    description: trimNonBlank(video.description),
-    language:
-      trimNonBlank(video.primaryLanguage?.name) ??
-      resolveCmsLanguageCode(video.primaryLanguage) ??
-      undefined,
-    subtitles,
-  }
+  return null
 }
 
 async function defaultLoadMuxSubtitleTracks(
@@ -265,6 +194,96 @@ function buildGeneratedChapterTrack(
     src: buildArtifactHref(job.id, "chapters-vtt"),
     source: "artifact",
     isGenerated: true,
+  }
+}
+
+function getSubtitleValidationArtifacts(
+  job: JobRecord,
+  buildArtifactHref: (jobId: string, artifactKey: string) => string,
+): ReviewSubtitleValidationArtifact[] {
+  return Object.entries(job.artifacts)
+    .filter(
+      ([key, value]) =>
+        value.kind === "downloadable" && key.startsWith("subtitle-validation-"),
+    )
+    .map(([key]) => {
+      const languageCode = key
+        .slice("subtitle-validation-".length)
+        .toLowerCase()
+
+      return {
+        key,
+        href: buildArtifactHref(job.id, key),
+        languageCode,
+      }
+    })
+    .sort((left, right) => left.languageCode.localeCompare(right.languageCode))
+}
+
+function getSubtitleValidationDomain(
+  job: JobRecord,
+  buildArtifactHref: (jobId: string, artifactKey: string) => string,
+): ReviewSubtitleValidationDomain {
+  const summary = job.steps.find((step) => step.name === "translation")?.details
+    ?.subtitleValidation
+  const artifacts = getSubtitleValidationArtifacts(job, buildArtifactHref)
+
+  if (!summary) {
+    return {
+      status: "unavailable",
+      reason: artifacts.length > 0 ? "summary_missing" : "artifact_missing",
+    }
+  }
+
+  return {
+    status: "available",
+    summary,
+    artifacts,
+  }
+}
+
+function getTranscriptCorrectionArtifacts(
+  job: JobRecord,
+  buildArtifactHref: (jobId: string, artifactKey: string) => string,
+): ReviewTranscriptCorrectionArtifact[] {
+  const artifactKinds: Record<
+    string,
+    ReviewTranscriptCorrectionArtifact["kind"]
+  > = {
+    "transcript-correction-report": "report",
+    "transcript-raw": "raw_transcript",
+    "subtitles-raw": "raw_subtitles",
+  }
+
+  return Object.entries(artifactKinds)
+    .filter(([key]) => job.artifacts[key]?.kind === "downloadable")
+    .map(([key, kind]) => ({
+      key,
+      href: buildArtifactHref(job.id, key),
+      kind,
+    }))
+}
+
+function getTranscriptCorrectionDomain(
+  job: JobRecord,
+  buildArtifactHref: (jobId: string, artifactKey: string) => string,
+): ReviewTranscriptCorrectionDomain {
+  const summary = job.steps.find(
+    (step) => step.name === "structured_transcript",
+  )?.details?.transcriptCorrection
+  const artifacts = getTranscriptCorrectionArtifacts(job, buildArtifactHref)
+
+  if (!summary) {
+    return {
+      status: "unavailable",
+      reason: artifacts.length > 0 ? "summary_missing" : "artifact_missing",
+    }
+  }
+
+  return {
+    status: "available",
+    summary,
+    artifacts,
   }
 }
 
@@ -406,6 +425,11 @@ export async function loadJobReviewContext(
   )
   const afterTracks = buildGeneratedSubtitleTracks(job, buildArtifactHref)
   const afterChapterTrack = buildGeneratedChapterTrack(job, buildArtifactHref)
+  const afterValidation = getSubtitleValidationDomain(job, buildArtifactHref)
+  const afterTranscriptCorrection = getTranscriptCorrectionDomain(
+    job,
+    buildArtifactHref,
+  )
 
   let afterMetadata: ReviewMetadataDomain
   if (job.artifacts.metadata?.kind !== "downloadable") {
@@ -522,6 +546,8 @@ export async function loadJobReviewContext(
               },
         metadata: afterMetadata,
         chapters: afterChapters,
+        validation: afterValidation,
+        transcriptCorrection: afterTranscriptCorrection,
       },
       compare: {},
     },

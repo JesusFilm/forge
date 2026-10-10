@@ -47,5 +47,35 @@ describe("EnrichActionControls", () => {
     expect(markup).toContain("1 enrichment job started.")
     expect(markup).toContain('href="/dashboard/jobs/job-1"')
     expect(markup).toContain("Open job")
+    expect(markup).not.toContain('aria-haspopup="dialog"')
+  })
+
+  it("renders error feedback with details as a dialog trigger", () => {
+    const markup = renderToStaticMarkup(
+      React.createElement(EnrichActionControls, {
+        enrichActionReady: true,
+        enrichFeedback: {
+          tone: "error",
+          message:
+            "Validation failed: targetLanguageIds: Expected a language id",
+          details: [
+            {
+              label: "targetLanguageIds",
+              message: "Expected a language id",
+            },
+          ],
+        },
+        isEnrichSubmitting: false,
+        languageSelectionRequired: false,
+        onCancel: vi.fn(),
+        onEnrich: vi.fn(),
+      }),
+    )
+
+    expect(markup).toContain('aria-haspopup="dialog"')
+    expect(markup).toContain('aria-expanded="false"')
+    expect(markup).toContain(
+      "Validation failed: targetLanguageIds: Expected a language id",
+    )
   })
 })

@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest"
-import { findMediaAssetUsages } from "./media-asset.usage"
+import {
+  findMediaAssetUsages,
+  findVideoLocaleMediaAssetUsages,
+} from "./media-asset.usage"
 
 describe("findMediaAssetUsages", () => {
   it("finds canonical asset-id references in nested block JSON", () => {
@@ -21,7 +24,8 @@ describe("findMediaAssetUsages", () => {
 
     expect(matches).toEqual([
       expect.objectContaining({
-        experienceLocaleId: "loc-1",
+        resourceType: "EXPERIENCE_LOCALE",
+        resourceLocaleId: "loc-1",
         location: "blocks",
         fieldPath: "$.blocks[0].items[0].imageAssetId",
         fieldName: "imageAssetId",
@@ -30,7 +34,46 @@ describe("findMediaAssetUsages", () => {
     ])
   })
 
-  it("finds legacy URL references in metadata and blocks", () => {
+  it("reports active and recoverable video-locale social image references", () => {
+    const rows = [
+      {
+        id: "video-locale-active",
+        videoId: "video-1",
+        locale: "en",
+        title: "JESUS",
+        socialImageAssetId: "asset-1",
+        deletedAt: null,
+        video: { slug: "jesus", deletedAt: null },
+      },
+      {
+        id: "video-locale-deleted",
+        videoId: "video-1",
+        locale: "fr",
+        title: "JESUS",
+        socialImageAssetId: "asset-1",
+        deletedAt: new Date("2026-01-01T00:00:00Z"),
+        video: { slug: "jesus", deletedAt: null },
+      },
+    ]
+
+    expect(
+      findVideoLocaleMediaAssetUsages({ assetId: "asset-1" }, rows),
+    ).toEqual([
+      expect.objectContaining({
+        resourceType: "VIDEO_LOCALE",
+        resourceLocaleId: "video-locale-active",
+        recoverable: false,
+        fieldPath: "$.socialImageAssetId",
+      }),
+      expect.objectContaining({
+        resourceType: "VIDEO_LOCALE",
+        resourceLocaleId: "video-locale-deleted",
+        recoverable: true,
+      }),
+    ])
+  })
+
+  it("finds legacy URL references in metadata and media fields", () => {
     const matches = findMediaAssetUsages(
       {
         assetId: "asset-1",
@@ -44,14 +87,7 @@ describe("findMediaAssetUsages", () => {
           title: "Landing",
           ogImageUrl: "/api/media-assets/asset-1/preview",
           blocks: [
-            {
-              t: "bibleQuotesCarousel",
-              quotes: [
-                {
-                  backgroundImageUrl: "/api/media-assets/asset-1/preview",
-                },
-              ],
-            },
+            { t: "card", mediaUrl: "/api/media-assets/asset-1/preview" },
           ],
         },
       ],
@@ -59,7 +95,7 @@ describe("findMediaAssetUsages", () => {
 
     expect(matches.map((item) => item.fieldPath)).toEqual([
       "$.ogImageUrl",
-      "$.blocks[0].quotes[0].backgroundImageUrl",
+      "$.blocks[0].mediaUrl",
     ])
     expect(matches.every((item) => item.match === "url")).toBe(true)
   })
@@ -79,8 +115,8 @@ describe("findMediaAssetUsages", () => {
           ogImageUrl: null,
           blocks: [
             {
-              t: "cta",
-              imageUrl: "media-assets/asset-1/original/hero.webp",
+              t: "card",
+              mediaUrl: "media-assets/asset-1/original/hero.webp",
             },
           ],
         },
@@ -89,7 +125,7 @@ describe("findMediaAssetUsages", () => {
 
     expect(matches).toHaveLength(1)
     expect(matches[0]).toMatchObject({
-      fieldName: "imageUrl",
+      fieldName: "mediaUrl",
       match: "object-key",
     })
   })

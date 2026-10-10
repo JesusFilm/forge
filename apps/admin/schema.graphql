@@ -4,11 +4,24 @@
 # Regenerate with:
 #   pnpm --filter @forge/admin schema:print
 #
-# The committed SDL is consumed by packages/graphql's gql.tada codegen
+# The committed SDL is consumed by packages/admin-graphql's gql.tada codegen
 # to produce the typed adminGraphql() factory + introspection types.
 # Consumer apps (web, mobile, tv) never introspect admin's running
 # server — admin disables introspection in production via
 # @envelop/disable-introspection.
+
+"""Advent calendar countdown block."""
+type AdventCountdownBlock {
+  backgroundColor: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  locale: String
+  scripture: String
+  scriptureReference: String
+  sectionKey: String
+  t: String
+  title: String
+}
 
 """A Core-sourced Bible book reference used by video citations."""
 type BibleBook {
@@ -32,8 +45,141 @@ type BibleCitation {
   id: ID
   order: Int
   osisId: String
+  """
+  Server-resolved Bible text for this citation. Returns null when no approved provider key is configured, the citation cannot be mapped, or the provider is unavailable.
+  """
+  passage(languageId: String, languageSlug: String): Passage
   verseEnd: Int
   verseStart: Int
+}
+
+"""Single entry in BibleQuotesCarouselBlock.quotes."""
+type BibleQuoteItem {
+  attribution: String
+  backgroundColor: String
+  backgroundImageAsset: BlockImageAsset
+  backgroundImageAssetId: String
+  chapterEnd: Int
+  chapterStart: Int
+  ctaEnabled: Boolean
+  ctaLabel: String
+  ctaLink: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  osisId: String
+  reference: String
+  text: String
+  verseEnd: Int
+  verseStart: Int
+}
+
+"""Carousel of Bible quote items."""
+type BibleQuotesCarouselBlock {
+  backgroundColor: String
+  heading: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  quotes: [BibleQuoteItem!]!
+  sectionKey: String
+  t: String
+}
+
+"""
+Public-safe media asset metadata for rendering Experience block imagery.
+"""
+type BlockImageAsset {
+  blurDataUrl: String
+  dominantColor: String
+  height: Int
+  id: ID
+  previewUrl: String
+  width: Int
+}
+
+"""
+Public-safe metadata for the linked Video image used by an Experience block item.
+"""
+type BlockVideoImage {
+  blurDataUrl: String
+  dominantColor: String
+  height: Int
+  id: ID
+  previewUrl: String
+  width: Int
+}
+
+"""Simple title/description card with optional media + link."""
+type CardBlock {
+  backgroundColor: String
+  description: String
+  link: String
+  mediaAssetId: String
+  mediaUrl: String
+  sectionKey: String
+  t: String
+  title: String
+  variant: CardVariant!
+}
+
+enum CardVariant {
+  default
+  featured
+}
+
+"""
+One distinct playable dub language available across a parent video's children. Drives the /series-page language picker. Every entry is guaranteed playable (published + streamable) — consumers need no further filtering.
+"""
+type ChildDubLanguage {
+  bcp47: String
+  """Compatibility JSON map of locale code → name (mirrors Language.name)."""
+  name: JSON
+  slug: String
+}
+
+"""
+Side-by-side layout container with repeatable slots. `content` dispatches into ContainerContentBlock.
+"""
+type ContainerBlock {
+  backgroundColor: String
+  backgroundImageAsset: BlockImageAsset
+  backgroundImageAssetId: String
+  content: [ContainerContentBlock!]!
+  sectionKey: String
+  slots: JSON
+  t: String
+}
+
+"""
+Discriminated union of block kinds allowed inside container.content. The narrowest scope.
+"""
+union ContainerContentBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerSlotBlock | CtaBlock | EasterDatesBlock | MediaCollectionBlock | RelatedQuestionsBlock | TextBlock | VideoBlock
+
+"""
+Slot divider marker inside ContainerBlock.content. Only valid inside ContainerContent.
+"""
+type ContainerSlotBlock {
+  backgroundColor: String
+  backgroundImageAsset: BlockImageAsset
+  backgroundImageAssetId: String
+  gridSpan: Int
+  spans: ContainerSlotSpans
+  t: String
+}
+
+"""Per-breakpoint grid span overrides on a ContainerSlotBlock."""
+type ContainerSlotSpans {
+  lg: Int
+  md: Int
+  sm: Int
+  xl: Int
+  xs: Int
+}
+
+type ContentPackRevision {
+  document: JSON
+  id: ID
+  number: Int
+  packId: ID
 }
 
 """A continent synced from Core."""
@@ -97,6 +243,25 @@ type CountryLocale {
   value: String
 }
 
+"""Call-to-action block with button label + link."""
+type CtaBlock {
+  backgroundColor: String
+  body: String
+  buttonLabel: String
+  buttonLink: String
+  heading: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  sectionKey: String
+  t: String
+  variant: CtaVariant!
+}
+
+enum CtaVariant {
+  primary
+  secondary
+}
+
 type DeleteMediaAssetResult {
   deleted: Boolean
   usageCount: Int
@@ -108,30 +273,50 @@ type DeleteMediaFolderResult {
   deleted: Boolean
 }
 
+"""Yearly Easter / Passover dates display block."""
+type EasterDatesBlock {
+  backgroundColor: String
+  easterDatesTitle: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  locale: String
+  orthodoxEasterEnabled: Boolean
+  orthodoxEasterLabel: String
+  passoverEnabled: Boolean
+  passoverLabel: String
+  sectionKey: String
+  t: String
+  westernEasterEnabled: Boolean
+  westernEasterLabel: String
+}
+
 """
-A page-builder Experience. Canonical row holds non-localized state; per-locale content (slug, blocks, title) lives in ExperienceLocale. Embedding vector is stored here but NEVER exposed via GraphQL.
+A page-builder Experience. Per-locale content lives in ExperienceLocale. Embedding vector is stored here but never exposed via GraphQL.
 """
 type Experience {
   archivedAt: String
   createdAt: String
   id: ID
   isTemplate: Boolean
-  """
-  Per-locale ExperienceLocale rows. ABAC-filtered: VIEWER/PUBLIC see PUBLISHED only.
-  """
+  """VIEWER/PUBLIC see PUBLISHED only; EDITOR/ADMIN see all."""
   locales: [ExperienceLocale!]
   ownerId: ID
   updatedAt: String
 }
 
 """
+Discriminated union of every block kind admin's editor can place at the top level of ExperienceLocale.blocks. Wire-discriminate via __typename or the explicit `t` field — both project from the Zod discriminator.
+"""
+union ExperienceBlock = AdventCountdownBlock | BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | EasterDatesBlock | HomepageRecommendationsBlock | InfoBlocksBlock | LanguageGlobeBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | RelatedQuestionsBlock | SectionBlock | TextBlock | VideoBlock | VideoCarouselBlock | VideoHeroBlock | VideoRecommendationsBlock | WatchHomeCategoryRailBlock | WatchHomeHeroBlock
+
+"""
 Per-locale content for an Experience — slug, blocks, title, publish state. Editors publish locales independently.
 """
 type ExperienceLocale {
   """
-  Array of Experience blocks. Schema shape enforced at write time by the domain Zod union; see `src/domain/blocks.ts`.
+  Array of Experience blocks. Shape mirrors `src/domain/blocks.ts` BlockSchema (Zod). Mutations still accept opaque JSON; only the query output is typed.
   """
-  blocks: JSON
+  blocks: [ExperienceBlock!]!
   createdAt: String
   experienceId: ID
   id: ID
@@ -149,76 +334,171 @@ type ExperienceLocale {
   updatedAt: String
 }
 
-"""Content corpus filter for hybrid search."""
-enum HybridSearchContentType {
-  EXPERIENCE
-  VIDEO
+"""Permissioned metadata for the one shared active draft of a locale."""
+type ExperienceLocaleActiveDraft {
+  id: ID
+  """
+  Bearer capability used by the unlisted Web preview route. Never exposed by public queries.
+  """
+  previewToken: String
+  reason: String
+  revisedAt: String
+  revisedBy: String
+  revisedByKind: String
 }
 
 """
-Which retrieval paths contributed to a response. 'keyword-only' indicates the query embedding call failed and only keyword search ran.
+Canonical, effective editable, and active-draft state for one language-specific Experience.
 """
-enum HybridSearchMode {
-  HYBRID
-  KEYWORD_ONLY
+type ExperienceLocaleDraftState {
+  activeDraft: ExperienceLocaleActiveDraft
+  canonical: ExperienceLocale
+  effective: ExperienceLocaleEffective
+  hasDraft: Boolean
 }
 
 """
-Full response envelope. `hasMore` is derived without a COUNT pass by dedup-to-(offset+limit+1). `searchMode` is the degradation signal.
+Effective editable locale state: the active draft snapshot when present, otherwise canonical content.
 """
-type HybridSearchResponse {
-  hasMore: Boolean!
-  query: String!
-  results: [HybridSearchResult!]!
-  """
-  Embedding-degradation signal — 'hybrid' when semantic retrieval ran, 'keyword-only' when the embedding provider failed. ORTHOGONAL to the input arg `mode`, which selects the retrieval pipeline. Same name, different concern.
-  """
-  searchMode: HybridSearchMode!
+type ExperienceLocaleEffective {
+  blocks: [ExperienceBlock!]!
+  createdAt: String
+  experienceId: ID
+  id: ID
+  isHomepage: Boolean
+  locale: String
+  metaDescription: String
+  ogDescription: String
+  ogImageUrl: String
+  ogTitle: String
+  pathSegment: String
+  publishedAt: String
+  slug: String
+  status: LocaleStatus
+  title: String
+  updatedAt: String
 }
 
-"""
-A single hybrid-search hit. Video results may carry scene-level snippet + timecode + playback id; experience results carry experience-level data.
-"""
-type HybridSearchResult {
-  """
-  Internal scoring detail. Present only when the caller passed `debug: true` AND the request origin is on the debug allowlist. Origin-gating happens at the resolver boundary; the service trusts the boolean.
-  """
-  debug: HybridSearchResultDebug
-  id: String!
-  imageUrl: String
-  playbackId: String
-  score: Float!
+"""Public render-only shape for an active Experience draft capability."""
+type ExperiencePreview {
+  blocks: [ExperienceBlock!]!
+  experienceId: ID!
+  isHomepage: Boolean!
+  locale: String!
+  localeId: ID!
+  metaDescription: String
+  ogDescription: String
+  ogImageUrl: String
+  ogTitle: String
+  pathSegment: String
   slug: String!
-  snippet: String!
-  startSeconds: Float
+  title: String
+}
+
+"""
+Sent only when the person left the device-details switch on. All four fields travel together.
+"""
+input FeedbackDeviceDetailsInput {
+  appBuild: String!
+  appVersion: String!
+  deviceModel: String!
+  osVersion: String!
+}
+
+"""What the person said the feedback was about."""
+enum FeedbackKind {
+  BROKEN
+  IDEA
+  OTHER
+  """A translation in the app is wrong. The phone sends `uiLocale` with it."""
+  TRANSLATION
+}
+
+enum FeedbackPlatform {
+  ANDROID
+  IOS
+}
+
+enum FeedbackRefusal {
+  DAILY_CAP
+  INVALID_INPUT
+  NOT_CONFIGURED
+  RATE_LIMITED
+  UNAVAILABLE
+}
+
+input FeedbackSubmissionInput {
+  deviceDetails: FeedbackDeviceDetailsInput
+  email: String
+  kind: FeedbackKind!
+  message: String!
+  name: String
+  platform: FeedbackPlatform!
+  """Client-generated UUID. Carried into the ticket for support."""
+  submissionId: String!
+  """
+  The catalog tag of the language that the app showed, such as `zh-Hans`. Sent with a TRANSLATION report.
+  """
+  uiLocale: String
+  video: FeedbackVideoContextInput
+}
+
+"""
+Outcome of one submission. `accepted: false` with a refusal is an expected answer, not an error.
+"""
+type FeedbackSubmissionResult {
+  accepted: Boolean!
+  """
+  Null when accepted. Every value renders the same message on the phone; it exists so operators can tell them apart.
+  """
+  refusal: FeedbackRefusal
+}
+
+"""The video the person tagged. Absent when they tagged nothing."""
+input FeedbackVideoContextInput {
+  languageSlug: String
+  positionSeconds: Float
+  slug: String
   title: String!
-  type: HybridSearchContentType!
 }
 
 """
-Per-result internal scoring detail. Origin-gated at the boundary; absent when the caller didn't request `debug` or the origin isn't on the allowlist. Carries no embedding vectors, no PII, and no credentials — only the per-retriever ranks that produced this hit, the fused RRF score, and whether the keyword-first dilution cap down-weighted the row.
+A page-level personalized video row. The consumer resolves recommendations privately at viewing time.
 """
-type HybridSearchResultDebug {
-  """
-  Whether the keyword-first semantic-dilution cap halved this row's score. The cap only runs in `mode="keyword-first"` when an exact-title hit covered every query token. In hybrid mode the cap never runs — the field reads `false` because 'cap was not applicable on this code path', NOT because 'cap considered this row and chose not to'. Use `mode` alongside this flag to interpret it correctly.
-  """
-  dilutionCapApplied: Boolean!
-  """
-  Reciprocal Rank Fusion score BEFORE the keyword-first dilution cap. The visible `score` field on `HybridSearchResult` reflects the post-cap value; comparing the two reveals exactly how much the cap down-weighted this row (0.5× when `dilutionCapApplied` is true, identical otherwise).
-  """
-  fusedScore: Float!
-  """
-  Per-list contributions that produced this fused result, in dispatch order (semantic-video, keyword-* / lexical retrievers, semantic-experience, keyword-experience). Each entry's `rank` is 1-based.
-  """
-  retrieverRanks: [HybridSearchRetrieverRank!]!
+type HomepageRecommendationsBlock {
+  sectionKey: String
+  t: String
+  title: String
+}
+
+"""Single entry in InfoBlocksBlock.blocks."""
+type InfoBlockItem {
+  description: String
+  icon: String
+  title: String
+}
+
+"""Grouped info-tile block."""
+type InfoBlocksBlock {
+  backgroundColor: String
+  blocks: [InfoBlockItem!]!
+  description: String
+  heading: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  intro: String
+  sectionKey: String
+  t: String
+  widthPercent: Int
 }
 
 """
-One contributing retriever's rank for a single fused result. The `label` is an UNSTABLE internal name (e.g. 'semantic-video', 'keyword-weighted-video', 'trigram-video', 'exact-title-video') — it MAY be renamed without a breaking-change marker. Operators inspecting the payload during triage are the intended audience; do NOT branch on these strings in production code.
+Where a collection's items come from. Shared by MediaCollectionBlock.itemsSource and VideoCarouselBlock.itemsSource.
 """
-type HybridSearchRetrieverRank {
-  label: String!
-  rank: Int!
+enum ItemsSource {
+  dynamicCollections
+  manual
+  routeVideoChildren
 }
 
 """
@@ -252,6 +532,20 @@ type Language {
   updatedAt: String
 }
 
+"""
+Animated language globe with locale-authored promotional copy and action.
+"""
+type LanguageGlobeBlock {
+  ctaEnabled: Boolean
+  ctaLabel: String
+  ctaLink: String
+  description: String
+  eyebrow: String
+  sectionKey: String
+  t: String
+  title: String
+}
+
 """A localized display name for a Core language."""
 type LanguageLocale {
   id: ID
@@ -266,6 +560,1212 @@ enum LocaleStatus {
   ARCHIVED
   DRAFT
   PUBLISHED
+}
+
+type ManagerContinent {
+  id: ID
+  name: String
+}
+
+type ManagerCountry {
+  continentId: String
+  id: ID
+  name: String
+}
+
+type ManagerCoverageCounts {
+  ai: Int
+  human: Int
+}
+
+type ManagerCoverageSnapshot {
+  audioAiTotal: Int
+  audioHumanTotal: Int
+  computedAt: String
+  date: String
+  documentId: ID
+  languageCoverage: JSON
+  subtitlesAiTotal: Int
+  subtitlesHumanTotal: Int
+  totalVideos: Int
+  videosWithAiMetadata: Int
+  videosWithHumanMetadata: Int
+}
+
+type ManagerEnrichmentDownload {
+  url: String
+}
+
+type ManagerEnrichmentLanguage {
+  bcp47: String
+  coreId: String
+  iso3: String
+}
+
+type ManagerEnrichmentMuxVideo {
+  assetId: String
+  playbackId: String
+}
+
+type ManagerEnrichmentVariant {
+  downloads: [ManagerEnrichmentDownload!]
+  language: ManagerEnrichmentLanguage
+  muxVideo: ManagerEnrichmentMuxVideo
+}
+
+type ManagerJob {
+  artifacts: JSON
+  completedAt: String
+  createdAt: String
+  currentStep: String
+  errors: JSON
+  id: ID
+  languages: [String!]
+  muxAssetId: String
+  muxPlaybackId: String
+  options: JSON
+  primaryRequestedTargetLanguageCode: String
+  requestedLanguageAbbreviations: [String!]
+  resolvedTargetLanguageCodes: [String!]
+  retries: Int
+  sourceCollectionTitle: String
+  sourceLanguageCode: String
+  sourceLanguageId: String
+  sourceMediaTitle: String
+  sourceSelectionReason: String
+  startedAt: String
+  status: String
+  steps: [ManagerJobStep!]
+  updatedAt: String
+  videoDocumentId: String
+}
+
+enum ManagerJobStatus {
+  completed
+  failed
+  pending
+  running
+}
+
+type ManagerJobStep {
+  details: JSON
+  error: String
+  finishedAt: String
+  name: String
+  retries: Int
+  startedAt: String
+  status: String
+}
+
+input ManagerJobStepInput {
+  details: JSON
+  error: String
+  finishedAt: String
+  name: String!
+  retries: Int
+  startedAt: String
+  status: ManagerJobStepStatus!
+}
+
+enum ManagerJobStepStatus {
+  completed
+  failed
+  pending
+  running
+  skipped
+}
+
+type ManagerLanguage {
+  bcp47: String
+  continentIds: [String!]
+  coreId: String
+  countryIds: [String!]
+  countrySpeakers: JSON
+  englishLabel: String
+  id: ID
+  iso3: String
+  nativeLabel: String
+}
+
+type ManagerLanguageGeo {
+  continents: [ManagerContinent!]
+  countries: [ManagerCountry!]
+  languages: [ManagerLanguage!]
+}
+
+"""
+Active subtitle-review authorization bound to one Admin language identity.
+"""
+type ManagerReviewerLanguageGrant {
+  id: ID
+  languageBcp47: String
+  languageId: ID
+  languageSlug: String
+  permittedRubricDimensions: [String!]
+  specialistCapabilities: ManagerReviewerSpecialistCapabilities
+}
+
+"""Specialist review capabilities attached to one exact language grant."""
+type ManagerReviewerSpecialistCapabilities {
+  scripture: Boolean
+  theology: Boolean
+}
+
+enum ManagerRole {
+  OPERATOR
+  REVIEWER
+}
+
+input ManagerSeoApproveInput {
+  assertion: String!
+  overlapAcknowledged: Boolean = false
+  payloadDigest: String!
+  proposalId: ID!
+  version: Int!
+}
+
+type ManagerSeoDecisionResult {
+  decisionId: ID
+  draftRevisionId: ID
+  editorPath: String
+  message: String
+  proposalId: ID
+  status: String
+  ticketOutboxId: ID
+  version: Int
+}
+
+type ManagerSeoEvaluation {
+  confounders: JSON
+  evidenceDigest: String
+  id: ID
+  kind: String
+  metrics: JSON
+  observedAt: String
+  outcome: String
+}
+
+type ManagerSeoExperiment {
+  activatedAt: String
+  canonicalUrl: String
+  confounders: JSON
+  evaluations: [ManagerSeoEvaluation!]
+  finalDueAt: String
+  id: ID
+  interimDueAt: String
+  lane: String
+  locale: String
+  measurementStartsAt: String
+  observedActivationHash: String
+  proposalId: ID
+  proposalVersion: Int
+  status: String
+}
+
+type ManagerSeoLesson {
+  confounders: JSON
+  content: String
+  createdAt: String
+  evidenceDigest: String
+  experimentId: ID
+  id: ID
+  metrics: JSON
+  proposalId: ID
+  proposalVersion: Int
+  reviewedAt: String
+  reviewedById: String
+  status: String
+}
+
+input ManagerSeoLessonReviewInput {
+  assertion: String!
+  lessonId: ID!
+  status: String!
+}
+
+type ManagerSeoProposal {
+  canonicalUrl: String
+  caveats: [String!]
+  createdAt: String
+  decision: ManagerSeoProposalDecision
+  editorialDiff: JSON
+  engineeringBrief: JSON
+  evidence: JSON
+  expectedOutcome: String
+  expiresAt: String
+  id: ID
+  intent: String
+  lane: String
+  locale: String
+  materialization: ManagerSeoProposalMaterialization
+  overlapCount: Int
+  payloadDigest: String
+  risk: String
+  rollbackPlan: String
+  status: String
+  targetId: ID
+  targetType: String
+  verificationPlan: String
+  version: Int
+}
+
+type ManagerSeoProposalDecision {
+  action: String
+  actorId: String
+  decidedAt: String
+  id: ID
+  overlapAcknowledged: Boolean
+  overlapCount: Int
+  reason: String
+}
+
+type ManagerSeoProposalMaterialization {
+  draftRevisionId: ID
+  editorPath: String
+  status: String
+  ticketOutboxId: ID
+}
+
+input ManagerSeoRejectInput {
+  assertion: String!
+  payloadDigest: String!
+  proposalId: ID!
+  reason: String
+  version: Int!
+}
+
+type ManagerSeoRunDetail {
+  completedAt: String
+  eligibleCount: Int
+  experimentCount: Int
+  id: ID
+  materializationCount: Int
+  mode: String
+  proposalOutcomes: [ManagerSeoRunProposalOutcome!]
+  proposedCount: Int
+  providerCoverage: JSON
+  reclaimed: Boolean
+  report: ManagerSeoRunReport
+  reportAvailability: String
+  selectedCount: Int
+  startedAt: String
+  status: String
+  suppressedOperations: [String!]
+  ticketCount: Int
+  wouldProposeCount: Int
+}
+
+type ManagerSeoRunGscFilter {
+  dimension: String
+  expression: String
+  operator: String
+}
+
+type ManagerSeoRunGscRequest {
+  capReached: Boolean
+  caveats: [String!]
+  configuredRowCap: Int
+  dataState: String
+  dimensions: [String!]
+  endDate: String
+  filters: [ManagerSeoRunGscFilter!]
+  firstIncompleteDate: String
+  omittedCaveatCount: Int
+  omittedFilterCount: Int
+  pageCount: Int
+  propertyId: String
+  requestCount: Int
+  responseAggregationType: String
+  returnedRowCount: Int
+  searchType: String
+  startDate: String
+  status: String
+  timezone: String
+}
+
+type ManagerSeoRunHumanDecision {
+  action: String
+  actorId: String
+  decidedAt: String
+  reason: String
+}
+
+type ManagerSeoRunLatestEvaluation {
+  kind: String
+  observedAt: String
+  outcome: String
+}
+
+type ManagerSeoRunOutcomeExperiment {
+  id: ID
+  latestEvaluation: ManagerSeoRunLatestEvaluation
+  status: String
+}
+
+type ManagerSeoRunPage {
+  generatedAt: String
+  hasNextPage: Boolean
+  items: [ManagerSeoRunSummary!]
+  nextCursor: String
+}
+
+type ManagerSeoRunProposalOutcome {
+  experiment: ManagerSeoRunOutcomeExperiment
+  humanDecision: ManagerSeoRunHumanDecision
+  materializationStatus: String
+  originatingRunId: ID
+  payloadDigest: String
+  proposalId: ID
+  proposalStatus: String
+  version: Int
+}
+
+type ManagerSeoRunProposalReference {
+  disposition: String
+  originatingRunId: ID
+  payloadDigest: String
+  proposalId: ID
+  version: Int
+}
+
+type ManagerSeoRunProviderCoverage {
+  provider: String
+  status: String
+}
+
+type ManagerSeoRunQueryDecision {
+  canonicalUrl: String
+  clicks: Float
+  ctr: Float
+  impressions: Float
+  locale: String
+  observationId: ID
+  position: Float
+  query: String
+  reason: String
+  score: Float
+  selectionOutcome: String
+  targetId: ID
+}
+
+type ManagerSeoRunQueryFunnel {
+  belowImpressionThresholdRows: Int
+  ctrThresholdNotMetRows: Int
+  malformedRows: Int
+  providerRows: Int
+  rankedRows: Int
+  rejectedQueryRows: Int
+  selectedQueryRows: Int
+  unmatchedTargetRows: Int
+}
+
+union ManagerSeoRunReport = ManagerSeoRunReportAvailable | ManagerSeoRunReportCompacted | ManagerSeoRunReportUnavailable
+
+type ManagerSeoRunReportAvailable {
+  detailState: String
+  eligibleCount: Int
+  generatedAt: String
+  gscRequests: [ManagerSeoRunGscRequest!]
+  observedCount: Int
+  omittedGscRequestCount: Int
+  omittedQueryDecisionCount: Int
+  omittedSkippedTargetCount: Int
+  persistedProposalCount: Int
+  proposalRefs: [ManagerSeoRunProposalReference!]
+  providerCoverage: [ManagerSeoRunProviderCoverage!]
+  queryDecisions: [ManagerSeoRunQueryDecision!]
+  queryFunnel: ManagerSeoRunQueryFunnel
+  schemaVersion: Int
+  selectedCount: Int
+  selectionPolicyId: String
+  skippedTargetIds: [String!]
+  suppressedOperations: [String!]
+  wouldProposeCount: Int
+}
+
+type ManagerSeoRunReportCompacted {
+  compactedAt: String
+  detailExpiresAt: String
+  detailState: String
+  eligibleCount: Int
+  persistedProposalCount: Int
+  proposalRefs: [ManagerSeoRunProposalReference!]
+  providerCoverage: [ManagerSeoRunProviderCoverage!]
+  schemaVersion: Int
+  selectedCount: Int
+  selectionPolicyId: String
+  suppressedOperations: [String!]
+  wouldProposeCount: Int
+}
+
+type ManagerSeoRunReportUnavailable {
+  detailState: String
+  eligibleCount: Int
+  observedCount: Int
+  persistedProposalCount: Int
+  proposalRefs: [ManagerSeoRunProposalReference!]
+  providerCoverage: [ManagerSeoRunProviderCoverage!]
+  schemaVersion: Int
+  selectedCount: Int
+  selectionPolicyId: String
+  suppressedOperations: [String!]
+  wouldProposeCount: Int
+}
+
+type ManagerSeoRunSummary {
+  completedAt: String
+  eligibleCount: Int
+  experimentCount: Int
+  id: ID
+  materializationCount: Int
+  mode: String
+  proposedCount: Int
+  providerCoverage: JSON
+  reclaimed: Boolean
+  reportAvailability: String
+  selectedCount: Int
+  startedAt: String
+  status: String
+  suppressedOperations: [String!]
+  ticketCount: Int
+  wouldProposeCount: Int
+}
+
+input ManagerSeoTicketReconcileInput {
+  action: String!
+  assertion: String!
+  outboxId: ID!
+  remoteId: String
+  remoteUrl: String
+}
+
+type ManagerSeoTicketReconciliation {
+  attemptCount: Int
+  attempts: JSON
+  candidateTickets: JSON
+  lastErrorCode: String
+  marker: String
+  outboxId: ID
+  payloadDigest: String
+  proposalId: ID
+  proposalVersion: Int
+  remoteId: String
+  remoteUrl: String
+  status: String
+}
+
+type ManagerSeoWorkspace {
+  experiments: [ManagerSeoExperiment!]
+  generatedAt: String
+  lessons: [ManagerSeoLesson!]
+  proposals: [ManagerSeoProposal!]
+  ticketReconciliations: [ManagerSeoTicketReconciliation!]
+}
+
+input ManagerSubtitleEvalAppendNarrativeInput {
+  assertion: String!
+  comparisonId: ID!
+  conclusion: String
+  followUpAction: String
+  hypothesis: String!
+  rationale: String
+}
+
+input ManagerSubtitleEvalApproveCorpusInput {
+  assertion: String!
+  certification: JSON!
+  corpusVersionId: ID!
+  reason: String!
+}
+
+input ManagerSubtitleEvalArtifactInput {
+  byteLength: String!
+  kind: ManagerSubtitleEvalArtifactKind!
+  mediaType: String!
+  objectKey: String!
+  sha256: String!
+}
+
+enum ManagerSubtitleEvalArtifactKind {
+  CANDIDATE_VTT
+  CELL_REPORT
+  REVIEW_EVIDENCE
+}
+
+input ManagerSubtitleEvalAssignSpecialistInput {
+  assertion: String!
+  assignmentId: ID!
+  reviewerMembershipId: ID!
+}
+
+enum ManagerSubtitleEvalAssignmentKind {
+  SPECIALIST
+  STANDARD
+}
+
+enum ManagerSubtitleEvalBlindTrack {
+  A
+  B
+}
+
+input ManagerSubtitleEvalBlindTrackAssessmentInput {
+  criticalHarmful: Boolean!
+  criticalMeaningLoss: Boolean!
+  criticalScriptureRisk: Boolean!
+  issueCodes: [ManagerSubtitleEvalIssueCode!]!
+  meaningAccuracyScore: Int!
+  naturalnessScore: Int!
+  scriptureTheologyScore: Int
+  timingReadabilityScore: Int!
+}
+
+input ManagerSubtitleEvalBlindTrackAssessmentsInput {
+  trackA: ManagerSubtitleEvalBlindTrackAssessmentInput!
+  trackB: ManagerSubtitleEvalBlindTrackAssessmentInput!
+}
+
+enum ManagerSubtitleEvalChangedAxis {
+  CODE_REVISION
+  MODEL
+  PROMPT_POLICY
+  RUNTIME
+  WORKFLOW_POLICY
+}
+
+type ManagerSubtitleEvalComparison {
+  baselineReportId: ID
+  candidateReportId: ID
+  changedAxis: String
+  coverageLabel: String
+  descriptiveDeltas: JSON
+  """
+  Live latest non-superseded human review evidence, kept distinct from frozen machine metrics.
+  """
+  humanEvidence: JSON
+  id: ID
+  identityDifferences: JSON
+  matchedCellCount: Int
+  matchedCollectionCount: Int
+  narratives: [ManagerSubtitleEvalNarrative!]
+  unmatchedCells: JSON
+}
+
+type ManagerSubtitleEvalCorpusCell {
+  caseId: String
+  clipEndSeconds: Float
+  clipStartSeconds: Float
+  collectionKey: String
+  editionIdentity: String
+  id: ID
+  metadata: JSON
+  referenceSnapshotClippedDigest: String
+  referenceSnapshotDigest: String
+  referenceSnapshotRawDigest: String
+  referenceTrackIdentity: String
+  sourceLanguageId: ID
+  sourceLanguageSlug: String
+  sourceSnapshotClippedDigest: String
+  sourceSnapshotDigest: String
+  sourceSnapshotRawDigest: String
+  sourceTrackIdentity: String
+  targetLanguageId: ID
+  targetLanguageSlug: String
+  videoId: String
+}
+
+input ManagerSubtitleEvalCorpusCellInput {
+  caseId: ID!
+  collectionKey: String!
+  editionIdentity: String!
+  metadata: JSON
+  referenceSnapshot: ManagerSubtitleEvalCorpusSnapshotInput!
+  referenceTrackIdentity: String!
+  sourceLanguageId: ID!
+  sourceLanguageSlug: String!
+  sourceSnapshot: ManagerSubtitleEvalCorpusSnapshotInput!
+  sourceTrackIdentity: String!
+  targetLanguageId: ID!
+  targetLanguageSlug: String!
+  videoId: ID!
+}
+
+input ManagerSubtitleEvalCorpusSnapshotInput {
+  byteLength: String!
+  clippedSha256: String
+  objectKey: String!
+  rawSha256: String!
+  sha256: String!
+}
+
+type ManagerSubtitleEvalCorpusVersion {
+  approvedAt: String
+  approvedById: ID
+  authority: String
+  cells: [ManagerSubtitleEvalCorpusCell!]
+  certification: JSON
+  createdAt: String
+  id: ID
+  identityDigest: String
+  lockDigest: String
+  manifestDigest: String
+  status: String
+  supersedesVersionId: ID
+}
+
+input ManagerSubtitleEvalCorrectionInput {
+  segmentId: ID!
+  text: String!
+  track: String!
+}
+
+input ManagerSubtitleEvalCreateAssignmentInput {
+  assertion: String!
+  idempotencyKey: String!
+  kind: ManagerSubtitleEvalAssignmentKind!
+  reviewerMembershipId: ID!
+  runCellId: ID!
+  specialistDimension: String
+}
+
+input ManagerSubtitleEvalCreateComparisonInput {
+  assertion: String!
+  baselineReportId: ID!
+  candidateReportId: ID!
+  changedAxis: ManagerSubtitleEvalChangedAxis!
+  idempotencyKey: String!
+}
+
+input ManagerSubtitleEvalCreateRunInput {
+  assertion: String!
+  codeRevision: String!
+  concurrency: Int!
+  corpusCellIds: [ID!]!
+  corpusVersionId: ID!
+  determinism: JSON
+  idempotencyKey: String!
+  maxAttempts: Int!
+  promptPolicyId: String!
+  requestedModel: String!
+  requestedProvider: String!
+  timeoutSeconds: Int!
+  workflowPolicyDigest: String!
+}
+
+input ManagerSubtitleEvalDispositionReferenceIssueInput {
+  assertion: String!
+  correctedCorpusVersionId: ID
+  disposition: String!
+  issueId: ID!
+  reason: String!
+}
+
+input ManagerSubtitleEvalFailCellInput {
+  errorCode: String!
+  leaseGeneration: Int!
+  leaseToken: String!
+  providerCalls: [ManagerSubtitleEvalProviderCallInput!]!
+  retryable: Boolean!
+  runCellId: ID!
+}
+
+input ManagerSubtitleEvalFinalizeCellInput {
+  artifacts: [ManagerSubtitleEvalArtifactInput!]!
+  leaseGeneration: Int!
+  leaseToken: String!
+  machineAssessment: ManagerSubtitleEvalMachineAssessmentInput!
+  providerCalls: [ManagerSubtitleEvalProviderCallInput!]!
+  resultDigest: String!
+  runCellId: ID!
+}
+
+input ManagerSubtitleEvalFinalizeRunInput {
+  expectedCorpusIdentityDigest: String!
+  expectedSourceReferenceDigest: String!
+  expectedStatus: ManagerSubtitleEvalTerminalStatus!
+  reproducibilityLimits: [String!]
+  runId: ID!
+}
+
+input ManagerSubtitleEvalImportCorpusInput {
+  assertion: String!
+  authority: String!
+  cells: [ManagerSubtitleEvalCorpusCellInput!]!
+  certification: JSON
+  lockDigest: String!
+  manifestDigest: String!
+  supersedesVersionId: ID
+}
+
+enum ManagerSubtitleEvalIssueCode {
+  ADDITION
+  GRAMMAR
+  LINE_BREAK
+  MISTRANSLATION
+  NATURALNESS
+  OMISSION
+  OTHER
+  READING_SPEED
+  REFERENCE_ERROR
+  SCRIPTURE
+  TERMINOLOGY
+  THEOLOGY
+  TIMING
+  TONE_REGISTER
+}
+
+input ManagerSubtitleEvalMachineAssessmentInput {
+  advisoryRiskFlags: [String!]
+  assessmentDigest: String!
+  metrics: JSON!
+  providerRequestId: String
+  providerResponseId: String
+  reproducibilityLimits: [String!]!
+  resolvedModel: String
+  schemaVersion: Int!
+  usage: JSON
+}
+
+input ManagerSubtitleEvalMachineRecoverRunInput {
+  dispatchFailed: Boolean
+  leaseGeneration: Int!
+  leaseToken: String!
+  runId: ID!
+}
+
+type ManagerSubtitleEvalNarrative {
+  conclusion: String
+  createdAt: String
+  createdById: ID
+  followUpAction: String
+  hypothesis: String
+  id: ID
+  rationale: String
+  version: Int
+}
+
+type ManagerSubtitleEvalOperationResult {
+  digest: String
+  id: ID
+  replayed: Boolean
+  status: String
+}
+
+"""
+Read-only operator evidence with named provenance, bounded human verdicts, notes, and suggested corrections.
+"""
+type ManagerSubtitleEvalOperatorAssignment {
+  candidateTrack: ManagerSubtitleEvalReviewerTrack
+  candidateTrackLabel: String
+  caseId: String
+  clipEndSeconds: Float
+  clipStartSeconds: Float
+  collectionKey: String
+  editionIdentity: String
+  id: ID
+  kind: String
+  machineAssessment: JSON
+  referenceTrack: ManagerSubtitleEvalReviewerTrack
+  referenceTrackLabel: String
+  reviewerDisplayName: String
+  reviewerEmail: String
+  reviewerMembershipId: ID
+  reviews: JSON
+  round: Int
+  sourceTrack: ManagerSubtitleEvalReviewerTrack
+  specialistDimension: String
+  status: String
+  targetLanguageId: ID
+  targetLanguageSlug: String
+  videoId: String
+}
+
+type ManagerSubtitleEvalOperatorAssignmentPage {
+  nextCursor: String
+  nodes: [ManagerSubtitleEvalOperatorAssignmentSummary!]
+}
+
+type ManagerSubtitleEvalOperatorAssignmentSummary {
+  assignedAt: String
+  id: ID
+  kind: String
+  latestVerdict: String
+  reviewerDisplayName: String
+  reviewerEmail: String
+  reviewerMembershipId: ID
+  round: Int
+  runCellId: ID
+  specialistDimension: String
+  status: String
+  submittedAt: String
+}
+
+type ManagerSubtitleEvalOperatorReviewerCandidate {
+  activeAssignmentCount: Int
+  displayName: String
+  email: String
+  membershipId: ID
+  qualificationVersion: Int
+  rubricDimensions: [String!]
+  specialistCapabilities: [String!]
+  targetLanguageId: ID
+  targetLanguageSlug: String
+}
+
+type ManagerSubtitleEvalOperatorReviewerCandidatePage {
+  nextCursor: String
+  nodes: [ManagerSubtitleEvalOperatorReviewerCandidate!]
+}
+
+"""
+Provenance unlocked by stored human evidence. Machine fields remain advisory and separate from the human verdict.
+"""
+type ManagerSubtitleEvalPostSubmitReceipt {
+  assessmentDigest: String!
+  candidateTrackLabel: String!
+  machineAdvisoryRiskFlags: [String!]!
+  referenceTrackLabel: String!
+  resolvedModel: String
+  reviewId: ID!
+  submittedAt: String!
+}
+
+input ManagerSubtitleEvalProviderCallInput {
+  callSequence: Int!
+  chunkIndex: Int
+  operation: ManagerSubtitleEvalProviderOperation!
+  operationAttempt: Int!
+  providerRequestId: String
+  providerResponseId: String
+  requestDigest: String!
+  requestedModel: String!
+  resolvedModel: String
+  status: ManagerSubtitleEvalProviderCallStatus!
+  usage: JSON
+}
+
+enum ManagerSubtitleEvalProviderCallStatus {
+  FAILED
+  INVALID_OUTPUT
+  SUCCEEDED
+}
+
+enum ManagerSubtitleEvalProviderOperation {
+  RETIMING
+  SCRIPTURE_DETECTION
+  SCRIPTURE_VALIDATION
+  TRANSLATION
+}
+
+input ManagerSubtitleEvalRecoverRunInput {
+  assertion: String!
+  dispatchFailed: Boolean
+  leaseGeneration: Int!
+  leaseToken: String!
+  runId: ID!
+}
+
+type ManagerSubtitleEvalReferenceIssue {
+  caseId: String
+  collectionKey: String
+  corpusCellId: ID
+  correctedCorpusVersionId: ID
+  createdAt: String
+  dispositionReason: String
+  id: ID
+  reviewId: ID
+  status: String
+  targetLanguageId: ID
+  targetLanguageSlug: String
+}
+
+type ManagerSubtitleEvalReferenceIssuePage {
+  nextCursor: String
+  nodes: [ManagerSubtitleEvalReferenceIssue!]
+}
+
+enum ManagerSubtitleEvalReviewVerdict {
+  NEEDS_CHANGES
+  PASS
+  REFERENCE_QUESTIONABLE
+  SPECIALIST_REVIEW
+}
+
+type ManagerSubtitleEvalReviewerAssignment {
+  caseId: String
+  clipEndSeconds: Float
+  clipStartSeconds: Float
+  collectionKey: String
+  editionIdentity: String!
+  id: ID
+  kind: String
+  postSubmitReceipt: ManagerSubtitleEvalPostSubmitReceipt
+  round: Int
+  sourceTrack: ManagerSubtitleEvalReviewerTrack
+  status: String
+  submitted: Boolean
+  targetLanguageId: ID
+  targetLanguageSlug: String
+  trackA: ManagerSubtitleEvalReviewerTrack
+  trackB: ManagerSubtitleEvalReviewerTrack
+  videoId: String
+}
+
+type ManagerSubtitleEvalReviewerAssignmentPage {
+  nextCursor: String
+  nodes: [ManagerSubtitleEvalReviewerAssignmentSummary!]
+}
+
+type ManagerSubtitleEvalReviewerAssignmentSummary {
+  assignedAt: String
+  caseId: String
+  collectionKey: String
+  id: ID
+  kind: String
+  round: Int
+  status: String
+  submittedAt: String
+  targetLanguageId: ID
+  targetLanguageSlug: String
+  videoId: String
+}
+
+"""
+Neutral assignment-scoped subtitle identity. Directional provenance and storage keys are intentionally omitted.
+"""
+type ManagerSubtitleEvalReviewerTrack {
+  contentId: ID
+  label: String
+  mediaType: String
+}
+
+type ManagerSubtitleEvalRun {
+  cells: [ManagerSubtitleEvalRunCell!]
+  codeRevision: String
+  concurrency: Int
+  corpusVersionId: ID
+  createdAt: String
+  estimatedSpendMicros: String
+  id: ID
+  maxAttempts: Int
+  promptPolicyId: String
+  requestedModel: String
+  requestedProvider: String
+  status: String
+  terminalAt: String
+  terminalReport: ManagerSubtitleEvalTerminalReport
+  timeoutSeconds: Int
+  workflowPolicyDigest: String
+}
+
+type ManagerSubtitleEvalRunCell {
+  artifactDigests: [String!]
+  assessmentDigest: String
+  assignmentCount: Int
+  attemptCount: Int
+  caseId: String
+  collectionKey: String
+  errorCode: String
+  errorRetryable: Boolean
+  id: ID
+  leaseGeneration: Int
+  machineMetrics: JSON
+  providerRequestId: String
+  providerResponseId: String
+  reproducibilityLimits: [String!]
+  resolvedModel: String
+  resultDigest: String
+  status: String
+  targetLanguageId: ID
+  targetLanguageSlug: String
+  videoId: String
+}
+
+type ManagerSubtitleEvalRunPage {
+  nextCursor: String
+  nodes: [ManagerSubtitleEvalRunSummary!]
+}
+
+"""Bounded scalar projection for one subtitle evaluation run."""
+type ManagerSubtitleEvalRunSummary {
+  cellCount: Int
+  codeRevision: String
+  createdAt: String
+  id: ID
+  promptPolicyId: String
+  requestedModel: String
+  requestedProvider: String
+  status: String
+  terminalAt: String
+}
+
+type ManagerSubtitleEvalStaleRun {
+  cellCount: Int
+  id: ID
+  leaseExpiresAt: String
+  leaseGeneration: Int
+  status: String
+  updatedAt: String
+}
+
+type ManagerSubtitleEvalStaleRunPage {
+  nextCursor: String
+  nodes: [ManagerSubtitleEvalStaleRun!]
+}
+
+input ManagerSubtitleEvalSubmitReviewInput {
+  assertion: String!
+  assignmentId: ID!
+  bodyDigest: String!
+  corrections: [ManagerSubtitleEvalCorrectionInput!]!
+  idempotencyKey: String!
+  notes: String
+  questionableTrack: ManagerSubtitleEvalBlindTrack
+  rubricVersion: Int!
+  supersedesReviewId: ID
+  trackAssessments: ManagerSubtitleEvalBlindTrackAssessmentsInput!
+  verdict: ManagerSubtitleEvalReviewVerdict!
+}
+
+type ManagerSubtitleEvalTerminalReport {
+  artifactInventory: JSON
+  collectionMetrics: JSON
+  completedAt: String
+  corpusIdentityDigest: String
+  id: ID
+  languageMetrics: JSON
+  partialFailures: JSON
+  providerIdentities: JSON
+  reportArtifactDigest: String
+  reportDigest: String
+  reproducibilityLimits: [String!]
+  runtimeIdentity: JSON
+  sourceReferenceDigests: JSON
+  status: String
+  usage: JSON
+}
+
+enum ManagerSubtitleEvalTerminalStatus {
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+"""
+Manager-BFF-only playback candidate for one frozen corpus video edition. The BFF must recheck Mux public policy by asset id.
+"""
+type ManagerSubtitleEvalVideoContext {
+  durationSeconds: Float
+  muxAssetId: String!
+  playbackId: String!
+}
+
+type ManagerVideoCoverage {
+  aiMetadata: Boolean
+  coreId: String
+  coverage: ManagerVideoCoverageBreakdown
+  documentId: ID
+  imageUrl: String
+  label: String
+  parentDocumentIds: [String!]
+  parentRelations: [ManagerVideoCoverageParentRelation!]
+  slug: String
+  title: String
+}
+
+type ManagerVideoCoverageBreakdown {
+  audio: ManagerCoverageCounts
+  subtitles: ManagerCoverageCounts
+}
+
+type ManagerVideoCoverageParentRelation {
+  order: Int
+  parentDocumentId: String
+}
+
+type ManagerVideoForEnrichment {
+  coreId: String
+  documentId: ID
+  label: String
+  primaryLanguage: ManagerEnrichmentLanguage
+  title: String
+  variants: [ManagerEnrichmentVariant!]
+}
+
+"""
+Manager-scoped interactive user shape backed by explicit Admin ManagerMembership.
+"""
+type ManagerViewer {
+  email: String
+  id: ID
+  managerRole: ManagerRole
+  permission: String
+  reviewerLanguageGrants: [ManagerReviewerLanguageGrant!]
+  username: String
+}
+
+type ManagerWatchRouteAlertItem {
+  activeUsers: Int!
+  count: Int!
+  countKind: String!
+  firstSeenAt: String!
+  httpStatus: Int
+  id: ID!
+  lastProbedAt: String
+  lastSeenAt: String!
+  lifecycle: String!
+  manifestVersion: String!
+  occurrenceCount: Int!
+  origin: String!
+  path: String!
+  propertyId: String!
+  severity: String!
+  sources: [String!]!
+  verdict: String!
+}
+
+type ManagerWatchRouteAlertLane {
+  caveats: [String!]!
+  countKind: String!
+  rowCount: Int!
+  source: String!
+  status: String!
+  windowEnd: String!
+  windowStart: String!
+}
+
+type ManagerWatchRouteAlertRun {
+  completedAt: String
+  id: ID!
+  lanes: [ManagerWatchRouteAlertLane!]!
+  mode: String!
+  propertyId: String!
+  startedAt: String!
+  status: String!
+  validationCaveats: [String!]!
+}
+
+type ManagerWatchRouteAlertSummary {
+  critical: Int!
+  open: Int!
+  plausibleMissingRoutes: Int!
+  recovered: Int!
+  supportedRouteFailures: Int!
+}
+
+type ManagerWatchRouteAlertsPage {
+  generatedAt: String!
+  hasNextPage: Boolean!
+  items: [ManagerWatchRouteAlertItem!]!
+  lastSuccessfulAt: String
+  latestRun: ManagerWatchRouteAlertRun
+  monitorState: String!
+  nextCursor: String
+  propertyRuns: [ManagerWatchRouteAlertRun!]!
+  propertyRunsTruncated: Boolean!
+  recoverySuppressed: Boolean!
+  showing: Int!
+  summary: ManagerWatchRouteAlertSummary!
+  totalCount: Int!
 }
 
 """
@@ -352,9 +1852,10 @@ enum MediaAssetStatus {
 }
 
 """
-A structured reference to an experience metadata or block field that uses a media asset.
+A structured reference to an experience or video locale field that uses a media asset.
 """
 type MediaAssetUsage {
+  editUrl: String
   experienceId: String
   experienceLocaleId: String
   fieldName: String
@@ -362,6 +1863,10 @@ type MediaAssetUsage {
   locale: String
   location: String
   match: String
+  recoverable: Boolean
+  resourceId: String
+  resourceLocaleId: String
+  resourceType: String
   title: String
   value: String
 }
@@ -369,6 +1874,91 @@ type MediaAssetUsage {
 enum MediaAssetVisibility {
   PRIVATE
   PUBLIC
+}
+
+"""A configurable collection of media items (carousel, grid, hero, etc.)."""
+type MediaCollectionBlock {
+  backgroundColor: String
+  categoryLabel: String
+  ctaLabel: String
+  ctaLink: String
+  """
+  First visible parent collection slug shared by every linked manual item, in the first item's relation order. Null when items are empty, unlinked, or mixed.
+  """
+  defaultCollectionSlug: String
+  description: String
+  """Video or collection ids excluded from dynamic collection feed results."""
+  excludedVideoIds: [String!]!
+  footerText: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  items: [MediaCollectionItem!]!
+  itemsSource: ItemsSource!
+  sectionKey: String
+  showItemNumbers: Boolean
+  subtitle: String
+  t: String
+  """
+  Authored media card shape. Null preserves the legacy variant-derived orientation.
+  """
+  thumbnailOrientation: MediaCollectionThumbnailOrientation
+  title: String
+  variant: MediaCollectionVariant!
+}
+
+"""Single entry in MediaCollectionBlock.items."""
+type MediaCollectionItem {
+  collectionSize: String
+  """
+  The referenced Video's public coreId — the identifier consumer clients (TV/mobile/web) pass to watchHomeVideos to hydrate this item. Resolved via the batched videoById loader; null when the item has no videoId.
+  """
+  coreId: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  labelOverride: String
+  languageId: String
+  """
+  Public Watch language slug resolved from the authored languageId. Lets consumers build valid collection routes even when the item references a parent collection with no direct VideoDub.
+  """
+  languageSlug: String
+  linkToSectionKey: String
+  """
+  Same projection as resolvedTitle, resolved against the locale of the Experience being previewed. Takes no locale argument, so a preview caller cannot request a different locale than the one on screen. Null outside an ExperiencePreview, where no preview locale is bound to the item.
+  """
+  previewResolvedTitle: String
+  """
+  Authored title override or the first nonblank published title for the linked Video in the exact requested locale.
+  """
+  resolvedTitle(locale: String!): String
+  subtitleOverride: String
+  titleOverride: String
+  """
+  Live playable dub resolved from this item's videoId + languageId. Blocks store only identity; stream URLs come from the VideoDub row.
+  """
+  videoDub: VideoDub
+  videoId: String
+  """
+  The linked Video image used as the item poster fallback when no block image asset is authored.
+  """
+  videoImage: BlockVideoImage
+  """
+  Canonical public Watch slug for the linked video. Falls back to the stored snapshot when no videoId is present.
+  """
+  videoSlug: String
+}
+
+"""The portrait or landscape shape used by media item cards."""
+enum MediaCollectionThumbnailOrientation {
+  horizontal
+  vertical
+}
+
+enum MediaCollectionVariant {
+  carousel
+  collection
+  grid
+  hero
+  player
 }
 
 """
@@ -393,14 +1983,40 @@ enum MediaImageEnrichmentStatus {
 }
 
 type Mutation {
+  appendManagerSubtitleEvalNarrative(input: ManagerSubtitleEvalAppendNarrativeInput!): ManagerSubtitleEvalOperationResult
+  applyShortsOperations(input: ShortsApplyInput!): ShortsCommandResult
+  approveManagerSeoProposal(input: ManagerSeoApproveInput!): ManagerSeoDecisionResult!
+  approveManagerSubtitleEvalCorpus(input: ManagerSubtitleEvalApproveCorpusInput!): ManagerSubtitleEvalOperationResult
+  approveShortsProject(input: ShortsApproveInput!): ShortsCommandResult
   """Archive an Experience. Owner or ADMIN."""
   archiveExperience(id: ID!): Experience
-  """Create a new Experience with an initial locale. Caller becomes owner."""
+  assignManagerSubtitleEvalSpecialist(input: ManagerSubtitleEvalAssignSpecialistInput!): ManagerSubtitleEvalOperationResult
+  attachShortsExperimentCandidate(input: JSON!): JSON
+  captureShortsSource(input: JSON!): ShortsSourceSnapshot
+  """
+  Place one sticker. Idempotent per (ballotId, placementId) so a retried send cannot double-count.
+  """
+  castWhatsNewFeatureVote(ballotId: String!, featureId: String!, placementId: String!, sticker: WhatsNewSticker!): WhatsNewFeatureVoteResult!
+  claimManagerSubtitleEvalCell(leaseSeconds: Int!, runCellId: ID!): ManagerSubtitleEvalOperationResult
+  claimManagerSubtitleEvalMachineRecovery(leaseSeconds: Int!, runId: ID!): ManagerSubtitleEvalOperationResult
+  claimManagerSubtitleEvalRecovery(assertion: String!, leaseSeconds: Int!, runId: ID!): ManagerSubtitleEvalOperationResult
+  claimSemanticRecommendationEpisode(claimNonce: String!, mediaId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): SemanticRecommendationEpisodeClaim!
+  clearMyWatchProgress(videoId: ID!): Boolean
+  completeShortsAttempt(input: ShortsCompleteInput!): ShortsCommandResult
+  """
+  Create a new Experience with an unpublished canonical locale and an initial shared draft. Caller becomes owner.
+  """
   createExperience(blocks: JSON, isTemplate: Boolean, locale: String!, slug: String!, title: String): Experience
+  createManagerJob(artifacts: JSON, errors: JSON, languages: [String!], muxAssetId: String!, muxPlaybackId: String, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, steps: [ManagerJobStepInput!], videoDocumentId: String): ManagerJob
+  createManagerSubtitleEvalAssignment(input: ManagerSubtitleEvalCreateAssignmentInput!): ManagerSubtitleEvalOperationResult
+  createManagerSubtitleEvalComparison(input: ManagerSubtitleEvalCreateComparisonInput!): ManagerSubtitleEvalOperationResult
+  createManagerSubtitleEvalRun(input: ManagerSubtitleEvalCreateRunInput!): ManagerSubtitleEvalOperationResult
   """Create a media folder at the root or inside another folder."""
   createMediaFolder(name: String!, parentId: ID): MediaFolder
+  createRecommendationViewer: RecommendationViewer!
+  createShortsProject(input: ShortsCreateInput!): ShortsCommandResult
   """
-  Delete a media asset only when no experience metadata or block fields still reference it.
+  Delete a media asset only when no experience or video locale fields still reference it.
   """
   deleteMediaAsset(id: ID!): DeleteMediaAssetResult
   """
@@ -408,32 +2024,91 @@ type Mutation {
   """
   deleteMediaFolder(id: ID!): DeleteMediaFolderResult
   """
-  Publish an ExperienceLocale (flip status to PUBLISHED). Owner or ADMIN.
+  Retire the locale's shared active draft without changing canonical content. Idempotent when no draft exists.
+  """
+  discardExperienceLocaleDraft(id: ID!): ExperienceLocale
+  dispositionManagerSubtitleEvalReferenceIssue(input: ManagerSubtitleEvalDispositionReferenceIssueInput!): ManagerSubtitleEvalOperationResult
+  """
+  Duplicate every locale of an Experience into a new unpublished draft owned by the caller.
+  """
+  duplicateExperience(id: ID!): Experience!
+  failManagerSubtitleEvalCell(input: ManagerSubtitleEvalFailCellInput!): ManagerSubtitleEvalOperationResult
+  finalizeManagerSubtitleEvalCell(input: ManagerSubtitleEvalFinalizeCellInput!): ManagerSubtitleEvalOperationResult
+  finalizeManagerSubtitleEvalRun(input: ManagerSubtitleEvalFinalizeRunInput!): ManagerSubtitleEvalOperationResult
+  importManagerSubtitleEvalCorpus(input: ManagerSubtitleEvalImportCorpusInput!): ManagerSubtitleEvalOperationResult
+  issueShortsAssetRead(reference: JSON!): ShortsAssetTransfer
+  issueShortsAssetUpload(input: JSON!): ShortsAssetTransfer
+  issueWatchPlaybackContext(discoverySource: String!, mediaId: ID!, provenance: JSON!, sessionDigest: String, sessionToken: String, viewerToken: String): WatchPlaybackContextReceipt!
+  issueWatchSurfaceDelivery(attemptId: String!, manifest: JSON!, trafficCategory: String!): JSON!
+  materializeShortsSource(input: JSON!): ShortsSourceSnapshot
+  """
+  Atomically promote the locale's active draft to canonical published content and retire the draft. Owner or ADMIN.
   """
   publishExperienceLocale(id: ID!): ExperienceLocale
+  recommendationProfileStatus(consentContractVersion: String, consentReceiptDigest: String, contractVersion: String!, profileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
+  reconcileManagerSeoTicket(input: ManagerSeoTicketReconcileInput!): ManagerSeoTicketReconciliation!
+  recordRecommendationContentAction(actionDetail: String, actionKind: String!, contractVersion: String!, eventId: String!, mediaId: ID!, occurredAt: String!, sessionDigest: String, sessionToken: String, viewerToken: String): RecommendationContentActionReceipt!
+  recordSemanticRecommendationEvidence(capability: String!, contractVersion: String!, events: [RecommendationEvidenceEventInput!]!, itemId: ID!, requestId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): [RecommendationEvidenceReceipt!]!
+  recordSemanticRecommendationPlayback(capability: String!, contractVersion: String!, episodeId: ID!, events: [RecommendationPlaybackEventInput!]!, mediaId: ID!, sessionDigest: String, sessionToken: String, viewerToken: String): [RecommendationPlaybackReceipt!]!
+  recordWatchEvent(durationSeconds: Int, eventType: WatchEventType!, languageId: ID, occurredAt: String, positionSeconds: Int, progress: Float, requestSessionId: String, videoDubId: ID, videoId: ID!): WatchEvent
+  recordWatchSearchEvent(client: WatchSearchEventClient!, eventType: WatchSearchEventType!, occurredAt: String, position: Int, requestId: String!, resultId: ID, resultType: WatchSearchEventResultType, routeLanguageSlug: String, searchLanguageSlug: String, visibleResultIds: [String!]): WatchSearchEvent
+  recordWatchSurfaceExposure(events: JSON!): [WatchSurfaceExposureReceipt!]!
+  recoverManagerSubtitleEvalMachineRun(input: ManagerSubtitleEvalMachineRecoverRunInput!): ManagerSubtitleEvalOperationResult
+  recoverManagerSubtitleEvalRun(input: ManagerSubtitleEvalRecoverRunInput!): ManagerSubtitleEvalOperationResult
   """
   Register an uploaded file in the media library after its bytes are stored.
   """
   registerMediaAsset(backend: MediaAssetBackend, byteSize: String, checksumSha256: String, durationMs: String, folderId: ID, height: Int, kind: MediaAssetKind!, mimeType: String!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
+  registerPushDevice(input: RegisterPushDeviceInput!): PushDeviceRegistrationReceipt!
+  rejectManagerSeoProposal(input: ManagerSeoRejectInput!): ManagerSeoDecisionResult!
+  reportPushOpen(input: ReportPushOpenInput!): PushOpenReceipt!
+  requestShortsAttempt(input: ShortsRequestInput!): ShortsCommandResult
+  requestShortsExperiment(input: JSON!): JSON
   """
-  Enqueue the experience-content-dump workflow. Reads cms's Strapi v5 experiences directly via CMS_DATABASE_URL, transforms each (documentId, locale) into admin's per-locale row + Zod BlockSchema shape, merge-upserts into Experience + ExperienceLocale, and dispatches runExperienceEmbedding for locales whose hashable content changed. ADMIN-only. Reruns are idempotent — repeated invocation against unchanged cms produces zero content writes (only the cms_dumped_at timestamp updates). See docs/plans/2026-04-23-001-feat-admin-r3-experience-migration-plan.md.
+  Copy a historical Experience locale revision into the shared active draft without changing canonical content.
   """
-  triggerExperienceContentDump(
-    """
-    Restrict to these cms Strapi v5 documentIds. Omitted = every cms experience document.
-    """
-    documentIds: [String!]
-    """
-    Restrict to these BCP-47 locales as a pure inclusion filter. Omitted = every locale that exists in cms's experiences corpus, derived at enumeration time. No hardcoded list, no `en` fallback.
-    """
-    locales: [String!]
-  ): JSON
+  restoreExperienceLocaleRevisionToDraft(revisionId: ID!): ExperienceLocale
+  """
+  Peel one sticker off. The row is kept and stops counting; omit placementId to take a whole ballot back.
+  """
+  retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
+  reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
+  selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String, sessionToken: String, tabDigest: String, viewerToken: String): SemanticRecommendationSelectionReceipt!
+  stageShortsCatalog(input: JSON!): ShortsCatalogRelease
+  startShortsAttempt(input: ShortsStartInput!): ShortsCommandResult
+  """
+  File one piece of mobile feedback. Signed in or not. The Linear issue exists before this answers.
+  """
+  submitFeedback(input: FeedbackSubmissionInput!): FeedbackSubmissionResult!
+  submitManagerSubtitleEvalReview(input: ManagerSubtitleEvalSubmitReviewInput!): ManagerSubtitleEvalOperationResult
+  transitionRecommendationProfile(action: String!, consentChoice: String, consentContractVersion: String, contractVersion: String!, existingConsentReceiptDigest: String, existingProfileDigest: String, proposedConsentReceiptDigest: String, proposedProfileDigest: String, sessionDigest: String!): RecommendationProfileReceipt!
   """
   Generate and persist a semantic embedding for an ExperienceLocale. Owner or ADMIN.
   """
   triggerExperienceEmbedding(localeId: ID!): JSON
   """
-  Dispatch apps/manager's enrichment pipeline (scene-analysis or transcript-only) for a list of cms videos. Forwards to manager's `/api/admin-trigger/{kind}` endpoint and returns one outcome per requested assetId. Operator-driven: typically called after reading the `missingArtifacts` projection emitted by `triggerSceneEmbeddingBackfill` / `triggerTranscriptEmbeddingBackfill` (feat-119 PR1). ADMIN-only.
+  Enqueue the experience-embedding backfill workflow. Enumerates ExperienceLocale rows (status='published', parent Experience not archived, and embedding IS NULL by default) and launches Mastra per locale. Mastra generates vectors and writes back through Admin's experience-specific ingest endpoint. ADMIN-only at the editorial-tier ladder; bearer-callable from CLIs via `WORKFLOW_TRIGGER`. Per-target error isolation: a failing embedding for one locale records `failed` and does not halt the run. Reruns are idempotent by default; explicit modes can repair missing vectors, force refreshes, or model-upgrade existing vectors.
+  """
+  triggerExperienceEmbeddingBackfill(
+    """
+    Restrict to ExperienceLocale rows whose `locale` is in this BCP-47 set, e.g. ["en", "es"]. Omitted = every locale that exists in the corpus, data-derived at enumeration time. No hardcoded list, no `en` fallback.
+    """
+    bcp47Locales: [String!]
+    """
+    Restrict to ExperienceLocale rows whose parent Experience.id is in this set. Omitted = every published, unarchived Experience.
+    """
+    experienceIds: [ID!]
+    """
+    When true, include rows that already have a non-NULL embedding (re-embed them). Default false — only rows with `embedding IS NULL` are enumerated. Use for model upgrades or drift fixes.
+    """
+    force: Boolean = false
+    """
+    Optional Mastra/Admin ingest mode: "idempotent", "repair", "force", or "model-upgrade". Omitted maps from force for backwards compatibility.
+    """
+    mode: String
+  ): JSON
+  """
+  Dispatch apps/manager's enrichment pipeline (scene-analysis or transcript-only) for a list of cms videos. Forwards to manager's `/api/admin-trigger/{kind}` endpoint and returns one outcome per requested assetId. Operator-driven: typically called after reading the `missingArtifacts` projection emitted by `triggerTranscriptEmbeddingBackfill`. ADMIN-only.
   """
   triggerManagerEnrichment(
     """
@@ -446,26 +2121,15 @@ type Mutation {
     coreIds: [String!]!
     """Enrichment kind. Must be "scene-analysis" or "transcript"."""
     kind: String!
+    """
+    Optional target locales/languages to run for each requested video. When supplied, Admin expands every asset/core pair across these locales and Manager must resolve matching localized media.
+    """
+    targetLocales: [String!]
   ): JSON
   """
   Queue or retry image enrichment for a media asset. Human-protected localized fields are preserved by the workflow.
   """
   triggerMediaImageEnrichment(id: ID!): MediaAsset
-  """
-  Enqueue the scene-embedding backfill workflow. Re-indexes apps/manager's scene-analysis artifacts into VideoScene + VideoSceneLocale. One target per (video, edition, locale) where the locale set is data-derived from the video's primary language + subtitle languages + dub languages. ADMIN-only.
-  """
-  triggerSceneEmbeddingBackfill(
-    """Restrict to these coreIds. Omitted = all mapped videos."""
-    coreIds: [String!]
-    """
-    Restrict to these BCP-47 tags. Omitted = every locale that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. Filters on the `VideoSceneLocale.locale` storage row — i.e. which language-specific scene description + embedding to (re)write. Contrast with `triggerTranscriptEmbeddingBackfill(languages)`, which filters on the Video's source transcription language (a different semantic axis despite the similar arg name).
-    """
-    locales: [String!]
-    """
-    S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`). Defaults to admin-migrations/core-id-mapping.json.
-    """
-    mappingS3Key: String = "admin-migrations/core-id-mapping.json"
-  ): JSON
   """
   Enqueue a Core sync run. ADMIN only. Returns workflow dispatch metadata.
   """
@@ -477,22 +2141,30 @@ type Mutation {
     scope: String
   ): JSON
   """
-  Enqueue the transcript-embedding backfill workflow. Re-indexes apps/manager's embeddings.json artifacts into VideoTranscript + VideoTranscriptChunk. One target per (video, edition, language) where the language set is data-derived from the video's primary language + subtitle languages + dub languages. Vectors are reused from the artifact (no OpenRouter call). ADMIN-only.
+  Enqueue the transcript-embedding backfill workflow. Reads apps/manager's transcript.json source artifact, launches Mastra for chunk planning + embeddings, then writes through Admin ingest. One target per (video, edition, language) where the language set is data-derived from the video's primary language + subtitle languages + dub languages. ADMIN-only.
   """
   triggerTranscriptEmbeddingBackfill(
     """Restrict to these coreIds. Omitted = all mapped videos."""
     coreIds: [String!]
     """
-    Restrict to these BCP-47 tags. Omitted = every language that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. NOT an override for the stamped language on the written row; the arg filters which `(video, edition, language)` targets get processed. The arg is named `languages` (not `locales` as in `triggerSceneEmbeddingBackfill`) because the filter axis is source transcription language, not per-locale publish state.
+    Restrict to these BCP-47 tags. Omitted = every language that exists for the videos — the union of each video's primary language, edition-level subtitle languages, and edition-level dub languages, derived at enumeration time. NOT an override for the stamped language on the written row; the arg filters which `(video, edition, language)` targets get processed. The arg is named `languages` because the filter axis is source transcription language, not per-locale publish state.
     """
     languages: [String!]
     """
-    S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`, shared with scene-embedding backfill). Defaults to admin-migrations/core-id-mapping.json.
+    S3 key of the coreId → cms video id mapping snapshot (uploaded via `pnpm --filter @forge/admin refresh:core-id-mapping`). Defaults to admin-migrations/core-id-mapping.json.
     """
     mappingS3Key: String = "admin-migrations/core-id-mapping.json"
+    """
+    Generation mode for Admin ingest. Defaults to IDEMPOTENT; use REPAIR, FORCE, or MODEL_UPGRADE only when intentionally rewriting existing transcript vectors.
+    """
+    mode: TranscriptBackfillMode
   ): JSON
-  """Update an ExperienceLocale (slug, title, blocks, etc.)."""
-  updateExperienceLocale(blocks: JSON, id: ID!, isHomepage: Boolean, isTemplate: Boolean, metaDescription: String, ogDescription: String, ogImageUrl: String, ogTitle: String, pathSegment: String, slug: String, title: String): ExperienceLocale
+  unpublishShortsProject(input: ShortsRevisionCommandInput!): ShortsCommandResult
+  """
+  Save fields to the locale's one shared active draft. Canonical published content is unchanged until publish.
+  """
+  updateExperienceLocale(blocks: JSON, id: ID!, isHomepage: Boolean, metaDescription: String, ogDescription: String, ogImageUrl: String, ogTitle: String, pathSegment: String, slug: String, title: String): ExperienceLocale
+  updateManagerJob(artifacts: JSON, completedAt: String, currentStep: String, errors: JSON, id: ID!, options: JSON, primaryRequestedTargetLanguageCode: String, requestedLanguageAbbreviations: [String!], resolvedTargetLanguageCodes: [String!], retries: Int, sourceCollectionTitle: String, sourceLanguageCode: String, sourceLanguageId: String, sourceMediaTitle: String, sourceSelectionReason: String, startedAt: String, status: ManagerJobStatus, steps: [ManagerJobStepInput!]): ManagerJob
   """Update editable media asset metadata and processing state."""
   updateMediaAsset(byteSize: String, checksumSha256: String, durationMs: String, errorCode: String, errorMessage: String, folderId: ID, height: Int, id: ID!, muxAssetId: String, muxPlaybackId: String, muxUploadId: String, originalFilename: String, status: MediaAssetStatus, visibility: MediaAssetVisibility, width: Int): MediaAsset
   """
@@ -501,15 +2173,106 @@ type Mutation {
   updateMediaAssetLocale(altText: String, displayName: String, locale: String!, mediaAssetId: ID!): MediaAssetLocale
   """Rename a media folder."""
   updateMediaFolder(id: ID!, name: String!): MediaFolder
+  updateRecommendationViewer(action: String!, sessionToken: String!, viewerToken: String!): RecommendationViewerStatus!
+  upsertMyWatchProgress(entries: [WatchProgressUpsertInput!]!): [WatchProgressEntry!]
+  writeShortsContentPack(input: JSON!): ContentPackRevision
 }
 
 """
-Mux asset metadata. Note: MuxVideo.duration is always 0 in legacy data — canonical duration lives on VideoVariant.lengthInMilliseconds.
+Mux asset metadata. MuxVideo.duration is always 0 in legacy data — canonical duration lives on VideoDub.lengthInMilliseconds.
 """
 type MuxVideo {
   assetId: String
   id: ID
   playbackId: String
+}
+
+"""Cross-block navigation carousel."""
+type NavigationCarouselBlock {
+  backgroundColor: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  items: [NavigationCarouselItem!]!
+  sectionKey: String
+  t: String
+}
+
+"""Single entry in NavigationCarouselBlock.items."""
+type NavigationCarouselItem {
+  backgroundColor: String
+  category: String
+  contentId: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  title: String
+}
+
+"""
+Cached Bible passage text for a video citation, fetched server-side from an approved provider.
+"""
+type Passage {
+  content: String
+  copyright: String
+  humanReference: String
+  provider: String
+  publisherUrl: String
+  reference: String
+  versionAbbreviation: String
+  versionId: Int
+  versionTitle: String
+}
+
+"""Promotional banner with heading, description, and CTA."""
+type PromoBannerBlock {
+  backgroundColor: String
+  ctaEnabled: Boolean
+  ctaLabel: String
+  ctaLink: String
+  description: String
+  heading: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  intro: String
+  sectionKey: String
+  t: String
+  widthPercent: Int
+}
+
+enum PushDevicePlatform {
+  ANDROID
+  IOS
+}
+
+"""
+What one registration answers. The test ID is the identifier the app reveals on its mission screen; it is never the push token.
+"""
+type PushDeviceRegistrationReceipt {
+  status: PushRegistrationState!
+  testDeviceId: String!
+}
+
+enum PushOpenOutcome {
+  DUPLICATE
+  STORED
+  UNKNOWN
+}
+
+"""
+What one open report answers. A duplicate and an unknown nonce are both normal outcomes, never errors.
+"""
+type PushOpenReceipt {
+  outcome: PushOpenOutcome!
+}
+
+enum PushPermissionState {
+  denied
+  granted
+}
+
+enum PushRegistrationState {
+  ACTIVE
+  INACTIVE
+  SUPERSEDED
 }
 
 type Query {
@@ -521,61 +2284,288 @@ type Query {
   Find an Experience locale by (locale, slug). PUBLIC sees published only; EDITOR/ADMIN see all.
   """
   experienceBySlug(locale: String!, slug: String!): ExperienceLocale
+  """
+  Fetch canonical and effective shared-draft state for one Experience locale. ABAC-filtered.
+  """
+  experienceLocaleDraftState(id: ID!): ExperienceLocaleDraftState!
+  """
+  Resolve an unlisted active Experience draft capability. Returns null when invalid or retired; never falls back to canonical content.
+  """
+  experiencePreview(token: String!): ExperiencePreview
   """List Experiences. ABAC-filtered."""
   experiences(includeArchived: Boolean = false, limit: Int = 50, offset: Int = 0): [Experience!]
   """List active (non-soft-deleted) keywords."""
   keywords(limit: Int = 100, offset: Int = 0): [Keyword!]
   """List active (non-soft-deleted) languages."""
   languages(limit: Int = 100, offset: Int = 0): [Language!]
+  managerCoverageSnapshots(endDate: String, latest: Boolean, startDate: String): [ManagerCoverageSnapshot!]
+  managerJob(id: ID!): ManagerJob
+  managerJobs(limit: Int, offset: Int): [ManagerJob!]
+  managerJobsTotal: Int
+  managerLanguageGeo: ManagerLanguageGeo
+  managerSeoProposal(id: ID!): ManagerSeoProposal
+  managerSeoRun(id: ID!): ManagerSeoRunDetail
+  managerSeoRuns(after: String, limit: Int = 25): ManagerSeoRunPage!
+  managerSeoWorkspace(limit: Int = 50): ManagerSeoWorkspace!
+  managerSubtitleEvalComparison(id: ID!): ManagerSubtitleEvalComparison
+  managerSubtitleEvalCorpusVersion(id: ID!): ManagerSubtitleEvalCorpusVersion
+  managerSubtitleEvalOperatorAssignment(assignmentId: ID!): ManagerSubtitleEvalOperatorAssignment
+  managerSubtitleEvalOperatorAssignments(after: String, limit: Int = 50, runCellId: ID, runId: ID!): ManagerSubtitleEvalOperatorAssignmentPage
+  managerSubtitleEvalOperatorReviewerCandidates(after: String, limit: Int = 25, specialistDimension: String, targetLanguageId: ID!, targetLanguageSlug: String!): ManagerSubtitleEvalOperatorReviewerCandidatePage
+  managerSubtitleEvalReferenceIssues(after: String, limit: Int = 25, status: String): ManagerSubtitleEvalReferenceIssuePage
+  managerSubtitleEvalReviewerAssignment(assertion: String!, assignmentId: ID!): ManagerSubtitleEvalReviewerAssignment
+  managerSubtitleEvalReviewerAssignments(after: String, assertion: String!, limit: Int = 25): ManagerSubtitleEvalReviewerAssignmentPage
+  managerSubtitleEvalRun(id: ID!): ManagerSubtitleEvalRun
+  managerSubtitleEvalRuns(after: String, limit: Int = 25): ManagerSubtitleEvalRunPage
+  managerSubtitleEvalStaleRuns(after: String, limit: Int = 25): ManagerSubtitleEvalStaleRunPage
+  managerSubtitleEvalVideoContext(editionIdentity: String!, videoId: ID!): ManagerSubtitleEvalVideoContext
+  managerVideoCoverage(languageIds: [String!]): [ManagerVideoCoverage!]
+  managerVideosForEnrichment(ids: [String!]!): [ManagerVideoForEnrichment!]
+  """
+  Current Admin session projected into the narrow Manager access contract.
+  """
+  managerViewer: ManagerViewer
+  managerWatchRouteAlerts(after: String, limit: Int = 25): ManagerWatchRouteAlertsPage!
   """Fetch a single media asset by id."""
   mediaAsset(id: ID!): MediaAsset
   """
-  List experience metadata and block fields that currently reference a media asset.
+  List experience and video locale fields that currently reference a media asset.
   """
   mediaAssetUsage(id: ID!): [MediaAssetUsage!]
   """List media assets ordered by most recent update."""
   mediaAssets(backend: MediaAssetBackend, folderId: ID, kind: MediaAssetKind, limit: Int = 50, offset: Int = 0, search: String, status: MediaAssetStatus): [MediaAsset!]
   """List media folders ordered for tree rendering."""
   mediaFolders: [MediaFolder!]
+  myWatchProgress: [WatchProgressEntry!]
   """
-  Per-scene cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
+  Transcript-backed cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
   """
   sceneRecommendations(limit: Int, locale: String!, sceneIndex: Int, slug: String, videoId: ID): [SceneRecommendation!]!
-  """
-  Hybrid (semantic + keyword) search across videos and experiences. PUBLIC — see published + non-archived rows only.
-  """
-  search(
-    """
-    When true, attaches internal scoring detail under `result.debug` (per-retriever ranks, fused score, dilution-cap state). Origin-gated at the resolver: requests from non-allowlisted origins (production browsers) silently get the payload stripped. Treat this as a soft feature flag — Origin headers are NOT an authentication mechanism.
-    """
-    debug: Boolean
-    limit: Int
-    locale: String!
-    """
-    Selects the retrieval pipeline. Default: 'hybrid' (the R4 baseline). Currently accepts 'hybrid' and 'keyword-first'. Unknown values fall back to 'hybrid' with a server-side warn log; never throws. Kept as a nullable String (not an enum) so future modes ship without GraphQL schema changes. ORTHOGONAL to the response field `searchMode`, which reports the embedding-degradation signal ('hybrid' | 'keyword-only') based on whether semantic retrieval ran — these two share a name but answer different questions.
-    """
-    mode: String
-    offset: Int
-    q: String!
-    type: HybridSearchContentType
-  ): HybridSearchResponse
   """
   Semantic search over Experience locales. Pass a 1536-dimension embedding vector. PUBLIC sees published only; EDITOR/ADMIN see all statuses.
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
+  semanticRecommendationDelivery(audioLanguageSlug: String!, clientDeliveryContract: String, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String): SemanticRecommendationDelivery!
+  shortsApprovals(cursor: ID, limit: Int, projectId: ID!): [ShortsApproval!]
+  shortsAsset(reference: JSON!): ShortsAssetVersion
+  shortsAssets(input: JSON): [ShortsAssetVersion!]
+  shortsAttempt(attemptId: ID!, projectId: ID!): ShortsAttempt
+  shortsAttempts(cursor: ID, limit: Int, projectId: ID!): [ShortsAttempt!]
+  shortsCatalogRelease(id: ID!): ShortsCatalogRelease
+  shortsContentPackRevision(id: ID!): ContentPackRevision
+  shortsContentPacks(input: JSON): [ContentPackRevision!]
+  shortsExperiment(id: ID!): JSON
+  shortsHistory(beforeRevision: Int, limit: Int, projectId: ID!): [ShortsRevision!]
+  shortsNarrationIdentity(language: String!, speech: JSON!): JSON
+  shortsNarrationMatches(identity: JSON!): [ShortsAssetVersion!]
+  shortsProject(projectId: ID!): ShortsProject
+  shortsProjects(cursor: ID, limit: Int): [ShortsProjectSummary!]
+  shortsSourceEligibility(id: ID!): JSON
+  shortsSourceSnapshot(id: ID!): ShortsSourceSnapshot
   """
   Per-phase Core sync watermarks and stats. Shows when each phase last synced and its row counts.
   """
   systemStatus: JSON
+  userRecommendations(audioLanguageSlug: String!, consentReceiptDigest: String, count: Int, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, sessionDigest: String, sessionToken: String, trafficCategory: String, viewerToken: String): UserRecommendationDelivery!
   """Fetch a single Video by id."""
   video(id: ID!): Video
+  """Fetch a single Video by slug."""
   videoBySlug(slug: String!): Video
+  """
+  Fetch a single VideoDub by id. Lets consumers lazily load one dub's downloads + subtitles (via `videoEdition { subtitles }`) without projecting every dub — mobile's watch screen uses this so switching language/opening the download or subtitle sheet fetches just the active dub, not all ~2,200. Visibility mirrors `videoBySlug { dubs }`: the dub and its parent video must both be non-deleted.
+  """
+  videoDub(id: ID!): VideoDub
+  """
+  Bounded, flat VideoDub-level catalog projection for yt-video-mapper sync. Service-readable only; callers page with `first` + `after` and receive Core-facing `coreId`/`videoVariantId` fields plus indexability state.
+  """
+  videoMapperCatalog(
+    """
+    Opaque cursor from pageInfo.endCursor. Pages forward by Admin VideoDub.id.
+    """
+    after: String
+    """Page size. Defaults to 100 and is capped at 250 for broad sync safety."""
+    first: Int
+  ): VideoMapperCatalogConnection!
   """List active Videos ordered by most recent Core update."""
   videos(limit: Int = 50, offset: Int = 0): [Video!]
+  """
+  Batched coreId → dispatch-fields lookup for manager's admin-trigger enrichment endpoints (feat-125). Replaces the Strapi `videos(filters: { coreId: { in } })` call. Gated by `read:video-metadata`; manager's `ADMIN_EMBED_TRIGGER_API_KEY` bearer satisfies it via the WORKFLOW_TRIGGER allowlist. Max 100 coreIds per call (matches manager's receiver-side cap).
+  """
+  videosByCoreIds(coreIds: [String!]!, targetLocale: String): [VideoForEnrichment!]
+  """
+  Bounded collection-parent feed for Watch homepage discovery. Ordered by stable Admin Video id; callers page with after and may exclude already-featured parent ids or slugs.
+  """
+  watchCollectionFeed(after: String, cardsPerParent: Int!, excludedIds: [String!], excludedSlugs: [String!], first: Int, languageSlug: String!, locale: String!): WatchCollectionFeed!
+  """
+  Batched audio/subtitle language counts for collection slugs. Deliberately separate from `watchLanguageInventory`: the counts are not language-scoped, and a slow aggregate must degrade the /videos availability indicator rather than blank the page. Unknown slugs are omitted from the result; callers must tolerate a short array.
+  """
+  watchCollectionLanguageCounts(
+    """Collection slugs. Deduplicated; capped at 400 entries."""
+    slugs: [String!]!
+  ): [WatchCollectionLanguageCounts!]!
+  """
+  Fetch ordered, admin-backed Video records for Forge's public /watch home programming. Max 100 Core ids per call; unknown Core ids are omitted so consumers can report source gaps.
+  """
+  watchHomeVideos(coreIds: [String!]!): [Video!]!
+  """
+  Flat localized Watch /videos inventory grouped as audio collections, audio videos, and subtitle-only videos. Returns counts plus bounded card rows for regional leads and missionaries.
+  """
+  watchLanguageInventory(
+    """
+    Public Watch language slug, e.g. 'english' or 'spanish-latin-american'.
+    """
+    languageSlug: String!
+    """Maximum rows returned per bucket. Defaults to the service cap."""
+    limit: Int
+  ): WatchLanguageInventory!
+  """
+  Search Watch content using separated query, target language, display language, evidence, and availability signals.
+  """
+  watchSearch(input: WatchSearchInput!): WatchSearchResponse
+  """
+  Return bounded language-aware query phrases and direct Watch content matches without running full search.
+  """
+  watchSearchSuggestions(input: WatchSearchSuggestionsInput!): [WatchSearchSuggestion!]
+  """
+  Per-locale homepage configuration. Replaces Strapi's `watchSetting` (consumer-migration U2, 2026-05-11). Locale-fallback is STRICT NULL.
+  """
+  watchSetting(locale: String!): WatchSetting
+  """
+  Fetch the public Watch single-video route snapshot by slug as a bounded, route-shaped DTO instead of a nested Video relation graph.
+  """
+  watchVideoRouteSnapshotBySlug(languageSlug: String, locale: String!, slug: String!, subtitleLanguageSlug: String): WatchRouteSnapshot
+  """
+  Totals per feature, retracted stickers excluded. Features with no votes are absent rather than zero.
+  """
+  whatsNewFeatureVoteTallies: [WhatsNewFeatureVoteTally!]!
+}
+
+"""Quiz launcher button. Only valid inside SectionContent."""
+type QuizButtonBlock {
+  buttonText: String
+  iframeSrc: String
+  sectionKey: String
+  t: String
+}
+
+type RecommendationCandidateContributor {
+  generator: String!
+  generatorVersion: String!
+  rank: Int!
+}
+
+type RecommendationContentActionReceipt {
+  actionId: ID!
+  eventId: String!
+  late: Boolean!
+  matched: Boolean!
+  status: String!
+}
+
+input RecommendationEvidenceEventInput {
+  eventId: String!
+  kind: String!
+  occurredAt: String!
+  payload: JSON!
+}
+
+type RecommendationEvidenceReceipt {
+  eventId: String!
+  status: String!
+}
+
+type RecommendationPersonalizationDelivery {
+  contractVersion: String!
+  effectiveManifestId: String!
+  executionMode: String
+  interestCount: Int!
+  lane: String!
+  profileState: String
+  projectionGeneration: Int
+  projectionVersion: String
+  reason: String
+  sessionIntentPresent: Boolean!
+}
+
+input RecommendationPlaybackEventInput {
+  eventId: String!
+  kind: String!
+  occurredAt: String!
+  payload: JSON!
+}
+
+type RecommendationPlaybackReceipt {
+  eventId: String!
+  sequence: Int!
+  status: String!
+}
+
+type RecommendationProfileReceipt {
+  choice: String!
+  consentChoice: String!
+  consentContractVersion: String!
+  consentCookieDisposition: String!
+  consentExpiresAt: String
+  cookieDisposition: String!
+  erasureState: String
+  expiresAt: String
+  privacyGeneration: Int
+  state: String!
+}
+
+type RecommendationViewer {
+  expiresAt: String!
+  personalization: Boolean!
+  sessionToken: String!
+  viewerToken: String!
+}
+
+type RecommendationViewerStatus {
+  personalization: Boolean!
+  state: String!
+}
+
+input RegisterPushDeviceInput {
+  appBuild: String!
+  appLanguageSlug: String!
+  expoPushToken: String!
+  installId: String!
+  permission: PushPermissionState!
+  phoneLocale: String!
+  platform: PushDevicePlatform!
+  sessionToken: String
+  timeZone: String!
+  viewerToken: String
+}
+
+"""Single entry in RelatedQuestionsBlock.questions."""
+type RelatedQuestionItem {
+  answer: String
+  question: String
+}
+
+"""Accordion of related Q&A pairs with optional CTA."""
+type RelatedQuestionsBlock {
+  backgroundColor: String
+  ctaEnabled: Boolean
+  ctaLabel: String
+  ctaLink: String
+  heading: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  questions: [RelatedQuestionItem!]!
+  sectionKey: String
+  t: String
+}
+
+input ReportPushOpenInput {
+  nonce: String!
+  sessionToken: String
+  viewerToken: String
 }
 
 """
-A single scene-similarity recommendation. Matches cms's SceneRecommendation shape modulo the cuid-string videoId.
+A single transcript-backed recommendation. Matches cms's SceneRecommendation shape modulo the cuid-string videoId.
 """
 type SceneRecommendation {
   demographics: [String!]!
@@ -594,29 +2584,478 @@ type SceneRecommendation {
 }
 
 """
-A video sourced from JesusFilm Core. Read-only at the GraphQL layer in v1 — editor writes land in a later phase.
+Wrapper section with background + dynamic content. Cannot contain another section.
+"""
+type SectionBlock {
+  backgroundColor: String
+  backgroundImageAsset: BlockImageAsset
+  backgroundImageAssetId: String
+  backgroundOpacity: Float
+  blurHash: String
+  content: [SectionContentBlock!]!
+  dynamicBackgroundImage: Boolean
+  sectionKey: String
+  staticOverlay: Boolean
+  t: String
+}
+
+"""Discriminated union of block kinds allowed inside section.content."""
+union SectionContentBlock = BibleQuotesCarouselBlock | CardBlock | ContainerBlock | CtaBlock | InfoBlocksBlock | MediaCollectionBlock | NavigationCarouselBlock | PromoBannerBlock | QuizButtonBlock | RelatedQuestionsBlock | TextBlock | VideoBlock | VideoCarouselBlock
+
+type SemanticRecommendationDelivery {
+  classifierVersion: String!
+  composedCount: Int
+  contractVersion: String!
+  expiresAt: String
+  items: [SemanticRecommendationDeliveryItem!]!
+  personalization: RecommendationPersonalizationDelivery
+  reason: String
+  requestId: ID
+  requestedCount: Int
+  result: String!
+  shortfallReason: String
+  strategyVersion: String!
+  surfaceVersion: String!
+}
+
+type SemanticRecommendationDeliveryItem {
+  candidateGenerator: String!
+  canonicalHref: String!
+  capability: String!
+  contributors: [RecommendationCandidateContributor!]!
+  demographics: [String!]!
+  description: String!
+  durationSeconds: Float
+  endSeconds: Float
+  id: ID!
+  imageUrl: String
+  playbackId: String!
+  position: Int!
+  sceneIndex: Int!
+  similarity: Float!
+  spiritualContext: [String!]!
+  startSeconds: Float!
+  targetMediaId: ID!
+  themes: [String!]!
+  videoSlug: String!
+  videoTitle: String!
+}
+
+type SemanticRecommendationEpisodeClaim {
+  activeUntil: String!
+  capability: String!
+  episodeId: ID!
+  hardUntil: String!
+}
+
+type SemanticRecommendationSelectionReceipt {
+  canonicalHref: String!
+  claimNonce: String
+  status: String!
+  targetMediaId: ID!
+}
+
+type ShortsActor {
+  id: ID
+  kind: String
+}
+
+input ShortsApplyInput {
+  expectedRevision: Int!
+  idempotencyKey: String!
+  operations: JSON!
+  projectId: ID!
+}
+
+type ShortsApproval {
+  actor: ShortsActor
+  dependencyHash: String
+  id: ID
+  kind: ShortsApprovalKind
+  projectId: ID
+  renderAttemptId: ID
+  revision: Int
+}
+
+enum ShortsApprovalKind {
+  PUBLICATION
+  SCRIPT
+}
+
+input ShortsApproveInput {
+  expectedRevision: Int!
+  idempotencyKey: String!
+  kind: ShortsApprovalKind!
+  projectId: ID!
+  renderAttemptId: ID
+}
+
+type ShortsAssetReference {
+  assetId: ID
+  digest: String
+  versionId: ID
+}
+
+type ShortsAssetTransfer {
+  expiresAt: String
+  method: String
+  path: String
+}
+
+type ShortsAssetVersion {
+  byteSize: Float
+  filename: String
+  mediaAssetId: ID
+  mimeType: String
+  narration: JSON
+  provenance: JSON
+  reference: ShortsAssetReference
+  role: String
+  voice: JSON
+}
+
+type ShortsAttempt {
+  actor: ShortsActor
+  baseRevision: Int
+  id: ID
+  inputHash: String
+  instructions: JSON
+  jobReference: String
+  kind: ShortsAttemptKind
+  projectId: ID
+  result: JSON
+  status: ShortsAttemptStatus
+}
+
+enum ShortsAttemptKind {
+  GENERATION
+  NARRATION
+  RENDER
+}
+
+enum ShortsAttemptStatus {
+  CANCELLED
+  FAILED
+  QUEUED
+  RUNNING
+  STALE
+  SUCCEEDED
+}
+
+type ShortsCatalogRelease {
+  durationMs: Int
+  fps: Int
+  height: Int
+  id: ID
+  languageSlug: String
+  muxAssetId: ID
+  muxPlaybackId: ID
+  projectId: ID
+  renderAttemptId: ID
+  revision: Int
+  snapshot: JSON
+  title: String
+  width: Int
+}
+
+type ShortsCommandResult {
+  approvalId: ID
+  attemptId: ID
+  outcome: String
+  projectId: ID
+  revision: Int
+}
+
+input ShortsCompleteInput {
+  attemptId: ID!
+  expectedRevision: Int!
+  idempotencyKey: String!
+  operations: JSON!
+  projectId: ID!
+  result: JSON!
+  status: ShortsAttemptStatus!
+}
+
+input ShortsCreateInput {
+  document: JSON!
+  expectedRevision: Int!
+  idempotencyKey: String!
+  projectId: ID!
+  sourceVideoDubId: ID
+}
+
+enum ShortsLifecycle {
+  DRAFT
+  PUBLISHED
+  UNPUBLISHED
+}
+
+type ShortsProject {
+  actor: ShortsActor
+  document: JSON
+  firstPublishedAt: String
+  lifecycle: ShortsLifecycle
+  projectId: ID
+  revision: Int
+  sourceVideoDubId: ID
+}
+
+type ShortsProjectSummary {
+  lifecycle: ShortsLifecycle
+  projectId: ID
+  revision: Int
+}
+
+input ShortsRequestInput {
+  expectedRevision: Int!
+  idempotencyKey: String!
+  instructions: JSON!
+  kind: ShortsAttemptKind!
+  projectId: ID!
+}
+
+type ShortsRevision {
+  actor: ShortsActor
+  document: JSON
+  revision: Int
+}
+
+input ShortsRevisionCommandInput {
+  expectedRevision: Int!
+  idempotencyKey: String!
+  projectId: ID!
+}
+
+type ShortsSourceSnapshot {
+  catalogDigest: String
+  coveredRanges: JSON
+  downloadId: ID
+  downloadUrl: String
+  durationMs: Float
+  exportHeight: Int
+  hlsUrl: String
+  id: ID
+  materialization: String
+  originalByteDigest: String
+  restrictions: [String!]
+  source: JSON
+  subtitleAiGenerated: Boolean
+  subtitlePrimary: Boolean
+  subtitleUrl: String
+}
+
+input ShortsStartInput {
+  attemptId: ID!
+  expectedRevision: Int!
+  idempotencyKey: String!
+  jobReference: String!
+  projectId: ID!
+}
+
+"""Rich text block with heading, subtitle, and paragraphs."""
+type TextBlock {
+  backgroundColor: String
+  contentParagraphs: [String!]
+  heading: String
+  headingLevel: TextHeadingLevel
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  sectionKey: String
+  subtitle: String
+  t: String
+  variant: TextVariant
+}
+
+enum TextHeadingLevel {
+  h1
+  h2
+  h3
+  h4
+  h5
+  h6
+}
+
+enum TextVariant {
+  default
+  lead
+  promotional
+  small
+}
+
+"""
+Overwrite intent for Mastra transcript embedding backfills. Idempotent is the default.
+"""
+enum TranscriptBackfillMode {
+  FORCE
+  IDEMPOTENT
+  MODEL_UPGRADE
+  REPAIR
+}
+
+type UserRecommendationDelivery {
+  cohort: String!
+  contractVersion: String!
+  curatedCount: Int!
+  expiresAt: String
+  items: [UserRecommendationItem!]!
+  poolVersion: String
+  profileCount: Int!
+  reason: String
+  requestId: ID
+  requestedCount: Int!
+  result: String!
+  surfaceVersion: String!
+}
+
+type UserRecommendationItem {
+  canonicalHref: String!
+  capability: String!
+  description: String!
+  durationSeconds: Float
+  generator: String!
+  id: ID!
+  imageUrl: String
+  poolKey: String
+  poolVersion: String
+  position: Int!
+  targetMediaId: ID!
+  videoSlug: String!
+  videoTitle: String!
+}
+
+"""
+A video sourced from JesusFilm Core. Read-only at the GraphQL layer in v1.
 """
 type Video {
   aiMetadata: Boolean
   bibleCitations: [BibleCitation!]
+  """
+  Distinct playable dub languages aggregated across this video's children (one representative dub per language). Empty for videos without children. Powers the /series-page language picker without projecting every child's full dub list — the ~45 MB / 137k-record payload that exceeds Next's unstable_cache 2 MB ceiling on the Jesus film (61 chapters × ~2,200 dubs). Respects the same child-visibility rules as `children`.
+  """
+  childDubLanguages: [ChildDubLanguage!]!
+  """
+  Child Video-Video relations: rows where this Video appears on the PARENT side of the VideoRelation join. Traverse `child { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose child has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.
+  """
+  children: [VideoRelation!]
   coreId: String
   """
-  Language-specific audio dubs + their encoded playback (formerly exposed as `variants`).
+  One downloadable Dub per visible direct child for an exact language slug. Intended for lazy collection downloads without projecting every child Dub.
   """
+  downloadableChildDubs(languageSlug: String!): [VideoDub!]!
   dubs: [VideoDub!]
+  """
+  Primary playable VideoDub duration in seconds, or null when the video has no playable dub (e.g. a SERIES/COLLECTION whose runtime lives on its children). Picks the primary-language playable dub, else the longest. Lets watch/series carousels render a per-chapter runtime pill via `children { child { durationSeconds } }` without projecting every child's full dub list. Batched per request through a DataLoader.
+  """
+  durationSeconds: Int
   id: ID
   images: [VideoImage!]
   label: VideoLabel
-  """Per-locale content rows (title, description, etc.)."""
-  locales: [VideoLocale!]
+  """
+  PUBLIC/VIEWER see PUBLISHED only; EDITOR/ADMIN see all. Pass `locale` to narrow the result to a single BCP-47 locale (web's WatchVideo fragment uses this to avoid overfetching every locale).
+  """
+  locales(languageSlug: String, locale: String): [VideoLocale!]
   locked: Boolean
+  """
+  Transcript-derived moments in chunk order, capped server-side. Requested language falls back to English; [] when no transcript exists. Direct service call rather than a loader — the consumer (TV's watch record) asks for one video at a time, so there is nothing to batch.
+  """
+  moments(languageSlug: String, limit: Int): [VideoMoment!]
+  """
+  Base64 blur data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
+  """
+  muxHeroPosterBlurDataUrl(languageSlug: String): String
+  """
+  Dominant color for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.
+  """
+  muxHeroPosterDominantColor(languageSlug: String): String
+  """
+  Best playable Mux playback id for this video. When languageSlug is supplied, prefers a published + streamable dub in that language; otherwise falls back to the primary-language playable dub, then the longest playable dub. Lets Watch thumbnails build Mux frame images without projecting every child dub.
+  """
+  muxPlaybackId(languageSlug: String): String
+  """
+  Base64 blur data URL for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
+  """
+  muxThumbnailBlurDataUrl(languageSlug: String): String
+  """
+  Dominant color for the Watch chapter carousel Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.
+  """
+  muxThumbnailDominantColor(languageSlug: String): String
   noIndex: Boolean
   origin: VideoOrigin
+  """
+  Parent Video-Video relations: rows where this Video appears on the CHILD side of the VideoRelation join. Traverse `parent { … }` to read the foreign Video. PUBLIC/VIEWER see only relations whose parent has a PUBLISHED locale and is not soft-deleted; EDITOR/ADMIN see all.
+  """
+  parents: [VideoRelation!]
+  """
+  Distinct playable audio-language count for this video. Used by Watch to decide whether to render language switching without loading every VideoDub in the cold route snapshot.
+  """
+  playableDubLanguageCount: Int!
+  """
+  One playable VideoDub for a Watch route. Prefers the requested language slug/BCP-47, then the video's primary language, then the longest playable dub. Lets consumer routes choose the initial player without projecting every dub.
+  """
+  preferredPlayableDub(languageSlug: String): VideoDub
   primaryLanguage: Language
   publishedAt: String
+  """
+  Core Platform slugs (e.g. "watch", "arclight") this video is restricted from viewing on. Synced read-only from Core; does not itself gate any public field — see search-watchability.ts and the public video resolvers for enforcement.
+  """
+  restrictViewPlatforms: [String!]
   slug: String
-  studyQuestions: [VideoStudyQuestion!]
+  studyQuestions(languageSlug: String, locale: String): [VideoStudyQuestion!]
   videoSource: VideoSourceHost
+}
+
+"""Embedded video block with playback controls + clip range."""
+type VideoBlock {
+  autoplay: Boolean
+  clipEndSeconds: Float
+  clipStartSeconds: Float
+  languageId: String
+  loop: Boolean
+  mediaAssetId: String
+  mediaUrl: String
+  muted: Boolean
+  sectionKey: String
+  showControls: Boolean
+  subtitle: String
+  subtitleSource: VideoSubtitleSource
+  t: String
+  title: String
+  titleSource: VideoTitleSource
+  useRouteVideo: Boolean
+  """
+  Live playable dub resolved from this block's videoId + languageId. Blocks store only identity; stream URLs come from the VideoDub row.
+  """
+  videoDub: VideoDub
+  videoId: String
+}
+
+"""Horizontal video carousel."""
+type VideoCarouselBlock {
+  backgroundColor: String
+  description: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  items: [VideoCarouselItem!]!
+  itemsSource: ItemsSource!
+  sectionKey: String
+  subtitle: String
+  t: String
+  title: String
+}
+
+"""Single entry in VideoCarouselBlock.items."""
+type VideoCarouselItem {
+  backgroundColor: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  languageId: String
+  subtitleOverride: String
+  titleOverride: String
+  """
+  Live playable dub resolved from this item's videoId + languageId. Blocks store only identity; stream URLs come from the VideoDub row.
+  """
+  videoDub: VideoDub
+  videoId: String
 }
 
 """
@@ -634,11 +3073,20 @@ type VideoDub {
   id: ID
   language: Language
   lengthInMilliseconds: String
+  """
+  Base64 blur data URL for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored in mux_image_derivative by playback id + recipe.
+  """
+  muxHeroPosterBlurDataUrl: String
+  """
+  Dominant color for the Watch hero poster Mux thumbnail recipe. Lazily generated and stored with the matching Mux image derivative.
+  """
+  muxHeroPosterDominantColor: String
   muxVideo: MuxVideo
   published: Boolean
   share: String
   slug: String
   videoEdition: VideoEdition
+  videoId: String
 }
 
 """A downloadable quality tier for a Core-sourced video dub."""
@@ -654,23 +3102,88 @@ type VideoDubDownload {
 }
 
 """
-A specific cut of a Video (theatrical, director's, extended, …). Subtitles attach here because timecodes are an edition property; dubs attach here because each dub is the audio for a specific cut.
+A specific cut of a Video. Subtitles + dubs attach here because timecodes and audio are per-cut.
 """
 type VideoEdition {
   coreId: String
-  """Language-specific audio dubs of this edition."""
   dubs: [VideoDub!]
   id: ID
   name: String
-  """
-  Timed text tracks. Same-language-as-source = transcript; different language = translation; same-language-as-dub = closed captions.
-  """
   subtitles: [VideoSubtitle!]
+}
+
+"""
+Dispatch-fields projection for manager's admin-trigger enrichment lookup. Fields are nullable so manager can distinguish missing primary language or mux validation blockers from an optional subtitle fast path.
+"""
+type VideoForEnrichment {
+  """Core's stable identifier for the video."""
+  coreId: String!
+  """Admin's Video.id (cuid)."""
+  id: ID!
+  """
+  VideoLabel as the camelCase wire-shape string ('featureFilm', 'shortFilm', 'behindTheScenes', etc.) — normalized from Prisma's TS enum identifier so manager's downstream LLM prompt stays byte-identical to the pre-feat-125 Strapi shape.
+  """
+  label: String
+  """
+  BCP-47 tag of the actual dispatch media language. Equals the primary language for source dispatches and the requested target language for localized dispatches when available.
+  """
+  languageBcp47: String
+  """
+  Mux assetId of the selected dispatch dub; null when no matching variant exists.
+  """
+  muxAssetId: String
+  """BCP-47 tag of the video's primary language; null when unattested."""
+  primaryLanguageBcp47: String
+  """
+  VTT URL of the best selected-language subtitle (primary + non-AI preferred); null when no candidate exists.
+  """
+  subtitleUrl: String
+  """
+  Requested target locale used for this dispatch lookup; null when the primary-language source projection was requested.
+  """
+  targetLocale: String
+}
+
+"""Full-bleed hero video block with optional CTA overlay."""
+type VideoHeroBlock {
+  autoplay: Boolean
+  clipEndSeconds: Float
+  clipStartSeconds: Float
+  ctaEnabled: Boolean
+  ctaLabel: String
+  ctaLink: String
+  heading: String
+  headingSource: VideoHeroHeadingSource
+  languageId: String
+  loop: Boolean
+  muted: Boolean
+  sectionKey: String
+  showControls: Boolean
+  subheading: String
+  subheadingSource: VideoHeroSubheadingSource
+  t: String
+  useRouteVideo: Boolean
+  """
+  Live playable dub resolved from this block's videoId + languageId. Blocks store only identity; stream URLs come from the VideoDub row.
+  """
+  videoDub: VideoDub
+  videoId: String
+}
+
+enum VideoHeroHeadingSource {
+  manual
+  videoTitle
+}
+
+enum VideoHeroSubheadingSource {
+  manual
+  videoDescription
 }
 
 type VideoImage {
   aspectRatio: String
-  blurhash: String
+  blurDataUrl: String
+  dominantColor: String
   height: Int
   id: ID
   kind: String
@@ -694,13 +3207,14 @@ enum VideoLabel {
   TRAILER
 }
 
-"""
-Per-locale title/description/snippet/imageAlt for a Video. Editors publish locales independently.
-"""
+"""Per-locale title/description/snippet/imageAlt for a Video."""
 type VideoLocale {
   description: String
   id: ID
   imageAlt: String
+  language: Language
+  languageCoreId: String
+  languageSlug: String
   locale: String
   publishedAt: String
   snippet: String
@@ -708,11 +3222,125 @@ type VideoLocale {
   title: String
 }
 
+"""
+Bounded page of flat mapper catalog rows. Does not expose nested Video or VideoDub relation graphs.
+"""
+type VideoMapperCatalogConnection {
+  nodes: [VideoMapperCatalogItem!]!
+  pageInfo: VideoMapperCatalogPageInfo!
+}
+
+"""
+Flat VideoDub-level projection for yt-video-mapper catalog sync. Uses Core-facing `coreId` and `videoVariantId` terminology while retaining Admin ids for diagnostics.
+"""
+type VideoMapperCatalogItem {
+  """Admin VideoDub.id for diagnostics and cursor ordering."""
+  adminDubId: ID!
+  """Admin Video.id for diagnostics."""
+  adminVideoId: ID!
+  """Admin Video.coreId: the canonical source video answer."""
+  coreId: String!
+  dashUrl: String
+  deletedAt: String
+  downloadHeight: Int
+  downloadQuality: String
+  downloadUrl: String
+  downloadWidth: Int
+  dubDeleted: Boolean!
+  dubPublished: Boolean!
+  durationSeconds: Int
+  editionCoreId: String
+  editionName: String
+  hlsUrl: String
+  indexable: Boolean!
+  """Core Language.coreId for the dub language."""
+  languageId: String
+  languageSlug: String
+  lengthInMilliseconds: String
+  """BCP-47 tag for the dub language."""
+  locale: String
+  mediaSourceType: VideoMapperCatalogMediaSourceType!
+  mediaSourceUrl: String
+  """
+  Machine-readable reason when indexable=false. Current values: dub_deleted, video_deleted, video_no_index, video_unpublished, dub_unpublished, language_missing, language_deleted, edition_deleted, media_missing.
+  """
+  nonIndexableReason: String
+  """
+  Share/playback URL exposed for diagnostics. Not selected as mediaSourceUrl in YTM-002 because mapper MediaSourceType has no SHARE value.
+  """
+  shareUrl: String
+  """
+  Selected source-video title for the mapper's lightweight coreId/title map.
+  """
+  sourceTitle: String!
+  """
+  Locale of the selected source title, null when the title fell back to slug/coreId.
+  """
+  sourceTitleLocale: String
+  videoDeleted: Boolean!
+  videoNoIndex: Boolean!
+  videoPublished: Boolean!
+  """Core videoVariant.id, stored in Admin as VideoDub.coreId."""
+  videoVariantId: String!
+}
+
+"""Primary media source selected for mapper catalog indexing."""
+enum VideoMapperCatalogMediaSourceType {
+  DASH
+  DOWNLOAD
+  HLS
+  NONE
+}
+
+"""Forward cursor pagination state for mapper catalog sync."""
+type VideoMapperCatalogPageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+  startCursor: String
+}
+
+"""
+A transcript-derived moment of this video: timing (null when the transcript chunker had no timecodes — clients must treat untimed rows as list items, never as second 0), an enriched summary of the span, and the Bible references the enrichment attached to it. The lean projection behind TV's in-player companion panel; the chunk's text and embedding stay backend-only.
+"""
+type VideoMoment {
+  bibleVerses: [String!]
+  endSeconds: Float
+  startSeconds: Float
+  summary: String
+}
+
 type VideoOrigin {
   coreId: String
   description: String
   id: ID
   name: String
+}
+
+"""
+Forward-looking recommendations carousel powered at render time by sceneRecommendations(...). No editor UX yet.
+"""
+type VideoRecommendationsBlock {
+  backgroundColor: String
+  description: String
+  imageAsset: BlockImageAsset
+  imageAssetId: String
+  limit: Int
+  sectionKey: String
+  sourceSceneIndex: Int
+  sourceVideoId: String
+  subtitle: String
+  t: String
+  title: String
+}
+
+"""
+Self-referential parent/child join between Videos (e.g. series→episode). Exposes the related parent/child Video plus its ordering position.
+"""
+type VideoRelation {
+  child: Video
+  id: ID
+  order: Int
+  parent: Video
 }
 
 """
@@ -763,6 +3391,8 @@ type VideoStudyQuestion {
   coreId: String
   id: ID
   language: Language
+  languageCoreId: String
+  languageSlug: String
   locale: String
   order: Int
   primary: Boolean
@@ -778,6 +3408,16 @@ type VideoSubtitle {
   value: String
   video: Video
   vttSrc: String
+}
+
+enum VideoSubtitleSource {
+  manual
+  videoDescription
+}
+
+enum VideoTitleSource {
+  manual
+  videoTitle
 }
 
 """
@@ -812,4 +3452,587 @@ type VideoTranscriptChunk {
   tokenCount: Int
   transcriptId: ID
   updatedAt: String
+}
+
+"""
+Cursor-paginated Watch collection parents used by the homepage infinite discovery feed.
+"""
+type WatchCollectionFeed {
+  nodes: [WatchCollectionFeedNode!]!
+  pageInfo: WatchCollectionFeedPageInfo!
+}
+
+"""
+A localized, playback-resolved Watch card in a bounded collection feed page.
+"""
+type WatchCollectionFeedItem {
+  blurDataUrl: String
+  coreId: String!
+  dominantColor: String
+  id: ID!
+  imageUrl: String
+  label: String
+  languageSlug: String
+  muxPlaybackId: String
+  title: String!
+  videoSlug: String!
+}
+
+"""
+A visible localized collection parent and its bounded card-ready items.
+"""
+type WatchCollectionFeedNode {
+  description: String
+  id: ID!
+  items: [WatchCollectionFeedItem!]!
+  slug: String!
+  title: String!
+}
+
+type WatchCollectionFeedPageInfo {
+  endCursor: String
+  hasNextPage: Boolean!
+}
+
+"""
+Distinct audio and subtitle language counts aggregated across a collection's visible children. Powers the Watch /videos sidebar availability indicator.
+"""
+type WatchCollectionLanguageCounts {
+  """
+  Distinct playable audio languages across the collection's visible children. Uses the same predicate as `Video.childDubLanguages`, so the two never disagree for the same collection.
+  """
+  audioLanguageCount: Int!
+  slug: String!
+  """Distinct subtitle languages across the collection's visible children."""
+  subtitleLanguageCount: Int!
+}
+
+type WatchEvent {
+  createdAt: String
+  durationSeconds: Int
+  eventType: String
+  id: ID
+  languageId: String
+  occurredAt: String
+  positionSeconds: Int
+  progress: Float
+  videoDubId: String
+  videoId: String
+}
+
+enum WatchEventType {
+  download
+  meaningful_playback
+}
+
+"""
+Top-level Watch homepage category carousel with an authored tile subset and order.
+"""
+type WatchHomeCategoryRailBlock {
+  categoryIds: [String!]!
+  ctaLabel: String
+  description: String
+  eyebrow: String
+  sectionKey: String
+  t: String
+  """
+  Authored tiles in render order. Null on blocks stored before tile authoring existed — read categoryIds instead. When non-null this is authoritative and categoryIds is a compatibility mirror of its predefined members.
+  """
+  tiles: [WatchHomeCategoryRailTile!]
+  title: String
+}
+
+"""
+Single authored tile in WatchHomeCategoryRailBlock.tiles. A non-null categoryId marks a predefined tile whose unset fields fall back to the consumer's catalog defaults; every field null but categoryId means 'render the predefined tile unchanged'.
+"""
+type WatchHomeCategoryRailTile {
+  categoryId: String
+  href: String
+  icon: String
+  id: String
+  style: String
+  title: String
+}
+
+"""Top-level placeholder that renders the Web-owned Watch Home hero."""
+type WatchHomeHeroBlock {
+  sectionKey: String
+  t: String
+}
+
+"""
+Localized Watch inventory grouped for regional leads: audio collections, audio videos, then subtitle-only videos.
+"""
+type WatchLanguageInventory {
+  audioCollections: [WatchLanguageInventoryItem!]!
+  audioVideos: [WatchLanguageInventoryItem!]!
+  counts: WatchLanguageInventoryCounts!
+  language: WatchLanguageInventoryLanguage
+  promoted: [WatchLanguageInventoryItem!]!
+  subtitleOnlyVideos: [WatchLanguageInventoryItem!]!
+}
+
+"""
+Whether the requested language has playable audio or subtitles only for this inventory row.
+"""
+enum WatchLanguageInventoryAvailability {
+  AUDIO
+  SUBTITLE_ONLY
+}
+
+"""Complete counts for the localized Watch inventory buckets."""
+type WatchLanguageInventoryCounts {
+  audioCollections: Int!
+  audioVideos: Int!
+  subtitleOnlyVideos: Int!
+  total: Int!
+}
+
+"""
+Card-ready Watch inventory row for a single video or parent collection in one requested language.
+"""
+type WatchLanguageInventoryItem {
+  availability: WatchLanguageInventoryAvailability!
+  childCount: Int!
+  coreId: String!
+  createdAt: String
+  description: String
+  durationSeconds: Int
+  id: ID!
+  imageAlt: String
+  imageUrl: String
+  """
+  VideoLabel as the camelCase database wire-shape string ('featureFilm', 'shortFilm', etc.).
+  """
+  label: String
+  """
+  Mux playback id of the row's best published dub. Lets consumers synthesize a frame thumbnail when `imageUrl` is null because the video carries no authored artwork.
+  """
+  muxPlaybackId: String
+  """
+  Zero-based order of this video inside the selected parent collection. Null for standalone videos and parent collection rows.
+  """
+  parentOrder: Int
+  parentSlug: String
+  parentTitle: String
+  publishedAt: String
+  slug: String!
+  title: String!
+  updatedAt: String
+  """
+  Public Watch audio-language slug to use in hrefs. Equals the requested language for audio rows; subtitle-only rows use a playable fallback audio language.
+  """
+  watchLanguageSlug: String!
+}
+
+"""Requested public Watch language for a localized inventory."""
+type WatchLanguageInventoryLanguage {
+  bcp47: String
+  name: JSON
+  slug: String!
+}
+
+type WatchPlaybackContextReceipt {
+  claimNonce: String!
+  contextVersion: String!
+}
+
+type WatchProgressEntry {
+  completed: Boolean
+  durationSeconds: Int
+  languageSlug: String
+  positionSeconds: Int
+  updatedAt: String
+  videoId: String
+}
+
+input WatchProgressUpsertInput {
+  durationSeconds: Float!
+  languageSlug: String
+  positionSeconds: Float!
+  updatedAt: String!
+  videoId: ID
+  videoSlug: String
+}
+
+"""
+Route-shaped Watch video snapshot assembled by the video service in bounded batches. Designed for the public Watch single-video cold path.
+"""
+type WatchRouteSnapshot {
+  bibleCitations: [WatchRouteSnapshotBibleCitation!]!
+  broadLocales: [WatchRouteSnapshotLocale!]!
+  broadStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
+  children: [WatchRouteSnapshotChildRelation!]!
+  documentId: ID!
+  englishLocales: [WatchRouteSnapshotLocale!]!
+  englishStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
+  exactLocales: [WatchRouteSnapshotLocale!]!
+  exactStudyQuestions: [WatchRouteSnapshotStudyQuestion!]!
+  images: [WatchRouteSnapshotImage!]!
+  label: VideoLabel
+  noIndex: Boolean
+  parents: [WatchRouteSnapshotParentRelation!]!
+  playableDubLanguageCount: Int!
+  preferredVariant: WatchRouteSnapshotPreferredVariant
+  primaryLanguage: WatchRouteSnapshotLanguage
+  publishedAt: String
+  slug: String
+}
+
+type WatchRouteSnapshotBibleBook {
+  documentId: ID!
+  name: JSON
+}
+
+type WatchRouteSnapshotBibleCitation {
+  bibleBook: WatchRouteSnapshotBibleBook
+  chapterEnd: Int
+  chapterStart: Int
+  documentId: ID!
+  order: Int
+  osisId: String
+  """
+  Server-resolved Bible text for this citation. Returns null when no approved provider key is configured, the citation cannot be mapped, or the provider is unavailable.
+  """
+  passage(languageId: String, languageSlug: String): Passage
+  verseEnd: Int
+  verseStart: Int
+}
+
+type WatchRouteSnapshotChild {
+  broadLocales: [WatchRouteSnapshotLocale!]!
+  documentId: ID!
+  durationSeconds: Int
+  englishLocales: [WatchRouteSnapshotLocale!]!
+  exactLocales: [WatchRouteSnapshotLocale!]!
+  images: [WatchRouteSnapshotImage!]!
+  label: VideoLabel
+  muxHeroPosterBlurDataUrl: String
+  muxHeroPosterDominantColor: String
+  muxPlaybackId: String
+  muxThumbnailBlurDataUrl: String
+  muxThumbnailDominantColor: String
+  slug: String
+}
+
+type WatchRouteSnapshotChildRelation {
+  child: WatchRouteSnapshotChild
+  order: Int
+}
+
+type WatchRouteSnapshotImage {
+  documentId: ID!
+  dominantColor: String
+  mobileCinematicHigh: String
+  mobileCinematicLow: String
+  thumbnail: String
+  url: String
+}
+
+type WatchRouteSnapshotLanguage {
+  bcp47: String
+  coreId: String
+  name: JSON
+  slug: String
+}
+
+type WatchRouteSnapshotLocale {
+  description: String
+  documentId: ID!
+  imageAlt: String
+  languageSlug: String
+  publishedAt: String
+  searchDescription: String
+  searchTitle: String
+  snippet: String
+  socialImage: WatchRouteSnapshotSocialImage
+  title: String
+}
+
+type WatchRouteSnapshotParent {
+  broadLocales: [WatchRouteSnapshotLocale!]!
+  children: [WatchRouteSnapshotChildRelation!]!
+  documentId: ID!
+  englishLocales: [WatchRouteSnapshotLocale!]!
+  exactLocales: [WatchRouteSnapshotLocale!]!
+  images: [WatchRouteSnapshotImage!]!
+  label: VideoLabel
+  noIndex: Boolean
+  slug: String
+}
+
+type WatchRouteSnapshotParentRelation {
+  parent: WatchRouteSnapshotParent
+}
+
+type WatchRouteSnapshotPreferredVariant {
+  documentId: ID!
+  duration: Int
+  hls: String
+  language: WatchRouteSnapshotLanguage
+  muxHeroPosterBlurDataUrl: String
+  muxHeroPosterDominantColor: String
+  published: Boolean
+  slug: String
+}
+
+"""Crawler-safe projection of a public, ready Media Library image."""
+type WatchRouteSnapshotSocialImage {
+  height: Int
+  mimeType: String
+  url: String!
+  width: Int
+}
+
+type WatchRouteSnapshotStudyQuestion {
+  documentId: ID!
+  languageSlug: String
+  order: Int
+  value: String
+}
+
+type WatchSearchAction {
+  hrefLanguageSlug: String
+  kind: WatchSearchActionKind
+}
+
+enum WatchSearchActionKind {
+  OPEN_EXPERIENCE
+  WATCH
+}
+
+type WatchSearchAvailability {
+  audio: Boolean
+  kind: WatchSearchAvailabilityKind
+  languageEnglishName: String
+  languageSlug: String
+  subtitles: Boolean
+}
+
+enum WatchSearchAvailabilityKind {
+  CONTAINER
+  RELATED_LANGUAGE
+  TARGET_AUDIO
+  TARGET_SUBTITLE
+  UNAVAILABLE
+}
+
+type WatchSearchEvent {
+  client: String
+  createdAt: String
+  eventType: String
+  id: ID
+  occurredAt: String
+  position: Int
+  requestId: String
+  resultId: String
+  resultType: String
+}
+
+enum WatchSearchEventClient {
+  MOBILE
+  TV
+  WEB
+}
+
+enum WatchSearchEventResultType {
+  EXPERIENCE
+  VIDEO
+}
+
+enum WatchSearchEventType {
+  LOAD_MORE
+  RESULTS_VIEWED
+  RESULT_CLICKED
+}
+
+type WatchSearchEvidence {
+  kind: WatchSearchEvidenceKind
+  label: String
+  languageSlug: String
+}
+
+enum WatchSearchEvidenceKind {
+  EXACT_TITLE
+  LANGUAGE_AVAILABILITY
+  METADATA
+  TRANSCRIPT_SEMANTIC
+}
+
+type WatchSearchFallback {
+  kind: WatchSearchFallbackKind
+  message: String
+}
+
+enum WatchSearchFallbackKind {
+  NONE
+  RELATED_LANGUAGE
+  SUBTITLE
+  UNAVAILABLE
+}
+
+input WatchSearchInput {
+  acceptLanguage: String
+  clientRequestId: String
+  currentWatchLanguageSlug: String
+  displayLanguageSlug: String
+  limit: Int
+  mode: WatchSearchMode
+  offset: Int
+  query: String!
+  queryLanguageSlug: String
+  queryNamedLanguageSlug: String
+  resultTypes: [WatchSearchResultType!]
+  routeLanguageSlug: String
+  """
+  Best-effort comparison mode for trusted Web traffic. Shadow work never changes the serving response.
+  """
+  shadowMode: WatchSearchMode
+  targetLanguageSlug: String
+}
+
+type WatchSearchLaneStatus {
+  detail: String
+  elapsedMs: Float
+  lane: String
+  reason: String
+  resultCount: Int
+  status: String
+}
+
+type WatchSearchLanguageInterpretation {
+  acceptLanguage: String
+  acceptLanguageSlug: String
+  currentWatchLanguageSlug: String
+  displayLanguageSlug: String
+  queryLanguageSlug: String
+  queryNamedLanguageSlug: String
+  routeLanguageSlug: String
+  targetLanguageSlug: String!
+  targetLanguageSource: String!
+}
+
+enum WatchSearchMode {
+  DEFAULT
+  MODERN
+}
+
+type WatchSearchResponse {
+  degraded: Boolean
+  hasMore: Boolean
+  laneStatuses: [WatchSearchLaneStatus!]
+  languageInterpretation: WatchSearchLanguageInterpretation
+  latencyMs: Float
+  nextOffset: Int
+  query: String
+  requestId: String
+  results: [WatchSearchResult!]
+  searchMode: String
+  surfaceManifest: JSON
+}
+
+type WatchSearchResult {
+  action: WatchSearchAction
+  availability: WatchSearchAvailability
+  childCount: Int
+  description: String
+  durationSeconds: Int
+  evidence: WatchSearchEvidence
+  fallback: WatchSearchFallback
+  id: ID
+  imageBlurDataUrl: String
+  imageUrl: String
+  label: String
+  languageEnglishName: String
+  languageSlug: String
+  muxThumbnailBlurDataUrl: String
+  playbackId: String
+  score: Float
+  slug: String
+  snippet: String
+  startSeconds: Int
+  title: String
+  type: WatchSearchResultType
+}
+
+enum WatchSearchResultType {
+  EXPERIENCE
+  VIDEO
+}
+
+type WatchSearchSuggestion {
+  childCount: Int
+  description: String
+  id: ID
+  kind: WatchSearchSuggestionKind
+  label: String
+  matchSource: WatchSearchSuggestionMatchSource
+  slug: String
+  title: String
+}
+
+enum WatchSearchSuggestionKind {
+  CONTENT
+  QUERY
+}
+
+enum WatchSearchSuggestionMatchSource {
+  DESCRIPTION
+  TITLE
+}
+
+input WatchSearchSuggestionsInput {
+  languageSlug: String!
+  query: String!
+}
+
+"""Per-locale homepage configuration for PUBLIC consumer apps."""
+type WatchSetting {
+  """
+  Published ExperienceLocale of the isTemplate Experience for the requested locale.
+  """
+  defaultTemplateExperience: ExperienceLocale
+  """
+  Experience id this watchSetting derives from — homepageExperience.experienceId if set, else defaultTemplateExperience.experienceId. Not exclusively the homepage id.
+  """
+  documentId: ID
+  """
+  Published ExperienceLocale flagged isHomepage for the requested locale.
+  """
+  homepageExperience: ExperienceLocale
+}
+
+type WatchSurfaceExposureReceipt {
+  eventId: String!
+  status: String!
+}
+
+enum WhatsNewFeatureVoteRefusal {
+  budget_exhausted
+  invalid_input
+}
+
+"""
+Outcome of a vote write. `accepted: false` with a refusal is an expected answer, not an error.
+"""
+type WhatsNewFeatureVoteResult {
+  accepted: Boolean!
+  """Null when accepted. Never retry a refused write."""
+  refusal: WhatsNewFeatureVoteRefusal
+  """
+  Totals after the write — present on refusals too, so a client that guessed optimistically can correct itself.
+  """
+  tallies: [WhatsNewFeatureVoteTally!]!
+}
+
+"""Live sticker count for one /watch/whats-new feature card."""
+type WhatsNewFeatureVoteTally {
+  featureId: String!
+  votes: Int!
+}
+
+enum WhatsNewSticker {
+  love
+  need
+  yes
 }

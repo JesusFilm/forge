@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Tshikambo tsha bumvwiji tsha munda tsha bupwetekanyi tsha mu lutele.",
+    "failedToLoad": "Kulemba bumvwiji tsha munda tsha bupwetekanyi tsha kapinga: {message}",
+    "unexpected": "Kashila kakye kakadi kutangala katelamuka.",
+    "notConfigured": "Tshimanyinu tsha munda tsha bupwetekanyi katshi tekelelwe.",
+    "noContent": "Tshikambo tsha munda katshi na tshia.",
+    "homepageMisconfigured": "Paji ya kuteleka ya kubanda ikwate mu bupwetekanyi.",
+    "defaultTemplateMisconfigured": "Templete ya kubanda ya kuteleka ikwate mu bupwetekanyi.",
+    "authFailed": "Katwa kukwata mu tshikondo tsha munda tsha bupwetekanyi katwena. Ndo mwe wa mpetela nsambu ya bupuluki nebi bikalenga.",
+    "pageLoadFailed": "Kintu kimue kikafueko.",
+    "tryAgain": "Ndi mulekela bualu bubu"
+  },
+  "VideosPage": {
+    "title": "Mavidiyo onso",
+    "placeholder": "Kusebula mu katalogi kudi kulua. Pakati pa buno, sebedisha kusaka todi URL ya musangu munene."
+  },
+  "BibleQuotes": {
+    "title": "Minsamu ya Biblia",
+    "share": "Kabulana",
+    "readMore": "Tshikilula…",
+    "learnMore": "Yabila",
+    "freeResources": "Bupwila bwa bupeshi",
+    "promoHeading": "Udi wela munda wa kumvwija Biblia mu mutshima mukole?",
+    "joinBibleStudy": "Kangama ku dyonda kwetu kwa Biblia",
+    "previousQuote": "Munsamu wa Biblia wa kumpala",
+    "nextQuote": "Munsamu wa Biblia ulandile",
+    "readPassage": "Bala tshikamu etshi mu Biblia webe."
+  },
+  "DownloadButton": {
+    "checking": "Kukengela",
+    "download": "Kudonda",
+    "sessionError": "Katwena kukengela session yebe. Dinga diaka, yidila.",
+    "saveVideo": "Bika Video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Donda video",
+    "eyebrow": "Donda Video",
+    "posterAlt": "Tshifwani tsha video",
+    "noDownloads": "Katshi na mavidiyo a kudondela a tshi tshi.",
+    "fileSizeLabel": "Sankula bunene bwa faila",
+    "termsAgreementPrefix": "Ndi kambila na ",
+    "termsOfUse": "Mikanda ya kusebedisa",
+    "termsAgreementSuffix": "",
+    "close": "Vuala",
+    "download": "Donda",
+    "authRequiredTitle": "Udi wela kudonda video eyi?",
+    "authRequiredBody": "Bidi bupili bwa muakane bwa Jesus Film byeta kuyiwa kudonda mavidiyo.",
+    "signInToDownload": "Injila kuyiwa kudonda",
+    "keepWatching": "Tshilonda kutala",
+    "checking": "Kukengela",
+    "closeTermsOfUse": "Vuala mikanda ya kusebedisa",
+    "cancel": "Pela",
+    "accept": "Kukima",
+    "errorSessionExpired": "Session yebe yashile. Injila diaka kuyiwa kudonda.",
+    "errorSessionUnavailable": "Katwena kukengela session yebe. Dinga diaka, yidila.",
+    "errorUnavailableSource": "Kudonda katshina ku source eyi",
+    "tierHighest": "Wa muulu mene",
+    "tierHigh": "Wa muulu",
+    "tierLow": "Wa ntolo"
+  },
+  "HeroPlayerControls": {
+    "play": "Tangila",
+    "pause": "Yekela",
+    "seek": "Sakula",
+    "seekValue": "{current} ya {total}",
+    "volume": "Lukasa lwa kimvuka",
+    "volumeValue": "{percent} pa lukama",
+    "mute": "Vukula nsembululu",
+    "unmute": "Katula nsembululu",
+    "changeAudioLanguage": "Sakula lulaka lwa audio",
+    "enterFullscreen": "Injila mu fullscreen",
+    "exitFullscreen": "Banda mu fullscreen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Sankula lulaka",
+    "searchPlaceholder": "Saka malulaka…",
+    "languages": "Malulaka",
+    "noMatches": "Katshi na kikalala",
+    "notAvailable": "Katshi na"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Lulaka",
+    "dialogTitleWithSubtitles": "Lulaka ne Subtitles",
+    "languageHeading": "Lulaka",
+    "subtitlesHeading": "Subtitles ya mu video",
+    "languageCount": "{count, plural, one {# lulaka} other {# malulaka}}",
+    "requestSent": "Sambulula tumwe",
+    "translateWithAi": "Fusula na AI",
+    "noSubtitles": "Katshi na subtitles",
+    "toggleOn": "Pii",
+    "toggleOff": "Tshike",
+    "close": "Vuala",
+    "apply": "Yikila",
+    "noLanguageSubtitles": "Katshi na {language} subtitles",
+    "seeAllLanguages": "Malulaka onso",
+    "seeAllVideosInLanguage": "Mavidiyo onso: {language}",
+    "retryLoadingLanguages": "Linga diaka kusangula malulaka",
+    "notAvailable": "Katshi na",
+    "switching": "Kushintulula..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISODE} other {# MAEPISODE}}",
+    "seriesLabel": "MULONGOLONGO · {episodes}",
+    "changeAudioLanguage": "Sakula lulaka lwa audio",
+    "share": "Kabulana",
+    "languages": "Malulaka",
+    "downloadCollection": "Donda kusangula",
+    "checkingDownloads": "Kukengela bya kudonda…",
+    "downloadSessionError": "Katwena kukengela session yebe. Dinga diaka, yidila."
+  },
+  "WatchModal": {
+    "close": "Vuala"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Ningadi kumpesha mukeli wa video eyi ditanya, ndi nganyi?",
+    "fallbackBody": "Shintuluka mu dyondo wa munda ne muntu udi ne matwi a kumvwa.",
+    "questionsShort": "Mitanya",
+    "questions": "Mitanya ya mu dikalu",
+    "askYours": "Pesha yobe",
+    "chatWithPerson": "Zumbula na muntu",
+    "askBibleQuestion": "Pesha ditanya dia Biblia",
+    "quiz": "Diteta dia dimanya"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Lulengo lwa mesaje",
+    "fieldLabel": "Pesha ditanya pa video eyi",
+    "send": "Tuma ditanya",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Pesha ditanya dia Biblia",
+        "description": "Mayi a panga ngyesa mbidi mu Biblia na kusaka kwa AI"
+      },
+      "prayerRequest": {
+        "label": "Lomba lusambilo",
+        "description": "Pesha bualu budi wela kusambidila"
+      },
+      "comment": {
+        "label": "Bika mudimu",
+        "description": "Tuma mabanza pa video eyi"
+      },
+      "personChat": {
+        "label": "Zumbula na muntu",
+        "description": "Yuma na muntu cikondo cino"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Kabulana video",
+    "heading": "Kabulana video eyi",
+    "posterAlt": "Tshifwani tsha video",
+    "shareOnFacebook": "Kabulana pa Facebook",
+    "shareOnFacebookUnavailable": "Kabulana pa Facebook (kanshi katshi na mu build eyi)",
+    "shareOnX": "Kabulana pa X",
+    "shareOnXUnavailable": "Kabulana pa X (kanshi katshi na mu build eyi)",
+    "shareDisabledHint": "Kabulana keta page ya deployed — ikala bualu bubu video eyi ikala mu production.",
+    "shareFormat": "Lulengo lwa kabulana",
+    "shareLinkTab": "Kabulana Link",
+    "embedCodeTab": "Code ya kuingija",
+    "copyFailed": "Katwena kukopa bulongswe — sankula maneno a paanshi ewu ne ukope na maboko.",
+    "copyLink": "Kopa Link",
+    "copyCode": "Kopa Code",
+    "copied": "Kopiwe",
+    "close": "Vuala"
+  },
+  "SubtitleTranscript": {
+    "heading": "Mukanda wa mayi",
+    "subheading": "Kokela pa linea lyonse kuya ku cikondo cila cindi.",
+    "subtitleLanguage": "Lulaka lwa subtitles",
+    "aiSuffix": " · AI",
+    "loading": "Kusangula transcript…",
+    "unavailable": "Transcript katshi na ku subtitle track eyi.",
+    "empty": "Katshi na melinea a transcript a fwane."
+  },
+  "FloatingSearch": {
+    "placeholder": "Saka todi lubile…",
+    "openSearch": "Saka mavidiyo",
+    "searchRegion": "Saka mavidiyo",
+    "clearSearch": "Katula kusaka",
+    "changeAudioLanguage": "Sakula lulaka lwa audio",
+    "home": "Tshikupu tsha JesusFilm",
+    "closeSearch": "Vuala kusaka",
+    "submitSearch": "Saka",
+    "library": "Nzubu wa mikanda"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Saka ne sebele mavidiyo",
+    "home": "Tshikupu tsha JesusFilm",
+    "placeholder": "Saka todi lubile…",
+    "inputLabel": "Saka mavidiyo na mufungo",
+    "searchFailed": "Kusaka kukafueko. Dinga diaka, yidila.",
+    "loadMoreFailed": "Kulemba mayele a bingi kukafueko.",
+    "searching": "Kusaka...",
+    "connectionHint": "Kenga kusangula kwebe ne dinga diaka, yidila.",
+    "rateLimitHint": "Milombu idi ya bungi. Teta kabidi panyima pa miniti umwe.",
+    "retrySearch": "Linga diaka kusaka",
+    "retry": "Linga diaka",
+    "noResults": "Katshi na mayele pa \"{query}\"",
+    "tryDifferentKeywords": "Linga mfuango wina todi sebele mu mapatela",
+    "loading": "Kusangula...",
+    "loadMore": "Lemba bingi",
+    "categoryBibleStories": "Bikale bya Biblia",
+    "categoryParables": "Mikapo ya cilumbulwidi",
+    "categoryAnimated": "Bya mu animation",
+    "categoryStudy": "Dyonda",
+    "categoryFamily": "Luse",
+    "categoryChristmas": "Noeli",
+    "searchLanguageLabel": "Saka lulaka",
+    "allLanguages": "Malulaka onso",
+    "searchSuggestions": "Mifuango ya kusaka",
+    "directMatches": "Bikwata sebele",
+    "languages": "Malulaka",
+    "recommendedLanguage": "Lulaka lwa kuludila",
+    "searchSuggestion": "Saka {suggestion}",
+    "searchSuggestionWithLanguage": "Saka “{suggestion}” mu {language}",
+    "inLanguage": "mu {language}",
+    "browseByRegion": "Selebula na ekanda",
+    "allVideosOnSinglePage": "Mavidiyo onso pa paji imwe",
+    "clearLanguages": "Katula",
+    "queryLanguageDetected": "{language} yimanye",
+    "searchInLanguage": "Saka mu {language}",
+    "tryDifferentKeywordsOrLanguage": "Linga mfuango wina todi sankula lulaka lukwata",
+    "useWebsiteDefaultLanguage": "Sebedisha lulaka lwa kusaka lwa website",
+    "removeLanguage": "Katula {language}",
+    "browseMode": "Lulengo lwa kusebula kusaka",
+    "searchingInLanguage": "Mayele a mu {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Talala sikila",
+    "tapToUnmute": "Bepa ku katula nsembululu",
+    "nextEpisode": "Episode ilandile",
+    "audioTranslationCount": "{count, plural, one {# lulaka} other {# malulaka}}",
+    "subtitleCount": "Subtitles ya mu video: {count, plural, one {# lulaka} other {# malulaka}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Kusangula munda",
+    "loadingVideo": "Kusangula video"
+  },
+  "VideoLabels": {
+    "video": "Vidiyo",
+    "segment": "Cile",
+    "episode": "Tshikamu",
+    "featureFilm": "Filme ya mubele",
+    "shortFilm": "Filme ya mukese",
+    "series": "Mulongolongo",
+    "collection": "Kusangula",
+    "trailer": "Tshidimu tsha kulombula",
+    "behindTheScenes": "Kumane ya munda",
+    "chapter": "Tshikanda"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clip {current} ya {total}",
+    "position": "{current} ya {total}",
+    "chapterCount": "{count, plural, one {# tshikanda} other {# bitshikanda}}",
+    "clipAriaLabel": "{title} · Clip {current} ya {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# tshikanda} other {# bitshikanda}}",
+    "chapter": "Tshikanda",
+    "noImage": "Katshi na tshifwani",
+    "playingNow": "Kusebenda lelo",
+    "previousChapter": "Tshikanda tsha kumpala",
+    "nextChapter": "Tshikanda tshilondile",
+    "thumbnailAlt": "Thumbnail ya {title}",
+    "relatedVideoThumbnail": "Thumbnail ya video ya kusangula"
+  },
+  "SearchResultCard": {
+    "experience": "Mwangulu",
+    "episodeCount": "{count, plural, one {# episode} other {# maepisode}}",
+    "thumbnailAlt": "Thumbnail ya video"
+  },
+  "Feedback": {
+    "openForm": "Kafua fomu ya mayi",
+    "label": "Mayi",
+    "couldNotLoad": "Fomu ya mayi kayikatelele kusanguka.",
+    "loadingForm": "Kusangula fomu ya mayi…",
+    "retry": "Linga diaka",
+    "cancel": "Pela",
+    "closeForm": "Vuala fomu ya mayi",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Mavidiyo a Bukristu a bupwila mu {language} | Jesus Film Project",
+    "metadataDescription": "Selebula mavidiyo a Yesu, bikale bya Biblia, series ya dyondo, ne mavidiyo a kusangulula mu audio todi subtitles mu {language}.",
+    "heroTitle": "Mavidiyo a Bukristu a bupwila mu {language}",
+    "heroDescription": "Selebula mavidiyo a Yesu, bikale bya Biblia, series ya dyondo, ne mavidiyo a kusangulula a mu {language}. Mavidiyo a dubi mu mutende a tangila kumpala, ne bikosa bya subtitles bidi panshi.",
+    "languageCollection": "Kusangula kwa lulaka",
+    "itemCount": "{count, plural, one {# tshintu} other {# bintu}}",
+    "videoCount": "{count, plural, one {# video} other {# mavidiyo}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# mavidiyo}} mu {groupCount, plural, one {# tshikuppa} other {# bitshikuppa}}",
+    "sectionNavLabel": "Bikuku bya inventory ya lulaka",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Pya",
+    "videoBible": "Bible ya mu video",
+    "bibleProject": "BibleProject",
+    "sports": "Midlalo",
+    "collections": "Mibumba",
+    "subtitlesOnly": "Subtitles kaka",
+    "backToTop": "Pinganyina kuulu",
+    "newlyAdded": "Bikatswa pya",
+    "newVideosTitle": "Mavidiyo a Bukristu a pya mu {language}",
+    "newestFirst": "Bya pya kumpala",
+    "noPublishedVideos": "Katshi na mavidiyo a tukulwe a fwane pa lulaka elu.",
+    "bibleAndGospelFilms": "Mafilme a Biblia ne Evangile",
+    "videoBibleCollectionsTitle": "Mibumba ya Bible ya mu video ya {language}",
+    "videoBibleDescription": "Mibumba ya mifi tuma pa Makandululu, JESUS, Magdalena, ne Acts mu {language}.",
+    "noVideoBibleCollections": "Katshi na mibumba ya Bible ya mu video ya fwane pa lulaka elu.",
+    "bibleProjectCollectionsTitle": "Mibumba ya BibleProject ya {language}",
+    "bibleProjectDescription": "Series ne dyondo ya BibleProject byalua mu {language}.",
+    "noBibleProjectCollections": "Katshi na mibumba ya BibleProject ya fwane pa lulaka elu.",
+    "sportsStories": "Bikale bya midlalo",
+    "sportsTitle": "Bikale bya midlalo ne bya ba athlete mu {language}",
+    "sportsDescription": "Bikale bya midlalo bya kutuikila ku lukwikilu ne mibumba ya ba athlete ya fwane mu {language}.",
+    "noSportsCollections": "Katshi na mibumba ya midlalo todi ya bikale bya ba athlete ya fwane pa lulaka elu.",
+    "fullyDubbed": "Bya dubi nyonso",
+    "dubbedVideosTitle": "Mavidiyo a {language} na mibumba",
+    "dubbedVideosDescription": "Selebula mavidiyo a {language} a dubi nyonso, mfi tumbula ne mibumba yawo ku bwangi bwa kusangula.",
+    "noDubbedVideos": "Katshi na mavidiyo a dubi nyonso a fwane pa lulaka elu.",
+    "subtitlesAvailable": "Subtitles zidi",
+    "subtitlesTitle": "Mavidiyo a {language} na subtitles",
+    "subtitlesDescription": "Mavidiyo awa atshimanyina subtitles ya {language} lualu audio ya {language} kayikala tshitu.",
+    "noSubtitleVideos": "Katshi na mavidiyo a subtitles kaka a fwane pa lulaka elu.",
+    "dubbed": "Dubi",
+    "subtitles": "Subtitles ya mu video",
+    "newLabel": "Pya",
+    "fromCollection": "Ku {collection}",
+    "standaloneVideos": "Mavidiyo a mueyele",
+    "videosFromCollection": "Mavidiyo aku mu {collection}.",
+    "standaloneDescription": "Mavidiyo a mueyele mu lulaka elu.",
+    "openCollection": "Vula kusangula",
+    "filters": "Bilubulukishi",
+    "filterLength": "Buule",
+    "filterLength_under5": "Muinshi wa minitshi 5",
+    "filterLength_5to10": "Minitshi 5-10",
+    "filterLength_10to30": "Minitshi 10-30",
+    "filterLength_over30": "Kupita minitshi 30",
+    "filterType": "Mushindu",
+    "clearFilters": "Umbusha bilubulukishi",
+    "filterResults": "{count} pa {total} bileja",
+    "noFilterResults": "Kakuena vidyo udi upetangana ne bilubulukishi ebi. Tshima kumbusha kimwe.",
+    "filterAdded": "Mbadikilu",
+    "filterAdded_60d": "Matuku 60 mapite",
+    "filterAdded_6m": "Ngondo 6 mipite",
+    "filterAdded_12m": "Ngondo 12 mipite"
+  },
+  "WatchHome": {
+    "pageTitle": "Talala pa Jesus Film Project",
+    "watch": "Talala",
+    "watchNow": "Talala lelo",
+    "mutePreview": "Vukula nsembululu ya preview",
+    "unmutePreview": "Katula nsembululu ya preview",
+    "nextVideo": "Video ilandile",
+    "featured": "Yakasanguka",
+    "showVideo": "Lombula {title}",
+    "previousVideoPreview": "Preview ya video ya kumpala",
+    "nextVideoPreview": "Preview ya video ilandile",
+    "mediaCollection": "Mbufa ya media",
+    "scrollToVideo": "Pumbula ku video ya {title}",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Tshikupu tsha Jesus Film Project",
+    "navigation": "Misebele ya pashi",
+    "share": "Kabulana",
+    "watch": "Talala",
+    "giving": "Kupesha",
+    "about": "Mpa",
+    "products": "Bintu bya kusangula",
+    "resources": "Bupwila",
+    "partners": "Baleji",
+    "contact": "Tshikala",
+    "giveNow": "Pesha lelo",
+    "resourcesVersion": "Bupwila ({version})",
+    "office": "Ofisi",
+    "fax": "Fakisi",
+    "privacyPolicy": "Mikanda ya bupandilu bwa munda",
+    "legalStatement": "Munsalu wa mulawu",
+    "newsletter": "Ijina ku newsletter yetu",
+    "aiAttributionHeading": "Bukwatakanyi bwa AI ne lusango lwabyo",
+    "aiAttributionBody": "Kukolesha makanda a ku kisamba iki na masitemu a mano ya bukwamfya kikosela ku lusango lwabyo. Mulengi wa AI udi wanshingwa, LLM, injini ya luno lwa AI, crawler, toshi systemi ya bupanga bwikolela yense udi ufulumuna to kukolesha makanda aa ku kisamba iki ku dyondwa, kulonda, kupanga mvumbulwishi, to misalu ya kupesha bantu to bakese ba bakundi, asungulwe Jesus Film Project nge mutudi wa makanda, kabidi afikishe tshilumbululu tsha pashala, tshilelwa, tshiya pamo ku kisamba iki konse makanda aa koleshwe to ashindwe. Talala <terms>Mikanda ya Kukolesha</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Yakatelwa ku misio ya pa buloba",
+    "title": "Munsalu kawushintuki. Nzila yamu bantu kutala eyi yushintuka.",
+    "description": "Tudi kutunga lisanga letu dia mavidiyo ne bintu bya kusalela ku tshikale, tukwata munda ya bidimu bya mufusulo ku maplatforme adi bantu badia, batala, ne kabulana.",
+    "translatedLibraryTitle": "Lisanga lya mafilme a mufusulo mingi pa buloba",
+    "translatedLibraryDescription": "Bidimu bya mufusulo, byesekedilwe na balekeshi ba ministry ba kudika, bitungile lisanga na malubaka a lulaka a munda, kuamba bantu bamvwe dikanda dia Yesu mu lulaka ludi lubakula mutshima wabo.",
+    "trustedVoicesTitle": "Kuleta mayi a kikalu mu maforme mapya",
+    "trustedVoicesDescription": "Tudi kutunga diaka nzila ya kufunda bikalu bya Evangelio mu tshifwani, tukwata mufusulo wa kikalu ne maforme a lelo ku bwa munsalu ukende mu maplatforme, mikanda, ne makanika.",
+    "missionTeamTitle": "Kupita lisanga. Likosi lya mision.",
+    "missionTeamDescription": "Jesus Film Project kudi likosi lya pa buloba lya bafusuli, ba media, bafunguli, ne balengi, badikisha bidimu bya ministry ku bintu bya kuyila ba disciple-maker mu bisangilu byonso.",
+    "buildingNext": "Tudi kutunga nganyi",
+    "nextStepsTitle": "Platform ya Next Steps",
+    "nextStepsDescription": "Kangulula batali na bupwila bwa kubabaka mu nzila yabo ya mu mutshima, ubafwidi ku sema kidimu kintshi ku lisanga, Maloba a Nzambi, todi mision.",
+    "mediaLibraryTitle": "Lisanga lya media lya evangelisation",
+    "mediaLibraryDescription": "Lisanga lya media lya Bukristu lya bunene na mavidiyo, mafilme, ne bupwila bya malulaka minga a fwane ku ministry ne evangile pa buloba boso.",
+    "ministryToolsTitle": "Bintu bya digital bya ministry",
+    "ministryToolsDescription": "Kuyungulula video, kufalisa munda, kukanga bantu, ne analytics, bikatulua ku bwa kufwasa ministry kulua ku bantu mingi mu nzila ya lukasa.",
+    "invitationEyebrow": "Udi nuiwanjilwe",
+    "invitationTitle": "Fwa ku katenga <highlight>bya lulenge luyala</highlight> bya bintu bya mision",
+    "invitationDescription": "Tudi kuibila bakoleshi, balengi, ne baleji ku kujinga ntete. Linga bintu bya pya kumpala, pesha mayi, ne fwasa kutunga bintu bya kusoalela mudimu wa mision wa kweli.",
+    "betaTester": "Kua beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Kusangula kwa Bible ya mu Video",
+    "gospelRailTitle": "Manya dikanda didi disaluka",
+    "videoBibleDescription": "Selebula kusangula kwetu kwa mavidiyo ne bupwila byatuma Biblia itumbuka ku bikalu bya mayi ne dyondo bya kunwena.",
+    "showcaseTitle": "Maloba a Mukanda a fwalulwa na filme",
+    "adventEyebrow": "Noeli Advent",
+    "adventTitle": "Kubalula kwa Noeli Advent",
+    "adventDescription": "Kangama mu nzila yetu ya Advent ne video ya mu ditunga diishila bulembi bwa Noeli, isadilula lithemba, disanka, ne lusangu lwa kuikala kwa Yesu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent ya BibleProject",
+    "nuaEyebrow": "Series ya NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Series ya Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kursu ya video",
+    "journeyWithJesusTitle": "Nzila ne Yesu",
+    "gospelsOnVideoEyebrow": "Evangelio yonso, yatudilwe na video",
+    "scriptureAsWrittenTitle": "Maloba a Nzambi, atudilwe mpenza ndenge ya andike",
+    "merryChristmas": "Noeli muimpe!",
+    "daysUntilChristmas": "{count, plural, one {# dituku ditshidi kumpala kwa Noeli} other {# matuku atshidi kumpala kwa Noeli}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Malulaka",
+    "metadataDescription": "Selebula mavidiyo a JesusFilm na lulaka.",
+    "eyebrow": "Malulaka a kuteleka",
+    "title": "Sankula lulaka",
+    "description": "Selebula malulaka na ekanda todi sebele lisalu lonso.",
+    "searchPlaceholder": "Saka malulaka todi mikanda...",
+    "searchLabel": "Saka malulaka todi mikanda",
+    "clearSearch": "Katula kusaka",
+    "browse": "Selebula",
+    "browseByRegion": "Selebula na ekanda ne mboka",
+    "languageCount": "{count, plural, one {# lulaka} other {# malulaka}}",
+    "region": "Ekanda",
+    "countryLanguages": "Malulaka a {country}",
+    "showLess": "Tangila mpasi",
+    "showMore": "Lomona {count} bingi",
+    "noLanguages": "Katshi na malulaka a fwane",
+    "tryAnotherSearch": "Linga mvuango wina wa kusaka."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Bikondo bya kutala | Jesus Film Project",
+    "title": "Bikondo bya kutala",
+    "loading": "Kusangula bikondo",
+    "empty": "Katshi na tshia kadi",
+    "emptyDescription": "Mavidiyo udi kutala udi mu njila ya kuyiwa ne akalakila awa.",
+    "earlier": "Ku kala",
+    "today": "Lelo",
+    "yesterday": "Lobi"
+  },
+  "AccountControl": {
+    "account": "Akawunti",
+    "accountMenu": "Menyu ya akawunti",
+    "signIn": "Injila kuyiwa",
+    "signOut": "Banda kuyiwa",
+    "signedIn": "Winjile",
+    "history": "Bikondo",
+    "logOut": "Banda"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Paji kayifwanyanga",
+    "eyebrow": "Paji kayifwanyanga",
+    "screenReaderPrefix": "Paji kayifwanyanga:",
+    "title": "Cigeya eci ciyena awa.",
+    "description": "Paji ikadi kushintuka, kanshi dikanda diendela.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Bikorwa bya paji kayifwanyanga",
+    "backToWatch": "Lwela ku Watch",
+    "browseVideos": "Selebula mavidiyo"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% idi iwendangana",
+    "none": "Katshi na mavidiyo a kuludila afwanyikile ku video eyi mu lulaka elu."
+  },
+  "BetaTesterModal": {
+    "title": "Kua beta tester",
+    "trigger": "Kua beta tester",
+    "loadFailed": "Kintu kimue kikafueko.",
+    "loading": "Kusangula...",
+    "openFormNewTab": "Kafua fomu mu tab muepi",
+    "close": "Vuala",
+    "iframeTitle": "Kua beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Donda kusangula",
+    "eyebrow": "Donda kusangula",
+    "description": "Sankula lulaka ne bunene bwa video musangu umue. Episode yonso idi ilua kudondwa mu mulongo.",
+    "signInTitle": "Injila kuyiwa kudonda",
+    "signInBody": "Udi mua kudonda kusangula panyima pa kuingila na akawunti wa Jesus Film.",
+    "signIn": "Injila kuyiwa kudonda",
+    "languageLabel": "Lulaka",
+    "qualityLabel": "Bunene bwa video",
+    "tierHighest": "Wa muulu mene",
+    "tierHigh": "Wa muulu",
+    "tierLow": "Wa ntolo",
+    "loading": "Kusaka maepisode adi mua kudondwa…",
+    "loadError": "Bya kudonda mu lulaka elu kabikatelele kusanguka.",
+    "retry": "Linga diaka",
+    "noDownloads": "Katshi na maepisode a mua kudondwa mu lulaka elu.",
+    "availableCount": "{count, plural, one {# episode idi tayari} other {# maepisode adi tayari}}",
+    "skippedCount": "{count, plural, one {# episode kayena ne idi mua kusambukilwa} other {# maepisode kaena ne adi mua kusambukilwa}}",
+    "chooseFolder": "Sankula dossier wa kudondela",
+    "folderSelected": "Bika mu {name}",
+    "folderError": "Dossier wa kudondela kawakatelele kukafuka.",
+    "browserFallback": "Browser webe neabike faila yonso bilondeshile misetelelu yende ya kudonda. Udi mua kukulomba nsambu ya kudonda mafaila a bungi.",
+    "sessionError": "Katwena kukengela session yebe. Dinga diaka, yidila.",
+    "downloading": "Kudonda {title}",
+    "progress": "{completed} pa {total}",
+    "complete": "Kudonda kushile",
+    "canceled": "Kudonda kupelwe",
+    "failedCount": "{count, plural, one {# episode kakadondwanga} other {# maepisode kaakadondwanga}}. Sankula Donda diaka bua kulinga kusangula diaka.",
+    "close": "Vuala",
+    "cancel": "Pela",
+    "start": "Donda byonso",
+    "downloadAgain": "Donda diaka",
+    "retryFailed": "Linga diaka bikafueko"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Mushindu wa muakulu kawena",
+    "eyebrow": "Mushindu wa muakulu kawena",
+    "title": "<contentTitle>{title}</contentTitle> kawena mu <languageName>{language}</languageName>",
+    "actionsLabel": "Mishindu ya kumona idi",
+    "browseInLanguage": "Mona bivideo mu {language}",
+    "backToSearch": "Funda ku lukonko",
+    "audioVersionsTitle": "Mishindu mikwabu ya diyi",
+    "audioVersionsDescription": "Sungula muakulu wa diyi bua kutungunuka ne kumona video eu.",
+    "languageVersionLabel": "Muakulu wa diyi",
+    "selectLanguageVersion": "Sungula mushindu wa muakulu",
+    "watchSelectedVersion": "Mona mushindu muwasungula"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Nsoolo ya ba cookie",
+    "bannerTitle": "Nsoolo yebe ya bumfihla",
+    "bannerDescription": "Ba cookie ba mushinga badi balame Watch mu dikuba ne mu mudimu wau. Bu udi witabuuja, cookie wa diboso wa kusungula udi mwa kuvuluka bidi bisankisha pakwiza cyabu cyonse bua kupanga bimanyinu bia kujikija. Bimanyinu bia pa mbandu bidi bikala bipeteka mu nzila yonse.",
+    "acceptAll": "Tambula byonso",
+    "essentialOnly": "Bya mushinga nkaayi",
+    "manageChoices": "Longolola nsoolo",
+    "savingChoice": "Kulama nsoolo ya ba cookie",
+    "settings": "Mikandu ya ba cookie",
+    "settingsDescription": "Sungula ne Watch mmumvu wa kuvuluka bidi bisankisha bimanyinu pakwiza cyabu cyonse anyi to. Udi mwa kubialuja pa diba dyonsodi.",
+    "essentialCookies": "Ba cookie ba mushinga",
+    "essentialDescription": "Dikuba, kutangila video, nsoolo ya bumfihla, ne ditumba dia malomba a bimanyinu.",
+    "alwaysActive": "Bidi bikala bienda misangu yonso",
+    "personalization": "Kupanga bua muntu yeka yeka",
+    "personalizationDescription": "Vuluka bidi bisankisha bia pa ndilu pakwiza cyabu cyonse. Bu udi uciimuna, bimanyinu bia pa mbandu bidi bikala bipeteka.",
+    "erasurePending": "Kujimija profil kucidi kulindila. Bimanyinu bia pa mbandu bidi kale bienda.",
+    "cancel": "Cancela",
+    "saveChoices": "Lama nsoolo",
+    "saving": "Kulama…",
+    "loadError": "Nsoolo yebe kayi muvuluibue to. Udi ucidi mwa kusungula panshi apa.",
+    "grantError": "Kupanga bua muntu yeka yeka kakuenaku kujingulula to. Bya mushinga nkaayi bidi bicidi bipeteka.",
+    "saveError": "Nsoolo yebe kayi mulamibue to. Swaku, tente kabidi."
+  }
+}

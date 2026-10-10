@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Aucun contenu d'expérience disponible.",
+    "failedToLoad": "Échec du chargement de l'expérience : {message}",
+    "unexpected": "Une erreur inattendue s'est produite.",
+    "notConfigured": "Le service de contenu n'est pas configuré.",
+    "noContent": "Aucun contenu n'est disponible.",
+    "homepageMisconfigured": "La page d'accueil de visionnage est mal configurée.",
+    "defaultTemplateMisconfigured": "Le modèle de visionnage par défaut est mal configuré.",
+    "authFailed": "Impossible de s'authentifier auprès du service de contenu. Veuillez contacter l'assistance si cela persiste.",
+    "pageLoadFailed": "Un problème est survenu.",
+    "tryAgain": "Réessayer"
+  },
+  "VideosPage": {
+    "title": "Toutes les vidéos",
+    "placeholder": "La navigation par catalogue arrive bientôt. En attendant, utilisez la recherche ou une URL liée à un sujet."
+  },
+  "BibleQuotes": {
+    "title": "Versets bibliques",
+    "share": "Partager",
+    "readMore": "Lire la suite...",
+    "learnMore": "En savoir plus",
+    "freeResources": "Ressources gratuites",
+    "promoHeading": "Envie de mieux comprendre la Bible ?",
+    "joinBibleStudy": "Rejoignez notre étude biblique",
+    "previousQuote": "Verset biblique précédent",
+    "nextQuote": "Verset biblique suivant",
+    "readPassage": "Jàngal xaaj bii ci sa Biibël."
+  },
+  "DownloadButton": {
+    "checking": "Vérification",
+    "download": "Télécharger",
+    "sessionError": "Impossible de vérifier votre session. Veuillez réessayer.",
+    "saveVideo": "Enregistrer la vidéo"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Télécharger la vidéo",
+    "eyebrow": "Télécharger la vidéo",
+    "posterAlt": "Affiche de la vidéo",
+    "noDownloads": "Aucun téléchargement n'est disponible pour cette vidéo.",
+    "fileSizeLabel": "Sélectionnez une taille de fichier",
+    "termsAgreementPrefix": "J'accepte les ",
+    "termsOfUse": "Conditions d'utilisation",
+    "termsAgreementSuffix": "",
+    "close": "Fermer",
+    "download": "Télécharger",
+    "authRequiredTitle": "Vous voulez télécharger cette vidéo ?",
+    "authRequiredBody": "Un compte gratuit Jesus Film est nécessaire pour télécharger des vidéos.",
+    "signInToDownload": "Se connecter pour télécharger",
+    "keepWatching": "Continuer à regarder",
+    "checking": "Vérification",
+    "closeTermsOfUse": "Fermer les Conditions d'utilisation",
+    "cancel": "Annuler",
+    "accept": "Accepter",
+    "errorSessionExpired": "Votre session a expiré. Connectez-vous de nouveau pour télécharger.",
+    "errorSessionUnavailable": "Impossible de vérifier votre session. Veuillez réessayer.",
+    "errorUnavailableSource": "Téléchargement indisponible depuis cette source",
+    "tierHighest": "La plus haute",
+    "tierHigh": "Élevée",
+    "tierLow": "Basse"
+  },
+  "HeroPlayerControls": {
+    "play": "Lire",
+    "pause": "Mettre en pause",
+    "seek": "Avancer/Reculer",
+    "seekValue": "{current} sur {total}",
+    "volume": "Dooley baat bi",
+    "volumeValue": "{percent} pour cent",
+    "mute": "Couper le son",
+    "unmute": "Rétablir le son",
+    "changeAudioLanguage": "Changer la langue audio",
+    "enterFullscreen": "Passer en plein écran",
+    "exitFullscreen": "Quitter le plein écran"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Choisir la langue",
+    "searchPlaceholder": "Rechercher des langues…",
+    "languages": "Langues",
+    "noMatches": "Aucun résultat",
+    "notAvailable": "Indisponible"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Lak",
+    "dialogTitleWithSubtitles": "Lak na bíncii ga widewo",
+    "languageHeading": "Lak",
+    "subtitlesHeading": "Bíncii ga widewo",
+    "languageCount": "{count, plural, one {# lak} other {# lakci}}",
+    "requestSent": "Kíimkaa wosu",
+    "translateWithAi": "Kilóogísoh na IA",
+    "noSubtitles": "Bíncii ga widewo laakkii",
+    "toggleOn": "Lëgís",
+    "toggleOff": "Laŋ",
+    "close": "Kilaŋ",
+    "apply": "Kitum",
+    "noLanguageSubtitles": "Bíncii ga widewo laakkii ga {language}",
+    "seeAllLanguages": "Kihot lakci tóoh",
+    "seeAllVideosInLanguage": "Kihot widewo tóoh ga {language}",
+    "retryLoadingLanguages": "Kiꞌaaw kiɓëwí lakci",
+    "notAvailable": "Laakkii",
+    "switching": "En na kisúpít..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 ÉPISODE} other {# ÉPISODES}}",
+    "seriesLabel": "SÉRIE · {episodes}",
+    "changeAudioLanguage": "Changer la langue audio",
+    "share": "Partager",
+    "languages": "Langues",
+    "downloadCollection": "Télécharger la collection",
+    "checkingDownloads": "Vérification des téléchargements…",
+    "downloadSessionError": "Impossible de vérifier votre session. Veuillez réessayer."
+  },
+  "WatchModal": {
+    "close": "Fermer"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Si vous pouviez poser une question au créateur de cette vidéo, quelle serait-elle ?",
+    "fallbackBody": "Ayez une discussion privée avec quelqu'un qui est prêt à vous écouter.",
+    "questionsShort": "Laaj yi",
+    "questions": "Questions associées",
+    "askYours": "Posez la vôtre",
+    "chatWithPerson": "Discuter avec une personne",
+    "askBibleQuestion": "Poser une question biblique",
+    "quiz": "Nattu xam-xam"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Type de message",
+    "fieldLabel": "Posez une question sur cette vidéo",
+    "send": "Envoyer la question",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Poser une question biblique",
+        "description": "Réponses instantanées de la Bible grâce à la recherche par IA"
+      },
+      "prayerRequest": {
+        "label": "Demander une prière",
+        "description": "Partagez vos sujets de prière"
+      },
+      "comment": {
+        "label": "Laisser un commentaire",
+        "description": "Envoyez vos impressions sur cette vidéo"
+      },
+      "personChat": {
+        "label": "Discuter avec une personne",
+        "description": "Parlez à quelqu'un maintenant"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Partager la vidéo",
+    "heading": "Partager cette vidéo",
+    "posterAlt": "Affiche de la vidéo",
+    "shareOnFacebook": "Partager sur Facebook",
+    "shareOnFacebookUnavailable": "Partager sur Facebook (indisponible dans cette version)",
+    "shareOnX": "Partager sur X",
+    "shareOnXUnavailable": "Partager sur X (indisponible dans cette version)",
+    "shareDisabledHint": "Le partage nécessite une page déployée — cela fonctionne une fois cette vidéo en production.",
+    "shareFormat": "Format de partage",
+    "shareLinkTab": "Lien de partage",
+    "embedCodeTab": "Code d'intégration",
+    "copyFailed": "Impossible de copier automatiquement — sélectionnez le texte ci-dessous et copiez-le manuellement.",
+    "copyLink": "Copier le lien",
+    "copyCode": "Copier le code",
+    "copied": "Copié",
+    "close": "Fermer"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcription",
+    "subheading": "Touchez une ligne pour aller à ce moment-là.",
+    "subtitleLanguage": "Langue des sous-titres",
+    "aiSuffix": " · IA",
+    "loading": "Chargement de la transcription…",
+    "unavailable": "Transcription indisponible pour cette piste de sous-titres.",
+    "empty": "Aucune ligne de transcription trouvée."
+  },
+  "FloatingSearch": {
+    "placeholder": "Rechercher ou parcourir des sujets…",
+    "openSearch": "Rechercher des vidéos",
+    "searchRegion": "Rechercher des vidéos",
+    "clearSearch": "Effacer la recherche",
+    "changeAudioLanguage": "Changer la langue audio",
+    "home": "Accueil de JesusFilm",
+    "closeSearch": "Fermer la recherche",
+    "submitSearch": "Wut",
+    "library": "Kaŋ kayitaa"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Rechercher et parcourir des vidéos",
+    "home": "Accueil de JesusFilm",
+    "placeholder": "Rechercher ou parcourir des sujets…",
+    "inputLabel": "Rechercher des vidéos par mot-clé",
+    "searchFailed": "La recherche a échoué. Veuillez réessayer.",
+    "loadMoreFailed": "Échec du chargement de résultats supplémentaires.",
+    "searching": "Recherche en cours...",
+    "connectionHint": "Veuillez vérifier votre connexion et réessayer.",
+    "rateLimitHint": "Kíimci yal. Kiꞌaaw ga minit yen.",
+    "retrySearch": "Réessayer la recherche",
+    "retry": "Réessayer",
+    "noResults": "Aucun résultat pour « {query} »",
+    "tryDifferentKeywords": "Essayez d'autres mots-clés ou parcourez les catégories",
+    "loading": "Chargement...",
+    "loadMore": "Charger plus",
+    "categoryBibleStories": "Histoires bibliques",
+    "categoryParables": "Paraboles",
+    "categoryAnimated": "Animé",
+    "categoryStudy": "Étude",
+    "categoryFamily": "Famille",
+    "categoryChristmas": "Noël",
+    "searchLanguageLabel": "Langue de recherche",
+    "allLanguages": "Toutes les langues",
+    "searchSuggestions": "Xelali wut",
+    "directMatches": "Li méngoo",
+    "languages": "Langues",
+    "recommendedLanguage": "Langue recommandée",
+    "searchSuggestion": "Wut: {suggestion}",
+    "searchSuggestionWithLanguage": "Wut « {suggestion} » ci {language}",
+    "inLanguage": "en {language}",
+    "browseByRegion": "Parcourir par région",
+    "allVideosOnSinglePage": "Toutes les vidéos sur une seule page",
+    "clearLanguages": "Effacer",
+    "queryLanguageDetected": "{language} détectée",
+    "searchInLanguage": "Wut ci {language}",
+    "tryDifferentKeywordsOrLanguage": "Essayez d'autres mots-clés ou choisissez une autre langue de recherche",
+    "useWebsiteDefaultLanguage": "Utiliser la langue de recherche par défaut du site",
+    "removeLanguage": "Supprimer {language}",
+    "browseMode": "Mode de navigation de recherche",
+    "searchingInLanguage": "Njureefi wut ci {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Regarder maintenant",
+    "tapToUnmute": "Touchez pour réactiver le son",
+    "nextEpisode": "Épisode suivant",
+    "audioTranslationCount": "{count, plural, one {# lak} other {# lakci}}",
+    "subtitleCount": "Bíncii ga widewo: {count, plural, one {# lak} other {# lakci}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Chargement du contenu",
+    "loadingVideo": "Chargement de la vidéo"
+  },
+  "VideoLabels": {
+    "video": "Vidéo",
+    "segment": "Xaaj",
+    "episode": "Épisode",
+    "featureFilm": "Long métrage",
+    "shortFilm": "Court métrage",
+    "series": "Série",
+    "collection": "Dencukaay",
+    "trailer": "Bande-annonce",
+    "behindTheScenes": "Coulisses",
+    "chapter": "Chapitre"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Extrait {current} sur {total}",
+    "position": "{current} sur {total}",
+    "chapterCount": "{count, plural, one {# chapitre} other {# chapitres}}",
+    "clipAriaLabel": "{title} · Extrait {current} sur {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# chapitre} other {# chapitres}}",
+    "chapter": "Chapitre",
+    "noImage": "Pas d'image",
+    "playingNow": "En lecture",
+    "previousChapter": "Chapitre précédent",
+    "nextChapter": "Chapitre suivant",
+    "thumbnailAlt": "Vignette de {title}",
+    "relatedVideoThumbnail": "Vignette de vidéo associée"
+  },
+  "SearchResultCard": {
+    "experience": "Expérience",
+    "episodeCount": "{count, plural, one {# épisode} other {# épisodes}}",
+    "thumbnailAlt": "Vignette de la vidéo"
+  },
+  "Feedback": {
+    "openForm": "Ouvrir le formulaire de retour",
+    "label": "Retour",
+    "couldNotLoad": "Impossible de charger le formulaire de retour.",
+    "loadingForm": "Chargement du formulaire de retour…",
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "closeForm": "Fermer le formulaire de retour",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Vidéos chrétiennes gratuites en {language} | Jesus Film Project",
+    "metadataDescription": "Explorez les films Jésus, les histoires bibliques, les séries de discipulat et les vidéos d'évangélisation avec audio doublé ou sous-titres en {language}.",
+    "heroTitle": "Vidéos chrétiennes gratuites en {language}",
+    "heroDescription": "Explorez les films Jésus, les histoires bibliques, les séries de discipulat et les vidéos d'évangélisation disponibles en {language}. Les vidéos entièrement doublées sont mises en avant en premier, avec les options avec sous-titres en dessous.",
+    "languageCollection": "Collection de langues",
+    "itemCount": "{count, plural, one {# élément} other {# éléments}}",
+    "videoCount": "{count, plural, one {# vidéo} other {# vidéos}}",
+    "videosInGroups": "{videoCount, plural, one {# vidéo} other {# vidéos}} dans {groupCount, plural, one {# groupe} other {# groupes}}",
+    "sectionNavLabel": "Sections de l'inventaire des langues",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nouveau",
+    "videoBible": "Bible vidéo",
+    "bibleProject": "BibleProject",
+    "sports": "Po ak tàggat-yaram",
+    "collections": "Dencukaay yi",
+    "subtitlesOnly": "Sous-titres seulement",
+    "backToTop": "Fandiŋ kajeeg",
+    "newlyAdded": "Ajouté récemment",
+    "newVideosTitle": "Nouvelles vidéos chrétiennes en {language}",
+    "newestFirst": "Les plus récentes d'abord",
+    "noPublishedVideos": "Aucune vidéo publiée n'a encore été trouvée pour cette langue.",
+    "bibleAndGospelFilms": "Films bibliques et évangéliques",
+    "videoBibleCollectionsTitle": "Collections Bible vidéo en {language}",
+    "videoBibleDescription": "Collections centrées sur l'Écriture, notamment LUMO, JESUS, Magdalena et Actes, en {language}.",
+    "noVideoBibleCollections": "Aucune collection Bible vidéo n'est encore disponible pour cette langue.",
+    "bibleProjectCollectionsTitle": "Collections BibleProject en {language}",
+    "bibleProjectDescription": "Séries et études BibleProject disponibles en {language}.",
+    "noBibleProjectCollections": "Aucune collection BibleProject n'est encore disponible pour cette langue.",
+    "sportsStories": "Histoires de sport",
+    "sportsTitle": "Histoires de sport et d'athlètes en {language}",
+    "sportsDescription": "Histoires de sport centrées sur la foi et collections axées sur les athlètes disponibles en {language}.",
+    "noSportsCollections": "Aucune collection sur le sport ou les athlètes n'est encore disponible pour cette langue.",
+    "fullyDubbed": "Entièrement doublé",
+    "dubbedVideosTitle": "Vidéos en {language} par collection",
+    "dubbedVideosDescription": "Parcourez les vidéos entièrement doublées en {language}, regroupées avec leur collection pour les trouver plus facilement.",
+    "noDubbedVideos": "Aucune vidéo entièrement doublée n'est encore disponible pour cette langue.",
+    "subtitlesAvailable": "Sous-titres disponibles",
+    "subtitlesTitle": "Vidéos en {language} avec sous-titres",
+    "subtitlesDescription": "Ces vidéos incluent des sous-titres en {language} lorsque l'audio parlé en {language} n'est pas encore disponible.",
+    "noSubtitleVideos": "Aucune vidéo avec sous-titres seulement n'est encore disponible pour cette langue.",
+    "dubbed": "Doublé",
+    "subtitles": "Sous-titres",
+    "newLabel": "Nouveau",
+    "fromCollection": "De {collection}",
+    "standaloneVideos": "Vidéos autonomes",
+    "videosFromCollection": "Vidéos de {collection}.",
+    "standaloneDescription": "Vidéos autonomes dans cette langue.",
+    "openCollection": "Ouvrir la collection",
+    "filters": "Ñoolaaŋ",
+    "filterLength": "Ndoolaa",
+    "filterLength_under5": "Rekan 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Fopan 30 min",
+    "filterType": "Kaŋaam",
+    "clearFilters": "Feesaŋ ñoolaaŋ",
+    "filterResults": "{count} ca {total} a wonaa",
+    "noFilterResults": "Amul widewo ba mos ak ñoolaaŋ yii. Feesaŋ kenn.",
+    "filterAdded": "A yokkul",
+    "filterAdded_60d": "Baax 60 fanaan",
+    "filterAdded_6m": "Baax 6 weer",
+    "filterAdded_12m": "Baax 12 weer"
+  },
+  "WatchHome": {
+    "pageTitle": "Visionnage Jesus Film Project",
+    "watch": "Regarder",
+    "watchNow": "Regarder maintenant",
+    "mutePreview": "Couper l'aperçu",
+    "unmutePreview": "Rétablir le son de l'aperçu",
+    "nextVideo": "Vidéo suivante",
+    "featured": "À la une",
+    "showVideo": "Afficher {title}",
+    "previousVideoPreview": "Aperçu de la vidéo précédente",
+    "nextVideoPreview": "Aperçu de la vidéo suivante",
+    "mediaCollection": "Collection de médias",
+    "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Accueil de Jesus Film Project",
+    "navigation": "Navigation du pied de page",
+    "share": "Partager",
+    "watch": "Regarder",
+    "giving": "Don",
+    "about": "À propos",
+    "products": "Produits",
+    "resources": "Ressources",
+    "partners": "Partenaires",
+    "contact": "Jokkoo",
+    "giveNow": "Faire un don",
+    "resourcesVersion": "Ressources ({version})",
+    "office": "Bureau",
+    "fax": "Faks",
+    "privacyPolicy": "Politique de confidentialité",
+    "legalStatement": "Mentions légales",
+    "newsletter": "Inscrivez-vous à notre newsletter",
+    "aiAttributionHeading": "Akɔma yi na kaddo",
+    "aiAttributionBody": "Kumɓa wonii piŋgini no waɲi i ze kaddo mba seɓi njaɓa. Buuru AI, LLM, AI n̄gase a kan, crawler, ko ɓeɗe njaɓa-aɲi ɓe diŋgɛ kaddo nɛ kaŋa ɓe gɔrɔ, ɓe fe Jesu Film Project a sɛɓɛlɛ, ta ɓe tuma linki laɗa, noor e yaa njaɓa mo ɓe gɔrɔ ko ɓe nyaa. Woro <terms>Terms of Use</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Conçu pour la mission mondiale",
+    "title": "Le message ne change pas. La façon de regarder, oui.",
+    "description": "Nous reconstruisons notre vidéothèque et nos outils de fond en comble, en mettant des décennies de travail de traduction au service des plateformes où les gens se retrouvent déjà, regardent et partagent.",
+    "translatedLibraryTitle": "La vidéothèque la plus traduite au monde",
+    "translatedLibraryDescription": "Des décennies de travail de traduction, portées par des partenaires de ministère de confiance, ont construit une bibliothèque avec des milliers de pistes linguistiques afin que chacun puisse rencontrer l'histoire de Jésus dans la langue qui le touche le plus profondément.",
+    "trustedVoicesTitle": "Transmettre des voix de confiance dans de nouveaux formats",
+    "trustedVoicesDescription": "Nous reconstruisons la manière de raconter visuellement les histoires de l'Évangile, en associant des traductions fiables à des formats modernes pour que le message circule librement entre plateformes, cultures et écrans.",
+    "missionTeamTitle": "Plus qu'une bibliothèque. Une équipe animée par la mission.",
+    "missionTeamDescription": "Jesus Film Project est une équipe mondiale de traducteurs, spécialistes des médias, monteurs et créateurs qui transforme des décennies d'expérience ministérielle en outils pour les faiseurs de disciples partout.",
+    "buildingNext": "Ce que nous construisons ensuite",
+    "nextStepsTitle": "Plateforme des prochaines étapes",
+    "nextStepsDescription": "Relier les spectateurs à des possibilités concrètes sur leur parcours spirituel, en les aidant à faire un pas de plus vers la communauté, les Écritures ou la mission.",
+    "mediaLibraryTitle": "Bibliothèque de médias d'évangélisation",
+    "mediaLibraryDescription": "Une vaste bibliothèque de médias chrétiens avec des milliers de vidéos, de films et de ressources disponibles en plusieurs langues pour le ministère et l'évangélisation dans le monde entier.",
+    "ministryToolsTitle": "Outils numériques pour les ministères",
+    "ministryToolsDescription": "Gestion vidéo, diffusion de contenu, engagement du public et analyses conçus pour aider les ministères à toucher davantage de personnes efficacement.",
+    "invitationEyebrow": "Vous êtes invité",
+    "invitationTitle": "Aidez à construire <highlight>la prochaine génération</highlight> d'outils de mission",
+    "invitationDescription": "Nous invitons les praticiens, créateurs et partenaires à un accès anticipé. Testez les nouveaux outils en premier, donnez votre avis et contribuez à façonner des produits conçus pour le vrai travail missionnaire.",
+    "betaTester": "Devenir bêta-testeur"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Collection Bible vidéo",
+    "gospelRailTitle": "Découvrez l'histoire complète",
+    "videoBibleDescription": "Explorez notre collection de vidéos et de ressources qui donnent vie à la Bible à travers des histoires et des enseignements captivants.",
+    "showcaseTitle": "L'Écriture racontée par le film",
+    "adventEyebrow": "Avent de Noël",
+    "adventTitle": "Compte à rebours de l'Avent de Noël",
+    "adventDescription": "Rejoignez notre parcours de l'Avent avec une vidéo quotidienne qui fait monter l'attente de Noël, en explorant l'espérance, la joie et la promesse de la venue de Jésus.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Avent BibleProject",
+    "nuaEyebrow": "Série NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Série Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Cours vidéo",
+    "journeyWithJesusTitle": "Cheminer avec Jésus",
+    "gospelsOnVideoEyebrow": "Chaque Évangile, raconté en vidéo",
+    "scriptureAsWrittenTitle": "L'Écriture, prononcée exactement comme elle est écrite",
+    "merryChristmas": "Noël bu neex!",
+    "daysUntilChristmas": "{count, plural, one {# fan la des ba Noël} other {# fan la des ba Noël}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Langues",
+    "metadataDescription": "Parcourez les vidéos JesusFilm par langue.",
+    "eyebrow": "Langues à regarder",
+    "title": "Choisissez une langue",
+    "description": "Explorez les langues par région ou parcourez la liste complète.",
+    "searchPlaceholder": "Rechercher des langues ou des pays...",
+    "searchLabel": "Rechercher des langues ou des pays",
+    "clearSearch": "Effacer la recherche",
+    "browse": "Parcourir",
+    "browseByRegion": "Parcourir par région et pays",
+    "languageCount": "{count, plural, one {# langue} other {# langues}}",
+    "region": "Région",
+    "countryLanguages": "Langues de {country}",
+    "showLess": "Afficher moins",
+    "showMore": "Afficher {count} de plus",
+    "noLanguages": "Aucune langue trouvée",
+    "tryAnotherSearch": "Essayez un autre terme de recherche."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Historique de visionnage | Jesus Film Project",
+    "title": "Historique de visionnage",
+    "loading": "Chargement de l'historique",
+    "empty": "Rien ici pour le moment",
+    "emptyDescription": "Les vidéos que vous regardez lorsque vous êtes connecté apparaîtront ici.",
+    "earlier": "Plus tôt",
+    "today": "Aujourd'hui",
+    "yesterday": "Hier"
+  },
+  "AccountControl": {
+    "account": "Compte",
+    "accountMenu": "Menu du compte",
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter",
+    "signedIn": "Connecté",
+    "history": "Historique",
+    "logOut": "Déconnexion"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page introuvable",
+    "eyebrow": "Page introuvable",
+    "screenReaderPrefix": "Page introuvable :",
+    "title": "Cette scène n'est pas ici.",
+    "description": "La page a peut-être été déplacée, mais l'histoire continue.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Actions de page introuvable",
+    "backToWatch": "Retour au visionnage",
+    "browseVideos": "Parcourir les vidéos"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% méngoo",
+    "none": "Giseesul benn tektal bu jëm ci widewo bii ci làkk wii."
+  },
+  "BetaTesterModal": {
+    "title": "Devenir bêta-testeur",
+    "trigger": "Devenir bêta-testeur",
+    "loadFailed": "Un problème est survenu.",
+    "loading": "Chargement...",
+    "openFormNewTab": "Ouvrir le formulaire dans un nouvel onglet",
+    "close": "Fermer",
+    "iframeTitle": "Devenir bêta-testeur"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Télécharger la collection",
+    "eyebrow": "Télécharger la collection",
+    "description": "Choisissez une seule fois la langue et la qualité. Chaque épisode disponible sera téléchargé dans l’ordre.",
+    "signInTitle": "Se connecter pour télécharger",
+    "signInBody": "Le téléchargement des collections est disponible après connexion avec un compte Jesus Film.",
+    "signIn": "Se connecter pour télécharger",
+    "languageLabel": "Langue",
+    "qualityLabel": "Qualité vidéo",
+    "tierHighest": "La plus haute",
+    "tierHigh": "Élevée",
+    "tierLow": "Basse",
+    "loading": "Recherche des épisodes disponibles…",
+    "loadError": "Impossible de charger les téléchargements pour cette langue.",
+    "retry": "Réessayer",
+    "noDownloads": "Aucun épisode téléchargeable n’est disponible dans cette langue.",
+    "availableCount": "{count, plural, one {# épisode est prêt} other {# épisodes sont prêts}}",
+    "skippedCount": "{count, plural, one {# épisode sera ignoré car il est indisponible} other {# épisodes seront ignorés car ils sont indisponibles}}",
+    "chooseFolder": "Choisir le dossier de téléchargement",
+    "folderSelected": "Enregistrer dans {name}",
+    "folderError": "Impossible d’ouvrir le dossier de téléchargement.",
+    "browserFallback": "Votre navigateur enregistrera chaque fichier selon ses paramètres de téléchargement habituels. Il peut vous demander d’autoriser plusieurs téléchargements.",
+    "sessionError": "Impossible de vérifier votre session. Veuillez réessayer.",
+    "downloading": "Téléchargement de {title}",
+    "progress": "{completed} sur {total}",
+    "complete": "Téléchargements terminés",
+    "canceled": "Téléchargements annulés",
+    "failedCount": "{count, plural, one {Échec du téléchargement de # épisode} other {Échec du téléchargement de # épisodes}}. Sélectionnez de nouveau Télécharger pour réessayer la collection.",
+    "close": "Fermer",
+    "cancel": "Annuler",
+    "start": "Tout télécharger",
+    "downloadAgain": "Télécharger de nouveau",
+    "retryFailed": "Réessayer les téléchargements échoués"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Kisúpít lak laakkii",
+    "eyebrow": "Kisúpít lak laakkii",
+    "title": "<contentTitle>{title}</contentTitle> laakkii ga <languageName>{language}</languageName>",
+    "actionsLabel": "Pulaal ki hot",
+    "browseInLanguage": "Kihot widewo ga {language}",
+    "backToSearch": "Kiwutaat ga wut",
+    "audioVersionsTitle": "Kisúpít ɗaahci",
+    "audioVersionsDescription": "Kitën lak ɗaah te kihot widewo ino.",
+    "languageVersionLabel": "Lak ɗaah",
+    "selectLanguageVersion": "Kitën kisúpít lak",
+    "watchSelectedVersion": "Kihot kisúpít kitënka"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tànn yi ci cookie",
+    "bannerTitle": "Say tànn yu ñeel sa sutura",
+    "bannerDescription": "Cookie yu am solo di dencal Watch mu wóor te muy liggéey. Bu nga ko maye, benn cookie bu tànneef bu site bi mën na fàttaliku say mbëggel ci njee yi ngir solal ndigal yi. Ndigal yu aju ci yeneen xaalis am nañu ba tey.",
+    "acceptAll": "Nangu lépp",
+    "essentialOnly": "Li am solo rekk",
+    "manageChoices": "Saytu tànn yi",
+    "savingChoice": "Mi ngi denc tànn bi ci cookie",
+    "settings": "Parameetar yi ci cookie",
+    "settingsDescription": "Tànnal ndax Watch man na fàttaliku say mbëggel yu ndigal ci njee yi. Mën nga soppi lii saa su nekk.",
+    "essentialCookies": "Cookie yu am solo",
+    "essentialDescription": "Kaarange, xëynaale, tànn yu sutura ak seetal kàddug laaj yi ci ndigal.",
+    "alwaysActive": "Dafa dox saa su nekk",
+    "personalization": "Solal ndigal",
+    "personalizationDescription": "Fàttaliku mbëggel yu tollu ci njee yi. Su ñu ko tëdde, ndigal yu aju ci xaalis dinañu sax.",
+    "erasurePending": "Far sa profil mi ngi xaar. Ndigal yu aju ci xaalis tàmbali nañu ba noppi.",
+    "cancel": "Bàyyi",
+    "saveChoices": "Denc tànn yi",
+    "saving": "Mi ngi denc…",
+    "loadError": "Manul a yebbi sa tànn. Waaye mën nga tànn ci suuf.",
+    "grantError": "Manul a taamu solal ndigal. Li am solo rekk mooy des.",
+    "saveError": "Manul a denc sa tànn. Jéemaatal."
+  }
+}

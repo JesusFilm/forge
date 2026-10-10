@@ -1,0 +1,129 @@
+{
+  "capturedAt": "2026-09-16T01:54:56.418Z",
+  "results": [
+    {
+      "name": "own_preview_profile_evidence",
+      "milliseconds": 827,
+      "rows": [
+        {
+          "ordinal": "1",
+          "state": "claimed",
+          "discovery_source": "direct",
+          "attributed_selection": false,
+          "conflict_count": 0,
+          "replay_count": 0,
+          "profile_state": "active",
+          "current_generation": true,
+          "policy_version": "sound-off-viewing-v1",
+          "sound_off_milliseconds": 41237,
+          "sound_on_milliseconds": 15094,
+          "sound_off_progress_seconds": 41.312536,
+          "sound_on_progress_seconds": 15.126178,
+          "sound_off_qualified": true,
+          "sound_on_qualified": false,
+          "preview_milliseconds": 41237,
+          "duration_seconds": 199,
+          "retention_matches": true,
+          "profile_link_precedes_episode": true
+        },
+        {
+          "ordinal": "2",
+          "state": "claimed",
+          "discovery_source": "recommendation",
+          "attributed_selection": true,
+          "conflict_count": 0,
+          "replay_count": 0,
+          "profile_state": "active",
+          "current_generation": true,
+          "policy_version": "sound-off-viewing-v1",
+          "sound_off_milliseconds": 50519,
+          "sound_on_milliseconds": 0,
+          "sound_off_progress_seconds": 50.63849,
+          "sound_on_progress_seconds": 0,
+          "sound_off_qualified": true,
+          "sound_on_qualified": false,
+          "preview_milliseconds": 50519,
+          "duration_seconds": 506,
+          "retention_matches": true,
+          "profile_link_precedes_episode": true
+        }
+      ]
+    },
+    {
+      "name": "own_episode_fact_health",
+      "milliseconds": 432,
+      "rows": [
+        {
+          "kind": "playback_active_visible_playing",
+          "facts": "2",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:51:56.329Z",
+          "last_occurred_at": "2026-09-16T01:52:11.588Z"
+        },
+        {
+          "kind": "playback_attempt",
+          "facts": "1",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:51:56.304Z",
+          "last_occurred_at": "2026-09-16T01:51:56.304Z"
+        },
+        {
+          "kind": "playback_navigation",
+          "facts": "1",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:52:11.588Z",
+          "last_occurred_at": "2026-09-16T01:52:11.588Z"
+        },
+        {
+          "kind": "playback_progress",
+          "facts": "1",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:52:06.467Z",
+          "last_occurred_at": "2026-09-16T01:52:06.467Z"
+        },
+        {
+          "kind": "playback_qoe",
+          "facts": "2",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:51:56.329Z",
+          "last_occurred_at": "2026-09-16T01:51:56.383Z"
+        },
+        {
+          "kind": "playback_seek",
+          "facts": "1",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:51:56.382Z",
+          "last_occurred_at": "2026-09-16T01:51:56.382Z"
+        },
+        {
+          "kind": "playback_start",
+          "facts": "1",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:51:56.304Z",
+          "last_occurred_at": "2026-09-16T01:51:56.304Z"
+        },
+        {
+          "kind": "playback_viewing_mode",
+          "facts": "12",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:51:15.713Z",
+          "last_occurred_at": "2026-09-16T01:54:51.104Z"
+        }
+      ]
+    },
+    {
+      "name": "own_later_delivery_mode_evidence",
+      "milliseconds": 440,
+      "rows": [
+        {
+          "execution_mode": "semantic_contextual",
+          "reason_code": "profile_cold_start",
+          "ranker_version": "semantic-deterministic-ranker-v1",
+          "requests": "1",
+          "candidate_observations": "178",
+          "observations_with_mode_evidence": "0"
+        }
+      ]
+    }
+  ]
+}

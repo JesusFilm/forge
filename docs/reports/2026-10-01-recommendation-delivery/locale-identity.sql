@@ -1,0 +1,3 @@
+SELECT locale,language_slug,status,count(*) rows,count(DISTINCT video_id) videos FROM video_locale WHERE language_slug IN ('telugu','mandarin-china','chinese','kurdish-sorani','central-kurdish','swahili','romanian') AND deleted_at IS NULL GROUP BY 1,2,3 ORDER BY 2,1;
+SELECT slug,bcp47,iso3,name->>'en' english_name FROM language WHERE slug IN ('telugu','mandarin-china','kurdish-sorani','central-kurdish','swahili','romanian','gbii','kwanyama') ORDER BY slug;
+SELECT vl.locale,vl.language_slug,vl.status,count(*) rows FROM video_locale vl JOIN video v ON v.id=vl.video_id WHERE v.slug='resurrected-jesus-appears' AND vl.deleted_at IS NULL GROUP BY 1,2,3 ORDER BY 1,2;

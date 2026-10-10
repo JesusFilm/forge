@@ -1,0 +1,95 @@
+{
+  "valid": true,
+  "deploymentId": "d218fb1c-8876-4b83-b370-8752300cf066",
+  "start": "2026-09-16T02:31:00Z",
+  "end": "2026-09-16T02:36:00Z",
+  "calls": 3,
+  "totalRequests": 862,
+  "requestIdDigest": "108edc9b538efd01157d81cf840c710b0490d9cf15275c767e5aa8f2cf93add4",
+  "counts": [
+    {
+      "method": "GET",
+      "path": "/watch/api/recommendations/for-you/availability",
+      "httpStatus": 200,
+      "requests": 1
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations",
+      "httpStatus": 200,
+      "requests": 56
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations",
+      "httpStatus": 403,
+      "requests": 29
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/content-actions",
+      "httpStatus": 200,
+      "requests": 1
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/evidence",
+      "httpStatus": 200,
+      "requests": 248
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/evidence",
+      "httpStatus": 403,
+      "requests": 32
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "httpStatus": 200,
+      "requests": 308
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "httpStatus": 403,
+      "requests": 28
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/profile",
+      "httpStatus": 200,
+      "requests": 92
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/profile",
+      "httpStatus": 403,
+      "requests": 59
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/select",
+      "httpStatus": 200,
+      "requests": 8
+    }
+  ],
+  "windows": [
+    {
+      "start": "2026-09-16T02:31:00Z",
+      "end": "2026-09-16T02:33:30Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T02:30:55.948909Z",
+      "complete": true,
+      "included": 476
+    },
+    {
+      "start": "2026-09-16T02:33:30Z",
+      "end": "2026-09-16T02:36:00Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T02:33:03.383737Z",
+      "complete": true,
+      "included": 386
+    }
+  ]
+}

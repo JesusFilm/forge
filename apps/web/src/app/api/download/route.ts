@@ -1,11 +1,11 @@
-// Same-origin streaming proxy for video downloads.
+// Same-origin download resolver.
 //
 // Browsers ignore the `<a download>` attribute on cross-origin URLs and
 // instead navigate to them, opening the video in a new tab. Routing the
-// download through this same-origin endpoint with `Content-Disposition:
-// attachment` set lets the browser hand the file to its download manager
-// without buffering the response in JS memory (we stream the upstream
-// `ReadableStream` directly into the response).
+// click through this same-origin endpoint lets Web keep opaque download IDs,
+// auth gating, and event recording without exposing raw CDN URLs in rendered
+// markup. Successful attachment downloads redirect to the CDN so Web does not
+// carry media streams.
 
 import { promises as dns } from "node:dns"
 import { isIP } from "node:net"
@@ -14,75 +14,119 @@ import type { ServerRuntime } from "next"
 import { NextResponse } from "next/server"
 
 import { isAllowedDownloadOrigin } from "@/lib/download-allowlist"
+import { readWatchDownloadCapability } from "@/lib/watch-download-capability"
+import { resolveWatchDownloadTarget } from "@/lib/download-target"
+import { resolveWatchSubtitleTarget } from "@/lib/subtitle-target"
+import {
+  isWatchDownloadAccountGateEnabled,
+  watchDownloadAccountGateFlagContext,
+} from "@/lib/feature-flags"
+import { verifyAuthSession } from "@/lib/auth-session"
+import { recordWatchEventWithAccessToken } from "@/lib/watch-event-actions"
+import {
+  WATCH_DOWNLOAD_AUTH_REQUIRED,
+  WATCH_DOWNLOAD_ERROR_HEADER,
+} from "@/lib/watch-download-contract"
 
-// Use the Node runtime so streaming bodies are fully supported across
-// hosts. The Edge runtime would also work, but Node gives us long
-// timeouts for multi-GB feature-film downloads.
+// Use the Node runtime for DNS preflight before releasing a target URL.
 export const runtime: ServerRuntime = "nodejs"
 export const dynamic = "force-dynamic"
-// Cap the worst-case route lifetime. Most feature-film downloads finish
-// well under 10 minutes; longer than that and the connection has stalled.
-export const maxDuration = 600
+export const maxDuration = 60
 
-const ALLOWED_DOWNLOAD_HEADERS = [
-  "content-type",
-  "content-length",
-  // Required on 206 Partial Content per RFC 7233 §4.1 — without it the
-  // browser cannot validate the byte slice received and cannot resume an
-  // interrupted download.
-  "content-range",
-  "accept-ranges",
-  "etag",
-  "last-modified",
-] as const
+const DEFAULT_DOWNLOAD_FILENAME = "download.mp4"
+const MAX_DOWNLOAD_FILENAME_LENGTH = 200
+const INLINE_SUBTITLE_TIMEOUT_MS = 30_000
+const DOWNLOAD_CACHE_CONTROL = "private, no-cache, no-store, must-revalidate"
+const INLINE_SUBTITLE_ORIGIN = "https://api-media-core.jesusfilm.org"
 
-// Conditional/Range headers the browser sends to validate a resumable
-// download. Forwarded as a unit so the upstream can return 206 + matching
-// validators (or 412 if the asset has rotated).
-const CLIENT_CONDITIONAL_HEADERS = [
-  "range",
-  "if-range",
-  "if-match",
-  "if-none-match",
-  "if-modified-since",
-  "if-unmodified-since",
-] as const
-
-// Header values are 1*( field-vchar / SP / HTAB ); reject any control char
-// to prevent CRLF injection (a smuggled "\r\nSet-Cookie: ..." filename
-// could split the response). encodeURIComponent encodes CR/LF in the
-// `filename*=UTF-8''...` form, but the `filename="..."` form is plain.
 // eslint-disable-next-line no-control-regex
 const CONTROL_CHARS_RE = /[\x00-\x1f\x7f]/g
-// RTL-override + invisible-direction-control codepoints used in
-// extension-spoof filename attacks (e.g. `invoice‮gnp.exe` → renders
-// as `invoiceexe.png` in the download UI).
-const BIDI_CONTROL_RE = /[‪-‮⁦-⁩]/g
-// Path separators and shell-meta characters that have no business in a
-// `Content-Disposition: filename` value.
+const BIDI_CONTROL_RE = /[\u202a-\u202e\u2066-\u2069]/g
 const FILENAME_UNSAFE_RE = /[\\/;,"]/g
-
-const SAFE_EXTENSIONS = new Set([
-  "mp4",
-  "m4v",
-  "mov",
-  "webm",
-  "mkv",
-  "mp3",
-  "m4a",
-  "aac",
-  "wav",
-  "ogg",
-])
 
 function jsonError(message: string, status: number): NextResponse {
   return NextResponse.json({ error: message }, { status })
 }
 
+function isAnonymousInlineSubtitleRequest(
+  searchParams: URLSearchParams,
+): boolean {
+  if (searchParams.get("disposition") !== "inline") return false
+  return Boolean(
+    searchParams.get("subtitleId") && searchParams.get("variantId"),
+  )
+}
+
+function buildInlineSubtitleFetchUrl(target: string): string | null {
+  try {
+    const parsed = new URL(target)
+    if (parsed.origin !== INLINE_SUBTITLE_ORIGIN || parsed.search) return null
+
+    const encodedSegments: string[] = []
+    for (const rawSegment of parsed.pathname.split("/")) {
+      const segment = decodeURIComponent(rawSegment)
+      if (
+        segment === "." ||
+        segment === ".." ||
+        segment.includes("/") ||
+        segment.includes("\\")
+      ) {
+        return null
+      }
+      encodedSegments.push(encodeURIComponent(segment))
+    }
+    const encodedPath = encodedSegments.join("/")
+    if (!encodedPath.toLowerCase().endsWith(".vtt")) return null
+
+    return `${INLINE_SUBTITLE_ORIGIN}${encodedPath}`
+  } catch {
+    return null
+  }
+}
+
+async function resolveDownloadAccountGate(
+  request: Request,
+  allowAuthExemptInlineSubtitle: boolean,
+): Promise<
+  | {
+      ok: true
+      accountGateEnabled: boolean
+      session?: Awaited<ReturnType<typeof verifyAuthSession>> & {
+        authenticated: true
+      }
+    }
+  | { ok: false; response: Response }
+> {
+  const accountGateEnabled = await isWatchDownloadAccountGateEnabled(
+    watchDownloadAccountGateFlagContext,
+  )
+  if (!accountGateEnabled || allowAuthExemptInlineSubtitle) {
+    return { ok: true, accountGateEnabled }
+  }
+
+  const session = await verifyAuthSession(request.headers)
+  if (session.authenticated) {
+    return { ok: true, accountGateEnabled: true, session }
+  }
+
+  return {
+    ok: false,
+    response: NextResponse.json(
+      { error: "Authentication required" },
+      {
+        status: 401,
+        headers: {
+          [WATCH_DOWNLOAD_ERROR_HEADER]: WATCH_DOWNLOAD_AUTH_REQUIRED,
+        },
+      },
+    ),
+  }
+}
+
 // IPv4 ranges to reject for SSRF defense. RFC 1918 private space + loopback +
 // link-local (cloud-metadata 169.254.169.254 lives here). We resolve DNS
-// ourselves before the fetch and reject any result that lands in these
-// ranges — closes DNS-rebinding via subdomain-takeover even though the
+// ourselves before redirecting and reject any result that lands in these
+// ranges; closes DNS-rebinding via subdomain-takeover even though the
 // hostname is allowlisted.
 function isPrivateIPv4(ip: string): boolean {
   const m = ip.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
@@ -119,10 +163,9 @@ function isPrivateIPv6(ip: string): boolean {
  * link-local / multicast / reserved IP. Standard SSRF defense (OWASP cheat
  * sheet) — closes DNS-rebinding via subdomain takeover that the hostname
  * allowlist alone cannot see. A narrow TOCTOU window remains between this
- * resolution and undici's own resolution at fetch time; for our threat
- * model (allowlist of two operator-trusted domains) that gap is
- * acceptable. To close it atomically we'd need an undici dispatcher that
- * pins the resolved IP, which the platform doesn't expose natively.
+ * resolution and the browser/CDN request after redirect. For our threat model
+ * (allowlist of operator-trusted domains) that gap is acceptable and keeps Web
+ * out of the response body path.
  */
 async function resolvesToPublicIp(hostname: string): Promise<boolean> {
   // Skip resolution if the hostname IS already an IP literal — `URL`
@@ -140,52 +183,113 @@ async function resolvesToPublicIp(hostname: string): Promise<boolean> {
     if (r.status === "fulfilled") ips.push(...r.value)
   }
   if (ips.length === 0) {
-    // No DNS answer at all — let the fetch surface the failure rather
-    // than guessing here.
+    // No DNS answer at all: allow the browser/CDN request to surface the
+    // failure rather than guessing here.
     return true
   }
   return ips.every((ip) => !(isPrivateIPv4(ip) || isPrivateIPv6(ip)))
 }
 
-function sanitizeFilename(raw: string): string {
-  const stripped = raw
-    .replace(CONTROL_CHARS_RE, "")
-    .replace(BIDI_CONTROL_RE, "")
-    .replace(FILENAME_UNSAFE_RE, "")
-    .trim()
-  // After stripping, optionally trim trailing dots/spaces (Windows-hostile)
-  // and clamp length to prevent absurd filenames in error logs.
-  const clamped = stripped.replace(/[.\s]+$/, "").slice(0, 200)
-  if (clamped.length === 0) return "download"
-  // Enforce extension allowlist tied to media-only payloads.
-  const lastDot = clamped.lastIndexOf(".")
-  if (lastDot > 0 && lastDot < clamped.length - 1) {
-    const ext = clamped.slice(lastDot + 1).toLowerCase()
-    if (!SAFE_EXTENSIONS.has(ext)) {
-      return `${clamped.slice(0, lastDot)}.mp4`
+// Discriminated union — callers branch on `ok` (a literal tag) rather
+// than `in`-narrowing on a structural field name. A future caller that
+// misspells the variant field will produce a type error instead of
+// silently reading `undefined`.
+type ValidateTargetResult =
+  | { ok: true; safeUrl: string }
+  | { ok: false; errorResponse: NextResponse }
+
+type ResolveTargetResult =
+  | {
+      ok: true
+      target: string
+      event?: {
+        videoId: string
+        videoDubId: string
+        languageId: string | null
+      }
+    }
+  | { ok: false; errorResponse: NextResponse }
+
+async function resolveRequestedTarget(
+  searchParams: URLSearchParams,
+  options: {
+    allowLegacyTarget: boolean
+    requiredSubject?: string
+  } = { allowLegacyTarget: true },
+): Promise<ResolveTargetResult> {
+  const capabilityToken = searchParams.get("capability")
+  if (searchParams.has("capability")) {
+    const capability = await readWatchDownloadCapability(capabilityToken)
+    if (
+      !capability ||
+      capability.downloadId !== searchParams.get("downloadId") ||
+      capability.variantId !== searchParams.get("variantId") ||
+      capability.videoSlug !== searchParams.get("videoSlug") ||
+      (options.requiredSubject !== undefined &&
+        capability.subject !== options.requiredSubject)
+    ) {
+      return {
+        ok: false,
+        errorResponse: jsonError("Download unavailable", 404),
+      }
+    }
+    return {
+      ok: true,
+      target: capability.target,
+      event: capability.event,
     }
   }
-  return clamped
-}
 
-// Logs origin + path only; signed-URL JWTs and other secrets in query
-// strings stay out of the log retention window.
-function safeLogUrl(target: string): string {
-  try {
-    const u = new URL(target)
-    return `${u.origin}${u.pathname}`
-  } catch {
-    return "<unparseable>"
+  const legacyTarget = searchParams.get("url")
+  if (legacyTarget) {
+    if (options.allowLegacyTarget) return { ok: true, target: legacyTarget }
+    return {
+      ok: false,
+      errorResponse: jsonError("Download identifiers required", 400),
+    }
+  }
+
+  const resolved = await resolveWatchDownloadTarget({
+    downloadId: searchParams.get("downloadId"),
+    variantId: searchParams.get("variantId"),
+    videoSlug: searchParams.get("videoSlug"),
+  })
+
+  if (resolved.ok) {
+    return { ok: true, target: resolved.url, event: resolved.event }
+  }
+  if (resolved.reason === "missing-params") {
+    return {
+      ok: false,
+      errorResponse: jsonError(
+        "Missing required `url` or download identifiers",
+        400,
+      ),
+    }
+  }
+  if (resolved.reason === "unavailable") {
+    return {
+      ok: false,
+      errorResponse: jsonError("Download lookup unavailable", 503),
+    }
+  }
+  return {
+    ok: false,
+    errorResponse: jsonError("Download unavailable", 404),
   }
 }
 
-export async function GET(request: Request): Promise<Response> {
-  const { searchParams } = new URL(request.url)
-  const target = searchParams.get("url")
-  const rawFilename = searchParams.get("filename")
-
+// Validates the target against the allowlist + DNS pre-flight and returns a
+// sanitized URL string ready to redirect. Shared by GET and HEAD so both
+// methods enforce the same SSRF defenses.
+async function validateTarget(
+  target: string | null,
+): Promise<ValidateTargetResult> {
   if (!target) {
-    return jsonError("Missing required `url` parameter", 400)
+    return {
+      ok: false,
+      errorResponse: jsonError("Missing required `url` parameter", 400),
+    }
   }
   if (!isAllowedDownloadOrigin(target)) {
     console.error("[api/download] rejected non-allowlisted target", {
@@ -197,145 +301,360 @@ export async function GET(request: Request): Promise<Response> {
         }
       })(),
     })
-    return jsonError("Forbidden", 403)
+    return { ok: false, errorResponse: jsonError("Forbidden", 403) }
   }
-
-  const filename = sanitizeFilename(rawFilename ?? "download")
-
-  // Forward Range + the rest of the conditional-request headers so the
-  // browser's download manager can resume cleanly: Range tells the
-  // upstream which byte slice to send; If-Range / If-None-Match let the
-  // upstream return 412 if the asset has rotated mid-download (preventing
-  // a silently-corrupt stitched file).
-  const upstreamHeaders: HeadersInit = {}
-  for (const name of CLIENT_CONDITIONAL_HEADERS) {
-    const value = request.headers.get(name)
-    if (value) upstreamHeaders[name] = value
-  }
-
-  // Combine the client's abort signal with our own connect-phase timeout
-  // so a stalled CDN can't pin a Node worker forever. AbortSignal.any is
-  // available on Node 20.5+ and supported by Vercel/Railway runtimes.
-  const timeoutController = new AbortController()
-  const timeoutId = setTimeout(() => timeoutController.abort(), 30_000)
-  const signal =
-    typeof AbortSignal.any === "function"
-      ? AbortSignal.any([request.signal, timeoutController.signal])
-      : timeoutController.signal
-
-  // Re-parse and reconstruct from validated components only. Drops any
-  // userinfo (`https://user:pass@host/`) and fragment that survived
-  // `isAllowedDownloadOrigin`'s hostname-only check, so credentials
-  // can't leak into the upstream request.
   const parsed = new URL(target)
-  const safeUrl = parsed.origin + parsed.pathname + parsed.search
-
-  // SSRF defense-in-depth: even though the hostname is allowlisted,
-  // resolve DNS now and reject if any answer lands in private / loopback
-  // / link-local space. Closes DNS-rebinding via subdomain takeover —
-  // an attacker who claims a dangling `*.jesusfilm.org` CNAME could
-  // otherwise repoint it at 127.0.0.1 or 169.254.169.254 (cloud
-  // metadata). See OWASP SSRF Prevention Cheat Sheet.
   try {
     if (!(await resolvesToPublicIp(parsed.hostname))) {
       console.error("[api/download] rejected non-public IP resolution", {
         host: parsed.hostname,
       })
-      return jsonError("Forbidden", 403)
+      return { ok: false, errorResponse: jsonError("Forbidden", 403) }
     }
   } catch (err) {
     console.error("[api/download] DNS pre-flight failed", {
       host: parsed.hostname,
       err: err instanceof Error ? err.message : String(err),
     })
-    return jsonError("Forbidden", 403)
+    return { ok: false, errorResponse: jsonError("Forbidden", 403) }
   }
+  // Reconstruct from validated components only. Drops userinfo
+  // (`https://user:pass@host/`) and fragment that survived the hostname
+  // allowlist check.
+  return { ok: true, safeUrl: parsed.origin + parsed.pathname + parsed.search }
+}
+
+function redirectToTarget(safeUrl: string): NextResponse {
+  return new NextResponse(null, {
+    status: 302,
+    headers: {
+      Location: safeUrl,
+      "Cache-Control": DOWNLOAD_CACHE_CONTROL,
+      "X-Content-Type-Options": "nosniff",
+    },
+  })
+}
+
+function safeLogUrl(target: string): string {
+  try {
+    const url = new URL(target)
+    return url.origin + url.pathname
+  } catch {
+    return "<unparseable>"
+  }
+}
+
+function discardResponseBody(response: Response): void {
+  void response.body?.cancel().catch(() => undefined)
+}
+
+function streamResponseBody(
+  body: ReadableStream<Uint8Array>,
+  clearSubtitleTimeout: () => void,
+): ReadableStream<Uint8Array> {
+  const reader = body.getReader()
+
+  return new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read()
+        if (done) {
+          clearSubtitleTimeout()
+          controller.close()
+          return
+        }
+        controller.enqueue(value)
+      } catch (error) {
+        clearSubtitleTimeout()
+        controller.error(error)
+      }
+    },
+    async cancel(reason) {
+      clearSubtitleTimeout()
+      await reader.cancel(reason)
+    },
+  })
+}
+
+async function proxyInlineSubtitle(
+  request: Request,
+  safeUrl: string,
+): Promise<Response> {
+  const timeoutController = new AbortController()
+  const timeoutId = setTimeout(
+    () => timeoutController.abort(),
+    INLINE_SUBTITLE_TIMEOUT_MS,
+  )
+  const clearSubtitleTimeout = () => clearTimeout(timeoutId)
+  const signal =
+    typeof AbortSignal.any === "function"
+      ? AbortSignal.any([request.signal, timeoutController.signal])
+      : timeoutController.signal
 
   let upstream: Response
   try {
-    // SSRF mitigations layered for this call:
-    //   1. `isAllowedDownloadOrigin(target)` rejects non-HTTPS and
-    //      non-allowlisted hostnames before we get here.
-    //   2. `safeUrl` is reconstructed from `parsed.origin/pathname/search`
-    //      so userinfo and fragment are dropped.
-    //   3. `resolvesToPublicIp` rejects private/loopback/link-local DNS
-    //      results so subdomain-takeover-via-DNS-rebinding can't smuggle
-    //      an internal IP through an allowlisted hostname.
-    //   4. `redirect: "manual"` blocks any 3xx the upstream might use to
-    //      pivot to a non-allowlisted origin.
-    //   5. `headers: upstreamHeaders` only contains the client's
-    //      conditional-request headers (Range / If-Range / etc.) — no
-    //      cookies, no Authorization. Node's fetch doesn't forward them
-    //      cross-origin by default.
-    //   6. `signal` is bounded by a 30s connect timeout and the client's
-    //      abort signal, so a stalled CDN can't pin a Node worker.
-    // CodeQL's `js/request-forgery` doesn't model any of these as
-    // sanitizers (per RequestForgeryCustomizations.qll — only
-    // `UriEncodingSanitizer` and models-as-data barriers are recognized).
+    // The validated VTT must remain same-origin for native <track> loading.
+    // Following a redirect here could bypass the target allowlist, so surface
+    // upstream redirects as a controlled failure instead.
     // codeql[js/request-forgery]
     upstream = await fetch(safeUrl, {
-      headers: upstreamHeaders,
+      headers: { Accept: "text/vtt" },
+      method: request.method === "HEAD" ? "HEAD" : "GET",
       redirect: "manual",
       signal,
     })
-  } catch (err) {
+  } catch (error) {
+    clearSubtitleTimeout()
     if (request.signal.aborted) {
-      // Client disconnected first — no point logging or returning a body
-      // the client will never read.
       return new NextResponse(null, { status: 499 })
     }
-    console.error("[api/download] upstream fetch failed", {
-      target: safeLogUrl(target),
-      err: err instanceof Error ? err.message : String(err),
+    console.error("[api/download] inline subtitle fetch failed", {
+      target: safeLogUrl(safeUrl),
+      error: error instanceof Error ? error.message : String(error),
     })
-    return jsonError("Upstream fetch failed", 502)
-  } finally {
-    clearTimeout(timeoutId)
+    return jsonError("Upstream subtitle fetch failed", 502)
   }
 
-  // `redirect: "manual"` surfaces 3xx as `type === "opaqueredirect"` with
-  // status 0; treat any non-200/non-206 as upstream failure.
   if (
     upstream.type === "opaqueredirect" ||
     (upstream.status >= 300 && upstream.status < 400)
   ) {
-    console.error("[api/download] upstream attempted redirect", {
-      target: safeLogUrl(target),
+    clearSubtitleTimeout()
+    discardResponseBody(upstream)
+    console.error("[api/download] inline subtitle upstream redirected", {
+      target: safeLogUrl(safeUrl),
     })
-    return jsonError("Upstream redirected; refusing to follow", 502)
+    return jsonError("Upstream subtitle redirected; refusing to follow", 502)
   }
 
-  if (!upstream.ok && upstream.status !== 206) {
-    console.error("[api/download] upstream non-OK", {
-      target: safeLogUrl(target),
-      status: upstream.status,
-    })
+  if (!upstream.ok) {
+    clearSubtitleTimeout()
+    discardResponseBody(upstream)
     return jsonError(`Upstream ${upstream.status}`, upstream.status)
   }
 
-  if (!upstream.body) {
-    return jsonError("Upstream had no body", 502)
+  const contentType = upstream.headers.get("content-type")
+  const mediaType = contentType?.split(";", 1)[0]?.trim().toLowerCase()
+  if (mediaType !== "text/vtt") {
+    clearSubtitleTimeout()
+    discardResponseBody(upstream)
+    console.error("[api/download] rejected non-VTT inline subtitle response", {
+      target: safeLogUrl(safeUrl),
+      contentType,
+    })
+    return jsonError("Upstream subtitle response was not VTT", 502)
   }
 
-  const headers = new Headers()
-  for (const name of ALLOWED_DOWNLOAD_HEADERS) {
-    const value = upstream.headers.get(name)
-    if (value) headers.set(name, value)
-  }
-  // RFC 6266 — quoted filename for legacy clients + filename* with UTF-8
-  // for non-ASCII. Both forms get the sanitized name; `encodeURIComponent`
-  // encodes any character that isn't safe in a header token.
-  const encodedName = encodeURIComponent(filename)
-  headers.set(
-    "Content-Disposition",
-    `attachment; filename="${filename}"; filename*=UTF-8''${encodedName}`,
-  )
-  headers.set("Cache-Control", "private, no-cache, no-store, must-revalidate")
-  // Don't let the browser/CDN sniff the response and override our content type.
-  headers.set("X-Content-Type-Options", "nosniff")
-
-  return new NextResponse(upstream.body, {
-    status: upstream.status,
-    headers,
+  const headers = new Headers({
+    "Cache-Control": DOWNLOAD_CACHE_CONTROL,
+    "Content-Disposition": "inline",
+    "Content-Type": contentType ?? "text/vtt",
+    "X-Content-Type-Options": "nosniff",
   })
+
+  if (request.method === "HEAD") {
+    clearSubtitleTimeout()
+    discardResponseBody(upstream)
+    return new NextResponse(null, { status: upstream.status, headers })
+  }
+
+  if (!upstream.body) {
+    clearSubtitleTimeout()
+    return jsonError("Upstream subtitle had no body", 502)
+  }
+
+  return new NextResponse(
+    streamResponseBody(upstream.body, clearSubtitleTimeout),
+    {
+      status: upstream.status,
+      headers,
+    },
+  )
+}
+
+function sanitizeDownloadFilename(raw: string | null): string {
+  const stripped = (raw ?? DEFAULT_DOWNLOAD_FILENAME)
+    .replace(CONTROL_CHARS_RE, "")
+    .replace(BIDI_CONTROL_RE, "")
+    .replace(FILENAME_UNSAFE_RE, "")
+    .trim()
+    .replace(/[.\s]+$/, "")
+
+  const filename = stripped || DEFAULT_DOWNLOAD_FILENAME
+  const basename = filename.toLowerCase().endsWith(".mp4")
+    ? filename.slice(0, -4)
+    : filename
+  return `${basename.slice(0, MAX_DOWNLOAD_FILENAME_LENGTH - 4)}.mp4`
+}
+
+function fallbackFilenameFromTarget(safeUrl: string): string {
+  try {
+    const pathname = new URL(safeUrl).pathname
+    const basename = pathname.split("/").filter(Boolean).at(-1)
+    return sanitizeDownloadFilename(basename ?? null)
+  } catch {
+    return DEFAULT_DOWNLOAD_FILENAME
+  }
+}
+
+function attachmentRedirectUrl(input: {
+  disposition: "attachment" | "inline"
+  filename: string | null
+  safeUrl: string
+}): string {
+  if (input.disposition !== "attachment") return input.safeUrl
+
+  const target = new URL(input.safeUrl)
+  if (
+    target.hostname !== "stream.mux.com" ||
+    !target.pathname.toLowerCase().endsWith(".mp4")
+  ) {
+    return input.safeUrl
+  }
+
+  target.searchParams.set(
+    "download",
+    input.filename
+      ? sanitizeDownloadFilename(input.filename)
+      : fallbackFilenameFromTarget(input.safeUrl),
+  )
+  return target.toString()
+}
+
+export async function GET(request: Request): Promise<Response> {
+  const { searchParams } = new URL(request.url)
+  const anonymousInlineSubtitleRequest =
+    isAnonymousInlineSubtitleRequest(searchParams)
+  const disposition =
+    searchParams.get("disposition") === "inline" ? "inline" : "attachment"
+  const authGate = await resolveDownloadAccountGate(
+    request,
+    anonymousInlineSubtitleRequest,
+  )
+  if (!authGate.ok) return authGate.response
+
+  let target: string
+  let downloadEvent:
+    | { videoId: string; videoDubId: string; languageId: string | null }
+    | undefined
+
+  if (anonymousInlineSubtitleRequest) {
+    const subtitleTarget = await resolveWatchSubtitleTarget({
+      subtitleId: searchParams.get("subtitleId"),
+      variantId: searchParams.get("variantId"),
+    })
+    if (!subtitleTarget.ok) {
+      if (subtitleTarget.reason === "missing-params") {
+        return jsonError("Subtitle identifiers required", 400)
+      }
+      if (subtitleTarget.reason === "unavailable") {
+        return jsonError("Subtitle lookup unavailable", 503)
+      }
+      return jsonError("Subtitle unavailable", 404)
+    }
+    target = subtitleTarget.target
+  } else {
+    const downloadTarget = await resolveRequestedTarget(searchParams, {
+      allowLegacyTarget: authGate.accountGateEnabled,
+      requiredSubject: authGate.accountGateEnabled
+        ? (authGate.session?.userId ?? "")
+        : undefined,
+    })
+    if (!downloadTarget.ok) return downloadTarget.errorResponse
+    target = downloadTarget.target
+    downloadEvent = downloadTarget.event
+  }
+
+  const validation = await validateTarget(target)
+  if (!validation.ok) {
+    return validation.errorResponse
+  }
+  const { safeUrl } = validation
+
+  if (anonymousInlineSubtitleRequest) {
+    const inlineSubtitleUrl = buildInlineSubtitleFetchUrl(safeUrl)
+    if (!inlineSubtitleUrl) return jsonError("Forbidden", 403)
+    return proxyInlineSubtitle(request, inlineSubtitleUrl)
+  }
+
+  if (authGate.session?.accessToken && downloadEvent) {
+    const result = await recordWatchEventWithAccessToken(
+      authGate.session.accessToken,
+      {
+        eventType: "download",
+        videoId: downloadEvent.videoId,
+        videoDubId: downloadEvent.videoDubId,
+        languageId: downloadEvent.languageId,
+      },
+    )
+    if (!result.ok) {
+      console.warn("[api/download] failed to record download watch event", {
+        videoId: downloadEvent.videoId,
+        videoDubId: downloadEvent.videoDubId,
+        reason: result.reason,
+      })
+    }
+  }
+
+  return redirectToTarget(
+    attachmentRedirectUrl({
+      disposition,
+      filename: searchParams.get("filename"),
+      safeUrl,
+    }),
+  )
+}
+
+export async function HEAD(request: Request): Promise<Response> {
+  const { searchParams } = new URL(request.url)
+
+  if (isAnonymousInlineSubtitleRequest(searchParams)) {
+    const subtitleTarget = await resolveWatchSubtitleTarget({
+      subtitleId: searchParams.get("subtitleId"),
+      variantId: searchParams.get("variantId"),
+    })
+    if (!subtitleTarget.ok) {
+      if (subtitleTarget.reason === "missing-params") {
+        return jsonError("Subtitle identifiers required", 400)
+      }
+      if (subtitleTarget.reason === "unavailable") {
+        return jsonError("Subtitle lookup unavailable", 503)
+      }
+      return jsonError("Subtitle unavailable", 404)
+    }
+
+    const validation = await validateTarget(subtitleTarget.target)
+    if (!validation.ok) return validation.errorResponse
+    const inlineSubtitleUrl = buildInlineSubtitleFetchUrl(validation.safeUrl)
+    if (!inlineSubtitleUrl) return jsonError("Forbidden", 403)
+    return proxyInlineSubtitle(request, inlineSubtitleUrl)
+  }
+
+  const authGate = await resolveDownloadAccountGate(request, false)
+  if (!authGate.ok) return authGate.response
+
+  const resolvedTarget = await resolveRequestedTarget(searchParams, {
+    allowLegacyTarget: authGate.accountGateEnabled,
+    requiredSubject: authGate.accountGateEnabled
+      ? (authGate.session?.userId ?? "")
+      : undefined,
+  })
+  if (!resolvedTarget.ok) {
+    return resolvedTarget.errorResponse
+  }
+
+  const validation = await validateTarget(resolvedTarget.target)
+  if (!validation.ok) {
+    return validation.errorResponse
+  }
+  const { safeUrl } = validation
+
+  return redirectToTarget(
+    attachmentRedirectUrl({
+      disposition:
+        searchParams.get("disposition") === "inline" ? "inline" : "attachment",
+      filename: searchParams.get("filename"),
+      safeUrl,
+    }),
+  )
 }

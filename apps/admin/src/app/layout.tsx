@@ -1,6 +1,7 @@
 import type { ReactNode } from "react"
 import { IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google"
 import "./globals.css"
+import DatadogRum from "@/components/DatadogRum"
 import { AdminI18nProvider } from "@/i18n/client"
 import { getAdminI18n, getAdminMessages } from "@/i18n/server"
 
@@ -32,9 +33,13 @@ export default async function RootLayout({
   const { locale, messages } = await getAdminI18n()
 
   return (
-    <html lang={locale} className={`${plexSans.variable} ${plexMono.variable}`}>
+    <html
+      lang={locale}
+      className={`${plexSans.variable} ${plexMono.variable} dark`}
+    >
       <body>
         <AdminI18nProvider locale={locale} messages={messages}>
+          <DatadogRum />
           {children}
         </AdminI18nProvider>
       </body>

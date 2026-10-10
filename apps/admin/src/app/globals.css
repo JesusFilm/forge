@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@workflow/web-shared/styles.css";
 
 @theme {
   --color-surface-inset: #08070a;
@@ -62,6 +63,7 @@ body {
 
 a {
   color: inherit;
+  cursor: pointer;
   text-decoration: none;
 }
 
@@ -71,6 +73,16 @@ textarea,
 select {
   font-family: inherit;
   color: inherit;
+}
+
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]) {
+  cursor: pointer;
+}
+
+button:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
 }
 
 select {
@@ -144,6 +156,62 @@ optgroup {
   background: transparent;
 }
 
+button.status-pill:not(:disabled) {
+  transition:
+    border-color 120ms ease-out,
+    color 120ms ease-out,
+    background-color 120ms ease-out;
+}
+
+button.status-pill:not(:disabled):hover {
+  background-color: var(--color-surface-raised);
+}
+
+.route-feedback-enter {
+  animation: routeFeedbackEnter 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+.route-feedback-exit {
+  animation: routeFeedbackExit 360ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  will-change: transform, opacity;
+}
+
+.workflow-trace-shell {
+  --ds-background-100: #14110f;
+  --ds-background-200: var(--color-surface-inset);
+  --ds-gray-100: #1a1715;
+  --ds-gray-200: #231f1c;
+  --ds-gray-300: #2d2824;
+  --ds-gray-400: rgba(255, 255, 255, 0.1);
+  --ds-gray-500: rgba(255, 255, 255, 0.18);
+  --ds-gray-600: var(--color-text-disabled);
+  --ds-gray-700: var(--color-text-muted);
+  --ds-gray-800: #b9b2ad;
+  --ds-gray-900: #cbc5bf;
+  --ds-gray-1000: #e7e1da;
+  --ds-gray-alpha-100: var(--color-hairline-soft);
+  --ds-gray-alpha-200: var(--color-hairline);
+  --ds-gray-alpha-400: var(--color-hairline-strong);
+  --ds-gray-alpha-700: rgba(255, 255, 255, 0.38);
+  --ds-gray-alpha-1000: rgba(231, 225, 218, 0.92);
+  --ds-shadow-small: 0 1px 2px rgba(0, 0, 0, 0.36);
+  --ds-shadow-menu: 0 12px 32px rgba(0, 0, 0, 0.45);
+  overscroll-behavior: contain;
+  color-scheme: dark;
+}
+
+.workflow-trace-shell *,
+.workflow-trace-shell {
+  scrollbar-width: none;
+}
+
+.workflow-trace-shell *::-webkit-scrollbar,
+.workflow-trace-shell::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+
 @keyframes toast-progress {
   from {
     transform: scaleX(1);
@@ -165,5 +233,29 @@ optgroup {
   to {
     transform: translateY(0) scale(1);
     opacity: 1;
+  }
+}
+
+@keyframes routeFeedbackEnter {
+  from {
+    transform: translateX(calc(100% + 32px));
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes routeFeedbackExit {
+  from {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateY(calc(100% + 32px));
+    opacity: 0;
   }
 }

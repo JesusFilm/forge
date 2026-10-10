@@ -8,11 +8,15 @@ import {
   QuizButtonBlockSchema,
   SectionBlockSchema,
   SectionContentBlockSchema,
+  TextBlockSchema,
   ContainerContentBlockSchema,
+  LanguageGlobeBlockSchema,
   VideoBlockSchema,
   VideoCarouselBlockSchema,
   VideoHeroBlockSchema,
   VideoRecommendationsBlockSchema,
+  WatchHomeCategoryRailBlockSchema,
+  WatchHomeHeroBlockSchema,
   type Blocks,
 } from "@/domain/blocks"
 
@@ -20,7 +24,17 @@ import {
 // Happy-path: each top-level block type validates at minimum-required fields.
 // -----------------------------------------------------------------------------
 
-describe("BlockSchema — all 16 top-level types validate", () => {
+describe("BlockSchema — all top-level types validate", () => {
+  it("keeps user recommendations a single top-level block without authored items", () => {
+    const block = { t: "homepageRecommendations", title: "Recommended for You" }
+    expect(BlocksSchema.safeParse([block]).success).toBe(true)
+    expect(BlocksSchema.safeParse([block, block]).success).toBe(false)
+    expect(SectionContentBlockSchema.safeParse(block).success).toBe(false)
+    expect(ContainerContentBlockSchema.safeParse(block).success).toBe(false)
+    expect(
+      BlockSchema.safeParse({ ...block, videoIds: ["video-1"] }).success,
+    ).toBe(false)
+  })
   const samples: Array<{ name: string; value: unknown }> = [
     {
       name: "adventCountdown",
@@ -50,6 +64,10 @@ describe("BlockSchema — all 16 top-level types validate", () => {
     },
     { name: "infoBlocks", value: { t: "infoBlocks" } },
     {
+      name: "languageGlobe",
+      value: { t: "languageGlobe", title: "Choose a language" },
+    },
+    {
       name: "mediaCollection",
       value: { t: "mediaCollection", variant: "grid" },
     },
@@ -73,11 +91,23 @@ describe("BlockSchema — all 16 top-level types validate", () => {
       value: { t: "videoRecommendations" },
     },
     {
+      name: "homepageRecommendations",
+      value: { t: "homepageRecommendations" },
+    },
+    {
+      name: "watchHomeCategoryRail",
+      value: { t: "watchHomeCategoryRail", categoryIds: ["family", "jesus"] },
+    },
+    {
+      name: "watchHomeHero",
+      value: { t: "watchHomeHero" },
+    },
+    {
       name: "container",
       value: {
         t: "container",
         backgroundColor: "#151515",
-        backgroundImageUrl: "https://example.com/container.jpg",
+        backgroundImageAssetId: "asset-container",
         content: [{ t: "containerSlot", gridSpan: 6 }],
       },
     },
@@ -86,7 +116,7 @@ describe("BlockSchema — all 16 top-level types validate", () => {
       value: {
         t: "section",
         backgroundColor: "#26313f",
-        backgroundImageUrl: "https://example.com/section.jpg",
+        backgroundImageAssetId: "asset-section",
         content: [],
       },
     },
@@ -99,10 +129,274 @@ describe("BlockSchema — all 16 top-level types validate", () => {
     })
   }
 
-  it("covers all 17 top-level block types listed in the experience schema", () => {
+  it("covers all top-level block types listed in the experience schema", () => {
     // 16 legacy cms-sourced blocks + R5's forward-looking
-    // videoRecommendations variant (schema only; no cms precedent).
-    expect(samples.length).toBe(17)
+    // videoRecommendations variant (schema only; no cms precedent) +
+    // watchHomeHero's homepage-only placeholder.
+    expect(samples.length).toBe(BlockSchema.options.length)
+  })
+
+  it("accepts an ordered category subset and keeps the rail top-level only", () => {
+    const block = {
+      t: "watchHomeCategoryRail" as const,
+      sectionKey: "browse-categories",
+      categoryIds: ["family", "gospels", "jesus"],
+    }
+
+    expect(WatchHomeCategoryRailBlockSchema.parse(block).categoryIds).toEqual([
+      "family",
+      "gospels",
+      "jesus",
+    ])
+    expect(BlockSchema.safeParse(block).success).toBe(true)
+    expect(SectionContentBlockSchema.safeParse(block).success).toBe(false)
+    expect(ContainerContentBlockSchema.safeParse(block).success).toBe(false)
+  })
+
+  it.each([
+    { name: "empty", categoryIds: [] },
+    { name: "duplicate", categoryIds: ["family", "family"] },
+    { name: "unknown", categoryIds: ["family", "unknown-category"] },
+  ])("rejects $name category selections", ({ categoryIds }) => {
+    expect(
+      WatchHomeCategoryRailBlockSchema.safeParse({
+        t: "watchHomeCategoryRail",
+        categoryIds,
+      }).success,
+    ).toBe(false)
+  })
+
+  describe("watchHomeCategoryRail tiles", () => {
+    function rail(tiles: unknown) {
+      return {
+        t: "watchHomeCategoryRail",
+        categoryIds: ["family"],
+        tiles,
+      }
+    }
+
+    it("keeps tiles optional so pre-feature blocks still parse", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse({
+          t: "watchHomeCategoryRail",
+          categoryIds: ["family"],
+        }).success,
+      ).toBe(true)
+    })
+
+    it("accepts a predefined tile carrying nothing but its category reference", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([{ id: "category:family", categoryId: "family" }]),
+        ).success,
+      ).toBe(true)
+    })
+
+    it("accepts a predefined tile with every field overridden", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([
+            {
+              id: "category:family",
+              categoryId: "family",
+              title: "Families",
+              href: "/watch/family.html",
+              icon: "users",
+              style: "forest",
+            },
+          ]),
+        ).success,
+      ).toBe(true)
+    })
+
+    it("accepts a fully custom tile with a title and destination", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([{ id: "custom-1", title: "Give", href: "https://x.example" }]),
+        ).success,
+      ).toBe(true)
+    })
+
+    it.each([
+      { name: "no title", tile: { id: "custom-1", href: "/partners" } },
+      { name: "no destination", tile: { id: "custom-1", title: "Partner" } },
+    ])("rejects a custom tile with $name", ({ tile }) => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(rail([tile])).success,
+      ).toBe(false)
+    })
+
+    it("rejects an empty tiles array — absent means 'no tiles authored', not 'an empty rail'", () => {
+      expect(WatchHomeCategoryRailBlockSchema.safeParse(rail([])).success).toBe(
+        false,
+      )
+    })
+
+    it("rejects duplicate tile ids", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([
+            { id: "custom-1", title: "A", href: "/a" },
+            { id: "custom-1", title: "B", href: "/b" },
+          ]),
+        ).success,
+      ).toBe(false)
+    })
+
+    it("rejects two tiles pointing at the same predefined category", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([
+            { id: "a", categoryId: "family" },
+            { id: "b", categoryId: "family" },
+          ]),
+        ).success,
+      ).toBe(false)
+    })
+
+    it("rejects an unknown category reference", () => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([{ id: "a", categoryId: "not-a-category" }]),
+        ).success,
+      ).toBe(false)
+    })
+
+    it.each([
+      { name: "unknown icon", patch: { icon: "rocket" } },
+      { name: "unknown style", patch: { style: "chartreuse" } },
+      { name: "unknown field", patch: { target: "_blank" } },
+    ])("rejects a tile with an $name", ({ patch }) => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([{ id: "custom-1", title: "A", href: "/a", ...patch }]),
+        ).success,
+      ).toBe(false)
+    })
+
+    // The href lands in an anchor. Every rejected shape here is a
+    // script-execution sink, a cross-origin destination disguised as a path,
+    // or a protocol downgrade.
+    it.each([
+      "javascript:alert(1)",
+      "JavaScript:alert(1)",
+      "data:text/html,<script>alert(1)</script>",
+      "//evil.example/watch",
+      "http://example.org/insecure",
+      "vbscript:msgbox(1)",
+      "file:///etc/passwd",
+      "watch/jesus.html",
+      "",
+      "   ",
+    ])("rejects the destination %j", (href) => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([{ id: "custom-1", title: "A", href }]),
+        ).success,
+      ).toBe(false)
+    })
+
+    it.each([
+      "/",
+      "/watch/jesus.html",
+      "/watch/jesus.html/spanish.html?t=12",
+      "https://example.org/give",
+      "https://example.org",
+    ])("accepts the destination %j", (href) => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse(
+          rail([{ id: "custom-1", title: "A", href }]),
+        ).success,
+      ).toBe(true)
+    })
+  })
+
+  describe("watchHomeCategoryRail copy", () => {
+    const base = {
+      t: "watchHomeCategoryRail" as const,
+      categoryIds: ["family" as const],
+    }
+
+    it("accepts optional locale-owned copy and keeps old blocks valid", () => {
+      expect(WatchHomeCategoryRailBlockSchema.safeParse(base).success).toBe(
+        true,
+      )
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse({
+          ...base,
+          eyebrow: "Explore",
+          title: "Find something to watch",
+          description: "Stories for every season of life.",
+          ctaLabel: "See everything",
+        }).success,
+      ).toBe(true)
+    })
+
+    it.each([
+      ["eyebrow", 80],
+      ["title", 160],
+      ["description", 500],
+      ["ctaLabel", 80],
+    ] as const)("bounds %s at %i characters", (field, maxLength) => {
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse({
+          ...base,
+          [field]: "x".repeat(maxLength),
+        }).success,
+      ).toBe(true)
+      expect(
+        WatchHomeCategoryRailBlockSchema.safeParse({
+          ...base,
+          [field]: "x".repeat(maxLength + 1),
+        }).success,
+      ).toBe(false)
+    })
+  })
+
+  it("accepts authored language globe copy and keeps it top-level only", () => {
+    const block = {
+      t: "languageGlobe" as const,
+      sectionKey: "watch-language-globe",
+      eyebrow: "Watch languages",
+      title: "Choose a language",
+      description: "Explore languages by region or browse the full list.",
+      ctaEnabled: true,
+      ctaLabel: "Select language",
+      ctaLink: "/languages",
+    }
+
+    expect(LanguageGlobeBlockSchema.safeParse(block).success).toBe(true)
+    expect(SectionContentBlockSchema.safeParse(block).success).toBe(false)
+    expect(ContainerContentBlockSchema.safeParse(block).success).toBe(false)
+  })
+
+  it("accepts watchHomeHero as a placement-only placeholder", () => {
+    const result = WatchHomeHeroBlockSchema.safeParse({
+      t: "watchHomeHero",
+      sectionKey: "watch-home-hero",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts promotional Markdown text and rejects unknown variants", () => {
+    const promotional = TextBlockSchema.safeParse({
+      t: "text",
+      sectionKey: "mission-story",
+      heading: "A story worth discovering",
+      contentParagraphs: [
+        "### Why this story matters\n\nA substantial opening paragraph.",
+        "- One reason\n- Another reason",
+      ],
+      variant: "promotional",
+    })
+
+    expect(promotional.success).toBe(true)
+    expect(
+      TextBlockSchema.safeParse({
+        t: "text",
+        variant: "editorial-but-unknown",
+      }).success,
+    ).toBe(false)
   })
 
   it("accepts videoHero metadata source modes", () => {
@@ -128,7 +422,7 @@ describe("BlockSchema — all 16 top-level types validate", () => {
     expect(result.success).toBe(true)
   })
 
-  it("accepts videoCarousel route children and item overrides", () => {
+  it("accepts videoCarousel route children and item images", () => {
     const result = VideoCarouselBlockSchema.safeParse({
       t: "videoCarousel",
       itemsSource: "routeVideoChildren",
@@ -137,11 +431,74 @@ describe("BlockSchema — all 16 top-level types validate", () => {
           videoId: "video-1",
           titleOverride: "Custom title",
           subtitleOverride: "Custom subtitle",
-          imageOverrideUrl: "https://example.com/image.jpg",
+          imageAssetId: "asset-1",
         },
       ],
     })
     expect(result.success).toBe(true)
+  })
+
+  it("accepts explicit media collection thumbnail orientations without changing legacy blocks", () => {
+    const legacy = BlockSchema.safeParse({
+      t: "mediaCollection",
+      variant: "carousel",
+    })
+    const horizontal = BlockSchema.safeParse({
+      t: "mediaCollection",
+      variant: "carousel",
+      thumbnailOrientation: "horizontal",
+    })
+
+    expect(legacy.success).toBe(true)
+    if (legacy.success && legacy.data.t === "mediaCollection") {
+      expect(legacy.data.thumbnailOrientation).toBeUndefined()
+    }
+    expect(horizontal.success).toBe(true)
+    expect(
+      BlockSchema.safeParse({
+        t: "mediaCollection",
+        variant: "carousel",
+        thumbnailOrientation: "square",
+      }).success,
+    ).toBe(false)
+  })
+
+  it("accepts the dynamic database collection source for media collections", () => {
+    const result = BlockSchema.safeParse({
+      t: "mediaCollection",
+      variant: "carousel",
+      thumbnailOrientation: "horizontal",
+      itemsSource: "dynamicCollections",
+    })
+
+    expect(result.success).toBe(true)
+    if (result.success && result.data.t === "mediaCollection") {
+      expect(result.data.itemsSource).toBe("dynamicCollections")
+      expect(result.data.excludedVideoIds).toEqual([])
+      expect(result.data.items).toEqual([])
+    }
+  })
+
+  it("validates dynamic collection feed video exclusions", () => {
+    expect(
+      BlockSchema.safeParse({
+        t: "mediaCollection",
+        variant: "carousel",
+        itemsSource: "dynamicCollections",
+        excludedVideoIds: ["collection-1", "video-1"],
+      }).success,
+    ).toBe(true)
+    expect(
+      BlockSchema.safeParse({
+        t: "mediaCollection",
+        variant: "carousel",
+        itemsSource: "dynamicCollections",
+        excludedVideoIds: Array.from(
+          { length: 201 },
+          (_, index) => `video-${index}`,
+        ),
+      }).success,
+    ).toBe(false)
   })
 
   it("videoRecommendations accepts seed + limit overrides", () => {
@@ -208,11 +565,30 @@ describe("BlockSchema — all 16 top-level types validate", () => {
           reference: "John 3:16",
           text: "For God...",
           attribution: "Jesus",
-          backgroundImageUrl: "https://example.com/quote.jpg",
+          backgroundImageAssetId: "asset-quote",
           backgroundColor: "#151515",
           ctaEnabled: true,
           ctaLabel: "Read more",
           ctaLink: "/watch",
+        },
+      ],
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("accepts a reference-first quote: structured citation identity and NO verse text", () => {
+    // Video-anchored generation stores reference + structured ids; apps/web resolves
+    // the verse text at render. The canonical schema must accept a text-less quote.
+    const result = BibleQuotesCarouselBlockSchema.safeParse({
+      t: "bibleQuotesCarousel",
+      heading: "Featured Scripture",
+      quotes: [
+        {
+          reference: "John 20:19-29",
+          osisId: "John.20.19",
+          chapterStart: 20,
+          verseStart: 19,
+          verseEnd: 29,
         },
       ],
     })
@@ -243,6 +619,15 @@ describe("strictness", () => {
   it("rejects an unknown block type", () => {
     const result = BlockSchema.safeParse({ t: "marquee", value: "go" })
     expect(result.success).toBe(false)
+  })
+
+  it("accepts the watch home hero discriminator stored on watch home locales", () => {
+    const result = BlockSchema.safeParse({
+      t: "watchHomeHero",
+      sectionKey: "watch-home-hero",
+    })
+
+    expect(result.success).toBe(true)
   })
 })
 
@@ -347,7 +732,7 @@ describe("container slot responsive spans", () => {
       t: "containerSlot",
       gridSpan: 6,
       backgroundColor: "#26313f",
-      backgroundImageUrl: "https://example.com/slot.jpg",
+      backgroundImageAssetId: "asset-slot",
     })
 
     expect(result.success, JSON.stringify(result)).toBe(true)
@@ -455,7 +840,7 @@ describe("BlocksSchema", () => {
       {
         t: "section",
         backgroundColor: "#26313f",
-        backgroundImageUrl: "https://example.com/section.jpg",
+        backgroundImageAssetId: "asset-section",
         content: [
           { t: "card", title: "A", description: "B", variant: "default" },
         ],
@@ -466,11 +851,31 @@ describe("BlocksSchema", () => {
     expect(BlocksSchema.safeParse(input).success).toBe(true)
   })
 
-  it("accepts canonical media asset ids beside transitional URL fields", () => {
+  it("rejects more than one watch home category rail", () => {
+    const rail = {
+      t: "watchHomeCategoryRail" as const,
+      categoryIds: ["jesus"],
+    }
+
+    const result = BlocksSchema.safeParse([rail, { ...rail }])
+
+    expect(result.success).toBe(false)
+    if (!result.success) {
+      expect(result.error.issues).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            path: [1],
+            message: expect.stringMatching(/only one/i),
+          }),
+        ]),
+      )
+    }
+  })
+
+  it("accepts canonical media asset ids for media collection imagery", () => {
     const input = [
       {
         t: "section",
-        backgroundImageUrl: "https://example.com/section.jpg",
         backgroundImageAssetId: "asset-section",
         content: [
           {
@@ -484,12 +889,10 @@ describe("BlocksSchema", () => {
             t: "mediaCollection",
             variant: "grid",
             itemsSource: "manual",
-            imageUrl: "https://example.com/collection.jpg",
             imageAssetId: "asset-collection",
             items: [
               {
-                imageOverrideUrl: "https://example.com/item.jpg",
-                imageOverrideAssetId: "asset-item",
+                imageAssetId: "asset-item",
               },
             ],
           },
@@ -498,6 +901,26 @@ describe("BlocksSchema", () => {
     ]
 
     expect(BlocksSchema.safeParse(input).success).toBe(true)
+  })
+
+  it("rejects raw media collection image URLs", () => {
+    const input = [
+      {
+        t: "mediaCollection",
+        variant: "collection",
+        itemsSource: "manual",
+        showItemNumbers: false,
+        items: [
+          {
+            videoId: "video-1",
+            imageUrl: "/api/media-assets/asset-1/preview",
+            imageAssetId: "asset-1",
+          },
+        ],
+      },
+    ]
+
+    expect(BlocksSchema.safeParse(input).success).toBe(false)
   })
 
   it("rejects if any single block is invalid", () => {
@@ -518,6 +941,8 @@ describe("videoHero authoring modes", () => {
   it("accepts authored streaming URL", () => {
     const result = VideoHeroBlockSchema.safeParse({
       t: "videoHero",
+      videoId: "video-1",
+      languageId: "english-language",
       streamingUrl: "https://cdn.example/video.m3u8",
       heading: "Watch",
     })

@@ -4,6 +4,7 @@ node_modules/
 .expo/
 .swc/
 .next/
+**/.mastra/
 next-env.d.ts
 dist/
 build/
@@ -24,6 +25,16 @@ local.properties
 .tmp/
 **/.tmp/
 
+# Mastra CLI build output (regenerated on each `mastra dev` / `mastra build`)
+**/.mastra/
+
+# Playwright / vitest test output (per-run artifacts)
+test-results/
+**/test-results/
+
+# Local package tarballs (pnpm pack output)
+*.tgz
+
 # Xcode user state (do not commit)
 **/xcuserdata/
 **/*.xcuserstate
@@ -34,6 +45,8 @@ local.properties
 .claude/debug/
 .claude/telemetry/
 .claude/worktrees/
+.claude/secrets.local.md
+.claude/**/*.dev.md
 
 # Compound engineering working files
 .context/
@@ -42,3 +55,31 @@ todos/*.md
 output/
 forge.code-workspace
 .worktrees
+
+# ce-plan HTML explainers (present-html) — disposable, regenerated per plan
+*.explainer.html
+
+# superpowers subagent-driven-development scratch (briefs, reports, ledger)
+.superpowers/
+
+# Design mockups — untracked local reference copies; canonical source is claude.ai/design
+apps/mobile/design-mockups/
+
+# Impeccable live copy-edit hook scratch cache (per-session, per-machine)
+.impeccable/
+
+# local whisper.cpp install + models (devo snippet detector)
+.cache/
+
+# Daily-devotional generated artifacts: rendered videos, downloaded clips, audio,
+# manifests, caches, previews. All reproducible output — never committed.
+devo/
+
+/local/
+# Seeker eval working runs (paid artifacts land in apps/mastra/evals/results/ when promoted to baseline)
+apps/mastra/eval-runs/
+eval-runs/
+apps/rag/eval/attempts/
+# Explicit local-only Seeker prompt debugging. Repository evidence writers
+# reject traversal and never target this scratch tree.
+apps/mastra/.seeker-eval-debug/

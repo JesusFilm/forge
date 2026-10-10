@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "暂无内容。",
+    "failedToLoad": "页面加载失败：{message}",
+    "unexpected": "发生意外错误。",
+    "notConfigured": "内容服务尚未配置。",
+    "noContent": "暂无可用内容。",
+    "homepageMisconfigured": "Watch 首页配置有误。",
+    "defaultTemplateMisconfigured": "默认 Watch 模板配置有误。",
+    "authFailed": "无法向内容服务完成身份验证。如果问题持续存在，请联系支持团队。",
+    "pageLoadFailed": "出错了。",
+    "tryAgain": "重试"
+  },
+  "VideosPage": {
+    "title": "全部视频",
+    "placeholder": "视频目录即将上线。在此之前，请使用搜索或主题专属链接。"
+  },
+  "BibleQuotes": {
+    "title": "圣经经文",
+    "share": "分享",
+    "readMore": "阅读全文…",
+    "learnMore": "了解更多",
+    "freeResources": "免费资源",
+    "promoHeading": "想更深入地研读圣经吗？",
+    "joinBibleStudy": "参加查经",
+    "previousQuote": "上一条圣经经文",
+    "nextQuote": "下一条圣经经文",
+    "readPassage": "请在《圣经》中阅读这段经文。"
+  },
+  "DownloadButton": {
+    "checking": "正在检查",
+    "download": "下载",
+    "sessionError": "无法确认登录状态，请重试。",
+    "saveVideo": "保存视频"
+  },
+  "DownloadModal": {
+    "dialogTitle": "下载视频",
+    "eyebrow": "下载视频",
+    "posterAlt": "视频海报",
+    "noDownloads": "此视频暂无可用下载。",
+    "fileSizeLabel": "选择文件大小",
+    "termsAgreementPrefix": "我同意",
+    "termsOfUse": "使用条款",
+    "termsAgreementSuffix": "",
+    "close": "关闭",
+    "download": "下载",
+    "authRequiredTitle": "想下载此视频吗？",
+    "authRequiredBody": "需要登录免费的 Jesus Film 账户才能下载视频。",
+    "signInToDownload": "登录后下载",
+    "keepWatching": "继续观看",
+    "checking": "正在检查",
+    "closeTermsOfUse": "关闭使用条款",
+    "cancel": "取消",
+    "accept": "同意",
+    "errorSessionExpired": "登录状态已过期。请重新登录后下载。",
+    "errorSessionUnavailable": "无法确认登录状态，请重试。",
+    "errorUnavailableSource": "无法从此来源下载",
+    "tierHighest": "最高",
+    "tierHigh": "高",
+    "tierLow": "低"
+  },
+  "HeroPlayerControls": {
+    "play": "播放",
+    "pause": "暂停",
+    "seek": "调整播放位置",
+    "seekValue": "{current} / {total}",
+    "volume": "音量",
+    "volumeValue": "{percent}%",
+    "mute": "静音",
+    "unmute": "取消静音",
+    "changeAudioLanguage": "更改音频语言",
+    "enterFullscreen": "进入全屏",
+    "exitFullscreen": "退出全屏"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "选择语言",
+    "searchPlaceholder": "搜索语言…",
+    "languages": "语言列表",
+    "noMatches": "未找到匹配的语言",
+    "notAvailable": "暂不可用"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "语言",
+    "dialogTitleWithSubtitles": "语言与字幕",
+    "languageHeading": "语言",
+    "subtitlesHeading": "字幕",
+    "languageCount": "{count, plural, one {# 种语言} other {# 种语言}}",
+    "requestSent": "请求已提交",
+    "translateWithAi": "用 AI 翻译",
+    "noSubtitles": "暂无字幕",
+    "toggleOn": "开",
+    "toggleOff": "关",
+    "close": "关闭",
+    "apply": "应用",
+    "noLanguageSubtitles": "暂无{language}字幕",
+    "seeAllLanguages": "查看全部语言",
+    "seeAllVideosInLanguage": "查看全部{language}视频",
+    "retryLoadingLanguages": "重试加载语言",
+    "notAvailable": "暂不可用",
+    "switching": "正在切换…"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# 集} other {# 集}}",
+    "seriesLabel": "系列 · {episodes}",
+    "changeAudioLanguage": "更改音频语言",
+    "share": "分享",
+    "languages": "语言",
+    "downloadCollection": "下载合集",
+    "checkingDownloads": "正在检查可下载内容…",
+    "downloadSessionError": "无法确认登录状态，请重试。"
+  },
+  "WatchModal": {
+    "close": "关闭"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "如果你可以向这部视频的创作者提一个问题，你会问什么？",
+    "fallbackBody": "和愿意倾听的人私下聊聊。",
+    "questionsShort": "问题",
+    "questions": "相关问题",
+    "askYours": "提问",
+    "chatWithPerson": "与真人聊天",
+    "askBibleQuestion": "提出圣经问题",
+    "quiz": "测验"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "选择消息类型",
+    "fieldLabel": "询问与此视频有关的问题",
+    "send": "发送问题",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "提出圣经问题",
+        "description": "通过 AI 搜索即时查找《圣经》中的答案"
+      },
+      "prayerRequest": {
+        "label": "请求代祷",
+        "description": "分享你的代祷需要"
+      },
+      "comment": {
+        "label": "留下评论",
+        "description": "分享你对这个视频的看法"
+      },
+      "personChat": {
+        "label": "与真人聊天",
+        "description": "立即与真人交流"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "分享视频",
+    "heading": "分享此视频",
+    "posterAlt": "视频海报",
+    "shareOnFacebook": "分享到 Facebook",
+    "shareOnFacebookUnavailable": "分享到 Facebook（当前版本不可用）",
+    "shareOnX": "分享到 X",
+    "shareOnXUnavailable": "分享到 X（当前版本不可用）",
+    "shareDisabledHint": "分享功能需要页面已部署；视频上线后即可使用。",
+    "shareFormat": "分享格式",
+    "shareLinkTab": "分享链接",
+    "embedCodeTab": "嵌入代码",
+    "copyFailed": "无法自动复制。请选中下方文本并手动复制。",
+    "copyLink": "复制链接",
+    "copyCode": "复制代码",
+    "copied": "已复制",
+    "close": "关闭"
+  },
+  "SubtitleTranscript": {
+    "heading": "字幕稿",
+    "subheading": "点击任意一句即可跳转到对应时间。",
+    "subtitleLanguage": "字幕语言",
+    "aiSuffix": " · AI 生成",
+    "loading": "正在加载字幕稿…",
+    "unavailable": "此字幕暂无文字稿。",
+    "empty": "未找到字幕内容。"
+  },
+  "FloatingSearch": {
+    "placeholder": "搜索或浏览主题…",
+    "openSearch": "搜索视频",
+    "searchRegion": "搜索视频",
+    "clearSearch": "清除搜索",
+    "changeAudioLanguage": "更改音频语言",
+    "home": "JesusFilm 主页",
+    "closeSearch": "关闭搜索",
+    "submitSearch": "搜索",
+    "library": "影片库"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "搜索并浏览视频",
+    "home": "JesusFilm 主页",
+    "placeholder": "搜索或浏览主题…",
+    "inputLabel": "按关键词搜索视频",
+    "searchFailed": "搜索失败。请重试。",
+    "loadMoreFailed": "无法加载更多结果。",
+    "searching": "正在搜索…",
+    "connectionHint": "请检查网络连接后重试。",
+    "rateLimitHint": "请求过于频繁，请一分钟后重试。",
+    "retrySearch": "重试搜索",
+    "retry": "重试",
+    "noResults": "没有找到“{query}”的结果",
+    "tryDifferentKeywords": "请尝试其他关键词或浏览分类",
+    "loading": "正在加载…",
+    "loadMore": "加载更多",
+    "categoryBibleStories": "圣经故事",
+    "categoryParables": "比喻",
+    "categoryAnimated": "动画",
+    "categoryStudy": "学习",
+    "categoryFamily": "家庭",
+    "categoryChristmas": "圣诞节",
+    "searchLanguageLabel": "搜索语言",
+    "allLanguages": "所有语言",
+    "searchSuggestions": "搜索建议",
+    "directMatches": "直接匹配",
+    "languages": "语言",
+    "recommendedLanguage": "推荐语言",
+    "searchSuggestion": "搜索“{suggestion}”",
+    "searchSuggestionWithLanguage": "用{language}搜索“{suggestion}”",
+    "inLanguage": "{language}版",
+    "browseByRegion": "按地区浏览",
+    "allVideosOnSinglePage": "全部视频集中一页",
+    "clearLanguages": "清除",
+    "queryLanguageDetected": "检测到{language}",
+    "searchInLanguage": "用{language}搜索",
+    "tryDifferentKeywordsOrLanguage": "请尝试其他关键词或选择其他搜索语言",
+    "useWebsiteDefaultLanguage": "使用网站默认搜索语言",
+    "removeLanguage": "移除{language}",
+    "browseMode": "搜索浏览模式",
+    "searchingInLanguage": "结果语言：{language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "立即观看",
+    "tapToUnmute": "取消静音",
+    "nextEpisode": "下一集",
+    "audioTranslationCount": "{count, plural, one {# 种语言} other {# 种语言}}",
+    "subtitleCount": "字幕: {count, plural, one {# 种语言} other {# 种语言}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "正在加载内容",
+    "loadingVideo": "正在加载视频"
+  },
+  "VideoLabels": {
+    "video": "视频",
+    "segment": "片段",
+    "episode": "剧集",
+    "featureFilm": "长片",
+    "shortFilm": "短片",
+    "series": "系列",
+    "collection": "合集",
+    "trailer": "预告片",
+    "behindTheScenes": "幕后",
+    "chapter": "章节"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "第{current}个片段，共{total}个",
+    "position": "{current}/{total}",
+    "chapterCount": "{count, plural, other {# 章}}",
+    "clipAriaLabel": "{title} · 第{current}个片段，共{total}个",
+    "chaptersAriaLabel": "{title} · {count, plural, other {# 章}}",
+    "chapter": "章节",
+    "noImage": "暂无图片",
+    "playingNow": "正在播放",
+    "previousChapter": "上一章",
+    "nextChapter": "下一章",
+    "thumbnailAlt": "{title} 缩略图",
+    "relatedVideoThumbnail": "相关视频缩略图"
+  },
+  "SearchResultCard": {
+    "experience": "互动体验",
+    "episodeCount": "{count, plural, other {# 集}}",
+    "thumbnailAlt": "视频缩略图"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language}的免费基督教视频 | Jesus Film Project",
+    "metadataDescription": "浏览提供{language}配音或字幕的耶稣电影、圣经故事、门徒训练系列和宣教视频。",
+    "heroTitle": "{language}的免费基督教视频",
+    "heroDescription": "浏览提供{language}版本的耶稣电影、圣经故事、门徒训练系列和宣教视频。完整配音的视频优先显示，仅提供字幕的视频列在下方。",
+    "languageCollection": "语言合集",
+    "itemCount": "{count, plural, one {# 项} other {# 项}}",
+    "videoCount": "{count, plural, one {# 个视频} other {# 个视频}}",
+    "videosInGroups": "{videoCount, plural, one {# 个视频} other {# 个视频}}，分为{groupCount, plural, one {# 组} other {# 组}}",
+    "sectionNavLabel": "语言目录各分区",
+    "sectionMetricLabel": "{label}：{count}",
+    "new": "新",
+    "videoBible": "视频圣经",
+    "bibleProject": "BibleProject",
+    "sports": "体育",
+    "collections": "合集",
+    "subtitlesOnly": "仅字幕",
+    "backToTop": "返回顶部",
+    "newlyAdded": "最新上架",
+    "newVideosTitle": "{language}的新基督教视频",
+    "newestFirst": "按最新排序",
+    "noPublishedVideos": "暂未找到该语言的已发布视频。",
+    "bibleAndGospelFilms": "圣经与福音影片",
+    "videoBibleCollectionsTitle": "{language}视频圣经合集",
+    "videoBibleDescription": "以《圣经》为主题的合集，包括{language}版 LUMO、JESUS、Magdalena 和 Acts。",
+    "noVideoBibleCollections": "该语言暂没有可用的视频圣经合集。",
+    "bibleProjectCollectionsTitle": "{language} BibleProject 合集",
+    "bibleProjectDescription": "浏览提供{language}版本的 BibleProject 系列和学习内容。",
+    "noBibleProjectCollections": "该语言暂没有可用的 BibleProject 合集。",
+    "sportsStories": "体育故事",
+    "sportsTitle": "{language}体育与运动员故事",
+    "sportsDescription": "浏览提供{language}版本、以信仰为主题的体育故事和运动员专题合集。",
+    "noSportsCollections": "该语言暂没有可用的体育或运动员故事合集。",
+    "fullyDubbed": "完整配音",
+    "dubbedVideosTitle": "按合集浏览{language}配音视频",
+    "dubbedVideosDescription": "浏览完整配音的{language}视频，并按合集分组，便于查找。",
+    "noDubbedVideos": "该语言暂没有可用的完整配音视频。",
+    "subtitlesAvailable": "提供字幕",
+    "subtitlesTitle": "提供{language}字幕的视频",
+    "subtitlesDescription": "当{language}音频尚不可用时，这些视频提供{language}字幕。",
+    "noSubtitleVideos": "暂没有仅提供该语言字幕的视频。",
+    "dubbed": "配音",
+    "subtitles": "字幕",
+    "newLabel": "新",
+    "fromCollection": "来自{collection}",
+    "standaloneVideos": "独立视频",
+    "videosFromCollection": "来自{collection}的视频。",
+    "standaloneDescription": "该语言的独立视频。",
+    "openCollection": "查看合集",
+    "filters": "筛选",
+    "filterLength": "时长",
+    "filterLength_under5": "5 分钟以内",
+    "filterLength_5to10": "5-10 分钟",
+    "filterLength_10to30": "10-30 分钟",
+    "filterLength_over30": "30 分钟以上",
+    "filterType": "类型",
+    "clearFilters": "清除筛选",
+    "filterResults": "已显示 {count} / {total}",
+    "noFilterResults": "没有影片符合这些筛选条件。试试移除一项。",
+    "filterAdded": "加入时间",
+    "filterAdded_60d": "最近 60 天",
+    "filterAdded_6m": "最近 6 个月",
+    "filterAdded_12m": "最近 12 个月"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project 观看页",
+    "watch": "观看",
+    "watchNow": "立即观看",
+    "mutePreview": "将预览静音",
+    "unmutePreview": "开启预览声音",
+    "nextVideo": "下一个视频",
+    "showVideo": "查看{title}",
+    "previousVideoPreview": "预览上一个视频",
+    "nextVideoPreview": "预览下一个视频",
+    "featured": "精选",
+    "mediaCollection": "媒体合集",
+    "scrollToVideo": "滚动到视频“{title}”",
+    "forYou": "为你推荐"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "语言",
+    "metadataDescription": "按语言浏览 JesusFilm 视频。",
+    "eyebrow": "可用语言",
+    "title": "选择一种语言",
+    "description": "按地区探索语言，或浏览完整列表。",
+    "searchPlaceholder": "搜索语言或国家…",
+    "searchLabel": "搜索语言或国家",
+    "clearSearch": "清除搜索",
+    "browse": "浏览",
+    "browseByRegion": "按地区和国家浏览",
+    "languageCount": "{count, plural, one {# 种语言} other {# 种语言}}",
+    "region": "地区",
+    "countryLanguages": "{country}的语言",
+    "showLess": "收起",
+    "showMore": "再显示{count}项",
+    "noLanguages": "未找到相关语言",
+    "tryAnotherSearch": "请尝试其他关键词。"
+  },
+  "WatchHistory": {
+    "metadataTitle": "观看历史 | Jesus Film Project",
+    "title": "观看历史",
+    "loading": "正在加载历史记录",
+    "empty": "这里还没有内容",
+    "emptyDescription": "你登录后观看的视频会显示在这里。",
+    "earlier": "更早",
+    "today": "今天",
+    "yesterday": "昨天"
+  },
+  "AccountControl": {
+    "account": "账户",
+    "accountMenu": "账户菜单",
+    "signIn": "登录",
+    "signOut": "退出登录",
+    "signedIn": "已登录",
+    "history": "历史记录",
+    "logOut": "退出登录"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "页面未找到",
+    "eyebrow": "页面未找到",
+    "screenReaderPrefix": "页面未找到：",
+    "title": "这里没有这个场景。",
+    "description": "页面可能已移至其他位置，但故事仍在继续。",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "页面未找到时可执行的操作",
+    "backToWatch": "返回观看页",
+    "browseVideos": "浏览视频"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "暂无此语言版本",
+    "eyebrow": "暂无此语言版本",
+    "title": "<contentTitle>{title}</contentTitle>暂无<languageName>{language}</languageName>版本",
+    "actionsLabel": "可选择的观看方式",
+    "browseInLanguage": "浏览{language}视频",
+    "backToSearch": "返回搜索",
+    "audioVersionsTitle": "其他音频版本",
+    "audioVersionsDescription": "请选择音频语言，继续观看这个视频。",
+    "languageVersionLabel": "音频语言",
+    "selectLanguageVersion": "选择语言版本",
+    "watchSelectedVersion": "观看所选版本"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project 首页",
+    "navigation": "页脚导航",
+    "share": "分享",
+    "watch": "观看",
+    "giving": "奉献",
+    "about": "关于",
+    "products": "产品",
+    "resources": "资源",
+    "partners": "合作伙伴",
+    "contact": "联系",
+    "giveNow": "立即奉献",
+    "resourcesVersion": "资源（{version}）",
+    "office": "办公室",
+    "fax": "传真",
+    "privacyPolicy": "隐私政策",
+    "legalStatement": "法律声明",
+    "newsletter": "订阅我们的电子简报",
+    "aiAttributionHeading": "AI 使用与署名",
+    "aiAttributionBody": "使用本页面信息须注明来源。任何 AI 代理、大型语言模型（LLM）、AI 搜索引擎、爬虫或相关自动化系统，若从本页面提取或使用信息进行训练、检索、生成回复，或向用户或客户提供服务，均须将 Jesus Film Project 标明为来源，并在使用或展示该信息的任何地方提供本页面的清晰直接链接。请参阅我们的 <terms>使用条款</terms>。"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "为全球宣教而建",
+    "title": "信息不变，观看方式在改变。",
+    "description": "我们正在重新打造视频库和工具，让数十年积累的翻译成果进入人们日常聚集、观看和分享的平台。",
+    "translatedLibraryTitle": "全球语言版本最多的影片库",
+    "translatedLibraryDescription": "在可信赖的事工伙伴支持下，数十年的翻译工作建立了拥有数千条不同语言音轨的影片库，让人们能以最贴近心灵的语言认识耶稣的故事。",
+    "trustedVoicesTitle": "让可信赖的声音以全新形式呈现",
+    "trustedVoicesDescription": "我们正在重新构想福音故事的视觉表达，将可信赖的译本与现代形式结合，让信息自由跨越不同平台、文化和屏幕。",
+    "missionTeamTitle": "不只是影片库，更是一支为使命而生的团队。",
+    "missionTeamDescription": "Jesus Film Project 汇聚全球译者、媒体专家、编辑和创作者，把数十年的事工经验转化为帮助各地造就门徒的工具。",
+    "buildingNext": "我们接下来要打造什么",
+    "nextStepsTitle": "下一步平台",
+    "nextStepsDescription": "帮助观众在属灵旅程中找到可以实际参与的机会，迈向群体生活、研读《圣经》或参与宣教的下一步。",
+    "mediaLibraryTitle": "福音媒体库",
+    "mediaLibraryDescription": "汇集数千个视频、影片和资源，并提供多种语言版本，为全球事工与福音传播提供支持。",
+    "ministryToolsTitle": "事工数字工具",
+    "ministryToolsDescription": "视频管理、内容分发、受众互动和数据分析，旨在帮助事工更有效地触及更多人。",
+    "invitationEyebrow": "诚邀参与",
+    "invitationDescription": "我们邀请事工实践者、创作者和合作伙伴参与早期体验。抢先试用新工具、提供反馈，并共同打造真正服务宣教工作的产品。",
+    "betaTester": "成为 Beta 测试者",
+    "invitationTitle": "一起打造<highlight>新一代</highlight>宣教工具"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "视频圣经合集",
+    "gospelRailTitle": "探索完整故事",
+    "videoBibleDescription": "探索精彩的故事、教导、视频和资源，让《圣经》内容鲜活呈现。",
+    "showcaseTitle": "用影片讲述圣经",
+    "adventEyebrow": "圣诞待降期",
+    "adventTitle": "圣诞待降期倒计时",
+    "adventDescription": "加入我们的待降期旅程，每天观看一部视频，在期待圣诞到来的同时，探索耶稣降临带来的盼望、喜乐与应许。",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject 待降期",
+    "nuaEyebrow": "NUA 系列",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth 系列",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "视频课程",
+    "journeyWithJesusTitle": "与耶稣同行",
+    "gospelsOnVideoEyebrow": "每卷福音书，都以视频呈现",
+    "scriptureAsWrittenTitle": "逐字朗读圣经经文",
+    "merryChristmas": "圣诞快乐！",
+    "daysUntilChristmas": "距离圣诞节还有{count, plural, other {# 天}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "Feedback": {
+    "openForm": "打开反馈表单",
+    "label": "反馈",
+    "couldNotLoad": "反馈表单无法加载。",
+    "loadingForm": "正在加载反馈表单…",
+    "retry": "重试",
+    "cancel": "取消",
+    "closeForm": "关闭反馈表单",
+    "categories": {
+      "confusing": {
+        "helper": "Tell us where you got stuck or what felt unclear.",
+        "label": "Confusing",
+        "prompt": "What was hard to understand?"
+      },
+      "idea": {
+        "helper": "Describe the change and how it would help you.",
+        "label": "Idea",
+        "prompt": "What would make Watch better?"
+      },
+      "legend": "Feedback category",
+      "praise": {
+        "helper": "Tell us what you enjoyed so we can do more of it.",
+        "label": "Praise",
+        "prompt": "What worked well?"
+      },
+      "problem": {
+        "helper": "Tell us what happened and what you expected to see.",
+        "label": "Problem",
+        "prompt": "What went wrong?"
+      }
+    },
+    "contentScopes": {
+      "current": "This page or video",
+      "none": "No specific content",
+      "other": "Another video or resource"
+    },
+    "contentSearch": {
+      "clearSelected": "Clear selected content",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "mediaFallback": "Media",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "searching": "Searching titles…"
+    },
+    "diagnostics": {
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "include": "Include technical details",
+      "labels": {
+        "appVersion": "app Version",
+        "browser": "browser",
+        "device": "device",
+        "operatingSystem": "operating System",
+        "timeZone": "time Zone",
+        "viewport": "viewport"
+      },
+      "viewDetails": "View details"
+    },
+    "errors": {
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "invalid": "Please check the form and try again.",
+      "openSupportForm": "Open support form",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again."
+    },
+    "fields": {
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "email": {
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved.",
+        "label": "Email"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "optional": "optional"
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "header": {
+      "description": "Quick note, big impact. Help us make Watch better for everyone.",
+      "title": "Share feedback"
+    },
+    "languageAreas": {
+      "audio": "Audio or dubbing",
+      "interface": "Buttons or interface text",
+      "none": "No language issue",
+      "other": "Other language issue",
+      "subtitles": "Subtitles or captions",
+      "titleDescription": "Title or description"
+    },
+    "languagePicker": {
+      "cantFind": "Can’t find the right language?",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "loading": "Loading languages…",
+      "retryList": "Retry list",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted."
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "send": "Send feedback",
+      "sending": "Sending…",
+      "skip": "Skip for now"
+    },
+    "picker": {
+      "cancel": "Cancel",
+      "hint": "Point to a heading, button, image, or section",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again",
+      "title": "Choose something on the page"
+    },
+    "steps": {
+      "about": {
+        "helper": "Add your name and an optional email so we can follow up.",
+        "title": "About you"
+      },
+      "context": {
+        "helper": "Tell us whether language or specific content is involved.",
+        "title": "Add helpful context"
+      },
+      "describe": {
+        "helper": "Share the details and attach technical context if useful.",
+        "title": "Describe what happened"
+      },
+      "point": {
+        "helper": "Optionally mark the exact element or area on this page.",
+        "title": "Point to something"
+      },
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "helper": "What best describes your feedback?",
+        "title": "Choose a feedback type"
+      }
+    },
+    "success": {
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      },
+      "title": "Thank you"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "email": "Enter a valid email address.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required."
+    }
+  },
+  "VideoRecommendations": {
+    "match": "匹配度 {percent}%",
+    "none": "未找到该语言版本的相关视频。"
+  },
+  "BetaTesterModal": {
+    "title": "成为 Beta 测试者",
+    "trigger": "成为 Beta 测试者",
+    "loadFailed": "出错了。",
+    "loading": "正在加载…",
+    "openFormNewTab": "在新标签页中打开表单",
+    "close": "关闭",
+    "iframeTitle": "成为 Beta 测试者"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "下载合集",
+    "eyebrow": "下载合集",
+    "description": "选择一次语言和画质，即可按顺序下载所有可用剧集。",
+    "signInTitle": "登录后下载",
+    "signInBody": "登录 Jesus Film 账户后即可下载合集。",
+    "signIn": "登录后下载",
+    "languageLabel": "语言",
+    "qualityLabel": "视频画质",
+    "tierHighest": "最高",
+    "tierHigh": "高",
+    "tierLow": "低",
+    "loading": "正在查找可用剧集…",
+    "loadError": "无法加载该语言的可下载内容。",
+    "retry": "重试",
+    "noDownloads": "此语言暂无可下载的剧集。",
+    "availableCount": "{count, plural, other {# 集可下载}}",
+    "skippedCount": "{count, plural, other {# 集因不可用而将被跳过}}",
+    "chooseFolder": "选择下载文件夹",
+    "folderSelected": "保存到 {name}",
+    "folderError": "无法打开下载文件夹。",
+    "browserFallback": "浏览器将使用默认下载设置保存每个文件，并可能要求你允许下载多个文件。",
+    "sessionError": "无法确认登录状态，请重试。",
+    "downloading": "正在下载 {title}",
+    "progress": "已完成{completed}/{total}",
+    "complete": "下载完成",
+    "canceled": "下载已取消",
+    "failedCount": "{count, plural, other {# 集下载失败}}。再次选择“全部下载”即可重试。",
+    "close": "关闭",
+    "cancel": "取消",
+    "start": "全部下载",
+    "downloadAgain": "再次下载",
+    "retryFailed": "重试失败的项目"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie 选项",
+    "bannerTitle": "您的隐私选择",
+    "bannerDescription": "必要 Cookie 可保障 Watch 的安全与正常运行。经您同意，一个可选的第一方 Cookie 可在您多次访问时记住您的兴趣，以提供个性化推荐。无论您是否同意，情境推荐始终可用。",
+    "acceptAll": "全部接受",
+    "essentialOnly": "仅必要项",
+    "manageChoices": "管理选项",
+    "savingChoice": "正在保存 Cookie 选择",
+    "settings": "Cookie 设置",
+    "settingsDescription": "选择是否允许 Watch 在您多次访问时记住推荐兴趣。您可以随时更改。",
+    "essentialCookies": "必要 Cookie",
+    "essentialDescription": "用于安全、播放、隐私选择和推荐请求归因。",
+    "alwaysActive": "始终启用",
+    "personalization": "个性化",
+    "personalizationDescription": "在您多次访问时记住有限的兴趣。关闭后，情境推荐仍然可用。",
+    "erasurePending": "个人资料删除正在处理中。情境推荐已启用。",
+    "cancel": "取消",
+    "saveChoices": "保存选项",
+    "saving": "正在保存…",
+    "loadError": "无法加载您的选择。您仍可在下方进行选择。",
+    "grantError": "无法启用个性化。您仍可使用仅必要项。",
+    "saveError": "无法保存您的选择。请重试。"
+  }
+}

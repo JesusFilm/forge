@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "അനുഭവ ഉള്ളടക്കം ലഭ്യമല്ല.",
+    "failedToLoad": "അനുഭവം ലോഡ് ചെയ്യാൻ പരാജയപ്പെട്ടു: {message}",
+    "unexpected": "അപ്രതീക്ഷിതമായ ഒരു പിശക് സംഭവിച്ചു.",
+    "notConfigured": "ഉള്ളടക്ക സേവനം ക്രമീകരിച്ചിട്ടില്ല.",
+    "noContent": "ഉള്ളടക്കം ലഭ്യമല്ല.",
+    "homepageMisconfigured": "വാച്ച് ഹോംപേജ് തെറ്റായി ക്രമീകരിച്ചിരിക്കുന്നു.",
+    "defaultTemplateMisconfigured": "ഡിഫോൾട്ട് വാച്ച് ടെംപ്ലേറ്റ് തെറ്റായി ക്രമീകരിച്ചിരിക്കുന്നു.",
+    "authFailed": "ഉള്ളടക്ക സേവനവുമായി പ്രാമാണീകരിക്കാൻ കഴിഞ്ഞില്ല. ഇത് തുടരുകയാണെങ്കിൽ, ദയവായി പിന്തുണയെ ബന്ധപ്പെടുക.",
+    "pageLoadFailed": "എന്തോ പിശക് സംഭവിച്ചു.",
+    "tryAgain": "വീണ്ടും ശ്രമിക്കുക"
+  },
+  "VideosPage": {
+    "title": "എല്ലാ വീഡിയോകളും",
+    "placeholder": "കാറ്റലോഗ് ബ്രൗസിംഗ് ഉടൻ വരുന്നു. അതുവരെ തിരച്ചിലോ വിഷയാനുസൃത URL ഓ ഉപയോഗിക്കുക."
+  },
+  "BibleQuotes": {
+    "title": "ബൈബിൾ ഉദ്ധരണികൾ",
+    "share": "പങ്കിടുക",
+    "readMore": "കൂടുതൽ വായിക്കുക...",
+    "learnMore": "കൂടുതൽ അറിയുക",
+    "freeResources": "സൗജന്യ വിഭവങ്ങൾ",
+    "promoHeading": "ബൈബിളിനെ കൂടുതൽ ആഴത്തിൽ മനസ്സിലാക്കാൻ ആഗ്രഹിക്കുന്നുണ്ടോ?",
+    "joinBibleStudy": "ഞങ്ങളുടെ ബൈബിൾ പഠനത്തിൽ ചേരുക",
+    "previousQuote": "മുൻ ബൈബിൾ ഉദ്ധരണം",
+    "nextQuote": "അടുത്ത ബൈബിൾ ഉദ്ധരണം",
+    "readPassage": "ഈ വേദഭാഗം നിങ്ങളുടെ ബൈബിളിൽ വായിക്കുക."
+  },
+  "DownloadButton": {
+    "checking": "പരിശോധിക്കുന്നു",
+    "download": "ഡൗൺലോഡ്",
+    "sessionError": "നിങ്ങളുടെ സെഷൻ പരിശോധിക്കാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.",
+    "saveVideo": "വീഡിയോ സേവ് ചെയ്യുക"
+  },
+  "DownloadModal": {
+    "dialogTitle": "വീഡിയോ ഡൗൺലോഡ് ചെയ്യുക",
+    "eyebrow": "വീഡിയോ ഡൗൺലോഡ്",
+    "posterAlt": "വീഡിയോ പോസ്റ്റർ",
+    "noDownloads": "ഈ വീഡിയോയ്ക്ക് ഡൗൺലോഡുകൾ ലഭ്യമല്ല.",
+    "fileSizeLabel": "ഒരു ഫയൽ വലുപ്പം തിരഞ്ഞെടുക്കുക",
+    "termsAgreementPrefix": "ഞാൻ ഇതിനെ അംഗീകരിക്കുന്നു: ",
+    "termsOfUse": "ഉപയോഗ നിബന്ധനകൾ",
+    "termsAgreementSuffix": "",
+    "close": "അടയ്ക്കുക",
+    "download": "ഡൗൺലോഡ്",
+    "authRequiredTitle": "ഈ വീഡിയോ ഡൗൺലോഡ് ചെയ്യണോ?",
+    "authRequiredBody": "വീഡിയോകൾ ഡൗൺലോഡ് ചെയ്യാൻ ഒരു സൗജന്യ Jesus Film അക്കൗണ്ട് ആവശ്യമാണ്.",
+    "signInToDownload": "ഡൗൺലോഡ് ചെയ്യാൻ സൈൻ ഇൻ ചെയ്യുക",
+    "keepWatching": "കാണുന്നത് തുടരുക",
+    "checking": "പരിശോധിക്കുന്നു",
+    "closeTermsOfUse": "ഉപയോഗ നിബന്ധനകൾ അടയ്ക്കുക",
+    "cancel": "റദ്ദാക്കുക",
+    "accept": "അംഗീകരിക്കുക",
+    "errorSessionExpired": "നിങ്ങളുടെ സെഷൻ കാലഹരണപ്പെട്ടു. ഡൗൺലോഡ് ചെയ്യാൻ വീണ്ടും സൈൻ ഇൻ ചെയ്യുക.",
+    "errorSessionUnavailable": "നിങ്ങളുടെ സെഷൻ പരിശോധിക്കാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.",
+    "errorUnavailableSource": "ഈ ഉറവിടത്തിൽ നിന്ന് ഡൗൺലോഡ് ലഭ്യമല്ല",
+    "tierHighest": "ഏറ്റവും ഉയർന്നത്",
+    "tierHigh": "ഉയർന്നത്",
+    "tierLow": "താഴ്ന്നത്"
+  },
+  "HeroPlayerControls": {
+    "play": "പ്ലേ",
+    "pause": "താൽക്കാലികമായി നിർത്തുക",
+    "seek": "തിരയുക",
+    "seekValue": "{current} / {total}",
+    "volume": "വോള്യം",
+    "volumeValue": "{percent} ശതമാനം",
+    "mute": "ശബ്ദം ഓഫ് ചെയ്യുക",
+    "unmute": "ശബ്ദം ഓൺ ചെയ്യുക",
+    "changeAudioLanguage": "ഓഡിയോ ഭാഷ മാറ്റുക",
+    "enterFullscreen": "ഫുൾസ്ക്രീനിലേക്കു പോകുക",
+    "exitFullscreen": "ഫുൾസ്ക്രീനിൽ നിന്ന് പുറത്തുകടക്കുക"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "ഭാഷ തിരഞ്ഞെടുക്കുക",
+    "searchPlaceholder": "ഭാഷകൾ തിരയുക…",
+    "languages": "ഭാഷകൾ",
+    "noMatches": "പൊരുത്തങ്ങൾ ഇല്ല",
+    "notAvailable": "ലഭ്യമല്ല"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "ഭാഷ",
+    "dialogTitleWithSubtitles": "ഭാഷയും സബ്ടൈറ്റിലുകളും",
+    "languageHeading": "ഭാഷ",
+    "subtitlesHeading": "സബ്ടൈറ്റിലുകൾ",
+    "languageCount": "{count, plural, one {# ഭാഷ} other {# ഭാഷകൾ}}",
+    "requestSent": "അഭ്യർത്ഥന അയച്ചു",
+    "translateWithAi": "AI ഉപയോഗിച്ച് വിവർത്തനം ചെയ്യുക",
+    "noSubtitles": "സബ്ടൈറ്റിലുകൾ ഇല്ല",
+    "toggleOn": "ഓൺ",
+    "toggleOff": "ഓഫ്",
+    "close": "അടയ്ക്കുക",
+    "apply": "പ്രയോഗിക്കുക",
+    "noLanguageSubtitles": "{language} സബ്ടൈറ്റിലുകൾ ഇല്ല",
+    "seeAllLanguages": "എല്ലാ ഭാഷകളും",
+    "seeAllVideosInLanguage": "എല്ലാ വീഡിയോകളും: {language}",
+    "retryLoadingLanguages": "ഭാഷകൾ വീണ്ടും ലോഡ് ചെയ്യുക",
+    "notAvailable": "ലഭ്യമല്ല",
+    "switching": "മാറുന്നു..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 എപ്പിസോഡ്} other {# എപ്പിസോഡുകൾ}}",
+    "seriesLabel": "സീരീസ് · {episodes}",
+    "changeAudioLanguage": "ഓഡിയോ ഭാഷ മാറ്റുക",
+    "share": "പങ്കിടുക",
+    "languages": "ഭാഷകൾ",
+    "downloadCollection": "ശേഖരം ഡൗൺലോഡ് ചെയ്യുക",
+    "checkingDownloads": "ഡൗൺലോഡുകൾ പരിശോധിക്കുന്നു…",
+    "downloadSessionError": "നിങ്ങളുടെ സെഷൻ പരിശോധിക്കാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക."
+  },
+  "WatchModal": {
+    "close": "അടയ്ക്കുക"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "ഈ വീഡിയോയുടെ സ്രഷ്ടാവിനോട് ഒരു ചോദ്യം ചോദിക്കാനായിരുന്നെങ്കിൽ, അത് എന്തായിരിക്കും?",
+    "fallbackBody": "ശ്രദ്ധിച്ച് കേൾക്കാൻ തയ്യാറുള്ള ഒരാളുമായി സ്വകാര്യമായി സംസാരിക്കുക.",
+    "questionsShort": "ചോദ്യങ്ങൾ",
+    "questions": "ബന്ധപ്പെട്ട ചോദ്യങ്ങൾ",
+    "askYours": "നിങ്ങളുടേത് ചോദിക്കുക",
+    "chatWithPerson": "ഒരു വ്യക്തിയുമായി ചാറ്റ് ചെയ്യുക",
+    "askBibleQuestion": "ഒരു ബൈബിൾ ചോദ്യം ചോദിക്കുക",
+    "quiz": "ക്വിസ്"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "സന്ദേശ തരം",
+    "fieldLabel": "ഈ വീഡിയോയെക്കുറിച്ച് ഒരു ചോദ്യം ചോദിക്കുക",
+    "send": "ചോദ്യം അയയ്‌ക്കുക",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "ഒരു ബൈബിൾ ചോദ്യം ചോദിക്കുക",
+        "description": "AI തിരയൽ ഉപയോഗിച്ച് ബൈബിളിൽ നിന്നുള്ള തൽക്ഷണ ഉത്തരങ്ങൾ"
+      },
+      "prayerRequest": {
+        "label": "പ്രാർത്ഥന അഭ്യർത്ഥിക്കുക",
+        "description": "പ്രാർത്ഥനയ്ക്കായി നിങ്ങൾ ആഗ്രഹിക്കുന്നതു പങ്കിടുക"
+      },
+      "comment": {
+        "label": "ഒരു അഭിപ്രായം രേഖപ്പെടുത്തുക",
+        "description": "ഈ വീഡിയോയെക്കുറിച്ചുള്ള നിങ്ങളുടെ ചിന്തകൾ അയയ്‌ക്കുക"
+      },
+      "personChat": {
+        "label": "ഒരു വ്യക്തിയുമായി ചാറ്റ് ചെയ്യുക",
+        "description": "ഇപ്പോൾ തന്നെ ആരുമായെങ്കിലും സംസാരിക്കുക"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "വീഡിയോ പങ്കിടുക",
+    "heading": "ഈ വീഡിയോ പങ്കിടുക",
+    "posterAlt": "വീഡിയോ പോസ്റ്റർ",
+    "shareOnFacebook": "Facebook-ൽ പങ്കിടുക",
+    "shareOnFacebookUnavailable": "Facebook-ൽ പങ്കിടുക (ഈ ബിൽഡിൽ ലഭ്യമല്ല)",
+    "shareOnX": "X-ൽ പങ്കിടുക",
+    "shareOnXUnavailable": "X-ൽ പങ്കിടുക (ഈ ബിൽഡിൽ ലഭ്യമല്ല)",
+    "shareDisabledHint": "പങ്കിടാൻ ഡിപ്ലോയ് ചെയ്ത പേജ് ആവശ്യമാണ് — ഈ വീഡിയോ പ്രൊഡക്ഷനിൽ ലഭ്യമായപ്പോൾ ഇത് പ്രവർത്തിക്കും.",
+    "shareFormat": "പങ്കിടൽ ഫോർമാറ്റ്",
+    "shareLinkTab": "ലിങ്ക് പങ്കിടുക",
+    "embedCodeTab": "എംബെഡ് കോഡ്",
+    "copyFailed": "സ്വയമേവ പകർത്താൻ കഴിഞ്ഞില്ല — താഴെയുള്ള വാചകം തിരഞ്ഞെടുത്ത് കൈമാറി പകർത്തുക.",
+    "copyLink": "ലിങ്ക് പകർത്തുക",
+    "copyCode": "കോഡ് പകർത്തുക",
+    "copied": "പകർത്തി",
+    "close": "അടയ്ക്കുക"
+  },
+  "SubtitleTranscript": {
+    "heading": "ട്രാൻസ്‌ക്രിപ്റ്റ്",
+    "subheading": "ഏത് വരിയിലും ടാപ്പ് ചെയ്‌താൽ ആ സമയത്തേക്ക് പോകാം.",
+    "subtitleLanguage": "സബ്ടൈറ്റിൽ ഭാഷ",
+    "aiSuffix": " · AI",
+    "loading": "ട്രാൻസ്‌ക്രിപ്റ്റ് ലോഡ് ചെയ്യുന്നു…",
+    "unavailable": "ഈ സബ്ടൈറ്റിൽ ട്രാക്കിന് ട്രാൻസ്‌ക്രിപ്റ്റ് ലഭ്യമല്ല.",
+    "empty": "ട്രാൻസ്‌ക്രിപ്റ്റ് വരികൾ ഒന്നും കണ്ടെത്തിയില്ല."
+  },
+  "FloatingSearch": {
+    "placeholder": "വിഷയങ്ങൾ തിരയുകയോ ബ്രൗസ് ചെയ്യുകയോ ചെയ്യുക…",
+    "openSearch": "വീഡിയോകൾ തിരയുക",
+    "searchRegion": "വീഡിയോകൾ തിരയുക",
+    "clearSearch": "തിരച്ചിൽ മായ്ക്കുക",
+    "changeAudioLanguage": "ഓഡിയോ ഭാഷ മാറ്റുക",
+    "home": "JesusFilm ഹോം",
+    "closeSearch": "തിരച്ചിൽ അടയ്ക്കുക",
+    "submitSearch": "തിരയുക",
+    "library": "ലൈബ്രറി"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "വീഡിയോകൾ തിരയുകയും ബ്രൗസ് ചെയ്യുകയും ചെയ്യുക",
+    "home": "JesusFilm ഹോം",
+    "placeholder": "വിഷയങ്ങൾ തിരയുകയോ ബ്രൗസ് ചെയ്യുകയോ ചെയ്യുക…",
+    "inputLabel": "പ്രധാനപദം ഉപയോഗിച്ച് വീഡിയോകൾ തിരയുക",
+    "searchFailed": "തിരച്ചിൽ പരാജയപ്പെട്ടു. ദയവായി വീണ്ടും ശ്രമിക്കുക.",
+    "loadMoreFailed": "കൂടുതൽ ഫലങ്ങൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
+    "searching": "തിരയുന്നു...",
+    "connectionHint": "ദയവായി നിങ്ങളുടെ കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക.",
+    "rateLimitHint": "വളരെയധികം അഭ്യർത്ഥനകൾ. ഒരു മിനിറ്റിന് ശേഷം വീണ്ടും ശ്രമിക്കുക.",
+    "retrySearch": "തിരച്ചിൽ വീണ്ടും ശ്രമിക്കുക",
+    "retry": "വീണ്ടും ശ്രമിക്കുക",
+    "noResults": "\"{query}\" ന് ഫലങ്ങളൊന്നുമില്ല",
+    "tryDifferentKeywords": "മറ്റു കീവേഡുകൾ ശ്രമിക്കുക അല്ലെങ്കിൽ വിഭാഗങ്ങൾ ബ്രൗസ് ചെയ്യുക",
+    "loading": "ലോഡ് ചെയ്യുന്നു...",
+    "loadMore": "കൂടുതൽ ലോഡ് ചെയ്യുക",
+    "categoryBibleStories": "ബൈബിൾ കഥകൾ",
+    "categoryParables": "ഉപമകൾ",
+    "categoryAnimated": "ആനിമേറ്റഡ്",
+    "categoryStudy": "പഠനം",
+    "categoryFamily": "കുടുംബം",
+    "categoryChristmas": "ക്രിസ്മസ്",
+    "searchLanguageLabel": "തിരച്ചിൽ ഭാഷ",
+    "allLanguages": "എല്ലാ ഭാഷകളും",
+    "searchSuggestions": "തിരച്ചിൽ നിർദ്ദേശങ്ങൾ",
+    "directMatches": "നേരിട്ടുള്ള പൊരുത്തങ്ങൾ",
+    "languages": "ഭാഷകൾ",
+    "recommendedLanguage": "ശുപാർശ ചെയ്യുന്ന ഭാഷ",
+    "searchSuggestion": "“{suggestion}” തിരയുക",
+    "searchSuggestionWithLanguage": "{language} ൽ “{suggestion}” തിരയുക",
+    "inLanguage": "{language} ൽ",
+    "browseByRegion": "പ്രദേശം പ്രകാരം ബ്രൗസ് ചെയ്യുക",
+    "allVideosOnSinglePage": "എല്ലാ വീഡിയോകളും ഒരു പേജിൽ",
+    "clearLanguages": "മായ്ക്കുക",
+    "queryLanguageDetected": "{language} കണ്ടെത്തി",
+    "searchInLanguage": "{language} ൽ തിരയുക",
+    "tryDifferentKeywordsOrLanguage": "മറ്റു കീവേഡുകൾ ശ്രമിക്കുക അല്ലെങ്കിൽ മറ്റൊരു തിരച്ചിൽ ഭാഷ തിരഞ്ഞെടുക്കുക",
+    "useWebsiteDefaultLanguage": "വെബ്‌സൈറ്റിന്റെ ഡിഫോൾട്ട് തിരച്ചിൽ ഭാഷ ഉപയോഗിക്കുക",
+    "removeLanguage": "{language} നീക്കം ചെയ്യുക",
+    "browseMode": "തിരച്ചിൽ ബ്രൗസ് മോഡ്",
+    "searchingInLanguage": "ഫലങ്ങൾ {language} ൽ"
+  },
+  "HeroPlayer": {
+    "playWithSound": "ഇപ്പോൾ കാണുക",
+    "tapToUnmute": "ശബ്ദം ഓൺ ചെയ്യാൻ ടാപ്പ് ചെയ്യുക",
+    "nextEpisode": "അടുത്ത എപ്പിസോഡ്",
+    "audioTranslationCount": "{count, plural, one {# ഭാഷ} other {# ഭാഷകൾ}}",
+    "subtitleCount": "സബ്ടൈറ്റിലുകൾ: {count, plural, one {# ഭാഷ} other {# ഭാഷകൾ}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "ഉള്ളടക്കം ലോഡ് ചെയ്യുന്നു",
+    "loadingVideo": "വീഡിയോ ലോഡ് ചെയ്യുന്നു"
+  },
+  "VideoLabels": {
+    "video": "വീഡിയോ",
+    "segment": "ഭാഗം",
+    "episode": "എപ്പിസോഡ്",
+    "featureFilm": "പൂർണ്ണദൈർഘ്യമുള്ള ചിത്രം",
+    "shortFilm": "ചെറുചിത്രം",
+    "series": "സീരീസ്",
+    "collection": "ശേഖരം",
+    "trailer": "ട്രെയിലർ",
+    "behindTheScenes": "നിർമ്മാണപിന്നിൽ",
+    "chapter": "അധ്യായം"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "ക്ലിപ്പ് {current} / {total}",
+    "position": "{current} / {total}",
+    "chapterCount": "{count, plural, one {# അധ്യായം} other {# അധ്യായങ്ങൾ}}",
+    "clipAriaLabel": "{title} · ക്ലിപ്പ് {current} / {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# അധ്യായം} other {# അധ്യായങ്ങൾ}}",
+    "chapter": "അധ്യായം",
+    "noImage": "ചിത്രമില്ല",
+    "playingNow": "ഇപ്പോൾ പ്ലേ ചെയ്യുന്നു",
+    "previousChapter": "മുൻ അധ്യായം",
+    "nextChapter": "അടുത്ത അധ്യായം",
+    "thumbnailAlt": "{title} തമ്പ്‌നെയിൽ",
+    "relatedVideoThumbnail": "ബന്ധപ്പെട്ട വീഡിയോ തമ്പ്‌നെയിൽ"
+  },
+  "SearchResultCard": {
+    "experience": "അനുഭവം",
+    "episodeCount": "{count, plural, one {# എപ്പിസോഡ്} other {# എപ്പിസോഡുകൾ}}",
+    "thumbnailAlt": "വീഡിയോ തമ്പ്‌നെയിൽ"
+  },
+  "Feedback": {
+    "openForm": "ഫീഡ്‌ബാക്ക് ഫോം തുറക്കുക",
+    "label": "ഫീഡ്‌ബാക്ക്",
+    "couldNotLoad": "ഫീഡ്‌ബാക്ക് ഫോം ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
+    "loadingForm": "ഫീഡ്‌ബാക്ക് ഫോം ലോഡ് ചെയ്യുന്നു…",
+    "retry": "വീണ്ടും ശ്രമിക്കുക",
+    "cancel": "റദ്ദാക്കുക",
+    "closeForm": "ഫീഡ്‌ബാക്ക് ഫോം അടയ്ക്കുക",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language}-ൽ സൗജന്യ ക്രിസ്തീയ വീഡിയോകൾ | Jesus Film Project",
+    "metadataDescription": "{language}-ൽ ഡബ് ചെയ്ത ഓഡിയോയോ സബ്ടൈറ്റിലുകളോ ഉള്ള യേശു ചിത്രങ്ങൾ, ബൈബിൾ കഥകൾ, ശിഷ്യത്വ സീരീസുകൾ, ഔട്രീച്ച് വീഡിയോകൾ എന്നിവ കണ്ടെത്തുക.",
+    "heroTitle": "{language}-ൽ സൗജന്യ ക്രിസ്തീയ വീഡിയോകൾ",
+    "heroDescription": "{language}-ൽ ലഭ്യമായ യേശു ചിത്രങ്ങൾ, ബൈബിൾ കഥകൾ, ശിഷ്യത്വ സീരീസുകൾ, ഔട്രീച്ച് വീഡിയോകൾ എന്നിവ കണ്ടെത്തുക. പൂർണ്ണമായി ഡബ് ചെയ്ത വീഡിയോകൾ ആദ്യം പ്രദർശിപ്പിക്കും; തുടർന്ന് സബ്ടൈറ്റിൽ മാത്രമുള്ള ഓപ്ഷനുകൾ.",
+    "languageCollection": "ഭാഷാ ശേഖരം",
+    "itemCount": "{count, plural, one {# ഇനം} other {# ഇനങ്ങൾ}}",
+    "videoCount": "{count, plural, one {# വീഡിയോ} other {# വീഡിയോകൾ}}",
+    "videosInGroups": "{videoCount, plural, one {# വീഡിയോ} other {# വീഡിയോകൾ}} · {groupCount, plural, one {# ഗ്രൂപ്പ്} other {# ഗ്രൂപ്പുകൾ}}",
+    "sectionNavLabel": "ഭാഷാ ഇൻവെന്ററി വിഭാഗങ്ങൾ",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "പുതിയത്",
+    "videoBible": "വീഡിയോ ബൈബിൾ",
+    "bibleProject": "BibleProject",
+    "sports": "കായികം",
+    "collections": "ശേഖരങ്ങൾ",
+    "subtitlesOnly": "സബ്ടൈറ്റിലുകൾ മാത്രം",
+    "backToTop": "മുകളിലേക്ക്",
+    "newlyAdded": "പുതുതായി ചേർത്തത്",
+    "newVideosTitle": "{language}-ൽ പുതിയ ക്രിസ്തീയ വീഡിയോകൾ",
+    "newestFirst": "പുതിയതു മുതൽ",
+    "noPublishedVideos": "ഈ ഭാഷയ്ക്കായി പ്രസിദ്ധീകരിച്ച വീഡിയോകൾ ഇതുവരെ കണ്ടെത്തിയില്ല.",
+    "bibleAndGospelFilms": "ബൈബിൾ, സുവിശേഷ ചിത്രങ്ങൾ",
+    "videoBibleCollectionsTitle": "{language} വീഡിയോ ബൈബിൾ ശേഖരങ്ങൾ",
+    "videoBibleDescription": "{language}-ൽ LUMO, JESUS, Magdalena, Acts എന്നിവ ഉൾപ്പെടുന്ന വചനകേന്ദ്രിത ശേഖരങ്ങൾ.",
+    "noVideoBibleCollections": "ഈ ഭാഷയ്ക്കായി വീഡിയോ ബൈബിൾ ശേഖരങ്ങൾ ഇതുവരെ ലഭ്യമല്ല.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject ശേഖരങ്ങൾ",
+    "bibleProjectDescription": "{language}-ൽ ലഭ്യമായ BibleProject സീരീസുകളും പഠനങ്ങളും.",
+    "noBibleProjectCollections": "ഈ ഭാഷയ്ക്കായി BibleProject ശേഖരങ്ങൾ ഇതുവരെ ലഭ്യമല്ല.",
+    "sportsStories": "കായിക കഥകൾ",
+    "sportsTitle": "{language}-യിലെ കായികവും കായികതാരങ്ങളുടെയും കഥകൾ",
+    "sportsDescription": "{language}-ൽ ലഭ്യമായ വിശ്വാസകേന്ദ്രിത കായിക കഥകളും കായികതാര ശേഖരങ്ങളും.",
+    "noSportsCollections": "ഈ ഭാഷയ്ക്കായി കായികമോ കായികതാര കഥകളോ ഉള്ള ശേഖരങ്ങൾ ഇതുവരെ ലഭ്യമല്ല.",
+    "fullyDubbed": "പൂർണ്ണമായി ഡബ് ചെയ്തത്",
+    "dubbedVideosTitle": "ശേഖരം അനുസരിച്ച് {language} വീഡിയോകൾ",
+    "dubbedVideosDescription": "എളുപ്പത്തിൽ കണ്ടെത്താനായി പൂർണ്ണമായി ഡബ് ചെയ്ത {language} വീഡിയോകൾ അവരുടെ ശേഖരങ്ങളോടൊപ്പം ബ്രൗസ് ചെയ്യുക.",
+    "noDubbedVideos": "ഈ ഭാഷയ്ക്കായി പൂർണ്ണമായി ഡബ് ചെയ്ത വീഡിയോകൾ ഇതുവരെ ലഭ്യമല്ല.",
+    "subtitlesAvailable": "സബ്ടൈറ്റിലുകൾ ലഭ്യമാണ്",
+    "subtitlesTitle": "സബ്ടൈറ്റിലുകളോടുകൂടിയ {language} വീഡിയോകൾ",
+    "subtitlesDescription": "സംസാരിക്കുന്ന {language} ഓഡിയോ ഇതുവരെ ലഭ്യമല്ലാത്തപ്പോൾ ഈ വീഡിയോകൾക്ക് {language} സബ്ടൈറ്റിലുകൾ ഉണ്ടായിരിക്കും.",
+    "noSubtitleVideos": "ഈ ഭാഷയ്ക്കായി സബ്ടൈറ്റിൽ-മാത്രം വീഡിയോകൾ ഇതുവരെ ലഭ്യമല്ല.",
+    "dubbed": "ഡബ് ചെയ്തത്",
+    "subtitles": "സബ്ടൈറ്റിലുകൾ",
+    "newLabel": "പുതിയത്",
+    "fromCollection": "{collection} നിന്ന്",
+    "standaloneVideos": "സ്വതന്ത്ര വീഡിയോകൾ",
+    "videosFromCollection": "{collection} ലെ വീഡിയോകൾ.",
+    "standaloneDescription": "ഈ ഭാഷയിലെ സ്വതന്ത്ര വീഡിയോകൾ.",
+    "openCollection": "ശേഖരം തുറക്കുക",
+    "filters": "ഫിൽട്ടറുകൾ",
+    "filterLength": "ദൈർഘ്യം",
+    "filterLength_under5": "5 മിനിറ്റിൽ കുറവ്",
+    "filterLength_5to10": "5-10 മിനിറ്റ്",
+    "filterLength_10to30": "10-30 മിനിറ്റ്",
+    "filterLength_over30": "30 മിനിറ്റിൽ കൂടുതൽ",
+    "filterType": "തരം",
+    "clearFilters": "ഫിൽട്ടറുകൾ മായ്ക്കുക",
+    "filterResults": "{total} ൽ {count} കാണിക്കുന്നു",
+    "noFilterResults": "ഈ ഫിൽട്ടറുകളുമായി ഒരു വീഡിയോയും പൊരുത്തപ്പെടുന്നില്ല. ഒന്ന് നീക്കം ചെയ്യുക.",
+    "filterAdded": "ചേർത്തത്",
+    "filterAdded_60d": "കഴിഞ്ഞ 60 ദിവസം",
+    "filterAdded_6m": "കഴിഞ്ഞ 6 മാസം",
+    "filterAdded_12m": "കഴിഞ്ഞ 12 മാസം"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project വാച്ച്",
+    "watch": "കാണുക",
+    "watchNow": "ഇപ്പോൾ കാണുക",
+    "mutePreview": "പ്രിവ്യൂ മ്യൂട്ട് ചെയ്യുക",
+    "unmutePreview": "പ്രിവ്യൂ മ്യൂട്ട് ഒഴിവാക്കുക",
+    "nextVideo": "അടുത്ത വീഡിയോ",
+    "featured": "പ്രധാനപ്പെട്ടത്",
+    "showVideo": "{title} കാണിക്കുക",
+    "previousVideoPreview": "മുമ്പത്തെ വീഡിയോ പ്രിവ്യൂ",
+    "nextVideoPreview": "അടുത്ത വീഡിയോ പ്രിവ്യൂ",
+    "mediaCollection": "മീഡിയ ശേഖരം",
+    "scrollToVideo": "{title} വീഡിയോയിലേക്ക് സ്ക്രോൾ ചെയ്യുക",
+    "forYou": "നിങ്ങൾക്കായി"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project ഹോം",
+    "navigation": "ഫൂട്ടർ നാവിഗേഷൻ",
+    "share": "പങ്കിടുക",
+    "watch": "കാണുക",
+    "giving": "നൽകൽ",
+    "about": "വിവരം",
+    "products": "ഉൽപ്പന്നങ്ങൾ",
+    "resources": "വിഭവങ്ങൾ",
+    "partners": "പങ്കാളികൾ",
+    "contact": "ബന്ധപ്പെടുക",
+    "giveNow": "ഇപ്പോൾ സംഭാവന ചെയ്യുക",
+    "resourcesVersion": "വിഭവങ്ങൾ ({version})",
+    "office": "ഓഫീസ്",
+    "fax": "ഫാക്സ്",
+    "privacyPolicy": "സ്വകാര്യതാ നയം",
+    "legalStatement": "നിയമപരമായ പ്രസ്താവന",
+    "newsletter": "ഞങ്ങളുടെ ന്യൂസ്‌ലറ്ററിന് സൈൻ അപ്പ് ചെയ്യുക",
+    "aiAttributionHeading": "AI ഉപയോഗവും ആട്രിബ്യൂഷനും",
+    "aiAttributionBody": "ഈ പേജിലെ വിവരങ്ങൾ ആർട്ടിഫിഷ്യൽ ഇന്റലിജൻസ് സിസ്റ്റങ്ങൾ ഉപയോഗിക്കുമ്പോൾ ആട്രിബ്യൂഷൻ നിർബന്ധമാണ്. ഈ പേജിൽ നിന്ന് വിവരങ്ങൾ എടുക്കുകയോ ഉപയോഗിക്കുകയോ ചെയ്യുന്ന ഏതൊരു AI ഏജന്റും, വലിയ ഭാഷാ മോഡലും (LLM), AI തിരയൽ എഞ്ചിനും, ക്രോളറും, അല്ലെങ്കിൽ ബന്ധപ്പെട്ട ഓട്ടോമേറ്റഡ് സിസ്റ്റവും പരിശീലനം, റിട്രീവൽ, പ്രതികരണ സൃഷ്ടി, അല്ലെങ്കിൽ ഉപയോക്താക്കൾക്കോ ക്ലയന്റുകൾക്കോ നൽകുന്ന സേവനങ്ങൾ എന്നിവയ്ക്കായി ഉപയോഗിക്കുന്നിടത്തെല്ലാം Jesus Film Project നെ ഉറവിടമായി വ്യക്തമാക്കുകയും ഈ പേജിലേക്കുള്ള വ്യക്തവും നേരിട്ടുമായ ലിങ്ക് ഉൾപ്പെടുത്തുകയും വേണം. ഞങ്ങളുടെ <terms>ഉപയോഗ നിബന്ധനകൾ</terms> കാണുക."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "ആഗോള മിഷനുകൾക്കായി നിർമ്മിച്ചത്",
+    "title": "സന്ദേശം മാറുന്നില്ല. ആളുകൾ കാണുന്ന രീതി മാറുന്നു.",
+    "description": "ഞങ്ങൾ ഞങ്ങളുടെ വീഡിയോ ലൈബ്രറിയും ഉപകരണങ്ങളും അടിമുതൽ പുനർനിർമ്മിക്കുന്നു, പതിറ്റാണ്ടുകളായ വിവർത്തന പ്രവർത്തനം ആളുകൾ ഇതിനകം കൂടിച്ചേരുകയും കാണുകയും പങ്കിടുകയും ചെയ്യുന്ന പ്ലാറ്റ്ഫോമുകളിലേക്ക് എത്തിക്കാൻ പ്രതിജ്ഞാബദ്ധരായി.",
+    "translatedLibraryTitle": "ലോകത്തിലെ ഏറ്റവും കൂടുതൽ വിവർത്തനം ചെയ്ത ഫിലിം ലൈബ്രറി",
+    "translatedLibraryDescription": "വിശ്വസനീയമായ ശുശ്രൂഷാ പങ്കാളികൾ കൈമാറിയ പതിറ്റാണ്ടുകളായ വിവർത്തന പ്രവർത്തനം, ആയിരക്കണക്കിന് ഭാഷാ ട്രാക്കുകളുള്ള ഒരു ലൈബ്രറി സൃഷ്ടിച്ചു; അതിലൂടെ ആളുകൾക്ക് യേശുവിന്റെ കഥ അവരുടെ ഹൃദയത്തെ ഏറ്റവും ആഴത്തിൽ സ്പർശിക്കുന്ന ഭാഷയിൽ അനുഭവിക്കാം.",
+    "trustedVoicesTitle": "വിശ്വസനീയമായ ശബ്ദങ്ങളെ പുതിയ ഫോർമാറ്റുകളിലേക്ക് കൊണ്ടുപോകുന്നു",
+    "trustedVoicesDescription": "ഗോസ്പൽ കഥകൾ ദൃശ്യരൂപത്തിൽ അവതരിപ്പിക്കുന്ന രീതി ഞങ്ങൾ പുനർനിർമ്മിക്കുന്നു; വിശ്വസനീയമായ വിവർത്തനങ്ങളെ ആധുനിക ഫോർമാറ്റുകളുമായി ചേർത്ത് സന്ദേശം പ്ലാറ്റ്ഫോമുകളിലൂടെയും സംസ്കാരങ്ങളിലൂടെയും സ്ക്രീനുകളിലൂടെയും സ്വതന്ത്രമായി നീങ്ങാൻ കഴിയുന്നു.",
+    "missionTeamTitle": "ഒരു ലൈബ്രറിയെക്കാൾ കൂടുതലാണ്. ദൗത്യപ്രേരിത ഒരു ടീം.",
+    "missionTeamDescription": "Jesus Film Project ലോകമെമ്പാടുമുള്ള ശിഷ്യത്വ നിർമ്മാതാക്കൾക്കായി പതിറ്റാണ്ടുകളുടെ ശുശ്രൂഷാനുഭവം ഉപകരണങ്ങളാക്കി മാറ്റുന്ന വിവർത്തകരുടെ, മീഡിയ വിദഗ്ധരുടെ, എഡിറ്റർമാരുടെ, സ്രഷ്ടാക്കളുടെയും ഒരു ആഗോള സംഘമാണ്.",
+    "buildingNext": "ഞങ്ങൾ അടുത്തതായി നിർമ്മിക്കുന്നത്",
+    "nextStepsTitle": "അടുത്ത ഘട്ടങ്ങളുടെ പ്ലാറ്റ്ഫോം",
+    "nextStepsDescription": "കാഴ്ചക്കാരെ അവരുടെ ആത്മീയ യാത്രയിലെ സ്പർശ്യമായ അവസരങ്ങളുമായി ബന്ധിപ്പിച്ച്, സമൂഹത്തിലേക്കോ, തിരുവെഴുത്തിലേക്കോ, ദൗത്യത്തിലേക്കോ ഒരു അടുത്ത ചുവടുവെപ്പിന് സഹായിക്കുക.",
+    "mediaLibraryTitle": "സുവിശേഷപ്രഖ്യാപന മീഡിയ ലൈബ്രറി",
+    "mediaLibraryDescription": "ലോകമെമ്പാടുമുള്ള ശുശ്രൂഷയ്ക്കും സുവിശേഷപ്രഘോഷണത്തിനുമായി വിവിധ ഭാഷകളിൽ ലഭ്യമായ ആയിരക്കണക്കിന് വീഡിയോകൾ, ചിത്രങ്ങൾ, വിഭവങ്ങൾ അടങ്ങിയ വിപുലമായ ക്രിസ്തീയ മീഡിയ ലൈബ്രറി.",
+    "ministryToolsTitle": "ശുശ്രൂഷകൾക്കായുള്ള ഡിജിറ്റൽ ഉപകരണങ്ങൾ",
+    "ministryToolsDescription": "ശുശ്രൂഷകൾക്ക് കൂടുതൽ ആളുകളിലേക്കു ഫലപ്രദമായി എത്താൻ സഹായിക്കാൻ രൂപകൽപ്പന ചെയ്ത വീഡിയോ മാനേജ്മെന്റ്, ഉള്ളടക്ക വിതരണം, പ്രേക്ഷക ഇടപെടൽ, അനലിറ്റിക്സ്.",
+    "invitationEyebrow": "നിങ്ങളെ ക്ഷണിക്കുന്നു",
+    "invitationTitle": "മിഷൻ ഉപകരണങ്ങളുടെ <highlight>പുതുതലമുറ</highlight> നിർമ്മിക്കാൻ സഹായിക്കുക",
+    "invitationDescription": "ആദ്യഘട്ട ആക്‌സസിലേക്ക് പ്രവർത്തകരെയും സ്രഷ്ടാക്കളെയും പങ്കാളികളെയും ഞങ്ങൾ ക്ഷണിക്കുന്നു. പുതിയ ഉപകരണങ്ങൾ ആദ്യം പരീക്ഷിക്കുക, അഭിപ്രായം നൽകുക, യഥാർത്ഥ മിഷൻ പ്രവർത്തനത്തിനായി രൂപകൽപ്പന ചെയ്ത ഉൽപ്പന്നങ്ങളെ രൂപപ്പെടുത്താൻ സഹായിക്കുക.",
+    "betaTester": "ബീറ്റാ ടെസ്റ്ററാകുക"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "വീഡിയോ ബൈബിൾ ശേഖരം",
+    "gospelRailTitle": "മുഴുവൻ കഥ കണ്ടെത്തുക",
+    "videoBibleDescription": "ആകർഷകമായ കഥകളിലൂടെയും പഠനങ്ങളിലൂടെയും ബൈബിളിനെ ജീവിപ്പിക്കുന്ന ഞങ്ങളുടെ വീഡിയോകളുടെയും വിഭവങ്ങളുടെയും ശേഖരം അന്വേഷിക്കുക.",
+    "showcaseTitle": "ചലച്ചിത്രത്തിലൂടെ അവതരിപ്പിക്കുന്ന തിരുവെഴുത്ത്",
+    "adventEyebrow": "ക്രിസ്മസ് അഡ്വെന്റ്",
+    "adventTitle": "ക്രിസ്മസ് അഡ്വെന്റ് കൗണ്ട്ഡൗൺ",
+    "adventDescription": "ക്രിസ്മസിനായുള്ള പ്രതീക്ഷ വർധിപ്പിക്കുന്ന ദിനവീഡിയോകളുമായി ഞങ്ങളുടെ അഡ്വെന്റ് യാത്രയിൽ ചേരുക; യേശുവിന്റെ വരവിന്റെ പ്രത്യാശ, ആനന്ദം, വാഗ്ദാനം എന്നിവ അന്വേഷിക്കുക.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject അഡ്വെന്റ്",
+    "nuaEyebrow": "NUA സീരീസ്",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth സീരീസ്",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "വീഡിയോ കോഴ്സ്",
+    "journeyWithJesusTitle": "യേശുവിനൊപ്പം യാത്ര ചെയ്യുക",
+    "gospelsOnVideoEyebrow": "ഓരോ സുവിശേഷവും വീഡിയോയിൽ",
+    "scriptureAsWrittenTitle": "എഴുതിയതുപോലെ കൃത്യമായി ഉച്ചരിക്കപ്പെട്ട തിരുവെഴുത്ത്",
+    "merryChristmas": "ക്രിസ്മസ് ആശംസകൾ!",
+    "daysUntilChristmas": "ക്രിസ്മസിന് ഇനി {count, plural, one {# ദിവസം} other {# ദിവസങ്ങൾ}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "ഭാഷകൾ",
+    "metadataDescription": "ഭാഷ പ്രകാരം JesusFilm വീഡിയോകൾ ബ്രൗസ് ചെയ്യുക.",
+    "eyebrow": "വാച്ച് ഭാഷകൾ",
+    "title": "ഒരു ഭാഷ തിരഞ്ഞെടുക്കുക",
+    "description": "പ്രദേശം പ്രകാരം ഭാഷകൾ അന്വേഷിക്കുക അല്ലെങ്കിൽ പൂർണ്ണ പട്ടിക ബ്രൗസ് ചെയ്യുക.",
+    "searchPlaceholder": "ഭാഷകളോ രാജ്യങ്ങളോ തിരയുക...",
+    "searchLabel": "ഭാഷകളോ രാജ്യങ്ങളോ തിരയുക",
+    "clearSearch": "തിരച്ചിൽ മായ്ക്കുക",
+    "browse": "ബ്രൗസ് ചെയ്യുക",
+    "browseByRegion": "പ്രദേശവും രാജ്യവും പ്രകാരം ബ്രൗസ് ചെയ്യുക",
+    "languageCount": "{count, plural, one {# ഭാഷ} other {# ഭാഷകൾ}}",
+    "region": "പ്രദേശം",
+    "countryLanguages": "{country} ഭാഷകൾ",
+    "showLess": "കുറച്ച് കാണിക്കുക",
+    "showMore": "ഇനിയും {count} കാണിക്കുക",
+    "noLanguages": "ഭാഷകൾ കണ്ടെത്താനായില്ല",
+    "tryAnotherSearch": "മറ്റൊരു തിരച്ചിൽ പദം ശ്രമിക്കുക."
+  },
+  "WatchHistory": {
+    "metadataTitle": "കാണൽ ചരിത്രം | Jesus Film Project",
+    "title": "കാണൽ ചരിത്രം",
+    "loading": "ചരിത്രം ലോഡ് ചെയ്യുന്നു",
+    "empty": "ഇപ്പോൾ ഇവിടെ ഒന്നുമില്ല",
+    "emptyDescription": "നിങ്ങൾ സൈൻ ഇൻ ചെയ്തിരിക്കെ കാണുന്ന വീഡിയോകൾ ഇവിടെ പ്രത്യക്ഷപ്പെടും.",
+    "earlier": "മുമ്പ്",
+    "today": "ഇന്ന്",
+    "yesterday": "ഇന്നലെ"
+  },
+  "AccountControl": {
+    "account": "അക്കൗണ്ട്",
+    "accountMenu": "അക്കൗണ്ട് മെനു",
+    "signIn": "സൈൻ ഇൻ ചെയ്യുക",
+    "signOut": "സൈൻ ഔട്ട് ചെയ്യുക",
+    "signedIn": "സൈൻ ഇൻ ചെയ്തു",
+    "history": "ചരിത്രം",
+    "logOut": "ലോഗ് ഔട്ട് ചെയ്യുക"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "പേജ് കണ്ടെത്തിയില്ല",
+    "eyebrow": "പേജ് കണ്ടെത്തിയില്ല",
+    "screenReaderPrefix": "പേജ് കണ്ടെത്തിയില്ല:",
+    "title": "ഈ ദൃശ്യം ഇവിടെ ഇല്ല.",
+    "description": "പേജ് മാറിയിരിക്കാം, പക്ഷേ കഥ തുടരുന്നു.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "പേജ് കണ്ടെത്തിയില്ല പ്രവർത്തനങ്ങൾ",
+    "backToWatch": "വാച്ചിലേക്ക് മടങ്ങുക",
+    "browseVideos": "വീഡിയോകൾ ബ്രൗസ് ചെയ്യുക"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% പൊരുത്തം",
+    "none": "ഈ ഭാഷയിൽ ഈ വീഡിയോയ്ക്കുള്ള ശുപാർശകളൊന്നും കണ്ടെത്തിയില്ല."
+  },
+  "BetaTesterModal": {
+    "title": "ബീറ്റാ ടെസ്റ്ററാകുക",
+    "trigger": "ബീറ്റാ ടെസ്റ്ററാകുക",
+    "loadFailed": "എന്തോ പിശക് സംഭവിച്ചു.",
+    "loading": "ലോഡ് ചെയ്യുന്നു...",
+    "openFormNewTab": "ഫോം പുതിയ ടാബിൽ തുറക്കുക",
+    "close": "അടയ്ക്കുക",
+    "iframeTitle": "ബീറ്റാ ടെസ്റ്ററാകുക"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "ശേഖരം ഡൗൺലോഡ് ചെയ്യുക",
+    "eyebrow": "ശേഖരം ഡൗൺലോഡ്",
+    "description": "ഭാഷയും ഗുണനിലവാരവും ഒരിക്കൽ തിരഞ്ഞെടുക്കുക. ലഭ്യമായ ഓരോ എപ്പിസോഡും ക്രമത്തിൽ ഡൗൺലോഡ് ചെയ്യപ്പെടും.",
+    "signInTitle": "ഡൗൺലോഡ് ചെയ്യാൻ സൈൻ ഇൻ ചെയ്യുക",
+    "signInBody": "Jesus Film അക്കൗണ്ട് ഉപയോഗിച്ച് സൈൻ ഇൻ ചെയ്താൽ ശേഖരങ്ങൾ ഡൗൺലോഡ് ചെയ്യാം.",
+    "signIn": "ഡൗൺലോഡ് ചെയ്യാൻ സൈൻ ഇൻ ചെയ്യുക",
+    "languageLabel": "ഭാഷ",
+    "qualityLabel": "വീഡിയോ ഗുണനിലവാരം",
+    "tierHighest": "ഏറ്റവും ഉയർന്നത്",
+    "tierHigh": "ഉയർന്നത്",
+    "tierLow": "താഴ്ന്നത്",
+    "loading": "ലഭ്യമായ എപ്പിസോഡുകൾ കണ്ടെത്തുന്നു…",
+    "loadError": "ഈ ഭാഷയ്ക്കുള്ള ഡൗൺലോഡുകൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
+    "retry": "വീണ്ടും ശ്രമിക്കുക",
+    "noDownloads": "ഈ ഭാഷയിൽ ഡൗൺലോഡ് ചെയ്യാവുന്ന എപ്പിസോഡുകളൊന്നും ലഭ്യമല്ല.",
+    "availableCount": "{count, plural, one {# എപ്പിസോഡ് തയ്യാറാണ്} other {# എപ്പിസോഡുകൾ തയ്യാറാണ്}}",
+    "skippedCount": "{count, plural, one {# എപ്പിസോഡ് ലഭ്യമല്ലാത്തതിനാൽ ഒഴിവാക്കും} other {# എപ്പിസോഡുകൾ ലഭ്യമല്ലാത്തതിനാൽ ഒഴിവാക്കും}}",
+    "chooseFolder": "ഡൗൺലോഡ് ഫോൾഡർ തിരഞ്ഞെടുക്കുക",
+    "folderSelected": "{name}-ൽ സേവ് ചെയ്യുക",
+    "folderError": "ഡൗൺലോഡ് ഫോൾഡർ തുറക്കാൻ കഴിഞ്ഞില്ല.",
+    "browserFallback": "നിങ്ങളുടെ ബ്രൗസറിന്റെ സാധാരണ ഡൗൺലോഡ് ക്രമീകരണങ്ങൾ ഉപയോഗിച്ച് ഓരോ ഫയലും സേവ് ചെയ്യും. ഒന്നിലധികം ഡൗൺലോഡുകൾ അനുവദിക്കാൻ ബ്രൗസർ ആവശ്യപ്പെട്ടേക്കാം.",
+    "sessionError": "നിങ്ങളുടെ സെഷൻ പരിശോധിക്കാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.",
+    "downloading": "{title} ഡൗൺലോഡ് ചെയ്യുന്നു",
+    "progress": "{total}-ൽ {completed}",
+    "complete": "ഡൗൺലോഡുകൾ പൂർത്തിയായി",
+    "canceled": "ഡൗൺലോഡുകൾ റദ്ദാക്കി",
+    "failedCount": "{count, plural, one {# എപ്പിസോഡ് പരാജയപ്പെട്ടു} other {# എപ്പിസോഡുകൾ പരാജയപ്പെട്ടു}}. ശേഖരം വീണ്ടും ഡൗൺലോഡ് ചെയ്യാൻ ഡൗൺലോഡ് വീണ്ടും തിരഞ്ഞെടുക്കുക.",
+    "close": "അടയ്ക്കുക",
+    "cancel": "റദ്ദാക്കുക",
+    "start": "എല്ലാം ഡൗൺലോഡ് ചെയ്യുക",
+    "downloadAgain": "വീണ്ടും ഡൗൺലോഡ് ചെയ്യുക",
+    "retryFailed": "പരാജയപ്പെട്ടവ വീണ്ടും ശ്രമിക്കുക"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "ഭാഷാ പതിപ്പ് ലഭ്യമല്ല",
+    "eyebrow": "ഭാഷാ പതിപ്പ് ലഭ്യമല്ല",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> ഭാഷയിൽ ലഭ്യമല്ല",
+    "actionsLabel": "ലഭ്യമായ കാഴ്ചാ ഓപ്ഷനുകൾ",
+    "browseInLanguage": "{language} ഭാഷയിലെ വീഡിയോകൾ കാണുക",
+    "backToSearch": "തിരയലിലേക്ക് മടങ്ങുക",
+    "audioVersionsTitle": "മറ്റ് ഓഡിയോ പതിപ്പുകൾ",
+    "audioVersionsDescription": "ഈ വീഡിയോ തുടർന്നും കാണാൻ ഒരു ഓഡിയോ ഭാഷ തിരഞ്ഞെടുക്കുക.",
+    "languageVersionLabel": "ഓഡിയോ ഭാഷ",
+    "selectLanguageVersion": "ഒരു ഭാഷാ പതിപ്പ് തിരഞ്ഞെടുക്കുക",
+    "watchSelectedVersion": "തിരഞ്ഞെടുത്ത പതിപ്പ് കാണുക"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "കുക്കി തിരഞ്ഞെടുപ്പുകൾ",
+    "bannerTitle": "നിങ്ങളുടെ സ്വകാര്യതാ തിരഞ്ഞെടുപ്പുകൾ",
+    "bannerDescription": "Watch സുരക്ഷിതമായും ശരിയായും പ്രവർത്തിക്കാൻ അനിവാര്യ കുക്കികൾ ആവശ്യമാണ്. നിങ്ങളുടെ അനുമതിയോടെ, ഐച്ഛികമായ ഒരു ഫസ്റ്റ്-പാർട്ടി കുക്കി സന്ദർശനങ്ങൾക്കിടയിൽ നിങ്ങളുടെ താൽപര്യങ്ങൾ ഓർത്ത് ശുപാർശകൾ വ്യക്തിഗതമാക്കാൻ കഴിയും. ഏത് തിരഞ്ഞെടുപ്പായാലും, സന്ദർഭാനുസൃത ശുപാർശകൾ ലഭ്യമായിരിക്കും.",
+    "acceptAll": "എല്ലാം സ്വീകരിക്കുക",
+    "essentialOnly": "അനിവാര്യവ മാത്രം",
+    "manageChoices": "തിരഞ്ഞെടുപ്പുകൾ നിയന്ത്രിക്കുക",
+    "savingChoice": "കുക്കി തിരഞ്ഞെടുപ്പ് സംരക്ഷിക്കുന്നു",
+    "settings": "കുക്കി ക്രമീകരണങ്ങൾ",
+    "settingsDescription": "സന്ദർശനങ്ങൾക്കിടയിൽ ശുപാർശ താൽപര്യങ്ങൾ Watch ഓർക്കണമോയെന്ന് തിരഞ്ഞെടുക്കുക. ഇത് നിങ്ങൾക്ക് ഏത് സമയത്തും മാറ്റാം.",
+    "essentialCookies": "അനിവാര്യ കുക്കികൾ",
+    "essentialDescription": "സുരക്ഷ, പ്ലേബാക്ക്, സ്വകാര്യതാ തിരഞ്ഞെടുപ്പുകൾ, ശുപാർശ അഭ്യർത്ഥന ആട്രിബ്യൂഷൻ.",
+    "alwaysActive": "എപ്പോഴും സജീവം",
+    "personalization": "വ്യക്തിഗതമാക്കൽ",
+    "personalizationDescription": "സന്ദർശനങ്ങൾക്കിടയിൽ പരിമിതപ്പെടുത്തിയ താൽപര്യങ്ങൾ ഓർക്കുക. ഇത് ഓഫാക്കുമ്പോഴും സന്ദർഭാനുസൃത ശുപാർശകൾ ലഭ്യമായിരിക്കും.",
+    "erasurePending": "പ്രൊഫൈൽ മായ്ക്കൽ പുരോഗമിക്കുന്നു. സന്ദർഭാനുസൃത ശുപാർശകൾ ഇതിനകം സജീവമാണ്.",
+    "cancel": "റദ്ദാക്കുക",
+    "saveChoices": "തിരഞ്ഞെടുപ്പുകൾ സംരക്ഷിക്കുക",
+    "saving": "സംരക്ഷിക്കുന്നു…",
+    "loadError": "നിങ്ങളുടെ തിരഞ്ഞെടുപ്പ് ലോഡ് ചെയ്യാനായില്ല. എന്നിരുന്നാലും താഴെ നിങ്ങൾക്ക് തിരഞ്ഞെടുക്കാം.",
+    "grantError": "വ്യക്തിഗതമാക്കൽ പ്രവർത്തനക്ഷമമാക്കാനായില്ല. അനിവാര്യവ മാത്രം ഇപ്പോഴും ലഭ്യമാണ്.",
+    "saveError": "നിങ്ങളുടെ തിരഞ്ഞെടുപ്പ് സംരക്ഷിക്കാനായില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക."
+  }
+}

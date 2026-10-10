@@ -1,0 +1,2624 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+
+describe("Mastra env", () => {
+  beforeEach(() => {
+    vi.stubEnv("FIRECRAWL_API_KEY", "firecrawl-key")
+  })
+
+  afterEach(() => {
+    vi.doUnmock("../services/embedding-provider")
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
+
+  it("accepts local development without service keys", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("refuses boot when a key value appears in BOTH the pool and ai-chat lane CSVs (feat-241, KTD2)", async () => {
+    // Wiring pin: assertMastraRuntimeEnv() itself must invoke the
+    // disjointness assertion with the real env-sourced defaults.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-a,shared-overlap-key")
+    vi.stubEnv("AI_CHAT_SERVICE_API_KEYS", "shared-overlap-key,lane-b")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrowError(
+      /must not share key values/,
+    )
+  })
+
+  it("boots clean with disjoint pool and ai-chat lane CSVs", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-a")
+    vi.stubEnv("AI_CHAT_SERVICE_API_KEYS", "lane-a")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("refuses boot when devotional approval shares a pool key", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-a,shared-key")
+    vi.stubEnv("DEVOTIONAL_APPROVAL_API_KEYS", "shared-key,approval-a")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrowError(
+      /DEVOTIONAL_APPROVAL_API_KEYS.*must not share key values/,
+    )
+  })
+
+  it("refuses boot when devotional playback shares a mutation key", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "pool-a")
+    vi.stubEnv("DEVOTIONAL_APPROVAL_API_KEYS", "approval-a")
+    vi.stubEnv("DEVOTIONAL_PLAYBACK_API_KEYS", "approval-a")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrowError(
+      /DEVOTIONAL_PLAYBACK_API_KEYS.*must not share key values/,
+    )
+  })
+
+  it("requires service keys in production runtime", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "MASTRA_SERVICE_API_KEYS required for Mastra production",
+    )
+  })
+
+  it("requires a database URL in production runtime", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv("DATABASE_URL", "")
+    vi.stubEnv("MASTRA_STORAGE_DIR", "/data/mastra")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "DATABASE_URL required for Mastra production",
+    )
+  })
+
+  it("accepts production runtime without an explicit storage dir", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_STORAGE_DIR", "")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("defaults Firecrawl config and stays optional in development", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("FIRECRAWL_API_KEY", "fc-test-key")
+    vi.stubEnv("FIRECRAWL_API_URL", "")
+    vi.stubEnv("FIRECRAWL_TIMEOUT_MS", "")
+
+    const { getFirecrawlConfig } = await import("./env")
+
+    expect(getFirecrawlConfig()).toEqual({
+      apiKey: "fc-test-key",
+      apiUrl: "https://api.firecrawl.dev",
+      timeoutMs: 60_000,
+      userAgent: "forge-mastra-firecrawl/1.0",
+      maxSearchResults: 5,
+      maxMarkdownCharacters: 16_000,
+    })
+  })
+
+  it("requires Firecrawl credentials in production runtime", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv("ADMIN_MASTRA_SCENE_INGEST_API_KEY", "admin-scene-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_SCENE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/scene-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+    vi.stubEnv("FIRECRAWL_API_KEY", "")
+
+    const { assertMastraRuntimeEnv, getFirecrawlConfig } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "FIRECRAWL_API_KEY required for Mastra production",
+    )
+    expect(getFirecrawlConfig().apiKey).toBeUndefined()
+  })
+
+  it("defaults YouTube config and stays optional in development", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("YOUTUBE_API_KEY", "yt-test-key")
+    vi.stubEnv("YOUTUBE_API_BASE_URL", "")
+    vi.stubEnv("YOUTUBE_SEARCH_TIMEOUT_MS", "")
+
+    const { getYouTubeConfig } = await import("./env")
+
+    expect(getYouTubeConfig()).toEqual({
+      apiKey: "yt-test-key",
+      baseUrl: "https://www.googleapis.com/youtube/v3",
+      timeoutMs: 30_000,
+    })
+  })
+
+  it("leaves the YouTube API key undefined when unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("YOUTUBE_API_KEY", "")
+
+    const { getYouTubeConfig } = await import("./env")
+
+    expect(getYouTubeConfig().apiKey).toBeUndefined()
+  })
+
+  it("keeps support research disabled and bounded when unconfigured", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SUPPORT_RESEARCH_ENABLED", "")
+    vi.stubEnv("SUPPORT_RESEARCH_PROVIDER_APPROVED", "")
+    vi.stubEnv("HELP_SCOUT_CLIENT_ID", "")
+    vi.stubEnv("LINEAR_SUPPORT_RESEARCH_API_KEY", "")
+
+    const { getSupportResearchConfig } = await import("./env")
+
+    expect(getSupportResearchConfig()).toMatchObject({
+      enabled: false,
+      providerApproved: false,
+      model: "openai/gpt-5.4-mini",
+      allowedWatchHosts: [],
+      maxConversations: 200,
+      maxThreadsPerConversation: 20,
+      maxSanitizedCharacters: 12_000,
+      maxActionsPerRun: 5,
+      retentionDays: 90,
+      helpScout: {
+        clientId: undefined,
+        mailboxIds: [],
+      },
+      linear: { apiKey: undefined },
+    })
+  })
+
+  it("parses support research routing without exposing secret values", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SUPPORT_RESEARCH_ENABLED", "true")
+    vi.stubEnv("SUPPORT_RESEARCH_PROVIDER_APPROVED", "true")
+    vi.stubEnv(
+      "SUPPORT_RESEARCH_WATCH_ALLOWED_HOSTS",
+      "WWW.JESUSFILM.ORG, watch.example.org",
+    )
+    vi.stubEnv("HELP_SCOUT_CLIENT_ID", "help-id")
+    vi.stubEnv("HELP_SCOUT_CLIENT_SECRET", "help-secret")
+    vi.stubEnv("HELP_SCOUT_MAILBOX_IDS", "10, 20")
+    vi.stubEnv("LINEAR_SUPPORT_RESEARCH_API_KEY", "linear-secret")
+    vi.stubEnv("LINEAR_SUPPORT_RESEARCH_TEAM_ID", "team-id")
+    vi.stubEnv("LINEAR_SUPPORT_RESEARCH_PROJECT_ID", "project-id")
+
+    const { getSupportResearchConfig } = await import("./env")
+    const config = getSupportResearchConfig()
+
+    expect(config.enabled).toBe(true)
+    expect(config.providerApproved).toBe(true)
+    expect(config.allowedWatchHosts).toEqual([
+      "www.jesusfilm.org",
+      "watch.example.org",
+    ])
+    expect(config.helpScout.mailboxIds).toEqual(["10", "20"])
+    expect(config.helpScout.clientSecret).toBe("help-secret")
+    expect(config.linear.apiKey).toBe("linear-secret")
+  })
+
+  it("defaults storage to the local gateway database in development", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("DATABASE_URL", "")
+
+    const { getMastraDatabaseUrl } = await import("./env")
+
+    expect(getMastraDatabaseUrl()).toBe(
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+  })
+
+  it("defaults file storage to the local Mastra storage directory in development", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_STORAGE_DIR", "")
+
+    const { getMastraStorageDir } = await import("./env")
+
+    expect(getMastraStorageDir()).toBe(".mastra/storage")
+  })
+
+  it("keeps production search eval baseline imports disabled by default", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT", "")
+
+    const { env } = await import("./env")
+
+    expect(env.MASTRA_SEARCH_EVAL_ALLOW_PROD_IMPORT).toBe("false")
+  })
+
+  it("uses the Railway volume mount path for storage when present", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("MASTRA_STORAGE_DIR", "")
+    vi.stubEnv("RAILWAY_VOLUME_MOUNT_PATH", "/data/")
+
+    const { getMastraStorageDir } = await import("./env")
+
+    expect(getMastraStorageDir()).toBe("/data/mastra")
+  })
+
+  it("defaults transcript and experience embedding model and provider settings", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS", "")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_BASE_URL", "")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_MODEL", "")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_PROVIDER", "")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS", "")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_USER_AGENT", "")
+    vi.stubEnv("FIRECRAWL_ALLOWED_HOSTS", "")
+    vi.stubEnv("FIRECRAWL_API_KEY", "")
+    vi.stubEnv("FIRECRAWL_API_URL", "")
+    vi.stubEnv("FIRECRAWL_MAX_MARKDOWN_CHARS", "")
+    vi.stubEnv("FIRECRAWL_MAX_SEARCH_RESULTS", "")
+    vi.stubEnv("FIRECRAWL_TIMEOUT_MS", "")
+    vi.stubEnv("FIRECRAWL_USER_AGENT", "")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "")
+    vi.stubEnv("TRANSCRIPT_EMBEDDING_MODEL", "")
+    vi.stubEnv("TRANSCRIPT_EMBEDDING_PROVIDER", "")
+    vi.stubEnv("EXPERIENCE_EMBEDDING_MODEL", "")
+    vi.stubEnv("EXPERIENCE_EMBEDDING_PROVIDER", "")
+    vi.stubEnv("EVAL_QUERY_GENERATION_MODEL", "")
+    vi.stubEnv("SUBTITLE_ENRICHMENT_MODEL", "")
+    vi.stubEnv("SUBTITLE_ENRICHMENT_TIMEOUT_MS", "")
+    vi.stubEnv("SUBTITLE_ENRICHMENT_CONCURRENCY", "")
+    vi.stubEnv("OPENAI_EMBEDDINGS_BASE_URL", "")
+    vi.stubEnv("OPENROUTER_EMBEDDINGS_BASE_URL", "")
+
+    const { env } = await import("./env")
+
+    expect(env.TRANSCRIPT_EMBEDDING_MODEL).toBe("openai/text-embedding-3-small")
+    expect(env.TRANSCRIPT_EMBEDDING_PROVIDER).toBe("openai")
+    expect(env.EXPERIENCE_EMBEDDING_MODEL).toBe("openai/text-embedding-3-small")
+    expect(env.EXPERIENCE_EMBEDDING_PROVIDER).toBe("openai")
+    expect(env.EVAL_QUERY_GENERATION_MODEL).toBe("anthropic/claude-haiku-4-5")
+    expect(env.SUBTITLE_ENRICHMENT_MODEL).toBe("google/gemini-2.5-flash")
+    expect(env.SUBTITLE_ENRICHMENT_TIMEOUT_MS).toBe(120_000)
+    expect(env.SUBTITLE_ENRICHMENT_CONCURRENCY).toBe(10)
+    expect(env.AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS).toBe(
+      "ai-gateway.jesusfilm.org",
+    )
+    expect(env.AI_GATEWAY_EMBEDDINGS_BASE_URL).toBe(
+      "https://ai-gateway.jesusfilm.org/v1",
+    )
+    expect(env.AI_GATEWAY_EMBEDDINGS_MODEL).toBe("embeddings")
+    expect(env.AI_GATEWAY_EMBEDDINGS_PROVIDER).toBe("jesus-film-ai-gateway")
+    expect(env.AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS).toBe(60_000)
+    expect(env.AI_GATEWAY_EMBEDDINGS_USER_AGENT).toBe(
+      "forge-mastra-content-embeddings/1.0",
+    )
+    expect(env.FIRECRAWL_ALLOWED_HOSTS).toBe("api.firecrawl.dev")
+    expect(env.FIRECRAWL_API_KEY).toBeUndefined()
+    expect(env.FIRECRAWL_API_URL).toBe("https://api.firecrawl.dev")
+    expect(env.FIRECRAWL_MAX_MARKDOWN_CHARS).toBe(16_000)
+    expect(env.FIRECRAWL_MAX_SEARCH_RESULTS).toBe(5)
+    expect(env.FIRECRAWL_TIMEOUT_MS).toBe(60_000)
+    expect(env.FIRECRAWL_USER_AGENT).toBe("forge-mastra-firecrawl/1.0")
+    expect(env.OPENAI_EMBEDDINGS_BASE_URL).toBe("https://api.openai.com/v1")
+    expect(env.OPENROUTER_EMBEDDINGS_BASE_URL).toBe(
+      "https://openrouter.ai/api/v1",
+    )
+  })
+
+  it("passes the AI Gateway embedding timeout through provider config", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "gateway")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_TIMEOUT_MS", "90000")
+
+    const { getTranscriptEmbeddingProviderConfig } = await import("./env")
+
+    expect(getTranscriptEmbeddingProviderConfig()).toMatchObject({
+      provider: "jesus-film-ai-gateway",
+      timeoutMs: 90_000,
+    })
+  })
+
+  it("passes Firecrawl settings through provider config", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("FIRECRAWL_API_KEY", "custom-firecrawl-key")
+    vi.stubEnv("FIRECRAWL_API_URL", "https://firecrawl.internal")
+    vi.stubEnv("FIRECRAWL_TIMEOUT_MS", "45000")
+    vi.stubEnv("FIRECRAWL_USER_AGENT", "forge-test-firecrawl/1.0")
+    vi.stubEnv("FIRECRAWL_MAX_SEARCH_RESULTS", "7")
+    vi.stubEnv("FIRECRAWL_MAX_MARKDOWN_CHARS", "9000")
+
+    const { getFirecrawlConfig } = await import("./env")
+
+    expect(getFirecrawlConfig()).toEqual({
+      apiKey: "custom-firecrawl-key",
+      apiUrl: "https://firecrawl.internal",
+      timeoutMs: 45_000,
+      userAgent: "forge-test-firecrawl/1.0",
+      maxSearchResults: 7,
+      maxMarkdownCharacters: 9000,
+    })
+  })
+
+  it("requires AI Gateway credentials in production runtime by default", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_EMBEDDINGS_API_KEY required for Mastra production",
+    )
+  })
+
+  it("requires Firecrawl credentials in production runtime", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("FIRECRAWL_API_KEY", "")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "FIRECRAWL_API_KEY required for Mastra production",
+    )
+  })
+
+  it("rejects unsafe Firecrawl API URLs in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("FIRECRAWL_API_URL", "http://evil.test")
+    vi.stubEnv("FIRECRAWL_ALLOWED_HOSTS", "api.firecrawl.dev")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "FIRECRAWL_API_URL must use https and a host listed in FIRECRAWL_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects non-allowlisted Firecrawl API hosts in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("FIRECRAWL_API_URL", "https://other.test")
+    vi.stubEnv("FIRECRAWL_ALLOWED_HOSTS", "api.firecrawl.dev")
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "FIRECRAWL_API_URL must use https and a host listed in FIRECRAWL_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("uses legacy OpenRouter credentials for embedding provider config in local mode", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENAI_API_KEY", "openai-key")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const {
+      getExperienceEmbeddingProviderConfig,
+      getTranscriptEmbeddingProviderConfig,
+    } = await import("./env")
+
+    expect(getTranscriptEmbeddingProviderConfig()).toEqual({
+      apiKey: "openrouter-key",
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: "openai/text-embedding-3-small",
+      provider: "openai",
+    })
+    expect(getExperienceEmbeddingProviderConfig()).toEqual({
+      apiKey: "openrouter-key",
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: "openai/text-embedding-3-small",
+      provider: "openai",
+    })
+  })
+
+  it("prefers OPENROUTER_API_PAID_KEY for legacy OpenRouter embedding config", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENAI_API_KEY", "openai-key")
+    vi.stubEnv("OPENROUTER_API_PAID_KEY", "paid-openrouter-key")
+    vi.stubEnv("OPENROUTER_API_KEY", "legacy-openrouter-key")
+
+    const { getOpenRouterApiKey, getTranscriptEmbeddingProviderConfig } =
+      await import("./env")
+
+    expect(getOpenRouterApiKey()).toBe("paid-openrouter-key")
+    expect(getTranscriptEmbeddingProviderConfig()).toEqual({
+      apiKey: "paid-openrouter-key",
+      baseUrl: "https://openrouter.ai/api/v1",
+      model: "openai/text-embedding-3-small",
+      provider: "openai",
+    })
+  })
+
+  it("prefers AI Gateway config for content embedding provider config", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv(
+      "AI_GATEWAY_EMBEDDINGS_BASE_URL",
+      "https://ai-gateway.jesusfilm.org/v1",
+    )
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_MODEL", "embeddings")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_PROVIDER", "jesus-film-ai-gateway")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_USER_AGENT", "forge-test/1.0")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+
+    const {
+      getContentEmbeddingsProviderMode,
+      getExperienceEmbeddingProviderConfig,
+      getTranscriptEmbeddingProviderConfig,
+    } = await import("./env")
+
+    expect(getContentEmbeddingsProviderMode()).toBe("gateway")
+    const expected = {
+      apiKey: "gateway-key",
+      baseUrl: "https://ai-gateway.jesusfilm.org/v1",
+      model: "embeddings",
+      provider: "jesus-film-ai-gateway",
+      userAgent: "forge-test/1.0",
+      timeoutMs: 60_000,
+      expectedNativeDimensions: 1536,
+    }
+    expect(getTranscriptEmbeddingProviderConfig()).toEqual(expected)
+    expect(getExperienceEmbeddingProviderConfig()).toEqual(expected)
+  })
+
+  it("keeps transform config for a future 4096-native gateway variant", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv(
+      "AI_GATEWAY_EMBEDDINGS_BASE_URL",
+      "https://ai-gateway.jesusfilm.org/v1",
+    )
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_MODEL", "embeddings")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_PROVIDER", "jesus-film-ai-gateway")
+
+    vi.doMock("../services/embedding-provider", async (importOriginal) => {
+      const actual =
+        await importOriginal<typeof import("../services/embedding-provider")>()
+      return {
+        ...actual,
+        EXPECTED_AI_GATEWAY_EMBEDDING_NATIVE_DIMENSIONS: 4096,
+        EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS: 1536,
+      }
+    })
+
+    const { getTranscriptEmbeddingProviderConfig } = await import("./env")
+
+    expect(getTranscriptEmbeddingProviderConfig()).toMatchObject({
+      provider: "jesus-film-ai-gateway",
+      model: "embeddings",
+      expectedNativeDimensions: 4096,
+      truncateToDimensions: 1536,
+      transformVersion: "matryoshka-truncate-1536-v1",
+    })
+  })
+
+  it("allows explicit legacy content embedding mode in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "")
+
+    const { assertMastraRuntimeEnv, getContentEmbeddingsProviderMode } =
+      await import("./env")
+
+    expect(getContentEmbeddingsProviderMode()).toBe("legacy")
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects unsafe AI Gateway base URLs in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_BASE_URL", "http://evil.test/v1")
+    vi.stubEnv(
+      "AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS",
+      "ai-gateway.jesusfilm.org",
+    )
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_EMBEDDINGS_BASE_URL must use https and a host listed in AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects non-allowlisted AI Gateway hosts in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_BASE_URL", "https://other.test/v1")
+    vi.stubEnv(
+      "AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS",
+      "ai-gateway.jesusfilm.org",
+    )
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_EMBEDDINGS_BASE_URL must use https and a host listed in AI_GATEWAY_EMBEDDINGS_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects unexpected AI Gateway embedding models in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_MODEL", "other-embeddings")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_EMBEDDINGS_MODEL and AI_GATEWAY_EMBEDDINGS_PROVIDER must match the approved production content embedding contract",
+    )
+  })
+
+  it("rejects unexpected AI Gateway embedding providers in production", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_API_KEY", "gateway-key")
+    vi.stubEnv("AI_GATEWAY_EMBEDDINGS_PROVIDER", "other-provider")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_EMBEDDINGS_MODEL and AI_GATEWAY_EMBEDDINGS_PROVIDER must match the approved production content embedding contract",
+    )
+  })
+
+  it("exposes configured devotional site-ingest, partners, and video search", async () => {
+    vi.stubEnv(
+      "DEVOTIONAL_SITE_INGEST_URL",
+      "https://watch.example.org/api/devotional-ingest",
+    )
+    vi.stubEnv("DEVOTIONAL_SITE_INGEST_API_KEY", "devotional-ingest-key")
+    vi.stubEnv("DEVOTIONAL_PARTNER_DOMAINS", "Partner.org, gotquestions.org ,")
+    vi.stubEnv("DEVOTIONAL_DEFAULT_VIDEO_ID", "video-fallback-1")
+    vi.stubEnv("DEVOTIONAL_MODEL", "anthropic/claude-sonnet-4-6")
+    vi.stubEnv("DEVOTIONAL_SAFETY_MODEL", "anthropic/claude-opus-4-8")
+    vi.stubEnv(
+      "ADMIN_SEARCH_EVAL_SEARCH_URL",
+      "https://admin.internal/api/internal/search-eval/search",
+    )
+    vi.stubEnv("ADMIN_SEARCH_EVAL_API_KEY", "search-eval-key")
+
+    const {
+      getDevotionalSiteIngestConfig,
+      getDevotionalPartnerDomains,
+      getDevotionalVideoSearchConfig,
+      getDevotionalModel,
+      getDevotionalSafetyModel,
+    } = await import("./env")
+
+    expect(getDevotionalSiteIngestConfig()).toEqual({
+      url: "https://watch.example.org/api/devotional-ingest",
+      apiKey: "devotional-ingest-key",
+    })
+    expect(getDevotionalPartnerDomains()).toEqual([
+      "partner.org",
+      "gotquestions.org",
+    ])
+    expect(getDevotionalVideoSearchConfig()).toEqual({
+      url: "https://admin.internal/api/internal/search-eval/search",
+      bearer: "search-eval-key",
+      defaultVideoId: "video-fallback-1",
+    })
+    expect(getDevotionalModel()).toBe("anthropic/claude-sonnet-4-6")
+    expect(getDevotionalSafetyModel()).toBe("anthropic/claude-opus-4-8")
+  })
+
+  it("defaults devotional config when optional vars are unset", async () => {
+    const {
+      getDevotionalSiteIngestConfig,
+      getDevotionalPartnerDomains,
+      getDevotionalVideoSearchConfig,
+      getDevotionalModel,
+      getDevotionalSafetyModel,
+    } = await import("./env")
+
+    expect(getDevotionalSiteIngestConfig()).toEqual({
+      url: undefined,
+      apiKey: undefined,
+    })
+    expect(getDevotionalPartnerDomains()).toEqual([])
+    expect(getDevotionalVideoSearchConfig().defaultVideoId).toBeUndefined()
+    expect(getDevotionalModel()).toBe("anthropic/claude-haiku-4-5")
+    expect(getDevotionalSafetyModel()).toBe("anthropic/claude-haiku-4-5")
+  })
+
+  it("keeps the Serving eval target on dedicated URL and bearer variables", async () => {
+    vi.stubEnv(
+      "ADMIN_SEARCH_EVAL_SEARCH_URL",
+      "https://admin.internal/api/internal/search-eval/search",
+    )
+    vi.stubEnv("ADMIN_SEARCH_EVAL_API_KEY", "shared-eval-key")
+    vi.stubEnv(
+      "ADMIN_SEARCH_EVAL_SERVING_URL",
+      "https://admin.internal/api/internal/search-eval/serving-search",
+    )
+    vi.stubEnv("ADMIN_SEARCH_EVAL_SERVING_API_KEY", "serving-eval-key")
+
+    const { getDevotionalVideoSearchConfig, getServingSearchEvalConfig } =
+      await import("./env")
+
+    expect(getServingSearchEvalConfig()).toEqual({
+      url: "https://admin.internal/api/internal/search-eval/serving-search",
+      bearer: "serving-eval-key",
+    })
+    expect(getDevotionalVideoSearchConfig()).toMatchObject({
+      url: "https://admin.internal/api/internal/search-eval/search",
+      bearer: "shared-eval-key",
+    })
+  })
+
+  it("does not fall back to shared eval credentials for Serving", async () => {
+    vi.stubEnv("ADMIN_SEARCH_EVAL_API_KEY", "shared-eval-key")
+    vi.stubEnv(
+      "ADMIN_SEARCH_EVAL_SEARCH_URL",
+      "https://admin.internal/api/internal/search-eval/search",
+    )
+
+    const { getServingSearchEvalConfig } = await import("./env")
+
+    expect(getServingSearchEvalConfig()).toEqual({
+      url: undefined,
+      bearer: undefined,
+    })
+  })
+
+  // --- feat-199: SEEKER_RAG_* optional config + production host guard ---
+
+  // Stub the full required production set so RAG-guard tests isolate the RAG
+  // var behavior (a missing unrelated required var would otherwise mask it).
+  function stubProductionBaseline() {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("ADMIN_MASTRA_EXPERIENCE_INGEST_API_KEY", "admin-exp-key")
+    vi.stubEnv("ADMIN_MASTRA_TRANSCRIPT_INGEST_API_KEY", "admin-ingest-key")
+    vi.stubEnv(
+      "ADMIN_EXPERIENCE_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/experience-embeddings",
+    )
+    vi.stubEnv(
+      "ADMIN_TRANSCRIPT_INGEST_URL",
+      "https://admin.internal/api/internal/mastra/transcript-embeddings",
+    )
+    vi.stubEnv(
+      "DATABASE_URL",
+      "postgresql://postgres:postgres@localhost:5432/forge_mastra_gateway",
+    )
+    vi.stubEnv("MASTRA_SERVICE_API_KEYS", "test-service-key")
+    vi.stubEnv("MASTRA_CONTENT_EMBEDDINGS_PROVIDER_MODE", "legacy")
+    vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+  }
+
+  it.each([
+    {
+      name: "all settings are absent",
+      ingestUrl: "",
+      sourcesUrl: "",
+      token: "",
+    },
+    {
+      name: "only the review-queue URL is set",
+      ingestUrl: "https://site.internal/api/review-queue",
+      sourcesUrl: "",
+      token: "",
+    },
+    {
+      name: "only the saved-sources URL is set",
+      ingestUrl: "",
+      sourcesUrl: "https://site.internal/api/discovery-sources",
+      token: "",
+    },
+    {
+      name: "only the shared bearer is set",
+      ingestUrl: "",
+      sourcesUrl: "",
+      token: "discovery-token",
+    },
+  ])(
+    "boots production when $name",
+    async ({ ingestUrl, sourcesUrl, token }) => {
+      stubProductionBaseline()
+      vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_URL", ingestUrl)
+      vi.stubEnv("DISCOVERY_SOURCES_URL", sourcesUrl)
+      vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", token)
+
+      const {
+        assertMastraRuntimeEnv,
+        getDiscoverySiteIngestConfig,
+        getDiscoverySourcesConfig,
+      } = await import("./env")
+
+      expect(() => assertMastraRuntimeEnv()).not.toThrow()
+      expect(getDiscoverySiteIngestConfig()).toBeNull()
+      expect(getDiscoverySourcesConfig()).toBeNull()
+    },
+  )
+
+  it.each([
+    {
+      name: "only the review-queue endpoint is active",
+      ingestUrl: "https://site.internal/api/review-queue",
+      sourcesUrl: "",
+      expectedIngest: {
+        url: "https://site.internal/api/review-queue",
+        token: "discovery-token",
+      },
+      expectedSources: null,
+    },
+    {
+      name: "only the saved-sources endpoint is active",
+      ingestUrl: "",
+      sourcesUrl: "https://site.internal/api/discovery-sources",
+      expectedIngest: null,
+      expectedSources: {
+        url: "https://site.internal/api/discovery-sources",
+        token: "discovery-token",
+      },
+    },
+    {
+      name: "endpoint syntax is invalid",
+      ingestUrl: "not a URL",
+      sourcesUrl: "http://site.internal/api/discovery-sources",
+      expectedIngest: {
+        url: "not a URL",
+        token: "discovery-token",
+      },
+      expectedSources: {
+        url: "http://site.internal/api/discovery-sources",
+        token: "discovery-token",
+      },
+    },
+  ])(
+    "boots production without a host allowlist when $name",
+    async ({ ingestUrl, sourcesUrl, expectedIngest, expectedSources }) => {
+      stubProductionBaseline()
+      vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_URL", ingestUrl)
+      vi.stubEnv("DISCOVERY_SOURCES_URL", sourcesUrl)
+      vi.stubEnv("INSTAGRAM_DISCOVERY_SITE_INGEST_TOKEN", "discovery-token")
+
+      const {
+        assertMastraRuntimeEnv,
+        getDiscoverySiteIngestConfig,
+        getDiscoverySourcesConfig,
+      } = await import("./env")
+
+      expect(() => assertMastraRuntimeEnv()).not.toThrow()
+      expect(getDiscoverySiteIngestConfig()).toEqual(expectedIngest)
+      expect(getDiscoverySourcesConfig()).toEqual(expectedSources)
+    },
+  )
+
+  it("imports cleanly with all RAG vars unset (no boot failure)", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { env, getJesusfilmRagConfig } = await import("./env")
+
+    // The Railway-brick regression gate: a fresh deploy with no RAG vars boots.
+    expect(env.SEEKER_RAG_BASE_URL).toBeUndefined()
+    expect(env.SEEKER_RAG_API_KEY).toBeUndefined()
+    expect(env.SEEKER_RAG_ALLOWED_HOSTS).toBeUndefined()
+    expect(getJesusfilmRagConfig()).toEqual({
+      baseUrl: undefined,
+      apiKey: undefined,
+      timeoutMs: 5_000,
+      userAgent: "forge-mastra-jesusfilm-rag/1.0",
+      // feat-202: `.optional()` knob falls back to the 2 MiB default at the
+      // accessor — no boot requirement, so a fresh deploy still gets a cap.
+      maxResponseBytes: 2_097_152,
+    })
+  })
+
+  it("does not fall back to retired JESUSFILM_RAG variables", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("JESUSFILM_RAG_BASE_URL", "https://retired.example")
+    vi.stubEnv("JESUSFILM_RAG_API_KEY", "retired-key")
+    vi.stubEnv("JESUSFILM_RAG_ALLOWED_HOSTS", "retired.example")
+    vi.stubEnv("JESUSFILM_RAG_TIMEOUT_MS", "1234")
+    vi.stubEnv("JESUSFILM_RAG_MAX_RESPONSE_BYTES", "1024")
+    vi.stubEnv("JESUSFILM_RAG_USER_AGENT", "retired-client")
+
+    const { getJesusfilmRagConfig } = await import("./env")
+
+    expect(getJesusfilmRagConfig()).toEqual({
+      baseUrl: undefined,
+      apiKey: undefined,
+      timeoutMs: 5_000,
+      userAgent: "forge-mastra-jesusfilm-rag/1.0",
+      maxResponseBytes: 2_097_152,
+    })
+  })
+
+  it("treats an empty-string RAG base URL as unset (no url() boot failure)", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "")
+    vi.stubEnv("SEEKER_RAG_TIMEOUT_MS", "")
+    vi.stubEnv("SEEKER_RAG_USER_AGENT", "")
+
+    const { env, getJesusfilmRagConfig } = await import("./env")
+
+    expect(env.SEEKER_RAG_BASE_URL).toBeUndefined()
+    // Defaults apply when unset.
+    expect(getJesusfilmRagConfig().timeoutMs).toBe(5_000)
+    expect(getJesusfilmRagConfig().userAgent).toBe(
+      "forge-mastra-jesusfilm-rag/1.0",
+    )
+  })
+
+  it("projects all RAG fields through getJesusfilmRagConfig when set", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://rag.internal")
+    vi.stubEnv("SEEKER_RAG_API_KEY", "rag-key")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
+    vi.stubEnv("SEEKER_RAG_TIMEOUT_MS", "2500")
+    vi.stubEnv("SEEKER_RAG_USER_AGENT", "forge-test-rag/9.9")
+    // feat-202: prove the optional byte-cap override projects through (coerced
+    // from string), not just the accessor default.
+    vi.stubEnv("SEEKER_RAG_MAX_RESPONSE_BYTES", "1048576")
+
+    const { getJesusfilmRagConfig } = await import("./env")
+
+    expect(getJesusfilmRagConfig()).toEqual({
+      baseUrl: "https://rag.internal",
+      apiKey: "rag-key",
+      timeoutMs: 2_500,
+      userAgent: "forge-test-rag/9.9",
+      maxResponseBytes: 1_048_576,
+    })
+  })
+
+  it("skips the RAG host guard in production when the base URL is unset", async () => {
+    stubProductionBaseline()
+    // No SEEKER_RAG_* vars set at all.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects an http RAG base URL in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://rag.internal")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("accepts an allowlisted Railway-private http RAG base URL in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://forge-rag.railway.internal:8080")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "forge-rag.railway.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects a Railway-private http RAG host absent from the allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://forge-rag.railway.internal:8080")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "other-service.railway.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a Railway-private http RAG base URL with no allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://forge-rag.railway.internal:8080")
+    // SEEKER_RAG_ALLOWED_HOSTS deliberately unset.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it.each([
+    "http://railway.internal:8080",
+    "http://evilrailway.internal:8080",
+    "http://forge-rag.railway.internal.evil.test:8080",
+    "http://.railway.internal:8080",
+    "http://forge-rag..railway.internal:8080",
+    "http://forge-rag.railway.internal.:8080",
+  ])("rejects Railway-private http lookalike %s", async (baseUrl) => {
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", baseUrl)
+    vi.stubEnv(
+      "SEEKER_RAG_ALLOWED_HOSTS",
+      new URL(baseUrl).hostname.toLowerCase(),
+    )
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a RAG host absent from the allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://other.test")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a set RAG base URL with no allowlist in production (fail-closed)", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://rag.internal")
+    // SEEKER_RAG_ALLOWED_HOSTS deliberately unset.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "SEEKER_RAG_BASE_URL must use https or Railway-private http and a host listed in SEEKER_RAG_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("accepts an https RAG base URL whose host is allowlisted in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://rag.internal")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("does not throw on an unsafe RAG base URL outside production", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "http://rag.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("boots in production with the RAG base URL+allowlist set but the API key absent", async () => {
+    // Confirms the allowlist throw and the key-degradation paths are
+    // independent: a valid allowlisted base URL with no key boots fine; the
+    // client returns config_missing at runtime (covered in U2).
+    stubProductionBaseline()
+    vi.stubEnv("SEEKER_RAG_BASE_URL", "https://rag.internal")
+    vi.stubEnv("SEEKER_RAG_ALLOWED_HOSTS", "rag.internal")
+    // SEEKER_RAG_API_KEY deliberately unset.
+
+    const { assertMastraRuntimeEnv, getJesusfilmRagConfig } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(getJesusfilmRagConfig().apiKey).toBeUndefined()
+  })
+
+  it("rejects a RAG timeout above the schema cap at parse", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_RAG_TIMEOUT_MS", "30001")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("rejects a RAG max-response-bytes above the 16 MiB schema cap at parse", async () => {
+    // Fail LOUD on an over-range operator typo rather than silently widening the
+    // OOM guard. 16_777_217 is one byte over the 16 MiB ceiling.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_RAG_MAX_RESPONSE_BYTES", "16777217")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  // --- feat-440: AI_GATEWAY_CHAT_ALLOWED_HOSTS production boot guard ---
+  // Mirrors the RAG guard's suite above, with the armed-only twist: the
+  // assert fires only when AI_GATEWAY_CHAT_API_KEY is set. One assert on the
+  // EFFECTIVE URL covers every chat-gateway consumer by construction
+  // (seeker-model-list, providers.ts, default-chat-agent, specialized-agents,
+  // memory.ts all read `env.AI_GATEWAY_CHAT_BASE_URL ?? DEFAULT`).
+
+  it("boots production unarmed even with a disallowed chat-gateway base URL", async () => {
+    // Discriminating fixture for the armed-only posture: the URL alone would
+    // fail the rule, so a pass here proves the missing key is what skips the
+    // guard — not a permissive rule.
+    stubProductionBaseline()
+    vi.stubEnv("AI_GATEWAY_CHAT_BASE_URL", "http://evil.example/v1")
+    // AI_GATEWAY_CHAT_API_KEY deliberately unset.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("boots production armed on all chat-gateway defaults (zero new env vars)", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("AI_GATEWAY_CHAT_API_KEY", "gw-chat-key")
+    // Base URL and allowlist both unset: the runtime defaults must cover the
+    // current production value with zero Railway edits (ticket constraint).
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects an http chat-gateway base URL in production when armed", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("AI_GATEWAY_CHAT_API_KEY", "gw-chat-key")
+    vi.stubEnv("AI_GATEWAY_CHAT_BASE_URL", "http://ai-gateway.jesusfilm.org/v1")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_CHAT_BASE_URL must use https and a host listed in AI_GATEWAY_CHAT_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects an unlisted https chat-gateway host in production when armed", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("AI_GATEWAY_CHAT_API_KEY", "gw-chat-key")
+    vi.stubEnv("AI_GATEWAY_CHAT_BASE_URL", "https://other.example/v1")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_CHAT_BASE_URL must use https and a host listed in AI_GATEWAY_CHAT_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("accepts a custom https chat-gateway host listed in the allowlist when armed", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("AI_GATEWAY_CHAT_API_KEY", "gw-chat-key")
+    vi.stubEnv("AI_GATEWAY_CHAT_BASE_URL", "https://gw.internal/v1")
+    vi.stubEnv("AI_GATEWAY_CHAT_ALLOWED_HOSTS", "gw.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects an allowlist override that excludes the default host when armed on the default URL", async () => {
+    // The allowlist governs the EFFECTIVE URL: overriding it to a host list
+    // that no longer covers the default base URL's host must throw — a
+    // "default is always allowed" shortcut would make the var inert.
+    stubProductionBaseline()
+    vi.stubEnv("AI_GATEWAY_CHAT_API_KEY", "gw-chat-key")
+    vi.stubEnv("AI_GATEWAY_CHAT_ALLOWED_HOSTS", "gw.internal")
+    // AI_GATEWAY_CHAT_BASE_URL unset → effective default host.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "AI_GATEWAY_CHAT_BASE_URL must use https and a host listed in AI_GATEWAY_CHAT_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("does not throw on a disallowed chat-gateway base URL outside production", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_CHAT_API_KEY", "gw-chat-key")
+    vi.stubEnv("AI_GATEWAY_CHAT_BASE_URL", "http://localhost:8080/v1")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("pins the shared isAllowedAiGatewayChatBaseUrl rule (pure surface)", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { isAllowedAiGatewayChatBaseUrl } = await import("./env")
+
+    // All-defaults configuration passes (zero-Railway-edits constraint).
+    expect(isAllowedAiGatewayChatBaseUrl(undefined, undefined)).toBe(true)
+    // https + listed custom host passes; CSV entries trim.
+    expect(
+      isAllowedAiGatewayChatBaseUrl(
+        "https://gw.internal/v1",
+        " gw.internal , other.internal ",
+      ),
+    ).toBe(true)
+    // http never passes, even on the default host.
+    expect(
+      isAllowedAiGatewayChatBaseUrl(
+        "http://ai-gateway.jesusfilm.org/v1",
+        undefined,
+      ),
+    ).toBe(false)
+    // Unlisted host fails against the default allowlist.
+    expect(
+      isAllowedAiGatewayChatBaseUrl("https://other.example/v1", undefined),
+    ).toBe(false)
+    // An allowlist override that drops the default host fails the default URL.
+    expect(isAllowedAiGatewayChatBaseUrl(undefined, "gw.internal")).toBe(false)
+    // URL hostnames case-fold; csvSet lowercases entries — mixed case matches.
+    expect(
+      isAllowedAiGatewayChatBaseUrl(
+        "https://AI-GATEWAY.jesusfilm.org/v1",
+        "AI-Gateway.JesusFilm.org",
+      ),
+    ).toBe(true)
+    // Unparseable input fails closed instead of throwing.
+    expect(isAllowedAiGatewayChatBaseUrl("not a url", undefined)).toBe(false)
+    // Host-confusion shapes an env-write attacker would try (feat-440
+    // review). Userinfo trick: the URL's hostname is evil.example — the
+    // allowlisted name before the @ is credentials, not the host.
+    expect(
+      isAllowedAiGatewayChatBaseUrl(
+        "https://ai-gateway.jesusfilm.org@evil.example/v1",
+        undefined,
+      ),
+    ).toBe(false)
+    // Suffix trick: the allowlisted host as a subdomain label of an attacker
+    // domain — exact hostname match must reject it.
+    expect(
+      isAllowedAiGatewayChatBaseUrl(
+        "https://ai-gateway.jesusfilm.org.evil.example/v1",
+        undefined,
+      ),
+    ).toBe(false)
+  })
+
+  // --- feat-204: SEEKER_ROUTE_ENABLED default-off string-boolean gate (KTD7) ---
+
+  it("disables the seeker route when SEEKER_ROUTE_ENABLED is unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { isSeekerRouteEnabled } = await import("./env")
+
+    expect(isSeekerRouteEnabled()).toBe(false)
+  })
+
+  it('treats SEEKER_ROUTE_ENABLED="false" as disabled (not JS-truthy)', async () => {
+    // The load-bearing guard against JS truthiness inverting the safety default:
+    // a naive `Boolean(env.SEEKER_ROUTE_ENABLED)` would enable on "false".
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_ROUTE_ENABLED", "false")
+
+    const { isSeekerRouteEnabled } = await import("./env")
+
+    expect(isSeekerRouteEnabled()).toBe(false)
+  })
+
+  it('enables the seeker route only when SEEKER_ROUTE_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_ROUTE_ENABLED", "true")
+
+    const { isSeekerRouteEnabled } = await import("./env")
+
+    expect(isSeekerRouteEnabled()).toBe(true)
+  })
+
+  it("keeps SEEKER_ROUTE_ENABLED out of the production required-var set (optional at boot)", async () => {
+    // The route flag must NEVER brick a Railway deploy: a fully-provisioned
+    // production env with SEEKER_ROUTE_ENABLED unset still boots.
+    stubProductionBaseline()
+    // SEEKER_ROUTE_ENABLED deliberately unset.
+
+    const { assertMastraRuntimeEnv, isSeekerRouteEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isSeekerRouteEnabled()).toBe(false)
+  })
+
+  // --- feat-327: ADMIN_AGENT_TOOLS_URL production egress guard ---
+  //
+  // Mirrors the JESUSFILM_RAG guard above case-for-case. The pair is a
+  // credentialed egress that feat-327 puts on a user-facing conversational
+  // path, so a production config with the URL set and no allowlist must fail
+  // PROMOTION rather than silently send the bearer to an unvetted host.
+
+  it("boots in production with the agent-tools URL unset (unprovisioned is valid)", async () => {
+    stubProductionBaseline()
+    // ADMIN_AGENT_TOOLS_URL deliberately unset — the tools degrade to empty.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("accepts an https agent-tools URL whose host is allowlisted in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("ADMIN_AGENT_TOOLS_URL", "https://admin.jesusfilm.org")
+    vi.stubEnv("ADMIN_AGENT_TOOLS_ALLOWED_HOSTS", "admin.jesusfilm.org")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects an http agent-tools URL in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("ADMIN_AGENT_TOOLS_URL", "http://admin.jesusfilm.org")
+    vi.stubEnv("ADMIN_AGENT_TOOLS_ALLOWED_HOSTS", "admin.jesusfilm.org")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "ADMIN_AGENT_TOOLS_URL must use https and a host listed in ADMIN_AGENT_TOOLS_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects an agent-tools host absent from the allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("ADMIN_AGENT_TOOLS_URL", "https://evil.example")
+    vi.stubEnv("ADMIN_AGENT_TOOLS_ALLOWED_HOSTS", "admin.jesusfilm.org")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "ADMIN_AGENT_TOOLS_URL must use https and a host listed in ADMIN_AGENT_TOOLS_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a set agent-tools URL with no allowlist in production (fail-closed)", async () => {
+    // The case the operator explicitly accepted as a tightening:
+    // ADMIN_AGENT_TOOLS_ALLOWED_HOSTS becomes required-when-URL-set.
+    stubProductionBaseline()
+    vi.stubEnv("ADMIN_AGENT_TOOLS_URL", "https://admin.jesusfilm.org")
+    // ADMIN_AGENT_TOOLS_ALLOWED_HOSTS deliberately unset.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "ADMIN_AGENT_TOOLS_URL must use https and a host listed in ADMIN_AGENT_TOOLS_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("does not throw on an unsafe agent-tools URL outside production", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("ADMIN_AGENT_TOOLS_URL", "http://localhost:4000")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  // --- feat-327: SEEKER_VIDEO_ENABLED default-off string-boolean gate (D6) ---
+
+  it("disables the seeker video capability when SEEKER_VIDEO_ENABLED is unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { isSeekerVideoEnabled } = await import("./env")
+
+    expect(isSeekerVideoEnabled()).toBe(false)
+  })
+
+  it('treats SEEKER_VIDEO_ENABLED="false" as disabled (not JS-truthy)', async () => {
+    // Same JS-truthiness trap as the sibling gates: a naive
+    // `Boolean(env.SEEKER_VIDEO_ENABLED)` would arm two credentialed tools on
+    // the code-unauthenticated /api/agents/* surface on the string "false".
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_VIDEO_ENABLED", "false")
+
+    const { isSeekerVideoEnabled } = await import("./env")
+
+    expect(isSeekerVideoEnabled()).toBe(false)
+  })
+
+  it('enables the seeker video capability only when SEEKER_VIDEO_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_VIDEO_ENABLED", "true")
+
+    const { isSeekerVideoEnabled } = await import("./env")
+
+    expect(isSeekerVideoEnabled()).toBe(true)
+  })
+
+  it("keeps SEEKER_VIDEO_ENABLED out of the production required-var set (optional at boot)", async () => {
+    stubProductionBaseline()
+    // SEEKER_VIDEO_ENABLED deliberately unset.
+
+    const { assertMastraRuntimeEnv, isSeekerVideoEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isSeekerVideoEnabled()).toBe(false)
+  })
+
+  // --- feat-366: SEEKER_FOLLOWUPS_ENABLED default-off string-boolean gate (KTD8) ---
+
+  it("disables seeker follow-ups when SEEKER_FOLLOWUPS_ENABLED is unset or empty", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const first = await import("./env")
+    expect(first.isSeekerFollowUpsEnabled()).toBe(false)
+
+    vi.resetModules()
+    vi.stubEnv("SEEKER_FOLLOWUPS_ENABLED", "")
+    const second = await import("./env")
+    expect(second.isSeekerFollowUpsEnabled()).toBe(false)
+  })
+
+  it.each(["false", "post", "tool", "heuristic", "TRUE"])(
+    "treats SEEKER_FOLLOWUPS_ENABLED=%j as disabled — string-boolean, and the retired prototype mode enum stays dead",
+    async (value) => {
+      // "post"/"tool"/"heuristic" were the prototype's SEEKER_FOLLOWUPS_MODE
+      // values (KTD8: the enum retires with the flag; `mode=post` survives
+      // only as a log-line mechanism label). Any of them read as OFF here.
+      vi.stubEnv("NODE_ENV", "development")
+      vi.stubEnv("SEEKER_FOLLOWUPS_ENABLED", value)
+
+      const { isSeekerFollowUpsEnabled } = await import("./env")
+
+      expect(isSeekerFollowUpsEnabled()).toBe(false)
+    },
+  )
+
+  it('enables seeker follow-ups only when SEEKER_FOLLOWUPS_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_FOLLOWUPS_ENABLED", "true")
+
+    const { isSeekerFollowUpsEnabled } = await import("./env")
+
+    expect(isSeekerFollowUpsEnabled()).toBe(true)
+  })
+
+  it("keeps SEEKER_FOLLOWUPS_ENABLED out of the production required-var set (optional at boot)", async () => {
+    stubProductionBaseline()
+    // SEEKER_FOLLOWUPS_ENABLED deliberately unset — a default-off deploy has
+    // zero new env prerequisites (KTD8).
+
+    const { assertMastraRuntimeEnv, isSeekerFollowUpsEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isSeekerFollowUpsEnabled()).toBe(false)
+  })
+
+  // --- feat-405: AI_CHAT_TITLE_REPAIR_ENABLED default-off string-boolean gate (KTD4) ---
+
+  it("disables title repair when AI_CHAT_TITLE_REPAIR_ENABLED is unset or empty", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const first = await import("./env")
+    expect(first.isTitleRepairEnabled()).toBe(false)
+
+    vi.resetModules()
+    vi.stubEnv("AI_CHAT_TITLE_REPAIR_ENABLED", "")
+    const second = await import("./env")
+    expect(second.isTitleRepairEnabled()).toBe(false)
+  })
+
+  it.each(["false", "TRUE", "1", "yes"])(
+    "treats AI_CHAT_TITLE_REPAIR_ENABLED=%j as disabled — string-boolean, not truthiness",
+    async (value) => {
+      vi.stubEnv("NODE_ENV", "development")
+      vi.stubEnv("AI_CHAT_TITLE_REPAIR_ENABLED", value)
+
+      const { isTitleRepairEnabled } = await import("./env")
+
+      expect(isTitleRepairEnabled()).toBe(false)
+    },
+  )
+
+  it('arms title repair only when AI_CHAT_TITLE_REPAIR_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_CHAT_TITLE_REPAIR_ENABLED", "true")
+
+    const { isTitleRepairEnabled } = await import("./env")
+
+    expect(isTitleRepairEnabled()).toBe(true)
+  })
+
+  it("keeps AI_CHAT_TITLE_REPAIR_ENABLED out of the production required-var set (optional at boot)", async () => {
+    stubProductionBaseline()
+    // AI_CHAT_TITLE_REPAIR_ENABLED deliberately unset — a default-off deploy
+    // has zero new env prerequisites (opt-in-scaffolding law).
+
+    const { assertMastraRuntimeEnv, isTitleRepairEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isTitleRepairEnabled()).toBe(false)
+  })
+
+  // --- feat-327: ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES byte cap ---
+
+  it("defaults the agent-tools response byte cap to 2 MiB when unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { getAdminAgentToolsConfig } = await import("./env")
+
+    expect(getAdminAgentToolsConfig().maxResponseBytes).toBe(2_097_152)
+  })
+
+  it("projects an ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES override through the config", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES", "1048576")
+
+    const { getAdminAgentToolsConfig } = await import("./env")
+
+    expect(getAdminAgentToolsConfig().maxResponseBytes).toBe(1_048_576)
+  })
+
+  it("rejects an agent-tools max-response-bytes above the 16 MiB schema cap at parse", async () => {
+    // Fail LOUD on an over-range operator typo rather than silently widening
+    // the OOM guard. 16_777_217 is one byte over the 16 MiB ceiling.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES", "16777217")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("keeps ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES out of the production required-var set", async () => {
+    stubProductionBaseline()
+    // ADMIN_AGENT_TOOLS_MAX_RESPONSE_BYTES deliberately unset.
+
+    const { assertMastraRuntimeEnv, getAdminAgentToolsConfig } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(getAdminAgentToolsConfig().maxResponseBytes).toBe(2_097_152)
+  })
+
+  // --- feat-237: AI_GATEWAY_SEEKER_ENABLED default-off string-boolean gate ---
+
+  it("disables the seeker gateway model when AI_GATEWAY_SEEKER_ENABLED is unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { isAiGatewaySeekerEnabled } = await import("./env")
+
+    expect(isAiGatewaySeekerEnabled()).toBe(false)
+  })
+
+  it('treats AI_GATEWAY_SEEKER_ENABLED="false" as disabled (not JS-truthy)', async () => {
+    // The load-bearing guard against JS truthiness inverting the safety default:
+    // a naive `Boolean(env.AI_GATEWAY_SEEKER_ENABLED)` would enable on "false".
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_SEEKER_ENABLED", "false")
+
+    const { isAiGatewaySeekerEnabled } = await import("./env")
+
+    expect(isAiGatewaySeekerEnabled()).toBe(false)
+  })
+
+  it('treats AI_GATEWAY_SEEKER_ENABLED="TRUE" as disabled (exact-match only)', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_SEEKER_ENABLED", "TRUE")
+
+    const { isAiGatewaySeekerEnabled } = await import("./env")
+
+    expect(isAiGatewaySeekerEnabled()).toBe(false)
+  })
+
+  it('treats AI_GATEWAY_SEEKER_ENABLED="1" as disabled (exact-match only)', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_SEEKER_ENABLED", "1")
+
+    const { isAiGatewaySeekerEnabled } = await import("./env")
+
+    expect(isAiGatewaySeekerEnabled()).toBe(false)
+  })
+
+  it('enables the seeker gateway model only when AI_GATEWAY_SEEKER_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_GATEWAY_SEEKER_ENABLED", "true")
+
+    const { isAiGatewaySeekerEnabled } = await import("./env")
+
+    expect(isAiGatewaySeekerEnabled()).toBe(true)
+  })
+
+  it("keeps AI_GATEWAY_SEEKER_ENABLED out of the production required-var set (optional at boot)", async () => {
+    // The flag must NEVER brick a Railway deploy: a fully-provisioned
+    // production env with AI_GATEWAY_SEEKER_ENABLED unset still boots.
+    stubProductionBaseline()
+    // AI_GATEWAY_SEEKER_ENABLED deliberately unset.
+
+    const { assertMastraRuntimeEnv, isAiGatewaySeekerEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isAiGatewaySeekerEnabled()).toBe(false)
+  })
+
+  // --- feat-321: LANGFUSE_TRACING_ENABLED default-off string-boolean gate ---
+
+  it("disables Langfuse tracing when LANGFUSE_TRACING_ENABLED is unset", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  it('treats LANGFUSE_TRACING_ENABLED="false" as disabled (not JS-truthy)', async () => {
+    // The load-bearing guard against JS truthiness inverting the safety
+    // default: a naive `Boolean(env.LANGFUSE_TRACING_ENABLED)` would enable
+    // raw-content export on "false".
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACING_ENABLED", "false")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  it('treats LANGFUSE_TRACING_ENABLED="TRUE" as disabled (exact-match only)', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACING_ENABLED", "TRUE")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  it('treats LANGFUSE_TRACING_ENABLED="1" as disabled (exact-match only)', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACING_ENABLED", "1")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  it('enables Langfuse tracing only when LANGFUSE_TRACING_ENABLED is exactly "true"', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACING_ENABLED", "true")
+
+    const { isLangfuseTracingEnabled } = await import("./env")
+
+    expect(isLangfuseTracingEnabled()).toBe(true)
+  })
+
+  it("keeps LANGFUSE_TRACING_ENABLED out of the production required-var set (optional at boot)", async () => {
+    // The flag must NEVER brick a Railway deploy: a fully-provisioned
+    // production env with LANGFUSE_TRACING_ENABLED unset still boots — and
+    // stays off, so credential presence alone never exports content.
+    stubProductionBaseline()
+    // LANGFUSE_TRACING_ENABLED deliberately unset.
+
+    const { assertMastraRuntimeEnv, isLangfuseTracingEnabled } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(isLangfuseTracingEnabled()).toBe(false)
+  })
+
+  // --- ai-chat storage follows the shared Mastra backend ---
+
+  it("ignores a stale dedicated memory value beside the shared postgres backend", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_STORAGE_BACKEND", "postgres")
+    vi.stubEnv("AI_CHAT_MEMORY_BACKEND", "memory")
+
+    const { canAiChatDataPersist, env } = await import("./env")
+
+    expect(env.MASTRA_STORAGE_BACKEND).toBe("postgres")
+    expect("AI_CHAT_MEMORY_BACKEND" in env).toBe(false)
+    expect(canAiChatDataPersist()).toBe(true)
+  })
+
+  it("rejects the shared memory backend in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("MASTRA_STORAGE_BACKEND", "memory")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "MASTRA_STORAGE_BACKEND=memory is not allowed in production",
+    )
+  })
+
+  // --- retention purge gating — canAiChatDataPersist ---
+
+  it("reports persisted ai-chat data possible under the postgres default", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    // MASTRA_STORAGE_BACKEND defaults to postgres.
+
+    const { canAiChatDataPersist } = await import("./env")
+
+    expect(canAiChatDataPersist()).toBe(true)
+  })
+
+  it("reports no persistence for a memory-backend local run", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_STORAGE_BACKEND", "memory")
+
+    const { canAiChatDataPersist } = await import("./env")
+
+    expect(canAiChatDataPersist()).toBe(false)
+  })
+
+  it("ignores a stale dedicated postgres value beside the shared memory backend", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("MASTRA_STORAGE_BACKEND", "memory")
+    vi.stubEnv("AI_CHAT_MEMORY_BACKEND", "postgres")
+
+    const { canAiChatDataPersist, env } = await import("./env")
+
+    expect("AI_CHAT_MEMORY_BACKEND" in env).toBe(false)
+    expect(canAiChatDataPersist()).toBe(false)
+  })
+
+  // --- Langfuse prompt helper (U1): LANGFUSE_* optional config + production host guard ---
+
+  it("imports cleanly with all Langfuse vars unset (no boot failure)", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+
+    const { env, getLangfuseConfig } = await import("./env")
+
+    // The Railway-brick regression gate: a fresh deploy with no Langfuse vars boots.
+    expect(env.LANGFUSE_BASE_URL).toBeUndefined()
+    expect(env.LANGFUSE_PUBLIC_KEY).toBeUndefined()
+    expect(env.LANGFUSE_SECRET_KEY).toBeUndefined()
+    expect(env.LANGFUSE_ALLOWED_HOSTS).toBeUndefined()
+    expect(getLangfuseConfig()).toEqual({
+      baseUrl: undefined,
+      publicKey: undefined,
+      secretKey: undefined,
+      timeoutMs: 3_000,
+      userAgent: "forge-mastra-langfuse/1.0",
+      // `.optional()` knob falls back to the 256 KiB default at the accessor —
+      // no boot requirement, so a fresh deploy still gets a cap.
+      maxResponseBytes: 262_144,
+      promptDefaultLabel: undefined,
+      promptCacheTtlMs: 60_000,
+      promptFailureCooldownMs: 10_000,
+    })
+  })
+
+  it("clamps a Langfuse failure cooldown above the cache TTL to the TTL (smaller wins)", async () => {
+    // Invariant: the effective failure cooldown never exceeds the effective
+    // TTL, whatever the operator configured — a cooldown outliving the cache
+    // window would keep serving the fallback after a fresh fetch is due.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_PROMPT_CACHE_TTL_MS", "30000")
+    vi.stubEnv("LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS", "45000")
+
+    const { getLangfuseConfig } = await import("./env")
+
+    expect(getLangfuseConfig().promptCacheTtlMs).toBe(30_000)
+    expect(getLangfuseConfig().promptFailureCooldownMs).toBe(30_000)
+  })
+
+  it("skips the Langfuse host guard in production when the base URL is unset", async () => {
+    stubProductionBaseline()
+    // No LANGFUSE_* vars set at all.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("rejects an http Langfuse base URL in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("LANGFUSE_BASE_URL", "http://langfuse.internal")
+    vi.stubEnv("LANGFUSE_ALLOWED_HOSTS", "langfuse.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "LANGFUSE_BASE_URL must use https and a host listed in LANGFUSE_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a Langfuse host absent from the allowlist in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("LANGFUSE_BASE_URL", "https://other.test")
+    vi.stubEnv("LANGFUSE_ALLOWED_HOSTS", "langfuse.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "LANGFUSE_BASE_URL must use https and a host listed in LANGFUSE_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("rejects a set Langfuse base URL with no allowlist in production (fail-closed)", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("LANGFUSE_BASE_URL", "https://langfuse.internal")
+    // LANGFUSE_ALLOWED_HOSTS deliberately unset.
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).toThrow(
+      "LANGFUSE_BASE_URL must use https and a host listed in LANGFUSE_ALLOWED_HOSTS for Mastra production",
+    )
+  })
+
+  it("accepts an https Langfuse base URL whose host is allowlisted in production", async () => {
+    stubProductionBaseline()
+    vi.stubEnv("LANGFUSE_BASE_URL", "https://langfuse.internal")
+    vi.stubEnv("LANGFUSE_ALLOWED_HOSTS", "langfuse.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("does not throw on an unsafe Langfuse base URL outside production", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_BASE_URL", "http://langfuse.internal")
+
+    const { assertMastraRuntimeEnv } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+  })
+
+  it("treats empty-string Langfuse values as unset (no url() boot failure)", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_BASE_URL", "")
+    vi.stubEnv("LANGFUSE_TIMEOUT_MS", "")
+    vi.stubEnv("LANGFUSE_USER_AGENT", "")
+    // An empty string must not trip the `z.enum(["1"])` smoke gate either.
+    vi.stubEnv("LANGFUSE_PROMPT_SMOKE_TEST", "")
+
+    const { env, getLangfuseConfig } = await import("./env")
+
+    expect(env.LANGFUSE_BASE_URL).toBeUndefined()
+    expect(env.LANGFUSE_PROMPT_SMOKE_TEST).toBeUndefined()
+    // Defaults apply when unset.
+    expect(getLangfuseConfig().timeoutMs).toBe(3_000)
+    expect(getLangfuseConfig().userAgent).toBe("forge-mastra-langfuse/1.0")
+  })
+
+  it("projects all Langfuse fields through getLangfuseConfig when set", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_BASE_URL", "https://langfuse.internal")
+    vi.stubEnv("LANGFUSE_PUBLIC_KEY", "pk-lf-test")
+    vi.stubEnv("LANGFUSE_SECRET_KEY", "sk-lf-test")
+    vi.stubEnv("LANGFUSE_ALLOWED_HOSTS", "langfuse.internal")
+    vi.stubEnv("LANGFUSE_TIMEOUT_MS", "2500")
+    vi.stubEnv("LANGFUSE_USER_AGENT", "forge-test-langfuse/9.9")
+    // Prove the optional byte-cap override projects through (coerced from
+    // string), not just the accessor default.
+    vi.stubEnv("LANGFUSE_MAX_RESPONSE_BYTES", "131072")
+    vi.stubEnv("LANGFUSE_PROMPT_DEFAULT_LABEL", "production")
+    // Cooldown below the TTL: projected verbatim, no clamping.
+    vi.stubEnv("LANGFUSE_PROMPT_CACHE_TTL_MS", "120000")
+    vi.stubEnv("LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS", "20000")
+
+    const { getLangfuseConfig } = await import("./env")
+
+    expect(getLangfuseConfig()).toEqual({
+      baseUrl: "https://langfuse.internal",
+      publicKey: "pk-lf-test",
+      secretKey: "sk-lf-test",
+      timeoutMs: 2_500,
+      userAgent: "forge-test-langfuse/9.9",
+      maxResponseBytes: 131_072,
+      promptDefaultLabel: "production",
+      promptCacheTtlMs: 120_000,
+      promptFailureCooldownMs: 20_000,
+    })
+  })
+
+  it("boots in production with the Langfuse base URL+allowlist set but the keys absent", async () => {
+    // Confirms the allowlist throw and the key-degradation paths are
+    // independent: a valid allowlisted base URL with no keys boots fine; the
+    // helper serves the caller-supplied fallback at runtime (covered in U2+).
+    stubProductionBaseline()
+    vi.stubEnv("LANGFUSE_BASE_URL", "https://langfuse.internal")
+    vi.stubEnv("LANGFUSE_ALLOWED_HOSTS", "langfuse.internal")
+    // LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY deliberately unset.
+
+    const { assertMastraRuntimeEnv, getLangfuseConfig } = await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(getLangfuseConfig().publicKey).toBeUndefined()
+    expect(getLangfuseConfig().secretKey).toBeUndefined()
+  })
+
+  it("rejects a Langfuse timeout above the schema cap at parse", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TIMEOUT_MS", "10001")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("gives the trace-retention config its own 15s default timeout while everything else mirrors the prompt config", async () => {
+    // The sweep's caller budget is a daily timer, not a chat turn (feat-336
+    // follow-up, 2026-08-11: the live DELETE measured ~3.4s — over the
+    // prompt-tuned 3s default the sweep previously inherited). Assert the
+    // ONLY divergence is timeoutMs, so credential/host/byte-cap posture can
+    // never silently fork between the two accessors. The credential trio is
+    // STUBBED so the equality compares real values — undefined-to-undefined
+    // would keep this green if the retention accessor were ever re-pointed
+    // at different credential env vars (security-review nit, 2026-08-12).
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_BASE_URL", "https://langfuse.internal")
+    vi.stubEnv("LANGFUSE_PUBLIC_KEY", "pk-lf-test")
+    vi.stubEnv("LANGFUSE_SECRET_KEY", "sk-lf-test")
+
+    const { getLangfuseConfig, getLangfuseTraceRetentionConfig } =
+      await import("./env")
+
+    const prompt = getLangfuseConfig()
+    const retention = getLangfuseTraceRetentionConfig()
+    expect(retention.timeoutMs).toBe(15_000)
+    expect(prompt.timeoutMs).toBe(3_000)
+    expect(retention.baseUrl).toBe("https://langfuse.internal")
+    expect(retention.publicKey).toBe("pk-lf-test")
+    expect(retention.secretKey).toBe("sk-lf-test")
+    expect({ ...retention, timeoutMs: prompt.timeoutMs }).toEqual(prompt)
+  })
+
+  it("projects a retention-timeout override without touching the prompt timeout", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACE_RETENTION_TIMEOUT_MS", "30000")
+
+    const { getLangfuseConfig, getLangfuseTraceRetentionConfig } =
+      await import("./env")
+
+    expect(getLangfuseTraceRetentionConfig().timeoutMs).toBe(30_000)
+    expect(getLangfuseConfig().timeoutMs).toBe(3_000)
+  })
+
+  it("rejects a retention timeout above the 60s schema cap at parse", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACE_RETENTION_TIMEOUT_MS", "60001")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("rejects a Langfuse prompt cache TTL above the schema cap at parse", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_PROMPT_CACHE_TTL_MS", "3600001")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("rejects a Langfuse failure cooldown above the schema cap at parse", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_PROMPT_FAILURE_COOLDOWN_MS", "300001")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("rejects a Langfuse max-response-bytes above the 5 MiB schema cap at parse", async () => {
+    // Fail LOUD on an over-range operator typo rather than silently widening
+    // the OOM guard. 5_242_881 is one byte over the 5 MiB ceiling.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_MAX_RESPONSE_BYTES", "5242881")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it('accepts LANGFUSE_PROMPT_SMOKE_TEST="1" (the only enabling literal)', async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_PROMPT_SMOKE_TEST", "1")
+
+    const { env } = await import("./env")
+
+    expect(env.LANGFUSE_PROMPT_SMOKE_TEST).toBe("1")
+  })
+
+  it('rejects a non-"1" LANGFUSE_PROMPT_SMOKE_TEST at parse', async () => {
+    // The enum fails loud on "true"/"yes"/etc. rather than silently
+    // half-enabling the smoke gate.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_PROMPT_SMOKE_TEST", "true")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it('accepts LANGFUSE_TRACE_RETENTION_SMOKE_TEST="1" and rejects any other non-empty value', async () => {
+    // Same posture as the prompt smoke gate (feat-336).
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("LANGFUSE_TRACE_RETENTION_SMOKE_TEST", "1")
+    const { env } = await import("./env")
+    expect(env.LANGFUSE_TRACE_RETENTION_SMOKE_TEST).toBe("1")
+
+    vi.resetModules()
+    vi.stubEnv("LANGFUSE_TRACE_RETENTION_SMOKE_TEST", "true")
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it('accepts AI_CHAT_ERASURE_SMOKE_TEST="1" and rejects any other non-empty value', async () => {
+    // Same posture as both Langfuse smoke gates (feat-337). Loud on a wrong
+    // value rather than half-enabling a suite that DELETES rows.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("AI_CHAT_ERASURE_SMOKE_TEST", "1")
+    const { env } = await import("./env")
+    expect(env.AI_CHAT_ERASURE_SMOKE_TEST).toBe("1")
+
+    vi.resetModules()
+    vi.stubEnv("AI_CHAT_ERASURE_SMOKE_TEST", "true")
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it('accepts SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST="1" and rejects any other non-empty value', async () => {
+    // Same posture as the sibling smoke gates (feat-366): only the literal
+    // "1" enables the opt-in live trace smoke — loud, never half-enabled.
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST", "1")
+    const { env } = await import("./env")
+    expect(env.SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST).toBe("1")
+
+    vi.resetModules()
+    vi.stubEnv("SEEKER_FOLLOWUPS_TRACE_SMOKE_TEST", "true")
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("defaults the devotional Workspace to a local directory and bounded SQL pool", async () => {
+    vi.stubEnv("NODE_ENV", "test")
+    vi.stubEnv("MASTRA_STORAGE_DIR", ".tmp/mastra")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_LOCAL_DIR", "")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX", "")
+
+    const { getDevotionalWorkspaceEnvironment } = await import("./env")
+
+    expect(getDevotionalWorkspaceEnvironment()).toMatchObject({
+      nodeEnv: "test",
+      localDirectory: ".tmp/mastra/devotional-workspace",
+      prefix: "devotional",
+      databasePoolMax: 3,
+      s3: {},
+    })
+  })
+
+  it("keeps the dedicated devotional S3 tuple separate from generic artifact storage", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("RAILWAY_S3_BUCKET", "generic-artifacts")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_S3_BUCKET", "devotional-content")
+    vi.stubEnv(
+      "DEVOTIONAL_WORKSPACE_S3_ENDPOINT",
+      "https://objects.example.test",
+    )
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_S3_REGION", "auto")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_S3_ACCESS_KEY_ID", "access")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_S3_SECRET_ACCESS_KEY", "secret")
+
+    const { env, getDevotionalWorkspaceEnvironment } = await import("./env")
+
+    expect(getDevotionalWorkspaceEnvironment().s3.bucket).toBe(
+      "devotional-content",
+    )
+    expect(env.RAILWAY_S3_BUCKET).toBe("generic-artifacts")
+  })
+
+  it("rejects a devotional direct SQL pool above its service budget", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX", "4")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("rejects a one-connection devotional pool that would self-deadlock", async () => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("DEVOTIONAL_WORKSPACE_DATABASE_POOL_MAX", "1")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+})
+
+/**
+ * Datadog mobile triage env surface (feat-datadog-mobile-triage U1).
+ *
+ * The whole block is `.optional()`/defaulted on purpose: an unprovisioned
+ * Railway environment must still boot, and completeness is a runtime readiness
+ * decision the workflow makes, never a boot throw.
+ */
+const DATADOG_TRIAGE_ENV_VARS = [
+  "DATADOG_TRIAGE_ENABLED",
+  "DATADOG_TRIAGE_SITE",
+  "DATADOG_TRIAGE_API_KEY",
+  "DATADOG_TRIAGE_APP_KEY",
+  "DATADOG_TRIAGE_SERVICES",
+  "DATADOG_TRIAGE_SERVICE_PROFILES_JSON",
+  "DATADOG_TRIAGE_MODEL",
+  "DATADOG_TRIAGE_MAX_CANDIDATES_PER_RUN",
+  "DATADOG_TRIAGE_MAX_TICKETS_PER_DAY",
+  "DATADOG_TRIAGE_TIMEOUT_MS",
+  "DATADOG_TRIAGE_MAX_RESPONSE_BYTES",
+  "DATADOG_TRIAGE_OVERLAP_MS",
+  "DATADOG_TRIAGE_LAG_MS",
+  "DATADOG_TRIAGE_BASELINE_LOOKBACK_MS",
+  "DATADOG_TRIAGE_CONFIDENCE_THRESHOLD",
+  "DATADOG_TRIAGE_ACTIONABILITY_THRESHOLD",
+  "DATADOG_TRIAGE_MIN_OCCURRENCES",
+  "DATADOG_TRIAGE_REGRESSION_MULTIPLIER",
+  "DATADOG_TRIAGE_MONITOR_COOLDOWN_MS",
+  "DATADOG_TRIAGE_SPIKE_MULTIPLIER",
+  "DATADOG_TRIAGE_RELEASE_VERSION_PATTERN",
+  "DATADOG_TRIAGE_DEV_SESSION_MARKERS",
+  "DATADOG_TRIAGE_REPOSITORY_SMOKE_TEST",
+  "LINEAR_DATADOG_TRIAGE_API_KEY",
+  "LINEAR_DATADOG_TRIAGE_API_URL",
+  "LINEAR_DATADOG_TRIAGE_TEAM_ID",
+  "LINEAR_DATADOG_TRIAGE_PROJECT_ID",
+  "LINEAR_DATADOG_TRIAGE_BUG_LABEL_ID",
+] as const
+
+function clearDatadogTriageEnv(): void {
+  for (const name of DATADOG_TRIAGE_ENV_VARS) vi.stubEnv(name, "")
+}
+
+function provisionDatadogTriageEnv(): void {
+  vi.stubEnv("DATADOG_TRIAGE_ENABLED", "true")
+  vi.stubEnv("DATADOG_TRIAGE_API_KEY", "dd-api-key")
+  vi.stubEnv("DATADOG_TRIAGE_APP_KEY", "dd-app-key")
+  // The default model is an `openai/...` route, so this is as load-bearing as
+  // the Datadog and Linear credentials: without it every judgment fails.
+  vi.stubEnv("OPENAI_API_KEY", "sk-test")
+  vi.stubEnv("LINEAR_DATADOG_TRIAGE_API_KEY", "lin_api_key")
+  vi.stubEnv("LINEAR_DATADOG_TRIAGE_TEAM_ID", "team-fge")
+  vi.stubEnv("LINEAR_DATADOG_TRIAGE_PROJECT_ID", "project-mobile-triage")
+  vi.stubEnv("LINEAR_DATADOG_TRIAGE_BUG_LABEL_ID", "label-bug")
+}
+
+describe("Datadog triage env", () => {
+  beforeEach(() => {
+    vi.stubEnv("NODE_ENV", "development")
+    vi.stubEnv("FIRECRAWL_API_KEY", "firecrawl-key")
+    // Explicit, not inherited: a real key in the developer's shell would make
+    // the model-credential cases pass for the wrong reason.
+    vi.stubEnv("OPENAI_API_KEY", "")
+    vi.stubEnv("OPENROUTER_API_KEY", "")
+    vi.stubEnv("OPENROUTER_API_PAID_KEY", "")
+    clearDatadogTriageEnv()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
+
+  it("boots with every new variable unset", async () => {
+    const { assertMastraRuntimeEnv, getDatadogTriageConfig } =
+      await import("./env")
+
+    expect(() => assertMastraRuntimeEnv()).not.toThrow()
+    expect(getDatadogTriageConfig().enabled).toBe(false)
+  })
+
+  it("defaults the enabled flag off and reports every missing credential", async () => {
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toEqual(
+      expect.arrayContaining([
+        "feature_disabled",
+        "datadog_api_key_missing",
+        "datadog_app_key_missing",
+        "linear_api_key_missing",
+        "linear_team_id_missing",
+        "linear_project_id_missing",
+        "linear_bug_label_missing",
+      ]),
+    )
+  })
+
+  it("reports ready once Datadog and Linear are fully provisioned", async () => {
+    provisionDatadogTriageEnv()
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    expect(getDatadogTriageReadiness(getDatadogTriageConfig())).toEqual({
+      ready: true,
+    })
+  })
+
+  // Without this the sweep passes readiness, spends Datadog quota hourly,
+  // fails every judgment, and files nothing — reported `partial`, while the
+  // runbook's liveness query stays green because the fetch half succeeded.
+  it("refuses when the configured model's provider has no credential", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("OPENAI_API_KEY", "")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("model_api_key_missing")
+  })
+
+  it("reads the credential the configured provider actually uses", async () => {
+    // Switching the model to an OpenRouter route must switch which key counts:
+    // checking OPENAI_API_KEY unconditionally would refuse a valid setup.
+    provisionDatadogTriageEnv()
+    vi.stubEnv("OPENAI_API_KEY", "")
+    vi.stubEnv("DATADOG_TRIAGE_MODEL", "openrouter/google/gemma-4-31b-it:free")
+    vi.stubEnv("OPENROUTER_API_KEY", "or-key")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    expect(getDatadogTriageReadiness(getDatadogTriageConfig())).toEqual({
+      ready: true,
+    })
+  })
+
+  it("refuses an OpenRouter model when neither OpenRouter key is set", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("OPENAI_API_KEY", "sk-test")
+    vi.stubEnv("DATADOG_TRIAGE_MODEL", "openrouter/google/gemma-4-31b-it:free")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("model_api_key_missing")
+  })
+
+  it("does not block a provider it cannot classify", async () => {
+    // Refusing an unknown prefix would break a legitimate custom route. This
+    // is the check's honest limit, pinned so it is a decision, not a surprise.
+    provisionDatadogTriageEnv()
+    vi.stubEnv("OPENAI_API_KEY", "")
+    vi.stubEnv("DATADOG_TRIAGE_MODEL", "custom-gateway/some-model")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    expect(getDatadogTriageReadiness(getDatadogTriageConfig())).toEqual({
+      ready: true,
+    })
+  })
+
+  it("refuses an unrecognized Datadog site instead of sending the key there", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("DATADOG_TRIAGE_SITE", "datadog.attacker.example")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("datadog_site_not_allowed")
+  })
+
+  it("defaults the service list to forge-mobile alone", async () => {
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig().services).toEqual(["forge-mobile"])
+  })
+
+  it("trims and drops empty entries from the service list", async () => {
+    vi.stubEnv("DATADOG_TRIAGE_SERVICES", " forge-mobile , ,forge-admin ,")
+
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig().services).toEqual([
+      "forge-mobile",
+      "forge-admin",
+    ])
+  })
+
+  it("deduplicates the service list", async () => {
+    // A repeat is not cosmetic: the sweep would push two cursor rows with the
+    // same source, and `on conflict (source) do update` raises 21000 — so one
+    // duplicated name fails every run rather than degrading.
+    vi.stubEnv(
+      "DATADOG_TRIAGE_SERVICES",
+      "forge-mobile, forge-admin ,forge-mobile",
+    )
+
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig().services).toEqual([
+      "forge-mobile",
+      "forge-admin",
+    ])
+  })
+
+  it("falls back to the DEFAULT_* constants for every numeric field", async () => {
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig()).toMatchObject({
+      maxCandidatesPerRun: 200,
+      maxTicketsPerDay: 5,
+      timeoutMs: 15_000,
+      maxResponseBytes: 4_194_304,
+      overlapMs: 300_000,
+      ingestionLagMs: 180_000,
+      baselineLookbackMs: 604_800_000,
+      confidenceThreshold: 0.7,
+      actionabilityThreshold: 0.6,
+      minOccurrences: 3,
+      regressionMultiplier: 3,
+      monitorCooldownMs: 21_600_000,
+      spikeMultiplier: 3,
+    })
+  })
+
+  it("rejects a non-numeric threshold rather than coercing it to NaN", async () => {
+    vi.stubEnv("DATADOG_TRIAGE_MAX_TICKETS_PER_DAY", "five")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("rejects a daily ticket budget above the schema ceiling", async () => {
+    vi.stubEnv("DATADOG_TRIAGE_MAX_TICKETS_PER_DAY", "500")
+
+    await expect(import("./env")).rejects.toThrow()
+  })
+
+  it("accepts a zero daily budget so the runbook dry-run can enqueue without dispatching", async () => {
+    vi.stubEnv("DATADOG_TRIAGE_MAX_TICKETS_PER_DAY", "0")
+
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig().maxTicketsPerDay).toBe(0)
+  })
+
+  it("ships the mobile service profile with the release-session filter on", async () => {
+    const { getDatadogTriageConfig, getDatadogTriageServiceProfile } =
+      await import("./env")
+
+    expect(
+      getDatadogTriageServiceProfile(getDatadogTriageConfig(), "forge-mobile"),
+    ).toEqual({
+      surfacePrefix: "[Mobile]",
+      releaseSessionFilter: true,
+      spikeSource: "rum",
+    })
+  })
+
+  it("reads per-service prefixes and filter applicability from config", async () => {
+    vi.stubEnv(
+      "DATADOG_TRIAGE_SERVICE_PROFILES_JSON",
+      JSON.stringify({
+        "forge-mobile": {
+          surfacePrefix: "[Mobile]",
+          releaseSessionFilter: true,
+        },
+        "forge-admin": {
+          surfacePrefix: "[Admin]",
+          releaseSessionFilter: false,
+        },
+      }),
+    )
+
+    const { getDatadogTriageConfig, getDatadogTriageServiceProfile } =
+      await import("./env")
+    const config = getDatadogTriageConfig()
+
+    // spikeSource is optional in the JSON and defaults to logs, so an operator
+    // adding a service does not have to know the field exists.
+    expect(getDatadogTriageServiceProfile(config, "forge-admin")).toEqual({
+      surfacePrefix: "[Admin]",
+      releaseSessionFilter: false,
+      spikeSource: "logs",
+    })
+    expect(config.serviceProfilesInvalid).toBe(false)
+  })
+
+  it("falls back to a logs spike check for a service with no profile at all", async () => {
+    const { getDatadogTriageConfig, getDatadogTriageServiceProfile } =
+      await import("./env")
+
+    expect(
+      getDatadogTriageServiceProfile(getDatadogTriageConfig(), "forge-unknown"),
+    ).toEqual({
+      surfacePrefix: "[Service]",
+      releaseSessionFilter: false,
+      spikeSource: "logs",
+    })
+  })
+
+  it("refuses a malformed service-profile map instead of filing under a guessed prefix", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("DATADOG_TRIAGE_SERVICE_PROFILES_JSON", "{not json")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("service_profiles_invalid")
+  })
+
+  it("refuses a service-profile entry whose prefix is not bracketed", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv(
+      "DATADOG_TRIAGE_SERVICE_PROFILES_JSON",
+      JSON.stringify({
+        "forge-mobile": { surfacePrefix: "Mobile", releaseSessionFilter: true },
+      }),
+    )
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("service_profiles_invalid")
+  })
+
+  it("refuses a service name that could widen the monitor tag filter", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("DATADOG_TRIAGE_SERVICES", "forge-mobile,*")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("service_name_invalid")
+  })
+
+  it("accepts ordinary service names", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("DATADOG_TRIAGE_SERVICES", "forge-mobile,forge-admin.api_v2")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    expect(getDatadogTriageReadiness(getDatadogTriageConfig())).toEqual({
+      ready: true,
+    })
+  })
+
+  it("refuses an unusable release-version pattern", async () => {
+    provisionDatadogTriageEnv()
+    vi.stubEnv("DATADOG_TRIAGE_RELEASE_VERSION_PATTERN", "([")
+
+    const { getDatadogTriageConfig, getDatadogTriageReadiness } =
+      await import("./env")
+
+    const readiness = getDatadogTriageReadiness(getDatadogTriageConfig())
+
+    expect(readiness.ready).toBe(false)
+    if (readiness.ready) throw new Error("expected unready config")
+    expect(readiness.reasons).toContain("release_version_pattern_invalid")
+  })
+
+  it("classifies the live 2026-08-18 dev-session versions as non-release", async () => {
+    const { getDatadogTriageConfig } = await import("./env")
+    const pattern = new RegExp(
+      getDatadogTriageConfig().releaseVersionPattern,
+      "u",
+    )
+
+    expect(pattern.test("1.4.2")).toBe(true)
+    expect(pattern.test("1.4.2-beta.3")).toBe(true)
+    expect(pattern.test("fixcheck-20260805")).toBe(false)
+    expect(pattern.test("sdk57-regression-20260813")).toBe(false)
+  })
+
+  it("lower-cases the dev-session markers so matching is case-insensitive", async () => {
+    vi.stubEnv("DATADOG_TRIAGE_DEV_SESSION_MARKERS", " LocalHost , DEV=true ")
+
+    const { getDatadogTriageConfig } = await import("./env")
+
+    expect(getDatadogTriageConfig().devSessionMarkers).toEqual([
+      "localhost",
+      "dev=true",
+    ])
+  })
+})

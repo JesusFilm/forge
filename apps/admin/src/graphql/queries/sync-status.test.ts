@@ -8,10 +8,19 @@ describe("parseSyncScopeArg", () => {
   })
 
   it("parses comma-separated phase scopes", () => {
-    expect(parseSyncScopeArg("languages, videos,video-dubs")).toEqual([
+    expect(
+      parseSyncScopeArg(
+        "languages, video-origins,videos,video-images,video-editions,video-subtitles,video-dubs,video-dub-downloads",
+      ),
+    ).toEqual([
       "languages",
+      "video-origins",
       "videos",
+      "video-images",
+      "video-editions",
+      "video-subtitles",
       "video-dubs",
+      "video-dub-downloads",
     ])
   })
 

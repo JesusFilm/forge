@@ -128,9 +128,7 @@ function mapVideoModel(video: {
 
 ### 1. Migrate Mobile Queries to Shared Package (Root Cause Fix)
 
-The mobile app defines queries locally, bypassing gql.tada codegen. This is the root cause of schema drift. Migrating to `@forge/graphql` would make field renames cause compile-time errors instead of runtime crashes.
-
-The `CLAUDE.md` convention already states: _"Operations (queries, mutations, fragments) are co-located in [packages/graphql] so both apps share them."_ The mobile deviation should be treated as tracked technical debt.
+The mobile app previously defined queries locally, bypassing gql.tada codegen. This was the root cause of schema drift. As of 2026-05-25, the mobile data layer cutover (PR #1011) completed this migration — mobile now consumes `@forge/admin-graphql` with typed fragments, making field renames a compile-time error. See `docs/solutions/architecture-patterns/mobile-admin-data-layer-cutover-pattern-20260525.md` for the full migration pattern.
 
 ### 2. Validate Dynamic Zone Fragments Against Schema
 
@@ -145,6 +143,15 @@ key={`${item.kind}-${item.id}-${index}`}
 ```
 
 ### 4. Follow the GraphQL Change Flow
+
+> **Superseded (2026-07-23):** Strapi has been removed and replaced by the Admin
+> CMS; `apps/cms/` no longer holds content types and the Strapi-bound
+> `packages/graphql` client is gone, so the six steps below describe a toolchain
+> that no longer exists. The current flow lives under "The GraphQL Change Flow"
+> in the root `CLAUDE.md` (Pothos types -> `schema:print` -> `admin-graphql
+generate` -> update consumers -> commit the generated artifacts together).
+> Sections 2 and 3 above are likewise Strapi dynamic-zone mechanics with no
+> Admin CMS equivalent. The incident record above stands as history.
 
 Every CMS schema change requires (per `CLAUDE.md`):
 

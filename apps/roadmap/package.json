@@ -7,12 +7,13 @@
     "build": "next build",
     "start": "next start -p 3100",
     "lint": "eslint .",
-    "generate:readme": "node ./scripts/generate-roadmap-readme.js"
+    "generate:readme": "tsx ./scripts/generate-roadmap-readme.js"
   },
   "dependencies": {
+    "@forge/watch-url-policy": "workspace:*",
     "@tailwindcss/typography": "0.5.19",
     "gray-matter": "^4.0.3",
-    "next": "^16.2.4",
+    "next": "^16.3.8",
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",

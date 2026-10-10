@@ -28,6 +28,18 @@ related:
 date_learned: 2026-04-19
 ---
 
+## Superseded by feat-133
+
+The storage and search guidance below still explains Admin's
+`video_scene` / `video_scene_locale` ownership model, but the provider-call
+boundary changed in feat-133. Admin no longer regenerates scene vectors
+directly from `scene-analysis.json`; Admin launches the Mastra scene embedding
+workflow and accepts vectors only through the scene-specific internal ingest.
+Use
+`docs/solutions/platform/mastra-scene-embedding-workflow-pattern.md`
+for current workflow ownership, provenance, retry, and Studio observability
+rules.
+
 ## Stage 3 (feat-117) update
 
 The per-target write loop has been collapsed into bulk SQL: ONE parent

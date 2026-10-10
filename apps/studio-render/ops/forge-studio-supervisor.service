@@ -1,0 +1,30 @@
+[Unit]
+Description=Forge scoped outbound Studio worker
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=root
+UMask=0077
+ExecStart=/usr/bin/flock --no-fork --nonblock /run/forge-studio-supervisor.lock /opt/forge-studio/current/node /opt/forge-studio/current/vm/supervisor.mjs
+Restart=on-failure
+RestartSec=5s
+RestartPreventExitStatus=78
+KillMode=control-group
+TimeoutStopSec=75s
+MemoryMax=2G
+MemorySwapMax=0
+CPUQuota=100%
+TasksMax=32
+LimitNOFILE=512
+WorkingDirectory=/var/lib/forge-studio
+Environment=PATH=/usr/bin:/bin
+Environment=LANG=C.UTF-8
+Environment=TMPDIR=/var/lib/forge-studio/tmp
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,7 @@
+{
+  "scope": "Local forced browser-launch failure cleanup control; no production calls",
+  "expectedFailure": true,
+  "exitCode": 1,
+  "elapsedMs": 1218.51,
+  "newScratchDirectoriesRemaining": 0
+}

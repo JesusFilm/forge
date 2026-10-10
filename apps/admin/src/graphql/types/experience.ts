@@ -1,29 +1,27 @@
-// Pothos types for Experience and ExperienceLocale.
-//
-// Classification: both types are `@classification abac-gated`. Ownership +
-// publish state apply (see canEditExperience / canViewExperience helpers in
-// Unit 6). Per the architectural tension resolution in the plan, access to
-// abac-gated types from a nested relation MUST route through a service
-// resolver that re-applies the ABAC WHERE — DO NOT add `t.relation` pointing
-// at Experience or ExperienceLocale from another Pothos type without wrapping
-// it in a service call. (See parity test coming in Unit 6.)
-//
-// Embedding vector EXCLUDED from this type by explicit field list — the
-// exclusion is a technical control, not a naming convention (R20). Unit 9
-// adds a resolver-surface test that walks every field and asserts no
-// 1536-length numeric array leaks.
-//
-// Blocks exposed as the generic JSON scalar. The Zod discriminated union in
-// src/domain/blocks.ts validates writes; on reads the shape is whatever was
-// written (agent-extensibility goal — adding a block type doesn't touch the
-// schema).
-//
-// Per Unit 4 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
+// Pothos types for Experience and ExperienceLocale (abac-gated).
+// Embedding column is intentionally excluded (R20). Per Unit 4 of
+// docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
+import type { ExperienceLocale, RevisedByKind } from "@prisma/client"
+import type { Block } from "@/domain/blocks"
+import { isEditorOrAdmin } from "@/auth/principal"
 import { builder } from "@/graphql/builder"
-// Import for side effect: registers the JSON scalar on the builder so this
-// module can reference `type: "JSON"` below. Also exports `LocaleStatusEnum`.
+import { ExperienceBlock } from "@/graphql/types/blocks"
 import { LocaleStatusEnum } from "@/graphql/types/reference"
+import type { ExperiencePreviewShape } from "@/services/experience-preview.service"
+import { stampPreviewLocaleOnMediaCollections } from "@/services/experience-preview-blocks"
+import { resolveWatchHomeCategoryRailReadBlocks } from "@/services/watch-home-category-rail-rollout"
+
+// PUBLIC field-strip triplet (consumer-migration U2 — 2026-05-11). The
+// `unauthorizedResolver: () => null` overrides Pothos scope-auth's default
+// throw so anonymous callers get null without populating `errors[]` — the
+// U5 parity comparator (PR #915) inspects both `data` and `errors[]`.
+
+const STRIPPED_FOR_PUBLIC = {
+  nullable: true as const,
+  authScopes: { hasPermission: "read:experiences" as const },
+  unauthorizedResolver: () => null,
+}
 
 // -----------------------------------------------------------------------------
 // ExperienceLocale
@@ -38,6 +36,110 @@ builder.prismaObject("ExperienceLocale", {
     experienceId: t.exposeID("experienceId"),
     locale: t.exposeString("locale"),
     slug: t.exposeString("slug"),
+    // Stripped for PUBLIC so anonymous callers cannot enumerate homepage flags.
+    isHomepage: t.exposeBoolean("isHomepage", { ...STRIPPED_FOR_PUBLIC }),
+    pathSegment: t.exposeString("pathSegment", { nullable: true }),
+    title: t.exposeString("title", { nullable: true }),
+    metaDescription: t.exposeString("metaDescription", { nullable: true }),
+    ogTitle: t.exposeString("ogTitle", { nullable: true }),
+    ogDescription: t.exposeString("ogDescription", { nullable: true }),
+    ogImageUrl: t.exposeString("ogImageUrl", { nullable: true }),
+    blocks: t.field({
+      // `t.field` (NOT `t.prismaField`) because the underlying value is a JSON
+      // column projected to a typed union, not a Prisma model relation. The
+      // Zod `BlockSchema` is the write-time contract; the union here is the
+      // read-time contract that mirrors it. Drift between the two is caught
+      // by `src/graphql/types/blocks.drift.test.ts`.
+      type: [ExperienceBlock],
+      nullable: false,
+      description:
+        "Array of Experience blocks. Shape mirrors `src/domain/blocks.ts` BlockSchema (Zod). Mutations still accept opaque JSON; only the query output is typed.",
+      resolve: (row, _args, ctx) =>
+        resolveWatchHomeCategoryRailReadBlocks({
+          rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
+          blocks: row.blocks,
+          isHomepage: row.isHomepage,
+        }) as Block[],
+    }),
+    status: t.expose("status", { type: LocaleStatusEnum }),
+    publishedAt: t.string({
+      nullable: true,
+      resolve: (row) => row.publishedAt?.toISOString() ?? null,
+    }),
+    createdAt: t.string({
+      ...STRIPPED_FOR_PUBLIC,
+      resolve: (row) => row.createdAt.toISOString(),
+    }),
+    updatedAt: t.string({
+      ...STRIPPED_FOR_PUBLIC,
+      resolve: (row) => row.updatedAt.toISOString(),
+    }),
+  }),
+})
+
+/** @classification abac-gated */
+builder.prismaObject("Experience", {
+  description:
+    "A page-builder Experience. Per-locale content lives in ExperienceLocale. Embedding vector is stored here but never exposed via GraphQL.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    isTemplate: t.exposeBoolean("isTemplate", { ...STRIPPED_FOR_PUBLIC }),
+    ownerId: t.exposeID("ownerId", { ...STRIPPED_FOR_PUBLIC }),
+    archivedAt: t.string({
+      ...STRIPPED_FOR_PUBLIC,
+      resolve: (row) => row.archivedAt?.toISOString() ?? null,
+    }),
+    createdAt: t.string({
+      ...STRIPPED_FOR_PUBLIC,
+      resolve: (row) => row.createdAt.toISOString(),
+    }),
+    updatedAt: t.string({
+      ...STRIPPED_FOR_PUBLIC,
+      resolve: (row) => row.updatedAt.toISOString(),
+    }),
+    locales: t.relation("locales", {
+      description: "VIEWER/PUBLIC see PUBLISHED only; EDITOR/ADMIN see all.",
+      query: (_args, ctx) =>
+        isEditorOrAdmin(ctx.user) ? {} : { where: { status: "PUBLISHED" } },
+    }),
+  }),
+})
+
+// -----------------------------------------------------------------------------
+// Experience draft editorial state (permissioned, service-mediated)
+// -----------------------------------------------------------------------------
+
+type ExperienceLocaleEffectiveShape = Omit<ExperienceLocale, "blocks"> & {
+  blocks: Block[]
+}
+
+type ExperienceLocaleActiveDraftShape = {
+  id: string
+  previewToken: string | null
+  revisedAt: Date
+  revisedBy: string | null
+  revisedByKind: RevisedByKind
+  reason: string | null
+}
+
+type ExperienceLocaleDraftStateShape = {
+  canonical: ExperienceLocale
+  effective: ExperienceLocaleEffectiveShape
+  activeDraft: ExperienceLocaleActiveDraftShape | null
+}
+
+/** @classification abac-gated */
+const ExperienceLocaleEffectiveRef =
+  builder.objectRef<ExperienceLocaleEffectiveShape>("ExperienceLocaleEffective")
+
+ExperienceLocaleEffectiveRef.implement({
+  description:
+    "Effective editable locale state: the active draft snapshot when present, otherwise canonical content.",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    experienceId: t.exposeID("experienceId"),
+    locale: t.exposeString("locale"),
+    slug: t.exposeString("slug"),
     isHomepage: t.exposeBoolean("isHomepage"),
     pathSegment: t.exposeString("pathSegment", { nullable: true }),
     title: t.exposeString("title", { nullable: true }),
@@ -45,16 +147,15 @@ builder.prismaObject("ExperienceLocale", {
     ogTitle: t.exposeString("ogTitle", { nullable: true }),
     ogDescription: t.exposeString("ogDescription", { nullable: true }),
     ogImageUrl: t.exposeString("ogImageUrl", { nullable: true }),
-    /**
-     * Block array — JSON scalar. Writes are validated by `BlocksSchema` in
-     * `src/domain/blocks.ts` before persistence. Reads return whatever was
-     * persisted; the GraphQL schema stays stable as block types evolve.
-     */
     blocks: t.field({
-      type: "JSON",
-      description:
-        "Array of Experience blocks. Schema shape enforced at write time by the domain Zod union; see `src/domain/blocks.ts`.",
-      resolve: (row) => row.blocks,
+      type: [ExperienceBlock],
+      nullable: false,
+      resolve: (row, _args, ctx) =>
+        resolveWatchHomeCategoryRailReadBlocks({
+          rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
+          blocks: row.blocks,
+          isHomepage: row.isHomepage,
+        }) as Block[],
     }),
     status: t.expose("status", { type: LocaleStatusEnum }),
     publishedAt: t.string({
@@ -66,43 +167,101 @@ builder.prismaObject("ExperienceLocale", {
   }),
 })
 
-// -----------------------------------------------------------------------------
-// Experience
-//
-// Intentional omissions:
-//   - `embedding` — NEVER exposed. Excluded by field list; Unit 9 adds a
-//     resolver-surface test that proves no field of this type ever returns
-//     a 1536-length numeric array even indirectly.
-// -----------------------------------------------------------------------------
-
 /** @classification abac-gated */
-builder.prismaObject("Experience", {
+const ExperienceLocaleActiveDraftRef =
+  builder.objectRef<ExperienceLocaleActiveDraftShape>(
+    "ExperienceLocaleActiveDraft",
+  )
+
+ExperienceLocaleActiveDraftRef.implement({
   description:
-    "A page-builder Experience. Canonical row holds non-localized state; per-locale content (slug, blocks, title) lives in ExperienceLocale. Embedding vector is stored here but NEVER exposed via GraphQL.",
+    "Permissioned metadata for the one shared active draft of a locale.",
   fields: (t) => ({
     id: t.exposeID("id"),
-    isTemplate: t.exposeBoolean("isTemplate"),
-    ownerId: t.exposeID("ownerId", { nullable: true }),
-    archivedAt: t.string({
+    previewToken: t.exposeString("previewToken", {
       nullable: true,
-      resolve: (row) => row.archivedAt?.toISOString() ?? null,
-    }),
-    createdAt: t.string({ resolve: (row) => row.createdAt.toISOString() }),
-    updatedAt: t.string({ resolve: (row) => row.updatedAt.toISOString() }),
-    locales: t.relation("locales", {
       description:
-        "Per-locale ExperienceLocale rows. ABAC-filtered: VIEWER/PUBLIC see PUBLISHED only.",
-      query: (_args, ctx) =>
-        ctx.user?.role === "ADMIN" || ctx.user?.role === "EDITOR"
-          ? {}
-          : { where: { status: "PUBLISHED" } },
+        "Bearer capability used by the unlisted Web preview route. Never exposed by public queries.",
+    }),
+    revisedAt: t.string({ resolve: (row) => row.revisedAt.toISOString() }),
+    revisedBy: t.exposeString("revisedBy", { nullable: true }),
+    revisedByKind: t.string({ resolve: (row) => row.revisedByKind }),
+    reason: t.exposeString("reason", { nullable: true }),
+  }),
+})
+
+/** @classification abac-gated */
+const ExperienceLocaleDraftStateRef =
+  builder.objectRef<ExperienceLocaleDraftStateShape>(
+    "ExperienceLocaleDraftState",
+  )
+
+ExperienceLocaleDraftStateRef.implement({
+  description:
+    "Canonical, effective editable, and active-draft state for one language-specific Experience.",
+  fields: (t) => ({
+    canonical: t.prismaField({
+      type: "ExperienceLocale",
+      resolve: (_query, row) => row.canonical,
+    }),
+    effective: t.field({
+      type: ExperienceLocaleEffectiveRef,
+      resolve: (row) => row.effective,
+    }),
+    hasDraft: t.boolean({ resolve: (row) => row.activeDraft !== null }),
+    activeDraft: t.field({
+      type: ExperienceLocaleActiveDraftRef,
+      nullable: true,
+      resolve: (row) => row.activeDraft,
     }),
   }),
 })
 
 // -----------------------------------------------------------------------------
-// Root queries — delegate to ExperienceService for ABAC filtering.
+// Public preview capability shape
 // -----------------------------------------------------------------------------
+
+/** @classification public-shape */
+const ExperiencePreviewRef =
+  builder.objectRef<ExperiencePreviewShape>("ExperiencePreview")
+
+ExperiencePreviewRef.implement({
+  description:
+    "Public render-only shape for an active Experience draft capability.",
+  fields: (t) => ({
+    experienceId: t.exposeID("experienceId", { nullable: false }),
+    localeId: t.exposeID("localeId", { nullable: false }),
+    locale: t.exposeString("locale", { nullable: false }),
+    slug: t.exposeString("slug", { nullable: false }),
+    isHomepage: t.exposeBoolean("isHomepage", { nullable: false }),
+    pathSegment: t.exposeString("pathSegment", { nullable: true }),
+    title: t.exposeString("title", { nullable: true }),
+    metaDescription: t.exposeString("metaDescription", { nullable: true }),
+    ogTitle: t.exposeString("ogTitle", { nullable: true }),
+    ogDescription: t.exposeString("ogDescription", { nullable: true }),
+    ogImageUrl: t.exposeString("ogImageUrl", { nullable: true }),
+    blocks: t.field({
+      type: [ExperienceBlock],
+      nullable: false,
+      // Bind the locale of this preview to every media collection item so
+      // `MediaCollectionItem.previewResolvedTitle` resolves without a
+      // caller-supplied locale argument. Runs after the rail projection so
+      // synthesized blocks go through the same stamp. Deliberately NOT applied
+      // to the published blocks resolvers above: published callers pass
+      // `$locale` to `resolvedTitle` explicitly, and leaving their items
+      // unstamped is what stops one from borrowing a preview locale.
+      resolve: (row, _args, ctx) =>
+        stampPreviewLocaleOnMediaCollections(
+          resolveWatchHomeCategoryRailReadBlocks({
+            rolloutCompleted: ctx.watchHomeCategoryRailRolloutCompleted,
+            blocks: row.blocks,
+            isHomepage: row.isHomepage,
+          }),
+          row.locale,
+        ) as Block[],
+    }),
+  }),
+})
 
 builder.queryFields((t) => ({
   experience: t.prismaField({
@@ -143,6 +302,21 @@ builder.queryFields((t) => ({
         query,
       }),
   }),
+  experienceLocaleDraftState: t.field({
+    type: ExperienceLocaleDraftStateRef,
+    nullable: false,
+    authScopes: { hasPermission: "write:experiences" },
+    description:
+      "Fetch canonical and effective shared-draft state for one Experience locale. ABAC-filtered.",
+    args: {
+      id: t.arg.id({ required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.experience.getLocaleDraftState({
+        id: String(args.id),
+        user: ctx.user,
+      }),
+  }),
   experienceBySlug: t.prismaField({
     type: "ExperienceLocale",
     nullable: true,
@@ -160,5 +334,17 @@ builder.queryFields((t) => ({
         user: ctx.user,
         query,
       }),
+  }),
+  experiencePreview: t.field({
+    type: ExperiencePreviewRef,
+    nullable: true,
+    authScopes: { public: true },
+    description:
+      "Resolve an unlisted active Experience draft capability. Returns null when invalid or retired; never falls back to canonical content.",
+    args: {
+      token: t.arg.string({ required: true }),
+    },
+    resolve: (_root, args, ctx) =>
+      ctx.services.experiencePreview.resolveByToken({ token: args.token }),
   }),
 }))

@@ -1,8 +1,11 @@
 {
   "expo": {
-    "name": "forge-tv",
+    "name": "Jesus Film Watch",
     "slug": "jesus-film-forge-tv",
+    "owner": "jesus-film-project",
     "version": "1.0.0",
+    "scheme": "org.jesusfilm.forgetv",
+    "icon": "./assets/icon.png",
     "orientation": "landscape",
     "userInterfaceStyle": "dark",
     "newArchEnabled": false,
@@ -11,16 +14,19 @@
       "backgroundColor": "#161311"
     },
     "ios": {
-      "bundleIdentifier": "org.jesusfilm.forgetv",
+      "bundleIdentifier": "org.jesusfilm.forgewatch",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
-      }
+      },
+      "appleTeamId": "DQ48D9BF2V"
     },
     "android": {
-      "package": "org.jesusfilm.forgetv"
+      "package": "org.jesusfilm.tv",
+      "versionCode": 2,
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "plugins": [
       "expo-router",
@@ -28,7 +34,17 @@
         "@react-native-tvos/config-tv",
         {
           "isTV": true,
-          "tvosDeploymentTarget": "16.0"
+          "tvosDeploymentTarget": "16.0",
+          "androidTVBanner": "./assets/tv/banner.png",
+          "appleTVImages": {
+            "icon": "./assets/tv/icon.png",
+            "iconSmall": "./assets/tv/iconSmall.png",
+            "iconSmall2x": "./assets/tv/iconSmall2x.png",
+            "topShelf": "./assets/tv/topShelf.png",
+            "topShelf2x": "./assets/tv/topShelf2x.png",
+            "topShelfWide": "./assets/tv/topShelfWide.png",
+            "topShelfWide2x": "./assets/tv/topShelfWide2x.png"
+          }
         }
       ],
       [
@@ -36,11 +52,20 @@
         {
           "supportsBackgroundPlayback": false
         }
-      ]
+      ],
+      "./plugins/withTVInfoPlistFixes",
+      "./plugins/withTVSceneLifecycle",
+      "./plugins/withAssistantSearchIntent",
+      "./plugins/withTVHardwareFeatures",
+      "./plugins/withAndroidStartupLoading",
+      "expo-secure-store"
     ],
     "extra": {
       "router": {
         "origin": false
+      },
+      "eas": {
+        "projectId": "5c706719-0203-4c73-a663-e354b94f563d"
       }
     }
   }

@@ -1,8 +1,13 @@
 import Image from "next/image"
 import Link from "next/link"
+import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
 import { demoResultHref } from "@/lib/demo-href"
 import type { ExperienceSectionNode } from "@/lib/experience-generator"
 import type { SearchResult } from "@/lib/search"
+import { cn } from "@/lib/utils"
 
 type ResultsBySlug = Map<string, SearchResult>
 
@@ -34,7 +39,10 @@ function Spotlight({
   return (
     <Link
       href={demoResultHref(result)}
-      className="group relative block overflow-hidden rounded-2xl"
+      className={cn(
+        "group relative block overflow-hidden rounded-2xl",
+        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+      )}
     >
       <div className="relative aspect-[16/9] w-full overflow-hidden bg-stone-800">
         {result.imageUrl ? (
@@ -49,6 +57,7 @@ function Spotlight({
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/10" />
       </div>
+      <VideoThumbnailInteractionFrame data-testid="generated-spotlight-thumbnail-frame" />
       <div className="absolute inset-x-0 bottom-0 flex flex-col gap-3 p-6 md:p-8">
         <span className="w-fit rounded-full bg-amber-500/90 px-3 py-0.5 text-[10px] font-semibold tracking-[0.2em] text-stone-950 uppercase">
           Spotlight
@@ -98,7 +107,10 @@ function ThemeCarousel({
           <Link
             key={result.slug}
             href={demoResultHref(result)}
-            className="group relative flex w-52 shrink-0 flex-col overflow-hidden rounded-xl bg-stone-900 transition hover:bg-stone-800 sm:w-60"
+            className={cn(
+              "group relative flex w-52 shrink-0 flex-col overflow-hidden rounded-xl bg-stone-900 transition hover:bg-stone-800 sm:w-60",
+              VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+            )}
           >
             <div className="relative aspect-video w-full overflow-hidden bg-stone-800">
               {result.imageUrl ? (
@@ -110,6 +122,7 @@ function ThemeCarousel({
                   className="object-cover transition-transform duration-500 group-hover:scale-105"
                 />
               ) : null}
+              <VideoThumbnailInteractionFrame data-testid="generated-theme-thumbnail-frame" />
             </div>
             <div className="p-3">
               <p className="line-clamp-2 text-sm font-medium text-stone-100">
@@ -135,14 +148,14 @@ function BibleVerse({
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-stone-800 bg-stone-900 p-8 md:p-10">
-      <div className="pointer-events-none absolute top-4 left-6 font-serif text-8xl leading-none text-amber-500/20 select-none">
+      <div className="pointer-events-none absolute top-4 left-6 font-sans text-8xl leading-none text-amber-500/20 select-none">
         &ldquo;
       </div>
       <div className="relative">
         <span className="text-[10px] font-semibold tracking-[0.25em] text-amber-400 uppercase">
           {section.reference}
         </span>
-        <blockquote className="mt-3 font-serif text-2xl leading-relaxed text-stone-50 md:text-3xl">
+        <blockquote className="mt-3 font-sans text-2xl leading-relaxed text-stone-50 md:text-3xl">
           {section.text}
         </blockquote>
         <p className="mt-5 border-t border-stone-800 pt-4 text-sm leading-relaxed text-stone-300">

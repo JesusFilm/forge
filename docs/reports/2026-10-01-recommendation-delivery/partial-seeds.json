@@ -1,0 +1,216 @@
+[
+  [
+    {
+      "locale": "en",
+      "audio_language_slug": "idioma-wanca",
+      "seed_media_id": "cmp7833rf0318qm01ntn1a3sj",
+      "slug": "creation",
+      "requests": "4",
+      "min_cards": 3,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kwanyama",
+      "seed_media_id": "cmp76ycuv02n0ny01faav3nae",
+      "slug": "the-beginning",
+      "requests": "4",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "naxi",
+      "seed_media_id": "cmp76znob02v8ny01ihd4kfn8",
+      "slug": "parable-of-the-pharisee-and-tax-collector",
+      "requests": "4",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "idioma-wanca",
+      "seed_media_id": "cmp78475n03lgqm01btiakdxi",
+      "slug": "the-adulterous-woman-forgiven",
+      "requests": "4",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bariba",
+      "seed_media_id": "cmp784sji03v6qm01t21d1tgi",
+      "slug": "rivka-believes",
+      "requests": "4",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "lamalera",
+      "seed_media_id": "cmp7816lx0220qm01ykkcxrwi",
+      "slug": "jesus-triumphal-entry",
+      "requests": "3",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "english-african",
+      "seed_media_id": "cmp76v2040248ny01vwz4gka2",
+      "slug": "storyclubs-jairus-daughter",
+      "requests": "3",
+      "min_cards": 1,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "vasui",
+      "seed_media_id": "cmp771jse033kny01qmrt171s",
+      "slug": "parable-of-the-sower-and-the-seed",
+      "requests": "3",
+      "min_cards": 3,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gbii",
+      "seed_media_id": "cmp76yn4x02owny01ta34f78o",
+      "slug": "birth-of-jesus",
+      "requests": "3",
+      "min_cards": 1,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bali-madya",
+      "seed_media_id": "cmp76zyw002wyny013kze3wcq",
+      "slug": "jairus-daughter-brought-back-to-life",
+      "requests": "3",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "loloda",
+      "seed_media_id": "cmp76zc2202seny01di1ovnfl",
+      "slug": "the-devil-tempts-jesus",
+      "requests": "2",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kalenjin-kipsigis",
+      "seed_media_id": "cmp76z3kf02rcny01tualv0bi",
+      "slug": "baptism-of-jesus-by-john",
+      "requests": "2",
+      "min_cards": 3,
+      "max_cards": 3
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "ikpeshi",
+      "seed_media_id": "cmp7818yu0234qm0115sjnjwf",
+      "slug": "jesus-drives-out-money-changers",
+      "requests": "2",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "kim",
+      "seed_media_id": "cmp781sp002dkqm01afgkh1cz",
+      "slug": "jesus-is-crucified",
+      "requests": "2",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "mandinka",
+      "seed_media_id": "cmp770cpx02zuny0159xq2baq",
+      "slug": "beatitudes",
+      "requests": "2",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gbii",
+      "seed_media_id": "cmp76z3kf02rcny01tualv0bi",
+      "slug": "baptism-of-jesus-by-john",
+      "requests": "2",
+      "min_cards": 2,
+      "max_cards": 2
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "gbii",
+      "seed_media_id": "cmp76yw1102qiny01sjxaygvh",
+      "slug": "childhood-of-jesus",
+      "requests": "2",
+      "min_cards": 1,
+      "max_cards": 1
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "dongo",
+      "seed_media_id": "cmp76zt5402w8ny01d40vgm3l",
+      "slug": "miraculous-catch-of-fish",
+      "requests": "2",
+      "min_cards": 4,
+      "max_cards": 4
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "bedamuni",
+      "seed_media_id": "cmp7816lx0220qm01ykkcxrwi",
+      "slug": "jesus-triumphal-entry",
+      "requests": "2",
+      "min_cards": 5,
+      "max_cards": 5
+    },
+    {
+      "locale": "en",
+      "audio_language_slug": "arabic-juba",
+      "seed_media_id": "cmp76ycuv02n0ny01faav3nae",
+      "slug": "the-beginning",
+      "requests": "2",
+      "min_cards": 2,
+      "max_cards": 2
+    }
+  ],
+  [
+    {
+      "language": "ckb",
+      "videos_with_compatible_embeddings": "132",
+      "watch_eligible": "132",
+      "published_same_locale": "0"
+    },
+    {
+      "language": "en",
+      "videos_with_compatible_embeddings": "867",
+      "watch_eligible": "858",
+      "published_same_locale": "867"
+    },
+    {
+      "language": "fr",
+      "videos_with_compatible_embeddings": "602",
+      "watch_eligible": "593",
+      "published_same_locale": "587"
+    },
+    {
+      "language": "te",
+      "videos_with_compatible_embeddings": "231",
+      "watch_eligible": "231",
+      "published_same_locale": "0"
+    },
+    {
+      "language": "zh",
+      "videos_with_compatible_embeddings": "472",
+      "watch_eligible": "469",
+      "published_same_locale": "0"
+    }
+  ]
+]

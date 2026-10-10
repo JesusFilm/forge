@@ -1,6 +1,7 @@
 ---
 title: In-memory slot reservation for fire-and-forget background dispatch — wrap the entire callback in try/finally
 date: 2026-05-06
+last_updated: 2026-05-19
 category: best-practices
 problem_type: best_practice
 component: nextjs-after-background-dispatch
@@ -143,6 +144,29 @@ The in-memory variant trades durability for simplicity. Both
 patterns share the same release-on-settle invariant; only the
 storage and recovery mechanism differ.
 
+**Queue-backed variant:** when the "fire-and-forget" work becomes a
+process-local queue, do not let the old short TTL govern queued or
+running slots. A queued job can sit behind other work, and a running
+Mux-heavy transcript job can outlive a 5-minute prune window. In that
+shape, use a non-expiring active marker while the queue owns the job,
+release it only in the queue runner's `finally`, and test that a stale
+clock still returns `already_in_flight` while dispatch is unresolved.
+
+Also keep the `after()` lifecycle attached to the accepted work. If
+the request's `after()` callback only enqueues jobs and returns, later
+queue drain promises become detached process work. Have the scheduled
+callback await the queued jobs accepted by that request through
+settlement, or document an explicit worker lifecycle that survives
+request cleanup.
+
+Finally, add backpressure before accepting new dispatchable jobs. A
+concurrency cap protects the provider, but an unbounded queue shifts
+the problem into manager memory. The queue-full path should reject
+new work with a retryable response before reserving in-flight slots;
+classification-only rows (`not_found`, `validation_failed`, and
+`already_in_flight`) should still be returned normally because they
+do not spend queue capacity.
+
 **Cross-link to the dispatch-error-log path:** schedule wrappers
 typically wrap the cb in `try/catch { console.error(...) }` so a
 thrown dispatch doesn't crash Next. That wrapper is for
@@ -177,3 +201,12 @@ The trap was caught by ce:review's reliability-reviewer (rel-1, conf
 0.88) before it reached prod. The fix added the `try {` above the
 `console.log` line and added the sync-throw test "releases the slot
 when dispatch throws SYNCHRONOUSLY".
+
+2026-05-19 follow-up: PR #981 extended the same helper with a bounded
+admin-trigger dispatch queue after production transcript triggers hit
+Mux `429 Too many requests`. The durable lesson is that slot
+reservation, queue capacity, provider concurrency, and `after()`
+lifecycle are one contract: reserve only after capacity is available,
+hold the slot while queued/running, release in the runner `finally`,
+and keep the scheduled background promise attached until accepted work
+settles.

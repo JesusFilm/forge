@@ -9,7 +9,15 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "dev": "turbo run dev --parallel",
+    "dev:admin-web-mastra": "scripts/admin-web-mastra.sh run",
+    "run:admin-web-mastra": "scripts/admin-web-mastra.sh run",
+    "pause:admin-web-mastra": "scripts/admin-web-mastra.sh pause",
+    "resume:admin-web-mastra": "scripts/admin-web-mastra.sh resume",
+    "stop:admin-web-mastra": "scripts/admin-web-mastra.sh stop",
+    "restart:admin-web-mastra": "scripts/admin-web-mastra.sh restart",
+    "status:admin-web-mastra": "scripts/admin-web-mastra.sh status",
     "fetch-secrets": "turbo run fetch-secrets --continue=always",
+    "seed:search-eval:prod": "pnpm --filter @forge/mastra seed:search-eval:prod",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "android": "pnpm --filter @forge/mobile android",
@@ -23,13 +31,20 @@
     "*": "prettier --write --ignore-unknown"
   },
   "pnpm": {
+    "packageExtensions": {
+      "react-native-worklets": {
+        "dependencies": {
+          "@babel/types": "^7.29.0"
+        }
+      }
+    },
     "overrides": {
-      "@hono/node-server": "1.19.14",
+      "@hono/node-server": "1.19.15",
       "@apollo/server": "5.5.0",
       "@casl/ability": "6.7.5",
       "@nestjs/core": "11.1.18",
       "@tootallnate/once": "3.0.1",
-      "@xmldom/xmldom": "0.8.12",
+      "@xmldom/xmldom": "0.8.15",
       "ajv@8": "8.18.0",
       "axios@0": "0.31.0",
       "axios@1": "1.15.0",
@@ -52,7 +67,7 @@
       "minimatch@3": "3.1.5",
       "minimatch@9": "9.0.7",
       "minimatch@10": "10.2.5",
-      "@nestjs/core>path-to-regexp": "8.4.0",
+      "@nestjs/core>path-to-regexp": "8.4.2",
       "node-forge": "1.4.0",
       "picomatch@2": "2.3.2",
       "picomatch@3": "3.0.2",
@@ -66,19 +81,28 @@
       "undici@6": "6.24.0",
       "undici@7": "7.24.0",
       "vitest>vite": "6.4.2",
-      "@strapi/strapi>vite": "6.4.2",
       "vite@5": "6.4.2",
       "vite@6": "6.4.2",
       "webpack": "5.106.2",
       "yaml@1": "1.10.3",
       "yaml@2": "2.8.3"
+    },
+    "patchedDependencies": {
+      "react-native-tvos@0.81.5-2": "patches/react-native-tvos@0.81.5-2.patch",
+      "@datadog/mobile-react-native@3.5.2": "patches/@datadog__mobile-react-native@3.5.2.patch",
+      "expo-tvos-search@2.1.1": "patches/expo-tvos-search@2.1.1.patch",
+      "@fortedigital/nextjs-cache-handler@3.2.1": "patches/@fortedigital__nextjs-cache-handler@3.2.1.patch",
+      "@workflow/world-postgres@4.1.1": "patches/@workflow__world-postgres@4.1.1.patch",
+      "@datadog/pprof@5.15.0": "patches/@datadog__pprof@5.15.0.patch",
+      "next@16.3.8": "patches/next@16.3.8.patch",
+      "@remotion/renderer@4.0.475": "patches/@remotion__renderer@4.0.475.patch"
     }
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.1",
     "@commitlint/config-conventional": "^20.4.1",
     "@eslint/js": "^9.0.0",
-    "@next/eslint-plugin-next": "16.2.2",
+    "@next/eslint-plugin-next": "16.3.8",
     "eslint": "^9.0.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.5",
@@ -88,6 +112,7 @@
     "prettier": "^3.8.1",
     "tsx": "^4.21.0",
     "turbo": "^2.8.9",
+    "typescript": "~5.9.3",
     "typescript-eslint": "^8.56.0"
   }
 }

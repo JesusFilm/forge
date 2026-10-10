@@ -1,27 +1,22 @@
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
+import { StyleSheet, Text, View } from "react-native"
+import { WatchProgressBar } from "../watch/WatchProgressBar"
 import { Image } from "expo-image"
-import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
 
-import Ionicons from "@expo/vector-icons/Ionicons"
-
-import {
-  hexToRgba,
-  BLACK,
-  SURFACE_COLOR,
-  TEXT_ON_OVERLAY,
-} from "../../lib/color"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { SURFACE_COLOR } from "../../lib/color"
+import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { useTypography } from "../../hooks/useTypography"
-import { card, feedback, overlay, text } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
-import { pickThumbnailUrl } from "../../lib/types"
-import type { VideoRef } from "../../lib/types"
+import { useT } from "../../i18n/useT"
+import { card, text } from "../../styles/shared"
+import type { AdminBlock } from "../../lib/queries"
+import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
+import { PressableCard } from "../ui/PressableCard"
+import { blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface VideoCardRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -29,21 +24,17 @@ export interface VideoCardRendererProps {
 export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   const router = useRouter()
   const typography = useTypography()
+  const tCommon = useT("Common")
 
-  const title =
-    (section.videoTitle as string | null) ?? (section.title as string | null)
-  const subtitle =
-    (section.videoSubtitle as string | null) ??
-    (section.subtitle as string | null)
-  const sectionKey =
-    (section.sectionKey as string | null) ?? (section.id as string | null)
+  const s = section as Record<string, unknown>
+  const title = (s.title as string | null) ?? tCommon("untitled")
+  const subtitle = s.subtitle as string | null
+  const sectionKey = s.sectionKey as string | null
+  const streamingUrl = blockStreamingUrl(s)
+  const videoId = s.videoId as string | null
 
-  const videoRef = section.videoRef as VideoRef | null | undefined
-
-  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(videoRef?.images))
-
-  const displayTitle = title ?? videoRef?.title ?? "Untitled"
-  const imageAlt = videoRef?.imageAlt ?? displayTitle
+  const resolvedThumb = useVideoThumbnail(videoId)
+  const thumbnailUrl = resolveThumbnailUrl(resolvedThumb, streamingUrl)
 
   const handlePress = () => {
     if (sectionKey) {
@@ -52,70 +43,48 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   }
 
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.container,
-        pressed && Platform.OS === "ios" && feedback.pressed,
-      ]}
-      android_ripple={{ color: "rgba(255, 255, 255, 0.2)", foreground: true }}
+    <PressableCard
       onPress={handlePress}
-      accessibilityRole="button"
-      accessibilityLabel={`Play ${displayTitle}`}
-    >
-      <View style={[card.surface, styles.localCard]}>
-        {thumbnailUrl != null ? (
+      accessibilityLabel={tCommon("playTitleAriaLabel", { title })}
+      {...{ "dd-action-name": "section-video-card" }}
+      style={styles.container}
+      surfaceStyle={[card.surface, styles.localCard]}
+      background={
+        thumbnailUrl != null ? (
           <Image
             source={thumbnailUrl}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
-            recyclingKey={`vcard-${section.id as string}`}
-            accessibilityLabel={imageAlt}
+            recyclingKey={`vcard-${sectionKey ?? "x"}`}
+            accessibilityLabel={title}
             priority="normal"
           />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.placeholder]} />
-        )}
-
-        {/* Bottom gradient */}
-        <LinearGradient
-          colors={[hexToRgba(BLACK, 0), hexToRgba(BLACK, 0.85)]}
-          locations={[0.4, 1]}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-
-        {/* Text overlay */}
-        <View style={styles.textOverlay}>
-          <Text style={[text.sectionHeading, typography.titleLarge]}>
-            {displayTitle}
+        )
+      }
+      scrim="standard"
+      playOverlay="large"
+    >
+      <View style={styles.textOverlay}>
+        <Text style={[text.sectionHeading, typography.titleLarge]}>
+          {title}
+        </Text>
+        {subtitle != null && (
+          <Text
+            style={[
+              text.sectionSubtitle,
+              styles.localSubtitle,
+              typography.bodySmall,
+            ]}
+            numberOfLines={1}
+          >
+            {subtitle}
           </Text>
-          {subtitle != null && (
-            <Text
-              style={[
-                text.sectionSubtitle,
-                styles.localSubtitle,
-                typography.bodySmall,
-              ]}
-              numberOfLines={1}
-            >
-              {subtitle}
-            </Text>
-          )}
-        </View>
-
-        {/* Play icon — rendered last so it sits above text in z-layer */}
-        <View style={overlay.playOverlay} pointerEvents="none">
-          <View style={styles.playCircle}>
-            <Ionicons
-              name="play"
-              size={22}
-              color={TEXT_ON_OVERLAY}
-              style={{ marginLeft: 4 }}
-            />
-          </View>
-        </View>
+        )}
       </View>
-    </Pressable>
+      <WatchProgressBar videoId={videoId} />
+    </PressableCard>
   )
 }
 
@@ -132,14 +101,6 @@ const styles = StyleSheet.create({
   },
   placeholder: {
     backgroundColor: SURFACE_COLOR,
-  },
-  playCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center",
-    alignItems: "center",
   },
   textOverlay: {
     position: "absolute",

@@ -1,0 +1,29 @@
+a5df24451b2e55b27de98d4f54ba9f78eb9a43fa 9d1e9335625054ba2660c345674c1bef219ec0a8 feat(mastra): point the music library and devotional cache at a volume
+9d1e9335625054ba2660c345674c1bef219ec0a8 05f458587d12f511dfa674a63106e60b291d9fa9 feat(mastra): devotional text gates, background continuity, teaser recipe
+05f458587d12f511dfa674a63106e60b291d9fa9 9848827de4fdd317c7969896654b10b5dda1979f docs: take main's devotional video studio plan
+9848827de4fdd317c7969896654b10b5dda1979f 96feb32378cdd13b3c16afd344b1509b22829448 docs: drop the stale devotional roadmap tickets superseded in main
+96feb32378cdd13b3c16afd344b1509b22829448 0074fd1cf932c9656f18daeeaa8738c421dfb514 docs: write the devotional inventory in English
+0074fd1cf932c9656f18daeeaa8738c421dfb514 ce997848a6e18eaf61316546707d94bd73c265dd docs: record that the devotional data plane already shipped in main
+ce997848a6e18eaf61316546707d94bd73c265dd 06a6b20b153773a480d0fe30f643b5bd448ab832 docs: fix the brand-path address and link the inventory from the handoff
+06a6b20b153773a480d0fe30f643b5bd448ab832 188134650ba316e729a9b7b991c5ba8c3b04cf5d docs: separate unread files from unneeded ones in the devotional inventory
+188134650ba316e729a9b7b991c5ba8c3b04cf5d fd2085e0b25d9d6f128d2f34883afa13b6b51185 docs: inventory what ties the devotional pipeline to one machine
+fd2085e0b25d9d6f128d2f34883afa13b6b51185 9cfd0630c23d328e05cad4deef8f8560deb088c3 docs: drop the ~3 minute duration target from the devotional handoff
+9cfd0630c23d328e05cad4deef8f8560deb088c3 c2b541a90e5a0aa7528c2aa90721addb93f34aef docs: bring the devotional handoff back in line with reality
+c2b541a90e5a0aa7528c2aa90721addb93f34aef 29c5288b9f1dbbd067e8c5c61a45bb2178e0838c feat(mastra): give the devotional workflow the CLI's capabilities
+29c5288b9f1dbbd067e8c5c61a45bb2178e0838c 2d84e6dd353dccdd0b842865ed40d50d71451c5a refactor(mastra): produce devotional narration through one shared path
+2d84e6dd353dccdd0b842865ed40d50d71451c5a 85659e89a29aabe0dc7ea046a828fe556bdf5786 fix(mastra): make the devotional quality gate and audio cache actually hold
+85659e89a29aabe0dc7ea046a828fe556bdf5786 6883c2da7ce805c87c6adbb9178f58b1328e5428 feat(mastra): harden devotional text pipeline + social cover cards
+6883c2da7ce805c87c6adbb9178f58b1328e5428 15efc4f77daf8f8bbec3c9979fe7a83fddfa560d fix(mastra): keep the devotional music bed audible to the end
+15efc4f77daf8f8bbec3c9979fe7a83fddfa560d ceefe8fc51d3f166e1bc934939ffbe11a498807d feat(mastra): video-first daily-devotional generator + Remotion composition
+ceefe8fc51d3f166e1bc934939ffbe11a498807d 58717b5b863d5330d8d197bc2db48dfdd9d03600 docs(review): record residual review findings (devotional)
+58717b5b863d5330d8d197bc2db48dfdd9d03600 3babf8128220c71ddc6b556cf15c22dc8ea80c18 fix(review): apply autofix feedback
+3babf8128220c71ddc6b556cf15c22dc8ea80c18 169dc1f0e5c598b36d7da1749d09550a602ea89f feat(mastra): register daily-devotional workflow + route, docs (U9)
+169dc1f0e5c598b36d7da1749d09550a602ea89f ec8eed68757809dc9685b095b4baa3f96209a590 feat(mastra): daily devotional workflow + artifact store + route handler (U8)
+ec8eed68757809dc9685b095b4baa3f96209a590 3b14c37140b973ba977030c520ebfd5a0158298e feat(mastra): devotional site publish client (U7)
+3b14c37140b973ba977030c520ebfd5a0158298e 3d1a507bbded93ecf685542794a17af243560031 feat(mastra): devotional safety gate — fail-closed doctrine/tone judge (U6)
+3d1a507bbded93ecf685542794a17af243560031 2578ea2f8c90e0d847c5baecaa0dd83ec6913975 feat(mastra): devotional writer with partner grounding + flexible block order (U5)
+2578ea2f8c90e0d847c5baecaa0dd83ec6913975 40dad253dc94c45dca1803551b719948e0a2bd09 feat(mastra): devotional video matcher with always-a-clip fallback (U4)
+40dad253dc94c45dca1803551b719948e0a2bd09 750cd895168eac02eaa44715fa617454df223de9 feat(mastra): devotional scripture selector (U3)
+750cd895168eac02eaa44715fa617454df223de9 caba241b2a08a114a8f412f4fc7b2fde610f535a feat(mastra): devotional hook picker + shared LLM helper (U2)
+caba241b2a08a114a8f412f4fc7b2fde610f535a 2cad98318a8ca1c7a8264d4bee7628b6b64e285f feat(mastra): devotional env config + shared types (U1)
+2cad98318a8ca1c7a8264d4bee7628b6b64e285f a6d34f2faf65ec7bc2009aab927d60459b6d1b2a docs(devotional): add daily devotional generator brainstorm + plan

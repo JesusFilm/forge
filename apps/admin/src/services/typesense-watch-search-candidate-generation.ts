@@ -1,0 +1,1721 @@
+import {
+  Prisma,
+  type PrismaClient,
+  type WatchSearchCandidateGenerationState,
+  type WatchSearchCandidateLeaseKind,
+  type WatchSearchCandidatePointerKind,
+  type WatchSearchCandidateQualificationStatus,
+} from "@prisma/client"
+import type {
+  TypesenseClient,
+  TypesenseCollectionField,
+  TypesenseCollectionSchema,
+} from "./typesense-client"
+import { TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID } from "./typesense-watch-search-publication-lock"
+import {
+  hasPassingCandidateQualificationEvidence,
+  parseCandidateOperatorAcceptanceBundle,
+} from "./typesense-watch-search-candidate-qualification"
+import {
+  freezeCurrentWatchSearchProfile,
+  watchSearchBindingMembers,
+} from "./typesense-watch-search-profile"
+import {
+  resolveCurrentWatchSearchTranscriptProjection,
+  resolveCurrentWatchSearchTranscriptProjectionWithFallback,
+} from "./typesense-watch-search-current-transcript-projection"
+
+export type CandidateGenerationState = WatchSearchCandidateGenerationState
+
+export const WATCH_SEARCH_CANDIDATE_AUTHORIZING_STATUSES = [
+  "PASSED",
+  "OPERATOR_ACCEPTED",
+] as const satisfies readonly WatchSearchCandidateQualificationStatus[]
+
+export type CandidateAuthorizingQualificationStatus =
+  (typeof WATCH_SEARCH_CANDIDATE_AUTHORIZING_STATUSES)[number]
+
+export type CandidateQualificationAudit = Readonly<{
+  reviewerIdentity: string
+  operatorIdentity: string
+  evidenceBundleSha256: string
+  evidenceBundleByteLength?: number
+}>
+
+export type CandidateCollectionOwnership = "OWNED" | "SHARED"
+
+export type CandidateCollectionMember = {
+  collection: string
+  ownership: CandidateCollectionOwnership
+  fields: readonly TypesenseCollectionField[]
+}
+
+export type CandidateGenerationInput = {
+  id: string
+  indexContractRevision: string
+  sourceEpoch: string
+  sourceDigests: Record<string, unknown>
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
+  transcriptProjectionRevision: bigint
+  members: {
+    catalog: CandidateCollectionMember
+    availability: CandidateCollectionMember
+    lexical: CandidateCollectionMember
+    transcript: CandidateCollectionMember
+  }
+}
+
+type CurrentTranscriptProjectionResolver = (
+  prisma: Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">,
+) => Promise<{
+  transcriptCollection: string
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
+  projectionRevision: bigint
+}>
+
+type SchemaClient = Pick<TypesenseClient, "getAlias" | "getCollectionSchema">
+type PointerKind = WatchSearchCandidatePointerKind
+
+type StoredGeneration = {
+  id: string
+  state: CandidateGenerationState
+  version: number
+  indexContractRevision: string
+  catalogCollection: string
+  availabilityCollection: string
+  lexicalCollection: string
+  transcriptCollection: string
+  contentEmbeddingContractId: string
+  transcriptChunkingVersion: string
+  transcriptProjectionRevision: bigint
+  catalogFields: unknown
+  availabilityFields: unknown
+  lexicalFields: unknown
+  transcriptFields: unknown
+}
+
+export class CandidateGenerationValidationError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "CandidateGenerationValidationError"
+  }
+}
+
+export class CandidateGenerationConflictError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "CandidateGenerationConflictError"
+  }
+}
+
+export class CandidateGenerationCompatibilityError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "CandidateGenerationCompatibilityError"
+  }
+}
+
+export class CandidateGenerationLeaseError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "CandidateGenerationLeaseError"
+  }
+}
+
+const LEGAL_TRANSITIONS: Readonly<
+  Record<CandidateGenerationState, readonly CandidateGenerationState[]>
+> = {
+  BUILDING: ["INVALIDATED", "RETIRING"],
+  READY: ["INVALIDATED"],
+  INVALIDATED: ["RETIRING"],
+  RETIRING: ["RETIRED"],
+  RETIRED: [],
+}
+
+const MAX_LEASE_TTL_MS = 10 * 60 * 1_000
+
+function requiredString(value: string, name: string): string {
+  const normalized = value.trim()
+  if (!normalized) {
+    throw new CandidateGenerationValidationError(`${name} is required`)
+  }
+  return normalized
+}
+
+function asJson(value: unknown): Prisma.InputJsonValue {
+  return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue
+}
+
+function assertJsonObject(value: unknown, name: string): void {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Object.keys(value).length === 0
+  ) {
+    throw new CandidateGenerationValidationError(
+      `${name} must be a non-empty object`,
+    )
+  }
+}
+
+function recordValue(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null
+}
+
+function normalizedQualificationAudit(
+  value: CandidateQualificationAudit | undefined,
+): CandidateQualificationAudit {
+  if (!value) {
+    throw new CandidateGenerationValidationError(
+      "qualification audit attribution is required",
+    )
+  }
+  const reviewerIdentity = requiredString(
+    value.reviewerIdentity,
+    "qualification reviewer identity",
+  )
+  const operatorIdentity = requiredString(
+    value.operatorIdentity,
+    "qualification operator identity",
+  )
+  const evidenceBundleSha256 = requiredString(
+    value.evidenceBundleSha256,
+    "qualification evidence bundle digest",
+  ).toLowerCase()
+  if (!/^sha256:[a-f0-9]{64}$/.test(evidenceBundleSha256)) {
+    throw new CandidateGenerationValidationError(
+      "qualification evidence bundle digest must be a SHA-256 digest",
+    )
+  }
+  const evidenceBundleByteLength = value.evidenceBundleByteLength
+  if (
+    evidenceBundleByteLength !== undefined &&
+    (!Number.isSafeInteger(evidenceBundleByteLength) ||
+      evidenceBundleByteLength <= 0)
+  ) {
+    throw new CandidateGenerationValidationError(
+      "qualification evidence bundle byte length must be a positive safe integer",
+    )
+  }
+  return {
+    reviewerIdentity,
+    operatorIdentity,
+    evidenceBundleSha256,
+    ...(evidenceBundleByteLength === undefined
+      ? {}
+      : { evidenceBundleByteLength }),
+  }
+}
+
+function qualificationAuditMatches(
+  evidence: unknown,
+  expected: CandidateQualificationAudit,
+): boolean {
+  const audit = recordValue(recordValue(evidence)?.audit)
+  return (
+    audit?.reviewerIdentity === expected.reviewerIdentity &&
+    audit?.operatorIdentity === expected.operatorIdentity &&
+    audit?.evidenceBundleSha256 === expected.evidenceBundleSha256 &&
+    audit?.evidenceBundleByteLength === expected.evidenceBundleByteLength
+  )
+}
+
+function assertOperatorAcceptedQualificationEvidence(
+  evidence: Record<string, unknown>,
+  generation: StoredGeneration,
+  input: {
+    generationId: string
+    indexContractRevision: string
+    rankingRevision: string
+    transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+    transcriptProjectionRevision: bigint
+    qrelsRevision: string
+    currentBindings: readonly string[]
+    qualificationAudit: CandidateQualificationAudit
+  },
+): void {
+  let bundle
+  try {
+    bundle = parseCandidateOperatorAcceptanceBundle(evidence)
+  } catch (error) {
+    throw new CandidateGenerationValidationError(
+      error instanceof Error
+        ? error.message
+        : "operator acceptance bundle is invalid",
+    )
+  }
+  const audit = normalizedQualificationAudit(input.qualificationAudit)
+  const candidateBindings = bundle.identity.candidateBindings
+  if (
+    audit.evidenceBundleByteLength === undefined ||
+    bundle.identity.generationId !== input.generationId ||
+    bundle.identity.indexContractRevision !== input.indexContractRevision ||
+    bundle.identity.rankingRevision !== input.rankingRevision ||
+    bundle.identity.transcriptCollection !== input.transcriptCollection ||
+    bundle.identity.contentEmbeddingContractId !==
+      input.contentEmbeddingContractId ||
+    bundle.identity.transcriptChunkingVersion !==
+      input.transcriptChunkingVersion ||
+    bundle.identity.transcriptProjectionRevision !==
+      input.transcriptProjectionRevision.toString() ||
+    bundle.identity.qrelsRevision !== input.qrelsRevision ||
+    JSON.stringify(bundle.identity.currentBindings) !==
+      JSON.stringify(input.currentBindings) ||
+    candidateBindings.catalog !== generation.catalogCollection ||
+    candidateBindings.availability !== generation.availabilityCollection ||
+    candidateBindings.lexical !== generation.lexicalCollection ||
+    candidateBindings.transcript !== generation.transcriptCollection ||
+    bundle.userAcceptance.reviewerIdentity !== audit.reviewerIdentity ||
+    !qualificationAuditMatches(evidence, audit)
+  ) {
+    throw new CandidateGenerationValidationError(
+      "operator acceptance requires an exact reviewed bundle and audit identity",
+    )
+  }
+}
+
+function assertPassingQualificationEvidence(
+  evidence: Record<string, unknown>,
+  input: {
+    generationId: string
+    indexContractRevision: string
+    rankingRevision: string
+    transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+    transcriptProjectionRevision: bigint
+    qrelsRevision: string
+    currentBindings: readonly string[]
+    qualificationAudit: CandidateQualificationAudit
+  },
+): void {
+  const identity = recordValue(evidence.identity)
+  const gates = recordValue(evidence.evidence)
+  const storedBindings = recordValue(identity?.currentBindings)
+  const identityBindings = storedBindings
+    ? Object.values(storedBindings)
+    : identity?.currentBindings
+  const qualificationAudit = normalizedQualificationAudit(
+    input.qualificationAudit,
+  )
+  if (
+    evidence.schemaVersion !== "watch-search-candidate-qualification/v2" ||
+    evidence.status !== "QUALIFIED" ||
+    !Array.isArray(evidence.reasons) ||
+    evidence.reasons.length !== 0 ||
+    identity?.generationId !== input.generationId ||
+    identity?.indexContractRevision !== input.indexContractRevision ||
+    identity?.rankingRevision !== input.rankingRevision ||
+    identity?.transcriptCollection !== input.transcriptCollection ||
+    identity?.contentEmbeddingContractId !== input.contentEmbeddingContractId ||
+    identity?.transcriptChunkingVersion !== input.transcriptChunkingVersion ||
+    identity?.transcriptProjectionRevision !==
+      input.transcriptProjectionRevision.toString() ||
+    identity?.qrelsRevision !== input.qrelsRevision ||
+    !Array.isArray(identityBindings) ||
+    JSON.stringify(identityBindings) !==
+      JSON.stringify(input.currentBindings) ||
+    !hasPassingCandidateQualificationEvidence(gates) ||
+    !qualificationAuditMatches(evidence, qualificationAudit)
+  ) {
+    throw new CandidateGenerationValidationError(
+      "passing qualification requires an exact QUALIFIED report with reviewed evidence",
+    )
+  }
+}
+
+function normalizedFields(
+  fields: readonly TypesenseCollectionField[],
+  name: string,
+): TypesenseCollectionField[] {
+  if (fields.length === 0) {
+    throw new CandidateGenerationValidationError(
+      `${name} field manifest cannot be empty`,
+    )
+  }
+
+  const names = new Set<string>()
+  return fields.map((field) => {
+    const fieldName = requiredString(field.name, `${name} field name`)
+    const type = requiredString(field.type, `${name}.${fieldName} field type`)
+    if (names.has(fieldName)) {
+      throw new CandidateGenerationValidationError(
+        `${name} field manifest contains duplicate field ${fieldName}`,
+      )
+    }
+    names.add(fieldName)
+    return { ...field, name: fieldName, type }
+  })
+}
+
+function parseStoredFields(value: unknown, name: string) {
+  if (!Array.isArray(value)) {
+    throw new CandidateGenerationValidationError(
+      `${name} stored field manifest is invalid`,
+    )
+  }
+  return normalizedFields(value as TypesenseCollectionField[], name)
+}
+
+function validateMember(
+  member: CandidateCollectionMember,
+  name: string,
+  ownership: CandidateCollectionOwnership,
+) {
+  const collection = requiredString(member.collection, `${name} collection`)
+  if (member.ownership !== ownership) {
+    throw new CandidateGenerationValidationError(
+      `${name} collection must be marked ${ownership}`,
+    )
+  }
+  return {
+    collection,
+    fields: normalizedFields(member.fields, name),
+  }
+}
+
+function validateInput(input: CandidateGenerationInput) {
+  const id = requiredString(input.id, "generation id")
+  const indexContractRevision = requiredString(
+    input.indexContractRevision,
+    "index contract revision",
+  )
+  const sourceEpoch = requiredString(input.sourceEpoch, "source epoch")
+  assertJsonObject(input.sourceDigests, "source digests")
+  const contentEmbeddingContractId = requiredString(
+    input.contentEmbeddingContractId,
+    "content embedding contract id",
+  )
+  const transcriptChunkingVersion = requiredString(
+    input.transcriptChunkingVersion,
+    "transcript chunking version",
+  )
+  if (input.transcriptProjectionRevision < 0n) {
+    throw new CandidateGenerationValidationError(
+      "transcript projection revision cannot be negative",
+    )
+  }
+
+  const catalog = validateMember(input.members.catalog, "catalog", "OWNED")
+  const availability = validateMember(
+    input.members.availability,
+    "availability",
+    "OWNED",
+  )
+  const lexical = validateMember(input.members.lexical, "lexical", "OWNED")
+  const transcript = validateMember(
+    input.members.transcript,
+    "transcript",
+    "SHARED",
+  )
+  const collections = [
+    catalog.collection,
+    availability.collection,
+    lexical.collection,
+    transcript.collection,
+  ]
+  if (new Set(collections).size !== collections.length) {
+    throw new CandidateGenerationValidationError(
+      "candidate physical collection members must be distinct",
+    )
+  }
+
+  return {
+    id,
+    indexContractRevision,
+    sourceEpoch,
+    sourceDigests: input.sourceDigests,
+    contentEmbeddingContractId,
+    transcriptChunkingVersion,
+    transcriptProjectionRevision: input.transcriptProjectionRevision,
+    catalog,
+    availability,
+    lexical,
+    transcript,
+  }
+}
+
+function assertSchemaMatches(
+  expectedCollection: string,
+  expectedFields: readonly TypesenseCollectionField[],
+  actual: TypesenseCollectionSchema,
+): void {
+  if (actual.name !== expectedCollection) {
+    throw new CandidateGenerationValidationError(
+      `Typesense returned schema ${actual.name} for ${expectedCollection}`,
+    )
+  }
+  if (actual.fields.length !== expectedFields.length) {
+    throw new CandidateGenerationValidationError(
+      `Typesense collection ${expectedCollection} field count does not match its manifest`,
+    )
+  }
+
+  const actualByName = new Map(
+    actual.fields.map((field) => [field.name, field]),
+  )
+  for (const expected of expectedFields) {
+    const observed = actualByName.get(expected.name)
+    if (!observed || observed.type !== expected.type) {
+      throw new CandidateGenerationValidationError(
+        `Typesense collection ${expectedCollection} field ${expected.name} does not match its manifest`,
+      )
+    }
+    for (const key of [
+      "facet",
+      "index",
+      "locale",
+      "optional",
+      "sort",
+      "num_dim",
+    ] as const) {
+      if (expected[key] !== undefined && observed[key] !== expected[key]) {
+        throw new CandidateGenerationValidationError(
+          `Typesense collection ${expectedCollection} field ${expected.name} does not match its manifest`,
+        )
+      }
+    }
+  }
+}
+
+function assertGenerationReady(generation: StoredGeneration): void {
+  if (generation.state !== "READY") {
+    throw new CandidateGenerationValidationError(
+      `candidate generation ${generation.id} is not READY`,
+    )
+  }
+}
+
+function assertExactIdentity(
+  generation: StoredGeneration,
+  identity: {
+    indexContractRevision: string
+    transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+    transcriptProjectionRevision?: bigint
+  },
+): void {
+  if (generation.indexContractRevision !== identity.indexContractRevision) {
+    throw new CandidateGenerationCompatibilityError(
+      `candidate generation ${generation.id} is not compatible with index contract revision ${identity.indexContractRevision}`,
+    )
+  }
+  if (
+    generation.transcriptCollection !== identity.transcriptCollection ||
+    generation.contentEmbeddingContractId !==
+      identity.contentEmbeddingContractId ||
+    generation.transcriptChunkingVersion !==
+      identity.transcriptChunkingVersion ||
+    (identity.transcriptProjectionRevision !== undefined &&
+      generation.transcriptProjectionRevision !==
+        identity.transcriptProjectionRevision)
+  ) {
+    throw new CandidateGenerationCompatibilityError(
+      `candidate generation ${generation.id} transcript identity is stale`,
+    )
+  }
+}
+
+function expiresAt(now: Date, ttlMs: number): Date {
+  if (!Number.isInteger(ttlMs) || ttlMs <= 0 || ttlMs > MAX_LEASE_TTL_MS) {
+    throw new CandidateGenerationValidationError(
+      `lease ttlMs must be between 1 and ${MAX_LEASE_TTL_MS}`,
+    )
+  }
+  return new Date(now.getTime() + ttlMs)
+}
+
+function normalizedBindings(bindings: readonly string[]): string[] {
+  const normalized = bindings.map((binding) =>
+    requiredString(binding, "current binding"),
+  )
+  if (
+    normalized.length === 0 ||
+    new Set(normalized).size !== normalized.length
+  ) {
+    throw new CandidateGenerationValidationError(
+      "current bindings must be a non-empty set",
+    )
+  }
+  return normalized
+}
+
+function storedStringArray(value: unknown, name: string): string[] {
+  if (
+    !Array.isArray(value) ||
+    value.some((entry) => typeof entry !== "string" || !entry.trim())
+  ) {
+    throw new CandidateGenerationValidationError(`${name} is invalid`)
+  }
+  return value as string[]
+}
+
+function storedDeletionProgress(value: unknown): string[] {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return []
+  const deleted = (value as { deletedCollections?: unknown }).deletedCollections
+  return deleted == null
+    ? []
+    : storedStringArray(deleted, "deleted collections")
+}
+
+function isUniqueConflict(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2002"
+  )
+}
+
+export class TypesenseWatchSearchCandidateGenerationService {
+  constructor(
+    private readonly prisma: PrismaClient,
+    private readonly typesense: SchemaClient,
+    private readonly now: () => Date = () => new Date(),
+    private readonly resolveCurrentTranscriptProjection: CurrentTranscriptProjectionResolver = resolveCurrentWatchSearchTranscriptProjection,
+  ) {}
+
+  private async loadCurrentTranscriptProjection(
+    prisma: Pick<
+      PrismaClient,
+      "watchSearchCurrentTranscriptProjection" | "$queryRaw"
+    >,
+    currentProfile?: Awaited<
+      ReturnType<typeof freezeCurrentWatchSearchProfile>
+    >,
+  ) {
+    return this.resolveCurrentTranscriptProjection ===
+      resolveCurrentWatchSearchTranscriptProjection
+      ? resolveCurrentWatchSearchTranscriptProjectionWithFallback({
+          prisma,
+          ...(currentProfile
+            ? { currentProfile }
+            : { typesense: this.typesense }),
+        })
+      : this.resolveCurrentTranscriptProjection(prisma)
+  }
+
+  private async assertExactCurrentTranscriptCompatibility(input: {
+    generation: StoredGeneration
+    currentBindings?: readonly string[]
+    prisma?: Pick<PrismaClient, "watchSearchCurrentTranscriptProjection">
+  }): Promise<void> {
+    const currentProfile = await freezeCurrentWatchSearchProfile(this.typesense)
+    const authoritativeCurrentBindings =
+      watchSearchBindingMembers(currentProfile)
+    if (
+      input.currentBindings &&
+      JSON.stringify(normalizedBindings(input.currentBindings)) !==
+        JSON.stringify(authoritativeCurrentBindings)
+    ) {
+      throw new CandidateGenerationValidationError(
+        "current physical bindings changed after qualification",
+      )
+    }
+
+    const currentProjection = await this.loadCurrentTranscriptProjection(
+      (input.prisma ?? this.prisma) as Pick<
+        PrismaClient,
+        "watchSearchCurrentTranscriptProjection" | "$queryRaw"
+      >,
+      currentProfile,
+    )
+    if (
+      input.generation.transcriptCollection !==
+        currentProfile.binding.transcript ||
+      input.generation.transcriptCollection !==
+        currentProjection.transcriptCollection ||
+      input.generation.contentEmbeddingContractId !==
+        currentProjection.contentEmbeddingContractId ||
+      input.generation.transcriptChunkingVersion !==
+        currentProjection.transcriptChunkingVersion
+    ) {
+      throw new CandidateGenerationCompatibilityError(
+        `candidate generation ${input.generation.id} transcript identity is stale`,
+      )
+    }
+  }
+
+  async createBuildingGeneration(input: CandidateGenerationInput) {
+    const validated = validateInput(input)
+    return this.prisma.watchSearchCandidateGeneration.create({
+      data: {
+        id: validated.id,
+        state: "BUILDING",
+        indexContractRevision: validated.indexContractRevision,
+        sourceEpoch: validated.sourceEpoch,
+        sourceDigests: asJson(validated.sourceDigests),
+        catalogCollection: validated.catalog.collection,
+        availabilityCollection: validated.availability.collection,
+        lexicalCollection: validated.lexical.collection,
+        transcriptCollection: validated.transcript.collection,
+        contentEmbeddingContractId: validated.contentEmbeddingContractId,
+        transcriptChunkingVersion: validated.transcriptChunkingVersion,
+        transcriptProjectionRevision: validated.transcriptProjectionRevision,
+        catalogFields: asJson(validated.catalog.fields),
+        availabilityFields: asJson(validated.availability.fields),
+        lexicalFields: asJson(validated.lexical.fields),
+        transcriptFields: asJson(validated.transcript.fields),
+        ownedCollections: asJson([
+          validated.catalog.collection,
+          validated.availability.collection,
+          validated.lexical.collection,
+        ]),
+        sharedCollections: asJson([validated.transcript.collection]),
+      },
+    })
+  }
+
+  async validateAndMarkReady(input: {
+    generationId: string
+    expectedVersion: number
+    documentCounts: Record<string, unknown>
+    capacityEvidence: Record<string, unknown>
+  }) {
+    const generation =
+      await this.prisma.watchSearchCandidateGeneration.findUnique({
+        where: { id: input.generationId },
+      })
+    if (
+      !generation ||
+      generation.state !== "BUILDING" ||
+      generation.version !== input.expectedVersion
+    ) {
+      throw new CandidateGenerationConflictError(
+        `candidate generation ${input.generationId} changed before validation completed`,
+      )
+    }
+    assertJsonObject(input.documentCounts, "document counts")
+    assertJsonObject(input.capacityEvidence, "capacity evidence")
+
+    const manifests = [
+      [
+        generation.catalogCollection,
+        parseStoredFields(generation.catalogFields, "catalog"),
+      ],
+      [
+        generation.availabilityCollection,
+        parseStoredFields(generation.availabilityFields, "availability"),
+      ],
+      [
+        generation.lexicalCollection,
+        parseStoredFields(generation.lexicalFields, "lexical"),
+      ],
+      [
+        generation.transcriptCollection,
+        parseStoredFields(generation.transcriptFields, "transcript"),
+      ],
+    ] as const
+
+    const schemas = await Promise.all(
+      manifests.map(([collection]) =>
+        this.typesense.getCollectionSchema(collection),
+      ),
+    )
+    manifests.forEach(([collection, fields], index) =>
+      assertSchemaMatches(collection, fields, schemas[index]!),
+    )
+
+    const update = await this.prisma.watchSearchCandidateGeneration.updateMany({
+      where: {
+        id: input.generationId,
+        state: "BUILDING",
+        version: input.expectedVersion,
+      },
+      data: {
+        state: "READY",
+        version: { increment: 1 },
+        documentCounts: asJson(input.documentCounts),
+        capacityEvidence: asJson(input.capacityEvidence),
+        validatedAt: this.now(),
+      },
+    })
+    if (update.count !== 1) {
+      throw new CandidateGenerationConflictError(
+        `candidate generation ${input.generationId} changed during validation`,
+      )
+    }
+    return this.requireGeneration(input.generationId)
+  }
+
+  async transitionGeneration(input: {
+    generationId: string
+    expectedState: CandidateGenerationState
+    expectedVersion: number
+    nextState: CandidateGenerationState
+    reason?: string
+  }) {
+    if (!LEGAL_TRANSITIONS[input.expectedState].includes(input.nextState)) {
+      throw new CandidateGenerationValidationError(
+        `illegal candidate lifecycle transition ${input.expectedState} -> ${input.nextState}`,
+      )
+    }
+    const reason =
+      input.nextState === "INVALIDATED"
+        ? requiredString(input.reason ?? "", "invalidation reason")
+        : null
+    const now = this.now()
+
+    const updated = await this.prisma.$transaction(
+      async (tx) => {
+        if (input.nextState === "RETIRING" || input.nextState === "RETIRED") {
+          await this.assertNotPublishedCatalog(tx, input.generationId)
+          const activeLease = await tx.watchSearchCandidateLease.findFirst({
+            where: { generationId: input.generationId, expiresAt: { gt: now } },
+            select: { resourceKey: true },
+          })
+          if (activeLease) {
+            throw new CandidateGenerationLeaseError(
+              `candidate generation ${input.generationId} is leased`,
+            )
+          }
+        }
+        if (input.nextState === "RETIRED") {
+          const generation = await tx.watchSearchCandidateGeneration.findUnique(
+            {
+              where: { id: input.generationId },
+              select: { ownedCollections: true, deletionProgress: true },
+            },
+          )
+          if (!generation) {
+            throw new CandidateGenerationConflictError(
+              `candidate generation ${input.generationId} changed before transition`,
+            )
+          }
+          const owned = storedStringArray(
+            generation.ownedCollections,
+            "owned collections",
+          )
+          const deleted = storedDeletionProgress(generation.deletionProgress)
+          if (
+            owned.length !== deleted.length ||
+            owned.some((collection) => !deleted.includes(collection))
+          ) {
+            throw new CandidateGenerationValidationError(
+              "candidate generation cannot retire before every owned collection is deleted",
+            )
+          }
+        }
+        return tx.watchSearchCandidateGeneration.updateMany({
+          where: {
+            id: input.generationId,
+            state: input.expectedState,
+            version: input.expectedVersion,
+          },
+          data: {
+            state: input.nextState,
+            version: { increment: 1 },
+            invalidatedAt: input.nextState === "INVALIDATED" ? now : undefined,
+            invalidationReason: reason ?? undefined,
+            retiredAt: input.nextState === "RETIRED" ? now : undefined,
+          },
+        })
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+    if (updated.count !== 1) {
+      throw new CandidateGenerationConflictError(
+        `candidate generation ${input.generationId} changed before transition`,
+      )
+    }
+    return this.requireGeneration(input.generationId)
+  }
+
+  publishEvaluationGeneration(input: {
+    generationId: string
+    expectedPointerVersion: number
+  }) {
+    return this.movePointer("EVALUATION", input, false)
+  }
+
+  pinServingGeneration(input: {
+    generationId: string
+    indexContractRevision: string
+    expectedPointerVersion: number
+    currentBindings: readonly string[]
+    qrelsRevision: string
+    rankingRevision: string
+    qualificationAudit: CandidateQualificationAudit
+    qualificationStatus?: CandidateAuthorizingQualificationStatus
+  }) {
+    return this.movePointer("SERVING", input, true)
+  }
+
+  async resolveGeneration(input: {
+    generationId: string
+    indexContractRevision: string
+    transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+    transcriptProjectionRevision?: bigint
+    requireQualified?: boolean
+    currentBindings?: readonly string[]
+    qrelsRevision?: string
+    rankingRevision?: string
+  }) {
+    const generation = await this.requireGeneration(input.generationId)
+    assertGenerationReady(generation)
+
+    if (
+      generation.transcriptCollection !== input.transcriptCollection ||
+      generation.contentEmbeddingContractId !==
+        input.contentEmbeddingContractId ||
+      generation.transcriptChunkingVersion !== input.transcriptChunkingVersion
+    ) {
+      console.warn(
+        `[watch-search-candidate] event=candidate_transcript_identity_mismatch generation_id=${generation.id} stored_collection=${generation.transcriptCollection} requested_collection=${input.transcriptCollection} stored_embedding_contract_id=${generation.contentEmbeddingContractId} requested_embedding_contract_id=${input.contentEmbeddingContractId} stored_chunking_version=${generation.transcriptChunkingVersion} requested_chunking_version=${input.transcriptChunkingVersion}`,
+      )
+      await this.prisma.watchSearchCandidateGeneration.updateMany({
+        where: {
+          id: generation.id,
+          state: "READY",
+          version: generation.version,
+        },
+        data: {
+          state: "INVALIDATED",
+          version: { increment: 1 },
+          invalidatedAt: this.now(),
+          invalidationReason:
+            "transcript physical collection, embedding contract, or chunking version changed",
+        },
+      })
+      throw new CandidateGenerationCompatibilityError(
+        `candidate generation ${generation.id} transcript identity is stale`,
+      )
+    }
+    assertExactIdentity(generation, input)
+
+    if (input.requireQualified) {
+      if (
+        !input.currentBindings ||
+        !input.qrelsRevision ||
+        !input.rankingRevision
+      ) {
+        throw new CandidateGenerationValidationError(
+          "qualified resolution requires current bindings, qrels revision, and ranking revision",
+        )
+      }
+      const qualification = await this.findExactAuthorizedQualification(
+        generation,
+        input.currentBindings,
+        input.qrelsRevision,
+        input.rankingRevision,
+      )
+      if (!qualification) {
+        throw new CandidateGenerationValidationError(
+          `candidate generation ${generation.id} has no exact passing qualification`,
+        )
+      }
+    }
+
+    return {
+      generationId: generation.id,
+      indexContractRevision: generation.indexContractRevision,
+      contentEmbeddingContractId: generation.contentEmbeddingContractId,
+      transcriptChunkingVersion: generation.transcriptChunkingVersion,
+      transcriptProjectionRevision: generation.transcriptProjectionRevision,
+      collections: {
+        catalog: generation.catalogCollection,
+        availability: generation.availabilityCollection,
+        lexical: generation.lexicalCollection,
+        transcript: generation.transcriptCollection,
+      },
+      fieldManifests: {
+        catalog: parseStoredFields(generation.catalogFields, "catalog"),
+        availability: parseStoredFields(
+          generation.availabilityFields,
+          "availability",
+        ),
+        lexical: parseStoredFields(generation.lexicalFields, "lexical"),
+        transcript: parseStoredFields(
+          generation.transcriptFields,
+          "transcript",
+        ),
+      },
+    }
+  }
+
+  async resolvePointer(input: {
+    kind: PointerKind
+    indexContractRevision: string
+    transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+    transcriptProjectionRevision?: bigint
+    requireQualified?: boolean
+  }) {
+    const pointer = await this.prisma.watchSearchCandidatePointer.findUnique({
+      where: { kind: input.kind },
+    })
+    if (!pointer?.generationId) {
+      throw new CandidateGenerationValidationError(
+        `${input.kind.toLowerCase()} candidate pointer is not set`,
+      )
+    }
+    return this.resolveGeneration({
+      ...input,
+      generationId: pointer.generationId,
+    })
+  }
+
+  async invalidateForTranscriptChange(input: {
+    transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+    reason: string
+  }): Promise<number> {
+    const reason = requiredString(input.reason, "invalidation reason")
+    const update = await this.prisma.watchSearchCandidateGeneration.updateMany({
+      where: {
+        state: { in: ["BUILDING", "READY"] },
+        OR: [
+          { transcriptCollection: { not: input.transcriptCollection } },
+          {
+            contentEmbeddingContractId: {
+              not: input.contentEmbeddingContractId,
+            },
+          },
+          {
+            transcriptChunkingVersion: {
+              not: input.transcriptChunkingVersion,
+            },
+          },
+        ],
+      },
+      data: {
+        state: "INVALIDATED",
+        version: { increment: 1 },
+        invalidatedAt: this.now(),
+        invalidationReason: reason,
+      },
+    })
+    return update.count
+  }
+
+  async recordQualification(input: {
+    generationId: string
+    status: WatchSearchCandidateQualificationStatus
+    indexContractRevision: string
+    rankingRevision: string
+    transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+    transcriptProjectionRevision: bigint
+    qrelsRevision: string
+    currentBindings: readonly string[]
+    evidence: Record<string, unknown>
+    qualificationAudit: CandidateQualificationAudit
+  }) {
+    const qrelsRevision = requiredString(input.qrelsRevision, "qrels revision")
+    const currentBindings = normalizedBindings(input.currentBindings)
+    const qualificationAudit = normalizedQualificationAudit(
+      input.qualificationAudit,
+    )
+    assertJsonObject(input.evidence, "qualification evidence")
+    if (input.status === "PASSED") {
+      assertPassingQualificationEvidence(input.evidence, {
+        ...input,
+        qrelsRevision,
+        currentBindings,
+        qualificationAudit,
+      })
+    }
+    return this.prisma.$transaction(
+      async (tx) => {
+        const generation = await tx.watchSearchCandidateGeneration.findUnique({
+          where: { id: input.generationId },
+        })
+        if (!generation) {
+          throw new CandidateGenerationValidationError(
+            `candidate generation ${input.generationId} does not exist`,
+          )
+        }
+        assertGenerationReady(generation)
+        assertExactIdentity(generation, input)
+        await this.assertExactCurrentTranscriptCompatibility({
+          generation,
+          currentBindings,
+          prisma: tx,
+        })
+        if (input.status === "OPERATOR_ACCEPTED") {
+          assertOperatorAcceptedQualificationEvidence(
+            input.evidence,
+            generation,
+            {
+              ...input,
+              qrelsRevision,
+              currentBindings,
+              qualificationAudit,
+            },
+          )
+        }
+        return tx.watchSearchCandidateQualification.create({
+          data: {
+            generationId: generation.id,
+            status: input.status,
+            indexContractRevision: generation.indexContractRevision,
+            transcriptCollection: generation.transcriptCollection,
+            contentEmbeddingContractId: generation.contentEmbeddingContractId,
+            transcriptChunkingVersion: generation.transcriptChunkingVersion,
+            transcriptProjectionRevision:
+              generation.transcriptProjectionRevision,
+            qrelsRevision,
+            currentBindings: asJson(currentBindings),
+            evidence: asJson(input.evidence),
+          },
+        })
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+  }
+
+  async acquireLease(input: {
+    resourceKey: string
+    kind: WatchSearchCandidateLeaseKind
+    holderToken: string
+    ttlMs: number
+    generationId: string
+    indexContractRevision: string
+    transcriptCollection: string
+    contentEmbeddingContractId: string
+    transcriptChunkingVersion: string
+    transcriptProjectionRevision: bigint
+    currentBindings: readonly string[]
+  }) {
+    const resourceKey = requiredString(input.resourceKey, "lease resource key")
+    const holderToken = requiredString(input.holderToken, "lease holder token")
+    const currentBindings = normalizedBindings(input.currentBindings)
+
+    return this.prisma.$transaction(
+      async (tx) => {
+        const lock = await tx.$queryRaw<Array<{ acquired: boolean }>>`
+          SELECT pg_try_advisory_xact_lock(
+            ${TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID}
+          ) AS acquired
+        `
+        if (lock[0]?.acquired !== true) return null
+        // The lease begins when admission wins the publication lock, not when
+        // the caller entered this method. Prisma may wait for a pool slot or
+        // transaction start long enough for a pre-lock timestamp to shorten or
+        // even immediately expire the lease while evaluation is still active.
+        const now = this.now()
+        const expiry = expiresAt(now, input.ttlMs)
+        const generation = await tx.watchSearchCandidateGeneration.findUnique({
+          where: { id: input.generationId },
+        })
+        if (!generation) {
+          throw new CandidateGenerationValidationError(
+            `candidate generation ${input.generationId} does not exist`,
+          )
+        }
+        assertGenerationReady(generation)
+        assertExactIdentity(generation, input)
+        // Profile resolution happens before lease admission. Publication or a
+        // rebuild may complete before this transaction wins the shared lock,
+        // so re-freeze aliases and durable compatibility before persisting the
+        // lease. A routine revision-only advance remains compatible.
+        await this.assertExactCurrentTranscriptCompatibility({
+          generation,
+          currentBindings,
+          prisma: tx,
+        })
+
+        const data = {
+          kind: input.kind,
+          holderToken,
+          generationId: generation.id,
+          indexContractRevision: generation.indexContractRevision,
+          transcriptCollection: generation.transcriptCollection,
+          contentEmbeddingContractId: generation.contentEmbeddingContractId,
+          transcriptChunkingVersion: generation.transcriptChunkingVersion,
+          transcriptProjectionRevision: generation.transcriptProjectionRevision,
+          currentBindings: asJson(currentBindings),
+          acquiredAt: now,
+          renewedAt: now,
+          expiresAt: expiry,
+        } as const
+        const takeover = await tx.watchSearchCandidateLease.updateMany({
+          where: {
+            resourceKey,
+            OR: [{ expiresAt: { lte: now } }, { holderToken }],
+          },
+          data,
+        })
+        if (takeover.count === 0) {
+          try {
+            await tx.watchSearchCandidateLease.create({
+              data: { resourceKey, ...data },
+            })
+          } catch (error) {
+            if (isUniqueConflict(error)) return null
+            throw error
+          }
+        }
+        return tx.watchSearchCandidateLease.findUnique({
+          where: { resourceKey },
+        })
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+  }
+
+  async renewLease(input: {
+    resourceKey: string
+    holderToken: string
+    ttlMs: number
+  }): Promise<boolean> {
+    const resourceKey = requiredString(input.resourceKey, "lease resource key")
+    const holderToken = requiredString(input.holderToken, "lease holder token")
+    return this.prisma.$transaction(
+      async (tx) => {
+        const lock = await tx.$queryRaw<Array<{ acquired: boolean }>>`
+          SELECT pg_try_advisory_xact_lock(
+            ${TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID}
+          ) AS acquired
+        `
+        if (lock[0]?.acquired !== true) return false
+        // Read time only after winning the publication lock. A renewal may
+        // have entered this transaction before its old deadline while a
+        // publisher completed after that deadline; using the earlier time
+        // would resurrect a lease over the newly published projection.
+        const now = this.now()
+        const update = await tx.watchSearchCandidateLease.updateMany({
+          where: {
+            resourceKey,
+            holderToken,
+            expiresAt: { gt: now },
+          },
+          data: { renewedAt: now, expiresAt: expiresAt(now, input.ttlMs) },
+        })
+        return update.count === 1
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+  }
+
+  async releaseLease(input: {
+    resourceKey: string
+    holderToken: string
+  }): Promise<boolean> {
+    const result = await this.prisma.watchSearchCandidateLease.deleteMany({
+      where: {
+        resourceKey: requiredString(input.resourceKey, "lease resource key"),
+        holderToken: requiredString(input.holderToken, "lease holder token"),
+      },
+    })
+    return result.count === 1
+  }
+
+  getGeneration(generationId: string) {
+    return this.requireGeneration(requiredString(generationId, "generation id"))
+  }
+
+  async getPointer(kind: PointerKind) {
+    const pointer = await this.prisma.watchSearchCandidatePointer.findUnique({
+      where: { kind },
+    })
+    if (!pointer) {
+      throw new CandidateGenerationValidationError(
+        `${kind.toLowerCase()} candidate pointer is missing`,
+      )
+    }
+    return pointer
+  }
+
+  async clearPointer(
+    kind: PointerKind,
+    input: { generationId: string; expectedPointerVersion: number },
+  ) {
+    const update = await this.prisma.watchSearchCandidatePointer.updateMany({
+      where: {
+        kind,
+        generationId: requiredString(input.generationId, "generation id"),
+        version: input.expectedPointerVersion,
+      },
+      data: { generationId: null, version: { increment: 1 } },
+    })
+    if (update.count !== 1) {
+      throw new CandidateGenerationConflictError(
+        `${kind.toLowerCase()} candidate pointer changed concurrently`,
+      )
+    }
+    return this.getPointer(kind)
+  }
+
+  private async assertNotPublishedCatalog(
+    tx: Prisma.TransactionClient,
+    generationId: string,
+  ) {
+    const active = await tx.watchCatalogPublication.findFirst({
+      where: { generationId },
+      select: { id: true },
+    })
+    if (active)
+      throw new CandidateGenerationLeaseError(
+        `candidate generation ${generationId} is the active Watch catalog`,
+      )
+  }
+
+  async beginRetirement(generationId: string) {
+    const id = requiredString(generationId, "generation id")
+    const now = this.now()
+    return this.prisma.$transaction(
+      async (tx) => {
+        await this.assertNotPublishedCatalog(tx, id)
+        const generation = await tx.watchSearchCandidateGeneration.findUnique({
+          where: { id },
+        })
+        if (!generation) {
+          throw new CandidateGenerationValidationError(
+            `candidate generation ${id} does not exist`,
+          )
+        }
+        if (generation.state === "RETIRED" || generation.state === "RETIRING") {
+          return generation
+        }
+        if (
+          generation.state !== "BUILDING" &&
+          generation.state !== "READY" &&
+          generation.state !== "INVALIDATED"
+        ) {
+          throw new CandidateGenerationValidationError(
+            `candidate generation ${id} cannot retire from ${generation.state}`,
+          )
+        }
+
+        const [servingPointer, evaluationPointer, activeLease] =
+          await Promise.all([
+            tx.watchSearchCandidatePointer.findUnique({
+              where: { kind: "SERVING" },
+            }),
+            tx.watchSearchCandidatePointer.findUnique({
+              where: { kind: "EVALUATION" },
+            }),
+            tx.watchSearchCandidateLease.findFirst({
+              where: { generationId: id, expiresAt: { gt: now } },
+              select: { resourceKey: true },
+            }),
+          ])
+        if (servingPointer?.generationId === id) {
+          throw new CandidateGenerationLeaseError(
+            `candidate generation ${id} is still referenced by serving`,
+          )
+        }
+        if (activeLease) {
+          throw new CandidateGenerationLeaseError(
+            `candidate generation ${id} is leased`,
+          )
+        }
+
+        if (evaluationPointer?.generationId === id) {
+          const cleared = await tx.watchSearchCandidatePointer.updateMany({
+            where: {
+              kind: "EVALUATION",
+              generationId: id,
+              version: evaluationPointer.version,
+            },
+            data: { generationId: null, version: { increment: 1 } },
+          })
+          if (cleared.count !== 1) {
+            throw new CandidateGenerationConflictError(
+              "evaluation candidate pointer changed during retirement",
+            )
+          }
+        }
+
+        const update = await tx.watchSearchCandidateGeneration.updateMany({
+          where: {
+            id,
+            state: generation.state,
+            version: generation.version,
+          },
+          data: {
+            state: "RETIRING",
+            version: { increment: 1 },
+            invalidatedAt: generation.state === "READY" ? now : undefined,
+            invalidationReason:
+              generation.state === "READY"
+                ? "candidate retirement requested"
+                : undefined,
+          },
+        })
+        if (update.count !== 1) {
+          throw new CandidateGenerationConflictError(
+            `candidate generation ${id} changed during retirement`,
+          )
+        }
+        const retiring = await tx.watchSearchCandidateGeneration.findUnique({
+          where: { id },
+        })
+        if (!retiring) {
+          throw new CandidateGenerationConflictError(
+            `candidate generation ${id} disappeared during retirement`,
+          )
+        }
+        return retiring
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+  }
+
+  async assertRetirementAllowed(generationId: string): Promise<void> {
+    const now = this.now()
+    const [pointer, lease] = await this.prisma.$transaction(
+      async (tx) => {
+        await this.assertNotPublishedCatalog(tx, generationId)
+        return Promise.all([
+          tx.watchSearchCandidatePointer.findFirst({
+            where: { generationId },
+            select: { kind: true },
+          }),
+          tx.watchSearchCandidateLease.findFirst({
+            where: { generationId, expiresAt: { gt: now } },
+            select: { resourceKey: true },
+          }),
+        ])
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+    if (pointer) {
+      throw new CandidateGenerationLeaseError(
+        `candidate generation ${generationId} is still referenced by ${pointer.kind.toLowerCase()}`,
+      )
+    }
+    if (lease) {
+      throw new CandidateGenerationLeaseError(
+        `candidate generation ${generationId} is leased`,
+      )
+    }
+  }
+
+  async recordDeletionProgress(input: {
+    generationId: string
+    expectedVersion: number
+    deletedCollections: readonly string[]
+  }) {
+    const generation = await this.requireGeneration(input.generationId)
+    if (
+      generation.state !== "RETIRING" ||
+      generation.version !== input.expectedVersion
+    ) {
+      throw new CandidateGenerationConflictError(
+        `candidate generation ${input.generationId} changed during retirement`,
+      )
+    }
+    const owned = new Set(
+      storedStringArray(generation.ownedCollections, "owned collections"),
+    )
+    const deletedCollections = normalizedBindings(input.deletedCollections)
+    if (deletedCollections.some((collection) => !owned.has(collection))) {
+      throw new CandidateGenerationValidationError(
+        "deletion progress contains a collection not owned by the generation",
+      )
+    }
+    const previous = storedDeletionProgress(generation.deletionProgress)
+    if (
+      previous.some((collection) => !deletedCollections.includes(collection))
+    ) {
+      throw new CandidateGenerationValidationError(
+        "deletion progress cannot move backward",
+      )
+    }
+    const update = await this.prisma.watchSearchCandidateGeneration.updateMany({
+      where: {
+        id: input.generationId,
+        state: "RETIRING",
+        version: input.expectedVersion,
+      },
+      data: {
+        version: { increment: 1 },
+        deletionProgress: asJson({ deletedCollections }),
+      },
+    })
+    if (update.count !== 1) {
+      throw new CandidateGenerationConflictError(
+        `candidate generation ${input.generationId} changed during retirement`,
+      )
+    }
+    return this.requireGeneration(input.generationId)
+  }
+
+  async assertGenerationNotLeased(generationId: string): Promise<void> {
+    const active = await this.prisma.watchSearchCandidateLease.findFirst({
+      where: {
+        generationId: requiredString(generationId, "generation id"),
+        expiresAt: { gt: this.now() },
+      },
+      select: { resourceKey: true },
+    })
+    if (active) {
+      throw new CandidateGenerationLeaseError(
+        `candidate generation ${generationId} is leased`,
+      )
+    }
+  }
+
+  async assertTranscriptNotLeased(
+    transcriptCollection: string,
+    contentEmbeddingContractId: string,
+    transcriptChunkingVersion: string,
+  ): Promise<void> {
+    const active = await this.prisma.watchSearchCandidateLease.findFirst({
+      where: {
+        transcriptCollection: requiredString(
+          transcriptCollection,
+          "transcript collection",
+        ),
+        contentEmbeddingContractId: requiredString(
+          contentEmbeddingContractId,
+          "content embedding contract id",
+        ),
+        transcriptChunkingVersion: requiredString(
+          transcriptChunkingVersion,
+          "transcript chunking version",
+        ),
+        expiresAt: { gt: this.now() },
+      },
+      select: { resourceKey: true },
+    })
+    if (active) {
+      throw new CandidateGenerationLeaseError(
+        `transcript compatibility ${transcriptCollection}@${contentEmbeddingContractId}/${transcriptChunkingVersion} is leased`,
+      )
+    }
+  }
+
+  async assertCurrentPublicationAllowed(input: {
+    rebuildTranscripts: boolean
+  }): Promise<void> {
+    const now = this.now()
+    const [activeLease, transcriptCandidate] = await Promise.all([
+      this.prisma.watchSearchCandidateLease.findFirst({
+        where: { expiresAt: { gt: now } },
+        select: { resourceKey: true },
+      }),
+      input.rebuildTranscripts
+        ? this.prisma.watchSearchCandidateGeneration.findFirst({
+            where: { state: { in: ["BUILDING", "READY"] } },
+            select: { id: true },
+          })
+        : Promise.resolve(null),
+    ])
+    if (activeLease) {
+      throw new CandidateGenerationLeaseError(
+        "current publication is blocked by an active candidate lease",
+      )
+    }
+    if (transcriptCandidate) {
+      throw new CandidateGenerationLeaseError(
+        `transcript rebuild is blocked by candidate generation ${transcriptCandidate.id}`,
+      )
+    }
+  }
+
+  private async movePointer(
+    kind: PointerKind,
+    input: {
+      generationId: string
+      indexContractRevision?: string
+      expectedPointerVersion: number
+      currentBindings?: readonly string[]
+      qrelsRevision?: string
+      rankingRevision?: string
+      qualificationAudit?: CandidateQualificationAudit
+      qualificationStatus?: CandidateAuthorizingQualificationStatus
+    },
+    requireQualification: boolean,
+  ) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        if (kind === "SERVING") {
+          const lock = await tx.$queryRaw<Array<{ acquired: boolean }>>`
+            SELECT pg_try_advisory_xact_lock(
+              ${TYPESENSE_WATCH_SEARCH_PUBLICATION_LOCK_ID}
+            ) AS acquired
+          `
+          if (lock[0]?.acquired !== true) {
+            throw new CandidateGenerationLeaseError(
+              "serving promotion is blocked by current publication",
+            )
+          }
+        }
+        const generation = await tx.watchSearchCandidateGeneration.findUnique({
+          where: { id: input.generationId },
+        })
+        if (!generation) {
+          throw new CandidateGenerationValidationError(
+            `candidate generation ${input.generationId} does not exist`,
+          )
+        }
+        assertGenerationReady(generation)
+        if (requireQualification) {
+          if (
+            !input.indexContractRevision ||
+            !input.currentBindings ||
+            !input.qrelsRevision ||
+            !input.rankingRevision ||
+            !input.qualificationAudit
+          ) {
+            throw new CandidateGenerationValidationError(
+              "serving promotion requires index contract revision, current bindings, qrels revision, ranking revision, and qualification audit attribution",
+            )
+          }
+          const indexContractRevision = requiredString(
+            input.indexContractRevision,
+            "index contract revision",
+          )
+          if (generation.indexContractRevision !== indexContractRevision) {
+            throw new CandidateGenerationCompatibilityError(
+              `candidate generation ${generation.id} is not compatible with index contract revision ${indexContractRevision}`,
+            )
+          }
+          const currentBindings = normalizedBindings(input.currentBindings)
+          await this.assertExactCurrentTranscriptCompatibility({
+            generation,
+            currentBindings,
+            prisma: tx,
+          })
+          const qrelsRevision = requiredString(
+            input.qrelsRevision,
+            "qrels revision",
+          )
+          const rankingRevision = requiredString(
+            input.rankingRevision,
+            "ranking revision",
+          )
+          const qualificationAudit = normalizedQualificationAudit(
+            input.qualificationAudit,
+          )
+          const qualificationStatus = input.qualificationStatus ?? "PASSED"
+          const qualification =
+            await tx.watchSearchCandidateQualification.findFirst({
+              where: {
+                generationId: generation.id,
+                status: qualificationStatus,
+                indexContractRevision,
+                transcriptCollection: generation.transcriptCollection,
+                contentEmbeddingContractId:
+                  generation.contentEmbeddingContractId,
+                transcriptChunkingVersion: generation.transcriptChunkingVersion,
+                qrelsRevision,
+                currentBindings: { equals: asJson(currentBindings) },
+                AND: [
+                  {
+                    evidence: {
+                      path: ["identity", "rankingRevision"],
+                      equals: rankingRevision,
+                    },
+                  },
+                  {
+                    evidence: {
+                      path: ["audit", "reviewerIdentity"],
+                      equals: qualificationAudit.reviewerIdentity,
+                    },
+                  },
+                  {
+                    evidence: {
+                      path: ["audit", "operatorIdentity"],
+                      equals: qualificationAudit.operatorIdentity,
+                    },
+                  },
+                  {
+                    evidence: {
+                      path: ["audit", "evidenceBundleSha256"],
+                      equals: qualificationAudit.evidenceBundleSha256,
+                    },
+                  },
+                  ...(qualificationAudit.evidenceBundleByteLength === undefined
+                    ? []
+                    : [
+                        {
+                          evidence: {
+                            path: ["audit", "evidenceBundleByteLength"],
+                            equals: qualificationAudit.evidenceBundleByteLength,
+                          },
+                        },
+                      ]),
+                ],
+              },
+              select: { id: true, status: true },
+            })
+          if (!qualification) {
+            throw new CandidateGenerationValidationError(
+              `candidate generation ${generation.id} has no exact ${qualificationStatus.toLowerCase()} qualification`,
+            )
+          }
+        }
+
+        const update = await tx.watchSearchCandidatePointer.updateMany({
+          where: { kind, version: input.expectedPointerVersion },
+          data: {
+            generationId: generation.id,
+            version: { increment: 1 },
+          },
+        })
+        if (update.count !== 1) {
+          throw new CandidateGenerationConflictError(
+            `${kind.toLowerCase()} candidate pointer changed concurrently`,
+          )
+        }
+        const pointer = await tx.watchSearchCandidatePointer.findUnique({
+          where: { kind },
+        })
+        if (!pointer) {
+          throw new CandidateGenerationConflictError(
+            `${kind.toLowerCase()} candidate pointer is missing`,
+          )
+        }
+        return pointer
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    )
+  }
+
+  private async findExactAuthorizedQualification(
+    generation: StoredGeneration,
+    currentBindings: readonly string[],
+    qrelsRevision: string,
+    rankingRevision: string,
+  ) {
+    return this.prisma.watchSearchCandidateQualification.findFirst({
+      where: {
+        generationId: generation.id,
+        status: { in: [...WATCH_SEARCH_CANDIDATE_AUTHORIZING_STATUSES] },
+        indexContractRevision: generation.indexContractRevision,
+        transcriptCollection: generation.transcriptCollection,
+        contentEmbeddingContractId: generation.contentEmbeddingContractId,
+        transcriptChunkingVersion: generation.transcriptChunkingVersion,
+        qrelsRevision: requiredString(qrelsRevision, "qrels revision"),
+        currentBindings: {
+          equals: asJson(normalizedBindings(currentBindings)),
+        },
+        evidence: {
+          path: ["identity", "rankingRevision"],
+          equals: requiredString(rankingRevision, "ranking revision"),
+        },
+      },
+      select: { id: true },
+    })
+  }
+
+  private async requireGeneration(id: string) {
+    const generation =
+      await this.prisma.watchSearchCandidateGeneration.findUnique({
+        where: { id },
+      })
+    if (!generation) {
+      throw new CandidateGenerationValidationError(
+        `candidate generation ${id} does not exist`,
+      )
+    }
+    return generation
+  }
+}

@@ -28,6 +28,7 @@ export type MockLanguageGeo = {
   countries: Array<{ id: string; name: string; continentId: string }>
   languages: Array<{
     id: string
+    coreId?: string | null
     englishLabel: string
     nativeLabel: string
     bcp47?: string | null
@@ -60,6 +61,7 @@ export type MockVideoCoverage = {
   aiMetadata: boolean | null
   imageUrl: string | null
   parentDocumentIds: string[]
+  parentRelations?: Array<{ parentDocumentId: string; order: number | null }>
   coverage: {
     subtitles: MockCoverageCounts
     audio: MockCoverageCounts
@@ -182,6 +184,90 @@ const DEFAULT_MANAGER_USER: MockManagerUserRecord = {
 }
 
 const DEFAULT_MOCK_JOBS: JobRecord[] = [
+  {
+    id: "mock-smart-crop-1",
+    muxAssetId: "mock_smart_crop_asset",
+    muxPlaybackId: "34eG2PxlcRu3L4wU5XlKVna2vN3BAI02Tjrq28dazn3Y",
+    videoDocumentId: "video-doc-standalone-1",
+    languages: ["529"],
+    sourceLanguageId: "529",
+    sourceLanguageCode: "en",
+    primaryRequestedTargetLanguageCode: "en",
+    resolvedTargetLanguageCodes: ["en"],
+    sourceMediaTitle: "A New Beginning",
+    options: {
+      smartCrop: {
+        kind: "canonical",
+        assetId: "mock_smart_crop_asset",
+        targetAspectRatio: "9:16",
+        cropMode: "auto",
+      },
+    },
+    status: "completed",
+    currentStep: "smart_crop_mux_output",
+    retries: 0,
+    createdAt: "2026-04-22T16:00:00.000Z",
+    updatedAt: "2026-04-22T16:12:00.000Z",
+    startedAt: "2026-04-22T16:00:10.000Z",
+    completedAt: "2026-04-22T16:12:00.000Z",
+    artifacts: {
+      smartCrop: {
+        kind: "metadata",
+        data: {
+          domain: "smart_crop",
+          kind: "canonical",
+          phase: "completed",
+          plan: { segmentCount: 3, approved: true },
+          qa: { verdict: "pass" },
+          usage: { inputTokens: 1000, outputTokens: 240 },
+        },
+      },
+      "smart-crop-plan": { kind: "downloadable" },
+      "smart-crop-attempts": { kind: "downloadable" },
+      "smart-crop-plan-attempt-000": { kind: "downloadable" },
+      "smart-crop-plan-attempt-001": { kind: "downloadable" },
+      "smart-crop-qa-attempt-000": { kind: "downloadable" },
+      "smart-crop-qa-attempt-001": { kind: "downloadable" },
+    },
+    steps: [
+      {
+        name: "smart_crop_fingerprint",
+        status: "completed",
+        retries: 0,
+        startedAt: "2026-04-22T16:00:10.000Z",
+        finishedAt: "2026-04-22T16:02:00.000Z",
+      },
+      {
+        name: "smart_crop_plan",
+        status: "completed",
+        retries: 0,
+        startedAt: "2026-04-22T16:02:00.000Z",
+        finishedAt: "2026-04-22T16:05:00.000Z",
+      },
+      {
+        name: "smart_crop_preview_render",
+        status: "completed",
+        retries: 0,
+        startedAt: "2026-04-22T16:05:00.000Z",
+        finishedAt: "2026-04-22T16:10:00.000Z",
+      },
+      {
+        name: "smart_crop_qa",
+        status: "completed",
+        retries: 0,
+        startedAt: "2026-04-22T16:10:00.000Z",
+        finishedAt: "2026-04-22T16:11:00.000Z",
+      },
+      {
+        name: "smart_crop_mux_output",
+        status: "completed",
+        retries: 0,
+        startedAt: "2026-04-22T16:11:00.000Z",
+        finishedAt: "2026-04-22T16:12:00.000Z",
+      },
+    ],
+    errors: [],
+  },
   {
     id: "mock-job-2",
     muxAssetId: "mock_asset_2",
@@ -455,6 +541,7 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
         aiMetadata: false,
         imageUrl: "https://images.jesusfilm.org/mock/hope-stories.jpg",
         parentDocumentIds: [],
+        parentRelations: [],
         coverage: {
           subtitles: { human: 1, ai: 1 },
           audio: { human: 0, ai: 1 },
@@ -486,6 +573,9 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
         aiMetadata: true,
         imageUrl: "https://images.jesusfilm.org/mock/episode-1.jpg",
         parentDocumentIds: ["video-doc-collection-1"],
+        parentRelations: [
+          { parentDocumentId: "video-doc-collection-1", order: 1 },
+        ],
         coverage: {
           subtitles: { human: 1, ai: 1 },
           audio: { human: 0, ai: 1 },
@@ -517,6 +607,9 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
         aiMetadata: null,
         imageUrl: "https://images.jesusfilm.org/mock/episode-2.jpg",
         parentDocumentIds: ["video-doc-collection-1"],
+        parentRelations: [
+          { parentDocumentId: "video-doc-collection-1", order: 2 },
+        ],
         coverage: {
           subtitles: { human: 1, ai: 0 },
           audio: { human: 0, ai: 0 },
@@ -548,6 +641,7 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
         aiMetadata: false,
         imageUrl: "https://images.jesusfilm.org/mock/a-new-beginning.jpg",
         parentDocumentIds: [],
+        parentRelations: [],
         coverage: {
           subtitles: { human: 1, ai: 1 },
           audio: { human: 1, ai: 0 },
@@ -677,6 +771,359 @@ export const DEFAULT_MOCK_CMS_SEED: MockCmsSeed = {
 }
 
 export const DEFAULT_MOCK_ARTIFACT_FILES: MockArtifactFile[] = [
+  {
+    assetId: "mock_smart_crop_asset",
+    artifactType: "smart-crop-plan-9x16-v1",
+    ext: "json",
+    body: JSON.stringify(
+      {
+        version: 1,
+        kind: "smart-crop-canonical-plan",
+        assetId: "mock_smart_crop_asset",
+        muxAssetId: "mock_smart_crop_asset",
+        playbackId: "34eG2PxlcRu3L4wU5XlKVna2vN3BAI02Tjrq28dazn3Y",
+        source: { width: 1920, height: 1080, durationSeconds: 60 },
+        target: { aspectRatio: "9:16", width: 1080, height: 1920 },
+        strategy: {
+          cropMode: "auto",
+          plannerVersion: "smart-crop-planner-v1",
+          model: "mock-model",
+        },
+        segments: [
+          {
+            shotId: "shot_00001",
+            canonicalStart: 0,
+            canonicalEnd: 18,
+            mode: "speaker",
+            primarySubject: "Narrator",
+            secondarySubjects: [],
+            avoidCutting: ["face"],
+            confidence: 0.92,
+            cropKeyframes: [
+              { progress: 0, x: 240, y: 0, width: 606, height: 1080 },
+              { progress: 1, x: 320, y: 0, width: 606, height: 1080 },
+            ],
+          },
+          {
+            shotId: "shot_00002",
+            canonicalStart: 18,
+            canonicalEnd: 42,
+            mode: "group",
+            primarySubject: "Two people",
+            secondarySubjects: ["background group"],
+            avoidCutting: ["faces"],
+            confidence: 0.86,
+            cropKeyframes: [
+              { progress: 0, x: 560, y: 0, width: 606, height: 1080 },
+              { progress: 1, x: 760, y: 0, width: 606, height: 1080 },
+            ],
+          },
+          {
+            shotId: "shot_00003",
+            canonicalStart: 42,
+            canonicalEnd: 60,
+            mode: "slide_aware",
+            primarySubject: "Title card",
+            secondarySubjects: [],
+            avoidCutting: ["on-screen text"],
+            confidence: 0.78,
+            cropKeyframes: [
+              { progress: 0, x: 656, y: 0, width: 606, height: 1080 },
+              { progress: 1, x: 656, y: 0, width: 606, height: 1080 },
+            ],
+          },
+        ],
+        usage: { inputTokens: 1000, outputTokens: 240 },
+        qa: {
+          status: "approved",
+          approvedBy: "mock-manager",
+          approvedAt: "2026-04-22T16:06:00.000Z",
+        },
+        generatedAt: "2026-04-22T16:05:00.000Z",
+      },
+      null,
+      2,
+    ),
+  },
+  {
+    assetId: "mock_smart_crop_asset",
+    artifactType: "smart-crop-plan-9x16-attempt-000-v1",
+    ext: "json",
+    body: JSON.stringify(
+      {
+        version: 1,
+        kind: "smart-crop-canonical-plan",
+        assetId: "mock_smart_crop_asset",
+        muxAssetId: "mock_smart_crop_asset",
+        playbackId: "34eG2PxlcRu3L4wU5XlKVna2vN3BAI02Tjrq28dazn3Y",
+        source: { width: 1920, height: 1080, durationSeconds: 60 },
+        target: { aspectRatio: "9:16", width: 1080, height: 1920 },
+        strategy: {
+          cropMode: "auto",
+          plannerVersion: "smart-crop-planner-v1",
+          model: "mock-model",
+        },
+        segments: [
+          {
+            shotId: "shot_00001",
+            canonicalStart: 0,
+            canonicalEnd: 18,
+            mode: "speaker",
+            primarySubject: "Narrator",
+            secondarySubjects: [],
+            avoidCutting: ["face"],
+            confidence: 0.92,
+            cropKeyframes: [
+              { progress: 0, x: 240, y: 0, width: 606, height: 1080 },
+              { progress: 1, x: 320, y: 0, width: 606, height: 1080 },
+            ],
+          },
+          {
+            shotId: "shot_00002",
+            canonicalStart: 18,
+            canonicalEnd: 42,
+            mode: "group",
+            primarySubject: "Two people",
+            secondarySubjects: ["background group"],
+            avoidCutting: ["faces"],
+            confidence: 0.86,
+            cropKeyframes: [
+              { progress: 0, x: 560, y: 0, width: 606, height: 1080 },
+              { progress: 1, x: 760, y: 0, width: 606, height: 1080 },
+            ],
+          },
+          {
+            shotId: "shot_00003",
+            canonicalStart: 42,
+            canonicalEnd: 60,
+            mode: "slide_aware",
+            primarySubject: "Title card",
+            secondarySubjects: [],
+            avoidCutting: ["on-screen text"],
+            confidence: 0.78,
+            cropKeyframes: [
+              { progress: 0, x: 656, y: 0, width: 606, height: 1080 },
+              { progress: 1, x: 656, y: 0, width: 606, height: 1080 },
+            ],
+          },
+        ],
+        usage: { inputTokens: 1000, outputTokens: 240 },
+        qa: {
+          status: "approved",
+          approvedBy: "mock-manager",
+          approvedAt: "2026-04-22T16:06:00.000Z",
+        },
+        generatedAt: "2026-04-22T16:05:00.000Z",
+      },
+      null,
+      2,
+    ),
+  },
+  {
+    assetId: "mock_smart_crop_asset",
+    artifactType: "smart-crop-attempts-9x16-v1",
+    ext: "json",
+    body: JSON.stringify(
+      {
+        version: 1,
+        kind: "smart-crop-attempts",
+        assetId: "mock_smart_crop_asset",
+        maxRepairAttempts: 2,
+        selectedAttemptIndex: 1,
+        attempts: [
+          {
+            attemptIndex: 0,
+            suffix: "attempt-000",
+            planLogicalKey: "smart-crop-plan-attempt-000",
+            planArtifactType: "smart-crop-plan-9x16-attempt-000-v1",
+            previewLogicalKey: "smart-crop-preview-attempt-000",
+            previewArtifactType: "smart-crop-preview-9x16-attempt-000",
+            renderReportLogicalKey:
+              "smart-crop-render-report-preview-attempt-000",
+            renderReportArtifactType:
+              "smart-crop-render-report-9x16-preview-attempt-000",
+            qaLogicalKey: "smart-crop-qa-attempt-000",
+            qaArtifactType: "smart-crop-qa-9x16-attempt-000-v1",
+            previewFrameLogicalKeyPattern:
+              "smart-crop-preview-frame-9x16-{NNN}-attempt-000",
+            status: "complete",
+            source: "initial",
+            createdAt: "2026-04-22T16:05:00.000Z",
+            updatedAt: "2026-04-22T16:10:00.000Z",
+            previewFrameLogicalKeys: [],
+            qa: {
+              verdict: "needs_repair",
+              issueCount: 1,
+              repairTriggerCount: 1,
+            },
+            triggerIssues: [
+              {
+                severity: "warning",
+                description:
+                  "Subject drifts near the right edge during the group shot.",
+                atSeconds: 30,
+                shotId: "shot_00002",
+              },
+            ],
+          },
+          {
+            attemptIndex: 1,
+            suffix: "attempt-001",
+            planLogicalKey: "smart-crop-plan-attempt-001",
+            planArtifactType: "smart-crop-plan-9x16-attempt-001-v1",
+            previewLogicalKey: "smart-crop-preview-attempt-001",
+            previewArtifactType: "smart-crop-preview-9x16-attempt-001",
+            renderReportLogicalKey:
+              "smart-crop-render-report-preview-attempt-001",
+            renderReportArtifactType:
+              "smart-crop-render-report-9x16-preview-attempt-001",
+            qaLogicalKey: "smart-crop-qa-attempt-001",
+            qaArtifactType: "smart-crop-qa-9x16-attempt-001-v1",
+            previewFrameLogicalKeyPattern:
+              "smart-crop-preview-frame-9x16-{NNN}-attempt-001",
+            status: "complete",
+            source: "repair",
+            repairedFromAttemptIndex: 0,
+            createdAt: "2026-04-22T16:10:30.000Z",
+            updatedAt: "2026-04-22T16:11:30.000Z",
+            previewFrameLogicalKeys: [],
+            qa: {
+              verdict: "pass",
+              issueCount: 0,
+              repairTriggerCount: 0,
+            },
+            triggerIssues: [],
+          },
+        ],
+        updatedAt: "2026-04-22T16:11:30.000Z",
+        manifestDigest: "fnv1a:13015fa1",
+      },
+      null,
+      2,
+    ),
+  },
+  {
+    assetId: "mock_smart_crop_asset",
+    artifactType: "smart-crop-qa-9x16-attempt-000-v1",
+    ext: "json",
+    body: JSON.stringify(
+      {
+        version: 1,
+        kind: "smart-crop-qa-report",
+        assetId: "mock_smart_crop_asset",
+        renderMode: "preview",
+        verdict: "needs_repair",
+        issues: [
+          {
+            severity: "warning",
+            description:
+              "Subject drifts near the right edge during the group shot.",
+            atSeconds: 30,
+            shotId: "shot_00002",
+          },
+        ],
+        frameCount: 2,
+        model: "mock-model",
+        usage: { inputTokens: 90, outputTokens: 24 },
+        generatedAt: "2026-04-22T16:10:00.000Z",
+      },
+      null,
+      2,
+    ),
+  },
+  {
+    assetId: "mock_smart_crop_asset",
+    artifactType: "smart-crop-qa-9x16-attempt-001-v1",
+    ext: "json",
+    body: JSON.stringify(
+      {
+        version: 1,
+        kind: "smart-crop-qa-report",
+        assetId: "mock_smart_crop_asset",
+        renderMode: "preview",
+        verdict: "pass",
+        issues: [],
+        frameCount: 2,
+        model: "mock-model",
+        usage: { inputTokens: 76, outputTokens: 14 },
+        generatedAt: "2026-04-22T16:11:30.000Z",
+      },
+      null,
+      2,
+    ),
+  },
+  {
+    assetId: "mock_smart_crop_asset",
+    artifactType: "smart-crop-plan-9x16-attempt-001-v1",
+    ext: "json",
+    body: JSON.stringify(
+      {
+        version: 1,
+        kind: "smart-crop-canonical-plan",
+        assetId: "mock_smart_crop_asset",
+        muxAssetId: "mock_smart_crop_asset",
+        playbackId: "34eG2PxlcRu3L4wU5XlKVna2vN3BAI02Tjrq28dazn3Y",
+        source: { width: 1920, height: 1080, durationSeconds: 60 },
+        target: { aspectRatio: "9:16", width: 1080, height: 1920 },
+        strategy: {
+          cropMode: "auto",
+          plannerVersion: "smart-crop-planner-v1",
+          model: "mock-model",
+        },
+        segments: [
+          {
+            shotId: "shot_00001",
+            canonicalStart: 0,
+            canonicalEnd: 18,
+            mode: "speaker",
+            primarySubject: "Narrator",
+            secondarySubjects: [],
+            avoidCutting: ["face"],
+            confidence: 0.92,
+            cropKeyframes: [
+              { progress: 0, x: 240, y: 0, width: 606, height: 1080 },
+              { progress: 1, x: 320, y: 0, width: 606, height: 1080 },
+            ],
+          },
+          {
+            shotId: "shot_00002",
+            canonicalStart: 18,
+            canonicalEnd: 42,
+            mode: "group",
+            primarySubject: "Two people",
+            secondarySubjects: ["background group"],
+            avoidCutting: ["faces"],
+            confidence: 0.9,
+            cropKeyframes: [
+              { progress: 0, x: 680, y: 0, width: 606, height: 1080 },
+              { progress: 1, x: 720, y: 0, width: 606, height: 1080 },
+            ],
+          },
+          {
+            shotId: "shot_00003",
+            canonicalStart: 42,
+            canonicalEnd: 60,
+            mode: "slide_aware",
+            primarySubject: "Title card",
+            secondarySubjects: [],
+            avoidCutting: ["on-screen text"],
+            confidence: 0.78,
+            cropKeyframes: [
+              { progress: 0, x: 656, y: 0, width: 606, height: 1080 },
+              { progress: 1, x: 656, y: 0, width: 606, height: 1080 },
+            ],
+          },
+        ],
+        usage: { inputTokens: 1240, outputTokens: 320 },
+        qa: {
+          status: "draft",
+        },
+        generatedAt: "2026-04-22T16:10:30.000Z",
+      },
+      null,
+      2,
+    ),
+  },
   {
     assetId: "mock_asset_1",
     artifactType: "metadata",

@@ -307,3 +307,7 @@ vi.mocked(indexEditionScenes).mockRejectedValueOnce(
   projection of the operator-actionable subset (e.g., `missingArtifacts`)
   is the natural next surface. Applies whenever the cascade emits L
   duplicate-meaning outcomes per group.
+
+## See Also
+
+- `docs/solutions/best-practices/external-client-retry-parity-in-runner-fanout-20260512.md` — sibling pattern: this doc covers `Promise.allSettled` aggregation; the new one covers retry-symmetry across the sibling external clients invoked inside that allSettled.

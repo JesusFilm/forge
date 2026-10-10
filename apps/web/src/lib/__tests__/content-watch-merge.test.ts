@@ -9,6 +9,7 @@ import {
   buildWatchBodyBlock,
   isWatchBlock,
   mergeWatchExperience,
+  rankSelectableCarouselParents,
   WatchVideoError,
 } from "@/lib/content"
 
@@ -16,13 +17,31 @@ import {
 // We deliberately use `as never` casts to avoid coupling tests to gql.tada's
 // generated types; the merge logic only reads a small subset of fields and
 // the runtime shape is what matters for these unit tests.
-function makeChild(documentId: string, slug: string, title: string) {
+type TestWatchChild = {
+  documentId: string
+  slug: string
+  title: string
+  label: string | null
+  images: { url: string }[]
+  durationSeconds: number | null
+  muxPlaybackId: string | null
+  muxThumbnailBlurDataUrl: string | null
+}
+
+function makeChild(
+  documentId: string,
+  slug: string,
+  title: string,
+): TestWatchChild {
   return {
     documentId,
     slug,
     title,
     label: null,
     images: [{ url: `https://cdn.example/${slug}.jpg` }],
+    durationSeconds: null,
+    muxPlaybackId: `mux-${documentId}`,
+    muxThumbnailBlurDataUrl: null,
   }
 }
 
@@ -33,7 +52,13 @@ function makeVariant(overrides: Record<string, unknown> = {}) {
     published: true,
     hls: "https://cdn.example/jesus.m3u8",
     duration: 7674,
-    language: { coreId: "529", bcp47: "en", slug: "english", name: "English" },
+    language: {
+      coreId: "529",
+      bcp47: "en",
+      slug: "english",
+      name: "English",
+      nativeName: null,
+    },
     downloads: [],
     muxVideo: { playbackId: "playback-id-123" },
     ...overrides,
@@ -45,7 +70,8 @@ function makeParent(
     documentId: string
     slug: string
     title: string
-    children: ReturnType<typeof makeChild>[]
+    label: string | null
+    children: TestWatchChild[]
   }> = {},
 ) {
   return {
@@ -61,12 +87,17 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
   return {
     documentId: "video-1",
     slug: "jesus",
+    publishedAt: null,
+    localePublishedAt: null,
     title: "Jesus",
     snippet: "snippet",
     description: "description",
     noIndex: false,
     label: null,
     imageAlt: null,
+    searchTitle: null,
+    searchDescription: null,
+    socialImage: null,
     images: [],
     primaryLanguage: { coreId: "529", bcp47: "en" },
     parents: [],
@@ -75,7 +106,9 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
     // builder falls back to canonicalParent.children — matching the existing
     // tests' assumption that the carousel is fed from sibling content.
     children: [],
+    childDubLanguages: [],
     variants: [],
+    subtitles: [],
     studyQuestions: [],
     bibleCitations: [],
     ...overrides,
@@ -88,14 +121,74 @@ function makeVideo(overrides: Record<string, unknown> = {}) {
 function asArgs(args: {
   video: ReturnType<typeof makeVideo>
   variant: ReturnType<typeof makeVariant>
-  canonicalParent: ReturnType<typeof makeParent>
+  canonicalParent: ReturnType<typeof makeParent> | null
+  selectableParents?: ReturnType<typeof makeParent>[]
   experience?: { blocks?: unknown[] } | null
 }) {
   return args as never
 }
 
 describe("mergeWatchExperience — auto-template fallback (Experience absent)", () => {
-  it("emits all 6 synthetic slots when video has populated study questions and bible citations and >=2 siblings", () => {
+  it("inserts exactly one route-owned semantic recommendation slot immediately after WatchBody", () => {
+    const merged = mergeWatchExperience(
+      asArgs({
+        video: makeVideo(),
+        variant: makeVariant(),
+        canonicalParent: null,
+      }),
+    )
+
+    const kinds = merged
+      .filter(isWatchBlock)
+      .map((block) => (block as { kind: string }).kind)
+    expect(kinds.filter((kind) => kind === "SemanticRecommendations")).toEqual([
+      "SemanticRecommendations",
+    ])
+    expect(kinds.indexOf("SemanticRecommendations")).toBe(
+      kinds.indexOf("WatchBody") + 1,
+    )
+  })
+
+  it("does not let an authored recommendation block replace or duplicate the live semantic slot", () => {
+    const authoredRecommendations = {
+      __typename: "VideoRecommendationsBlock",
+      sectionKey: "authored-recommendations",
+      title: "More videos",
+      description: null,
+      subtitle: null,
+      backgroundColor: null,
+      imageAssetId: null,
+      imageAsset: null,
+      sourceVideoId: "video-1",
+      sourceSceneIndex: null,
+      limit: 6,
+    }
+    const merged = mergeWatchExperience(
+      asArgs({
+        video: makeVideo(),
+        variant: makeVariant(),
+        canonicalParent: null,
+        experience: { blocks: [authoredRecommendations] },
+      }),
+    )
+
+    const automatic = merged.filter(
+      (block) =>
+        isWatchBlock(block) &&
+        (block as { kind: string }).kind === "SemanticRecommendations",
+    )
+    expect(automatic).toHaveLength(1)
+    expect(
+      merged.filter(
+        (block) =>
+          !isWatchBlock(block) &&
+          (block as { __typename?: string }).__typename ===
+            "VideoRecommendationsBlock",
+      ),
+    ).toHaveLength(1)
+  })
+
+  it("emits all 7 synthetic slots when video has populated study questions and bible citations and >=2 siblings", () => {
     const video = makeVideo({
       studyQuestions: [
         { documentId: "sq-1", value: "Q1?", order: 1 },
@@ -130,10 +223,50 @@ describe("mergeWatchExperience — auto-template fallback (Experience absent)", 
       "HeroPlayer",
       "SiblingCarousel",
       "WatchBody",
+      "SemanticRecommendations",
       "StudyQuestions",
       "BibleQuotes",
       "Share",
     ])
+    const heroBlock = merged.find(
+      (block) => isWatchBlock(block) && block.kind === "HeroPlayer",
+    )
+    expect(
+      isWatchBlock(heroBlock!) && heroBlock.kind === "HeroPlayer"
+        ? heroBlock.nextWatchItem
+        : null,
+    ).toEqual({
+      parentSlug: "jesus-collection",
+      slug: "the-beginning",
+      title: "The Beginning",
+      documentId: "video-2",
+      kind: "chapter",
+    })
+  })
+
+  it("omits merged HeroPlayer nextWatchItem when the video is the last sibling", () => {
+    const video = makeVideo({ documentId: "video-2", slug: "the-beginning" })
+    const variant = makeVariant()
+    const canonicalParent = makeParent({
+      slug: "jesus",
+      children: [
+        makeChild("video-1", "jesus", "Jesus"),
+        makeChild("video-2", "the-beginning", "The Beginning"),
+      ],
+    })
+
+    const merged = mergeWatchExperience(
+      asArgs({ video, variant, canonicalParent }),
+    )
+
+    const heroBlock = merged.find(
+      (block) => isWatchBlock(block) && block.kind === "HeroPlayer",
+    )
+    expect(
+      isWatchBlock(heroBlock!) && heroBlock.kind === "HeroPlayer"
+        ? heroBlock.nextWatchItem
+        : undefined,
+    ).toBeNull()
   })
 
   it("omits the SiblingCarousel block when canonicalParent has fewer than 2 children", () => {
@@ -150,13 +283,20 @@ describe("mergeWatchExperience — auto-template fallback (Experience absent)", 
     expect(
       merged.some((b) => isWatchBlock(b) && b.kind === "SiblingCarousel"),
     ).toBe(false)
-    // HeroPlayer + WatchBody + BibleQuotes (always-on promo) + Share are
+    // HeroPlayer + WatchBody + SemanticRecommendations + BibleQuotes
+    // (always-on promo) + Share are
     // present even with empty data — only SiblingCarousel + StudyQuestions
     // are omitted when their source data is missing.
     const kinds = merged
       .filter(isWatchBlock)
       .map((b) => (b as { kind: string }).kind)
-    expect(kinds).toEqual(["HeroPlayer", "WatchBody", "BibleQuotes", "Share"])
+    expect(kinds).toEqual([
+      "HeroPlayer",
+      "WatchBody",
+      "SemanticRecommendations",
+      "BibleQuotes",
+      "Share",
+    ])
   })
 
   it("omits the StudyQuestions block when video has empty studyQuestions[]", () => {
@@ -245,8 +385,8 @@ describe("mergeWatchExperience — Experience overrides", () => {
     )
     expect(heroBlock).toBeDefined()
     expect(heroBlock?.video.title).toBe("Custom Hero")
-    // All 6 slots still present.
-    expect(merged).toHaveLength(6)
+    // All 7 route-owned slots still present.
+    expect(merged).toHaveLength(7)
   })
 
   it("fills the BibleQuotes slot via delegation when Experience supplies ComponentSectionsBibleQuotesCarousel", () => {
@@ -347,13 +487,13 @@ describe("mergeWatchExperience — Experience overrides", () => {
       merged.some((b) => isWatchBlock(b) && b.kind === "StudyQuestions"),
     ).toBe(false)
     // RelatedQuestions occupies the StudyQuestions slot, in slot-order
-    // position 4 (HeroPlayer, SiblingCarousel, WatchBody, StudyQuestions=RQ,
-    // BibleQuotes, Share).
-    expect((merged[3] as { __typename?: string }).__typename).toBe(
+    // position 5 (HeroPlayer, SiblingCarousel, WatchBody,
+    // SemanticRecommendations, StudyQuestions=RQ, BibleQuotes, Share).
+    expect((merged[4] as { __typename?: string }).__typename).toBe(
       "ComponentSectionsRelatedQuestions",
     )
-    // All 6 slots still represented.
-    expect(merged).toHaveLength(6)
+    // All 7 slots still represented.
+    expect(merged).toHaveLength(7)
   })
 
   it("appends non-slot Strapi blocks (e.g. PromoBanner) after the 6 watch slots", () => {
@@ -374,9 +514,9 @@ describe("mergeWatchExperience — Experience overrides", () => {
       }),
     )
 
-    // 4 always-present synthetic blocks (HeroPlayer + WatchBody + BibleQuotes
-    // + Share) + 1 passthrough Strapi block.
-    expect(merged).toHaveLength(5)
+    // 5 always-present synthetic blocks (HeroPlayer + WatchBody + semantic
+    // recommendations + BibleQuotes + Share) + 1 passthrough Strapi block.
+    expect(merged).toHaveLength(6)
     expect(
       (merged[merged.length - 1] as { __typename?: string }).__typename,
     ).toBe("ComponentSectionsPromoBanner")
@@ -428,6 +568,66 @@ describe("mergeWatchExperience — HeroPlayer slot type-restriction", () => {
 })
 
 describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection videos)", () => {
+  it("uses the standalone video's own children without selectable parent choices", () => {
+    const video = makeVideo({
+      children: [
+        makeChild("own-1", "own-1", "Own 1"),
+        makeChild("own-2", "own-2", "Own 2"),
+      ],
+    })
+    const selectableParents = [
+      makeParent({
+        documentId: "parent-a",
+        slug: "collection-a",
+        title: "Collection A",
+        children: [
+          makeChild("video-1", "jesus", "Jesus"),
+          makeChild("a-2", "a-2", "A 2"),
+        ],
+      }),
+      makeParent({
+        documentId: "parent-b",
+        slug: "collection-b",
+        title: "Collection B",
+        children: [
+          makeChild("b-1", "b-1", "B 1"),
+          makeChild("video-1", "jesus", "Jesus"),
+        ],
+      }),
+    ]
+
+    const merged = mergeWatchExperience(
+      asArgs({
+        video,
+        variant: makeVariant(),
+        canonicalParent: null,
+        selectableParents,
+      }),
+    )
+    const carousel = merged.find(
+      (block) => isWatchBlock(block) && block.kind === "SiblingCarousel",
+    )
+    const hero = merged.find(
+      (block) => isWatchBlock(block) && block.kind === "HeroPlayer",
+    )
+
+    expect(
+      isWatchBlock(carousel!) && carousel.kind === "SiblingCarousel"
+        ? carousel.canonicalParent.documentId
+        : null,
+    ).toBe(video.documentId)
+    expect(
+      isWatchBlock(carousel!) && carousel.kind === "SiblingCarousel"
+        ? carousel.selectableParents
+        : undefined,
+    ).toBeUndefined()
+    expect(
+      isWatchBlock(hero!) && hero.kind === "HeroPlayer"
+        ? hero.nextWatchItem
+        : undefined,
+    ).toMatchObject({ parentSlug: "jesus", documentId: "own-1" })
+  })
+
   it("synthesizes a virtual parent from video.children when video has >= 2 own children", () => {
     const ownChildren = [
       makeChild("chapter-1", "chapter-1", "Chapter 1"),
@@ -459,7 +659,27 @@ describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection 
     ).toBe(false)
   })
 
-  it("prefers video.children over canonicalParent.children when both are populated", () => {
+  it.each([49, 61, 73])(
+    "uses the generic fixed-own-rail path for %i standalone children",
+    (childCount) => {
+      const children = Array.from({ length: childCount }, (_, index) =>
+        makeChild(
+          `chapter-${index + 1}`,
+          `chapter-${index + 1}`,
+          `Chapter ${index + 1}`,
+        ),
+      )
+      const video = makeVideo({ children })
+
+      const block = buildSiblingCarouselBlock(null, video as never)
+
+      expect(block?.canonicalParent.documentId).toBe(video.documentId)
+      expect(block?.canonicalParent.children).toHaveLength(childCount)
+      expect(block).not.toHaveProperty("selectableParents")
+    },
+  )
+
+  it("uses the contextual canonical parent when the selected video also owns children", () => {
     const ownChildren = [
       makeChild("chapter-1", "chapter-1", "Chapter 1"),
       makeChild("chapter-2", "chapter-2", "Chapter 2"),
@@ -483,13 +703,388 @@ describe("buildSiblingCarouselBlock — virtualParent branch (parent/collection 
     )
 
     expect(block).not.toBeNull()
-    // The video's own children win — virtual-parent identity is video.documentId.
-    expect(block!.canonicalParent.documentId).toBe(video.documentId)
-    expect(block!.canonicalParent.children).toEqual(ownChildren)
+    expect(block!.canonicalParent.documentId).toBe(canonicalParent.documentId)
+    expect(block!.canonicalParent.children).toEqual(canonicalParent.children)
+  })
+
+  it("treats a below-threshold contextual parent as terminal", () => {
+    const video = makeVideo({
+      children: [
+        makeChild("own-1", "own-1", "Own 1"),
+        makeChild("own-2", "own-2", "Own 2"),
+      ],
+    })
+    const canonicalParent = makeParent({
+      children: [makeChild("video-1", "jesus", "Jesus")],
+    })
+    const selectableParents = [
+      makeParent({
+        documentId: "fallback-parent",
+        children: [
+          makeChild("video-1", "jesus", "Jesus"),
+          makeChild("peer-1", "peer-1", "Peer 1"),
+        ],
+      }),
+    ]
+
+    expect(
+      buildSiblingCarouselBlock(
+        canonicalParent as never,
+        video as never,
+        selectableParents as never,
+      ),
+    ).toBeNull()
+  })
+})
+
+describe("rankSelectableCarouselParents", () => {
+  const collection = makeParent({
+    documentId: "parent-collection",
+    slug: "anticipate-the-resurrection",
+    label: "COLLECTION",
+  })
+  const film = makeParent({
+    documentId: "parent-film",
+    slug: "life-of-jesus-gospel-of-john",
+    label: "FEATURE_FILM",
+  })
+  const series = makeParent({
+    documentId: "parent-series",
+    slug: "some-series",
+    label: "SERIES",
+  })
+
+  it("promotes the containing film ahead of a collection admin listed first", () => {
+    expect(
+      rankSelectableCarouselParents([collection, film] as never).map(
+        (parent) => parent.slug,
+      ),
+    ).toEqual(["life-of-jesus-gospel-of-john", "anticipate-the-resurrection"])
+  })
+
+  it("promotes a SERIES parent the same way as a FEATURE_FILM parent", () => {
+    expect(
+      rankSelectableCarouselParents([collection, series] as never).map(
+        (parent) => parent.slug,
+      ),
+    ).toEqual(["some-series", "anticipate-the-resurrection"])
+  })
+
+  // Admin's wire enum is SNAKE_CASE, but web sees other spellings of the same
+  // label, and every mismatch fails in the SILENT direction — straight back to
+  // admin's VideoRelation.order with nothing else going red. `normalizeLabel`
+  // is the repo's existing canonicalizer for exactly this; a bare
+  // `toUpperCase()` would pass the first case and fail the camelCase one.
+  it.each([
+    ["SNAKE_CASE (admin's wire enum)", "FEATURE_FILM"],
+    ["lowercase", "feature_film"],
+    ["camelCase", "featureFilm"],
+    ["space-separated", "Feature Film"],
+    ["surrounding whitespace", "  FEATURE_FILM  "],
+  ])("promotes a film labelled in %s", (_spelling, label) => {
+    const film = makeParent({
+      documentId: "parent-film",
+      slug: "life-of-jesus-gospel-of-john",
+      label,
+    })
+    expect(
+      rankSelectableCarouselParents([collection, film] as never).map(
+        (parent) => parent.slug,
+      ),
+    ).toEqual(["life-of-jesus-gospel-of-john", "anticipate-the-resurrection"])
+  })
+
+  // Near-miss labels: every positive row above would also pass under a sloppy
+  // substring or prefix classifier, which would then promote labels outside
+  // admin's enum. These rows only pass under an exact match on the canonical
+  // form, so they are what distinguishes the two implementations.
+  it.each([
+    ["a longer label containing a promoted one", "FEATURED_COLLECTION"],
+    ["a sibling enum member that is not promoted", "SHORT_FILM"],
+    ["another sibling enum member", "EPISODE"],
+    ["a promoted name as a substring", "MINI_SERIES"],
+  ])("does not promote %s", (_case, label) => {
+    const nearMiss = makeParent({
+      documentId: "parent-near-miss",
+      slug: "near-miss",
+      label,
+    })
+    expect(
+      rankSelectableCarouselParents([collection, nearMiss] as never).map(
+        (parent) => parent.slug,
+      ),
+    ).toEqual(["anticipate-the-resurrection", "near-miss"])
+  })
+
+  it("leaves admin's order untouched when no parent is a film or series", () => {
+    const second = makeParent({
+      documentId: "parent-collection-2",
+      slug: "another-collection",
+      label: "COLLECTION",
+    })
+    const missingLabel = makeParent({
+      documentId: "parent-unknown",
+      slug: "unlabelled",
+      label: null,
+    })
+    // The whole point of the two-tier rule: a page with no containing work —
+    // including one whose labels never arrived — renders exactly as it did
+    // before this change rather than getting reshuffled.
+    expect(
+      rankSelectableCarouselParents([
+        collection,
+        missingLabel,
+        second,
+      ] as never).map((parent) => parent.slug),
+    ).toEqual([
+      "anticipate-the-resurrection",
+      "unlabelled",
+      "another-collection",
+    ])
+  })
+
+  it("is stable among several containing works", () => {
+    expect(
+      rankSelectableCarouselParents([collection, series, film] as never).map(
+        (parent) => parent.slug,
+      ),
+    ).toEqual([
+      "some-series",
+      "life-of-jesus-gospel-of-john",
+      "anticipate-the-resurrection",
+    ])
+  })
+
+  it("does not mutate the array it was handed", () => {
+    const parents = [collection, film]
+    rankSelectableCarouselParents(parents as never)
+    expect(parents.map((parent) => parent.slug)).toEqual([
+      "anticipate-the-resurrection",
+      "life-of-jesus-gospel-of-john",
+    ])
+  })
+
+  it("ranks the block's default and its picker list identically", () => {
+    const video = makeVideo({ documentId: "video-1", children: [] })
+    const withCurrentVideo = (parent: ReturnType<typeof makeParent>) => ({
+      ...parent,
+      children: [
+        makeChild("video-1", "jesus", "Jesus"),
+        makeChild(`${parent.documentId}-peer`, "peer", "Peer"),
+      ],
+    })
+
+    const block = buildSiblingCarouselBlock(
+      null,
+      video as never,
+      [withCurrentVideo(collection), withCurrentVideo(film)] as never,
+    )
+
+    expect(block!.canonicalParent.slug).toBe("life-of-jesus-gospel-of-john")
+    expect(block!.selectableParents?.[0]?.slug).toBe(
+      block!.canonicalParent.slug,
+    )
+    expect(block!.selectableParents?.map((parent) => parent.slug)).toEqual([
+      "life-of-jesus-gospel-of-john",
+      "anticipate-the-resurrection",
+    ])
+  })
+})
+
+describe("buildHeroBlock — next watch item", () => {
+  it("uses the canonical parent's next child for a chapter page", () => {
+    const video = makeVideo({ documentId: "chapter-1", slug: "chapter-one" })
+    const parent = makeParent({
+      slug: "jesus",
+      children: [
+        makeChild("chapter-1", "chapter-one", "Chapter One"),
+        makeChild("chapter-2", "chapter-two", "Chapter Two"),
+      ],
+    })
+
+    const block = buildHeroBlock(
+      video as never,
+      makeVariant() as never,
+      parent as never,
+    )
+
+    expect(block.nextWatchItem).toEqual({
+      parentSlug: "jesus",
+      slug: "chapter-two",
+      title: "Chapter Two",
+      documentId: "chapter-2",
+      kind: "chapter",
+    })
+  })
+
+  it("uses the first child for a parent video with its own chapter list", () => {
+    const video = makeVideo({
+      documentId: "jesus-parent",
+      slug: "jesus",
+      children: [
+        {
+          ...makeChild("episode-1", "episode-one", "Episode One"),
+          label: "EPISODE",
+        },
+        makeChild("episode-2", "episode-two", "Episode Two"),
+      ],
+    })
+
+    const block = buildHeroBlock(video as never, makeVariant() as never)
+
+    expect(block.nextWatchItem).toEqual({
+      parentSlug: "jesus",
+      slug: "episode-one",
+      title: "Episode One",
+      documentId: "episode-1",
+      kind: "episode",
+    })
+  })
+
+  it("uses contextual parent progression before a hybrid video's own children", () => {
+    const video = makeVideo({
+      documentId: "hybrid-video",
+      slug: "hybrid-video",
+      children: [makeChild("own-1", "own-one", "Own One")],
+    })
+    const parent = makeParent({
+      slug: "chosen-collection",
+      children: [
+        makeChild("hybrid-video", "hybrid-video", "Hybrid Video"),
+        makeChild("peer-2", "peer-two", "Peer Two"),
+      ],
+    })
+
+    const block = buildHeroBlock(
+      video as never,
+      makeVariant() as never,
+      parent as never,
+    )
+
+    expect(block.nextWatchItem).toMatchObject({
+      parentSlug: "chosen-collection",
+      slug: "peer-two",
+      documentId: "peer-2",
+    })
+  })
+
+  it("does not fall through to own children at the end of a contextual parent", () => {
+    const video = makeVideo({
+      documentId: "hybrid-video",
+      slug: "hybrid-video",
+      children: [makeChild("own-1", "own-one", "Own One")],
+    })
+    const parent = makeParent({
+      children: [
+        makeChild("peer-1", "peer-one", "Peer One"),
+        makeChild("hybrid-video", "hybrid-video", "Hybrid Video"),
+      ],
+    })
+
+    const block = buildHeroBlock(
+      video as never,
+      makeVariant() as never,
+      parent as never,
+    )
+
+    expect(block.nextWatchItem).toBeNull()
+  })
+
+  it("uses the first child for a parent video with a single child", () => {
+    const video = makeVideo({
+      documentId: "jesus-parent",
+      slug: "jesus",
+      children: [makeChild("chapter-1", "chapter-one", "Chapter One")],
+    })
+
+    const block = buildHeroBlock(video as never, makeVariant() as never)
+
+    expect(block.nextWatchItem).toEqual({
+      parentSlug: "jesus",
+      slug: "chapter-one",
+      title: "Chapter One",
+      documentId: "chapter-1",
+      kind: "chapter",
+    })
+  })
+
+  it("omits next watch item for the last child", () => {
+    const video = makeVideo({ documentId: "chapter-2", slug: "chapter-two" })
+    const parent = makeParent({
+      slug: "jesus",
+      children: [
+        makeChild("chapter-1", "chapter-one", "Chapter One"),
+        makeChild("chapter-2", "chapter-two", "Chapter Two"),
+      ],
+    })
+
+    const block = buildHeroBlock(
+      video as never,
+      makeVariant() as never,
+      parent as never,
+    )
+
+    expect(block.nextWatchItem).toBeNull()
+  })
+
+  it("skips unplayable next siblings", () => {
+    const video = makeVideo({ documentId: "chapter-1", slug: "chapter-one" })
+    const parent = makeParent({
+      slug: "jesus",
+      children: [
+        makeChild("chapter-1", "chapter-one", "Chapter One"),
+        {
+          ...makeChild("chapter-2", "chapter-two", "Chapter Two"),
+          muxPlaybackId: null as string | null,
+        },
+        makeChild("chapter-3", "chapter-three", "Chapter Three"),
+      ],
+    })
+
+    const block = buildHeroBlock(
+      video as never,
+      makeVariant() as never,
+      parent as never,
+    )
+
+    expect(block.nextWatchItem).toEqual({
+      parentSlug: "jesus",
+      slug: "chapter-three",
+      title: "Chapter Three",
+      documentId: "chapter-3",
+      kind: "chapter",
+    })
   })
 })
 
 describe("Auto-template builders return null on empty data", () => {
+  it("preserves search/social metadata without replacing visible Watch body copy", () => {
+    const video = makeVideo({
+      title: "Jesus",
+      description: "Visible description",
+      searchTitle: "Watch JESUS — Full Movie Free Online | Jesus Film Project",
+      searchDescription: "Crawler-facing description",
+      socialImage: {
+        url: "https://admin.example/jesus-social.jpg",
+        width: 1200,
+        height: 630,
+      },
+    })
+
+    const block = buildWatchBodyBlock(video as never, makeVariant() as never)
+
+    expect(block.video.title).toBe("Jesus")
+    expect(block.video.description).toBe("Visible description")
+    expect(block.video.searchTitle).toBe(
+      "Watch JESUS — Full Movie Free Online | Jesus Film Project",
+    )
+    expect(block.video.socialImage).toEqual({
+      url: "https://admin.example/jesus-social.jpg",
+      width: 1200,
+      height: 630,
+    })
+  })
+
   it("buildSiblingCarouselBlock returns null when children.length < 2", () => {
     const parent = makeParent({
       children: [makeChild("v", "v", "V")],

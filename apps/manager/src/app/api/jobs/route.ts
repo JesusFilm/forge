@@ -48,15 +48,24 @@ export async function GET(request: Request) {
   }
 
   const { limit, offset, view } = query.data
-  if (view === "count") {
-    const total = await countJobs()
-    return NextResponse.json({ total })
+  try {
+    if (view === "count") {
+      const total = await countJobs()
+      return NextResponse.json({ total })
+    }
+
+    const [jobs, total] = await Promise.all([
+      view === "full"
+        ? listJobs({ limit, offset })
+        : listJobSummaries({ limit, offset }),
+      countJobs(),
+    ])
+
+    return NextResponse.json({ jobs, total })
+  } catch (error) {
+    console.warn("Failed to list Manager jobs:", error)
+    return NextResponse.json({ error: "Failed to load jobs" }, { status: 502 })
   }
-
-  const allJobs = view === "full" ? await listJobs() : await listJobSummaries()
-  const jobs = allJobs.slice(offset, offset + limit)
-
-  return NextResponse.json({ jobs, total: allJobs.length })
 }
 
 export async function POST(request: Request) {

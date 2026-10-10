@@ -1,0 +1,39 @@
+{
+  "projectId": "9073018876001790791",
+  "projectName": "projects/9073018876001790791",
+  "title": "Forge TV App - Video Details Page",
+  "designSystem": {
+    "name": "Crimson Gallery",
+    "assetId": "301f51e9e8aa45afab5660e1489891f5",
+    "sourceDoc": "apps/tv/.stitch/DESIGN.md",
+    "deviceType": "DESKTOP"
+  },
+  "screens": [
+    {
+      "id": "13002913447543364276",
+      "title": "DESIGN.md",
+      "type": "design-system-source"
+    },
+    {
+      "id": "a072295a7e8f4d909ebbc77db4400992",
+      "title": "Launch Page - The Birth of Jesus",
+      "playerModel": "A — details page -> Play -> existing fullscreen overlay (TV-native)"
+    },
+    {
+      "id": "c52503bcc0154b8c8889d4c35a75c51b",
+      "title": "The Birth of Jesus - Details",
+      "playerModel": "B — inline hero autoplays on the page (mobile-mirror)"
+    },
+    {
+      "id": "112c936ce9da4b6fb417fe5175f75461",
+      "title": "Hybrid Backdrop Preview - The Birth of Jesus",
+      "playerModel": "C — muted backdrop preview + Play -> fullscreen (hybrid)"
+    },
+    {
+      "id": "9ea698acbe954c678cdf04b935dd6427",
+      "title": "Cinematic film still (auto-generated background image asset)",
+      "type": "image-asset"
+    }
+  ],
+  "notes": "Design system extracted from apps/tv Crimson Gallery tokens (colors.ts, scale.ts, renderers). Three video-details mockups each embody one player-interaction model from the brainstorm. Generation endpoint was flaky this session (intermittent OAuth auth errors + timeouts on generate_screen_from_text); Model C required several retries."
+}

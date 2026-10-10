@@ -578,6 +578,8 @@ pnpm --filter=@forge/mobile typecheck
 
 If step 3 produces output, the SDL or introspection types are stale relative to the current Pothos source. Commit the diff before opening a PR, or CI's drift job will fail.
 
+The steps above verify the **producer side** (admin SDL → typed introspection). The **consumer side** has its own dual-pattern discipline: when inventorying every callsite of `graphql()` in a consumer app, also sweep for raw Apollo `` gql`...` `` callsites, because the same file may legitimately mix both forms. See [`graphql-callsite-inventory-dual-pattern-sweep-20260507.md`](../best-practices/graphql-callsite-inventory-dual-pattern-sweep-20260507.md).
+
 ---
 
 ## Related
@@ -588,4 +590,5 @@ If step 3 produces output, the SDL or introspection types are stale relative to 
 - `docs/roadmap/platform/feat-120-decouple-admin-sdl-emit-from-runtime-graph.md` — deferred follow-up: the `print-schema.ts` script currently triggers Prisma client construction + env validation at SDL emit time via the side-effect import chain through `@/graphql/schema`. Restructuring `apps/admin/src/graphql/builder.ts` to lazy-load services would decouple SDL emission from runtime concerns.
 - `docs/solutions/integration-issues/expo-graphql-schema-drift-and-fragment-validation.md` — the specific drift incident this pattern's architecture prevents. That doc's Prevention §1 calls for "migrating to `@forge/graphql`" — the dual-client pattern documented here is exactly that migration.
 - `docs/solutions/best-practices/mocked-shape-vs-real-contract-discipline-20260506.md` — the type-isolation test (Pitfall 3 above) is a worked instance of this discipline applied to TypeScript types: prove the contract you think is load-bearing is actually tested as such, not a vacuous tautology.
+- `docs/solutions/best-practices/graphql-callsite-inventory-dual-pattern-sweep-20260507.md` — the consumer-side complement to this pattern. When migrating consumers off Strapi onto admin, the inventory step must run BOTH `rg "graphql\("` AND `rg "= gql\`"` because consumer apps mix gql.tada with raw Apollo. Ships as the 6th worked instance in the mocked-shape-vs-real-contract META above.
 - `docs/solutions/best-practices/nextjs-route-shape-migration-cross-cutting-contract-drift-20260430.md` — analog for URL-template drift. Both that doc and this one prescribe "single authoritative source for the contract shape" with CI enforcement, applied to different contract surfaces (URL templates vs. GraphQL schema types).

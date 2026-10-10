@@ -1,11 +1,13 @@
 "use client"
 
 import * as React from "react"
+import { useLocale } from "next-intl"
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
 } from "embla-carousel-react"
 
 import { cn } from "@/lib/utils"
+import { textDirectionForLocale } from "@/lib/locale"
 import { Button } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react"
 
@@ -28,9 +30,13 @@ type CarouselContextProps = {
   scrollNext: () => void
   canScrollPrev: boolean
   canScrollNext: boolean
+  direction: "ltr" | "rtl"
 } & CarouselProps
 
 const CarouselContext = React.createContext<CarouselContextProps | null>(null)
+const HORIZONTAL_WHEEL_DELTA_THRESHOLD = 8
+const CAROUSEL_EDGE_CONTROL_CLASSES =
+  "pointer-events-none absolute z-20 hidden size-11 touch-manipulation rounded-full border-white/30 bg-white/95 text-stone-900 opacity-0 shadow-xl transition-[opacity,background-color,color,scale] duration-200 group-hover/carousel:pointer-events-auto group-hover/carousel:opacity-100 group-focus-within/carousel:pointer-events-auto group-focus-within/carousel:opacity-100 hover:scale-105 hover:bg-white hover:text-stone-950 focus-visible:pointer-events-auto focus-visible:opacity-100 disabled:hidden md:inline-flex"
 
 function useCarousel() {
   const context = React.useContext(CarouselContext)
@@ -51,10 +57,13 @@ function Carousel({
   children,
   ...props
 }: React.ComponentProps<"div"> & CarouselProps) {
+  const locale = useLocale()
+  const direction = opts?.direction ?? textDirectionForLocale(locale)
   const [carouselRef, api] = useEmblaCarousel(
     {
       ...opts,
       axis: orientation === "horizontal" ? "x" : "y",
+      direction,
     },
     plugins,
   )
@@ -117,11 +126,12 @@ function Carousel({
         scrollNext,
         canScrollPrev,
         canScrollNext,
+        direction,
       }}
     >
       <div
         onKeyDownCapture={handleKeyDown}
-        className={cn("relative", className)}
+        className={cn("group/carousel relative", className)}
         role="region"
         aria-roledescription="carousel"
         data-slot="carousel"
@@ -133,14 +143,40 @@ function Carousel({
   )
 }
 
-function CarouselContent({ className, ...props }: React.ComponentProps<"div">) {
-  const { carouselRef, orientation } = useCarousel()
+function CarouselContent({
+  className,
+  viewportClassName,
+  onWheel,
+  ...props
+}: React.ComponentProps<"div"> & { viewportClassName?: string }) {
+  const { carouselRef, orientation, api } = useCarousel()
+
+  function handleWheel(event: React.WheelEvent<HTMLDivElement>) {
+    onWheel?.(event)
+    if (event.defaultPrevented) return
+    if (orientation !== "horizontal" || !api) return
+    if (
+      Math.abs(event.deltaX) <= Math.abs(event.deltaY) ||
+      Math.abs(event.deltaX) < HORIZONTAL_WHEEL_DELTA_THRESHOLD
+    ) {
+      return
+    }
+
+    if (event.deltaX > 0 && api.canScrollNext()) {
+      event.preventDefault()
+      api.scrollNext()
+    } else if (event.deltaX < 0 && api.canScrollPrev()) {
+      event.preventDefault()
+      api.scrollPrev()
+    }
+  }
 
   return (
     <div
       ref={carouselRef}
-      className="overflow-hidden"
+      className={cn("overflow-x-clip overflow-y-visible", viewportClassName)}
       data-slot="carousel-content"
+      onWheel={handleWheel}
     >
       <div
         className={cn(
@@ -176,19 +212,28 @@ function CarouselPrevious({
   className,
   variant = "outline",
   size = "icon-sm",
+  label = "Previous slide",
+  "aria-label": ariaLabelOverride,
   ...props
-}: React.ComponentProps<typeof Button>) {
-  const { orientation, scrollPrev, canScrollPrev } = useCarousel()
+}: React.ComponentProps<typeof Button> & { label?: string }) {
+  const { orientation, direction, scrollPrev, canScrollPrev } = useCarousel()
+  const isRtl = orientation === "horizontal" && direction === "rtl"
+  // Single source of truth for the button's accessible name. A caller may
+  // pass `aria-label` directly OR the `label` prop; pull `aria-label` out
+  // of the prop spread so it never silently overrides `label` while the
+  // (now-removed) sr-only span uses a different value.
+  const accessibleName = ariaLabelOverride ?? label
 
   return (
     <Button
       data-slot="carousel-previous"
       variant={variant}
       size={size}
+      aria-label={accessibleName}
       className={cn(
-        "absolute touch-manipulation rounded-full",
+        CAROUSEL_EDGE_CONTROL_CLASSES,
         orientation === "horizontal"
-          ? "top-1/2 -left-12 -translate-y-1/2"
+          ? cn("top-1/2 -translate-y-1/2", isRtl ? "right-3" : "left-3")
           : "-top-12 left-1/2 -translate-x-1/2 rotate-90",
         className,
       )}
@@ -196,8 +241,7 @@ function CarouselPrevious({
       onClick={scrollPrev}
       {...props}
     >
-      <ChevronLeftIcon />
-      <span className="sr-only">Previous slide</span>
+      {isRtl ? <ChevronRightIcon /> : <ChevronLeftIcon />}
     </Button>
   )
 }
@@ -206,19 +250,24 @@ function CarouselNext({
   className,
   variant = "outline",
   size = "icon-sm",
+  label = "Next slide",
+  "aria-label": ariaLabelOverride,
   ...props
-}: React.ComponentProps<typeof Button>) {
-  const { orientation, scrollNext, canScrollNext } = useCarousel()
+}: React.ComponentProps<typeof Button> & { label?: string }) {
+  const { orientation, direction, scrollNext, canScrollNext } = useCarousel()
+  const isRtl = orientation === "horizontal" && direction === "rtl"
+  const accessibleName = ariaLabelOverride ?? label
 
   return (
     <Button
       data-slot="carousel-next"
       variant={variant}
       size={size}
+      aria-label={accessibleName}
       className={cn(
-        "absolute touch-manipulation rounded-full",
+        CAROUSEL_EDGE_CONTROL_CLASSES,
         orientation === "horizontal"
-          ? "top-1/2 -right-12 -translate-y-1/2"
+          ? cn("top-1/2 -translate-y-1/2", isRtl ? "left-3" : "right-3")
           : "-bottom-12 left-1/2 -translate-x-1/2 rotate-90",
         className,
       )}
@@ -226,8 +275,7 @@ function CarouselNext({
       onClick={scrollNext}
       {...props}
     >
-      <ChevronRightIcon />
-      <span className="sr-only">Next slide</span>
+      {isRtl ? <ChevronLeftIcon /> : <ChevronRightIcon />}
     </Button>
   )
 }

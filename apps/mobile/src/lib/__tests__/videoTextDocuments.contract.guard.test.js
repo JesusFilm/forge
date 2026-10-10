@@ -1,0 +1,72 @@
+/** U6: every UI-locale Admin document validates against the COMMITTED SDL (the
+ *  argument names, the `"english"` literal, the `@skip` aliases). Plain JS, as
+ *  it reads the SDL with fs/path and the RN tsconfig has no Node types. */
+/* eslint-disable @typescript-eslint/no-require-imports */
+/* global describe, expect, it, require */
+const { readFileSync } = require("node:fs")
+const path = require("node:path")
+const { buildSchema, parse, print, validate } = require("graphql")
+
+const queries = require("../queries")
+const {
+  videoThumbnailsDocument,
+  videoThumbnailsVariables,
+} = require("../../hooks/useVideoThumbnails")
+
+const ADMIN_SDL_PATH = path.resolve(
+  __dirname,
+  "../../../../admin/schema.graphql",
+)
+
+const schema = buildSchema(readFileSync(ADMIN_SDL_PATH, "utf8"))
+
+const U6_DOCUMENTS = [
+  "GET_VIDEO_BY_SLUG",
+  "GET_VIDEO_TEXT",
+  "GET_SERIES_BY_SLUG",
+  "GET_SERIES_TEXT",
+  "GET_WATCH_HOME_VIDEOS",
+  "GET_WATCH_SETTING",
+  "GET_EXPERIENCE_BY_SLUG",
+  // U7: the passage by slug, the Explore text rows, and the language name.
+  "GET_VIDEO_BIBLE_PASSAGES",
+  "EXPLORE_CLIP_CANDIDATES",
+  "EXPLORE_INVENTORY",
+  "WATCH_SEARCH",
+]
+
+describe("U6 documents against the committed Admin SDL", () => {
+  it.each(U6_DOCUMENTS)("%s validates", (name) => {
+    const doc = queries[name]
+    expect(doc).toBeDefined()
+    const errors = validate(schema, doc)
+    expect(errors.map((error) => error.message)).toEqual([])
+  })
+
+  it("the Experience card batch validates for one and for several ids", () => {
+    for (const count of [1, 3]) {
+      const errors = validate(schema, videoThumbnailsDocument(count))
+      expect(errors.map((error) => error.message)).toEqual([])
+    }
+  })
+
+  // The old hand-built string wrote each id into the document text.
+  it("the Experience card batch carries its ids as variables only", () => {
+    const ids = ["cmpbs74n6036v6d819ppuc9fo", "abc-123_def"]
+    const printed = print(videoThumbnailsDocument(ids.length))
+    for (const id of ids) expect(printed).not.toContain(id)
+    expect(videoThumbnailsVariables(ids, "russian")).toEqual({
+      textSlug: "russian",
+      id0: ids[0],
+      id1: ids[1],
+    })
+  })
+
+  // Positive control: a document with an unknown argument fails the same check.
+  it("rejects a locales(...) argument Admin does not know (positive control)", () => {
+    const bad = parse(
+      'query Bad($slug: String!) { videoBySlug(slug: $slug) { locales(language: "x") { title } } }',
+    )
+    expect(validate(schema, bad).length).toBeGreaterThan(0)
+  })
+})

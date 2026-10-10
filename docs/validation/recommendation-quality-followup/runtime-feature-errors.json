@@ -1,0 +1,43 @@
+{
+  "from": "2026-09-16T01:49:00Z",
+  "to": "2026-09-16T02:04:00Z",
+  "rows": 9,
+  "errors": [
+    {
+      "timestamp": "2026-09-16T01:57:05.565469275Z",
+      "message": "event=recommendation.evidence source=web action=facts outcome=ambiguous reason=upstream_unavailable timeoutStage=upstream retryDisposition=retryable crawler=not_recognized httpStatus=503"
+    },
+    {
+      "timestamp": "2026-09-16T01:57:05.639250512Z",
+      "message": "event=recommendation.evidence source=web action=facts outcome=ambiguous reason=upstream_unavailable timeoutStage=upstream retryDisposition=retryable crawler=not_recognized httpStatus=503"
+    },
+    {
+      "timestamp": "2026-09-16T01:57:34.102929699Z",
+      "message": "event=recommendation.evidence source=web action=facts outcome=ambiguous reason=upstream_unavailable timeoutStage=upstream retryDisposition=retryable crawler=not_recognized httpStatus=503"
+    },
+    {
+      "timestamp": "2026-09-16T01:57:34.102934269Z",
+      "message": "event=recommendation.evidence source=web action=facts outcome=ambiguous reason=upstream_unavailable timeoutStage=upstream retryDisposition=retryable crawler=not_recognized httpStatus=503"
+    },
+    {
+      "timestamp": "2026-09-16T01:57:40.936804939Z",
+      "message": "event=recommendation.evidence source=web action=facts outcome=ambiguous reason=upstream_unavailable timeoutStage=upstream retryDisposition=retryable crawler=not_recognized httpStatus=503"
+    },
+    {
+      "timestamp": "2026-09-16T02:00:13.012159579Z",
+      "message": "event=recommendation.evidence source=web action=facts outcome=ambiguous reason=upstream_unavailable timeoutStage=upstream retryDisposition=retryable crawler=not_recognized httpStatus=503"
+    },
+    {
+      "timestamp": "2026-09-16T02:02:13.216042528Z",
+      "message": "event=recommendation.evidence source=web action=select outcome=ambiguous reason=upstream_unavailable timeoutStage=upstream retryDisposition=retryable crawler=not_recognized httpStatus=503"
+    },
+    {
+      "timestamp": "2026-09-16T02:02:21.901845274Z",
+      "message": "event=recommendation.evidence source=web action=select outcome=ambiguous reason=upstream_unavailable timeoutStage=upstream retryDisposition=retryable crawler=not_recognized httpStatus=503"
+    },
+    {
+      "timestamp": "2026-09-16T02:02:30.454487875Z",
+      "message": "event=recommendation.evidence source=web action=select outcome=ambiguous reason=upstream_unavailable timeoutStage=upstream retryDisposition=retryable crawler=not_recognized httpStatus=503"
+    }
+  ]
+}

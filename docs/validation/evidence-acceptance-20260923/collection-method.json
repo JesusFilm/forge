@@ -1,0 +1,61 @@
+{
+  "window": {
+    "begin": "2026-09-23T04:30:00Z",
+    "endExclusive": "2026-09-23T06:30:00Z"
+  },
+  "pointerAudit": {
+    "source": "apps/admin/src/services/recommendations/profiles/profile-lineage.ts",
+    "function": "profileLineageEligibleSql",
+    "sourceSha256": "bc328aa49b76ff2f4bd9af60388ef6e1324b92b772018513c3593f25bb7092b3",
+    "parameterizedQuerySha256": "4228b9be12063d4510f506f547ecdb97f43299696da45d2d76cb15d63da65921",
+    "population": "Every pointer joined to a published, unexpired generation at the server snapshot time.",
+    "cursorBatchRows": 2000,
+    "overallDeadlineSeconds": 120
+  },
+  "durableAudit": {
+    "episodeCohort": "Retained episodes created in the fixed window; all their retained facts and replay receipts at the snapshot.",
+    "factReceiptWindow": "All retained facts received in the fixed window, including older episodes.",
+    "replayObservationWindow": "All retained replay receipts observed in the fixed window, including older episodes.",
+    "finalizedOutcomeCheck": "Latest active-watch-proxy-v1 outcome revision has matching fact watermark and episode generation; queued updates are reported separately.",
+    "overallDeadlineSeconds": 60
+  },
+  "databaseGuards": {
+    "isolation": "repeatable read",
+    "readOnly": true,
+    "statementTimeoutMs": 5000,
+    "lockTimeoutMs": 500,
+    "idleInTransactionTimeoutMs": 10000,
+    "jit": "off for this transaction only",
+    "completion": "Explicit rollback and closed connection"
+  },
+  "http": {
+    "source": "Railway httpLogs on the primary Web deployment",
+    "beforeLimit": 500,
+    "afterLimit": 0,
+    "initialSliceMinutes": 5,
+    "subdivideAtCap": true,
+    "bounds": "half-open",
+    "uniqueRequestIds": true,
+    "explicitPathAndDeploymentValidation": true,
+    "publishedIdentity": "Only SHA-256 of sorted request-ID set"
+  },
+  "deploymentLogs": {
+    "source": "Railway deployment logs; unfiltered input preserves structured JSON runtime entries",
+    "sliceMinutes": 10,
+    "limit": 5000,
+    "subdivideAtCap": true,
+    "output": "Allowlisted aggregate fields; raw logs remain private"
+  },
+  "scratchCollectorSha256": {
+    "railway-read.py": "3aead85dfc61db702726b1aeb3d4ffdf2cb893b9fc58c681671c98246af2c1f7",
+    "log-read.py": "acd3f66dbbe2a0de847ac943da831bfe399e3e20478a6e65b1da220f0dc2d2cb",
+    "prod-read.py": "3afb3927de598eb62997cc33dc573123e6138d30c21d4d10eae7d70374039306",
+    "durable-audit.js": "11c69842c732794e573b6c2d840689516668c97590acc537694407ed4b9fb89c",
+    "audit-runner.py": "ff7982272ddc716de3d1f873a22c01210e3519949a653819e85af6970ba6487a",
+    "delivery-audit.js": "1e375fe6973b476057f25a8df463548d1ea6c5f99da1162544e32d44d30da6e5"
+  },
+  "durableDeliveryAudit": {
+    "population": "Recommendation requests created and evidence audits occurred in the fixed window; aggregated by purpose/state/result/reason only.",
+    "overallDeadlineSeconds": 60
+  }
+}

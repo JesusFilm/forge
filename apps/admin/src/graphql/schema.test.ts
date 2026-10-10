@@ -16,8 +16,9 @@
 // DB-DEPENDENT assertions (nested-relation SQL count, ABAC parity test) live
 // in later units once services are in place.
 
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { schema } from "@/graphql/schema"
+import { duplicateExperienceFromContext } from "@/graphql/mutations/experience"
 
 type FieldsHolder = { getFields(): Record<string, unknown> }
 
@@ -47,10 +48,298 @@ describe("GraphQL schema — Unit 4 content types", () => {
         "video",
         "videoBySlug",
         "videos",
+        "watchHomeVideos",
+        "watchCollectionFeed",
+        "watchLanguageInventory",
+        "watchSearch",
+        "watchSearchSuggestions",
+        "videosByCoreIds",
         // Experience
         "experience",
         "experiences",
         "experienceBySlug",
+        "experienceLocaleDraftState",
+        "experiencePreview",
+        "watchSetting",
+        // Manager backend contracts
+        "managerViewer",
+        "managerLanguageGeo",
+        "managerVideoCoverage",
+        "managerVideosForEnrichment",
+        "managerCoverageSnapshots",
+        "managerJobs",
+        "managerJob",
+      ]),
+    )
+  })
+
+  it("exposes the bounded Watch collection feed contract", () => {
+    const query = schema.getQueryType()!.getFields().watchCollectionFeed
+    expect(String(query.type)).toBe("WatchCollectionFeed!")
+    expect(query.args.map((arg) => arg.name).sort()).toEqual([
+      "after",
+      "cardsPerParent",
+      "excludedIds",
+      "excludedSlugs",
+      "first",
+      "languageSlug",
+      "locale",
+    ])
+    const argsByName = new Map(query.args.map((arg) => [arg.name, arg]))
+    expect(String(argsByName.get("first")?.type)).toBe("Int")
+    expect(String(argsByName.get("cardsPerParent")?.type)).toBe("Int!")
+    expect(String(argsByName.get("languageSlug")?.type)).toBe("String!")
+    expect(String(argsByName.get("locale")?.type)).toBe("String!")
+    expect(Object.keys(fieldsOf("WatchCollectionFeed"))).toEqual([
+      "nodes",
+      "pageInfo",
+    ])
+    expect(Object.keys(fieldsOf("WatchCollectionFeedNode"))).toEqual([
+      "description",
+      "id",
+      "items",
+      "slug",
+      "title",
+    ])
+    expect(Object.keys(fieldsOf("WatchCollectionFeedItem"))).toEqual([
+      "blurDataUrl",
+      "coreId",
+      "dominantColor",
+      "id",
+      "imageUrl",
+      "label",
+      "languageSlug",
+      "muxPlaybackId",
+      "title",
+      "videoSlug",
+    ])
+    expect(Object.keys(fieldsOf("WatchCollectionFeedPageInfo"))).toEqual([
+      "endCursor",
+      "hasNextPage",
+    ])
+  })
+
+  it("extends the stable Watch locale contract with search/social fields", () => {
+    expect(Object.keys(fieldsOf("WatchRouteSnapshotLocale"))).toEqual(
+      expect.arrayContaining([
+        "searchTitle",
+        "searchDescription",
+        "socialImage",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("WatchRouteSnapshotSocialImage"))).toEqual(
+      expect.arrayContaining(["url", "width", "height", "mimeType"]),
+    )
+    expect(schema.getType("WatchRouteSnapshotRootLocale")).toBeUndefined()
+  })
+
+  it("exposes canonical order on Watch child relations", () => {
+    const fields = fieldsOf("WatchRouteSnapshotChildRelation") as Record<
+      string,
+      { type: { toString(): string } }
+    >
+
+    expect(fields.order?.type.toString()).toBe("Int")
+    expect(fields.child?.type.toString()).toBe("WatchRouteSnapshotChild")
+  })
+
+  it("Manager session/read/job contract types expose the expected shape", () => {
+    expect(Object.keys(fieldsOf("ManagerViewer"))).toEqual(
+      expect.arrayContaining([
+        "id",
+        "username",
+        "email",
+        "managerRole",
+        "permission",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ManagerLanguageGeo"))).toEqual(
+      expect.arrayContaining(["continents", "countries", "languages"]),
+    )
+    expect(Object.keys(fieldsOf("ManagerLanguage"))).toEqual(
+      expect.arrayContaining(["id", "coreId", "bcp47", "iso3"]),
+    )
+    expect(Object.keys(fieldsOf("ManagerVideoForEnrichment"))).toEqual(
+      expect.arrayContaining([
+        "documentId",
+        "coreId",
+        "title",
+        "label",
+        "primaryLanguage",
+        "variants",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ManagerEnrichmentVariant"))).toEqual(
+      expect.arrayContaining(["language", "muxVideo", "downloads"]),
+    )
+    expect(Object.keys(fieldsOf("ManagerVideoCoverage"))).toEqual(
+      expect.arrayContaining([
+        "documentId",
+        "coreId",
+        "parentDocumentIds",
+        "parentRelations",
+        "coverage",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ManagerJob"))).toEqual(
+      expect.arrayContaining([
+        "id",
+        "muxAssetId",
+        "languages",
+        "status",
+        "steps",
+        "errors",
+      ]),
+    )
+  })
+
+  it("WatchSetting type exposes the consumer-shape fields (documentId, homepageExperience, defaultTemplateExperience)", () => {
+    const fields = fieldsOf("WatchSetting")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "documentId",
+        "homepageExperience",
+        "defaultTemplateExperience",
+      ]),
+    )
+  })
+
+  it("VideoForEnrichment type (feat-125) exposes the dispatch-fields projection with the expected nullability", () => {
+    const fields = fieldsOf("VideoForEnrichment")
+    expect(Object.keys(fields)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "coreId",
+        "label",
+        "primaryLanguageBcp47",
+        "muxAssetId",
+        "subtitleUrl",
+      ]),
+    )
+    // id + coreId are non-null per the service contract; the rest
+    // are nullable so manager can classify missing fields as
+    // `validation_failed`.
+    const nonNull = (key: string) =>
+      String((fields[key] as { type: unknown }).type).endsWith("!")
+    expect(nonNull("id")).toBe(true)
+    expect(nonNull("coreId")).toBe(true)
+    expect(nonNull("label")).toBe(false)
+    expect(nonNull("primaryLanguageBcp47")).toBe(false)
+    expect(nonNull("muxAssetId")).toBe(false)
+    expect(nonNull("subtitleUrl")).toBe(false)
+  })
+
+  it("WatchLanguageInventory type exposes the localized /videos card contract", () => {
+    const inventoryFields = fieldsOf("WatchLanguageInventory")
+    expect(Object.keys(inventoryFields)).toEqual(
+      expect.arrayContaining([
+        "language",
+        "counts",
+        "promoted",
+        "audioCollections",
+        "audioVideos",
+        "subtitleOnlyVideos",
+      ]),
+    )
+
+    const itemFields = fieldsOf("WatchLanguageInventoryItem")
+    expect(Object.keys(itemFields)).toEqual(
+      expect.arrayContaining([
+        "id",
+        "coreId",
+        "slug",
+        "title",
+        "description",
+        "imageUrl",
+        "imageAlt",
+        "muxPlaybackId",
+        "label",
+        "availability",
+        "watchLanguageSlug",
+        "parentSlug",
+        "parentTitle",
+        "durationSeconds",
+        "childCount",
+        "publishedAt",
+      ]),
+    )
+
+    const query = schema.getQueryType()!.getFields().watchLanguageInventory
+    expect(String(query.type)).toBe("WatchLanguageInventory!")
+    expect(query.args.map((arg) => arg.name).sort()).toEqual([
+      "languageSlug",
+      "limit",
+    ])
+  })
+
+  it("WatchSearch type exposes the replacement multilingual contract skeleton", () => {
+    const query = schema.getQueryType()!.getFields().watchSearch
+    expect(String(query.type)).toBe("WatchSearchResponse")
+    expect(query.args.map((arg) => arg.name)).toEqual(["input"])
+
+    expect(Object.keys(fieldsOf("WatchSearchResponse"))).toEqual(
+      expect.arrayContaining([
+        "query",
+        "results",
+        "hasMore",
+        "nextOffset",
+        "searchMode",
+        "requestId",
+        "degraded",
+        "latencyMs",
+        "laneStatuses",
+        "languageInterpretation",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("WatchSearchResponse"))).not.toContain(
+      "retrievalIdentity",
+    )
+
+    expect(Object.keys(fieldsOf("WatchSearchLaneStatus"))).toEqual(
+      expect.arrayContaining([
+        "lane",
+        "status",
+        "elapsedMs",
+        "resultCount",
+        "reason",
+        "detail",
+      ]),
+    )
+
+    expect(Object.keys(fieldsOf("WatchSearchResult"))).toEqual(
+      expect.arrayContaining([
+        "type",
+        "id",
+        "slug",
+        "title",
+        "snippet",
+        "imageUrl",
+        "playbackId",
+        "startSeconds",
+        "score",
+        "label",
+        "durationSeconds",
+        "childCount",
+        "languageSlug",
+        "languageEnglishName",
+        "availability",
+        "evidence",
+        "action",
+        "fallback",
+      ]),
+    )
+
+    expect(Object.keys(fieldsOf("WatchSearchLanguageInterpretation"))).toEqual(
+      expect.arrayContaining([
+        "queryLanguageSlug",
+        "queryNamedLanguageSlug",
+        "targetLanguageSlug",
+        "targetLanguageSource",
+        "displayLanguageSlug",
+        "routeLanguageSlug",
+        "currentWatchLanguageSlug",
+        "acceptLanguage",
+        "acceptLanguageSlug",
       ]),
     )
   })
@@ -68,6 +357,101 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.triggerExperienceEmbedding).toBeDefined()
   })
 
+  it("exposes the Experience locale draft lifecycle contract", () => {
+    const query = schema.getQueryType()!.getFields()
+    expect(String(query.experiencePreview!.type)).toBe("ExperiencePreview")
+    expect(query.experiencePreview!.args.map((arg) => arg.name)).toEqual([
+      "token",
+    ])
+    expect(String(query.experienceLocaleDraftState!.type)).toBe(
+      "ExperienceLocaleDraftState!",
+    )
+
+    expect(Object.keys(fieldsOf("ExperienceLocaleDraftState"))).toEqual(
+      expect.arrayContaining([
+        "canonical",
+        "effective",
+        "hasDraft",
+        "activeDraft",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ExperienceLocaleActiveDraft"))).toEqual(
+      expect.arrayContaining([
+        "id",
+        "previewToken",
+        "revisedAt",
+        "revisedBy",
+        "revisedByKind",
+        "reason",
+      ]),
+    )
+    expect(Object.keys(fieldsOf("ExperiencePreview"))).toEqual(
+      expect.arrayContaining([
+        "experienceId",
+        "localeId",
+        "locale",
+        "slug",
+        "isHomepage",
+        "title",
+        "blocks",
+      ]),
+    )
+
+    const mutation = schema.getMutationType()!.getFields()
+    expect(mutation.discardExperienceLocaleDraft).toBeDefined()
+    expect(mutation.restoreExperienceLocaleRevisionToDraft).toBeDefined()
+    expect(
+      mutation.updateExperienceLocale!.args.map((arg) => arg.name),
+    ).not.toContain("isTemplate")
+  })
+
+  it("Mutation root exposes Experience duplication through the API", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const duplicate = mutation!.getFields().duplicateExperience
+    expect(duplicate).toBeDefined()
+    expect(String(duplicate!.type)).toBe("Experience!")
+    expect(duplicate!.args.map((arg) => arg.name)).toEqual(["id"])
+  })
+
+  it("delegates Experience duplication to the shared service with the caller", async () => {
+    const duplicate = vi.fn().mockResolvedValue({
+      id: "exp-copy",
+      isTemplate: false,
+      ownerId: "editor-1",
+      locales: [],
+    })
+    const user = { id: "editor-1", role: "EDITOR" as const }
+    await expect(
+      duplicateExperienceFromContext(
+        {
+          user,
+          services: { experience: { duplicate } } as never,
+        },
+        "exp-source",
+      ),
+    ).resolves.toMatchObject({ id: "exp-copy" })
+    expect(duplicate).toHaveBeenCalledWith({
+      input: { id: "exp-source" },
+      user,
+    })
+  })
+
+  it("Mutation root exposes Manager job write contracts", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    expect(fields.createManagerJob).toBeDefined()
+    expect(fields.updateManagerJob).toBeDefined()
+  })
+
+  it("Mutation root exposes the private watch-event write contract", () => {
+    const mutation = schema.getMutationType()
+    expect(mutation).toBeTruthy()
+    const fields = mutation!.getFields()
+    expect(fields.recordWatchEvent).toBeDefined()
+  })
+
   it("Mutation root exposes media asset write entry points", () => {
     const mutation = schema.getMutationType()
     expect(mutation).toBeTruthy()
@@ -82,22 +466,11 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.deleteMediaFolder).toBeDefined()
   })
 
-  it("Mutation root exposes the scene embedding backfill trigger", () => {
+  it("Mutation root does not expose the retired scene embedding backfill trigger", () => {
     const mutation = schema.getMutationType()
     expect(mutation).toBeTruthy()
     const fields = mutation!.getFields()
-    expect(fields.triggerSceneEmbeddingBackfill).toBeDefined()
-  })
-
-  it("triggerSceneEmbeddingBackfill.mappingS3Key is optional with the canonical default", () => {
-    const mutation = schema.getMutationType()!
-    const field = mutation.getFields().triggerSceneEmbeddingBackfill!
-    const arg = field.args.find((a) => a.name === "mappingS3Key")
-    expect(arg).toBeDefined()
-    // Nullable (String, not String!) so clients may omit or pass null;
-    // defaultValue holds the canonical admin-migrations/ snapshot.
-    expect(String(arg!.type)).toBe("String")
-    expect(arg!.defaultValue).toBe("admin-migrations/core-id-mapping.json")
+    expect(fields.triggerSceneEmbeddingBackfill).toBeUndefined()
   })
 
   it("Mutation root exposes the transcript embedding backfill trigger", () => {
@@ -108,24 +481,39 @@ describe("GraphQL schema — Unit 4 content types", () => {
     expect(fields.triggerTranscriptEmbeddingBackfill).toBeDefined()
   })
 
-  it("Mutation root exposes the experience content dump trigger (R3)", () => {
+  it("Mutation root exposes the admin-native experience-embedding backfill trigger", () => {
     const mutation = schema.getMutationType()
     expect(mutation).toBeTruthy()
     const fields = mutation!.getFields()
-    expect(fields.triggerExperienceContentDump).toBeDefined()
+    expect(fields.triggerExperienceEmbeddingBackfill).toBeDefined()
   })
 
-  it("triggerExperienceContentDump declares optional documentIds + locales args", () => {
+  it("triggerExperienceEmbeddingBackfill declares optional experienceIds + bcp47Locales + force + mode args", () => {
     const mutation = schema.getMutationType()!
-    const field = mutation.getFields().triggerExperienceContentDump!
-    const documentIds = field.args.find((a) => a.name === "documentIds")
-    const locales = field.args.find((a) => a.name === "locales")
-    expect(documentIds).toBeDefined()
-    expect(locales).toBeDefined()
-    // Both are nullable lists ([String!]) so clients may omit or pass
-    // null; the workflow itself treats length-0 arrays as omitted.
-    expect(String(documentIds!.type)).toBe("[String!]")
-    expect(String(locales!.type)).toBe("[String!]")
+    const field = mutation.getFields().triggerExperienceEmbeddingBackfill!
+    const experienceIds = field.args.find((a) => a.name === "experienceIds")
+    const bcp47Locales = field.args.find((a) => a.name === "bcp47Locales")
+    const force = field.args.find((a) => a.name === "force")
+    const mode = field.args.find((a) => a.name === "mode")
+    expect(experienceIds).toBeDefined()
+    expect(bcp47Locales).toBeDefined()
+    expect(force).toBeDefined()
+    expect(mode).toBeDefined()
+    // experienceIds and bcp47Locales are nullable inclusion-filter lists.
+    expect(String(experienceIds!.type)).toBe("[ID!]")
+    expect(String(bcp47Locales!.type)).toBe("[String!]")
+    // force is nullable Boolean (defaultValue: false on the resolver).
+    expect(String(force!.type)).toBe("Boolean")
+    // mode is nullable String, parsed by the resolver into the ingest mode.
+    expect(String(mode!.type)).toBe("String")
+  })
+
+  it("Mutation root does NOT expose the retired experience-content-dump trigger", () => {
+    // Defense-in-depth: the cms-coupled dump mutation was removed in
+    // docs/plans/2026-05-17-001-refactor-decouple-experience-embeds-from-cms-plan.md.
+    // A regression that re-introduces it should fail loudly here.
+    const mutation = schema.getMutationType()!
+    expect(mutation.getFields().triggerExperienceContentDump).toBeUndefined()
   })
 })
 
@@ -247,12 +635,16 @@ describe("Experience type", () => {
 })
 
 describe("ExperienceLocale type", () => {
-  it("exposes blocks as JSON and status as enum", () => {
+  it("exposes blocks as a typed ExperienceBlock list and status as enum", () => {
     const fields = fieldsOf("ExperienceLocale") as Record<
       string,
       { type: { toString(): string } }
     >
-    expect(fields.blocks.type.toString()).toMatch(/JSON/)
+    // The blocks field switched from JSON scalar to a non-null list of the
+    // typed `ExperienceBlock` union (U3 of the admin direct-cutover plan).
+    // Mutations still accept JSON input — see mutations/experience.ts.
+    expect(fields.blocks.type.toString()).toMatch(/ExperienceBlock/)
+    expect(fields.blocks.type.toString()).not.toMatch(/JSON/)
     expect(fields.status.type.toString()).toMatch(/LocaleStatus/)
   })
 
@@ -292,6 +684,7 @@ describe("Video type", () => {
         "aiMetadata",
         "locales",
         "dubs",
+        "muxPlaybackId",
         "studyQuestions",
         "bibleCitations",
       ]),
@@ -306,6 +699,45 @@ describe("Video type", () => {
   it("does NOT expose subtitles directly (they attach to VideoEdition)", () => {
     const fields = fieldsOf("Video")
     expect(fields.subtitles).toBeUndefined()
+  })
+
+  it("localized content relations accept broad locale and exact languageSlug arguments", () => {
+    const fields = fieldsOf("Video") as Record<
+      string,
+      { args: Array<{ name: string; type: { toString(): string } }> }
+    >
+    const studyLocaleArg = fields.studyQuestions.args.find(
+      (arg) => arg.name === "locale",
+    )
+    const studyLanguageSlugArg = fields.studyQuestions.args.find(
+      (arg) => arg.name === "languageSlug",
+    )
+    const localesLocaleArg = fields.locales.args.find(
+      (arg) => arg.name === "locale",
+    )
+    const localesLanguageSlugArg = fields.locales.args.find(
+      (arg) => arg.name === "languageSlug",
+    )
+    const muxPlaybackLanguageSlugArg = fields.muxPlaybackId.args.find(
+      (arg) => arg.name === "languageSlug",
+    )
+    expect(studyLocaleArg?.type.toString()).toBe("String")
+    expect(studyLanguageSlugArg?.type.toString()).toBe("String")
+    expect(localesLocaleArg?.type.toString()).toBe("String")
+    expect(localesLanguageSlugArg?.type.toString()).toBe("String")
+    expect(muxPlaybackLanguageSlugArg?.type.toString()).toBe("String")
+  })
+
+  it("localized content rows expose variant identity diagnostics", () => {
+    const localeFields = fieldsOf("VideoLocale")
+    expect(Object.keys(localeFields)).toEqual(
+      expect.arrayContaining(["locale", "languageSlug", "languageCoreId"]),
+    )
+
+    const questionFields = fieldsOf("VideoStudyQuestion")
+    expect(Object.keys(questionFields)).toEqual(
+      expect.arrayContaining(["locale", "languageSlug", "languageCoreId"]),
+    )
   })
 })
 
@@ -339,9 +771,12 @@ describe("MediaAssetUsage type", () => {
     const fields = fieldsOf("MediaAssetUsage")
     expect(Object.keys(fields)).toEqual(
       expect.arrayContaining([
-        "experienceId",
-        "experienceLocaleId",
+        "resourceType",
+        "resourceId",
+        "resourceLocaleId",
         "locale",
+        "editUrl",
+        "recoverable",
         "location",
         "fieldPath",
         "fieldName",
@@ -422,117 +857,6 @@ describe("reference types", () => {
         "language",
       ]),
     )
-  })
-})
-
-describe("Hybrid search — R4 query + response types", () => {
-  it("Query root exposes the `search` field", () => {
-    const fields = schema.getQueryType()!.getFields()
-    expect(fields.search).toBeTruthy()
-  })
-
-  it("HybridSearchResult exposes the expected consumer-facing shape", () => {
-    const fields = fieldsOf("HybridSearchResult") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(Object.keys(fields)).toEqual(
-      expect.arrayContaining([
-        "type",
-        "id",
-        "slug",
-        "title",
-        "imageUrl",
-        "snippet",
-        "startSeconds",
-        "playbackId",
-        "score",
-      ]),
-    )
-    expect(fields.score.type.toString()).toBe("Float!")
-    expect(fields.startSeconds.type.toString()).toBe("Float")
-    expect(fields.playbackId.type.toString()).toBe("String")
-  })
-
-  it("HybridSearchResult exposes no embedding/vector/similarity-shaped field", () => {
-    const fields = fieldsOf("HybridSearchResult")
-    for (const key of Object.keys(fields)) {
-      expect(key).not.toMatch(/embed|vector|similarit/i)
-    }
-  })
-
-  it("HybridSearchResultDebug exposes ranks + fusedScore + dilutionCapApplied (no embedding leak)", () => {
-    const fields = fieldsOf("HybridSearchResultDebug") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(Object.keys(fields)).toEqual(
-      expect.arrayContaining([
-        "retrieverRanks",
-        "fusedScore",
-        "dilutionCapApplied",
-      ]),
-    )
-    for (const key of Object.keys(fields)) {
-      expect(key).not.toMatch(/embed|vector|similarit/i)
-    }
-    expect(fields.fusedScore.type.toString()).toBe("Float!")
-    expect(fields.dilutionCapApplied.type.toString()).toBe("Boolean!")
-    expect(fields.retrieverRanks.type.toString()).toBe(
-      "[HybridSearchRetrieverRank!]!",
-    )
-  })
-
-  it("HybridSearchRetrieverRank carries label + rank only (no embedding leak)", () => {
-    const fields = fieldsOf("HybridSearchRetrieverRank") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(Object.keys(fields).sort()).toEqual(["label", "rank"])
-    for (const key of Object.keys(fields)) {
-      expect(key).not.toMatch(/embed|vector|similarit/i)
-    }
-    expect(fields.label.type.toString()).toBe("String!")
-    expect(fields.rank.type.toString()).toBe("Int!")
-  })
-
-  it("HybridSearchResult exposes a nullable debug field gated at the resolver", () => {
-    const fields = fieldsOf("HybridSearchResult") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(fields.debug.type.toString()).toBe("HybridSearchResultDebug")
-  })
-
-  it("HybridSearchResponse wraps results + hasMore + query + searchMode", () => {
-    const fields = fieldsOf("HybridSearchResponse") as Record<
-      string,
-      { type: { toString(): string } }
-    >
-    expect(fields.results.type.toString()).toBe("[HybridSearchResult!]!")
-    expect(fields.hasMore.type.toString()).toBe("Boolean!")
-    expect(fields.query.type.toString()).toBe("String!")
-    expect(fields.searchMode.type.toString()).toBe("HybridSearchMode!")
-  })
-
-  it("HybridSearchMode enum exposes hybrid + keyword-only values", () => {
-    const t = schema.getType("HybridSearchMode")
-    expect(t).toBeTruthy()
-    const values = (
-      t as unknown as { getValues(): { value: string }[] }
-    ).getValues()
-    const raw = values.map((v) => v.value)
-    expect(raw).toContain("hybrid")
-    expect(raw).toContain("keyword-only")
-  })
-
-  it("HybridSearchContentType enum maps to service-layer values", () => {
-    const t = schema.getType("HybridSearchContentType")
-    const values = (
-      t as unknown as { getValues(): { value: string }[] }
-    ).getValues()
-    const raw = values.map((v) => v.value)
-    expect(raw).toEqual(expect.arrayContaining(["video", "experience"]))
   })
 })
 

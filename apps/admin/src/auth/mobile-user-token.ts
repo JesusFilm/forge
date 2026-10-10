@@ -1,0 +1,346 @@
+// Verifies mobile user JWTs locally so this branch can sit before web-user,
+// which spends a network round trip on every unrecognized bearer.
+// Hardening rationale: docs/solutions/architecture-patterns/hardened-oidc-id-token-verify-jose-jwks-20260702.md
+
+import {
+  createRemoteJWKSet,
+  customFetch,
+  decodeProtectedHeader,
+  jwtVerify,
+  type JWTPayload,
+} from "jose"
+
+import { env } from "@/config/env"
+import { MOBILE_USER_PRINCIPAL, type Principal } from "@/auth/principal"
+
+/** The session-stamped client claim Auth mints for mobile-app sessions. */
+const MOBILE_CLIENT_CLAIM = "https://jesusfilm.org/claims/client"
+const MOBILE_CLIENT_KIND = "mobile"
+
+// Matches admin's existing 3s auth-call budget (web-user introspection).
+const AUTH_FETCH_TIMEOUT_MS = 3000
+const ALG_CACHE_TTL_MS = 10 * 60_000
+// Mirrors createRemoteJWKSet's own 30s cooldown so a stream of bad-alg
+// tokens cannot amplify into repeated outbound JWKS fetches.
+const ALG_REFETCH_COOLDOWN_MS = 30_000
+// A JWKS is a handful of keys; this is generous. Bounds the buffered read so a
+// misbehaving Auth cannot OOM the process every agent and route shares.
+const JWKS_MAX_BYTES = 256 * 1024
+// Asymmetric only. A hostile JWKS advertising HS256 would otherwise enter the
+// derived allowlist, leaving rejection to jose's internals rather than to us.
+const ASYMMETRIC_ALG = /^(RS|PS|ES)(256|384|512)$|^EdDSA$/
+
+type MobileJwtRejectionReason =
+  | "expired"
+  | "aud_mismatch"
+  | "iss_mismatch"
+  | "signature_invalid"
+  | "alg_not_allowed"
+  | "jwks_unavailable"
+  | "client_claim_missing"
+  | "sub_missing"
+  | "invalid"
+
+// Module-level caches keyed on issuer so an env change never serves a stale
+// keyset (defensive parity with the chat verifier; issuer is set at boot).
+let algCache: {
+  issuer: string
+  algorithms: string[]
+  fetchedAt: number
+} | null = null
+let jwksCache: {
+  issuer: string
+  jwks: ReturnType<typeof createRemoteJWKSet>
+} | null = null
+
+/**
+ * The jwt plugin mints iss/aud as Auth's ORIGIN (no /api/auth path) — the
+ * runtime-verified shape — unlike the oauthProvider tokens web introspects,
+ * whose issuer carries the path. Derived from the same AUTH_ISSUER_URL.
+ */
+function expectedIssuer(): string {
+  return new URL(env.AUTH_ISSUER_URL).origin
+}
+
+function jwksUrl(): URL {
+  return new URL("/api/auth/jwks", env.AUTH_ISSUER_URL)
+}
+
+function getJwks(issuer: string) {
+  if (jwksCache && jwksCache.issuer === issuer) return jwksCache.jwks
+  const jwks = createRemoteJWKSet(jwksUrl(), {
+    timeoutDuration: AUTH_FETCH_TIMEOUT_MS,
+    // jose refetches this URL on cache expiry and kid-miss, so it needs the
+    // same byte ceiling — capping only our alg read left the hot path open.
+    [customFetch]: cappedJwksFetch,
+  })
+  jwksCache = { issuer, jwks }
+  return jwks
+}
+
+/** Map an alg-less JWK to its signing algorithm from kty+crv (total map). */
+function algFromKeyType(key: JsonWebKey): string | null {
+  if (key.kty === "OKP") {
+    if (key.crv === "Ed25519" || key.crv === "Ed448") return "EdDSA"
+    return null
+  }
+  if (key.kty === "EC") {
+    if (key.crv === "P-256") return "ES256"
+    if (key.crv === "P-384") return "ES384"
+    if (key.crv === "P-521") return "ES512"
+    return null
+  }
+  if (key.kty === "RSA") return "RS256"
+  return null
+}
+
+/**
+ * Read a response body with a hard byte ceiling, cancelling the socket the
+ * instant it is crossed. Content-Length is advisory and not trusted.
+ */
+async function readCapped(response: Response): Promise<string> {
+  if (!response.body) {
+    // Null body still buffers, so it is capped too — the law applies to
+    // EVERY buffering read, not just the streaming one.
+    const text = await response.text()
+    if (text.length > JWKS_MAX_BYTES)
+      throw new MobileJwtError("jwks_unavailable")
+    return text
+  }
+  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
+  try {
+    reader = response.body.getReader()
+    const chunks: Uint8Array[] = []
+    let total = 0
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      if (!value) continue
+      total += value.byteLength
+      if (total > JWKS_MAX_BYTES) {
+        // Abort the transfer rather than merely stop reading, then fall into
+        // the caller's existing jwks_unavailable path — never a new throw shape.
+        await reader.cancel()
+        throw new MobileJwtError("jwks_unavailable")
+      }
+      chunks.push(value)
+    }
+    const joined = new Uint8Array(total)
+    let offset = 0
+    for (const c of chunks) {
+      joined.set(c, offset)
+      offset += c.byteLength
+    }
+    return new TextDecoder().decode(joined)
+  } finally {
+    // cancel() does not release the lock; releasing twice throws, so guard it.
+    try {
+      reader?.releaseLock()
+    } catch {
+      // Lock already released
+    }
+  }
+}
+
+/** Byte-capped fetch for jose's own JWKS refetches. */
+async function cappedJwksFetch(
+  ...args: Parameters<typeof fetch>
+): Promise<Response> {
+  const response = await fetch(...args)
+  if (!response.ok) return response
+  const text = await readCapped(response)
+  return new Response(text, {
+    status: response.status,
+    headers: { "content-type": "application/json" },
+  })
+}
+
+async function fetchAlgorithms(): Promise<string[]> {
+  let keys: JsonWebKey[]
+  try {
+    const response = await fetch(jwksUrl(), {
+      redirect: "error",
+      signal: AbortSignal.timeout(AUTH_FETCH_TIMEOUT_MS),
+    })
+    if (!response.ok) throw new Error("jwks_not_ok")
+    const text = await readCapped(response)
+    const body = JSON.parse(text) as { keys?: JsonWebKey[] }
+    keys = Array.isArray(body.keys) ? body.keys : []
+  } catch {
+    // Never log the caught error: a JSON parse failure can embed raw body.
+    throw new MobileJwtError("jwks_unavailable")
+  }
+
+  const algorithms = new Set<string>()
+  for (const key of keys) {
+    // A key that ADVERTISES an alg is taken at its word or skipped entirely.
+    // Falling through to algFromKeyType would silently substitute RS256 for a
+    // key that asked for HS256, admitting the alg the floor just rejected.
+    if (typeof key.alg === "string" && !ASYMMETRIC_ALG.test(key.alg)) {
+      console.warn(
+        `[mobile-auth] event=jwks_alg_rejected kty=${key.kty ?? "none"}`,
+      )
+      continue
+    }
+    const explicit = typeof key.alg === "string" ? key.alg : undefined
+    const derived = explicit ?? algFromKeyType(key)
+    if (derived) {
+      algorithms.add(derived)
+    } else if (!explicit) {
+      // Unrecognized kty/crv with no explicit alg — fail closed LOUDLY.
+      console.warn(
+        `[mobile-auth] event=jwks_alg_unrecognized kty=${key.kty ?? "none"} crv=${key.crv ?? "none"}`,
+      )
+    }
+  }
+
+  // Empty allowlist fails closed explicitly — never verify without a pin.
+  if (algorithms.size === 0) throw new MobileJwtError("jwks_unavailable")
+
+  return [...algorithms]
+}
+
+/**
+ * Single-flight: this runs for every JWS-shaped bearer, so without it every
+ * request arriving in the same expired-cache window fires its own outbound
+ * JWKS fetch instead of sharing one.
+ */
+let algFlight: { issuer: string; promise: Promise<string[]> } | null = null
+
+async function getAlgorithms(issuer: string, force = false): Promise<string[]> {
+  const now = Date.now()
+  const cached = algCache?.issuer === issuer ? algCache : null
+  if (cached) {
+    const age = now - cached.fetchedAt
+    if (force ? age < ALG_REFETCH_COOLDOWN_MS : age < ALG_CACHE_TTL_MS) {
+      return cached.algorithms
+    }
+  }
+  if (algFlight?.issuer === issuer) return algFlight.promise
+
+  const flight = fetchAlgorithms().then((algorithms) => {
+    algCache = { issuer, algorithms, fetchedAt: Date.now() }
+    return algorithms
+  })
+  algFlight = { issuer, promise: flight }
+  // Released on BOTH settlement paths; `.finally` would re-throw the
+  // rejection into an unhandled one. Identity-checked so a later flight
+  // started after an invalidation is never cleared by an earlier one.
+  const release = () => {
+    if (algFlight?.promise === flight) algFlight = null
+  }
+  void flight.then(release, release)
+  return flight
+}
+
+class MobileJwtError extends Error {
+  constructor(readonly reason: MobileJwtRejectionReason) {
+    super(reason)
+    this.name = "MobileJwtError"
+  }
+}
+
+function classifyVerifyFailure(error: unknown): MobileJwtRejectionReason {
+  const code =
+    typeof error === "object" && error !== null && "code" in error
+      ? (error as { code?: unknown }).code
+      : undefined
+  if (code === "ERR_JWT_EXPIRED") return "expired"
+  if (code === "ERR_JOSE_ALG_NOT_ALLOWED") return "alg_not_allowed"
+  if (code === "ERR_JWS_SIGNATURE_VERIFICATION_FAILED")
+    return "signature_invalid"
+  if (code === "ERR_JWT_CLAIM_VALIDATION_FAILED") {
+    const claim = (error as { claim?: unknown }).claim
+    if (claim === "aud") return "aud_mismatch"
+    if (claim === "iss") return "iss_mismatch"
+  }
+  return "invalid"
+}
+
+function isAlgNotAllowed(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === "ERR_JOSE_ALG_NOT_ALLOWED"
+  )
+}
+
+function logRejection(reason: MobileJwtRejectionReason) {
+  console.warn(`[mobile-auth] event=mobile_jwt_rejected reason=${reason}`)
+}
+
+/**
+ * Resolve a bearer to the MOBILE_USER principal, or null.
+ *
+ * Null covers both "not a JWT at all" (silent — every opaque bearer on the
+ * context chain passes through here) and "a JWT that failed verification"
+ * (logged with its distinct reason code, then fail-closed to null so the
+ * chain continues; no principal is ever minted from an unverified token).
+ */
+export async function resolveMobileUserPrincipalFromToken(
+  authHeader: string | null,
+): Promise<Principal | null> {
+  const token = parseBearerToken(authHeader)
+  if (!token) return null
+
+  // Cheap local dispatch: opaque bearers (workflow/consumer/web `jfp_at_`
+  // keys) are not JWS-shaped and must not cost a JWKS fetch.
+  try {
+    decodeProtectedHeader(token)
+  } catch {
+    return null
+  }
+
+  const issuer = expectedIssuer()
+  const jwks = getJwks(issuer)
+  const verifyWith = async (algorithms: string[]): Promise<JWTPayload> => {
+    const { payload } = await jwtVerify(token, jwks, {
+      issuer,
+      audience: issuer,
+      algorithms,
+    })
+    return payload
+  }
+
+  let payload: JWTPayload
+  try {
+    try {
+      payload = await verifyWith(await getAlgorithms(issuer))
+    } catch (error) {
+      if (isAlgNotAllowed(error)) {
+        // Possible rotation to a new asymmetric alg — re-derive once.
+        payload = await verifyWith(await getAlgorithms(issuer, true))
+      } else {
+        throw error
+      }
+    }
+  } catch (error) {
+    logRejection(
+      error instanceof MobileJwtError
+        ? error.reason
+        : classifyVerifyFailure(error),
+    )
+    return null
+  }
+
+  // Load-bearing: the jwt plugin mints off ANY Auth session (web, admin
+  // dashboard, agent). Only sessions Auth stamped as mobile carry this
+  // claim; without it the token is not acceptable as a mobile user.
+  if (payload[MOBILE_CLIENT_CLAIM] !== MOBILE_CLIENT_KIND) {
+    logRejection("client_claim_missing")
+    return null
+  }
+
+  if (typeof payload.sub !== "string" || payload.sub.length === 0) {
+    logRejection("sub_missing")
+    return null
+  }
+
+  return MOBILE_USER_PRINCIPAL({ subject: payload.sub })
+}
+
+function parseBearerToken(authHeader: string | null) {
+  const match = authHeader?.match(/^Bearer\s+(.+)$/i)
+  return match?.[1]
+}

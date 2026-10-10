@@ -1,29 +1,16 @@
 /**
  * @vitest-environment jsdom
  *
- * U12 — CarouselVideo dual-branch tests.
- *
- * - Flag-off: smoke. videojs() invoked once for the active item.
- * - Flag-on: smoke. Mux Video custom element mounted; videojs() not called.
+ * CarouselVideo — Mux-only path. The flag-off (video.js) branch was
+ * removed once `NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION` graduated.
  */
 
 import { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const { videojsMock } = vi.hoisted(() => ({
-  videojsMock: vi.fn(),
-}))
-vi.mock("video.js", () => ({
-  default: videojsMock,
-}))
-
-vi.mock("@/env", () => ({
-  env: { NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: false },
-}))
-
 // Embla / next/image are heavy. Mock the carousel & next/image down to
-// trivial pass-throughs so the test focuses on the player branch logic.
+// trivial pass-throughs so the test focuses on the player path.
 vi.mock("@/components/ui/carousel", () => {
   const Pass = ({ children }: { children?: React.ReactNode }) => (
     <div>{children}</div>
@@ -32,8 +19,12 @@ vi.mock("@/components/ui/carousel", () => {
     Carousel: Pass,
     CarouselContent: Pass,
     CarouselItem: Pass,
-    CarouselPrevious: () => null,
-    CarouselNext: () => null,
+    CarouselPrevious: ({ label }: { label: string }) => (
+      <button data-slot="carousel-previous" aria-label={label} />
+    ),
+    CarouselNext: ({ label }: { label: string }) => (
+      <button data-slot="carousel-next" aria-label={label} />
+    ),
   }
 })
 
@@ -41,57 +32,26 @@ vi.mock("next/image", () => ({
   default: () => null,
 }))
 
-import { env } from "@/env"
-
 import { CarouselVideo } from "@/components/sections/CarouselVideo"
-
-type MutableEnv = {
-  NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: boolean
-}
-function setFlag(value: boolean) {
-  ;(env as unknown as MutableEnv).NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION =
-    value
-}
-
-function createMockPlayer() {
-  let muted = true
-  return {
-    el: () => document.createElement("div"),
-    ready: (cb: () => void) => cb(),
-    on: vi.fn(),
-    off: vi.fn(),
-    src: vi.fn(),
-    poster: vi.fn(),
-    addRemoteTextTrack: vi.fn(),
-    removeRemoteTextTrack: vi.fn(),
-    textTracks: vi.fn(() => []),
-    paused: vi.fn(() => true),
-    play: vi.fn().mockResolvedValue(undefined),
-    pause: vi.fn(),
-    muted: vi.fn((next?: boolean) => {
-      if (typeof next === "boolean") muted = next
-      return muted
-    }),
-    currentTime: vi.fn(() => 0),
-    duration: vi.fn(() => 0),
-    dispose: vi.fn(),
-  }
-}
+import {
+  WatchModalActivityProvider,
+  useWatchModalActivity,
+} from "@/components/watch/WatchModalActivityProvider"
 
 const baseFragment = {
-  id: "cv-1",
+  t: "videoCarousel",
   sectionKey: "carousel",
   title: "Series",
-  subtitle: null,
-  carouselDescription: null,
+  subtitle: undefined,
+  description: undefined,
+  itemsSource: "manual",
   items: [
     {
-      id: "item-1",
       streamingUrl: "https://example.com/one.m3u8",
-      imageUrl: null,
+      imageUrl: undefined,
       titleOverride: "First",
-      backgroundColor: null,
-      video: null,
+      backgroundColor: undefined,
+      videoId: undefined,
     },
   ],
 } as Parameters<typeof CarouselVideo>[0]["data"]
@@ -108,7 +68,6 @@ beforeEach(() => {
   container = document.createElement("div")
   document.body.appendChild(container)
   root = createRoot(container)
-  videojsMock.mockImplementation(() => createMockPlayer())
 })
 
 afterEach(async () => {
@@ -116,35 +75,140 @@ afterEach(async () => {
     root.unmount()
   })
   container.remove()
-  videojsMock.mockReset()
-  setFlag(false)
   vi.restoreAllMocks()
 })
 
-describe("CarouselVideo — flag-off (videojs branch)", () => {
-  it("mounts via videojs for the selected item", async () => {
-    setFlag(false)
+describe("CarouselVideo", () => {
+  function ModalOwner({ active }: { active: boolean }) {
+    useWatchModalActivity(active, { releaseDelayMs: 0 })
+    return null
+  }
 
+  async function renderWithModal(active: boolean) {
+    await act(async () => {
+      root.render(
+        <WatchModalActivityProvider>
+          <ModalOwner active={active} />
+          <CarouselVideo data={baseFragment} />
+        </WatchModalActivityProvider>,
+      )
+    })
+  }
+
+  it("mounts via Mux Video for the selected item", async () => {
     await act(async () => {
       root.render(<CarouselVideo data={baseFragment} />)
     })
 
-    expect(videojsMock).toHaveBeenCalledTimes(1)
-    expect(container.textContent).toContain("Series")
-  })
-})
-
-describe("CarouselVideo — flag-on (Mux branch)", () => {
-  it("mounts via Mux Video, no videojs() call", async () => {
-    setFlag(true)
-
-    await act(async () => {
-      root.render(<CarouselVideo data={baseFragment} />)
-    })
-
-    expect(videojsMock).not.toHaveBeenCalled()
     // @mux/mux-video-react renders a plain <video> element.
     expect(container.querySelector("video")).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="carousel-copy"]'),
+    ).not.toBeNull()
     expect(container.textContent).toContain("Series")
+    expect(
+      container.querySelector(
+        'button[data-slot="carousel-previous"][aria-label="Previous video preview"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        'button[data-slot="carousel-next"][aria-label="Next video preview"]',
+      ),
+    ).not.toBeNull()
+  })
+
+  it("uses the shared focus frame and preserves selected-state framing", async () => {
+    const data = {
+      ...baseFragment,
+      items: [
+        ...baseFragment.items,
+        {
+          ...baseFragment.items[0],
+          streamingUrl: "https://example.com/two.m3u8",
+          titleOverride: "Second",
+        },
+      ],
+    } as Parameters<typeof CarouselVideo>[0]["data"]
+
+    await act(async () => {
+      root.render(<CarouselVideo data={data} />)
+    })
+
+    const selected = container.querySelector<HTMLElement>(
+      '[role="button"][aria-label="Show First"]',
+    )
+    const inactive = container.querySelector<HTMLElement>(
+      '[role="button"][aria-label="Show Second"]',
+    )
+    const selectedInteractionFrame = selected?.querySelector<HTMLElement>(
+      '[data-testid="carousel-video-thumbnail-frame"]',
+    )
+    const inactiveInteractionFrame = inactive?.querySelector<HTMLElement>(
+      '[data-testid="carousel-video-thumbnail-frame"]',
+    )
+
+    expect(selected?.className).toContain("focus-visible:outline-none")
+    expect(selectedInteractionFrame?.className).not.toContain(
+      "group-focus-visible:opacity-100",
+    )
+    expect(selectedInteractionFrame?.className).toContain("opacity-100")
+    expect(inactiveInteractionFrame?.className).toContain("border-white")
+    expect(inactiveInteractionFrame?.className).toContain(
+      "group-hover:opacity-100",
+    )
+    expect(inactiveInteractionFrame?.className).toContain(
+      "group-focus-visible:opacity-100",
+    )
+
+    await act(async () => {
+      inactive?.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+      )
+    })
+
+    expect(inactiveInteractionFrame?.className).toContain("opacity-100")
+    expect(inactiveInteractionFrame?.className).not.toContain(
+      "group-focus-visible:opacity-100",
+    )
+  })
+
+  it("omits the copy block when no carousel text is authored", async () => {
+    await act(async () => {
+      root.render(
+        <CarouselVideo
+          data={{
+            ...baseFragment,
+            title: undefined,
+            subtitle: undefined,
+            carouselDescription: undefined,
+          }}
+        />,
+      )
+    })
+
+    expect(container.querySelector("video")).not.toBeNull()
+    expect(container.querySelector('[data-testid="carousel-copy"]')).toBeNull()
+    expect(container.textContent).toContain("First")
+  })
+
+  it("pauses its authored carousel media when modal activity opens", async () => {
+    await renderWithModal(false)
+    const video = container.querySelector("video") as HTMLVideoElement
+    Object.defineProperty(video, "paused", {
+      configurable: true,
+      value: false,
+      writable: true,
+    })
+    const pause = vi.spyOn(video, "pause").mockImplementation(() => {
+      Object.defineProperty(video, "paused", {
+        configurable: true,
+        value: true,
+      })
+    })
+
+    await renderWithModal(true)
+
+    expect(pause).toHaveBeenCalledOnce()
   })
 })

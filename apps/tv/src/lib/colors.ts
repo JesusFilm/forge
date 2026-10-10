@@ -10,9 +10,9 @@ export const COLORS = {
 } as const
 
 /**
- * Convert a hex color to rgba — never use the string "transparent" in
- * LinearGradient colors arrays, as it resolves to rgba(0,0,0,0) and
- * causes dark banding when interpolating with non-black colors.
+ * Convert a hex color to rgba. Use instead of "transparent" in LinearGradient
+ * colors arrays — "transparent" resolves to rgba(0,0,0,0) and dark-bands when
+ * interpolating with non-black colors.
  * @see docs/solutions/mobile/linear-gradient-dark-banding-transparent-keyword.md
  */
 export function hexToRgba(hex: string, alpha: number): string {

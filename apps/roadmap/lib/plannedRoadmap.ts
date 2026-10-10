@@ -12,6 +12,10 @@ export type PlannedTrackId =
   | "foundation"
   | "surface"
   | "search"
+  | "actual-foundation"
+  | "actual-player"
+  | "actual-surface"
+  | "actual-search"
   | "agentic-framework"
   | "mobile-tv"
 
@@ -61,6 +65,7 @@ export type PlannedTrackBar = {
   spanWeeks: number
   badge?: string
   details?: string[]
+  overdueStartWeek?: number
 }
 
 export type PlannedMilestone = {
@@ -104,7 +109,7 @@ function formatDateRangeLabel(startDate: Date, endDate: Date): string {
   return `${startMonth} ${startDay}-${endMonth} ${endDay}`
 }
 
-export const PLANNED_WEEK_COUNT = 14
+export const PLANNED_WEEK_COUNT = 15
 export const PLANNED_START_ISO = "2026-04-28"
 
 export const PLANNED_WEEKS: PlannedWeek[] = Array.from(
@@ -124,7 +129,7 @@ export const PLANNED_WEEKS: PlannedWeek[] = Array.from(
 
 export const PLANNED_TITLE = "FORGE ROADMAP - Next 3 Months"
 export const PLANNED_SUBTITLE = "Starting Apr 28, 2026"
-export const PLANNED_RANGE_LABEL = "Apr 28 - Aug 3, 2026"
+export const PLANNED_RANGE_LABEL = "Apr 28 - Aug 10, 2026"
 export const PLANNED_GOAL =
   "Migrate to Forge while shipping real user value, prepare Demo Day, and set up the future AI and creator ecosystem."
 
@@ -156,6 +161,26 @@ export const PLANNED_TRACKS: PlannedTrack[] = [
     description: "Hybrid and multilingual search",
   },
   {
+    id: "actual-foundation",
+    label: "Actual Foundation",
+    description: "Actual CMS, data, stability, shutdown delivery",
+  },
+  {
+    id: "actual-player",
+    label: "Actual Player",
+    description: "Actual player page delivery",
+  },
+  {
+    id: "actual-surface",
+    label: "Actual Surface",
+    description: "Actual experiences and homepage delivery",
+  },
+  {
+    id: "actual-search",
+    label: "Actual Search",
+    description: "Actual hybrid and multilingual search delivery",
+  },
+  {
     id: "agentic-framework",
     label: "Agentic Framework",
     description: "R&D with Mastra AI, non-blocking",
@@ -169,10 +194,35 @@ export const PLANNED_TRACKS: PlannedTrack[] = [
 
 export const PLANNED_TIMELINE_ROWS: PlannedTimelineRow[] = [
   {
-    id: "migration",
-    label: "Delivery",
-    description: "Core migration, product releases, search",
+    id: "delivery-planned",
+    label: "Delivery Planned",
+    description: "Original migration release plan",
     trackIds: ["foundation", "surface", "search"],
+  },
+  {
+    id: "delivery-actual",
+    label: "Delivery Actual",
+    description: "Current delivery reality and shifted forecast",
+    trackIds: [
+      "actual-foundation",
+      "actual-player",
+      "actual-surface",
+      "actual-search",
+    ],
+    sublanes: [
+      {
+        id: "actual-foundation",
+        trackIds: ["actual-foundation"],
+      },
+      {
+        id: "actual-player",
+        trackIds: ["actual-player"],
+      },
+      {
+        id: "actual-follow-on",
+        trackIds: ["actual-surface", "actual-search"],
+      },
+    ],
   },
   {
     id: "experimentation",
@@ -364,6 +414,109 @@ export const PLANNED_PHASES: PlannedPhase[] = [
 ]
 
 export const PLANNED_TRACK_BARS: PlannedTrackBar[] = [
+  {
+    id: "actual-foundation-track",
+    title: "Foundation",
+    summary: "Actual foundation work extended from W1 through the end of W5.",
+    track: "actual-foundation",
+    tone: "stone",
+    startWeek: 0,
+    spanWeeks: 5,
+    badge: "Actual W1-5",
+    overdueStartWeek: 2,
+    details: [
+      "Foundation work ran from W1 through the end of W5",
+      "Kept CMS, data, infrastructure, stability, and migration base visible as actual delivery",
+    ],
+  },
+  {
+    id: "actual-player-track",
+    title: "Replace Player Page",
+    summary: "Actual player replacement work spans W3 through W6.",
+    track: "actual-player",
+    tone: "amber",
+    startWeek: 2,
+    spanWeeks: 4,
+    badge: "Actual W3-6",
+    overdueStartWeek: 4,
+    details: [
+      "Player page replacement moved from the planned W3-W4 window to W3-W6",
+      "Keeps the player release connected to the extended foundation work",
+    ],
+  },
+  {
+    id: "actual-experiences-track",
+    title: "Experiences Rollout",
+    summary:
+      "Actual experiences rollout starts in W6 and keeps the same duration.",
+    track: "actual-surface",
+    tone: "amber",
+    startWeek: 5,
+    spanWeeks: 2,
+    badge: "Actual W6-7",
+    overdueStartWeek: 6,
+    details: ["Experiences rollout starts in W6", "Duration remains two weeks"],
+  },
+  {
+    id: "actual-search-track",
+    title: "Search Rollout",
+    summary: "Shifted two-week search rollout after the experiences block.",
+    track: "actual-search",
+    tone: "sky",
+    startWeek: 7,
+    spanWeeks: 2,
+    badge: "Actual W8-9",
+    overdueStartWeek: 8,
+    details: [
+      "Search rollout keeps the planned two-week duration",
+      "Starts after the shifted experiences rollout",
+    ],
+  },
+  {
+    id: "actual-homepage-track",
+    title: "Watch Homepage",
+    summary: "Shifted two-week homepage rollout after search.",
+    track: "actual-surface",
+    tone: "amber",
+    startWeek: 9,
+    spanWeeks: 2,
+    badge: "Actual W10-11",
+    overdueStartWeek: 10,
+    details: [
+      "Homepage rollout keeps the planned two-week duration",
+      "Follows the shifted search rollout",
+    ],
+  },
+  {
+    id: "actual-stability-track",
+    title: "i18n + Stability",
+    summary: "Shifted two-week stability block before shutdown.",
+    track: "actual-foundation",
+    tone: "stone",
+    startWeek: 11,
+    spanWeeks: 2,
+    badge: "Actual W12-13",
+    overdueStartWeek: 12,
+    details: [
+      "Internationalization and stability keep the planned two-week duration",
+      "Moves with the shifted delivery forecast",
+    ],
+  },
+  {
+    id: "actual-shutdown-track",
+    title: "Old Watch Shutdown",
+    summary: "Shifted two-week old Watch shutdown block.",
+    track: "actual-foundation",
+    tone: "stone",
+    startWeek: 13,
+    spanWeeks: 2,
+    badge: "Actual W14-15",
+    overdueStartWeek: 14,
+    details: [
+      "Old Watch shutdown keeps the planned two-week duration",
+      "Moves to W14-W15 after the shifted stability block",
+    ],
+  },
   {
     id: "agentic-track",
     title: "Agentic Framework",

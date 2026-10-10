@@ -21,7 +21,7 @@
  */
 
 import { PrismaClient } from "@prisma/client"
-import { runSync } from "@/services/core-sync/orchestrator"
+import { runSync, type RunSyncOptions } from "@/services/core-sync/orchestrator"
 
 function parseArg(name: string, fallback: string): string {
   const flag = `--${name}=`
@@ -61,7 +61,11 @@ async function main(): Promise<void> {
   const startedAt = Date.now()
 
   try {
-    const result = await runSync(prisma, { scope, incremental })
+    const result = await runSync(prisma, {
+      scope,
+      incremental,
+      onProgress: logProgress,
+    })
 
     const phasesSummary = result.phases.map((p) => ({
       phase: p.phase,
@@ -91,6 +95,12 @@ async function main(): Promise<void> {
   } finally {
     await prisma.$disconnect()
   }
+}
+
+const logProgress: NonNullable<RunSyncOptions["onProgress"]> = (progress) => {
+  console.log(
+    `[core-sync] event=core-sync.phase.progress phase=${progress.phase} completed=${progress.completed} total=${progress.total} elapsedMs=${progress.elapsedMs}`,
+  )
 }
 
 main().catch((err) => {

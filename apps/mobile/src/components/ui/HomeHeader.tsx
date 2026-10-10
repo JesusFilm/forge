@@ -12,37 +12,90 @@ import {
   TEXT_PRIMARY,
   hexToRgba,
 } from "../../lib/color"
+import { useT } from "../../i18n/useT"
 import { HORIZONTAL_PADDING } from "../../styles/shared"
+import { HOME_HEADER_ROW_HEIGHT, HOME_HEADER_ROW_TOP } from "./homeHeaderLayout"
 
 type HomeHeaderProps = {
   title: string | null
   titleOpacity: number
+  /**
+   * Home-tab variant: profile left, search right. Default (Experience screens)
+   * keeps the original layout — search left, profile right.
+   */
+  homeVariant?: boolean
 }
 
-export function HomeHeader({ title, titleOpacity }: HomeHeaderProps) {
+/**
+ * Home-tab header actions are hidden for now. The buttons below stay wired up.
+ * Before you set this to true, move HomeLogo: it sits where the leading button
+ * draws.
+ */
+const SHOW_HOME_ACTIONS = false
+
+export function HomeHeader({
+  title,
+  titleOpacity,
+  homeVariant = false,
+}: HomeHeaderProps) {
   const insets = useSafeAreaInsets()
   const router = useRouter()
+  const t = useT("Common")
+
+  const searchButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t("searchAriaLabel")}
+      onPress={() => router.navigate("/(tabs)/watch")}
+      {...{ "dd-action-name": "header-search" }}
+    >
+      <GlassView
+        style={styles.glassButton}
+        glassEffectStyle="regular"
+        colorScheme="dark"
+      >
+        <Ionicons name="search" size={22} color={ACCENT} />
+      </GlassView>
+    </Pressable>
+  )
+
+  const profileButton = (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t("myWatchAriaLabel")}
+      onPress={() => router.navigate("/(tabs)/profile")}
+      {...{ "dd-action-name": "header-profile" }}
+    >
+      <GlassView
+        style={styles.glassButton}
+        glassEffectStyle="regular"
+        colorScheme="dark"
+      >
+        <Ionicons name="person" size={16} color={ACCENT} />
+      </GlassView>
+    </Pressable>
+  )
+
+  const hideActions = homeVariant && !SHOW_HOME_ACTIONS
+  const leading = homeVariant ? profileButton : searchButton
+  const trailing = homeVariant ? searchButton : profileButton
+  // An empty 40pt slot holds the row at the height HomeScreen's
+  // HEADER_ALLOWANCE assumes, so hiding the actions shifts nothing below it.
+  const slot = <View style={styles.slot} />
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 4 }]}>
+    <View
+      style={[
+        styles.container,
+        { paddingTop: insets.top + HOME_HEADER_ROW_TOP },
+      ]}
+    >
       <LinearGradient
         colors={[hexToRgba(BLACK, 0.5), hexToRgba(BLACK, 0)]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Search"
-        onPress={() => router.navigate("/(tabs)/watch")}
-      >
-        <GlassView
-          style={styles.glassButton}
-          glassEffectStyle="regular"
-          colorScheme="dark"
-        >
-          <Ionicons name="search" size={22} color={ACCENT} />
-        </GlassView>
-      </Pressable>
+      {hideActions ? slot : leading}
 
       {title != null && titleOpacity > 0 && (
         <GlassView
@@ -56,19 +109,7 @@ export function HomeHeader({ title, titleOpacity }: HomeHeaderProps) {
         </GlassView>
       )}
 
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Profile"
-        onPress={() => router.navigate("/(tabs)/profile")}
-      >
-        <GlassView
-          style={styles.glassButton}
-          glassEffectStyle="regular"
-          colorScheme="dark"
-        >
-          <Ionicons name="person" size={16} color={ACCENT} />
-        </GlassView>
-      </Pressable>
+      {hideActions ? slot : trailing}
     </View>
   )
 }
@@ -106,6 +147,10 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontFamily: "System",
     textAlign: "center",
+  },
+  slot: {
+    width: HOME_HEADER_ROW_HEIGHT,
+    height: HOME_HEADER_ROW_HEIGHT,
   },
   glassButton: {
     width: 40,

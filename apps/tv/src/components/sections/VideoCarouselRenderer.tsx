@@ -1,44 +1,33 @@
-import React, { useCallback } from "react"
+import React, { useCallback, useState } from "react"
 import { FlatList, StyleSheet, Text, View } from "react-native"
 import { Image } from "expo-image"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { VideoCarouselBlockModel } from "../../lib/normalizer"
 import { TVFocusGuideView } from "../TVFocusGuideView"
-import { COLORS, hexToRgba } from "../../lib/colors"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
+import { SECTION_HEADING } from "./sectionHeading"
 import { scale } from "../../lib/scale"
+import { extractMuxPlaybackId } from "../../lib/muxUrl"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import { pickThumbnailUrl } from "../../lib/types"
+import { blockImageAssetPreviewUrl } from "../../lib/blockImageAsset"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { FocusableCard } from "../FocusableCard"
+import { useHoverPreview } from "../focus/useHoverPreview"
+import { HoverPreviewImage } from "../watch/HoverPreviewImage"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
+import { blockMuxPlaybackId, blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const CARD_WIDTH = scale(320)
-const CARD_HEIGHT = scale(180)
+const CARD_HEIGHT = scale(150) // 32:15 (2.13:1) of the 320 width — cinematic art
 const CARD_GAP = scale(24)
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type VideoCarouselItem = {
-  id: string
-  streamingUrl?: string | null
-  imageUrl?: string | null
-  titleOverride?: string | null
-  backgroundColor?: string | null
-  video?: {
-    documentId?: string
-    title?: string
-    slug?: string
-    streamingUrl?: string
-    imageAlt?: string
-    images?: {
-      url?: string
-      mobileCinematicHigh?: string
-      videoStill?: string
-    }[]
-  } | null
-}
+// Derived from the fragment: resolved dub + overrides only (no nested video
+// record is fetched on TV).
+type VideoCarouselItem = NonNullable<VideoCarouselBlockModel["items"]>[number]
 
 // ── VideoCarouselCard ────────────────────────────────────────────────────────
 
@@ -50,19 +39,32 @@ function VideoCarouselCard({
   onPress: () => void
 }) {
   const thumbnailUrl = resolveImageUrl(
-    item.imageUrl ?? pickThumbnailUrl(item.video?.images),
+    blockImageAssetPreviewUrl(item.imageAsset),
   )
-  const title = item.titleOverride ?? item.video?.title ?? "Untitled"
+  const title = item.titleOverride ?? "Untitled"
+  const [focused, setFocused] = useState(false)
+  const previewUrl = useHoverPreview({
+    focused,
+    enabled: true,
+    playbackId:
+      blockMuxPlaybackId(item) ?? extractMuxPlaybackId(blockStreamingUrl(item)),
+  })
 
   return (
-    <FocusableCard onPress={onPress} style={styles.card}>
+    <FocusableCard
+      onPress={onPress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
+      style={styles.card}
+    >
       <View style={styles.thumbnailContainer}>
         {thumbnailUrl != null ? (
           <Image
             source={thumbnailUrl}
             style={styles.thumbnail}
             contentFit="cover"
-            recyclingKey={`vc-${item.id}`}
+            contentPosition="top left"
+            recyclingKey={`vc-${item.videoId ?? "item"}`}
             accessibilityLabel={title}
           />
         ) : (
@@ -71,7 +73,7 @@ function VideoCarouselCard({
               styles.thumbnail,
               {
                 backgroundColor:
-                  item.backgroundColor ?? COLORS.surfaceContainer,
+                  item.backgroundColor ?? WATCH_THEME.cardFallback,
               },
             ]}
           />
@@ -83,6 +85,9 @@ function VideoCarouselCard({
             <Text style={styles.playGlyph}>{"\u25B6"}</Text>
           </View>
         </View>
+
+        {/* Above the thumbnail + play icon, below the title band (KTD6 z-order). */}
+        <HoverPreviewImage previewUrl={previewUrl} contentFit="cover" />
 
         {/* Title band */}
         <View style={styles.titleBand}>
@@ -100,23 +105,22 @@ function VideoCarouselCard({
 export function VideoCarouselRenderer({
   section,
 }: {
-  section: NormalizedBlock
+  section: VideoCarouselBlockModel
 }) {
   const { playVideo } = useVideoPlayerContext()
 
-  const heading = section.vcTitle as string | null | undefined
-  const subtitle = section.vcSubtitle as string | null | undefined
-  const items = (section.items as VideoCarouselItem[] | undefined) ?? []
+  const heading = section.vcTitle
+  const subtitle = section.vcSubtitle
+  const items: VideoCarouselItem[] = section.items ?? []
 
   const handlePress = useCallback(
     (item: VideoCarouselItem) => {
-      const streamingUrl = item.streamingUrl ?? item.video?.streamingUrl ?? null
+      const streamingUrl = blockStreamingUrl(item)
       if (
         typeof streamingUrl === "string" &&
         validateStreamingUrl(streamingUrl)
       ) {
-        const title = item.titleOverride ?? item.video?.title ?? undefined
-        playVideo(streamingUrl, title)
+        playVideo(streamingUrl, item.titleOverride ?? undefined)
       }
     },
     [playVideo],
@@ -132,7 +136,8 @@ export function VideoCarouselRenderer({
   )
 
   const keyExtractor = useCallback(
-    (item: VideoCarouselItem, index: number) => `vc-${item.id}-${index}`,
+    (item: VideoCarouselItem, index: number) =>
+      `vc-${item.videoId ?? "item"}-${index}`,
     [],
   )
 
@@ -169,7 +174,6 @@ function Separator() {
 
 const PLAY_ICON_SIZE = scale(48)
 const SUBTITLE_FONT_SIZE = scale(18)
-const HEADING_FONT_SIZE = scale(24)
 const TITLE_FONT_SIZE = scale(18)
 const PLAY_GLYPH_SIZE = scale(20)
 
@@ -181,15 +185,12 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: SUBTITLE_FONT_SIZE,
     fontWeight: "400",
-    color: COLORS.muted,
+    color: WATCH_THEME.text74,
     marginBottom: scale(4),
     paddingHorizontal: scale(80),
   },
   heading: {
-    fontFamily: "System",
-    fontSize: HEADING_FONT_SIZE,
-    fontWeight: "600",
-    color: COLORS.text,
+    ...SECTION_HEADING,
     marginBottom: scale(12),
     paddingHorizontal: scale(80),
   },
@@ -205,7 +206,7 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    backgroundColor: COLORS.surfaceContainer,
+    backgroundColor: WATCH_THEME.scrim(1),
     borderRadius: scale(16),
     overflow: "hidden",
   },
@@ -231,14 +232,14 @@ const styles = StyleSheet.create({
     width: PLAY_ICON_SIZE,
     height: PLAY_ICON_SIZE,
     borderRadius: PLAY_ICON_SIZE / 2,
-    backgroundColor: hexToRgba("#000000", 0.5),
+    backgroundColor: WATCH_THEME.scrim(0.5),
     justifyContent: "center",
     alignItems: "center",
   },
   playGlyph: {
     fontFamily: "System",
     fontSize: PLAY_GLYPH_SIZE,
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     // Slight offset to visually center the triangle glyph
     marginLeft: scale(3),
   },
@@ -247,13 +248,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: hexToRgba("#000000", 0.4),
+    backgroundColor: WATCH_THEME.scrim(0.4),
     padding: scale(12),
   },
   titleText: {
     fontFamily: "System",
     fontSize: TITLE_FONT_SIZE,
     fontWeight: "700",
-    color: COLORS.text,
+    color: WATCH_THEME.text,
   },
 })

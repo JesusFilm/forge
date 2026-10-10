@@ -14,9 +14,12 @@ import { WebView } from "react-native-webview"
 import { LinearGradient } from "expo-linear-gradient"
 
 import { useTypography } from "../../hooks/useTypography"
+import { useUiTag } from "../../hooks/useUiTag"
+import { useT } from "../../i18n/useT"
 import { QUIZ_GRADIENT } from "../../lib/color"
+import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppression"
 import { layout, feedback } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { AdminBlock } from "../../lib/queries"
 
 // ── URL Validation ──────────────────────────────────────────────────────────
 
@@ -42,6 +45,7 @@ type QuizModalState = "loading" | "loaded" | "errored"
 
 function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
   const insets = useSafeAreaInsets()
+  const tCommon = useT("Common")
   const [state, setState] = useState<QuizModalState>("loading")
 
   const handleLoadEnd = useCallback(() => {
@@ -75,7 +79,8 @@ function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
           onPress={onClose}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Close"
+          accessibilityLabel={tCommon("closeAriaLabel")}
+          {...{ "dd-action-name": "section-quiz-close" }}
         >
           <Text style={styles.closeIcon}>{"\u2715"}</Text>
         </Pressable>
@@ -111,15 +116,20 @@ function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
 // ── QuizButtonRenderer ──────────────────────────────────────────────────────
 
 export interface QuizButtonRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
   const typography = useTypography()
+  const t = useT("Sections")
+  const uiTag = useUiTag()
   const [modalVisible, setModalVisible] = useState(false)
 
-  const buttonText = section.buttonText as string | null
-  const iframeSrc = section.iframeSrc as string | null
+  useNonRouteSheetSuppression(modalVisible, "sduiQuiz")
+
+  const s = section as Record<string, unknown>
+  const buttonText = s.buttonText as string | null
+  const iframeSrc = s.iframeSrc as string | null
 
   // Silent drop if URL is invalid or missing
   if (!iframeSrc || !isAllowedQuizUrl(iframeSrc)) return null
@@ -131,7 +141,8 @@ export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
           style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
           onPress={() => setModalVisible(true)}
           accessibilityRole="button"
-          accessibilityLabel="Open faith quiz"
+          accessibilityLabel={t("openQuizAriaLabel")}
+          {...{ "dd-action-name": "section-quiz-open" }}
         >
           <LinearGradient
             colors={[...QUIZ_GRADIENT]}
@@ -145,13 +156,15 @@ export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants"
               >
-                <Text style={styles.badgeText}>QUIZ</Text>
+                <Text style={styles.badgeText}>
+                  {t("quizBadge").toLocaleUpperCase(uiTag)}
+                </Text>
               </View>
               <Text
                 style={[styles.buttonLabel, typography.body]}
                 numberOfLines={2}
               >
-                {buttonText ?? "Take the quiz"}
+                {buttonText ?? t("takeQuiz")}
               </Text>
               <Text
                 style={styles.arrow}
@@ -204,7 +217,7 @@ const styles = StyleSheet.create({
   badgeText: {
     color: "#ffffff",
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "700",
     fontFamily: "System",
     letterSpacing: 1,
   },
@@ -241,7 +254,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   loadingContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },

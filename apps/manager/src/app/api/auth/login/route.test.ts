@@ -1,28 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const { cookieSet, loginManagerUserMock } = vi.hoisted(() => ({
-  cookieSet: vi.fn(),
-  loginManagerUserMock: vi.fn(),
-}))
-
-vi.mock("next/headers", () => ({
-  cookies: vi.fn(async () => ({
-    set: cookieSet,
-  })),
-}))
-
-vi.mock("@/cms/gateway", () => ({
-  registerLiveCmsGatewayAuthHandlers: vi.fn(),
-  getCmsGateway: () => ({
-    loginManagerUser: loginManagerUserMock,
-  }),
-}))
-
-describe("POST /api/auth/login", () => {
+describe("GET /api/auth/login", () => {
   beforeEach(() => {
-    cookieSet.mockReset()
-    loginManagerUserMock.mockReset()
-
     vi.unstubAllEnvs()
     vi.resetModules()
 
@@ -31,72 +10,55 @@ describe("POST /api/auth/login", () => {
     vi.stubEnv("MUX_TOKEN_ID", "mux-token-id")
     vi.stubEnv("MUX_TOKEN_SECRET", "mux-token-secret")
     vi.stubEnv("OPENROUTER_API_KEY", "openrouter-key")
+    vi.stubEnv(
+      "MANAGER_SESSION_SECRET",
+      "manager-session-secret-change-me-000000",
+    )
+    vi.stubEnv("AUTH_ISSUER_URL", "https://auth.jesusfilm.org")
+    vi.stubEnv("AUTH_MANAGER_CLIENT_ID", "jfp_manager_local")
+    vi.stubEnv("MANAGER_BASE_URL", "http://localhost:3002")
   })
 
-  it("logs in through the mock gateway and sets the session cookie", async () => {
-    loginManagerUserMock.mockResolvedValue({
-      token: "mock-session-token",
-      user: {
-        id: 7,
-        email: "manager@forge.test",
-        role: { name: "Manager", type: "manager" },
-      },
-    })
-
-    const { POST } = await import("./route")
-    const response = await POST(
-      new Request("http://example.test/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: "manager@forge.test",
-          password: "demo-manager-password",
-        }),
-      }),
+  it("redirects to Auth with Manager OAuth scope and PKCE cookies", async () => {
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3002/api/auth/login?returnTo=/dashboard/jobs",
+      ),
     )
 
-    expect(response.status).toBe(200)
-    await expect(response.json()).resolves.toEqual({
-      user: {
-        id: 7,
-        email: "manager@forge.test",
-        role: "Manager",
-      },
-    })
-    expect(loginManagerUserMock).toHaveBeenCalledWith(
-      "manager@forge.test",
-      "demo-manager-password",
+    expect(response.status).toBe(307)
+    const location = response.headers.get("location")
+    expect(location).toBeTruthy()
+    const redirectUrl = new URL(location!)
+    expect(redirectUrl.origin).toBe("https://auth.jesusfilm.org")
+    expect(redirectUrl.pathname).toBe("/api/auth/oauth2/authorize")
+    expect(redirectUrl.searchParams.get("client_id")).toBe("jfp_manager_local")
+    expect(redirectUrl.searchParams.get("redirect_uri")).toBe(
+      "http://localhost:3002/api/auth/callback",
     )
-    expect(cookieSet).toHaveBeenCalledWith(
-      "strapi-jwt",
-      "mock-session-token",
-      expect.objectContaining({
-        httpOnly: true,
-        path: "/",
-        sameSite: "lax",
-      }),
+    expect(redirectUrl.searchParams.get("scope")).toBe(
+      "openid profile:read email:read manager:access",
     )
+    expect(redirectUrl.searchParams.get("code_challenge_method")).toBe("S256")
+
+    const setCookie = response.headers.get("set-cookie") ?? ""
+    expect(setCookie).toContain("manager-oauth-state=")
+    expect(setCookie).toContain("manager-oauth-verifier=")
+    expect(setCookie).toContain("manager-oauth-return-to=")
+    expect(setCookie).not.toContain("strapi-jwt=")
   })
 
-  it("rejects invalid mock credentials", async () => {
-    loginManagerUserMock.mockResolvedValue(null)
-
-    const { POST } = await import("./route")
-    const response = await POST(
-      new Request("http://example.test/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: "manager@forge.test",
-          password: "wrong-password",
-        }),
-      }),
+  it("does not allow cross-origin returnTo redirects", async () => {
+    const { GET } = await import("./route")
+    const response = await GET(
+      new Request(
+        "http://localhost:3002/api/auth/login?returnTo=https://evil.test/path",
+      ),
     )
 
-    expect(response.status).toBe(401)
-    await expect(response.json()).resolves.toEqual({
-      error: "Invalid credentials",
-    })
-    expect(cookieSet).not.toHaveBeenCalled()
+    expect(response.headers.get("set-cookie")).toContain(
+      "manager-oauth-return-to=http%3A%2F%2Flocalhost%3A3002%2Fdashboard%2Fcoverage",
+    )
   })
 })

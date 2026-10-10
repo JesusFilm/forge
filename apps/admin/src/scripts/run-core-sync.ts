@@ -1,5 +1,5 @@
 import { syncPrisma } from "@/db/client"
-import { runSync } from "@/services/core-sync/orchestrator"
+import { runSync, type RunSyncOptions } from "@/services/core-sync/orchestrator"
 
 function parseArgs(argv: string[]) {
   const full = argv.includes("--full")
@@ -21,7 +21,10 @@ function parseArgs(argv: string[]) {
 async function main() {
   const options = parseArgs(process.argv.slice(2))
   const startedAt = Date.now()
-  const result = await runSync(syncPrisma, options)
+  const result = await runSync(syncPrisma, {
+    ...options,
+    onProgress: logProgress,
+  })
 
   console.log(
     JSON.stringify(
@@ -32,6 +35,12 @@ async function main() {
       null,
       2,
     ),
+  )
+}
+
+const logProgress: NonNullable<RunSyncOptions["onProgress"]> = (progress) => {
+  console.log(
+    `[core-sync] event=core-sync.phase.progress phase=${progress.phase} completed=${progress.completed} total=${progress.total} elapsedMs=${progress.elapsedMs}`,
   )
 }
 

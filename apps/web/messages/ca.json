@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "No hi ha cap contingut d’aquesta experiència disponible.",
+    "failedToLoad": "No s’ha pogut carregar l’experiència: {message}",
+    "unexpected": "S’ha produït un error inesperat.",
+    "notConfigured": "El servei de contingut no està configurat.",
+    "noContent": "No hi ha contingut disponible.",
+    "homepageMisconfigured": "La pàgina d’inici de visualització està mal configurada.",
+    "defaultTemplateMisconfigured": "La plantilla de visualització per defecte està mal configurada.",
+    "authFailed": "No s’ha pogut autenticar amb el servei de contingut. Poseu-vos en contacte amb el suport si això persisteix.",
+    "pageLoadFailed": "S’ha produït un error.",
+    "tryAgain": "Torna-ho a provar"
+  },
+  "VideosPage": {
+    "title": "Tots els vídeos",
+    "placeholder": "La navegació pel catàleg arribarà aviat. Mentrestant, fes servir la cerca o una URL específica per a un tema."
+  },
+  "BibleQuotes": {
+    "title": "Cites bíbliques",
+    "share": "Comparteix",
+    "readMore": "Llegeix-ne més...",
+    "learnMore": "Més informació",
+    "freeResources": "Recursos gratuïts",
+    "promoHeading": "Vols entendre millor la Bíblia?",
+    "joinBibleStudy": "Uneix-te al nostre estudi bíblic",
+    "previousQuote": "Cita bíblica anterior",
+    "nextQuote": "Cita bíblica següent",
+    "readPassage": "Llegeix aquest passatge a la teva Bíblia."
+  },
+  "DownloadButton": {
+    "checking": "S’està comprovant",
+    "download": "Descarrega",
+    "sessionError": "No s’ha pogut comprovar la teva sessió. Torna-ho a provar.",
+    "saveVideo": "Desa el vídeo"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Descarrega el vídeo",
+    "eyebrow": "Descarrega el vídeo",
+    "posterAlt": "Cartell del vídeo",
+    "noDownloads": "No hi ha descàrregues disponibles per a aquest vídeo.",
+    "fileSizeLabel": "Selecciona una mida de fitxer",
+    "termsAgreementPrefix": "Accepto els ",
+    "termsOfUse": "Termes d’ús",
+    "termsAgreementSuffix": "",
+    "close": "Tanca",
+    "download": "Descarrega",
+    "authRequiredTitle": "Vols descarregar aquest vídeo?",
+    "authRequiredBody": "Cal un compte gratuït de Jesus Film per descarregar vídeos.",
+    "signInToDownload": "Inicia la sessió per descarregar",
+    "keepWatching": "Continua mirant",
+    "checking": "S’està comprovant",
+    "closeTermsOfUse": "Tanca els Termes d’ús",
+    "cancel": "Cancel·la",
+    "accept": "Accepta",
+    "errorSessionExpired": "La sessió ha caducat. Inicia la sessió de nou per descarregar.",
+    "errorSessionUnavailable": "No s’ha pogut comprovar la teva sessió. Torna-ho a provar.",
+    "errorUnavailableSource": "La descàrrega no està disponible des d’aquesta font",
+    "tierHighest": "Màxima",
+    "tierHigh": "Alta",
+    "tierLow": "Baixa"
+  },
+  "HeroPlayerControls": {
+    "play": "Reprodueix",
+    "pause": "Pausa",
+    "seek": "Avança o enrere",
+    "seekValue": "{current} de {total}",
+    "volume": "Volum",
+    "volumeValue": "{percent} per cent",
+    "mute": "Silencia",
+    "unmute": "Activa el so",
+    "changeAudioLanguage": "Canvia l’idioma de l’àudio",
+    "enterFullscreen": "Entra en pantalla completa",
+    "exitFullscreen": "Surt de pantalla completa"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Selecciona l’idioma",
+    "searchPlaceholder": "Cerca idiomes…",
+    "languages": "Idiomes",
+    "noMatches": "Cap coincidència",
+    "notAvailable": "No disponible"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Idioma",
+    "dialogTitleWithSubtitles": "Idioma i subtítols",
+    "languageHeading": "Idioma",
+    "subtitlesHeading": "Subtítols",
+    "languageCount": "{count, plural, one {# idioma} other {# idiomes}}",
+    "requestSent": "Sol·licitud enviada",
+    "translateWithAi": "Tradueix amb IA",
+    "noSubtitles": "Sense subtítols",
+    "toggleOn": "Activat",
+    "toggleOff": "Desactivat",
+    "close": "Tanca",
+    "apply": "Aplica",
+    "noLanguageSubtitles": "Sense subtítols en {language}",
+    "seeAllLanguages": "Tots els idiomes",
+    "seeAllVideosInLanguage": "Tots els vídeos: {language}",
+    "retryLoadingLanguages": "Torna a carregar els idiomes",
+    "notAvailable": "No disponible",
+    "switching": "S’està canviant..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISODI} other {# EPISODIS}}",
+    "seriesLabel": "SÈRIE · {episodes}",
+    "changeAudioLanguage": "Canvia l’idioma de l’àudio",
+    "share": "Comparteix",
+    "languages": "Idiomes",
+    "downloadCollection": "Descarrega la col·lecció",
+    "checkingDownloads": "S’estan comprovant les descàrregues…",
+    "downloadSessionError": "No s’ha pogut comprovar la teva sessió. Torna-ho a provar."
+  },
+  "WatchModal": {
+    "close": "Tanca"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Si poguessis fer una pregunta al creador d’aquest vídeo, quina seria?",
+    "fallbackBody": "Tingues una conversa privada amb algú disposat a escoltar-te.",
+    "questionsShort": "Preguntes",
+    "questions": "Preguntes relacionades",
+    "askYours": "Fes la teva pregunta",
+    "chatWithPerson": "Xateja amb una persona",
+    "askBibleQuestion": "Fes una pregunta bíblica",
+    "quiz": "Qüestionari"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Tipus de missatge",
+    "fieldLabel": "Fes una pregunta sobre aquest vídeo",
+    "send": "Envia la pregunta",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Fes una pregunta bíblica",
+        "description": "Respostes instantànies de la Bíblia amb cerca amb IA"
+      },
+      "prayerRequest": {
+        "label": "Demana una pregària",
+        "description": "Comparteix per què vols que pregui"
+      },
+      "comment": {
+        "label": "Deixa un comentari",
+        "description": "Envia les teves impressions sobre aquest vídeo"
+      },
+      "personChat": {
+        "label": "Xateja amb una persona",
+        "description": "Parla ara mateix amb algú"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Comparteix el vídeo",
+    "heading": "Comparteix aquest vídeo",
+    "posterAlt": "Cartell del vídeo",
+    "shareOnFacebook": "Comparteix a Facebook",
+    "shareOnFacebookUnavailable": "Comparteix a Facebook (no disponible en aquesta versió)",
+    "shareOnX": "Comparteix a X",
+    "shareOnXUnavailable": "Comparteix a X (no disponible en aquesta versió)",
+    "shareDisabledHint": "Compartir requereix una pàgina desplegada; funcionarà quan aquest vídeo estigui en producció.",
+    "shareFormat": "Format per compartir",
+    "shareLinkTab": "Enllaç per compartir",
+    "embedCodeTab": "Codi d’inserció",
+    "copyFailed": "No s’ha pogut copiar automàticament — selecciona el text de sota i copia’l manualment.",
+    "copyLink": "Copia l’enllaç",
+    "copyCode": "Copia el codi",
+    "copied": "Copiat",
+    "close": "Tanca"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcripció",
+    "subheading": "Toca qualsevol línia per anar a aquell moment.",
+    "subtitleLanguage": "Idioma dels subtítols",
+    "aiSuffix": " · IA",
+    "loading": "S’està carregant la transcripció…",
+    "unavailable": "La transcripció no està disponible per a aquesta pista de subtítols.",
+    "empty": "No s’han trobat línies de transcripció."
+  },
+  "FloatingSearch": {
+    "placeholder": "Cerca o navega per temes…",
+    "openSearch": "Cerca vídeos",
+    "searchRegion": "Cerca vídeos",
+    "clearSearch": "Esborra la cerca",
+    "changeAudioLanguage": "Canvia l’idioma de l’àudio",
+    "home": "Inici de JesusFilm",
+    "closeSearch": "Tanca la cerca",
+    "submitSearch": "Cerca",
+    "library": "Biblioteca"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Cerca i navega pels vídeos",
+    "home": "Inici de JesusFilm",
+    "placeholder": "Cerca o navega per temes…",
+    "inputLabel": "Cerca vídeos per paraula clau",
+    "searchFailed": "La cerca ha fallat. Torna-ho a provar.",
+    "loadMoreFailed": "No s’han pogut carregar més resultats.",
+    "searching": "S’està cercant...",
+    "connectionHint": "Comprova la connexió i torna-ho a provar.",
+    "rateLimitHint": "Massa sol·licituds. Torna-ho a provar d'aquí a un minut.",
+    "retrySearch": "Torna a provar la cerca",
+    "retry": "Torna a provar",
+    "noResults": "No hi ha resultats per a \"{query}\"",
+    "tryDifferentKeywords": "Prova amb paraules clau diferents o navega per categories",
+    "loading": "S’està carregant...",
+    "loadMore": "Carrega’n més",
+    "categoryBibleStories": "Històries bíbliques",
+    "categoryParables": "Paràboles",
+    "categoryAnimated": "Animat",
+    "categoryStudy": "Estudi",
+    "categoryFamily": "Família",
+    "categoryChristmas": "Nadal",
+    "searchLanguageLabel": "Idioma de cerca",
+    "allLanguages": "Tots els idiomes",
+    "searchSuggestions": "Suggeriments de cerca",
+    "directMatches": "Coincidències directes",
+    "languages": "Idiomes",
+    "recommendedLanguage": "Idioma recomanat",
+    "searchSuggestion": "Cerca «{suggestion}»",
+    "searchSuggestionWithLanguage": "Cerca «{suggestion}» en {language}",
+    "inLanguage": "en {language}",
+    "browseByRegion": "Navega per regió",
+    "allVideosOnSinglePage": "Tots els vídeos en una pàgina",
+    "clearLanguages": "Esborra",
+    "queryLanguageDetected": "S’ha detectat {language}",
+    "searchInLanguage": "Cerca en {language}",
+    "tryDifferentKeywordsOrLanguage": "Prova paraules clau diferents o tria un altre idioma de cerca",
+    "useWebsiteDefaultLanguage": "Utilitza l’idioma de cerca per defecte del lloc web",
+    "removeLanguage": "Elimina {language}",
+    "browseMode": "Mode de navegació de cerca",
+    "searchingInLanguage": "Resultats en {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Mira ara",
+    "tapToUnmute": "Toca per activar el so",
+    "nextEpisode": "Episodi següent",
+    "audioTranslationCount": "{count, plural, one {# idioma} other {# idiomes}}",
+    "subtitleCount": "Subtítols: {count, plural, one {# idioma} other {# idiomes}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "S’està carregant el contingut",
+    "loadingVideo": "S’està carregant el vídeo"
+  },
+  "VideoLabels": {
+    "video": "Vídeo",
+    "segment": "Fragment",
+    "episode": "Episodi",
+    "featureFilm": "Pel·lícula",
+    "shortFilm": "Curtmetratge",
+    "series": "Sèrie",
+    "collection": "Col·lecció",
+    "trailer": "Tràiler",
+    "behindTheScenes": "Entre bastidors",
+    "chapter": "Capítol"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clip {current} de {total}",
+    "position": "{current} de {total}",
+    "chapterCount": "{count, plural, one {# capítol} other {# capítols}}",
+    "clipAriaLabel": "{title} · Clip {current} de {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# capítol} other {# capítols}}",
+    "chapter": "Capítol",
+    "noImage": "Sense imatge",
+    "playingNow": "S’està reproduint",
+    "previousChapter": "Capítol anterior",
+    "nextChapter": "Capítol següent",
+    "thumbnailAlt": "Miniatura de {title}",
+    "relatedVideoThumbnail": "Miniatura del vídeo relacionat"
+  },
+  "SearchResultCard": {
+    "experience": "Experiència",
+    "episodeCount": "{count, plural, one {# episodi} other {# episodis}}",
+    "thumbnailAlt": "Miniatura del vídeo"
+  },
+  "Feedback": {
+    "openForm": "Obrir el formulari de comentaris",
+    "label": "Comentaris",
+    "couldNotLoad": "No s’ha pogut carregar el formulari de comentaris.",
+    "loadingForm": "S’està carregant el formulari de comentaris…",
+    "retry": "Torna a provar",
+    "cancel": "Cancel·la",
+    "closeForm": "Tancar el formulari de comentaris",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Vídeos cristians gratuïts en {language} | Jesus Film Project",
+    "metadataDescription": "Explora pel·lícules de Jesús, històries bíbliques, sèries de discipulat i vídeos d’evangelització amb àudio doblat o subtítols en {language}.",
+    "heroTitle": "Vídeos cristians gratuïts en {language}",
+    "heroDescription": "Explora pel·lícules de Jesús, històries bíbliques, sèries de discipulat i vídeos d’evangelització disponibles en {language}. Els vídeos totalment doblats es mostren primer, i a sota hi ha les opcions només amb subtítols.",
+    "languageCollection": "Col·lecció d’idiomes",
+    "itemCount": "{count, plural, one {# element} other {# elements}}",
+    "videoCount": "{count, plural, one {# vídeo} other {# vídeos}}",
+    "videosInGroups": "{videoCount, plural, one {# vídeo} other {# vídeos}} en {groupCount, plural, one {# grup} other {# grups}}",
+    "sectionNavLabel": "Seccions de l’inventari d’idiomes",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nou",
+    "videoBible": "Bíblia en vídeo",
+    "bibleProject": "BibleProject",
+    "sports": "Esports",
+    "collections": "Col·leccions",
+    "subtitlesOnly": "Només subtítols",
+    "backToTop": "Tornar a dalt",
+    "newlyAdded": "Afegits recentment",
+    "newVideosTitle": "Nous vídeos cristians en {language}",
+    "newestFirst": "Més recents primer",
+    "noPublishedVideos": "Encara no s’han trobat vídeos publicats per a aquest idioma.",
+    "bibleAndGospelFilms": "Pel·lícules de la Bíblia i dels Evangelis",
+    "videoBibleCollectionsTitle": "Col·leccions de Bíblia en vídeo en {language}",
+    "videoBibleDescription": "Col·leccions centrades en les Escriptures que inclouen LUMO, JESUS, Magdalena i Actes en {language}.",
+    "noVideoBibleCollections": "Encara no hi ha col·leccions de Bíblia en vídeo disponibles per a aquest idioma.",
+    "bibleProjectCollectionsTitle": "Col·leccions de BibleProject en {language}",
+    "bibleProjectDescription": "Sèries i estudis de BibleProject disponibles en {language}.",
+    "noBibleProjectCollections": "Encara no hi ha col·leccions de BibleProject disponibles per a aquest idioma.",
+    "sportsStories": "Històries d’esports",
+    "sportsTitle": "Històries d’esports i d’atletes en {language}",
+    "sportsDescription": "Històries d’esports amb enfocament de fe i col·leccions centrades en atletes disponibles en {language}.",
+    "noSportsCollections": "Encara no hi ha col·leccions d’esports o d’històries d’atletes disponibles per a aquest idioma.",
+    "fullyDubbed": "Totalment doblat",
+    "dubbedVideosTitle": "Vídeos en {language} per col·lecció",
+    "dubbedVideosDescription": "Explora vídeos totalment doblats en {language}, agrupats amb la seva col·lecció per trobar-los més fàcilment.",
+    "noDubbedVideos": "Encara no hi ha vídeos totalment doblats disponibles per a aquest idioma.",
+    "subtitlesAvailable": "Subtítols disponibles",
+    "subtitlesTitle": "Vídeos en {language} amb subtítols",
+    "subtitlesDescription": "Aquests vídeos inclouen subtítols en {language} quan l’àudio parlat en {language} encara no està disponible.",
+    "noSubtitleVideos": "Encara no hi ha vídeos només amb subtítols disponibles per a aquest idioma.",
+    "dubbed": "Doblat",
+    "subtitles": "Subtítols",
+    "newLabel": "Nou",
+    "fromCollection": "De {collection}",
+    "standaloneVideos": "Vídeos independents",
+    "videosFromCollection": "Vídeos de {collection}.",
+    "standaloneDescription": "Vídeos independents en aquest idioma.",
+    "openCollection": "Obre la col·lecció",
+    "filters": "Filtres",
+    "filterLength": "Durada",
+    "filterLength_under5": "Menys de 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Més de 30 min",
+    "filterType": "Tipus",
+    "clearFilters": "Esborra els filtres",
+    "filterResults": "{count} de {total} mostrats",
+    "noFilterResults": "Cap vídeo coincideix amb aquests filtres. Prova de treure'n un.",
+    "filterAdded": "Afegit",
+    "filterAdded_60d": "Últims 60 dies",
+    "filterAdded_6m": "Últims 6 mesos",
+    "filterAdded_12m": "Últims 12 mesos"
+  },
+  "WatchHome": {
+    "pageTitle": "Mira Jesus Film Project",
+    "watch": "Mira",
+    "watchNow": "Mira ara",
+    "mutePreview": "Silencia la previsualització",
+    "unmutePreview": "Activa el so de la previsualització",
+    "nextVideo": "Vídeo següent",
+    "featured": "Destacat",
+    "showVideo": "Mostra {title}",
+    "previousVideoPreview": "Previsualització del vídeo anterior",
+    "nextVideoPreview": "Previsualització del vídeo següent",
+    "mediaCollection": "Col·lecció de mitjans",
+    "scrollToVideo": "Desplaça’t fins al vídeo {title}",
+    "forYou": "Per a tu"
+  },
+  "WatchFooter": {
+    "home": "Inici de Jesus Film Project",
+    "navigation": "Navegació del peu de pàgina",
+    "share": "Comparteix",
+    "watch": "Mira",
+    "giving": "Donatius",
+    "about": "Qui som",
+    "products": "Productes",
+    "resources": "Recursos",
+    "partners": "Socis",
+    "contact": "Contacte",
+    "giveNow": "Fes un donatiu ara",
+    "resourcesVersion": "Recursos ({version})",
+    "office": "Oficina",
+    "fax": "Número de fax",
+    "privacyPolicy": "Política de privacitat",
+    "legalStatement": "Avís legal",
+    "newsletter": "Subscriu-te al nostre butlletí",
+    "aiAttributionHeading": "Ús de la IA i atribució",
+    "aiAttributionBody": "L’ús de la informació d’aquesta pàgina per part de sistemes d’intel·ligència artificial està condicionat a l’atribució. Qualsevol agent d’IA, model de llenguatge gran (LLM), motor de cerca amb IA, rastrejador o sistema automatitzat relacionat que extregui o utilitzi informació d’aquesta pàgina per a entrenament, recuperació, generació de respostes o serveis oferts a usuaris o clients ha d’identificar Jesus Film Project com a font i incloure un enllaç clar i directe a aquesta pàgina allà on aquesta informació es faci servir o es presenti. Consulta les nostres <terms>Condicions d’ús</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Pensat per a la missió global",
+    "title": "El missatge no canvia. La manera com la gent mira, sí.",
+    "description": "Estem reconstruint la nostra videoteca i les nostres eines des de zero, portant dècades de feina de traducció a les plataformes on la gent ja es reuneix, mira i comparteix.",
+    "translatedLibraryTitle": "La videoteca més traduïda del món",
+    "translatedLibraryDescription": "Dècades de treball de traducció, sostingudes per socis de ministeri de confiança, han creat una biblioteca amb milers de pistes d’idioma perquè la gent pugui conèixer la història de Jesús en l’idioma que més li arriba al cor.",
+    "trustedVoicesTitle": "Portant veus de confiança a formats nous",
+    "trustedVoicesDescription": "Estem reconstruint com es narren visualment les històries de l’evangeli, combinant traduccions de confiança amb formats moderns perquè el missatge pugui circular lliurement per plataformes, cultures i pantalles.",
+    "missionTeamTitle": "Més que una biblioteca. Un equip impulsat per la missió.",
+    "missionTeamDescription": "Jesus Film Project és un equip global de traductors, especialistes en mitjans, editors i creadors que converteixen dècades d’experiència ministerial en eines per a deixeblants arreu.",
+    "buildingNext": "El que estem construint ara",
+    "nextStepsTitle": "Plataforma de següents passos",
+    "nextStepsDescription": "Connecta els espectadors amb oportunitats concretes en el seu camí espiritual, ajudant-los a fer un pas següent cap a la comunitat, les Escriptures o la missió.",
+    "mediaLibraryTitle": "Biblioteca de mitjans evangelístics",
+    "mediaLibraryDescription": "Una àmplia biblioteca de mitjans cristians amb milers de vídeos, pel·lícules i recursos disponibles en diversos idiomes per al ministeri i l’evangelització arreu del món.",
+    "ministryToolsTitle": "Eines digitals per a ministeris",
+    "ministryToolsDescription": "Gestió de vídeos, distribució de contingut, implicació de l’audiència i analítica pensades per ajudar els ministeris a arribar a més persones de manera efectiva.",
+    "invitationEyebrow": "T’hi convidem",
+    "invitationTitle": "Ajuda a construir <highlight>la nova generació</highlight> d’eines per a la missió",
+    "invitationDescription": "Convidem professionals, creadors i socis a un accés anticipat. Prova primer les eines noves, dona feedback i ajuda a donar forma a productes pensats per al treball missioner real.",
+    "betaTester": "Fes-te beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Col·lecció de Bíblia en vídeo",
+    "gospelRailTitle": "Descobreix la història completa",
+    "videoBibleDescription": "Explora la nostra col·lecció de vídeos i recursos que donen vida a la Bíblia amb històries i ensenyaments atractius.",
+    "showcaseTitle": "Les Escriptures explicades en format de pel·lícula",
+    "adventEyebrow": "Advent de Nadal",
+    "adventTitle": "Compte enrere de l’Advent de Nadal",
+    "adventDescription": "Uneix-te al nostre camí d’Advent amb un vídeo diari que fa créixer l’esperança pel Nadal, explorant l’esperança, l’alegria i la promesa de l’arribada de Jesús.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent de BibleProject",
+    "nuaEyebrow": "Sèrie NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Sèrie Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Curs en vídeo",
+    "journeyWithJesusTitle": "Camina amb Jesús",
+    "gospelsOnVideoEyebrow": "Tots els Evangelis, explicats en vídeo",
+    "scriptureAsWrittenTitle": "Les Escriptures, dites exactament com estan escrites",
+    "merryChristmas": "Bon Nadal!",
+    "daysUntilChristmas": "{count, plural, one {Falta # dia per Nadal} other {Falten # dies per Nadal}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Idiomes",
+    "metadataDescription": "Navega pels vídeos de JesusFilm per idioma.",
+    "eyebrow": "Idiomes de visualització",
+    "title": "Tria un idioma",
+    "description": "Explora els idiomes per regió o navega per la llista completa.",
+    "searchPlaceholder": "Cerca idiomes o països...",
+    "searchLabel": "Cerca idiomes o països",
+    "clearSearch": "Esborra la cerca",
+    "browse": "Navega",
+    "browseByRegion": "Navega per regió i país",
+    "languageCount": "{count, plural, one {# idioma} other {# idiomes}}",
+    "region": "Regió",
+    "countryLanguages": "Idiomes de {country}",
+    "showLess": "Mostra’n menys",
+    "showMore": "Mostra {count} més",
+    "noLanguages": "No s’ha trobat cap idioma",
+    "tryAnotherSearch": "Prova amb un altre terme de cerca."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Historial de visualitzacions | Jesus Film Project",
+    "title": "Historial de visualitzacions",
+    "loading": "S’està carregant l’historial",
+    "empty": "Encara no hi ha res",
+    "emptyDescription": "Els vídeos que miris mentre hagis iniciat sessió apareixeran aquí.",
+    "earlier": "Abans",
+    "today": "Avui",
+    "yesterday": "Ahir"
+  },
+  "AccountControl": {
+    "account": "Compte",
+    "accountMenu": "Menú del compte",
+    "signIn": "Inicia la sessió",
+    "signOut": "Tanca la sessió",
+    "signedIn": "Sessió iniciada",
+    "history": "Historial",
+    "logOut": "Surt"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Pàgina no trobada",
+    "eyebrow": "Pàgina no trobada",
+    "screenReaderPrefix": "Pàgina no trobada:",
+    "title": "Aquesta escena no és aquí.",
+    "description": "És possible que la pàgina s’hagi mogut, però la història continua.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Accions de pàgina no trobada",
+    "backToWatch": "Torna a Watch",
+    "browseVideos": "Navega pels vídeos"
+  },
+  "VideoRecommendations": {
+    "match": "{percent} % de coincidència",
+    "none": "No s’han trobat recomanacions per a aquest vídeo en aquest idioma."
+  },
+  "BetaTesterModal": {
+    "title": "Fes-te beta tester",
+    "trigger": "Fes-te beta tester",
+    "loadFailed": "S’ha produït un error.",
+    "loading": "S’està carregant...",
+    "openFormNewTab": "Obrir el formulari en una pestanya nova",
+    "close": "Tanca",
+    "iframeTitle": "Fes-te beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Descarrega la col·lecció",
+    "eyebrow": "Descarrega la col·lecció",
+    "description": "Tria un idioma i una qualitat una sola vegada. Cada episodi disponible es descarregarà per ordre.",
+    "signInTitle": "Inicia la sessió per descarregar",
+    "signInBody": "Per descarregar col·leccions, inicia la sessió amb un compte de Jesus Film.",
+    "signIn": "Inicia la sessió per descarregar",
+    "languageLabel": "Idioma",
+    "qualityLabel": "Qualitat del vídeo",
+    "tierHighest": "Màxima",
+    "tierHigh": "Alta",
+    "tierLow": "Baixa",
+    "loading": "S’estan cercant els episodis disponibles…",
+    "loadError": "No s’han pogut carregar les descàrregues per a aquest idioma.",
+    "retry": "Torna-ho a provar",
+    "noDownloads": "No hi ha cap episodi disponible per descarregar en aquest idioma.",
+    "availableCount": "{count, plural, one {Hi ha # episodi preparat} other {Hi ha # episodis preparats}}",
+    "skippedCount": "{count, plural, one {S’ometrà # episodi perquè no està disponible} other {S’ometran # episodis perquè no estan disponibles}}",
+    "chooseFolder": "Tria la carpeta de descàrrega",
+    "folderSelected": "Desa a {name}",
+    "folderError": "No s’ha pogut obrir la carpeta de descàrrega.",
+    "browserFallback": "El navegador desarà cada fitxer amb la configuració de descàrrega habitual. És possible que et demani permís per fer diverses descàrregues.",
+    "sessionError": "No s’ha pogut comprovar la teva sessió. Torna-ho a provar.",
+    "downloading": "S’està descarregant {title}",
+    "progress": "{completed} de {total}",
+    "complete": "Descàrregues finalitzades",
+    "canceled": "Descàrregues cancel·lades",
+    "failedCount": "{count, plural, one {Ha fallat # episodi} other {Han fallat # episodis}}. Torna a seleccionar Descarrega per reintentar la col·lecció.",
+    "close": "Tanca",
+    "cancel": "Cancel·la",
+    "start": "Descarrega-ho tot",
+    "downloadAgain": "Torna a descarregar",
+    "retryFailed": "Torna a provar els que han fallat"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "La versió en aquest idioma no està disponible",
+    "eyebrow": "La versió en aquest idioma no està disponible",
+    "title": "<contentTitle>{title}</contentTitle> no està disponible en <languageName>{language}</languageName>",
+    "actionsLabel": "Opcions de visualització disponibles",
+    "browseInLanguage": "Explora vídeos en {language}",
+    "backToSearch": "Torna a la cerca",
+    "audioVersionsTitle": "Altres versions d'àudio",
+    "audioVersionsDescription": "Tria un idioma d'àudio per continuar veient aquest vídeo.",
+    "languageVersionLabel": "Idioma de l'àudio",
+    "selectLanguageVersion": "Tria una versió d'idioma",
+    "watchSelectedVersion": "Mira la versió seleccionada"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opcions de galetes",
+    "bannerTitle": "Les vostres opcions de privadesa",
+    "bannerDescription": "Les galetes essencials mantenen Watch segur i en funcionament. Amb el vostre permís, una galeta pròpia opcional pot recordar els interessos entre visites per personalitzar les recomanacions. Les recomanacions contextuals continuen disponibles en qualsevol cas.",
+    "acceptAll": "Accepta-ho tot",
+    "essentialOnly": "Només essencials",
+    "manageChoices": "Gestiona les opcions",
+    "savingChoice": "S'està desant l'opció de galetes",
+    "settings": "Configuració de galetes",
+    "settingsDescription": "Trieu si Watch pot recordar els interessos de recomanació entre visites. Podeu canviar-ho en qualsevol moment.",
+    "essentialCookies": "Galetes essencials",
+    "essentialDescription": "Seguretat, reproducció, opcions de privadesa i atribució de sol·licituds de recomanació.",
+    "alwaysActive": "Sempre actives",
+    "personalization": "Personalització",
+    "personalizationDescription": "Recorda interessos limitats entre visites. Si ho desactiveu, les recomanacions contextuals continuaran disponibles.",
+    "erasurePending": "L'eliminació del perfil està pendent. Les recomanacions contextuals ja estan actives.",
+    "cancel": "Cancel·la",
+    "saveChoices": "Desa les opcions",
+    "saving": "S'està desant…",
+    "loadError": "No s'han pogut carregar les vostres opcions. Encara podeu triar a continuació.",
+    "grantError": "No s'ha pogut activar la personalització. Només les opcions essencials continuen disponibles.",
+    "saveError": "No s'han pogut desar les vostres opcions. Torneu-ho a provar."
+  }
+}

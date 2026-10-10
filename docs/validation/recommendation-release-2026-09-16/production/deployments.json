@@ -1,0 +1,26 @@
+{
+  "verifiedAt": "2026-09-15T22:09:05.591083+00:00",
+  "services": [
+    {
+      "service": "web",
+      "deploymentId": "d42c8525-8af2-4352-978e-e125f04c9add",
+      "sha": "1981f1c5f77d57fabe720d76154b9c19238d6331",
+      "status": "SUCCESS",
+      "soleActive": true
+    },
+    {
+      "service": "admin",
+      "deploymentId": "25436286-c030-4932-99b6-76d1efe7e5a1",
+      "sha": "1981f1c5f77d57fabe720d76154b9c19238d6331",
+      "status": "SUCCESS",
+      "soleActive": true
+    },
+    {
+      "service": "worker",
+      "deploymentId": "93a6e87a-92a4-4af1-b824-8bf3294ca56e",
+      "sha": "1981f1c5f77d57fabe720d76154b9c19238d6331",
+      "status": "SUCCESS",
+      "soleActive": true
+    }
+  ]
+}

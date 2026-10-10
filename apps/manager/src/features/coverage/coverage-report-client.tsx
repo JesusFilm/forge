@@ -55,6 +55,7 @@ import {
   type ReportType,
 } from "./coverage-report-model"
 import {
+  buildEnrichRequestErrorFeedback,
   getVideoQaSelectionDisabledReason,
   isEnrichActionReady,
   isEnrichSelectionInputEnabled,
@@ -789,17 +790,6 @@ const CollectionCard = memo(function CollectionCard({
     return collection.videos.filter((video) => video.coverageStatus === filter)
   }, [collection.videos, filter])
 
-  const sortedVideos = useMemo(() => {
-    return [...filteredVideos].sort((a, b) => {
-      const order: Record<CoverageStatus, number> = {
-        human: 0,
-        ai: 1,
-        none: 2,
-      }
-      return order[a.coverageStatus] - order[b.coverageStatus]
-    })
-  }, [filteredVideos])
-
   const toggleCollectionNoneVideos = useCallback(
     (sourceElement?: HTMLElement | null) => {
       const noneVideos = getSelectableNoneVideos(collection.videos)
@@ -964,14 +954,9 @@ const CollectionCard = memo(function CollectionCard({
       </div>
       <div className={`collection-details${isExpanded ? " is-open" : ""}`}>
         {(["human", "ai", "none"] as const).map((groupStatus) => {
-          const groupVideos = filteredVideos
-            .filter((v) => v.coverageStatus === groupStatus)
-            .sort((a, b) => {
-              const aIsCollection = a.id.startsWith("collection:")
-              const bIsCollection = b.id.startsWith("collection:")
-              if (aIsCollection !== bIsCollection) return aIsCollection ? -1 : 1
-              return a.title.localeCompare(b.title)
-            })
+          const groupVideos = filteredVideos.filter(
+            (v) => v.coverageStatus === groupStatus,
+          )
           if (groupVideos.length === 0) return null
 
           return (
@@ -1065,7 +1050,7 @@ const CollectionCard = memo(function CollectionCard({
         })}
       </div>
       <div className={`collection-tiles${isExpanded ? " is-hidden" : ""}`}>
-        {sortedVideos.map((video) => {
+        {filteredVideos.map((video) => {
           const status = video.coverageStatus
           const statusLabel = reportConfig.statusLabels[status]
           const videoDetails = {
@@ -1563,14 +1548,16 @@ export function CoverageReportClient({
         jobs?: Array<{ videoId: string; jobId: string }>
         errors?: Array<{ videoId: string; error: string }>
         error?: string
+        details?: {
+          formErrors?: string[]
+          fieldErrors?: Record<string, string[] | undefined>
+        }
+        unresolvedTargetLanguageIds?: string[]
       }
       if (shouldIgnoreRequest()) return
 
       if (!res.ok) {
-        setEnrichFeedback({
-          tone: "error",
-          message: data.error ?? "Failed to create enrichment jobs.",
-        })
+        setEnrichFeedback(buildEnrichRequestErrorFeedback(data))
         return
       }
 

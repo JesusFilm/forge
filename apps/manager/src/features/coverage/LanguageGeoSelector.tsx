@@ -1,8 +1,14 @@
 "use client"
 
-import Image from "next/image"
+import Image, { type StaticImageData } from "next/image"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import React, { useEffect, useMemo, useRef, useState } from "react"
+import regionAfricaImage from "../../../public/region-africa.png"
+import regionAsiaImage from "../../../public/region-asia.png"
+import regionEuropeImage from "../../../public/region-europe.png"
+import regionNorthAmericaImage from "../../../public/region-north-america.png"
+import regionOceaniaImage from "../../../public/region-oceania.png"
+import regionSouthAmericaImage from "../../../public/region-south-america.png"
 import {
   ArrowRight,
   ChevronDown,
@@ -99,48 +105,54 @@ function matchesLanguageQuery(language: GeoLanguage, query: string): boolean {
 
 const REGION_THEMES: Record<
   string,
-  { accent: string; bg: string; border: string; image: string; text: string }
+  {
+    accent: string
+    bg: string
+    border: string
+    image: StaticImageData
+    text: string
+  }
 > = {
   Africa: {
     accent: "#5f9f63",
     bg: "color-mix(in_srgb,#5f9f63_9%,var(--ds-panel))",
     border: "color-mix(in_srgb,#5f9f63_24%,var(--ds-line))",
-    image: "/region-africa.png",
+    image: regionAfricaImage,
     text: "#2f7a35",
   },
   Asia: {
     accent: "#4f7fd3",
     bg: "color-mix(in_srgb,#4f7fd3_8%,var(--ds-panel))",
     border: "color-mix(in_srgb,#4f7fd3_23%,var(--ds-line))",
-    image: "/region-asia.png",
+    image: regionAsiaImage,
     text: "#3267c6",
   },
   Europe: {
     accent: "#7d5bc8",
     bg: "color-mix(in_srgb,#7d5bc8_9%,var(--ds-panel))",
     border: "color-mix(in_srgb,#7d5bc8_24%,var(--ds-line))",
-    image: "/region-europe.png",
+    image: regionEuropeImage,
     text: "#6d48be",
   },
   "North America": {
     accent: "#db8742",
     bg: "color-mix(in_srgb,#db8742_9%,var(--ds-panel))",
     border: "color-mix(in_srgb,#db8742_24%,var(--ds-line))",
-    image: "/region-north-america.png",
+    image: regionNorthAmericaImage,
     text: "#c9671b",
   },
   Oceania: {
     accent: "#3da2aa",
     bg: "color-mix(in_srgb,#3da2aa_9%,var(--ds-panel))",
     border: "color-mix(in_srgb,#3da2aa_24%,var(--ds-line))",
-    image: "/region-oceania.png",
+    image: regionOceaniaImage,
     text: "#13858f",
   },
   "South America": {
     accent: "#c6538d",
     bg: "color-mix(in_srgb,#c6538d_9%,var(--ds-panel))",
     border: "color-mix(in_srgb,#c6538d_24%,var(--ds-line))",
-    image: "/region-south-america.png",
+    image: regionSouthAmericaImage,
     text: "#b12f76",
   },
 }
@@ -971,6 +983,7 @@ export function LanguageGeoSelector({
             src={theme.image}
             alt=""
             fill
+            loading="eager"
             sizes="(max-width: 767px) calc((100vw - 5.5rem) / 2), (max-width: 900px) 18rem, 22vw"
             className="object-cover transition-transform duration-200 group-hover:scale-[1.025]"
           />

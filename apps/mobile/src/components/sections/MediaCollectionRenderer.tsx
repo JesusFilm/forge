@@ -1,62 +1,53 @@
+import { WatchProgressBar } from "../watch/WatchProgressBar"
 import {
   FlatList,
-  Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
 } from "react-native"
 import { Image } from "expo-image"
-import { LinearGradient } from "expo-linear-gradient"
 import { useRouter } from "expo-router"
 
-import {
-  BLACK,
-  hexToRgba,
-  TEXT_ON_OVERLAY,
-  TEXT_SECONDARY,
-} from "../../lib/color"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { TEXT_ON_OVERLAY } from "../../lib/color"
+import { resolveMediaCollectionThumbnailOrientation } from "../../lib/mediaCollectionThumbnailOrientation"
+import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import {
   card,
   carousel,
-  feedback,
   layout,
   text,
   CARD_GAP,
   HORIZONTAL_PADDING,
 } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
-import { pickThumbnailUrl } from "../../lib/types"
-import type { VideoRef } from "../../lib/types"
+import type { AdminBlock } from "../../lib/queries"
+import { useExperienceContext } from "../../contexts/ExperienceProvider"
+import { PressableCard } from "../ui/PressableCard"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type MediaItem = {
-  id: string
+  videoId?: string | null
   titleOverride?: string | null
   subtitleOverride?: string | null
   labelOverride?: string | null
   collectionSize?: number | null
   imageUrl?: string | null
   linkToSectionKey?: string | null
-  video?: VideoRef | null
 }
 
 export interface MediaCollectionRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
 
-const CARD_WIDTH_RATIO = 0.37
-const CARD_ASPECT = 3 / 4
-const GRADIENT_COLORS: [string, string] = [
-  hexToRgba(BLACK, 0),
-  hexToRgba(BLACK, 0.85),
-]
+const VERTICAL_CARD_WIDTH_RATIO = 0.37
+const HORIZONTAL_CARD_WIDTH_RATIO = 0.72
+const VERTICAL_CARD_ASPECT = 3 / 4
+const HORIZONTAL_CARD_ASPECT = 16 / 9
 
 // ── Component ───────────────────────────────────────────────────────────────
 
@@ -65,97 +56,103 @@ export function MediaCollectionRenderer({
 }: MediaCollectionRendererProps) {
   const router = useRouter()
   const typography = useTypography()
+  const t = useT("Sections")
+  const epoch = useLocaleEpoch()
   const { width: screenWidth } = useWindowDimensions()
+  const { getVideoThumbnail, getVideoTitle } = useExperienceContext()
 
-  const mcTitle = section.mcTitle as string | null
-  const mcSubtitle = section.mcSubtitle as string | null
-  const categoryLabel = section.categoryLabel as string | null
-  const items = (section.items as MediaItem[] | undefined) ?? []
+  const s = section as Record<string, unknown>
+  const mcTitle = s.title as string | null
+  const mcSubtitle = s.subtitle as string | null
+  const categoryLabel = s.categoryLabel as string | null
+  const items = (s.items as MediaItem[] | undefined) ?? []
+  const thumbnailOrientation = resolveMediaCollectionThumbnailOrientation(
+    s.thumbnailOrientation,
+    "vertical",
+  )
 
-  const cardWidth = Math.round(screenWidth * CARD_WIDTH_RATIO)
+  const cardWidth = Math.round(
+    screenWidth *
+      (thumbnailOrientation === "horizontal"
+        ? HORIZONTAL_CARD_WIDTH_RATIO
+        : VERTICAL_CARD_WIDTH_RATIO),
+  )
+  const cardAspect =
+    thumbnailOrientation === "horizontal"
+      ? HORIZONTAL_CARD_ASPECT
+      : VERTICAL_CARD_ASPECT
 
   if (items.length === 0) return null
 
   const renderItem = ({ item, index }: { item: MediaItem; index: number }) => {
-    const thumbnailUrl = resolveImageUrl(
-      item.imageUrl ?? pickThumbnailUrl(item.video?.images),
-    )
-    const title = item.titleOverride ?? item.video?.title ?? "Untitled"
+    const resolvedThumb = item.videoId ? getVideoThumbnail(item.videoId) : null
+    const thumbnailUrl =
+      resolveThumbnailUrl(item.imageUrl) ?? resolveThumbnailUrl(resolvedThumb)
+    // Match TV: flat items carry no titleOverride, so fall back to the linked
+    // video's localized title before the generic label. `||` so an empty
+    // override (admin clears to "") falls through instead of blanking the card.
+    const resolvedTitle = item.videoId ? getVideoTitle(item.videoId) : null
+    const title =
+      item.titleOverride || resolvedTitle || item.labelOverride || ""
     const label = item.labelOverride ?? categoryLabel
-    const alt = item.video?.imageAlt ?? title
 
     const handlePress = () => {
-      const key = item.linkToSectionKey ?? item.video?.slug
+      const key = item.linkToSectionKey
       if (key) {
         router.push(`/video/${encodeURIComponent(key)}`)
       }
     }
 
     return (
-      <Pressable
-        style={({ pressed }) => [
-          card.surface,
-          { width: cardWidth },
-          pressed && Platform.OS === "ios" && feedback.pressed,
-        ]}
-        android_ripple={{
-          color: "rgba(255, 255, 255, 0.2)",
-          foreground: true,
-        }}
+      <PressableCard
         onPress={handlePress}
-        accessibilityRole="button"
         accessibilityLabel={`${label ?? ""} ${title}`.trim()}
-        accessibilityHint="Opens this video"
-      >
-        <View style={styles.cardInner}>
-          {thumbnailUrl != null && (
+        accessibilityHint={t("opensVideoAriaHint")}
+        style={[card.surface, { width: cardWidth }]}
+        surfaceStyle={[styles.cardInner, { aspectRatio: cardAspect }]}
+        background={
+          thumbnailUrl != null ? (
             <Image
               source={thumbnailUrl}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
-              recyclingKey={`mc-${item.id}-${index}`}
-              accessibilityLabel={alt}
+              recyclingKey={`mc-${index}`}
+              accessibilityLabel={title}
               priority="low"
             />
-          )}
-          <LinearGradient
-            colors={GRADIENT_COLORS}
-            locations={[0.4, 1]}
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-          />
-          {item.collectionSize != null && (
-            <View style={styles.badge}>
-              <Text style={[styles.badgeText, typography.caption]}>
-                {item.collectionSize}
-              </Text>
-            </View>
-          )}
-          <View style={styles.textContent}>
-            {label != null && (
-              <Text
-                style={[styles.label, typography.caption]}
-                numberOfLines={1}
-              >
-                {label}
-              </Text>
-            )}
-            <Text
-              style={[styles.cardTitle, typography.bodySmall]}
-              numberOfLines={2}
-            >
-              {title}
+          ) : undefined
+        }
+        scrim="standard"
+      >
+        {item.collectionSize != null && (
+          <View style={card.badge}>
+            <Text style={[card.badgeText, typography.caption]}>
+              {item.collectionSize}
             </Text>
           </View>
+        )}
+        <View style={styles.textContent}>
+          {label != null && (
+            <Text style={[styles.label, typography.caption]} numberOfLines={1}>
+              {label}
+            </Text>
+          )}
+          <Text
+            style={[styles.cardTitle, typography.bodySmall]}
+            numberOfLines={2}
+          >
+            {title}
+          </Text>
         </View>
-      </Pressable>
+        <WatchProgressBar videoId={item.videoId} />
+      </PressableCard>
     )
   }
 
   return (
     <View style={[layout.sectionOuter, styles.localContainer]}>
       {categoryLabel != null && (
-        <Text style={[styles.categoryLabel, typography.caption]}>
+        <Text style={[text.eyebrow, styles.categoryLabel, typography.caption]}>
           {categoryLabel.toUpperCase()}
         </Text>
       )}
@@ -186,14 +183,15 @@ export function MediaCollectionRenderer({
       <FlatList
         data={items}
         renderItem={renderItem}
-        keyExtractor={(item, index) => `mediaCollection-${item.id}-${index}`}
+        extraData={epoch}
+        keyExtractor={(_item, index) => `mc-${index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={carousel.listContent}
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
-        accessibilityLabel={`${items.length} media items`}
+        accessibilityLabel={t("mediaItemsAriaLabel", { count: items.length })}
       />
     </View>
   )
@@ -206,11 +204,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   categoryLabel: {
-    fontWeight: "600",
-    color: TEXT_SECONDARY,
-    fontFamily: "System",
-    textTransform: "uppercase",
-    letterSpacing: 1,
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 4,
   },
@@ -223,21 +216,6 @@ const styles = StyleSheet.create({
   },
   cardInner: {
     width: "100%",
-    aspectRatio: CARD_ASPECT,
-  },
-  badge: {
-    position: "absolute",
-    top: 8,
-    right: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  badgeText: {
-    color: TEXT_ON_OVERLAY,
-    fontFamily: "System",
-    fontWeight: "600",
   },
   textContent: {
     position: "absolute",

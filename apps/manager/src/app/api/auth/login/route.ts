@@ -1,50 +1,69 @@
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { z } from "zod"
-import { getCmsGateway } from "@/cms/gateway"
-import "@/lib/auth"
 
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-})
+import {
+  MANAGER_OAUTH_RETURN_TO_COOKIE,
+  MANAGER_OAUTH_STATE_COOKIE,
+  MANAGER_OAUTH_VERIFIER_COOKIE,
+  managerOAuthCookieOptions,
+} from "@/lib/manager-session-cookie"
+import {
+  buildManagerAuthorizeUrl,
+  getManagerOAuthConfig,
+} from "@/lib/oauth-client"
+import { createOAuthState } from "@/lib/oauth-state"
 
-export async function POST(request: Request) {
-  let rawBody: unknown
+export async function GET(request: Request) {
+  const config = getManagerOAuthConfig()
+  const url = new URL(request.url)
+  const returnTo = resolveManagerReturnToURL(
+    url.searchParams.get("returnTo") ?? undefined,
+    `${config.managerBaseUrl.replace(/\/$/, "")}/dashboard/coverage`,
+    config.managerBaseUrl,
+  )
+  const prompt = parsePrompt(url.searchParams.get("prompt"))
+  const state = createOAuthState()
+  const response = NextResponse.redirect(
+    buildManagerAuthorizeUrl({
+      config,
+      state: state.state,
+      codeChallenge: state.codeChallenge,
+      prompt,
+    }),
+  )
+  const cookieOptions = managerOAuthCookieOptions()
+
+  response.cookies.set(MANAGER_OAUTH_STATE_COOKIE, state.state, cookieOptions)
+  response.cookies.set(
+    MANAGER_OAUTH_VERIFIER_COOKIE,
+    state.codeVerifier,
+    cookieOptions,
+  )
+  response.cookies.set(MANAGER_OAUTH_RETURN_TO_COOKIE, returnTo, cookieOptions)
+
+  return response
+}
+
+export const POST = GET
+
+function parsePrompt(
+  prompt: string | null,
+): "login" | "select_account" | undefined {
+  return prompt === "login" || prompt === "select_account" ? prompt : undefined
+}
+
+function resolveManagerReturnToURL(
+  returnTo: string | undefined,
+  fallbackURL: string,
+  managerBaseUrl: string,
+): string {
+  if (!returnTo) return fallbackURL
+
   try {
-    rawBody = await request.json()
+    const parsed = new URL(returnTo, fallbackURL)
+    return parsed.origin === new URL(managerBaseUrl).origin
+      ? parsed.toString()
+      : fallbackURL
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+    return fallbackURL
   }
-
-  const parsed = loginSchema.safeParse(rawBody)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Email and password are required" },
-      { status: 400 },
-    )
-  }
-
-  const { email, password } = parsed.data
-  const session = await getCmsGateway().loginManagerUser(email, password)
-  if (!session || session.user.role.name !== "Manager") {
-    return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
-  }
-
-  const cookieStore = await cookies()
-  cookieStore.set("strapi-jwt", session.token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  })
-
-  return NextResponse.json({
-    user: {
-      id: session.user.id,
-      email: session.user.email,
-      role: session.user.role.name,
-    },
-  })
 }

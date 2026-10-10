@@ -4,8 +4,7 @@
 // `apps/manager/vitest.setup.ts`. When `skipValidation` is on, t3-oss/env
 // does NOT apply Zod defaults, so explicit values are required here.
 process.env.CI ??= "1"
-process.env.NEXT_PUBLIC_APP_NAME ??= "forge-admin"
 process.env.DATABASE_URL ??=
   "postgresql://test:test@localhost:5432/forge_admin_test"
-process.env.BETTER_AUTH_SECRET ??=
+process.env.ADMIN_SESSION_SECRET ??=
   "forge-admin-test-secret-min-32-chars-placeholder"

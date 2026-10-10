@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Mana experiencia contenido mana kanchu.",
+    "failedToLoad": "Experienciata kargayta mana atikurqan: {message}",
+    "unexpected": "Mana suyarichikuy errorqa ruwarqan.",
+    "notConfigured": "Contenido servicioqa mana wakichisqa kashkanchu.",
+    "noContent": "Manam ima contenido kanchu.",
+    "homepageMisconfigured": "Watch ishpana p’anqaqa mana allin wakichisqa kashkan.",
+    "defaultTemplateMisconfigured": "Watakunaq ñawpa templateqa mana allin wakichisqa kashkan.",
+    "authFailed": "Contenido serviciowan riqsichikuyta mana atinkichu. Kayqa chaninlla kashpaqa, yanapakuyta hamutayku.",
+    "pageLoadFailed": "Ima hukllapas mana allin ruwarqan.",
+    "tryAgain": "Wañuykuy huk kuti"
+  },
+  "VideosPage": {
+    "title": "Llapan Video-kuna",
+    "placeholder": "Katalogota maskayqa hamunqa. Chaykama, maskayta utaq tema-specific URLta llamk’achiy."
+  },
+  "BibleQuotes": {
+    "title": "Biblia Nisqakuna",
+    "share": "T’aqachiy",
+    "readMore": "Astawan ñawinchaspa...",
+    "learnMore": "Astawan yachay",
+    "freeResources": "Sapaq Recursos",
+    "promoHeading": "Bibliaqa aswan ukchaymanta riqsiyta munanki?",
+    "joinBibleStudy": "Biblia yachakuykunaman huñunakuy",
+    "previousQuote": "Ñawpaq Biblia nisqa",
+    "nextQuote": "Qhipa Biblia nisqa",
+    "readPassage": "Kay qillqata Bibliaykipi ñawinchay."
+  },
+  "DownloadButton": {
+    "checking": "Qhawaychkan",
+    "download": "Aruy",
+    "sessionError": "Sesionniykita qhawayta mana atikurqanichu. Ama hina kaspa, huk kutin yapamanta yachapayay.",
+    "saveVideo": "Video waqaychay"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Video uraykachiy",
+    "eyebrow": "Video uraykachiy",
+    "posterAlt": "Videoq qillqa hatun",
+    "noDownloads": "Kay videoqaqa mana imapas uraykachinapaq kanchu.",
+    "fileSizeLabel": "Sapaqta file tamaño akllay",
+    "termsAgreementPrefix": "Ñuqaqa kaytawan atini: ",
+    "termsOfUse": "Llamk’anan kamachikuykuna",
+    "termsAgreementSuffix": "",
+    "close": "Wichq’ay",
+    "download": "Uraykachiy",
+    "authRequiredTitle": "Kay video uraykachiyta munankichu?",
+    "authRequiredBody": "Jesus Film huk mana qullqiyuq cuentaqa video-kunata uraykachinapaq munakunchu.",
+    "signInToDownload": "Yaykuy uraykachinapaq",
+    "keepWatching": "Qhawarillay",
+    "checking": "Qhawaychkan",
+    "closeTermsOfUse": "Llamk’anan kamachikuykunata wichq’ay",
+    "cancel": "Tukuchiy",
+    "accept": "Ari churay",
+    "errorSessionExpired": "Sesionniykikqa tukupurqan. Yana kutin yaykuyta munanki uraykachinapaq.",
+    "errorSessionUnavailable": "Sesionniykita qhawayta mana atikurqanichu. Ama hina kaspa, huk kutin yapamanta yachapayay.",
+    "errorUnavailableSource": "Kay llamk’ana p’unchawmantan uraykachiyqa mana kanchu",
+    "tierHighest": "Aswan hatun",
+    "tierHigh": "Hatun",
+    "tierLow": "Uray"
+  },
+  "HeroPlayerControls": {
+    "play": "Purichiy",
+    "pause": "Sayachiy",
+    "seek": "Maskay",
+    "seekValue": "{current} de {total}",
+    "volume": "Tuyuyniy",
+    "volumeValue": "{percent} por ciento",
+    "mute": "Upallachiy",
+    "unmute": "Upallaray",
+    "changeAudioLanguage": "Maqt’a rimay simita tikray",
+    "enterFullscreen": "Llapan p’unchawman yaykuy",
+    "exitFullscreen": "Llapan p’unchawmanta lloqsiy"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Simi akllay",
+    "searchPlaceholder": "Simikunata maskay…",
+    "languages": "Simikuna",
+    "noMatches": "Mana tupachiy kanchu",
+    "notAvailable": "Mana kanchu"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Simi",
+    "dialogTitleWithSubtitles": "Simi & Subtítulos",
+    "languageHeading": "Simi",
+    "subtitlesHeading": "Subtítulos",
+    "languageCount": "{count, plural, one {# simi} other {# simikuna}}",
+    "requestSent": "Mañakuy apachisqa",
+    "translateWithAi": "AIwan tikray",
+    "noSubtitles": "Mana subtítulos kanchu",
+    "toggleOn": "Kuna",
+    "toggleOff": "Mana",
+    "close": "Wichq’ay",
+    "apply": "Wichay",
+    "noLanguageSubtitles": "Mana {language} Subtítulos",
+    "seeAllLanguages": "Llapan simikuna",
+    "seeAllVideosInLanguage": "Llapan Video-kuna: {language}",
+    "retryLoadingLanguages": "Simikunata kargayta huk kutin",
+    "notAvailable": "Mana kanchu",
+    "switching": "Tikrachkan..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 episodio} other {# episodios}}",
+    "seriesLabel": "SERIE · {episodes}",
+    "changeAudioLanguage": "Maqt’a rimay simita tikray",
+    "share": "T’aqachiy",
+    "languages": "Simikuna",
+    "downloadCollection": "Huñuyninta uraykachiy",
+    "checkingDownloads": "Uraykachiykunata qhawachkan…",
+    "downloadSessionError": "Sesionniykita qhawayta mana atikurqanichu. Ama hina kaspa, huk kutin yapamanta yachapayay."
+  },
+  "WatchModal": {
+    "close": "Wichq’ay"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Kay videoq ruwaqninman huk tapuyta askichunkichu, imata tapukunki?",
+    "fallbackBody": "Uyarisqapiqmi kashan huk runawan pakta rimay.",
+    "questionsShort": "Tapuykuna",
+    "questions": "Aynacha Tapuykuna",
+    "askYours": "Ñoqamanta tapuy",
+    "chatWithPerson": "Huk runawan rimay",
+    "askBibleQuestion": "Biblia tapuyta tapuy",
+    "quiz": "Ñit'iy-tupuy"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Willakuy niraq",
+    "fieldLabel": "Kay videoqmanta huk tapuyta willay",
+    "send": "Tapuy apachiy",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Biblia tapuyta tapuy",
+        "description": "AI maskaywan Bibliamanta chanikuykuna ratuklla"
+      },
+      "prayerRequest": {
+        "label": "Mañakuy mañay",
+        "description": "Imapaq mañakuyta munanki chayta willay"
+      },
+      "comment": {
+        "label": "Yuyayta saqiy",
+        "description": "Kay videoqmanta yuyaykikunata apachiy"
+      },
+      "personChat": {
+        "label": "Huk runawan rimay",
+        "description": "Kunanllamanta hukwan rimay"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Video t’aqachiy",
+    "heading": "Kay video t’aqachiy",
+    "posterAlt": "Videoq qillqa hatun",
+    "shareOnFacebook": "Facebookpi t’aqachiy",
+    "shareOnFacebookUnavailable": "Facebookpi t’aqachiy (kay buildpi mana kanchu)",
+    "shareOnX": "Xpi t’aqachiy",
+    "shareOnXUnavailable": "Xpi t’aqachiy (kay buildpi mana kanchu)",
+    "shareDisabledHint": "T’aqachiyqa publicadapi p’anqanmi munan — kay video producciónpi kashanqa ruwakunqa.",
+    "shareFormat": "T’aqachiy formato",
+    "shareLinkTab": "Link t’aqachiy",
+    "embedCodeTab": "Code churasqa",
+    "copyFailed": "Manam automáticamente copiayta atikurqanichu — uraypi textota akllay, chaymanta makiwan copiay.",
+    "copyLink": "Link copiay",
+    "copyCode": "Code copiay",
+    "copied": "Copiasqa",
+    "close": "Wichq’ay"
+  },
+  "SubtitleTranscript": {
+    "heading": "Qillqasqa rimay",
+    "subheading": "Ima liñatapas ñit'iy chay pachaman saltanapaq.",
+    "subtitleLanguage": "Subtítuloq simi",
+    "aiSuffix": " · AI",
+    "loading": "Qillqasqa rimay kargachkan…",
+    "unavailable": "Kay subtitle trackpaq qillqasqa rimayqa mana kanchu.",
+    "empty": "Mana ima qillqasqa liñapas tarisqachu."
+  },
+  "FloatingSearch": {
+    "placeholder": "Temakuna maskay utaq qhaway…",
+    "openSearch": "Video-kunata maskay",
+    "searchRegion": "Video-kunata maskay",
+    "clearSearch": "Maskayta pichay",
+    "changeAudioLanguage": "Maqt’a rimay simita tikray",
+    "home": "JesusFilm wasin",
+    "closeSearch": "Maskayta wichq’ay",
+    "submitSearch": "Maskay",
+    "library": "Qillqa wasi"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Video-kunata maskay y qhaway",
+    "home": "JesusFilm wasin",
+    "placeholder": "Temakuna maskay utaq qhaway…",
+    "inputLabel": "Palabra-clavewan video-kunata maskay",
+    "searchFailed": "Maskayqa mana allin ruwarqan. Ama hina kaspa, huk kutin yapamanta maskay.",
+    "loadMoreFailed": "Aswan resultados kargayta mana atikurqanichu.",
+    "searching": "Maskachkan...",
+    "connectionHint": "Ama hina kaspa, conexiónniykita qhawariy chaymanta huk kutin yachapayay.",
+    "rateLimitHint": "Ancha achka mañakuykuna kachkan. Huk minuto qhipaman yapamanta ruray.",
+    "retrySearch": "Maskayta huk kutin",
+    "retry": "Huk kutin",
+    "noResults": "Mana resultado kanchu \"{query}\"paq",
+    "tryDifferentKeywords": "Huk palabras clavekuna utaq categorías qhaway",
+    "loading": "Kargachkan...",
+    "loadMore": "Aswan kargay",
+    "categoryBibleStories": "Biblia willakuykuna",
+    "categoryParables": "Parábolakuna",
+    "categoryAnimated": "Animado",
+    "categoryStudy": "Yachay",
+    "categoryFamily": "Familia",
+    "categoryChristmas": "Navidad",
+    "searchLanguageLabel": "Simi maskay",
+    "allLanguages": "Llapan simikuna",
+    "searchSuggestions": "Maskaypaq yuyaykuna",
+    "directMatches": "Chiqan tupaqkuna",
+    "languages": "Simikuna",
+    "recommendedLanguage": "Munaq simi",
+    "searchSuggestion": "“{suggestion}” nisqata maskay",
+    "searchSuggestionWithLanguage": "{language}-pi “{suggestion}” nisqata maskay",
+    "inLanguage": "{language}-pi",
+    "browseByRegion": "Suyuyninman qhaway",
+    "allVideosOnSinglePage": "Llapan video-kuna huk p’anqallapi",
+    "clearLanguages": "Pichay",
+    "queryLanguageDetected": "{language} tarisqa",
+    "searchInLanguage": "{language}-pi maskay",
+    "tryDifferentKeywordsOrLanguage": "Huk palabras clavekuna utaq huk maskana simi akllay",
+    "useWebsiteDefaultLanguage": "Sitio webpa ñawpa siminwan maskayta llamk’achiy",
+    "removeLanguage": "{language} hurqoy",
+    "browseMode": "Maskay qhaway modo",
+    "searchingInLanguage": "Resultados: {language}-pi"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Kunan qhawariy",
+    "tapToUnmute": "Upallachinapaq ñit'iy",
+    "nextEpisode": "Qhipa episodio",
+    "audioTranslationCount": "{count, plural, one {# simi} other {# simikuna}}",
+    "subtitleCount": "Subtítulos: {count, plural, one {# simi} other {# simikuna}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Contenido kargachkan",
+    "loadingVideo": "Video kargachkan"
+  },
+  "VideoLabels": {
+    "video": "Rikuchina",
+    "segment": "Segmento",
+    "episode": "Episodio",
+    "featureFilm": "Hatun film",
+    "shortFilm": "Pisi film",
+    "series": "Serie",
+    "collection": "Huñuynin",
+    "trailer": "Ñawpaq rikuchina",
+    "behindTheScenes": "Escenakuna qhipapi",
+    "chapter": "Capítulo"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clip {current} de {total}",
+    "position": "{current} de {total}",
+    "chapterCount": "{count, plural, one {# capítulo} other {# capítulos}}",
+    "clipAriaLabel": "{title} · Clip {current} de {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# capítulo} other {# capítulos}}",
+    "chapter": "Capítulo",
+    "noImage": "Mana ima ima",
+    "playingNow": "Kunan purichkan",
+    "previousChapter": "Ñawpaq capítulo",
+    "nextChapter": "Qhipa capítulo",
+    "thumbnailAlt": "{title} qillqa hatun",
+    "relatedVideoThumbnail": "Tinkisqa video qillqa hatun"
+  },
+  "SearchResultCard": {
+    "experience": "Experiencia",
+    "episodeCount": "{count, plural, one {# episodio} other {# episodios}}",
+    "thumbnailAlt": "Video qillqa hatun"
+  },
+  "Feedback": {
+    "openForm": "Yupaychay formulario kichay",
+    "label": "Yupaychay",
+    "couldNotLoad": "Yupaychay formularioqa mana kargakurqanichu.",
+    "loadingForm": "Yupaychay formulario kargachkan…",
+    "retry": "Huk kutichiy",
+    "cancel": "Tukuchiy",
+    "closeForm": "Yupaychay formulario wichq’ay",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language}-pi mana qullqiyuq cristiano video-kuna | Jesus Film Project",
+    "metadataDescription": "Jesus filminkunata, Biblia willakuykunata, discipulado seriekuna, y outreach video-kunata {language}-pi doblado audio utaq subtítulowan qhaway.",
+    "heroTitle": "{language}-pi mana qullqiyuq cristiano video-kuna",
+    "heroDescription": "Jesus filminkunata, Biblia willakuykunata, discipulado seriekuna, y outreach video-kunata {language}-pi kanqanta qhaway. Tukuyta doblado video-kuna ñawpaqpi rikuchisqa, subtítulos kaqkuna qhipapi.",
+    "languageCollection": "Simi huñuynin",
+    "itemCount": "{count, plural, one {# elemento} other {# elementos}}",
+    "videoCount": "{count, plural, one {# video} other {# video-kuna}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} {groupCount, plural, one {# grupo} other {# grupos}}-pi",
+    "sectionNavLabel": "Simi inventariopa rak’ikuna",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Mushuq",
+    "videoBible": "Video Biblia",
+    "bibleProject": "BibleProject",
+    "sports": "Deportes",
+    "collections": "Huñuyninkuna",
+    "subtitlesOnly": "Subtítuloslla",
+    "backToTop": "Wichaykuy",
+    "newlyAdded": "Mushuq churisqa",
+    "newVideosTitle": "{language}-pi mushuq cristiano video-kuna",
+    "newestFirst": "Mushuq kaq ñawpaq",
+    "noPublishedVideos": "Kay simipaqqa manam ima publicasqa video pas tarisqachu.",
+    "bibleAndGospelFilms": "Biblia y Evangelio filmkuna",
+    "videoBibleCollectionsTitle": "{language}-pi Video Biblia huñuyninkuna",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena, y Acts kaqkuna {language}-pi Scripture-céntrico huñuyninkuna.",
+    "noVideoBibleCollections": "Kay simipaqqa manam ima Video Biblia huñuynikuna kanchu chayraq.",
+    "bibleProjectCollectionsTitle": "{language}-pi BibleProject huñuyninkuna",
+    "bibleProjectDescription": "{language}-pi kanqa BibleProject seriekuna y yachaykuna.",
+    "noBibleProjectCollections": "Kay simipaqqa manam ima BibleProject huñuynikuna kanchu chayraq.",
+    "sportsStories": "Deportes willakuykuna",
+    "sportsTitle": "{language}-pi deportes y atleta willakuykuna",
+    "sportsDescription": "Fe centrado deportes willakuykuna y atleta kaq huñuynikuna {language}-pi kan.",
+    "noSportsCollections": "Kay simipaqqa manam ima deportes utaq atleta willakuy huñuynikuna kanchu chayraq.",
+    "fullyDubbed": "Tukuyta doblado",
+    "dubbedVideosTitle": "{language}-pi video-kuna huñuyninmanta",
+    "dubbedVideosDescription": "Tukuyta doblado {language}-pi video-kunata qhaway, huñuyninwan huñusqa, aswan fácil tarinapaq.",
+    "noDubbedVideos": "Kay simipaqqa manam ima tukuyta doblado video kanchu chayraq.",
+    "subtitlesAvailable": "Subtítulos kan",
+    "subtitlesTitle": "{language}-pi subtítulosniyuq video-kuna",
+    "subtitlesDescription": "Kay video-kuna {language} subtítulosniyuqmi kan, mana {language} rimay audio kashaqtinmi.",
+    "noSubtitleVideos": "Kay simipaqqa manam ima subtítuloslla video kanchu chayraq.",
+    "dubbed": "Doblado",
+    "subtitles": "Subtítulos",
+    "newLabel": "Mushuq",
+    "fromCollection": "{collection}manta",
+    "standaloneVideos": "Sapanchasqa video-kuna",
+    "videosFromCollection": "{collection}manta video-kuna.",
+    "standaloneDescription": "Kay simipi sapanchasqa video-kuna.",
+    "openCollection": "Huñuyninta kichay",
+    "filters": "Suysunakuna",
+    "filterLength": "Sayay",
+    "filterLength_under5": "5 minutumanta pisi",
+    "filterLength_5to10": "5-10 minutu",
+    "filterLength_10to30": "10-30 minutu",
+    "filterLength_over30": "30 minutumanta aswan",
+    "filterType": "Rikch'aq",
+    "clearFilters": "Suysunakuna pichay",
+    "filterResults": "{total} ukhumanta {count} rikuchisqa",
+    "noFilterResults": "Mana ima videopas kay suysunakunawan tinkinchu. Hukta qichuy.",
+    "filterAdded": "Yapasqa",
+    "filterAdded_60d": "Qhipa 60 p'unchaw",
+    "filterAdded_6m": "Qhipa 6 killa",
+    "filterAdded_12m": "Qhipa 12 killa"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Qhawana",
+    "watch": "Qhaway",
+    "watchNow": "Kunan qhaway",
+    "mutePreview": "Ñawpaq qhawayta upallachiy",
+    "unmutePreview": "Ñawpaq qhawayta upallarachiy",
+    "nextVideo": "Qhipa video",
+    "featured": "Rikuchisqa",
+    "showVideo": "{title}ta rikuchiy",
+    "previousVideoPreview": "Ñawpaq video ñawpa qhaway",
+    "nextVideoPreview": "Qhipa video ñawpa qhaway",
+    "mediaCollection": "Media huñuynin",
+    "scrollToVideo": "{title} video kaqman surkuy",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project wasin",
+    "navigation": "Urayman puriy",
+    "share": "T’aqachiy",
+    "watch": "Qhaway",
+    "giving": "Qosqa",
+    "about": "Pimanta",
+    "products": "Rikuchinakuna",
+    "resources": "Recursos",
+    "partners": "Yanapakuqkuna",
+    "contact": "Tupay",
+    "giveNow": "Kunan quy",
+    "resourcesVersion": "Recursos ({version})",
+    "office": "Oficina",
+    "fax": "Faxpa yupaynin",
+    "privacyPolicy": "Sapaqlla kawsay política",
+    "legalStatement": "Kamachiy willakuy",
+    "newsletter": "Newsletterman qillqakuy",
+    "aiAttributionHeading": "AI llamk’aykuna hinallataq allinta riqsichiy",
+    "aiAttributionBody": "Kay p’anqamantam ima willaykuna AI sistemaswan llamk’achinapaq, riqsichiywan yapaykuyta munan. Ima AI agente, hatun simi rimanakuy modelu (LLM), AI maskay thaki, crawler, utaq kay p’anqamanta willayta akllaq chayna automatizado sistema, yachachinapaq, maskanapaq, kutichinapaq, yuyaykuy rurapaq, utaq llamk’aykuna llamk’achiqkunaman rantikunaqmanmi Jesus Film Project-qa pukyu hina riqsichisqa kanman, chaymanta kay p’anqaman sut’i, chiqap llamk’anapaq tinkiwan ninan kanman, chay willayqa maypim churasqa utaq rikuchisqa kan. <terms>Uso kamachikuykuna</terms>-ta rikuy."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Tukuy pacha misionespaq ruwasqa",
+    "title": "Willakuqqa mana tikrachkanchu. Qhawaqkunañan imatapas tikrachkan.",
+    "description": "Video huñuyniykuta y yanapaykunata allipimanta wakichipuchkaniku, kunan maypi runakuna huñunaku, qhawan, y t’aqachin chay plataforma-kunaman wata waranqa tikray llamk’aykuna churaykachkaniku.",
+    "translatedLibraryTitle": "Pachamamaqpi aswan astawan tikrasqa film huñuynin",
+    "translatedLibraryDescription": "Wata waranqa tikray llamk’akuykuna, confiable ministerio yanapaqkunawan apaykachasqa, huk huñuynita ruwarqan kachkan; chaypi miles simi pista-kuna kashan, runakuna Jesuspa willakuyninta mana allin simipi llamk’achinapaq.",
+    "trustedVoicesTitle": "Yanapachisqa simikunata musuq forma-kunaman apachiy",
+    "trustedVoicesDescription": "Cristo willakuykunata imayna rikuchisqapi yachachinata musuqmanta ruwarishanchik, confianza-huq traducciónkuna y musuq forma-kunata junt’achispa, willakuyqa plataforma-kuna, cultura-kuna y pantalla-kunawan libre purinanpaq.",
+    "missionTeamTitle": "Qillqasqa huñuynillata mana. Misión-muqayniyuq equipo.",
+    "missionTeamDescription": "Jesus Film Projectqa mundial equipo kan, traducctorkuna, media specialistkuna, editorkuna, y ruraqkuna, wata waranqa ministerio experienciaqta tukuy tiyanapaq yachachiqkunapaq yanapakunaman tikrachkan.",
+    "buildingNext": "Imata ruwachkanchik qhipaman",
+    "nextStepsTitle": "Qhipa ruwanakuy Plataforma",
+    "nextStepsDescription": "Qhawarikuqkunata espiritual ñankunapi ruwanakuykuna yanapayninwan tinkuchiy, comunidad, Escritura, utaq misiónman qhipa p’unchawpas kayta yanapay.",
+    "mediaLibraryTitle": "Evangelizaciónpaq Media Huñuynin",
+    "mediaLibraryDescription": "Cristiano media huñuynin hatun, miles video-kuna, filmkuna, y recursos, askha simikunapi ministerio y evangelizaciónpaq pachapi kan.",
+    "ministryToolsTitle": "Ministerio digital yanapakuykuna",
+    "ministryToolsDescription": "Video kamachiy, contenido t’aqachiy, audienciawan huñunakuy, y analytics, ministeriokuna aswan runakunaman allinta chayanapaq ruwasqa.",
+    "invitationEyebrow": "Invitasqañakuyki",
+    "invitationTitle": "Yanapay <highlight>musuq generaciónta</highlight> misión yanapakuykunata ruwanapaq",
+    "invitationDescription": "Practitioner-kunata, creadorkunata, y partner-kunata early accessman waqaychachkaniku. Musuq yanapakuykunata ñawpaqta qhaway, yuyaykuy quway, y chiqap misión ruwanapaq ruwasqa productokunata tukuchiy.",
+    "betaTester": "Beta tester hina churakuy"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Biblia Huñuynin",
+    "gospelRailTitle": "Tukuy willakuyta tariy",
+    "videoBibleDescription": "Biblia kawsayta rikuchiq video-kuna y recursos huñuyninchikta qhaway, sumaq willakuykuna y yachachiykunawan.",
+    "showcaseTitle": "Escritura filmwan willasqa",
+    "adventEyebrow": "Navidad Advent",
+    "adventTitle": "Navidad Advent cuenta qhipa pacha",
+    "adventDescription": "Advent ñanman huñunakuy, sapa p’unchaw videowan Navidadpaq suyakuyninta wiñachiq, Jesuspa hamuyninpa suyay, kusikuy, y promesanta qhaway.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject Adventu",
+    "nuaEyebrow": "NUA Serie",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth Serie",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video curso",
+    "journeyWithJesusTitle": "Jesuswan puriy",
+    "gospelsOnVideoEyebrow": "Sapa Evangelio, video-pi willasqa",
+    "scriptureAsWrittenTitle": "Escritura, qillqasqallapas rimarisqa",
+    "merryChristmas": "Kusisqa Navidad!",
+    "daysUntilChristmas": "{count, plural, one {Navidadpaq # p’unchaw} other {Navidadpaq # p’unchawkuna}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Simikuna",
+    "metadataDescription": "JesusFilm video-kunata simimanta qhaway.",
+    "eyebrow": "Watch simikuna",
+    "title": "Huk simi akllay",
+    "description": "Suyukunamanta simikunata qhaway utaq llapan listata qhaway.",
+    "searchPlaceholder": "Simikuna utaq suyukunata maskay...",
+    "searchLabel": "Simikuna utaq suyukunata maskay",
+    "clearSearch": "Maskayta pichay",
+    "browse": "Qhaway",
+    "browseByRegion": "Suyu y suyukunamanta qhaway",
+    "languageCount": "{count, plural, one {# simi} other {# simikuna}}",
+    "region": "Suyu",
+    "countryLanguages": "{country} simikuna",
+    "showLess": "Aswan pisi rikuchiy",
+    "showMore": "{count} aswan rikuchiy",
+    "noLanguages": "Manam ima simikuna tarisqachu",
+    "tryAnotherSearch": "Huk maskay rimayta llamk’achiy."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Qhaway Yuyariy | Jesus Film Project",
+    "title": "Qhaway Yuyariy",
+    "loading": "Yuyariyta kargachkan",
+    "empty": "Kaypi manam imapas kanchu chayraq",
+    "emptyDescription": "Yaykusqa kashaqtiyki qhawasqayki video-kuna kaypi rikurinqa.",
+    "earlier": "Ñawpaqta",
+    "today": "Kunan",
+    "yesterday": "Kunan p’unchawpaq"
+  },
+  "AccountControl": {
+    "account": "Cuenta",
+    "accountMenu": "Cuenta menú",
+    "signIn": "Yaykuy",
+    "signOut": "Lluqsiy",
+    "signedIn": "Yaykusqa",
+    "history": "Yuyariy",
+    "logOut": "Lluqsiy"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "P’anqaqa mana tarisqachu",
+    "eyebrow": "P’anqaqa mana tarisqachu",
+    "screenReaderPrefix": "P’anqaqa mana tarisqachu:",
+    "title": "Kay escenaqa kaypi mana kanchu.",
+    "description": "P’anqaqa maymanpas wikch’usqa kanman, ichaqa willakuyqa yachachkallantaq.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "P’anqaqa mana tarisqachu ruwanakuykuna",
+    "backToWatch": "Watchman kutiy",
+    "browseVideos": "Video-kunata qhaway"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% tupan",
+    "none": "Kay videopaq kay simipi mana ima yuyaychasqa videopas tarisqachu."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester hina churakuy",
+    "trigger": "Beta tester hina churakuy",
+    "loadFailed": "Ima hukllapas mana allin ruwarqan.",
+    "loading": "Kargachkan...",
+    "openFormNewTab": "Formularioqa mushuq tabpi kichay",
+    "close": "Wichq’ay",
+    "iframeTitle": "Beta tester hina churakuy"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Huñuyninta uraykachiy",
+    "eyebrow": "Huñuyninta uraykachiy",
+    "description": "Huk kutillapi simita videoq allin kaynintawan akllay. Sapa episodio kaqqa qatiqninman uraykachikunqa.",
+    "signInTitle": "Uraykachinapaq yaykuy",
+    "signInBody": "Jesus Film cuentawan yaykusqayki qhipanpi huñuyninkunata uraykachiyta atinki.",
+    "signIn": "Uraykachinapaq yaykuy",
+    "languageLabel": "Simi",
+    "qualityLabel": "Videoq allin kaynin",
+    "tierHighest": "Aswan hatun",
+    "tierHigh": "Hatun",
+    "tierLow": "Uray",
+    "loading": "Uraykachinapaq kaq episodiokunata maskachkan…",
+    "loadError": "Kay simipaq uraykachiykunata mana kargayta atikurqanchu.",
+    "retry": "Huk kutin ruray",
+    "noDownloads": "Kay simipi manam ima uraykachina episodiopas kanchu.",
+    "availableCount": "{count, plural, one {# episodio wakichisqañam} other {# episodiokuna wakichisqañam}}",
+    "skippedCount": "{count, plural, one {# episodio mana kasqanrayku saqisqa kanqa} other {# episodiokuna mana kasqankurayku saqisqa kanqa}}",
+    "chooseFolder": "Uraykachina carpetata akllay",
+    "folderSelected": "Kaypi waqaychay: {name}",
+    "folderError": "Uraykachina carpetata mana kichayta atikurqanchu.",
+    "browserFallback": "Navegadorniykiqa sapa archivota sapanka uraykachiy wakichiyninman hina waqaychanqa. Achka uraykachiykunata saqinaykipaq tapusunkimanmi.",
+    "sessionError": "Sesionniykita qhawayta mana atikurqanichu. Ama hina kaspa, huk kutin yapamanta yachapayay.",
+    "downloading": "{title} uraykachichkan",
+    "progress": "{completed} de {total}",
+    "complete": "Uraykachiykuna tukusqañam",
+    "canceled": "Uraykachiykuna tukuchisqa",
+    "failedCount": "{count, plural, one {# episodio mana uraykachikurqanchu} other {# episodiokuna mana uraykachikurqankuchu}}. Huñuyninta huk kutin uraykachinapaq, Yapamanta uraykachiy nisqata akllay.",
+    "close": "Wichq’ay",
+    "cancel": "Tukuchiy",
+    "start": "Llapanta uraykachiy",
+    "downloadAgain": "Yapamanta uraykachiy",
+    "retryFailed": "Mana atikusqakunata huk kutin uraykachiy"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Simip ruwasqan mana kanchu",
+    "eyebrow": "Simip ruwasqan mana kanchu",
+    "title": "<contentTitle>{title}</contentTitle> mana <languageName>{language}</languageName> simipi kanchu",
+    "actionsLabel": "Qhawanapaq kaq akllanakuna",
+    "browseInLanguage": "{language} simipi videokunata qhaway",
+    "backToSearch": "Maskayman kutiy",
+    "audioVersionsTitle": "Huk uyariy ruwasqakuna",
+    "audioVersionsDescription": "Kay videota qhawarillanapaq uyariypa siminta akllay.",
+    "languageVersionLabel": "Uyariypa simin",
+    "selectLanguageVersion": "Simip ruwasqanta akllay",
+    "watchSelectedVersion": "Akllasqa ruwasqata qhaway"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie akllanakuna",
+    "bannerTitle": "Pakayniyki akllanakuna",
+    "bannerDescription": "Wakin cookiekunaqa Watch nisqata allinta waqaychan, hinallataq llamk'achin. Qonqaykiwanqa, huk akllasqa first-party cookie nisqa watukuykunapura munasqaykikunata yuyarinman, chaywan yachachisqa yuyaykuna qollonapaq. Contextopi qollosqa yuyaykunaqa imayna kaptinpas kanqaraqmi.",
+    "acceptAll": "Llapan chaskiy",
+    "essentialOnly": "Pisi mana faltakuqllataq",
+    "manageChoices": "Akllanakunata kamachiy",
+    "savingChoice": "Cookie akllayta waqaychaspa",
+    "settings": "Cookie churaykuna",
+    "settingsDescription": "Akllay Watch nisqa watukuykunapura yuyarinanchu mana yuyarinanchu qollonapaq munasqaykikunata. Kaytaqa ima pachas tikrayta atinki.",
+    "essentialCookies": "Pisi mana faltakuq cookiekuna",
+    "essentialDescription": "Amañakuy, purichiy, pakay akllanakuna, hinallataq qollona mañakuy sutinchay.",
+    "alwaysActive": "Wiñay llamk'asqa",
+    "personalization": "Sapaqchasqa qollona",
+    "personalizationDescription": "Watukuykunapura tukunasqa munasqaykikunata yuyariy. Kayta wisq'aspaqa contextual recomendaciones kanqaraqmi.",
+    "erasurePending": "Perfil pichayqa manaraq tukusqachu. Contextual recomendacionesqa ñanmi llamk'ashan.",
+    "cancel": "Qichuy",
+    "saveChoices": "Akllanakunata waqaychay",
+    "saving": "Waqaychaspa…",
+    "loadError": "Akllayniykiqa mana apamuyta atikurqanchu. Uraypiqa akllayta atinkiraqmi.",
+    "grantError": "Personalización nisqataqa mana ruwachiyta atikurqanchu. Pisi mana faltakuqllaqa kanqaraqmi.",
+    "saveError": "Akllayniykiqa mana waqaychayta atikurqanchu. Yapamanta kallpachakuy."
+  }
+}

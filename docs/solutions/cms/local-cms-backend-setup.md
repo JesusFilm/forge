@@ -29,7 +29,7 @@ No useful context from the default error output — the `ECONNREFUSED` doesn't s
 
 3. **Ran with `NODE_DEBUG=net`** — confirmed Strapi was trying to connect to `localhost:5432` (PostgreSQL) and failing because no Postgres was running.
 
-4. **Found `.devcontainer/docker-compose.yml`** — the repo provides a Postgres 16 container with credentials `forge/forge/forge` on port 5432.
+4. **Found `.devcontainer/docker-compose.yml`** — the repo provides a Postgres 18 container with credentials `forge/forge/forge` on port 5432.
 
 ## Root Cause
 

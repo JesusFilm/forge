@@ -9,7 +9,7 @@ tags:
   - env
   - admin
 problem_type: security_issue
-component: apps/admin/src/auth/config.ts
+component: apps/auth/src/auth/config.ts
 ---
 
 ## Problem
@@ -80,6 +80,11 @@ For any auth-critical env var in a Next.js app:
 
 ## Related
 
-- `apps/admin/src/auth/config.ts` — the guarded config
+- `apps/auth/src/auth/config.ts` and `apps/auth/src/config/env.ts` — the
+  guarded config. The incident happened in admin's embedded Better Auth
+  config; when auth was extracted into the standalone `apps/auth`, the same
+  two-part pattern moved with it (`betterAuthSecret` build placeholder +
+  `assertProductionAuthSecrets()` runtime guard). Admin no longer holds a
+  Better Auth config.
 - `docs/solutions/auth/spike-auth-header-must-be-env-gated.md` — same
   class of issue (dev convenience → production exploit)

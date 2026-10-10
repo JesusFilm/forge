@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Tejribe mazmuny elýeterli däl.",
+    "failedToLoad": "Tejribäni ýükläp bolmady: {message}",
+    "unexpected": "Garşylanmadyk ýalňyşlyk ýüze çykdy.",
+    "notConfigured": "Mazmun hyzmaty sazlanmady.",
+    "noContent": "Hiç hili mazmun elýeterli däl.",
+    "homepageMisconfigured": "Seretmek başlangyç sahypasy nädogry sazlanan.",
+    "defaultTemplateMisconfigured": "Bellenen seretmek şablony nädogry sazlanan.",
+    "authFailed": "Mazmun hyzmaty bilen tassyklanyp bolmady. Bu dowam etse, goldaw bilen habarlaşyň.",
+    "pageLoadFailed": "Bir ýalňyşlyk boldy.",
+    "tryAgain": "Gaýtadan synanşyň"
+  },
+  "VideosPage": {
+    "title": "Ähli wideolar",
+    "placeholder": "Katalog boýunça gözleg ýakyn wagtda gelýär. Şol wagt gözlegden ýa-da tema boýunça URL-den peýdalanyň."
+  },
+  "BibleQuotes": {
+    "title": "Mukaddes Ýazgy sitatalary",
+    "share": "Paýlaş",
+    "readMore": "Köpräk oka...",
+    "learnMore": "Köpräk bil",
+    "freeResources": "Mugt serişdeler",
+    "promoHeading": "Mukaddes Ýazgyny has çuňňur düşünmek isleýärsiňizmi?",
+    "joinBibleStudy": "Mukaddes Kitap öwrenişimize goşulyň",
+    "previousQuote": "Öňki sitata",
+    "nextQuote": "Soňky sitata",
+    "readPassage": "Bu parçany Mukaddes Kitabyňyzdan okaň."
+  },
+  "DownloadButton": {
+    "checking": "Barlanylýar",
+    "download": "Ýükle",
+    "sessionError": "Sessiýaňyzy barlap bolmady. Gaýtadan synanşyň.",
+    "saveVideo": "Wideony sakla"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Wideony ýükle",
+    "eyebrow": "Wideony ýükle",
+    "posterAlt": "Wideo afişasy",
+    "noDownloads": "Bu wideo üçin ýüklemeler ýok.",
+    "fileSizeLabel": "Faýl ölçegini saýlaň",
+    "termsAgreementPrefix": "Men  ",
+    "termsOfUse": "Ulanyş şertlerine",
+    "termsAgreementSuffix": "",
+    "close": "Ýap",
+    "download": "Ýükle",
+    "authRequiredTitle": "Bu wideony ýüklemek isleýärsiňizmi?",
+    "authRequiredBody": "Wideolary ýüklemek üçin mugt Jesus Film hasaby gerek.",
+    "signInToDownload": "Ýüklemek üçin giriň",
+    "keepWatching": "Seretmegi dowam et",
+    "checking": "Barlanylýar",
+    "closeTermsOfUse": "Ulanyş şertlerini ýap",
+    "cancel": "Ýatyr",
+    "accept": "Kabul et",
+    "errorSessionExpired": "Sessiýaňyz möhleti gutardy. Ýüklemek üçin gaýtadan giriň.",
+    "errorSessionUnavailable": "Sessiýaňyzy barlap bolmady. Gaýtadan synanşyň.",
+    "errorUnavailableSource": "Bu çeşmeden ýüklemek elýeterli däl",
+    "tierHighest": "Iň ýokary",
+    "tierHigh": "Ýokary",
+    "tierLow": "Pes"
+  },
+  "HeroPlayerControls": {
+    "play": "Oýnat",
+    "pause": "Duruz",
+    "seek": "Geç",
+    "seekValue": "{current} / {total}",
+    "volume": "Ses derejesi",
+    "volumeValue": "{percent} göterim",
+    "mute": "Sesi öçür",
+    "unmute": "Sesi aç",
+    "changeAudioLanguage": "Ses dilini üýtget",
+    "enterFullscreen": "Doly ekran gir",
+    "exitFullscreen": "Doly ekran çyk"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Dil saýlaň",
+    "searchPlaceholder": "Dilleri gözläň…",
+    "languages": "Diller",
+    "noMatches": "Gabat gelýän ýok",
+    "notAvailable": "Elýeterli däl"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Dil",
+    "dialogTitleWithSubtitles": "Dil we subtitrler",
+    "languageHeading": "Dil",
+    "subtitlesHeading": "Subtitrlər",
+    "languageCount": "{count, plural, one {# dil} other {# dil}}",
+    "requestSent": "Sorag iberildi",
+    "translateWithAi": "AI bilen terjime et",
+    "noSubtitles": "Subtitrsiz",
+    "toggleOn": "Açyk",
+    "toggleOff": "Öçük",
+    "close": "Ýap",
+    "apply": "Ulan",
+    "noLanguageSubtitles": "{language} subtitrleri ýok",
+    "seeAllLanguages": "Ähli diller",
+    "seeAllVideosInLanguage": "Ähli wideolar: {language}",
+    "retryLoadingLanguages": "Dilleri ýene ýükle",
+    "notAvailable": "Elýeterli däl",
+    "switching": "Üýtgedilýär..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 bölümi} other {# bölümi}}",
+    "seriesLabel": "SERIÝA · {episodes}",
+    "changeAudioLanguage": "Ses dilini üýtget",
+    "share": "Paýlaş",
+    "languages": "Diller",
+    "downloadCollection": "Toplumy ýükle",
+    "checkingDownloads": "Ýüklemeler barlanylýar…",
+    "downloadSessionError": "Sessiýaňyzy barlap bolmady. Gaýtadan synanşyň."
+  },
+  "WatchModal": {
+    "close": "Ýap"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Eger bu wideony döredijä bir sorag berip bilseňiz, ol näme bolardy?",
+    "fallbackBody": "Diňlemäge taýýar biri bilen şahsy gürrüňdeşlik geçiriň.",
+    "questionsShort": "Soraglar",
+    "questions": "Baglanyşykly soraglar",
+    "askYours": "Özüňizi sorap görüň",
+    "chatWithPerson": "Adam bilen söhbetdeş boluň",
+    "askBibleQuestion": "Mukaddes Kitap boýunça sorag beriň",
+    "quiz": "Kwiz"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Habar görnüşi",
+    "fieldLabel": "Bu wideo barada sorag beriň",
+    "send": "Soragy iber",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Mukaddes Kitap boýunça sorag beriň",
+        "description": "AI gözleg arkaly Mukaddes Kitapdan derrew jogaplar"
+      },
+      "prayerRequest": {
+        "label": "Doga haýyş ediň",
+        "description": "Nämäniň üçin doga edilmegini isleýärsiňiz, paýlaşyň"
+      },
+      "comment": {
+        "label": "Teswir goýuň",
+        "description": "Bu wideo baradaky pikiriňizi iberiň"
+      },
+      "personChat": {
+        "label": "Adam bilen söhbetdeş boluň",
+        "description": "Häzir biri bilen gürrüň ediň"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Wideony paýlaş",
+    "heading": "Bu wideony paýlaşyň",
+    "posterAlt": "Wideo afişasy",
+    "shareOnFacebook": "Facebook-da paýlaş",
+    "shareOnFacebookUnavailable": "Facebook-da paýlaş (bu gurluşda elýeterli däl)",
+    "shareOnX": "X-de paýlaş",
+    "shareOnXUnavailable": "X-de paýlaş (bu gurluşda elýeterli däl)",
+    "shareDisabledHint": "Paýlaşmak üçin ýerleşdirilen sahypa gerek — bu wideo önümçilige çykanda işleýär.",
+    "shareFormat": "Paýlaşyş görnüşi",
+    "shareLinkTab": "Link paýlaş",
+    "embedCodeTab": "Goşma kody",
+    "copyFailed": "Awtomatiki göçürip bolmady — aşakdaky ýazgyny saýlaň we el bilen göçüriň.",
+    "copyLink": "Linki göçür",
+    "copyCode": "Kody göçür",
+    "copied": "Göçürildi",
+    "close": "Ýap"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkript",
+    "subheading": "Şol pursada geçmek üçin islendik setire basyň.",
+    "subtitleLanguage": "Subtitr dili",
+    "aiSuffix": " · AI",
+    "loading": "Transkript ýüklenýär…",
+    "unavailable": "Bu subtitr ýolunda transkript elýeterli däl.",
+    "empty": "Hiç hili transkript setiri tapylmady."
+  },
+  "FloatingSearch": {
+    "placeholder": "Temalary gözläň ýa-da gözden geçiriň…",
+    "openSearch": "Wideolary gözläň",
+    "searchRegion": "Wideolary gözläň",
+    "clearSearch": "Gözlegi arassala",
+    "changeAudioLanguage": "Ses dilini üýtget",
+    "home": "JesusFilm baş sahypasy",
+    "closeSearch": "Gözlegi ýap",
+    "submitSearch": "Gözle",
+    "library": "Kitaphana"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Wideolary gözläň we gözden geçiriň",
+    "home": "JesusFilm baş sahypasy",
+    "placeholder": "Temalary gözläň ýa-da gözden geçiriň…",
+    "inputLabel": "Wideolary açar söz boýunça gözläň",
+    "searchFailed": "Gözleg şowsuz boldy. Gaýtadan synanşyň.",
+    "loadMoreFailed": "Has köp netijäni ýükläp bolmady.",
+    "searching": "Gözlenýär...",
+    "connectionHint": "Baglanyşygyňyzy barlaň we gaýtadan synanşyň.",
+    "rateLimitHint": "Örän köp haýyş iberildi. Bir minutdan soň gaýtadan synanyşyň.",
+    "retrySearch": "Gözlegi gaýtala",
+    "retry": "Täzeden synanş",
+    "noResults": "\"{query}\" üçin netije ýok",
+    "tryDifferentKeywords": "Dürli açar sözleri synap görüň ýa-da kategoriýalara göz aýlaň",
+    "loading": "Ýüklenýär...",
+    "loadMore": "Has köp ýükle",
+    "categoryBibleStories": "Mukaddes Kitap hekaýalary",
+    "categoryParables": "Mysallar",
+    "categoryAnimated": "Animasiýaly",
+    "categoryStudy": "Öwreniş",
+    "categoryFamily": "Maşgala",
+    "categoryChristmas": "Roždestwo",
+    "searchLanguageLabel": "Gözleg dili",
+    "allLanguages": "Ähli diller",
+    "searchSuggestions": "Gözleg teklipleri",
+    "directMatches": "Takyk gabat gelýänler",
+    "languages": "Diller",
+    "recommendedLanguage": "Maslahat berilýän dil",
+    "searchSuggestion": "«{suggestion}» boýunça gözle",
+    "searchSuggestionWithLanguage": "«{suggestion}» boýunça {language} dilinde gözle",
+    "inLanguage": "{language} dilinde",
+    "browseByRegion": "Sebit boýunça gözden geçir",
+    "allVideosOnSinglePage": "Ähli wideolar bir sahypada",
+    "clearLanguages": "Arassala",
+    "queryLanguageDetected": "{language} tapyldy",
+    "searchInLanguage": "{language} dilinde gözle",
+    "tryDifferentKeywordsOrLanguage": "Dürli açar sözleri synap görüň ýa-da başga bir gözleg dilini saýlaň",
+    "useWebsiteDefaultLanguage": "Websaýtyň deslapky gözleg dilini ulanyň",
+    "removeLanguage": "{language} aýyr",
+    "browseMode": "Gözden geçiriş tertibi",
+    "searchingInLanguage": "Netijeler {language} dilinde"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Häzir seret",
+    "tapToUnmute": "Ses açmak üçin basyň",
+    "nextEpisode": "Soňky bölüm",
+    "audioTranslationCount": "{count, plural, one {# dil} other {# dil}}",
+    "subtitleCount": "Subtitrlər: {count, plural, one {# dil} other {# dil}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Mazmun ýüklenýär",
+    "loadingVideo": "Wideo ýüklenýär"
+  },
+  "VideoLabels": {
+    "video": "Wideo",
+    "segment": "Bölüm",
+    "episode": "Bölüm",
+    "featureFilm": "Uzyn metražly film",
+    "shortFilm": "Gysga metražly film",
+    "series": "Seriýa",
+    "collection": "Toplum",
+    "trailer": "Tizer",
+    "behindTheScenes": "Sahnanyň arkasynda",
+    "chapter": "Bap"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "{current} / {total} klip",
+    "position": "{current} / {total}",
+    "chapterCount": "{count, plural, one {# bap} other {# bap}}",
+    "clipAriaLabel": "{title} · {current} / {total} klip",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# bap} other {# bap}}",
+    "chapter": "Bap",
+    "noImage": "Surat ýok",
+    "playingNow": "Häzir görkezilýär",
+    "previousChapter": "Öňki bap",
+    "nextChapter": "Soňky bap",
+    "thumbnailAlt": "{title} kiçijik şekili",
+    "relatedVideoThumbnail": "Baglanyşykly wideo kiçijik şekili"
+  },
+  "SearchResultCard": {
+    "experience": "Tejribe",
+    "episodeCount": "{count, plural, one {# bölüm} other {# bölüm}}",
+    "thumbnailAlt": "Wideo kiçijik şekili"
+  },
+  "Feedback": {
+    "openForm": "Seslenme formasyny aç",
+    "label": "Seslenme",
+    "couldNotLoad": "Seslenme formasyny ýükläp bolmady.",
+    "loadingForm": "Seslenme formasy ýüklenýär…",
+    "retry": "Täzeden synanş",
+    "cancel": "Ýatyr",
+    "closeForm": "Seslenme formasyny ýap",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} dilindäki mugt hristian wideolary | Jesus Film Project",
+    "metadataDescription": "{language} dilinde dubly ses ýa-da subtitrler bilen Jesus filmlerini, Mukaddes Kitap hekaýalaryny, şägirt taýýarlyk seriýalaryny we wagyz wideolaryny öwreniň.",
+    "heroTitle": "{language} dilindäki mugt hristian wideolary",
+    "heroDescription": "{language} dilinde bar bolan Jesus filmlerini, Mukaddes Kitap hekaýalaryny, şägirt taýýarlyk seriýalaryny we wagyz wideolaryny öwreniň. Doly dubly edilen wideolar ilki görkezilýär, diňe subtitrli mümkinçilikler aşakda ýerleşýär.",
+    "languageCollection": "Dil toplumy",
+    "itemCount": "{count, plural, one {# zat} other {# zat}}",
+    "videoCount": "{count, plural, one {# wideo} other {# wideo}}",
+    "videosInGroups": "{videoCount, plural, one {# wideo} other {# wideo}} - {groupCount, plural, one {# topar} other {# topar}} içinde",
+    "sectionNavLabel": "Dil katalogy bölümleri",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Täze",
+    "videoBible": "Wideo Injil",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Toplumlar",
+    "subtitlesOnly": "Diňe subtitrler",
+    "backToTop": "Ýokara dolan",
+    "newlyAdded": "Täze goşuldy",
+    "newVideosTitle": "{language} dilindäki täze hristian wideolary",
+    "newestFirst": "Ilki iň täzeleri",
+    "noPublishedVideos": "Bu dil üçin entek neşir edilen wideo tapylmady.",
+    "bibleAndGospelFilms": "Mukaddes Kitap we Hoş Habar filmleri",
+    "videoBibleCollectionsTitle": "{language} Wideo Injil toplumlary",
+    "videoBibleDescription": "{language} dilindäki LUMO, JESUS, Magdalena we Resullaryň Işleri ýaly ýazgy merkezli toplumlar.",
+    "noVideoBibleCollections": "Bu dil üçin entek Wideo Injil toplumlary ýok.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject toplumlary",
+    "bibleProjectDescription": "{language} dilinde bar bolan BibleProject seriýalary we öwrenişleri.",
+    "noBibleProjectCollections": "Bu dil üçin entek BibleProject toplumlary ýok.",
+    "sportsStories": "Sport hekaýalary",
+    "sportsTitle": "{language} sport we sportçy hekaýalary",
+    "sportsDescription": "{language} dilinde bar bolan iman merkezli sport hekaýalary we sportçylara degişli toplumlar.",
+    "noSportsCollections": "Bu dil üçin entek sport ýa-da sportçy hekaýalary boýunça toplum ýok.",
+    "fullyDubbed": "Doly dubly edilen",
+    "dubbedVideosTitle": "Toplum boýunça {language} wideolar",
+    "dubbedVideosDescription": "Toplumlary bilen bile görkezilen doly dubly edilen {language} wideolaryny gözden geçiriň.",
+    "noDubbedVideos": "Bu dil üçin entek doly dubly edilen wideo ýok.",
+    "subtitlesAvailable": "Subtitrler elýeterli",
+    "subtitlesTitle": "Subtitrlýi {language} wideolar",
+    "subtitlesDescription": "Sözleýiş sesli {language} görnüşi entek elýeterli bolmadyk ýagdaýynda, bu wideolarda {language} subtitrler bolýar.",
+    "noSubtitleVideos": "Bu dil üçin entek diňe subtitrli wideo ýok.",
+    "dubbed": "Dubly",
+    "subtitles": "Subtitrlər",
+    "newLabel": "Täze",
+    "fromCollection": "{collection}-den",
+    "standaloneVideos": "Aýratyn wideolar",
+    "videosFromCollection": "{collection}-den wideolar.",
+    "standaloneDescription": "Bu dilde aýratyn wideolar.",
+    "openCollection": "Toplumy aç",
+    "filters": "Süzgüçler",
+    "filterLength": "Dowamlylygy",
+    "filterLength_under5": "5 minutdan az",
+    "filterLength_5to10": "5-10 minut",
+    "filterLength_10to30": "10-30 minut",
+    "filterLength_over30": "30 minutdan köp",
+    "filterType": "Görnüşi",
+    "clearFilters": "Süzgüçleri arassala",
+    "filterResults": "{total} sanydan {count} görkezilýär",
+    "noFilterResults": "Bu süzgüçlere gabat gelýän wideo ýok. Birini aýryp görüň.",
+    "filterAdded": "Goşuldy",
+    "filterAdded_60d": "Soňky 60 gün",
+    "filterAdded_6m": "Soňky 6 aý",
+    "filterAdded_12m": "Soňky 12 aý"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project-de serediň",
+    "watch": "Seret",
+    "watchNow": "Häzir seret",
+    "mutePreview": "Deslapky görkezilişi sesi öçür",
+    "unmutePreview": "Deslapky görkezilişi sesi aç",
+    "nextVideo": "Soňky wideo",
+    "featured": "Aýratyn",
+    "showVideo": "{title} görkez",
+    "previousVideoPreview": "Öňki wideo deslapky görkezilişi",
+    "nextVideoPreview": "Soňky wideo deslapky görkezilişi",
+    "mediaCollection": "Media ýygyndysy",
+    "scrollToVideo": "{title} wideosyna geçiň",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project baş sahypasy",
+    "navigation": "Aşaky navigasiýa",
+    "share": "Paýlaş",
+    "watch": "Seret",
+    "giving": "Berme",
+    "about": "Hakynda",
+    "products": "Önümler",
+    "resources": "Serişdeler",
+    "partners": "Hyzmatdaşlar",
+    "contact": "Habarlaşmak",
+    "giveNow": "Häzir beriň",
+    "resourcesVersion": "Serişdeler ({version})",
+    "office": "Ofis",
+    "fax": "Faks",
+    "privacyPolicy": "Hususylyk syýasaty",
+    "legalStatement": "Hukuk beýany",
+    "newsletter": "Biziň habar býulletenimize ýazylyň",
+    "aiAttributionHeading": "Ýasalma intellektiň ulanylyşy we degişli görkezme",
+    "aiAttributionBody": "Bu sahypadaky maglumatlaryň emeli intellekt ulgamları tarapyndan ulanylmagy degişli görkezme bilen şertlendirilýär. Bu sahypadaky maglumatlary okuw, gözleg, jogap döretmek ýa-da ulanyjylara ýa-da müşderilere hödürlenýän hyzmatlar üçin çykaryp alýan ýa-da ulanýan islendik AI agenti, uly dil modeli (LLM), AI gözleg motory, krowler ýa-da degişli awtomatlaşdyrylan ulgam Jesus Film Project-i çeşme hökmünde görkezmeli we şol maglumat ulanylanda ýa-da görkezilende bu sahypa gönüden-göni açyk baglanyşygy goşmaly. Biziň <terms>Ulanyş şertlerimizi</terms> görüň."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Dünýä derejesindäki missiýalar üçin döredildi",
+    "title": "Habar üýtgemeýär. Ony adamlaryň görmek usuly üýtgeýär.",
+    "description": "Biz wideotekamyz we gurallarymyzy düýbünden täzeleýäris, onlarça ýyllap edilen terjime işini adamlaryň eýýäm jemlenýän, görýän we paýlaşýan platformalaryna ýetirýäris.",
+    "translatedLibraryTitle": "Dünýäde iň köp terjime edilen film kitaphanasy",
+    "translatedLibraryDescription": "Ygtybarly hyzmatdaşlaryň getiren onlarça ýyllyk terjime işi müňlerçe dil ýazgylary bolan kitaphanany döretdi, şeýlelikde adamlar Isa baradaky gürrüňi özlerine iň ýakyn dillerde eşidip bilerler.",
+    "trustedVoicesTitle": "Ygtybarly sesleri täze görnüşlere geçirmek",
+    "trustedVoicesDescription": "Biz Hoş Habaryň gürrüňini wizual görnüşde bermegiň usulyny täzeden gurýarys, ygtybarly terjimeleri häzirki zaman görnüşleri bilen utgaşdyryp, habaryň platformalar, medeniýetler we ekranlar boýunça erkin hereket etmegine mümkinçilik berýäris.",
+    "missionTeamTitle": "Diňe kitaphana däl. Missiýa ugrukdyrylan topar.",
+    "missionTeamDescription": "Jesus Film Project dünýä boýunça terjimeçileriň, mediýa hünärmenleriniň, redaktorlaryň we döredijileriň topary bolup, onlarça ýyllyk hyzmat tejribesini ähli ýerdäki şägirt ýetişdirijiler üçin gurallara öwürýär.",
+    "buildingNext": "Soňky döwürde näme döredýäris",
+    "nextStepsTitle": "Soňky ädimler platformasy",
+    "nextStepsDescription": "Tomlara ruhy ýolunda görnetin mümkinçilikler bilen baglanyşdyryp, jemgyýete, Ýazga ýa-da missiýa tarap indiki ädimi ädmäge kömek edýär.",
+    "mediaLibraryTitle": "Hoş Habar üçin mediýa kitaphanasy",
+    "mediaLibraryDescription": "Dünýä boýunça hyzmat we wagyz üçin birnäçe dilde bar bolan müňlerçe wideo, film we serişdäni öz içine alýan giň hristian mediýa kitaphanasy.",
+    "ministryToolsTitle": "Hyzmatlar üçin sanly gurallar",
+    "ministryToolsDescription": "Wideony dolandyrmak, mazmun paýlamak, tomaşaçy bilen gatnaşyk we analitika hyzmatlaryň has köp adama netijeli ýetmegine kömek etmek üçin döredildi.",
+    "invitationEyebrow": "Sizi çagyrýarys",
+    "invitationTitle": "Missiýa gurallarynyň <highlight>täze neslini</highlight> döretmäge kömek ediň",
+    "invitationDescription": "Biz tejribeli işgärleri, döredijileri we hyzmatdaşlary irki girişe çagyrýarys. Täze gurallary ilkinji bolup synap görüň, seslenme beriň we hakyky missiýa işi üçin döredilen önümleri şekillendirmäge kömek ediň.",
+    "betaTester": "Beta synagçy bol"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Wideo Injil toplumy",
+    "gospelRailTitle": "Doly gürrüňi açyň",
+    "videoBibleDescription": "Mukaddes Kitaby janlandyrýan, gyzykly hekaýalar we öwretmeler arkaly düzülen wideo we serişdeler toplumymyzy gözden geçiriň.",
+    "showcaseTitle": "Mukaddes Yazgy film arkaly gürrüň edilýär",
+    "adventEyebrow": "Roždestwo adventi",
+    "adventTitle": "Roždestwo Advent sany",
+    "adventDescription": "Advent ýolumyzyň dowamynda, Isa-nyň gelmegine degişli umydy, şatlygyny we wadany öwrenýän gündelik wideo bilen Roždestwo bolan garaşmany artdyryň.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Adventi",
+    "nuaEyebrow": "NUA seriýasy",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth seriýasy",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Wideo kurs",
+    "journeyWithJesusTitle": "Isa bilen ýol ýöriň",
+    "gospelsOnVideoEyebrow": "Her Hoş Habar, wideoda gürrüň berilýär",
+    "scriptureAsWrittenTitle": "Mukaddes ýazgy, ýazylan görnüşi boýunça aýdylyşy ýaly",
+    "merryChristmas": "Roždestwo baýramyňyz gutly bolsun!",
+    "daysUntilChristmas": "{count, plural, one {Roždestwo baýramyna # gün galdy} other {Roždestwo baýramyna # gün galdy}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Diller",
+    "metadataDescription": "JesusFilm wideolaryny dile görä gözden geçiriň.",
+    "eyebrow": "Seretmek dilleri",
+    "title": "Dil saýlaň",
+    "description": "Sebit boýunça dilleri öwreniň ýa-da doly sanawy gözden geçiriň.",
+    "searchPlaceholder": "Dilleri ýa-da ýurtlary gözläň...",
+    "searchLabel": "Dilleri ýa-da ýurtlary gözläň",
+    "clearSearch": "Gözlegi arassala",
+    "browse": "Gözden geçir",
+    "browseByRegion": "Sebit we ýurt boýunça gözden geçir",
+    "languageCount": "{count, plural, one {# dil} other {# dil}}",
+    "region": "Sebit",
+    "countryLanguages": "{country} dilleri",
+    "showLess": "Az görkez",
+    "showMore": "Ýene {count} görkez",
+    "noLanguages": "Dil tapylmady",
+    "tryAnotherSearch": "Başga gözleg sözüni synap görüň."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Seretmek taryhy | Jesus Film Project",
+    "title": "Seretmek taryhy",
+    "loading": "Taryh ýüklenýär",
+    "empty": "Bu ýerde entek hiç zat ýok",
+    "emptyDescription": "Giriş eden wagtyňyz sereden wideolaryňyz bu ýerde görkeziler.",
+    "earlier": "Öňräk",
+    "today": "Şu gün",
+    "yesterday": "Düýn"
+  },
+  "AccountControl": {
+    "account": "Hasap",
+    "accountMenu": "Hasap menýusy",
+    "signIn": "Giriş et",
+    "signOut": "Çyk",
+    "signedIn": "Giriş edilen",
+    "history": "Taryh",
+    "logOut": "Çykmak"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Sahypa tapylmady",
+    "eyebrow": "Sahypa tapylmady",
+    "screenReaderPrefix": "Sahypa tapylmady:",
+    "title": "Bu sahna bu ýerde ýok.",
+    "description": "Sahypa göçürilen bolmagy mümkin, ýöne gürrüň dowam edýär.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Sahypa tapylmady hereketleri",
+    "backToWatch": "Seretmäge dolan",
+    "browseVideos": "Wideolara göz aýla"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% gabat gelýär",
+    "none": "Bu wideo üçin şu dilde hiç hili maslahat tapylmady."
+  },
+  "BetaTesterModal": {
+    "title": "Beta synagçy bol",
+    "trigger": "Beta synagçy bol",
+    "loadFailed": "Bir ýalňyşlyk boldy.",
+    "loading": "Ýüklenýär...",
+    "openFormNewTab": "Formany täze goýma aç",
+    "close": "Ýap",
+    "iframeTitle": "Beta synagçy bol"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Toplumy ýükle",
+    "eyebrow": "Toplumy ýükle",
+    "description": "Dili we wideo hilini bir gezek saýlaň. Elýeterli bölümleriň her biri yzygiderli ýüklener.",
+    "signInTitle": "Ýüklemek üçin giriň",
+    "signInBody": "Toplumlary ýüklemek üçin Jesus Film hasabyňyza giriň.",
+    "signIn": "Ýüklemek üçin giriň",
+    "languageLabel": "Dil",
+    "qualityLabel": "Wideo hili",
+    "tierHighest": "Iň ýokary",
+    "tierHigh": "Ýokary",
+    "tierLow": "Pes",
+    "loading": "Elýeterli bölümler gözlenýär…",
+    "loadError": "Bu dil üçin ýüklemeleri ýükläp bolmady.",
+    "retry": "Täzeden synanş",
+    "noDownloads": "Bu dilde ýükläp bolýan bölüm ýok.",
+    "availableCount": "{count, plural, one {# bölüm taýýar} other {# bölüm taýýar}}",
+    "skippedCount": "{count, plural, one {# bölüm elýeterli däldigi üçin geçiler} other {# bölüm elýeterli däldigi üçin geçiler}}",
+    "chooseFolder": "Ýüklemeler üçin bukja saýlaň",
+    "folderSelected": "{name} bukjasyna sakla",
+    "folderError": "Ýükleme bukjasyny açyp bolmady.",
+    "browserFallback": "Brauzeriňiz her faýly adaty ýükleme sazlamalaryna görä saklar. Ol birnäçe faýly ýüklemäge rugsat bermegiňizi sorap biler.",
+    "sessionError": "Sessiýaňyzy barlap bolmady. Gaýtadan synanşyň.",
+    "downloading": "{title} ýüklenýär",
+    "progress": "{completed} / {total}",
+    "complete": "Ýüklemeler tamamlandy",
+    "canceled": "Ýüklemeler ýatyryldy",
+    "failedCount": "{count, plural, one {# bölümi ýükläp bolmady} other {# bölümi ýükläp bolmady}}. Toplumy gaýtadan synamak üçin Ýükle düwmesini ýene saýlaň.",
+    "close": "Ýap",
+    "cancel": "Ýatyr",
+    "start": "Ählisini ýükle",
+    "downloadAgain": "Gaýtadan ýükle",
+    "retryFailed": "Şowsuz bolanlary gaýtadan synanş"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Dil görnüşi elýeterli däl",
+    "eyebrow": "Dil görnüşi elýeterli däl",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> dilinde elýeterli däl",
+    "actionsLabel": "Elýeterli tomaşa görnüşleri",
+    "browseInLanguage": "{language} dilindäki wideolara serediň",
+    "backToSearch": "Gözlege dolan",
+    "audioVersionsTitle": "Beýleki ses görnüşleri",
+    "audioVersionsDescription": "Bu wideony görmegi dowam etdirmek üçin ses dilini saýlaň.",
+    "languageVersionLabel": "Ses dili",
+    "selectLanguageVersion": "Dil görnüşini saýlaň",
+    "watchSelectedVersion": "Saýlanan görnüşi görüň"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie saýlawlary",
+    "bannerTitle": "Şahsy durmuşyňyz boýunça saýlawlar",
+    "bannerDescription": "Zerur cookie-ler Watch-y howpsuz we işleýän ýagdaýda saklaýar. Rugsadyňyz bilen, islege bagly birinji tarap cookie-si teklipleri şahsylaşdyrmak üçin saparlaryň arasynda gyzyklanmalary ýatda saklap biler. Muňa garamazdan, ýagdaýlaýyn teklipler elýeterli bolmagynda galýar.",
+    "acceptAll": "Hemmesini kabul et",
+    "essentialOnly": "Diňe zerur",
+    "manageChoices": "Saýlawlary dolandyr",
+    "savingChoice": "Cookie saýlawy saklanýar",
+    "settings": "Cookie sazlamalary",
+    "settingsDescription": "Watch-yň saparlaryň arasynda teklipler boýunça gyzyklanmalary ýatda saklap biljekdigini saýlaň. Muny islendik wagt üýtgedip bilersiňiz.",
+    "essentialCookies": "Zerur cookie-ler",
+    "essentialDescription": "Howpsuzlyk, görkezmek, şahsy durmuş saýlawlary we teklip soraglarynyň degişli bolşy.",
+    "alwaysActive": "Hemişe işjeň",
+    "personalization": "Şahsylaşdyrma",
+    "personalizationDescription": "Saparlaryň arasynda çäklendirilen gyzyklanmalary ýatda sakla. Muny öçürseňiz, ýagdaýlaýyn teklipler elýeterli bolmagynda galýar.",
+    "erasurePending": "Profiliňiziň pozulmagy garaşylýar. Ýagdaýlaýyn teklipler eýýäm işjeň.",
+    "cancel": "Ýatyr",
+    "saveChoices": "Saýlawlary ýatda sakla",
+    "saving": "Saklanýar…",
+    "loadError": "Saýlawyňyz ýükläp bolmady. Şeýle-de bolsa, aşakda saýlap bilersiňiz.",
+    "grantError": "Şahsylaşdyrmany işjeňleşdirip bolmady. Diňe zerur görnüşi elýeterli bolmagynda galýar.",
+    "saveError": "Saýlawyňyzy ýatda saklap bolmady. Täzeden synanyşyň."
+  }
+}

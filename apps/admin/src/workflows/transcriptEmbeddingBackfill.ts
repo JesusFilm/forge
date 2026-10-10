@@ -1,5 +1,6 @@
-// Transcript embedding backfill — durable useworkflow job that
-// indexes manager's embeddings.json artifacts into admin's Postgres.
+// Transcript embedding backfill — durable useworkflow job that launches
+// Mastra from subtitle timed text first, then manager transcript.json
+// fallback artifacts.
 //
 // Flow (Stage 2 — feat-116):
 //   1. stepLoadMapping              — load coreId → cms video id snapshot
@@ -11,22 +12,21 @@
 //                                     dub languages
 //   3. groupTargetsByVideoEdition   — flat targets → groups keyed by
 //                                     (videoId, videoEditionId). The
-//                                     embeddings artifact is shared
-//                                     across every language in a group,
-//                                     so fetching it once per group
-//                                     collapses S3 reads from N×L to N.
-//   4. processGroup                 — per-group worker:
-//        4a. Load embeddings artifact ONCE for the group.
-//        4b. For each language in the group, call
-//            stepIndexEditionTranscript with `loadedArtifact` so the
-//            service skips the S3 read.
-//   5. stepReport                   — aggregate per-target outcomes.
+//                                     transcript source gaps still aggregate
+//                                     at the video-edition boundary.
+//   4. stepProcessTranscriptEmbeddingGroups — target-bounded durable batches:
+//        4a. Load transcript source artifact through a step-local cache.
+//        4b. For each language in the group, call Mastra with Admin
+//            target identifiers so Mastra embeds and Admin ingest stores.
+//   5. stepConfirmTranscriptEmbeddingIngests — short polling steps for Mastra
+//                                     runs that outlive the launch request.
+//   6. stepReport                   — aggregate per-target outcomes.
 //
-// R2 divergence from R1: NO provider call (vector reuse from
-// manager's `embeddings.json`). Stage 2 only adds the S3 cache for R2.
-// See docs/solutions/platform/admin-transcript-embeddings-vector-reuse-pattern.md.
+// feat-132 boundary: Admin never imports manager-generated transcript
+// vectors. Admin reads transcript source only; Mastra owns chunking and
+// provider calls; Admin ingest owns vector storage.
 //
-// Per-target errors are caught inside the per-language step so one bad
+// Per-target errors are caught inside the per-language helper so one bad
 // artifact doesn't halt the backfill. A group-level artifact-load
 // failure cascades to per-language outcomes for every language in the
 // group with the right classification (artifact_missing → skipped;
@@ -35,54 +35,83 @@
 // (transcriptId, chunkIndex) for chunks), so the workflow is safe to
 // re-run.
 //
-// pLimit boundary moved up one level relative to Stage 1: the cap now
-// constrains concurrent (video, edition) GROUPS, not concurrent flat
-// targets. Inside a group, per-language work runs sequentially so the
-// loaded artifact stays scoped to one stack frame.
+// Concurrency boundary moved up one level relative to Stage 1, then
+// feat-192's production hotfix added target-bounded step batches so the full
+// corpus is not held inside one Graphile task.
 //
 // Language model: data-derived at enumeration time, not a hardcoded
 // list. Earlier prototype iterations hardcoded a `DEFAULT_LOCALES =
 // ['en', 'es', 'fr']` constant + an `en` fallback; both dropped once
 // the enumeration became data-derived.
 
-import pLimit from "p-limit"
+import { getWorkflowMetadata, sleep } from "workflow"
 import { prisma } from "@/db/client"
-import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import { env } from "@/config/env"
 import {
   loadCoreIdMapping,
   type CoreIdMapping,
 } from "@/services/core-id-mapping.service"
+import { type MastraTranscriptEmbeddingMode } from "@/services/mastra-transcript-embedding-client"
+import type {
+  ResolvedTranscriptEmbeddingSource,
+  TranscriptSourceGap,
+} from "@/services/transcript-source-resolver.service"
 import {
-  ManagerArtifactError,
-  type EmbeddingsResult,
-} from "@/services/manager-artifacts.service"
-import {
-  indexEditionTranscript,
-  type IndexEditionTranscriptResult,
-} from "@/services/transcript-embedding.service"
-// The artifact-load step lives in a separate module on purpose — the
-// useworkflow build plugin treats functions imported into a workflow
-// file as workflow scope, so importing `readEmbeddingsArtifact` here
-// would trip the Node-module reachability check even though the actual
-// call is inside `"use step"`. See `_steps/load-manager-artifact.ts`.
-import { stepLoadEmbeddingsArtifact } from "./_steps/load-manager-artifact"
+  stepConfirmTranscriptEmbeddingIngests,
+  stepFailPendingTranscriptEmbeddingIngests,
+  stepProcessTranscriptEmbeddingGroups,
+  type PendingTranscriptIngestConfirmation,
+} from "./_steps/process-transcript-embedding-group"
 
 /**
- * Default per-group concurrency for the R2 transcript-embedding
+ * Default per-group concurrency for the Mastra transcript-embedding
  * backfill. Stage 2: the unit changed from per-target to per-(video,
- * edition) GROUP. R2 is DB-bound (no provider call); the default is
- * sized below admin's documented `connection_limit=10` Prisma pool to
- * leave headroom for concurrent traffic. Local dev can crank to 20+
- * via the env override.
+ * edition) GROUP. feat-132 makes each target a Mastra launch plus an
+ * Admin ingest callback, so the default stays below admin's documented
+ * `connection_limit=10` Prisma pool while also avoiding a provider-call
+ * burst from local backfills.
  *
- * Memory budget per active language: ~250 KB artifact (vectors are
- * reused in-place from the artifact's `chunks[i].embedding`; R2
- * doesn't allocate a parallel embeddings array). At default
- * concurrency=5 that's ~1.25 MB peak resident; released as soon as
- * the per-language transaction completes.
+ * Memory budget per active group stays small because Admin only keeps
+ * the transcript source artifact in scope before handing chunking and
+ * provider work to Mastra.
  */
 export const DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY = 5
+export const DEFAULT_TRANSCRIPT_EMBEDDING_STEP_TARGET_LIMIT = 50
+export const DEFAULT_TRANSCRIPT_EMBEDDING_STEP_MAX_DURATION_MS = 220_000
+export const DEFAULT_TRANSCRIPT_EMBEDDING_LAUNCH_TIMEOUT_MS = 120_000
+export const DEFAULT_TRANSCRIPT_EMBEDDING_CONFIRMATION_BATCH_LIMIT = 25
+export const TIMED_OUT_LAUNCH_CONFIRM_TIMEOUT_MS = 20 * 60 * 1_000
+export const TIMED_OUT_LAUNCH_CONFIRM_POLL_MS = 5_000
+
+type TranscriptEmbeddingRuntimeConfig = {
+  concurrency: number
+  stepTargetLimit: number
+  stepMaxDurationMs: number
+  launchTimeoutMs: number
+  confirmationBatchLimit: number
+}
+
+function transcriptEmbeddingConcurrency(): number {
+  const value =
+    env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
+    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
+  const concurrency = Number(value)
+
+  return Number.isInteger(concurrency) && concurrency > 0
+    ? concurrency
+    : DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
+}
+
+function transcriptEmbeddingRuntimeConfig(): TranscriptEmbeddingRuntimeConfig {
+  return {
+    concurrency: transcriptEmbeddingConcurrency(),
+    stepTargetLimit: DEFAULT_TRANSCRIPT_EMBEDDING_STEP_TARGET_LIMIT,
+    stepMaxDurationMs: DEFAULT_TRANSCRIPT_EMBEDDING_STEP_MAX_DURATION_MS,
+    launchTimeoutMs: DEFAULT_TRANSCRIPT_EMBEDDING_LAUNCH_TIMEOUT_MS,
+    confirmationBatchLimit:
+      DEFAULT_TRANSCRIPT_EMBEDDING_CONFIRMATION_BATCH_LIMIT,
+  }
+}
 
 export type TranscriptEmbeddingBackfillInput = {
   /** S3 key of the JSON mapping snapshot uploaded via the admin refresh CLI. */
@@ -96,6 +125,8 @@ export type TranscriptEmbeddingBackfillInput = {
    * for the derivation.
    */
   languages?: readonly string[]
+  /** Mastra/Admin ingest generation mode. Defaults to idempotent. */
+  mode?: MastraTranscriptEmbeddingMode
 }
 
 export type BackfillTarget = {
@@ -112,19 +143,46 @@ export type BackfillTarget = {
    * for an edition, the edition simply produces no targets.
    */
   language: string
+  /** Admin language row identity. BCP-47 is not unique enough for source selection. */
+  languageId: string
+  languageSlug: string | null
+  hasSubtitle: boolean
+  hasDub: boolean
+  isPrimaryLanguage: boolean
 }
 
 /**
  * One group per (videoId, videoEditionId). Stage 2 groups flat targets
  * along this axis so the manager-artifacts S3 read happens once and
- * the loaded embeddings artifact is reused across every language in
+ * the loaded transcript source artifact is reused across every language in
  * the group.
  *
- * `targets` order is preserved from enumeration; the indexer fans out
+ * `targets` order is preserved from enumeration; the launcher fans out
  * sequentially across that order inside the group worker.
  */
-export type BackfillGroup = Omit<BackfillTarget, "language"> & {
+export type BackfillGroup = Pick<
+  BackfillTarget,
+  "videoId" | "videoEditionId" | "coreId" | "cmsVideoId"
+> & {
   targets: readonly BackfillTarget[]
+}
+
+export type TranscriptEmbeddingSourceGap = {
+  readonly assetId: number
+  readonly coreId: string
+  readonly videoId: string
+  readonly videoEditionId: string
+  readonly language: string
+  readonly languageId: string
+  readonly languageSlug: string | null
+  readonly reason:
+    | TranscriptSourceGap["reason"]
+    | "artifact_missing"
+    | "dub_without_timed_text"
+  readonly subtitleReason?: TranscriptSourceGap["reason"]
+  readonly subtitleId?: string
+  readonly subtitleFormat?: "vtt" | "srt"
+  readonly sourceKind: "transcript"
 }
 
 export type BackfillOutcome =
@@ -132,6 +190,7 @@ export type BackfillOutcome =
       status: "succeeded"
       target: BackfillTarget
       language: string
+      sourceKind: ResolvedTranscriptEmbeddingSource["sourceKind"]
       chunksIndexed: number
       embeddingsWritten: number
       chunksPruned: number
@@ -142,6 +201,7 @@ export type BackfillOutcome =
       target: BackfillTarget
       language: string
       reason: string
+      sourceGap?: TranscriptEmbeddingSourceGap
       durationMs: number
     }
   | {
@@ -153,9 +213,9 @@ export type BackfillOutcome =
     }
 
 /**
- * One entry per upstream gap surfaced by this run. Mirrors the R1
- * (scene-embedding) shape — see that file for the dedup-by-assetId +
- * sort-ascending rationale. The R2 workflow stamps every entry with
+ * One entry per upstream gap surfaced by this run. The workflow dedupes
+ * by assetId and sorts ascending so operator reports are stable across
+ * retries. The R2 workflow stamps every entry with
  * `kind: "transcript"` so PR2's trigger endpoint dispatches the
  * transcript pipeline (vs scene-analysis). Only
  * `skipped { reason: "artifact_missing" }` outcomes feed this list;
@@ -184,9 +244,10 @@ export type TranscriptEmbeddingBackfillReport = {
   /**
    * Deduped, sorted-ascending list of upstream gaps the operator can
    * feed into PR2's enrichment trigger. Length 0 when every target
-   * had its embeddings artifact present. See `MissingArtifact`.
+   * had its transcript source artifact present. See `MissingArtifact`.
    */
   missingArtifacts: ReadonlyArray<MissingArtifact>
+  sourceGaps: ReadonlyArray<TranscriptEmbeddingSourceGap>
 }
 
 export async function runTranscriptEmbeddingBackfill(
@@ -212,24 +273,30 @@ export async function runTranscriptEmbeddingBackfill(
     ? allTargets.filter((t) => languageFilter.has(t.language))
     : allTargets
 
-  // Group flat targets by (video, edition) so the artifact load
-  // collapses from per-target to per-group.
+  // Group flat targets by (video, edition) first so reporting and source-gap
+  // aggregation keep the same order. The runtime batcher below keeps target
+  // chunks bounded so no single Workflow step owns a whole multilingual
+  // edition.
   const groups = groupTargetsByVideoEdition(targets)
 
-  // Bounded parallelism over GROUPS (Stage 2 reshape). Same shape /
-  // same rule as R1 — see the R1 sibling for the full rationale and
-  // docs/solutions/best-practices/bounded-parallelism-per-target-workflow-pattern-20260505.md
-  // for the canonical HOW. R2's only divergence from R1 stays the same:
-  // no provider call inside the per-language step.
-  const concurrency =
-    env.TRANSCRIPT_EMBEDDING_CONCURRENCY ??
-    DEFAULT_TRANSCRIPT_EMBEDDING_CONCURRENCY
-  const limit = pLimit(concurrency)
+  // Persist runtime knobs before batching so replay keeps the same partitioning
+  // even if Railway env changes during a long run.
+  const runtimeConfig = await stepResolveTranscriptEmbeddingRuntimeConfig()
+
+  // Production useworkflow rejects parallel repeated calls to the same step
+  // function from a groups.map(...) loop with event-log corruption. Keep the
+  // repeated step calls sequential at workflow scope, and keep the parallelism
+  // inside each target-bounded batch step.
+  const groupBatches = batchGroupsByTargetLimit(
+    groups,
+    runtimeConfig.stepTargetLimit,
+  )
 
   // Structured start log so the workflow's effective concurrency is
   // observable from any trigger path. `groupCount` surfaces Stage 2's
   // reshape so an operator inspecting logs can see the artifact-fetch
-  // fan-in.
+  // fan-in. `groupBatchCount` and `stepTargetLimit` surface the Workflow
+  // time-slicing boundary used to keep Graphile tasks below the step ceiling.
   console.log(
     JSON.stringify({
       workflow: "transcript-embedding-backfill",
@@ -237,57 +304,47 @@ export async function runTranscriptEmbeddingBackfill(
       mappingGeneratedAt: mapping.generatedAt,
       totalTargets: targets.length,
       groupCount: groups.length,
-      concurrency,
+      groupBatchCount: groupBatches.length,
+      stepTargetLimit: runtimeConfig.stepTargetLimit,
+      stepMaxDurationMs: runtimeConfig.stepMaxDurationMs,
+      launchTimeoutMs: runtimeConfig.launchTimeoutMs,
+      confirmationBatchLimit: runtimeConfig.confirmationBatchLimit,
+      concurrency: runtimeConfig.concurrency,
       languageFilter:
         input.languages && input.languages.length > 0 ? input.languages : null,
     }),
   )
 
-  // One batch wall-clock baseline; reused for synthetic-failed
-  // outcomes so dashboards built on `outcomes[].durationMs` aren't
-  // polluted with `0`s when the defensive branch fires.
-  const batchStartedAt = Date.now()
+  const outcomes: BackfillOutcome[] = []
+  let pendingConfirmations: PendingTranscriptIngestConfirmation[] = []
+  for (const groupBatch of groupBatches) {
+    let remainingBatch = groupBatch
+    while (remainingBatch.length > 0) {
+      const batchResult = await stepProcessTranscriptEmbeddingGroups(
+        remainingBatch,
+        input.mode ?? "idempotent",
+        runtimeConfig.concurrency,
+        runtimeConfig.stepMaxDurationMs,
+        runtimeConfig.launchTimeoutMs,
+      )
+      outcomes.push(...batchResult.outcomes)
+      pendingConfirmations.push(...batchResult.pendingConfirmations)
 
-  const settled = await Promise.allSettled(
-    groups.map((group) =>
-      limit(() =>
-        // Deliberately do NOT catch here. `processGroup` already
-        // returns typed outcomes for every per-target error it can see
-        // (including a group-level artifact-load failure cascaded to
-        // per-language outcomes); an unexpected throw past that
-        // boundary should propagate as a `rejected` settled result so
-        // the synthetic-failed branch below records it (with real
-        // elapsed time) and the per-target isolation contract is
-        // observable to tests.
-        processGroup(group),
-      ),
-    ),
+      const confirmation = await confirmPendingTranscriptIngestsOnce(
+        pendingConfirmations,
+        runtimeConfig.confirmationBatchLimit,
+      )
+      outcomes.push(...confirmation.outcomes)
+      pendingConfirmations = confirmation.pendingConfirmations
+      remainingBatch = batchResult.unprocessedGroups
+    }
+  }
+  outcomes.push(
+    ...(await waitForPendingTranscriptIngestConfirmations(
+      pendingConfirmations,
+      runtimeConfig.confirmationBatchLimit,
+    )),
   )
-
-  const outcomes: BackfillOutcome[] = settled.flatMap((result, i) => {
-    const group = groups[i]!
-    if (result.status === "fulfilled") return result.value
-    // Synthetic-failed cascade for the WHOLE group — a thrown error
-    // past `processGroup`'s defensive branch is a step-plumbing fault
-    // and should not aggregate as "one of the languages failed";
-    // every language in the affected group lost its work.
-    const reason =
-      result.reason instanceof Error
-        ? result.reason.message
-        : String(result.reason)
-    const durationMs = Date.now() - batchStartedAt
-    return group.targets.map((target) => {
-      const synthetic: BackfillOutcome = {
-        status: "failed",
-        target,
-        language: target.language,
-        reason,
-        durationMs,
-      }
-      logOutcome(synthetic)
-      return synthetic
-    })
-  })
 
   return stepReport({
     mappingGeneratedAt: mapping.generatedAt,
@@ -301,6 +358,155 @@ export async function runTranscriptEmbeddingBackfill(
 async function stepLoadMapping(s3Key: string): Promise<CoreIdMapping> {
   "use step"
   return loadCoreIdMapping(s3Key)
+}
+
+async function stepResolveTranscriptEmbeddingRuntimeConfig(): Promise<TranscriptEmbeddingRuntimeConfig> {
+  "use step"
+  return transcriptEmbeddingRuntimeConfig()
+}
+
+async function confirmPendingTranscriptIngestsOnce(
+  pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+  batchLimit: number,
+) {
+  if (pendingConfirmations.length === 0) {
+    return { outcomes: [], pendingConfirmations: [], checkedCount: 0 }
+  }
+  const { batch, rest } = splitPendingConfirmations(
+    pendingConfirmations,
+    batchLimit,
+  )
+  const result = await stepConfirmTranscriptEmbeddingIngests(batch)
+  return {
+    outcomes: result.outcomes,
+    pendingConfirmations: [...rest, ...result.pendingConfirmations],
+    checkedCount: batch.length,
+  }
+}
+
+async function waitForPendingTranscriptIngestConfirmations(
+  pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+  batchLimit: number,
+): Promise<BackfillOutcome[]> {
+  let pending = Array.from(pendingConfirmations)
+  const outcomes: BackfillOutcome[] = []
+  const maxPolls = Math.ceil(
+    TIMED_OUT_LAUNCH_CONFIRM_TIMEOUT_MS / TIMED_OUT_LAUNCH_CONFIRM_POLL_MS,
+  )
+  const maxConfirmationSlices = confirmationSliceBudget(
+    pending.length,
+    batchLimit,
+    maxPolls,
+  )
+  let uncheckedThisPollCycle = pending.length
+
+  for (
+    let poll = 0, confirmationSlices = 0;
+    pending.length > 0 && confirmationSlices < maxConfirmationSlices;
+  ) {
+    const confirmation = await confirmPendingTranscriptIngestsOnce(
+      pending,
+      batchLimit,
+    )
+    confirmationSlices += 1
+    outcomes.push(...confirmation.outcomes)
+    pending = confirmation.pendingConfirmations
+    uncheckedThisPollCycle -= confirmation.checkedCount
+
+    if (pending.length === 0) break
+    if (uncheckedThisPollCycle > 0) continue
+
+    poll += 1
+    if (poll > maxPolls) break
+    await sleepForPendingConfirmation(TIMED_OUT_LAUNCH_CONFIRM_POLL_MS)
+    uncheckedThisPollCycle = pending.length
+  }
+
+  if (pending.length === 0) return outcomes
+
+  outcomes.push(
+    ...(await failPendingTranscriptEmbeddingIngestsInBatches(
+      pending,
+      batchLimit,
+    )),
+  )
+  return outcomes
+}
+
+async function failPendingTranscriptEmbeddingIngestsInBatches(
+  pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+  batchLimit: number,
+): Promise<BackfillOutcome[]> {
+  const outcomes: BackfillOutcome[] = []
+  for (const batch of batchPendingConfirmations(
+    pendingConfirmations,
+    batchLimit,
+  )) {
+    outcomes.push(...(await stepFailPendingTranscriptEmbeddingIngests(batch)))
+  }
+  return outcomes
+}
+
+function batchPendingConfirmations(
+  pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+  batchLimit: number,
+): PendingTranscriptIngestConfirmation[][] {
+  const batches: PendingTranscriptIngestConfirmation[][] = []
+  let pending = Array.from(pendingConfirmations)
+  while (pending.length > 0) {
+    const { batch, rest } = splitPendingConfirmations(pending, batchLimit)
+    batches.push(batch)
+    pending = rest
+  }
+  return batches
+}
+
+function confirmationSliceBudget(
+  pendingCount: number,
+  batchLimit: number,
+  maxPolls: number,
+): number {
+  const safePendingCount =
+    Number.isInteger(pendingCount) && pendingCount > 0 ? pendingCount : 0
+  if (safePendingCount === 0) return 0
+  const safeBatchLimit = safePendingConfirmationBatchLimit(batchLimit)
+  const slicesPerPollCycle = Math.ceil(safePendingCount / safeBatchLimit)
+  return slicesPerPollCycle * (maxPolls + 1)
+}
+
+function splitPendingConfirmations(
+  pendingConfirmations: readonly PendingTranscriptIngestConfirmation[],
+  batchLimit: number,
+): {
+  batch: PendingTranscriptIngestConfirmation[]
+  rest: PendingTranscriptIngestConfirmation[]
+} {
+  const safeLimit = safePendingConfirmationBatchLimit(batchLimit)
+
+  return {
+    batch: pendingConfirmations.slice(0, safeLimit),
+    rest: pendingConfirmations.slice(safeLimit),
+  }
+}
+
+function safePendingConfirmationBatchLimit(batchLimit: number): number {
+  return Number.isInteger(batchLimit) && batchLimit > 0
+    ? batchLimit
+    : DEFAULT_TRANSCRIPT_EMBEDDING_CONFIRMATION_BATCH_LIMIT
+}
+
+async function sleepForPendingConfirmation(ms: number): Promise<void> {
+  try {
+    getWorkflowMetadata()
+    await sleep(ms)
+  } catch {
+    await stepSleepForDirectExecution(ms)
+  }
+}
+
+async function stepSleepForDirectExecution(ms: number): Promise<void> {
+  "use step"
+  await new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function stepEnumerateTargets(
@@ -330,15 +536,25 @@ async function stepEnumerateTargets(
       video_id: string
       video_edition_id: string
       core_id: string
+      language_id: string
       bcp47: string
+      slug: string | null
+      has_subtitle: boolean
+      has_dub: boolean
+      is_primary_language: boolean
     }>
   >`
-    WITH edition_languages AS (
-      SELECT DISTINCT
+    WITH target_language_sources AS (
+      SELECT
         v.id AS video_id,
         e.id AS video_edition_id,
         v.core_id AS core_id,
-        l.bcp47 AS bcp47
+        l.id AS language_id,
+        l.bcp47 AS bcp47,
+        l.slug AS slug,
+        false AS has_subtitle,
+        false AS has_dub,
+        true AS is_primary_language
       FROM video v
       JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
       JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
@@ -346,13 +562,18 @@ async function stepEnumerateTargets(
       WHERE v.deleted_at IS NULL
         AND l.bcp47 IS NOT NULL
 
-      UNION
+      UNION ALL
 
-      SELECT DISTINCT
+      SELECT
         v.id,
         e.id,
         v.core_id,
-        l.bcp47
+        l.id,
+        l.bcp47,
+        l.slug,
+        true AS has_subtitle,
+        false AS has_dub,
+        false AS is_primary_language
       FROM video v
       JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
       JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
@@ -361,13 +582,18 @@ async function stepEnumerateTargets(
       WHERE v.deleted_at IS NULL
         AND l.bcp47 IS NOT NULL
 
-      UNION
+      UNION ALL
 
-      SELECT DISTINCT
+      SELECT
         v.id,
         e.id,
         v.core_id,
-        l.bcp47
+        l.id,
+        l.bcp47,
+        l.slug,
+        false AS has_subtitle,
+        true AS has_dub,
+        false AS is_primary_language
       FROM video v
       JOIN video_dub d ON d.video_id = v.id AND d.deleted_at IS NULL
       JOIN video_edition e ON e.id = d.video_edition_id AND e.deleted_at IS NULL
@@ -375,9 +601,19 @@ async function stepEnumerateTargets(
       WHERE v.deleted_at IS NULL
         AND l.bcp47 IS NOT NULL
     )
-    SELECT video_id, video_edition_id, core_id, bcp47
-    FROM edition_languages
-    ORDER BY core_id, bcp47
+    SELECT
+      video_id,
+      video_edition_id,
+      core_id,
+      language_id,
+      bcp47,
+      slug,
+      bool_or(has_subtitle) AS has_subtitle,
+      bool_or(has_dub) AS has_dub,
+      bool_or(is_primary_language) AS is_primary_language
+    FROM target_language_sources
+    GROUP BY video_id, video_edition_id, core_id, language_id, bcp47, slug
+    ORDER BY core_id, bcp47, slug
   `
 
   const targets: BackfillTarget[] = []
@@ -391,6 +627,11 @@ async function stepEnumerateTargets(
       coreId: row.core_id,
       cmsVideoId,
       language: row.bcp47,
+      languageId: row.language_id,
+      languageSlug: row.slug,
+      hasSubtitle: row.has_subtitle,
+      hasDub: row.has_dub,
+      isPrimaryLanguage: row.is_primary_language,
     })
   }
 
@@ -440,137 +681,53 @@ function groupTargetsByVideoEdition(
   return Array.from(groupMap.values(), (e) => e.group)
 }
 
-/**
- * Per-group worker. Loads the embeddings artifact ONCE, then fans out
- * per-language sequentially with the artifact in scope.
- *
- * Group-level artifact-load failure is cascaded to per-language
- * outcomes with the same classification the per-language path would
- * have produced (`artifact_missing` → skipped, anything else →
- * failed). This preserves Stage 1's per-target outcome shape so the
- * report's succeeded/skipped/failed triple stays meaningful even when
- * the load fault is shared.
- */
-async function processGroup(group: BackfillGroup): Promise<BackfillOutcome[]> {
-  "use step"
-  const groupStartedAt = Date.now()
+function batchGroupsByTargetLimit(
+  groups: readonly BackfillGroup[],
+  targetLimit: number,
+): BackfillGroup[][] {
+  const safeLimit =
+    Number.isInteger(targetLimit) && targetLimit > 0
+      ? targetLimit
+      : DEFAULT_TRANSCRIPT_EMBEDDING_STEP_TARGET_LIMIT
+  const batches: BackfillGroup[][] = []
+  let current: BackfillGroup[] = []
+  let currentTargetCount = 0
 
-  // useworkflow replay note: the S3 read goes through `stepLoadArtifact`
-  // (a `"use step"` function below) so a worker restart mid-group
-  // replays the journaled result instead of re-fetching. The build
-  // plugin requires this — `s3.ts` imports Node-only modules
-  // (`node:fs/promises`, `node:path`) for the local-fallback path, so
-  // any direct call from the workflow scope is rejected at compile
-  // time. Persisting ~250 KB JSON per group as a step result is the
-  // necessary trade-off; it's small per-call but adds up across a full
-  // backfill — operators monitoring useworkflow journal size should be
-  // aware.
-
-  let loadedArtifact: EmbeddingsResult
-  try {
-    loadedArtifact = await stepLoadEmbeddingsArtifact(group.cmsVideoId)
-  } catch (error) {
-    const durationMs = Date.now() - groupStartedAt
-    const isMissing =
-      error instanceof ManagerArtifactError && error.code === "artifact_missing"
-    const reason = isMissing
-      ? "artifact_missing"
-      : error instanceof Error
-        ? error.message
-        : String(error)
-    return group.targets.map((target) => {
-      const outcome: BackfillOutcome = isMissing
-        ? {
-            status: "skipped",
-            target,
-            language: target.language,
-            reason,
-            durationMs,
-          }
-        : {
-            status: "failed",
-            target,
-            language: target.language,
-            reason,
-            durationMs,
-          }
-      logOutcome(outcome)
-      return outcome
-    })
+  const flush = () => {
+    if (current.length === 0) return
+    batches.push(current)
+    current = []
+    currentTargetCount = 0
   }
 
-  // Per-language fan-out with the loaded artifact in scope. Sequential
-  // inside the group so the artifact stays bounded to one stack frame
-  // and the per-target step's timing measurement is honest.
-  const outcomes: BackfillOutcome[] = []
-  for (const target of group.targets) {
-    const outcome = await _internals.stepIndexEditionTranscript(
-      target,
-      loadedArtifact,
-    )
-    logOutcome(outcome)
-    outcomes.push(outcome)
-  }
-  return outcomes
-}
-
-async function stepIndexEditionTranscript(
-  target: BackfillTarget,
-  loadedArtifact: EmbeddingsResult,
-): Promise<BackfillOutcome> {
-  "use step"
-
-  const startedAt = Date.now()
-
-  try {
-    const result = await indexEditionTranscript(prisma, {
-      editionId: target.videoEditionId,
-      videoId: target.videoId,
-      coreId: target.coreId,
-      language: target.language,
-      cmsVideoId: target.cmsVideoId,
-      loadedArtifact,
-      user: SYSTEM_PRINCIPAL,
-    })
-    return toSucceeded(target, result, Date.now() - startedAt)
-  } catch (error) {
-    const durationMs = Date.now() - startedAt
-    // Branch on the typed error class, not error-message regex. Only a
-    // genuinely-missing artifact gets demoted to skipped; every other
-    // error shape (ManagerArtifactError artifact_invalid /
-    // artifact_read_failed, TranscriptIndexError dimension_mismatch /
-    // empty_chunk_text, Prisma P2025, etc.) stays classified as failed
-    // so the operator sees it in the report. With Stage 2's group-level
-    // artifact load, an `artifact_missing` here would only fire if the
-    // indexer's empty-`loadedArtifact` short-circuit somehow bypassed
-    // the cache; keep the classification path intact for safety in
-    // depth.
-    if (
-      error instanceof ManagerArtifactError &&
-      error.code === "artifact_missing"
-    ) {
-      return {
-        status: "skipped",
-        target,
-        language: target.language,
-        reason: "artifact_missing",
-        durationMs,
+  for (const group of groups) {
+    for (let targetIndex = 0; targetIndex < group.targets.length; ) {
+      const remainingBatchCapacity = safeLimit - currentTargetCount
+      if (remainingBatchCapacity <= 0) {
+        flush()
+        continue
       }
-    }
-    const reason = error instanceof Error ? error.message : String(error)
-    return {
-      status: "failed",
-      target,
-      language: target.language,
-      reason,
-      durationMs,
+
+      const targets = group.targets.slice(
+        targetIndex,
+        targetIndex + remainingBatchCapacity,
+      )
+      current.push({
+        ...group,
+        targets,
+      })
+      currentTargetCount += targets.length
+      targetIndex += targets.length
     }
   }
+
+  flush()
+  return batches
 }
 
 /**
  * Project the outcome list to the deduped, sorted set of missing
- * embeddings artifacts. See R1's `deriveMissingArtifacts` for the full
+ * transcript source artifacts. See R1's `deriveMissingArtifacts` for the full
  * rationale (dedup-by-assetId, ascending sort, first-seen-coreId
  * tiebreak, `failed`-outcomes excluded). The only difference here is
  * the literal `kind: "transcript"` stamp on each entry. Pure function —
@@ -582,7 +739,7 @@ function deriveMissingArtifacts(
   const byAssetId = new Map<number, MissingArtifact>()
   for (const outcome of outcomes) {
     if (outcome.status !== "skipped") continue
-    if (outcome.reason !== "artifact_missing") continue
+    if (outcome.reason !== "artifact_missing" && !outcome.sourceGap) continue
     if (byAssetId.has(outcome.target.cmsVideoId)) continue
     byAssetId.set(outcome.target.cmsVideoId, {
       assetId: outcome.target.cmsVideoId,
@@ -591,6 +748,26 @@ function deriveMissingArtifacts(
     })
   }
   return Array.from(byAssetId.values()).sort((a, b) => a.assetId - b.assetId)
+}
+
+function deriveSourceGaps(
+  outcomes: readonly BackfillOutcome[],
+): TranscriptEmbeddingSourceGap[] {
+  const byKey = new Map<string, TranscriptEmbeddingSourceGap>()
+  for (const outcome of outcomes) {
+    if (outcome.status !== "skipped" || !outcome.sourceGap) continue
+    const key = [
+      outcome.sourceGap.assetId,
+      outcome.sourceGap.videoEditionId,
+      outcome.sourceGap.languageId,
+      outcome.sourceGap.reason,
+    ].join("::")
+    if (!byKey.has(key)) byKey.set(key, outcome.sourceGap)
+  }
+  return Array.from(byKey.values()).sort((a, b) => {
+    if (a.assetId !== b.assetId) return a.assetId - b.assetId
+    return a.language.localeCompare(b.language)
+  })
 }
 
 function stepReport(args: {
@@ -633,99 +810,20 @@ function stepReport(args: {
     skipped,
     failed,
     missingArtifacts: deriveMissingArtifacts(args.outcomes),
-  }
-}
-
-function toSucceeded(
-  target: BackfillTarget,
-  result: IndexEditionTranscriptResult,
-  durationMs: number,
-): BackfillOutcome {
-  return {
-    status: "succeeded",
-    target,
-    language: result.language,
-    chunksIndexed: result.chunksIndexed,
-    embeddingsWritten: result.embeddingsWritten,
-    chunksPruned: result.chunksPruned,
-    durationMs,
-  }
-}
-
-function logOutcome(outcome: BackfillOutcome): void {
-  // Same defensive wrap R3 adopted: logOutcome runs OUTSIDE the
-  // per-target try/catch, so a JSON.stringify throw would halt the
-  // run and break per-target isolation.
-  try {
-    switch (outcome.status) {
-      case "succeeded":
-        console.log(
-          JSON.stringify({
-            workflow: "transcript-embedding-backfill",
-            event: "transcript_index_complete",
-            coreId: outcome.target.coreId,
-            videoEditionId: outcome.target.videoEditionId,
-            language: outcome.language,
-            chunksIndexed: outcome.chunksIndexed,
-            embeddingsWritten: outcome.embeddingsWritten,
-            chunksPruned: outcome.chunksPruned,
-            durationMs: outcome.durationMs,
-          }),
-        )
-        return
-      case "skipped":
-        console.log(
-          JSON.stringify({
-            workflow: "transcript-embedding-backfill",
-            event: "transcript_index_skipped",
-            coreId: outcome.target.coreId,
-            videoEditionId: outcome.target.videoEditionId,
-            language: outcome.language,
-            reason: outcome.reason,
-            durationMs: outcome.durationMs,
-          }),
-        )
-        return
-      case "failed":
-        console.error(
-          JSON.stringify({
-            workflow: "transcript-embedding-backfill",
-            event: "transcript_index_failed",
-            coreId: outcome.target.coreId,
-            videoEditionId: outcome.target.videoEditionId,
-            language: outcome.language,
-            reason: outcome.reason,
-            durationMs: outcome.durationMs,
-          }),
-        )
-        return
-      default: {
-        const _exhaustive: never = outcome
-        throw new Error(
-          `Unhandled BackfillOutcome variant: ${JSON.stringify(_exhaustive)}`,
-        )
-      }
-    }
-  } catch (logErr) {
-    console.error(
-      `[transcript-embedding-backfill] logOutcome failed: ${
-        logErr instanceof Error ? logErr.message : String(logErr)
-      }`,
-    )
+    sourceGaps: deriveSourceGaps(args.outcomes),
   }
 }
 
 // Exported for tests — pure helpers safe to exercise without the
-// useworkflow runtime. `stepIndexEditionTranscript` is referenced
-// through `_internals` from `processGroup` so tests can
-// `vi.spyOn(_internals, "stepIndexEditionTranscript")` to force a
-// `Promise.allSettled` rejection — the only way to exercise the
-// synthetic-failed defensive branch, since the real step body catches
-// everything internally.
+// useworkflow runtime.
 export const _internals = {
   stepReport,
-  stepIndexEditionTranscript,
-  toSucceeded,
-  logOutcome,
   groupTargetsByVideoEdition,
+  batchGroupsByTargetLimit,
+  batchPendingConfirmations,
+  confirmationSliceBudget,
+  splitPendingConfirmations,
+  confirmPendingTranscriptIngestsOnce,
+  waitForPendingTranscriptIngestConfirmations,
+  failPendingTranscriptEmbeddingIngestsInBatches,
 }

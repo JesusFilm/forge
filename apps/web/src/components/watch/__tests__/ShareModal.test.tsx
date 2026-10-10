@@ -4,7 +4,7 @@
  * ShareModal tests.
  *
  * Covers:
- *  - Copy Link → clipboard contains the canonical 2-segment URL built from
+ *  - Copy Link → clipboard contains the public 2-segment URL resolved from
  *    `NEXT_PUBLIC_CANONICAL_ORIGIN`.
  *  - Clipboard rejection → "Select and copy manually" hint appears, the
  *    field stays selectable.
@@ -28,11 +28,7 @@ vi.mock("@/env", () => ({
   },
 }))
 
-import {
-  PUBLIC_SHARE_FALLBACK_ORIGIN,
-  ShareModal,
-  isPublicShareableOrigin,
-} from "@/components/watch/ShareModal"
+import { ShareModal } from "@/components/watch/ShareModal"
 
 let container: HTMLDivElement
 let root: Root
@@ -64,7 +60,7 @@ afterEach(() => {
 })
 
 describe("ShareModal — Copy Link", () => {
-  it("renders the canonical 2-segment URL (with /watch/) in the input field", () => {
+  it("renders the language-less English canonical URL in the input field", () => {
     act(() => {
       root.render(
         <ShareModal
@@ -79,7 +75,9 @@ describe("ShareModal — Copy Link", () => {
     const input = $(
       '[data-testid="watch-share-modal-link-input"]',
     ) as HTMLInputElement
-    expect(input.value).toBe("https://share.example/watch/the-call/english")
+    expect(input.value).toBe(
+      "https://share.example/watch/the-call.html?playback_source=share",
+    )
     expect(input.readOnly).toBe(true)
   })
 
@@ -88,6 +86,7 @@ describe("ShareModal — Copy Link", () => {
       Promise.resolve(),
     )
     setClipboard(writeText)
+    const onShareAction = vi.fn()
 
     act(() => {
       root.render(
@@ -95,6 +94,7 @@ describe("ShareModal — Copy Link", () => {
           open
           videoSlug="the-call"
           currentLanguageSlug="english"
+          onShareAction={onShareAction}
           onClose={vi.fn()}
         />,
       )
@@ -108,9 +108,10 @@ describe("ShareModal — Copy Link", () => {
     })
 
     expect(writeText).toHaveBeenCalledWith(
-      "https://share.example/watch/the-call/english",
+      "https://share.example/watch/the-call.html?playback_source=share",
     )
     expect(copyBtn.textContent).toBe("Copied")
+    expect(onShareAction).toHaveBeenCalledWith("link_copy")
   })
 
   it("URL never contains a leading // or empty segment", () => {
@@ -150,7 +151,7 @@ describe("ShareModal — Facebook + X share intents", () => {
       '[data-testid="watch-share-modal-facebook"]',
     ) as HTMLAnchorElement
     expect(fb.href).toBe(
-      "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call%2Fenglish",
+      "https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html%3Fplayback_source%3Dshare",
     )
   })
 
@@ -168,39 +169,8 @@ describe("ShareModal — Facebook + X share intents", () => {
     })
     const x = $('[data-testid="watch-share-modal-x"]') as HTMLAnchorElement
     expect(x.href).toBe(
-      "https://x.com/intent/tweet?url=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call%2Fenglish&text=The%20Call",
+      "https://x.com/intent/tweet?url=https%3A%2F%2Fshare.example%2Fwatch%2Fthe-call.html%3Fplayback_source%3Dshare&text=The%20Call",
     )
-  })
-})
-
-describe("ShareModal — public-origin fallback (helper)", () => {
-  it("treats real https origins as shareable", () => {
-    expect(isPublicShareableOrigin("https://jesusfilm.org")).toBe(true)
-    expect(isPublicShareableOrigin("https://staging.jesusfilm.org")).toBe(true)
-    expect(isPublicShareableOrigin("http://example.com")).toBe(true)
-  })
-
-  it("rejects localhost and private hosts that Facebook can't crawl", () => {
-    // Reproduces the reported bug: NEXT_PUBLIC_CANONICAL_ORIGIN defaults to
-    // http://localhost:3000 in dev, which Facebook silently strips from the
-    // composer (no preview card, no link). Treating these as non-shareable
-    // forces a fallback to the public canonical so the dialog populates.
-    expect(isPublicShareableOrigin("http://localhost:3000")).toBe(false)
-    expect(isPublicShareableOrigin("http://127.0.0.1:3000")).toBe(false)
-    expect(isPublicShareableOrigin("http://my-mac.local:3000")).toBe(false)
-    expect(isPublicShareableOrigin("http://0.0.0.0:3000")).toBe(false)
-  })
-
-  it("rejects malformed origins", () => {
-    expect(isPublicShareableOrigin("")).toBe(false)
-    expect(isPublicShareableOrigin("not-a-url")).toBe(false)
-  })
-
-  it("exposes the production canonical as the fallback host", () => {
-    // Sanity guard so a future refactor doesn't silently swap the fallback to
-    // a host that's not the actual public site — that would either 404 the
-    // shared link or share an unrelated origin.
-    expect(PUBLIC_SHARE_FALLBACK_ORIGIN).toBe("https://jesusfilm.org")
   })
 })
 
@@ -278,6 +248,7 @@ describe("ShareModal — Embed Code tab", () => {
     // attribute.
     expect(textarea.value).toContain("border:0")
     expect(textarea.value).not.toContain("frameborder")
+    expect(textarea.getAttribute("aria-label")).toBe("Embed Code")
 
     const copyBtn = $(
       '[data-testid="watch-share-modal-embed-copy"]',
@@ -291,15 +262,80 @@ describe("ShareModal — Embed Code tab", () => {
 
     expect(writeText).toHaveBeenCalledWith(textarea.value)
   })
+
+  it("connects the dual-format tabs to a labelled tabpanel and supports keyboard navigation", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="the-call"
+          currentLanguageSlug="english"
+          playbackId="ScBFl3LbJCViZNNdZfa4bpJCEyQr9Mw4Cpiirb7gb00E"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const linkTab = $(
+      '[data-testid="watch-share-modal-tab-link"]',
+    ) as HTMLButtonElement
+    const embedTab = $(
+      '[data-testid="watch-share-modal-tab-embed"]',
+    ) as HTMLButtonElement
+    const panelId = linkTab.getAttribute("aria-controls")
+    const panel = document.getElementById(panelId ?? "")
+
+    expect(linkTab.id).not.toBe("")
+    expect(embedTab.id).not.toBe("")
+    expect(linkTab.id).not.toBe(embedTab.id)
+    expect(embedTab.getAttribute("aria-controls")).toBe(panelId)
+    expect(panel?.getAttribute("role")).toBe("tabpanel")
+    expect(panel?.getAttribute("aria-labelledby")).toBe(linkTab.id)
+    expect(linkTab.getAttribute("aria-selected")).toBe("true")
+    expect(linkTab.tabIndex).toBe(0)
+    expect(embedTab.tabIndex).toBe(-1)
+
+    act(() => {
+      linkTab.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key: "ArrowRight" }),
+      )
+    })
+
+    expect(document.activeElement).toBe(embedTab)
+    expect(embedTab.getAttribute("aria-selected")).toBe("true")
+    expect(embedTab.tabIndex).toBe(0)
+    expect(panel?.getAttribute("aria-labelledby")).toBe(embedTab.id)
+    expect($('[data-testid="watch-share-modal-embed-input"]')).not.toBeNull()
+
+    act(() => {
+      embedTab.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key: "ArrowLeft" }),
+      )
+    })
+
+    expect(document.activeElement).toBe(linkTab)
+    expect(linkTab.getAttribute("aria-selected")).toBe("true")
+
+    act(() => {
+      linkTab.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key: "End" }),
+      )
+    })
+
+    expect(document.activeElement).toBe(embedTab)
+
+    act(() => {
+      embedTab.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, key: "Home" }),
+      )
+    })
+
+    expect(document.activeElement).toBe(linkTab)
+  })
 })
 
-describe("ShareModal — non-public origin disables FB + X buttons", () => {
-  // F20 regression guard: when NEXT_PUBLIC_CANONICAL_ORIGIN is localhost (or
-  // any non-public host), firing the FB share intent against the production
-  // fallback URL would poison Facebook's negative cache for a slug that
-  // doesn't yet exist in production. The buttons must stay visible (so the
-  // affordance is discoverable) but be disabled, with a hint explaining why.
-  it("renders FB + X as disabled buttons with a hint when origin is localhost", async () => {
+describe("ShareModal — local origin fallback", () => {
+  it("renders a public Copy Link and enabled social anchors on localhost", async () => {
     vi.resetModules()
     vi.doMock("@/env", () => ({
       env: {
@@ -324,18 +360,89 @@ describe("ShareModal — non-public origin disables FB + X buttons", () => {
     const x = $('[data-testid="watch-share-modal-x"]')
     expect(fb).not.toBeNull()
     expect(x).not.toBeNull()
-    // They are now <button disabled>, not <a href=…>.
-    expect(fb?.tagName).toBe("BUTTON")
-    expect(x?.tagName).toBe("BUTTON")
-    expect((fb as HTMLButtonElement).disabled).toBe(true)
-    expect((x as HTMLButtonElement).disabled).toBe(true)
+    expect(fb?.tagName).toBe("A")
+    expect(x?.tagName).toBe("A")
+    expect(fb?.getAttribute("aria-label")).toBe(
+      "Share on Facebook (opens in a new tab)",
+    )
+    expect(x?.getAttribute("aria-label")).toBe(
+      "Share on X (opens in a new tab)",
+    )
+    expect((fb as HTMLAnchorElement).href).toContain(
+      encodeURIComponent(
+        "https://www.jesusfilm.org/watch/the-call.html?playback_source=share",
+      ),
+    )
+    expect((x as HTMLAnchorElement).href).toContain(
+      encodeURIComponent(
+        "https://www.jesusfilm.org/watch/the-call.html?playback_source=share",
+      ),
+    )
 
     const hint = $('[data-testid="watch-share-modal-share-disabled-hint"]')
-    expect(hint).not.toBeNull()
-    expect(hint?.textContent ?? "").toContain("deployed page")
+    expect(hint).toBeNull()
+    const input = $(
+      '[data-testid="watch-share-modal-link-input"]',
+    ) as HTMLInputElement
+    expect(input.value).toBe(
+      "https://www.jesusfilm.org/watch/the-call.html?playback_source=share",
+    )
 
     vi.doUnmock("@/env")
     vi.resetModules()
+  })
+
+  it("keeps a valid Embed action when the share identity is invalid", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug=""
+          currentLanguageSlug="english"
+          playbackId="ScBFl3LbJCViZNNdZfa4bpJCEyQr9Mw4Cpiirb7gb00E"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    expect($('[data-testid="watch-share-modal-facebook"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-x"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-link-input"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-link-copy"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-embed-input"]')).not.toBeNull()
+    expect($('[data-testid="watch-share-modal-embed-copy"]')).not.toBeNull()
+    expect($('[data-testid="watch-share-modal-close"]')).not.toBeNull()
+    expect(document.querySelector('[role="tablist"]')).toBeNull()
+    expect(document.querySelector('[role="tabpanel"]')).toBeNull()
+    expect(
+      (
+        $(
+          '[data-testid="watch-share-modal-embed-input"]',
+        ) as HTMLTextAreaElement
+      ).getAttribute("aria-label"),
+    ).toBe("Embed Code")
+  })
+
+  it("shows only Close when both share and embed identities are invalid", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug=""
+          currentLanguageSlug="english"
+          playbackId={null}
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    expect($('[data-testid="watch-share-modal-facebook"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-x"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-link-input"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-embed-input"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-link-copy"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-embed-copy"]')).toBeNull()
+    expect($('[data-testid="watch-share-modal-close"]')).not.toBeNull()
   })
 })
 
@@ -358,16 +465,114 @@ describe("ShareModal — clipboard failure", () => {
       '[data-testid="watch-share-modal-link-copy"]',
     ) as HTMLButtonElement
     await act(async () => {
+      await Promise.resolve()
+    })
+    copyBtn.focus()
+    expect(document.activeElement).toBe(copyBtn)
+    await act(async () => {
       copyBtn.click()
     })
 
     const hint = $('[data-testid="watch-share-modal-link-fallback"]')
     expect(hint).not.toBeNull()
     expect(hint?.textContent ?? "").toContain("manually")
+
+    const status = $('[data-testid="watch-share-modal-copy-status"]')
+    expect(status?.getAttribute("role")).toBe("status")
+    expect(status?.textContent ?? "").toContain("manually")
+    expect(status?.hasAttribute("tabindex")).toBe(false)
+  })
+
+  it("announces successful copies through a non-focusable status region", async () => {
+    setClipboard(() => Promise.resolve())
+
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="v"
+          currentLanguageSlug="english"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const copyBtn = $(
+      '[data-testid="watch-share-modal-link-copy"]',
+    ) as HTMLButtonElement
+    await act(async () => {
+      copyBtn.click()
+    })
+
+    const status = $('[data-testid="watch-share-modal-copy-status"]')
+    expect(status?.textContent).toBe("Copied")
+    expect(status?.hasAttribute("tabindex")).toBe(false)
   })
 })
 
 describe("ShareModal — lifecycle", () => {
+  it("scrolls at the viewport edge instead of inside the modal", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="v"
+          currentLanguageSlug="english"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const modal = $('[data-testid="watch-share-modal"]')
+    const viewport = modal?.parentElement
+    const content = $('[data-testid="watch-share-modal-content"]')
+
+    expect(viewport?.getAttribute("data-slot")).toBe("dialog-viewport")
+    expect(viewport?.className).toContain("fixed")
+    expect(viewport?.className).toContain("inset-0")
+    expect(viewport?.className).toContain("overflow-y-auto")
+    expect(modal?.className).toContain("m-auto")
+    expect(modal?.className).toContain("shrink-0")
+    expect(content?.className).not.toContain("overflow-y-auto")
+    expect(content?.className).not.toContain("max-h-")
+    expect(modal?.contains($('[data-testid="watch-share-modal-close"]'))).toBe(
+      true,
+    )
+  })
+
+  it("renders the close button at the viewport top-right", () => {
+    const onClose = vi.fn()
+
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="v"
+          currentLanguageSlug="english"
+          onClose={onClose}
+        />,
+      )
+    })
+
+    const close = $(
+      '[data-testid="watch-share-modal-close"]',
+    ) as HTMLButtonElement
+    expect(close).not.toBeNull()
+    expect(close.className).toContain("fixed")
+    expect(close.style.top).toBe("max(1rem, env(safe-area-inset-top, 0px))")
+    expect(close.style.right).toBe("max(1rem, env(safe-area-inset-right, 0px))")
+    expect(close.className).toContain("h-[52px]")
+    expect(close.className).toContain("w-12")
+    expect(close.className).toContain("z-[1100]")
+    expect(close.querySelector("svg")?.getAttribute("class")).toContain("h-6")
+
+    act(() => {
+      close.click()
+    })
+
+    expect(onClose).toHaveBeenCalled()
+  })
+
   it("does not render any modal contents when open is false", () => {
     act(() => {
       root.render(
@@ -381,5 +586,35 @@ describe("ShareModal — lifecycle", () => {
     })
 
     expect($('[data-testid="watch-share-modal"]')).toBeNull()
+  })
+
+  it("labels link-only controls and communicates social new-tab behavior with 44px targets", () => {
+    act(() => {
+      root.render(
+        <ShareModal
+          open
+          videoSlug="v"
+          currentLanguageSlug="english"
+          onClose={vi.fn()}
+        />,
+      )
+    })
+
+    const input = $(
+      '[data-testid="watch-share-modal-link-input"]',
+    ) as HTMLInputElement
+    const facebook = $(
+      '[data-testid="watch-share-modal-facebook"]',
+    ) as HTMLAnchorElement
+    const x = $('[data-testid="watch-share-modal-x"]') as HTMLAnchorElement
+
+    expect(input.getAttribute("aria-label")).toBe("Share Link")
+    expect(document.querySelector('[role="tablist"]')).toBeNull()
+    expect(facebook.getAttribute("aria-label")).toContain("opens in a new tab")
+    expect(x.getAttribute("aria-label")).toContain("opens in a new tab")
+    expect(facebook.className).toContain("h-11")
+    expect(facebook.className).toContain("w-11")
+    expect(x.className).toContain("h-11")
+    expect(x.className).toContain("w-11")
   })
 })

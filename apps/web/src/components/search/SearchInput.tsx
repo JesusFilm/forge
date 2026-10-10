@@ -30,7 +30,7 @@ type SearchInputProps = {
 
 export function SearchInput({
   defaultValue = "",
-  searchPath = "/search",
+  searchPath = "/",
   maxLength,
   onSubmit,
   extraQueryOnSubmit,

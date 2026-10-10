@@ -1,0 +1,22 @@
+{
+  "candidateCount": 64,
+  "nominationCount": 64,
+  "composer": {
+    "medianMs": 0.8509299999999484,
+    "p95Ms": 1.0512710000000425,
+    "samples": 1000
+  },
+  "renderBaseline": {
+    "medianMs": 0.021488999999974112,
+    "p95Ms": 0.035356000000092536,
+    "samples": 1000
+  },
+  "renderWithComparison": {
+    "medianMs": 1.4509280000002036,
+    "p95Ms": 2.649952999999641,
+    "samples": 1000
+  },
+  "markupBytes": 17918,
+  "newClientModules": 0,
+  "newNetworkRequests": 0
+}

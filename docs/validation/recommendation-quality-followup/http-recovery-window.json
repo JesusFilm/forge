@@ -1,0 +1,147 @@
+{
+  "valid": true,
+  "deploymentId": "772b93a2-4303-4a64-bd5c-b96623ad9f2a",
+  "start": "2026-09-16T02:14:00Z",
+  "end": "2026-09-16T02:24:00Z",
+  "calls": 12,
+  "totalRequests": 2345,
+  "requestIdDigest": "c57bc6013d5d26dba6c930281c04ca25a0d586567898da91468431e74e2415ac",
+  "counts": [
+    {
+      "method": "GET",
+      "path": "/watch/api/recommendations/for-you/availability",
+      "httpStatus": 200,
+      "requests": 1
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations",
+      "httpStatus": 200,
+      "requests": 152
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations",
+      "httpStatus": 400,
+      "requests": 1
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations",
+      "httpStatus": 403,
+      "requests": 91
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/evidence",
+      "httpStatus": 200,
+      "requests": 697
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/evidence",
+      "httpStatus": 400,
+      "requests": 6
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/evidence",
+      "httpStatus": 403,
+      "requests": 117
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/for-you",
+      "httpStatus": 403,
+      "requests": 1
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "httpStatus": 200,
+      "requests": 733
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/playback",
+      "httpStatus": 403,
+      "requests": 88
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/profile",
+      "httpStatus": 200,
+      "requests": 234
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/profile",
+      "httpStatus": 403,
+      "requests": 200
+    },
+    {
+      "method": "POST",
+      "path": "/watch/api/recommendations/select",
+      "httpStatus": 200,
+      "requests": 24
+    }
+  ],
+  "windows": [
+    {
+      "start": "2026-09-16T02:14:00Z",
+      "end": "2026-09-16T02:15:15Z",
+      "returned": 399,
+      "oldestReturned": "2026-09-16T02:12:50.223224Z",
+      "complete": true,
+      "included": 250
+    },
+    {
+      "start": "2026-09-16T02:15:15Z",
+      "end": "2026-09-16T02:16:30Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T02:14:25.326984Z",
+      "complete": true,
+      "included": 332
+    },
+    {
+      "start": "2026-09-16T02:16:30Z",
+      "end": "2026-09-16T02:17:45Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T02:15:45.142905Z",
+      "complete": true,
+      "included": 364
+    },
+    {
+      "start": "2026-09-16T02:17:45Z",
+      "end": "2026-09-16T02:19:00Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T02:17:09.191999Z",
+      "complete": true,
+      "included": 294
+    },
+    {
+      "start": "2026-09-16T02:19:00Z",
+      "end": "2026-09-16T02:20:15Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T02:18:20.835441Z",
+      "complete": true,
+      "included": 344
+    },
+    {
+      "start": "2026-09-16T02:20:15Z",
+      "end": "2026-09-16T02:21:30Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T02:19:18.255227Z",
+      "complete": true,
+      "included": 276
+    },
+    {
+      "start": "2026-09-16T02:21:30Z",
+      "end": "2026-09-16T02:24:00Z",
+      "returned": 501,
+      "oldestReturned": "2026-09-16T02:21:27.958600Z",
+      "complete": true,
+      "included": 485
+    }
+  ]
+}

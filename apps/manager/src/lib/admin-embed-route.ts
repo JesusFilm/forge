@@ -1,8 +1,6 @@
-// Shared route-handler shape for the manager → admin embed-trigger
-// REST proxies. Both `/api/admin-embeds/scene` and
-// `/api/admin-embeds/transcript` go through `proxyAdminEmbedTrigger`
-// — the only differences are the body schema and which trigger
-// helper they invoke. Per plan 006.
+// Shared route-handler shape for the active manager → admin transcript
+// embed-trigger REST proxy. The legacy scene proxy is a separate 410
+// tombstone and must not call this helper.
 
 import { NextResponse } from "next/server"
 import { z } from "zod"

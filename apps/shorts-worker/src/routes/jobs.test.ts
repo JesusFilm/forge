@@ -1,0 +1,736 @@
+import type { IncomingMessage } from "node:http"
+import { createHash } from "node:crypto"
+import { Readable, Writable } from "node:stream"
+import { describe, expect, it } from "vitest"
+import { createJobLanes } from "../jobs.js"
+import type {
+  runDevotionalRender,
+  RunDevotionalRenderInput,
+} from "../devotional-render.js"
+import type { DevotionalWorkspaceTransfer } from "../devotional-transfer.js"
+import { createHandleRequest } from "../server.js"
+
+class TestResponse extends Writable {
+  statusCode = 200
+  headers: Record<string, string> = {}
+  body = ""
+
+  _write(
+    chunk: Buffer | string,
+    _encoding: BufferEncoding,
+    callback: () => void,
+  ): void {
+    this.body += chunk.toString()
+    callback()
+  }
+
+  writeHead(statusCode: number, headers: Record<string, string>): this {
+    this.statusCode = statusCode
+    this.headers = headers
+    return this
+  }
+}
+
+type RequestOptions = {
+  method: string
+  url: string
+  headers?: Record<string, string>
+  body?: unknown
+  rawBody?: string
+  contentType?: string
+}
+
+function makeRequest({
+  method,
+  url,
+  headers = {},
+  body,
+  rawBody,
+  contentType,
+}: RequestOptions): IncomingMessage {
+  const payload =
+    rawBody !== undefined
+      ? [Buffer.from(rawBody)]
+      : body !== undefined
+        ? [Buffer.from(JSON.stringify(body))]
+        : []
+  const stream = Readable.from(payload)
+  return Object.assign(stream, {
+    method,
+    url,
+    headers: {
+      ...(body !== undefined || rawBody !== undefined
+        ? { "content-type": contentType ?? "application/json" }
+        : {}),
+      ...headers,
+    },
+  }) as unknown as IncomingMessage
+}
+
+type Handler = ReturnType<typeof createHandleRequest>
+
+async function dispatch(
+  handler: Handler,
+  options: RequestOptions,
+): Promise<{ statusCode: number; body: Record<string, unknown> }> {
+  const response = new TestResponse()
+  await handler(makeRequest(options), response as never)
+  return {
+    statusCode: response.statusCode,
+    body: JSON.parse(response.body) as Record<string, unknown>,
+  }
+}
+
+async function settle(): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, 0))
+}
+
+const renderReport = { outputDurationSec: 10.1, width: 1080, height: 1920 }
+
+const validProps = {
+  templateId: "focus",
+  accentColor: "#FFC83D",
+  captionPosition: "center",
+  captionFont: "montserrat",
+  waveformStyle: "bars",
+  showCaptions: true,
+  captionPages: [
+    {
+      text: "Hello",
+      startMs: 0,
+      durationMs: 900,
+      tokens: [{ text: "Hello", fromMs: 0, toMs: 900 }],
+    },
+  ],
+  fps: 30,
+  clipDurationSec: 10,
+  hasAudio: true,
+}
+
+const prepareBody = {
+  kind: "prepare",
+  jobId: "manager-job-1",
+  assetId: "muxasset1-short-ab12cd34",
+  source: { url: "https://stream.mux.com/pb_abc.m3u8" },
+  clip: { startSec: 5, endSec: 15 },
+  transcription: { language: "en" },
+}
+
+const renderBody = {
+  kind: "render",
+  jobId: "manager-job-2",
+  assetId: "muxasset1-short-ab12cd34",
+  propsHash: "f".repeat(64),
+  draftVersion: 2,
+  props: validProps,
+}
+
+const devotionalRenderBody = {
+  kind: "devotional-render",
+  jobId: "manager-job-devotional",
+  runId: "mastra-run-1",
+  inputAssetId: "devotional-input-run-1",
+  outputAssetId: "devotional-output-run-1",
+  inputHash: "a".repeat(64),
+}
+
+const devotionalAttempt = {
+  workspaceGeneration: 3,
+  attemptId: "attempt_3",
+  runId: "mastra-run-1",
+}
+const devotionalAttemptToken = createHash("sha256")
+  .update(devotionalAttempt.attemptId)
+  .digest("hex")
+  .slice(0, 24)
+const signedExpiresAt = new Date(Date.now() + 60 * 60_000).toISOString()
+const signedCapabilityUrl = (key: string) =>
+  `https://bucket.example/${key}?signed=secret`
+const workspaceRef = (name: string) => ({
+  schemaVersion: "2" as const,
+  key: `runs/g3/${devotionalAttemptToken}/run-input/${"a".repeat(64)}/${name}`,
+  digest: "a".repeat(64),
+  size: 10,
+  contentType: name.endsWith(".json") ? "application/json" : "audio/mpeg",
+  attempt: devotionalAttempt,
+})
+const signedWorkspaceTransfer = {
+  schemaVersion: "1",
+  attempt: devotionalAttempt,
+  manifest: {
+    ref: {
+      ...workspaceRef("manifest.json"),
+      key: `runs/g3/${devotionalAttemptToken}/run-input/manifest.json`,
+    },
+    url: signedCapabilityUrl(
+      `runs/g3/${devotionalAttemptToken}/run-input/manifest.json`,
+    ),
+    expiresAt: signedExpiresAt,
+  },
+  inputs: [
+    {
+      artifactType: "devotional-render-input-v1",
+      ext: "json",
+      ref: workspaceRef("input.json"),
+      url: signedCapabilityUrl(workspaceRef("input.json").key),
+      expiresAt: signedExpiresAt,
+    },
+    {
+      artifactType: "devotional-narration-cover-v1",
+      ext: "mp3",
+      ref: workspaceRef("cover.mp3"),
+      url: signedCapabilityUrl(workspaceRef("cover.mp3").key),
+      expiresAt: signedExpiresAt,
+    },
+  ],
+  outputs: [
+    {
+      artifactType: "devotional-output-portrait-v1",
+      ext: "mp4",
+      key: `runs/g3/${devotionalAttemptToken}/worker-upload/upload_1/portrait.mp4`,
+      contentType: "video/mp4",
+      url: signedCapabilityUrl(
+        `runs/g3/${devotionalAttemptToken}/worker-upload/upload_1/portrait.mp4`,
+      ),
+      expiresAt: signedExpiresAt,
+    },
+    {
+      artifactType: "devotional-output-wide-v1",
+      ext: "mp4",
+      key: `runs/g3/${devotionalAttemptToken}/worker-upload/upload_1/wide.mp4`,
+      contentType: "video/mp4",
+      url: signedCapabilityUrl(
+        `runs/g3/${devotionalAttemptToken}/worker-upload/upload_1/wide.mp4`,
+      ),
+      expiresAt: signedExpiresAt,
+    },
+  ],
+} satisfies DevotionalWorkspaceTransfer
+
+const signedDevotionalResult = {
+  artifacts: [
+    {
+      assetId: devotionalRenderBody.outputAssetId,
+      artifactType: "devotional-output-portrait-v1",
+      ext: "mp4",
+    },
+    {
+      assetId: devotionalRenderBody.outputAssetId,
+      artifactType: "devotional-output-wide-v1",
+      ext: "mp4",
+    },
+  ],
+  report: {
+    portrait: {
+      artifact: {
+        assetId: devotionalRenderBody.outputAssetId,
+        artifactType: "devotional-output-portrait-v1",
+        ext: "mp4",
+      },
+      ...renderReport,
+    },
+    wide: {
+      artifact: {
+        assetId: devotionalRenderBody.outputAssetId,
+        artifactType: "devotional-output-wide-v1",
+        ext: "mp4",
+      },
+      outputDurationSec: renderReport.outputDurationSec,
+      width: 1920,
+      height: 1080,
+    },
+  },
+} satisfies Awaited<ReturnType<typeof runDevotionalRender>>
+
+const authedHeaders = { authorization: "Bearer test-key" }
+const auth = { apiKeysCsv: "test-key", nodeEnv: "production" }
+
+function buildHandler(overrides?: Parameters<typeof createHandleRequest>[0]) {
+  return createHandleRequest({
+    queue: createJobLanes({
+      render: { concurrency: 1, limit: 2 },
+    }),
+    auth,
+    devotionalWorkspaceAllowedOrigin: "https://bucket.example",
+    runDevotionalRenderImpl: async () => signedDevotionalResult,
+    ...overrides,
+  })
+}
+
+describe("auth", () => {
+  it("returns 401 unauthorized for a missing or wrong bearer", async () => {
+    const handler = buildHandler()
+
+    await expect(
+      dispatch(handler, { method: "POST", url: "/jobs", body: prepareBody }),
+    ).resolves.toEqual({ statusCode: 401, body: { error: "unauthorized" } })
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: { authorization: "Bearer wrong" },
+        body: prepareBody,
+      }),
+    ).resolves.toEqual({ statusCode: 401, body: { error: "unauthorized" } })
+  })
+
+  it("returns 503 config_missing in production when the allowlist is unset", async () => {
+    const handler = buildHandler({
+      auth: { apiKeysCsv: undefined, nodeEnv: "production" },
+    })
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        body: prepareBody,
+      }),
+    ).resolves.toEqual({ statusCode: 503, body: { error: "config_missing" } })
+  })
+
+  it("also guards GET /jobs/{id}", async () => {
+    const handler = buildHandler()
+
+    await expect(
+      dispatch(handler, { method: "GET", url: "/jobs/wj_x" }),
+    ).resolves.toEqual({ statusCode: 401, body: { error: "unauthorized" } })
+  })
+})
+
+describe("POST /jobs validation", () => {
+  it("rejects schema-invalid bodies with 400", async () => {
+    const handler = buildHandler()
+
+    const invalidBodies: unknown[] = [
+      {},
+      { ...devotionalRenderBody, kind: "unknown" },
+      { ...devotionalRenderBody, runId: "../escape" },
+      { ...devotionalRenderBody, inputHash: "not-a-digest" },
+      { ...devotionalRenderBody, outputAssetId: "" },
+    ]
+
+    for (const body of invalidBodies) {
+      await expect(
+        dispatch(handler, {
+          method: "POST",
+          url: "/jobs",
+          headers: authedHeaders,
+          body,
+        }),
+        JSON.stringify(body),
+      ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+    }
+  })
+
+  it("rejects non-JSON content types and malformed JSON with 400", async () => {
+    const handler = buildHandler()
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        rawBody: "kind=prepare",
+        contentType: "text/plain",
+      }),
+    ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        rawBody: "{not json",
+      }),
+    ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+  })
+
+  it("rejects bodies over the 1MB cap with 413", async () => {
+    const handler = buildHandler()
+
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        rawBody: `{"pad":"${"x".repeat(1_000_001)}"}`,
+      }),
+    ).resolves.toEqual({ statusCode: 413, body: { error: "body_too_large" } })
+  })
+})
+
+describe("devotional render job lifecycle", () => {
+  it("retains structured failure status when rendering fails", async () => {
+    const handler = buildHandler({
+      runDevotionalRenderImpl: async () => {
+        throw new Error("render failed")
+      },
+    })
+    const result = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: devotionalRenderBody,
+    })
+    await settle()
+    const status = await dispatch(handler, {
+      method: "GET",
+      url: `/jobs/${result.body.workerJobId}`,
+      headers: authedHeaders,
+    })
+    expect(status.body).toMatchObject({
+      status: "failed",
+      result: null,
+      error: {
+        reason: "internal_error",
+        messages: ["render failed"],
+        retryable: false,
+      },
+    })
+  })
+
+  it("requires auth and rejects unsafe identifiers", async () => {
+    const handler = buildHandler()
+    await expect(
+      dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        body: devotionalRenderBody,
+      }),
+    ).resolves.toEqual({ statusCode: 401, body: { error: "unauthorized" } })
+
+    for (const body of [
+      { ...devotionalRenderBody, runId: "../run" },
+      { ...devotionalRenderBody, inputAssetId: "input/path" },
+      { ...devotionalRenderBody, outputAssetId: "output%2Fpath" },
+      { ...devotionalRenderBody, inputHash: "not-a-hash" },
+    ]) {
+      await expect(
+        dispatch(handler, {
+          method: "POST",
+          url: "/jobs",
+          headers: authedHeaders,
+          body,
+        }),
+      ).resolves.toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+    }
+  })
+
+  it("returns stable portrait and wide artifact refs", async () => {
+    const inputs: RunDevotionalRenderInput[] = []
+    const handler = buildHandler({
+      runDevotionalRenderImpl: (async (input: RunDevotionalRenderInput) => {
+        inputs.push(input)
+        const portrait = {
+          artifact: {
+            assetId: input.outputAssetId,
+            artifactType: "devotional-output-portrait-v1",
+            ext: "mp4",
+          },
+          outputDurationSec: 60,
+          width: 1080,
+          height: 1920,
+        }
+        const wide = {
+          artifact: {
+            assetId: input.outputAssetId,
+            artifactType: "devotional-output-wide-v1",
+            ext: "mp4",
+          },
+          outputDurationSec: 60,
+          width: 1920,
+          height: 1080,
+        }
+        return {
+          artifacts: [portrait.artifact, wide.artifact],
+          report: { portrait, wide },
+        }
+      }) as typeof runDevotionalRender,
+    })
+    const submit = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: devotionalRenderBody,
+    })
+    await settle()
+    const status = await dispatch(handler, {
+      method: "GET",
+      url: `/jobs/${submit.body.workerJobId as string}`,
+      headers: authedHeaders,
+    })
+    expect(inputs[0]).toMatchObject({
+      runId: "mastra-run-1",
+      inputAssetId: "devotional-input-run-1",
+      outputAssetId: "devotional-output-run-1",
+      inputHash: "a".repeat(64),
+    })
+    expect(status.body).toMatchObject({
+      kind: "devotional-render",
+      status: "completed",
+      result: {
+        report: {
+          portrait: { width: 1080, height: 1920 },
+          wide: { width: 1920, height: 1080 },
+        },
+      },
+    })
+  })
+
+  it("passes a validated signed Workspace transfer without logging or persisting URLs", async () => {
+    const inputs: RunDevotionalRenderInput[] = []
+    const handler = buildHandler({
+      runDevotionalRenderImpl: async (input: RunDevotionalRenderInput) => {
+        inputs.push(input)
+        return signedDevotionalResult
+      },
+    })
+    const submit = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: {
+        ...devotionalRenderBody,
+        runId: devotionalAttempt.runId,
+        workspaceTransfer: signedWorkspaceTransfer,
+      },
+    })
+    expect(submit.statusCode).toBe(202)
+    await settle()
+
+    expect(inputs[0]?.workspaceTransfer).toEqual(signedWorkspaceTransfer)
+    const status = await dispatch(handler, {
+      method: "GET",
+      url: `/jobs/${submit.body.workerJobId as string}`,
+      headers: authedHeaders,
+    })
+    expect(JSON.stringify(status.body)).not.toContain("signed=secret")
+  })
+
+  it("rejects a signed Workspace transfer targeting a private host before enqueue", async () => {
+    let calls = 0
+    const handler = buildHandler({
+      runDevotionalRenderImpl: async () => {
+        calls += 1
+        return signedDevotionalResult
+      },
+    })
+    const response = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: {
+        ...devotionalRenderBody,
+        runId: devotionalAttempt.runId,
+        workspaceTransfer: {
+          ...signedWorkspaceTransfer,
+          manifest: {
+            ...signedWorkspaceTransfer.manifest,
+            url: "https://169.254.169.254/metadata",
+          },
+        },
+      },
+    })
+    expect(response).toEqual({
+      statusCode: 400,
+      body: { error: "invalid_body" },
+    })
+    await settle()
+    expect(calls).toBe(0)
+  })
+
+  it("dedupes active devotional renders by output asset and input hash", async () => {
+    const handler = buildHandler({
+      runDevotionalRenderImpl: (async () =>
+        new Promise(() => {})) as unknown as typeof runDevotionalRender,
+    })
+    const first = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: devotionalRenderBody,
+    })
+    await settle()
+    const duplicate = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: { ...devotionalRenderBody, runId: "mastra-run-restarted" },
+    })
+    expect(duplicate.body.workerJobId).toBe(first.body.workerJobId)
+  })
+
+  it("cancels an active devotional render through the authenticated job route", async () => {
+    const handler = buildHandler({
+      runDevotionalRenderImpl: (async (input: RunDevotionalRenderInput) =>
+        new Promise((_resolve, reject) => {
+          input.deps?.signal?.addEventListener(
+            "abort",
+            () => reject(new Error("aborted")),
+            { once: true },
+          )
+        })) as typeof runDevotionalRender,
+    })
+    const submit = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: devotionalRenderBody,
+    })
+    await settle()
+    const workerJobId = submit.body.workerJobId as string
+    const cancelled = await dispatch(handler, {
+      method: "DELETE",
+      url: `/jobs/${workerJobId}`,
+      headers: authedHeaders,
+    })
+    expect(cancelled).toEqual({
+      statusCode: 202,
+      body: { workerJobId, status: "cancelled" },
+    })
+    await settle()
+    const status = await dispatch(handler, {
+      method: "GET",
+      url: `/jobs/${workerJobId}`,
+      headers: authedHeaders,
+    })
+    expect(status.body).toMatchObject({
+      status: "cancelled",
+      error: null,
+      result: null,
+    })
+  })
+})
+
+describe("queue limits, dedupe, unknown jobs", () => {
+  it("returns 409 queue_full when a lane is at its cap", async () => {
+    const handler = buildHandler({
+      runDevotionalRenderImpl: (async () =>
+        new Promise(() => {})) as unknown as typeof runDevotionalRender,
+    })
+
+    // Lane limit 2: running + queued. Distinct assetIds — identical bodies
+    // would re-attach (dedupe) instead of exercising the bound.
+    for (const [index, assetId] of ["asset-a", "asset-b"].entries()) {
+      const accepted = await dispatch(handler, {
+        method: "POST",
+        url: "/jobs",
+        headers: authedHeaders,
+        body: { ...devotionalRenderBody, outputAssetId: assetId },
+      })
+      expect(accepted.statusCode, `submission ${index}`).toBe(202)
+    }
+
+    const rejected = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: { ...devotionalRenderBody, outputAssetId: "asset-c" },
+    })
+    expect(rejected).toEqual({
+      statusCode: 409,
+      body: { error: "queue_full" },
+    })
+  })
+
+  it("re-attaches a duplicate devotional render POST to the ACTIVE job (same inputHash, different jobId)", async () => {
+    const handler = buildHandler({
+      runDevotionalRenderImpl: (async () =>
+        new Promise(() => {})) as unknown as typeof runDevotionalRender,
+    })
+
+    const first = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: devotionalRenderBody,
+    })
+    expect(first.statusCode).toBe(202)
+    await settle()
+
+    const duplicate = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: { ...devotionalRenderBody, jobId: "manager-job-relaunched" },
+    })
+    expect(duplicate.statusCode).toBe(202)
+    expect(duplicate.body.workerJobId).toBe(first.body.workerJobId)
+    expect(duplicate.body.status).toBe("running")
+
+    // A DIFFERENT inputHash is a new logical job (re-render after an edit).
+    const edited = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: { ...devotionalRenderBody, inputHash: "0".repeat(64) },
+    })
+    expect(edited.statusCode).toBe(202)
+    expect(edited.body.workerJobId).not.toBe(first.body.workerJobId)
+  })
+
+  it("does not dedupe after completion (manager resubmits intentionally)", async () => {
+    const handler = buildHandler()
+
+    const first = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: devotionalRenderBody,
+    })
+    await settle()
+
+    const second = await dispatch(handler, {
+      method: "POST",
+      url: "/jobs",
+      headers: authedHeaders,
+      body: devotionalRenderBody,
+    })
+    expect(second.statusCode).toBe(202)
+    expect(second.body.workerJobId).not.toBe(first.body.workerJobId)
+  })
+
+  it("returns 404 for unknown worker job ids", async () => {
+    const handler = buildHandler()
+
+    await expect(
+      dispatch(handler, {
+        method: "GET",
+        url: "/jobs/wj_unknown",
+        headers: authedHeaders,
+      }),
+    ).resolves.toEqual({ statusCode: 404, body: { error: "not_found" } })
+  })
+})
+
+describe("retired Shorts admission", () => {
+  it.each([prepareBody, renderBody])(
+    "rejects $kind without reserving devotional capacity",
+    async (body) => {
+      const handler = buildHandler({
+        queue: createJobLanes({ render: { concurrency: 1, limit: 1 } }),
+        runDevotionalRenderImpl: async () => signedDevotionalResult,
+      })
+      expect(
+        await dispatch(handler, {
+          method: "POST",
+          url: "/jobs",
+          headers: authedHeaders,
+          body,
+        }),
+      ).toEqual({ statusCode: 400, body: { error: "invalid_body" } })
+      expect(
+        (
+          await dispatch(handler, {
+            method: "POST",
+            url: "/jobs",
+            headers: authedHeaders,
+            body: devotionalRenderBody,
+          })
+        ).statusCode,
+      ).toBe(202)
+    },
+  )
+})

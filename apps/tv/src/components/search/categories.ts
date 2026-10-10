@@ -1,15 +1,7 @@
 /**
- * Hardcoded category cards surfaced in SearchBrowse when the query is
- * empty. Titles and searchTerms are ported verbatim from
- * apps/web/src/lib/search-categories.ts — keeping the two lists in
- * sync preserves the brand moment across surfaces.
- *
- * RN cannot parse CSS linear-gradient strings, so the TV variant
- * expresses each card as a 2-color stop array + a 135° diagonal
- * angle. The actual render uses expo-linear-gradient in
- * SearchBrowse.tsx. The hex values here must match the web gradient
- * stops exactly; a follow-up ticket could extract a shared token
- * module once the TV app has proven its layout out.
+ * Empty-query category cards for SearchBrowse. Titles/searchTerms ported verbatim
+ * from apps/web/src/lib/search-categories.ts — keep in sync. RN can't parse CSS
+ * gradients, so colors are 2-stop arrays; hex must match the web gradient stops.
  */
 
 export type SearchCategory = {

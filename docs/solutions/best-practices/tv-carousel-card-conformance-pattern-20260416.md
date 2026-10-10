@@ -1,6 +1,7 @@
 ---
 title: "TV Carousel Card Conformance — Matching Mobile/Web Visual Patterns"
 date: 2026-04-16
+last_updated: 2026-06-24
 category: best-practices
 module: apps/tv
 problem_type: best_practice
@@ -84,7 +85,7 @@ Note: this defeats FlatList virtualization since all items must render to measur
 - **No dark banding**: `hexToRgba(color, 0)` is enforced in the TV CLAUDE.md. String `"transparent"` causes visible black bands on Android TV gradient interpolation.
 - **tvOS TurboModule safety**: `react-native-webview` is not available on tvOS. A top-level `import` crashes the app before any component mounts. Conditional `require()` inside the shared modal is the only safe pattern.
 - **DRY security hardening**: WebView security config is non-trivial (~10 props). Centralizing it in `LinkModal` means security fixes propagate to all consumers automatically.
-- **FocusableCard two-layer architecture**: The outer `Animated.View` (`overflow: "visible"`) handles scale animation and crimson glow shadow. The inner `View` (`overflow: "hidden"`, `collapsable={false}`) clips content to border radius. This split is load-bearing for all image cards — `expo-image` with `absoluteFill` inside a single `overflow: "hidden"` View is invisible on Android TV. (session history)
+- **FocusableCard two-layer architecture**: The outer `Animated.View` (`overflow: "visible"`) handles the scale animation and the focus ring + drop shadow (a white **border ring** by default since the focus-consistency change; crimson is opt-in for near-white surfaces — see Related). The inner `View` (`overflow: "hidden"`, `collapsable={false}`) clips content to border radius. This split is load-bearing for all image cards — `expo-image` with `absoluteFill` inside a single `overflow: "hidden"` View is invisible on Android TV. (session history)
 
 ## When to Apply
 
@@ -154,6 +155,7 @@ const CARD_SIZE = scale(340)
 ## Related
 
 - `docs/solutions/ui-bugs/tv-carousel-card-focus-animation-overflow-20260416.md` — FocusableCard two-layer architecture, crimson glow, FlatList item padding
+- `docs/solutions/best-practices/tv-focus-white-ring-default-and-light-surface-exception.md` — the white-ring focus default that superseded the crimson glow; light-surface crimson opt-in
 - `docs/solutions/ui-bugs/android-tv-density-scaling-and-native-view-clipping-20260416.md` — `scale()` utility, `expo-image` inside `overflow: "hidden"` on Android TV
 - `docs/solutions/mobile/linear-gradient-dark-banding-transparent-keyword.md` — `hexToRgba()` origin and the `"transparent"` keyword ban
 - `docs/solutions/best-practices/react-native-tvos-porting-pitfalls-20260414.md` — WebView conditional require, absolute positioning focus issues

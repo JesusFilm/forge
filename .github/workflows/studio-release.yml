@@ -1,0 +1,92 @@
+name: Studio release candidate
+
+"on":
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish after candidate build (not VM activation)
+        required: true
+        type: boolean
+        default: false
+
+permissions: {}
+concurrency:
+  group: studio-release
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    if: github.repository == 'JesusFilm/forge' && github.ref == 'refs/heads/main' && vars.STUDIO_RELEASE_ENABLED == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+    outputs:
+      candidate-sha256: ${{ steps.candidate.outputs.sha256 }}
+      artifact-id: ${{ steps.upload.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Check manual main release configuration before any build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 apps/studio-render/ops/release/ci.py preflight
+      - name: Install exact ORAS into runner temporary storage
+        run: python3 apps/studio-render/ops/release/ci.py tools
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+        env:
+          DOCKER_CONFIG: ${{ runner.temp }}/studio-release/docker-public
+        with:
+          driver: docker-container
+          driver-opts: image=moby/buildkit@sha256:6c2fa84a6b61ccd72899dde4239f8d5717f05f9a8ca6f3cad185fb1a95a94de3
+      - name: Acquire exact retained codec using read-only package permission
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 apps/studio-render/ops/release/ci.py codec
+      - name: Build immutable candidate without publication credentials
+        id: candidate
+        run: python3 apps/studio-render/ops/release/ci.py build
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        id: upload
+        with:
+          name: studio-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/studio-release/candidate/*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+
+  publish:
+    if: github.repository == 'JesusFilm/forge' && github.ref == 'refs/heads/main' && vars.STUDIO_RELEASE_ENABLED == 'true' && inputs.publish
+    needs: [candidate]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment:
+      name: studio-release
+      url: https://github.com/JesusFilm/forge/actions/runs/${{ github.run_id }}
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    steps:
+      # Trusted main checkout only; never checkout candidate-supplied source.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Install exact inert OCI transfer tool
+        run: python3 apps/studio-render/ops/release/ci.py tools
+      - name: Download bounded archive and validate names before extraction
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STUDIO_CANDIDATE_ARTIFACT_ID: ${{ needs.candidate.outputs.artifact-id }}
+          STUDIO_CANDIDATE_SHA256: ${{ needs.candidate.outputs.candidate-sha256 }}
+        run: python3 apps/studio-render/ops/release/ci.py download
+      - name: Verify workflow identity and copy exact candidate bytes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STUDIO_CANDIDATE_SHA256: ${{ needs.candidate.outputs.candidate-sha256 }}
+        run: python3 apps/studio-render/ops/release/ci.py publish

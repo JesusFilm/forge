@@ -1,0 +1,342 @@
+{
+  "capturedAt": "2026-09-16T02:18:38.102388+00:00",
+  "variant": "after-cold-diagnostic",
+  "samples": [
+    {
+      "lcp": 1304,
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 1304,
+          "size": 88480,
+          "tag": "H1",
+          "time": 1304
+        }
+      ],
+      "longTasks": 8,
+      "longestTask": 204,
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.229188
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 1026.399999976158,
+          "load": 1765.2999999523165,
+          "ttfb": 926.0999999642372
+        }
+      ],
+      "slowResources": [
+        {
+          "bytes": 0,
+          "duration": 1058.699999988079,
+          "host": "browser-intake-datadoghq.com",
+          "start": 2069.5,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 880,
+          "host": "browser-intake-datadoghq.com",
+          "start": 2037.5999999642372,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 859.1999999880791,
+          "host": "browser-intake-datadoghq.com",
+          "start": 2040.199999988079,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 848.8999999761581,
+          "host": "browser-intake-datadoghq.com",
+          "start": 2033.899999976158,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 834.9000000357628,
+          "host": "browser-intake-datadoghq.com",
+          "start": 2042.7999999523165,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 825.6000000238419,
+          "host": "browser-intake-datadoghq.com",
+          "start": 2085.099999964237,
+          "type": "fetch"
+        },
+        {
+          "bytes": 16952,
+          "duration": 775.7000000476837,
+          "host": "www.jesusfilm.org",
+          "start": 3418.2999999523163,
+          "type": "img"
+        },
+        {
+          "bytes": 449,
+          "duration": 769.8999999761581,
+          "host": "www.jesusfilm.org",
+          "start": 3423.699999988079,
+          "type": "fetch"
+        },
+        {
+          "bytes": 4047,
+          "duration": 693.3999999761581,
+          "host": "www.jesusfilm.org",
+          "start": 2705.899999976158,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 636.6999999880791,
+          "host": "inferred.litix.io",
+          "start": 10104.599999964235,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 623.7999999523163,
+          "host": "www.googletagmanager.com",
+          "start": 942.5,
+          "type": "link"
+        },
+        {
+          "bytes": 440,
+          "duration": 585.3999999761581,
+          "host": "www.jesusfilm.org",
+          "start": 3428.5,
+          "type": "fetch"
+        },
+        {
+          "bytes": 438,
+          "duration": 584.8999999761581,
+          "host": "www.jesusfilm.org",
+          "start": 3427.199999988079,
+          "type": "fetch"
+        },
+        {
+          "bytes": 439,
+          "duration": 577.2000000476837,
+          "host": "www.jesusfilm.org",
+          "start": 3429.7999999523163,
+          "type": "fetch"
+        },
+        {
+          "bytes": 27763,
+          "duration": 557.1999999880791,
+          "host": "www.jesusfilm.org",
+          "start": 1058.699999988079,
+          "type": "css"
+        }
+      ],
+      "syntheticProfileCleanup": {
+        "status": 200
+      }
+    },
+    {
+      "lcp": 900,
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 900,
+          "size": 88480,
+          "tag": "H1",
+          "time": 900
+        }
+      ],
+      "longTasks": 8,
+      "longestTask": 214,
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.541853
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 602,
+          "load": 1057.9000000357628,
+          "ttfb": 444.199999988079
+        }
+      ],
+      "slowResources": [
+        {
+          "bytes": 4052,
+          "duration": 1345.9000000357628,
+          "host": "www.jesusfilm.org",
+          "start": 2321.699999988079,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 664.4000000357628,
+          "host": "inferred.litix.io",
+          "start": 9611.19999998808,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 637.8000000119209,
+          "host": "www.googletagmanager.com",
+          "start": 462.60000002384186,
+          "type": "link"
+        }
+      ],
+      "syntheticProfileCleanup": {
+        "status": 200
+      }
+    },
+    {
+      "lcp": 1108,
+      "lcpEntries": [
+        {
+          "host": null,
+          "id": "",
+          "loadTime": 0,
+          "renderTime": 1108,
+          "size": 88480,
+          "tag": "H1",
+          "time": 1108
+        }
+      ],
+      "longTasks": 8,
+      "longestTask": 206,
+      "media": [
+        {
+          "muted": true,
+          "paused": false,
+          "seconds": 4.472606
+        }
+      ],
+      "navigation": [
+        {
+          "dcl": 807.1999999880791,
+          "load": 1260.4000000357628,
+          "ttfb": 625.5
+        }
+      ],
+      "slowResources": [
+        {
+          "bytes": 4040,
+          "duration": 871.6999999880791,
+          "host": "www.jesusfilm.org",
+          "start": 2659.800000011921,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 856.9000000357628,
+          "host": "browser-intake-datadoghq.com",
+          "start": 1957.199999988079,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 847.3999999761581,
+          "host": "browser-intake-datadoghq.com",
+          "start": 1960.100000023842,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 845.8000000119209,
+          "host": "browser-intake-datadoghq.com",
+          "start": 2006.600000023842,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 842.5999999642372,
+          "host": "browser-intake-datadoghq.com",
+          "start": 2009.600000023842,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 842.5,
+          "host": "browser-intake-datadoghq.com",
+          "start": 2125.199999988079,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 666.8999999761581,
+          "host": "www.googletagmanager.com",
+          "start": 651.1000000238419,
+          "type": "link"
+        },
+        {
+          "bytes": 438,
+          "duration": 665.8999999761581,
+          "host": "www.jesusfilm.org",
+          "start": 3553.600000023842,
+          "type": "fetch"
+        },
+        {
+          "bytes": 439,
+          "duration": 665.1000000238419,
+          "host": "www.jesusfilm.org",
+          "start": 3559.699999988079,
+          "type": "fetch"
+        },
+        {
+          "bytes": 438,
+          "duration": 664.6999999880791,
+          "host": "www.jesusfilm.org",
+          "start": 3558.5,
+          "type": "fetch"
+        },
+        {
+          "bytes": 439,
+          "duration": 664.5,
+          "host": "www.jesusfilm.org",
+          "start": 3557,
+          "type": "fetch"
+        },
+        {
+          "bytes": 437,
+          "duration": 656.6999999880791,
+          "host": "www.jesusfilm.org",
+          "start": 3561,
+          "type": "fetch"
+        },
+        {
+          "bytes": 439,
+          "duration": 651.6999999880791,
+          "host": "www.jesusfilm.org",
+          "start": 3555.400000035763,
+          "type": "fetch"
+        },
+        {
+          "bytes": 0,
+          "duration": 602.1000000238419,
+          "host": "inferred.litix.io",
+          "start": 9793.5,
+          "type": "fetch"
+        },
+        {
+          "bytes": 497,
+          "duration": 589.8999999761581,
+          "host": "www.jesusfilm.org",
+          "start": 2064.900000035763,
+          "type": "fetch"
+        }
+      ],
+      "syntheticProfileCleanup": {
+        "status": 200
+      }
+    }
+  ]
+}

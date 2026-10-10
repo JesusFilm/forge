@@ -1,0 +1,57 @@
+{
+  "scope": "Observation timing and serialization only, no database or API latency claim",
+  "baseline": "77eb63fbb325f6279955f34cffd1f8994f9281dd",
+  "order": "ABBA",
+  "timingLabels": 16,
+  "callsPerObservation": 32,
+  "phases": [
+    {
+      "name": "before",
+      "n": 3000,
+      "concurrency": 10,
+      "warmups": 200,
+      "wallMs": 203.03396600000002,
+      "maxForwardingPayloadBytes": 2847,
+      "p50Ms": 0.5744869999999764,
+      "p95Ms": 0.9755099999999857,
+      "p99Ms": 1.31082600000002,
+      "maxMs": 1.5589820000000145
+    },
+    {
+      "name": "after",
+      "n": 3000,
+      "concurrency": 10,
+      "warmups": 200,
+      "wallMs": 248.540531,
+      "maxForwardingPayloadBytes": 3847,
+      "p50Ms": 0.7020200000000045,
+      "p95Ms": 1.1169649999999933,
+      "p99Ms": 1.540006999999946,
+      "maxMs": 5.099234000000024
+    },
+    {
+      "name": "after",
+      "n": 3000,
+      "concurrency": 10,
+      "warmups": 200,
+      "wallMs": 243.67131200000006,
+      "maxForwardingPayloadBytes": 3846,
+      "p50Ms": 0.6978769999999486,
+      "p95Ms": 1.1588859999999386,
+      "p99Ms": 1.4657959999999548,
+      "maxMs": 2.2157960000000685
+    },
+    {
+      "name": "before",
+      "n": 3000,
+      "concurrency": 10,
+      "warmups": 200,
+      "wallMs": 198.84498600000006,
+      "maxForwardingPayloadBytes": 2845,
+      "p50Ms": 0.5930020000000695,
+      "p95Ms": 0.8943440000000464,
+      "p99Ms": 1.1118020000001252,
+      "maxMs": 1.4541119999998955
+    }
+  ]
+}

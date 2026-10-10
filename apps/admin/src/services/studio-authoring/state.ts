@@ -1,0 +1,142 @@
+import { orderedStudioSpeech } from "@forge/studio-contracts/production"
+import { studioHash } from "@forge/studio-server"
+export { studioHash } from "@forge/studio-server"
+import type { Prisma, Short } from "@prisma/client"
+import {
+  studioActorSchema,
+  studioAttemptResultSchema,
+  studioCommandResultSchema,
+  type StudioActor,
+  type StudioCommandResult,
+  type StudioDocument,
+  type StudioAssetReference,
+} from "@forge/studio-contracts"
+import type { Principal } from "@/auth/principal"
+import { canAuthorStudio, isStudioHuman } from "@/auth/permissions"
+import { ForbiddenError, NotFoundError } from "../errors"
+import { StudioCommandError } from "./errors"
+
+export function studioActor(user: Principal | null) {
+  if (!canAuthorStudio(user)) throw new ForbiddenError()
+  if (isStudioHuman(user))
+    return studioActorSchema.parse({
+      kind: "human",
+      id: user!.id,
+      authority: user!.studioAuthority,
+      clientId: user!.studioClientId,
+    })
+  if (user?.role === "MANAGER_BACKEND" || user?.role === "SYSTEM")
+    return studioActorSchema.parse({
+      kind: "service",
+      id: user.role.toLowerCase(),
+    })
+  throw new ForbiddenError()
+}
+
+export async function lockProject(
+  tx: Prisma.TransactionClient,
+  projectId: string,
+  includeDeleted = false,
+) {
+  await tx.$queryRaw`SELECT id FROM short WHERE id = ${projectId} FOR UPDATE`
+  const project = await tx.short.findUnique({
+    where: { id: projectId },
+  })
+  if (!project || (project.deletedAt && !includeDeleted))
+    throw new NotFoundError("Short", projectId)
+  return project
+}
+export function assertEditable(project: Short, expectedRevision: number) {
+  if (project.deletedAt) throw new NotFoundError("Short", project.id)
+  if (project.firstPublishedAt || project.lifecycle !== "DRAFT")
+    throw new StudioCommandError("IMMUTABLE")
+  if (project.currentRevision !== expectedRevision)
+    throw new StudioCommandError("CONFLICT")
+}
+export async function receipt(
+  tx: Prisma.TransactionClient,
+  projectId: string,
+  idempotencyKey: string,
+  hash: string,
+) {
+  const prior = await tx.shortCommand.findUnique({
+    where: { projectId_idempotencyKey: { projectId, idempotencyKey } },
+  })
+  if (!prior) return null
+  if (prior.inputHash !== hash) throw new StudioCommandError("CONFLICT")
+  return studioCommandResultSchema.parse(prior.result)
+}
+export async function saveReceipt(
+  tx: Prisma.TransactionClient,
+  projectId: string,
+  idempotencyKey: string,
+  hash: string,
+  actor: StudioActor,
+  result: StudioCommandResult,
+) {
+  await tx.shortCommand.create({
+    data: { projectId, idempotencyKey, inputHash: hash, actor, result },
+  })
+}
+
+export function scriptHash(document: StudioDocument) {
+  return studioHash({
+    language: document.language,
+    speech: orderedStudioSpeech(document).map((i) => ({
+      id: i.id,
+      speech: i.speech,
+    })),
+  })
+}
+
+export function publicationHash(
+  document: StudioDocument,
+  revision: number,
+  inputHash: string,
+  manifest: StudioAssetReference,
+) {
+  return studioHash({ document, revision, inputHash, manifest })
+}
+
+// Approval and publication must bind to the same successful, current render.
+export async function publicationDependencyHash(
+  tx: Prisma.TransactionClient,
+  project: Short,
+  document: StudioDocument,
+  renderAttemptId: string,
+) {
+  // Delegated draft generation never supplies human script/voice review.
+  if (
+    orderedStudioSpeech(document).some(
+      (item) =>
+        item.speech && !item.speech.suppressed && item.speech.text.length > 0,
+    ) &&
+    !(await tx.shortApproval.findFirst({
+      where: {
+        projectId: project.id,
+        kind: "SCRIPT",
+        dependencyHash: scriptHash(document),
+      },
+    }))
+  )
+    throw new StudioCommandError("APPROVAL_REQUIRED")
+  const attempt = await tx.shortAttempt.findUnique({
+    where: { id: renderAttemptId },
+  })
+  if (
+    !attempt ||
+    attempt.projectId !== project.id ||
+    attempt.baseRevision !== project.currentRevision ||
+    attempt.kind !== "RENDER" ||
+    attempt.status !== "SUCCEEDED"
+  )
+    throw new StudioCommandError("APPROVAL_REQUIRED")
+  const render = studioAttemptResultSchema.parse(attempt.result)
+  if (!render.manifest) throw new StudioCommandError("APPROVAL_REQUIRED")
+  return publicationHash(
+    document,
+    project.currentRevision,
+    attempt.inputHash,
+    render.manifest,
+  )
+}

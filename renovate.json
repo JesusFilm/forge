@@ -1,0 +1,28 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Pacific/Auckland",
+  "dependencyDashboard": true,
+  "prConcurrentLimit": 3,
+  "prHourlyLimit": 2,
+  "automerge": false,
+  "vulnerabilityAlerts": {
+    "enabled": true,
+    "automerge": false,
+    "prConcurrentLimit": 2
+  },
+  "lockFileMaintenance": {
+    "enabled": true
+  },
+  "packageRules": [
+    {
+      "description": "Resolve AndroidX and Play Integrity artifacts from Google Maven",
+      "matchDatasources": ["maven"],
+      "matchPackageNames": [
+        "/^androidx\\./",
+        "/^com\\.google\\.android\\.play:/"
+      ],
+      "registryUrls": ["https://dl.google.com/dl/android/maven2/"]
+    }
+  ]
+}

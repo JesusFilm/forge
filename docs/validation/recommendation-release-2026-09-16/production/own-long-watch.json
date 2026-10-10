@@ -1,0 +1,260 @@
+{
+  "synthetic": true,
+  "journey": "autoplay preview, explicit Watch now, foreground playback, pause/resume, in-app home link",
+  "beforeExit": {
+    "mediaEvents": [
+      {
+        "kind": "waiting",
+        "seconds": 0
+      },
+      {
+        "kind": "playing",
+        "seconds": 0
+      },
+      {
+        "kind": "waiting",
+        "seconds": 0
+      },
+      {
+        "kind": "playing",
+        "seconds": 0
+      },
+      {
+        "kind": "waiting",
+        "seconds": 0
+      },
+      {
+        "kind": "playing",
+        "seconds": 0
+      },
+      {
+        "kind": "pause",
+        "seconds": 40.1
+      },
+      {
+        "kind": "playing",
+        "seconds": 40.2
+      }
+    ],
+    "requests": [
+      {
+        "milliseconds": 246,
+        "path": "/watch/api/recommendations/profile",
+        "status": 200
+      },
+      {
+        "milliseconds": 205,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      },
+      {
+        "milliseconds": 217,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      },
+      {
+        "milliseconds": 370,
+        "path": "/watch/api/recommendations",
+        "status": 200
+      },
+      {
+        "milliseconds": 294,
+        "path": "/watch/api/recommendations/evidence",
+        "status": 200
+      },
+      {
+        "milliseconds": 300,
+        "path": "/watch/api/recommendations/evidence",
+        "status": 200
+      },
+      {
+        "milliseconds": 295,
+        "path": "/watch/api/recommendations/evidence",
+        "status": 200
+      },
+      {
+        "milliseconds": 300,
+        "path": "/watch/api/recommendations/evidence",
+        "status": 200
+      },
+      {
+        "milliseconds": 295,
+        "path": "/watch/api/recommendations/evidence",
+        "status": 200
+      },
+      {
+        "milliseconds": 299,
+        "path": "/watch/api/recommendations/evidence",
+        "status": 200
+      },
+      {
+        "milliseconds": 230,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      },
+      {
+        "milliseconds": 236,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      },
+      {
+        "milliseconds": 251,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      },
+      {
+        "milliseconds": 1030,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      },
+      {
+        "milliseconds": 276,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      },
+      {
+        "milliseconds": 233,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      },
+      {
+        "milliseconds": 212,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      },
+      {
+        "milliseconds": 212,
+        "path": "/watch/api/recommendations/playback",
+        "status": 200
+      }
+    ],
+    "seconds": 42.203646,
+    "smokeStartedAt": "2026-09-15T22:09:18.136Z"
+  },
+  "destination": "/watch",
+  "observations": [
+    {
+      "capturedAt": "2026-09-15T22:14:54.338Z",
+      "readOnly": "on",
+      "requestedEpisodeCount": 1,
+      "matchedEpisodeCount": 1,
+      "allTargetsInOwnBoundedWindow": true,
+      "projectionRuntime": "checked_out_release_code_against_production_facts",
+      "episodes": [
+        {
+          "ordinal": 1,
+          "discoveryScope": "own_browser_episode",
+          "state": "finalized",
+          "conflictCount": 0,
+          "activeCurrentProfileLinks": 1,
+          "profileLinkPrecedesEpisode": true,
+          "recentReaderScope": "active_profile_current_session",
+          "recentReaderInputAmbiguous": false,
+          "ownVideoInRecentContext": true,
+          "ownRecentReasonCodes": ["recent_playback_start"],
+          "factCounts": {
+            "playback_attempt": 1,
+            "playback_start": 1,
+            "playback_qoe": 2,
+            "playback_active_visible_playing": 3,
+            "playback_seek": 1,
+            "playback_progress": 4,
+            "playback_navigation": 2,
+            "playback_end": 1,
+            "playback_observation": 1
+          },
+          "lateFactCount": 0,
+          "retainedNonlateStartCount": 1,
+          "observationVersion": "playback-observations-v1",
+          "preferenceInterpretation": "unknown",
+          "rankingInfluence": false,
+          "departure": {
+            "classification": "later_departure",
+            "stage": "after_start",
+            "immediate": false,
+            "windowMilliseconds": 10000,
+            "elapsedMilliseconds": 43587,
+            "activeMilliseconds": 42436,
+            "activeCoverage": "complete",
+            "timingVerified": true,
+            "cause": "unknown",
+            "trigger": "route_exit",
+            "playerState": "paused"
+          },
+          "navigation": {
+            "coverage": "observed",
+            "decision": "inconclusive",
+            "pauses": 1,
+            "resumes": 1,
+            "forwardSeeks": 0,
+            "backwardSeeks": 0,
+            "returnsToStart": 0,
+            "automaticAttempt": false,
+            "hiddenTransitions": 0,
+            "bfcacheSuspensions": 0,
+            "reasonCodes": [
+              "preference_interpretation_unknown",
+              "pause_and_navigation_cause_unknown",
+              "manual_skip_and_replay_intent_unavailable"
+            ]
+          },
+          "qoe": {
+            "coverage": "observed",
+            "decision": "inconclusive",
+            "startupMilliseconds": 0,
+            "bufferingEpisodes": 1,
+            "bufferingMilliseconds": 44,
+            "openBufferingInterval": false,
+            "errors": 0,
+            "reasonCodes": [
+              "error_recoverability_unknown",
+              "startup_timeout_unavailable",
+              "device_and_network_unavailable"
+            ]
+          },
+          "outcomes": [
+            {
+              "classifier_version": "active-watch-proxy-v1",
+              "qualified_view": true,
+              "active_coverage": "complete",
+              "active_playback_milliseconds": 42436,
+              "reasons": [
+                "active_time_at_least_30_seconds",
+                "duration_cohort_medium",
+                "terminal_partial"
+              ]
+            },
+            {
+              "classifier_version": "legacy-position-v0",
+              "qualified_view": true,
+              "active_coverage": null,
+              "active_playback_milliseconds": null,
+              "reasons": ["maximum_position_at_least_30_seconds"]
+            }
+          ],
+          "ownCurrentProfileProjection": [
+            {
+              "scope": "durable",
+              "state": "published",
+              "projection_version": "multi-interest-profile-projection-v1",
+              "contribution_count": 1,
+              "durable_interest_count": 1,
+              "session_intent_present": false,
+              "explicit_preference_count": 0,
+              "negative_evidence_count": 0,
+              "published_at": "2026-09-15T22:14:43.396Z",
+              "own_episode_contributions": "1"
+            }
+          ],
+          "qualifiedOutcomeContributions": 1,
+          "invalidUnqualifiedContributions": 0
+        }
+      ],
+      "laterRequestEvidence": {
+        "requests_with_matching_candidate": "0",
+        "actual_start_suppression_entries": "0",
+        "refill_or_movement_entries": "0"
+      }
+    }
+  ]
+}

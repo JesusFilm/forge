@@ -1,0 +1,110 @@
+[
+  {
+    "locale": "en",
+    "audioLanguageSlug": "english",
+    "startUnique": 191,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "fr",
+    "audioLanguageSlug": "french",
+    "startUnique": 164,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "hi",
+    "audioLanguageSlug": "hindi",
+    "startUnique": 141,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "ta",
+    "audioLanguageSlug": "tamil",
+    "startUnique": 0,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "en",
+    "audioLanguageSlug": "dagaari-northern",
+    "startUnique": 0,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "en",
+    "audioLanguageSlug": "american-sign-language",
+    "startUnique": 2,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "en",
+    "audioLanguageSlug": "arabic-najdi",
+    "startUnique": 5,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "en",
+    "audioLanguageSlug": "english-african",
+    "startUnique": 12,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "en",
+    "audioLanguageSlug": "french-african",
+    "startUnique": 28,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "en",
+    "audioLanguageSlug": "aguna",
+    "startUnique": 30,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "es",
+    "audioLanguageSlug": "spanish-latin-american",
+    "startUnique": 137,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "ar",
+    "audioLanguageSlug": "arabic-modern-standard",
+    "startUnique": 154,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "zh-Hans",
+    "audioLanguageSlug": "english",
+    "startUnique": 0,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "zh-Hant",
+    "audioLanguageSlug": "english",
+    "startUnique": 0,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "zh-Hans",
+    "audioLanguageSlug": "mandarin-china",
+    "startUnique": 0,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "de",
+    "audioLanguageSlug": "english",
+    "startUnique": 191,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "fr",
+    "audioLanguageSlug": "hindi",
+    "startUnique": 143,
+    "passedEquivalence": true
+  },
+  {
+    "locale": "ab",
+    "audioLanguageSlug": "english",
+    "startUnique": 0,
+    "passedEquivalence": true
+  }
+]

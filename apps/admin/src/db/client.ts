@@ -2,17 +2,25 @@
 //
 // Two clients are exported:
 //   - `prisma`       — the main client for GraphQL + mutations
-//                      (connection_limit=10, pool_timeout=20 via DATABASE_URL)
+//                      (max=10, connection timeout=20s via PrismaPg adapter)
 //   - `syncPrisma`   — dedicated client for Core sync background workflow
-//                      (connection_limit=2 via DATABASE_URL_SYNC) so sync
-//                      cannot starve read traffic.
+//                      (max=5, connection timeout=60s via PrismaPg adapter)
+//                      so sync cannot starve read traffic.
 //
-// Both use the Next.js HMR-safe singleton pattern: dev reloads reuse the
-// existing client from `globalThis` instead of spawning new pools.
+// Next's API, RSC and SSR module caches can evaluate this file independently.
+// Reuse each client through globalThis in production as well as development
+// so those module graphs cannot multiply the configured pool budgets.
 //
 // Per Unit 2 of docs/plans/2026-04-13-002-feat-admin-app-graphql-postgres-plan.md.
 
+import { PrismaPg } from "@prisma/adapter-pg"
 import { Prisma, PrismaClient } from "@prisma/client"
+import { ObservedPool } from "@/db/observed-pool"
+import { timeRecommendationOperation } from "@/lib/recommendation-runtime-observation"
+import {
+  prismaPgAdapterConfigForProfile,
+  type PrismaPoolProfile,
+} from "@/db/prisma-pool-config"
 
 export const INCLUDE_EMBEDDING_ARG = "__includeEmbedding" as const
 
@@ -62,7 +70,14 @@ const embeddingGuardExtension = Prisma.defineExtension((client) =>
   client.$extends({
     query: {
       $allModels: {
-        async $allOperations({ args, query }) {
+        // Avoid expanding the union of every generated model operation here.
+        async $allOperations({
+          args,
+          query,
+        }: {
+          args: unknown
+          query: (args: never) => Promise<unknown>
+        }) {
           const { cleanedArgs, includeEmbedding } = takeEmbeddingOptIn(args)
           const result = await query(cleanedArgs as never)
           return includeEmbedding ? result : stripEmbeddingFromResult(result)
@@ -72,21 +87,56 @@ const embeddingGuardExtension = Prisma.defineExtension((client) =>
   }),
 )
 
-function createPrismaClient(
-  options?: Prisma.PrismaClientOptions,
+const runtimeObservationExtension = Prisma.defineExtension({
+  query: {
+    async $allOperations({ model, operation, args, query }) {
+      const data =
+        args && typeof args === "object" && "data" in args
+          ? args.data
+          : undefined
+      return timeRecommendationOperation(
+        `db.${model ?? "raw"}.${operation}`,
+        () => query(args),
+        Array.isArray(data) ? data.length : undefined,
+      )
+    },
+  },
+})
+
+export function createPrismaClient(
+  profile: PrismaPoolProfile,
+  options?: Omit<Prisma.PrismaClientOptions, "adapter" | "datasourceUrl">,
 ): PrismaClient {
-  return new PrismaClient(options).$extends(
-    embeddingGuardExtension,
-  ) as unknown as PrismaClient
+  const adapterConfig = prismaPgAdapterConfigForProfile(
+    process.env.DATABASE_URL,
+    profile,
+  )
+  const metadata = new PrismaPg(adapterConfig.poolConfig, adapterConfig.options)
+  const adapter = {
+    adapterName: metadata.adapterName,
+    provider: "postgres" as const,
+    // A fresh owned pool on reconnect preserves $disconnect semantics without
+    // falling back to an unobserved pg.Pool inside the adapter factory.
+    connect: () =>
+      new PrismaPg(new ObservedPool(adapterConfig.poolConfig, profile), {
+        ...adapterConfig.options,
+        disposeExternalPool: true,
+      }).connect(),
+  }
+
+  return new PrismaClient({ ...options, adapter })
+    .$extends(embeddingGuardExtension)
+    .$extends(runtimeObservationExtension) as unknown as PrismaClient
 }
 
 /**
  * Main Prisma client. Use for GraphQL resolvers, services, and user-facing
- * mutations. Configure `DATABASE_URL` with `?connection_limit=10&pool_timeout=20`.
+ * mutations. Pool tuning lives in the PrismaPg adapter config above so
+ * `DATABASE_URL` remains a plain Postgres URL usable by libpq tools.
  */
 export const prisma =
   globalForPrisma.prisma ??
-  createPrismaClient({
+  createPrismaClient("main", {
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "warn", "error"]
@@ -94,18 +144,15 @@ export const prisma =
   })
 
 /**
- * Dedicated Prisma client for Core sync background workflow.
- * Isolated pool (`DATABASE_URL_SYNC` with `?connection_limit=2`) so a stalled
- * sync transaction cannot starve connections from the main pool.
+ * Dedicated Prisma client for Core sync background workflow. Production should
+ * use the same `DATABASE_URL` with its own adapter pool sized against total
+ * Postgres capacity.
  */
 export const syncPrisma =
   globalForPrisma.syncPrisma ??
-  createPrismaClient({
-    datasourceUrl: process.env.DATABASE_URL_SYNC ?? process.env.DATABASE_URL,
+  createPrismaClient("sync", {
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   })
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma
-  globalForPrisma.syncPrisma = syncPrisma
-}
+globalForPrisma.prisma = prisma
+globalForPrisma.syncPrisma = syncPrisma

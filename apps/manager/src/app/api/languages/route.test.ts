@@ -11,10 +11,7 @@ vi.mock("@/lib/auth", () => ({
 }))
 
 vi.mock("@/config/env", () => ({
-  env: {
-    STRAPI_URL: "http://example.test",
-    STRAPI_API_TOKEN: "token",
-  },
+  env: {},
 }))
 
 vi.mock("@/cms/gateway", async () => {

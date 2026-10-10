@@ -140,7 +140,7 @@ async function stepGenerateBlurMetadata(bytes: Uint8Array) {
 
 async function stepPersistBlurMetadata(
   mediaAssetId: string,
-  metadata: ReturnType<typeof generateImageMetadata>,
+  metadata: Awaited<ReturnType<typeof generateImageMetadata>>,
 ) {
   "use step"
 

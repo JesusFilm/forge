@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Տեսանելի բովանդակություն չկա։",
+    "failedToLoad": "Չհաջողվեց բեռնել փորձառությունը՝ {message}",
+    "unexpected": "Անսպասելի սխալ տեղի ունեցավ։",
+    "notConfigured": "Բովանդակության ծառայությունը կարգավորված չէ։",
+    "noContent": "Բովանդակություն չկա։",
+    "homepageMisconfigured": "Դիտման գլխավոր էջը սխալ կարգավորված է։",
+    "defaultTemplateMisconfigured": "Դիտման լռելյայն ձևանմուշը սխալ կարգավորված է։",
+    "authFailed": "Չհաջողվեց նույնականանալ բովանդակության ծառայության հետ։ Եթե այս խնդիրը շարունակվի, կապվեք աջակցման հետ։",
+    "pageLoadFailed": "Ինչ-որ բան սխալ գնաց։",
+    "tryAgain": "Կրկին փորձել"
+  },
+  "VideosPage": {
+    "title": "Բոլոր տեսանյութերը",
+    "placeholder": "Շուտով հասանելի կլինի կատալոգի դիտումը։ Մինչ այդ օգտագործեք որոնումը կամ թեմային համապատասխան URL-ը։"
+  },
+  "BibleQuotes": {
+    "title": "Աստվածաշնչի համարներ",
+    "share": "Կիսվել",
+    "readMore": "Կարդալ ավելին...",
+    "learnMore": "Իմանալ ավելին",
+    "freeResources": "Անվճար ռեսուրսներ",
+    "promoHeading": "Ցանկանո՞ւմ եք ավելի խորությամբ հասկանալ Աստվածաշունչը։",
+    "joinBibleStudy": "Միացեք մեր Աստվածաշնչի ուսումնասիրությանը",
+    "previousQuote": "Նախորդ աստվածաշնչյան մեջբերումը",
+    "nextQuote": "Հաջորդ աստվածաշնչյան մեջբերումը",
+    "readPassage": "Կարդացեք այս հատվածը ձեր Աստվածաշնչում։"
+  },
+  "DownloadButton": {
+    "checking": "Ստուգվում է",
+    "download": "Ներբեռնել",
+    "sessionError": "Չհաջողվեց ստուգել ձեր սեսիան։ Խնդրում ենք կրկին փորձել։",
+    "saveVideo": "Պահպանել տեսանյութը"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Ներբեռնել տեսանյութը",
+    "eyebrow": "Տեսանյութի ներբեռնում",
+    "posterAlt": "Տեսանյութի պաստառ",
+    "noDownloads": "Այս տեսանյութի համար ներբեռնումներ չկան։",
+    "fileSizeLabel": "Ընտրեք ֆայլի չափը",
+    "termsAgreementPrefix": "Համաձայն եմ ",
+    "termsOfUse": "Օգտագործման պայմաններին",
+    "termsAgreementSuffix": "",
+    "close": "Փակել",
+    "download": "Ներբեռնել",
+    "authRequiredTitle": "Ցանկանո՞ւմ եք ներբեռնել այս տեսանյութը։",
+    "authRequiredBody": "Տեսանյութեր ներբեռնելու համար անհրաժեշտ է անվճար Jesus Film հաշիվ։",
+    "signInToDownload": "Մուտք գործել՝ ներբեռնելու համար",
+    "keepWatching": "Շարունակել դիտումը",
+    "checking": "Ստուգվում է",
+    "closeTermsOfUse": "Փակել օգտագործման պայմանները",
+    "cancel": "Չեղարկել",
+    "accept": "Ընդունել",
+    "errorSessionExpired": "Ձեր սեսիան ժամկետանց է։ Ներբեռնելու համար կրկին մուտք գործեք։",
+    "errorSessionUnavailable": "Չհաջողվեց ստուգել ձեր սեսիան։ Խնդրում ենք կրկին փորձել։",
+    "errorUnavailableSource": "Այս աղբյուրից ներբեռնումը հասանելի չէ",
+    "tierHighest": "Ամենաբարձր",
+    "tierHigh": "Բարձր",
+    "tierLow": "Ցածր"
+  },
+  "HeroPlayerControls": {
+    "play": "Նվագարկել",
+    "pause": "Դադարեցնել",
+    "seek": "Տեղաշարժել",
+    "seekValue": "{current}/{total}",
+    "volume": "Ձայնի բարձրություն",
+    "volumeValue": "{percent} տոկոս",
+    "mute": "Լռեցնել",
+    "unmute": "Միացնել ձայնը",
+    "changeAudioLanguage": "Փոխել ձայնի լեզուն",
+    "enterFullscreen": "Անցնել ամբողջ էկրան",
+    "exitFullscreen": "Դուրս գալ ամբողջ էկրանից"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Ընտրեք լեզուն",
+    "searchPlaceholder": "Որոնել լեզուներ…",
+    "languages": "Լեզուներ",
+    "noMatches": "Համընկնումներ չկան",
+    "notAvailable": "Հասանելի չէ"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Լեզու",
+    "dialogTitleWithSubtitles": "Լեզու և ենթագրեր",
+    "languageHeading": "Լեզու",
+    "subtitlesHeading": "Ենթագրեր",
+    "languageCount": "{count, plural, one {# լեզու} other {# լեզու}}",
+    "requestSent": "Հարցումը ուղարկված է",
+    "translateWithAi": "Թարգմանել AI-ով",
+    "noSubtitles": "Ենթագրեր չկան",
+    "toggleOn": "Միացված",
+    "toggleOff": "Անջատված",
+    "close": "Փակել",
+    "apply": "Կիրառել",
+    "noLanguageSubtitles": "{language} ենթագրեր չկան",
+    "seeAllLanguages": "Բոլոր լեզուները",
+    "seeAllVideosInLanguage": "Բոլոր տեսանյութերը: {language}",
+    "retryLoadingLanguages": "Կրկին փորձել բեռնել լեզուները",
+    "notAvailable": "Հասանելի չէ",
+    "switching": "Փոխվում է..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 ՍԵՐԻԱ} other {# ՍԵՐԻԱՆԵՐ}}",
+    "seriesLabel": "ՍԵՐԻԱ · {episodes}",
+    "changeAudioLanguage": "Փոխել ձայնի լեզուն",
+    "share": "Կիսվել",
+    "languages": "Լեզուներ",
+    "downloadCollection": "Ներբեռնել հավաքածուն",
+    "checkingDownloads": "Ներբեռնումները ստուգվում են…",
+    "downloadSessionError": "Չհաջողվեց ստուգել ձեր սեսիան։ Խնդրում ենք կրկին փորձել։"
+  },
+  "WatchModal": {
+    "close": "Փակել"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Եթե կարողանայիք այս տեսանյութի ստեղծողին հարց տալ, ո՞րը կլիներ այն։",
+    "fallbackBody": "Անձնական քննարկում ունեցեք մեկի հետ, ով պատրաստ է լսել։",
+    "questionsShort": "Հարցեր",
+    "questions": "Կապակցված հարցեր",
+    "askYours": "Հարցնել ձեր հարցը",
+    "chatWithPerson": "Զրուցել մարդու հետ",
+    "askBibleQuestion": "Հարցնել Աստվածաշնչի մասին",
+    "quiz": "Վիկտորինա"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Հաղորդագրության տեսակ",
+    "fieldLabel": "Հարց տվեք այս տեսանյութի մասին",
+    "send": "Ուղարկել հարցը",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Հարցնել Աստվածաշնչի մասին",
+        "description": "Ակնթարթային պատասխաններ Աստվածաշնչից՝ AI որոնմամբ"
+      },
+      "prayerRequest": {
+        "label": "Աղոթքի խնդրանք",
+        "description": "Կիսվեք, թե ինչի համար եք ուզում, որ աղոթեն"
+      },
+      "comment": {
+        "label": "Թողնել մեկնաբանություն",
+        "description": "Ուղարկել մտքեր այս տեսանյութի մասին"
+      },
+      "personChat": {
+        "label": "Զրուցել մարդու հետ",
+        "description": "Խոսեք մեկի հետ հիմա"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Կիսվել տեսանյութով",
+    "heading": "Կիսվեք այս տեսանյութով",
+    "posterAlt": "Տեսանյութի պաստառ",
+    "shareOnFacebook": "Կիսվել Facebook-ում",
+    "shareOnFacebookUnavailable": "Կիսվել Facebook-ում (անհասանելի է այս կառուցման մեջ)",
+    "shareOnX": "Կիսվել X-ում",
+    "shareOnXUnavailable": "Կիսվել X-ում (անհասանելի է այս կառուցման մեջ)",
+    "shareDisabledHint": "Կիսվելը պահանջում է հրապարակված էջ — այն կաշխատի, երբ այս տեսանյութը դրվի արտադրական միջավայրում։",
+    "shareFormat": "Կիսվելու ձևաչափ",
+    "shareLinkTab": "Կիսվելու հղում",
+    "embedCodeTab": "Ներդրման կոդ",
+    "copyFailed": "Չհաջողվեց ավտոմատ պատճենել — ընտրեք ստորև եղած տեքստը և պատճենեք ձեռքով։",
+    "copyLink": "Պատճենել հղումը",
+    "copyCode": "Պատճենել կոդը",
+    "copied": "Պատճենված է",
+    "close": "Փակել"
+  },
+  "SubtitleTranscript": {
+    "heading": "Տեքստային տարբերակ",
+    "subheading": "Հպեք ցանկացած տողի վրա՝ այդ հատվածին անցնելու համար։",
+    "subtitleLanguage": "Ենթագրերի լեզու",
+    "aiSuffix": " · AI",
+    "loading": "Տեքստային տարբերակը բեռնվում է…",
+    "unavailable": "Այս ենթագրային հետքի համար տեքստային տարբերակ չկա։",
+    "empty": "Տեքստային տողեր չեն գտնվել։"
+  },
+  "FloatingSearch": {
+    "placeholder": "Որոնել կամ դիտել թեմաները…",
+    "openSearch": "Որոնել տեսանյութեր",
+    "searchRegion": "Որոնել տեսանյութեր",
+    "clearSearch": "Մաքրել որոնումը",
+    "changeAudioLanguage": "Փոխել ձայնի լեզուն",
+    "home": "JesusFilm գլխավոր էջ",
+    "closeSearch": "Փակել որոնումը",
+    "submitSearch": "Որոնել",
+    "library": "Գրադարան"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Որոնել և դիտել տեսանյութեր",
+    "home": "JesusFilm գլխավոր էջ",
+    "placeholder": "Որոնել կամ դիտել թեմաները…",
+    "inputLabel": "Որոնել տեսանյութերը ըստ հիմնաբառի",
+    "searchFailed": "Որոնումը չհաջողվեց։ Խնդրում ենք կրկին փորձել։",
+    "loadMoreFailed": "Չհաջողվեց բեռնել ավելի շատ արդյունքներ։",
+    "searching": "Որոնվում է...",
+    "connectionHint": "Խնդրում ենք ստուգել ձեր կապը և կրկին փորձել։",
+    "rateLimitHint": "Չափազանց շատ հարցումներ։ Կրկին փորձեք մեկ րոպեից։",
+    "retrySearch": "Կրկնել որոնումը",
+    "retry": "Կրկնել",
+    "noResults": "Արդյունքներ չկան «{query}»-ի համար",
+    "tryDifferentKeywords": "Փորձեք այլ հիմնաբառեր կամ դիտեք կատեգորիաները",
+    "loading": "Բեռնվում է...",
+    "loadMore": "Բեռնել ավելին",
+    "categoryBibleStories": "Աստվածաշնչյան պատմություններ",
+    "categoryParables": "Առակներ",
+    "categoryAnimated": "Անիմացիոն",
+    "categoryStudy": "Ուսումնասիրություն",
+    "categoryFamily": "Ընտանեկան",
+    "categoryChristmas": "Սուրբ Ծնունդ",
+    "searchLanguageLabel": "Որոնման լեզու",
+    "allLanguages": "Բոլոր լեզուները",
+    "searchSuggestions": "Որոնման առաջարկներ",
+    "directMatches": "Ուղիղ համընկնումներ",
+    "languages": "Լեզուներ",
+    "recommendedLanguage": "Առաջարկվող լեզու",
+    "searchSuggestion": "Որոնել «{suggestion}»",
+    "searchSuggestionWithLanguage": "{language}-ով որոնել «{suggestion}»",
+    "inLanguage": "{language}-ով",
+    "browseByRegion": "Դիտել ըստ տարածաշրջանի",
+    "allVideosOnSinglePage": "Բոլոր տեսանյութերը մեկ էջում",
+    "clearLanguages": "Մաքրել",
+    "queryLanguageDetected": "Հայտնաբերվել է {language}",
+    "searchInLanguage": "Որոնել {language}-ով",
+    "tryDifferentKeywordsOrLanguage": "Փորձեք այլ հիմնաբառեր կամ ընտրեք այլ որոնման լեզու",
+    "useWebsiteDefaultLanguage": "Օգտագործել կայքի լռելյայն որոնման լեզուն",
+    "removeLanguage": "Հեռացնել {language}",
+    "browseMode": "Դիտման որոնման ռեժիմ",
+    "searchingInLanguage": "Արդյունքները՝ {language}-ով"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Դիտել հիմա",
+    "tapToUnmute": "Հպեք՝ ձայնը միացնելու համար",
+    "nextEpisode": "Հաջորդ սերիան",
+    "audioTranslationCount": "{count, plural, one {# լեզու} other {# լեզու}}",
+    "subtitleCount": "Ենթագրեր: {count, plural, one {# լեզու} other {# լեզու}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Բովանդակությունը բեռնվում է",
+    "loadingVideo": "Տեսանյութը բեռնվում է"
+  },
+  "VideoLabels": {
+    "video": "Տեսանյութ",
+    "segment": "Հատված",
+    "episode": "Սերիա",
+    "featureFilm": "Գեղարվեստական ֆիլմ",
+    "shortFilm": "Կարճամետրաժ ֆիլմ",
+    "series": "Սերիա",
+    "collection": "Հավաքածու",
+    "trailer": "Թրեյլեր",
+    "behindTheScenes": "Կուլիսների հետևում",
+    "chapter": "Գլուխ"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Հատված {current}/{total}",
+    "position": "{current}/{total}",
+    "chapterCount": "{count, plural, one {# գլուխ} other {# գլուխ}}",
+    "clipAriaLabel": "{title} · Հատված {current}/{total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# գլուխ} other {# գլուխ}}",
+    "chapter": "Գլուխ",
+    "noImage": "Պատկեր չկա",
+    "playingNow": "Նվագարկվում է",
+    "previousChapter": "Նախորդ գլուխ",
+    "nextChapter": "Հաջորդ գլուխ",
+    "thumbnailAlt": "{title}-ի մանրապատկեր",
+    "relatedVideoThumbnail": "Կապակցված տեսանյութի մանրապատկեր"
+  },
+  "SearchResultCard": {
+    "experience": "Փորձառություն",
+    "episodeCount": "{count, plural, one {# սերիա} other {# սերիա}}",
+    "thumbnailAlt": "Տեսանյութի մանրապատկեր"
+  },
+  "Feedback": {
+    "openForm": "Բացել արձագանքի ձևը",
+    "label": "Արձագանք",
+    "couldNotLoad": "Չհաջողվեց բեռնել արձագանքի ձևը։",
+    "loadingForm": "Արձագանքի ձևը բեռնվում է…",
+    "retry": "Կրկին փորձել",
+    "cancel": "Չեղարկել",
+    "closeForm": "Փակել արձագանքի ձևը",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Անվճար քրիստոնեական տեսանյութեր՝ {language}-ով | Jesus Film Project",
+    "metadataDescription": "Ուսումնասիրեք Հիսուսի մասին ֆիլմեր, Աստվածաշնչյան պատմություններ, աշակերտության շարքեր և քարոզչական տեսանյութեր՝ կրկնօրինակված ձայնով կամ ենթագրերով՝ {language}-ով։",
+    "heroTitle": "Անվճար քրիստոնեական տեսանյութեր՝ {language}-ով",
+    "heroDescription": "Ուսումնասիրեք Հիսուսի մասին ֆիլմեր, Աստվածաշնչյան պատմություններ, աշակերտության շարքեր և քարոզչական տեսանյութեր, որոնք հասանելի են {language}-ով։ Ամբողջությամբ կրկնօրինակված տեսանյութերը ցուցադրվում են առաջինը, իսկ ներքևում՝ միայն ենթագրերով տարբերակները։",
+    "languageCollection": "Լեզվային հավաքածու",
+    "itemCount": "{count, plural, one {# նյութ} other {# նյութ}}",
+    "videoCount": "{count, plural, one {# տեսանյութ} other {# տեսանյութ}}",
+    "videosInGroups": "{videoCount, plural, one {# տեսանյութ} other {# տեսանյութ}}՝ {groupCount, plural, one {# խմբում} other {# խմբերում}}",
+    "sectionNavLabel": "Լեզվային ցանկի բաժիններ",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Նոր",
+    "videoBible": "Տեսաաստվածաշունչ",
+    "bibleProject": "BibleProject",
+    "sports": "Սպորտ",
+    "collections": "Հավաքածուներ",
+    "subtitlesOnly": "Միայն ենթագրեր",
+    "backToTop": "Վերև",
+    "newlyAdded": "Նոր ավելացված",
+    "newVideosTitle": "Նոր քրիստոնեական տեսանյութեր՝ {language}-ով",
+    "newestFirst": "Նորերը սկզբում",
+    "noPublishedVideos": "Այս լեզվի համար դեռ հրապարակված տեսանյութեր չեն գտնվել։",
+    "bibleAndGospelFilms": "Աստվածաշնչյան և Ավետարանի ֆիլմեր",
+    "videoBibleCollectionsTitle": "{language}-ով տեսաաստվածաշնչյան հավաքածուներ",
+    "videoBibleDescription": "Սուրբ Գրքի վրա կենտրոնացած հավաքածուներ, ներառյալ LUMO, JESUS, Magdalena և Acts՝ {language}-ով։",
+    "noVideoBibleCollections": "Այս լեզվի համար դեռ տեսաաստվածաշնչյան հավաքածուներ չկան։",
+    "bibleProjectCollectionsTitle": "{language}-ով BibleProject հավաքածուներ",
+    "bibleProjectDescription": "BibleProject-ի շարքերն ու ուսումնասիրությունները, հասանելի {language}-ով։",
+    "noBibleProjectCollections": "Այս լեզվի համար դեռ BibleProject հավաքածուներ չկան։",
+    "sportsStories": "Սպորտային պատմություններ",
+    "sportsTitle": "{language}-ով սպորտի և մարզիկների պատմություններ",
+    "sportsDescription": "Հավատքի վրա կենտրոնացած սպորտային պատմություններ և մարզիկների մասին հավաքածուներ, հասանելի {language}-ով։",
+    "noSportsCollections": "Այս լեզվի համար դեռ սպորտային կամ մարզիկների պատմությունների հավաքածուներ չկան։",
+    "fullyDubbed": "Ամբողջությամբ կրկնօրինակված",
+    "dubbedVideosTitle": "{language}-ով տեսանյութեր ըստ հավաքածուի",
+    "dubbedVideosDescription": "Դիտեք ամբողջությամբ կրկնօրինակված {language}-ով տեսանյութերը՝ խմբավորված իրենց հավաքածուի հետ՝ ավելի հեշտ գտնելու համար։",
+    "noDubbedVideos": "Այս լեզվի համար դեռ ամբողջությամբ կրկնօրինակված տեսանյութեր չկան։",
+    "subtitlesAvailable": "Ենթագրերը հասանելի են",
+    "subtitlesTitle": "{language}-ով տեսանյութեր՝ ենթագրերով",
+    "subtitlesDescription": "Այս տեսանյութերը ներառում են {language}-ով ենթագրեր, երբ խոսակցական {language}-ով ձայնը դեռ հասանելի չէ։",
+    "noSubtitleVideos": "Այս լեզվի համար դեռ միայն ենթագրերով տեսանյութեր չկան։",
+    "dubbed": "Կրկնօրինակված",
+    "subtitles": "Ենթագրեր",
+    "newLabel": "Նոր",
+    "fromCollection": "{collection}-ից",
+    "standaloneVideos": "Առանձին տեսանյութեր",
+    "videosFromCollection": "Տեսանյութեր {collection}-ից։",
+    "standaloneDescription": "Այս լեզվով առանձին տեսանյութեր։",
+    "openCollection": "Բացել հավաքածուն",
+    "filters": "Զտիչներ",
+    "filterLength": "Տևողություն",
+    "filterLength_under5": "5 րոպեից պակաս",
+    "filterLength_5to10": "5-10 րոպե",
+    "filterLength_10to30": "10-30 րոպե",
+    "filterLength_over30": "30 րոպեից ավելի",
+    "filterType": "Տեսակ",
+    "clearFilters": "Մաքրել զտիչները",
+    "filterResults": "Ցուցադրված է {count}՝ {total}-ից",
+    "noFilterResults": "Այս զտիչներին համապատասխանող տեսանյութ չկա։ Փորձեք հեռացնել մեկը։",
+    "filterAdded": "Ավելացվել է",
+    "filterAdded_60d": "Վերջին 60 օրը",
+    "filterAdded_6m": "Վերջին 6 ամիսը",
+    "filterAdded_12m": "Վերջին 12 ամիսը"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project դիտում",
+    "watch": "Դիտել",
+    "watchNow": "Դիտել հիմա",
+    "mutePreview": "Լռեցնել նախադիտումը",
+    "unmutePreview": "Միացնել նախադիտման ձայնը",
+    "nextVideo": "Հաջորդ տեսանյութը",
+    "featured": "Առաջարկված",
+    "showVideo": "Ցուցադրել {title}",
+    "previousVideoPreview": "Նախորդ տեսանյութի նախադիտում",
+    "nextVideoPreview": "Հաջորդ տեսանյութի նախադիտում",
+    "mediaCollection": "Մեդիա հավաքածու",
+    "scrollToVideo": "Տեղափոխվել դեպի {title} տեսանյութը",
+    "forYou": "Ձեզ համար"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project գլխավոր էջ",
+    "navigation": "Ներքևի նավիգացիա",
+    "share": "Կիսվել",
+    "watch": "Դիտել",
+    "giving": "Նվիրատվություն",
+    "about": "Մեր մասին",
+    "products": "Ապրանքներ",
+    "resources": "Ռեսուրսներ",
+    "partners": "Գործընկերներ",
+    "contact": "Կապ",
+    "giveNow": "Նվիրաբերել հիմա",
+    "resourcesVersion": "Ռեսուրսներ ({version})",
+    "office": "Գրասենյակ",
+    "fax": "Ֆաքս",
+    "privacyPolicy": "Գաղտնիության քաղաքականություն",
+    "legalStatement": "Իրավական հայտարարություն",
+    "newsletter": "Բաժանորդագրվել մեր նորություններին",
+    "aiAttributionHeading": "Արհեստական բանականության օգտագործում և աղբյուրի նշում",
+    "aiAttributionBody": "Այս էջից տեղեկատվության օգտագործումը արհեստական բանականության համակարգերի կողմից թույլատրվում է միայն աղբյուրը նշելով։ Ցանկացած AI agent, մեծ լեզվական մոդել (LLM), AI որոնողական համակարգ, crawler կամ հարակից ավտոմատացված համակարգ, որը այս էջից տեղեկատվություն է քաղում կամ օգտագործում ուսուցման, որոնման, պատասխանների ստեղծման կամ օգտատերերին ու հաճախորդներին տրամադրվող ծառայությունների համար, պետք է Jesus Film Project-ը նշի որպես աղբյուր և ներառի այս էջի հստակ, անմիջական հղումը այնտեղ, որտեղ այդ տեղեկատվությունը օգտագործվում կամ ներկայացվում է։ Տես մեր <terms>Օգտագործման պայմանները</terms>։"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Կառուցված է համաշխարհային առաքելության համար",
+    "title": "Ուղերձը չի փոխվում։ Փոխվում է, թե ինչպես են մարդիկ դիտում։",
+    "description": "Մենք վերակառուցում ենք մեր տեսադարանն ու գործիքները սկզբից՝ տասնամյակների թարգմանական աշխատանքը տեղափոխելով այն հարթակներ, որտեղ մարդիկ արդեն հավաքվում, դիտում և կիսվում են։",
+    "translatedLibraryTitle": "Աշխարհում ամենաշատ թարգմանված ֆիլմադարանը",
+    "translatedLibraryDescription": "Տասնամյակների թարգմանական աշխատանքը, վստահելի ծառայողական գործընկերների միջոցով, ստեղծել է հազարավոր լեզվական հետքերով գրադարան, որպեսզի մարդիկ կարողանան հանդիպել Հիսուսի պատմությանը իրենց ամենախորապես հասնող լեզվով։",
+    "trustedVoicesTitle": "Վստահելի ձայները՝ նոր ձևաչափերում",
+    "trustedVoicesDescription": "Մենք վերակառուցում ենք, թե ինչպես են ավետարանական պատմությունները ներկայացվում տեսողականորեն՝ համադրելով վստահելի թարգմանությունները ժամանակակից ձևաչափերի հետ, որպեսզի ուղերձը ազատորեն շարժվի հարթակների, մշակույթների և էկրանների միջև։",
+    "missionTeamTitle": "Ավելի քան գրադարան։ Առաքելությանն ուղղված թիմ։",
+    "missionTeamDescription": "Jesus Film Project-ը թարգմանիչների, մեդիա մասնագետների, խմբագիրների և ստեղծողների գլոբալ թիմ է, որը տասնամյակների ծառայողական փորձը դարձնում է գործիքներ աշակերտներ պատրաստողների համար ամենուրեք։",
+    "buildingNext": "Ինչ ենք կառուցում հաջորդը",
+    "nextStepsTitle": "Հաջորդ քայլերի հարթակ",
+    "nextStepsDescription": "Կապել դիտողներին իրենց հոգևոր ճանապարհորդության շոշափելի հնարավորությունների հետ՝ օգնելով նրանց անել հաջորդ քայլը դեպի համայնք, Սուրբ Գիրք կամ առաքելություն։",
+    "mediaLibraryTitle": "Ավետարանչական մեդիագրադարան",
+    "mediaLibraryDescription": "Ընդարձակ քրիստոնեական մեդիագրադարան՝ հազարավոր տեսանյութերով, ֆիլմերով և ռեսուրսներով, հասանելի բազմալեզու ծառայության և ամբողջ աշխարհում ավետարանչության համար։",
+    "ministryToolsTitle": "Թվային գործիքներ ծառայությունների համար",
+    "ministryToolsDescription": "Տեսանյութերի կառավարում, բովանդակության տարածում, լսարանի ներգրավում և վերլուծություն՝ նախագծված՝ ծառայություններին օգնելու ավելի արդյունավետ հասնել ավելի շատ մարդկանց։",
+    "invitationEyebrow": "Դուք հրավիրված եք",
+    "invitationTitle": "Օգնեք կառուցել <highlight>առաքելական գործիքների հաջորդ սերունդը</highlight>",
+    "invitationDescription": "Հրավիրում ենք գործնական մասնագետներին, ստեղծագործողներին և գործընկերներին՝ վաղ հասանելիության փուլում մասնակցելու։ Փորձարկեք նոր գործիքները առաջինը, տվեք արձագանք և օգնեք ձևավորել իրական առաքելական աշխատանքի համար նախատեսված արտադրանքը։",
+    "betaTester": "Դարձեք բետա թեստավորող"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Տեսաաստվածաշնչյան հավաքածու",
+    "gospelRailTitle": "Բացահայտեք ամբողջ պատմությունը",
+    "videoBibleDescription": "Ուսումնասիրեք մեր տեսանյութերի և ռեսուրսների հավաքածուն, որոնք կենդանացնում են Աստվածաշունչը՝ հետաքրքիր պատմություններով և ուսուցումներով։",
+    "showcaseTitle": "Սուրբ Գրքի պատմություն՝ ֆիլմի միջոցով",
+    "adventEyebrow": "Սուրբ Ծննդյան Ադվենտ",
+    "adventTitle": "Սուրբ Ծննդյան Ադվենտի հաշվարկ",
+    "adventDescription": "Միացեք մեր Ադվենտի ճանապարհին՝ ամենօրյա տեսանյութով, որը ուժեղացնում է Սուրբ Ծննդի սպասումը՝ ուսումնասիրելով Հիսուսի գալստյան հույսը, ուրախությունը և խոստումը։",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject Ադվենտ",
+    "nuaEyebrow": "NUA շարք",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth շարք",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Տեսադասընթաց",
+    "journeyWithJesusTitle": "Ճանապարհորդություն Հիսուսի հետ",
+    "gospelsOnVideoEyebrow": "Յուրաքանչյուր Ավետարան՝ տեսանյութով",
+    "scriptureAsWrittenTitle": "Սուրբ Գիրքը՝ ճիշտ այնպես, ինչպես գրված է",
+    "merryChristmas": "Շնորհավոր Սուրբ Ծնունդ։",
+    "daysUntilChristmas": "{count, plural, one {# օր մինչև Սուրբ Ծնունդ} other {# օր մինչև Սուրբ Ծնունդ}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Լեզուներ",
+    "metadataDescription": "Դիտեք JesusFilm տեսանյութերը ըստ լեզվի։",
+    "eyebrow": "Դիտման լեզուներ",
+    "title": "Ընտրեք լեզու",
+    "description": "Ուսումնասիրեք լեզուները ըստ տարածաշրջանի կամ դիտեք ամբողջ ցանկը։",
+    "searchPlaceholder": "Որոնել լեզուներ կամ երկրներ...",
+    "searchLabel": "Որոնել լեզուներ կամ երկրներ",
+    "clearSearch": "Մաքրել որոնումը",
+    "browse": "Դիտել",
+    "browseByRegion": "Դիտել ըստ տարածաշրջանի և երկրի",
+    "languageCount": "{count, plural, one {# լեզու} other {# լեզու}}",
+    "region": "Տարածաշրջան",
+    "countryLanguages": "{country}-ի լեզուներ",
+    "showLess": "Ցուցադրել քիչ",
+    "showMore": "Ցուցադրել ևս {count}",
+    "noLanguages": "Լեզուներ չեն գտնվել",
+    "tryAnotherSearch": "Փորձեք այլ որոնման բառ։"
+  },
+  "WatchHistory": {
+    "metadataTitle": "Դիտման պատմություն | Jesus Film Project",
+    "title": "Դիտման պատմություն",
+    "loading": "Պատմությունը բեռնվում է",
+    "empty": "Դեռ ոչինչ չկա",
+    "emptyDescription": "Ձեր դիտած տեսանյութերը, երբ մուտք գործած եք, կհայտնվեն այստեղ։",
+    "earlier": "Ավելի վաղ",
+    "today": "Այսօր",
+    "yesterday": "Երեկ"
+  },
+  "AccountControl": {
+    "account": "Հաշիվ",
+    "accountMenu": "Հաշվի ընտրացանկ",
+    "signIn": "Մուտք գործել",
+    "signOut": "Դուրս գալ",
+    "signedIn": "Մուտք գործած",
+    "history": "Պատմություն",
+    "logOut": "Ելք"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Էջը չի գտնվել",
+    "eyebrow": "Էջը չի գտնվել",
+    "screenReaderPrefix": "Էջը չի գտնվել՝",
+    "title": "Այս տեսարանը այստեղ չէ։",
+    "description": "Էջը կարող է տեղափոխված լինել, բայց պատմությունը շարունակվում է։",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Էջը չի գտնվել՝ գործողություններ",
+    "backToWatch": "Վերադառնալ դիտմանը",
+    "browseVideos": "Դիտել տեսանյութերը"
+  },
+  "VideoRecommendations": {
+    "match": "Համապատասխանություն՝ {percent}%",
+    "none": "Այս լեզվով այս տեսանյութի համար առաջարկություններ չեն գտնվել։"
+  },
+  "BetaTesterModal": {
+    "title": "Դարձեք բետա թեստավորող",
+    "trigger": "Դարձեք բետա թեստավորող",
+    "loadFailed": "Ինչ-որ բան սխալ գնաց։",
+    "loading": "Բեռնվում է...",
+    "openFormNewTab": "Բացել ձևը նոր ներդիրում",
+    "close": "Փակել",
+    "iframeTitle": "Դարձեք բետա թեստավորող"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Ներբեռնել հավաքածուն",
+    "eyebrow": "Հավաքածուի ներբեռնում",
+    "description": "Մեկ անգամ ընտրեք լեզուն և որակը։ Յուրաքանչյուր հասանելի սերիա կներբեռնվի հերթականությամբ։",
+    "signInTitle": "Մուտք գործեք՝ ներբեռնելու համար",
+    "signInBody": "Հավաքածուները կարող եք ներբեռնել Jesus Film հաշվով մուտք գործելուց հետո։",
+    "signIn": "Մուտք գործել՝ ներբեռնելու համար",
+    "languageLabel": "Լեզու",
+    "qualityLabel": "Տեսանյութի որակ",
+    "tierHighest": "Ամենաբարձր",
+    "tierHigh": "Բարձր",
+    "tierLow": "Ցածր",
+    "loading": "Հասանելի սերիաները որոնվում են…",
+    "loadError": "Չհաջողվեց բեռնել այս լեզվով հասանելի ներբեռնումները։",
+    "retry": "Կրկին փորձել",
+    "noDownloads": "Այս լեզվով ներբեռնման համար հասանելի սերիաներ չկան։",
+    "availableCount": "{count, plural, one {# սերիա պատրաստ է} other {# սերիա պատրաստ են}}",
+    "skippedCount": "{count, plural, one {# սերիա բաց կթողնվի, քանի որ հասանելի չէ} other {# սերիա բաց կթողնվեն, քանի որ հասանելի չեն}}",
+    "chooseFolder": "Ընտրել ներբեռնման պանակը",
+    "folderSelected": "Պահպանման վայր՝ {name}",
+    "folderError": "Չհաջողվեց բացել ներբեռնման պանակը։",
+    "browserFallback": "Ձեր դիտարկիչը յուրաքանչյուր ֆայլ կպահպանի ներբեռնման սովորական կարգավորումներով։ Այն կարող է խնդրել թույլատրել մի քանի ներբեռնում։",
+    "sessionError": "Չհաջողվեց ստուգել ձեր սեսիան։ Խնդրում ենք կրկին փորձել։",
+    "downloading": "Ներբեռնվում է՝ {title}",
+    "progress": "{completed}՝ {total}-ից",
+    "complete": "Ներբեռնումներն ավարտված են",
+    "canceled": "Ներբեռնումները չեղարկված են",
+    "failedCount": "{count, plural, one {Չհաջողվեց ներբեռնել # սերիա} other {Չհաջողվեց ներբեռնել # սերիա}}։ Հավաքածուն կրկին ներբեռնելու համար ընտրեք «Կրկին ներբեռնել»։",
+    "close": "Փակել",
+    "cancel": "Չեղարկել",
+    "start": "Ներբեռնել բոլորը",
+    "downloadAgain": "Կրկին ներբեռնել",
+    "retryFailed": "Կրկին փորձել չներբեռնվածները"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Լեզվական տարբերակը հասանելի չէ",
+    "eyebrow": "Լեզվական տարբերակը հասանելի չէ",
+    "title": "<contentTitle>{title}</contentTitle>-ը հասանելի չէ <languageName>{language}</languageName> լեզվով",
+    "actionsLabel": "Դիտման հասանելի տարբերակներ",
+    "browseInLanguage": "Դիտել տեսանյութեր {language} լեզվով",
+    "backToSearch": "Վերադառնալ որոնմանը",
+    "audioVersionsTitle": "Այլ ձայնային տարբերակներ",
+    "audioVersionsDescription": "Ընտրեք ձայնի լեզուն՝ այս տեսանյութի դիտումը շարունակելու համար։",
+    "languageVersionLabel": "Ձայնի լեզու",
+    "selectLanguageVersion": "Ընտրել լեզվական տարբերակ",
+    "watchSelectedVersion": "Դիտել ընտրված տարբերակը"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-ների ընտրանքներ",
+    "bannerTitle": "Ձեր գաղտնիության ընտրանքները",
+    "bannerDescription": "Անհրաժեշտ cookie-ները պահպանում են Watch-ը անվտանգ և գործող։ Ձեր թույլտվությամբ կամընտրական առաջին կողմի cookie-ն կարող է հիշել հետաքրքրությունները այցելությունների միջև՝ առաջարկությունները անհատականացնելու համար։ Համատեքստային առաջարկությունները հասանելի են մնում ցանկացած դեպքում։",
+    "acceptAll": "Ընդունել բոլորը",
+    "essentialOnly": "Միայն անհրաժեշտները",
+    "manageChoices": "Կառավարել ընտրանքները",
+    "savingChoice": "Պահվում է cookie-ի ընտրությունը",
+    "settings": "Cookie-ների կարգավորումներ",
+    "settingsDescription": "Ընտրեք՝ արդյոք Watch-ը կարող է հիշել առաջարկությունների հետ կապված հետաքրքրությունները այցելությունների միջև։ Դուք կարող եք սա փոխել ցանկացած ժամանակ։",
+    "essentialCookies": "Անհրաժեշտ cookie-ներ",
+    "essentialDescription": "Անվտանգություն, նվագարկում, գաղտնիության ընտրանքներ և առաջարկության հարցման վերագրում։",
+    "alwaysActive": "Միշտ ակտիվ",
+    "personalization": "Անհատականացում",
+    "personalizationDescription": "Հիշել սահմանափակ հետաքրքրությունները այցելությունների միջև։ Սա անջատելու դեպքում համատեքստային առաջարկությունները կմնան հասանելի։",
+    "erasurePending": "Պրոֆիլի ջնջումը սպասման մեջ է։ Համատեքստային առաջարկություններն արդեն ակտիվ են։",
+    "cancel": "Չեղարկել",
+    "saveChoices": "Պահել ընտրանքները",
+    "saving": "Պահվում է…",
+    "loadError": "Չհաջողվեց բեռնել ձեր ընտրությունը։ Դուք դեռ կարող եք ընտրել ստորև։",
+    "grantError": "Չհաջողվեց միացնել անհատականացումը։ Միայն անհրաժեշտները մնում են հասանելի։",
+    "saveError": "Չհաջողվեց պահպանել ձեր ընտրությունը։ Խնդրում ենք փորձել կրկին։"
+  }
+}

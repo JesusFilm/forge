@@ -71,6 +71,7 @@ export default async function ExperiencesPage() {
             createAction={createExperienceAction}
             labels={{
               filter: page.actions.filter,
+              filterUnavailable: page.actions.filterUnavailable,
               primary: page.actions.primary,
               modalTitle: page.modal.title,
               modalDescription: page.modal.description,

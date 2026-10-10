@@ -21,8 +21,8 @@ export type MuxPlayerProps = ComponentPropsWithoutRef<typeof MuxPlayerReact>
  * Methods on the ref:
  *   - `.play(): Promise<void>`, `.pause(): void`, `.requestFullscreen()`
  *
- * Verified empirically in U1 spike:
- *   apps/web/src/components/watch/__tests__/MuxPlayerSpike.test.tsx
+ * Keep this alias anchored to the React wrapper type so consumers do not need
+ * to import Mux's lower-level custom-element package directly.
  */
 export type MuxPlayerRef = ComponentRef<typeof MuxPlayerReact>
 

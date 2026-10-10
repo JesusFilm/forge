@@ -1,23 +1,49 @@
 import type { RevisionStatus } from "@prisma/client"
 import { notFound } from "next/navigation"
 import { revalidatePath } from "next/cache"
-import { ExperienceEditor } from "@/app/dashboard/experiences/experience-editor"
-import { loadVideoRows } from "@/app/dashboard/live-data"
+import { ExperienceEditorWithChat } from "@/app/dashboard/experiences/experience-editor-with-chat"
+import { duplicateExperienceForEditor } from "@/app/dashboard/experiences/duplicate-experience-action"
+import {
+  archiveThreadAction as archiveChatThreadCore,
+  createThreadAction as createChatThreadCore,
+  getMessagesAction as getChatMessagesCore,
+  listThreadsAction as listChatThreadsCore,
+} from "@/app/dashboard/experiences/experience-chat-actions"
+import { runGenerateDraftAction } from "@/app/dashboard/experiences/generate-draft-action"
+import { runGenerateSectionAction } from "@/app/dashboard/experiences/generate-section-action"
+import { runGenerateVariantAction } from "@/app/dashboard/experiences/generate-variant-action"
+import { mediaAssetIdsFromExperienceBlocks } from "@/app/dashboard/experiences/experience-editor/block-helpers"
+import { buildMediaLibraryBrowserData } from "@/app/dashboard/media/media-library-browser-data"
+import { uploadMediaAssetFromFormData } from "@/app/dashboard/media/upload-media-asset-action"
+import { loadExperienceEditorVideoRows } from "@/app/dashboard/live-data"
+import { extractAuthoredVideoDubSelectors } from "@/domain/experience-editor-dub-selectors"
+import {
+  matchesVideoLibraryCategory,
+  parseVideoLibraryCategory,
+  type VideoLibraryCategory,
+} from "@/app/dashboard/video-library-utils"
+import { hasPermission } from "@/auth/permissions"
 import { requireSession } from "@/auth/session"
+import { env } from "@/config/env"
 import { prisma } from "@/db/client"
 import { getAdminLocale } from "@/i18n/server"
 import { createServices } from "@/services"
 import { ForbiddenError } from "@/services/errors"
-import { mediaAssetPreviewUrl } from "@/services/media-asset.service"
-
-function formatBytes(value: bigint | null) {
-  if (value == null) return "N/A"
-  const bytes = Number(value)
-  if (!Number.isFinite(bytes)) return value.toString()
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-}
+import {
+  loadExperienceEditorCollectionChildPage,
+  loadExperienceEditorDubPage,
+  validateExperienceEditorDubSelections,
+  boundedExperienceEditorActionSelectors,
+  boundedExperienceEditorActionVideoIds,
+  type ExperienceEditorAuthoredDubSelector,
+  type ExperienceEditorCollectionChildPageActionInput,
+  type ExperienceEditorDubPageActionInput,
+  type ExperienceEditorDubSelectionValidationActionInput,
+} from "@/services/experience-editor-video.service"
+import {
+  recordAdminVideoLibrarySearchTraceSafely,
+  type AdminVideoLibrarySearchTraceClient,
+} from "@/services/search-trace.service"
 
 type LocaleSnapshot = {
   title: string | null
@@ -49,6 +75,11 @@ function statusTone(status: string): "success" | "warning" | "danger" {
   if (status === "PUBLISHED") return "success"
   if (status === "ARCHIVED") return "danger"
   return "warning"
+}
+
+function draftPreviewUrl(watchOrigin: string, previewToken: string | null) {
+  if (!previewToken) return null
+  return `${watchOrigin.replace(/\/$/, "")}/watch/preview/experience/${previewToken}`
 }
 
 function revisionTone(
@@ -112,41 +143,68 @@ function snapshotFromLocale(locale: {
   }
 }
 
-async function loadMediaLibrary() {
-  const assets = await prisma.mediaAsset.findMany({
-    where: { kind: "IMAGE", status: "READY" },
-    select: {
-      id: true,
-      backend: true,
-      originalFilename: true,
-      mimeType: true,
-      byteSize: true,
-      objectKey: true,
-      previewObjectKey: true,
-      muxPlaybackId: true,
-      updatedAt: true,
-      locales: {
-        where: { locale: "en" },
-        select: { displayName: true, altText: true },
-        take: 1,
-      },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 80,
+async function languageSlugForLocale(locale: string): Promise<string | null> {
+  const language = await prisma.language.findFirst({
+    where: { bcp47: locale, deletedAt: null, slug: { not: null } },
+    select: { slug: true },
   })
+  return language?.slug ?? null
+}
 
-  return assets.map((asset) => ({
-    id: asset.id,
-    displayName:
-      asset.locales[0]?.displayName?.trim() ||
-      asset.originalFilename ||
-      asset.id,
-    altText: asset.locales[0]?.altText ?? null,
-    mimeType: asset.mimeType,
-    byteSize: formatBytes(asset.byteSize),
-    previewUrl: mediaAssetPreviewUrl(asset),
-    updated: formatDateTime(asset.updatedAt),
-  }))
+async function languageIdForLocale(locale: string): Promise<string | null> {
+  const language = await prisma.language.findFirst({
+    where: {
+      deletedAt: null,
+      OR: [{ bcp47: locale }, { slug: locale }, { iso3: locale }],
+    },
+    select: { id: true },
+  })
+  return language?.id ?? null
+}
+
+async function loadMediaLibrary({
+  assetIds,
+}: {
+  assetIds?: readonly string[]
+} = {}) {
+  const fullCatalog = assetIds === undefined
+  const [folders, assets] = await Promise.all([
+    fullCatalog
+      ? prisma.mediaFolder.findMany({
+          select: { id: true, name: true, parentId: true },
+          orderBy: [{ parentId: "asc" }, { name: "asc" }],
+        })
+      : [],
+    assetIds?.length === 0
+      ? []
+      : prisma.mediaAsset.findMany({
+          where: {
+            kind: "IMAGE",
+            status: "READY",
+            ...(assetIds ? { id: { in: [...assetIds] } } : {}),
+          },
+          select: {
+            id: true,
+            backend: true,
+            originalFilename: true,
+            mimeType: true,
+            byteSize: true,
+            objectKey: true,
+            previewObjectKey: true,
+            muxPlaybackId: true,
+            folderId: true,
+            updatedAt: true,
+            locales: {
+              where: { locale: "en" },
+              select: { displayName: true, altText: true },
+              take: 1,
+            },
+          },
+          orderBy: { updatedAt: "desc" },
+        }),
+  ])
+
+  return buildMediaLibraryBrowserData({ folders, images: assets })
 }
 
 function summarizeSnapshotDiff(
@@ -189,25 +247,6 @@ function summarizeSnapshotDiff(
     : `Changed ${visible}`
 }
 
-function sameSnapshotContent(
-  left: LocaleSnapshot | null,
-  right: LocaleSnapshot | null,
-) {
-  if (!left || !right) return false
-
-  return (
-    (left.title ?? "") === (right.title ?? "") &&
-    (left.slug ?? "") === (right.slug ?? "") &&
-    (left.pathSegment ?? "") === (right.pathSegment ?? "") &&
-    (left.metaDescription ?? "") === (right.metaDescription ?? "") &&
-    (left.ogTitle ?? "") === (right.ogTitle ?? "") &&
-    (left.ogDescription ?? "") === (right.ogDescription ?? "") &&
-    (left.ogImageUrl ?? "") === (right.ogImageUrl ?? "") &&
-    left.isHomepage === right.isHomepage &&
-    JSON.stringify(left.blocks ?? []) === JSON.stringify(right.blocks ?? [])
-  )
-}
-
 type ExperienceEditorPageProps = {
   params: Promise<{ id: string }>
   searchParams?: Promise<{ locale?: string }>
@@ -224,11 +263,6 @@ export default async function ExperienceEditorPage({
       requireSession(),
       getAdminLocale(),
     ])
-  const [videoLibrary, mediaLibrary] = await Promise.all([
-    loadVideoRows(principal),
-    loadMediaLibrary(),
-  ])
-
   const services = createServices(prisma)
   const experienceSummary = await services.experience.getById({
     id,
@@ -263,7 +297,65 @@ export default async function ExperienceEditorPage({
     notFound()
   }
 
+  const draftState = await services.experience.getLocaleDraftState({
+    id: selectedLocale.id,
+    user: principal,
+  })
+  const editableLocale = draftState.effective
+  const [mediaLibrary, selectedLocaleLanguageId, activeLocaleDrafts] =
+    await Promise.all([
+      loadMediaLibrary({
+        assetIds: mediaAssetIdsFromExperienceBlocks(
+          Array.isArray(editableLocale.blocks) ? editableLocale.blocks : [],
+        ),
+      }),
+      languageIdForLocale(selectedLocale.locale),
+      prisma.contentRevision.findMany({
+        where: {
+          entityType: "ExperienceLocale",
+          entityId: { in: experience.locales.map((locale) => locale.id) },
+          status: "DRAFT",
+        },
+        select: { entityId: true, revisedAt: true },
+      }),
+    ])
+  const activeDraftByLocaleId = new Map(
+    activeLocaleDrafts.map((draft) => [draft.entityId, draft]),
+  )
+
   const currentExperienceId = experience.id
+  const canUploadImages = hasPermission(principal, "write:media-assets")
+
+  async function duplicateExperienceAction() {
+    "use server"
+
+    const user = await requireSession()
+    const services = createServices(prisma)
+
+    return duplicateExperienceForEditor({
+      duplicate: (args) => services.experience.duplicate(args),
+      user,
+      sourceExperienceId: currentExperienceId,
+      selectedLocale: selectedLocale.locale,
+      revalidate: () => revalidatePath("/dashboard/experiences"),
+    })
+  }
+
+  async function uploadImageAssetAction(formData: FormData) {
+    "use server"
+
+    const user = await requireSession()
+    const result = await uploadMediaAssetFromFormData({
+      formData,
+      user,
+      imageOnly: true,
+    })
+
+    if (result.ok) {
+      revalidatePath(`/dashboard/experiences/${currentExperienceId}`)
+    }
+    return result
+  }
 
   const owner = experience.ownerId
     ? await prisma.user.findUnique({
@@ -296,43 +388,43 @@ export default async function ExperienceEditorPage({
           select: { id: true, name: true, email: true },
         })
   const usersById = new Map(users.map((user) => [user.id, user]))
-  const currentSnapshot = snapshotFromLocale(selectedLocale)
-  const latestAppliedRevision = revisions.reduce<
-    (typeof revisions)[number] | null
-  >((latest, revision) => {
-    if (!revision.appliedAt) return latest
-    if (!latest?.appliedAt) return revision
-    return revision.appliedAt > latest.appliedAt ? revision : latest
-  }, null)
-  const restoredSnapshot = normalizeLocaleSnapshot(
-    latestAppliedRevision?.snapshot,
+  const canonicalSnapshot = snapshotFromLocale(selectedLocale)
+  const currentSnapshot = snapshotFromLocale(editableLocale)
+  const activeDraft = draftState.activeDraft
+  const historyRevisions = revisions.filter(
+    (revision) => revision.id !== activeDraft?.id,
   )
-  const isRestoredDraft =
-    selectedLocale.status === "DRAFT" &&
-    sameSnapshotContent(restoredSnapshot, currentSnapshot)
+  const activeDraftAuthor = activeDraft?.revisedBy
+    ? usersById.get(activeDraft.revisedBy)
+    : null
   const revisionEntries = [
     {
       id: `current-${selectedLocale.id}`,
       statusLabel: "ACTIVE",
-      statusTone: statusTone(selectedLocale.status),
-      reason:
-        isRestoredDraft && latestAppliedRevision?.appliedAt
-          ? "Restored draft"
-          : selectedLocale.status === "PUBLISHED"
-            ? "Currently published"
-            : "Current draft",
-      summary:
-        isRestoredDraft && latestAppliedRevision?.appliedAt
-          ? `Restored from ${formatDateTime(latestAppliedRevision.appliedAt)}`
-          : summarizeSnapshotDiff(
-              normalizeLocaleSnapshot(revisions[0]?.snapshot),
-              currentSnapshot,
-            ),
-      revisedAt: formatDateTime(selectedLocale.updatedAt),
-      revisedBy: owner?.name?.trim() || owner?.email || "System",
+      statusTone: activeDraft
+        ? ("warning" as const)
+        : statusTone(selectedLocale.status),
+      reason: activeDraft
+        ? "Shared draft"
+        : selectedLocale.status === "PUBLISHED"
+          ? "Currently published"
+          : "Current unpublished version",
+      summary: activeDraft
+        ? summarizeSnapshotDiff(canonicalSnapshot, currentSnapshot)
+        : "No staged changes",
+      revisedAt: formatDateTime(
+        activeDraft?.revisedAt ?? selectedLocale.updatedAt,
+      ),
+      revisedBy:
+        activeDraftAuthor?.name?.trim() ||
+        activeDraftAuthor?.email ||
+        activeDraft?.revisedBy ||
+        owner?.name?.trim() ||
+        owner?.email ||
+        "System",
       isActive: true,
     },
-    ...revisions.map((revision, index) => {
+    ...historyRevisions.map((revision, index) => {
       const author = revision.revisedBy
         ? usersById.get(revision.revisedBy)
         : null
@@ -340,7 +432,7 @@ export default async function ExperienceEditorPage({
       const newerSnapshot =
         index === 0
           ? currentSnapshot
-          : normalizeLocaleSnapshot(revisions[index - 1]?.snapshot)
+          : normalizeLocaleSnapshot(historyRevisions[index - 1]?.snapshot)
 
       return {
         id: revision.id,
@@ -371,6 +463,9 @@ export default async function ExperienceEditorPage({
     const user = await requireSession()
     const services = createServices(prisma)
     const localeId = String(formData.get("id") ?? "")
+    if (localeId !== selectedLocale.id) {
+      return { ok: false, error: "Locale does not match this editor." }
+    }
     const blocksValue = String(formData.get("blocks") ?? "[]").trim() || "[]"
 
     let blocks: unknown
@@ -392,7 +487,6 @@ export default async function ExperienceEditorPage({
           ogImageUrl: String(formData.get("ogImageUrl") ?? "").trim() || null,
           pathSegment: String(formData.get("pathSegment") ?? "").trim() || null,
           isHomepage: formData.get("isHomepage") === "on",
-          isTemplate: formData.get("isTemplate") === "on",
           blocks,
         },
         user,
@@ -414,7 +508,17 @@ export default async function ExperienceEditorPage({
 
     revalidatePath("/dashboard/experiences")
     revalidatePath(`/dashboard/experiences/${id}`)
-    return { ok: true }
+    const nextDraftState = await services.experience.getLocaleDraftState({
+      id: localeId,
+      user,
+    })
+    return {
+      ok: true,
+      previewUrl: draftPreviewUrl(
+        env.WATCH_CANONICAL_ORIGIN,
+        nextDraftState.activeDraft?.previewToken ?? null,
+      ),
+    }
   }
 
   async function publishLocaleAction(localeId: string) {
@@ -446,6 +550,49 @@ export default async function ExperienceEditorPage({
     revalidatePath("/dashboard/experiences")
     revalidatePath(`/dashboard/experiences/${id}`)
     return { ok: true }
+  }
+
+  async function discardLocaleDraftAction(localeId: string) {
+    "use server"
+
+    const user = await requireSession()
+    const services = createServices(prisma)
+
+    try {
+      const canonical = await services.experience.discardLocaleDraft({
+        input: { id: localeId },
+        user,
+      })
+      revalidatePath("/dashboard/experiences")
+      revalidatePath(`/dashboard/experiences/${id}`)
+      return {
+        ok: true,
+        values: {
+          title: canonical.title ?? "",
+          slug: canonical.slug,
+          metaDescription: canonical.metaDescription ?? "",
+          ogTitle: canonical.ogTitle ?? "",
+          ogDescription: canonical.ogDescription ?? "",
+          ogImageUrl: canonical.ogImageUrl ?? "",
+          pathSegment: canonical.pathSegment ?? "",
+          isHomepage: canonical.isHomepage,
+          blocksJson: JSON.stringify(canonical.blocks ?? [], null, 2),
+        },
+      }
+    } catch (error) {
+      if (error instanceof ForbiddenError) {
+        return {
+          ok: false,
+          error: "You do not have permission to discard this draft.",
+        }
+      }
+
+      if (error instanceof Error) {
+        return { ok: false, error: error.message }
+      }
+
+      return { ok: false, error: "Unable to discard draft." }
+    }
   }
 
   async function createLocaleAction(formData: FormData) {
@@ -534,43 +681,308 @@ export default async function ExperienceEditorPage({
     return { ok: true }
   }
 
+  async function listChatThreads() {
+    "use server"
+    const user = await requireSession()
+    return listChatThreadsCore(
+      { prisma, user },
+      { experienceLocaleId: selectedLocale.id },
+    )
+  }
+
+  async function createChatThread(input: { firstPrompt: string }) {
+    "use server"
+    const user = await requireSession()
+    return createChatThreadCore(
+      { prisma, user },
+      {
+        experienceLocaleId: selectedLocale.id,
+        firstPrompt: input.firstPrompt,
+      },
+    )
+  }
+
+  async function archiveChatThread(threadId: string) {
+    "use server"
+    const user = await requireSession()
+    await archiveChatThreadCore({ prisma, user }, { threadId })
+  }
+
+  async function getChatMessages(threadId: string) {
+    "use server"
+    const user = await requireSession()
+    return getChatMessagesCore({ prisma, user }, { threadId })
+  }
+
+  async function loadVideosByIdsAction(input: {
+    videoIds: readonly string[]
+    authoredSelectors: readonly ExperienceEditorAuthoredDubSelector[]
+  }) {
+    "use server"
+    const user = await requireSession()
+    const videoIds = boundedExperienceEditorActionVideoIds(input?.videoIds)
+    if (videoIds.length === 0) return []
+    return loadExperienceEditorVideoRows(user, {
+      authoredSelectors: boundedExperienceEditorActionSelectors(
+        input?.authoredSelectors,
+      ),
+      exactVideoIds: videoIds,
+      preferredLocale: selectedLocale.locale,
+    })
+  }
+
+  async function loadVideoDubPageAction(
+    input: ExperienceEditorDubPageActionInput,
+  ) {
+    "use server"
+    await requireSession()
+    return loadExperienceEditorDubPage(prisma, {
+      ...input,
+      locale: selectedLocale.locale,
+    })
+  }
+
+  async function loadVideoCollectionChildrenPageAction(
+    input: ExperienceEditorCollectionChildPageActionInput,
+  ) {
+    "use server"
+    await requireSession()
+    return loadExperienceEditorCollectionChildPage(prisma, {
+      ...input,
+      locale: selectedLocale.locale,
+    })
+  }
+
+  async function validateVideoDubSelectionsAction(
+    input: ExperienceEditorDubSelectionValidationActionInput,
+  ) {
+    "use server"
+    const user = await requireSession()
+    const selectors = boundedExperienceEditorActionSelectors(input?.selectors)
+    const services = createServices(prisma)
+    const previousDraftState = await services.experience.getLocaleDraftState({
+      id: selectedLocale.id,
+      user,
+    })
+    return validateExperienceEditorDubSelections(prisma, {
+      ...input,
+      selectors,
+      locale: selectedLocale.locale,
+      previousSelectors: extractAuthoredVideoDubSelectors(
+        previousDraftState.effective.blocks,
+      ),
+    })
+  }
+
+  async function loadMediaLibraryAction() {
+    "use server"
+    await requireSession()
+    return loadMediaLibrary()
+  }
+
+  async function searchVideoLibraryAction(
+    query: string,
+    context?: {
+      category?: VideoLibraryCategory
+      client?: AdminVideoLibrarySearchTraceClient
+    },
+  ) {
+    "use server"
+    const user = await requireSession()
+    const normalizedQuery = query.trim()
+    const category = parseVideoLibraryCategory(context?.category)
+    if (!normalizedQuery) {
+      return loadExperienceEditorVideoRows(user, {
+        category,
+        preferredLocale: selectedLocale.locale,
+      })
+    }
+    const services = createServices(prisma)
+    const targetLanguageSlug = await languageSlugForLocale(
+      selectedLocale.locale,
+    )
+    const client = context?.client ?? "experience-editor-video-picker"
+    const startedAt = new Date()
+    // Call the service directly so editor picker keystrokes use the new search
+    // stack, then writes a client-identified admin trace for operator review.
+    try {
+      const response = await services.watchSearch.search({
+        query: normalizedQuery,
+        targetLanguageSlug,
+        displayLanguageSlug: targetLanguageSlug,
+        routeLanguageSlug: targetLanguageSlug,
+        acceptLanguage: selectedLocale.locale,
+        limit: 30,
+        resultTypes: ["video"],
+      })
+      const videoIds = response.results
+        .filter((result) => result.type === "video")
+        .map((result) => result.id)
+      const rows = await loadExperienceEditorVideoRows(user, {
+        exactVideoIds: videoIds,
+        preferredLocale: selectedLocale.locale,
+      })
+      const filteredRows = rows.filter((row) =>
+        matchesVideoLibraryCategory(row.label, category),
+      )
+      const byId = new Map(filteredRows.map((row) => [row.key, row]))
+      const orderedRows = videoIds.flatMap((id) => {
+        const row = byId.get(id)
+        return row ? [row] : []
+      })
+      await recordAdminVideoLibrarySearchTraceSafely({
+        query: normalizedQuery,
+        locale: selectedLocale.locale,
+        client,
+        response,
+        resultIds: orderedRows.map((row) => row.key),
+        hydratedResultCount: orderedRows.length,
+        targetLanguageSlug,
+        startedAt,
+        completedAt: new Date(),
+      })
+      return orderedRows
+    } catch (error) {
+      await recordAdminVideoLibrarySearchTraceSafely({
+        query: normalizedQuery,
+        locale: selectedLocale.locale,
+        client,
+        targetLanguageSlug,
+        startedAt,
+        completedAt: new Date(),
+        outcome: "failed",
+        traceClass:
+          error instanceof Error ? error.constructor.name : "UnknownError",
+      })
+      throw error
+    }
+  }
+
+  async function generateDraftAction(input: {
+    prompt: string
+    currentTitle?: string
+    currentMetaDescription?: string
+    threadId?: string
+    mode?: "full" | "quick"
+  }) {
+    "use server"
+    const user = await requireSession()
+    return runGenerateDraftAction(
+      { prisma, user },
+      {
+        localeId: selectedLocale.id,
+        locale: selectedLocale.locale,
+        prompt: input.prompt,
+        currentTitle: input.currentTitle,
+        currentMetaDescription: input.currentMetaDescription,
+        threadId: input.threadId,
+        mode: input.mode,
+      },
+    )
+  }
+
+  async function generateSectionAction(input: { anchorVideoId: string }) {
+    "use server"
+    const user = await requireSession()
+    return runGenerateSectionAction(
+      { prisma, user },
+      {
+        localeId: selectedLocale.id,
+        locale: selectedLocale.locale,
+        anchorVideoId: input.anchorVideoId,
+      },
+    )
+  }
+
+  async function generateVariantAction(input: { personaId: string }) {
+    "use server"
+    const user = await requireSession()
+    return runGenerateVariantAction(
+      { prisma, user },
+      {
+        sourceLocaleId: selectedLocale.id,
+        locale: selectedLocale.locale,
+        personaId: input.personaId,
+      },
+    )
+  }
+
   return (
-    <div className="flex min-h-[calc(100vh-3rem)] flex-col">
-      <ExperienceEditor
-        key={`${selectedLocale.id}:${selectedLocale.updatedAt.toISOString()}:${selectedLocale.status}`}
-        canPublish={selectedLocale.status !== "PUBLISHED"}
-        hasPublishedVersion={selectedLocale.publishedAt !== null}
-        calendarDate={new Date().toISOString().slice(0, 10)}
-        initialValues={{
-          localeId: selectedLocale.id,
-          title: selectedLocale.title ?? "",
-          slug: selectedLocale.slug,
-          metaDescription: selectedLocale.metaDescription ?? "",
-          ogTitle: selectedLocale.ogTitle ?? "",
-          ogDescription: selectedLocale.ogDescription ?? "",
-          ogImageUrl: selectedLocale.ogImageUrl ?? "",
-          pathSegment: selectedLocale.pathSegment ?? "",
-          isHomepage: selectedLocale.isHomepage,
-          isTemplate: experience.isTemplate,
-          blocksJson: JSON.stringify(selectedLocale.blocks ?? [], null, 2),
-        }}
-        localeEntries={experience.locales.map((locale) => ({
-          id: locale.id,
-          code: locale.locale,
-          title: locale.title?.trim() || "Untitled Locale",
-          href: `/dashboard/experiences/${experience.id}?locale=${locale.locale}`,
-          stateLabel: locale.status,
-          stateTone: statusTone(locale.status),
-          active: locale.id === selectedLocale.id,
-        }))}
-        revisionEntries={revisionEntries}
-        videoLibrary={videoLibrary}
-        mediaLibrary={mediaLibrary}
-        saveAction={saveLocaleAction}
-        publishAction={publishLocaleAction}
-        createLocaleAction={createLocaleAction}
-        restoreAction={restoreRevisionAction}
-      />
-    </div>
+    <ExperienceEditorWithChat
+      key={`${selectedLocale.id}:${selectedLocale.updatedAt.toISOString()}:${activeDraft?.id ?? "canonical"}:${activeDraft?.revisedAt.toISOString() ?? ""}`}
+      experienceLocaleId={selectedLocale.id}
+      locale={selectedLocale.locale}
+      chatActions={{
+        listThreads: listChatThreads,
+        createThread: createChatThread,
+        archiveThread: archiveChatThread,
+        getMessages: getChatMessages,
+      }}
+      canPublish={hasPermission(principal, "publish:experiences")}
+      hasPublishedVersion={selectedLocale.publishedAt !== null}
+      hasDraft={activeDraft !== null}
+      draftSavedAt={activeDraft ? formatDateTime(activeDraft.revisedAt) : null}
+      previewUrl={draftPreviewUrl(
+        env.WATCH_CANONICAL_ORIGIN,
+        activeDraft?.previewToken ?? null,
+      )}
+      publishedSlug={
+        selectedLocale.publishedAt !== null ? selectedLocale.slug : null
+      }
+      calendarDate={new Date().toISOString().slice(0, 10)}
+      watchOrigin={env.WATCH_CANONICAL_ORIGIN}
+      initialValues={{
+        localeId: selectedLocale.id,
+        videoLanguageId: selectedLocaleLanguageId,
+        title: editableLocale.title ?? "",
+        slug: editableLocale.slug,
+        metaDescription: editableLocale.metaDescription ?? "",
+        ogTitle: editableLocale.ogTitle ?? "",
+        ogDescription: editableLocale.ogDescription ?? "",
+        ogImageUrl: editableLocale.ogImageUrl ?? "",
+        pathSegment: editableLocale.pathSegment ?? "",
+        isHomepage: editableLocale.isHomepage,
+        isTemplate: experience.isTemplate,
+        blocksJson: JSON.stringify(editableLocale.blocks ?? [], null, 2),
+      }}
+      localeEntries={experience.locales.map((locale) => ({
+        id: locale.id,
+        code: locale.locale,
+        title: locale.title?.trim() || "Untitled Locale",
+        href: `/dashboard/experiences/${experience.id}?locale=${locale.locale}`,
+        stateLabel: activeDraftByLocaleId.has(locale.id)
+          ? "SHARED DRAFT"
+          : locale.status,
+        stateTone: activeDraftByLocaleId.has(locale.id)
+          ? "warning"
+          : statusTone(locale.status),
+        active: locale.id === selectedLocale.id,
+      }))}
+      revisionEntries={revisionEntries}
+      loadVideosByIdsAction={loadVideosByIdsAction}
+      loadVideoDubPageAction={loadVideoDubPageAction}
+      loadVideoCollectionChildrenPageAction={
+        loadVideoCollectionChildrenPageAction
+      }
+      validateVideoDubSelectionsAction={validateVideoDubSelectionsAction}
+      searchVideoLibraryAction={searchVideoLibraryAction}
+      mediaLibrary={mediaLibrary}
+      loadMediaLibraryAction={loadMediaLibraryAction}
+      canUploadImages={canUploadImages}
+      saveAction={saveLocaleAction}
+      duplicateAction={
+        hasPermission(principal, "write:experiences")
+          ? duplicateExperienceAction
+          : undefined
+      }
+      publishAction={publishLocaleAction}
+      discardAction={discardLocaleDraftAction}
+      createLocaleAction={createLocaleAction}
+      restoreAction={restoreRevisionAction}
+      uploadImageAction={uploadImageAssetAction}
+      generateDraftAction={generateDraftAction}
+      generateSectionAction={generateSectionAction}
+      generateVariantAction={generateVariantAction}
+    />
   )
 }

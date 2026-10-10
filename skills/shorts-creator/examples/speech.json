@@ -1,0 +1,28 @@
+{
+  "projectId": "example-short",
+  "expectedRevision": 2,
+  "idempotencyKey": "example-speech-1",
+  "operations": [
+    {
+      "kind": "set-speech",
+      "itemId": "hook-1",
+      "speech": {
+        "text": "A small act of kindness can change someone\u2019s day.",
+        "role": "narrator",
+        "suppressed": false,
+        "voice": {
+          "assetId": "example-approved-voice",
+          "versionId": "example-approved-voice-v1",
+          "digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        "provider": "elevenlabs",
+        "model": "eleven_multilingual_v2",
+        "settings": {
+          "stability": 0.5,
+          "similarity_boost": 0.75
+        },
+        "pronunciation": null
+      }
+    }
+  ]
+}

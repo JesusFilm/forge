@@ -2,16 +2,16 @@
 //
 // DB interactions are tested against a stub Prisma client that mirrors
 // the call surface we use after Stage 3 (feat-117): $transaction +
-// videoTranscript.upsert + videoTranscriptChunk.deleteMany +
+// videoTranscript.upsert + videoTranscriptChunk.findMany/deleteMany +
 // tx.$executeRaw (one bulk chunk INSERT). True end-to-end verification
 // against a live Postgres with pgvector is out of scope for the unit
 // tests; the prod smoke run for Stage 3 covers it.
 
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { Principal } from "@/auth/principal"
-import type { EmbeddingsResult } from "@/services/manager-artifacts.service"
 import {
   EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+  type EmbeddingsResult,
   indexEditionTranscript,
   TranscriptIndexError,
 } from "./transcript-embedding.service"
@@ -25,9 +25,52 @@ type UpsertCall = { where: unknown; create: unknown; update: unknown }
 type StubPrismaTx = {
   videoTranscript: { upsert: ReturnType<typeof vi.fn> }
   videoTranscriptChunk: {
+    findMany: ReturnType<typeof vi.fn>
     deleteMany: ReturnType<typeof vi.fn>
   }
   $executeRaw: ReturnType<typeof vi.fn>
+}
+
+function parsePgTextArray(literal: unknown): Array<string | null> {
+  if (typeof literal !== "string") {
+    throw new Error("expected PG text array literal")
+  }
+  if (literal === "{}") return []
+  if (!literal.startsWith("{") || !literal.endsWith("}")) {
+    throw new Error(`invalid PG text array literal: ${literal}`)
+  }
+
+  const values: Array<string | null> = []
+  let index = 1
+  while (index < literal.length - 1) {
+    if (literal.startsWith("NULL", index)) {
+      values.push(null)
+      index += 4
+    } else {
+      if (literal[index] !== '"') {
+        throw new Error("expected quoted PG array item")
+      }
+      index += 1
+      let value = ""
+      while (index < literal.length - 1) {
+        const char = literal[index]!
+        if (char === "\\") {
+          value += literal[index + 1] ?? ""
+          index += 2
+          continue
+        }
+        if (char === '"') {
+          index += 1
+          break
+        }
+        value += char
+        index += 1
+      }
+      values.push(value)
+    }
+    if (literal[index] === ",") index += 1
+  }
+  return values
 }
 
 function buildStubPrisma(opts?: {
@@ -42,14 +85,57 @@ function buildStubPrisma(opts?: {
   const videoTranscriptUpsert = vi.fn(async (_args: UpsertCall) => ({
     id: "transcript-stub-id",
   }))
+  let chunkRows: Array<{
+    id: string
+    transcriptId: string
+    chunkIndex: number
+  }> = []
+  const videoTranscriptChunkFindMany = vi.fn(
+    async (args: {
+      where: {
+        transcriptId: string
+        chunkIndex?: { notIn?: number[] }
+      }
+      select: { id: true }
+    }) => {
+      const notIn = args.where.chunkIndex?.notIn
+      const rows = chunkRows
+        .filter(
+          (row) =>
+            row.transcriptId === args.where.transcriptId &&
+            (notIn == null || !notIn.includes(row.chunkIndex)),
+        )
+        .sort((left, right) => left.chunkIndex - right.chunkIndex)
+      return rows.map((row) => ({ id: row.id }))
+    },
+  )
   const videoTranscriptChunkDeleteMany = vi.fn(async () => ({
     count: opts?.prunedCount ?? 0,
   }))
-  const executeRaw = vi.fn(async () => opts?.executeRawAffected ?? 1)
+  const executeRaw = vi.fn(
+    async (
+      _strings: TemplateStringsArray,
+      idsLiteral: string,
+      transcriptIdsLiteral: string,
+      _languagesLiteral: string,
+      chunkIndexesLiteral: string,
+    ) => {
+      const ids = parsePgTextArray(idsLiteral)
+      const transcriptIds = parsePgTextArray(transcriptIdsLiteral)
+      const chunkIndexes = parsePgTextArray(chunkIndexesLiteral)
+      chunkRows = ids.map((id, index) => ({
+        id: id ?? `chunk-doc-${index}`,
+        transcriptId: transcriptIds[index] ?? "transcript-stub-id",
+        chunkIndex: Number(chunkIndexes[index] ?? index),
+      }))
+      return opts?.executeRawAffected ?? (ids.length || 1)
+    },
+  )
 
   const tx: StubPrismaTx = {
     videoTranscript: { upsert: videoTranscriptUpsert },
     videoTranscriptChunk: {
+      findMany: videoTranscriptChunkFindMany,
       deleteMany: videoTranscriptChunkDeleteMany,
     },
     $executeRaw: executeRaw,
@@ -93,7 +179,7 @@ function buildArtifact(
     },
   }))
   return {
-    model: "openai/text-embedding-3-small",
+    model: "embeddings",
     dimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
     chunks,
     averagedEmbedding: new Array(EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS).fill(
@@ -150,23 +236,9 @@ describe("indexEditionTranscript", () => {
     ).rejects.toMatchObject({ code: "forbidden" })
   })
 
-  it("throws missing_cms_video_id when no artifact or id is provided", async () => {
-    const { prisma } = buildStubPrisma()
-    await expect(
-      indexEditionTranscript(prisma, {
-        editionId: "edition-1",
-        videoId: "video-1",
-        coreId: "core-1",
-        language: "en",
-        user: SYSTEM,
-      }),
-    ).rejects.toMatchObject({ code: "missing_cms_video_id" })
-  })
-
   it("returns zero counts for an empty artifact without touching the DB", async () => {
     const { prisma, videoTranscriptUpsert, executeRaw } = buildStubPrisma()
-    // Mirror the symmetry of scene-embedding's empty-artifact test: even
-    // though R2 reuses vectors verbatim from the artifact (the embedding
+    // Even though R2 reuses vectors verbatim from the artifact (the embedding
     // provider isn't imported into the transcript indexer at all), spy on
     // the embeddings module to lock the invariant. A regression that
     // accidentally re-introduced a provider call on R2 would fire this
@@ -262,6 +334,11 @@ describe("indexEditionTranscript", () => {
       language: "en",
       user: ADMIN,
       loadedArtifact: buildArtifact({ chunkCount: 3 }),
+      provenance: {
+        embeddingProvider: "jesus-film-ai-gateway",
+        embeddingNativeDimensions: 4096,
+        embeddingTransformVersion: "matryoshka-truncate-1536-v1",
+      },
     })
 
     expect(result).toMatchObject({
@@ -270,7 +347,7 @@ describe("indexEditionTranscript", () => {
       chunksIndexed: 3,
       embeddingsWritten: 3,
       chunksPruned: 0,
-      model: "openai/text-embedding-3-small",
+      model: "embeddings",
       dimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
     })
     expect(videoTranscriptUpsert).toHaveBeenCalledTimes(1)
@@ -284,8 +361,11 @@ describe("indexEditionTranscript", () => {
         create: expect.objectContaining({
           videoEditionId: "edition-1",
           language: "en",
-          model: "openai/text-embedding-3-small",
+          model: "embeddings",
           dimensions: EXPECTED_TRANSCRIPT_EMBEDDING_DIMENSIONS,
+          embeddingProvider: "jesus-film-ai-gateway",
+          embeddingNativeDimensions: 4096,
+          embeddingTransformVersion: "matryoshka-truncate-1536-v1",
           chunkingType: "segment-aware",
           totalChunks: 3,
         }),
@@ -310,6 +390,11 @@ describe("indexEditionTranscript", () => {
     ]
     const sql = strings.join("?")
     expect(sql).toContain("INSERT INTO video_transcript_chunk")
+    expect(sql).toContain("raw_source_text")
+    expect(sql).toContain("embedding_input_text")
+    expect(sql).toContain("felt_needs")
+    expect(sql).toContain("content_summary")
+    expect(sql).toContain("extraction_metadata")
     expect(sql).toContain("unnest(")
     expect(sql).toContain("::text[]")
     // Way A vector cast — per-row at the SELECT seam, NOT
@@ -371,24 +456,6 @@ describe("indexEditionTranscript", () => {
     expect(spy).not.toHaveBeenCalled()
   })
 
-  it("skips the S3 read when loadedArtifact is supplied (Stage 2 per-(video, edition) cache)", async () => {
-    const managerArtifactsModule =
-      await import("@/services/manager-artifacts.service")
-    const s3ReadSpy = vi.spyOn(managerArtifactsModule, "readEmbeddingsArtifact")
-
-    const { prisma } = buildStubPrisma()
-    await indexEditionTranscript(prisma, {
-      editionId: "edition-1",
-      videoId: "video-1",
-      coreId: "core-1",
-      language: "en",
-      user: SYSTEM,
-      loadedArtifact: buildArtifact({ chunkCount: 2 }),
-    })
-
-    expect(s3ReadSpy).not.toHaveBeenCalled()
-  })
-
   it("warns on model-stamp drift with a structured payload and still writes the vectors", async () => {
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {})
     const { prisma, executeRaw } = buildStubPrisma()
@@ -419,6 +486,7 @@ describe("indexEditionTranscript", () => {
       expect.arrayContaining([
         "openai/text-embedding-3-small",
         "text-embedding-3-small",
+        "embeddings",
       ]),
     )
     expect(typeof parsed.note).toBe("string")

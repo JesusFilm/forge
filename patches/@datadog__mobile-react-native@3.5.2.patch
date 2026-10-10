@@ -1,0 +1,38 @@
+diff --git a/ios/Sources/DdSdk.mm b/ios/Sources/DdSdk.mm
+index c05ac6a7ce1eecfd1a36ad550a31de52f8f6f933..4a2d6f9dd77f015d0d5fbae1bcb98c2151345ec5 100644
+--- a/ios/Sources/DdSdk.mm
++++ b/ios/Sources/DdSdk.mm
+@@ -122,12 +122,16 @@ + (void)initFromNative {
+     [self telemetryError:message stack:stack kind:kind resolve:resolve reject:reject];
+ }
+                  
++// tvOS fix: consumeWebviewEvent: is TARGET_OS_IOS-only (line ~172); the SDK
++// failed to guard this RCT export, so it broke the tvOS build (3.5.2).
++#if TARGET_OS_IOS
+ RCT_REMAP_METHOD(consumeWebviewEvent, withWebviewMessage:(NSString*)message
+                  withResolver:(RCTPromiseResolveBlock)resolve
+                  withRejecter:(RCTPromiseRejectBlock)reject)
+ {
+     [self consumeWebviewEvent:message resolve:resolve reject:reject];
+ }
++#endif
+ 
+ RCT_EXPORT_METHOD(clearAllData:(RCTPromiseResolveBlock)resolve
+                  withRejecter:(RCTPromiseRejectBlock)reject)
+diff --git a/ios/Sources/DdSdkImplementation.swift b/ios/Sources/DdSdkImplementation.swift
+index 8a2a455d8f8064c911cdddaaf5a2339911da91cb..8d38b5530928e84aa536bd7ace1d14de35eda313 100644
+--- a/ios/Sources/DdSdkImplementation.swift
++++ b/ios/Sources/DdSdkImplementation.swift
+@@ -10,10 +10,11 @@ import DatadogInternal
+ import DatadogLogs
+ import DatadogRUM
+ import DatadogTrace
+-import DatadogWebViewTracking
+ import Foundation
+ import React
+ 
++// tvOS fix: DatadogWebViewTracking has no tvOS slice; the guarded import below
++// covers iOS. The SDK's stray UNGUARDED import here broke the tvOS build (3.5.2).
+ #if os(iOS)
+     import DatadogWebViewTracking
+ #endif

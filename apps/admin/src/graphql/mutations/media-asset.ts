@@ -146,7 +146,7 @@ builder.mutationFields((t) => ({
     type: DeleteMediaAssetResultRef,
     authScopes: { hasPermission: "delete:media-assets" },
     description:
-      "Delete a media asset only when no experience metadata or block fields still reference it.",
+      "Delete a media asset only when no experience or video locale fields still reference it.",
     args: {
       id: t.arg.id({ required: true }),
     },

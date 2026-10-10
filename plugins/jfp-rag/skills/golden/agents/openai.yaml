@@ -1,0 +1,6 @@
+interface:
+  display_name: "RAG Golden Cases"
+  short_description: "Curate grounded Forge RAG evaluation cases"
+  default_prompt: "Use $golden to curate grounded retrieval evaluation cases for an ingested source."
+policy:
+  allow_implicit_invocation: false

@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Dim cynnwys profiad ar gael.",
+    "failedToLoad": "Methu llwytho’r profiad: {message}",
+    "unexpected": "Digwyddodd gwall annisgwyl.",
+    "notConfigured": "Nid yw’r gwasanaeth cynnwys wedi’i ffurfweddu.",
+    "noContent": "Nid oes cynnwys ar gael.",
+    "homepageMisconfigured": "Mae hafan y gwylio wedi’i ffurfweddu’n anghywir.",
+    "defaultTemplateMisconfigured": "Mae’r templed gwylio diofyn wedi’i ffurfweddu’n anghywir.",
+    "authFailed": "Methu dilysu â’r gwasanaeth cynnwys. Cysylltwch â chymorth os bydd hyn yn parhau.",
+    "pageLoadFailed": "Aeth rhywbeth o'i le.",
+    "tryAgain": "Rhowch gynnig arall arni"
+  },
+  "VideosPage": {
+    "title": "Pob Fideo",
+    "placeholder": "Mae pori’r catalog yn dod yn fuan. Yn y cyfamser, defnyddiwch chwilio neu URL penodol i bwnc."
+  },
+  "BibleQuotes": {
+    "title": "Dyfyniadau’r Beibl",
+    "share": "Rhannu",
+    "readMore": "Darllen rhagor...",
+    "learnMore": "Dysgu rhagor",
+    "freeResources": "Adnoddau Am Ddim",
+    "promoHeading": "Eisiau deall y Beibl yn ddyfnach?",
+    "joinBibleStudy": "Ymunwch â’n hastudiaeth Feiblaidd",
+    "previousQuote": "Dyfyniad Beiblaidd blaenorol",
+    "nextQuote": "Dyfyniad Beiblaidd nesaf",
+    "readPassage": "Darllenwch y darn hwn yn eich Beibl."
+  },
+  "DownloadButton": {
+    "checking": "Wrthi’n gwirio",
+    "download": "Lawrlwytho",
+    "sessionError": "Methu gwirio eich sesiwn. Rhowch gynnig arall arni.",
+    "saveVideo": "Cadw Fideo"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Lawrlwytho fideo",
+    "eyebrow": "Lawrlwytho Fideo",
+    "posterAlt": "Poster fideo",
+    "noDownloads": "Nid oes unrhyw lawrlwythiadau ar gael ar gyfer y fideo hwn.",
+    "fileSizeLabel": "Dewiswch faint ffeil",
+    "termsAgreementPrefix": "Rwy’n cytuno â’r ",
+    "termsOfUse": "Telerau Defnyddio",
+    "termsAgreementSuffix": "",
+    "close": "Cau",
+    "download": "Lawrlwytho",
+    "authRequiredTitle": "Eisiau lawrlwytho’r fideo hwn?",
+    "authRequiredBody": "Mae angen cyfrif Jesus Film am ddim i lawrlwytho fideos.",
+    "signInToDownload": "Mewngofnodwch i lawrlwytho",
+    "keepWatching": "Parhau i wylio",
+    "checking": "Wrthi’n gwirio",
+    "closeTermsOfUse": "Cau’r Telerau Defnyddio",
+    "cancel": "Canslo",
+    "accept": "Derbyn",
+    "errorSessionExpired": "Mae eich sesiwn wedi dod i ben. Mewngofnodwch eto i lawrlwytho.",
+    "errorSessionUnavailable": "Methu gwirio eich sesiwn. Rhowch gynnig arall arni.",
+    "errorUnavailableSource": "Nid yw lawrlwytho ar gael o’r ffynhonnell hon",
+    "tierHighest": "Uwchaf",
+    "tierHigh": "Uchel",
+    "tierLow": "Isel"
+  },
+  "HeroPlayerControls": {
+    "play": "Chwarae",
+    "pause": "Oedi",
+    "seek": "Sychu",
+    "seekValue": "{current} o {total}",
+    "volume": "Cyfaint",
+    "volumeValue": "{percent} y cant",
+    "mute": "Distewi",
+    "unmute": "Dad-distewi",
+    "changeAudioLanguage": "Newid iaith sain",
+    "enterFullscreen": "Mynd i’r sgrin lawn",
+    "exitFullscreen": "Gadael y sgrin lawn"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Dewis iaith",
+    "searchPlaceholder": "Chwilio ieithoedd…",
+    "languages": "Ieithoedd",
+    "noMatches": "Dim cyfatebiaeth",
+    "notAvailable": "Ddim ar gael"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Iaith",
+    "dialogTitleWithSubtitles": "Iaith a Chapsiynau",
+    "languageHeading": "Iaith",
+    "subtitlesHeading": "Capsiynau",
+    "languageCount": "{count, plural, one {# iaith} other {# iaith}}",
+    "requestSent": "Anfonwyd y cais",
+    "translateWithAi": "Cyfieithu gydag AI",
+    "noSubtitles": "Dim capsiynau",
+    "toggleOn": "Ymlaen",
+    "toggleOff": "I ffwrdd",
+    "close": "Cau",
+    "apply": "Gosod",
+    "noLanguageSubtitles": "Dim capsiynau {language}",
+    "seeAllLanguages": "Pob iaith",
+    "seeAllVideosInLanguage": "Pob Fideo: {language}",
+    "retryLoadingLanguages": "Ceisio llwytho ieithoedd eto",
+    "notAvailable": "Ddim ar gael",
+    "switching": "Wrthi’n newid..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 episod} other {# episodau}}",
+    "seriesLabel": "Cyfres · {episodes}",
+    "changeAudioLanguage": "Newid iaith sain",
+    "share": "Rhannu",
+    "languages": "Ieithoedd",
+    "downloadCollection": "Lawrlwytho’r casgliad",
+    "checkingDownloads": "Wrthi’n gwirio lawrlwythiadau…",
+    "downloadSessionError": "Methu gwirio eich sesiwn. Rhowch gynnig arall arni."
+  },
+  "WatchModal": {
+    "close": "Cau"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Pe baech chi’n gallu gofyn cwestiwn i grewr y fideo hwn, beth fyddai’r cwestiwn?",
+    "fallbackBody": "Cael trafodaeth breifat gyda rhywun sy’n barod i wrando.",
+    "questionsShort": "Cwestiynau",
+    "questions": "Cwestiynau Perthnasol",
+    "askYours": "Gofynnwch eich un chi",
+    "chatWithPerson": "Sgwrsio â pherson",
+    "askBibleQuestion": "Gofyn cwestiwn Beiblaidd",
+    "quiz": "Cwis"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Math o neges",
+    "fieldLabel": "Gofynnwch gwestiwn am y fideo hwn",
+    "send": "Anfon cwestiwn",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Gofyn cwestiwn Beiblaidd",
+        "description": "Atebion ar unwaith o’r Beibl gan ddefnyddio chwilio AI"
+      },
+      "prayerRequest": {
+        "label": "Gofyn am weddi",
+        "description": "Rhannwch beth hoffech weddi drosto"
+      },
+      "comment": {
+        "label": "Gadael sylw",
+        "description": "Anfonwch feddyliau am y fideo hwn"
+      },
+      "personChat": {
+        "label": "Sgwrsio â pherson",
+        "description": "Siaradwch â rhywun nawr"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Rhannu fideo",
+    "heading": "Rhannu’r fideo hwn",
+    "posterAlt": "Poster fideo",
+    "shareOnFacebook": "Rhannu ar Facebook",
+    "shareOnFacebookUnavailable": "Rhannu ar Facebook (ddim ar gael ar y fersiwn hon)",
+    "shareOnX": "Rhannu ar X",
+    "shareOnXUnavailable": "Rhannu ar X (ddim ar gael ar y fersiwn hon)",
+    "shareDisabledHint": "Mae rhannu’n gofyn am dudalen wedi’i chyhoeddi — bydd yn gweithio unwaith y bydd y fideo hwn mewn cynhyrchiad.",
+    "shareFormat": "Fformat rhannu",
+    "shareLinkTab": "Rhannu Dolen",
+    "embedCodeTab": "Cod Mewnosod",
+    "copyFailed": "Methu copïo’n awtomatig — dewiswch y testun isod a chopïwch â llaw.",
+    "copyLink": "Copïo Dolen",
+    "copyCode": "Copïo Cod",
+    "copied": "Wedi’i gopïo",
+    "close": "Cau"
+  },
+  "SubtitleTranscript": {
+    "heading": "Trawsgrifiad",
+    "subheading": "Tapiwch unrhyw linell i neidio i’r foment honno.",
+    "subtitleLanguage": "Iaith y capsiynau",
+    "aiSuffix": " · AI",
+    "loading": "Wrthi’n llwytho’r trawsgrifiad…",
+    "unavailable": "Nid yw’r trawsgrifiad ar gael ar gyfer y trac capsiynau hwn.",
+    "empty": "Heb ganfod llinellau trawsgrifiad."
+  },
+  "FloatingSearch": {
+    "placeholder": "Chwilio neu bori pynciau…",
+    "openSearch": "Chwilio fideos",
+    "searchRegion": "Chwilio fideos",
+    "clearSearch": "Clirio chwilio",
+    "changeAudioLanguage": "Newid iaith sain",
+    "home": "Hafan JesusFilm",
+    "closeSearch": "Cau chwilio",
+    "submitSearch": "Chwilio",
+    "library": "Llyfrgell"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Chwilio a phori fideos",
+    "home": "Hafan JesusFilm",
+    "placeholder": "Chwilio neu bori pynciau…",
+    "inputLabel": "Chwilio fideos yn ôl allweddair",
+    "searchFailed": "Methodd y chwilio. Rhowch gynnig arall arni.",
+    "loadMoreFailed": "Methu llwytho rhagor o ganlyniadau.",
+    "searching": "Wrthi’n chwilio...",
+    "connectionHint": "Gwiriwch eich cysylltiad a rhoi cynnig arall arni.",
+    "rateLimitHint": "Gormod o geisiadau. Rhowch gynnig arall arni ymhen munud.",
+    "retrySearch": "Ceisio chwilio eto",
+    "retry": "Ceisio eto",
+    "noResults": "Dim canlyniadau ar gyfer \"{query}\"",
+    "tryDifferentKeywords": "Rhowch gynnig ar eiriau allweddol gwahanol neu bori categorïau",
+    "loading": "Wrthi’n llwytho...",
+    "loadMore": "Llwytho rhagor",
+    "categoryBibleStories": "Storïau’r Beibl",
+    "categoryParables": "Damhegion",
+    "categoryAnimated": "Animeiddiedig",
+    "categoryStudy": "Astudiaeth",
+    "categoryFamily": "Teulu",
+    "categoryChristmas": "Nadolig",
+    "searchLanguageLabel": "Iaith chwilio",
+    "allLanguages": "Pob iaith",
+    "searchSuggestions": "Awgrymiadau chwilio",
+    "directMatches": "Cyfatebiad uniongyrchol",
+    "languages": "Ieithoedd",
+    "recommendedLanguage": "Iaith a argymhellir",
+    "searchSuggestion": "Chwilio am {suggestion}",
+    "searchSuggestionWithLanguage": "Chwilio am “{suggestion}” yn {language}",
+    "inLanguage": "yn {language}",
+    "browseByRegion": "Pori yn ôl rhanbarth",
+    "allVideosOnSinglePage": "Pob fideo ar un dudalen",
+    "clearLanguages": "Clirio",
+    "queryLanguageDetected": "Wedi canfod {language}",
+    "searchInLanguage": "Chwilio yn {language}",
+    "tryDifferentKeywordsOrLanguage": "Rhowch gynnig ar eiriau allweddol gwahanol neu ddewis iaith chwilio arall",
+    "useWebsiteDefaultLanguage": "Defnyddio iaith chwilio ddiofyn y wefan",
+    "removeLanguage": "Tynnu {language}",
+    "browseMode": "Modd pori chwilio",
+    "searchingInLanguage": "Canlyniadau yn {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Gwylio nawr",
+    "tapToUnmute": "Tapio i ddad-distewi",
+    "nextEpisode": "Pennod Nesaf",
+    "audioTranslationCount": "{count, plural, one {# iaith} other {# iaith}}",
+    "subtitleCount": "Capsiynau: {count, plural, one {# iaith} other {# iaith}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Wrthi’n llwytho cynnwys",
+    "loadingVideo": "Wrthi’n llwytho fideo"
+  },
+  "VideoLabels": {
+    "video": "Fideo",
+    "segment": "Rhan",
+    "episode": "Pennod",
+    "featureFilm": "Ffilm Hyd Llawn",
+    "shortFilm": "Ffilm Fer",
+    "series": "Cyfres",
+    "collection": "Casgliad",
+    "trailer": "Trelar",
+    "behindTheScenes": "Y Tu Ôl i’r Llwyfan",
+    "chapter": "Pennod"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clip {current} o {total}",
+    "position": "{current} o {total}",
+    "chapterCount": "{count, plural, one {# pennod} other {# penodau}}",
+    "clipAriaLabel": "{title} · Clip {current} o {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# pennod} other {# penodau}}",
+    "chapter": "Pennod",
+    "noImage": "Dim delwedd",
+    "playingNow": "Yn chwarae nawr",
+    "previousChapter": "Pennod flaenorol",
+    "nextChapter": "Pennod nesaf",
+    "thumbnailAlt": "Mân-lun {title}",
+    "relatedVideoThumbnail": "Mân-lun fideo cysylltiedig"
+  },
+  "SearchResultCard": {
+    "experience": "Profiad",
+    "episodeCount": "{count, plural, one {# episod} other {# episodau}}",
+    "thumbnailAlt": "Mân-lun fideo"
+  },
+  "Feedback": {
+    "openForm": "Agor ffurflen adborth",
+    "label": "Adborth",
+    "couldNotLoad": "Doedd dim modd llwytho’r ffurflen adborth.",
+    "loadingForm": "Wrthi’n llwytho’r ffurflen adborth…",
+    "retry": "Ceisio eto",
+    "cancel": "Canslo",
+    "closeForm": "Cau’r ffurflen adborth",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Fideos Cristnogol am ddim yn {language} | Jesus Film Project",
+    "metadataDescription": "Archwiliwch ffilmiau Iesu, straeon Beiblaidd, cyfresi disgyblaeth, a fideos allgymorth gyda sain wedi’i dweud neu isdeitlau yn {language}.",
+    "heroTitle": "Fideos Cristnogol am ddim yn {language}",
+    "heroDescription": "Archwiliwch ffilmiau Iesu, straeon Beiblaidd, cyfresi disgyblaeth, a fideos allgymorth sydd ar gael yn {language}. Amlygir fideos wedi’u dybio’n llawn yn gyntaf, gyda dewisiadau isdeitlau isod.",
+    "languageCollection": "Casgliad iaith",
+    "itemCount": "{count, plural, one {# eitem} other {# eitemau}}",
+    "videoCount": "{count, plural, one {# fideo} other {# fideos}}",
+    "videosInGroups": "{videoCount, plural, one {# fideo} other {# fideos}} mewn {groupCount, plural, one {# grŵp} other {# grwpiau}}",
+    "sectionNavLabel": "Adrannau’r rhestr ieithoedd",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Newydd",
+    "videoBible": "Beibl Fideo",
+    "bibleProject": "BibleProject",
+    "sports": "Chwaraeon",
+    "collections": "Casgliadau",
+    "subtitlesOnly": "Isdeitlau yn unig",
+    "backToTop": "Nôl i'r top",
+    "newlyAdded": "Wedi’u hychwanegu’n ddiweddar",
+    "newVideosTitle": "Fideos Cristnogol newydd yn {language}",
+    "newestFirst": "Y diweddaraf yn gyntaf",
+    "noPublishedVideos": "Ni chafwyd unrhyw fideos cyhoeddedig ar gyfer yr iaith hon eto.",
+    "bibleAndGospelFilms": "Ffilmiau’r Beibl a’r Efengyl",
+    "videoBibleCollectionsTitle": "Casgliadau Beibl Fideo {language}",
+    "videoBibleDescription": "Casgliadau sy’n canolbwyntio ar yr Ysgrythur, gan gynnwys LUMO, JESUS, Magdalena, ac Actau yn {language}.",
+    "noVideoBibleCollections": "Nid oes unrhyw gasgliadau Beibl Fideo ar gael ar gyfer yr iaith hon eto.",
+    "bibleProjectCollectionsTitle": "Casgliadau BibleProject {language}",
+    "bibleProjectDescription": "Cyfresi a hastudiaethau BibleProject sydd ar gael yn {language}.",
+    "noBibleProjectCollections": "Nid oes unrhyw gasgliadau BibleProject ar gael ar gyfer yr iaith hon eto.",
+    "sportsStories": "Storïau chwaraeon",
+    "sportsTitle": "Storïau chwaraeon ac athletwyr {language}",
+    "sportsDescription": "Storïau chwaraeon sy’n canolbwyntio ar ffydd a chasgliadau sy’n canolbwyntio ar athletwyr sydd ar gael yn {language}.",
+    "noSportsCollections": "Nid oes unrhyw gasgliadau chwaraeon na storïau athletwyr ar gael ar gyfer yr iaith hon eto.",
+    "fullyDubbed": "Wedi’u dybio’n llawn",
+    "dubbedVideosTitle": "Fideos {language} fesul casgliad",
+    "dubbedVideosDescription": "Pori fideos {language} wedi’u dybio’n llawn wedi’u grwpio gyda’u casgliad er mwyn eu canfod yn haws.",
+    "noDubbedVideos": "Nid oes unrhyw fideos wedi’u dybio’n llawn ar gael ar gyfer yr iaith hon eto.",
+    "subtitlesAvailable": "Isdeitlau ar gael",
+    "subtitlesTitle": "Fideos {language} gydag isdeitlau",
+    "subtitlesDescription": "Mae’r fideos hyn yn cynnwys isdeitlau {language} pan nad yw sain llafar {language} ar gael eto.",
+    "noSubtitleVideos": "Nid oes unrhyw fideos isdeitlau yn unig ar gael ar gyfer yr iaith hon eto.",
+    "dubbed": "Wedi’i ddybio",
+    "subtitles": "Isdeitlau",
+    "newLabel": "Newydd",
+    "fromCollection": "O {collection}",
+    "standaloneVideos": "Fideos annibynnol",
+    "videosFromCollection": "Fideos o {collection}.",
+    "standaloneDescription": "Fideos annibynnol yn yr iaith hon.",
+    "openCollection": "Agor y casgliad",
+    "filters": "Hidlyddion",
+    "filterLength": "Hyd",
+    "filterLength_under5": "Llai na 5 mun",
+    "filterLength_5to10": "5-10 mun",
+    "filterLength_10to30": "10-30 mun",
+    "filterLength_over30": "Mwy na 30 mun",
+    "filterType": "Math",
+    "clearFilters": "Clirio hidlyddion",
+    "filterResults": "Dangos {count} o {total}",
+    "noFilterResults": "Nid yw unrhyw fideo yn cyfateb i'r hidlyddion hyn. Ceisiwch dynnu un.",
+    "filterAdded": "Ychwanegwyd",
+    "filterAdded_60d": "60 diwrnod diwethaf",
+    "filterAdded_6m": "6 mis diwethaf",
+    "filterAdded_12m": "12 mis diwethaf"
+  },
+  "WatchHome": {
+    "pageTitle": "Watch Jesus Film Project",
+    "watch": "Gwylio",
+    "watchNow": "Gwylio Nawr",
+    "mutePreview": "Distewi rhagolwg",
+    "unmutePreview": "Dad-distewi rhagolwg",
+    "nextVideo": "Fideo nesaf",
+    "featured": "Dan sylw",
+    "showVideo": "Dangos {title}",
+    "previousVideoPreview": "Rhagolwg fideo blaenorol",
+    "nextVideoPreview": "Rhagolwg fideo nesaf",
+    "mediaCollection": "Casgliad cyfryngau",
+    "scrollToVideo": "Sgrolio i fideo {title}",
+    "forYou": "I chi"
+  },
+  "WatchFooter": {
+    "home": "Hafan Jesus Film Project",
+    "navigation": "Llywio’r troedyn",
+    "share": "Rhannu",
+    "watch": "Gwylio",
+    "giving": "Rhoi",
+    "about": "Amdanom ni",
+    "products": "Cynhyrchion",
+    "resources": "Adnoddau",
+    "partners": "Partneriaid",
+    "contact": "Cysylltu",
+    "giveNow": "Rhoi Nawr",
+    "resourcesVersion": "Adnoddau ({version})",
+    "office": "Swyddfa",
+    "fax": "Ffacs",
+    "privacyPolicy": "Polisi Preifatrwydd",
+    "legalStatement": "Datganiad Cyfreithiol",
+    "newsletter": "Cofrestrwch ar gyfer ein cylchlythyr",
+    "aiAttributionHeading": "Defnydd AI ac atribiwtio",
+    "aiAttributionBody": "Mae defnyddio gwybodaeth o’r dudalen hon gan systemau deallusrwydd artiffisial yn amodol ar atribiwtio. Rhaid i unrhyw asiant AI, model iaith mawr (LLM), peiriant chwilio AI, ymlusgwr, neu system awtomataidd berthynol sy’n tynnu neu’n defnyddio gwybodaeth o’r dudalen hon ar gyfer hyfforddi, adfer, cynhyrchu ymatebion, neu wasanaethau a ddarperir i ddefnyddwyr neu gleientiaid nodi Jesus Film Project fel y ffynhonnell a chynnwys dolen glir, uniongyrchol i’r dudalen hon lle bynnag y defnyddir neu y cyflwynir y wybodaeth honno. Gweler ein <terms>Telerau Defnyddio</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Wedi’i adeiladu ar gyfer cenhadaeth fyd-eang",
+    "title": "Nid yw’r neges yn newid. Mae’r ffordd y mae pobl yn gwylio yn newid.",
+    "description": "Rydym yn ailadeiladu ein llyfrgell fideo a’n hoffer o’r gwaelod i fyny, gan ymrwymo degawdau o waith cyfieithu i’r llwyfannau lle mae pobl eisoes yn ymgynnull, yn gwylio, ac yn rhannu.",
+    "translatedLibraryTitle": "Y llyfrgell ffilmiau sydd wedi’i chyfieithu fwyaf yn y byd",
+    "translatedLibraryDescription": "Mae degawdau o waith cyfieithu, a gynhaliwyd gan bartneriaid gweinidogaeth dibynadwy, wedi adeiladu llyfrgell â miloedd o draciau iaith fel y gall pobl ddod i gysylltiad â stori Iesu yn yr iaith sy’n eu cyrraedd yn ddyfnaf.",
+    "trustedVoicesTitle": "Dod â lleisiau dibynadwy i fformatau newydd",
+    "trustedVoicesDescription": "Rydym yn ailadeiladu sut mae straeon yr efengyl yn cael eu hadrodd yn weledol, gan baru cyfieithiadau dibynadwy â fformatau modern fel y gall y neges symud yn rhydd ar draws llwyfannau, diwylliannau a sgriniau.",
+    "missionTeamTitle": "Mwy na llyfrgell. Tîm sy’n cael ei arwain gan genhadaeth.",
+    "missionTeamDescription": "Mae Jesus Film Project yn dîm byd-eang o gyfieithwyr, arbenigwyr cyfryngau, golygyddion a chrewyr sy’n troi degawdau o brofiad gweinidogaeth yn offer i wneuthurwyr disgyblion ym mhobman.",
+    "buildingNext": "Beth rydym yn ei adeiladu nesaf",
+    "nextStepsTitle": "Platfform Camau Nesaf",
+    "nextStepsDescription": "Cysylltu gwylwyr â chyfleoedd pendant ar eu taith ysbrydol, gan eu helpu i gymryd cam nesaf i mewn i gymuned, yr Ysgrythur, neu genhadaeth.",
+    "mediaLibraryTitle": "Llyfrgell Cyfryngau Efengylaidd",
+    "mediaLibraryDescription": "Llyfrgell helaeth o gyfryngau Cristnogol gyda miloedd o fideos, ffilmiau ac adnoddau ar gael mewn sawl iaith ar gyfer gweinidogaeth ac efengylu ledled y byd.",
+    "ministryToolsTitle": "Offer Digidol ar gyfer Gweinidogaethau",
+    "ministryToolsDescription": "Rheoli fideo, dosbarthu cynnwys, ymgysylltu â chynulleidfaoedd, a dadansoddeg wedi’u cynllunio i helpu gweinidogaethau i gyrraedd mwy o bobl yn effeithiol.",
+    "invitationEyebrow": "Rydych wedi’ch gwahodd",
+    "invitationTitle": "Helpwch i adeiladu <highlight>y genhedlaeth nesaf</highlight> o offer cenhadaeth",
+    "invitationDescription": "Rydym yn gwahodd ymarferwyr, creadwyr a phartneriaid i fynediad cynnar. Profwch offer newydd yn gyntaf, rhowch adborth, a helpwch i lunio cynhyrchion sydd wedi’u cynllunio ar gyfer gwaith cenhadol go iawn.",
+    "betaTester": "Dod yn brofwr beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Casgliad Beibl Fideo",
+    "gospelRailTitle": "Darganfod y stori lawn",
+    "videoBibleDescription": "Archwiliwch ein casgliad o fideos ac adnoddau sy’n dod â’r Beibl yn fyw drwy straeon a dysgeidiaethau deniadol.",
+    "showcaseTitle": "Yr Ysgrythur wedi’i Hadrodd Trwy Ffilm",
+    "adventEyebrow": "Adfent y Nadolig",
+    "adventTitle": "Cyfrif Adfent y Nadolig",
+    "adventDescription": "Ymunwch â’n taith Adfent gyda fideo dyddiol sy’n adeiladu disgwyliad ar gyfer y Nadolig, gan archwilio gobaith, llawenydd, ac addewid dyfodiad Iesu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Adfent BibleProject",
+    "nuaEyebrow": "Cyfres NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Cyfres Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Cwrs Fideo",
+    "journeyWithJesusTitle": "Taith gyda Iesu",
+    "gospelsOnVideoEyebrow": "Pob Efengyl, wedi’i Hadrodd ar Fideo",
+    "scriptureAsWrittenTitle": "Yr Ysgrythur, wedi’i Llefaru’n Union Fel y’i Ysgrifennwyd",
+    "merryChristmas": "Nadolig Llawen!",
+    "daysUntilChristmas": "{count, plural, one {# diwrnod tan y Nadolig} other {# diwrnod tan y Nadolig}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Ieithoedd",
+    "metadataDescription": "Pori fideos JesusFilm yn ôl iaith.",
+    "eyebrow": "Ieithoedd gwylio",
+    "title": "Dewiswch iaith",
+    "description": "Archwiliwch ieithoedd yn ôl rhanbarth neu bori’r rhestr lawn.",
+    "searchPlaceholder": "Chwilio ieithoedd neu wledydd...",
+    "searchLabel": "Chwilio ieithoedd neu wledydd",
+    "clearSearch": "Clirio chwilio",
+    "browse": "Pori",
+    "browseByRegion": "Pori yn ôl rhanbarth a gwlad",
+    "languageCount": "{count, plural, one {# iaith} other {# ieithoedd}}",
+    "region": "Rhanbarth",
+    "countryLanguages": "Ieithoedd {country}",
+    "showLess": "Dangos llai",
+    "showMore": "Dangos {count} yn rhagor",
+    "noLanguages": "Dim ieithoedd wedi’u canfod",
+    "tryAnotherSearch": "Rhowch gynnig ar derm chwilio arall."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Hanes Gwylio | Jesus Film Project",
+    "title": "Hanes Gwylio",
+    "loading": "Wrthi’n llwytho hanes",
+    "empty": "Dim byd yma eto",
+    "emptyDescription": "Bydd fideos a wyliwch tra byddwch wedi’ch mewngofnodi yn ymddangos yma.",
+    "earlier": "Yn gynharach",
+    "today": "Heddiw",
+    "yesterday": "Ddoe"
+  },
+  "AccountControl": {
+    "account": "Cyfrif",
+    "accountMenu": "Dewislen y cyfrif",
+    "signIn": "Mewngofnodi",
+    "signOut": "Allgofnodi",
+    "signedIn": "Wedi mewngofnodi",
+    "history": "Hanes",
+    "logOut": "Allgofnodi"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Ni chafwyd hyd i’r dudalen",
+    "eyebrow": "Ni chafwyd hyd i’r dudalen",
+    "screenReaderPrefix": "Ni chafwyd hyd i’r dudalen:",
+    "title": "Nid yw’r olygfa hon yma.",
+    "description": "Mae’n bosibl bod y dudalen wedi symud, ond mae’r stori’n parhau.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Camau ar gyfer tudalen heb ei chanfod",
+    "backToWatch": "Yn ôl i Wylio",
+    "browseVideos": "Pori fideos"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% yn cyfateb",
+    "none": "Ni chanfuwyd unrhyw argymhellion ar gyfer y fideo hwn yn yr iaith hon."
+  },
+  "BetaTesterModal": {
+    "title": "Dod yn brofwr beta",
+    "trigger": "Dod yn brofwr beta",
+    "loadFailed": "Aeth rhywbeth o'i le.",
+    "loading": "Wrthi’n llwytho...",
+    "openFormNewTab": "Agor ffurflen mewn tab newydd",
+    "close": "Cau",
+    "iframeTitle": "Dod yn brofwr beta"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Lawrlwytho’r casgliad",
+    "eyebrow": "Lawrlwytho’r casgliad",
+    "description": "Dewiswch iaith ac ansawdd unwaith. Bydd pob episod sydd ar gael yn cael ei lawrlwytho yn ei dro.",
+    "signInTitle": "Mewngofnodwch i lawrlwytho",
+    "signInBody": "Gallwch lawrlwytho casgliadau ar ôl mewngofnodi gyda chyfrif Jesus Film.",
+    "signIn": "Mewngofnodwch i lawrlwytho",
+    "languageLabel": "Iaith",
+    "qualityLabel": "Ansawdd fideo",
+    "tierHighest": "Uwchaf",
+    "tierHigh": "Uchel",
+    "tierLow": "Isel",
+    "loading": "Wrthi’n chwilio am episodau sydd ar gael…",
+    "loadError": "Doedd dim modd llwytho’r lawrlwythiadau ar gyfer yr iaith hon.",
+    "retry": "Ceisio eto",
+    "noDownloads": "Nid oes unrhyw episodau y gellir eu lawrlwytho ar gael yn yr iaith hon.",
+    "availableCount": "{count, plural, one {Mae # episod yn barod} other {Mae # episodau yn barod}}",
+    "skippedCount": "{count, plural, one {Bydd # episod yn cael ei hepgor am nad yw ar gael} other {Bydd # episodau yn cael eu hepgor am nad ydynt ar gael}}",
+    "chooseFolder": "Dewis ffolder lawrlwytho",
+    "folderSelected": "Cadw i {name}",
+    "folderError": "Doedd dim modd agor y ffolder lawrlwytho.",
+    "browserFallback": "Bydd eich porwr yn cadw pob ffeil gan ddefnyddio ei osodiadau lawrlwytho arferol. Efallai y bydd yn gofyn ichi ganiatáu lawrlwythiadau lluosog.",
+    "sessionError": "Methu gwirio eich sesiwn. Rhowch gynnig arall arni.",
+    "downloading": "Wrthi’n lawrlwytho {title}",
+    "progress": "{completed} o {total}",
+    "complete": "Mae’r lawrlwythiadau wedi gorffen",
+    "canceled": "Mae’r lawrlwythiadau wedi’u canslo",
+    "failedCount": "{count, plural, one {Methodd # episod} other {Methodd # episodau}}. Dewiswch Lawrlwytho eto i roi cynnig arall ar lawrlwytho’r casgliad.",
+    "close": "Cau",
+    "cancel": "Canslo",
+    "start": "Lawrlwytho’r cyfan",
+    "downloadAgain": "Lawrlwytho eto",
+    "retryFailed": "Ceisio’r rhai a fethodd eto"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Nid yw'r fersiwn iaith ar gael",
+    "eyebrow": "Nid yw'r fersiwn iaith ar gael",
+    "title": "Nid yw <contentTitle>{title}</contentTitle> ar gael yn <languageName>{language}</languageName>",
+    "actionsLabel": "Opsiynau gwylio sydd ar gael",
+    "browseInLanguage": "Pori fideos yn {language}",
+    "backToSearch": "Yn ôl i'r chwiliad",
+    "audioVersionsTitle": "Fersiynau sain eraill",
+    "audioVersionsDescription": "Dewiswch iaith sain i barhau i wylio'r fideo hwn.",
+    "languageVersionLabel": "Iaith sain",
+    "selectLanguageVersion": "Dewiswch fersiwn iaith",
+    "watchSelectedVersion": "Gwylio'r fersiwn a ddewiswyd"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Dewisiadau cwcis",
+    "bannerTitle": "Eich dewisiadau preifatrwydd",
+    "bannerDescription": "Mae cwcis hanfodol yn cadw Watch yn ddiogel ac yn gweithio. Gyda’ch caniatâd, gall cwci dewisol parti cyntaf gofio diddordebau ar draws ymweliadau er mwyn personoli argymhellion. Mae argymhellion cyd-destunol ar gael y naill ffordd neu’r llall.",
+    "acceptAll": "Derbyn y cyfan",
+    "essentialOnly": "Hanfodol yn unig",
+    "manageChoices": "Rheoli dewisiadau",
+    "savingChoice": "Yn cadw dewis cwcis",
+    "settings": "Gosodiadau cwcis",
+    "settingsDescription": "Dewiswch a gaiff Watch gofio diddordebau argymhellion ar draws ymweliadau. Gallwch newid hyn unrhyw bryd.",
+    "essentialCookies": "Cwcis hanfodol",
+    "essentialDescription": "Diogelwch, chwarae fideos, dewisiadau preifatrwydd, a phriodoli ceisiadau am argymhellion.",
+    "alwaysActive": "Bob amser yn weithredol",
+    "personalization": "Personoli",
+    "personalizationDescription": "Cofio diddordebau cyfyngedig ar draws ymweliadau. Os caiff hwn ei ddiffodd, bydd argymhellion cyd-destunol ar gael o hyd.",
+    "erasurePending": "Mae dileu’r proffil ar y gweill. Mae argymhellion cyd-destunol eisoes yn weithredol.",
+    "cancel": "Canslo",
+    "saveChoices": "Cadw dewisiadau",
+    "saving": "Yn cadw…",
+    "loadError": "Methwyd llwytho eich dewis. Gallwch ddewis isod o hyd.",
+    "grantError": "Nid oedd modd galluogi personoli. Mae’r opsiwn hanfodol yn unig ar gael o hyd.",
+    "saveError": "Methwyd cadw eich dewis. Rhowch gynnig arall arni."
+  }
+}

@@ -13,14 +13,19 @@ import {
   MAX_EXACT_TITLE_TOKENS,
   searchByExactTitle,
   searchByKeywordWeighted,
+  searchKeywordFirstVideoLexical,
   searchByTrigram,
   tokenizeForExactTitle,
 } from "./hybrid-search-keyword-first-retrievers"
+import { SearchTimingRecorder } from "./hybrid-search-timing"
 
 function mockPrisma() {
   const $queryRaw = vi.fn()
+  const tx = { $queryRaw }
+  const $transaction = vi.fn(async (run) => run(tx))
   return {
     $queryRaw,
+    $transaction,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any
 }
@@ -133,6 +138,30 @@ describe("searchByKeywordWeighted", () => {
     })
   })
 
+  it("records the weighted keyword DB timing when a recorder is passed", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([])
+    const timing = new SearchTimingRecorder()
+
+    await searchByKeywordWeighted(
+      prisma,
+      {
+        query: "bible project",
+        locale: "en",
+        limit: 10,
+      },
+      timing,
+    )
+
+    expect(timing.snapshotDbTimings()).toEqual([
+      expect.objectContaining({
+        label: "keyword-weighted-video.query",
+        status: "fulfilled",
+        resultCount: 0,
+        elapsedMs: expect.any(Number),
+      }),
+    ])
+  })
+
   it("short-circuits to [] on empty / whitespace input without a DB call", async () => {
     expect(
       await searchByKeywordWeighted(prisma, {
@@ -191,6 +220,7 @@ describe("searchByKeywordWeighted", () => {
     expect(joined).toMatch(/vl\.locale\s*=\s*\?/)
     expect(joined).toMatch(/vl\.status\s*=\s*'published'/)
     expect(joined).toMatch(/v\.deleted_at IS NULL/)
+    expect(joined).toMatch(/v\.no_index = false/)
   })
 })
 
@@ -247,6 +277,7 @@ describe("searchByTrigram", () => {
     // drives the new `video_locale_description_trgm_idx` from migration 0010.
     expect(joined).toMatch(/vl\.title\s*%>\s*\?/)
     expect(joined).toMatch(/vl\.description\s*%>\s*\?/)
+    expect(joined).toMatch(/v\.no_index = false/)
   })
 
   it("ranks by GREATEST similarity across title and description", async () => {
@@ -324,7 +355,45 @@ describe("searchByExactTitle", () => {
       resultId: "vid-1",
       videoTitle: "The Bible Project",
       titleLength: 17,
+      titleMatched: true,
+      curated: false,
+      curationPosition: null,
     })
+  })
+
+  it("returns exact normalized editorial curation targets with their marker", async () => {
+    prisma.$queryRaw.mockResolvedValueOnce([
+      {
+        video_id: "video-rescue-intro",
+        video_core_id: "13_0-RPGospelIntro",
+        video_slug: "rescue-project-introduction",
+        video_title: "Rescue Project Introduction",
+        description: "A Visual Vernacular introduction.",
+        title_length: 27,
+        title_matched: false,
+        curated: true,
+        curation_position: 1,
+      },
+    ])
+
+    const rows = await searchByExactTitle(prisma, {
+      query: "  Rescue   Project  ",
+      locale: "en",
+      limit: 20,
+    })
+
+    expect(rows[0]).toMatchObject({
+      resultId: "video-rescue-intro",
+      videoCoreId: "13_0-RPGospelIntro",
+      titleMatched: false,
+      curated: true,
+      curationPosition: 1,
+    })
+    const callArgs = prisma.$queryRaw.mock.calls[0]
+    const [strings] = callArgs as [TemplateStringsArray]
+    expect(strings.join("?")).toMatch(/watch_search_curation_alias/)
+    expect(strings.join("?")).toMatch(/normalized_query/)
+    expect(callArgs).toContain("rescue project")
   })
 
   it("short-circuits to [] on empty / pure-punctuation queries", async () => {
@@ -359,12 +428,12 @@ describe("searchByExactTitle", () => {
     expect(prisma.$queryRaw).toHaveBeenCalledOnce()
     // Tagged-template `prisma.$queryRaw\`...\`` passes the cooked
     // strings as the 0th arg and bound values as positional args after.
-    // Our query has three positional bindings:
-    //   ${ilikeChain}  ${locale}  ${limit}
+    // Our query has five positional bindings:
+    //   ${ilikeChain}  ${locale}  ${locale}  ${normalizedQuery}  ${limit}
     // — `Prisma.join` collapses the 16 ILIKE clauses into one bound
-    // expression. So the call should have 1 + 3 args total.
+    // expression. So the call should have 1 + 5 args total.
     const callArgs = prisma.$queryRaw.mock.calls[0]
-    expect(callArgs.length - 1).toBe(3)
+    expect(callArgs.length - 1).toBe(5)
     // The first bound positional is the `Prisma.Sql` from `Prisma.join`,
     // which exposes the constituent values. Each of those is one wrapped
     // ILIKE pattern. Cap holds: exactly 16 entries.
@@ -388,5 +457,100 @@ describe("searchByExactTitle", () => {
     const callArgs = prisma.$queryRaw.mock.calls[0]
     const ilikeChain = callArgs[1] as { values: string[] }
     expect(ilikeChain.values).toEqual(["%the%", "%bible%"])
+    const [strings] = callArgs as [TemplateStringsArray]
+    expect(strings.join("?")).toMatch(/v\.no_index = false/)
+  })
+})
+
+describe("searchKeywordFirstVideoLexical", () => {
+  let prisma: ReturnType<typeof mockPrisma>
+
+  beforeEach(() => {
+    prisma = mockPrisma()
+  })
+
+  it("runs all three lexical retrievers inside one transaction", async () => {
+    prisma.$queryRaw
+      .mockResolvedValueOnce([
+        {
+          video_id: "vid-kw",
+          video_core_id: "core-kw",
+          video_slug: "kw",
+          video_title: "Keyword",
+          description: "keyword result",
+          rank: 0.7,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          video_id: "vid-trgm",
+          video_core_id: "core-trgm",
+          video_slug: "trgm",
+          video_title: "Trigram",
+          description: "trigram result",
+          similarity: 0.5,
+        },
+      ])
+      .mockResolvedValueOnce([
+        {
+          video_id: "vid-exact",
+          video_core_id: "core-exact",
+          video_slug: "exact",
+          video_title: "Exact",
+          description: "exact result",
+          title_length: 5,
+        },
+      ])
+    const timing = new SearchTimingRecorder()
+
+    const result = await searchKeywordFirstVideoLexical(
+      prisma,
+      {
+        query: "the bible project",
+        locale: "en",
+        limit: 10,
+      },
+      timing,
+    )
+
+    expect(prisma.$transaction).toHaveBeenCalledOnce()
+    expect(prisma.$transaction).toHaveBeenCalledWith(expect.any(Function), {
+      maxWait: 5_000,
+      timeout: 20_000,
+    })
+    expect(prisma.$queryRaw).toHaveBeenCalledTimes(3)
+    expect(result.keywordWeighted[0]).toMatchObject({
+      resultId: "vid-kw",
+      rank: 0.7,
+    })
+    expect(result.trigram[0]).toMatchObject({
+      resultId: "vid-trgm",
+      similarity: 0.5,
+    })
+    expect(result.exactTitle[0]).toMatchObject({
+      resultId: "vid-exact",
+      titleLength: 5,
+    })
+    expect(timing.snapshotDbTimings().map((row) => row.label)).toEqual([
+      "keyword-weighted-video.query",
+      "trigram-video.query",
+      "exact-title-video.query",
+    ])
+  })
+
+  it("short-circuits whitespace-only input before opening a transaction", async () => {
+    await expect(
+      searchKeywordFirstVideoLexical(prisma, {
+        query: "   ",
+        locale: "en",
+        limit: 10,
+      }),
+    ).resolves.toEqual({
+      keywordWeighted: [],
+      trigram: [],
+      exactTitle: [],
+    })
+    expect(prisma.$transaction).not.toHaveBeenCalled()
+    expect(prisma.$queryRaw).not.toHaveBeenCalled()
   })
 })

@@ -16,7 +16,6 @@ const automationPayloadSchema = z.object({
     "target_subtitles_missing",
     "metadata_missing",
     "transcript_embeddings_missing",
-    "scene_embeddings_missing",
   ]),
   status: z.enum(["active", "paused"]),
   schedule: automationScheduleSchema,

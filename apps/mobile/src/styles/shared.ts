@@ -1,19 +1,15 @@
 /**
- * Shared styles for mobile components.
- *
- * Convention: shared styles go FIRST in style arrays, component-specific
- * overrides go LAST. RN resolves left-to-right (last wins).
- *
- *   style={[layout.screenContainer]}                    // sole style
- *   style={[text.sectionHeading, typography.heading]}   // compose with typography
- *   style={[layout.sectionOuter, styles.localPadding]}  // compose with local override
+ * Shared styles for mobile components. Convention: shared styles go FIRST in
+ * style arrays, local overrides LAST — RN resolves left-to-right (last wins).
  */
 import { StyleSheet } from "react-native"
 
 import {
   ACCENT,
+  ACCENT_ON_DARK,
   BG_COLOR,
   SURFACE_COLOR,
+  TEXT_ON_OVERLAY,
   TEXT_PRIMARY,
   TEXT_SECONDARY,
 } from "../lib/color"
@@ -22,7 +18,14 @@ import {
 
 export const HORIZONTAL_PADDING = 16
 export const CARD_GAP = 12
+/** `sectionHeadingPadded`'s bottom margin, for rows that reserve a heading. */
+export const SECTION_HEADING_MARGIN_BOTTOM = 12
 export const CARD_BORDER_RADIUS = 12
+
+// Viewport-fraction detents for the language/subtitle formSheets. The unbounded
+// formSheet root can't be measured, so list height derives from these + the
+// detent-change index. Keep in sync with app/watch/_layout.tsx; index 0 is initial.
+export const LIST_SHEET_DETENTS = [0.65, 1] as const
 
 // ── Layout ─────────────────────────────────────────────────────────────────
 
@@ -61,7 +64,7 @@ export const text = StyleSheet.create({
     color: TEXT_PRIMARY,
     fontFamily: "System",
     paddingHorizontal: HORIZONTAL_PADDING,
-    marginBottom: 12,
+    marginBottom: SECTION_HEADING_MARGIN_BOTTOM,
   },
   sectionSubtitle: {
     fontWeight: "400",
@@ -83,8 +86,17 @@ export const text = StyleSheet.create({
   },
   accentLinkText: {
     fontWeight: "600",
-    color: ACCENT,
+    // ACCENT_ON_DARK, not ACCENT: link text needs >= 4.5:1 on the dark bg (AA).
+    color: ACCENT_ON_DARK,
     fontFamily: "System",
+  },
+  // Uppercase section eyebrow; padding/margins stay local to each consumer.
+  eyebrow: {
+    fontWeight: "600",
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+    textTransform: "uppercase",
+    letterSpacing: 1,
   },
 })
 
@@ -99,6 +111,21 @@ export const card = StyleSheet.create({
     borderRadius: CARD_BORDER_RADIUS,
     overflow: "hidden",
     backgroundColor: SURFACE_COLOR,
+  },
+  // Meta badge pinned to a poster card's top-right corner.
+  badge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  badgeText: {
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
+    fontWeight: "600",
   },
 })
 
@@ -137,7 +164,7 @@ export const feedback = StyleSheet.create({
 
 export const overlay = StyleSheet.create({
   playOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: "center",
     alignItems: "center",
   },

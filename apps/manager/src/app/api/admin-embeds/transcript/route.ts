@@ -2,8 +2,7 @@
 // `triggerTranscriptEmbeddingBackfill` GraphQL mutation. Manager owns
 // the presentation surface; admin owns execution. See plan 006.
 //
-// Response envelope: see apps/manager/src/app/api/admin-embeds/scene/route.ts
-// — both routes share the same shape via `proxyAdminEmbedTrigger`.
+// Response envelope is produced by `proxyAdminEmbedTrigger`.
 
 import { z } from "zod"
 import { triggerTranscriptEmbeddingBackfill } from "@/lib/admin-embed-trigger"

@@ -1,0 +1,28 @@
+{
+  "holidays": {
+    "01-01": {
+      "title": "New Year's Day",
+      "summary": "A threshold moment — looking back with gratitude and forward with hope."
+    },
+    "01-06": {
+      "title": "Epiphany",
+      "summary": "The revealing of Christ to the nations, remembered with the visit of the magi."
+    },
+    "10-31": {
+      "title": "Reformation Day",
+      "summary": "A day recalling renewal and return to scripture in the life of the church."
+    },
+    "11-01": {
+      "title": "All Saints' Day",
+      "summary": "Remembering the faithful who have gone before across every nation and age."
+    },
+    "12-24": {
+      "title": "Christmas Eve",
+      "summary": "The eve of the Nativity — waiting on the edge of the story of God-with-us."
+    },
+    "12-25": {
+      "title": "Christmas Day",
+      "summary": "The birth of Jesus — the Word made flesh, dwelling among us."
+    }
+  }
+}

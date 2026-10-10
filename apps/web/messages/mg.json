@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Tsy misy votoaty ho an'ity traikefa ity.",
+    "failedToLoad": "Tsy nahomby ny fampidirana ny traikefa: {message}",
+    "unexpected": "Nisy hadisoana tsy nampoizina nitranga.",
+    "notConfigured": "Tsy voaendrika ny serivisy votoaty.",
+    "noContent": "Tsy misy votoaty azo alaina.",
+    "homepageMisconfigured": "Tsy voaendrika tsara ny pejy fandraisana fijerena.",
+    "defaultTemplateMisconfigured": "Tsy voaendrika tsara ny maodely fijerena mahazatra.",
+    "authFailed": "Tsy afaka nanamarina amin'ny serivisy votoaty. Mifandraisa amin'ny fanohanana raha mbola mitohy izany.",
+    "pageLoadFailed": "Nisy olana nitranga.",
+    "tryAgain": "Andramo indray"
+  },
+  "VideosPage": {
+    "title": "Lahatsary rehetra",
+    "placeholder": "Ho avy ny fijerena ny kataloga. Mandritra izany, ampiasao ny fikarohana na rohy manokana momba lohahevitra iray."
+  },
+  "BibleQuotes": {
+    "title": "Teny nalaina avy amin'ny Baiboly",
+    "share": "Zarao",
+    "readMore": "Vakio bebe kokoa...",
+    "learnMore": "Fantaro bebe kokoa",
+    "freeResources": "Loharano maimaim-poana",
+    "promoHeading": "Te hahatakatra lalindalina kokoa ny Baiboly ve ianao?",
+    "joinBibleStudy": "Midira amin'ny fianarana Baiboly miaraka aminay",
+    "previousQuote": "Teny nalaina teo aloha",
+    "nextQuote": "Teny nalaina manaraka",
+    "readPassage": "Vakio ao amin'ny Baibolinao ity andalan-teny ity."
+  },
+  "DownloadButton": {
+    "checking": "Manamarina",
+    "download": "Misintona",
+    "sessionError": "Tsy afaka nanamarina ny fotoam-piasanao. Andramo indray azafady.",
+    "saveVideo": "Tehirizo ny lahatsary"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Sintomy ny lahatsary",
+    "eyebrow": "Sintomy ny lahatsary",
+    "posterAlt": "Sary afisy an'ny lahatsary",
+    "noDownloads": "Tsy misy fampidinana azo alaina ho an'ity lahatsary ity.",
+    "fileSizeLabel": "Safidio ny haben'ny rakitra",
+    "termsAgreementPrefix": "Manaiky ny ",
+    "termsOfUse": "Fepetra fampiasana",
+    "termsAgreementSuffix": "",
+    "close": "Hidio",
+    "download": "Sintomy",
+    "authRequiredTitle": "Te-hisintona ity lahatsary ity ve ianao?",
+    "authRequiredBody": "Ilaina ny kaonty Jesus Film maimaim-poana mba hisintonana lahatsary.",
+    "signInToDownload": "Midira raha hisintona",
+    "keepWatching": "Tohizo ny fijerena",
+    "checking": "Manamarina",
+    "closeTermsOfUse": "Hidio ny Fepetra fampiasana",
+    "cancel": "Foana",
+    "accept": "Ekena",
+    "errorSessionExpired": "Lany daty ny fotoam-piasanao. Midira indray raha hisintona.",
+    "errorSessionUnavailable": "Tsy afaka nanamarina ny fotoam-piasanao. Andramo indray azafady.",
+    "errorUnavailableSource": "Tsy azo sintonina avy amin'ity loharano ity",
+    "tierHighest": "Avo indrindra",
+    "tierHigh": "Avo",
+    "tierLow": "Ambany"
+  },
+  "HeroPlayerControls": {
+    "play": "Alefaso",
+    "pause": "Atsaharo",
+    "seek": "Tadiavo ny toerana",
+    "seekValue": "{current} amin'ny {total}",
+    "volume": "Hafem-batana",
+    "volumeValue": "{percent} isan-jato",
+    "mute": "Atsaharo ny feo",
+    "unmute": "Alefaso ny feo",
+    "changeAudioLanguage": "Ovay ny fitenin'ny feo",
+    "enterFullscreen": "Midira amin'ny efijery feno",
+    "exitFullscreen": "Mivoaha amin'ny efijery feno"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Misafidiana fiteny",
+    "searchPlaceholder": "Karohy ny fiteny…",
+    "languages": "Fiteny",
+    "noMatches": "Tsy nisy mifanentana",
+    "notAvailable": "Tsy misy"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Fiteny",
+    "dialogTitleWithSubtitles": "Fiteny sy dikanteny",
+    "languageHeading": "Fiteny",
+    "subtitlesHeading": "Dikanteny",
+    "languageCount": "{count, plural, one {# fiteny} other {# fiteny}}",
+    "requestSent": "Nalefa ny fangatahana",
+    "translateWithAi": "Adikao amin'ny AI",
+    "noSubtitles": "Tsy misy dikanteny",
+    "toggleOn": "Mandeha",
+    "toggleOff": "Miala",
+    "close": "Hidio",
+    "apply": "Ampiharo",
+    "noLanguageSubtitles": "Tsy misy dikanteny amin'ny {language}",
+    "seeAllLanguages": "Fiteny rehetra",
+    "seeAllVideosInLanguage": "Lahatsary rehetra: {language}",
+    "retryLoadingLanguages": "Andramo indray ny fampidirana ny fiteny",
+    "notAvailable": "Tsy misy",
+    "switching": "Manova..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 FIZARANA} other {# FIZARANA} }",
+    "seriesLabel": "ANDIAN-DALASARY · {episodes}",
+    "changeAudioLanguage": "Ovay ny fitenin'ny feo",
+    "share": "Zarao",
+    "languages": "Fiteny",
+    "downloadCollection": "Sintomy ny fitambarana",
+    "checkingDownloads": "Manamarina ireo azo sintonina…",
+    "downloadSessionError": "Tsy afaka nanamarina ny fotoam-piasanao. Andramo indray azafady."
+  },
+  "WatchModal": {
+    "close": "Hidio"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Raha afaka manontany ny mpamorona ity lahatsary ity ianao, inona no hanontanianao?",
+    "fallbackBody": "Manaova fifanakalozan-kevitra manokana amin'olona vonona hihaino.",
+    "questionsShort": "Fanontaniana",
+    "questions": "Fanontaniana mifandraika",
+    "askYours": "Apetraho ny anao",
+    "chatWithPerson": "Resaho amin'ny olona iray",
+    "askBibleQuestion": "Manontania momba ny Baiboly",
+    "quiz": "Fitsapana"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Karazan-kafatra",
+    "fieldLabel": "Manontania momba ity lahatsary ity",
+    "send": "Alefaso ny fanontaniana",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Manontania momba ny Baiboly",
+        "description": "Valiny avy hatrany avy amin'ny Baiboly amin'ny alalan'ny fikarohana AI"
+      },
+      "prayerRequest": {
+        "label": "Mangataka vavaka",
+        "description": "Zarao izay tianao ivavahana"
+      },
+      "comment": {
+        "label": "Mametraha hevitra",
+        "description": "Alefaso ny eritreritrao momba ity lahatsary ity"
+      },
+      "personChat": {
+        "label": "Resaho amin'ny olona iray",
+        "description": "Miresaha amin'olona izao"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Zarao ny lahatsary",
+    "heading": "Zarao ity lahatsary ity",
+    "posterAlt": "Sary afisy an'ny lahatsary",
+    "shareOnFacebook": "Zarao amin'ny Facebook",
+    "shareOnFacebookUnavailable": "Zarao amin'ny Facebook (tsy azo ampiasaina amin'ity kinova ity)",
+    "shareOnX": "Zarao amin'ny X",
+    "shareOnXUnavailable": "Zarao amin'ny X (tsy azo ampiasaina amin'ity kinova ity)",
+    "shareDisabledHint": "Mila pejy efa napetraka ny fizarana — mandeha izany rehefa ao amin'ny famokarana ity lahatsary ity.",
+    "shareFormat": "Endriky ny fizarana",
+    "shareLinkTab": "Rohy fizarana",
+    "embedCodeTab": "Kaody ampidirina",
+    "copyFailed": "Tsy afaka nandika ho azy — safidio ny lahatsoratra etsy ambany ary adikao tanana.",
+    "copyLink": "Adikao ny rohy",
+    "copyCode": "Adikao ny kaody",
+    "copied": "Voadika",
+    "close": "Hidio"
+  },
+  "SubtitleTranscript": {
+    "heading": "Dikanteny an-tsoratra",
+    "subheading": "Tsindrio tsipika iray mba hifindra amin'io fotoana io.",
+    "subtitleLanguage": "Fitenin'ny dikanteny",
+    "aiSuffix": " · AI",
+    "loading": "Mampiditra ny dikanteny an-tsoratra…",
+    "unavailable": "Tsy misy dikanteny an-tsoratra ho an'ity lalana dikanteny ity.",
+    "empty": "Tsy nahitana tsipika dikanteny."
+  },
+  "FloatingSearch": {
+    "placeholder": "Karohy na zaha lohahevitra…",
+    "openSearch": "Karohy lahatsary",
+    "searchRegion": "Karohy lahatsary",
+    "clearSearch": "Fafao ny fikarohana",
+    "changeAudioLanguage": "Ovay ny fitenin'ny feo",
+    "home": "Pejy fandraisana JesusFilm",
+    "closeSearch": "Hidio ny fikarohana",
+    "submitSearch": "Karohy",
+    "library": "Tranomboky"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Karohy sy zaha lahatsary",
+    "home": "Pejy fandraisana JesusFilm",
+    "placeholder": "Karohy na zaha lohahevitra…",
+    "inputLabel": "Karohy lahatsary amin'ny teny fanalahidy",
+    "searchFailed": "Tsy nahomby ny fikarohana. Andramo indray azafady.",
+    "loadMoreFailed": "Tsy nahomby ny fampidirana valiny fanampiny.",
+    "searching": "Mikaroka...",
+    "connectionHint": "Hamarino ny fifandraisanao ary andramo indray.",
+    "rateLimitHint": "Be loatra ny fangatahana. Andramo indray afaka iray minitra.",
+    "retrySearch": "Andramo indray ny fikarohana",
+    "retry": "Andramo indray",
+    "noResults": "Tsy nisy valiny ho an'ny \"{query}\"",
+    "tryDifferentKeywords": "Andramo teny fanalahidy hafa na zaha sokajy",
+    "loading": "Mampiditra...",
+    "loadMore": "Mampiditra bebe kokoa",
+    "categoryBibleStories": "Tantaran'ny Baiboly",
+    "categoryParables": "Fanoharana",
+    "categoryAnimated": "Sarin-tsary mihetsika",
+    "categoryStudy": "Fianarana",
+    "categoryFamily": "Fianakaviana",
+    "categoryChristmas": "Noely",
+    "searchLanguageLabel": "Fiteny hikarohana",
+    "allLanguages": "Fiteny rehetra",
+    "searchSuggestions": "Soso-kevitra fikarohana",
+    "directMatches": "Valiny mifanaraka mivantana",
+    "languages": "Fiteny",
+    "recommendedLanguage": "Fiteny soso-kevitra",
+    "searchSuggestion": "Karohy ny “{suggestion}”",
+    "searchSuggestionWithLanguage": "Karohy amin'ny {language} ny “{suggestion}”",
+    "inLanguage": "amin'ny {language}",
+    "browseByRegion": "Zaha araka ny faritra",
+    "allVideosOnSinglePage": "Lahatsary rehetra ao amin’ny pejy iray",
+    "clearLanguages": "Fafao",
+    "queryLanguageDetected": "Hita fa {language}",
+    "searchInLanguage": "Karohy amin'ny {language}",
+    "tryDifferentKeywordsOrLanguage": "Andramo teny fanalahidy hafa na mifidiana fiteny fikarohana hafa",
+    "useWebsiteDefaultLanguage": "Ampiasao ny fiteny fikarohana mahazatra an'ny tranonkala",
+    "removeLanguage": "Esory {language}",
+    "browseMode": "Fomba fijerena fikarohana",
+    "searchingInLanguage": "Valiny amin'ny {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Jereo izao",
+    "tapToUnmute": "Tsindrio mba hampandeha ny feo",
+    "nextEpisode": "Fizarana manaraka",
+    "audioTranslationCount": "{count, plural, one {# fiteny} other {# fiteny}}",
+    "subtitleCount": "Dikanteny: {count, plural, one {# fiteny} other {# fiteny}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Mampiditra votoaty",
+    "loadingVideo": "Mampiditra lahatsary"
+  },
+  "VideoLabels": {
+    "video": "Lahatsary",
+    "segment": "Sombiny",
+    "episode": "Fizarana",
+    "featureFilm": "Sarimihetsika lava",
+    "shortFilm": "Sarimihetsika fohy",
+    "series": "Andian-dahatsary",
+    "collection": "Fitambarana",
+    "trailer": "Fampisehoana",
+    "behindTheScenes": "Ao ambadiky ny sehatra",
+    "chapter": "Toko"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Sombiny {current} amin'ny {total}",
+    "position": "{current} amin'ny {total}",
+    "chapterCount": "{count, plural, one {# toko} other {# toko}}",
+    "clipAriaLabel": "{title} · Sombiny {current} amin'ny {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# toko} other {# toko}}",
+    "chapter": "Toko",
+    "noImage": "Tsy misy sary",
+    "playingNow": "Mandeha izao",
+    "previousChapter": "Toko teo aloha",
+    "nextChapter": "Toko manaraka",
+    "thumbnailAlt": "Sarin-tsary madinika ho an'i {title}",
+    "relatedVideoThumbnail": "Sarin-tsary madinika ho an'ny lahatsary mifandraika"
+  },
+  "SearchResultCard": {
+    "experience": "Traikefa",
+    "episodeCount": "{count, plural, one {# fizarana} other {# fizarana}}",
+    "thumbnailAlt": "Sarin-tsary madinika an'ny lahatsary"
+  },
+  "Feedback": {
+    "openForm": "Sokafy ny taratasy fanehoan-kevitra",
+    "label": "Fanehoan-kevitra",
+    "couldNotLoad": "Tsy afaka nampidirina ny taratasy fanehoan-kevitra.",
+    "loadingForm": "Mampiditra ny taratasy fanehoan-kevitra…",
+    "retry": "Andramo indray",
+    "cancel": "Foana",
+    "closeForm": "Hidio ny taratasy fanehoan-kevitra",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Lahatsary kristianina maimaim-poana amin'ny {language} | Jesus Film Project",
+    "metadataDescription": "Zaha ny sarimihetsika momba an'i Jesosy, tantara ao amin'ny Baiboly, andian-dahatsary momba ny mpianatra, ary lahatsary fanentanana amin'ny feo nadika na dikanteny amin'ny {language}.",
+    "heroTitle": "Lahatsary kristianina maimaim-poana amin'ny {language}",
+    "heroDescription": "Zaha ny sarimihetsika momba an'i Jesosy, tantara ao amin'ny Baiboly, andian-dahatsary momba ny mpianatra, ary lahatsary fanentanana misy amin'ny {language}. Ny lahatsary nadika tanteraka no aseho aloha, ary eo ambany kosa ny safidy dikanteny fotsiny.",
+    "languageCollection": "Fitambaran'ny fiteny",
+    "itemCount": "{count, plural, one {# singa} other {# singa}}",
+    "videoCount": "{count, plural, one {# lahatsary} other {# lahatsary}}",
+    "videosInGroups": "{videoCount, plural, one {# lahatsary} other {# lahatsary}} ao anatin'ny {groupCount, plural, one {# vondrona} other {# vondrona}}",
+    "sectionNavLabel": "Fizarana ao amin'ny tahirin-teny",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Vaovao",
+    "videoBible": "Baiboly an-tsary",
+    "bibleProject": "BibleProject",
+    "sports": "Fanatanjahantena",
+    "collections": "Fitambarana",
+    "subtitlesOnly": "Dikanteny fotsiny",
+    "backToTop": "Hiverina eny ambony",
+    "newlyAdded": "Nampidirina vao haingana",
+    "newVideosTitle": "Lahatsary kristianina vaovao amin'ny {language}",
+    "newestFirst": "Vaovao indrindra aloha",
+    "noPublishedVideos": "Tsy mbola nisy lahatsary navoaka hita amin'ity fiteny ity.",
+    "bibleAndGospelFilms": "Sarimihetsika momba ny Baiboly sy ny Filazantsara",
+    "videoBibleCollectionsTitle": "Fitambaran'ny Baiboly an-tsary amin'ny {language}",
+    "videoBibleDescription": "Fitambarana mifototra amin'ny Soratra Masina ao anatin'izany ny LUMO, JESUS, Magdalena, ary Asa ao amin'ny {language}.",
+    "noVideoBibleCollections": "Tsy mbola misy fitambaran'ny Baiboly an-tsary ho an'ity fiteny ity.",
+    "bibleProjectCollectionsTitle": "Fitambarana BibleProject amin'ny {language}",
+    "bibleProjectDescription": "Andian-dahatsary sy fianarana BibleProject misy amin'ny {language}.",
+    "noBibleProjectCollections": "Tsy mbola misy fitambaran'ny BibleProject ho an'ity fiteny ity.",
+    "sportsStories": "Tantaran'ny fanatanjahantena",
+    "sportsTitle": "Tantaran'ny fanatanjahantena sy atleta amin'ny {language}",
+    "sportsDescription": "Tantaran'ny fanatanjahantena mifototra amin'ny finoana sy fitambarana mifantoka amin'ny atleta misy amin'ny {language}.",
+    "noSportsCollections": "Tsy mbola misy fitambarana momba ny fanatanjahantena na tantaran'ny atleta ho an'ity fiteny ity.",
+    "fullyDubbed": "Nadika tanteraka",
+    "dubbedVideosTitle": "Lahatsary amin'ny {language} araka ny fitambarana",
+    "dubbedVideosDescription": "Zaha ny lahatsary amin'ny {language} nadika tanteraka, voazara araka ny fitambarany mba ho mora hitadiavana azy.",
+    "noDubbedVideos": "Tsy mbola misy lahatsary nadika tanteraka ho an'ity fiteny ity.",
+    "subtitlesAvailable": "Misy dikanteny",
+    "subtitlesTitle": "Lahatsary amin'ny {language} misy dikanteny",
+    "subtitlesDescription": "Misy dikanteny amin'ny {language} ireo lahatsary ireo rehefa mbola tsy misy feo tenenin'ny {language}.",
+    "noSubtitleVideos": "Tsy mbola misy lahatsary misy dikanteny fotsiny ho an'ity fiteny ity.",
+    "dubbed": "Nadika feo",
+    "subtitles": "Dikanteny",
+    "newLabel": "Vaovao",
+    "fromCollection": "Avy amin'ny {collection}",
+    "standaloneVideos": "Lahatsary misaraka",
+    "videosFromCollection": "Lahatsary avy amin'ny {collection}.",
+    "standaloneDescription": "Lahatsary misaraka amin'ity fiteny ity.",
+    "openCollection": "Sokafy ny fitambarana",
+    "filters": "Sivana",
+    "filterLength": "Halavany",
+    "filterLength_under5": "Latsaky ny 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mihoatra ny 30 min",
+    "filterType": "Karazana",
+    "clearFilters": "Hanadio ny sivana",
+    "filterResults": "{count} amin'ny {total} no aseho",
+    "noFilterResults": "Tsy misy horonantsary mifanaraka amin'ireo sivana ireo. Andramo esorina ny iray.",
+    "filterAdded": "Nampiana",
+    "filterAdded_60d": "60 andro farany",
+    "filterAdded_6m": "6 volana farany",
+    "filterAdded_12m": "12 volana farany"
+  },
+  "WatchHome": {
+    "pageTitle": "Fijerena Jesus Film Project",
+    "watch": "Jereo",
+    "watchNow": "Jereo izao",
+    "mutePreview": "Atsaharo ny feo amin'ny topimaso",
+    "unmutePreview": "Alefaso ny feo amin'ny topimaso",
+    "nextVideo": "Lahatsary manaraka",
+    "featured": "Asongadina",
+    "showVideo": "Asehoy {title}",
+    "previousVideoPreview": "Topimaso lahatsary teo aloha",
+    "nextVideoPreview": "Topimaso lahatsary manaraka",
+    "mediaCollection": "Fitambaran'ny media",
+    "scrollToVideo": "Tadiavo ny lahatsary {title}",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Pejy fandraisana Jesus Film Project",
+    "navigation": "Fikarohana ambany pejy",
+    "share": "Zarao",
+    "watch": "Jereo",
+    "giving": "Fanomezana",
+    "about": "Momba",
+    "products": "Vokatra",
+    "resources": "Loharano",
+    "partners": "Mpiara-miombon'antoka",
+    "contact": "Fifandraisana",
+    "giveNow": "Manomeza izao",
+    "resourcesVersion": "Loharano ({version})",
+    "office": "Birao",
+    "fax": "Faksa",
+    "privacyPolicy": "Politika fiarovana ny fiainana manokana",
+    "legalStatement": "Fanambarana ara-dalàna",
+    "newsletter": "Misoratra anarana amin'ny gazetinay",
+    "aiAttributionHeading": "Fampiasana AI sy fanononana loharano",
+    "aiAttributionBody": "Ny fampiasan'ny rafitra faharanitan-tsaina artifisialy ny vaovao avy amin'ity pejy ity dia miankina amin'ny fanononana loharano. Izay mpiasan'ny AI, maodely fiteny lehibe (LLM), milina fikarohana AI, crawler, na rafitra mandeha ho azy mifandraika amin'izany izay maka na mampiasa vaovao avy amin'ity pejy ity ho an'ny fampiofanana, fitadiavana, famoronana valiny, na serivisy omena ny mpampiasa na ny mpanjifa dia tsy maintsy manondro an'i Jesus Film Project ho loharano ary mampiditra rohy mivantana sy mazava mankany amin'ity pejy ity isaky ny ampiasaina na aseho io vaovao io. Jereo ny <terms>Fepetra Fampiasana</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Namboarina ho an'ny iraka maneran-tany",
+    "title": "Tsy miova ny hafatra. Ny fomba fijerin'ny olona no miova.",
+    "description": "Amboarinay indray hatrany amin'ny fotony ny tranombokin'ny lahatsarinay sy ny fitaovanay, ka entinay any amin'ireo sehatra efa ivorian'ny olona, mijery, ary mizara ny asa fandikan-teny vita nandritra ny taona maro.",
+    "translatedLibraryTitle": "Ny tranomboky sarimihetsika be fandikana indrindra eran-tany",
+    "translatedLibraryDescription": "Ny asa fandikan-teny natao nandritra ny taona maro, tohanan'ireo mpiara-miombon'antoka amin'ny asa fanompoana azo itokisana, dia nahatonga tranomboky misy lalana fiteny an'arivony mba hahafahan'ny olona mihaona amin'ny tantaran'i Jesosy amin'ny fiteny tena mahakasika azy.",
+    "trustedVoicesTitle": "Mitondra feo itokisana ho amin'ny endrika vaovao",
+    "trustedVoicesDescription": "Amboarinay indray ny fomba itantarana amin'ny sary ny tantara mahafaly, mampitambatra fandikan-teny itokisana sy endrika maoderina mba hahafahan'ny hafatra mivezivezy malalaka amin'ny sehatra, kolontsaina, ary efijery rehetra.",
+    "missionTeamTitle": "Mihoatra noho ny tranomboky. Ekipa entanin'ny iraka.",
+    "missionTeamDescription": "Jesus Film Project dia ekipa maneran-tany misy mpandika teny, manam-pahaizana amin'ny haino aman-jery, mpanitsy, ary mpamorona, manova ny traikefa niasan'ny fanompoana nandritra ny taona maro ho fitaovana ho an'ireo mpanao mpianatra eny rehetra eny.",
+    "buildingNext": "Izay amboarinay manaraka",
+    "nextStepsTitle": "Sehatra Dingana Manaraka",
+    "nextStepsDescription": "Ampifandraiso amin'ny fahafahana azo tsapain-tanana ireo mpijery amin'ny diany ara-panahy, manampy azy ireo handray dingana manaraka ho amin'ny fiaraha-monina, ny Soratra Masina, na ny asa fanirahana.",
+    "mediaLibraryTitle": "Tranomboky Media Fitoriana Filazantsara",
+    "mediaLibraryDescription": "Tranomboky media kristianina midadasika misy lahatsary, sarimihetsika, ary loharano an'arivony amin'ny fiteny maro ho an'ny asa fanompoana sy fitoriana maneran-tany.",
+    "ministryToolsTitle": "Fitaovana nomerika ho an'ny asa fanompoana",
+    "ministryToolsDescription": "Fitantanana lahatsary, fizarana votoaty, fandraisana anjara avy amin'ny mpihaino, ary fanadihadiana natao hanampiana ny asa fanompoana hahatratra olona maro kokoa amin'ny fomba mahomby.",
+    "invitationEyebrow": "Manasa anao izahay",
+    "invitationTitle": "Manampia amin'ny fananganana <highlight>ny taranaka manaraka</highlight> amin'ireo fitaovana ho an'ny iraka",
+    "invitationDescription": "Manasa ireo mpiasa, mpamorona, ary mpiara-miombon'antoka izahay hiditra amin'ny fidirana aloha. Andramo aloha ireo fitaovana vaovao, omeo valin-kevitra, ary ampio amin'ny famolavolana vokatra natao ho an'ny asa fanirahana tena izy.",
+    "betaTester": "Lasa mpitsapa beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Fitambaran'ny Baiboly an-tsary",
+    "gospelRailTitle": "Fantaro ny tantara manontolo",
+    "videoBibleDescription": "Zaha ny fitambaran'ny lahatsary sy loharano izay mampahavelona ny Baiboly amin'ny alalan'ny tantara sy fampianarana mahaliana.",
+    "showcaseTitle": "Soratra Masina tantaraina amin'ny alalan'ny sarimihetsika",
+    "adventEyebrow": "Fiandrasana Krismasy",
+    "adventTitle": "Fanisana mialoha ny Krismasy",
+    "adventDescription": "Miaraha amin'ny dian'ny Advent miaraka amin'ny lahatsary isan'andro izay mampitombo ny fiandrasana ny Krismasy, mamakafaka ny fanantenana, ny fifaliana, ary ny fampanantenana amin'ny fahatongavan'i Jesosy.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Andian-dahatsary NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Andian-dahatsary Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kursa lahatsary",
+    "journeyWithJesusTitle": "Mandeha miaraka amin'i Jesosy",
+    "gospelsOnVideoEyebrow": "Filazantsara tsirairay, tantaraina amin'ny lahatsary",
+    "scriptureAsWrittenTitle": "Soratra Masina, tenenina araka ny voasoratra indrindra",
+    "merryChristmas": "Tratry ny Krismasy!",
+    "daysUntilChristmas": "{count, plural, one {# andro sisa hahatongavan'ny Krismasy} other {# andro sisa hahatongavan'ny Krismasy}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Fiteny",
+    "metadataDescription": "Zaha lahatsary JesusFilm araka ny fiteny.",
+    "eyebrow": "Fiteny hojerena",
+    "title": "Misafidiana fiteny",
+    "description": "Zaha ny fiteny araka ny faritra na jereo ny lisitra feno.",
+    "searchPlaceholder": "Karohy fiteny na firenena...",
+    "searchLabel": "Karohy fiteny na firenena",
+    "clearSearch": "Fafao ny fikarohana",
+    "browse": "Zaha",
+    "browseByRegion": "Zaha araka ny faritra sy firenena",
+    "languageCount": "{count, plural, one {# fiteny} other {# fiteny}}",
+    "region": "Faritra",
+    "countryLanguages": "Fitenin'i {country}",
+    "showLess": "Asehoy kely kokoa",
+    "showMore": "Asehoy {count} fanampiny",
+    "noLanguages": "Tsy nahitana fiteny",
+    "tryAnotherSearch": "Andramo teny hikarohana hafa."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Tantaran'ny fijerena | Jesus Film Project",
+    "title": "Tantaran'ny fijerena",
+    "loading": "Mampiditra ny tantara",
+    "empty": "Tsy mbola misy na inona na inona eto",
+    "emptyDescription": "Ny lahatsary jerenao rehefa tafiditra dia hiseho eto.",
+    "earlier": "Taloha kelin'izao",
+    "today": "Androany",
+    "yesterday": "Omaly"
+  },
+  "AccountControl": {
+    "account": "Kaonty",
+    "accountMenu": "Menio kaonty",
+    "signIn": "Midira",
+    "signOut": "Mivoaha",
+    "signedIn": "Tafiditra",
+    "history": "Tantara",
+    "logOut": "Mivoaha"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Tsy hita ny pejy",
+    "eyebrow": "Tsy hita ny pejy",
+    "screenReaderPrefix": "Tsy hita ny pejy:",
+    "title": "Tsy eto ity sehatra ity.",
+    "description": "Mety nifindra ilay pejy, saingy mitohy ny tantara.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Hetsika raha tsy hita ny pejy",
+    "backToWatch": "Miverina amin'ny Fijerena",
+    "browseVideos": "Zaha lahatsary"
+  },
+  "VideoRecommendations": {
+    "match": "Mifanentana {percent}%",
+    "none": "Tsy nahitana soso-kevitra ho an'ity lahatsary ity amin'ity fiteny ity."
+  },
+  "BetaTesterModal": {
+    "title": "Lasa mpitsapa beta",
+    "trigger": "Lasa mpitsapa beta",
+    "loadFailed": "Nisy olana nitranga.",
+    "loading": "Mampiditra...",
+    "openFormNewTab": "Sokafy amin'ny kiheba vaovao",
+    "close": "Hidio",
+    "iframeTitle": "Lasa mpitsapa beta"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Sintomy ny fitambarana",
+    "eyebrow": "Sintomy ny fitambarana",
+    "description": "Fidio indray mandeha ny fiteny sy ny kalitao. Hisintona araka ny filaharany ny fizarana rehetra misy.",
+    "signInTitle": "Midira raha hisintona",
+    "signInBody": "Afaka misintona fitambarana ianao rehefa tafiditra amin'ny kaonty Jesus Film.",
+    "signIn": "Midira raha hisintona",
+    "languageLabel": "Fiteny",
+    "qualityLabel": "Kalitaon'ny lahatsary",
+    "tierHighest": "Avo indrindra",
+    "tierHigh": "Avo",
+    "tierLow": "Ambany",
+    "loading": "Mitady ireo fizarana azo sintonina…",
+    "loadError": "Tsy afaka nampidirina ireo azo sintonina amin'ity fiteny ity.",
+    "retry": "Andramo indray",
+    "noDownloads": "Tsy misy fizarana azo sintonina amin'ity fiteny ity.",
+    "availableCount": "{count, plural, one {Fizarana # no vonona} other {Fizarana # no vonona}}",
+    "skippedCount": "{count, plural, one {Fizarana # no hodinganina satria tsy misy} other {Fizarana # no hodinganina satria tsy misy}}",
+    "chooseFolder": "Safidio ny lahatahiry fampidinana",
+    "folderSelected": "Tehirizo ao amin'ny {name}",
+    "folderError": "Tsy afaka nosokafana ny lahatahiry fampidinana.",
+    "browserFallback": "Hotehirizin'ny mpitety tranonkalanao araka ny fikirana fampidinana mahazatra azy ny rakitra tsirairay. Mety hangataka alalana hisintona rakitra maromaro izy.",
+    "sessionError": "Tsy afaka nanamarina ny fotoam-piasanao. Andramo indray azafady.",
+    "downloading": "Misintona an'i {title}",
+    "progress": "{completed} amin'ny {total}",
+    "complete": "Vita ny fampidinana",
+    "canceled": "Nofoanana ny fampidinana",
+    "failedCount": "{count, plural, one {Fizarana # no tsy voasintona} other {Fizarana # no tsy voasintona}}. Safidio indray ny Sintomy mba hanandrana hisintona ilay fitambarana indray.",
+    "close": "Hidio",
+    "cancel": "Foana",
+    "start": "Sintomy izy rehetra",
+    "downloadAgain": "Sintomy indray",
+    "retryFailed": "Andramo indray ireo tsy nahomby"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Tsy misy ity dikan-teny ity",
+    "eyebrow": "Tsy misy ity dikan-teny ity",
+    "title": "Tsy misy amin'ny teny <languageName>{language}</languageName> ny <contentTitle>{title}</contentTitle>",
+    "actionsLabel": "Safidy fijerena misy",
+    "browseInLanguage": "Hijery horonan-tsary amin'ny teny {language}",
+    "backToSearch": "Hiverina amin'ny fikarohana",
+    "audioVersionsTitle": "Dikan-peo hafa",
+    "audioVersionsDescription": "Misafidiana fiteny ho an'ny feo hanohizana ny fijerena ity horonan-tsary ity.",
+    "languageVersionLabel": "Fitenin'ny feo",
+    "selectLanguageVersion": "Misafidiana dikan-teny",
+    "watchSelectedVersion": "Hijery ny dikan-teny voafidy"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Safidy momba ny cookie",
+    "bannerTitle": "Ny safidinao momba ny tsiambaratelo",
+    "bannerDescription": "Ny cookie ilaina dia mitazona an’i Watch ho azo antoka sy hiasa tsara. Raha manome alalana ianao, dia afaka mitadidy ny zavatra mahaliana anao mandritra ny fitsidihana samihafa ny cookie an’ny tranonkala mba hanokana ny soso-kevitra ho anao. Mbola hisy foana ny soso-kevitra mifanaraka amin’ny toe-javatra na izany aza.",
+    "acceptAll": "Ekeo daholo",
+    "essentialOnly": "Ny ilaina ihany",
+    "manageChoices": "Hitantana safidy",
+    "savingChoice": "Mitahiry ny safidy cookie",
+    "settings": "Fikirana cookie",
+    "settingsDescription": "Fidio raha azon’i Watch tehirizina mandritra ny fitsidihana samihafa ny zavatra mahaliana anao amin’ny soso-kevitra. Azonao ovaina amin’ny fotoana rehetra izany.",
+    "essentialCookies": "Cookie ilaina",
+    "essentialDescription": "Fiarovana, famerenana horonan-tsary, safidy momba ny tsiambaratelo, ary fanondroana ny fangatahana soso-kevitra.",
+    "alwaysActive": "Miasa hatrany",
+    "personalization": "Fampanokanana manokana",
+    "personalizationDescription": "Mitadidy ireo zavatra mahaliana voafetra mandritra ny fitsidihana samihafa. Raha vonoina ity dia mbola hisy foana ny soso-kevitra mifanaraka amin’ny toe-javatra.",
+    "erasurePending": "Eo am-piandrasana ny famafana ny mombamomba anao. Efa mandeha ny soso-kevitra mifanaraka amin’ny toe-javatra.",
+    "cancel": "Hanafoana",
+    "saveChoices": "Tehirizo ny safidy",
+    "saving": "Mitahiry…",
+    "loadError": "Tsy azo nalaina ny safidinao. Mbola afaka misafidy etsy ambany ianao.",
+    "grantError": "Tsy afaka navela ny fampanokanana manokana. Mbola azo ampiasaina ny safidy ilaina ihany.",
+    "saveError": "Tsy voatahiry ny safidinao. Andramo indray azafady."
+  }
+}

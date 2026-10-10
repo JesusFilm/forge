@@ -111,6 +111,76 @@ describe("formatCitation — branch 4: cross-chapter through-end-of-chapter (en-
   })
 })
 
+describe("formatCitation — branch 5: whole-chapter citation (no verseStart)", () => {
+  const genesis = { name: "Genesis" }
+
+  it("formats 'Genesis 3' when verseStart is null and chapterEnd is null", () => {
+    expect(
+      formatCitation({
+        chapterStart: 3,
+        chapterEnd: null,
+        verseStart: null,
+        verseEnd: null,
+        bibleBook: genesis,
+      }),
+    ).toBe("Genesis 3")
+  })
+
+  it("formats 'Genesis 3' when verseStart is null and chapterEnd equals chapterStart", () => {
+    expect(
+      formatCitation({
+        chapterStart: 3,
+        chapterEnd: 3,
+        verseStart: null,
+        verseEnd: null,
+        bibleBook: genesis,
+      }),
+    ).toBe("Genesis 3")
+  })
+
+  it("does NOT emit ':0' when verseStart is null — regression guard for the original bug report", () => {
+    const out = formatCitation({
+      chapterStart: 3,
+      chapterEnd: null,
+      verseStart: null,
+      verseEnd: null,
+      bibleBook: genesis,
+    })
+    expect(out).not.toContain(":0")
+    expect(out).not.toContain(":")
+  })
+})
+
+describe("formatCitation — branch 6: chapter range without verses", () => {
+  const genesis = { name: "Genesis" }
+
+  it("formats 'Genesis 3–5' with en-dash when verseStart is null and chapters differ", () => {
+    expect(
+      formatCitation({
+        chapterStart: 3,
+        chapterEnd: 5,
+        verseStart: null,
+        verseEnd: null,
+        bibleBook: genesis,
+      }),
+    ).toBe("Genesis 3–5")
+  })
+})
+
+describe("formatCitation — defensive: missing chapterStart", () => {
+  it("renders only the book name when chapterStart is null (malformed citation)", () => {
+    expect(
+      formatCitation({
+        chapterStart: null,
+        chapterEnd: null,
+        verseStart: null,
+        verseEnd: null,
+        bibleBook: { name: "Genesis" },
+      }),
+    ).toBe("Genesis")
+  })
+})
+
 describe("formatCitation — fallback: missing bibleBook / book.name", () => {
   it("substitutes 'Unknown Book' when bibleBook is null", () => {
     expect(

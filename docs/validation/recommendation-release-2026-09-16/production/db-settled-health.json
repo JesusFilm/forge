@@ -1,0 +1,326 @@
+{
+  "capturedAt": "2026-09-15T22:20:57.926Z",
+  "results": [
+    {
+      "name": "delivery_settled_window",
+      "milliseconds": 432,
+      "rows": [
+        {
+          "surface_version": "watch-below-player-v1",
+          "strategy_version": "semantic-transcript-pgvector-v1",
+          "state": "issued",
+          "requests": "48",
+          "cards": "237",
+          "zero_card_requests": "5",
+          "duplicate_slates": "0",
+          "minimum_cards": "0",
+          "median_cards": 6,
+          "with_profile_cards": "14",
+          "retrieval_p50_ms": 103.5,
+          "retrieval_p95_ms": 315.44999999999993,
+          "retrieval_max_ms": 805
+        }
+      ]
+    },
+    {
+      "name": "episode_and_fact_health_settled_window",
+      "milliseconds": 431,
+      "rows": [
+        {
+          "discovery_source": "direct",
+          "state": "claimed",
+          "episodes": "18",
+          "claimed": "18",
+          "started": "5",
+          "facts": "126",
+          "late_facts": "0",
+          "conflicted_episodes": "0"
+        },
+        {
+          "discovery_source": "direct",
+          "state": "finalized",
+          "episodes": "7",
+          "claimed": "7",
+          "started": "7",
+          "facts": "126",
+          "late_facts": "0",
+          "conflicted_episodes": "0"
+        },
+        {
+          "discovery_source": "acquisition",
+          "state": "claimed",
+          "episodes": "1",
+          "claimed": "1",
+          "started": "1",
+          "facts": "19",
+          "late_facts": "0",
+          "conflicted_episodes": "0"
+        },
+        {
+          "discovery_source": "acquisition",
+          "state": "finalized",
+          "episodes": "1",
+          "claimed": "1",
+          "started": "1",
+          "facts": "25",
+          "late_facts": "0",
+          "conflicted_episodes": "0"
+        },
+        {
+          "discovery_source": "direct",
+          "state": "pending",
+          "episodes": "1",
+          "claimed": "0",
+          "started": "0",
+          "facts": "0",
+          "late_facts": "0",
+          "conflicted_episodes": "0"
+        }
+      ]
+    },
+    {
+      "name": "fact_kinds_for_episode_cohort_settled_window",
+      "milliseconds": 425,
+      "rows": [
+        {
+          "kind": "playback_progress",
+          "facts": "102",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_active_visible_playing",
+          "facts": "54",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_navigation",
+          "facts": "44",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_qoe",
+          "facts": "31",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_seek",
+          "facts": "21",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_attempt",
+          "facts": "14",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_start",
+          "facts": "14",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_observation",
+          "facts": "8",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_end",
+          "facts": "8",
+          "late_facts": "0"
+        }
+      ]
+    },
+    {
+      "name": "latest_outcomes_for_episode_cohort_settled_window",
+      "milliseconds": 425,
+      "rows": [
+        {
+          "discovery_source": "direct",
+          "classifier_version": "active-watch-proxy-v1",
+          "active_coverage": "complete",
+          "latest_outcomes": "7",
+          "qualified_views": "2"
+        },
+        {
+          "discovery_source": "direct",
+          "classifier_version": "legacy-position-v0",
+          "active_coverage": null,
+          "latest_outcomes": "7",
+          "qualified_views": "6"
+        },
+        {
+          "discovery_source": "acquisition",
+          "classifier_version": "active-watch-proxy-v1",
+          "active_coverage": "complete",
+          "latest_outcomes": "1",
+          "qualified_views": "1"
+        },
+        {
+          "discovery_source": "acquisition",
+          "classifier_version": "legacy-position-v0",
+          "active_coverage": null,
+          "latest_outcomes": "1",
+          "qualified_views": "1"
+        }
+      ]
+    },
+    {
+      "name": "delivery_results_settled_window",
+      "milliseconds": 427,
+      "rows": [
+        {
+          "surface_version": "watch-below-player-v1",
+          "result": "served",
+          "fallback_reason": null,
+          "requests": "43",
+          "cards": "237",
+          "zero_card_requests": "0"
+        },
+        {
+          "surface_version": "watch-below-player-v1",
+          "result": "empty",
+          "fallback_reason": "no_candidates",
+          "requests": "3",
+          "cards": "0",
+          "zero_card_requests": "3"
+        },
+        {
+          "surface_version": "watch-below-player-v1",
+          "result": "empty",
+          "fallback_reason": "seed_embedding_unavailable",
+          "requests": "2",
+          "cards": "0",
+          "zero_card_requests": "2"
+        }
+      ]
+    },
+    {
+      "name": "latest_200_personalized_request_repeat_diagnostic_settled_window",
+      "milliseconds": 744,
+      "rows": [
+        {
+          "candidate_generator": "multi-interest-profile",
+          "learned_outside_recommendations": true,
+          "learned_from_recommendation": false,
+          "repeat_cards": "3",
+          "affected_requests": "2",
+          "suppression_recorded": "3",
+          "refill_or_movement_recorded": "3"
+        }
+      ]
+    },
+    {
+      "name": "latest_200_personalized_request_sample_size",
+      "milliseconds": 425,
+      "rows": [
+        {
+          "sample_requests": "14"
+        }
+      ]
+    },
+    {
+      "name": "worker_recent_heartbeat_aggregate",
+      "milliseconds": 428,
+      "rows": [
+        {
+          "service": "admin",
+          "status": "online",
+          "recent_workers": "1",
+          "fresh_workers": "1",
+          "youngest_heartbeat_seconds": "11.698435",
+          "newest_started_at": "2026-09-15T21:54:14.878Z"
+        }
+      ]
+    },
+    {
+      "name": "recommendation_workflow_aggregate",
+      "milliseconds": 428,
+      "rows": [
+        {
+          "workflow_key": "recommendation-episode-finalization",
+          "status": "running",
+          "runs": "27",
+          "runs_with_errors": "0",
+          "finished_runs": "0",
+          "maximum_duration_ms": null
+        },
+        {
+          "workflow_key": "recommendation-episode-finalization",
+          "status": "succeeded",
+          "runs": "20",
+          "runs_with_errors": "0",
+          "finished_runs": "20",
+          "maximum_duration_ms": null
+        }
+      ]
+    },
+    {
+      "name": "settled_bounded_candidate_suppression",
+      "milliseconds": 429,
+      "rows": [
+        {
+          "stage": "canonicalized",
+          "evidence_entries": "644",
+          "requests_with_entries": "14",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "composed",
+          "evidence_entries": "83",
+          "requests_with_entries": "14",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "80"
+        },
+        {
+          "stage": "deduplicated",
+          "evidence_entries": "489",
+          "requests_with_entries": "14",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "nominated",
+          "evidence_entries": "644",
+          "requests_with_entries": "14",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "ordered",
+          "evidence_entries": "489",
+          "requests_with_entries": "14",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "rejected",
+          "evidence_entries": "116",
+          "requests_with_entries": "14",
+          "recent_start_entries": "16",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "113",
+          "refill_or_movement_entries": "0"
+        },
+        {
+          "stage": "scored",
+          "evidence_entries": "489",
+          "requests_with_entries": "14",
+          "recent_start_entries": "0",
+          "recent_selection_entries": "0",
+          "repeatedly_served_entries": "0",
+          "refill_or_movement_entries": "0"
+        }
+      ]
+    }
+  ]
+}

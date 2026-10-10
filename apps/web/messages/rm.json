@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Nagutga cuntegn da l'experientscha disponibel.",
+    "failedToLoad": "Betg reussì da chargiar l'experientscha: {message}",
+    "unexpected": "È capitada ina errur nunspetgada.",
+    "notConfigured": "Il servetsch da cuntegn n'è betg configurà.",
+    "noContent": "Nagina cuntegn n'è disponibel.",
+    "homepageMisconfigured": "La pagina principala da guardar è configurada faussa.",
+    "defaultTemplateMisconfigured": "La mula da standard da guardar è configurada faussa.",
+    "authFailed": "Betg pussaivel d'autentitgar cun il servetsch da cuntegn. Contactai per plaschair il support, sch'i dura anc.",
+    "pageLoadFailed": "Insatge n'è betg ì sco previs.",
+    "tryAgain": "Empruvai anc ina giada"
+  },
+  "VideosPage": {
+    "title": "Tut ils videos",
+    "placeholder": "La navigaziun en il catalog vegn anc. Per il mument utilisai la tschertga u ina URL specifica per in tema."
+  },
+  "BibleQuotes": {
+    "title": "Citats biblics",
+    "share": "Partir",
+    "readMore": "Leger pli…",
+    "learnMore": "Savair dapli",
+    "freeResources": "Resursas gratuitas",
+    "promoHeading": "Vulais chapir pli profundamain la Bibla?",
+    "joinBibleStudy": "Gidai en noss studi biblic",
+    "previousQuote": "Citat biblic precedent",
+    "nextQuote": "Proxim citat biblic",
+    "readPassage": "Legiai quest passadi en vossa Bibla."
+  },
+  "DownloadButton": {
+    "checking": "Verificaziun",
+    "download": "Biodar giu",
+    "sessionError": "Betg pussaivel da controllar la sessiun. Empruvai anc ina giada.",
+    "saveVideo": "Memorisar il video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Biodar giu il video",
+    "eyebrow": "Biodar giu il video",
+    "posterAlt": "Affisch dal video",
+    "noDownloads": "Per quest video n'èn nagins downloads disponibels.",
+    "fileSizeLabel": "Tscherner ina grondezza da datoteca",
+    "termsAgreementPrefix": "Jau accept il ",
+    "termsOfUse": "Cuntegns d'utilisaziun",
+    "termsAgreementSuffix": "",
+    "close": "Serrar",
+    "download": "Biodar giu",
+    "authRequiredTitle": "Vais gugent da biodar giu quest video?",
+    "authRequiredBody": "Per biodar giu videos dovri in conto gratuit da Jesus Film.",
+    "signInToDownload": "S'annunziar per telechargiar",
+    "keepWatching": "Cuntinuar a guardar",
+    "checking": "Verificaziun",
+    "closeTermsOfUse": "Serrar las cundiziuns d'utilisaziun",
+    "cancel": "Interrumper",
+    "accept": "Acceptar",
+    "errorSessionExpired": "Vossa sessiun è scadida. Annunziai puspè per telechargiar.",
+    "errorSessionUnavailable": "Betg pussaivel da controllar la sessiun. Empruvai anc ina giada.",
+    "errorUnavailableSource": "Telechargiar betg disponibel da questa funtauna",
+    "tierHighest": "La pli auta",
+    "tierHigh": "Auta",
+    "tierLow": "Bassa"
+  },
+  "HeroPlayerControls": {
+    "play": "Reproduzir",
+    "pause": "Pausa",
+    "seek": "Posiziun",
+    "seekValue": "{current} da {total}",
+    "volume": "Volumen",
+    "volumeValue": "{percent} pertschient",
+    "mute": "Silenziar",
+    "unmute": "Activar il tun",
+    "changeAudioLanguage": "Midar la lingua d'audio",
+    "enterFullscreen": "Ir en la scretira cumpletta",
+    "exitFullscreen": "Bandunar la scretira cumpletta"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Tscherner lingua",
+    "searchPlaceholder": "Tschertgar linguas…",
+    "languages": "Linguas",
+    "noMatches": "Nagina concordanza",
+    "notAvailable": "Betg disponibel"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Lingua",
+    "dialogTitleWithSubtitles": "Lingua & suttitels",
+    "languageHeading": "Lingua",
+    "subtitlesHeading": "Suttitels",
+    "languageCount": "{count, plural, one {# lingua} other {# linguas}}",
+    "requestSent": "Demonda tramessa",
+    "translateWithAi": "Translatar cun IA",
+    "noSubtitles": "Nagins suttitels",
+    "toggleOn": "Activ",
+    "toggleOff": "Deactiv",
+    "close": "Serrar",
+    "apply": "Applitgar",
+    "noLanguageSubtitles": "Nagins suttitels en {language}",
+    "seeAllLanguages": "Tut las linguas",
+    "seeAllVideosInLanguage": "Tut ils videos: {language}",
+    "retryLoadingLanguages": "Empruvar anc ina giada da chargiar las linguas",
+    "notAvailable": "Betg disponibel",
+    "switching": "Midar..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 episoda} other {# episodas}}",
+    "seriesLabel": "SERIA · {episodes}",
+    "changeAudioLanguage": "Midar la lingua d'audio",
+    "share": "Partir",
+    "languages": "Linguas",
+    "downloadCollection": "Biodar giu la collecziun",
+    "checkingDownloads": "Verificaziun dals downloads…",
+    "downloadSessionError": "Betg pussaivel da controllar la sessiun. Empruvai anc ina giada."
+  },
+  "WatchModal": {
+    "close": "Serrar"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Sche ti pudessas dumandar al creatur da quest video insatge, tge fissi quai?",
+    "fallbackBody": "Avai ina discussiun privata cun insatgi che è pront d'ascoltar.",
+    "questionsShort": "Dumondas",
+    "questions": "Dumondas cuntegnidas",
+    "askYours": "Dumandai la vossa",
+    "chatWithPerson": "Discurrer cun ina persuna",
+    "askBibleQuestion": "Far ina dumonda da la Bibla",
+    "quiz": "Test"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Tip da messadi",
+    "fieldLabel": "Dumandai ina dumonda davart quest video",
+    "send": "Trametter dumonda",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Far ina dumonda da la Bibla",
+        "description": "Respostas immediatas da la Bibla cun tschertga IA"
+      },
+      "prayerRequest": {
+        "label": "Pider ina oraziun",
+        "description": "Condividai per tge che vus vulais oraziun"
+      },
+      "comment": {
+        "label": "Laschar in commentari",
+        "description": "Tramettai patratgs davart quest video"
+      },
+      "personChat": {
+        "label": "Discurrer cun ina persuna",
+        "description": "Discuttai ussa cun insatgi"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Partir il video",
+    "heading": "Partir quest video",
+    "posterAlt": "Affisch dal video",
+    "shareOnFacebook": "Partir sin Facebook",
+    "shareOnFacebookUnavailable": "Partir sin Facebook (betg disponibel en questa versiun)",
+    "shareOnX": "Partir sin X",
+    "shareOnXUnavailable": "Partir sin X (betg disponibel en questa versiun)",
+    "shareDisabledHint": "Il partair dovra ina pagina publitgada — quai funcziuna uschespert che quest video è en producziun.",
+    "shareFormat": "Format da partiziun",
+    "shareLinkTab": "Partir il link",
+    "embedCodeTab": "Code d'integrar",
+    "copyFailed": "Betg reussì da copiar automaticamain — selecziunai il text sutvart e copiai al manualmain.",
+    "copyLink": "Copiar il link",
+    "copyCode": "Copiar il code",
+    "copied": "Copià",
+    "close": "Serrar"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transcripziun",
+    "subheading": "Tappar sin mintga lingia per siglir a quel mument.",
+    "subtitleLanguage": "Lingua dals suttitels",
+    "aiSuffix": " · IA",
+    "loading": "Chargiament da la transcripziun…",
+    "unavailable": "Transcripziun betg disponibla per questa pista da suttitels.",
+    "empty": "Nagina lingia da transcripziun chattada."
+  },
+  "FloatingSearch": {
+    "placeholder": "Tschertgar u navigar tras temas…",
+    "openSearch": "Tschertgar videos",
+    "searchRegion": "Tschertgar videos",
+    "clearSearch": "Betg pli tschertgar",
+    "changeAudioLanguage": "Midar la lingua d'audio",
+    "home": "Pagina principala da JesusFilm",
+    "closeSearch": "Serrar la tschertga",
+    "submitSearch": "Tschertgar",
+    "library": "Biblioteca"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Tschertgar e navigar tras videos",
+    "home": "Pagina principala da JesusFilm",
+    "placeholder": "Tschertgar u navigar tras temas…",
+    "inputLabel": "Tschertgar videos tenor pled clav",
+    "searchFailed": "La tschertga n'è betg reussida. Empruvai anc ina giada.",
+    "loadMoreFailed": "Betg reussì da chargiar dapli resultats.",
+    "searching": "Tschertga...",
+    "connectionHint": "Controllai per plaschair la connexiun e empruvai anc ina giada.",
+    "rateLimitHint": "Memia bleras dumondas. Empruvai anc ina giada en ina minuta.",
+    "retrySearch": "Empruvar anc ina giada da tschertgar",
+    "retry": "Empruvar anc ina giada",
+    "noResults": "Nagin resultat per \"{query}\"",
+    "tryDifferentKeywords": "Empruvai auters pleds clav u navigai tras novitads",
+    "loading": "Chargiament...",
+    "loadMore": "Chargiar dapli",
+    "categoryBibleStories": "Istorgias biblicas",
+    "categoryParables": "Parablas",
+    "categoryAnimated": "Animate",
+    "categoryStudy": "Studi",
+    "categoryFamily": "Famiglia",
+    "categoryChristmas": "Nadal",
+    "searchLanguageLabel": "Lingua da tschertga",
+    "allLanguages": "Tut las linguas",
+    "searchSuggestions": "Propostas da tschertga",
+    "directMatches": "Resultats directs",
+    "languages": "Linguas",
+    "recommendedLanguage": "Lingua recumandada",
+    "searchSuggestion": "Tschertgar «{suggestion}»",
+    "searchSuggestionWithLanguage": "Tschertgar «{suggestion}» en {language}",
+    "inLanguage": "en {language}",
+    "browseByRegion": "Navigar tenor regiun",
+    "allVideosOnSinglePage": "Tut ils videos sin ina pagina",
+    "clearLanguages": "Sfurzar",
+    "queryLanguageDetected": "{language} identifitgà",
+    "searchInLanguage": "Tschertgar en {language}",
+    "tryDifferentKeywordsOrLanguage": "Empruvai auters pleds clav u tschernai ina autra lingua da tschertga",
+    "useWebsiteDefaultLanguage": "Utilisar la lingua da tschertga predefinida dal website",
+    "removeLanguage": "Allontanar {language}",
+    "browseMode": "Modus da navigaziun da tschertga",
+    "searchingInLanguage": "Resultats en {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Guardar ussa",
+    "tapToUnmute": "Tappa per activar il tun",
+    "nextEpisode": "Proxima episoda",
+    "audioTranslationCount": "{count, plural, one {# lingua} other {# linguas}}",
+    "subtitleCount": "Suttitels: {count, plural, one {# lingua} other {# linguas}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Chargiament dal cuntegn",
+    "loadingVideo": "Chargiament dal video"
+  },
+  "VideoLabels": {
+    "video": "Videoclip",
+    "segment": "Part",
+    "episode": "Episoda",
+    "featureFilm": "Film lung",
+    "shortFilm": "Curt film",
+    "series": "Seria",
+    "collection": "Collecziun",
+    "trailer": "Preannunzia",
+    "behindTheScenes": "Davostiers las culissas",
+    "chapter": "Chapitel"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clip {current} da {total}",
+    "position": "{current} da {total}",
+    "chapterCount": "{count, plural, one {# chapitel} other {# chapitels}}",
+    "clipAriaLabel": "{title} · Clip {current} da {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# chapitel} other {# chapitels}}",
+    "chapter": "Chapitel",
+    "noImage": "Nagina figura",
+    "playingNow": "En reproduziun ussa",
+    "previousChapter": "Chapitel precedent",
+    "nextChapter": "Proxim chapitel",
+    "thumbnailAlt": "Miniatura da {title}",
+    "relatedVideoThumbnail": "Miniatura dal video sumegliant"
+  },
+  "SearchResultCard": {
+    "experience": "Experientscha",
+    "episodeCount": "{count, plural, one {# episoda} other {# episodas}}",
+    "thumbnailAlt": "Miniatura dal video"
+  },
+  "Feedback": {
+    "openForm": "Avrir il formular da feedback",
+    "label": "Resuns",
+    "couldNotLoad": "Betg reussì da chargiar il formular da feedback.",
+    "loadingForm": "Chargiament dal formular da feedback…",
+    "retry": "Empruvar anc ina giada",
+    "cancel": "Interrumper",
+    "closeForm": "Serrar il formular da feedback",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Videos cristians gratuits en {language} | Jesus Film Project",
+    "metadataDescription": "Scuvri films da Jesus, istorgias biblicas, serias da discipulat e videos evangelistics cun tun dubià u suttitels en {language}.",
+    "heroTitle": "Videos cristians gratuits en {language}",
+    "heroDescription": "Scuvri films da Jesus, istorgias biblicas, serias da discipulat e videos evangelistics disponibels en {language}. Videos cumplettamain dubiads vegnan mess en evidenza l'emprim, cun opziuns be cun suttitels sutvart.",
+    "languageCollection": "Collecziun da lingua",
+    "itemCount": "{count, plural, one {# object} other {# objects}}",
+    "videoCount": "{count, plural, one {# film} other {# films}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videos}} en {groupCount, plural, one {# gruppa} other {# gruppas}}",
+    "sectionNavLabel": "Secziuns da l'inventari da linguas",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nov",
+    "videoBible": "Bibla video",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Collecziuns",
+    "subtitlesOnly": "Be suttitels",
+    "backToTop": "Turnar si",
+    "newlyAdded": "Agiuntà dacurt",
+    "newVideosTitle": "Novs videos cristians en {language}",
+    "newestFirst": "Ils pli novs l'emprim",
+    "noPublishedVideos": "Fin ussa n'èn betg vegnids chattads videos publitgads per questa lingua.",
+    "bibleAndGospelFilms": "Films biblics e da l'Evangelium",
+    "videoBibleCollectionsTitle": "Collecziuns da Bibla video en {language}",
+    "videoBibleDescription": "Collecziuns centralisadas sin la Scrittira, inclus LUMO, JESUS, Magdalena e Acts en {language}.",
+    "noVideoBibleCollections": "Per questa lingua n'èn anc betg disponiblas collecziuns da Bibla video.",
+    "bibleProjectCollectionsTitle": "Collecziuns BibleProject en {language}",
+    "bibleProjectDescription": "Serias e studis BibleProject disponibels en {language}.",
+    "noBibleProjectCollections": "Per questa lingua n'èn anc betg disponiblas collecziuns BibleProject.",
+    "sportsStories": "Istorgias da sport",
+    "sportsTitle": "Istorgias da sport e d'atletas en {language}",
+    "sportsDescription": "Istorgias da sport cun focus sin la fe e collecziuns d'atletas disponiblas en {language}.",
+    "noSportsCollections": "Per questa lingua n'èn anc betg disponiblas collecziuns da sport u d'istorgias d'atletas.",
+    "fullyDubbed": "Cumplainamain dubià",
+    "dubbedVideosTitle": "Videos en {language} tenor collecziun",
+    "dubbedVideosDescription": "Navigai tras videos cumplettamain dubiads en {language}, gruppads cun lur collecziun per chattar pli facilmain.",
+    "noDubbedVideos": "Per questa lingua n'èn anc betg disponibels videos cumplettamain dubiads.",
+    "subtitlesAvailable": "Suttitels disponibels",
+    "subtitlesTitle": "Videos en {language} cun suttitels",
+    "subtitlesDescription": "Quests videos cuntegnan suttitels en {language}, sche l'audio discurrì en {language} n'è anc betg disponibel.",
+    "noSubtitleVideos": "Per questa lingua n'èn anc betg disponibels videos be cun suttitels.",
+    "dubbed": "Dubià",
+    "subtitles": "Suttitels",
+    "newLabel": "Nov",
+    "fromCollection": "Da {collection}",
+    "standaloneVideos": "Videos independents",
+    "videosFromCollection": "Videos da {collection}.",
+    "standaloneDescription": "Videos independents en questa lingua.",
+    "openCollection": "Avrir collecziun",
+    "filters": "Filtrar",
+    "filterLength": "Durada",
+    "filterLength_under5": "Main che 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Dapli che 30 min",
+    "filterType": "Tip",
+    "clearFilters": "Stizzar ils filters",
+    "filterResults": "{count} da {total} mussads",
+    "noFilterResults": "Nagin video correspunda a quests filters. Empruvai da allontanar in.",
+    "filterAdded": "Agiuntà",
+    "filterAdded_60d": "Ultims 60 dis",
+    "filterAdded_6m": "Ultims 6 mais",
+    "filterAdded_12m": "Ultims 12 mais"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project – Guardar",
+    "watch": "Guardar",
+    "watchNow": "Guardar ussa",
+    "mutePreview": "Silenziar la previsiun",
+    "unmutePreview": "Activar il tun da la previsiun",
+    "nextVideo": "Proxim video",
+    "featured": "Premà",
+    "showVideo": "Mussar {title}",
+    "previousVideoPreview": "Previsiun dal video precedent",
+    "nextVideoPreview": "Previsiun dal proxim video",
+    "mediaCollection": "Collecziun da medias",
+    "scrollToVideo": "Scrolar tar il video {title}",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Pagina principala da Jesus Film Project",
+    "navigation": "Navigaziun dal pei da pagina",
+    "share": "Partir",
+    "watch": "Guardar",
+    "giving": "Donate",
+    "about": "Davart nus",
+    "products": "Prodots",
+    "resources": "Resursas",
+    "partners": "Partenaris",
+    "contact": "Contactar",
+    "giveNow": "Donar ussa",
+    "resourcesVersion": "Resursas ({version})",
+    "office": "Uffizi",
+    "fax": "Telefax",
+    "privacyPolicy": "Politica da privatadad",
+    "legalStatement": "Decleraziun giuridica",
+    "newsletter": "As annunziar per novitads novitads",
+    "aiAttributionHeading": "Utilisaziun da IA e attribuziun",
+    "aiAttributionBody": "L’utilisaziun da novitads da questa pagina tras sistems d’intelligenza artifiziala è liada ad attribuziun. Mintga agent IA, model linguistic grond (LLM), maschina da tschertgar IA, crawler u auter sistem automatizà parentà che tschertga u utilisescha novitads da questa pagina per trenament, retrieval, generaziun da respostas u servetschs purschids ad utilisaders u clients stuess numnar Jesus Film Project sco funtauna ed inditgar cleramain in colliaziun directa a questa pagina mintga giada che questas novitads vegnan utilisadas u mussadas. Vejair noss <terms>Termins d’utilisaziun</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Construì per novitads globalas",
+    "title": "Il messadi na mida betg. La moda co che persunas guardan, gea.",
+    "description": "Nus reconstruin nossa biblioteca da videos e novitads da fundament ensi, engaschond decennis da lavur da translaziun per las plattafurmas nua che persunas gia sa radunan, guardan e partan.",
+    "translatedLibraryTitle": "La biblioteca da films la pli translatada dal mund",
+    "translatedLibraryDescription": "Decennis da lavur da translaziun, purtads da partenaris da ministeri fidabels, han construì ina biblioteca cun millis da pistas da lingua, uschia che persunas pon scuntràr l'istorgia da Jesus en la lingua che las cuntanscha il pli profund.",
+    "trustedVoicesTitle": "Purtretsar vuschs fidablas en novitads novas",
+    "trustedVoicesDescription": "Nus reconstruin co che novitads da l'evangeli vegnan raquintadas visualmain, combinond translaziuns fidablas cun novitads modernas, uschia che il messadi po sa mover libramain tras plattafurmas, culturas e scherms.",
+    "missionTeamTitle": "Pli che ina biblioteca. In team orientà sin la missiun.",
+    "missionTeamDescription": "Jesus Film Project è in team global da translaturas e translatuors, specialists da medias, editurs e creaturs che transfurman decennis d'experientscha da ministeri en novitads per persunas che fan discipuls en tut il mund.",
+    "buildingNext": "Tge che nus construin vinavant",
+    "nextStepsTitle": "Plattafurma da proxim pass",
+    "nextStepsDescription": "Connectai persunas che guardan cun novitads concretas sin lur viadi spiertal, gidond ad ir in proxim pass en la communitad, la Scrittira u la missiun.",
+    "mediaLibraryTitle": "Biblioteca da medias evangelistica",
+    "mediaLibraryDescription": "Ina vasta biblioteca da novitads cristianas cun millis da videos, films e novitads disponibels en pliras linguas per il ministeri ed evangelisaziun mundiala.",
+    "ministryToolsTitle": "Instruments digitals per ministeris",
+    "ministryToolsDescription": "Administraziun da videos, distribuziun da cuntegn, interacziun cun il public ed analitica concepids per gidar ministeris a cuntanscher dapli persunas cun success.",
+    "invitationEyebrow": "Vus essas invitads",
+    "invitationTitle": "Gidai a construir <highlight>la proxima generaziun</highlight> d'instruments per la missiun",
+    "invitationDescription": "Nus envidain persunas praticantas, creaturs e partenaris ad access anticipà. Tschertgai ils novs instruments l'emprim, dà feedback e gidai a furmar products concepids per la lavur missionara reala.",
+    "betaTester": "Daventar beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Collecziun da Bibla video",
+    "gospelRailTitle": "Scuvri l'entira istorgia",
+    "videoBibleDescription": "Explorai nossa collecziun da videos e novitads che fan viver la Bibla cun novitads captivantas e novitads d'instrucziun.",
+    "showcaseTitle": "La Scrittira raquintada tras film",
+    "adventEyebrow": "Advent da Nadal",
+    "adventTitle": "Cuntegn da Nadal",
+    "adventDescription": "Unì our viadi d'Advent cun in video quotidian che augmentsa l'attesa per Nadal ed explora l'aspectanza, la plaschair e la sanadad da la venida da Jesus.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Seria NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Seria Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Curs video",
+    "journeyWithJesusTitle": "Viadi cun Jesus",
+    "gospelsOnVideoEyebrow": "Mintga Evangeli, raquintà en video",
+    "scriptureAsWrittenTitle": "Scrittira, pronunziada exact sco scritta",
+    "merryChristmas": "Legraivels Nadal!",
+    "daysUntilChristmas": "{count, plural, one {# di fin Nadal} other {# dis fin Nadal}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Linguas",
+    "metadataDescription": "Navigai tras videos JesusFilm tenor lingua.",
+    "eyebrow": "Linguas da guardar",
+    "title": "Tscherner ina lingua",
+    "description": "Explorai linguas tenor regiun u navigai la glista cumpletta.",
+    "searchPlaceholder": "Tschertgar linguas u pajais...",
+    "searchLabel": "Tschertgar linguas u pajais",
+    "clearSearch": "Sfurzar tschertga",
+    "browse": "Navigar",
+    "browseByRegion": "Navigar tenor regiun e pajais",
+    "languageCount": "{count, plural, one {# lingua} other {# linguas}}",
+    "region": "Regiun",
+    "countryLanguages": "Linguas da {country}",
+    "showLess": "Mussar damain",
+    "showMore": "Mussar anc {count}",
+    "noLanguages": "Naginas linguas chattadas",
+    "tryAnotherSearch": "Empruvai in auter pled da tschertga."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Istorgia da guardar | Jesus Film Project",
+    "title": "Istorgia da guardar",
+    "loading": "Chargiament da l'istorgia",
+    "empty": "Anc nagut qua",
+    "emptyDescription": "Videos che vus guardais entant che vus essas annunziads cumparan qua.",
+    "earlier": "Avant",
+    "today": "Oz",
+    "yesterday": "Ier"
+  },
+  "AccountControl": {
+    "account": "Cont",
+    "accountMenu": "Menu dal conto",
+    "signIn": "S'annunziar",
+    "signOut": "Sortir",
+    "signedIn": "Annunzià",
+    "history": "Istorgia",
+    "logOut": "Sair sortir"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Pagina betg chattada",
+    "eyebrow": "Pagina betg chattada",
+    "screenReaderPrefix": "Pagina betg chattada:",
+    "title": "Questa scena n'è betg qua.",
+    "description": "La pagina è eventualmain sa midada, ma l'istorgia cuntinuescha.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Acziuns per pagina betg chattada",
+    "backToWatch": "Torna a guardar",
+    "browseVideos": "Navigar videos"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% concordanza",
+    "none": "Naginas recumandaziuns chattadas per quest video en questa lingua."
+  },
+  "BetaTesterModal": {
+    "title": "Daventar beta tester",
+    "trigger": "Daventar beta tester",
+    "loadFailed": "Insatge n'è betg ì sco previs.",
+    "loading": "Chargiament...",
+    "openFormNewTab": "Avrir il formular en ina nova tab",
+    "close": "Serrar",
+    "iframeTitle": "Daventar beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Biodar giu la collecziun",
+    "eyebrow": "Biodar giu la collecziun",
+    "description": "Tscherner ina giada la lingua e la qualitad. Mintga episoda disponibla vegn alura telechargiada en successiun.",
+    "signInTitle": "S'annunziar per telechargiar",
+    "signInBody": "Per telechargiar collecziuns stuais vus esser annunziads cun in conto da Jesus Film.",
+    "signIn": "S'annunziar per telechargiar",
+    "languageLabel": "Lingua",
+    "qualityLabel": "Qualitad dal video",
+    "tierHighest": "La pli auta",
+    "tierHigh": "Auta",
+    "tierLow": "Bassa",
+    "loading": "Tschertga d'episodas disponiblas…",
+    "loadError": "Betg reussì da chargiar ils downloads per questa lingua.",
+    "retry": "Empruvar anc ina giada",
+    "noDownloads": "En questa lingua n'èn naginas episodas disponiblas per telechargiar.",
+    "availableCount": "{count, plural, one {# episoda è pronta} other {# episodas èn prontas}}",
+    "skippedCount": "{count, plural, one {# episoda vegn sursiglida, perquai ch'ella n'è betg disponibla} other {# episodas vegnan sursiglidas, perquai ch'ellas n'èn betg disponiblas}}",
+    "chooseFolder": "Tscherner l'ordinatur da download",
+    "folderSelected": "Memorisar en {name}",
+    "folderError": "Betg reussì d'avrir l'ordinatur da download.",
+    "browserFallback": "Voss navigatur memorisescha mintga datoteca cun sias configuraziuns normalas da download. El po dumandar da permetter plirs downloads.",
+    "sessionError": "Betg pussaivel da controllar la sessiun. Empruvai anc ina giada.",
+    "downloading": "Telechargiament da {title}",
+    "progress": "{completed} da {total}",
+    "complete": "Downloads terminads",
+    "canceled": "Downloads interruts",
+    "failedCount": "{count, plural, one {# episoda n'è betg reussida} other {# episodas n'èn betg reussidas}}. Selecziunai anc ina giada «Biodar giu» per reempruvar cun la collecziun.",
+    "close": "Serrar",
+    "cancel": "Interrumper",
+    "start": "Biodar giu tut",
+    "downloadAgain": "Biodar giu anc ina giada",
+    "retryFailed": "Reempruvar ils downloads betg reussids"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Versiun linguistica betg disponibla",
+    "eyebrow": "Versiun linguistica betg disponibla",
+    "title": "<contentTitle>{title}</contentTitle> n'è betg disponibel en <languageName>{language}</languageName>",
+    "actionsLabel": "Opziuns da guardar disponiblas",
+    "browseInLanguage": "Navigar tras videos en {language}",
+    "backToSearch": "Enavos a la tschertga",
+    "audioVersionsTitle": "Autras versiuns audio",
+    "audioVersionsDescription": "Tscherna ina lingua audio per cuntinuar a guardar quest video.",
+    "languageVersionLabel": "Lingua audio",
+    "selectLanguageVersion": "Tscherner ina versiun linguistica",
+    "watchSelectedVersion": "Guardar la versiun tschernida"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tscherchas da cookies",
+    "bannerTitle": "Tas tscherchas da privacy",
+    "bannerDescription": "Cookies essenzials mantegnan Watch segir e funcziunal. Cun tia permissiun po in cookie opziunal da l'emprima partida memorisar tes interess tranter visitas per persunalisar recumandaziuns. Recumandaziuns contextualas restan disponiblas en mintga cas.",
+    "acceptAll": "Acceptar tut",
+    "essentialOnly": "Mo ils essenzials",
+    "manageChoices": "Administrar las tscherchas",
+    "savingChoice": "Memorisar la tschercha da cookies",
+    "settings": "Parameters da cookies",
+    "settingsDescription": "Tscherna sche Watch po memorisar interess da recumandaziuns tranter visitas. Ti pos midar quai da tut temp.",
+    "essentialCookies": "Cookies essenzials",
+    "essentialDescription": "Segirezza, reproducziun, tscherchas da privacy e attribuziun da dumondas da recumandaziun.",
+    "alwaysActive": "Adina activ",
+    "personalization": "Persunalisaziun",
+    "personalizationDescription": "Memorisar interess limitads tranter visitas. Sche ti deactiveschas quai, recumandaziuns contextualas restan disponiblas.",
+    "erasurePending": "L'eliminaziun dal profil è pendent. Recumandaziuns contextualas èn gia activas.",
+    "cancel": "Annullar",
+    "saveChoices": "Memorisar las tscherchas",
+    "saving": "Memorisar…",
+    "loadError": "Tia tschercha n'ha betg pudì vegnir chargiada. Ti pos tuttina tscherner sutvart.",
+    "grantError": "La persunalisaziun n'ha betg pudì vegnir activada. Mo l'opziun essenziala resta disponibla.",
+    "saveError": "Tia tschercha n'ha betg pudì vegnir memorisada. Emprova anc ina giada."
+  }
+}

@@ -5,14 +5,13 @@
 // without pulling in @/storage/s3 → @/config/env. The CLI deliberately
 // bypasses the admin env validator so it can run with only the
 // RAILWAY_S3_* vars populated — not the full server env matrix
-// (DATABASE_URL, BETTER_AUTH_SECRET, etc.). A transitive import of
+// (DATABASE_URL, ADMIN_SESSION_SECRET, etc.). A transitive import of
 // env.ts from the service file broke that contract.
 
 /**
  * Canonical S3 key for the coreId → cms video id snapshot that the admin
- * refresh CLI uploads. Consumed by (a) the `triggerSceneEmbeddingBackfill`
- * Pothos defaultValue, (b) the refresh CLI's upload target, and (c) the
- * operator runbook.
+ * refresh CLI uploads. Consumed by transcript embedding backfills, the
+ * refresh CLI's upload target, and the operator runbook.
  */
 export const DEFAULT_CORE_ID_MAPPING_S3_KEY =
   "admin-migrations/core-id-mapping.json"

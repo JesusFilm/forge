@@ -5,6 +5,7 @@
 import type { MediaAssetKind, Prisma, PrismaClient } from "@prisma/client"
 import type { Principal } from "@/auth/principal"
 import { canWriteDerived, hasPermission } from "@/auth/permissions"
+import { getAdminBaseURL } from "@/auth/origins"
 import { ForbiddenError } from "./errors"
 import {
   CreateMediaAssetInput,
@@ -151,12 +152,40 @@ export class MediaAssetService {
 
     const input = UpdateMediaAssetInput.parse(raw)
     const { id, ...data } = input
-    await assertFolderExists(this.prisma, input.folderId ?? null)
+    const exitsPublicReady =
+      (input.status !== undefined && input.status !== "READY") ||
+      (input.visibility !== undefined && input.visibility !== "PUBLIC")
 
-    return this.prisma.mediaAsset.update({
-      where: { id },
-      data,
-    })
+    return this.prisma.$transaction(
+      async (tx) => {
+        const studioVersion = await tx.shortAssetVersion.findFirst({
+          where: { mediaAssetId: id },
+          include: { usages: true },
+        })
+        if (
+          studioVersion &&
+          Object.keys(data).some((key) => key !== "folderId")
+        ) {
+          throw new MediaAssetValidationError(
+            `Studio asset version is retained with ${studioVersion.usages.length} durable dependencies; register replacement bytes as a new version`,
+          )
+        }
+        await assertFolderExists(tx, input.folderId ?? null)
+        if (exitsPublicReady) {
+          const socialImageUsageCount = await tx.videoLocale.count({
+            where: { socialImageAssetId: id },
+          })
+          if (socialImageUsageCount > 0) {
+            throw new MediaAssetValidationError(
+              "Clear or replace every video Search & Social image reference before changing this asset from public and ready",
+            )
+          }
+        }
+
+        return tx.mediaAsset.update({ where: { id }, data })
+      },
+      { isolationLevel: "Serializable" },
+    )
   }
 
   async listImageLocales({
@@ -336,17 +365,19 @@ export class MediaAssetService {
   }: {
     mediaAssetId: string
     user: Principal | null
-    data: Pick<
-      Prisma.MediaAssetUpdateInput,
-      | "blurDataUrl"
-      | "dominantColor"
-      | "width"
-      | "height"
-      | "imageEnrichmentStatus"
-      | "imageEnrichmentErrorCode"
-      | "imageEnrichmentErrorMessage"
-      | "imageEnrichmentStartedAt"
-      | "imageEnrichmentCompletedAt"
+    data: Partial<
+      Pick<
+        Prisma.MediaAssetUpdateInput,
+        | "blurDataUrl"
+        | "dominantColor"
+        | "width"
+        | "height"
+        | "imageEnrichmentStatus"
+        | "imageEnrichmentErrorCode"
+        | "imageEnrichmentErrorMessage"
+        | "imageEnrichmentStartedAt"
+        | "imageEnrichmentCompletedAt"
+      >
     >
   }) {
     if (!canWriteDerived(user)) {
@@ -447,6 +478,35 @@ export function mediaAssetDownloadUrl(asset: {
   return asset.objectKey ? `/api/media-assets/${asset.id}/download` : null
 }
 
+export function publicMediaAssetPreviewUrl(
+  asset: {
+    id: string
+    backend: string
+    status: string
+    visibility: string
+    objectKey: string | null
+    previewObjectKey: string | null
+    muxPlaybackId: string | null
+  },
+  baseUrl = getAdminBaseURL(),
+) {
+  if (asset.status !== "READY" || asset.visibility !== "PUBLIC") {
+    return null
+  }
+  if (asset.muxPlaybackId) {
+    return `https://image.mux.com/${asset.muxPlaybackId}/thumbnail.jpg`
+  }
+  if (
+    asset.backend === "MUX" ||
+    (!asset.previewObjectKey && !asset.objectKey)
+  ) {
+    return null
+  }
+
+  const origin = new URL(baseUrl).origin
+  return `${origin}/api/public/media-assets/${encodeURIComponent(asset.id)}/preview`
+}
+
 function validateMimeKind(kind: MediaAssetKind, mimeType: string) {
   const ok =
     kind === "FILE" ||
@@ -474,7 +534,7 @@ function validateBackendShape(input: CreateMediaAssetInput) {
 }
 
 async function assertFolderExists(
-  prisma: PrismaClient,
+  prisma: Pick<PrismaClient, "mediaFolder">,
   folderId: string | null,
 ) {
   if (!folderId) {

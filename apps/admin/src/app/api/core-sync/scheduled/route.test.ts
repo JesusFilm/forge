@@ -10,10 +10,14 @@ const dispatchCoreSync = vi.hoisted(() => vi.fn())
 vi.mock("@/config/env", () => mockEnv)
 vi.mock("@/services/core-sync/job", () => ({ dispatchCoreSync }))
 
-function makePost(headers: Record<string, string> = {}): Request {
+function makePost(
+  headers: Record<string, string> = {},
+  body?: unknown,
+): Request {
   return new Request("http://localhost/api/core-sync/scheduled", {
     method: "POST",
     headers,
+    body: body == null ? undefined : JSON.stringify(body),
   })
 }
 
@@ -60,7 +64,18 @@ describe("scheduled Core sync endpoint", () => {
     dispatchCoreSync.mockResolvedValueOnce({
       workflow: "core-sync",
       runId: "run-scheduled-1",
-      scope: ["languages", "countries", "keywords", "videos", "video-dubs"],
+      scope: [
+        "languages",
+        "countries",
+        "keywords",
+        "video-origins",
+        "videos",
+        "video-images",
+        "video-editions",
+        "video-subtitles",
+        "video-dubs",
+        "video-dub-downloads",
+      ],
       incremental: true,
       trigger: "scheduled",
       status: "queued",
@@ -82,7 +97,52 @@ describe("scheduled Core sync endpoint", () => {
     expect(dispatchCoreSync).toHaveBeenCalledTimes(1)
     expect(dispatchCoreSync).toHaveBeenCalledWith({
       incremental: true,
+      scope: undefined,
       trigger: "scheduled",
     })
+  })
+
+  it("dispatches a requested full scoped sync with valid auth", async () => {
+    dispatchCoreSync.mockResolvedValueOnce({
+      workflow: "core-sync",
+      runId: "run-scheduled-full",
+      scope: ["languages", "videos"],
+      incremental: false,
+      trigger: "scheduled",
+      status: "queued",
+    })
+    const { POST } = await import("./route")
+    const res = await POST(
+      makePost(
+        {
+          authorization: "Bearer cron-secret",
+          "content-type": "application/json",
+        },
+        { incremental: false, scope: "languages,videos" },
+      ),
+    )
+
+    expect(res.status).toBe(202)
+    expect(dispatchCoreSync).toHaveBeenCalledWith({
+      incremental: false,
+      scope: ["languages", "videos"],
+      trigger: "scheduled",
+    })
+  })
+
+  it("rejects invalid scheduled sync options", async () => {
+    const { POST } = await import("./route")
+    const res = await POST(
+      makePost(
+        {
+          authorization: "Bearer cron-secret",
+          "content-type": "application/json",
+        },
+        { incremental: "false" },
+      ),
+    )
+
+    expect(res.status).toBe(400)
+    expect(dispatchCoreSync).not.toHaveBeenCalled()
   })
 })

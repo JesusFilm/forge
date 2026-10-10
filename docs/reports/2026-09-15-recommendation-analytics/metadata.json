@@ -1,0 +1,14 @@
+{
+  "source": "Live Forge production Admin PostgreSQL",
+  "project": "forge",
+  "environment": "production",
+  "read_only": true,
+  "database_verified_at": "2026-09-15T01:54:07.127Z",
+  "evidence_cutoff": "2026-09-15T01:35:00Z",
+  "week_start": "2026-09-08T01:35:00Z",
+  "previous_week_start": "2026-09-01T01:35:00Z",
+  "latest_day_start": "2026-09-14T01:35:00Z",
+  "retained_first_request": "2026-09-01T00:20:48.742Z",
+  "query_statement_timeout_ms": 25000,
+  "lock_timeout_ms": 2000
+}

@@ -1,0 +1,11 @@
+{
+  "start": "2026-09-23T04:30:00Z",
+  "end": "2026-09-23T06:30:00Z",
+  "deployment": "7e475679-fd30-4973-b92c-797a183147f3",
+  "anchorReturned": 501,
+  "oldest": "2026-09-23T04:24:05.222325174Z",
+  "latest": "2026-09-23T04:27:30.079879471Z",
+  "requestsInWindow": 0,
+  "complete": true,
+  "method": "One bounded anchor read requesting beforeLimit=500; API returned 501 rows, extending before the lower boundary."
+}

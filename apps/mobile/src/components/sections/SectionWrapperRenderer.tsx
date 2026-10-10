@@ -1,30 +1,13 @@
 import { ImageBackground, StyleSheet, View } from "react-native"
 
 import { layout } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { AdminBlock } from "../../lib/queries"
 import { ContentDispatcher } from "./ContentDispatcher"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface SectionWrapperRendererProps {
-  section: NormalizedBlock
-}
-
-const SECTION_BACKGROUND_COLORS: Record<string, string> = {
-  default: "#292524",
-  light: "#f5f5f4",
-  dark: "#1c1917",
-  primary: "#1e3a8a",
-  cosmic: "#1e1b4b",
-  purple: "#581c87",
-}
-
-function sectionBackgroundColor(value: unknown) {
-  if (typeof value !== "string" || value.trim() === "") return undefined
-  const color = value.trim()
-  return /^#[0-9a-fA-F]{6}$/.test(color)
-    ? color
-    : SECTION_BACKGROUND_COLORS[color]
+  section: AdminBlock
 }
 
 // ── Component ───────────────────────────────────────────────────────────────
@@ -32,16 +15,12 @@ function sectionBackgroundColor(value: unknown) {
 export function SectionWrapperRenderer({
   section,
 }: SectionWrapperRendererProps) {
-  const content =
-    (section.sectionContent as NormalizedBlock[] | undefined) ?? []
-  const backgroundColor = sectionBackgroundColor(section.backgroundColor)
+  const s = section as Record<string, unknown>
+  const content = (s.sectionContent as AdminBlock[] | undefined) ?? []
   const backgroundImageUrl =
-    typeof section.backgroundImageUrl === "string"
-      ? section.backgroundImageUrl
-      : ""
+    typeof s.backgroundImageUrl === "string" ? s.backgroundImageUrl : ""
   const outerStyle = [
     layout.sectionOuter,
-    backgroundColor ? { backgroundColor } : null,
     backgroundImageUrl ? styles.withImage : null,
   ]
 

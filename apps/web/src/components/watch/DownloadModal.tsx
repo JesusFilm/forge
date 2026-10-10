@@ -1,26 +1,47 @@
 "use client"
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import Image from "next/image"
 import {
   Check,
   ChevronDown,
   Download as DownloadIcon,
   Globe2,
+  LogIn,
   Play,
+  X as XIcon,
 } from "lucide-react"
+import { useTranslations } from "next-intl"
 
+import { formatDuration as formatDurationShared } from "@/lib/format-duration"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { isAllowedDownloadOrigin } from "@/lib/download-allowlist"
+import {
+  TERMS_OF_USE_CANONICAL_URL,
+  TERMS_OF_USE_PARAGRAPHS,
+} from "@/lib/terms-of-use"
 import { cn } from "@/lib/utils"
+import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
+import { resolveDownloadSessionAccess } from "@/components/watch/download-session-access"
+import { redirectToAuth } from "@/components/watch/download-session-client"
+import {
+  buildDownloadFilename,
+  buildDownloadProxyUrl,
+  type DownloadSequence,
+} from "@/components/watch/download-link"
+import {
+  bucketDownloads,
+  type DownloadTier as Tier,
+  type WatchDownloadOption,
+} from "@/components/watch/download-options"
+import {
+  WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS,
+  WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS,
+} from "@/components/watch/watch-modal-presentation"
+import { WatchModalViewportCloseButton } from "./WatchModalViewportCloseButton"
 
-export type DownloadModalDownload = {
-  documentId: string
-  quality: string
-  size: number | null
-  url: string
-}
+export type DownloadModalDownload = WatchDownloadOption
 
 export type DownloadModalProps = {
   open: boolean
@@ -29,102 +50,29 @@ export type DownloadModalProps = {
   posterUrl?: string | null
   /** Variant duration in seconds (used for the runtime overlay on the thumbnail). */
   durationSeconds?: number | null
+  languageCode?: string | null
   languageName?: string | null
+  languageSlug?: string | null
+  downloadSequence?: DownloadSequence | null
+  variantId: string
+  videoSlug: string
+  accountGateEnabled?: boolean
+  authRequiredLoginUrl?: string | null
   onClose: () => void
 }
 
-// Public terms-of-use page; opens in a new tab from the modal's checkbox row.
-const TERMS_OF_USE_URL = "https://www.jesusfilm.org/terms-of-use/"
+const SIZE_DROPDOWN_ANIMATION_MS = 160
 
-// Same-origin streaming proxy. Hardcoded against `next.config.mjs`'s
-// `basePath: "/watch"`; if the basePath ever moves, this string moves
-// with it.
-const DOWNLOAD_PROXY_PATH = "/watch/api/download"
-
-// Quality keys the CMS emits, ordered highest-fidelity first. Used to sort
-// the downloads before bucketing into UI tiers. Kept as `as const` so
-// `pickFirst`-style typo-guards stay intact; if Strapi codegen evolves
-// the enum, a literal-type comparison would catch new keys at the call
-// site rather than silently sorting them to the tail.
-const QUALITY_PRIORITY = [
-  "uhd",
-  "qhd",
-  "fhd",
-  "highest",
-  "high",
-  "distroHigh",
-  "sd",
-  "distroSd",
-  "low",
-  "distroLow",
-] as const
-
-type Tier = "highest" | "high" | "low"
-
-type TierOption = {
-  tier: Tier
-  label: string
-  download: DownloadModalDownload
-}
-
-function sortByQuality(
-  downloads: DownloadModalDownload[],
-): DownloadModalDownload[] {
-  const priority = new Map<string, number>(
-    QUALITY_PRIORITY.map((q, i) => [q, i]),
-  )
-  const tail = QUALITY_PRIORITY.length
-  return [...downloads].sort((a, b) => {
-    const ai = priority.get(a.quality) ?? tail
-    const bi = priority.get(b.quality) ?? tail
-    return ai - bi
-  })
-}
-
-// Surface as many tier options as there are distinct downloads, up to three.
-//   1 download  → [Highest]
-//   2 downloads → [Highest, Low]
-//   3+ downloads → [Highest, High, Low] picked at evenly-spaced positions in
-//                  the priority-sorted list, so we always include the best
-//                  and worst options plus a middle representative.
-function bucketDownloads(downloads: DownloadModalDownload[]): TierOption[] {
-  const sorted = sortByQuality(downloads)
-  if (sorted.length === 0) return []
-  const head = sorted[0] as DownloadModalDownload
-  if (sorted.length === 1) {
-    return [{ tier: "highest", label: "Highest", download: head }]
-  }
-  const tail = sorted[sorted.length - 1] as DownloadModalDownload
-  if (sorted.length === 2) {
-    return [
-      { tier: "highest", label: "Highest", download: head },
-      { tier: "low", label: "Low", download: tail },
-    ]
-  }
-  const middle = sorted[Math.floor(sorted.length / 2)] as DownloadModalDownload
-  return [
-    { tier: "highest", label: "Highest", download: head },
-    { tier: "high", label: "High", download: middle },
-    { tier: "low", label: "Low", download: tail },
-  ]
-}
-
-function formatSize(bytes: number | null): string {
-  if (bytes == null) return ""
-  const mb = bytes / 1024 / 1024
-  if (mb >= 1024) return `${(mb / 1024).toFixed(2)} GB`
-  if (mb >= 100) return `${mb.toFixed(0)} MB`
-  return `${mb.toFixed(2)} MB`
-}
-
+// Thin null-tolerant wrapper around the shared formatter. The download
+// modal renders nothing when duration is missing or non-positive
+// (previously returned `null`); preserving that semantic keeps the JSX
+// checks (`durationLabel != null`) unchanged. Note: the shared
+// formatter does NOT zero-pad the leading segment (`1:10`, not
+// `01:10`) — that's a visible label format change for this modal
+// matching the standard media-duration convention used elsewhere.
 function formatDuration(seconds: number | null | undefined): string | null {
   if (seconds == null || !Number.isFinite(seconds) || seconds <= 0) return null
-  const total = Math.floor(seconds)
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  const pad = (n: number) => n.toString().padStart(2, "0")
-  return h > 0 ? `${pad(h)}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
+  return formatDurationShared(seconds)
 }
 
 export function DownloadModal({
@@ -133,13 +81,45 @@ export function DownloadModal({
   videoTitle,
   posterUrl,
   durationSeconds,
+  languageCode,
   languageName,
+  languageSlug,
+  downloadSequence = null,
+  variantId,
+  videoSlug,
+  accountGateEnabled = false,
+  authRequiredLoginUrl = null,
   onClose,
 }: DownloadModalProps) {
+  const t = useTranslations("DownloadModal")
+  const fileSizeLabel = t("fileSizeLabel")
+  const termsAgreementLabel = `${t("termsAgreementPrefix")}${t(
+    "termsOfUse",
+  )}${t("termsAgreementSuffix")}`
+  // Localized label for a quality tier. `bucketDownloads` carries an English
+  // `label` for back-compat, but the rendered text is resolved here so it
+  // translates.
+  const tierLabel = (tier: Tier): string =>
+    tier === "highest"
+      ? t("tierHighest")
+      : tier === "high"
+        ? t("tierHigh")
+        : t("tierLow")
   const [tosAgreed, setTosAgreed] = useState(false)
   const [selectedTier, setSelectedTier] = useState<Tier | null>(null)
   const [dropdownOpen, setDropdownOpen] = useState(false)
+  const [dropdownMounted, setDropdownMounted] = useState(false)
+  const [dropdownRect, setDropdownRect] = useState<{
+    left: number
+    top: number
+    width: number
+  } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [localAuthLoginUrl, setLocalAuthLoginUrl] = useState<string | null>(
+    null,
+  )
+  const [authChecking, setAuthChecking] = useState(false)
+  const [termsOpen, setTermsOpen] = useState(false)
   const dropdownId = useId()
   const dropdownListId = `${dropdownId}-list`
   const triggerRef = useRef<HTMLButtonElement | null>(null)
@@ -148,6 +128,7 @@ export function DownloadModal({
   // queueing a second proxy request before the modal-close re-render
   // hides the button.
   const downloadInFlight = useRef<boolean>(false)
+  const requestVersionRef = useRef(0)
 
   const tiers = useMemo(() => bucketDownloads(downloads), [downloads])
 
@@ -165,8 +146,26 @@ export function DownloadModal({
       ? selectedTier
       : defaultTier
   const selected = tiers.find((t) => t.tier === effectiveTier) ?? null
-  const canDownload = tosAgreed && selected != null
+  const effectiveAuthLoginUrl = authRequiredLoginUrl ?? localAuthLoginUrl
+  const authRequired = accountGateEnabled && effectiveAuthLoginUrl != null
+  const canDownload = tosAgreed && selected != null && !authChecking
   const durationLabel = formatDuration(durationSeconds)
+
+  const updateDropdownRect = useCallback(() => {
+    const trigger = triggerRef.current
+    if (!trigger) return
+    const rect = trigger.getBoundingClientRect()
+    setDropdownRect({
+      left: rect.left,
+      top: rect.bottom + 8,
+      width: rect.width,
+    })
+  }, [])
+
+  const closeDropdown = useCallback(() => {
+    if (dropdownOpen) setDropdownMounted(true)
+    setDropdownOpen(false)
+  }, [dropdownOpen])
 
   const handleOpenChange = useCallback(
     (next: boolean) => {
@@ -174,13 +173,28 @@ export function DownloadModal({
         setTosAgreed(false)
         setSelectedTier(null)
         setDropdownOpen(false)
+        setDropdownMounted(false)
+        setDropdownRect(null)
         setError(null)
+        setAuthChecking(false)
+        setTermsOpen(false)
         downloadInFlight.current = false
+        requestVersionRef.current += 1
         onClose()
       }
     },
     [onClose],
   )
+
+  useEffect(() => {
+    if (dropdownOpen) return
+    if (!dropdownMounted) return
+    const timeout = window.setTimeout(() => {
+      setDropdownMounted(false)
+      setDropdownRect(null)
+    }, SIZE_DROPDOWN_ANIMATION_MS)
+    return () => window.clearTimeout(timeout)
+  }, [dropdownMounted, dropdownOpen])
 
   // Click-outside / Escape-first close for the custom dropdown. Without
   // this, clicking elsewhere in the modal leaves the listbox open
@@ -188,6 +202,7 @@ export function DownloadModal({
   // collapsing only the dropdown.
   useEffect(() => {
     if (!dropdownOpen) return
+    updateDropdownRect()
     function handlePointerDown(event: PointerEvent) {
       const target = event.target as Node | null
       if (!target) return
@@ -197,70 +212,79 @@ export function DownloadModal({
       ) {
         return
       }
-      setDropdownOpen(false)
+      closeDropdown()
     }
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         // Stop propagation so base-ui's dialog Escape handler doesn't
         // also fire and close the entire modal.
         event.stopPropagation()
-        setDropdownOpen(false)
+        closeDropdown()
         triggerRef.current?.focus()
       }
     }
+    function handleViewportChange() {
+      updateDropdownRect()
+    }
     document.addEventListener("pointerdown", handlePointerDown, true)
     document.addEventListener("keydown", handleKeyDown, true)
+    window.addEventListener("resize", handleViewportChange)
+    window.addEventListener("scroll", handleViewportChange, true)
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown, true)
       document.removeEventListener("keydown", handleKeyDown, true)
+      window.removeEventListener("resize", handleViewportChange)
+      window.removeEventListener("scroll", handleViewportChange, true)
     }
-  }, [dropdownOpen])
+  }, [closeDropdown, dropdownOpen, updateDropdownRect])
 
-  function buildFilename(sourceUrl: string, tier: Tier): string {
-    const SAFE_EXTENSIONS = new Set(["mp4", "m4v", "mov", "webm", "mkv", "mp3"])
-    // Strip query string before extracting the extension so a `?token=...`
-    // CDN URL doesn't end up with `mp4?token=abc` as the ext.
-    const path = sourceUrl.split("?")[0] ?? ""
-    const lastDot = path.lastIndexOf(".")
-    const lastSlash = path.lastIndexOf("/")
-    // Only treat the last segment's `.ext` as an extension; otherwise a
-    // URL like `https://stream.mux.com/abc` would emit `com/abc` as the
-    // extension and embed a slash in the filename.
-    const candidate =
-      lastDot > lastSlash && lastDot < path.length - 1
-        ? path.slice(lastDot + 1).toLowerCase()
-        : ""
-    const ext = SAFE_EXTENSIONS.has(candidate) ? candidate : "mp4"
-
-    const slug = (videoTitle ?? "video")
-      .replace(/[^a-z0-9]+/gi, "-")
-      .replace(/^-|-$/g, "")
-      .toLowerCase()
-    return `${slug || "video"}-${tier}.${ext}`
-  }
-
-  function handleDownload() {
+  async function handleDownload() {
     if (!selected) return
     if (downloadInFlight.current) return
-    const sourceUrl = selected.download.url
-    if (!isAllowedDownloadOrigin(sourceUrl)) {
-      console.error(
-        "[DownloadModal] Refusing to download from non-allowlisted origin",
-        { url: sourceUrl },
-      )
-      setError("Download unavailable from this source")
-      return
-    }
+    const requestVersion = ++requestVersionRef.current
     setError(null)
     downloadInFlight.current = true
+    setAuthChecking(true)
 
-    const filename = buildFilename(sourceUrl, selected.tier)
+    if (accountGateEnabled) {
+      const session = await resolveDownloadSessionAccess()
+      if (requestVersionRef.current !== requestVersion) return
+      if (!session.ok && session.reason === "session-unavailable") {
+        downloadInFlight.current = false
+        setAuthChecking(false)
+        setError(t("errorSessionUnavailable"))
+        return
+      }
+      if (!session.ok) {
+        downloadInFlight.current = false
+        setAuthChecking(false)
+        setError(null)
+        setLocalAuthLoginUrl(session.loginUrl)
+        return
+      }
+    }
+    setAuthChecking(false)
 
-    // Route through our same-origin streaming proxy so the browser honors
-    // the `download` attribute and `Content-Disposition: attachment`. A
-    // direct cross-origin link gets navigated by the browser instead of
-    // handed to the download manager.
-    const proxy = `${DOWNLOAD_PROXY_PATH}?url=${encodeURIComponent(sourceUrl)}&filename=${encodeURIComponent(filename)}`
+    const filename = buildDownloadFilename({
+      languageCode,
+      languageName,
+      languageSlug,
+      renditionHeight: selected.download.height,
+      sequence: downloadSequence,
+      tier: selected.tier,
+      videoSlug,
+      videoTitle,
+    })
+
+    // Route through the same-origin resolver so the browser never sees raw CDN
+    // URLs in markup. The resolver redirects to the media host so Web does not
+    // carry the video stream.
+    const proxy = buildDownloadProxyUrl({
+      downloadId: selected.download.documentId,
+      filename,
+      variantId,
+      videoSlug,
+    })
 
     const a = document.createElement("a")
     a.href = proxy
@@ -275,221 +299,485 @@ export function DownloadModal({
     handleOpenChange(false)
   }
 
+  const modalHeader = (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:gap-6">
+        <div
+          data-testid="watch-download-modal-poster"
+          className="relative aspect-video w-full shrink-0 overflow-hidden rounded-2xl bg-stone-800 sm:w-56"
+        >
+          {posterUrl ? (
+            <Image
+              src={posterUrl}
+              alt={videoTitle ?? t("posterAlt")}
+              fill
+              sizes="(min-width: 640px) 224px, 100vw"
+              className="object-cover"
+            />
+          ) : null}
+          {durationLabel ? (
+            <div
+              data-testid="watch-download-modal-duration"
+              className="absolute right-2 bottom-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-sm sm:text-xs font-semibold text-stone-100"
+            >
+              <Play size={12} fill="currentColor" />
+              <span>{durationLabel}</span>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <span
+            data-testid="watch-download-modal-eyebrow"
+            className={WATCH_SECTION_EYEBROW_CLASS}
+          >
+            {t("eyebrow")}
+          </span>
+          <h2
+            data-testid="watch-download-modal-title"
+            className="text-2xl leading-tight font-semibold text-stone-50 sm:text-3xl"
+          >
+            {videoTitle ?? ""}
+          </h2>
+          {languageName ? (
+            <span
+              data-testid="watch-download-modal-language"
+              className="inline-flex w-fit items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-base sm:text-sm font-semibold text-stone-100"
+            >
+              <Globe2 size={14} />
+              <span>{languageName}</span>
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  )
+
+  if (authRequired) {
+    return (
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent
+          data-testid="watch-download-modal"
+          className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
+          overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
+          viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
+          showCloseButton={false}
+        >
+          <WatchModalViewportCloseButton
+            open={open}
+            onClose={() => handleOpenChange(false)}
+            testId="watch-download-modal-close"
+            renderInline
+          />
+          <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
+
+          <div
+            data-testid="watch-download-modal-content"
+            className="flex flex-col gap-7"
+          >
+            {modalHeader}
+
+            <div
+              data-testid="watch-download-modal-auth-required"
+              className="flex flex-col gap-4"
+            >
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Button
+                  variant="pill"
+                  onClick={() =>
+                    redirectToAuth(effectiveAuthLoginUrl, {
+                      reopenDownload: true,
+                    })
+                  }
+                  aria-label={t("signInToDownload")}
+                  data-testid="watch-download-modal-sign-in"
+                  className="w-full px-6 py-4 text-xs sm:w-auto sm:px-7 sm:text-sm"
+                >
+                  <LogIn size={16} aria-hidden />
+                  <span>{t("signInToDownload")}</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleOpenChange(false)}
+                  data-testid="watch-download-modal-keep-watching"
+                  className="h-auto w-full cursor-pointer rounded-full border border-transparent px-7 py-4 text-base sm:text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:border-white/30 hover:bg-transparent hover:text-stone-100 focus-visible:border-white/50 sm:w-auto"
+                >
+                  {t("keepWatching")}
+                </Button>
+              </div>
+
+              <h3 className="text-lg font-semibold text-stone-50">
+                {t("authRequiredTitle")}
+              </h3>
+              <p className="text-base sm:text-sm leading-6 text-stone-400">
+                {t("authRequiredBody")}
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         data-testid="watch-download-modal"
-        className="overflow-hidden rounded-2xl border border-stone-700/50 bg-stone-900 p-0 text-stone-100 sm:max-w-xl"
+        className={`${WATCH_MODAL_PAGE_SCROLL_CONTENT_CLASS} w-full max-w-[min(90vw,608px)] border-0 bg-transparent p-0 text-stone-100 ring-0 sm:max-w-[608px]`}
+        overlayClassName="bg-black/85 supports-backdrop-filter:backdrop-blur-md"
+        viewportClassName={WATCH_MODAL_PAGE_SCROLL_VIEWPORT_CLASS}
+        showCloseButton={false}
       >
-        <DialogTitle className="sr-only">Download video</DialogTitle>
+        <WatchModalViewportCloseButton
+          open={open}
+          onClose={() => handleOpenChange(false)}
+          testId="watch-download-modal-close"
+          renderInline
+        />
+        <DialogTitle className="sr-only">{t("dialogTitle")}</DialogTitle>
 
-        {/* Header: thumbnail + metadata */}
-        <div className="flex flex-col gap-6 p-6 pb-4 sm:flex-row sm:items-start sm:gap-6">
-          <div
-            data-testid="watch-download-modal-poster"
-            className="relative aspect-video w-full shrink-0 overflow-hidden rounded-lg bg-stone-800 sm:w-56"
-          >
-            {posterUrl ? (
-              <Image
-                src={posterUrl}
-                alt={videoTitle ?? "Video poster"}
-                fill
-                sizes="(min-width: 640px) 224px, 100vw"
-                className="object-cover"
-              />
-            ) : null}
-            {durationLabel ? (
-              <div
-                data-testid="watch-download-modal-duration"
-                className="absolute right-2 bottom-2 flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-xs font-semibold text-stone-100"
-              >
-                <Play size={12} fill="currentColor" />
-                <span>{durationLabel}</span>
-              </div>
-            ) : null}
-          </div>
+        <div
+          data-testid="watch-download-modal-content"
+          className="flex flex-col gap-7"
+        >
+          {modalHeader}
 
-          <div className="flex min-w-0 flex-1 flex-col gap-3">
-            <span className="text-xs font-semibold tracking-[0.18em] text-stone-400 uppercase">
-              Download Video
-            </span>
-            <h2
-              data-testid="watch-download-modal-title"
-              className="text-2xl font-bold text-stone-50 sm:text-3xl"
-            >
-              {videoTitle ?? ""}
-            </h2>
-            {languageName ? (
-              <span
-                data-testid="watch-download-modal-language"
-                className="inline-flex w-fit items-center gap-2 rounded-full border border-stone-700/70 bg-stone-800/50 px-3 py-1.5 text-xs font-medium text-stone-100"
+          {/* Body: file size dropdown */}
+          <div>
+            {tiers.length === 0 ? (
+              <p
+                data-testid="watch-download-modal-empty"
+                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-base sm:text-sm font-semibold text-stone-400"
               >
-                <Globe2 size={14} />
-                <span>{languageName}</span>
-              </span>
-            ) : null}
-          </div>
-        </div>
-
-        {/* Body: file size dropdown */}
-        <div className="px-6 pb-4">
-          {tiers.length === 0 ? (
-            <p
-              data-testid="watch-download-modal-empty"
-              className="rounded-lg border border-stone-700/50 bg-stone-800/40 px-4 py-3 text-sm text-stone-400"
-            >
-              No downloads are available for this video.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <label
-                htmlFor={dropdownId}
-                className="text-sm font-semibold text-stone-100"
-              >
-                Select a file size
-              </label>
-              <div className="relative">
-                <button
-                  ref={triggerRef}
-                  id={dropdownId}
-                  type="button"
-                  onClick={() => setDropdownOpen((v) => !v)}
-                  data-testid="watch-download-modal-size-trigger"
-                  data-open={dropdownOpen ? "true" : "false"}
-                  aria-haspopup="listbox"
-                  aria-expanded={dropdownOpen}
-                  aria-controls={dropdownListId}
-                  className="flex w-full items-center justify-between rounded-lg border border-stone-700/70 bg-stone-950/40 px-4 py-3 text-left text-sm font-medium text-stone-100 transition hover:bg-stone-800/40"
+                {t("noDownloads")}
+              </p>
+            ) : (
+              <div className="-mx-2 flex flex-col gap-3 px-2">
+                <label
+                  htmlFor={dropdownId}
+                  className="text-lg font-semibold text-stone-100"
                 >
-                  <span>
-                    {selected ? (
-                      <>
-                        <span className="font-semibold">{selected.label}</span>
-                        <span className="ml-1 text-stone-300">
-                          ({formatSize(selected.download.size)})
-                        </span>
-                      </>
-                    ) : (
-                      "Select a file size"
-                    )}
-                  </span>
-                  <ChevronDown
-                    size={18}
-                    className={cn(
-                      "transition-transform",
-                      dropdownOpen ? "rotate-180" : "",
-                    )}
-                  />
-                </button>
-                {dropdownOpen ? (
-                  <ul
-                    ref={listRef}
-                    id={dropdownListId}
-                    role="listbox"
-                    aria-labelledby={dropdownId}
-                    data-testid="watch-download-modal-size-list"
-                    className="absolute z-50 mt-2 w-full overflow-hidden rounded-lg border border-stone-700/70 bg-stone-900 shadow-2xl"
+                  {fileSizeLabel}
+                </label>
+                <div className="relative">
+                  <button
+                    ref={triggerRef}
+                    id={dropdownId}
+                    type="button"
+                    onClick={() => {
+                      if (dropdownOpen) {
+                        closeDropdown()
+                        return
+                      }
+                      updateDropdownRect()
+                      setDropdownMounted(false)
+                      setDropdownOpen(true)
+                    }}
+                    data-testid="watch-download-modal-size-trigger"
+                    data-open={dropdownOpen ? "true" : "false"}
+                    aria-haspopup="listbox"
+                    aria-expanded={dropdownOpen}
+                    aria-controls={dropdownListId}
+                    className="flex w-full cursor-pointer items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-5 py-4 text-left text-lg font-semibold text-stone-100 transition hover:bg-white/10"
                   >
-                    {tiers.map((t) => {
-                      const isSelected = effectiveTier === t.tier
-                      return (
-                        <li key={t.tier}>
-                          <button
-                            type="button"
-                            role="option"
-                            aria-selected={isSelected}
-                            data-testid="watch-download-modal-size-option"
-                            data-tier={t.tier}
-                            onClick={() => {
-                              setSelectedTier(t.tier)
-                              setDropdownOpen(false)
-                            }}
-                            className={cn(
-                              "flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition",
-                              isSelected
-                                ? "bg-red-600 text-white"
-                                : "text-stone-100 hover:bg-stone-800",
-                            )}
-                          >
-                            <Check
-                              size={16}
-                              className={
-                                isSelected ? "opacity-100" : "opacity-0"
-                              }
-                            />
-                            <span className="font-semibold">{t.label}</span>
-                            <span
-                              className={cn(
-                                "text-xs",
-                                isSelected ? "text-white/80" : "text-stone-400",
-                              )}
-                            >
-                              ({formatSize(t.download.size)})
-                            </span>
-                          </button>
-                        </li>
+                    <span>
+                      {selected ? (
+                        <span className="font-semibold">
+                          {tierLabel(selected.tier)}
+                        </span>
+                      ) : (
+                        fileSizeLabel
+                      )}
+                    </span>
+                    <ChevronDown
+                      size={20}
+                      className={cn(
+                        "transition-transform",
+                        dropdownOpen ? "rotate-180" : "",
+                      )}
+                    />
+                  </button>
+                  {(dropdownOpen || dropdownMounted) &&
+                  dropdownRect != null &&
+                  typeof document !== "undefined"
+                    ? createPortal(
+                        <ul
+                          ref={listRef}
+                          id={dropdownListId}
+                          role="listbox"
+                          aria-labelledby={dropdownId}
+                          data-testid="watch-download-modal-size-list"
+                          data-open={dropdownOpen ? "true" : "false"}
+                          className={cn(
+                            "fixed z-[1000] max-h-72 origin-top overflow-y-auto rounded-2xl border border-white/10 bg-stone-950/95 shadow-2xl backdrop-blur-md transition-[opacity,transform] duration-150 ease-out",
+                            dropdownOpen
+                              ? "translate-y-0 scale-100 opacity-100"
+                              : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0",
+                          )}
+                          style={{
+                            left: dropdownRect.left,
+                            top: dropdownRect.top,
+                            width: dropdownRect.width,
+                          }}
+                        >
+                          {tiers.map((t) => {
+                            const isSelected = effectiveTier === t.tier
+                            return (
+                              <li key={t.tier}>
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={isSelected}
+                                  data-testid="watch-download-modal-size-option"
+                                  data-tier={t.tier}
+                                  data-size-bytes={
+                                    t.download.size != null &&
+                                    t.download.size > 0
+                                      ? t.download.size
+                                      : ""
+                                  }
+                                  onClick={() => {
+                                    setSelectedTier(t.tier)
+                                    closeDropdown()
+                                  }}
+                                  className={cn(
+                                    "flex w-full cursor-pointer items-center gap-3 px-5 py-4 text-left text-base sm:text-sm transition",
+                                    isSelected
+                                      ? "bg-brand-red text-white"
+                                      : "text-stone-100 hover:bg-white/10",
+                                  )}
+                                >
+                                  <Check
+                                    size={16}
+                                    className={
+                                      isSelected ? "opacity-100" : "opacity-0"
+                                    }
+                                  />
+                                  <span className="font-semibold">
+                                    {tierLabel(t.tier)}
+                                  </span>
+                                </button>
+                              </li>
+                            )
+                          })}
+                        </ul>,
+                        document.body,
                       )
-                    })}
-                  </ul>
-                ) : null}
+                    : null}
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Footer: terms checkbox + download button */}
-        <div className="mx-6 mb-6 flex flex-col gap-3 rounded-lg border border-stone-700/50 bg-stone-950/40 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <label className="flex cursor-pointer items-center gap-3 text-sm text-stone-100">
-            <span className="relative inline-flex shrink-0 items-center justify-center">
-              <input
-                type="checkbox"
-                checked={tosAgreed}
-                onChange={(e) => setTosAgreed(e.target.checked)}
-                data-testid="watch-download-modal-tos"
-                className="peer size-4 cursor-pointer appearance-none rounded-full border-2 border-stone-500 bg-transparent transition-colors hover:border-stone-300 checked:border-red-600 checked:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/50"
-              />
-              <Check
-                size={10}
-                strokeWidth={3}
-                aria-hidden="true"
-                className="pointer-events-none absolute text-white opacity-0 peer-checked:opacity-100"
-              />
-            </span>
-            <span>
-              I agree to the{" "}
-              <a
-                href={TERMS_OF_USE_URL}
-                target="_blank"
-                rel="noreferrer noopener"
-                data-testid="watch-download-modal-tos-link"
-                className="font-semibold text-red-500 underline-offset-4 hover:underline"
+          {error ? (
+            <p
+              data-testid="watch-download-modal-error"
+              role="alert"
+              className="text-base sm:text-sm font-semibold text-brand-red"
+            >
+              {error}
+            </p>
+          ) : null}
+
+          <div
+            data-testid="watch-download-modal-confirmation-row"
+            className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <label className="flex cursor-pointer items-start gap-3 text-base sm:text-sm font-normal text-stone-100">
+              <span className="relative mt-0.5 inline-flex shrink-0 items-center justify-center">
+                <input
+                  type="checkbox"
+                  checked={tosAgreed}
+                  disabled={selected == null}
+                  onChange={(event) => setTosAgreed(event.target.checked)}
+                  aria-label={termsAgreementLabel}
+                  data-testid="watch-download-modal-tos"
+                  className="peer size-4 cursor-pointer appearance-none rounded-[3px] border-2 border-stone-500 bg-transparent transition-colors hover:border-stone-300 checked:border-brand-red checked:bg-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                />
+                <Check
+                  size={10}
+                  strokeWidth={3}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute text-white opacity-0 peer-checked:opacity-100"
+                />
+              </span>
+              <span>
+                {t("termsAgreementPrefix")}
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault()
+                    setTermsOpen(true)
+                  }}
+                  data-testid="watch-download-modal-tos-trigger"
+                  className="inline cursor-pointer align-baseline leading-inherit font-normal text-brand-red underline decoration-brand-red/40 underline-offset-2 hover:decoration-brand-red focus-visible:ring-2 focus-visible:ring-brand-red/50 focus-visible:outline-none"
+                >
+                  {t("termsOfUse")}
+                </button>
+                {t("termsAgreementSuffix")}
+              </span>
+            </label>
+
+            <div className="flex shrink-0 items-center justify-end gap-3">
+              <Button
+                variant="ghost"
+                onClick={() => handleOpenChange(false)}
+                className="cursor-pointer rounded-full px-5 py-3.5 text-base sm:text-sm font-bold tracking-wider text-stone-400 uppercase transition-colors duration-200 hover:bg-transparent hover:text-stone-100"
               >
-                Terms of Use
-              </a>
-            </span>
-          </label>
-          <Button
-            variant="pill"
-            onClick={handleDownload}
-            disabled={!canDownload}
-            aria-label="Download"
-            data-testid="watch-download-modal-confirm"
+                {t("close")}
+              </Button>
+              <Button
+                variant="pill"
+                onClick={handleDownload}
+                disabled={!canDownload}
+                aria-label={t("download")}
+                data-testid="watch-download-modal-confirm"
+                className="px-7 py-4 text-base sm:text-sm"
+              >
+                <DownloadIcon size={16} />
+                <span>{authChecking ? t("checking") : t("download")}</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+
+      <TermsOfUseDialog
+        open={termsOpen}
+        onCancel={() => setTermsOpen(false)}
+        onAccept={() => {
+          setTosAgreed(true)
+          setTermsOpen(false)
+        }}
+      />
+    </Dialog>
+  )
+}
+
+type TermsOfUseDialogProps = {
+  open: boolean
+  onCancel: () => void
+  onAccept: () => void
+}
+
+function TermsOfUseDialog({ open, onCancel, onAccept }: TermsOfUseDialogProps) {
+  const t = useTranslations("DownloadModal")
+
+  useEffect(() => {
+    if (!open) return
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        event.stopPropagation()
+        onCancel()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown, true)
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true)
+    }
+  }, [onCancel, open])
+
+  if (!open || typeof document === "undefined") return null
+
+  function stopNestedDialogEvent(event: { stopPropagation: () => void }) {
+    event.stopPropagation()
+  }
+
+  return createPortal(
+    <div
+      aria-hidden="false"
+      data-testid="watch-download-modal-terms-overlay"
+      className="fixed inset-0 z-[70] flex overflow-x-hidden overflow-y-auto bg-black/60 p-4 supports-backdrop-filter:backdrop-blur-sm"
+      onClick={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        onCancel()
+      }}
+      onPointerDown={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="watch-download-modal-terms-title"
+        data-testid="watch-download-modal-terms-dialog"
+        className="m-auto flex w-full shrink-0 flex-col gap-0 rounded-2xl border border-stone-700/60 bg-stone-900 p-0 text-stone-100 sm:max-w-2xl"
+        onClick={stopNestedDialogEvent}
+        onPointerDown={stopNestedDialogEvent}
+      >
+        <div className="flex items-start justify-between px-8 pt-8 pb-4">
+          <h2
+            id="watch-download-modal-terms-title"
+            data-testid="watch-download-modal-terms-title"
+            className="text-2xl font-bold text-stone-50 sm:text-3xl"
           >
-            <DownloadIcon size={16} />
-            <span>Download</span>
-          </Button>
+            {t("termsOfUse")}
+          </h2>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label={t("closeTermsOfUse")}
+            data-testid="watch-download-modal-terms-close"
+            className="flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-full bg-stone-700/60 text-stone-200 transition-colors hover:bg-stone-600 focus-visible:ring-2 focus-visible:ring-brand-red/50 focus-visible:outline-none"
+          >
+            <XIcon size={16} />
+          </button>
         </div>
 
-        {error ? (
+        <div
+          data-testid="watch-download-modal-terms-body"
+          className="space-y-4 pr-6 pb-6 pl-8 text-base sm:text-sm leading-relaxed text-stone-200"
+        >
+          {TERMS_OF_USE_PARAGRAPHS.map((paragraph, index) => (
+            <p key={index}>{paragraph}</p>
+          ))}
+        </div>
+
+        <div
+          data-testid="watch-download-modal-terms-footer"
+          className="flex flex-col gap-4 border-t border-stone-700/50 px-8 py-5 sm:flex-row sm:items-center sm:justify-between"
+        >
           <p
-            data-testid="watch-download-modal-error"
-            role="alert"
-            className="px-6 pb-6 text-sm text-red-400"
+            data-testid="watch-download-modal-terms-canonical-notice"
+            className="max-w-lg text-sm sm:text-xs leading-relaxed text-stone-400"
           >
-            {error}
+            We include these terms here to make them easy to review. You can
+            always find the most current version at{" "}
+            <a
+              href={TERMS_OF_USE_CANONICAL_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="cursor-pointer text-stone-200 underline decoration-stone-500 underline-offset-2 hover:text-white hover:decoration-white"
+            >
+              {TERMS_OF_USE_CANONICAL_URL}
+            </a>
+            .
           </p>
-        ) : null}
-      </DialogContent>
-    </Dialog>
+          <div className="flex shrink-0 items-center justify-end gap-3">
+            <button
+              type="button"
+              onClick={onCancel}
+              data-testid="watch-download-modal-terms-cancel"
+              className="cursor-pointer rounded-full bg-stone-700/60 px-5 py-2.5 text-base sm:text-sm font-medium text-stone-100 transition-colors hover:bg-stone-600 focus-visible:ring-2 focus-visible:ring-stone-400/50 focus-visible:outline-none"
+            >
+              {t("cancel")}
+            </button>
+            <Button
+              variant="pill"
+              onClick={onAccept}
+              data-testid="watch-download-modal-terms-accept"
+            >
+              {t("accept")}
+            </Button>
+          </div>
+        </div>
+      </section>
+    </div>,
+    document.body,
   )
 }

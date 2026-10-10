@@ -20,6 +20,11 @@ export default async function EmbeddingsPage() {
   const principal = await requireSession()
   const data = await loadEmbeddingsData()
   const canTrigger = hasPermission(principal, "write:experiences")
+  const triggerDisabledReason = !canTrigger
+    ? "You do not have permission to run embedding workflows. Contact an administrator to grant access."
+    : !data.providerReady
+      ? "Embedding provider env is missing, so manual dispatch is currently disabled."
+      : "Dispatches the existing experience embedding workflow for a specific locale row."
 
   async function triggerEmbeddingAction(formData: FormData) {
     "use server"
@@ -79,19 +84,22 @@ export default async function EmbeddingsPage() {
                   name="localeId"
                   placeholder="clocale_..."
                   disabled={!canTrigger || !data.providerReady}
-                  className="h-10 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none"
+                  aria-describedby="embedding-trigger-status"
+                  className="h-10 rounded-sm border border-[var(--color-hairline)] bg-[var(--color-surface-raised)] px-3 font-mono text-[12px] text-[var(--color-text-primary)] outline-none transition-all duration-[120ms] ease-out focus:border-[var(--color-hairline-strong)] disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </label>
               <div className="flex items-center justify-between gap-4">
-                <p className="text-[12px] text-[var(--color-text-secondary)]">
-                  {data.providerReady
-                    ? "Dispatches the existing experience embedding workflow for a specific locale row."
-                    : "Embedding provider env is missing, so manual dispatch is currently disabled."}
+                <p
+                  id="embedding-trigger-status"
+                  className="text-[12px] text-[var(--color-text-secondary)]"
+                >
+                  {triggerDisabledReason}
                 </p>
                 <button
                   type="submit"
                   disabled={!canTrigger || !data.providerReady}
-                  className="inline-flex h-8 items-center gap-2 rounded-sm bg-[var(--color-brand)] px-3 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] disabled:cursor-not-allowed disabled:opacity-50"
+                  aria-describedby="embedding-trigger-status"
+                  className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-sm bg-[var(--color-brand)] px-3 text-[13px] font-medium text-white transition-all duration-[120ms] ease-out hover:bg-[var(--color-brand-pressed)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-brand)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[var(--color-brand)]"
                 >
                   Run Embedding
                 </button>

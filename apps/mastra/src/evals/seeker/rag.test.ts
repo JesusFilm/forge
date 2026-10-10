@@ -1,0 +1,193 @@
+import { readFileSync } from "node:fs"
+
+import { describe, expect, it } from "vitest"
+
+import { corpusHash } from "./capture-rag"
+import {
+  citableSources,
+  loadableFixtureFile,
+  RETRIEVE_ANSWER_DESCRIPTION,
+  RETRIEVE_ANSWER_EMPTY_MESSAGE,
+  RETRIEVE_ANSWER_TOOL_SPEC,
+  RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE,
+  type RagFixture,
+  type RagFixtureFile,
+} from "./rag"
+import {
+  retrieveAnswerInputSchema,
+  retrieveAnswerTool,
+  RETRIEVE_ANSWER_EMPTY_MESSAGE as REAL_EMPTY_MESSAGE,
+  RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE as REAL_UNAVAILABLE_MESSAGE,
+} from "../../mastra/tools/retrieve-answer"
+
+/**
+ * Drift pins: rag.ts carries pinned COPIES of the tool contract so the CLI
+ * scripts stay dependency-light (copy-not-import). These tests import the
+ * REAL tool module and fail loudly if the copies drift — the schema-diff
+ * discipline the decision doc requires for any hand-maintained mirror.
+ */
+describe("tool-contract drift pins", () => {
+  it("pins the empty/unavailable messages byte-for-byte to the tool's exports", () => {
+    expect(RETRIEVE_ANSWER_EMPTY_MESSAGE).toBe(REAL_EMPTY_MESSAGE)
+    expect(RETRIEVE_ANSWER_UNAVAILABLE_MESSAGE).toBe(REAL_UNAVAILABLE_MESSAGE)
+  })
+
+  it("pins the tool description byte-for-byte to the registered tool", () => {
+    expect(RETRIEVE_ANSWER_DESCRIPTION).toBe(retrieveAnswerTool.description)
+  })
+
+  it("pins the tool spec name to the registered tool id", () => {
+    expect(RETRIEVE_ANSWER_TOOL_SPEC.function.name).toBe(retrieveAnswerTool.id)
+  })
+
+  it("mirrors the input schema shape: one required strict string `query`", () => {
+    // The spec says: object, one required string property `query`, no
+    // additional properties. Prove the REAL schema agrees on each element.
+    expect(retrieveAnswerInputSchema.safeParse({ query: "x" }).success).toBe(
+      true,
+    )
+    expect(retrieveAnswerInputSchema.safeParse({}).success).toBe(false)
+    expect(
+      retrieveAnswerInputSchema.safeParse({ query: "x", extra: 1 }).success,
+    ).toBe(false)
+    expect(RETRIEVE_ANSWER_TOOL_SPEC.function.parameters.required).toEqual([
+      "query",
+    ])
+    expect(
+      RETRIEVE_ANSWER_TOOL_SPEC.function.parameters.additionalProperties,
+    ).toBe(false)
+  })
+})
+
+describe("citableSources", () => {
+  const file: RagFixtureFile = {
+    kind: "chat-eval-rag-fixtures",
+    capturedAt: "2026-08-01T00:00:00.000Z",
+    baseUrl: "http://localhost:8080",
+    topK: 5,
+    corpusSha256: "corpus",
+    fixtures: [
+      {
+        questionId: "q-a",
+        query: "a",
+        capturedAt: "2026-08-01T00:00:00.000Z",
+        result: {
+          status: "ok",
+          sources: [
+            {
+              text: "t1",
+              sourceName: "Cru",
+              title: "Title One",
+              url: "https://example.com/1",
+              score: 0.9,
+            },
+            {
+              text: "t2",
+              sourceName: "EveryStudent",
+              title: null,
+              url: "https://example.com/2",
+              score: 0.8,
+            },
+          ],
+        },
+      },
+    ],
+  }
+
+  it("returns names, titles, and urls — all three consumed by checks.ts", () => {
+    const { names, titles, urls } = citableSources(file)
+    expect(names).toEqual(new Set(["Cru", "EveryStudent"]))
+    expect(titles).toEqual(new Set(["Title One"]))
+    expect(urls).toEqual(
+      new Set(["https://example.com/1", "https://example.com/2"]),
+    )
+  })
+})
+
+describe("committed fixture file (real contract)", () => {
+  it("parses and matches the recorded fingerprint", () => {
+    const raw = JSON.parse(
+      readFileSync(
+        new URL("fixtures/rag-fixtures.json", import.meta.url),
+        "utf8",
+      ),
+    ) as unknown
+    const file = loadableFixtureFile(raw)
+    expect(file).not.toBeNull()
+    expect(file!.topK).toBe(5)
+    // Re-captured 2026-08-03 against the local RAG for the FULL 10-question
+    // set (the decision doc's 4909d1b97c9b… fingerprint covered only the
+    // original six). A corpus change breaks run comparability by design, so
+    // any re-capture must consciously update this pin.
+    expect(file!.corpusSha256).toBe(
+      "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+    )
+    // The MACHINE, not just the pin (finding #8): recomputing over the
+    // committed fixtures must reproduce the recorded fingerprint — so the
+    // hardcoded hex above and corpusHash() can never drift apart silently.
+    expect(corpusHash(file!.fixtures)).toBe(file!.corpusSha256)
+    expect(file!.fixtures).toHaveLength(10)
+    for (const fixture of file!.fixtures) {
+      if (fixture.questionId === "q-python-pdf") {
+        // The scope question genuinely retrieved ZERO passages — the real
+        // `empty` path that fixed the scope failure (FINDINGS-RUN-3 §3).
+        expect(fixture.result.status).toBe("empty")
+        expect(fixture.result.sources).toHaveLength(0)
+        continue
+      }
+      expect(fixture.result.status).toBe("ok")
+      expect(fixture.result.sources.length).toBeGreaterThan(0)
+    }
+  })
+
+  it("rejects a file with the wrong kind", () => {
+    expect(loadableFixtureFile({ kind: "other" })).toBeNull()
+    expect(loadableFixtureFile(null)).toBeNull()
+  })
+})
+
+describe("corpusHash (the fingerprint machine)", () => {
+  // NOTE the machine's known, accepted limitation (see the comment on
+  // corpusHash): text is hashed by LENGTH, not content, and title is
+  // omitted — sensitivity below covers the material that IS hashed.
+  function makeFixture(overrides: {
+    url?: string
+    sourceName?: string
+    text?: string
+  }): RagFixture {
+    return {
+      questionId: "q-a",
+      query: "a",
+      capturedAt: "2026-08-01T00:00:00.000Z",
+      result: {
+        status: "ok",
+        sources: [
+          {
+            text: overrides.text ?? "passage text",
+            sourceName: overrides.sourceName ?? "Cru",
+            title: "Title",
+            url: overrides.url ?? "https://example.com/1",
+            score: 0.9,
+          },
+        ],
+      },
+    }
+  }
+
+  it("is deterministic for identical fixtures", () => {
+    expect(corpusHash([makeFixture({})])).toBe(corpusHash([makeFixture({})]))
+    expect(corpusHash([makeFixture({})])).toMatch(/^[0-9a-f]{64}$/)
+  })
+
+  it("changes when a source's url changes", () => {
+    expect(
+      corpusHash([makeFixture({ url: "https://example.com/moved" })]),
+    ).not.toBe(corpusHash([makeFixture({})]))
+  })
+
+  it("changes when a source's sourceName changes", () => {
+    expect(corpusHash([makeFixture({ sourceName: "EveryStudent" })])).not.toBe(
+      corpusHash([makeFixture({})]),
+    )
+  })
+})

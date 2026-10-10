@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "अनुभवाची सामग्री उपलब्ध नाही.",
+    "failedToLoad": "अनुभव लोड करण्यात अयशस्वी: {message}",
+    "unexpected": "एक अनपेक्षित त्रुटी आली.",
+    "notConfigured": "कंटेंट सेवा संरचित केलेली नाही.",
+    "noContent": "कोणतीही सामग्री उपलब्ध नाही.",
+    "homepageMisconfigured": "वॉच होमपेजमध्ये चुकीची संरचना आहे.",
+    "defaultTemplateMisconfigured": "मूळ वॉच टेम्पलेटमध्ये चुकीची संरचना आहे.",
+    "authFailed": "कंटेंट सेवेसोबत प्रमाणीकरण करण्यात अक्षम. हे समस्या सुरूच राहिल्यास कृपया सपोर्टशी संपर्क साधा.",
+    "pageLoadFailed": "काहीतरी चुकले.",
+    "tryAgain": "पुन्हा प्रयत्न करा"
+  },
+  "VideosPage": {
+    "title": "सर्व व्हिडिओ",
+    "placeholder": "लवकरच कॅटलॉग ब्राउझिंग उपलब्ध होईल. तोपर्यंत शोध वापरा किंवा विषयानुसार URL वापरा."
+  },
+  "BibleQuotes": {
+    "title": "बायबलमधील उद्धरणे",
+    "share": "शेअर करा",
+    "readMore": "अधिक वाचा...",
+    "learnMore": "अधिक जाणून घ्या",
+    "freeResources": "मोफत संसाधने",
+    "promoHeading": "बायबल अधिक सखोल समजून घ्यायचे आहे का?",
+    "joinBibleStudy": "आमच्या बायबल अभ्यासात सहभागी व्हा",
+    "previousQuote": "मागील बायबल उद्धरण",
+    "nextQuote": "पुढील बायबल उद्धरण",
+    "readPassage": "हा उतारा तुमच्या बायबलमध्ये वाचा."
+  },
+  "DownloadButton": {
+    "checking": "तपासत आहे",
+    "download": "डाउनलोड करा",
+    "sessionError": "तुमचे सत्र तपासता आले नाही. कृपया पुन्हा प्रयत्न करा.",
+    "saveVideo": "व्हिडिओ जतन करा"
+  },
+  "DownloadModal": {
+    "dialogTitle": "व्हिडिओ डाउनलोड करा",
+    "eyebrow": "व्हिडिओ डाउनलोड करा",
+    "posterAlt": "व्हिडिओ पोस्टर",
+    "noDownloads": "या व्हिडिओसाठी कोणतेही डाउनलोड उपलब्ध नाहीत.",
+    "fileSizeLabel": "फाइलचा आकार निवडा",
+    "termsAgreementPrefix": "मी  स्वीकारतो/स्वीकारते ",
+    "termsOfUse": "वापराच्या अटी",
+    "termsAgreementSuffix": "",
+    "close": "बंद करा",
+    "download": "डाउनलोड करा",
+    "authRequiredTitle": "हा व्हिडिओ डाउनलोड करायचा आहे का?",
+    "authRequiredBody": "व्हिडिओ डाउनलोड करण्यासाठी मोफत Jesus Film खाते आवश्यक आहे.",
+    "signInToDownload": "डाउनलोड करण्यासाठी साइन इन करा",
+    "keepWatching": "पाहणे सुरू ठेवा",
+    "checking": "तपासत आहे",
+    "closeTermsOfUse": "वापराच्या अटी बंद करा",
+    "cancel": "रद्द करा",
+    "accept": "स्वीकारा",
+    "errorSessionExpired": "तुमचे सत्र कालबाह्य झाले. डाउनलोड करण्यासाठी पुन्हा साइन इन करा.",
+    "errorSessionUnavailable": "तुमचे सत्र तपासता आले नाही. कृपया पुन्हा प्रयत्न करा.",
+    "errorUnavailableSource": "या स्रोतावरून डाउनलोड उपलब्ध नाही",
+    "tierHighest": "सर्वोच्च",
+    "tierHigh": "उच्च",
+    "tierLow": "कमी"
+  },
+  "HeroPlayerControls": {
+    "play": "प्ले",
+    "pause": "थांबवा",
+    "seek": "पुढे-मागे जा",
+    "seekValue": "{current} पैकी {total}",
+    "volume": "आवाज",
+    "volumeValue": "{percent} टक्के",
+    "mute": "म्यूट करा",
+    "unmute": "म्यूट काढा",
+    "changeAudioLanguage": "ऑडिओ भाषा बदला",
+    "enterFullscreen": "पूर्ण स्क्रीनमध्ये जा",
+    "exitFullscreen": "पूर्ण स्क्रीनमधून बाहेर पडा"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "भाषा निवडा",
+    "searchPlaceholder": "भाषा शोधा…",
+    "languages": "भाषा",
+    "noMatches": "जुळणारे काही नाही",
+    "notAvailable": "उपलब्ध नाही"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "भाषा",
+    "dialogTitleWithSubtitles": "भाषा आणि सबटायटल्स",
+    "languageHeading": "भाषा",
+    "subtitlesHeading": "सबटायटल्स",
+    "languageCount": "{count, plural, one {# भाषा} other {# भाषा}}",
+    "requestSent": "विनंती पाठवली",
+    "translateWithAi": "AI ने भाषांतर करा",
+    "noSubtitles": "सबटायटल्स नाहीत",
+    "toggleOn": "चालू",
+    "toggleOff": "बंद",
+    "close": "बंद करा",
+    "apply": "लागू करा",
+    "noLanguageSubtitles": "{language} सबटायटल्स नाहीत",
+    "seeAllLanguages": "सर्व भाषा",
+    "seeAllVideosInLanguage": "सर्व व्हिडिओ: {language}",
+    "retryLoadingLanguages": "भाषा लोड करणे पुन्हा प्रयत्न करा",
+    "notAvailable": "उपलब्ध नाही",
+    "switching": "बदलत आहे..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 भाग} other {# भाग}}",
+    "seriesLabel": "मालिका · {episodes}",
+    "changeAudioLanguage": "ऑडिओ भाषा बदला",
+    "share": "शेअर करा",
+    "languages": "भाषा",
+    "downloadCollection": "संग्रह डाउनलोड करा",
+    "checkingDownloads": "डाउनलोड तपासत आहे…",
+    "downloadSessionError": "तुमचे सत्र तपासता आले नाही. कृपया पुन्हा प्रयत्न करा."
+  },
+  "WatchModal": {
+    "close": "बंद करा"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "जर तुम्ही या व्हिडिओच्या निर्मात्याला एक प्रश्न विचारू शकत असाल, तर तो काय असेल?",
+    "fallbackBody": "ऐकायला तयार असलेल्या व्यक्तीसोबत खासगी चर्चा करा.",
+    "questionsShort": "प्रश्न",
+    "questions": "संबंधित प्रश्न",
+    "askYours": "तुमचा प्रश्न विचारा",
+    "chatWithPerson": "एखाद्या व्यक्तीशी चॅट करा",
+    "askBibleQuestion": "बायबलविषयी प्रश्न विचारा",
+    "quiz": "क्विझ"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "संदेशाचा प्रकार",
+    "fieldLabel": "या व्हिडिओबद्दल प्रश्न विचारा",
+    "send": "प्रश्न पाठवा",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "बायबलविषयी प्रश्न विचारा",
+        "description": "AI शोध वापरून बायबलमधून त्वरित उत्तरे"
+      },
+      "prayerRequest": {
+        "label": "प्रार्थनेची विनंती करा",
+        "description": "तुमच्यासाठी कशासाठी प्रार्थना हवी आहे ते सांगा"
+      },
+      "comment": {
+        "label": "टिप्पणी द्या",
+        "description": "या व्हिडिओबद्दल तुमचे विचार पाठवा"
+      },
+      "personChat": {
+        "label": "एखाद्या व्यक्तीशी चॅट करा",
+        "description": "आता कोणाशी तरी बोला"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "व्हिडिओ शेअर करा",
+    "heading": "हा व्हिडिओ शेअर करा",
+    "posterAlt": "व्हिडिओ पोस्टर",
+    "shareOnFacebook": "Facebook वर शेअर करा",
+    "shareOnFacebookUnavailable": "Facebook वर शेअर करा (या बिल्डमध्ये उपलब्ध नाही)",
+    "shareOnX": "X वर शेअर करा",
+    "shareOnXUnavailable": "X वर शेअर करा (या बिल्डमध्ये उपलब्ध नाही)",
+    "shareDisabledHint": "शेअरिंगसाठी प्रकाशित पृष्ठ आवश्यक आहे — हा व्हिडिओ प्रोडक्शनमध्ये आल्यावर ते कार्य करेल.",
+    "shareFormat": "शेअर स्वरूप",
+    "shareLinkTab": "लिंक शेअर करा",
+    "embedCodeTab": "एम्बेड कोड",
+    "copyFailed": "आपोआप कॉपी करता आले नाही — खालील मजकूर निवडा आणि हाताने कॉपी करा.",
+    "copyLink": "लिंक कॉपी करा",
+    "copyCode": "कोड कॉपी करा",
+    "copied": "कॉपी केले",
+    "close": "बंद करा"
+  },
+  "SubtitleTranscript": {
+    "heading": "प्रतिलेख",
+    "subheading": "त्या क्षणावर जाण्यासाठी कोणतीही ओळ टॅप करा.",
+    "subtitleLanguage": "सबटायटल भाषा",
+    "aiSuffix": " · AI",
+    "loading": "प्रतिलेख लोड होत आहे…",
+    "unavailable": "या सबटायटल ट्रॅकसाठी प्रतिलेख उपलब्ध नाही.",
+    "empty": "प्रतिलेखाच्या ओळी सापडल्या नाहीत."
+  },
+  "FloatingSearch": {
+    "placeholder": "विषय शोधा किंवा ब्राउझ करा…",
+    "openSearch": "व्हिडिओ शोधा",
+    "searchRegion": "व्हिडिओ शोधा",
+    "clearSearch": "शोध साफ करा",
+    "changeAudioLanguage": "ऑडिओ भाषा बदला",
+    "home": "JesusFilm मुख्यपृष्ठ",
+    "closeSearch": "शोध बंद करा",
+    "submitSearch": "शोधा",
+    "library": "लायब्ररी"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "व्हिडिओ शोधा आणि ब्राउझ करा",
+    "home": "JesusFilm मुख्यपृष्ठ",
+    "placeholder": "विषय शोधा किंवा ब्राउझ करा…",
+    "inputLabel": "कीवर्डनुसार व्हिडिओ शोधा",
+    "searchFailed": "शोध अयशस्वी झाला. कृपया पुन्हा प्रयत्न करा.",
+    "loadMoreFailed": "अधिक निकाल लोड करण्यात अयशस्वी.",
+    "searching": "शोधत आहे...",
+    "connectionHint": "कृपया तुमचे कनेक्शन तपासा आणि पुन्हा प्रयत्न करा.",
+    "rateLimitHint": "खूप विनंत्या झाल्या. कृपया एका मिनिटाने पुन्हा प्रयत्न करा.",
+    "retrySearch": "शोध पुन्हा करा",
+    "retry": "पुन्हा प्रयत्न करा",
+    "noResults": "\"{query}\" साठी कोणतेही निकाल नाहीत",
+    "tryDifferentKeywords": "वेगवेगळे कीवर्ड वापरा किंवा श्रेणी ब्राउझ करा",
+    "loading": "लोड होत आहे...",
+    "loadMore": "अधिक लोड करा",
+    "categoryBibleStories": "बायबल कथा",
+    "categoryParables": "उपमे",
+    "categoryAnimated": "अॅनिमेटेड",
+    "categoryStudy": "अभ्यास",
+    "categoryFamily": "कुटुंब",
+    "categoryChristmas": "ख्रिसमस",
+    "searchLanguageLabel": "शोध भाषा",
+    "allLanguages": "सर्व भाषा",
+    "searchSuggestions": "सुचवलेले शोध",
+    "directMatches": "थेट जुळणारे निकाल",
+    "languages": "भाषा",
+    "recommendedLanguage": "शिफारस केलेली भाषा",
+    "searchSuggestion": "{suggestion} शोधा",
+    "searchSuggestionWithLanguage": "{language} मध्ये “{suggestion}” शोधा",
+    "inLanguage": "{language} मध्ये",
+    "browseByRegion": "प्रदेशानुसार ब्राउझ करा",
+    "allVideosOnSinglePage": "सर्व व्हिडिओ एका पानावर",
+    "clearLanguages": "साफ करा",
+    "queryLanguageDetected": "{language} आढळले",
+    "searchInLanguage": "{language} मध्ये शोधा",
+    "tryDifferentKeywordsOrLanguage": "वेगवेगळे कीवर्ड वापरून पाहा किंवा दुसरी शोध भाषा निवडा",
+    "useWebsiteDefaultLanguage": "वेबसाइटची मूळ शोध भाषा वापरा",
+    "removeLanguage": "{language} काढा",
+    "browseMode": "शोध ब्राउझ मोड",
+    "searchingInLanguage": "{language} मधील निकाल"
+  },
+  "HeroPlayer": {
+    "playWithSound": "आता पहा",
+    "tapToUnmute": "आवाज सुरू करण्यासाठी टॅप करा",
+    "nextEpisode": "पुढील भाग",
+    "audioTranslationCount": "{count, plural, one {# भाषा} other {# भाषा}}",
+    "subtitleCount": "सबटायटल्स: {count, plural, one {# भाषा} other {# भाषा}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "सामग्री लोड होत आहे",
+    "loadingVideo": "व्हिडिओ लोड होत आहे"
+  },
+  "VideoLabels": {
+    "video": "व्हिडिओ",
+    "segment": "भाग",
+    "episode": "भाग",
+    "featureFilm": "फीचर फिल्म",
+    "shortFilm": "शॉर्ट फिल्म",
+    "series": "मालिका",
+    "collection": "संग्रह",
+    "trailer": "ट्रेलर",
+    "behindTheScenes": "पडद्यामागे",
+    "chapter": "अध्याय"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "क्लिप {current} पैकी {total}",
+    "position": "{current} पैकी {total}",
+    "chapterCount": "{count, plural, one {# अध्याय} other {# अध्याय}}",
+    "clipAriaLabel": "{title} · क्लिप {current} पैकी {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# अध्याय} other {# अध्याय}}",
+    "chapter": "अध्याय",
+    "noImage": "प्रतिमा नाही",
+    "playingNow": "आता चालू आहे",
+    "previousChapter": "मागील अध्याय",
+    "nextChapter": "पुढील अध्याय",
+    "thumbnailAlt": "{title} चे थंबनेल",
+    "relatedVideoThumbnail": "संबंधित व्हिडिओ थंबनेल"
+  },
+  "SearchResultCard": {
+    "experience": "अनुभव",
+    "episodeCount": "{count, plural, one {# भाग} other {# भाग}}",
+    "thumbnailAlt": "व्हिडिओ थंबनेल"
+  },
+  "Feedback": {
+    "openForm": "अभिप्राय फॉर्म उघडा",
+    "label": "अभिप्राय",
+    "couldNotLoad": "अभिप्राय फॉर्म लोड होऊ शकला नाही.",
+    "loadingForm": "अभिप्राय फॉर्म लोड होत आहे…",
+    "retry": "पुन्हा प्रयत्न करा",
+    "cancel": "रद्द करा",
+    "closeForm": "अभिप्राय फॉर्म बंद करा",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} मधील मोफत ख्रिस्ती व्हिडिओ | Jesus Film Project",
+    "metadataDescription": "{language} मधील डब केलेल्या ऑडिओसह किंवा सबटायटल्ससह Jesus films, बायबल कथा, शिष्यत्व मालिका आणि outreach व्हिडिओ शोधा.",
+    "heroTitle": "{language} मधील मोफत ख्रिस्ती व्हिडिओ",
+    "heroDescription": "{language} मध्ये उपलब्ध Jesus films, बायबल कथा, शिष्यत्व मालिका आणि outreach व्हिडिओ शोधा. पूर्ण डब केलेले व्हिडिओ आधी दाखवले जातील, आणि खाली फक्त सबटायटल्सचे पर्याय आहेत.",
+    "languageCollection": "भाषा संग्रह",
+    "itemCount": "{count, plural, one {# आयटम} other {# आयटम्स}}",
+    "videoCount": "{count, plural, one {# व्हिडिओ} other {# व्हिडिओ}}",
+    "videosInGroups": "{videoCount, plural, one {# व्हिडिओ} other {# व्हिडिओ}} in {groupCount, plural, one {# गट} other {# गट}}",
+    "sectionNavLabel": "भाषा इन्व्हेंटरी विभाग",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "नवीन",
+    "videoBible": "व्हिडिओ बायबल",
+    "bibleProject": "BibleProject",
+    "sports": "क्रीडा",
+    "collections": "संग्रह",
+    "subtitlesOnly": "फक्त सबटायटल्स",
+    "backToTop": "वर परत",
+    "newlyAdded": "नवीन जोडलेले",
+    "newVideosTitle": "{language} मधील नवीन ख्रिस्ती व्हिडिओ",
+    "newestFirst": "नवीनतम पहिले",
+    "noPublishedVideos": "या भाषेसाठी अद्याप कोणतेही प्रकाशित व्हिडिओ सापडले नाहीत.",
+    "bibleAndGospelFilms": "बायबल आणि सुवार्ता चित्रपट",
+    "videoBibleCollectionsTitle": "{language} व्हिडिओ बायबल संग्रह",
+    "videoBibleDescription": "{language} मधील LUMO, JESUS, Magdalena, आणि Acts यांसारखे शास्त्र-केंद्रित संग्रह.",
+    "noVideoBibleCollections": "या भाषेसाठी अद्याप कोणतेही व्हिडिओ बायबल संग्रह उपलब्ध नाहीत.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject संग्रह",
+    "bibleProjectDescription": "{language} मध्ये उपलब्ध BibleProject मालिका आणि अभ्यास.",
+    "noBibleProjectCollections": "या भाषेसाठी अद्याप कोणतेही BibleProject संग्रह उपलब्ध नाहीत.",
+    "sportsStories": "क्रीडा कथा",
+    "sportsTitle": "{language} मधील क्रीडा आणि खेळाडू कथा",
+    "sportsDescription": "{language} मध्ये उपलब्ध विश्वास-केंद्रित क्रीडा कथा आणि खेळाडू-केंद्रित संग्रह.",
+    "noSportsCollections": "या भाषेसाठी अद्याप कोणतेही क्रीडा किंवा खेळाडू-कथा संग्रह उपलब्ध नाहीत.",
+    "fullyDubbed": "पूर्ण डब केलेले",
+    "dubbedVideosTitle": "संग्रहानुसार {language} व्हिडिओ",
+    "dubbedVideosDescription": "सुलभ शोधासाठी संग्रहासह गटबद्ध केलेले पूर्ण डब केलेले {language} व्हिडिओ ब्राउझ करा.",
+    "noDubbedVideos": "या भाषेसाठी अद्याप कोणतेही पूर्ण डब केलेले व्हिडिओ उपलब्ध नाहीत.",
+    "subtitlesAvailable": "सबटायटल्स उपलब्ध",
+    "subtitlesTitle": "सबटायटल्ससह {language} व्हिडिओ",
+    "subtitlesDescription": "जेव्हा बोललेले {language} ऑडिओ अद्याप उपलब्ध नसते, तेव्हा या व्हिडिओंमध्ये {language} सबटायटल्स असतात.",
+    "noSubtitleVideos": "या भाषेसाठी अद्याप फक्त सबटायटल्स असलेले व्हिडिओ उपलब्ध नाहीत.",
+    "dubbed": "डब केलेले",
+    "subtitles": "सबटायटल्स",
+    "newLabel": "नवीन",
+    "fromCollection": "{collection} मधून",
+    "standaloneVideos": "स्वतंत्र व्हिडिओ",
+    "videosFromCollection": "{collection} मधील व्हिडिओ.",
+    "standaloneDescription": "या भाषेतील स्वतंत्र व्हिडिओ.",
+    "openCollection": "संग्रह उघडा",
+    "filters": "फिल्टर",
+    "filterLength": "लांबी",
+    "filterLength_under5": "5 मिनिटांपेक्षा कमी",
+    "filterLength_5to10": "5-10 मिनिटे",
+    "filterLength_10to30": "10-30 मिनिटे",
+    "filterLength_over30": "30 मिनिटांपेक्षा जास्त",
+    "filterType": "प्रकार",
+    "clearFilters": "फिल्टर साफ करा",
+    "filterResults": "{total} पैकी {count} दाखवले",
+    "noFilterResults": "या फिल्टरशी कोणताही व्हिडिओ जुळत नाही. एक काढून पहा.",
+    "filterAdded": "जोडले",
+    "filterAdded_60d": "गेल्या 60 दिवस",
+    "filterAdded_6m": "गेल्या 6 महिने",
+    "filterAdded_12m": "गेल्या 12 महिने"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project पाहा",
+    "watch": "पाहा",
+    "watchNow": "आत्ताच पहा",
+    "mutePreview": "पूर्वदृश्य म्यूट करा",
+    "unmutePreview": "पूर्वदृश्याचा आवाज सुरू करा",
+    "nextVideo": "पुढील व्हिडिओ",
+    "featured": "वैशिष्ट्यपूर्ण",
+    "showVideo": "{title} दाखवा",
+    "previousVideoPreview": "मागील व्हिडिओ पूर्वदृश्य",
+    "nextVideoPreview": "पुढील व्हिडिओ पूर्वदृश्य",
+    "mediaCollection": "मीडिया संग्रह",
+    "scrollToVideo": "{title} व्हिडिओकडे स्क्रोल करा",
+    "forYou": "तुमच्यासाठी"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project मुख्यपृष्ठ",
+    "navigation": "तळटीप नेव्हिगेशन",
+    "share": "शेअर करा",
+    "watch": "पाहा",
+    "giving": "देणगी",
+    "about": "आमच्याबद्दल",
+    "products": "उत्पादने",
+    "resources": "संसाधने",
+    "partners": "भागीदार",
+    "contact": "संपर्क",
+    "giveNow": "आत्ताच द्या",
+    "resourcesVersion": "संसाधने ({version})",
+    "office": "कार्यालय",
+    "fax": "फॅक्स",
+    "privacyPolicy": "गोपनीयता धोरण",
+    "legalStatement": "कायदेशीर निवेदन",
+    "newsletter": "आमच्या न्यूजलेटरसाठी नोंदणी करा",
+    "aiAttributionHeading": "एआय वापर आणि श्रेय",
+    "aiAttributionBody": "या पानावरील माहितीचा कृत्रिम बुद्धिमत्ता प्रणालींनी वापर करण्यासाठी श्रेय देणे आवश्यक आहे. कोणताही AI agent, large language model (LLM), AI search engine, crawler, किंवा संबंधित स्वयंचलित प्रणाली जी प्रशिक्षण, retrieval, response generation, किंवा वापरकर्त्यांना किंवा ग्राहकांना दिल्या जाणाऱ्या सेवांसाठी या पानावरील माहिती काढते किंवा वापरते, तिने Jesus Film Project यास स्रोत म्हणून ओळख द्यावी आणि ही माहिती जिथे वापरली किंवा सादर केली जाते तिथे या पानाची स्पष्ट, थेट लिंक समाविष्ट करावी. आमच्या <terms>वापराच्या अटी</terms> पहा."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "जागतिक मिशनसाठी तयार केलेले",
+    "title": "संदेश बदलत नाही. लोक तो कसा पाहतात ते बदलते.",
+    "description": "आम्ही आमची व्हिडिओ लायब्ररी आणि साधने नव्याने उभारत आहोत, दशकांचे भाषांतरकार्य ज्या प्लॅटफॉर्मवर लोक आधीच एकत्र येतात, पाहतात आणि शेअर करतात, त्यांच्याशी जोडत आहोत.",
+    "translatedLibraryTitle": "जगातील सर्वाधिक भाषांत अनुवादित चित्रपट लायब्ररी",
+    "translatedLibraryDescription": "विश्वसनीय मंत्रालय भागीदारांच्या मदतीने केलेल्या दशकांच्या भाषांतरकार्यामुळे हजारो भाषा-ट्रॅक असलेली एक लायब्ररी तयार झाली आहे, ज्यामुळे लोकांना येशूची कहाणी त्यांच्या हृदयापर्यंत पोहोचणाऱ्या भाषेत अनुभवता येते.",
+    "trustedVoicesTitle": "विश्वसनीय आवाजांना नव्या स्वरूपात घेऊन जाणे",
+    "trustedVoicesDescription": "आम्ही सुवार्तेच्या कथा दृश्यरूपात कशा सांगायच्या हे नव्याने उभारत आहोत, विश्वासार्ह भाषांतरांना आधुनिक स्वरूपांशी जोडत आहोत, जेणेकरून संदेश प्लॅटफॉर्म, संस्कृती आणि स्क्रीनवर मुक्तपणे जाऊ शकेल.",
+    "missionTeamTitle": "फक्त लायब्ररी नाही. मिशन-केंद्रित टीम.",
+    "missionTeamDescription": "Jesus Film Project ही अनुवादक, मीडिया तज्ज्ञ, संपादक आणि निर्माते यांची एक जागतिक टीम आहे, जी दशकांचा मंत्रालय अनुभव सर्वत्र शिष्य घडवणाऱ्यांसाठी साधनांमध्ये रूपांतरित करत आहे.",
+    "buildingNext": "आम्ही पुढे काय उभारत आहोत",
+    "nextStepsTitle": "पुढील पायऱ्यांचे प्लॅटफॉर्म",
+    "nextStepsDescription": "दर्शकांना त्यांच्या आध्यात्मिक प्रवासातील ठोस संधींशी जोडा, त्यांना समुदाय, शास्त्रलेखन किंवा मिशनकडे पुढचे पाऊल टाकण्यास मदत करा.",
+    "mediaLibraryTitle": "सुवार्तिक मीडिया लायब्ररी",
+    "mediaLibraryDescription": "जगभर मंत्रालय आणि सुवार्ताप्रसारासाठी अनेक भाषांमध्ये उपलब्ध हजारो व्हिडिओ, चित्रपट आणि संसाधनांची विस्तृत ख्रिस्ती मीडिया लायब्ररी.",
+    "ministryToolsTitle": "मंत्रालयांसाठी डिजिटल साधने",
+    "ministryToolsDescription": "मंत्रालयांना अधिक लोकांपर्यंत प्रभावीपणे पोहोचण्यासाठी मदत करणारे व्हिडिओ व्यवस्थापन, सामग्री वितरण, प्रेक्षक सहभाग आणि विश्लेषण.",
+    "invitationEyebrow": "आपले स्वागत आहे",
+    "invitationTitle": "मिशन साधनांची <highlight>पुढची पिढी</highlight> उभारण्यात मदत करा",
+    "invitationDescription": "आम्ही प्रॅक्टिशनर्स, निर्माते आणि भागीदारांना लवकर प्रवेशासाठी आमंत्रित करत आहोत. नवीन साधने आधी वापरून पाहा, अभिप्राय द्या, आणि खऱ्या मिशन कार्यासाठी बनवलेल्या उत्पादनांना आकार द्या.",
+    "betaTester": "बीटा टेस्टर बना"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "व्हिडिओ बायबल संग्रह",
+    "gospelRailTitle": "संपूर्ण कथा शोधा",
+    "videoBibleDescription": "आमचा व्हिडिओ आणि संसाधनांचा संग्रह शोधा, जो आकर्षक कथा आणि शिकवणीद्वारे बायबल जिवंत करतो.",
+    "showcaseTitle": "चित्रपटातून सांगितलेले शास्त्र",
+    "adventEyebrow": "ख्रिसमस आगमन",
+    "adventTitle": "ख्रिसमस आगमन उलटमोजणी",
+    "adventDescription": "दररोजच्या व्हिडिओसह आमच्या आगमन प्रवासात सहभागी व्हा, जो ख्रिसमससाठीची उत्कंठा वाढवतो आणि येशूच्या आगमनातील आशा, आनंद आणि वचनाचा शोध घेतो.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject आगमन",
+    "nuaEyebrow": "NUA मालिका",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth मालिका",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "व्हिडिओ कोर्स",
+    "journeyWithJesusTitle": "येशूसोबत प्रवास",
+    "gospelsOnVideoEyebrow": "प्रत्येक सुवार्ता, व्हिडिओवर सांगितलेली",
+    "scriptureAsWrittenTitle": "शास्त्र, जसे लिहिले आहे तसेच बोललेले",
+    "merryChristmas": "ख्रिसमसच्या हार्दिक शुभेच्छा!",
+    "daysUntilChristmas": "{count, plural, one {ख्रिसमसला अजून # दिवस बाकी} other {ख्रिसमसला अजून # दिवस बाकी}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "भाषा",
+    "metadataDescription": "JesusFilm व्हिडिओ भाषाानुसार ब्राउझ करा.",
+    "eyebrow": "पाहण्याच्या भाषा",
+    "title": "भाषा निवडा",
+    "description": "प्रदेशानुसार भाषा शोधा किंवा पूर्ण यादी ब्राउझ करा.",
+    "searchPlaceholder": "भाषा किंवा देश शोधा...",
+    "searchLabel": "भाषा किंवा देश शोधा",
+    "clearSearch": "शोध साफ करा",
+    "browse": "ब्राउझ करा",
+    "browseByRegion": "प्रदेश आणि देशानुसार ब्राउझ करा",
+    "languageCount": "{count, plural, one {# भाषा} other {# भाषा}}",
+    "region": "प्रदेश",
+    "countryLanguages": "{country} च्या भाषा",
+    "showLess": "कमी दाखवा",
+    "showMore": "आणखी {count} दाखवा",
+    "noLanguages": "कोणत्याही भाषा सापडल्या नाहीत",
+    "tryAnotherSearch": "दुसरी शोध संज्ञा वापरून पाहा."
+  },
+  "WatchHistory": {
+    "metadataTitle": "पाहण्याचा इतिहास | Jesus Film Project",
+    "title": "पाहण्याचा इतिहास",
+    "loading": "इतिहास लोड होत आहे",
+    "empty": "इथे अजून काही नाही",
+    "emptyDescription": "तुम्ही साइन इन असताना पाहिलेले व्हिडिओ इथे दिसतील.",
+    "earlier": "पूर्वी",
+    "today": "आज",
+    "yesterday": "काल"
+  },
+  "AccountControl": {
+    "account": "खाते",
+    "accountMenu": "खाते मेनू",
+    "signIn": "साइन इन करा",
+    "signOut": "साइन आउट करा",
+    "signedIn": "साइन इन केले आहे",
+    "history": "इतिहास",
+    "logOut": "लॉग आउट करा"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "पृष्ठ सापडले नाही",
+    "eyebrow": "पृष्ठ सापडले नाही",
+    "screenReaderPrefix": "पृष्ठ सापडले नाही:",
+    "title": "हे दृश्य इथे नाही.",
+    "description": "पृष्ठ हलवले गेले असेल, पण कथा सुरूच आहे.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "पृष्ठ सापडले नाही क्रिया",
+    "backToWatch": "पुन्हा Watch वर जा",
+    "browseVideos": "व्हिडिओ ब्राउझ करा"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% जुळते",
+    "none": "या भाषेत या व्हिडिओसाठी कोणत्याही शिफारसी सापडल्या नाहीत."
+  },
+  "BetaTesterModal": {
+    "title": "बीटा टेस्टर बना",
+    "trigger": "बीटा टेस्टर बना",
+    "loadFailed": "काहीतरी चुकले.",
+    "loading": "लोड होत आहे...",
+    "openFormNewTab": "फॉर्म नवीन टॅबमध्ये उघडा",
+    "close": "बंद करा",
+    "iframeTitle": "बीटा टेस्टर बना"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "संग्रह डाउनलोड करा",
+    "eyebrow": "संग्रह डाउनलोड करा",
+    "description": "भाषा आणि गुणवत्ता एकदाच निवडा. उपलब्ध असलेला प्रत्येक भाग क्रमाने डाउनलोड होईल.",
+    "signInTitle": "डाउनलोड करण्यासाठी साइन इन करा",
+    "signInBody": "Jesus Film खात्याने साइन इन केल्यानंतर संग्रह डाउनलोड करता येतील.",
+    "signIn": "डाउनलोड करण्यासाठी साइन इन करा",
+    "languageLabel": "भाषा",
+    "qualityLabel": "व्हिडिओ गुणवत्ता",
+    "tierHighest": "सर्वोच्च",
+    "tierHigh": "उच्च",
+    "tierLow": "कमी",
+    "loading": "उपलब्ध भाग शोधत आहे…",
+    "loadError": "या भाषेसाठी डाउनलोड लोड करता आले नाहीत.",
+    "retry": "पुन्हा प्रयत्न करा",
+    "noDownloads": "या भाषेत डाउनलोड करण्यासाठी कोणतेही भाग उपलब्ध नाहीत.",
+    "availableCount": "{count, plural, one {# भाग तयार आहे} other {# भाग तयार आहेत}}",
+    "skippedCount": "{count, plural, one {# भाग उपलब्ध नसल्यामुळे वगळला जाईल} other {# भाग उपलब्ध नसल्यामुळे वगळले जातील}}",
+    "chooseFolder": "डाउनलोड फोल्डर निवडा",
+    "folderSelected": "{name} मध्ये जतन करा",
+    "folderError": "डाउनलोड फोल्डर उघडता आला नाही.",
+    "browserFallback": "तुमचा ब्राउझर त्याच्या नेहमीच्या डाउनलोड सेटिंग्जनुसार प्रत्येक फाइल जतन करेल. तो तुम्हाला एकापेक्षा जास्त डाउनलोडना परवानगी देण्यास सांगू शकतो.",
+    "sessionError": "तुमचे सत्र तपासता आले नाही. कृपया पुन्हा प्रयत्न करा.",
+    "downloading": "{title} डाउनलोड होत आहे",
+    "progress": "{total} पैकी {completed}",
+    "complete": "डाउनलोड पूर्ण झाले",
+    "canceled": "डाउनलोड रद्द केले",
+    "failedCount": "{count, plural, one {# भाग डाउनलोड होऊ शकला नाही} other {# भाग डाउनलोड होऊ शकले नाहीत}}. संग्रहाचा पुन्हा प्रयत्न करण्यासाठी पुन्हा डाउनलोड करा निवडा.",
+    "close": "बंद करा",
+    "cancel": "रद्द करा",
+    "start": "सर्व डाउनलोड करा",
+    "downloadAgain": "पुन्हा डाउनलोड करा",
+    "retryFailed": "अयशस्वी डाउनलोडचा पुन्हा प्रयत्न करा"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "भाषा आवृत्ती उपलब्ध नाही",
+    "eyebrow": "भाषा आवृत्ती उपलब्ध नाही",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> भाषेत उपलब्ध नाही",
+    "actionsLabel": "उपलब्ध पाहण्याचे पर्याय",
+    "browseInLanguage": "{language} भाषेतील व्हिडिओ ब्राउझ करा",
+    "backToSearch": "शोधाकडे परत जा",
+    "audioVersionsTitle": "इतर ऑडिओ आवृत्त्या",
+    "audioVersionsDescription": "हा व्हिडिओ पाहणे सुरू ठेवण्यासाठी ऑडिओ भाषा निवडा.",
+    "languageVersionLabel": "ऑडिओ भाषा",
+    "selectLanguageVersion": "भाषा आवृत्ती निवडा",
+    "watchSelectedVersion": "निवडलेली आवृत्ती पहा"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "कुकी पर्याय",
+    "bannerTitle": "तुमचे गोपनीयता पर्याय",
+    "bannerDescription": "आवश्यक कुकीज Watch ला सुरक्षित ठेवतात आणि नीट कार्यरत ठेवतात. तुमच्या परवानगीने, एक ऐच्छिक प्रथम-पक्ष कुकी शिफारसी वैयक्तिक करण्यासाठी भेटींमधील आवडी लक्षात ठेवू शकते. कोणत्याही पर्यायात संदर्भाधारित शिफारसी उपलब्ध राहतील.",
+    "acceptAll": "सर्व स्वीकारा",
+    "essentialOnly": "फक्त आवश्यक",
+    "manageChoices": "पर्याय व्यवस्थापित करा",
+    "savingChoice": "कुकी निवड जतन करत आहे",
+    "settings": "कुकी सेटिंग्ज",
+    "settingsDescription": "भेटींमधून शिफारसींसाठीच्या आवडी Watch ने लक्षात ठेवाव्यात की नाही ते निवडा. तुम्ही हे कधीही बदलू शकता.",
+    "essentialCookies": "आवश्यक कुकीज",
+    "essentialDescription": "सुरक्षा, प्लेबॅक, गोपनीयता पर्याय आणि शिफारस विनंतीचे श्रेयांकन.",
+    "alwaysActive": "नेहमी सक्रिय",
+    "personalization": "वैयक्तिकरण",
+    "personalizationDescription": "भेटींमधील मर्यादित आवडी लक्षात ठेवा. हे बंद केल्यावरही संदर्भाधारित शिफारसी उपलब्ध राहतील.",
+    "erasurePending": "प्रोफाइल हटवण्याची प्रक्रिया प्रलंबित आहे. संदर्भाधारित शिफारसी आधीपासून सक्रिय आहेत.",
+    "cancel": "रद्द करा",
+    "saveChoices": "पर्याय जतन करा",
+    "saving": "जतन करत आहे…",
+    "loadError": "तुमचा पर्याय लोड करता आला नाही. तरीही तुम्ही खाली निवड करू शकता.",
+    "grantError": "वैयक्तिकरण सक्षम करता आले नाही. फक्त आवश्यक पर्याय उपलब्ध राहील.",
+    "saveError": "तुमचा पर्याय जतन करता आला नाही. कृपया पुन्हा प्रयत्न करा."
+  }
+}

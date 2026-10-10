@@ -4,10 +4,10 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 
 ## Core model
 
-- Canonical content lives in Strapi.
-- `apps/cms` GraphQL schema drives contracts.
-- `packages/graphql` is the typed client layer.
-- `apps/web` and `apps/mobile` consume `packages/graphql`.
+- Web, mobile, and TV read from admin.
+- `apps/admin` GraphQL schema drives contracts for `apps/web` via `packages/admin-graphql`.
+- `apps/admin` GraphQL schema drives contracts for consumers via `packages/admin-graphql`.
+- Both typed-client packages emit gql.tada introspection; never hand-edit `*-env.d.ts` outputs.
 - Deploy on Railway with Cloudflare edge controls.
 
 ## Execution checklist
@@ -15,8 +15,10 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - Check `docs/roadmap/` for a relevant ticket before starting.
 - If a ticket exists, set `status: "in-progress"` before making changes.
 - If no ticket exists, create one in the correct lane using the next sequential `feat-NNN` ID and the format defined in `CLAUDE.md`.
-- Check `docs/solutions/` for prior patterns and `todos/` for unresolved findings when they apply to your scope.
+- `docs/solutions/` is the searchable knowledge store for past bugs, patterns, and decisions, organized by category with YAML frontmatter (`module`, `tags`, `problem_type`); relevant when implementing or debugging documented areas. Check `todos/` for unresolved findings when they apply to your scope.
+- Use `CONCEPTS.md` for shared domain vocabulary when orienting to content, search, embeddings, and media concepts.
 - Read the package-local guide for the area you are changing before editing.
+- For frontend changes, verify the change did not degrade page-loading performance; visual smoke alone is not enough when rendering, hydration, media, routing, or client-side initialization changed.
 - Before pushing or opening/updating a PR, run PR-focused validation for the touched scope, including format and CI-sensitive checks.
 - When the work is done, update the roadmap ticket to `status: "complete"`. Create a follow-up `feat-NNN` ticket if additional work is discovered.
 
@@ -32,20 +34,31 @@ Use this file as the quick execution map. `CLAUDE.md` holds the detailed repo co
 - Keep roadmap files in `docs/roadmap/` with YAML frontmatter.
 - Keep dependencies bidirectional: if a feature `depends_on` another feature, add the reverse entry to `blocks`.
 - Keep feature bodies agent-optimized: exact file paths, grep patterns, types, constraints, and verification.
+- For recommendation scope, read `docs/reports/2026-10-02-recommendation-roadmap-closeout.md` before reviving historical requirements. `cancelled` retires scope with a reason; it does not establish implementation or authorize removing working behavior.
 
 ## Boundaries
 
+- Recommendations and product analytics require no consent prerequisite. Preserve the configured Watch GA and Datadog integrations; follow `docs/analytics-and-recommendation-policy.md` when planning or changing either area.
+- For recommendation health, empty/partial rows or sparse co-watch coverage, apply the October 2 owner decision in `docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`: coverage limitations are accepted outcomes and do not block proceeding; classify server failures separately.
 - One PR should stay within one scope unless explicitly broadened.
 - No cross-imports between app contexts.
 - Never hand-edit generated GraphQL env/types outputs.
-- If the CMS schema changes, regenerate GraphQL types in the same PR.
+- If the admin Pothos schema changes, regenerate `apps/admin/schema.graphql` AND `packages/admin-graphql` types in the same PR.
+- Production deploys must go through the normal PR-to-main flow. Do not run
+  `railway up`, trigger Railway redeploys, or otherwise publish local worktree
+  code directly to production unless the user explicitly declares a break-glass
+  emergency and names the target service/environment in that same request.
 
 ## Package guidance
 
 - `apps/web/AGENTS.md` + `apps/web/CLAUDE.md`
-- `apps/cms/AGENTS.md` + `apps/cms/CLAUDE.md`
 - `apps/manager/AGENTS.md` + `apps/manager/CLAUDE.md`
 - `apps/admin/AGENTS.md` + `apps/admin/CLAUDE.md`
 - `apps/mobile/CLAUDE.md`
+- `apps/tv/CLAUDE.md`
 - `apps/roadmap/CLAUDE.md`
-- `packages/graphql/AGENTS.md` + `packages/graphql/CLAUDE.md`
+- `apps/chat/AGENTS.md` + `apps/chat/CLAUDE.md`
+- `apps/rag/AGENTS.md` (canonical) + `apps/rag/CLAUDE.md` (provider redirect)
+- `packages/rag-contracts/AGENTS.md` (canonical) + `packages/rag-contracts/CLAUDE.md` (provider redirect)
+- `docs/roadmap/rag/CLAUDE.md`
+- `packages/admin-graphql/CLAUDE.md`

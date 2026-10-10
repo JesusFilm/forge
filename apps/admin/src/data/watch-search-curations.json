@@ -1,0 +1,257 @@
+{
+  "schemaVersion": "watch-search-curations/v1",
+  "curations": [
+    {
+      "id": "rescue-project-visual-vernacular-intro",
+      "key": "rescue-project-visual-vernacular-intro",
+      "targetVideoCoreId": "13_0-RPGospelIntro",
+      "scope": "PUBLISHED_LOCALES",
+      "position": 1,
+      "enabled": true,
+      "aliases": [
+        {
+          "id": "rescue-project-en",
+          "query": "Rescue Project",
+          "normalizedQuery": "rescue project",
+          "locale": null,
+          "source": "EDITORIAL",
+          "translationModel": null,
+          "sourceTextDigest": null,
+          "generatedAt": null,
+          "active": true
+        },
+        {
+          "id": "rescue-project-ar",
+          "query": "مشروع الإنقاذ",
+          "normalizedQuery": "مشروع الإنقاذ",
+          "locale": "ar",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-bn",
+          "query": "উদ্ধার প্রকল্প",
+          "normalizedQuery": "উদ্ধার প্রকল্প",
+          "locale": "bn",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-de",
+          "query": "Rettungsprojekt",
+          "normalizedQuery": "rettungsprojekt",
+          "locale": "de",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-fa",
+          "query": "پروژه نجات",
+          "normalizedQuery": "پروژه نجات",
+          "locale": "fa",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-fil",
+          "query": "Proyektong Pagsagip",
+          "normalizedQuery": "proyektong pagsagip",
+          "locale": "fil",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-fr",
+          "query": "Projet de sauvetage",
+          "normalizedQuery": "projet de sauvetage",
+          "locale": "fr",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-he",
+          "query": "פרויקט ההצלה",
+          "normalizedQuery": "פרויקט ההצלה",
+          "locale": "he",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-hi",
+          "query": "बचाव परियोजना",
+          "normalizedQuery": "बचाव परियोजना",
+          "locale": "hi",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-id",
+          "query": "Proyek Penyelamatan",
+          "normalizedQuery": "proyek penyelamatan",
+          "locale": "id",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-ja",
+          "query": "救済プロジェクト",
+          "normalizedQuery": "救済プロジェクト",
+          "locale": "ja",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-kk",
+          "query": "Құтқару жобасы",
+          "normalizedQuery": "құтқару жобасы",
+          "locale": "kk",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-ko",
+          "query": "구조 프로젝트",
+          "normalizedQuery": "구조 프로젝트",
+          "locale": "ko",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-mn",
+          "query": "Авралын төсөл",
+          "normalizedQuery": "авралын төсөл",
+          "locale": "mn",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-pt",
+          "query": "Projeto de Resgate",
+          "normalizedQuery": "projeto de resgate",
+          "locale": "pt",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-ru",
+          "query": "Проект спасения",
+          "normalizedQuery": "проект спасения",
+          "locale": "ru",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-th",
+          "query": "โครงการช่วยเหลือ",
+          "normalizedQuery": "โครงการช่วยเหลือ",
+          "locale": "th",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-tr",
+          "query": "Kurtarma Projesi",
+          "normalizedQuery": "kurtarma projesi",
+          "locale": "tr",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-ur",
+          "query": "نجات کا منصوبہ",
+          "normalizedQuery": "نجات کا منصوبہ",
+          "locale": "ur",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-vi",
+          "query": "Dự án Giải cứu",
+          "normalizedQuery": "dự án giải cứu",
+          "locale": "vi",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-zh-hans",
+          "query": "救援计划",
+          "normalizedQuery": "救援计划",
+          "locale": "zh-hans",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        },
+        {
+          "id": "rescue-project-zh-hant",
+          "query": "救援計畫",
+          "normalizedQuery": "救援計畫",
+          "locale": "zh-hant",
+          "source": "MACHINE",
+          "translationModel": "gpt-5",
+          "sourceTextDigest": "sha256:01a79347640aa7432f8a0d23b8fd7461dcf877da5af1a0a018c6cdf79936896c",
+          "generatedAt": "2026-09-07T00:00:00.000Z",
+          "active": true
+        }
+      ]
+    }
+  ]
+}

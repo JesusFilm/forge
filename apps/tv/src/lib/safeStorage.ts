@@ -1,34 +1,9 @@
 import { NativeModules, TurboModuleRegistry } from "react-native"
 
 /**
- * AsyncStorage wrapper that degrades to an in-memory fallback when
- * the native module is not linked.
- *
- * Why a wrapper at all:
- * - `@react-native-async-storage/async-storage` throws at module-load
- *   time ("NativeModule: AsyncStorage is null") if the dev client was
- *   built before the package was added to `package.json`. Until the
- *   native rebuild lands (`EXPO_TV=1 npx expo prebuild --clean` +
- *   `expo run:ios|android`), the module is unavailable.
- * - A static `import AsyncStorage from "..."` at the top of a consumer
- *   file would crash the whole bundle. The fallback lets the rest of
- *   the app keep working while recents simply don't persist across
- *   reloads.
- *
- * Why a `NativeModules` pre-check:
- * - Wrapping the `require()` in a try/catch IS sufficient to catch
- *   the JavaScript exception, but Metro's dev-mode bundler dispatches
- *   the synchronous throw to React Native's global error handler
- *   BEFORE the catch on the JS side runs — which surfaces the red
- *   "Uncaught Error" overlay even though the JS state machine is
- *   handling the failure correctly. Pre-checking the native module
- *   registration via `NativeModules` / `TurboModuleRegistry` avoids
- *   triggering AsyncStorage's top-level throw at all when the native
- *   side is missing, which keeps the dev overlay clean.
- *
- * Once the native rebuild has happened, this wrapper transparently
- * returns the real AsyncStorage and recents start persisting — no
- * consumer-side code change required.
+ * AsyncStorage wrapper with an in-memory fallback when the native module isn't
+ * linked. The require is gated behind a NativeModules pre-check (not just try/catch):
+ * Metro dispatches the top-level throw to RN's global error handler before JS catch.
  */
 
 export type StorageBackend = {
@@ -40,12 +15,9 @@ export type StorageBackend = {
 const ASYNC_STORAGE_NATIVE_MODULE_NAME = "RNCAsyncStorage"
 
 /**
- * Returns true when the AsyncStorage native module is registered on
- * either the legacy bridge (`NativeModules`) or the new architecture
- * (`TurboModuleRegistry`). Pre-checking here lets us avoid `require`-
- * ing the AsyncStorage package when the module is missing — the
- * package's own top-level guard (`if (!RCTAsyncStorage) throw ...`)
- * never fires because we never trigger the import.
+ * True when the AsyncStorage native module is registered on either NativeModules
+ * (legacy) or TurboModuleRegistry (new arch). Pre-checking lets us skip the
+ * require when missing, so the package's top-level throw never fires.
  */
 function isAsyncStorageNativeModuleRegistered(): boolean {
   // Old architecture: AsyncStorage v2 falls back to NativeModules
@@ -63,10 +35,8 @@ function isAsyncStorageNativeModuleRegistered(): boolean {
 }
 
 function loadAsyncStorage(): StorageBackend | null {
-  // Pre-flight: only require the package when the underlying native
-  // module is actually registered. Skipping the require entirely is
-  // the only way to keep the dev red-box overlay quiet — see the
-  // comment at the top of this file.
+  // Only require the package when the native module is registered; skipping the
+  // require is the only way to keep the dev red-box quiet (see file header).
   if (!isAsyncStorageNativeModuleRegistered()) return null
 
   try {
@@ -108,14 +78,9 @@ let _storage: StorageBackend | null = null
 let _loggedFallback = false
 
 /**
- * Returns the real AsyncStorage when its native module is linked, or
- * an in-memory fallback otherwise. Logs once when the fallback is
- * active so the gap is visible in dev without spamming logs.
- *
- * Exported (rather than evaluated at module scope) so test harnesses
- * can inject their own backend if useful, and so the loader runs
- * lazily — the first hook mount triggers the resolution, not bundle
- * init.
+ * Real AsyncStorage when linked, else in-memory fallback (logged once). Exported
+ * as a function (not module-scope) so resolution runs lazily on first hook mount
+ * rather than at bundle init, and so tests can inject their own backend.
  */
 export function getStorage(): StorageBackend {
   if (_storage != null) return _storage
@@ -138,9 +103,8 @@ export function getStorage(): StorageBackend {
 }
 
 /**
- * Test-only: reset the cached backend so a fresh resolution runs on
- * the next getStorage() call. Used by unit tests that want to swap
- * fallbacks between runs. No-op in production code paths.
+ * Test-only: reset the cached backend so getStorage() re-resolves next call.
+ * Lets unit tests swap fallbacks between runs; unused in production.
  */
 export function _resetStorageForTests(): void {
   _storage = null

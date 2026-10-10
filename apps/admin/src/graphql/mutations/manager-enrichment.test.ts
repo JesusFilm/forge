@@ -51,6 +51,20 @@ describe("pairAndValidateArgs", () => {
     expect(out.kind).toBe("transcript")
   })
 
+  it("expands targetLocales across each requested item", () => {
+    const out = pairAndValidateArgs({
+      assetIds: [1],
+      coreIds: ["c-1"],
+      kind: "scene-analysis",
+      targetLocales: ["ES", "ar"],
+    })
+
+    expect(out.items).toEqual([
+      { assetId: 1, coreId: "c-1", targetLocale: "es" },
+      { assetId: 1, coreId: "c-1", targetLocale: "ar" },
+    ])
+  })
+
   it.each([
     "bogus",
     "",
@@ -87,6 +101,20 @@ describe("pairAndValidateArgs", () => {
     const coreIds = assetIds.map((id) => `c-${id}`)
     expect(() =>
       pairAndValidateArgs({ assetIds, coreIds, kind: "transcript" }),
+    ).toThrow(/100/i)
+  })
+
+  it("rejects targetLocale expansion above 100 dispatch items", () => {
+    const assetIds = Array.from({ length: 51 }, (_, i) => i + 1)
+    const coreIds = assetIds.map((id) => `c-${id}`)
+
+    expect(() =>
+      pairAndValidateArgs({
+        assetIds,
+        coreIds,
+        kind: "scene-analysis",
+        targetLocales: ["es", "ar"],
+      }),
     ).toThrow(/100/i)
   })
 

@@ -42,12 +42,9 @@
         "NODE_ENV"
       ]
     },
-    "generate": {
-      "inputs": [
-        "../../apps/cms/schema.graphql",
-        "../../apps/admin/schema.graphql"
-      ],
-      "outputs": ["src/graphql-env.d.ts", "src/admin-graphql-env.d.ts"]
+    "@forge/admin-graphql#generate": {
+      "inputs": ["../../apps/admin/schema.graphql"],
+      "outputs": ["src/admin-graphql-env.d.ts"]
     },
     "schema:print": {
       "inputs": [

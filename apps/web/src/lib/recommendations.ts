@@ -1,30 +1,119 @@
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
-import { gql } from "@apollo/client"
-import { graphql, type ResultOf } from "@forge/graphql"
-import client from "@/lib/client"
+import { adminGraphql } from "@forge/admin-graphql"
+import type { AdminResultOf, AdminVariablesOf } from "@forge/admin-graphql"
+import {
+  adminClaimSemanticRecommendationEpisodeOperation,
+  adminIssueWatchPlaybackContextOperation,
+  adminIssueWatchSurfaceDeliveryOperation,
+  adminRecommendationProfileStatusOperation,
+  adminRecordSemanticRecommendationEvidenceOperation,
+  adminRecordSemanticRecommendationPlaybackOperation,
+  adminRecordRecommendationContentActionOperation,
+  adminRecordWatchSurfaceExposureOperation,
+  adminSelectSemanticRecommendationOperation,
+  adminSemanticRecommendationDeliveryOperation,
+  adminTransitionRecommendationProfileOperation,
+} from "@forge/admin-graphql/operations"
+import client from "@/lib/admin-client"
+import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
+import {
+  RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS,
+  RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS,
+} from "@/lib/recommendation-timeouts"
 
-// --- SceneRecommendation types (custom extension, not in gql.tada introspection) ---
+// Keep Admin delivery bounded below the browser's 12-second deadline, leaving
+// room for admission, serialization, network transit, and bounded retries.
+const DELIVERY_UPSTREAM_TIMEOUT_MS = 3_500
+const SELECTION_UPSTREAM_TIMEOUT_MS = 700
+const CONTENT_ACTION_UPSTREAM_TIMEOUT_MS = 900
 
-export type SceneRecommendation = {
-  videoId: number
-  videoSlug: string
-  videoTitle: string
-  imageUrl: string | null
-  sceneIndex: number
-  description: string
-  startSeconds: number
-  endSeconds: number | null
-  similarity: number
-  themes: string[]
-  demographics: string[]
-  spiritualContext: string[]
-  playbackId: string
+export async function issueWatchSurfaceDelivery(
+  variables: AdminVariablesOf<typeof adminIssueWatchSurfaceDeliveryOperation>,
+) {
+  const result = await client.mutate({
+    mutation: adminIssueWatchSurfaceDeliveryOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.issueWatchSurfaceDelivery) {
+    throw new RecommendationRuntimeError("evidence_unavailable")
+  }
+  return result.data.issueWatchSurfaceDelivery
 }
 
-// Use raw gql tag — sceneRecommendations is a custom GraphQL extension type
-// not present in Strapi's auto-generated introspection schema.
-const SCENE_RECOMMENDATIONS = gql`
+function upstreamContext(timeoutMs: number) {
+  return { fetchOptions: { signal: AbortSignal.timeout(timeoutMs) } }
+}
+
+function hasRecommendationGraphqlCode(
+  value: unknown,
+  expected: string,
+  field: "recommendationCode" | "code" = "recommendationCode",
+): boolean {
+  if (!value || typeof value !== "object") return false
+  const record = value as {
+    error?: unknown
+    errors?: unknown
+    graphQLErrors?: unknown
+  }
+  const nested =
+    record.error && typeof record.error === "object"
+      ? (record.error as { errors?: unknown; graphQLErrors?: unknown })
+      : undefined
+  const errors = [
+    record.errors,
+    record.graphQLErrors,
+    nested?.errors,
+    nested?.graphQLErrors,
+  ].flatMap((entries) => (Array.isArray(entries) ? entries : []))
+  return errors.some((entry) => {
+    if (!entry || typeof entry !== "object" || !("extensions" in entry)) {
+      return false
+    }
+    const extensions = entry.extensions
+    return (
+      !!extensions &&
+      typeof extensions === "object" &&
+      field in extensions &&
+      (extensions as Record<string, unknown>)[field] === expected
+    )
+  })
+}
+
+// Apollo's default errorPolicy rejects GraphQL errors. Also accept returned
+// envelopes for compatible callers without relying on human-readable messages.
+async function withRecommendationDomainErrors<T>(
+  operation: Promise<T>,
+  invalidInputCode: "playback_request_invalid" | "evidence_request_invalid",
+): Promise<T> {
+  let result: T
+  try {
+    result = await operation
+  } catch (error) {
+    if (hasRecommendationGraphqlCode(error, "invalid_binding")) {
+      throw new RecommendationRuntimeError("playback_binding_invalid")
+    }
+    if (hasRecommendationGraphqlCode(error, "BAD_USER_INPUT", "code")) {
+      throw new RecommendationRuntimeError(invalidInputCode)
+    }
+    throw error
+  }
+  if (hasRecommendationGraphqlCode(result, "invalid_binding")) {
+    throw new RecommendationRuntimeError("playback_binding_invalid")
+  }
+  if (hasRecommendationGraphqlCode(result, "BAD_USER_INPUT", "code")) {
+    throw new RecommendationRuntimeError(invalidInputCode)
+  }
+  return result
+}
+
+// Admin's `sceneRecommendations` returns SceneRecommendation rows directly.
+// `videoId` is admin's cuid string (ID); web's previous Strapi-backed shape
+// carried it as an integer and is updated in this rebuild to match.
+
+const SCENE_RECOMMENDATIONS = adminGraphql(`
   query SceneRecommendations($slug: String!, $locale: String!, $limit: Int) {
     sceneRecommendations(slug: $slug, locale: $locale, limit: $limit) {
       videoId
@@ -42,35 +131,63 @@ const SCENE_RECOMMENDATIONS = gql`
       playbackId
     }
   }
-`
+`)
 
-type SceneRecommendationsResult = {
-  sceneRecommendations: SceneRecommendation[]
+export type SceneRecommendation = {
+  videoId: string
+  videoSlug: string
+  videoTitle: string
+  imageUrl: string | null
+  sceneIndex: number
+  description: string
+  startSeconds: number
+  endSeconds: number | null
+  durationSeconds?: number | null
+  similarity: number
+  themes: string[]
+  demographics: string[]
+  spiritualContext: string[]
+  playbackId: string
 }
 
-// --- Video lookup (uses gql.tada typed query) ---
-
-const GET_VIDEO_BY_SLUG = graphql(`
-  query GetVideoBySlug($slug: String!, $locale: I18NLocaleCode!) {
-    videos(filters: { slug: { eq: $slug } }, locale: $locale) {
-      documentId
-      title
+// Demo-recommendations page video lookup. Admin's `videoBySlug` keeps
+// locale-varying fields on `VideoLocale`; the locale-narrowed
+// `locales(locale: $locale)` arg keeps the projection to one row per
+// request. The shape mirrors content.ts's normalizeAdminVideo convention
+// of hoisting the active locale's title/description onto a flat record.
+const GET_VIDEO_BY_SLUG = adminGraphql(`
+  query GetVideoBySlug($slug: String!, $locale: String!) {
+    videoBySlug(slug: $slug) {
+      documentId: id
       slug
-      description
       images {
         url
         thumbnail
         mobileCinematicHigh
       }
+      primaryLanguage {
+        coreId
+      }
+      locales(locale: $locale) {
+        title
+        description
+      }
     }
   }
 `)
 
-export type VideoBySlug = NonNullable<
-  ResultOf<typeof GET_VIDEO_BY_SLUG>["videos"]
->[number]
-
-// --- Data fetching functions ---
+export type VideoBySlug = {
+  documentId: string
+  slug: string | null
+  title: string | null
+  description: string | null
+  images: {
+    url: string | null
+    thumbnail: string | null
+    mobileCinematicHigh: string | null
+  }[]
+  primaryLanguage: { coreId: string | null } | null
+}
 
 const fetchRecommendations = unstable_cache(
   async (
@@ -79,7 +196,7 @@ const fetchRecommendations = unstable_cache(
     limit: number,
   ): Promise<SceneRecommendation[]> => {
     try {
-      const result = await client.query<SceneRecommendationsResult>({
+      const result = await client.query({
         query: SCENE_RECOMMENDATIONS,
         variables: { slug, locale, limit },
         fetchPolicy: "no-cache",
@@ -111,7 +228,23 @@ const fetchVideoBySlug = unstable_cache(
         variables: { slug, locale },
         fetchPolicy: "no-cache",
       })
-      return result.data?.videos?.[0] ?? null
+      const raw = result.data?.videoBySlug
+      if (!raw || !raw.documentId) return null
+      const localeRow = raw.locales?.[0] ?? null
+      return {
+        documentId: raw.documentId,
+        slug: raw.slug ?? null,
+        title: localeRow?.title ?? null,
+        description: localeRow?.description ?? null,
+        images: (raw.images ?? []).map((img) => ({
+          url: img.url ?? null,
+          thumbnail: img.thumbnail ?? null,
+          mobileCinematicHigh: img.mobileCinematicHigh ?? null,
+        })),
+        primaryLanguage: raw.primaryLanguage
+          ? { coreId: raw.primaryLanguage.coreId ?? null }
+          : null,
+      }
     } catch {
       return null
     }
@@ -125,3 +258,197 @@ export const getVideoBySlug = cache(
     return fetchVideoBySlug(slug, locale)
   },
 )
+
+export type SemanticRecommendationDelivery = NonNullable<
+  AdminResultOf<
+    typeof adminSemanticRecommendationDeliveryOperation
+  >["semanticRecommendationDelivery"]
+>
+
+export type SemanticRecommendationSelection = NonNullable<
+  AdminResultOf<
+    typeof adminSelectSemanticRecommendationOperation
+  >["selectSemanticRecommendation"]
+>
+
+export type SemanticRecommendationEpisodeClaim = NonNullable<
+  AdminResultOf<
+    typeof adminClaimSemanticRecommendationEpisodeOperation
+  >["claimSemanticRecommendationEpisode"]
+>
+
+export async function getSemanticRecommendationDelivery(
+  variables: AdminVariablesOf<
+    typeof adminSemanticRecommendationDeliveryOperation
+  >,
+): Promise<SemanticRecommendationDelivery> {
+  const result = await client.query({
+    query: adminSemanticRecommendationDeliveryOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(DELIVERY_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.semanticRecommendationDelivery) {
+    throw new RecommendationRuntimeError("delivery_unavailable")
+  }
+  return result.data.semanticRecommendationDelivery
+}
+
+export async function recordSemanticRecommendationEvidence(
+  variables: AdminVariablesOf<
+    typeof adminRecordSemanticRecommendationEvidenceOperation
+  >,
+) {
+  const result = await withRecommendationDomainErrors(
+    client.mutate({
+      mutation: adminRecordSemanticRecommendationEvidenceOperation,
+      variables,
+      fetchPolicy: "no-cache",
+      context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
+    }),
+    "evidence_request_invalid",
+  )
+  if (result.error || !result.data?.recordSemanticRecommendationEvidence) {
+    throw new RecommendationRuntimeError("evidence_unavailable")
+  }
+  return result.data.recordSemanticRecommendationEvidence
+}
+
+export async function selectSemanticRecommendation(
+  variables: AdminVariablesOf<
+    typeof adminSelectSemanticRecommendationOperation
+  >,
+): Promise<SemanticRecommendationSelection> {
+  const result = await withRecommendationDomainErrors(
+    client.mutate({
+      mutation: adminSelectSemanticRecommendationOperation,
+      variables,
+      fetchPolicy: "no-cache",
+      context: upstreamContext(SELECTION_UPSTREAM_TIMEOUT_MS),
+    }),
+    "evidence_request_invalid",
+  )
+  if (result.error || !result.data?.selectSemanticRecommendation) {
+    throw new RecommendationRuntimeError("selection_unavailable")
+  }
+  return result.data.selectSemanticRecommendation
+}
+
+export async function claimSemanticRecommendationEpisode(
+  variables: AdminVariablesOf<
+    typeof adminClaimSemanticRecommendationEpisodeOperation
+  >,
+): Promise<SemanticRecommendationEpisodeClaim> {
+  const result = await withRecommendationDomainErrors(
+    client.mutate({
+      mutation: adminClaimSemanticRecommendationEpisodeOperation,
+      variables,
+      fetchPolicy: "no-cache",
+      context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
+    }),
+    "playback_request_invalid",
+  )
+  if (result.error || !result.data?.claimSemanticRecommendationEpisode) {
+    throw new RecommendationRuntimeError("episode_unavailable")
+  }
+  return result.data.claimSemanticRecommendationEpisode
+}
+
+export async function issueWatchPlaybackContext(
+  variables: AdminVariablesOf<typeof adminIssueWatchPlaybackContextOperation>,
+) {
+  const result = await client.mutate({
+    mutation: adminIssueWatchPlaybackContextOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.issueWatchPlaybackContext) {
+    throw new RecommendationRuntimeError("episode_unavailable")
+  }
+  return result.data.issueWatchPlaybackContext
+}
+
+export async function recordSemanticRecommendationPlayback(
+  variables: AdminVariablesOf<
+    typeof adminRecordSemanticRecommendationPlaybackOperation
+  >,
+) {
+  const result = await withRecommendationDomainErrors(
+    client.mutate({
+      mutation: adminRecordSemanticRecommendationPlaybackOperation,
+      variables,
+      fetchPolicy: "no-cache",
+      context: upstreamContext(RECOMMENDATION_EVIDENCE_UPSTREAM_TIMEOUT_MS),
+    }),
+    "playback_request_invalid",
+  )
+  if (result.error || !result.data?.recordSemanticRecommendationPlayback) {
+    throw new RecommendationRuntimeError("playback_unavailable")
+  }
+  return result.data.recordSemanticRecommendationPlayback
+}
+
+export async function recordRecommendationContentAction(
+  variables: AdminVariablesOf<
+    typeof adminRecordRecommendationContentActionOperation
+  >,
+) {
+  const result = await client.mutate({
+    mutation: adminRecordRecommendationContentActionOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.recordRecommendationContentAction) {
+    throw new RecommendationRuntimeError("content_action_unavailable")
+  }
+  return result.data.recordRecommendationContentAction
+}
+
+export async function recordWatchSurfaceExposure(
+  events: Record<string, unknown>[],
+) {
+  const result = await client.mutate({
+    mutation: adminRecordWatchSurfaceExposureOperation,
+    variables: { events },
+    fetchPolicy: "no-cache",
+    context: upstreamContext(CONTENT_ACTION_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.recordWatchSurfaceExposure) {
+    throw new RecommendationRuntimeError("evidence_failed")
+  }
+  return result.data.recordWatchSurfaceExposure
+}
+
+export async function getRecommendationProfileStatus(
+  variables: AdminVariablesOf<typeof adminRecommendationProfileStatusOperation>,
+) {
+  const result = await client.mutate({
+    mutation: adminRecommendationProfileStatusOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.recommendationProfileStatus) {
+    throw new RecommendationRuntimeError("profile_unavailable")
+  }
+  return result.data.recommendationProfileStatus
+}
+
+export async function transitionRecommendationProfile(
+  variables: AdminVariablesOf<
+    typeof adminTransitionRecommendationProfileOperation
+  >,
+) {
+  const result = await client.mutate({
+    mutation: adminTransitionRecommendationProfileOperation,
+    variables,
+    fetchPolicy: "no-cache",
+    context: upstreamContext(RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS),
+  })
+  if (result.error || !result.data?.transitionRecommendationProfile) {
+    throw new RecommendationRuntimeError("profile_unavailable")
+  }
+  return result.data.transitionRecommendationProfile
+}

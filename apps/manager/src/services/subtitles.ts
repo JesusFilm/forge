@@ -57,9 +57,10 @@ export function parseVttToText(vttContent: string): string {
 }
 
 /**
- * Fetch a VTT file from the Core API and parse it to plain text.
+ * Fetch a VTT file from the Core API with the same host, timeout, and size
+ * guards used by all subtitle consumers.
  */
-export async function fetchSubtitleText(vttUrl: string): Promise<string> {
+export async function fetchSubtitleVttContent(vttUrl: string): Promise<string> {
   // SSRF protection — only fetch from trusted JesusFilm domains
   const url = new URL(vttUrl)
   if (url.protocol !== "https:" || !isTrustedHost(url.hostname)) {
@@ -100,15 +101,20 @@ export async function fetchSubtitleText(vttUrl: string): Promise<string> {
     )
   }
 
-  const text = parseVttToText(vttContent)
-
   console.log(
     JSON.stringify({
       event: "subtitle_fetch_complete",
       host: url.hostname,
-      textLength: text.length,
+      contentLength: vttContent.length,
     }),
   )
 
-  return text
+  return vttContent
+}
+
+/**
+ * Fetch a VTT file from the Core API and parse it to plain text.
+ */
+export async function fetchSubtitleText(vttUrl: string): Promise<string> {
+  return parseVttToText(await fetchSubtitleVttContent(vttUrl))
 }

@@ -40,20 +40,62 @@ describe("buildExperienceEmbeddingText", () => {
     expect(text).not.toContain("video-123")
     expect(text).not.toContain("https://example.com/ignore-me")
   })
+
+  it("does not treat card orientation as semantic content", async () => {
+    const { buildExperienceEmbeddingSource } =
+      await import("./embeddings.service")
+    const locale = {
+      title: "Hope",
+      metaDescription: null,
+      ogTitle: null,
+      ogDescription: null,
+      blocks: [
+        {
+          t: "mediaCollection",
+          variant: "carousel",
+          title: "Stories of hope",
+          items: [],
+        },
+      ],
+    }
+
+    const horizontal = buildExperienceEmbeddingSource({
+      ...locale,
+      blocks: [{ ...locale.blocks[0], thumbnailOrientation: "horizontal" }],
+    })
+    const vertical = buildExperienceEmbeddingSource({
+      ...locale,
+      blocks: [{ ...locale.blocks[0], thumbnailOrientation: "vertical" }],
+    })
+
+    expect(horizontal.text).toBe(vertical.text)
+    expect(horizontal.contentHash).toBe(vertical.contentHash)
+    expect(horizontal.text).not.toMatch(/horizontal|vertical/)
+  })
 })
 
 describe("generateExperienceEmbedding", () => {
   beforeEach(() => {
     vi.resetModules()
     vi.unstubAllGlobals()
+    delete process.env.OPENROUTER_API_PAID_KEY
     process.env.OPENROUTER_API_KEY = "test-openrouter-key"
+    delete process.env.FIREWORKS_API_KEY
+    delete process.env.FIREWORKS_EMBEDDING_MODEL
+    delete process.env.FIREWORKS_EMBEDDING_BASE_URL
+    delete process.env.QUERY_EMBEDDING_PROVIDER
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    delete process.env.OPENROUTER_API_PAID_KEY
     delete process.env.OPENROUTER_API_KEY
+    delete process.env.FIREWORKS_API_KEY
+    delete process.env.FIREWORKS_EMBEDDING_MODEL
+    delete process.env.FIREWORKS_EMBEDDING_BASE_URL
+    delete process.env.QUERY_EMBEDDING_PROVIDER
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
   })
@@ -88,20 +130,232 @@ describe("generateExperienceEmbedding", () => {
       embedding: vector,
     })
   })
+
+  it("requests Qwen through OpenRouter at 1536 dimensions", async () => {
+    const vector = Array.from({ length: 1536 }, () => 0.1)
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbedding } = await import("./embeddings.service")
+
+    await generateExperienceEmbedding("hope and peace")
+
+    const [, init] = fetchMock.mock.calls[0]!
+    const body = JSON.parse((init as RequestInit).body as string) as {
+      model: string
+      dimensions: number
+      provider: {
+        only: string[]
+        allow_fallbacks: boolean
+        require_parameters: boolean
+      }
+    }
+    expect(body.model).toBe("qwen/qwen3-embedding-8b")
+    expect(body.dimensions).toBe(1536)
+    expect(body.provider).toEqual({
+      only: ["SiliconFlow"],
+      allow_fallbacks: false,
+      require_parameters: true,
+    })
+  })
+
+  it("prefers OPENROUTER_API_PAID_KEY over the legacy OpenRouter key", async () => {
+    process.env.OPENROUTER_API_PAID_KEY = "test-paid-openrouter-key"
+    process.env.OPENROUTER_API_KEY = "test-legacy-openrouter-key"
+    const vector = Array.from({ length: 1536 }, () => 0.1)
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbedding } = await import("./embeddings.service")
+
+    await generateExperienceEmbedding("hope and peace")
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://openrouter.ai/api/v1/embeddings",
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          authorization: "Bearer test-paid-openrouter-key",
+        }),
+      }),
+    )
+  })
+
+  it("calls Fireworks when selected for query embeddings", async () => {
+    delete process.env.OPENROUTER_API_KEY
+    process.env.FIREWORKS_API_KEY = "test-fireworks-key"
+    process.env.QUERY_EMBEDDING_PROVIDER = "fireworks"
+    const vector = Array.from({ length: 1536 }, () => 0.1)
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const {
+      FIREWORKS_EMBEDDING_MODEL,
+      generateExperienceEmbedding,
+      currentEmbeddingProviderIdentity,
+    } = await import("./embeddings.service")
+
+    const result = await generateExperienceEmbedding("hope and peace")
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.fireworks.ai/inference/v1/embeddings",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          authorization: "Bearer test-fireworks-key",
+        }),
+      }),
+    )
+    const [, init] = fetchMock.mock.calls[0]!
+    const body = JSON.parse((init as RequestInit).body as string) as {
+      model: string
+      dimensions: number
+      provider?: unknown
+    }
+    expect(body.model).toBe(FIREWORKS_EMBEDDING_MODEL)
+    expect(body.dimensions).toBe(1536)
+    expect(body.provider).toBeUndefined()
+    expect(result).toEqual({
+      model: FIREWORKS_EMBEDDING_MODEL,
+      dimensions: 1536,
+      embedding: vector,
+    })
+    expect(currentEmbeddingProviderIdentity()).toEqual({
+      provider: "fireworks",
+      model: FIREWORKS_EMBEDDING_MODEL,
+      nativeDimensions: 1536,
+      dimensions: 1536,
+      transformVersion: null,
+    })
+  })
+
+  it("uses Fireworks model and base URL overrides", async () => {
+    process.env.FIREWORKS_API_KEY = "test-fireworks-key"
+    process.env.FIREWORKS_EMBEDDING_MODEL = "accounts/team/models/qwen3-custom"
+    process.env.FIREWORKS_EMBEDDING_BASE_URL =
+      "https://example.fireworks.test/v1/embeddings"
+    process.env.QUERY_EMBEDDING_PROVIDER = "fireworks"
+    const vector = Array.from({ length: 1536 }, () => 0.1)
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbedding } = await import("./embeddings.service")
+
+    const result = await generateExperienceEmbedding("hope and peace")
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.fireworks.test/v1/embeddings",
+      expect.any(Object),
+    )
+    const [, init] = fetchMock.mock.calls[0]!
+    const body = JSON.parse((init as RequestInit).body as string) as {
+      model: string
+    }
+    expect(body.model).toBe("accounts/team/models/qwen3-custom")
+    expect(result.model).toBe("accounts/team/models/qwen3-custom")
+  })
+
+  it("falls back to Fireworks when no provider is selected and OpenRouter is unavailable", async () => {
+    delete process.env.OPENROUTER_API_KEY
+    process.env.FIREWORKS_API_KEY = "test-fireworks-key"
+    const vector = Array.from({ length: 1536 }, () => 0.1)
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: [{ embedding: vector }] }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbedding } = await import("./embeddings.service")
+
+    const result = await generateExperienceEmbedding("hope and peace")
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.fireworks.ai/inference/v1/embeddings",
+      expect.any(Object),
+    )
+    expect(result.model).toBe("fireworks/qwen3-embedding-8b")
+  })
+
+  it("requires FIREWORKS_API_KEY when Fireworks is explicitly selected", async () => {
+    process.env.QUERY_EMBEDDING_PROVIDER = "fireworks"
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbedding, EmbeddingsBatchError } =
+      await import("./embeddings.service")
+
+    const thrown = await generateExperienceEmbedding("hope").catch((e) => e)
+    expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
+    expect((thrown as { code: string }).code).toBe("missing_credentials")
+    expect((thrown as Error).message).toBe(
+      "FIREWORKS_API_KEY is required when QUERY_EMBEDDING_PROVIDER=fireworks",
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it("requires OpenRouter credentials when OpenRouter is explicitly selected", async () => {
+    delete process.env.OPENROUTER_API_KEY
+    process.env.FIREWORKS_API_KEY = "test-fireworks-key"
+    process.env.QUERY_EMBEDDING_PROVIDER = "openrouter"
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbedding, EmbeddingsBatchError } =
+      await import("./embeddings.service")
+
+    const thrown = await generateExperienceEmbedding("hope").catch((e) => e)
+    expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
+    expect((thrown as { code: string }).code).toBe("missing_credentials")
+    expect((thrown as Error).message).toBe(
+      "OPENROUTER_API_PAID_KEY or OPENROUTER_API_KEY is required when QUERY_EMBEDDING_PROVIDER=openrouter",
+    )
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
 })
 
 describe("generateExperienceEmbeddings (batched)", () => {
   beforeEach(() => {
     vi.resetModules()
     vi.unstubAllGlobals()
+    delete process.env.OPENROUTER_API_PAID_KEY
     process.env.OPENROUTER_API_KEY = "test-openrouter-key"
+    delete process.env.FIREWORKS_API_KEY
+    delete process.env.FIREWORKS_EMBEDDING_MODEL
+    delete process.env.FIREWORKS_EMBEDDING_BASE_URL
+    delete process.env.QUERY_EMBEDDING_PROVIDER
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    delete process.env.OPENROUTER_API_PAID_KEY
     delete process.env.OPENROUTER_API_KEY
+    delete process.env.FIREWORKS_API_KEY
+    delete process.env.FIREWORKS_EMBEDDING_MODEL
+    delete process.env.FIREWORKS_EMBEDDING_BASE_URL
+    delete process.env.QUERY_EMBEDDING_PROVIDER
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
   })
@@ -140,15 +394,101 @@ describe("generateExperienceEmbeddings (batched)", () => {
       input: string[]
       model: string
       encoding_format: string
+      dimensions: number
+      provider: {
+        only: string[]
+        allow_fallbacks: boolean
+        require_parameters: boolean
+      }
     }
     expect(body.input).toEqual(["first input", "second input", "third input"])
     expect(body.model).toBe(OPENROUTER_EMBEDDING_MODEL)
     expect(body.encoding_format).toBe("float")
+    expect(body.dimensions).toBe(1536)
+    expect(body.provider).toEqual({
+      only: ["SiliconFlow"],
+      allow_fallbacks: false,
+      require_parameters: true,
+    })
 
     // Position-stable: embeddings[i] aligns with inputs[i].
     expect(result.embeddings).toEqual([v0, v1, v2])
     expect(result.model).toBe(OPENROUTER_EMBEDDING_MODEL)
     expect(result.dimensions).toBe(1536)
+  })
+
+  it("fails a timed-out single-input request after one second without retrying", async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn().mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init.signal?.addEventListener("abort", () => {
+            const error = new Error("aborted")
+            error.name = "AbortError"
+            reject(error)
+          })
+        }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+
+    try {
+      const { generateExperienceEmbeddings, EmbeddingsBatchError } =
+        await import("./embeddings.service")
+
+      const resultPromise = generateExperienceEmbeddings([
+        "single input",
+      ]).catch((error) => error)
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(1_000)
+
+      const thrown = await resultPromise
+      expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
+      expect((thrown as { code: string }).code).toBe("request_timed_out")
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it("fails when a single-input response body stalls after headers", async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi
+      .fn()
+      .mockImplementation((_url: string, init: RequestInit) =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () =>
+            new Promise<unknown>((_resolve, reject) => {
+              init.signal?.addEventListener("abort", () => {
+                const error = new Error("aborted")
+                error.name = "AbortError"
+                reject(error)
+              })
+            }),
+        }),
+      )
+    vi.stubGlobal("fetch", fetchMock)
+
+    try {
+      const { generateExperienceEmbeddings, EmbeddingsBatchError } =
+        await import("./embeddings.service")
+
+      const resultPromise = generateExperienceEmbeddings([
+        "single input",
+      ]).catch((error) => error)
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+
+      await vi.advanceTimersByTimeAsync(1_000)
+
+      const thrown = await resultPromise
+      expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
+      expect((thrown as { code: string }).code).toBe("request_timed_out")
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it("rejects an empty input list with EmbeddingsBatchError(empty_input)", async () => {
@@ -233,16 +573,51 @@ describe("generateExperienceEmbeddings (batched)", () => {
     const thrown = await generateExperienceEmbeddings(["a"]).catch((e) => e)
     expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
     expect((thrown as { code: string }).code).toBe("request_failed")
+    expect((thrown as { status: number }).status).toBe(503)
+  })
+
+  it("wraps transport failures as retryable EmbeddingsBatchError(request_failed)", async () => {
+    const cause = new TypeError("fetch failed")
+    const fetchMock = vi.fn().mockRejectedValue(cause)
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbeddings, EmbeddingsBatchError } =
+      await import("./embeddings.service")
+    const thrown = await generateExperienceEmbeddings(["a"]).catch((e) => e)
+    expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
+    expect((thrown as { code: string }).code).toBe("request_failed")
+    expect((thrown as { status?: number }).status).toBeUndefined()
+    expect((thrown as { cause: unknown }).cause).toBe(cause)
   })
 
   it("surfaces missing credentials with EmbeddingsBatchError(missing_credentials)", async () => {
     delete process.env.OPENROUTER_API_KEY
+    delete process.env.OPENROUTER_API_PAID_KEY
+    delete process.env.FIREWORKS_API_KEY
     delete process.env.OPENAI_API_KEY
     const { generateExperienceEmbeddings, EmbeddingsBatchError } =
       await import("./embeddings.service")
     const thrown = await generateExperienceEmbeddings(["hi"]).catch((e) => e)
     expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
     expect((thrown as { code: string }).code).toBe("missing_credentials")
+  })
+
+  it("does not fall back to OpenAI credentials when OpenRouter is missing", async () => {
+    delete process.env.OPENROUTER_API_KEY
+    delete process.env.OPENROUTER_API_PAID_KEY
+    delete process.env.FIREWORKS_API_KEY
+    process.env.OPENAI_API_KEY = "test-openai-key"
+    process.env.OPENAI_BASE_URL = "https://api.openai.example/v1"
+    const fetchMock = vi.fn()
+    vi.stubGlobal("fetch", fetchMock)
+
+    const { generateExperienceEmbeddings, EmbeddingsBatchError } =
+      await import("./embeddings.service")
+
+    const thrown = await generateExperienceEmbeddings(["hi"]).catch((e) => e)
+    expect(thrown).toBeInstanceOf(EmbeddingsBatchError)
+    expect((thrown as { code: string }).code).toBe("missing_credentials")
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it("surfaces an AbortError as EmbeddingsBatchError(request_timed_out)", async () => {
@@ -286,21 +661,31 @@ describe("generateExperienceEmbeddings (batched)", () => {
 
 describe("generateExperienceEmbedding (singular) — back-compat error contract", () => {
   // The singular wrapper now delegates to the batched form. Back-compat
-  // callers (hybrid-search.service.ts, experienceEmbedding.ts,
+  // callers (watch-search.service.ts, experienceEmbedding.ts,
   // ops-data.ts, search/health/route.ts) catch on the literal message
   // "Embedding input must not be empty" and on the generic Error class
   // (NOT EmbeddingsBatchError). Pin the contract.
   beforeEach(() => {
     vi.resetModules()
     vi.unstubAllGlobals()
+    delete process.env.OPENROUTER_API_PAID_KEY
     process.env.OPENROUTER_API_KEY = "test-openrouter-key"
+    delete process.env.FIREWORKS_API_KEY
+    delete process.env.FIREWORKS_EMBEDDING_MODEL
+    delete process.env.FIREWORKS_EMBEDDING_BASE_URL
+    delete process.env.QUERY_EMBEDDING_PROVIDER
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
   })
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    delete process.env.OPENROUTER_API_PAID_KEY
     delete process.env.OPENROUTER_API_KEY
+    delete process.env.FIREWORKS_API_KEY
+    delete process.env.FIREWORKS_EMBEDDING_MODEL
+    delete process.env.FIREWORKS_EMBEDDING_BASE_URL
+    delete process.env.QUERY_EMBEDDING_PROVIDER
     delete process.env.OPENAI_API_KEY
     delete process.env.OPENAI_BASE_URL
   })
@@ -315,18 +700,81 @@ describe("generateExperienceEmbedding (singular) — back-compat error contract"
   })
 })
 
-describe("writeExperienceLocaleEmbedding", () => {
-  it("rejects non-derived callers", async () => {
-    const { writeExperienceLocaleEmbedding } =
+describe("buildExperienceEmbeddingSource", () => {
+  it("returns deterministic text, source hash, and safe summary", async () => {
+    const { buildExperienceEmbeddingSource } =
       await import("./embeddings.service")
 
+    const source = buildExperienceEmbeddingSource({
+      title: "Hope",
+      metaDescription: "A story of hope.",
+      ogTitle: "Hope",
+      ogDescription: null,
+      blocks: [{ t: "paragraph", text: "Jesus brings hope." }],
+    })
+
+    expect(source.text).toContain("Hope")
+    expect(source.text).toContain("Jesus brings hope.")
+    expect(source.contentHash).toMatch(/^sha256:[a-f0-9]{64}$/)
+    expect(source.summary).toContain("chars=")
+    expect(source.summary).toContain("title=present")
+    expect(source.summary).not.toContain("Jesus brings hope")
+  })
+})
+
+describe("writeExperienceEmbeddingPayloadInTransaction", () => {
+  function provenance() {
+    return {
+      sourceContentHash: "sha256:source",
+      sourceSummary: "chars=10;lines=1;title=present;meta=absent;og=absent",
+      model: "qwen/qwen3-embedding-8b",
+      dimensions: 1536,
+      provider: "openrouter",
+      generationMode: "idempotent" as const,
+      mastraRunId: "run-1",
+      generatedAt: "2026-05-26T00:00:00.000Z",
+    }
+  }
+
+  it("rejects wrong vector dimensions before writing", async () => {
+    const { writeExperienceEmbeddingPayloadInTransaction } =
+      await import("./embeddings.service")
+    const executeRaw = vi.fn()
+
     await expect(
-      writeExperienceLocaleEmbedding({
-        prisma: { $executeRaw: vi.fn() } as never,
+      writeExperienceEmbeddingPayloadInTransaction(
+        { $executeRaw: executeRaw } as never,
+        {
+          localeId: "loc-1",
+          embedding: [0.1],
+          provenance: provenance(),
+          user: { id: "system", role: "SYSTEM" },
+        },
+      ),
+    ).rejects.toThrow(/expected 1536/)
+    expect(executeRaw).not.toHaveBeenCalled()
+  })
+
+  it("writes vector and compact Mastra provenance through raw SQL", async () => {
+    const { writeExperienceEmbeddingPayloadInTransaction } =
+      await import("./embeddings.service")
+    const executeRaw = vi.fn()
+
+    await writeExperienceEmbeddingPayloadInTransaction(
+      { $executeRaw: executeRaw } as never,
+      {
         localeId: "loc-1",
-        embedding: [0.1, 0.2],
-        user: { id: "editor-1", role: "EDITOR" },
-      }),
-    ).rejects.toThrow("Forbidden")
+        embedding: Array.from({ length: 1536 }, (_, index) => index / 1000),
+        provenance: provenance(),
+        user: { id: "system", role: "SYSTEM" },
+      },
+    )
+
+    expect(executeRaw).toHaveBeenCalledTimes(1)
+    const strings = executeRaw.mock.calls[0]![0] as TemplateStringsArray
+    const sql = Array.from(strings).join("?")
+    expect(sql).toContain("embedding = ?::vector")
+    expect(sql).toContain("embedding_source_content_hash")
+    expect(sql).toContain("embedding_mastra_run_id")
   })
 })

@@ -3,15 +3,16 @@ import { Pressable, StyleSheet, Text, View } from "react-native"
 
 import { TEXT_BODY } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
 import { layout, text } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { AdminBlock } from "../../lib/queries"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 type HeadingLevel = "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
 
 export interface TextRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 const COLLAPSED_LINES = 3
@@ -20,15 +21,17 @@ const COLLAPSED_LINES = 3
 
 export function TextRenderer({ section }: TextRendererProps) {
   const typography = useTypography()
+  const t = useT("Common")
   const [expanded, setExpanded] = useState(false)
 
-  const heading = section.textHeading as string | null
-  const headingLevel = (section.headingLevel as HeadingLevel | null) ?? "h2"
-  const subtitle = section.subtitle as string | null
-  const rawParagraphs = section.contentParagraphs
-  const variant = section.textVariant as string | null
+  const s = section as Record<string, unknown>
+  const heading = s.heading as string | null
+  const headingLevel = (s.headingLevel as HeadingLevel | null) ?? "h2"
+  const subtitle = s.subtitle as string | null
+  const rawParagraphs = s.contentParagraphs
+  const variant = s.textVariant as string | null
 
-  // contentParagraphs is a Strapi JSON field that should be string[]
+  // contentParagraphs is a JSON field that should be string[]
   const paragraphs: string[] = Array.isArray(rawParagraphs)
     ? (rawParagraphs as string[])
     : []
@@ -83,10 +86,15 @@ export function TextRenderer({ section }: TextRendererProps) {
           onPress={handleToggle}
           style={styles.toggleButton}
           accessibilityRole="button"
-          accessibilityLabel={expanded ? "Show less" : "Read more"}
+          accessibilityLabel={expanded ? t("showLess") : t("readMore")}
+          {...{
+            "dd-action-name": expanded
+              ? "section-text-less"
+              : "section-text-more",
+          }}
         >
           <Text style={[text.accentLinkText, typography.bodySmall]}>
-            {expanded ? "Show less" : "Read more"}
+            {expanded ? t("showLess") : t("readMore")}
           </Text>
         </Pressable>
       )}

@@ -1,0 +1,37 @@
+{
+  "name": "@forge/yt-video-mapper-backend",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "build": "rm -rf dist && pnpm run db:generate && tsc -p tsconfig.build.json && rm -rf dist/generated/prisma && mkdir -p dist/generated && cp -R src/generated/prisma dist/generated/prisma",
+    "start": "node dist/server.js",
+    "sync:catalog": "tsx src/scripts/sync-catalog.ts",
+    "index:media": "tsx src/scripts/index-media.ts",
+    "postinstall": "DATABASE_URL=${DATABASE_URL:-postgresql://forge:forge@localhost:5432/yt_video_mapper} prisma generate",
+    "db:generate": "DATABASE_URL=${DATABASE_URL:-postgresql://forge:forge@localhost:5432/yt_video_mapper} prisma generate",
+    "db:migrate:dev": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:studio": "prisma studio",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@fastify/busboy": "3.2.0",
+    "@forge/admin-graphql": "workspace:*",
+    "@prisma/client": "^6",
+    "graphql": "16.13.1",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "eslint": "^9.0.0",
+    "prisma": "^6",
+    "tsx": "^4.21.0",
+    "typescript": "^5",
+    "vitest": "3.2.4"
+  }
+}

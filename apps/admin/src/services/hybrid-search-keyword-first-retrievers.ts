@@ -22,6 +22,11 @@
 import { Prisma, type PrismaClient } from "@prisma/client"
 import { WEIGHTED_TSV_QUERY_EXPR } from "./hybrid-search-sql"
 import type { RankedItem } from "./hybrid-search-fusion"
+import {
+  recordSearchDbTiming,
+  type SearchTimingRecorder,
+} from "./hybrid-search-timing"
+import { normalizeWatchSearchCurationQuery } from "./watch-search-curation"
 
 // -----------------------------------------------------------------------------
 // Shared parameter shapes
@@ -40,6 +45,12 @@ export type TrigramSearchParams = {
 }
 
 export type ExactTitleSearchParams = {
+  query: string
+  locale: string
+  limit: number
+}
+
+export type KeywordFirstVideoLexicalSearchParams = {
   query: string
   locale: string
   limit: number
@@ -73,7 +84,18 @@ export type KeywordWeightedResult = VideoKeywordRowShape & { rank: number }
  * via `DISTINCT ON (v.id)`, keeping the higher-similarity row.
  */
 export type TrigramResult = VideoKeywordRowShape & { similarity: number }
-export type ExactTitleResult = VideoKeywordRowShape & { titleLength: number }
+export type ExactTitleResult = VideoKeywordRowShape & {
+  titleLength: number
+  titleMatched: boolean
+  curated: boolean
+  curationPosition: number | null
+}
+
+export type KeywordFirstVideoLexicalResults = {
+  keywordWeighted: KeywordWeightedResult[]
+  trigram: TrigramResult[]
+  exactTitle: ExactTitleResult[]
+}
 
 // -----------------------------------------------------------------------------
 // Internal raw-row shapes
@@ -104,7 +126,15 @@ type ExactTitleRow = {
   video_title: string | null
   description: string | null
   title_length: number
+  title_matched?: boolean
+  curated?: boolean
+  curation_position?: number | null
 }
+
+type QueryRawClient = Pick<PrismaClient, "$queryRaw">
+
+const KEYWORD_FIRST_LEXICAL_TRANSACTION_MAX_WAIT_MS = 5_000
+const KEYWORD_FIRST_LEXICAL_TRANSACTION_TIMEOUT_MS = 20_000
 
 // -----------------------------------------------------------------------------
 // Exact-title tokenizer + DoS cap
@@ -168,8 +198,9 @@ export function tokenizeForExactTitle(query: string): string[] {
  * Empty / whitespace input short-circuits to `[]`.
  */
 export async function searchByKeywordWeighted(
-  prisma: PrismaClient,
+  prisma: QueryRawClient,
   params: KeywordWeightedSearchParams,
+  timing?: SearchTimingRecorder,
 ): Promise<KeywordWeightedResult[]> {
   const trimmed = params.query.trim()
   if (trimmed.length === 0) return []
@@ -177,29 +208,35 @@ export async function searchByKeywordWeighted(
   const { locale, limit } = params
   const tsvector = Prisma.raw(WEIGHTED_TSV_QUERY_EXPR)
 
-  const rows = await prisma.$queryRaw<KeywordWeightedRow[]>`
-    SELECT * FROM (
-      SELECT DISTINCT ON (v.id)
-        v.id           AS video_id,
-        v.core_id      AS video_core_id,
-        v.slug         AS video_slug,
-        vl.title       AS video_title,
-        vl.description AS description,
-        ts_rank_cd(
-          ${tsvector},
-          websearch_to_tsquery('simple', ${trimmed})
-        ) AS rank
-      FROM video_locale vl
-      JOIN video v ON v.id = vl.video_id
-        AND v.deleted_at IS NULL
-      WHERE ${tsvector} @@ websearch_to_tsquery('simple', ${trimmed})
-        AND vl.locale = ${locale}
-        AND vl.status = 'published'
-      ORDER BY v.id, rank DESC
-    ) sub
-    ORDER BY sub.rank DESC
-    LIMIT ${limit}
-  `
+  const rows = await recordSearchDbTiming(
+    timing,
+    "keyword-weighted-video.query",
+    () => prisma.$queryRaw<KeywordWeightedRow[]>`
+      SELECT * FROM (
+        SELECT DISTINCT ON (v.id)
+          v.id           AS video_id,
+          v.core_id      AS video_core_id,
+          v.slug         AS video_slug,
+          vl.title       AS video_title,
+          vl.description AS description,
+          ts_rank_cd(
+            ${tsvector},
+            websearch_to_tsquery('simple', ${trimmed})
+          ) AS rank
+        FROM video_locale vl
+        JOIN video v ON v.id = vl.video_id
+          AND v.deleted_at IS NULL
+          AND v.no_index = false
+        WHERE ${tsvector} @@ websearch_to_tsquery('simple', ${trimmed})
+          AND vl.locale = ${locale}
+          AND vl.status = 'published'
+          AND vl.deleted_at IS NULL
+        ORDER BY v.id, rank DESC
+      ) sub
+      ORDER BY sub.rank DESC
+      LIMIT ${limit}
+    `,
+  )
 
   return rows.map((row) => ({
     resultType: "video" as const,
@@ -250,37 +287,44 @@ export async function searchByKeywordWeighted(
  * Empty input short-circuits to `[]`.
  */
 export async function searchByTrigram(
-  prisma: PrismaClient,
+  prisma: QueryRawClient,
   params: TrigramSearchParams,
+  timing?: SearchTimingRecorder,
 ): Promise<TrigramResult[]> {
   const trimmed = params.query.trim()
   if (trimmed.length === 0) return []
 
   const { locale, limit } = params
 
-  const rows = await prisma.$queryRaw<TrigramRow[]>`
-    SELECT * FROM (
-      SELECT DISTINCT ON (v.id)
-        v.id           AS video_id,
-        v.core_id      AS video_core_id,
-        v.slug         AS video_slug,
-        vl.title       AS video_title,
-        vl.description AS description,
-        GREATEST(
-          similarity(vl.title, ${trimmed}),
-          similarity(coalesce(vl.description, ''), ${trimmed})
-        ) AS similarity
-      FROM video_locale vl
-      JOIN video v ON v.id = vl.video_id
-        AND v.deleted_at IS NULL
-      WHERE (vl.title %> ${trimmed} OR vl.description %> ${trimmed})
-        AND vl.locale = ${locale}
-        AND vl.status = 'published'
-      ORDER BY v.id, similarity DESC
-    ) sub
-    ORDER BY sub.similarity DESC
-    LIMIT ${limit}
-  `
+  const rows = await recordSearchDbTiming(
+    timing,
+    "trigram-video.query",
+    () => prisma.$queryRaw<TrigramRow[]>`
+      SELECT * FROM (
+        SELECT DISTINCT ON (v.id)
+          v.id           AS video_id,
+          v.core_id      AS video_core_id,
+          v.slug         AS video_slug,
+          vl.title       AS video_title,
+          vl.description AS description,
+          GREATEST(
+            similarity(vl.title, ${trimmed}),
+            similarity(coalesce(vl.description, ''), ${trimmed})
+          ) AS similarity
+        FROM video_locale vl
+        JOIN video v ON v.id = vl.video_id
+          AND v.deleted_at IS NULL
+          AND v.no_index = false
+        WHERE (vl.title %> ${trimmed} OR vl.description %> ${trimmed})
+          AND vl.locale = ${locale}
+          AND vl.status = 'published'
+          AND vl.deleted_at IS NULL
+        ORDER BY v.id, similarity DESC
+      ) sub
+      ORDER BY sub.similarity DESC
+      LIMIT ${limit}
+    `,
+  )
 
   return rows.map((row) => ({
     resultType: "video" as const,
@@ -295,10 +339,11 @@ export async function searchByTrigram(
 }
 
 /**
- * Exact-token-in-title retriever.
+ * Exact-token-in-title retriever plus exact editorial curation lookup.
  *
  * Returns videos whose title contains EVERY query token (case-
- * insensitive, punctuation-stripped). Ranked shortest-title first —
+ * insensitive, punctuation-stripped), plus published targets whose active
+ * editorial alias equals the normalized query. Ranked shortest-title first —
  * the shorter the title, the tighter the match (a 3-word title that
  * contains all 3 tokens wins over a 12-word title that contains all 3
  * plus 9 unrelated words).
@@ -312,18 +357,22 @@ export async function searchByTrigram(
  * `tokenizeForExactTitle`. Empty / whitespace-only / all-punctuation
  * queries short-circuit to `[]`.
  *
- * Dynamic AND-chain composed via `Prisma.join` so the bound parameter
- * count exactly matches the token count. Postgres rejects unbound
- * placeholders at parse time, which is the safe failure mode.
+ * Dynamic AND-chain composed via `Prisma.join` so the bound parameter count
+ * exactly matches the token count. The curation lookup shares this query and
+ * database connection, so unrelated searches do not add another round trip.
+ * Postgres rejects unbound placeholders at parse time, which is the safe
+ * failure mode.
  */
 export async function searchByExactTitle(
-  prisma: PrismaClient,
+  prisma: QueryRawClient,
   params: ExactTitleSearchParams,
+  timing?: SearchTimingRecorder,
 ): Promise<ExactTitleResult[]> {
   const tokens = tokenizeForExactTitle(params.query)
   if (tokens.length === 0) return []
 
   const { locale, limit } = params
+  const normalizedQuery = normalizeWatchSearchCurationQuery(params.query)
 
   // One ILIKE per token, ANDed. Each bound to its own parameter via
   // `Prisma.sql` template fragment; `Prisma.join` composes them.
@@ -332,26 +381,78 @@ export async function searchByExactTitle(
     " AND ",
   )
 
-  const rows = await prisma.$queryRaw<ExactTitleRow[]>`
-    SELECT * FROM (
-      SELECT DISTINCT ON (v.id)
-        v.id            AS video_id,
-        v.core_id       AS video_core_id,
-        v.slug          AS video_slug,
-        vl.title        AS video_title,
-        vl.description  AS description,
-        LENGTH(vl.title) AS title_length
-      FROM video_locale vl
-      JOIN video v ON v.id = vl.video_id
-        AND v.deleted_at IS NULL
-      WHERE ${ilikeChain}
-        AND vl.locale = ${locale}
-        AND vl.status = 'published'
-      ORDER BY v.id, title_length ASC
-    ) sub
-    ORDER BY sub.title_length ASC
-    LIMIT ${limit}
-  `
+  const rows = await recordSearchDbTiming(
+    timing,
+    "exact-title-video.query",
+    () => prisma.$queryRaw<ExactTitleRow[]>`
+      WITH candidate_sources AS (
+        SELECT
+          v.id            AS video_id,
+          v.core_id       AS video_core_id,
+          v.slug          AS video_slug,
+          vl.title        AS video_title,
+          vl.description  AS description,
+          LENGTH(vl.title) AS title_length,
+          TRUE             AS title_matched,
+          FALSE            AS curated,
+          NULL::integer    AS curation_position
+        FROM video_locale vl
+        JOIN video v ON v.id = vl.video_id
+          AND v.deleted_at IS NULL
+          AND v.no_index = false
+        WHERE ${ilikeChain}
+          AND vl.locale = ${locale}
+          AND vl.status = 'published'
+          AND vl.deleted_at IS NULL
+        UNION ALL
+        SELECT
+          v.id             AS video_id,
+          v.core_id        AS video_core_id,
+          v.slug           AS video_slug,
+          vl.title         AS video_title,
+          vl.description   AS description,
+          LENGTH(vl.title)  AS title_length,
+          FALSE             AS title_matched,
+          TRUE              AS curated,
+          curation.position AS curation_position
+        FROM watch_search_curation_alias alias
+        JOIN watch_search_curation curation
+          ON curation.id = alias.curation_id
+         AND curation.enabled = TRUE
+        JOIN video v
+          ON v.core_id = curation.target_video_core_id
+         AND v.deleted_at IS NULL
+         AND v.no_index = FALSE
+        JOIN video_locale vl
+          ON vl.video_id = v.id
+         AND vl.locale = ${locale}
+         AND vl.status = 'published'
+         AND vl.deleted_at IS NULL
+        WHERE alias.active = TRUE
+          AND alias.normalized_query = ${normalizedQuery}
+      ), deduped AS (
+        SELECT DISTINCT ON (video_id)
+          video_id,
+          video_core_id,
+          video_slug,
+          video_title,
+          description,
+          title_length,
+          BOOL_OR(title_matched) OVER (PARTITION BY video_id) AS title_matched,
+          BOOL_OR(curated) OVER (PARTITION BY video_id) AS curated,
+          MIN(curation_position) FILTER (WHERE curated)
+            OVER (PARTITION BY video_id) AS curation_position
+        FROM candidate_sources
+        ORDER BY video_id, title_matched DESC, curated DESC, title_length ASC
+      )
+      SELECT *
+      FROM deduped
+      ORDER BY curated DESC,
+               curation_position ASC NULLS LAST,
+               title_length ASC
+      LIMIT ${limit}
+    `,
+  )
 
   return rows.map((row) => ({
     resultType: "video" as const,
@@ -362,5 +463,48 @@ export async function searchByExactTitle(
     imageUrl: null,
     description: row.description,
     titleLength: Number(row.title_length),
+    titleMatched: row.title_matched ?? true,
+    curated: row.curated ?? false,
+    curationPosition:
+      row.curation_position == null ? null : Number(row.curation_position),
   }))
+}
+
+/**
+ * Run the keyword-first video lexical stack on one DB connection.
+ *
+ * The three underlying SQL queries stay byte-for-byte owned by their
+ * retrievers above; this helper changes only connection scheduling. In
+ * production that cuts pool fan-out from three concurrent video-lexical
+ * connections to one transaction-bound connection while preserving the
+ * three logical result lists consumed by RRF, debug attribution, and the
+ * dilution cap.
+ */
+export async function searchKeywordFirstVideoLexical(
+  prisma: PrismaClient,
+  params: KeywordFirstVideoLexicalSearchParams,
+  timing?: SearchTimingRecorder,
+): Promise<KeywordFirstVideoLexicalResults> {
+  if (params.query.trim().length === 0) {
+    return {
+      keywordWeighted: [],
+      trigram: [],
+      exactTitle: [],
+    }
+  }
+
+  return prisma.$transaction(
+    async (tx) => {
+      const client: QueryRawClient = tx
+      return {
+        keywordWeighted: await searchByKeywordWeighted(client, params, timing),
+        trigram: await searchByTrigram(client, params, timing),
+        exactTitle: await searchByExactTitle(client, params, timing),
+      }
+    },
+    {
+      maxWait: KEYWORD_FIRST_LEXICAL_TRANSACTION_MAX_WAIT_MS,
+      timeout: KEYWORD_FIRST_LEXICAL_TRANSACTION_TIMEOUT_MS,
+    },
+  )
 }

@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Nuk ka përmbajtje për këtë përvojë.",
+    "failedToLoad": "Dështoi ngarkimi i përvojës: {message}",
+    "unexpected": "Ndodhi një gabim i papritur.",
+    "notConfigured": "Shërbimi i përmbajtjes nuk është i konfiguruar.",
+    "noContent": "Nuk ka përmbajtje të disponueshme.",
+    "homepageMisconfigured": "Faqja kryesore e shikimit është e konfiguruar gabim.",
+    "defaultTemplateMisconfigured": "Modeli i parazgjedhur i shikimit është i konfiguruar gabim.",
+    "authFailed": "Nuk mund të bëhet autentikimi me shërbimin e përmbajtjes. Ju lutemi kontaktoni mbështetjen nëse kjo vazhdon.",
+    "pageLoadFailed": "Diçka shkoi keq.",
+    "tryAgain": "Provo përsëri"
+  },
+  "VideosPage": {
+    "title": "Të gjitha videot",
+    "placeholder": "Shfletimi i katalogut po vjen. Ndërkohë përdorni kërkimin ose një URL specifike për temën."
+  },
+  "BibleQuotes": {
+    "title": "Citate nga Bibla",
+    "share": "Ndaj",
+    "readMore": "Lexo më shumë...",
+    "learnMore": "Mëso më shumë",
+    "freeResources": "Burime falas",
+    "promoHeading": "Dëshironi ta kuptoni më thellë Biblën?",
+    "joinBibleStudy": "Bashkohuni me studimin tonë biblik",
+    "previousQuote": "Cita­ti i mëparshëm biblik",
+    "nextQuote": "Cita­ti tjetër biblik",
+    "readPassage": "Lexojeni këtë pjesë në Biblën tuaj."
+  },
+  "DownloadButton": {
+    "checking": "Po kontrollohet",
+    "download": "Shkarko",
+    "sessionError": "Nuk mund të kontrollohet sesioni juaj. Ju lutemi provoni përsëri.",
+    "saveVideo": "Ruaj videon"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Shkarko videon",
+    "eyebrow": "Shkarko videon",
+    "posterAlt": "Posteri i videos",
+    "noDownloads": "Nuk ka shkarkime të disponueshme për këtë video.",
+    "fileSizeLabel": "Zgjidhni madhësinë e skedarit",
+    "termsAgreementPrefix": "Unë pajtohem me ",
+    "termsOfUse": "Kushtet e përdorimit",
+    "termsAgreementSuffix": "",
+    "close": "Mbyll",
+    "download": "Shkarko",
+    "authRequiredTitle": "Dëshironi ta shkarkoni këtë video?",
+    "authRequiredBody": "Për të shkarkuar videot kërkohet një llogari falas Jesus Film.",
+    "signInToDownload": "Hyni për të shkarkuar",
+    "keepWatching": "Vazhdo shikimin",
+    "checking": "Po kontrollohet",
+    "closeTermsOfUse": "Mbyll kushtet e përdorimit",
+    "cancel": "Anulo",
+    "accept": "Prano",
+    "errorSessionExpired": "Sesioni juaj ka skaduar. Hyni përsëri për të shkarkuar.",
+    "errorSessionUnavailable": "Nuk mund të kontrollohet sesioni juaj. Ju lutemi provoni përsëri.",
+    "errorUnavailableSource": "Shkarkimi nuk është i disponueshëm nga ky burim",
+    "tierHighest": "Më i larti",
+    "tierHigh": "I lartë",
+    "tierLow": "I ulët"
+  },
+  "HeroPlayerControls": {
+    "play": "Luaj",
+    "pause": "Pauzë",
+    "seek": "Kërko",
+    "seekValue": "{current} nga {total}",
+    "volume": "Volumi",
+    "volumeValue": "{percent} për qind",
+    "mute": "Pa zë",
+    "unmute": "Me zë",
+    "changeAudioLanguage": "Ndrysho gjuhën e audios",
+    "enterFullscreen": "Hyr në ekran të plotë",
+    "exitFullscreen": "Dil nga ekrani i plotë"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Zgjidhni gjuhën",
+    "searchPlaceholder": "Kërko gjuhë…",
+    "languages": "Gjuhë",
+    "noMatches": "Pa përputhje",
+    "notAvailable": "Nuk është i disponueshëm"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Gjuha",
+    "dialogTitleWithSubtitles": "Gjuha dhe titrat",
+    "languageHeading": "Gjuha",
+    "subtitlesHeading": "Titrat",
+    "languageCount": "{count, plural, one {# gjuhë} other {# gjuhë}}",
+    "requestSent": "Kërkesa u dërgua",
+    "translateWithAi": "Përkthe me AI",
+    "noSubtitles": "Pa titra",
+    "toggleOn": "Aktiv",
+    "toggleOff": "Joaktiv",
+    "close": "Mbyll",
+    "apply": "Apliko",
+    "noLanguageSubtitles": "Pa titra në {language}",
+    "seeAllLanguages": "Të gjitha gjuhët",
+    "seeAllVideosInLanguage": "Të gjitha videot: {language}",
+    "retryLoadingLanguages": "Provo të ngarkosh sërish gjuhët",
+    "notAvailable": "Nuk është i disponueshëm",
+    "switching": "Po ndërrohet..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISOD} other {# EPISODE}}",
+    "seriesLabel": "SERI · {episodes}",
+    "changeAudioLanguage": "Ndrysho gjuhën e audios",
+    "share": "Ndaj",
+    "languages": "Gjuhë",
+    "downloadCollection": "Shkarko koleksionin",
+    "checkingDownloads": "Po kontrollohen shkarkimet…",
+    "downloadSessionError": "Nuk mund të kontrollohet sesioni juaj. Ju lutemi provoni përsëri."
+  },
+  "WatchModal": {
+    "close": "Mbyll"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Nëse do t’i bënit krijuesit të kësaj videoje një pyetje, cila do të ishte?",
+    "fallbackBody": "Bëni një bisedë private me dikë që është gati të dëgjojë.",
+    "questionsShort": "Pyetje",
+    "questions": "Pyetje të lidhura",
+    "askYours": "Bëni pyetjen tuaj",
+    "chatWithPerson": "Bisedo me një person",
+    "askBibleQuestion": "Bëj një pyetje biblike",
+    "quiz": "Kuiz"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Lloji i mesazhit",
+    "fieldLabel": "Bëni një pyetje rreth kësaj videoje",
+    "send": "Dërgo pyetjen",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Bëj një pyetje biblike",
+        "description": "Përgjigje të menjëhershme nga Bibla duke përdorur kërkim me AI"
+      },
+      "prayerRequest": {
+        "label": "Kërko lutje",
+        "description": "Tregoni për çfarë dëshironi lutje"
+      },
+      "comment": {
+        "label": "Lini një koment",
+        "description": "Dërgoni mendimet tuaja për këtë video"
+      },
+      "personChat": {
+        "label": "Bisedo me një person",
+        "description": "Flisni tani me dikë"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Ndaj videon",
+    "heading": "Ndani këtë video",
+    "posterAlt": "Posteri i videos",
+    "shareOnFacebook": "Ndaj në Facebook",
+    "shareOnFacebookUnavailable": "Ndaj në Facebook (nuk është i disponueshëm në këtë version)",
+    "shareOnX": "Ndaj në X",
+    "shareOnXUnavailable": "Ndaj në X (nuk është i disponueshëm në këtë version)",
+    "shareDisabledHint": "Ndarja kërkon një faqe të publikuar — funksionon sapo kjo video të jetë në prodhim.",
+    "shareFormat": "Formati i ndarjes",
+    "shareLinkTab": "Ndaj lidhjen",
+    "embedCodeTab": "Kodi i integrimit",
+    "copyFailed": "Nuk mundi të kopjohej automatikisht — zgjidhni tekstin më poshtë dhe kopjojeni manualisht.",
+    "copyLink": "Kopjo lidhjen",
+    "copyCode": "Kopjo kodin",
+    "copied": "U kopjua",
+    "close": "Mbyll"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkripti",
+    "subheading": "Prekni çdo rresht për të kaluar te ai moment.",
+    "subtitleLanguage": "Gjuha e titrave",
+    "aiSuffix": " · AI",
+    "loading": "Po ngarkohet transkripti…",
+    "unavailable": "Transkripti nuk është i disponueshëm për këtë pistë titrash.",
+    "empty": "Nuk u gjetën rreshta transkripti."
+  },
+  "FloatingSearch": {
+    "placeholder": "Kërko ose shfleto temat…",
+    "openSearch": "Kërko video",
+    "searchRegion": "Kërko video",
+    "clearSearch": "Pastro kërkimin",
+    "changeAudioLanguage": "Ndrysho gjuhën e audios",
+    "home": "Faqja kryesore e JesusFilm",
+    "closeSearch": "Mbyll kërkimin",
+    "submitSearch": "Kërko",
+    "library": "Bibliotekë"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Kërko dhe shfleto videot",
+    "home": "Faqja kryesore e JesusFilm",
+    "placeholder": "Kërko ose shfleto temat…",
+    "inputLabel": "Kërko video sipas fjalës kyçe",
+    "searchFailed": "Kërkimi dështoi. Ju lutemi provoni përsëri.",
+    "loadMoreFailed": "Dështoi ngarkimi i rezultateve të tjera.",
+    "searching": "Po kërkohet...",
+    "connectionHint": "Ju lutemi kontrolloni lidhjen dhe provoni përsëri.",
+    "rateLimitHint": "Shumë kërkesa. Provo përsëri pas një minute.",
+    "retrySearch": "Provo sërish kërkimin",
+    "retry": "Provo përsëri",
+    "noResults": "Nuk ka rezultate për \"{query}\"",
+    "tryDifferentKeywords": "Provo fjalë kyçe të tjera ose shfleto kategoritë",
+    "loading": "Po ngarkohet...",
+    "loadMore": "Ngarko më shumë",
+    "categoryBibleStories": "Tregime biblike",
+    "categoryParables": "Shëmbëlltyra",
+    "categoryAnimated": "Të animuara",
+    "categoryStudy": "Studim",
+    "categoryFamily": "Familje",
+    "categoryChristmas": "Krishtlindje",
+    "searchLanguageLabel": "Gjuha e kërkimit",
+    "allLanguages": "Të gjitha gjuhët",
+    "searchSuggestions": "Sugjerime kërkimi",
+    "directMatches": "Përputhje të drejtpërdrejta",
+    "languages": "Gjuhë",
+    "recommendedLanguage": "Gjuha e rekomanduar",
+    "searchSuggestion": "Kërko “{suggestion}”",
+    "searchSuggestionWithLanguage": "Kërko “{suggestion}” në {language}",
+    "inLanguage": "në {language}",
+    "browseByRegion": "Shfleto sipas rajonit",
+    "allVideosOnSinglePage": "Të gjitha videot në një faqe",
+    "clearLanguages": "Pastro",
+    "queryLanguageDetected": "U zbulua {language}",
+    "searchInLanguage": "Kërko në {language}",
+    "tryDifferentKeywordsOrLanguage": "Provo fjalë kyçe të tjera ose zgjidh një gjuhë tjetër kërkimi",
+    "useWebsiteDefaultLanguage": "Përdor gjuhën e parazgjedhur të kërkimit të faqes",
+    "removeLanguage": "Hiq {language}",
+    "browseMode": "Modaliteti i shfletimit të kërkimit",
+    "searchingInLanguage": "Rezultate në {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Shiko tani",
+    "tapToUnmute": "Prek për të aktivizuar zërin",
+    "nextEpisode": "Episodi tjetër",
+    "audioTranslationCount": "{count, plural, one {# gjuhë} other {# gjuhë}}",
+    "subtitleCount": "Titrat: {count, plural, one {# gjuhë} other {# gjuhë}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Po ngarkohet përmbajtja",
+    "loadingVideo": "Po ngarkohet videoja"
+  },
+  "VideoLabels": {
+    "video": "Material video",
+    "segment": "Pjesë",
+    "episode": "Episod",
+    "featureFilm": "Film i metrazhit të gjatë",
+    "shortFilm": "Film i shkurtër",
+    "series": "Serial",
+    "collection": "Koleksion",
+    "trailer": "Trajler",
+    "behindTheScenes": "Prapaskenat",
+    "chapter": "Kapitull"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Klipi {current} nga {total}",
+    "position": "{current} nga {total}",
+    "chapterCount": "{count, plural, one {# kapitull} other {# kapituj}}",
+    "clipAriaLabel": "{title} · Klipi {current} nga {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# kapitull} other {# kapituj}}",
+    "chapter": "Kapitull",
+    "noImage": "Pa imazh",
+    "playingNow": "Po luhet tani",
+    "previousChapter": "Kapitulli i mëparshëm",
+    "nextChapter": "Kapitulli tjetër",
+    "thumbnailAlt": "Miniatura e {title}",
+    "relatedVideoThumbnail": "Miniaturë videoje të lidhur"
+  },
+  "SearchResultCard": {
+    "experience": "Përvojë",
+    "episodeCount": "{count, plural, one {# episod} other {# episode}}",
+    "thumbnailAlt": "Miniatura e videos"
+  },
+  "Feedback": {
+    "openForm": "Hap formularin e komenteve",
+    "label": "Komente",
+    "couldNotLoad": "Formulari i komenteve nuk mund të ngarkohej.",
+    "loadingForm": "Po ngarkohet formulari i komenteve…",
+    "retry": "Provo përsëri",
+    "cancel": "Anulo",
+    "closeForm": "Mbyll formularin e komenteve",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Video të krishtera falas në {language} | Jesus Film Project",
+    "metadataDescription": "Eksploroni filmat për Jezusin, historitë biblike, seritë e dishepullimit dhe videot e ungjillizimit me audio të dubluar ose titra në {language}.",
+    "heroTitle": "Video të krishtera falas në {language}",
+    "heroDescription": "Eksploroni filmat për Jezusin, historitë biblike, seritë e dishepullimit dhe videot e ungjillizimit të disponueshme në {language}. Videot plotësisht të dubluara theksohen së pari, ndërsa opsionet vetëm me titra janë më poshtë.",
+    "languageCollection": "Koleksioni i gjuhës",
+    "itemCount": "{count, plural, one {# element} other {# elemente}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} në {groupCount, plural, one {# grup} other {# grupe}}",
+    "sectionNavLabel": "Seksionet e inventarit të gjuhës",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "E re",
+    "videoBible": "Bibla në video",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Koleksione",
+    "subtitlesOnly": "Vetëm titra",
+    "backToTop": "Kthehu lart",
+    "newlyAdded": "Sapo shtuar",
+    "newVideosTitle": "Video të reja të krishtera në {language}",
+    "newestFirst": "Më të rejat të parat",
+    "noPublishedVideos": "Nuk u gjetën ende video të publikuara për këtë gjuhë.",
+    "bibleAndGospelFilms": "Filma biblikë dhe ungjillorë",
+    "videoBibleCollectionsTitle": "Koleksionet e Biblës në video në {language}",
+    "videoBibleDescription": "Koleksione të përqendruara te Shkrimi, duke përfshirë LUMO, JESUS, Magdalena dhe Veprat në {language}.",
+    "noVideoBibleCollections": "Nuk ka ende koleksione të Biblës në video të disponueshme për këtë gjuhë.",
+    "bibleProjectCollectionsTitle": "Koleksionet BibleProject në {language}",
+    "bibleProjectDescription": "Seritë dhe studimet BibleProject të disponueshme në {language}.",
+    "noBibleProjectCollections": "Nuk ka ende koleksione BibleProject të disponueshme për këtë gjuhë.",
+    "sportsStories": "Histori sportive",
+    "sportsTitle": "Histori sportive dhe të atletëve në {language}",
+    "sportsDescription": "Histori sportive me qendër besimin dhe koleksione të fokusuara te atletët të disponueshme në {language}.",
+    "noSportsCollections": "Nuk ka ende koleksione sportive ose me histori atletësh të disponueshme për këtë gjuhë.",
+    "fullyDubbed": "Plotësisht të dubluara",
+    "dubbedVideosTitle": "Video në {language} sipas koleksionit",
+    "dubbedVideosDescription": "Shfletoni videot plotësisht të dubluara në {language}, të grupuara me koleksionin e tyre për zbulim më të lehtë.",
+    "noDubbedVideos": "Nuk ka ende video plotësisht të dubluara të disponueshme për këtë gjuhë.",
+    "subtitlesAvailable": "Titra të disponueshme",
+    "subtitlesTitle": "Video në {language} me titra",
+    "subtitlesDescription": "Këto video përfshijnë titra në {language} kur audioja e folur në {language} nuk është ende e disponueshme.",
+    "noSubtitleVideos": "Nuk ka ende video vetëm me titra të disponueshme për këtë gjuhë.",
+    "dubbed": "Të dubluara",
+    "subtitles": "Titra",
+    "newLabel": "E re",
+    "fromCollection": "Nga {collection}",
+    "standaloneVideos": "Video të veçanta",
+    "videosFromCollection": "Video nga {collection}.",
+    "standaloneDescription": "Video të veçanta në këtë gjuhë.",
+    "openCollection": "Hap koleksionin",
+    "filters": "Filtra",
+    "filterLength": "Kohëzgjatja",
+    "filterLength_under5": "Nën 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mbi 30 min",
+    "filterType": "Tipi",
+    "clearFilters": "Fshi filtrat",
+    "filterResults": "{count} nga {total} të shfaqura",
+    "noFilterResults": "Asnjë video nuk përputhet me këta filtra. Provoni të hiqni një.",
+    "filterAdded": "Shtuar",
+    "filterAdded_60d": "60 ditët e fundit",
+    "filterAdded_6m": "6 muajt e fundit",
+    "filterAdded_12m": "12 muajt e fundit"
+  },
+  "WatchHome": {
+    "pageTitle": "Shikimi i Jesus Film Project",
+    "watch": "Shiko",
+    "watchNow": "Shiko tani",
+    "mutePreview": "Hiq zërin e parapamjes",
+    "unmutePreview": "Aktivizo zërin e parapamjes",
+    "nextVideo": "Videoja tjetër",
+    "featured": "Të veçuara",
+    "showVideo": "Shfaq {title}",
+    "previousVideoPreview": "Parapamja e videos së mëparshme",
+    "nextVideoPreview": "Parapamja e videos tjetër",
+    "mediaCollection": "Koleksion mediash",
+    "scrollToVideo": "Lëviz te videoja {title}",
+    "forYou": "Për ju"
+  },
+  "WatchFooter": {
+    "home": "Faqja kryesore e Jesus Film Project",
+    "navigation": "Navigimi i faqes së poshtme",
+    "share": "Ndaj",
+    "watch": "Shiko",
+    "giving": "Dhënie",
+    "about": "Rreth nesh",
+    "products": "Produkte",
+    "resources": "Burime",
+    "partners": "Partnerë",
+    "contact": "Kontakt",
+    "giveNow": "Jep tani",
+    "resourcesVersion": "Burime ({version})",
+    "office": "Zyrë",
+    "fax": "Faks",
+    "privacyPolicy": "Politika e privatësisë",
+    "legalStatement": "Deklaratë ligjore",
+    "newsletter": "Regjistrohuni për buletinin tonë",
+    "aiAttributionHeading": "Përdorimi dhe atribuimi i AI-së",
+    "aiAttributionBody": "Përdorimi i informacionit nga kjo faqe nga sistemet e inteligjencës artificiale kushtëzohet nga atribuimi. Çdo agjent AI, model i madh gjuhësor (LLM), motor kërkimi AI, crawler ose sistem tjetër i automatizuar i ngjashëm që nxjerr ose përdor informacion nga kjo faqe për trajnim, kërkim, gjenerim përgjigjesh ose shërbime të ofruara përdoruesve apo klientëve, duhet të identifikojë Jesus Film Project si burimin dhe të përfshijë një lidhje të qartë dhe të drejtpërdrejtë me këtë faqe kudo që ai informacion përdoret ose paraqitet. Shihni <terms>Kushtet e Përdorimit</terms> tona."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Ndërtuar për misionin global",
+    "title": "Mesazhi nuk ndryshon. Mënyra si e shikojnë njerëzit po.",
+    "description": "Po rindërtojmë bibliotekën dhe mjetet tona video nga e para, duke e çuar dekada pune përkthimi në platformat ku njerëzit tashmë mblidhen, shikojnë dhe ndajnë.",
+    "translatedLibraryTitle": "Biblioteka e filmave më e përkthyer në botë",
+    "translatedLibraryDescription": "Dekada pune përkthimi, të mbështetura nga partnerë të besuar të shërbesës, kanë ndërtuar një bibliotekë me mijëra pista gjuhësore që njerëzit të mund të takojnë historinë e Jezusit në gjuhën që u prek më thellë.",
+    "trustedVoicesTitle": "Duke i sjellë zërat e besuar në formate të reja",
+    "trustedVoicesDescription": "Po rindërtojmë mënyrën si tregohen vizualisht historitë e ungjillit, duke i lidhur përkthimet e besuara me formate moderne që mesazhi të lëvizë lirshëm nëpër platforma, kultura dhe ekrane.",
+    "missionTeamTitle": "Më shumë se një bibliotekë. Një ekip me mision.",
+    "missionTeamDescription": "Jesus Film Project është një ekip global përkthyesish, specialistësh të medias, redaktorësh dhe krijuesish që shndërrojnë dekada përvoje në shërbesë në mjete për dishepullbërësit kudo.",
+    "buildingNext": "Çfarë po ndërtojmë më tej",
+    "nextStepsTitle": "Platforma e Hapave të Radhës",
+    "nextStepsDescription": "Lidhni shikuesit me mundësi konkrete në rrugëtimin e tyre shpirtëror, duke i ndihmuar të hedhin hapin e radhës drejt komunitetit, Shkrimit ose misionit.",
+    "mediaLibraryTitle": "Bibliotekë Media për Ungjillizim",
+    "mediaLibraryDescription": "Një bibliotekë e gjerë mediash të krishtera me mijëra video, filma dhe burime të disponueshme në shumë gjuhë për shërbesë dhe ungjillizim në mbarë botën.",
+    "ministryToolsTitle": "Mjete Digjitale për Shërbesat",
+    "ministryToolsDescription": "Menaxhim videoje, shpërndarje përmbajtjeje, angazhim të audiencës dhe analiza të krijuara për t’i ndihmuar shërbesat të arrijnë më shumë njerëz në mënyrë efektive.",
+    "invitationEyebrow": "Jeni të ftuar",
+    "invitationTitle": "Ndihmoni të ndërtojmë <highlight>brezin e ardhshëm</highlight> të mjeteve për misionin",
+    "invitationDescription": "Po ftojmë praktikues, krijues dhe partnerë në qasje të hershme. Testoni mjetet e reja të parët, jepni feedback dhe ndihmoni të formësojmë produkte të krijuara për punë të vërtetë misionare.",
+    "betaTester": "Bëhuni testues beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Koleksioni Bibla në Video",
+    "gospelRailTitle": "Zbuloni historinë e plotë",
+    "videoBibleDescription": "Eksploroni koleksionin tonë të videove dhe burimeve që e sjellin Biblën në jetë përmes tregimeve dhe mësimeve tërheqëse.",
+    "showcaseTitle": "Shkrimi i treguar përmes filmit",
+    "adventEyebrow": "Ardhja e Krishtlindjes",
+    "adventTitle": "Numërimi mbrapsht i Ardhjes së Krishtlindjes",
+    "adventDescription": "Bashkohuni me udhëtimin tonë të Ardhjes me një video të përditshme që ndërton pritjen për Krishtlindje, duke eksploruar shpresën, gëzimin dhe premtimin e ardhjes së Jezusit.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Ardhja e Krishtlindjes me BibleProject",
+    "nuaEyebrow": "Seria NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Seria Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kurs video",
+    "journeyWithJesusTitle": "Udhëto me Jezusin",
+    "gospelsOnVideoEyebrow": "Çdo Ungjill, i treguar në video",
+    "scriptureAsWrittenTitle": "Shkrimi, i shqiptuar saktësisht siç është shkruar",
+    "merryChristmas": "Gëzuar Krishtlindjet!",
+    "daysUntilChristmas": "{count, plural, one {# ditë deri në Krishtlindje} other {# ditë deri në Krishtlindje}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Gjuhët",
+    "metadataDescription": "Shfletoni videot e JesusFilm sipas gjuhës.",
+    "eyebrow": "Gjuhët e shikimit",
+    "title": "Zgjidhni një gjuhë",
+    "description": "Eksploroni gjuhët sipas rajonit ose shfletoni listën e plotë.",
+    "searchPlaceholder": "Kërko gjuhë ose vende...",
+    "searchLabel": "Kërko gjuhë ose vende",
+    "clearSearch": "Pastro kërkimin",
+    "browse": "Shfleto",
+    "browseByRegion": "Shfleto sipas rajonit dhe vendit",
+    "languageCount": "{count, plural, one {# gjuhë} other {# gjuhë}}",
+    "region": "Rajon",
+    "countryLanguages": "Gjuhët e {country}",
+    "showLess": "Shfaq më pak",
+    "showMore": "Shfaq {count} më shumë",
+    "noLanguages": "Nuk u gjetën gjuhë",
+    "tryAnotherSearch": "Provoni një term tjetër kërkimi."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Historia e shikimit | Jesus Film Project",
+    "title": "Historia e shikimit",
+    "loading": "Po ngarkohet historia",
+    "empty": "S’ka asgjë këtu ende",
+    "emptyDescription": "Videot që shikoni ndërsa jeni të kyçur do të shfaqen këtu.",
+    "earlier": "Më herët",
+    "today": "Sot",
+    "yesterday": "Dje"
+  },
+  "AccountControl": {
+    "account": "Llogaria",
+    "accountMenu": "Menyja e llogarisë",
+    "signIn": "Hyni",
+    "signOut": "Dilni",
+    "signedIn": "I kyçur",
+    "history": "Historia",
+    "logOut": "Shkyçu"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Faqja nuk u gjet",
+    "eyebrow": "Faqja nuk u gjet",
+    "screenReaderPrefix": "Faqja nuk u gjet:",
+    "title": "Kjo skenë nuk është këtu.",
+    "description": "Faqja mund të jetë zhvendosur, por historia vazhdon.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Veprimet kur faqja nuk u gjet",
+    "backToWatch": "Kthehu te Shikimi",
+    "browseVideos": "Shfleto videot"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% përputhje",
+    "none": "Nuk u gjetën rekomandime për këtë video në këtë gjuhë."
+  },
+  "BetaTesterModal": {
+    "title": "Bëhuni testues beta",
+    "trigger": "Bëhuni testues beta",
+    "loadFailed": "Diçka shkoi keq.",
+    "loading": "Po ngarkohet...",
+    "openFormNewTab": "Hap formularin në një skedë të re",
+    "close": "Mbyll",
+    "iframeTitle": "Bëhuni testues beta"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Shkarko koleksionin",
+    "eyebrow": "Shkarko koleksionin",
+    "description": "Zgjidhni një herë gjuhën dhe cilësinë. Çdo episod i disponueshëm do të shkarkohet sipas radhës.",
+    "signInTitle": "Hyni për të shkarkuar",
+    "signInBody": "Shkarkimet e koleksioneve janë të disponueshme pasi të hyni me një llogari Jesus Film.",
+    "signIn": "Hyni për të shkarkuar",
+    "languageLabel": "Gjuha",
+    "qualityLabel": "Cilësia e videos",
+    "tierHighest": "Më e larta",
+    "tierHigh": "E lartë",
+    "tierLow": "E ulët",
+    "loading": "Po kërkohen episodet e disponueshme…",
+    "loadError": "Shkarkimet për këtë gjuhë nuk mund të ngarkoheshin.",
+    "retry": "Provo përsëri",
+    "noDownloads": "Nuk ka episode të shkarkueshme në këtë gjuhë.",
+    "availableCount": "{count, plural, one {# episod është gati} other {# episode janë gati}}",
+    "skippedCount": "{count, plural, one {# episod do të kapërcehet sepse nuk është i disponueshëm} other {# episode do të kapërcehen sepse nuk janë të disponueshme}}",
+    "chooseFolder": "Zgjidh dosjen e shkarkimit",
+    "folderSelected": "Ruaj te {name}",
+    "folderError": "Dosja e shkarkimit nuk mund të hapej.",
+    "browserFallback": "Shfletuesi juaj do ta ruajë çdo skedar sipas cilësimeve të zakonshme të shkarkimit. Mund t’ju kërkojë të lejoni shkarkime të shumëfishta.",
+    "sessionError": "Nuk mund të kontrollohet sesioni juaj. Ju lutemi provoni përsëri.",
+    "downloading": "Po shkarkohet {title}",
+    "progress": "{completed} nga {total}",
+    "complete": "Shkarkimet përfunduan",
+    "canceled": "Shkarkimet u anuluan",
+    "failedCount": "{count, plural, one {Shkarkimi i # episodi dështoi} other {Shkarkimi i # episodeve dështoi}}. Zgjidhni përsëri «Shkarko» për të riprovuar koleksionin.",
+    "close": "Mbyll",
+    "cancel": "Anulo",
+    "start": "Shkarko të gjitha",
+    "downloadAgain": "Shkarko përsëri",
+    "retryFailed": "Riprovo shkarkimet e dështuara"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Versioni në këtë gjuhë nuk disponohet",
+    "eyebrow": "Versioni në këtë gjuhë nuk disponohet",
+    "title": "<contentTitle>{title}</contentTitle> nuk disponohet në <languageName>{language}</languageName>",
+    "actionsLabel": "Opsionet e disponueshme të shikimit",
+    "browseInLanguage": "Shfleto video në {language}",
+    "backToSearch": "Kthehu te kërkimi",
+    "audioVersionsTitle": "Versione të tjera audio",
+    "audioVersionsDescription": "Zgjidh një gjuhë audio për të vazhduar shikimin e kësaj videoje.",
+    "languageVersionLabel": "Gjuha e audios",
+    "selectLanguageVersion": "Zgjidh një version gjuhësor",
+    "watchSelectedVersion": "Shiko versionin e zgjedhur"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Zgjedhjet e cookie-ve",
+    "bannerTitle": "Zgjedhjet tuaja për privatësinë",
+    "bannerDescription": "Cookie-t thelbësore e mbajnë Watch të sigurt dhe funksional. Me lejen tuaj, një cookie opsionale e palës së parë mund të mbajë mend interesat në vizita të ndryshme për të personalizuar rekomandimet. Rekomandimet kontekstuale mbeten të disponueshme në çdo rast.",
+    "acceptAll": "Pranoji të gjitha",
+    "essentialOnly": "Vetëm thelbësoret",
+    "manageChoices": "Menaxho zgjedhjet",
+    "savingChoice": "Po ruhen zgjedhjet për cookie-t",
+    "settings": "Cilësimet e cookie-ve",
+    "settingsDescription": "Zgjidhni nëse Watch mund të mbajë mend interesat për rekomandime në vizita të ndryshme. Këtë mund ta ndryshoni në çdo kohë.",
+    "essentialCookies": "Cookie thelbësore",
+    "essentialDescription": "Siguria, riprodhimi, zgjedhjet për privatësinë dhe atribuimi i kërkesave për rekomandime.",
+    "alwaysActive": "Gjithmonë aktive",
+    "personalization": "Personalizimi",
+    "personalizationDescription": "Mban mend interesa të kufizuara në vizita të ndryshme. Nëse e çaktivizoni këtë, rekomandimet kontekstuale mbeten të disponueshme.",
+    "erasurePending": "Fshirja e profilit është në pritje. Rekomandimet kontekstuale janë tashmë aktive.",
+    "cancel": "Anulo",
+    "saveChoices": "Ruaj zgjedhjet",
+    "saving": "Po ruhet…",
+    "loadError": "Zgjedhja juaj nuk mund të ngarkohej. Mund të zgjidhni gjithsesi më poshtë.",
+    "grantError": "Personalizimi nuk mund të aktivizohej. Opsioni vetëm thelbësoret mbetet i disponueshëm.",
+    "saveError": "Zgjedhja juaj nuk mund të ruhej. Ju lutemi, provoni përsëri."
+  }
+}

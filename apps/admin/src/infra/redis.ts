@@ -13,6 +13,8 @@ export function getRedisClient(): Redis | null {
   }
 
   if (redisClient === undefined) {
+    // Keep shared-client behavior unchanged. Admission and readiness bound their
+    // own waits and outstanding operations via redis-availability.ts.
     redisClient = new Redis({
       host: env.REDIS_HOST,
       port: env.REDIS_PORT,
@@ -21,12 +23,10 @@ export function getRedisClient(): Redis | null {
       enableOfflineQueue: false,
     })
     redisClient.on("error", (err: Error) =>
+      // Plain-string per the Railway logsV2 rule (JSON from runtime routes is
+      // silenced). Never include command args / keys.
       console.warn(
-        JSON.stringify({
-          event: "redis.error",
-          message: err.message,
-          service: "forge-admin",
-        }),
+        `[redis] event=redis.error message=${err.message} service=forge-admin`,
       ),
     )
   }

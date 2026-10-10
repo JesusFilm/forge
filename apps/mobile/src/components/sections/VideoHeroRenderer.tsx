@@ -8,7 +8,6 @@ import {
   View,
   useWindowDimensions,
 } from "react-native"
-import { BlurView } from "expo-blur"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 import { useEvent } from "expo"
@@ -25,28 +24,25 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { feedback } from "../../styles/shared"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
-import { pickThumbnailUrl } from "../../lib/types"
+import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { validateStreamingUrl } from "../../lib/validateUrl"
+import { PlatformBlur } from "../ui/PlatformBlur"
+import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { useTypography } from "../../hooks/useTypography"
-import type { NormalizedBlock } from "../../lib/normalizer"
+import { useT } from "../../i18n/useT"
+import type { AdminBlock } from "../../lib/queries"
+import { useVideoThumbnail } from "../../contexts/ExperienceProvider"
+import { blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
 export interface VideoHeroRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
   heroHeight?: number
-  /** When true, the video is paused by the parent (scrolled away). */
   paused?: boolean
-  /** Blur/dim overlay opacity (0 = clear, 1 = fully blurred/dimmed). */
   blurOpacity?: number
-  /** Controlled mute state — managed by the parent so the toggle button can
-   *  live in a layer above the scroll view. */
   muted?: boolean
-  /** Called when the parent's mute button is pressed. */
   onMuteToggle?: () => void
-  /** Reports the mute button's position (relative to the hero container) so the
-   *  parent can place an invisible touch target in the overlay layer. */
   onMuteButtonLayout?: (x: number, y: number, w: number, h: number) => void
 }
 
@@ -61,34 +57,31 @@ export function VideoHeroRenderer({
   onMuteToggle,
   onMuteButtonLayout,
 }: VideoHeroRendererProps) {
-  const heading = section.heading as string | null
-  const subheading = section.subheading as string | null
-  const ctaLabel = (section.ctaLabel as string | null)?.trim() ?? null
-  const ctaLink = (section.ctaLink as string | null)?.trim() ?? null
-  const streamingUrl = section.streamingUrl as string | null
-  const video = section.video as
-    | {
-        documentId?: string
-        title?: string
-        slug?: string
-        images?: {
-          url?: string
-          mobileCinematicHigh?: string
-          videoStill?: string
-        }
-      }
-    | null
-    | undefined
+  const s = section as Record<string, unknown>
+  const heading = s.heading as string | null
+  const subheading = s.subheading as string | null
+  const ctaLabel = (s.ctaLabel as string | null)?.trim() ?? null
+  const ctaLink = (s.ctaLink as string | null)?.trim() ?? null
+  const streamingUrl = blockStreamingUrl(s)
+  const sectionKey = s.sectionKey as string | null
+  const videoId = s.videoId as string | null
 
-  const thumbnailUrl = resolveImageUrl(pickThumbnailUrl(video?.images))
+  const resolvedThumb = useVideoThumbnail(videoId)
+  const thumbnailUrl = resolveThumbnailUrl(resolvedThumb, streamingUrl)
   const hasValidStream = validateStreamingUrl(streamingUrl)
   const hasCta =
     ctaLabel != null && ctaLabel !== "" && ctaLink != null && ctaLink !== ""
 
   const { width: screenWidth } = useWindowDimensions()
   const typography = useTypography()
+  const t = useT("Sections")
+  const tCommon = useT("Common")
   const router = useRouter()
   const appActiveRef = useRef(true)
+  // R19 keeps this hero out of the mini player, but it still competes for the
+  // one decoder (R10), so it yields to a window that holds a live video.
+  const windowHoldsVideo = useMiniPlayerHoldsVideo()
+  const suspended = windowHoldsVideo || paused === true
 
   const [hasStarted, setHasStarted] = useState(false)
 
@@ -98,7 +91,6 @@ export function VideoHeroRenderer({
     p.play()
   })
 
-  // Defensive cleanup on unmount
   useEffect(() => {
     return () => {
       try {
@@ -113,33 +105,32 @@ export function VideoHeroRenderer({
     isPlaying: player.playing,
   })
 
-  // Dismiss thumbnail when autoplay starts
   useEffect(() => {
     if (isPlaying && !hasStarted) {
       setHasStarted(true)
     }
   }, [isPlaying, hasStarted])
 
-  // Pause/resume based on paused prop
   useEffect(() => {
-    if (paused == null) return
-    if (paused) {
-      player.pause()
-    } else if (appActiveRef.current) {
-      player.play()
+    try {
+      if (suspended) {
+        player.pause()
+      } else if (appActiveRef.current) {
+        player.play()
+      }
+    } catch {
+      // Native player already released
     }
-  }, [paused, player])
+  }, [suspended, player])
 
-  // Sync controlled mute prop to the native player
   useEffect(() => {
     player.muted = mutedProp
   }, [mutedProp, player])
 
-  // Pause/resume on app background/foreground
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (nextState) => {
       appActiveRef.current = nextState === "active"
-      if (appActiveRef.current && !paused) {
+      if (appActiveRef.current && !suspended) {
         player.play()
       } else {
         try {
@@ -150,7 +141,7 @@ export function VideoHeroRenderer({
       }
     })
     return () => subscription.remove()
-  }, [player, paused])
+  }, [player, suspended])
 
   const containerRef = useRef<View>(null)
   const muteButtonRef = useRef<View>(null)
@@ -171,12 +162,10 @@ export function VideoHeroRenderer({
   }, [onMuteButtonLayout])
 
   const handleCtaPress = useCallback(() => {
-    if (video?.slug) {
-      const sectionKey =
-        (section.sectionKey as string | undefined) ?? video.slug
+    if (sectionKey) {
       router.push(`/video/${encodeURIComponent(sectionKey)}`)
     }
-  }, [video, section, router])
+  }, [sectionKey, router])
 
   const computedHeight = heroHeight ?? screenWidth * 1.2
 
@@ -185,22 +174,30 @@ export function VideoHeroRenderer({
       ref={containerRef}
       style={[styles.container, { height: computedHeight }]}
     >
-      {/* Video layer */}
       {hasValidStream ? (
         <>
-          <VideoView
-            player={player}
-            style={StyleSheet.absoluteFill}
-            nativeControls={false}
-            contentFit="cover"
-          />
-          {!hasStarted && thumbnailUrl != null && (
+          {/* R10: a paused player keeps its surface, so the yield unmounts the
+              view and the thumbnail below takes the hero back. */}
+          {!windowHoldsVideo && (
+            <VideoView
+              player={player}
+              style={StyleSheet.absoluteFill}
+              nativeControls={false}
+              contentFit="cover"
+              // RN 0.86 Fabric: the default SurfaceView decodes but never
+              // composites under a layered hero stack — mirrors HomeHeroPager.
+              surfaceType={
+                Platform.OS === "android" ? "textureView" : undefined
+              }
+            />
+          )}
+          {(!hasStarted || windowHoldsVideo) && thumbnailUrl != null && (
             <Image
               source={thumbnailUrl}
               style={StyleSheet.absoluteFill}
               contentFit="cover"
-              recyclingKey={`hero-thumb-${section.id as string}`}
-              accessibilityLabel={video?.title ?? "Video thumbnail"}
+              recyclingKey="hero-thumb"
+              accessibilityLabel={heading ?? tCommon("videoThumbnailAriaLabel")}
             />
           )}
         </>
@@ -209,14 +206,13 @@ export function VideoHeroRenderer({
           source={thumbnailUrl}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
-          recyclingKey={`hero-img-${section.id as string}`}
-          accessibilityLabel={video?.title ?? "Hero image"}
+          recyclingKey="hero-img"
+          accessibilityLabel={heading ?? t("heroImageAriaLabel")}
         />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.fallback]} />
       )}
 
-      {/* Scroll-driven blur/dim overlay */}
       {blurOpacity > 0 && (
         <View
           style={[StyleSheet.absoluteFill, { opacity: blurOpacity }]}
@@ -224,19 +220,10 @@ export function VideoHeroRenderer({
           importantForAccessibility="no-hide-descendants"
           accessibilityElementsHidden
         >
-          {Platform.OS === "ios" ? (
-            <BlurView
-              intensity={50}
-              tint="dark"
-              style={StyleSheet.absoluteFill}
-            />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, styles.androidDim]} />
-          )}
+          <PlatformBlur intensity={50} style={StyleSheet.absoluteFill} />
         </View>
       )}
 
-      {/* Gradient overlay — fades hero into base background */}
       <LinearGradient
         colors={[hexToRgba(BG_COLOR, 0), BG_COLOR]}
         locations={[0.4, 1]}
@@ -244,7 +231,6 @@ export function VideoHeroRenderer({
         pointerEvents="none"
       />
 
-      {/* Text content */}
       <View style={[styles.textContent, { paddingBottom: 32 }]}>
         {heading != null && (
           <View style={styles.headingRow}>
@@ -301,9 +287,6 @@ const styles = StyleSheet.create({
   },
   fallback: {
     backgroundColor: BG_COLOR,
-  },
-  androidDim: {
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
   },
   textContent: {
     paddingHorizontal: 16,

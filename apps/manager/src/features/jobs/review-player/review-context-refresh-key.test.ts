@@ -101,6 +101,47 @@ describe("getReviewContextRefreshKey", () => {
     )
   })
 
+  it("changes when subtitle validation artifacts or summaries change", () => {
+    const before = buildJob()
+    const after = buildJob({
+      artifacts: {
+        "subtitle-validation-fr": { kind: "downloadable" },
+      },
+      steps: [
+        {
+          name: "translation",
+          status: "completed",
+          retries: 0,
+          details: {
+            subtitleValidation: {
+              highestVerdict: "warning",
+              languagesChecked: 1,
+              modelOnlyLanguages: ["fr"],
+              unavailableLanguages: [],
+              warningCount: 1,
+              needsReviewCount: 0,
+              results: [
+                {
+                  lang: "fr",
+                  verdict: "warning",
+                  basis: "model_knowledge",
+                  confidence: 0.73,
+                  checkedReferenceCount: 1,
+                  warningCount: 1,
+                  needsReviewCount: 0,
+                },
+              ],
+            },
+          },
+        },
+      ],
+    })
+
+    expect(getReviewContextRefreshKey(after)).not.toBe(
+      getReviewContextRefreshKey(before),
+    )
+  })
+
   it("changes when playback identity or terminal status changes", () => {
     const before = buildJob()
     const after = buildJob({

@@ -2,179 +2,195 @@ import { print } from "graphql"
 import { describe, expect, it } from "vitest"
 
 import {
-  getWatchVideoOperation,
-  watchVideoFragment,
+  getWatchCollectionDownloadDubsBySlugOperation,
+  getWatchVideoCarouselMuxPlaybackIdsBySlugOperation,
+  getWatchLanguagePickerVariantsBySlugOperation,
+  getWatchVideoDubDetailOperation,
+  getWatchVideoLocalizedCopyBySlugOperation,
+  getWatchVideoRouteSnapshotBySlugOperation,
+  getWatchVideoShellBySlugOperation,
+  watchVideoDubDetailFragment,
+  watchVideoLocalizedCopyFragment,
+  watchVideoShellFragment,
 } from "@/lib/fragments/watch-video"
 
-/**
- * U2 verification — guard the WatchVideoFragment + GetWatchVideo operation
- * against (a) accidental field removal and (b) the
- * `codegen-strips-optional-graphql-variables` failure mode where required
- * variable definitions are silently dropped from the serialized DocumentNode.
- *
- * See `docs/plans/2026-04-29-001-feat-watch-page-mux-parity-plan.md` (R22, U2).
- */
+describe("WatchVideo split GraphQL operations", () => {
+  it("keeps the slug-level shell free of localized copy and heavy Dub detail", () => {
+    const printed = print(watchVideoShellFragment)
 
-describe("WatchVideoFragment", () => {
-  it("projects every field the watch page consumes (R22)", () => {
-    const printed = print(watchVideoFragment)
-
-    // Top-level Video fields
-    expect(printed).toMatch(/fragment WatchVideo on Video/)
-    expect(printed).toMatch(/documentId/)
+    expect(printed).toMatch(/fragment WatchVideoShell on Video/)
+    expect(printed).toMatch(/documentId\s*:\s*\bid\b/)
     expect(printed).toMatch(/\bslug\b/)
-    expect(printed).toMatch(/\btitle\b/)
-    expect(printed).toMatch(/\bsnippet\b/)
-    expect(printed).toMatch(/\bdescription\b/)
     expect(printed).toMatch(/\bnoIndex\b/)
     expect(printed).toMatch(/\blabel\b/)
-    expect(printed).toMatch(/\bimageAlt\b/)
-
-    // images { url }
-    expect(printed).toMatch(/images\s*\{\s*[^}]*\burl\b/)
-
-    // primaryLanguage { coreId, bcp47 }
+    expect(printed).toMatch(/images\s*\{[\s\S]*?\burl\b/)
     expect(printed).toMatch(/primaryLanguage\s*\{[\s\S]*?coreId[\s\S]*?bcp47/)
-
-    // parents projection (canonical-parent + sibling carousel).
-    // NOTE: R22 originally asked for `children(sort: ["order:asc"])`, but
-    // Strapi has no `order` field on Video — see fragment file comment.
-    // Children come back in editor-curated relation order; sibling-carousel
-    // (U6) will fall back to client-side ordering if needed.
-    expect(printed).toMatch(/parents\s*\{[\s\S]*?\bchildren\b/)
-    expect(printed).toMatch(
-      /\bchildren\b[^{]*\{[\s\S]*?documentId[\s\S]*?\bslug\b[\s\S]*?\btitle\b[\s\S]*?\blabel\b[\s\S]*?images\s*\{\s*url/,
-    )
-
-    // Top-level `children(pagination: { limit: -1 })` — required so Strapi
-    // returns every chapter for parent/collection videos (e.g. JESUS has 61
-    // segments). The default 10-row pagination would silently drop chapters
-    // and the SiblingCarousel would render an incomplete strip. Mirrors the
-    // variants assertion shape below. graphql-js prints selections in source
-    // order, so the printed fragment shape is:
-    //   parents { ... children(pagination) { ... } }
-    //   children(pagination) { ... }      ← top-level
-    //   variants(pagination) { ... }
-    // The top-level occurrence is uniquely anchored by what appears AFTER
-    // the closing `}` of the children block — the next field is
-    // `variants(`. The nested occurrence is followed by another `}` (the
-    // parents block close) instead.
-    expect(printed).toMatch(
-      /\bchildren\(pagination:\s*\{\s*limit:\s*-1\s*\}\)\s*\{[\s\S]*?\}\s*variants\s*\(/,
-    )
-
-    // variants: identifying + playable + downloads + muxVideo.
-    // The relation is paginated with `limit: -1` so Strapi returns every
-    // variant — the 10-row default would silently drop the English variant
-    // for any video whose first 10 variants are non-English (242 variants
-    // on `mary-visit-to-elizabeth`, etc.) and the watch page would fall back
-    // to "first playable" → wrong-language playback.
-    expect(printed).toMatch(/variants\(pagination:\s*\{\s*limit:\s*-1\s*\}\)/)
-    expect(printed).toMatch(/variants\([^)]*\)\s*\{[\s\S]*?\bhls\b/)
-    expect(printed).toMatch(/variants\([^)]*\)\s*\{[\s\S]*?\bpublished\b/)
-    expect(printed).toMatch(
-      /variants\([^)]*\)\s*\{[\s\S]*?\bmuxVideo\s*\{[\s\S]*?playbackId/,
-    )
-    expect(printed).toMatch(
-      /variants\([^)]*\)\s*\{[\s\S]*?downloads\s*\{[\s\S]*?\bquality\b[\s\S]*?\bsize\b[\s\S]*?\burl\b/,
-    )
-    // variants.language must include the slug U3 will key off
-    expect(printed).toMatch(
-      /variants\([^)]*\)\s*\{[\s\S]*?language\s*\{[\s\S]*?coreId[\s\S]*?bcp47[\s\S]*?\bslug\b[\s\S]*?\bname\b/,
-    )
-
-    // studyQuestions sorted ascending; only `value` + `order` (no `answer`)
-    expect(printed).toMatch(/studyQuestions\(sort:\s*\["order:asc"\]\)/)
-    expect(printed).toMatch(/studyQuestions\([^)]*\)\s*\{[\s\S]*?\bvalue\b/)
-    expect(printed).not.toMatch(
-      /studyQuestions\([^)]*\)\s*\{[\s\S]*?\banswer\b[\s\S]*?\}/,
-    )
-
-    // bibleCitations sorted ascending
-    expect(printed).toMatch(/bibleCitations\(sort:\s*\["order:asc"\]\)/)
-    expect(printed).toMatch(
-      /bibleCitations\([^)]*\)\s*\{[\s\S]*?chapterStart[\s\S]*?chapterEnd[\s\S]*?verseStart[\s\S]*?verseEnd[\s\S]*?\border\b[\s\S]*?\bosisId\b/,
-    )
-
-    // bibleBook { name } MUST be a plain String selection — guard against
-    // accidentally projecting `name { value primary }`.
-    expect(printed).toMatch(
-      /bibleBook\s*\{[\s\S]*?documentId[\s\S]*?\bname\b[\s\S]*?\}/,
-    )
-    expect(printed).not.toMatch(/bibleBook\s*\{[^}]*name\s*\{/)
+    expect(printed).toMatch(/parents\s*\{[\s\S]*?parent\s*\{/)
+    expect(printed).toMatch(/children\s*\{[\s\S]*?child\s*\{/)
+    expect(printed).toMatch(/children\s*\{\s*order\s+child\s*\{/)
+    expect(printed).not.toMatch(/\blocales\(/)
+    expect(printed).not.toMatch(/\bstudyQuestions\(/)
+    expect(printed).not.toMatch(/\bdubs\s*\{/)
+    expect(printed).not.toMatch(/\bdownloads\s*\{/)
+    expect(printed).not.toMatch(/\bmuxVideo\s*\{/)
+    expect(printed).not.toMatch(/\bvideoEdition\s*\{/)
   })
 
-  it("preserves a single fragment definition (gql.tada @_unmask compiles cleanly)", () => {
-    const printed = print(watchVideoFragment)
-    // graphql-js's `print()` strips unknown client directives like
-    // `@_unmask` after schema validation, so we cannot assert the directive
-    // text round-trips. Instead, assert the fragment definition prints
-    // exactly once and on the expected target type — proof that gql.tada's
-    // codegen accepted the fragment without throwing.
-    const matches = printed.match(/fragment WatchVideo on Video/g) ?? []
-    expect(matches).toHaveLength(1)
+  it("keeps localized fallback queries text-only", () => {
+    const printed = print(watchVideoLocalizedCopyFragment)
+
+    expect(printed).toMatch(/fragment WatchVideoLocalizedCopy on Video/)
+    expect(printed).toMatch(
+      /locales\(locale:\s*\$locale,\s*languageSlug:\s*\$languageSlug\)/,
+    )
+    expect(printed).toMatch(
+      /locales\([^)]*\)\s*\{[\s\S]*?\btitle\b[\s\S]*?description[\s\S]*?snippet[\s\S]*?imageAlt/,
+    )
+    expect(printed).toMatch(
+      /studyQuestions\(locale:\s*\$locale,\s*languageSlug:\s*\$languageSlug\)\s*\{/,
+    )
+    expect(printed).toMatch(
+      /studyQuestions\([^)]*\)\s*\{[\s\S]*?value\s*:\s*text/,
+    )
+    expect(printed).toMatch(/parents\s*\{[\s\S]*?locales\(/)
+    expect(printed).toMatch(/children\s*\{[\s\S]*?locales\(/)
+    expect(printed).toMatch(/children\s*\{\s*order\s+child\s*\{/)
+
+    expect(printed).not.toMatch(/\bdubs\s*\{/)
+    expect(printed).not.toMatch(/\bdownloads\s*\{/)
+    expect(printed).not.toMatch(/\bmuxVideo\s*\{/)
+    expect(printed).not.toMatch(/\bvideoEdition\s*\{/)
+  })
+
+  it("loads downloads, mux playback, and subtitles only for one selected Dub", () => {
+    const printed = print(watchVideoDubDetailFragment)
+
+    expect(printed).toMatch(/fragment WatchVideoDubDetail on VideoDub/)
+    expect(printed).toMatch(/documentId\s*:\s*\bid\b/)
+    expect(printed).toMatch(/\bhls\b/)
+    expect(printed).toMatch(/\bduration\b/)
+    expect(printed).toMatch(
+      /\blanguage\s*\{[\s\S]*?coreId[\s\S]*?iso3[\s\S]*?slug/,
+    )
+    expect(printed).toMatch(
+      /\bdownloads\s*\{[\s\S]*?height[\s\S]*?quality[\s\S]*?size/,
+    )
+    expect(printed).toMatch(/\bmuxVideo\s*\{[\s\S]*?playbackId/)
+    expect(printed).toMatch(
+      /\bvideoEdition\s*\{[\s\S]*?subtitles\s*\{[\s\S]*?vttSrc[\s\S]*?srtSrc[\s\S]*?primary[\s\S]*?aiGenerated/,
+    )
+    expect(printed).toMatch(
+      /\bsubtitles\s*\{[\s\S]*?\bvideo\s*\{[\s\S]*?documentId\s*:\s*\bid\b/,
+    )
   })
 })
 
-describe("GetWatchVideo operation", () => {
-  it("declares every variable as required (avoids codegen-strips-optional-graphql-variables)", () => {
-    const printed = print(getWatchVideoOperation)
+describe("WatchVideo split operation documents", () => {
+  it("keeps collection source URLs inside the server-only lookup", () => {
+    const printed = print(getWatchCollectionDownloadDubsBySlugOperation)
 
     expect(printed).toMatch(
-      /query GetWatchVideo\([\s\S]*?\$i18nLocale:\s*I18NLocaleCode!/,
+      /downloadableChildDubs\(languageSlug:\s*\$languageSlug\)/,
     )
-    expect(printed).toMatch(/\$collectionSlug:\s*String!/)
+    expect(printed).toMatch(/downloads\s*\{/)
+    expect(printed).toMatch(/documentId\s*:\s*id/)
+    expect(printed).toMatch(
+      /downloadableChildDubs\([^)]*\)\s*\{[\s\S]*?\bslug\b[\s\S]*?language\s*\{[\s\S]*?documentId\s*:\s*id/,
+    )
+    expect(printed).toMatch(/\burl\b/)
+  })
+
+  it("declares only videoSlug for the stable shell lookup", () => {
+    const printed = print(getWatchVideoShellBySlugOperation)
+
+    expect(printed).toMatch(
+      /query GetWatchVideoShellBySlug\(\$videoSlug:\s*String!\)/,
+    )
+    expect(printed).toMatch(/videoBySlug\(slug:\s*\$videoSlug\)/)
+    expect(printed).not.toMatch(/muxPlaybackId/)
+    expect(printed).toMatch(/\.\.\.WatchVideoShell\b/)
+  })
+
+  it("uses the dedicated route snapshot field for the cold watch route", () => {
+    const printed = print(getWatchVideoRouteSnapshotBySlugOperation)
+
+    expect(printed).toMatch(
+      /watchVideoRouteSnapshotBySlug\(\s*slug:\s*\$videoSlug\s*locale:\s*\$locale\s*languageSlug:\s*\$languageSlug\s*subtitleLanguageSlug:\s*\$subtitleLanguageSlug\s*\)/,
+    )
+    expect(printed).toMatch(/\bpublishedAt\b/)
+    expect(printed).toMatch(/\bexactLocales\b/)
+    expect(printed).toMatch(/\bbroadLocales\b/)
+    expect(printed).toMatch(/\benglishLocales\b/)
+    expect(printed).toMatch(/\bsearchTitle\b/)
+    expect(printed).toMatch(/\bsearchDescription\b/)
+    expect(printed).toMatch(
+      /\bsocialImage\s*\{[\s\S]*?\burl\b[\s\S]*?\bwidth\b[\s\S]*?\bheight\b/,
+    )
+    const parentAndChildProjection = printed.slice(
+      printed.indexOf("parents"),
+      printed.indexOf("bibleCitations"),
+    )
+    expect(parentAndChildProjection).not.toMatch(/\bsearchTitle\b/)
+    expect(parentAndChildProjection).not.toMatch(/\bsearchDescription\b/)
+    expect(parentAndChildProjection).not.toMatch(/\bsocialImage\b/)
+    expect(printed).toMatch(/\bexactStudyQuestions\b/)
+    expect(printed).toMatch(/\bmuxPlaybackId\b/)
+    expect(printed).toMatch(/\bplayableDubLanguageCount\b/)
+    expect(printed).toMatch(/\bpreferredVariant\b/)
+    expect(parentAndChildProjection).toMatch(
+      /children\s*\{\s*order\s+child\s*\{/,
+    )
+    expect(printed).not.toMatch(/videoBySlug\(slug:\s*\$videoSlug\)/)
+    expect(printed).not.toMatch(/\.\.\.WatchVideoShell\b/)
+    expect(printed).not.toMatch(/\blocales\(/)
+    expect(printed).not.toMatch(/\bstudyQuestions\(/)
+    expect(printed).not.toMatch(/preferredPlayableDub\(/)
+    expect(printed).not.toMatch(/variants\s*:\s*dubs\s*\{/)
+    expect(printed).not.toMatch(/\bdownloads\s*\{/)
+    expect(printed).not.toMatch(/\bvideoEdition\s*\{/)
+  })
+
+  it("fetches optional carousel Mux playback ids by languageSlug", () => {
+    const printed = print(getWatchVideoCarouselMuxPlaybackIdsBySlugOperation)
+
     expect(printed).toMatch(/\$videoSlug:\s*String!/)
-    // No optional variables — every var has the trailing `!`.
-    const variableSection = printed.match(/GetWatchVideo\(([^)]*)\)/)?.[1] ?? ""
-    expect(variableSection).not.toMatch(/:\s*[A-Za-z]+\s*[,)\s]/)
+    expect(printed).toMatch(/\$languageSlug:\s*String\b/)
+    expect(printed).toMatch(/videoBySlug\(slug:\s*\$videoSlug\)/)
+    expect(printed).toMatch(/muxPlaybackId\(languageSlug:\s*\$languageSlug\)/)
   })
 
-  it("filters videos by slug + parent.slug and threads i18nLocale", () => {
-    const printed = print(getWatchVideoOperation)
+  it("keeps the full dub list isolated to the lazy language-picker lookup", () => {
+    const printed = print(getWatchLanguagePickerVariantsBySlugOperation)
 
-    expect(printed).toMatch(/videos\(/)
     expect(printed).toMatch(
-      /filters:\s*\{[\s\S]*?slug:\s*\{\s*eq:\s*\$videoSlug/,
+      /query GetWatchLanguagePickerVariantsBySlug\(\$videoSlug:\s*String!\)/,
     )
+    expect(printed).toMatch(/videoBySlug\(slug:\s*\$videoSlug\)/)
+    expect(printed).toMatch(/variants\s*:\s*dubs\s*\{/)
+    expect(printed).toMatch(/variants\s*:\s*dubs\s*\{[\s\S]*?\bhls\b/)
+    expect(printed).toMatch(/variants\s*:\s*dubs\s*\{[\s\S]*?\bduration\b/)
     expect(printed).toMatch(
-      /parents:\s*\{\s*slug:\s*\{\s*eq:\s*\$collectionSlug/,
+      /variants\s*:\s*dubs\s*\{[\s\S]*?language\s*\{[\s\S]*?coreId[\s\S]*?bcp47[\s\S]*?\bslug\b[\s\S]*?\bname\b/,
     )
-    expect(printed).toMatch(/locale:\s*\$i18nLocale/)
+    expect(printed).not.toMatch(/\bdownloads\s*\{/)
+    expect(printed).not.toMatch(/\bmuxVideo\s*\{/)
+    expect(printed).not.toMatch(/\bvideoEdition\s*\{/)
   })
 
-  it("inlines the WatchVideoFragment selection set (gql.tada @_unmask)", () => {
-    const printed = print(getWatchVideoOperation)
-    // With `@_unmask`, gql.tada keeps the spread syntax in the printed AST
-    // BUT gql.tada wires the fragment definition into the same DocumentNode,
-    // so `print()` emits it after the operation. Guard both the spread and
-    // the inlined fragment definition.
-    expect(printed).toMatch(/\.\.\.WatchVideo\b/)
-    expect(printed).toMatch(/fragment WatchVideo on Video/)
+  it("threads locale and languageSlug only into the copy lookup", () => {
+    const printed = print(getWatchVideoLocalizedCopyBySlugOperation)
+
+    expect(printed).toMatch(/\$locale:\s*String!/)
+    expect(printed).toMatch(/\$languageSlug:\s*String\b/)
+    expect(printed).toMatch(/\$videoSlug:\s*String!/)
+    expect(printed).toMatch(/\.\.\.WatchVideoLocalizedCopy\b/)
   })
 
-  it("does NOT declare $languageSlug as a query variable (resolver-side per R22)", () => {
-    const printed = print(getWatchVideoOperation)
-    // Per the U2 plan, `$languageSlug` is consumed resolver-side by U3, not
-    // passed through the GraphQL operation. Declaring it without using it
-    // would fail GraphQL validation; passing it as a Strapi filter would
-    // contradict the "Strapi returns every variant" decision in R8/R22.
-    expect(printed).not.toMatch(/\$languageSlug/)
-  })
-})
+  it("fetches selected Dub detail by id", () => {
+    const printed = print(getWatchVideoDubDetailOperation)
 
-describe("WatchVideoFragment empirical assertions (skipped — Strapi fetch)", () => {
-  // Deferred-to-implementation check from the plan:
-  //   "$Video.variant.language.slug actual values in Strapi$ — empirical check
-  //    during U2 codegen run. If `language.slug` is null on existing variants
-  //    (unlikely given Strapi convention), surface as a U2 blocker."
-  //
-  // We do NOT mock-fetch from Strapi here because (a) Strapi credentials live
-  // in env vars not present in CI, and (b) the apollo client wrapper is
-  // covered by content.test.ts. The empirical check is performed manually
-  // during the codegen run; results are documented in the U2 commit message
-  // and PR description.
-  it.todo(
-    "fetches `considering-christmas` against christmas/en/english and asserts variants[].language.slug is non-null",
-  )
+    expect(printed).toMatch(/query GetWatchVideoDubDetail\(\$id:\s*ID!\)/)
+    expect(printed).toMatch(/videoDub\(id:\s*\$id\)/)
+    expect(printed).toMatch(/\.\.\.WatchVideoDubDetail\b/)
+  })
 })

@@ -1,0 +1,182 @@
+[
+  [],
+  [],
+  [],
+  [],
+  [
+    {
+      "proof": {
+        "cards": {
+          "total": 109,
+          "renderedExactCowatchCards": 0,
+          "exactCowatchContributedIssuedCards": 0,
+          "requestsWithExactCowatchContribution": 0
+        },
+        "graph": {
+          "edgeCount": 9006,
+          "expiresAt": "2026-10-30T02:56:54.108",
+          "windowEnd": "2026-09-30T19:00:00",
+          "publishedAt": "2026-10-01T02:56:54.108",
+          "sourceCount": 6768,
+          "windowStart": "2026-09-23T19:00:00",
+          "invalidatedAt": null,
+          "evaluationAsOf": "2026-10-01T02:00:00",
+          "rawSourceCount": 40490,
+          "contributionCount": 40295,
+          "invalidationReason": null
+        },
+        "pointer": {
+          "stage": "owner_approved",
+          "generation": 7,
+          "activeReleaseId": "be1947f1-3302-4a26-9b40-beb53d06a5f9",
+          "activeManifestId": "hybrid-profile-viewing-mode-cowatch-mmr-owner-live-v1",
+          "killSwitchEnabled": false,
+          "exposureCeilingBps": 10000,
+          "isExpectedCurrentRelease": true
+        },
+        "release": {
+          "id": "be1947f1-3302-4a26-9b40-beb53d06a5f9",
+          "revokedAt": null,
+          "approvedAt": "2026-10-01T02:57:35.266",
+          "manifestId": "hybrid-profile-viewing-mode-cowatch-mmr-owner-live-v1",
+          "validUntil": "2026-10-02T02:56:54.108",
+          "bindingDigest": "783d89e51db93651bfb5f9061f4893be4f7b94de71737ef373dfd1d7270bbbdf",
+          "manifestDigest": "c88bb7dd062506e212e04abae73d3c2704643454625bbd6dd0edc3d9913870cd",
+          "revocationReason": null,
+          "graphGenerationId": "b5a47a2824cdf8adb9af02ec4c128ad80f430336199871313cfb1461afc89a8f",
+          "pointerGeneration": 7,
+          "dependencyExpiresAt": "2026-10-22T19:00:18.809",
+          "exactReviewedBinding": true,
+          "compositionConfigDigest": "468450410923541b610893ad9851a0505c68f47d1273c1e09b413eddd7e6e6fa"
+        },
+        "proofEnd": "2026-10-01T03:02:35.203+00:00",
+        "readOnly": "on",
+        "requests": {
+          "total": 22,
+          "issued": 22,
+          "withCards": 19,
+          "lastRequestAt": "2026-10-01T03:02:32.792+00:00",
+          "firstRequestAt": "2026-10-01T02:58:28.189+00:00",
+          "exactOwnerExecution": 0,
+          "exactOwnerMissingTrace": 0,
+          "exactOwnerIssuedWithTrace": 0
+        },
+        "g6History": {
+          "releaseId": "d43d554f-362f-4cb5-b9d3-69e8fcd78dc9",
+          "revokedAt": "2026-09-30T03:07:39.005",
+          "revocationReason": "eligibility_changed",
+          "graphInvalidatedAt": "2026-09-30T03:07:39.005",
+          "graphInvalidationReason": "eligibility_changed"
+        },
+        "rootCount": 22,
+        "scheduler": {
+          "status": "running",
+          "last_batch": {
+            "status": "idle"
+          },
+          "started_at": "2026-10-01T02:52:47.171",
+          "updated_at": "2026-10-01T02:58:01.559",
+          "next_run_at": "2026-10-01T03:03:01.558Z",
+          "last_batch_status": "completed"
+        },
+        "observedAt": "2026-10-01T03:02:39.359993+00:00",
+        "proofStart": "2026-10-01T02:58:00+00:00",
+        "refreshGrant": {
+          "id": "a593c39d-20c2-42fe-aefc-f6ce92776a4b",
+          "revokedAt": null,
+          "approvedAt": "2026-10-01T02:59:47.524",
+          "validUntil": "2026-10-30T02:59:47.524",
+          "policyVersion": "cowatch-refresh-seven-day-mature-v1",
+          "manifestDigest": "c88bb7dd062506e212e04abae73d3c2704643454625bbd6dd0edc3d9913870cd",
+          "anchorReleaseId": "be1947f1-3302-4a26-9b40-beb53d06a5f9",
+          "revocationReason": null,
+          "configurationDigest": "77f82d289ffb83e4527eba2a43d7459adad89798db37ecc2cdd4587bdf26a9a6",
+          "nextEligibleAttemptAt": "2026-10-01T14:56:54.108",
+          "anchorPointerGeneration": 7,
+          "exactRuntimeConfiguration": true
+        },
+        "fallbackGroups": [
+          {
+            "state": "issued",
+            "result": "served",
+            "requests": 8,
+            "reason_code": "profile_cold_start",
+            "execution_mode": "semantic_contextual",
+            "fallback_reason": null,
+            "requests_with_cards": 8,
+            "effective_manifest_id": "semantic-transcript-pgvector-v1"
+          },
+          {
+            "state": "issued",
+            "result": "fallback",
+            "requests": 3,
+            "reason_code": "seed_embedding_unavailable",
+            "execution_mode": "curated_fallback",
+            "fallback_reason": "seed_embedding_unavailable",
+            "requests_with_cards": 3,
+            "effective_manifest_id": "semantic-transcript-pgvector-v1"
+          },
+          {
+            "state": "issued",
+            "result": "empty",
+            "requests": 1,
+            "reason_code": "profile_cold_start",
+            "execution_mode": "semantic_contextual",
+            "fallback_reason": "seed_embedding_unavailable",
+            "requests_with_cards": 0,
+            "effective_manifest_id": "semantic-transcript-pgvector-v1"
+          },
+          {
+            "state": "issued",
+            "result": "served",
+            "requests": 5,
+            "reason_code": null,
+            "execution_mode": "hybrid_personalized",
+            "fallback_reason": null,
+            "requests_with_cards": 5,
+            "effective_manifest_id": "semantic-transcript-pgvector-v1"
+          },
+          {
+            "state": "issued",
+            "result": "fallback",
+            "requests": 1,
+            "reason_code": "cowatch_mmr_incumbent_fallback",
+            "execution_mode": "hybrid_personalized",
+            "fallback_reason": "cowatch_supported_edges_sparse",
+            "requests_with_cards": 1,
+            "effective_manifest_id": "hybrid-profile-viewing-mode-v1"
+          },
+          {
+            "state": "issued",
+            "result": "empty",
+            "requests": 2,
+            "reason_code": "profile_cold_start",
+            "execution_mode": "semantic_contextual",
+            "fallback_reason": "no_candidates",
+            "requests_with_cards": 0,
+            "effective_manifest_id": "semantic-transcript-pgvector-v1"
+          },
+          {
+            "state": "issued",
+            "result": "served",
+            "requests": 2,
+            "reason_code": "viewing_mode_preference",
+            "execution_mode": "viewing_mode_personalized",
+            "fallback_reason": null,
+            "requests_with_cards": 2,
+            "effective_manifest_id": "semantic-transcript-pgvector-v1"
+          }
+        ],
+        "refreshAttempts": [],
+        "requestBoundExceeded": false,
+        "missingInputDiagnostics": {
+          "missingTheme": 0,
+          "missingSource": 0,
+          "missingHistory": 0,
+          "missingInterest": 0,
+          "requestsWithDiagnostics": 0
+        }
+      }
+    }
+  ]
+]

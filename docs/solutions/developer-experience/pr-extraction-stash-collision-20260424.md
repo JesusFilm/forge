@@ -1,6 +1,7 @@
 ---
 title: "Focused PR extraction corrupts worktree when stash-pop crosses branches with divergent files"
 date: "2026-04-24"
+last_updated: "2026-07-08"
 category: "developer-experience"
 module: "git-workflow"
 problem_type: "workflow_issue"
@@ -13,6 +14,7 @@ applies_when:
   - "Source branch differs from target base on any tracked file outside the intended PR scope"
   - "Using `/pr`, `/ce-commit-push-pr`, or any flow that stashes, branches from `origin/main`, then pops"
   - "The dirty file is `apps/cms/schema.graphql` or any other Strapi/codegen artifact that drifts per-branch"
+  - "Relocating an ENTIRE dirty worktree (tracked + untracked) into a fresh git worktree without committing"
 tags:
   - "git"
   - "git-stash"
@@ -98,6 +100,56 @@ comm -12 <(echo "$BASE_DIFF" | sort) <(echo "$STASH_DIFF" | sort)
 ```
 
 Non-empty intersection ⇒ stash-pop will mis-merge those files. Bail and use path 1 or 2.
+
+### 5. Relocating an entire dirty worktree into a new worktree (safe stash-move — same-HEAD only)
+
+The paths above extract a _focused subset_ onto `origin/main`. A different task —
+moving ALL uncommitted work (tracked edits **and** untracked new files) out of
+the main checkout into an isolated worktree **without committing** — has a clean
+stash-move recipe, and it is safe precisely because it avoids the divergent-base
+trap this doc warns about:
+
+```bash
+# In the main checkout (the only worktree so far):
+git stash push --include-untracked -m "<feature> wip"          # -u carries untracked files too
+git worktree add -b <feature-branch> /path/to/worktrees/<name> HEAD   # SAME HEAD you stashed from
+git -C /path/to/worktrees/<name> stash pop                     # pops onto an identical base -> no mis-merge
+```
+
+Why this is safe where the focused-PR stash-pop is dangerous: the new worktree's
+branch is created from **`HEAD`** — the exact commit the stash was recorded
+against — so the three-way merge on pop has the _same_ parent and cannot
+silently mis-merge. The divergent-base danger that paths 1–4 exist to avoid
+arises only when the pop lands on a base where `origin/main` ≠ the feature HEAD.
+**Same base ⇒ safe; divergent base ⇒ use cherry-pick.**
+
+Two things a fresh `git worktree add` does NOT do — which is why the stash step
+is needed at all: it checks out the branch **clean** (it never carries the main
+checkout's uncommitted changes, so the untracked new files especially would be
+left behind), and worktrees do **not** share `node_modules`. After the move, run
+`pnpm install --frozen-lockfile` in the new worktree before its pre-commit hook
+or tests can run (see
+`docs/solutions/build-errors/worktree-pnpm-install-8mb-file-truncation-20260624.md`).
+`git stash` is repo-global — stashes live in the shared `.git` and are visible
+from every worktree — which is what lets a stash created in one worktree pop in
+another. Verify the move by comparing the changed-file set before and after: the
+new worktree should carry exactly what the main checkout did, and the main
+checkout should read clean (`git status --porcelain` empty).
+
+**Caveat — gitignored files do not travel.** `--include-untracked` carries
+tracked edits and untracked new files, but **not** gitignored ones (e.g.
+`.env.local`); and `git status --porcelain` hides ignored files, so both
+worktrees read "clean" whether or not those files came across — the verification
+above does not cover them. Per-worktree env files must be copied or recreated
+separately, like `node_modules`.
+
+**Caveat — staged/index state does not travel.** A plain `git stash pop` restores
+everything as _unstaged_, flattening any curated index (your staged-vs-unstaged
+split) you had before the move — and the changed-file-set check above can't
+detect it, because it compares file _sets_, not staging state. If the index
+mattered, pop with `git stash pop --index` to restore it too; that is safe here
+precisely because the base is identical, so there is no conflict for `--index` to
+trip on.
 
 ## Why This Matters
 

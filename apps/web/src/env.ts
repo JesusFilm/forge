@@ -1,19 +1,287 @@
 import { createEnv } from "@t3-oss/env-nextjs"
 import { z } from "zod"
 
+/**
+ * Build a warn-only host-allowlist `.refine()` callback. Always returns
+ * true so misconfigured hosts don't brick boot — emits a console.warn so
+ * the misconfig is visible in deploy logs. Used by both
+ * `ADMIN_GRAPHQL_URL` (server) and `NEXT_PUBLIC_CANONICAL_ORIGIN`
+ * (client) — same shape, different allowlists.
+ */
+function softHostAllowlistRefine(
+  varName: string,
+  exacts: readonly string[],
+  suffixes: readonly string[],
+): (value: string) => true {
+  const allowlistDescription = [
+    ...exacts,
+    ...suffixes.map((s) => `*${s}`),
+  ].join(" / ")
+  return (value) => {
+    try {
+      const { hostname } = new URL(value)
+      const ok =
+        exacts.includes(hostname) ||
+        suffixes.some((suffix) => hostname.endsWith(suffix))
+      if (!ok && typeof console !== "undefined") {
+        console.warn(
+          `[env] ${varName} host "${hostname}" is outside the soft allowlist (${allowlistDescription}). Continuing without throwing — verify this is intentional.`,
+        )
+      }
+    } catch {
+      // The outer z.url() already validates URL shape; if URL parsing
+      // fails here we let z.url()'s error surface instead.
+    }
+    return true
+  }
+}
+
+/**
+ * Optional boolean env var with NO schema-level default. An unset or empty
+ * value parses to `undefined` so an environment that has not been provisioned
+ * still boots; the read site supplies the runtime default. Use this for opt-in
+ * scaffolding (canary flags, migration toggles) rather than a required var,
+ * which bricks a Railway deploy the moment it is missing.
+ */
+function optionalBooleanEnv() {
+  return z.preprocess((value) => {
+    if (value == null) return undefined
+
+    const normalized = String(value).trim().toLowerCase()
+    if (!normalized) return undefined
+    if (["1", "true", "yes", "y", "on"].includes(normalized)) return true
+    if (["0", "false", "no", "n", "off"].includes(normalized)) return false
+
+    return value
+  }, z.boolean().optional())
+}
+
+function booleanEnv(defaultValue: boolean) {
+  return z
+    .preprocess((value) => {
+      if (typeof value !== "string") return value
+
+      const normalized = value.trim().toLowerCase()
+      if (!normalized) return defaultValue
+      if (["1", "true", "yes", "y", "on"].includes(normalized)) return true
+      if (["0", "false", "no", "n", "off"].includes(normalized)) return false
+
+      return value
+    }, z.boolean())
+    .default(defaultValue)
+}
+
+function emptyToUndefined(value: string | undefined): string | undefined {
+  return value === "" ? undefined : value
+}
+
+function productionDefault<T extends string>(
+  productionValue: T,
+  localValue: T,
+): T {
+  return process.env.NODE_ENV === "production" ? productionValue : localValue
+}
+
+function normalizeDatadogEnv(value: string | undefined): string | undefined {
+  const normalized = value?.trim()
+  if (!normalized) return undefined
+
+  switch (normalized.toLowerCase()) {
+    case "production":
+    case "prod":
+      return "prod"
+    case "staging":
+    case "stage":
+      return "stage"
+    case "preview":
+      return "preview"
+    case "development":
+    case "dev":
+      return "development"
+    case "test":
+      return "test"
+    default:
+      return normalized
+  }
+}
+
+function datadogEnvFallback(): string | undefined {
+  return normalizeDatadogEnv(
+    process.env.NEXT_PUBLIC_DATADOG_ENV ??
+      process.env.RAILWAY_ENVIRONMENT_NAME ??
+      process.env.VERCEL_ENV ??
+      process.env.NODE_ENV,
+  )
+}
+
+function datadogServerEnvFallback(): string | undefined {
+  return normalizeDatadogEnv(
+    process.env.DD_ENV ??
+      process.env.NEXT_PUBLIC_DATADOG_ENV ??
+      process.env.RAILWAY_ENVIRONMENT_NAME ??
+      process.env.VERCEL_ENV ??
+      process.env.NODE_ENV,
+  )
+}
+
+function datadogVersionFallback(): string | undefined {
+  return (
+    emptyToUndefined(process.env.NEXT_PUBLIC_DATADOG_VERSION) ??
+    emptyToUndefined(process.env.RAILWAY_GIT_COMMIT_SHA) ??
+    emptyToUndefined(process.env.VERCEL_GIT_COMMIT_SHA) ??
+    emptyToUndefined(process.env.GIT_COMMIT_SHA)
+  )
+}
+
+function datadogServerVersionFallback(): string | undefined {
+  return emptyToUndefined(process.env.DD_VERSION) ?? datadogVersionFallback()
+}
+
+const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES = [
+  ".jesusfilm.org",
+  ".railway.internal",
+  ".railway.app",
+  ".local",
+] as const
+const ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS = [
+  "localhost",
+  "127.0.0.1",
+] as const
+// Explicit hard-reject set. These hosts pass the soft allowlist
+// (.jesusfilm.org suffix) but are NOT the admin GraphQL surface and
+// will always 404 — the auth host (PR #909) is the canonical case.
+const ADMIN_GRAPHQL_URL_HOST_REJECT_SET = new Set<string>([
+  "auth.jesusfilm.org",
+])
+
+const DATADOG_SITE_VALUES = [
+  "datadoghq.com",
+  "us3.datadoghq.com",
+  "us5.datadoghq.com",
+  "datadoghq.eu",
+  "ddog-gov.com",
+  "ap1.datadoghq.com",
+  "ap2.datadoghq.com",
+] as const
+
+function optionalPositiveIntDefault(defaultValue: number) {
+  return z.preprocess((value) => {
+    if (value == null || value === "") return undefined
+    const parsed = Number(value)
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined
+  }, z.number().int().positive().default(defaultValue))
+}
+
 export const env = createEnv({
   server: {
-    INTERNAL_GRAPHQL_URL: z.url(),
-    STRAPI_API_TOKEN: z.string(),
-    STRAPI_PREVIEW_SECRET: z.string(),
+    // Retained for the /api/preview Next.js draft-mode handler. The data
+    // layer no longer talks to Strapi; preview-flow migration to admin is
+    // a separate future unit.
+    STRAPI_PREVIEW_SECRET: z.string().optional(),
     REVALIDATION_SECRET: z.string(),
+    WATCH_FOR_YOU_ENABLED: z.enum(["true", "false"]).default("true"),
+    // Separate from account authentication. Missing/weak secrets disable tester access.
+    WATCH_RECOMMENDATION_TESTER_SECRET: z.string().optional(),
+    // Optional Cloudflare cache-tag purge credentials. The dynamic collection
+    // route emits shared edge-cache headers only when both are configured, so
+    // a long-lived edge object can always be purged after content publication.
+    CLOUDFLARE_ZONE_ID: z
+      .string()
+      .regex(/^[A-Fa-f0-9]{32}$/)
+      .optional(),
+    CLOUDFLARE_CACHE_PURGE_TOKEN: z.string().min(1).optional(),
     // Optional: used only by the /demo-search AI experience generator.
     // Absent in most preview environments; the server action surfaces a
     // graceful "not configured" state when unset.
     OPENROUTER_API_KEY: z.string().optional(),
+    // Optional LaunchDarkly server-side SDK key. When unset, feature flag
+    // helpers return local defaults so preview/local environments can boot
+    // before LaunchDarkly is provisioned.
+    LAUNCHDARKLY_SDK_KEY: z.string().optional(),
+    FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT: z.string().optional(),
+    FORGE_WATCH_PLAYER_MIGRATION_DEFAULT: z.string().optional(),
+    FORGE_WATCH_CTA_TEXT_COPY_DEFAULT: z.string().optional(),
+    FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT: z.string().optional(),
+    FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT: z.string().optional(),
+    FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT: z.string().optional(),
+    FORGE_WATCH_QUESTION_PANEL_DEFAULT: z.string().optional(),
+    // Admin GraphQL URL. Required — web's data layer reads from admin.
+    ADMIN_GRAPHQL_URL: z
+      .url()
+      .refine(
+        (value) => {
+          try {
+            const { hostname } = new URL(value)
+            return !ADMIN_GRAPHQL_URL_HOST_REJECT_SET.has(
+              hostname.toLowerCase(),
+            )
+          } catch {
+            return true
+          }
+        },
+        {
+          message:
+            "ADMIN_GRAPHQL_URL points at a known non-GraphQL host (e.g. auth.jesusfilm.org). Admin GraphQL lives at admin.jesusfilm.org/api/graphql, not the auth host (PR #909).",
+        },
+      )
+      .refine(
+        softHostAllowlistRefine(
+          "ADMIN_GRAPHQL_URL",
+          ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS,
+          ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES,
+        ),
+        { message: "unreachable" },
+      ),
+    // Bearer key web's SSR sends to admin so traffic buckets as
+    // `consumer:<key>` rather than `public:<railway-egress-ip>`.
+    //
+    // Format: single string OR comma-separated CSV mirroring admin's
+    // `WEB_ADMIN_API_KEYS` Doppler value. Web reads the first entry as its
+    // outbound bearer; admin recognizes any entry as a valid CONSUMER_BEARER.
+    // Required — flipped from optional in U13.
+    WEB_ADMIN_API_KEYS: z.string().min(1),
+    // Optional narrower bearer for admin's watch-progress receiver. When unset,
+    // local development falls back to WEB_ADMIN_API_KEYS until the dedicated
+    // secret is provisioned in the target environment.
+    WATCH_PROGRESS_ADMIN_API_KEYS: z.string().min(1).optional(),
+    // Optional native-feedback integration. These remain server-only and
+    // optional so environments can deploy before Linear is provisioned.
+    WEB_FEEDBACK_LINEAR_API_KEY: z.string().min(1).optional(),
+    WEB_FEEDBACK_LINEAR_TEAM_ID: z.string().min(1).optional(),
+    WEB_FEEDBACK_LINEAR_PROJECT_ID: z.string().min(1).optional(),
+    WEB_FEEDBACK_LINEAR_LABEL_ID: z.string().min(1).optional(),
+    // Shared Auth host used by server routes to verify Better Auth sessions
+    // over HTTP. Local development mirrors Admin and uses production Auth by
+    // default; CI overrides this to the standalone auth dev port.
+    WEB_AUTH_BASE_URL: z.url().default("https://auth.jesusfilm.org"),
+    WEB_AUTH_ISSUER_URL: z.url().optional(),
+    WEB_AUTH_CLIENT_ID: z.string().min(1).optional(),
+    WEB_BASE_URL: z
+      .url()
+      .default(
+        productionDefault("https://web.jesusfilm.org", "http://localhost:3000"),
+      ),
+    WEB_SESSION_SECRET: z.string().min(32).optional(),
+    // Optional server-side Datadog APM/log forwarding configuration. Keep
+    // NODE_OPTIONS scoped to Railway's start command; these vars only tell the
+    // tracer where to report and how to tag web spans/logs.
+    DD_AGENT_HOST: z.string().min(1).optional(),
+    DD_TRACE_AGENT_PORT: optionalPositiveIntDefault(8126),
+    DD_AGENT_SYSLOG_PORT: optionalPositiveIntDefault(514),
+    DD_ENV: z.string().min(1).optional(),
+    DD_SERVICE: z.string().min(1).optional(),
+    DD_VERSION: z.string().min(1).optional(),
+    WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT: booleanEnv(true),
+    // Public Watch search rollout controls. MODERN is the Typesense primary;
+    // operators can restore DEFAULT without a code revert. DEFAULT shadowing
+    // is requested only while MODERN is primary and runs after the response in
+    // Admin, so disabling it does not change result selection.
+    WATCH_SEARCH_PRIMARY_MODE: z
+      .enum(["DEFAULT", "MODERN"])
+      .default(productionDefault("MODERN", "DEFAULT")),
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED: booleanEnv(true),
   },
   client: {
-    NEXT_PUBLIC_GRAPHQL_URL: z.url(),
     // U12 — Mux watch-page player migration flag.
     // Boolean env var (true|false). Per-environment value, no per-user
     // targeting. When `true`, VideoHero/Video/CarouselVideo render via
@@ -21,17 +289,66 @@ export const env = createEnv({
     // `false` keeps the existing video.js path live until rollout.
     // R19 trigger: drop `video.js` from apps/web after this has been `true`
     // in production for one stable release.
-    NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: z.coerce.boolean().default(false),
+    NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION: booleanEnv(false),
+    // U3 — Watch GA4 measurement contract v2 collector flag (R24, KTD6).
+    // Unset/`false` keeps the v1 Google tag initialization and emission path
+    // untouched. `true` selects the explicit SPA page-view owner and the typed
+    // event dispatcher TOGETHER, so hybrid v1/v2 behavior cannot create
+    // duplicate or contextless events.
+    //
+    // `.optional()` on purpose: this is opt-in scaffolding, and a required var
+    // with no default would brick every Railway environment that has not been
+    // provisioned. The read site
+    // (`isWatchAnalyticsContractV2Enabled` in `src/lib/watch-analytics-contract.ts`)
+    // defaults an absent value to `false`.
+    //
+    // Rollback is `NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2=false` through the
+    // normal deploy path; `NEXT_PUBLIC_*` values are inlined by `next build`,
+    // so it costs a rebuild rather than a restart.
+    NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2: optionalBooleanEnv(),
+    // Optional Datadog RUM configuration. Application id + client token gate
+    // initialization; when absent, the client component no-ops so local and
+    // preview environments can boot before Datadog is provisioned.
+    NEXT_PUBLIC_DATADOG_APPLICATION_ID: z.string().optional(),
+    NEXT_PUBLIC_DATADOG_CLIENT_TOKEN: z.string().optional(),
+    NEXT_PUBLIC_DATADOG_SITE: z
+      .enum(DATADOG_SITE_VALUES)
+      .default("datadoghq.com"),
+    NEXT_PUBLIC_DATADOG_ENV: z.string().default("development"),
+    NEXT_PUBLIC_DATADOG_VERSION: z.string().optional(),
+    // Optional Google Analytics 4 measurement id. When unset, the analytics
+    // component renders nothing so local and preview environments stay quiet.
+    NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID: z.string().optional(),
     // U5 — Mux Data env key for the watch-page Mux Player. Optional because
     // not all environments (preview / local) have Mux Data set up; when
     // unset, the player simply does not emit Mux Data beacons.
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: z.string().optional(),
-    // U10 — Canonical absolute origin used by the watch-page Share modal to
-    // build sharable Copy Link / Copy Embed Code values that DO include
-    // `/watch/` (the Next.js basePath). Defaults to `http://localhost:3000`
-    // for safer dev / CI experience — `z.url()` would otherwise hard-fail
-    // boot on environments where the value isn't set explicitly. Production
-    // and preview must override to `https://jesusfilm.org` (or equivalent).
+    // Public Admin GraphQL endpoint used by client-side Watch search reads.
+    // Admin's `watchSearch` query is public; production Admin must allow the
+    // Web origin in `CORS_ALLOWED_ORIGINS` before browser-direct calls work.
+    NEXT_PUBLIC_ADMIN_GRAPHQL_URL: z
+      .url()
+      .default(
+        productionDefault(
+          "https://admin.jesusfilm.org/api/graphql",
+          "http://localhost:3003/api/graphql",
+        ),
+      )
+      .refine(
+        softHostAllowlistRefine(
+          "NEXT_PUBLIC_ADMIN_GRAPHQL_URL",
+          ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_EXACTS,
+          ADMIN_GRAPHQL_URL_HOST_ALLOWLIST_SUFFIXES,
+        ),
+        { message: "unreachable" },
+      ),
+    // U10 — Environment-specific absolute origin used by the watch-page Share
+    // modal to build sharable Copy Link / Copy Embed Code values that DO
+    // include `/watch/` (the Next.js basePath). Production defaults to the
+    // indexed public Watch host so same-origin browser writes remain valid when
+    // the deployment variable is missing. Dev / CI keep the loopback default.
+    // Public SEO/social metadata intentionally does not read this value; it
+    // emits the indexed www host from routes.ts.
     //
     // F21: refine with a soft allowlist of known-good host shapes. When a
     // value falls outside the allowlist we WARN at module-import time
@@ -43,50 +360,84 @@ export const env = createEnv({
     // still letting unrelated deployments stand up cleanly.
     NEXT_PUBLIC_CANONICAL_ORIGIN: z
       .url()
-      .default("http://localhost:3000")
+      .default(
+        productionDefault("https://www.jesusfilm.org", "http://localhost:3000"),
+      )
       .refine(
-        (value) => {
-          try {
-            const { hostname } = new URL(value)
-            const allowlistedSuffixes = [
-              ".jesusfilm.org",
-              ".local",
-              ".railway.app",
-            ]
-            const allowlistedExacts = [
-              "jesusfilm.org",
-              "localhost",
-              "127.0.0.1",
-            ]
-            const ok =
-              allowlistedExacts.includes(hostname) ||
-              allowlistedSuffixes.some((suffix) => hostname.endsWith(suffix))
-            if (!ok && typeof console !== "undefined") {
-              console.warn(
-                `[env] NEXT_PUBLIC_CANONICAL_ORIGIN host "${hostname}" is outside the soft allowlist (jesusfilm.org / *.jesusfilm.org / *.local / *.railway.app / localhost / 127.0.0.1). Continuing without throwing — verify this is intentional.`,
-              )
-            }
-          } catch {
-            // The outer z.url() already validates the URL shape; if URL
-            // parsing fails here we let z.url()'s error surface instead.
-          }
-          // Warn-only: always pass refinement so misconfigured hosts don't
-          // brick boot in legitimate-but-unknown deployment topologies.
-          return true
-        },
+        softHostAllowlistRefine(
+          "NEXT_PUBLIC_CANONICAL_ORIGIN",
+          ["jesusfilm.org", "localhost", "127.0.0.1"],
+          [".jesusfilm.org", ".local", ".railway.app"],
+        ),
         { message: "unreachable" },
       ),
   },
   runtimeEnv: {
-    INTERNAL_GRAPHQL_URL: process.env.INTERNAL_GRAPHQL_URL,
-    STRAPI_API_TOKEN: process.env.STRAPI_API_TOKEN,
     STRAPI_PREVIEW_SECRET: process.env.STRAPI_PREVIEW_SECRET,
     REVALIDATION_SECRET: process.env.REVALIDATION_SECRET,
+    WATCH_FOR_YOU_ENABLED: process.env.WATCH_FOR_YOU_ENABLED,
+    WATCH_RECOMMENDATION_TESTER_SECRET:
+      process.env.WATCH_RECOMMENDATION_TESTER_SECRET,
+    CLOUDFLARE_ZONE_ID: emptyToUndefined(process.env.CLOUDFLARE_ZONE_ID),
+    CLOUDFLARE_CACHE_PURGE_TOKEN: emptyToUndefined(
+      process.env.CLOUDFLARE_CACHE_PURGE_TOKEN,
+    ),
     OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY,
-    NEXT_PUBLIC_GRAPHQL_URL: process.env.NEXT_PUBLIC_GRAPHQL_URL,
+    LAUNCHDARKLY_SDK_KEY: process.env.LAUNCHDARKLY_SDK_KEY,
+    FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT:
+      process.env.FORGE_WATCH_HOMEPAGE_RECOMMENDATIONS_DEFAULT,
+    FORGE_WATCH_PLAYER_MIGRATION_DEFAULT:
+      process.env.FORGE_WATCH_PLAYER_MIGRATION_DEFAULT,
+    FORGE_WATCH_CTA_TEXT_COPY_DEFAULT:
+      process.env.FORGE_WATCH_CTA_TEXT_COPY_DEFAULT,
+    FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT:
+      process.env.FORGE_WATCH_DOWNLOAD_ACCOUNT_GATE_DEFAULT,
+    FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT:
+      process.env.FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT,
+    FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT:
+      process.env.FORGE_WATCH_HIDE_BIBLE_QUOTES_DEFAULT,
+    FORGE_WATCH_QUESTION_PANEL_DEFAULT:
+      process.env.FORGE_WATCH_QUESTION_PANEL_DEFAULT,
+    ADMIN_GRAPHQL_URL: process.env.ADMIN_GRAPHQL_URL,
+    WEB_ADMIN_API_KEYS: process.env.WEB_ADMIN_API_KEYS,
+    WATCH_PROGRESS_ADMIN_API_KEYS: process.env.WATCH_PROGRESS_ADMIN_API_KEYS,
+    WEB_FEEDBACK_LINEAR_API_KEY: process.env.WEB_FEEDBACK_LINEAR_API_KEY,
+    WEB_FEEDBACK_LINEAR_TEAM_ID: process.env.WEB_FEEDBACK_LINEAR_TEAM_ID,
+    WEB_FEEDBACK_LINEAR_PROJECT_ID: process.env.WEB_FEEDBACK_LINEAR_PROJECT_ID,
+    WEB_FEEDBACK_LINEAR_LABEL_ID: process.env.WEB_FEEDBACK_LINEAR_LABEL_ID,
+    WEB_AUTH_BASE_URL: emptyToUndefined(process.env.WEB_AUTH_BASE_URL),
+    WEB_AUTH_ISSUER_URL: emptyToUndefined(process.env.WEB_AUTH_ISSUER_URL),
+    WEB_AUTH_CLIENT_ID: emptyToUndefined(process.env.WEB_AUTH_CLIENT_ID),
+    WEB_BASE_URL: emptyToUndefined(process.env.WEB_BASE_URL),
+    WEB_SESSION_SECRET: emptyToUndefined(process.env.WEB_SESSION_SECRET),
+    DD_AGENT_HOST: emptyToUndefined(process.env.DD_AGENT_HOST),
+    DD_TRACE_AGENT_PORT: process.env.DD_TRACE_AGENT_PORT,
+    DD_AGENT_SYSLOG_PORT: process.env.DD_AGENT_SYSLOG_PORT,
+    DD_ENV: datadogServerEnvFallback(),
+    DD_SERVICE: emptyToUndefined(process.env.DD_SERVICE),
+    DD_VERSION: datadogServerVersionFallback(),
+    WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT:
+      process.env.WATCH_SEARCH_ANALYTICS_INCLUDE_QUERY_TEXT,
+    WATCH_SEARCH_PRIMARY_MODE: process.env.WATCH_SEARCH_PRIMARY_MODE,
+    WATCH_SEARCH_DEFAULT_SHADOW_ENABLED:
+      process.env.WATCH_SEARCH_DEFAULT_SHADOW_ENABLED,
     NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION:
       process.env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION,
+    NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2: emptyToUndefined(
+      process.env.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2,
+    ),
+    NEXT_PUBLIC_DATADOG_APPLICATION_ID:
+      process.env.NEXT_PUBLIC_DATADOG_APPLICATION_ID,
+    NEXT_PUBLIC_DATADOG_CLIENT_TOKEN:
+      process.env.NEXT_PUBLIC_DATADOG_CLIENT_TOKEN,
+    NEXT_PUBLIC_DATADOG_SITE: process.env.NEXT_PUBLIC_DATADOG_SITE,
+    NEXT_PUBLIC_DATADOG_ENV: datadogEnvFallback(),
+    NEXT_PUBLIC_DATADOG_VERSION: datadogVersionFallback(),
+    NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID: emptyToUndefined(
+      process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID,
+    ),
     NEXT_PUBLIC_MUX_DATA_ENV_KEY: process.env.NEXT_PUBLIC_MUX_DATA_ENV_KEY,
+    NEXT_PUBLIC_ADMIN_GRAPHQL_URL: process.env.NEXT_PUBLIC_ADMIN_GRAPHQL_URL,
     NEXT_PUBLIC_CANONICAL_ORIGIN: process.env.NEXT_PUBLIC_CANONICAL_ORIGIN,
   },
 })

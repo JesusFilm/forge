@@ -3,7 +3,7 @@ id: "feat-094"
 title: "Recommendation A/B Comparison Logging"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "cancelled"
 start_date: "2026-06-21"
 duration: 7
 depends_on:
@@ -16,6 +16,13 @@ tags:
   - "infrastructure"
   - "personalization"
 ---
+
+## Closure Decision
+
+Cancelled on 2026-07-21. The proposed comparison requires the FPMC and
+Two-Tower candidates from `feat-091` and `feat-092`, neither of which belongs to
+the current recommendation architecture. Experiment logging should be designed
+with whichever replacement personalized ranker is eventually selected.
 
 ## Problem
 

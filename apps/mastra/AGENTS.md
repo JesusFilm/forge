@@ -1,0 +1,189 @@
+# apps/mastra Agent Guide
+
+Full context lives in `apps/mastra/CLAUDE.md`. Keep both files aligned.
+
+## Core model
+
+- Runs the self-hosted Mastra Server runtime for Forge agents and workflows.
+- Owns the default-off deterministic daily Watch route-alert workflow, which
+  reads bounded GA4 not-found evidence and reconciles Admin's signed alert
+  ledger without giving Manager direct access to Mastra storage or GA4.
+- Owns transcript embedding chunk planning and provider calls, then submits
+  transcript vectors to Admin ingest.
+- Owns experience embedding provider calls and workflow diagnostics, then
+  submits experience vectors to Admin's experience-specific ingest endpoint.
+- Owns offline eval query generation for catalog-derived, locale-quality, and
+  Admin-trace-sampled candidates, then stores staged candidates back through
+  Admin's authenticated HTTP contracts.
+- Owns the offline search eval system: seed prompt sets, baseline/report
+  artifacts, comparison workflows, judge orchestration, and developer/operator
+  eval routes that call Admin search through authenticated HTTP.
+- Owns search eval caller tracks. Public Watch, AI experience generation, and
+  semantic diagnostics use different seed prompts, mode defaults, judge
+  rubrics, and baseline identities even when they call the same Admin search
+  endpoint.
+- Owns a thin search eval orchestrator that coordinates those leaf workflows
+  for baseline capture, comparison, native Evaluation sync, and release-gate
+  summaries without moving leaf logic into one mega-workflow.
+- Owns Firecrawl web data access for agents and operator workflows through
+  bounded search/scrape tools, a dedicated web research agent, and the
+  `/forge-firecrawl-web-data` service route.
+- Owns optional website review-queue and saved-source discovery integration.
+  Incomplete website configuration disables only that integration and must
+  never block Mastra startup; outbound clients require HTTPS before sending
+  the shared bearer and reject redirects.
+- Owns the default-off daily Help Scout support-research workflow. Help Scout
+  is GET-only in v1; customer text is minimized and redacted before model use
+  or persistence; the agent has no tools; Watch validation is bounded to exact
+  configured public hosts; and Linear writes pass through the durable
+  `support_research` outbox with explicit confirmed/inferred labels and budgets.
+- Owns subtitle enrichment execution through `/forge-subtitle-enrichment`:
+  reads Manager transcript artifacts, translates and retimes subtitles, and
+  writes Manager-compatible subtitle/translation artifacts to shared storage.
+- Owns the subtitle translation gold-standard evaluator. The offline adapter
+  resolves exact human Core VTT references from a committed manifest and lock;
+  the protected cloud cell route accepts only already-frozen verified bytes,
+  never refetches Core, and runs the same production subtitle runtime.
+- Owns RAG retrieval for the seeker agent through the `retrieveAnswer` tool and
+  `jesusfilm-rag-client` (outbound-only bearer to the JesusFilm RAG service;
+  the tool returns cited passages, the agent generates the answer). Fully
+  optional config — unset degrades to an explicit unavailable result, never a
+  boot failure.
+- Owns retrieval-only Langfuse prompt management through
+  `langfuse-prompt-client` (`fetchLangfusePrompt` result-union fetch + cached
+  `getManagedPrompt` with caller-supplied fallback and provenance). Fully
+  optional config — unset serves the fallback (`config_missing`), never a
+  boot failure. Prompt authoring, versioning, and label moves stay in the
+  Langfuse UI. ONE Langfuse project (`forge-mastra`) holds every agent's
+  prompt, with labels `production` / `development` distinguishing
+  environments; two key pairs (Railway + local dev) live inside it. The
+  seeker agent resolves `seeker-system` by the exact repository-pinned version
+  and content hash in `seeker-production-config.ts` (WHOLE prompt — no
+  composition split), with the full working text as compiled-in degraded
+  fallback. Managed prompt versions and the reviewed outage fallback are pinned
+  independently; promotion of one does not synchronize the other's bytes. Both
+  must preserve the same live tool and safety contract. The `production` label
+  is an alert-only deployment marker, not a production traffic selector; label
+  defaults remain for candidate intake.
+  Langfuse tracing shipped separately (feat-321): opt-in, default-off behind
+  `LANGFUSE_TRACING_ENABLED` plus the credential trio, routing seeker turns
+  by a per-process marker to a dedicated observability config that exports
+  RAW conversation content to Langfuse ONLY — no local copy. Every other
+  trace stays on the redacted default config.
+- Owns subtitle scripture accuracy validation for Bible-story results:
+  runs model-knowledge checks by default, can optionally compare against a
+  configured target-language Bible text source, and writes sanitized
+  Manager-compatible validation artifacts.
+- Owns source transcript scripture correction judgment through
+  `/forge-transcript-scripture-correction`: detects likely Bible-story source
+  transcripts and returns bounded correction candidates/flag-only findings.
+  Manager applies deterministic exact-match corrections and writes artifacts.
+- Transcript and experience embedding workflows share provider-result
+  validation for count alignment, finite vector values, and configured
+  dimensions before calling Admin.
+- AI Gateway content embeddings request the normal OpenAI-compatible
+  embedding response and require the configured native dimensions before Admin
+  ingest. Current production gateway output is native 1536, so Mastra does not
+  pass `dimensions` through LiteLLM and does not apply a client transform; keep
+  the shared 4096-to-1536 truncate/re-normalize helper for future gateway
+  variants that truly return 4096.
+- Transcript and experience embedding workflows use the shared Admin ingest
+  client behavior but keep separate endpoints and payload schemas. The scene
+  embedding workflow/Admin ingest path is retired; scene analysis artifacts are
+  non-search source artifacts.
+- Generation modes are consistent across embedding workflows: omitted means
+  idempotent; explicit repair, force, and model-upgrade request rewrites.
+- Builds Studio assets with `mastra build --studio` and serves them from the
+  same internal Railway service.
+- Human Studio access is handled by `apps/mastra-gateway`; this service should
+  not become the human identity authority.
+- App-to-runtime calls use service bearer authentication.
+- Owns the owner-approved `video-first-devotional` durable control loop as a
+  narrow exception to the default Manager-owned heavy-media orchestration rule.
+  Mastra owns workflow state, canonical Workspace inputs/outputs, approval,
+  polling, and publish handoff. Shorts Worker owns media processing, ffmpeg,
+  Chromium, and rendering through short-lived attempt-bound capabilities; it
+  has no permanent devotional Workspace credentials.
+
+## Boundaries
+
+- Do not import from app contexts such as `apps/admin`, `apps/manager`, or
+  `apps/auth`.
+- Do not log bearer tokens, model provider keys, cookies, or raw prompts that
+  may contain sensitive data.
+- Do not add Help Scout mailbox mutations, attachments, raw ticket persistence,
+  arbitrary validation URLs, or model-selected Linear routing to the support
+  research workflow. Keep it disabled until model-provider data processing is
+  approved and use a Studio dry run before live Linear dispatch.
+- Runtime storage uses Postgres via `DATABASE_URL`; Studio-visible logs and
+  observability use DuckDB files under `MASTRA_STORAGE_DIR` on the Railway
+  volume.
+- The video-first devotional exception requires exactly one Mastra replica;
+  Postgres workflow persistence; authenticated, serialized lifecycle routes;
+  canonical starts idempotent per UTC date; retries idempotent per parent-run
+  and variant identity; attributable human approval; disjoint approval and
+  playback bearers; authenticated worker calls; Mastra-owned private Workspace
+  storage with expiring Worker capabilities; and a Mastra poll deadline
+  strictly above the capped worker deadline.
+  Loss of any invariant requires `DEVOTIONAL_NEW_RUNS_ENABLED=false`, scheduler
+  shutdown, and restoration or Manager migration before new work resumes. Do
+  not generalize this exception without explicit owner approval in root rules.
+- Keep `DEVOTIONAL_NEW_RUNS_ENABLED` default-off and deny native Mastra workflow
+  mutations for every devotional workflow ID. Dedicated lifecycle routes are
+  the only mutation surface; playback status reads must remain side-effect free.
+- Do not import from Admin or Manager to share types; use service HTTP
+  contracts and local schemas.
+- Eval query generation is offline only. It must not enter Admin's live search
+  path, generate live query embeddings, or make generated candidates permanent
+  regression truth before Admin human promotion.
+- Offline search eval is also outside the live request path. Baselines are
+  seed-prompt artifacts owned by Mastra. Keep the Studio-facing workflow
+  seed-only until a later human promotion flow decides how staged generated
+  candidates should become reviewable.
+- Offline search eval baselines are scoped by `callerTrack`. Treat legacy
+  untracked baselines as `public-watch`, and do not compare or overwrite a
+  baseline under a different caller track.
+- The search eval orchestrator must not promote generated, trace-derived, seed,
+  or user-submitted candidates. Candidate generation and seed submission are
+  opt-in staging steps; human promotion stays behind Admin review contracts.
+- Firecrawl access belongs in this runtime. Do not add Firecrawl SDK/API calls
+  to Admin or Manager; expose typed Mastra tools/workflows and HTTP contracts
+  from here when other apps need web data.
+- Subtitle translation and retiming belongs in this runtime. Manager may call
+  the service route and handle job state/Mux sync, but should not reintroduce
+  provider-heavy subtitle execution.
+- Subtitle gold-standard evaluation is restricted to the offline CLI and the
+  service-bearer-protected one-cell Lab route. It must not publish subtitles,
+  commit raw human VTT bodies, or treat automatic scores as human approval.
+- Gospel-aware subtitle translation prompt steering belongs in this runtime.
+  Manager may send optional title, label, and Bible-reference context, but
+  Mastra owns scripture-context detection, translation prompt guidance, and
+  sanitized subtitle artifact provenance.
+- Subtitle scripture accuracy validation also belongs in this runtime. Missing
+  Bible-source configuration must fall back to `model_knowledge` validation,
+  not fail translation or require Manager-side scripture logic.
+- Source transcript scripture correction judgment also belongs in this runtime.
+  Return candidates and sanitized rationale only; do not mutate Manager source
+  artifacts or log raw prompts/full Bible passage text.
+- Firecrawl MCP is not the product runtime path. Revisit MCP only for local
+  operator/coding-agent convenience or after a clear multi-tool server need.
+- Studio-facing workflows need structured Zod object input schemas on both the
+  workflow and first step. Avoid `z.unknown()` for operator-run workflows, and
+  prefer defaults/optional fields that render usable Studio forms.
+- Keep service-bearer auth scoped to explicit `/forge-*` service routes so
+  Studio's built-in `/api/workflows` calls continue to work.
+- Parse programmatic workflow input through its exported Zod schema before
+  calling `run.start` or `run.startAsync`. Mastra 1.55 types those calls with
+  the schema output, so fields supplied by `.default()` are required there;
+  do not bypass the contract with casts.
+
+## Validation
+
+- `pnpm --filter @forge/mastra test`
+- `pnpm --filter @forge/mastra typecheck`
+- `pnpm --filter @forge/mastra lint`
+- `pnpm --filter @forge/mastra eval:content-embedding-gate -- --baseline-name=<baseline>`
+
+For Studio hosted instructions, OAuth MCP authority, or execution admission, read
+`docs/solutions/security-issues/studio-native-agent-admission.md` from the repository
+root before changing those boundaries.

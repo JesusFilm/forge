@@ -3,7 +3,7 @@ id: "feat-105"
 title: "Wire SSO + Firebase fallback auth on @forge/admin"
 owner: "tataihono"
 priority: "P0"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-04-21"
 duration: 3
 depends_on:
@@ -66,7 +66,7 @@ usable."
 ### 1. Provision OAuth apps (external work)
 
 For each provider, create an OAuth application pointed at
-`https://admin.jesusfilm.org/api/auth/callback/{provider}`:
+`https://auth.jesusfilm.org/api/auth/callback/{provider}`:
 
 - **Facebook** — developers.facebook.com → app → Facebook Login → set
   redirect URI. Needs app review if public scopes beyond email.
@@ -130,13 +130,15 @@ UPDATE "user" SET role = 'ADMIN' WHERE email = 'tataihono.nikora@jesusfilm.org';
 The R1 smoke deploy lives at
 `forgeadmin-production-f4d1.up.railway.app`. For SSO callbacks to match
 provider-configured URIs, the canonical URL needs to be
-`https://admin.jesusfilm.org`:
+`https://auth.jesusfilm.org`:
 
-- Cloudflare: add CNAME `admin` → `forgeadmin-production-f4d1.up.railway.app`.
-- Railway service: add custom domain `admin.jesusfilm.org` via
+- Cloudflare: add CNAME `auth` → `forgeadmin-production-f4d1.up.railway.app`.
+- Railway service: add custom domain `auth.jesusfilm.org` via
   `customDomainCreate` mutation.
 - Cloudflare: enable Authenticated Origin Pulls for the subdomain
   (matches the pattern for `cms.jesusfilm.org` etc.).
+- Keep the admin UI custom domain on `admin.jesusfilm.org`; it calls the
+  auth API cross-origin using the shared `.jesusfilm.org` cookie domain.
 
 ## Constraints
 
@@ -154,9 +156,10 @@ provider-configured URIs, the canonical URL needs to be
 
 ## Verification
 
-- Navigate to `https://admin.jesusfilm.org/signin` (once custom domain
+- Navigate to `https://admin.jesusfilm.org/login` (once custom domains
   is live). Each configured provider button triggers its OAuth flow,
-  callback succeeds, user row appears in the `user` table.
+  callback returns through `https://auth.jesusfilm.org/api/auth/callback/{provider}`,
+  and a user row appears in the `user` table.
 - After promoting to ADMIN via SQL, the mutation
   `triggerSceneEmbeddingBackfill` succeeds for the authenticated
   session (Better Auth cookie → Pothos scope-auth → passes

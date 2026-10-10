@@ -33,6 +33,7 @@ const BASE_REPORT: TranscriptEmbeddingBackfillReport = {
   skipped: 0,
   failed: 0,
   missingArtifacts: [],
+  sourceGaps: [],
 }
 
 describe("dispatchTranscriptEmbeddingBackfill", () => {
@@ -47,6 +48,7 @@ describe("dispatchTranscriptEmbeddingBackfill", () => {
       mappingS3Key: "admin-migrations/core-id-mapping.json",
       coreIds: ["core-1"],
       languages: ["en"],
+      mode: "force",
     })
 
     dispatch.expectDispatched(runTranscriptEmbeddingBackfill, [
@@ -54,6 +56,7 @@ describe("dispatchTranscriptEmbeddingBackfill", () => {
         mappingS3Key: "admin-migrations/core-id-mapping.json",
         coreIds: ["core-1"],
         languages: ["en"],
+        mode: "force",
       },
     ])
     expect(report).toEqual(BASE_REPORT)
@@ -68,6 +71,24 @@ describe("dispatchTranscriptEmbeddingBackfill", () => {
 
     dispatch.expectDispatched(runTranscriptEmbeddingBackfill, [
       { mappingS3Key: "admin-migrations/core-id-mapping.json" },
+    ])
+  })
+
+  it("preserves the production resume shape for the latest failure point", async () => {
+    dispatch.mockReturnValue(BASE_REPORT)
+
+    await dispatchTranscriptEmbeddingBackfill({
+      mappingS3Key: "admin-migrations/core-id-mapping.json",
+      coreIds: ["1_jf-0-0"],
+      mode: "model-upgrade",
+    })
+
+    dispatch.expectDispatched(runTranscriptEmbeddingBackfill, [
+      {
+        mappingS3Key: "admin-migrations/core-id-mapping.json",
+        coreIds: ["1_jf-0-0"],
+        mode: "model-upgrade",
+      },
     ])
   })
 

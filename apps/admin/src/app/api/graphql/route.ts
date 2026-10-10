@@ -18,10 +18,13 @@ import { createYoga } from "graphql-yoga"
 import type { NextRequest } from "next/server"
 import { schema } from "@/graphql/schema"
 import { createContext } from "@/graphql/context"
+import { createGraphqlLogger } from "@/graphql/logger"
 import { armorPlugins } from "@/graphql/plugins/armor"
 import { introspectionPlugins } from "@/graphql/plugins/introspection"
+import { openTelemetryPlugin } from "@/graphql/plugins/opentelemetry"
 import { rateLimitPlugin } from "@/graphql/plugins/rate-limit"
 import { env } from "@/config/env"
+import { withPublicGraphqlPriority } from "@/services/public-request-priority"
 
 type NextAppRouteContext = { params: Promise<Record<string, string>> }
 
@@ -49,7 +52,13 @@ const yoga = createYoga<NextAppRouteContext>({
   graphqlEndpoint: "/api/graphql",
   fetchAPI: { Response },
   context: ({ request }) => createContext({ request }),
-  plugins: [...armorPlugins, ...introspectionPlugins, rateLimitPlugin],
+  logging: createGraphqlLogger(),
+  plugins: [
+    ...armorPlugins,
+    ...introspectionPlugins,
+    rateLimitPlugin,
+    openTelemetryPlugin,
+  ],
   graphiql: env.GRAPHQL_INTROSPECTION_ENABLED === "true",
   cors: corsConfig,
 })
@@ -61,4 +70,15 @@ async function handler(
   return yoga.handle(request, context)
 }
 
-export { handler as GET, handler as POST, handler as OPTIONS }
+async function prioritizedHandler(
+  request: NextRequest,
+  context: NextAppRouteContext,
+): Promise<Response> {
+  return withPublicGraphqlPriority(() => handler(request, context))
+}
+
+export {
+  prioritizedHandler as GET,
+  prioritizedHandler as POST,
+  handler as OPTIONS,
+}

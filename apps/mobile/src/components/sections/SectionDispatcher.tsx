@@ -1,4 +1,4 @@
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { AdminBlock } from "../../lib/queries"
 import { VideoHeroRenderer } from "./VideoHeroRenderer"
 import { SectionWrapperRenderer } from "./SectionWrapperRenderer"
 import { VideoCardRenderer } from "./VideoCardRenderer"
@@ -12,25 +12,22 @@ import { QuizButtonRenderer } from "./QuizButtonRenderer"
 import { EasterDatesRenderer } from "./EasterDatesRenderer"
 import { ContainerRenderer } from "./ContainerRenderer"
 
-/**
- * Classify a section for the home feed.
- * A sectionWrapper whose first child is a "video" block renders as a videoCard.
- */
-export function classifySection(
-  block: NormalizedBlock,
-): "videoCard" | "standard" {
-  if (block.kind === "sectionWrapper" && Array.isArray(block.sectionContent)) {
-    const children = block.sectionContent as NormalizedBlock[]
-    const firstVideo = children.find((c) => c.kind === "video")
+export function classifySection(block: AdminBlock): "videoCard" | "standard" {
+  if (
+    block.__typename === "SectionBlock" &&
+    "sectionContent" in block &&
+    Array.isArray(block.sectionContent)
+  ) {
+    const children = block.sectionContent as AdminBlock[]
+    const firstVideo = children.find((c) => c.__typename === "VideoBlock")
     if (firstVideo) return "videoCard"
   }
-  if (block.kind === "video") return "videoCard"
+  if (block.__typename === "VideoBlock") return "videoCard"
   return "standard"
 }
 
 export interface SectionDispatcherProps {
-  section: NormalizedBlock
-  /** When true, render sectionWrapper-with-video as a VideoCard */
+  section: AdminBlock
   asVideoCard?: boolean
 }
 
@@ -38,53 +35,56 @@ export function SectionDispatcher({
   section,
   asVideoCard,
 }: SectionDispatcherProps) {
-  const { kind } = section
+  const typename = section.__typename
 
-  // If classified as a videoCard on home, render the VideoCardRenderer
-  if (asVideoCard && (kind === "sectionWrapper" || kind === "video")) {
+  if (
+    asVideoCard &&
+    (typename === "SectionBlock" || typename === "VideoBlock")
+  ) {
     const videoBlock =
-      kind === "video"
+      typename === "VideoBlock"
         ? section
-        : ((section.sectionContent as NormalizedBlock[])?.find(
-            (c) => c.kind === "video",
-          ) ?? null)
+        : (("sectionContent" in section && Array.isArray(section.sectionContent)
+            ? (section.sectionContent as AdminBlock[]).find(
+                (c) => c.__typename === "VideoBlock",
+              )
+            : null) ?? null)
     if (videoBlock) {
       return <VideoCardRenderer section={videoBlock} />
     }
   }
 
-  switch (kind) {
-    case "videoHero":
+  switch (typename) {
+    case "VideoHeroBlock":
       return <VideoHeroRenderer section={section} />
-    case "sectionWrapper":
+    case "SectionBlock":
       return <SectionWrapperRenderer section={section} />
-    case "video":
+    case "VideoBlock":
       return <VideoCardRenderer section={section} />
-    case "navigationCarousel":
+    case "NavigationCarouselBlock":
       return <NavigationCarouselRenderer section={section} />
-    case "videoCarousel":
+    case "VideoCarouselBlock":
       return <VideoCarouselRenderer section={section} />
-    case "mediaCollection":
+    case "MediaCollectionBlock":
       return <MediaCollectionRenderer section={section} />
-    case "text":
+    case "TextBlock":
       return <TextRenderer section={section} />
-    case "relatedQuestions":
+    case "RelatedQuestionsBlock":
       return <RelatedQuestionsRenderer section={section} />
-    case "bibleQuotesCarousel":
+    case "BibleQuotesCarouselBlock":
       return <BibleQuotesCarouselRenderer section={section} />
-    case "quizButton":
+    case "QuizButtonBlock":
       return <QuizButtonRenderer section={section} />
-    case "easterDates":
+    case "EasterDatesBlock":
       return <EasterDatesRenderer section={section} />
-    case "container":
+    case "ContainerBlock":
       return <ContainerRenderer section={section} />
-    case "adventCountdown":
-    case "cta":
-      // TODO: implement dedicated renderers
+    case "AdventCountdownBlock":
+    case "CtaBlock":
       return null
     default:
       if (__DEV__) {
-        console.warn(`[SectionDispatcher] Unhandled section kind: ${kind}`)
+        console.warn(`[SectionDispatcher] Unhandled block type: ${typename}`)
       }
       return null
   }

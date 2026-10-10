@@ -5,24 +5,26 @@
 // Body shape:
 //   { items: [{ assetId: number, coreId: string }, ...] }
 //
-// `assetId` is the integer cms videos.id (Strapi numeric PK), used
-// here only as the operator-facing identifier and the storage-key
-// prefix manager uses when writing artifacts. The Strapi v5 GraphQL
-// surface does NOT expose a numeric `id` filter on `Video`
-// (`VideoFiltersInput` only has `documentId` + `coreId`), so the
-// CMS lookup uses `coreId`. Admin already has both fields in PR1's
-// `missingArtifacts: [{ assetId, coreId, kind }]` projection — the
-// wire payload mirrors that shape so the wiring is straight-through.
+// `assetId` is the operator-facing identifier + storage-key prefix
+// manager uses when writing source artifacts (`{assetId}/scene-analysis.json`,
+// `{assetId}/transcript.json`). Transcript embedding vectors are now produced
+// by Mastra and written through Admin ingest, not by this route. `coreId` is
+// admin's stable identifier for the same video.
 //
 // Per-id flow:
-//   1. CMS lookup by coreId → derive { documentId, muxAssetId,
-//      subtitleUrl, label, languageBcp47 }. Missing → status
-//      "not_found".
+//   1. Admin lookup by coreId via `videosByCoreIds` GraphQL query →
+//      derive { muxAssetId, subtitleUrl, label, primaryLanguageBcp47 }
+//      (feat-125). Missing row → status "not_found". Missing required
+//      fields for that trigger kind → status "validation_failed".
 //   2. Idempotency check against the in-memory map (5-minute TTL,
 //      keyed by `${kind}:${assetId}`). Hit → return existing
 //      managerJobId with status "already_in_flight".
-//   3. Generate a new managerJobId, store in the map, dispatch via
+//   3. Generate a new managerJobId, store in the map, enqueue via
 //      `after()` background-task semantics. Status "started".
+//
+// Admin owns the video catalogue now (R6 of the migration playbook),
+// so this route resolves dispatch fields through Admin's
+// `videosByCoreIds` contract and carries no legacy catalogue lookup path.
 //
 // The in-memory map is a deliberate deviation from plan D7 (which
 // suggested querying EnrichmentJob). Rationale captured in the
@@ -31,8 +33,13 @@
 import { after, NextResponse } from "next/server"
 import { randomUUID } from "node:crypto"
 import { z } from "zod"
-import getClient from "@/cms/client"
-import { graphql, type ResultOf } from "@forge/graphql"
+import {
+  lookupVideosByCoreIdFromAdmin,
+  videoLookupKey,
+  type AdminVideoLookupEnvelope,
+  type AdminVideoLookupRequest,
+  type VideoForEnrichment,
+} from "@/lib/admin-video-lookup"
 import { validateAdminTriggerBearer } from "@/lib/admin-trigger-auth"
 
 // ---------------------------------------------------------------------------
@@ -53,6 +60,12 @@ export type TriggerKind = z.infer<typeof TriggerKindSchema>
 export const AdminTriggerItemSchema = z.object({
   assetId: z.number().int().positive(),
   coreId: z.string().min(1),
+  targetLocale: z
+    .string()
+    .trim()
+    .min(1)
+    .transform((value) => value.toLowerCase())
+    .optional(),
 })
 
 export type AdminTriggerItem = z.infer<typeof AdminTriggerItemSchema>
@@ -66,13 +79,13 @@ export const AdminTriggerBodySchema = z
   })
   .strict()
   .transform((parsed) => {
-    // Dedupe by assetId — duplicate assetIds in a single call would
-    // surface as repeated `already_in_flight` results which is
-    // wasteful but technically correct. Dedupe at the boundary so
-    // operators don't accidentally double-charge themselves.
-    const seen = new Map<number, AdminTriggerItem>()
+    // Dedupe by assetId + normalized targetLocale. The same asset can
+    // legitimately run once per locale, but locale casing variants
+    // write the same artifact key and must collapse at the boundary.
+    const seen = new Map<string, AdminTriggerItem>()
     for (const item of parsed.items) {
-      if (!seen.has(item.assetId)) seen.set(item.assetId, item)
+      const key = `${item.assetId}:${item.targetLocale ?? ""}`
+      if (!seen.has(key)) seen.set(key, item)
     }
     return { items: [...seen.values()] }
   })
@@ -92,6 +105,7 @@ export type AdminTriggerStatus =
 export type AdminTriggerResult = {
   assetId: number
   coreId: string
+  targetLocale?: string
   managerJobId: string | null
   status: AdminTriggerStatus
   message?: string
@@ -104,9 +118,9 @@ export type AdminTriggerResult = {
 // expiresAt }` with a 5-minute TTL. Pruned lazily on each lookup.
 //
 // Deliberately simpler than EnrichmentJob-backed idempotency because:
-//   1. EnrichmentJob is keyed by Strapi documentId, not integer
-//      assetId. Bridging would require an extra CMS round-trip per
-//      call just to dedupe.
+//   1. EnrichmentJob belongs to the legacy Manager job model, while this
+//      Admin-trigger path is keyed by the source `assetId`. Bridging the two
+//      models would reintroduce deleted catalogue coupling just to dedupe.
 //   2. The existing `/api/scene-analysis` route does NOT create an
 //      EnrichmentJob, so the table doesn't reflect "is a scene-
 //      analysis pipeline currently running for this video?" anyway.
@@ -121,21 +135,43 @@ export type AdminTriggerResult = {
 // `processAdminTriggerRequest` doesn't change.
 // ---------------------------------------------------------------------------
 
-const IN_FLIGHT_TTL_MS = 5 * 60 * 1000
+const DEFAULT_DISPATCH_CONCURRENCY = 3
+const DEFAULT_MAX_PENDING_DISPATCHES = 300
 
-type InFlightEntry = { managerJobId: string; expiresAt: number }
+type InFlightEntry = { managerJobId: string; expiresAt: number | null }
 
 // Module-level so it survives across requests on the same process.
 const inFlightMap = new Map<string, InFlightEntry>()
 
+type QueuedAdminTriggerJob = {
+  kind: TriggerKind
+  item: AdminTriggerItem
+  managerJobId: string
+  key: string
+  dispatchInput: AdminTriggerDispatchInput
+  dispatch: AdminTriggerDispatcher
+  done: Promise<void>
+  resolveDone: () => void
+}
+
+const dispatchQueue: QueuedAdminTriggerJob[] = []
+let activeDispatches = 0
+let dispatchConcurrency = DEFAULT_DISPATCH_CONCURRENCY
+let maxPendingDispatches = DEFAULT_MAX_PENDING_DISPATCHES
+
 function pruneExpired(now: number): void {
   for (const [key, entry] of inFlightMap) {
+    if (entry.expiresAt == null) continue
     if (entry.expiresAt < now) inFlightMap.delete(key)
   }
 }
 
-function inFlightKey(kind: TriggerKind, assetId: number): string {
-  return `${kind}:${assetId}`
+function inFlightKey(
+  kind: TriggerKind,
+  assetId: number,
+  targetLocale: string | null | undefined,
+): string {
+  return `${kind}:${assetId}:${targetLocale ?? ""}`
 }
 
 /**
@@ -146,164 +182,138 @@ function inFlightKey(kind: TriggerKind, assetId: number): string {
  */
 export function __clearInFlightMapForTests(): void {
   inFlightMap.clear()
+  dispatchQueue.splice(0, dispatchQueue.length)
+  activeDispatches = 0
+  dispatchConcurrency = DEFAULT_DISPATCH_CONCURRENCY
+  maxPendingDispatches = DEFAULT_MAX_PENDING_DISPATCHES
 }
-
-// ---------------------------------------------------------------------------
-// CMS lookup — batched by coreId
-// ---------------------------------------------------------------------------
 
 /**
- * Strapi v5 videos lookup keyed by coreId. Returns the fields
- * needed to dispatch the scene-analysis or transcript pipeline.
- * Variants and subtitles are returned with relations populated so
- * the dispatcher can pick a primary-language variant + subtitle.
+ * Test-only: override queue width so unit tests can prove queuing
+ * behavior without relying on the production cap.
  */
-const GET_VIDEOS_FOR_ENRICHMENT = graphql(`
-  query GetVideosForAdminTrigger($coreIds: [String]) {
-    videos(filters: { coreId: { in: $coreIds } }, pagination: { limit: 100 }) {
-      documentId
-      coreId
-      title
-      label
-      primaryLanguage {
-        coreId
-        bcp47
-      }
-      subtitles(pagination: { limit: -1 }) {
-        primary
-        aiGenerated
-        vttSrc
-        language {
-          coreId
-          bcp47
-        }
-      }
-      variants(pagination: { limit: -1 }) {
-        muxVideo {
-          assetId
-        }
-        language {
-          coreId
-          bcp47
-        }
-      }
-    }
-  }
-`)
-
-export type CmsVideoForEnrichment = NonNullable<
-  ResultOf<typeof GET_VIDEOS_FOR_ENRICHMENT>["videos"][number]
->
+export function __setDispatchConcurrencyForTests(concurrency: number): void {
+  dispatchConcurrency = Math.max(1, Math.floor(concurrency))
+  drainDispatchQueue()
+}
 
 /**
- * Resolve the dispatch input fields from a CMS video. Returns
- * `null` when the video is missing the required relations
- * (subtitles in the primary language, primary-language variant
- * with a Mux asset id) — the per-id outcome will be
- * `not_found` in that case.
- *
- * Picks the primary-language variant + subtitle. Prefers
- * `primary === true` and non-aiGenerated subtitles when multiple
- * candidates exist for the same language.
+ * Test-only: override the pending queue cap so tests can prove the
+ * backpressure branch without filling hundreds of jobs.
  */
-export function resolveDispatchFields(video: CmsVideoForEnrichment): {
-  muxAssetId: string
-  subtitleUrl: string
-  videoLabel: string
-  languageBcp47: string
-} | null {
-  const primaryBcp47 = video.primaryLanguage?.bcp47
-  if (!primaryBcp47) return null
-
-  const variantWithMux = (video.variants ?? []).find(
-    (v) =>
-      v != null &&
-      v.language?.bcp47 === primaryBcp47 &&
-      typeof v.muxVideo?.assetId === "string" &&
-      v.muxVideo.assetId.length > 0,
-  )
-  const muxAssetId = variantWithMux?.muxVideo?.assetId
-  if (!muxAssetId) return null
-
-  const subtitleCandidates = (video.subtitles ?? []).filter(
-    (
-      s,
-    ): s is NonNullable<typeof s> & {
-      vttSrc: string
-      language: { bcp47: string }
-    } =>
-      s != null &&
-      typeof s.vttSrc === "string" &&
-      s.vttSrc.length > 0 &&
-      s.language?.bcp47 === primaryBcp47,
-  )
-  // Prefer primary + non-AI; fall back to any candidate in the
-  // primary language. Stable order so test assertions are
-  // deterministic.
-  subtitleCandidates.sort((a, b) => {
-    const aScore = (a.primary ? 0 : 1) + (a.aiGenerated ? 1 : 0)
-    const bScore = (b.primary ? 0 : 1) + (b.aiGenerated ? 1 : 0)
-    return aScore - bScore
-  })
-  const subtitle = subtitleCandidates[0]
-  if (!subtitle) return null
-
-  return {
-    muxAssetId,
-    subtitleUrl: subtitle.vttSrc,
-    videoLabel: video.label ?? "unknown",
-    languageBcp47: primaryBcp47,
-  }
+export function __setMaxPendingDispatchesForTests(maxPending: number): void {
+  maxPendingDispatches = Math.max(1, Math.floor(maxPending))
 }
 
-type LookupClient = {
-  query: (vars: {
-    query: typeof GET_VIDEOS_FOR_ENRICHMENT
-    variables: { coreIds: string[] }
-    fetchPolicy: "no-cache"
-  }) => Promise<{ data?: ResultOf<typeof GET_VIDEOS_FOR_ENRICHMENT> }>
+function pendingDispatchCount(): number {
+  return activeDispatches + dispatchQueue.length
 }
 
-// Bound the cms lookup so a hung Strapi can't pin manager request
-// workers indefinitely. Admin's outbound client uses a 15s ceiling
-// (apps/admin/src/services/manager-trigger.service.ts), so the cms
-// lookup must finish in well under that to leave room for the
-// trigger response itself. 10s is generous for a 100-row coreId
-// filter against Strapi v5's flat videos query.
-const CMS_LOOKUP_TIMEOUT_MS = 10_000
-
-async function lookupVideosByCoreId(
-  coreIds: string[],
-  client?: LookupClient,
-): Promise<Map<string, CmsVideoForEnrichment>> {
-  const apollo = client ?? (getClient() as unknown as LookupClient)
-  const queryPromise = apollo.query({
-    query: GET_VIDEOS_FOR_ENRICHMENT,
-    variables: { coreIds },
-    fetchPolicy: "no-cache",
-  })
-  const result = await Promise.race([
-    queryPromise,
-    new Promise<never>((_, reject) => {
-      const timer = setTimeout(() => {
-        reject(
-          Object.assign(
-            new Error(`cms lookup timed out after ${CMS_LOOKUP_TIMEOUT_MS}ms`),
-            { name: "TimeoutError" },
-          ),
-        )
-      }, CMS_LOOKUP_TIMEOUT_MS)
-      // Don't keep the event loop alive on this timer if the query
-      // resolves first (Promise.race ignores the loser).
-      timer.unref?.()
+function enqueueDispatch(job: QueuedAdminTriggerJob): Promise<void> {
+  dispatchQueue.push(job)
+  console.warn(
+    JSON.stringify({
+      event: "admin-trigger.dispatch.queued",
+      kind: job.kind,
+      assetId: job.item.assetId,
+      coreId: job.item.coreId,
+      managerJobId: job.managerJobId,
+      queueDepth: dispatchQueue.length,
+      activeDispatches,
     }),
-  ])
-  const out = new Map<string, CmsVideoForEnrichment>()
-  for (const video of result.data?.videos ?? []) {
-    if (video?.coreId) out.set(video.coreId, video)
-  }
-  return out
+  )
+  drainDispatchQueue()
+  return job.done
 }
+
+function drainDispatchQueue(): void {
+  while (activeDispatches < dispatchConcurrency) {
+    const job = dispatchQueue.shift()
+    if (!job) return
+
+    activeDispatches++
+    void runQueuedDispatch(job)
+  }
+}
+
+async function runQueuedDispatch(job: QueuedAdminTriggerJob): Promise<void> {
+  try {
+    // Use console.warn (stderr) for structured runtime events —
+    // Railway logsV2 silences console.log (stdout) from Next.js
+    // App Router runtime handlers. See
+    // docs/solutions/runtime-errors/railway-logsv2-silences-nextjs-stdout-runtime-20260518.md.
+    console.warn(
+      JSON.stringify({
+        event: "admin-trigger.dispatch.running",
+        kind: job.kind,
+        assetId: job.item.assetId,
+        coreId: job.item.coreId,
+        managerJobId: job.managerJobId,
+        queueDepth: dispatchQueue.length,
+        activeDispatches,
+        dispatchConcurrency,
+      }),
+    )
+    await job.dispatch(job.dispatchInput)
+    console.warn(
+      JSON.stringify({
+        event: "admin-trigger.dispatch.complete",
+        kind: job.kind,
+        assetId: job.item.assetId,
+        coreId: job.item.coreId,
+        managerJobId: job.managerJobId,
+      }),
+    )
+  } catch (err) {
+    console.error(
+      JSON.stringify({
+        event: "admin-trigger.dispatch.error",
+        kind: job.kind,
+        assetId: job.item.assetId,
+        coreId: job.item.coreId,
+        managerJobId: job.managerJobId,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    )
+  } finally {
+    // Release the in-flight slot once the dispatch settles
+    // (success OR failure) so a re-trigger after pipeline finish
+    // (operator decided to re-run) is allowed without waiting out
+    // the TTL.
+    inFlightMap.delete(job.key)
+    activeDispatches--
+    job.resolveDone()
+    drainDispatchQueue()
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Admin lookup — batched by coreId (feat-125)
+//
+// The lookup helper lives in `admin-video-lookup.ts` and mirrors the
+// shape of `admin-embed-trigger.ts` (the inverse direction). It hits
+// admin's `videosByCoreIds` GraphQL query, which does the primary-
+// language variant + subtitle picker server-side and returns a
+// flat `VideoForEnrichment` row per coreId.
+//
+// Per coreId, manager classifies:
+//   - row missing entirely         → status "not_found"
+//   - row present, but required dispatch fields
+//     are null                     → status "validation_failed"
+//     (scene-analysis and transcript require mux; subtitle is used
+//     directly when present and can otherwise be generated from Mux)
+//   - row complete                 → dispatch
+// ---------------------------------------------------------------------------
+
+/**
+ * @public Exported so test seams + future custom-client injections
+ * can type-check against the lookup contract. The only production
+ * caller passes `lookupVideosByCoreIdFromAdmin`; tests pass
+ * inline mocks via `ProcessAdminTriggerArgs.adminLookup`.
+ */
+export type AdminLookupClient = (
+  requests: readonly AdminVideoLookupRequest[],
+) => Promise<AdminVideoLookupEnvelope>
 
 // ---------------------------------------------------------------------------
 // Dispatch input (the manager-side invocation contract).
@@ -314,13 +324,19 @@ async function lookupVideosByCoreId(
 export type AdminTriggerDispatchInput = {
   assetId: number
   coreId: string
-  documentId: string
+  targetLocale?: string
+  adminVideoId: string
   muxAssetId: string
   subtitleUrl: string
   videoLabel: string
   languageBcp47: string
 }
 
+// The resolved value isn't inspected by the route handler — only
+// settlement/rejection. Keeping `Promise<unknown>` (rather than
+// `Promise<void>`) lets each dispatcher return its pipeline's
+// typed result object without an extra `async (input) => { await ...; }`
+// wrapper at every call site.
 export type AdminTriggerDispatcher = (
   input: AdminTriggerDispatchInput,
 ) => Promise<unknown>
@@ -333,8 +349,10 @@ export type ProcessAdminTriggerArgs = {
   request: Request
   kind: TriggerKind
   dispatch: AdminTriggerDispatcher
-  // Test seam — defaults to the live Apollo client + Next's after().
-  cmsClient?: LookupClient
+  // Test seam — defaults to the live `lookupVideosByCoreIdFromAdmin`
+  // helper (fetch + bearer + AbortSignal.timeout). Override in tests
+  // to inject a deterministic envelope.
+  adminLookup?: AdminLookupClient
   scheduleAfter?: (cb: () => Promise<void>) => void
 }
 
@@ -362,33 +380,49 @@ export async function processAdminTriggerRequest(
   }
 
   const { items } = parsed.data
-  const coreIds = items.map((i) => i.coreId)
-  let videos: Map<string, CmsVideoForEnrichment>
-  try {
-    videos = await lookupVideosByCoreId(coreIds, args.cmsClient)
-  } catch (error) {
-    // Apollo / network failure during the cms lookup. Surface a
-    // 502 with a clear reason so the admin-side outbound client
-    // maps it to `DISPATCH_FAILED { reason: "remote_5xx" }` rather
-    // than crashing on an empty-body 500.
-    const message = error instanceof Error ? error.message : String(error)
+  const lookupRequests = items.map((item) => ({
+    coreId: item.coreId,
+    targetLocale: item.targetLocale ?? null,
+  }))
+  const adminLookup = args.adminLookup ?? lookupVideosByCoreIdFromAdmin
+  const envelope = await adminLookup(lookupRequests)
+  if (!envelope.ok) {
+    // Surface admin's lookup failure with a clear reason so admin's
+    // outbound classifier maps it to `DISPATCH_FAILED { reason:
+    // "remote_5xx" }` rather than crashing on an empty-body 500.
+    // `config_missing` is operator-fixable misconfig → 503; every
+    // other reason is upstream-side and surfaces as 502 (matches
+    // the `admin-embed-route.ts` envelope shape on the inverse
+    // direction).
     console.error(
       JSON.stringify({
-        event: "admin-trigger.cms-lookup.error",
+        event: "admin-trigger.admin-lookup.error",
         kind: args.kind,
-        coreIds,
-        error: message,
+        reason: envelope.reason,
+        messages: envelope.messages,
+        // Log only the cardinality, not the full coreIds list —
+        // log-line size is bounded regardless of batch size, and
+        // operational triage rarely needs the exact IDs (request
+        // body is the source of truth).
+        coreIdCount: lookupRequests.length,
       }),
     )
+    const status = envelope.reason === "config_missing" ? 503 : 502
     return NextResponse.json(
       {
-        error: "cms lookup failed",
-        reason: "cms_unreachable",
-        message,
+        error: "admin lookup failed",
+        reason:
+          envelope.reason === "config_missing"
+            ? "config_missing"
+            : "admin_unreachable",
+        upstreamReason: envelope.reason,
+        messages: envelope.messages,
+        retryable: envelope.retryable,
       },
-      { status: 502 },
+      { status },
     )
   }
+  const videos: Map<string, VideoForEnrichment> = envelope.data
 
   const now = Date.now()
   pruneExpired(now)
@@ -412,39 +446,74 @@ export async function processAdminTriggerRequest(
     })
 
   const results: AdminTriggerResult[] = []
+  const queuedJobs: QueuedAdminTriggerJob[] = []
 
   for (const item of items) {
-    const video = videos.get(item.coreId)
+    const video = videos.get(
+      videoLookupKey(item.coreId, item.targetLocale ?? null),
+    )
     if (!video) {
       results.push({
         assetId: item.assetId,
         coreId: item.coreId,
+        ...(item.targetLocale ? { targetLocale: item.targetLocale } : {}),
         managerJobId: null,
         status: "not_found",
-        message: "cms video not found for coreId",
+        message: "admin returned no video for coreId",
       })
       continue
     }
 
-    const fields = resolveDispatchFields(video)
-    if (!fields) {
+    // Admin's `videosByCoreIds` resolver does the primary-language
+    // variant + best-subtitle picker server-side. Manager classifies
+    // a row with null mux or primary language as validation_failed —
+    // operator-actionable signal that the upstream catalogue is
+    // missing required dispatch data for this video. Name the
+    // specific gap(s) so operators don't chase the wrong upstream
+    // signal — primary-language absence cascades into null
+    // mux/subtitle via the picker, so reporting only the symptom
+    // would hide the real data gap.
+    const dispatchLanguageBcp47 = item.targetLocale
+      ? (video.languageBcp47 ?? null)
+      : (video.languageBcp47 ?? video.primaryLanguageBcp47)
+    const targetLocaleMismatch =
+      item.targetLocale &&
+      video.targetLocale != null &&
+      video.targetLocale !== item.targetLocale
+
+    if (
+      video.muxAssetId == null ||
+      dispatchLanguageBcp47 == null ||
+      targetLocaleMismatch
+    ) {
+      const missing: string[] = []
+      if (dispatchLanguageBcp47 == null) {
+        missing.push(item.targetLocale ? "target language" : "primary language")
+      }
+      if (video.muxAssetId == null) {
+        missing.push(
+          item.targetLocale ? "localized mux variant" : "mux variant",
+        )
+      }
+      if (targetLocaleMismatch) missing.push("target locale echo")
       results.push({
         assetId: item.assetId,
         coreId: item.coreId,
+        ...(item.targetLocale ? { targetLocale: item.targetLocale } : {}),
         managerJobId: null,
         status: "validation_failed",
-        message:
-          "cms video missing required dispatch fields (primary-language subtitle or mux variant)",
+        message: `admin video missing required dispatch fields (${missing.join(", ")})`,
       })
       continue
     }
 
-    const key = inFlightKey(args.kind, item.assetId)
+    const key = inFlightKey(args.kind, item.assetId, item.targetLocale)
     const existing = inFlightMap.get(key)
     if (existing) {
       results.push({
         assetId: item.assetId,
         coreId: item.coreId,
+        ...(item.targetLocale ? { targetLocale: item.targetLocale } : {}),
         managerJobId: existing.managerJobId,
         status: "already_in_flight",
       })
@@ -452,55 +521,86 @@ export async function processAdminTriggerRequest(
     }
 
     const managerJobId = randomUUID()
-    inFlightMap.set(key, {
-      managerJobId,
-      expiresAt: now + IN_FLIGHT_TTL_MS,
-    })
 
     const dispatchInput: AdminTriggerDispatchInput = {
       assetId: item.assetId,
       coreId: item.coreId,
-      documentId: video.documentId,
-      muxAssetId: fields.muxAssetId,
-      subtitleUrl: fields.subtitleUrl,
-      videoLabel: fields.videoLabel,
-      languageBcp47: fields.languageBcp47,
+      ...(item.targetLocale ? { targetLocale: item.targetLocale } : {}),
+      adminVideoId: video.id,
+      muxAssetId: video.muxAssetId,
+      subtitleUrl: video.subtitleUrl ?? "",
+      videoLabel: video.label ?? "unknown",
+      languageBcp47: dispatchLanguageBcp47,
     }
 
-    schedule(async () => {
-      // Wrap the ENTIRE callback body in try/finally so the
-      // in-flight slot is released regardless of where in the cb a
-      // throw originates (the dispatch itself, the structured-log
-      // JSON.stringify above the await, or any future side-effect
-      // added between them). A naive `try { await dispatch } finally
-      // { delete }` only covers the await path — a synchronous throw
-      // earlier in the cb would leak the slot until TTL prune,
-      // blocking re-triggers for up to 5 minutes.
-      try {
-        console.log(
-          JSON.stringify({
-            event: "admin-trigger.dispatch",
-            kind: args.kind,
-            assetId: item.assetId,
-            coreId: item.coreId,
-            managerJobId,
-          }),
-        )
-        await args.dispatch(dispatchInput)
-      } finally {
-        // Release the in-flight slot once the dispatch settles
-        // (success OR failure) so a re-trigger after pipeline
-        // finish (operator decided to re-run) is allowed without
-        // waiting out the TTL.
-        inFlightMap.delete(key)
-      }
+    let resolveDone: () => void = () => {}
+    const done = new Promise<void>((resolve) => {
+      resolveDone = resolve
+    })
+
+    queuedJobs.push({
+      kind: args.kind,
+      item,
+      managerJobId,
+      key,
+      dispatchInput,
+      dispatch: args.dispatch,
+      done,
+      resolveDone,
     })
 
     results.push({
       assetId: item.assetId,
       coreId: item.coreId,
+      ...(item.targetLocale ? { targetLocale: item.targetLocale } : {}),
       managerJobId,
       status: "started",
+    })
+  }
+
+  const pendingAfterThisRequest = pendingDispatchCount() + queuedJobs.length
+  if (pendingAfterThisRequest > maxPendingDispatches) {
+    console.error(
+      JSON.stringify({
+        event: "admin-trigger.dispatch.queue_full",
+        kind: args.kind,
+        itemCount: queuedJobs.length,
+        queueDepth: dispatchQueue.length,
+        activeDispatches,
+        maxPendingDispatches,
+      }),
+    )
+    return NextResponse.json(
+      {
+        error: "manager dispatch queue full",
+        retryable: true,
+        queueDepth: dispatchQueue.length,
+        activeDispatches,
+        maxPendingDispatches,
+      },
+      { status: 503 },
+    )
+  }
+
+  if (queuedJobs.length > 0) {
+    for (const job of queuedJobs) {
+      inFlightMap.set(job.key, {
+        managerJobId: job.managerJobId,
+        expiresAt: null,
+      })
+      console.warn(
+        JSON.stringify({
+          event: "admin-trigger.dispatch.accepted",
+          kind: job.kind,
+          assetId: job.item.assetId,
+          coreId: job.item.coreId,
+          managerJobId: job.managerJobId,
+        }),
+      )
+    }
+
+    schedule(async () => {
+      await Promise.all(queuedJobs.map((job) => enqueueDispatch(job)))
     })
   }
 

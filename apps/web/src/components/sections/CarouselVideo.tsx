@@ -2,9 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import Image from "next/image"
-import "video.js/dist/video-js.css"
-import type { FragmentOf } from "@forge/graphql"
-import { MuxVideo, useVideoPlayerCore } from "@forge/video-player"
+import MuxVideo from "@forge/video-player/mux-video"
+import { useWatchModalMediaRef } from "@/components/watch/WatchModalActivityProvider"
+import { useTranslations } from "next-intl"
+import type {
+  FragmentOf,
+  LegacyFragmentValue,
+} from "@/lib/legacy-fragment-types"
+import { formatDuration } from "@/lib/format-duration"
 import { videoCarouselFragment } from "@/lib/fragments/video-carousel"
 import {
   Carousel,
@@ -14,11 +19,20 @@ import {
   CarouselNext,
 } from "@/components/ui/carousel"
 import {
+  VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+  VideoThumbnailInteractionFrame,
+} from "@/components/ui/video-thumbnail-interaction-frame"
+import {
+  VideoThumbnailEyebrow,
+  VideoThumbnailTitle,
+} from "@/components/ui/video-thumbnail-caption"
+import {
   CAROUSEL_BLEED_CLASSES,
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
-import { env } from "@/env"
+import { cn } from "@/lib/utils"
+import { resolvedBlockStreamingUrl } from "./video-dub"
 
 export { videoCarouselFragment }
 
@@ -120,119 +134,6 @@ function PlayIcon({ isPlaying }: { isPlaying: boolean }) {
   )
 }
 
-function VideojsCarouselVideoPlayer({
-  src,
-  poster,
-}: {
-  src: string
-  poster?: string
-}) {
-  const {
-    containerRef,
-    videoRef,
-    sliderRef,
-    timeRef,
-    isMuted,
-    isPlaying,
-    isFullscreen,
-    handlePlayPause,
-    handleMuteToggle,
-    handleSeek,
-    handleFullscreen,
-  } = useVideoPlayerCore({
-    src,
-    poster,
-    playOnSourceChange: true,
-  })
-
-  return (
-    <div className="relative" ref={containerRef}>
-      <div className="relative block aspect-video overflow-hidden rounded-lg bg-black shadow-2xl shadow-stone-950/70">
-        <div
-          role="button"
-          tabIndex={0}
-          className="absolute inset-0 h-full w-full cursor-pointer"
-          onClick={handlePlayPause}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault()
-              handlePlayPause()
-            }
-          }}
-          aria-label={isPlaying ? "Pause video" : "Play video"}
-        >
-          <video
-            className="video-js vjs-fluid vjs-default-skin absolute inset-0 h-full w-full object-cover"
-            ref={videoRef}
-            playsInline
-          />
-        </div>
-
-        <button
-          type="button"
-          onClick={handleFullscreen}
-          className="absolute top-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
-          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
-        >
-          <FullscreenIcon isFullscreen={isFullscreen} />
-        </button>
-
-        {isMuted && (
-          <button
-            type="button"
-            onClick={handleMuteToggle}
-            className="absolute top-1/2 left-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 p-6 text-white transition hover:bg-black/50"
-            aria-label="Unmute video"
-          >
-            <MutedCenterIcon />
-          </button>
-        )}
-
-        {!isMuted && (
-          <button
-            type="button"
-            onClick={handleMuteToggle}
-            className="absolute top-4 left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
-            aria-label="Mute video"
-          >
-            <VolumeOnIcon />
-          </button>
-        )}
-
-        <div className="absolute right-0 bottom-0 left-0 z-30 flex items-center gap-2 px-4 py-2">
-          <button
-            type="button"
-            onClick={handlePlayPause}
-            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center text-white"
-            aria-label={isPlaying ? "Pause video" : "Play video"}
-          >
-            <PlayIcon isPlaying={isPlaying} />
-          </button>
-
-          <input
-            ref={sliderRef}
-            type="range"
-            min={0}
-            max={100}
-            defaultValue={0}
-            step="any"
-            onChange={handleSeek}
-            className="h-1 flex-1 cursor-pointer appearance-none rounded bg-white/30 accent-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-            aria-label="Video progress"
-          />
-
-          <span
-            ref={timeRef}
-            className="ml-1 min-w-[60px] shrink-0 text-right text-xs text-white"
-          >
-            0:00 / 0:00
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function MuxBackedCarouselVideoPlayer({
   src,
   poster,
@@ -240,8 +141,13 @@ function MuxBackedCarouselVideoPlayer({
   src: string
   poster?: string
 }) {
+  const t = useTranslations("HeroPlayerControls")
   const containerRef = useRef<HTMLDivElement>(null)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const {
+    media: video,
+    mediaRef: videoRef,
+    setMediaRef: setVideoRef,
+  } = useWatchModalMediaRef<HTMLVideoElement>(src)
   const sliderRef = useRef<HTMLInputElement>(null)
   const timeRef = useRef<HTMLSpanElement>(null)
   const lastAppliedSrcRef = useRef<string | null>(null)
@@ -249,13 +155,13 @@ function MuxBackedCarouselVideoPlayer({
   const [isMuted, setIsMuted] = useState(true)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
-
-  const formatTime = useCallback((seconds: number) => {
-    const safe = Number.isFinite(seconds) ? seconds : 0
-    const mins = Math.floor(safe / 60)
-    const secs = Math.floor(safe % 60)
-    return `${mins}:${secs.toString().padStart(2, "0")}`
-  }, [])
+  const formatTime = useCallback(
+    (seconds: number) =>
+      Number.isFinite(seconds) && seconds >= 0
+        ? formatDuration(seconds)
+        : "0:00",
+    [],
+  )
 
   const syncPlaybackUi = useCallback(() => {
     const video = videoRef.current
@@ -269,11 +175,10 @@ function MuxBackedCarouselVideoPlayer({
     if (timeRef.current) {
       timeRef.current.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`
     }
-  }, [formatTime])
+  }, [formatTime, videoRef])
 
   // Mirror media events to local state.
   useEffect(() => {
-    const video = videoRef.current
     if (!video) return
     const onPlay = () => setIsPlaying(true)
     const onPause = () => setIsPlaying(false)
@@ -292,19 +197,18 @@ function MuxBackedCarouselVideoPlayer({
       video.removeEventListener("timeupdate", onTime)
       video.removeEventListener("durationchange", onDuration)
     }
-  }, [syncPlaybackUi])
+  }, [syncPlaybackUi, video])
 
   // Auto-play on src change (preserves the videojs path's
   // `playOnSourceChange: true`).
   useEffect(() => {
-    const video = videoRef.current
     if (!video) return
     if (lastAppliedSrcRef.current === src) return
     lastAppliedSrcRef.current = src
     void video.play().catch(() => {
       /* ignore — autoplay may be blocked */
     })
-  }, [src])
+  }, [src, video])
 
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -326,13 +230,13 @@ function MuxBackedCarouselVideoPlayer({
       return
     }
     video.pause()
-  }, [])
+  }, [videoRef])
 
   const handleMuteToggle = useCallback(() => {
     const video = videoRef.current
     if (!video) return
     video.muted = !video.muted
-  }, [])
+  }, [videoRef])
 
   const handleSeek = useCallback(
     (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -341,7 +245,7 @@ function MuxBackedCarouselVideoPlayer({
       video.currentTime = Number(event.target.value)
       syncPlaybackUi()
     },
-    [syncPlaybackUi],
+    [syncPlaybackUi, videoRef],
   )
 
   const handleFullscreen = useCallback(() => {
@@ -368,10 +272,10 @@ function MuxBackedCarouselVideoPlayer({
               handlePlayPause()
             }
           }}
-          aria-label={isPlaying ? "Pause video" : "Play video"}
+          aria-label={isPlaying ? t("pause") : t("play")}
         >
           <MuxVideo
-            ref={videoRef as React.Ref<HTMLVideoElement | undefined>}
+            ref={setVideoRef}
             src={src}
             poster={poster}
             muted
@@ -388,7 +292,7 @@ function MuxBackedCarouselVideoPlayer({
           type="button"
           onClick={handleFullscreen}
           className="absolute top-4 right-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
-          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          aria-label={isFullscreen ? t("exitFullscreen") : t("enterFullscreen")}
         >
           <FullscreenIcon isFullscreen={isFullscreen} />
         </button>
@@ -398,7 +302,7 @@ function MuxBackedCarouselVideoPlayer({
             type="button"
             onClick={handleMuteToggle}
             className="absolute top-1/2 left-1/2 z-30 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-black/30 p-6 text-white transition hover:bg-black/50"
-            aria-label="Unmute video"
+            aria-label={t("unmute")}
           >
             <MutedCenterIcon />
           </button>
@@ -409,7 +313,7 @@ function MuxBackedCarouselVideoPlayer({
             type="button"
             onClick={handleMuteToggle}
             className="absolute top-4 left-4 z-30 flex h-10 w-10 items-center justify-center rounded-full bg-black/30 text-white transition hover:bg-black/50"
-            aria-label="Mute video"
+            aria-label={t("mute")}
           >
             <VolumeOnIcon />
           </button>
@@ -420,7 +324,7 @@ function MuxBackedCarouselVideoPlayer({
             type="button"
             onClick={handlePlayPause}
             className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center text-white"
-            aria-label={isPlaying ? "Pause video" : "Play video"}
+            aria-label={isPlaying ? t("pause") : t("play")}
           >
             <PlayIcon isPlaying={isPlaying} />
           </button>
@@ -434,12 +338,12 @@ function MuxBackedCarouselVideoPlayer({
             step="any"
             onChange={handleSeek}
             className="h-1 flex-1 cursor-pointer appearance-none rounded bg-white/30 accent-white [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white"
-            aria-label="Video progress"
+            aria-label={t("seek")}
           />
 
           <span
             ref={timeRef}
-            className="ml-1 min-w-[60px] shrink-0 text-right text-xs text-white"
+            className="ml-1 min-w-[60px] shrink-0 text-right text-sm sm:text-xs text-white"
           >
             0:00 / 0:00
           </span>
@@ -456,10 +360,7 @@ function CarouselVideoPlayer({
   src: string
   poster?: string
 }) {
-  if (env.NEXT_PUBLIC_FORGE_WATCH_PLAYER_MIGRATION) {
-    return <MuxBackedCarouselVideoPlayer src={src} poster={poster} />
-  }
-  return <VideojsCarouselVideoPlayer src={src} poster={poster} />
+  return <MuxBackedCarouselVideoPlayer src={src} poster={poster} />
 }
 
 function ThumbnailCard({
@@ -471,6 +372,8 @@ function ThumbnailCard({
   isSelected: boolean
   onClick: () => void
 }) {
+  const t = useTranslations("WatchHome")
+  const videoLabels = useTranslations("VideoLabels")
   const imageUrl = item.imageUrl ?? item.video?.images?.[0]?.url
   const title = item.titleOverride ?? item.video?.title ?? ""
 
@@ -485,10 +388,11 @@ function ThumbnailCard({
           onClick()
         }
       }}
-      aria-label={`Play ${title}`}
-      className={`group relative m-1 flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg ${
-        isSelected ? "outline-4 outline-white" : ""
-      }`}
+      aria-label={t("showVideo", { title })}
+      className={cn(
+        "group relative m-1 flex h-[240px] w-full cursor-pointer flex-col justify-end overflow-hidden rounded-lg",
+        VIDEO_THUMBNAIL_FOCUS_TARGET_CLASS,
+      )}
       style={{
         backgroundColor: item.backgroundColor ?? "#1a1a1a",
       }}
@@ -503,7 +407,7 @@ function ThumbnailCard({
         />
       )}
 
-      <div className="absolute top-1/2 left-1/2 hidden h-24 w-24 -translate-x-1/2 -translate-y-1/2 transform items-center justify-center rounded-full bg-stone-900/60 text-white group-hover:flex hover:bg-red-500">
+      <div className="absolute top-1/2 left-1/2 hidden h-24 w-24 -translate-x-1/2 -translate-y-1/2 transform items-center justify-center rounded-full bg-stone-900/60 text-white group-hover:flex hover:bg-brand-red">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="h-20 w-20"
@@ -515,22 +419,28 @@ function ThumbnailCard({
         </svg>
       </div>
 
+      <VideoThumbnailInteractionFrame
+        data-testid="carousel-video-thumbnail-frame"
+        interactive={!isSelected}
+        visible={isSelected}
+      />
+
       <div className="p-4">
-        <span className="text-xs font-medium tracking-wider text-white/60 uppercase">
-          Short Video
-        </span>
-        <h3 className="line-clamp-3 text-base leading-tight font-bold text-white/90">
-          {title}
-        </h3>
+        <VideoThumbnailEyebrow>
+          {videoLabels("shortFilm")}
+        </VideoThumbnailEyebrow>
+        <VideoThumbnailTitle lines={3}>{title}</VideoThumbnailTitle>
       </div>
     </div>
   )
 }
 
 export function CarouselVideo({ data }: CarouselVideoProps) {
+  const t = useTranslations("WatchHome")
   const { title, subtitle, carouselDescription, items } = data
   const validItems = items?.filter(
-    (item): item is NonNullable<typeof item> => item != null,
+    (item: LegacyFragmentValue): item is NonNullable<typeof item> =>
+      item != null,
   )
 
   const [selectedIndex, setSelectedIndex] = useState(0)
@@ -549,9 +459,9 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
   return (
     <div className="flex w-full flex-col gap-8">
       {(subtitle || title || carouselDescription) && (
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-1" data-testid="carousel-copy">
           {subtitle && (
-            <h4 className="mb-0 text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:mb-1 xl:text-base 2xl:text-lg">
+            <h4 className="mb-0 text-base font-semibold tracking-eyebrow text-red-100/70 uppercase sm:text-sm xl:mb-1 xl:text-base 2xl:text-lg">
               {subtitle}
             </h4>
           )}
@@ -569,9 +479,9 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
         </div>
       )}
 
-      {selectedItem.streamingUrl && (
+      {resolvedBlockStreamingUrl(selectedItem) && (
         <CarouselVideoPlayer
-          src={selectedItem.streamingUrl}
+          src={resolvedBlockStreamingUrl(selectedItem) as string}
           poster={posterUrl}
         />
       )}
@@ -585,7 +495,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
           className="w-full"
         >
           <CarouselContent className={`-ml-5 ${CAROUSEL_CONTENT_PADDING}`}>
-            {validItems.map((item, index) => (
+            {validItems.map((item: LegacyFragmentValue, index: number) => (
               <CarouselItem
                 key={item.id ?? index}
                 className="max-w-[200px] pl-5"
@@ -601,12 +511,8 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
               <div className={CAROUSEL_END_SPACER} />
             </CarouselItem>
           </CarouselContent>
-          {validItems.length > 3 && (
-            <>
-              <CarouselPrevious className="hidden md:flex" />
-              <CarouselNext className="hidden md:flex" />
-            </>
-          )}
+          <CarouselPrevious label={t("previousVideoPreview")} />
+          <CarouselNext label={t("nextVideoPreview")} />
         </Carousel>
       </div>
     </div>

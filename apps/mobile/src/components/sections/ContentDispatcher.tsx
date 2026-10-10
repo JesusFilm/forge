@@ -1,6 +1,6 @@
 import { View } from "react-native"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
+import type { AdminBlock } from "../../lib/queries"
 import { VideoCardRenderer } from "./VideoCardRenderer"
 import { TextRenderer } from "./TextRenderer"
 import { RelatedQuestionsRenderer } from "./RelatedQuestionsRenderer"
@@ -12,46 +12,40 @@ import { QuizButtonRenderer } from "./QuizButtonRenderer"
 import { EasterDatesRenderer } from "./EasterDatesRenderer"
 import { ContainerRenderer } from "./ContainerRenderer"
 
-/**
- * Recursive dispatcher for nested content inside SectionWrapper and Container.
- * Unlike SectionDispatcher (which handles top-level feed items), this renders
- * content blocks that live inside a parent wrapper.
- */
 export interface ContentDispatcherProps {
-  content: NormalizedBlock[]
+  content: AdminBlock[]
 }
 
-function renderBlock(block: NormalizedBlock, index: number) {
-  const key = `${block.kind}-${(block.id as string) ?? "x"}-${index}`
+function renderBlock(block: AdminBlock, index: number) {
+  const key = `${block.__typename}-${index}`
 
-  switch (block.kind) {
-    case "video":
+  switch (block.__typename) {
+    case "VideoBlock":
       return <VideoCardRenderer key={key} section={block} />
-    case "text":
+    case "TextBlock":
       return <TextRenderer key={key} section={block} />
-    case "relatedQuestions":
+    case "RelatedQuestionsBlock":
       return <RelatedQuestionsRenderer key={key} section={block} />
-    case "bibleQuotesCarousel":
+    case "BibleQuotesCarouselBlock":
       return <BibleQuotesCarouselRenderer key={key} section={block} />
-    case "mediaCollection":
+    case "MediaCollectionBlock":
       return <MediaCollectionRenderer key={key} section={block} />
-    case "videoCarousel":
+    case "VideoCarouselBlock":
       return <VideoCarouselRenderer key={key} section={block} />
-    case "navigationCarousel":
+    case "NavigationCarouselBlock":
       return <NavigationCarouselRenderer key={key} section={block} />
-    case "quizButton":
+    case "QuizButtonBlock":
       return <QuizButtonRenderer key={key} section={block} />
-    case "easterDates":
+    case "EasterDatesBlock":
       return <EasterDatesRenderer key={key} section={block} />
-    case "container":
+    case "ContainerBlock":
       return <ContainerRenderer key={key} section={block} />
-    case "adventCountdown":
-    case "cta":
-      // TODO: implement dedicated renderers
+    case "AdventCountdownBlock":
+    case "CtaBlock":
       return null
     default:
       if (__DEV__) {
-        console.warn(`[ContentDispatcher] Unhandled kind: ${block.kind}`)
+        console.warn(`[ContentDispatcher] Unhandled type: ${block.__typename}`)
       }
       return null
   }

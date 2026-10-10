@@ -11,7 +11,8 @@ depends_on:
   - "feat-091"
   - "feat-092"
   - "feat-093"
-blocks: []
+blocks:
+  - "feat-153"
 tags:
   - "platform"
   - "admin"

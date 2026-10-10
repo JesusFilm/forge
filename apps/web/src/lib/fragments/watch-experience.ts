@@ -1,102 +1,44 @@
-import { graphql } from "@forge/graphql"
-import { adventCountdownFragment } from "./advent-countdown"
-import { bibleQuotesCarouselFragment } from "./bible-quotes-carousel"
-import { containerFragment } from "./container"
-import { ctaSectionFragment } from "./cta-section"
-import { easterDatesFragment } from "./easter-dates"
-import { infoBlocksFragment } from "./info-blocks"
-import { mediaCollectionFragment } from "./media-collection"
-import { navigationCarouselFragment } from "./navigation-carousel"
-import { promoBannerFragment } from "./promo-banner"
-import { relatedQuestionsFragment } from "./related-questions"
-import { sectionFragment } from "./section"
-import { textSectionFragment } from "./text-section"
-import { videoCarouselFragment } from "./video-carousel"
-import { videoHeroFragment } from "./video-hero"
-import { videoSectionFragment } from "./video-section"
+import { adminGraphql } from "@forge/admin-graphql"
+import {
+  adminLegacyWatchExperienceFragment,
+  adminPreCopyWatchExperienceFragment,
+  adminWatchExperienceFragment,
+} from "@forge/admin-graphql/fragments"
 
-export const watchExperienceFragment = graphql(
+import { watchMediaCollectionTitlesFragment } from "./watch-media-collection-titles"
+
+// Compose Web's locale-aware media collection titles over the canonical Watch
+// Experience projection. The extension stays local so native consumers retain
+// the shared operation text without resolvedTitle resolver work.
+export const watchExperienceFragment = adminGraphql(
   `
-    fragment WatchExperience on Experience @_unmask {
-      documentId
-      slug
-      isTemplate
-      title
-      metaDescription
-      ogTitle
-      ogDescription
-      pathSegment
-      ogImage {
-        url
-        width
-        height
-        alternativeText
-      }
-      blocks {
-        __typename
-        ... on ComponentSectionsMediaCollection {
-          ...MediaCollection
-        }
-        ... on ComponentSectionsPromoBanner {
-          ...PromoBanner
-        }
-        ... on ComponentSectionsInfoBlocks {
-          ...InfoBlocks
-        }
-        ... on ComponentSectionsCta {
-          ...CTASection
-        }
-        ... on ComponentSectionsVideoHero {
-          ...VideoHero
-        }
-        ... on ComponentSectionsBibleQuotesCarousel {
-          ...BibleQuotesCarousel
-        }
-        ... on ComponentSectionsText {
-          ...TextSection
-        }
-        ... on ComponentSectionsEasterDates {
-          ...EasterDates
-        }
-        ... on ComponentSectionsAdventCountdown {
-          ...AdventCountdown
-        }
-        ... on ComponentSectionsContainer {
-          ...Container
-        }
-        ... on ComponentSectionsVideo {
-          ...VideoSection
-        }
-        ... on ComponentSectionsSection {
-          ...Section
-        }
-        ... on ComponentSectionsRelatedQuestions {
-          ...RelatedQuestions
-        }
-        ... on ComponentSectionsVideoCarousel {
-          ...VideoCarousel
-        }
-        ... on ComponentSectionsNavigationCarousel {
-          ...NavigationCarousel
-        }
-      }
+    fragment WatchExperience on ExperienceLocale @_unmask {
+      ...AdminWatchExperience
+      ...WatchMediaCollectionTitles
     }
   `,
-  [
-    mediaCollectionFragment,
-    promoBannerFragment,
-    infoBlocksFragment,
-    ctaSectionFragment,
-    videoHeroFragment,
-    videoSectionFragment,
-    bibleQuotesCarouselFragment,
-    textSectionFragment,
-    easterDatesFragment,
-    adventCountdownFragment,
-    containerFragment,
-    sectionFragment,
-    videoCarouselFragment,
-    relatedQuestionsFragment,
-    navigationCarouselFragment,
-  ],
+  [adminWatchExperienceFragment, watchMediaCollectionTitlesFragment],
+)
+
+export const preCopyWatchExperienceFragment = adminGraphql(
+  `
+    fragment PreCopyWatchExperience on ExperienceLocale @_unmask {
+      ...AdminPreCopyWatchExperience
+      ...WatchMediaCollectionTitles
+    }
+  `,
+  [adminPreCopyWatchExperienceFragment, watchMediaCollectionTitlesFragment],
+)
+
+// Rollout-only equivalent that composes the old-schema-safe canonical
+// fragment. Keep the Web-local title extension so a compatibility retry loses
+// only the category block selection, not existing media collection copy.
+export const legacyWatchExperienceFragment = adminGraphql(
+  `
+    fragment LegacyWatchExperience on ExperienceLocale @_unmask {
+      ...AdminLegacyWatchExperience
+      ...WatchMediaCollectionTitles
+    }
+  `,
+  [adminLegacyWatchExperienceFragment, watchMediaCollectionTitlesFragment],
 )

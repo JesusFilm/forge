@@ -1,19 +1,7 @@
-import { prisma } from "@/db/client"
-import { SYSTEM_PRINCIPAL } from "@/auth/principal"
 import {
-  buildExperienceEmbeddingText,
-  generateExperienceEmbedding,
-  writeExperienceLocaleEmbedding,
-} from "@/services/embeddings.service"
-
-type ExperienceEmbeddingLocaleRecord = {
-  id: string
-  title: string | null
-  metaDescription: string | null
-  ogTitle: string | null
-  ogDescription: string | null
-  blocks: unknown
-}
+  launchMastraExperienceEmbeddingForLocale,
+  type MastraExperienceEmbeddingLaunchResult,
+} from "@/services/mastra-experience-embedding-client"
 
 export type ExperienceEmbeddingInput = {
   localeId: string
@@ -21,63 +9,39 @@ export type ExperienceEmbeddingInput = {
 
 export type ExperienceEmbeddingOutput = {
   localeId: string
-  dimensions: number
-  model: string
   updated: boolean
 }
 
+/**
+ * Per-locale experience embedding workflow. Admin authorizes and resolves
+ * the locale; Mastra owns provider generation and writes back through
+ * Admin's experience-specific ingest endpoint.
+ *
+ * The GraphQL-facing return intentionally stays scrubbed: no vector,
+ * provider payload, model, dimensions, source hash, or Mastra run id.
+ */
 export async function runExperienceEmbedding(
   input: ExperienceEmbeddingInput,
 ): Promise<ExperienceEmbeddingOutput> {
   "use workflow"
 
-  const locale = await stepLoadExperienceLocale(input.localeId)
-  const text = buildExperienceEmbeddingText(locale)
-  const embedding = await stepGenerateExperienceEmbedding(text)
-  await stepPersistExperienceEmbedding(input.localeId, embedding.embedding)
+  const result = await stepEmbed(input.localeId)
+  if (!result.ok) {
+    throw new Error(
+      `Mastra experience embedding failed: ${result.reason}` +
+        (result.adminReason ? ` (${result.adminReason})` : ""),
+    )
+  }
 
   return {
     localeId: input.localeId,
-    dimensions: embedding.dimensions,
-    model: embedding.model,
     updated: true,
   }
 }
 
-async function stepLoadExperienceLocale(
+async function stepEmbed(
   localeId: string,
-): Promise<ExperienceEmbeddingLocaleRecord> {
+): Promise<MastraExperienceEmbeddingLaunchResult> {
   "use step"
-
-  return prisma.experienceLocale.findUniqueOrThrow({
-    where: { id: localeId },
-    select: {
-      id: true,
-      title: true,
-      metaDescription: true,
-      ogTitle: true,
-      ogDescription: true,
-      blocks: true,
-    },
-  })
-}
-
-async function stepGenerateExperienceEmbedding(text: string) {
-  "use step"
-
-  return generateExperienceEmbedding(text)
-}
-
-async function stepPersistExperienceEmbedding(
-  localeId: string,
-  embedding: readonly number[],
-) {
-  "use step"
-
-  await writeExperienceLocaleEmbedding({
-    prisma,
-    localeId,
-    embedding,
-    user: SYSTEM_PRINCIPAL,
-  })
+  return launchMastraExperienceEmbeddingForLocale(localeId, { mode: "force" })
 }

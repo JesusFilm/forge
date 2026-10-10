@@ -1,0 +1,334 @@
+{
+  "schemaVersion": "forge-recommendation-release-health-v1",
+  "releaseSha": "1981f1c5f77d57fabe720d76154b9c19238d6331",
+  "deploymentFinalCheckAt": "2026-09-15T22:22:06.292694+00:00",
+  "originMainMatches": true,
+  "allServicesSoleActiveOnRelease": true,
+  "deployments": {
+    "web": {
+      "status": "SUCCESS",
+      "sha": "1981f1c5f77d57fabe720d76154b9c19238d6331",
+      "statusUpdatedAt": "2026-09-15T22:08:38.748Z"
+    },
+    "admin": {
+      "status": "SUCCESS",
+      "sha": "1981f1c5f77d57fabe720d76154b9c19238d6331",
+      "statusUpdatedAt": "2026-09-15T21:54:41.433Z"
+    },
+    "worker": {
+      "status": "SUCCESS",
+      "sha": "1981f1c5f77d57fabe720d76154b9c19238d6331",
+      "statusUpdatedAt": "2026-09-15T21:54:17.839Z"
+    }
+  },
+  "database": {
+    "migration": "0096_recommendation_recent_episode_index",
+    "finishedAt": "2026-09-15T21:53:34.713Z",
+    "rolledBack": false,
+    "indexReady": true,
+    "indexValid": true,
+    "indexColumns": ["session_digest", "created_at DESC", "id DESC"],
+    "verifiedReadOnly": true
+  },
+  "window": {
+    "start": "2026-09-15T22:10:00Z",
+    "end": "2026-09-15T22:20:00Z",
+    "durationMinutes": 10,
+    "sqlCapturedAt": "2026-09-15T22:20:57.926Z",
+    "httpScope": "Exact active Web deployment and fixed recommendation endpoint set; all traffic, including crawler rejections and synthetic checks"
+  },
+  "http": {
+    "total": 1072,
+    "countsByStatus": {
+      "200": 621,
+      "400": 1,
+      "401": 1,
+      "403": 444,
+      "405": 5
+    },
+    "success200": 621,
+    "client4xx": 451,
+    "server5xx": 0,
+    "explicit5xx": {
+      "500": 0,
+      "502": 0,
+      "503": 0,
+      "504": 0
+    },
+    "playbackRequests": 426,
+    "playback400": 1,
+    "coverageComplete": true,
+    "disjointCompleteWindows": 3,
+    "collectionCalls": 4,
+    "endpointCounts": [
+      {
+        "method": "GET",
+        "path": "/watch/api/recommendations/evidence",
+        "httpStatus": 405,
+        "requests": 5
+      },
+      {
+        "method": "POST",
+        "path": "/watch/api/recommendations",
+        "httpStatus": 200,
+        "requests": 48
+      },
+      {
+        "method": "POST",
+        "path": "/watch/api/recommendations",
+        "httpStatus": 403,
+        "requests": 87
+      },
+      {
+        "method": "POST",
+        "path": "/watch/api/recommendations/evidence",
+        "httpStatus": 200,
+        "requests": 124
+      },
+      {
+        "method": "POST",
+        "path": "/watch/api/recommendations/evidence",
+        "httpStatus": 403,
+        "requests": 54
+      },
+      {
+        "method": "POST",
+        "path": "/watch/api/recommendations/playback",
+        "httpStatus": 200,
+        "requests": 334
+      },
+      {
+        "method": "POST",
+        "path": "/watch/api/recommendations/playback",
+        "httpStatus": 400,
+        "requests": 1
+      },
+      {
+        "method": "POST",
+        "path": "/watch/api/recommendations/playback",
+        "httpStatus": 401,
+        "requests": 1
+      },
+      {
+        "method": "POST",
+        "path": "/watch/api/recommendations/playback",
+        "httpStatus": 403,
+        "requests": 90
+      },
+      {
+        "method": "POST",
+        "path": "/watch/api/recommendations/profile",
+        "httpStatus": 200,
+        "requests": 115
+      },
+      {
+        "method": "POST",
+        "path": "/watch/api/recommendations/profile",
+        "httpStatus": 403,
+        "requests": 213
+      }
+    ]
+  },
+  "httpBaseline": {
+    "start": "2026-09-15T20:00:00Z",
+    "end": "2026-09-15T21:00:00Z",
+    "durationMinutes": 60,
+    "total": 7462,
+    "server5xx": 1,
+    "selection503": 1,
+    "playback5xx": 0,
+    "comparison": "Different durations and traffic mixes; no causal error-rate improvement claim"
+  },
+  "delivery": {
+    "surface_version": "watch-below-player-v1",
+    "strategy_version": "semantic-transcript-pgvector-v1",
+    "state": "issued",
+    "requests": "48",
+    "cards": "237",
+    "zero_card_requests": "5",
+    "duplicate_slates": "0",
+    "minimum_cards": "0",
+    "median_cards": 6,
+    "with_profile_cards": "14",
+    "retrieval_p50_ms": 103.5,
+    "retrieval_p95_ms": 315.44999999999993,
+    "retrieval_max_ms": 805,
+    "resultBreakdown": [
+      {
+        "surface_version": "watch-below-player-v1",
+        "result": "served",
+        "fallback_reason": null,
+        "requests": "43",
+        "cards": "237",
+        "zero_card_requests": "0"
+      },
+      {
+        "surface_version": "watch-below-player-v1",
+        "result": "empty",
+        "fallback_reason": "no_candidates",
+        "requests": "3",
+        "cards": "0",
+        "zero_card_requests": "3"
+      },
+      {
+        "surface_version": "watch-below-player-v1",
+        "result": "empty",
+        "fallback_reason": "seed_embedding_unavailable",
+        "requests": "2",
+        "cards": "0",
+        "zero_card_requests": "2"
+      }
+    ],
+    "baselineWindowStart": "2026-09-14T21:00:00Z",
+    "baselineWindowEnd": "2026-09-15T21:00:00Z",
+    "baselineSeededIssued": 10297,
+    "baselineSeededCards": 41724,
+    "baselineRetrievalP50Ms": 90,
+    "baselineRetrievalP95Ms": 374.2,
+    "baselineRetrievalMaxMs": 1221,
+    "comparison": "Ten-minute operational sample compared with prior24h summary; no usefulness or latency uplift claim"
+  },
+  "recency": {
+    "personalizedSampleRequests": 14,
+    "nominatedEntries": 644,
+    "composedEntries": 83,
+    "actualRejectedEntries": 116,
+    "recentStartReasonEntries": 16,
+    "repeatedlyServedReasonEntries": 113,
+    "reasonCountsCanOverlap": true,
+    "composedRefillOrMovementEntries": 80,
+    "recentlyQualifiedRepeatedCards": 3,
+    "affectedRequests": 2,
+    "repeatedCardsWithActualRejectionAndRefill": 3,
+    "earlierPostAdminWindow": {
+      "start": "2026-09-15T21:54:57Z",
+      "end": "2026-09-15T22:00:00Z",
+      "personalizedRequests": 8,
+      "actualRecentStartRejectedEntries": 5,
+      "entriesMatchedToNonlateDirectOriginStarts": 5,
+      "recommendationOriginMatches": 0,
+      "unmatchedEntries": 0
+    },
+    "comparison": "Actual rejection and composed refill are distinct. Sparse request samples do not establish usefulness uplift."
+  },
+  "playback": {
+    "episodes": 28,
+    "facts": 296,
+    "starts": 14,
+    "lateFacts": 0,
+    "conflictedEpisodes": 0,
+    "factKinds": [
+      {
+        "kind": "playback_progress",
+        "facts": "102",
+        "late_facts": "0"
+      },
+      {
+        "kind": "playback_active_visible_playing",
+        "facts": "54",
+        "late_facts": "0"
+      },
+      {
+        "kind": "playback_navigation",
+        "facts": "44",
+        "late_facts": "0"
+      },
+      {
+        "kind": "playback_qoe",
+        "facts": "31",
+        "late_facts": "0"
+      },
+      {
+        "kind": "playback_seek",
+        "facts": "21",
+        "late_facts": "0"
+      },
+      {
+        "kind": "playback_attempt",
+        "facts": "14",
+        "late_facts": "0"
+      },
+      {
+        "kind": "playback_start",
+        "facts": "14",
+        "late_facts": "0"
+      },
+      {
+        "kind": "playback_observation",
+        "facts": "8",
+        "late_facts": "0"
+      },
+      {
+        "kind": "playback_end",
+        "facts": "8",
+        "late_facts": "0"
+      }
+    ],
+    "latestActiveOutcomes": 8,
+    "activeOutcomesCompleteCoverage": 8,
+    "activeQualifiedViews": 3,
+    "finalizationInterpretation": "Episode states are as of SQL capture; facts/outcomes are cut at window end. Ongoing episodes are immature, not failed."
+  },
+  "worker": {
+    "freshOnlineWorkers": 1,
+    "heartbeatAgeSeconds": 11.698435,
+    "finalizationRunsSucceeded": 20,
+    "finalizationRunsRunning": 27,
+    "workflowRowsWithErrors": 0,
+    "runningInterpretation": "Scheduled finalization wakes may remain running until their boundary; no failed ledger rows in this window"
+  },
+  "factTransport": {
+    "acceptedWebBatches": 278,
+    "acceptedAdminBatches": 278,
+    "replayWebBatches": 1,
+    "replayAdminBatches": 1,
+    "factTransactionBusyAttempt1": 5,
+    "finalizeTransactionBusyAttempt1": 1,
+    "serializationFailureMappedToWeb400": 1,
+    "failureAt": "2026-09-15T22:15:51Z",
+    "followUp": "feat-509 linked to existing feat-464",
+    "baselineArtifact": "fact-serialization-baseline.json"
+  },
+  "settledLogHealth": {
+    "errorLevelLogs": 0,
+    "importantQualification": "PostgreSQL serialization error is logged at info and produced the single HTTP400; error-level zero does not mean no failures"
+  },
+  "startupCaveats": [
+    {
+      "kind": "existing_worker_prewarm_warning",
+      "message": "query_embedding_prewarm_failure failed=6 total=6",
+      "priorWorkerStartupWarningCount": 2
+    },
+    {
+      "kind": "unattributed_secondary_worker_process",
+      "start": "2026-09-15T21:59:17.637Z",
+      "end": "2026-09-15T21:59:49.092Z",
+      "errorLogs": 16,
+      "warningLogs": 1,
+      "safeError": "Instrumentation hook failed while selecting workflow runtime rows",
+      "correlation": "Absent from exact Railway worker runtime log; no second Railway worker deployment; active worker heartbeat and runtime healthy. Provenance unresolved."
+    }
+  ],
+  "syntheticActivity": {
+    "included": true,
+    "ordinaryAnonymousBrowserOpenedAt": "2026-09-15T21:52:00Z",
+    "featureChecksAfterAllServicesLive": true,
+    "browserClosedAt": "2026-09-15T22:21:18Z",
+    "completedEpisodes": 2,
+    "qualifiedLongWatchSeconds": 42.436,
+    "quickExitActiveSeconds": 1.106,
+    "preferenceInterpretation": "unknown",
+    "observationRankingInfluence": false,
+    "newNegativeEvidence": 0
+  },
+  "forYou": {
+    "intentionalHoldPreserved": true,
+    "availabilityResponse": {
+      "httpStatus": 200,
+      "enabled": false
+    },
+    "englishPublishedHomepageBlockPresent": false,
+    "journeyVerified": false
+  },
+  "assessment": "Release behavior and operational transport verified with a pre-existing serialization400 follow-up and an unresolved secondary startup-process log caveat. This short synthetic-inclusive window is not a causal usefulness experiment."
+}

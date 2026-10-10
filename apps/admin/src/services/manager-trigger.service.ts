@@ -53,6 +53,7 @@ export type ManagerEnrichmentDispatchStatus =
 export type ManagerEnrichmentDispatchResult = {
   assetId: number
   coreId: string
+  targetLocale?: string
   managerJobId: string | null
   status: ManagerEnrichmentDispatchStatus
   /** Free-form failure detail when status is `DISPATCH_FAILED` /
@@ -78,6 +79,7 @@ export type ManagerEnrichmentKind = "scene-analysis" | "transcript"
 export type ManagerEnrichmentTriggerItem = {
   assetId: number
   coreId: string
+  targetLocale?: string
 }
 
 // ---------------------------------------------------------------------------
@@ -88,6 +90,7 @@ export type ManagerEnrichmentTriggerItem = {
 type ManagerPerIdResult = {
   assetId: number
   coreId: string
+  targetLocale?: string | null
   managerJobId: string | null
   status: "started" | "already_in_flight" | "not_found" | "validation_failed"
   message?: string
@@ -133,6 +136,7 @@ function mapManagerResult(
     return {
       assetId: r.assetId,
       coreId: r.coreId,
+      ...(r.targetLocale ? { targetLocale: r.targetLocale } : {}),
       managerJobId: r.managerJobId,
       status: "DISPATCH_FAILED",
       reason: "parse_error",
@@ -145,6 +149,7 @@ function mapManagerResult(
   return {
     assetId: r.assetId,
     coreId: r.coreId,
+    ...(r.targetLocale ? { targetLocale: r.targetLocale } : {}),
     managerJobId: r.managerJobId,
     status: mapped,
     ...(propagateMessage ? { error: r.message } : {}),
@@ -162,6 +167,7 @@ function syntheticDispatchFailure(
   return items.map((item) => ({
     assetId: item.assetId,
     coreId: item.coreId,
+    ...(item.targetLocale ? { targetLocale: item.targetLocale } : {}),
     managerJobId: null,
     status: "DISPATCH_FAILED",
     error: partial.error,
@@ -183,6 +189,7 @@ function logResults(
         kind,
         assetId: r.assetId,
         coreId: r.coreId,
+        ...(r.targetLocale ? { targetLocale: r.targetLocale } : {}),
         status: r.status,
         managerJobId: r.managerJobId,
         durationMs,
@@ -195,10 +202,9 @@ function logResults(
 
 /**
  * Dispatch a list of (assetId, coreId) pairs to apps/manager's
- * `/api/admin-trigger/{kind}` endpoint. The manager looks up each
- * cms video via Strapi GraphQL (filtered by coreId) and dispatches
- * the matching pipeline (scene-analysis or transcript-only) in the
- * background.
+ * `/api/admin-trigger/{kind}` endpoint. The manager resolves dispatch
+ * metadata from admin by coreId and schedules the matching pipeline
+ * (scene-analysis or transcript-only) in the background.
  *
  * Returns one result per requested item — the function never
  * partial-fails. On HTTP non-2xx, network error, parse error, or
@@ -216,17 +222,18 @@ export async function triggerManagerEnrichment(
     return []
   }
 
-  // Pre-dedupe by assetId so the admin caller's per-id outcome list
-  // length matches what manager will respond with. Manager dedupes
-  // the same way at its boundary; without admin doing the same, a
-  // duplicate assetId in the input would cause manager's response
-  // array to be SHORTER than the request, forcing a synthetic
-  // outcome with no clean status to assign. Dedupe at both
-  // boundaries keeps the per-id outcome contract honest.
-  const seen = new Set<number>()
-  const dedupedItems = items.filter((item) => {
-    if (seen.has(item.assetId)) return false
-    seen.add(item.assetId)
+  // Pre-dedupe by assetId + normalized targetLocale so the admin
+  // caller's per-id outcome list length matches what manager will
+  // respond with. Manager dedupes the same way at its boundary;
+  // without admin doing the same, a duplicate dispatch key would make
+  // manager's response array shorter than the request, forcing a
+  // synthetic outcome with no clean status to assign.
+  const normalizedItems = items.map(normalizeEnrichmentItem)
+  const seen = new Set<string>()
+  const dedupedItems = normalizedItems.filter((item) => {
+    const key = enrichmentItemKey(item)
+    if (seen.has(key)) return false
+    seen.add(key)
     return true
   })
 
@@ -333,14 +340,17 @@ export async function triggerManagerEnrichment(
   // bug worth surfacing rather than masking with synthetic
   // NOT_FOUND), fall through to a typed DISPATCH_FAILED so the
   // operator sees a real error.
-  const seenInResponse = new Set<number>(mapped.map((r) => r.assetId))
-  const dropped = dedupedItems.filter((it) => !seenInResponse.has(it.assetId))
+  const seenInResponse = new Set(mapped.map(enrichmentResultKey))
+  const dropped = dedupedItems.filter(
+    (it) => !seenInResponse.has(enrichmentItemKey(it)),
+  )
   const filled = [
     ...mapped,
     ...dropped.map(
       (it): ManagerEnrichmentDispatchResult => ({
         assetId: it.assetId,
         coreId: it.coreId,
+        ...(it.targetLocale ? { targetLocale: it.targetLocale } : {}),
         managerJobId: null,
         status: "DISPATCH_FAILED",
         reason: "parse_error",
@@ -353,4 +363,32 @@ export async function triggerManagerEnrichment(
 
   logResults(kind, Date.now() - startedAt, filled)
   return filled
+}
+
+function enrichmentItemKey(item: ManagerEnrichmentTriggerItem): string {
+  return `${item.assetId}:${normalizeTargetLocale(item.targetLocale) ?? ""}`
+}
+
+function enrichmentResultKey(
+  item: Pick<ManagerEnrichmentDispatchResult, "assetId" | "targetLocale">,
+): string {
+  return `${item.assetId}:${normalizeTargetLocale(item.targetLocale) ?? ""}`
+}
+
+function normalizeEnrichmentItem(
+  item: ManagerEnrichmentTriggerItem,
+): ManagerEnrichmentTriggerItem {
+  const targetLocale = normalizeTargetLocale(item.targetLocale)
+  return {
+    assetId: item.assetId,
+    coreId: item.coreId,
+    ...(targetLocale ? { targetLocale } : {}),
+  }
+}
+
+function normalizeTargetLocale(
+  value: string | null | undefined,
+): string | null {
+  const normalized = value?.trim()
+  return normalized && normalized.length > 0 ? normalized.toLowerCase() : null
 }

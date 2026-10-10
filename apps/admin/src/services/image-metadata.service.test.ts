@@ -2,24 +2,30 @@ import { describe, expect, it } from "vitest"
 import { generateImageMetadata } from "./image-metadata.service"
 
 describe("generateImageMetadata", () => {
-  it("generates a Next Image-compatible blur data URL for PNG bytes", () => {
-    const png = Uint8Array.from([
-      0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
-      0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03,
-      0x08, 0x02, 0x00, 0x00, 0x00,
-    ])
+  it("generates a raster Next Image-compatible blur data URL", async () => {
+    const image = new TextEncoder().encode(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="2" height="3"><rect width="2" height="3" fill="#ff0000"/></svg>',
+    )
 
-    const metadata = generateImageMetadata(png)
+    const metadata = await generateImageMetadata(image)
 
     expect(metadata.width).toBe(2)
     expect(metadata.height).toBe(3)
-    expect(metadata.blurDataUrl).toMatch(/^data:image\/svg\+xml;base64,/)
+    expect(metadata.blurDataUrl).toMatch(/^data:image\/jpeg;base64,/)
+    expect(metadata.blurDataUrl).not.toContain("<svg")
     expect(metadata.dominantColor).toMatch(/^#[0-9a-f]{6}$/i)
+    expect(metadata.dominantColor).not.toBe("#111827")
   })
 
-  it("rejects empty image bytes", () => {
-    expect(() => generateImageMetadata(new Uint8Array())).toThrow(
+  it("rejects empty image bytes", async () => {
+    await expect(generateImageMetadata(new Uint8Array())).rejects.toThrow(
       "Image bytes are empty",
     )
+  })
+
+  it("rejects corrupt image bytes with a domain error", async () => {
+    await expect(
+      generateImageMetadata(new TextEncoder().encode("not an image")),
+    ).rejects.toThrow("Unable to generate image metadata")
   })
 })

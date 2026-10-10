@@ -3,14 +3,20 @@ import { StyleSheet, Text, View, useWindowDimensions } from "react-native"
 import { Image } from "expo-image"
 import { LinearGradient } from "expo-linear-gradient"
 
-import type { NormalizedBlock } from "../../lib/normalizer"
-import { COLORS, hexToRgba } from "../../lib/colors"
+import type { VideoBlockModel } from "../../lib/normalizer"
+import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { scale } from "../../lib/scale"
-import { resolveImageUrl, getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
-import { pickThumbnailUrl } from "../../lib/types"
+import {
+  extractMuxPlaybackId,
+  EXPERIENCE_CARD_PREVIEW_OPTS,
+} from "../../lib/muxUrl"
+import { getMuxThumbnailUrl } from "../../lib/resolveImageUrl"
 import { FocusableCard } from "../FocusableCard"
+import { useHoverPreview } from "../focus/useHoverPreview"
+import { HoverPreviewImage } from "../watch/HoverPreviewImage"
 import { useVideoPlayerContext } from "../../contexts/VideoPlayerContext"
 import { validateStreamingUrl } from "../../lib/validateUrl"
+import { blockMuxPlaybackId, blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -22,7 +28,7 @@ const FOCUS_SCALE = 1.05
 // ── Types ────────────────────────────────────────────────────────────────────
 
 export type VideoCardRendererProps = {
-  section: NormalizedBlock
+  section: VideoBlockModel
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -35,35 +41,31 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
   const prevVisibleRef = useRef(playerState.isVisible)
   const [shouldRestoreFocus, setShouldRestoreFocus] = useState(false)
 
-  const video = section.videoRef as
-    | {
-        documentId?: string
-        title?: string
-        slug?: string
-        images?: {
-          url?: string
-          mobileCinematicHigh?: string
-          videoStill?: string
-        }[]
-      }
-    | null
-    | undefined
-
   // Playback URL: only Mux streaming URLs are allowed (validateStreamingUrl
   // enforces stream.mux.com). CMS-uploaded media URLs use different hosts
   // and cannot pass validation, so no fallback is attempted.
-  const sectionStreamingUrl = section.streamingUrl as string | null | undefined
+  const sectionStreamingUrl = blockStreamingUrl(section)
   const playbackUrl =
     typeof sectionStreamingUrl === "string" &&
     validateStreamingUrl(sectionStreamingUrl)
       ? sectionStreamingUrl
       : null
 
-  const imageSource =
-    resolveImageUrl(pickThumbnailUrl(video?.images)) ??
-    getMuxThumbnailUrl(sectionStreamingUrl)
+  // The fragment fetches no video record — the poster is always Mux-derived.
+  const imageSource = getMuxThumbnailUrl(sectionStreamingUrl)
 
-  const title = video?.title ?? (section.videoTitle as string | null) ?? null
+  const title = section.videoTitle ?? null
+
+  const [focused, setFocused] = useState(false)
+  const previewUrl = useHoverPreview({
+    focused,
+    enabled: true,
+    playbackId:
+      blockMuxPlaybackId(section) ?? extractMuxPlaybackId(sectionStreamingUrl),
+    // This inline card is far larger than a rail thumb — request Mux's max-quality
+    // animated preview (accepts a cold ~5s transcode); rails keep the warm default.
+    previewOpts: EXPERIENCE_CARD_PREVIEW_OPTS,
+  })
 
   // ── Sizing: 65% of screen width, capped to parent container ──
   const targetWidth = Math.round(screenWidth * TARGET_WIDTH_RATIO)
@@ -100,6 +102,8 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
             playVideo(playbackUrl, title ?? undefined)
           }
         }}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         focusScale={FOCUS_SCALE}
         hasTVPreferredFocus={shouldRestoreFocus}
         accessibilityLabel={title ? `Play ${title}` : "Play video"}
@@ -107,7 +111,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
           width: cardWidth,
           height: cardHeight,
           alignSelf: "center",
-          backgroundColor: COLORS.surfaceContainerHigh,
+          backgroundColor: WATCH_THEME.scrim(1),
           borderRadius: 16,
           overflow: "hidden",
         }}
@@ -118,7 +122,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
             source={imageSource}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
-            recyclingKey={`video-card-${section.kind}-${String(video?.documentId ?? "unknown")}`}
+            recyclingKey={`video-card-${section.videoId ?? "unknown"}`}
           />
         ) : (
           <View style={[StyleSheet.absoluteFill, styles.thumbnailFallback]} />
@@ -126,10 +130,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
 
         {/* Gradient overlay (decorative, not focusable) */}
         <LinearGradient
-          colors={[
-            hexToRgba(COLORS.surfaceContainerHigh, 0),
-            COLORS.surfaceContainerHigh,
-          ]}
+          colors={[WATCH_THEME.scrim(0), WATCH_THEME.scrim(1)]}
           locations={[0.4, 1]}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
@@ -161,6 +162,9 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
           </View>
         </View>
 
+        {/* Above the thumbnail + play icon, below the title (KTD6 z-order). */}
+        <HoverPreviewImage previewUrl={previewUrl} contentFit="cover" />
+
         {/* Title in gradient area (decorative overlay, not focusable) */}
         {title != null && (
           <View style={styles.titleContainer} pointerEvents="none">
@@ -178,7 +182,7 @@ export function VideoCardRenderer({ section }: VideoCardRendererProps) {
 
 const styles = StyleSheet.create({
   thumbnailFallback: {
-    backgroundColor: COLORS.surfaceContainerHighest,
+    backgroundColor: WATCH_THEME.below,
   },
   playIconContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -186,12 +190,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   playIcon: {
-    backgroundColor: hexToRgba("#000000", 0.5),
+    backgroundColor: WATCH_THEME.scrim(0.5),
     justifyContent: "center",
     alignItems: "center",
   },
   playGlyph: {
-    color: COLORS.text,
+    color: WATCH_THEME.text,
     fontFamily: "System",
   },
   titleContainer: {
@@ -204,6 +208,6 @@ const styles = StyleSheet.create({
     fontFamily: "System",
     fontSize: scale(24),
     fontWeight: "600",
-    color: COLORS.text,
+    color: WATCH_THEME.text,
   },
 })

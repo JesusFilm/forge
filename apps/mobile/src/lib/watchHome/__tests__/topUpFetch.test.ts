@@ -1,0 +1,133 @@
+import {
+  chunk,
+  fetchTopUpVideos,
+  lastGoodHydrationFor,
+  resolveHydrationVideos,
+} from "../topUpFetch"
+import { ENGLISH_ADMIN_FORMS, adminFormsFor } from "../../../i18n/adminLanguage"
+import type { WatchHomeVideoInput } from "../model"
+
+describe("chunk", () => {
+  it("splits into <=size chunks", () => {
+    const ids = Array.from({ length: 250 }, (_, i) => `id-${i}`)
+    expect(chunk(ids, 100).map((c) => c.length)).toEqual([100, 100, 50])
+  })
+
+  it("returns [] for empty input and one chunk at exactly the cap", () => {
+    expect(chunk([], 100)).toEqual([])
+    expect(
+      chunk(
+        Array.from({ length: 100 }, (_, i) => i),
+        100,
+      ),
+    ).toHaveLength(1)
+  })
+})
+
+function topUp(
+  query: unknown,
+  ids: string[],
+  policy: Parameters<typeof fetchTopUpVideos>[2],
+  forms = ENGLISH_ADMIN_FORMS,
+) {
+  return fetchTopUpVideos({ query } as never, ids, policy, forms)
+}
+
+describe("fetchTopUpVideos", () => {
+  it("fires a single call for a <=100-id set and returns the records", async () => {
+    const query = jest
+      .fn()
+      .mockResolvedValue({ data: { watchHomeVideos: [{ coreId: "x" }] } })
+    const out = await topUp(query, ["x"], "cache-first")
+    expect(query).toHaveBeenCalledTimes(1)
+    expect(out).toEqual([{ coreId: "x" }])
+  })
+
+  it("chunks a >100-id set into multiple calls and merges the results", async () => {
+    const ids = Array.from({ length: 150 }, (_, i) => `c-${i}`)
+    const query = jest.fn(({ variables }) =>
+      Promise.resolve({
+        data: {
+          watchHomeVideos: (variables.coreIds as string[]).map((id) => ({
+            coreId: id,
+          })),
+        },
+      }),
+    )
+    const out = await topUp(query, ids, "network-only")
+    expect(query).toHaveBeenCalledTimes(2) // 100 + 50
+    expect(out).toHaveLength(150)
+  })
+
+  it("rejects fail-fast when any chunk rejects (a rejected top-up must degrade)", async () => {
+    const ids = Array.from({ length: 150 }, (_, i) => `c-${i}`)
+    let call = 0
+    const query = jest.fn(() =>
+      call++ === 0
+        ? Promise.resolve({ data: { watchHomeVideos: [] } })
+        : Promise.reject(new Error("boom")),
+    )
+    await expect(
+      fetchTopUpVideos(
+        { query } as never,
+        ids,
+        "network-only",
+        ENGLISH_ADMIN_FORMS,
+      ),
+    ).rejects.toThrow("boom")
+  })
+})
+
+describe("fetchTopUpVideos text rows (U6)", () => {
+  it("asks for the forms' text slug, the one argument set Home shares", async () => {
+    const query = jest.fn().mockResolvedValue({ data: { watchHomeVideos: [] } })
+    await topUp(query, ["x"], "cache-first", adminFormsFor("ru"))
+    expect(query.mock.calls[0][0].variables).toEqual({
+      coreIds: ["x"],
+      textSlug: "russian",
+    })
+  })
+})
+
+// KTD16: the last-good records are text in one locale.
+describe("lastGoodHydrationFor (U6)", () => {
+  const videos: WatchHomeVideoInput[] = [{ coreId: "6_Acts0402", slug: "b" }]
+
+  it("reuses the last-good records in the same locale", () => {
+    expect(lastGoodHydrationFor({ locale: "ru", videos }, "ru")).toBe(videos)
+  })
+
+  it("never reuses them under another locale", () => {
+    expect(lastGoodHydrationFor({ locale: "en", videos }, "ru")).toBeNull()
+    expect(lastGoodHydrationFor(null, "ru")).toBeNull()
+  })
+})
+
+describe("resolveHydrationVideos", () => {
+  const fresh: WatchHomeVideoInput[] = [{ coreId: "6_Acts0401", slug: "a" }]
+  const lastGood: WatchHomeVideoInput[] = [{ coreId: "6_Acts0402", slug: "b" }]
+
+  it("on success uses the fresh records and remembers them as the next last-good", () => {
+    const r = resolveHydrationVideos({ ok: true, videos: fresh }, lastGood)
+    expect(r.hydrationVideos).toBe(fresh)
+    expect(r.nextLastGood).toBe(fresh)
+  })
+
+  it("on an EMPTY success uses empty but keeps the prior last-good (no clobber)", () => {
+    const r = resolveHydrationVideos({ ok: true, videos: [] }, lastGood)
+    expect(r.hydrationVideos).toEqual([])
+    expect(r.nextLastGood).toBe(lastGood)
+  })
+
+  it("on failure reuses the last-good and leaves it unchanged", () => {
+    const r = resolveHydrationVideos({ ok: false }, lastGood)
+    expect(r.hydrationVideos).toBe(lastGood)
+    expect(r.nextLastGood).toBe(lastGood)
+  })
+
+  it("on failure with NO last-good yields empty (first-launch degrade, never throws)", () => {
+    const r = resolveHydrationVideos({ ok: false }, null)
+    expect(r.hydrationVideos).toEqual([])
+    expect(r.nextLastGood).toBeNull()
+  })
+})

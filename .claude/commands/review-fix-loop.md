@@ -1,10 +1,13 @@
-Run ce:review, fix all actionable findings, then re-review — looping until the review is clean.
+Run ce-code-review, fix all actionable findings, then re-review — looping until the review is clean.
 
 ## Process
 
 ### Round 1: Initial review
 
-1. Run `/ce:review` in interactive mode (no arguments needed — it reviews the current branch).
+1. Run `/ce-code-review` in interactive mode (no arguments needed — it reviews
+   the current branch). The skill is hyphenated and named `ce-code-review`;
+   `/ce:review` and `/ce-review` do not resolve. If it is unavailable, follow the
+   plugin preflight in `.claude/commands/work.md` before continuing.
 2. When the review presents findings and asks the policy question, select **"Apply safe_auto fixes and leave the rest as residual work"** (or the closest option that applies all safe fixes).
 3. If the review offers to apply fixes, let it proceed.
 
@@ -17,7 +20,7 @@ After fixes are applied:
    - `pnpm --filter @forge/web test` (if web files changed)
    - Adjust for whichever packages were touched.
 2. If tests fail, fix the test failures before continuing.
-3. Run `/ce:review` again on the updated code.
+3. Run `/ce-code-review` again on the updated code.
 4. If new findings appear, apply safe_auto fixes again.
 5. Repeat until the review returns **"Ready to merge"** with zero actionable findings (P0-P2).
 

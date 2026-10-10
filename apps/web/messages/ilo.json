@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Awan ti maipakita a sulat ti pannakaidalan.",
+    "failedToLoad": "Nabigat ti panangikarga ti pannakaidalan: {message}",
+    "unexpected": "Napasamak ti saan a naammo a biddut.",
+    "notConfigured": "Saan a naipasdek ti content service.",
+    "noContent": "Awan ti maipakita a sulat.",
+    "homepageMisconfigured": "Saan a naurnos ti watch homepage.",
+    "defaultTemplateMisconfigured": "Saan a naurnos ti default watch template.",
+    "authFailed": "Saan a mabalin ti panagpamiling iti content service. Konektarem ti support no agtultuloy daytoy.",
+    "pageLoadFailed": "Adda napasamak a biddut.",
+    "tryAgain": "Agsublim manen"
+  },
+  "VideosPage": {
+    "title": "Amin a Video",
+    "placeholder": "Maayus pay ti panagbi-browse ti katalogo. Kabayatan daytoy, usaren ti panagsapul wenno ti espesipiko a URL ti topiko."
+  },
+  "BibleQuotes": {
+    "title": "Dagiti Sango a Kukua ti Biblia",
+    "share": "Ibahagi",
+    "readMore": "Basaen pay...",
+    "learnMore": "Ad-adu pay ti maammoan",
+    "freeResources": "Libre a Rikiwar",
+    "promoHeading": "Kayatmo kadi nga maawatan a nalaing pay ti Biblia?",
+    "joinBibleStudy": "Ummeyka iti Bible study mi",
+    "previousQuote": "Idiay a nauna a sango a kukuam ti Biblia",
+    "nextQuote": "Masurot a sango a kukuam ti Biblia",
+    "readPassage": "Basaem daytoy a paset iti Bibliam."
+  },
+  "DownloadButton": {
+    "checking": "Sasaksakbay",
+    "download": "I-download",
+    "sessionError": "Saan a maipatuloy ti panangusisa iti sesionyo. Pangngaasiyo ta sukimaten manen.",
+    "saveVideo": "I-save ti Video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "I-download ti video",
+    "eyebrow": "I-download ti Video",
+    "posterAlt": "Poster ti video",
+    "noDownloads": "Awan ti mabalin a i-download para iti daytoy a video.",
+    "fileSizeLabel": "Piliem ti kadakkel ti file",
+    "termsAgreementPrefix": "Agkaykaysaak iti ",
+    "termsOfUse": "Napasamak a Paggamit",
+    "termsAgreementSuffix": "",
+    "close": "Isarda",
+    "download": "I-download",
+    "authRequiredTitle": "Kayatmo kadi nga i-download daytoy a video?",
+    "authRequiredBody": "Kasapulan ti libre a Jesus Film account tapno ma-download dagiti video.",
+    "signInToDownload": "Ag-sign in tapno maka-download",
+    "keepWatching": "Agtultuloy ti panagkita",
+    "checking": "Sasaksakbay",
+    "closeTermsOfUse": "Isarda ti Napasamak a Paggamit",
+    "cancel": "Ikinna",
+    "accept": "Umawat",
+    "errorSessionExpired": "Nag-pigsa ti sesionyo. Ag-sign in manen tapno maka-download.",
+    "errorSessionUnavailable": "Saan a maipatuloy ti panangusisa iti sesionyo. Pangngaasiyo ta sukimaten manen.",
+    "errorUnavailableSource": "Saan a mabalin ti download manipud iti daytoy a pagtaudan",
+    "tierHighest": "Kadakkel a nalawa",
+    "tierHigh": "Nalamuyot",
+    "tierLow": "Kabassit"
+  },
+  "HeroPlayerControls": {
+    "play": "Ipagaraw",
+    "pause": "Isardeng",
+    "seek": "Sapulen",
+    "seekValue": "{current} iti {total}",
+    "volume": "Boses",
+    "volumeValue": "{percent} a porsiento",
+    "mute": "Ipatangken",
+    "unmute": "Ipatangken laeng",
+    "changeAudioLanguage": "Sukatan ti pagsasao ti audio",
+    "enterFullscreen": "Sumrek iti fullscreen",
+    "exitFullscreen": "Lumabas iti fullscreen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Piliem ti pagsasao",
+    "searchPlaceholder": "Biroken dagiti pagsasao…",
+    "languages": "Dagiti pagsasao",
+    "noMatches": "Awan ti kapada",
+    "notAvailable": "Saan a magun-od"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Pagsasao",
+    "dialogTitleWithSubtitles": "Pagsasao ken Subtitles",
+    "languageHeading": "Pagsasao",
+    "subtitlesHeading": "Dagiti subtitle",
+    "languageCount": "{count, plural, one {# a pagsasao} other {# a pagsasao}}",
+    "requestSent": "Naipatulod ti request",
+    "translateWithAi": "Isalin babaen iti AI",
+    "noSubtitles": "Awan ti subtitles",
+    "toggleOn": "Naka-on",
+    "toggleOff": "Naka-off",
+    "close": "Isarda",
+    "apply": "Ipatongpal",
+    "noLanguageSubtitles": "Awan a Subtitles iti {language}",
+    "seeAllLanguages": "Amin a pagsasao",
+    "seeAllVideosInLanguage": "Amin a Video: {language}",
+    "retryLoadingLanguages": "Agsubli a mangikarga kadagiti pagsasao",
+    "notAvailable": "Saan a magun-od",
+    "switching": "Agsusukisok..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 a EPISODE} other {# a EPISODE}}",
+    "seriesLabel": "SERYE · {episodes}",
+    "changeAudioLanguage": "Sukatan ti pagsasao ti audio",
+    "share": "Ibahagi",
+    "languages": "Dagiti pagsasao",
+    "downloadCollection": "I-download ti koleksion",
+    "checkingDownloads": "Us-usisaen dagiti download…",
+    "downloadSessionError": "Saan a maipatuloy ti panangusisa iti sesionyo. Pangngaasiyo ta subuken manen."
+  },
+  "WatchModal": {
+    "close": "Isarda"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "No mabalin a damagem ti nagparsua iti daytoy a video ti maysa a saludsod, ania dayta?",
+    "fallbackBody": "Mangidaldalan iti pribado iti maysa a natalinaed a mangngeg.",
+    "questionsShort": "Dagiti saludsod",
+    "questions": "Kairamanan a Saludsod",
+    "askYours": "Damagem ti buya",
+    "chatWithPerson": "Makipag-usap iti maysa a tao",
+    "askBibleQuestion": "Agdamag ti saludsod maipanggep iti Biblia",
+    "quiz": "Pagsubok"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Kita ti mensahe",
+    "fieldLabel": "Agdamag ti saludsod maipanggep iti daytoy a video",
+    "send": "Ipadala ti saludsod",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Agdamag ti saludsod maipanggep iti Biblia",
+        "description": "Dagus a sungbat manipud iti Biblia babaen iti panagsapul ti AI"
+      },
+      "prayerRequest": {
+        "label": "Agkiddaw ti kararag",
+        "description": "Ibahagi no ania ti kayatmo a pagkararag"
+      },
+      "comment": {
+        "label": "Mangted ti komentario",
+        "description": "Ipadala dagiti panunot maipanggep iti daytoy a video"
+      },
+      "personChat": {
+        "label": "Makipag-usap iti maysa a tao",
+        "description": "Makisarita iti maysa a tao ita"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Ibahagi ti video",
+    "heading": "Ibahagi daytoy a video",
+    "posterAlt": "Poster ti video",
+    "shareOnFacebook": "Ibahagi iti Facebook",
+    "shareOnFacebookUnavailable": "Ibahagi iti Facebook (saan a magun-od iti daytoy a build)",
+    "shareOnX": "Ibahagi iti X",
+    "shareOnXUnavailable": "Ibahagi iti X (saan a magun-od iti daytoy a build)",
+    "shareDisabledHint": "Kasapulan ti na-deploy a pahina tapno maibabahagi — agtaray no daytoy a video ket adda iti production.",
+    "shareFormat": "Porma ti panagbahagi",
+    "shareLinkTab": "Ibahagi ti Link",
+    "embedCodeTab": "Code ti panangikabil",
+    "copyFailed": "Saan a naburuto a maikopya — piliem ti teksto iti baba ken ikopya a manual.",
+    "copyLink": "Kopyaen ti Link",
+    "copyCode": "Kopyaen ti Code",
+    "copied": "Nakopya",
+    "close": "Isarda"
+  },
+  "SubtitleTranscript": {
+    "heading": "Naisurat a teksto",
+    "subheading": "I-tap ti aniaman a linia tapno mapan iti dayta nga oras.",
+    "subtitleLanguage": "Pagsasao ti subtitle",
+    "aiSuffix": " · AI",
+    "loading": "Ikkarga ti transcript…",
+    "unavailable": "Saan a magun-od ti transcript para iti daytoy a subtitle track.",
+    "empty": "Awan ti nasarakan a linia ti transcript."
+  },
+  "FloatingSearch": {
+    "placeholder": "Sapulen wenno agsukisok kadagiti topiko…",
+    "openSearch": "Sapulen dagiti video",
+    "searchRegion": "Sapulen dagiti video",
+    "clearSearch": "Buriasen ti panagsapul",
+    "changeAudioLanguage": "Sukatan ti pagsasao ti audio",
+    "home": "Balay ti JesusFilm",
+    "closeSearch": "Isarda ti panagsapul",
+    "submitSearch": "Sapulen",
+    "library": "Librarya"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Sapulen ken agsukisok kadagiti video",
+    "home": "Balay ti JesusFilm",
+    "placeholder": "Sapulen wenno agsukisok kadagiti topiko…",
+    "inputLabel": "Sapulen dagiti video babaen iti keyword",
+    "searchFailed": "Nabigat ti panagsapul. Pangngaasiyo ta subuken manen.",
+    "loadMoreFailed": "Saan a naikarga dagiti ad-adu a resulta.",
+    "searching": "Agsapsapul...",
+    "connectionHint": "Pakisukimaten ti koneksionyo ken subuken manen.",
+    "rateLimitHint": "Napalalo ti kiddaw. Padasen manen kalpasan ti maysa a minuto.",
+    "retrySearch": "Agsubli a mangsapul",
+    "retry": "Agsubli",
+    "noResults": "Awan ti resulta para iti \"{query}\"",
+    "tryDifferentKeywords": "Subuken ti sabali a keyword wenno agsukisok kadagiti kategorya",
+    "loading": "Ikkarga...",
+    "loadMore": "Agkarga pay",
+    "categoryBibleStories": "Dagiti istoria ti Biblia",
+    "categoryParables": "Dagiti parabola",
+    "categoryAnimated": "Animado",
+    "categoryStudy": "Panagadal",
+    "categoryFamily": "Pamilya",
+    "categoryChristmas": "Paskua",
+    "searchLanguageLabel": "Pagsasao ti panagsapul",
+    "allLanguages": "Amin a pagsasao",
+    "searchSuggestions": "Dagiti singasing iti panagsapul",
+    "directMatches": "Dagiti direkta a katupag",
+    "languages": "Dagiti pagsasao",
+    "recommendedLanguage": "Naidalan a pagsasao",
+    "searchSuggestion": "Sapulen: {suggestion}",
+    "searchSuggestionWithLanguage": "Sapulen iti {language}: “{suggestion}”",
+    "inLanguage": "iti {language}",
+    "browseByRegion": "Agsukisok babaen iti rehion",
+    "allVideosOnSinglePage": "Amin a video iti maysa a panid",
+    "clearLanguages": "Buriasen",
+    "queryLanguageDetected": "Naduktalan ti {language}",
+    "searchInLanguage": "Agsapul iti {language}",
+    "tryDifferentKeywordsOrLanguage": "Subuken dagiti sabali a keyword wenno pumili ti sabali a pagsasao ti panagsapul",
+    "useWebsiteDefaultLanguage": "Usaren ti default a pagsasao ti panagsapul ti website",
+    "removeLanguage": "Ikkaten {language}",
+    "browseMode": "Mode ti panagsapul ken panagsukisok",
+    "searchingInLanguage": "Dagiti resulta iti {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Kitaen ita",
+    "tapToUnmute": "I-tap tapno maipanaw ti mute",
+    "nextEpisode": "Masurot a Episode",
+    "audioTranslationCount": "{count, plural, one {# a pagsasao} other {# a pagsasao}}",
+    "subtitleCount": "Dagiti subtitle: {count, plural, one {# a pagsasao} other {# a pagsasao}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Ikkarga ti content",
+    "loadingVideo": "Ikkarga ti video"
+  },
+  "VideoLabels": {
+    "video": "Bidyo",
+    "segment": "Bahagi",
+    "episode": "Paset",
+    "featureFilm": "Haba a Pelikula",
+    "shortFilm": "Napisik a Pelikula",
+    "series": "Serye",
+    "collection": "Kalap",
+    "trailer": "Pauna a buya",
+    "behindTheScenes": "Idi likudan ti Eksena",
+    "chapter": "Kapitulo"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clip {current} iti {total}",
+    "position": "{current} iti {total}",
+    "chapterCount": "{count, plural, one {# a kapitulo} other {# a kapitulo}}",
+    "clipAriaLabel": "{title} · Clip {current} iti {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# a kapitulo} other {# a kapitulo}}",
+    "chapter": "Kapitulo",
+    "noImage": "Awan ti ladawan",
+    "playingNow": "Agkarkaro ita",
+    "previousChapter": "Nauna a kapitulo",
+    "nextChapter": "Masurot a kapitulo",
+    "thumbnailAlt": "Thumbnail ni {title}",
+    "relatedVideoThumbnail": "Thumbnail ti kabulig a video"
+  },
+  "SearchResultCard": {
+    "experience": "Pannakaidalan",
+    "episodeCount": "{count, plural, one {# a episode} other {# a episode}}",
+    "thumbnailAlt": "Thumbnail ti video"
+  },
+  "Feedback": {
+    "openForm": "Ilukat ti feedback form",
+    "label": "Komentario",
+    "couldNotLoad": "Saan a maikarga ti feedback form.",
+    "loadingForm": "Ikkarga ti feedback form…",
+    "retry": "Agsubli",
+    "cancel": "Ikinna",
+    "closeForm": "Ikabil ti feedback form",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Libre a Kristiano a video iti {language} | Jesus Film Project",
+    "metadataDescription": "Sukimaten dagiti Jesus films, istoria ti Biblia, discipleship series, ken outreach videos nga adda dubbing audio wenno subtitles iti {language}.",
+    "heroTitle": "Libre a Kristiano a video iti {language}",
+    "heroDescription": "Sukimaten dagiti Jesus films, istoria ti Biblia, discipleship series, ken outreach videos nga adda iti {language}. Dagiti fully dubbed nga video ket iparangarang manipud iti uneg, ken dagiti subtitle-only a pagpilian ket adda iti baba.",
+    "languageCollection": "Kalap ti pagsasao",
+    "itemCount": "{count, plural, one {# a banag} other {# a banag}}",
+    "videoCount": "{count, plural, one {# a video} other {# a video}}",
+    "videosInGroups": "{videoCount, plural, one {# a video} other {# a video}} iti {groupCount, plural, one {# a grupo} other {# a grupo}}",
+    "sectionNavLabel": "Dagiti seksyon ti inventory ti pagsasao",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Baro",
+    "videoBible": "Biblia iti Video",
+    "bibleProject": "BibleProject",
+    "sports": "Aramat",
+    "collections": "Dagiti kalap",
+    "subtitlesOnly": "Subtitles laeng",
+    "backToTop": "Agsubli iti ngato",
+    "newlyAdded": "Bag-o a naisarakan",
+    "newVideosTitle": "Baro a Kristiano a video iti {language}",
+    "newestFirst": "Pinakabaro immuna",
+    "noPublishedVideos": "Awan pay ti nasarakan a naipablaak a video para iti daytoy a pagsasao.",
+    "bibleAndGospelFilms": "Dagiti pelikula ti Biblia ken Ebanghelyo",
+    "videoBibleCollectionsTitle": "{language} a Video Bible collections",
+    "videoBibleDescription": "Dagiti koleksion a naipamaysam iti Sagrado a Surat nga aglaon iti LUMO, JESUS, Magdalena, ken Acts iti {language}.",
+    "noVideoBibleCollections": "Awan pay ti Video Bible collections a magun-od para iti daytoy a pagsasao.",
+    "bibleProjectCollectionsTitle": "{language} a BibleProject collections",
+    "bibleProjectDescription": "Dagiti BibleProject series ken pagadal a magun-od iti {language}.",
+    "noBibleProjectCollections": "Awan pay ti BibleProject collections a magun-od para iti daytoy a pagsasao.",
+    "sportsStories": "Dagiti istoria ti ar-aramat",
+    "sportsTitle": "{language} a istoria ti ar-aramat ken atleta",
+    "sportsDescription": "Dagiti istoria ti pammati a maipanggep iti ar-aramat ken koleksion a nakasentro iti atleta a magun-od iti {language}.",
+    "noSportsCollections": "Awan pay ti koleksion ti ar-aramat wenno istoria ti atleta a magun-od para iti daytoy a pagsasao.",
+    "fullyDubbed": "Napudno a na-dub",
+    "dubbedVideosTitle": "{language} a video babaen iti koleksion",
+    "dubbedVideosDescription": "Agsukisok kadagiti fully dubbed a {language} a video a nairaman iti koleksion tapno nalaklaka ti panagsapul.",
+    "noDubbedVideos": "Awan pay ti fully dubbed a video a magun-od para iti daytoy a pagsasao.",
+    "subtitlesAvailable": "Adda subtitles",
+    "subtitlesTitle": "{language} a video nga addaan subtitles",
+    "subtitlesDescription": "Daytoy a video ket nairaman ti {language} subtitles no awan pay ti naisao a {language} audio.",
+    "noSubtitleVideos": "Awan pay ti subtitle-only a video a magun-od para iti daytoy a pagsasao.",
+    "dubbed": "Na-dub",
+    "subtitles": "Dagiti subtitle",
+    "newLabel": "Baro",
+    "fromCollection": "Manipud iti {collection}",
+    "standaloneVideos": "Kabesad a video",
+    "videosFromCollection": "Dagiti video manipud iti {collection}.",
+    "standaloneDescription": "Dagiti kabesad a video iti daytoy a pagsasao.",
+    "openCollection": "Ilukat ti kalap",
+    "filters": "Dagiti filter",
+    "filterLength": "Kaatiddog",
+    "filterLength_under5": "Nababbaba ngem 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Nasursurok ngem 30 min",
+    "filterType": "Kita",
+    "clearFilters": "Ikkaten dagiti filter",
+    "filterResults": "{count} iti {total} ti maipapakita",
+    "noFilterResults": "Awan ti video a maitunos kadagitoy a filter. Padasem nga ikkaten ti maysa.",
+    "filterAdded": "Nainayon",
+    "filterAdded_60d": "Naudi a 60 nga aldaw",
+    "filterAdded_6m": "Naudi a 6 a bulan",
+    "filterAdded_12m": "Naudi a 12 a bulan"
+  },
+  "WatchHome": {
+    "pageTitle": "Pagbuyaan ti Jesus Film Project",
+    "watch": "Kitaen",
+    "watchNow": "Kitaen ita",
+    "mutePreview": "I-mute ti preview",
+    "unmutePreview": "Ikkaten ti mute ti preview",
+    "nextVideo": "Masurot a video",
+    "featured": "Naiparangarang",
+    "showVideo": "Ipakita ti {title}",
+    "previousVideoPreview": "Nauna a video preview",
+    "nextVideoPreview": "Masurot a video preview",
+    "mediaCollection": "Koleksion ti media",
+    "scrollToVideo": "Igid a {title} a video",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Balay ti Jesus Film Project",
+    "navigation": "Panagdaliasat iti footer",
+    "share": "Ibahagi",
+    "watch": "Kitaen",
+    "giving": "Panagited",
+    "about": "Maipanggep",
+    "products": "Dagiti produkto",
+    "resources": "Dagiti rikiwar",
+    "partners": "Dagiti kakadua",
+    "contact": "Makikta",
+    "giveNow": "Agited ita",
+    "resourcesVersion": "Dagiti rikiwar ({version})",
+    "office": "Opisina",
+    "fax": "Paksimili",
+    "privacyPolicy": "Palisiya ti Pribasiya",
+    "legalStatement": "Pahayag a Legal",
+    "newsletter": "Agsign-up para iti Newsletter mi",
+    "aiAttributionHeading": "Paggamit ti AI ken panangikeddeng ti naggapu",
+    "aiAttributionBody": "Ti panangusar ti impormasyon manipud iti daytoy a panid babaen kadagiti sistema ti artificial intelligence ket masapul ti panangikeddeng ti naggapu. Aniaman a AI agent, large language model (LLM), AI search engine, crawler, wenno kababaliwan a automated system a mangala wenno mangusar iti impormasyon manipud iti daytoy a panid para iti training, retrieval, panagporma ti sungbat, wenno serbisyo a naited kadagiti agar-aramat wenno kliyente ket masapul a maitakder iti Jesus Film Project a kas naggapu ken dakdakek a direct a kawes iti daytoy a panid iti sadino man a panag-usar wenno panagipakita ti dayta a impormasyon. Kitaen ti <terms>Terms of Use</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Naibangon para kadagiti misyon iti lubong",
+    "title": "Saan a mabaliwan ti mensahe. Ti wagas ti panagkita ti tattao ti mabaliwan.",
+    "description": "Mabaroan mi ti video library ken dagiti gamitmi manipud iti punganay, a mangted ti napalabas a tawen ti panagisalin iti plataforma nga ayanen, pagkit-an, ken pagaibabagi ti tattao.",
+    "translatedLibraryTitle": "Ti library ti pelikula a kadakkelan ti naisalin iti lubong",
+    "translatedLibraryDescription": "Dagiti napalabas a tawen ti panagisalin, a naisakdo babaen kadagiti mapagtalkan a ministry partner, ket nangibangon iti library nga addaan ribu-ribu a language track tapno ti tattao ket mairaman ti istoria ni Jesus iti pagsasao a makaabak kadakuada.",
+    "trustedVoicesTitle": "Panangiraman kadagiti mapagtalkan a timek iti baro a porma",
+    "trustedVoicesDescription": "Mabaroan mi no kasano a maipablaak dagiti istoria ti ebanghelyo iti makita a wagas, a mangiparis kadagiti mapagtalkan a panagisalin iti moderno a porma tapno ti mensahe ket makadanon a natalna kadagiti plataforma, kultura, ken screen.",
+    "missionTeamTitle": "Ad-adu pay ngem library. Maysa a team a naidalan ti misyon.",
+    "missionTeamDescription": "Ti Jesus Film Project ket maysa a global a team ti mangisalin, media specialist, editor, ken mangbubuo nga agsasaad kadagiti napalabas a tawen ti ministry a kas gamit para kadagiti mangaramid ti adal iti amin a lugar.",
+    "buildingNext": "Dagiti aramatenmi iti sumaruno",
+    "nextStepsTitle": "Plataporma ti Next Steps",
+    "nextStepsDescription": "Ikonekta dagiti mangkita kadagiti napudno a gundaway iti espiritu a panagbiagda, a mangtulong kadakuada nga agsubli iti komunidad, Sagrado a Surat, wenno misyon.",
+    "mediaLibraryTitle": "Media Library para iti Ebanghelisasion",
+    "mediaLibraryDescription": "Maysa a napalawa a Kristiano a media library nga addaan ribu-ribu a video, pelikula, ken rikiwar a magun-od iti adu a pagsasao para iti ministry ken evangelism iti entero a lubong.",
+    "ministryToolsTitle": "Digital Tools para kadagiti Ministry",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, ken analytics a naurnos tapno matulongan dagiti ministry nga makaabot pay iti adu a tattao a naimbag ti epekto.",
+    "invitationEyebrow": "Maawisanka",
+    "invitationTitle": "Tulongan a mangbangon ti <highlight>baro a henerasion</highlight> ti misyon a gamit",
+    "invitationDescription": "Awisen mi dagiti practitioner, creator, ken partner iti nangina a panagaramat. Subuken dagiti baro a gamit, mangted ti feedback, ken tulongan a mamorma dagiti produkto a nainayon iti napudno a misyon a trabaho.",
+    "betaTester": "Maging beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Kalap ti Video Bible",
+    "gospelRailTitle": "Sangsangkamaysaen ti sibibiag a istoria",
+    "videoBibleDescription": "Sukimaten ti koleksionmi dagiti video ken rikiwar a mangipabibiag iti Biblia babaen kadagiti makaallukoy a istoria ken pannursuro.",
+    "showcaseTitle": "Ti Sagrado a Surat a Naibaga Babaen iti Pelikula",
+    "adventEyebrow": "Advent ti Paskua",
+    "adventTitle": "Countdown ti Advent ti Paskua",
+    "adventDescription": "Makikadua iti advent journey mi babaen iti inaldaw a video a mangiparbeng iti namnama para iti Paskua, a mangsukisok iti namnama, rag-o, ken kari ti pannakatnag ni Jesus.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent ti BibleProject",
+    "nuaEyebrow": "Series ti NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Series ti Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kurso a Video",
+    "journeyWithJesusTitle": "Panagbiag a kakuyog ni Jesus",
+    "gospelsOnVideoEyebrow": "Amin a Ebanghelyo, Naibaga iti Video",
+    "scriptureAsWrittenTitle": "Ti Sagrado a Surat, Naibaga Kas la Ti Naisurat",
+    "merryChristmas": "Naragsak a Paskua!",
+    "daysUntilChristmas": "{count, plural, one {# nga aldaw sakbay ti Paskua} other {# nga aldaw sakbay ti Paskua}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Dagiti Pagsasao",
+    "metadataDescription": "Agsukisok kadagiti video ti JesusFilm babaen iti pagsasao.",
+    "eyebrow": "Dagiti pagsasao ti panagkita",
+    "title": "Piliem ti pagsasao",
+    "description": "Sukimaten dagiti pagsasao babaen iti rehion wenno no dadduma ti kompleto a listaan.",
+    "searchPlaceholder": "Biroken dagiti pagsasao wenno pagilian...",
+    "searchLabel": "Biroken dagiti pagsasao wenno pagilian",
+    "clearSearch": "Buriasen ti panagsapul",
+    "browse": "Sukimaten",
+    "browseByRegion": "Agsukisok babaen iti rehion ken pagilian",
+    "languageCount": "{count, plural, one {# a pagsasao} other {# a pagsasao}}",
+    "region": "Rehion",
+    "countryLanguages": "Dagiti pagsasao ti {country}",
+    "showLess": "Ipakita a nababa",
+    "showMore": "Ipakita ti {count} pay",
+    "noLanguages": "Awan ti nasarakan a pagsasao",
+    "tryAnotherSearch": "Subuken ti sabali a biag ti panagsapul."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Kasayaatan ti Panagkita | Jesus Film Project",
+    "title": "Kasayaatan ti Panagkita",
+    "loading": "Ikkarga ti kasaysayan",
+    "empty": "Awan pay ti maysa ditoy",
+    "emptyDescription": "Dagiti video a pagkitam kabayatan a nakasign in ka ket agparang ditoy.",
+    "earlier": "Sango a tiempo",
+    "today": "Itatta",
+    "yesterday": "Kalman"
+  },
+  "AccountControl": {
+    "account": "Akkawnt",
+    "accountMenu": "Menu ti account",
+    "signIn": "Ag-sign in",
+    "signOut": "Ag-sign out",
+    "signedIn": "Naka-sign in",
+    "history": "Kasaysayan",
+    "logOut": "Ag-log out"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Saan a nasarakan ti panid",
+    "eyebrow": "Saan a nasarakan ti panid",
+    "screenReaderPrefix": "Saan a nasarakan ti panid:",
+    "title": "Awan ditoy daytoy a eksena.",
+    "description": "Basin a nagbalin ti panid ti sabali a lugar, ngem agtultuloy ti istoria.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Dagiti aksion no saan a nasarakan ti panid",
+    "backToWatch": "Agsubli iti Watch",
+    "browseVideos": "Sukimaten dagiti video"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% a maitutop",
+    "none": "Awan ti nasarakan a mairekomenda para iti daytoy a video iti daytoy a pagsasao."
+  },
+  "BetaTesterModal": {
+    "title": "Maging beta tester",
+    "trigger": "Maging beta tester",
+    "loadFailed": "Adda napasamak a biddut.",
+    "loading": "Ikkarga...",
+    "openFormNewTab": "Ilukat ti form iti baro a tab",
+    "close": "Isarda",
+    "iframeTitle": "Maging beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "I-download ti koleksion",
+    "eyebrow": "I-download ti koleksion",
+    "description": "Maminsan laeng a piliem ti pagsasao ken kalidad. Ma-download a sunod-sunod ti tunggal magun-od nga episode.",
+    "signInTitle": "Ag-sign in tapno maka-download",
+    "signInBody": "Mabalinmo nga i-download dagiti koleksion kalpasan nga ag-sign in ka babaen iti Jesus Film account.",
+    "signIn": "Ag-sign in tapno maka-download",
+    "languageLabel": "Pagsasao",
+    "qualityLabel": "Kalidad ti video",
+    "tierHighest": "Kadakkel a nalawa",
+    "tierHigh": "Nalamuyot",
+    "tierLow": "Kabassit",
+    "loading": "Biroken dagiti magun-od nga episode…",
+    "loadError": "Saan a naikarga dagiti download para iti daytoy a pagsasao.",
+    "retry": "Agsubli",
+    "noDownloads": "Awan ti magun-od a ma-download nga episode iti daytoy a pagsasao.",
+    "availableCount": "{count, plural, one {Nakasagana ti # nga episode} other {Nakasagana ti # nga episode}}",
+    "skippedCount": "{count, plural, one {Malaktawan ti # nga episode gapu ta saan a magun-od} other {Malaktawan ti # nga episode gapu ta saan a magun-od dagitoy}}",
+    "chooseFolder": "Piliem ti folder a pagidulinan",
+    "folderSelected": "Idulin iti {name}",
+    "folderError": "Saan a mailukat ti folder a pagidulinan dagiti download.",
+    "browserFallback": "Idulin ti browsermo ti tunggal file babaen kadagiti gagangay a setting ti download. Mabalin a kiddawennaka daytoy a mangipalubos iti adu a download.",
+    "sessionError": "Saan a maipatuloy ti panangusisa iti sesionyo. Pangngaasiyo ta subuken manen.",
+    "downloading": "I-download ti {title}",
+    "progress": "{completed} iti {total}",
+    "complete": "Nalpas dagiti download",
+    "canceled": "Nakansela dagiti download",
+    "failedCount": "{count, plural, one {Saan a na-download ti # nga episode} other {Saan a na-download ti # nga episode}}. Piliem manen ti I-download tapno subuken manen ti koleksion.",
+    "close": "Isarda",
+    "cancel": "Ikinna",
+    "start": "I-download amin",
+    "downloadAgain": "I-download manen",
+    "retryFailed": "Subuken manen dagiti saan a na-download"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Saan a magun-od ti bersion ti pagsasao",
+    "eyebrow": "Saan a magun-od ti bersion ti pagsasao",
+    "title": "Saan a magun-od ti <contentTitle>{title}</contentTitle> iti <languageName>{language}</languageName>",
+    "actionsLabel": "Dagiti magun-od a pagpilian a panagbuya",
+    "browseInLanguage": "Agbiruk kadagiti video iti {language}",
+    "backToSearch": "Agsubli iti panagbirok",
+    "audioVersionsTitle": "Dadduma a bersion ti audio",
+    "audioVersionsDescription": "Pilien ti pagsasao ti audio tapno ituloy ti panagbuya iti daytoy a video.",
+    "languageVersionLabel": "Pagsasao ti audio",
+    "selectLanguageVersion": "Pilien ti bersion ti pagsasao",
+    "watchSelectedVersion": "Buyaen ti napili a bersion"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Pilien ti cookie",
+    "bannerTitle": "Dagiti pilim maipapan iti kinapribadom",
+    "bannerDescription": "Dagiti nasken a cookie ket pagtalinaedenda a natalged ken agtrabaho ti Watch. No itedmo ti pammalubosmo, mabalin a lagipen ti opsional a first-party cookie dagiti kayatmo iti nadumaduma a panagsubli tapno maipersonalisar dagiti rekomendasion. Adda latta dagiti rekomendasion a maibatay iti konteksto uray aniaman ti pilim.",
+    "acceptAll": "Awaten amin",
+    "essentialOnly": "Dagiti nasken laeng",
+    "manageChoices": "Asikasuen dagiti pilien",
+    "savingChoice": "Maisalsalakan ti pinilim a cookie",
+    "settings": "Dagiti setting ti cookie",
+    "settingsDescription": "Pilien no mabalin a lagipen ti Watch dagiti kayatmo para iti rekomendasion iti nadumaduma a panagsubli. Mabalinmo daytoy a baliwan iti aniaman a tiempo.",
+    "essentialCookies": "Dagiti nasken a cookie",
+    "essentialDescription": "Seguridad, panagplay, dagiti pilim maipapan iti kinapribado, ken pannakaikabil dagiti kiddaw iti rekomendasion.",
+    "alwaysActive": "Kankanayon nga aktibo",
+    "personalization": "Personalisasion",
+    "personalizationDescription": "Lagipen dagiti naikkeddeng a kayatmo iti nadumaduma a panagsubli. No iddepmo daytoy, adda latta dagiti rekomendasion a maibatay iti konteksto.",
+    "erasurePending": "Uray pay adda pay iti proseso ti pannakaikkat ti profile. Aktibo dan dagiti rekomendasion a maibatay iti konteksto.",
+    "cancel": "Ukasen",
+    "saveChoices": "Isalakan dagiti pilien",
+    "saving": "Maisalsalakan…",
+    "loadError": "Saan a naikarga ti pinilim. Mabalinmo latta nga agpili iti baba.",
+    "grantError": "Saan a napalubosan ti personalisasion. Dagiti nasken laeng ti magun-od.",
+    "saveError": "Saan a naisalakan ti pinilim. Padasem manen."
+  }
+}

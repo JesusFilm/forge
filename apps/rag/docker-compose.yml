@@ -1,0 +1,21 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg18-trixie
+    container_name: forge-rag-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: forge
+      POSTGRES_PASSWORD: forge
+      POSTGRES_DB: forge_rag
+    ports:
+      - "5435:5432"
+    volumes:
+      - forge-rag-pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forge -d forge_rag"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  forge-rag-pgdata:

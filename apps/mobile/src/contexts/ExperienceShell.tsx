@@ -1,91 +1,55 @@
 /**
- * ExperienceShell — wraps the root layout to provide Experience data
- * to both (tabs) and video/[sectionKey] routes.
- *
- * Reads the active slug from ExperienceSelectionProvider.
- * On first launch (no persisted slug), resolves the default by querying
- * LIST_EXPERIENCES for the isHomepage experience or the first available.
+ * ExperienceShell — wraps the root layout to provide Experience data to routes.
+ * Never blocks rendering: children + ExperienceProvider always mount; no slug ->
+ * empty context. First launch best-effort resolves the homepage via watchSetting.
  */
 import { useEffect, useRef, type ReactNode } from "react"
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native"
 import { useQuery } from "@apollo/client/react"
 import { useExperience } from "../hooks/useExperience"
-import { LIST_EXPERIENCES } from "../lib/queries"
-import { TEXT_PRIMARY, TEXT_SECONDARY } from "../lib/color"
-import { layout, button } from "../styles/shared"
+import { GET_WATCH_SETTING } from "../lib/queries"
+import { localeQueryVariables } from "../lib/videoText"
 import { ExperienceProvider } from "./ExperienceProvider"
 import { useExperienceSelection } from "./ExperienceSelectionProvider"
+
+const noopRefetch = () => {}
 
 export function ExperienceShell({ children }: { children: ReactNode }) {
   const { currentSlug, selectExperience, isReady } = useExperienceSelection()
 
-  // Resolve default slug on first launch when no slug is persisted
   const needsDefault = isReady && currentSlug === null
-  const {
-    data: listData,
-    loading: listLoading,
-    error: listError,
-    refetch: listRefetch,
-  } = useQuery(LIST_EXPERIENCES, {
-    variables: { locale: "en" },
+  // KTD16: the selection stays on `en`. A slug that followed the UI language
+  // would reset the selection, and that remounts the Stack under a live change.
+  const { data: settingData } = useQuery(GET_WATCH_SETTING, {
+    variables: localeQueryVariables("en"),
     skip: !needsDefault,
     fetchPolicy: "cache-and-network",
   })
 
-  // Guard against stale closure overwriting a user selection
   const resolvedRef = useRef(false)
   useEffect(() => {
     if (!needsDefault) {
       resolvedRef.current = false
       return
     }
-    if (resolvedRef.current || !listData?.experiences) return
-    const experiences = listData.experiences.filter(
-      (e): e is NonNullable<typeof e> => e !== null,
-    )
-    const homepage = experiences.find((e) => e.isHomepage)
-    const fallback = experiences[0]
-    const resolved = homepage ?? fallback
-    if (resolved) {
+    if (resolvedRef.current) return
+    const homepage = settingData?.watchSetting?.homepageExperience
+    if (homepage?.slug) {
       resolvedRef.current = true
-      selectExperience(resolved.slug)
+      selectExperience(homepage.slug)
     }
-  }, [needsDefault, listData, selectExperience])
+  }, [needsDefault, settingData, selectExperience])
 
-  // Block subtree until AsyncStorage resolves (~<10ms)
-  if (!isReady) return null
-
-  // First launch: show loading or error while resolving default slug
   if (currentSlug === null) {
-    if (listError) {
-      return (
-        <View style={layout.centered}>
-          <Text style={styles.errorText}>Unable to load experiences</Text>
-          <Pressable
-            onPress={() => listRefetch()}
-            style={button.accent}
-            accessibilityRole="button"
-            accessibilityLabel="Retry loading experiences"
-          >
-            <Text style={button.accentText}>Try Again</Text>
-          </Pressable>
-        </View>
-      )
-    }
-    if (listLoading || needsDefault) {
-      return (
-        <View style={layout.centered}>
-          <ActivityIndicator size="small" color={TEXT_SECONDARY} />
-        </View>
-      )
-    }
-    return null
+    return (
+      <ExperienceProvider
+        experience={null}
+        loading={false}
+        error={null}
+        refetch={noopRefetch}
+      >
+        {children}
+      </ExperienceProvider>
+    )
   }
 
   return (
@@ -113,12 +77,3 @@ function ExperienceShellInner({
     </ExperienceProvider>
   )
 }
-
-const styles = StyleSheet.create({
-  errorText: {
-    color: TEXT_PRIMARY,
-    fontFamily: "System",
-    fontSize: 16,
-    marginBottom: 16,
-  },
-})

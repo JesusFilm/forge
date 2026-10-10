@@ -1,11 +1,13 @@
 /**
- * Public scene-recommendations GraphQL query (`sceneRecommendations`).
+ * Public transcript-backed recommendations GraphQL query
+ * (`sceneRecommendations`).
  *
  * Delegates to SceneRecommendationsService — the same service the REST
  * route at /api/scene-embedding/recommendations calls. Matches cms's
  * `sceneRecommendations` SDL shape field-for-field, modulo the
  * `videoId: Int!` → `videoId: ID!` identity delta (admin cuid strings
- * vs. cms integer ids). See plan §Key Technical Decisions #2.
+ * vs. cms integer ids). The field name stays for client parity, but
+ * feat-192 backs it with enriched transcript chunks.
  *
  * `VideoNotFoundError` is soft-swallowed to `[]` (matches cms's
  * resolver) so the recommendations block on apps/web renders an empty
@@ -32,7 +34,7 @@ const SceneRecommendationRef = builder.objectRef<SceneRecommendation>(
 
 SceneRecommendationRef.implement({
   description:
-    "A single scene-similarity recommendation. Matches cms's SceneRecommendation shape modulo the cuid-string videoId.",
+    "A single transcript-backed recommendation. Matches cms's SceneRecommendation shape modulo the cuid-string videoId.",
   fields: (t) => ({
     videoId: t.id({
       nullable: false,
@@ -65,7 +67,7 @@ builder.queryFields((t) => ({
     nullable: false,
     authScopes: { public: true },
     description:
-      "Per-scene cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.",
+      "Transcript-backed cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.",
     args: {
       videoId: t.arg.id({ required: false }),
       slug: t.arg.string({ required: false }),

@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "seeker-resolved-identities/v1",
+  "experimentId": "2026-08-10-006-seeker-source-attribution-prompt",
+  "attemptId": "attempt-001",
+  "productionBenchmark": {
+    "prompt": {
+      "provider": "langfuse",
+      "name": "seeker-system",
+      "revision": "1",
+      "contentHash": "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5"
+    },
+    "model": {
+      "routing": "ordered-fallback",
+      "routes": [
+        {
+          "provider": "openrouter",
+          "model": "anthropic/claude-sonnet-5",
+          "endpoint": "model-router",
+          "maxRetries": 1
+        }
+      ]
+    },
+    "decoding": {
+      "mode": "provider-default"
+    },
+    "questionSet": {
+      "id": "seeker-eval/v1",
+      "questionIds": [
+        "q-suffering",
+        "q-grief-father",
+        "q-trinity",
+        "q-living-together",
+        "q-python-pdf",
+        "q-islam-jesus",
+        "q-verse-exact-words",
+        "q-links-to-verify",
+        "q-bible-changed",
+        "q-theotokos"
+      ]
+    },
+    "criteria": {
+      "contentHash": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213"
+    },
+    "judge": {
+      "model": "anthropic/claude-haiku-4.5",
+      "rubricHash": "d53822f668c6fd9f726003f8866a5c61486eb0880d49500073c0123fcb092244"
+    },
+    "retrieval": {
+      "mode": "fixtures",
+      "corpusHash": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+      "topK": 5
+    },
+    "runtime": {
+      "configurationHash": "76fd63ddd840f51547f7212fe97a86544cb47901bbd02dad6d911597d9e45153"
+    }
+  },
+  "candidates": {
+    "source-attribution-prompt-v3": {
+      "prompt": {
+        "provider": "langfuse",
+        "name": "seeker-system",
+        "revision": "3",
+        "contentHash": "fb79743a2a6068cb2ec030694ec73f025a6a74ae617ef5e0bdd8ddc2e81099d2",
+        "provenance": {
+          "intakeSelector": {
+            "kind": "label",
+            "value": "latest"
+          }
+        }
+      },
+      "model": {
+        "routing": "ordered-fallback",
+        "routes": [
+          {
+            "provider": "openrouter",
+            "model": "anthropic/claude-sonnet-5",
+            "endpoint": "model-router",
+            "maxRetries": 1
+          }
+        ]
+      },
+      "decoding": {
+        "mode": "provider-default"
+      },
+      "questionSet": {
+        "id": "seeker-eval/v1",
+        "questionIds": [
+          "q-suffering",
+          "q-grief-father",
+          "q-trinity",
+          "q-living-together",
+          "q-python-pdf",
+          "q-islam-jesus",
+          "q-verse-exact-words",
+          "q-links-to-verify",
+          "q-bible-changed",
+          "q-theotokos"
+        ]
+      },
+      "criteria": {
+        "contentHash": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213"
+      },
+      "judge": {
+        "model": "anthropic/claude-haiku-4.5",
+        "rubricHash": "d53822f668c6fd9f726003f8866a5c61486eb0880d49500073c0123fcb092244"
+      },
+      "retrieval": {
+        "mode": "fixtures",
+        "corpusHash": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+        "topK": 5
+      },
+      "runtime": {
+        "configurationHash": "76fd63ddd840f51547f7212fe97a86544cb47901bbd02dad6d911597d9e45153"
+      }
+    }
+  }
+}

@@ -1,4 +1,7 @@
 import { type Blocks } from "@/domain/blocks"
+import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
+
+export { extractAuthoredVideoDubSelectors } from "@/domain/experience-editor-dub-selectors"
 
 export type BlockTone = "hero" | "quote" | "grid" | "standard"
 
@@ -19,15 +22,21 @@ export type BlockTemplateKey =
   | "cta"
   | "easterDates"
   | "infoBlocks"
+  | "languageGlobe"
   | "mediaCollection"
+  | "dynamicMediaCollection"
   | "navigationCarousel"
   | "promoBanner"
+  | "promotionalText"
   | "relatedQuestions"
   | "section"
   | "text"
   | "video"
   | "videoCarousel"
   | "videoHero"
+  | "watchHomeHero"
+  | "watchHomeCategoryRail"
+  | "homepageRecommendations"
   | "routeVideo"
   | "routeVideoCarousel"
   | "routeVideoHero"
@@ -36,11 +45,17 @@ export const BLOCK_TEMPLATE_KEYS: BlockTemplateKey[] = [
   "videoHero",
   "video",
   "videoCarousel",
+  "watchHomeHero",
+  "watchHomeCategoryRail",
+  "homepageRecommendations",
+  "languageGlobe",
   "routeVideoHero",
   "routeVideo",
   "routeVideoCarousel",
   "mediaCollection",
+  "dynamicMediaCollection",
   "text",
+  "promotionalText",
   "cta",
   "infoBlocks",
   "card",
@@ -69,6 +84,31 @@ export const CONTAINER_SLOT_LAYOUT_PRESETS = [
   { label: "3 / 3 / 3 / 3", spans: [3, 3, 3, 3] },
 ] as const
 
+export function contentParagraphsFromEditorText(
+  value: string,
+  variant: unknown,
+) {
+  const separator = variant === "promotional" ? /\n\s*\n/g : /\n/g
+
+  return value
+    .split(separator)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+export function editorTextFromContentParagraphs(
+  paragraphs: string[],
+  variant: unknown,
+) {
+  return paragraphs.join(variant === "promotional" ? "\n\n" : "\n")
+}
+
+const legacyEditorOnlyKeys = new Set([
+  "backgroundImageUrl",
+  "imageUrl",
+  "videoSlug",
+])
+
 export type VideoLibraryItem = {
   key: string
   title: string
@@ -76,6 +116,8 @@ export type VideoLibraryItem = {
   id: string
   label: string | null
   labelLabel: string | null
+  childCount?: number
+  isCollectionTarget?: boolean
   sourceLabel: string
   sourceTone: "success" | "warning" | "danger" | "info" | "muted"
   dubs: string
@@ -84,6 +126,90 @@ export type VideoLibraryItem = {
   durationSeconds: number | null
   previewImageUrl: string | null
   previewStreamUrl: string | null
+  playableLanguageCount?: number
+  playableLanguageChips?: Array<{
+    code: string
+    flagUrl: string | null
+  }>
+  defaultDub?: VideoLibraryPlayableDub | null
+  authoredDubs?: VideoLibraryPlayableDub[]
+  dubInventory?:
+    | { status: "not-loaded" }
+    | { status: "loading" }
+    | {
+        status: "loaded"
+        choices: VideoLibraryPlayableDub[]
+        nextCursor: string | null
+      }
+    | { status: "error"; message: string }
+  /** Compatibility-only field for legacy callers; editor summaries stay bounded. */
+  playableDubs?: VideoLibraryPlayableDub[]
+  hasGrounding: boolean
+  collectionPreviewItems?: Array<{
+    key: string
+    title: string
+    previewImageUrl: string | null
+  }>
+}
+
+export type VideoLibraryPlayableDub = {
+  key: string
+  label: string
+  languageId: string | null
+  languageSlug: string | null
+  bcp47: string | null
+  iso3?: string | null
+  languageIdentity?: string
+  streamUrl: string
+  duration: string
+  durationSeconds: number | null
+}
+
+function mergeVideoLibraryDubs(
+  current: readonly VideoLibraryPlayableDub[] | undefined,
+  incoming: readonly VideoLibraryPlayableDub[] | undefined,
+) {
+  if (!incoming) return current ? [...current] : undefined
+  const byKey = new Map((current ?? []).map((item) => [item.key, item]))
+  incoming.forEach((item) => byKey.set(item.key, item))
+  return Array.from(byKey.values())
+}
+
+/** Merge exact-selector top-ups without dropping Dubs already hydrated for a video. */
+export function mergeVideoLibrarySummaries(
+  current: VideoLibraryItem[],
+  incoming: readonly VideoLibraryItem[],
+) {
+  if (incoming.length === 0) return current
+  const next = [...current]
+  const indexes = new Map<string, number>()
+  next.forEach((item, index) => {
+    indexes.set(item.key, index)
+    indexes.set(item.id, index)
+  })
+  for (const item of incoming) {
+    const index = indexes.get(item.key) ?? indexes.get(item.id)
+    if (index === undefined) {
+      indexes.set(item.key, next.length)
+      indexes.set(item.id, next.length)
+      next.push(item)
+      continue
+    }
+    const existing = next[index]!
+    next[index] = {
+      ...existing,
+      ...item,
+      authoredDubs: mergeVideoLibraryDubs(
+        existing.authoredDubs,
+        item.authoredDubs,
+      ),
+      playableDubs: mergeVideoLibraryDubs(
+        existing.playableDubs,
+        item.playableDubs,
+      ),
+    }
+  }
+  return next
 }
 
 export type VideoHeroHeadingSource = "manual" | "videoTitle"
@@ -174,7 +300,7 @@ export function containerSlotMarkerIndexes(content: unknown[]) {
 
 const optionalEmptyStringKeys = new Set([
   "backgroundColor",
-  "backgroundImageUrl",
+  "backgroundImageAssetId",
   "buttonLink",
   "category",
   "categoryLabel",
@@ -183,12 +309,14 @@ const optionalEmptyStringKeys = new Set([
   "ctaLabel",
   "ctaLink",
   "footerText",
-  "imageOverrideUrl",
+  "imageAssetId",
   "imageUrl",
   "labelOverride",
+  "languageId",
   "link",
   "linkToSectionKey",
   "mediaUrl",
+  "mediaAssetId",
   "ogImageUrl",
   "sectionKey",
   "streamingUrl",
@@ -196,6 +324,13 @@ const optionalEmptyStringKeys = new Set([
   "subtitleOverride",
   "titleOverride",
   "videoId",
+])
+
+const watchHomeCategoryRailCopyKeys = new Set([
+  "eyebrow",
+  "title",
+  "description",
+  "ctaLabel",
 ])
 
 export function asRecord(value: unknown): BlockRecord | null {
@@ -206,6 +341,41 @@ export function asRecord(value: unknown): BlockRecord | null {
 
 export function asString(value: unknown) {
   return typeof value === "string" ? value : ""
+}
+
+const MEDIA_ASSET_ID_FIELDS = new Set([
+  "backgroundImageAssetId",
+  "imageAssetId",
+  "mediaAssetId",
+])
+
+/** Collect the managed image ids needed to render an Experience canvas. */
+export function mediaAssetIdsFromExperienceBlocks(
+  blocks: readonly unknown[],
+): string[] {
+  const assetIds = new Set<string>()
+
+  function visit(value: unknown) {
+    if (Array.isArray(value)) {
+      value.forEach(visit)
+      return
+    }
+
+    const record = asRecord(value)
+    if (!record) return
+
+    for (const [field, child] of Object.entries(record)) {
+      if (MEDIA_ASSET_ID_FIELDS.has(field)) {
+        const assetId = asString(child).trim()
+        if (assetId) assetIds.add(assetId)
+      } else {
+        visit(child)
+      }
+    }
+  }
+
+  visit(blocks)
+  return Array.from(assetIds)
 }
 
 export function asBoolean(value: unknown) {
@@ -259,12 +429,29 @@ export function normalizeEditorBlockPayload(value: unknown): unknown {
 
   const record = value as BlockRecord
   const normalizedEntries = Object.entries(record)
-    .map(([key, item]) => [key, normalizeEditorBlockPayload(item)] as const)
+    .map(([key, item]) => {
+      const normalizedItem = normalizeEditorBlockPayload(item)
+      return [
+        key,
+        record.t === "watchHomeCategoryRail" &&
+        watchHomeCategoryRailCopyKeys.has(key) &&
+        typeof normalizedItem === "string"
+          ? normalizedItem.trim()
+          : normalizedItem,
+      ] as const
+    })
     .filter(([key, item]) => {
+      if (legacyEditorOnlyKeys.has(key)) return false
       if (record.t === "container" && key === "slots") return false
       if (item === null || item === undefined) return false
       if (typeof item !== "string") return true
       if (item.trim().length > 0) return true
+      if (
+        record.t === "watchHomeCategoryRail" &&
+        watchHomeCategoryRailCopyKeys.has(key)
+      ) {
+        return false
+      }
       return !optionalEmptyStringKeys.has(key) && !key.endsWith("Url")
     })
 
@@ -332,6 +519,63 @@ export function summarizeBlock(
     }
   }
 
+  if (type === "watchHomeHero") {
+    return {
+      key: summaryKey,
+      typeLabel: "Watch Home Hero",
+      title: "Watch Home Hero",
+      body: "Renders the static Watch homepage hero.",
+      tone: "hero",
+      badges: ["WATCH_HOME"],
+    }
+  }
+
+  if (type === "homepageRecommendations") {
+    return {
+      key: summaryKey,
+      typeLabel: "Homepage Recommendations Block",
+      title: asString(value.title).trim() || "Recommended for You",
+      body: "Six videos personalized for each viewer, with curated starters for new viewers.",
+      tone: "grid",
+      badges: ["PERSONALIZED"],
+    }
+  }
+
+  if (type === "watchHomeCategoryRail") {
+    // `tiles` is authoritative when present; `categoryIds` is what blocks
+    // stored before tile authoring carry (and the mirror kept for old readers).
+    const tiles = asArray(value.tiles)
+    const tileCount =
+      tiles.length > 0 ? tiles.length : asArray(value.categoryIds).length
+    const customCount = tiles.filter(
+      (tile) => asString(asRecord(tile)?.categoryId).length === 0,
+    ).length
+    return {
+      key: summaryKey,
+      typeLabel: "Watch Category Rail",
+      title: asString(value.title).trim() || "Browse by category",
+      body:
+        customCount > 0
+          ? `${tileCount} ${tileCount === 1 ? "tile" : "tiles"} · ${customCount} custom`
+          : `${tileCount} ${tileCount === 1 ? "tile" : "tiles"}`,
+      tone: "standard",
+      badges: ["WATCH_HOME"],
+    }
+  }
+
+  if (type === "languageGlobe") {
+    return {
+      key: summaryKey,
+      typeLabel: "Language Globe",
+      title: asString(value.title) || "Choose a language",
+      body:
+        asString(value.description) ||
+        "Animated scripture globe and language action.",
+      tone: "standard",
+      badges: ["LANGUAGES"],
+    }
+  }
+
   if (type === "bibleQuotesCarousel") {
     const quotes = asArray(value.quotes)
     const firstQuote = asRecord(quotes[0])
@@ -371,38 +615,47 @@ export function summarizeBlock(
 
   if (type === "mediaCollection") {
     const items = asArray(value.items)
+    const usesDynamicCollections =
+      asString(value.itemsSource) === "dynamicCollections"
     return {
       key: summaryKey,
-      typeLabel: "Media Collection",
-      title: asString(value.title) || "Media collection",
+      typeLabel: usesDynamicCollections
+        ? "Infinite Collection Feed"
+        : "Media Collection",
+      title:
+        asString(value.title) ||
+        (usesDynamicCollections ? "Keep exploring" : "Media collection"),
       body:
         asString(value.description) ||
-        `${items.length || 0} items in ${asString(value.variant) || "grid"} mode`,
+        (usesDynamicCollections
+          ? "Loads unfeatured database collections as viewers scroll"
+          : `${items.length || 0} items in ${asString(value.variant) || "grid"} mode`),
       tone: "grid",
-      badges: [],
+      badges: usesDynamicCollections ? ["DYNAMIC_COLLECTIONS"] : [],
     }
   }
 
   if (type === "videoCarousel") {
     const items = asArray(value.items)
     const itemsSource = asString(value.itemsSource) || "manual"
+    const usesRouteVideoChildren = itemsSource === "routeVideoChildren"
     return {
       key: summaryKey,
-      typeLabel:
-        itemsSource === "routeVideoChildren"
-          ? "Route Video Carousel"
-          : "Video Carousel",
-      title: asString(value.title) || "Video carousel",
+      typeLabel: usesRouteVideoChildren
+        ? "Route Video Carousel"
+        : "Video Carousel",
+      title:
+        asString(value.title) ||
+        (usesRouteVideoChildren ? "Related videos" : "Video carousel"),
       body:
         asString(value.description) ||
-        (itemsSource === "routeVideoChildren"
+        (usesRouteVideoChildren
           ? "Pulls from the current route video's descendants"
           : `${items.length || 0} carousel items`),
       tone: "grid",
-      badges:
-        itemsSource === "routeVideoChildren"
-          ? ["ROUTE_VIDEO_CHILDREN"]
-          : [`${items.length || 0} items`],
+      badges: usesRouteVideoChildren
+        ? ["ROUTE_VIDEO_CHILDREN"]
+        : [`${items.length || 0} items`],
     }
   }
 
@@ -613,6 +866,41 @@ export function createTemplateBlock(
     }
   }
 
+  if (template === "watchHomeHero") {
+    return {
+      t: "watchHomeHero",
+      sectionKey: `watch-home-hero-${index}`,
+    }
+  }
+
+  if (template === "homepageRecommendations") {
+    return {
+      t: "homepageRecommendations",
+      sectionKey: `user-recommendations-${index}`,
+    }
+  }
+
+  if (template === "watchHomeCategoryRail") {
+    return {
+      t: "watchHomeCategoryRail",
+      sectionKey: `watch-home-category-rail-${index}`,
+      categoryIds: WATCH_HOME_CATEGORY_CATALOG.map(({ id }) => id),
+    }
+  }
+
+  if (template === "languageGlobe") {
+    return {
+      t: "languageGlobe",
+      sectionKey: `language-globe-${index}`,
+      eyebrow: "Watch languages",
+      title: "Choose a language",
+      description: "Explore languages by region or browse the full list.",
+      ctaEnabled: true,
+      ctaLabel: "Select language",
+      ctaLink: "/languages",
+    }
+  }
+
   if (template === "video") {
     return {
       t: "video",
@@ -644,9 +932,6 @@ export function createTemplateBlock(
       t: "videoCarousel",
       sectionKey: `video-carousel-${index}`,
       itemsSource: "manual",
-      title: "Video carousel",
-      subtitle: "Choose a story to watch",
-      description: "Carousel description",
       items: [],
     }
   }
@@ -656,9 +941,6 @@ export function createTemplateBlock(
       t: "videoCarousel",
       sectionKey: `route-video-carousel-${index}`,
       itemsSource: "routeVideoChildren",
-      title: "Related videos",
-      subtitle: "Keep watching",
-      description: "Videos connected to the current route video.",
       items: [],
     }
   }
@@ -669,6 +951,7 @@ export function createTemplateBlock(
       sectionKey: `media-collection-${index}`,
       categoryLabel: "Featured",
       variant: "grid",
+      thumbnailOrientation: "vertical",
       itemsSource: "manual",
       title: "Media collection",
       subtitle: "Explore the collection",
@@ -681,6 +964,23 @@ export function createTemplateBlock(
     }
   }
 
+  if (template === "dynamicMediaCollection") {
+    return {
+      t: "mediaCollection",
+      sectionKey: `dynamic-media-collection-${index}`,
+      categoryLabel: "Explore more",
+      variant: "carousel",
+      thumbnailOrientation: "horizontal",
+      itemsSource: "dynamicCollections",
+      title: "Keep exploring",
+      subtitle: "Discover more from our library",
+      description: "New collections will appear as you scroll.",
+      showItemNumbers: false,
+      excludedVideoIds: [],
+      items: [],
+    }
+  }
+
   if (template === "text") {
     return {
       t: "text",
@@ -689,6 +989,33 @@ export function createTemplateBlock(
       subtitle: "Supporting subtitle",
       contentParagraphs: ["Write the next part of the story here."],
       variant: "default",
+    }
+  }
+
+  if (template === "promotionalText") {
+    return {
+      t: "section",
+      sectionKey: `promotional-story-${index}`,
+      backgroundColor: "purple",
+      backgroundOpacity: 1,
+      dynamicBackgroundImage: false,
+      staticOverlay: true,
+      content: [
+        {
+          t: "text",
+          sectionKey: `promotional-copy-${index}`,
+          subtitle: "Promotional story",
+          heading: "Tell the story behind this experience",
+          headingLevel: "h2",
+          contentParagraphs: [
+            "### Add a descriptive subheading",
+            "Write a substantial opening paragraph that explains what viewers will discover in this experience.",
+            "Follow with the people, places, themes, or context that make this story distinct.",
+            "- Add specific, useful details\n- Use natural language people search for\n- Link to a meaningful next step",
+          ],
+          variant: "promotional",
+        },
+      ],
     }
   }
 

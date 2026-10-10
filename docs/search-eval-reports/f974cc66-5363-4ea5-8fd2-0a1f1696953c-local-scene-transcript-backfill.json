@@ -1,0 +1,27 @@
+{
+  "event": "run-embeds.complete",
+  "pipeline": "both",
+  "wallClockMs": 2520,
+  "reports": {},
+  "contentBackfillGate": {
+    "reportId": "f974cc66-5363-4ea5-8fd2-0a1f1696953c-offline-search-eval",
+    "mastraRunId": "f974cc66-5363-4ea5-8fd2-0a1f1696953c",
+    "baselineName": "prod-seed-baseline-2026-06-02",
+    "judgeModel": "anthropic/claude-haiku-4-5",
+    "netWinRate": 1,
+    "comparableQueries": 8,
+    "contentEmbeddingProvider": {
+      "provider": "jesus-film-ai-gateway",
+      "model": "embeddings",
+      "requestModel": "embeddings",
+      "nativeDimensions": 4096,
+      "finalDimensions": 1536,
+      "transformVersion": "matryoshka-truncate-1536-v1"
+    }
+  },
+  "contentBackfillGateBypass": null,
+  "errors": {
+    "scene": "scene preflight failed: admin_object_storage:bucket_not_found, core_id_mapping:mapping_read_failed",
+    "transcript": "Failed to read Core-ID mapping from s3 key admin-migrations/core-id-mapping.json: The specified bucket does not exist"
+  }
+}

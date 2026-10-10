@@ -1,7 +1,6 @@
+import { WatchProgressBar } from "../watch/WatchProgressBar"
 import {
   FlatList,
-  Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -10,38 +9,40 @@ import {
 import { Image } from "expo-image"
 import { useRouter } from "expo-router"
 
-import Ionicons from "@expo/vector-icons/Ionicons"
-
 import { SURFACE_COLOR, TEXT_ON_OVERLAY } from "../../lib/color"
-import { resolveImageUrl } from "../../lib/resolveImageUrl"
+import { resolveThumbnailUrl } from "../../lib/resolveThumbnailUrl"
 import { useTypography } from "../../hooks/useTypography"
+import { useLocaleEpoch, useT } from "../../i18n/useT"
 import {
   carousel,
   card,
-  feedback,
   layout,
-  overlay,
   text,
   CARD_GAP,
   HORIZONTAL_PADDING,
 } from "../../styles/shared"
-import type { NormalizedBlock } from "../../lib/normalizer"
-import { pickThumbnailUrl } from "../../lib/types"
-import type { VideoRef } from "../../lib/types"
+import type { AdminBlock } from "../../lib/queries"
+import { useExperienceContext } from "../../contexts/ExperienceProvider"
+import { PressableCard } from "../ui/PressableCard"
+import { blockStreamingUrl } from "../../lib/blockVideoDub"
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
-export type VideoCarouselItem = {
-  id: string
+type CarouselItem = {
+  videoId?: string | null
   streamingUrl?: string | null
+  videoDub?: {
+    hls?: string | null
+    dash?: string | null
+    share?: string | null
+  } | null
   imageUrl?: string | null
   titleOverride?: string | null
   backgroundColor?: string | null
-  video?: VideoRef | null
 }
 
 export interface VideoCarouselRendererProps {
-  section: NormalizedBlock
+  section: AdminBlock
 }
 
 // ── Constants ───────────────────────────────────────────────────────────────
@@ -54,11 +55,16 @@ const CARD_ASPECT_RATIO = 9 / 16
 export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
   const router = useRouter()
   const typography = useTypography()
+  const t = useT("Sections")
+  const tCommon = useT("Common")
+  const epoch = useLocaleEpoch()
   const { width: screenWidth } = useWindowDimensions()
+  const { getVideoThumbnail } = useExperienceContext()
 
-  const vcTitle = section.vcTitle as string | null
-  const vcSubtitle = section.vcSubtitle as string | null
-  const items = (section.items as VideoCarouselItem[] | undefined) ?? []
+  const s = section as Record<string, unknown>
+  const vcTitle = s.title as string | null
+  const vcSubtitle = s.subtitle as string | null
+  const items = (s.items as CarouselItem[] | undefined) ?? []
 
   const cardWidth = Math.round(screenWidth * CARD_WIDTH_RATIO)
   const cardHeight = Math.round(cardWidth / CARD_ASPECT_RATIO)
@@ -69,14 +75,16 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
     item,
     index,
   }: {
-    item: VideoCarouselItem
+    item: CarouselItem
     index: number
   }) => {
-    const thumbnailUrl = resolveImageUrl(
-      item.imageUrl ?? pickThumbnailUrl(item.video?.images),
+    const resolvedThumb = item.videoId ? getVideoThumbnail(item.videoId) : null
+    const thumbnailUrl = resolveThumbnailUrl(
+      item.imageUrl ?? resolvedThumb,
+      blockStreamingUrl(item),
     )
-    const title = item.titleOverride ?? item.video?.title ?? "Untitled"
-    const carouselSectionKey = section.sectionKey as string | undefined
+    const title = item.titleOverride ?? tCommon("untitled")
+    const carouselSectionKey = s.sectionKey as string | undefined
 
     const handlePress = () => {
       if (carouselSectionKey) {
@@ -87,54 +95,37 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
     }
 
     return (
-      <Pressable
-        style={({ pressed }) => [
-          card.surface,
-          { width: cardWidth, height: cardHeight },
-          pressed && Platform.OS === "ios" && feedback.pressed,
-        ]}
-        android_ripple={{ color: "rgba(255, 255, 255, 0.2)", foreground: true }}
+      <PressableCard
         onPress={handlePress}
-        accessibilityRole="button"
-        accessibilityLabel={`Play ${title}`}
-      >
-        {thumbnailUrl != null ? (
-          <Image
-            source={thumbnailUrl}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            recyclingKey={`vc-${item.id}-${index}`}
-            accessibilityLabel={item.video?.imageAlt ?? title}
-            priority="low"
-          />
-        ) : (
-          <View
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                backgroundColor: item.backgroundColor ?? SURFACE_COLOR,
-              },
-            ]}
-          />
-        )}
-
-        {/* Play icon overlay */}
-        <View style={overlay.playOverlay} pointerEvents="none">
-          <View style={styles.playCircle}>
-            <Ionicons
-              name="play"
-              size={18}
-              color={TEXT_ON_OVERLAY}
-              style={{ marginLeft: 3 }}
+        accessibilityLabel={tCommon("playTitleAriaLabel", { title })}
+        {...{ "dd-action-name": "section-video-carousel-card" }}
+        style={[card.surface, { width: cardWidth, height: cardHeight }]}
+        background={
+          thumbnailUrl != null ? (
+            <Image
+              source={thumbnailUrl}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              recyclingKey={`vc-${index}`}
+              accessibilityLabel={title}
+              priority="low"
             />
-          </View>
-        </View>
-
-        {/* Title at bottom */}
+          ) : (
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                { backgroundColor: item.backgroundColor ?? SURFACE_COLOR },
+              ]}
+            />
+          )
+        }
+        playOverlay="small"
+      >
         <View style={styles.titleOverlay} pointerEvents="none">
           <Text style={[styles.cardTitle, typography.bodySmall]}>{title}</Text>
         </View>
-      </Pressable>
+        <WatchProgressBar videoId={item.videoId} />
+      </PressableCard>
     )
   }
 
@@ -162,14 +153,15 @@ export function VideoCarouselRenderer({ section }: VideoCarouselRendererProps) {
       <FlatList
         data={items}
         renderItem={renderItem}
-        keyExtractor={(item, index) => `videoCarousel-${item.id}-${index}`}
+        extraData={epoch}
+        keyExtractor={(_item, index) => `vc-${index}`}
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={carousel.listContent}
         snapToInterval={cardWidth + CARD_GAP}
         snapToAlignment="start"
         decelerationRate="fast"
-        accessibilityLabel={`${items.length} video items`}
+        accessibilityLabel={t("videoItemsAriaLabel", { count: items.length })}
       />
     </View>
   )
@@ -181,14 +173,6 @@ const styles = StyleSheet.create({
   localSubtitle: {
     paddingHorizontal: HORIZONTAL_PADDING,
     marginBottom: 2,
-  },
-  playCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: `rgba(0, 0, 0, 0.5)`,
-    justifyContent: "center",
-    alignItems: "center",
   },
   titleOverlay: {
     position: "absolute",
