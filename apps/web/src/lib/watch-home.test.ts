@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest"
 
-import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxHeroPosterUrlAtMaxWidth,
+} from "@/lib/url"
 import { cardToCarouselSlide, type WatchHomeCard } from "@/lib/watch-home"
 
 function makeCard(overrides: Partial<WatchHomeCard> = {}): WatchHomeCard {
@@ -33,7 +36,7 @@ function makeCard(overrides: Partial<WatchHomeCard> = {}): WatchHomeCard {
 }
 
 describe("cardToCarouselSlide posters", () => {
-  it("posters the full-bleed intro from the Mux frame, and the card from the authored image", () => {
+  it("keeps authored timeline art ahead of the pinned frame fallback", () => {
     // The admin library stores mobile derivatives for these videos — the
     // `mobileCinematicHigh` above measured 640x300, which the full-bleed intro
     // upscales about fourfold. The Mux frame is 1280x720 from the derivative
@@ -45,6 +48,22 @@ describe("cardToCarouselSlide posters", () => {
       resolveMuxHeroPosterUrlAtMaxWidth("playback-1"),
     )
     expect(slide?.posterUrl).not.toContain("imagedelivery.net")
+    expect(slide?.thumbnailUrl).toBe(makeCard().imageUrl)
+  })
+
+  it.each([null, "", "   "])(
+    "uses WATCH_CHAPTER_CAROUSEL_RECIPE for missing timeline art (%j)",
+    (imageUrl) => {
+      const slide = cardToCarouselSlide(makeCard({ imageUrl }))
+      expect(slide?.thumbnailUrl).toBe(
+        resolveMuxFrameThumbnailUrl("playback-1"),
+      )
+    },
+  )
+
+  it("uses the authored image when a timeline thumbnail has no Mux playback id", () => {
+    const slide = cardToCarouselSlide(makeCard({ playbackId: null }))
+
     expect(slide?.thumbnailUrl).toContain("mobileCinematicHigh")
   })
 

@@ -1,5 +1,8 @@
 import type { ErrorLike } from "@apollo/client"
-import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxHeroPosterUrlAtMaxWidth,
+} from "@/lib/url"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
@@ -667,7 +670,10 @@ export function cardToCarouselSlide(
       resolveMuxHeroPosterUrlAtMaxWidth(card.playbackId) ||
       card.imageUrl ||
       null,
-    thumbnailUrl: card.imageUrl,
+    thumbnailUrl:
+      card.imageUrl?.trim() ||
+      resolveMuxFrameThumbnailUrl(card.playbackId) ||
+      resolveMuxHeroPosterUrlAtMaxWidth(card.playbackId),
     imageAlt: card.imageAlt,
     src: card.hls,
     playbackId: card.playbackId,

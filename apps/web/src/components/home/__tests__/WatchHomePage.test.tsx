@@ -44,7 +44,10 @@ import {
   WATCH_HERO_TITLE_CLASS,
 } from "@/components/watch/WatchHeroOverlay"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
-import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxHeroPosterUrlAtMaxWidth,
+} from "@/lib/url"
 import { WATCH_HERO_BODY_OVERLAP_CSS } from "@/lib/watch-hero-preview-overlap"
 import {
   fitWatchHomeHeroHeight,
@@ -56,6 +59,7 @@ import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-producti
 import {
   WATCH_HOME_INTRO_HLS_CONFIG,
   WATCH_HOME_INTRO_MAX_RESOLUTION,
+  watchHomeHeroSlidesToTvCarouselSlides,
 } from "@/components/home/WatchHomeTvCarousel"
 import { signWatchHomeHeroManifestCatalog } from "@/lib/watch-surface-manifest.server"
 import * as exposureBoundary from "@/components/recommendations/WatchExposureBoundary"
@@ -3318,6 +3322,24 @@ describe("WatchHomePage", () => {
     expect(poster).not.toContain("cdn.example")
     expect(video.getAttribute("poster")).toBe(poster)
   })
+
+  it("preserves authored artwork for circular timeline thumbnails", () => {
+    const [slide] = watchHomeHeroSlidesToTvCarouselSlides([
+      { ...makeCard(), eyebrow: "Featured" },
+    ])
+
+    expect(slide?.thumbnailUrl).toBe(makeCard().imageUrl)
+  })
+
+  it.each([null, "", "   "])(
+    "uses the pinned timeline frame when authored art is absent (%j)",
+    (imageUrl) => {
+      const [slide] = watchHomeHeroSlidesToTvCarouselSlides([
+        { ...makeCard(), eyebrow: "Featured", imageUrl },
+      ])
+      expect(slide?.thumbnailUrl).toBe(resolveMuxFrameThumbnailUrl("mux-1"))
+    },
+  )
 
   it.each([
     [
