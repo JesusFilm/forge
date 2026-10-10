@@ -530,6 +530,9 @@
     "scrollToVideo": "Tz'otz' ta video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Skip to main content"
+  },
   "WatchFooter": {
     "home": "Ruwotot Jesus Film Project",
     "navigation": "Navigation ta footer",

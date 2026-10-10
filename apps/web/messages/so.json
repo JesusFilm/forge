@@ -530,6 +530,9 @@
     "scrollToVideo": "U deg fiidiyowga {title}",
     "forYou": "Adiga kuu gaar ah"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "U bood waxa ugu muhiimsan"
+  },
   "WatchFooter": {
     "home": "Bogga hore ee Jesus Film Project",
     "navigation": "Dhulgalka hoose",

@@ -285,70 +285,72 @@ export function WatchHomeExperiencePage({
   }
 
   return (
-    <main
-      // `overflow-x-clip`, never `overflow-x-hidden`: hidden computes the other
-      // axis to `auto`, which makes this element the scroll container and
-      // silently stops the hero below from sticking. Clip does not establish a
-      // scroll container, so the pin survives.
-      className="min-h-screen overflow-x-clip bg-black text-white"
-    >
-      <div
-        className="relative font-sans text-white"
-        style={{ minHeight: "100svh" }}
+    <>
+      <main
+        // `overflow-x-clip`, never `overflow-x-hidden`: hidden computes the other
+        // axis to `auto`, which makes this element the scroll container and
+        // silently stops the hero below from sticking. Clip does not establish a
+        // scroll container, so the pin survives.
+        className="min-h-screen overflow-x-clip bg-black text-white"
       >
-        <div className="sticky top-0 z-[1] mx-auto h-screen max-w-[1920px] overflow-hidden bg-black/10">
-          {backdrop ? (
-            <Image
-              src={backdrop.url}
-              alt={backdrop.alt}
-              fill
-              priority
-              sizes="100vw"
-              className="scale-110 object-cover opacity-45 blur-sm"
-            />
-          ) : (
+        <div
+          className="relative font-sans text-white"
+          style={{ minHeight: "100svh" }}
+        >
+          <div className="sticky top-0 z-[1] mx-auto h-screen max-w-[1920px] overflow-hidden bg-black/10">
+            {backdrop ? (
+              <Image
+                src={backdrop.url}
+                alt={backdrop.alt}
+                fill
+                priority
+                sizes="100vw"
+                className="scale-110 object-cover opacity-45 blur-sm"
+              />
+            ) : (
+              <div
+                aria-hidden
+                className="h-full w-full bg-[linear-gradient(135deg,#020617,#3f1d2b_50%,#14332c)]"
+              />
+            )}
             <div
               aria-hidden
-              className="h-full w-full bg-[linear-gradient(135deg,#020617,#3f1d2b_50%,#14332c)]"
+              className="absolute inset-0 bg-black/10"
+              style={{ backdropFilter: "brightness(.6) blur(40px)" }}
             />
-          )}
-          <div
-            aria-hidden
-            className="absolute inset-0 bg-black/10"
-            style={{ backdropFilter: "brightness(.6) blur(40px)" }}
-          />
-          <div aria-hidden className="absolute inset-0 bg-black/35" />
-        </div>
+            <div aria-hidden className="absolute inset-0 bg-black/35" />
+          </div>
 
-        {/* No `overflow-x-clip` here: the hero media bleeds past this 1920px
+          {/* No `overflow-x-clip` here: the hero media bleeds past this 1920px
             rail to the viewport edges. `html`/`body` already clip the page,
             so nothing gains a horizontal scrollbar. */}
-        <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px]">
-          {normalized.hasAuthoredPageHeading ? null : (
-            <h1 className="sr-only">{t("pageTitle")}</h1>
-          )}
-          {heroAboveBodyZone ? (
-            <WatchHomeTvCarousel
-              heroManifestCatalog={
-                signWatchHomeHeroManifestCatalog(
-                  watchHomeHeroSource(heroModel),
-                ) ?? undefined
-              }
-              slides={heroModel.heroSlides}
-              sequence={heroModel.carousel}
-            />
-          ) : null}
-          <WatchHomeBodyZone>
-            {heroAboveBodyZone ? compatibilityCategoryRail : null}
-            {bodyZoneBlocks.map((block, index) =>
-              // Keep the original index so a block without a `sectionKey`
-              // keeps the key it had before the hero was hoisted out.
-              renderBlock(block, leadsWithHeroBlock ? index + 1 : index),
+          <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px]">
+            {normalized.hasAuthoredPageHeading ? null : (
+              <h1 className="sr-only">{t("pageTitle")}</h1>
             )}
-            <WatchHomeFooter />
-          </WatchHomeBodyZone>
+            {heroAboveBodyZone ? (
+              <WatchHomeTvCarousel
+                heroManifestCatalog={
+                  signWatchHomeHeroManifestCatalog(
+                    watchHomeHeroSource(heroModel),
+                  ) ?? undefined
+                }
+                slides={heroModel.heroSlides}
+                sequence={heroModel.carousel}
+              />
+            ) : null}
+            <WatchHomeBodyZone>
+              {heroAboveBodyZone ? compatibilityCategoryRail : null}
+              {bodyZoneBlocks.map((block, index) =>
+                // Keep the original index so a block without a `sectionKey`
+                // keeps the key it had before the hero was hoisted out.
+                renderBlock(block, leadsWithHeroBlock ? index + 1 : index),
+              )}
+            </WatchHomeBodyZone>
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
+      <WatchHomeFooter />
+    </>
   )
 }

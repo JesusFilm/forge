@@ -25,6 +25,16 @@ describe("route-scoped client messages", () => {
     expect(messages.BetaTesterModal?.trigger).toBe("Become a beta tester")
   })
 
+  it("keeps the server-rendered skip link out of the client payload", () => {
+    // The root layout resolves WatchAccessibility with getTranslations, so no
+    // client component reads it; shipping it would only grow every page.
+    expect(GLOBAL_CLIENT_MESSAGE_NAMESPACES).not.toContain("WatchAccessibility")
+    expect(
+      pickClientMessages(englishMessages, GLOBAL_CLIENT_MESSAGE_NAMESPACES)
+        .WatchAccessibility,
+    ).toBeUndefined()
+  })
+
   it.each([
     ["Russian", russianMessages, "Недоступно"],
     ["Arabic", arabicMessages, "غير متاح"],

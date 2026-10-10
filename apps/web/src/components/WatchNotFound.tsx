@@ -3,13 +3,23 @@ import { useTranslations } from "next-intl"
 
 import { LanguageGlobeSection } from "@/components/sections/LanguageGlobeSection"
 import { languagesIndexPath, searchPath } from "@/lib/routes"
+import { watchMainContentTargetProps } from "@/lib/watch-main-content"
 
-export function WatchNotFound() {
+// `ownsMainTarget` is for the root not-found only, which renders outside
+// WatchChromeShell and so has no shell wrapper carrying the skip-link target.
+export function WatchNotFound({
+  ownsMainTarget = false,
+}: {
+  ownsMainTarget?: boolean
+}) {
   const t = useTranslations("WatchNotFound")
   const languageT = useTranslations("WatchLanguageIndex")
 
   return (
-    <main className="min-h-svh overflow-x-hidden overflow-y-auto bg-black">
+    <main
+      {...(ownsMainTarget ? watchMainContentTargetProps : {})}
+      className="min-h-svh overflow-x-hidden overflow-y-auto bg-black"
+    >
       <LanguageGlobeSection
         actions={[
           {

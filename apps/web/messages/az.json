@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} videosuna sürüşdür",
     "forYou": "Sizin üçün"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Əsas məzmuna keç"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ana səhifəsi",
     "navigation": "Altbilgi naviqasiyası",

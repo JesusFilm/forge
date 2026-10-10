@@ -530,6 +530,9 @@
     "scrollToVideo": "Görgess a {title} videóhoz",
     "forYou": "Neked"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Ugrás a fő tartalomra"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project kezdőlap",
     "navigation": "Lábléc navigáció",

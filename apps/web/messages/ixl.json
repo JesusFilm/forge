@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} video chi q'ala'j",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Tuch' u'l tu' ve'tal"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project rochoch",
     "navigation": "Navegación re footer",

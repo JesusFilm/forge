@@ -71,6 +71,7 @@ import {
   tryAsLocaleSlug,
 } from "@/lib/routes"
 import { isOneSegmentCollectionSlug } from "@/lib/url-shape"
+import { WATCH_MAIN_CONTENT_ID } from "@/lib/watch-main-content"
 import {
   loadWatchInteraction,
   scheduleWatchInteractionWarmup,
@@ -821,36 +822,6 @@ export function FloatingSearchProvider({
   return (
     <WatchRouteSurfaceContext.Provider value={routeSurfaceValue}>
       <FloatingSearchPinnedContext.Provider value={pinnedValue}>
-        <div
-          inert={modalChromeHidden || undefined}
-          aria-hidden={modalChromeHidden || undefined}
-          className={
-            modalChromeHidden
-              ? "blur-[12px] transition-[filter] duration-200"
-              : "transition-[filter] duration-200"
-          }
-        >
-          {children}
-        </div>
-        <div
-          aria-hidden="true"
-          data-testid="floating-header-backdrop"
-          className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(4.75rem+env(safe-area-inset-top,0px))] backdrop-blur-[14px] transition-[opacity,background-color,translate,backdrop-filter] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] md:h-[calc(8rem+env(safe-area-inset-top,0px))] md:backdrop-blur-none compact-landscape:h-[calc(4.25rem+env(safe-area-inset-top,0px))] compact-landscape:backdrop-blur-[14px] ${
-            headerSurfaceSolid
-              ? "bg-black/72 shadow-[0_1px_0_rgba(255,255,255,0.08)] md:bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] md:shadow-none md:[mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
-              : "bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
-          } ${headerBackdropMotionClass}`}
-        />
-        <div
-          aria-hidden="true"
-          data-testid="floating-header-hover-zone"
-          onPointerEnter={handleHeaderPointerEnter}
-          className={`fixed inset-x-0 top-0 z-[45] h-[calc(5.5rem+env(safe-area-inset-top,0px))] md:h-[calc(9rem+env(safe-area-inset-top,0px))] compact-landscape:h-[calc(4.25rem+env(safe-area-inset-top,0px))] ${
-            headerHoverZoneActive
-              ? "pointer-events-auto"
-              : "pointer-events-none"
-          }`}
-        />
         <header
           data-testid="floating-header"
           inert={headerChromeHidden || undefined}
@@ -1007,6 +978,39 @@ export function FloatingSearchProvider({
             )}
           </div>
         </header>
+        <div
+          inert={modalChromeHidden || undefined}
+          aria-hidden={modalChromeHidden || undefined}
+          id={WATCH_MAIN_CONTENT_ID}
+          tabIndex={-1}
+          className={
+            modalChromeHidden
+              ? "blur-[12px] transition-[filter] duration-200"
+              : "transition-[filter] duration-200"
+          }
+        >
+          {children}
+        </div>
+        <div
+          aria-hidden="true"
+          data-testid="floating-header-backdrop"
+          className={`pointer-events-none fixed inset-x-0 top-0 z-40 h-[calc(4.75rem+env(safe-area-inset-top,0px))] backdrop-blur-[14px] transition-[opacity,background-color,translate,backdrop-filter] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] md:h-[calc(8rem+env(safe-area-inset-top,0px))] md:backdrop-blur-none compact-landscape:h-[calc(4.25rem+env(safe-area-inset-top,0px))] compact-landscape:backdrop-blur-[14px] ${
+            headerSurfaceSolid
+              ? "bg-black/72 shadow-[0_1px_0_rgba(255,255,255,0.08)] md:bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] md:shadow-none md:[mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
+              : "bg-[linear-gradient(180deg,rgba(8,16,24,0.46)_0%,rgba(28,56,72,0.22)_44%,rgba(28,56,72,0.08)_72%,rgba(28,56,72,0)_100%)] [mask-image:linear-gradient(to_bottom,black_0%,black_56%,transparent_100%)]"
+          } ${headerBackdropMotionClass}`}
+        />
+        <div
+          aria-hidden="true"
+          data-testid="floating-header-hover-zone"
+          onPointerEnter={handleHeaderPointerEnter}
+          className={`fixed inset-x-0 top-0 z-[45] h-[calc(5.5rem+env(safe-area-inset-top,0px))] md:h-[calc(9rem+env(safe-area-inset-top,0px))] compact-landscape:h-[calc(4.25rem+env(safe-area-inset-top,0px))] ${
+            headerHoverZoneActive
+              ? "pointer-events-auto"
+              : "pointer-events-none"
+          }`}
+        />
+
         {searchControllerEnabled ? (
           <LazyFloatingSearchController
             open={open}

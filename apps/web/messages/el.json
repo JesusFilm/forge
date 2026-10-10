@@ -530,6 +530,9 @@
     "scrollToVideo": "Κύλιση στο βίντεο {title}",
     "forYou": "Για εσάς"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Μετάβαση στο κύριο περιεχόμενο"
+  },
   "WatchFooter": {
     "home": "Αρχική Jesus Film Project",
     "navigation": "Πλοήγηση υποσέλιδου",

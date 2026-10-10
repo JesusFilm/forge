@@ -530,6 +530,9 @@
     "scrollToVideo": "Loloa ki he vitio {title}",
     "forYou": "Maʻau"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Hopo ki he konga tefitó"
+  },
   "WatchFooter": {
     "home": "Peesi kamata ʻo e Jesus Film Project",
     "navigation": "Fakalaka ʻo e footer",

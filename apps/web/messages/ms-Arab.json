@@ -530,6 +530,9 @@
     "scrollToVideo": "Tatal ke video {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "لڠکاو ک کندوڠن اوتام"
+  },
   "WatchFooter": {
     "home": "Laman utama Jesus Film Project",
     "navigation": "Navigasi pengaki",

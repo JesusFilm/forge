@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} བརྙན་འཕྲིན་ལ་མར་འཁྱུགས",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "གཙོ་བོའི་ནང་དོན་ལ་མཆོང་།"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project གཙོ་ངོས",
     "navigation": "ཞབས་ཀྱི་འགྲོ་ལམ",

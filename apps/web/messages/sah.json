@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеога төнн",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Сүрүн ис хоһоонугар көс"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project бастыҥ сирэйи",
     "navigation": "Түмүктүүр навигация",

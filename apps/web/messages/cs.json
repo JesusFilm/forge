@@ -530,6 +530,9 @@
     "scrollToVideo": "Srolovat k videu {title}",
     "forYou": "Pro vás"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Přeskočit na hlavní obsah"
+  },
   "WatchFooter": {
     "home": "Domovská stránka Jesus Film Project",
     "navigation": "Navigace v patičce",

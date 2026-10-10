@@ -530,6 +530,9 @@
     "scrollToVideo": "Mag-scroll sa video nga {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Lumpat sa panguna nga sulod"
+  },
   "WatchFooter": {
     "home": "Panguna nga pahina sang Jesus Film Project",
     "navigation": "Nabigasyon sa idalom sang pahina",

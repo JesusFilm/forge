@@ -530,6 +530,9 @@
     "scrollToVideo": "Kokita na vidéo ya {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Kwenda na mambu ya ntwala"
+  },
   "WatchFooter": {
     "home": "Ndako ya Jesus Film Project",
     "navigation": "Navigation ya se ya lokasa",

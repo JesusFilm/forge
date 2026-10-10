@@ -530,6 +530,9 @@
     "scrollToVideo": "Pumbula ku video ya {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Ya ku malu manene"
+  },
   "WatchFooter": {
     "home": "Tshikupu tsha Jesus Film Project",
     "navigation": "Misebele ya pashi",

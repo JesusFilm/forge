@@ -530,6 +530,9 @@
     "scrollToVideo": "Vieritä videon {title} kohdalle",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Siirry pääsisältöön"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project -etusivu",
     "navigation": "Alatunnisteen navigointi",

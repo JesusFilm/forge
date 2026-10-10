@@ -16,6 +16,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
 import { WatchChromeShell } from "@/components/WatchChromeShell"
 import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
+import { WATCH_MAIN_CONTENT_ID } from "@/lib/watch-main-content"
 
 function findElement(
   node: ReactNode,
@@ -99,6 +100,41 @@ describe("Watch root layout <html lang>/<dir> (FGE-170 / W-082)", () => {
 })
 
 describe("Watch root layout", () => {
+  it("renders a localized skip link as the first body child", async () => {
+    const layout = await RootLayout({
+      children: <main id={WATCH_MAIN_CONTENT_ID}>Watch page</main>,
+      params: Promise.resolve({ locale: "en", htmlLang: "english" }),
+    })
+    const body = findElement(layout, "body") as ReactElement<{
+      children?: ReactNode
+    }> | null
+    const firstBodyChild = Children.toArray(body?.props.children)[0]
+
+    expect(isValidElement(firstBodyChild)).toBe(true)
+    if (
+      !isValidElement<{ href?: string; "data-testid"?: string }>(firstBodyChild)
+    ) {
+      throw new Error("Expected the first body child to be a link")
+    }
+    expect(firstBodyChild.type).toBe("a")
+    expect(firstBodyChild.props.href).toBe(`#${WATCH_MAIN_CONTENT_ID}`)
+    expect(firstBodyChild.props["data-testid"]).toBe("watch-skip-to-main")
+    // sr-only leaves a 1px clipped box; focus must undo all of it (not-sr-only)
+    // before positioning, or the focused link stays invisible.
+    const classes = String(
+      (firstBodyChild.props as { className?: string }).className,
+    ).split(/\s+/)
+    expect(classes).toEqual(
+      expect.arrayContaining([
+        "sr-only",
+        "focus:not-sr-only",
+        "focus:fixed",
+        "focus:top-3",
+        "focus:left-3",
+      ]),
+    )
+  })
+
   it("mounts both environment-configured analytics integrations", async () => {
     const layout = await RootLayout({
       children: <main>Watch page</main>,

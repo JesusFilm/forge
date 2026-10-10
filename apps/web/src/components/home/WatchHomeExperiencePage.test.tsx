@@ -497,9 +497,13 @@ describe("WatchHomeExperiencePage", () => {
       '[data-section-type="LanguageGlobeBlock"]',
     )
     expect(authoredGlobe).not.toBeNull()
-    expect(authoredGlobe?.nextElementSibling?.getAttribute("data-testid")).toBe(
-      "watch-home-footer",
-    )
+    expect(
+      container
+        .querySelector("main")
+        ?.contains(
+          container.querySelector('[data-testid="watch-home-footer"]'),
+        ),
+    ).toBe(false)
   })
 
   it("keeps the canonical footer as the final element after the dynamic discovery feed", async () => {
@@ -542,7 +546,7 @@ describe("WatchHomeExperiencePage", () => {
     expect(dynamicFeed?.compareDocumentPosition(footer as Node) ?? 0).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     )
-    expect(footer?.parentElement?.lastElementChild).toBe(footer)
+    expect(container.querySelector("main")?.contains(footer)).toBe(false)
   })
 
   it("preserves the editor-authored globe position around the dynamic feed", async () => {

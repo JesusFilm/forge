@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} video kaqman surkuy",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Hatun willakuyman phinkiy"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project wasin",
     "navigation": "Urayman puriy",

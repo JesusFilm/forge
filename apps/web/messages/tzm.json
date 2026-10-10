@@ -530,6 +530,9 @@
     "scrollToVideo": "Ḍur ɣer tvidyo n {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Ɛeddi ɣer ugbur agejdan"
+  },
   "WatchFooter": {
     "home": "Tazwara n Jesus Film Project",
     "navigation": "Amsekkin n ufellah",

@@ -530,6 +530,9 @@
     "scrollToVideo": "រំកិលទៅកាន់វីដេអូ {title}",
     "forYou": "សម្រាប់អ្នក"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "រំលងទៅមាតិកាចម្បង"
+  },
   "WatchFooter": {
     "home": "ទំព័រដើម Jesus Film Project",
     "navigation": "ការរុករកផ្នែកខាងក្រោម",

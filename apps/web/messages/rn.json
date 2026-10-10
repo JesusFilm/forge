@@ -530,6 +530,9 @@
     "scrollToVideo": "Yiyunguruze kuri videwo ya {title}",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Simbira ku birimwo nyamukuru"
+  },
   "WatchFooter": {
     "home": "Urugo rwa Jesus Film Project",
     "navigation": "Imbuga zo hepfo",

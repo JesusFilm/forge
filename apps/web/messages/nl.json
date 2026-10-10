@@ -395,6 +395,9 @@
     "backToWatch": "Terug naar Watch",
     "browseVideos": "Video's bekijken"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Naar hoofdinhoud gaan"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project-startpagina",
     "navigation": "Voeternavigatie",

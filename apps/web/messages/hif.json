@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} video tak scroll kariye",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Main content pe jaao"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project ka home page",
     "navigation": "Footer ke links",

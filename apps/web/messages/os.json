@@ -530,6 +530,9 @@
     "scrollToVideo": "{title} видеоæймæ æрхæсс",
     "forYou": "Recommended for You"
   },
+  "WatchAccessibility": {
+    "skipToMainContent": "Сæйраг мидисмæ ахиз"
+  },
   "WatchFooter": {
     "home": "Jesus Film Project æрмæст",
     "navigation": "Футер навигаци",
