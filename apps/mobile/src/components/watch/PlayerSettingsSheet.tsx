@@ -1,0 +1,369 @@
+import { useState, useSyncExternalStore } from "react"
+import {
+  Animated,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
+import Ionicons from "@expo/vector-icons/Ionicons"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+
+import { useSlideUpSheet } from "../../hooks/useSlideUpSheet"
+import {
+  BG_COLOR,
+  BLACK,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  hexToRgba,
+} from "../../lib/color"
+import { setCastPlaybackRateLogged } from "../../lib/cast/castAdapter"
+import { useT, type UiT } from "../../i18n/useT"
+import {
+  PLAYBACK_SPEEDS,
+  getPlayerSettingsStore,
+  type PlaybackSpeed,
+} from "../../lib/miniPlayer/playerSettings"
+import {
+  QUALITY_TIERS,
+  supportsQualityConstraint,
+  type QualityTier,
+} from "../../lib/streamQuality"
+import { feedback } from "../../styles/shared"
+
+type PlayerT = UiT<"Player">
+
+// Only "Normal" is a word; a value such as 1.5× reads the same everywhere.
+function speedLabel(speed: PlaybackSpeed, t: PlayerT): string {
+  return speed === 1 ? t("speedNormal") : `${speed}×`
+}
+
+function qualityLabel(tier: QualityTier, t: PlayerT): string {
+  switch (tier) {
+    case "auto":
+      return t("qualityAuto")
+    case "low":
+      return t("qualityLow")
+    case "high":
+      return t("qualityHigh")
+    case "highest":
+      return t("qualityHighest")
+  }
+}
+
+type SheetBody = "root" | "speed" | "quality"
+
+function bodyTitle(body: SheetBody, t: PlayerT): string {
+  switch (body) {
+    case "root":
+      return t("settingsTitle")
+    case "speed":
+      return t("playbackSpeed")
+    case "quality":
+      return t("quality")
+  }
+}
+
+export type PlayerSettingsSheetProps = {
+  onClose: () => void
+  /** The feedback door (KTD5). Fires at the tap, BEFORE this sheet's own
+   *  close, so the host captures the playback position the viewer saw. */
+  onReportProblem: () => void
+  /** R10: while a cast session is active the sheet offers speed only. */
+  castActive: boolean
+  /** R9/R11 at the point of use: the quality row exists only for a
+   *  constrainable (Mux http(s)) stream — offline file:// and non-Mux hide it. */
+  streamingUrl: string | null
+}
+
+/** Two-level player settings sheet (R2, KTD5): component-state RN Modal in
+ *  the chrome layer, because a routed form sheet cannot present over the
+ *  fullscreen player. A pick writes the store; the sheet stays open (R3). */
+export function PlayerSettingsSheet({
+  onClose,
+  onReportProblem,
+  castActive,
+  streamingUrl,
+}: PlayerSettingsSheetProps) {
+  const store = getPlayerSettingsStore()
+  const snapshot = useSyncExternalStore(store.subscribe, store.getSnapshot)
+  const insets = useSafeAreaInsets()
+  const t = useT("Player")
+  const tCommon = useT("Common")
+  const [body, setBody] = useState<SheetBody>("root")
+  const { progress, panelHeight, onPanelLayout, close } =
+    useSlideUpSheet(onClose)
+
+  const qualityAvailable =
+    !castActive && supportsQualityConstraint(streamingUrl)
+
+  // Decision 5: a cast flip mid-submenu snaps back to the root list. Adjusted
+  // during render (not an effect) so the stale submenu never paints a frame.
+  const [prevCastActive, setPrevCastActive] = useState(castActive)
+  if (prevCastActive !== castActive) {
+    setPrevCastActive(castActive)
+    if (body !== "root") setBody("root")
+  }
+  if (body === "quality" && !qualityAvailable) setBody("root")
+
+  const rootRow = (
+    key: string,
+    title: string,
+    value: string,
+    onPress: () => void,
+  ) => (
+    <Pressable
+      style={({ pressed }) => [styles.row, pressed && feedback.pressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      {...{ "dd-action-name": `player-settings-${key}` }}
+    >
+      <Text style={styles.rowTitle}>{title}</Text>
+      <View style={styles.rowValue}>
+        <Text style={styles.rowValueText}>{value}</Text>
+        <Ionicons name="chevron-forward" size={16} color={TEXT_SECONDARY} />
+      </View>
+    </Pressable>
+  )
+
+  const optionRow = (
+    key: string,
+    label: string,
+    selected: boolean,
+    onPress: () => void,
+  ) => (
+    <Pressable
+      key={key}
+      style={({ pressed }) => [styles.row, pressed && feedback.pressed]}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
+      {...{ "dd-action-name": `player-settings-${key}` }}
+    >
+      <View style={styles.checkSlot}>
+        {selected && (
+          <Ionicons name="checkmark" size={18} color={TEXT_PRIMARY} />
+        )}
+      </View>
+      <Text style={styles.rowTitle}>{label}</Text>
+    </Pressable>
+  )
+
+  let listRows
+  if (body === "speed") {
+    listRows = PLAYBACK_SPEEDS.map((speed) =>
+      optionRow(
+        `speed-${speed}`,
+        speedLabel(speed, t),
+        snapshot.speed === speed,
+        () => {
+          // AE4: the store stays the single truth; while casting the pick ALSO
+          // goes to the receiver (fire-and-forget, logged in the facade).
+          store.setSpeed(speed)
+          if (castActive) setCastPlaybackRateLogged(speed)
+        },
+      ),
+    )
+  } else if (body === "quality") {
+    listRows = QUALITY_TIERS.map((tier) =>
+      optionRow(
+        `quality-${tier}`,
+        qualityLabel(tier, t),
+        snapshot.qualityTier === tier,
+        () => store.setQualityTier(tier),
+      ),
+    )
+  } else {
+    listRows = (
+      <>
+        {rootRow(
+          "speed",
+          t("playbackSpeed"),
+          speedLabel(snapshot.speed, t),
+          () => setBody("speed"),
+        )}
+        {qualityAvailable &&
+          rootRow(
+            "quality",
+            t("quality"),
+            qualityLabel(snapshot.qualityTier, t),
+            () => setBody("quality"),
+          )}
+        {/* R2: offered while casting too — the quality row above is the one
+            a session hides. The host opens the feedback sheet from onClose,
+            which is why this row closes itself after the callback. */}
+        <Pressable
+          style={({ pressed }) => [
+            styles.row,
+            styles.reportRow,
+            pressed && feedback.pressed,
+          ]}
+          onPress={() => {
+            onReportProblem()
+            close()
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={t("reportProblem")}
+          {...{ "dd-action-name": "player-settings-report-problem" }}
+        >
+          <Text style={styles.rowTitle}>{t("reportProblem")}</Text>
+          <Ionicons name="chevron-forward" size={16} color={TEXT_SECONDARY} />
+        </Pressable>
+      </>
+    )
+  }
+
+  return (
+    <Modal
+      visible
+      transparent
+      // "none": this component owns both animations so they can differ.
+      animationType="none"
+      statusBarTranslucent
+      // Fullscreen locks the app to landscape while the Modal's default is
+      // portrait-only; UIKit aborts a presentation with no common orientation.
+      supportedOrientations={["portrait", "landscape"]}
+      onRequestClose={close}
+    >
+      <View style={styles.overlay}>
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.scrim, { opacity: progress }]}
+        />
+        <Pressable
+          style={styles.backdrop}
+          onPress={close}
+          accessibilityRole="button"
+          accessibilityLabel={t("dismissSettingsAriaLabel")}
+          {...{ "dd-action-name": "player-settings-dismiss" }}
+        />
+        <Animated.View
+          onLayout={onPanelLayout}
+          style={[
+            styles.panel,
+            { paddingBottom: Math.max(insets.bottom, 12) },
+            {
+              transform: [
+                {
+                  translateY: progress.interpolate({
+                    inputRange: [0, 1],
+                    // Parked a full panel-height down until measured, so the
+                    // unmeasured first frame is offscreen rather than in place.
+                    outputRange: [panelHeight || 9999, 0],
+                  }),
+                },
+              ],
+            },
+          ]}
+        >
+          <View style={styles.header}>
+            {body !== "root" ? (
+              <Pressable
+                style={styles.headerButton}
+                onPress={() => setBody("root")}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel={t("backAriaLabel")}
+                {...{ "dd-action-name": "player-settings-back" }}
+              >
+                <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
+              </Pressable>
+            ) : (
+              <View style={styles.headerButton} />
+            )}
+            <Text style={styles.headerTitle}>{bodyTitle(body, t)}</Text>
+            <Pressable
+              style={styles.headerButton}
+              onPress={close}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={tCommon("closeAriaLabel")}
+              {...{ "dd-action-name": "player-settings-close" }}
+            >
+              <Ionicons name="close" size={22} color={TEXT_PRIMARY} />
+            </Pressable>
+          </View>
+          {listRows}
+        </Animated.View>
+      </View>
+    </Modal>
+  )
+}
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+  },
+  // Carries the dimming so its opacity can animate independently of the panel.
+  scrim: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: hexToRgba(BLACK, 0.5),
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+  },
+  // The app's hard-coded dark surface — the sheet must not follow the system
+  // appearance the player chrome ignores.
+  panel: {
+    backgroundColor: BG_COLOR,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    paddingTop: 4,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+  },
+  headerButton: {
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  row: {
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 48,
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  rowTitle: {
+    flex: 1,
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
+    fontSize: 15,
+  },
+  // A rule above it: this row leaves the sheet, the settings rows do not.
+  reportRow: {
+    marginTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: hexToRgba(TEXT_SECONDARY, 0.3),
+  },
+  rowValue: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  rowValueText: {
+    color: TEXT_SECONDARY,
+    fontFamily: "System",
+    fontSize: 14,
+  },
+  checkSlot: {
+    width: 24,
+    alignItems: "center",
+  },
+})

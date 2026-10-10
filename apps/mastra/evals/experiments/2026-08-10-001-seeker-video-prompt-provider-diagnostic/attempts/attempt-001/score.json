@@ -1,0 +1,353 @@
+{
+  "schemaVersion": "seeker-experiment-scores/v1",
+  "productionBenchmark": {
+    "kind": "seeker-eval-score",
+    "weightsVersion": "seeker-weights/v1",
+    "identity": {
+      "promptSha256": "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5",
+      "promptSource": "langfuse",
+      "promptLangfuseVersion": 1,
+      "promptLangfuseLabel": null,
+      "sectionMappingVersion": "seeker-sections/v2",
+      "questionSetId": "seeker-eval/v1",
+      "questionIds": [
+        "q-suffering",
+        "q-grief-father",
+        "q-trinity",
+        "q-living-together",
+        "q-python-pdf",
+        "q-islam-jesus",
+        "q-verse-exact-words",
+        "q-links-to-verify",
+        "q-bible-changed",
+        "q-theotokos"
+      ],
+      "criteriaSha256": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213",
+      "answeringModels": [
+        "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free"
+      ],
+      "decoding": null,
+      "sampleId": "s1",
+      "gitSha": "05730954",
+      "retrieval": {
+        "mode": "tool-loop",
+        "corpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+        "topK": 5
+      },
+      "judge": {
+        "model": "anthropic/claude-haiku-4.5",
+        "rubricSha256": "74b9d01b5c444630aa92432f95466925fcb95010c14442b7b379639cb7bccc4a"
+      },
+      "weightsSha256": "abf30f70f9027b6c39f6d559037a2eb46639bc43065aa8ce6e8d34b33c41e195"
+    },
+    "runScore": 0.9166666666666666,
+    "runBand": "pass",
+    "cells": [
+      {
+        "questionId": "q-suffering",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "status": "judged",
+        "score": 0.9,
+        "band": "pass",
+        "satisfiedWeight": 9,
+        "totalWeight": 10
+      },
+      {
+        "questionId": "q-grief-father",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 10,
+        "totalWeight": 10
+      },
+      {
+        "questionId": "q-trinity",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 13,
+        "totalWeight": 13
+      },
+      {
+        "questionId": "q-living-together",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "status": "judged",
+        "score": 0.5454545454545454,
+        "band": "fail",
+        "satisfiedWeight": 6,
+        "totalWeight": 11
+      },
+      {
+        "questionId": "q-python-pdf",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 17,
+        "totalWeight": 17
+      },
+      {
+        "questionId": "q-islam-jesus",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "status": "judged",
+        "score": 1,
+        "band": "pass",
+        "satisfiedWeight": 11,
+        "totalWeight": 11
+      },
+      {
+        "questionId": "q-verse-exact-words",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "status": "answer-error",
+        "score": null,
+        "band": null,
+        "satisfiedWeight": 0,
+        "totalWeight": 0
+      },
+      {
+        "questionId": "q-links-to-verify",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "status": "answer-error",
+        "score": null,
+        "band": null,
+        "satisfiedWeight": 0,
+        "totalWeight": 0
+      },
+      {
+        "questionId": "q-bible-changed",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "status": "answer-error",
+        "score": null,
+        "band": null,
+        "satisfiedWeight": 0,
+        "totalWeight": 0
+      },
+      {
+        "questionId": "q-theotokos",
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "status": "answer-error",
+        "score": null,
+        "band": null,
+        "satisfiedWeight": 0,
+        "totalWeight": 0
+      }
+    ],
+    "byModel": [
+      {
+        "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+        "score": 0.9166666666666666,
+        "band": "pass",
+        "judgedCells": 6,
+        "invalidCells": 0,
+        "answerErrorCells": 4
+      }
+    ],
+    "bySection": [
+      {
+        "section": "citation-discipline",
+        "score": 1,
+        "satisfiedCount": 6,
+        "violatedCount": 0
+      },
+      {
+        "section": "empty-unavailable-handling",
+        "score": 1,
+        "satisfiedCount": 2,
+        "violatedCount": 0
+      },
+      {
+        "section": "persona",
+        "score": 0.8181818181818182,
+        "satisfiedCount": 18,
+        "violatedCount": 4
+      },
+      {
+        "section": "safety",
+        "score": 0.8,
+        "satisfiedCount": 4,
+        "violatedCount": 1
+      }
+    ],
+    "judgedCells": 6,
+    "invalidCells": 0,
+    "answerErrorCells": 4
+  },
+  "candidates": {
+    "video-prompt-v2": {
+      "kind": "seeker-eval-score",
+      "weightsVersion": "seeker-weights/v1",
+      "identity": {
+        "promptSha256": "bdc09456d558f2853604adff70655ee850730ccc8f2b18881780590c657b76ee",
+        "promptSource": "langfuse",
+        "promptLangfuseVersion": 2,
+        "promptLangfuseLabel": null,
+        "sectionMappingVersion": "seeker-sections/v2",
+        "questionSetId": "seeker-eval/v1",
+        "questionIds": [
+          "q-suffering",
+          "q-grief-father",
+          "q-trinity",
+          "q-living-together",
+          "q-python-pdf",
+          "q-islam-jesus",
+          "q-verse-exact-words",
+          "q-links-to-verify",
+          "q-bible-changed",
+          "q-theotokos"
+        ],
+        "criteriaSha256": "7baf6d4003a03671c668ecf4998456d2cd02ec5ec5ae17068b93e08c98541213",
+        "answeringModels": [
+          "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free"
+        ],
+        "decoding": null,
+        "sampleId": "s1",
+        "gitSha": "05730954",
+        "retrieval": {
+          "mode": "tool-loop",
+          "corpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738",
+          "topK": 5
+        },
+        "judge": {
+          "model": "anthropic/claude-haiku-4.5",
+          "rubricSha256": "74b9d01b5c444630aa92432f95466925fcb95010c14442b7b379639cb7bccc4a"
+        },
+        "weightsSha256": "abf30f70f9027b6c39f6d559037a2eb46639bc43065aa8ce6e8d34b33c41e195"
+      },
+      "runScore": 1,
+      "runBand": "pass",
+      "cells": [
+        {
+          "questionId": "q-suffering",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "status": "invalid",
+          "score": null,
+          "band": null,
+          "satisfiedWeight": 0,
+          "totalWeight": 0
+        },
+        {
+          "questionId": "q-grief-father",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "status": "judged",
+          "score": 1,
+          "band": "pass",
+          "satisfiedWeight": 10,
+          "totalWeight": 10
+        },
+        {
+          "questionId": "q-trinity",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "status": "judged",
+          "score": 1,
+          "band": "pass",
+          "satisfiedWeight": 13,
+          "totalWeight": 13
+        },
+        {
+          "questionId": "q-living-together",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "status": "answer-error",
+          "score": null,
+          "band": null,
+          "satisfiedWeight": 0,
+          "totalWeight": 0
+        },
+        {
+          "questionId": "q-python-pdf",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "status": "judged",
+          "score": 1,
+          "band": "pass",
+          "satisfiedWeight": 17,
+          "totalWeight": 17
+        },
+        {
+          "questionId": "q-islam-jesus",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "status": "answer-error",
+          "score": null,
+          "band": null,
+          "satisfiedWeight": 0,
+          "totalWeight": 0
+        },
+        {
+          "questionId": "q-verse-exact-words",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "status": "answer-error",
+          "score": null,
+          "band": null,
+          "satisfiedWeight": 0,
+          "totalWeight": 0
+        },
+        {
+          "questionId": "q-links-to-verify",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "status": "answer-error",
+          "score": null,
+          "band": null,
+          "satisfiedWeight": 0,
+          "totalWeight": 0
+        },
+        {
+          "questionId": "q-bible-changed",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "status": "answer-error",
+          "score": null,
+          "band": null,
+          "satisfiedWeight": 0,
+          "totalWeight": 0
+        },
+        {
+          "questionId": "q-theotokos",
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "status": "answer-error",
+          "score": null,
+          "band": null,
+          "satisfiedWeight": 0,
+          "totalWeight": 0
+        }
+      ],
+      "byModel": [
+        {
+          "model": "google/gemma-4-31b-it:free -> google/gemma-4-26b-a4b-it:free",
+          "score": 1,
+          "band": "pass",
+          "judgedCells": 3,
+          "invalidCells": 1,
+          "answerErrorCells": 6
+        }
+      ],
+      "bySection": [
+        {
+          "section": "citation-discipline",
+          "score": 1,
+          "satisfiedCount": 3,
+          "violatedCount": 0
+        },
+        {
+          "section": "empty-unavailable-handling",
+          "score": 1,
+          "satisfiedCount": 2,
+          "violatedCount": 0
+        },
+        {
+          "section": "persona",
+          "score": 1,
+          "satisfiedCount": 9,
+          "violatedCount": 0
+        },
+        {
+          "section": "safety",
+          "score": 1,
+          "satisfiedCount": 3,
+          "violatedCount": 0
+        }
+      ],
+      "judgedCells": 3,
+      "invalidCells": 1,
+      "answerErrorCells": 6
+    }
+  }
+}

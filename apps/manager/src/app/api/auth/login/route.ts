@@ -1,82 +1,69 @@
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
-import { z } from "zod"
-import { env } from "@/config/env"
-import { fetchUserWithRole } from "@/lib/auth"
 
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
-})
+import {
+  MANAGER_OAUTH_RETURN_TO_COOKIE,
+  MANAGER_OAUTH_STATE_COOKIE,
+  MANAGER_OAUTH_VERIFIER_COOKIE,
+  managerOAuthCookieOptions,
+} from "@/lib/manager-session-cookie"
+import {
+  buildManagerAuthorizeUrl,
+  getManagerOAuthConfig,
+} from "@/lib/oauth-client"
+import { createOAuthState } from "@/lib/oauth-state"
 
-const authResponseSchema = z.object({
-  jwt: z.string().min(1),
-  user: z.object({ id: z.number() }),
-})
+export async function GET(request: Request) {
+  const config = getManagerOAuthConfig()
+  const url = new URL(request.url)
+  const returnTo = resolveManagerReturnToURL(
+    url.searchParams.get("returnTo") ?? undefined,
+    `${config.managerBaseUrl.replace(/\/$/, "")}/dashboard/coverage`,
+    config.managerBaseUrl,
+  )
+  const prompt = parsePrompt(url.searchParams.get("prompt"))
+  const state = createOAuthState()
+  const response = NextResponse.redirect(
+    buildManagerAuthorizeUrl({
+      config,
+      state: state.state,
+      codeChallenge: state.codeChallenge,
+      prompt,
+    }),
+  )
+  const cookieOptions = managerOAuthCookieOptions()
 
-export async function POST(request: Request) {
-  let rawBody: unknown
+  response.cookies.set(MANAGER_OAUTH_STATE_COOKIE, state.state, cookieOptions)
+  response.cookies.set(
+    MANAGER_OAUTH_VERIFIER_COOKIE,
+    state.codeVerifier,
+    cookieOptions,
+  )
+  response.cookies.set(MANAGER_OAUTH_RETURN_TO_COOKIE, returnTo, cookieOptions)
+
+  return response
+}
+
+export const POST = GET
+
+function parsePrompt(
+  prompt: string | null,
+): "login" | "select_account" | undefined {
+  return prompt === "login" || prompt === "select_account" ? prompt : undefined
+}
+
+function resolveManagerReturnToURL(
+  returnTo: string | undefined,
+  fallbackURL: string,
+  managerBaseUrl: string,
+): string {
+  if (!returnTo) return fallbackURL
+
   try {
-    rawBody = await request.json()
+    const parsed = new URL(returnTo, fallbackURL)
+    return parsed.origin === new URL(managerBaseUrl).origin
+      ? parsed.toString()
+      : fallbackURL
   } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+    return fallbackURL
   }
-
-  const parsed = loginSchema.safeParse(rawBody)
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Email and password are required" },
-      { status: 400 },
-    )
-  }
-
-  const { email, password } = parsed.data
-
-  // Authenticate against Strapi Users & Permissions
-  const res = await fetch(`${env.STRAPI_URL}/api/auth/local`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ identifier: email, password }),
-    signal: AbortSignal.timeout(5000),
-  })
-
-  if (!res.ok) {
-    return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
-  }
-
-  const authParsed = authResponseSchema.safeParse(await res.json())
-  if (!authParsed.success) {
-    return NextResponse.json(
-      { error: "Unexpected auth response from upstream" },
-      { status: 502 },
-    )
-  }
-  const { jwt, user: authUser } = authParsed.data
-
-  // Fetch user with role (uses admin API token to bypass content API sanitization)
-  const user = await fetchUserWithRole(authUser.id)
-
-  if (!user) {
-    return NextResponse.json(
-      { error: "Failed to fetch user profile from upstream" },
-      { status: 502 },
-    )
-  }
-
-  if (user.role?.name !== "Manager") {
-    return NextResponse.json({ error: "Unauthorized role" }, { status: 403 })
-  }
-
-  const cookieStore = await cookies()
-  cookieStore.set("strapi-jwt", jwt, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  })
-
-  return NextResponse.json({
-    user: { id: user.id, email: user.email, role: user.role?.name },
-  })
 }

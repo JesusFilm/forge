@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Няма даступнага зместу пра вопыт.",
+    "failedToLoad": "Не ўдалося загрузіць вопыт: {message}",
+    "unexpected": "Адбылася нечаканая памылка.",
+    "notConfigured": "Служба зместу не наладжана.",
+    "noContent": "Няма даступнага зместу.",
+    "homepageMisconfigured": "Галоўная старонка прагляду наладжана няправільна.",
+    "defaultTemplateMisconfigured": "Прадвызначаны шаблон прагляду наладжаны няправільна.",
+    "authFailed": "Не ўдалося аўтарызавацца ў службе зместу. Калі праблема не знікае, звярніцеся ў службу падтрымкі.",
+    "pageLoadFailed": "Штосьці пайшло не так.",
+    "tryAgain": "Паспрабаваць зноў"
+  },
+  "VideosPage": {
+    "title": "Усе відэа",
+    "placeholder": "Пошук па каталогу з’явіцца хутка. Пакуль што карыстайцеся пошукам або спасылкай на пэўную тэму."
+  },
+  "BibleQuotes": {
+    "title": "Цытаты з Бібліі",
+    "share": "Падзяліцца",
+    "readMore": "Чытаць далей...",
+    "learnMore": "Даведацца больш",
+    "freeResources": "Бясплатныя рэсурсы",
+    "promoHeading": "Хочаце глыбей зразумець Біблію?",
+    "joinBibleStudy": "Далучайцеся да нашага вывучэння Бібліі",
+    "previousQuote": "Папярэдняя цытата з Бібліі",
+    "nextQuote": "Наступная цытата з Бібліі",
+    "readPassage": "Прачытайце гэты ўрывак у сваёй Бібліі."
+  },
+  "DownloadButton": {
+    "checking": "Праверка",
+    "download": "Спампаваць",
+    "sessionError": "Не ўдалося праверыць вашу сесію. Паспрабуйце яшчэ раз.",
+    "saveVideo": "Захаваць відэа"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Спампаваць відэа",
+    "eyebrow": "Спампаваць відэа",
+    "posterAlt": "Постэр відэа",
+    "noDownloads": "Для гэтага відэа няма даступных спамповак.",
+    "fileSizeLabel": "Выберыце памер файла",
+    "termsAgreementPrefix": "Я згодны з ",
+    "termsOfUse": "Умовамі выкарыстання",
+    "termsAgreementSuffix": "",
+    "close": "Закрыць",
+    "download": "Спампаваць",
+    "authRequiredTitle": "Хочаце спампаваць гэтае відэа?",
+    "authRequiredBody": "Каб спампаваць відэа, патрэбны бясплатны ўліковы запіс Jesus Film.",
+    "signInToDownload": "Увайсці, каб спампаваць",
+    "keepWatching": "Працягнуць прагляд",
+    "checking": "Праверка",
+    "closeTermsOfUse": "Закрыць умовы выкарыстання",
+    "cancel": "Скасаваць",
+    "accept": "Прыняць",
+    "errorSessionExpired": "Тэрмін дзеяння вашай сесіі скончыўся. Увайдзіце зноў, каб спампаваць.",
+    "errorSessionUnavailable": "Не ўдалося праверыць вашу сесію. Паспрабуйце яшчэ раз.",
+    "errorUnavailableSource": "Спампоўка недаступная з гэтага крыніцы",
+    "tierHighest": "Найвышэйшая",
+    "tierHigh": "Высокая",
+    "tierLow": "Нізкая"
+  },
+  "HeroPlayerControls": {
+    "play": "Прайграць",
+    "pause": "Прыпыніць",
+    "seek": "Перайсці",
+    "seekValue": "{current} з {total}",
+    "volume": "Гучнасць",
+    "volumeValue": "{percent} працэнтаў",
+    "mute": "Адключыць гук",
+    "unmute": "Уключыць гук",
+    "changeAudioLanguage": "Змяніць мову аўдыё",
+    "enterFullscreen": "Увайсці ў поўнаэкранны рэжым",
+    "exitFullscreen": "Выйсці з поўнаэкраннага рэжыму"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Выбраць мову",
+    "searchPlaceholder": "Пошук моў…",
+    "languages": "Мовы",
+    "noMatches": "Няма супадзенняў",
+    "notAvailable": "Недаступна"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Мова",
+    "dialogTitleWithSubtitles": "Мова і субцітры",
+    "languageHeading": "Мова",
+    "subtitlesHeading": "Субцітры",
+    "languageCount": "{count, plural, one {# мова} few {# мовы} many {# моў} other {# мовы}}",
+    "requestSent": "Запыт адпраўлены",
+    "translateWithAi": "Перакласці з дапамогай ШІ",
+    "noSubtitles": "Няма субцітраў",
+    "toggleOn": "Укл.",
+    "toggleOff": "Выкл.",
+    "close": "Закрыць",
+    "apply": "Ужыць",
+    "noLanguageSubtitles": "Няма субцітраў на {language}",
+    "seeAllLanguages": "Усе мовы",
+    "seeAllVideosInLanguage": "Усе відэа: {language}",
+    "retryLoadingLanguages": "Паспрабаваць загрузіць мовы яшчэ раз",
+    "notAvailable": "Недаступна",
+    "switching": "Пераключэнне..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# ЭПІЗОД} few {# ЭПІЗОДЫ} many {# ЭПІЗОДАЎ} other {# ЭПІЗОДАЎ}}",
+    "seriesLabel": "СЕРЫЯ · {episodes}",
+    "changeAudioLanguage": "Змяніць мову аўдыё",
+    "share": "Падзяліцца",
+    "languages": "Мовы",
+    "downloadCollection": "Спампаваць калекцыю",
+    "checkingDownloads": "Праверка спамповак…",
+    "downloadSessionError": "Не ўдалося праверыць вашу сесію. Паспрабуйце яшчэ раз."
+  },
+  "WatchModal": {
+    "close": "Закрыць"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Калі б вы маглі задаць пытанне стваральніку гэтага відэа, што б вы спыталі?",
+    "fallbackBody": "Правядзіце асабістую размову з чалавекам, які гатовы слухаць.",
+    "questionsShort": "Пытанні",
+    "questions": "Падобныя пытанні",
+    "askYours": "Задаць сваё",
+    "chatWithPerson": "Пагаварыць з чалавекам",
+    "askBibleQuestion": "Задаць пытанне па Бібліі",
+    "quiz": "Віктарына"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Тып паведамлення",
+    "fieldLabel": "Задайце пытанне пра гэтае відэа",
+    "send": "Адправіць пытанне",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Задаць пытанне па Бібліі",
+        "description": "Адказы адразу з Бібліі з дапамогай пошуку на базе ШІ"
+      },
+      "prayerRequest": {
+        "label": "Папрасіць аб малітве",
+        "description": "Падзяліцеся, за што маліцца"
+      },
+      "comment": {
+        "label": "Пакінуць каментар",
+        "description": "Адпраўце свае думкі пра гэтае відэа"
+      },
+      "personChat": {
+        "label": "Пагаварыць з чалавекам",
+        "description": "Пагаварыце з кім-небудзь зараз"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Падзяліцца відэа",
+    "heading": "Падзяліцца гэтым відэа",
+    "posterAlt": "Постэр відэа",
+    "shareOnFacebook": "Падзяліцца ў Facebook",
+    "shareOnFacebookUnavailable": "Падзяліцца ў Facebook (недаступна ў гэтай зборцы)",
+    "shareOnX": "Падзяліцца ў X",
+    "shareOnXUnavailable": "Падзяліцца ў X (недаступна ў гэтай зборцы)",
+    "shareDisabledHint": "Для абмену патрэбна апублікаваная старонка — гэта будзе працаваць, калі гэтае відэа выйдзе ў прадакшн.",
+    "shareFormat": "Фармат абмену",
+    "shareLinkTab": "Спасылка для абмену",
+    "embedCodeTab": "Код убудовы",
+    "copyFailed": "Не ўдалося скапіяваць аўтаматычна — вылучыце тэкст ніжэй і скапіруйце ўручную.",
+    "copyLink": "Скапіяваць спасылку",
+    "copyCode": "Скапіяваць код",
+    "copied": "Скапіявана",
+    "close": "Закрыць"
+  },
+  "SubtitleTranscript": {
+    "heading": "Транскрыпт",
+    "subheading": "Націсніце на любы радок, каб перайсці да гэтага моманту.",
+    "subtitleLanguage": "Мова субцітраў",
+    "aiSuffix": " · ШІ",
+    "loading": "Загрузка транскрыпту…",
+    "unavailable": "Транскрыпт недаступны для гэтай дарожкі субцітраў.",
+    "empty": "Радкі транскрыпту не знойдзены."
+  },
+  "FloatingSearch": {
+    "placeholder": "Шукайце або праглядайце тэмы…",
+    "openSearch": "Шукаць відэа",
+    "searchRegion": "Шукаць відэа",
+    "clearSearch": "Ачысціць пошук",
+    "changeAudioLanguage": "Змяніць мову аўдыё",
+    "home": "Галоўная JesusFilm",
+    "closeSearch": "Закрыць пошук",
+    "submitSearch": "Шукаць",
+    "library": "Бібліятэка"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Пошук і прагляд відэа",
+    "home": "Галоўная JesusFilm",
+    "placeholder": "Шукайце або праглядайце тэмы…",
+    "inputLabel": "Шукаць відэа па ключавым слове",
+    "searchFailed": "Пошук не ўдалося. Паспрабуйце яшчэ раз.",
+    "loadMoreFailed": "Не ўдалося загрузіць больш вынікаў.",
+    "searching": "Пошук...",
+    "connectionHint": "Праверце злучэнне і паспрабуйце яшчэ раз.",
+    "rateLimitHint": "Занадта шмат запытаў. Паўтарыце спробу праз хвіліну.",
+    "retrySearch": "Паўтарыць пошук",
+    "retry": "Паспрабаваць зноў",
+    "noResults": "Няма вынікаў па запыце \"{query}\"",
+    "tryDifferentKeywords": "Паспрабуйце іншыя ключавыя словы або праглядзіце катэгорыі",
+    "loading": "Загрузка...",
+    "loadMore": "Загрузіць яшчэ",
+    "categoryBibleStories": "Біблейскія гісторыі",
+    "categoryParables": "Прытчы",
+    "categoryAnimated": "Анімацыя",
+    "categoryStudy": "Вучоба",
+    "categoryFamily": "Сям’я",
+    "categoryChristmas": "Каляды",
+    "searchLanguageLabel": "Мова пошуку",
+    "allLanguages": "Усе мовы",
+    "searchSuggestions": "Пошукавыя падказкі",
+    "directMatches": "Дакладныя супадзенні",
+    "languages": "Мовы",
+    "recommendedLanguage": "Рэкамендаваная мова",
+    "searchSuggestion": "Шукаць «{suggestion}»",
+    "searchSuggestionWithLanguage": "Шукаць «{suggestion}» — мова: {language}",
+    "inLanguage": "на {language}",
+    "browseByRegion": "Праглядаць па рэгіёне",
+    "allVideosOnSinglePage": "Усе відэа на адной старонцы",
+    "clearLanguages": "Ачысціць",
+    "queryLanguageDetected": "Выяўлена мова: {language}",
+    "searchInLanguage": "Мова пошуку: {language}",
+    "tryDifferentKeywordsOrLanguage": "Паспрабуйце іншыя ключавыя словы або выберыце іншую мову пошуку",
+    "useWebsiteDefaultLanguage": "Выкарыстоўваць мову пошуку сайта па змаўчанні",
+    "removeLanguage": "Выдаліць {language}",
+    "browseMode": "Рэжым агляду пошуку",
+    "searchingInLanguage": "Мова вынікаў: {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Глядзець зараз",
+    "tapToUnmute": "Націсніце, каб уключыць гук",
+    "nextEpisode": "Наступны эпізод",
+    "audioTranslationCount": "{count, plural, one {# мова} few {# мовы} many {# моў} other {# мовы}}",
+    "subtitleCount": "Субцітры: {count, plural, one {# мова} few {# мовы} many {# моў} other {# мовы}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Загрузка зместу",
+    "loadingVideo": "Загрузка відэа"
+  },
+  "VideoLabels": {
+    "video": "Відэа",
+    "segment": "Сегмент",
+    "episode": "Эпізод",
+    "featureFilm": "Поўнаметражны фільм",
+    "shortFilm": "Кароткаметражны фільм",
+    "series": "Серыя",
+    "collection": "Калекцыя",
+    "trailer": "Трэйлер",
+    "behindTheScenes": "За кадрам",
+    "chapter": "Раздзел"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Кліп {current} з {total}",
+    "position": "{current} з {total}",
+    "chapterCount": "{count, plural, one {# раздзел} few {# раздзелы} many {# раздзелаў} other {# раздзелаў}}",
+    "clipAriaLabel": "{title} · Кліп {current} з {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# раздзел} few {# раздзелы} many {# раздзелаў} other {# раздзелаў}}",
+    "chapter": "Раздзел",
+    "noImage": "Няма выявы",
+    "playingNow": "Ідзе цяпер",
+    "previousChapter": "Папярэдні раздзел",
+    "nextChapter": "Наступны раздзел",
+    "thumbnailAlt": "Мініяцюра {title}",
+    "relatedVideoThumbnail": "Мініяцюра звязанага відэа"
+  },
+  "SearchResultCard": {
+    "experience": "Вопыт",
+    "episodeCount": "{count, plural, one {# эпізод} few {# эпізоды} many {# эпізодаў} other {# эпізодаў}}",
+    "thumbnailAlt": "Мініяцюра відэа"
+  },
+  "Feedback": {
+    "openForm": "Адкрыць форму водгуку",
+    "label": "Водгук",
+    "couldNotLoad": "Не ўдалося загрузіць форму водгуку.",
+    "loadingForm": "Загрузка формы водгуку…",
+    "retry": "Паспрабаваць зноў",
+    "cancel": "Скасаваць",
+    "closeForm": "Закрыць форму водгуку",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Бясплатныя хрысціянскія відэа на {language} | Jesus Film Project",
+    "metadataDescription": "Паглядзіце фільмы пра Езуса, біблейскія гісторыі, серыі для вучнёўства і відэа для евангелізацыі з агучкай або субцітрамі на {language}.",
+    "heroTitle": "Бясплатныя хрысціянскія відэа на {language}",
+    "heroDescription": "Паглядзіце фільмы пра Езуса, біблейскія гісторыі, серыі для вучнёўства і відэа для евангелізацыі, даступныя на {language}. Спачатку паказваюцца відэа з поўным дубляжом, ніжэй — варыянты толькі з субцітрамі.",
+    "languageCollection": "Калекцыя мовы",
+    "itemCount": "{count, plural, one {# элемент} few {# элементы} many {# элементаў} other {# элементаў}}",
+    "videoCount": "{count, plural, one {# відэа} few {# відэа} many {# відэа} other {# відэа}}",
+    "videosInGroups": "{videoCount, plural, one {# відэа} few {# відэа} many {# відэа} other {# відэа}} у {groupCount, plural, one {# групе} few {# групах} many {# групах} other {# групах}}",
+    "sectionNavLabel": "Раздзелы каталога моў",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Новае",
+    "videoBible": "Відэа Біблія",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Калекцыі",
+    "subtitlesOnly": "Толькі субцітры",
+    "backToTop": "Уверх",
+    "newlyAdded": "Нядаўна дададзеныя",
+    "newVideosTitle": "Новыя хрысціянскія відэа на {language}",
+    "newestFirst": "Спачатку найноўшыя",
+    "noPublishedVideos": "Пакуль што для гэтай мовы не знойдзена апублікаваных відэа.",
+    "bibleAndGospelFilms": "Біблейскія і Евангельскія фільмы",
+    "videoBibleCollectionsTitle": "Калекцыі Video Bible на {language}",
+    "videoBibleDescription": "Калекцыі, заснаваныя на Пісанні, у тым ліку LUMO, JESUS, Magdalena і Acts, на {language}.",
+    "noVideoBibleCollections": "Пакуль што для гэтай мовы няма даступных калекцый Video Bible.",
+    "bibleProjectCollectionsTitle": "Калекцыі BibleProject на {language}",
+    "bibleProjectDescription": "Серыі і вывучэнні BibleProject, даступныя на {language}.",
+    "noBibleProjectCollections": "Пакуль што для гэтай мовы няма даступных калекцый BibleProject.",
+    "sportsStories": "Спартыўныя гісторыі",
+    "sportsTitle": "Спартыўныя гісторыі і гісторыі пра спартсменаў на {language}",
+    "sportsDescription": "Гісторыі пра спорт і калекцыі пра спартсменаў, даступныя на {language}.",
+    "noSportsCollections": "Пакуль што для гэтай мовы няма даступных калекцый пра спорт або гісторыі пра спартсменаў.",
+    "fullyDubbed": "Поўны дубляж",
+    "dubbedVideosTitle": "Відэа на {language} па калекцыях",
+    "dubbedVideosDescription": "Праглядвайце цалкам дубляваныя відэа на {language}, згрупаваныя паводле калекцый для зручнага пошуку.",
+    "noDubbedVideos": "Пакуль што для гэтай мовы няма даступных цалкам дубляваных відэа.",
+    "subtitlesAvailable": "Субцітры даступныя",
+    "subtitlesTitle": "Відэа на {language} з субцітрамі",
+    "subtitlesDescription": "Гэтыя відэа маюць субцітры на {language}, калі агучка на {language} яшчэ недаступная.",
+    "noSubtitleVideos": "Пакуль што для гэтай мовы няма даступных відэа толькі з субцітрамі.",
+    "dubbed": "Дубляванае",
+    "subtitles": "Субцітры",
+    "newLabel": "Новае",
+    "fromCollection": "З {collection}",
+    "standaloneVideos": "Асобныя відэа",
+    "videosFromCollection": "Відэа з {collection}.",
+    "standaloneDescription": "Асобныя відэа на гэтай мове.",
+    "openCollection": "Адкрыць калекцыю",
+    "filters": "Фільтры",
+    "filterLength": "Працягласць",
+    "filterLength_under5": "Менш за 5 хв",
+    "filterLength_5to10": "5-10 хв",
+    "filterLength_10to30": "10-30 хв",
+    "filterLength_over30": "Больш за 30 хв",
+    "filterType": "Тып",
+    "clearFilters": "Скінуць фільтры",
+    "filterResults": "Паказана {count} з {total}",
+    "noFilterResults": "Няма відэа, якія адпавядаюць гэтым фільтрам. Спрабуйце зняць адзін.",
+    "filterAdded": "Дадана",
+    "filterAdded_60d": "Останнія 60 дзён",
+    "filterAdded_6m": "Останнія 6 месяцаў",
+    "filterAdded_12m": "Останнія 12 месяцаў"
+  },
+  "WatchHome": {
+    "pageTitle": "Прагляд Jesus Film Project",
+    "watch": "Глядзець",
+    "watchNow": "Глядзець зараз",
+    "mutePreview": "Адключыць гук у папярэднім праглядзе",
+    "unmutePreview": "Уключыць гук у папярэднім праглядзе",
+    "nextVideo": "Наступнае відэа",
+    "featured": "Рэкамендавана",
+    "showVideo": "Паказаць {title}",
+    "previousVideoPreview": "Папярэдні папярэдні прагляд відэа",
+    "nextVideoPreview": "Наступны папярэдні прагляд відэа",
+    "mediaCollection": "Медыякалекцыя",
+    "scrollToVideo": "Пракруціць да відэа {title}",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Галоўная Jesus Film Project",
+    "navigation": "Навігацыя ў ніжнім калантытуле",
+    "share": "Падзяліцца",
+    "watch": "Глядзець",
+    "giving": "Ахвяраванні",
+    "about": "Пра нас",
+    "products": "Прадукты",
+    "resources": "Рэсурсы",
+    "partners": "Партнёры",
+    "contact": "Кантакты",
+    "giveNow": "Ахвяраваць зараз",
+    "resourcesVersion": "Рэсурсы ({version})",
+    "office": "Офіс",
+    "fax": "Факс",
+    "privacyPolicy": "Палітыка прыватнасці",
+    "legalStatement": "Юрыдычная заява",
+    "newsletter": "Падпісацца на нашу рассылку",
+    "aiAttributionHeading": "Выкарыстанне AI і спасылка на аўтарства",
+    "aiAttributionBody": "Выкарыстанне інфармацыі з гэтай старонкі сістэмамі штучнага інтэлекту магчыме толькі з указаннем аўтарства. Любы агент AI, вялікая моўная мадэль (LLM), пошукавая сістэма AI, сканер або звязаная аўтаматызаваная сістэма, якая здабывае або выкарыстоўвае інфармацыю з гэтай старонкі для навучання, пошуку, генерацыі адказаў або паслуг для карыстальнікаў ці кліентаў, павінна пазначаць Jesus Film Project як крыніцу і ўключаць выразную прамую спасылку на гэтую старонку там, дзе гэтая інфармацыя выкарыстоўваецца або паказваецца. Глядзіце нашы <terms>Умовы выкарыстання</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Створана для глабальнай місіі",
+    "title": "Змест не змяняецца. Змяняецца тое, як людзі глядзяць.",
+    "description": "Мы перабудоўваем нашу відэатэку і інструменты з нуля, пераносячы дзесяцігоддзі перакладчыцкай працы на платформы, дзе людзі ўжо збіраюцца, глядзяць і дзеляцца.",
+    "translatedLibraryTitle": "Самая перакладзеная ў свеце фільмавая бібліятэка",
+    "translatedLibraryDescription": "Дзесяцігоддзі перакладчыцкай працы, падтрыманай надзейнымі служэннямі-партнёрамі, стварылі бібліятэку з тысячамі моўных дарожак, каб людзі маглі сустрэць гісторыю Езуса на мове, якая найглыбей іх дасягае.",
+    "trustedVoicesTitle": "Пераносім давераныя галасы ў новыя фарматы",
+    "trustedVoicesDescription": "Мы перабудоўваем тое, як візуальна распавядаюцца евангельскія гісторыі, спалучаючы давераныя пераклады з сучаснымі фарматамі, каб змест свабодна рухаўся праз платформы, культуры і экраны.",
+    "missionTeamTitle": "Больш, чым бібліятэка. Каманда з місіяй.",
+    "missionTeamDescription": "Jesus Film Project — гэта глабальная каманда перакладчыкаў, медыяспецыялістаў, рэдактараў і аўтараў, якая ператварае дзесяцігоддзі служэння ў інструменты для вучняў усюды.",
+    "buildingNext": "Што мы будуем далей",
+    "nextStepsTitle": "Платформа наступнага кроку",
+    "nextStepsDescription": "Злучайце гледачоў з канкрэтнымі магчымасцямі на іх духоўным шляху, дапамагаючы ім зрабіць наступны крок у супольнасць, да Пісання або ў місію.",
+    "mediaLibraryTitle": "Евангелізацыйная медыябібліятэка",
+    "mediaLibraryDescription": "Шырокая хрысціянская медыябібліятэка з тысячамі відэа, фільмаў і рэсурсаў, даступных на розных мовах для служэння і евангелізацыі ва ўсім свеце.",
+    "ministryToolsTitle": "Лічбавыя інструменты для служэння",
+    "ministryToolsDescription": "Кіраванне відэа, распаўсюджванне кантэнту, узаемадзеянне з аўдыторыяй і аналітыка, створаныя, каб дапамагчы служэнням дасягаць больш людзей эфектыўна.",
+    "invitationEyebrow": "Вас запрашаюць",
+    "invitationTitle": "Дапамажыце стварыць <highlight>новае пакаленне</highlight> місійных інструментаў",
+    "invitationDescription": "Мы запрашаем практыкаў, аўтараў і партнёраў да ранняга доступу. Тэстуйце новыя інструменты першымі, пакідайце водгукі і дапамажыце сфарміраваць прадукты, створаныя для рэальнай місійнай працы.",
+    "betaTester": "Стаць бэта-тэстарам"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Калекцыя Video Bible",
+    "gospelRailTitle": "Адкрыйце поўную гісторыю",
+    "videoBibleDescription": "Азнаёмцеся з нашай калекцыяй відэа і рэсурсаў, якія ажыўляюць Біблію праз захапляльныя гісторыі і навучанне.",
+    "showcaseTitle": "Пісанне, распаведзенае праз фільм",
+    "adventEyebrow": "Калядны Адвэнт",
+    "adventTitle": "Зваротны адлік да Каляднага Адвэнту",
+    "adventDescription": "Далучайцеся да нашай адвэнт-дарогі з штодзённым відэа, якое ўзмацняе чаканне Каляд, адкрываючы надзею, радасць і абяцанне прыйсця Езуса.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Адвэнт BibleProject",
+    "nuaEyebrow": "Серыя NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Серыя Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Відэакурс",
+    "journeyWithJesusTitle": "Шлях з Езусам",
+    "gospelsOnVideoEyebrow": "Кожнае Евангелле ў відэа",
+    "scriptureAsWrittenTitle": "Пісанне, прамоўленае дакладна так, як напісана",
+    "merryChristmas": "Шчаслівых Калядаў!",
+    "daysUntilChristmas": "{count, plural, one {# дзень да Калядаў} few {# дні да Калядаў} many {# дзён да Калядаў} other {# дня да Калядаў}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Мовы",
+    "metadataDescription": "Праглядайце відэа JesusFilm па мовах.",
+    "eyebrow": "Мовы прагляду",
+    "title": "Выберыце мову",
+    "description": "Даследуйце мовы па рэгіёнах або праглядзіце поўны спіс.",
+    "searchPlaceholder": "Пошук моў або краін...",
+    "searchLabel": "Пошук моў або краін",
+    "clearSearch": "Ачысціць пошук",
+    "browse": "Прагляд",
+    "browseByRegion": "Прагляд па рэгіёне і краіне",
+    "languageCount": "{count, plural, one {# мова} few {# мовы} many {# моў} other {# мовы}}",
+    "region": "Рэгіён",
+    "countryLanguages": "Мовы {country}",
+    "showLess": "Паказаць менш",
+    "showMore": "Паказаць яшчэ {count}",
+    "noLanguages": "Мовы не знойдзены",
+    "tryAnotherSearch": "Паспрабуйце іншы пошукавы запыт."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Гісторыя прагляду | Jesus Film Project",
+    "title": "Гісторыя прагляду",
+    "loading": "Загрузка гісторыі",
+    "empty": "Пакуль што тут нічога няма",
+    "emptyDescription": "Відэа, якія вы глядзіце падчас уваходу ў сістэму, будуць з’яўляцца тут.",
+    "earlier": "Раней",
+    "today": "Сёння",
+    "yesterday": "Учора"
+  },
+  "AccountControl": {
+    "account": "Уліковы запіс",
+    "accountMenu": "Меню ўліковага запісу",
+    "signIn": "Увайсці",
+    "signOut": "Выйсці",
+    "signedIn": "Увайшлі ў сістэму",
+    "history": "Гісторыя",
+    "logOut": "Выйсці"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Старонка не знойдзена",
+    "eyebrow": "Старонка не знойдзена",
+    "screenReaderPrefix": "Старонка не знойдзена:",
+    "title": "Гэтай сцэны тут няма.",
+    "description": "Магчыма, старонка перамясцілася, але гісторыя працягваецца.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Дзеянні для старонкі не знойдзена",
+    "backToWatch": "Назад да прагляду",
+    "browseVideos": "Праглядзець відэа"
+  },
+  "VideoRecommendations": {
+    "match": "Супадзенне: {percent}%",
+    "none": "Для гэтага відэа няма рэкамендацый на гэтай мове."
+  },
+  "BetaTesterModal": {
+    "title": "Стаць бэта-тэстарам",
+    "trigger": "Стаць бэта-тэстарам",
+    "loadFailed": "Штосьці пайшло не так.",
+    "loading": "Загрузка...",
+    "openFormNewTab": "Адкрыць форму ў новай укладцы",
+    "close": "Закрыць",
+    "iframeTitle": "Стаць бэта-тэстарам"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Спампаваць калекцыю",
+    "eyebrow": "Спампаваць калекцыю",
+    "description": "Адзін раз выберыце мову і якасць. Усе даступныя эпізоды будуць спампаваны па парадку.",
+    "signInTitle": "Увайдзіце, каб спампаваць",
+    "signInBody": "Спампоўка калекцый даступная пасля ўваходу з уліковым запісам Jesus Film.",
+    "signIn": "Увайсці, каб спампаваць",
+    "languageLabel": "Мова",
+    "qualityLabel": "Якасць відэа",
+    "tierHighest": "Найвышэйшая",
+    "tierHigh": "Высокая",
+    "tierLow": "Нізкая",
+    "loading": "Пошук даступных для спампоўкі эпізодаў…",
+    "loadError": "Не ўдалося загрузіць спампоўкі для гэтай мовы.",
+    "retry": "Паспрабаваць зноў",
+    "noDownloads": "На гэтай мове няма эпізодаў, даступных для спампоўкі.",
+    "availableCount": "{count, plural, one {# эпізод гатовы} few {# эпізоды гатовыя} many {# эпізодаў гатовыя} other {# эпізода гатовыя}}",
+    "skippedCount": "{count, plural, one {# эпізод будзе прапушчаны, бо ён недаступны} few {# эпізоды будуць прапушчаны, бо яны недаступныя} many {# эпізодаў будуць прапушчаны, бо яны недаступныя} other {# эпізода будуць прапушчаны, бо яны недаступныя}}",
+    "chooseFolder": "Выбраць папку для спамповак",
+    "folderSelected": "Захаваць у {name}",
+    "folderError": "Не ўдалося адкрыць папку для спамповак.",
+    "browserFallback": "Браўзер захавае кожны файл са звычайнымі наладамі спамповак. Ён можа папрасіць дазволіць некалькі спамповак.",
+    "sessionError": "Не ўдалося праверыць вашу сесію. Паспрабуйце яшчэ раз.",
+    "downloading": "Спампоўваецца: {title}",
+    "progress": "{completed} з {total}",
+    "complete": "Спампоўкі завершаны",
+    "canceled": "Спампоўкі скасаваны",
+    "failedCount": "{count, plural, one {Не ўдалося спампаваць # эпізод} few {Не ўдалося спампаваць # эпізоды} many {Не ўдалося спампаваць # эпізодаў} other {Не ўдалося спампаваць # эпізода}}. Каб паўтарыць спампоўку калекцыі, зноў выберыце «Спампаваць».",
+    "close": "Закрыць",
+    "cancel": "Скасаваць",
+    "start": "Спампаваць усе",
+    "downloadAgain": "Спампаваць зноў",
+    "retryFailed": "Паўтарыць няўдалыя спампоўкі"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Моўная версія недаступная",
+    "eyebrow": "Моўная версія недаступная",
+    "title": "<contentTitle>{title}</contentTitle>: няма версіі на мове <languageName>«{language}»</languageName>",
+    "actionsLabel": "Даступныя варыянты прагляду",
+    "browseInLanguage": "Усе відэа на мове «{language}»",
+    "backToSearch": "Назад да пошуку",
+    "audioVersionsTitle": "Іншыя аўдыяверсіі",
+    "audioVersionsDescription": "Выберыце мову аўдыя, каб працягнуць прагляд гэтага відэа.",
+    "languageVersionLabel": "Мова аўдыя",
+    "selectLanguageVersion": "Выберыце моўную версію",
+    "watchSelectedVersion": "Глядзець выбраную версію"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Налады cookie",
+    "bannerTitle": "Ваш выбар прыватнасці",
+    "bannerDescription": "Абавязковыя cookie забяспечваюць бяспеку і працу Watch. З вашага дазволу дадатковы ўласны cookie можа запамінаць інтарэсы паміж наведваннямі, каб персаналізаваць рэкамендацыі. Кантэкстныя рэкамендацыі будуць даступныя ў любым выпадку.",
+    "acceptAll": "Прыняць усе",
+    "essentialOnly": "Толькі абавязковыя",
+    "manageChoices": "Кіраваць выбарам",
+    "savingChoice": "Захаванне выбару cookie",
+    "settings": "Налады cookie",
+    "settingsDescription": "Выберыце, ці можа Watch запамінаць інтарэсы для рэкамендацый паміж наведваннямі. Вы можаце змяніць гэта ў любы час.",
+    "essentialCookies": "Абавязковыя cookie",
+    "essentialDescription": "Бяспека, прайграванне, налады прыватнасці і атрыбуцыя запытаў на рэкамендацыі.",
+    "alwaysActive": "Заўсёды актыўныя",
+    "personalization": "Персаналізацыя",
+    "personalizationDescription": "Запамінаць абмежаваныя інтарэсы паміж наведваннямі. Калі выключыць гэта, кантэкстныя рэкамендацыі ўсё роўна будуць даступныя.",
+    "erasurePending": "Выдаленне профілю чакаецца. Кантэкстныя рэкамендацыі ўжо актыўныя.",
+    "cancel": "Скасаваць",
+    "saveChoices": "Захаваць выбар",
+    "saving": "Захаванне…",
+    "loadError": "Не ўдалося загрузіць ваш выбар. Вы ўсё яшчэ можаце выбраць ніжэй.",
+    "grantError": "Не ўдалося ўключыць персаналізацыю. Застаюцца даступнымі толькі абавязковыя cookie.",
+    "saveError": "Не ўдалося захаваць ваш выбар. Паспрабуйце яшчэ раз."
+  }
+}

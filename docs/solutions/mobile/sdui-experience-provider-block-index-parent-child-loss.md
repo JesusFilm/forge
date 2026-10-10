@@ -2,6 +2,7 @@
 title: "Video detail page missing sibling content from parent sectionWrapper"
 category: mobile
 date: 2026-04-07
+last_updated: 2026-05-27
 tags:
   [
     sdui,
@@ -13,15 +14,17 @@ tags:
     navigation,
     block-index,
   ]
-module: apps/mobile-v2
+module: apps/mobile
 severity: high
 ---
 
 # Video Detail Page Missing Sibling Content From Parent SectionWrapper
 
+> **Note (2026-05-27):** The standalone video detail route at `app/watch/[slug].tsx` (branch `feat/mobile-video-detail-page`) bypasses this issue entirely by fetching video data independently via `GET_VIDEO_BY_SLUG` GraphQL query, without relying on the ExperienceProvider block index. The workaround below still applies to the existing `app/video/[sectionKey].tsx` route within Experience contexts. See `docs/solutions/best-practices/mobile-video-detail-page-patterns-20260527.md`.
+
 ## Problem
 
-In the `apps/mobile-v2` SDUI app, tapping a video thumbnail on the home page navigated to a video detail page that only showed the video player, title, and description. All associated sibling content from the parent Experience section — text blocks, related questions, Bible quotes carousel, quiz buttons, Easter dates — was missing.
+In the `apps/mobile` SDUI app, tapping a video thumbnail on the home page navigated to a video detail page that only showed the video player, title, and description. All associated sibling content from the parent Experience section — text blocks, related questions, Bible quotes carousel, quiz buttons, Easter dates — was missing.
 
 ## Root Cause
 
@@ -38,7 +41,7 @@ Attach a synthetic `siblingContent` field to each child block during the indexin
 ### ExperienceProvider — indexBlock with siblingContent propagation
 
 ```typescript
-// apps/mobile-v2/src/contexts/ExperienceProvider.tsx
+// apps/mobile/src/contexts/ExperienceProvider.tsx
 function indexBlock(
   block: NormalizedBlock,
   siblingContent?: NormalizedBlock[],
@@ -75,7 +78,7 @@ function indexBlock(
 ### Video detail page — consuming siblingContent
 
 ```typescript
-// apps/mobile-v2/app/video/[sectionKey].tsx
+// apps/mobile/app/video/[sectionKey].tsx
 const siblings = (section.siblingContent as NormalizedBlock[] | undefined) ?? []
 const currentKey = section.sectionKey as string | undefined
 const nestedContent = siblings.filter(
@@ -107,9 +110,9 @@ The existing `ContentDispatcher` renders siblings automatically — no new rende
 
 ## Entry Points
 
-- `apps/mobile-v2/src/contexts/ExperienceProvider.tsx` — `indexBlock` function with `siblingContent` propagation
-- `apps/mobile-v2/app/video/[sectionKey].tsx` — reads `siblingContent`, filters current video, renders via ContentDispatcher
-- `apps/mobile-v2/src/components/sections/ContentDispatcher.tsx` — renders sibling blocks
+- `apps/mobile/src/contexts/ExperienceProvider.tsx` — `indexBlock` function with `siblingContent` propagation
+- `apps/mobile/app/video/[sectionKey].tsx` — reads `siblingContent`, filters current video, renders via ContentDispatcher
+- `apps/mobile/src/components/sections/ContentDispatcher.tsx` — renders sibling blocks
 
 ## Grep These
 

@@ -3,7 +3,7 @@ id: "feat-071"
 title: "Recommendation Content Deduplication"
 owner: "nisal"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-06-15"
 duration: 5
 depends_on:

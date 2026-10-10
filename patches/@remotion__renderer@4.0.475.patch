@@ -1,0 +1,145 @@
+diff --git a/dist/call-ffmpeg.js b/dist/call-ffmpeg.js
+index e488dab94036a037ed601da73c2d8029ae7a51b1..36d5c11d7b8fc679e883ced1e23284059462c392 100644
+--- a/dist/call-ffmpeg.js
++++ b/dist/call-ffmpeg.js
+@@ -11,6 +11,20 @@ const get_executable_path_1 = require("./compositor/get-executable-path");
+ const get_explicit_env_1 = require("./compositor/get-explicit-env");
+ const make_file_executable_1 = require("./compositor/make-file-executable");
+ const truthy_1 = require("./truthy");
++// Forge contained renderer only. Capture trusted startup policy before composition code.
++const forgeBoundedCodecThreads = process.env.FORGE_STUDIO_CODEC_THREADS === '1';
++const forgeCodecArgs = (bin, raw) => {
++    const args = raw.filter(Boolean);
++    if (!forgeBoundedCodecThreads || bin !== 'ffmpeg' || !args.includes('-i')) return args;
++    const clean = [];
++    for (let index = 0; index < args.length; index++) {
++        if (['-threads', '-filter_threads', '-filter_complex_threads'].includes(args[index])) { index++; continue; }
++        if (args[index] === '-i') clean.push('-threads', '1');
++        clean.push(args[index]);
++    }
++    // FFmpeg decoder options are per-input; final thread option belongs to the encoder.
++    return ['-filter_threads', '1', '-filter_complex_threads', '1', ...clean.slice(0, -1), '-threads', '1', ...clean.slice(-1)];
++};
+ const callFf = ({ args, bin, indent, logLevel, options, binariesDirectory, cancelSignal, }) => {
+     const executablePath = (0, get_executable_path_1.getExecutablePath)({
+         type: bin,
+@@ -20,7 +34,7 @@ const callFf = ({ args, bin, indent, logLevel, options, binariesDirectory, cance
+     });
+     (0, make_file_executable_1.makeFileExecutableIfItIsNot)(executablePath);
+     const cwd = path_1.default.dirname(executablePath);
+-    const task = (0, execa_1.default)(executablePath, args.filter(truthy_1.truthy), {
++    const task = (0, execa_1.default)(executablePath, forgeCodecArgs(bin, args), {
+         cwd,
+         env: (0, get_explicit_env_1.getExplicitEnv)(cwd),
+         ...options,
+@@ -40,7 +54,7 @@ const callFfNative = ({ args, bin, indent, logLevel, options, binariesDirectory,
+     });
+     (0, make_file_executable_1.makeFileExecutableIfItIsNot)(executablePath);
+     const cwd = path_1.default.dirname(executablePath);
+-    const task = (0, node_child_process_1.spawn)(executablePath, args.filter(truthy_1.truthy), {
++    const task = (0, node_child_process_1.spawn)(executablePath, forgeCodecArgs(bin, args), {
+         cwd,
+         env: (0, get_explicit_env_1.getExplicitEnv)(cwd),
+         ...options,
+diff --git a/dist/esm/index.mjs b/dist/esm/index.mjs
+index a06ba76ecb83a7d31663ce467dc0d1972776c430..187a0e5d21af203081c92bf72ebedd633df77a00 100644
+--- a/dist/esm/index.mjs
++++ b/dist/esm/index.mjs
+@@ -4690,6 +4690,21 @@ var makeFileExecutableIfItIsNot = (path5) => {
+ };
+ 
+ // src/call-ffmpeg.ts
++// Forge contained renderer only. Capture trusted startup policy before composition code.
++const forgeBoundedCodecThreads = process.env.FORGE_STUDIO_CODEC_THREADS === '1';
++const forgeCodecArgs = (bin, raw) => {
++    const args = raw.filter(Boolean);
++    if (!forgeBoundedCodecThreads || bin !== 'ffmpeg' || !args.includes('-i')) return args;
++    const clean = [];
++    for (let index = 0; index < args.length; index++) {
++        if (['-threads', '-filter_threads', '-filter_complex_threads'].includes(args[index])) { index++; continue; }
++        if (args[index] === '-i') clean.push('-threads', '1');
++        clean.push(args[index]);
++    }
++    // FFmpeg decoder options are per-input; final thread option belongs to the encoder.
++    return ['-filter_threads', '1', '-filter_complex_threads', '1', ...clean.slice(0, -1), '-threads', '1', ...clean.slice(-1)];
++};
++
+ var callFf = ({
+   args,
+   bin,
+@@ -4707,7 +4722,7 @@ var callFf = ({
+   });
+   makeFileExecutableIfItIsNot(executablePath);
+   const cwd = path5.dirname(executablePath);
+-  const task = execa(executablePath, args.filter(truthy), {
++  const task = execa(executablePath, forgeCodecArgs(bin, args), {
+     cwd,
+     env: getExplicitEnv(cwd),
+     ...options2
+@@ -4734,7 +4749,7 @@ var callFfNative = ({
+   });
+   makeFileExecutableIfItIsNot(executablePath);
+   const cwd = path5.dirname(executablePath);
+-  const task = spawn2(executablePath, args.filter(truthy), {
++  const task = spawn2(executablePath, forgeCodecArgs(bin, args), {
+     cwd,
+     env: getExplicitEnv(cwd),
+     ...options2
+@@ -21043,6 +21058,7 @@ var internalRenderFramesRaw = ({
+   const browserInstance = puppeteerInstance ?? makeBrowser();
+   const resolvedConcurrency = resolveConcurrency(concurrency);
+   const openedPages = [];
++    let browserReplacer;
+   return new Promise((resolve2, reject) => {
+     const cleanup = [];
+     const onError = (err) => {
+@@ -21072,7 +21088,7 @@ var internalRenderFramesRaw = ({
+         browserInstance
+       ]).then(([{ server: openedServer, cleanupServer }, pInstance]) => {
+         const { serveUrl, offthreadPort, sourceMap, downloadMap } = openedServer;
+-        const browserReplacer = handleBrowserCrash(pInstance, logLevel, indent);
++        browserReplacer = handleBrowserCrash(pInstance, logLevel, indent);
+         const cycle = cycleBrowserTabs({
+           puppeteerInstance: browserReplacer,
+           concurrency: resolvedConcurrency,
+@@ -21145,7 +21161,8 @@ var internalRenderFramesRaw = ({
+           Log.error({ indent, logLevel }, "Unable to close browser tab", err);
+         });
+       } else {
+-        Promise.resolve(browserInstance).then((instance) => {
++        // A recovered render owns the replacement browser, not the crashed original.
++                Promise.resolve(browserReplacer ? browserReplacer.getBrowser() : browserInstance).then((instance) => {
+           return instance.close({ silent: true });
+         }).catch((err) => {
+           if (!err?.message.includes("Target closed")) {
+diff --git a/dist/render-frames.js b/dist/render-frames.js
+index 508c2a48504a2194975fd301776cee0cd0e32f23..e52a47741ddf07eea60b54078df214793f1a86b0 100644
+--- a/dist/render-frames.js
++++ b/dist/render-frames.js
+@@ -222,6 +222,7 @@ const internalRenderFramesRaw = ({ browserExecutable, cancelSignal, chromiumOpti
+     const browserInstance = puppeteerInstance !== null && puppeteerInstance !== void 0 ? puppeteerInstance : makeBrowser();
+     const resolvedConcurrency = (0, get_concurrency_1.resolveConcurrency)(concurrency);
+     const openedPages = [];
++    let browserReplacer;
+     return new Promise((resolve, reject) => {
+         const cleanup = [];
+         const onError = (err) => {
+@@ -252,7 +253,7 @@ const internalRenderFramesRaw = ({ browserExecutable, cancelSignal, chromiumOpti
+             ]).then(([{ server: openedServer, cleanupServer }, pInstance]) => {
+                 var _a;
+                 const { serveUrl, offthreadPort, sourceMap, downloadMap } = openedServer;
+-                const browserReplacer = (0, replace_browser_1.handleBrowserCrash)(pInstance, logLevel, indent);
++                browserReplacer = (0, replace_browser_1.handleBrowserCrash)(pInstance, logLevel, indent);
+                 const cycle = (0, cycle_browser_tabs_1.cycleBrowserTabs)({
+                     puppeteerInstance: browserReplacer,
+                     concurrency: resolvedConcurrency,
+@@ -332,7 +333,8 @@ const internalRenderFramesRaw = ({ browserExecutable, cancelSignal, chromiumOpti
+                 });
+             }
+             else {
+-                Promise.resolve(browserInstance)
++                // A recovered render owns the replacement browser, not the crashed original.
++                Promise.resolve(browserReplacer ? browserReplacer.getBrowser() : browserInstance)
+                     .then((instance) => {
+                     return instance.close({ silent: true });
+                 })

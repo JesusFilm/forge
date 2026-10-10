@@ -1,9 +1,15 @@
-// Job state manager backed by Strapi CMS via GraphQL.
-// Uses typed operations from @forge/graphql with gql.tada.
+// Job state access helpers for admin and mock manager data modes.
 
-import { graphql, type ResultOf, type VariablesOf } from "@forge/graphql"
-import getClient from "@/cms/client"
-import { cmsPost } from "@/services/cmsClient"
+import { AdminGraphqlClient } from "@/backend/admin-client"
+import { publishJobEvent } from "@/lib/job-events"
+import {
+  getCmsGateway,
+  readMockCmsState,
+  updateMockCmsState,
+} from "@/cms/gateway"
+import { env } from "@/config/env"
+import { normalizeSubtitleValidationStepSummary } from "@/lib/subtitle-validation"
+import { normalizeTranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 import { buildInitialSteps } from "@/lib/workflow-steps"
 import type {
   JobArtifactEntry,
@@ -11,6 +17,7 @@ import type {
   JobRecord,
   JobStatus,
   JobStepDetails,
+  MastraStepCorrelation,
   JobStepState,
   WorkflowStepName,
   StepStatus,
@@ -18,160 +25,87 @@ import type {
 } from "@/types/job"
 
 export type { JobRecord, JobStatus, WorkflowStepName, StepStatus }
-
-// ---------------------------------------------------------------------------
-// GraphQL fragments & operations (typed via gql.tada)
-// ---------------------------------------------------------------------------
-
-const JOB_CORE_FIELDS = graphql(`
-  fragment JobCoreFields on EnrichmentJob @_unmask {
-    documentId
-    muxAssetId
-    muxPlaybackId
-    languages
-    status
-    currentStep
-    retries
-    createdAt
-    updatedAt
-    startedAt
-    completedAt
-    artifacts
-    errors
-    steps {
-      name
-      status
-      retries
-      startedAt
-      finishedAt
-      error
-      details
-    }
-  }
-`)
-
-const JOB_SOURCE_FIELDS = graphql(`
-  fragment JobSourceFields on EnrichmentJob @_unmask {
-    video {
-      title
-      parents(pagination: { limit: -1 }) {
-        title
-      }
-    }
-  }
-`)
-
-const JOB_SUMMARY_FIELDS = graphql(`
-  fragment JobSummaryFields on EnrichmentJob @_unmask {
-    documentId
-    muxAssetId
-    muxPlaybackId
-    languages
-    status
-    currentStep
-    retries
-    createdAt
-    updatedAt
-    startedAt
-    completedAt
-    artifacts
-    errors
-    steps {
-      name
-      status
-      retries
-      startedAt
-      finishedAt
-      error
-      details
-    }
-  }
-`)
-
-const CREATE_JOB = graphql(
-  `
-    mutation CreateEnrichmentJob($data: EnrichmentJobInput!) {
-      createEnrichmentJob(data: $data) {
-        ...JobCoreFields
-      }
-    }
-  `,
-  [JOB_CORE_FIELDS],
-)
-
-const UPDATE_JOB = graphql(
-  `
-    mutation UpdateEnrichmentJob($documentId: ID!, $data: EnrichmentJobInput!) {
-      updateEnrichmentJob(documentId: $documentId, data: $data) {
-        ...JobCoreFields
-      }
-    }
-  `,
-  [JOB_CORE_FIELDS],
-)
-
-const GET_JOB = graphql(
-  `
-    query GetEnrichmentJob($documentId: ID!) {
-      enrichmentJob(documentId: $documentId) {
-        ...JobCoreFields
-        ...JobSourceFields
-      }
-    }
-  `,
-  [JOB_CORE_FIELDS, JOB_SOURCE_FIELDS],
-)
-
-const LIST_JOBS = graphql(
-  `
-    query ListEnrichmentJobs {
-      enrichmentJobs(sort: "createdAt:desc", pagination: { pageSize: 50 }) {
-        ...JobCoreFields
-        ...JobSourceFields
-      }
-    }
-  `,
-  [JOB_CORE_FIELDS, JOB_SOURCE_FIELDS],
-)
-
-const LIST_JOB_SUMMARIES = graphql(
-  `
-    query ListEnrichmentJobSummaries {
-      enrichmentJobs(sort: "createdAt:desc", pagination: { pageSize: 50 }) {
-        ...JobSummaryFields
-        ...JobSourceFields
-      }
-    }
-  `,
-  [JOB_SUMMARY_FIELDS, JOB_SOURCE_FIELDS],
-)
-
-const COUNT_JOBS = graphql(`
-  query CountEnrichmentJobs {
-    enrichmentJobs_connection(pagination: { pageSize: 1 }) {
-      pageInfo {
-        total
-      }
-    }
-  }
-`)
-
-// ---------------------------------------------------------------------------
-// Types inferred from the fragment
-// ---------------------------------------------------------------------------
-
-type OptionalVideoField<T> = Omit<T, "video"> & {
-  video?: T extends { video?: infer V } ? V : never
+type JobListOptions = {
+  limit?: number
+  offset?: number
 }
 
-type EnrichmentJobNode =
-  | OptionalVideoField<NonNullable<ResultOf<typeof GET_JOB>["enrichmentJob"]>>
-  | OptionalVideoField<
-      NonNullable<ResultOf<typeof LIST_JOBS>["enrichmentJobs"][number]>
-    >
-  | OptionalVideoField<
-      NonNullable<ResultOf<typeof LIST_JOB_SUMMARIES>["enrichmentJobs"][number]>
-    >
+type JobUpdateFields = Partial<
+  Pick<
+    JobRecord,
+    | "status"
+    | "currentStep"
+    | "artifacts"
+    | "errors"
+    | "startedAt"
+    | "completedAt"
+    | "retries"
+    | "steps"
+    | "sourceLanguageId"
+    | "sourceLanguageCode"
+    | "sourceSelectionReason"
+    | "primaryRequestedTargetLanguageCode"
+    | "resolvedTargetLanguageCodes"
+  >
+>
+
+export type JobLookupResult =
+  | {
+      status: "found"
+      job: JobRecord
+    }
+  | {
+      status: "not-found"
+    }
+  | {
+      status: "error"
+      error: unknown
+    }
+
+let adminJobClient: AdminGraphqlClient | undefined
+
+function getAdminJobClient(): AdminGraphqlClient {
+  if (!env.ADMIN_GRAPHQL_URL) {
+    throw new Error("ADMIN_GRAPHQL_URL is required for Manager job state")
+  }
+  adminJobClient ??= new AdminGraphqlClient({
+    graphqlUrl: env.ADMIN_GRAPHQL_URL,
+    apiKey: env.ADMIN_MANAGER_API_KEY,
+  })
+  return adminJobClient
+}
+
+type EnrichmentJobNode = {
+  documentId: string
+  muxAssetId?: string | null
+  muxPlaybackId?: string | null
+  video?: {
+    documentId?: string | null
+    title?: string | null
+    parents?: Array<{ title?: string | null } | null> | null
+  } | null
+  languages?: string[] | null
+  status?: string | null
+  currentStep?: string | null
+  retries?: number | null
+  createdAt?: string | null
+  updatedAt?: string | null
+  startedAt?: string | null
+  completedAt?: string | null
+  artifacts?: unknown
+  steps?: EnrichmentJobStepNode[] | null
+  errors?: JobRecord["errors"] | null
+}
+
+type EnrichmentJobStepNode = {
+  name?: string | null
+  status?: string | null
+  retries?: number | null
+  startedAt?: string | null
+  finishedAt?: string | null
+  error?: string | null
+  details?: unknown
+} | null
 
 function isDownloadableArtifactEntry(
   value: unknown,
@@ -316,29 +250,38 @@ export function normalizeJobArtifacts(raw: unknown): JobArtifactManifest {
 
 /** Map a Strapi GraphQL response node to a local JobRecord. */
 export function toJobRecord(node: EnrichmentJobNode): JobRecord {
-  const video = "video" in node ? node.video : undefined
+  const rawVideo = "video" in node ? node.video : undefined
   const artifacts = normalizeJobArtifacts(
     "artifacts" in node ? node.artifacts : undefined,
   )
   const errors = "errors" in node ? node.errors : undefined
   const materializationFields = deriveMaterializationFields(artifacts)
+  const videoDocumentId =
+    rawVideo && "documentId" in rawVideo
+      ? readNonBlankString(rawVideo.documentId)
+      : undefined
+  const videoTitle =
+    rawVideo && "title" in rawVideo ? rawVideo.title : undefined
+  const videoParents =
+    rawVideo && "parents" in rawVideo ? rawVideo.parents : undefined
   const parentTitles = Array.from(
     new Set(
-      (video?.parents ?? [])
+      (videoParents ?? [])
         .map((parent) => parent?.title?.trim())
         .filter((title): title is string => Boolean(title)),
     ),
   )
 
   return {
-    id: node.documentId,
-    muxAssetId: node.muxAssetId,
+    id: node.documentId ?? "",
+    muxAssetId: node.muxAssetId ?? "",
     muxPlaybackId: node.muxPlaybackId ?? "",
+    videoDocumentId: videoDocumentId ?? undefined,
     languages: (node.languages ?? []) as string[],
     ...materializationFields,
     sourceCollectionTitle:
       parentTitles.length > 0 ? parentTitles.join(", ") : undefined,
-    sourceMediaTitle: video?.title?.trim() || undefined,
+    sourceMediaTitle: videoTitle?.trim() || undefined,
     options: {},
     status: node.status as JobStatus,
     currentStep: node.currentStep as WorkflowStepName | undefined,
@@ -353,9 +296,7 @@ export function toJobRecord(node: EnrichmentJobNode): JobRecord {
   }
 }
 
-function toStepState(
-  s: NonNullable<EnrichmentJobNode["steps"]>[number],
-): JobStepState {
+function toStepState(s: EnrichmentJobStepNode): JobStepState {
   if (!s) {
     return {
       name: "ingest" as WorkflowStepName,
@@ -378,24 +319,26 @@ function toStepState(
   }
 }
 
-type StrapiStepInput = NonNullable<
-  NonNullable<VariablesOf<typeof CREATE_JOB>["data"]>["steps"]
->[number]
+type JobStepInput = {
+  name: WorkflowStepName
+  status: StepStatus
+  retries: number
+  startedAt: string | null
+  finishedAt: string | null
+  error: string | null
+  details: JobStepDetails | null
+}
 
-/** Convert local step objects into the shape Strapi expects for the repeatable component. */
-function toStepInput(steps: JobStepState[]): StrapiStepInput[] {
-  return steps.map(
-    (s) =>
-      ({
-        name: s.name,
-        status: s.status,
-        retries: s.retries,
-        startedAt: s.startedAt ?? null,
-        finishedAt: s.finishedAt ?? null,
-        error: s.error ?? null,
-        details: s.details ?? null,
-      }) as StrapiStepInput,
-  )
+function toStepInput(steps: JobStepState[]): JobStepInput[] {
+  return steps.map((s) => ({
+    name: s.name,
+    status: s.status,
+    retries: s.retries,
+    startedAt: s.startedAt ?? null,
+    finishedAt: s.finishedAt ?? null,
+    error: s.error ?? null,
+    details: s.details ?? null,
+  }))
 }
 
 function normalizeTranslationLanguageResult(
@@ -426,23 +369,115 @@ function normalizeTranslationLanguageResult(
   }
 }
 
+function normalizeMastraStepCorrelation(
+  raw: unknown,
+): MastraStepCorrelation | undefined {
+  if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
+    return undefined
+  }
+
+  const candidate = raw as {
+    runId?: unknown
+    status?: unknown
+    reason?: unknown
+    retryable?: unknown
+    provider?: unknown
+    model?: unknown
+    chunks?: unknown
+    totalTokens?: unknown
+    sourceContentHash?: unknown
+    languages?: unknown
+  }
+
+  if (typeof candidate.runId !== "string" || candidate.runId.length === 0) {
+    return undefined
+  }
+
+  const languages = Array.isArray(candidate.languages)
+    ? candidate.languages.filter(
+        (language): language is string =>
+          typeof language === "string" && language.length > 0,
+      )
+    : []
+
+  return {
+    runId: candidate.runId,
+    ...(typeof candidate.status === "string"
+      ? { status: candidate.status }
+      : {}),
+    ...(typeof candidate.reason === "string"
+      ? { reason: candidate.reason }
+      : {}),
+    ...(typeof candidate.retryable === "boolean"
+      ? { retryable: candidate.retryable }
+      : {}),
+    ...(typeof candidate.provider === "string"
+      ? { provider: candidate.provider }
+      : {}),
+    ...(typeof candidate.model === "string" ? { model: candidate.model } : {}),
+    ...(typeof candidate.chunks === "number"
+      ? { chunks: candidate.chunks }
+      : {}),
+    ...(typeof candidate.totalTokens === "number"
+      ? { totalTokens: candidate.totalTokens }
+      : {}),
+    ...(typeof candidate.sourceContentHash === "string"
+      ? { sourceContentHash: candidate.sourceContentHash }
+      : {}),
+    ...(languages.length > 0 ? { languages } : {}),
+  }
+}
+
 function normalizeStepDetails(raw: unknown): JobStepDetails | undefined {
   if (typeof raw !== "object" || raw == null || Array.isArray(raw)) {
     return undefined
   }
 
-  const candidate = raw as { languageResults?: unknown }
+  const candidate = raw as {
+    languageResults?: unknown
+    subtitleValidation?: unknown
+    transcriptCorrection?: unknown
+    mastra?: unknown
+    progress?: unknown
+    message?: unknown
+  }
   const languageResults = Array.isArray(candidate.languageResults)
     ? candidate.languageResults
         .map(normalizeTranslationLanguageResult)
         .filter((result): result is TranslationLanguageResult => result != null)
     : []
+  const progress =
+    typeof candidate.progress === "number" ? candidate.progress : undefined
+  const message =
+    typeof candidate.message === "string" ? candidate.message : undefined
+  const mastra = normalizeMastraStepCorrelation(candidate.mastra)
+  const subtitleValidation = normalizeSubtitleValidationStepSummary(
+    candidate.subtitleValidation,
+  )
+  const transcriptCorrection =
+    normalizeTranscriptScriptureCorrectionStepSummary(
+      candidate.transcriptCorrection,
+    )
 
-  if (languageResults.length === 0) {
+  if (
+    languageResults.length === 0 &&
+    subtitleValidation === undefined &&
+    transcriptCorrection === undefined &&
+    mastra === undefined &&
+    progress === undefined &&
+    !message
+  ) {
     return undefined
   }
 
-  return { languageResults }
+  return {
+    ...(languageResults.length > 0 ? { languageResults } : {}),
+    ...(subtitleValidation !== undefined ? { subtitleValidation } : {}),
+    ...(transcriptCorrection !== undefined ? { transcriptCorrection } : {}),
+    ...(mastra !== undefined ? { mastra } : {}),
+    ...(progress !== undefined ? { progress } : {}),
+    ...(message !== undefined ? { message } : {}),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -455,113 +490,179 @@ export async function createJob(
   languages: string[] = [],
   options?: {
     videoDocumentId?: string
+    sourceCollectionTitle?: string
+    sourceMediaTitle?: string
     initialArtifacts?: JobArtifactManifest
+    // Persisted JobOptions (e.g. options.smartCrop discriminator) and a
+    // custom step inventory (smart-crop jobs persist smart_crop_* steps
+    // instead of the enrichment FORGE_WORKFLOW_STEPS).
+    jobOptions?: JobRecord["options"]
+    steps?: JobStepState[]
   },
 ): Promise<JobRecord> {
-  const steps = buildInitialSteps()
+  const steps = options?.steps ?? buildInitialSteps()
+  const jobOptions = options?.jobOptions ?? {}
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
 
-  if (options?.videoDocumentId) {
-    const response = await cmsPost<{ documentId: string }>(
-      "/enrichment-job/internal-create",
-      {
-        muxAssetId,
-        muxPlaybackId,
-        languages,
-        status: "pending",
-        retries: 0,
-        artifacts: options.initialArtifacts ?? {},
-        errors: [],
-        steps: toStepInput(steps),
-        videoDocumentId: options.videoDocumentId,
-      },
-    )
+  if (mockState) {
+    const now = new Date().toISOString()
+    const nextJobNumber =
+      mockState.readModels.jobs.reduce((max, job) => {
+        const match = job.id.match(/^mock-job-(\d+)$/)
+        return match ? Math.max(max, Number(match[1])) : max
+      }, 0) + 1
 
-    const job = await getJob(response.documentId)
-    if (!job) {
-      throw new Error("Failed to load enrichment job after CMS creation")
+    const sourceVideo = options?.videoDocumentId
+      ? mockState.readModels.videoCoverage.find(
+          (video) => video.documentId === options.videoDocumentId,
+        )
+      : null
+    const sourceCollection = sourceVideo?.parentDocumentIds[0]
+      ? mockState.readModels.videoCoverage.find(
+          (video) => video.documentId === sourceVideo.parentDocumentIds[0],
+        )
+      : null
+
+    const job: JobRecord = {
+      id: `mock-job-${nextJobNumber}`,
+      muxAssetId,
+      muxPlaybackId,
+      videoDocumentId: options?.videoDocumentId,
+      languages,
+      sourceLanguageId: "529",
+      sourceLanguageCode: "en",
+      resolvedTargetLanguageCodes: languages,
+      sourceCollectionTitle: sourceCollection?.title ?? undefined,
+      sourceMediaTitle: sourceVideo?.title ?? undefined,
+      options: jobOptions,
+      status: "pending",
+      retries: 0,
+      createdAt: now,
+      updatedAt: now,
+      artifacts: options?.initialArtifacts ?? {},
+      steps,
+      errors: [],
     }
+
+    await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        jobs: [job, ...current.readModels.jobs],
+      },
+    }))
+
+    publishJobEvent(job)
     return job
   }
 
-  const client = getClient()
-
-  const result = await client.mutate({
-    mutation: CREATE_JOB,
-    variables: {
-      data: {
-        muxAssetId,
-        muxPlaybackId,
-        languages,
-        status: "pending",
-        retries: 0,
-        artifacts: options?.initialArtifacts ?? {},
-        errors: [],
-        video: options?.videoDocumentId,
-        steps: toStepInput(steps),
-      },
-    },
-  })
-
-  const data = result.data
-  if (!data?.createEnrichmentJob) {
-    throw new Error("Failed to create enrichment job")
+  if (gateway.mode === "admin") {
+    const initialArtifacts = options?.initialArtifacts ?? {}
+    const job = await getAdminJobClient().createJob({
+      muxAssetId,
+      muxPlaybackId,
+      languages,
+      videoDocumentId: options?.videoDocumentId,
+      sourceCollectionTitle: options?.sourceCollectionTitle,
+      sourceMediaTitle: options?.sourceMediaTitle,
+      options: jobOptions,
+      artifacts: initialArtifacts,
+      errors: [],
+      steps,
+      ...deriveMaterializationFields(initialArtifacts),
+    })
+    publishJobEvent(job)
+    return job
   }
-  return toJobRecord(data.createEnrichmentJob)
+
+  throw new Error("Manager job creation requires admin or mock backend mode")
 }
 
 export async function getJob(id: string): Promise<JobRecord | null> {
-  const client = getClient()
+  const result = await getJobLookup(id)
+  return result.status === "found" ? result.job : null
+}
 
-  try {
-    const result = await client.query({
-      query: GET_JOB,
-      variables: { documentId: id },
-      fetchPolicy: "no-cache",
-    })
+export async function getJobLookup(id: string): Promise<JobLookupResult> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const job = mockState.readModels.jobs.find(
+      (candidate) => candidate.id === id,
+    )
+    if (!job) {
+      return { status: "not-found" }
+    }
 
-    if (!result.data?.enrichmentJob) return null
-    return toJobRecord(result.data.enrichmentJob)
-  } catch (err) {
-    console.warn(`[state] getJob(${id}) failed:`, err)
-    return null
+    return {
+      status: "found",
+      job,
+    }
   }
+
+  if (gateway.mode === "admin") {
+    try {
+      const job = await getAdminJobClient().getJob(id)
+      return job ? { status: "found", job } : { status: "not-found" }
+    } catch (err) {
+      console.warn(`[state] getJob(${id}) failed:`, err)
+      return {
+        status: "error",
+        error: err,
+      }
+    }
+  }
+
+  return { status: "error", error: new Error("Unsupported Manager backend") }
 }
 
-export async function listJobs(): Promise<JobRecord[]> {
-  const client = getClient()
+export async function listJobs(
+  options: JobListOptions = {},
+): Promise<JobRecord[]> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const { limit = mockState.readModels.jobs.length, offset = 0 } = options
+    return mockState.readModels.jobs.slice(offset, offset + limit)
+  }
 
-  const result = await client.query({
-    query: LIST_JOBS,
-    fetchPolicy: "no-cache",
-  })
+  if (gateway.mode === "admin") {
+    return getAdminJobClient().listJobs(options)
+  }
 
-  return (result.data?.enrichmentJobs ?? [])
-    .filter((node): node is NonNullable<typeof node> => node != null)
-    .map((node) => toJobRecord(node))
+  return []
 }
 
-export async function listJobSummaries(): Promise<JobRecord[]> {
-  const client = getClient()
+export async function listJobSummaries(
+  options: JobListOptions = {},
+): Promise<JobRecord[]> {
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const { limit = mockState.readModels.jobs.length, offset = 0 } = options
+    return mockState.readModels.jobs.slice(offset, offset + limit)
+  }
 
-  const result = await client.query({
-    query: LIST_JOB_SUMMARIES,
-    fetchPolicy: "no-cache",
-  })
+  if (gateway.mode === "admin") {
+    return getAdminJobClient().listJobs(options)
+  }
 
-  return (result.data?.enrichmentJobs ?? [])
-    .filter((node): node is NonNullable<typeof node> => node != null)
-    .map((node) => toJobRecord(node))
+  return []
 }
 
 export async function countJobs(): Promise<number> {
-  const client = getClient()
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    return mockState.readModels.jobs.length
+  }
 
-  const result = await client.query({
-    query: COUNT_JOBS,
-    fetchPolicy: "no-cache",
-  })
+  if (gateway.mode === "admin") {
+    return getAdminJobClient().countJobs()
+  }
 
-  return result.data?.enrichmentJobs_connection?.pageInfo.total ?? 0
+  return 0
 }
 
 export async function updateJob(
@@ -580,39 +681,61 @@ export async function updateJob(
     >
   >,
 ): Promise<JobRecord | null> {
-  const client = getClient()
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const nextState = await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        jobs: current.readModels.jobs.map((job) =>
+          job.id === id
+            ? {
+                ...job,
+                ...updates,
+                updatedAt: new Date().toISOString(),
+              }
+            : job,
+        ),
+      },
+    }))
 
-  const data = buildJobUpdateData(updates)
+    const job = nextState?.readModels.jobs.find(
+      (candidate) => candidate.id === id,
+    )
+    if (job) {
+      publishJobEvent(job)
+    }
 
-  try {
-    const mutResult = await client.mutate({
-      mutation: UPDATE_JOB,
-      variables: { documentId: id, data },
-    })
-
-    const result = mutResult.data
-    if (!result?.updateEnrichmentJob) return null
-    return toJobRecord(result.updateEnrichmentJob)
-  } catch (err) {
-    console.warn(`[state] updateJob(${id}) failed:`, err)
-    return null
+    return job ?? null
   }
+
+  if (gateway.mode === "admin") {
+    try {
+      const updatesWithDerivedFields =
+        updates.artifacts !== undefined
+          ? {
+              ...updates,
+              ...deriveMaterializationFields(updates.artifacts),
+            }
+          : updates
+      const adminUpdates = buildJobUpdateData(updatesWithDerivedFields)
+      const job = await getAdminJobClient().updateJob(id, adminUpdates)
+      if (job) {
+        publishJobEvent(job)
+      }
+      return job
+    } catch (err) {
+      console.warn(`[state] updateJob(${id}) failed:`, err)
+      return null
+    }
+  }
+
+  return null
 }
 
 export function buildJobUpdateData(
-  updates: Partial<
-    Pick<
-      JobRecord,
-      | "status"
-      | "currentStep"
-      | "artifacts"
-      | "errors"
-      | "startedAt"
-      | "completedAt"
-      | "retries"
-      | "steps"
-    >
-  >,
+  updates: JobUpdateFields,
 ): Record<string, unknown> {
   const data: Record<string, unknown> = {}
 
@@ -624,6 +747,22 @@ export function buildJobUpdateData(
   if ("completedAt" in updates) data.completedAt = updates.completedAt ?? null
   if (updates.retries !== undefined) data.retries = updates.retries
   if (updates.steps !== undefined) data.steps = toStepInput(updates.steps)
+  if (updates.sourceLanguageId !== undefined) {
+    data.sourceLanguageId = updates.sourceLanguageId
+  }
+  if (updates.sourceLanguageCode !== undefined) {
+    data.sourceLanguageCode = updates.sourceLanguageCode
+  }
+  if (updates.sourceSelectionReason !== undefined) {
+    data.sourceSelectionReason = updates.sourceSelectionReason
+  }
+  if (updates.primaryRequestedTargetLanguageCode !== undefined) {
+    data.primaryRequestedTargetLanguageCode =
+      updates.primaryRequestedTargetLanguageCode
+  }
+  if (updates.resolvedTargetLanguageCodes !== undefined) {
+    data.resolvedTargetLanguageCodes = updates.resolvedTargetLanguageCodes
+  }
 
   return data
 }
@@ -695,8 +834,7 @@ async function doUpdateStepStatus(
   error?: string,
   details?: JobStepDetails,
 ): Promise<JobRecord | null> {
-  // We need to read-then-write because Strapi replaces the entire repeatable
-  // component array on update — there is no patch-single-item operation.
+  // Step updates are read-then-write so the full workflow state stays coherent.
   const job = await getJob(jobId)
   if (!job) return null
 
@@ -724,25 +862,39 @@ async function doUpdateStepStatus(
     errors.push({ step: stepName, message: error, at: now })
   }
 
-  const client = getClient()
-
-  try {
-    const mutResult = await client.mutate({
-      mutation: UPDATE_JOB,
-      variables: {
-        documentId: jobId,
-        data: {
-          steps: toStepInput(steps),
-          errors,
-        },
+  const gateway = getCmsGateway()
+  const mockState = await readMockCmsState(gateway)
+  if (mockState) {
+    const nextState = await updateMockCmsState(gateway, (current) => ({
+      ...current,
+      readModels: {
+        ...current.readModels,
+        jobs: current.readModels.jobs.map((candidate) =>
+          candidate.id === jobId
+            ? {
+                ...candidate,
+                steps,
+                errors,
+                updatedAt: now,
+              }
+            : candidate,
+        ),
       },
-    })
+    }))
 
-    const resultData = mutResult.data
-    if (!resultData?.updateEnrichmentJob) return null
-    return toJobRecord(resultData.updateEnrichmentJob)
-  } catch (err) {
-    console.warn(`[state] updateStepStatus(${jobId}, ${stepName}) failed:`, err)
-    return null
+    const jobRecord =
+      nextState?.readModels.jobs.find((candidate) => candidate.id === jobId) ??
+      null
+    if (jobRecord) {
+      publishJobEvent(jobRecord)
+    }
+
+    return jobRecord
   }
+
+  if (gateway.mode === "admin") {
+    return updateJob(jobId, { steps, errors })
+  }
+
+  return null
 }

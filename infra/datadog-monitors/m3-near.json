@@ -1,0 +1,22 @@
+{
+  "name": "[forge-admin] fleet_ceiling.near — fleet key at 80% of search ceiling",
+  "type": "log alert",
+  "query": "logs(\"service:forge-admin \\\"event=fleet_ceiling.near\\\"\").index(\"*\").rollup(\"count\").last(\"5m\") >= 1",
+  "message": "A fleet key reached 80% of its per-minute search ceiling (event=fleet_ceiling.near). This is not an incident — it is the calibration tripwire.\n\nSustained firing means real load is close to the ceiling: either raise FLEET_SEARCH_GLOBAL_CEILING_PER_MIN or investigate a traffic spike. Prefer a low-urgency (non-paging) channel or a dashboard for this signal.\n\n@urim.chae@tandem.org.nz",
+  "tags": [
+    "service:forge-admin",
+    "env:prod",
+    "team:forge",
+    "feature:feat-240",
+    "area:fleet-search"
+  ],
+  "priority": 4,
+  "options": {
+    "thresholds": { "critical": 1 },
+    "notify_no_data": false,
+    "evaluation_delay": 60,
+    "enable_logs_sample": true,
+    "include_tags": true,
+    "groupby_simple_monitor": false
+  }
+}

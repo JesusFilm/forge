@@ -38,6 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       services: ${{ steps.affected.outputs.services }}
+      portal_allowlist: ${{ steps.affected.outputs.portal_allowlist }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -56,7 +57,7 @@ jobs:
         name: Detect affected services
         run: |
           BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
-          TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo ls --affected --output=json 2>/dev/null || echo "[]")
+          TURBO_OUT=$(TURBO_SCM_BASE="$BASE" pnpm turbo ls --affected --output=json)
           SERVICES=$(echo "$TURBO_OUT" | jq -c '
             if type == "array" then
               [ .[] | if type == "object" then (.name // .package // empty) else . end ]
@@ -71,14 +72,44 @@ jobs:
             end
             | map(select(type == "string" and startswith("@forge/")))
             | unique
-          ' 2>/dev/null || echo "[]")
+          ')
+          # Mobile runs web's translation script on its own catalogs, so a change
+          # to the script or to the language inventory re-runs mobile's suites.
+          if git diff --name-only "$BASE" HEAD -- \
+            apps/web/scripts/translate-ui-catalogs.mjs \
+            apps/web/scripts/openai-catalog-translator.mjs \
+            docs/i18n/watch-ui-official-language-inventory.json | grep -q .; then
+            SERVICES=$(echo "$SERVICES" | jq -c '. + ["@forge/mobile"] | unique')
+          fi
           echo "Affected services: $SERVICES"
           echo "services=$SERVICES" >> "$GITHUB_OUTPUT"
+          if git diff --name-only "$BASE" HEAD -- apps/rag/portal/users.json | grep -q .; then
+            echo "portal_allowlist=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "portal_allowlist=false" >> "$GITHUB_OUTPUT"
+          fi
 
-  graphql-generate:
+  rag-portal-allowlist:
     runs-on: ubuntu-latest
     needs: affected
-    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/graphql')
+    if: needs.affected.outputs.portal_allowlist == 'true'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify portal users
+        env:
+          RAG_PORTAL_ELIGIBILITY_TOKEN: ${{ secrets.RAG_PORTAL_ELIGIBILITY_TOKEN }}
+        run: pnpm --filter @forge/rag exec tsx scripts/validate-portal-users.ts
+
+  admin-graphql-generate:
+    runs-on: ubuntu-latest
+    needs: affected
+    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/admin-graphql')
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -92,7 +123,293 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Verify generated code
-        run: pnpm turbo run generate --filter=@forge/graphql && git diff --exit-code packages/graphql/src/graphql-env.d.ts
+        run: pnpm turbo run generate --filter=@forge/admin-graphql && git diff --exit-code packages/admin-graphql/src/admin-graphql-env.d.ts
+
+  admin-schema-drift:
+    runs-on: ubuntu-latest
+    needs: affected
+    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/admin')
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18-trixie
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify schema artifact
+        run: pnpm turbo run schema:print --filter=@forge/admin && git diff --exit-code apps/admin/schema.graphql
+      - name: Apply Admin database migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: pnpm --filter @forge/admin exec prisma migrate deploy
+      - name: Exercise Watch database integration against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          WATCH_SEARCH_DB_TEST: "1"
+        run: pnpm --filter @forge/admin test -- src/services/typesense-watch-search-candidate-trigger-migration.db.test.ts src/services/search-watchability.db.test.ts
+      - name: Exercise push campaign content writes, deletes, agent reads, and MCP tools against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          PUSH_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/push/campaign-content.db.test.ts
+          src/services/push/campaign-delete.db.test.ts
+          src/services/push/agent-reads.db.test.ts
+          src/app/mcp/route.push.db.test.ts
+          src/services/push/schema.db.test.ts
+          --no-file-parallelism
+      - name: Exercise recommendation tracer migration against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          RECOMMENDATION_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/recommendations/migration.db.test.ts
+          src/services/recommendations/migration.candidates.db.test.ts
+          src/services/recommendations/migration.lifecycle.db.test.ts
+          src/services/recommendations/migration.operations.db.test.ts
+          src/services/recommendations/migration.attribution-reliability.db.test.ts
+          src/services/recommendations/migration.playback-upgrade.db.test.ts
+          src/services/recommendations/playback-episode.db.test.ts
+          src/services/recommendations/snapshot-repair.db.test.ts
+          src/services/recommendations/promotion/service.db.test.ts
+          src/services/recommendations/profile.service.db.test.ts
+          src/services/recommendations/viewer-identity.service.db.test.ts
+          src/services/recommendations/curated-pools.service.db.test.ts
+          src/services/recommendations/recent-context.db.test.ts
+          src/services/recommendations/admin-ops/detail.db.test.ts
+          src/services/recommendations/admin-ops/watch-exposure.service.db.test.ts
+          src/services/recommendations/watch-surface-migration.db.test.ts
+          src/services/recommendations/viewing-mode.service.db.test.ts
+          src/services/recommendations/delivery-persistence.db.test.ts
+          src/db/recommendation-wait-sampler.db.test.ts
+          --no-file-parallelism
+      - name: Create owned Co-watch PostgreSQL fixtures
+        env:
+          PGPASSWORD: postgres
+        run: |
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_test'
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_feat565_test'
+          psql -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE forge_retention_standalone_test'
+      - name: Apply owned retention fixture migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
+        run: pnpm --filter @forge/admin exec prisma migrate deploy
+      - name: Exercise bounded recommendation retention tail against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
+          RECOMMENDATION_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/recommendations/retention-profile-tail.db.test.ts
+          src/services/recommendations/retention-composition.db.test.ts
+          --no-file-parallelism --testTimeout=60000
+      - name: Exercise loaded standalone retention against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_retention_standalone_test
+          RECOMMENDATION_DB_TEST: "1"
+        run: |
+          pnpm --filter @forge/admin exec prisma migrate deploy
+          pnpm --filter @forge/admin test -- src/services/recommendations/retention-standalone.db.test.ts --no-file-parallelism --testTimeout=60000
+      - name: Exercise Co-watch refresh and measurement reuse against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_test
+          RECOMMENDATION_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/recommendations/cowatch/refresh.db.test.ts
+          src/services/recommendations/integrity.measurement-reuse.db.test.ts
+          --no-file-parallelism --testTimeout=30000
+      - name: Apply owned Co-watch authority fixture migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_feat565_test
+        run: pnpm --filter @forge/admin exec prisma migrate deploy
+      - name: Exercise Co-watch trial authority and source query against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/forge_feat565_test
+          RECOMMENDATION_DB_TEST: "1"
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/recommendations/cowatch/trial-authority.db.test.ts
+          src/services/recommendations/cowatch/source-query.db.test.ts
+          --no-file-parallelism --testTimeout=30000
+      - name: Exercise semantic retrieval budget against pgvector
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          RECOMMENDATION_DB_TEST: "1"
+          RECOMMENDATION_DELIVERY_DB_FIXTURE: deterministic
+        run: pnpm --filter @forge/admin test -- src/services/recommendations/delivery-retriever.db.test.ts
+      - name: Exercise profile recommendation retrieval against deterministic pgvector
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          RECOMMENDATION_DB_TEST: "1"
+          RECOMMENDATION_PROFILE_DB_FIXTURE: deterministic
+        run: >-
+          pnpm --filter @forge/admin test --
+          src/services/recommendations/candidates/profile-candidate.db.test.ts
+          src/services/recommendations/profiles/profile-projection.service.db.test.ts
+          --no-file-parallelism
+      - name: Exercise recommendation admission against Redis
+        env:
+          RECOMMENDATION_REDIS_TEST: "1"
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: "6379"
+        run: pnpm --filter @forge/admin test -- src/services/recommendations/admission.redis.db.test.ts
+
+  web-redis-integration:
+    runs-on: ubuntu-latest
+    needs: affected
+    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/web')
+    services:
+      redis:
+        image: redis:8-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Exercise Watch recommendation admission against Redis
+        env:
+          RECOMMENDATION_REDIS_TEST: "1"
+          REDIS_URL: redis://127.0.0.1:6379
+        run: pnpm --filter @forge/web test -- src/lib/recommendation-mutation-admission.redis.db.test.ts
+
+  auth-postgres-integration:
+    runs-on: ubuntu-latest
+    needs: affected
+    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/auth')
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18-trixie
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply Auth database migrations
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: pnpm --filter @forge/auth exec prisma migrate deploy
+      - name: Seed Auth first-party applications
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+        run: pnpm --filter @forge/auth seed:first-party-apps
+      - name: Exercise Auth integration against PostgreSQL
+        env:
+          AUTH_TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          BETTER_AUTH_SECRET: auth-integration-secret-not-for-production
+        run: pnpm --filter @forge/auth test -- src/auth/discovery-startup.integration.test.ts src/services/better-auth-upgrade.integration.test.ts src/services/device-grant.integration.test.ts src/services/changelog-oauth-grant.integration.test.ts src/services/changelog-local-reader-grant.integration.test.ts src/services/changelog-production-access.integration.test.ts --no-file-parallelism
+
+  rag-postgres-integration:
+    runs-on: ubuntu-latest
+    needs: affected
+    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/rag')
+    services:
+      postgres:
+        image: pgvector/pgvector:pg18-trixie
+        env:
+          POSTGRES_USER: forge
+          POSTGRES_PASSWORD: forge
+          POSTGRES_DB: forge_rag
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U forge -d forge_rag"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Validate RAG schema contract
+        run: pnpm --filter @forge/rag db:schema:check
+      - name: Apply RAG migrations from zero
+        env:
+          DATABASE_URL: postgresql://forge:forge@localhost:5432/forge_rag
+        run: pnpm --filter @forge/rag db:migrate:deploy
+      - name: Prove RAG migrations are idempotent and current
+        env:
+          DATABASE_URL: postgresql://forge:forge@localhost:5432/forge_rag
+        run: |
+          pnpm --filter @forge/rag db:migrate:deploy
+          pnpm --filter @forge/rag db:migrate:status
+          pnpm --filter @forge/rag db:drift:check
+      - name: Exercise RAG schema against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://forge:forge@localhost:5432/forge_rag
+        run: pnpm --filter @forge/rag db:verify
+      - name: Install Chromium for RAG usage regression
+        run: pnpm --filter @forge/rag exec playwright install --with-deps chromium
+      - name: Verify recorded RAG usage in the portal
+        env:
+          RAG_USAGE_TEST_DATABASE_URL: postgresql://forge:forge@localhost:5432/forge_rag
+        run: pnpm --filter @forge/rag portal:usage:verify
 
   format:
     runs-on: ubuntu-latest
@@ -110,6 +427,86 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Check format
         run: pnpm run format:check
+
+  patched-deps-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+      - name: Test the patched-deps guard logic
+        run: node scripts/check-patched-deps.test.mjs
+      # Dependency-free guard: fails fast when a pnpm.patchedDependencies key no
+      # longer matches the installed version (pnpm only warns), so an orphaned
+      # tvOS patch can't silently re-break the native build. No install needed.
+      - name: Check pnpm patch keys match installed versions
+        run: node scripts/check-patched-deps.mjs
+
+  hidden-roadmap-lanes:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Verify docs-only roadmap lanes stay hidden
+        run: |
+          pnpm exec tsx --test scripts/check-hidden-roadmap-lanes.test.ts
+          pnpm exec tsx scripts/check-hidden-roadmap-lanes.ts
+
+  roadmap-id-collisions-advisory:
+    # Deliberately excluded from ci-gate. Existing cross-lane collisions are
+    # grandfathered in; only IDs introduced by this PR can fail this job.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Test roadmap ID check
+        run: node --test scripts/check-new-roadmap-ids.test.mjs
+      - name: Check newly introduced roadmap IDs
+        env:
+          ROADMAP_ID_BASE: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/check-new-roadmap-ids.mjs
+
+  dev-port-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Validate resolved devcontainer Compose contract
+        run: >-
+          docker compose -f .devcontainer/docker-compose.yml config --format json |
+          node scripts/check-dev-port-contract.mjs
+
+  experiment-ledger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      # Always reports a status so it can be required without path-filtered
+      # workflows leaving unrelated PRs pending. No install or paid eval runs.
+      - name: Test experiment-ledger guard logic
+        run: node scripts/check-seeker-experiment-ledger.test.mjs
+      - name: Enforce append-only Seeker experiment history
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: node scripts/check-seeker-experiment-ledger.mjs --base="$BASE_SHA" --head="$HEAD_SHA"
 
   lint:
     runs-on: ubuntu-latest
@@ -161,19 +558,46 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Install renderer native security test prerequisites
+        if: matrix.service == '@forge/studio-render'
+        run: bash apps/studio-render/scripts/install-native-test-prerequisites.sh
       - name: Load CI env files
         run: |
           for f in $(find apps packages -name '.env.ci' 2>/dev/null); do
             cp "$f" "$(dirname "$f")/.env"
           done
+      - name: Install PostgreSQL 18 client for Admin snapshot contracts
+        if: matrix.service == '@forge/admin'
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          source /etc/os-release
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-18
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+          export PATH="/usr/lib/postgresql/18/bin:$PATH"
+          pg_dump --version | grep -F 'PostgreSQL) 18.'
+          pg_restore --version | grep -F 'PostgreSQL) 18.'
+          psql --version | grep -F 'PostgreSQL) 18.'
+      # languageId.test.js runs language-id.py's accepted-code rule through uv.
+      - name: Setup uv for the mobile language-ID test
+        if: matrix.service == '@forge/mobile'
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          version: "0.11.11"
+          enable-cache: false
       - name: Test package
         run: pnpm --filter "${{ matrix.service }}" run --if-present test
+      # Lines in the job summary, never a failure: the jest suites enforce.
+      - name: Report mobile translation status
+        if: ${{ !cancelled() && matrix.service == '@forge/mobile' }}
+        run: node apps/mobile/scripts/i18n/pending-report.mjs
 
   expo-doctor:
     runs-on: ubuntu-latest
     needs: affected
-    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/mobile-v2')
-    continue-on-error: true # advisory-only until 2026-05-01, then remove to make blocking
+    if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/mobile')
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -186,9 +610,21 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Check Expo package versions
+        working-directory: apps/mobile
+        run: npx expo install --check
+      - name: Create isolated mobile dependency tree
+        run: |
+          pnpm --filter @forge/mobile deploy --prod "$RUNNER_TEMP/mobile-doctor"
+          touch "$RUNNER_TEMP/mobile-doctor/pnpm-lock.yaml"
       - name: Run Expo Doctor
-        working-directory: apps/mobile-v2
-        run: npx expo-doctor@1.18.17
+        working-directory: ${{ runner.temp }}/mobile-doctor
+        env:
+          # Version compatibility is checked above. Isolation prevents Expo
+          # Doctor from treating the auth server's optional Expo peers as
+          # duplicate native modules in the mobile application.
+          EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: "1"
+        run: npx expo-doctor@1.20.1
 
   build:
     runs-on: ubuntu-latest
@@ -215,5 +651,56 @@ jobs:
           for f in $(find apps packages -name '.env.ci' 2>/dev/null); do
             cp "$f" "$(dirname "$f")/.env"
           done
+          if [ "${{ matrix.service }}" = "@forge/admin" ]; then
+            cat apps/admin/.env.ci >> "$GITHUB_ENV"
+          fi
       - name: Build package
         run: pnpm --filter "${{ matrix.service }}" run --if-present build
+
+  # One always-reporting job so `main` can require a single stable check name.
+  #
+  # A per-package matrix leg cannot be required directly: `affected` only
+  # expands the packages a PR touches, so `test (@forge/mobile)` never reports
+  # on an admin-only PR, and a required check that never reports blocks that PR
+  # forever. This job always runs, always reports under one name, and fails if
+  # any needed job failed or was cancelled.
+  #
+  # `skipped` is a PASS on purpose. Conditional jobs skip legitimately —
+  # commit-lint on a push to main or a dependabot PR, and every `affected`-gated
+  # job when its package is untouched.
+  ci-gate:
+    runs-on: ubuntu-latest
+    if: always()
+    needs:
+      - commit-lint
+      - affected
+      - admin-graphql-generate
+      - admin-schema-drift
+      - web-redis-integration
+      - auth-postgres-integration
+      - rag-postgres-integration
+      - rag-portal-allowlist
+      - format
+      - patched-deps-guard
+      - hidden-roadmap-lanes
+      - dev-port-contract
+      - experiment-ledger
+      - lint
+      - test
+      - expo-doctor
+      - build
+    steps:
+      - name: Fail if any required job failed or was cancelled
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          echo "$NEEDS"
+          bad=$(echo "$NEEDS" | jq -r \
+            'to_entries
+             | map(select(.value.result == "failure" or .value.result == "cancelled"))
+             | map(.key) | join(", ")')
+          if [ -n "$bad" ]; then
+            echo "::error::CI gate failed. Jobs not green: $bad"
+            exit 1
+          fi
+          echo "CI gate passed."

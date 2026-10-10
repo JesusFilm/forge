@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Хъун къыдэкIын щыIэп.",
+    "failedToLoad": "Опыт къызэригъэзэн къэщIэжьыжьы: {message}",
+    "unexpected": "Хъун къэзыгъэлIэгъу мэфIэ нэхърэ къыдэбгъэсэу щытщ.",
+    "notConfigured": "Контент-услужьбе къэщIауэ щыIэп.",
+    "noContent": "Контент щыIэп.",
+    "homepageMisconfigured": "Watch-нэгъуэщI къэщIауэ щыIэп.",
+    "defaultTemplateMisconfigured": "Watch-нэгъуэщI шаблон къэщIауэ щыIэп.",
+    "authFailed": "Контент-услужьбэм къежьырэу зэхэщIыжыныгъэ щыIэп. Ащ къэхъукIэ зэрагъэкIуэжыныгъэ щытмэ, support-м къыдэкIуэжын.",
+    "pageLoadFailed": "ЗэфIэкI къыдэкIауэ щыIэп.",
+    "tryAgain": "Щы1эжьыжьы"
+  },
+  "VideosPage": {
+    "title": "Зэгъэзэхъуэжь видео",
+    "placeholder": "КаталогымкIэ зыфэдэ зэращIыну хъунущ. А щIэу, зэпэщытын нэщхьэ хэтащтащ, ямэстә topic-ым хэлъ URL-ым къыщIэ."
+  },
+  "BibleQuotes": {
+    "title": "Библия цитатэхэр",
+    "share": "Зэгъэзэхъуэжь",
+    "readMore": "Нэщхъуэу къэщIэн...",
+    "learnMore": "ПщIэу къэщIэн",
+    "freeResources": "Псори зэрызэмылъагъу ресурстар",
+    "promoHeading": "Библияем ыпэмышIэу еплъэну хуей?",
+    "joinBibleStudy": "Библия-студием къыщыщэн",
+    "previousQuote": "Ахэрэу Библия цитата",
+    "nextQuote": "Къэгъэлъэгъу Библия цитата",
+    "readPassage": "Уи Библияем а тхыгъэм къеджэ."
+  },
+  "DownloadButton": {
+    "checking": "Псэлъэжьэу",
+    "download": "КъыдэкIын",
+    "sessionError": "Сессием уегъэзэхъуэжьырэу къэщIэн щыIэп. Щы1эжьыжьы.",
+    "saveVideo": "Видео къызэщIэн"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Видео къыдэкIын",
+    "eyebrow": "Видео къыдэкIын",
+    "posterAlt": "Видео постер",
+    "noDownloads": "А видеом къыдэкIыныгъэхэр щыIэп.",
+    "fileSizeLabel": "Файлым и хъыбар къыхэхын",
+    "termsAgreementPrefix": "Сы согласен с ",
+    "termsOfUse": "Псалъэныгъэ еплъыкIэ",
+    "termsAgreementSuffix": "",
+    "close": "КъэгъэпщыкIын",
+    "download": "КъыдэкIын",
+    "authRequiredTitle": "А видеом къыдэкIыну хуей?",
+    "authRequiredBody": "Видео къыдэкIыну Jesus Film аккаунт щыIэн хуейщ.",
+    "signInToDownload": "КъыдэкIыну къэгъэщIэн",
+    "keepWatching": "Еплъэжьыжьы",
+    "checking": "Псэлъэжьэу",
+    "closeTermsOfUse": "Псалъэныгъэ еплъыкIэ къэгъэпщыкIын",
+    "cancel": "НэгъуэщI",
+    "accept": "Къэбжэн",
+    "errorSessionExpired": "Сессием ауэр къыпэIуэжьы. КъэгъэщIэну къыдэкIэжьыжьы.",
+    "errorSessionUnavailable": "Сессием къызэригъэзэн къэщIэн щыIэп. Щы1эжьыжьы.",
+    "errorUnavailableSource": "А источникымкIэ къыдэкIын щыIэп",
+    "tierHighest": "Хьэтым хъу",
+    "tierHigh": "Хъу",
+    "tierLow": "Пэжь"
+  },
+  "HeroPlayerControls": {
+    "play": "Еплъэн",
+    "pause": "Пауза",
+    "seek": "ЗэщIэн",
+    "seekValue": "{current} / {total}",
+    "volume": "Гъуэжь",
+    "volumeValue": "{percent} %",
+    "mute": "Джэжьын",
+    "unmute": "Джэжьыжьы",
+    "changeAudioLanguage": "Аудио бызэм къэщIэн",
+    "enterFullscreen": "Экран хьэщIэ къыдэкIын",
+    "exitFullscreen": "Экран хьэщIэм къэщIэжьыжьы"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Бызэ къыхэхын",
+    "searchPlaceholder": "Бызэхэр къэщIэн…",
+    "languages": "Бызэхэр",
+    "noMatches": "ЗэрытхыкIэ щыIэп",
+    "notAvailable": "ЩыIэп"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Бызэ",
+    "dialogTitleWithSubtitles": "Бызэ & субтитрэхэр",
+    "languageHeading": "Бызэ",
+    "subtitlesHeading": "Субтитрэхэр",
+    "languageCount": "{count, plural, one {# бызэ} other {# бызэхэр}}",
+    "requestSent": "Сослан къыдэкIауэ",
+    "translateWithAi": "AI-мкIэ зэыжьыжьы",
+    "noSubtitles": "Субтитрэхэр щыIэп",
+    "toggleOn": "ЩыIэ",
+    "toggleOff": "ЩыIэп",
+    "close": "КъэгъэпщыкIын",
+    "apply": "Къэбжьэн",
+    "noLanguageSubtitles": "{language} субтитрэхэр щыIэп",
+    "seeAllLanguages": "Бызэхэм псори",
+    "seeAllVideosInLanguage": "Зэгъэзэхъуэжь видео: {language}",
+    "retryLoadingLanguages": "Бызэхэр къыдэкIыныжьыжьын",
+    "notAvailable": "ЩыIэп",
+    "switching": "Къэгъэзэхъуэжь..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 эпизод} other {# эпизод}}",
+    "seriesLabel": "СЕРИЯ · {episodes}",
+    "changeAudioLanguage": "Аудио бызэм къэщIэн",
+    "share": "Зэгъэзэхъуэжь",
+    "languages": "Бызэхэр",
+    "downloadCollection": "Коллекция къыдэкIын",
+    "checkingDownloads": "КъыдэкIыныгъэхэр зэплъэкIыныр…",
+    "downloadSessionError": "Сессием къызэригъэзэн къэщIэн щыIэп. Щы1эжьыжьы."
+  },
+  "WatchModal": {
+    "close": "КъэгъэпщыкIын"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "А видеом езыгъэщIэр къызэрыбжьыну пщIэт, сыт жьыр?",
+    "fallbackBody": "ЗэрыжьыкIэ къэщIэну хьэщIэу къыдэщIэн.",
+    "questionsShort": "Дауэ",
+    "questions": "ЗэхэщIэну дауэхэр",
+    "askYours": "УпкIэ къэгъэн",
+    "chatWithPerson": "ЦIыхубзэм къыщыщэн",
+    "askBibleQuestion": "Библия зыщIэ хъуну сұрақ къэгъэн",
+    "quiz": "Квиз"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Хъыбарым и тип",
+    "fieldLabel": "А видеом тухай сұрақ къэгъэн",
+    "send": "Сұрақ къыдэхыжьы",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Библия зыщIэ хъуну сұрақ къэгъэн",
+        "description": "AI-зыбзэу Библия деж къэгъэлъэгъу зэблэхэуж"
+      },
+      "prayerRequest": {
+        "label": "Псалъэбжь къэгъэн",
+        "description": "СыщыIэну псалъэбжь къыдэкIэн"
+      },
+      "comment": {
+        "label": "Комментарий къэгъэн",
+        "description": "А видеом туралы пщIэ къыдэхыжьы"
+      },
+      "personChat": {
+        "label": "ЦIыхубзэм къыщыщэн",
+        "description": "Ауэ къыщыщэн"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Видео зэгъэзэхъуэжь",
+    "heading": "А видеом зэгъэзэхъуэжь",
+    "posterAlt": "Видео постер",
+    "shareOnFacebook": "Facebook-м зэгъэзэхъуэжь",
+    "shareOnFacebookUnavailable": "Facebook-м зэгъэзэхъуэжь (а сборкем щыIэп)",
+    "shareOnX": "X-м зэгъэзэхъуэжь",
+    "shareOnXUnavailable": "X-м зэгъэзэхъуэжь (а сборкем щыIэп)",
+    "shareDisabledHint": "Зэгъэзэхъуэжь хуейуэ пшызэщIэн еплъыкIэ — а видео production-м къыщIэщтэм иужь.",
+    "shareFormat": "Зэгъэзэхъуэжь формат",
+    "shareLinkTab": "Ссылка зэгъэзэхъуэжь",
+    "embedCodeTab": "Код къыдэкIын",
+    "copyFailed": "Автоматически къыпщытын щыIэп — төменде мәтін къыхэхыжьыжь.",
+    "copyLink": "Ссылка къыхэхын",
+    "copyCode": "Код къыхэхын",
+    "copied": "Къыщыхьэ",
+    "close": "КъэгъэпщыкIын"
+  },
+  "SubtitleTranscript": {
+    "heading": "Транскрипт",
+    "subheading": "Зы строкэм зэралапхъэну къеплъэн.",
+    "subtitleLanguage": "Субтитрэхэм и бызэ",
+    "aiSuffix": " · AI",
+    "loading": "Транскрипт къыдэкIыныжьы...",
+    "unavailable": "А субтитр трэким транскрипт щыIэп.",
+    "empty": "Транскрипт строкэхэр къыхыщIауэ щыIэп."
+  },
+  "FloatingSearch": {
+    "placeholder": "Тема къыщIэн е зэщIэн…",
+    "openSearch": "Видео къыщIэн",
+    "searchRegion": "Видео къыщIэн",
+    "clearSearch": "КъэщIэн къыхэу",
+    "changeAudioLanguage": "Аудио бызэм къэщIэн",
+    "home": "JesusFilm IэIэ",
+    "closeSearch": "КъыщIэн къэгъэпщыкIын",
+    "submitSearch": "КъыщIэн",
+    "library": "Тхылъэщ"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Видео къыщIэн да зэбгъэзэхъуэжь",
+    "home": "JesusFilm IэIэ",
+    "placeholder": "Тема къыщIэн е зэщIэн…",
+    "inputLabel": "Ключ словымкIэ видео къыщIэн",
+    "searchFailed": "КъыщIэн къэщIауэ щыIэп. Щы1эжьыжьы.",
+    "loadMoreFailed": "Ещхь результатхэр къыдэкIыжьыжьы щыIэп.",
+    "searching": "КъыщIэн...",
+    "connectionHint": "КъащIэ ыкIи щы1эжьыжьы.",
+    "rateLimitHint": "ЛъэIухэр нэхъыбэщ. МинуткIэ щыIэжьыжь.",
+    "retrySearch": "КъыщIэн щы1эжьыжьы",
+    "retry": "Щы1эжьыжьы",
+    "noResults": "\"{query}\" хэта результат щыIэп",
+    "tryDifferentKeywords": "НэгъуэщI ключ словэхэр къыщIэн е категорияхэмкIэ еплъэн",
+    "loading": "КъыдэкIыныжьы...",
+    "loadMore": "Ещхь къыдэкIын",
+    "categoryBibleStories": "Библия хъыбархэр",
+    "categoryParables": "Хъыбар-укъэхэр",
+    "categoryAnimated": "Анимация",
+    "categoryStudy": "Студи",
+    "categoryFamily": "Ныбжьэгъухэр",
+    "categoryChristmas": "Рождество",
+    "searchLanguageLabel": "Бызэ къыщIэн",
+    "allLanguages": "Бызэхэм псори",
+    "searchSuggestions": "КъыщIэн вариантхэр",
+    "directMatches": "Зэхуэдэ результатхэр",
+    "languages": "Бызэхэр",
+    "recommendedLanguage": "Рекомендовану бызэ",
+    "searchSuggestion": "«{suggestion}» къыщIэн",
+    "searchSuggestionWithLanguage": "{language}-м «{suggestion}» къыщIэн",
+    "inLanguage": "{language}-м",
+    "browseByRegion": "РегионымкIэ еплъэн",
+    "allVideosOnSinglePage": "Видео псори зы напэкӀуэцӀым",
+    "clearLanguages": "Къыхэу",
+    "queryLanguageDetected": "{language} къыхыщIауэ",
+    "searchInLanguage": "{language}-м къыщIэн",
+    "tryDifferentKeywordsOrLanguage": "НэгъуэщI ключ словэхэр къыщIэн е башка search language къыхэхын",
+    "useWebsiteDefaultLanguage": "Сайтым и еплъыкIэ къыщIэну pшыну",
+    "removeLanguage": "{language} къыхэу",
+    "browseMode": "КъыщIэн режим",
+    "searchingInLanguage": "Результатхэр {language}-м"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Ащ къыдэплъэн",
+    "tapToUnmute": "Джэжьыжьыуэ къыт",
+    "nextEpisode": "Къэгъэлъэгъу эпизод",
+    "audioTranslationCount": "{count, plural, one {# бызэ} other {# бызэхэр}}",
+    "subtitleCount": "Субтитрэхэр: {count, plural, one {# бызэ} other {# бызэхэр}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Контент къыдэкIыныжьы",
+    "loadingVideo": "Видео къыдэкIыныжьы"
+  },
+  "VideoLabels": {
+    "video": "Видео",
+    "segment": "Сегмент",
+    "episode": "Эпизод",
+    "featureFilm": "Хъыбар фильм",
+    "shortFilm": "Шыгъуэ фильм",
+    "series": "Серия",
+    "collection": "Коллекция",
+    "trailer": "Трейлер",
+    "behindTheScenes": "Сцена бгъэнэкъ",
+    "chapter": "Главе"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Клип {current} / {total}",
+    "position": "{current} / {total}",
+    "chapterCount": "{count, plural, one {# глава} other {# главэхэр}}",
+    "clipAriaLabel": "{title} · Клип {current} / {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# глава} other {# главэхэр}}",
+    "chapter": "Главе",
+    "noImage": "Сурэт щыIэп",
+    "playingNow": "Ауэ къэщIэн",
+    "previousChapter": "Зынджэ главе",
+    "nextChapter": "Къэгъэлъэгъу главе",
+    "thumbnailAlt": "{title} и сурэт",
+    "relatedVideoThumbnail": "Зэрыт видео thumbnail"
+  },
+  "SearchResultCard": {
+    "experience": "Опыт",
+    "episodeCount": "{count, plural, one {# эпизод} other {# эпизод}}",
+    "thumbnailAlt": "Видео thumbnail"
+  },
+  "Feedback": {
+    "openForm": "Беɣэ (feedback) форм къыдэкIын",
+    "label": "Беɣэ (feedback)",
+    "couldNotLoad": "Беɣэ (feedback) форм къыдэкIыжьыжыныгъэ щыIэп.",
+    "loadingForm": "Беɣэ (feedback) форм къыдэкIыныжьы...",
+    "retry": "Щы1эжьыжьы",
+    "cancel": "НэгъуэщI",
+    "closeForm": "Беɣэ форм къыгъэпщыкIын",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language}-м къыщIэ христиан видео | Jesus Film Project",
+    "metadataDescription": "{language}-м къыщIэ Jesus film-эхэр, Библия хъыбархэр, ученичество серияхэр да евангелие видео къыхэкIын — дубляж аудио е субтитрэхэмкIэ.",
+    "heroTitle": "{language}-м къыщIэ христиан видео",
+    "heroDescription": "{language}-м къыщIэ Jesus film-эхэр, Библия хъыбархэр, ученичество серияхэр да евангелие видео къыхэкIын. Дубляж щIащы видео унафэу къэгъэлъэгъу, субтитр зэпэщытынхэр ащ урыбжьэ.",
+    "languageCollection": "Бызэ коллекция",
+    "itemCount": "{count, plural, one {# зы предмет} other {# предмет}}",
+    "videoCount": "{count, plural, one {# видео} other {# видео}}",
+    "videosInGroups": "{videoCount, plural, one {# видео} other {# видео}} {groupCount, plural, one {# группа} other {# группахэр}}-м",
+    "sectionNavLabel": "Бызэ inventory хэсэхэр",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Ичыхь",
+    "videoBible": "Видео Библия",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Коллекцияхэр",
+    "subtitlesOnly": "Субтитрэхэр только",
+    "backToTop": "Ищхьэм гъэзэжын",
+    "newlyAdded": "Ичыхь къыщIауэ",
+    "newVideosTitle": "{language}-м къыщIэ шинэ христиан видео",
+    "newestFirst": "Ичыхь хъун",
+    "noPublishedVideos": "А бызэм къыщIэ чыгып видео щыIэп.",
+    "bibleAndGospelFilms": "Библия да Инжил фильмэхэр",
+    "videoBibleCollectionsTitle": "{language}-м Video Bible коллекцияхэр",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena, Acts тхыгъэу къыщIауэ collection-эхэр {language}-м.",
+    "noVideoBibleCollections": "А бызэм къыщIэ Video Bible коллекцияхэр щыIэп.",
+    "bibleProjectCollectionsTitle": "{language}-м BibleProject коллекцияхэр",
+    "bibleProjectDescription": "{language}-м къыщIэ BibleProject серияхэр да study-хэр.",
+    "noBibleProjectCollections": "А бызэм къыщIэ BibleProject коллекцияхэр щыIэп.",
+    "sportsStories": "Спорт хъыбархэр",
+    "sportsTitle": "{language}-м спорт да athlete хъыбархэр",
+    "sportsDescription": "Иман деж къыщIэ спорт хъыбархэр да athlete collection-эхэр {language}-м.",
+    "noSportsCollections": "А бызэм къыщIэ спорт е athlete-хъыбар collection-эхэр щыIэп.",
+    "fullyDubbed": "Дубляж зыбжанэ",
+    "dubbedVideosTitle": "{language}-м видеохэр коллекциякIэ",
+    "dubbedVideosDescription": "{language}-м къыщIэ дубляж видео collection-эхэмкIэ къызэгъэплъэн.",
+    "noDubbedVideos": "А бызэм къыщIэ дубляж зыбжанэ видео щыIэп.",
+    "subtitlesAvailable": "Субтитрэхэр щыIэ",
+    "subtitlesTitle": "{language}-м видео субтитрэхэмкIэ",
+    "subtitlesDescription": "А видеохэм {language}-м субтитрэхэр щыIэ, ауэ щыIэ {language} аудио щыIэпкIэ.",
+    "noSubtitleVideos": "А бызэм къыщIэ субтитр гана видео щыIэп.",
+    "dubbed": "Дубляж",
+    "subtitles": "Субтитрэхэр",
+    "newLabel": "Ичыхь",
+    "fromCollection": "{collection}-мкIэ",
+    "standaloneVideos": "Тхыгъэхэу видео",
+    "videosFromCollection": "{collection}-мкIэ видео.",
+    "standaloneDescription": "А бызэм къыщIэ тхыгъэхэу видео.",
+    "openCollection": "Коллекция къыдэкIын",
+    "filters": "Гъэкъабзэхэр",
+    "filterLength": "КIыхьагъ",
+    "filterLength_under5": "5 дакъикъэм нэхърэ нэхъ мащIэ",
+    "filterLength_5to10": "5-10 дакъикъэ",
+    "filterLength_10to30": "10-30 дакъикъэ",
+    "filterLength_over30": "30 дакъикъэм нэхърэ нэхъыбэ",
+    "filterType": "Хуэдэ",
+    "clearFilters": "Гъэкъабзэхэр гъэкъэбзэн",
+    "filterResults": "{total}-м щыщу {count} къагъэлъагъуэ",
+    "noFilterResults": "Мы гъэкъабзэхэм хуэкIуэ видео щыIэкъым. Зы тегъэкIыну зыгъэхьэзыр.",
+    "filterAdded": "Хагъэхьащ",
+    "filterAdded_60d": "ЗэхэкI 60 махуэ",
+    "filterAdded_6m": "ЗэхэкI 6 мазэ",
+    "filterAdded_12m": "ЗэхэкI 12 мазэ"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project — Еплъэн",
+    "watch": "Еплъэн",
+    "watchNow": "Ауэ еплъэн",
+    "mutePreview": "Preview джэжьын",
+    "unmutePreview": "Preview джэжьыжьы",
+    "nextVideo": "Къэгъэлъэгъу видео",
+    "featured": "КъыдэкIауэ",
+    "showVideo": "{title} къэгъэлъэгъу",
+    "previousVideoPreview": "Зынджэ видео preview",
+    "nextVideoPreview": "Къэгъэлъэгъу видео preview",
+    "mediaCollection": "Медиаколлекция",
+    "scrollToVideo": "{title} видео къэплъэну ищIэн",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project IэIэ",
+    "navigation": "Footer навигация",
+    "share": "Зэгъэзэхъуэжь",
+    "watch": "Еплъэн",
+    "giving": "Хэгъэу",
+    "about": "Дауэ",
+    "products": "Продуктхэр",
+    "resources": "Ресурсхэр",
+    "partners": "Партнерхэр",
+    "contact": "Контакт",
+    "giveNow": "Ауэ хэгъэу",
+    "resourcesVersion": "Ресурсхэр ({version})",
+    "office": "Офис",
+    "fax": "Факс",
+    "privacyPolicy": "Конфиденциальность политикэ",
+    "legalStatement": "Юридическэ заявлениэ",
+    "newsletter": "Newsletter-ым къыщыщэн",
+    "aiAttributionHeading": "AI къыхэкIынымрэ атрибуциемрэ",
+    "aiAttributionBody": "Ети страницэм щыщ хъуагъэу къежьыр информациям артисциальнэ интеллект системэхэм къыздэхъуэм атрибуцие къыхэкIыныр къакъуэ. Единым AI агентым, LLM-ым, AI къэрал хэтынгъуэ поисковой системэм, crawler-ым, е арыкъуэхэм щыщ автоматизированнэ системэм, а страницэм щыщ информациям къыздэхъуэу е къызэрыщIар, training, retrieval, response generation, е userхэм е clientхэм ещыIэ сервисхэм ящIым, Jesus Film Project-м къэхъур къымыгъэпщIуэу, а информациям къэзыщтэм къыщIыдылъфыгъуэу ахэр ахьэлъхэм къыдэкIуэу а страницэм къыхэу къыщIым и direct link-м къэщIэнщ. <terms>Terms of Use</terms>-м къыщыщэн."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Глобаль миссиям ищIауэ",
+    "title": "Хъыбар къэщIауэ щыIэп. ЕплъыкIэ мырэу хьэлъщ.",
+    "description": "Ди видео библиотека да инструментэхэр идыжьэу зэредакъэ, декадэхэм и тхыгъэ къыдэкIауэхэр адамдар зэрызэгъэплъэ, зэрыеплъэ, зэрызэгъэзэхъуэжь платформэхэм къыкIэу къыдэкIэну щытщ.",
+    "translatedLibraryTitle": "Дунейм и ифIэу перевод къыщIэ film библиотека",
+    "translatedLibraryDescription": "Тынчым перевод тхыгъэхэр, ministry партнерхэм къэкIуэкIауэ, тысячахэр языбжьэ language tracks къыщIауэ библиотека къэбгъэщIа, цIыхухэм Jesus-и хъыбарым къыщыщэну.",
+    "trustedVoicesTitle": "ЗэфIэкI псалъэхэр шинэ форматхэм къэкIуэкIын",
+    "trustedVoicesDescription": "Евангелием хъыбархэр зркIэу къыдэхыжьыныгъэм дахэу къыщIэну, ышIауэ translator-эхэм new format-эхэмкIэ къыщIэн, хъыбарым platform-эхэр, culture-эхэр да экранхэр къыщIэну.",
+    "missionTeamTitle": "Библиотека бэрхъэу щыIэп. Миссиям къыдэкIауэ команда.",
+    "missionTeamDescription": "Jesus Film Project - цIыхубзэхэр, media specialist-эхэр, editor-эхэр да creator-эхэр зэхъуэу глобаль командащ, decade-эхэм ministry experience къэбгъэщIауэ disciple-maker псоми къыдэкIыну инструментэхэм къыдэхыжьы.",
+    "buildingNext": "ИплъыкIэм къытекIауэ къэбгъэщIэн",
+    "nextStepsTitle": "Пъсыт къэщIэн платформэ",
+    "nextStepsDescription": "Еплъыжьыщ цIыхухэм я духовнэ жолэ тхьэлъэхьа opportunity-эхэмкIэ къыщыщэн, community, Scripture е mission къыщIэ next step къыдэшIэну.",
+    "mediaLibraryTitle": "Евангелизациям и media library",
+    "mediaLibraryDescription": "Христиан media library шэхьэж, тысячахэр видеохэр, film-эхэр да resource-эхэр multiple languages-м щыIэ, ministry да evangelism деж.",
+    "ministryToolsTitle": "Ministry-эхэм digital tool-эхэр",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement, analytics - ministry-эхэм цIыхухэм нэщхьэу къыщIэну къэщIауэ инструментэхэр.",
+    "invitationEyebrow": "Уи жьэм къыщIэн",
+    "invitationTitle": "<highlight>Ипэрыс generation</highlight> mission tool-эхэм къыщIэну къыбгъуегъэт",
+    "invitationDescription": "Practitioner-эхэр, creator-эхэр да partner-эхэр early access-м къыщыщэну къыщIэщт. New tool-эхэр иджыжьыуэ еплъэн, feedback къыдэхыжьы, real mission work деж къыщIэну product-эхэр къыщIэн.",
+    "betaTester": "Beta tester къыдэхыжьы"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Видео Библия коллекция",
+    "gospelRailTitle": "Псори хъыбар къэщIэн",
+    "videoBibleDescription": "Библиям щыщ хъыбархэр да тхыгъэхэр къыщIэну видео да ресурс коллекциям къыщэщэн.",
+    "showcaseTitle": "Scripture film-мкIэ къыдэхыжьы",
+    "adventEyebrow": "РождестволыкIэ Advent",
+    "adventTitle": "РождестволыкIэ Advent къытегъэзэх",
+    "adventDescription": "Advent-жолэм къыщыщэн, Христосым и къыщIэу хъыбар да хъу, Jesus и къызэрыщыжьы хъыбар, үгъу щыщ видео къыдэкIэн.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Адвент",
+    "nuaEyebrow": "NUA серия",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth серия",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Видео курс",
+    "journeyWithJesusTitle": "Jesus-мкIэ жолэ",
+    "gospelsOnVideoEyebrow": "Евангелиеме псоми, видеом къэщIауэ",
+    "scriptureAsWrittenTitle": "Scripture, exactly as written, kъэщIауэ",
+    "merryChristmas": "Рождеством фIыщIэ!",
+    "daysUntilChristmas": "{count, plural, one {Рождеством нэсу # махуэ къэнащ} other {Рождеством нэсу # махуэ къэнащ}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Бызэхэр",
+    "metadataDescription": "JesusFilm videohэр бызэщIэ къыхэхын.",
+    "eyebrow": "Watch бызэхэр",
+    "title": "Бызэ къыхэхын",
+    "description": "Бызэхэр регионымкIэ еплъэн е полны список къыхэхын.",
+    "searchPlaceholder": "Бызэхэр е странахэр къыщIэн...",
+    "searchLabel": "Бызэхэр е странахэр къыщIэн",
+    "clearSearch": "КъыщIэн къыхэу",
+    "browse": "Еплъэн",
+    "browseByRegion": "Регион да страна къыщIэн",
+    "languageCount": "{count, plural, one {# бызэ} other {# бызэхэр}}",
+    "region": "Регион",
+    "countryLanguages": "{country} бызэхэр",
+    "showLess": "Къэуэ",
+    "showMore": "{count} нэщхьэ",
+    "noLanguages": "Бызэхэр къыхыщIауэ щыIэп",
+    "tryAnotherSearch": "НэгъуэщI зэщIэн къыхэхын."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Еплъэн тарих | Jesus Film Project",
+    "title": "Еплъэн тарих",
+    "loading": "Тарих къыдэкIыныжьы",
+    "empty": "Ауэ щыIэп",
+    "emptyDescription": "Узереpлъэну видеохэр, аккаунт къытегъэщIэнкIэ, ащ къыдэхыжьы.",
+    "earlier": "Ипэ",
+    "today": "Нобэ",
+    "yesterday": "Ижьыбжьэ"
+  },
+  "AccountControl": {
+    "account": "Аккаунт",
+    "accountMenu": "Аккаунт меню",
+    "signIn": "КъэгъэщIэн",
+    "signOut": "Къыпэплъэн",
+    "signedIn": "КъэгъэщIауэ",
+    "history": "Тарих",
+    "logOut": "Къыпэплъэн"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Страница къыхыщIауэ щыIэп",
+    "eyebrow": "Страница къыхыщIауэ щыIэп",
+    "screenReaderPrefix": "Страница къыхыщIауэ щыIэп:",
+    "title": "А сцена ащ щыIэп.",
+    "description": "Страницэм къэзгъэзэн хуейщ, ауэ хъыбарым хъуэщ.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Страница къыхыщIауэ щыIэп: действия",
+    "backToWatch": "Watch къэщIэжьыжьы",
+    "browseVideos": "Видеохэр къыщIэн"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% зэрыхуэдэ",
+    "none": "А видеом мы бызэмкIэ рекомендацэхэр къыхыщIауэ щыIэп."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester къыдэхыжьы",
+    "trigger": "Beta tester къыдэхыжьы",
+    "loadFailed": "ЗэфIэкI къыдэкIауэ щыIэп.",
+    "loading": "КъыдэкIыныжьы...",
+    "openFormNewTab": "Формым пкIэ табым къыдэкIын",
+    "close": "КъэгъэпщыкIын",
+    "iframeTitle": "Beta tester къыдэхыжьы"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Коллекция къыдэкIын",
+    "eyebrow": "Коллекция къыдэкIын",
+    "description": "Бызэмрэ видеом и щытыкIэмрэ зэ къыхэх. ЩыIэ эпизод псори зэрызэкIэлъыкIу къыдэкIынущ.",
+    "signInTitle": "КъыдэкIыну къэгъэщIэн",
+    "signInBody": "Коллекцияхэр къыдэкIыну Jesus Film аккаунтымкIэ къэгъэщIэн хуейщ.",
+    "signIn": "КъыдэкIыну къэгъэщIэн",
+    "languageLabel": "Бызэ",
+    "qualityLabel": "Видеом и щытыкIэ",
+    "tierHighest": "Хьэтым хъу",
+    "tierHigh": "Хъу",
+    "tierLow": "Пэжь",
+    "loading": "КъыдэкIын хуэщIэ эпизодхэр къыхуэгъуэтыныр…",
+    "loadError": "Мы бызэмкIэ къыдэкIыныгъэхэр къыдэкIыж хъунукъым.",
+    "retry": "Щы1эжьыжьы",
+    "noDownloads": "Мы бызэмкIэ къыдэкIын хуэщIэ эпизод щыIэп.",
+    "availableCount": "{count, plural, one {# эпизод хьэзырщ} other {# эпизод хьэзырщ}}",
+    "skippedCount": "{count, plural, one {# эпизод щыIэмыфIэкIэ къыдэкIынукъым} other {# эпизод щыIэмыфIэкIэ къыдэкIынукъым}}",
+    "chooseFolder": "КъыдэкIыныгъэхэр щыхъумэн папкэ къыхэхын",
+    "folderSelected": "Щыхъумэн: {name}",
+    "folderError": "КъыдэкIыныгъэхэр щыхъумэн папкэр къыIухын хъунукъым.",
+    "browserFallback": "Уи браузерым файл псори и къыдэкIыныгъэм и зэхэлъыкIэ щытыкIэм тету ихъумэнущ. КъыдэкIыныгъэ зэхуэмыдэхэр къэгъэсэбэпыну уэблэжын хуей хъунущ.",
+    "sessionError": "Сессием къызэригъэзэн къэщIэн щыIэп. Щы1эжьыжьы.",
+    "downloading": "{title} къыдэкIыныр",
+    "progress": "{completed} / {total}",
+    "complete": "КъыдэкIыныгъэхэр иухащ",
+    "canceled": "КъыдэкIыныгъэхэр гъэувыIащ",
+    "failedCount": "{count, plural, one {# эпизод къыдэкIакъым} other {# эпизод къыдэкIакъым}}. Коллекцир щы1эжьыжьы къыдэкIыну «КъыдэкIын» къыхэх.",
+    "close": "КъэгъэпщыкIын",
+    "cancel": "НэгъуэщI",
+    "start": "Псори къыдэкIын",
+    "downloadAgain": "Щы1эжьыжьы къыдэкIын",
+    "retryFailed": "КъыдэкIа хъунукъымхэр щы1эжьыжьы"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Бызэ версиер щыIэп",
+    "eyebrow": "Бызэ версиер щыIэп",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName>-м щыIэп",
+    "actionsLabel": "Еплъыну щыIэ вариантхэр",
+    "browseInLanguage": "{language}-м видеохэр къэплъэн",
+    "backToSearch": "КъыщIэнэм къэкIуэжын",
+    "audioVersionsTitle": "НэгъуэщI аудио версиэхэр",
+    "audioVersionsDescription": "Мы видеом еплъэн нэщIу аудио бызэ къыхэх.",
+    "languageVersionLabel": "Аудио бызэ",
+    "selectLanguageVersion": "Бызэ версие къыхэх",
+    "watchSelectedVersion": "Къыхэха версием еплъын"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie къыхэхахэр",
+    "bannerTitle": "Уи хьэл-щэныгъэм къыхэхахэр",
+    "bannerDescription": "Мыкъутэ cookie-хэр Watch-ыр къэгъэхъуэну, иныбжьэгъу еплъыну къызэрагъэпэщыт. Уэ фIэщIу къызэфIэмыгъэхьэ, тхылъым и cookie-м нэгъуэщIу зэхэгъэкIыныр къэкIуэкIыжхэм ящыщ уи интересхэр къэгъэнэну, рекомендацэхэр уи щхьэусыгъуэкIэ гъэпэщытыну. Контекстуальнэ рекомендацэхэр апхуэдэуи къыпщIэщт.",
+    "acceptAll": "Псори къыщIэсын",
+    "essentialOnly": "Мыхъумэ къэзыухьыр щхьэху",
+    "manageChoices": "Къыхэхахэр гъэпкъыр",
+    "savingChoice": "Cookie къыхэхам къызэрагъэхъу",
+    "settings": "Cookie щIэпхъуэжхэр",
+    "settingsDescription": "Watch-м рекомендацэм и интересхэр къэкIуэкIыжхэм ящыщ къэгъэнэн хуейрэ, хуеймэ къыхэх. Мыри зы сыхьэткIэ уиIуэ узыщIэпхъуэжын щыIэщ.",
+    "essentialCookies": "Мыхъумэ cookie-хэр",
+    "essentialDescription": "Щытхъуныгъэ, къеплъэн, хьэл-щэныгъэ къыхэхахэр, рекомендацэ Iэмалыр зыхэлъагъу.",
+    "alwaysActive": "Зэхэту щыIэ",
+    "personalization": "Уи щхьэусыгъуэкIэ гъэпэщытын",
+    "personalizationDescription": "КъэкIуэкIыжхэм ящыщ зэфIэкI интересхэр къэгъэнэн. Мыри къыпхуэмыхьауэ, контекстуальнэ рекомендацэхэр къыпщIэщт.",
+    "erasurePending": "Профилыр епцIыхуэн щыIэу къыщIэкIащ. Контекстуальнэ рекомендацэхэр иджыри зэхэтщ.",
+    "cancel": "Къэмыбжьэн",
+    "saveChoices": "Къыхэхахэр гъэхъу",
+    "saving": "Гъэхъу жыпIэм…",
+    "loadError": "Уи къыхэхам къызэрагъэшэж хъумэщ. Ащыгъу къекIуэу щIалэбжьэу къыхэхын пхуохьэщ.",
+    "grantError": "Уи щхьэусыгъуэкIэ гъэпэщытын щIэрымыкIыфIэщ. Мыхъумэ къэзыухьыр щхьэху щыIэу къэнэщт.",
+    "saveError": "Уи къыхэхам гъэхъу хъумэщ. Гъэпытэжын къытхъуэ."
+  }
+}

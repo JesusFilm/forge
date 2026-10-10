@@ -1,0 +1,96 @@
+{
+  "schemaVersion": "seeker-experiment-gates/v1",
+  "candidates": {
+    "video-prompt-v2": {
+      "kind": "seeker-eval-gate-report",
+      "verdict": "red",
+      "refusedOn": [],
+      "promptChanged": {
+        "baselineSha256": "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5",
+        "currentSha256": "bdc09456d558f2853604adff70655ee850730ccc8f2b18881780590c657b76ee",
+        "baselineSource": "langfuse",
+        "currentSource": "langfuse"
+      },
+      "newHardFails": [
+        {
+          "questionId": "q-suffering",
+          "model": "anthropic/claude-sonnet-5",
+          "checkId": "cited-source-names-grounded",
+          "details": [
+            "Do Evil and Suffering Disprove the Existence of God? Part 3 (https://thelife.com/do-evil-and-suffering-disprove-the-existence-of-god-part-3)"
+          ]
+        }
+      ],
+      "carriedKnownFails": [],
+      "toolSkipDeltas": [
+        {
+          "model": "anthropic/claude-sonnet-5",
+          "checkId": "tool-called",
+          "baselineCount": 0,
+          "currentCount": 0,
+          "currentCells": [],
+          "regression": false
+        }
+      ],
+      "toolSkipPooled": {
+        "baselineCount": 0,
+        "currentCount": 0,
+        "regression": false
+      },
+      "formatDeltas": [
+        {
+          "model": "anthropic/claude-sonnet-5",
+          "checkId": "word-count",
+          "baselineCount": 6,
+          "currentCount": 7,
+          "currentCells": [
+            "q-suffering",
+            "q-grief-father",
+            "q-trinity",
+            "q-islam-jesus",
+            "q-verse-exact-words",
+            "q-links-to-verify",
+            "q-bible-changed"
+          ],
+          "regression": true
+        },
+        {
+          "model": "anthropic/claude-sonnet-5",
+          "checkId": "prose-format",
+          "baselineCount": 5,
+          "currentCount": 2,
+          "currentCells": ["q-living-together", "q-links-to-verify"],
+          "regression": false
+        }
+      ],
+      "groundingFlips": [],
+      "triageFlips": [
+        {
+          "questionId": "q-theotokos",
+          "model": "anthropic/claude-sonnet-5",
+          "criterionId": "q-theotokos-on-question",
+          "criterionClass": "tone",
+          "reasoning": "The question asks what 'Theotokos' means and whether all Christians believe it. While the answer acknowledges the gap in grounded sources, it does not attempt to address the core question or provide any substantive answer to what the term means or its denominational differences."
+        }
+      ],
+      "confirmedGroundingFlips": [],
+      "unconfirmedGroundingFlips": [],
+      "scoreDelta": {
+        "baseline": 0.9932432432432432,
+        "current": 0.9864864864864865,
+        "delta": -0.006756756756756688,
+        "tolerance": 0.05,
+        "beyondTolerance": false
+      },
+      "invalidCells": {
+        "baseline": 0,
+        "current": 0
+      },
+      "answerErrorCells": {
+        "baseline": 0,
+        "current": 0
+      },
+      "fixturesCorpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738"
+    }
+  }
+}

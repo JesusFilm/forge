@@ -1,0 +1,211 @@
+import { CombinedGraphQLErrors } from "@apollo/client/errors"
+
+import type { AdminLanguageForms } from "../i18n/adminLanguage"
+import type { UiT } from "../i18n/useT"
+import { isBrowseTopicTerm } from "./browseTopics"
+
+import type {
+  SearchResponse,
+  SearchResult,
+  WatchSearchResultItem,
+  WatchSearchWire,
+} from "./queries"
+
+// Pure, React-free mapping for the watchSearch contract (admin #1622), so the
+// nullable-wire-row → non-null-UI-row narrowing, the request input, and the
+// error copy are unit testable without Apollo or the native Datadog SDK.
+
+/**
+ * Language inputs take a `language.slug` ("english"), NOT a BCP-47 tag ("en"):
+ * a tag matches no language row, so every result returns UNAVAILABLE with a
+ * null playbackId. See docs/solutions/.../language-identity-on-slug-not-bcp47.
+ */
+export const SEARCH_LANGUAGE_SLUG = "english"
+
+/** The languages one search asks in. Discover pins it per search (KTD16). */
+export type SearchLanguage = {
+  /** The UI's text slug: results come back in its text rows (R9). */
+  readonly display: string
+  /** The query's own language, when the app knows it; null lets Admin infer. */
+  readonly query: string | null
+}
+
+export const ENGLISH_SEARCH_LANGUAGE: SearchLanguage = {
+  display: SEARCH_LANGUAGE_SLUG,
+  query: null,
+}
+
+/** KTD9: the mapped text slug (`english` for a catalog with no Admin
+ *  language). A browse-topic term is English whatever the UI shows. */
+export function searchLanguageFor(
+  forms: AdminLanguageForms,
+  query: string,
+): SearchLanguage {
+  const display = forms.textSlug.trim()
+  return {
+    display: display === "" ? SEARCH_LANGUAGE_SLUG : display,
+    query: isBrowseTopicTerm(query) ? SEARCH_LANGUAGE_SLUG : null,
+  }
+}
+
+// Web's query cap (search-actions.ts truncatedQuery). One constant for the
+// screen's input truncation AND the log builder's cap, so they can't drift.
+export const MAX_QUERY_LENGTH = 200
+
+export type WatchSearchInputArgs = {
+  query: string
+  offset: number
+  limit: number
+  clientRequestId?: string
+  language: SearchLanguage
+}
+
+/**
+ * Omits `targetLanguageSlug` (an explicit target kills admin's query-named-
+ * language inference, so "jesus in spanish" would stop working) and
+ * `routeLanguageSlug` (no mobile equivalent; it outranks display).
+ */
+export function buildWatchSearchInput({
+  query,
+  offset,
+  limit,
+  clientRequestId,
+  language,
+}: WatchSearchInputArgs) {
+  return {
+    query,
+    displayLanguageSlug: language.display,
+    ...(language.query ? { queryLanguageSlug: language.query } : {}),
+    ...(clientRequestId ? { clientRequestId } : {}),
+    limit,
+    offset,
+  }
+}
+
+/**
+ * Snippets come from admin's video/scene descriptions, which are CMS-authored
+ * and may carry markup. RN `<Text>` renders tags literally, so strip them —
+ * mirrors web's htmlToPlainText, minus the DOMParser branch RN has no use for.
+ */
+const HTML_ENTITIES: Record<string, string> = {
+  "&nbsp;": " ",
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&apos;": "'",
+}
+
+// Require a letter or `/` after `<` so ordinary prose ("a < b") survives, and
+// loop until stable: one pass over `<<b>b>` reassembles a live `<b>`.
+const HTML_TAG = /<\/?[a-zA-Z][^>]*>/g
+
+export function stripHtml(value: string | null | undefined): string | null {
+  if (!value) return null
+  let text = value.replace(/<br\s*\/?>/gi, " ")
+  let previous: string
+  do {
+    previous = text
+    text = text.replace(HTML_TAG, "")
+  } while (text !== previous)
+  // ONE pass over all entities: a sequence of per-entity replaces would decode
+  // `&amp;lt;` twice, turning escaped text back into a live `<`.
+  text = text
+    .replace(
+      /&(?:nbsp|amp|lt|gt|quot|apos|#39);/gi,
+      (m) => HTML_ENTITIES[m.toLowerCase()] ?? m,
+    )
+    .replace(/\s+/g, " ")
+    .trim()
+  return text.length > 0 ? text : null
+}
+
+/**
+ * Narrows one wire row to the UI shape, or null when admin omitted a field the
+ * card and the routing branch read unconditionally (mirrors web's mapper).
+ */
+export function mapWatchSearchResult(
+  item: WatchSearchResultItem,
+): SearchResult | null {
+  if (!item.type || !item.id || !item.slug || !item.title) return null
+  return {
+    type: item.type,
+    id: item.id,
+    slug: item.slug,
+    title: item.title,
+    imageUrl: item.imageUrl ?? null,
+    snippet: stripHtml(item.snippet),
+    startSeconds: item.startSeconds ?? null,
+    playbackId: item.playbackId ?? null,
+    score: item.score ?? null,
+    label: item.label ?? null,
+    childCount: item.childCount ?? null,
+    durationSeconds: item.durationSeconds ?? null,
+  }
+}
+
+/**
+ * Whole-response mapping. `requestedQuery`/`requestedOffset` back-fill the
+ * echo fields so a sparse response still yields a usable page cursor.
+ */
+export function mapWatchSearchResponse(
+  response: WatchSearchWire,
+  requestedQuery: string,
+  requestedOffset: number,
+): SearchResponse {
+  const returned = response?.results ?? []
+  const results = returned.flatMap((item) => {
+    const mapped = mapWatchSearchResult(item)
+    return mapped ? [mapped] : []
+  })
+  return {
+    query: response?.query ?? requestedQuery,
+    // An empty page can't advance the fallback cursor, so honouring hasMore
+    // would refetch the same offset forever, spending a token each tap.
+    hasMore: returned.length === 0 ? false : (response?.hasMore ?? false),
+    // Advance by rows RETURNED, not rows kept — a dropped row would otherwise
+    // shift the cursor back and re-fetch duplicates.
+    nextOffset: response?.nextOffset ?? requestedOffset + returned.length,
+    results,
+    // Telemetry passthrough (feat-335): nullable end to end, absence never throws.
+    requestId: response?.requestId ?? null,
+    latencyMs: response?.latencyMs ?? null,
+    degraded: response?.degraded ?? null,
+    searchMode: response?.searchMode ?? null,
+  }
+}
+
+export type SearchErrorKind = "rateLimited" | "unavailable" | "failed"
+
+/** The kind of a failed search. Apollo v4 throws Admin's 200-body errors as
+ *  CombinedGraphQLErrors with no domain `code`, so branch on what is sent: the
+ *  limiter's `extensions.http.statusCode`, or INTERNAL_SERVER_ERROR (masked). */
+export function searchErrorKind(error: unknown): SearchErrorKind {
+  if (!CombinedGraphQLErrors.is(error)) return "failed"
+
+  const extensions = error.errors[0]?.extensions
+  const status = (extensions?.http as { statusCode?: unknown } | undefined)
+    ?.statusCode
+
+  if (status === 429) return "rateLimited"
+  if (typeof status === "number" && status >= 500) return "unavailable"
+  if (extensions?.code === "INTERNAL_SERVER_ERROR") return "unavailable"
+  return "failed"
+}
+
+/** User-facing copy for a failed search. The screen keeps the kind, so the
+ *  message follows a language change while it shows (KTD15). */
+export function searchErrorMessage(
+  kind: SearchErrorKind,
+  t: UiT<"Discover">,
+): string {
+  switch (kind) {
+    case "rateLimited":
+      return t("rateLimitedError")
+    case "unavailable":
+      return t("unavailableError")
+    case "failed":
+      return t("failedError")
+  }
+}

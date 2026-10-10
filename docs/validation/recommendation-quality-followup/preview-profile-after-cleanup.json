@@ -1,0 +1,145 @@
+{
+  "capturedAt": "2026-09-16T02:16:04.732Z",
+  "results": [
+    {
+      "name": "own_preview_profile_evidence",
+      "milliseconds": 444,
+      "rows": [
+        {
+          "ordinal": "1",
+          "state": "claimed",
+          "discovery_source": "direct",
+          "attributed_selection": false,
+          "conflict_count": 0,
+          "replay_count": 0,
+          "profile_state": null,
+          "current_generation": null,
+          "policy_version": null,
+          "sound_off_milliseconds": null,
+          "sound_on_milliseconds": null,
+          "sound_off_progress_seconds": null,
+          "sound_on_progress_seconds": null,
+          "sound_off_qualified": null,
+          "sound_on_qualified": null,
+          "preview_milliseconds": null,
+          "duration_seconds": null,
+          "retention_matches": null,
+          "profile_link_precedes_episode": false
+        },
+        {
+          "ordinal": "2",
+          "state": "claimed",
+          "discovery_source": "recommendation",
+          "attributed_selection": true,
+          "conflict_count": 0,
+          "replay_count": 0,
+          "profile_state": null,
+          "current_generation": null,
+          "policy_version": null,
+          "sound_off_milliseconds": null,
+          "sound_on_milliseconds": null,
+          "sound_off_progress_seconds": null,
+          "sound_on_progress_seconds": null,
+          "sound_off_qualified": null,
+          "sound_on_qualified": null,
+          "preview_milliseconds": null,
+          "duration_seconds": null,
+          "retention_matches": null,
+          "profile_link_precedes_episode": false
+        }
+      ]
+    },
+    {
+      "name": "own_episode_fact_health",
+      "milliseconds": 453,
+      "rows": [
+        {
+          "kind": "playback_active_visible_playing",
+          "facts": "2",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:51:56.329Z",
+          "last_occurred_at": "2026-09-16T01:52:11.588Z"
+        },
+        {
+          "kind": "playback_attempt",
+          "facts": "1",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:51:56.304Z",
+          "last_occurred_at": "2026-09-16T01:51:56.304Z"
+        },
+        {
+          "kind": "playback_navigation",
+          "facts": "1",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:52:11.588Z",
+          "last_occurred_at": "2026-09-16T01:52:11.588Z"
+        },
+        {
+          "kind": "playback_progress",
+          "facts": "1",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:52:06.467Z",
+          "last_occurred_at": "2026-09-16T01:52:06.467Z"
+        },
+        {
+          "kind": "playback_qoe",
+          "facts": "2",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:51:56.329Z",
+          "last_occurred_at": "2026-09-16T01:51:56.383Z"
+        },
+        {
+          "kind": "playback_seek",
+          "facts": "1",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:51:56.382Z",
+          "last_occurred_at": "2026-09-16T01:51:56.382Z"
+        },
+        {
+          "kind": "playback_start",
+          "facts": "1",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:51:56.304Z",
+          "last_occurred_at": "2026-09-16T01:51:56.304Z"
+        },
+        {
+          "kind": "playback_viewing_mode",
+          "facts": "37",
+          "late_facts": "0",
+          "first_occurred_at": "2026-09-16T01:51:15.713Z",
+          "last_occurred_at": "2026-09-16T01:59:03.479Z"
+        }
+      ]
+    },
+    {
+      "name": "own_later_delivery_mode_evidence",
+      "milliseconds": 436,
+      "rows": [
+        {
+          "execution_mode": "curated_fallback",
+          "reason_code": "seed_embedding_unavailable",
+          "ranker_version": "source-rank-hybrid-ranker-v1",
+          "requests": "1",
+          "candidate_observations": "325",
+          "observations_with_mode_evidence": "0"
+        },
+        {
+          "execution_mode": "semantic_contextual",
+          "reason_code": "profile_cold_start",
+          "ranker_version": "semantic-deterministic-ranker-v1",
+          "requests": "1",
+          "candidate_observations": "178",
+          "observations_with_mode_evidence": "0"
+        },
+        {
+          "execution_mode": "semantic_contextual",
+          "reason_code": null,
+          "ranker_version": "semantic-deterministic-ranker-v1",
+          "requests": "1",
+          "candidate_observations": "2",
+          "observations_with_mode_evidence": "0"
+        }
+      ]
+    }
+  ]
+}

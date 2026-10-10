@@ -12,28 +12,39 @@ tags:
   - symlinks
   - dependency-resolution
   - turborepo
-module: "apps/mobile-v2"
+module: "apps/mobile"
+last_updated: "2026-08-13"
 related_issues:
   - "pnpm symlink traversal into .pnpm/ store"
   - "multiple React versions in monorepo"
   - "Metro resolver configuration"
 ---
 
+> **Scope note (2026-08-13):** this doc covers the Metro BUNDLER-time layer of
+> pnpm duplicate-instance hazards — Metro following symlinks to the wrong
+> installed copy. The sibling LOCKFILE-time layer (pnpm's peer resolution
+> silently re-keying an importer that never declared the package) is a
+> different mechanism with a different fix; see
+> `docs/solutions/architecture-patterns/pnpm-workspace-optional-peer-dependency-silent-borrowing.md`.
+> Fixing one layer does not fix the other. The app was `apps/mobile-v2` when
+> this was written; it is `apps/mobile` today, and the resolver below is live
+> in `apps/mobile/metro.config.js`.
+
 ## Problem
 
-On simulator launch, the Expo app (`apps/mobile-v2`) crashed immediately with:
+On simulator launch, the Expo app (then `apps/mobile-v2`, now `apps/mobile`) crashed immediately with:
 
 ```
 A React Element from an older version of React was rendered. This is not supported.
 ```
 
-The monorepo has three incompatible React versions:
+The monorepo carries multiple incompatible React versions (the 2026-04 lineup below is historical — the split itself persists, e.g. `apps/mobile` on 19.2.x and `apps/tv` on 19.1.x as of 2026-08):
 
-| App                     | React Version          |
-| ----------------------- | ---------------------- |
-| `apps/cms` (Strapi v5)  | 18.x                   |
-| `apps/web` (Next.js)    | 19.2.x (via react-dom) |
-| `apps/mobile-v2` (Expo) | 19.1.0 (pinned)        |
+| App                                   | React Version (2026-04) |
+| ------------------------------------- | ----------------------- |
+| `apps/cms` (Strapi v5, since retired) | 18.x                    |
+| `apps/web` (Next.js)                  | 19.2.x (via react-dom)  |
+| `apps/mobile-v2` (Expo)               | 19.1.0 (pinned)         |
 
 Metro followed pnpm symlinks into `.pnpm/` and resolved the wrong React copy from a transitive dependency (e.g., Apollo Client linked to React 18 or 19.2).
 
@@ -56,7 +67,7 @@ pnpm uses a content-addressable store with symlinks. When Metro encounters `impo
 
 ## Solution
 
-File: `apps/mobile-v2/metro.config.js`
+File: `apps/mobile/metro.config.js` (path was `apps/mobile-v2/` at the time)
 
 ```js
 // Paths used by extraNodeModules; keys also drive the custom resolveRequest.
@@ -101,7 +112,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 - **`resolveRequest: undefined` prevents infinite recursion.** This is the canonical Metro pattern — omitting it causes a stack overflow.
 - **Override `originModulePath`, not the module name.** Passing a directory path as the module specifier breaks Metro. The correct lever is `originModulePath`: set it to `path.join(projectRoot, "package.json")` so Node resolution walks up from the project root.
 - **`startsWith(pkg + "/")` catches deep imports safely.** `"react-native"` does not match `"react/"` — the trailing slash delimiter prevents false positives. This covers `react/jsx-runtime`, `react/jsx-dev-runtime`, and `react-native/Libraries/...`.
-- **pnpm overrides are not viable** because `apps/cms` genuinely requires React 18. A monorepo-wide override would break the CMS.
+- **pnpm overrides are not viable** because workspace apps genuinely hold different React generations (React 18 in `apps/cms` at the time of writing; `apps/mobile` 19.2.x vs `apps/tv` 19.1.x as of 2026-08). A monorepo-wide override would force one app onto another's version.
 - **`.npmrc` hoisting changes affect all workspaces.** The Metro-level fix is more surgical and scoped to the app that has the problem.
 
 ## Alternatives Considered
@@ -120,11 +131,11 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 3. **After any `pnpm install`/`pnpm add` in the monorepo**, verify resolution:
 
 ```bash
-# Should show only react@19.1.0 for mobile-v2
-pnpm --filter @forge/mobile-v2 exec node -e "console.log(require('react/package.json').version)"
+# Should print exactly the react version apps/mobile/package.json declares
+pnpm --filter @forge/mobile exec node -e "console.log(require('react/package.json').version)"
 
-# Should resolve to mobile-v2's own node_modules
-pnpm --filter @forge/mobile-v2 exec node -e "console.log(require.resolve('react'))"
+# Should resolve to apps/mobile's own node_modules
+pnpm --filter @forge/mobile exec node -e "console.log(require.resolve('react'))"
 ```
 
 4. **Watch for these symptoms** — they indicate the problem has recurred:
@@ -134,6 +145,8 @@ pnpm --filter @forge/mobile-v2 exec node -e "console.log(require.resolve('react'
 
 ## Related Documentation
 
+- [`docs/solutions/architecture-patterns/pnpm-workspace-optional-peer-dependency-silent-borrowing.md`](../architecture-patterns/pnpm-workspace-optional-peer-dependency-silent-borrowing.md) — The sibling LOCKFILE-time layer: pnpm peer resolution silently re-keying importers that never declared the package; fixed with per-importer package.json pins, not Metro config
+- [`docs/solutions/build-errors/pnpm-hidden-hoist-phantom-dependency-worklets-babel-metro-bundle-failure.md`](../build-errors/pnpm-hidden-hoist-phantom-dependency-worklets-babel-metro-bundle-failure.md) — The third sibling, also Metro BUNDLE-time but a different mechanism: an undeclared (phantom) `require` resolving through pnpm's hidden hoist to an incompatible major after a lockfile dedupe; fixed with root `pnpm.packageExtensions`, not Metro config
 - [`docs/solutions/mobile/mobile-v2-sdui-app-scaffold-and-review-findings.md`](mobile-v2-sdui-app-scaffold-and-review-findings.md) — Documents Metro resolution failures during mobile-v2 scaffold
 - [`docs/solutions/mobile/expo-env-file-handling.md`](expo-env-file-handling.md) — Metro's role in env var inlining and `.env` file priority
 - [`docs/solutions/deployment/nextjs-pnpm-monorepo-railway-standalone.md`](../deployment/nextjs-pnpm-monorepo-railway-standalone.md) — Same class of problem (pnpm path assumptions) in deployment context

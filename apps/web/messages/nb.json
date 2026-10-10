@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Ingen opplevelsesinnhold er tilgjengelig.",
+    "failedToLoad": "Kunne ikke laste opplevelsen: {message}",
+    "unexpected": "Det oppstod en uventet feil.",
+    "notConfigured": "Innholdstjenesten er ikke konfigurert.",
+    "noContent": "Det er ikke noe innhold tilgjengelig.",
+    "homepageMisconfigured": "Startsidens visning er feil konfigurert.",
+    "defaultTemplateMisconfigured": "Standardmalen for visning er feil konfigurert.",
+    "authFailed": "Kunne ikke autentisere mot innholdstjenesten. Ta kontakt med support hvis dette vedvarer.",
+    "pageLoadFailed": "Noe gikk galt.",
+    "tryAgain": "Prøv igjen"
+  },
+  "VideosPage": {
+    "title": "Alle videoer",
+    "placeholder": "Katalogblading kommer. I mellomtiden kan du bruke søk eller en emnespesifikk URL."
+  },
+  "BibleQuotes": {
+    "title": "Bibelvers",
+    "share": "Del",
+    "readMore": "Les mer...",
+    "learnMore": "Les mer",
+    "freeResources": "Gratis ressurser",
+    "promoHeading": "Vil du forstå Bibelen dypere?",
+    "joinBibleStudy": "Bli med i bibelstudiet vårt",
+    "previousQuote": "Forrige bibelvers",
+    "nextQuote": "Neste bibelvers",
+    "readPassage": "Les dette avsnittet i Bibelen din."
+  },
+  "DownloadButton": {
+    "checking": "Sjekker",
+    "download": "Last ned",
+    "sessionError": "Kunne ikke sjekke økten din. Prøv igjen.",
+    "saveVideo": "Lagre video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Last ned video",
+    "eyebrow": "Last ned video",
+    "posterAlt": "Videoplakat",
+    "noDownloads": "Ingen nedlastinger er tilgjengelige for denne videoen.",
+    "fileSizeLabel": "Velg filstørrelse",
+    "termsAgreementPrefix": "Jeg godtar ",
+    "termsOfUse": "vilkårene for bruk",
+    "termsAgreementSuffix": "",
+    "close": "Lukk",
+    "download": "Last ned",
+    "authRequiredTitle": "Vil du laste ned denne videoen?",
+    "authRequiredBody": "Du trenger en gratis Jesus Film-konto for å laste ned videoer.",
+    "signInToDownload": "Logg inn for å laste ned",
+    "keepWatching": "Fortsett å se",
+    "checking": "Sjekker",
+    "closeTermsOfUse": "Lukk vilkårene for bruk",
+    "cancel": "Avbryt",
+    "accept": "Godta",
+    "errorSessionExpired": "Økten din er utløpt. Logg inn på nytt for å laste ned.",
+    "errorSessionUnavailable": "Kunne ikke sjekke økten din. Prøv igjen.",
+    "errorUnavailableSource": "Nedlasting er ikke tilgjengelig fra denne kilden",
+    "tierHighest": "Høyest",
+    "tierHigh": "Høy",
+    "tierLow": "Lav"
+  },
+  "HeroPlayerControls": {
+    "play": "Spill av",
+    "pause": "Sett på pause",
+    "seek": "Søk",
+    "seekValue": "{current} av {total}",
+    "volume": "Volum",
+    "volumeValue": "{percent} prosent",
+    "mute": "Demp",
+    "unmute": "Lyd på",
+    "changeAudioLanguage": "Endre lydspråk",
+    "enterFullscreen": "Gå til fullskjerm",
+    "exitFullscreen": "Avslutt fullskjerm"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Velg språk",
+    "searchPlaceholder": "Søk etter språk…",
+    "languages": "Språk",
+    "noMatches": "Ingen treff",
+    "notAvailable": "Ikke tilgjengelig"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Språk",
+    "dialogTitleWithSubtitles": "Språk og undertekster",
+    "languageHeading": "Språk",
+    "subtitlesHeading": "Undertekster",
+    "languageCount": "{count, plural, one {# språk} other {# språk}}",
+    "requestSent": "Forespørsel sendt",
+    "translateWithAi": "Oversett med KI",
+    "noSubtitles": "Ingen undertekster",
+    "toggleOn": "På",
+    "toggleOff": "Av",
+    "close": "Lukk",
+    "apply": "Bruk",
+    "noLanguageSubtitles": "Ingen undertekster på {language}",
+    "seeAllLanguages": "Alle språk",
+    "seeAllVideosInLanguage": "Alle videoer: {language}",
+    "retryLoadingLanguages": "Prøv å laste språk på nytt",
+    "notAvailable": "Ikke tilgjengelig",
+    "switching": "Bytter..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISODE} other {# EPISODER}}",
+    "seriesLabel": "SERIE · {episodes}",
+    "changeAudioLanguage": "Endre lydspråk",
+    "share": "Del",
+    "languages": "Språk",
+    "downloadCollection": "Last ned samling",
+    "checkingDownloads": "Sjekker nedlastinger…",
+    "downloadSessionError": "Kunne ikke sjekke økten din. Prøv igjen."
+  },
+  "WatchModal": {
+    "close": "Lukk"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Hvis du kunne stille skaperen av denne videoen ett spørsmål, hva ville det vært?",
+    "fallbackBody": "Ha en privat samtale med noen som er villig til å lytte.",
+    "questionsShort": "Spørsmål",
+    "questions": "Relaterte spørsmål",
+    "askYours": "Still ditt spørsmål",
+    "chatWithPerson": "Chat med en person",
+    "askBibleQuestion": "Still et bibelspørsmål",
+    "quiz": "Kunnskapsprøve"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Meldingstype",
+    "fieldLabel": "Still et spørsmål om denne videoen",
+    "send": "Send spørsmål",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Still et bibelspørsmål",
+        "description": "Umiddelbare svar fra Bibelen ved hjelp av KI-søk"
+      },
+      "prayerRequest": {
+        "label": "Be om forbønn",
+        "description": "Del hva du ønsker forbønn for"
+      },
+      "comment": {
+        "label": "Legg igjen en kommentar",
+        "description": "Send tanker om denne videoen"
+      },
+      "personChat": {
+        "label": "Chat med en person",
+        "description": "Snakk med noen nå"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Del video",
+    "heading": "Del denne videoen",
+    "posterAlt": "Videoplakat",
+    "shareOnFacebook": "Del på Facebook",
+    "shareOnFacebookUnavailable": "Del på Facebook (ikke tilgjengelig i denne versjonen)",
+    "shareOnX": "Del på X",
+    "shareOnXUnavailable": "Del på X (ikke tilgjengelig i denne versjonen)",
+    "shareDisabledHint": "Deling krever en publisert side — fungerer når denne videoen er i produksjon.",
+    "shareFormat": "Delingsformat",
+    "shareLinkTab": "Delingslenke",
+    "embedCodeTab": "Innbyggingskode",
+    "copyFailed": "Kunne ikke kopiere automatisk — marker teksten nedenfor og kopier manuelt.",
+    "copyLink": "Kopier lenke",
+    "copyCode": "Kopier kode",
+    "copied": "Kopiert",
+    "close": "Lukk"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkripsjon",
+    "subheading": "Trykk på en linje for å hoppe til det tidspunktet.",
+    "subtitleLanguage": "Undertekstspråk",
+    "aiSuffix": " · KI",
+    "loading": "Laster transkripsjon…",
+    "unavailable": "Transkripsjon er ikke tilgjengelig for dette undertekstsporet.",
+    "empty": "Fant ingen transkripsjonslinjer."
+  },
+  "FloatingSearch": {
+    "placeholder": "Søk eller bla i emner…",
+    "openSearch": "Søk etter videoer",
+    "searchRegion": "Søk etter videoer",
+    "clearSearch": "Tøm søk",
+    "changeAudioLanguage": "Endre lydspråk",
+    "home": "JesusFilm-startside",
+    "closeSearch": "Lukk søk",
+    "submitSearch": "Søk",
+    "library": "Bibliotek"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Søk og bla i videoer",
+    "home": "JesusFilm-startside",
+    "placeholder": "Søk eller bla i emner…",
+    "inputLabel": "Søk etter videoer med nøkkelord",
+    "searchFailed": "Søk mislyktes. Prøv igjen.",
+    "loadMoreFailed": "Kunne ikke laste inn flere resultater.",
+    "searching": "Søker...",
+    "connectionHint": "Sjekk tilkoblingen din og prøv igjen.",
+    "rateLimitHint": "For mange forespørsler. Prøv igjen om ett minutt.",
+    "retrySearch": "Prøv søket på nytt",
+    "retry": "Prøv igjen",
+    "noResults": "Ingen resultater for \"{query}\"",
+    "tryDifferentKeywords": "Prøv andre nøkkelord eller bla i kategorier",
+    "loading": "Laster...",
+    "loadMore": "Last inn mer",
+    "categoryBibleStories": "Bibelfortellinger",
+    "categoryParables": "Lignelser",
+    "categoryAnimated": "Animerte",
+    "categoryStudy": "Studie",
+    "categoryFamily": "Familie",
+    "categoryChristmas": "Jul",
+    "searchLanguageLabel": "Søkespråk",
+    "allLanguages": "Alle språk",
+    "searchSuggestions": "Søkeforslag",
+    "directMatches": "Direkte treff",
+    "languages": "Språk",
+    "recommendedLanguage": "Anbefalt språk",
+    "searchSuggestion": "Søk etter {suggestion}",
+    "searchSuggestionWithLanguage": "Søk etter «{suggestion}» på {language}",
+    "inLanguage": "på {language}",
+    "browseByRegion": "Bla etter region",
+    "allVideosOnSinglePage": "Alle videoer på én side",
+    "clearLanguages": "Tøm",
+    "queryLanguageDetected": "{language} oppdaget",
+    "searchInLanguage": "Søk på {language}",
+    "tryDifferentKeywordsOrLanguage": "Prøv andre nøkkelord eller velg et annet søkespråk",
+    "useWebsiteDefaultLanguage": "Bruk nettstedets standardspråk for søk",
+    "removeLanguage": "Fjern {language}",
+    "browseMode": "Søke- og bla-modus",
+    "searchingInLanguage": "Resultater på {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Se nå",
+    "tapToUnmute": "Trykk for å slå på lyd",
+    "nextEpisode": "Neste episode",
+    "audioTranslationCount": "{count, plural, one {# språk} other {# språk}}",
+    "subtitleCount": "Undertekster: {count, plural, one {# språk} other {# språk}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Laster innhold",
+    "loadingVideo": "Laster video"
+  },
+  "VideoLabels": {
+    "video": "Videoinnslag",
+    "segment": "Del",
+    "episode": "Avsnitt",
+    "featureFilm": "Langfilm",
+    "shortFilm": "Kortfilm",
+    "series": "Serie",
+    "collection": "Samling",
+    "trailer": "Forhåndsvisning",
+    "behindTheScenes": "Bak kulissene",
+    "chapter": "Kapittel"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Klipp {current} av {total}",
+    "position": "{current} av {total}",
+    "chapterCount": "{count, plural, one {# kapittel} other {# kapitler}}",
+    "clipAriaLabel": "{title} · Klipp {current} av {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# kapittel} other {# kapitler}}",
+    "chapter": "Kapittel",
+    "noImage": "Intet bilde",
+    "playingNow": "Spilles nå",
+    "previousChapter": "Forrige kapittel",
+    "nextChapter": "Neste kapittel",
+    "thumbnailAlt": "Miniatyrbilde av {title}",
+    "relatedVideoThumbnail": "Miniatyrbilde av relatert video"
+  },
+  "SearchResultCard": {
+    "experience": "Opplevelse",
+    "episodeCount": "{count, plural, one {# episode} other {# episoder}}",
+    "thumbnailAlt": "Videominiatyr"
+  },
+  "Feedback": {
+    "openForm": "Åpne tilbakemeldingsskjema",
+    "label": "Tilbakemelding",
+    "couldNotLoad": "Kunne ikke laste inn tilbakemeldingsskjemaet.",
+    "loadingForm": "Laster inn tilbakemeldingsskjema…",
+    "retry": "Prøv igjen",
+    "cancel": "Avbryt",
+    "closeForm": "Lukk tilbakemeldingsskjema",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Gratis kristne videoer på {language} | Jesus Film Project",
+    "metadataDescription": "Utforsk Jesus-filmer, bibelhistorier, disipleringsserier og evangeliseringsvideoer med dubbet lyd eller undertekster på {language}.",
+    "heroTitle": "Gratis kristne videoer på {language}",
+    "heroDescription": "Utforsk Jesus-filmer, bibelhistorier, disipleringsserier og evangeliseringsvideoer tilgjengelig på {language}. Fullt dubbet innhold vises først, med alternativer kun med undertekster nedenfor.",
+    "languageCollection": "Språksamling",
+    "itemCount": "{count, plural, one {# element} other {# elementer}}",
+    "videoCount": "{count, plural, one {# video} other {# videoer}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videoer}} i {groupCount, plural, one {# gruppe} other {# grupper}}",
+    "sectionNavLabel": "Seksjoner i språkkatalogen",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Ny",
+    "videoBible": "Videobibel",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Samlinger",
+    "subtitlesOnly": "Bare undertekster",
+    "backToTop": "Tilbake til toppen",
+    "newlyAdded": "Nylig lagt til",
+    "newVideosTitle": "Nye kristne videoer på {language}",
+    "newestFirst": "Nyeste først",
+    "noPublishedVideos": "Ingen publiserte videoer ble funnet for dette språket ennå.",
+    "bibleAndGospelFilms": "Bibelske og evangeliske filmer",
+    "videoBibleCollectionsTitle": "{language}-samlinger for Videobibel",
+    "videoBibleDescription": "Skriftfokuserte samlinger som inkluderer LUMO, JESUS, Magdalena og Apostlenes gjerninger på {language}.",
+    "noVideoBibleCollections": "Ingen Videobibel-samlinger er tilgjengelige for dette språket ennå.",
+    "bibleProjectCollectionsTitle": "{language}-samlinger fra BibleProject",
+    "bibleProjectDescription": "BibleProject-serier og studier tilgjengelig på {language}.",
+    "noBibleProjectCollections": "Ingen BibleProject-samlinger er tilgjengelige for dette språket ennå.",
+    "sportsStories": "Sportshistorier",
+    "sportsTitle": "{language} sport- og idrettsutøverhistorier",
+    "sportsDescription": "Trosbaserte sportshistorier og samlinger med fokus på idrettsutøvere tilgjengelig på {language}.",
+    "noSportsCollections": "Ingen samlinger med sport eller idrettsutøverhistorier er tilgjengelige for dette språket ennå.",
+    "fullyDubbed": "Fullt dubbet",
+    "dubbedVideosTitle": "{language}-videoer etter samling",
+    "dubbedVideosDescription": "Bla i fullt dubbet innhold på {language}, gruppert med samlingen for enklere oppdagelse.",
+    "noDubbedVideos": "Ingen fullt dubbet innhold er tilgjengelig for dette språket ennå.",
+    "subtitlesAvailable": "Undertekster tilgjengelig",
+    "subtitlesTitle": "{language}-videoer med undertekster",
+    "subtitlesDescription": "Disse videoene har undertekster på {language} når dubbet lyd på {language} ennå ikke er tilgjengelig.",
+    "noSubtitleVideos": "Ingen videoer kun med undertekster er tilgjengelige for dette språket ennå.",
+    "dubbed": "Dubbet",
+    "subtitles": "Undertekster",
+    "newLabel": "Ny",
+    "fromCollection": "Fra {collection}",
+    "standaloneVideos": "Enkeltstående videoer",
+    "videosFromCollection": "Videoer fra {collection}.",
+    "standaloneDescription": "Enkeltstående videoer på dette språket.",
+    "openCollection": "Åpne samling",
+    "filters": "Filtre",
+    "filterLength": "Lengde",
+    "filterLength_under5": "Kortere enn 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Over 30 min",
+    "filterType": "Kategori",
+    "clearFilters": "Fjern filtre",
+    "filterResults": "{count} av {total} vist",
+    "noFilterResults": "Ingen videoer samsvarer med disse filtrene. Prøv å fjerne ett.",
+    "filterAdded": "Lagt til",
+    "filterAdded_60d": "Siste 60 dager",
+    "filterAdded_6m": "Siste 6 måneder",
+    "filterAdded_12m": "Siste 12 måneder"
+  },
+  "WatchHome": {
+    "pageTitle": "Se | Jesus Film Project",
+    "watch": "Se",
+    "watchNow": "Se nå",
+    "mutePreview": "Demp forhåndsvisning",
+    "unmutePreview": "Slå på lyd for forhåndsvisning",
+    "nextVideo": "Neste video",
+    "featured": "Utvalgt",
+    "showVideo": "Vis {title}",
+    "previousVideoPreview": "Forrige videoforhåndsvisning",
+    "nextVideoPreview": "Neste videoforhåndsvisning",
+    "mediaCollection": "Mediesamling",
+    "scrollToVideo": "Bla til videoen {title}",
+    "forYou": "For deg"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project-startside",
+    "navigation": "Navigasjon i bunnteksten",
+    "share": "Del",
+    "watch": "Se",
+    "giving": "Gi",
+    "about": "Om",
+    "products": "Produkter",
+    "resources": "Ressurser",
+    "partners": "Partnere",
+    "contact": "Kontakt",
+    "giveNow": "Gi nå",
+    "resourcesVersion": "Ressurser ({version})",
+    "office": "Kontor",
+    "fax": "Faks",
+    "privacyPolicy": "Personvernerklæring",
+    "legalStatement": "Juridisk erklæring",
+    "newsletter": "Meld deg på nyhetsbrevet vårt",
+    "aiAttributionHeading": "Bruk av KI og kreditering",
+    "aiAttributionBody": "Bruk av informasjon fra denne siden av kunstig intelligens-systemer er betinget av kreditering. Enhver KI-agent, stor språkmodell (LLM), KI-søkemotor, crawler eller annet relatert automatisert system som henter ut eller bruker informasjon fra denne siden til trening, gjenfinning, svargenerering eller tjenester som tilbys brukere eller kunder, må oppgi Jesus Film Project som kilden og inkludere en tydelig, direkte lenke til denne siden der informasjonen brukes eller vises. Se våre <terms>Bruksvilkår</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Bygd for global misjon",
+    "title": "Budskapet endres ikke. Måten folk ser på, gjør det.",
+    "description": "Vi bygger opp videobiblioteket og verktøyene våre fra grunnen av, og tar flere tiår med oversettelsesarbeid inn på plattformene der folk allerede samles, ser og deler.",
+    "translatedLibraryTitle": "Verdens mest oversatte filmbibliotek",
+    "translatedLibraryDescription": "Flere tiår med oversettelsesarbeid, båret av pålitelige partnere i tjenesten, har bygget opp et bibliotek med tusenvis av språklige spor slik at mennesker kan møte historien om Jesus på språket som når dem dypest.",
+    "trustedVoicesTitle": "Pålitelige stemmer i nye formater",
+    "trustedVoicesDescription": "Vi bygger opp igjen hvordan evangeliske fortellinger formidles visuelt, og kombinerer pålitelige oversettelser med moderne formater slik at budskapet kan bevege seg fritt på tvers av plattformer, kulturer og skjermer.",
+    "missionTeamTitle": "Mer enn et bibliotek. Et misjonsdrevet team.",
+    "missionTeamDescription": "Jesus Film Project er et globalt team av oversettere, mediespesialister, redaktører og skapere som gjør flere tiår med tjenesteerfaring om til verktøy for disippelgjørere overalt.",
+    "buildingNext": "Det vi bygger videre på",
+    "nextStepsTitle": "Plattform for neste steg",
+    "nextStepsDescription": "Koble seere til konkrete muligheter på deres åndelige reise, og hjelp dem å ta neste steg inn i fellesskap, Skriften eller misjon.",
+    "mediaLibraryTitle": "Evangeliserende mediebibliotek",
+    "mediaLibraryDescription": "Et omfattende kristent mediebibliotek med tusenvis av videoer, filmer og ressurser tilgjengelig på flere språk for tjeneste og evangelisering over hele verden.",
+    "ministryToolsTitle": "Digitale verktøy for menigheter og tjenester",
+    "ministryToolsDescription": "Videohåndtering, innholdsdistribusjon, publikumsengasjement og analyse utformet for å hjelpe tjenester med å nå flere mennesker effektivt.",
+    "invitationEyebrow": "Du er invitert",
+    "invitationTitle": "Hjelp til med å bygge <highlight>den neste generasjonen</highlight> av misjonsverktøy",
+    "invitationDescription": "Vi inviterer praktikere, skapere og partnere inn i tidlig tilgang. Test nye verktøy først, gi tilbakemelding og hjelp til med å forme produkter laget for reelt misjonsarbeid.",
+    "betaTester": "Bli betatester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Videobibel-samling",
+    "gospelRailTitle": "Oppdag hele historien",
+    "videoBibleDescription": "Utforsk samlingen vår av videoer og ressurser som gjør Bibelen levende gjennom engasjerende historier og undervisning.",
+    "showcaseTitle": "Skriften fortalt gjennom film",
+    "adventEyebrow": "Juleadvent",
+    "adventTitle": "Nedtelling til jul med advent",
+    "adventDescription": "Bli med på adventsreisen vår med en daglig video som bygger forventning til jul, og utforsker håpet, gleden og løftet i Jesu komme.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject-advent",
+    "nuaEyebrow": "NUA-serien",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth-serien",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Videokurs",
+    "journeyWithJesusTitle": "Reise med Jesus",
+    "gospelsOnVideoEyebrow": "Hvert evangelium, fortalt på video",
+    "scriptureAsWrittenTitle": "Skriften, lest nøyaktig som skrevet",
+    "merryChristmas": "God jul!",
+    "daysUntilChristmas": "{count, plural, one {# dag til jul} other {# dager til jul}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Språk",
+    "metadataDescription": "Bla i JesusFilm-videoer etter språk.",
+    "eyebrow": "Se språk",
+    "title": "Velg et språk",
+    "description": "Utforsk språk etter region eller bla i hele listen.",
+    "searchPlaceholder": "Søk etter språk eller land...",
+    "searchLabel": "Søk etter språk eller land",
+    "clearSearch": "Tøm søk",
+    "browse": "Bla gjennom",
+    "browseByRegion": "Bla etter region og land",
+    "languageCount": "{count, plural, one {# språk} other {# språk}}",
+    "region": "Område",
+    "countryLanguages": "{country}-språk",
+    "showLess": "Vis færre",
+    "showMore": "Vis {count} til",
+    "noLanguages": "Ingen språk funnet",
+    "tryAnotherSearch": "Prøv et annet søkeord."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Sehistorikk | Jesus Film Project",
+    "title": "Sehistorikk",
+    "loading": "Laster historikk",
+    "empty": "Ingenting her ennå",
+    "emptyDescription": "Videoer du ser mens du er innlogget, vises her.",
+    "earlier": "Tidligere",
+    "today": "I dag",
+    "yesterday": "I går"
+  },
+  "AccountControl": {
+    "account": "Konto",
+    "accountMenu": "Kontomeny",
+    "signIn": "Logg inn",
+    "signOut": "Logg ut",
+    "signedIn": "Innlogget",
+    "history": "Historikk",
+    "logOut": "Logg ut"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Side ikke funnet",
+    "eyebrow": "Side ikke funnet",
+    "screenReaderPrefix": "Side ikke funnet:",
+    "title": "Denne scenen finnes ikke her.",
+    "description": "Siden kan ha flyttet, men historien fortsetter.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Handlinger for siden ikke funnet",
+    "backToWatch": "Tilbake til Se",
+    "browseVideos": "Bla i videoer"
+  },
+  "VideoRecommendations": {
+    "match": "{percent} % treff",
+    "none": "Fant ingen anbefalinger for denne videoen på dette språket."
+  },
+  "BetaTesterModal": {
+    "title": "Bli betatester",
+    "trigger": "Bli betatester",
+    "loadFailed": "Noe gikk galt.",
+    "loading": "Laster...",
+    "openFormNewTab": "Åpne skjema i en ny fane",
+    "close": "Lukk",
+    "iframeTitle": "Bli betatester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Last ned samling",
+    "eyebrow": "Last ned samling",
+    "description": "Velg språk og kvalitet én gang. Alle tilgjengelige episoder lastes ned i riktig rekkefølge.",
+    "signInTitle": "Logg inn for å laste ned",
+    "signInBody": "Du kan laste ned samlinger etter at du har logget inn med en Jesus Film-konto.",
+    "signIn": "Logg inn for å laste ned",
+    "languageLabel": "Språk",
+    "qualityLabel": "Videokvalitet",
+    "tierHighest": "Høyest",
+    "tierHigh": "Høy",
+    "tierLow": "Lav",
+    "loading": "Finner tilgjengelige episoder…",
+    "loadError": "Kunne ikke laste inn nedlastinger for dette språket.",
+    "retry": "Prøv igjen",
+    "noDownloads": "Ingen episoder kan lastes ned på dette språket.",
+    "availableCount": "{count, plural, one {# episode er klar} other {# episoder er klare}}",
+    "skippedCount": "{count, plural, one {# episode hoppes over fordi den ikke er tilgjengelig} other {# episoder hoppes over fordi de ikke er tilgjengelige}}",
+    "chooseFolder": "Velg nedlastingsmappe",
+    "folderSelected": "Lagre i {name}",
+    "folderError": "Kunne ikke åpne nedlastingsmappen.",
+    "browserFallback": "Nettleseren lagrer hver fil med de vanlige innstillingene for nedlasting. Du kan bli bedt om å tillate flere nedlastinger.",
+    "sessionError": "Kunne ikke sjekke økten din. Prøv igjen.",
+    "downloading": "Laster ned {title}",
+    "progress": "{completed} av {total}",
+    "complete": "Nedlastingene er fullført",
+    "canceled": "Nedlastingene ble avbrutt",
+    "failedCount": "{count, plural, one {# episode kunne ikke lastes ned} other {# episoder kunne ikke lastes ned}}. Velg «Last ned på nytt» for å prøve samlingen på nytt.",
+    "close": "Lukk",
+    "cancel": "Avbryt",
+    "start": "Last ned alle",
+    "downloadAgain": "Last ned på nytt",
+    "retryFailed": "Prøv mislykkede nedlastinger på nytt"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Språkversjonen er ikke tilgjengelig",
+    "eyebrow": "Språkversjonen er ikke tilgjengelig",
+    "title": "<contentTitle>{title}</contentTitle> er ikke tilgjengelig på <languageName>{language}</languageName>",
+    "actionsLabel": "Tilgjengelige visningsalternativer",
+    "browseInLanguage": "Se videoer på {language}",
+    "backToSearch": "Tilbake til søk",
+    "audioVersionsTitle": "Andre lydversjoner",
+    "audioVersionsDescription": "Velg et lydspråk for å fortsette å se denne videoen.",
+    "languageVersionLabel": "Lydspråk",
+    "selectLanguageVersion": "Velg en språkversjon",
+    "watchSelectedVersion": "Se valgt versjon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Informasjonskapselvalg",
+    "bannerTitle": "Dine personvernvalg",
+    "bannerDescription": "Nødvendige informasjonskapsler holder Watch sikkert og i gang. Med din tillatelse kan en valgfri førsteparts informasjonskapsel huske interesser mellom besøk for å tilpasse anbefalinger. Kontekstuelle anbefalinger er tilgjengelige uansett.",
+    "acceptAll": "Godta alle",
+    "essentialOnly": "Kun nødvendige",
+    "manageChoices": "Administrer valg",
+    "savingChoice": "Lagrer valg av informasjonskapsler",
+    "settings": "Innstillinger for informasjonskapsler",
+    "settingsDescription": "Velg om Watch kan huske anbefalingsinteresser mellom besøk. Du kan endre dette når som helst.",
+    "essentialCookies": "Nødvendige informasjonskapsler",
+    "essentialDescription": "Sikkerhet, avspilling, personvernvalg og tilordning av anbefalingsforespørsler.",
+    "alwaysActive": "Alltid aktiv",
+    "personalization": "Personalisering",
+    "personalizationDescription": "Husk avgrensede interesser mellom besøk. Hvis du slår dette av, vil kontekstuelle anbefalinger fortsatt være tilgjengelige.",
+    "erasurePending": "Sletting av profil er under behandling. Kontekstuelle anbefalinger er allerede aktive.",
+    "cancel": "Avbryt",
+    "saveChoices": "Lagre valg",
+    "saving": "Lagrer…",
+    "loadError": "Valget ditt kunne ikke lastes inn. Du kan fortsatt velge nedenfor.",
+    "grantError": "Personalisering kunne ikke aktiveres. Kun nødvendige er fortsatt tilgjengelig.",
+    "saveError": "Valget ditt kunne ikke lagres. Prøv igjen."
+  }
+}

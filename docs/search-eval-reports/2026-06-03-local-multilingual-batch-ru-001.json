@@ -1,0 +1,612 @@
+{
+  "event": "run-embeds.complete",
+  "pipeline": "both",
+  "wallClockMs": 213036,
+  "reports": {
+    "scene": {
+      "mappingGeneratedAt": "2026-04-27T21:40:47.352Z",
+      "totalTargets": 20,
+      "localeFilter": ["ru"],
+      "outcomes": [
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nx90wr4qsl3xlszs8ij",
+            "videoEditionId": "cmoqa7nxs0wrnqsl33fccp47f",
+            "coreId": "10_Darkroom03Sin",
+            "cmsVideoId": 510,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3813
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7r2q12vnqsl3s2glj94z",
+            "videoEditionId": "cmoqa7r3a12w3qsl3pn43utxk",
+            "coreId": "1_jf6115-0-0",
+            "cmsVideoId": 645,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3307
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7s0p15rbqsl3hytpv4v3",
+            "videoEditionId": "cmoqa7s1115rrqsl3au5bdq3u",
+            "coreId": "1_jf6127-0-0",
+            "cmsVideoId": 657,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3534
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7s3915zwqsl3lc6zsmhk",
+            "videoEditionId": "cmoqa7s3l1609qsl3fhnf5h1q",
+            "coreId": "1_jf6128-0-0",
+            "cmsVideoId": 658,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3409
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7six17foqsl3bgjbav2w",
+            "videoEditionId": "cmoqa7sjc17g3qsl31sz74fy5",
+            "coreId": "1_jf6134-0-0",
+            "cmsVideoId": 664,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3404
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7twa1br8qsl306usixlf",
+            "videoEditionId": "cmoqa7two1broqsl3ghzdbmbk",
+            "coreId": "1_jf6152-0-0",
+            "cmsVideoId": 682,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3273
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7tyw1bztqsl3k0r4vcjj",
+            "videoEditionId": "cmoqa7tz91c09qsl3zu3ols9i",
+            "coreId": "1_jf6153-0-0",
+            "cmsVideoId": 683,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3260
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7u741cpqqsl345dsj1o7",
+            "videoEditionId": "cmoqa7u7o1cq8qsl33l398i2s",
+            "coreId": "1_jf6156-0-0",
+            "cmsVideoId": 686,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3131
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7ud31d70qsl396shh43d",
+            "videoEditionId": "cmoqa7udk1d7fqsl37in1wb27",
+            "coreId": "1_jf6158-0-0",
+            "cmsVideoId": 688,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3153
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7uiu1doaqsl3oaqt9yi5",
+            "videoEditionId": "cmoqa7ujb1donqsl3la9pba7r",
+            "coreId": "1_jf6160-0-0",
+            "cmsVideoId": 690,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3502
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7uoq1e5iqsl30dpkm6v0",
+            "videoEditionId": "cmoqa7up31e5vqsl31tuq26ju",
+            "coreId": "1_mld-0-0",
+            "cmsVideoId": 692,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3327
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7v8y1f18qsl3l5bf9ybh",
+            "videoEditionId": "cmoqa7v941f1iqsl34iaqpbvc",
+            "coreId": "1_wl-0-0",
+            "cmsVideoId": 713,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3324
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7vcn1fceqsl3snj5ug9r",
+            "videoEditionId": "cmoqa7vcs1fclqsl39isaw1fv",
+            "coreId": "1_wl604401-0-0",
+            "cmsVideoId": 715,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3496
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7vla1g44qsl32219cntx",
+            "videoEditionId": "cmoqa7vlg1g4hqsl3w54x2we4",
+            "coreId": "1_wl604410-0-0",
+            "cmsVideoId": 724,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3362
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7vs51gqbqsl3f3m8a4hg",
+            "videoEditionId": "cmoqa7vsb1gqqqsl3bora667g",
+            "coreId": "1_wl604417-0-0",
+            "cmsVideoId": 731,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3419
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7vt31gtgqsl3d4bl1x9c",
+            "videoEditionId": "cmoqa7vtb1gu3qsl3uu6bczdk",
+            "coreId": "1_wl604418-0-0",
+            "cmsVideoId": 732,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3621
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7wau1icpqsl3j8rjjypy",
+            "videoEditionId": "cmoqa7wb01id0qsl3xudvt16r",
+            "coreId": "1_wl604435-0-0",
+            "cmsVideoId": 749,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3270
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7wct1iiuqsl3pubfxbw1",
+            "videoEditionId": "cmoqa7wd11ijdqsl3mymbvnwm",
+            "coreId": "1_wl604437-0-0",
+            "cmsVideoId": 751,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3222
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7wf11ipeqsl3kwsx361o",
+            "videoEditionId": "cmoqa7wfa1ipzqsl3zkeaywdz",
+            "coreId": "1_wl604439-0-0",
+            "cmsVideoId": 753,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3330
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7wqs1jlfqsl357717x0q",
+            "videoEditionId": "cmoqa7wr31jm2qsl397hlpfnz",
+            "coreId": "1_wl75-0-0",
+            "cmsVideoId": 764,
+            "locale": "ru"
+          },
+          "locale": "ru",
+          "scenesIndexed": 1,
+          "embeddingsWritten": 1,
+          "durationMs": 3342
+        }
+      ],
+      "succeeded": 20,
+      "skipped": 0,
+      "failed": 0,
+      "missingArtifacts": [],
+      "retrySelection": null,
+      "groupedFailures": []
+    },
+    "transcript": {
+      "mappingGeneratedAt": "2026-04-27T21:40:47.352Z",
+      "totalTargets": 20,
+      "languageFilter": ["ru"],
+      "outcomes": [
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7nx90wr4qsl3xlszs8ij",
+            "videoEditionId": "cmoqa7nxs0wrnqsl33fccp47f",
+            "coreId": "10_Darkroom03Sin",
+            "cmsVideoId": 510,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 4,
+          "embeddingsWritten": 4,
+          "chunksPruned": 0,
+          "durationMs": 13508
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7r2q12vnqsl3s2glj94z",
+            "videoEditionId": "cmoqa7r3a12w3qsl3pn43utxk",
+            "coreId": "1_jf6115-0-0",
+            "cmsVideoId": 645,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3387
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7s0p15rbqsl3hytpv4v3",
+            "videoEditionId": "cmoqa7s1115rrqsl3au5bdq3u",
+            "coreId": "1_jf6127-0-0",
+            "cmsVideoId": 657,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3151
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7s3915zwqsl3lc6zsmhk",
+            "videoEditionId": "cmoqa7s3l1609qsl3fhnf5h1q",
+            "coreId": "1_jf6128-0-0",
+            "cmsVideoId": 658,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3316
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7six17foqsl3bgjbav2w",
+            "videoEditionId": "cmoqa7sjc17g3qsl31sz74fy5",
+            "coreId": "1_jf6134-0-0",
+            "cmsVideoId": 664,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3325
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7twa1br8qsl306usixlf",
+            "videoEditionId": "cmoqa7two1broqsl3ghzdbmbk",
+            "coreId": "1_jf6152-0-0",
+            "cmsVideoId": 682,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3207
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7tyw1bztqsl3k0r4vcjj",
+            "videoEditionId": "cmoqa7tz91c09qsl3zu3ols9i",
+            "coreId": "1_jf6153-0-0",
+            "cmsVideoId": 683,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3353
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7u741cpqqsl345dsj1o7",
+            "videoEditionId": "cmoqa7u7o1cq8qsl33l398i2s",
+            "coreId": "1_jf6156-0-0",
+            "cmsVideoId": 686,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3547
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7ud31d70qsl396shh43d",
+            "videoEditionId": "cmoqa7udk1d7fqsl37in1wb27",
+            "coreId": "1_jf6158-0-0",
+            "cmsVideoId": 688,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3184
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7uiu1doaqsl3oaqt9yi5",
+            "videoEditionId": "cmoqa7ujb1donqsl3la9pba7r",
+            "coreId": "1_jf6160-0-0",
+            "cmsVideoId": 690,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3268
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7uoq1e5iqsl30dpkm6v0",
+            "videoEditionId": "cmoqa7up31e5vqsl31tuq26ju",
+            "coreId": "1_mld-0-0",
+            "cmsVideoId": 692,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3613
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7v8y1f18qsl3l5bf9ybh",
+            "videoEditionId": "cmoqa7v941f1iqsl34iaqpbvc",
+            "coreId": "1_wl-0-0",
+            "cmsVideoId": 713,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 17,
+          "embeddingsWritten": 17,
+          "chunksPruned": 0,
+          "durationMs": 55914
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7vcn1fceqsl3snj5ug9r",
+            "videoEditionId": "cmoqa7vcs1fclqsl39isaw1fv",
+            "coreId": "1_wl604401-0-0",
+            "cmsVideoId": 715,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3341
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7vla1g44qsl32219cntx",
+            "videoEditionId": "cmoqa7vlg1g4hqsl3w54x2we4",
+            "coreId": "1_wl604410-0-0",
+            "cmsVideoId": 724,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3390
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7vs51gqbqsl3f3m8a4hg",
+            "videoEditionId": "cmoqa7vsb1gqqqsl3bora667g",
+            "coreId": "1_wl604417-0-0",
+            "cmsVideoId": 731,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3155
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7vt31gtgqsl3d4bl1x9c",
+            "videoEditionId": "cmoqa7vtb1gu3qsl3uu6bczdk",
+            "coreId": "1_wl604418-0-0",
+            "cmsVideoId": 732,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3182
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7wau1icpqsl3j8rjjypy",
+            "videoEditionId": "cmoqa7wb01id0qsl3xudvt16r",
+            "coreId": "1_wl604435-0-0",
+            "cmsVideoId": 749,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3205
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7wct1iiuqsl3pubfxbw1",
+            "videoEditionId": "cmoqa7wd11ijdqsl3mymbvnwm",
+            "coreId": "1_wl604437-0-0",
+            "cmsVideoId": 751,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 2966
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7wf11ipeqsl3kwsx361o",
+            "videoEditionId": "cmoqa7wfa1ipzqsl3zkeaywdz",
+            "coreId": "1_wl604439-0-0",
+            "cmsVideoId": 753,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3299
+        },
+        {
+          "status": "succeeded",
+          "target": {
+            "videoId": "cmoqa7wqs1jlfqsl357717x0q",
+            "videoEditionId": "cmoqa7wr31jm2qsl397hlpfnz",
+            "coreId": "1_wl75-0-0",
+            "cmsVideoId": 764,
+            "language": "ru"
+          },
+          "language": "ru",
+          "chunksIndexed": 1,
+          "embeddingsWritten": 1,
+          "chunksPruned": 0,
+          "durationMs": 3406
+        }
+      ],
+      "succeeded": 20,
+      "skipped": 0,
+      "failed": 0,
+      "missingArtifacts": []
+    }
+  },
+  "contentBackfillGateBypass": null
+}

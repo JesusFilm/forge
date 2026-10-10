@@ -1,0 +1,554 @@
+{
+  "capturedAt": "2026-09-23T00:41:42.612Z",
+  "fixture": "Owned PostgreSQL 18, all 98 migrations, real Prisma adapter and evidence writes. Lock blocks full issuance; server/application cases rewrite exactly 220 existing evidence rows. Delays are injected and are not proof of the production cause.",
+  "evidence": [
+    {
+      "scenario": "table_lock",
+      "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+      "elapsedMs": 1475.3406579999998,
+      "databaseTransactions": [
+        {
+          "ordinal": 1,
+          "backendPid": 229
+        }
+      ],
+      "timings": {
+        "persistence": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 1470.9592509999998,
+          "maxMs": 1470.9592509999998,
+          "errors": 1,
+          "errorCode": "deadline"
+        },
+        "transaction.begin": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 2.1178849999998874,
+          "maxMs": 2.1178849999998874,
+          "errors": 0
+        },
+        "transaction.callback": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 1468.6179680000002,
+          "maxMs": 1468.6179680000002,
+          "errors": 1,
+          "errorCode": "deadline"
+        },
+        "db.raw.$queryRaw": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 1.9995139999998628,
+          "maxMs": 1.9995139999998628,
+          "errors": 0
+        },
+        "db.RecommendationRequest.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 9.45675499999993,
+          "maxMs": 9.45675499999993,
+          "errors": 0
+        },
+        "db.RecommendationCandidateRun.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 2.680275000000165,
+          "maxMs": 2.680275000000165,
+          "errors": 0
+        },
+        "db.RecommendationPersonalizationDecision.create": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 2.3512049999999363,
+          "maxMs": 2.3512049999999363,
+          "errors": 0
+        },
+        "candidate_evidence.insert": {
+          "calls": 1,
+          "inFlight": 1,
+          "elapsedMs": 0,
+          "maxMs": 0,
+          "errors": 0,
+          "inputRows": 326
+        },
+        "db.raw.$executeRaw": {
+          "calls": 1,
+          "inFlight": 1,
+          "elapsedMs": 0,
+          "maxMs": 0,
+          "errors": 0
+        },
+        "transaction.rollback_settle": {
+          "calls": 1,
+          "inFlight": 1,
+          "elapsedMs": 0,
+          "maxMs": 0,
+          "errors": 0
+        }
+      },
+      "samples": [
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:39.240Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 65.763,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:39.344Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 169.95,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:39.447Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 272.91,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:39.550Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 375.646,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:39.653Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 478.458,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:39.756Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 581.143,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:39.858Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 683.833,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:39.960Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 785.59,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:40.063Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 888.193,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:40.169Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 994.605,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:40.273Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 1098.96,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:40.376Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 1201.676,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:40.479Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 1304.572,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:40.582Z",
+          "backendPid": 229,
+          "observationId": "d3d0b6dd-df1c-4ca9-bdf5-4965918ddccb",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Lock",
+          "waitEvent": "relation",
+          "queryStartedAt": "2026-09-23T00:41:39.174Z",
+          "stateChangedAt": "2026-09-23T00:41:39.174Z",
+          "queryAgeMs": 1407.478,
+          "blockerCount": 1,
+          "statementCategory": "candidate_evidence.insert"
+        }
+      ]
+    },
+    {
+      "scenario": "server_sleep",
+      "observationId": "928050b5-865f-46e3-a00d-53414f776074",
+      "elapsedMs": 444.7478460000002,
+      "databaseTransactions": [
+        {
+          "ordinal": 1,
+          "backendPid": 231
+        }
+      ],
+      "timings": {
+        "transaction.begin": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 1.7130849999998645,
+          "maxMs": 1.7130849999998645,
+          "errors": 0
+        },
+        "transaction.callback": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 439.29320899999993,
+          "maxMs": 439.29320899999993,
+          "errors": 0
+        },
+        "db.raw.$queryRaw": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 1.9218620000001465,
+          "maxMs": 1.9218620000001465,
+          "errors": 0
+        },
+        "db.RecommendationCandidateStageEvidence.deleteMany": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 5.1138929999997345,
+          "maxMs": 5.1138929999997345,
+          "errors": 0
+        },
+        "candidate_evidence.insert": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 431.10979599999973,
+          "maxMs": 431.10979599999973,
+          "errors": 0,
+          "inputRows": 220
+        },
+        "db.raw.$executeRaw": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 428.80539999999974,
+          "maxMs": 428.80539999999974,
+          "errors": 0
+        },
+        "transaction.commit_ack": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 3.5161440000001676,
+          "maxMs": 3.5161440000001676,
+          "errors": 0
+        }
+      },
+      "samples": [
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:41.195Z",
+          "backendPid": 231,
+          "observationId": "928050b5-865f-46e3-a00d-53414f776074",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Timeout",
+          "waitEvent": "PgSleep",
+          "queryStartedAt": "2026-09-23T00:41:41.110Z",
+          "stateChangedAt": "2026-09-23T00:41:41.110Z",
+          "queryAgeMs": 84.635,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:41.299Z",
+          "backendPid": 231,
+          "observationId": "928050b5-865f-46e3-a00d-53414f776074",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Timeout",
+          "waitEvent": "PgSleep",
+          "queryStartedAt": "2026-09-23T00:41:41.110Z",
+          "stateChangedAt": "2026-09-23T00:41:41.110Z",
+          "queryAgeMs": 188.56,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:41.402Z",
+          "backendPid": 231,
+          "observationId": "928050b5-865f-46e3-a00d-53414f776074",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Timeout",
+          "waitEvent": "PgSleep",
+          "queryStartedAt": "2026-09-23T00:41:41.110Z",
+          "stateChangedAt": "2026-09-23T00:41:41.110Z",
+          "queryAgeMs": 291.579,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:41.505Z",
+          "backendPid": 231,
+          "observationId": "928050b5-865f-46e3-a00d-53414f776074",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Timeout",
+          "waitEvent": "PgSleep",
+          "queryStartedAt": "2026-09-23T00:41:41.110Z",
+          "stateChangedAt": "2026-09-23T00:41:41.110Z",
+          "queryAgeMs": 394.432,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        }
+      ]
+    },
+    {
+      "scenario": "application_loop_block",
+      "observationId": "e4eb241f-17c7-4044-9677-7ff4d2ebd6f5",
+      "elapsedMs": 519.912241,
+      "databaseTransactions": [
+        {
+          "ordinal": 1,
+          "backendPid": 231
+        }
+      ],
+      "timings": {
+        "transaction.begin": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 2.7858820000001288,
+          "maxMs": 2.7858820000001288,
+          "errors": 0
+        },
+        "transaction.callback": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 514.6273119999996,
+          "maxMs": 514.6273119999996,
+          "errors": 0
+        },
+        "db.raw.$queryRaw": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 1.9744940000000497,
+          "maxMs": 1.9744940000000497,
+          "errors": 0
+        },
+        "db.RecommendationCandidateStageEvidence.deleteMany": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 4.444241999999576,
+          "maxMs": 4.444241999999576,
+          "errors": 0
+        },
+        "candidate_evidence.insert": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 507.2935809999999,
+          "maxMs": 507.2935809999999,
+          "errors": 0,
+          "inputRows": 220
+        },
+        "db.raw.$executeRaw": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 502.69186099999934,
+          "maxMs": 502.69186099999934,
+          "errors": 0
+        },
+        "transaction.commit_ack": {
+          "calls": 1,
+          "inFlight": 0,
+          "elapsedMs": 2.357756999999765,
+          "maxMs": 2.357756999999765,
+          "errors": 0
+        }
+      },
+      "samples": [
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:42.065Z",
+          "backendPid": 231,
+          "observationId": "e4eb241f-17c7-4044-9677-7ff4d2ebd6f5",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Timeout",
+          "waitEvent": "PgSleep",
+          "queryStartedAt": "2026-09-23T00:41:41.983Z",
+          "stateChangedAt": "2026-09-23T00:41:41.983Z",
+          "queryAgeMs": 82.915,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:42.169Z",
+          "backendPid": 231,
+          "observationId": "e4eb241f-17c7-4044-9677-7ff4d2ebd6f5",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Timeout",
+          "waitEvent": "PgSleep",
+          "queryStartedAt": "2026-09-23T00:41:41.983Z",
+          "stateChangedAt": "2026-09-23T00:41:41.983Z",
+          "queryAgeMs": 186.757,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:42.272Z",
+          "backendPid": 231,
+          "observationId": "e4eb241f-17c7-4044-9677-7ff4d2ebd6f5",
+          "transactionOrdinal": 1,
+          "state": "active",
+          "waitType": "Timeout",
+          "waitEvent": "PgSleep",
+          "queryStartedAt": "2026-09-23T00:41:41.983Z",
+          "stateChangedAt": "2026-09-23T00:41:41.983Z",
+          "queryAgeMs": 289.947,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        },
+        {
+          "event": "recommendation.database_wait",
+          "sampledAt": "2026-09-23T00:41:42.375Z",
+          "backendPid": 231,
+          "observationId": "e4eb241f-17c7-4044-9677-7ff4d2ebd6f5",
+          "transactionOrdinal": 1,
+          "state": "idle in transaction",
+          "waitType": "Client",
+          "waitEvent": "ClientRead",
+          "queryStartedAt": "2026-09-23T00:41:41.983Z",
+          "stateChangedAt": "2026-09-23T00:41:42.294Z",
+          "queryAgeMs": 392.96,
+          "blockerCount": 0,
+          "statementCategory": "candidate_evidence.insert"
+        }
+      ]
+    }
+  ]
+}

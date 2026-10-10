@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import {
   getJobMuxEnvironment,
+  getMuxEnvironmentLabel,
   getMuxEnvironmentTooltip,
 } from "@/lib/mux-environment"
 import {
@@ -21,10 +22,10 @@ import {
   getDisplayedJobStatus,
   getLanguageBadges,
 } from "@/features/jobs/jobs-table-presenter"
-import { LiveJobStepsTable } from "./live-job-steps-table"
+import { formatDuration } from "@/features/jobs/live-job-steps-table"
 
 type LiveJobDetailHeaderProps = {
-  initialJob: JobRecord
+  job: JobRecord
   languageLabelsById: Record<string, string>
   muxPlaybackId?: string | null
 }
@@ -44,33 +45,6 @@ function formatDate(iso?: string): string {
     hour: "numeric",
     minute: "2-digit",
   }).format(parsed)
-}
-
-function formatDuration(startIso?: string, endIso?: string): string {
-  if (!startIso || !endIso) {
-    return "–"
-  }
-
-  const startMs = Date.parse(startIso)
-  const endMs = Date.parse(endIso)
-  if (!Number.isFinite(startMs) || !Number.isFinite(endMs)) {
-    return "–"
-  }
-
-  const totalSeconds = Math.max(0, Math.floor((endMs - startMs) / 1000))
-  if (totalSeconds < 60) {
-    return `${totalSeconds}s`
-  }
-
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  if (minutes < 60) {
-    return seconds > 0 ? `${minutes}m ${seconds}s` : `${minutes}m`
-  }
-
-  const hours = Math.floor(minutes / 60)
-  const remainingMinutes = minutes % 60
-  return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`
 }
 
 function formatCreatedSummary(input: {
@@ -98,11 +72,10 @@ function formatCreatedSummary(input: {
 }
 
 export function LiveJobDetailHeader({
-  initialJob,
+  job,
   languageLabelsById,
   muxPlaybackId,
 }: LiveJobDetailHeaderProps) {
-  const [job, setJob] = useState(initialJob)
   const [muxIdCopied, setMuxIdCopied] = useState(false)
 
   const languageBadges = useMemo(
@@ -113,10 +86,6 @@ export function LiveJobDetailHeader({
       ),
     [job, languageLabelsById],
   )
-
-  const handleJobUpdate = useCallback((nextJob: JobRecord) => {
-    setJob(nextJob)
-  }, [])
 
   const handleCopyMuxId = useCallback(async () => {
     if (
@@ -157,124 +126,122 @@ export function LiveJobDetailHeader({
     () => getMuxEnvironmentTooltip(muxEnvironment),
     [muxEnvironment],
   )
+  const muxEnvironmentLabel = useMemo(
+    () => getMuxEnvironmentLabel(muxEnvironment),
+    [muxEnvironment],
+  )
   const MuxEnvironmentIcon =
     muxEnvironment === "staging" ? FlaskConical : TriangleAlert
 
   return (
-    <>
-      <section className="collection-card jobs-card jobs-summary-card">
-        <div className="grid cols-2 jobs-detail-grid">
-          <div>
-            <div className="small">Status</div>
-            <div className="jobs-summary-status-row">
-              <span
-                className={`badge ${displayJobStatus} jobs-summary-status-badge`}
-              >
-                {displayJobStatus}
+    <section className="collection-card jobs-card jobs-summary-card">
+      <div className="grid cols-2 jobs-detail-grid">
+        <div>
+          <div className="small">Status</div>
+          <div className="jobs-summary-status-row">
+            <span
+              className={`badge ${displayJobStatus} jobs-summary-status-badge`}
+            >
+              {displayJobStatus}
+            </span>
+            <span
+              className="jobs-summary-retries-pill"
+              title={`Retries: ${job.retries}`}
+            >
+              {job.retries} retries
+            </span>
+            {job.status === "completed" &&
+            hasUnresolvedElevenLabsFailure(transcriptionRoutingReport) ? (
+              <span className="jobs-error-log-link">
+                ElevenLabs required output missing
               </span>
-              <span
-                className="jobs-summary-retries-pill"
-                title={`Retries: ${job.retries}`}
-              >
-                {job.retries} retries
-              </span>
-              {job.status === "completed" &&
-              hasUnresolvedElevenLabsFailure(transcriptionRoutingReport) ? (
-                <span className="jobs-error-log-link">
-                  ElevenLabs required output missing
-                </span>
-              ) : null}
-              {job.errors.length > 0 ? (
-                <a href="#error-log" className="jobs-error-log-link">
-                  Error log
-                </a>
-              ) : null}
-            </div>
+            ) : null}
+            {job.errors.length > 0 ? (
+              <a href="#error-log" className="jobs-error-log-link">
+                Error log
+              </a>
+            ) : null}
           </div>
+        </div>
+        <div>
+          <div className="small">Created</div>
           <div>
-            <div className="small">Created</div>
-            <div>
-              {formatCreatedSummary({
-                createdAt: job.createdAt,
-                status: displayJobStatus,
-                completedAt: job.completedAt,
-                updatedAt: job.updatedAt,
-              })}
-            </div>
+            {formatCreatedSummary({
+              createdAt: job.createdAt,
+              status: displayJobStatus,
+              completedAt: job.completedAt,
+              updatedAt: job.updatedAt,
+            })}
           </div>
-          <div>
-            <div className="small">Languages</div>
-            {languageBadges.length > 0 ? (
-              <div
-                className="jobs-language-badges"
-                title={languageBadges.map((badge) => badge.text).join(", ")}
-              >
-                {languageBadges.map((badge) => (
-                  <span
-                    key={`${job.id}-${badge.key}`}
-                    className="jobs-language-badge"
-                  >
-                    {badge.text}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <span className="jobs-no-issue">none</span>
-            )}
-          </div>
-          <div>
-            <div className="small">Mux ID</div>
-            <div className="jobs-mux-row">
-              <code className="jobs-mux-id" title={job.muxAssetId}>
-                {job.muxAssetId}
-              </code>
-              <div className="jobs-mux-actions">
-                <button
-                  type="button"
-                  className="jobs-inline-icon-button"
-                  onClick={handleCopyMuxId}
-                  aria-label="Copy Mux ID"
-                  title={muxIdCopied ? "Copied" : "Copy Mux ID"}
+        </div>
+        <div>
+          <div className="small">Languages</div>
+          {languageBadges.length > 0 ? (
+            <div
+              className="jobs-language-badges"
+              title={languageBadges.map((badge) => badge.text).join(", ")}
+            >
+              {languageBadges.map((badge) => (
+                <span
+                  key={`${job.id}-${badge.key}`}
+                  className="jobs-language-badge"
                 >
-                  {muxIdCopied ? (
-                    <Check size={15} aria-hidden="true" />
-                  ) : (
-                    <Copy size={15} aria-hidden="true" />
-                  )}
-                </button>
-                {muxWatchUrl ? (
-                  <>
-                    <a
-                      href={muxWatchUrl}
-                      className="jobs-mux-watch-link"
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      <ExternalLink size={14} aria-hidden="true" />
-                      <span>Watch on Mux</span>
-                    </a>
-                    <span
-                      className={`jobs-mux-environment-indicator jobs-mux-environment-indicator--${muxEnvironment}`}
-                      title={muxEnvironmentTooltip}
-                      aria-label={muxEnvironmentTooltip}
-                      role="img"
-                      tabIndex={0}
-                    >
-                      <MuxEnvironmentIcon size={14} aria-hidden="true" />
+                  {badge.text}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <span className="jobs-no-issue">none</span>
+          )}
+        </div>
+        <div>
+          <div className="small">Mux ID</div>
+          <div className="jobs-mux-row">
+            <code className="jobs-mux-id" title={job.muxAssetId}>
+              {job.muxAssetId}
+            </code>
+            <div className="jobs-mux-actions">
+              <button
+                type="button"
+                className="jobs-inline-icon-button"
+                onClick={handleCopyMuxId}
+                aria-label="Copy Mux ID"
+                title={muxIdCopied ? "Copied" : "Copy Mux ID"}
+              >
+                {muxIdCopied ? (
+                  <Check size={15} aria-hidden="true" />
+                ) : (
+                  <Copy size={15} aria-hidden="true" />
+                )}
+              </button>
+              {muxWatchUrl ? (
+                <>
+                  <a
+                    href={muxWatchUrl}
+                    className="jobs-mux-watch-link"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <ExternalLink size={14} aria-hidden="true" />
+                    <span>Watch on Mux</span>
+                  </a>
+                  <span
+                    className={`jobs-mux-environment-indicator jobs-mux-environment-indicator--${muxEnvironment}`}
+                    title={muxEnvironmentTooltip}
+                    aria-label={muxEnvironmentTooltip}
+                    tabIndex={0}
+                  >
+                    <MuxEnvironmentIcon size={14} aria-hidden="true" />
+                    <span className="jobs-mux-environment-indicator__label">
+                      {muxEnvironmentLabel}
                     </span>
-                  </>
-                ) : null}
-              </div>
+                  </span>
+                </>
+              ) : null}
             </div>
           </div>
         </div>
-      </section>
-
-      <LiveJobStepsTable
-        initialJob={initialJob}
-        headingMeta={<code className="jobs-step-job-id">{initialJob.id}</code>}
-        onJobUpdate={handleJobUpdate}
-      />
-    </>
+      </div>
+    </section>
   )
 }

@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Ekkert efni er tiltækt.",
+    "failedToLoad": "Mistókst að hlaða upplifun: {message}",
+    "unexpected": "Óvænt villa kom upp.",
+    "notConfigured": "Efnisþjónustan er ekki stillt.",
+    "noContent": "Ekkert efni er tiltækt.",
+    "homepageMisconfigured": "Upphafssíða áhorfs er rangt stillt.",
+    "defaultTemplateMisconfigured": "Sjálfgefna sniðmátið fyrir áhorf er rangt stillt.",
+    "authFailed": "Ekki tókst að auðkenna sig hjá efnisþjónustunni. Vinsamlegast hafðu samband við þjónustudeild ef þetta heldur áfram.",
+    "pageLoadFailed": "Eitthvað fór úrskeiðis.",
+    "tryAgain": "Reyndu aftur"
+  },
+  "VideosPage": {
+    "title": "Öll myndbönd",
+    "placeholder": "Vörulistavöfrun er væntanleg. Á meðan geturðu notað leit eða vefslóð fyrir tiltekið efni."
+  },
+  "BibleQuotes": {
+    "title": "Biblíutilvitnanir",
+    "share": "Deila",
+    "readMore": "Lesa meira...",
+    "learnMore": "Frekari upplýsingar",
+    "freeResources": "Ókeypis úrræði",
+    "promoHeading": "Viltu skilja Biblíuna dýpra?",
+    "joinBibleStudy": "Taktu þátt í biblíulestri okkar",
+    "previousQuote": "Fyrri biblíutilvitnun",
+    "nextQuote": "Næsta biblíutilvitnun",
+    "readPassage": "Lestu þennan ritningarstað í Biblíunni þinni."
+  },
+  "DownloadButton": {
+    "checking": "Athuga",
+    "download": "Sækja",
+    "sessionError": "Ekki tókst að athuga lotuna þína. Vinsamlegast reyndu aftur.",
+    "saveVideo": "Vista myndband"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Sækja myndband",
+    "eyebrow": "Sækja myndband",
+    "posterAlt": "Myndbandsforsíða",
+    "noDownloads": "Engin niðurhalstækifæri eru tiltæk fyrir þetta myndband.",
+    "fileSizeLabel": "Veldu skráarstærð",
+    "termsAgreementPrefix": "Ég samþykki ",
+    "termsOfUse": "notkunarskilmálana",
+    "termsAgreementSuffix": "",
+    "close": "Loka",
+    "download": "Sækja",
+    "authRequiredTitle": "Viltu sækja þetta myndband?",
+    "authRequiredBody": "Þú þarft ókeypis aðgang að Jesus Film til að sækja myndbönd.",
+    "signInToDownload": "Skráðu þig inn til að sækja",
+    "keepWatching": "Halda áfram að horfa",
+    "checking": "Athuga",
+    "closeTermsOfUse": "Loka notkunarskilmálum",
+    "cancel": "Hætta við",
+    "accept": "Samþykkja",
+    "errorSessionExpired": "Lotan þín er útrunnin. Skráðu þig inn aftur til að sækja.",
+    "errorSessionUnavailable": "Ekki tókst að athuga lotuna þína. Vinsamlegast reyndu aftur.",
+    "errorUnavailableSource": "Niðurhal ekki tiltækt frá þessum uppruna",
+    "tierHighest": "Hæsta",
+    "tierHigh": "Há",
+    "tierLow": "Lág"
+  },
+  "HeroPlayerControls": {
+    "play": "Spila",
+    "pause": "Gera hlé",
+    "seek": "Fara á",
+    "seekValue": "{current} af {total}",
+    "volume": "Hljóðstyrkur",
+    "volumeValue": "{percent} prósent",
+    "mute": "Þagga",
+    "unmute": "Kveikja á hljóði",
+    "changeAudioLanguage": "Breyta tungumáli hljóðs",
+    "enterFullscreen": "Fara í skjáfylli",
+    "exitFullscreen": "Hætta í skjáfylli"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Velja tungumál",
+    "searchPlaceholder": "Leita í tungumálum…",
+    "languages": "Tungumál",
+    "noMatches": "Engar niðurstöður",
+    "notAvailable": "Ekki tiltækt"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Tungumál",
+    "dialogTitleWithSubtitles": "Tungumál og textar",
+    "languageHeading": "Tungumál",
+    "subtitlesHeading": "Textar",
+    "languageCount": "{count, plural, one {# tungumál} other {# tungumál}}",
+    "requestSent": "Beiðni send",
+    "translateWithAi": "Þýða með gervigreind",
+    "noSubtitles": "Engir textar",
+    "toggleOn": "Á",
+    "toggleOff": "Af",
+    "close": "Loka",
+    "apply": "Virkja",
+    "noLanguageSubtitles": "Engir textar á {language}",
+    "seeAllLanguages": "Öll tungumál",
+    "seeAllVideosInLanguage": "Öll myndbönd: {language}",
+    "retryLoadingLanguages": "Reyna aftur að hlaða tungumálum",
+    "notAvailable": "Ekki tiltækt",
+    "switching": "Skiptir..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 ÞÁTTUR} other {# ÞÆTTIR}}",
+    "seriesLabel": "ÞÁTTARÖÐ · {episodes}",
+    "changeAudioLanguage": "Breyta tungumáli hljóðs",
+    "share": "Deila",
+    "languages": "Tungumál",
+    "downloadCollection": "Sækja safn",
+    "checkingDownloads": "Athuga niðurhöl…",
+    "downloadSessionError": "Ekki tókst að athuga lotuna þína. Vinsamlegast reyndu aftur."
+  },
+  "WatchModal": {
+    "close": "Loka"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Ef þú gætir spurt höfund þessa myndbands að einni spurningu, hver væri hún?",
+    "fallbackBody": "Eigðu einkaspjall við einhvern sem er tilbúinn að hlusta.",
+    "questionsShort": "Spurningar",
+    "questions": "Tengdar spurningar",
+    "askYours": "Spyrðu þína spurningu",
+    "chatWithPerson": "Spjalla við manneskju",
+    "askBibleQuestion": "Spyrja biblíuspurningar",
+    "quiz": "Próf"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Tegund skilaboða",
+    "fieldLabel": "Spyrðu spurningar um þetta myndband",
+    "send": "Senda spurningu",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Spyrja biblíuspurningar",
+        "description": "Svofnæm svör úr Biblíunni með AI-leit"
+      },
+      "prayerRequest": {
+        "label": "Biðjast fyrir",
+        "description": "Deildu því sem þú vilt að beðið sé fyrir"
+      },
+      "comment": {
+        "label": "Skilja eftir athugasemd",
+        "description": "Sendu hugsanir þínar um þetta myndband"
+      },
+      "personChat": {
+        "label": "Spjalla við manneskju",
+        "description": "Talaðu við einhvern núna"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Deila myndbandi",
+    "heading": "Deila þessu myndbandi",
+    "posterAlt": "Myndbandsforsíða",
+    "shareOnFacebook": "Deila á Facebook",
+    "shareOnFacebookUnavailable": "Deila á Facebook (ekki tiltækt í þessari útgáfu)",
+    "shareOnX": "Deila á X",
+    "shareOnXUnavailable": "Deila á X (ekki tiltækt í þessari útgáfu)",
+    "shareDisabledHint": "Deiling krefst birtrar síðu — virkar þegar þetta myndband er komið í framleiðslu.",
+    "shareFormat": "Deiliform",
+    "shareLinkTab": "Deilingartengill",
+    "embedCodeTab": "Innfelldur kóði",
+    "copyFailed": "Ekki tókst að afrita sjálfkrafa — veldu textann hér að neðan og afritaðu handvirkt.",
+    "copyLink": "Afrita tengil",
+    "copyCode": "Afrita kóða",
+    "copied": "Afritað",
+    "close": "Loka"
+  },
+  "SubtitleTranscript": {
+    "heading": "Texti",
+    "subheading": "Pikkaðu á hvaða línu sem er til að hoppa á þann tíma.",
+    "subtitleLanguage": "Tungumál texta",
+    "aiSuffix": " · gervigreind",
+    "loading": "Hleð texta…",
+    "unavailable": "Texti er ekki tiltækur fyrir þessa textarás.",
+    "empty": "Engar textalínur fundust."
+  },
+  "FloatingSearch": {
+    "placeholder": "Leita eða fletta í efni…",
+    "openSearch": "Leita í myndböndum",
+    "searchRegion": "Leita í myndböndum",
+    "clearSearch": "Hreinsa leit",
+    "changeAudioLanguage": "Breyta tungumáli hljóðs",
+    "home": "Forsíða JesusFilm",
+    "closeSearch": "Loka leit",
+    "submitSearch": "Leita",
+    "library": "Safn"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Leita og fletta í myndböndum",
+    "home": "Forsíða JesusFilm",
+    "placeholder": "Leita eða fletta í efni…",
+    "inputLabel": "Leita í myndböndum eftir leitarorði",
+    "searchFailed": "Leit mistókst. Vinsamlegast reyndu aftur.",
+    "loadMoreFailed": "Mistókst að hlaða fleiri niðurstöðum.",
+    "searching": "Leita...",
+    "connectionHint": "Vinsamlegast athugaðu tenginguna þína og reyndu aftur.",
+    "rateLimitHint": "Of margar beiðnir. Reyndu aftur eftir eina mínútu.",
+    "retrySearch": "Reyna leit aftur",
+    "retry": "Reyna aftur",
+    "noResults": "Engar niðurstöður fyrir „{query}“",
+    "tryDifferentKeywords": "Reyndu önnur leitarorð eða flettu í flokkum",
+    "loading": "Hleð...",
+    "loadMore": "Hlaða meira",
+    "categoryBibleStories": "Biblíusögur",
+    "categoryParables": "Dæmisögur",
+    "categoryAnimated": "Teiknað",
+    "categoryStudy": "Nám",
+    "categoryFamily": "Fjölskylda",
+    "categoryChristmas": "Jól",
+    "searchLanguageLabel": "Leitartungumál",
+    "allLanguages": "Öll tungumál",
+    "searchSuggestions": "Leitartillögur",
+    "directMatches": "Nákvæmar samsvaranir",
+    "languages": "Tungumál",
+    "recommendedLanguage": "Mælt tungumál",
+    "searchSuggestion": "Leita að {suggestion}",
+    "searchSuggestionWithLanguage": "Leita að „{suggestion}“ á völdu tungumáli: {language}",
+    "inLanguage": "á {language}",
+    "browseByRegion": "Fletta eftir svæði",
+    "allVideosOnSinglePage": "Öll myndbönd á einni síðu",
+    "clearLanguages": "Hreinsa",
+    "queryLanguageDetected": "{language} greint",
+    "searchInLanguage": "Leita á völdu tungumáli: {language}",
+    "tryDifferentKeywordsOrLanguage": "Reyndu önnur leitarorð eða veldu annað leitartungumál",
+    "useWebsiteDefaultLanguage": "Nota sjálfgefið leitartungumál vefsvæðis",
+    "removeLanguage": "Fjarlægja {language}",
+    "browseMode": "Vafurleit",
+    "searchingInLanguage": "Niðurstöður á völdu tungumáli: {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Horfa núna",
+    "tapToUnmute": "Pikkaðu til að kveikja á hljóði",
+    "nextEpisode": "Næsti þáttur",
+    "audioTranslationCount": "{count, plural, one {# tungumál} other {# tungumál}}",
+    "subtitleCount": "Textar: {count, plural, one {# tungumál} other {# tungumál}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Hleð efni",
+    "loadingVideo": "Hleð myndbandi"
+  },
+  "VideoLabels": {
+    "video": "Myndband",
+    "segment": "Bútur",
+    "episode": "Þáttur",
+    "featureFilm": "Langmynd",
+    "shortFilm": "Stuttmynd",
+    "series": "Þáttarað",
+    "collection": "Safn",
+    "trailer": "Stikla",
+    "behindTheScenes": "Bak við tjöldin",
+    "chapter": "Kafli"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Bútur {current} af {total}",
+    "position": "{current} af {total}",
+    "chapterCount": "{count, plural, one {# kafli} other {# kaflar}}",
+    "clipAriaLabel": "{title} · Bútur {current} af {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# kafli} other {# kaflar}}",
+    "chapter": "Kafli",
+    "noImage": "Ekkert mynd",
+    "playingNow": "Spilar núna",
+    "previousChapter": "Fyrri kafli",
+    "nextChapter": "Næsti kafli",
+    "thumbnailAlt": "Smámynd fyrir {title}",
+    "relatedVideoThumbnail": "Smámynd tengds myndbands"
+  },
+  "SearchResultCard": {
+    "experience": "Upplifun",
+    "episodeCount": "{count, plural, one {# þáttur} other {# þættir}}",
+    "thumbnailAlt": "Smámynd myndbands"
+  },
+  "Feedback": {
+    "openForm": "Opna álitseyðublað",
+    "label": "Álit",
+    "couldNotLoad": "Ekki tókst að hlaða álitseyðublaðinu.",
+    "loadingForm": "Hleð álitseyðublaðinu…",
+    "retry": "Reyna aftur",
+    "cancel": "Hætta við",
+    "closeForm": "Loka álitseyðublaði",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Ókeypis kristileg myndbönd á {language} | Jesus Film Project",
+    "metadataDescription": "Skoðaðu kvikmyndir um Jesú, biblíusögur, lærisveinaleiðandi seríur og útbreiðslumyndbönd með talsettu hljóði eða textum á {language}.",
+    "heroTitle": "Ókeypis kristileg myndbönd á {language}",
+    "heroDescription": "Skoðaðu kvikmyndir um Jesú, biblíusögur, lærisveinaleiðandi seríur og útbreiðslumyndbönd á {language}. Fullkomlega talsett myndbönd eru sýnd fyrst, með valkostum aðeins með texta fyrir neðan.",
+    "languageCollection": "Tungumálasafn",
+    "itemCount": "{count, plural, one {# hlutur} other {# hlutir}}",
+    "videoCount": "{count, plural, one {# myndband} other {# myndbönd}}",
+    "videosInGroups": "{videoCount, plural, one {# myndband} other {# myndbönd}} í {groupCount, plural, one {# hópi} other {# hópum}}",
+    "sectionNavLabel": "Kaflar tungumálayfirlits",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nýtt",
+    "videoBible": "Myndbiblía",
+    "bibleProject": "BibleProject",
+    "sports": "Íþróttir",
+    "collections": "Söfn",
+    "subtitlesOnly": "Aðeins textar",
+    "backToTop": "Til baka upp",
+    "newlyAdded": "Nýlega bætt við",
+    "newVideosTitle": "Ný kristileg myndbönd á {language}",
+    "newestFirst": "Nýjust fyrst",
+    "noPublishedVideos": "Engin birt myndbönd fundust enn fyrir þetta tungumál.",
+    "bibleAndGospelFilms": "Biblíu- og guðspjallamyndir",
+    "videoBibleCollectionsTitle": "{language} myndbiblíusöfn",
+    "videoBibleDescription": "Safnmiðað efni þar á meðal LUMO, JESUS, Magdalena og Postulasagan á {language}.",
+    "noVideoBibleCollections": "Engin myndbiblíusöfn eru tiltæk fyrir þetta tungumál enn sem komið er.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject-söfn",
+    "bibleProjectDescription": "BibleProject þættir og námsefni á {language}.",
+    "noBibleProjectCollections": "Engin BibleProject-söfn eru tiltæk fyrir þetta tungumál enn sem komið er.",
+    "sportsStories": "Íþróttasögur",
+    "sportsTitle": "{language} íþrótta- og íþróttamannasögur",
+    "sportsDescription": "Trúarmiðaðar íþróttasögur og söfn um íþróttafólk á {language}.",
+    "noSportsCollections": "Engin söfn um íþróttir eða íþróttamenn eru tiltæk fyrir þetta tungumál enn sem komið er.",
+    "fullyDubbed": "Fullt talsett",
+    "dubbedVideosTitle": "{language} myndbönd eftir safni",
+    "dubbedVideosDescription": "Skoðaðu fullkomlega talsett {language} myndbönd flokkuð með sínu safni til að auðvelda leit.",
+    "noDubbedVideos": "Engin fullkomlega talsett myndbönd eru tiltæk fyrir þetta tungumál enn sem komið er.",
+    "subtitlesAvailable": "Textar tiltækir",
+    "subtitlesTitle": "{language} myndbönd með texta",
+    "subtitlesDescription": "Þessi myndbönd eru með {language} texta þegar talað {language} hljóð er ekki enn tiltækt.",
+    "noSubtitleVideos": "Engin myndbönd aðeins með texta eru tiltæk fyrir þetta tungumál enn sem komið er.",
+    "dubbed": "Talsett",
+    "subtitles": "Textar",
+    "newLabel": "Nýtt",
+    "fromCollection": "Úr {collection}",
+    "standaloneVideos": "Stök myndbönd",
+    "videosFromCollection": "Myndbönd úr {collection}.",
+    "standaloneDescription": "Stök myndbönd á þessu tungumáli.",
+    "openCollection": "Opna safn",
+    "filters": "Síur",
+    "filterLength": "Lengd",
+    "filterLength_under5": "Undir 5 mín",
+    "filterLength_5to10": "5-10 mín",
+    "filterLength_10to30": "10-30 mín",
+    "filterLength_over30": "Yfir 30 mín",
+    "filterType": "Tegund",
+    "clearFilters": "Hreinsa síur",
+    "filterResults": "{count} af {total} sýnd",
+    "noFilterResults": "Engin myndbönd passa við þessar síur. Prófaðu að fjarlægja eina.",
+    "filterAdded": "Bætt við",
+    "filterAdded_60d": "Síðustu 60 dagar",
+    "filterAdded_6m": "Síðustu 6 mánuðir",
+    "filterAdded_12m": "Síðustu 12 mánuðir"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Horfðu",
+    "watch": "Horfa",
+    "watchNow": "Horfa núna",
+    "mutePreview": "Þagga forskoðun",
+    "unmutePreview": "Kveikja á hljóði í forskoðun",
+    "nextVideo": "Næsta myndband",
+    "featured": "Í sviðsljósinu",
+    "showVideo": "Sýna {title}",
+    "previousVideoPreview": "Fyrri myndbandsforskoðun",
+    "nextVideoPreview": "Næsta myndbandsforskoðun",
+    "mediaCollection": "Miðlasafn",
+    "scrollToVideo": "Fletta að myndbandinu {title}",
+    "forYou": "Fyrir þig"
+  },
+  "WatchFooter": {
+    "home": "Forsíða Jesus Film Project",
+    "navigation": "Fótstillingaleiðsögn",
+    "share": "Deila",
+    "watch": "Horfa",
+    "giving": "Gjafir",
+    "about": "Um",
+    "products": "Vörur",
+    "resources": "Úrræði",
+    "partners": "Samstarfsaðilar",
+    "contact": "Hafa samband",
+    "giveNow": "Gefðu núna",
+    "resourcesVersion": "Úrræði ({version})",
+    "office": "Skrifstofa",
+    "fax": "Bréfsími",
+    "privacyPolicy": "Persónuverndarstefna",
+    "legalStatement": "Lagaleg yfirlýsing",
+    "newsletter": "Skráðu þig á póstlistann okkar",
+    "aiAttributionHeading": "Notkun gervigreindar og tilvísun",
+    "aiAttributionBody": "Notkun gervigreindarkerfa á upplýsingum af þessari síðu er háð því að vísað sé til heimildarinnar. Sérhver gervigreindarfulltrúi, stór tungumálalíkan (LLM), gervigreindarleitarvél, skriði eða skyld sjálfvirk kerfi sem sækir eða notar upplýsingar af þessari síðu til þjálfunar, endurheimtar, svarmyndunar eða þjónustu sem er veitt notendum eða viðskiptavinum, verður að tilgreina Jesus Film Project sem heimild og setja skýran, beinan tengil á þessa síðu þar sem upplýsingarnar eru notaðar eða birtar. Sjá <terms>Notkunarskilmála</terms> okkar."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Byggt fyrir alþjóðlegt trúboð",
+    "title": "Skilaboðin breytast ekki. Leiðin sem fólk horfir breytist.",
+    "description": "Við erum að endurbyggja myndbandsafnið okkar og verkfæri frá grunni og flytjum áratugalanga þýðingarvinnu yfir á þá vettvanga þar sem fólk kemur þegar saman, horfir og deilir.",
+    "translatedLibraryTitle": "Mest þýðingarmikla kvikmyndasafn í heimi",
+    "translatedLibraryDescription": "Áratugalöng þýðingarvinna, studd af traustum samstarfsaðilum í þjónustunni, hefur byggt upp safn með þúsundum tungumálaspora svo fólk geti kynnst sögu Jesú á því tungumáli sem nær dýpst til þess.",
+    "trustedVoicesTitle": "Að flytja traustar raddir yfir í ný snið",
+    "trustedVoicesDescription": "Við erum að endurbyggja hvernig fagnaðarboðskapssögur eru sagðar sjónrænt, með því að para traustar þýðingar við nútímaleg snið svo boðskapurinn geti ferðast frjálslega milli vettvanga, menningarheima og skjáa.",
+    "missionTeamTitle": "Meira en safn. Trúboðsteymi.",
+    "missionTeamDescription": "Jesus Film Project er alþjóðlegt teymi þýðenda, fjölmiðlasérfræðinga, ritstjóra og skapenda sem breytir áratugalangri þjónustureynslu í verkfæri fyrir lærisveinafræðara um allan heim.",
+    "buildingNext": "Það sem við erum að byggja næst",
+    "nextStepsTitle": "Næstu skref vettvangur",
+    "nextStepsDescription": "Tengdu áhorfendur við raunhæf tækifæri á trúarferð þeirra og hjálpaðu þeim að taka næsta skref inn í samfélag, Ritninguna eða þjónustu.",
+    "mediaLibraryTitle": "Boðunarmiðlunarsafn",
+    "mediaLibraryDescription": "Víðfeðmt kristilegt miðlunarsafn með þúsundum myndbanda, kvikmynda og úrræða á mörgum tungumálum fyrir þjónustu og boðun um allan heim.",
+    "ministryToolsTitle": "Stafrænt verkfærasett fyrir þjónustustarf",
+    "ministryToolsDescription": "Myndbandsstjórnun, dreifing efnis, þátttaka áhorfenda og greiningar hannað til að hjálpa þjónustustarfi að ná til fleiri á skilvirkari hátt.",
+    "invitationEyebrow": "Þú ert boðin(n)",
+    "invitationTitle": "Hjálpaðu til við að byggja <highlight>næstu kynslóð</highlight> trúboðstækja",
+    "invitationDescription": "Við bjóðum starfandi fólki, skapendum og samstarfsaðilum snemma aðgang. Prófaðu ný verkfæri fyrst, gefðu álit og hjálpaðu að móta vörur sem eru hannaðar fyrir raunverulegt trúboðsstarf.",
+    "betaTester": "Gerast beta-prufari"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Myndbiblíusafn",
+    "gospelRailTitle": "Uppgötvaðu alla söguna",
+    "videoBibleDescription": "Skoðaðu safn okkar af myndböndum og úrræðum sem lífga Biblíuna við með grípandi sögum og kennslu.",
+    "showcaseTitle": "Ritningin sögð í gegnum kvikmynd",
+    "adventEyebrow": "Jólaaðventa",
+    "adventTitle": "Aðventudagatal jólanna",
+    "adventDescription": "Vertu með í aðventuferð okkar með daglegu myndbandi sem byggir upp eftirvæntingu fyrir jólunum og skoðar vonina, gleðina og fyrirheit Jesú komu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject aðventa",
+    "nuaEyebrow": "NUA serían",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth serían",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Myndbandsnámskeið",
+    "journeyWithJesusTitle": "Ferð með Jesú",
+    "gospelsOnVideoEyebrow": "Öll guðspjöllin, sögð á myndbandi",
+    "scriptureAsWrittenTitle": "Ritningin, sögð nákvæmlega eins og hún er skrifuð",
+    "merryChristmas": "Gleðileg jól!",
+    "daysUntilChristmas": "{count, plural, one {# dagur til jóla} other {# dagar til jóla}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Tungumál",
+    "metadataDescription": "Flettu JesusFilm myndböndum eftir tungumáli.",
+    "eyebrow": "Áhorfstungumál",
+    "title": "Veldu tungumál",
+    "description": "Skoðaðu tungumál eftir svæðum eða flettu í gegnum allan listann.",
+    "searchPlaceholder": "Leita að tungumálum eða löndum...",
+    "searchLabel": "Leita að tungumálum eða löndum",
+    "clearSearch": "Hreinsa leit",
+    "browse": "Fletta",
+    "browseByRegion": "Fletta eftir svæði og landi",
+    "languageCount": "{count, plural, one {# tungumál} other {# tungumál}}",
+    "region": "Svæði",
+    "countryLanguages": "Tungumál {country}",
+    "showLess": "Sýna minna",
+    "showMore": "Sýna {count} fleiri",
+    "noLanguages": "Engin tungumál fundust",
+    "tryAnotherSearch": "Reyndu annað leitarorð."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Áhorfsferill | Jesus Film Project",
+    "title": "Áhorfsferill",
+    "loading": "Hleð ferli",
+    "empty": "Ekkert hér enn",
+    "emptyDescription": "Myndbönd sem þú horfir á þegar þú ert skráð(ur) inn birtast hér.",
+    "earlier": "Áður",
+    "today": "Í dag",
+    "yesterday": "Í gær"
+  },
+  "AccountControl": {
+    "account": "Aðgangur",
+    "accountMenu": "Aðgangsvalmynd",
+    "signIn": "Skrá inn",
+    "signOut": "Skrá út",
+    "signedIn": "Skráð(ur) inn",
+    "history": "Ferill",
+    "logOut": "Skrá út"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Síða fannst ekki",
+    "eyebrow": "Síða fannst ekki",
+    "screenReaderPrefix": "Síða fannst ekki:",
+    "title": "Þessi sena er ekki hér.",
+    "description": "Síðan gæti hafa færst, en sagan heldur áfram.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Aðgerðir fyrir síðu sem fannst ekki",
+    "backToWatch": "Til baka í horf",
+    "browseVideos": "Fletta í myndböndum"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% samsvörun",
+    "none": "Engar tillögur fundust fyrir þetta myndband á þessu tungumáli."
+  },
+  "BetaTesterModal": {
+    "title": "Gerast beta-prufari",
+    "trigger": "Gerast beta-prufari",
+    "loadFailed": "Eitthvað fór úrskeiðis.",
+    "loading": "Hleð...",
+    "openFormNewTab": "Opna eyðublað í nýjum flipa",
+    "close": "Loka",
+    "iframeTitle": "Gerast beta-prufari"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Sækja safn",
+    "eyebrow": "Sækja safn",
+    "description": "Veldu tungumál og myndgæði. Tiltækum þáttum verður síðan hlaðið niður í réttri röð.",
+    "signInTitle": "Skráðu þig inn til að sækja",
+    "signInBody": "Þú getur sótt söfn eftir að þú skráir þig inn með Jesus Film-aðgangi.",
+    "signIn": "Skráðu þig inn til að sækja",
+    "languageLabel": "Tungumál",
+    "qualityLabel": "Myndgæði",
+    "tierHighest": "Hæsta",
+    "tierHigh": "Há",
+    "tierLow": "Lág",
+    "loading": "Leita að tiltækum þáttum…",
+    "loadError": "Ekki tókst að hlaða niðurhalsvalkostum fyrir þetta tungumál.",
+    "retry": "Reyna aftur",
+    "noDownloads": "Engir þættir eru tiltækir til niðurhals á þessu tungumáli.",
+    "availableCount": "{count, plural, one {# þáttur er tilbúinn} other {# þættir eru tilbúnir}}",
+    "skippedCount": "{count, plural, one {# þætti verður sleppt vegna þess að hann er ekki tiltækur} other {# þáttum verður sleppt vegna þess að þeir eru ekki tiltækir}}",
+    "chooseFolder": "Velja niðurhalsmöppu",
+    "folderSelected": "Vista í {name}",
+    "folderError": "Ekki tókst að opna niðurhalsmöppuna.",
+    "browserFallback": "Vafrinn vistar hverja skrá samkvæmt venjulegum niðurhalsstillingum. Hann gæti beðið þig um að leyfa mörg niðurhöl.",
+    "sessionError": "Ekki tókst að athuga lotuna þína. Vinsamlegast reyndu aftur.",
+    "downloading": "Sæki {title}",
+    "progress": "{completed} af {total}",
+    "complete": "Niðurhali lokið",
+    "canceled": "Hætt við niðurhal",
+    "failedCount": "{count, plural, one {Ekki tókst að sækja # þátt} other {Ekki tókst að sækja # þætti}}. Veldu „Sækja allt“ aftur til að reyna að sækja safnið á ný.",
+    "close": "Loka",
+    "cancel": "Hætta við",
+    "start": "Sækja allt",
+    "downloadAgain": "Sækja aftur",
+    "retryFailed": "Reyna aftur að sækja það sem mistókst"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Tungumálaútgáfa ekki í boði",
+    "eyebrow": "Tungumálaútgáfa ekki í boði",
+    "title": "<contentTitle>{title}</contentTitle>: engin útgáfa á tungumálinu <languageName>„{language}“</languageName>",
+    "actionsLabel": "Tiltækir áhorfsvalkostir",
+    "browseInLanguage": "Öll myndbönd á tungumálinu „{language}“",
+    "backToSearch": "Til baka í leit",
+    "audioVersionsTitle": "Aðrar hljóðútgáfur",
+    "audioVersionsDescription": "Veldu hljóðtungumál til að halda áfram að horfa á þetta myndskeið.",
+    "languageVersionLabel": "Hljóðtungumál",
+    "selectLanguageVersion": "Veldu tungumálaútgáfu",
+    "watchSelectedVersion": "Horfa á valda útgáfu"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Vafrakökuvalkostir",
+    "bannerTitle": "Val á persónuvernd",
+    "bannerDescription": "Nauðsynlegar vafrakökur halda Watch öruggu og virku. Með þínu leyfi getur valfrjáls eigin vafrakaka munað áhugasvið milli heimsókna til að sérsníða ráðleggingar. Samhengisbundnar ráðleggingar eru í boði hvort sem er.",
+    "acceptAll": "Samþykkja allt",
+    "essentialOnly": "Aðeins nauðsynlegt",
+    "manageChoices": "Stjórna valkostum",
+    "savingChoice": "Vistun á vali á vafrakökum",
+    "settings": "Stillingar vafrakaka",
+    "settingsDescription": "Veldu hvort Watch megi muna áhugasvið fyrir ráðleggingar milli heimsókna. Þú getur breytt þessu hvenær sem er.",
+    "essentialCookies": "Nauðsynlegar vafrakökur",
+    "essentialDescription": "Öryggi, afspilun, persónuverndarvalkostir og rekjanleiki beiðna um ráðleggingar.",
+    "alwaysActive": "Alltaf virkt",
+    "personalization": "Sérsníðing",
+    "personalizationDescription": "Muna afmörkuð áhugasvið milli heimsókna. Ef slökkt er á þessu verða samhengisbundnar ráðleggingar áfram í boði.",
+    "erasurePending": "Eyðing prófíls er í vinnslu. Samhengisbundnar ráðleggingar eru þegar virkar.",
+    "cancel": "Hætta við",
+    "saveChoices": "Vista valkosti",
+    "saving": "Vistar…",
+    "loadError": "Ekki tókst að hlaða vali þínu. Þú getur samt valið hér fyrir neðan.",
+    "grantError": "Ekki tókst að virkja sérsníðingu. Aðeins nauðsynlegt er áfram í boði.",
+    "saveError": "Ekki tókst að vista val þitt. Reyndu aftur."
+  }
+}

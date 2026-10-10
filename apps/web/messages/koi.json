@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Видзӧтӧм йӧртіс висьтъяыс абу.",
+    "failedToLoad": "Видзӧтӧм йӧртісӧ лэдзӧмсьӧтӧм: {message}",
+    "unexpected": "Пӧтым тӧдӧмтӧм ошибка лоис.",
+    "notConfigured": "Контент-сервис абу настроен.",
+    "noContent": "Контент абу.",
+    "homepageMisconfigured": "Просмотрӧн главная страница лачтӧмӧн настроен.",
+    "defaultTemplateMisconfigured": "Просмотрӧн тӧдчан шаблон лачтӧмӧн настроен.",
+    "authFailed": "Контент-сервисын авторизациясӧ тшӧктӧмӧн лоӧ. Меӧтлам техподдержкаӧ, кӧть это продолжитчӧ.",
+    "pageLoadFailed": "Сэтшӧмыс вештіс.",
+    "tryAgain": "Вӧтшӧтень юр."
+  },
+  "VideosPage": {
+    "title": "Пӧскӧд видеоэз",
+    "placeholder": "Каталогӧн вуҗӧтӧм висьталӧ. Вэтчин шӧрын поиск либӧ темаӧн URL-ӧн пользуйтчӧ."
+  },
+  "BibleQuotes": {
+    "title": "Библия цитатаэз",
+    "share": "Вöзьтӧн",
+    "readMore": "Висьтлӧны…",
+    "learnMore": "Тӧдны ӧддьӧн",
+    "freeResources": "Венӧз ресурсэз",
+    "promoHeading": "Библиясӧ ӧддьӧн лӧсьӧтӧмӧн тӧдны?",
+    "joinBibleStudy": "Библия изучениеӧ ветлыны",
+    "previousQuote": "Вӧлі Библия цитата",
+    "nextQuote": "Висьталӧм Библия цитата",
+    "readPassage": "Тай отрывоксӧ ас Библиятын лыддьы."
+  },
+  "DownloadButton": {
+    "checking": "Проверка",
+    "download": "Тӧтшӧтны",
+    "sessionError": "Сессияӧс проверитны позьтӧм. Вӧтшӧтень висьталӧ.",
+    "saveVideo": "Видеоӧс вӧтчыны"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Видео тӧтшӧтны",
+    "eyebrow": "Видео тӧтшӧтны",
+    "posterAlt": "Видео постер",
+    "noDownloads": "Сійӧ видеоын тӧтшӧтны позьтӧм абу.",
+    "fileSizeLabel": "Файл шӧрӧтӧн вӧтлыны",
+    "termsAgreementPrefix": "Ме согласен ",
+    "termsOfUse": "Пользование условиеэз",
+    "termsAgreementSuffix": "",
+    "close": "Вӧтчыны",
+    "download": "Тӧтшӧтны",
+    "authRequiredTitle": "Сійӧ видеоӧс тӧтшӧтны ке?",
+    "authRequiredBody": "Видеоэзӧс тӧтшӧтны бесплатный Jesus Film аккаунт колӧ.",
+    "signInToDownload": "Входитны да тӧтшӧтны",
+    "keepWatching": "Видзӧтчыны продолжайтны",
+    "checking": "Проверка",
+    "closeTermsOfUse": "Пользование условиеэзӧс вӧтчыны",
+    "cancel": "Сӧкӧтны",
+    "accept": "Кӧптыны",
+    "errorSessionExpired": "Сессияӧс срокыс йылыс. Тӧтшӧтны понда выльысь входитны.",
+    "errorSessionUnavailable": "Сессияӧс проверитны позьтӧм. Вӧтшӧтень висьталӧ.",
+    "errorUnavailableSource": "Сійӧ источникӧн тӧтшӧтны позьтӧм абу",
+    "tierHighest": "Ӧддьӧн вись",
+    "tierHigh": "Вись",
+    "tierLow": "Уджыт"
+  },
+  "HeroPlayerControls": {
+    "play": "Вӧчны",
+    "pause": "Тыртыны",
+    "seek": "Пыжыны",
+    "seekValue": "{current} из {total}",
+    "volume": "Громкость",
+    "volumeValue": "{percent} процент",
+    "mute": "Тыртыны звук",
+    "unmute": "Звук вӧчны",
+    "changeAudioLanguage": "Аудиоязык вӧтлыны",
+    "enterFullscreen": "Полный экранӧ ӧтчыны",
+    "exitFullscreen": "Полный экранӧс вӧтчыны"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Язык вӧтлыны",
+    "searchPlaceholder": "Языкэзӧн вӧтлыны…",
+    "languages": "Языкэз",
+    "noMatches": "Тӧдӧмӧн абу",
+    "notAvailable": "Позьтӧм"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Язык",
+    "dialogTitleWithSubtitles": "Язык да субтитрӧй",
+    "languageHeading": "Язык",
+    "subtitlesHeading": "Субтитрӧй",
+    "languageCount": "{count, plural, one {# язык} other {# языкэз}}",
+    "requestSent": "Запросыс җитӧм",
+    "translateWithAi": "AI-ӧн виштӧтны",
+    "noSubtitles": "Субтитрӧй абу",
+    "toggleOn": "Ӧт",
+    "toggleOff": "Сӧт",
+    "close": "Вӧтчыны",
+    "apply": "Пыдыны",
+    "noLanguageSubtitles": "{language} субтитрӧй абу",
+    "seeAllLanguages": "Пӧскӧд языкэз",
+    "seeAllVideosInLanguage": "Пӧскӧд видеоэз: {language}",
+    "retryLoadingLanguages": "Языкэз лэдзӧмсӧ выльысь ӧшмӧтны",
+    "notAvailable": "Позьтӧм",
+    "switching": "Вӧтлыны..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 серия} other {# серияэз}}",
+    "seriesLabel": "СЕРИЯ · {episodes}",
+    "changeAudioLanguage": "Аудиоязык вӧтлыны",
+    "share": "Вöзьтӧн",
+    "languages": "Языкэз",
+    "downloadCollection": "Коллекцияӧс тӧтшӧтны",
+    "checkingDownloads": "Тӧтшӧтӧмэзӧс проверитӧм…",
+    "downloadSessionError": "Сессияӧс проверитны позьтӧм. Вӧтшӧтень висьталӧ."
+  },
+  "WatchModal": {
+    "close": "Вӧтчыны"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Тай видеоӧс создательлы вопрос йӧзлітӧг, мый гӧгӧр?",
+    "fallbackBody": "Весьтшӧм висьталӧм кылны готовӧй морткӧт висьталӧ.",
+    "questionsShort": "Вопросэз",
+    "questions": "Тшӧтш вопросэз",
+    "askYours": "Ԝӧтлыны свой",
+    "chatWithPerson": "Морткӧт висьталӧм",
+    "askBibleQuestion": "Библия йылысь вопрос юны",
+    "quiz": "Викторина"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Висьталӧм вида",
+    "fieldLabel": "Тай видео йылысь вопрос юны",
+    "send": "Вопрос җибытны",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Библия йылысь вопрос юны",
+        "description": "AI-ӧн Библияын шӧрӧтсӧн висьталӧмэз"
+      },
+      "prayerRequest": {
+        "label": "Ӧбүтны понда молитва юны",
+        "description": "Мый понда молитва колӧ, сійӧс висьтлӧ"
+      },
+      "comment": {
+        "label": "Комментарий кольны",
+        "description": "Тай видео йылысь думайтӧмэз җибытны"
+      },
+      "personChat": {
+        "label": "Морткӧт висьталӧм",
+        "description": "Нывӧтшӧн сійӧмкӧт висьталӧ"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Видеоӧс вӧзьтӧн",
+    "heading": "Тай видеоӧс вӧзьтӧн",
+    "posterAlt": "Видео постер",
+    "shareOnFacebook": "Facebook-ын вӧзьтӧн",
+    "shareOnFacebookUnavailable": "Facebook-ын вӧзьтӧн (сійӧ сборкаын позьтӧм)",
+    "shareOnX": "X-ын вӧзьтӧн",
+    "shareOnXUnavailable": "X-ын вӧзьтӧн (сійӧ сборкаын позьтӧм)",
+    "shareDisabledHint": "Вӧзьтӧмӧн потребуйтӧн опубликованнӧй страница — сійӧ видео production-ын лоис кежӧ вӧтӧ.",
+    "shareFormat": "Вӧзьтӧм формат",
+    "shareLinkTab": "Ссылка вӧзьтӧм",
+    "embedCodeTab": "Код встраивание",
+    "copyFailed": "Автоматическӧй копировать позьтӧм — ыджыт текстысӧ вӧтлыны да ручнӧйӧн копировать.",
+    "copyLink": "Ссылка копировать",
+    "copyCode": "Код копировать",
+    "copied": "Копирован",
+    "close": "Вӧтчыны"
+  },
+  "SubtitleTranscript": {
+    "heading": "Транскрипт",
+    "subheading": "Кӧтчӧн строкаӧс пыджыны, сійӧ моментӧ пыжыны.",
+    "subtitleLanguage": "Субтитрӧй язык",
+    "aiSuffix": " · AI",
+    "loading": "Транскрипт лэдзӧм…",
+    "unavailable": "Сійӧ субтитр трекын транскрипт абу.",
+    "empty": "Транскрипт строкаэз эг тӧд."
+  },
+  "FloatingSearch": {
+    "placeholder": "Темаэзӧн вӧтлыны либӧ вуҗӧтны…",
+    "openSearch": "Видеоэзӧс вӧтлыны",
+    "searchRegion": "Видеоэзӧс вӧтлыны",
+    "clearSearch": "Поиск вӧтчыны",
+    "changeAudioLanguage": "Аудиоязык вӧтлыны",
+    "home": "JesusFilm главная",
+    "closeSearch": "Поисксӧ вӧтчыны",
+    "submitSearch": "Вӧтлыны",
+    "library": "Небöкуд"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Видеоэзӧс вӧтлыны да вуҗӧтны",
+    "home": "JesusFilm главная",
+    "placeholder": "Темаэзӧн вӧтлыны либӧ вуҗӧтны…",
+    "inputLabel": "Видеоэзӧс ключевӧй словаэзӧн вӧтлыны",
+    "searchFailed": "Поиск висьтӧмӧн лоис. Вӧтшӧтень юр.",
+    "loadMoreFailed": "Мында результатэз лэдзӧмсьӧтӧм.",
+    "searching": "Поиск…",
+    "connectionHint": "Тызалан тӧдӧмӧн вӧтшыны да выльысь юр.",
+    "rateLimitHint": "Юалӧмъяс зэв уна. Минут мысти выльысь ӧшмӧт.",
+    "retrySearch": "Поисксӧ выльысь юр",
+    "retry": "Ӧшмӧтны",
+    "noResults": "\"{query}\" понда результатэз абу",
+    "tryDifferentKeywords": "Мында ключевӧй словаэз юр либӧ категорияэзӧн вуҗӧт",
+    "loading": "Лэдзӧм…",
+    "loadMore": "Мында лэдзӧм",
+    "categoryBibleStories": "Библия висьтэз",
+    "categoryParables": "Притчаэз",
+    "categoryAnimated": "Анимациялы",
+    "categoryStudy": "Изучение",
+    "categoryFamily": "Герӧт",
+    "categoryChristmas": "Рождество",
+    "searchLanguageLabel": "Поиск язык",
+    "allLanguages": "Пӧскӧд языкэз",
+    "searchSuggestions": "Поиск понда сӧветэз",
+    "directMatches": "Веськыта лӧсялӧм",
+    "languages": "Языкэз",
+    "recommendedLanguage": "Рекомендуемӧй язык",
+    "searchSuggestion": "«{suggestion}» вӧтлыны",
+    "searchSuggestionWithLanguage": "{language} йылӧн «{suggestion}» вӧтлыны",
+    "inLanguage": "{language} йылӧн",
+    "browseByRegion": "Регион йылӧн вуҗӧтны",
+    "allVideosOnSinglePage": "Быдӧс видео ӧтік страница вылын",
+    "clearLanguages": "Вӧтчыны",
+    "queryLanguageDetected": "{language} тӧдӧм",
+    "searchInLanguage": "{language} йылӧн вӧтлыны",
+    "tryDifferentKeywordsOrLanguage": "Мында ключевӧй словаэз либӧ мӧд язык юр",
+    "useWebsiteDefaultLanguage": "Сайтӧн по умолчанию поиск языксӧ пользуйтчыны",
+    "removeLanguage": "{language} кежӧтны",
+    "browseMode": "Поиск вуҗӧтӧм режим",
+    "searchingInLanguage": "Результатэз: {language} йылӧн"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Пыдӧт",
+    "tapToUnmute": "Звук вӧтлыны йылӧн тупкӧт",
+    "nextEpisode": "Выль серия",
+    "audioTranslationCount": "{count, plural, one {# язык} other {# языкэз}}",
+    "subtitleCount": "Субтитрӧй: {count, plural, one {# язык} other {# языкэз}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Контент лэдзӧм",
+    "loadingVideo": "Видео лэдзӧм"
+  },
+  "VideoLabels": {
+    "video": "Видео",
+    "segment": "Сегмент",
+    "episode": "Серия",
+    "featureFilm": "Полнометражнӧй фильм",
+    "shortFilm": "Кӧрӧт фильм",
+    "series": "Серия",
+    "collection": "Коллекция",
+    "trailer": "Трейлер",
+    "behindTheScenes": "Сцена бӧрын",
+    "chapter": "Глава"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Клип {current} из {total}",
+    "position": "{current} из {total}",
+    "chapterCount": "{count, plural, one {# глава} other {# главаэз}}",
+    "clipAriaLabel": "{title} · Клип {current} из {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# глава} other {# главаэз}}",
+    "chapter": "Глава",
+    "noImage": "Снимок абу",
+    "playingNow": "Нывӧтны",
+    "previousChapter": "Вӧлі глава",
+    "nextChapter": "Выль глава",
+    "thumbnailAlt": "{title} миниатюра",
+    "relatedVideoThumbnail": "Тшӧтш видео миниатюра"
+  },
+  "SearchResultCard": {
+    "experience": "Опыт",
+    "episodeCount": "{count, plural, one {# серия} other {# серияэз}}",
+    "thumbnailAlt": "Видео миниатюра"
+  },
+  "Feedback": {
+    "openForm": "Отзыв формаӧн вӧчны",
+    "label": "Отзыв",
+    "couldNotLoad": "Отзыв форма лэдзӧмсьӧтӧм позьтӧм.",
+    "loadingForm": "Отзыв форма лэдзӧм…",
+    "retry": "Ӧшмӧтны",
+    "cancel": "Сӧкӧтны",
+    "closeForm": "Отзыв формаӧс вӧтчыны",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} йылӧн венӧз христианскӧй видеоэз | Jesus Film Project",
+    "metadataDescription": "Jesus фильмэз, Библия висьтэз, ученичествӧ серияэз да евангелизация видеоэз {language} йылӧн озвучкаӧн либӧ субтитрӧйӧн вуҗӧт.",
+    "heroTitle": "{language} йылӧн венӧз христианскӧй видеоэз",
+    "heroDescription": "{language} йылӧн видеозы, Библия висьтэз, ученичествӧ серияэз да евангелизация видеоэз вуҗӧт. Полностью озвучитӧм видеоэз вештӧм йӧртісь, субтитрӧй вариантэз — вӧтӧс.",
+    "languageCollection": "Язык коллекция",
+    "itemCount": "{count, plural, one {# предмет} other {# предметэз}}",
+    "videoCount": "{count, plural, one {# видео} other {# видеоэз}}",
+    "videosInGroups": "{videoCount, plural, one {# видео} other {# видеоэз}} {groupCount, plural, one {# группаын} other {# группаын}}",
+    "sectionNavLabel": "Язык inventory разделэз",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Выль",
+    "videoBible": "Видео Библия",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Коллекцияэз",
+    "subtitlesOnly": "Субтитрӧй гӧгӧр",
+    "backToTop": "Вылö бертны",
+    "newlyAdded": "Выльысь шедтӧм",
+    "newVideosTitle": "{language} йылӧн выль христианскӧй видеоэз",
+    "newestFirst": "Выльыс вӧлі",
+    "noPublishedVideos": "Сійӧ языклы озвисьтӧм видеоэз эг тӧд.",
+    "bibleAndGospelFilms": "Библия да Евангелие фильмэз",
+    "videoBibleCollectionsTitle": "{language} Видео Библия коллекцияэз",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena да Acts тшӧтш {language} йылӧн Писаниеын тызалан коллекцияэз.",
+    "noVideoBibleCollections": "Сійӧ языклы Видео Библия коллекцияэз әлега абу.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject коллекцияэз",
+    "bibleProjectDescription": "BibleProject серияэз да изучениеэз {language} йылӧн вуҗӧтӧм.",
+    "noBibleProjectCollections": "Сійӧ языклы BibleProject коллекцияэз әлега абу.",
+    "sportsStories": "Спорт висьтэз",
+    "sportsTitle": "{language} йылӧн спорт да спортсмен висьтэз",
+    "sportsDescription": "Вераны тшӧтш спорт висьтэз да спортсмен йылысь коллекцияэз {language} йылӧн.",
+    "noSportsCollections": "Сійӧ языклы спорт либӧ спортсмен висьтӧм коллекцияэз әлега абу.",
+    "fullyDubbed": "Полностью озвучитӧм",
+    "dubbedVideosTitle": "{language} йылӧн видеоэз коллекцияэзӧн",
+    "dubbedVideosDescription": "Тӧдчыны ыджытная {language} видеоэз коллекцияэзӧн тшӧтш, шуны буржыкӧн тӧдны понда.",
+    "noDubbedVideos": "Сійӧ языклы полностью озвучитӧм видеоэз әлега абу.",
+    "subtitlesAvailable": "Субтитрӧйэз колӧны",
+    "subtitlesTitle": "{language} йылӧн субтитрӧй видеоэз",
+    "subtitlesDescription": "Сійӧ видеоэзын {language} субтитрӧйэз колӧны, кӧть {language} аудиосӧ эгесь абу.",
+    "noSubtitleVideos": "Сійӧ языклы субтитрӧй гӧгӧр видеоэз әлега абу.",
+    "dubbed": "Озвучитӧм",
+    "subtitles": "Субтитрӧй",
+    "newLabel": "Выль",
+    "fromCollection": "{collection} вын",
+    "standaloneVideos": "Торӧт видеоэз",
+    "videosFromCollection": "{collection} коллекцияысь видеоэз.",
+    "standaloneDescription": "Торӧт видеоэз тай языкын.",
+    "openCollection": "Коллекцияӧс вӧтчыны",
+    "filters": "Пыртöмъяс",
+    "filterLength": "Кузьта",
+    "filterLength_under5": "5 минутсянь этша",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минутсянь уна",
+    "filterType": "Ногыс",
+    "clearFilters": "Пыртöмъяс чышкыны",
+    "filterResults": "{total}-ысь {count} петкöдлöма",
+    "noFilterResults": "Тайö пыртöмъяслы лöсялана видео абу. Öтикöс босьтны видзöд.",
+    "filterAdded": "Содтöма",
+    "filterAdded_60d": "Бöръя 60 лун",
+    "filterAdded_6m": "Бöръя 6 тöлысь",
+    "filterAdded_12m": "Бöръя 12 тöлысь"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project: видзӧтны",
+    "watch": "Видзӧтны",
+    "watchNow": "Нӧр видзӧтны",
+    "mutePreview": "Предпросмотр звук вӧтчыны",
+    "unmutePreview": "Предпросмотр звук вӧтлыны",
+    "nextVideo": "Выль видео",
+    "featured": "Тӧдчан",
+    "showVideo": "{title} вӧзьтӧн",
+    "previousVideoPreview": "Вӧлі видео предпросмотр",
+    "nextVideoPreview": "Выль видео предпросмотр",
+    "mediaCollection": "Медиа коллекция",
+    "scrollToVideo": "{title} видеоӧ кужны",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project главная",
+    "navigation": "Футер навигация",
+    "share": "Вӧзьтӧн",
+    "watch": "Видзӧтны",
+    "giving": "Тӧтны",
+    "about": "Йылысь",
+    "products": "Продуктэз",
+    "resources": "Ресурсэз",
+    "partners": "Партнерэз",
+    "contact": "Контакт",
+    "giveNow": "Нӧр тӧтны",
+    "resourcesVersion": "Ресурсэз ({version})",
+    "office": "Офис",
+    "fax": "Факс",
+    "privacyPolicy": "Конфиденциальность политика",
+    "legalStatement": "Юридическӧй висьталӧм",
+    "newsletter": "Наш newsletter-ӧ кыскыны",
+    "aiAttributionHeading": "AI-лӧн пользование да атрибуция",
+    "aiAttributionBody": "Кыдз сы страницаын информациясӧ искусственнӧй интеллект системӧт понда, атрибуцияӧн лӧсьӧтчан. Кытшӧм сэки AI-агент, сывӧт языковӧй модель (LLM), AI-юралӧм система, краулер гижӧм да сы вылӧ шорӧдӧм автоматизированнӧй система, кутшӧм браласьтны ті информациясӧ понда обучения, поискысь, ответ вылӧ кытчыштӧм да пользователей либӧ клиенттӧт мог вылын, колӧ висьтӧны Jesus Film Project-ӧс источникӧн да вӧчны сы страницаӧ прямой, вӧдитчӧн ссылкасӧ, кыдз сэки информациясӧ пользуйтӧны либӧ сетӧны. Витчӧтны наш <terms>Terms of Use</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Глобальнӧй миссияэз понда вӧтӧм",
+    "title": "Висьтыс вӧтшӧтны абу. Мыйын йӧзэз видзӧтӧ, сійӧ вӧтшӧтӧ.",
+    "description": "Меӧтӧ video library да инструментэз вылын выльысь вӧтӧм, десятилетиӧн вуҗӧтӧм тырӧн платформаэзӧ, кӧні йӧзэз уже йыйӧны, видзӧтӧны да вӧзьтӧны.",
+    "translatedLibraryTitle": "Дуннӧйын ӧддьӧн вуҗӧтӧм фильм библиотека",
+    "translatedLibraryDescription": "Десятилетиӧн вуҗӧтӧм да тӧдчан ministry partnerэзыс берданысь, библиотекаын кӧдзытсьӧ тысячӧм язык трекэз, чтобы йӧзэз Jesus висьтӧн тӧдны, кӧні сійӧй ӧддьӧн тырӧ.",
+    "trustedVoicesTitle": "Тӧдчан голосэз выль форматэзӧ вӧтӧм",
+    "trustedVoicesDescription": "Меӧтӧ gospel висьтэзсӧ мыйын вӧтны, тӧдчан вуҗӧтӧмэзсӧ modern форматэзӧн пӧртны, чтобы висьтыс платформаэз, культураэз да экранэз йылӧн вӧтны.",
+    "missionTeamTitle": "Библиотекаын тӧдӧм абу. Миссиялысь команда.",
+    "missionTeamDescription": "Jesus Film Project — переводчикэз, media specialistэз, editorэз да creatorэз дунакӧн глобальнӧй команда, кӧні десятилетиӧн ministry опытсӧ discple-makerэз понда инструментэзӧ вӧтӧны.",
+    "buildingNext": "Мый меӧтӧ вылын лоӧ",
+    "nextStepsTitle": "Пыдӧтӧм выль юр",
+    "nextStepsDescription": "Видзӧтны олыссӧ духовнӧй жолын тӧдчан позьӧмэзӧн, комьюнити, Писание либӧ миссияӧ кытшӧм пыдӧт кежӧм.",
+    "mediaLibraryTitle": "Евангелизационнӧй медиа библиотека",
+    "mediaLibraryDescription": "Библия эшӧтӧм Christian media библиотека, кӧні тысячӧм видеоэз, фильмэз да ресурсэз множествӧн языкэзын ministry да evangelism понда тӧдӧм.",
+    "ministryToolsTitle": "Министерствоэз понда digital инструментэз",
+    "ministryToolsDescription": "Видео башкарение, контент таразитӧм, аудиторияӧн вӧзьтӧм да analytics, ministry эзӧ ӧддьӧн йӧзӧс җыччӧтӧм понда чӧскытӧм.",
+    "invitationEyebrow": "Ӧтӧй вӧйтӧм",
+    "invitationTitle": "Меӧтӧ <highlight>выль поколение</highlight> миссия инструментэзӧн вӧтӧм",
+    "invitationDescription": "Ме практикэз, creatorэз да partnerэз ранний доступӧ вӧзьтӧмӧн ырыс. Выль инструментэзсӧ бура тӧдны, feedback вӧзьтӧм да настоящӧй mission work понда продуктэзсӧ лӧсьӧтны.",
+    "betaTester": "Beta tester лоӧ"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Видео Библия коллекция",
+    "gospelRailTitle": "Пӧскӧд висьтсӧ тӧдны",
+    "videoBibleDescription": "Наш коллекцияын видеоэз да ресурсэз Библиясӧ ӧддьӧн живӧйӧн кыскыны, висьтэз да учениеэз висьтлӧмӧн.",
+    "showcaseTitle": "Писание фильмын висьтӧм",
+    "adventEyebrow": "Рождество Advent",
+    "adventTitle": "Рождество Advent count-down",
+    "adventDescription": "Advent journeyӧ ветлыны, кӧні кӧдзыт сайын видео әрныкӧн Рождествоӧ кытчӧн сӧмын ӧддӧн тӧдны, Jesus пыдӧтлӧм йылӧн ӧтласа шӧрӧт, вӧвлӧм да обещаниеэзсӧ тӧдны.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Адвент",
+    "nuaEyebrow": "NUA серия",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth серия",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Видео курс",
+    "journeyWithJesusTitle": "Jesus-кӧт journey",
+    "gospelsOnVideoEyebrow": "Пӧскӧд Евангелие, видеоын висьтӧм",
+    "scriptureAsWrittenTitle": "Писание, кыдз висьтӧм, сэтшӧмӧн үтӧкын",
+    "merryChristmas": "Рождествоӧн!",
+    "daysUntilChristmas": "{count, plural, one {Рождествоӧдз # лун} other {Рождествоӧдз # лунэз}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Языкэз",
+    "metadataDescription": "JesusFilm видеоэзсӧ языкӧн вуҗӧтны.",
+    "eyebrow": "Видзӧтны языкэз",
+    "title": "Язык вӧтлыны",
+    "description": "Регион йылӧн языкэзсӧ вуҗӧтны либӧ пӧскӧд списоксӧ видзӧтны.",
+    "searchPlaceholder": "Языкэз либӧ странаэзӧн вӧтлыны...",
+    "searchLabel": "Языкэз либӧ странаэзӧн вӧтлыны",
+    "clearSearch": "Поиск вӧтчыны",
+    "browse": "Вуҗӧтны",
+    "browseByRegion": "Регион да страна йылӧн вуҗӧтны",
+    "languageCount": "{count, plural, one {# язык} other {# языкэз}}",
+    "region": "Регион",
+    "countryLanguages": "{country} языкэз",
+    "showLess": "Мында абу",
+    "showMore": "Мында {count} быдӧс",
+    "noLanguages": "Языкэз эг тӧд",
+    "tryAnotherSearch": "Мӧд поиск сёрни вӧтлы."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Видзӧтӧм история | Jesus Film Project",
+    "title": "Видзӧтӧм история",
+    "loading": "История лэдзӧм",
+    "empty": "Медым бы абу",
+    "emptyDescription": "Входитӧмӧн видзӧтӧм видеоэз сэтшын пӧртӧны.",
+    "earlier": "Вӧліӧн",
+    "today": "Тӧри",
+    "yesterday": "Ӧніӧн"
+  },
+  "AccountControl": {
+    "account": "Аккаунт",
+    "accountMenu": "Аккаунт меню",
+    "signIn": "Входитны",
+    "signOut": "Выходитны",
+    "signedIn": "Входитӧм",
+    "history": "История",
+    "logOut": "Выйти"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Страница абу тӧд",
+    "eyebrow": "Страница абу тӧд",
+    "screenReaderPrefix": "Страница абу тӧд:",
+    "title": "Сійӧ сцена сэтшын абу.",
+    "description": "Страницаын вӧртӧм позьӧ, но висьтыс продолжайтӧ.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Страница абу тӧд әрекетэз",
+    "backToWatch": "Видзӧтӧмӧ кежӧ",
+    "browseVideos": "Видеоэзсӧ вуҗӧтны"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% лӧсялӧм",
+    "none": "Тай видео понда сійӧ языкын рекомендацияэз эг тӧд."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester лоӧ",
+    "trigger": "Beta tester лоӧ",
+    "loadFailed": "Сэтшӧмыс вештіс.",
+    "loading": "Лэдзӧм…",
+    "openFormNewTab": "Формаӧн вӧчны выль вкладкаын",
+    "close": "Вӧтчыны",
+    "iframeTitle": "Beta tester лоӧ"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Коллекцияӧс тӧтшӧтны",
+    "eyebrow": "Коллекцияӧс тӧтшӧтны",
+    "description": "Языксӧ да качествосӧ ӧтчыд бӧрйы. Быд позьтӧм серия очередьӧн тӧтшӧтчас.",
+    "signInTitle": "Тӧтшӧтны понда входитны",
+    "signInBody": "Коллекцияэзӧс тӧтшӧтны позьӧ Jesus Film аккаунтӧ входитӧм бӧрын.",
+    "signIn": "Входитны да тӧтшӧтны",
+    "languageLabel": "Язык",
+    "qualityLabel": "Видео качество",
+    "tierHighest": "Ӧддьӧн вись",
+    "tierHigh": "Вись",
+    "tierLow": "Уджыт",
+    "loading": "Пӧзян серияэзӧс вӧтлыны…",
+    "loadError": "Сійӧ языкын тӧтшӧтӧмэзӧс лэдзны эз вермы.",
+    "retry": "Ӧшмӧтны",
+    "noDownloads": "Сійӧ языкын тӧтшӧтны позьтӧм серияэз абу.",
+    "availableCount": "{count, plural, one {# серия дась} other {# серияэз дась}}",
+    "skippedCount": "{count, plural, one {# серия коляс, сы вӧсна мый сійӧ абу позьтӧм} other {# серияэз колясӧ, сы вӧсна мый найӧ абу позьтӧмӧсь}}",
+    "chooseFolder": "Тӧтшӧтӧм папкаӧс бӧрйыны",
+    "folderSelected": "Вӧтчан ин: {name}",
+    "folderError": "Тӧтшӧтӧм папка эз восьтысь.",
+    "browserFallback": "Браузертӧ быд файлӧс аслас обычнӧй тӧтшӧтӧм настройкаэз серти вӧтӧ. Сійӧ вермас юавны уна файл тӧтшӧтны разрешение.",
+    "sessionError": "Сессияӧс проверитны позьтӧм. Вӧтшӧтень висьталӧ.",
+    "downloading": "Тӧтшӧтӧм: {title}",
+    "progress": "{completed} из {total}",
+    "complete": "Тӧтшӧтӧмэз эштісӧ",
+    "canceled": "Тӧтшӧтӧм сӧкӧтӧм",
+    "failedCount": "{count, plural, one {# серияӧс тӧтшӧтны эз вермы} other {# серияӧс тӧтшӧтны эз вермы}}. Коллекциясӧ выльысь тӧтшӧтны понда бара бӧрйы «Тӧтшӧтны».",
+    "close": "Вӧтчыны",
+    "cancel": "Сӧкӧтны",
+    "start": "Пӧскӧдӧс тӧтшӧтны",
+    "downloadAgain": "Выльпӧв тӧтшӧтны",
+    "retryFailed": "Тӧтшӧтӧмтӧмэзӧс выльысь ӧшмӧтны"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Язык версияыс абу",
+    "eyebrow": "Язык версияыс абу",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> вылын абу",
+    "actionsLabel": "Видзӧтчан позянлунъяс",
+    "browseInLanguage": "{language} вылын видеоэз видзӧтны",
+    "backToSearch": "Корсьӧмӧ бергӧдчыны",
+    "audioVersionsTitle": "Мӧд аудио версияэз",
+    "audioVersionsDescription": "Тайӧ видео видзӧтӧм водзӧ нуӧдны аудио язык бӧрйы.",
+    "languageVersionLabel": "Аудио язык",
+    "selectLanguageVersion": "Язык версия бӧрйы",
+    "watchSelectedVersion": "Бӧрйӧм версия видзӧтны"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Куки бӧрйӧммез",
+    "bannerTitle": "Тэнад приватность понда бӧрйӧммез",
+    "bannerDescription": "Колана кукиэз Watch-ӧс видзӧны безопаснӧйӧн да уджаланаӧн. Тэнад разрешениеӧн ӧтік содтана первой стороналӧн куки вермас визывны интерессэз посещеннёэз коста, медбы рекомендацияэз вӧлісӧ аслыт ладын. Контекстнӧй рекомендацияэз быднёж кольччӧны доступнӧйӧсь.",
+    "acceptAll": "Примитны быдӧс",
+    "essentialOnly": "Только коланаэз",
+    "manageChoices": "Веськӧтны бӧрйӧммез",
+    "savingChoice": "Куки бӧрйӧмсӧ видзӧм",
+    "settings": "Куки настройкаэз",
+    "settingsDescription": "Бӧрйыны, позьӧ ли Watch-лӧ помнитны рекомендация понда интерессэз посещеннёэз коста. Тэ верман вежны это кӧркӧ.",
+    "essentialCookies": "Колана кукиэз",
+    "essentialDescription": "Безопасность, видеосӧ видзӧм, приватность понда бӧрйӧммез да рекомендация корӧмлӧн атрибуция.",
+    "alwaysActive": "Пыр активнӧй",
+    "personalization": "Персонализация",
+    "personalizationDescription": "Посещеннёэз коста ограниченнӧй интерессэзсӧ помнитны. Это кӧ сувтӧтны, контекстнӧй рекомендацияэз всё равно лоӧны доступнӧйӧсь.",
+    "erasurePending": "Профиль удалитӧм видзӧтчӧ. Контекстнӧй рекомендацияэз ни активнӧйӧсь.",
+    "cancel": "Отмена",
+    "saveChoices": "Видзны бӧрйӧммез",
+    "saving": "Видзӧ…",
+    "loadError": "Тэнад бӧрйӧмсӧ эз позь загрузитны. Унаӧн тэ всё эшӧ верман бӧрйыны улын.",
+    "grantError": "Персонализациясӧ эз позь включитны. Только коланаэз кольччӧны доступнӧйӧсь.",
+    "saveError": "Тэнад бӧрйӧмсӧ эз позь видзны. Пожалуйста, видзӧтӧй ещё ӧтпыр."
+  }
+}

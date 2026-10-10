@@ -77,7 +77,13 @@ async function getS3() {
 - `apps/manager/src/config/env.ts` — optional S3 vars
 - `apps/manager/src/services/storage.ts` — dual-backend storage service
 - `apps/cms/config/plugins.ts` — original CMS pattern (reference)
+- `apps/admin/src/storage/s3.ts` — pattern propagated to admin (2026-04-29);
+  exploited by plan 006's `pull-mapping-from-prod` CLI which writes prod
+  mapping snapshots into the local-fallback path so the workflow's
+  existing `getObject` reads them transparently. See
+  `docs/solutions/platform/local-embed-pipeline-pattern-20260429.md`.
 
 ## PR
 
 - https://github.com/JesusFilm/forge/pull/504
+- https://github.com/JesusFilm/forge/pull/858 (admin propagation + local CLI exploit)

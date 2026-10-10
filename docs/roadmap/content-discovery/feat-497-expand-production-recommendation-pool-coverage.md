@@ -1,0 +1,83 @@
+---
+id: "feat-497"
+title: "Expand production recommendation pools beyond the initial languages"
+owner: "nisal"
+priority: "P2"
+status: "cancelled"
+start_date: "2026-09-14"
+duration: 3
+depends_on: []
+blocks: []
+tags:
+  - "recommendations"
+  - "i18n"
+  - "admin"
+---
+
+## October 2, 2026 closeout disposition
+
+Cancelled under the owner's final recommendation-roadmap scope decision.
+Broader curated-pool expansion is optional and is not selected for this closeout. Preserve all currently active contexts and validated immutable pools. Accepted translation/transcript/exact-audio/fallback inventory gaps do not justify language relaxation, pool mutation or reopening healthy delivery. The interrupted broader catalogue audit is not a completed audit and does not prove exhaustion.
+
+Audit anchors: `docs/operations/user-recommendations-activation-2026-09-14.md`, `apps/admin/src/services/recommendations/curated-pools.service.ts`, `docs/reports/2026-10-02-recommendation-coverage-acceptance.md`.
+The audit establishes the current scope and code boundaries, not new production
+verification. See [the consolidated closeout record](../../reports/2026-10-02-recommendation-roadmap-closeout.md)
+for owner, PR, evidence and remaining operational work. The requirements below
+are historical and do not authorize new implementation.
+
+## Historical problem
+
+The source-free API and Web row are live with 51 validated locale/audio contexts.
+The owner explicitly accepted partial coverage. A broader production audit of
+2,081 contexts that passed the local snapshot lost its public PostgreSQL
+connection after more than 600 queries; it produced no completed report.
+Continue coverage work without disabling available contexts or reopening launch.
+
+The October 2 owner decision confirms this is optional coverage expansion,
+not repair of an unhealthy delivery service. Apply
+`docs/analytics-and-recommendation-policy.md#delivery-health-and-accepted-coverage`:
+valid empty/partial results do not block proceeding or automatically trigger
+inventory work. Server failures and reproduced correctness defects stay separate.
+
+## Entry Points — Read These First
+
+1. `docs/operations/user-recommendations-activation-2026-09-14.md` and its JSON
+   evidence — exact activated contexts, generation, observations and limits.
+2. `apps/admin/scripts/import-recommendation-pools.ts` — audit/import/promote/rollback.
+3. `apps/admin/src/services/recommendations/curated-pools.service.ts` and
+   `curated-pools.catalog.ts` — immutable versions and current eligibility.
+4. `docs/recommendations/curation/2026-09-10/all-context-web-default-coverage.csv`
+   and `pg-catalog-summary.json` — local projections and unfiltered catalog map.
+
+## Grep These
+
+`CuratedPoolsService`, `CURATED_POOL_POINTER_ID`, `exact_audio_unavailable`,
+`localePublished`, `watchPlayable`, `canonical_duplicate`.
+
+## What To Build
+
+- Audit remaining actual Web locale/audio mappings in bounded, resumable batches.
+  Record completed reports by source digest and context; do not treat progress
+  counters as completed validation. Avoid repeatedly transferring identical
+  embeddings, with parity checks against the normal audit implementation.
+- Import a new immutable generation that includes every currently active context
+  plus additional passing contexts. Promote through the existing service with
+  the expected current version and fresh production eligibility checks.
+- Classify failures separately: display translation, exact audio, playback,
+  restrictions, artwork, canonical duplicates and reserve depth. Reuse the
+  reviewed editorial choices; do not infer absent videoVariants from absent text.
+
+## Constraints
+
+No 100% coverage launch gate, new model API spend, monthly worker, silent language
+fallback, weakened history rules or direct application deployment. Six plus zero
+exclusions was the initial activation check; thirty starters provides a larger
+reserve, but overlapping interest pools do not add distinct inventory.
+
+## Verification
+
+All source IDs resolve. Every newly activated context passes the existing
+validator and is retained in the immutable report. Recheck stored starter IDs at
+promotion, prove currently active contexts remain present, and smoke representative
+languages through the live API. Runtime failures remain `feat-496`; a successful
+catalog audit alone does not prove delivery latency or full playback of every dub.

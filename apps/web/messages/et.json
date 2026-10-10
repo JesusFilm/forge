@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Kogemuse sisu pole saadaval.",
+    "failedToLoad": "Kogemuse laadimine nurjus: {message}",
+    "unexpected": "Tekkis ootamatu viga.",
+    "notConfigured": "Sisu teenus pole seadistatud.",
+    "noContent": "Sisu pole saadaval.",
+    "homepageMisconfigured": "Vaatamise avaleht on valesti seadistatud.",
+    "defaultTemplateMisconfigured": "Vaate vaikešabloon on valesti seadistatud.",
+    "authFailed": "Sisu teenusega autentimine ei õnnestunud. Kui see jätkub, võtke palun ühendust toega.",
+    "pageLoadFailed": "Midagi läks valesti.",
+    "tryAgain": "Proovi uuesti"
+  },
+  "VideosPage": {
+    "title": "Kõik videod",
+    "placeholder": "Kataloogi sirvimine on tulekul. Seni kasuta otsingut või teemaspetsiifilist URL-i."
+  },
+  "BibleQuotes": {
+    "title": "Piiblitsitaadid",
+    "share": "Jaga",
+    "readMore": "Loe rohkem...",
+    "learnMore": "Loe lähemalt",
+    "freeResources": "Tasuta ressursid",
+    "promoHeading": "Soovid Piiblist sügavamalt aru saada?",
+    "joinBibleStudy": "Liitu meie piibliõppega",
+    "previousQuote": "Eelmine piiblitsitaat",
+    "nextQuote": "Järgmine piiblitsitaat",
+    "readPassage": "Loe seda kirjakohta oma Piiblist."
+  },
+  "DownloadButton": {
+    "checking": "Kontrollimine",
+    "download": "Laadi alla",
+    "sessionError": "Sinu seanssi ei õnnestunud kontrollida. Proovi uuesti.",
+    "saveVideo": "Salvesta video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Laadi video alla",
+    "eyebrow": "Laadi video alla",
+    "posterAlt": "Video plakat",
+    "noDownloads": "Selle video jaoks pole allalaadimisi saadaval.",
+    "fileSizeLabel": "Vali faili suurus",
+    "termsAgreementPrefix": "Nõustun ",
+    "termsOfUse": "kasutustingimustega",
+    "termsAgreementSuffix": "",
+    "close": "Sulge",
+    "download": "Laadi alla",
+    "authRequiredTitle": "Soovid selle video alla laadida?",
+    "authRequiredBody": "Videote allalaadimiseks on vaja tasuta Jesus Filmi kontot.",
+    "signInToDownload": "Laadi alla pärast sisselogimist",
+    "keepWatching": "Jätka vaatamist",
+    "checking": "Kontrollimine",
+    "closeTermsOfUse": "Sulge kasutustingimused",
+    "cancel": "Tühista",
+    "accept": "Nõustu",
+    "errorSessionExpired": "Sinu seanss aegus. Laadi alla pärast uuesti sisselogimist.",
+    "errorSessionUnavailable": "Sinu seanssi ei õnnestunud kontrollida. Proovi uuesti.",
+    "errorUnavailableSource": "Selle allika puhul allalaadimine pole saadaval",
+    "tierHighest": "Kõrgeim",
+    "tierHigh": "Kõrge",
+    "tierLow": "Madal"
+  },
+  "HeroPlayerControls": {
+    "play": "Esita",
+    "pause": "Paus",
+    "seek": "Keri",
+    "seekValue": "{current} / {total}",
+    "volume": "Helitugevus",
+    "volumeValue": "{percent}%",
+    "mute": "Vaigista",
+    "unmute": "Lülita heli sisse",
+    "changeAudioLanguage": "Muuda heli keelt",
+    "enterFullscreen": "Täisekraan",
+    "exitFullscreen": "Välju täisekraanist"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Vali keel",
+    "searchPlaceholder": "Otsi keeli…",
+    "languages": "Keeled",
+    "noMatches": "Tulemusi pole",
+    "notAvailable": "Pole saadaval"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Keel",
+    "dialogTitleWithSubtitles": "Keel ja subtiitrid",
+    "languageHeading": "Keel",
+    "subtitlesHeading": "Subtiitrid",
+    "languageCount": "{count, plural, one {# keel} other {# keelt}}",
+    "requestSent": "Taotlus saadetud",
+    "translateWithAi": "Tõlgi tehisintellektiga",
+    "noSubtitles": "Subtiitreid pole",
+    "toggleOn": "Sees",
+    "toggleOff": "Väljas",
+    "close": "Sulge",
+    "apply": "Rakenda",
+    "noLanguageSubtitles": "{language} subtiitreid pole",
+    "seeAllLanguages": "Kõik keeled",
+    "seeAllVideosInLanguage": "Kõik videod: {language}",
+    "retryLoadingLanguages": "Proovi keelte laadimist uuesti",
+    "notAvailable": "Pole saadaval",
+    "switching": "Vahetamine..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1. osa} other {# osa}}",
+    "seriesLabel": "SARI · {episodes}",
+    "changeAudioLanguage": "Muuda heli keelt",
+    "share": "Jaga",
+    "languages": "Keeled",
+    "downloadCollection": "Laadi kogu alla",
+    "checkingDownloads": "Allalaadimiste kontrollimine…",
+    "downloadSessionError": "Sinu seanssi ei õnnestunud kontrollida. Proovi uuesti."
+  },
+  "WatchModal": {
+    "close": "Sulge"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Kui saaksid küsida selle video loojalt ühe küsimuse, mis see oleks?",
+    "fallbackBody": "Arutle privaatselt inimesega, kes on valmis kuulama.",
+    "questionsShort": "Küsimused",
+    "questions": "Seotud küsimused",
+    "askYours": "Küsi ise",
+    "chatWithPerson": "Vestle inimesega",
+    "askBibleQuestion": "Küsi Piibli kohta",
+    "quiz": "Viktoriin"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Sõnumi tüüp",
+    "fieldLabel": "Küsi selle video kohta küsimus",
+    "send": "Saada küsimus",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Küsi Piibli kohta",
+        "description": "Kiired vastused Piiblist tehisintellekti otsingu abil"
+      },
+      "prayerRequest": {
+        "label": "Palvetaotluse saatmine",
+        "description": "Jaga, mille eest soovid palvet"
+      },
+      "comment": {
+        "label": "Jäta kommentaar",
+        "description": "Saada mõtteid selle video kohta"
+      },
+      "personChat": {
+        "label": "Vestle inimesega",
+        "description": "Räägi kellegagi kohe"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Jaga videot",
+    "heading": "Jaga seda videot",
+    "posterAlt": "Video plakat",
+    "shareOnFacebook": "Jaga Facebookis",
+    "shareOnFacebookUnavailable": "Jaga Facebookis (selles versioonis pole saadaval)",
+    "shareOnX": "Jaga X-is",
+    "shareOnXUnavailable": "Jaga X-is (selles versioonis pole saadaval)",
+    "shareDisabledHint": "Jagamiseks on vaja avaldatud lehte — see töötab siis, kui see video on tootmiskeskkonnas.",
+    "shareFormat": "Jagamise vorming",
+    "shareLinkTab": "Jagamislink",
+    "embedCodeTab": "Manustamiskood",
+    "copyFailed": "Automaatne kopeerimine ebaõnnestus — vali allolev tekst ja kopeeri käsitsi.",
+    "copyLink": "Kopeeri link",
+    "copyCode": "Kopeeri kood",
+    "copied": "Kopeeritud",
+    "close": "Sulge"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkript",
+    "subheading": "Toksake mis tahes rida, et liikuda sellesse hetke.",
+    "subtitleLanguage": "Subtiitrite keel",
+    "aiSuffix": " · AI",
+    "loading": "Transkripti laadimine…",
+    "unavailable": "Selle subtiitriraja jaoks transkripti pole saadaval.",
+    "empty": "Transkripti ridu ei leitud."
+  },
+  "FloatingSearch": {
+    "placeholder": "Otsi või sirvi teemasid…",
+    "openSearch": "Otsi videoid",
+    "searchRegion": "Otsi videoid",
+    "clearSearch": "Tühjenda otsing",
+    "changeAudioLanguage": "Muuda heli keelt",
+    "home": "JesusFilmi avaleht",
+    "closeSearch": "Sulge otsing",
+    "submitSearch": "Otsi",
+    "library": "Teek"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Otsi ja sirvi videoid",
+    "home": "JesusFilmi avaleht",
+    "placeholder": "Otsi või sirvi teemasid…",
+    "inputLabel": "Otsi videoid märksõna järgi",
+    "searchFailed": "Otsing ebaõnnestus. Proovi uuesti.",
+    "loadMoreFailed": "Rohkemate tulemuste laadimine nurjus.",
+    "searching": "Otsimine...",
+    "connectionHint": "Kontrolli oma ühendust ja proovi uuesti.",
+    "rateLimitHint": "Liiga palju päringuid. Proovige minuti pärast uuesti.",
+    "retrySearch": "Proovi otsingut uuesti",
+    "retry": "Proovi uuesti",
+    "noResults": "Tulemusi päringule \"{query}\" ei leitud",
+    "tryDifferentKeywords": "Proovi teisi märksõnu või sirvi kategooriaid",
+    "loading": "Laadimine...",
+    "loadMore": "Laadi veel",
+    "categoryBibleStories": "Piiblilood",
+    "categoryParables": "Tähendamissõnad",
+    "categoryAnimated": "Animatsioon",
+    "categoryStudy": "Õpe",
+    "categoryFamily": "Perekond",
+    "categoryChristmas": "Jõulud",
+    "searchLanguageLabel": "Otsingukeel",
+    "allLanguages": "Kõik keeled",
+    "searchSuggestions": "Otsingusoovitused",
+    "directMatches": "Täpsed vasted",
+    "languages": "Keeled",
+    "recommendedLanguage": "Soovitatud keel",
+    "searchSuggestion": "Otsi „{suggestion}”",
+    "searchSuggestionWithLanguage": "Otsi keeles {language}: „{suggestion}”",
+    "inLanguage": "keeles {language}",
+    "browseByRegion": "Sirvi piirkonna järgi",
+    "allVideosOnSinglePage": "Kõik videod ühel lehel",
+    "clearLanguages": "Tühjenda",
+    "queryLanguageDetected": "Tuvastatud keel: {language}",
+    "searchInLanguage": "Otsi keeles {language}",
+    "tryDifferentKeywordsOrLanguage": "Proovi teisi märksõnu või vali teine otsingukeel",
+    "useWebsiteDefaultLanguage": "Kasuta veebisaidi vaikimisi otsingukeelt",
+    "removeLanguage": "Eemalda {language}",
+    "browseMode": "Sirvimisrežiim",
+    "searchingInLanguage": "Tulemused keeles {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Vaata nüüd",
+    "tapToUnmute": "Toksake heli sisselülitamiseks",
+    "nextEpisode": "Järgmine osa",
+    "audioTranslationCount": "{count, plural, one {# keel} other {# keelt}}",
+    "subtitleCount": "Subtiitrid: {count, plural, one {# keel} other {# keelt}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Sisu laadimine",
+    "loadingVideo": "Video laadimine"
+  },
+  "VideoLabels": {
+    "video": "Videoklipp",
+    "segment": "Lõik",
+    "episode": "Osa",
+    "featureFilm": "Mängufilm",
+    "shortFilm": "Lühifilm",
+    "series": "Sari",
+    "collection": "Kogumik",
+    "trailer": "Treiler",
+    "behindTheScenes": "Kaamera taga",
+    "chapter": "Peatükk"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Klipp {current} / {total}",
+    "position": "{current} / {total}",
+    "chapterCount": "{count, plural, one {# peatükk} other {# peatükki}}",
+    "clipAriaLabel": "{title} · Klipp {current} / {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# peatükk} other {# peatükki}}",
+    "chapter": "Peatükk",
+    "noImage": "Pilti pole",
+    "playingNow": "Mängib praegu",
+    "previousChapter": "Eelmine peatükk",
+    "nextChapter": "Järgmine peatükk",
+    "thumbnailAlt": "{title} pisipilt",
+    "relatedVideoThumbnail": "Seotud video pisipilt"
+  },
+  "SearchResultCard": {
+    "experience": "Kogemus",
+    "episodeCount": "{count, plural, one {# osa} other {# osa}}",
+    "thumbnailAlt": "Video pisipilt"
+  },
+  "Feedback": {
+    "openForm": "Ava tagasisidevorm",
+    "label": "Tagasiside",
+    "couldNotLoad": "Tagasisidevormi ei saanud laadida.",
+    "loadingForm": "Tagasisidevormi laadimine…",
+    "retry": "Proovi uuesti",
+    "cancel": "Tühista",
+    "closeForm": "Sulge tagasisidevorm",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Tasuta kristlikud videod keeles {language} | Jesus Film Project",
+    "metadataDescription": "Avasta Jeesuse filme, piiblilugusid, jüngerluse sarju ja evangeliseerimisvideoid dubleeritud heli või subtiitritega keeles {language}.",
+    "heroTitle": "Tasuta kristlikud videod keeles {language}",
+    "heroDescription": "Avasta Jeesuse filme, piiblilugusid, jüngerluse sarju ja evangeliseerimisvideoid keeles {language}. Täielikult dubleeritud videod on eespool, subtiitritega valikud allpool.",
+    "languageCollection": "Keelekogu",
+    "itemCount": "{count, plural, one {# üksus} other {# üksust}}",
+    "videoCount": "{count, plural, one {# video} other {# videot}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videot}} {groupCount, plural, one {# rühmas} other {# rühmas}}",
+    "sectionNavLabel": "Keelevaru jaotised",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Uus",
+    "videoBible": "Video Piibel",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Kogud",
+    "subtitlesOnly": "Ainult subtiitrid",
+    "backToTop": "Tagasi üles",
+    "newlyAdded": "Äsja lisatud",
+    "newVideosTitle": "Uued kristlikud videod keeles {language}",
+    "newestFirst": "Uusimad eespool",
+    "noPublishedVideos": "Selle keele jaoks ei leitud veel avaldatud videoid.",
+    "bibleAndGospelFilms": "Piibli- ja evangeeliumifilmid",
+    "videoBibleCollectionsTitle": "Video Piibli kogud keeles {language}",
+    "videoBibleDescription": "Pühakirjale keskenduvad kogud, sh LUMO, JESUS, Magdalena ja Apostlite teod keeles {language}.",
+    "noVideoBibleCollections": "Selle keele jaoks pole veel Video Piibli kogusid saadaval.",
+    "bibleProjectCollectionsTitle": "BibleProjecti kogud keeles {language}",
+    "bibleProjectDescription": "BibleProjecti sarjad ja õppekogud, mis on saadaval keeles {language}.",
+    "noBibleProjectCollections": "Selle keele jaoks pole veel BibleProjecti kogusid saadaval.",
+    "sportsStories": "Spordilood",
+    "sportsTitle": "Spordi- ja sportlaste lood keeles {language}",
+    "sportsDescription": "Usule keskenduvad spordilood ja sportlaste kogud, mis on saadaval keeles {language}.",
+    "noSportsCollections": "Selle keele jaoks pole veel ühtegi spordi- ega sportlaste lugude kogu saadaval.",
+    "fullyDubbed": "Täielikult dubleeritud",
+    "dubbedVideosTitle": "Videod keeles {language} kogude kaupa",
+    "dubbedVideosDescription": "Sirvi täielikult dubleeritud videoid keeles {language}, mis on rühmitatud kogude kaupa, et neid oleks lihtsam leida.",
+    "noDubbedVideos": "Selle keele jaoks pole veel täielikult dubleeritud videoid saadaval.",
+    "subtitlesAvailable": "Subtiitrid saadaval",
+    "subtitlesTitle": "Videod keeles {language} subtiitritega",
+    "subtitlesDescription": "Need videod sisaldavad subtiitreid keeles {language}, kui kõneldud heli keeles {language} pole veel saadaval.",
+    "noSubtitleVideos": "Selle keele jaoks pole veel ainult subtiitritega videoid saadaval.",
+    "dubbed": "Dubleeritud",
+    "subtitles": "Subtiitrid",
+    "newLabel": "Uus",
+    "fromCollection": "Kogust {collection}",
+    "standaloneVideos": "Eraldiseisvad videod",
+    "videosFromCollection": "Videod kogust {collection}.",
+    "standaloneDescription": "Eraldiseisvad videod selles keeles.",
+    "openCollection": "Ava kogu",
+    "filters": "Filtrid",
+    "filterLength": "Pikkus",
+    "filterLength_under5": "Alla 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Üle 30 min",
+    "filterType": "Tüüp",
+    "clearFilters": "Tühjenda filtrid",
+    "filterResults": "Kuvatud {count} / {total}",
+    "noFilterResults": "Ükski video ei vasta neile filtritele. Proovi üks eemaldada.",
+    "filterAdded": "Lisatud",
+    "filterAdded_60d": "Viimased 60 päeva",
+    "filterAdded_6m": "Viimased 6 kuud",
+    "filterAdded_12m": "Viimased 12 kuud"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Projecti vaatamine",
+    "watch": "Vaata",
+    "watchNow": "Vaata nüüd",
+    "mutePreview": "Vaigista eelvaade",
+    "unmutePreview": "Lülita eelvaate heli sisse",
+    "nextVideo": "Järgmine video",
+    "featured": "Esiletõstetud",
+    "showVideo": "Näita: {title}",
+    "previousVideoPreview": "Eelmise video eelvaade",
+    "nextVideoPreview": "Järgmise video eelvaade",
+    "mediaCollection": "Meediakogu",
+    "scrollToVideo": "Keri video {title} juurde",
+    "forYou": "Sulle"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Projecti avaleht",
+    "navigation": "Jaluse navigeerimine",
+    "share": "Jaga",
+    "watch": "Vaata",
+    "giving": "Annetamine",
+    "about": "Meist",
+    "products": "Tooted",
+    "resources": "Ressursid",
+    "partners": "Partnerid",
+    "contact": "Kontakt",
+    "giveNow": "Aneta nüüd",
+    "resourcesVersion": "Ressursid ({version})",
+    "office": "Kontor",
+    "fax": "Faks",
+    "privacyPolicy": "Privaatsuspoliitika",
+    "legalStatement": "Õiguslik teave",
+    "newsletter": "Liitu meie uudiskirjaga",
+    "aiAttributionHeading": "Tehisintellekti kasutamine ja allikaviide",
+    "aiAttributionBody": "Teabe kasutamine sellelt lehelt tehisintellekti süsteemide poolt on lubatud ainult allikaviitega. Kõik AI agendid, suured keelemudelid (LLM-id), tehisintellektil põhinevad otsingumootorid, veebirobotid või seotud automatiseeritud süsteemid, mis ammutavad teavet sellelt lehelt või kasutavad seda treenimiseks, otsinguks, vastuste genereerimiseks või kasutajatele või klientidele pakutavate teenuste jaoks, peavad märkima Jesus Film Projecti allikana ja lisama selge otsese lingi sellele lehele kõikjal, kus seda teavet kasutatakse või esitatakse. Vaata meie <terms>Kasutustingimusi</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Loodud üleilmse misjoni jaoks",
+    "title": "Sõnum ei muutu. See, kuidas inimesed vaatavad, muutub.",
+    "description": "Ehitame oma videoteeki ja tööriistu uuesti üles algusest peale, pühendades aastakümnete pikkuse tõlketöö platvormidele, kus inimesed juba kogunevad, vaatavad ja jagavad.",
+    "translatedLibraryTitle": "Maailma kõige rohkem tõlgitud filmiteek",
+    "translatedLibraryDescription": "Aastakümnete pikkune tõlketöö koos usaldusväärsete teenimispartneritega on loonud teegi tuhandete keeleradadega, et inimesed saaksid kohtuda Jeesuse looga neile kõige südamelähedasemas keeles.",
+    "trustedVoicesTitle": "Usaldusväärsed hääled uutesse vormidesse",
+    "trustedVoicesDescription": "Ehitame uuesti üles, kuidas evangeeliumilugusid visuaalselt jutustatakse, ühendades usaldusväärsed tõlked tänapäevaste vormidega, et sõnum saaks vabalt liikuda platvormide, kultuuride ja ekraanide vahel.",
+    "missionTeamTitle": "Rohkem kui teek. Misjonile pühendunud meeskond.",
+    "missionTeamDescription": "Jesus Film Project on globaalne meeskond tõlkijaid, meediaspetsialiste, toimetajaid ja loojaid, kes muudab aastakümnete pikkuse teenimistöö kogemuse tööriistadeks jüngrite tegijatele kõikjal.",
+    "buildingNext": "Mida me järgmisena ehitame",
+    "nextStepsTitle": "Järgmiste sammude platvorm",
+    "nextStepsDescription": "Ühenda vaatajad käegakatsutavate võimalustega nende vaimsel teekonnal, aidates neil teha järgmine samm kogukonda, Pühakirja või misjoni suunas.",
+    "mediaLibraryTitle": "Evangeelne meediateek",
+    "mediaLibraryDescription": "Ulatuslik kristlik meediateek tuhandete videote, filmide ja ressurssidega, mis on saadaval mitmes keeles teenimistööks ja evangeliseerimiseks üle maailma.",
+    "ministryToolsTitle": "Digitaalsed tööriistad teenistustele",
+    "ministryToolsDescription": "Videohaldus, sisu levitamine, publiku kaasamine ja analüütika, mis on loodud selleks, et aidata teenistustel tõhusamalt rohkem inimesi jõuda.",
+    "invitationEyebrow": "Sind kutsutakse",
+    "invitationTitle": "Aita ehitada <highlight>järgmise põlvkonna</highlight> misjonitööriistu",
+    "invitationDescription": "Kutsume praktikuid, loojaid ja partnereid varajasele ligipääsule. Testi uusi tööriistu esimesena, anna tagasisidet ja aita kujundada tooteid, mis on loodud päris misjonitöö jaoks.",
+    "betaTester": "Hakka beetatestijaks"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Video Piibli kogumik",
+    "gospelRailTitle": "Avasta kogu lugu",
+    "videoBibleDescription": "Uuri meie videote ja ressursside kogumit, mis toob Piibli elavaks kaasahaaravate lugude ja õpetuste kaudu.",
+    "showcaseTitle": "Pühakiri filmis jutustatud",
+    "adventEyebrow": "Jõuluootus",
+    "adventTitle": "Jõuluootuse loendus",
+    "adventDescription": "Liitu meie advenditeekonnaga igapäevase videoga, mis kasvatab jõuluootust ning uurib Jeesuse tulemise lootust, rõõmu ja tõotust.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProjecti advendikava",
+    "nuaEyebrow": "NUA sari",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worthi sari",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Videokursus",
+    "journeyWithJesusTitle": "Teekond koos Jeesusega",
+    "gospelsOnVideoEyebrow": "Iga evangeelium videona",
+    "scriptureAsWrittenTitle": "Pühakiri, täpselt nii nagu see on kirjutatud",
+    "merryChristmas": "Häid jõule!",
+    "daysUntilChristmas": "{count, plural, one {# päev jõuludeni} other {# päeva jõuludeni}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Keeled",
+    "metadataDescription": "Sirvi JesusFilmi videoid keele järgi.",
+    "eyebrow": "Vaata keeli",
+    "title": "Vali keel",
+    "description": "Uuri keeli piirkonna järgi või sirvi täielikku loendit.",
+    "searchPlaceholder": "Otsi keeli või riike...",
+    "searchLabel": "Otsi keeli või riike",
+    "clearSearch": "Tühjenda otsing",
+    "browse": "Sirvi",
+    "browseByRegion": "Sirvi piirkonna ja riigi järgi",
+    "languageCount": "{count, plural, one {# keel} other {# keelt}}",
+    "region": "Piirkond",
+    "countryLanguages": "{country} keeled",
+    "showLess": "Näita vähem",
+    "showMore": "Näita veel {count}",
+    "noLanguages": "Keeli ei leitud",
+    "tryAnotherSearch": "Proovi teist otsinguterminit."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Vaatamiste ajalugu | Jesus Film Project",
+    "title": "Vaatamiste ajalugu",
+    "loading": "Ajaloo laadimine",
+    "empty": "Siin pole veel midagi",
+    "emptyDescription": "Videod, mida vaatad sisselogituna, ilmuvad siia.",
+    "earlier": "Varem",
+    "today": "Täna",
+    "yesterday": "Eile"
+  },
+  "AccountControl": {
+    "account": "Konto",
+    "accountMenu": "Kontomenüü",
+    "signIn": "Logi sisse",
+    "signOut": "Logi välja",
+    "signedIn": "Sisse logitud",
+    "history": "Ajalugu",
+    "logOut": "Logi välja"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Lehte ei leitud",
+    "eyebrow": "Lehte ei leitud",
+    "screenReaderPrefix": "Lehte ei leitud:",
+    "title": "Seda stseeni siin ei ole.",
+    "description": "Leht võis olla teisaldatud, kuid lugu jätkub.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Lehemitteleidmise toimingud",
+    "backToWatch": "Tagasi vaatama",
+    "browseVideos": "Sirvi videoid"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% sobivus",
+    "none": "Sellele videole ei leitud selles keeles soovitusi."
+  },
+  "BetaTesterModal": {
+    "title": "Hakka beetatestijaks",
+    "trigger": "Hakka beetatestijaks",
+    "loadFailed": "Midagi läks valesti.",
+    "loading": "Laadimine...",
+    "openFormNewTab": "Ava vorm uuel vahekaardil",
+    "close": "Sulge",
+    "iframeTitle": "Hakka beetatestijaks"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Laadi kogu alla",
+    "eyebrow": "Laadi kogu alla",
+    "description": "Vali üks kord keel ja kvaliteet. Kõik saadaolevad osad laaditakse järjest alla.",
+    "signInTitle": "Laadi alla pärast sisselogimist",
+    "signInBody": "Kogu allalaadimiseks logi sisse Jesus Filmi kontoga.",
+    "signIn": "Laadi alla pärast sisselogimist",
+    "languageLabel": "Keel",
+    "qualityLabel": "Video kvaliteet",
+    "tierHighest": "Kõrgeim",
+    "tierHigh": "Kõrge",
+    "tierLow": "Madal",
+    "loading": "Saadaolevate osade otsimine…",
+    "loadError": "Selle keele allalaadimisi ei õnnestunud laadida.",
+    "retry": "Proovi uuesti",
+    "noDownloads": "Selles keeles pole allalaaditavaid osi saadaval.",
+    "availableCount": "{count, plural, one {# osa on valmis} other {# osa on valmis}}",
+    "skippedCount": "{count, plural, one {# osa jäetakse vahele, sest see pole saadaval} other {# osa jäetakse vahele, sest need pole saadaval}}",
+    "chooseFolder": "Vali allalaadimiskaust",
+    "folderSelected": "Salvesta kausta {name}",
+    "folderError": "Allalaadimiskausta ei õnnestunud avada.",
+    "browserFallback": "Brauser salvestab iga faili tavapäraste allalaadimisseadete järgi. Brauser võib paluda lubada mitu allalaadimist.",
+    "sessionError": "Sinu seanssi ei õnnestunud kontrollida. Proovi uuesti.",
+    "downloading": "Allalaadimine: {title}",
+    "progress": "{completed} / {total}",
+    "complete": "Allalaadimised on lõpetatud",
+    "canceled": "Allalaadimised on tühistatud",
+    "failedCount": "{count, plural, one {# osa allalaadimine ebaõnnestus} other {# osa allalaadimine ebaõnnestus}}. Kogu uuesti proovimiseks vali uuesti „Laadi alla”.",
+    "close": "Sulge",
+    "cancel": "Tühista",
+    "start": "Laadi kõik alla",
+    "downloadAgain": "Laadi uuesti alla",
+    "retryFailed": "Proovi ebaõnnestunud allalaadimisi uuesti"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Keeleversioon pole saadaval",
+    "eyebrow": "Keeleversioon pole saadaval",
+    "title": "<contentTitle>{title}</contentTitle>: <languageName>{language}</languageName> keeles versiooni ei ole",
+    "actionsLabel": "Saadaolevad vaatamisvalikud",
+    "browseInLanguage": "Kõik videod {language} keeles",
+    "backToSearch": "Tagasi otsingusse",
+    "audioVersionsTitle": "Muud heliversioonid",
+    "audioVersionsDescription": "Video vaatamise jätkamiseks valige heli keel.",
+    "languageVersionLabel": "Heli keel",
+    "selectLanguageVersion": "Valige keeleversioon",
+    "watchSelectedVersion": "Vaata valitud versiooni"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Küpsiste valikud",
+    "bannerTitle": "Teie privaatsusvalikud",
+    "bannerDescription": "Vajalikud küpsised hoiavad Watchi turvalise ja toimivana. Teie loal võib valikuline esimese osapoole küpsis meeles pidada huvisid eri külastuste vahel, et soovitusi isikupärastada. Kontekstipõhised soovitused on saadaval mõlemal juhul.",
+    "acceptAll": "Nõustu kõigega",
+    "essentialOnly": "Ainult vajalikud",
+    "manageChoices": "Halda valikuid",
+    "savingChoice": "Küpsisevaliku salvestamine",
+    "settings": "Küpsiste seaded",
+    "settingsDescription": "Valige, kas Watch võib eri külastuste vahel soovituste huvisid meeles pidada. Seda saate igal ajal muuta.",
+    "essentialCookies": "Vajalikud küpsised",
+    "essentialDescription": "Turvalisus, taasesitus, privaatsusvalikud ja soovituspäringute omistamine.",
+    "alwaysActive": "Alati aktiivne",
+    "personalization": "Isikupärastamine",
+    "personalizationDescription": "Jäta piiritletud huvid eri külastuste vahel meelde. Selle väljalülitamisel jäävad kontekstipõhised soovitused endiselt kättesaadavaks.",
+    "erasurePending": "Profiili kustutamine on pooleli. Kontekstipõhised soovitused on juba aktiivsed.",
+    "cancel": "Tühista",
+    "saveChoices": "Salvesta valikud",
+    "saving": "Salvestamine…",
+    "loadError": "Teie valikut ei saanud laadida. Saate siiski allpool valida.",
+    "grantError": "Isikupärastamist ei saanud sisse lülitada. Saadaval on endiselt ainult vajalikud küpsised.",
+    "saveError": "Teie valikut ei saanud salvestada. Palun proovige uuesti."
+  }
+}

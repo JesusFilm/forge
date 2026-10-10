@@ -187,6 +187,7 @@ Added structured JSON logging at step boundaries to make pipeline progress obser
 - [ ] Never instantiate SDK clients at module scope — use lazy getter functions
 - [ ] Test that the app builds with env vars unset (simulates CI)
 - [ ] Commit deployment config (`railway.toml` for web, `eas.json` for mobile)
+  > ⚠ **For Railway services**: committing `apps/<svc>/railway.toml` is necessary but NOT sufficient. Railway only auto-discovers `railway.toml` at the **repo root**. A per-service file is silently ignored unless the service's **Config-as-code Path** is explicitly set to point at it (e.g., `apps/admin/railway.toml`). If you skip that dashboard step, the toml's `startCommand` / `buildCommand` / `healthcheckPath` will look authoritative in the codebase but never run in production. Verify after first deploy by checking the deployment record's `configFile` field — `null` means the toml was ignored. See [`docs/solutions/deployment/railway-dashboard-override-shadows-railway-toml-20260429.md`](../deployment/railway-dashboard-override-shadows-railway-toml-20260429.md).
 - [ ] Commit `.env.example` listing every required var
 - [ ] Commit `.env.ci` with placeholder values (ensure `.gitignore` has `!.env.ci` exemption)
 

@@ -1,0 +1,21 @@
+{
+  "scope": "Built Next.js Manager dashboard, local mock session and intercepted list/delete responses; actual production auth/backend excluded.",
+  "calls": [
+    {
+      "action": "list",
+      "input": {
+        "limit": 100
+      }
+    },
+    {
+      "action": "delete",
+      "input": {
+        "projectId": "lumo-local-probe",
+        "expectedRevision": 7,
+        "hasIdempotencyKey": true
+      }
+    }
+  ],
+  "pageErrors": [],
+  "emptyState": true
+}

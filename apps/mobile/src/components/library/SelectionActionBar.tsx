@@ -1,0 +1,167 @@
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
+import Ionicons from "@expo/vector-icons/Ionicons"
+
+import { useTypography } from "../../hooks/useTypography"
+import { useT } from "../../i18n/useT"
+import { ACCENT, TEXT_ON_OVERLAY, TEXT_PRIMARY } from "../../lib/color"
+import { formatLibraryBytes } from "../../lib/libraryDownloads"
+import { feedback } from "../../styles/shared"
+import { TAB_BAR_HEIGHT_IOS } from "../../lib/tabBar"
+import { TabBarBackground } from "../ui/TabBarBackground"
+
+const BAR_SIDE_PADDING = 16
+const BAR_BG = "rgba(12, 12, 13, 0.94)"
+const BAR_BORDER = "rgba(255, 255, 255, 0.09)"
+const GHOST_BG = "rgba(255, 255, 255, 0.09)"
+// The bar keeps a tab bar's fixed height, so its labels stop growing where
+// they still fit a 40 pt button, as the Bible reader's chrome does.
+export const ACTION_LABEL_MAX_FONT_SCALE = 1.3
+
+export interface SelectionActionBarProps {
+  count: number
+  combinedBytes: number
+  hasFailed: boolean
+  onRetryFailed: () => void
+  onDeletePress: () => void
+}
+
+/** Bottom bar shown during selection on the root Downloads screen (R12). */
+export function SelectionActionBar({
+  count,
+  combinedBytes,
+  hasFailed,
+  onRetryFailed,
+  onDeletePress,
+}: SelectionActionBarProps) {
+  const insets = useSafeAreaInsets()
+  const t = useT("Library")
+  const typography = useTypography()
+
+  // On iOS the bar takes a UIKit tab bar's box: flush, full width, its own
+  // height above the home indicator. Android keeps its flush bar as it was.
+  const isPill = Platform.OS === "ios"
+
+  // The host is a root route, so the inset holds the home indicator only.
+  const indicator = insets.bottom
+
+  const shape = isPill
+    ? {
+        height: TAB_BAR_HEIGHT_IOS + indicator,
+        paddingTop: 0,
+        paddingBottom: indicator,
+        // An edge padding replaces styles.bar's paddingHorizontal outright, so
+        // the base value has to be added back in or the buttons touch the edge.
+        paddingLeft: BAR_SIDE_PADDING + insets.left,
+        paddingRight: BAR_SIDE_PADDING + insets.right,
+        backgroundColor: undefined,
+        borderTopWidth: 0,
+      }
+    : { paddingBottom: insets.bottom + 14 }
+
+  return (
+    <View style={[styles.bar, shape]}>
+      {isPill && <TabBarBackground />}
+      {hasFailed && (
+        <Pressable
+          onPress={onRetryFailed}
+          style={({ pressed }) => [
+            styles.button,
+            isPill && styles.pillButton,
+            styles.ghostButton,
+            pressed && feedback.pressed,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel={t("retryFailedAriaLabel")}
+          {...{ "dd-action-name": "library-retry-failed" }}
+        >
+          <Ionicons name="refresh" size={17} color={TEXT_PRIMARY} />
+          <Text
+            maxFontSizeMultiplier={ACTION_LABEL_MAX_FONT_SCALE}
+            style={[styles.ghostText, typography.bodySmall]}
+          >
+            {t("retryFailed")}
+          </Text>
+        </Pressable>
+      )}
+      <Pressable
+        onPress={onDeletePress}
+        disabled={count === 0}
+        style={({ pressed }) => [
+          styles.button,
+          isPill && styles.pillButton,
+          styles.dangerButton,
+          count === 0 && styles.buttonDisabled,
+          pressed && feedback.pressed,
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={
+          count > 0 ? t("deleteSelectedAriaLabel", { count }) : t("delete")
+        }
+        {...{ "dd-action-name": "library-delete-selected" }}
+      >
+        <Ionicons name="trash-outline" size={17} color={TEXT_ON_OVERLAY} />
+        <Text
+          maxFontSizeMultiplier={ACTION_LABEL_MAX_FONT_SCALE}
+          style={[styles.dangerText, typography.bodySmall]}
+        >
+          {count > 0
+            ? t("deleteWithSize", {
+                count,
+                size: formatLibraryBytes(combinedBytes),
+              })
+            : t("delete")}
+        </Text>
+      </Pressable>
+    </View>
+  )
+}
+
+const styles = StyleSheet.create({
+  bar: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: BAR_SIDE_PADDING,
+    paddingTop: 14,
+    backgroundColor: BAR_BG,
+    borderTopWidth: 1,
+    borderTopColor: BAR_BORDER,
+  },
+  button: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  pillButton: {
+    height: 40,
+    borderRadius: 20,
+  },
+  ghostButton: {
+    backgroundColor: GHOST_BG,
+  },
+  dangerButton: {
+    backgroundColor: ACCENT,
+  },
+  buttonDisabled: {
+    opacity: 0.35,
+  },
+  ghostText: {
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
+    fontWeight: "700",
+  },
+  dangerText: {
+    color: TEXT_ON_OVERLAY,
+    fontFamily: "System",
+    fontWeight: "700",
+  },
+})

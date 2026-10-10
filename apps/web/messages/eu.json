@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Ez dago esperientzia-edukirik erabilgarri.",
+    "failedToLoad": "Ezin izan da esperientzia kargatu: {message}",
+    "unexpected": "Ustekabeko errore bat gertatu da.",
+    "notConfigured": "Eduki-zerbitzua ez dago konfiguratuta.",
+    "noContent": "Ez dago edukirik erabilgarri.",
+    "homepageMisconfigured": "Ikuspenaren hasierako orria gaizki konfiguratuta dago.",
+    "defaultTemplateMisconfigured": "Ikuspenaren txantiloi lehenetsia gaizki konfiguratuta dago.",
+    "authFailed": "Ezin izan da autentifikatu edukien zerbitzuarekin. Mesedez, jarri harremanetan laguntzarekin arazoak jarraitzen badu.",
+    "pageLoadFailed": "Zerbait gaizki joan da.",
+    "tryAgain": "Saiatu berriro"
+  },
+  "VideosPage": {
+    "title": "Bideo guztiak",
+    "placeholder": "Katalogoan nabigatzea laster etorriko da. Bitartean, erabili bilaketa edo gai-URL zehatz bat."
+  },
+  "BibleQuotes": {
+    "title": "Bibliako aipamenak",
+    "share": "Partekatu",
+    "readMore": "Irakurri gehiago...",
+    "learnMore": "Informazio gehiago",
+    "freeResources": "Doako baliabideak",
+    "promoHeading": "Bibliaren sakonago ulertu nahi duzu?",
+    "joinBibleStudy": "Sartu gure Bibliako ikasketa-taldean",
+    "previousQuote": "Aurreko bibliako aipamena",
+    "nextQuote": "Hurrengo bibliako aipamena",
+    "readPassage": "Irakurri pasarte hau zure Biblian."
+  },
+  "DownloadButton": {
+    "checking": "Egiaztatzen",
+    "download": "Deskargatu",
+    "sessionError": "Ezin izan da zure saioa egiaztatu. Mesedez, saiatu berriro.",
+    "saveVideo": "Gorde bideoa"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Deskargatu bideoa",
+    "eyebrow": "Deskargatu bideoa",
+    "posterAlt": "Bideoaren kartela",
+    "noDownloads": "Ez dago deskargarik erabilgarri bideo honetarako.",
+    "fileSizeLabel": "Hautatu fitxategi-tamaina bat",
+    "termsAgreementPrefix": "Onartzen ditut ",
+    "termsOfUse": "Erabilera-baldintzak",
+    "termsAgreementSuffix": "",
+    "close": "Itxi",
+    "download": "Deskargatu",
+    "authRequiredTitle": "Bideo hau deskargatu nahi duzu?",
+    "authRequiredBody": "Jesus Film kontu doako bat behar da bideoak deskargatzeko.",
+    "signInToDownload": "Hasi saioa deskargatzeko",
+    "keepWatching": "Jarraitu ikusten",
+    "checking": "Egiaztatzen",
+    "closeTermsOfUse": "Itxi erabilera-baldintzak",
+    "cancel": "Utzi",
+    "accept": "Onartu",
+    "errorSessionExpired": "Zure saioa iraungi da. Hasi saioa berriro deskargatzeko.",
+    "errorSessionUnavailable": "Ezin izan da zure saioa egiaztatu. Mesedez, saiatu berriro.",
+    "errorUnavailableSource": "Ezin da deskargatu iturri honetatik",
+    "tierHighest": "Gehiena",
+    "tierHigh": "Handia",
+    "tierLow": "Txikia"
+  },
+  "HeroPlayerControls": {
+    "play": "Erreproduzitu",
+    "pause": "Eten",
+    "seek": "Bilatu",
+    "seekValue": "{current} / {total}",
+    "volume": "Bolumena",
+    "volumeValue": "{percent} ehuneko",
+    "mute": "Mututu",
+    "unmute": "Soinua piztu",
+    "changeAudioLanguage": "Aldatu audio-hizkuntza",
+    "enterFullscreen": "Sartu pantaila osoan",
+    "exitFullscreen": "Irten pantaila osotik"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Hautatu hizkuntza",
+    "searchPlaceholder": "Bilatu hizkuntzak…",
+    "languages": "Hizkuntzak",
+    "noMatches": "Ez dago bat datorrenik",
+    "notAvailable": "Ez dago erabilgarri"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Hizkuntza",
+    "dialogTitleWithSubtitles": "Hizkuntza eta azpitituluak",
+    "languageHeading": "Hizkuntza",
+    "subtitlesHeading": "Azpitituluak",
+    "languageCount": "{count, plural, one {# hizkuntza} other {# hizkuntza}}",
+    "requestSent": "Eskaera bidalia",
+    "translateWithAi": "Itzuli IA erabiliz",
+    "noSubtitles": "Azpititulurik ez",
+    "toggleOn": "Aktibatuta",
+    "toggleOff": "Desaktibatuta",
+    "close": "Itxi",
+    "apply": "Aplikatu",
+    "noLanguageSubtitles": "Ez dago {language} azpititulurik",
+    "seeAllLanguages": "Hizkuntza guztiak",
+    "seeAllVideosInLanguage": "Bideo guztiak: {language}",
+    "retryLoadingLanguages": "Saiatu berriro hizkuntzak kargatzen",
+    "notAvailable": "Ez dago erabilgarri",
+    "switching": "Aldatzen..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 ATALA} other {# ATAL}}",
+    "seriesLabel": "SAIOA · {episodes}",
+    "changeAudioLanguage": "Aldatu audio-hizkuntza",
+    "share": "Partekatu",
+    "languages": "Hizkuntzak",
+    "downloadCollection": "Deskargatu bilduma",
+    "checkingDownloads": "Deskargak egiaztatzen…",
+    "downloadSessionError": "Ezin izan da zure saioa egiaztatu. Mesedez, saiatu berriro."
+  },
+  "WatchModal": {
+    "close": "Itxi"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Bideo honen sortzaileari galdera bat egin ahal izango bazenio, zein egingo zenioke?",
+    "fallbackBody": "Egin elkarrizketa pribatu bat entzuteko prest dagoen norbaitekin.",
+    "questionsShort": "Galderak",
+    "questions": "Lotutako galderak",
+    "askYours": "Egin zurea",
+    "chatWithPerson": "Txateatu pertsona batekin",
+    "askBibleQuestion": "Egin Bibliari buruzko galdera bat",
+    "quiz": "Galdeketa"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Mezu mota",
+    "fieldLabel": "Egin galdera bat bideo honi buruz",
+    "send": "Bidali galdera",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Egin Bibliari buruzko galdera bat",
+        "description": "Berehalako erantzunak Biblian oinarrituta, IA bilaketa erabiliz"
+      },
+      "prayerRequest": {
+        "label": "Egin otoitz-eskaera bat",
+        "description": "Partekatu zertarako nahi duzun otoitza"
+      },
+      "comment": {
+        "label": "Utzi iruzkin bat",
+        "description": "Bidali zure iritziak bideo honi buruz"
+      },
+      "personChat": {
+        "label": "Txateatu pertsona batekin",
+        "description": "Egin hitz norbaitekin orain"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Partekatu bideoa",
+    "heading": "Partekatu bideo hau",
+    "posterAlt": "Bideoaren kartela",
+    "shareOnFacebook": "Partekatu Facebooken",
+    "shareOnFacebookUnavailable": "Partekatu Facebooken (ez dago erabilgarri eraikitze honetan)",
+    "shareOnX": "Partekatu X-en",
+    "shareOnXUnavailable": "Partekatu X-en (ez dago erabilgarri eraikitze honetan)",
+    "shareDisabledHint": "Partekatzea orri hedatua behar da — bideo hau produkzioan dagoenean funtzionatuko du.",
+    "shareFormat": "Partekatzeko formatua",
+    "shareLinkTab": "Partekatu esteka",
+    "embedCodeTab": "Txertatze-kodea",
+    "copyFailed": "Ezin izan da automatikoki kopiatu — hautatu beheko testua eta kopiatu eskuz.",
+    "copyLink": "Kopiatu esteka",
+    "copyCode": "Kopiatu kodea",
+    "copied": "Kopiatuta",
+    "close": "Itxi"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkripzioa",
+    "subheading": "Ukitu edozein lerro une horretara joateko.",
+    "subtitleLanguage": "Azpitituluen hizkuntza",
+    "aiSuffix": " · IA",
+    "loading": "Transkripzioa kargatzen…",
+    "unavailable": "Ez dago transkripziorik eskuragarri azpititulu-pista honetarako.",
+    "empty": "Ez da transkripzio-lerroarik aurkitu."
+  },
+  "FloatingSearch": {
+    "placeholder": "Bilatu edo arakatu gaiak…",
+    "openSearch": "Bilatu bideoak",
+    "searchRegion": "Bilatu bideoak",
+    "clearSearch": "Garbitu bilaketa",
+    "changeAudioLanguage": "Aldatu audio-hizkuntza",
+    "home": "JesusFilm hasiera",
+    "closeSearch": "Itxi bilaketa",
+    "submitSearch": "Bilatu",
+    "library": "Liburutegia"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Bilatu eta arakatu bideoak",
+    "home": "JesusFilm hasiera",
+    "placeholder": "Bilatu edo arakatu gaiak…",
+    "inputLabel": "Bilatu bideoak gako-hitzen arabera",
+    "searchFailed": "Bilaketak huts egin du. Mesedez, saiatu berriro.",
+    "loadMoreFailed": "Ezin izan dira emaitza gehiago kargatu.",
+    "searching": "Bilatzen...",
+    "connectionHint": "Mesedez, egiaztatu zure konexioa eta saiatu berriro.",
+    "rateLimitHint": "Eskaera gehiegi. Saiatu berriro minutu bat barru.",
+    "retrySearch": "Saiatu berriro bilatzen",
+    "retry": "Saiatu berriro",
+    "noResults": "Ez dago emaitzarik \"{query}\" bilaketarako",
+    "tryDifferentKeywords": "Saiatu gako-hitz desberdinekin edo arakatu kategoriak",
+    "loading": "Kargatzen...",
+    "loadMore": "Kargatu gehiago",
+    "categoryBibleStories": "Bibliako istorioak",
+    "categoryParables": "Parabolak",
+    "categoryAnimated": "Animatua",
+    "categoryStudy": "Ikasketa",
+    "categoryFamily": "Familia",
+    "categoryChristmas": "Eguberriak",
+    "searchLanguageLabel": "Bilaketa-hizkuntza",
+    "allLanguages": "Hizkuntza guztiak",
+    "searchSuggestions": "Bilaketa-iradokizunak",
+    "directMatches": "Bat-etortze zuzena",
+    "languages": "Hizkuntzak",
+    "recommendedLanguage": "Gomendatutako hizkuntza",
+    "searchSuggestion": "Bilatu «{suggestion}»",
+    "searchSuggestionWithLanguage": "Bilatu «{suggestion}» {language} hizkuntzan",
+    "inLanguage": "{language} hizkuntzan",
+    "browseByRegion": "Arakatu eskualdearen arabera",
+    "allVideosOnSinglePage": "Bideo guztiak orri bakarrean",
+    "clearLanguages": "Garbitu",
+    "queryLanguageDetected": "{language} detektatu da",
+    "searchInLanguage": "Bilatu {language} hizkuntzan",
+    "tryDifferentKeywordsOrLanguage": "Saiatu gako-hitz desberdinekin edo aukeratu beste bilaketa-hizkuntza bat",
+    "useWebsiteDefaultLanguage": "Erabili webgunearen bilaketa-hizkuntza lehenetsia",
+    "removeLanguage": "Kendu {language}",
+    "browseMode": "Bilaketa-arakatze modua",
+    "searchingInLanguage": "Emaitzak {language} hizkuntzan"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Ikusi orain",
+    "tapToUnmute": "Ukitu soinua aktibatzeko",
+    "nextEpisode": "Hurrengo atala",
+    "audioTranslationCount": "{count, plural, one {# hizkuntza} other {# hizkuntza}}",
+    "subtitleCount": "Azpitituluak: {count, plural, one {# hizkuntza} other {# hizkuntza}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Edukia kargatzen",
+    "loadingVideo": "Bideoa kargatzen"
+  },
+  "VideoLabels": {
+    "video": "Bideoa",
+    "segment": "Atala",
+    "episode": "Episodioa",
+    "featureFilm": "Luzemetraia",
+    "shortFilm": "Film laburra",
+    "series": "Saioa",
+    "collection": "Bilduma",
+    "trailer": "Trailerra",
+    "behindTheScenes": "Eszenen atzean",
+    "chapter": "Kapitulua"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "{current} / {total} klipa",
+    "position": "{current} / {total}",
+    "chapterCount": "{count, plural, one {# kapitulua} other {# kapitulu}}",
+    "clipAriaLabel": "{title} · {current} / {total} klipa",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# kapitulua} other {# kapitulu}}",
+    "chapter": "Kapitulua",
+    "noImage": "Irudirik ez",
+    "playingNow": "Orain erreproduzitzen",
+    "previousChapter": "Aurreko kapitulua",
+    "nextChapter": "Hurrengo kapitulua",
+    "thumbnailAlt": "{title} miniatura",
+    "relatedVideoThumbnail": "Lotutako bideoaren miniatura"
+  },
+  "SearchResultCard": {
+    "experience": "Esperientzia",
+    "episodeCount": "{count, plural, one {# episodio} other {# episodio}}",
+    "thumbnailAlt": "Bideoaren miniatura"
+  },
+  "Feedback": {
+    "openForm": "Ireki iritzia emateko formularioa",
+    "label": "Iritzia",
+    "couldNotLoad": "Ezin izan da iritzia emateko formularioa kargatu.",
+    "loadingForm": "Iritzia emateko formularioa kargatzen…",
+    "retry": "Saiatu berriro",
+    "cancel": "Utzi",
+    "closeForm": "Itxi iritzia emateko formularioa",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Doako kristau-bideoak {language} hizkuntzan | Jesus Film Project",
+    "metadataDescription": "Arakatu Jesusen filmak, Bibliako istorioak, dizipulutza-saioak eta hedapen-bideoak {language} hizkuntzan bikoiztutako audioarekin edo azpitituluekin.",
+    "heroTitle": "Doako kristau-bideoak {language} hizkuntzan",
+    "heroDescription": "Arakatu {language} hizkuntzan eskuragarri dauden Jesusen filmak, Bibliako istorioak, dizipulutza-saioak eta hedapen-bideoak. Bikoiztutako bideoak lehenik nabarmenduta daude, eta azpitituluak soilik dituzten aukerak behean ageri dira.",
+    "languageCollection": "Hizkuntza-bilduma",
+    "itemCount": "{count, plural, one {# elementu} other {# elementu}}",
+    "videoCount": "{count, plural, one {# bideo} other {# bideo}}",
+    "videosInGroups": "{videoCount, plural, one {# bideo} other {# bideo}} {groupCount, plural, one {# taldean} other {# taldetan}}",
+    "sectionNavLabel": "Hizkuntza-inbentarioaren atalak",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Berria",
+    "videoBible": "Bideo Biblia",
+    "bibleProject": "BibleProject",
+    "sports": "Kirolak",
+    "collections": "Bildumak",
+    "subtitlesOnly": "Azpitituluak soilik",
+    "backToTop": "Itzuli gora",
+    "newlyAdded": "Berriki gehitua",
+    "newVideosTitle": "Kristau-bideo berriak {language} hizkuntzan",
+    "newestFirst": "Berrienak lehenik",
+    "noPublishedVideos": "Oraindik ez da bideorik aurkitu hizkuntza honetarako.",
+    "bibleAndGospelFilms": "Bibliako eta Ebanjelioko filmak",
+    "videoBibleCollectionsTitle": "{language} Bideo Bibliako bildumak",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena eta Eginak barne hartzen dituzten Eskrituretan oinarritutako bildumak {language} hizkuntzan.",
+    "noVideoBibleCollections": "Oraindik ez dago Bideo Bibliako bildumarik hizkuntza honetarako.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject bildumak",
+    "bibleProjectDescription": "{language} hizkuntzan eskuragarri dauden BibleProject saioak eta ikasketak.",
+    "noBibleProjectCollections": "Oraindik ez dago BibleProject bildumarik hizkuntza honetarako.",
+    "sportsStories": "Kirol-istorioak",
+    "sportsTitle": "{language} kirol eta kirolarien istorioak",
+    "sportsDescription": "Fedean oinarritutako kirol-istorioak eta kirolariei buruzko bildumak eskuragarri daude {language} hizkuntzan.",
+    "noSportsCollections": "Oraindik ez dago kirol edo kirolarien istorioen bildumarik hizkuntza honetarako.",
+    "fullyDubbed": "Erabat bikoiztua",
+    "dubbedVideosTitle": "{language} bideoak bildumaren arabera",
+    "dubbedVideosDescription": "Arakatu erabat bikoiztutako {language} bideoak, euren bildumaren arabera multzokatuta, errazago aurkitzeko.",
+    "noDubbedVideos": "Oraindik ez dago erabat bikoiztutako biderik hizkuntza honetarako.",
+    "subtitlesAvailable": "Azpitituluak eskuragarri",
+    "subtitlesTitle": "{language} azpitituludun bideoak",
+    "subtitlesDescription": "Bideo hauek {language} azpitituluak dituzte oraindik hitz egindako {language} audioa ez dagoenean.",
+    "noSubtitleVideos": "Oraindik ez dago azpitituluak soilik dituzten bideorik hizkuntza honetarako.",
+    "dubbed": "Bikoiztua",
+    "subtitles": "Azpitituluak",
+    "newLabel": "Berria",
+    "fromCollection": "{collection} bildumatik",
+    "standaloneVideos": "Bakarkako bideoak",
+    "videosFromCollection": "{collection} bildumako bideoak.",
+    "standaloneDescription": "Hizkuntza honetako bakarkako bideoak.",
+    "openCollection": "Ireki bilduma",
+    "filters": "Iragazkiak",
+    "filterLength": "Iraupena",
+    "filterLength_under5": "5 min baino gutxiago",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "30 min baino gehiago",
+    "filterType": "Mota",
+    "clearFilters": "Garbitu iragazkiak",
+    "filterResults": "{total}(e)tik {count} erakutsita",
+    "noFilterResults": "Ez dago iragazki hauekin bat datorren bideorik. Saiatu bat kentzen.",
+    "filterAdded": "Gehituta",
+    "filterAdded_60d": "Azken 60 egunak",
+    "filterAdded_6m": "Azken 6 hilabeteak",
+    "filterAdded_12m": "Azken 12 hilabeteak"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project Ikusi",
+    "watch": "Ikusi",
+    "watchNow": "Ikusi orain",
+    "mutePreview": "Mututu aurrebista",
+    "unmutePreview": "Aktibatu aurrebistaren soinua",
+    "nextVideo": "Hurrengo bideoa",
+    "featured": "Nabarmendua",
+    "showVideo": "Erakutsi {title}",
+    "previousVideoPreview": "Aurreko bideoaren aurrebista",
+    "nextVideoPreview": "Hurrengo bideoaren aurrebista",
+    "mediaCollection": "Edukiontzi-bilduma",
+    "scrollToVideo": "Joan {title} bideora",
+    "forYou": "Zuretzat"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project hasiera",
+    "navigation": "Orri-azpiko nabigazioa",
+    "share": "Partekatu",
+    "watch": "Ikusi",
+    "giving": "Ekarpenak",
+    "about": "Guri buruz",
+    "products": "Produktuak",
+    "resources": "Baliabideak",
+    "partners": "Lankideak",
+    "contact": "Kontaktua",
+    "giveNow": "Eman orain",
+    "resourcesVersion": "Baliabideak ({version})",
+    "office": "Bulegoa",
+    "fax": "Faxa",
+    "privacyPolicy": "Pribatutasun-politika",
+    "legalStatement": "Legezko oharra",
+    "newsletter": "Harpidetu gure buletinera",
+    "aiAttributionHeading": "AIaren erabilera eta atribuzioa",
+    "aiAttributionBody": "Orri honetako informazioa adimen artifizialeko sistemek erabiltzea atribuzioaren baldintzapean dago. Orri honetako informazioa entrenamendurako, berreskurapenerako, erantzunak sortzeko edo erabiltzaileei nahiz bezeroei emandako zerbitzuetarako ateratzen edo erabiltzen duen edozein AI agente, hizkuntza eredu handi (LLM), AI bilaketa-motor, arakatzaile edo lotutako sistema automatizatuk Jesus Film Project iturri gisa identifikatu eta orri honetarako esteka zuzen eta argia sartu behar du informazio hori erabiltzen edo erakusten den guztietan. Ikusi gure <terms>Erabilera-baldintzak</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Munduko misioetarako egina",
+    "title": "Mezua ez da aldatzen. Jendeak ikusteko modua bai.",
+    "description": "Gure bideo-liburutegia eta tresnak oinarritik berreraikitzen ari gara, hamarkadetako itzulpen-lana jada jendea biltzen, ikusten eta partekatzen den plataformetara eramanez.",
+    "translatedLibraryTitle": "Munduan gehien itzuli den film-bilduma",
+    "translatedLibraryDescription": "Hamarkadetako itzulpen-lanak, ministerio-lankide fidagarriek eramanda, milaka hizkuntza-pistadun liburutegia osatu du, jendeak Jesusen istorioa beraiengana sakonen heltzen den hizkuntzan ezagutu dezan.",
+    "trustedVoicesTitle": "Ahots fidagarriak formatu berrietara eramanez",
+    "trustedVoicesDescription": "Ebanjelioaren istorioak ikusiz kontatzeko modua berreraikitzen ari gara, itzulpen fidagarriak formatu modernoekin uztartuz mezua plataforma, kultura eta pantaila guztietara aske mugi dadin.",
+    "missionTeamTitle": "Liburutegi bat baino gehiago. Misioan oinarritutako taldea.",
+    "missionTeamDescription": "Jesus Film Project mundu osoko itzultzaile, komunikabide-espezialista, editore eta sortzaileen taldea da, hamarkadetako ministerio-esperientzia mundu osoko dizipulugileentzako tresnetan bihurtzen duena.",
+    "buildingNext": "Eraikitzen ari garena",
+    "nextStepsTitle": "Hurrengo Urratsak Plataforma",
+    "nextStepsDescription": "Konektatu ikusleak beren bidaia espiritualeko aukera zehatzekin, komunitatera, Eskrituretara edo misiora hurrengo urratsa ematen lagunduz.",
+    "mediaLibraryTitle": "Ebanjelizazio-hedabideen liburutegia",
+    "mediaLibraryDescription": "Kristau-hedabideen liburutegi zabala, milaka bideo, film eta baliabiderekin, hainbat hizkuntzatan eskuragarri, mundu osoko ministerio eta ebanjelizaziorako.",
+    "ministryToolsTitle": "Ministerioentzako tresna digitalak",
+    "ministryToolsDescription": "Bideo-kudeaketa, edukien banaketa, audientziaren parte-hartzea eta analitika, ministerioei jende gehiagorengana eraginkortasunez heltzen laguntzeko diseinatuak.",
+    "invitationEyebrow": "Gonbidatuta zaude",
+    "invitationTitle": "Lagundu <highlight>hurrengo belaunaldia</highlight> misio-tresnetan eraikitzen",
+    "invitationDescription": "Praktikaria, sortzaile eta lankideak gonbidatzen ari gara aurretiazko sarbidera. Probatu tresna berriak lehenik, eman iritzia eta lagundu benetako misio-lanerako diseinatutako produktuak moldatzen.",
+    "betaTester": "Bihurtu beta probatzaile"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Bideo Bibliako bilduma",
+    "gospelRailTitle": "Ezagutu istorio osoa",
+    "videoBibleDescription": "Arakatu Biblia biziberritzen duten bideo eta baliabideen gure bilduma, istorio eta irakaspen erakargarrien bidez.",
+    "showcaseTitle": "Eskritura zinemaren bidez kontatua",
+    "adventEyebrow": "Eguberrietako Adventua",
+    "adventTitle": "Eguberrietako Adventu-kontaketa",
+    "adventDescription": "Bat egin gure Adventu-bidaiarekin, Eguberrietarako itxaropena, poza eta Jesusen etorreraren promesa aztertzen duen eguneroko bideo batekin.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject Adventua",
+    "nuaEyebrow": "NUA saioa",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth saioa",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Bideo-ikastaroa",
+    "journeyWithJesusTitle": "Jesusekin bidaian",
+    "gospelsOnVideoEyebrow": "Ebanjelio bakoitza, bideoan kontatua",
+    "scriptureAsWrittenTitle": "Eskritura, idatzita dagoen bezala zehatz-mehatz esana",
+    "merryChristmas": "Eguberri on!",
+    "daysUntilChristmas": "{count, plural, one {Egun # Eguberrietarako} other {# egun Eguberrietarako}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Hizkuntzak",
+    "metadataDescription": "Arakatu JesusFilm bideoak hizkuntzaren arabera.",
+    "eyebrow": "Ikusteko hizkuntzak",
+    "title": "Hautatu hizkuntza bat",
+    "description": "Arakatu hizkuntzak eskualdeka edo begiratu zerrenda osoa.",
+    "searchPlaceholder": "Bilatu hizkuntzak edo herrialdeak...",
+    "searchLabel": "Bilatu hizkuntzak edo herrialdeak",
+    "clearSearch": "Garbitu bilaketa",
+    "browse": "Arakatu",
+    "browseByRegion": "Arakatu eskualde eta herrialdearen arabera",
+    "languageCount": "{count, plural, one {# hizkuntza} other {# hizkuntza}}",
+    "region": "Eskualdea",
+    "countryLanguages": "{country} hizkuntzak",
+    "showLess": "Erakutsi gutxiago",
+    "showMore": "Erakutsi beste {count}",
+    "noLanguages": "Ez da hizkuntzarik aurkitu",
+    "tryAnotherSearch": "Saiatu beste bilaketa-hitz batekin."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Ikusteko historia | Jesus Film Project",
+    "title": "Ikusteko historia",
+    "loading": "Historia kargatzen",
+    "empty": "Oraindik ez dago ezer hemen",
+    "emptyDescription": "Saioa hasita ikusten dituzun bideoak hemen agertuko dira.",
+    "earlier": "Lehenago",
+    "today": "Gaur",
+    "yesterday": "Atzo"
+  },
+  "AccountControl": {
+    "account": "Kontua",
+    "accountMenu": "Kontu-menua",
+    "signIn": "Hasi saioa",
+    "signOut": "Saioa amaitu",
+    "signedIn": "Saioa hasita",
+    "history": "Historia",
+    "logOut": "Irten saioa"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Orria ez da aurkitu",
+    "eyebrow": "Orria ez da aurkitu",
+    "screenReaderPrefix": "Orria ez da aurkitu:",
+    "title": "Eszena hau ez dago hemen.",
+    "description": "Orria lekuz aldatu daiteke, baina istorioak jarraitzen du.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Orria ez aurkitzeko ekintzak",
+    "backToWatch": "Itzuli ikustera",
+    "browseVideos": "Arakatu bideoak"
+  },
+  "VideoRecommendations": {
+    "match": "%{percent}eko bat-etortzea",
+    "none": "Ez da gomendiorik aurkitu bideo honetarako hizkuntza honetan."
+  },
+  "BetaTesterModal": {
+    "title": "Bihurtu beta probatzaile",
+    "trigger": "Bihurtu beta probatzaile",
+    "loadFailed": "Zerbait gaizki joan da.",
+    "loading": "Kargatzen...",
+    "openFormNewTab": "Ireki formularioa fitxa berri batean",
+    "close": "Itxi",
+    "iframeTitle": "Bihurtu beta probatzaile"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Deskargatu bilduma",
+    "eyebrow": "Deskargatu bilduma",
+    "description": "Hautatu behin hizkuntza eta kalitatea. Eskuragarri dauden atal guztiak ordenan deskargatuko dira.",
+    "signInTitle": "Hasi saioa deskargatzeko",
+    "signInBody": "Bildumak deskargatzeko, hasi saioa Jesus Film kontu batekin.",
+    "signIn": "Hasi saioa deskargatzeko",
+    "languageLabel": "Hizkuntza",
+    "qualityLabel": "Bideoaren kalitatea",
+    "tierHighest": "Gehiena",
+    "tierHigh": "Handia",
+    "tierLow": "Txikia",
+    "loading": "Atal erabilgarriak bilatzen…",
+    "loadError": "Ezin izan dira hizkuntza honetako deskargak kargatu.",
+    "retry": "Saiatu berriro",
+    "noDownloads": "Ez dago deskargatzeko atalik erabilgarri hizkuntza honetan.",
+    "availableCount": "{count, plural, one {# atal prest dago} other {# atal prest daude}}",
+    "skippedCount": "{count, plural, one {# atal saltatuko da, ez dagoelako erabilgarri} other {# atal saltatuko dira, ez daudelako erabilgarri}}",
+    "chooseFolder": "Hautatu deskarga-karpeta",
+    "folderSelected": "Gorde hemen: {name}",
+    "folderError": "Ezin izan da deskarga-karpeta ireki.",
+    "browserFallback": "Zure arakatzaileak fitxategi bakoitza ohiko deskarga-ezarpenekin gordeko du. Baliteke hainbat deskarga baimentzeko eskatzea.",
+    "sessionError": "Ezin izan da zure saioa egiaztatu. Mesedez, saiatu berriro.",
+    "downloading": "{title} deskargatzen",
+    "progress": "{completed} / {total}",
+    "complete": "Deskargak amaitu dira",
+    "canceled": "Deskargak bertan behera utzi dira",
+    "failedCount": "{count, plural, one {Huts egin du # atal deskargatzeak} other {# atalen deskargak huts egin du}}. Bilduma berriro deskargatzen saiatzeko, hautatu berriro Deskargatu.",
+    "close": "Itxi",
+    "cancel": "Utzi",
+    "start": "Deskargatu dena",
+    "downloadAgain": "Deskargatu berriro",
+    "retryFailed": "Saiatu berriro huts egindakoekin"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Hizkuntza-bertsioa ez dago erabilgarri",
+    "eyebrow": "Hizkuntza-bertsioa ez dago erabilgarri",
+    "title": "<contentTitle>{title}</contentTitle> ez dago erabilgarri <languageName>{language}</languageName> hizkuntzan",
+    "actionsLabel": "Ikusteko aukera erabilgarriak",
+    "browseInLanguage": "Arakatu bideoak {language} hizkuntzan",
+    "backToSearch": "Itzuli bilaketara",
+    "audioVersionsTitle": "Beste audio-bertsio batzuk",
+    "audioVersionsDescription": "Aukeratu audio-hizkuntza bat bideo hau ikusten jarraitzeko.",
+    "languageVersionLabel": "Audio-hizkuntza",
+    "selectLanguageVersion": "Aukeratu hizkuntza-bertsio bat",
+    "watchSelectedVersion": "Ikusi aukeratutako bertsioa"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie aukerak",
+    "bannerTitle": "Zure pribatutasun-aukerak",
+    "bannerDescription": "Ezinbesteko cookiek Watch seguru eta martxan mantentzen dute. Zure baimenarekin, aukerako lehen mailako cookie batek interesak gorde ditzake bisiten artean gomendioak pertsonalizatzeko. Testuinguruko gomendioak erabilgarri egongo dira bi kasuetan ere.",
+    "acceptAll": "Onartu dena",
+    "essentialOnly": "Ezinbestekoak soilik",
+    "manageChoices": "Kudeatu aukerak",
+    "savingChoice": "Cookie aukera gordetzen",
+    "settings": "Cookie ezarpenak",
+    "settingsDescription": "Aukeratu Watch-ek gomendioetarako interesak bisiten artean gogora ditzakeen ala ez. Hau noiznahi alda dezakezu.",
+    "essentialCookies": "Ezinbesteko cookieak",
+    "essentialDescription": "Segurtasuna, erreprodukzioa, pribatutasun-aukerak eta gomendio-eskaeren atribuzioa.",
+    "alwaysActive": "Beti aktibo",
+    "personalization": "Pertsonalizazioa",
+    "personalizationDescription": "Gorde interes mugatuak bisiten artean. Hau desaktibatzeak testuinguruko gomendioak erabilgarri mantentzen ditu.",
+    "erasurePending": "Profilaren ezabaketa zain dago. Testuinguruko gomendioak dagoeneko aktibo daude.",
+    "cancel": "Utzi",
+    "saveChoices": "Gorde aukerak",
+    "saving": "Gordetzen…",
+    "loadError": "Ezin izan da zure aukera kargatu. Hala ere, behean aukeratu dezakezu.",
+    "grantError": "Ezin izan da pertsonalizazioa gaitu. Ezinbestekoak soilik erabil daitezke.",
+    "saveError": "Ezin izan da zure aukera gorde. Saiatu berriro, mesedez."
+  }
+}

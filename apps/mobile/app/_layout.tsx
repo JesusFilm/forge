@@ -1,0 +1,558 @@
+import { Component, useEffect, useRef, useState } from "react"
+import { Pressable, Text, View, ScrollView } from "react-native"
+import type { ErrorInfo, ReactNode } from "react"
+
+let moduleError: string | null = null
+
+let Stack: typeof import("expo-router").Stack
+let useRouter: typeof import("expo-router").useRouter
+let StatusBar: typeof import("expo-status-bar").StatusBar
+let Ionicons: typeof import("@expo/vector-icons/Ionicons").default
+let ApolloProvider: typeof import("@apollo/client/react").ApolloProvider
+let SafeAreaProvider: typeof import("react-native-safe-area-context").SafeAreaProvider
+let getApolloClient: typeof import("../src/lib/apolloClient").getApolloClient
+let ACCENT: string
+let BG_COLOR: string
+let BACK_SWIPE_RESPONSE_DISTANCE: typeof import("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
+let READER_SHEET_SCREEN_OPTIONS: typeof import("../src/lib/bible/sheets/screenOptions").READER_SHEET_SCREEN_OPTIONS
+let ExperienceShell: typeof import("../src/contexts/ExperienceShell").ExperienceShell
+let ExperienceSelectionProvider: typeof import("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
+let WatchPreferencesProvider: typeof import("../src/contexts/WatchPreferencesProvider").WatchPreferencesProvider
+let DownloadsProvider: typeof import("../src/contexts/DownloadsProvider").DownloadsProvider
+let AuthProvider: typeof import("../src/contexts/AuthProvider").AuthProvider
+let LapseReminderProvider: typeof import("../src/contexts/LapseReminderProvider").LapseReminderProvider
+let isCachePersistenceEnabled: typeof import("../src/lib/cachePersistence").isCachePersistenceEnabled
+let restoreApolloCache: typeof import("../src/lib/cachePersistence").restoreApolloCache
+let startCachePersistence: typeof import("../src/lib/cachePersistence").startCachePersistence
+let lockPortrait: typeof import("../src/lib/orientation").lockPortrait
+// Dev-only surface: the require itself is gated so Metro drops it from a
+// release bundle rather than shipping a component nothing can render.
+let DevEndpointNotice:
+  | typeof import("../src/components/DevEndpointNotice").DevEndpointNotice
+  | undefined
+let PlaybackHost: typeof import("../src/components/watch/PlaybackHost").PlaybackHost
+let ExportReportHost: typeof import("../src/components/ExportReportHost").ExportReportHost
+let PushNoticeHost: typeof import("../src/components/PushNoticeHost").PushNoticeHost
+let MobileDatadogProvider: typeof import("../src/components/DatadogRum").MobileDatadogProvider
+let DatadogRouteTracker: typeof import("../src/components/DatadogRouteTracker").DatadogRouteTracker
+// `| undefined`: this one is read at module scope after the try/catch, where a
+// require failure could leave it unassigned — the R15 guard tolerates that.
+let reportDatadogError:
+  | typeof import("../src/lib/datadog").reportDatadogError
+  | undefined
+let addDatadogTiming: typeof import("../src/lib/datadog").addDatadogTiming
+let datadogLog: typeof import("../src/lib/datadog").datadogLog
+let Linking: typeof import("expo-linking")
+let initDeepLinkOrigins: typeof import("../src/lib/deepLinkOrigin").initDeepLinkOrigins
+let SplashHost: typeof import("../src/components/splash/SplashHost").SplashHost
+let SplashCoveredTree: typeof import("../src/components/splash/SplashHost").SplashCoveredTree
+// `| undefined`: both are called from the error branches, where the splash
+// require may be the one that threw. An unguarded call would white-screen the
+// panel it exists to reveal — the same shape as reportDatadogError above.
+let hideNativeSplashOnce:
+  | typeof import("../src/lib/splash/nativeSplash").hideNativeSplashOnce
+  | undefined
+let getSplashSession:
+  | typeof import("../src/lib/splash/splashSession").getSplashSession
+  | undefined
+let useLocaleResolutionLog: typeof import("../src/i18n/useLocaleResolutionLog").useLocaleResolutionLog
+let useT: typeof import("../src/i18n/useT").useT
+
+// require() is intentional — static imports cause silent white screens when
+// module-level throws (e.g., env validation) crash the entire module graph.
+// See docs/solutions/runtime-errors/metro-env-inlining-eas-update-white-screen-20260410.md
+/* eslint-disable @typescript-eslint/no-require-imports */
+try {
+  const router = require("expo-router")
+  Stack = router.Stack
+  useRouter = router.useRouter
+  StatusBar = require("expo-status-bar").StatusBar
+  Ionicons = require("@expo/vector-icons/Ionicons").default
+  ApolloProvider = require("@apollo/client/react").ApolloProvider
+  SafeAreaProvider = require("react-native-safe-area-context").SafeAreaProvider
+  getApolloClient = require("../src/lib/apolloClient").getApolloClient
+  const color = require("../src/lib/color")
+  ACCENT = color.ACCENT
+  BG_COLOR = color.BG_COLOR
+  BACK_SWIPE_RESPONSE_DISTANCE =
+    require("../src/lib/backSwipe").BACK_SWIPE_RESPONSE_DISTANCE
+  READER_SHEET_SCREEN_OPTIONS =
+    require("../src/lib/bible/sheets/screenOptions").READER_SHEET_SCREEN_OPTIONS
+  ExperienceShell = require("../src/contexts/ExperienceShell").ExperienceShell
+  ExperienceSelectionProvider =
+    require("../src/contexts/ExperienceSelectionProvider").ExperienceSelectionProvider
+  WatchPreferencesProvider =
+    require("../src/contexts/WatchPreferencesProvider").WatchPreferencesProvider
+  DownloadsProvider =
+    require("../src/contexts/DownloadsProvider").DownloadsProvider
+  AuthProvider = require("../src/contexts/AuthProvider").AuthProvider
+  LapseReminderProvider =
+    require("../src/contexts/LapseReminderProvider").LapseReminderProvider
+  // KTD1: this require is what registers the foreground handler at the
+  // adapter's module scope. Named here, not left to the provider's import
+  // graph, so a throwing notifications module lands on the Startup Error panel.
+  require("../src/lib/lapseReminders/notificationsAdapter")
+  const cachePersistence = require("../src/lib/cachePersistence")
+  isCachePersistenceEnabled = cachePersistence.isCachePersistenceEnabled
+  restoreApolloCache = cachePersistence.restoreApolloCache
+  startCachePersistence = cachePersistence.startCachePersistence
+  lockPortrait = require("../src/lib/orientation").lockPortrait
+  PlaybackHost = require("../src/components/watch/PlaybackHost").PlaybackHost
+  ExportReportHost =
+    require("../src/components/ExportReportHost").ExportReportHost
+  PushNoticeHost = require("../src/components/PushNoticeHost").PushNoticeHost
+  if (__DEV__) {
+    DevEndpointNotice =
+      require("../src/components/DevEndpointNotice").DevEndpointNotice
+  }
+  MobileDatadogProvider =
+    require("../src/components/DatadogRum").MobileDatadogProvider
+  DatadogRouteTracker =
+    require("../src/components/DatadogRouteTracker").DatadogRouteTracker
+  const datadog = require("../src/lib/datadog")
+  reportDatadogError = datadog.reportDatadogError
+  addDatadogTiming = datadog.addDatadogTiming
+  datadogLog = datadog.datadogLog
+  Linking = require("expo-linking")
+  initDeepLinkOrigins = require("../src/lib/deepLinkOrigin").initDeepLinkOrigins
+  const splashHost = require("../src/components/splash/SplashHost")
+  SplashHost = splashHost.SplashHost
+  SplashCoveredTree = splashHost.SplashCoveredTree
+  const nativeSplash = require("../src/lib/splash/nativeSplash")
+  hideNativeSplashOnce = nativeSplash.hideNativeSplashOnce
+  getSplashSession = require("../src/lib/splash/splashSession").getSplashSession
+  // KTD2: module scope, or the call lands after the native splash has already
+  // auto-hidden. It is the ONLY thing covering the cache-restore window, where
+  // the layout returns a bare view and the host does not mount at all.
+  nativeSplash.preventNativeSplashAutoHide()
+  getSplashSession?.().start()
+  // KTD3: module scope, so the first frame and the first request use the
+  // phone's language. A failed phone read keeps English and does not throw.
+  const localeStore = require("../src/i18n/localeStore")
+  localeStore.startLocaleSync()
+  useLocaleResolutionLog =
+    require("../src/i18n/useLocaleResolutionLog").useLocaleResolutionLog
+  useT = require("../src/i18n/useT").useT
+} catch (e: unknown) {
+  const err = e instanceof Error ? e : new Error(String(e))
+  moduleError = `${err.message}\n\n${err.stack ?? ""}`
+}
+/* eslint-enable @typescript-eslint/no-require-imports */
+
+// R5: neither diagnostic panel may sit behind the cover. Both halves are
+// guarded because the splash require itself may be what failed.
+function hideNativeSplash(): void {
+  if (typeof hideNativeSplashOnce !== "function") return
+  try {
+    hideNativeSplashOnce()
+  } catch {
+    // The panel must render even when the splash module is unusable.
+  }
+}
+
+function releaseSplashImmediately(): void {
+  if (typeof getSplashSession !== "function") return
+  try {
+    getSplashSession().releaseImmediately()
+  } catch {
+    // Same: the panel outranks the session's own bookkeeping.
+  }
+}
+
+// R15: the module-init boot failure is invisible to the RUM crash path and the
+// React ErrorBoundary. Best-effort report — never re-throw; the SDK may be down.
+if (moduleError && typeof reportDatadogError === "function") {
+  try {
+    reportDatadogError(new Error(moduleError), { origin: "module_init" })
+  } catch {
+    // Telemetry must never mask the Startup Error screen.
+  }
+}
+
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null; errorInfo: ErrorInfo | null }
+> {
+  state: { error: Error | null; errorInfo: ErrorInfo | null } = {
+    error: null,
+    errorInfo: null,
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    // Here, not componentDidCatch: this runs BEFORE the panel renders (R5).
+    // Both calls are idempotent no-throw one-shots, which is what makes them
+    // safe in a lifecycle React may re-run.
+    hideNativeSplash()
+    releaseSplashImmediately()
+    return { error }
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // setState FIRST: it is what puts the component stack on the visible App
+    // Error screen, and must not sit behind a telemetry call that could throw.
+    this.setState({ errorInfo })
+    // A boundary catch already reaches RUM — RN routes it through
+    // console.error, which the Datadog SDK patches. What that path drops is
+    // `componentStack`, the one field that names the component that threw. Log
+    // it rather than adding a second RUM error, which would split one crash
+    // into two Error Tracking issues.
+    if (typeof datadogLog?.error === "function") {
+      try {
+        datadogLog.error("app.render_boundary_caught", {
+          origin: "error_boundary",
+          error_message: error.message,
+          component_stack: errorInfo.componentStack ?? "",
+        })
+      } catch {
+        // Telemetry must never mask the App Error screen.
+      }
+    }
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "#1c1917",
+            padding: 40,
+            paddingTop: 80,
+          }}
+        >
+          <Text
+            style={{
+              color: "#ef4444",
+              fontSize: 20,
+              fontWeight: "bold",
+              marginBottom: 12,
+            }}
+          >
+            App Error
+          </Text>
+          <ScrollView>
+            <Text
+              style={{
+                color: "#fbbf24",
+                fontSize: 13,
+                fontFamily: "monospace",
+              }}
+              selectable
+            >
+              {this.state.error.message}
+            </Text>
+            {this.state.errorInfo?.componentStack && (
+              <Text
+                style={{
+                  color: "#a8a29e",
+                  fontSize: 11,
+                  fontFamily: "monospace",
+                  marginTop: 12,
+                }}
+                selectable
+              >
+                {this.state.errorInfo.componentStack}
+              </Text>
+            )}
+          </ScrollView>
+        </View>
+      )
+    }
+    return this.props.children
+  }
+}
+
+export const unstable_settings = {
+  initialRouteName: "(tabs)",
+}
+
+// The label is read here, not in RootLayout, so a language change
+// re-renders this button and not the whole root.
+function HeaderBackButton() {
+  const router = useRouter()
+  const t = useT("Common")
+  return (
+    <Pressable
+      onPress={() => router.back()}
+      accessibilityRole="button"
+      accessibilityLabel={t("goBackAriaLabel")}
+      {...{ "dd-action-name": "header-back" }}
+      hitSlop={12}
+    >
+      <Ionicons name="chevron-back" size={28} color={ACCENT} />
+    </Pressable>
+  )
+}
+
+// One FULL detent, unlike the watch/series list sheets: the feedback form is
+// taller, it hosts a keyboard, and its two steps differ in height — a single
+// detent cannot resize between them or hide the message field behind the keys.
+const FEEDBACK_SHEET_OPTIONS = {
+  headerShown: false,
+  presentation: "formSheet" as const,
+  sheetInitialDetentIndex: 0,
+  sheetGrabberVisible: true,
+  sheetCornerRadius: 16,
+  sheetAllowedDetents: [1],
+}
+
+export default function RootLayout() {
+  if (moduleError) {
+    // Both, like the App Error path. Nothing reaches the session on this
+    // branch today, but the asymmetry is what a future require-block reorder
+    // would turn into a panel behind a cover.
+    hideNativeSplash()
+    releaseSplashImmediately()
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "#1c1917",
+          padding: 40,
+          paddingTop: 80,
+        }}
+      >
+        <Text
+          style={{
+            color: "#ef4444",
+            fontSize: 20,
+            fontWeight: "bold",
+            marginBottom: 12,
+          }}
+        >
+          Startup Error
+        </Text>
+        <ScrollView>
+          <Text
+            style={{
+              color: "#fbbf24",
+              fontSize: 13,
+              fontFamily: "monospace",
+            }}
+            selectable
+          >
+            {moduleError}
+          </Text>
+        </ScrollView>
+      </View>
+    )
+  }
+
+  const clientRef = useRef(getApolloClient())
+
+  // Lock the whole app to portrait; only the fullscreen video player rotates
+  // (it relaxes the lock on entry and re-asserts it on exit). Fired as early as
+  // the root effect allows so a cold launch held in landscape snaps to portrait.
+  useEffect(() => {
+    void lockPortrait()
+  }, [])
+
+  // Opt-in cache persistence: restore snapshot BEFORE ApolloProvider mounts so no
+  // query races the restore (timeout-bounded in restoreApolloCache). When disabled,
+  // hydrated starts true and this is inert — default path renders immediately.
+  const [hydrated, setHydrated] = useState(() => !isCachePersistenceEnabled())
+  useEffect(() => {
+    if (hydrated) return
+    let cancelled = false
+    restoreApolloCache(clientRef.current.cache).finally(() => {
+      if (cancelled) return
+      // R23: mark the cold-start restore gate finished; the granular
+      // Distinct event: cache_restore's granular hit/miss/timeout outcome is
+      // emitted inside restoreApolloCache — reusing that name here would swamp
+      // its outcome aggregate. This just marks the hydration gate finished.
+      datadogLog.info("app_hydration_complete", {})
+      startCachePersistence(clientRef.current)
+      setHydrated(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [hydrated])
+
+  // Records which slugs arrived from OUTSIDE the app, so deep-link attribution
+  // reads the opening URL instead of guessing from stack shape.
+  useEffect(() => {
+    return initDeepLinkOrigins({
+      getInitialURL: () => Linking.getInitialURL(),
+      addUrlListener: (handler) => Linking.addEventListener("url", handler),
+    })
+  }, [])
+
+  // R20: js-thread time-to-interactive — the first real-tree paint past the
+  // hydration gate. Fires once; native app-start hides this Hermes stall.
+  const jsTtiEmittedRef = useRef(false)
+  useEffect(() => {
+    if (!hydrated || jsTtiEmittedRef.current) return
+    jsTtiEmittedRef.current = true
+    addDatadogTiming("js_tti")
+  }, [hydrated])
+
+  // After hydration, so MobileDatadogProvider has mounted; the SDK buffers
+  // logs until its init completes. Once per process, like js_tti.
+  useLocaleResolutionLog(hydrated)
+
+  if (!hydrated) {
+    return <View style={{ flex: 1, backgroundColor: BG_COLOR }} />
+  }
+
+  return (
+    <View style={{ flex: 1 }}>
+      <ErrorBoundary>
+        <MobileDatadogProvider>
+          <ApolloProvider client={clientRef.current}>
+            <SafeAreaProvider>
+              <ExperienceSelectionProvider>
+                <WatchPreferencesProvider>
+                  {/* Inside MobileDatadogProvider so its events are logged,
+                      and an ancestor of SplashHost so the native-splash hide
+                      runs first — effects run children-first (KTD6). */}
+                  <LapseReminderProvider>
+                    <AuthProvider>
+                      <DownloadsProvider>
+                        {/* R16: everything the cover hides leaves the
+                            accessibility tree while it is up, and returns on the
+                            same predicate that clears the cover. */}
+                        <SplashCoveredTree>
+                          <ExperienceShell>
+                            <StatusBar style="light" />
+                            <DatadogRouteTracker />
+                            <Stack
+                              screenOptions={{
+                                headerShown: false,
+                                contentStyle: { backgroundColor: BG_COLOR },
+                              }}
+                            >
+                              <Stack.Screen name="(tabs)" />
+                              <Stack.Screen
+                                name="video/[sectionKey]"
+                                options={{
+                                  headerShown: true,
+                                  headerTintColor: ACCENT,
+                                  headerTitle: "",
+                                  headerStyle: { backgroundColor: BG_COLOR },
+                                  headerShadowVisible: false,
+                                  headerTitleAlign: "center",
+                                  headerLeft: () => <HeaderBackButton />,
+                                }}
+                              />
+                              <Stack.Screen
+                                name="collection/[sectionKey]"
+                                options={{
+                                  headerShown: true,
+                                  headerTintColor: ACCENT,
+                                  headerTitle: "",
+                                  headerStyle: { backgroundColor: BG_COLOR },
+                                  headerShadowVisible: false,
+                                  headerTitleAlign: "center",
+                                  headerLeft: () => <HeaderBackButton />,
+                                }}
+                              />
+                              <Stack.Screen
+                                name="experience/[slug]"
+                                // Full-bleed: the screen renders its own floating back
+                                // button over the edge-to-edge hero (no native nav bar).
+                                options={{ headerShown: false }}
+                              />
+                              <Stack.Screen
+                                name="mission"
+                                // Full-bleed, same as experience/[slug]: an opaque
+                                // header would cap the screen's gradient with a
+                                // flat band. The screen renders its own floating
+                                // back button instead.
+                                options={{ headerShown: false }}
+                              />
+                              {/* My Watch's three screens cover the tab bar and
+                                draw their own top bar (ScreenTopBar). */}
+                              <Stack.Screen
+                                name="downloads"
+                                options={{ headerShown: false }}
+                              />
+                              <Stack.Screen
+                                name="more"
+                                options={{ headerShown: false }}
+                              />
+                              <Stack.Screen
+                                name="account"
+                                options={{ headerShown: false }}
+                              />
+                              {/* A ROOT sheet, not a group one, so a root
+                                  screen can push it — hence its entry in
+                                  IN_APP_SHEET_ROUTE_PATTERNS. */}
+                              <Stack.Screen
+                                name="feedback"
+                                options={FEEDBACK_SHEET_OPTIONS}
+                              />
+                              {/* Both player stacks confine the back-swipe to the
+                                left edge: iOS 26 defaults it to full-width,
+                                which claims rightward scrubs (src/lib/backSwipe). */}
+                              <Stack.Screen
+                                name="watch"
+                                options={{
+                                  headerShown: false,
+                                  gestureResponseDistance:
+                                    BACK_SWIPE_RESPONSE_DISTANCE,
+                                }}
+                              />
+                              <Stack.Screen
+                                name="series"
+                                options={{
+                                  headerShown: false,
+                                  gestureResponseDistance:
+                                    BACK_SWIPE_RESPONSE_DISTANCE,
+                                }}
+                              />
+                              {/* feat-553 R6: the pushed Bible reader has a verse
+                                scrubber and chapter swipes, so it gets the same strip. */}
+                              <Stack.Screen
+                                name="reader"
+                                options={{
+                                  headerShown: false,
+                                  gestureResponseDistance:
+                                    BACK_SWIPE_RESPONSE_DISTANCE,
+                                }}
+                              />
+                              {/* feat-553 KTD9: root sheets, so they present
+                                over the Bible tab and the pushed reader. */}
+                              <Stack.Screen
+                                name="reader-passage"
+                                options={READER_SHEET_SCREEN_OPTIONS}
+                              />
+                              <Stack.Screen
+                                name="reader-translation"
+                                options={READER_SHEET_SCREEN_OPTIONS}
+                              />
+                              <Stack.Screen
+                                name="reader-settings"
+                                options={READER_SHEET_SCREEN_OPTIONS}
+                              />
+                            </Stack>
+                          </ExperienceShell>
+                          {/* KTD1: a sibling of ExperienceShell, never inside it —
+                              the shell swaps its element type once per cold launch,
+                              remounting its subtree. The player outlives the route. */}
+                          <PlaybackHost />
+                          {/* R29: a raw export outlives the sheet that started it,
+                              so its report is hosted here rather than in a route. */}
+                          <ExportReportHost />
+                          {/* R21: a notification tap is routed from a timer or a
+                              native listener, so its message needs a host that
+                              belongs to no route. */}
+                          <PushNoticeHost />
+                        </SplashCoveredTree>
+                        {/* Last child, and a sibling for the same KTD1 reason: the
+                            cover must paint above the player and must not restart
+                            when the shell resolves its slug. */}
+                        <SplashHost />
+                      </DownloadsProvider>
+                    </AuthProvider>
+                  </LapseReminderProvider>
+                </WatchPreferencesProvider>
+              </ExperienceSelectionProvider>
+            </SafeAreaProvider>
+          </ApolloProvider>
+        </MobileDatadogProvider>
+      </ErrorBoundary>
+      {DevEndpointNotice ? <DevEndpointNotice /> : null}
+    </View>
+  )
+}

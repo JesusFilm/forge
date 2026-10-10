@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
-import { resolveJobArtifactDescriptor } from "@/lib/job-artifacts"
+import {
+  getJobArtifactStorageAssetId,
+  resolveJobArtifactDescriptor,
+} from "@/lib/job-artifacts"
 import { hasValidMuxArtifactAccessSignature } from "@/lib/mux-artifact-access"
 import { getJob } from "@/lib/state"
 import { readArtifact } from "@/services/storage"
@@ -43,21 +46,26 @@ export async function GET(
     )
   }
 
+  // Smart-crop jobs store artifacts under options.smartCrop.assetId, which may
+  // differ from the job's muxAssetId. Enrichment jobs keep muxAssetId.
   const body = await readArtifact(
-    job.muxAssetId,
+    getJobArtifactStorageAssetId(job),
     descriptor.artifactType,
     descriptor.ext,
   )
-  const responseBody = new Uint8Array(body.byteLength)
-  responseBody.set(body)
 
-  return new NextResponse(responseBody, {
-    headers: {
-      "Content-Type": descriptor.contentType,
-      "Content-Disposition": `inline; filename="${logicalKey}.${descriptor.ext}"`,
-      "Cache-Control": hasMuxSignature
-        ? "private, max-age=60"
-        : "private, no-store",
+  return new NextResponse(
+    new Blob([body as Uint8Array<ArrayBuffer>], {
+      type: descriptor.contentType,
+    }),
+    {
+      headers: {
+        "Content-Type": descriptor.contentType,
+        "Content-Disposition": `inline; filename="${logicalKey}.${descriptor.ext}"`,
+        "Cache-Control": hasMuxSignature
+          ? "private, max-age=60"
+          : "private, no-store",
+      },
     },
-  })
+  )
 }

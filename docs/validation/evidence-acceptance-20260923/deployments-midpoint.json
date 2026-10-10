@@ -1,0 +1,43 @@
+{
+  "observedAt": "2026-09-23T05:30:31Z",
+  "project": "98952497-a4d9-4714-8fe8-0cdbff3147c9",
+  "environment": "5f41e037-90e4-4674-a3ea-66bbd05fb3b4",
+  "services": [
+    {
+      "service": "admin",
+      "serviceId": "bdb15048-1ca9-4217-ae01-ef7cc19ca6f4",
+      "activeDeployments": [
+        {
+          "deployment": "05d2971e-d42a-4f32-b91a-3c552cb44353",
+          "status": "SUCCESS",
+          "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+          "runningInstances": 1
+        }
+      ]
+    },
+    {
+      "service": "worker",
+      "serviceId": "4f805f5d-b98b-4e0d-8a41-194176336d2c",
+      "activeDeployments": [
+        {
+          "deployment": "264a75df-cc73-47a9-aee1-7c336e8f986b",
+          "status": "SUCCESS",
+          "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+          "runningInstances": 1
+        }
+      ]
+    },
+    {
+      "service": "web",
+      "serviceId": "23b82451-0da1-4edc-bcde-096a9fd2a687",
+      "activeDeployments": [
+        {
+          "deployment": "9448a080-628d-4964-ae79-81c1f920739e",
+          "status": "SUCCESS",
+          "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+          "runningInstances": 1
+        }
+      ]
+    }
+  ]
+}

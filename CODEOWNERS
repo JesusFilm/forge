@@ -6,3 +6,6 @@
 /apps/cms/ @JesusFilm/engineering/forge
 /packages/graphql/ @JesusFilm/engineering/forge
 /apps/mobile/ @JesusFilm/engineering/forge
+/apps/rag/ @JesusFilm/engineering/forge
+/packages/rag-contracts/ @JesusFilm/engineering/forge
+/docs/roadmap/rag/ @JesusFilm/engineering/forge

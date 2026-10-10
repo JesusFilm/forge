@@ -9,19 +9,19 @@ import {
   Text,
   View,
 } from "react-native"
-import { LinearGradient } from "expo-linear-gradient"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { WebView } from "react-native-webview"
+import { LinearGradient } from "expo-linear-gradient"
 
 import { useTypography } from "../../hooks/useTypography"
-import type { QuizButtonSection } from "../../lib/sectionModels"
+import { useUiTag } from "../../hooks/useUiTag"
+import { useT } from "../../i18n/useT"
+import { QUIZ_GRADIENT } from "../../lib/color"
+import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppression"
+import { layout, feedback } from "../../styles/shared"
+import type { AdminBlock } from "../../lib/queries"
 
-// -- Constants ----------------------------------------------------------------
-
-const GRADIENT_COLORS = ["#F59E0B", "#F97316", "#EF4444", "#B91C1C"] as const
-const GRADIENT_LOCATIONS = [0, 0.35, 0.7, 1] as const
-
-// -- URL validation -----------------------------------------------------------
+// ── URL Validation ──────────────────────────────────────────────────────────
 
 function isAllowedQuizUrl(url: string): boolean {
   try {
@@ -39,17 +39,13 @@ function isAllowedQuizUrl(url: string): boolean {
   }
 }
 
-// -- QuizModal (child) --------------------------------------------------------
+// ── QuizModal ───────────────────────────────────────────────────────────────
 
 type QuizModalState = "loading" | "loaded" | "errored"
 
-interface QuizModalProps {
-  url: string
-  onClose: () => void
-}
-
-function QuizModal({ url, onClose }: QuizModalProps) {
+function QuizModal({ url, onClose }: { url: string; onClose: () => void }) {
   const insets = useSafeAreaInsets()
+  const tCommon = useT("Common")
   const [state, setState] = useState<QuizModalState>("loading")
 
   const handleLoadEnd = useCallback(() => {
@@ -75,29 +71,26 @@ function QuizModal({ url, onClose }: QuizModalProps) {
     >
       <StatusBar barStyle="light-content" />
       <View style={styles.modalOverlay}>
-        {/* Close button */}
         <Pressable
           style={[
             styles.closeButton,
             { top: Platform.OS === "android" ? insets.top : insets.top + 8 },
-            Platform.OS === "android" && { right: 16 },
           ]}
           onPress={onClose}
           hitSlop={8}
           accessibilityRole="button"
-          accessibilityLabel="Close"
+          accessibilityLabel={tCommon("closeAriaLabel")}
+          {...{ "dd-action-name": "section-quiz-close" }}
         >
           <Text style={styles.closeIcon}>{"\u2715"}</Text>
         </Pressable>
 
-        {/* Loading indicator */}
         {state === "loading" && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#ffffff" />
           </View>
         )}
 
-        {/* WebView */}
         <WebView
           source={{ uri: url }}
           originWhitelist={["https://*"]}
@@ -120,58 +113,59 @@ function QuizModal({ url, onClose }: QuizModalProps) {
   )
 }
 
-// -- QuizButtonRenderer (parent) ----------------------------------------------
+// ── QuizButtonRenderer ──────────────────────────────────────────────────────
 
 export interface QuizButtonRendererProps {
-  section: QuizButtonSection
+  section: AdminBlock
 }
 
 export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
-  const { buttonText, iframeSrc } = section
-  const [modalVisible, setModalVisible] = useState(false)
   const typography = useTypography()
+  const t = useT("Sections")
+  const uiTag = useUiTag()
+  const [modalVisible, setModalVisible] = useState(false)
 
-  // Client-side URL validation — silent drop if invalid
-  if (!isAllowedQuizUrl(iframeSrc)) return null
+  useNonRouteSheetSuppression(modalVisible, "sduiQuiz")
+
+  const s = section as Record<string, unknown>
+  const buttonText = s.buttonText as string | null
+  const iframeSrc = s.iframeSrc as string | null
+
+  // Silent drop if URL is invalid or missing
+  if (!iframeSrc || !isAllowedQuizUrl(iframeSrc)) return null
 
   return (
     <>
-      <View style={styles.container}>
+      <View style={[layout.sectionOuter, styles.localContainer]}>
         <Pressable
-          style={({ pressed }: { pressed: boolean }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
-          ]}
+          style={({ pressed }) => [styles.button, pressed && feedback.pressed]}
           onPress={() => setModalVisible(true)}
           accessibilityRole="button"
-          accessibilityLabel="Open faith quiz"
+          accessibilityLabel={t("openQuizAriaLabel")}
+          {...{ "dd-action-name": "section-quiz-open" }}
         >
           <LinearGradient
-            colors={[...GRADIENT_COLORS]}
-            locations={[...GRADIENT_LOCATIONS]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.gradient}
+            colors={[...QUIZ_GRADIENT]}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={styles.buttonGradient}
           >
             <View style={styles.buttonContent}>
-              {/* QUIZ badge — decorative */}
               <View
                 style={styles.badge}
                 accessibilityElementsHidden
                 importantForAccessibility="no-hide-descendants"
               >
-                <Text style={styles.badgeText}>QUIZ</Text>
+                <Text style={styles.badgeText}>
+                  {t("quizBadge").toLocaleUpperCase(uiTag)}
+                </Text>
               </View>
-
-              {/* Button text */}
               <Text
                 style={[styles.buttonLabel, typography.body]}
                 numberOfLines={2}
               >
-                {buttonText}
+                {buttonText ?? t("takeQuiz")}
               </Text>
-
-              {/* Arrow icon */}
               <Text
                 style={styles.arrow}
                 accessibilityElementsHidden
@@ -191,22 +185,20 @@ export function QuizButtonRenderer({ section }: QuizButtonRendererProps) {
   )
 }
 
-// -- Styles -------------------------------------------------------------------
+// ── Styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  container: {
+  localContainer: {
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   button: {
     borderRadius: 12,
     overflow: "hidden",
+    minHeight: 48,
   },
-  buttonPressed: {
-    opacity: 0.85,
-  },
-  gradient: {
-    borderRadius: 12,
+  buttonGradient: {
+    flex: 1,
   },
   buttonContent: {
     flexDirection: "row",
@@ -225,13 +217,15 @@ const styles = StyleSheet.create({
   badgeText: {
     color: "#ffffff",
     fontSize: 11,
-    fontWeight: "800",
+    fontWeight: "700",
+    fontFamily: "System",
     letterSpacing: 1,
   },
   buttonLabel: {
     flex: 1,
     color: "#ffffff",
     fontWeight: "600",
+    fontFamily: "System",
     textAlign: "center",
   },
   arrow: {
@@ -246,11 +240,11 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     position: "absolute",
-    right: 56,
+    right: 16,
     zIndex: 10,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: "rgba(255, 255, 255, 0.15)",
     alignItems: "center",
     justifyContent: "center",
@@ -260,7 +254,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
   },
   loadingContainer: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     alignItems: "center",
     justifyContent: "center",
   },

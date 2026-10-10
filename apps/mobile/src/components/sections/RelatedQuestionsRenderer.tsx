@@ -1,179 +1,226 @@
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useState } from "react"
 import {
-  Animated,
-  LayoutAnimation,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
   Text,
-  UIManager,
   View,
 } from "react-native"
+import Ionicons from "@expo/vector-icons/Ionicons"
 
-import { useTypography, type TypographyScale } from "../../hooks/useTypography"
-import type {
-  RelatedQuestionItem,
-  RelatedQuestionsSection,
-} from "../../lib/sectionModels"
-import { useSectionColorScheme } from "./SectionColorSchemeContext"
+import { AnimatedChevron, animateLayout } from "../ui/AnimatedChevron"
+import { validateActionUrl } from "../../lib/validateUrl"
+import { useTypography } from "../../hooks/useTypography"
+import {
+  useTextDirection,
+  type TextDirectionProps,
+} from "../../i18n/textDirection"
+import { useT } from "../../i18n/useT"
+import {
+  ACCENT,
+  BG_COLOR,
+  TEXT_PRIMARY,
+  TEXT_SECONDARY,
+  TEXT_BODY,
+} from "../../lib/color"
+import { layout, text, button } from "../../styles/shared"
+import type { AdminBlock } from "../../lib/queries"
 
-// Enable LayoutAnimation on Android
-if (
-  Platform.OS === "android" &&
-  UIManager.setLayoutAnimationEnabledExperimental
-) {
-  UIManager.setLayoutAnimationEnabledExperimental(true)
+type QuestionItem = {
+  question: string
+  answer: string
 }
 
 export interface RelatedQuestionsRendererProps {
-  section: RelatedQuestionsSection
+  section: AdminBlock
+  /** The language of the heading and of the questions (KTD13). Absent on the
+   *  Experience and SDUI paths, whose text language is not known. */
+  headingLang?: string | null
+  questionsLang?: string | null
 }
 
-function AnimatedChevron({
-  isExpanded,
-  isOnDark,
-}: {
-  isExpanded: boolean
-  isOnDark?: boolean
-}) {
-  const rotation = useRef(new Animated.Value(isExpanded ? 1 : 0)).current
+const CHAT_WITH_PERSON_URL =
+  "https://chataboutjesus.com/chat/?utm_source=jesusfilm-watch"
+const ASK_BIBLE_QUESTION_URL =
+  "https://www.everystudent.com/contact.php?utm_source=jesusfilm-watch"
 
-  useEffect(() => {
-    Animated.timing(rotation, {
-      toValue: isExpanded ? 1 : 0,
-      duration: 300,
-      useNativeDriver: true,
-    }).start()
-  }, [isExpanded, rotation])
-
-  const rotateInterpolation = rotation.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "90deg"],
-  })
+function AnswerFallback() {
+  const typography = useTypography()
+  const t = useT("StudyQuestions")
+  const direction = useTextDirection()
 
   return (
-    <Animated.View style={{ transform: [{ rotate: rotateInterpolation }] }}>
-      <Text style={[styles.chevron, isOnDark && styles.chevronLight]}>▸</Text>
-    </Animated.View>
-  )
-}
-
-function QuestionIcon({ isOnDark }: { isOnDark?: boolean }) {
-  return (
-    <View
-      style={[styles.questionIcon, isOnDark && styles.questionIconLight]}
-      accessibilityElementsHidden={true}
-      importantForAccessibility="no-hide-descendants"
-    >
-      <Text
-        style={[
-          styles.questionIconText,
-          isOnDark && styles.questionIconTextLight,
-        ]}
-      >
-        ?
+    <View style={styles.fallbackContainer}>
+      <Text style={[styles.fallbackBody, typography.bodySmall, direction.ui]}>
+        {t("fallbackBody")}
       </Text>
+      <View style={styles.fallbackButtonRow}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.fallbackButton,
+            pressed && Platform.OS === "ios" && styles.fallbackButtonPressed,
+          ]}
+          android_ripple={{ color: "rgba(0, 0, 0, 0.1)" }}
+          onPress={() => Linking.openURL(CHAT_WITH_PERSON_URL)}
+          accessibilityRole="link"
+          accessibilityLabel={t("chatAriaLabel")}
+          {...{ "dd-action-name": "study-questions-chat" }}
+        >
+          <Ionicons
+            name="chatbubble-outline"
+            size={14}
+            color={BG_COLOR}
+            style={styles.fallbackButtonIcon}
+          />
+          <Text style={styles.fallbackButtonText}>{t("chat")}</Text>
+        </Pressable>
+        <Pressable
+          style={({ pressed }) => [
+            styles.fallbackButton,
+            pressed && Platform.OS === "ios" && styles.fallbackButtonPressed,
+          ]}
+          android_ripple={{ color: "rgba(0, 0, 0, 0.1)" }}
+          onPress={() => Linking.openURL(ASK_BIBLE_QUESTION_URL)}
+          accessibilityRole="link"
+          accessibilityLabel={t("askBibleQuestionAriaLabel")}
+          {...{ "dd-action-name": "study-questions-ask" }}
+        >
+          <Ionicons
+            name="mail-outline"
+            size={14}
+            color={BG_COLOR}
+            style={styles.fallbackButtonIcon}
+          />
+          <Text style={styles.fallbackButtonText}>{t("askBibleQuestion")}</Text>
+        </Pressable>
+      </View>
     </View>
   )
 }
 
-function QuestionItem({
+function QuestionRow({
   item,
   isExpanded,
-  isOnDark,
-  typography,
   onToggle,
+  questionDirection,
 }: {
-  item: RelatedQuestionItem
+  item: QuestionItem
   isExpanded: boolean
-  isOnDark?: boolean
-  typography: TypographyScale
   onToggle: () => void
+  questionDirection: TextDirectionProps
 }) {
+  const typography = useTypography()
+  const hasAnswer = item.answer != null && item.answer.trim() !== ""
+
   return (
-    <View style={[styles.item, isOnDark && styles.itemLight]}>
+    <View style={styles.item}>
       <Pressable
         style={styles.questionRow}
         onPress={onToggle}
         accessibilityRole="button"
         accessibilityLabel={item.question}
+        accessibilityLanguage={questionDirection.accessibilityLanguage}
         accessibilityState={{ expanded: isExpanded }}
       >
-        <QuestionIcon isOnDark={isOnDark} />
         <Text
           style={[
             styles.questionText,
             typography.body,
-            isOnDark && styles.questionTextLight,
+            questionDirection.style,
           ]}
           numberOfLines={3}
+          accessibilityLanguage={questionDirection.accessibilityLanguage}
         >
           {item.question}
         </Text>
-        <AnimatedChevron isExpanded={isExpanded} isOnDark={isOnDark} />
+        <AnimatedChevron
+          isExpanded={isExpanded}
+          glyph={"›"}
+          style={styles.chevron}
+        />
       </Pressable>
-      {isExpanded && (
-        <Text
-          style={[
-            styles.answerText,
-            typography.bodySmall,
-            isOnDark && styles.answerTextLight,
-          ]}
-        >
-          {item.answer}
-        </Text>
-      )}
+      {isExpanded &&
+        (hasAnswer ? (
+          <Text style={[styles.answerText, typography.bodySmall]}>
+            {item.answer}
+          </Text>
+        ) : (
+          <AnswerFallback />
+        ))}
     </View>
   )
 }
 
 export function RelatedQuestionsRenderer({
   section,
+  headingLang,
+  questionsLang,
 }: RelatedQuestionsRendererProps) {
-  const { heading, questions } = section
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const colorScheme = useSectionColorScheme()
-  const isOnDark = colorScheme === "light"
   const typography = useTypography()
+  const t = useT("StudyQuestions")
+  const direction = useTextDirection()
+  const headingDirection = direction.text(headingLang)
+  const questionDirection = direction.text(questionsLang)
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
 
-  const toggle = (id: string) => {
-    LayoutAnimation.configureNext({
-      duration: 300,
-      update: { type: LayoutAnimation.Types.easeInEaseOut },
-      create: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity,
-      },
-      delete: {
-        type: LayoutAnimation.Types.easeInEaseOut,
-        property: LayoutAnimation.Properties.opacity,
-      },
-    })
-    setExpandedId((prev) => (prev === id ? null : id))
-  }
+  const s = section as Record<string, unknown>
+  const heading = s.heading as string | null
+  const ctaLabel = s.ctaLabel as string | null
+  const ctaLink = s.ctaLink as string | null
+  const questions = (s.questions as QuestionItem[] | undefined) ?? []
+
+  const handleToggle = useCallback((index: number) => {
+    animateLayout()
+    setExpandedIndex((prev) => (prev === index ? null : index))
+  }, [])
+
+  const handleCtaPress = useCallback(() => {
+    if (ctaLink && validateActionUrl(ctaLink)) {
+      Linking.openURL(ctaLink)
+    }
+  }, [ctaLink])
 
   return (
-    <View style={styles.container}>
-      {heading != null && (
-        <Text
-          style={[
-            styles.heading,
-            typography.heading,
-            isOnDark && styles.headingLight,
-          ]}
-          accessibilityRole="header"
-        >
-          {heading}
-        </Text>
-      )}
-      {questions.map((item) => (
-        <QuestionItem
-          key={item.id}
+    <View style={[layout.sectionOuter, styles.localContainer]}>
+      <View style={[layout.headerRow, styles.localHeaderRow]}>
+        {heading != null && (
+          <Text
+            style={[
+              text.sectionHeading,
+              styles.localHeading,
+              typography.titleLarge,
+              headingDirection.style,
+            ]}
+            accessibilityRole="header"
+            accessibilityLanguage={headingDirection.accessibilityLanguage}
+          >
+            {heading}
+          </Text>
+        )}
+        {ctaLink != null && (
+          <Pressable
+            onPress={handleCtaPress}
+            style={[button.iconButton44, styles.localCtaButton]}
+            accessibilityRole="link"
+            accessibilityLabel={ctaLabel ?? t("askQuestionAriaLabel")}
+            {...{ "dd-action-name": "study-questions-cta" }}
+          >
+            <Ionicons
+              name="chatbubble-ellipses-outline"
+              size={22}
+              color={ACCENT}
+            />
+          </Pressable>
+        )}
+      </View>
+      {questions.map((item, index) => (
+        <QuestionRow
+          key={`rq-${index}`}
           item={item}
-          isExpanded={expandedId === item.id}
-          isOnDark={isOnDark}
-          typography={typography}
-          onToggle={() => toggle(item.id)}
+          isExpanded={expandedIndex === index}
+          onToggle={() => handleToggle(index)}
+          questionDirection={questionDirection}
         />
       ))}
     </View>
@@ -181,74 +228,78 @@ export function RelatedQuestionsRenderer({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 24,
-    marginVertical: 4,
+  localContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
-  heading: {
-    fontWeight: "700",
-    color: "#1a1a1a",
-    marginBottom: 16,
+  localHeaderRow: {
+    marginBottom: 12,
   },
-  headingLight: {
-    color: "#ffffff",
+  localHeading: {
+    flex: 1,
+  },
+  localCtaButton: {
+    marginLeft: 8,
   },
   item: {
     borderBottomWidth: 1,
-    borderBottomColor: "#e5e5e5",
-  },
-  itemLight: {
-    borderBottomColor: "rgba(255, 255, 255, 0.2)",
+    borderBottomColor: "rgba(255, 255, 255, 0.1)",
   },
   questionRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 16,
-  },
-  questionIcon: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    borderColor: "#666666",
-    alignItems: "center",
-    justifyContent: "center",
-    opacity: 0.25,
-    marginRight: 14,
-  },
-  questionIconLight: {
-    borderColor: "rgba(255, 255, 255, 0.7)",
-  },
-  questionIconText: {
-    fontSize: 11, // Icon/badge size — intentionally excluded from typography scale
-    fontWeight: "600",
-    color: "#666666",
-    lineHeight: 13,
-  },
-  questionIconTextLight: {
-    color: "rgba(255, 255, 255, 0.7)",
+    minHeight: 48,
   },
   questionText: {
     flex: 1,
     fontWeight: "600",
-    color: "#1a1a1a",
+    color: TEXT_PRIMARY,
+    fontFamily: "System",
     marginRight: 12,
   },
-  questionTextLight: {
-    color: "#ffffff",
-  },
   chevron: {
-    fontSize: 18, // Icon/badge size — intentionally excluded from typography scale
-    color: "#666666",
-  },
-  chevronLight: {
-    color: "rgba(255, 255, 255, 0.7)",
+    fontSize: 22,
+    color: TEXT_SECONDARY,
   },
   answerText: {
-    color: "#4a4a4a",
+    color: TEXT_BODY,
+    fontFamily: "System",
+    paddingBottom: 16,
+    paddingLeft: 0,
+  },
+  fallbackContainer: {
     paddingBottom: 16,
   },
-  answerTextLight: {
-    color: "rgba(255, 255, 255, 0.85)",
+  fallbackBody: {
+    color: TEXT_BODY,
+    fontFamily: "System",
+    marginBottom: 12,
+  },
+  fallbackButtonRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  fallbackButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: TEXT_PRIMARY,
+    borderRadius: 9999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    minHeight: 40,
+  },
+  fallbackButtonPressed: {
+    opacity: 0.85,
+  },
+  fallbackButtonIcon: {
+    marginRight: 4,
+  },
+  fallbackButtonText: {
+    color: BG_COLOR,
+    fontFamily: "System",
+    fontWeight: "600",
+    fontSize: 14,
   },
 })

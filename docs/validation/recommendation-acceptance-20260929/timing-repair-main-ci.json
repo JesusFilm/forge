@@ -1,0 +1,210 @@
+{
+  "recordedAt": "2026-09-29T00:24:00.575768+00:00",
+  "revision": "e2582c77b92ded7891c3b645f6a177bb4cb1a097",
+  "runs": [
+    {
+      "databaseId": 36501464545,
+      "status": "completed",
+      "conclusion": "success",
+      "headSha": "e2582c77b92ded7891c3b645f6a177bb4cb1a097",
+      "event": "push",
+      "attempt": 1,
+      "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545",
+      "jobs": [
+        {
+          "name": "patched-deps-guard",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:06:57Z",
+          "completedAt": "2026-09-29T00:07:15Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193045482"
+        },
+        {
+          "name": "format",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:06:57Z",
+          "completedAt": "2026-09-29T00:10:19Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193045675"
+        },
+        {
+          "name": "dev-port-contract",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:06:56Z",
+          "completedAt": "2026-09-29T00:07:05Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193045711"
+        },
+        {
+          "name": "hidden-roadmap-lanes",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:06:56Z",
+          "completedAt": "2026-09-29T00:08:07Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193045783"
+        },
+        {
+          "name": "experiment-ledger",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:06:57Z",
+          "completedAt": "2026-09-29T00:07:09Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193045799"
+        },
+        {
+          "name": "affected",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:06:57Z",
+          "completedAt": "2026-09-29T00:07:55Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193045835"
+        },
+        {
+          "name": "commit-lint",
+          "status": "completed",
+          "conclusion": "skipped",
+          "startedAt": "2026-09-29T00:06:54Z",
+          "completedAt": "2026-09-29T00:06:53Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193047008"
+        },
+        {
+          "name": "build (@forge/web)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:07:57Z",
+          "completedAt": "2026-09-29T00:09:47Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193326008"
+        },
+        {
+          "name": "test (@forge/web)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:08:33Z",
+          "completedAt": "2026-09-29T00:11:02Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193326094"
+        },
+        {
+          "name": "web-redis-integration",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:07:57Z",
+          "completedAt": "2026-09-29T00:09:21Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193326113"
+        },
+        {
+          "name": "lint (@forge/web)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:07:57Z",
+          "completedAt": "2026-09-29T00:09:53Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193326130"
+        },
+        {
+          "name": "admin-schema-drift",
+          "status": "completed",
+          "conclusion": "skipped",
+          "startedAt": "2026-09-29T00:07:55Z",
+          "completedAt": "2026-09-29T00:07:55Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193326906"
+        },
+        {
+          "name": "rag-portal-allowlist",
+          "status": "completed",
+          "conclusion": "skipped",
+          "startedAt": "2026-09-29T00:07:55Z",
+          "completedAt": "2026-09-29T00:07:55Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193326942"
+        },
+        {
+          "name": "rag-postgres-integration",
+          "status": "completed",
+          "conclusion": "skipped",
+          "startedAt": "2026-09-29T00:07:55Z",
+          "completedAt": "2026-09-29T00:07:55Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193327151"
+        },
+        {
+          "name": "auth-postgres-integration",
+          "status": "completed",
+          "conclusion": "skipped",
+          "startedAt": "2026-09-29T00:07:55Z",
+          "completedAt": "2026-09-29T00:07:55Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193327215"
+        },
+        {
+          "name": "admin-graphql-generate",
+          "status": "completed",
+          "conclusion": "skipped",
+          "startedAt": "2026-09-29T00:07:55Z",
+          "completedAt": "2026-09-29T00:07:55Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193327232"
+        },
+        {
+          "name": "expo-doctor",
+          "status": "completed",
+          "conclusion": "skipped",
+          "startedAt": "2026-09-29T00:07:55Z",
+          "completedAt": "2026-09-29T00:07:55Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109193327342"
+        },
+        {
+          "name": "ci-gate",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:11:04Z",
+          "completedAt": "2026-09-29T00:11:07Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501464545/job/109194163218"
+        }
+      ]
+    },
+    {
+      "databaseId": 36501463381,
+      "status": "completed",
+      "conclusion": "success",
+      "headSha": "e2582c77b92ded7891c3b645f6a177bb4cb1a097",
+      "event": "dynamic",
+      "attempt": 1,
+      "url": "https://github.com/JesusFilm/forge/actions/runs/36501463381",
+      "jobs": [
+        {
+          "name": "Analyze (actions)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:06:56Z",
+          "completedAt": "2026-09-29T00:07:46Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501463381/job/109193046973"
+        },
+        {
+          "name": "Analyze (javascript-typescript)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:06:56Z",
+          "completedAt": "2026-09-29T00:23:13Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501463381/job/109193047092"
+        },
+        {
+          "name": "Analyze (python)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:06:56Z",
+          "completedAt": "2026-09-29T00:08:11Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501463381/job/109193047105"
+        },
+        {
+          "name": "Analyze (c-cpp)",
+          "status": "completed",
+          "conclusion": "success",
+          "startedAt": "2026-09-29T00:06:56Z",
+          "completedAt": "2026-09-29T00:08:17Z",
+          "url": "https://github.com/JesusFilm/forge/actions/runs/36501463381/job/109193047267"
+        }
+      ]
+    }
+  ],
+  "webTestSummary": [
+    "2026-09-29T00:09:34.7082684Z  \u2713 src/components/home/__tests__/WatchHomePage.test.tsx (72 tests) 13234ms",
+    "2026-09-29T00:10:59.4828168Z  Test Files  277 passed | 1 skipped (278)",
+    "2026-09-29T00:10:59.4837992Z       Tests  4721 passed | 10 skipped | 1 todo (4732)"
+  ],
+  "interpretation": "New ordinary push-to-main runs after PR #2453, each successful on attempt 1. No rerun of the prior failed main run, no manual deployment."
+}

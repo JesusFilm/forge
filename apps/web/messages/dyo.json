@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Jëmul benn xibaar bu tollu ci jëfandikukat.",
+    "failedToLoad": "Mënul a tëj xibaar: {message}",
+    "unexpected": "Am na benn error bu laale.",
+    "notConfigured": "Service bu xibaar bi du taxawal.",
+    "noContent": "Amul dara bu xibaar.",
+    "homepageMisconfigured": "Waxtu watch bi dafa am solo bu baaxul.",
+    "defaultTemplateMisconfigured": "Modèle bu watch bu ñu def lu wér dafa am solo bu baaxul.",
+    "authFailed": "Mënul a këddu ak service bu xibaar bi. Jëfeekat yi kontakat bu amul taxaw, bu ko kontine.",
+    "pageLoadFailed": "Am na lu ne xewul.",
+    "tryAgain": "Jéemaatal"
+  },
+  "VideosPage": {
+    "title": "Wideo yu yépp",
+    "placeholder": "Gox bu video yi dina ñëw. Ci jamono jii, jëfandikoo seetlu walla URL bu suuf bu temaa."
+  },
+  "BibleQuotes": {
+    "title": "Kàddu yu Biibël",
+    "share": "Partager",
+    "readMore": "Jàng lu ci ëpp...",
+    "learnMore": "Xam lu ëpp",
+    "freeResources": "Jëmmi yomb",
+    "promoHeading": "Doy na la njaal ak biibël bi guddi?",
+    "joinBibleStudy": "Jëme ci sunu diine biibël",
+    "previousQuote": "Kàddu bu jiitu",
+    "nextQuote": "Kàddu bu topp",
+    "readPassage": "Jàngal pàcc bii ci sa Biibël."
+  },
+  "DownloadButton": {
+    "checking": "Seetlu",
+    "download": "Yeb",
+    "sessionError": "Mënul a seet sa session. Jéemaatal.",
+    "saveVideo": "Sàmm wideo bi"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Yeb wideo bi",
+    "eyebrow": "Yeb wideo",
+    "posterAlt": "Sooñ bu wideo bi",
+    "noDownloads": "Amul yeb bu wideo bii.",
+    "fileSizeLabel": "Tann mbiru suuf",
+    "termsAgreementPrefix": "Damaa nangu  ",
+    "termsOfUse": "Teggin jëfandikoo",
+    "termsAgreementSuffix": "",
+    "close": "Tëj",
+    "download": "Yeb",
+    "authRequiredTitle": "Bëgg nga yeb wideo bii?",
+    "authRequiredBody": "Fëpp bu Jesus Film bu fayul la war a am ngir yeb wideo yi.",
+    "signInToDownload": "Dugg ngir yeb",
+    "keepWatching": "Kontine a seet",
+    "checking": "Seetlu",
+    "closeTermsOfUse": "Tëj Teggin Jëfandikoo",
+    "cancel": "Dakkal",
+    "accept": "Nangu",
+    "errorSessionExpired": "Sa session yàgg na. Duggaat ngir yeb.",
+    "errorSessionUnavailable": "Mënul a seet sa session. Jéemaatal.",
+    "errorUnavailableSource": "Yeb bi amul ci bii jëmm",
+    "tierHighest": "Li gëna kawe",
+    "tierHigh": "Kawe",
+    "tierLow": "Suufe"
+  },
+  "HeroPlayerControls": {
+    "play": "Tambali",
+    "pause": "Taxawal",
+    "seek": "Seet",
+    "seekValue": "{current} ci {total}",
+    "volume": "Njàng",
+    "volumeValue": "{percent} ci juróom",
+    "mute": "Fay ko",
+    "unmute": "Wutaat kàddu",
+    "changeAudioLanguage": "Soppi làkku audio bi",
+    "enterFullscreen": "Dugg ci fullscreen",
+    "exitFullscreen": "Génn ci fullscreen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Tann làkk",
+    "searchPlaceholder": "Seet làkk yi…",
+    "languages": "Làkk yi",
+    "noMatches": "Amul lu méngoo",
+    "notAvailable": "Amul"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Làkk",
+    "dialogTitleWithSubtitles": "Làkk ak Suufrek",
+    "languageHeading": "Làkk",
+    "subtitlesHeading": "Suufrek",
+    "languageCount": "{count, plural, one {# làkk} other {# làkk yi}}",
+    "requestSent": "Daan ñaan",
+    "translateWithAi": "Soppi ak AI",
+    "noSubtitles": "Amul suufrek",
+    "toggleOn": "Dox",
+    "toggleOff": "Fay",
+    "close": "Tëj",
+    "apply": "Jëfandikoo",
+    "noLanguageSubtitles": "Amul {language} suufrek",
+    "seeAllLanguages": "Làkk yépp",
+    "seeAllVideosInLanguage": "Wideo yu yépp: {language}",
+    "retryLoadingLanguages": "Jéemaatal a daan làkk yi",
+    "notAvailable": "Amul",
+    "switching": "Soppi..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 épisode} other {# épisodes}}",
+    "seriesLabel": "SÉRIE · {episodes}",
+    "changeAudioLanguage": "Soppi làkku audio bi",
+    "share": "Partager",
+    "languages": "Làkk yi",
+    "downloadCollection": "Yeb àtte bi",
+    "checkingDownloads": "Seetlu yeb yi…",
+    "downloadSessionError": "Mënul a seet sa session. Jéemaatal."
+  },
+  "WatchModal": {
+    "close": "Tëj"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Soo mën a laaj ki bind wideo bii benn laaj, lan la dëgër?",
+    "fallbackBody": "Waxtaan bu seese ak ki bëgg a déglu la.",
+    "questionsShort": "Laaj yi",
+    "questions": "Laaj yu jëkk",
+    "askYours": "Laajal sa bopp",
+    "chatWithPerson": "Waxaat ak nit",
+    "askBibleQuestion": "Laajal laaj bu Biibël",
+    "quiz": "Laaj yu natt"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Mbiru bataaxal",
+    "fieldLabel": "Laajal laaj ci wideo bii",
+    "send": "Yónnee laaj bi",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Laajal laaj bu Biibël",
+        "description": "Réponse yu gaaw ci Biibël bi ak seetlu AI"
+      },
+      "prayerRequest": {
+        "label": "Ñaan",
+        "description": "Waxal li nga bëgg ñaan ci moom"
+      },
+      "comment": {
+        "label": "Bind comment",
+        "description": "Yónnee xalaat yi ci wideo bii"
+      },
+      "personChat": {
+        "label": "Waxaat ak nit",
+        "description": "Wax ak kenn léegi"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Partager wideo",
+    "heading": "Partager wideo bii",
+    "posterAlt": "Sooñ bu wideo bi",
+    "shareOnFacebook": "Partager ci Facebook",
+    "shareOnFacebookUnavailable": "Partager ci Facebook (amul ci bii build)",
+    "shareOnX": "Partager ci X",
+    "shareOnXUnavailable": "Partager ci X (amul ci bii build)",
+    "shareDisabledHint": "Partager bi dafa soxla benn page bu defu — dina dox bu wideo bii amee production.",
+    "shareFormat": "Ñaari waye partager",
+    "shareLinkTab": "Partager Link",
+    "embedCodeTab": "Code bu embed",
+    "copyFailed": "Mënul a copi automatique — falal teks bi ci suuf te copi ko bu yaatu.",
+    "copyLink": "Copi Link",
+    "copyCode": "Copi Code",
+    "copied": "Copi na",
+    "close": "Tëj"
+  },
+  "SubtitleTranscript": {
+    "heading": "Bindu wax ji",
+    "subheading": "Tappe benn liggéey ngir dem ci jamono boobu.",
+    "subtitleLanguage": "Làkku subtitles",
+    "aiSuffix": " · AI",
+    "loading": "Daan transcript bi…",
+    "unavailable": "Transcript bi amul ci track bu subtitles bii.",
+    "empty": "Amul benn line bu transcript."
+  },
+  "FloatingSearch": {
+    "placeholder": "Seet walla gëstu temaa yi…",
+    "openSearch": "Seet wideo yi",
+    "searchRegion": "Seet wideo yi",
+    "clearSearch": "Far seetlu bi",
+    "changeAudioLanguage": "Soppi làkku audio bi",
+    "home": "Kër Jesus Film Project",
+    "closeSearch": "Tëj seetlu bi",
+    "submitSearch": "Seet",
+    "library": "Kaŋ kayitaŋ"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Seet te gëstu wideo yi",
+    "home": "Kër Jesus Film Project",
+    "placeholder": "Seet walla gëstu temaa yi…",
+    "inputLabel": "Seet wideo yi ak baat bu néew",
+    "searchFailed": "Seetlu bi duggul. Jéemaatal.",
+    "loadMoreFailed": "Mënul a daan lu ëpp.",
+    "searching": "Daan...",
+    "connectionHint": "Wone sa ker wi te jéemaatal.",
+    "rateLimitHint": "Lajulo la kamboor. Kañu minit iñee, fuñsoom.",
+    "retrySearch": "Jéemaatal seetlu",
+    "retry": "Jéemaatal",
+    "noResults": "Amul benn lu méngoo ak \"{query}\"",
+    "tryDifferentKeywords": "Jéemaatal ak baat yu wuute walla gëstu kategori yi",
+    "loading": "Daan...",
+    "loadMore": "Daññ lu ëpp",
+    "categoryBibleStories": "Mbind yu Biibël",
+    "categoryParables": "Parabole",
+    "categoryAnimated": "Animé",
+    "categoryStudy": "Jàng",
+    "categoryFamily": "Famile",
+    "categoryChristmas": "Noël",
+    "searchLanguageLabel": "Seet làkk",
+    "allLanguages": "Làkk yépp",
+    "searchSuggestions": "Tegtal yu seetlu",
+    "directMatches": "Yi méngoo ci saa si",
+    "languages": "Làkk yi",
+    "recommendedLanguage": "Làkk bu ñu jàngal",
+    "searchSuggestion": "Seet {suggestion}",
+    "searchSuggestionWithLanguage": "Seet «{suggestion}» ci {language}",
+    "inLanguage": "ci {language}",
+    "browseByRegion": "Gëstu ci reew",
+    "allVideosOnSinglePage": "Wideo yu yépp ci benn xët",
+    "clearLanguages": "Far",
+    "queryLanguageDetected": "{language} ñaaw na",
+    "searchInLanguage": "Seet ci {language}",
+    "tryDifferentKeywordsOrLanguage": "Jéemaatal ak baat yu wuute walla tann beneen làkk bu seetlu",
+    "useWebsiteDefaultLanguage": "Jëfandikoo làkk bu ñu def ci sit bi",
+    "removeLanguage": "Faj {language}",
+    "browseMode": "Modu gëstu seet",
+    "searchingInLanguage": "Njureefu seetlu yi ci {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Seet léegi",
+    "tapToUnmute": "Tappe ngir wutaat kàddu",
+    "nextEpisode": "Episode bu topp",
+    "audioTranslationCount": "{count, plural, one {# làkk} other {# làkk yi}}",
+    "subtitleCount": "Suufrek: {count, plural, one {# làkk} other {# làkk yi}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Daan xibaar bi",
+    "loadingVideo": "Daan wideo bi"
+  },
+  "VideoLabels": {
+    "video": "Wideo",
+    "segment": "Kër",
+    "episode": "Épisode",
+    "featureFilm": "Filmu bu mag",
+    "shortFilm": "Filmu bu gàtt",
+    "series": "Série",
+    "collection": "Àtte",
+    "trailer": "Bande-annonce",
+    "behindTheScenes": "Ci ginaaw suuf",
+    "chapter": "Xet"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clip {current} ci {total}",
+    "position": "{current} ci {total}",
+    "chapterCount": "{count, plural, one {# xet} other {# xet yi}}",
+    "clipAriaLabel": "{title} · Clip {current} ci {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# xet} other {# xet yi}}",
+    "chapter": "Xet",
+    "noImage": "Amul nataal",
+    "playingNow": "Daan léegi",
+    "previousChapter": "Xet bu jiitu",
+    "nextChapter": "Xet bu topp",
+    "thumbnailAlt": "Nataal bu {title}",
+    "relatedVideoThumbnail": "Nataal bu wideo bu méngoo"
+  },
+  "SearchResultCard": {
+    "experience": "Expérience",
+    "episodeCount": "{count, plural, one {# épisode} other {# épisodes}}",
+    "thumbnailAlt": "Nataal bu wideo"
+  },
+  "Feedback": {
+    "openForm": "Ubbi form bu opinion",
+    "label": "Opinion",
+    "couldNotLoad": "Mënul a yomb form bu opinion bi.",
+    "loadingForm": "Daan form bu opinion bi…",
+    "retry": "Jéemaatal",
+    "cancel": "Dakkal",
+    "closeForm": "Tëj form bu opinion bi",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Wideo yu Kirist bu fayu ci {language} | Jesus Film Project",
+    "metadataDescription": "Gëstu fimu Jesús, xibaaru Biibël, series yu disciple, ak wideo yu outreach ak audio bu dubee walla subtitles ci {language}.",
+    "heroTitle": "Wideo yu Kirist bu fayu ci {language}",
+    "heroDescription": "Gëstu fimu Jesús, xibaaru Biibël, series yu disciple, ak wideo yu outreach yu am ci {language}. Wideo yu dubee bu baax ñoo jiitu, subtitles rekk ñoo nekk ci suuf.",
+    "languageCollection": "Àtte làkk",
+    "itemCount": "{count, plural, one {# élément} other {# éléments}}",
+    "videoCount": "{count, plural, one {# wideo} other {# wideo yi}}",
+    "videosInGroups": "{videoCount, plural, one {# wideo} other {# wideo yi}} ci {groupCount, plural, one {# group} other {# group yi}}",
+    "sectionNavLabel": "Pàkk yu inventory làkk",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Bés bu bees",
+    "videoBible": "Biibël bu wideo",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Àtte yi",
+    "subtitlesOnly": "Subtitles rekk",
+    "backToTop": "Sofukoŋ jaat",
+    "newlyAdded": "Añs bu bees",
+    "newVideosTitle": "Wideo yu Kirist yu bees ci {language}",
+    "newestFirst": "Yees bu jiitu",
+    "noPublishedVideos": "Amul benn wideo bu ñu yàgg ci làkk bii ba jii.",
+    "bibleAndGospelFilms": "Fimu yu Biibël ak Gospel",
+    "videoBibleCollectionsTitle": "Àtte yu {language} Video Bible",
+    "videoBibleDescription": "Àtte yu jëme ci Mbind mi, ci biir LUMO, JESUS, Magdalena, ak Acts ci {language}.",
+    "noVideoBibleCollections": "Amul benn àtte bu Video Bible ci làkk bii ba jii.",
+    "bibleProjectCollectionsTitle": "Àtte yu {language} BibleProject",
+    "bibleProjectDescription": "Series ak jàngat yu BibleProject yu am ci {language}.",
+    "noBibleProjectCollections": "Amul benn àtte bu BibleProject ci làkk bii ba jii.",
+    "sportsStories": "Xibaar yu sport",
+    "sportsTitle": "Xibaar yu sport ak ay athlete ci {language}",
+    "sportsDescription": "Xibaar yu sport yu jëm ci ngëm ak àtte yu athlete yu am ci {language}.",
+    "noSportsCollections": "Amul benn àtte bu sport walla xibaaru athlete ci làkk bii ba jii.",
+    "fullyDubbed": "Dubee bu mat",
+    "dubbedVideosTitle": "Wideo yu {language} ci àtte",
+    "dubbedVideosDescription": "Gëstu wideo yu {language} yu dubee bu mat, ñu xamle ko ak àtte mi ngir gëstu bu yomb.",
+    "noDubbedVideos": "Amul benn wideo bu dubee bu mat ci làkk bii ba jii.",
+    "subtitlesAvailable": "Subtitles am na",
+    "subtitlesTitle": "Wideo yu {language} ak subtitles",
+    "subtitlesDescription": "Wideo yii am nañu subtitles {language} bu {language} audio bu waxeegul ba noppi.",
+    "noSubtitleVideos": "Amul benn wideo bu subtitles rekk ci làkk bii ba jii.",
+    "dubbed": "Dubee",
+    "subtitles": "Sous-titres",
+    "newLabel": "Bés bu bees",
+    "fromCollection": "Ci {collection}",
+    "standaloneVideos": "Wideo yu këpp",
+    "videosFromCollection": "Wideo yu ñëw ci {collection}.",
+    "standaloneDescription": "Wideo yu këpp ci làkk bii.",
+    "openCollection": "Ubbi àtte",
+    "filters": "Kañaŋ",
+    "filterLength": "Bujaat",
+    "filterLength_under5": "Sikanaŋ 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Bukanaŋ 30 min",
+    "filterType": "Nabaj",
+    "clearFilters": "Buŋoŋ kañaŋ",
+    "filterResults": "{count} ka {total} bujukolaŋ",
+    "noFilterResults": "Awul widewo bumos nan kañaŋ yaayi. Buŋoŋ enoŋ.",
+    "filterAdded": "Bulaŋ",
+    "filterAdded_60d": "60 fanaŋ bujom",
+    "filterAdded_6m": "6 uroŋ bujom",
+    "filterAdded_12m": "12 uroŋ bujom"
+  },
+  "WatchHome": {
+    "pageTitle": "Watch bu Jesus Film Project",
+    "watch": "Seet",
+    "watchNow": "Seet léegi",
+    "mutePreview": "Fay preview",
+    "unmutePreview": "Wutaat preview",
+    "nextVideo": "Wideo bu topp",
+    "featured": "Fekk",
+    "showVideo": "Wone {title}",
+    "previousVideoPreview": "Preview bu wideo bu jiitu",
+    "nextVideoPreview": "Preview bu wideo bu topp",
+    "mediaCollection": "Collection de médias",
+    "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Kër Jesus Film Project",
+    "navigation": "Navigation bu footer",
+    "share": "Partager",
+    "watch": "Seet",
+    "giving": "Jox",
+    "about": "Ci mbir",
+    "products": "Produits",
+    "resources": "Jëmmi yomb",
+    "partners": "Partner yi",
+    "contact": "Kontakt",
+    "giveNow": "Jox léegi",
+    "resourcesVersion": "Jëmmi yomb ({version})",
+    "office": "Biro",
+    "fax": "Faks",
+    "privacyPolicy": "Politique bu privacy",
+    "legalStatement": "Déclaration bu juridique",
+    "newsletter": "Bindu ci sunu newsletter",
+    "aiAttributionHeading": "Jëfandikoo AI ak jox sa tur",
+    "aiAttributionBody": "Jëfandikoo ay xibaar yu wii pàj bi ci sistemu artificial intelligence dañu koy waajal ci jox sa tur. Bokk na ci loolu: beneen AI agent, large language model (LLM), AI search engine, crawler, walla beneen sistemu automatiku bu mel ni loolu bu jële walla jëfandikoo xibaar yi ci wii pàj bi ngir tàmbali, wut, indil tontu, walla jëfandikoo ci seen mbir bu ñu jox jëfandikoo-réew mi, ñu war a jaxase Jesus Film Project ni źàmbaar bi, te ñu yokk ci beneen link bu leer te jub ci wii pàj bi fuñu jëfandikoo walla wonale xibaar boobu. Seet sunu <terms>Conditions d’utilisation</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Jëme ci misyon yu àddina",
+    "title": "Mbind mi du soppi. Waaye ni ñi gëstu ko, dafa soppi.",
+    "description": "Nun dañuy defaat sunu library wideo ak tool yi dale ko ci ndaw, ngir doxal jafe-jafe yu ay jàngat ak platform yi nit ñi giàmm a di jote, seet, ak partage.",
+    "translatedLibraryTitle": "Library bu film bu gëna ñuñu ci àddina",
+    "translatedLibraryDescription": "Ay duk su gëna yàgg ci liggéeyu translate, ñu miin ci partner yu ñu wóor, def nañu library bu am ñetti-ñetti language tracks ngir nit ñi mën a daldi fekk xibaaru Yeesu ci làkk bu leen di teewal.",
+    "trustedVoicesTitle": "Jokkoo baat yu ñu wóor ci form yu bees",
+    "trustedVoicesDescription": "Nun dañuy defaat ni xibaaru Gospel yi di wonee ci nataal, teewlu ko ci translate yu ñu wóor ak form yu bees ngir xibaar mi mën a dem ci platform yi, culture yi, ak ekrãn yi.",
+    "missionTeamTitle": "Dafay ëpp ci library rekk. Ñu am team bu jëme ci misyon.",
+    "missionTeamDescription": "Jesus Film Project mooy team bu àddina bu translateur, media specialists, editurs, ak creators yu tax ay yoon yu yàgg ci ministry màndi jëfandikoo ngir ñiy jàngal nit ñépp.",
+    "buildingNext": "Li nu đang defaat nii",
+    "nextStepsTitle": "Platform bu Next Steps",
+    "nextStepsDescription": "Jokkoo seetkat yi ak yoon yu am solo ci seen yoonu xel, di leen dimbali ñu jël benn next step ci communautaire, Mbind, walla misyon.",
+    "mediaLibraryTitle": "Library bu media bu evangelistic",
+    "mediaLibraryDescription": "Library bu media bu Kirist bu am ay wideo, fimu, ak jëmmi yomb yu bare ci ñetti làkk, ngir ministry ak évangélisation ci àddina sépp.",
+    "ministryToolsTitle": "Tool yu digital ngir ministries",
+    "ministryToolsDescription": "Video management, gàmmu xibaar, engagement bu audience, ak analytics yu ñu def ngir dimbali ministries ñu jot ñu bare ak jafe-jafe lu baax.",
+    "invitationEyebrow": "Ngeen am ngir ñëw",
+    "invitationTitle": "Dimbalil ginnaaw <highlight>gépp jëmm bu bees</highlight> bu tool yu misyon",
+    "invitationDescription": "Dañoo woo jëfandikukat, creators, ak partner yi ci early access. Jéem tool yu bees yi jëkk, jox feedback, te dimbali a def products yu ñu def ngir liggéeyu misyon bu réy.",
+    "betaTester": "Doxalul beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Àtte bu Video Bible",
+    "gospelRailTitle": "Fekk xibaar bi mu mat",
+    "videoBibleDescription": "Gëstu sunu àtte wideo ak jëmmi yomb yi di wone Biibël ak xibaar yu jàmm ak jàngat yu am solo.",
+    "showcaseTitle": "Mbind mi ñu waxe ci film",
+    "adventEyebrow": "Avent bu Noël",
+    "adventTitle": "Sañsaanu Avent bu Noël",
+    "adventDescription": "Jëme ci sunu yoonu Advent ak wideo bu bes bu bees di yokk coono ci Noël, di gëstu yaakaar, bànneex, ak kàttan yu ñëw Yeesu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Avent BibleProject",
+    "nuaEyebrow": "Series bu NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Series bu Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Cours bu wideo",
+    "journeyWithJesusTitle": "Yoon wi ak Yeesu",
+    "gospelsOnVideoEyebrow": "Kaadaal bu Gospels, ñu waxe ci wideo",
+    "scriptureAsWrittenTitle": "Mbind mi, ñu wax ko ni mu bindee",
+    "merryChristmas": "Noël bu neex!",
+    "daysUntilChristmas": "{count, plural, one {# fan ba Noël} other {# fan yi ba Noël}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Làkk yi",
+    "metadataDescription": "Gëstu wideo yu JesusFilm ci làkk.",
+    "eyebrow": "Làkk yu watch",
+    "title": "Tann benn làkk",
+    "description": "Gëstu làkk yi ci reew walla seet li yépp.",
+    "searchPlaceholder": "Seet làkk yi walla reew yi...",
+    "searchLabel": "Seet làkk yi walla reew yi",
+    "clearSearch": "Far seetlu bi",
+    "browse": "Gëstu",
+    "browseByRegion": "Gëstu ci reew ak gëdd",
+    "languageCount": "{count, plural, one {# làkk} other {# làkk yi}}",
+    "region": "Reew",
+    "countryLanguages": "Làkk yu {country}",
+    "showLess": "Wone lu gëna tuuti",
+    "showMore": "Wone {count} lu gëna bare",
+    "noLanguages": "Amul làkk bu ñu fekk",
+    "tryAnotherSearch": "Jéemal beneen baat bu seetlu."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Istwa bu seet | Jesus Film Project",
+    "title": "Istwa bu seet",
+    "loading": "Daan istwa bi",
+    "empty": "Amul dara fii",
+    "emptyDescription": "Wideo yi nga seet te nga dugg sẽdinañu fii.",
+    "earlier": "Ba noppi",
+    "today": "Bésub tey",
+    "yesterday": "Bésub ëllëg"
+  },
+  "AccountControl": {
+    "account": "Compte",
+    "accountMenu": "Menu bu account",
+    "signIn": "Dugg",
+    "signOut": "Génn",
+    "signedIn": "Duggu na",
+    "history": "Istwa",
+    "logOut": "Génn"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Page bi amul",
+    "eyebrow": "Page bi amul",
+    "screenReaderPrefix": "Page bi amul:",
+    "title": "Scene bii amul fii.",
+    "description": "Page bi mën na dem, waaye xibaar bi kontine na.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Jëf yi page bi amul",
+    "backToWatch": "Dellusi ci Watch",
+    "browseVideos": "Gëstu wideo yi"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% méngoo",
+    "none": "Amul benn wideo bu ñu digal ngir wideo bii ci làkk bii."
+  },
+  "BetaTesterModal": {
+    "title": "Doxalul beta tester",
+    "trigger": "Doxalul beta tester",
+    "loadFailed": "Am na lu ne xewul.",
+    "loading": "Daan...",
+    "openFormNewTab": "Ubbi form bi ci beneen onglet",
+    "close": "Tëj",
+    "iframeTitle": "Doxalul beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Yeb àtte bi",
+    "eyebrow": "Yeb àtte bi",
+    "description": "Tann làkk ak kalite benn yoon. Épisode bu nekk te am dina yeb ci toppante bi.",
+    "signInTitle": "Dugg ngir yeb",
+    "signInBody": "Yeb àtte yi dina am ginnaaw bu nga duggee ak compte bu Jesus Film.",
+    "signIn": "Dugg ngir yeb",
+    "languageLabel": "Làkk",
+    "qualityLabel": "Kalite wideo",
+    "tierHighest": "Li gëna kawe",
+    "tierHigh": "Kawe",
+    "tierLow": "Suufe",
+    "loading": "Seet épisode yi mën a yeb…",
+    "loadError": "Mënul a daan yeb yi ci làkk bii.",
+    "retry": "Jéemaatal",
+    "noDownloads": "Amul benn épisode bu mën a yeb ci làkk bii.",
+    "availableCount": "{count, plural, one {# épisode pare na} other {# épisodes pare nañu}}",
+    "skippedCount": "{count, plural, one {Dinañu bàyyi # épisode ndax amul} other {Dinañu bàyyi # épisodes ndax amuñu}}",
+    "chooseFolder": "Tann dosiye bu yeb yi",
+    "folderSelected": "Sàmm ci {name}",
+    "folderError": "Mënul a ubbi dosiye bu yeb yi.",
+    "browserFallback": "Sa browser dina sàmm bépp dencukaay ci ni mu daan yebee. Mën na la laaj nga may ko mu yeb ay dencukaay yu bare.",
+    "sessionError": "Mënul a seet sa session. Jéemaatal.",
+    "downloading": "Daan yeb {title}",
+    "progress": "{completed} ci {total}",
+    "complete": "Yeb yi jeex nañu",
+    "canceled": "Yeb yi dakkal nañu",
+    "failedCount": "{count, plural, one {# épisode lajj na} other {# épisodes lajj nañu}}. Tannaat « Yebaat » ngir jéemaatal àtte bi.",
+    "close": "Tëj",
+    "cancel": "Dakkal",
+    "start": "Yeb lépp",
+    "downloadAgain": "Yebaat",
+    "retryFailed": "Jéemaatal yi lajj"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Bersionu kaji kanam katea",
+    "eyebrow": "Bersionu kaji kanam katea",
+    "title": "<contentTitle>{title}</contentTitle> katea di <languageName>{language}</languageName>",
+    "actionsLabel": "Kañu kañu di gisa",
+    "browseInLanguage": "Gis video yi di {language}",
+    "backToSearch": "Délut di sayo",
+    "audioVersionsTitle": "Bersion audio yeneen",
+    "audioVersionsDescription": "Tan kanam audio ban man gis video bii di kanam.",
+    "languageVersionLabel": "Kanam audio",
+    "selectLanguageVersion": "Tan bersionu kanam",
+    "watchSelectedVersion": "Gis bersion bi nga tan"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tànn yi ci cookie",
+    "bannerTitle": "Say tànn ci sutura sa bopp",
+    "bannerDescription": "Cookie yu soxla yi dañuy tax Watch am kaaraange te muy liggéey bu baax. Bu nga maye, benn cookie buy jot ci saet bi mën na fàttali sa yiw ngir solo ndigal yi ci wàll visit yi nga di dellu. Ndigal yu aju ci li ngay seet dañuy nekk maslaa sax.",
+    "acceptAll": "Nangu lépp",
+    "essentialOnly": "Yi soxla rekk",
+    "manageChoices": "Saytu tànn yi",
+    "savingChoice": "Mi ngi denc tànn cookie bi",
+    "settings": "Parameetar yu cookie",
+    "settingsDescription": "Tànnal ndax Watch man na fàttali sa yiw ci ndigal yi ci diggante visit yi ngay def. Mën nga ko soppi saa su ne.",
+    "essentialCookies": "Cookie yu soxla",
+    "essentialDescription": "Kaaraange, play, tànn yu sutura sa bopp, ak xamle ki laaj ndigal yi.",
+    "alwaysActive": "Dafa doon liggéey saa su ne",
+    "personalization": "Solo ku ñuul",
+    "personalizationDescription": "Fàttali yiw yi ñu teg kem-kem ci diggante visit yi. Su nga ko tëjée, ndigal yu aju ci li ngay seet dinañu nekk.",
+    "erasurePending": "Mbugal far sa profayl bi mi ngi xaar. Ndigal yu aju ci li ngay seet tàmbali na ba noppi.",
+    "cancel": "Neenal",
+    "saveChoices": "Denc tànn yi",
+    "saving": "Mi ngi denc…",
+    "loadError": "Mënu ñu yebbi sa tànn. Waaye mën nga tànn ci suuf.",
+    "grantError": "Mënu ñu doxal personalization bi. Yi soxla rekk lañuy wéyal.",
+    "saveError": "Mënu ñu denc sa tànn. Jéemaatal."
+  }
+}

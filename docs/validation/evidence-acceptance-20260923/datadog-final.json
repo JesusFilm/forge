@@ -1,0 +1,149 @@
+{
+  "window": {
+    "begin": "2026-09-23T04:30:00Z",
+    "endExclusive": "2026-09-23T06:30:00Z"
+  },
+  "source": "Datadog indexed recommendation.evidence messages scoped to exact running primary instance hostnames",
+  "web": [
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=facts outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+      "events": "3513"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=evidence outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+      "events": "1472"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+      "events": "681"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=crawler_rejected timeoutStage=none retryDisposition=terminal crawler=recognized httpStatus=403",
+      "events": "350"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=403",
+      "events": "295"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=context outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+      "events": "279"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=claim outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+      "events": "256"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=select outcome=accepted reason=none timeoutStage=none retryDisposition=none crawler=not_recognized httpStatus=200",
+      "events": "13"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=facts outcome=replay reason=none timeoutStage=none retryDisposition=idempotent_replay crawler=not_recognized httpStatus=200",
+      "events": "8"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=401",
+      "events": "6"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=evidence outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+      "events": "6"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=facts outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=401",
+      "events": "2"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=claim outcome=rejected reason=invalid_binding timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=409",
+      "events": "1"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=playback outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+      "events": "1"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=select outcome=rejected reason=invalid_request timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=400",
+      "events": "1"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=claim outcome=rejected reason=forbidden timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=401",
+      "events": "1"
+    },
+    {
+      "service": "forge-web",
+      "message": "event=recommendation.evidence source=web action=facts outcome=rejected reason=invalid_binding timeoutStage=none retryDisposition=terminal crawler=not_recognized httpStatus=409",
+      "events": "1"
+    }
+  ],
+  "admin": [
+    {
+      "service": "forge-admin",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=accepted reason=none retryDisposition=none",
+      "events": "3516"
+    },
+    {
+      "service": "forge-admin",
+      "message": "event=recommendation.evidence source=admin action=claim outcome=accepted",
+      "events": "256"
+    },
+    {
+      "service": "forge-admin",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1",
+      "events": "46"
+    },
+    {
+      "service": "forge-admin",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=replay reason=none retryDisposition=idempotent_replay",
+      "events": "8"
+    },
+    {
+      "service": "forge-admin",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2",
+      "events": "6"
+    },
+    {
+      "service": "forge-admin",
+      "message": "event=recommendation.evidence source=admin action=facts outcome=rejected reason=invalid_binding retryDisposition=terminal",
+      "events": "1"
+    },
+    {
+      "service": "forge-admin",
+      "message": "event=recommendation.evidence source=admin action=claim outcome=rejected reason=invalid_binding retryDisposition=terminal",
+      "events": "1"
+    }
+  ],
+  "worker": [
+    {
+      "service": "forge-admin-worker",
+      "message": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=1",
+      "events": "13"
+    },
+    {
+      "service": "forge-admin-worker",
+      "message": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=2",
+      "events": "1"
+    },
+    {
+      "service": "forge-admin-worker",
+      "message": "event=recommendation.evidence source=admin action=finalize outcome=failed reason=transaction_busy retryDisposition=retryable retryAttempt=3",
+      "events": "1"
+    }
+  ],
+  "collectionTiming": "After the fixed window ended and ingestion settled"
+}

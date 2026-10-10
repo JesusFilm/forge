@@ -1,68 +1,56 @@
-import { StyleSheet, View } from "react-native"
+import { ImageBackground, StyleSheet, View } from "react-native"
 
-import type {
-  SectionBackgroundColor,
-  SectionWrapperSection,
-} from "../../lib/sectionModels"
-import { useIsInsideHero } from "./HeroSectionContext"
-import {
-  SectionColorSchemeContext,
-  type ColorScheme,
-} from "./SectionColorSchemeContext"
-import { ContentDispatcher } from "./SectionDispatcher"
+import { layout } from "../../styles/shared"
+import type { AdminBlock } from "../../lib/queries"
+import { ContentDispatcher } from "./ContentDispatcher"
+
+// ── Types ───────────────────────────────────────────────────────────────────
 
 export interface SectionWrapperRendererProps {
-  section: SectionWrapperSection
+  section: AdminBlock
 }
 
-const backgroundColors: Record<SectionBackgroundColor, string> = {
-  default: "#f5f5f5",
-  light: "#fafafa",
-  dark: "#1a1a1a",
-  primary: "#CB333B",
-}
-
-const colorSchemes: Record<SectionBackgroundColor, ColorScheme> = {
-  default: "dark",
-  light: "dark",
-  dark: "light",
-  primary: "light",
-}
+// ── Component ───────────────────────────────────────────────────────────────
 
 export function SectionWrapperRenderer({
   section,
 }: SectionWrapperRendererProps) {
-  const { backgroundColor, content } = section
-  const insideHero = useIsInsideHero()
-  // TODO: render blurHash background when react-native-blurhash is added
-
-  const bgColor =
-    backgroundColor && !insideHero
-      ? backgroundColors[backgroundColor]
-      : undefined
-
-  const colorScheme: ColorScheme = insideHero
-    ? "light"
-    : backgroundColor
-      ? colorSchemes[backgroundColor]
-      : "dark"
+  const s = section as Record<string, unknown>
+  const content = (s.sectionContent as AdminBlock[] | undefined) ?? []
+  const backgroundImageUrl =
+    typeof s.backgroundImageUrl === "string" ? s.backgroundImageUrl : ""
+  const outerStyle = [
+    layout.sectionOuter,
+    backgroundImageUrl ? styles.withImage : null,
+  ]
 
   return (
-    <View
-      style={[
-        styles.container,
-        bgColor != null && { backgroundColor: bgColor },
-      ]}
-    >
-      <SectionColorSchemeContext.Provider value={colorScheme}>
-        {content.length > 0 && <ContentDispatcher content={content} />}
-      </SectionColorSchemeContext.Provider>
+    <View style={outerStyle}>
+      {backgroundImageUrl ? (
+        <ImageBackground
+          source={{ uri: backgroundImageUrl }}
+          resizeMode="cover"
+          style={styles.imageBackground}
+        >
+          <View style={styles.imageOverlay}>
+            {content.length > 0 && <ContentDispatcher content={content} />}
+          </View>
+        </ImageBackground>
+      ) : (
+        content.length > 0 && <ContentDispatcher content={content} />
+      )}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: {
-    marginVertical: 4,
+  imageBackground: {
+    overflow: "hidden",
+  },
+  imageOverlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.35)",
+  },
+  withImage: {
+    overflow: "hidden",
   },
 })

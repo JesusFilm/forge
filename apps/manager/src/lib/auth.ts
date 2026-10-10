@@ -1,33 +1,55 @@
 // API route authentication.
 // Supports two auth methods:
-// 1. Strapi JWT cookie (set by /api/auth/login) — for dashboard UI
+// 1. Manager-local OAuth session cookie (set by /api/auth/callback)
 // 2. Bearer token header (MANAGER_API_KEY) — for external API clients
 // Auth is enforced in all environments (dev included).
 
 import { timingSafeEqual } from "node:crypto"
 import { NextResponse } from "next/server"
 import { env } from "@/config/env"
+import { validateAdminManagerSession } from "@/lib/admin-manager-session"
+import {
+  MANAGER_SESSION_COOKIE,
+  readManagerSessionCookie,
+  type ManagerSessionPrincipal,
+} from "@/lib/manager-session-cookie"
+import {
+  hasReviewerLanguageGrant as hasExactReviewerLanguageGrant,
+  type ReviewerLanguageGrant,
+} from "@/lib/reviewer-session"
 
-type StrapiUser = {
-  id: number
+export type ManagerAuthenticatedUser = {
+  id: string
   username: string
   email: string
-  role?: {
-    name: string
-    type: string
-  }
+  role: { name: "Manager"; type: "manager" }
 }
 
 export type ManagerOverrideActor =
   | {
       kind: "session"
-      user: StrapiUser
+      user: ManagerAuthenticatedUser
       approvedByUserId: string
     }
   | {
       kind: "api_key"
       approvedByUserId: string
     }
+
+export type ManagerInteractiveActor = Extract<
+  ManagerOverrideActor,
+  { kind: "session" }
+>
+
+export type ManagerReviewerSession = ManagerSessionPrincipal & {
+  managerRole: "REVIEWER"
+  reviewerLanguageGrants: ReviewerLanguageGrant[]
+}
+
+export type ManagerReviewerActor = {
+  kind: "reviewer_session"
+  session: ManagerReviewerSession
+}
 
 function isValidManagerApiKey(token: string): boolean {
   const apiKey = env.MANAGER_API_KEY
@@ -40,75 +62,68 @@ function isValidManagerApiKey(token: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b)
 }
 
-/**
- * Fetches a Strapi user by ID with role populated using the admin API token.
- * Private — callers must only pass IDs obtained from a verified source
- * (JWT-validated /api/users/me or /api/auth/local response).
- */
-export async function fetchUserWithRole(
-  userId: number,
-): Promise<StrapiUser | null> {
-  try {
-    const response = await fetch(
-      `${env.STRAPI_URL}/api/users/${userId}?populate=role`,
-      {
-        headers: { Authorization: `Bearer ${env.STRAPI_API_TOKEN}` },
-        signal: AbortSignal.timeout(5000),
-      },
-    )
-
-    if (!response.ok) {
-      return null
-    }
-
-    return (await response.json()) as StrapiUser
-  } catch {
+export async function verifyManagerSession(
+  token: string,
+): Promise<ManagerAuthenticatedUser | null> {
+  const session = await readValidatedManagerSessionCookie(token)
+  if (!session || session.managerRole !== "OPERATOR") {
     return null
   }
+
+  return toManagerUser(session)
+}
+
+export async function verifyReviewerSession(
+  token: string,
+): Promise<ManagerReviewerSession | null> {
+  const session = await readValidatedManagerSessionCookie(token)
+  return session?.managerRole === "REVIEWER"
+    ? (session as ManagerReviewerSession)
+    : null
+}
+
+export async function resolveManagerLandingPathForSession(
+  token: string,
+): Promise<"/dashboard/coverage" | "/subtitle-review" | null> {
+  const session = await readValidatedManagerSessionCookie(token)
+  if (!session) return null
+  return session.managerRole === "REVIEWER"
+    ? "/subtitle-review"
+    : "/dashboard/coverage"
 }
 
 /**
- * Verifies a Strapi JWT signature by calling /api/users/me.
- * Strapi returns 401 for invalid/expired JWTs, 200 or 403 for valid ones.
- * A 403 means the JWT is genuine but the role lacks the "me" permission —
- * in that case we decode the trusted user ID from the validated JWT.
- * Returns the user with role populated via admin API token.
+ * Reviewer-only interactive guard. It never accepts MANAGER_API_KEY and uses
+ * a non-disclosing 404 for every denial so future assignment/artifact routes
+ * do not reveal reviewer or language-bound resource existence.
  */
-export async function verifyStrapiJwtWithRole(
-  jwt: string,
-): Promise<StrapiUser | null> {
-  try {
-    const meResponse = await fetch(`${env.STRAPI_URL}/api/users/me`, {
-      headers: { Authorization: `Bearer ${jwt}` },
-      signal: AbortSignal.timeout(5000),
-    })
-
-    if (meResponse.status === 401) {
-      return null // JWT invalid or expired
-    }
-
-    let userId: number | undefined
-
-    if (meResponse.ok) {
-      // 200 — JWT valid and role has "me" permission
-      const me = (await meResponse.json()) as { id: number }
-      userId = me.id
-    } else if (meResponse.status === 403) {
-      // 403 — JWT signature is valid (Strapi verified it) but role lacks
-      // the "me" permission. Decode the user ID from the verified JWT.
-      const parts = jwt.split(".")
-      if (parts.length !== 3) return null
-      const payload = JSON.parse(
-        Buffer.from(parts[1], "base64url").toString(),
-      ) as { id?: number }
-      userId = payload.id
-    }
-
-    if (!userId) return null
-    return await fetchUserWithRole(userId)
-  } catch {
-    return null
+export async function authenticateInteractiveReviewerRequest(
+  request: Request,
+): Promise<ManagerReviewerActor | NextResponse> {
+  const session = await readAnySessionFromCookieHeader(
+    request.headers.get("cookie"),
+  )
+  if (session?.managerRole !== "REVIEWER") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
+
+  return {
+    kind: "reviewer_session",
+    session: session as ManagerReviewerSession,
+  }
+}
+
+/** Exact Admin Language.id + Language.slug authorization; never BCP-47. */
+export function hasReviewerLanguageGrant(
+  session: Pick<ManagerReviewerSession, "reviewerLanguageGrants">,
+  languageId: string,
+  languageSlug: string,
+): boolean {
+  return hasExactReviewerLanguageGrant(
+    session.reviewerLanguageGrants,
+    languageId,
+    languageSlug,
+  )
 }
 
 export async function authenticateRequest(
@@ -123,25 +138,61 @@ export async function authenticateRequest(
     }
   }
 
-  // Check Strapi JWT cookie (for dashboard UI)
-  // Verify the JWT signature via Strapi's /api/users/me, then check the role.
-  const cookieHeader = request.headers.get("cookie") ?? ""
-  const jwtMatch = cookieHeader.match(/strapi-jwt=([^;]+)/)
-  if (jwtMatch?.[1]) {
-    const user = await verifyStrapiJwtWithRole(jwtMatch[1])
-    if (user?.role?.name === "Manager") {
-      return null // Authenticated via validated Strapi session
-    }
-    return NextResponse.json(
-      { error: "Invalid or expired token" },
-      { status: 401 },
-    )
+  const session = await readSessionFromCookieHeader(
+    request.headers.get("cookie"),
+  )
+  if (session) {
+    return null
   }
 
   return NextResponse.json(
     { error: "Authentication required" },
     { status: 401 },
   )
+}
+
+export function authenticateServiceBearerRequest(
+  request: Request,
+): NextResponse | null {
+  const authHeader = request.headers.get("authorization")
+  if (authHeader?.startsWith("Bearer ")) {
+    const token = authHeader.slice(7)
+    if (isValidManagerApiKey(token)) {
+      return null
+    }
+  }
+
+  return NextResponse.json(
+    { error: "Service bearer token required" },
+    { status: 403 },
+  )
+}
+
+export async function authenticateInteractiveManagerRequest(
+  request: Request,
+): Promise<ManagerInteractiveActor | NextResponse> {
+  const session = await readSessionFromCookieHeader(
+    request.headers.get("cookie"),
+  )
+  if (!session) {
+    const hasBearer = request.headers
+      .get("authorization")
+      ?.startsWith("Bearer ")
+    return NextResponse.json(
+      {
+        error: hasBearer
+          ? "Interactive Manager session required; service keys cannot perform this action"
+          : "Interactive Manager session required",
+      },
+      { status: hasBearer ? 403 : 401 },
+    )
+  }
+
+  return {
+    kind: "session",
+    user: toManagerUser(session),
+    approvedByUserId: session.id,
+  }
 }
 
 export async function authenticateManagerOverrideRequest(
@@ -163,28 +214,108 @@ export async function authenticateManagerOverrideRequest(
     )
   }
 
-  // Check Strapi JWT cookie (for dashboard UI)
-  // Verify the JWT signature via Strapi's /api/users/me, then check the role.
-  const cookieHeader = request.headers.get("cookie") ?? ""
-  const jwtMatch = cookieHeader.match(/strapi-jwt=([^;]+)/)
-  if (!jwtMatch?.[1]) {
+  const session = await readSessionFromCookieHeader(
+    request.headers.get("cookie"),
+  )
+  if (!session) {
     return NextResponse.json(
       { error: "Interactive Manager session or API key required" },
       { status: 403 },
     )
   }
 
-  const user = await verifyStrapiJwtWithRole(jwtMatch[1])
-  if (user?.role?.name === "Manager") {
-    return {
-      kind: "session",
-      user,
-      approvedByUserId: String(user.id),
-    }
+  return {
+    kind: "session",
+    user: toManagerUser(session),
+    approvedByUserId: session.id,
+  }
+}
+
+// Display identity for audit fields derived from the authenticated actor
+// (NEVER the request body): the session user's email when available, the
+// stable user id otherwise, and the service principal for API-key callers.
+// Extracted from the smart-crop approve route's inline pattern so the shorts
+// routes (create requestedBy, draft updatedBy, render launch log) share one
+// definition.
+export function managerActorIdentity(actor: ManagerOverrideActor): string {
+  return actor.kind === "session"
+    ? actor.user.email || actor.approvedByUserId
+    : actor.approvedByUserId
+}
+
+async function readSessionFromCookieHeader(
+  cookieHeader: string | null,
+): Promise<ManagerSessionPrincipal | null> {
+  const session = await readAnySessionFromCookieHeader(cookieHeader)
+  return session?.managerRole === "OPERATOR" ? session : null
+}
+
+async function readAnySessionFromCookieHeader(
+  cookieHeader: string | null,
+): Promise<ManagerSessionPrincipal | null> {
+  const token = readCookie(cookieHeader, MANAGER_SESSION_COOKIE)
+  return readValidatedManagerSessionCookie(token)
+}
+
+async function readValidatedManagerSessionCookie(
+  token?: string,
+): Promise<ManagerSessionPrincipal | null> {
+  const session = await readManagerSessionCookie(token)
+  if (!session) {
+    return null
   }
 
-  return NextResponse.json(
-    { error: "Interactive Manager session or API key required" },
-    { status: 403 },
-  )
+  if (isMockManagerMode()) {
+    return session
+  }
+
+  try {
+    const adminSession = await validateAdminManagerSession({
+      subject: session.subject,
+      email: session.email,
+      name: session.name,
+    })
+
+    if (!adminSession) {
+      return null
+    }
+
+    return {
+      ...session,
+      id: adminSession.user.id,
+      email: adminSession.user.email,
+      name: adminSession.user.name ?? session.name,
+      managerRole: adminSession.managerRole,
+      reviewerLanguageGrants: adminSession.reviewerLanguageGrants,
+    }
+  } catch (error) {
+    console.warn("manager.auth.session_validation_failed", {
+      message: error instanceof Error ? error.message : "unknown",
+    })
+
+    return null
+  }
+}
+
+function isMockManagerMode() {
+  return (env.MANAGER_BACKEND_MODE ?? env.MANAGER_DATA_MODE) === "mock"
+}
+
+function readCookie(cookieHeader: string | null, name: string) {
+  return cookieHeader
+    ?.split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(`${name}=`))
+    ?.slice(name.length + 1)
+}
+
+function toManagerUser(
+  session: ManagerSessionPrincipal,
+): ManagerAuthenticatedUser {
+  return {
+    id: session.id,
+    username: session.name ?? session.email,
+    email: session.email,
+    role: { name: "Manager", type: "manager" },
+  }
 }

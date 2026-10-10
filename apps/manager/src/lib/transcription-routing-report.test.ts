@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest"
 import {
   buildInitialTranscriptionRoutingReport,
-  getUnresolvedElevenLabsFailureReason,
   getTranscriptionRoutingReport,
+  getUnresolvedElevenLabsFailureReason,
   hasUnresolvedElevenLabsFailure,
   setTranscriptionRoutingReport,
 } from "@/lib/transcription-routing-report"
@@ -12,10 +12,11 @@ describe("transcription routing report", () => {
     expect(
       buildInitialTranscriptionRoutingReport({
         sourceInputUrl:
-          "https://cdn.example.com/video.mp4?token=123#operator-note",
+          "https://user:secret@cdn.example.com/video.mp4?token=123#operator-note",
       }),
     ).toEqual({
       sourceInputUrl: "https://cdn.example.com/video.mp4",
+      sourceInputHost: "cdn.example.com",
       attempts: [],
     })
   })
@@ -47,6 +48,7 @@ describe("transcription routing report", () => {
 
     expect(getTranscriptionRoutingReport(artifacts)).toEqual({
       sourceInputUrl: "https://cdn.example.com/video.mp4",
+      sourceInputHost: "cdn.example.com",
       finalProvider: "mux",
       finalSourceLanguageCode: "en",
       attempts: [
@@ -65,22 +67,145 @@ describe("transcription routing report", () => {
     })
   })
 
-  it("redacts source input credentials when reading a persisted routing report artifact", () => {
+  it("does not persist raw source input urls", () => {
     const artifacts = setTranscriptionRoutingReport(
-      {
-        transcript: { kind: "downloadable" },
-      },
+      {},
       {
         sourceInputUrl:
-          "https://cdn.example.com/video.mp4?token=123&expires=456#fragment",
+          "https://user:secret@cdn.example.com/video.mp4?token=123#note",
+        attempts: [],
+      },
+    )
+    const persistedRouting = artifacts.transcriptionRouting
+
+    expect(persistedRouting.kind).toBe("metadata")
+    if (persistedRouting.kind !== "metadata") return
+
+    const persistedPayload = JSON.stringify(persistedRouting.data)
+    expect(persistedPayload).not.toContain("user:secret")
+    expect(persistedPayload).not.toContain("token=123")
+    expect(persistedPayload).not.toContain("#note")
+    expect(persistedRouting.data).toMatchObject({
+      sourceInputUrl: "https://cdn.example.com/video.mp4",
+      sourceInputHost: "cdn.example.com",
+    })
+    expect(getTranscriptionRoutingReport(artifacts)).toEqual({
+      sourceInputUrl: "https://cdn.example.com/video.mp4",
+      sourceInputHost: "cdn.example.com",
+      attempts: [],
+    })
+  })
+
+  it("does not persist raw source input hosts", () => {
+    const artifacts = setTranscriptionRoutingReport(
+      {},
+      {
+        sourceInputHost:
+          "https://user:secret@host.example.com/private/video.mp4?token=123#note",
+        attempts: [],
+      },
+    )
+    const persistedRouting = artifacts.transcriptionRouting
+
+    expect(persistedRouting.kind).toBe("metadata")
+    if (persistedRouting.kind !== "metadata") return
+
+    const persistedPayload = JSON.stringify(persistedRouting.data)
+    expect(persistedPayload).not.toContain("secret")
+    expect(persistedPayload).not.toContain("token=123")
+    expect(persistedPayload).not.toContain("/private/video.mp4")
+    expect(persistedRouting.data).toMatchObject({
+      sourceInputHost: "host.example.com",
+    })
+    expect(persistedRouting.data).not.toHaveProperty("sourceInputUrl")
+    expect(getTranscriptionRoutingReport(artifacts)).toEqual({
+      sourceInputHost: "host.example.com",
+      attempts: [],
+    })
+  })
+
+  it("falls back to source input url when source input host is malformed", () => {
+    const artifacts = setTranscriptionRoutingReport(
+      {},
+      {
+        sourceInputHost: "internal/path?token=123",
+        sourceInputUrl:
+          "https://user:secret@cdn.example.com/video.mp4?token=123#note",
         attempts: [],
       },
     )
 
     expect(getTranscriptionRoutingReport(artifacts)).toEqual({
       sourceInputUrl: "https://cdn.example.com/video.mp4",
+      sourceInputHost: "cdn.example.com",
       attempts: [],
     })
+  })
+
+  it("keeps bare source input hosts with ports", () => {
+    const artifacts = setTranscriptionRoutingReport(
+      {},
+      {
+        sourceInputHost: "cdn.example.com:8443",
+        attempts: [],
+      },
+    )
+
+    expect(getTranscriptionRoutingReport(artifacts)).toEqual({
+      sourceInputHost: "cdn.example.com:8443",
+      attempts: [],
+    })
+  })
+
+  it("reads legacy raw source input urls as sanitized url and host-only provenance", () => {
+    expect(
+      getTranscriptionRoutingReport({
+        transcriptionRouting: {
+          kind: "metadata",
+          data: {
+            sourceInputUrl:
+              "https://user:secret@cdn.example.com/video.mp4?token=123#note",
+            attempts: [],
+          },
+        },
+      }),
+    ).toEqual({
+      sourceInputUrl: "https://cdn.example.com/video.mp4",
+      sourceInputHost: "cdn.example.com",
+      attempts: [],
+    })
+  })
+
+  it("reads legacy raw source input hosts as host-only provenance", () => {
+    expect(
+      getTranscriptionRoutingReport({
+        transcriptionRouting: {
+          kind: "metadata",
+          data: {
+            sourceInputHost:
+              "https://user:secret@host.example.com/private/video.mp4?token=123#note",
+            attempts: [],
+          },
+        },
+      }),
+    ).toEqual({
+      sourceInputHost: "host.example.com",
+      attempts: [],
+    })
+  })
+
+  it("ignores legacy malformed source input hosts", () => {
+    expect(
+      getTranscriptionRoutingReport({
+        transcriptionRouting: {
+          kind: "metadata",
+          data: {
+            sourceInputHost: "internal/path?token=123",
+            attempts: [],
+          },
+        },
+      }),
+    ).toBeUndefined()
   })
 
   it("flags a failed ElevenLabs attempt that never recovered with ElevenLabs", () => {

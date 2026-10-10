@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Гаьнтина къонахалла йоцуш а ца хилла.",
+    "failedToLoad": "Къахьоьлла кхерам хилла: {message}",
+    "unexpected": "Духадоцу тӀом хьалхе хили.",
+    "notConfigured": "Контент-хьошалла тохан ца кхетийна.",
+    "noContent": "Контент йоцуш ду.",
+    "homepageMisconfigured": "Коьртан гӀемачу страница къастийна.",
+    "defaultTemplateMisconfigured": "Шаблон по умолчанию къастийна.",
+    "authFailed": "Контент-хьошаллехь аутентификаци кхочуш ца хили. Цхьаьнакхетар доцуш, техподдержкаца байланыш.",
+    "pageLoadFailed": "Цхьа пайда болар ахь ницкъ болуш ца хилла.",
+    "tryAgain": "Хьажа цхьаннга"
+  },
+  "VideosPage": {
+    "title": "ХӀора видеолаш",
+    "placeholder": "Каталог юьстара бен ца хилла. Цунах чуьра хьажар я search я темаца цхьа URL пайдалла."
+  },
+  "BibleQuotes": {
+    "title": "Библийн цитаташ",
+    "share": "Цхьаьна дӀахьажар",
+    "readMore": "Даха къинхьегар...",
+    "learnMore": "Кхин хьоьжар",
+    "freeResources": "Бесплатни ресурсаш",
+    "promoHeading": "Библия дӀакхетарг доцуш кхетийла деза?",
+    "joinBibleStudy": "Тхайн Библи хьехамехца цхьаьнакхетар дӀахили",
+    "previousQuote": "Халха цитата",
+    "nextQuote": "Кхин цитата",
+    "readPassage": "ХӀара дакъа хьайн Библиехь деша."
+  },
+  "DownloadButton": {
+    "checking": "Текшир ахь",
+    "download": "Кхочуш дӀаязда",
+    "sessionError": "Хьан сессина текшир ахь ницкъ ца хили. Хьажа цхьаннга.",
+    "saveVideo": "Видео сакхъо"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Видео дӀаязда",
+    "eyebrow": "Видео дӀаязда",
+    "posterAlt": "Видео постер",
+    "noDownloads": "Цу видео үчүн дӀаязарш йоцуш ду.",
+    "fileSizeLabel": "Файл гӀаттара хазчу",
+    "termsAgreementPrefix": "Сан кхоьру ",
+    "termsOfUse": "Пайдалланы шартташ",
+    "termsAgreementSuffix": "",
+    "close": "ДӀакхахьа",
+    "download": "ДӀаязда",
+    "authRequiredTitle": "Цу видео дӀаяздан хьажахьа?",
+    "authRequiredBody": "Видео дӀаяздан Jesus Film аккаунт хӀораца нохчийн бен ца хилла.",
+    "signInToDownload": "ДӀасахьа, дӀаяздан",
+    "keepWatching": "Хьажа дӀа",
+    "checking": "Текшир ахь",
+    "closeTermsOfUse": "Пайдалланы шартташ юкъадаьккха",
+    "cancel": "Юкъадаьккха",
+    "accept": "Кхоьру",
+    "errorSessionExpired": "Хьан сессия ахь бекхба. ДӀасахьа, видео дӀаяздан.",
+    "errorSessionUnavailable": "Хьан сессина текшир ахь ницкъ ца хили. Хьажа цхьаннга.",
+    "errorUnavailableSource": "Цу кхи гӀирсаран дӀаязар хила ца дӀахош ду",
+    "tierHighest": "Къаьстта",
+    "tierHigh": "Йоккха",
+    "tierLow": "Локхе"
+  },
+  "HeroPlayerControls": {
+    "play": "Хьажа",
+    "pause": "ТӀаьхьа",
+    "seek": "Хьаьжар",
+    "seekValue": "{current} / {total}",
+    "volume": "Денг",
+    "volumeValue": "{percent} процент",
+    "mute": "Денг дӀа",
+    "unmute": "Денг дӀаха",
+    "changeAudioLanguage": "Аудио мотт къобалдолла",
+    "enterFullscreen": "Экран толла чуьра",
+    "exitFullscreen": "Толла чуьра дӀахьа"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Мотт кхиийла",
+    "searchPlaceholder": "Мотт лар…",
+    "languages": "Моттш",
+    "noMatches": "Бирамаш ца хилла",
+    "notAvailable": "Йоцуш ду"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Мотт",
+    "dialogTitleWithSubtitles": "Мотт & субтитраш",
+    "languageHeading": "Мотт",
+    "subtitlesHeading": "Субтитраш",
+    "languageCount": "{count, plural, one {# мотт} other {# мотт}}",
+    "requestSent": "Хьажар дӀаяздина",
+    "translateWithAi": "AI-ца талла",
+    "noSubtitles": "Субтитраш йоцуш",
+    "toggleOn": "ДӀахош",
+    "toggleOff": "ДӀахоцуш",
+    "close": "ДӀакхахьа",
+    "apply": "Кхоьру",
+    "noLanguageSubtitles": "{language} субтитраш йоцуш",
+    "seeAllLanguages": "ХӀора моттш",
+    "seeAllVideosInLanguage": "ХӀора видеолаш: {language}",
+    "retryLoadingLanguages": "Моттш ачуьллуш кхин дӀа",
+    "notAvailable": "Йоцуш ду",
+    "switching": "ДӀакхачар…"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 эпизод} other {# эпизод}}",
+    "seriesLabel": "СЕРИ: {episodes}",
+    "changeAudioLanguage": "Аудио мотт къобалдолла",
+    "share": "Цхьаьна дӀахьажар",
+    "languages": "Моттш",
+    "downloadCollection": "Коллекци дӀаязда",
+    "checkingDownloads": "ДӀаязарш талла…",
+    "downloadSessionError": "Хьан сесси талла ца хили. Хьажа цхьаннга."
+  },
+  "WatchModal": {
+    "close": "ДӀакхахьа"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Цу видео тӀе юкъара хьехаран шеко дахахьа, хӀун дехар дара?",
+    "fallbackBody": "Йоккха гӀуллакх тӀехь бусуш, суна дуьхьа цхьа адамца кхача дӀахила.",
+    "questionsShort": "Хьажарш",
+    "questions": "Байланы хьажарш",
+    "askYours": "Хьоьн деха",
+    "chatWithPerson": "Цхьа адамца хьажа",
+    "askBibleQuestion": "Библияхь кхойкхар деха",
+    "quiz": "Викторина"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Дехаран къастор",
+    "fieldLabel": "Цу видео тӀехь хьажар деха",
+    "send": "Хьажар дӀаязда",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Библияхь кхойкхар деха",
+        "description": "AI-леларца Библиясахьа хӀараса жавабаш"
+      },
+      "prayerRequest": {
+        "label": "ДуӀа дехар",
+        "description": "Цхьа дехар ахь дуӀа дехар"
+      },
+      "comment": {
+        "label": "Комментарий дӀаязда",
+        "description": "Цу видео тӀехь хьалхе хетар дӀаязда"
+      },
+      "personChat": {
+        "label": "Цхьа адамца хьажа",
+        "description": "ХӀинца цхьаьнца кхача"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Видео дӀахьа",
+    "heading": "Цу видео дӀахьа",
+    "posterAlt": "Видео постер",
+    "shareOnFacebook": "Facebook тӀехь дӀахьа",
+    "shareOnFacebookUnavailable": "Facebook тӀехь дӀахьа (бу къастадала ахь цу сборкахь)",
+    "shareOnX": "X тӀехь дӀахьа",
+    "shareOnXUnavailable": "X тӀехь дӀахьа (бу къастадала ахь цу сборкахь)",
+    "shareDisabledHint": "ДӀахьа хила дӀахьажар дошлой страница деха — цу видео production ахь кхачахьа иштта ажилла.",
+    "shareFormat": "ДӀахьа формата",
+    "shareLinkTab": "Ссылка дӀахьа",
+    "embedCodeTab": "Код дӀахи",
+    "copyFailed": "Автоматически копировать ца хили — тӀехь текст къайла, ручной хьалхе копировать дӀахьа.",
+    "copyLink": "Ссылка копировать",
+    "copyCode": "Код копировать",
+    "copied": "Копи хили",
+    "close": "ДӀакхахьа"
+  },
+  "SubtitleTranscript": {
+    "heading": "Транскрипт",
+    "subheading": "Массара а строка тӀе къахьийна, цу хенахь хьаьжахьа.",
+    "subtitleLanguage": "Субтитран мотт",
+    "aiSuffix": " · AI",
+    "loading": "Транскрипт ачуьллу…",
+    "unavailable": "Цу субтитран трек үчүн транскрипт йоцуш ду.",
+    "empty": "Транскрипт строки ца хили."
+  },
+  "FloatingSearch": {
+    "placeholder": "Темаш лар я хьажар…",
+    "openSearch": "Видео лар",
+    "searchRegion": "Видео лар",
+    "clearSearch": "Ларх дӀахьа",
+    "changeAudioLanguage": "Аудио мотт къобалдолла",
+    "home": "JesusFilm коьрта",
+    "closeSearch": "Ларх дӀакхахьа",
+    "submitSearch": "Лар",
+    "library": "Библиотека"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Видео лар а хьажар а",
+    "home": "JesusFilm коьрта",
+    "placeholder": "Темаш лар я хьажар…",
+    "inputLabel": "Ключовой сөзашца видео лар",
+    "searchFailed": "Ларх кхерам хилла. Хьажа цхьаннга.",
+    "loadMoreFailed": "Дерриг результаташ ачуьллуш ца хили.",
+    "searching": "Ларчучун…",
+    "connectionHint": "Хьан байланыш текшир ахь, цхьаннга хьажа.",
+    "rateLimitHint": "Дех дукха дехар. Цхьа минот яьлча юха хьажа.",
+    "retrySearch": "Ларчар кхин дӀа",
+    "retry": "Кхин дӀа",
+    "noResults": "\"{query}\" үчүн гӀуллакх ца хилла",
+    "tryDifferentKeywords": "Кхин ключовой сөзаш я категориаш хьажахьа",
+    "loading": "Ачуьллу…",
+    "loadMore": "Кхин ачуьлла",
+    "categoryBibleStories": "Библийн тарихаш",
+    "categoryParables": "Мисалш",
+    "categoryAnimated": "Анимаци",
+    "categoryStudy": "Хьехар",
+    "categoryFamily": "Даймохк",
+    "categoryChristmas": "Кристмас",
+    "searchLanguageLabel": "Ларчаран мотт",
+    "allLanguages": "ХӀора моттш",
+    "searchSuggestions": "Ларчаран хьехамаш",
+    "directMatches": "Нийса тӀекхачар",
+    "languages": "Моттш",
+    "recommendedLanguage": "Дехар мотт",
+    "searchSuggestion": "{suggestion} лар",
+    "searchSuggestionWithLanguage": "«{suggestion}» лар — мотт: {language}",
+    "inLanguage": "{language} тӀехь",
+    "browseByRegion": "Регион тӀехь лар",
+    "allVideosOnSinglePage": "Массо видеош цхьана агӀона тӀехь",
+    "clearLanguages": "ДӀахьа",
+    "queryLanguageDetected": "{language} кхийтина",
+    "searchInLanguage": "Ларчаран мотт: {language}",
+    "tryDifferentKeywordsOrLanguage": "Кхин ключовой сөзаш я ларчаран мотт кхиийла",
+    "useWebsiteDefaultLanguage": "Сайт шорта ларчаран мотт пайдалла",
+    "removeLanguage": "{language} дӀахьа",
+    "browseMode": "Ларчан режим",
+    "searchingInLanguage": "ЖамӀийн мотт: {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "ХӀинца хьажа",
+    "tapToUnmute": "Денг дӀаха учун тӀехь къахьийна",
+    "nextEpisode": "Кхин эпизод",
+    "audioTranslationCount": "{count, plural, one {# мотт} other {# мотт}}",
+    "subtitleCount": "Субтитраш: {count, plural, one {# мотт} other {# мотт}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Контент ачуьллу",
+    "loadingVideo": "Видео ачуьллу"
+  },
+  "VideoLabels": {
+    "video": "Видео",
+    "segment": "Сегмент",
+    "episode": "Эпизод",
+    "featureFilm": "Полнометражный фильм",
+    "shortFilm": "Къеззиг фильм",
+    "series": "Серия",
+    "collection": "Коллекци",
+    "trailer": "Трейлер",
+    "behindTheScenes": "Сценан тӀе",
+    "chapter": "Глава"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Клип {current} / {total}",
+    "position": "{current} / {total}",
+    "chapterCount": "{count, plural, one {# глава} other {# глав}}",
+    "clipAriaLabel": "{title} · Клип {current} / {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# глава} other {# глав}}",
+    "chapter": "Глава",
+    "noImage": "Сурт ца хилла",
+    "playingNow": "ХӀинца хьажа",
+    "previousChapter": "Халха глава",
+    "nextChapter": "Кхин глава",
+    "thumbnailAlt": "{title} миниатюра",
+    "relatedVideoThumbnail": "Байланы видео миниатюра"
+  },
+  "SearchResultCard": {
+    "experience": "Экспириенс",
+    "episodeCount": "{count, plural, one {# эпизод} other {# эпизод}}",
+    "thumbnailAlt": "Видео миниатюра"
+  },
+  "Feedback": {
+    "openForm": "Пайдах форма ачуьлла",
+    "label": "Пайда",
+    "couldNotLoad": "Пайда форма ачула ца хили.",
+    "loadingForm": "Пайда форма ачуьллу…",
+    "retry": "Кхин дӀагӀа",
+    "cancel": "Юкъадаьккха",
+    "closeForm": "Пайда форман юкъадаьккха",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} мотте бесплатни христиански видеолаш | Jesus Film Project",
+    "metadataDescription": "Jesus фильмш, Библийн тарихаш, хьехаран серияш а миссионерски видеолаш а {language} моттехь дубляж а субтитраш аца цхьаьнакхетар.",
+    "heroTitle": "{language} мотте бесплатни христиански видеолаш",
+    "heroDescription": "Jesus фильмш, Библийн тарихаш, хьехаран серияш а миссионерски видеолаш а {language} моттехь лар.",
+    "languageCollection": "Моттехь коллекци",
+    "itemCount": "{count, plural, one {# элемент} other {# элемент}}",
+    "videoCount": "{count, plural, one {# видео} other {# видео}}",
+    "videosInGroups": "{videoCount, plural, one {# видео} other {# видео}} {groupCount, plural, one {# группа} other {# группа}} тӀехь",
+    "sectionNavLabel": "Мотт инвентарь секцеш",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Ийна",
+    "videoBible": "Видео Библия",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Коллекцеш",
+    "subtitlesOnly": "Субтитраш гана",
+    "backToTop": "Лакхара юха",
+    "newlyAdded": "Ийна дӀаяздина",
+    "newVideosTitle": "{language} мотте цӀийча христиански видеолаш",
+    "newestFirst": "Деррига халха",
+    "noPublishedVideos": "Цу моттехь хьалха чыкъ ца хилла видеолаш ца кхиийна.",
+    "bibleAndGospelFilms": "Библия а Инжил а фильмш",
+    "videoBibleCollectionsTitle": "{language} Видео Библи коллекцеш",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena, Acts цхьаьнакхетарш {language} моттехь.",
+    "noVideoBibleCollections": "Цу моттехь Видео Библи коллекцеш хӀинца йоцуш ду.",
+    "bibleProjectCollectionsTitle": "{language} BibleProject коллекцеш",
+    "bibleProjectDescription": "BibleProject серияш а хьехарш а {language} моттехь.",
+    "noBibleProjectCollections": "Цу моттехь BibleProject коллекцеш хӀинца йоцуш ду.",
+    "sportsStories": "Спортан тарихаш",
+    "sportsTitle": "{language} мотте спорт а спортсменийн тарихаш а",
+    "sportsDescription": "Ийманца къобалдоллуш спортан тарихаш а спортсменехь цхьаьнакхетарш а {language} моттехь.",
+    "noSportsCollections": "Цу моттехь спорт я спортсменийн тарихийн коллекцеш хӀинца йоцуш ду.",
+    "fullyDubbed": "Толлу бен дӀаяздина",
+    "dubbedVideosTitle": "{language} моттехь видеолаш коллекцехь",
+    "dubbedVideosDescription": "Толлу бен дӀаяздина {language} видеолаш коллекцица цхьаьнакхетарца кхетийла җарах хьажар үчүн.",
+    "noDubbedVideos": "Цу моттехь толлу бен дӀаяздина видеолаш хӀинца йоцуш ду.",
+    "subtitlesAvailable": "Субтитраш хила",
+    "subtitlesTitle": "{language} субтитрашаца видеолаш",
+    "subtitlesDescription": "Цу видеолеша {language} субтитраш ду, ахь ахь аңглийн {language} аудио хӀинца ца хили.",
+    "noSubtitleVideos": "Цу моттехь субтитраш гана видеолаш хӀинца йоцуш ду.",
+    "dubbed": "ДӀаяздина",
+    "subtitles": "Субтитраш",
+    "newLabel": "Ийна",
+    "fromCollection": "{collection} чохь",
+    "standaloneVideos": "Къастийна видеолаш",
+    "videosFromCollection": "{collection} чохь видеолаш.",
+    "standaloneDescription": "Цу моттехь къастийна видеолаш.",
+    "openCollection": "Коллекци ачуьлла",
+    "filters": "Литтарш",
+    "filterLength": "Деха",
+    "filterLength_under5": "5 минотана к1езиг",
+    "filterLength_5to10": "5-10 минот",
+    "filterLength_10to30": "10-30 минот",
+    "filterLength_over30": "30 минотана дукха",
+    "filterType": "Тайпа",
+    "clearFilters": "Литтарш цIандар",
+    "filterResults": "{total} чуьра {count} гайтина",
+    "noFilterResults": "Оцу литтаршна тайна видео дац. Цхьаъ дIаяккха гIортта.",
+    "filterAdded": "Т1етоьхна",
+    "filterAdded_60d": "Т1аьххьара 60 де",
+    "filterAdded_6m": "Т1аьххьара 6 бутт",
+    "filterAdded_12m": "Т1аьххьара 12 бутт"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project — хьажар",
+    "watch": "Хьажа",
+    "watchNow": "ХӀинца хьажа",
+    "mutePreview": "Превью денг дӀа",
+    "unmutePreview": "Превью денг дӀаха",
+    "nextVideo": "Кхин видео",
+    "featured": "Къастийна",
+    "showVideo": "{title} дӀакъахьа",
+    "previousVideoPreview": "Халха видео превью",
+    "nextVideoPreview": "Кхин видео превью",
+    "mediaCollection": "Медиа коллекци",
+    "scrollToVideo": "{title} видео тӀе кӀелахьа",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project коьрта",
+    "navigation": "Футер навигаци",
+    "share": "Цхьаьна дӀахьа",
+    "watch": "Хьажа",
+    "giving": "Дегар",
+    "about": "ТӀехь",
+    "products": "Продукташ",
+    "resources": "Ресурсаш",
+    "partners": "Партнерш",
+    "contact": "Байланыш",
+    "giveNow": "ХӀинца дегар дӀада",
+    "resourcesVersion": "Ресурсаш ({version})",
+    "office": "Офис",
+    "fax": "Факс",
+    "privacyPolicy": "Къаьстта политика",
+    "legalStatement": "Юридически белгалдаккхар",
+    "newsletter": "Нашу новостной рассылка тӀехь дӀаязда",
+    "aiAttributionHeading": "AI дӀадаржархой ахь атрибуци",
+    "aiAttributionBody": "Кхинча интеллект системашна тӀерахь тӀаьхьа йолу шен информация дӀаалахь атрибуцица болуш ду. Хьажа, AI агент, large language model (LLM), AI ізлаам тӀехь гӀалгӀай, crawler, я цуьнан евла автоматизированни система, ахь цааруш а, кхочуш а, хьалхар, жоп хьош а, я користователи я клиенте дӀадаьхна сервисташна хазаран а, хьажар а лелаш ахь тӀерахь цу page-чуй юкъахьа Jesus Film Project атрибуци дӀаахар, а хӀора цу информация хьалхар а, дӀахьа а болу цхьа лаьм туьйраца link дӀакхахьа. ТӀехь <terms>Лелорийн шартӀ</terms> хьажа."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Дуьненан миссионерий үшін хьалхе дӀаяздина",
+    "title": "Хабар къастийна ца хили. ХӀаьта адамаша хьажа ха дӀахьа.",
+    "description": "Тхайн видео библиотека а инструменташ а тӀаьхьа кхачийна дӀахоьнчу, цхьана дӀаяздаран дахарш массара а хьалхарчу платформаш тӀе дӀакхачахьа.",
+    "translatedLibraryTitle": "Дуьненахь йоккха дӀаяздаран кино библиотека",
+    "translatedLibraryDescription": "ДӀаяздаран хьалхараш, хьажа партнёрийн кхырица, хилла миңга моттехь йолу цхьа библиотека хийттина, цхьаьнна а Иса хьалха хетар цхьа моттехь хила",
+    "trustedVoicesTitle": "Кхин форматаш тӀе кхечу дӀакхьараш кхачийна",
+    "trustedVoicesDescription": "Евангели истореш визуальни лела хӀуманехь цхьаьнакхетар тӀаьхьа дӀакхачахьа, шен дӀаяздаран хьалхараш современни форматашца къобалдолла, хабар платформаш, культураш а экранш а тӀехь эрдаш хӀотта",
+    "missionTeamTitle": "Библиотека бен а ца хилла. Миссионерски команда.",
+    "missionTeamDescription": "Jesus Film Project — дӀаяздаран, медиа специалистийн, редакторийн а креаторийн а дуьненан команда, цхьаьнакхетар кхочуш ду, тӀехьчахьа душаналар өчен инструменташ кыл.",
+    "buildingNext": "Тахана хӀун кхачахьа ду",
+    "nextStepsTitle": "Next Steps платформа",
+    "nextStepsDescription": "Хьажарш шен рухаарехь дӀакхачахьачу хьесматехь цхьаьнакхетар, дуьхьа, Къуръан, я мисси тӀехь кхин хӀумахьа дӀахачахьа.",
+    "mediaLibraryTitle": "Евангелизациян медиа библиотека",
+    "mediaLibraryDescription": "ГоӀа христиански медиа библиотека, миңга видеолаш, фильмаш а ресурсаш а, дуьненан миссионерий а евангелизация өчен цхьаьнакхетар",
+    "ministryToolsTitle": "Министерствос үчүн цифровой инструменташ",
+    "ministryToolsDescription": "Видео башкар, контент дӀакхачар, аудиторина гӀодаллар а аналитика а, миссионерий хӀараса адамашахьа хьалхе дӀакхачахьа үчүн",
+    "invitationEyebrow": "Хьо дехар цхьаь",
+    "invitationTitle": "Миссия инструментийн <highlight>кхаьрхилхойн хьал</highlight> кхачахьа гӀо",
+    "invitationDescription": "Практик, креаторш а партнёрш а early access тӀехь дехар ду. ЦӀийча инструменташ халха текшар, feedback дӀаяздар, а доьзалан миссионерски гӀуллакх үчүн инструменташ кхачахьа",
+    "betaTester": "Бета-тестер хилла"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Видео Библи коллекци",
+    "gospelRailTitle": "Цхьаьна тарих кхетийла",
+    "videoBibleDescription": "Библия дагадохуш видеолаш а ресурсаш а цхьаьнакхетар лар.",
+    "showcaseTitle": "Фильмца дӀакхачийна Писани",
+    "adventEyebrow": "Рождествоны Advent",
+    "adventTitle": "Рождество Advent сана",
+    "adventDescription": "Advent йолуш хьалхарчу видеонца цхьаьнакхетар, Рождествона хьалха хьоьжар, Исан кхачахьа хьоьжар а сийлахь хилар а хьажар.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Адвент",
+    "nuaEyebrow": "NUA серия",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth серия",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Видео курс",
+    "journeyWithJesusTitle": "Исаца гӀо",
+    "gospelsOnVideoEyebrow": "Массара а Инжил, видео тӀехь",
+    "scriptureAsWrittenTitle": "Писани, яздина лаьмнашца ца",
+    "merryChristmas": "Рождество долуш декъал хила!",
+    "daysUntilChristmas": "{count, plural, one {Рождествона тӀекхачале # де} other {Рождествона тӀекхачале # де}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Моттш",
+    "metadataDescription": "JesusFilm видеолаш моттехь лар.",
+    "eyebrow": "Хьажа моттш",
+    "title": "Мотт кхиийла",
+    "description": "Регион тӀехь моттш лар я массара а цхьаьнца хьажа.",
+    "searchPlaceholder": "Моттш я могӀчаш лар...",
+    "searchLabel": "Моттш я могӀчаш лар",
+    "clearSearch": "Ларх дӀахьа",
+    "browse": "Хьажа",
+    "browseByRegion": "Регион а кӀошташ а тӀехь лар",
+    "languageCount": "{count, plural, one {# мотт} other {# мотт}}",
+    "region": "Регион",
+    "countryLanguages": "{country} моттш",
+    "showLess": "Къеззиг дӀакъа",
+    "showMore": "Дерриг {count} кхин",
+    "noLanguages": "Моттш ца кхиийна",
+    "tryAnotherSearch": "Кхин ларчаран сөзар дӀахьа."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Хьажаран тарих | Jesus Film Project",
+    "title": "Хьажаран тарих",
+    "loading": "Тарих ачуьллу",
+    "empty": "ХӀунда ца хилла",
+    "emptyDescription": "ДӀасахьа, ахь хьажа видеолаш ахьа цхьанахьа ачуьдогӀар.",
+    "earlier": "Халха",
+    "today": "ХӀинца",
+    "yesterday": "Дакъа"
+  },
+  "AccountControl": {
+    "account": "Аккаунт",
+    "accountMenu": "Аккаунт меню",
+    "signIn": "ДӀасахьа",
+    "signOut": "ДӀахьа",
+    "signedIn": "ДӀасахьа хили",
+    "history": "Тарих",
+    "logOut": "ДӀахьа"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Страница ца кхиийна",
+    "eyebrow": "Страница ца кхиийна",
+    "screenReaderPrefix": "Страница ца кхиийна:",
+    "title": "Цу сцина хӀума йоцуш ду.",
+    "description": "Страница кхачахьа ахь бен, хьаьхкхитин тарих дӀацу.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Страница йоцуш гӀуллакх",
+    "backToWatch": "Watch ахь дӀахьа",
+    "browseVideos": "Видеолаш хьажа"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% нийса догӀу",
+    "none": "ХӀара видео хӀокху маттахь рекомендацеш ца карийна."
+  },
+  "BetaTesterModal": {
+    "title": "Бета-тестер хилла",
+    "trigger": "Бета-тестер хилла",
+    "loadFailed": "Цхьа пайда болар ахь ницкъ болуш ца хилла.",
+    "loading": "Ачуьллу…",
+    "openFormNewTab": "Форман нова вкладка ачуьлла",
+    "close": "ДӀакхахьа",
+    "iframeTitle": "Бета-тестер хилла"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Коллекци дӀаязда",
+    "eyebrow": "Коллекци дӀаязда",
+    "description": "Мотт а видео башхо а цкъа харжа. Карахь йолу эпизодаш рогӀаллаца дӀаязйина хир ю.",
+    "signInTitle": "ДӀаяздан дӀасахьа",
+    "signInBody": "Коллекци дӀаязъян Jesus Film аккаунтца дӀасахьа деза.",
+    "signIn": "ДӀаяздан дӀасахьа",
+    "languageLabel": "Мотт",
+    "qualityLabel": "Видеон башхо",
+    "tierHighest": "Къаьстта",
+    "tierHigh": "Йоккха",
+    "tierLow": "Локха",
+    "loading": "Карахь йолу эпизодаш лоьху…",
+    "loadError": "ХӀокху маттахь дӀаязарш чуйийца ца хили.",
+    "retry": "Кхин дӀа",
+    "noDownloads": "ХӀокху маттахь дӀаязъян йиш йолу эпизодаш йоцуш ю.",
+    "availableCount": "{count, plural, one {# эпизод кийча ю} other {# эпизод кийча ю}}",
+    "skippedCount": "{count, plural, one {# эпизод карахь йоцунна дӀайоккхур ю} other {# эпизод карахь йоцунна дӀайохкур ю}}",
+    "chooseFolder": "ДӀаяздаран папка харжа",
+    "folderSelected": "{name} чу ларъе",
+    "folderError": "ДӀаяздаран папка дӀайелла ца хили.",
+    "browserFallback": "Хьан браузеро хӀора файл шен гӀирсашца дӀаязйина ларъю. Масех дӀаяздар магийтар хьоьга дехар тарло.",
+    "sessionError": "Хьан сесси талла ца хили. Хьажа цхьаннга.",
+    "downloading": "{title} дӀаязйо…",
+    "progress": "{total} чохь {completed}",
+    "complete": "ДӀаязарш чекхдаьлла",
+    "canceled": "ДӀаязарш юкъадаьхна",
+    "failedCount": "{count, plural, one {# эпизод дӀаязъян ца хили} other {# эпизод дӀаязъян ца хили}}. Коллекци юха дӀаязъян «Юха дӀаязда» харжа.",
+    "close": "ДӀакхахьа",
+    "cancel": "Юкъадаьккха",
+    "start": "Дерриг дӀаязда",
+    "downloadAgain": "Юха дӀаязда",
+    "retryFailed": "Ца хилларг юха хьажа"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Меттан верси йоцуш ю",
+    "eyebrow": "Меттан верси йоцуш ю",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> маттахь йоцуш ю",
+    "actionsLabel": "Хьажа йиш йолу гӀирсаш",
+    "browseInLanguage": "{language} маттахь видеонаш хьажа",
+    "backToSearch": "Лехарна юха",
+    "audioVersionsTitle": "Кхин аудиоверсиш",
+    "audioVersionsDescription": "ХӀара видео хьажа дӀадахьа аудиомотт харжа.",
+    "languageVersionLabel": "Аудиомотт",
+    "selectLanguageVersion": "Меттан верси харжа",
+    "watchSelectedVersion": "Хержина верси хьажа"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie харжамаш",
+    "bannerTitle": "Хьан конфиденциальность харжамаш",
+    "bannerDescription": "Лазаме cookie-файлаш Watch хьалхаькха а, болх бан а дика латто. Хьан тӀедилларца, хьаша optional first-party cookie могуш ю хьан соцамаш визиташ юкъара дӀаяздан, рекомендацеш хьуна хетаргашка хьаьжжина таӀоран. Контекстийн рекомендацеш кхин а карор ю иштта а, иштта доцуш а.",
+    "acceptAll": "Массо а тӀеэца",
+    "essentialOnly": "Цхьанна лазаме",
+    "manageChoices": "Харжамаш кхачам бан",
+    "savingChoice": "Cookie харжам ларбар",
+    "settings": "Cookie тохарш",
+    "settingsDescription": "Watch-на визиташ юкъара рекомендацийн соцамаш дӀаяздан мегар дуй хьажа. Иза хьо цу хенахь а хийца мега.",
+    "essentialCookies": "Лазаме cookie-файлаш",
+    "essentialDescription": "Безопасность, вахар playback, конфиденциальность харжамаш, а рекомендаци дехарийн attribution.",
+    "alwaysActive": "Дайма тӀехьа",
+    "personalization": "Шенна таӀоран",
+    "personalizationDescription": "Визиташ юкъара хьалхадоьккху соцамаш дӀаязде. Иза дӀадаккхарца контекстийн рекомендацеш кхин а карор ю.",
+    "erasurePending": "Профиль дӀадаккхар тӀехьадогӀуш ду. Контекстийн рекомендацеш хьанна хӀинца а тӀехьа ю.",
+    "cancel": "Бекъа",
+    "saveChoices": "Харжамаш ларбе",
+    "saving": "Ларбеш ду…",
+    "loadError": "Хьан харжам чуйолуш хила ца мегира. Хьо кхузахьа харжам бан мега.",
+    "grantError": "Шенна таӀоран тӀетуьйра ца мегира. Цхьанна лазаме кхин а карор ду.",
+    "saveError": "Хьан харжам ларбан ца мегира. Дехар ду, юха а хьажа."
+  }
+}

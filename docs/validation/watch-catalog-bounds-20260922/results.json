@@ -1,0 +1,1535 @@
+{
+  "scope": "Owned PostgreSQL 18 fixture with verified existing production lookup indexes; no production fault injection. Actual production incident query parameters and historical concurrency were not retained.",
+  "fixture": {
+    "videos": 1175,
+    "dubs": 212193,
+    "muxVideos": 176297,
+    "sharedMemoryBytes": 67108864,
+    "workMem": "4MB",
+    "maxParallelWorkersPerGather": 2,
+    "poolMax": 10
+  },
+  "productionEstimatedPlans": {
+    "original": {
+      "at": "2026-09-21T20:46:31.351Z",
+      "revision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "scope": "estimated plan only, 206 ordered active catalog IDs, not the missing incident parameters",
+      "plan": {
+        "Node Type": "Gather Merge",
+        "Parallel Aware": false,
+        "Total Cost": 39472.32,
+        "Plan Rows": 35280,
+        "Plans": [
+          {
+            "Node Type": "Sort",
+            "Parallel Aware": false,
+            "Total Cost": 34400.11,
+            "Plan Rows": 14700,
+            "Plans": [
+              {
+                "Node Type": "Hash Join",
+                "Parallel Aware": true,
+                "Total Cost": 33345.86,
+                "Plan Rows": 14700,
+                "Plans": [
+                  {
+                    "Node Type": "Bitmap Heap Scan",
+                    "Parallel Aware": true,
+                    "Total Cost": 21568.69,
+                    "Plan Rows": 14703,
+                    "Plans": [
+                      {
+                        "Node Type": "Bitmap Index Scan",
+                        "Parallel Aware": false,
+                        "Index Name": "video_dub_video_id_idx",
+                        "Total Cost": 1052.8,
+                        "Plan Rows": 42168
+                      }
+                    ]
+                  },
+                  {
+                    "Node Type": "Hash",
+                    "Parallel Aware": true,
+                    "Total Cost": 10820.57,
+                    "Plan Rows": 73440,
+                    "Plans": [
+                      {
+                        "Node Type": "Seq Scan",
+                        "Parallel Aware": true,
+                        "Total Cost": 10820.57,
+                        "Plan Rows": 73440
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "fixed": {
+      "at": "2026-09-21T21:04:52.801Z",
+      "revision": "d0c749b981b8c3cf777c6e62bd9e5eae1abbd2bf",
+      "scope": "estimated plan only, 206 ordered active catalog IDs, not the missing incident parameters",
+      "plan": {
+        "Node Type": "Nested Loop",
+        "Parallel Aware": false,
+        "Total Cost": 12965.4,
+        "Plan Rows": 206,
+        "Plans": [
+          {
+            "Node Type": "Seq Scan",
+            "Parallel Aware": false,
+            "Total Cost": 56.14,
+            "Plan Rows": 206
+          },
+          {
+            "Node Type": "Limit",
+            "Parallel Aware": false,
+            "Total Cost": 62.65,
+            "Plan Rows": 1,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Parallel Aware": false,
+                "Total Cost": 62.66,
+                "Plan Rows": 5,
+                "Plans": [
+                  {
+                    "Node Type": "Subquery Scan",
+                    "Parallel Aware": false,
+                    "Total Cost": 62.62,
+                    "Plan Rows": 5,
+                    "Plans": [
+                      {
+                        "Node Type": "Limit",
+                        "Parallel Aware": false,
+                        "Total Cost": 62.54,
+                        "Plan Rows": 5,
+                        "Plans": [
+                          {
+                            "Node Type": "Nested Loop",
+                            "Parallel Aware": false,
+                            "Total Cost": 2728.15,
+                            "Plan Rows": 221,
+                            "Plans": [
+                              {
+                                "Node Type": "Index Scan",
+                                "Parallel Aware": false,
+                                "Index Name": "video_dub_watch_playable_duration_idx",
+                                "Total Cost": 907.46,
+                                "Plan Rows": 221
+                              },
+                              {
+                                "Node Type": "Index Scan",
+                                "Parallel Aware": false,
+                                "Index Name": "mux_video_pkey",
+                                "Total Cost": 8.24,
+                                "Plan Rows": 1
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  },
+  "regression": {
+    "baselineWireRows": 137608,
+    "videoIds": 206,
+    "maximumAllowedWireRows": 1236,
+    "fixedPasses": 3
+  },
+  "negativeControls": [
+    "The first synthetic fixture omitted existing playable-duration indexes. The first bounded join avoided shared-memory errors but was slower; it was not accepted as a performance result. Recreated the verified production indexes before all final comparisons.",
+    "The SQL-only comparison had 20/40 original failures and zero fixed failures; actual Prisma comparison below independently had 18/40 original failures and zero fixed failures. Do not combine these populations."
+  ],
+  "validation": {
+    "adminTests": 7293,
+    "postgresTests": 14,
+    "loaderTests": 15,
+    "lint": "pass",
+    "typecheck": "pass",
+    "build": "pass",
+    "firstFullRun": "one unrelated ExperienceEditor test exceeded 20s while build/lint ran concurrently; all 81 editor tests and then the full suite passed without test changes"
+  },
+  "initialActualPrismaService": {
+    "parityVideos": 206,
+    "poolMax": 10,
+    "runs": [
+      {
+        "round": 0,
+        "name": "original",
+        "results": [
+          {
+            "ms": 1362.666,
+            "rows": 206
+          },
+          {
+            "ms": 208.272,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1438.536,
+            "rows": 206
+          },
+          {
+            "ms": 1387.628,
+            "rows": 206
+          },
+          {
+            "ms": 1396.354,
+            "rows": 206
+          },
+          {
+            "ms": 390.474,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 206.585,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1410.263,
+            "rows": 206
+          },
+          {
+            "ms": 204.314,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1608.898,
+            "rows": 206
+          }
+        ]
+      },
+      {
+        "round": 0,
+        "name": "fixed",
+        "results": [
+          {
+            "ms": 39.802,
+            "rows": 206
+          },
+          {
+            "ms": 59.531,
+            "rows": 206
+          },
+          {
+            "ms": 36.603,
+            "rows": 206
+          },
+          {
+            "ms": 54.317,
+            "rows": 206
+          },
+          {
+            "ms": 39.956,
+            "rows": 206
+          },
+          {
+            "ms": 50.038,
+            "rows": 206
+          },
+          {
+            "ms": 69.579,
+            "rows": 206
+          },
+          {
+            "ms": 77.99,
+            "rows": 206
+          },
+          {
+            "ms": 80.205,
+            "rows": 206
+          },
+          {
+            "ms": 78.927,
+            "rows": 206
+          }
+        ]
+      },
+      {
+        "round": 1,
+        "name": "original",
+        "results": [
+          {
+            "ms": 81.966,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 81.342,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1136.517,
+            "rows": 206
+          },
+          {
+            "ms": 85.26,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 130.692,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1128.824,
+            "rows": 206
+          },
+          {
+            "ms": 1127.55,
+            "rows": 206
+          },
+          {
+            "ms": 1401.722,
+            "rows": 206
+          },
+          {
+            "ms": 1227.638,
+            "rows": 206
+          },
+          {
+            "ms": 127.29,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          }
+        ]
+      },
+      {
+        "round": 1,
+        "name": "fixed",
+        "results": [
+          {
+            "ms": 41.425,
+            "rows": 206
+          },
+          {
+            "ms": 46.909,
+            "rows": 206
+          },
+          {
+            "ms": 66.361,
+            "rows": 206
+          },
+          {
+            "ms": 44.348,
+            "rows": 206
+          },
+          {
+            "ms": 69.668,
+            "rows": 206
+          },
+          {
+            "ms": 38.857,
+            "rows": 206
+          },
+          {
+            "ms": 72.997,
+            "rows": 206
+          },
+          {
+            "ms": 45.564,
+            "rows": 206
+          },
+          {
+            "ms": 67.59,
+            "rows": 206
+          },
+          {
+            "ms": 66.255,
+            "rows": 206
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "name": "original",
+        "results": [
+          {
+            "ms": 1065.418,
+            "rows": 206
+          },
+          {
+            "ms": 82.033,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 78.682,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1034.443,
+            "rows": 206
+          },
+          {
+            "ms": 79.027,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 82.26,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1184.183,
+            "rows": 206
+          },
+          {
+            "ms": 79.299,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1073.715,
+            "rows": 206
+          },
+          {
+            "ms": 1256.714,
+            "rows": 206
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "name": "fixed",
+        "results": [
+          {
+            "ms": 54.655,
+            "rows": 206
+          },
+          {
+            "ms": 40.878,
+            "rows": 206
+          },
+          {
+            "ms": 54.752,
+            "rows": 206
+          },
+          {
+            "ms": 54.973,
+            "rows": 206
+          },
+          {
+            "ms": 42.15,
+            "rows": 206
+          },
+          {
+            "ms": 81.862,
+            "rows": 206
+          },
+          {
+            "ms": 70.337,
+            "rows": 206
+          },
+          {
+            "ms": 95.116,
+            "rows": 206
+          },
+          {
+            "ms": 65.57,
+            "rows": 206
+          },
+          {
+            "ms": 71.76,
+            "rows": 206
+          }
+        ]
+      },
+      {
+        "round": 3,
+        "name": "original",
+        "results": [
+          {
+            "ms": 79.371,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1400.161,
+            "rows": 206
+          },
+          {
+            "ms": 1378.69,
+            "rows": 206
+          },
+          {
+            "ms": 1484.38,
+            "rows": 206
+          },
+          {
+            "ms": 1402.295,
+            "rows": 206
+          },
+          {
+            "ms": 72.793,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 115.482,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 77.721,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1398.25,
+            "rows": 206
+          },
+          {
+            "ms": 1647.382,
+            "rows": 206
+          }
+        ]
+      },
+      {
+        "round": 3,
+        "name": "fixed",
+        "results": [
+          {
+            "ms": 33.694,
+            "rows": 206
+          },
+          {
+            "ms": 52.637,
+            "rows": 206
+          },
+          {
+            "ms": 43.241,
+            "rows": 206
+          },
+          {
+            "ms": 33.735,
+            "rows": 206
+          },
+          {
+            "ms": 64.604,
+            "rows": 206
+          },
+          {
+            "ms": 61.816,
+            "rows": 206
+          },
+          {
+            "ms": 33.814,
+            "rows": 206
+          },
+          {
+            "ms": 35.633,
+            "rows": 206
+          },
+          {
+            "ms": 71.075,
+            "rows": 206
+          },
+          {
+            "ms": 69.846,
+            "rows": 206
+          }
+        ]
+      }
+    ]
+  },
+  "actualPrismaService": {
+    "parityVideos": 206,
+    "poolMax": 10,
+    "runs": [
+      {
+        "round": 0,
+        "name": "original",
+        "results": [
+          {
+            "ms": 114.472,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1007.206,
+            "rows": 206
+          },
+          {
+            "ms": 1187.645,
+            "rows": 206
+          },
+          {
+            "ms": 1250.437,
+            "rows": 206
+          },
+          {
+            "ms": 117.04,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1008.645,
+            "rows": 206
+          },
+          {
+            "ms": 117.441,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 114.692,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 111.556,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1050.699,
+            "rows": 206
+          }
+        ]
+      },
+      {
+        "round": 0,
+        "name": "fixed",
+        "results": [
+          {
+            "ms": 31.677,
+            "rows": 206
+          },
+          {
+            "ms": 34.389,
+            "rows": 206
+          },
+          {
+            "ms": 61.522,
+            "rows": 206
+          },
+          {
+            "ms": 34.666,
+            "rows": 206
+          },
+          {
+            "ms": 69.141,
+            "rows": 206
+          },
+          {
+            "ms": 34.881,
+            "rows": 206
+          },
+          {
+            "ms": 37.41,
+            "rows": 206
+          },
+          {
+            "ms": 60.298,
+            "rows": 206
+          },
+          {
+            "ms": 60.564,
+            "rows": 206
+          },
+          {
+            "ms": 65.464,
+            "rows": 206
+          }
+        ]
+      },
+      {
+        "round": 1,
+        "name": "original",
+        "results": [
+          {
+            "ms": 1075.627,
+            "rows": 206
+          },
+          {
+            "ms": 1072.813,
+            "rows": 206
+          },
+          {
+            "ms": 1054.184,
+            "rows": 206
+          },
+          {
+            "ms": 66.143,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 74.999,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1464.021,
+            "rows": 206
+          },
+          {
+            "ms": 71.583,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 63.923,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1462.774,
+            "rows": 206
+          },
+          {
+            "ms": 75.879,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          }
+        ]
+      },
+      {
+        "round": 1,
+        "name": "fixed",
+        "results": [
+          {
+            "ms": 34.914,
+            "rows": 206
+          },
+          {
+            "ms": 35.175,
+            "rows": 206
+          },
+          {
+            "ms": 35.502,
+            "rows": 206
+          },
+          {
+            "ms": 35.793,
+            "rows": 206
+          },
+          {
+            "ms": 57.003,
+            "rows": 206
+          },
+          {
+            "ms": 54.317,
+            "rows": 206
+          },
+          {
+            "ms": 82.564,
+            "rows": 206
+          },
+          {
+            "ms": 78.666,
+            "rows": 206
+          },
+          {
+            "ms": 60.087,
+            "rows": 206
+          },
+          {
+            "ms": 35.911,
+            "rows": 206
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "name": "original",
+        "results": [
+          {
+            "ms": 58.258,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 971.909,
+            "rows": 206
+          },
+          {
+            "ms": 59.895,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 53.017,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 54.845,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 752.589,
+            "rows": 206
+          },
+          {
+            "ms": 53.303,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 61.312,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 870.236,
+            "rows": 206
+          },
+          {
+            "ms": 841.61,
+            "rows": 206
+          }
+        ]
+      },
+      {
+        "round": 2,
+        "name": "fixed",
+        "results": [
+          {
+            "ms": 59.324,
+            "rows": 206
+          },
+          {
+            "ms": 33.44,
+            "rows": 206
+          },
+          {
+            "ms": 56.315,
+            "rows": 206
+          },
+          {
+            "ms": 33.583,
+            "rows": 206
+          },
+          {
+            "ms": 33.745,
+            "rows": 206
+          },
+          {
+            "ms": 69.115,
+            "rows": 206
+          },
+          {
+            "ms": 57.116,
+            "rows": 206
+          },
+          {
+            "ms": 35.632,
+            "rows": 206
+          },
+          {
+            "ms": 67.923,
+            "rows": 206
+          },
+          {
+            "ms": 52.351,
+            "rows": 206
+          }
+        ]
+      },
+      {
+        "round": 3,
+        "name": "original",
+        "results": [
+          {
+            "ms": 58.686,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1339.303,
+            "rows": 206
+          },
+          {
+            "ms": 60.588,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1347.197,
+            "rows": 206
+          },
+          {
+            "ms": 65.139,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          },
+          {
+            "ms": 1570.139,
+            "rows": 206
+          },
+          {
+            "ms": 1355.211,
+            "rows": 206
+          },
+          {
+            "ms": 1475.144,
+            "rows": 206
+          },
+          {
+            "ms": 1365.663,
+            "rows": 206
+          },
+          {
+            "ms": 58.148,
+            "error": "53100: could not resize shared memory segment: No space left on device"
+          }
+        ]
+      },
+      {
+        "round": 3,
+        "name": "fixed",
+        "results": [
+          {
+            "ms": 43.466,
+            "rows": 206
+          },
+          {
+            "ms": 43.553,
+            "rows": 206
+          },
+          {
+            "ms": 43.746,
+            "rows": 206
+          },
+          {
+            "ms": 43.908,
+            "rows": 206
+          },
+          {
+            "ms": 44.068,
+            "rows": 206
+          },
+          {
+            "ms": 73.285,
+            "rows": 206
+          },
+          {
+            "ms": 73.02,
+            "rows": 206
+          },
+          {
+            "ms": 44.151,
+            "rows": 206
+          },
+          {
+            "ms": 76.253,
+            "rows": 206
+          },
+          {
+            "ms": 74.029,
+            "rows": 206
+          }
+        ]
+      }
+    ]
+  },
+  "initialActualFixedBuild": [
+    {
+      "trial": 0,
+      "catalogs": [
+        {
+          "ms": 189.25,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 190.74,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 315.84,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 215.47,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 247.35,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 249.02,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 342.61,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 277.28,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 278.64,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 290.89,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        }
+      ],
+      "selections": [
+        {
+          "ms": 393.87,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 389.22,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 404.27,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 403.18,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 391.94,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        }
+      ],
+      "playback": {
+        "ms": 408.99,
+        "httpStatus": 200,
+        "accepted": true,
+        "errors": null
+      }
+    },
+    {
+      "trial": 1,
+      "catalogs": [
+        {
+          "ms": 144.98,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 124.44,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 145.63,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 218.37,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 255.4,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 215.6,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 252.5,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 266.98,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 278.64,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 273.75,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        }
+      ],
+      "selections": [
+        {
+          "ms": 305.87,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 308.76,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 307.45,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 331.74,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 309.84,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        }
+      ],
+      "playback": {
+        "ms": 329.31,
+        "httpStatus": 200,
+        "accepted": true,
+        "errors": null
+      }
+    },
+    {
+      "trial": 2,
+      "catalogs": [
+        {
+          "ms": 178.57,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 123.62,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 106.29,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 124.3,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 141.14,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 167.75,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 178.23,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 182.49,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 183.58,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 250.94,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        }
+      ],
+      "selections": [
+        {
+          "ms": 272.71,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 266.79,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 270.69,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 269.38,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 277.42,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        }
+      ],
+      "playback": {
+        "ms": 277.66,
+        "httpStatus": 200,
+        "accepted": true,
+        "errors": null
+      }
+    }
+  ],
+  "actualFixedBuild": [
+    {
+      "trial": 0,
+      "catalogs": [
+        {
+          "ms": 109.39,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 225.1,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 244.69,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 165.13,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 178.85,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 193.6,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 261.94,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 224.1,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 213.74,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 217.91,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        }
+      ],
+      "selections": [
+        {
+          "ms": 323.56,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 316.6,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 330.23,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 318.26,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 325.6,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        }
+      ],
+      "playback": {
+        "ms": 319.31,
+        "httpStatus": 200,
+        "accepted": true,
+        "errors": null
+      }
+    },
+    {
+      "trial": 1,
+      "catalogs": [
+        {
+          "ms": 151.79,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 152.82,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 187.31,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 188.29,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 210.63,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 219.55,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 220.13,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 228.93,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 236.91,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 246.12,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        }
+      ],
+      "selections": [
+        {
+          "ms": 255.83,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 259.1,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 282.37,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 267.07,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 255.89,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        }
+      ],
+      "playback": {
+        "ms": 274.99,
+        "httpStatus": 200,
+        "accepted": true,
+        "errors": null
+      }
+    },
+    {
+      "trial": 2,
+      "catalogs": [
+        {
+          "ms": 100.72,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 98.91,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 129.03,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 129.64,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 144.87,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 233.03,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 150.85,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 212.78,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 212.05,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        },
+        {
+          "ms": 227.89,
+          "httpStatus": 200,
+          "errors": 0,
+          "videos": 206
+        }
+      ],
+      "selections": [
+        {
+          "ms": 238.75,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 243.42,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 241.18,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 239.69,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        },
+        {
+          "ms": 251.41,
+          "httpStatus": 200,
+          "accepted": true,
+          "errors": null
+        }
+      ],
+      "playback": {
+        "ms": 261.81,
+        "httpStatus": 200,
+        "accepted": true,
+        "errors": null
+      }
+    }
+  ],
+  "reviewRegression": "Explicit primary-preference CASE preserves the highest-ranked null-language fallback. A new database case failed before this correction and passed afterward."
+}

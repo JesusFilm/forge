@@ -1,5 +1,7 @@
 "use client"
 
+import { RotateCcw } from "lucide-react"
+
 export default function DashboardError({
   error,
   reset,
@@ -8,28 +10,16 @@ export default function DashboardError({
   reset: () => void
 }) {
   return (
-    <div style={{ padding: "2rem" }}>
-      <h2
-        style={{ fontSize: "1.25rem", fontWeight: 600, marginBottom: "1rem" }}
-      >
-        Something went wrong
-      </h2>
-      <p style={{ color: "#6b7280", marginBottom: "1rem" }}>
-        {error.message || "An unexpected error occurred."}
-      </p>
-      <button
-        onClick={reset}
-        style={{
-          padding: "0.5rem 1rem",
-          background: "#111827",
-          color: "#fff",
-          borderRadius: 6,
-          border: "none",
-          cursor: "pointer",
-        }}
-      >
-        Try again
-      </button>
+    <div className="studio-shell-state">
+      <div className="studio-shell-state-card">
+        <span className="studio-shell-state-eyebrow">Studio UI</span>
+        <h2>Something went wrong</h2>
+        <p>{error.message || "An unexpected error occurred."}</p>
+        <button className="design-system-button is-primary" onClick={reset}>
+          <RotateCcw className="icon" aria-hidden="true" />
+          Try again
+        </button>
+      </div>
     </div>
   )
 }

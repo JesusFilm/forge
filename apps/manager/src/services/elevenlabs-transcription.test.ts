@@ -136,6 +136,51 @@ describe("elevenlabs transcription", () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it("sends provided isolated audio directly to Scribe", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        language_code: "en",
+        text: "Clean audio transcript.",
+        words: [
+          {
+            text: "Clean",
+            start: 0,
+            end: 0.4,
+            type: "word",
+            speaker_id: "speaker_0",
+          },
+          {
+            text: " audio transcript.",
+            start: 0.4,
+            end: 1.2,
+            type: "word",
+            speaker_id: "speaker_0",
+          },
+        ],
+      }),
+    })
+    vi.stubGlobal("fetch", fetchMock)
+
+    const result = await transcribeViaElevenLabs({
+      isolatedAudio: new Blob(["isolated"], { type: "audio/mpeg" }),
+      languageCode: "en",
+    })
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://api.elevenlabs.io/v1/speech-to-text",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.any(FormData),
+      }),
+    )
+    expect(result).toMatchObject({
+      text: "Clean audio transcript.",
+      language: "en",
+    })
+  })
+
   it("fails clearly when ElevenLabs rejects the transcription request", async () => {
     const fetchMock = vi
       .fn()

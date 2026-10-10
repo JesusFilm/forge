@@ -1,0 +1,128 @@
+import { describe, expect, it } from "vitest"
+
+import {
+  getDefaultWatchCallbackOrigins,
+  isAllowedDownloadOrigin,
+  resolveWatchCallbackURL,
+} from "./index"
+import {
+  buildCanonicalWatchVideoPath,
+  buildExplicitWatchVideoPath,
+  isLanguageLessWatchVideoPathEligible,
+  PUBLIC_WATCH_LANGUAGE_SLUGS,
+} from "./routes"
+
+describe("watch URL policy", () => {
+  describe("standalone Watch video paths", () => {
+    it("omits the language only for eligible English content", () => {
+      expect(buildCanonicalWatchVideoPath("jesus", "english")).toBe(
+        "/jesus.html",
+      )
+      expect(buildCanonicalWatchVideoPath("jesus", "spanish-castilian")).toBe(
+        "/jesus.html/spanish-castilian.html",
+      )
+      expect(buildCanonicalWatchVideoPath("jesus", "romanian")).toBe(
+        "/jesus.html/romanian.html",
+      )
+      expect(buildCanonicalWatchVideoPath("jesus", "russian")).toBe(
+        "/jesus.html/russian.html",
+      )
+    })
+
+    it("always emits an explicit language when requested", () => {
+      expect(buildExplicitWatchVideoPath("jesus", "english")).toBe(
+        "/jesus.html/english.html",
+      )
+    })
+
+    it("keeps English explicit for a public language-home collision", () => {
+      expect(isLanguageLessWatchVideoPathEligible("russian")).toBe(false)
+      expect(buildCanonicalWatchVideoPath("russian", "english")).toBe(
+        "/russian.html/english.html",
+      )
+    })
+
+    it("keeps non-language one-segment Experiences eligible", () => {
+      expect(isLanguageLessWatchVideoPathEligible("easter")).toBe(true)
+      expect(buildCanonicalWatchVideoPath("easter", "english")).toBe(
+        "/easter.html",
+      )
+    })
+
+    it("owns the generated public-language collision corpus", () => {
+      expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has("english")).toBe(true)
+      expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has("romanian")).toBe(true)
+      expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has("spanish-latin-american")).toBe(
+        true,
+      )
+      expect(PUBLIC_WATCH_LANGUAGE_SLUGS.has("jesus")).toBe(false)
+    })
+  })
+
+  it("allows watch-page callbacks from exact configured origins", () => {
+    expect(
+      resolveWatchCallbackURL("https://preview.example.test/watch/jesus", [
+        "https://preview.example.test",
+      ]),
+    ).toBe("https://preview.example.test/watch/jesus")
+    expect(
+      resolveWatchCallbackURL("https://preview.example.test/watch", [
+        "https://preview.example.test",
+      ]),
+    ).toBe("https://preview.example.test/watch")
+  })
+
+  it.each([
+    "https://attacker.example.test/watch",
+    "https://preview.example.test/watcher",
+    "https://preview.example.test/watch-evil",
+    "https://preview.example.test/watch/api/download",
+    "https://preview.example.test/watch/api%2Fdownload",
+    "https://preview.example.test/watch?url=https%3A%2F%2Fstream.mux.com%2Fabc.mp4",
+    "https://preview.example.test/watch?next=https%3A%2F%2Fapi-media-core.jesusfilm.org%2Fabc.mp4",
+    "https://preview.example.test/watch?next=stream.mux.com%2Fabc.mp4",
+  ])("rejects unsafe callback %s", (callbackURL) => {
+    expect(
+      resolveWatchCallbackURL(callbackURL, ["https://preview.example.test"]),
+    ).toBeUndefined()
+  })
+
+  it("rejects watch API callbacks and embedded media download references", () => {
+    expect(
+      resolveWatchCallbackURL(
+        "https://preview.example.test/watch/api/download",
+        ["https://preview.example.test"],
+      ),
+    ).toBeUndefined()
+    expect(
+      resolveWatchCallbackURL(
+        "https://preview.example.test/watch/jesus?next=https%3A%2F%2Fstream.mux.com%2Fabc.mp4",
+        ["https://preview.example.test"],
+      ),
+    ).toBeUndefined()
+  })
+
+  it("keeps localhost callback origins out of production defaults", () => {
+    expect(getDefaultWatchCallbackOrigins("production")).not.toContain(
+      "http://localhost:3000",
+    )
+    expect(getDefaultWatchCallbackOrigins("production")).toContain(
+      "https://watch.jesusfilm.org",
+    )
+    expect(getDefaultWatchCallbackOrigins("production")).not.toContain(
+      "https://web.jesusfilm.org",
+    )
+    expect(getDefaultWatchCallbackOrigins("test")).toContain(
+      "http://localhost:3000",
+    )
+  })
+
+  it("shares the download origin allowlist used by callback sanitizers and download routes", () => {
+    expect(isAllowedDownloadOrigin("https://stream.mux.com/abc.mp4")).toBe(true)
+    expect(
+      isAllowedDownloadOrigin("https://api-media-core.jesusfilm.org/abc.mp4"),
+    ).toBe(true)
+    expect(isAllowedDownloadOrigin("http://stream.mux.com/abc.mp4")).toBe(false)
+    expect(isAllowedDownloadOrigin("https://evil.example/abc.mp4")).toBe(false)
+  })
+})

@@ -1,0 +1,70 @@
+[
+  [
+    {
+      "execution_mode": "hybrid_personalized",
+      "candidate_generator": "multi-interest-profile",
+      "cards": "15465",
+      "impressions": "1131",
+      "selections": "63",
+      "matched_selections": "60",
+      "starts": "39",
+      "qualified": "22",
+      "active_ms": "3530278"
+    },
+    {
+      "execution_mode": "hybrid_personalized",
+      "candidate_generator": "semantic",
+      "cards": "16501",
+      "impressions": "1067",
+      "selections": "60",
+      "matched_selections": "57",
+      "starts": "33",
+      "qualified": "13",
+      "active_ms": "1960597"
+    },
+    {
+      "execution_mode": "semantic_contextual",
+      "candidate_generator": "semantic",
+      "cards": "226497",
+      "impressions": "9487",
+      "selections": "266",
+      "matched_selections": "258",
+      "starts": "135",
+      "qualified": "70",
+      "active_ms": "10624741"
+    },
+    {
+      "execution_mode": "semantic_fallback",
+      "candidate_generator": "semantic",
+      "cards": "1271",
+      "impressions": "62",
+      "selections": "4",
+      "matched_selections": "4",
+      "starts": "3",
+      "qualified": "1",
+      "active_ms": "225268"
+    },
+    {
+      "execution_mode": null,
+      "candidate_generator": "curated",
+      "cards": "4866",
+      "impressions": "167",
+      "selections": "7",
+      "matched_selections": "6",
+      "starts": "4",
+      "qualified": "4",
+      "active_ms": "1066191"
+    },
+    {
+      "execution_mode": null,
+      "candidate_generator": "multi-interest-profile",
+      "cards": "78",
+      "impressions": "29",
+      "selections": "2",
+      "matched_selections": "1",
+      "starts": "0",
+      "qualified": "0",
+      "active_ms": "0"
+    }
+  ]
+]

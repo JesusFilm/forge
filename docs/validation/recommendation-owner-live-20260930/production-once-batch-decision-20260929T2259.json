@@ -1,0 +1,13 @@
+{
+  "batchId": "3e9900c4-cf73-45a3-9cc3-1c4bf2103eb1",
+  "recordedAt": "2026-09-29T22:59:03.098371+00:00",
+  "expectedRuntimeCommit": "8ecca9c7db8a29bc728c95238ca62a4f6a61e51b",
+  "helperSha256": "f65302f94409b5c7aed3dcf541f8aa528e960a1aa449a7fa0ee9b11b6acdc7d7",
+  "decision": "one reviewed fresh-preflight then at most one exact publication within original fixed-window resource limits",
+  "reason": "Read-only two-clock diagnostic confirms 3 profile-to-session changes with identical counts; additional historical metadata drift remains unresolved. Shortening the handoff minimizes both without waiving publisher exact-generation recheck.",
+  "capacityReceipt": "/tmp/forge-owner-batch-capacity-decision.json",
+  "runtimeReceipt": "/tmp/forge-owner-final-batch-runtime-health.json",
+  "automaticRetryPermitted": false,
+  "originalLimitsAndWindowUnchanged": true,
+  "existingActivationApproval": true
+}

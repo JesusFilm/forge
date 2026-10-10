@@ -1,0 +1,62 @@
+// DB-backed sync lock — atomic UPDATE WHERE unlocked or stale.
+//
+// Replaces the CMS's in-memory `syncInProgress` guard which does not
+// survive Railway horizontal scaling.
+
+import type { PrismaClient } from "@prisma/client"
+
+const LOCK_KEY = "core-sync"
+export const DEFAULT_SYNC_LOCK_STALE_AFTER_MS = 15 * 60 * 1000
+
+export async function acquireSyncLock(
+  prisma: PrismaClient,
+  heldBy: string,
+  staleAfterMs = DEFAULT_SYNC_LOCK_STALE_AFTER_MS,
+): Promise<boolean> {
+  // Ensure the lock row exists (idempotent)
+  await prisma.syncLock.upsert({
+    where: { key: LOCK_KEY },
+    create: { key: LOCK_KEY },
+    update: {},
+  })
+
+  // Atomic claim: UPDATE only if not held, or if the holder stopped
+  // heartbeating and the row is stale. Returns affected count.
+  const claimed = await prisma.$executeRaw`
+    UPDATE sync_locks
+    SET held_by = ${heldBy}, acquired_at = NOW(), updated_at = NOW()
+    WHERE key = ${LOCK_KEY}
+      AND (
+        held_by IS NULL
+        OR updated_at < NOW() - (${staleAfterMs} * INTERVAL '1 millisecond')
+      )
+  `
+
+  return claimed > 0
+}
+
+export async function refreshSyncLock(
+  prisma: PrismaClient,
+  heldBy: string,
+): Promise<boolean> {
+  const refreshed = await prisma.$executeRaw`
+    UPDATE sync_locks
+    SET updated_at = NOW()
+    WHERE key = ${LOCK_KEY} AND held_by = ${heldBy}
+  `
+
+  return refreshed > 0
+}
+
+export async function releaseSyncLock(
+  prisma: PrismaClient,
+  heldBy: string,
+): Promise<boolean> {
+  const released = await prisma.$executeRaw`
+    UPDATE sync_locks
+    SET held_by = NULL, acquired_at = NULL, updated_at = NOW()
+    WHERE key = ${LOCK_KEY} AND held_by = ${heldBy}
+  `
+
+  return released > 0
+}

@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Үзүүлэмжийн агуулга алга.",
+    "failedToLoad": "Үзүүлэмжийг ачаалж чадсангүй: {message}",
+    "unexpected": "Төлөвлөөгүй алдаа гарлаа.",
+    "notConfigured": "Агуулгын үйлчилгээ тохируулагдаагүй байна.",
+    "noContent": "Агуулга алга.",
+    "homepageMisconfigured": "Үзэх нүүр хуудас буруу тохируулагдсан байна.",
+    "defaultTemplateMisconfigured": "Үзэх үндсэн загвар буруу тохируулагдсан байна.",
+    "authFailed": "Агуулгын үйлчилгээтэй нэвтэрч чадсангүй. Үргэлжилбэл дэмжлэгтэй холбогдоно уу.",
+    "pageLoadFailed": "Ямар нэг зүйл буруу боллоо.",
+    "tryAgain": "Дахин оролдох"
+  },
+  "VideosPage": {
+    "title": "Бүх видео",
+    "placeholder": "Каталогийг үзэх удахгүй нэмэгдэнэ. Одоогоор хайлт эсвэл сэдвийн тусгай URL ашиглана уу."
+  },
+  "BibleQuotes": {
+    "title": "Библийн ишлэлүүд",
+    "share": "Хуваалцах",
+    "readMore": "Дэлгэрэнгүй...",
+    "learnMore": "Дэлгэрэнгүй үзэх",
+    "freeResources": "Үнэгүй нөөцүүд",
+    "promoHeading": "Библийг илүү гүнзгий ойлгохыг хүсэж байна уу?",
+    "joinBibleStudy": "Библи судлалд нэгдэх",
+    "previousQuote": "Өмнөх Библийн ишлэл",
+    "nextQuote": "Дараагийн Библийн ишлэл",
+    "readPassage": "Энэ эшэлэлые Библи соогоо уншагты."
+  },
+  "DownloadButton": {
+    "checking": "Шалгаж байна",
+    "download": "Татах",
+    "sessionError": "Таны сессийг шалгаж чадсангүй. Дахин оролдоно уу.",
+    "saveVideo": "Видеог хадгалах"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Видео татах",
+    "eyebrow": "Видео татах",
+    "posterAlt": "Видео постер",
+    "noDownloads": "Энэ видеонд татах боломж алга.",
+    "fileSizeLabel": "Файлын хэмжээг сонгох",
+    "termsAgreementPrefix": "Би дараахыг зөвшөөрч байна: ",
+    "termsOfUse": "Ашиглах нөхцөл",
+    "termsAgreementSuffix": "",
+    "close": "Хаах",
+    "download": "Татах",
+    "authRequiredTitle": "Энэ видеог татахыг хүсэж байна уу?",
+    "authRequiredBody": "Видео татахын тулд үнэгүй Jesus Film данс хэрэгтэй.",
+    "signInToDownload": "Нэвтэрч татах",
+    "keepWatching": "Үргэлжлүүлэн үзэх",
+    "checking": "Шалгаж байна",
+    "closeTermsOfUse": "Ашиглах нөхцөлийг хаах",
+    "cancel": "Цуцлах",
+    "accept": "Зөвшөөрөх",
+    "errorSessionExpired": "Таны сессийн хугацаа дууссан. Татахын тулд дахин нэвтэрнэ үү.",
+    "errorSessionUnavailable": "Таны сессийг шалгаж чадсангүй. Дахин оролдоно уу.",
+    "errorUnavailableSource": "Энэ эх сурвалжаас татах боломжгүй",
+    "tierHighest": "Хамгийн өндөр",
+    "tierHigh": "Өндөр",
+    "tierLow": "Бага"
+  },
+  "HeroPlayerControls": {
+    "play": "Тоглуулах",
+    "pause": "Түр зогсоох",
+    "seek": "Урагшлуулах",
+    "seekValue": "{current} / {total}",
+    "volume": "Дууны түвшин",
+    "volumeValue": "{percent} хувь",
+    "mute": "Дууг хаах",
+    "unmute": "Дууг нээх",
+    "changeAudioLanguage": "Дууны хэлийг солих",
+    "enterFullscreen": "Дэлгэцийг бүтэн болгох",
+    "exitFullscreen": "Бүтэн дэлгэцээс гарах"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Хэл сонгох",
+    "searchPlaceholder": "Хэл хайх…",
+    "languages": "Хэлнүүд",
+    "noMatches": "Таарах зүйл алга",
+    "notAvailable": "Боломжгүй"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Хэл",
+    "dialogTitleWithSubtitles": "Хэл ба хадмал",
+    "languageHeading": "Хэл",
+    "subtitlesHeading": "Хадмал",
+    "languageCount": "{count, plural, one {# хэл} other {# хэл}}",
+    "requestSent": "Хүсэлт илгээгдлээ",
+    "translateWithAi": "AI-гаар орчуулах",
+    "noSubtitles": "Хадмал алга",
+    "toggleOn": "Асаалттай",
+    "toggleOff": "Унтраалттай",
+    "close": "Хаах",
+    "apply": "Хэрэглэх",
+    "noLanguageSubtitles": "{language} хадмал алга",
+    "seeAllLanguages": "Бүх хэл",
+    "seeAllVideosInLanguage": "Бүх видео: {language}",
+    "retryLoadingLanguages": "Хэлүүдийг дахин ачаалах",
+    "notAvailable": "Боломжгүй",
+    "switching": "Сольж байна..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 анги} other {# анги}}",
+    "seriesLabel": "ЦУВРАЛ · {episodes}",
+    "changeAudioLanguage": "Дууны хэлийг солих",
+    "share": "Хуваалцах",
+    "languages": "Хэлнүүд",
+    "downloadCollection": "Цуглуулгые татажа абаха",
+    "checkingDownloads": "Татажа абаха боломжонуудые шалгажа байна…",
+    "downloadSessionError": "Таны сессийг шалгаж чадсангүй. Дахин оролдоно уу."
+  },
+  "WatchModal": {
+    "close": "Хаах"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Хэрэв та энэ видеог бүтээгчээс нэг асуулт асууж чадвал юу асуух вэ?",
+    "fallbackBody": "Сонсохоор бэлэн нэгэнтэй хувийн ярилцлага өрнүүлээрэй.",
+    "questionsShort": "Асуултууд",
+    "questions": "Холбогдох асуултууд",
+    "askYours": "Өөрийнхөө асуултыг асуу",
+    "chatWithPerson": "Хүнтэй чатлах",
+    "askBibleQuestion": "Библийн асуулт асуух",
+    "quiz": "Викторина"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Зурвасын төрөл",
+    "fieldLabel": "Энэ видеоны талаар асуулт асуу",
+    "send": "Асуулт илгээх",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Библийн асуулт асуух",
+        "description": "AI хайлтаар Библиэс шууд хариу авах"
+      },
+      "prayerRequest": {
+        "label": "Залбирал хүсэх",
+        "description": "Юуны төлөө залбирахыг хүсэж байгаагаа хуваалцах"
+      },
+      "comment": {
+        "label": "Сэтгэгдэл үлдээх",
+        "description": "Энэ видеоны талаар бодлоо илгээх"
+      },
+      "personChat": {
+        "label": "Хүнтэй чатлах",
+        "description": "Одоо хэн нэгэнтэй ярилцах"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Видео хуваалцах",
+    "heading": "Энэ видеог хуваалцах",
+    "posterAlt": "Видео постер",
+    "shareOnFacebook": "Facebook дээр хуваалцах",
+    "shareOnFacebookUnavailable": "Facebook дээр хуваалцах (энэ хувилбарт боломжгүй)",
+    "shareOnX": "X дээр хуваалцах",
+    "shareOnXUnavailable": "X дээр хуваалцах (энэ хувилбарт боломжгүй)",
+    "shareDisabledHint": "Хуваалцахын тулд нийтлэгдсэн хуудас хэрэгтэй — энэ видео production-д орсны дараа ажиллана.",
+    "shareFormat": "Хуваалцах хэлбэр",
+    "shareLinkTab": "Холбоос хуваалцах",
+    "embedCodeTab": "Код оруулах",
+    "copyFailed": "Автоматаар хуулах боломжгүй байсан — доорх текстийг сонгоод гараар хуулна уу.",
+    "copyLink": "Холбоос хуулах",
+    "copyCode": "Код хуулах",
+    "copied": "Хуулагдлаа",
+    "close": "Хаах"
+  },
+  "SubtitleTranscript": {
+    "heading": "Ярианы бичвэр",
+    "subheading": "Аливаа мөрийг товшвол тухайн мөч рүү очно.",
+    "subtitleLanguage": "Хадмалын хэл",
+    "aiSuffix": " · AI",
+    "loading": "Ярианы бичвэр ачаалж байна…",
+    "unavailable": "Энэ хадмалын мөрөнд ярианы бичвэр алга.",
+    "empty": "Ярианы мөр олдсонгүй."
+  },
+  "FloatingSearch": {
+    "placeholder": "Сэдэв хайх эсвэл үзэх…",
+    "openSearch": "Видео хайх",
+    "searchRegion": "Видео хайх",
+    "clearSearch": "Хайлтыг цэвэрлэх",
+    "changeAudioLanguage": "Дууны хэлийг солих",
+    "home": "JesusFilm нүүр хуудас",
+    "closeSearch": "Хайлт хаах",
+    "submitSearch": "Бэдэрхэ",
+    "library": "Номой сан"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Видео хайж үзэх",
+    "home": "JesusFilm нүүр хуудас",
+    "placeholder": "Сэдэв хайх эсвэл үзэх…",
+    "inputLabel": "Түлхүүр үгээр видео хайх",
+    "searchFailed": "Хайлт амжилтгүй боллоо. Дахин оролдоно уу.",
+    "loadMoreFailed": "Нэмэлт үр дүнг ачаалж чадсангүй.",
+    "searching": "Хайж байна...",
+    "connectionHint": "Сүлжээгээ шалгаад дахин оролдоно уу.",
+    "rateLimitHint": "Дурадхал дэндүү олон. Нэгэ минутын һүүлээр дахин туршагты.",
+    "retrySearch": "Хайлтыг дахин оролдох",
+    "retry": "Дахин оролдох",
+    "noResults": "“{query}” гэсэн үр дүн алга",
+    "tryDifferentKeywords": "Өөр түлхүүр үг хэрэглэж үзэх эсвэл ангиллаар үзэх",
+    "loading": "Ачаалж байна...",
+    "loadMore": "Илүүг ачаалах",
+    "categoryBibleStories": "Библийн түүхүүд",
+    "categoryParables": "Сургаалт зүйрлэлүүд",
+    "categoryAnimated": "Анимейшн",
+    "categoryStudy": "Судалгаа",
+    "categoryFamily": "Гэр бүл",
+    "categoryChristmas": "Зул сар",
+    "searchLanguageLabel": "Хайлтын хэл",
+    "allLanguages": "Бүх хэл",
+    "searchSuggestions": "Бэдэрэлгын дурадхалнууд",
+    "directMatches": "Сэхэ таараһан үрэ дүнгүүд",
+    "languages": "Хэлнүүд",
+    "recommendedLanguage": "Зөвлөмж болгосон хэл",
+    "searchSuggestion": "«{suggestion}» гэжэ бэдэрхэ",
+    "searchSuggestionWithLanguage": "{language} хэлээр «{suggestion}» гэжэ бэдэрхэ",
+    "inLanguage": "{language}-ээр",
+    "browseByRegion": "Бүс нутгаар үзэх",
+    "allVideosOnSinglePage": "Бүх видео нэгэ хуудасда",
+    "clearLanguages": "Арилгах",
+    "queryLanguageDetected": "{language} илэрлээ",
+    "searchInLanguage": "{language} хэлээр бэдэрхэ",
+    "tryDifferentKeywordsOrLanguage": "Өөр түлхүүр үг эсвэл өөр хайлтын хэл сонгоно уу",
+    "useWebsiteDefaultLanguage": "Вэбсайтын үндсэн хайлтын хэлийг ашиглах",
+    "removeLanguage": "{language}-г устгах",
+    "browseMode": "Хайж үзэх горим",
+    "searchingInLanguage": "Үрэ дүнгүүд: {language} хэлээр"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Одоо үзэх",
+    "tapToUnmute": "Дууг нээхийн тулд товшино уу",
+    "nextEpisode": "Дараагийн анги",
+    "audioTranslationCount": "{count, plural, one {# хэл} other {# хэл}}",
+    "subtitleCount": "Хадмал: {count, plural, one {# хэл} other {# хэл}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Агуулга ачаалж байна",
+    "loadingVideo": "Видео ачаалж байна"
+  },
+  "VideoLabels": {
+    "video": "Видео",
+    "segment": "Хэсэг",
+    "episode": "Анги",
+    "featureFilm": "Уран сайхны кино",
+    "shortFilm": "Богино хэмжээний кино",
+    "series": "Цуврал",
+    "collection": "Цуглуулга",
+    "trailer": "Трейлер",
+    "behindTheScenes": "Хөшигний ард",
+    "chapter": "Бүлэг"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "{current}/{total} клип",
+    "position": "{current} / {total}",
+    "chapterCount": "{count, plural, one {# бүлэг} other {# бүлэг}}",
+    "clipAriaLabel": "{title} · {current}/{total} клип",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# бүлэг} other {# бүлэг}}",
+    "chapter": "Бүлэг",
+    "noImage": "Зураг алга",
+    "playingNow": "Одоо тоглож байна",
+    "previousChapter": "Өмнөх бүлэг",
+    "nextChapter": "Дараагийн бүлэг",
+    "thumbnailAlt": "{title} жижиг зураг",
+    "relatedVideoThumbnail": "Холбогдох видеоны жижиг зураг"
+  },
+  "SearchResultCard": {
+    "experience": "Үзүүлэмж",
+    "episodeCount": "{count, plural, one {# анги} other {# анги}}",
+    "thumbnailAlt": "Видео жижиг зураг"
+  },
+  "Feedback": {
+    "openForm": "Санал хүсэлтийн маягт нээх",
+    "label": "Санал хүсэлт",
+    "couldNotLoad": "Санал хүсэлтийн маягтыг ачаалж чадсангүй.",
+    "loadingForm": "Санал хүсэлтийн маягт ачаалж байна…",
+    "retry": "Дахин оролдох",
+    "cancel": "Цуцлах",
+    "closeForm": "Санал хүсэлтийн маягтыг хаах",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language}-д байгаа үнэгүй Христийн видеонууд | Jesus Film Project",
+    "metadataDescription": "{language}-д дуу оруулгатай эсвэл хадмалтай Jesus-ийн кино, Библийн түүх, дагалдах цуврал, сайн мэдээ түгээх видеонуудыг сонирхоорой.",
+    "heroTitle": "{language}-д байгаа үнэгүй Христийн видеонууд",
+    "heroDescription": "{language}-д байдаг Jesus-ийн кино, Библийн түүх, дагалдах цуврал, сайн мэдээ түгээх видеонуудыг сонирхоорой. Бүрэн дуу оруулгатай видеонуудыг эхэнд нь онцолсон бөгөөд хадмалтай хувилбарууд доор байрлана.",
+    "languageCollection": "Хэлний цуглуулга",
+    "itemCount": "{count, plural, one {# зүйл} other {# зүйл}}",
+    "videoCount": "{count, plural, one {# видео} other {# видео}}",
+    "videosInGroups": "{videoCount, plural, one {# видео} other {# видео}} / {groupCount, plural, one {# бүлэг} other {# бүлэг}}",
+    "sectionNavLabel": "Хэлний сангийн хэсгүүд",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Шинэ",
+    "videoBible": "Видео Библи",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Цуглуулгууд",
+    "subtitlesOnly": "Зөвхөн хадмал",
+    "backToTop": "Дээшээ бусаха",
+    "newlyAdded": "Шинээр нэмэгдсэн",
+    "newVideosTitle": "{language}-д байгаа шинэ Христийн видеонууд",
+    "newestFirst": "Шинэ нь эхэнд",
+    "noPublishedVideos": "Энэ хэл дээр одоогоор нийтлэгдсэн видео олдсонгүй.",
+    "bibleAndGospelFilms": "Библи ба Сайн мэдээний кинонууд",
+    "videoBibleCollectionsTitle": "{language}-ийн Видео Библийн цуглуулгууд",
+    "videoBibleDescription": "LUMO, JESUS, Magdalena, Acts зэрэг сударт төвлөрсөн цуглуулгууд {language}-д.",
+    "noVideoBibleCollections": "Энэ хэл дээр одоогоор Видео Библийн цуглуулга алга.",
+    "bibleProjectCollectionsTitle": "{language}-ийн BibleProject цуглуулгууд",
+    "bibleProjectDescription": "{language}-д байгаа BibleProject цуврал, судалгаанууд.",
+    "noBibleProjectCollections": "Энэ хэл дээр одоогоор BibleProject цуглуулга алга.",
+    "sportsStories": "Спортын түүхүүд",
+    "sportsTitle": "{language}-ийн спорт ба тамирчдын түүхүүд",
+    "sportsDescription": "{language}-д байгаа итгэл төвтэй спортын түүхүүд, тамирчдын цуглуулгууд.",
+    "noSportsCollections": "Энэ хэл дээр одоогоор спорт эсвэл тамирчдын түүхийн цуглуулга алга.",
+    "fullyDubbed": "Бүрэн дуу оруулгатай",
+    "dubbedVideosTitle": "{language}-ийн видеонуудыг цуглуулгаар",
+    "dubbedVideosDescription": "Илүү амархан олохын тулд бүрэн дуу оруулгатай {language}-ийн видеонуудыг цуглуулгаар нь үзнэ үү.",
+    "noDubbedVideos": "Энэ хэл дээр одоогоор бүрэн дуу оруулгатай видео алга.",
+    "subtitlesAvailable": "Хадмалтай",
+    "subtitlesTitle": "{language}-ийн хадмалтай видеонууд",
+    "subtitlesDescription": "Ярьсан {language} дуу оруулга одоогоор байхгүй үед эдгээр видеонд {language} хадмал орно.",
+    "noSubtitleVideos": "Энэ хэл дээр одоогоор зөвхөн хадмалтай видео алга.",
+    "dubbed": "Дуу оруулгатай",
+    "subtitles": "Хадмал",
+    "newLabel": "Шинэ",
+    "fromCollection": "{collection}-оос",
+    "standaloneVideos": "Бие даасан видеонууд",
+    "videosFromCollection": "{collection}-ын видеонууд.",
+    "standaloneDescription": "Энэ хэл дээрх бие даасан видеонууд.",
+    "openCollection": "Цуглуулга нээх",
+    "filters": "Шүүлтүүрнүүд",
+    "filterLength": "Утань",
+    "filterLength_under5": "5 минутаһаа багаар",
+    "filterLength_5to10": "5-10 минута",
+    "filterLength_10to30": "10-30 минута",
+    "filterLength_over30": "30 минутаһаа ехээр",
+    "filterType": "Түхэл",
+    "clearFilters": "Шүүлтүүрнүүдые арилгаха",
+    "filterResults": "{total}-һаа {count} харуулагдана",
+    "noFilterResults": "Эдэ шүүлтүүрнүүдтэ таарамжатай видео үгы. Нэгыень абажа хараад үзэгты.",
+    "filterAdded": "Нэмэгдэбэ",
+    "filterAdded_60d": "Һүүлшын 60 үдэр",
+    "filterAdded_6m": "Һүүлшын 6 һара",
+    "filterAdded_12m": "Һүүлшын 12 һара"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project — хараха",
+    "watch": "Үзэх",
+    "watchNow": "Одоо үзэх",
+    "mutePreview": "Урьдчилан харалтыг дуугүй болгох",
+    "unmutePreview": "Урьдчилан харалтын дууг нээх",
+    "nextVideo": "Дараагийн видео",
+    "featured": "Онцлох",
+    "showVideo": "{title}-г харуулах",
+    "previousVideoPreview": "Өмнөх видеоны урьдчилан харалт",
+    "nextVideoPreview": "Дараагийн видеоны урьдчилан харалт",
+    "mediaCollection": "Медиа цуглуулга",
+    "scrollToVideo": "{title} видеог харуулахаар гүйлгэх",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project нүүр хуудас",
+    "navigation": "Доод талын навигаци",
+    "share": "Хуваалцах",
+    "watch": "Үзэх",
+    "giving": "Хандив",
+    "about": "Тухай",
+    "products": "Бүтээгдэхүүнүүд",
+    "resources": "Нөөцүүд",
+    "partners": "Түншүүд",
+    "contact": "Холбоо барих",
+    "giveNow": "Одоо хандивлах",
+    "resourcesVersion": "Нөөцүүд ({version})",
+    "office": "Албан газар",
+    "fax": "Факс",
+    "privacyPolicy": "Нууцлалын бодлого",
+    "legalStatement": "Хуулийн мэдэгдэл",
+    "newsletter": "Манай мэдээний товхимолд бүртгүүлэх",
+    "aiAttributionHeading": "Хиймэл оюун хэрэглээ ба эшлэл",
+    "aiAttributionBody": "Энэ хуудаснаас авсан мэдээллийг хиймэл оюуны системүүд ашиглахдаа эшлэл заавал хийх нөхцөлтэй. Энэ хуудаснаас мэдээлэл олборлож, сургалт, хайлт, хариу үүсгэх эсвэл хэрэглэгч, үйлчлүүлэгчдэд үзүүлэх үйлчилгээний зориулалтаар ашиглаж буй ямар ч AI агент, том хэлний загвар (LLM), AI хайлтын систем, crawler болон холбогдох автоматжуулсан систем Jesus Film Project-ийг эх сурвалж гэж тодорхой зааж, тухайн мэдээлэл ашиглагдсан эсвэл харуулсан газар бүрт энэ хуудасны тод, шууд холбоосыг оруулах ёстой. Манай <terms>Хэрэглэх нөхцөл</terms>-ийг үзнэ үү."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Дэлхийн номлолд зориулан бүтээгдсэн",
+    "title": "Мессеж өөрчлөгдөхгүй. Харин хүмүүсийн үзэх арга өөрчлөгдөнө.",
+    "description": "Бид видео сан болон хэрэгслүүдээ шинээр бүтээж, олон арван жилийн орчуулгын ажлыг хүмүүс аль хэдийн цугларч, үзэж, хуваалцаж байдаг платформууд руу авчирч байна.",
+    "translatedLibraryTitle": "Дэлхийн хамгийн олон хэлээр орчуулагдсан киноны сан",
+    "translatedLibraryDescription": "Итгэлт үйлчилгээний түншүүдийн дэмжлэгтэй олон арван жилийн орчуулгын ажил нь мянга мянган хэлний замтай санг бий болгож, хүмүүс Есүсийн түүхийг өөрт нь хамгийн гүн хүрэх хэлээрээ сонсох боломжийг өгсөн.",
+    "trustedVoicesTitle": "Итгэлтэй дуу хоолойг шинэ хэлбэрт хүргэх нь",
+    "trustedVoicesDescription": "Бид сайн мэдээний түүхүүдийг дүрслэн өгүүлэх аргаа дахин бүтээж, найдвартай орчуулгыг орчин үеийн хэлбэрүүдтэй хослуулан мессежийг платформ, соёл, дэлгэцүүдээр чөлөөтэй түгээхээр ажиллаж байна.",
+    "missionTeamTitle": "Зөвхөн сан биш. Номлолд чиглэсэн баг.",
+    "missionTeamDescription": "Jesus Film Project бол олон арван жилийн үйлчлэлийн туршлагыг хаа сайгүй шавь бэлдэгчдэд зориулсан хэрэгсэл болгон хувиргаж буй орчуулагч, медиа мэргэжилтэн, редактор, бүтээгчдийн дэлхий нийтийн баг юм.",
+    "buildingNext": "Бид дараа нь юу бүтээж байна",
+    "nextStepsTitle": "Дараагийн алхмын платформ",
+    "nextStepsDescription": "Үзэгчдийг сүнслэг аялалдаа бодитой дараагийн боломжуудтай холбож, тэднийг хамт олон, Судар эсвэл номлол руу дараагийн алхам хийхэд нь тусална.",
+    "mediaLibraryTitle": "Сайн мэдээ түгээх медиа сан",
+    "mediaLibraryDescription": "Дэлхий даяарх үйлчлэл, сайн мэдээ түгээхэд зориулсан олон хэл дээрх мянга мянган видео, кино, нөөц бүхий өргөн цар хүрээтэй Христийн медиа сан.",
+    "ministryToolsTitle": "Үйлчлэлд зориулсан дижитал хэрэгслүүд",
+    "ministryToolsDescription": "Видео удирдлага, агуулга түгээлт, үзэгчийн оролцоо, аналитик нь үйлчлэлүүдэд илүү олон хүнд үр дүнтэй хүрэхэд туслахаар бүтээгдсэн.",
+    "invitationEyebrow": "Таныг урьж байна",
+    "invitationTitle": "Номлолын хэрэгслүүдийн <highlight>дараагийн үе</highlight>-ийг бүтээхэд туслаарай",
+    "invitationDescription": "Бид туршигчид, бүтээгчид, түншүүдийг эрт хандалтын шатанд урьж байна. Шинэ хэрэгслүүдийг хамгийн түрүүнд туршиж, санал хүсэлтээ өгч, бодит номлолын ажилд зориулсан бүтээгдэхүүнийг хамтдаа хөгжүүлээрэй.",
+    "betaTester": "Бета туршигч болох"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Видео Библи цуглуулга",
+    "gospelRailTitle": "Бүх түүхийг нээ",
+    "videoBibleDescription": "Сонирхолтой түүх, сургаалаар Библийг амилуулдаг манай видео, нөөцийн цуглуулгыг сонирхоорой.",
+    "showcaseTitle": "Судрыг киноноор өгүүлэх нь",
+    "adventEyebrow": "Зул сарын ирэлт",
+    "adventTitle": "Зул сарын ирэлтийн тоолол",
+    "adventDescription": "Зул сарын баярыг догдлон хүлээх сэтгэлийг өдөр бүрийн видеоор бүтээдэг Ирэлтийн аялагатай нэгдэж, Есүсийн ирэлтийн найдвар, баяр хөөр, амлалтыг сонирхоорой.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject Ирэлт",
+    "nuaEyebrow": "NUA цуврал",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth цуврал",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Видео курс",
+    "journeyWithJesusTitle": "Есүстэй хамт аялах",
+    "gospelsOnVideoEyebrow": "Бүх Сайн мэдээг видеоор",
+    "scriptureAsWrittenTitle": "Бичвэрийг яг бичсэнээр нь",
+    "merryChristmas": "Христосой түрэһэн үдэрөөр амаршалнабди!",
+    "daysUntilChristmas": "{count, plural, one {Христосой түрэһэн үдэр болотор # үдэр} other {Христосой түрэһэн үдэр болотор # үдэр}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Хэлнүүд",
+    "metadataDescription": "JesusFilm видеонуудыг хэлээр нь үзнэ үү.",
+    "eyebrow": "Үзэх хэлүүд",
+    "title": "Хэл сонгох",
+    "description": "Бүс нутгаар хэлүүдийг үзэх эсвэл бүтэн жагсаалтаар нь сонирхоорой.",
+    "searchPlaceholder": "Хэл эсвэл улс хайх...",
+    "searchLabel": "Хэл эсвэл улс хайх",
+    "clearSearch": "Хайлтыг цэвэрлэх",
+    "browse": "Үзэх",
+    "browseByRegion": "Бүс нутаг ба улсаар үзэх",
+    "languageCount": "{count, plural, one {# хэл} other {# хэл}}",
+    "region": "Бүс нутаг",
+    "countryLanguages": "{country} хэлүүд",
+    "showLess": "Бага харуулах",
+    "showMore": "Дахиад {count} харуулах",
+    "noLanguages": "Хэл олдсонгүй",
+    "tryAnotherSearch": "Өөр хайлтын нэр томьёо оролдоно уу."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Үзсэн түүх | Jesus Film Project",
+    "title": "Үзсэн түүх",
+    "loading": "Түүх ачаалж байна",
+    "empty": "Одоогоор энд юу ч алга",
+    "emptyDescription": "Таны нэвтэрсэн үед үзсэн видеонууд энд харагдана.",
+    "earlier": "Өмнө",
+    "today": "Өнөөдөр",
+    "yesterday": "Өчигдөр"
+  },
+  "AccountControl": {
+    "account": "Данс",
+    "accountMenu": "Дансны цэс",
+    "signIn": "Нэвтрэх",
+    "signOut": "Гарах",
+    "signedIn": "Нэвтэрсэн",
+    "history": "Түүх",
+    "logOut": "Гарах"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Хуудас олдсонгүй",
+    "eyebrow": "Хуудас олдсонгүй",
+    "screenReaderPrefix": "Хуудас олдсонгүй:",
+    "title": "Энэ хэсэг энд алга.",
+    "description": "Хуудас шилжсэн байж болох ч түүх үргэлжилсээр байна.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Хуудас олдсонгүй үйлдлүүд",
+    "backToWatch": "Үзэх хэсэг рүү буцах",
+    "browseVideos": "Видео үзэх"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% тааралдана",
+    "none": "Энэ хэлэн дээрэ энэ видеодо дурадхал олдобогүй."
+  },
+  "BetaTesterModal": {
+    "title": "Бета туршигч болох",
+    "trigger": "Бета туршигч болох",
+    "loadFailed": "Ямар нэг зүйл буруу боллоо.",
+    "loading": "Ачаалж байна...",
+    "openFormNewTab": "Маягтыг шинэ табд нээх",
+    "close": "Хаах",
+    "iframeTitle": "Бета туршигч болох"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Цуглуулгые татажа абаха",
+    "eyebrow": "Цуглуулгые татажа абаха",
+    "description": "Хэлэ болон шанар нэгэ дахин шэлэгты. Боломжотой анги бүхэн гуримаараа татагдаха.",
+    "signInTitle": "Татажа абахын тула нэбтэрхэ",
+    "signInBody": "Jesus Film дансаар нэбтэрһэнэй һүүлдэ цуглуулгые татажа абаха боломжотой.",
+    "signIn": "Нэбтэрээд татажа абаха",
+    "languageLabel": "Хэлэн",
+    "qualityLabel": "Видеогой шанар",
+    "tierHighest": "Эгээл дээдэ",
+    "tierHigh": "Үндэр",
+    "tierLow": "Доодо",
+    "loading": "Боломжотой ангинуудые бэдэржэ байна…",
+    "loadError": "Энэ хэлэндэ татажа абаха зүйлнүүдые ачаалжа шадабагүй.",
+    "retry": "Дахин туршаха",
+    "noDownloads": "Энэ хэлэн дээрэ татажа абаха боломжотой анги үгы.",
+    "availableCount": "{count, plural, one {# анги бэлэн} other {# анги бэлэн}}",
+    "skippedCount": "{count, plural, one {# анги боломжогүй тула алгасагдаха} other {# анги боломжогүй тула алгасагдаха}}",
+    "chooseFolder": "Татажа абаха хабтаһа шэлэхэ",
+    "folderSelected": "{name} соо хадагалха",
+    "folderError": "Татажа абаха хабтаһые нээжэ шадабагүй.",
+    "browserFallback": "Танай браузер файл бүхэниие юрын татажа абалгын тохируулгаар хадагалха. Олон файл татажа абахые зүбшөөхые таниие гуйжа магад.",
+    "sessionError": "Таны сессийг шалгаж чадсангүй. Дахин оролдоно уу.",
+    "downloading": "Татажа байна: {title}",
+    "progress": "{completed} / {total}",
+    "complete": "Татажа абалга дүүрэбэ",
+    "canceled": "Татажа абалга болюулагдаа",
+    "failedCount": "{count, plural, one {# анги татагдабагүй} other {# анги татагдабагүй}}. Цуглуулгые дахин туршахын тула «Дахин татажа абаха» гэһэниие шэлэгты.",
+    "close": "Хааха",
+    "cancel": "Болюулха",
+    "start": "Бүгэдые татажа абаха",
+    "downloadAgain": "Дахин татажа абаха",
+    "retryFailed": "Татагдаагүй ангинуудые дахин туршаха"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Хэлэнэй хубилбари үгы",
+    "eyebrow": "Хэлэнэй хубилбари үгы",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> хэлээр үгы",
+    "actionsLabel": "Хараха арга боломжонууд",
+    "browseInLanguage": "{language} хэлээр видеонуудые хараха",
+    "backToSearch": "Бэдэрэлгэдэ бусаха",
+    "audioVersionsTitle": "Бусад аудио хубилбаринууд",
+    "audioVersionsDescription": "Энэ видео үргэлжэлүүлэн харахын тула аудио хэлэ шэлэгты.",
+    "languageVersionLabel": "Аудио хэлэн",
+    "selectLanguageVersion": "Хэлэнэй хубилбари шэлэхэ",
+    "watchSelectedVersion": "Шэлэгдэһэн хубилбари хараха"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie-нуудай шэлэлтэ",
+    "bannerTitle": "Танай нюуса байдалай шэлэлтэнүүд",
+    "bannerDescription": "Шухала cookie-нүүд Watch-ые аюулгүйгөөр хүдэлгэжэ байдаг. Танай зүбшөөлөөр нэмэлтэ нэгэдэхи талын cookie айлшалалтануудай хоорондо һонирхолнуудые һанажа, дурадхалнуудые хубиин хэрэгсээндэ тааруулжа шадаха. Ямаршье шэлэлтэ хэһэн байбашье, нөхэсэл байдалда таараһан дурадхалнууд байһаар.",
+    "acceptAll": "Бүгэдыень абаха",
+    "essentialOnly": "Гансал шухала",
+    "manageChoices": "Шэлэлтэнүүдээ тааруулха",
+    "savingChoice": "Cookie-нуудай шэлэлтые хадагалжа байна",
+    "settings": "Cookie-нуудай тохиргоо",
+    "settingsDescription": "Watch айлшалалтануудай хоорондо дурадхалай һонирхолнуудые һанаха гү гэжэ шэлэгты. Та үүниие ямаршье үедэ хубилгажа шадахат.",
+    "essentialCookies": "Шухала cookie-нүүд",
+    "essentialDescription": "Аюулгүй байдал, тоглолго, нюуса байдалай шэлэлтэнүүд, мүн дурадхал хүсэлтын холбоо.",
+    "alwaysActive": "Үргэлжэ идэбхитэй",
+    "personalization": "Хубиин тааруулга",
+    "personalizationDescription": "Айлшалалтануудай хоорондо хизаартай һонирхолнуудые һанаха. Эние унтараабал, нөхэсэл байдалда таараһан дурадхалнууд байһаар.",
+    "erasurePending": "Профиль устгалгада хүлээгдэжэ байна. Нөхэсэл байдалда таараһан дурадхалнууд аль хэдынэ идэбхитэй.",
+    "cancel": "Болихо",
+    "saveChoices": "Шэлэлтэнүүдээ хадагалха",
+    "saving": "Хадагалжа байна…",
+    "loadError": "Танай шэлэлтэ ашаалагдажа шадаагүй. Та доороһоо шэлэжэ болонот.",
+    "grantError": "Хубиин тааруулга идэбхижүүлэгдэжэ шадаагүй. Гансал шухала гэһэн шэлэлтэ бии зандаа.",
+    "saveError": "Танай шэлэлтэ хадагалагдажа шадаагүй. Дахин оролдоно уу."
+  }
+}

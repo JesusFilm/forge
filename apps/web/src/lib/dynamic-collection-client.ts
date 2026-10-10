@@ -1,0 +1,95 @@
+"use client"
+
+import {
+  DynamicCollectionFeedRequestError,
+  DynamicCollectionFeedValidationError,
+  WATCH_COLLECTION_FEED_MAX_URL_LENGTH,
+  dynamicCollectionFeedSearchParams,
+  normalizeDynamicCollectionFeedInput,
+  parseDynamicCollectionFeedPage,
+  type DynamicCollectionFeedInput,
+  type LoadedDynamicCollectionFeedPage,
+} from "@/lib/dynamic-collection-contract"
+import { watchPath } from "@/lib/watch-paths"
+
+const DYNAMIC_COLLECTION_FEED_TIMEOUT_MS = 10_000
+
+function boundedRetryAfterSeconds(value: string | null): number {
+  const seconds = value?.match(/^\d+$/) ? Number(value) : Number.NaN
+  return Number.isFinite(seconds) ? Math.min(300, Math.max(1, seconds)) : 60
+}
+
+export async function loadDynamicCollectionFeedPage(
+  input: DynamicCollectionFeedInput,
+  options: { signal?: AbortSignal } = {},
+): Promise<LoadedDynamicCollectionFeedPage> {
+  const normalized = normalizeDynamicCollectionFeedInput(input)
+  const endpoint = watchPath("/api/dynamic-collections")
+  let requestInput = normalized
+  let href = `${endpoint}?${dynamicCollectionFeedSearchParams(requestInput)}`
+  if (
+    href.length >= WATCH_COLLECTION_FEED_MAX_URL_LENGTH &&
+    requestInput.cacheSignature
+  ) {
+    requestInput = { ...requestInput, cacheSignature: null }
+    href = `${endpoint}?${dynamicCollectionFeedSearchParams(requestInput)}`
+  }
+  if (href.length >= WATCH_COLLECTION_FEED_MAX_URL_LENGTH) {
+    throw new DynamicCollectionFeedValidationError(
+      "request",
+      "Collection feed request is too large",
+    )
+  }
+
+  const controller = new AbortController()
+  let timedOut = false
+  const abortFromCaller = () => controller.abort(options.signal?.reason)
+  if (options.signal?.aborted) abortFromCaller()
+  else
+    options.signal?.addEventListener("abort", abortFromCaller, { once: true })
+  const timeout = window.setTimeout(() => {
+    timedOut = true
+    controller.abort()
+  }, DYNAMIC_COLLECTION_FEED_TIMEOUT_MS)
+
+  let response: Response
+  try {
+    response = await fetch(href, {
+      headers: { accept: "application/json" },
+      method: "GET",
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (options.signal?.aborted) throw error
+    throw new DynamicCollectionFeedRequestError(
+      timedOut ? "timeout" : "transport",
+    )
+  } finally {
+    window.clearTimeout(timeout)
+    options.signal?.removeEventListener("abort", abortFromCaller)
+  }
+
+  if (response.status === 429) {
+    throw new DynamicCollectionFeedRequestError(
+      "rate_limited",
+      boundedRetryAfterSeconds(response.headers.get("retry-after")),
+    )
+  }
+  if (!response.ok) throw new DynamicCollectionFeedRequestError("http")
+
+  let payload: unknown
+  try {
+    payload = await response.json()
+  } catch {
+    throw new DynamicCollectionFeedValidationError(
+      "response",
+      "Invalid collection feed response",
+    )
+  }
+  return {
+    ...parseDynamicCollectionFeedPage(payload, normalized),
+    nextCacheSignature: response.headers.get(
+      "x-watch-collection-next-signature",
+    ),
+  }
+}

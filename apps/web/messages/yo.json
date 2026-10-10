@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Àkóónú ìrírí kò sí.",
+    "failedToLoad": "Kò ṣàṣeyọrí láti gba ìrírí: {message}",
+    "unexpected": "Aṣìṣe àìròtẹ́lẹ̀ kan ṣẹlẹ̀.",
+    "notConfigured": "A kò ṣètò iṣẹ́ àkóónú.",
+    "noContent": "Kò sí àkóónú rárá.",
+    "homepageMisconfigured": "Ojú-ìbẹ̀rẹ̀ Watch kò ṣètò dáadáa.",
+    "defaultTemplateMisconfigured": "Àwòrán àtẹ̀jáde aiyélujára Watch kò ṣètò dáadáa.",
+    "authFailed": "A kò lè jẹ́risi pẹ̀lú iṣẹ́ àkóónú. Jọ̀wọ́ kan si atilẹ́yìn bí èyí bá ń bá a lọ.",
+    "pageLoadFailed": "Ohun kan kò lọ dáadáa.",
+    "tryAgain": "Gbìyànjú sí i"
+  },
+  "VideosPage": {
+    "title": "Gbogbo Fídíò",
+    "placeholder": "Ìwádìí kátálógì ń bọ̀. Ní àkókò yìí, lo ìwádìí tàbí URL tó jẹ́ ti kókó kan."
+  },
+  "BibleQuotes": {
+    "title": "Àwọn ọ̀rọ̀ Bíbélì",
+    "share": "Pín",
+    "readMore": "Kà sí i...",
+    "learnMore": "Kọ́ sí i",
+    "freeResources": "Àwọn orísun ọ̀fẹ́",
+    "promoHeading": "Ṣé o fẹ́ lóye Bíbélì jinlẹ̀ sí i?",
+    "joinBibleStudy": "Darapọ̀ mọ́ ìkẹ́kọ̀ọ́ Bíbélì wa",
+    "previousQuote": "Ọ̀rọ̀ Bíbélì ṣáájú",
+    "nextQuote": "Ọ̀rọ̀ Bíbélì tó tẹ̀lé",
+    "readPassage": "Ka ẹsẹ Bíbélì yìí nínú Bíbélì rẹ."
+  },
+  "DownloadButton": {
+    "checking": "Ń ṣàyẹ̀wò",
+    "download": "Ṣe àyọkà",
+    "sessionError": "A kò lè ṣàyẹ̀wò àkókò ìwọlé rẹ. Jọ̀wọ́ gbìyànjú sí i.",
+    "saveVideo": "Fi Fídíò pamọ́"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Ṣe àyọkà fídíò",
+    "eyebrow": "Ṣe Àyọkà Fídíò",
+    "posterAlt": "Àwòrán fídíò",
+    "noDownloads": "Kò sí ohun tí a lè gba wọlé fún fídíò yìí.",
+    "fileSizeLabel": "Yan ìwọ̀n fáìlì",
+    "termsAgreementPrefix": "Mo fara mọ́ ",
+    "termsOfUse": "Àwọn Ilànà Lílò",
+    "termsAgreementSuffix": "",
+    "close": "Pàdé",
+    "download": "Ṣe àyọkà",
+    "authRequiredTitle": "Ṣé o fẹ́ ṣe àyọkà fídíò yìí?",
+    "authRequiredBody": "Ìkàǹsífẹ́fẹ́ Jesus Film ọ̀fẹ́ ni a nílò láti ṣe àyọkà fídíò.",
+    "signInToDownload": "Wọlé láti ṣe àyọkà",
+    "keepWatching": "Máa wo",
+    "checking": "Ń ṣàyẹ̀wò",
+    "closeTermsOfUse": "Pàdé Àwọn Ilànà Lílò",
+    "cancel": "Fagilé",
+    "accept": "Gba",
+    "errorSessionExpired": "Àkókò ìwọlé rẹ ti parí. Wọlé sí i lẹ́ẹ̀kansi láti ṣe àyọkà.",
+    "errorSessionUnavailable": "A kò lè ṣàyẹ̀wò àkókò ìwọlé rẹ. Jọ̀wọ́ gbìyànjú sí i.",
+    "errorUnavailableSource": "Kò sí àyọkà láti orísun yìí",
+    "tierHighest": "Gíga jù lọ",
+    "tierHigh": "Gíga",
+    "tierLow": "Kéré"
+  },
+  "HeroPlayerControls": {
+    "play": "Ṣeré",
+    "pause": "Dúró",
+    "seek": "Wá",
+    "seekValue": "{current} nínú {total}",
+    "volume": "Ìró",
+    "volumeValue": "{percent} ogorun",
+    "mute": "Ṣe adití",
+    "unmute": "Yọ adití kúrò",
+    "changeAudioLanguage": "Yí èdè ohun padà",
+    "enterFullscreen": "Wọ ìṣàfihàn kíkún",
+    "exitFullscreen": "Jáde kúrò nínú ìṣàfihàn kíkún"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Yan èdè",
+    "searchPlaceholder": "Wa àwọn èdè…",
+    "languages": "Àwọn èdè",
+    "noMatches": "Kò sí ohun tó bá mu",
+    "notAvailable": "Kò sí"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Èdè",
+    "dialogTitleWithSubtitles": "Èdè àti Àwọn ìtúpalẹ̀ ọrọ̀",
+    "languageHeading": "Èdè",
+    "subtitlesHeading": "Àwọn ìtúpalẹ̀ ọrọ̀",
+    "languageCount": "{count, plural, one {# èdè} other {# èdè}}",
+    "requestSent": "A rán ìbéèrè",
+    "translateWithAi": "Tumọ̀ pẹ̀lú AI",
+    "noSubtitles": "Kò sí ìtúpalẹ̀ ọrọ̀",
+    "toggleOn": "Tán",
+    "toggleOff": "Pá",
+    "close": "Pàdé",
+    "apply": "Lò",
+    "noLanguageSubtitles": "Kò sí ìtúpalẹ̀ ọrọ̀ {language}",
+    "seeAllLanguages": "Gbogbo àwọn èdè",
+    "seeAllVideosInLanguage": "Gbogbo Fídíò: {language}",
+    "retryLoadingLanguages": "Gbìyànjú láti gbé àwọn èdè wá sí i",
+    "notAvailable": "Kò sí",
+    "switching": "Ń yí padà..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {EPISODE 1} other {# EPISODES}}",
+    "seriesLabel": "JARA · {episodes}",
+    "changeAudioLanguage": "Yí èdè ohun padà",
+    "share": "Pín",
+    "languages": "Àwọn èdè",
+    "downloadCollection": "Ṣe àyọkà àkójọpọ̀",
+    "checkingDownloads": "Ń ṣàyẹ̀wò àwọn àyọkà…",
+    "downloadSessionError": "A kò lè ṣàyẹ̀wò àkókò ìwọlé rẹ. Jọ̀wọ́ gbìyànjú sí i."
+  },
+  "WatchModal": {
+    "close": "Pàdé"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Báwo ni ìbéèrè tí ìwọ yóò béèrè lọ́wọ́ ẹlẹ́dá fídíò yìí bá jẹ́?",
+    "fallbackBody": "Ní ìjíròrò aṣírí pẹ̀lú ẹnìkan tó ṣetán láti gbọ́.",
+    "questionsShort": "Àwọn ìbéèrè",
+    "questions": "Àwọn Ìbéèrè Tó Jẹ́mọ́",
+    "askYours": "Béèrè tìrẹ",
+    "chatWithPerson": "Bá ẹni kan sọ̀rọ̀",
+    "askBibleQuestion": "Beèrè ìbéèrè Bíbélì kan",
+    "quiz": "Ìdánwò kúkúrú"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Irú ìránṣẹ́",
+    "fieldLabel": "Béèrè ìbéèrè nípa fídíò yìí",
+    "send": "Rán ìbéèrè",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Beèrè ìbéèrè Bíbélì kan",
+        "description": "Àwọn ìdáhùn lẹ́sẹ̀kẹsẹ̀ láti inú Bíbélì pẹ̀lú ìwádìí AI"
+      },
+      "prayerRequest": {
+        "label": "Beèrè adúrà",
+        "description": "Pín ohun tí o fẹ́ kí a gbàdúrà fún"
+      },
+      "comment": {
+        "label": "Fi ọ̀rọ̀ìwòye sílẹ̀",
+        "description": "Rán àwọn ìrònú nípa fídíò yìí"
+      },
+      "personChat": {
+        "label": "Bá ẹni kan sọ̀rọ̀",
+        "description": "Bá ẹnìkan sọ̀rọ̀ báyìí"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Pín fídíò",
+    "heading": "Pín fídíò yìí",
+    "posterAlt": "Àwòrán fídíò",
+    "shareOnFacebook": "Pín lórí Facebook",
+    "shareOnFacebookUnavailable": "Pín lórí Facebook (kò sí lórí ìtújáde yìí)",
+    "shareOnX": "Pín lórí X",
+    "shareOnXUnavailable": "Pín lórí X (kò sí lórí ìtújáde yìí)",
+    "shareDisabledHint": "Pípín nílò ojú-ìwé tí a ti gbé kalẹ̀ — ó máa ṣiṣẹ́ nígbà tí fídíò yìí bá wà ní gbígbéjáde.",
+    "shareFormat": "Fọ́ọ̀mátì pípín",
+    "shareLinkTab": "Pín Ọ̀nà-ọ̀nà",
+    "embedCodeTab": "Kóòdù fífi sínú",
+    "copyFailed": "A kò lè dáakọ́ laifọwọyi — yan àyọkà tó wà ní isàlẹ̀ kí o sì dáakọ́ fúnra rẹ.",
+    "copyLink": "Dá Ọ̀nà-ọ̀nà Kopí",
+    "copyCode": "Dá Kóòdù Kopí",
+    "copied": "A ti dáakọ́",
+    "close": "Pàdé"
+  },
+  "SubtitleTranscript": {
+    "heading": "Àkọsílẹ̀ ọ̀rọ̀",
+    "subheading": "Tẹ laini kankan láti lọ sí àkókò yẹn.",
+    "subtitleLanguage": "Èdè ìtúpalẹ̀ ọrọ̀",
+    "aiSuffix": " · AI",
+    "loading": "Ń gbé àkọsílẹ̀ wá…",
+    "unavailable": "Àkọsílẹ̀ kò sí fún ọ̀nà ìtúpalẹ̀ ọrọ̀ yìí.",
+    "empty": "A kò rí àwọn laini àkọsílẹ̀ kankan."
+  },
+  "FloatingSearch": {
+    "placeholder": "Wa tàbí lọ kiri kókó…",
+    "openSearch": "Wa àwọn fídíò",
+    "searchRegion": "Wa àwọn fídíò",
+    "clearSearch": "Pa ìwádìí rẹ rẹ́",
+    "changeAudioLanguage": "Yí èdè ohun padà",
+    "home": "Ojú-ìbẹ̀rẹ̀ JesusFilm",
+    "closeSearch": "Pàdé ìwádìí",
+    "submitSearch": "Wa",
+    "library": "Ìkàwé"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Wa kí o sì lọ kiri àwọn fídíò",
+    "home": "Ojú-ìbẹ̀rẹ̀ JesusFilm",
+    "placeholder": "Wa tàbí lọ kiri kókó…",
+    "inputLabel": "Wa àwọn fídíò nípasẹ̀ ọ̀rọ̀ kúkúrú",
+    "searchFailed": "Ìwádìí kò ṣàṣeyọrí. Jọ̀wọ́ gbìyànjú sí i.",
+    "loadMoreFailed": "Kò ṣàṣeyọrí láti gbé àwọn èsì míì wá.",
+    "searching": "Ń wá...",
+    "connectionHint": "Jọ̀wọ́ ṣàyẹ̀wò ìsopọ̀ rẹ kí o sì gbìyànjú sí i.",
+    "rateLimitHint": "Àwọn ìbéèrè ti pọ̀ jù. Jọ̀wọ́ tún gbìyànjú lẹ́yìn ìṣẹ́jú kan.",
+    "retrySearch": "Gbìyànjú ìwádìí sí i",
+    "retry": "Gbìyànjú sí i",
+    "noResults": "Kò sí èsì fún \"{query}\"",
+    "tryDifferentKeywords": "Gbìyànjú ọ̀rọ̀ kúkúrú míì tàbí ṣàwárí àwọn ẹ̀ka",
+    "loading": "Ń gbé wá...",
+    "loadMore": "Gbé míì wá",
+    "categoryBibleStories": "Àwọn ìtàn Bíbélì",
+    "categoryParables": "Àwọn òwe",
+    "categoryAnimated": "Àwòrán alààyè",
+    "categoryStudy": "Ìkẹ́kọ̀ọ́",
+    "categoryFamily": "Ìdílé",
+    "categoryChristmas": "Kérésìmesì",
+    "searchLanguageLabel": "Wa èdè",
+    "allLanguages": "Gbogbo àwọn èdè",
+    "searchSuggestions": "Àwọn àbá ìwádìí",
+    "directMatches": "Àwọn èsì tó bá mu tààrà",
+    "languages": "Àwọn èdè",
+    "recommendedLanguage": "Èdè tí a ṣàbáṣepọ̀",
+    "searchSuggestion": "Wa “{suggestion}”",
+    "searchSuggestionWithLanguage": "Wa “{suggestion}” ní {language}",
+    "inLanguage": "ní {language}",
+    "browseByRegion": "Lọ kiri nípa agbègbè",
+    "allVideosOnSinglePage": "Gbogbo fídíò lórí ojúewé kan",
+    "clearLanguages": "Mọ́",
+    "queryLanguageDetected": "A rí {language}",
+    "searchInLanguage": "Wa ní {language}",
+    "tryDifferentKeywordsOrLanguage": "Gbìyànjú ọ̀rọ̀ kúkúrú míì tàbí yan èdè ìwádìí míì",
+    "useWebsiteDefaultLanguage": "Lo èdè ìwádìí aiyélujára",
+    "removeLanguage": "Yọ {language} kúrò",
+    "browseMode": "Ipo ìwádìí àwárí",
+    "searchingInLanguage": "Àwọn èsì ní {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Wo báyìí",
+    "tapToUnmute": "Tẹ́ láti yọ adití kúrò",
+    "nextEpisode": "Ẹ̀ka tó tẹ̀lé",
+    "audioTranslationCount": "{count, plural, one {# èdè} other {# èdè}}",
+    "subtitleCount": "Àwọn ìtúpalẹ̀ ọrọ̀: {count, plural, one {# èdè} other {# èdè}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Ń gbé àkóónú wá",
+    "loadingVideo": "Ń gbé fídíò wá"
+  },
+  "VideoLabels": {
+    "video": "Fídíò",
+    "segment": "Apá",
+    "episode": "Ẹ̀ka",
+    "featureFilm": "Fídíò gígùn",
+    "shortFilm": "Fídíò kúkúrú",
+    "series": "Jara",
+    "collection": "Àkójọpọ̀",
+    "trailer": "Àfihàn kúkúrú",
+    "behindTheScenes": "Lẹ́yìn ìran",
+    "chapter": "Orí"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Klipu {current} nínú {total}",
+    "position": "{current} nínú {total}",
+    "chapterCount": "{count, plural, one {# orí} other {# orí}}",
+    "clipAriaLabel": "{title} · Klipu {current} nínú {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# orí} other {# orí}}",
+    "chapter": "Orí",
+    "noImage": "Kò sí àwòrán",
+    "playingNow": "Ń ṣeré báyìí",
+    "previousChapter": "Orí ṣáájú",
+    "nextChapter": "Orí tó tẹ̀lé",
+    "thumbnailAlt": "Àwòrán kékeré {title}",
+    "relatedVideoThumbnail": "Àwòrán kékeré fídíò tó jẹ́mọ́"
+  },
+  "SearchResultCard": {
+    "experience": "Ìrírí",
+    "episodeCount": "{count, plural, one {# ẹ̀ka} other {# ẹ̀ka}}",
+    "thumbnailAlt": "Àwòrán kékeré fídíò"
+  },
+  "Feedback": {
+    "openForm": "Ṣí fọ́ọ̀mù àfèsọ́nà",
+    "label": "Àfèsọ́nà",
+    "couldNotLoad": "A kò lè ṣí fọ́ọ̀mù àfèsọ́nà.",
+    "loadingForm": "Ń gbé fọ́ọ̀mù àfèsọ́nà wá…",
+    "retry": "Gbìyànjú sí i",
+    "cancel": "Fagilé",
+    "closeForm": "Pàdé fọ́ọ̀mù àfèsọ́nà",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Àwọn fídíò Kristẹni ọ̀fẹ́ ní {language} | Jesus Film Project",
+    "metadataDescription": "Ṣàwárí àwọn fídíò Jésù, ìtàn Bíbélì, jara ìkẹ́kọ̀ọ́, àti àwọn fídíò ìpẹ̀yà pẹ̀lú ohun tí a gbasilẹ tàbí àwọn ìtúpalẹ̀ ọrọ̀ ní {language}.",
+    "heroTitle": "Àwọn fídíò Kristẹni ọ̀fẹ́ ní {language}",
+    "heroDescription": "Ṣàwárí àwọn fídíò Jésù, ìtàn Bíbélì, jara ìkẹ́kọ̀ọ́, àti àwọn fídíò ìpẹ̀yà tí ó wà ní {language}. Àwọn fídíò tí a gbasilẹ kíkún ni a kọ́kọ́ ṣe àfihàn, pẹ̀lú àwọn aṣayan ìtúpalẹ̀ ọrọ̀ ní isàlẹ̀.",
+    "languageCollection": "Àkójọpọ̀ èdè",
+    "itemCount": "{count, plural, one {# ohun kan} other {# ohun}}",
+    "videoCount": "{count, plural, one {# fídíò} other {# fídíò}}",
+    "videosInGroups": "{videoCount, plural, one {# fídíò} other {# fídíò}} nínú {groupCount, plural, one {# ẹgbẹ́} other {# ẹgbẹ́}}",
+    "sectionNavLabel": "Àwọn apá àkójọ èdè",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Tuntun",
+    "videoBible": "Bíbélì Fídíò",
+    "bibleProject": "BibleProject",
+    "sports": "Eré ìdárayá",
+    "collections": "Àkójọpọ̀",
+    "subtitlesOnly": "Àwọn ìtúpalẹ̀ ọrọ̀ nìkan",
+    "backToTop": "Padà sí orí",
+    "newlyAdded": "Tó ṣẹ̀ṣẹ̀ fi kún",
+    "newVideosTitle": "Àwọn fídíò Kristẹni tuntun ní {language}",
+    "newestFirst": "Tuntun jù lọ kọ́kọ́",
+    "noPublishedVideos": "A kò tíì rí àwọn fídíò tí a tẹ̀jáde fún èdè yìí.",
+    "bibleAndGospelFilms": "Àwọn fídíò Bíbélì àti Ìhìnrere",
+    "videoBibleCollectionsTitle": "Àwọn àkójọpọ̀ Bíbélì Fídíò ní {language}",
+    "videoBibleDescription": "Àwọn àkójọpọ̀ tí ń dojú kọ Ìwé Mímọ́ pẹ̀lú LUMO, JESUS, Magdalena, àti Acts ní {language}.",
+    "noVideoBibleCollections": "Kò sí àkójọpọ̀ Bíbélì Fídíò fún èdè yìí ní báyìí.",
+    "bibleProjectCollectionsTitle": "Àwọn àkójọpọ̀ BibleProject ní {language}",
+    "bibleProjectDescription": "Àwọn jara àti ìkẹ́kọ̀ọ́ BibleProject tí ó wà ní {language}.",
+    "noBibleProjectCollections": "Kò sí àkójọpọ̀ BibleProject fún èdè yìí ní báyìí.",
+    "sportsStories": "Àwọn ìtàn eré ìdárayá",
+    "sportsTitle": "Àwọn ìtàn eré ìdárayá àti àwọn akíkanjú eré ìdárayá ní {language}",
+    "sportsDescription": "Àwọn ìtàn eré ìdárayá tí ń dojú kọ ìgbàgbọ́ àti àwọn àkójọpọ̀ tó fojú sókè sí àwọn akíkanjú eré ìdárayá tí ó wà ní {language}.",
+    "noSportsCollections": "Kò sí eré ìdárayá tàbí àkójọpọ̀ ìtàn akíkanjú eré ìdárayá fún èdè yìí ní báyìí.",
+    "fullyDubbed": "Tí a gbasilẹ kíkún",
+    "dubbedVideosTitle": "Àwọn fídíò {language} nípasẹ̀ àkójọpọ̀",
+    "dubbedVideosDescription": "Lọ kiri àwọn fídíò {language} tí a gbasilẹ kíkún tí a ṣe àkójọpọ̀ pọ̀ pẹ̀lú àkójọpọ̀ wọn kí ó rọrùn láti rí wọn.",
+    "noDubbedVideos": "Kò sí àwọn fídíò tí a gbasilẹ kíkún fún èdè yìí ní báyìí.",
+    "subtitlesAvailable": "Àwọn ìtúpalẹ̀ ọrọ̀ wà",
+    "subtitlesTitle": "Àwọn fídíò {language} pẹ̀lú àwọn ìtúpalẹ̀ ọrọ̀",
+    "subtitlesDescription": "Àwọn fídíò wọ̀nyí ní àwọn ìtúpalẹ̀ ọrọ̀ {language} nígbà tí ohun {language} tí a sọ kò tíì wà.",
+    "noSubtitleVideos": "Kò sí àwọn fídíò tí ó ní ìtúpalẹ̀ ọrọ̀ nìkan fún èdè yìí ní báyìí.",
+    "dubbed": "Tí a gbasilẹ",
+    "subtitles": "Àwọn ìtúpalẹ̀ ọrọ̀",
+    "newLabel": "Tuntun",
+    "fromCollection": "Látinú {collection}",
+    "standaloneVideos": "Àwọn fídíò aládàáyébá",
+    "videosFromCollection": "Àwọn fídíò látinú {collection}.",
+    "standaloneDescription": "Àwọn fídíò aládàáyébá ní èdè yìí.",
+    "openCollection": "Ṣí àkójọpọ̀",
+    "filters": "Àwọn àṣẹ̀",
+    "filterLength": "Gígùn",
+    "filterLength_under5": "Kéré sí ìṣẹ́jú 5",
+    "filterLength_5to10": "Ìṣẹ́jú 5-10",
+    "filterLength_10to30": "Ìṣẹ́jú 10-30",
+    "filterLength_over30": "Ju ìṣẹ́jú 30",
+    "filterType": "Irú",
+    "clearFilters": "Nu àwọn àṣẹ̀ kúrò",
+    "filterResults": "{count} nínú {total} ni a fihàn",
+    "noFilterResults": "Kò sí fídíò tí ó bá àwọn àṣẹ̀ wọ̀nyí. Gbìyànjú láti mú ọ̀kan kúrò.",
+    "filterAdded": "Fikun",
+    "filterAdded_60d": "Ọjọ́ 60 tí ó kọjá",
+    "filterAdded_6m": "Oṣù 6 tí ó kọjá",
+    "filterAdded_12m": "Oṣù 12 tí ó kọjá"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project: Wo",
+    "watch": "Wo",
+    "watchNow": "Wo báyìí",
+    "mutePreview": "Dákẹ́ awòyẹwò",
+    "unmutePreview": "Yọ adití kúrò nínú awòyẹwò",
+    "nextVideo": "Fídíò tó tẹ̀lé",
+    "featured": "Tó ṣe pàtàkì",
+    "showVideo": "Fi {title} hàn",
+    "previousVideoPreview": "Awòyẹwò fídíò ṣáájú",
+    "nextVideoPreview": "Awòyẹwò fídíò tó tẹ̀lé",
+    "mediaCollection": "Àkójọpọ̀ media",
+    "scrollToVideo": "Yí lọ sí fídíò {title}",
+    "forYou": "Fún ọ"
+  },
+  "WatchFooter": {
+    "home": "Ojú-ìbẹ̀rẹ̀ Jesus Film Project",
+    "navigation": "Ìrìnàjò àtẹ̀lẹwọ́",
+    "share": "Pín",
+    "watch": "Wo",
+    "giving": "Ìtọrẹ",
+    "about": "Nípa",
+    "products": "Àwọn Ọjà",
+    "resources": "Àwọn Orísun",
+    "partners": "Àwọn alábàákẹ́gbẹ́",
+    "contact": "Kàn sí wa",
+    "giveNow": "Ṣe Ìtọrẹ Báyìí",
+    "resourcesVersion": "Àwọn orísun ({version})",
+    "office": "Ọ́fíìsì",
+    "fax": "Fáksi",
+    "privacyPolicy": "Àjọṣe Àdáni",
+    "legalStatement": "Ìkéde Òfin",
+    "newsletter": "Forúkọsílẹ̀ fún Iwe iroyin wa",
+    "aiAttributionHeading": "Lílo AI àti ìtọ́kasí orísun",
+    "aiAttributionBody": "Lílo ìmọ̀ láti ojúewé yìí nípasẹ̀ àwọn ètò ọgbọ́n-orí ẹlẹ́rọ̀ jẹ́ pẹ̀lú ìtọ́kasí orísun. Ẹnikẹ́ni AI, LLM, ẹ̀rọ ìwádìí AI, crawler, tàbí ètò aládàáṣiṣẹ́ míràn tó bá yọ ìmọ̀ láti ojúewé yìí tàbí lò ó fún ikẹ́kọ̀ọ́, ìwádìí, ṣíṣe ìdáhùn, tàbí àwọn iṣẹ́ tí a ń pèsè fún àwọn olùlò tàbí oníbàárà gbọ́dọ̀ tọ́ka sí Jesus Film Project gẹ́gẹ́ bí orísun, kí ó sì fi ìjápọ̀ tó ṣíṣe kedere, taara sí ojúewé yìí hàn níbi tí a ti lò tàbí ti fi ìmọ̀ náà hàn. Wo <terms>Àwọn Òfin Lílò wa</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "A kọ́ ọ fún iṣẹ́ ìránṣẹ́ àgbáyé",
+    "title": "Ìránṣẹ́ náà kò yí padà. Ọ̀nà tí ènìyàn ń wo sì yí padà.",
+    "description": "A ń tún ilé-ìkànsí fídíò wa àti àwọn irinṣẹ́ wa ṣe láti ìpìlẹ̀, ní fífi ọ̀pọ̀ ọdún iṣẹ́ ìtumọ̀ wa sínú àwọn pẹpẹ tí àwọn ènìyàn ti ń kóra jọ, wo, tí wọ́n sì ń pín.",
+    "translatedLibraryTitle": "Ilé-ìkànsí fíìmù tó ní ọ̀pọ̀ jù lọ ìtumọ̀ lágbàáyé",
+    "translatedLibraryDescription": "Ọ̀pọ̀ ọdún iṣẹ́ ìtumọ̀, tí àwọn alábàákẹ́gbẹ́ iṣẹ́ ìránṣẹ́ tó jẹ́ olóòótọ́ mú, ti kọ́ ilé-ìkànsí kan pẹ̀lú ẹgbẹẹgbẹ̀rún ọ̀nà èdè kí àwọn ènìyàn lè pàdé ìtàn Jésù ní èdè tí ó dé ọkàn wọn jù lọ.",
+    "trustedVoicesTitle": "Mú àwọn ohùn tó jẹ́ olóòótọ́ lọ sínú àwọn fọ́ọ̀mátì tuntun",
+    "trustedVoicesDescription": "A ń tún bí a ṣe ń sọ ìtàn ìhìnrere ní ojú ṣe, a ń so àwọn ìtumọ̀ tó jẹ́ olóòótọ́ pọ̀ mọ́ àwọn fọ́ọ̀mátì òde-òní kí ìránṣẹ́ náà lè rìn lọ́nà ọ̀fẹ́ káàkiri àwọn pẹpẹ, àṣà, àti iboju.",
+    "missionTeamTitle": "Kì í ṣe ilé-ìkànsí nìkan. Ẹgbẹ́ tó ní ète iṣẹ́ ìránṣẹ́ ni.",
+    "missionTeamDescription": "Jesus Film Project jẹ́ ẹgbẹ́ àgbáyé ti àwọn olùtumọ̀, amòye media, olùṣètò, àti àwọn akọ̀dá tí ń yí ọ̀pọ̀ ọdún ìrírí iṣẹ́ ìránṣẹ́ padà sí àwọn irinṣẹ́ fún àwọn oníṣe-ẹ̀yìn káàkiri.",
+    "buildingNext": "Ohun tí a ń kọ́ lọ́wọ́lọwọ́",
+    "nextStepsTitle": "Pẹpẹ Ìgbésẹ̀ Tó Tẹ̀lé",
+    "nextStepsDescription": "Sopọ̀ àwọn olùwò pẹ̀lú àwọn ànfààní ojulówó lórí ìrìn àjò ẹ̀mí wọn, kí ó ràn wọ́n lọ́wọ́ láti gbé ìgbésẹ̀ tó tẹ̀lé sí ìjọ, Ìwé Mímọ́, tàbí iṣẹ́ ìránṣẹ́.",
+    "mediaLibraryTitle": "Ilé-ìkànsí Media Ìhìnrere",
+    "mediaLibraryDescription": "Ilé-ìkànsí media Kristẹni gbooro pẹ̀lú ẹgbẹẹgbẹ̀rún fídíò, fíìmù, àti àwọn orísun tí ó wà ní ọ̀pọ̀ èdè fún iṣẹ́ ìránṣẹ́ àti ìhìnrere káàkiri ayé.",
+    "ministryToolsTitle": "Àwọn Irinṣẹ́ Nọ́mbà Fún Àwọn Iṣẹ́ Ìránṣẹ́",
+    "ministryToolsDescription": "Ìṣàkóso fídíò, pípín akóónú, ìfaramọ́ olùgbọ́, àti ìtúpalẹ̀ tí a ṣe láti ràn àwọn iṣẹ́ ìránṣẹ́ lọ́wọ́ láti dé ọ̀dọ̀ ọ̀pọ̀ ènìyàn lọ́nà tó munadoko.",
+    "invitationEyebrow": "A ń pè ọ́",
+    "invitationTitle": "Ràn wá lọ́wọ́ láti kọ <highlight>ìran tuntun</highlight> àwọn irinṣẹ́ iṣẹ́ ìránṣẹ́",
+    "invitationDescription": "A ń pe àwọn amọ̀ràn, àwọn akọ̀dá, àti àwọn alábàákẹ́gbẹ́ wọlé sí ìwọlé ìbẹ̀rẹ̀. Ṣe àdánwò àwọn irinṣẹ́ tuntun kọ́kọ́, fún wa ní àfèsọ́nà, kí o sì ràn wá lọ́wọ́ láti dá àwọn ọjà tó jẹ́ ti iṣẹ́ ìránṣẹ́ gidi sílẹ̀.",
+    "betaTester": "Di olùdánwò beta"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Àkójọpọ̀ Bíbélì Fídíò",
+    "gospelRailTitle": "Ṣàwárí ìtàn kíkún",
+    "videoBibleDescription": "Ṣàwárí àkójọpọ̀ wa ti àwọn fídíò àti àwọn orísun tó ń mú Bíbélì wá sí ìyè nípasẹ̀ àwọn ìtàn àti ẹ̀kọ́ tó ní ìfọkànsìn.",
+    "showcaseTitle": "Ìwé Mímọ́ Tó Sọ Nípasẹ̀ Fíìmù",
+    "adventEyebrow": "Kérésìmesì Advent",
+    "adventTitle": "Kàǹdà Kérésìmesì Advent",
+    "adventDescription": "Darapọ̀ mọ́ ìrìnàjò Advent wa pẹ̀lú fídíò ojoojúmọ́ tí ń kọ́ ìfojúsọ́nà sí Kérésìmesì, tí ń ṣàwárí ìrètí, ayọ̀, àti ìlérí ìbọ̀wọ̀ Jésù.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Jara NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Jara Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kọ́ọ̀sì Fídíò",
+    "journeyWithJesusTitle": "Rìn pẹ̀lú Jésù",
+    "gospelsOnVideoEyebrow": "Gbogbo Ìhìnrere, Tó Sọ Ní Fídíò",
+    "scriptureAsWrittenTitle": "Ìwé Mímọ́, Tó Sọ Gẹ́gẹ́ Bí A ti Kọ Ọ́",
+    "merryChristmas": "Ẹ kú Kérésìmesì!",
+    "daysUntilChristmas": "{count, plural, one {Ọjọ́ # ló kù sí Kérésìmesì} other {Ọjọ́ # ló kù sí Kérésìmesì}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Àwọn Èdè",
+    "metadataDescription": "Lọ kiri àwọn fídíò JesusFilm nípasẹ̀ èdè.",
+    "eyebrow": "Àwọn èdè Watch",
+    "title": "Yan èdè kan",
+    "description": "Ṣàwárí àwọn èdè nípasẹ̀ agbègbè tàbí lọ kiri àkójọ kíkún.",
+    "searchPlaceholder": "Wa àwọn èdè tàbí orílẹ̀-èdè...",
+    "searchLabel": "Wa àwọn èdè tàbí orílẹ̀-èdè",
+    "clearSearch": "Pa ìwádìí rẹ rẹ́",
+    "browse": "Lọ kiri",
+    "browseByRegion": "Lọ kiri nípasẹ̀ agbègbè àti orílẹ̀-èdè",
+    "languageCount": "{count, plural, one {# èdè} other {# èdè}}",
+    "region": "Agbègbè",
+    "countryLanguages": "Àwọn èdè {country}",
+    "showLess": "Fi díẹ̀ hàn",
+    "showMore": "Fi {count} míì hàn",
+    "noLanguages": "A kò rí èdè kankan",
+    "tryAnotherSearch": "Gbìyànjú ọ̀rọ̀ ìwádìí míì."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Ìtàn Wíwo | Jesus Film Project",
+    "title": "Ìtàn Wíwo",
+    "loading": "Ń gbé ìtàn wá",
+    "empty": "Kò sí nǹkan níbí ṣáájú",
+    "emptyDescription": "Àwọn fídíò tí o wo nígbà tó o wọlé ni yóò hàn níbí.",
+    "earlier": "Tẹ́lẹ̀",
+    "today": "Òní",
+    "yesterday": "Láìpẹ́"
+  },
+  "AccountControl": {
+    "account": "Àkánti",
+    "accountMenu": "Àtòjọ àkánti",
+    "signIn": "Wọlé",
+    "signOut": "Jáde",
+    "signedIn": "Ti wọlé",
+    "history": "Ìtàn",
+    "logOut": "Jáde"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "A kò rí ojúewé",
+    "eyebrow": "A kò rí ojúewé",
+    "screenReaderPrefix": "A kò rí ojúewé:",
+    "title": "Kò sí ìṣẹ̀lẹ̀ yìí níbí.",
+    "description": "Ó ṣeé ṣe kí ojúewé ti yí padà, ṣùgbọ́n ìtàn náà ń bá a lọ.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Àwọn ìṣe fún ojúewé tí a kò rí",
+    "backToWatch": "Padà sí Watch",
+    "browseVideos": "Lọ kiri àwọn fídíò"
+  },
+  "VideoRecommendations": {
+    "match": "Ìbámu {percent}%",
+    "none": "A kò rí àbá fídíò kankan fún fídíò yìí ní èdè yìí."
+  },
+  "BetaTesterModal": {
+    "title": "Di olùdánwò beta",
+    "trigger": "Di olùdánwò beta",
+    "loadFailed": "Ohun kan kò lọ dáadáa.",
+    "loading": "Ń gbé wá...",
+    "openFormNewTab": "Ṣí fọ́ọ̀mù nínú taabu tuntun",
+    "close": "Pàdé",
+    "iframeTitle": "Di olùdánwò beta"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Ṣe àyọkà àkójọpọ̀",
+    "eyebrow": "Ṣe àyọkà àkójọpọ̀",
+    "description": "Yan èdè àti ìwọ̀n dídára lẹ́ẹ̀kan. A ó ṣe àyọkà ẹ̀ka kọ̀ọ̀kan tó wà ní tẹ̀lé-tẹ̀lé.",
+    "signInTitle": "Wọlé láti ṣe àyọkà",
+    "signInBody": "O lè ṣe àyọkà àkójọpọ̀ lẹ́yìn tí o bá wọlé pẹ̀lú àkánti Jesus Film.",
+    "signIn": "Wọlé láti ṣe àyọkà",
+    "languageLabel": "Èdè",
+    "qualityLabel": "Ìwọ̀n dídára fídíò",
+    "tierHighest": "Gíga jù lọ",
+    "tierHigh": "Gíga",
+    "tierLow": "Kéré",
+    "loading": "Ń wá àwọn ẹ̀ka tó wà fún àyọkà…",
+    "loadError": "A kò lè gbé àwọn àyọkà èdè yìí wá.",
+    "retry": "Gbìyànjú sí i",
+    "noDownloads": "Kò sí ẹ̀ka kankan tó wà fún àyọkà ní èdè yìí.",
+    "availableCount": "{count, plural, one {Ẹ̀ka # ti ṣe tán} other {Àwọn ẹ̀ka # ti ṣe tán}}",
+    "skippedCount": "{count, plural, one {A ó fo ẹ̀ka # nítorí kò sí} other {A ó fo àwọn ẹ̀ka # nítorí wọn kò sí}}",
+    "chooseFolder": "Yan fódà àyọkà",
+    "folderSelected": "Fi pamọ́ sí {name}",
+    "folderError": "A kò lè ṣí fódà àyọkà náà.",
+    "browserFallback": "Aṣàwákiri rẹ yóò fi fáìlì kọ̀ọ̀kan pamọ́ gẹ́gẹ́ bí ètò àyọkà rẹ ṣe rí. Ó lè béèrè pé kí o fàyè gba ọ̀pọ̀ àyọkà.",
+    "sessionError": "A kò lè ṣàyẹ̀wò àkókò ìwọlé rẹ. Jọ̀wọ́ gbìyànjú sí i.",
+    "downloading": "Ń ṣe àyọkà {title}",
+    "progress": "{completed} nínú {total}",
+    "complete": "Àwọn àyọkà ti parí",
+    "canceled": "A ti fagilé àwọn àyọkà",
+    "failedCount": "{count, plural, one {Ẹ̀ka # kùnà} other {Àwọn ẹ̀ka # kùnà}}. Yan Ṣe àyọkà lẹ́ẹ̀kansi láti tún àkójọpọ̀ náà gbìyànjú.",
+    "close": "Pàdé",
+    "cancel": "Fagilé",
+    "start": "Ṣe àyọkà gbogbo wọn",
+    "downloadAgain": "Ṣe àyọkà lẹ́ẹ̀kansi",
+    "retryFailed": "Tún àwọn tó kùnà gbìyànjú"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Ẹ̀dà èdè yìí kò sí",
+    "eyebrow": "Ẹ̀dà èdè yìí kò sí",
+    "title": "<contentTitle>{title}</contentTitle> kò sí ní <languageName>{language}</languageName>",
+    "actionsLabel": "Àwọn ọ̀nà wíwo tó wà",
+    "browseInLanguage": "Wo àwọn fídíò ní {language}",
+    "backToSearch": "Padà sí ìṣàwárí",
+    "audioVersionsTitle": "Àwọn ẹ̀dà ohùn mìíràn",
+    "audioVersionsDescription": "Yan èdè ohùn láti tẹ̀síwájú ní wíwo fídíò yìí.",
+    "languageVersionLabel": "Èdè ohùn",
+    "selectLanguageVersion": "Yan ẹ̀dà èdè",
+    "watchSelectedVersion": "Wo ẹ̀dà tí o yàn"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Àwọn yíyàn kuki",
+    "bannerTitle": "Àwọn yíyàn àṣírí rẹ",
+    "bannerDescription": "Àwọn kuki pàtàkì ń jẹ́ kí Watch wà láàbò, kí ó sì ṣiṣẹ́ dáadáa. Pẹ̀lú àṣẹ rẹ, kuki àṣàyàn ẹni-kìn-ín-ní kan lè rántí àwọn ohun tí o nífẹ̀ẹ́ sí láàárín àwọn ìbẹ̀wò kí a lè ṣe àdáni àwọn àbá. Àwọn àbá tó dá lórí àkópọ̀-ọrọ ṣì wà níbẹ̀ ní ọ̀nà méjèèjì.",
+    "acceptAll": "Gba gbogbo rẹ̀",
+    "essentialOnly": "Àwọn pàtàkì nìkan",
+    "manageChoices": "Ṣàkóso àwọn yíyàn",
+    "savingChoice": "Ń fi yíyàn kuki pamọ́",
+    "settings": "Ètò kuki",
+    "settingsDescription": "Yan bóyá Watch lè rántí àwọn ohun tí o fẹ́ fún àbá láàárín àwọn ìbẹ̀wò. O lè yí èyí padà nígbàkigbà.",
+    "essentialCookies": "Àwọn kuki pàtàkì",
+    "essentialDescription": "Ààbò, ṣíṣeré fídíò, àwọn yíyàn àṣírí, àti ìtọ́kasí ìbéèrè àbá.",
+    "alwaysActive": "Ń ṣiṣẹ́ ní gbogbo ìgbà",
+    "personalization": "Ṣíṣe àdáni",
+    "personalizationDescription": "Rántí àwọn ohun tó ní ààlà tí o nífẹ̀ẹ́ sí láàárín àwọn ìbẹ̀wò. Tí o bá pa èyí, àwọn àbá tó dá lórí àkópọ̀-ọrọ yóò ṣì wà.",
+    "erasurePending": "Ìparẹ́ prófáìlì ń dúró. Àwọn àbá tó dá lórí àkópọ̀-ọrọ ti ń ṣiṣẹ́ tẹ́lẹ̀.",
+    "cancel": "Fagilé",
+    "saveChoices": "Fi àwọn yíyàn pamọ́",
+    "saving": "Ń fipamọ́…",
+    "loadError": "A kò lè gbé yíyàn rẹ wọlé. O ṣì lè yan ní ìsàlẹ̀.",
+    "grantError": "A kò lè mú ṣíṣe àdáni ṣiṣẹ́. Àwọn pàtàkì nìkan ṣì wà.",
+    "saveError": "A kò lè fi yíyàn rẹ pamọ́. Jọ̀wọ́ tún gbìyànjú."
+  }
+}

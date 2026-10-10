@@ -1,24 +1,18 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
-import { env } from "@/config/env"
-import { createSwrCache } from "@/lib/swr-cache"
-
-type CmsVideoCoverage = {
-  documentId: string
-  coreId: string | null
-  title: string | null
-  label: string | null
-  slug: string | null
-  aiMetadata: boolean | null
-  imageUrl: string | null
-  parentDocumentIds: string[]
-  coverage: {
-    subtitles: { human: number; ai: number }
-    audio: { human: number; ai: number }
-  }
-}
+import {
+  type CmsVideoCoverage,
+  getFilteredVideoCoverageCache,
+  normalizeCoverageLanguageIds,
+  videoCache,
+} from "./cache"
 
 type CoverageCounts = { human: number; ai: number; none: number }
+type CollectionChild = {
+  video: CmsVideoCoverage
+  order: number | null
+  inputIndex: number
+}
 
 const LABEL_DISPLAY: Record<string, string> = {
   collection: "Collection",
@@ -30,74 +24,6 @@ const LABEL_DISPLAY: Record<string, string> = {
   trailer: "Trailer",
   behindTheScenes: "Behind the Scenes",
   unknown: "Other",
-}
-
-async function fetchVideoCoverage(
-  languageIds?: string[],
-): Promise<CmsVideoCoverage[]> {
-  const params = new URLSearchParams()
-  if (languageIds && languageIds.length > 0) {
-    params.set("languageIds", languageIds.join(","))
-  }
-
-  const qs = params.toString()
-  const url = `${env.STRAPI_URL}/api/video-coverage${qs ? `?${qs}` : ""}`
-
-  const response = await fetch(url, {
-    headers: { Authorization: `Bearer ${env.STRAPI_API_TOKEN}` },
-    signal: AbortSignal.timeout(10_000),
-  })
-
-  if (!response.ok) {
-    throw new Error(
-      `CMS /api/video-coverage returned ${response.status}: ${await response.text()}`,
-    )
-  }
-
-  const data = (await response.json()) as { videos: CmsVideoCoverage[] }
-  return data.videos
-}
-
-export function normalizeCoverageLanguageIds(languageIds: string[]): string[] {
-  return Array.from(
-    new Set(languageIds.map((languageId) => languageId.trim()).filter(Boolean)),
-  ).sort((left, right) => left.localeCompare(right))
-}
-
-export function getFilteredVideoCoverageCacheKey(
-  languageIds: string[],
-): string {
-  return normalizeCoverageLanguageIds(languageIds).join(",")
-}
-
-export const videoCache = createSwrCache({
-  fetcher: () => fetchVideoCoverage(),
-  ttlMs: 2 * 60_000,
-  maxStaleMs: 30 * 60_000,
-  label: "video-cache",
-})
-
-const filteredVideoCaches = new Map<
-  string,
-  ReturnType<typeof createSwrCache<CmsVideoCoverage[]>>
->()
-
-export function getFilteredVideoCoverageCache(languageIds: string[]) {
-  const normalizedLanguageIds = normalizeCoverageLanguageIds(languageIds)
-  const cacheKey = getFilteredVideoCoverageCacheKey(normalizedLanguageIds)
-  const existing = filteredVideoCaches.get(cacheKey)
-  if (existing) {
-    return existing
-  }
-
-  const cache = createSwrCache({
-    fetcher: () => fetchVideoCoverage(normalizedLanguageIds),
-    ttlMs: 2 * 60_000,
-    maxStaleMs: 30 * 60_000,
-    label: `video-cache:${cacheKey}`,
-  })
-  filteredVideoCaches.set(cacheKey, cache)
-  return cache
 }
 
 export async function GET(request: Request) {
@@ -133,8 +59,10 @@ export async function GET(request: Request) {
     function toVideoItem(video: CmsVideoCoverage) {
       return {
         id: String(video.coreId ?? video.documentId),
+        coreId: video.coreId ?? null,
         title:
           video.title ?? video.slug ?? String(video.coreId ?? video.documentId),
+        slug: video.slug ?? null,
         imageUrl: video.imageUrl,
         label: video.label ?? "unknown",
         coverage: {
@@ -149,23 +77,55 @@ export async function GET(request: Request) {
       }
     }
 
+    function parentRelationsFor(video: CmsVideoCoverage) {
+      if (video.parentRelations != null && video.parentRelations.length > 0) {
+        return video.parentRelations
+      }
+
+      return video.parentDocumentIds.map((parentDocumentId) => ({
+        parentDocumentId,
+        order: null,
+      }))
+    }
+
+    function compareCollectionChildren(
+      left: CollectionChild,
+      right: CollectionChild,
+    ) {
+      if (left.order != null || right.order != null) {
+        if (left.order == null) return 1
+        if (right.order == null) return -1
+        if (left.order !== right.order) return left.order - right.order
+      }
+
+      const leftTitle = left.video.title ?? left.video.slug ?? ""
+      const rightTitle = right.video.title ?? right.video.slug ?? ""
+      const titleCompare = leftTitle.localeCompare(rightTitle)
+      if (titleCompare !== 0) return titleCompare
+
+      return left.inputIndex - right.inputIndex
+    }
+
     const videoMap = new Map(videos.map((video) => [video.documentId, video]))
 
-    const parentChildrenMap = new Map<string, CmsVideoCoverage[]>()
-    for (const video of videos) {
-      for (const parentDocId of video.parentDocumentIds) {
+    const parentChildrenMap = new Map<string, CollectionChild[]>()
+    for (const [inputIndex, video] of videos.entries()) {
+      for (const relation of parentRelationsFor(video)) {
+        const parentDocId = relation.parentDocumentId
         let children = parentChildrenMap.get(parentDocId)
         if (!children) {
           children = []
           parentChildrenMap.set(parentDocId, children)
         }
-        children.push(video)
+        children.push({ video, order: relation.order, inputIndex })
       }
     }
 
     const collections: Array<{
       id: string
+      coreId: string | null
       title: string
+      slug: string | null
       imageUrl: string | null
       label: string
       labelDisplay: string
@@ -182,16 +142,19 @@ export async function GET(request: Request) {
       if (!parent) continue
 
       const parentItem = toVideoItem(parent)
+      const sortedChildren = [...children].sort(compareCollectionChildren)
 
       collections.push({
         id: parentItem.id,
+        coreId: parentItem.coreId,
         title: parentItem.title,
+        slug: parentItem.slug,
         imageUrl: parentItem.imageUrl,
         label: parentItem.label,
         labelDisplay:
           LABEL_DISPLAY[parent.label ?? "unknown"] ?? parent.label ?? "unknown",
         coverage: parentItem.coverage,
-        videos: children.map(toVideoItem),
+        videos: sortedChildren.map((child) => toVideoItem(child.video)),
       })
     }
 
@@ -200,7 +163,7 @@ export async function GET(request: Request) {
     const standalone = videos
       .filter(
         (video) =>
-          video.parentDocumentIds.length === 0 &&
+          parentRelationsFor(video).length === 0 &&
           !parentChildrenMap.has(video.documentId),
       )
       .map(toVideoItem)

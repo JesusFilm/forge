@@ -1,0 +1,256 @@
+{
+  "capturedAt": "2026-09-16T02:24:45.375Z",
+  "results": [
+    {
+      "name": "delivery_settled_window",
+      "milliseconds": 441,
+      "rows": [
+        {
+          "surface_version": "watch-below-player-v1",
+          "strategy_version": "semantic-transcript-pgvector-v1",
+          "state": "issued",
+          "requests": "152",
+          "cards": "752",
+          "zero_card_requests": "8",
+          "duplicate_slates": "0",
+          "minimum_cards": "0",
+          "median_cards": 6,
+          "with_profile_cards": "28",
+          "retrieval_p50_ms": 170,
+          "retrieval_p95_ms": 594.8999999999997,
+          "retrieval_max_ms": 998
+        }
+      ]
+    },
+    {
+      "name": "episode_and_fact_health_settled_window",
+      "milliseconds": 442,
+      "rows": [
+        {
+          "discovery_source": "direct",
+          "state": "claimed",
+          "episodes": "60",
+          "claimed": "59",
+          "started": "7",
+          "facts": "218",
+          "late_facts": "0",
+          "conflicted_episodes": "0"
+        },
+        {
+          "discovery_source": "recommendation",
+          "state": "claimed",
+          "episodes": "24",
+          "claimed": "24",
+          "started": "0",
+          "facts": "0",
+          "late_facts": "0",
+          "conflicted_episodes": "0"
+        },
+        {
+          "discovery_source": "direct",
+          "state": "finalized",
+          "episodes": "8",
+          "claimed": "8",
+          "started": "8",
+          "facts": "309",
+          "late_facts": "0",
+          "conflicted_episodes": "0"
+        },
+        {
+          "discovery_source": "direct",
+          "state": "pending",
+          "episodes": "3",
+          "claimed": "0",
+          "started": "0",
+          "facts": "0",
+          "late_facts": "0",
+          "conflicted_episodes": "0"
+        },
+        {
+          "discovery_source": "acquisition",
+          "state": "claimed",
+          "episodes": "2",
+          "claimed": "2",
+          "started": "1",
+          "facts": "59",
+          "late_facts": "0",
+          "conflicted_episodes": "0"
+        },
+        {
+          "discovery_source": "search",
+          "state": "claimed",
+          "episodes": "1",
+          "claimed": "1",
+          "started": "1",
+          "facts": "16",
+          "late_facts": "0",
+          "conflicted_episodes": "0"
+        }
+      ]
+    },
+    {
+      "name": "fact_kinds_for_episode_cohort_settled_window",
+      "milliseconds": 436,
+      "rows": [
+        {
+          "kind": "playback_progress",
+          "facts": "166",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_viewing_mode",
+          "facts": "132",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_qoe",
+          "facts": "70",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_active_visible_playing",
+          "facts": "66",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_seek",
+          "facts": "64",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_navigation",
+          "facts": "55",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_start",
+          "facts": "17",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_attempt",
+          "facts": "17",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_end",
+          "facts": "8",
+          "late_facts": "0"
+        },
+        {
+          "kind": "playback_observation",
+          "facts": "7",
+          "late_facts": "0"
+        }
+      ]
+    },
+    {
+      "name": "latest_outcomes_for_episode_cohort_settled_window",
+      "milliseconds": 785,
+      "rows": [
+        {
+          "discovery_source": "direct",
+          "classifier_version": "active-watch-proxy-v1",
+          "active_coverage": "complete",
+          "latest_outcomes": "8",
+          "qualified_views": "5"
+        },
+        {
+          "discovery_source": "direct",
+          "classifier_version": "legacy-position-v0",
+          "active_coverage": null,
+          "latest_outcomes": "8",
+          "qualified_views": "6"
+        }
+      ]
+    },
+    {
+      "name": "delivery_results_settled_window",
+      "milliseconds": 436,
+      "rows": [
+        {
+          "surface_version": "watch-below-player-v1",
+          "result": "served",
+          "fallback_reason": null,
+          "requests": "136",
+          "cards": "704",
+          "zero_card_requests": "0"
+        },
+        {
+          "surface_version": "watch-below-player-v1",
+          "result": "fallback",
+          "fallback_reason": "seed_embedding_unavailable",
+          "requests": "8",
+          "cards": "48",
+          "zero_card_requests": "0"
+        },
+        {
+          "surface_version": "watch-below-player-v1",
+          "result": "empty",
+          "fallback_reason": "no_candidates",
+          "requests": "5",
+          "cards": "0",
+          "zero_card_requests": "5"
+        },
+        {
+          "surface_version": "watch-below-player-v1",
+          "result": "empty",
+          "fallback_reason": "seed_embedding_unavailable",
+          "requests": "3",
+          "cards": "0",
+          "zero_card_requests": "3"
+        }
+      ]
+    },
+    {
+      "name": "latest_200_personalized_request_repeat_diagnostic_settled_window",
+      "milliseconds": 460,
+      "rows": []
+    },
+    {
+      "name": "latest_200_personalized_request_sample_size",
+      "milliseconds": 434,
+      "rows": [
+        {
+          "sample_requests": "48"
+        }
+      ]
+    },
+    {
+      "name": "worker_recent_heartbeat_aggregate",
+      "milliseconds": 442,
+      "rows": [
+        {
+          "service": "admin",
+          "status": "online",
+          "recent_workers": "1",
+          "fresh_workers": "1",
+          "youngest_heartbeat_seconds": "1.324033",
+          "newest_started_at": "2026-09-16T02:13:28.228Z"
+        }
+      ]
+    },
+    {
+      "name": "recommendation_workflow_aggregate",
+      "milliseconds": 439,
+      "rows": [
+        {
+          "workflow_key": "recommendation-episode-finalization",
+          "status": "running",
+          "runs": "118",
+          "runs_with_errors": "0",
+          "finished_runs": "0",
+          "maximum_duration_ms": null
+        },
+        {
+          "workflow_key": "recommendation-episode-finalization",
+          "status": "succeeded",
+          "runs": "21",
+          "runs_with_errors": "0",
+          "finished_runs": "21",
+          "maximum_duration_ms": null
+        }
+      ]
+    }
+  ]
+}

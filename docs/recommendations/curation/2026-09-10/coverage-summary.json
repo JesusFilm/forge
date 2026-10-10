@@ -1,0 +1,100 @@
+{
+  "version": "2026-09-10.astra-editorial.v1",
+  "status": "draft-core-only",
+  "coreLanguages": 2318,
+  "languagesWithPublishedHlsVisibleLeaf": 2313,
+  "editorialChoices": 208,
+  "editorialStarterChoices": 203,
+  "adminValidatedChoices": 0,
+  "coverageDenominator": "Languages with at least one published nonempty-HLS dub of a visible leaf-label Core video; not supported Admin languages",
+  "activeLanguagesByStarterDepth": {
+    "0": 4,
+    "1to5": 27,
+    "6to29": 6,
+    "30plus": 2276
+  },
+  "activeLanguagesWithSourceHlsLeafBelow6": 29,
+  "activeLanguagesWithSourceHlsAllLabelsBelow6": 29,
+  "activeLanguagesWithSourceHlsLeafBelow30": 35,
+  "activeLanguagesWithUnion30": 2276,
+  "activeLanguagesWithFewerThan6WorkFamilies": 2115,
+  "themeCoverage": {
+    "meaning-and-purpose": {
+      "globalEditorialChoices": 82,
+      "activeLanguagesAtLeast6": 2275,
+      "activeLanguagesAtLeast30": 54
+    },
+    "hope-and-perseverance": {
+      "globalEditorialChoices": 74,
+      "activeLanguagesAtLeast6": 2278,
+      "activeLanguagesAtLeast30": 96
+    },
+    "love-and-belonging": {
+      "globalEditorialChoices": 77,
+      "activeLanguagesAtLeast6": 2279,
+      "activeLanguagesAtLeast30": 84
+    },
+    "forgiveness-and-new-beginnings": {
+      "globalEditorialChoices": 50,
+      "activeLanguagesAtLeast6": 2277,
+      "activeLanguagesAtLeast30": 27
+    },
+    "exploring-jesus": {
+      "globalEditorialChoices": 99,
+      "activeLanguagesAtLeast6": 2280,
+      "activeLanguagesAtLeast30": 255
+    }
+  },
+  "globalPairwiseThemeOverlap": [
+    {
+      "poolA": "meaning-and-purpose",
+      "poolB": "hope-and-perseverance",
+      "sharedEditorialChoices": 19
+    },
+    {
+      "poolA": "meaning-and-purpose",
+      "poolB": "love-and-belonging",
+      "sharedEditorialChoices": 25
+    },
+    {
+      "poolA": "meaning-and-purpose",
+      "poolB": "forgiveness-and-new-beginnings",
+      "sharedEditorialChoices": 6
+    },
+    {
+      "poolA": "meaning-and-purpose",
+      "poolB": "exploring-jesus",
+      "sharedEditorialChoices": 26
+    },
+    {
+      "poolA": "hope-and-perseverance",
+      "poolB": "love-and-belonging",
+      "sharedEditorialChoices": 16
+    },
+    {
+      "poolA": "hope-and-perseverance",
+      "poolB": "forgiveness-and-new-beginnings",
+      "sharedEditorialChoices": 5
+    },
+    {
+      "poolA": "hope-and-perseverance",
+      "poolB": "exploring-jesus",
+      "sharedEditorialChoices": 35
+    },
+    {
+      "poolA": "love-and-belonging",
+      "poolB": "forgiveness-and-new-beginnings",
+      "sharedEditorialChoices": 22
+    },
+    {
+      "poolA": "love-and-belonging",
+      "poolB": "exploring-jesus",
+      "sharedEditorialChoices": 16
+    },
+    {
+      "poolA": "forgiveness-and-new-beginnings",
+      "poolB": "exploring-jesus",
+      "sharedEditorialChoices": 16
+    }
+  ]
+}

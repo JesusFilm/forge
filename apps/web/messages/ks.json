@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "کچھ تجربہ مواد دستیاب نہ ہے۔",
+    "failedToLoad": "تجربہ لوڈ کرنہٕ مینٛ ناکامی: {message}",
+    "unexpected": "اکھ اَچانک غلطی ہوئی۔",
+    "notConfigured": "مواد سروس سیٹ نہٕ کیتی گئی چھُ۔",
+    "noContent": "کوٚنٛہہ مواد دستیاب نہٕ چھُ۔",
+    "homepageMisconfigured": "واچ ہوم پیج غلط طرح سیٹ چھُ۔",
+    "defaultTemplateMisconfigured": "ڈیفالٹ واچ ٹیمپلیٹ غلط طرح سیٹ چھُ۔",
+    "authFailed": "مواد سروس سۭتۍ تصدیق کرنہٕ منز ناکامی۔ اگر یہ مسئلہ برقرار رہے تو سپورٹ سۭتۍ رابطہ کرو۔",
+    "pageLoadFailed": "کچھ غلط گژھِ۔",
+    "tryAgain": "پھِر کوشش کرو"
+  },
+  "VideosPage": {
+    "title": "سارے ویڈیو",
+    "placeholder": "کیٹلاگ براؤز کرنہٕ چھُ آسن منز۔ فی الحال سرچ یا موضوع-خاص URL استعمال کرو۔"
+  },
+  "BibleQuotes": {
+    "title": "بائبل قول",
+    "share": "شیئر",
+    "readMore": "مزید پڑھیو...",
+    "learnMore": "مزید جانیو",
+    "freeResources": "مفت وسائل",
+    "promoHeading": "بائبل گہری طرح سمجھنہٕ چھَوا؟",
+    "joinBibleStudy": "ساں بائبل اسٹڈی منز شامل گژھیو",
+    "previousQuote": "پہلے بائبل قول",
+    "nextQuote": "اگلا بائبل قول",
+    "readPassage": "یہ عبارت پنٛنِس بائبلس منز پڑھیو۔"
+  },
+  "DownloadButton": {
+    "checking": "چیک کران",
+    "download": "ڈاؤن لوڈ",
+    "sessionError": "تُہندۍ سیشن چیک کرنہٕ منز ناکامی۔ مہربانی کرِتھ دوبارہ کوشش کرو۔",
+    "saveVideo": "ویڈیو محفوظ کرو"
+  },
+  "DownloadModal": {
+    "dialogTitle": "ویڈیو ڈاؤن لوڈ کرو",
+    "eyebrow": "ویڈیو ڈاؤن لوڈ",
+    "posterAlt": "ویڈیو پوسٹر",
+    "noDownloads": "اس ویڈیو لئی کوٚنٛہہ ڈاؤن لوڈ دستیاب نہٕ چھُ۔",
+    "fileSizeLabel": "فائل سائز چُنئیو",
+    "termsAgreementPrefix": "میں  ",
+    "termsOfUse": "استعمال شرائط",
+    "termsAgreementSuffix": "",
+    "close": "بند کرو",
+    "download": "ڈاؤن لوڈ",
+    "authRequiredTitle": "یہ ویڈیو ڈاؤن لوڈ کرنہٕ چھوا؟",
+    "authRequiredBody": "ویڈیو ڈاؤن لوڈ کرنہٕ لئی مفت Jesus Film اکاؤنٹ ضروری چھُ۔",
+    "signInToDownload": "ڈاؤن لوڈ کرنہٕ لئی سائن اِن کرو",
+    "keepWatching": "دیکھان جاری تھویو",
+    "checking": "چیک کران",
+    "closeTermsOfUse": "استعمال شرائط بند کرو",
+    "cancel": "منسوخ",
+    "accept": "قبول",
+    "errorSessionExpired": "تُہندۍ سیشن ختم گژھۍ۔ ڈاؤن لوڈ کرنہٕ لئی دوبارہ سائن اِن کرو۔",
+    "errorSessionUnavailable": "تُہندۍ سیشن چیک کرنہٕ منز ناکامی۔ مہربانی کرِتھ دوبارہ کوشش کرو۔",
+    "errorUnavailableSource": "اس ذریعے کُنہہ ڈاؤن لوڈ دستیاب نہٕ چھُ",
+    "tierHighest": "سبن منٛز اعلیٰ",
+    "tierHigh": "اعلیٰ",
+    "tierLow": "کم"
+  },
+  "HeroPlayerControls": {
+    "play": "چلاؤ",
+    "pause": "رکو",
+    "seek": "آگے پیچھے کرو",
+    "seekValue": "{current} / {total}",
+    "volume": "آواز",
+    "volumeValue": "{percent} فیصد",
+    "mute": "خاموش کرو",
+    "unmute": "آواز آن کرو",
+    "changeAudioLanguage": "آڈیو زبان بدلیو",
+    "enterFullscreen": "فل سکرین منز جائیو",
+    "exitFullscreen": "فل سکرین باہر آؤ"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "زبان چُنئیو",
+    "searchPlaceholder": "زبانہٕ تلاش کرو…",
+    "languages": "زبانہٕ",
+    "noMatches": "کوٚنٛہہ میچ نہٕ",
+    "notAvailable": "دستیاب نہٕ"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "زبان",
+    "dialogTitleWithSubtitles": "زبان اَور سب ٹائٹلز",
+    "languageHeading": "زبان",
+    "subtitlesHeading": "سب ٹائٹلز",
+    "languageCount": "{count, plural, one {# زبان} other {# زبانہٕ}}",
+    "requestSent": "درخواست بھیج دی گئی",
+    "translateWithAi": "AI سۭتۍ ترجمہ کرو",
+    "noSubtitles": "سب ٹائٹلز نہٕ",
+    "toggleOn": "آن",
+    "toggleOff": "آف",
+    "close": "بند کرو",
+    "apply": "لاگو کرو",
+    "noLanguageSubtitles": "کوٚنٛہہ {language} سب ٹائٹلز نہٕ",
+    "seeAllLanguages": "سارۍ زبانہٕ",
+    "seeAllVideosInLanguage": "سارے ویڈیو: {language}",
+    "retryLoadingLanguages": "زبانہٕ لوڈ کرنہٕ کُن دوبارہ کوشش کرو",
+    "notAvailable": "دستیاب نہٕ",
+    "switching": "بدلان۔۔۔"
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 قسط} other {# قسطہٕ}}",
+    "seriesLabel": "سیریز · {episodes}",
+    "changeAudioLanguage": "آڈیو زبان بدلیو",
+    "share": "شیئر",
+    "languages": "زبانہٕ",
+    "downloadCollection": "مجموعہ ڈاؤن لوڈ کرو",
+    "checkingDownloads": "ڈاؤن لوڈ چیک کران۔۔۔",
+    "downloadSessionError": "تُہندۍ سیشن چیک کرنہٕ منز ناکامی۔ مہربانی کرِتھ دوبارہ کوشش کرو۔"
+  },
+  "WatchModal": {
+    "close": "بند کرو"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "اگر تُہندِس اس ویڈیو خالق سۭتۍ اکھ سوال پوچھنُک موقع میلان، تہٕ کیہہ پوچھُن؟",
+    "fallbackBody": "اکھ نجی گفتگو کِسی ایسے شخص سۭتۍ کرو جو سننہٕ لئی تیار چھُ۔",
+    "questionsShort": "سوال",
+    "questions": "متعلقہ سوال",
+    "askYours": "پنٛنۍ پوٚچھنۍ",
+    "chatWithPerson": "شخص سۭتۍ گپ شپ کرو",
+    "askBibleQuestion": "بائبل سوال پوچھیو",
+    "quiz": "کوئز"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "پیغام قِسم",
+    "fieldLabel": "اس ویڈیو کے بارے میں سوال پوچھیو",
+    "send": "سوال بھیجو",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "بائبل سوال پوچھیو",
+        "description": "AI سرچ سۭتۍ بائبل کَنٛدۍ فوري جواب"
+      },
+      "prayerRequest": {
+        "label": "دعا لئی درخواست کرو",
+        "description": "جیہِس لئی دعا چاہوان چھَو، اوہ شیئر کرو"
+      },
+      "comment": {
+        "label": "تبصرہ چھوڑیَو",
+        "description": "اس ویڈیو بارے پنٛنۍ سوچہٕ بھیجو"
+      },
+      "personChat": {
+        "label": "شخص سۭتۍ گپ شپ کرو",
+        "description": "ہنٛز کِسِس سۭتۍ گپ کرو"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "ویڈیو شیئر کرو",
+    "heading": "یہ ویڈیو شیئر کرو",
+    "posterAlt": "ویڈیو پوسٹر",
+    "shareOnFacebook": "Facebook تام شیئر کرو",
+    "shareOnFacebookUnavailable": "Facebook تام شیئر کرو (اس build منز دستیاب نہٕ)",
+    "shareOnX": "X تام شیئر کرو",
+    "shareOnXUnavailable": "X تام شیئر کرو (اس build منز دستیاب نہٕ)",
+    "shareDisabledHint": "شیئر کرنہٕ لئی deployed page ضروری چھُ — یہ ویڈیو production منز آسن بعد کام کرِ۔",
+    "shareFormat": "شیئر فارمیٹ",
+    "shareLinkTab": "لنک شیئر کرو",
+    "embedCodeTab": "ایمبیڈ کوڈ",
+    "copyFailed": "خود کار طریقے سۭتۍ کاپی نہٕ گژھۍ — نیچے متن چُنئیو تہٕ ہاتھہٕ سۭتۍ کاپی کرو۔",
+    "copyLink": "لنک کاپی کرو",
+    "copyCode": "کوڈ کاپی کرو",
+    "copied": "کاپی گژھۍ",
+    "close": "بند کرو"
+  },
+  "SubtitleTranscript": {
+    "heading": "ٹرانسکرپٹ",
+    "subheading": "کُنہِس تہٕ سطر تپھیو، اوہ مقام تام جاسن لئی۔",
+    "subtitleLanguage": "سب ٹائٹل زبان",
+    "aiSuffix": " · AI",
+    "loading": "ٹرانسکرپٹ لوڈ کران۔۔۔",
+    "unavailable": "اس سب ٹریک لئی ٹرانسکرپٹ دستیاب نہٕ چھُ۔",
+    "empty": "کوٚنٛہہ ٹرانسکرپٹ سطر نہٕ ملۍ۔"
+  },
+  "FloatingSearch": {
+    "placeholder": "موضوعہٕ تلاش یا براؤز کرو…",
+    "openSearch": "ویڈیو تلاش کرو",
+    "searchRegion": "ویڈیو تلاش کرو",
+    "clearSearch": "تلاش صاف کرو",
+    "changeAudioLanguage": "آڈیو زبان بدلیو",
+    "home": "JesusFilm ہوم",
+    "closeSearch": "تلاش بند کرو",
+    "submitSearch": "تلاش کرو",
+    "library": "لائبریری"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "ویڈیو تلاش کرو اَور براؤز کرو",
+    "home": "JesusFilm ہوم",
+    "placeholder": "موضوعہٕ تلاش یا براؤز کرو…",
+    "inputLabel": "کلیدی لفظ سۭتۍ ویڈیو تلاش کرو",
+    "searchFailed": "تلاش ناکام۔ مہربانی کرِتھ دوبارہ کوشش کرو۔",
+    "loadMoreFailed": "مزید نتائج لوڈ کرنہٕ منز ناکامی۔",
+    "searching": "تلاش کران...",
+    "connectionHint": "مہربانی کرِتھ پنٛنۍ کنیکشن چیک کرو تہٕ دوبارہ کوشش کرو۔",
+    "rateLimitHint": "واریاہ درخواستہٕ آیہِ۔ مہربٲنی کٔرِتھ اَکھ مِنَٹ پتہٕ کٔرِو دوبارٕ کوشش۔",
+    "retrySearch": "تلاش دوبارہ کرو",
+    "retry": "دوبارہ کوشش کرو",
+    "noResults": "\"{query}\" لئی کوٚنٛہہ نتیجہ نہٕ",
+    "tryDifferentKeywords": "دوسرے کلیدی لفظ آزمائیو یا کیٹیگری براؤز کرو",
+    "loading": "لوڈ کران...",
+    "loadMore": "مزید لوڈ کرو",
+    "categoryBibleStories": "بائبل کہانۍ",
+    "categoryParables": "مثلہٕ",
+    "categoryAnimated": "متحرک",
+    "categoryStudy": "مطالعہ",
+    "categoryFamily": "خاندان",
+    "categoryChristmas": "کرسمس",
+    "searchLanguageLabel": "تلاش زبان",
+    "allLanguages": "سارۍ زبانہٕ",
+    "searchSuggestions": "تلاش خٲطرٕ تجویزہٕ",
+    "directMatches": "سیدھا میل",
+    "languages": "زبانہٕ",
+    "recommendedLanguage": "تجویز شدہ زبان",
+    "searchSuggestion": "{suggestion} تلاش کرو",
+    "searchSuggestionWithLanguage": "{language} منز ”{suggestion}“ تلاش کرو",
+    "inLanguage": "{language} منز",
+    "browseByRegion": "علاقہ سۭتۍ براؤز کرو",
+    "allVideosOnSinglePage": "سارے ویڈیو اکھ صفحس پؠٹھ",
+    "clearLanguages": "صاف کرو",
+    "queryLanguageDetected": "{language} پہچان گژھِ",
+    "searchInLanguage": "{language} منز تلاش کرو",
+    "tryDifferentKeywordsOrLanguage": "مختلف کلیدی لفظ آزمائیو یا ٻی تلاش زبان چُنئیو",
+    "useWebsiteDefaultLanguage": "ویب سائٹ کی ڈیفالٹ تلاش زبان استعمال کرو",
+    "removeLanguage": "{language} ہٹاؤ",
+    "browseMode": "تلاش براؤز موڈ",
+    "searchingInLanguage": "نتیجہٕ {language} منز چھِ"
+  },
+  "HeroPlayer": {
+    "playWithSound": "ہنٛز دیکھیو",
+    "tapToUnmute": "آواز آن کرنہٕ لئی ٹیپ کرو",
+    "nextEpisode": "اگلی قسط",
+    "audioTranslationCount": "{count, plural, one {# زبان} other {# زبانہٕ}}",
+    "subtitleCount": "سب ٹائٹلز: {count, plural, one {# زبان} other {# زبانہٕ}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "مواد لوڈ کران",
+    "loadingVideo": "ویڈیو لوڈ کران"
+  },
+  "VideoLabels": {
+    "video": "ویڈیو",
+    "segment": "حصہ",
+    "episode": "قسط",
+    "featureFilm": "فیچر فلم",
+    "shortFilm": "مختصر فلم",
+    "series": "سیریز",
+    "collection": "مجموعہ",
+    "trailer": "ٹریلر",
+    "behindTheScenes": "پردے پُشت",
+    "chapter": "باب"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "کل {total} میں سۭتۍ {current} کلپ",
+    "position": "{current} / {total}",
+    "chapterCount": "{count, plural, one {# باب} other {# بابہٕ}}",
+    "clipAriaLabel": "{title} · کلپ {current} / {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# باب} other {# بابہٕ}}",
+    "chapter": "باب",
+    "noImage": "تصویر نہٕ",
+    "playingNow": "ہنٛز چلان",
+    "previousChapter": "پہلے باب",
+    "nextChapter": "اگلے باب",
+    "thumbnailAlt": "{title} تھمب نیل",
+    "relatedVideoThumbnail": "متعلقہ ویڈیو تھمب نیل"
+  },
+  "SearchResultCard": {
+    "experience": "تجربہ",
+    "episodeCount": "{count, plural, one {# قسط} other {# قسطہٕ}}",
+    "thumbnailAlt": "ویڈیو تھمب نیل"
+  },
+  "Feedback": {
+    "openForm": "فیڈبیک فارم کھولیو",
+    "label": "فیڈبیک",
+    "couldNotLoad": "فیڈبیک فارم لوڈ نہٕ گژھ۔",
+    "loadingForm": "فیڈبیک فارم لوڈ کران۔۔۔",
+    "retry": "پھِر کوشش کرو",
+    "cancel": "منسوخ",
+    "closeForm": "فیڈبیک فارم بند کرو",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language} منز مفت مسیحی ویڈیو | Jesus Film Project",
+    "metadataDescription": "{language} منز ڈب آڈیو یا سب ٹائٹلز سۭتۍ Jesus فلمہٕ، بائبل کہانیہٕ، شاگردی سیریز، تہٕ outreach ویڈیو دریافت کرو۔",
+    "heroTitle": "{language} منز مفت مسیحی ویڈیو",
+    "heroDescription": "{language} منز دستیاب Jesus فلمہٕ، بائبل کہانیہٕ، شاگردی سیریز، تہٕ outreach ویڈیو دریافت کرو۔ پورے ڈب ویڈیو پہلے نمایاں چھنہٕ، تہٕ سب ٹائٹل والے اختیارات نیچے چھنہٕ۔",
+    "languageCollection": "زبان مجموعہ",
+    "itemCount": "{count, plural, one {# چیز} other {# چیزہٕ}}",
+    "videoCount": "{count, plural, one {# ویڈیو} other {# ویڈیوہٕ}}",
+    "videosInGroups": "{videoCount, plural, one {# ویڈیو} other {# ویڈیوہٕ}} {groupCount, plural, one {# گروپ} other {# گروپہٕ}} منز",
+    "sectionNavLabel": "زبان inventory حصے",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "نَو",
+    "videoBible": "ویڈیو بائبل",
+    "bibleProject": "BibleProject",
+    "sports": "کھیل",
+    "collections": "مجموعہ",
+    "subtitlesOnly": "صرف سب ٹائٹلز",
+    "backToTop": "بۆنہٕ پؠٹھ",
+    "newlyAdded": "ہنٛز شامل",
+    "newVideosTitle": "{language} منز نَو مسیحی ویڈیو",
+    "newestFirst": "سبن منٛز نَو پہلے",
+    "noPublishedVideos": "اِس زبان لئی ہنٛوز کوٚنٛہہ شائع شدہ ویڈیو نہٕ ملے۔",
+    "bibleAndGospelFilms": "بائبل اَور خوشخبری فلمہٕ",
+    "videoBibleCollectionsTitle": "{language} ویڈیو بائبل مجموعہٕ",
+    "videoBibleDescription": "صحیفہ مرکوز مجموعہٕ جن منٛز {language} منز LUMO، JESUS، Magdalena، تہٕ Acts شامل چھنہٕ۔",
+    "noVideoBibleCollections": "اِس زبان لئی ہنٛوز کوٚنٛہہ Video Bible مجموعہٕ دستیاب نہٕ چھنہٕ۔",
+    "bibleProjectCollectionsTitle": "{language} BibleProject مجموعہٕ",
+    "bibleProjectDescription": "{language} منز دستیاب BibleProject سیریز تہٕ مطالعہ۔",
+    "noBibleProjectCollections": "اِس زبان لئی ہنٛوز کوٚنٛہہ BibleProject مجموعہٕ دستیاب نہٕ چھنہٕ۔",
+    "sportsStories": "کھیل کہانۍ",
+    "sportsTitle": "{language} کھیل اَور ایتھلیٹ کہانۍ",
+    "sportsDescription": "ایمان مرکوز کھیل کہانۍ تہٕ ایتھلیٹ-مرکوز مجموعہٕ {language} منز دستیاب چھنہٕ۔",
+    "noSportsCollections": "اِس زبان لئی ہنٛوز کوٚنٛہہ کھیل یا ایتھلیٹ-کہانی مجموعہٕ دستیاب نہٕ چھنہٕ۔",
+    "fullyDubbed": "پورے ڈب شدہ",
+    "dubbedVideosTitle": "{language} ویڈیو بحیثیت مجموعہٕ",
+    "dubbedVideosDescription": "آسان دریافت لئی مکمل ڈب {language} ویڈیو پنٛنۍ مجموعہٕ سۭتۍ براؤز کرو۔",
+    "noDubbedVideos": "اِس زبان لئی ہنٛوز کوٚنٛہہ مکمل ڈب ویڈیو دستیاب نہٕ چھنہٕ۔",
+    "subtitlesAvailable": "سب ٹائٹلز دستیاب",
+    "subtitlesTitle": "سب ٹائٹلز سۭتۍ {language} ویڈیو",
+    "subtitlesDescription": "یہ ویڈیو {language} سب ٹائٹلز سۭتۍ چھنہٕ، جتھ spoken {language} آڈیو ابھی دستیاب نہٕ چھُ۔",
+    "noSubtitleVideos": "اِس زبان لئی ہنٛوز کوٚنٛہہ صرف سب ٹائٹل ویڈیو دستیاب نہٕ چھنہٕ۔",
+    "dubbed": "ڈب شدہ",
+    "subtitles": "سب ٹائٹلز",
+    "newLabel": "نَو",
+    "fromCollection": "{collection} سۭتۍ",
+    "standaloneVideos": "الگ ویڈیو",
+    "videosFromCollection": "{collection} سۭتۍ ویڈیو۔",
+    "standaloneDescription": "اس زبان منز الگ ویڈیو۔",
+    "openCollection": "مجموعہ کھولیو",
+    "filters": "فلٹر",
+    "filterLength": "ڈؠنگر",
+    "filterLength_under5": "5 مِنٹھ کھۄتہ کم",
+    "filterLength_5to10": "5-10 مِنٹھ",
+    "filterLength_10to30": "10-30 مِنٹھ",
+    "filterLength_over30": "30 مِنٹھ کھۄتہ زیادٕ",
+    "filterType": "قِسم",
+    "clearFilters": "فلٹر صاف کریو",
+    "filterResults": "{total} منٛز {count} ہاوان",
+    "noFilterResults": "یِمَو فلٹرَو سٟتؠ کانٛہہ ویڈیو نہٕ چھُ میلان۔ اکھ ہٹاویو۔",
+    "filterAdded": "شٲمِل کرنہٕ آو",
+    "filterAdded_60d": "پؠٹھِم 60 دۄہ",
+    "filterAdded_6m": "پؠٹھِم 6 ریتھ",
+    "filterAdded_12m": "پؠٹھِم 12 ریتھ"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project واچ",
+    "watch": "دیکھیو",
+    "watchNow": "ہنٛز دیکھیو",
+    "mutePreview": "پیش نظارہ خاموش کرو",
+    "unmutePreview": "پیش نظارہ آواز آن کرو",
+    "nextVideo": "اگلا ویڈیو",
+    "featured": "نمایاں",
+    "showVideo": "{title} دکھاؤ",
+    "previousVideoPreview": "پہلے ویڈیو پیش نظارہ",
+    "nextVideoPreview": "اگلے ویڈیو پیش نظارہ",
+    "mediaCollection": "میڈیا مجموعہ",
+    "scrollToVideo": "{title} ویڈیو تام سکرول کرو",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project ہوم",
+    "navigation": "فوٹر نیویگیشن",
+    "share": "شیئر",
+    "watch": "دیکھیو",
+    "giving": "عطیہ",
+    "about": "بارہٕ منز",
+    "products": "مصنوعات",
+    "resources": "وسائل",
+    "partners": "شراکت دار",
+    "contact": "رابطہ",
+    "giveNow": "ہنٛز عطیہ کرو",
+    "resourcesVersion": "وسائل ({version})",
+    "office": "دفتر",
+    "fax": "فیکس",
+    "privacyPolicy": "رازداری پالیسی",
+    "legalStatement": "قانونی بیان",
+    "newsletter": "ساں نیوزلیٹر لئی سائن اپ کرو",
+    "aiAttributionHeading": "AI استعمال تہٕ انتساب",
+    "aiAttributionBody": "اس صفحہٕ ہند معلومات ہند AI نظامَن طرفہٕ استعمال انتساب سۭتہٕ مشروط چھُ۔ یِمَن کُنہِ AI ایجنٹ، بڈ زبان ماڈل (LLM)، AI تلاش انجن، کرالر، یا یِمَن سۭتہٕ وابستہ خودکار نظامہٕس، یم معلومات یِس یِم صفحہٕ ہندۍ کھۄتہٕ نِکسن یا استعمال کران چھُ training، retrieval، جواب تیاری، یا user یا client ہندۍ لَئے دَییَن سروسَن لَئے، تہٕ یِمَن Jesus Film Project کوٚنہٕ ماخذ طور پہچانُن چُھُ اوٚر یِم معلومات جتنۍ بَارَس یُس استعمال یا پیش کرن منظور چھُ، اُتھ صاف، سِڌو link یِتھ صفحہٕ کُن شامل کرُن چُھُ۔ ساڑِ <terms>Terms of Use</terms> وۄتھیو۔"
+  },
+  "WatchHomePromo": {
+    "eyebrow": "عالمی مشن لئی بنایا گیا",
+    "title": "پیغام نہٕ بدلان۔ لوگ کیانہٕ ویڈیو دیکھان، اوہ بدلان۔",
+    "description": "اسہِ پنٛنۍ ویڈیو لائبریری تہٕ اوزارہٕ نَو سرے تھئین بناوان چھنہٕ، دہایانہٕ ترجمهٕ کام انہِ پلیٹ فارمہٕ تام لۭگاونہٕ جتھ لوٚک پہلے ہی جمع، دیکھان، تہٕ شیئر کران چھنہٕ۔",
+    "translatedLibraryTitle": "دنیا کی سب سے زیادہ ترجمہ شدہ فلم لائبریری",
+    "translatedLibraryDescription": "دہائیان ہُنہٕ ترجمهٕ کام، قابلِ اعتماد خدمت پارٹنرہٕ کَنٛدۍ سۭتۍ، اکھ ایسی لائبریری بنائی چھُ، جتھ ہزارَن زبان ٹریکس چھنہٕ، تاکہ لوٚک یسوع کتھ کہانی پنٛنۍ دل تام پَہُنچانہٕ والی زبان منز سُنہٕ۔",
+    "trustedVoicesTitle": "قابلِ اعتماد آواز نَو فارمہٕ منز لانا",
+    "trustedVoicesDescription": "اسہِ خوشخبری کہانۍ تصویری طور ترجُمانہ کرنہٕ کِیونز طریقہٕ نَو سرے بناوان چھنہٕ، قابلِ اعتماد ترجمہٕ جدید فارمہٕ سۭتۍ جوڑان، تاکہ پیغام پلیٹ فارم، ثقافتہٕ، تہٕ سکرینہٕ پار آزادانہ چلان۔",
+    "missionTeamTitle": "صرف اکھ لائبریری نہٕ۔ اکھ مشن-مرکوز ٹیم۔",
+    "missionTeamDescription": "Jesus Film Project اکھ عالمی ٹیم چھُ، جتھ ترجمان، میڈیا ماہر، ایڈیٹر، تہٕ تخلیق کار دہایانہٕ خدمت تجربہ دیشِی اوزارہٕ منز بدلان چھنہٕ، ساری دنیا دِسِ شاگرد سازی لئی۔",
+    "buildingNext": "اَسہِ کیہہ بنان چھنہٕ",
+    "nextStepsTitle": "اگلا قدم پلیٹ فارم",
+    "nextStepsDescription": "دیکھن والا شخصہٕ پنٛنۍ روحانی سفر منز ٹھوس مواقعہٕ سۭتۍ جوڑیو، تاکہ اوہ برادری، صحیفہ، یا مشن منز اَگلا قدم لین۔",
+    "mediaLibraryTitle": "انجیل-مرکوز میڈیا لائبریری",
+    "mediaLibraryDescription": "اکھ وسیع مسیحی میڈیا لائبریری، جتھ ہزارَن ویڈیو، فلمہٕ، تہٕ وسائل کئی زبانہٕ منز دنیا بھر خدمت تہٕ بشارت لئی دستیاب چھنہٕ۔",
+    "ministryToolsTitle": "خدمت لئی ڈیجیٹل اوزار",
+    "ministryToolsDescription": "ویڈیو مینجمنٹ، مواد تقسیم، ناظرین شمولیت، تہٕ اینالٹکس، جو خدمتہٕ کۆ زیادہ لوٚکُن تام مؤثر طریقے سۭتۍ پَہُنچانہٕ لئی بناونہٕ گژھنہٕ۔",
+    "invitationEyebrow": "تُہندۍ دعوت چھُ",
+    "invitationTitle": "مشن اوزارہٕ نَو نسل <highlight>بنانہٕ منز</highlight> مدد کرو",
+    "invitationDescription": "اسہِ practitioners، creators، تہٕ partners early access لئی دعوت دیوان چھنہٕ۔ پہلے نَو اوزار آزمائیو، فیڈبیک دیو، تہٕ اصل مشن کام لئی بننہٕ والے مصنوعات شکل دِنہٕ منز مدد کرو۔",
+    "betaTester": "بیٹا ٹیسٹر بنیو"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "ویڈیو بائبل مجموعہ",
+    "gospelRailTitle": "ساری کہانی دریافت کرو",
+    "videoBibleDescription": "ساں ویڈیو تہٕ وسائل مجموعہ دریافت کرو جو دلچسپ کہانیہٕ تہٕ تعلیمہٕ سۭتۍ بائبل زندہ کران چھنہٕ۔",
+    "showcaseTitle": "فلم سۭتۍ بیان شدہ صحیفہ",
+    "adventEyebrow": "کرسمس آڈونٹ",
+    "adventTitle": "کرسمس آڈونٹ الٹی گِنتی",
+    "adventDescription": "ہمارے آڈونٹ سفر منز شامل گژھیو، روزانہ ویڈیو سۭتۍ جو کرسمس لئی انتظار بڑھاونہٕ کران چھُ، تہٕ یسوع کی آمدک امید، خوشی، تہٕ وعدہ دریافت کران چھُ۔",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "BibleProject آڈونٹ",
+    "nuaEyebrow": "NUA سیریز",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth سیریز",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "ویڈیو کورس",
+    "journeyWithJesusTitle": "یسوع سۭتۍ سفر",
+    "gospelsOnVideoEyebrow": "ہر انجیل، ویڈیو منز بیان",
+    "scriptureAsWrittenTitle": "صحیفہ، جی ہٕنٛز لکھیُک اُسی طرح",
+    "merryChristmas": "کرسمس مبارک!",
+    "daysUntilChristmas": "{count, plural, one {کرسمس تام # دۄہ باقی چھُ} other {کرسمس تام # دۄہ باقی چھنہٕ}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "زبانہٕ",
+    "metadataDescription": "JesusFilm ویڈیو زبانہٕ سۭتۍ براؤز کرو۔",
+    "eyebrow": "واچ زبانہٕ",
+    "title": "اکھ زبان چُنئیو",
+    "description": "علاقہ سۭتۍ زبانہٕ دریافت کرو یا پوری فہرست براؤز کرو۔",
+    "searchPlaceholder": "زبانہٕ یا ملکہٕ تلاش کرو...",
+    "searchLabel": "زبانہٕ یا ملکہٕ تلاش کرو",
+    "clearSearch": "تلاش صاف کرو",
+    "browse": "براؤز",
+    "browseByRegion": "علاقہ اَور ملک سۭتۍ براؤز کرو",
+    "languageCount": "{count, plural, one {# زبان} other {# زبانہٕ}}",
+    "region": "علاقہ",
+    "countryLanguages": "{country} زبانہٕ",
+    "showLess": "کم دکھاؤ",
+    "showMore": "مزید {count} دکھاؤ",
+    "noLanguages": "کوٚنٛہہ زبان نہٕ ملۍ",
+    "tryAnotherSearch": "دوسر تلاش لفظ آزمائیو۔"
+  },
+  "WatchHistory": {
+    "metadataTitle": "واچ ہسٹری | Jesus Film Project",
+    "title": "واچ ہسٹری",
+    "loading": "ہسٹری لوڈ کران",
+    "empty": "ہنٛوز کُچھ نہٕ",
+    "emptyDescription": "جیڑۍ ویڈیو تُہٕ سائن اِن ہنٛہٕ دیکھنہٕ، اوہ یتھ نظر آسنہٕ۔",
+    "earlier": "پہلے",
+    "today": "آج",
+    "yesterday": "کل"
+  },
+  "AccountControl": {
+    "account": "اکاؤنٹ",
+    "accountMenu": "اکاؤنٹ مینو",
+    "signIn": "سائن اِن",
+    "signOut": "سائن آؤٹ",
+    "signedIn": "سائن اِن چھُ",
+    "history": "ہسٹری",
+    "logOut": "لاگ آؤٹ"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "صفحہ نہٕ ملۍ",
+    "eyebrow": "صفحہ نہٕ ملۍ",
+    "screenReaderPrefix": "صفحہ نہٕ ملۍ:",
+    "title": "یہ منظر یتھ نہٕ چھُ۔",
+    "description": "صفحہ ہٹ گژھِ ہاے، مگر کہانی جاری چھُ۔",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "صفحہ نہٕ ملنہٕ کاروائیاں",
+    "backToWatch": "واچ کُن واپس",
+    "browseVideos": "ویڈیو براؤز کرو"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% میچ",
+    "none": "اِس زبان منز اِس ویڈیو لئی کوٚنٛہہ تجویز نہٕ ملۍ۔"
+  },
+  "BetaTesterModal": {
+    "title": "بیٹا ٹیسٹر بنیو",
+    "trigger": "بیٹا ٹیسٹر بنیو",
+    "loadFailed": "کچھ غلط گژھِ۔",
+    "loading": "لوڈ کران...",
+    "openFormNewTab": "فارم نَوۍ ٹیب منز کھولیو",
+    "close": "بند کرو",
+    "iframeTitle": "بیٹا ٹیسٹر بنیو"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "مجموعہ ڈاؤن لوڈ کرو",
+    "eyebrow": "مجموعہ ڈاؤن لوڈ",
+    "description": "اکھ بار زبان تہٕ معیار چُنئیو۔ ہر دستیاب قسط ترتیب وار ڈاؤن لوڈ گژھِ۔",
+    "signInTitle": "ڈاؤن لوڈ کرنہٕ لئی سائن اِن کرو",
+    "signInBody": "Jesus Film اکاؤنٹس سۭتۍ سائن اِن کرنہٕ پتہٕ مجموعہ ڈاؤن لوڈ دستیاب چھنہٕ۔",
+    "signIn": "ڈاؤن لوڈ کرنہٕ لئی سائن اِن کرو",
+    "languageLabel": "زبان",
+    "qualityLabel": "ویڈیو معیار",
+    "tierHighest": "سبن منٛز اعلیٰ",
+    "tierHigh": "اعلیٰ",
+    "tierLow": "کم",
+    "loading": "دستیاب قسطہٕ تلاش کران۔۔۔",
+    "loadError": "اِس زبان لئی ڈاؤن لوڈ لوڈ نہٕ گژھ۔",
+    "retry": "پھِر کوشش کرو",
+    "noDownloads": "اِس زبان منز ڈاؤن لوڈ کرنہٕ لائق کوٚنٛہہ قسط دستیاب نہٕ چھُ۔",
+    "availableCount": "{count, plural, one {# قسط تیار چھُ} other {# قسطہٕ تیار چھنہٕ}}",
+    "skippedCount": "{count, plural, one {# قسط دستیاب نہٕ آسنہٕ سبب چھوڑنہٕ یِیہِ} other {# قسطہٕ دستیاب نہٕ آسنہٕ سبب چھوڑنہٕ یِنہٕ}}",
+    "chooseFolder": "ڈاؤن لوڈ فولڈر چُنئیو",
+    "folderSelected": "{name} منز محفوظ کرو",
+    "folderError": "ڈاؤن لوڈ فولڈر کھولنہٕ نہٕ آو۔",
+    "browserFallback": "تُہندۍ براؤزر پنٛنہٕ معمول ڈاؤن لوڈ سیٹنگہٕ مطابق ہر فائل محفوظ کرِ۔ یہ کئی ڈاؤن لوڈز اجازت دِنہٕ لئی تُہندِس کُن پوچھی ہیکہٕ۔",
+    "sessionError": "تُہندۍ سیشن چیک کرنہٕ منز ناکامی۔ مہربانی کرِتھ دوبارہ کوشش کرو۔",
+    "downloading": "{title} ڈاؤن لوڈ کران",
+    "progress": "کل {total} منٛز {completed}",
+    "complete": "ڈاؤن لوڈ مکمل گژھۍ",
+    "canceled": "ڈاؤن لوڈ منسوخ گژھۍ",
+    "failedCount": "{count, plural, one {# قسط ڈاؤن لوڈ نہٕ گژھ} other {# قسطہٕ ڈاؤن لوڈ نہٕ گژھہٕ}}۔ مجموعہ دوبارہ آزماونہٕ لئی ڈاؤن لوڈ پھِر چُنئیو۔",
+    "close": "بند کرو",
+    "cancel": "منسوخ",
+    "start": "سارۍ ڈاؤن لوڈ کرو",
+    "downloadAgain": "دوبارہ ڈاؤن لوڈ کرو",
+    "retryFailed": "ناکام ڈاؤن لوڈ دوبارہ کرو"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "زبانُک وٲرژن چھُنہٕ دستیاب",
+    "eyebrow": "زبانُک وٲرژن چھُنہٕ دستیاب",
+    "title": "<contentTitle>{title}</contentTitle> چھُنہٕ <languageName>{language}</languageName> زبانہٕ منز دستیاب",
+    "actionsLabel": "وچھنُک دستیاب اختیار",
+    "browseInLanguage": "{language} زبانہٕ منز وِڈیو وچھِو",
+    "backToSearch": "تلاشس پٮ۪ٹھ واپس گٔژھِو",
+    "audioVersionsTitle": "باقٕے آڈیو وٲرژن",
+    "audioVersionsDescription": "یہِ وِڈیو وچھُن جٲری تھاونہٕ خٲطرٕ آڈیو زبان ژٲرِو۔",
+    "languageVersionLabel": "آڈیو زبان",
+    "selectLanguageVersion": "زبانُک وٲرژن ژٲرِو",
+    "watchSelectedVersion": "ژٲرمُت وٲرژن وچھِو"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "کوکی ژور",
+    "bannerTitle": "تُہند رازداری ہُنٛد ژور",
+    "bannerDescription": "ضروری کوکیز چھِ Watch محفوط تہٕ کارگر تھاونہٕ باپت۔ تُہنٛد اِجازت سانٛت، اَکھ اِختیاری فرسٹ پارٹی کوکی چھُ مختلف دورَن منز دِلچسپی یاد رَکھِتھ سفارشَن ہٕند شخصی بناؤنہٕ باپت۔ سیاقی سفارشہٕ چھِ دۄنٛی صورتَن منز دستیاب۔",
+    "acceptAll": "سٲری مَنظور کٔرِو",
+    "essentialOnly": "صرف ضروری",
+    "manageChoices": "ژور سنبھالِو",
+    "savingChoice": "کوکی ہُنٛد ژور محفوظ کران",
+    "settings": "کوکی ترتیبات",
+    "settingsDescription": "ژور کٔرِو کہٕ Watch مختلف دورَن منز سفارش دِلچسپی یاد رَکھِوَن یا نہ۔ تُہۍ ہیکِو یہِ یژھان وَقتہٕ تبدیل کٔرِتھ۔",
+    "essentialCookies": "ضروری کوکیز",
+    "essentialDescription": "سلامتی، پلے بیک، رازداری ہُنٛد ژور، تہٕ سفارش درخواست نسبت۔",
+    "alwaysActive": "ہمیشہ فعال",
+    "personalization": "ذاتی بَنٲوَٹ",
+    "personalizationDescription": "محدود دِلچسپی مختلف دورَن منز یاد رَکھِو۔ یہِ بند کرنہٕ سانٛت سیاقی سفارشہٕ تَوَن دستیاب رَہَن۔",
+    "erasurePending": "پروفائل مٹاونہٕ ہُنٛد عمل چھُ جاری۔ سیاقی سفارشہٕ چھِ پَہلِے پٮ۪ٹھ فعال۔",
+    "cancel": "منسوخ",
+    "saveChoices": "ژور محفوظ کٔرِو",
+    "saving": "محفوظ کران…",
+    "loadError": "تُہنٛد ژور لوڈ نہٕ گٔژھ۔ توتہٕ تہِ تُہۍ ہیکِو بٔلنۍ ژور کٔرِتھ۔",
+    "grantError": "ذاتی بَنٲوَٹ فعال نہٕ گٔژھ۔ صرف ضروری اختیار تَوَن دستیاب چھُ.",
+    "saveError": "تُہنٛد ژور محفوظ نہٕ گٔژھ۔ مہربٲنی کرِتھ دوبارٕ کوشش کٔرِو۔"
+  }
+}

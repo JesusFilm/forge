@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "No tin contenido di experiencia disponible.",
+    "failedToLoad": "No por a karga experiencia: {message}",
+    "unexpected": "Un error inesperá a tuma lugar.",
+    "notConfigured": "Servicio di contenido no ta konfigurá.",
+    "noContent": "No tin ningun contenido disponible.",
+    "homepageMisconfigured": "E pòrtafo di Watch ta miskonfigurá.",
+    "defaultTemplateMisconfigured": "E plantilla regular di Watch ta miskonfigurá.",
+    "authFailed": "No por a autenticá ku e servicio di contenido. Por fabor tuma kontakto ku soporte si esaki kibra sigui asina.",
+    "pageLoadFailed": "Algo a bai rana.",
+    "tryAgain": "Purba bèk"
+  },
+  "VideosPage": {
+    "title": "Tur video",
+    "placeholder": "Bashamentu den katalogo ta bin. Entranto, usa buskeda òf un URL spisífiko di topico."
+  },
+  "BibleQuotes": {
+    "title": "Kota di Biblia",
+    "share": "Komparti",
+    "readMore": "Le mas...",
+    "learnMore": "Siña mas",
+    "freeResources": "Rekursonan gratis",
+    "promoHeading": "Ke komprondé Biblia mas profondamente?",
+    "joinBibleStudy": "Uni ku nos estudio di Biblia",
+    "previousQuote": "Kota di Biblia anterior",
+    "nextQuote": "Próksimo kota di Biblia",
+    "readPassage": "Lesa e pasashi aki den bo Biblia."
+  },
+  "DownloadButton": {
+    "checking": "Verifikando",
+    "download": "Baha",
+    "sessionError": "No por a verifiká bo sesión. Por fabor purba di nobo.",
+    "saveVideo": "Wardá video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Baha video",
+    "eyebrow": "BAHA VIDEO",
+    "posterAlt": "Poster di video",
+    "noDownloads": "No tin download disponible pa e video aki.",
+    "fileSizeLabel": "Kies un mucha di file",
+    "termsAgreementPrefix": "Mi ta akordá ku e ",
+    "termsOfUse": "Terminan di Uso",
+    "termsAgreementSuffix": "",
+    "close": "sera",
+    "download": "Baha",
+    "authRequiredTitle": "Ke download e video aki?",
+    "authRequiredBody": "Bo mester tin un kuenta gratis di Jesus Film pa download video.",
+    "signInToDownload": "Log in pa download",
+    "keepWatching": "Sigui mira",
+    "checking": "Verifikando",
+    "closeTermsOfUse": "Sera Terminan di Uso",
+    "cancel": "Anula",
+    "accept": "Akseptá",
+    "errorSessionExpired": "Bo sesión a kaduká. Log in di nobo pa download.",
+    "errorSessionUnavailable": "No por a verifiká bo sesión. Por fabor purba di nobo.",
+    "errorUnavailableSource": "Download no disponible di e fonte aki",
+    "tierHighest": "Mas haltu",
+    "tierHigh": "Haltu",
+    "tierLow": "Fo'i bach"
+  },
+  "HeroPlayerControls": {
+    "play": "Reprodusí",
+    "pause": "Pausa",
+    "seek": "Buska",
+    "seekValue": "{current} di {total}",
+    "volume": "Volúmen",
+    "volumeValue": "{percent} porshento",
+    "mute": "Sin son",
+    "unmute": "Kita mute",
+    "changeAudioLanguage": "Muda idioma di audio",
+    "enterFullscreen": "Entra full screen",
+    "exitFullscreen": "Sali di full screen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Skohe idioma",
+    "searchPlaceholder": "Buska idioma…",
+    "languages": "Idiomanan",
+    "noMatches": "Ningun komparashon",
+    "notAvailable": "No disponible"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Idioma",
+    "dialogTitleWithSubtitles": "Idioma & Subtítulonan",
+    "languageHeading": "Idioma",
+    "subtitlesHeading": "Subtítulonan",
+    "languageCount": "{count, plural, one {# idioma} other {# idiomanan}}",
+    "requestSent": "Pèrmit a wòrdu manda",
+    "translateWithAi": "Traduce ku AI",
+    "noSubtitles": "Sin subtítulonan",
+    "toggleOn": "Aktivá",
+    "toggleOff": "Desaktivá",
+    "close": "Sera",
+    "apply": "Aplicá",
+    "noLanguageSubtitles": "Sin subtítulonan den {language}",
+    "seeAllLanguages": "Tur idioma",
+    "seeAllVideosInLanguage": "Tur video: {language}",
+    "retryLoadingLanguages": "Purba karga idiomanan di nobo",
+    "notAvailable": "No disponible",
+    "switching": "Ta cambia..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPISODIO} other {# EPISODIONAN}}",
+    "seriesLabel": "SERIE · {episodes}",
+    "changeAudioLanguage": "Muda idioma di audio",
+    "share": "Komparti",
+    "languages": "Idiomanan",
+    "downloadCollection": "Baha kolekshon",
+    "checkingDownloads": "Ta verifikando downloadnan…",
+    "downloadSessionError": "No por a verifiká bo sesión. Por fabor purba di nobo."
+  },
+  "WatchModal": {
+    "close": "Sera"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Si bo por puntra e creador di e video aki un pregunta, kiko lo ta?",
+    "fallbackBody": "Tene un konversashon privá ku un hende ku ta lesa.",
+    "questionsShort": "Preguntanan",
+    "questions": "Preguntanan Relashoná",
+    "askYours": "Puntra bo mes",
+    "chatWithPerson": "Habla ku un persona",
+    "askBibleQuestion": "Puntra un pregunta di Biblia",
+    "quiz": "Prueba"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Tipo di mensahe",
+    "fieldLabel": "Puntra un pregunta tocante e video aki",
+    "send": "Manda pregunta",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Puntra un pregunta di Biblia",
+        "description": "Respuesta imediato for di Biblia usando buskeda ku AI"
+      },
+      "prayerRequest": {
+        "label": "Pidi orashon",
+        "description": "Comparte pa kico bo ke ku wòrdu ora"
+      },
+      "comment": {
+        "label": "Yaga un komentario",
+        "description": "Manda bo pensamentunan tokante e video aki"
+      },
+      "personChat": {
+        "label": "Habla ku un persona",
+        "description": "Habla ku alguén awe mes"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Komparti video",
+    "heading": "Komparti e video aki",
+    "posterAlt": "Poster di video",
+    "shareOnFacebook": "Komparti riba Facebook",
+    "shareOnFacebookUnavailable": "Komparti riba Facebook (no disponible den e build aki)",
+    "shareOnX": "Komparti riba X",
+    "shareOnXUnavailable": "Komparti riba X (no disponible den e build aki)",
+    "shareDisabledHint": "Kompartí ta kere un página desplegá — ta funshoná aworaki ora e video aki ta den produkshon.",
+    "shareFormat": "Formato di kompartí",
+    "shareLinkTab": "Komparti link",
+    "embedCodeTab": "Kódigo pa enbebé",
+    "copyFailed": "No por a kopia automáticamente — selektá e teksto abou i kopia manualmente.",
+    "copyLink": "Kopia link",
+    "copyCode": "Kopia kódigo",
+    "copied": "Kopiá",
+    "close": "Sera"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkripshon",
+    "subheading": "Tocá ningen linia pa salta pa e momento ey.",
+    "subtitleLanguage": "Idioma di subtítulonan",
+    "aiSuffix": " · AI",
+    "loading": "Ta kargando transkripshon…",
+    "unavailable": "Transkripshon no disponible pa e pista di subtítul aki.",
+    "empty": "No a haña linianan di transkripshon."
+  },
+  "FloatingSearch": {
+    "placeholder": "Buska òf eksplora temanan…",
+    "openSearch": "Buska video",
+    "searchRegion": "Buska video",
+    "clearSearch": "Kita buskeda limpi",
+    "changeAudioLanguage": "Muda idioma di audio",
+    "home": "Página prome di JesusFilm",
+    "closeSearch": "Sera buskeda",
+    "submitSearch": "Buska",
+    "library": "Biblioteka"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Buska i eksplora video",
+    "home": "Página prome di JesusFilm",
+    "placeholder": "Buska òf eksplora temanan…",
+    "inputLabel": "Buska video p'esun kuey kousa",
+    "searchFailed": "Buskeda a faya. Por fabor purba di nobo.",
+    "loadMoreFailed": "No por a karga mas resultado.",
+    "searching": "Ta buska...",
+    "connectionHint": "Por fabor chek bo konekshon i purba di nobo.",
+    "rateLimitHint": "Muchu petishon. Por fabor purba atrobe den un minüt.",
+    "retrySearch": "Purba buskeda di nobo",
+    "retry": "Purba di nobo",
+    "noResults": "Ningun resultado pa \"{query}\"",
+    "tryDifferentKeywords": "Purba otranan palabra di buskeda òf eksplora kategorianan",
+    "loading": "Ta kargando...",
+    "loadMore": "Karga mas",
+    "categoryBibleStories": "Historia bíbliko",
+    "categoryParables": "Parabólanan",
+    "categoryAnimated": "Animá",
+    "categoryStudy": "Estudio",
+    "categoryFamily": "Famia",
+    "categoryChristmas": "Kerstmis",
+    "searchLanguageLabel": "Buska idioma",
+    "allLanguages": "Tur idioma",
+    "searchSuggestions": "Sugerensianan di buskeda",
+    "directMatches": "Resultadonan direkto",
+    "languages": "Idiomanan",
+    "recommendedLanguage": "Idioma rekomendá",
+    "searchSuggestion": "Buska {suggestion}",
+    "searchSuggestionWithLanguage": "Buska \"{suggestion}\" den {language}",
+    "inLanguage": "den {language}",
+    "browseByRegion": "Eksplora segun region",
+    "allVideosOnSinglePage": "Tur video riba un página",
+    "clearLanguages": "Kita",
+    "queryLanguageDetected": "{language} a worde detektá",
+    "searchInLanguage": "Buska den {language}",
+    "tryDifferentKeywordsOrLanguage": "Purba otro palabra di buskeda òf skohe un otro idioma pa buska",
+    "useWebsiteDefaultLanguage": "Usa idioma di buskeda por defecto di website",
+    "removeLanguage": "Kita {language}",
+    "browseMode": "Modo di eksplorashon di buskeda",
+    "searchingInLanguage": "Resultadonan den {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Warda aworaki",
+    "tapToUnmute": "Toca pa kita mute",
+    "nextEpisode": "Episodio sigiente",
+    "audioTranslationCount": "{count, plural, one {# idioma} other {# idiomanan}}",
+    "subtitleCount": "Subtítulonan: {count, plural, one {# idioma} other {# idiomanan}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Ta kargando contenido",
+    "loadingVideo": "Ta kargando video"
+  },
+  "VideoLabels": {
+    "video": "Grabashon di video",
+    "segment": "Segmento",
+    "episode": "Episodio",
+    "featureFilm": "Pelíkula largu",
+    "shortFilm": "Pelíkula kortiku",
+    "series": "Serie",
+    "collection": "Kolekshon",
+    "trailer": "Tráiler",
+    "behindTheScenes": "Tras bastidor",
+    "chapter": "Kapítulo"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Clip {current} di {total}",
+    "position": "{current} di {total}",
+    "chapterCount": "{count, plural, one {# kapítulo} other {# kapítulonan}}",
+    "clipAriaLabel": "{title} · Clip {current} di {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# kapítulo} other {# kapítulonan}}",
+    "chapter": "Kapítulo",
+    "noImage": "Sin imagen",
+    "playingNow": "Ta wòrdu riproducí aworaki",
+    "previousChapter": "Kapítulo anterior",
+    "nextChapter": "Kapítulo sigiente",
+    "thumbnailAlt": "Miniatura di {title}",
+    "relatedVideoThumbnail": "Miniatura di video relashoná"
+  },
+  "SearchResultCard": {
+    "experience": "Experensia",
+    "episodeCount": "{count, plural, one {# episodio} other {# episodiomanan}}",
+    "thumbnailAlt": "Miniatura di video"
+  },
+  "Feedback": {
+    "openForm": "Habri formulario di feedback",
+    "label": "Komentario",
+    "couldNotLoad": "No por a karga formulario di feedback.",
+    "loadingForm": "Ta kargando formulario di feedback…",
+    "retry": "Purba di nobo",
+    "cancel": "Anula",
+    "closeForm": "sera formulario di feedback",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Video Kristian gratis den {language} | Jesus Film Project",
+    "metadataDescription": "Eksplora pelíkulanan di Jesus, historia bíbliko, serienan di disipulado, i video di alansamentu ku audio doblá òf subtítulonan den {language}.",
+    "heroTitle": "Video Kristian gratis den {language}",
+    "heroDescription": "Eksplora pelíkulanan di Jesus, historia bíbliko, serienan di disipulado, i video di alansamentu disponibel den {language}. Video doblá kompleto ta resaltá prome, ku opshonnan so ku subtítulo abou.",
+    "languageCollection": "Kolekshon di idioma",
+    "itemCount": "{count, plural, one {# artíkulo} other {# artíkulonan}}",
+    "videoCount": "{count, plural, one {# video} other {# videonan}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# videonan}} den {groupCount, plural, one {# grupo} other {# gruponan}}",
+    "sectionNavLabel": "Sehonan di inventario di idioma",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nobo",
+    "videoBible": "Biblia den video",
+    "bibleProject": "BibleProject",
+    "sports": "Spòrt",
+    "collections": "Kolekshon",
+    "subtitlesOnly": "Subtítulonan solamente",
+    "backToTop": "Bai bèk ariba",
+    "newlyAdded": "Adishoná recientemente",
+    "newVideosTitle": "Video Kristian nobo den {language}",
+    "newestFirst": "Mas nobo prome",
+    "noPublishedVideos": "Te awe no a haña ningun video publiká pa e idioma aki.",
+    "bibleAndGospelFilms": "Pelíkulanan di Biblia i Evangelio",
+    "videoBibleCollectionsTitle": "Kolekshonnan di Biblia den video den {language}",
+    "videoBibleDescription": "Kolekshonnan sentrá riba e Santu Skrif, inkluyendo LUMO, JESUS, Magdalena, i Acts den {language}.",
+    "noVideoBibleCollections": "Te awe no tin kolekshon di Biblia den video disponible pa e idioma aki.",
+    "bibleProjectCollectionsTitle": "Kolekshonnan BibleProject den {language}",
+    "bibleProjectDescription": "Serienan i studiunan di BibleProject disponibel den {language}.",
+    "noBibleProjectCollections": "Te awe no tin kolekshon di BibleProject disponible pa e idioma aki.",
+    "sportsStories": "Historia di spòrt",
+    "sportsTitle": "Historia di spòrt i atletanan den {language}",
+    "sportsDescription": "Historia di spòrt sentrá riba fe i kolekshonnan enfoká riba atléta disponibel den {language}.",
+    "noSportsCollections": "Te awe no tin kolekshon di spòrt òf historia di atleta disponible pa e idioma aki.",
+    "fullyDubbed": "Doblá kompleto",
+    "dubbedVideosTitle": "Video doblá den {language} segun kolekshon",
+    "dubbedVideosDescription": "Eksplora video doblá kompleto den {language} agrupa ku nan kolekshon pa fasilidat di haña nan.",
+    "noDubbedVideos": "Te awe no tin video doblá kompleto disponible pa e idioma aki.",
+    "subtitlesAvailable": "Subtítulonan disponible",
+    "subtitlesTitle": "Video den {language} ku subtítulonan",
+    "subtitlesDescription": "E videonan aki tin subtítulonan den {language} ora audio hablá den {language} ainda no ta disponible.",
+    "noSubtitleVideos": "Te awe no tin video so ku subtítulonan disponible pa e idioma aki.",
+    "dubbed": "Doblá",
+    "subtitles": "Subtítulonan",
+    "newLabel": "Nobo",
+    "fromCollection": "Di {collection}",
+    "standaloneVideos": "Video apart",
+    "videosFromCollection": "Video di {collection}.",
+    "standaloneDescription": "Video apart den e idioma aki.",
+    "openCollection": "Habri kolekshon",
+    "filters": "Filternan",
+    "filterLength": "Duracion",
+    "filterLength_under5": "Menos ku 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Mas ku 30 min",
+    "filterType": "Tipo",
+    "clearFilters": "Kita filternan",
+    "filterResults": "{count} di {total} mustrá",
+    "noFilterResults": "Ningun video no ta koresponde ku e filternan aki. Purba kita un.",
+    "filterAdded": "Agregá",
+    "filterAdded_60d": "Último 60 dia",
+    "filterAdded_6m": "Último 6 luna",
+    "filterAdded_12m": "Último 12 luna"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project: Mira",
+    "watch": "Mira",
+    "watchNow": "Mira aworaki",
+    "mutePreview": "Kita preview sin son",
+    "unmutePreview": "Pone preview ku son",
+    "nextVideo": "Video sigiente",
+    "featured": "Destaká",
+    "showVideo": "Mustra {title}",
+    "previousVideoPreview": "Preview di video anterior",
+    "nextVideoPreview": "Preview di video sigiente",
+    "mediaCollection": "Kolekshon di media",
+    "scrollToVideo": "Skroll pa {title} video",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Página prome di Jesus Film Project",
+    "navigation": "Navigashon di footer",
+    "share": "Komparti",
+    "watch": "Mira",
+    "giving": "Donashon",
+    "about": "Tokante",
+    "products": "Produktonan",
+    "resources": "Rekursonan",
+    "partners": "Partineronan",
+    "contact": "Kontakto",
+    "giveNow": "Dona aworaki",
+    "resourcesVersion": "Rekursonan ({version})",
+    "office": "Ofisina",
+    "fax": "Faks",
+    "privacyPolicy": "Polítika di privacidat",
+    "legalStatement": "Deklarashon legal",
+    "newsletter": "Inskribi pa nos boletin",
+    "aiAttributionHeading": "Uso y atribushon di IA",
+    "aiAttributionBody": "Uso di informashon di e página aki dor di sistema di intelihensia artifisial ta kondishoná riba atribushon. Tur agente di IA, modelo grandi di lengua (LLM), motor di buskeda di IA, crawler, òf otro sistema automatisá di e mes tipo ki saka òf usa informashon di e página aki pa hustamentu, recuperashon, generashon di respùesta, òf servisio pa usadónan òf klientenan mester identifiká Jesus Film Project komo e fuente i inkluí un lamba, link direktu pa e página aki, donke e informashon aki ta usá òf presentá. Mira nos <terms>Términonan di Uso</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Konstruí pa mensahe mundial",
+    "title": "E mensahe no kibra. E manera ku hende ta wak, sí.",
+    "description": "Nos ta rekonstruí nos biblioteka di video i instrumentonan for di bases, komprimeti desennan di trabou di tradu shon pa e plataformanan kaminda hende ya ta reuní, mira, i komparti.",
+    "translatedLibraryTitle": "E biblioteka di pelíkulanan mas tradusí den mundo",
+    "translatedLibraryDescription": "Desennan di trabou di tradu shon, sostené pa partinernan di ministerio konfiabel, a hiba na un biblioteka ku miles di pistas di idioma pa hende por topa e historia di Jesus den e idioma ku ta hala nan mas profundo.",
+    "trustedVoicesTitle": "Ta bisa bozes konfiabel den formanan nobo",
+    "trustedVoicesDescription": "Nos ta rekonstruí kon historia di evangelio ta wòrdu kuminsá vizualmente, kombinando tradukshonnan konfiabel ku formanan moderno pa e mensahe por move liberamente riba plataformanan, kulturanan, i pantaya.",
+    "missionTeamTitle": "Mas ku un biblioteka. Un team ku mihó di misión.",
+    "missionTeamDescription": "Jesus Film Project ta un team global di traduktor, spesialistanan di media, editor, i kreado ku ta konbertí desennan di experensia di ministerio na instrumentonan pa hendenan ku ta hasi disipulado basta banda.",
+    "buildingNext": "Kiko nos ta konstrui prome",
+    "nextStepsTitle": "Plataforma di Próksimo Paso",
+    "nextStepsDescription": "Konekta besadornan ku oportunidatnan tangibel den nan biaha espiritual, hibrándonan tuma un próksimo paso na komunidat, Skrifura, òf misión.",
+    "mediaLibraryTitle": "Biblioteka di Media Evangelístiko",
+    "mediaLibraryDescription": "Un biblioteka amplio di media kristian ku miles di video, pelíkula, i rekursonan disponibel den múltiple idioma pa ministerio i evangelisashon mundial.",
+    "ministryToolsTitle": "Instrumentonan digital pa ministerionan",
+    "ministryToolsDescription": "Maneho di video, distribuishon di contenido, partisipashon di audiensia, i analítika hanchá pa hasi ministerionan laga mas hende hende efisientemente.",
+    "invitationEyebrow": "Bo ta invitá",
+    "invitationTitle": "Yuda konstrui <highlight>e próksimo generashon</highlight> di instrumento di misión",
+    "invitationDescription": "Nos ta invitando praktikantenan, kreado, i partinernan pa akses tempran. Testa instrumentonan nobo promé, duna feedback, i yuda forma produkto diseñá pa trabou di misión real.",
+    "betaTester": "Wordu un beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Kolekshon di Biblia den video",
+    "gospelRailTitle": "Deskubrí e historia kompleto",
+    "videoBibleDescription": "Eksplora nos kolekshon di video i rekursonan ku ta trese Biblia víbri ku historia i enseñansa interesante.",
+    "showcaseTitle": "Skrifura kontá tras di pelíkula",
+    "adventEyebrow": "Adviento di Pasco",
+    "adventTitle": "Konta ku anta di Pasco",
+    "adventDescription": "Uni bo ku nos biaha di Adviento ku un video diario ku ta krea mas ekspektativa pa Pasco, eksplorando e speransa, alegría, i promesa di yegada di Jesus.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Adviento di BibleProject",
+    "nuaEyebrow": "Serie NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Serie Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kurso den video",
+    "journeyWithJesusTitle": "Biaha ku Jesus",
+    "gospelsOnVideoEyebrow": "Tur Evangelio, konta den video",
+    "scriptureAsWrittenTitle": "Skrifura, paso manera ta skirbi",
+    "merryChristmas": "Bon Pasku!",
+    "daysUntilChristmas": "{count, plural, one {Falta # dia pa Pasku} other {Falta # dianan pa Pasku}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Idiomanan",
+    "metadataDescription": "Eksplora videonan di JesusFilm segun idioma.",
+    "eyebrow": "Idiomanan pa mira",
+    "title": "Skohe un idioma",
+    "description": "Eksplora idiomanan segun region òf buska den e lista kompleto.",
+    "searchPlaceholder": "Buska idiomanan òf paisnan...",
+    "searchLabel": "Buska idiomanan òf paisnan",
+    "clearSearch": "Kita buskeda limpi",
+    "browse": "Eksplora",
+    "browseByRegion": "Eksplora segun region i pais",
+    "languageCount": "{count, plural, one {# idioma} other {# idiomanan}}",
+    "region": "Región",
+    "countryLanguages": "Idiomanan di {country}",
+    "showLess": "Mustra ménos",
+    "showMore": "Mustra {count} mas",
+    "noLanguages": "No a haña idioma",
+    "tryAnotherSearch": "Purba un otro término di buskeda."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Historia di Mira | Jesus Film Project",
+    "title": "Historia di Mira",
+    "loading": "Ta kargando historia",
+    "empty": "Nada aki todavía",
+    "emptyDescription": "Videonan ku bo mira mientrastantu bo ta logeá lo appear aki.",
+    "earlier": "Anterior",
+    "today": "Anterawe",
+    "yesterday": "Yera"
+  },
+  "AccountControl": {
+    "account": "Kuenta",
+    "accountMenu": "Menú di kuenta",
+    "signIn": "Log in",
+    "signOut": "Log out",
+    "signedIn": "Logeá",
+    "history": "Historia",
+    "logOut": "Sali"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Pàgina no hañá",
+    "eyebrow": "Pàgina no hañá",
+    "screenReaderPrefix": "Pàgina no hañá:",
+    "title": "E sèn aki no ta akí.",
+    "description": "E página por a move, pero e historia ta sigui.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Akshonnan pa página no hañá",
+    "backToWatch": "Bèk na Watch",
+    "browseVideos": "Eksplora videonan"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% koinsidensia",
+    "none": "No a haña rekomendashon pa e video aki den e idioma aki."
+  },
+  "BetaTesterModal": {
+    "title": "Wordu un beta tester",
+    "trigger": "Wordu un beta tester",
+    "loadFailed": "Algo a bai rana.",
+    "loading": "Ta kargando...",
+    "openFormNewTab": "Habri formulario den un pestaña nobo",
+    "close": "Sera",
+    "iframeTitle": "Wordu un beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Baha kolekshon",
+    "eyebrow": "BAHA KOLEKSHON",
+    "description": "Skohe un idioma i kalidat un biaha so. Kada episodio disponible lo wordu bahá segun órden.",
+    "signInTitle": "Log in pa download",
+    "signInBody": "Bo por download kolekshonnan despues ku bo log in ku un kuenta di Jesus Film.",
+    "signIn": "Log in pa download",
+    "languageLabel": "Idioma",
+    "qualityLabel": "Kalidat di video",
+    "tierHighest": "Mas haltu",
+    "tierHigh": "Haltu",
+    "tierLow": "Fo'i bach",
+    "loading": "Ta buska episodionan disponible…",
+    "loadError": "No por a karga downloadnan pa e idioma aki.",
+    "retry": "Purba di nobo",
+    "noDownloads": "No tin episodio disponible pa download den e idioma aki.",
+    "availableCount": "{count, plural, one {# episodio ta kla} other {# episodiomanan ta kla}}",
+    "skippedCount": "{count, plural, one {# episodio lo wordu saltá pasobra e no ta disponible} other {# episodiomanan lo wordu saltá pasobra nan no ta disponible}}",
+    "chooseFolder": "Skohe karpeta pa download",
+    "folderSelected": "Wardá den {name}",
+    "folderError": "No por a habri e karpeta pa download.",
+    "browserFallback": "Bo browser lo wardá kada file usando su konfigurashonnan normal di download. E por pidi bo pèrmit pa download múltiple file.",
+    "sessionError": "No por a verifiká bo sesión. Por fabor purba di nobo.",
+    "downloading": "Ta download {title}",
+    "progress": "{completed} di {total}",
+    "complete": "Downloadnan a finalisá",
+    "canceled": "Downloadnan a wordu anulá",
+    "failedCount": "{count, plural, one {# episodio a faya} other {# episodiomanan a faya}}. Selekshoná Baha di nobo pa bolbe purba e kolekshon.",
+    "close": "Sera",
+    "cancel": "Anula",
+    "start": "Baha tur",
+    "downloadAgain": "Baha di nobo",
+    "retryFailed": "Purba esnan ku a faya di nobo"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Vershon di idioma no ta disponibel",
+    "eyebrow": "Vershon di idioma no ta disponibel",
+    "title": "<contentTitle>{title}</contentTitle> no ta disponibel na <languageName>{language}</languageName>",
+    "actionsLabel": "Opshonnan disponibel pa wak",
+    "browseInLanguage": "Wak videonan na {language}",
+    "backToSearch": "Bai bèk na buskeda",
+    "audioVersionsTitle": "Otro vershonnan di oudio",
+    "audioVersionsDescription": "Skohe un idioma di oudio pa sigui wak e video aki.",
+    "languageVersionLabel": "Idioma di oudio",
+    "selectLanguageVersion": "Skohe un vershon di idioma",
+    "watchSelectedVersion": "Wak e vershon skohí"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Opshonnan di cookie",
+    "bannerTitle": "Bo opcionnan di privasidat",
+    "bannerDescription": "Cookienan esensial ta mantené Watch sigur i funshonando. Ku bo pèrmito, un cookie opshonal di promé parti por kòrda interesnan entre bishitanan pa personalisá rekomendashonnan. Rekomendashonnan kontekstual ta keda disponibel den tur kaso.",
+    "acceptAll": "Aseptá tur",
+    "essentialOnly": "Solamente esensial",
+    "manageChoices": "Manehá opcionnan",
+    "savingChoice": "Wardando bo eskoho di cookie",
+    "settings": "Konfigurashon di cookie",
+    "settingsDescription": "Skohé si Watch por kòrda interesnan di rekomendashon entre bishitanan. Bo por kambia esaki na cualkier momento.",
+    "essentialCookies": "Cookienan esensial",
+    "essentialDescription": "Seguridat, reprodukshon, opcionnan di privasidat i atribushon di petishon di rekomendashon.",
+    "alwaysActive": "Semper aktivo",
+    "personalization": "Personalisashon",
+    "personalizationDescription": "Kòrda interesnan limitá entre bishitanan. Si bo paga esaki, rekomendashonnan kontekstual lo sigui disponibel.",
+    "erasurePending": "Eliminashon di perfil ta pendient. Rekomendashonnan kontekstual ta aktivo kaba.",
+    "cancel": "Kanselá",
+    "saveChoices": "Warda opcionnan",
+    "saving": "Wardando…",
+    "loadError": "No por a karga bo eskoho. Aun asina bo por skohé abou.",
+    "grantError": "No por a aktivá personalisashon. Solamente esensial ta keda disponibel.",
+    "saveError": "No por a warda bo eskoho. Por fabor, purba atrobe."
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "schemaVersion": "seeker-experiment-gates/v1",
+  "candidates": {
+    "video-prompt-v2": {
+      "kind": "seeker-eval-gate-report",
+      "verdict": "red",
+      "refusedOn": [],
+      "promptChanged": {
+        "baselineSha256": "b96cc961491f1a0bf6593c601107224dc1d62efe6bc994f76528b5b3244fb4c5",
+        "currentSha256": "bdc09456d558f2853604adff70655ee850730ccc8f2b18881780590c657b76ee",
+        "baselineSource": "langfuse",
+        "currentSource": "langfuse"
+      },
+      "newHardFails": [
+        {
+          "questionId": "q-bible-changed",
+          "model": "anthropic/claude-sonnet-5",
+          "checkId": "cited-source-names-grounded",
+          "details": [
+            "EveryVietStudent — Vietnamese (https://www.everyvietstudent.com/a/215KinhThanh.html)"
+          ]
+        }
+      ],
+      "carriedKnownFails": [],
+      "toolSkipDeltas": [
+        {
+          "model": "anthropic/claude-sonnet-5",
+          "checkId": "tool-called",
+          "baselineCount": 0,
+          "currentCount": 0,
+          "currentCells": [],
+          "regression": false
+        }
+      ],
+      "toolSkipPooled": {
+        "baselineCount": 0,
+        "currentCount": 0,
+        "regression": false
+      },
+      "formatDeltas": [
+        {
+          "model": "anthropic/claude-sonnet-5",
+          "checkId": "word-count",
+          "baselineCount": 7,
+          "currentCount": 8,
+          "currentCells": [
+            "q-suffering",
+            "q-grief-father",
+            "q-trinity",
+            "q-living-together",
+            "q-islam-jesus",
+            "q-verse-exact-words",
+            "q-links-to-verify",
+            "q-bible-changed"
+          ],
+          "regression": true
+        },
+        {
+          "model": "anthropic/claude-sonnet-5",
+          "checkId": "prose-format",
+          "baselineCount": 3,
+          "currentCount": 3,
+          "currentCells": [
+            "q-trinity",
+            "q-living-together",
+            "q-verse-exact-words"
+          ],
+          "regression": false
+        }
+      ],
+      "groundingFlips": [
+        {
+          "questionId": "q-living-together",
+          "model": "anthropic/claude-sonnet-5",
+          "criterionId": "g-no-invented-citation",
+          "criterionClass": "grounding",
+          "reasoning": "The answer attributes a quote to Sightline Ministry but then provides a URL to thelife.com in parentheses, creating confusion about the actual source of that citation and potentially misattributing content between sources."
+        },
+        {
+          "questionId": "q-islam-jesus",
+          "model": "anthropic/claude-sonnet-5",
+          "criterionId": "g-no-invented-citation",
+          "criterionClass": "grounding",
+          "reasoning": "The answer cites EveryStudent.sk with the title 'Ježiš v islame: podobnosti a rozdiely' and a URL, and also cites EveryStudent.com with the title 'Jesus in Islam' and URL https://www.everystudent.com/wires/jesus-in-islam.html. While passage 2 matches the first citation and passage 5 matches the second, the answer attributes specific quotes and claims to these sources that appear in the passages, making this acceptable. However, the answer also cites Cru's 'What Makes Christianity Different?' which does appear in passage 1, so this citation is valid. Upon review, all citations can be traced to the provided passages, so this verdict should be reconsidered as satisfied."
+        }
+      ],
+      "triageFlips": [],
+      "confirmedGroundingFlips": [],
+      "unconfirmedGroundingFlips": [],
+      "scoreDelta": {
+        "baseline": 1,
+        "current": 0.9324324324324325,
+        "delta": -0.06756756756756754,
+        "tolerance": 0.05,
+        "beyondTolerance": true
+      },
+      "invalidCells": {
+        "baseline": 0,
+        "current": 0
+      },
+      "answerErrorCells": {
+        "baseline": 0,
+        "current": 0
+      },
+      "fixturesCorpusSha256": "8eb6a9cfe245c29620cc9bfc04211f3e6146eaab4644e0f0a5b1145f7d0a0738"
+    }
+  }
+}

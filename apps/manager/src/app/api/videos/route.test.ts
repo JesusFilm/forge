@@ -3,7 +3,7 @@ import {
   getFilteredVideoCoverageCache,
   getFilteredVideoCoverageCacheKey,
   normalizeCoverageLanguageIds,
-} from "@/app/api/videos/route"
+} from "@/app/api/videos/cache"
 
 describe("/api/videos coverage cache helpers", () => {
   it("normalizes language ids into a stable sorted unique set", () => {

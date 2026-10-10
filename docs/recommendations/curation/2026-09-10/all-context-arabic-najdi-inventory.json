@@ -1,0 +1,65 @@
+{
+  "context": {
+    "locale": "ar",
+    "audioLanguageSlug": "arabic-najdi",
+    "coreLanguageId": "184591"
+  },
+  "eligibleAdminIds": 9,
+  "deterministicGreedyUnique": 9,
+  "rows": [
+    {
+      "coreVideoId": "9_0-TheSavior",
+      "title": "المخلص",
+      "duplicateOf": null,
+      "duplicateReason": null
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0701",
+      "title": "1. الله العلي الأعلى وخلقه",
+      "duplicateOf": null,
+      "duplicateReason": null
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0702",
+      "title": "2. الخطيئة والانفصال عن الله",
+      "duplicateOf": null,
+      "duplicateReason": null
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0703",
+      "title": "3. الله يعطي الوصايا العشر والذبائح",
+      "duplicateOf": null,
+      "duplicateReason": null
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0704",
+      "title": "4. الله يعطي يسوع",
+      "duplicateOf": null,
+      "duplicateReason": null
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0705",
+      "title": "5. موت يسوع وقيامته",
+      "duplicateOf": null,
+      "duplicateReason": null
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0706",
+      "title": "6. الابن التائه",
+      "duplicateOf": null,
+      "duplicateReason": null
+    },
+    {
+      "coreVideoId": "9_CreationtoChrist0707",
+      "title": "7. العودة إلى الله",
+      "duplicateOf": null,
+      "duplicateReason": null
+    },
+    {
+      "coreVideoId": "9_CreationtoChristFull",
+      "title": "قصة الخلق إلى المسيح فيديو كامل",
+      "duplicateOf": null,
+      "duplicateReason": null
+    }
+  ]
+}

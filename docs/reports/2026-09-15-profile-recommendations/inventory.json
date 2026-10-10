@@ -1,0 +1,124 @@
+[
+  [
+    {
+      "db_time": "2026-09-15T02:03:52.496Z",
+      "read_only": "on"
+    }
+  ],
+  [
+    {
+      "choice": "durable_allowed",
+      "state": "active",
+      "profiles": "119096",
+      "unexpired": "119096",
+      "created_last_7d": "56882"
+    },
+    {
+      "choice": "durable_allowed",
+      "state": "tombstoned",
+      "profiles": "89",
+      "unexpired": "89",
+      "created_last_7d": "12"
+    }
+  ],
+  [
+    {
+      "scope": "durable",
+      "state": "published",
+      "generations": "129167",
+      "unexpired": "129167",
+      "median_contributions": 0,
+      "max_contributions": 64
+    }
+  ],
+  [
+    {
+      "scope": "durable",
+      "state": "completed",
+      "failure_reason": null,
+      "runs": "16683",
+      "oldest_created": "2026-09-13T10:30:07.645Z",
+      "latest_created": "2026-09-15T02:03:52.279Z"
+    },
+    {
+      "scope": "durable",
+      "state": "fenced",
+      "failure_reason": "pointer_generation_fenced",
+      "runs": "36",
+      "oldest_created": "2026-09-13T12:38:25.916Z",
+      "latest_created": "2026-09-14T21:23:03.485Z"
+    },
+    {
+      "scope": "durable",
+      "state": "fenced",
+      "failure_reason": "eligibility_input_fenced",
+      "runs": "11",
+      "oldest_created": "2026-09-13T12:20:19.356Z",
+      "latest_created": "2026-09-15T00:22:02.259Z"
+    },
+    {
+      "scope": "durable",
+      "state": "failed",
+      "failure_reason": "profile_projection_failed",
+      "runs": "9",
+      "oldest_created": "2026-09-13T13:21:12.816Z",
+      "latest_created": "2026-09-14T20:01:47.742Z"
+    }
+  ],
+  [
+    {
+      "manifest_id": "multi-interest-profile-shadow-v1",
+      "scope": "durable",
+      "state": "published",
+      "current_pointers": "118301",
+      "unexpired": "118301",
+      "empty": "117094",
+      "with_durable_interests": "1170",
+      "with_session_intent": "55",
+      "oldest_published": "2026-08-31T13:35:09.613Z",
+      "newest_published": "2026-09-15T02:03:52.536Z"
+    }
+  ],
+  [
+    {
+      "kind": "durable",
+      "interests": "22089",
+      "unexpired": "22089"
+    },
+    {
+      "kind": "session",
+      "interests": "203",
+      "unexpired": "131"
+    }
+  ],
+  [
+    {
+      "relname": "recommendation_profile",
+      "n_live_tup": "119185"
+    },
+    {
+      "relname": "recommendation_candidate_stage_evidence",
+      "n_live_tup": "7877934"
+    },
+    {
+      "relname": "recommendation_profile_projection_generation",
+      "n_live_tup": "129167"
+    },
+    {
+      "relname": "recommendation_profile_interest",
+      "n_live_tup": "22292"
+    },
+    {
+      "relname": "recommendation_profile_projection_contribution",
+      "n_live_tup": "80814"
+    },
+    {
+      "relname": "recommendation_profile_projection_pointer",
+      "n_live_tup": "118301"
+    },
+    {
+      "relname": "recommendation_profile_projection_run",
+      "n_live_tup": "16739"
+    }
+  ]
+]

@@ -1,0 +1,187 @@
+import { createPortalSourcesReader } from "../src/serving/http/portal-sources.js"
+import { PostgresUsageStore } from "../src/adapters/postgres/consumer-usage.js"
+import { UsageCollector } from "../src/serving/http/usage.js"
+import { reportAuthorizer } from "../src/serving/http/usage-report-auth.js"
+import { fileURLToPath } from "node:url"
+
+import { serve } from "@hono/node-server"
+
+import { loadEnvironmentFiles, parseRuntimeEnv } from "../src/config/env.js"
+import { environmentConfigurationError } from "../src/config/environment-error.js"
+import { wire } from "../src/main.js"
+import { createApp } from "../src/serving/http/index.js"
+import { createGitHubAdmission } from "../src/serving/http/portal-github.js"
+import { createPostgresSessionStore } from "../src/adapters/postgres/portal-sessions.js"
+import { verifyPortalSessionRenewal } from "./lib/portal-session-renewal-grant.js"
+import { PostgresConsumerAccess } from "../src/adapters/postgres/consumer-access.js"
+import { PostgresConsumerAuthenticator } from "../src/adapters/postgres/consumer-auth.js"
+import { PrismaClient } from "../src/generated/prisma/index.js"
+import { allSources } from "../src/registry/index.js"
+
+const packageDirectory = fileURLToPath(new URL("..", import.meta.url))
+
+async function main(): Promise<void> {
+  const input = loadEnvironmentFiles(packageDirectory)
+  const env = parseRuntimeEnv(input)
+  const wiring = wire(input)
+  const portalKeys = [
+    "RAG_PORTAL_DATABASE_URL",
+    "RAG_PORTAL_GITHUB_TOKEN",
+    "RAG_PORTAL_CLIENT_ID",
+    "RAG_PORTAL_CLIENT_SECRET",
+    "RAG_PORTAL_CALLBACK_URL",
+    "RAG_PORTAL_ORIGIN",
+  ] as const
+  const configured = portalKeys.filter((key) => !!input[key])
+  if (configured.length !== 0 && configured.length !== portalKeys.length)
+    throw environmentConfigurationError(
+      "portal_configuration_incomplete",
+      "portal configuration is incomplete",
+      "railway",
+    )
+  if (configured.length)
+    await verifyPortalSessionRenewal(input.RAG_PORTAL_DATABASE_URL!)
+  const sessions = configured.length
+    ? createPostgresSessionStore(input.RAG_PORTAL_DATABASE_URL!)
+    : undefined
+  const consumerWriterUrl = input.RAG_CONSUMER_WRITER_DATABASE_URL
+  const consumerReaderUrl = input.RAG_CONSUMER_AUTH_DATABASE_URL
+  if (!consumerWriterUrl || !consumerReaderUrl)
+    throw environmentConfigurationError(
+      "consumer_access_configuration_incomplete",
+      "serving requires both consumer access database URLs",
+      "railway",
+    )
+  const consumerWriter = new PrismaClient({ datasourceUrl: consumerWriterUrl })
+  const consumerReader = new PrismaClient({ datasourceUrl: consumerReaderUrl })
+  const consumers = new PostgresConsumerAccess(consumerWriter)
+  const consumerAuth = new PostgresConsumerAuthenticator(consumerReader)
+  if (!sessions)
+    throw environmentConfigurationError(
+      "consumer_access_requires_portal",
+      "consumer access requires portal admission",
+      "railway",
+    )
+  const allowedSourceKeys = (input.RAG_DEFAULT_CONSUMER_SOURCE_KEYS ?? "")
+    .split(",")
+    .map((key) => key.trim())
+    .filter(Boolean)
+  const registeredSources = new Set(allSources().map((source) => source.key))
+  if (
+    new Set(allowedSourceKeys).size !== allowedSourceKeys.length ||
+    allowedSourceKeys.some((key) => !registeredSources.has(key))
+  )
+    throw environmentConfigurationError(
+      "consumer_source_scope_invalid",
+      "consumer source scope is invalid",
+      "railway",
+    )
+  const usageWriterUrl = input.RAG_USAGE_WRITER_DATABASE_URL
+  const usageReaderUrl = input.RAG_USAGE_REPORT_DATABASE_URL
+  const reportHashes = input.RAG_USAGE_REPORT_TOKEN_HASHES
+  if (
+    (reportHashes && !usageReaderUrl) ||
+    (usageReaderUrl && !sessions && !reportHashes) ||
+    (usageReaderUrl && !usageWriterUrl) ||
+    (usageWriterUrl && !consumerAuth)
+  )
+    throw environmentConfigurationError(
+      "usage_configuration_incomplete",
+      "usage configuration is incomplete",
+      "railway",
+    )
+  const usageWriter = usageWriterUrl
+    ? new PrismaClient({ datasourceUrl: usageWriterUrl })
+    : undefined
+  const usageReader = usageReaderUrl
+    ? new PrismaClient({ datasourceUrl: usageReaderUrl })
+    : undefined
+  const usage = usageWriter
+    ? new UsageCollector(new PostgresUsageStore(usageWriter))
+    : undefined
+  if (
+    usageReader &&
+    reportHashes &&
+    Object.hasOwn(JSON.parse(reportHashes), "ragbot")
+  ) {
+    const ragbotId = input.RAG_USAGE_RAGBOT_CONSUMER_ID ?? ""
+    if (!/^[0-9a-f-]{36}$/i.test(ragbotId))
+      throw environmentConfigurationError(
+        "usage_configuration_incomplete",
+        "RAGBot registration is required before its report grant",
+        "railway",
+      )
+    const rows = await usageReader.$queryRaw<
+      Array<{ consumer_id: string }>
+    >`SELECT consumer_id FROM usage_private.consumer_labels WHERE consumer_id=${ragbotId}::uuid`
+    if (!rows.length)
+      throw environmentConfigurationError(
+        "usage_configuration_incomplete",
+        "RAGBot registration is required before its report grant",
+        "railway",
+      )
+  }
+  const portalUsageReader = usageReader
+    ? new PostgresUsageStore(usageReader)
+    : undefined
+  const portal = sessions
+    ? {
+        sessions,
+        admission: createGitHubAdmission({
+          repositoryToken: input.RAG_PORTAL_GITHUB_TOKEN!,
+          clientId: input.RAG_PORTAL_CLIENT_ID!,
+          clientSecret: input.RAG_PORTAL_CLIENT_SECRET!,
+          callbackUrl: input.RAG_PORTAL_CALLBACK_URL!,
+        }),
+        clientId: input.RAG_PORTAL_CLIENT_ID!,
+        callbackUrl: input.RAG_PORTAL_CALLBACK_URL!,
+        origin: input.RAG_PORTAL_ORIGIN!,
+        consumers,
+        usageReader: portalUsageReader,
+        allowedSourceKeys,
+        sources: createPortalSourcesReader(allSources()),
+      }
+    : undefined
+  const usageReport =
+    usageReader && reportHashes
+      ? {
+          reader: portalUsageReader!,
+          authorize: reportAuthorizer(reportHashes),
+        }
+      : undefined
+  const app = createApp({
+    retriever: wiring.retriever,
+    portal,
+    consumerAuth,
+    usage,
+    usageReport,
+  })
+  const server = serve({ fetch: app.fetch, port: env.PORT }, ({ port }) => {
+    console.error(`serve: /v1 listening on :${port}`)
+  })
+
+  let closing = false
+  const close = (): void => {
+    if (closing) return
+    closing = true
+    server.close(() => {
+      void Promise.all([
+        usage?.stop().then(() => usageWriter?.$disconnect()),
+        usageReader?.$disconnect(),
+        wiring.shutdown(),
+        sessions?.close(),
+        consumerWriter?.$disconnect(),
+        consumerReader?.$disconnect(),
+      ]).finally(() => process.exit(0))
+    })
+  }
+  process.on("SIGINT", close)
+  process.on("SIGTERM", close)
+}
+
+main().catch((error: unknown) => {
+  console.error(
+    `serve failed error_name=${error instanceof Error ? error.name : "unknown"}`,
+  )
+  process.exit(1)
+})

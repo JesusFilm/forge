@@ -1,0 +1,23 @@
+{
+  "capturedAt": "2026-09-23T05:30:31.585512+00:00",
+  "services": [
+    {
+      "service": "web",
+      "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+      "deployment": "9448a080-628d-4964-ae79-81c1f920739e",
+      "hostname": "db7a05218a06"
+    },
+    {
+      "service": "admin",
+      "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+      "deployment": "05d2971e-d42a-4f32-b91a-3c552cb44353",
+      "hostname": "6cc3a8a7c30c"
+    },
+    {
+      "service": "worker",
+      "revision": "37e10b622bd66e55647cf561c3896b2d4fbb4dce",
+      "deployment": "264a75df-cc73-47a9-aee1-7c336e8f986b",
+      "hostname": "108a1b0ef940"
+    }
+  ]
+}

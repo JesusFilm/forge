@@ -1,0 +1,17 @@
+[
+  {
+    "locale": "en",
+    "audioLanguageSlug": "english",
+    "coreLanguageId": "529"
+  },
+  {
+    "locale": "fr",
+    "audioLanguageSlug": "french",
+    "coreLanguageId": "496"
+  },
+  {
+    "locale": "hi",
+    "audioLanguageSlug": "hindi",
+    "coreLanguageId": "6464"
+  }
+]

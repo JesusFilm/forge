@@ -13,6 +13,8 @@ function statusEmoji(status: FeatureStatus): string {
   switch (status) {
     case "complete":
       return "done"
+    case "cancelled":
+      return "cancelled"
     case "in-progress":
       return "in-progress"
     case "blocked":
@@ -36,7 +38,7 @@ function featuresTable(features: Feature[]): string {
 
 function statusSummary(features: Feature[]): string {
   const counts = getStatusCounts(features)
-  return `**${features.length} features** — ${counts.complete} complete, ${counts["in-progress"]} in-progress, ${counts["not-started"]} not-started, ${counts.blocked} blocked`
+  return `**${features.length} features** — ${counts.complete} complete, ${counts.cancelled} cancelled, ${counts["in-progress"]} in-progress, ${counts["not-started"]} not-started, ${counts.blocked} blocked`
 }
 
 function formatIsoDate(date: Date): string {
@@ -52,7 +54,8 @@ function formatDueDate(feature: Feature): string {
 
 function countOverdueOpenFeatures(features: Feature[], today: Date): number {
   return features.filter((feature) => {
-    if (feature.status === "complete") return false
+    if (feature.status === "complete" || feature.status === "cancelled")
+      return false
     if (!feature.start_date || feature.duration <= 0) return false
     return formatDueDate(feature) < formatIsoDate(today)
   }).length
@@ -93,10 +96,11 @@ export function renderRoadmapReadme(
     "",
     `- **Total tickets:** ${features.length}`,
     `- **Complete:** ${counts.complete}`,
+    `- **Cancelled:** ${counts.cancelled}`,
     `- **In progress:** ${counts["in-progress"]}`,
     `- **Not started:** ${counts["not-started"]}`,
     `- **Blocked:** ${counts.blocked}`,
-    `- **Overdue and not complete:** ${overdueCount}`,
+    `- **Overdue and open:** ${overdueCount}`,
     "",
     `## Feature Index`,
   ]
@@ -223,8 +227,9 @@ export function renderHomeMarkdown(
     `## Progress at a Glance`,
     "",
     `- **Features Shipped:** ${counts.complete}`,
+    `- **Cancelled:** ${counts.cancelled}`,
     `- **In Progress:** ${counts["in-progress"]}`,
-    `- **Total Planned:** ${features.length}`,
+    `- **Total Planned:** ${features.length - counts.cancelled}`,
     "",
     `[Full Roadmap](/roadmap.md) | [About](/about.md) | [Experiments](/experiments.md)`,
   ]

@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Ulac agbur n tzemmert.",
+    "failedToLoad": "Ur yeddi ara uselkem n tzemmert: {message}",
+    "unexpected": "Yella ugur ur nettwaṛaḥ ara.",
+    "notConfigured": "Amezruy n ugbur ur yettwaɛraḍ ara.",
+    "noContent": "Ulac agbur.",
+    "homepageMisconfigured": "Asmel n useggas n tzemmert ur yettwaṣfa ara.",
+    "defaultTemplateMisconfigured": "Anekcum amezwaru n tzemmert ur yettwaṣfa ara.",
+    "authFailed": "Ur nezmir ara ad nerr azal ɣef umeẓlu n ugbur. Ma yella ayagi yezga-d, nermes-d tallalt.",
+    "pageLoadFailed": "Yella wayen ur nelli ara.",
+    "tryAgain": "Ɛreḍ tikkelt-nniḍen"
+  },
+  "VideosPage": {
+    "title": "Meṛṛa iẓriyen",
+    "placeholder": "Aseqdec n wansiwen yedda-d. S tikelt nniḍen, seqdec anadi neɣ URL n usentel."
+  },
+  "BibleQuotes": {
+    "title": "Tisenfal n Umadal",
+    "share": "Beḍḍel",
+    "readMore": "Gzem aṭas...",
+    "learnMore": "Ẓer ugar",
+    "freeResources": "Iɣbula n bazaz",
+    "promoHeading": "Tebɣiḍ ad tefhemḍ Axxam s tugna ufruḥen?",
+    "joinBibleStudy": "Arewlu ɣer uselmed n Taqbaylit",
+    "previousQuote": "Asefru n Mdal yezrin",
+    "nextQuote": "Asefru n Mdal d-iteddun",
+    "readPassage": "Ɣer aḍris-agi deg Taqbaylit-inek."
+  },
+  "DownloadButton": {
+    "checking": "Asenqed",
+    "download": "Sider",
+    "sessionError": "Ur nezmir ara ad nsenqed tawuri-k. Ma ulac aɣilif, ɛreḍ tikkelt-nniḍen.",
+    "saveVideo": "Kles tividyo"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Sider tividyo",
+    "eyebrow": "Sider Tividyo",
+    "posterAlt": "Amud n tividyo",
+    "noDownloads": "Ulac idlisen n usider i tividyo-agi.",
+    "fileSizeLabel": "Fren tehri n ufaylu",
+    "termsAgreementPrefix": "Qebleɣ ",
+    "termsOfUse": "Iɣewwaren n useqdec",
+    "termsAgreementSuffix": "",
+    "close": "Mdel",
+    "download": "Sider",
+    "authRequiredTitle": "Tebɣiḍ ad tsidreḍ tividyo-agi?",
+    "authRequiredBody": "Ila yella yir Jesus Film asmi ara tsidreḍ tividyo.",
+    "signInToDownload": "Kcem i usider",
+    "keepWatching": "Kemmel amezwaru",
+    "checking": "Asenqed",
+    "closeTermsOfUse": "Mdel Iɣewwaren n useqdec",
+    "cancel": "Semmet",
+    "accept": "Qebleɣ",
+    "errorSessionExpired": "Tawuri-k tɛedda. Kcem tikkelt-nniḍen i usider.",
+    "errorSessionUnavailable": "Ur nezmir ara ad nsenqed tawuri-k. Ma ulac aɣilif, ɛreḍ tikkelt-nniḍen.",
+    "errorUnavailableSource": "Asider ur yelli ara seg uɣbalu-agi",
+    "tierHighest": "Aɣbalu afellan",
+    "tierHigh": "Afellan",
+    "tierLow": "Aqerruy"
+  },
+  "HeroPlayerControls": {
+    "play": "Wali",
+    "pause": "Ṭṭef",
+    "seek": "Ḍur",
+    "seekValue": "{current} seg {total}",
+    "volume": "Aselway",
+    "volumeValue": "{percent} n miyyat deg miyyat",
+    "mute": "Smutti",
+    "unmute": "Srek",
+    "changeAudioLanguage": "Snifel tutlayt n uslaw",
+    "enterFullscreen": "Kcem ɣer usemzar n tmeẓri",
+    "exitFullscreen": "Ffeɣ seg usemzar n tmeẓri"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Fren tutlayt",
+    "searchPlaceholder": "Nadi tutlayin…",
+    "languages": "Tutlayin",
+    "noMatches": "Ulac amuɣen",
+    "notAvailable": "Ulac"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Tutlayt",
+    "dialogTitleWithSubtitles": "Tutlayt d Ijerriden",
+    "languageHeading": "Tutlayt",
+    "subtitlesHeading": "Ijerriden",
+    "languageCount": "{count, plural, one {# tutlayt} other {# tutlayin}}",
+    "requestSent": "Asuter yewwed",
+    "translateWithAi": "Sselkem s AI",
+    "noSubtitles": "Ulac ijerriden",
+    "toggleOn": "Yettwarmed",
+    "toggleOff": "Yettwakkes",
+    "close": "Mdel",
+    "apply": "Snes",
+    "noLanguageSubtitles": "Ulac ijerriden n {language}",
+    "seeAllLanguages": "Meṛṛa tutlayin",
+    "seeAllVideosInLanguage": "Meṛṛa iẓriyen: {language}",
+    "retryLoadingLanguages": "Ɛreḍ tikkelt-nniḍen asali n tutlayin",
+    "notAvailable": "Ulac",
+    "switching": "Asnifel..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 n tferkit} other {# n tferkiwin}}",
+    "seriesLabel": "SÉRIE · {episodes}",
+    "changeAudioLanguage": "Snifel tutlayt n uslaw",
+    "share": "Beḍḍel",
+    "languages": "Tutlayin",
+    "downloadCollection": "Sider amas",
+    "checkingDownloads": "Asenqed n yisidar…",
+    "downloadSessionError": "Ur nezmir ara ad nsenqed tawuri-k. Ma ulac aɣilif, ɛreḍ tikkelt-nniḍen."
+  },
+  "WatchModal": {
+    "close": "Mdel"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Ma yella zemreḍ ad tessutreḍ amek i d-yessawel uṣeggem n tividyo-agi, acu ara d-yili?",
+    "fallbackBody": "Mmeslay s tmennaḍt yettwaqbelen ad yeḍfer.",
+    "questionsShort": "Isteqsiyen",
+    "questions": "Isteqsiyen i yettwaḍafren",
+    "askYours": "Suter-k",
+    "chatWithPerson": "Mmeslay akked win",
+    "askBibleQuestion": "Suter asteqsi n Taqbaylit",
+    "quiz": "Akayad"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Anaw n tebrat",
+    "fieldLabel": "Suter asteqsi ɣef tvidyo-agi",
+    "send": "Azen asteqsi",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Suter asteqsi n Taqbaylit",
+        "description": "Iġewwaren i d-yeffɣen deg Tazwart s useqdec n AI"
+      },
+      "prayerRequest": {
+        "label": "Suter tazmert n tdukli",
+        "description": "Beḍḍel acu tebɣiḍ ad ttwaṣṛaḍen fell-ak"
+      },
+      "comment": {
+        "label": "Efk awennit",
+        "description": "Azen tikta ɣef tvidyo-agi"
+      },
+      "personChat": {
+        "label": "Mmeslay akked win",
+        "description": "Mmeslay d win tura"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Beḍḍel tvidyo",
+    "heading": "Beḍḍel tvidyo-agi",
+    "posterAlt": "Amud n tividyo",
+    "shareOnFacebook": "Beḍḍel ɣef Facebook",
+    "shareOnFacebookUnavailable": "Beḍḍel ɣef Facebook (ur yelli ara deg build-agi)",
+    "shareOnX": "Beḍḍel ɣef X",
+    "shareOnXUnavailable": "Beḍḍel ɣef X (ur yelli ara deg build-agi)",
+    "shareDisabledHint": "Abeḍḍel yesra asebtar yettwadren — ad yeddu ticki tvidyo-agi ad yili deg production.",
+    "shareFormat": "Amasal n ubeḍḍel",
+    "shareLinkTab": "Beḍḍel aseɣwan",
+    "embedCodeTab": "Tangalt n usemdeɣ",
+    "copyFailed": "Ur nezmir ara ad nesneɣ s wudem awurman — fren tazwart-agi i d-itteddun sakin sneɣ s ufus.",
+    "copyLink": "Nɣel aseɣwan",
+    "copyCode": "Nɣel tangalt",
+    "copied": "Yettwanɣel",
+    "close": "Mdel"
+  },
+  "SubtitleTranscript": {
+    "heading": "Amazray n tazwara",
+    "subheading": "Ssed ɣef yal izwal i wakken ad teqqneḍ ɣer wakud-agi.",
+    "subtitleLanguage": "Tutlayt n ijerriden",
+    "aiSuffix": " · AI",
+    "loading": "Asali n umgraz…",
+    "unavailable": "Umgraz ur yella ara i umdukel-agi n ijerriden.",
+    "empty": "Ulac izwal n umgraz yettwafen."
+  },
+  "FloatingSearch": {
+    "placeholder": "Nadi neɣ brows yefka...",
+    "openSearch": "Nadi tividyo",
+    "searchRegion": "Nadi tividyo",
+    "clearSearch": "Sfeḍ anadi",
+    "changeAudioLanguage": "Snifel tutlayt n uslaw",
+    "home": "Tazwara n JesusFilm",
+    "closeSearch": "Mdel anadi",
+    "submitSearch": "Nadi",
+    "library": "Tasdlist"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Nadi akked brows tividyo",
+    "home": "Tazwara n JesusFilm",
+    "placeholder": "Nadi neɣ brows yefka...",
+    "inputLabel": "Nadi tividyo s wawalen n tsertit",
+    "searchFailed": "Anadi ur yeddi ara. Ma ulac aɣilif, ɛreḍ tikkelt-nniḍen.",
+    "loadMoreFailed": "Ur yeddi ara usali n yiriken nniḍen.",
+    "searching": "Anadi...",
+    "connectionHint": "Ma ulac aɣilif, ssenqed aqeddac-nnek sakin ɛreḍ tikkelt-nniḍen.",
+    "rateLimitHint": "ⴰⵟⴰⵚ ⵏ ⵉⵙⵓⵜⵔⴰ. ⴰⵔⵎ ⵜⵉⴽⴽⵍⵜ ⵢⴰⴹⵏ ⴷⴼⴼⵉⵔ ⵢⴰⵏ ⵓⵙⴷⵉⴷ.",
+    "retrySearch": "Ɛreḍ anadi tikkelt-nniḍen",
+    "retry": "Ɛreḍ tikkelt-nniḍen",
+    "noResults": "Ulac yiriken i \"{query}\"",
+    "tryDifferentKeywords": "Ɛreḍ awalen-nniḍen neɣ brows tiɣiriyin",
+    "loading": "Asali...",
+    "loadMore": "Sali ugar",
+    "categoryBibleStories": "Tudrin n Taqbaylit",
+    "categoryParables": "Imiguyen",
+    "categoryAnimated": "Ittusnifen",
+    "categoryStudy": "Talmudt",
+    "categoryFamily": "Tawacult",
+    "categoryChristmas": "Nnayan",
+    "searchLanguageLabel": "Nadi tutlayt",
+    "allLanguages": "Meṛṛa tutlayin",
+    "searchSuggestions": "Isumar n unadi",
+    "directMatches": "Amṣada usrid",
+    "languages": "Tutlayin",
+    "recommendedLanguage": "Tutlayt yettwassnen",
+    "searchSuggestion": "Nadi “{suggestion}”",
+    "searchSuggestionWithLanguage": "Nadi “{suggestion}” deg {language}",
+    "inLanguage": "deg {language}",
+    "browseByRegion": "Brows s tamnaḍt",
+    "allVideosOnSinglePage": "Meṛṛa iẓriyen deg yiwen usebtar",
+    "clearLanguages": "Sfeḍ",
+    "queryLanguageDetected": "Tettwaf {language}",
+    "searchInLanguage": "Nadi deg {language}",
+    "tryDifferentKeywordsOrLanguage": "Ɛreḍ awalen-nniḍen neɣ fren tutlayt-nniḍen n unadi",
+    "useWebsiteDefaultLanguage": "Seqdec tutlayt n usmel amezwaru n web",
+    "removeLanguage": "Kkes {language}",
+    "browseMode": "Askar n anadi brows",
+    "searchingInLanguage": "Iriken deg {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Wali tura",
+    "tapToUnmute": "Ssed i usmutti",
+    "nextEpisode": "Tferkit d-iteddun",
+    "audioTranslationCount": "{count, plural, one {# tutlayt} other {# tutlayin}}",
+    "subtitleCount": "Ijerriden: {count, plural, one {# tutlayt} other {# tutlayin}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Asali n ugbur",
+    "loadingVideo": "Asali n tvidyo"
+  },
+  "VideoLabels": {
+    "video": "Tividyo",
+    "segment": "Aḥraz",
+    "episode": "Tferkit",
+    "featureFilm": "Tafilimt tamattant",
+    "shortFilm": "Tafilimt tamecṭuḥt",
+    "series": "Série",
+    "collection": "Amas",
+    "trailer": "Asezwel",
+    "behindTheScenes": "Deffir n uskar",
+    "chapter": "Aḥric"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Aḍris {current} seg {total}",
+    "position": "{current} seg {total}",
+    "chapterCount": "{count, plural, one {# aḥric} other {# iḥricen}}",
+    "clipAriaLabel": "{title} · Aḍris {current} seg {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# aḥric} other {# iḥricen}}",
+    "chapter": "Aḥric",
+    "noImage": "Ulac tugna",
+    "playingNow": "Yettwasefru tura",
+    "previousChapter": "Aḥric yezrin",
+    "nextChapter": "Aḥric d-iteddun",
+    "thumbnailAlt": "Tughniwt n {title}",
+    "relatedVideoThumbnail": "Tughniwt n tividyo yettwasnen"
+  },
+  "SearchResultCard": {
+    "experience": "Tazmert",
+    "episodeCount": "{count, plural, one {# tferkit} other {# tferkiwin}}",
+    "thumbnailAlt": "Tughniwt n tividyo"
+  },
+  "Feedback": {
+    "openForm": "Ldi tiferkit n tudert",
+    "label": "Tudert",
+    "couldNotLoad": "Ur izmir ara ad yeldi tiferkit n tudert.",
+    "loadingForm": "Asali n tiferkit n tudert…",
+    "retry": "Ɛreḍ tikkelt-nniḍen",
+    "cancel": "Semmet",
+    "closeForm": "Mdel tiferkit n tudert",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Tividyo n Tazrant n Taqbaylit deg {language} | Jesus Film Project",
+    "metadataDescription": "Wali film n Jesus, tudrin n Taqbaylit, tiseriyin n tazmert, d tvidyo n usselmed s uslaw yettwaxedmen neɣ s ijerriden deg {language}.",
+    "heroTitle": "Tividyo n Tazrant n Taqbaylit deg {language}",
+    "heroDescription": "Wali film n Jesus, tudrin n Taqbaylit, tiseriyin n tazmert, d tvidyo n usselmed yettwaxedmen deg {language}. Tividyo yettuselkmen akk-d uslaw yettwasnen d wayen n ijerriden deffir.",
+    "languageCollection": "Amas n tutlayt",
+    "itemCount": "{count, plural, one {# n ufaris} other {# n iferdisen}}",
+    "videoCount": "{count, plural, one {# tividyo} other {# tividyo}}",
+    "videosInGroups": "{videoCount, plural, one {# tividyo} other {# tividyo}} deg {groupCount, plural, one {# tagrumma} other {# tigrumma}}",
+    "sectionNavLabel": "Iḥricen n uinventory n tutlayt",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Amaynut",
+    "videoBible": "Taqbaylit s tvidyo",
+    "bibleProject": "BibleProject",
+    "sports": "Idablan",
+    "collections": "Igrumen",
+    "subtitlesOnly": "Maɣar ijerriden kan",
+    "backToTop": "Uɣul s ufella",
+    "newlyAdded": "Yettwakkes tura",
+    "newVideosTitle": "Tividyo n tazrant n Taqbaylit deg {language}",
+    "newestFirst": "Tebḍiḍ tikkelt tamezwarut",
+    "noPublishedVideos": "Ulac tividyo yettwazuzmen i tutlayt-agi ar tura.",
+    "bibleAndGospelFilms": "Tifilmin n Taqbaylit d tangelut",
+    "videoBibleCollectionsTitle": "Igrumen n Taqbaylit s tvidyo deg {language}",
+    "videoBibleDescription": "Igrumen yettwaṛaḍen ɣef tazmert, s LUMO, JESUS, Magdalena, d Acts deg {language}.",
+    "noVideoBibleCollections": "Ulac igrumen n Taqbaylit s tvidyo i tutlayt-agi ar tura.",
+    "bibleProjectCollectionsTitle": "Igrumen n BibleProject deg {language}",
+    "bibleProjectDescription": "Tiseriyin d tissin n BibleProject yettwaxedmen deg {language}.",
+    "noBibleProjectCollections": "Ulac igrumen n BibleProject i tutlayt-agi ar tura.",
+    "sportsStories": "Tudrin n idablan",
+    "sportsTitle": "Tudrin n idablan d yimeɣnasen deg {language}",
+    "sportsDescription": "Tudrin n idablan yettwaṛaḍen ɣef laɛqida d igrumen n yimeɣnasen yettwaxedmen deg {language}.",
+    "noSportsCollections": "Ulac igrumen n idablan neɣ n tudrin n yimeɣnasen i tutlayt-agi ar tura.",
+    "fullyDubbed": "Yettuselkem akk",
+    "dubbedVideosTitle": "Tividyo deg {language} s ugrup",
+    "dubbedVideosDescription": "Brows tividyo yettuselkmen akk deg {language} yettwagraren akked ugrup-nsen i tuqqna iɣewṛen.",
+    "noDubbedVideos": "Ulac tividyo yettuselkmen akk i tutlayt-agi ar tura.",
+    "subtitlesAvailable": "Ijerriden llan",
+    "subtitlesTitle": "Tividyo deg {language} s ijerriden",
+    "subtitlesDescription": "Tividyo-agi sran ijerriden deg {language} mi ara ur yili ara uslaw yettwaselkmen deg {language} yakan.",
+    "noSubtitleVideos": "Ulac tividyo kan s ijerriden i tutlayt-agi ar tura.",
+    "dubbed": "Yettuselkem",
+    "subtitles": "Ijerriden",
+    "newLabel": "Amaynut",
+    "fromCollection": "Seg {collection}",
+    "standaloneVideos": "Tividyo yellan s yiman-nsen",
+    "videosFromCollection": "Tividyo seg {collection}.",
+    "standaloneDescription": "Tividyo yellan s yiman-nsen deg tutlayt-agi.",
+    "openCollection": "Ldi amas",
+    "filters": "Isaffaɣen",
+    "filterLength": "Tazegrart",
+    "filterLength_under5": "Drus n 5 tusdidin",
+    "filterLength_5to10": "5-10 tusdidin",
+    "filterLength_10to30": "10-30 tusdidin",
+    "filterLength_over30": "Ugar n 30 tusdidin",
+    "filterType": "Anaw",
+    "clearFilters": "Sfeḍ isaffaɣen",
+    "filterResults": "{count} seg {total} yettwasken",
+    "noFilterResults": "Ulac vidyu yemsadan d isaffaɣen-a. Ɛreḍ ad tekkseḍ yan.",
+    "filterAdded": "Yettwarnu",
+    "filterAdded_60d": "60 wussan ineggura",
+    "filterAdded_6m": "6 wayyuren ineggura",
+    "filterAdded_12m": "12 wayyuren ineggura"
+  },
+  "WatchHome": {
+    "pageTitle": "Watch n Jesus Film Project",
+    "watch": "Wali",
+    "watchNow": "Wali tura",
+    "mutePreview": "Smutti aẓeṛri n usekkir",
+    "unmutePreview": "Srek aẓeṛri n usekkir",
+    "nextVideo": "Tividyo d-iteddun",
+    "featured": "Yettwafṛen",
+    "showVideo": "Sken {title}",
+    "previousVideoPreview": "Asekkir n tvidyo yezrin",
+    "nextVideoPreview": "Asekkir n tvidyo d-iteddun",
+    "mediaCollection": "Amas n tmedya",
+    "scrollToVideo": "Ḍur ɣer tvidyo n {title}",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Tazwara n Jesus Film Project",
+    "navigation": "Amsekkin n ufellah",
+    "share": "Beḍḍel",
+    "watch": "Wali",
+    "giving": "Tazmert",
+    "about": "Ɣef",
+    "products": "Ifukal",
+    "resources": "Iɣbula",
+    "partners": "Imeṛkumen",
+    "contact": "Nermes",
+    "giveNow": "Mudd tura",
+    "resourcesVersion": "Iɣbula ({version})",
+    "office": "Asekfa",
+    "fax": "Faks",
+    "privacyPolicy": "Tasertit n tbaḍnit",
+    "legalStatement": "Ameslay azrefan",
+    "newsletter": "Sekcem i uselmed-nneɣ s yisallen",
+    "aiAttributionHeading": "Asemmed n AI d usemmel",
+    "aiAttributionBody": "Asemmed n yisallen seg usebter-a s isefka n tnikki n tarrayt n tizzla (AI) yella yewwi s usemmel. Kra n uselkim AI, amsefru ameqran n tutlayt (LLM), anadi n AI, crawler, neɣ kra n uselkim awtomatik amezwaru i yessefraken neɣ i yesseqdec isefka seg usebter-a i usemmar, i tnezzar, i tmerna n tiririt, neɣ i yimeẓla i yettwasumren i yiseqdacen neɣ i yiɣewwaṛen, ilaq ad yessefhem Jesus Film Project d aɣbalu, u ad yernu azday afella, umezwaru ɣef usebter-a anda isallen-a ttuseqdacen neɣ ttwasenfen. Wali <terms>Tiẓrigin n useqdec</terms> nneɣ."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Yettwasen i tmura n umaḍal",
+    "title": "Amezruy ur yettbeddel ara. Tarrayt i medden ttwaɣren tella.",
+    "description": "Negguma-d akka tibratin-nneɣ n tvidyo d tɣiwin s uqerru n uzni, ad nsebber idrisen n usekfel i yinawen andamen i d-ittawin medden, ttwaɣren, d ttbeḍḍilen yakan.",
+    "translatedLibraryTitle": "Tibratin n tfilmin i yettwaẓraben aṭas deg umaḍal",
+    "translatedLibraryDescription": "Idrisen n usekfel, yettweḥṣen s imeẓla n tneɣrit, bnan-d tibratin s udrar n yizeḍwan n tutlayin i wakken medden ad zren tudert n Jesus deg tutlayt i t-id-yewḍen.",
+    "trustedVoicesTitle": "Aqqaṛ n yimeslayen i yettwassnen ɣer tmeslalin timaynutin",
+    "trustedVoicesDescription": "Negguma-d amek ara d-ttwaḥekken tudrin n lɣospel s wudem, s usemres n ttraductions yettwassnen d tmeslalin timaynutin i wakken awenni ad yezmir ad yeffeɣ s tlibert ɣef yisnawen, tigawt, d iskranen.",
+    "missionTeamTitle": "Ila mačči kan d tibratin. D tirmi n tmissi.",
+    "missionTeamDescription": "Jesus Film Project d tirmi tamaṛrut n yesseqdec, imezra, imsɛayen n tvidyo, d yinagmayen i yettwassen i wakken ad nerr idrisen n tmissi ɣer wid i yettwarebban i tḍsa n tazmert deg meṛṛa.",
+    "buildingNext": "Acu ara neg awal s uḍris d-iteddun",
+    "nextStepsTitle": "Asebtar n tikli i d-iteddun",
+    "nextStepsDescription": "Qaren i wid i ttzemmren ɣer tazmert-nsen s tferka tizegrek, ad d-sken ad yal-k tikkelt i d-iteddun ɣer tagdud, taqbaylit, neɣ tmissi.",
+    "mediaLibraryTitle": "Tibratin n tmedya n usḥeṛ",
+    "mediaLibraryDescription": "Tibratin tazayit n tmedya n Taqbaylit s uḍris n tvidyo, tifilmin, d iɣbula yellan deg waṭas n tutlayin i tmissi d tazmert deg umaḍal.",
+    "ministryToolsTitle": "Ifecka n tissad n tmissi",
+    "ministryToolsDescription": "Asefrek n tvidyo, azuzer n ugbur, taɣbula n wawal n yilewlen, d tmuɣliwin yettwasnen i wakken ad isɛun tmissi aṭas n medden s wudem iɣewṛen.",
+    "invitationEyebrow": "Tettnuḥriḍ",
+    "invitationTitle": "Mudd afus i usnerni n <highlight>tarbaɛt tamaynut</highlight> n yifecka n tmissi",
+    "invitationDescription": "Nettaru-d imeẓla, imsɛayen, d imeṛkumen ɣer usqedec amezwaru. Jeṛṛeb ifecka nniḍen mezwar, efk tuddsa, d mmeslay ɣef tsugert n ifukal yettwasnen i wergaz n tmissi.",
+    "betaTester": "Kkemer d beta tester"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Amas n Taqbaylit s Tvidyo",
+    "gospelRailTitle": "Af-d tazmert tameqqrant",
+    "videoBibleDescription": "Ẓer amas-nneɣ n tividyo d yiɣbula i d-ttaken i Taqbaylit tudert s tudrin i yettwasnen d uselmed.",
+    "showcaseTitle": "Tazmert s tfilmin",
+    "adventEyebrow": "Advent n Nnayan",
+    "adventTitle": "Aḍris n Advent n Nnayan",
+    "adventDescription": "Arewlu ɣer umuddu n Advent s yiwen n tvidyo n yal ass i d-ittaken asirem i Nnayan, s usenfali n lɛid, afṛaḥ, d lamal n ussufeɣ n Jesus.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Advent n BibleProject",
+    "nuaEyebrow": "Série NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Série Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Asentel s Tvidyo",
+    "journeyWithJesusTitle": "Abrid akked Jesus",
+    "gospelsOnVideoEyebrow": "Yal Injil, yettwasselkem s tvidyo",
+    "scriptureAsWrittenTitle": "Aẓref, yettwaselkem akken i d-yettwettb",
+    "merryChristmas": "Nnayan ameggaz!",
+    "daysUntilChristmas": "{count, plural, one {# wass ar Nnayan} other {# n wussan ar Nnayan}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Tutlayin",
+    "metadataDescription": "Brows tividyo n JesusFilm s tutlayt.",
+    "eyebrow": "Tutlayin n tazwara",
+    "title": "Fren tutlayt",
+    "description": "Wali tutlayin s tmnaḍt neɣ brows taɣlist tamatut.",
+    "searchPlaceholder": "Nadi tutlayin neɣ tmura...",
+    "searchLabel": "Nadi tutlayin neɣ tmura",
+    "clearSearch": "Sfeḍ anadi",
+    "browse": "Brows",
+    "browseByRegion": "Brows s tmnaḍt d tmurt",
+    "languageCount": "{count, plural, one {# tutlayt} other {# tutlayin}}",
+    "region": "Tamnaḍt",
+    "countryLanguages": "Tutlayin n {country}",
+    "showLess": "Sken drus",
+    "showMore": "Sken {count} ugar",
+    "noLanguages": "Ulac tutlayin i yettwafen",
+    "tryAnotherSearch": "Ɛreḍ awenni nniḍen."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Amezruy n useqdec | Jesus Film Project",
+    "title": "Amezruy n useqdec",
+    "loading": "Asali n umezruy",
+    "empty": "Ulac kra akka tura",
+    "emptyDescription": "Tividyo ara ttwaliḍ mi ara tiliḍ d-amek i tbeddeḍ ad ad-ttwafken da.",
+    "earlier": "Yezrin",
+    "today": "Ass-a",
+    "yesterday": "Ass n deffir"
+  },
+  "AccountControl": {
+    "account": "Amiḍan",
+    "accountMenu": "Umuɣ n umiḍan",
+    "signIn": "Kcem",
+    "signOut": "Ffeɣ",
+    "signedIn": "Yettwaksekcem",
+    "history": "Amezruy",
+    "logOut": "Ffeɣ"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Ur yettwaf ara usebtar",
+    "eyebrow": "Ur yettwaf ara usebtar",
+    "screenReaderPrefix": "Ur yettwaf ara usebtar:",
+    "title": "Tazmert-agi ulac da.",
+    "description": "Asebtar yezmer ad yuɣal, maca aḥkay n tazmert yedda-d.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Ifecka n usebtar ur yettwaf ara",
+    "backToWatch": "Uɣal ɣer Watch",
+    "browseVideos": "Brows tividyo"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% n umṣada",
+    "none": "Ur ttwafen ara yisumar i tvidyo-agi deg tutlayt-agi."
+  },
+  "BetaTesterModal": {
+    "title": "Kkemer d beta tester",
+    "trigger": "Kkemer d beta tester",
+    "loadFailed": "Yella wayen ur nelli ara.",
+    "loading": "Asali...",
+    "openFormNewTab": "Ldi tiferkit deg taceṭṭa tamaynut",
+    "close": "Mdel",
+    "iframeTitle": "Kkemer d beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Sider amas",
+    "eyebrow": "Sider amas",
+    "description": "Fren tutlayt d tɣara yiwet n tikkelt. Yal taferkit yellan ad d-tettwasider s umyizwer.",
+    "signInTitle": "Kcem i usider",
+    "signInBody": "Isidar n umas llan mi ara tekcmeḍ s umiḍan n Jesus Film.",
+    "signIn": "Kcem i usider",
+    "languageLabel": "Tutlayt",
+    "qualityLabel": "Taɣara n tvidyo",
+    "tierHighest": "Aɣbalu afellan",
+    "tierHigh": "Afellan",
+    "tierLow": "Aqerruy",
+    "loading": "Anadi ɣef tferkiwin yellan…",
+    "loadError": "Ur izmir ara ad d-ttwasalin yisidar i tutlayt-agi.",
+    "retry": "Ɛreḍ tikkelt-nniḍen",
+    "noDownloads": "Ulac tiferkiwin ara d-ttwasidren deg tutlayt-agi.",
+    "availableCount": "{count, plural, one {# tferkit thegga} other {# tferkiwin heggant}}",
+    "skippedCount": "{count, plural, one {# tferkit ad tettwazgel acku ur telli ara} other {# tferkiwin ad ttuzgelent acku ur llint ara}}",
+    "chooseFolder": "Fren akaram n usider",
+    "folderSelected": "Kles deg {name}",
+    "folderError": "Ur izmir ara ad yeldi ukaram n usider.",
+    "browserFallback": "Iminig-inek ad ikles yal afaylu s yiɣewwaren-is imugna n usider. Izmer ad k-isuter ad tqebleḍ aṭas n yisidar.",
+    "sessionError": "Ur nezmir ara ad nsenqed tawuri-k. Ma ulac aɣilif, ɛreḍ tikkelt-nniḍen.",
+    "downloading": "Asider n {title}",
+    "progress": "{completed} seg {total}",
+    "complete": "Kfan yisidar",
+    "canceled": "Semmten yisidar",
+    "failedCount": "{count, plural, one {# tferkit ur teddi ara} other {# tferkiwin ur ddint ara}}. Fren «Sider» tikkelt-nniḍen i wakken ad tɛerḍeḍ amas.",
+    "close": "Mdel",
+    "cancel": "Semmet",
+    "start": "Sider meṛṛa",
+    "downloadAgain": "Sider tikkelt-nniḍen",
+    "retryFailed": "Ɛreḍ wid ur yeddin ara"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "ⵓⵍⴰ ⵜⴰⵍⵖⴰ ⵏ ⵜⵓⵜⵍⴰⵢⵜ",
+    "eyebrow": "ⵓⵍⴰ ⵜⴰⵍⵖⴰ ⵏ ⵜⵓⵜⵍⴰⵢⵜ",
+    "title": "<contentTitle>{title}</contentTitle> ⵓⵔ ⵉⵍⵍⵉ ⵙ <languageName>{language}</languageName>",
+    "actionsLabel": "ⵜⵉⴼⵔⴰⵜⵉⵏ ⵏ ⵓⵙⴽⴰⵏ",
+    "browseInLanguage": "ⵙⵙⵉⵔⵎ ⵉⴼⵉⴷⵢⵓⵜⵏ ⵙ {language}",
+    "backToSearch": "ⴰⵖⵓⵍ ⵖⵔ ⵓⵔⵣⵣⵓ",
+    "audioVersionsTitle": "ⵜⵉⵍⵖⴰ ⵢⴰⴹⵏ ⵏ ⵉⵎⵙⵍⵉ",
+    "audioVersionsDescription": "ⵙⵜⵉ ⵜⵓⵜⵍⴰⵢⵜ ⵏ ⵉⵎⵙⵍⵉ ⴰⴼⴰⴷ ⴰⴷ ⵜⴽⵎⵎⵍⴷ ⴰⵙⴽⴰⵏ ⵏ ⵓⴼⵉⴷⵢⵓ ⴰⴷ.",
+    "languageVersionLabel": "ⵜⵓⵜⵍⴰⵢⵜ ⵏ ⵉⵎⵙⵍⵉ",
+    "selectLanguageVersion": "ⵙⵜⵉ ⵜⴰⵍⵖⴰ ⵏ ⵜⵓⵜⵍⴰⵢⵜ",
+    "watchSelectedVersion": "ⵙⴽⵏ ⵜⴰⵍⵖⴰ ⵉⵜⵜⵓⵙⵜⴰⵢⵏ"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Tifranin n ikukiyen",
+    "bannerTitle": "Tifranin n tudert-ik tusligt",
+    "bannerDescription": "Ikukiyen izwaren ttaǧǧan Watch d aɣelsan u iteddu akken iwata. S tsriḥt-ik, yiwen n ukuki anefrayan seg usmel ad yekkes ccfawa n yineɣmisen-ik gar tirzaf i usagen n isumeren yettwasagen. Isumeren s umnadi n usatal qqimen llan di sin yisekkilen.",
+    "acceptAll": "Qbel akk",
+    "essentialOnly": "Izwaren kan",
+    "manageChoices": "Sefrek tifranin",
+    "savingChoice": "Asekles n tefrant n ikukiyen",
+    "settings": "Iɣewwaren n ikukiyen",
+    "settingsDescription": "Fren ma yella Watch yezmer ad yekkes ccfawa n yineɣmisen n isumeren gar tirzaf. Tzemreḍ ad tbeddleḍ aya yal tikelt.",
+    "essentialCookies": "Ikukiyen izwaren",
+    "essentialDescription": "Taɣellist, taɣuri n uvidyu, tifranin n tudert tusligt, akked asdukkel n usuter n isumeren.",
+    "alwaysActive": "Yermed yal tikkelt",
+    "personalization": "Asagen udmawan",
+    "personalizationDescription": "Sektes ineɣmisen yettusbdaden gar tirzaf. Ma tessenseḍ aya, isumeren s umnadi n usatal ad qqimen llan.",
+    "erasurePending": "Asemsi n umaɣnu yella deg uraǧu. Isumeren s umnadi n usatal remden yakan.",
+    "cancel": "Sefsex",
+    "saveChoices": "Sekles tifranin",
+    "saving": "Asekles…",
+    "loadError": "Ur nezmir ara ad d-nawi tafrant-ik. Mazal tzemreḍ ad tferneḍ ddaw-a.",
+    "grantError": "Ur yezmir ara ad yermed usagen udmawan. Izwaren kan qqimen llan.",
+    "saveError": "Ur nezmir ara ad nsekles tafrant-ik. Ma ulac aɣilif, ɛreḍ tikelt-nniḍen."
+  }
+}

@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Экспозиция къабуладаб материал гьечӏо.",
+    "failedToLoad": "Экспозиция загруждать гьабуна: {message}",
+    "unexpected": "Ожидание тӏалаб гьечӏедал хъизам гьабуна.",
+    "notConfigured": "Контент-служба тохолаго ялъуна.",
+    "noContent": "Контент гьечӏо.",
+    "homepageMisconfigured": "Смотрящий homepage тӏалаб гьечӏедал тохолаго ялъуна.",
+    "defaultTemplateMisconfigured": "Смотрящий default template тӏалаб гьечӏедал тохолаго ялъуна.",
+    "authFailed": "Контент-службадеги аутентификация гьабизе кьвагьунеб гьечӏо. Гьаб хъизам къотӏолеб бугони, поддержкага хабар гьабе.",
+    "pageLoadFailed": "Нечидаб хъизам гьабуна.",
+    "tryAgain": "Цӏидаса гьабе"
+  },
+  "VideosPage": {
+    "title": "Багьесаб видеол",
+    "placeholder": "Каталогда къадалъан кӏалъал. Гьабанлъиялъ search или topic-specific URL пайдал гьабе."
+  },
+  "BibleQuotes": {
+    "title": "Библиялъи цитатал",
+    "share": "Пайдал гьабе",
+    "readMore": "Цӏикӏкӏараб бицине...",
+    "learnMore": "Цӏикӏкӏараб хъвазе",
+    "freeResources": "Тӏолаб гьечӏеб ресурсал",
+    "promoHeading": "Библия цӏикӏкӏараб гьечӏе хӏалалъ бехьизе кьоб?",
+    "joinBibleStudy": "Библияги цӏалул къоролъе кӏолёзе",
+    "previousQuote": "Цӏалул тӏубазе библия цитата",
+    "nextQuote": "Къваналаб библия цитата",
+    "readPassage": "Гьаб бутӏа Библиялда цӏале."
+  },
+  "DownloadButton": {
+    "checking": "Текширай",
+    "download": "Жибе",
+    "sessionError": "Сессия къаледе текширизе кьвагьунеб гьечӏо. Цӏидаса гьабе.",
+    "saveVideo": "Видео хӏалтӏизе"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Видео жибе",
+    "eyebrow": "Видео жибе",
+    "posterAlt": "Видео плакат",
+    "noDownloads": "Гьаб видеоялъе жибезе хъулухъ гьечӏо.",
+    "fileSizeLabel": "Файл хэмжээ кӏолӏе",
+    "termsAgreementPrefix": "Ставортӏе гьабула ",
+    "termsOfUse": "Пайдал гьабизе шартал",
+    "termsAgreementSuffix": "",
+    "close": "Бекьизе",
+    "download": "Жибе",
+    "authRequiredTitle": "Гьаб видеоялъе жибезе кьоб?",
+    "authRequiredBody": "Видео жибезе Jesus Film аккаунт тӏадбухъараб буго.",
+    "signInToDownload": "Жибезе кӏолӏе системадеги кӏоде",
+    "keepWatching": "Смотрение гьабе",
+    "checking": "Текширай",
+    "closeTermsOfUse": "Пайдал гьабизе шартал бекьизе",
+    "cancel": "Бахъине",
+    "accept": "Кьабул гьабе",
+    "errorSessionExpired": "Сессия къалеб буго. Жибезе цӏидаса кӏоде.",
+    "errorSessionUnavailable": "Сессия текширизе кьвагьунеб гьечӏо. Цӏидаса гьабе.",
+    "errorUnavailableSource": "Гьаб источникдан жибезе гьечӏо",
+    "tierHighest": "Бищун цӏикӏкӏараб",
+    "tierHigh": "Цӏикӏкӏараб",
+    "tierLow": "Кӏенеб"
+  },
+  "HeroPlayerControls": {
+    "play": "Босе",
+    "pause": "Токӏолъе",
+    "seek": "Къотӏе",
+    "seekValue": "{current} / {total}",
+    "volume": "Гьуни",
+    "volumeValue": "{percent} процент",
+    "mute": "Бацӏе",
+    "unmute": "Бацӏараб бекьизе",
+    "changeAudioLanguage": "Аудиоялъе миллат бади",
+    "enterFullscreen": "Тӏолаб экранда кӏолӏе",
+    "exitFullscreen": "Тӏолаб экрандан хьвазе"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Тил бие",
+    "searchPlaceholder": "Тилал гӏарби…",
+    "languages": "Тилал",
+    "noMatches": "Къоларух гьечӏо",
+    "notAvailable": "Хӏажат гьечӏо"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Тил",
+    "dialogTitleWithSubtitles": "Тил ва субтитрал",
+    "languageHeading": "Тил",
+    "subtitlesHeading": "Субтитрал",
+    "languageCount": "{count, plural, one {# тил} other {# тилал}}",
+    "requestSent": "Талаб кьуна",
+    "translateWithAi": "AI ниса таржума гьабе",
+    "noSubtitles": "Субтитрал гьечӏо",
+    "toggleOn": "Къачӏараб",
+    "toggleOff": "Къотӏараб",
+    "close": "Бекьизе",
+    "apply": "Кьун гьабе",
+    "noLanguageSubtitles": "{language} субтитрал гьечӏо",
+    "seeAllLanguages": "Тӏолал тилал",
+    "seeAllVideosInLanguage": "Багьесаб видеол: {language}",
+    "retryLoadingLanguages": "Тилал загруждать цӏидаса хъвазе",
+    "notAvailable": "Хӏажат гьечӏо",
+    "switching": "Бадидал..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 эпизод} other {# эпизодал}}",
+    "seriesLabel": "СЕРИЯ · {episodes}",
+    "changeAudioLanguage": "Аудиоялъе миллат бади",
+    "share": "Пайдал гьабе",
+    "languages": "Тилал",
+    "downloadCollection": "Коллекция жибе",
+    "checkingDownloads": "Жибиял текшералел руго…",
+    "downloadSessionError": "Сессия къаледе текширизе кьвагьунеб гьечӏо. Цӏидаса гьабе."
+  },
+  "WatchModal": {
+    "close": "Бекьизе"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Гьаб видео къадалъан хъвазе кьолеб бугони, тӏад къватӏиб кинаб бугони?",
+    "fallbackBody": "Къалъулъ кӏвабизе хъалхъанаб хүнар къотӏолеб инсаналъе къатӏарай.",
+    "questionsShort": "Суалал",
+    "questions": "Къурбанал суалал",
+    "askYours": "Суал къвагье",
+    "chatWithPerson": "Инсаналъги кӏалъае",
+    "askBibleQuestion": "Библиялъе суал къвагье",
+    "quiz": "Викторина"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Хъвазе хилма",
+    "fieldLabel": "Гьаб видеоялъе суал къвагье",
+    "send": "Суал кьолӏе",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Библиялъе суал къвагье",
+        "description": "AI search ниса Библиядал жибаб жуапал"
+      },
+      "prayerRequest": {
+        "label": "Дуа къвагье",
+        "description": "Кинаб чӏалалъе дуа къвагьидал бице"
+      },
+      "comment": {
+        "label": "Комментарий кӏолӏе",
+        "description": "Гьаб видео цӏидаса бице"
+      },
+      "personChat": {
+        "label": "Инсаналъги кӏалъае",
+        "description": "Хӏалал инсаналъги кӏалъае"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Видео пайдам гьабе",
+    "heading": "Гьаб видео пайдам гьабе",
+    "posterAlt": "Видео плакат",
+    "shareOnFacebook": "Facebook-да пайдам гьабе",
+    "shareOnFacebookUnavailable": "Facebook-да пайдам гьабе (гьаб build-да хӏажат гьечӏо)",
+    "shareOnX": "X-да пайдам гьабе",
+    "shareOnXUnavailable": "X-да пайдам гьабе (гьаб build-да хӏажат гьечӏо)",
+    "shareDisabledHint": "Пайдам гьабизе deployed page тӏадбухъараб буго — гьаб видео production-да кквечӏелъул даралда.",
+    "shareFormat": "Пайдам гьабизе формат",
+    "shareLinkTab": "Link пайдам",
+    "embedCodeTab": "Code къоларух",
+    "copyFailed": "Автоматически copy гьабизе кьвагьунеб гьечӏо — къватӏиб текст тӏолабалъ къотӏе ва manual-да copy гьабе.",
+    "copyLink": "Link copy гьабе",
+    "copyCode": "Code copy гьабе",
+    "copied": "Copy гьабуна",
+    "close": "Бекьизе"
+  },
+  "SubtitleTranscript": {
+    "heading": "Текст",
+    "subheading": "Кинаб цӏалул жекъалда тӏад тӏезе ва гьал къолеб моменталде кӏолӏе.",
+    "subtitleLanguage": "Субтитрал тил",
+    "aiSuffix": " · AI",
+    "loading": "Текст загруждай…",
+    "unavailable": "Гьаб subtitle track-да текст гьечӏо.",
+    "empty": "Текст строчкабил кӏолӏо гьечӏо."
+  },
+  "FloatingSearch": {
+    "placeholder": "Тема кӏалъе или къадалъан бие…",
+    "openSearch": "Видео кӏалъе",
+    "searchRegion": "Видео кӏалъе",
+    "clearSearch": "Кӏалъан бекьизе",
+    "changeAudioLanguage": "Аудиоялъе миллат бади",
+    "home": "JesusFilm хона",
+    "closeSearch": "Кӏалъан бекьизе",
+    "submitSearch": "Кӏалъе",
+    "library": "Библиотека"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Видео кӏалъе ва къадалъан бие",
+    "home": "JesusFilm хона",
+    "placeholder": "Тема кӏалъе или къадалъан бие…",
+    "inputLabel": "Видео кӏалъе, ключевой сөзал ниса",
+    "searchFailed": "Кӏалъан кьвагьуна. Цӏидаса гьабе.",
+    "loadMoreFailed": "Цӏикӏкӏараб нәтижал загруждать кьвагьуна.",
+    "searching": "Кӏалъай...",
+    "connectionHint": "Байланыш текшере ва цӏидаса гьабе.",
+    "rateLimitHint": "Хӏаракатал цӏакъго. Минуталдаса цӏидаса гьабе.",
+    "retrySearch": "Кӏалъан цӏидаса гьабе",
+    "retry": "Цӏидаса гьабе",
+    "noResults": "\"{query}\" учун нәтижа гьечӏо",
+    "tryDifferentKeywords": "Цӏияб ключевой сөзал гьабе немесе categories къадалъан бие",
+    "loading": "Загруждай...",
+    "loadMore": "Цӏикӏкӏараб жибе",
+    "categoryBibleStories": "Библия гьалбал",
+    "categoryParables": "Масалал",
+    "categoryAnimated": "Анимациял",
+    "categoryStudy": "Цӏалул",
+    "categoryFamily": "Хъизан",
+    "categoryChristmas": "Рождество",
+    "searchLanguageLabel": "Кӏалъан тил",
+    "allLanguages": "Тӏолал тилал",
+    "searchSuggestions": "Кӏалъан тавсиял",
+    "directMatches": "Тӏубараб дандекквей",
+    "languages": "Тилал",
+    "recommendedLanguage": "Тавсия гьабураб тил",
+    "searchSuggestion": "«{suggestion}» кӏалъе",
+    "searchSuggestionWithLanguage": "{language} мацӏалда «{suggestion}» кӏалъе",
+    "inLanguage": "{language} лъайда",
+    "browseByRegion": "Регионниса кӏалъе",
+    "allVideosOnSinglePage": "Киналго видеол цо страницалда",
+    "clearLanguages": "Бекьизе",
+    "queryLanguageDetected": "{language} цӏумена",
+    "searchInLanguage": "{language} мацӏалда кӏалъе",
+    "tryDifferentKeywordsOrLanguage": "Цӏияб ключевой сөзал гьабе или цӏияб search тил бие",
+    "useWebsiteDefaultLanguage": "Сайт тӏадбухъараб search тил пайдалан гьабе",
+    "removeLanguage": "{language} алып хъвазе",
+    "browseMode": "Кӏалъай browse режим",
+    "searchingInLanguage": "Нәтижал {language} мацӏалда"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Гьанжиде бец",
+    "tapToUnmute": "Бацӏараб бекьизе учун тап гьабе",
+    "nextEpisode": "Къваналаб эпизод",
+    "audioTranslationCount": "{count, plural, one {# тил} other {# тилал}}",
+    "subtitleCount": "Субтитрал: {count, plural, one {# тил} other {# тилал}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Контент загруждай",
+    "loadingVideo": "Видео загруждай"
+  },
+  "VideoLabels": {
+    "video": "Видео",
+    "segment": "Сегмент",
+    "episode": "Эпизод",
+    "featureFilm": "Хӏалеб фильм",
+    "shortFilm": "Къиса фильм",
+    "series": "Серия",
+    "collection": "Коллекция",
+    "trailer": "Трейлер",
+    "behindTheScenes": "Сцена артӏуда",
+    "chapter": "Баб"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Клип {current} / {total}",
+    "position": "{current} / {total}",
+    "chapterCount": "{count, plural, one {# баб} other {# бабал}}",
+    "clipAriaLabel": "{title} · Клип {current} / {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# баб} other {# бабал}}",
+    "chapter": "Баб",
+    "noImage": "Сурәт гьечӏо",
+    "playingNow": "Хӏалтӏизе буго",
+    "previousChapter": "Авал баб",
+    "nextChapter": "Къваналаб баб",
+    "thumbnailAlt": "{title} миниатюра",
+    "relatedVideoThumbnail": "Релевантное видео миниатюра"
+  },
+  "SearchResultCard": {
+    "experience": "Экспозиция",
+    "episodeCount": "{count, plural, one {# эпизод} other {# эпизодал}}",
+    "thumbnailAlt": "Видео thumbnail"
+  },
+  "Feedback": {
+    "openForm": "Отзывы къоларух кӏвабизе",
+    "label": "Отзывы",
+    "couldNotLoad": "Отзывы къоларух загруждате гьабизе гьечӏо.",
+    "loadingForm": "Отзывы къоларух загруждай…",
+    "retry": "Цӏидаса хъвазе",
+    "cancel": "Бахъине",
+    "closeForm": "Отзывы къоларух бекьизе",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "{language}-да тӏолаб гьечӏеб христианский видеол | Jesus Film Project",
+    "metadataDescription": "Jesus films, Библия гьалбал, discipleship сериял ва outreach видеол {language}-да дубляж аудио или субтитрал ниса къадалъан бие.",
+    "heroTitle": "{language}-да тӏолаб гьечӏеб христианский видеол",
+    "heroDescription": "Jesus films, Библия гьалбал, discipleship сериял ва outreach видеол {language}-да къадалъан бие. Тӏолаб дубляж гьабураб видеол аввал хъвазе, субтитрал цӏикӏкӏараб чӏарал къваналъе.",
+    "languageCollection": "Тилал коллекция",
+    "itemCount": "{count, plural, one {# тӏубазе} other {# тӏубазал}}",
+    "videoCount": "{count, plural, one {# видео} other {# видеол}}",
+    "videosInGroups": "{videoCount, plural, one {# видео} other {# видеол}} {groupCount, plural, one {# группа} other {# группал}}-да",
+    "sectionNavLabel": "Тилал inventory разделал",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Цӏияб",
+    "videoBible": "Видео Библия",
+    "bibleProject": "BibleProject",
+    "sports": "Спорт",
+    "collections": "Коллекциял",
+    "subtitlesOnly": "Субтитрал ган",
+    "backToTop": "Тӏадегӏан",
+    "newlyAdded": "Цӏидаса кьабул гьабураб",
+    "newVideosTitle": "{language}-да цӏияб христианский видеол",
+    "newestFirst": "Бищун цӏияб аввал",
+    "noPublishedVideos": "Гьал моментаялъе гьаб тилалда тӏадбухъараб видео гьечӏо.",
+    "bibleAndGospelFilms": "Библия ва Инжил фильмал",
+    "videoBibleCollectionsTitle": "{language}-да Видео Библия коллекциял",
+    "videoBibleDescription": "Гьелъие Scripture-centered коллекциял: LUMO, JESUS, Magdalena ва Acts {language}-да.",
+    "noVideoBibleCollections": "Гьал тилалда Видео Библия коллекциял хәдеб гьечӏо.",
+    "bibleProjectCollectionsTitle": "{language}-да BibleProject коллекциял",
+    "bibleProjectDescription": "BibleProject сериял ва study {language}-да къадалъан бие.",
+    "noBibleProjectCollections": "Гьал тилалда BibleProject коллекциял хәдеб гьечӏо.",
+    "sportsStories": "Спорт хъвалил",
+    "sportsTitle": "{language}-да спорт ва атлеталъул хъвалил",
+    "sportsDescription": "Иманалъе къадалъараб спорт хъвалил ва атлеталъул коллекциял {language}-да.",
+    "noSportsCollections": "Гьал тилалда спорт կամ атлет хъвалил коллекциял хәдеб гьечӏо.",
+    "fullyDubbed": "Тӏолаб дубляж гьабураб",
+    "dubbedVideosTitle": "{language}-да коллекциябил видеол",
+    "dubbedVideosDescription": "Тӏолаб дубляж гьабураб {language}-да видеол, коллекциябил ниса къадалъан бие.",
+    "noDubbedVideos": "Гьал тилалда тӏолаб дубляж гьабураб видео хәдеб гьечӏо.",
+    "subtitlesAvailable": "Субтитрал буго",
+    "subtitlesTitle": "{language}-да субтитрал ниса видеол",
+    "subtitlesDescription": "Гьел видеолалда {language}-да субтитрал буго, хӏалаб {language} аудио гьечӏеб бугони.",
+    "noSubtitleVideos": "Гьал тилалда субтитрал ган видеол хәдеб гьечӏо.",
+    "dubbed": "Дубляж",
+    "subtitles": "Субтитрал",
+    "newLabel": "Цӏияб",
+    "fromCollection": "{collection}-дан",
+    "standaloneVideos": "Тӏатӏа видеол",
+    "videosFromCollection": "{collection}-дан видеол.",
+    "standaloneDescription": "Гьаб тилалда тӏатӏа видеол.",
+    "openCollection": "Коллекция къоларух",
+    "filters": "Тӏасалъиял",
+    "filterLength": "Халалъи",
+    "filterLength_under5": "5 минуталдаса дагьаб",
+    "filterLength_5to10": "5-10 минут",
+    "filterLength_10to30": "10-30 минут",
+    "filterLength_over30": "30 минуталдаса цӏикӏкӏун",
+    "filterType": "Тайпа",
+    "clearFilters": "Тӏасалъиял цӏунизе",
+    "filterResults": "{total}-даса {count} бихьизабуна",
+    "noFilterResults": "Гьал тӏасалъиялде рекъараб видео гьечӏо. Цо бахъизе гьабе.",
+    "filterAdded": "Жубараб",
+    "filterAdded_60d": "Ахирисел 60 къо",
+    "filterAdded_6m": "Ахирисел 6 моцӏ",
+    "filterAdded_12m": "Ахирисел 12 моцӏ"
+  },
+  "WatchHome": {
+    "pageTitle": "Jesus Film Project: Смотре",
+    "watch": "Смотре",
+    "watchNow": "Хӏалӏе смотре",
+    "mutePreview": "Preview бацӏе",
+    "unmutePreview": "Preview бекьизе",
+    "nextVideo": "Къваналаб видео",
+    "featured": "Қӏачӏараб",
+    "showVideo": "{title} гьабе",
+    "previousVideoPreview": "Авал видео preview",
+    "nextVideoPreview": "Къваналаб видео preview",
+    "mediaCollection": "Медиа коллекция",
+    "scrollToVideo": "{title} видеоялде кӏолӏе",
+    "forYou": "Recommended for You"
+  },
+  "WatchFooter": {
+    "home": "Jesus Film Project хона",
+    "navigation": "Нижняя навигация",
+    "share": "Пайдам гьабе",
+    "watch": "Смотре",
+    "giving": "Тӏадбухъе",
+    "about": "Хъалбухъе",
+    "products": "Маҳсулал",
+    "resources": "Ресурсал",
+    "partners": "Партнёрал",
+    "contact": "Байланыш",
+    "giveNow": "Хӏалӏе тӏадбухъе",
+    "resourcesVersion": "Ресурсал ({version})",
+    "office": "Офис",
+    "fax": "Факс",
+    "privacyPolicy": "Хӏурматияб хӏакъалъи",
+    "legalStatement": "Юридический баянат",
+    "newsletter": "Newsletter-да къолъе",
+    "aiAttributionHeading": "AI-ял къадараб хъахъилъи ва атрибуция",
+    "aiAttributionBody": "Буго биялъул информацияялъе искусственный интеллекталъул системаялъул хъулухъалъе пайда гьабураб бугони, атрибуция къватIги хIисабалда гьечIеб. Бу page-алъул информацияялъулъ AI agent, large language model (LLM), AI search engine, crawler яги цогидаб автоматиял система, мацI, къанщалъи, жаваб къалъалъизе, яги хэрэглъиялъе хэрэглъиял users я clients-алъе лъазе пайда гьабураб бугони, Jesus Film Project-мехъерлъиялъул гьечIо гьабкье хъамали. Хъублайда къватIъа хъварияб лъугIи ва гьаб page-алъе тIокIу, гьечIи гьелде гьалъул информация пайда гьабураб яги къалъалъизе гьабураб буго. <terms>Terms of Use</terms>-алъе лъагIараб къокъби."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Тӏолаб жахӏат миссиябилъе гьабураб",
+    "title": "Хабар тӏубараб буго. Адамал гьанжиде кинаб жеги?",
+    "description": "Къватӏиб видеол бібліотека ва toolal цӏидаса строить гьабулеб буго, кӏолӏулцаги къватӏиб translation work платформабилде, халкьани гьелда кӏвалъазе, смотре ва share гьабизе кинаб жеги.",
+    "translatedLibraryTitle": "Дунъялалда бищун цӏикӏкӏараб таржума фильм библиотека",
+    "translatedLibraryDescription": "Кӏолӏулцаги translation work, trusted ministry partners-нужно кӏвабураб, тӏолаб 1000+ тил trackал бугеб library ккун буго, адамал Jesus хъвалиналда къватӏиб гьанжигьалъе цӏалул тилалда кӏвалъазе.",
+    "trustedVoicesTitle": "Кьабул гьабураб хъвалил цӏияб форматалде ячӏизе",
+    "trustedVoicesDescription": "Инжил хъвалил хӏаракалде бицине кинаб хӏалал цӏидаса къотӏолеб буго, кьабул гьабураб таржума современный форматалдалъан кӏалъазе, хабар platform, культура ва экраналда хӏалал хьвазе.",
+    "missionTeamTitle": "Библиотека ган, миссиябилъе команда",
+    "missionTeamDescription": "Jesus Film Project — таржумачилар, медиа специалистал, редакторал ва creatorал бугеб глобальный команда, decades of ministry experience инструментаралде түйн гьабулеб, disciple-makerалге къватӏиб.",
+    "buildingNext": "Кинаб цӏидаса гьабулеб буго",
+    "nextStepsTitle": "Next Steps платформа",
+    "nextStepsDescription": "Зрителалъул spirituality journey-да нақты opportunity-ялде къваналӏе, community, Scripture или mission-да next step къотӏизе кӏола.",
+    "mediaLibraryTitle": "Евангелизациял media library",
+    "mediaLibraryDescription": "Кӏицӏе видеол, фильмал ва ресурсал бугеб христианский media library, multiple languages-да ministry ва evangelism-алъе.",
+    "ministryToolsTitle": "Министриялъе digital toolal",
+    "ministryToolsDescription": "Video management, content distribution, audience engagement ва analytics — министриял цӏикӏкӏараб инсаналде кӏалъазе кӏолӏе гьабураб.",
+    "invitationEyebrow": "Гьелда цӏолъа",
+    "invitationTitle": "<highlight>Next generation</highlight> mission tools строить гьабизе кӏоле",
+    "invitationDescription": "Practitionerал, creatorал ва partnerал early access-алде къотӏолеб буго. Цӏияб tool аввал тӏадбухъе, feedback кьезе ва real mission work-алъе продуктал хъвазе кумек гьабе.",
+    "betaTester": "Beta tester бузе"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Видео Библия коллекция",
+    "gospelRailTitle": "Тӏолаб хъвалин къадалъе",
+    "videoBibleDescription": "Библия хаяталде къадалъараб video ва resource коллекциял кӏалъе, бецӏараб хъвалил ва таълимал ниса.",
+    "showcaseTitle": "Film ниса къалъараб Scripture",
+    "adventEyebrow": "Рождествоялъул Адвент",
+    "adventTitle": "Christmas Advent countdown",
+    "adventDescription": "Advent journey-да кӏолӏе, кӏолӏул video ниса Christmas-дал цӏумал хӏалал, Jesus-дал къалъараб hope, joy ва promise къадалъе.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "BibleProject Адвент",
+    "nuaEyebrow": "NUA серия",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Worth серия",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Видео курс",
+    "journeyWithJesusTitle": "Jesus-ниса къалъе",
+    "gospelsOnVideoEyebrow": "Кинаб Инжил, видео ниса",
+    "scriptureAsWrittenTitle": "Scripture, чӏогьо хъвазе гьабурабалдаса хъвалаб",
+    "merryChristmas": "Рождество баркула!",
+    "daysUntilChristmas": "{count, plural, one {Рождествоялде # къо хутӏана} other {Рождествоялде # къоял хутӏана}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Тилал",
+    "metadataDescription": "JesusFilm видеол тилалда къадалъе.",
+    "eyebrow": "Смотре тилал",
+    "title": "Тил бие",
+    "description": "Тилал регионниса къадалъе или тӏолаб list-алъе кӏалъе.",
+    "searchPlaceholder": "Тилал или къотӏарал гӏарби...",
+    "searchLabel": "Тилал или къотӏарал гӏарби",
+    "clearSearch": "Кӏалъан бекьизе",
+    "browse": "Къадалъе",
+    "browseByRegion": "Регион ва странаялъда къадалъе",
+    "languageCount": "{count, plural, one {# тил} other {# тилал}}",
+    "region": "Регион",
+    "countryLanguages": "{country} тилал",
+    "showLess": "Кӏамбузе",
+    "showMore": "{count} цӏикӏкӏараб гьабе",
+    "noLanguages": "Тилал гьечӏо",
+    "tryAnotherSearch": "Цӏияб search сөзал гьабе."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Смотре тарих | Jesus Film Project",
+    "title": "Смотре тарих",
+    "loading": "Тарих загруждай",
+    "empty": "Гьанжесалда гьечӏо",
+    "emptyDescription": "Кӏодалочӏо кинай видео гьабулеб, гьедал гьанжесалда кӏолӏо.",
+    "earlier": "Авал",
+    "today": "Багъал",
+    "yesterday": "Кечӏал"
+  },
+  "AccountControl": {
+    "account": "Аккаунт",
+    "accountMenu": "Аккаунт меню",
+    "signIn": "Кӏоде",
+    "signOut": "Кӏодан хьвазе",
+    "signedIn": "Кӏодараб",
+    "history": "Тарих",
+    "logOut": "Выйти"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Бетарица страница",
+    "eyebrow": "Бетарица страница",
+    "screenReaderPrefix": "Бетарица страница:",
+    "title": "Гьаб сцена гьанжесалда гьечӏо.",
+    "description": "Страница кинаб жеги кӏодалеб бугони, хъвалин дәвам буго.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Бетарица страница actions",
+    "backToWatch": "Смотрелде тӏадбухъе",
+    "browseVideos": "Видео къадалъе"
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% рекъола",
+    "none": "Гьаб тилалда гьаб видеоялъе тавсиял батичӏо."
+  },
+  "BetaTesterModal": {
+    "title": "Beta tester бузе",
+    "trigger": "Beta tester бузе",
+    "loadFailed": "Нечидаб хъизам гьабуна.",
+    "loading": "Загруждай...",
+    "openFormNewTab": "Нухмалъиялда цӏияб табда форма къоларух",
+    "close": "Бекьизе",
+    "iframeTitle": "Beta tester бузе"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Коллекция жибе",
+    "eyebrow": "Коллекция жибе",
+    "description": "Тил ва качество нухалъ бие. Жибизе бегьулеб гьар эпизод нухалъ нухалъ жибила.",
+    "signInTitle": "Жибезе системадеги кӏоде",
+    "signInBody": "Коллекциял жибизе Jesus Film аккаунталда системадеги кӏаралдаса хадуб кӏола.",
+    "signIn": "Жибезе системадеги кӏоде",
+    "languageLabel": "Тил",
+    "qualityLabel": "Видеоялъул качество",
+    "tierHighest": "Бищун цӏикӏкӏараб",
+    "tierHigh": "Цӏикӏкӏараб",
+    "tierLow": "Кӏенеб",
+    "loading": "Жибизе бегьулел эпизодал ратулел руго…",
+    "loadError": "Гьаб тилалъе жибиял загрузить гьаризе кьвагьуна.",
+    "retry": "Цӏидаса гьабе",
+    "noDownloads": "Гьаб тилалда жибизе бегьулел эпизодал гьечӏо.",
+    "availableCount": "{count, plural, one {# эпизод хӏадур буго} other {# эпизодал хӏадур руго}}",
+    "skippedCount": "{count, plural, one {# эпизод хӏажаталда гьечӏолъиялъ нахъе тола} other {# эпизодал хӏажаталда гьечӏолъиялъ нахъе тола}}",
+    "chooseFolder": "Жибулеб папка бие",
+    "folderSelected": "{name}-алде хӏалтӏизе",
+    "folderError": "Жибулеб папка рагьизе кьвагьуна.",
+    "browserFallback": "Нужер браузералъ гьар файл жиндир гӏадатаб жибулеб низамалда хӏалтӏизабила. Цӏикӏкӏарал жибиял рухсат кьезе тӏалаб гьабизеги бегьула.",
+    "sessionError": "Сессия къаледе текширизе кьвагьунеб гьечӏо. Цӏидаса гьабе.",
+    "downloading": "{title} жибулеб буго",
+    "progress": "{total}-ялдаса {completed}",
+    "complete": "Жибиял лъугӏана",
+    "canceled": "Жибиял нахъе гьаруна",
+    "failedCount": "{count, plural, one {# эпизод жибизе кьвагьуна} other {# эпизодал жибизе кьвагьуна}}. Коллекция цӏидаса жибизе «Жибе» бие.",
+    "close": "Бекьизе",
+    "cancel": "Бахъине",
+    "start": "Тӏолал жибе",
+    "downloadAgain": "Цӏидаса жибе",
+    "retryFailed": "Кьвагьарал цӏидаса жибе"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Мацӏалъул версия гьечӏо",
+    "eyebrow": "Мацӏалъул версия гьечӏо",
+    "title": "<contentTitle>{title}</contentTitle> <languageName>{language}</languageName> мацӏалда гьечӏо",
+    "actionsLabel": "Батӏияб гьал къалъан вариантал",
+    "browseInLanguage": "{language} мацӏалда видеоял къадалъан бие",
+    "backToSearch": "Кӏалъаналдаса тӏад цӏидаса",
+    "audioVersionsTitle": "Цогидаб аудио версиял",
+    "audioVersionsDescription": "Гьаб видео халатго къалъан учун аудио мацӏ бихье.",
+    "languageVersionLabel": "Аудио мацӏ",
+    "selectLanguageVersion": "Мацӏалъул версия бихье",
+    "watchSelectedVersion": "Бихьараб версия къалъе"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Cookie къагӀараз",
+    "bannerTitle": "Дур хъвадарухъ гьорклъаби",
+    "bannerDescription": "Бищун хӀажатал cookie-базе Watch бехатарлъун ва хӀалтӀулеблъун цӀунила. Дур изнуялда рекъон, тӀаде бугеб ихтиярияб first-party cookie-ялъ тӀадвуссинал гьоркьор интересал ракӀалде щвезе ккола, рекомендацияби хаслъизаризе. Контексталиял рекомендацияби щибаб хӀалалъги руго.",
+    "acceptAll": "Кинабго къабул гьабизе",
+    "essentialOnly": "ХӀажатал гӀинтӀаме",
+    "manageChoices": "КъагӀараз тӀадретӀизе",
+    "savingChoice": "Cookie къагӀара цӀунизе буго",
+    "settings": "Cookie рихьизариял",
+    "settingsDescription": "Watch-алъ тӀадвуссинал гьоркьор рекомендациязул интересал ракӀалде щвезе бегьилищ тӀаса бища. Мун цебе-къоялда гьеб хисизе вугев.",
+    "essentialCookies": "Бищун хӀажатал cookie-бал",
+    "essentialDescription": "Бехатарлъи, тӀамун бихьизаби, хъвадарухъ къагӀараз ва рекомендация тӀалабалъул атрибуция.",
+    "alwaysActive": "Гьел гьанже вакилаб руго",
+    "personalization": "Хаслъи гьабиял",
+    "personalizationDescription": "ТӀадвуссинал гьоркьор чӀезарурал интересал ракӀалде щвезаризе. Гьеб свалил къотӀизе ккани, контексталиял рекомендацияби цойги руго.",
+    "erasurePending": "Профиль нахъе чӀвай тӀаде буго. Контексталиял рекомендацияби хӀинкъунго хӀалтӀула руго.",
+    "cancel": "Тохта",
+    "saveChoices": "КъагӀараз цӀунизе",
+    "saving": "ЦӀунила…",
+    "loadError": "Дур къагӀара щвезе кӀвечӀо. АскӀоб тӀаса бищизе мунде хӀанжар буго.",
+    "grantError": "Хаслъи гьабиял кабизе кӀвечӀо. ХӀажатал гӀинтӀаме хӀалтӀизе бегьула.",
+    "saveError": "Дур къагӀара цӀунизе кӀвечӀо. Хадуб цойги хӀалбихьизе."
+  }
+}

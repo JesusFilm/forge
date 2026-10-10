@@ -1,0 +1,4 @@
+cohort,requests,with_cards,timeouts,success_p50_ms,success_p95_ms
+last_24h,11140,9434,20,134,717
+last_7d,69973,56349,2032,140,1117
+previous_7d,56065,39129,5719,332,1160

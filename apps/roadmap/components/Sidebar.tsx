@@ -28,6 +28,7 @@ export default function Sidebar({
 }) {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
+  const showDirectorySections = pathname !== "/roadmap"
 
   const close = () => setOpen(false)
 
@@ -57,50 +58,61 @@ export default function Sidebar({
         <Link href="/roadmap" className={linkClass("/roadmap")} onClick={close}>
           Roadmap
         </Link>
+        <Link
+          href="/contributions"
+          className={linkClass("/contributions")}
+          onClick={close}
+        >
+          Tasks
+        </Link>
       </div>
 
-      <div>
-        <h3 className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
-          Lanes
-        </h3>
-        {ALL_LANES.map((lane) => (
-          <Link
-            key={lane}
-            href={`/lane/${lane}`}
-            className={linkClass(`/lane/${lane}`)}
-            onClick={close}
-          >
-            {LANE_LABELS[lane]}
-          </Link>
-        ))}
-      </div>
+      {showDirectorySections ? (
+        <>
+          <div>
+            <h3 className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
+              Lanes
+            </h3>
+            {ALL_LANES.map((lane) => (
+              <Link
+                key={lane}
+                href={`/lane/${lane}`}
+                className={linkClass(`/lane/${lane}`)}
+                onClick={close}
+              >
+                {LANE_LABELS[lane]}
+              </Link>
+            ))}
+          </div>
 
-      <div>
-        <h3 className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
-          People
-        </h3>
-        {owners.map((owner) => (
-          <Link
-            key={owner}
-            href={`/person/${owner}`}
-            className={`flex items-center gap-2 capitalize ${linkClass(`/person/${owner}`)}`}
-            onClick={close}
-          >
-            {ownerAvatars[owner] ? (
-              <img
-                src={`${ownerAvatars[owner]}&s=32`}
-                alt={owner}
-                className="h-4 w-4 rounded-full bg-white"
-              />
-            ) : (
-              <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-stone-700 text-[9px] font-medium uppercase text-stone-400">
-                {owner[0]}
-              </span>
-            )}
-            {owner}
-          </Link>
-        ))}
-      </div>
+          <div>
+            <h3 className="mb-1 px-2 text-xs font-semibold uppercase tracking-wider text-stone-500">
+              People
+            </h3>
+            {owners.map((owner) => (
+              <Link
+                key={owner}
+                href={`/person/${owner}`}
+                className={`flex items-center gap-2 capitalize ${linkClass(`/person/${owner}`)}`}
+                onClick={close}
+              >
+                {ownerAvatars[owner] ? (
+                  <img
+                    src={`${ownerAvatars[owner]}&s=32`}
+                    alt={owner}
+                    className="h-4 w-4 rounded-full bg-white"
+                  />
+                ) : (
+                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-stone-700 text-[9px] font-medium uppercase text-stone-400">
+                    {owner[0]}
+                  </span>
+                )}
+                {owner}
+              </Link>
+            ))}
+          </div>
+        </>
+      ) : null}
     </nav>
   )
 

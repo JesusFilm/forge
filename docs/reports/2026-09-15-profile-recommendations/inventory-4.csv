@@ -1,0 +1,5 @@
+scope,state,failure_reason,runs,oldest_created,latest_created
+durable,completed,,16683,2026-09-13T10:30:07.645Z,2026-09-15T02:03:52.279Z
+durable,fenced,pointer_generation_fenced,36,2026-09-13T12:38:25.916Z,2026-09-14T21:23:03.485Z
+durable,fenced,eligibility_input_fenced,11,2026-09-13T12:20:19.356Z,2026-09-15T00:22:02.259Z
+durable,failed,profile_projection_failed,9,2026-09-13T13:21:12.816Z,2026-09-14T20:01:47.742Z

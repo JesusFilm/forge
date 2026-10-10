@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Watch TV Demo</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="vendor/shaka-player.compiled.js"></script>
+  </head>
+  <body>
+    <main id="home" class="screen" aria-label="Watch TV home">
+      <img
+        id="hero-image"
+        class="hero-image"
+        src="https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/1_jf-0-0.mobileCinematicHigh.jpg/f=jpg,w=1280,h=720,q=95"
+        alt=""
+      />
+      <div class="hero-shade"></div>
+
+      <header class="topbar">
+        <a class="brand" aria-label="Watch TV home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span>WATCH</span>
+        </a>
+        <nav aria-label="Primary navigation">
+          <button class="nav-link focusable" data-focusable type="button">
+            Home
+          </button>
+          <button class="nav-link focusable" data-focusable type="button">
+            Search
+          </button>
+          <button class="nav-link focusable" data-focusable type="button">
+            My List
+          </button>
+        </nav>
+      </header>
+
+      <section class="hero-copy" aria-labelledby="hero-title">
+        <p id="hero-kicker" class="kicker">Featured film</p>
+        <h1 id="hero-title">JESUS</h1>
+        <p id="hero-description" class="description">
+          Experience the life of Jesus, told through the Gospel of Luke.
+        </p>
+        <div class="hero-actions">
+          <button
+            id="watch-now"
+            class="primary-button focusable"
+            data-focusable
+            type="button"
+          >
+            <span aria-hidden="true">▶</span>
+            <span class="button-label">Watch now</span>
+          </button>
+          <button
+            id="more-info"
+            class="secondary-button focusable"
+            data-focusable
+            type="button"
+          >
+            <span aria-hidden="true">i</span>
+            More info
+          </button>
+        </div>
+      </section>
+
+      <section class="rail" aria-labelledby="rail-title">
+        <div class="rail-heading">
+          <h2 id="rail-title">Continue watching</h2>
+          <p>Use the remote to explore</p>
+        </div>
+        <div class="cards">
+          <button
+            class="content-card focusable"
+            data-focusable
+            data-kicker="Featured film"
+            data-title="JESUS"
+            data-description="Experience the life of Jesus, told through the Gospel of Luke."
+            data-image="https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/1_jf-0-0.mobileCinematicHigh.jpg/f=jpg,w=1280,h=720,q=95"
+            data-hls="https://stream.mux.com/Dl8dRUL01MKAdzv7XtfvvUj1jVYq029z2TS9TGeH8Xj00o.m3u8"
+            type="button"
+          >
+            <img
+              src="https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/1_jf-0-0.mobileCinematicHigh.jpg/f=jpg,w=480,h=270,q=90"
+              alt=""
+            />
+            <span class="card-gradient"></span>
+            <span class="card-copy">
+              <strong>JESUS</strong>
+              <span>128 min</span>
+            </span>
+            <span class="progress"><span style="width: 0%"></span></span>
+          </button>
+
+          <button
+            class="content-card focusable"
+            data-focusable
+            data-kicker="8-part series"
+            data-title="Who is Jesus?"
+            data-description="Eight short stories that explore who Jesus is and why his life matters."
+            data-image="https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/3_0-8DWJ-WIJ.mobileCinematicHigh.jpg/f=jpg,w=1280,h=720,q=95"
+            type="button"
+          >
+            <img
+              src="https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/3_0-8DWJ-WIJ.mobileCinematicHigh.jpg/f=jpg,w=480,h=270,q=90"
+              alt=""
+            />
+            <span class="card-gradient"></span>
+            <span class="card-copy">
+              <strong>Who is Jesus?</strong>
+              <span>Episode 3</span>
+            </span>
+            <span class="progress"><span style="width: 34%"></span></span>
+          </button>
+
+          <button
+            class="content-card focusable"
+            data-focusable
+            data-kicker="40-day journey"
+            data-title="40 Days with Jesus"
+            data-description="Follow Jesus through daily stories, reflection, and Scripture."
+            data-image="https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/3_0-40DWJ.mobileCinematicHigh.jpg/f=jpg,w=1280,h=720,q=95"
+            type="button"
+          >
+            <img
+              src="https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/3_0-40DWJ.mobileCinematicHigh.jpg/f=jpg,w=480,h=270,q=90"
+              alt=""
+            />
+            <span class="card-gradient"></span>
+            <span class="card-copy">
+              <strong>40 Days with Jesus</strong>
+              <span>Day 8</span>
+            </span>
+            <span class="progress"><span style="width: 20%"></span></span>
+          </button>
+
+          <button
+            class="content-card focusable"
+            data-focusable
+            data-kicker="The BibleProject"
+            data-title="The BibleProject"
+            data-description="Discover the unified story of Scripture through beautiful animated films."
+            data-image="https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/BibleProject.mobileCinematicHigh.jpg/f=jpg,w=1280,h=720,q=95"
+            type="button"
+          >
+            <img
+              src="https://imagedelivery.net/tMY86qEHFACTO8_0kAeRFA/BibleProject.mobileCinematicHigh.jpg/f=jpg,w=480,h=270,q=90"
+              alt=""
+            />
+            <span class="card-gradient"></span>
+            <span class="card-copy">
+              <strong>The BibleProject</strong>
+              <span>12 films</span>
+            </span>
+            <span class="progress"><span style="width: 8%"></span></span>
+          </button>
+        </div>
+      </section>
+    </main>
+
+    <section id="player" class="screen player" aria-label="Demo player" hidden>
+      <video
+        id="demo-video"
+        class="demo-video"
+        preload="metadata"
+        playsinline
+      ></video>
+      <div class="player-shade"></div>
+      <div class="player-badges" aria-live="polite">
+        <span class="player-badge">SHAKA 5.2.8 · MUX HLS</span>
+        <span id="player-status" class="player-badge status-badge"
+          >Connecting</span
+        >
+      </div>
+      <button
+        id="play-toggle"
+        class="player-center focusable"
+        data-focusable
+        type="button"
+        aria-label="Pause video"
+      >
+        <span aria-hidden="true">Ⅱ</span>
+      </button>
+      <div class="player-controls">
+        <div>
+          <p>Now watching</p>
+          <h2 id="player-title">JESUS</h2>
+        </div>
+        <div class="player-timeline" aria-label="Playback progress">
+          <span id="player-progress"></span>
+        </div>
+        <div class="player-meta">
+          <span id="player-current-time">00:00</span>
+          <span id="player-duration">--:--</span>
+        </div>
+        <div class="player-actions">
+          <button
+            id="back-home"
+            class="secondary-button focusable"
+            data-focusable
+            type="button"
+          >
+            ← Back to browse
+          </button>
+          <button
+            id="captions-toggle"
+            class="secondary-button captions-button focusable"
+            data-focusable
+            type="button"
+            aria-pressed="false"
+            disabled
+          >
+            <span class="cc-icon" aria-hidden="true">CC</span>
+            <span id="captions-label">Subtitles loading</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>

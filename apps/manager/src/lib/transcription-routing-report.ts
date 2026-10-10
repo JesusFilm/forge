@@ -1,7 +1,7 @@
 import type {
   JobArtifactManifest,
-  ResolvedTranscriptionProvider,
   RequestedTranscriptionProvider,
+  ResolvedTranscriptionProvider,
   TranscriptionAttempt,
   TranscriptionAttemptStatus,
   TranscriptionDiarizationSegment,
@@ -36,6 +36,33 @@ function sanitizeSourceInputUrl(value: unknown): string | undefined {
     parsed.search = ""
     parsed.hash = ""
     return parsed.toString()
+  } catch {
+    return undefined
+  }
+}
+
+function normalizeSourceInputHost(value: unknown): string | undefined {
+  const source = readString(value)
+  if (!source) {
+    return undefined
+  }
+
+  try {
+    const parsed = new URL(source)
+    if (parsed.host) {
+      return parsed.host
+    }
+  } catch {
+    // Fall through to strict bare-host parsing below.
+  }
+
+  if (/[/?#@\s]/.test(source)) {
+    return undefined
+  }
+
+  try {
+    const parsed = new URL(`https://${source}`)
+    return parsed.hostname ? parsed.host : undefined
   } catch {
     return undefined
   }
@@ -76,11 +103,13 @@ function normalizeDiarizationSegment(
     return null
   }
 
+  const text = readString(value.text)
+
   return {
     speakerId,
     start,
     end,
-    ...(readString(value.text) ? { text: readString(value.text) } : {}),
+    ...(text ? { text } : {}),
   }
 }
 
@@ -127,27 +156,24 @@ function normalizeAttempt(value: unknown): TranscriptionAttempt | null {
     return null
   }
 
+  const sourceLanguageCode = readString(value.sourceLanguageCode)
+  const decisionReason = readString(value.decisionReason)
+  const fallbackReason = readString(value.fallbackReason)
+  const finishedAt = readString(value.finishedAt)
+
   return {
     attemptId,
     requestedProvider: value.requestedProvider,
     resolvedProvider: value.resolvedProvider,
     status: value.status,
     startedAt,
-    ...(readString(value.sourceLanguageCode)
-      ? { sourceLanguageCode: readString(value.sourceLanguageCode) }
-      : {}),
-    ...(readString(value.decisionReason)
-      ? { decisionReason: readString(value.decisionReason) }
-      : {}),
+    ...(sourceLanguageCode ? { sourceLanguageCode } : {}),
+    ...(decisionReason ? { decisionReason } : {}),
     ...(value.fallbackFromProvider === "elevenlabs"
       ? { fallbackFromProvider: "elevenlabs" as const }
       : {}),
-    ...(readString(value.fallbackReason)
-      ? { fallbackReason: readString(value.fallbackReason) }
-      : {}),
-    ...(readString(value.finishedAt)
-      ? { finishedAt: readString(value.finishedAt) }
-      : {}),
+    ...(fallbackReason ? { fallbackReason } : {}),
+    ...(finishedAt ? { finishedAt } : {}),
   }
 }
 
@@ -155,9 +181,13 @@ export function buildInitialTranscriptionRoutingReport(input?: {
   sourceInputUrl?: string
 }): TranscriptionRoutingReport {
   const sourceInputUrl = sanitizeSourceInputUrl(input?.sourceInputUrl)
+  const sourceInputHost =
+    normalizeSourceInputHost(sourceInputUrl) ??
+    normalizeSourceInputHost(input?.sourceInputUrl)
 
   return {
     ...(sourceInputUrl ? { sourceInputUrl } : {}),
+    ...(sourceInputHost ? { sourceInputHost } : {}),
     attempts: [],
   }
 }
@@ -177,6 +207,10 @@ export function getTranscriptionRoutingReport(
     : []
 
   const sourceInputUrl = sanitizeSourceInputUrl(artifact.data.sourceInputUrl)
+  const sourceInputHost =
+    normalizeSourceInputHost(artifact.data.sourceInputHost) ??
+    normalizeSourceInputHost(sourceInputUrl) ??
+    normalizeSourceInputHost(artifact.data.sourceInputUrl)
   const currentAttemptId = readString(artifact.data.currentAttemptId)
   const finalProvider = isResolvedProvider(artifact.data.finalProvider)
     ? artifact.data.finalProvider
@@ -190,6 +224,7 @@ export function getTranscriptionRoutingReport(
   if (
     attempts.length === 0 &&
     !sourceInputUrl &&
+    !sourceInputHost &&
     !currentAttemptId &&
     !finalProvider &&
     !finalSourceLanguageCode &&
@@ -202,6 +237,7 @@ export function getTranscriptionRoutingReport(
   return {
     attempts,
     ...(sourceInputUrl ? { sourceInputUrl } : {}),
+    ...(sourceInputHost ? { sourceInputHost } : {}),
     ...(currentAttemptId ? { currentAttemptId } : {}),
     ...(finalProvider ? { finalProvider } : {}),
     ...(finalSourceLanguageCode ? { finalSourceLanguageCode } : {}),
@@ -214,11 +250,24 @@ export function setTranscriptionRoutingReport(
   artifacts: JobArtifactManifest,
   report: TranscriptionRoutingReport,
 ): JobArtifactManifest {
+  const { sourceInputUrl, sourceInputHost, ...safeReport } = report
+  const safeSourceInputUrl = sanitizeSourceInputUrl(sourceInputUrl)
+  const safeSourceInputHost =
+    normalizeSourceInputHost(sourceInputHost) ??
+    normalizeSourceInputHost(safeSourceInputUrl) ??
+    normalizeSourceInputHost(sourceInputUrl)
+
   return {
     ...artifacts,
     transcriptionRouting: {
       kind: "metadata",
-      data: report as unknown as Record<string, unknown>,
+      data: {
+        ...safeReport,
+        ...(safeSourceInputUrl ? { sourceInputUrl: safeSourceInputUrl } : {}),
+        ...(safeSourceInputHost
+          ? { sourceInputHost: safeSourceInputHost }
+          : {}),
+      } as unknown as Record<string, unknown>,
     },
   }
 }

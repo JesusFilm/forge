@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Obsah pro toto prožívání není k dispozici.",
+    "failedToLoad": "Nepodařilo se načíst prožívání: {message}",
+    "unexpected": "Došlo k neočekávané chybě.",
+    "notConfigured": "Služba obsahu není nakonfigurována.",
+    "noContent": "Žádný obsah není k dispozici.",
+    "homepageMisconfigured": "Domovská stránka sledování je nesprávně nakonfigurována.",
+    "defaultTemplateMisconfigured": "Výchozí šablona sledování je nesprávně nakonfigurována.",
+    "authFailed": "Nepodařilo se ověřit u služby obsahu. Pokud problém přetrvává, obraťte se na podporu.",
+    "pageLoadFailed": "Něco se pokazilo.",
+    "tryAgain": "Zkusit znovu"
+  },
+  "VideosPage": {
+    "title": "Všechna videa",
+    "placeholder": "Procházení katalogu teprve přijde. Mezitím použijte vyhledávání nebo adresu URL pro konkrétní téma."
+  },
+  "BibleQuotes": {
+    "title": "Biblické citáty",
+    "share": "Sdílet",
+    "readMore": "Číst více...",
+    "learnMore": "Zjistit více",
+    "freeResources": "Bezplatné zdroje",
+    "promoHeading": "Chcete Bibli lépe porozumět do hloubky?",
+    "joinBibleStudy": "Připojte se k našemu biblickému studiu",
+    "previousQuote": "Předchozí biblický citát",
+    "nextQuote": "Další biblický citát",
+    "readPassage": "Přečtěte si tento úryvek ve své Bibli."
+  },
+  "DownloadButton": {
+    "checking": "Ověřování",
+    "download": "Stáhnout",
+    "sessionError": "Nepodařilo se ověřit vaši relaci. Zkuste to prosím znovu.",
+    "saveVideo": "Uložit video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Stáhnout video",
+    "eyebrow": "Stáhnout video",
+    "posterAlt": "Plakát videa",
+    "noDownloads": "Pro toto video nejsou k dispozici žádné soubory ke stažení.",
+    "fileSizeLabel": "Vyberte velikost souboru",
+    "termsAgreementPrefix": "Souhlasím s ",
+    "termsOfUse": "Podmínkami použití",
+    "termsAgreementSuffix": "",
+    "close": "Zavřít",
+    "download": "Stáhnout",
+    "authRequiredTitle": "Chcete si toto video stáhnout?",
+    "authRequiredBody": "Ke stažení videí je vyžadován bezplatný účet Jesus Film.",
+    "signInToDownload": "Přihlaste se pro stažení",
+    "keepWatching": "Pokračovat ve sledování",
+    "checking": "Ověřování",
+    "closeTermsOfUse": "Zavřít Podmínky použití",
+    "cancel": "Zrušit",
+    "accept": "Přijmout",
+    "errorSessionExpired": "Vaše relace vypršela. Pro stažení se přihlaste znovu.",
+    "errorSessionUnavailable": "Nepodařilo se ověřit vaši relaci. Zkuste to prosím znovu.",
+    "errorUnavailableSource": "Stažení není z tohoto zdroje k dispozici",
+    "tierHighest": "Nejvyšší",
+    "tierHigh": "Vysoká",
+    "tierLow": "Nízká"
+  },
+  "HeroPlayerControls": {
+    "play": "Přehrát",
+    "pause": "Pozastavit",
+    "seek": "Posun",
+    "seekValue": "{current} z {total}",
+    "volume": "Hlasitost",
+    "volumeValue": "{percent} procent",
+    "mute": "Ztlumit",
+    "unmute": "Zapnout zvuk",
+    "changeAudioLanguage": "Změnit jazyk zvuku",
+    "enterFullscreen": "Na celou obrazovku",
+    "exitFullscreen": "Opustit celou obrazovku"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Vybrat jazyk",
+    "searchPlaceholder": "Hledat jazyky…",
+    "languages": "Jazyky",
+    "noMatches": "Žádné shody",
+    "notAvailable": "Není k dispozici"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Jazyk",
+    "dialogTitleWithSubtitles": "Jazyk a titulky",
+    "languageHeading": "Jazyk",
+    "subtitlesHeading": "Titulky",
+    "languageCount": "{count, plural, one {# jazyk} few {# jazyky} other {# jazyků}}",
+    "requestSent": "Žádost odeslána",
+    "translateWithAi": "Přeložit pomocí AI",
+    "noSubtitles": "Žádné titulky",
+    "toggleOn": "Zapnuto",
+    "toggleOff": "Vypnuto",
+    "close": "Zavřít",
+    "apply": "Použít",
+    "noLanguageSubtitles": "Žádné titulky v jazyce {language}",
+    "seeAllLanguages": "Všechny jazyky",
+    "seeAllVideosInLanguage": "Všechna videa: {language}",
+    "retryLoadingLanguages": "Zkusit znovu načíst jazyky",
+    "notAvailable": "Není k dispozici",
+    "switching": "Přepínání..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPIZODA} few {# EPIZODY} other {# EPIZOD}}",
+    "seriesLabel": "SÉRIE · {episodes}",
+    "changeAudioLanguage": "Změnit jazyk zvuku",
+    "share": "Sdílet",
+    "languages": "Jazyky",
+    "downloadCollection": "Stáhnout sbírku",
+    "checkingDownloads": "Ověřování možností stažení…",
+    "downloadSessionError": "Nepodařilo se ověřit vaši relaci. Zkuste to prosím znovu."
+  },
+  "WatchModal": {
+    "close": "Zavřít"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Kdybyste mohl/a položit tvůrci tohoto videa otázku, na co byste se zeptal/a?",
+    "fallbackBody": "Veďte soukromý rozhovor s někým, kdo je připraven naslouchat.",
+    "questionsShort": "Otázky",
+    "questions": "Související otázky",
+    "askYours": "Položte svou",
+    "chatWithPerson": "Chatujte s člověkem",
+    "askBibleQuestion": "Položit biblickou otázku",
+    "quiz": "Kvíz"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Typ zprávy",
+    "fieldLabel": "Položte otázku k tomuto videu",
+    "send": "Odeslat otázku",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Položit biblickou otázku",
+        "description": "Okamžité odpovědi z Bible pomocí vyhledávání AI"
+      },
+      "prayerRequest": {
+        "label": "Požádat o modlitbu",
+        "description": "Podělte se, za co chcete, abychom se modlili"
+      },
+      "comment": {
+        "label": "Zanechat komentář",
+        "description": "Pošlete své myšlenky k tomuto videu"
+      },
+      "personChat": {
+        "label": "Chatujte s člověkem",
+        "description": "Promluvte si s někým hned teď"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Sdílet video",
+    "heading": "Sdílet toto video",
+    "posterAlt": "Plakát videa",
+    "shareOnFacebook": "Sdílet na Facebooku",
+    "shareOnFacebookUnavailable": "Sdílet na Facebooku (v tomto sestavení není k dispozici)",
+    "shareOnX": "Sdílet na X",
+    "shareOnXUnavailable": "Sdílet na X (v tomto sestavení není k dispozici)",
+    "shareDisabledHint": "Sdílení vyžaduje nasazenou stránku — funguje, jakmile bude toto video v produkci.",
+    "shareFormat": "Formát sdílení",
+    "shareLinkTab": "Sdílet odkaz",
+    "embedCodeTab": "Vložit kód",
+    "copyFailed": "Nepodařilo se automaticky zkopírovat — vyberte text níže a zkopírujte jej ručně.",
+    "copyLink": "Kopírovat odkaz",
+    "copyCode": "Kopírovat kód",
+    "copied": "Zkopírováno",
+    "close": "Zavřít"
+  },
+  "SubtitleTranscript": {
+    "heading": "Přepis",
+    "subheading": "Klepnutím na libovolný řádek přeskočíte na dané místo.",
+    "subtitleLanguage": "Jazyk titulků",
+    "aiSuffix": " · AI",
+    "loading": "Načítání přepisu…",
+    "unavailable": "Přepis pro tuto stopu titulků není k dispozici.",
+    "empty": "Nebyly nalezeny žádné řádky přepisu."
+  },
+  "FloatingSearch": {
+    "placeholder": "Hledat nebo procházet témata…",
+    "openSearch": "Hledat videa",
+    "searchRegion": "Hledat videa",
+    "clearSearch": "Vymazat hledání",
+    "changeAudioLanguage": "Změnit jazyk zvuku",
+    "home": "Domovská stránka JesusFilm",
+    "closeSearch": "Zavřít hledání",
+    "submitSearch": "Hledat",
+    "library": "Knihovna"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Hledat a procházet videa",
+    "home": "Domovská stránka JesusFilm",
+    "placeholder": "Hledat nebo procházet témata…",
+    "inputLabel": "Hledat videa podle klíčového slova",
+    "searchFailed": "Hledání se nezdařilo. Zkuste to prosím znovu.",
+    "loadMoreFailed": "Nepodařilo se načíst další výsledky.",
+    "searching": "Vyhledávání...",
+    "connectionHint": "Zkontrolujte prosím své připojení a zkuste to znovu.",
+    "rateLimitHint": "Příliš mnoho požadavků. Zkuste to znovu za minutu.",
+    "retrySearch": "Zkusit hledání znovu",
+    "retry": "Zkusit znovu",
+    "noResults": "Žádné výsledky pro „{query}“",
+    "tryDifferentKeywords": "Zkuste jiná klíčová slova nebo procházejte kategorie",
+    "loading": "Načítání...",
+    "loadMore": "Načíst další",
+    "categoryBibleStories": "Biblické příběhy",
+    "categoryParables": "Podobenství",
+    "categoryAnimated": "Animované",
+    "categoryStudy": "Studium",
+    "categoryFamily": "Rodina",
+    "categoryChristmas": "Vánoce",
+    "searchLanguageLabel": "Hledat jazyk",
+    "allLanguages": "Všechny jazyky",
+    "searchSuggestions": "Návrhy hledání",
+    "directMatches": "Přímé shody",
+    "languages": "Jazyky",
+    "recommendedLanguage": "Doporučený jazyk",
+    "searchSuggestion": "Vyhledat „{suggestion}“",
+    "searchSuggestionWithLanguage": "Vyhledat „{suggestion}“ v jazyce: {language}",
+    "inLanguage": "v jazyce {language}",
+    "browseByRegion": "Procházet podle regionu",
+    "allVideosOnSinglePage": "Všechna videa na jedné stránce",
+    "clearLanguages": "Vymazat",
+    "queryLanguageDetected": "Zjištěn jazyk {language}",
+    "searchInLanguage": "Hledat v jazyce: {language}",
+    "tryDifferentKeywordsOrLanguage": "Zkuste jiná klíčová slova nebo vyberte jiný jazyk vyhledávání",
+    "useWebsiteDefaultLanguage": "Použít výchozí jazyk vyhledávání webu",
+    "removeLanguage": "Odebrat {language}",
+    "browseMode": "Režim procházení vyhledávání",
+    "searchingInLanguage": "Výsledky pro jazyk: {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Sledovat nyní",
+    "tapToUnmute": "Klepněte pro zapnutí zvuku",
+    "nextEpisode": "Další epizoda",
+    "audioTranslationCount": "{count, plural, one {# jazyk} few {# jazyky} other {# jazyků}}",
+    "subtitleCount": "Titulky: {count, plural, one {# jazyk} few {# jazyky} other {# jazyků}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Načítání obsahu",
+    "loadingVideo": "Načítání videa"
+  },
+  "VideoLabels": {
+    "video": "Videosnímek",
+    "segment": "Úsek",
+    "episode": "Epizoda",
+    "featureFilm": "Celovečerní film",
+    "shortFilm": "Krátký film",
+    "series": "Série",
+    "collection": "Sbírka",
+    "trailer": "Upoutávka",
+    "behindTheScenes": "Ze zákulisí",
+    "chapter": "Kapitola"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Klip {current} z {total}",
+    "position": "{current} z {total}",
+    "chapterCount": "{count, plural, one {# kapitola} few {# kapitoly} other {# kapitol}}",
+    "clipAriaLabel": "{title} · Klip {current} z {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# kapitola} few {# kapitoly} other {# kapitol}}",
+    "chapter": "Kapitola",
+    "noImage": "Žádný obrázek",
+    "playingNow": "Právě se přehrává",
+    "previousChapter": "Předchozí kapitola",
+    "nextChapter": "Další kapitola",
+    "thumbnailAlt": "Miniatura {title}",
+    "relatedVideoThumbnail": "Miniatura souvisejícího videa"
+  },
+  "SearchResultCard": {
+    "experience": "Prožívání",
+    "episodeCount": "{count, plural, one {# epizoda} few {# epizody} other {# epizod}}",
+    "thumbnailAlt": "Miniatura videa"
+  },
+  "Feedback": {
+    "openForm": "Otevřít formulář zpětné vazby",
+    "label": "Zpětná vazba",
+    "couldNotLoad": "Formulář zpětné vazby se nepodařilo načíst.",
+    "loadingForm": "Načítání formuláře zpětné vazby…",
+    "retry": "Zkusit znovu",
+    "cancel": "Zrušit",
+    "closeForm": "Zavřít formulář zpětné vazby",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Bezplatná křesťanská videa v jazyce {language} | Jesus Film Project",
+    "metadataDescription": "Prozkoumejte filmy o Ježíši, biblické příběhy, učednické série a evangelizační videa s dabovaným zvukem nebo titulky v jazyce {language}.",
+    "heroTitle": "Bezplatná křesťanská videa v jazyce {language}",
+    "heroDescription": "Prozkoumejte filmy o Ježíši, biblické příběhy, učednické série a evangelizační videa dostupná v jazyce {language}. Nejprve jsou zvýrazněna plně dabovaná videa, níže jsou možnosti pouze s titulky.",
+    "languageCollection": "Jazyková sbírka",
+    "itemCount": "{count, plural, one {# položka} few {# položky} other {# položek}}",
+    "videoCount": "{count, plural, one {# video} few {# videa} other {# videí}}",
+    "videosInGroups": "{videoCount, plural, one {# video} few {# videa} other {# videí}} ve {groupCount, plural, one {# skupině} few {# skupinách} other {# skupinách}}",
+    "sectionNavLabel": "Sekce jazykového katalogu",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Nové",
+    "videoBible": "Sbírky Video Bible",
+    "bibleProject": "BibleProject",
+    "sports": "Sport",
+    "collections": "Sbírky",
+    "subtitlesOnly": "Pouze titulky",
+    "backToTop": "Zpět nahoru",
+    "newlyAdded": "Nově přidáno",
+    "newVideosTitle": "Nová křesťanská videa v jazyce {language}",
+    "newestFirst": "Nejnovější nejdřív",
+    "noPublishedVideos": "Pro tento jazyk zatím nebyla nalezena žádná publikovaná videa.",
+    "bibleAndGospelFilms": "Filmy z Bible a evangelia",
+    "videoBibleCollectionsTitle": "Video Bible sbírky v jazyce {language}",
+    "videoBibleDescription": "Sbírky zaměřené na Písmo, včetně LUMO, JESUS, Magdalena a Skutků v jazyce {language}.",
+    "noVideoBibleCollections": "Pro tento jazyk zatím nejsou k dispozici žádné sbírky Video Bible.",
+    "bibleProjectCollectionsTitle": "Sbírky BibleProject v jazyce {language}",
+    "bibleProjectDescription": "Série a studie BibleProject dostupné v jazyce {language}.",
+    "noBibleProjectCollections": "Pro tento jazyk zatím nejsou k dispozici žádné sbírky BibleProject.",
+    "sportsStories": "Sportovní příběhy",
+    "sportsTitle": "Sportovní a atletické příběhy v jazyce {language}",
+    "sportsDescription": "Příběhy se zaměřením na víru a sbírky o sportovcích dostupné v jazyce {language}.",
+    "noSportsCollections": "Pro tento jazyk zatím nejsou k dispozici žádné sportovní sbírky ani sbírky o sportovcích.",
+    "fullyDubbed": "Plně dabováno",
+    "dubbedVideosTitle": "Videa v jazyce {language} podle sbírky",
+    "dubbedVideosDescription": "Procházejte plně dabovaná videa v jazyce {language} seskupená podle sbírky pro snazší vyhledání.",
+    "noDubbedVideos": "Pro tento jazyk zatím nejsou k dispozici žádná plně dabovaná videa.",
+    "subtitlesAvailable": "Titulky k dispozici",
+    "subtitlesTitle": "Videa v jazyce {language} s titulky",
+    "subtitlesDescription": "Tato videa obsahují titulky v jazyce {language}, pokud mluvený zvuk v jazyce {language} ještě není k dispozici.",
+    "noSubtitleVideos": "Pro tento jazyk zatím nejsou k dispozici žádná videa pouze s titulky.",
+    "dubbed": "Dabováno",
+    "subtitles": "Titulky",
+    "newLabel": "Nové",
+    "fromCollection": "Ze sbírky {collection}",
+    "standaloneVideos": "Samostatná videa",
+    "videosFromCollection": "Videa ze sbírky {collection}.",
+    "standaloneDescription": "Samostatná videa v tomto jazyce.",
+    "openCollection": "Otevřít sbírku",
+    "filters": "Filtry",
+    "filterLength": "Délka",
+    "filterLength_under5": "Do 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Nad 30 min",
+    "filterType": "Typ",
+    "clearFilters": "Vymazat filtry",
+    "filterResults": "Zobrazeno {count} z {total}",
+    "noFilterResults": "Žádné video neodpovídá těmto filtrům. Zkuste jeden odebrat.",
+    "filterAdded": "Přidáno",
+    "filterAdded_60d": "Posledních 60 dní",
+    "filterAdded_6m": "Posledních 6 měsíců",
+    "filterAdded_12m": "Posledních 12 měsíců"
+  },
+  "WatchHome": {
+    "pageTitle": "Sledování Jesus Film Project",
+    "watch": "Sledovat",
+    "watchNow": "Sledovat nyní",
+    "mutePreview": "Ztlumit náhled",
+    "unmutePreview": "Zapnout zvuk náhledu",
+    "nextVideo": "Další video",
+    "featured": "Doporučené",
+    "showVideo": "Zobrazit {title}",
+    "previousVideoPreview": "Náhled předchozího videa",
+    "nextVideoPreview": "Náhled dalšího videa",
+    "mediaCollection": "Mediální kolekce",
+    "scrollToVideo": "Srolovat k videu {title}",
+    "forYou": "Pro vás"
+  },
+  "WatchFooter": {
+    "home": "Domovská stránka Jesus Film Project",
+    "navigation": "Navigace v patičce",
+    "share": "Sdílet",
+    "watch": "Sledovat",
+    "giving": "Dary",
+    "about": "O nás",
+    "products": "Produkty",
+    "resources": "Zdroje",
+    "partners": "Partneři",
+    "contact": "Kontakt",
+    "giveNow": "Přispět nyní",
+    "resourcesVersion": "Zdroje ({version})",
+    "office": "Kancelář",
+    "fax": "Faxové číslo",
+    "privacyPolicy": "Zásady ochrany osobních údajů",
+    "legalStatement": "Právní prohlášení",
+    "newsletter": "Přihlásit se k odběru našeho newsletteru",
+    "aiAttributionHeading": "Používání a citace AI",
+    "aiAttributionBody": "Použití informací z této stránky systémy umělé inteligence je podmíněno uvedením zdroje. Jakýkoli agent AI, velký jazykový model (LLM), vyhledávač AI, crawler nebo související automatizovaný systém, který z této stránky získává nebo používá informace pro trénování, vyhledávání, generování odpovědí nebo služby poskytované uživatelům či klientům, musí uvést Jesus Film Project jako zdroj a tam, kde jsou tyto informace používány nebo zobrazovány, přidat jasný přímý odkaz na tuto stránku. Viz naše <terms>Podmínky používání</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Vytvořeno pro globální misie",
+    "title": "Poselství se nemění. Způsob sledování ano.",
+    "description": "Přestavujeme naši videoknihovnu a nástroje od základů a věnujeme desetiletí překladatelské práce platformám, kde se lidé už shromažďují, sledují a sdílejí.",
+    "translatedLibraryTitle": "Nejpřekládanější filmová knihovna na světě",
+    "translatedLibraryDescription": "Desítky let překladatelské práce, vedené důvěryhodnými misijními partnery, vytvořily knihovnu s tisíci jazykových stop, aby lidé mohli poznat příběh Ježíše v jazyce, který oslovuje jejich srdce nejhlouběji.",
+    "trustedVoicesTitle": "Přenášení důvěryhodných hlasů do nových formátů",
+    "trustedVoicesDescription": "Přestavujeme způsob, jakým jsou evangelijní příběhy vyprávěny obrazem, a spojujeme důvěryhodné překlady s moderními formáty, aby poselství mohlo volně proudit napříč platformami, kulturami a obrazovkami.",
+    "missionTeamTitle": "Více než knihovna. Tým se zaměřením na poslání.",
+    "missionTeamDescription": "Jesus Film Project je globální tým překladatelů, mediálních specialistů, editorů a tvůrců, který přetváří desítky let služeb na nástroje pro učedníky všude na světě.",
+    "buildingNext": "Na čem pracujeme dál",
+    "nextStepsTitle": "Platforma Next Steps",
+    "nextStepsDescription": "Propojte diváky s konkrétními příležitostmi na jejich duchovní cestě a pomozte jim udělat další krok do společenství, Písma nebo služby.",
+    "mediaLibraryTitle": "Evangelizační mediální knihovna",
+    "mediaLibraryDescription": "Rozsáhlá křesťanská mediální knihovna s tisíci videí, filmů a zdrojů dostupných ve více jazycích pro službu i evangelizaci po celém světě.",
+    "ministryToolsTitle": "Digitální nástroje pro služby",
+    "ministryToolsDescription": "Správa videí, distribuce obsahu, zapojení publika a analytika navržené tak, aby pomohly službám účinně oslovit více lidí.",
+    "invitationEyebrow": "Jste zváni",
+    "invitationTitle": "Pomozte budovat <highlight>novou generaci</highlight> misijních nástrojů",
+    "invitationDescription": "Zveme praktikující, tvůrce i partnery k předběžnému přístupu. Otestujte nové nástroje jako první, dejte zpětnou vazbu a pomozte utvářet produkty určené pro skutečnou misijní práci.",
+    "betaTester": "Staňte se beta testerem"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Sbírka Video Bible",
+    "gospelRailTitle": "Objevte celý příběh",
+    "videoBibleDescription": "Prozkoumejte naši sbírku videí a zdrojů, které přinášejí Bibli k životu prostřednictvím poutavých příběhů a výuky.",
+    "showcaseTitle": "Písmo vyprávěné filmem",
+    "adventEyebrow": "Vánoční advent",
+    "adventTitle": "Adventní odpočet do Vánoc",
+    "adventDescription": "Připojte se k naší adventní cestě s denním videem, které buduje očekávání Vánoc a objevuje naději, radost a příslib Ježíšova příchodu.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Série NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Série Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video kurz",
+    "journeyWithJesusTitle": "Cesta s Ježíšem",
+    "gospelsOnVideoEyebrow": "Každé evangelium vyprávěné ve видеu",
+    "scriptureAsWrittenTitle": "Písmo, přesně tak, jak je napsáno",
+    "merryChristmas": "Veselé Vánoce!",
+    "daysUntilChristmas": "{count, plural, one {Do Vánoc zbývá # den} few {Do Vánoc zbývají # dny} other {Do Vánoc zbývá # dní}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Jazyky",
+    "metadataDescription": "Procházejte videa JesusFilm podle jazyka.",
+    "eyebrow": "Jazyky sledování",
+    "title": "Vyberte jazyk",
+    "description": "Prozkoumejte jazyky podle regionu nebo procházejte celý seznam.",
+    "searchPlaceholder": "Hledat jazyky nebo země...",
+    "searchLabel": "Hledat jazyky nebo země",
+    "clearSearch": "Vymazat hledání",
+    "browse": "Procházet",
+    "browseByRegion": "Procházet podle regionu a země",
+    "languageCount": "{count, plural, one {# jazyk} few {# jazyky} other {# jazyků}}",
+    "region": "Oblast",
+    "countryLanguages": "Jazyky v {country}",
+    "showLess": "Zobrazit méně",
+    "showMore": "Zobrazit dalších {count}",
+    "noLanguages": "Nebyly nalezeny žádné jazyky",
+    "tryAnotherSearch": "Zkuste jiný vyhledávací výraz."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Historie sledování | Jesus Film Project",
+    "title": "Historie sledování",
+    "loading": "Načítání historie",
+    "empty": "Zatím tu nic není",
+    "emptyDescription": "Videa, která sledujete po přihlášení, se zde zobrazí.",
+    "earlier": "Dříve",
+    "today": "Dnes",
+    "yesterday": "Včera"
+  },
+  "AccountControl": {
+    "account": "Účet",
+    "accountMenu": "Nabídka účtu",
+    "signIn": "Přihlásit se",
+    "signOut": "Odhlásit se",
+    "signedIn": "Přihlášen",
+    "history": "Historie",
+    "logOut": "Odhlásit"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Stránka nenalezena",
+    "eyebrow": "Stránka nenalezena",
+    "screenReaderPrefix": "Stránka nenalezena:",
+    "title": "Tato scéna tu není.",
+    "description": "Stránka se mohla přesunout, ale příběh pokračuje.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Akce pro nenalezenou stránku",
+    "backToWatch": "Zpět na sledování",
+    "browseVideos": "Procházet videa"
+  },
+  "VideoRecommendations": {
+    "match": "Shoda: {percent} %",
+    "none": "Pro toto video nebyla v tomto jazyce nalezena žádná doporučení."
+  },
+  "BetaTesterModal": {
+    "title": "Staňte se beta testerem",
+    "trigger": "Staňte se beta testerem",
+    "loadFailed": "Něco se pokazilo.",
+    "loading": "Načítání...",
+    "openFormNewTab": "Otevřít formulář na nové kartě",
+    "close": "Zavřít",
+    "iframeTitle": "Staňte se beta testerem"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Stáhnout sbírku",
+    "eyebrow": "Stáhnout sbírku",
+    "description": "Vyberte jednou jazyk a kvalitu. Všechny dostupné epizody se postupně stáhnou.",
+    "signInTitle": "Přihlaste se pro stažení",
+    "signInBody": "Sbírky si můžete stáhnout po přihlášení k účtu Jesus Film.",
+    "signIn": "Přihlásit se pro stažení",
+    "languageLabel": "Jazyk",
+    "qualityLabel": "Kvalita videa",
+    "tierHighest": "Nejvyšší",
+    "tierHigh": "Vysoká",
+    "tierLow": "Nízká",
+    "loading": "Vyhledávání dostupných epizod…",
+    "loadError": "Pro tento jazyk se nepodařilo načíst soubory ke stažení.",
+    "retry": "Zkusit znovu",
+    "noDownloads": "V tomto jazyce nejsou k dispozici žádné epizody ke stažení.",
+    "availableCount": "{count, plural, one {# epizoda je připravena} few {# epizody jsou připraveny} other {# epizod je připraveno}}",
+    "skippedCount": "{count, plural, one {# epizoda bude přeskočena, protože není k dispozici} few {# epizody budou přeskočeny, protože nejsou k dispozici} other {# epizod bude přeskočeno, protože nejsou k dispozici}}",
+    "chooseFolder": "Vybrat složku pro stahování",
+    "folderSelected": "Uložit do složky {name}",
+    "folderError": "Složku pro stahování se nepodařilo otevřít.",
+    "browserFallback": "Prohlížeč uloží každý soubor podle svého běžného nastavení stahování. Může vás požádat o povolení vícenásobného stahování.",
+    "sessionError": "Nepodařilo se ověřit vaši relaci. Zkuste to prosím znovu.",
+    "downloading": "Stahování: {title}",
+    "progress": "{completed} z {total}",
+    "complete": "Stahování dokončeno",
+    "canceled": "Stahování zrušeno",
+    "failedCount": "{count, plural, one {# epizodu se nepodařilo stáhnout} few {# epizody se nepodařilo stáhnout} other {# epizod se nepodařilo stáhnout}}. Chcete-li stažení sbírky zopakovat, vyberte znovu možnost Stáhnout.",
+    "close": "Zavřít",
+    "cancel": "Zrušit",
+    "start": "Stáhnout vše",
+    "downloadAgain": "Stáhnout znovu",
+    "retryFailed": "Zopakovat neúspěšná stahování"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Jazyková verze není dostupná",
+    "eyebrow": "Jazyková verze není dostupná",
+    "title": "<contentTitle>{title}</contentTitle>: verze v jazyce <languageName>„{language}“</languageName> není k dispozici",
+    "actionsLabel": "Dostupné možnosti sledování",
+    "browseInLanguage": "Všechna videa v jazyce „{language}“",
+    "backToSearch": "Zpět k vyhledávání",
+    "audioVersionsTitle": "Další zvukové verze",
+    "audioVersionsDescription": "Vyberte jazyk zvuku a pokračujte ve sledování videa.",
+    "languageVersionLabel": "Jazyk zvuku",
+    "selectLanguageVersion": "Vyberte jazykovou verzi",
+    "watchSelectedVersion": "Sledovat vybranou verzi"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Volby souborů cookie",
+    "bannerTitle": "Vaše volby ochrany soukromí",
+    "bannerDescription": "Nezbytné soubory cookie zajišťují bezpečnost a správné fungování Watch. S vaším souhlasem si může volitelný soubor cookie první strany pamatovat vaše zájmy mezi návštěvami, aby přizpůsobil doporučení. Kontextová doporučení jsou dostupná v obou případech.",
+    "acceptAll": "Přijmout vše",
+    "essentialOnly": "Pouze nezbytné",
+    "manageChoices": "Spravovat volby",
+    "savingChoice": "Ukládání volby souborů cookie",
+    "settings": "Nastavení souborů cookie",
+    "settingsDescription": "Zvolte, zda si Watch může mezi návštěvami pamatovat zájmy pro doporučování. Toto můžete kdykoli změnit.",
+    "essentialCookies": "Nezbytné soubory cookie",
+    "essentialDescription": "Zabezpečení, přehrávání, volby ochrany soukromí a přiřazení požadavků na doporučení.",
+    "alwaysActive": "Vždy aktivní",
+    "personalization": "Personalizace",
+    "personalizationDescription": "Zapamatovat si vymezené zájmy mezi návštěvami. Když tuto možnost vypnete, kontextová doporučení zůstanou dostupná.",
+    "erasurePending": "Čeká se na vymazání profilu. Kontextová doporučení jsou již aktivní.",
+    "cancel": "Zrušit",
+    "saveChoices": "Uložit volby",
+    "saving": "Ukládání…",
+    "loadError": "Vaši volbu se nepodařilo načíst. Níže ji přesto můžete nastavit.",
+    "grantError": "Personalizaci se nepodařilo zapnout. Možnost pouze nezbytných zůstává dostupná.",
+    "saveError": "Vaši volbu se nepodařilo uložit. Zkuste to prosím znovu."
+  }
+}

@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Walang available na content.",
+    "failedToLoad": "Hindi na-load ang page: {message}",
+    "unexpected": "May hindi inaasahang error.",
+    "notConfigured": "Hindi naka-configure ang content service.",
+    "noContent": "Walang available na content.",
+    "homepageMisconfigured": "Mali ang configuration ng Watch homepage.",
+    "defaultTemplateMisconfigured": "Mali ang configuration ng default na Watch template.",
+    "authFailed": "Hindi makakonekta sa content service. Makipag-ugnayan sa support kung magpapatuloy ito.",
+    "pageLoadFailed": "May nangyaring mali.",
+    "tryAgain": "Subukan muli"
+  },
+  "VideosPage": {
+    "title": "Lahat ng video",
+    "placeholder": "Malapit nang maging available ang pag-browse sa catalog. Sa ngayon, gamitin ang paghahanap o URL na partikular sa paksa."
+  },
+  "BibleQuotes": {
+    "title": "Mga talata sa Bibliya",
+    "share": "Ibahagi",
+    "readMore": "Magbasa pa...",
+    "learnMore": "Matuto pa",
+    "freeResources": "Libreng materyales",
+    "promoHeading": "Gusto mo bang mas malalim na maunawaan ang Bibliya?",
+    "joinBibleStudy": "Sumali sa pag-aaral ng Bibliya",
+    "previousQuote": "Nakaraang talata sa Bibliya",
+    "nextQuote": "Susunod na talata sa Bibliya",
+    "readPassage": "Basahin ang talatang ito sa iyong Bibliya."
+  },
+  "DownloadButton": {
+    "checking": "Tinitingnan",
+    "download": "I-download",
+    "sessionError": "Hindi masuri ang iyong session. Subukan muli.",
+    "saveVideo": "I-save ang video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "I-download ang video",
+    "eyebrow": "I-download ang video",
+    "posterAlt": "Poster ng video",
+    "noDownloads": "Walang download na available para sa video na ito.",
+    "fileSizeLabel": "Pumili ng laki ng file",
+    "termsAgreementPrefix": "Sumasang-ayon ako sa ",
+    "termsOfUse": "Mga Tuntunin ng Paggamit",
+    "termsAgreementSuffix": "",
+    "close": "Isara",
+    "download": "I-download",
+    "authRequiredTitle": "Gusto mong i-download ang video na ito?",
+    "authRequiredBody": "Kailangan ng libreng Jesus Film account upang mag-download ng mga video.",
+    "signInToDownload": "Mag-sign in para mag-download",
+    "keepWatching": "Magpatuloy sa panonood",
+    "checking": "Tinitingnan",
+    "closeTermsOfUse": "Isara ang Mga Tuntunin ng Paggamit",
+    "cancel": "Kanselahin",
+    "accept": "Tanggapin",
+    "errorSessionExpired": "Nag-expire ang iyong session. Mag-sign in muli para mag-download.",
+    "errorSessionUnavailable": "Hindi masuri ang iyong session. Subukan muli.",
+    "errorUnavailableSource": "Hindi available ang download mula sa source na ito",
+    "tierHighest": "Pinakamataas",
+    "tierHigh": "Mataas",
+    "tierLow": "Mababa"
+  },
+  "HeroPlayerControls": {
+    "play": "I-play",
+    "pause": "I-pause",
+    "seek": "Hanapin",
+    "seekValue": "{current} ng {total}",
+    "volume": "Lakas ng tunog",
+    "volumeValue": "{percent} porsyento",
+    "mute": "I-mute",
+    "unmute": "I-unmute",
+    "changeAudioLanguage": "Palitan ang wika ng audio",
+    "enterFullscreen": "I-fullscreen",
+    "exitFullscreen": "Lumabas sa fullscreen"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Pumili ng wika",
+    "searchPlaceholder": "Maghanap ng mga wika…",
+    "languages": "Mga wika",
+    "noMatches": "Walang tugma",
+    "notAvailable": "Hindi available"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Wika",
+    "dialogTitleWithSubtitles": "Wika at subtitle",
+    "languageHeading": "Wika",
+    "subtitlesHeading": "Mga subtitle",
+    "languageCount": "{count, plural, one {# wika} other {# wika}}",
+    "requestSent": "Naipadala ang request",
+    "translateWithAi": "Isalin gamit ang AI",
+    "noSubtitles": "Walang subtitle",
+    "toggleOn": "Naka-on",
+    "toggleOff": "Naka-off",
+    "close": "Isara",
+    "apply": "Ilapat",
+    "noLanguageSubtitles": "Walang subtitle sa {language}",
+    "seeAllLanguages": "Tingnan ang lahat ng wika",
+    "seeAllVideosInLanguage": "Tingnan ang lahat ng video sa {language}",
+    "retryLoadingLanguages": "Subukang i-load muli ang mga wika",
+    "notAvailable": "Hindi available",
+    "switching": "Nagpapalit..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# EPISODE} other {# EPISODE}}",
+    "seriesLabel": "SERYE · {episodes}",
+    "changeAudioLanguage": "Palitan ang wika ng audio",
+    "share": "Ibahagi",
+    "languages": "Mga wika",
+    "downloadCollection": "I-download ang koleksyon",
+    "checkingDownloads": "Tinitingnan ang mga download…",
+    "downloadSessionError": "Hindi masuri ang iyong session. Subukan muli."
+  },
+  "WatchModal": {
+    "close": "Isara"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Kung makakapagtanong ka ng isang tanong sa gumawa ng video na ito, ano iyon?",
+    "fallbackBody": "Magsimula ng pribadong usapan sa taong handang makinig.",
+    "questionsShort": "Mga tanong",
+    "questions": "Mga kaugnay na tanong",
+    "askYours": "Tanong mo",
+    "chatWithPerson": "Makipag-usap sa tao",
+    "askBibleQuestion": "Magtanong tungkol sa Bibliya",
+    "quiz": "Pagsusulit"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Uri ng mensahe",
+    "fieldLabel": "Magtanong tungkol sa video na ito",
+    "send": "Ipadala ang tanong",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Magtanong tungkol sa Bibliya",
+        "description": "Agarang sagot mula sa Bibliya gamit ang AI search"
+      },
+      "prayerRequest": {
+        "label": "Humiling ng panalangin",
+        "description": "Ibahagi kung ano ang gusto mong ipagdasal"
+      },
+      "comment": {
+        "label": "Mag-iwan ng komento",
+        "description": "Ipadala ang iyong saloobin tungkol sa video na ito"
+      },
+      "personChat": {
+        "label": "Makipag-usap sa tao",
+        "description": "Makipag-usap sa isang tao ngayon"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Ibahagi ang video",
+    "heading": "Ibahagi ang video na ito",
+    "posterAlt": "Poster ng video",
+    "shareOnFacebook": "Ibahagi sa Facebook",
+    "shareOnFacebookUnavailable": "Ibahagi sa Facebook (hindi available sa build na ito)",
+    "shareOnX": "Ibahagi sa X",
+    "shareOnXUnavailable": "Ibahagi sa X (hindi available sa build na ito)",
+    "shareDisabledHint": "Kailangan ng published page para makapagbahagi — gagana ito kapag nasa production na ang video.",
+    "shareFormat": "Format ng pagbabahagi",
+    "shareLinkTab": "Link sa pagbabahagi",
+    "embedCodeTab": "Embed code",
+    "copyFailed": "Hindi awtomatikong makopya — piliin ang text sa ibaba at kopyahin nang manual.",
+    "copyLink": "Kopyahin ang link",
+    "copyCode": "Kopyahin ang code",
+    "copied": "Nakopya",
+    "close": "Isara"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkripsyon",
+    "subheading": "I-tap ang anumang linya para tumalon sa sandaling iyon.",
+    "subtitleLanguage": "Wika ng subtitle",
+    "aiSuffix": " · artipisyal na intelihensiya",
+    "loading": "Nilo-load ang transcript…",
+    "unavailable": "Hindi available ang transcript para sa subtitle track na ito.",
+    "empty": "Walang nahanap na linya ng transcript."
+  },
+  "FloatingSearch": {
+    "placeholder": "Maghanap o mag-browse ng mga paksa…",
+    "openSearch": "Maghanap ng mga video",
+    "searchRegion": "Maghanap ng mga video",
+    "clearSearch": "I-clear ang paghahanap",
+    "changeAudioLanguage": "Palitan ang wika ng audio",
+    "home": "Tahanan ng JesusFilm",
+    "closeSearch": "Isara ang paghahanap",
+    "submitSearch": "Maghanap",
+    "library": "Aklatan"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Maghanap at mag-browse ng mga video",
+    "home": "Tahanan ng JesusFilm",
+    "placeholder": "Maghanap o mag-browse ng mga paksa…",
+    "inputLabel": "Maghanap ng video gamit ang keyword",
+    "searchFailed": "Hindi natuloy ang paghahanap. Subukan muli.",
+    "loadMoreFailed": "Hindi na-load ang karagdagang resulta.",
+    "searching": "Naghahanap...",
+    "connectionHint": "Pakisuri ang koneksyon at subukan muli.",
+    "rateLimitHint": "Masyadong maraming kahilingan. Pakisubukang muli pagkalipas ng isang minuto.",
+    "retrySearch": "Ulitin ang paghahanap",
+    "retry": "Subukan muli",
+    "noResults": "Walang resulta para sa “{query}”",
+    "tryDifferentKeywords": "Subukan ang ibang keyword o mag-browse ng mga kategorya",
+    "loading": "Naglo-load...",
+    "loadMore": "Mag-load pa",
+    "categoryBibleStories": "Mga Kuwento sa Biblia",
+    "categoryParables": "Mga Talinghaga",
+    "categoryAnimated": "Animasyon",
+    "categoryStudy": "Pag-aaral",
+    "categoryFamily": "Pamilya",
+    "categoryChristmas": "Pasko",
+    "searchLanguageLabel": "Wika ng paghahanap",
+    "allLanguages": "Lahat ng wika",
+    "searchSuggestions": "Mga mungkahing paghahanap",
+    "directMatches": "Mga direktang tugma",
+    "languages": "Mga wika",
+    "recommendedLanguage": "Inirerekomendang wika",
+    "searchSuggestion": "Hanapin ang {suggestion}",
+    "searchSuggestionWithLanguage": "Hanapin sa wikang {language} ang “{suggestion}”",
+    "inLanguage": "sa {language}",
+    "browseByRegion": "Mag-browse ayon sa rehiyon",
+    "allVideosOnSinglePage": "Lahat ng video sa isang pahina",
+    "clearLanguages": "I-clear",
+    "queryLanguageDetected": "Nadetect ang {language}",
+    "searchInLanguage": "Maghanap sa wikang {language}",
+    "tryDifferentKeywordsOrLanguage": "Subukan ang ibang keyword o pumili ng ibang wika ng paghahanap",
+    "useWebsiteDefaultLanguage": "Gamitin ang default na wika ng paghahanap ng website",
+    "removeLanguage": "Alisin ang {language}",
+    "browseMode": "Mode ng pag-browse sa paghahanap",
+    "searchingInLanguage": "Mga resulta sa wikang {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Manood ngayon",
+    "tapToUnmute": "I-unmute",
+    "nextEpisode": "Susunod na Episode",
+    "audioTranslationCount": "{count, plural, one {# wika} other {# wika}}",
+    "subtitleCount": "Mga subtitle: {count, plural, one {# wika} other {# wika}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Naglo-load ng content",
+    "loadingVideo": "Naglo-load ng video"
+  },
+  "VideoLabels": {
+    "video": "Bidyo",
+    "segment": "Segmento",
+    "episode": "Yugto",
+    "featureFilm": "Tampok na pelikula",
+    "shortFilm": "Maikling pelikula",
+    "series": "Serye",
+    "collection": "Koleksyon",
+    "trailer": "Paunang sulyap",
+    "behindTheScenes": "Sa likod ng mga eksena",
+    "chapter": "Kabanata"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Klip {current} ng {total}",
+    "position": "{current} ng {total}",
+    "chapterCount": "{count, plural, one {# kabanata} other {# kabanata}}",
+    "clipAriaLabel": "{title} · klip {current} ng {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# kabanata} other {# kabanata}}",
+    "chapter": "Kabanata",
+    "noImage": "Walang larawan",
+    "playingNow": "Kasalukuyang pinapanood",
+    "previousChapter": "Nakaraang kabanata",
+    "nextChapter": "Susunod na kabanata",
+    "thumbnailAlt": "Thumbnail ng {title}",
+    "relatedVideoThumbnail": "Thumbnail ng kaugnay na video"
+  },
+  "SearchResultCard": {
+    "experience": "Karanasan",
+    "episodeCount": "{count, plural, one {# episode} other {# episode}}",
+    "thumbnailAlt": "Thumbnail ng video"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Mga libreng Kristiyanong video sa {language} | Jesus Film Project",
+    "metadataDescription": "Tuklasin ang mga pelikula tungkol kay Jesus, mga kuwento sa Bibliya, mga serye sa pagdidisipulo, at mga video para sa outreach na may dubbing o subtitle sa {language}.",
+    "heroTitle": "Mga libreng Kristiyanong video sa {language}",
+    "heroDescription": "Tuklasin ang mga pelikula tungkol kay Jesus, mga kuwento sa Bibliya, mga serye sa pagdidisipulo, at mga video para sa outreach na available sa {language}. Una ang mga ganap na may dubbing, at nasa ibaba ang mga opsyong subtitle-only.",
+    "languageCollection": "Koleksyon ng wika",
+    "itemCount": "{count, plural, one {# item} other {# item}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} sa {groupCount, plural, one {# grupo} other {# grupo}}",
+    "sectionNavLabel": "Mga seksyon ng imbentaryo ng wika",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Bago",
+    "videoBible": "Bibliya sa Video",
+    "bibleProject": "BibleProject",
+    "sports": "Palakasan",
+    "collections": "Mga koleksyon",
+    "subtitlesOnly": "Subtitle lang",
+    "backToTop": "Bumalik sa itaas",
+    "newlyAdded": "Bagong dagdag",
+    "newVideosTitle": "Mga bagong Kristiyanong video sa {language}",
+    "newestFirst": "Pinakabago muna",
+    "noPublishedVideos": "Wala pang nahanap na published na video para sa wikang ito.",
+    "bibleAndGospelFilms": "Mga pelikula sa Bibliya at Ebanghelyo",
+    "videoBibleCollectionsTitle": "Mga koleksyon ng Video Bible sa {language}",
+    "videoBibleDescription": "Mga koleksyong nakasentro sa Kasulatan kabilang ang LUMO, JESUS, Magdalena, at Acts sa {language}.",
+    "noVideoBibleCollections": "Wala pang available na koleksyon ng Video Bible para sa wikang ito.",
+    "bibleProjectCollectionsTitle": "Mga koleksyon ng BibleProject sa {language}",
+    "bibleProjectDescription": "Mga serye at pag-aaral ng BibleProject na available sa {language}.",
+    "noBibleProjectCollections": "Wala pang available na koleksyon ng BibleProject para sa wikang ito.",
+    "sportsStories": "Mga kuwento sa sports",
+    "sportsTitle": "Mga kuwento sa sports at atleta sa {language}",
+    "sportsDescription": "Mga kuwentong nakasentro sa pananampalataya at mga koleksyong nakatuon sa atleta na available sa {language}.",
+    "noSportsCollections": "Wala pang available na mga koleksyon ng sports o kuwento ng atleta para sa wikang ito.",
+    "fullyDubbed": "Ganap na may dubbing",
+    "dubbedVideosTitle": "Mga video sa {language} ayon sa koleksyon",
+    "dubbedVideosDescription": "Mag-browse ng mga video sa {language} na ganap na may dubbing, naka-grupo ayon sa koleksyon para mas madaling makita.",
+    "noDubbedVideos": "Wala pang available na mga video na ganap na may dubbing para sa wikang ito.",
+    "subtitlesAvailable": "May subtitle",
+    "subtitlesTitle": "Mga video sa {language} na may subtitle",
+    "subtitlesDescription": "Kasama ng mga videong ito ang mga subtitle sa {language} kapag wala pa ang audio na sinasalita sa {language}.",
+    "noSubtitleVideos": "Wala pang available na subtitle-only na mga video para sa wikang ito.",
+    "dubbed": "May dubbing",
+    "subtitles": "Subtitle",
+    "newLabel": "Bago",
+    "fromCollection": "Mula sa {collection}",
+    "standaloneVideos": "Mga standalone na video",
+    "videosFromCollection": "Mga video mula sa {collection}.",
+    "standaloneDescription": "Mga standalone na video sa wikang ito.",
+    "openCollection": "Buksan ang koleksyon",
+    "filters": "Mga filter",
+    "filterLength": "Haba",
+    "filterLength_under5": "Mas mababa sa 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Higit sa 30 min",
+    "filterType": "Uri",
+    "clearFilters": "Alisin ang mga filter",
+    "filterResults": "{count} sa {total} ang nakikita",
+    "noFilterResults": "Walang videong tugma sa mga filter na ito. Subukang alisin ang isa.",
+    "filterAdded": "Naidagdag",
+    "filterAdded_60d": "Huling 60 araw",
+    "filterAdded_6m": "Huling 6 buwan",
+    "filterAdded_12m": "Huling 12 buwan"
+  },
+  "WatchHome": {
+    "pageTitle": "Manood sa Jesus Film Project",
+    "watch": "Manood",
+    "watchNow": "Manood Ngayon",
+    "mutePreview": "I-mute ang preview",
+    "unmutePreview": "I-unmute ang preview",
+    "nextVideo": "Susunod na video",
+    "showVideo": "Ipakita ang {title}",
+    "previousVideoPreview": "Preview ng nakaraang video",
+    "nextVideoPreview": "Preview ng susunod na video",
+    "featured": "Tampok",
+    "mediaCollection": "Koleksyon ng media",
+    "scrollToVideo": "Mag-scroll sa video na {title}",
+    "forYou": "Para sa iyo"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Mga wika",
+    "metadataDescription": "Mag-browse ng mga video ng JesusFilm ayon sa wika.",
+    "eyebrow": "Mga wika sa Watch",
+    "title": "Pumili ng wika",
+    "description": "Tuklasin ang mga wika ayon sa rehiyon o i-browse ang buong listahan.",
+    "searchPlaceholder": "Maghanap ng mga wika o bansa...",
+    "searchLabel": "Maghanap ng mga wika o bansa",
+    "clearSearch": "I-clear ang paghahanap",
+    "browse": "Mag-browse",
+    "browseByRegion": "Mag-browse ayon sa rehiyon at bansa",
+    "languageCount": "{count, plural, one {# wika} other {# wika}}",
+    "region": "Rehiyon",
+    "countryLanguages": "Mga wika ng {country}",
+    "showLess": "Ipakita nang mas kaunti",
+    "showMore": "Magpakita pa ng {count}",
+    "noLanguages": "Walang nahanap na mga wika",
+    "tryAnotherSearch": "Subukan ang ibang salita sa paghahanap."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Kasaysayan ng Panonood | Jesus Film Project",
+    "title": "Kasaysayan ng Panonood",
+    "loading": "Nilo-load ang history",
+    "empty": "Wala pa rito",
+    "emptyDescription": "Ang mga video na pinapanood mo habang naka-sign in ay lalabas dito.",
+    "earlier": "Mas maaga",
+    "today": "Ngayon",
+    "yesterday": "Kahapon"
+  },
+  "AccountControl": {
+    "account": "Aking account",
+    "accountMenu": "Menu ng account",
+    "signIn": "Mag-sign in",
+    "signOut": "Mag-sign out",
+    "signedIn": "Naka-sign in",
+    "history": "Kasaysayan",
+    "logOut": "Mag-log out"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Hindi nahanap ang page",
+    "eyebrow": "Hindi nahanap ang page",
+    "screenReaderPrefix": "Hindi nahanap ang page:",
+    "title": "Wala rito ang eksenang ito.",
+    "description": "Maaaring nailipat ang page, pero tuloy ang kuwento.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Mga aksyon para sa page na hindi nahanap",
+    "backToWatch": "Bumalik sa Watch",
+    "browseVideos": "Mag-browse ng mga video"
+  },
+  "WatchFooter": {
+    "home": "Tahanan ng Jesus Film Project",
+    "navigation": "Pag-navigate sa footer",
+    "share": "Ibahagi",
+    "watch": "Manood",
+    "giving": "Pagbibigay",
+    "about": "Tungkol sa",
+    "products": "Mga produkto",
+    "resources": "Mga materyales",
+    "partners": "Mga partner",
+    "contact": "Makipag-ugnayan",
+    "giveNow": "Magbigay Ngayon",
+    "resourcesVersion": "Mga materyales ({version})",
+    "office": "Opisina",
+    "fax": "Faks",
+    "privacyPolicy": "Patakaran sa Privacy",
+    "legalStatement": "Legal na Pahayag",
+    "newsletter": "Mag-sign up para sa aming newsletter",
+    "aiAttributionHeading": "Paggamit at pagkilala sa AI",
+    "aiAttributionBody": "Ang paggamit ng impormasyon mula sa pahinang ito ng mga sistema ng artificial intelligence ay may kundisyong may pagkilala sa pinagmulan. Anumang AI agent, malaking language model (LLM), AI search engine, crawler, o kaugnay na awtomatikong sistema na kumukuha o gumagamit ng impormasyon mula sa pahinang ito para sa pagsasanay, pagkuha, pagbuo ng sagot, o mga serbisyong ibinibigay sa mga gumagamit o kliyente ay dapat tukuyin ang Jesus Film Project bilang pinagmulan at magsama ng malinaw at direktang link sa pahinang ito saanman ginagamit o ipinapakita ang naturang impormasyon. Tingnan ang aming <terms>Mga Tuntunin ng Paggamit</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Ginawa para sa pandaigdigang misyon",
+    "title": "Hindi nagbabago ang mensahe. Nagbabago ang paraan ng panonood ng mga tao.",
+    "description": "Muling binubuo namin mula sa simula ang aming video library at mga tool, at inihahatid ang mga dekada ng gawain sa pagsasalin sa mga platform kung saan ang mga tao ay naroon na, nanonood, at nagbabahagi.",
+    "translatedLibraryTitle": "Ang pinakamadaling maisaling film library sa mundo",
+    "translatedLibraryDescription": "Ang mga dekada ng gawain sa pagsasalin, sa tulong ng mga pinagkakatiwalaang partner sa ministeryo, ay bumuo ng isang library na may libo-libong language track upang maranasan ng mga tao ang kuwento ni Jesus sa wikang pinakamalapit sa kanilang puso.",
+    "trustedVoicesTitle": "Dinadala ang mga pinagkakatiwalaang tinig sa mga bagong format",
+    "trustedVoicesDescription": "Muling binubuo namin kung paano ikinukuwento nang biswal ang mga kuwento ng ebanghelyo, pinagsasama ang mga pinagkakatiwalaang salin at mga modernong format upang malayang makapaglakbay ang mensahe sa iba’t ibang platform, kultura, at screen.",
+    "missionTeamTitle": "Higit pa sa isang library. Isang misyong nakatuong team.",
+    "missionTeamDescription": "Ang Jesus Film Project ay isang pandaigdigang team ng mga tagasalin, media specialist, editor, at creator na ginagawang mga tool para sa mga disciple-maker sa buong mundo ang mga dekada ng karanasan sa ministeryo.",
+    "buildingNext": "Ang aming susunod na binubuo",
+    "nextStepsTitle": "Plataporma ng Mga Susunod na Hakbang",
+    "nextStepsDescription": "Iugnay ang mga manonood sa mga konkretong oportunidad sa kanilang paglalakbay sa pananampalataya, upang matulungan silang gumawa ng susunod na hakbang tungo sa komunidad, Kasulatan, o misyon.",
+    "mediaLibraryTitle": "Library ng Media para sa Evangelism",
+    "mediaLibraryDescription": "Isang malawak na Christian media library na may libo-libong video, pelikula, at materyales na available sa iba’t ibang wika para sa ministeryo at evangelism sa buong mundo.",
+    "ministryToolsTitle": "Mga Digital na Tool para sa mga Ministry",
+    "ministryToolsDescription": "Pamamahala ng video, pamamahagi ng content, pakikipag-ugnayan sa audience, at analytics na idinisenyo upang matulungan ang mga ministry na maabot ang mas maraming tao nang mas epektibo.",
+    "invitationEyebrow": "Inaanyayahan ka",
+    "invitationDescription": "Inaanyayahan namin ang mga practitioner, creator, at partner sa maagang access. Subukan muna ang mga bagong tool, magbigay ng feedback, at tumulong bumuo ng mga produktong para sa totoong gawain sa misyon.",
+    "betaTester": "Maging beta tester",
+    "invitationTitle": "Tulungan kaming buuin ang <highlight>susunod na henerasyon</highlight> ng mga tool para sa misyon"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Koleksyon ng Video Bible",
+    "gospelRailTitle": "Tuklasin ang buong kuwento",
+    "videoBibleDescription": "Tuklasin ang aming koleksyon ng mga video at materyales na nagbibigay-buhay sa Bibliya sa pamamagitan ng mga nakakaengganyong kuwento at turo.",
+    "showcaseTitle": "Ang Kasulatan na Isinalaysay sa Pamamagitan ng Pelikula",
+    "adventEyebrow": "Adbiyento ng Pasko",
+    "adventTitle": "Countdown sa Adbiyento ng Pasko",
+    "adventDescription": "Sumali sa aming paglalakbay sa Adbiyento gamit ang pang-araw-araw na video na nagpapataas ng pag-asa para sa Pasko, habang tinutuklas ang pag-asa, kagalakan, at pangako ng pagdating ni Jesus.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Adbiyento ng BibleProject",
+    "nuaEyebrow": "Serye ng NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Serye ng Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kurso sa Video",
+    "journeyWithJesusTitle": "Maglakbay kasama si Jesus",
+    "gospelsOnVideoEyebrow": "Bawat Ebanghelyo, Isinalaysay sa Video",
+    "scriptureAsWrittenTitle": "Ang Kasulatan, Binibigkas Nang Eksakto Ayon sa Nakasulat",
+    "merryChristmas": "Maligayang Pasko!",
+    "daysUntilChristmas": "{count, plural, one {# araw bago mag-Pasko} other {# araw bago mag-Pasko}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "Feedback": {
+    "openForm": "Buksan ang form ng feedback",
+    "label": "Puna",
+    "couldNotLoad": "Hindi ma-load ang form ng feedback.",
+    "loadingForm": "Nilo-load ang form ng feedback…",
+    "retry": "Subukan muli",
+    "cancel": "Kanselahin",
+    "closeForm": "Isara ang form ng feedback",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% tugma",
+    "none": "Walang nakitang rekomendasyon para sa video na ito sa wikang ito."
+  },
+  "BetaTesterModal": {
+    "title": "Maging beta tester",
+    "trigger": "Maging beta tester",
+    "loadFailed": "May nangyaring mali.",
+    "loading": "Naglo-load...",
+    "openFormNewTab": "Buksan ang form sa bagong tab",
+    "close": "Isara",
+    "iframeTitle": "Maging beta tester"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "I-download ang koleksyon",
+    "eyebrow": "I-download ang koleksyon",
+    "description": "Pumili ng wika at kalidad nang isang beses. Sunod-sunod na mada-download ang bawat available na episode.",
+    "signInTitle": "Mag-sign in para mag-download",
+    "signInBody": "Makakapag-download ka ng mga koleksyon pagkatapos mong mag-sign in gamit ang Jesus Film account.",
+    "signIn": "Mag-sign in para mag-download",
+    "languageLabel": "Wika",
+    "qualityLabel": "Kalidad ng video",
+    "tierHighest": "Pinakamataas",
+    "tierHigh": "Mataas",
+    "tierLow": "Mababa",
+    "loading": "Hinahanap ang mga available na episode…",
+    "loadError": "Hindi ma-load ang mga download para sa wikang ito.",
+    "retry": "Subukan muli",
+    "noDownloads": "Walang mada-download na episode sa wikang ito.",
+    "availableCount": "{count, plural, one {Handa na ang # episode} other {Handa na ang # episode}}",
+    "skippedCount": "{count, plural, one {Lalaktawan ang # episode dahil hindi ito available} other {Lalaktawan ang # episode dahil hindi available ang mga ito}}",
+    "chooseFolder": "Pumili ng folder para sa mga download",
+    "folderSelected": "I-save sa {name}",
+    "folderError": "Hindi mabuksan ang folder para sa mga download.",
+    "browserFallback": "Ise-save ng iyong browser ang bawat file gamit ang karaniwang mga setting nito sa pag-download. Maaaring hilingin nitong payagan mo ang maramihang pag-download.",
+    "sessionError": "Hindi masuri ang iyong session. Subukan muli.",
+    "downloading": "Dina-download ang {title}",
+    "progress": "{completed} sa {total}",
+    "complete": "Tapos na ang mga download",
+    "canceled": "Kinansela ang mga download",
+    "failedCount": "{count, plural, one {Hindi na-download ang # episode} other {Hindi na-download ang # episode}}. Piliin muli ang I-download para subukang i-download ulit ang koleksyon.",
+    "close": "Isara",
+    "cancel": "Kanselahin",
+    "start": "I-download lahat",
+    "downloadAgain": "I-download muli",
+    "retryFailed": "Hindi nagtagumpay ang muling pagsubok"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Hindi available ang bersyon sa wikang ito",
+    "eyebrow": "Hindi available ang bersyon sa wikang ito",
+    "title": "Hindi available ang <contentTitle>{title}</contentTitle> sa <languageName>{language}</languageName>",
+    "actionsLabel": "Mga available na opsyon sa panonood",
+    "browseInLanguage": "Mag-browse ng mga video sa {language}",
+    "backToSearch": "Bumalik sa paghahanap",
+    "audioVersionsTitle": "Iba pang bersyon ng audio",
+    "audioVersionsDescription": "Pumili ng wika ng audio para ipagpatuloy ang panonood sa video na ito.",
+    "languageVersionLabel": "Wika ng audio",
+    "selectLanguageVersion": "Pumili ng bersyon ng wika",
+    "watchSelectedVersion": "Panoorin ang napiling bersyon"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Mga pagpipilian sa cookie",
+    "bannerTitle": "Mga pagpipilian mo sa privacy",
+    "bannerDescription": "Pinananatiling ligtas at maayos na gumagana ng mahahalagang cookie ang Watch. Kapag pumayag ka, maaaring tandaan ng opsyonal na first-party cookie ang iyong mga interes sa iba’t ibang pagbisita para ma-personalize ang mga rekomendasyon. Mananatiling available ang mga rekomendasyong ayon sa konteksto alinman dito.",
+    "acceptAll": "Tanggapin lahat",
+    "essentialOnly": "Mahahalaga lang",
+    "manageChoices": "Pamahalaan ang mga pagpipilian",
+    "savingChoice": "Sine-save ang pagpili sa cookie",
+    "settings": "Mga setting ng cookie",
+    "settingsDescription": "Piliin kung maaaring tandaan ng Watch ang mga interes mo sa rekomendasyon sa iba’t ibang pagbisita. Maaari mo itong baguhin anumang oras.",
+    "essentialCookies": "Mahahalagang cookie",
+    "essentialDescription": "Seguridad, pag-playback, mga pagpipilian sa privacy, at atribusyon ng kahilingan sa rekomendasyon.",
+    "alwaysActive": "Palaging aktibo",
+    "personalization": "Pag-personalize",
+    "personalizationDescription": "Tandaan ang mga limitadong interes sa iba’t ibang pagbisita. Kapag naka-off ito, mananatiling available ang mga rekomendasyong ayon sa konteksto.",
+    "erasurePending": "Nakahintay pa ang pagbura ng profile. Aktibo na ang mga rekomendasyong ayon sa konteksto.",
+    "cancel": "Kanselahin",
+    "saveChoices": "I-save ang mga pagpipilian",
+    "saving": "Sine-save…",
+    "loadError": "Hindi na-load ang iyong pinili. Maaari ka pa ring pumili sa ibaba.",
+    "grantError": "Hindi na-enable ang pag-personalize. Mahahalaga lang ang mananatiling available.",
+    "saveError": "Hindi na-save ang iyong pinili. Pakisubukan muli."
+  }
+}

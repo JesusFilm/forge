@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
-import { getJob } from "@/lib/state"
+import { getJobLookup } from "@/lib/state"
 
 export async function GET(
   request: Request,
@@ -10,11 +10,15 @@ export async function GET(
   if (authError) return authError
 
   const { id } = await params
-  const job = await getJob(id)
+  const lookup = await getJobLookup(id)
 
-  if (!job) {
+  if (lookup.status === "error") {
+    return NextResponse.json({ error: "Failed to load job" }, { status: 502 })
+  }
+
+  if (lookup.status === "not-found") {
     return NextResponse.json({ error: "Job not found" }, { status: 404 })
   }
 
-  return NextResponse.json({ job })
+  return NextResponse.json({ job: lookup.job })
 }

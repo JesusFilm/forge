@@ -33,6 +33,8 @@ related:
   - "docs/solutions/platform/backfill-worker-pattern-manager-20260407.md"
   - "docs/solutions/performance-issues/manager-video-coverage-sql-aggregation-20260402.md"
   - "docs/solutions/platform/multimodal-scene-analysis-pipeline.md"
+  - "docs/solutions/performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md"
+last_updated: "2026-04-15"
 ---
 
 ## Problem
@@ -206,7 +208,9 @@ Transport adapters handle only request parsing and error response formatting.
 2. **`DISTINCT ON` + subquery** is the canonical PostgreSQL pattern for "best row per group with global ordering."
 3. **Parent-child exclusion prevents content cannibalization** — JESUS film's 61 child segments are literally the same content cut into clips. Without exclusion, recommendations are useless.
 4. **`register()` timing** is required because Strapi compiles the GraphQL schema after `register()` but before `bootstrap()`. Extensions added in `bootstrap()` are silently ignored.
-5. **Performance verified**: 45ms execution time for top-10 query against 1,965 scenes. HNSW index handles the cosine similarity search efficiently.
+5. **Performance verified**: 45ms execution time for top-10 query against 1,965 scenes. HNSW index handles the cosine similarity search efficiently because the locale filter lives on a _joined_ table (`languages.bcp_47`), not on `scene_embeddings` itself — the HNSW scan stays unconstrained.
+
+   ⚠️ **Watch out at scale or with different schemas.** If a future query puts the filter directly on the embedding table (`WHERE column = ? ORDER BY embedding <=> ?`), pgvector's planner cost model is too pessimistic and silently picks Seq Scan over HNSW. Verify with `EXPLAIN ANALYZE` once `scene_embeddings` grows past ~5K rows or whenever a new filter column is added. The fix is per-locale partial HNSW indexes plus `hnsw.iterative_scan = relaxed_order`. See [pgvector HNSW index bypassed by planner when WHERE filter on indexed table](../performance-issues/pgvector-hnsw-index-bypass-with-where-filter-20260415.md).
 
 ## Prevention
 

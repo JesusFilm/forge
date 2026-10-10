@@ -1,0 +1,5 @@
+surface_version,strategy_version,manifest_id,execution_mode,requests
+watch-below-player-v1,semantic-transcript-pgvector-v1,semantic-transcript-pgvector-v1,semantic_contextual,62876
+watch-below-player-v1,semantic-transcript-pgvector-v1,semantic-transcript-pgvector-v1,hybrid_personalized,5380
+watch-below-player-v1,semantic-transcript-pgvector-v1,semantic-transcript-pgvector-v1,semantic_fallback,897
+watch-for-you-v1,profile-first-curated-fill-v1,semantic-transcript-pgvector-v1,,824

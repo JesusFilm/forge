@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Konten tidak tersedia.",
+    "failedToLoad": "Gagal memuat halaman: {message}",
+    "unexpected": "Terjadi kesalahan yang tidak terduga.",
+    "notConfigured": "Layanan konten belum dikonfigurasi.",
+    "noContent": "Tidak ada konten yang tersedia.",
+    "homepageMisconfigured": "Beranda Watch salah konfigurasi.",
+    "defaultTemplateMisconfigured": "Template Watch bawaan salah konfigurasi.",
+    "authFailed": "Tidak dapat terhubung ke layanan konten. Hubungi dukungan jika masalah berlanjut.",
+    "pageLoadFailed": "Ada kesalahan.",
+    "tryAgain": "Coba lagi"
+  },
+  "VideosPage": {
+    "title": "Semua video",
+    "placeholder": "Penjelajahan katalog akan segera tersedia. Untuk saat ini, gunakan pencarian atau URL khusus topik."
+  },
+  "BibleQuotes": {
+    "title": "Ayat Alkitab",
+    "share": "Bagikan",
+    "readMore": "Baca selengkapnya...",
+    "learnMore": "Pelajari lebih lanjut",
+    "freeResources": "Materi gratis",
+    "promoHeading": "Ingin memahami Alkitab lebih dalam?",
+    "joinBibleStudy": "Bergabung dengan pendalaman Alkitab",
+    "previousQuote": "Ayat sebelumnya",
+    "nextQuote": "Ayat berikutnya",
+    "readPassage": "Bacalah bagian ini dalam Alkitab Anda."
+  },
+  "DownloadButton": {
+    "checking": "Memeriksa",
+    "download": "Unduh",
+    "sessionError": "Tidak dapat memeriksa sesi Anda. Coba lagi.",
+    "saveVideo": "Simpan video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Unduh video",
+    "eyebrow": "Unduh video",
+    "posterAlt": "Poster video",
+    "noDownloads": "Tidak ada unduhan yang tersedia untuk video ini.",
+    "fileSizeLabel": "Pilih ukuran file",
+    "termsAgreementPrefix": "Saya menyetujui ",
+    "termsOfUse": "Ketentuan Penggunaan",
+    "termsAgreementSuffix": "",
+    "close": "Tutup",
+    "download": "Unduh",
+    "authRequiredTitle": "Ingin mengunduh video ini?",
+    "authRequiredBody": "Akun Jesus Film gratis diperlukan untuk mengunduh video.",
+    "signInToDownload": "Masuk untuk mengunduh",
+    "keepWatching": "Lanjutkan menonton",
+    "checking": "Memeriksa",
+    "closeTermsOfUse": "Tutup Ketentuan Penggunaan",
+    "cancel": "Batal",
+    "accept": "Setuju",
+    "errorSessionExpired": "Sesi Anda telah berakhir. Masuk lagi untuk mengunduh video.",
+    "errorSessionUnavailable": "Tidak dapat memeriksa sesi Anda. Coba lagi.",
+    "errorUnavailableSource": "Unduhan tidak tersedia dari sumber ini",
+    "tierHighest": "Tertinggi",
+    "tierHigh": "Tinggi",
+    "tierLow": "Rendah"
+  },
+  "HeroPlayerControls": {
+    "play": "Putar",
+    "pause": "Jeda",
+    "seek": "Geser posisi",
+    "seekValue": "{current} dari {total}",
+    "volume": "Volume suara",
+    "volumeValue": "{percent} persen",
+    "mute": "Bisukan",
+    "unmute": "Nyalakan suara",
+    "changeAudioLanguage": "Ubah bahasa audio",
+    "enterFullscreen": "Masuk layar penuh",
+    "exitFullscreen": "Keluar dari layar penuh"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Pilih bahasa",
+    "searchPlaceholder": "Cari bahasa…",
+    "languages": "Bahasa",
+    "noMatches": "Tidak ada hasil yang cocok",
+    "notAvailable": "Tidak tersedia"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Bahasa",
+    "dialogTitleWithSubtitles": "Bahasa & Teks",
+    "languageHeading": "Bahasa",
+    "subtitlesHeading": "Teks",
+    "languageCount": "{count, plural, one {# bahasa} other {# bahasa}}",
+    "requestSent": "Permintaan terkirim",
+    "translateWithAi": "Terjemahkan dengan AI",
+    "noSubtitles": "Tanpa teks",
+    "toggleOn": "Aktif",
+    "toggleOff": "Nonaktif",
+    "close": "Tutup",
+    "apply": "Terapkan",
+    "noLanguageSubtitles": "Tanpa teks {language}",
+    "seeAllLanguages": "Lihat semua bahasa",
+    "seeAllVideosInLanguage": "Lihat semua video dalam {language}",
+    "retryLoadingLanguages": "Coba lagi memuat bahasa",
+    "notAvailable": "Tidak tersedia",
+    "switching": "Sedang beralih..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {# EPISODE} other {# EPISODE}}",
+    "seriesLabel": "SERI · {episodes}",
+    "changeAudioLanguage": "Ubah bahasa audio",
+    "share": "Bagikan",
+    "languages": "Bahasa",
+    "downloadCollection": "Unduh koleksi",
+    "checkingDownloads": "Memeriksa unduhan…",
+    "downloadSessionError": "Tidak dapat memeriksa sesi Anda. Coba lagi."
+  },
+  "WatchModal": {
+    "close": "Tutup"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Jika Anda bisa mengajukan satu pertanyaan kepada pembuat video ini, apa yang akan Anda tanyakan?",
+    "fallbackBody": "Mulai percakapan pribadi dengan seseorang yang siap mendengarkan.",
+    "questionsShort": "Pertanyaan",
+    "questions": "Pertanyaan terkait",
+    "askYours": "Pertanyaanmu",
+    "chatWithPerson": "Bicara dengan seseorang",
+    "askBibleQuestion": "Ajukan pertanyaan tentang Alkitab",
+    "quiz": "Kuis"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Jenis pesan",
+    "fieldLabel": "Ajukan pertanyaan tentang video ini",
+    "send": "Kirim pertanyaan",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Ajukan pertanyaan tentang Alkitab",
+        "description": "Jawaban instan dari Alkitab dengan pencarian AI"
+      },
+      "prayerRequest": {
+        "label": "Minta doa",
+        "description": "Bagikan hal yang ingin Anda doakan"
+      },
+      "comment": {
+        "label": "Tinggalkan komentar",
+        "description": "Bagikan pendapat Anda tentang video ini"
+      },
+      "personChat": {
+        "label": "Bicara dengan seseorang",
+        "description": "Bicara dengan seseorang sekarang"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Bagikan video",
+    "heading": "Bagikan video ini",
+    "posterAlt": "Poster video",
+    "shareOnFacebook": "Bagikan di Facebook",
+    "shareOnFacebookUnavailable": "Bagikan di Facebook (tidak tersedia pada build ini)",
+    "shareOnX": "Bagikan di X",
+    "shareOnXUnavailable": "Bagikan di X (tidak tersedia pada build ini)",
+    "shareDisabledHint": "Berbagi memerlukan halaman yang sudah dipublikasikan — akan berfungsi setelah video ini berada di produksi.",
+    "shareFormat": "Format berbagi",
+    "shareLinkTab": "Bagikan tautan",
+    "embedCodeTab": "Kode sematan",
+    "copyFailed": "Tidak dapat menyalin otomatis — pilih teks di bawah lalu salin secara manual.",
+    "copyLink": "Salin tautan",
+    "copyCode": "Salin kode",
+    "copied": "Tersalin",
+    "close": "Tutup"
+  },
+  "SubtitleTranscript": {
+    "heading": "Transkrip",
+    "subheading": "Ketuk baris mana pun untuk melompat ke momen itu.",
+    "subtitleLanguage": "Bahasa teks",
+    "aiSuffix": " · Kecerdasan buatan",
+    "loading": "Memuat transkrip…",
+    "unavailable": "Transkrip tidak tersedia untuk trek teks ini.",
+    "empty": "Tidak ada baris transkrip ditemukan."
+  },
+  "FloatingSearch": {
+    "placeholder": "Cari atau jelajahi topik…",
+    "openSearch": "Cari video",
+    "searchRegion": "Cari video",
+    "clearSearch": "Hapus pencarian",
+    "changeAudioLanguage": "Ubah bahasa audio",
+    "home": "Beranda JesusFilm",
+    "closeSearch": "Tutup pencarian",
+    "submitSearch": "Cari",
+    "library": "Perpustakaan"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Cari dan jelajahi video",
+    "home": "Beranda JesusFilm",
+    "placeholder": "Cari atau jelajahi topik…",
+    "inputLabel": "Cari video berdasarkan kata kunci",
+    "searchFailed": "Pencarian gagal. Coba lagi.",
+    "loadMoreFailed": "Gagal memuat hasil lainnya.",
+    "searching": "Mencari...",
+    "connectionHint": "Periksa koneksi Anda lalu coba lagi.",
+    "rateLimitHint": "Terlalu banyak permintaan. Coba lagi dalam satu menit.",
+    "retrySearch": "Coba cari lagi",
+    "retry": "Coba lagi",
+    "noResults": "Tidak ada hasil untuk “{query}”",
+    "tryDifferentKeywords": "Coba kata kunci lain atau jelajahi kategori",
+    "loading": "Memuat...",
+    "loadMore": "Muat lagi",
+    "categoryBibleStories": "Kisah Alkitab",
+    "categoryParables": "Perumpamaan",
+    "categoryAnimated": "Animasi",
+    "categoryStudy": "Pembelajaran",
+    "categoryFamily": "Keluarga",
+    "categoryChristmas": "Natal",
+    "searchLanguageLabel": "Bahasa pencarian",
+    "allLanguages": "Semua bahasa",
+    "searchSuggestions": "Saran pencarian",
+    "directMatches": "Hasil yang cocok",
+    "languages": "Bahasa",
+    "recommendedLanguage": "Bahasa yang disarankan",
+    "searchSuggestion": "Cari “{suggestion}”",
+    "searchSuggestionWithLanguage": "Cari “{suggestion}” dalam {language}",
+    "inLanguage": "dalam {language}",
+    "browseByRegion": "Jelajahi berdasarkan wilayah",
+    "allVideosOnSinglePage": "Semua video dalam satu halaman",
+    "clearLanguages": "Hapus",
+    "queryLanguageDetected": "Terdeteksi {language}",
+    "searchInLanguage": "Cari dalam {language}",
+    "tryDifferentKeywordsOrLanguage": "Coba kata kunci lain atau pilih bahasa pencarian lain",
+    "useWebsiteDefaultLanguage": "Gunakan bahasa pencarian bawaan situs",
+    "removeLanguage": "Hapus {language}",
+    "browseMode": "Mode jelajah pencarian",
+    "searchingInLanguage": "Hasil dalam {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Tonton sekarang",
+    "tapToUnmute": "Aktifkan suara",
+    "nextEpisode": "Episode Berikutnya",
+    "audioTranslationCount": "{count, plural, one {# bahasa} other {# bahasa}}",
+    "subtitleCount": "Teks: {count, plural, one {# bahasa} other {# bahasa}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Memuat konten",
+    "loadingVideo": "Memuat video"
+  },
+  "VideoLabels": {
+    "video": "Tayangan video",
+    "segment": "Segmen",
+    "episode": "Bagian episode",
+    "featureFilm": "Film panjang",
+    "shortFilm": "Film pendek",
+    "series": "Serial",
+    "collection": "Koleksi",
+    "trailer": "Cuplikan",
+    "behindTheScenes": "Di balik layar",
+    "chapter": "Bab"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Klip {current} dari {total}",
+    "position": "{current} dari {total}",
+    "chapterCount": "{count, plural, one {# bab} other {# bab}}",
+    "clipAriaLabel": "{title} · klip {current} dari {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# bab} other {# bab}}",
+    "chapter": "Bab",
+    "noImage": "Tidak ada gambar",
+    "playingNow": "Sedang diputar",
+    "previousChapter": "Bab sebelumnya",
+    "nextChapter": "Bab berikutnya",
+    "thumbnailAlt": "Thumbnail {title}",
+    "relatedVideoThumbnail": "Thumbnail video terkait"
+  },
+  "SearchResultCard": {
+    "experience": "Pengalaman",
+    "episodeCount": "{count, plural, one {# episode} other {# episode}}",
+    "thumbnailAlt": "Gambar mini video"
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Video Kristen gratis dalam {language} | Jesus Film Project",
+    "metadataDescription": "Jelajahi film Yesus, kisah Alkitab, seri pemuridan, dan video penginjilan dengan audio sulih suara atau teks dalam {language}.",
+    "heroTitle": "Video Kristen gratis dalam {language}",
+    "heroDescription": "Jelajahi film Yesus, kisah Alkitab, seri pemuridan, dan video penginjilan yang tersedia dalam {language}. Video sulih suara penuh ditampilkan lebih dulu, dengan opsi hanya teks di bawahnya.",
+    "languageCollection": "Koleksi bahasa",
+    "itemCount": "{count, plural, one {# item} other {# item}}",
+    "videoCount": "{count, plural, one {# video} other {# video}}",
+    "videosInGroups": "{videoCount, plural, one {# video} other {# video}} dalam {groupCount, plural, one {# grup} other {# grup}}",
+    "sectionNavLabel": "Bagian inventaris bahasa",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Baru",
+    "videoBible": "Video Alkitab",
+    "bibleProject": "BibleProject",
+    "sports": "Olahraga",
+    "collections": "Koleksi",
+    "subtitlesOnly": "Hanya teks",
+    "backToTop": "Kembali ke atas",
+    "newlyAdded": "Baru ditambahkan",
+    "newVideosTitle": "Video Kristen baru dalam {language}",
+    "newestFirst": "Terbaru dulu",
+    "noPublishedVideos": "Belum ditemukan video yang dipublikasikan untuk bahasa ini.",
+    "bibleAndGospelFilms": "Film Alkitab dan Injil",
+    "videoBibleCollectionsTitle": "Koleksi Video Alkitab dalam {language}",
+    "videoBibleDescription": "Koleksi berpusat pada Kitab Suci termasuk LUMO, JESUS, Magdalena, dan Kisah Para Rasul dalam {language}.",
+    "noVideoBibleCollections": "Belum ada koleksi Video Alkitab yang tersedia untuk bahasa ini.",
+    "bibleProjectCollectionsTitle": "Koleksi BibleProject dalam {language}",
+    "bibleProjectDescription": "Seri dan studi BibleProject yang tersedia dalam {language}.",
+    "noBibleProjectCollections": "Belum ada koleksi BibleProject yang tersedia untuk bahasa ini.",
+    "sportsStories": "Kisah olahraga",
+    "sportsTitle": "Kisah olahraga dan atlet dalam {language}",
+    "sportsDescription": "Kisah olahraga yang berpusat pada iman dan koleksi bertema atlet yang tersedia dalam {language}.",
+    "noSportsCollections": "Belum ada koleksi olahraga atau kisah atlet yang tersedia untuk bahasa ini.",
+    "fullyDubbed": "Sulih suara penuh",
+    "dubbedVideosTitle": "Video {language} berdasarkan koleksi",
+    "dubbedVideosDescription": "Jelajahi video {language} bersulih suara penuh yang dikelompokkan bersama koleksinya agar lebih mudah ditemukan.",
+    "noDubbedVideos": "Belum ada video bersulih suara penuh yang tersedia untuk bahasa ini.",
+    "subtitlesAvailable": "Tersedia teks",
+    "subtitlesTitle": "Video {language} dengan teks",
+    "subtitlesDescription": "Video ini menyertakan teks {language} saat audio lisan {language} belum tersedia.",
+    "noSubtitleVideos": "Belum ada video hanya teks yang tersedia untuk bahasa ini.",
+    "dubbed": "Sulih suara",
+    "subtitles": "Teks",
+    "newLabel": "Baru",
+    "fromCollection": "Dari {collection}",
+    "standaloneVideos": "Video mandiri",
+    "videosFromCollection": "Video dari {collection}.",
+    "standaloneDescription": "Video mandiri dalam bahasa ini.",
+    "openCollection": "Buka koleksi",
+    "filters": "Filter",
+    "filterLength": "Durasi",
+    "filterLength_under5": "Kurang dari 5 mnt",
+    "filterLength_5to10": "5-10 mnt",
+    "filterLength_10to30": "10-30 mnt",
+    "filterLength_over30": "Lebih dari 30 mnt",
+    "filterType": "Jenis",
+    "clearFilters": "Hapus filter",
+    "filterResults": "{count} dari {total} ditampilkan",
+    "noFilterResults": "Tidak ada video yang cocok dengan filter ini. Coba hapus salah satu.",
+    "filterAdded": "Ditambahkan",
+    "filterAdded_60d": "60 hari terakhir",
+    "filterAdded_6m": "6 bulan terakhir",
+    "filterAdded_12m": "12 bulan terakhir"
+  },
+  "WatchHome": {
+    "pageTitle": "Tonton di Jesus Film Project",
+    "watch": "Tonton",
+    "watchNow": "Tonton Sekarang",
+    "mutePreview": "Bisukan pratinjau",
+    "unmutePreview": "Aktifkan suara pratinjau",
+    "nextVideo": "Video berikutnya",
+    "showVideo": "Tampilkan {title}",
+    "previousVideoPreview": "Pratinjau video sebelumnya",
+    "nextVideoPreview": "Pratinjau video berikutnya",
+    "featured": "Unggulan",
+    "mediaCollection": "Koleksi media",
+    "scrollToVideo": "Gulir ke video {title}",
+    "forYou": "Direkomendasikan untuk Anda"
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Bahasa",
+    "metadataDescription": "Jelajahi video JesusFilm berdasarkan bahasa.",
+    "eyebrow": "Bahasa Watch",
+    "title": "Pilih bahasa",
+    "description": "Jelajahi bahasa berdasarkan wilayah atau telusuri daftar lengkapnya.",
+    "searchPlaceholder": "Cari bahasa atau negara...",
+    "searchLabel": "Cari bahasa atau negara",
+    "clearSearch": "Hapus pencarian",
+    "browse": "Jelajahi",
+    "browseByRegion": "Jelajahi berdasarkan wilayah dan negara",
+    "languageCount": "{count, plural, one {# bahasa} other {# bahasa}}",
+    "region": "Wilayah",
+    "countryLanguages": "Bahasa {country}",
+    "showLess": "Tampilkan lebih sedikit",
+    "showMore": "Tampilkan {count} lagi",
+    "noLanguages": "Tidak ditemukan bahasa",
+    "tryAnotherSearch": "Coba istilah pencarian lain."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Riwayat Tonton | Jesus Film Project",
+    "title": "Riwayat Tonton",
+    "loading": "Memuat riwayat",
+    "empty": "Belum ada apa-apa di sini",
+    "emptyDescription": "Video yang Anda tonton saat masuk akan muncul di sini.",
+    "earlier": "Lebih awal",
+    "today": "Hari ini",
+    "yesterday": "Kemarin"
+  },
+  "AccountControl": {
+    "account": "Akun",
+    "accountMenu": "Menu akun",
+    "signIn": "Masuk",
+    "signOut": "Keluar",
+    "signedIn": "Sudah masuk",
+    "history": "Riwayat",
+    "logOut": "Keluar"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Halaman tidak ditemukan",
+    "eyebrow": "Halaman tidak ditemukan",
+    "screenReaderPrefix": "Halaman tidak ditemukan:",
+    "title": "Adegan ini tidak ada di sini.",
+    "description": "Halamannya mungkin sudah berpindah, tetapi kisahnya terus berlanjut.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Tindakan halaman tidak ditemukan",
+    "backToWatch": "Kembali ke Watch",
+    "browseVideos": "Jelajahi video"
+  },
+  "WatchFooter": {
+    "home": "Beranda Jesus Film Project",
+    "navigation": "Navigasi footer",
+    "share": "Bagikan",
+    "watch": "Tonton",
+    "giving": "Memberi",
+    "about": "Tentang",
+    "products": "Produk",
+    "resources": "Sumber daya",
+    "partners": "Mitra",
+    "contact": "Kontak",
+    "giveNow": "Beri Sekarang",
+    "resourcesVersion": "Sumber daya ({version})",
+    "office": "Kantor",
+    "fax": "Faks",
+    "privacyPolicy": "Kebijakan Privasi",
+    "legalStatement": "Pernyataan Hukum",
+    "newsletter": "Daftar untuk menerima buletin kami",
+    "aiAttributionHeading": "Penggunaan AI dan atribusi",
+    "aiAttributionBody": "Penggunaan informasi dari halaman ini oleh sistem kecerdasan buatan bergantung pada atribusi. Setiap agen AI, model bahasa besar (LLM), mesin pencari AI, perayap, atau sistem otomatis terkait yang mengekstrak atau menggunakan informasi dari halaman ini untuk pelatihan, pengambilan, pembuatan respons, atau layanan yang diberikan kepada pengguna atau klien harus mencantumkan Jesus Film Project sebagai sumber dan menyertakan tautan langsung yang jelas ke halaman ini di mana pun informasi itu digunakan atau ditampilkan. Lihat <terms>Ketentuan Penggunaan</terms> kami."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Dibangun untuk misi global",
+    "title": "Pesannya tidak berubah. Cara orang menonton berubah.",
+    "description": "Kami sedang membangun ulang perpustakaan video dan alat kami dari awal, membawa puluhan tahun karya penerjemahan ke platform tempat orang sudah berkumpul, menonton, dan berbagi.",
+    "translatedLibraryTitle": "Perpustakaan film paling banyak diterjemahkan di dunia",
+    "translatedLibraryDescription": "Puluhan tahun karya penerjemahan, dibawa oleh mitra pelayanan yang tepercaya, telah membangun perpustakaan dengan ribuan trek bahasa sehingga orang dapat menjumpai kisah Yesus dalam bahasa yang paling menyentuh mereka.",
+    "trustedVoicesTitle": "Membawa suara yang tepercaya ke format baru",
+    "trustedVoicesDescription": "Kami sedang membangun ulang cara kisah Injil disampaikan secara visual, memadukan terjemahan yang tepercaya dengan format modern agar pesan dapat bergerak bebas lintas platform, budaya, dan layar.",
+    "missionTeamTitle": "Lebih dari sekadar perpustakaan. Sebuah tim yang digerakkan misi.",
+    "missionTeamDescription": "Jesus Film Project adalah tim global penerjemah, spesialis media, editor, dan kreator yang mengubah puluhan tahun pengalaman pelayanan menjadi alat bagi para pemurid di mana pun.",
+    "buildingNext": "Apa yang sedang kami bangun selanjutnya",
+    "nextStepsTitle": "Platform Langkah Berikutnya",
+    "nextStepsDescription": "Hubungkan penonton dengan peluang nyata dalam perjalanan iman mereka, membantu mereka mengambil langkah berikutnya ke dalam komunitas, Kitab Suci, atau misi.",
+    "mediaLibraryTitle": "Perpustakaan Media Penginjilan",
+    "mediaLibraryDescription": "Perpustakaan media Kristen yang luas dengan ribuan video, film, dan sumber daya tersedia dalam berbagai bahasa untuk pelayanan dan penginjilan di seluruh dunia.",
+    "ministryToolsTitle": "Alat Digital untuk Pelayanan",
+    "ministryToolsDescription": "Pengelolaan video, distribusi konten, keterlibatan audiens, dan analitik yang dirancang untuk membantu pelayanan menjangkau lebih banyak orang secara efektif.",
+    "invitationEyebrow": "Anda diundang",
+    "invitationDescription": "Kami mengundang para praktisi, kreator, dan mitra untuk akses awal. Uji alat baru lebih dulu, berikan masukan, dan bantu bentuk produk yang dirancang untuk pekerjaan misi yang nyata.",
+    "betaTester": "Jadi penguji beta",
+    "invitationTitle": "Bantu membangun <highlight>generasi baru</highlight> alat misi"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Koleksi Video Alkitab",
+    "gospelRailTitle": "Temukan kisah lengkapnya",
+    "videoBibleDescription": "Jelajahi koleksi video dan sumber daya kami yang menghidupkan Alkitab melalui kisah dan pengajaran yang menarik.",
+    "showcaseTitle": "Kitab Suci Diceritakan Melalui Film",
+    "adventEyebrow": "Adven Natal",
+    "adventTitle": "Hitung Mundur Adven Natal",
+    "adventDescription": "Ikuti perjalanan Adven kami dengan video harian yang membangun antisipasi menuju Natal, menjelajahi pengharapan, sukacita, dan janji kedatangan Yesus.",
+    "bibleProjectEyebrow": "Bible Project",
+    "bibleProjectAdventTitle": "Adven BibleProject",
+    "nuaEyebrow": "Seri NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Seri Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Kursus Video",
+    "journeyWithJesusTitle": "Perjalanan bersama Yesus",
+    "gospelsOnVideoEyebrow": "Setiap Injil, Diceritakan dalam Video",
+    "scriptureAsWrittenTitle": "Kitab Suci, Diucapkan Persis seperti Tertulis",
+    "merryChristmas": "Selamat Natal!",
+    "daysUntilChristmas": "{count, plural, one {# hari lagi menuju Natal} other {# hari lagi menuju Natal}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "Feedback": {
+    "openForm": "Buka formulir masukan",
+    "label": "Masukan",
+    "couldNotLoad": "Formulir masukan tidak dapat dimuat.",
+    "loadingForm": "Memuat formulir masukan…",
+    "retry": "Coba lagi",
+    "cancel": "Batal",
+    "closeForm": "Tutup formulir masukan",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "VideoRecommendations": {
+    "match": "{percent}% cocok",
+    "none": "Tidak ada rekomendasi untuk video ini dalam bahasa ini."
+  },
+  "BetaTesterModal": {
+    "title": "Jadi penguji beta",
+    "trigger": "Jadi penguji beta",
+    "loadFailed": "Ada kesalahan.",
+    "loading": "Memuat...",
+    "openFormNewTab": "Buka formulir di tab baru",
+    "close": "Tutup",
+    "iframeTitle": "Jadi penguji beta"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Unduh koleksi",
+    "eyebrow": "Unduh koleksi",
+    "description": "Pilih bahasa dan kualitas satu kali. Setiap episode yang tersedia akan diunduh secara berurutan.",
+    "signInTitle": "Masuk untuk mengunduh",
+    "signInBody": "Unduhan koleksi tersedia setelah Anda masuk dengan akun Jesus Film.",
+    "signIn": "Masuk untuk mengunduh",
+    "languageLabel": "Bahasa",
+    "qualityLabel": "Kualitas video",
+    "tierHighest": "Tertinggi",
+    "tierHigh": "Tinggi",
+    "tierLow": "Rendah",
+    "loading": "Mencari episode yang tersedia…",
+    "loadError": "Unduhan untuk bahasa ini tidak dapat dimuat.",
+    "retry": "Coba lagi",
+    "noDownloads": "Tidak ada episode yang dapat diunduh dalam bahasa ini.",
+    "availableCount": "{count, plural, one {# episode siap diunduh} other {# episode siap diunduh}}",
+    "skippedCount": "{count, plural, one {# episode akan dilewati karena tidak tersedia} other {# episode akan dilewati karena tidak tersedia}}",
+    "chooseFolder": "Pilih folder unduhan",
+    "folderSelected": "Simpan ke {name}",
+    "folderError": "Folder unduhan tidak dapat dibuka.",
+    "browserFallback": "Browser Anda akan menyimpan setiap file menggunakan pengaturan unduhan biasanya. Anda mungkin diminta mengizinkan beberapa unduhan.",
+    "sessionError": "Tidak dapat memeriksa sesi Anda. Coba lagi.",
+    "downloading": "Mengunduh {title}",
+    "progress": "{completed} dari {total}",
+    "complete": "Pengunduhan selesai",
+    "canceled": "Pengunduhan dibatalkan",
+    "failedCount": "{count, plural, one {# episode gagal diunduh} other {# episode gagal diunduh}}. Pilih Unduh lagi untuk mencoba mengunduh ulang koleksi.",
+    "close": "Tutup",
+    "cancel": "Batal",
+    "start": "Unduh semua",
+    "downloadAgain": "Unduh lagi",
+    "retryFailed": "Coba lagi yang gagal"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Versi bahasa tidak tersedia",
+    "eyebrow": "Versi bahasa tidak tersedia",
+    "title": "<contentTitle>{title}</contentTitle> tidak tersedia dalam bahasa <languageName>{language}</languageName>",
+    "actionsLabel": "Pilihan tontonan yang tersedia",
+    "browseInLanguage": "Jelajahi video dalam bahasa {language}",
+    "backToSearch": "Kembali ke pencarian",
+    "audioVersionsTitle": "Versi audio lainnya",
+    "audioVersionsDescription": "Pilih bahasa audio untuk melanjutkan menonton video ini.",
+    "languageVersionLabel": "Bahasa audio",
+    "selectLanguageVersion": "Pilih versi bahasa",
+    "watchSelectedVersion": "Tonton versi yang dipilih"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Pilihan cookie",
+    "bannerTitle": "Pilihan privasi Anda",
+    "bannerDescription": "Cookie esensial menjaga Watch tetap aman dan berfungsi. Dengan izin Anda, cookie pihak pertama opsional dapat mengingat minat di berbagai kunjungan untuk mempersonalisasi rekomendasi. Rekomendasi kontekstual tetap tersedia dalam kedua keadaan.",
+    "acceptAll": "Terima semua",
+    "essentialOnly": "Hanya yang esensial",
+    "manageChoices": "Kelola pilihan",
+    "savingChoice": "Menyimpan pilihan cookie",
+    "settings": "Pengaturan cookie",
+    "settingsDescription": "Pilih apakah Watch boleh mengingat minat rekomendasi di berbagai kunjungan. Anda dapat mengubahnya kapan saja.",
+    "essentialCookies": "Cookie esensial",
+    "essentialDescription": "Keamanan, pemutaran, pilihan privasi, dan atribusi permintaan rekomendasi.",
+    "alwaysActive": "Selalu aktif",
+    "personalization": "Personalisasi",
+    "personalizationDescription": "Mengingat minat terbatas di berbagai kunjungan. Menonaktifkan ini tetap membuat rekomendasi kontekstual tersedia.",
+    "erasurePending": "Penghapusan profil sedang diproses. Rekomendasi kontekstual sudah aktif.",
+    "cancel": "Batal",
+    "saveChoices": "Simpan pilihan",
+    "saving": "Menyimpan…",
+    "loadError": "Pilihan Anda tidak dapat dimuat. Anda tetap dapat memilih di bawah.",
+    "grantError": "Personalisasi tidak dapat diaktifkan. Opsi hanya esensial tetap tersedia.",
+    "saveError": "Pilihan Anda tidak dapat disimpan. Silakan coba lagi."
+  }
+}

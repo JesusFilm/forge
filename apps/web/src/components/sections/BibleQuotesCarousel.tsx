@@ -2,20 +2,27 @@
 
 import Image from "next/image"
 import type { ReactNode } from "react"
-import type { FragmentOf } from "@forge/graphql"
+import type {
+  FragmentOf,
+  LegacyFragmentValue,
+} from "@/lib/legacy-fragment-types"
 import { BookOpen, ExternalLink } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { bibleQuotesCarouselFragment } from "@/lib/fragments/bible-quotes-carousel"
 import { Button } from "@/components/ui/button"
 import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
 } from "@/components/ui/carousel"
 import {
   CAROUSEL_BLEED_CLASSES,
   CAROUSEL_CONTENT_PADDING,
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
+import { resolveWatchShareUrlFromPathname } from "@/lib/share"
 
 export { bibleQuotesCarouselFragment }
 
@@ -27,10 +34,27 @@ type QuoteItem = NonNullable<
   NonNullable<FragmentOf<typeof bibleQuotesCarouselFragment>["quotes"]>[number]
 >
 
+type ImageAssetBackedQuote = QuoteItem & {
+  imageAsset?: { previewUrl?: string | null } | null
+  backgroundImageAsset?: { previewUrl?: string | null } | null
+}
+
+function quoteImageUrl(quote: QuoteItem) {
+  const assetBackedQuote = quote as ImageAssetBackedQuote
+  return (
+    assetBackedQuote.imageAsset?.previewUrl ??
+    assetBackedQuote.backgroundImageAsset?.previewUrl ??
+    quote.imageUrl
+  )
+}
+
 export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
+  const t = useTranslations("BibleQuotes")
   const { heading, quotes } = data
   const validQuotes =
-    quotes?.filter((q): q is NonNullable<typeof q> => q != null) ?? []
+    quotes?.filter(
+      (q: LegacyFragmentValue): q is NonNullable<typeof q> => q != null,
+    ) ?? []
 
   if (validQuotes.length === 0) return null
 
@@ -48,7 +72,7 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
           className="w-full"
         >
           <CarouselContent className={`-ml-4 ${CAROUSEL_CONTENT_PADDING}`}>
-            {validQuotes.map((quote) => (
+            {validQuotes.map((quote: QuoteItem) => (
               <CarouselItem
                 key={quote.id}
                 className="basis-[85vw] pl-4 sm:basis-[50%] lg:basis-1/4"
@@ -60,10 +84,16 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
                 )}
               </CarouselItem>
             ))}
-            <CarouselItem className="basis-auto pl-0" aria-hidden="true">
+            <CarouselItem
+              className="basis-auto pl-0"
+              aria-hidden="true"
+              tabIndex={-1}
+            >
               <div className={CAROUSEL_END_SPACER} />
             </CarouselItem>
           </CarouselContent>
+          <CarouselPrevious label={t("previousQuote")} />
+          <CarouselNext label={t("nextQuote")} />
         </Carousel>
       </div>
     </div>
@@ -71,8 +101,16 @@ export function BibleQuotesCarousel({ data }: BibleQuotesCarouselProps) {
 }
 
 function BibleQuotesHeader({ heading }: { heading: string | null }) {
+  const t = useTranslations("BibleQuotes")
+
   async function handleShare() {
-    const shareUrl = new URL(window.location.href)
+    const resolvedUrl = resolveWatchShareUrlFromPathname({
+      origin: window.location.origin,
+      pathname: window.location.pathname,
+    })
+    if (!resolvedUrl) return
+
+    const shareUrl = new URL(resolvedUrl)
     shareUrl.searchParams.set("utm_source", "share")
 
     const shareData = {
@@ -95,13 +133,13 @@ function BibleQuotesHeader({ heading }: { heading: string | null }) {
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between pb-2">
       {heading && (
-        <h3 className="text-sm font-semibold tracking-wider text-red-100/70 uppercase xl:text-base 2xl:text-lg">
+        <h3 className="text-base font-semibold tracking-eyebrow text-red-100/70 uppercase sm:text-sm xl:text-base 2xl:text-lg">
           {heading}
         </h3>
       )}
-      <Button variant="pill" onClick={handleShare} aria-label="Share">
+      <Button variant="pill" onClick={handleShare} aria-label={t("share")}>
         <ExternalLink size={16} />
-        <span>Share</span>
+        <span>{t("share")}</span>
       </Button>
     </div>
   )
@@ -138,18 +176,33 @@ function BibleQuoteCard({
 }
 
 function QuoteCard({ quote }: { quote: QuoteItem }) {
+  const t = useTranslations("BibleQuotes")
+  // Reference-first scripture (video-anchored generation) stores only the
+  // reference; verse text is resolved at render in a follow-up. Until then,
+  // render the reference prominently with a "read it" hint instead of a blank.
+  const hasText = typeof quote.text === "string" && quote.text.trim().length > 0
   return (
     <BibleQuoteCard
-      imageUrl={quote.imageUrl}
+      imageUrl={quoteImageUrl(quote)}
       bgColor={quote.backgroundColor}
       altText={quote.reference}
     >
-      <span className="mb-1 block text-[10px] font-semibold tracking-[0.15em] text-amber-200/60 uppercase">
+      <span
+        className={`mb-1 block font-semibold tracking-[0.15em] text-amber-200/60 uppercase ${
+          hasText ? "text-xs sm:text-[10px]" : "text-base sm:text-sm"
+        }`}
+      >
         {quote.reference}
       </span>
-      <p className="text-base leading-relaxed text-balance text-white/90">
-        {quote.text}
-      </p>
+      {hasText ? (
+        <p className="text-base leading-relaxed text-balance text-white/90">
+          {quote.text}
+        </p>
+      ) : (
+        <p className="text-base sm:text-sm leading-relaxed text-balance text-white/70">
+          {t("readPassage")}
+        </p>
+      )}
     </BibleQuoteCard>
   )
 }
@@ -157,11 +210,11 @@ function QuoteCard({ quote }: { quote: QuoteItem }) {
 function FreeResourceCard({ quote }: { quote: QuoteItem }) {
   return (
     <BibleQuoteCard
-      imageUrl={quote.imageUrl}
+      imageUrl={quoteImageUrl(quote)}
       bgColor={quote.backgroundColor}
       altText={quote.reference}
     >
-      <span className="mb-1 block text-xs font-semibold tracking-[0.15em] text-white/70 uppercase">
+      <span className="mb-1 block text-sm sm:text-xs font-semibold tracking-[0.15em] text-white/70 uppercase">
         {quote.reference}
       </span>
       <h3 className="mt-1 mb-4 text-xl font-bold leading-snug text-balance text-white/90">
@@ -169,6 +222,7 @@ function FreeResourceCard({ quote }: { quote: QuoteItem }) {
       </h3>
       <Button
         variant="pill"
+        nativeButton={false}
         render={
           quote.ctaLink ? (
             <a href={quote.ctaLink} target="_blank" rel="noopener noreferrer" />

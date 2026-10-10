@@ -1,0 +1,662 @@
+import type { AuthSessionSnapshot } from "../../authSession"
+import { adminFormsFor } from "../../../i18n/adminLanguage"
+import {
+  createMiniPlayerStore,
+  getMiniPlayerStore,
+  sameSessionContent,
+  screenAdminForms,
+  type MiniPlayerEndEvent,
+  type MiniPlayerAuthSource,
+} from "../store"
+
+function buildAuthSource(initialUserId: string | null = null) {
+  let snapshot: AuthSessionSnapshot =
+    initialUserId == null
+      ? { status: "signedOut", user: null }
+      : { status: "signedIn", user: { id: initialUserId } }
+  const listeners = new Set<() => void>()
+  const source: MiniPlayerAuthSource = {
+    getSnapshot: () => snapshot,
+    subscribe: (listener) => {
+      listeners.add(listener)
+      return () => {
+        listeners.delete(listener)
+      }
+    },
+  }
+  return {
+    source,
+    setUser(userId: string | null) {
+      snapshot =
+        userId == null
+          ? { status: "signedOut", user: null }
+          : { status: "signedIn", user: { id: userId } }
+      for (const listener of listeners) listener()
+    },
+  }
+}
+
+function startedStore() {
+  const store = createMiniPlayerStore()
+  const ends: MiniPlayerEndEvent[] = []
+  store.onEnd((event) => ends.push(event))
+  store.start({
+    videoId: "video-1",
+    videoSlug: "birth-of-jesus",
+    title: "Birth of Jesus",
+    posterUrl: "https://example.test/poster.jpg",
+    languageSlug: "english",
+    originPattern: "watch/[slug]",
+  })
+  return { store, ends }
+}
+
+describe("sameSessionContent (one identity for the store and the host)", () => {
+  it("matches one video across the keys a remount happens to carry", () => {
+    const byId = { videoId: "video-a", videoSlug: "life-of-jesus" }
+    expect(sameSessionContent(byId, { ...byId })).toBe(true)
+    // Before its record lands a screen has only the slug; after, only the id
+    // compare would call this a different video and replace the session.
+    expect(
+      sameSessionContent({ videoId: null, videoSlug: "life-of-jesus" }, byId),
+    ).toBe(true)
+    expect(
+      sameSessionContent({ videoId: "video-b", videoSlug: "other" }, byId),
+    ).toBe(false)
+    expect(
+      sameSessionContent({ videoId: null, videoSlug: "other" }, byId),
+    ).toBe(false)
+  })
+
+  // The id branch on its own: with an id on both sides the slug is not read,
+  // so an alias slug still names one video and a shared slug cannot join two.
+  it("decides on the ids alone when both sides carry one", () => {
+    expect(
+      sameSessionContent(
+        { videoId: "video-a", videoSlug: "life-of-jesus" },
+        { videoId: "video-a", videoSlug: "life-of-jesus-alias" },
+      ),
+    ).toBe(true)
+    expect(
+      sameSessionContent(
+        { videoId: "video-a", videoSlug: "life-of-jesus" },
+        { videoId: "video-b", videoSlug: "life-of-jesus" },
+      ),
+    ).toBe(false)
+  })
+})
+
+describe("start", () => {
+  it("publishes a playing session with the identity the window needs", () => {
+    const { store } = startedStore()
+    const session = store.getSnapshot().session
+    expect(session).toMatchObject({
+      videoId: "video-1",
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+      languageSlug: "english",
+      originPattern: "watch/[slug]",
+      phase: "playing",
+      endedCause: null,
+      positionSeconds: 0,
+    })
+    expect(store.getSnapshot().dismissal).toBe("none")
+  })
+
+  it("ends the previous session as replaced when different content starts", () => {
+    const { store, ends } = startedStore()
+    store.publishPosition({ positionSeconds: 42, durationSeconds: 600 })
+    store.start({
+      videoId: "video-2",
+      videoSlug: "magdalena",
+      title: "Magdalena",
+    })
+
+    expect(ends).toHaveLength(1)
+    expect(ends[0].reason).toBe("replaced")
+    expect(ends[0].session.videoId).toBe("video-1")
+    expect(ends[0].session.positionSeconds).toBe(42)
+    expect(store.getSnapshot().session).toMatchObject({
+      videoId: "video-2",
+      positionSeconds: 0,
+    })
+  })
+
+  it("merges a re-start of the SAME content and keeps the position", () => {
+    const { store, ends } = startedStore()
+    store.publishPosition({ positionSeconds: 90, durationSeconds: 600 })
+    store.start({
+      videoId: "video-1",
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+      languageSlug: "spanish",
+    })
+
+    expect(ends).toHaveLength(0)
+    expect(store.getSnapshot().session).toMatchObject({
+      positionSeconds: 90,
+      durationSeconds: 600,
+      languageSlug: "spanish",
+    })
+  })
+
+  // A remounted screen publishes no dub until its provider settles one, and
+  // that provider reads the dub back from HERE: dropping it undoes a pick.
+  it("keeps the dub the window knows across a re-start that names none", () => {
+    const { store, ends } = startedStore()
+    store.start({
+      videoId: "video-1",
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+      languageSlug: "spanish",
+    })
+    store.start({
+      videoId: null,
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+    })
+
+    expect(ends).toHaveLength(0)
+    expect(store.getSnapshot().session).toMatchObject({
+      videoId: "video-1",
+      languageSlug: "spanish",
+    })
+  })
+
+  // A screen that detaches before its record lands names the video by slug
+  // alone; the session it re-starts already carries the id, and keeps it.
+  it("merges a re-start of the same content that has not resolved the id yet", () => {
+    const { store, ends } = startedStore()
+    store.publishPosition({ positionSeconds: 90, durationSeconds: 600 })
+    store.start({
+      videoId: null,
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+    })
+
+    expect(ends).toHaveLength(0)
+    expect(store.getSnapshot().session).toMatchObject({
+      videoId: "video-1",
+      positionSeconds: 90,
+      durationSeconds: 600,
+    })
+  })
+
+  // The other arm of the same line: a different id-less video (a download)
+  // replaces the session and must not inherit the departed video's id.
+  it("gives a different id-less video no id of its own", () => {
+    const { store, ends } = startedStore()
+    store.publishPosition({ positionSeconds: 90, durationSeconds: 600 })
+    store.start({
+      videoId: null,
+      videoSlug: "downloaded-slug",
+      title: "A download",
+    })
+
+    expect(ends.map((e) => e.reason)).toEqual(["replaced"])
+    expect(store.getSnapshot().session).toMatchObject({
+      videoId: null,
+      videoSlug: "downloaded-slug",
+      positionSeconds: 0,
+    })
+  })
+
+  it("resets a merged 'ended' phase when the caller verified live playback", () => {
+    const { store } = startedStore()
+    store.publishPosition({ positionSeconds: 590, durationSeconds: 600 })
+    store.markEnded("playToEnd")
+    expect(store.getSnapshot().session?.phase).toBe("ended")
+
+    // The full-view replay's pop (R27): detachSlot re-starts the same content
+    // having verified unfinished playback, so the window must mount playing —
+    // an 'ended' merge releases its surface over live audio.
+    store.start({
+      videoId: "video-1",
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+      positionSeconds: 12,
+      playbackLive: true,
+    })
+
+    expect(store.getSnapshot().session).toMatchObject({
+      phase: "playing",
+      endedCause: null,
+      positionSeconds: 12,
+    })
+  })
+
+  it("keeps a merged 'ended' phase when the caller did not verify playback", () => {
+    const { store } = startedStore()
+    store.markEnded("failure")
+
+    store.start({
+      videoId: "video-1",
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+    })
+
+    expect(store.getSnapshot().session).toMatchObject({
+      phase: "ended",
+      endedCause: "failure",
+    })
+  })
+
+  it("notifies subscribers with a fresh snapshot identity", () => {
+    const store = createMiniPlayerStore()
+    const listener = jest.fn()
+    store.subscribe(listener)
+    const before = store.getSnapshot()
+
+    store.start({ videoId: "video-1", videoSlug: "a", title: "A" })
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(store.getSnapshot()).not.toBe(before)
+  })
+})
+
+describe("publishPosition", () => {
+  it("carries the poll's position and duration", () => {
+    const { store } = startedStore()
+    store.publishPosition({ positionSeconds: 12.5, durationSeconds: 300 })
+    expect(store.getSnapshot().session).toMatchObject({
+      positionSeconds: 12.5,
+      durationSeconds: 300,
+    })
+  })
+
+  it("is inert with no session", () => {
+    const store = createMiniPlayerStore()
+    const listener = jest.fn()
+    store.subscribe(listener)
+    store.publishPosition({ positionSeconds: 5 })
+    expect(store.getSnapshot().session).toBeNull()
+    expect(listener).not.toHaveBeenCalled()
+  })
+})
+
+describe("ended phase", () => {
+  it("closes the quality session as ended and keeps the window mounted", () => {
+    const { store, ends } = startedStore()
+    store.markEnded("playToEnd")
+
+    expect(store.getSnapshot().session).toMatchObject({
+      phase: "ended",
+      endedCause: "playToEnd",
+    })
+    expect(ends).toHaveLength(1)
+    expect(ends[0].reason).toBe("ended")
+    expect(ends[0].endedCause).toBe("playToEnd")
+  })
+
+  it("reports a failure as its own quality reason (R22)", () => {
+    const { store, ends } = startedStore()
+    store.markEnded("failure")
+    expect(ends[0].reason).toBe("failed")
+    expect(ends[0].endedCause).toBe("failure")
+  })
+
+  it("closes once, however many end signals arrive", () => {
+    const { store, ends } = startedStore()
+    store.markEnded("playToEnd")
+    store.markEnded("failure")
+    expect(ends).toHaveLength(1)
+    expect(store.getSnapshot().session?.endedCause).toBe("playToEnd")
+  })
+
+  it("restarts inside the window on replay (R27)", () => {
+    const { store } = startedStore()
+    store.publishPosition({ positionSeconds: 300, durationSeconds: 300 })
+    store.markEnded("playToEnd")
+    store.markPlaying()
+
+    expect(store.getSnapshot().session).toMatchObject({
+      phase: "playing",
+      endedCause: null,
+      positionSeconds: 0,
+    })
+  })
+})
+
+describe("dismissal", () => {
+  it("enters exiting, stops the session, and clears only on completion", () => {
+    const { store, ends } = startedStore()
+    store.requestDismiss()
+
+    expect(store.getSnapshot().dismissal).toBe("exiting")
+    expect(store.getSnapshot().session).not.toBeNull()
+    expect(ends).toEqual([expect.objectContaining({ reason: "dismissed" })])
+
+    store.reportExitComplete()
+    expect(store.getSnapshot().session).toBeNull()
+    expect(store.getSnapshot().dismissal).toBe("none")
+  })
+
+  it("ignores an exit-completion report that no dismissal armed", () => {
+    const { store } = startedStore()
+    store.reportExitComplete()
+    expect(store.getSnapshot().session).not.toBeNull()
+  })
+
+  it("does not close the quality session twice for an ended window (R27)", () => {
+    const { store, ends } = startedStore()
+    store.markEnded("playToEnd")
+    store.requestDismiss()
+
+    expect(store.getSnapshot().dismissal).toBe("exiting")
+    expect(ends.map((event) => event.reason)).toEqual(["ended"])
+  })
+
+  it("is idempotent", () => {
+    const { store, ends } = startedStore()
+    store.requestDismiss()
+    store.requestDismiss()
+    expect(ends).toHaveLength(1)
+  })
+
+  it("is inert with no session", () => {
+    const store = createMiniPlayerStore()
+    store.requestDismiss()
+    expect(store.getSnapshot().dismissal).toBe("none")
+  })
+})
+
+describe("picture-in-picture hold", () => {
+  it("defers a dismiss until the hold clears (R24, AE12)", () => {
+    const { store, ends } = startedStore()
+    store.setPipHold(true)
+    store.requestDismiss()
+
+    expect(store.getSnapshot().dismissal).toBe("deferred")
+    expect(store.getSnapshot().session).not.toBeNull()
+    expect(ends).toHaveLength(0)
+
+    store.setPipHold(false)
+    expect(store.getSnapshot().dismissal).toBe("exiting")
+    expect(ends).toEqual([expect.objectContaining({ reason: "dismissed" })])
+  })
+
+  it("notifies only on a real latch change", () => {
+    const { store } = startedStore()
+    const listener = jest.fn()
+    store.subscribe(listener)
+    store.setPipHold(true)
+    store.setPipHold(true)
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
+  it("survives the session being cleared", () => {
+    const { store } = startedStore()
+    store.setPipHold(true)
+    store.end("abandoned")
+    expect(store.getSnapshot().pipHold).toBe(true)
+  })
+})
+
+describe("explicit end", () => {
+  it("clears immediately and reports the reason", () => {
+    const { store, ends } = startedStore()
+    store.end("abandoned")
+    expect(store.getSnapshot().session).toBeNull()
+    expect(ends).toEqual([expect.objectContaining({ reason: "abandoned" })])
+  })
+
+  it("is inert with no session", () => {
+    const store = createMiniPlayerStore()
+    const ends: MiniPlayerEndEvent[] = []
+    store.onEnd((event) => ends.push(event))
+    store.end("abandoned")
+    expect(ends).toHaveLength(0)
+  })
+
+  it("releases an end listener on unsubscribe", () => {
+    const { store } = startedStore()
+    const listener = jest.fn()
+    const unsubscribe = store.onEnd(listener)
+    unsubscribe()
+    store.end("abandoned")
+    expect(listener).not.toHaveBeenCalled()
+  })
+})
+
+describe("auth attach (KTD15, R25)", () => {
+  it("tags a session with the signed-in subject", () => {
+    const auth = buildAuthSource("account-a")
+    const store = createMiniPlayerStore()
+    store.attachAuthSession(auth.source)
+    store.start({ videoId: "video-1", videoSlug: "a", title: "A" })
+    expect(store.getSnapshot().session?.accountId).toBe("account-a")
+  })
+
+  it("ends the session and clears on sign-out, accepting no later write", () => {
+    const auth = buildAuthSource("account-a")
+    const store = createMiniPlayerStore()
+    const ends: MiniPlayerEndEvent[] = []
+    store.onEnd((event) => ends.push(event))
+    store.attachAuthSession(auth.source)
+    store.start({ videoId: "video-1", videoSlug: "a", title: "A" })
+    store.publishPosition({ positionSeconds: 30, durationSeconds: 600 })
+
+    auth.setUser(null)
+
+    expect(store.getSnapshot().session).toBeNull()
+    expect(ends).toEqual([
+      expect.objectContaining({
+        reason: "abandoned",
+        session: expect.objectContaining({
+          accountId: "account-a",
+          positionSeconds: 30,
+        }),
+      }),
+    ])
+
+    // A poll tick still in flight for the signed-out account writes nothing.
+    store.publishPosition({ positionSeconds: 45, durationSeconds: 600 })
+    expect(store.getSnapshot().session).toBeNull()
+    expect(ends).toHaveLength(1)
+  })
+
+  it("ends the session on an account switch", () => {
+    const auth = buildAuthSource("account-a")
+    const store = createMiniPlayerStore()
+    const ends: MiniPlayerEndEvent[] = []
+    store.onEnd((event) => ends.push(event))
+    store.attachAuthSession(auth.source)
+    store.start({ videoId: "video-1", videoSlug: "a", title: "A" })
+
+    auth.setUser("account-b")
+
+    expect(store.getSnapshot().session).toBeNull()
+    expect(ends).toHaveLength(1)
+  })
+
+  it("rejects a write whose session belongs to a previous subject", () => {
+    const auth = buildAuthSource("account-a")
+    const store = createMiniPlayerStore()
+    const detach = store.attachAuthSession(auth.source)
+    store.start({ videoId: "video-1", videoSlug: "a", title: "A" })
+    // Detached first, so nothing clears the stale session: the write guard is
+    // the only thing left standing between account-a's session and account-b.
+    detach()
+    store.attachAuthSession(buildAuthSource("account-b").source)
+
+    store.publishPosition({ positionSeconds: 30, durationSeconds: 600 })
+    expect(store.getSnapshot().session?.positionSeconds).toBe(0)
+  })
+
+  it("keeps playing when the same subject's profile changes", () => {
+    const auth = buildAuthSource("account-a")
+    const store = createMiniPlayerStore()
+    const ends: MiniPlayerEndEvent[] = []
+    store.onEnd((event) => ends.push(event))
+    store.attachAuthSession(auth.source)
+    store.start({ videoId: "video-1", videoSlug: "a", title: "A" })
+
+    auth.setUser("account-a")
+
+    expect(store.getSnapshot().session).not.toBeNull()
+    expect(ends).toHaveLength(0)
+  })
+
+  it("adopts a session started signed-out when the viewer signs in", () => {
+    const auth = buildAuthSource(null)
+    const store = createMiniPlayerStore()
+    const ends: MiniPlayerEndEvent[] = []
+    store.onEnd((event) => ends.push(event))
+    store.attachAuthSession(auth.source)
+    store.start({ videoId: "video-1", videoSlug: "a", title: "A" })
+    expect(store.getSnapshot().session?.accountId).toBeNull()
+
+    auth.setUser("account-a")
+
+    expect(ends).toHaveLength(0)
+    expect(store.getSnapshot().session?.accountId).toBe("account-a")
+    store.publishPosition({ positionSeconds: 10 })
+    expect(store.getSnapshot().session?.positionSeconds).toBe(10)
+  })
+
+  it("stops listening after detach", () => {
+    const auth = buildAuthSource("account-a")
+    const store = createMiniPlayerStore()
+    const detach = store.attachAuthSession(auth.source)
+    store.start({ videoId: "video-1", videoSlug: "a", title: "A" })
+    detach()
+
+    auth.setUser(null)
+    expect(store.getSnapshot().session).not.toBeNull()
+  })
+})
+
+describe("module singleton", () => {
+  it("returns one store", () => {
+    expect(getMiniPlayerStore()).toBe(getMiniPlayerStore())
+  })
+})
+
+// feat-553 KTD10: the reader cover ends a session the viewer never ended. A
+// report here would close the quality session, the recommendation episode and
+// the player settings while the player keeps playing.
+describe("an ending with no report (the reader cover)", () => {
+  it("clears the session at once and reports nothing", () => {
+    const { store, ends } = startedStore()
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    store.clearWithoutReport()
+
+    expect(store.getSnapshot().session).toBeNull()
+    expect(store.getSnapshot().dismissal).toBe("none")
+    expect(ends).toHaveLength(0)
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps the picture-in-picture hold", () => {
+    const { store } = startedStore()
+    store.setPipHold(true)
+
+    store.clearWithoutReport()
+
+    expect(store.getSnapshot().pipHold).toBe(true)
+  })
+
+  it("is inert with no session", () => {
+    const store = createMiniPlayerStore()
+    const listener = jest.fn()
+    store.subscribe(listener)
+
+    store.clearWithoutReport()
+
+    expect(listener).not.toHaveBeenCalled()
+  })
+
+  it("runs the exit for a closed window and reports nothing", () => {
+    const { store, ends } = startedStore()
+
+    store.dismissWithoutReport()
+
+    expect(store.getSnapshot().dismissal).toBe("exiting")
+    expect(ends).toHaveLength(0)
+    store.reportExitComplete()
+    expect(store.getSnapshot().session).toBeNull()
+    expect(ends).toHaveLength(0)
+  })
+
+  it("stays silent when the hold defers the exit (R24)", () => {
+    const { store, ends } = startedStore()
+    store.setPipHold(true)
+
+    store.dismissWithoutReport()
+    expect(store.getSnapshot().dismissal).toBe("deferred")
+    store.setPipHold(false)
+
+    expect(store.getSnapshot().dismissal).toBe("exiting")
+    expect(ends).toHaveLength(0)
+  })
+
+  it("leaves a later reported dismissal reported", () => {
+    const { store, ends } = startedStore()
+    store.setPipHold(true)
+    store.dismissWithoutReport()
+    store.setPipHold(false)
+    store.reportExitComplete()
+    store.start({ videoId: "video-2", videoSlug: "b", title: "B" })
+
+    store.requestDismiss()
+
+    expect(ends.map((event) => event.reason)).toEqual(["dismissed"])
+  })
+})
+
+// ── U6. The session keeps the language its screen read with (KTD16) ─────────
+
+describe("the session's Admin language forms", () => {
+  const EN = adminFormsFor("en")
+  const RU = adminFormsFor("ru")
+
+  // AE11: the phone moves to Russian while the window plays; the expand
+  // remounts a screen that must read the session's English forms back.
+  it("keeps the forms its screen noted through an expand after a language change", () => {
+    const store = createMiniPlayerStore()
+    store.noteScreenAdminForms("birth-of-jesus", EN)
+    store.start({ videoId: "v1", videoSlug: "birth-of-jesus", title: "T" })
+    expect(store.getSnapshot().session?.adminForms).toBe(EN)
+    // A screen that ignored the session would note Russian here.
+    store.noteScreenAdminForms("birth-of-jesus", RU)
+    store.start({ videoId: null, videoSlug: "birth-of-jesus", title: "T" })
+    expect(store.getSnapshot().session?.adminForms).toBe(EN)
+  })
+
+  it("keeps the notes of a stack of open screens, so each video starts with its own", () => {
+    const store = createMiniPlayerStore()
+    store.noteScreenAdminForms("birth-of-jesus", EN)
+    store.noteScreenAdminForms("the-baptism", RU)
+    store.start({ videoId: "v1", videoSlug: "birth-of-jesus", title: "T" })
+    expect(store.getSnapshot().session?.adminForms).toBe(EN)
+    store.start({ videoId: "v2", videoSlug: "the-baptism", title: "B" })
+    expect(store.getSnapshot().session?.adminForms).toBe(RU)
+  })
+
+  it("has no forms when no screen noted any", () => {
+    const { store } = startedStore()
+    expect(store.getSnapshot().session?.adminForms).toBeNull()
+  })
+
+  describe("screenAdminForms (what a media screen reads at mount)", () => {
+    const session = { videoSlug: "birth-of-jesus", adminForms: EN }
+
+    it("reads the session's forms for the video the session plays", () => {
+      expect(screenAdminForms(session, "birth-of-jesus", RU)).toBe(EN)
+    })
+
+    it("reads the current forms for another video, or a session with none", () => {
+      expect(screenAdminForms(session, "the-baptism", RU)).toBe(RU)
+      expect(screenAdminForms(null, "birth-of-jesus", RU)).toBe(RU)
+      expect(
+        screenAdminForms(
+          { videoSlug: "birth-of-jesus", adminForms: null },
+          "birth-of-jesus",
+          RU,
+        ),
+      ).toBe(RU)
+    })
+  })
+})

@@ -1,0 +1,2056 @@
+{
+  "browser": "Chromium 149.0.7827.55",
+  "viewport": {
+    "width": 1440,
+    "height": 1000
+  },
+  "units": "milliseconds",
+  "productionWebBeforeHydrationFix": "2bf3eba35f996884e2076fc3d60c3331146dfdb4",
+  "runs": [
+    {
+      "group": "prod",
+      "index": 0,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 1424,
+          "duration": 0
+        },
+        {
+          "startTime": 1424,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 1424,
+          "duration": 0,
+          "size": 71008,
+          "tag": "H1",
+          "text": "Chosen Witness",
+          "renderTime": 1424,
+          "loadTime": 0
+        },
+        {
+          "startTime": 1544,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 1544,
+          "loadTime": 1325.800000011921
+        },
+        {
+          "startTime": 11044,
+          "duration": 0,
+          "size": 1013760,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 11044,
+          "loadTime": 0
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.738026,
+        "paused": false
+      },
+      "maxLongTaskMs": 149
+    },
+    {
+      "group": "prod",
+      "index": 1,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 796,
+          "duration": 0
+        },
+        {
+          "startTime": 796,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 796,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 796,
+          "loadTime": 695.5
+        }
+      ],
+      "finalVideo": null,
+      "maxLongTaskMs": 96
+    },
+    {
+      "group": "prod",
+      "index": 2,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 792,
+          "duration": 0
+        },
+        {
+          "startTime": 792,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 792,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 792,
+          "loadTime": 693
+        },
+        {
+          "startTime": 9884,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9884,
+          "loadTime": 9658.600000023842
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 2.06428,
+        "paused": false
+      },
+      "maxLongTaskMs": 116
+    },
+    {
+      "group": "prod",
+      "index": 3,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 624,
+          "duration": 0
+        },
+        {
+          "startTime": 624,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 624,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 624,
+          "loadTime": 467.5
+        },
+        {
+          "startTime": 9572,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9572,
+          "loadTime": 9360.300000011921
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.834434,
+        "paused": false
+      },
+      "maxLongTaskMs": 160
+    },
+    {
+      "group": "prod",
+      "index": 4,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 572,
+          "duration": 0
+        },
+        {
+          "startTime": 572,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 572,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 572,
+          "loadTime": 430.39999997615814
+        },
+        {
+          "startTime": 9624,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9624,
+          "loadTime": 9360
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.969222,
+        "paused": false
+      },
+      "maxLongTaskMs": 137
+    },
+    {
+      "group": "prod",
+      "index": 5,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 544,
+          "duration": 0
+        },
+        {
+          "startTime": 544,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 544,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 544,
+          "loadTime": 433.5999999642372
+        },
+        {
+          "startTime": 9560,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9560,
+          "loadTime": 9347.199999988079
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.718229,
+        "paused": false
+      },
+      "maxLongTaskMs": 113
+    },
+    {
+      "group": "prod-simple",
+      "index": 0,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 2876,
+          "duration": 0
+        },
+        {
+          "startTime": 2876,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 2876,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 2876,
+          "loadTime": 2722.7999999523163
+        },
+        {
+          "startTime": 11868,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 11868,
+          "loadTime": 11589
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.567263,
+        "paused": false
+      },
+      "maxLongTaskMs": 171
+    },
+    {
+      "group": "prod-simple",
+      "index": 1,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 704,
+          "duration": 0
+        },
+        {
+          "startTime": 704,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 704,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 704,
+          "loadTime": 473.30000001192093
+        },
+        {
+          "startTime": 9568,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9568,
+          "loadTime": 9366.300000011921
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.287222,
+        "paused": false
+      },
+      "maxLongTaskMs": 150
+    },
+    {
+      "group": "prod-simple",
+      "index": 2,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 1448,
+          "duration": 0
+        },
+        {
+          "startTime": 1448,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 1448,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 1448,
+          "loadTime": 1301.8999999761581
+        },
+        {
+          "startTime": 10344,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 10344,
+          "loadTime": 10137.800000011921
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 2.002927,
+        "paused": false
+      },
+      "maxLongTaskMs": 120
+    },
+    {
+      "group": "prod-simple",
+      "index": 3,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 808,
+          "duration": 0
+        },
+        {
+          "startTime": 808,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 808,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 808,
+          "loadTime": 669.1000000238419
+        },
+        {
+          "startTime": 9736,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9736,
+          "loadTime": 9482.699999988079
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.823661,
+        "paused": false
+      },
+      "maxLongTaskMs": 124
+    },
+    {
+      "group": "prod-simple",
+      "index": 4,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 540,
+          "duration": 0
+        },
+        {
+          "startTime": 540,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 540,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 540,
+          "loadTime": 394.19999998807907
+        },
+        {
+          "startTime": 9472,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9472,
+          "loadTime": 9264.899999976158
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.708534,
+        "paused": false
+      },
+      "maxLongTaskMs": 139
+    },
+    {
+      "group": "prod-simple",
+      "index": 5,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 904,
+          "duration": 0
+        },
+        {
+          "startTime": 904,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 904,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 904,
+          "loadTime": 751.5
+        },
+        {
+          "startTime": 9824,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9824,
+          "loadTime": 9608
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.855231,
+        "paused": false
+      },
+      "maxLongTaskMs": 133
+    },
+    {
+      "group": "local-valid",
+      "index": 0,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 432,
+          "duration": 0
+        },
+        {
+          "startTime": 432,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 432,
+          "duration": 0,
+          "size": 71008,
+          "tag": "H1",
+          "text": "Chosen Witness",
+          "renderTime": 432,
+          "loadTime": 0
+        },
+        {
+          "startTime": 564,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 564,
+          "loadTime": 277.19999998807907
+        },
+        {
+          "startTime": 9380,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9380,
+          "loadTime": 9142.599999964237
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.376085,
+        "paused": false
+      },
+      "maxLongTaskMs": 146
+    },
+    {
+      "group": "local-valid",
+      "index": 1,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 1080,
+          "duration": 0
+        },
+        {
+          "startTime": 1080,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 1080,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 1080,
+          "loadTime": 925.1000000238419
+        },
+        {
+          "startTime": 10060,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 10060,
+          "loadTime": 9814.5
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.827724,
+        "paused": false
+      },
+      "maxLongTaskMs": 193
+    },
+    {
+      "group": "local-valid",
+      "index": 2,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 404,
+          "duration": 0
+        },
+        {
+          "startTime": 404,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 404,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 404,
+          "loadTime": 260.5
+        },
+        {
+          "startTime": 9344,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9344,
+          "loadTime": 9107.800000011921
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.80101,
+        "paused": false
+      },
+      "maxLongTaskMs": 168
+    },
+    {
+      "group": "local-valid",
+      "index": 3,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 340,
+          "duration": 0
+        },
+        {
+          "startTime": 340,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 340,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 340,
+          "loadTime": 216.4000000357628
+        },
+        {
+          "startTime": 9256,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9256,
+          "loadTime": 9051.400000035763
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.851322,
+        "paused": false
+      },
+      "maxLongTaskMs": 150
+    },
+    {
+      "group": "local-valid",
+      "index": 4,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 444,
+          "duration": 0
+        },
+        {
+          "startTime": 444,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 444,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 444,
+          "loadTime": 250.19999998807907
+        },
+        {
+          "startTime": 9644,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9644,
+          "loadTime": 9352.699999988079
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.608913,
+        "paused": false
+      },
+      "maxLongTaskMs": 214
+    },
+    {
+      "group": "local-valid",
+      "index": 5,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 480,
+          "duration": 0
+        },
+        {
+          "startTime": 480,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 480,
+          "duration": 0,
+          "size": 71008,
+          "tag": "H1",
+          "text": "Chosen Witness",
+          "renderTime": 480,
+          "loadTime": 0
+        },
+        {
+          "startTime": 632,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 632,
+          "loadTime": 365.5
+        },
+        {
+          "startTime": 9660,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9660,
+          "loadTime": 9435.900000035763
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.347866,
+        "paused": false
+      },
+      "maxLongTaskMs": 199
+    },
+    {
+      "group": "local-fixed-chosen",
+      "index": 0,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 1192,
+          "duration": 0
+        },
+        {
+          "startTime": 1192,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 1192,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 1192,
+          "loadTime": 1000
+        },
+        {
+          "startTime": 10028,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 10028,
+          "loadTime": 9804.5
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.354628,
+        "paused": false
+      },
+      "maxLongTaskMs": 125
+    },
+    {
+      "group": "local-fixed-chosen",
+      "index": 1,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 340,
+          "duration": 0
+        },
+        {
+          "startTime": 340,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 340,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 340,
+          "loadTime": 217.5
+        },
+        {
+          "startTime": 9236,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9236,
+          "loadTime": 8975.099999964237
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.852448,
+        "paused": false
+      },
+      "maxLongTaskMs": 143
+    },
+    {
+      "group": "local-fixed-chosen",
+      "index": 2,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 332,
+          "duration": 0
+        },
+        {
+          "startTime": 332,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 332,
+          "duration": 0,
+          "size": 71008,
+          "tag": "H1",
+          "text": "Chosen Witness",
+          "renderTime": 332,
+          "loadTime": 0
+        },
+        {
+          "startTime": 492,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 492,
+          "loadTime": 243
+        },
+        {
+          "startTime": 9252,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9252,
+          "loadTime": 9058.300000011921
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.701391,
+        "paused": false
+      },
+      "maxLongTaskMs": 130
+    },
+    {
+      "group": "local-fixed-chosen",
+      "index": 3,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 332,
+          "duration": 0
+        },
+        {
+          "startTime": 332,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 332,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 332,
+          "loadTime": 215.5999999642372
+        },
+        {
+          "startTime": 9216,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9216,
+          "loadTime": 9000.399999976158
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.885861,
+        "paused": false
+      },
+      "maxLongTaskMs": 149
+    },
+    {
+      "group": "local-fixed-chosen",
+      "index": 4,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 332,
+          "duration": 0
+        },
+        {
+          "startTime": 332,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 332,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 332,
+          "loadTime": 210.5
+        },
+        {
+          "startTime": 9232,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9232,
+          "loadTime": 9025.899999976158
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.732119,
+        "paused": false
+      },
+      "maxLongTaskMs": 146
+    },
+    {
+      "group": "local-fixed-chosen",
+      "index": 5,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 364,
+          "duration": 0
+        },
+        {
+          "startTime": 364,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 364,
+          "duration": 0,
+          "size": 71008,
+          "tag": "H1",
+          "text": "Chosen Witness",
+          "renderTime": 364,
+          "loadTime": 0
+        },
+        {
+          "startTime": 464,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 464,
+          "loadTime": 260.30000001192093
+        },
+        {
+          "startTime": 9180,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9180,
+          "loadTime": 9004.300000011921
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.866059,
+        "paused": false
+      },
+      "maxLongTaskMs": 151
+    },
+    {
+      "group": "local-fixed-simple",
+      "index": 0,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 3912,
+          "duration": 0
+        },
+        {
+          "startTime": 3912,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 3912,
+          "duration": 0,
+          "size": 78312,
+          "tag": "H1",
+          "text": "1. The Simple Gospel",
+          "renderTime": 3912,
+          "loadTime": 0
+        },
+        {
+          "startTime": 4072,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 4072,
+          "loadTime": 3754.900000035763
+        },
+        {
+          "startTime": 12872,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 12872,
+          "loadTime": 12660.400000035763
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.611439,
+        "paused": false
+      },
+      "maxLongTaskMs": 224
+    },
+    {
+      "group": "local-fixed-simple",
+      "index": 1,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 472,
+          "duration": 0
+        },
+        {
+          "startTime": 472,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 472,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 472,
+          "loadTime": 163.69999998807907
+        },
+        {
+          "startTime": 9300,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9300,
+          "loadTime": 9089.899999976158
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.509669,
+        "paused": false
+      },
+      "maxLongTaskMs": 167
+    },
+    {
+      "group": "local-fixed-simple",
+      "index": 2,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 372,
+          "duration": 0
+        },
+        {
+          "startTime": 372,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 372,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 372,
+          "loadTime": 174
+        },
+        {
+          "startTime": 9140,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9140,
+          "loadTime": 8961.699999988079
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.371618,
+        "paused": false
+      },
+      "maxLongTaskMs": 135
+    },
+    {
+      "group": "local-fixed-simple",
+      "index": 3,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 256,
+          "duration": 0
+        },
+        {
+          "startTime": 256,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 256,
+          "duration": 0,
+          "size": 88480,
+          "tag": "H1",
+          "text": "1. The Simple Gospel",
+          "renderTime": 256,
+          "loadTime": 0
+        },
+        {
+          "startTime": 340,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 340,
+          "loadTime": 145.10000002384186
+        },
+        {
+          "startTime": 9212,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9212,
+          "loadTime": 8950.899999976158
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.716499,
+        "paused": false
+      },
+      "maxLongTaskMs": 133
+    },
+    {
+      "group": "local-fixed-simple",
+      "index": 4,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 336,
+          "duration": 0
+        },
+        {
+          "startTime": 336,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 336,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 336,
+          "loadTime": 133.19999998807907
+        },
+        {
+          "startTime": 9108,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9108,
+          "loadTime": 8919
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.664076,
+        "paused": false
+      },
+      "maxLongTaskMs": 136
+    },
+    {
+      "group": "local-fixed-simple",
+      "index": 5,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 332,
+          "duration": 0
+        },
+        {
+          "startTime": 332,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 332,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 332,
+          "loadTime": 122.59999996423721
+        },
+        {
+          "startTime": 9088,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9088,
+          "loadTime": 8930.299999952316
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.647927,
+        "paused": false
+      },
+      "maxLongTaskMs": 138
+    },
+    {
+      "group": "preview-causal",
+      "index": 0,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 3136,
+          "duration": 0
+        },
+        {
+          "startTime": 3136,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 3136,
+          "duration": 0,
+          "size": 78312,
+          "tag": "H1",
+          "text": "1. The Simple Gospel",
+          "renderTime": 3136,
+          "loadTime": 0
+        },
+        {
+          "startTime": 3256,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 3256,
+          "loadTime": 3050.300000011921
+        },
+        {
+          "startTime": 12020,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 12020,
+          "loadTime": 11798.800000011921
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.64085,
+        "paused": false
+      },
+      "maxLongTaskMs": 151
+    },
+    {
+      "group": "preview-causal",
+      "index": 1,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": true,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 356,
+          "duration": 0
+        },
+        {
+          "startTime": 356,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 356,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 356,
+          "loadTime": 159.5999999642372
+        },
+        {
+          "startTime": 9132,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9132,
+          "loadTime": 8933.5
+        }
+      ],
+      "finalVideo": {
+        "readyState": 0,
+        "time": 0,
+        "paused": false
+      },
+      "maxLongTaskMs": 135
+    },
+    {
+      "group": "preview-causal",
+      "index": 2,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 488,
+          "duration": 0
+        },
+        {
+          "startTime": 488,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 488,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 488,
+          "loadTime": 174.89999997615814
+        },
+        {
+          "startTime": 9300,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9300,
+          "loadTime": 9092
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.481797,
+        "paused": false
+      },
+      "maxLongTaskMs": 147
+    },
+    {
+      "group": "preview-causal",
+      "index": 3,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": true,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 348,
+          "duration": 0
+        },
+        {
+          "startTime": 348,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 348,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 348,
+          "loadTime": 141.70000004768372
+        },
+        {
+          "startTime": 9152,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9152,
+          "loadTime": 8919.100000023842
+        }
+      ],
+      "finalVideo": {
+        "readyState": 0,
+        "time": 0,
+        "paused": false
+      },
+      "maxLongTaskMs": 124
+    },
+    {
+      "group": "poster-causal",
+      "index": 0,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": true,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 2776,
+          "duration": 0
+        },
+        {
+          "startTime": 2776,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 2776,
+          "duration": 0,
+          "size": 78312,
+          "tag": "H1",
+          "text": "1. The Simple Gospel",
+          "renderTime": 2776,
+          "loadTime": 0
+        },
+        {
+          "startTime": 2884,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 2884,
+          "loadTime": 2682.099999964237
+        },
+        {
+          "startTime": 11648,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 11648,
+          "loadTime": 11449.099999964237
+        }
+      ],
+      "finalVideo": {
+        "readyState": 0,
+        "time": 0,
+        "paused": false
+      },
+      "maxLongTaskMs": 161
+    },
+    {
+      "group": "poster-causal",
+      "index": 1,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": true,
+      "nativePosterRemoved": true,
+      "paint": [
+        {
+          "startTime": 292,
+          "duration": 0
+        },
+        {
+          "startTime": 292,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 292,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 292,
+          "loadTime": 146.69999998807907
+        }
+      ],
+      "finalVideo": {
+        "readyState": 0,
+        "time": 0,
+        "paused": false
+      },
+      "maxLongTaskMs": 134
+    },
+    {
+      "group": "poster-causal",
+      "index": 2,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": true,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 332,
+          "duration": 0
+        },
+        {
+          "startTime": 332,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 332,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 332,
+          "loadTime": 141.80000001192093
+        },
+        {
+          "startTime": 9068,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9068,
+          "loadTime": 8893.200000047684
+        }
+      ],
+      "finalVideo": {
+        "readyState": 0,
+        "time": 0,
+        "paused": false
+      },
+      "maxLongTaskMs": 129
+    },
+    {
+      "group": "poster-causal",
+      "index": 3,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": true,
+      "nativePosterRemoved": true,
+      "paint": [
+        {
+          "startTime": 356,
+          "duration": 0
+        },
+        {
+          "startTime": 356,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 356,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 356,
+          "loadTime": 151.80000001192093
+        }
+      ],
+      "finalVideo": {
+        "readyState": 0,
+        "time": 0,
+        "paused": false
+      },
+      "maxLongTaskMs": 144
+    },
+    {
+      "group": "prod-after517-simple",
+      "revision": "cc5a5056562dce3cc70dbcd8fce2713128450e97",
+      "index": 0,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 980,
+          "duration": 0
+        },
+        {
+          "startTime": 980,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 980,
+          "duration": 0,
+          "size": 88480,
+          "tag": "H1",
+          "text": "1. The Simple Gospel",
+          "renderTime": 980,
+          "loadTime": 0
+        },
+        {
+          "startTime": 1060,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 1060,
+          "loadTime": 881
+        },
+        {
+          "startTime": 9900,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9900,
+          "loadTime": 9713.5
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.455423,
+        "paused": false
+      },
+      "maxLongTaskMs": 125
+    },
+    {
+      "group": "prod-after517-simple",
+      "revision": "cc5a5056562dce3cc70dbcd8fce2713128450e97",
+      "index": 1,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 1372,
+          "duration": 0
+        },
+        {
+          "startTime": 1372,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 1372,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 1372,
+          "loadTime": 1196.800000011921
+        },
+        {
+          "startTime": 10876,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 10876,
+          "loadTime": 10680.199999988079
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.246003,
+        "paused": false
+      },
+      "maxLongTaskMs": 143
+    },
+    {
+      "group": "prod-after517-simple",
+      "revision": "cc5a5056562dce3cc70dbcd8fce2713128450e97",
+      "index": 2,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 564,
+          "duration": 0
+        },
+        {
+          "startTime": 564,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 564,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 564,
+          "loadTime": 361.5
+        },
+        {
+          "startTime": 9388,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9388,
+          "loadTime": 9192.199999988079
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.67336,
+        "paused": false
+      },
+      "maxLongTaskMs": 129
+    },
+    {
+      "group": "prod-after517-simple",
+      "revision": "cc5a5056562dce3cc70dbcd8fce2713128450e97",
+      "index": 3,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 560,
+          "duration": 0
+        },
+        {
+          "startTime": 560,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 560,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 560,
+          "loadTime": 358.9000000357628
+        },
+        {
+          "startTime": 9440,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9440,
+          "loadTime": 9183.900000035763
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.664403,
+        "paused": false
+      },
+      "maxLongTaskMs": 134
+    },
+    {
+      "group": "prod-after517-simple",
+      "revision": "cc5a5056562dce3cc70dbcd8fce2713128450e97",
+      "index": 4,
+      "status": 200,
+      "errors": [],
+      "screenshots": false,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 580,
+          "duration": 0
+        },
+        {
+          "startTime": 580,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 580,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 580,
+          "loadTime": 356
+        },
+        {
+          "startTime": 9420,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9420,
+          "loadTime": 9201.699999988079
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.588104,
+        "paused": false
+      },
+      "maxLongTaskMs": 128
+    },
+    {
+      "group": "prod-after517-simple",
+      "revision": "cc5a5056562dce3cc70dbcd8fce2713128450e97",
+      "index": 5,
+      "status": 200,
+      "errors": [],
+      "screenshots": true,
+      "mediaBlocked": false,
+      "nativePosterRemoved": false,
+      "paint": [
+        {
+          "startTime": 472,
+          "duration": 0
+        },
+        {
+          "startTime": 472,
+          "duration": 0
+        }
+      ],
+      "lcp": [
+        {
+          "startTime": 472,
+          "duration": 0,
+          "size": 921600,
+          "tag": "IMG",
+          "text": "",
+          "renderTime": 472,
+          "loadTime": 337.39999997615814
+        },
+        {
+          "startTime": 9352,
+          "duration": 0,
+          "size": 1283040,
+          "tag": "VIDEO",
+          "text": "",
+          "renderTime": 9352,
+          "loadTime": 9155.699999988079
+        }
+      ],
+      "finalVideo": {
+        "readyState": 4,
+        "time": 1.742766,
+        "paused": false
+      },
+      "maxLongTaskMs": 127
+    }
+  ]
+}

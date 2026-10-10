@@ -1,0 +1,750 @@
+{
+  "ExperienceError": {
+    "empty": "Vsebina izkušnje ni na voljo.",
+    "failedToLoad": "Nalaganje izkušnje ni uspelo: {message}",
+    "unexpected": "Prišlo je do nepričakovane napake.",
+    "notConfigured": "Storitev vsebin ni konfigurirana.",
+    "noContent": "Vsebina ni na voljo.",
+    "homepageMisconfigured": "Domača stran za ogled ni pravilno konfigurirana.",
+    "defaultTemplateMisconfigured": "Privzeta predloga za ogled ni pravilno konfigurirana.",
+    "authFailed": "Preverjanje pristnosti s storitvijo vsebin ni bilo mogoče. Če se to ponavlja, se obrnite na podporo.",
+    "pageLoadFailed": "Nekaj je šlo narobe.",
+    "tryAgain": "Poskusite znova"
+  },
+  "VideosPage": {
+    "title": "Vsi videoposnetki",
+    "placeholder": "Brskanje po katalogu prihaja kmalu. Za zdaj uporabite iskanje ali URL za določeno temo."
+  },
+  "BibleQuotes": {
+    "title": "Svetopisemski citati",
+    "share": "Deli",
+    "readMore": "Preberi več ...",
+    "learnMore": "Izvedite več",
+    "freeResources": "Brezplačni viri",
+    "promoHeading": "Želite globlje razumeti Sveto pismo?",
+    "joinBibleStudy": "Pridružite se našemu preučevanju Svetega pisma",
+    "previousQuote": "Prejšnji svetopisemski citat",
+    "nextQuote": "Naslednji svetopisemski citat",
+    "readPassage": "Preberite ta odlomek v svojem Svetem pismu."
+  },
+  "DownloadButton": {
+    "checking": "Preverjanje",
+    "download": "Prenesi",
+    "sessionError": "Vaše seje ni bilo mogoče preveriti. Poskusite znova.",
+    "saveVideo": "Shrani video"
+  },
+  "DownloadModal": {
+    "dialogTitle": "Prenesi videoposnetek",
+    "eyebrow": "Prenos videoposnetka",
+    "posterAlt": "Plakat videoposnetka",
+    "noDownloads": "Za ta videoposnetek ni na voljo prenosov.",
+    "fileSizeLabel": "Izberite velikost datoteke",
+    "termsAgreementPrefix": "Strinjam se z ",
+    "termsOfUse": "Pogoji uporabe",
+    "termsAgreementSuffix": "",
+    "close": "Zapri",
+    "download": "Prenesi",
+    "authRequiredTitle": "Želite prenesti ta videoposnetek?",
+    "authRequiredBody": "Za prenos videoposnetkov je potreben brezplačen račun Jesus Film.",
+    "signInToDownload": "Prijavite se za prenos",
+    "keepWatching": "Nadaljuj gledanje",
+    "checking": "Preverjanje",
+    "closeTermsOfUse": "Zapri pogoje uporabe",
+    "cancel": "Prekliči",
+    "accept": "Sprejmi",
+    "errorSessionExpired": "Vaša seja je potekla. Za prenos se znova prijavite.",
+    "errorSessionUnavailable": "Vaše seje ni bilo mogoče preveriti. Poskusite znova.",
+    "errorUnavailableSource": "Prenos iz tega vira ni na voljo",
+    "tierHighest": "Najvišja",
+    "tierHigh": "Visoka",
+    "tierLow": "Nizka"
+  },
+  "HeroPlayerControls": {
+    "play": "Predvajaj",
+    "pause": "Premor",
+    "seek": "Premik",
+    "seekValue": "{current} od {total}",
+    "volume": "Glasnost",
+    "volumeValue": "{percent} odstotkov",
+    "mute": "Utišaj",
+    "unmute": "Vklopi zvok",
+    "changeAudioLanguage": "Spremeni jezik zvoka",
+    "enterFullscreen": "Celozaslonski način",
+    "exitFullscreen": "Izhod iz celozaslonskega načina"
+  },
+  "LanguageCombobox": {
+    "selectLanguage": "Izberite jezik",
+    "searchPlaceholder": "Poišči jezike …",
+    "languages": "Jeziki",
+    "noMatches": "Brez zadetkov",
+    "notAvailable": "Ni na voljo"
+  },
+  "LanguagePickerModal": {
+    "dialogTitle": "Jezik",
+    "dialogTitleWithSubtitles": "Jezik in podnapisi",
+    "languageHeading": "Jezik",
+    "subtitlesHeading": "Podnapisi",
+    "languageCount": "{count, plural, one {# jezik} two {# jezika} few {# jeziki} other {# jezikov}}",
+    "requestSent": "Zahteva poslana",
+    "translateWithAi": "Prevedi z umetno inteligenco",
+    "noSubtitles": "Brez podnapisov",
+    "toggleOn": "Vklopljeno",
+    "toggleOff": "Izklopljeno",
+    "close": "Zapri",
+    "apply": "Uporabi",
+    "noLanguageSubtitles": "Brez podnapisov v jeziku {language}",
+    "seeAllLanguages": "Vsi jeziki",
+    "seeAllVideosInLanguage": "Vsi videoposnetki: {language}",
+    "retryLoadingLanguages": "Poskusi znova naložiti jezike",
+    "notAvailable": "Ni na voljo",
+    "switching": "Preklapljanje..."
+  },
+  "SeriesPage": {
+    "episodeCount": "{count, plural, one {1 EPIZODA} two {# EPIZODI} few {# EPIZODE} other {# EPIZOD}}",
+    "seriesLabel": "SERIJA · {episodes}",
+    "changeAudioLanguage": "Spremeni jezik zvoka",
+    "share": "Deli",
+    "languages": "Jeziki",
+    "downloadCollection": "Prenesi zbirko",
+    "checkingDownloads": "Preverjanje prenosov …",
+    "downloadSessionError": "Vaše seje ni bilo mogoče preveriti. Poskusite znova."
+  },
+  "WatchModal": {
+    "close": "Zapri"
+  },
+  "WatchStudyQuestions": {
+    "placeholderQuestion": "Če bi lahko ustvarjalcu tega videoposnetka postavili eno vprašanje, kaj bi ga vprašali?",
+    "fallbackBody": "Opravite zaseben pogovor z nekom, ki je pripravljen poslušati.",
+    "questionsShort": "Vprašanja",
+    "questions": "Povezana vprašanja",
+    "askYours": "Postavite svoje vprašanje",
+    "chatWithPerson": "Klepetajte z osebo",
+    "askBibleQuestion": "Postavite svetopisemsko vprašanje",
+    "quiz": "Kviz"
+  },
+  "WatchQuestionPanel": {
+    "messageType": "Vrsta sporočila",
+    "fieldLabel": "Postavite vprašanje o tem videoposnetku",
+    "send": "Pošlji vprašanje",
+    "prompts": {
+      "bibleQuestion": {
+        "label": "Postavite svetopisemsko vprašanje",
+        "description": "Takojšnji odgovori iz Svetega pisma z uporabo iskanja z umetno inteligenco"
+      },
+      "prayerRequest": {
+        "label": "Zahtevajte molitev",
+        "description": "Povejte, za kaj želite molitev"
+      },
+      "comment": {
+        "label": "Pustite komentar",
+        "description": "Pošljite svoje misli o tem videoposnetku"
+      },
+      "personChat": {
+        "label": "Klepetajte z osebo",
+        "description": "Z nekom se pogovorite zdaj"
+      }
+    }
+  },
+  "ShareModal": {
+    "dialogTitle": "Deli videoposnetek",
+    "heading": "Deli ta videoposnetek",
+    "posterAlt": "Plakat videoposnetka",
+    "shareOnFacebook": "Deli na Facebooku",
+    "shareOnFacebookUnavailable": "Deli na Facebooku (ni na voljo v tej različici)",
+    "shareOnX": "Deli na X",
+    "shareOnXUnavailable": "Deli na X (ni na voljo v tej različici)",
+    "shareDisabledHint": "Deljenje zahteva objavljeno stran — deluje, ko bo ta videoposnetek v produkciji.",
+    "shareFormat": "Oblika deljenja",
+    "shareLinkTab": "Povezava za deljenje",
+    "embedCodeTab": "Vdelana koda",
+    "copyFailed": "Samodejno kopiranje ni uspelo — označite spodnje besedilo in ga kopirajte ročno.",
+    "copyLink": "Kopiraj povezavo",
+    "copyCode": "Kopiraj kodo",
+    "copied": "Kopirano",
+    "close": "Zapri"
+  },
+  "SubtitleTranscript": {
+    "heading": "Prepis",
+    "subheading": "Dotaknite se vrstice, da skočite na tisti trenutek.",
+    "subtitleLanguage": "Jezik podnapisov",
+    "aiSuffix": " · UI",
+    "loading": "Nalaganje prepisa …",
+    "unavailable": "Prepis za to skladbo podnapisov ni na voljo.",
+    "empty": "Ni najdenih vrstic prepisa."
+  },
+  "FloatingSearch": {
+    "placeholder": "Poiščite ali brskajte po temah …",
+    "openSearch": "Išči videoposnetke",
+    "searchRegion": "Išči videoposnetke",
+    "clearSearch": "Počisti iskanje",
+    "changeAudioLanguage": "Spremeni jezik zvoka",
+    "home": "Domača stran JesusFilm",
+    "closeSearch": "Zapri iskanje",
+    "submitSearch": "Išči",
+    "library": "Knjižnica"
+  },
+  "SearchOverlay": {
+    "dialogLabel": "Iskanje in brskanje po videoposnetkih",
+    "home": "Domača stran JesusFilm",
+    "placeholder": "Poiščite ali brskajte po temah …",
+    "inputLabel": "Išči videoposnetke po ključni besedi",
+    "searchFailed": "Iskanje ni uspelo. Poskusite znova.",
+    "loadMoreFailed": "Nalaganje več rezultatov ni uspelo.",
+    "searching": "Iskanje ...",
+    "connectionHint": "Preverite povezavo in poskusite znova.",
+    "rateLimitHint": "Preveč zahtev. Poskusite znova čez minuto.",
+    "retrySearch": "Ponovi iskanje",
+    "retry": "Poskusi znova",
+    "noResults": "Ni rezultatov za »{query}«",
+    "tryDifferentKeywords": "Poskusite z drugimi ključnimi besedami ali brskajte po kategorijah",
+    "loading": "Nalaganje ...",
+    "loadMore": "Naloži več",
+    "categoryBibleStories": "Svetopisemske zgodbe",
+    "categoryParables": "Prilike",
+    "categoryAnimated": "Animirano",
+    "categoryStudy": "Preučevanje",
+    "categoryFamily": "Družina",
+    "categoryChristmas": "Božič",
+    "searchLanguageLabel": "Jezik iskanja",
+    "allLanguages": "Vsi jeziki",
+    "searchSuggestions": "Predlogi za iskanje",
+    "directMatches": "Neposredna ujemanja",
+    "languages": "Jeziki",
+    "recommendedLanguage": "Priporočen jezik",
+    "searchSuggestion": "Išči »{suggestion}«",
+    "searchSuggestionWithLanguage": "Išči »{suggestion}« v jeziku {language}",
+    "inLanguage": "v jeziku {language}",
+    "browseByRegion": "Brskaj po regiji",
+    "allVideosOnSinglePage": "Vsi videoposnetki na eni strani",
+    "clearLanguages": "Počisti",
+    "queryLanguageDetected": "Zaznan jezik: {language}",
+    "searchInLanguage": "Išči v jeziku {language}",
+    "tryDifferentKeywordsOrLanguage": "Poskusite z drugimi ključnimi besedami ali izberite drug jezik iskanja",
+    "useWebsiteDefaultLanguage": "Uporabi privzeti jezik iskanja spletnega mesta",
+    "removeLanguage": "Odstrani {language}",
+    "browseMode": "Način brskanja po iskanju",
+    "searchingInLanguage": "Rezultati v jeziku {language}"
+  },
+  "HeroPlayer": {
+    "playWithSound": "Glej zdaj",
+    "tapToUnmute": "Tapnite za vklop zvoka",
+    "nextEpisode": "Naslednja epizoda",
+    "audioTranslationCount": "{count, plural, one {# jezik} two {# jezika} few {# jeziki} other {# jezikov}}",
+    "subtitleCount": "Podnapisi: {count, plural, one {# jezik} two {# jezika} few {# jeziki} other {# jezikov}}"
+  },
+  "ExperienceSkeleton": {
+    "loadingContent": "Nalaganje vsebine",
+    "loadingVideo": "Nalaganje videoposnetka"
+  },
+  "VideoLabels": {
+    "video": "Videoposnetek",
+    "segment": "Odsek",
+    "episode": "Epizoda",
+    "featureFilm": "Celovečerni film",
+    "shortFilm": "Kratki film",
+    "series": "Serija",
+    "collection": "Zbirka",
+    "trailer": "Napovednik",
+    "behindTheScenes": "Za kulisami",
+    "chapter": "Poglavje"
+  },
+  "SiblingCarousel": {
+    "clipPosition": "Posnetek {current} od {total}",
+    "position": "{current} od {total}",
+    "chapterCount": "{count, plural, one {# poglavje} two {# poglavji} few {# poglavja} other {# poglavij}}",
+    "clipAriaLabel": "{title} · Posnetek {current} od {total}",
+    "chaptersAriaLabel": "{title} · {count, plural, one {# poglavje} two {# poglavji} few {# poglavja} other {# poglavij}}",
+    "chapter": "Poglavje",
+    "noImage": "Brez slike",
+    "playingNow": "Trenutno predvajano",
+    "previousChapter": "Prejšnje poglavje",
+    "nextChapter": "Naslednje poglavje",
+    "thumbnailAlt": "Sličica za {title}",
+    "relatedVideoThumbnail": "Sličica povezanega videoposnetka"
+  },
+  "SearchResultCard": {
+    "experience": "Izkušnja",
+    "episodeCount": "{count, plural, one {# epizoda} two {# epizodi} few {# epizode} other {# epizod}}",
+    "thumbnailAlt": "Sličica videoposnetka"
+  },
+  "Feedback": {
+    "openForm": "Odpri obrazec za povratne informacije",
+    "label": "Povratne informacije",
+    "couldNotLoad": "Obrazca za povratne informacije ni bilo mogoče naložiti.",
+    "loadingForm": "Nalaganje obrazca za povratne informacije …",
+    "retry": "Poskusi znova",
+    "cancel": "Prekliči",
+    "closeForm": "Zapri obrazec za povratne informacije",
+    "header": {
+      "title": "Share feedback",
+      "description": "Quick note, big impact. Help us make Watch better for everyone."
+    },
+    "steps": {
+      "progressLabel": "Step {step} of {count}",
+      "type": {
+        "title": "Choose a feedback type",
+        "helper": "What best describes your feedback?"
+      },
+      "context": {
+        "title": "Add helpful context",
+        "helper": "Tell us whether language or specific content is involved."
+      },
+      "point": {
+        "title": "Point to something",
+        "helper": "Optionally mark the exact element or area on this page."
+      },
+      "describe": {
+        "title": "Describe what happened",
+        "helper": "Share the details and attach technical context if useful."
+      },
+      "about": {
+        "title": "About you",
+        "helper": "Add your name and an optional email so we can follow up."
+      }
+    },
+    "categories": {
+      "legend": "Feedback category",
+      "problem": {
+        "label": "Problem",
+        "prompt": "What went wrong?",
+        "helper": "Tell us what happened and what you expected to see."
+      },
+      "confusing": {
+        "label": "Confusing",
+        "prompt": "What was hard to understand?",
+        "helper": "Tell us where you got stuck or what felt unclear."
+      },
+      "idea": {
+        "label": "Idea",
+        "prompt": "What would make Watch better?",
+        "helper": "Describe the change and how it would help you."
+      },
+      "praise": {
+        "label": "Praise",
+        "prompt": "What worked well?",
+        "helper": "Tell us what you enjoyed so we can do more of it."
+      }
+    },
+    "languageAreas": {
+      "none": "No language issue",
+      "audio": "Audio or dubbing",
+      "subtitles": "Subtitles or captions",
+      "interface": "Buttons or interface text",
+      "titleDescription": "Title or description",
+      "other": "Other language issue"
+    },
+    "contentScopes": {
+      "none": "No specific content",
+      "current": "This page or video",
+      "other": "Another video or resource"
+    },
+    "fields": {
+      "details": {
+        "label": "Details",
+        "placeholder": "Share details here…"
+      },
+      "languageArea": {
+        "label": "Is this language-related?"
+      },
+      "affectedLanguage": {
+        "label": "Affected language",
+        "placeholder": "Type the affected language"
+      },
+      "contentScope": {
+        "label": "Is this about specific content?"
+      },
+      "contentSearch": {
+        "label": "Search or enter media and collections",
+        "placeholder": "Search or type a title…"
+      },
+      "name": {
+        "label": "Name"
+      },
+      "email": {
+        "label": "Email",
+        "helper": "Add an email if you’d like us to ask follow-up questions or notify you when the problem is resolved."
+      },
+      "optional": "optional"
+    },
+    "validation": {
+      "category": "Choose a feedback type to continue.",
+      "message": "Please share at least 10 characters.",
+      "name": "Name is required.",
+      "email": "Enter a valid email address."
+    },
+    "languagePicker": {
+      "loading": "Loading languages…",
+      "select": "Select language",
+      "unavailable": "The language list is unavailable. Your typed value will still be submitted.",
+      "retryList": "Retry list",
+      "chooseFromList": "Choose from list",
+      "enterManually": "Enter manually",
+      "cantFind": "Can’t find the right language?"
+    },
+    "contentSearch": {
+      "searching": "Searching titles…",
+      "error": "Couldn’t search titles. You can continue with what you typed.",
+      "noMatch": "No direct match. Your typed title will still be submitted.",
+      "mediaFallback": "Media",
+      "clearSelected": "Clear selected content"
+    },
+    "picker": {
+      "title": "Choose something on the page",
+      "hint": "Point to a heading, button, image, or section",
+      "cancel": "Cancel",
+      "mark": "Mark something on the page",
+      "markHint": "Highlight or point out an area",
+      "selected": "Selected {role} · choose again"
+    },
+    "diagnostics": {
+      "include": "Include technical details",
+      "description": "Browser, device, operating system, screen size, page URL, language, time zone, and app version. Never passwords or form contents.",
+      "viewDetails": "View details",
+      "labels": {
+        "browser": "browser",
+        "operatingSystem": "operating System",
+        "device": "device",
+        "viewport": "viewport",
+        "timeZone": "time Zone",
+        "appVersion": "app Version"
+      }
+    },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue",
+      "skip": "Skip for now",
+      "send": "Send feedback",
+      "sending": "Sending…"
+    },
+    "success": {
+      "title": "Thank you",
+      "description": "Your feedback is with our team.",
+      "done": "Done",
+      "followUp": {
+        "addEmail": "Add email",
+        "adding": "Adding…",
+        "emailPlaceholder": "you@example.com",
+        "idea": {
+          "confirmation": "We’ll email you once we implement your idea.",
+          "invitation": "Want to know if your idea ships? Add your email and we’ll let you know."
+        },
+        "other": {
+          "confirmation": "If our team needs anything else, we’ll email you.",
+          "invitation": "Add your email if you’d like our team to follow up about your feedback."
+        },
+        "problem": {
+          "confirmation": "We’ll email you when the problem is resolved.",
+          "invitation": "Want to know when this is fixed? Add your email and we’ll let you know."
+        }
+      }
+    },
+    "footer": {
+      "reviewed": "Your feedback is reviewed by our team."
+    },
+    "errors": {
+      "invalid": "Please check the form and try again.",
+      "rateLimited": "Too many feedback requests. Please try again later.",
+      "sendFailed": "We could not send your feedback. Please try again.",
+      "timeout": "This is taking longer than expected. Your feedback may have been received; please wait before trying again.",
+      "followUpExpired": "This follow-up link has expired. Please use the support form to contact us.",
+      "followUpFailed": "We could not add your email. Please use the support form to contact us.",
+      "openSupportForm": "Open support form"
+    }
+  },
+  "LanguageInventory": {
+    "metadataTitle": "Brezplačni krščanski videoposnetki v jeziku {language} | Jesus Film Project",
+    "metadataDescription": "Raziščite filme o Jezusu, svetopisemske zgodbe, serije za učence in videoposnetke za evangelizacijo z zvočnim zapisom ali podnapisi v jeziku {language}.",
+    "heroTitle": "Brezplačni krščanski videoposnetki v jeziku {language}",
+    "heroDescription": "Raziščite filme o Jezusu, svetopisemske zgodbe, serije za učence in videoposnetke za evangelizacijo, ki so na voljo v jeziku {language}. Najprej so prikazani videoposnetki s popolnim sinhroniziranim zvokom, spodaj pa možnosti samo s podnapisi.",
+    "languageCollection": "Jezikovna zbirka",
+    "itemCount": "{count, plural, one {# element} two {# elementa} few {# elementi} other {# elementov}}",
+    "videoCount": "{count, plural, one {# videoposnetek} two {# videoposnetka} few {# videoposnetki} other {# videoposnetkov}}",
+    "videosInGroups": "{videoCount, plural, one {# videoposnetek} two {# videoposnetka} few {# videoposnetki} other {# videoposnetkov}} v {groupCount, plural, one {# skupini} two {# skupinama} few {# skupinah} other {# skupinah}}",
+    "sectionNavLabel": "Razdelki jezikovnega kataloga",
+    "sectionMetricLabel": "{label}: {count}",
+    "new": "Novo",
+    "videoBible": "Video Sveto pismo",
+    "bibleProject": "BibleProject",
+    "sports": "Šport",
+    "collections": "Zbirke",
+    "subtitlesOnly": "Samo podnapisi",
+    "backToTop": "Nazaj na vrh",
+    "newlyAdded": "Nedavno dodano",
+    "newVideosTitle": "Novi krščanski videoposnetki v jeziku {language}",
+    "newestFirst": "Najnovejše najprej",
+    "noPublishedVideos": "Za ta jezik še ni bilo najdenih objavljenih videoposnetkov.",
+    "bibleAndGospelFilms": "Svetopisemski in evangelijski filmi",
+    "videoBibleCollectionsTitle": "Zbirke Video Sveto pismo v jeziku {language}",
+    "videoBibleDescription": "Zbirke, osredotočene na Sveto pismo, vključno z LUMO, JESUS, Magdalena in Apostolska dela v jeziku {language}.",
+    "noVideoBibleCollections": "Za ta jezik še ni na voljo zbirk Video Sveto pismo.",
+    "bibleProjectCollectionsTitle": "Zbirke BibleProject v jeziku {language}",
+    "bibleProjectDescription": "Serije in študije BibleProject, na voljo v jeziku {language}.",
+    "noBibleProjectCollections": "Za ta jezik še ni na voljo zbirk BibleProject.",
+    "sportsStories": "Športne zgodbe",
+    "sportsTitle": "Športne zgodbe in zgodbe športnikov v jeziku {language}",
+    "sportsDescription": "Z vero povezane športne zgodbe in zbirke o športnikih, na voljo v jeziku {language}.",
+    "noSportsCollections": "Za ta jezik še ni na voljo športnih zbirk ali zbirk zgodb športnikov.",
+    "fullyDubbed": "Popolnoma sinhronizirano",
+    "dubbedVideosTitle": "Videoposnetki v jeziku {language} po zbirki",
+    "dubbedVideosDescription": "Brskajte po popolnoma sinhroniziranih videoposnetkih v jeziku {language}, združenih po zbirkah za lažje odkrivanje.",
+    "noDubbedVideos": "Za ta jezik še ni na voljo popolnoma sinhroniziranih videoposnetkov.",
+    "subtitlesAvailable": "Podnapisi na voljo",
+    "subtitlesTitle": "Videoposnetki v jeziku {language} s podnapisi",
+    "subtitlesDescription": "Ti videoposnetki vključujejo podnapise v jeziku {language}, kadar zvočni zapis v govorjenem jeziku {language} še ni na voljo.",
+    "noSubtitleVideos": "Za ta jezik še ni na voljo videoposnetkov samo s podnapisi.",
+    "dubbed": "Sinhronizirano",
+    "subtitles": "Podnapisi",
+    "newLabel": "Novo",
+    "fromCollection": "Iz {collection}",
+    "standaloneVideos": "Samostojni videoposnetki",
+    "videosFromCollection": "Videoposnetki iz {collection}.",
+    "standaloneDescription": "Samostojni videoposnetki v tem jeziku.",
+    "openCollection": "Odpri zbirko",
+    "filters": "Filtri",
+    "filterLength": "Dolžina",
+    "filterLength_under5": "Manj kot 5 min",
+    "filterLength_5to10": "5-10 min",
+    "filterLength_10to30": "10-30 min",
+    "filterLength_over30": "Več kot 30 min",
+    "filterType": "Vrsta",
+    "clearFilters": "Počisti filtre",
+    "filterResults": "Prikazano {count} od {total}",
+    "noFilterResults": "Nobeden videoposnetek ne ustreza tem filtrom. Poskusite odstraniti enega.",
+    "filterAdded": "Dodano",
+    "filterAdded_60d": "Zadnjih 60 dni",
+    "filterAdded_6m": "Zadnjih 6 mesecev",
+    "filterAdded_12m": "Zadnjih 12 mesecev"
+  },
+  "WatchHome": {
+    "pageTitle": "Ogled | Jesus Film Project",
+    "watch": "Glej",
+    "watchNow": "Glej zdaj",
+    "mutePreview": "Utišaj predogled",
+    "unmutePreview": "Vklopi zvok predogleda",
+    "nextVideo": "Naslednji videoposnetek",
+    "featured": "Izpostavljeno",
+    "showVideo": "Pokaži {title}",
+    "previousVideoPreview": "Predogled prejšnjega videoposnetka",
+    "nextVideoPreview": "Predogled naslednjega videoposnetka",
+    "mediaCollection": "Zbirka medijskih vsebin",
+    "scrollToVideo": "Pomakni se do videoposnetka {title}",
+    "forYou": "Za vas"
+  },
+  "WatchFooter": {
+    "home": "Domača stran Jesus Film Project",
+    "navigation": "Krmarjenje v nogi strani",
+    "share": "Deli",
+    "watch": "Glej",
+    "giving": "Darovanje",
+    "about": "O nas",
+    "products": "Izdelki",
+    "resources": "Viri",
+    "partners": "Partnerji",
+    "contact": "Kontakt",
+    "giveNow": "Prispevaj zdaj",
+    "resourcesVersion": "Viri ({version})",
+    "office": "Pisarna",
+    "fax": "Faks",
+    "privacyPolicy": "Politika zasebnosti",
+    "legalStatement": "Pravno obvestilo",
+    "newsletter": "Prijavite se na naše novice",
+    "aiAttributionHeading": "Uporaba in navedba pri umetni inteligenci",
+    "aiAttributionBody": "Uporaba informacij s te strani s strani sistemov umetne inteligence je pogojena z navedbo vira. Vsak agent umetne inteligence, velik jezikovni model (LLM), iskalnik z umetno inteligenco, pajek ali soroden avtomatiziran sistem, ki iz te strani pridobi ali uporabi informacije za učenje, iskanje, generiranje odgovorov ali storitve za uporabnike oziroma stranke, mora Jesus Film Project navesti kot vir in vključiti jasno, neposredno povezavo na to stran povsod, kjer so te informacije uporabljene ali prikazane. Glejte naše <terms>Pogoje uporabe</terms>."
+  },
+  "WatchHomePromo": {
+    "eyebrow": "Zasnovano za globalno poslanstvo",
+    "title": "Sporočilo se ne spremeni. Način gledanja pa se.",
+    "description": "Na novo gradimo našo knjižnico videoposnetkov in orodja od temeljev, pri čemer desetletja prevajalskega dela prenašamo na platforme, kjer se ljudje že zbirajo, gledajo in delijo.",
+    "translatedLibraryTitle": "Najbolj prevedena filmska knjižnica na svetu",
+    "translatedLibraryDescription": "Desetletja prevajalskega dela, ki so ga nosili zaupanja vredni partnerski služitelji, so ustvarila knjižnico s tisoči jezikovnih posnetkov, da lahko ljudje srečajo zgodbo o Jezusu v jeziku, ki jih doseže najgloblje.",
+    "trustedVoicesTitle": "Zaupanja vredne glasove prenašamo v nove formate",
+    "trustedVoicesDescription": "Na novo gradimo, kako se evangelijske zgodbe pripovedujejo vizualno, in združujemo zaupanja vredne prevode s sodobnimi formati, da se sporočilo lahko prosto giblje med platformami, kulturami in zasloni.",
+    "missionTeamTitle": "Več kot knjižnica. Ekipa z misijonom.",
+    "missionTeamDescription": "Jesus Film Project je globalna ekipa prevajalcev, medijskih strokovnjakov, urednikov in ustvarjalcev, ki desetletja izkušenj v službi preoblikuje v orodja za vse, ki delajo z učenci.",
+    "buildingNext": "Kaj gradimo naprej",
+    "nextStepsTitle": "Platforma Naslednji korak",
+    "nextStepsDescription": "Povežite gledalce z oprijemljivimi priložnostmi na njihovi duhovni poti in jim pomagajte narediti naslednji korak v skupnost, Sveto pismo ali poslanstvo.",
+    "mediaLibraryTitle": "Evangelizacijska medijska knjižnica",
+    "mediaLibraryDescription": "Obsežna krščanska medijska knjižnica s tisoči videoposnetkov, filmov in virov, ki so na voljo v več jezikih za služenje in evangelizacijo po vsem svetu.",
+    "ministryToolsTitle": "Digitalna orodja za službe",
+    "ministryToolsDescription": "Upravljanje videoposnetkov, distribucija vsebin, vključevanje občinstva in analitika, zasnovani za to, da pomagajo službam učinkoviteje doseči več ljudi.",
+    "invitationEyebrow": "Vabljeni ste",
+    "invitationTitle": "Pomagajte graditi <highlight>novo generacijo</highlight> orodij za poslanstvo",
+    "invitationDescription": "K zgodnjemu dostopu vabimo praktike, ustvarjalce in partnerje. Najprej preizkusite nova orodja, podajte povratne informacije in pomagajte oblikovati izdelke, zasnovane za resnično misijonsko delo.",
+    "betaTester": "Postanite beta preizkuševalec"
+  },
+  "WatchHomeSections": {
+    "videoBibleEyebrow": "Zbirka Video Sveto pismo",
+    "gospelRailTitle": "Odkrijte celotno zgodbo",
+    "videoBibleDescription": "Raziščite našo zbirko videoposnetkov in virov, ki oživljajo Sveto pismo skozi privlačne zgodbe in nauke.",
+    "showcaseTitle": "Sveto pismo, povedano skozi film",
+    "adventEyebrow": "Božični advent",
+    "adventTitle": "Odštevanje do božiča z adventom",
+    "adventDescription": "Pridružite se naši adventni poti z dnevnim videoposnetkom, ki gradi pričakovanje za božič ter raziskuje upanje, veselje in obljubo Jezusovega prihoda.",
+    "bibleProjectEyebrow": "BibleProject",
+    "bibleProjectAdventTitle": "Advent BibleProject",
+    "nuaEyebrow": "Serija NUA",
+    "nuaTitle": "NUA",
+    "worthEyebrow": "Serija Worth",
+    "nuaWorthTitle": "NUA Worth",
+    "videoCourseEyebrow": "Video tečaj",
+    "journeyWithJesusTitle": "Pot z Jezusom",
+    "gospelsOnVideoEyebrow": "Vsak evangelij, posnet na video",
+    "scriptureAsWrittenTitle": "Sveto pismo, izgovorjeno natanko tako, kot je zapisano",
+    "merryChristmas": "Vesel božič!",
+    "daysUntilChristmas": "{count, plural, one {Še # dan do božiča} two {Še # dneva do božiča} few {Še # dnevi do božiča} other {Še # dni do božiča}}"
+  },
+  "WatchHomeCategories": {
+    "eyebrow": "Browse the library",
+    "title": "Browse by category",
+    "description": "Jump straight to the part of the library you need — the life of Jesus, the seasons of the church year, and videos made for families, students, and small groups.",
+    "seeAll": "See all videos",
+    "categories": {
+      "jesus": "The JESUS Film",
+      "gospels": "Gospels",
+      "shortVideos": "Short videos",
+      "family": "Family",
+      "relationships": "Relationships",
+      "women": "For Women",
+      "students": "For Students",
+      "sports": "Sports",
+      "goodNews": "Good News",
+      "hope": "Hope",
+      "training": "Training",
+      "easter": "Easter",
+      "christmas": "Christmas"
+    }
+  },
+  "WatchLanguageIndex": {
+    "metadataTitle": "Jeziki",
+    "metadataDescription": "Brskajte po videoposnetkih JesusFilm po jeziku.",
+    "eyebrow": "Jeziki za ogled",
+    "title": "Izberite jezik",
+    "description": "Raziščite jezike po regijah ali prebrskajte celoten seznam.",
+    "searchPlaceholder": "Poišči jezike ali države ...",
+    "searchLabel": "Poišči jezike ali države",
+    "clearSearch": "Počisti iskanje",
+    "browse": "Brskaj",
+    "browseByRegion": "Brskaj po regiji in državi",
+    "languageCount": "{count, plural, one {# jezik} two {# jezika} few {# jeziki} other {# jezikov}}",
+    "region": "Regija",
+    "countryLanguages": "Jeziki v {country}",
+    "showLess": "Pokaži manj",
+    "showMore": "Pokaži še {count}",
+    "noLanguages": "Ni najdenih jezikov",
+    "tryAnotherSearch": "Poskusite z drugim iskalnim izrazom."
+  },
+  "WatchHistory": {
+    "metadataTitle": "Zgodovina ogledov | Jesus Film Project",
+    "title": "Zgodovina ogledov",
+    "loading": "Nalaganje zgodovine",
+    "empty": "Za zdaj še nič ni tukaj",
+    "emptyDescription": "Videoposnetki, ki jih gledate prijavljeni, bodo prikazani tukaj.",
+    "earlier": "Prej",
+    "today": "Danes",
+    "yesterday": "Včeraj"
+  },
+  "AccountControl": {
+    "account": "Račun",
+    "accountMenu": "Meni računa",
+    "signIn": "Prijava",
+    "signOut": "Odjava",
+    "signedIn": "Prijavljen",
+    "history": "Zgodovina",
+    "logOut": "Odjava"
+  },
+  "WatchNotFound": {
+    "metadataTitle": "Stran ni najdena",
+    "eyebrow": "Stran ni najdena",
+    "screenReaderPrefix": "Stran ni najdena:",
+    "title": "Ta prizor tukaj ne obstaja.",
+    "description": "Stran se je morda premaknila, toda zgodba se nadaljuje.",
+    "languageDescription": "We couldn't find the page you're looking for, but the story continues in films and videos from languages around the world.",
+    "actionsLabel": "Dejanja za stran ni najdena",
+    "backToWatch": "Nazaj na ogled",
+    "browseVideos": "Brskaj po videoposnetkih"
+  },
+  "VideoRecommendations": {
+    "match": "Ujemanje: {percent} %",
+    "none": "Za ta videoposnetek v tem jeziku ni bilo najdenih priporočil."
+  },
+  "BetaTesterModal": {
+    "title": "Postanite beta preizkuševalec",
+    "trigger": "Postanite beta preizkuševalec",
+    "loadFailed": "Nekaj je šlo narobe.",
+    "loading": "Nalaganje ...",
+    "openFormNewTab": "Odpri obrazec v novem zavihku",
+    "close": "Zapri",
+    "iframeTitle": "Postanite beta preizkuševalec"
+  },
+  "CollectionDownloadModal": {
+    "dialogTitle": "Prenesi zbirko",
+    "eyebrow": "Prenos zbirke",
+    "description": "Enkrat izberite jezik in kakovost. Vse razpoložljive epizode se bodo prenesle po vrsti.",
+    "signInTitle": "Prijavite se za prenos",
+    "signInBody": "Zbirko lahko prenesete, ko se prijavite z računom Jesus Film.",
+    "signIn": "Prijavite se za prenos",
+    "languageLabel": "Jezik",
+    "qualityLabel": "Kakovost videoposnetka",
+    "tierHighest": "Najvišja",
+    "tierHigh": "Visoka",
+    "tierLow": "Nizka",
+    "loading": "Iskanje razpoložljivih epizod …",
+    "loadError": "Prenosov za ta jezik ni bilo mogoče naložiti.",
+    "retry": "Poskusi znova",
+    "noDownloads": "V tem jeziku ni epizod, ki bi jih bilo mogoče prenesti.",
+    "availableCount": "{count, plural, one {# epizoda je pripravljena} two {# epizodi sta pripravljeni} few {# epizode so pripravljene} other {# epizod je pripravljenih}}",
+    "skippedCount": "{count, plural, one {# epizoda bo preskočena, ker ni na voljo} two {# epizodi bosta preskočeni, ker nista na voljo} few {# epizode bodo preskočene, ker niso na voljo} other {# epizod bo preskočenih, ker niso na voljo}}",
+    "chooseFolder": "Izberite mapo za prenose",
+    "folderSelected": "Shrani v mapo {name}",
+    "folderError": "Mape za prenose ni bilo mogoče odpreti.",
+    "browserFallback": "Brskalnik bo vsako datoteko shranil z običajnimi nastavitvami za prenose. Morda vas bo pozval, da dovolite več prenosov.",
+    "sessionError": "Vaše seje ni bilo mogoče preveriti. Poskusite znova.",
+    "downloading": "Prenašanje: {title}",
+    "progress": "{completed} od {total}",
+    "complete": "Prenosi so končani",
+    "canceled": "Prenosi so preklicani",
+    "failedCount": "{count, plural, one {Neuspešen prenos: # epizoda} two {Neuspešna prenosa: # epizodi} few {Neuspešni prenosi: # epizode} other {Neuspešni prenosi: # epizod}}. Za ponovni poskus prenosa zbirke znova izberite »Prenesi«.",
+    "close": "Zapri",
+    "cancel": "Prekliči",
+    "start": "Prenesi vse",
+    "downloadAgain": "Prenesi znova",
+    "retryFailed": "Znova poskusi neuspele prenose"
+  },
+  "WatchUnavailableLanguage": {
+    "metadataTitle": "Jezikovna različica ni na voljo",
+    "eyebrow": "Jezikovna različica ni na voljo",
+    "title": "<contentTitle>{title}</contentTitle>: različica v jeziku <languageName>»{language}«</languageName> ni na voljo",
+    "actionsLabel": "Razpoložljive možnosti ogleda",
+    "browseInLanguage": "Vsi videoposnetki v jeziku »{language}«",
+    "backToSearch": "Nazaj na iskanje",
+    "audioVersionsTitle": "Druge zvočne različice",
+    "audioVersionsDescription": "Izberite jezik zvoka in nadaljujte ogled videoposnetka.",
+    "languageVersionLabel": "Jezik zvoka",
+    "selectLanguageVersion": "Izberite jezikovno različico",
+    "watchSelectedVersion": "Oglejte si izbrano različico"
+  },
+  "RecommendationConsent": {
+    "bannerLabel": "Izbire piškotkov",
+    "bannerTitle": "Vaše izbire zasebnosti",
+    "bannerDescription": "Nujni piškotki zagotavljajo varnost in delovanje Watch. Z vašim dovoljenjem lahko izbirni lastni piškotek med obiski shrani vaše interese za prilagojena priporočila. Kontekstualna priporočila so na voljo v vsakem primeru.",
+    "acceptAll": "Sprejmi vse",
+    "essentialOnly": "Samo nujni",
+    "manageChoices": "Upravljaj izbire",
+    "savingChoice": "Shranjevanje izbire piškotkov",
+    "settings": "Nastavitve piškotkov",
+    "settingsDescription": "Izberite, ali lahko Watch med obiski shrani vaše interese za priporočila. To lahko kadar koli spremenite.",
+    "essentialCookies": "Nujni piškotki",
+    "essentialDescription": "Varnost, predvajanje, izbire zasebnosti in pripis zahtev za priporočila.",
+    "alwaysActive": "Vedno aktivno",
+    "personalization": "Prilagajanje",
+    "personalizationDescription": "Zapomni si omejene interese med obiski. Če to izklopite, bodo kontekstualna priporočila še vedno na voljo.",
+    "erasurePending": "Izbris profila je v teku. Kontekstualna priporočila so že aktivna.",
+    "cancel": "Prekliči",
+    "saveChoices": "Shrani izbire",
+    "saving": "Shranjevanje…",
+    "loadError": "Vaše izbire ni bilo mogoče naložiti. Še vedno lahko izberete spodaj.",
+    "grantError": "Prilagajanja ni bilo mogoče omogočiti. Možnost samo nujnih ostaja na voljo.",
+    "saveError": "Vaše izbire ni bilo mogoče shraniti. Poskusite znova."
+  }
+}

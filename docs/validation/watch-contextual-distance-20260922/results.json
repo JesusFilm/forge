@@ -1,0 +1,643 @@
+{
+  "scope": "Local synthetic catalog, exact multi-seed SQL. Query optimization proof, not reproduction or closure of historical selection timeout.",
+  "baseRevision": "f1223455ae9c74524d7bc2d9df69fcc48bed288c",
+  "fixture": {
+    "ownership": "codex-watch-budget-root-cause-20260922-r4m",
+    "postgresImage": "pgvector/pgvector:pg18",
+    "imageId": "sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a",
+    "candidateChunks": 2668,
+    "videos": 1175,
+    "dimensions": 1536,
+    "vectors": "Deterministic synthetic sin((seed+1)*(dimension+1)*0.013), seven decimals; no production vectors copied.",
+    "sharedBuffers": "128MB",
+    "workMem": "4MB",
+    "sharedMemory": "64MiB",
+    "maxParallelWorkersPerGather": 2,
+    "mainPoolMax": 10,
+    "limitPerSeed": 6,
+    "limitations": "Fixture matches English chunk count and longest all-edition seed count, but simplifies global/localized catalog distribution and includes 1175 eligible videos versus 867 production English video identities. Timings are not production percentiles."
+  },
+  "productionShape": {
+    "at": "2026-09-22T01:06:38.320Z",
+    "transcripts": [
+      {
+        "language": "fr",
+        "transcripts": 671,
+        "declared_chunks": "1360",
+        "longest_video_chunks": 33
+      },
+      {
+        "language": "en",
+        "transcripts": 1232,
+        "declared_chunks": "2668",
+        "longest_video_chunks": 37
+      },
+      {
+        "language": "es",
+        "transcripts": 608,
+        "declared_chunks": "1172",
+        "longest_video_chunks": 33
+      }
+    ],
+    "chunks": [
+      {
+        "language": "en",
+        "videos": 867,
+        "total_chunks": 2668,
+        "longest_video_all_editions": 176
+      },
+      {
+        "language": "es",
+        "videos": 539,
+        "total_chunks": 1172,
+        "longest_video_all_editions": 123
+      },
+      {
+        "language": "fr",
+        "videos": 602,
+        "total_chunks": 1360,
+        "longest_video_all_editions": 126
+      }
+    ]
+  },
+  "regression": {
+    "test": "evaluates cosine distance once per eligible chunk and seed",
+    "eligibleChunks": 4,
+    "seeds": 2,
+    "beforeCalls": 16,
+    "afterCalls": 8,
+    "measurement": "pg_stat_xact_user_functions, SET LOCAL track_functions=all on isolated local transaction"
+  },
+  "explainPlans": [
+    {
+      "variant": "baseline",
+      "seeds": 3,
+      "executionMs": 107.005,
+      "sharedHitBlocks": 48512,
+      "tempReadBlocks": 0,
+      "tempWrittenBlocks": 0
+    },
+    {
+      "variant": "distance-once",
+      "seeds": 3,
+      "executionMs": 77.08,
+      "sharedHitBlocks": 24500,
+      "tempReadBlocks": 0,
+      "tempWrittenBlocks": 0
+    },
+    {
+      "variant": "detoast",
+      "seeds": 3,
+      "executionMs": 917.405,
+      "sharedHitBlocks": 8438,
+      "tempReadBlocks": 6383,
+      "tempWrittenBlocks": 2128
+    },
+    {
+      "variant": "binary-copy",
+      "seeds": 3,
+      "executionMs": 142.419,
+      "sharedHitBlocks": 8438,
+      "tempReadBlocks": 6383,
+      "tempWrittenBlocks": 2128
+    },
+    {
+      "variant": "baseline",
+      "seeds": 37,
+      "executionMs": 1054.666,
+      "sharedHitBlocks": 593378,
+      "tempReadBlocks": 0,
+      "tempWrittenBlocks": 0
+    },
+    {
+      "variant": "distance-once",
+      "seeds": 37,
+      "executionMs": 705.973,
+      "sharedHitBlocks": 297230,
+      "tempReadBlocks": 0,
+      "tempWrittenBlocks": 0
+    },
+    {
+      "variant": "detoast",
+      "seeds": 37,
+      "executionMs": 1278.215,
+      "sharedHitBlocks": 8438,
+      "tempReadBlocks": 78735,
+      "tempWrittenBlocks": 2128
+    },
+    {
+      "variant": "binary-copy",
+      "seeds": 37,
+      "executionMs": 519.395,
+      "sharedHitBlocks": 8438,
+      "tempReadBlocks": 78735,
+      "tempWrittenBlocks": 2128
+    },
+    {
+      "variant": "baseline",
+      "seeds": 176,
+      "executionMs": 4993.49,
+      "sharedHitBlocks": 2820344,
+      "tempReadBlocks": 1668,
+      "tempWrittenBlocks": 1671
+    },
+    {
+      "variant": "distance-once",
+      "seeds": 176,
+      "executionMs": 3315.108,
+      "sharedHitBlocks": 1411640,
+      "tempReadBlocks": 1668,
+      "tempWrittenBlocks": 1671
+    },
+    {
+      "variant": "detoast",
+      "seeds": 176,
+      "executionMs": 2883.944,
+      "sharedHitBlocks": 8438,
+      "tempReadBlocks": 376195,
+      "tempWrittenBlocks": 3799
+    },
+    {
+      "variant": "binary-copy",
+      "seeds": 176,
+      "executionMs": 2184.617,
+      "sharedHitBlocks": 8438,
+      "tempReadBlocks": 376195,
+      "tempWrittenBlocks": 3799
+    }
+  ],
+  "fullOutputParity": [
+    {
+      "seeds": 3,
+      "returnedRows": 18,
+      "allFieldsEqual": true
+    },
+    {
+      "seeds": 37,
+      "returnedRows": 216,
+      "allFieldsEqual": true
+    },
+    {
+      "seeds": 176,
+      "returnedRows": 834,
+      "allFieldsEqual": true
+    }
+  ],
+  "concurrencyRounds": [
+    {
+      "round": 0,
+      "name": "baseline",
+      "concurrency": 1,
+      "seedCount": 176,
+      "catalog": {
+        "n": 1,
+        "min": 5102.927484,
+        "p50": 5102.927484,
+        "p95": 5102.927484,
+        "max": 5102.927484
+      },
+      "probe": {
+        "n": 189,
+        "min": 1.2620460000002822,
+        "p50": 1.6876640000000407,
+        "p95": 2.2059399999999982,
+        "max": 12.892595999999998
+      },
+      "acquire": {
+        "n": 189,
+        "min": 0.03152799999952549,
+        "p50": 0.053974000000152955,
+        "p95": 0.0950990000001184,
+        "max": 9.865345999999988
+      },
+      "eventLoopMaxMs": 14.999551,
+      "catalogRows": [834]
+    },
+    {
+      "round": 0,
+      "name": "candidate",
+      "concurrency": 1,
+      "seedCount": 176,
+      "catalog": {
+        "n": 1,
+        "min": 3344.1577930000003,
+        "p50": 3344.1577930000003,
+        "p95": 3344.1577930000003,
+        "max": 3344.1577930000003
+      },
+      "probe": {
+        "n": 124,
+        "min": 1.4224749999993946,
+        "p50": 1.7429400000000896,
+        "p95": 2.2234959999996136,
+        "max": 10.17663100000027
+      },
+      "acquire": {
+        "n": 124,
+        "min": 0.039170000000012806,
+        "p50": 0.05959100000018225,
+        "p95": 0.11060300000008283,
+        "max": 8.38843900000029
+      },
+      "eventLoopMaxMs": 18.055167,
+      "catalogRows": [834]
+    },
+    {
+      "round": 1,
+      "name": "candidate",
+      "concurrency": 1,
+      "seedCount": 176,
+      "catalog": {
+        "n": 1,
+        "min": 3249.549563999999,
+        "p50": 3249.549563999999,
+        "p95": 3249.549563999999,
+        "max": 3249.549563999999
+      },
+      "probe": {
+        "n": 121,
+        "min": 1.419753000000128,
+        "p50": 1.7054669999997714,
+        "p95": 2.185879999999088,
+        "max": 6.879966000000422
+      },
+      "acquire": {
+        "n": 121,
+        "min": 0.03661099999953876,
+        "p50": 0.05498199999965436,
+        "p95": 0.10758799999894109,
+        "max": 5.319838000001255
+      },
+      "eventLoopMaxMs": 11.960319,
+      "catalogRows": [834]
+    },
+    {
+      "round": 1,
+      "name": "baseline",
+      "concurrency": 1,
+      "seedCount": 176,
+      "catalog": {
+        "n": 1,
+        "min": 4994.005103000001,
+        "p50": 4994.005103000001,
+        "p95": 4994.005103000001,
+        "max": 4994.005103000001
+      },
+      "probe": {
+        "n": 187,
+        "min": 1.257659999999305,
+        "p50": 1.6069079999997484,
+        "p95": 1.8875459999999293,
+        "max": 10.31189600000107
+      },
+      "acquire": {
+        "n": 187,
+        "min": 0.029411999999865657,
+        "p50": 0.04430800000045565,
+        "p95": 0.07621900000049209,
+        "max": 8.495554999999513
+      },
+      "eventLoopMaxMs": 12.853247,
+      "catalogRows": [834]
+    },
+    {
+      "round": 0,
+      "name": "baseline",
+      "concurrency": 3,
+      "seedCount": 176,
+      "catalog": {
+        "n": 3,
+        "min": 5377.774700000002,
+        "p50": 5512.116348,
+        "p95": 5525.053662000002,
+        "max": 5525.053662000002
+      },
+      "probe": {
+        "n": 203,
+        "min": 1.422365999998874,
+        "p50": 1.7317929999990156,
+        "p95": 2.206207999999606,
+        "max": 33.521802999999636
+      },
+      "acquire": {
+        "n": 203,
+        "min": 0.03702700000212644,
+        "p50": 0.05689199999687844,
+        "p95": 0.08319699999992736,
+        "max": 27.673399999999674
+      },
+      "eventLoopMaxMs": 23.625727,
+      "catalogRows": [834, 834, 834]
+    },
+    {
+      "round": 0,
+      "name": "candidate",
+      "concurrency": 3,
+      "seedCount": 176,
+      "catalog": {
+        "n": 3,
+        "min": 3375.696970000001,
+        "p50": 3380.0865830000002,
+        "p95": 3399.578054999998,
+        "max": 3399.578054999998
+      },
+      "probe": {
+        "n": 125,
+        "min": 1.5421760000026552,
+        "p50": 1.8858470000013767,
+        "p95": 2.1736889999992854,
+        "max": 26.301487000000634
+      },
+      "acquire": {
+        "n": 125,
+        "min": 0.032233999998425134,
+        "p50": 0.0637620000015886,
+        "p95": 0.08774500000072294,
+        "max": 23.74515899999824
+      },
+      "eventLoopMaxMs": 15.056895,
+      "catalogRows": [834, 834, 834]
+    },
+    {
+      "round": 1,
+      "name": "candidate",
+      "concurrency": 3,
+      "seedCount": 176,
+      "catalog": {
+        "n": 3,
+        "min": 3381.1153190000005,
+        "p50": 3386.963737000002,
+        "p95": 3406.6790870000004,
+        "max": 3406.6790870000004
+      },
+      "probe": {
+        "n": 124,
+        "min": 1.4754219999995257,
+        "p50": 1.8399090000020806,
+        "p95": 2.256282000002102,
+        "max": 23.84668700000111
+      },
+      "acquire": {
+        "n": 124,
+        "min": 0.025244000000384403,
+        "p50": 0.07268099999782862,
+        "p95": 0.10731200000009267,
+        "max": 22.468348000002152
+      },
+      "eventLoopMaxMs": 18.825215,
+      "catalogRows": [834, 834, 834]
+    },
+    {
+      "round": 1,
+      "name": "baseline",
+      "concurrency": 3,
+      "seedCount": 176,
+      "catalog": {
+        "n": 3,
+        "min": 5331.813355000002,
+        "p50": 5338.131478999996,
+        "p95": 5362.928221000002,
+        "max": 5362.928221000002
+      },
+      "probe": {
+        "n": 198,
+        "min": 1.2824499999987893,
+        "p50": 1.710017000001244,
+        "p95": 2.185593999998673,
+        "max": 28.305566999999428
+      },
+      "acquire": {
+        "n": 198,
+        "min": 0.028960000003280584,
+        "p50": 0.05588500000158092,
+        "p95": 0.08755800000290037,
+        "max": 16.200615999998263
+      },
+      "eventLoopMaxMs": 17.448959,
+      "catalogRows": [834, 834, 834]
+    }
+  ],
+  "productionLead": {
+    "traceId": "6ab1d0ee00000000579e185f90765b3f",
+    "at": "2026-09-22T00:50:54.752Z",
+    "graphql": "ContextualSceneRecommendations",
+    "sqlMs": 2261.708,
+    "applicationMs": 2359,
+    "revision": "92a597ee03074bf4d79b0eb21db4499046ecd09f",
+    "poolObservation": "Multiple idle Admin-source connections during slow catalog statements; pool saturation not established."
+  },
+  "diagnostics": {
+    "activity": {
+      "started": "2026-09-22T00:48:44.241Z",
+      "ended": "2026-09-22T00:52:43.051Z",
+      "samples": 2394,
+      "totalSampleMs": 5000.045,
+      "maxSampleMs": 12.786,
+      "stoppedForCumulativeOverhead": true,
+      "budgetObservations": 14,
+      "maxBudgetStatementAgeMs": 2.39,
+      "slowBudgetCaptured": false
+    },
+    "volume": {
+      "samples": 2998,
+      "durationSeconds": 299.9970600605011,
+      "observerMs": {
+        "max": 0.54999440908432,
+        "total": 696.8408711254597
+      },
+      "volumeDeltas": {
+        "rbytes": 28241920,
+        "wbytes": 189751296,
+        "rios": 3714,
+        "wios": 19522,
+        "dbytes": 0,
+        "dios": 0
+      },
+      "memoryPressureDeltaMs": 0.0,
+      "topPressureIntervals": [
+        {
+          "at": "2026-09-22T00:53:26.596940+00:00",
+          "elapsedMs": 100.11,
+          "pressureMs": 82.57,
+          "fullMs": 82.57,
+          "rbytes": 0,
+          "wbytes": 8192,
+          "rios": 0,
+          "wios": 2,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:50:26.221690+00:00",
+          "elapsedMs": 100.1,
+          "pressureMs": 66.74,
+          "fullMs": 66.74,
+          "rbytes": 647168,
+          "wbytes": 0,
+          "rios": 70,
+          "wios": 0,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:49:32.265100+00:00",
+          "elapsedMs": 100.1,
+          "pressureMs": 62.76,
+          "fullMs": 62.76,
+          "rbytes": 3084288,
+          "wbytes": 155648,
+          "rios": 495,
+          "wios": 2,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:50:54.647740+00:00",
+          "elapsedMs": 100.09,
+          "pressureMs": 61.82,
+          "fullMs": 61.82,
+          "rbytes": 0,
+          "wbytes": 49152,
+          "rios": 0,
+          "wios": 10,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:49:51.984440+00:00",
+          "elapsedMs": 100.09,
+          "pressureMs": 59.64,
+          "fullMs": 59.63,
+          "rbytes": 8192,
+          "wbytes": 32768,
+          "rios": 1,
+          "wios": 2,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:49:28.461620+00:00",
+          "elapsedMs": 100.09,
+          "pressureMs": 54.95,
+          "fullMs": 53.03,
+          "rbytes": 0,
+          "wbytes": 622592,
+          "rios": 0,
+          "wios": 79,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:52:16.629690+00:00",
+          "elapsedMs": 100.09,
+          "pressureMs": 47.23,
+          "fullMs": 47.23,
+          "rbytes": 0,
+          "wbytes": 32768,
+          "rios": 0,
+          "wios": 6,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:50:23.619370+00:00",
+          "elapsedMs": 100.08,
+          "pressureMs": 42.3,
+          "fullMs": 42.3,
+          "rbytes": 0,
+          "wbytes": 24576,
+          "rios": 0,
+          "wios": 6,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:52:25.337700+00:00",
+          "elapsedMs": 100.07,
+          "pressureMs": 39.32,
+          "fullMs": 39.32,
+          "rbytes": 0,
+          "wbytes": 32768,
+          "rios": 0,
+          "wios": 2,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:49:52.084530+00:00",
+          "elapsedMs": 100.09,
+          "pressureMs": 38.34,
+          "fullMs": 38.34,
+          "rbytes": 0,
+          "wbytes": 57344,
+          "rios": 0,
+          "wios": 12,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:52:01.912620+00:00",
+          "elapsedMs": 100.1,
+          "pressureMs": 37.28,
+          "fullMs": 37.28,
+          "rbytes": 0,
+          "wbytes": 24576,
+          "rios": 0,
+          "wios": 4,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:50:54.847900+00:00",
+          "elapsedMs": 100.08,
+          "pressureMs": 32.53,
+          "fullMs": 31.88,
+          "rbytes": 0,
+          "wbytes": 32768,
+          "rios": 0,
+          "wios": 6,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:51:02.655030+00:00",
+          "elapsedMs": 100.09,
+          "pressureMs": 31.16,
+          "fullMs": 31.16,
+          "rbytes": 0,
+          "wbytes": 32768,
+          "rios": 0,
+          "wios": 4,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:50:54.747820+00:00",
+          "elapsedMs": 100.08,
+          "pressureMs": 30.83,
+          "fullMs": 30.8,
+          "rbytes": 0,
+          "wbytes": 8192,
+          "rios": 0,
+          "wios": 2,
+          "dbytes": 0,
+          "dios": 0
+        },
+        {
+          "at": "2026-09-22T00:50:26.121590+00:00",
+          "elapsedMs": 100.09,
+          "pressureMs": 27.95,
+          "fullMs": 27.95,
+          "rbytes": 6549504,
+          "wbytes": 761856,
+          "rios": 894,
+          "wios": 48,
+          "dbytes": 0,
+          "dios": 0
+        }
+      ]
+    },
+    "kernelWaits": "No retained rows; process filter/surface visibility unverified, so not evidence of no kernel waits.",
+    "cleanup": "All observers ended. Settings were confined to their own read-only sessions; no global database settings changed."
+  }
+}

@@ -1,0 +1,36 @@
+diff --git a/out/src/sourcemapper/sourcemapper.js b/out/src/sourcemapper/sourcemapper.js
+index b0fca42e5add90d51417fa6e1743ee913486c081..ef7de606777e0524c489fe85136b17cacd822b22 100644
+--- a/out/src/sourcemapper/sourcemapper.js
++++ b/out/src/sourcemapper/sourcemapper.js
+@@ -370,6 +370,31 @@ class SourceMapper {
+         })));
+         // Phase 2: Process .map files for any JS files not yet resolved.
+         await Promise.all(mapFiles.map(mapPath => limit(() => processSourceMap(this.infoMap, mapPath, this.debug))));
++        // SourceMapConsumer parses mappings lazily. Prepare executed CommonJS
++        // modules between event-loop turns so the first profile collection does
++        // not pay their accumulated parsing cost. Unloaded modules remain lazy.
++        for (const [file, entry] of this.infoMap) {
++            if (!require.cache[file])
++                continue;
++            const consumers = [entry.mapConsumer];
++            while (consumers.length) {
++                const consumer = consumers.pop();
++                // Indexed Next.js maps contain independent lazy basic maps.
++                if (consumer._sections) {
++                    consumers.push(...consumer._sections.map(section => section.consumer));
++                    continue;
++                }
++                await new Promise(resolve => setImmediate(resolve));
++                try {
++                    consumer.originalPositionFor({ line: 1, column: 0 });
++                }
++                catch (err) {
++                    // Preserve lazy lookup/error behavior for malformed maps;
++                    // one bad map must not prevent all profiler initialization.
++                    logger_1.logger.warn(`Could not prepare source map for ${file}: ${err}`);
++                }
++            }
++        }
+         // Any file whose annotation pointed to a missing map and that still has no
+         // entry after Phase 2 is tracked as "declared but missing".
+         for (const jsPath of annotatedNotLoaded) {

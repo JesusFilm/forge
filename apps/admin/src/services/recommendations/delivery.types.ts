@@ -1,0 +1,197 @@
+import type { PrismaClient } from "@prisma/client"
+import type { Principal } from "@/auth/principal"
+import type { SceneRecommendation } from "@/services/scene-recommendations.service"
+import type { RecommendationDeliveryAdmission } from "./admission"
+import type {
+  RecommendationAssignmentLane,
+  RecommendationCandidateContributor,
+  RecommendationExecutionMode,
+  RecommendationShortfallReason,
+} from "./contracts"
+import { RECOMMENDATION_CONTRACTS } from "./contracts"
+import type {
+  CandidateNomination,
+  SemanticCandidatePoolItem,
+} from "./candidate"
+import type { LiveProfileCandidateResult } from "./candidates/profile-candidate.service"
+import type { ExperimentAssignmentResolution } from "./experiment/assignment"
+import type { RecommendationServingState } from "./manifest.service"
+import type { RecommendationRecentContext } from "./recent-context.service"
+import type { DeliveryCapabilityBinding } from "./token.service"
+import type {
+  CuratedDeliveryDiagnostics,
+  SemanticRetrievalDiagnostics,
+} from "./delivery-diagnostics"
+
+export type DeliveryTokenService = {
+  activeKid: string
+  signDeliveryCapability(binding: DeliveryCapabilityBinding): Promise<string>
+}
+
+export type SemanticRecommendationDeliveryItem = SceneRecommendation & {
+  id: string
+  position: number
+  targetMediaId: string
+  canonicalHref: string
+  candidateGenerator:
+    | "semantic"
+    | "multi-interest-profile"
+    | "directional-cowatch"
+    | "curated"
+  contributors: RecommendationCandidateContributor[]
+  capability: string
+}
+
+export type SemanticRecommendationDelivery = {
+  contractVersion: typeof RECOMMENDATION_CONTRACTS.delivery
+  surfaceVersion: typeof RECOMMENDATION_CONTRACTS.surface
+  strategyVersion: typeof RECOMMENDATION_CONTRACTS.strategy
+  classifierVersion: typeof RECOMMENDATION_CONTRACTS.outcome
+  requestId: string | null
+  result: "served" | "fallback" | "empty" | "unavailable"
+  reason: string | null
+  expiresAt: string | null
+  requestedCount?: number
+  composedCount?: number
+  shortfallReason?: RecommendationShortfallReason | null
+  items: SemanticRecommendationDeliveryItem[]
+  personalization?: RecommendationPersonalizationDelivery | null
+}
+
+export type RecommendationPersonalizationDelivery = Readonly<{
+  contractVersion: "anonymous-profile-personalization-v1"
+  lane: RecommendationAssignmentLane
+  executionMode?: RecommendationExecutionMode
+  effectiveManifestId: string
+  profileState: "session" | "durable" | null
+  projectionVersion: string | null
+  projectionGeneration: number | null
+  interestCount: number
+  sessionIntentPresent: boolean
+  reason: string | null
+}>
+
+export type DeliveryDependencies = {
+  prisma: PrismaClient
+  candidateTraceFormat?: "legacy" | "compact"
+  servedItemFormat?: "legacy" | "packed"
+  admission: RecommendationDeliveryAdmission
+  getServingState(input: {
+    deadlineAt: number
+  }): Promise<RecommendationServingState>
+  retrieve(input: {
+    seedMediaId: string
+    locale: string
+    audioLanguageSlug: string
+    limit: number
+    deadlineAt: number
+    onDiagnostics?: (diagnostics: SemanticRetrievalDiagnostics) => void
+  }): Promise<SemanticCandidatePoolItem[]>
+  retrieveCuratedFallback?: (input: {
+    seedMediaId: string
+    locale: string
+    audioLanguageSlug: string
+    excludedMediaIds: readonly string[]
+    deadlineAt: number
+    onDiagnostics?: (diagnostics: CuratedDeliveryDiagnostics) => void
+  }) => Promise<CandidateNomination[]>
+  recheckCached(
+    items: SemanticCandidatePoolItem[],
+    input: {
+      locale: string
+      audioLanguageSlug: string
+      deadlineAt: number
+    },
+  ): Promise<SemanticCandidatePoolItem[]>
+  orchestrate?: typeof import("./orchestration").runSemanticCandidatePlatform
+  orchestrateHybrid?: typeof import("./orchestration").runCandidatePlatform
+  authorizeProfile?: (input: {
+    sessionDigest: string
+    consentReceiptDigest: string
+    profileTokenDigest: string
+    now: Date
+    deadlineAt: number
+  }) => Promise<boolean>
+  assignExperiment?: (input: {
+    surfaceVersion: string
+    sessionDigest: string
+    profileTokenDigest: string | null
+    eligibleHuman: boolean
+    now: Date
+    deadlineAt: number
+  }) => Promise<ExperimentAssignmentResolution>
+  assignProfileExperiment?: (input: {
+    sessionDigest: string
+    profileTokenDigest: string
+    eligibleForEnrollment: boolean
+    clientDeliveryContract?: string | null
+    now: Date
+    deadlineAt: number
+  }) => Promise<ExperimentAssignmentResolution>
+  resolveStudyAuthority?: (
+    input: Parameters<
+      typeof import("./delivery-trial.service").resolveDeliveryStudyAuthority
+    >[1],
+  ) => ReturnType<
+    typeof import("./delivery-trial.service").resolveDeliveryStudyAuthority
+  >
+  composeCowatchTrial?: (
+    input: import("./delivery-trial.service").TrialCompositionInput,
+  ) => Promise<import("./delivery-trial.service").TrialCompositionResult>
+  resolveOwnerAuthority?: (
+    input: Parameters<
+      typeof import("./delivery-owner.service").resolveDeliveryOwnerAuthority
+    >[1],
+  ) => ReturnType<
+    typeof import("./delivery-owner.service").resolveDeliveryOwnerAuthority
+  >
+  composeOwnerCowatch?: (
+    input: import("./delivery-owner.service").OwnerCompositionInput,
+  ) => Promise<import("./delivery-owner.service").OwnerCompositionResult>
+  retrieveProfile?: (input: {
+    sessionDigest: string
+    profileTokenDigest: string | null
+    seedMediaId: string | null
+    locale: string
+    audioLanguageSlug: string
+    manifestId: string
+    deadlineAt: number
+    now: Date
+  }) => Promise<LiveProfileCandidateResult | null>
+  loadViewingModeAffinity?: (input: {
+    profileTokenDigest: string
+    mediaIds: readonly string[]
+    now: Date
+    deadlineAt: number
+  }) => Promise<import("./viewing-mode").ViewingModeAffinity | null>
+  resolveRecentContext?: (input: {
+    sessionDigest: string
+    profileTokenDigest: string | null
+    allowDurableProfileLinks: boolean
+    locale: string
+    now: Date
+    deadlineAt: number
+  }) => Promise<RecommendationRecentContext>
+  tokenService: DeliveryTokenService | null
+  buildCanonicalTarget?: (input: {
+    videoSlug: string
+    audioLanguageSlug: string
+  }) => string
+  now?: () => Date
+  nowMilliseconds?: () => number
+  newId?: () => string
+}
+
+export type DeliveryInput = {
+  caller: Principal | null
+  seedMediaId: string
+  /** Requested presentation locale. Chinese script variants retrieve zh transcripts. */
+  locale: string
+  audioLanguageSlug: string
+  sessionDigest: string
+  consentReceiptDigest?: string | null
+  profileTokenDigest?: string | null
+  eligibleHuman?: boolean
+  trafficCategory?: string | null
+  clientDeliveryContract?: string | null
+}

@@ -1,0 +1,967 @@
+import { PrismaClient } from "@prisma/client"
+import { Client } from "pg"
+import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { env } from "@/config/env"
+import { recommendationRuntimeMigrationSql } from "../current-schema.test-fixture"
+import {
+  ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+  ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+  CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+} from "@/services/content-embedding-contract"
+import { DELIVERY_RETRIEVAL_BUDGET_MS } from "../contracts"
+import { runRecommendationRetrievalQuery } from "../delivery.service"
+import { runCandidatePlatform } from "../orchestration"
+import {
+  makeHarness,
+  personalizedInput,
+  semanticCandidates,
+} from "../delivery.service.test-helpers"
+import { servedSnapshotValue } from "../served-item-payload"
+import { loadRecommendationRequestDetail } from "../admin-ops/detail.service"
+import { purgeExpiredRecommendationRequests } from "../retention.service"
+import { safeShadowLiveItem } from "../shadow-evaluation/projection"
+import {
+  createDatabaseProfileSourceNominationGenerator,
+  getLiveProfileCandidates,
+} from "./profile-candidate.service"
+
+const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
+const USE_DETERMINISTIC_FIXTURE =
+  env.RECOMMENDATION_PROFILE_DB_FIXTURE === "deterministic"
+const migrations = recommendationRuntimeMigrationSql
+
+function deterministicVector(first: number, second: number): string {
+  return `[${[first, second, ...Array<number>(1534).fill(0)].join(",")}]`
+}
+
+function latencyPercentile(
+  samples: readonly number[],
+  percentile: number,
+): number {
+  const sorted = [...samples].sort((left, right) => left - right)
+  return sorted[Math.ceil((percentile / 100) * sorted.length) - 1]!
+}
+
+async function insertEligibleProjectionSource(
+  client: Client,
+  input: { ordinal: number; mediaId: string },
+): Promise<void> {
+  const suffix = String(input.ordinal)
+  await client.query(
+    `INSERT INTO recommendation_playback_episode (
+      id, media_id, session_digest, state, capability_jti, signing_kid,
+      active_until, hard_until, generation, claimed_at, finalized_at,
+      created_at, expires_at
+    ) VALUES ($1, $2, $3, 'finalized', $4, 'test-kid', $5, $6, 1,
+      $7, $7, $7, '2027-02-20T00:00:00.000Z')`,
+    [
+      `u19-snapshot-episode-${suffix}`,
+      input.mediaId,
+      "e".repeat(64),
+      `u19-snapshot-episode-jti-${suffix}`,
+      new Date("2026-08-26T13:00:00.000Z"),
+      new Date("2026-08-26T14:00:00.000Z"),
+      new Date("2026-08-26T11:00:00.000Z"),
+    ],
+  )
+  await client.query(
+    `INSERT INTO recommendation_outcome_revision (
+      id, episode_id, classifier_version, fact_watermark, input_digest,
+      revision, qualified_view, view_quality_weight,
+      view_quality_weight_reason, active_playback_milliseconds,
+      duration_seconds, duration_cohort, active_coverage, generation,
+      created_at, expires_at
+    ) VALUES ($1, $2, 'active-watch-proxy-v1', 0, $3, 1, true, 1,
+      'active_fraction_of_duration', 60000, 120, 'medium', 'complete', 1,
+      '2026-08-26T11:00:00.000Z', '2027-02-20T00:00:00.000Z')`,
+    [
+      `u19-snapshot-outcome-${suffix}`,
+      `u19-snapshot-episode-${suffix}`,
+      suffix.repeat(64),
+    ],
+  )
+  await client.query(
+    `INSERT INTO recommendation_eligibility_decision (
+      id, source_type, source_key, outcome_id, policy_version, revision,
+      actor_class, state, reason_codes, eligible_scopes,
+      contribution_weight, contribution_ordinal, distinct_support,
+      identity_concentration, input_digest, evidence_watermark,
+      decided_at, expires_at
+    ) VALUES ($1, 'playback_outcome', $2, $3,
+      'recommendation-integrity-v1', 1, 'human_anonymous', 'eligible',
+      ARRAY['qualified_view'], ARRAY['profile'], 1, $4, 1, 1, $5,
+      '2026-08-26T11:00:00.000Z', '2026-08-26T11:00:00.000Z',
+      '2027-02-20T00:00:00.000Z')`,
+    [
+      `u19-snapshot-decision-${suffix}`,
+      `playback_outcome:u19-snapshot-outcome-${suffix}`,
+      `u19-snapshot-outcome-${suffix}`,
+      input.ordinal + 1,
+      (input.ordinal + 3).toString().repeat(64),
+    ],
+  )
+  await client.query(
+    `INSERT INTO recommendation_profile_projection_contribution (
+      id, generation_id, kind, source_id_digest, source_outcome_id,
+      target_media_id, interest_ordinal, weight,
+      eligibility_policy_version, outcome_classifier_version,
+      source_eligibility_decision_id, source_eligibility_revision,
+      privacy_generation, occurred_at, expires_at
+    ) VALUES ($1, 'u19-snapshot-projection', 'qualified_outcome', $2, $3,
+      $4, $5, 1, 'recommendation-integrity-v1', 'active-watch-proxy-v1',
+      $6, 1, 1, '2026-08-26T11:00:00.000Z',
+      '2027-02-20T00:00:00.000Z')`,
+    [
+      `u19-snapshot-contribution-${suffix}`,
+      (input.ordinal + 5).toString().repeat(64),
+      `u19-snapshot-outcome-${suffix}`,
+      input.mediaId,
+      input.ordinal,
+      `u19-snapshot-decision-${suffix}`,
+    ],
+  )
+}
+
+async function installContentEmbeddingContractAuthority(
+  client: Client,
+): Promise<void> {
+  await client.query(`
+    CREATE TABLE content_embedding_contract (
+      id text PRIMARY KEY,
+      query_provider text NOT NULL,
+      query_model text NOT NULL,
+      query_native_dimensions integer NOT NULL,
+      query_dimensions integer NOT NULL,
+      query_transform_version text,
+      storage_provider text NOT NULL,
+      storage_model text NOT NULL,
+      storage_native_dimensions integer NOT NULL,
+      storage_dimensions integer NOT NULL,
+      storage_transform_version text,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE TABLE content_embedding_contract_pointer (
+      id text PRIMARY KEY,
+      active_contract_id text NOT NULL REFERENCES content_embedding_contract(id),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+  `)
+  await client.query(
+    `INSERT INTO content_embedding_contract (
+      id, query_provider, query_model, query_native_dimensions,
+      query_dimensions, query_transform_version, storage_provider,
+      storage_model, storage_native_dimensions, storage_dimensions,
+      storage_transform_version
+    ) VALUES (
+      $1, $2, $3, $4, $4, NULL, $5, $6, $7, $7, NULL
+    )`,
+    [
+      ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+      ACTIVE_CONTENT_QUERY_EMBEDDING_PROVIDER,
+      ACTIVE_CONTENT_QUERY_EMBEDDING_MODEL,
+      ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+      ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+    ],
+  )
+  await client.query(
+    `INSERT INTO content_embedding_contract_pointer (
+      id, active_contract_id
+    ) VALUES ($1, $2)`,
+    [
+      CONTENT_EMBEDDING_CONTRACT_POINTER_ID,
+      ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
+    ],
+  )
+}
+
+async function installDeterministicCatalogFixture(
+  client: Client,
+  input: { projectionMediaId: string; seedMediaId: string },
+): Promise<void> {
+  await installContentEmbeddingContractAuthority(client)
+  await client.query(`
+    CREATE TABLE video (
+      id text PRIMARY KEY, core_id text, slug text NOT NULL,
+      deleted_at timestamp, restrict_view_platforms text[] NOT NULL DEFAULT '{}'
+    );
+    CREATE TABLE video_relation (parent_id text, child_id text);
+    CREATE TABLE video_transcript (
+      id text PRIMARY KEY, video_id text NOT NULL, video_edition_id text NOT NULL,
+      language text NOT NULL, embedding_provider text, model text NOT NULL,
+      dimensions integer NOT NULL, embedding_native_dimensions integer,
+      embedding_transform_version text
+    );
+    CREATE TABLE video_transcript_chunk (
+      id text PRIMARY KEY, transcript_id text NOT NULL, language text NOT NULL,
+      model text NOT NULL, dimensions integer NOT NULL, chunk_index integer NOT NULL,
+      content_summary text, raw_source_text text, text text NOT NULL,
+      start_seconds double precision, end_seconds double precision,
+      felt_needs text[] NOT NULL DEFAULT '{}', demographics text[] NOT NULL DEFAULT '{}',
+      spiritual_context text[] NOT NULL DEFAULT '{}',
+      embedding public.vector(1536)
+    );
+    CREATE INDEX video_transcript_chunk_embedding_hnsw
+      ON video_transcript_chunk USING hnsw (embedding public.vector_cosine_ops);
+    CREATE TABLE video_locale (
+      id text PRIMARY KEY, video_id text NOT NULL, locale text NOT NULL,
+      status text NOT NULL, deleted_at timestamp, title text,
+      language_slug text, language_core_id text
+    );
+    CREATE TABLE language (id text PRIMARY KEY, slug text NOT NULL);
+    CREATE TABLE mux_video (id text PRIMARY KEY, playback_id text);
+    CREATE TABLE video_dub (
+      id text PRIMARY KEY, video_edition_id text NOT NULL, language_id text NOT NULL,
+      mux_video_id text NOT NULL, deleted_at timestamp, published boolean,
+      duration integer, length_in_milliseconds bigint, updated_at timestamp NOT NULL
+    );
+    CREATE TABLE video_image (
+      id text PRIMARY KEY, video_id text NOT NULL, mobile_cinematic_high text,
+      video_still text, thumbnail text, url text, deleted_at timestamp,
+      created_at timestamp NOT NULL
+    );
+  `)
+  const videos = [
+    {
+      id: input.projectionMediaId,
+      slug: "ci-profile-candidate-a",
+      vector: deterministicVector(1, 0),
+    },
+    {
+      id: "ci-profile-candidate-b",
+      slug: "ci-profile-candidate-b",
+      vector: deterministicVector(0.95, 0.05),
+    },
+    {
+      id: input.seedMediaId,
+      slug: "ci-profile-seed",
+      vector: deterministicVector(0, 1),
+    },
+  ]
+  await client.query(
+    `INSERT INTO language (id, slug) VALUES ('ci-english', 'english')`,
+  )
+  for (const [index, video] of videos.entries()) {
+    const editionId = `ci-edition-${index}`
+    const transcriptId = `ci-transcript-${index}`
+    const muxId = `ci-mux-${index}`
+    await client.query(
+      `INSERT INTO video (id, core_id, slug) VALUES ($1, $2, $3)`,
+      [video.id, `ci-core-${index}`, video.slug],
+    )
+    await client.query(
+      `INSERT INTO video_locale (
+         id, video_id, locale, status, title, language_slug, language_core_id
+       ) VALUES ($1, $2, 'en', 'published', $3, 'english', '529')`,
+      [`ci-locale-${index}-english`, video.id, `CI profile candidate ${index}`],
+    )
+    if (index === 1) {
+      await client.query(
+        `INSERT INTO video_locale (
+           id, video_id, locale, status, title, language_slug, language_core_id
+         ) VALUES (
+           'ci-locale-1-other', $1, 'en', 'published',
+           'Wrong duplicate-locale title', 'spanish-latin-american', '21028'
+         )`,
+        [video.id],
+      )
+    }
+    await client.query(
+      `INSERT INTO mux_video (id, playback_id) VALUES ($1, $2)`,
+      [muxId, `ci-playback-${index}`],
+    )
+    await client.query(
+      `INSERT INTO video_dub (
+        id, video_edition_id, language_id, mux_video_id, published,
+        duration, length_in_milliseconds, updated_at
+       ) VALUES (
+        $1, $2, 'ci-english', $3, true, $4, $5,
+        '2026-08-26T00:00:00.000Z'
+       )`,
+      [
+        `ci-dub-${index}`,
+        editionId,
+        muxId,
+        180 + index,
+        index === 0 ? 125_000 : null,
+      ],
+    )
+    await client.query(
+      `INSERT INTO video_transcript (
+        id, video_id, video_edition_id, language, embedding_provider, model,
+       dimensions, embedding_native_dimensions, embedding_transform_version
+       ) VALUES ($1, $2, $3, 'en', $4, $5, $6, $6, NULL)`,
+      [
+        transcriptId,
+        video.id,
+        editionId,
+        ACTIVE_CONTENT_STORAGE_EMBEDDING_PROVIDER,
+        ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+        ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+      ],
+    )
+    await client.query(
+      `INSERT INTO video_transcript_chunk (
+         id, transcript_id, language, model, dimensions, chunk_index,
+         content_summary, raw_source_text, text, start_seconds, end_seconds,
+         felt_needs, demographics, spiritual_context, embedding
+       ) VALUES ($1, $2, 'en', $4, $5, 0,
+         $3, $3, $3, 0, 60, ARRAY['hope'], ARRAY['general'],
+         ARRAY['curious'], $6::public.vector)`,
+      [
+        `ci-chunk-${index}`,
+        transcriptId,
+        `Deterministic recommendation fixture ${index}`,
+        ACTIVE_CONTENT_STORAGE_EMBEDDING_MODEL,
+        ACTIVE_CONTENT_STORAGE_EMBEDDING_DIMENSIONS,
+        video.vector,
+      ],
+    )
+  }
+}
+
+describe.skipIf(!RUN_REAL_DB_TEST)(
+  "multi-interest candidates against an approved pgvector fixture",
+  () => {
+    const schema = `recommendation_u19_snapshot_${Date.now()}`
+    const now = new Date("2026-08-26T12:00:00.000Z")
+    let admin: Client
+    let prisma: PrismaClient
+    let projectionMediaId: string
+    let secondaryProjectionMediaId: string
+    let seedMediaId: string
+
+    beforeAll(async () => {
+      admin = new Client({ connectionString: env.DATABASE_URL })
+      await admin.connect()
+      await admin.query(`CREATE SCHEMA "${schema}"`)
+      await admin.query(`SET search_path TO "${schema}", public`)
+      for (const migration of migrations) await admin.query(migration)
+      if (USE_DETERMINISTIC_FIXTURE) {
+        projectionMediaId = "ci-profile-candidate-a"
+        seedMediaId = "ci-profile-seed"
+        secondaryProjectionMediaId = seedMediaId
+        await installDeterministicCatalogFixture(admin, {
+          projectionMediaId,
+          seedMediaId,
+        })
+      } else {
+        const snapshot = await admin.query<{ video_id: string }>(`
+          SELECT transcript.video_id
+          FROM public.video_transcript transcript
+          JOIN public.video_transcript_chunk chunk
+            ON chunk.transcript_id = transcript.id AND chunk.embedding IS NOT NULL
+          JOIN public.video video ON video.id = transcript.video_id
+            AND video.deleted_at IS NULL
+          JOIN public.video_locale locale ON locale.video_id = video.id
+            AND locale.locale = 'en' AND locale.status = 'published'
+            AND locale.deleted_at IS NULL
+          JOIN public.video_dub dub ON dub.video_edition_id = transcript.video_edition_id
+            AND dub.deleted_at IS NULL
+          JOIN public.language language ON language.id = dub.language_id
+            AND language.slug = 'english'
+          JOIN public.mux_video mux ON mux.id = dub.mux_video_id
+            AND mux.playback_id IS NOT NULL
+          WHERE transcript.language = 'en'
+            AND transcript.embedding_provider = 'jesus-film-ai-gateway'
+            AND transcript.model = 'embeddings'
+            AND transcript.dimensions = 1536
+            AND transcript.embedding_native_dimensions = 1536
+            AND transcript.embedding_transform_version IS NULL
+            AND chunk.model = 'embeddings'
+            AND chunk.dimensions = 1536
+          GROUP BY transcript.video_id
+          ORDER BY transcript.video_id
+          LIMIT 3
+        `)
+        if (snapshot.rows.length < 3) {
+          throw new Error(
+            "The approved production snapshot must contain three playable English pgvector videos for U19 verification.",
+          )
+        }
+        projectionMediaId = snapshot.rows[0]!.video_id
+        seedMediaId = snapshot.rows[1]!.video_id
+        secondaryProjectionMediaId = snapshot.rows[2]!.video_id
+        for (const table of [
+          "content_embedding_contract",
+          "content_embedding_contract_pointer",
+          "video",
+          "video_relation",
+          "video_transcript",
+          "video_transcript_chunk",
+          "video_locale",
+          "language",
+          "mux_video",
+          "video_dub",
+          "video_image",
+        ]) {
+          await admin.query(
+            `CREATE VIEW "${schema}"."${table}" AS SELECT * FROM public."${table}"`,
+          )
+        }
+      }
+      await admin.query(
+        `INSERT INTO recommendation_profile (
+          id, token_digest, privacy_generation, choice, state, expires_at,
+          created_at, updated_at
+        ) VALUES (
+          'u19-snapshot-profile', $1, 1, 'durable_allowed', 'active',
+          '2027-02-20T00:00:00.000Z', '2026-08-25T00:00:00.000Z', $2
+        )`,
+        ["a".repeat(64), now],
+      )
+      await admin.query(
+        `INSERT INTO recommendation_profile_projection_generation (
+          id, manifest_id, scope, profile_id, privacy_generation, generation,
+          state, projection_version, clustering_version,
+          eligibility_policy_version, outcome_classifier_version,
+          input_window_start, input_window_end, input_watermark, input_digest,
+          contribution_count, durable_interest_count, coverage, stability,
+          cohort_quality, retention_days, published_at, expires_at
+        ) VALUES (
+          'u19-snapshot-projection', 'multi-interest-profile-shadow-v1',
+          'durable', 'u19-snapshot-profile', 1, 1, 'published',
+          'multi-interest-profile-projection-v1',
+          'deterministic-farthest-first-medoids-v1',
+          'recommendation-integrity-v1', 'active-watch-proxy-v1',
+          '2026-08-25T12:00:00.000Z', $1, $1, $2, 2, 2,
+          1, 1, 0.9, 180, $1, '2027-02-20T00:00:00.000Z'
+        )`,
+        [now, "b".repeat(64)],
+      )
+      const shared = env.RECOMMENDATION_PROFILE_VECTOR_SHARING === "true"
+      if (shared) {
+        await admin.query(
+          `INSERT INTO recommendation_profile_vector_snapshot (digest, embedding)
+           SELECT
+             encode(sha256(convert_to(public.avg(chunk.embedding)::text, 'UTF8')), 'hex'),
+             public.avg(chunk.embedding)
+           FROM video_transcript transcript
+           JOIN video_transcript_chunk chunk ON chunk.transcript_id = transcript.id
+           WHERE transcript.video_id IN ($1, $2) AND chunk.embedding IS NOT NULL
+           GROUP BY transcript.video_id
+           ON CONFLICT (digest) DO NOTHING`,
+          [projectionMediaId, secondaryProjectionMediaId],
+        )
+      }
+      const vectorColumn = shared ? "vector_digest" : "embedding"
+      const vectorValue = shared
+        ? "encode(sha256(convert_to(public.avg(chunk.embedding)::text, 'UTF8')), 'hex')"
+        : "public.avg(chunk.embedding)"
+      await admin.query(
+        `INSERT INTO recommendation_profile_interest (
+          id, generation_id, kind, interest_ordinal, medoid_media_id,
+          medoid_source_digest, ${vectorColumn}, weight, support_count, stability,
+          expires_at
+        )
+        SELECT
+          'u19-snapshot-interest', 'u19-snapshot-projection', 'durable', 0,
+          $1::varchar(191), $2, ${vectorValue}, 1, 1, 1,
+          '2027-02-20T00:00:00.000Z'
+        FROM video_transcript transcript
+        JOIN video_transcript_chunk chunk ON chunk.transcript_id = transcript.id
+        WHERE transcript.video_id::text = $1::text AND chunk.embedding IS NOT NULL
+        GROUP BY transcript.video_id`,
+        [projectionMediaId, "c".repeat(64)],
+      )
+      await admin.query(
+        `INSERT INTO recommendation_profile_interest (
+          id, generation_id, kind, interest_ordinal, medoid_media_id,
+          medoid_source_digest, ${vectorColumn}, weight, support_count, stability,
+          expires_at
+        )
+        SELECT
+          'u19-snapshot-interest-secondary', 'u19-snapshot-projection',
+          'durable', 1, $1::varchar(191), $2, ${vectorValue}, 1, 1, 1,
+          '2027-02-20T00:00:00.000Z'
+        FROM video_transcript transcript
+        JOIN video_transcript_chunk chunk ON chunk.transcript_id = transcript.id
+        WHERE transcript.video_id::text = $1::text
+          AND chunk.embedding IS NOT NULL
+        GROUP BY transcript.video_id`,
+        [secondaryProjectionMediaId, "f".repeat(64)],
+      )
+      await insertEligibleProjectionSource(admin, {
+        ordinal: 0,
+        mediaId: projectionMediaId,
+      })
+      await insertEligibleProjectionSource(admin, {
+        ordinal: 1,
+        mediaId: secondaryProjectionMediaId,
+      })
+      await admin.query(
+        `INSERT INTO recommendation_profile_projection_pointer (
+          scope_digest, scope, profile_id, privacy_generation, generation_id,
+          pointer_generation, updated_at
+        ) VALUES ($1, 'durable', 'u19-snapshot-profile', 1,
+          'u19-snapshot-projection', 1, $2)`,
+        ["d".repeat(64), now],
+      )
+      const url = new URL(env.DATABASE_URL)
+      url.searchParams.delete("options")
+      url.searchParams.set("schema", schema)
+      prisma = new PrismaClient({
+        datasources: { db: { url: url.toString() } },
+      })
+    })
+
+    afterAll(async () => {
+      await prisma?.$disconnect()
+      if (!admin) return
+      await admin.query("RESET search_path")
+      await admin.query(`DROP SCHEMA IF EXISTS "${schema}" CASCADE`)
+      await admin.end()
+    })
+
+    it("stores both candidate interests in the configured vector shape", async () => {
+      const { rows } = await admin.query<{
+        inline_count: string
+        shared_count: string
+        exact_count: string
+      }>(`
+        SELECT
+          count(*) FILTER (WHERE interest.embedding IS NOT NULL)::text AS inline_count,
+          count(*) FILTER (WHERE interest.vector_digest IS NOT NULL)::text AS shared_count,
+          count(*) FILTER (
+            WHERE public.vector_send(
+              COALESCE(interest.embedding, snapshot.embedding)
+            ) = public.vector_send(content.embedding)
+          )::text AS exact_count
+        FROM recommendation_profile_interest interest
+        LEFT JOIN recommendation_profile_vector_snapshot snapshot
+          ON snapshot.digest = interest.vector_digest
+        JOIN LATERAL (
+          SELECT public.avg(chunk.embedding) AS embedding
+          FROM video_transcript transcript
+          JOIN video_transcript_chunk chunk ON chunk.transcript_id = transcript.id
+          WHERE transcript.video_id = interest.medoid_media_id
+        ) content ON true
+        WHERE interest.generation_id = 'u19-snapshot-projection'
+      `)
+      expect(rows[0]).toEqual({
+        inline_count:
+          env.RECOMMENDATION_PROFILE_VECTOR_SHARING === "true" ? "0" : "2",
+        shared_count:
+          env.RECOMMENDATION_PROFILE_VECTOR_SHARING === "true" ? "2" : "0",
+        exact_count: "2",
+      })
+    })
+
+    it("keeps cold and warm live profile challenger retrieval inside the unchanged 1.5s deadline", async () => {
+      const retrieve = async () => {
+        const startedAt = Date.now()
+        const result = await runRecommendationRetrievalQuery(
+          prisma,
+          startedAt + DELIVERY_RETRIEVAL_BUDGET_MS,
+          (scopedPrisma) =>
+            getLiveProfileCandidates(scopedPrisma, {
+              sessionDigest: "e".repeat(64),
+              profileTokenDigest: "a".repeat(64),
+              context: {
+                surface: "watch-below-player-v1",
+                purpose: "watch",
+                locale: "en",
+                audioLanguageSlug: "english",
+                seedMediaId,
+                manifestId: "multi-interest-profile-pilot-v1",
+              },
+              now,
+            }),
+        )
+        return { result, elapsedMs: Date.now() - startedAt }
+      }
+
+      const cold = await retrieve()
+      const warm = await retrieve()
+      const loaded = await Promise.all(Array.from({ length: 6 }, retrieve))
+
+      for (const run of [cold, warm, ...loaded]) {
+        expect(run.elapsedMs).toBeLessThan(DELIVERY_RETRIEVAL_BUDGET_MS)
+        expect(run.result?.projection).toMatchObject({
+          id: "u19-snapshot-projection",
+          scope: "durable",
+          generation: 1,
+          projectionVersion: "multi-interest-profile-projection-v1",
+          interestCount: 2,
+        })
+        expect(run.result?.nominations.length).toBeGreaterThanOrEqual(2)
+        expect(
+          run.result?.nominations.every(
+            (nomination) =>
+              nomination.source.generator === "multi-interest-profile",
+          ),
+        ).toBe(true)
+        expect(JSON.stringify(run.result)).not.toMatch(
+          /vectorText|profileId|sessionDigest|tokenDigest/,
+        )
+        expect(run.result?.nominations).toEqual(warm.result?.nominations)
+      }
+      if (USE_DETERMINISTIC_FIXTURE) {
+        expect(
+          cold.result?.nominations.map(
+            (nomination) => nomination.targetMediaId,
+          ),
+        ).toEqual([
+          "ci-profile-candidate-a",
+          "ci-profile-candidate-b",
+          "ci-profile-candidate-b",
+          "ci-profile-candidate-a",
+        ])
+        const coldCandidate = cold.result?.nominations.find(
+          (candidate) => candidate.targetMediaId === "ci-profile-candidate-b",
+        )
+        const warmCandidate = warm.result?.nominations.find(
+          (candidate) => candidate.targetMediaId === "ci-profile-candidate-b",
+        )
+        expect(coldCandidate?.presentation.videoTitle).toBe(
+          "CI profile candidate 1",
+        )
+        expect(warmCandidate?.presentation.videoTitle).toBe(
+          coldCandidate?.presentation.videoTitle,
+        )
+        expect(coldCandidate?.presentation.durationSeconds).toBe(181)
+        expect(
+          cold.result?.nominations.find(
+            (candidate) => candidate.targetMediaId === "ci-profile-candidate-a",
+          )?.presentation.durationSeconds,
+        ).toBe(125)
+      }
+
+      console.info(
+        `[recommendations] event=live_profile_challenger_snapshot_benchmark fixture=${USE_DETERMINISTIC_FIXTURE ? "deterministic_ci" : "production_snapshot"} shape=${env.RECOMMENDATION_PROFILE_VECTOR_SHARING === "true" ? "shared" : "inline"} cold_ms=${cold.elapsedMs} warm_ms=${warm.elapsedMs} loaded_p50_ms=${latencyPercentile(
+          loaded.map((run) => run.elapsedMs),
+          50,
+        )} loaded_p95_ms=${latencyPercentile(
+          loaded.map((run) => run.elapsedMs),
+          95,
+        )} nominated=${cold.result?.nominations.length ?? 0}`,
+      )
+    })
+
+    it("retrieves hybrid profile-source ANN candidates within 1.5s", async () => {
+      const generator = createDatabaseProfileSourceNominationGenerator(
+        prisma,
+        () => now,
+      )
+      const context = {
+        surface: "watch-below-player-v1",
+        purpose: "watch",
+        locale: "en",
+        audioLanguageSlug: "english",
+        seedMediaId,
+        manifestId: "semantic-profile-hybrid-v1",
+        contextProjection: {
+          ref: "u19-snapshot-projection",
+          version: "multi-interest-profile-projection-v1",
+          digest: "b".repeat(64),
+          privacyGeneration: 1,
+        },
+        liveItems: [],
+      } as const
+      const generate = async () => {
+        const startedAt = performance.now()
+        const result = await generator(context)
+        return {
+          result,
+          elapsedMs: Math.ceil(performance.now() - startedAt),
+        }
+      }
+      const first = await generate()
+      const loaded = await Promise.all(Array.from({ length: 6 }, generate))
+      for (const run of [first, ...loaded]) {
+        expect(run.elapsedMs).toBeLessThanOrEqual(1_500)
+        expect(run.result.nominations).toEqual(first.result.nominations)
+      }
+      console.info(
+        `[recommendations] event=profile_source_nomination_benchmark fixture=${USE_DETERMINISTIC_FIXTURE ? "deterministic_ci" : "production_snapshot"} shape=${env.RECOMMENDATION_PROFILE_VECTOR_SHARING === "true" ? "shared" : "inline"} first_ms=${first.elapsedMs} loaded_p50_ms=${latencyPercentile(
+          loaded.map((run) => run.elapsedMs),
+          50,
+        )} loaded_p95_ms=${latencyPercentile(
+          loaded.map((run) => run.elapsedMs),
+          95,
+        )} nominated=${first.result.nominations.length}`,
+      )
+      const generated = first.result
+      if (USE_DETERMINISTIC_FIXTURE) {
+        expect(
+          generated.nominations.map((nomination) => ({
+            targetMediaId: nomination.targetMediaId,
+            rank: nomination.source.rank,
+            interestOrdinal: nomination.source.evidence.interestOrdinal,
+            interestRank: nomination.source.evidence.interestRank,
+          })),
+        ).toEqual([
+          {
+            targetMediaId: "ci-profile-candidate-a",
+            rank: 1,
+            interestOrdinal: 0,
+            interestRank: 1,
+          },
+          {
+            targetMediaId: "ci-profile-candidate-b",
+            rank: 2,
+            interestOrdinal: 1,
+            interestRank: 1,
+          },
+          {
+            targetMediaId: "ci-profile-candidate-b",
+            rank: 3,
+            interestOrdinal: 0,
+            interestRank: 2,
+          },
+          {
+            targetMediaId: "ci-profile-candidate-a",
+            rank: 4,
+            interestOrdinal: 1,
+            interestRank: 2,
+          },
+        ])
+      }
+      expect(generated.nominations.length).toBeGreaterThanOrEqual(2)
+      expect(
+        generated.nominations.map((nomination) => nomination.source.rank),
+      ).toEqual(
+        Array.from(
+          { length: generated.nominations.length },
+          (_, index) => index + 1,
+        ),
+      )
+      expect(
+        generated.nominations
+          .slice(0, 2)
+          .map((nomination) => nomination.source.evidence.interestRank),
+      ).toEqual([1, 1])
+      expect(generated.nominations[0]?.source).toMatchObject({
+        generator: "multi-interest-profile",
+        evidence: {
+          interestOrdinal: 0,
+          interestKind: "durable",
+          interestRank: 1,
+          projectionVersion: "multi-interest-profile-projection-v1",
+        },
+      })
+      expect(JSON.stringify(generated)).not.toMatch(
+        /vectorText|profileId|sessionDigest|tokenDigest/,
+      )
+      expect(
+        generated.nominations.every(
+          (nomination) => nomination.canonicalIdentity.embeddingText === null,
+        ),
+      ).toBe(true)
+
+      const hybrid = runCandidatePlatform({
+        context: {
+          surface: "watch-below-player-v1",
+          purpose: "watch",
+          locale: "en",
+          audioLanguageSlug: "english",
+        },
+        limit: 6,
+        nominations: generated.nominations,
+        generatorVersion: "semantic-profile-hybrid-generators-v1",
+      })
+      const bestRankByVideo = new Map<string, number>()
+      for (const nomination of generated.nominations) {
+        const existing = bestRankByVideo.get(nomination.targetMediaId)
+        if (existing == null || nomination.source.rank < existing) {
+          bestRankByVideo.set(nomination.targetMediaId, nomination.source.rank)
+        }
+      }
+      const expectedHybridOrder = [...bestRankByVideo]
+        .sort(
+          ([leftId, leftRank], [rightId, rightRank]) =>
+            leftRank - rightRank || leftId.localeCompare(rightId),
+        )
+        .map(([videoId]) => videoId)
+      expect(
+        hybrid.ordered.map((candidate) => candidate.targetMediaId),
+      ).toEqual(expectedHybridOrder)
+      if (USE_DETERMINISTIC_FIXTURE) {
+        expect(expectedHybridOrder).toEqual([
+          "ci-profile-candidate-a",
+          "ci-profile-candidate-b",
+        ])
+      }
+    })
+
+    it.skipIf(!USE_DETERMINISTIC_FIXTURE)(
+      "serves shared profile nominations in packed requests with reader parity and expiry cleanup",
+      async () => {
+        const candidateInput = {
+          sessionDigest: "e".repeat(64),
+          profileTokenDigest: "a".repeat(64),
+          context: {
+            surface: "watch-below-player-v1" as const,
+            purpose: "watch" as const,
+            locale: "en",
+            audioLanguageSlug: "english",
+            seedMediaId,
+            manifestId: "semantic-transcript-pgvector-v1",
+          },
+          now: new Date(),
+        }
+        const inline = await getLiveProfileCandidates(prisma, candidateInput)
+        expect(inline?.nominations.length).toBeGreaterThanOrEqual(2)
+
+        // This final test changes only its disposable fixture. Published rows
+        // cannot be updated, so delete/reinsert them in the new writer shape.
+        await admin.query(`
+          CREATE TEMP TABLE saved_profile_interests AS
+            SELECT * FROM recommendation_profile_interest
+            WHERE generation_id = 'u19-snapshot-projection';
+          INSERT INTO recommendation_profile_vector_snapshot (digest, embedding)
+            SELECT DISTINCT
+              encode(sha256(convert_to(embedding::text, 'UTF8')), 'hex'),
+              embedding
+            FROM saved_profile_interests WHERE embedding IS NOT NULL
+            ON CONFLICT (digest) DO NOTHING;
+          DELETE FROM recommendation_profile_interest
+            WHERE generation_id = 'u19-snapshot-projection';
+          INSERT INTO recommendation_profile_interest (
+            id, generation_id, kind, interest_ordinal, medoid_media_id,
+            medoid_source_digest, vector_digest, weight, support_count,
+            stability, created_at, expires_at
+          ) SELECT id, generation_id, kind, interest_ordinal, medoid_media_id,
+            medoid_source_digest,
+            COALESCE(vector_digest,
+              encode(sha256(convert_to(embedding::text, 'UTF8')), 'hex')),
+            weight, support_count, stability, created_at, expires_at
+          FROM saved_profile_interests;
+        `)
+        const shape = await admin.query<{
+          inline_count: string
+          shared_count: string
+        }>(`
+          SELECT count(*) FILTER (WHERE embedding IS NOT NULL)::text AS inline_count,
+                 count(*) FILTER (WHERE vector_digest IS NOT NULL)::text AS shared_count
+          FROM recommendation_profile_interest
+          WHERE generation_id = 'u19-snapshot-projection'
+        `)
+        expect(shape.rows[0]).toEqual({ inline_count: "0", shared_count: "2" })
+        const shared = await getLiveProfileCandidates(prisma, candidateInput)
+        expect(shared?.nominations).toEqual(inline?.nominations)
+
+        const snapshots = []
+        const detailItems = []
+        const shadowItems = []
+        const requestIds: string[] = []
+        const requestExpiries: Date[] = []
+        for (const format of ["legacy", "packed"] as const) {
+          const harness = makeHarness({
+            database: prisma,
+            servedItemFormat: format,
+          })
+          harness.retrieve.mockResolvedValue(semanticCandidates(6))
+          harness.retrieveProfile.mockResolvedValue(shared)
+          const result = await harness.service.deliver({
+            ...personalizedInput(seedMediaId, "e"),
+            profileTokenDigest: "a".repeat(64),
+          })
+          expect(result.result).toBe("served")
+          expect(harness.retrieveProfile).toHaveBeenCalledOnce()
+          expect(harness.retrieveProfile).toHaveBeenCalledWith(
+            expect.objectContaining({
+              sessionDigest: "e".repeat(64),
+              profileTokenDigest: "a".repeat(64),
+            }),
+          )
+          requestIds.push(result.requestId!)
+          const request = await prisma.recommendationRequest.findUniqueOrThrow({
+            where: { id: result.requestId! },
+            include: { items: { orderBy: { position: "asc" } } },
+          })
+          expect(request.items.length).toBeGreaterThan(1)
+          expect(request.servedItemPayload === null).toBe(format === "legacy")
+          requestExpiries.push(request.expiresAt)
+          expect(
+            request.items.some(
+              (item) => item.candidateGenerator === "multi-interest-profile",
+            ),
+          ).toBe(true)
+          const restored = request.items.map((item) => {
+            const value = servedSnapshotValue(request.servedItemPayload, item)
+            return {
+              mediaId: item.targetMediaId,
+              presentation: value.presentation,
+              candidateProvenance: value.candidateProvenance,
+            }
+          })
+          shadowItems.push(
+            request.items.map((item) =>
+              safeShadowLiveItem(
+                servedSnapshotValue(request.servedItemPayload, item),
+                request.locale,
+              ),
+            ),
+          )
+          expect(
+            restored.some((item) =>
+              JSON.stringify(item.candidateProvenance).includes(
+                "multi-interest-profile",
+              ),
+            ),
+          ).toBe(true)
+          const detail = await loadRecommendationRequestDetail(prisma, {
+            requestId: result.requestId!,
+            actorDigest: "a".repeat(64),
+          })
+          expect(detail?.items.length).toBe(request.items.length)
+          detailItems.push(
+            detail?.items.map((item) => ({
+              targetMediaId: item.targetMediaId,
+              candidateGenerator: item.candidateGenerator,
+              presentation: item.presentation,
+            })),
+          )
+          snapshots.push(restored)
+        }
+        expect(snapshots[1]).toEqual(snapshots[0])
+        expect(detailItems[1]).toEqual(detailItems[0])
+        expect(shadowItems[1]).toEqual(shadowItems[0])
+
+        const snapshotsCreated =
+          await prisma.recommendationProfileVectorSnapshot.findMany({
+            select: { createdAt: true },
+          })
+        expect(snapshotsCreated.length).toBeGreaterThan(0)
+        const purgeAt = new Date(
+          Math.max(
+            ...requestExpiries.map((expiresAt) => expiresAt.getTime()),
+            ...snapshotsCreated.map(
+              ({ createdAt }) => createdAt.getTime() + 25 * 60 * 60 * 1000,
+            ),
+          ) + 1_000,
+        )
+        const purge = await purgeExpiredRecommendationRequests(prisma, purgeAt)
+        expect(purge.status).toBe("succeeded")
+        expect(
+          await prisma.recommendationRequest.count({
+            where: { id: { in: requestIds } },
+          }),
+        ).toBe(0)
+        expect(
+          await prisma.recommendationServedItem.count({
+            where: { requestId: { in: requestIds } },
+          }),
+        ).toBe(0)
+        await prisma.recommendationProfile.delete({
+          where: { id: "u19-snapshot-profile" },
+        })
+        expect(
+          await prisma.recommendationProfileInterest.count({
+            where: { generationId: "u19-snapshot-projection" },
+          }),
+        ).toBe(0)
+        const sweep = await purgeExpiredRecommendationRequests(prisma, purgeAt)
+        expect(sweep.status).toBe("succeeded")
+        expect(await prisma.recommendationProfileVectorSnapshot.count()).toBe(0)
+      },
+    )
+  },
+)

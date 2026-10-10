@@ -3,19 +3,16 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Captions,
-  ChevronDown,
   Download,
-  ExternalLink,
   FileAudio2,
   FileJson2,
   Languages,
   ListOrdered,
   Network,
   RefreshCw,
+  Search,
   type LucideIcon,
 } from "lucide-react"
-import { getEmbeddingSyncReport } from "@/lib/embedding-sync-report"
-import { getSceneEmbeddingSyncReport } from "@/lib/scene-embedding-sync-report"
 import {
   getTranscriptionRoutingReport,
   getUnresolvedElevenLabsFailureReason,
@@ -25,31 +22,28 @@ import { formatStepName } from "@/lib/workflow-steps"
 import { canRetryMuxSyncOverride } from "@/lib/mux-sync-override"
 import type {
   JobRecord,
+  MastraStepCorrelation,
   MuxSyncComparison,
   RequestedTranscriptionProvider,
   StepStatus,
+  SubtitleValidationStepSummary,
+  TranscriptionRoutingReport,
   WorkflowStepName,
 } from "@/types/job"
+import type { TranscriptScriptureCorrectionStepSummary } from "@/lib/transcript-scripture-correction"
 import {
   FOREGROUND_POLL_DELAY_MS,
   getNextPollDelayMs,
-  shouldApplyPollResult,
 } from "./live-jobs-polling"
+import {
+  createInitialLiveJobsRealtimeSnapshot,
+  createLiveJobDetailEventSourceOpener,
+  createLiveJobDetailRealtimeController,
+  type LiveJobsDetailRealtimeController,
+} from "./live-jobs-realtime"
 import { getArtifactsForStep } from "@/lib/job-artifacts"
-import {
-  EmbeddingSyncInlineDetails,
-  shouldExpandEmbeddingSyncByDefault,
-} from "./embedding-sync-card"
-import {
-  hasSceneEmbeddingSyncIssue,
-  SceneEmbeddingSyncInlineDetails,
-  shouldExpandSceneEmbeddingSyncByDefault,
-} from "./scene-embedding-sync-card"
 import { getPresentedMuxSyncComparisons } from "@/features/jobs/mux-sync-presenter"
-
-type RunPollOptions = {
-  scheduleNext: boolean
-}
+import { CollapsibleStepRow } from "./collapsible-step-row"
 
 type LiveJobStepsTableProps = {
   initialJob: JobRecord
@@ -57,11 +51,9 @@ type LiveJobStepsTableProps = {
   onJobUpdate?: (job: JobRecord) => void
 }
 
-function isTerminalJobStatus(status: JobRecord["status"]): boolean {
-  return status === "completed" || status === "failed"
-}
-
-const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
+// Exported for reuse by other step tables (e.g. the Shorts Studio detail) —
+// single source of truth for step description copy.
+export const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   download_video: "Fetches source media and validates job inputs.",
   transcription: "Generates a timestamped transcript from the source audio.",
   structured_transcript:
@@ -72,13 +64,37 @@ const STEP_DESCRIPTION_BY_NAME: Record<WorkflowStepName, string> = {
   metadata: "Extracts summary, tags, and structured content metadata.",
   embeddings: "Creates semantic vectors for search and retrieval.",
   translation: "Translates transcript content into target languages.",
+  audio_cleanup:
+    "Cleans source audio before transcription and stores review artifacts.",
   voiceover: "Synthesizes voiceover audio from generated text.",
   artifact_upload: "Uploads generated artifacts and writes the manifest.",
   mux_upload: "Publishes translated subtitle tracks to Mux when needed.",
+  theology_validation_bible_quotes:
+    "Planned theology validation and Bible Quotes generation; skipped for now.",
+  seo_improvements:
+    "Future SEO optimization phase. No SEO actions run in this version.",
   cms_notify: "Notifies downstream CMS integrations of completion.",
+  smart_crop_fingerprint:
+    "Builds the visual fingerprint (shot boundaries + perceptual hashes).",
+  smart_crop_plan: "Generates the AI canonical 9:16 crop plan per shot batch.",
+  smart_crop_align:
+    "Aligns localized shots to the canonical fingerprint with confidence gates.",
+  smart_crop_preview_render:
+    "Renders a sampled 9:16 preview through the crop worker.",
+  smart_crop_qa: "Runs AI review over the rendered preview frames.",
+  smart_crop_render: "Renders the full 9:16 output through the crop worker.",
+  smart_crop_mux_output: "Creates the Mux output asset from the rendered file.",
+  shorts_prepare:
+    "Trims the source clip and generates whisper word captions via the shorts worker.",
+  shorts_render: "Renders the 1080x1920 short through the shorts worker.",
+  shorts_mux_output: "Creates the Mux output asset from the rendered short.",
 }
 
-function formatDuration(startedAt?: string, finishedAt?: string): string {
+// Exported for reuse by other job UIs (shorts steps table, detail header).
+export function formatDuration(
+  startedAt?: string,
+  finishedAt?: string,
+): string {
   if (!startedAt || !finishedAt) {
     return "–"
   }
@@ -126,6 +142,9 @@ function getStepLabelIcon(stepName: WorkflowStepName): LucideIcon {
       return Network
     case "translation":
       return Languages
+    case "seo_improvements":
+      return Search
+    case "audio_cleanup":
     case "voiceover":
       return FileAudio2
     case "artifact_upload":
@@ -153,7 +172,378 @@ function getTranslationFailureDetails(step: JobRecord["steps"][number]): Array<{
     }))
 }
 
-function StepStatusGlyph({ status }: { status: StepStatus }) {
+function getTranslationFailureSummary(
+  translationFailures: Array<{ lang: string; error?: string }>,
+): string | null {
+  if (translationFailures.length === 0) {
+    return null
+  }
+
+  return `${translationFailures.length} target${
+    translationFailures.length === 1 ? "" : "s"
+  } failed during translation.`
+}
+
+function getMastraInlineSummary(
+  mastra: MastraStepCorrelation | undefined,
+): string | null {
+  if (!mastra) {
+    return null
+  }
+
+  return mastra.status
+    ? `Mastra run ${mastra.runId} (${mastra.status}).`
+    : `Mastra run ${mastra.runId}.`
+}
+
+function getSubtitleValidationInlineSummary(
+  validation: SubtitleValidationStepSummary | undefined,
+): string | null {
+  if (!validation || validation.languagesChecked === 0) {
+    return null
+  }
+
+  if (validation.needsReviewCount > 0) {
+    return `${validation.needsReviewCount} scripture validation finding${
+      validation.needsReviewCount === 1 ? "" : "s"
+    } need review.`
+  }
+
+  if (validation.warningCount > 0) {
+    return `${validation.warningCount} scripture validation warning${
+      validation.warningCount === 1 ? "" : "s"
+    }.`
+  }
+
+  if (validation.unavailableLanguages.length > 0) {
+    return `Scripture validation unavailable for ${validation.unavailableLanguages.join(", ")}.`
+  }
+
+  if (validation.modelOnlyLanguages.length > 0) {
+    return `Scripture validation passed with model knowledge for ${validation.modelOnlyLanguages.join(", ")}.`
+  }
+
+  return "Scripture validation passed."
+}
+
+function SubtitleValidationInlineDetails({
+  validation,
+}: {
+  validation: SubtitleValidationStepSummary
+}) {
+  return (
+    <>
+      <p className="jobs-step-detail-summary">Subtitle scripture validation</p>
+      <ul className="jobs-step-detail-list">
+        {validation.results.map((result) => (
+          <li
+            key={`subtitle-validation-${result.lang}`}
+            className="jobs-step-detail-item"
+          >
+            <strong>{result.lang}</strong>
+            {`: ${result.verdict} (${result.basis}, confidence ${Math.round(
+              result.confidence * 100,
+            )}%)`}
+            {result.fallbackReason
+              ? `; fallback ${result.fallbackReason}`
+              : null}
+            {result.unavailableReason
+              ? `; unavailable ${result.unavailableReason}`
+              : null}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+function getTranscriptCorrectionInlineSummary(
+  correction: TranscriptScriptureCorrectionStepSummary | undefined,
+): { text: string; needsAttention: boolean } | null {
+  if (!correction) return null
+
+  if (correction.status === "unavailable") {
+    return {
+      text: `Transcript correction unavailable${
+        correction.unavailableReason ? `: ${correction.unavailableReason}` : ""
+      }.`,
+      needsAttention: true,
+    }
+  }
+
+  if (correction.appliedCount > 0) {
+    return {
+      text: `${correction.appliedCount} source correction${
+        correction.appliedCount === 1 ? "" : "s"
+      } applied${
+        correction.flaggedCount > 0
+          ? `; ${correction.flaggedCount} flagged`
+          : ""
+      }.`,
+      needsAttention: correction.flaggedCount > 0,
+    }
+  }
+
+  if (correction.flaggedCount > 0) {
+    return {
+      text: `${correction.flaggedCount} transcript correction finding${
+        correction.flaggedCount === 1 ? "" : "s"
+      } need review.`,
+      needsAttention: true,
+    }
+  }
+
+  return {
+    text:
+      correction.status === "skipped"
+        ? "No source scripture correction applied."
+        : "Transcript correction reviewed.",
+    needsAttention: false,
+  }
+}
+
+function TranscriptCorrectionInlineDetails({
+  correction,
+}: {
+  correction: TranscriptScriptureCorrectionStepSummary
+}) {
+  return (
+    <>
+      <p className="jobs-step-detail-summary">
+        Source transcript scripture correction
+      </p>
+      <ul className="jobs-step-detail-list">
+        <li className="jobs-step-detail-item">
+          <strong>Status</strong>
+          {`: ${correction.status} (${correction.basis}, confidence ${Math.round(
+            correction.confidence * 100,
+          )}%)`}
+        </li>
+        {correction.unavailableReason ? (
+          <li className="jobs-step-detail-item">
+            <strong>Unavailable</strong>: {correction.unavailableReason}
+          </li>
+        ) : null}
+        {correction.skippedReason ? (
+          <li className="jobs-step-detail-item">
+            <strong>Skipped</strong>: {correction.skippedReason}
+          </li>
+        ) : null}
+        {correction.findings.map((finding) => (
+          <li
+            key={`${finding.action}-${finding.segmentIndex}-${finding.originalText}`}
+            className="jobs-step-detail-item"
+          >
+            <strong>
+              {finding.action === "applied" ? "Applied" : "Flagged"} segment{" "}
+              {finding.segmentIndex}
+            </strong>
+            {`: ${finding.originalText}`}
+            {finding.correctedText ? ` -> ${finding.correctedText}` : ""}
+            {finding.reference ? ` (${finding.reference})` : ""}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+function MastraStepInlineDetails({
+  mastra,
+}: {
+  mastra: MastraStepCorrelation
+}) {
+  const rows = [
+    { label: "Run ID", value: mastra.runId },
+    { label: "Status", value: mastra.status },
+    { label: "Reason", value: mastra.reason },
+    {
+      label: "Retryable",
+      value:
+        mastra.retryable === undefined ? undefined : String(mastra.retryable),
+    },
+    { label: "Provider", value: mastra.provider },
+    { label: "Model", value: mastra.model },
+    {
+      label: "Chunks",
+      value: mastra.chunks === undefined ? undefined : String(mastra.chunks),
+    },
+    {
+      label: "Total tokens",
+      value:
+        mastra.totalTokens === undefined
+          ? undefined
+          : String(mastra.totalTokens),
+    },
+    { label: "Source hash", value: mastra.sourceContentHash },
+    {
+      label: "Languages",
+      value: mastra.languages?.length ? mastra.languages.join(", ") : undefined,
+    },
+  ].filter((row): row is { label: string; value: string } => Boolean(row.value))
+
+  return (
+    <>
+      <p className="jobs-step-detail-summary">Mastra run diagnostics</p>
+      <ul className="jobs-step-detail-list">
+        {rows.map((row) => (
+          <li key={row.label} className="jobs-step-detail-item">
+            <strong>{row.label}</strong>: {row.value}
+          </li>
+        ))}
+      </ul>
+    </>
+  )
+}
+
+function getMuxSyncInlineSummary(
+  comparisons: MuxSyncComparison[],
+): { text: string; needsAttention: boolean } | null {
+  if (comparisons.length === 0) {
+    return null
+  }
+
+  const needsAttentionCount = comparisons.filter((comparison) =>
+    ["failed", "override_pending", "reconciliation_required"].includes(
+      comparison.status,
+    ),
+  ).length
+
+  if (needsAttentionCount > 0) {
+    return {
+      text: `${needsAttentionCount} subtitle sync result${
+        needsAttentionCount === 1 ? "" : "s"
+      } ${needsAttentionCount === 1 ? "needs" : "need"} attention.`,
+      needsAttention: true,
+    }
+  }
+
+  return {
+    text: `${comparisons.length} subtitle sync comparison${
+      comparisons.length === 1 ? "" : "s"
+    } available.`,
+    needsAttention: false,
+  }
+}
+
+function TranscriptionRoutingInlineDetails({
+  report,
+  rerunError,
+  rerunProvider,
+  isRerunDisabled,
+  onRerun,
+}: {
+  report: TranscriptionRoutingReport | undefined
+  rerunError: string | null
+  rerunProvider: RequestedTranscriptionProvider | null
+  isRerunDisabled: boolean
+  onRerun: (
+    provider: Extract<RequestedTranscriptionProvider, "elevenlabs" | "mux">,
+  ) => void
+}) {
+  return (
+    <>
+      <p className="jobs-step-detail-summary">Transcription provider</p>
+      {rerunError ? <p className="jobs-error-text">{rerunError}</p> : null}
+      <div className="jobs-transcription-routing">
+        {report ? (
+          <>
+            <div className="jobs-transcription-routing-summary">
+              <span className="jobs-transcription-summary-pill">
+                Final: {report.finalProvider ?? "pending"}
+              </span>
+              <span className="jobs-transcription-summary-pill">
+                Attempts: {report.attempts.length}
+              </span>
+            </div>
+            {report.finalSourceLanguageCode ? (
+              <p className="jobs-transcription-routing-note">
+                Source language: {report.finalSourceLanguageCode}
+              </p>
+            ) : null}
+            {report.sourceInputHost ? (
+              <p className="jobs-transcription-routing-note">
+                Source host: {report.sourceInputHost}
+              </p>
+            ) : null}
+            {report.fallbackReason ? (
+              <p className="jobs-transcription-routing-note">
+                Fell back to Mux after ElevenLabs failed:{" "}
+                {report.fallbackReason}
+              </p>
+            ) : null}
+            {report.attempts.length > 0 ? (
+              <div className="jobs-transcription-attempts">
+                {report.attempts.map((attempt) => (
+                  <article
+                    key={attempt.attemptId}
+                    className="jobs-transcription-attempt-card"
+                  >
+                    <div className="jobs-transcription-attempt-header">
+                      <strong>{attempt.requestedProvider}</strong>
+                      <span className="jobs-step-retry-pill">
+                        {attempt.status}
+                      </span>
+                    </div>
+                    <p className="jobs-transcription-routing-note">
+                      Resolved provider: {attempt.resolvedProvider}
+                      {attempt.sourceLanguageCode
+                        ? ` / ${attempt.sourceLanguageCode}`
+                        : ""}
+                    </p>
+                    {attempt.decisionReason ? (
+                      <p className="jobs-transcription-routing-note">
+                        {attempt.decisionReason}
+                      </p>
+                    ) : null}
+                    {attempt.fallbackReason ? (
+                      <p className="jobs-transcription-routing-note">
+                        {attempt.fallbackReason}
+                      </p>
+                    ) : null}
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </>
+        ) : null}
+        <div className="jobs-transcription-rerun-actions">
+          <button
+            type="button"
+            className="jobs-transcription-rerun-button"
+            onClick={() => onRerun("elevenlabs")}
+            disabled={isRerunDisabled}
+          >
+            {rerunProvider === "elevenlabs" ? (
+              <RefreshCw className="icon is-spinning" aria-hidden="true" />
+            ) : (
+              <FileAudio2 className="icon" aria-hidden="true" />
+            )}
+            {rerunProvider === "elevenlabs"
+              ? "Rerunning..."
+              : "Rerun with ElevenLabs"}
+          </button>
+          <button
+            type="button"
+            className="jobs-transcription-rerun-button"
+            onClick={() => onRerun("mux")}
+            disabled={isRerunDisabled}
+          >
+            {rerunProvider === "mux" ? (
+              <RefreshCw className="icon is-spinning" aria-hidden="true" />
+            ) : (
+              <Captions className="icon" aria-hidden="true" />
+            )}
+            {rerunProvider === "mux" ? "Rerunning..." : "Rerun with Mux"}
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// Exported for reuse by other step tables (e.g. the Shorts Studio detail).
+export function StepStatusGlyph({ status }: { status: StepStatus }) {
   if (status === "completed") {
     return (
       <svg viewBox="0 0 20 20" aria-hidden="true">
@@ -229,31 +619,17 @@ export function LiveJobStepsTable({
   headingMeta,
   onJobUpdate,
 }: LiveJobStepsTableProps) {
-  const [job, setJob] = useState(initialJob)
-  const [isRefreshing, setIsRefreshing] = useState(false)
-  const [isPollingError, setIsPollingError] = useState(false)
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
-  const embeddingSyncReport = useMemo(
-    () => getEmbeddingSyncReport(job.artifacts),
-    [job.artifacts],
+  const [realtimeSnapshot, setRealtimeSnapshot] = useState(() =>
+    createInitialLiveJobsRealtimeSnapshot(initialJob),
   )
-  const sceneEmbeddingSyncReport = useMemo(
-    () => getSceneEmbeddingSyncReport(job.artifacts),
-    [job.artifacts],
-  )
+  const job = realtimeSnapshot.state
   const transcriptionRoutingReport = useMemo(
     () => getTranscriptionRoutingReport(job.artifacts),
     [job.artifacts],
   )
-  const [isEmbeddingSyncExpanded, setIsEmbeddingSyncExpanded] = useState(
-    () =>
-      shouldExpandEmbeddingSyncByDefault(
-        getEmbeddingSyncReport(initialJob.artifacts),
-      ) ||
-      shouldExpandSceneEmbeddingSyncByDefault(
-        getSceneEmbeddingSyncReport(initialJob.artifacts),
-      ),
-  )
+  const [expandedSteps, setExpandedSteps] = useState<
+    Partial<Record<WorkflowStepName, boolean>>
+  >({})
   const [overrideArtifactKey, setOverrideArtifactKey] = useState<string | null>(
     null,
   )
@@ -262,136 +638,89 @@ export function LiveJobStepsTable({
     useState<RequestedTranscriptionProvider | null>(null)
   const [rerunError, setRerunError] = useState<string | null>(null)
 
-  const requestSeqRef = useRef(0)
-  const latestStatusRef = useRef<JobRecord["status"]>(initialJob.status)
-  const timeoutIdRef = useRef<number | null>(null)
-  const activeControllerRef = useRef<AbortController | null>(null)
-  const runPollRef = useRef<
-    ((options: RunPollOptions) => Promise<void>) | null
-  >(null)
+  const controllerRef = useRef<LiveJobsDetailRealtimeController | null>(null)
+  const lastSyncedJobRef = useRef(initialJob)
 
   useEffect(() => {
-    let cancelled = false
+    lastSyncedJobRef.current = initialJob
 
-    const clearScheduledPoll = () => {
-      if (timeoutIdRef.current !== null) {
-        window.clearTimeout(timeoutIdRef.current)
-        timeoutIdRef.current = null
-      }
-    }
-
-    const scheduleNextPoll = () => {
-      if (cancelled) return
-      if (isTerminalJobStatus(latestStatusRef.current)) return
-      clearScheduledPoll()
-      const isDocumentHidden =
-        typeof document !== "undefined" && document.visibilityState === "hidden"
-      timeoutIdRef.current = window.setTimeout(() => {
-        const currentRunPoll = runPollRef.current
-        if (!currentRunPoll) return
-        void currentRunPoll({ scheduleNext: true })
-      }, getNextPollDelayMs(isDocumentHidden))
-    }
-
-    const runPoll = async ({ scheduleNext }: RunPollOptions) => {
-      const responseSeq = ++requestSeqRef.current
-      setIsRefreshing(true)
-      activeControllerRef.current?.abort()
-      const controller = new AbortController()
-      activeControllerRef.current = controller
-
-      try {
+    const controller = createLiveJobDetailRealtimeController({
+      initialJob,
+      openStream: createLiveJobDetailEventSourceOpener({
+        jobId: initialJob.id,
+      }),
+      poll: async (signal) => {
         const response = await fetch(
           `/api/jobs/${encodeURIComponent(initialJob.id)}`,
           {
             cache: "no-store",
-            signal: controller.signal,
+            signal,
           },
         )
+
         if (!response.ok) {
-          if (!controller.signal.aborted) {
-            setIsPollingError(true)
-          }
-          return
+          throw new Error(`Job refresh failed (${response.status})`)
         }
 
-        const raw = (await response.json()) as { job: JobRecord }
-        const payload = raw.job
-        if (
-          shouldApplyPollResult({
-            cancelled,
-            activeRequestSeq: requestSeqRef.current,
-            responseSeq,
-            aborted: controller.signal.aborted,
-          })
-        ) {
-          setJob(payload)
-          onJobUpdate?.(payload)
-          latestStatusRef.current = payload.status
-          setIsPollingError(false)
-          setLastUpdatedAt(new Date().toISOString())
-        }
-      } catch {
-        if (!controller.signal.aborted) {
-          setIsPollingError(true)
-        }
-      } finally {
-        if (responseSeq === requestSeqRef.current) {
-          setIsRefreshing(false)
-        }
-        if (
-          scheduleNext &&
-          !cancelled &&
-          !isTerminalJobStatus(latestStatusRef.current)
-        ) {
-          scheduleNextPoll()
-        }
+        const payload = (await response.json()) as { job: JobRecord }
+        return payload.job
+      },
+      getPollDelayMs: () =>
+        getNextPollDelayMs(
+          typeof document !== "undefined" &&
+            document.visibilityState === "hidden",
+        ),
+    })
+
+    controllerRef.current = controller
+
+    const unsubscribe = controller.subscribe((snapshot) => {
+      const didStateChange = snapshot.state !== lastSyncedJobRef.current
+
+      setRealtimeSnapshot(snapshot)
+
+      if (didStateChange) {
+        lastSyncedJobRef.current = snapshot.state
+        onJobUpdate?.(snapshot.state)
       }
-    }
+    })
 
-    runPollRef.current = runPoll
-    if (!isTerminalJobStatus(initialJob.status)) {
-      void runPoll({ scheduleNext: true })
-    }
+    controller.start()
 
     return () => {
-      cancelled = true
-      runPollRef.current = null
-      clearScheduledPoll()
-      activeControllerRef.current?.abort()
+      unsubscribe()
+      controller.stop()
+      if (controllerRef.current === controller) {
+        controllerRef.current = null
+      }
     }
-  }, [initialJob.id, initialJob.status, onJobUpdate])
+  }, [initialJob, onJobUpdate])
 
-  const handleRefreshNow = useCallback(() => {
-    const runPoll = runPollRef.current
-    if (!runPoll) return
-    void runPoll({ scheduleNext: true })
-  }, [])
-
-  const handleJobUpdate = useCallback(
+  const replaceJobState = useCallback(
     (nextJob: JobRecord) => {
-      setJob(nextJob)
+      lastSyncedJobRef.current = nextJob
       onJobUpdate?.(nextJob)
+
+      if (controllerRef.current) {
+        controllerRef.current.replaceState(nextJob)
+        return
+      }
+
+      setRealtimeSnapshot((current) => ({
+        ...current,
+        state: nextJob,
+        lastSyncSource: "external",
+      }))
     },
     [onJobUpdate],
   )
 
-  useEffect(() => {
-    if (
-      shouldExpandEmbeddingSyncByDefault(embeddingSyncReport) ||
-      shouldExpandSceneEmbeddingSyncByDefault(sceneEmbeddingSyncReport)
-    ) {
-      setIsEmbeddingSyncExpanded(true)
-      return
-    }
-
-    if (
-      !embeddingSyncReport &&
-      !hasSceneEmbeddingSyncIssue(sceneEmbeddingSyncReport)
-    ) {
-      setIsEmbeddingSyncExpanded(false)
-    }
-  }, [embeddingSyncReport, sceneEmbeddingSyncReport])
+  const handleToggleStep = useCallback((stepName: WorkflowStepName) => {
+    setExpandedSteps((current) => ({
+      ...current,
+      [stepName]: !current[stepName],
+    }))
+  }, [])
 
   const handleSubtitleOverride = useCallback(
     async (comparison: MuxSyncComparison) => {
@@ -418,9 +747,7 @@ export function LiveJobStepsTable({
           job?: JobRecord
         }
         if (payload.job) {
-          setJob(payload.job)
-          onJobUpdate?.(payload.job)
-          latestStatusRef.current = payload.job.status
+          replaceJobState(payload.job)
         }
 
         if (!response.ok) {
@@ -437,7 +764,7 @@ export function LiveJobStepsTable({
         setOverrideArtifactKey(null)
       }
     },
-    [job.id, onJobUpdate],
+    [job.id, replaceJobState],
   )
 
   const handleTranscriptionRerun = useCallback(
@@ -464,9 +791,7 @@ export function LiveJobStepsTable({
           job?: JobRecord
         }
         if (payload.job) {
-          setJob(payload.job)
-          onJobUpdate?.(payload.job)
-          latestStatusRef.current = payload.job.status
+          replaceJobState(payload.job)
         }
 
         if (!response.ok) {
@@ -483,24 +808,26 @@ export function LiveJobStepsTable({
         setRerunProvider(null)
       }
     },
-    [job.id, onJobUpdate],
+    [job.id, replaceJobState],
   )
 
   const liveStatus = useMemo(() => {
-    if (isRefreshing) {
-      return "Updating job..."
+    if (realtimeSnapshot.transportMode === "connecting") {
+      return "Connecting live updates..."
     }
-    if (isTerminalJobStatus(job.status)) {
-      return `Auto-update paused (${job.status}).`
+    if (realtimeSnapshot.transportMode === "polling") {
+      if (realtimeSnapshot.isPollingPaused) {
+        return `Live updates reconnecting. Polling paused (${job.status})`
+      }
+
+      return `Live updates reconnecting. Polling every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
     }
-    if (isPollingError) {
-      return "Auto-update retrying after a network error."
-    }
-    if (lastUpdatedAt) {
-      return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
-    }
-    return `Auto-updating every ${Math.floor(FOREGROUND_POLL_DELAY_MS / 1000)}s`
-  }, [isPollingError, isRefreshing, job.status, lastUpdatedAt])
+    return "Live updates connected"
+  }, [
+    job.status,
+    realtimeSnapshot.isPollingPaused,
+    realtimeSnapshot.transportMode,
+  ])
 
   const muxSyncComparisons = useMemo(
     () => getPresentedMuxSyncComparisons(job),
@@ -522,17 +849,6 @@ export function LiveJobStepsTable({
           >
             {liveStatus}
           </span>
-          <button
-            type="button"
-            className="collection-cache-clear jobs-refresh-link"
-            onClick={handleRefreshNow}
-            disabled={isRefreshing}
-            aria-label="Refresh now"
-            title="Refresh now"
-          >
-            <RefreshCw className="icon" aria-hidden="true" />
-            Refresh now
-          </button>
         </div>
       </div>
       <div className="jobs-table-wrap">
@@ -570,195 +886,142 @@ export function LiveJobStepsTable({
                     "ElevenLabs transcription did not complete successfully.")
                   : null)
               const translationFailures = getTranslationFailureDetails(step)
-              const isEmbeddingsStep = step.name === "embeddings"
-              const hasSceneEmbeddingDetails = hasSceneEmbeddingSyncIssue(
-                sceneEmbeddingSyncReport,
-              )
-              const isEmbeddingRowExpandable =
-                isEmbeddingsStep &&
-                (embeddingSyncReport != null || hasSceneEmbeddingDetails)
-              const showEmbeddingSyncInlineDetails =
-                isEmbeddingsStep &&
-                (embeddingSyncReport != null || hasSceneEmbeddingDetails) &&
-                isEmbeddingSyncExpanded
-              const showInlineEmbeddingSummary =
-                isEmbeddingsStep &&
-                ((embeddingSyncReport != null &&
-                  embeddingSyncReport.status === "failed") ||
-                  hasSceneEmbeddingDetails)
-              const toggleEmbeddingSyncExpanded = () => {
-                if (!isEmbeddingRowExpandable) {
-                  return
-                }
-                setIsEmbeddingSyncExpanded((current) => !current)
-              }
-              const handleExpandableCellClick = () => {
-                toggleEmbeddingSyncExpanded()
-              }
-              return (
-                <React.Fragment key={step.name}>
-                  <tr
+              const mastraCorrelation =
+                step.name === "translation" ||
+                step.name === "embeddings" ||
+                step.name === "structured_transcript"
+                  ? step.details?.mastra
+                  : undefined
+              const subtitleValidation =
+                step.name === "translation"
+                  ? step.details?.subtitleValidation
+                  : undefined
+              const transcriptCorrection =
+                step.name === "structured_transcript"
+                  ? step.details?.transcriptCorrection
+                  : undefined
+              const hasMastraDetails = mastraCorrelation != null
+              const hasEmbeddingDetails =
+                step.name === "embeddings" && hasMastraDetails
+              const hasTranslationDetails =
+                step.name === "translation" &&
+                (translationFailures.length > 0 ||
+                  hasMastraDetails ||
+                  subtitleValidation != null)
+              const hasStructuredTranscriptDetails =
+                step.name === "structured_transcript" &&
+                (transcriptCorrection != null || hasMastraDetails)
+              const hasTranscriptionDetails =
+                step.name === "transcription" &&
+                (transcriptionRoutingReport != null || rerunError != null)
+              const hasMuxUploadDetails =
+                step.name === "mux_upload" &&
+                (muxSyncStepComparisons.length > 0 || overrideError != null)
+              const isExpanded = expandedSteps[step.name] ?? false
+              const translationFailureSummary =
+                getTranslationFailureSummary(translationFailures)
+              const mastraSummary = getMastraInlineSummary(mastraCorrelation)
+              const subtitleValidationSummary =
+                getSubtitleValidationInlineSummary(subtitleValidation)
+              const transcriptCorrectionSummary =
+                getTranscriptCorrectionInlineSummary(transcriptCorrection)
+              const transcriptionSummary =
+                transcriptionRoutingReport != null
+                  ? `Final provider: ${
+                      transcriptionRoutingReport.finalProvider ?? "pending"
+                    }. ${
+                      transcriptionRoutingReport.attempts.length === 1
+                        ? "1 attempt"
+                        : `${transcriptionRoutingReport.attempts.length} attempts`
+                    }.`
+                  : null
+              const muxSyncSummary = overrideError
+                ? {
+                    text: "Subtitle sync override failed.",
+                    needsAttention: true,
+                  }
+                : getMuxSyncInlineSummary(muxSyncStepComparisons)
+              let inlineSummary: React.ReactNode = null
+              let detailContent: React.ReactNode = null
+              let detailRowClassName: string | undefined
+
+              if (hasEmbeddingDetails) {
+                inlineSummary = mastraSummary ? (
+                  <span className="jobs-step-inline-summary-note">
+                    {mastraSummary}
+                  </span>
+                ) : null
+                detailContent = (
+                  <>
+                    {mastraCorrelation ? (
+                      <MastraStepInlineDetails mastra={mastraCorrelation} />
+                    ) : null}
+                  </>
+                )
+                detailRowClassName = "jobs-embedding-sync-detail-row"
+              } else if (hasStructuredTranscriptDetails) {
+                inlineSummary = transcriptCorrectionSummary ? (
+                  <span
                     className={
-                      [
-                        inlineError ? "jobs-row-with-issue" : null,
-                        isEmbeddingRowExpandable ? "jobs-clickable-row" : null,
-                        showEmbeddingSyncInlineDetails
-                          ? "jobs-step-row-expanded"
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" ") || undefined
-                    }
-                    onKeyDown={
-                      isEmbeddingRowExpandable
-                        ? (event) => {
-                            if (event.key !== "Enter" && event.key !== " ") {
-                              return
-                            }
-                            event.preventDefault()
-                            toggleEmbeddingSyncExpanded()
-                          }
-                        : undefined
-                    }
-                    tabIndex={isEmbeddingRowExpandable ? 0 : undefined}
-                    aria-expanded={
-                      isEmbeddingRowExpandable
-                        ? isEmbeddingSyncExpanded
-                        : undefined
+                      transcriptCorrectionSummary.needsAttention
+                        ? "jobs-step-inline-summary-text"
+                        : "jobs-step-inline-summary-note"
                     }
                   >
-                    <td
-                      onClick={
-                        isEmbeddingRowExpandable
-                          ? handleExpandableCellClick
-                          : undefined
-                      }
-                    >
-                      <span className="jobs-step-label">
-                        <StepIcon
-                          className="jobs-step-label-icon"
-                          aria-hidden="true"
-                          size={24}
-                        />
-                        <span className="jobs-step-label-text">
-                          <span className="jobs-step-label-title">
-                            {formatStepName(step.name)}
-                          </span>
-                          <span className="jobs-step-label-subtitle">
-                            {STEP_DESCRIPTION_BY_NAME[step.name]}
-                          </span>
-                          {showInlineEmbeddingSummary && embeddingSyncReport ? (
-                            <span className="jobs-step-inline-summary">
-                              <span className="jobs-step-inline-summary-text">
-                                CMS sync needs attention.
-                              </span>
-                            </span>
-                          ) : showInlineEmbeddingSummary ? (
-                            <span className="jobs-step-inline-summary">
-                              <span className="jobs-step-inline-summary-text">
-                                Scene sync needs attention.
-                              </span>
-                            </span>
-                          ) : null}
-                        </span>
-                      </span>
-                    </td>
-                    <td
-                      onClick={
-                        isEmbeddingRowExpandable
-                          ? handleExpandableCellClick
-                          : undefined
-                      }
-                    >
-                      {formatDuration(step.startedAt, step.finishedAt)}
-                    </td>
-                    <td
-                      onClick={
-                        isEmbeddingRowExpandable
-                          ? handleExpandableCellClick
-                          : undefined
-                      }
-                    >
-                      {stepArtifacts.length === 0 ? (
-                        <span className="jobs-no-issue">–</span>
-                      ) : (
-                        <div className="jobs-step-artifacts">
-                          {stepArtifacts.map((artifact) => (
-                            <a
-                              key={`${step.name}-${artifact.key}`}
-                              href={artifact.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="jobs-step-artifact-link"
-                              onClick={(event) => event.stopPropagation()}
-                              aria-label={`Open ${artifact.key} in a new tab`}
-                              title={`Open ${artifact.key} in a new tab`}
-                            >
-                              <ExternalLink
-                                className="jobs-step-artifact-icon"
-                                aria-hidden="true"
-                                size={14}
-                              />
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </td>
-                    <td
-                      onClick={
-                        isEmbeddingRowExpandable
-                          ? handleExpandableCellClick
-                          : undefined
-                      }
-                    >
-                      <div className="jobs-step-status-cell">
-                        <span
-                          className={`jobs-step-status-icon jobs-step-status-icon-${displayedStepStatus}`}
-                          role="img"
-                          aria-label={displayedStepStatus}
-                          title={displayedStepStatus}
-                        >
-                          <StepStatusGlyph status={displayedStepStatus} />
-                        </span>
-                        {step.retries > 0 ? (
-                          <span
-                            className="jobs-step-retry-pill"
-                            title={`${step.retries} retries`}
-                          >
-                            x {step.retries}
-                          </span>
-                        ) : null}
-                        {isEmbeddingRowExpandable ? (
-                          <span
-                            className={`jobs-step-expand-icon ${
-                              isEmbeddingSyncExpanded
-                                ? "jobs-step-expand-icon-open"
-                                : ""
-                            }`}
-                            aria-hidden="true"
-                          >
-                            <ChevronDown size={18} />
-                          </span>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                  {inlineError && (
-                    <tr className="jobs-issue-row">
-                      <td colSpan={4}>
-                        <p className="jobs-error-text" title={inlineError}>
-                          {inlineError}
-                        </p>
-                      </td>
-                    </tr>
-                  )}
-                  {translationFailures.length > 0 && (
-                    <tr className="jobs-step-detail-row">
-                      <td colSpan={4}>
+                    {transcriptCorrectionSummary.text}
+                  </span>
+                ) : mastraSummary ? (
+                  <span className="jobs-step-inline-summary-note">
+                    {mastraSummary}
+                  </span>
+                ) : null
+                detailContent = (
+                  <>
+                    {mastraCorrelation ? (
+                      <MastraStepInlineDetails mastra={mastraCorrelation} />
+                    ) : null}
+                    {transcriptCorrection ? (
+                      <TranscriptCorrectionInlineDetails
+                        correction={transcriptCorrection}
+                      />
+                    ) : null}
+                  </>
+                )
+              } else if (hasTranslationDetails) {
+                inlineSummary = translationFailureSummary ? (
+                  <span className="jobs-step-inline-summary-note">
+                    {translationFailureSummary}
+                  </span>
+                ) : subtitleValidationSummary ? (
+                  <span
+                    className={
+                      subtitleValidation?.highestVerdict === "needs_review" ||
+                      subtitleValidation?.highestVerdict === "warning"
+                        ? "jobs-step-inline-summary-text"
+                        : "jobs-step-inline-summary-note"
+                    }
+                  >
+                    {subtitleValidationSummary}
+                  </span>
+                ) : mastraSummary ? (
+                  <span className="jobs-step-inline-summary-note">
+                    {mastraSummary}
+                  </span>
+                ) : null
+                detailContent = (
+                  <>
+                    {mastraCorrelation ? (
+                      <MastraStepInlineDetails mastra={mastraCorrelation} />
+                    ) : null}
+                    {subtitleValidation ? (
+                      <SubtitleValidationInlineDetails
+                        validation={subtitleValidation}
+                      />
+                    ) : null}
+                    {translationFailureSummary ? (
+                      <>
                         <p className="jobs-step-detail-summary">
-                          {translationFailures.length} target
-                          {translationFailures.length === 1 ? "" : "s"} failed
-                          during translation.
+                          {translationFailureSummary}
                         </p>
                         <ul className="jobs-step-detail-list">
                           {translationFailures.map((failure) => (
@@ -776,203 +1039,150 @@ export function LiveJobStepsTable({
                             </li>
                           ))}
                         </ul>
-                      </td>
-                    </tr>
-                  )}
-                  {showEmbeddingSyncInlineDetails && (
-                    <tr className="jobs-step-detail-row jobs-embedding-sync-detail-row">
-                      <td colSpan={4}>
-                        {embeddingSyncReport ? (
-                          <EmbeddingSyncInlineDetails
-                            job={job}
-                            onJobUpdate={handleJobUpdate}
-                          />
-                        ) : null}
-                        {hasSceneEmbeddingDetails ? (
-                          <SceneEmbeddingSyncInlineDetails job={job} />
-                        ) : null}
-                      </td>
-                    </tr>
-                  )}
-                  {step.name === "transcription" &&
-                    (transcriptionRoutingReport || rerunError) && (
-                      <tr className="jobs-step-detail-row">
-                        <td colSpan={4}>
-                          <p className="jobs-step-detail-summary">
-                            Transcription provider
-                          </p>
-                          {rerunError ? (
-                            <p className="jobs-error-text">{rerunError}</p>
-                          ) : null}
-                          {transcriptionRoutingReport ? (
-                            <div className="jobs-transcription-routing">
-                              <div className="jobs-transcription-routing-summary">
-                                <span className="jobs-transcription-summary-pill">
-                                  Final:{" "}
-                                  {transcriptionRoutingReport.finalProvider ??
-                                    "pending"}
-                                </span>
-                                <span className="jobs-transcription-summary-pill">
-                                  Attempts:{" "}
-                                  {transcriptionRoutingReport.attempts.length}
-                                </span>
+                      </>
+                    ) : null}
+                  </>
+                )
+              } else if (hasTranscriptionDetails) {
+                inlineSummary = transcriptionSummary ? (
+                  <span className="jobs-step-inline-summary-note">
+                    {transcriptionSummary}
+                  </span>
+                ) : null
+                detailContent = (
+                  <TranscriptionRoutingInlineDetails
+                    report={transcriptionRoutingReport}
+                    rerunError={rerunError}
+                    rerunProvider={rerunProvider}
+                    isRerunDisabled={
+                      rerunProvider != null ||
+                      (job.status === "running" &&
+                        job.currentStep === "transcription")
+                    }
+                    onRerun={(provider) =>
+                      void handleTranscriptionRerun(provider)
+                    }
+                  />
+                )
+              } else if (hasMuxUploadDetails) {
+                inlineSummary = muxSyncSummary ? (
+                  <span
+                    className={
+                      muxSyncSummary.needsAttention
+                        ? "jobs-step-inline-summary-text"
+                        : "jobs-step-inline-summary-note"
+                    }
+                  >
+                    {muxSyncSummary.text}
+                  </span>
+                ) : null
+                detailContent = (
+                  <>
+                    <p className="jobs-step-detail-summary">
+                      Subtitle sync results
+                    </p>
+                    {overrideError ? (
+                      <p className="jobs-error-text">{overrideError}</p>
+                    ) : null}
+                    <div className="jobs-mux-sync-list">
+                      {muxSyncStepComparisons.map((comparison) => {
+                        const canOverride = canRetryMuxSyncOverride(comparison)
+
+                        return (
+                          <article
+                            key={`${step.name}-${comparison.artifactKey}`}
+                            className="jobs-mux-sync-card"
+                          >
+                            <div className="jobs-mux-sync-card-header">
+                              <strong>{comparison.targetLanguage}</strong>
+                              <span className="jobs-step-retry-pill">
+                                {comparison.status}
+                              </span>
+                            </div>
+                            <p className="jobs-mux-sync-explanation">
+                              {comparison.explanation}
+                            </p>
+                            <div className="jobs-mux-sync-previews">
+                              <div>
+                                <div className="small">Generated</div>
+                                <pre className="jobs-mux-sync-preview">
+                                  {comparison.generatedPreview ?? "–"}
+                                </pre>
                               </div>
-                              {transcriptionRoutingReport.fallbackReason ? (
-                                <p className="jobs-transcription-routing-note">
-                                  Fell back to Mux after ElevenLabs failed:{" "}
-                                  {transcriptionRoutingReport.fallbackReason}
-                                </p>
-                              ) : null}
-                              {transcriptionRoutingReport.attempts.length >
-                              0 ? (
-                                <div className="jobs-transcription-attempts">
-                                  {transcriptionRoutingReport.attempts.map(
-                                    (attempt) => (
-                                      <article
-                                        key={attempt.attemptId}
-                                        className="jobs-transcription-attempt-card"
-                                      >
-                                        <div className="jobs-transcription-attempt-header">
-                                          <strong>
-                                            {attempt.requestedProvider}
-                                          </strong>
-                                          <span className="jobs-step-retry-pill">
-                                            {attempt.status}
-                                          </span>
-                                        </div>
-                                        <p className="jobs-transcription-routing-note">
-                                          Resolved provider:{" "}
-                                          {attempt.resolvedProvider}
-                                          {attempt.sourceLanguageCode
-                                            ? ` • ${attempt.sourceLanguageCode}`
-                                            : ""}
-                                        </p>
-                                        {attempt.decisionReason ? (
-                                          <p className="jobs-transcription-routing-note">
-                                            {attempt.decisionReason}
-                                          </p>
-                                        ) : null}
-                                        {attempt.fallbackReason ? (
-                                          <p className="jobs-transcription-routing-note">
-                                            {attempt.fallbackReason}
-                                          </p>
-                                        ) : null}
-                                      </article>
-                                    ),
-                                  )}
-                                </div>
-                              ) : null}
-                              <div className="jobs-transcription-rerun-actions">
-                                <button
-                                  type="button"
-                                  className="jobs-transcription-rerun-button"
-                                  onClick={() =>
-                                    void handleTranscriptionRerun("elevenlabs")
-                                  }
-                                  disabled={
-                                    rerunProvider != null ||
-                                    (job.status === "running" &&
-                                      job.currentStep === "transcription")
-                                  }
-                                >
-                                  {rerunProvider === "elevenlabs"
-                                    ? "Rerunning…"
-                                    : "Rerun with ElevenLabs"}
-                                </button>
-                                <button
-                                  type="button"
-                                  className="jobs-transcription-rerun-button"
-                                  onClick={() =>
-                                    void handleTranscriptionRerun("mux")
-                                  }
-                                  disabled={
-                                    rerunProvider != null ||
-                                    (job.status === "running" &&
-                                      job.currentStep === "transcription")
-                                  }
-                                >
-                                  {rerunProvider === "mux"
-                                    ? "Rerunning…"
-                                    : "Rerun with Mux"}
-                                </button>
+                              <div>
+                                <div className="small">Mux</div>
+                                <pre className="jobs-mux-sync-preview">
+                                  {comparison.muxPreview ?? "–"}
+                                </pre>
                               </div>
                             </div>
-                          ) : null}
-                        </td>
-                      </tr>
-                    )}
-                  {step.name === "mux_upload" &&
-                    (muxSyncStepComparisons.length > 0 || overrideError) && (
-                      <tr className="jobs-step-detail-row">
-                        <td colSpan={4}>
-                          <p className="jobs-step-detail-summary">
-                            Subtitle sync results
-                          </p>
-                          {overrideError ? (
-                            <p className="jobs-error-text">{overrideError}</p>
-                          ) : null}
-                          <div className="jobs-mux-sync-list">
-                            {muxSyncStepComparisons.map((comparison) => {
-                              const canOverride =
-                                canRetryMuxSyncOverride(comparison)
+                            {canOverride ? (
+                              <button
+                                type="button"
+                                className="jobs-mux-sync-override"
+                                onClick={() =>
+                                  void handleSubtitleOverride(comparison)
+                                }
+                                disabled={
+                                  overrideArtifactKey === comparison.artifactKey
+                                }
+                              >
+                                {overrideArtifactKey ===
+                                comparison.artifactKey ? (
+                                  <RefreshCw
+                                    className="icon is-spinning"
+                                    aria-hidden="true"
+                                  />
+                                ) : (
+                                  <RefreshCw
+                                    className="icon"
+                                    aria-hidden="true"
+                                  />
+                                )}
+                                {overrideArtifactKey === comparison.artifactKey
+                                  ? "Overriding…"
+                                  : comparison.status === "override_pending"
+                                    ? "Resume override"
+                                    : "Override Mux data"}
+                              </button>
+                            ) : null}
+                          </article>
+                        )
+                      })}
+                    </div>
+                  </>
+                )
+              }
 
-                              return (
-                                <article
-                                  key={`${step.name}-${comparison.artifactKey}`}
-                                  className="jobs-mux-sync-card"
-                                >
-                                  <div className="jobs-mux-sync-card-header">
-                                    <strong>{comparison.targetLanguage}</strong>
-                                    <span className="jobs-step-retry-pill">
-                                      {comparison.status}
-                                    </span>
-                                  </div>
-                                  <p className="jobs-mux-sync-explanation">
-                                    {comparison.explanation}
-                                  </p>
-                                  <div className="jobs-mux-sync-previews">
-                                    <div>
-                                      <div className="small">Generated</div>
-                                      <pre className="jobs-mux-sync-preview">
-                                        {comparison.generatedPreview ?? "–"}
-                                      </pre>
-                                    </div>
-                                    <div>
-                                      <div className="small">Mux</div>
-                                      <pre className="jobs-mux-sync-preview">
-                                        {comparison.muxPreview ?? "–"}
-                                      </pre>
-                                    </div>
-                                  </div>
-                                  {canOverride ? (
-                                    <button
-                                      type="button"
-                                      className="jobs-mux-sync-override"
-                                      onClick={() =>
-                                        void handleSubtitleOverride(comparison)
-                                      }
-                                      disabled={
-                                        overrideArtifactKey ===
-                                        comparison.artifactKey
-                                      }
-                                    >
-                                      {overrideArtifactKey ===
-                                      comparison.artifactKey
-                                        ? "Overriding…"
-                                        : comparison.status ===
-                                            "override_pending"
-                                          ? "Resume override"
-                                          : "Override Mux data"}
-                                    </button>
-                                  ) : null}
-                                </article>
-                              )
-                            })}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                </React.Fragment>
+              const commonStepRowProps = {
+                stepName: step.name,
+                title: formatStepName(step.name),
+                description: STEP_DESCRIPTION_BY_NAME[step.name],
+                icon: StepIcon,
+                duration: formatDuration(step.startedAt, step.finishedAt),
+                artifacts: stepArtifacts,
+                status: displayedStepStatus,
+                statusIcon: <StepStatusGlyph status={displayedStepStatus} />,
+                retries: step.retries,
+                inlineSummary,
+                inlineError,
+              } as const
+
+              if (detailContent == null) {
+                return (
+                  <CollapsibleStepRow key={step.name} {...commonStepRowProps} />
+                )
+              }
+
+              return (
+                <CollapsibleStepRow
+                  key={step.name}
+                  {...commonStepRowProps}
+                  isExpanded={isExpanded}
+                  onToggle={() => handleToggleStep(step.name)}
+                  detailContent={detailContent}
+                  detailRowClassName={detailRowClassName}
+                />
               )
             })}
           </tbody>

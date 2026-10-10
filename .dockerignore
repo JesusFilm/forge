@@ -9,6 +9,8 @@ node_modules
 **/node_modules
 .turbo
 **/.turbo
+**/.next
+**/tsconfig.tsbuildinfo
 **/dist
 apps/cms/.tmp
 apps/cms/.strapi-updater.json

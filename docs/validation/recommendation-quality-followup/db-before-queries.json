@@ -1,0 +1,46 @@
+[
+  {
+    "name": "delivery_settled_window",
+    "params": ["2026-09-16T00:58:00Z", "2026-09-16T01:13:00Z"],
+    "sql": "WITH r AS MATERIALIZED (SELECT id,surface_version,strategy_version,state,retrieval_latency_ms FROM recommendation_request WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz), x AS (SELECT r.*,count(i.id) cards,count(DISTINCT i.target_media_id) distinct_cards,count(i.id) FILTER(WHERE i.candidate_generator='multi-interest-profile') profile_cards FROM r LEFT JOIN recommendation_served_item i ON i.request_id=r.id GROUP BY r.id,r.surface_version,r.strategy_version,r.state,r.retrieval_latency_ms) SELECT surface_version,strategy_version,state,count(*) requests,sum(cards) cards,count(*) FILTER(WHERE cards=0) zero_card_requests,count(*) FILTER(WHERE cards<>distinct_cards) duplicate_slates,min(cards) minimum_cards,percentile_cont(0.5) within group(order by cards) median_cards,count(*) FILTER(WHERE profile_cards>0) with_profile_cards,percentile_cont(0.5) within group(order by retrieval_latency_ms) retrieval_p50_ms,percentile_cont(0.95) within group(order by retrieval_latency_ms) retrieval_p95_ms,max(retrieval_latency_ms) retrieval_max_ms FROM x GROUP BY 1,2,3 ORDER BY requests DESC"
+  },
+  {
+    "name": "episode_and_fact_health_settled_window",
+    "params": ["2026-09-16T00:58:00Z", "2026-09-16T01:13:00Z"],
+    "sql": "WITH episodes AS MATERIALIZED (SELECT id,discovery_source,state,claimed_at,conflict_count FROM recommendation_playback_episode WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz), grouped AS (SELECT e.*,count(f.id) facts,count(f.id) FILTER(WHERE f.late) late_facts,bool_or(f.kind='playback_start') started FROM episodes e LEFT JOIN recommendation_playback_fact f ON f.episode_id=e.id AND f.received_at < $2::timestamptz GROUP BY e.id,e.discovery_source,e.state,e.claimed_at,e.conflict_count) SELECT discovery_source,state,count(*) episodes,count(*) FILTER(WHERE claimed_at < $2::timestamptz) claimed,count(*) FILTER(WHERE started) started,sum(facts) facts,sum(late_facts) late_facts,count(*) FILTER(WHERE conflict_count>0) conflicted_episodes FROM grouped GROUP BY 1,2 ORDER BY episodes DESC"
+  },
+  {
+    "name": "fact_kinds_for_episode_cohort_settled_window",
+    "params": ["2026-09-16T00:58:00Z", "2026-09-16T01:13:00Z"],
+    "sql": "WITH e AS MATERIALIZED (SELECT id FROM recommendation_playback_episode WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz) SELECT f.kind,count(*) facts,count(*) FILTER(WHERE f.late) late_facts FROM e JOIN recommendation_playback_fact f ON f.episode_id=e.id WHERE f.received_at < $2::timestamptz GROUP BY 1 ORDER BY facts DESC"
+  },
+  {
+    "name": "latest_outcomes_for_episode_cohort_settled_window",
+    "params": ["2026-09-16T00:58:00Z", "2026-09-16T01:13:00Z"],
+    "sql": "WITH e AS MATERIALIZED (SELECT id,discovery_source FROM recommendation_playback_episode WHERE created_at >= $1::timestamptz AND created_at < $2::timestamptz), o AS (SELECT DISTINCT ON (o.episode_id,o.classifier_version) o.episode_id,o.classifier_version,o.qualified_view,o.active_coverage FROM e JOIN recommendation_outcome_revision o ON o.episode_id=e.id WHERE o.created_at < $2::timestamptz ORDER BY o.episode_id,o.classifier_version,o.revision DESC) SELECT e.discovery_source,o.classifier_version,o.active_coverage,count(*) latest_outcomes,count(*) FILTER(WHERE o.qualified_view) qualified_views FROM o JOIN e ON e.id=o.episode_id GROUP BY 1,2,3 ORDER BY latest_outcomes DESC"
+  },
+  {
+    "name": "delivery_results_settled_window",
+    "sql": "WITH r AS MATERIALIZED (SELECT id,surface_version,result,fallback_reason FROM recommendation_request WHERE created_at>=$1::timestamptz AND created_at<$2::timestamptz), x AS (SELECT r.*,count(i.id) cards FROM r LEFT JOIN recommendation_served_item i ON i.request_id=r.id GROUP BY r.id,r.surface_version,r.result,r.fallback_reason) SELECT surface_version,result,fallback_reason,count(*) requests,sum(cards) cards,count(*) FILTER(WHERE cards=0) zero_card_requests FROM x GROUP BY 1,2,3 ORDER BY requests DESC",
+    "params": ["2026-09-16T00:58:00Z", "2026-09-16T01:13:00Z"]
+  },
+  {
+    "name": "latest_200_personalized_request_repeat_diagnostic_settled_window",
+    "sql": "WITH r AS MATERIALIZED (SELECT r.id,r.created_at,p.projection_generation_id FROM recommendation_request r JOIN recommendation_personalization_decision p ON p.request_id=r.id WHERE p.execution_mode='hybrid_personalized' AND r.created_at>=$1::timestamptz AND r.created_at<$2::timestamptz ORDER BY r.created_at DESC,r.id DESC LIMIT 200), repeats AS MATERIALIZED (\n SELECT i.id item_id,r.id request_id,i.target_media_id,i.candidate_generator,bool_or(e.discovery_source<>'recommendation') learned_outside_recommendations,bool_or(e.discovery_source='recommendation') learned_from_recommendation\n FROM r JOIN recommendation_served_item i ON i.request_id=r.id JOIN recommendation_profile_projection_contribution c ON c.generation_id=r.projection_generation_id AND c.target_media_id=i.target_media_id AND c.kind='qualified_outcome' AND c.occurred_at>r.created_at-interval '24 hours'\n JOIN recommendation_outcome_revision o ON o.id=c.source_outcome_id JOIN recommendation_playback_episode e ON e.id=o.episode_id GROUP BY 1,2,3,4\n), f AS MATERIALIZED (\n SELECT repeats.*,EXISTS(SELECT 1 FROM recommendation_candidate_run cr JOIN recommendation_candidate_stage_evidence se ON se.run_id=cr.id AND se.stage='rejected' AND se.reason_codes && ARRAY['recent_playback_start','recent_selection','repeatedly_served']::text[] AND se.target_media_id=repeats.target_media_id WHERE cr.request_id=repeats.request_id) suppression_recorded,\n EXISTS(SELECT 1 FROM recommendation_candidate_run cr JOIN recommendation_candidate_stage_evidence se ON se.run_id=cr.id AND se.stage='composed' AND se.target_media_id=repeats.target_media_id AND 'refill_after_suppression'=ANY(se.reason_codes) WHERE cr.request_id=repeats.request_id) refill_or_movement_recorded FROM repeats\n)\nSELECT candidate_generator,learned_outside_recommendations,learned_from_recommendation,count(*) repeat_cards,count(distinct request_id) affected_requests,count(*) FILTER(WHERE suppression_recorded) suppression_recorded,count(*) FILTER(WHERE refill_or_movement_recorded) refill_or_movement_recorded FROM f GROUP BY 1,2,3 ORDER BY repeat_cards DESC;",
+    "params": ["2026-09-16T00:58:00Z", "2026-09-16T01:13:00Z"]
+  },
+  {
+    "name": "latest_200_personalized_request_sample_size",
+    "sql": "SELECT count(*) AS sample_requests FROM (SELECT r.id FROM recommendation_request r JOIN recommendation_personalization_decision p ON p.request_id=r.id WHERE p.execution_mode='hybrid_personalized' AND r.created_at>=$1::timestamptz AND r.created_at<$2::timestamptz ORDER BY r.created_at DESC,r.id DESC LIMIT 200) sample",
+    "params": ["2026-09-16T00:58:00Z", "2026-09-16T01:13:00Z"]
+  },
+  {
+    "name": "worker_recent_heartbeat_aggregate",
+    "sql": "SELECT service,status,count(*) recent_workers,count(*) FILTER(WHERE last_seen_at>now()-interval '45 seconds') fresh_workers,min(extract(epoch FROM now()-last_seen_at)) youngest_heartbeat_seconds,max(started_at) newest_started_at FROM workflow_worker_heartbeat WHERE last_seen_at>now()-interval '10 minutes' GROUP BY service,status"
+  },
+  {
+    "name": "recommendation_workflow_aggregate",
+    "params": ["2026-09-16T00:58:00Z", "2026-09-16T01:13:00Z"],
+    "sql": "SELECT workflow_key,status,count(*) runs,count(*) FILTER(WHERE error IS NOT NULL) runs_with_errors,count(*) FILTER(WHERE finished_at IS NOT NULL) finished_runs,max(duration_ms) maximum_duration_ms FROM workflow_run WHERE workflow_key IN ('recommendation-episode-finalization','recommendation-episode-finalization-recovery','recommendation-shadow-evaluation','recommendation-experiment-evaluation','recommendation-profile-projection','recommendation-profile-reconciliation') AND created_at>=$1::timestamptz AND created_at<$2::timestamptz GROUP BY workflow_key,status ORDER BY workflow_key,status"
+  }
+]

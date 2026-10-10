@@ -1,22 +1,137 @@
 import { createEnv } from "@t3-oss/env-core"
+import { Platform } from "react-native"
 import { z } from "zod"
+import {
+  decideAdminEndpointAccess,
+  reportAdminEndpoint,
+  resolveAdminGraphqlUrl,
+} from "./lib/adminEndpoint"
 
-export const env = createEnv({
-  clientPrefix: "EXPO_PUBLIC_",
-  client: {
-    EXPO_PUBLIC_GRAPHQL_URL_IOS: z.string().url(),
-    EXPO_PUBLIC_GRAPHQL_URL_ANDROID: z.string().url(),
-    EXPO_PUBLIC_STRAPI_TOKEN: z.string().optional(),
-    EXPO_PUBLIC_WEB_BASE_URL: z.string().optional(),
-  },
-  runtimeEnvStrict: {
-    EXPO_PUBLIC_GRAPHQL_URL_IOS: process.env.EXPO_PUBLIC_GRAPHQL_URL_IOS,
-    EXPO_PUBLIC_GRAPHQL_URL_ANDROID:
-      process.env.EXPO_PUBLIC_GRAPHQL_URL_ANDROID,
-    EXPO_PUBLIC_STRAPI_TOKEN: process.env.EXPO_PUBLIC_STRAPI_TOKEN,
-    EXPO_PUBLIC_WEB_BASE_URL: process.env.EXPO_PUBLIC_WEB_BASE_URL,
-  },
-  isServer: false,
-  emptyStringAsUndefined: true,
-  skipValidation: !!process.env.CI && !process.env.EAS_BUILD,
-})
+// Metro only reliably inlines process.env.EXPO_PUBLIC_* at module scope.
+const _inlined = {
+  adminGraphqlUrl: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL,
+  allowProductionAdmin: process.env.EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN,
+  adminGraphqlToken: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN,
+  cachePersist: process.env.EXPO_PUBLIC_FORGE_CACHE_PERSIST,
+  datadogClientToken: process.env.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN,
+  datadogApplicationId: process.env.EXPO_PUBLIC_DATADOG_APPLICATION_ID,
+  datadogSite: process.env.EXPO_PUBLIC_DATADOG_SITE,
+  datadogEnv: process.env.EXPO_PUBLIC_DATADOG_ENV,
+  datadogVersion: process.env.EXPO_PUBLIC_DATADOG_VERSION,
+  datadogSessionSampleRate: process.env.EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE,
+  datadogReplaySampleRate: process.env.EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE,
+  authBaseUrl: process.env.EXPO_PUBLIC_AUTH_BASE_URL,
+  recommendationsEnabled: process.env.EXPO_PUBLIC_RECOMMENDATIONS_ENABLED,
+  signInEnabled: process.env.EXPO_PUBLIC_SIGN_IN_ENABLED,
+  exploreEnabled: process.env.EXPO_PUBLIC_EXPLORE_ENABLED,
+  exploreAndroidEnabled: process.env.EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED,
+}
+void _inlined
+
+const createAppEnv = () =>
+  createEnv({
+    clientPrefix: "EXPO_PUBLIC_",
+    client: {
+      EXPO_PUBLIC_ADMIN_GRAPHQL_URL: z.string().url().optional(),
+      // Escape hatch for the development-build refusal below. Optional, never
+      // required: a required var would pass CI and crash on a device instead.
+      EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN: z.string().optional(),
+      // Consumer bearer for admin's search auth (WEB_ADMIN_API_KEYS class).
+      // Optional so builds without a provisioned key keep booting; search
+      // then runs anonymous and fails only where admin requires auth.
+      EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN: z.string().optional(),
+      // Opt-in cache persistence (default off). Optional so default builds need
+      // no new env var; the consumer falls back to "disabled".
+      EXPO_PUBLIC_FORGE_CACHE_PERSIST: z.string().optional(),
+      // Datadog RUM/Logs — all optional so an unprovisioned build still boots
+      // (datadog.ts null-gates telemetry when creds are absent). Client token is
+      // public (in-bundle); the API key is a build-time EAS secret, never here.
+      EXPO_PUBLIC_DATADOG_CLIENT_TOKEN: z.string().optional(),
+      EXPO_PUBLIC_DATADOG_APPLICATION_ID: z.string().optional(),
+      EXPO_PUBLIC_DATADOG_SITE: z.string().optional(),
+      EXPO_PUBLIC_DATADOG_ENV: z.string().optional(),
+      EXPO_PUBLIC_DATADOG_VERSION: z.string().optional(),
+      // Per-environment sample rates (R5) — production dials toward web's 50%
+      // without a code change. Strings (Metro inlines env as strings); parsed
+      // by datadog.ts's parseSampleRate.
+      EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE: z.string().optional(),
+      EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE: z.string().optional(),
+      // Auth service base URL — optional; unset falls back to production
+      // auth so store builds need no new env var.
+      EXPO_PUBLIC_AUTH_BASE_URL: z.string().url().optional(),
+      // Opt-out kill switch for the recommendations client (feat-516). Optional
+      // so default builds need no new env var; only "false" / "0" disables.
+      EXPO_PUBLIC_RECOMMENDATIONS_ENABLED: z.string().optional(),
+      // Opt-in sign-in gate (feat-543). Keep it a loose string: the on-values
+      // live in signInGateState, and a strict schema stops startup on a typo.
+      EXPO_PUBLIC_SIGN_IN_ENABLED: z.string().optional(),
+      // Opt-in Explore tab gate (KTD16). Loose strings for the same reason as
+      // the sign-in gate: the on-values live in explore/availabilityState.
+      EXPO_PUBLIC_EXPLORE_ENABLED: z.string().optional(),
+      EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED: z.string().optional(),
+    },
+    runtimeEnvStrict: {
+      EXPO_PUBLIC_ADMIN_GRAPHQL_URL: process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL,
+      EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN:
+        process.env.EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN,
+      EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN:
+        process.env.EXPO_PUBLIC_ADMIN_GRAPHQL_TOKEN,
+      EXPO_PUBLIC_FORGE_CACHE_PERSIST:
+        process.env.EXPO_PUBLIC_FORGE_CACHE_PERSIST,
+      EXPO_PUBLIC_DATADOG_CLIENT_TOKEN:
+        process.env.EXPO_PUBLIC_DATADOG_CLIENT_TOKEN,
+      EXPO_PUBLIC_DATADOG_APPLICATION_ID:
+        process.env.EXPO_PUBLIC_DATADOG_APPLICATION_ID,
+      EXPO_PUBLIC_DATADOG_SITE: process.env.EXPO_PUBLIC_DATADOG_SITE,
+      EXPO_PUBLIC_DATADOG_ENV: process.env.EXPO_PUBLIC_DATADOG_ENV,
+      EXPO_PUBLIC_DATADOG_VERSION: process.env.EXPO_PUBLIC_DATADOG_VERSION,
+      EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE:
+        process.env.EXPO_PUBLIC_DATADOG_SESSION_SAMPLE_RATE,
+      EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE:
+        process.env.EXPO_PUBLIC_DATADOG_REPLAY_SAMPLE_RATE,
+      EXPO_PUBLIC_AUTH_BASE_URL: process.env.EXPO_PUBLIC_AUTH_BASE_URL,
+      EXPO_PUBLIC_RECOMMENDATIONS_ENABLED:
+        process.env.EXPO_PUBLIC_RECOMMENDATIONS_ENABLED,
+      EXPO_PUBLIC_SIGN_IN_ENABLED: process.env.EXPO_PUBLIC_SIGN_IN_ENABLED,
+      EXPO_PUBLIC_EXPLORE_ENABLED: process.env.EXPO_PUBLIC_EXPLORE_ENABLED,
+      EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED:
+        process.env.EXPO_PUBLIC_EXPLORE_ANDROID_ENABLED,
+    },
+    isServer: false,
+    emptyStringAsUndefined: true,
+    skipValidation: !!process.env.CI && !process.env.EAS_BUILD,
+  })
+
+let env: ReturnType<typeof createAppEnv>
+try {
+  env = createAppEnv()
+} catch (e) {
+  throw new Error(
+    `Env validation failed. Inlined: ADMIN_GRAPHQL_URL="${_inlined.adminGraphqlUrl}". Original: ${e instanceof Error ? e.message : e}`,
+    { cause: e },
+  )
+}
+
+// Module scope is the earliest app-owned code and the only seam guaranteed to
+// run before all three getGraphQLUrl() callers. The throw surfaces on the RN
+// dev overlay, NOT _layout.tsx's Startup Error panel (see the KTD1 correction).
+const resolvedAdminGraphqlUrl = resolveAdminGraphqlUrl(
+  env.EXPO_PUBLIC_ADMIN_GRAPHQL_URL,
+  __DEV__,
+  Platform.OS,
+)
+
+const adminEndpointAccess = decideAdminEndpointAccess(
+  resolvedAdminGraphqlUrl,
+  __DEV__,
+  env.EXPO_PUBLIC_ALLOW_PRODUCTION_ADMIN,
+)
+if (!adminEndpointAccess.allowed) {
+  throw new Error(adminEndpointAccess.message)
+}
+
+// Once per Metro start — not inside getGraphQLUrl(), which the Datadog provider
+// re-invokes on every render.
+reportAdminEndpoint(resolvedAdminGraphqlUrl, __DEV__)
+
+export { env }

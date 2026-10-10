@@ -3,14 +3,18 @@
 // OpenRouter does not expose a Whisper transcription endpoint.
 
 import { randomUUID } from "node:crypto"
-import { env } from "@/config/env"
 import {
   appendTranscriptionAttempt,
   buildInitialTranscriptionRoutingReport,
   updateTranscriptionAttempt,
 } from "@/lib/transcription-routing-report"
-import { ensureGeneratedSubtitlesForAsset, getMux } from "@/services/mux"
-import { writeArtifact } from "@/services/storage"
+import {
+  buildMuxTextTrackUrl,
+  ensureGeneratedSubtitlesForAsset,
+  getMux,
+  type MuxPlaybackPolicy,
+} from "@/services/mux"
+import { readArtifact, writeArtifact } from "@/services/storage"
 import { parseVTT, segmentsToVTT, type TranscriptSegment } from "@/lib/vtt"
 import type {
   RequestedTranscriptionProvider,
@@ -23,8 +27,10 @@ import {
   isSupportedElevenLabsLanguage,
   transcribeViaElevenLabs,
 } from "@/services/elevenlabs-transcription"
+import { fetchSubtitleVttContent } from "@/services/subtitles"
 
 export type { TranscriptSegment }
+export { buildMuxTextTrackUrl } from "@/services/mux"
 
 export type TranscriptionResult = {
   text: string
@@ -36,6 +42,12 @@ export type TranscriptionResult = {
 }
 
 type RawTranscriptionResult = Omit<TranscriptionResult, "artifactKeys">
+
+export type CleanedAudioTranscriptionSource = {
+  assetId: string
+  artifactType: "cleaned-audio"
+  ext: "mp3"
+}
 
 export class TranscriptionExecutionError extends Error {
   routingReport: TranscriptionRoutingReport
@@ -50,9 +62,6 @@ export class TranscriptionExecutionError extends Error {
     this.routingReport = routingReport
   }
 }
-
-type MuxPlaybackPolicy = "public" | "signed" | "drm"
-
 type MuxPlaybackId = {
   id?: string | null
   policy?: MuxPlaybackPolicy | null
@@ -80,6 +89,21 @@ export type ReadySubtitleTrack = {
   playbackPolicy: MuxPlaybackPolicy
 }
 
+export class MuxSubtitleReadinessTimeoutError extends Error {
+  constructor(
+    readonly muxAssetId: string,
+    readonly language: string,
+    readonly timeoutMs: number,
+    readonly waitedMs: number,
+    readonly attempts: number,
+  ) {
+    super(
+      `Timed out waiting for a ready subtitle track on Mux asset ${muxAssetId} after ${Math.round(waitedMs / 1000)}s.`,
+    )
+    this.name = "MuxSubtitleReadinessTimeoutError"
+  }
+}
+
 const SUBTITLE_TRACK_POLL_INTERVAL_MS = 5_000
 const MIN_SUBTITLE_TRACK_TIMEOUT_MS = 2 * 60_000
 const MAX_SUBTITLE_TRACK_TIMEOUT_MS = 15 * 60_000
@@ -89,10 +113,6 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms)
   })
-}
-
-function hasMuxSigningKeys(): boolean {
-  return Boolean(env.MUX_SIGNING_KEY && env.MUX_PRIVATE_KEY)
 }
 
 function isSubtitleTrack(track: MuxTrack): boolean {
@@ -107,7 +127,14 @@ function normalizeRequestedLanguage(language: string): string | null {
   if (!language || language === "auto") {
     return null
   }
-  return language.toLowerCase()
+  return language.toLowerCase().split(/[-_]/)[0] ?? null
+}
+
+function normalizeTrackLanguage(
+  language: string | null | undefined,
+): string | null {
+  if (!language) return null
+  return language.toLowerCase().split(/[-_]/)[0] ?? null
 }
 
 function chooseBestSubtitleTrack(
@@ -120,12 +147,17 @@ function chooseBestSubtitleTrack(
       (track): track is MuxTrack & { id: string } =>
         Boolean(track.id) && isSubtitleTrack(track),
     )
+    .filter((track) => {
+      if (requestedLanguage == null) return true
+      const trackLanguage = normalizeTrackLanguage(track.language_code)
+      return trackLanguage === requestedLanguage || trackLanguage === "auto"
+    })
     .map((track) => ({
       track,
       score:
         (isGeneratedSubtitleTrack(track) ? 100 : 0) +
         (requestedLanguage &&
-        track.language_code?.toLowerCase() === requestedLanguage
+        normalizeTrackLanguage(track.language_code) === requestedLanguage
           ? 10
           : 0) +
         (track.language_code === "auto" ? 1 : 0),
@@ -165,38 +197,6 @@ export function calculateSubtitleTrackTimeoutMs(
       Math.round(durationSeconds * 1000 * 0.1 + 60_000),
     ),
   )
-}
-
-export async function buildMuxTextTrackUrl(
-  playbackId: string,
-  trackId: string,
-  playbackPolicy: MuxPlaybackPolicy,
-): Promise<string> {
-  if (playbackPolicy === "drm") {
-    throw new Error(
-      "DRM playback IDs are not supported for generated subtitle transcription.",
-    )
-  }
-
-  const url = new URL(
-    `https://stream.mux.com/${playbackId}/text/${trackId}.vtt`,
-  )
-
-  if (playbackPolicy === "signed") {
-    if (!hasMuxSigningKeys()) {
-      throw new Error(
-        "Mux signing keys are required to fetch subtitles from signed playback assets.",
-      )
-    }
-
-    const token = await getMux().jwt.signPlaybackId(playbackId, {
-      type: "video",
-      expiration: "5m",
-    })
-    url.searchParams.set("token", token)
-  }
-
-  return url.toString()
 }
 
 export async function waitForReadySubtitleTrack(
@@ -256,8 +256,12 @@ export async function waitForReadySubtitleTrack(
 
     const waitedMs = Date.now() - startedAt
     if (waitedMs >= timeoutMs) {
-      throw new Error(
-        `Timed out waiting for a ready subtitle track on Mux asset ${muxAssetId} after ${Math.round(waitedMs / 1000)}s.`,
+      throw new MuxSubtitleReadinessTimeoutError(
+        muxAssetId,
+        language,
+        timeoutMs,
+        waitedMs,
+        attempts,
       )
     }
 
@@ -274,6 +278,78 @@ export async function waitForReadySubtitleTrack(
   }
 }
 
+export async function transcribeSubtitleUrl(
+  assetId: string,
+  subtitleUrl: string,
+  language = "auto",
+): Promise<TranscriptionResult> {
+  const report = buildInitialTranscriptionRoutingReport({
+    sourceInputUrl: subtitleUrl,
+  })
+  const { report: runningReport, attemptId } = beginAttempt(report, {
+    requestedProvider: "automatic",
+    resolvedProvider: "mux",
+    sourceLanguageCode: normalizeSourceLanguageCode(language) ?? language,
+    decisionReason:
+      "Admin trigger supplied a subtitle URL, so transcript-only used the existing subtitle artifact instead of polling Mux generated subtitles.",
+  })
+
+  let vttContent: string
+  try {
+    vttContent = await fetchSubtitleVttContent(subtitleUrl)
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Failed to fetch subtitle URL"
+    const failedReport = completeAttempt(runningReport, attemptId, {
+      status: "failed",
+      fallbackReason: message,
+    })
+    throw new TranscriptionExecutionError(message, failedReport, error)
+  }
+  const segments = parseVTT(vttContent)
+  const text = segments.map((s) => s.text).join(" ")
+  const resolvedLanguage = normalizeSourceLanguageCode(language) ?? language
+  const rawResult: RawTranscriptionResult = {
+    text,
+    segments,
+    language: resolvedLanguage,
+    resolvedProvider: "mux",
+    routingReport: withFinalProvider(
+      completeAttempt(runningReport, attemptId, { status: "completed" }),
+      {
+        provider: "mux",
+        language: resolvedLanguage,
+      },
+    ),
+  }
+  const artifactKeys = ["transcript"]
+
+  await writeArtifact({
+    assetId,
+    artifactType: "transcript",
+    ext: "json",
+    body: JSON.stringify(rawResult, null, 2),
+    contentType: "application/json",
+  })
+
+  if (segments.length > 0) {
+    const vtt = segmentsToVTT(segments)
+    await writeArtifact({
+      assetId,
+      artifactType: "subtitles",
+      ext: "vtt",
+      body: vtt,
+      contentType: "text/vtt",
+    })
+    artifactKeys.push("subtitles")
+  }
+
+  return {
+    ...rawResult,
+    artifactKeys,
+  }
+}
+
 // Retrieve Mux-generated subtitles and parse into transcript.
 export async function transcribe(
   assetId: string,
@@ -282,6 +358,7 @@ export async function transcribe(
   options?: {
     requestedProvider?: RequestedTranscriptionProvider
     sourceInputUrl?: string
+    cleanedAudioArtifact?: CleanedAudioTranscriptionSource
     keyterms?: string[]
     priorRoutingReport?: TranscriptionRoutingReport
   },
@@ -518,6 +595,7 @@ async function resolveTranscriptionResult(
   options?: {
     requestedProvider?: RequestedTranscriptionProvider
     sourceInputUrl?: string
+    cleanedAudioArtifact?: CleanedAudioTranscriptionSource
     keyterms?: string[]
     priorRoutingReport?: TranscriptionRoutingReport
   },
@@ -526,6 +604,10 @@ async function resolveTranscriptionResult(
   const sourceLanguageCode = normalizeSourceLanguageCode(language)
   const sourceInputUrl =
     options?.sourceInputUrl ?? options?.priorRoutingReport?.sourceInputUrl
+  const cleanedAudioArtifact = options?.cleanedAudioArtifact
+  const hasElevenLabsMediaInput = Boolean(
+    sourceInputUrl || cleanedAudioArtifact,
+  )
   const baseReport: TranscriptionRoutingReport = {
     ...(options?.priorRoutingReport ??
       buildInitialTranscriptionRoutingReport(
@@ -579,7 +661,7 @@ async function resolveTranscriptionResult(
     return runMuxDirectly("Operator explicitly requested Mux transcription.")
   }
 
-  if (!sourceInputUrl) {
+  if (!hasElevenLabsMediaInput) {
     if (requestedProvider === "elevenlabs") {
       failAttemptWithRoutingReport(baseReport, {
         requestedProvider,
@@ -588,7 +670,7 @@ async function resolveTranscriptionResult(
         decisionReason:
           "Operator explicitly requested ElevenLabs transcription.",
         message:
-          "ElevenLabs transcription requires a persisted source input URL.",
+          "ElevenLabs transcription requires a persisted source input URL or cleaned audio artifact.",
       })
     }
 
@@ -635,15 +717,33 @@ async function resolveTranscriptionResult(
     requestedProvider,
     resolvedProvider: "elevenlabs",
     sourceLanguageCode,
-    decisionReason:
-      requestedProvider === "automatic"
+    decisionReason: cleanedAudioArtifact
+      ? requestedProvider === "automatic"
+        ? "Automatic routing chose ElevenLabs for the resolved source language using cleaned audio from audio_cleanup."
+        : "Operator explicitly requested ElevenLabs transcription using cleaned audio from audio_cleanup."
+      : requestedProvider === "automatic"
         ? "Automatic routing chose ElevenLabs for the resolved source language."
         : "Operator explicitly requested ElevenLabs transcription.",
   })
 
   try {
+    const isolatedAudio = cleanedAudioArtifact
+      ? new Blob(
+          [
+            Buffer.from(
+              await readArtifact(
+                cleanedAudioArtifact.assetId,
+                cleanedAudioArtifact.artifactType,
+                cleanedAudioArtifact.ext,
+              ),
+            ),
+          ],
+          { type: "audio/mpeg" },
+        )
+      : undefined
     const elevenlabsResult = await transcribeViaElevenLabs({
-      sourceUrl: sourceInputUrl,
+      ...(sourceInputUrl ? { sourceUrl: sourceInputUrl } : {}),
+      ...(isolatedAudio ? { isolatedAudio } : {}),
       languageCode: sourceLanguageCode,
       keyterms: options?.keyterms,
     })
