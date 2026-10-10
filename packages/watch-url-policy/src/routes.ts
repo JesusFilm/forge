@@ -8,7 +8,8 @@ export const PUBLIC_WATCH_ORIGIN = "https://www.jesusfilm.org"
 export const DEFAULT_PUBLIC_WATCH_BASE_PATH = "/watch"
 export const MAX_PUBLIC_WATCH_PATHNAME_LENGTH = 1000
 
-const SAFE_PUBLIC_SLUG_PATTERN = /^[a-z0-9_-]+$/
+const SAFE_PUBLIC_SLUG_PATTERN =
+  /^(?:(?=\p{Ll})(?![\u0250-\u02FF\u1D00-\u1D7F\u2100-\u214F\uA700-\uA7FF\uFB00-\uFB4F\uFF00-\uFFEF])\p{Script=Latin}|[0-9_-])+$/u
 const SAFE_BASE_PATH_PATTERN = /^\/[a-z0-9_-]+(?:\/[a-z0-9_-]+)*$/
 const HTML_SUFFIX = ".html"
 
@@ -102,9 +103,20 @@ export type PublicWatchPathnameClassification =
     }
 
 function stripRequiredHtmlSuffix(segment: string): string | null {
-  if (!segment.endsWith(HTML_SUFFIX)) return null
-  const slug = segment.slice(0, -HTML_SUFFIX.length)
-  return SAFE_PUBLIC_SLUG_PATTERN.test(slug) ? slug : null
+  let decoded: string
+  try {
+    // URL.pathname keeps UTF-8 escapes encoded. decodeURI leaves encoded path
+    // separators and reserved URL characters untouched so slug validation
+    // below continues to reject them.
+    decoded = decodeURI(segment)
+  } catch {
+    return null
+  }
+  if (!decoded.endsWith(HTML_SUFFIX)) return null
+  const slug = decoded.slice(0, -HTML_SUFFIX.length)
+  return SAFE_PUBLIC_SLUG_PATTERN.test(slug) && slug === slug.toLowerCase()
+    ? slug
+    : null
 }
 
 /**
@@ -136,14 +148,26 @@ export function classifyPublicWatchPathname(
   }
   if (
     pathname.length > MAX_PUBLIC_WATCH_PATHNAME_LENGTH ||
-    !/^\/[A-Za-z0-9._\-/]+$/.test(pathname) ||
     pathname.includes("//") ||
     pathname.endsWith("/")
   ) {
     return { kind: "malformed", reason: "unsafe-pathname" }
   }
 
-  const relativePathname = pathname.slice(basePath.length + 1)
+  let decodedPathname: string
+  try {
+    decodedPathname = decodeURI(pathname)
+  } catch {
+    return { kind: "malformed", reason: "unsafe-pathname" }
+  }
+  if (encodeURI(decodedPathname) !== pathname) {
+    return { kind: "malformed", reason: "non-canonical-pathname" }
+  }
+  if (!/^\/(?:\p{Script=Latin}|[0-9._\-/])+$/u.test(decodedPathname)) {
+    return { kind: "malformed", reason: "unsafe-pathname" }
+  }
+
+  const relativePathname = decodedPathname.slice(basePath.length + 1)
   const segments = relativePathname.split("/")
   const first = segments[0]
   if (first && PUBLIC_WATCH_RESERVED_FIRST_SEGMENTS.has(first)) {

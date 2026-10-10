@@ -359,6 +359,24 @@ describe("SeriesEpisodeCard — href", () => {
     )
   })
 
+  it.each([
+    "tümlükden-nura",
+    "la-búsqueda-the-search",
+    "la-liberté-de-l-interieur-freedom-within",
+    "jätku-leiba",
+  ])("links a playable child with the native slug %s", (slug) => {
+    renderCard({
+      episode: makeEpisode({ slug }),
+      languageSlug: "english",
+      parentSlug: "conversation-starters",
+    })
+
+    const anchor = container.querySelector("a")
+    expect(anchor?.getAttribute("href")).toBe(
+      `/conversation-starters.html/${slug}.html`,
+    )
+  })
+
   it("routes a nested collection to its standalone language page", () => {
     renderCard({
       episode: makeEpisode({

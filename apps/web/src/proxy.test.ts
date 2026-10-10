@@ -420,6 +420,34 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
 })
 
 describe("proxy — internal locale/htmlLang rewrites", () => {
+  it.each([
+    [
+      "/en/en/t%C3%BCml%C3%BCkden-nura.html/spanish.html",
+      "/t%C3%BCml%C3%BCkden-nura.html/spanish.html",
+    ],
+    [
+      "/en/en/conversation-starters.html/la-b%C3%BAsqueda-the-search/english.html",
+      "/conversation-starters.html/la-b%C3%BAsqueda-the-search.html",
+    ],
+    [
+      "/en/en/conversation-starters.html/la-libert%C3%A9-de-l-interieur-freedom-within/english.html",
+      "/conversation-starters.html/la-libert%C3%A9-de-l-interieur-freedom-within.html",
+    ],
+    [
+      "/en/en/j%C3%A4tku-leiba.html/spanish.html",
+      "/j%C3%A4tku-leiba.html/spanish.html",
+    ],
+  ])(
+    "redirects internal Unicode route %s to its canonical public URL",
+    async (path, expectedPath) => {
+      const response = await proxy(makeRequest(path))
+      expect(response.status).toBe(308)
+      expect(new URL(response.headers.get("location") ?? "").pathname).toBe(
+        expectedPath,
+      )
+    },
+  )
+
   it("keeps root and language indexes public while internally adding locale/htmlLang", async () => {
     for (const [publicPath, internalPath] of [
       ["/", "/en/en"],
@@ -624,6 +652,35 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     expect(rewritePath(explicit)).toBe("/en/en/discipleship.html/english.html")
   })
 
+  it("re-enters a Unicode content rewrite with consistent URL encoding", async () => {
+    const slug = "tümlükden-nura"
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      contentSlugs: [slug, "nested-child"],
+      oneSegmentSlugs: [],
+      audioLanguageSlugs: ["english"],
+      audioLanguageIndexesByContent: { [slug]: [] },
+      audioLanguageIndexesByEpisode: {},
+      nestedContainerAudioLanguageIndexesByParent: {
+        [slug]: { "nested-child": [0] },
+      },
+    }))
+
+    const first = await proxy(makeRequest(`/${slug}.html`))
+    const internalPath = rewritePath(first)
+    expect(internalPath).toBe(`/en/en/${encodeURI(slug)}.html/english.html`)
+
+    const second = await proxy(
+      makeRequest(internalPath ?? "", {
+        headers: rewrittenRequestHeaders(first),
+      }),
+    )
+
+    expect(second.status).toBe(200)
+    expect(rewritePath(second)).toBeNull()
+  })
+
   it("keeps nested parent admission closed until a nested relation snapshot is generated", async () => {
     resetManifestSource?.()
     resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
@@ -787,6 +844,43 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
       "/ru/ru/lumo-the-gospel-of-john.html/lumo-john-1-1-34/russian.html",
     )
   })
+
+  it.each([
+    "tümlükden-nura",
+    "la-búsqueda-the-search",
+    "la-liberté-de-l-interieur-freedom-within",
+    "jätku-leiba",
+  ])(
+    "rewrites an admitted contextual child with Unicode slug %s",
+    async (slug) => {
+      resetManifestSource?.()
+      resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+        ...TEST_MANIFEST,
+        contentSlugs: [
+          ...TEST_MANIFEST.contentSlugs,
+          "conversation-starters",
+          slug,
+        ],
+        episodePairsByParent: {
+          ...TEST_MANIFEST.episodePairsByParent,
+          "conversation-starters": [slug],
+        },
+        audioLanguageIndexesByEpisode: {
+          ...TEST_MANIFEST.audioLanguageIndexesByEpisode,
+          "conversation-starters": { [slug]: [2] },
+        },
+      }))
+
+      const response = await proxy(
+        makeRequest(`/conversation-starters.html/${slug}.html`),
+      )
+
+      expect(response.headers.get("location")).toBeNull()
+      expect(rewritePath(response)).toBe(
+        `/en/en/conversation-starters.html/${encodeURI(slug)}.html`,
+      )
+    },
+  )
 
   it("rewrites a short legacy episode alias to its exact current English context", async () => {
     const response = await proxy(
@@ -1538,9 +1632,27 @@ describe("proxy — resilience on malformed inputs", () => {
     expectNotFoundRewrite(response)
   })
 
-  it("does not rewrite cyrillic slugs (positive allowlist rejects non-ASCII)", async () => {
+  it.each([
+    "/conversation-starters.html/t%C3%BCml%C3%BCkden%2Fnura.html",
+    "/conversation-starters.html/t%C3%BCml%C3%BCkden%5Cnura.html",
+    "/conversation-starters.html/%E0%A4.html",
+    "/%6Aesus.html",
+    "/t%c3%bcml%c3%bckden-nura.html",
+    "/%2E%2E/conversation-starters.html",
+    "/conversation-starters.html/%C3%9Cber.html",
+  ])(
+    "rejects unsafe or non-canonical Unicode route encoding %s",
+    async (path) => {
+      const response = await proxy(makeRequest(path))
+      expect(response.status).not.toBe(307)
+      expect(response.status).not.toBe(308)
+      expectNotFoundRewrite(response)
+    },
+  )
+
+  it("does not rewrite cyrillic slugs that are absent from the route manifest", async () => {
     const response = await proxy(
-      makeRequest(`/${encodeURIComponent("Иисус")}/english`),
+      makeRequest(`/${encodeURIComponent("иисус")}/english`),
     )
     expect(response.status).not.toBe(307)
     expect(response.status).not.toBe(308)
