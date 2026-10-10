@@ -4,15 +4,15 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 8, 2026)
+## Status (October 10, 2026)
 
-- **Total tickets:** 794
-- **Complete:** 595
+- **Total tickets:** 795
+- **Complete:** 596
 - **Cancelled:** 39
-- **In progress:** 61
-- **Not started:** 42
+- **In progress:** 60
+- **Not started:** 43
 - **Blocked:** 57
-- **Overdue and open:** 142
+- **Overdue and open:** 144
 
 ## Feature Index
 
@@ -819,7 +819,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-522](topic-experiences/feat-522-watch-language-search-input-icons.md)                 | Keep Watch language search icons visible above the input                         | vlad       | P1       | 2026-09-17 | 1    | 2026-09-17 | complete    |
 | [feat-615](topic-experiences/feat-615-tv-startup-logo-audio.md)                             | TV fresh-launch logo animation and sound                                         | ekkasit    | P1       | 2026-10-07 | 1    | 2026-10-07 | in-progress |
 | [feat-616](topic-experiences/feat-616-tv-animation-settings.md)                             | Watch startup and loading animation choices                                      | ekkasit    | P1       | 2026-10-07 | 2    | 2026-10-08 | in-progress |
-| [feat-637](topic-experiences/feat-637-watch-home-category-rail-reachability.md)             | Make every Watch home category reachable                                         | vlad       | P1       | 2026-10-08 | 2    | 2026-10-09 | in-progress |
+| [feat-681](topic-experiences/feat-681-watch-home-category-rail-reachability.md)             | Make every Watch home category reachable                                         | vlad       | P1       | 2026-10-08 | 2    | 2026-10-09 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad       | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit    | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim       | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
@@ -828,4 +828,5 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-438](topic-experiences/feat-438-watch-immersive-section-background-saturation.md)     | Watch immersive section background saturation                                    | vlad       | P2       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-263](topic-experiences/feat-263-ai-assembled-showcase-reel.md)                        | AI-assembled Showcase reel                                                       | urim       | P2       | 2026-09-01 | 14   | 2026-09-14 | blocked     |
 | [feat-481](topic-experiences/feat-481-lg-webos-simulator-demo.md)                           | LG webOS simulator demo                                                          | ekkasit    | P2       | 2026-09-04 | 1    | 2026-09-04 | in-progress |
+| [feat-684](topic-experiences/feat-684-watch-home-category-rail-arrow-translations.md)       | Translate the Watch category rail arrow labels                                   | vlad       | P2       | 2026-10-12 | 2    | 2026-10-13 | not-started |
 | [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                                            | tataihono  | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |

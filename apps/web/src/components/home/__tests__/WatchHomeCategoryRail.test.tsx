@@ -2,35 +2,14 @@
  * @vitest-environment jsdom
  */
 
-import type { ReactNode } from "react"
+import { act } from "react"
+import { createRoot, type Root } from "react-dom/client"
 import { renderToStaticMarkup } from "react-dom/server"
-import { describe, expect, it, vi } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
 
 import enMessages from "../../../../messages/en.json"
 import { WATCH_HOME_CATEGORIES } from "@/lib/watch-home-categories"
-
-vi.mock("@/components/ui/carousel", () => ({
-  Carousel: ({
-    children,
-    ...props
-  }: {
-    children: ReactNode
-    [key: string]: unknown
-  }) => <div {...props}>{children}</div>,
-  CarouselContent: ({ children }: { children: ReactNode }) => (
-    <div>{children}</div>
-  ),
-  CarouselItem: ({
-    children,
-    ...props
-  }: {
-    children?: ReactNode
-    [key: string]: unknown
-  }) => <div {...props}>{children}</div>,
-  CarouselNext: () => <button type="button">next</button>,
-  CarouselPrevious: () => <button type="button">previous</button>,
-}))
 
 const { WatchHomeCategoryRail } =
   await import("@/components/home/WatchHomeCategoryRail")
@@ -309,16 +288,489 @@ describe("WatchHomeCategoryRail", () => {
       '[data-testid="watch-home-category-scroller"]',
     )
 
-    expect(scroller?.getAttribute("tabindex")).toBe("0")
     expect(scroller?.className).toContain("overflow-x-auto")
     expect(scroller?.className).toContain("snap-x")
     expect(scroller?.className).toContain("min-[1440px]:grid-cols-7")
     expect(
       container.querySelectorAll('[data-testid^="watch-home-category-slide-"]'),
     ).toHaveLength(WATCH_HOME_CATEGORIES.length)
+  })
+
+  it("adds no tab stop for the scroller, which only contains links", () => {
+    const container = render("english")
+    expect(container.querySelectorAll("[tabindex]")).toHaveLength(0)
+  })
+
+  it("renders no arrow buttons in the server HTML, only the end-edge cue", () => {
+    // Arrows are a hydrated enhancement; before the scroller is measured they
+    // would be dead controls. The fade is CSS-only, so it ships in the HTML.
+    const container = render("english")
+    expect(container.querySelectorAll("button")).toHaveLength(0)
     expect(
-      container.querySelector('[aria-label="Scroll Browse by category right"]'),
+      container.querySelector('[data-testid="watch-home-category-fade-end"]'),
     ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="watch-home-category-fade-start"]'),
+    ).toBeNull()
+  })
+
+  // Real layout is not available in jsdom, so these pin the CLASS CONTRACT
+  // that was measured to fail in a real Next build at PR head 660ca4866:
+  // the list-item wrapper had `min-w-0` and no `shrink-0`, so it collapsed to
+  // ~12px while the 190px link overflowed it. All 13 cards painted on top of
+  // each other and the scroller's scrollWidth fell to 548px (about 2,700
+  // expected). The browser evidence lives in the PR / progress report.
+  it("lets the list-item wrapper own the card width and refuse to shrink", () => {
+    const container = render("english")
+    for (const category of WATCH_HOME_CATEGORIES) {
+      const slide = container.querySelector(
+        `[data-testid="watch-home-category-slide-${category.id}"]`,
+      )
+      const link = card(container, category.id)
+      const slideClasses = slide?.className.split(/\s+/) ?? []
+
+      expect(slideClasses, category.id).toContain("shrink-0")
+      expect(slideClasses, category.id).toContain("w-[190px]")
+      expect(slideClasses, category.id).toContain("snap-start")
+      // Back to a content-sized grid track at the two-row breakpoint.
+      expect(slideClasses, category.id).toContain("min-[1440px]:w-auto")
+      expect(slideClasses, category.id).not.toContain("min-w-0")
+      // The link fills its wrapper instead of carrying its own fixed width.
+      expect(link?.className.split(/\s+/), category.id).toContain("w-full")
+      expect(link?.className, category.id).not.toContain("w-[190px]")
+    }
+  })
+
+  it("mirrors the scroller padding with scroll padding at every tier", () => {
+    // Without scroll-padding, mandatory snapping pulls scrollLeft past the
+    // padding on load and the first card sits flush with the viewport edge
+    // (measured: rest scrollLeft 20/64/25 at 390/768/1280).
+    const classes =
+      render("english")
+        .querySelector('[data-testid="watch-home-category-scroller"]')
+        ?.className.split(/\s+/) ?? []
+
+    for (const [padding, scrollPadding] of [
+      ["px-5", "scroll-px-5"],
+      ["md:px-16", "md:scroll-px-16"],
+      ["xl:px-24", "xl:scroll-px-24"],
+    ]) {
+      expect(classes).toContain(padding)
+      expect(classes).toContain(scrollPadding)
+    }
+    // The grid does not scroll, so it must not keep snapping.
+    expect(classes).toContain("min-[1440px]:snap-none")
+  })
+
+  it("keeps long and unbroken titles inside the fixed-height card, in either direction", () => {
+    const container = render("english", null, [
+      {
+        id: "t1",
+        categoryId: "jesus",
+        title: "Supercalifragilistic".repeat(8),
+      },
+    ])
+    const label = card(container, "t1")?.querySelector("span.relative")
+    expect(label?.className).toContain("line-clamp-3")
+    expect(label?.className).toContain("break-words")
+    expect(label?.className).toContain("min-w-0")
+    // Logical offset, so the glyph flips to the leading side in RTL.
+    const icon = card(container, "t1")?.querySelector("svg")
+    expect(icon?.getAttribute("class")).toContain("end-3")
+    expect(icon?.getAttribute("class")).not.toContain("right-3")
+  })
+})
+
+describe("WatchHomeCategoryRail scrolling behaviour", () => {
+  const CARD_STEP = 206
+  const VIEWPORT = 1000
+  const mounted: Array<{ root: Root; host: HTMLElement }> = []
+  let scrollLeft = 0
+  let rtl = false
+  let scrollByMock = vi.fn()
+  const resizeObservers: Array<{
+    callback: () => void
+    observed: Set<Element>
+  }> = []
+
+  function installLayout() {
+    scrollLeft = 0
+    rtl = false
+    scrollByMock = vi.fn()
+    resizeObservers.length = 0
+    const isScroller = (element: Element) =>
+      element.getAttribute("data-testid") === "watch-home-category-scroller"
+    Object.defineProperty(HTMLElement.prototype, "scrollWidth", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return isScroller(this) ? this.children.length * CARD_STEP : 0
+      },
+    })
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return isScroller(this) ? VIEWPORT : 0
+      },
+    })
+    Object.defineProperty(HTMLElement.prototype, "scrollLeft", {
+      configurable: true,
+      get(this: HTMLElement) {
+        return isScroller(this) ? scrollLeft : 0
+      },
+      set() {},
+    })
+    Object.defineProperty(HTMLElement.prototype, "scrollBy", {
+      configurable: true,
+      value: scrollByMock,
+    })
+    vi.spyOn(window, "getComputedStyle").mockImplementation(
+      () => ({ direction: rtl ? "rtl" : "ltr" }) as CSSStyleDeclaration,
+    )
+    window.matchMedia = ((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    })) as unknown as typeof window.matchMedia
+    class StubResizeObserver {
+      private entry: { callback: () => void; observed: Set<Element> }
+      constructor(callback: () => void) {
+        this.entry = { callback, observed: new Set() }
+        resizeObservers.push(this.entry)
+      }
+      observe(element: Element) {
+        this.entry.observed.add(element)
+      }
+      disconnect() {
+        this.entry.observed.clear()
+      }
+      unobserve() {}
+    }
+    vi.stubGlobal("ResizeObserver", StubResizeObserver)
+  }
+
+  async function mount(
+    tiles?: readonly RailTileInput[] | null,
+  ): Promise<{ host: HTMLElement; root: Root }> {
+    installLayout()
+    const host = document.createElement("div")
+    document.body.appendChild(host)
+    const root = createRoot(host)
+    mounted.push({ root, host })
+    await act(async () => {
+      root.render(
+        <WatchHomeCategoryRail languageSlug="english" tiles={tiles} />,
+      )
+    })
+    return { host, root }
+  }
+
+  async function scrollTo(host: HTMLElement, position: number) {
+    scrollLeft = position
+    await act(async () => {
+      host
+        .querySelector('[data-testid="watch-home-category-scroller"]')
+        ?.dispatchEvent(new Event("scroll"))
+    })
+  }
+
+  const previous = (host: HTMLElement) =>
+    host.querySelector<HTMLButtonElement>(
+      '[data-testid="watch-home-category-previous"]',
+    )
+  const next = (host: HTMLElement) =>
+    host.querySelector<HTMLButtonElement>(
+      '[data-testid="watch-home-category-next"]',
+    )
+  const fadeStart = (host: HTMLElement) =>
+    host.querySelector('[data-testid="watch-home-category-fade-start"]')
+  const fadeEnd = (host: HTMLElement) =>
+    host.querySelector('[data-testid="watch-home-category-fade-end"]')
+  const manyTiles = (count: number): RailTileInput[] =>
+    Array.from({ length: count }, (_, index) => ({
+      id: `t${index}`,
+      categoryId: "jesus",
+    }))
+
+  afterEach(async () => {
+    for (const { root, host } of mounted.splice(0)) {
+      await act(async () => root.unmount())
+      host.remove()
+    }
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it("starts at the beginning: only a forward arrow and the end fade", async () => {
+    const { host } = await mount()
+
+    expect(previous(host)).toBeNull()
+    expect(fadeStart(host)).toBeNull()
+    expect(next(host)).not.toBeNull()
+    expect(fadeEnd(host)).not.toBeNull()
+  })
+
+  it("labels the arrows with the dedicated catalog strings, not video-preview copy", async () => {
+    const { host } = await mount()
+    await scrollTo(host, 300)
+
+    expect(previous(host)?.getAttribute("aria-label")).toBe(
+      enMessages.WatchHomeCategories.previous,
+    )
+    expect(next(host)?.getAttribute("aria-label")).toBe(
+      enMessages.WatchHomeCategories.next,
+    )
+  })
+
+  it("shows both arrows mid-rail and only the backward one at the end", async () => {
+    const { host } = await mount()
+    const maxScroll = WATCH_HOME_CATEGORIES.length * CARD_STEP - VIEWPORT
+
+    await scrollTo(host, 300)
+    expect(previous(host)).not.toBeNull()
+    expect(next(host)).not.toBeNull()
+    expect(fadeStart(host)).not.toBeNull()
+    expect(fadeEnd(host)).not.toBeNull()
+
+    await scrollTo(host, maxScroll)
+    expect(previous(host)).not.toBeNull()
+    expect(next(host)).toBeNull()
+    expect(fadeEnd(host)).toBeNull()
+
+    // Fractional rest positions must not leave a spent arrow enabled.
+    await scrollTo(host, maxScroll - 0.5)
+    expect(next(host)).toBeNull()
+  })
+
+  it("keeps the arrows as ordinary tabbable buttons that only fine pointers from md see", async () => {
+    const { host } = await mount()
+    await scrollTo(host, 300)
+
+    for (const button of [previous(host), next(host)]) {
+      expect(button?.getAttribute("type")).toBe("button")
+      // Effective tab order, not attribute absence: base-ui sets tabindex="0".
+      expect(button?.tabIndex).toBe(0)
+      const classes = button?.className.split(/\s+/) ?? []
+      expect(classes).toContain("hidden")
+      expect(classes).toContain("md:pointer-fine:flex")
+    }
+    // The cue overlays must never become hit targets.
+    expect(fadeStart(host)?.className).toContain("pointer-events-none")
+    expect(fadeEnd(host)?.className).toContain("pointer-events-none")
+  })
+
+  it("gives the arrows an explicit dark-on-light face, never the section's white", async () => {
+    // The rail section is text-white and the outline Button variant paints a
+    // white background: without an explicit pair the chevron was white on
+    // white. Same face as the Watch carousel arrows.
+    const { host } = await mount()
+    await scrollTo(host, 300)
+
+    for (const button of [previous(host), next(host)]) {
+      const classes = button?.className.split(/\s+/) ?? []
+      expect(classes).toContain("bg-white/95")
+      expect(classes).toContain("text-stone-900")
+      expect(classes).not.toContain("text-white")
+      expect(classes).toContain("rounded-full")
+      expect(classes).toContain("size-11")
+    }
+  })
+
+  it("scrolls toward the logical end in left-to-right", async () => {
+    const { host } = await mount()
+    await scrollTo(host, 300)
+
+    await act(async () => next(host)?.click())
+    expect(scrollByMock).toHaveBeenLastCalledWith({
+      left: VIEWPORT * 0.8,
+      behavior: "smooth",
+    })
+    await act(async () => previous(host)?.click())
+    expect(scrollByMock).toHaveBeenLastCalledWith({
+      left: -VIEWPORT * 0.8,
+      behavior: "smooth",
+    })
+  })
+
+  it("scrolls toward the logical end in right-to-left, where scrollLeft is negative", async () => {
+    const { host } = await mount()
+    rtl = true
+    // Negative scrollLeft is how RTL reports travel away from the start edge.
+    await scrollTo(host, -300)
+    expect(previous(host)).not.toBeNull()
+    expect(next(host)).not.toBeNull()
+
+    await act(async () => next(host)?.click())
+    expect(scrollByMock).toHaveBeenLastCalledWith({
+      left: -VIEWPORT * 0.8,
+      behavior: "smooth",
+    })
+    await act(async () => previous(host)?.click())
+    expect(scrollByMock).toHaveBeenLastCalledWith({
+      left: VIEWPORT * 0.8,
+      behavior: "smooth",
+    })
+    // The glyphs mirror in RTL through CSS, not by swapping which arrow is which.
+    expect(
+      previous(host)?.querySelector("svg")?.getAttribute("class"),
+    ).toContain("rtl:rotate-180")
+    expect(next(host)?.querySelector("svg")?.getAttribute("class")).toContain(
+      "rtl:rotate-180",
+    )
+  })
+
+  it("places arrows and fades on logical edges so RTL mirrors them", async () => {
+    const { host } = await mount()
+    await scrollTo(host, 300)
+
+    expect(previous(host)?.className).toContain("start-2")
+    expect(next(host)?.className).toContain("end-2")
+    expect(fadeStart(host)?.className).toContain("start-0")
+    expect(fadeStart(host)?.className).toContain("rtl:bg-gradient-to-l")
+    expect(fadeEnd(host)?.className).toContain("end-0")
+    expect(fadeEnd(host)?.className).toContain("rtl:bg-gradient-to-r")
+  })
+
+  it("uses reduced motion when the visitor asks for it", async () => {
+    const { host } = await mount()
+    window.matchMedia = ((query: string) => ({
+      matches: true,
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    })) as unknown as typeof window.matchMedia
+
+    await act(async () => next(host)?.click())
+    expect(scrollByMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ behavior: "auto" }),
+    )
+  })
+
+  it("hands focus to the opposite arrow when the focused arrow is spent", async () => {
+    const { host } = await mount()
+    await scrollTo(host, 300)
+    const forward = next(host)
+    await act(async () => {
+      forward?.focus()
+      forward?.click()
+    })
+    expect(document.activeElement).toBe(forward)
+
+    await scrollTo(host, WATCH_HOME_CATEGORIES.length * CARD_STEP - VIEWPORT)
+
+    expect(next(host)).toBeNull()
+    expect(document.activeElement).toBe(previous(host))
+  })
+
+  it("does not steal focus the visitor has already moved to a card", async () => {
+    const { host } = await mount()
+    await scrollTo(host, 300)
+    await act(async () => next(host)?.click())
+    const cardLink = host.querySelector<HTMLElement>("a[href]")
+    await act(async () => cardLink?.focus())
+
+    await scrollTo(host, WATCH_HOME_CATEGORIES.length * CARD_STEP - VIEWPORT)
+
+    expect(document.activeElement).toBe(cardLink)
+  })
+
+  it("does not steal focus after a click on Next followed by a click outside", async () => {
+    // Activation is not focus: the visitor pressed Next, then clicked away to
+    // the page body, then wheel-scrolled the rail to its end.
+    const { host } = await mount()
+    await scrollTo(host, 300)
+    await act(async () => {
+      next(host)?.focus()
+      next(host)?.click()
+    })
+    await act(async () => (document.activeElement as HTMLElement).blur())
+    expect(document.activeElement).toBe(document.body)
+
+    await scrollTo(host, WATCH_HOME_CATEGORIES.length * CARD_STEP - VIEWPORT)
+
+    expect(next(host)).toBeNull()
+    expect(document.activeElement).toBe(document.body)
+  })
+
+  it("hands focus the other way when Previous is spent at the start", async () => {
+    const { host } = await mount()
+    await scrollTo(host, 300)
+    await act(async () => previous(host)?.focus())
+
+    await scrollTo(host, 0)
+
+    expect(previous(host)).toBeNull()
+    expect(document.activeElement).toBe(next(host))
+  })
+
+  it("has no arrows or fades when every tile already fits", async () => {
+    const { host } = await mount(manyTiles(2))
+
+    expect(previous(host)).toBeNull()
+    expect(next(host)).toBeNull()
+    expect(fadeStart(host)).toBeNull()
+    // Assumed forward in the server HTML, then corrected once measured.
+    expect(fadeEnd(host)).toBeNull()
+  })
+
+  it("re-measures when authored tiles grow at the same viewport width", async () => {
+    // Short -> long at an unchanged scroller box: a ResizeObserver on the
+    // scroller alone would leave the stale "nothing to scroll" state.
+    const { host, root } = await mount(manyTiles(2))
+    expect(next(host)).toBeNull()
+
+    await act(async () => {
+      root.render(
+        <WatchHomeCategoryRail languageSlug="english" tiles={manyTiles(13)} />,
+      )
+    })
+
+    expect(next(host)).not.toBeNull()
+    expect(fadeEnd(host)).not.toBeNull()
+  })
+
+  it("re-measures when authored tiles shrink to fit", async () => {
+    const { host, root } = await mount(manyTiles(13))
+    expect(next(host)).not.toBeNull()
+
+    await act(async () => {
+      root.render(
+        <WatchHomeCategoryRail languageSlug="english" tiles={manyTiles(2)} />,
+      )
+    })
+
+    expect(next(host)).toBeNull()
+    expect(fadeEnd(host)).toBeNull()
+  })
+
+  it("observes every list item so a card resizing alone re-measures", async () => {
+    const { host } = await mount(manyTiles(5))
+    const scroller = host.querySelector(
+      '[data-testid="watch-home-category-scroller"]',
+    )
+    const observed = resizeObservers.flatMap(({ observed }) => [...observed])
+
+    expect(observed).toContain(scroller)
+    for (const child of scroller?.children ?? []) {
+      expect(observed).toContain(child)
+    }
+  })
+
+  it("stops listening when unmounted", async () => {
+    const { host, root } = await mount()
+    const scroller = host.querySelector(
+      '[data-testid="watch-home-category-scroller"]',
+    )
+    const removeSpy = vi.spyOn(scroller as Element, "removeEventListener")
+
+    await act(async () => root.unmount())
+    mounted.splice(0)
+    host.remove()
+
+    expect(removeSpy).toHaveBeenCalledWith("scroll", expect.any(Function))
+    expect(resizeObservers.every(({ observed }) => observed.size === 0)).toBe(
+      true,
+    )
   })
 })
 
