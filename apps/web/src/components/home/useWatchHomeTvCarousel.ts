@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
+  useLayoutEffect,
 } from "react"
 import {
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
@@ -37,6 +38,31 @@ export type { WatchHomeCarouselSequenceData, WatchHomeTvCarouselSlide }
 export const WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS = 7
 const IMAGE_SLIDE_ADVANCE_MS = WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS * 1000
 const VIDEO_POSTER_HOLD_MS = 1500
+export const WATCH_HOME_TV_PAUSED_SESSION_STORAGE_KEY =
+  "watch-home-tv-carousel-paused"
+const WATCH_HOME_TV_PAUSE_PREFERENCE_EVENT = "watch-home-tv-pause-preference"
+
+function subscribeToPausePreference(callback: () => void) {
+  window.addEventListener(WATCH_HOME_TV_PAUSE_PREFERENCE_EVENT, callback)
+  return () =>
+    window.removeEventListener(WATCH_HOME_TV_PAUSE_PREFERENCE_EVENT, callback)
+}
+
+function getClientPausePreference() {
+  try {
+    return (
+      window.sessionStorage.getItem(
+        WATCH_HOME_TV_PAUSED_SESSION_STORAGE_KEY,
+      ) === "true"
+    )
+  } catch {
+    return false
+  }
+}
+
+function getServerPausePreference() {
+  return false
+}
 
 /**
  * How far past a video's own length the backstop timer sits. Made of the
@@ -276,6 +302,12 @@ export function useWatchHomeTvCarousel(
   // mount and emits no event there -- which is what keeps the 1500 ms poster
   // hold behaving exactly as it does today.
   const [isMediaPaused, setIsMediaPaused] = useState(false)
+  const isUserPaused = useSyncExternalStore(
+    subscribeToPausePreference,
+    getClientPausePreference,
+    getServerPausePreference,
+  )
+  const isUserPausedRef = useRef(isUserPaused)
   const isMutedRef = useRef(isMuted)
   // Read inside `handleCanPlay`, which must stay a stable callback, so the
   // poster-hold arm/skip decision cannot depend on render state.
@@ -302,6 +334,10 @@ export function useWatchHomeTvCarousel(
   // `waiting` still loses its turn instead of re-arming forever.
   const backstopSeenTimeRef = useRef(0)
   const videoRef = useRef<HTMLVideoElement | null>(null)
+  useLayoutEffect(() => {
+    isUserPausedRef.current = isUserPaused
+    if (isUserPaused) videoRef.current?.pause()
+  }, [isUserPaused])
   const isSequenced = sequence != null
   const sequenceKey = useMemo(
     () =>
@@ -375,7 +411,7 @@ export function useWatchHomeTvCarousel(
   // holds its turn the same way a buffering one does. The two are kept
   // separate for the ring: only buffering is a stall worth explaining.
   const isMediaHeld = Boolean(activeSlide?.src) && isMediaPaused
-  const isTurnHeld = isBuffering || isMediaHeld
+  const isTurnHeld = isBuffering || isMediaHeld || isUserPaused
   // One resolved duration feeds both the ring and the backstop, so the two
   // cannot drift apart. The measurement only counts for the slide it was read
   // from.
@@ -542,11 +578,15 @@ export function useWatchHomeTvCarousel(
             // below is still worth attempting.
           }
           const refusedForTurn = turnTokenRef.current
-          startPlayback(video, () => {
-            if (turnTokenRef.current !== refusedForTurn) return
-            if (videoRef.current !== video) return
-            setIsBufferingMedia(true)
-          })
+          if (!isUserPausedRef.current) {
+            startPlayback(video, () => {
+              if (turnTokenRef.current !== refusedForTurn) return
+              if (videoRef.current !== video) return
+              setIsBufferingMedia(true)
+            })
+          } else {
+            video.pause()
+          }
         }
       }
     },
@@ -587,6 +627,31 @@ export function useWatchHomeTvCarousel(
       if (video) video.muted = next
       return next
     })
+  }, [])
+
+  const togglePlaybackPaused = useCallback(() => {
+    const next = !isUserPausedRef.current
+    isUserPausedRef.current = next
+    try {
+      window.sessionStorage.setItem(
+        WATCH_HOME_TV_PAUSED_SESSION_STORAGE_KEY,
+        String(next),
+      )
+    } catch {
+      // The in-memory preference still pauses playback for this page.
+    }
+    window.dispatchEvent(new Event(WATCH_HOME_TV_PAUSE_PREFERENCE_EVENT))
+    const video = videoRef.current
+    if (next) {
+      video?.pause()
+    } else if (video && mediaReadyRef.current) {
+      const refusedForTurn = turnTokenRef.current
+      startPlayback(video, () => {
+        if (turnTokenRef.current !== refusedForTurn) return
+        if (videoRef.current !== video) return
+        setIsBufferingMedia(true)
+      })
+    }
   }, [])
 
   const handleTimeUpdate = useCallback(() => {
@@ -649,7 +714,7 @@ export function useWatchHomeTvCarousel(
     videoPosterHoldTimeoutRef.current = window.setTimeout(() => {
       mediaReadyRef.current = true
       setMediaReady(true)
-      if (!autoAdvancePausedRef.current) {
+      if (!autoAdvancePausedRef.current && !isUserPausedRef.current) {
         // A rejection can land long after this turn ended -- the viewer picks
         // another slide, the element is replaced -- and the buffering flag is
         // hook-wide, so an ungated callback would park the slide that
@@ -864,7 +929,9 @@ export function useWatchHomeTvCarousel(
     // mid-stall leaves both true, and a ceiling that ignored the pause would
     // force-advance the hero every 12 seconds behind the page -- exactly the
     // behaviour the pause gate exists to stop.
-    if (!isBuffering || isMediaHeld || autoAdvancePaused) return undefined
+    if (!isBuffering || isMediaHeld || isUserPaused || autoAdvancePaused) {
+      return undefined
+    }
 
     const armedForTurn = turnTokenRef.current
     mediaWaitTimeoutRef.current = window.setTimeout(() => {
@@ -884,6 +951,7 @@ export function useWatchHomeTvCarousel(
     clearMediaWaitTimeout,
     isBuffering,
     isMediaHeld,
+    isUserPaused,
   ])
 
   useEffect(() => {
@@ -957,6 +1025,8 @@ export function useWatchHomeTvCarousel(
       selectSlide,
       slides: displaySlides,
       toggleMuted,
+      togglePlaybackPaused,
+      isUserPaused,
       videoRef,
     }),
     [
@@ -981,6 +1051,8 @@ export function useWatchHomeTvCarousel(
       playbackTime,
       selectSlide,
       toggleMuted,
+      togglePlaybackPaused,
+      isUserPaused,
     ],
   )
 }

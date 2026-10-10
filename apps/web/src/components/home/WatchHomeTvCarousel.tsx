@@ -18,7 +18,7 @@ import {
 import type { MuxPlayerRef } from "@forge/video-player"
 import MuxVideo from "@forge/video-player/mux-video"
 import { useTranslations } from "next-intl"
-import { Play, Volume2, VolumeX } from "lucide-react"
+import { Pause, Play, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "@/components/watch/subtitle-track"
@@ -542,9 +542,11 @@ function WatchHomeTvOverlay({
   isBuffering,
   isTurnHeld,
   isMuted,
+  isUserPaused,
   leavingSlide,
   onSelectSlide,
   onToggleMuted,
+  onTogglePlaybackPaused,
   playbackTimeSeconds,
   slides,
   ringAnimationKey,
@@ -557,9 +559,11 @@ function WatchHomeTvOverlay({
   isBuffering: boolean
   isTurnHeld: boolean
   isMuted: boolean
+  isUserPaused: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   onSelectSlide: (slideId: string) => void
   onToggleMuted: () => void
+  onTogglePlaybackPaused: () => void
   playbackTimeSeconds: number
   ringAnimationKey: string
   slides: readonly WatchHomeTvCarouselSlide[]
@@ -567,6 +571,7 @@ function WatchHomeTvOverlay({
   heroManifestCatalog?: WatchHomeHeroManifestCatalog
 }) {
   const t = useTranslations("WatchHome")
+  const controlsT = useTranslations("HeroPlayerControls")
   const actionsRef = useRef<HTMLDivElement>(null)
   const activePath = watchSurfaceItemPath(activeSlide.href)
   const manifest = useMemo(
@@ -636,6 +641,24 @@ function WatchHomeTvOverlay({
                 data-testid="watch-home-mute-bevel"
                 className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] mix-blend-overlay shadow-[inset_0_0_0_1px_rgba(255,255,255,0.28)] transition-shadow duration-200 group-hover/mute:shadow-[inset_0_0_0_1px_rgba(255,255,255,0.48)]"
               />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={isUserPaused ? controlsT("play") : controlsT("pause")}
+              onClick={onTogglePlaybackPaused}
+              data-testid="watch-home-tv-pause-toggle"
+              className="group/pause relative isolate h-11 w-11 overflow-hidden rounded-full border-0 bg-black/55 text-white shadow-lg shadow-black/30 ring-0 hover:scale-105 hover:bg-black/70 hover:text-white focus-visible:bg-black/70 focus-visible:text-white focus-visible:ring-2 focus-visible:ring-white/80 active:scale-95 md:h-13 md:w-13"
+            >
+              {isUserPaused ? (
+                <Play
+                  className="relative z-10 size-7 fill-current"
+                  aria-hidden
+                />
+              ) : (
+                <Pause className="relative z-10 size-7" aria-hidden />
+              )}
             </Button>
             <div className="ml-auto flex shrink-0 items-center text-white sm:hidden">
               <WatchHomeVideoTimeline
@@ -1090,6 +1113,7 @@ export function WatchHomeTvCarousel({
     isBuffering,
     isTurnHeld,
     isMuted,
+    isUserPaused,
     leavingSlide,
     mediaReady,
     playbackTimeSeconds,
@@ -1097,6 +1121,7 @@ export function WatchHomeTvCarousel({
     selectSlide,
     slides: timelineSlides,
     toggleMuted,
+    togglePlaybackPaused,
     videoRef,
   } = useWatchHomeTvCarousel(carouselSlides, sequence)
   const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
@@ -1191,9 +1216,11 @@ export function WatchHomeTvCarousel({
           isBuffering={isBuffering}
           isTurnHeld={isTurnHeld}
           isMuted={isMuted}
+          isUserPaused={isUserPaused}
           leavingSlide={leavingSlide}
           onSelectSlide={selectSlide}
           onToggleMuted={toggleMuted}
+          onTogglePlaybackPaused={togglePlaybackPaused}
           playbackTimeSeconds={playbackTimeSeconds}
           ringAnimationKey={ringAnimationKey}
           slides={timelineSlides}
