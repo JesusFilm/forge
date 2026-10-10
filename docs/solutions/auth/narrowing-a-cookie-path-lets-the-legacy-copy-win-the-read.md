@@ -76,6 +76,18 @@ Mechanical constraints that ride along:
 - `ResponseCookies.set()/delete()` **rewrites the whole `Set-Cookie` header** from
   its own parsed map, silently dropping earlier raw appends. So every
   `response.cookies.*` call must come **before** every raw append on that response.
+- The same collapse happens through `cookies()` from `next/headers`: a `.set` or
+  `.delete` through it inside the route handler makes Next rebuild `Set-Cookie`
+  from a name-keyed map at send time. Keep those handlers read-only on
+  `next/headers` cookies.
+
+### The coexistence window this rollout accepts
+
+A user who signed in before the rollout and neither signs in again nor signs out
+keeps the encrypted `Path=/` session until it expires — up to 7 days
+(`maxAgeSeconds` in `apps/web/src/auth/web-session.ts`). For that window the browser
+still sends it to the WordPress half of the origin. The rollout does not re-issue it
+at `/watch` on read; the window closes on its own when the cookie expires.
 
 ## Why tests missed it
 

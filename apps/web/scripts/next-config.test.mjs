@@ -1,4 +1,7 @@
 import { matchRemotePattern } from "next/dist/shared/lib/match-remote-pattern.js"
+import { readFileSync, readdirSync } from "node:fs"
+import { join } from "node:path"
+import { fileURLToPath } from "node:url"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { getAllowedDevOrigins, nextConfig } from "../next.config.mjs"
 import { datadogIntakeHost } from "../watch-security-headers.mjs"
@@ -100,11 +103,8 @@ describe("Watch baseline security headers", () => {
     expect(rules.map((entry) => entry.source)).toContain("/:path*")
   })
 
-  it("carries HSTS with preload, nosniff, referrer policy, COOP and CORP", async () => {
+  it("carries nosniff, referrer policy, COOP and CORP", async () => {
     const headers = await headersFor("/:path*")
-    expect(headers["strict-transport-security"]).toBe(
-      "max-age=63072000; includeSubDomains; preload",
-    )
     expect(headers["x-content-type-options"]).toBe("nosniff")
     // Matches what proxy.ts already sent on rewrite paths; this change widens
     // the coverage, it does not change the policy.
@@ -114,6 +114,21 @@ describe("Watch baseline security headers", () => {
     )
     expect(headers["cross-origin-resource-policy"]).toBe("same-site")
     expect(headers["permissions-policy"]).toBeTypeOf("string")
+  })
+
+  it("leaves HSTS to the Cloudflare edge instead of setting a host-wide policy from Watch", async () => {
+    // HSTS binds the whole www.jesusfilm.org host (WordPress included) for its
+    // full max-age. The edge owns it (max-age=300 observed 2026-10-10); a Watch
+    // deploy must not silently replace that with a longer, includeSubDomains or
+    // preload policy.
+    for (const enforce of ["", "true"]) {
+      const config = await configWithEnv({ WATCH_CSP_ENFORCE: enforce })
+      const keys = (await config.headers()).flatMap((rule) =>
+        rule.headers.map((header) => header.key.toLowerCase()),
+      )
+      expect(keys).toContain("x-content-type-options")
+      expect(keys).not.toContain("strict-transport-security")
+    }
   })
 
   it("leaves DNS prefetching enabled for the image CDN hint in the layout", async () => {
@@ -377,6 +392,48 @@ describe("Next.js image optimizer is not an open proxy", () => {
       "https://images.unsplash.com/photo-1650658720644-e1588bd66de3",
     ]) {
       expect(matchesAnyPattern(rendered), rendered).toBe(true)
+    }
+  })
+
+  it("allowlists every Unsplash photo the source renders through next/image", () => {
+    // The hardcoded list above cannot notice a NEW placeholder: a future
+    // Unsplash literal rendered through next/image would 400 at the optimizer
+    // and show as a broken image with every test green. Sweep the source
+    // instead, so each literal is either allowlisted or explicitly known to
+    // bypass the optimizer.
+    const sourceRoot = fileURLToPath(new URL("../src", import.meta.url))
+    // Emitted only as absolute og:image / twitter:image meta content
+    // (DEFAULT_OG_IMAGE in src/lib/experience-metadata.ts). Crawlers fetch it
+    // straight from Unsplash; it never reaches /watch/_next/image, so it needs
+    // no optimizer entry. Production /watch on 2026-10-10 carried it only in
+    // those two meta tags.
+    const metadataOnly = new Set([
+      "https://images.unsplash.com/photo-1482424917728-d82d29662023",
+    ])
+    const found = new Map()
+    for (const entry of readdirSync(sourceRoot, {
+      recursive: true,
+      withFileTypes: true,
+    })) {
+      if (!entry.isFile() || !/\.(ts|tsx)$/.test(entry.name)) continue
+      if (/\.test\.tsx?$/.test(entry.name)) continue
+      const file = join(entry.parentPath, entry.name)
+      for (const [url] of readFileSync(file, "utf8").matchAll(
+        /https:\/\/images\.unsplash\.com\/photo-[0-9a-f-]+/g,
+      )) {
+        found.set(url, file)
+      }
+    }
+
+    // Anti-vacuous: the sweep must actually see the known literals.
+    expect(found.size).toBeGreaterThanOrEqual(3)
+    for (const [url, file] of found) {
+      if (metadataOnly.has(url)) continue
+      expect(matchesAnyPattern(url), `${url} in ${file}`).toBe(true)
+    }
+    for (const url of metadataOnly) {
+      expect(found.has(url), `${url} is no longer in src`).toBe(true)
+      expect(matchesAnyPattern(url), url).toBe(false)
     }
   })
 

@@ -148,7 +148,7 @@ export function buildWatchContentSecurityPolicy({
   // "directive 'upgrade-insecure-requests' is ignored when delivered in a
   // report-only policy" (observed in a real browser run), so it buys nothing
   // today and would silently start rewriting requests the moment the policy is
-  // promoted. HSTS and the Cloudflare edge already force HTTPS.
+  // promoted. The Cloudflare edge already forces HTTPS and sends HSTS.
   return Object.entries(directives)
     .map(([name, values]) =>
       values.length > 0 ? `${name} ${values.join(" ")}` : name,
@@ -177,13 +177,13 @@ export function buildWatchSecurityHeaders({
   })
 
   return [
-    {
-      // Two years, subdomains included. Sending the header does NOT enrol the
-      // domain in the browser preload list; that is a separate, deliberate
-      // submission at hstspreload.org.
-      key: "Strict-Transport-Security",
-      value: "max-age=63072000; includeSubDomains; preload",
-    },
+    // Deliberately NO `Strict-Transport-Security` here. HSTS is host-wide: a
+    // value sent from /watch also binds the WordPress half of
+    // www.jesusfilm.org, and browsers cache it for its whole max-age, so it is
+    // a domain policy rather than a Watch header. The Cloudflare edge owns it
+    // (observed `max-age=300` on 2026-10-10); changing its duration,
+    // `includeSubDomains` or `preload` is an owner decision at the edge, not a
+    // side effect of a Watch deploy.
     { key: "X-Content-Type-Options", value: "nosniff" },
     // `on`, not `off`: the Watch layout deliberately emits
     // `<link rel="dns-prefetch" href="https://imagedelivery.net">` to shave the

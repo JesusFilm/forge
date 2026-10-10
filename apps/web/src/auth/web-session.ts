@@ -110,7 +110,10 @@ export function webAuthCookieOptions() {
  * `NextResponse.cookies` is keyed by cookie NAME, so it cannot express two
  * cookies that differ only by path; the raw `Set-Cookie` lines can. Call this
  * after every `response.cookies.*` mutation on the same response, because the
- * cookies API rewrites the header from its own parsed map.
+ * cookies API rewrites the header from its own parsed map. The same applies to
+ * `cookies()` from `next/headers`: a `.set`/`.delete` through it inside a route
+ * handler makes Next rebuild `Set-Cookie` from a name-keyed map when the
+ * response is sent, collapsing each `/watch` + `/` clear pair to one line.
  */
 export function clearWebAuthCookie(headers: Headers, name: string) {
   appendClearedCookie(headers, name, [
