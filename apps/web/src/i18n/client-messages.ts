@@ -9,6 +9,7 @@ export const GLOBAL_CLIENT_MESSAGE_NAMESPACES = [
   "AccountControl",
   "BetaTesterModal",
   "ExperienceError",
+  "ExperienceSkeleton",
   "Feedback",
   "FloatingSearch",
   "LanguageCombobox",

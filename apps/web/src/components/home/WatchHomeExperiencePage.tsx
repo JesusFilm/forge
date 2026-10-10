@@ -6,7 +6,7 @@ import {
   authoredWatchSurfaceSource,
   watchHomeHeroSource,
 } from "@/lib/watch-surface-manifest.sources"
-import { Fragment } from "react"
+import { Fragment, Suspense } from "react"
 import Image from "next/image"
 import { useTranslations } from "next-intl"
 import { WATCH_HOME_CATEGORY_CATALOG } from "@forge/watch-url-policy/watch-home-categories"
@@ -58,6 +58,13 @@ function isWatchHomeHeroBlock(block: Section) {
     (block as { readonly __typename?: string | null }).__typename ===
     "WatchHomeHeroBlock"
   )
+}
+
+function watchHomeBlockKey(block: Section, index: number) {
+  const sectionKey = (block as { sectionKey?: string | null }).sectionKey
+  return typeof sectionKey === "string" && sectionKey.trim().length > 0
+    ? sectionKey
+    : index
 }
 
 type PageHeadingCandidate = {
@@ -148,6 +155,7 @@ export function WatchHomeExperiencePage({
   dynamicCollectionCacheScope = "live",
 }: WatchHomeExperiencePageProps) {
   const t = useTranslations("WatchHome")
+  const tLoading = useTranslations("ExperienceSkeleton")
   const backdrop = findBackdropImage(heroModel)
   const normalized = normalizeAuthoredPageHeadings(blocks)
   const hasHeroBlock = normalized.blocks.some(isWatchHomeHeroBlock)
@@ -203,8 +211,7 @@ export function WatchHomeExperiencePage({
   ) : null
 
   const renderBlock = (block: Section, index: number) => {
-    const blockKey =
-      (block as { sectionKey?: string | null }).sectionKey ?? index
+    const blockKey = watchHomeBlockKey(block, index)
 
     if (isWatchHomeHeroBlock(block)) {
       // Reached only by a hero authored somewhere other than first — a leading
@@ -328,24 +335,52 @@ export function WatchHomeExperiencePage({
             <h1 className="sr-only">{t("pageTitle")}</h1>
           )}
           {heroAboveBodyZone ? (
-            <WatchHomeTvCarousel
-              heroManifestCatalog={
-                signWatchHomeHeroManifestCatalog(
-                  watchHomeHeroSource(heroModel),
-                ) ?? undefined
+            <Suspense
+              fallback={
+                <div
+                  role="status"
+                  aria-busy="true"
+                  aria-label={tLoading("loadingContent")}
+                  className="relative h-[66svh] w-full animate-pulse bg-stone-900 md:h-[min(100svh,56.25vw)]"
+                >
+                  <div className="absolute bottom-8 left-6 right-6 flex flex-col gap-3 md:left-12 md:right-12">
+                    <div className="h-10 w-2/3 rounded bg-stone-800 md:h-14" />
+                    <div className="h-4 w-1/3 rounded bg-stone-800" />
+                  </div>
+                </div>
               }
-              slides={heroModel.heroSlides}
-              sequence={heroModel.carousel}
-            />
+            >
+              <WatchHomeTvCarousel
+                heroManifestCatalog={
+                  signWatchHomeHeroManifestCatalog(
+                    watchHomeHeroSource(heroModel),
+                  ) ?? undefined
+                }
+                slides={heroModel.heroSlides}
+                sequence={heroModel.carousel}
+              />
+            </Suspense>
           ) : null}
           <WatchHomeBodyZone>
-            {heroAboveBodyZone ? compatibilityCategoryRail : null}
-            {bodyZoneBlocks.map((block, index) =>
+            {heroAboveBodyZone ? (
+              <Suspense fallback={null}>{compatibilityCategoryRail}</Suspense>
+            ) : null}
+            {bodyZoneBlocks.map((block, index) => {
               // Keep the original index so a block without a `sectionKey`
               // keeps the key it had before the hero was hoisted out.
-              renderBlock(block, leadsWithHeroBlock ? index + 1 : index),
-            )}
-            <WatchHomeFooter />
+              const renderIndex = leadsWithHeroBlock ? index + 1 : index
+              return (
+                <Suspense
+                  key={watchHomeBlockKey(block, renderIndex)}
+                  fallback={null}
+                >
+                  {renderBlock(block, renderIndex)}
+                </Suspense>
+              )
+            })}
+            <Suspense fallback={null}>
+              <WatchHomeFooter />
+            </Suspense>
           </WatchHomeBodyZone>
         </div>
       </div>
