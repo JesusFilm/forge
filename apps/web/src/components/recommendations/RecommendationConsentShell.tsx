@@ -17,7 +17,11 @@ import {
 } from "@/lib/recommendation-consent"
 import { RECOMMENDATION_PROFILE_CONTRACT } from "@/lib/recommendation-contracts"
 import { RecommendationRuntimeError } from "@/lib/recommendation-errors"
-import { RECOMMENDATION_PROFILE_BROWSER_DEADLINE_MS } from "@/lib/recommendation-timeouts"
+import { scheduleIdleTask } from "@/lib/idle-task"
+import {
+  RECOMMENDATION_PROFILE_BROWSER_DEADLINE_MS,
+  RECOMMENDATION_PROFILE_IDLE_TIMEOUT_MS,
+} from "@/lib/recommendation-timeouts"
 import {
   clearRecommendationWithdrawalPending,
   isRecommendationWithdrawalPending,
@@ -234,11 +238,20 @@ export function RecommendationConsentShell() {
       setState({ choice: "essential_only", erasurePending: true })
       setSettingsPersonalization(false)
     }
-    void refresh().finally(() => {
-      if (active) completeRecommendationConsentBootstrap()
-    })
+    // Defer the automatic profile POST past hydration and first paint. The
+    // bootstrap barrier stays open meanwhile, so recommendation calls still
+    // wait for the profile exactly as before.
+    const cancelIdleBootstrap = scheduleIdleTask(
+      () => {
+        void refresh().finally(() => {
+          if (active) completeRecommendationConsentBootstrap()
+        })
+      },
+      { timeoutMs: RECOMMENDATION_PROFILE_IDLE_TIMEOUT_MS },
+    )
     return () => {
       active = false
+      cancelIdleBootstrap()
       operationGenerationRef.current += 1
       operationControllerRef.current?.abort()
       operationControllerRef.current = null
