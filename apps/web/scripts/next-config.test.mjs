@@ -10,6 +10,17 @@ describe("Next.js Server Action origins", () => {
   })
 })
 
+describe("Next.js client router cache", () => {
+  it("keeps prefetched route data for 30s dynamic and 300s static", () => {
+    // Next 16 defaults `dynamic` to 0, which re-fetched the same `?_rsc=`
+    // URL on every revisit (FGE-209: 43 exact duplicates in one session).
+    expect(nextConfig.experimental.staleTimes).toEqual({
+      dynamic: 30,
+      static: 300,
+    })
+  })
+})
+
 describe("Next.js development origins", () => {
   it("keeps loopback and admits the configured canonical hostname", () => {
     expect(getAllowedDevOrigins("https://base.example.test:8400")).toEqual([
