@@ -36,6 +36,12 @@ import {
 } from "@/lib/watch-search-client"
 import { normalizeWatchSearchQuery } from "@/lib/watch-search-query"
 import {
+  type WatchAnalyticsSearchOutcome,
+  type WatchAnalyticsSearchRequestType,
+  dispatchWatchAnalyticsEvent,
+  watchAnalyticsResultCountBucket,
+} from "@/lib/watch-analytics-contract"
+import {
   FloatingSearchContext,
   type FloatingSearchContextValue,
   type FloatingSearchResultAnalyticsContext,
@@ -53,6 +59,33 @@ const WATCH_SEARCH_RESULT_SOURCE: SearchActionResultSource = "watch-search"
 type SearchLanguageOptionsResponse = Awaited<
   ReturnType<typeof getSearchLanguageOptions>
 >
+
+/**
+ * R13: one `search_completed` per settled search attempt that is still the
+ * current one. Outcome, a bounded count bucket, and request type only — the
+ * query, titles, result ids, request ids, and language names are not
+ * representable in the event, so they cannot reach GA. A superseded attempt
+ * reports nothing because the viewer never saw it settle.
+ */
+function reportWatchSearchCompleted(
+  requestType: WatchAnalyticsSearchRequestType,
+  resultCount: number | null,
+): void {
+  const outcome: WatchAnalyticsSearchOutcome =
+    resultCount == null ? "failed" : resultCount > 0 ? "results" : "no_results"
+  dispatchWatchAnalyticsEvent(
+    {
+      type: "search_completed",
+      outcome,
+      resultCountBucket:
+        resultCount == null
+          ? undefined
+          : watchAnalyticsResultCountBucket(resultCount),
+      requestType,
+    },
+    { mode: "deferred" },
+  )
+}
 
 const searchLanguageOptionsCache = new Map<
   string,
@@ -486,6 +519,7 @@ export function FloatingSearchController({
 
         const newResults = data.results
         const responseSearchRequestId = data.requestId ?? searchRequestId
+        reportWatchSearchCompleted("search", newResults.length)
         setResults(newResults)
         setDisplayResults(newResults)
         setDisplayResultPages([
@@ -536,6 +570,7 @@ export function FloatingSearchController({
         })
       } catch (searchError) {
         if (requestIdRef.current === thisRequest) {
+          reportWatchSearchCompleted("search", null)
           activeSearchSignatureRef.current = null
           setSearchResultAnalytics(null)
           setError(tSearchOverlay("searchFailed"))
@@ -610,6 +645,7 @@ export function FloatingSearchController({
         },
       })
       if (requestIdRef.current !== thisRequest) return
+      reportWatchSearchCompleted("load_more", data.results.length)
       setResults((prev) => [...prev, ...data.results])
       setDisplayResults((prev) => [...prev, ...data.results])
       setDisplayResultPages((prev) => [
@@ -640,6 +676,7 @@ export function FloatingSearchController({
       })
     } catch (searchError) {
       if (requestIdRef.current === thisRequest) {
+        reportWatchSearchCompleted("load_more", null)
         setError(tSearchOverlay("loadMoreFailed"))
         setErrorKind(watchSearchErrorKind(searchError))
       }

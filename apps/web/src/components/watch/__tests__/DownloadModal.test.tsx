@@ -30,6 +30,10 @@ import {
 } from "@/components/watch/DownloadModal"
 import { redirectToAuth } from "@/components/watch/download-session-client"
 import { WATCH_SECTION_EYEBROW_CLASS } from "@/components/watch/watch-section-styles"
+import {
+  resetWatchAnalyticsEmitState,
+  setWatchAnalyticsFrameScheduler,
+} from "@/lib/watch-analytics-contract"
 
 // next/image renders an <img> in tests; the modal otherwise tries to load the
 // real image-optimization endpoint, which JSDOM can't serve. Preserve its
@@ -75,6 +79,22 @@ vi.mock(
     }
   },
 )
+
+// Only the v2 analytics flag is overridden; every other env value is real.
+const envOverrides = vi.hoisted(
+  () => ({}) as { NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2?: boolean },
+)
+vi.mock("@/env", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/env")>()
+  return {
+    env: new Proxy(actual.env, {
+      get: (target, key, receiver) =>
+        Object.prototype.hasOwnProperty.call(envOverrides, key)
+          ? envOverrides[key as keyof typeof envOverrides]
+          : Reflect.get(target, key, receiver),
+    }),
+  }
+})
 
 let container: HTMLDivElement
 let root: Root
@@ -1320,5 +1340,166 @@ describe("DownloadModal — no lazy HEAD probe", () => {
     expect(option).not.toBeNull()
     expect(option.getAttribute("data-size-bytes")).toBe("")
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+// v2 (U5, R15). The flag is ON, `window.gtag` is defined, and the frame
+// scheduler never runs, so every positive assertion proves an IMMEDIATE
+// dispatch and every absence assertion cannot pass because another gate was
+// closed.
+describe("DownloadModal — v2 download_started", () => {
+  let gtag: ReturnType<typeof vi.fn>
+
+  function startedEvents(): Array<Record<string, unknown>> {
+    return gtag.mock.calls
+      .filter(
+        ([command, name]) => command === "event" && name === "download_started",
+      )
+      .map(([, , params]) => params as Record<string, unknown>)
+  }
+
+  function renderModal(props: Partial<DownloadModalProps> = {}) {
+    act(() => {
+      root.render(
+        <TestDownloadModal
+          open
+          downloads={[
+            makeDownload({ documentId: "dl-1", height: 1080, quality: "fhd" }),
+            makeDownload({ documentId: "dl-2", height: 360, quality: "low" }),
+          ]}
+          languageSlug="english"
+          videoTitle="Jesus Film"
+          onClose={vi.fn()}
+          {...props}
+        />,
+      )
+    })
+  }
+
+  function confirmButton(): HTMLButtonElement {
+    return $(
+      '[data-testid="watch-download-modal-confirm"]',
+    ) as HTMLButtonElement
+  }
+
+  beforeEach(() => {
+    envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = true
+    resetWatchAnalyticsEmitState()
+    gtag = vi.fn()
+    window.gtag = gtag
+    setWatchAnalyticsFrameScheduler(() => {})
+    window.history.replaceState({}, "", "/watch/jesus.html")
+  })
+
+  afterEach(() => {
+    delete envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2
+    setWatchAnalyticsFrameScheduler(null)
+    window.gtag = undefined
+  })
+
+  it("emits one immediate event after an accepted handoff, even on double click", async () => {
+    renderModal()
+    acceptTerms()
+    const confirm = confirmButton()
+
+    await act(async () => {
+      confirm.click()
+    })
+    await act(async () => {
+      confirm.click()
+    })
+
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1)
+    expect(startedEvents()).toHaveLength(1)
+    expect(startedEvents()[0]).toMatchObject({
+      event_contract_version: 2,
+      page_path: "/watch/jesus.html",
+      watch_quality_tier: "highest",
+      watch_access_outcome: "open",
+    })
+    // R15/R19: never the filename, proxy URL, or download identity.
+    const wire = JSON.stringify(gtag.mock.calls)
+    expect(wire).not.toContain("/watch/api/download")
+    expect(wire).not.toContain(".mp4")
+    expect(wire).not.toContain("dl-1")
+    expect(wire).not.toContain("variant-1")
+  })
+
+  it("reports a granted gate once while the session check is in flight", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () =>
+        Response.json({ accountGateEnabled: true, authenticated: true }),
+      ),
+    )
+    renderModal({ accountGateEnabled: true })
+    acceptTerms()
+    const confirm = confirmButton()
+
+    // Both activations land before the session check settles.
+    await act(async () => {
+      confirm.click()
+      confirm.click()
+    })
+
+    expect(startedEvents()).toHaveLength(1)
+    expect(startedEvents()[0]).toMatchObject({
+      watch_access_outcome: "granted",
+      watch_quality_tier: "highest",
+    })
+  })
+
+  it("emits nothing when the session is denied or cannot be checked", async () => {
+    for (const response of [
+      Response.json({
+        accountGateEnabled: true,
+        authenticated: false,
+        loginUrl: "http://localhost/api/auth/login",
+      }),
+      new Response("unavailable", { status: 500 }),
+    ]) {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => response),
+      )
+      renderModal({ accountGateEnabled: true })
+      acceptTerms()
+      await act(async () => {
+        confirmButton().click()
+      })
+      act(() => {
+        root.unmount()
+      })
+      root = createRoot(container)
+    }
+
+    expect(HTMLAnchorElement.prototype.click).not.toHaveBeenCalled()
+    expect(startedEvents()).toHaveLength(0)
+  })
+
+  it("emits nothing when the modal is opened and closed (AE5)", async () => {
+    const onClose = vi.fn()
+    renderModal({ onClose })
+    acceptTerms()
+    await act(async () => {
+      ;(
+        $('[data-testid="watch-download-modal-close"]') as HTMLButtonElement
+      ).click()
+    })
+
+    expect(onClose).toHaveBeenCalled()
+    expect(gtag).not.toHaveBeenCalled()
+  })
+
+  it("emits nothing new with the flag off", async () => {
+    envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = false
+    renderModal()
+    acceptTerms()
+    await act(async () => {
+      confirmButton().click()
+    })
+
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(1)
+    expect(gtag).not.toHaveBeenCalled()
   })
 })

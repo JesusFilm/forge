@@ -100,10 +100,30 @@ vi.mock("@/lib/language-preference-client", () => ({
   writePreferredLanguageSlug: writePreferredLanguageSlugMock,
 }))
 
+// Only the v2 analytics flag is overridden; every other env value is real.
+const envOverrides = vi.hoisted(
+  () => ({}) as { NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2?: boolean },
+)
+vi.mock("@/env", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/env")>()
+  return {
+    env: new Proxy(actual.env, {
+      get: (target, key, receiver) =>
+        Object.prototype.hasOwnProperty.call(envOverrides, key)
+          ? envOverrides[key as keyof typeof envOverrides]
+          : Reflect.get(target, key, receiver),
+    }),
+  }
+})
+
 import {
   LanguagePickerModal,
   type LanguagePickerVariant,
 } from "@/components/watch/LanguagePickerModal"
+import {
+  resetWatchAnalyticsEmitState,
+  setWatchAnalyticsFrameScheduler,
+} from "@/lib/watch-analytics-contract"
 import type { WatchSubtitle } from "@/lib/content"
 
 let container: HTMLDivElement
@@ -1550,5 +1570,144 @@ describe("LanguagePickerModal — selective language prefetch", () => {
     })
 
     expect(routerPrefetchMock).toHaveBeenCalledTimes(1)
+  })
+})
+
+// v2 (U5, R14). The flag is ON and `window.gtag` is defined in every case, so
+// an absence assertion cannot pass because another gate was closed.
+describe("LanguagePickerModal — v2 apply outcomes", () => {
+  let gtag: ReturnType<typeof vi.fn>
+  let frames: Array<() => void>
+
+  function runFrames() {
+    for (const callback of frames.splice(0, frames.length)) callback()
+  }
+
+  function events(): Array<[string, Record<string, unknown>]> {
+    return gtag.mock.calls
+      .filter(([command]) => command === "event")
+      .map(([, name, params]) => [
+        name as string,
+        params as Record<string, unknown>,
+      ])
+  }
+
+  function pickLanguage(slug: string) {
+    act(() => {
+      $('[data-testid="language-combobox-trigger"]')?.click()
+    })
+    const option = $$('[data-testid="language-combobox-option"]').find(
+      (el) => el.getAttribute("data-language-slug") === slug,
+    )!
+    act(() => {
+      option.click()
+    })
+  }
+
+  beforeEach(() => {
+    envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = true
+    resetWatchAnalyticsEmitState()
+    gtag = vi.fn()
+    window.gtag = gtag
+    frames = []
+    setWatchAnalyticsFrameScheduler((callback) => {
+      frames.push(callback)
+    })
+    window.history.replaceState({}, "", "/watch/the-call.html")
+  })
+
+  afterEach(() => {
+    delete envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2
+    setWatchAnalyticsFrameScheduler(null)
+    window.gtag = undefined
+  })
+
+  it("emits one language_applied before navigation, even on double click", () => {
+    let queuedAtPush = -1
+    routerPushMock.mockImplementation(() => {
+      queuedAtPush = frames.length
+    })
+    renderModal({ open: true, variants: baseVariants })
+    // `french` is a public Watch language slug, so the destination is the
+    // canonical explicit-language form rather than an episode-shaped path.
+    pickLanguage("french")
+
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+    })
+    // Dispatched (queued for the paint yield) before router.push ran.
+    expect(queuedAtPush).toBe(1)
+    runFrames()
+
+    expect(events().map(([name]) => name)).toEqual(["language_applied"])
+    expect(events()[0]?.[1]).toMatchObject({
+      event_contract_version: 2,
+      // Source route context: the page the viewer applied the change on.
+      page_path: "/watch/the-call.html",
+      watch_from_language_class: "english",
+      watch_to_language_class: "non_english",
+      watch_destination_route_variant: "canonical",
+    })
+    // Exact language slugs and labels never ride on this event.
+    expect(JSON.stringify(events())).not.toContain("french")
+    expect(JSON.stringify(events())).not.toContain("French")
+  })
+
+  it("emits subtitle_applied alone when only the subtitle state changes", () => {
+    const onSubtitleChange = vi.fn()
+    renderModal({
+      open: true,
+      variants: baseVariants,
+      subtitles: [makeSubtitle("sub-en", "english", "English")],
+      currentSubtitleEnabled: false,
+      currentSubtitleSlug: "english",
+      onSubtitleChange,
+    })
+
+    act(() => {
+      ;(
+        $(
+          '[data-testid="watch-language-picker-subtitles-toggle"]',
+        ) as HTMLButtonElement
+      ).click()
+    })
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+    })
+    runFrames()
+
+    expect(onSubtitleChange).toHaveBeenCalledWith(true, "english")
+    expect(routerPushMock).not.toHaveBeenCalled()
+    expect(events().map(([name]) => name)).toEqual(["subtitle_applied"])
+    expect(events()[0]?.[1]).toMatchObject({
+      watch_subtitle_enabled: true,
+      watch_subtitle_language_class: "english",
+    })
+  })
+
+  it("emits nothing when a change is picked and then closed (AE5)", () => {
+    renderModal({ open: true, variants: baseVariants })
+    pickLanguage("spanish")
+    act(() => {
+      $('[data-testid="watch-language-picker-close"]')?.click()
+    })
+    runFrames()
+
+    expect(routerPushMock).not.toHaveBeenCalled()
+    expect(gtag).not.toHaveBeenCalled()
+  })
+
+  it("emits nothing with the flag off", () => {
+    envOverrides.NEXT_PUBLIC_FORGE_WATCH_GA4_CONTRACT_V2 = false
+    renderModal({ open: true, variants: baseVariants })
+    pickLanguage("spanish")
+    act(() => {
+      $('[data-testid="watch-language-picker-apply"]')?.click()
+    })
+    runFrames()
+
+    expect(routerPushMock).toHaveBeenCalledTimes(1)
+    expect(gtag).not.toHaveBeenCalled()
   })
 })

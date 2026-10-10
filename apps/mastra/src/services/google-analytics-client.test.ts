@@ -4,7 +4,10 @@ import { WATCH_NOT_FOUND_METADATA_TITLES } from "@forge/watch-url-policy/not-fou
 import { getSeoConfig } from "../config/seo"
 import {
   queryGoogleAnalytics,
+  queryWatchMeasurementReconciliation,
   queryWatchRouteNotFoundLane,
+  reconcileWatchMeasurementRows,
+  type Ga4Row,
 } from "./google-analytics-client"
 
 const config = getSeoConfig({
@@ -454,5 +457,377 @@ describe("queryGoogleAnalytics", () => {
       reason: "parse_error",
       retryable: true,
     })
+  })
+})
+
+describe("queryWatchMeasurementReconciliation (FGE-115 U6)", () => {
+  const tokenProvider = async () => ({
+    ok: true as const,
+    accessToken: "access",
+  })
+
+  function row(
+    values: string[],
+    eventCount: number,
+  ): {
+    dimensionValues: Array<{ value: string }>
+    metricValues: Array<{ value: string }>
+  } {
+    return {
+      dimensionValues: values.map((value) => ({ value })),
+      metricValues: [{ value: String(eventCount) }],
+    }
+  }
+
+  it("requests only date, event, and canonical page path for allowlisted Watch events", async () => {
+    let request: Record<string, unknown> = {}
+    const result = await queryWatchMeasurementReconciliation({
+      propertyId: "1234",
+      startDate: "2026-09-01",
+      endDate: "2026-09-28",
+      eventNames: ["page_view", "videostarts"],
+      pagePaths: ["/watch/jesus.html"],
+      config,
+      tokenProvider,
+      fetchImpl: vi.fn(async (_url, init) => {
+        request = JSON.parse(String(init?.body)) as Record<string, unknown>
+        return Response.json({ rows: [], rowCount: 0 })
+      }) as unknown as typeof fetch,
+    })
+
+    expect(result).toMatchObject({
+      ok: true,
+      grain: "standard",
+      complete: true,
+    })
+    expect(request).toMatchObject({
+      dimensions: [
+        { name: "date" },
+        { name: "eventName" },
+        { name: "pagePath" },
+      ],
+      metrics: [{ name: "eventCount" }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: "pagePath",
+                inListFilter: {
+                  values: ["/watch/jesus.html"],
+                  caseSensitive: true,
+                },
+              },
+            },
+            {
+              filter: {
+                fieldName: "eventName",
+                inListFilter: {
+                  values: ["page_view", "videostarts"],
+                  caseSensitive: true,
+                },
+              },
+            },
+          ],
+        },
+      },
+      returnPropertyQuota: true,
+    })
+  })
+
+  it("adds the registered route-variant and contract-version dimensions only at contract grain", async () => {
+    let request: Record<string, unknown> = {}
+    await queryWatchMeasurementReconciliation({
+      propertyId: "1234",
+      startDate: "2026-09-01",
+      endDate: "2026-09-28",
+      grain: "contract",
+      config,
+      tokenProvider,
+      fetchImpl: vi.fn(async (_url, init) => {
+        request = JSON.parse(String(init?.body)) as Record<string, unknown>
+        return Response.json({ rows: [], rowCount: 0 })
+      }) as unknown as typeof fetch,
+    })
+
+    expect(request.dimensions).toEqual([
+      { name: "date" },
+      { name: "eventName" },
+      { name: "pagePath" },
+      { name: "customEvent:watch_route_variant" },
+      { name: "customEvent:event_contract_version" },
+    ])
+    // No page-path list: the whole /watch/ prefix, never an unbounded scan.
+    expect(
+      (
+        request.dimensionFilter as {
+          andGroup: { expressions: Array<{ filter: unknown }> }
+        }
+      ).andGroup.expressions[0],
+    ).toEqual({
+      filter: {
+        fieldName: "pagePath",
+        stringFilter: {
+          matchType: "BEGINS_WITH",
+          value: "/watch/",
+          caseSensitive: true,
+        },
+      },
+    })
+  })
+
+  it("rejects arbitrary property fields, event names, and page paths before calling GA4", async () => {
+    const fetchImpl = vi.fn()
+    const base = {
+      propertyId: "1234",
+      startDate: "2026-09-01",
+      endDate: "2026-09-28",
+      config,
+      tokenProvider,
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    }
+
+    for (const overrides of [
+      { propertyId: "9999" },
+      { eventNames: ["purchase"] },
+      { eventNames: [] },
+      { pagePaths: ["/account/reset-password"] },
+      { pagePaths: ["/watch/jesus.html?q=viewer@example.test"] },
+      { pagePaths: ["/watch/../admin"] },
+      { pagePaths: ["/watch//jesus.html"] },
+      {
+        pagePaths: Array.from({ length: 21 }, (_, i) => `/watch/v${i}.html`),
+      },
+      { grain: "raw" as never },
+      { startDate: "2026-09-29" },
+    ]) {
+      const result = await queryWatchMeasurementReconciliation({
+        ...base,
+        ...overrides,
+      })
+      expect(result.ok).toBe(false)
+    }
+    expect(fetchImpl).not.toHaveBeenCalled()
+  })
+
+  it("reconciles canonical and compatibility rows to one canonical total while retaining variant totals (AE7)", async () => {
+    const result = await queryWatchMeasurementReconciliation({
+      propertyId: "1234",
+      startDate: "2026-09-01",
+      endDate: "2026-09-28",
+      grain: "contract",
+      eventNames: ["page_view"],
+      pagePaths: ["/watch/jesus.html"],
+      config,
+      tokenProvider,
+      fetchImpl: vi.fn(async () =>
+        Response.json({
+          rows: [
+            row(
+              ["20260901", "page_view", "/watch/jesus.html", "canonical", "2"],
+              300,
+            ),
+            row(
+              [
+                "20260901",
+                "page_view",
+                "/watch/jesus.html",
+                "explicit_language_compatibility",
+                "2",
+              ],
+              200,
+            ),
+            row(
+              ["20260902", "page_view", "/watch/jesus.html", "canonical", "2"],
+              100,
+            ),
+          ],
+          rowCount: 3,
+          metadata: { timeZone: "America/Los_Angeles" },
+        }),
+      ) as unknown as typeof fetch,
+    })
+
+    expect(result).toMatchObject({
+      ok: true,
+      complete: true,
+      propertyTimezone: "America/Los_Angeles",
+    })
+    if (!result.ok) throw new Error("expected success")
+    expect(result.reconciliation).toEqual([
+      {
+        pagePath: "/watch/jesus.html",
+        eventName: "page_view",
+        total: 600,
+        byRouteVariant: {
+          canonical: 400,
+          explicit_language_compatibility: 200,
+        },
+        unattributedShare: 0,
+      },
+    ])
+  })
+
+  it("marks thresholded, other-row, and unattributed results partial", async () => {
+    const result = await queryWatchMeasurementReconciliation({
+      propertyId: "1234",
+      startDate: "2026-09-01",
+      endDate: "2026-09-28",
+      grain: "contract",
+      config,
+      tokenProvider,
+      fetchImpl: vi.fn(async () =>
+        Response.json({
+          rows: [
+            row(
+              [
+                "20260901",
+                "page_view",
+                "/watch/jesus.html",
+                "(not set)",
+                "(not set)",
+              ],
+              50,
+            ),
+            row(
+              ["20260901", "page_view", "/watch/jesus.html", "canonical", "2"],
+              150,
+            ),
+          ],
+          rowCount: 2,
+          metadata: {
+            subjectToThresholding: true,
+            dataLossFromOtherRow: true,
+          },
+        }),
+      ) as unknown as typeof fetch,
+    })
+
+    expect(result).toMatchObject({ ok: true, complete: false })
+    if (!result.ok) throw new Error("expected success")
+    expect(result.reconciliation[0]?.unattributedShare).toBe(0.25)
+    expect(result.caveats).toEqual(
+      expect.arrayContaining([
+        "GA4 reports this result as subject to thresholding.",
+        "GA4 reports data loss from an aggregated other row.",
+        expect.stringContaining("no route variant"),
+      ]),
+    )
+  })
+
+  it("keeps zero rows and capped pagination explicit", async () => {
+    const empty = await queryWatchMeasurementReconciliation({
+      propertyId: "1234",
+      startDate: "2026-09-01",
+      endDate: "2026-09-28",
+      config,
+      tokenProvider,
+      fetchImpl: vi.fn(async () =>
+        Response.json({ rows: [], rowCount: 0 }),
+      ) as unknown as typeof fetch,
+    })
+    expect(empty).toMatchObject({
+      ok: true,
+      rows: [],
+      reconciliation: [],
+      complete: true,
+    })
+
+    const capped = await queryWatchMeasurementReconciliation({
+      propertyId: "1234",
+      startDate: "2026-09-01",
+      endDate: "2026-09-28",
+      config,
+      tokenProvider,
+      requestBudget: { remaining: 1 },
+      fetchImpl: vi.fn(async (_url, init) => {
+        const body = JSON.parse(String(init?.body)) as { limit: string }
+        return Response.json({
+          rows: Array.from({ length: Number(body.limit) }, (_, i) =>
+            row(["20260901", "page_view", `/watch/v${i}.html`], 1),
+          ),
+          rowCount: Number(body.limit) + 5,
+        })
+      }) as unknown as typeof fetch,
+    })
+    expect(capped).toMatchObject({ ok: true, complete: false })
+    if (!capped.ok) throw new Error("expected success")
+    expect(capped.caveats).toEqual(
+      expect.arrayContaining([
+        "Configured GA4 row cap was reached.",
+        "The bounded GA4 request budget was exhausted.",
+      ]),
+    )
+  })
+
+  it("fails closed when GA4 returns a row outside the requested scope", async () => {
+    const result = await queryWatchMeasurementReconciliation({
+      propertyId: "1234",
+      startDate: "2026-09-01",
+      endDate: "2026-09-28",
+      pagePaths: ["/watch/jesus.html"],
+      config,
+      tokenProvider,
+      fetchImpl: vi.fn(async () =>
+        Response.json({
+          rows: [row(["20260901", "page_view", "/account/settings"], 1)],
+          rowCount: 1,
+        }),
+      ) as unknown as typeof fetch,
+    })
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "parse_error",
+      retryable: true,
+    })
+  })
+})
+
+describe("reconcileWatchMeasurementRows", () => {
+  it("groups by page path and event name across dates without inventing variants", () => {
+    const rows: Ga4Row[] = [
+      {
+        dimensions: {
+          date: "20260901",
+          eventName: "page_view",
+          pagePath: "/watch/jesus.html",
+        },
+        metrics: { eventCount: 3 },
+      },
+      {
+        dimensions: {
+          date: "20260902",
+          eventName: "page_view",
+          pagePath: "/watch/jesus.html",
+        },
+        metrics: { eventCount: 4 },
+      },
+      {
+        dimensions: {
+          date: "20260901",
+          eventName: "videostarts",
+          pagePath: "/watch/jesus.html",
+        },
+        metrics: { eventCount: 2 },
+      },
+    ]
+
+    expect(reconcileWatchMeasurementRows(rows)).toEqual([
+      {
+        pagePath: "/watch/jesus.html",
+        eventName: "page_view",
+        total: 7,
+        byRouteVariant: {},
+        unattributedShare: null,
+      },
+      {
+        pagePath: "/watch/jesus.html",
+        eventName: "videostarts",
+        total: 2,
+        byRouteVariant: {},
+        unattributedShare: null,
+      },
+    ])
   })
 })

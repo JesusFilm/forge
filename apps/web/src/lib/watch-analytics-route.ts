@@ -440,6 +440,20 @@ function languageClassFor(slug: string): WatchAnalyticsLanguageClass {
   return slug === DEFAULT_WATCH_LANGUAGE_SLUG ? "english" : "non_english"
 }
 
+/**
+ * Language class for a public audio or subtitle language slug held by a call
+ * site (R14, R20). Resolves aliases through the same table route projection
+ * uses, so `language_applied` and the page view agree on what "english" means.
+ * An absent or malformed slug is `none`, never a guess.
+ */
+export function watchAnalyticsLanguageClassForSlug(
+  slug: string | null | undefined,
+): WatchAnalyticsLanguageClass {
+  if (typeof slug !== "string" || slug.length === 0) return "none"
+  const language = resolveLanguageSegment(slug)
+  return language == null ? "none" : languageClassFor(language.slug)
+}
+
 /** Whether a one-segment path names a public language home rather than content. */
 function isLanguageHomeSegment(bare: string): boolean {
   return (

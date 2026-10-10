@@ -19,6 +19,9 @@ vi.mock("@/env", () => ({ env: mockEnv }))
 
 import {
   WATCH_ANALYTICS_CONTRACT_VERSION,
+  WATCH_ANALYTICS_CTA_DESTINATIONS,
+  type WatchAnalyticsCtaId,
+  watchAnalyticsCtaDispatchMode,
   WATCH_ANALYTICS_SUPPRESSED_VALUE,
   resetWatchAnalyticsEmitState,
   WATCH_ANALYTICS_WIRE_NAMES,
@@ -140,11 +143,7 @@ describe("wire names (R25)", () => {
       },
       { type: "share_opened" },
       { type: "share_completed", method: "copy_link" },
-      {
-        type: "watch_cta_clicked",
-        ctaId: "study_questions",
-        destinationClass: "outbound",
-      },
+      { type: "watch_cta_clicked", ctaId: "study_ask_yours" },
     ]
 
     for (const input of inputs) {
@@ -232,11 +231,7 @@ describe("route context on every event (R10)", () => {
 describe("scheduling seam (R28, KTD9)", () => {
   it("emits an immediate dispatch before the test yields a frame", () => {
     dispatchWatchAnalyticsEvent(
-      {
-        type: "watch_cta_clicked",
-        ctaId: "study_questions",
-        destinationClass: "outbound",
-      },
+      { type: "watch_cta_clicked", ctaId: "study_ask_yours" },
       { mode: "immediate" },
     )
 
@@ -257,26 +252,20 @@ describe("scheduling seam (R28, KTD9)", () => {
   })
 
   it("keeps the mode a per-dispatch input, not an event-level flag", () => {
+    // The same declared event, once per mode: copy completes in place
+    // (deferred), a social target opens a new tab (immediate).
     dispatchWatchAnalyticsEvent(
-      {
-        type: "watch_cta_clicked",
-        ctaId: "study_questions",
-        destinationClass: "internal",
-      },
+      { type: "share_completed", method: "copy_link" },
       { mode: "deferred" },
     )
     expect(gtag).not.toHaveBeenCalled()
 
     dispatchWatchAnalyticsEvent(
-      {
-        type: "watch_cta_clicked",
-        ctaId: "study_questions",
-        destinationClass: "outbound",
-      },
+      { type: "share_completed", method: "facebook" },
       { mode: "immediate" },
     )
     expect(gaEvents()).toHaveLength(1)
-    expect(lastParams()).toMatchObject({ watch_destination_class: "outbound" })
+    expect(lastParams()).toMatchObject({ watch_share_method: "facebook" })
 
     runFrame()
     expect(gaEvents()).toHaveLength(2)
@@ -507,8 +496,7 @@ describe("validation and privacy (R9, R19-R21)", () => {
         {
           type: "watch_cta_clicked",
           ctaId: sentinel,
-          destinationClass: "outbound",
-        },
+        } as unknown as WatchAnalyticsEventInput,
         { mode: "immediate" },
       )
 
@@ -527,6 +515,56 @@ describe("validation and privacy (R9, R19-R21)", () => {
         { mode: "immediate" },
       ),
     ).not.toThrow()
+  })
+})
+
+describe("mission CTA allowlist (R16)", () => {
+  it("resolves the destination class from the allowlist, not the call site", () => {
+    dispatchWatchAnalyticsEvent(
+      { type: "watch_cta_clicked", ctaId: "study_chat_with_person" },
+      { mode: "immediate" },
+    )
+
+    expect(gaEvents().map(([name]) => name)).toEqual(["watch_cta_clicked"])
+    expect(lastParams()).toMatchObject({
+      watch_cta_id: "study_chat_with_person",
+      watch_destination_class: "outbound",
+    })
+  })
+
+  it("emits nothing for an identifier, href, or label outside the allowlist", () => {
+    for (const ctaId of [
+      "https://chataboutjesus.com/chat/",
+      "Chat with a person",
+      "study_questions",
+      "constructor",
+      "toString",
+    ]) {
+      dispatchWatchAnalyticsEvent(
+        {
+          type: "watch_cta_clicked",
+          ctaId,
+          // A smuggled destination class must not be honored either.
+          destinationClass: "internal",
+        } as unknown as WatchAnalyticsEventInput,
+        { mode: "immediate" },
+      )
+    }
+
+    expect(gtag).not.toHaveBeenCalled()
+  })
+
+  it("dispatches outbound CTAs immediately (R28)", () => {
+    for (const ctaId of Object.keys(
+      WATCH_ANALYTICS_CTA_DESTINATIONS,
+    ) as WatchAnalyticsCtaId[]) {
+      expect(watchAnalyticsCtaDispatchMode(ctaId)).toBe(
+        WATCH_ANALYTICS_CTA_DESTINATIONS[ctaId] === "outbound"
+          ? "immediate"
+          : "deferred",
+      )
+    }
+    expect(watchAnalyticsCtaDispatchMode("study_ask_yours")).toBe("immediate")
   })
 })
 
