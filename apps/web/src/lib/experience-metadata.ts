@@ -206,9 +206,24 @@ export function buildWatchVideoMetadataModel(
   const episodeSlug = options.video.slug ?? options.routeSlug
   const canonicalUrl = buildCanonicalUrl(episodeSlug, options.pathLocale)
   const videoTitle = options.video.title || options.routeSlug || "Watch"
+  const localeResolvedTitle =
+    trimmedValue(options.video.title) ?? options.routeSlug
+  const selectedLanguageSlug =
+    options.selectedVariant.language?.slug?.trim().toLowerCase() ?? ""
+  const localizedDescriptor =
+    selectedLanguageSlug &&
+    selectedLanguageSlug !== "english" &&
+    selectedLanguageSlug !== "en"
+      ? trimmedValue(options.selectedVariant.language?.nativeName)
+      : null
   const structuredDataTitle = options.video.title?.trim() || null
   const title =
-    trimmedValue(options.video.searchTitle) ?? `${videoTitle} ${TITLE_SUFFIX}`
+    trimmedValue(options.video.searchTitle) ??
+    withTitleSuffix(
+      localizedDescriptor
+        ? `${localeResolvedTitle} · ${localizedDescriptor}`
+        : localeResolvedTitle,
+    )
   const description =
     trimmedValue(options.video.searchDescription) ??
     options.video.description ??
