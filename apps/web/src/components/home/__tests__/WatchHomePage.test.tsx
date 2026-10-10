@@ -56,6 +56,7 @@ import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-producti
 import {
   WATCH_HOME_INTRO_HLS_CONFIG,
   WATCH_HOME_INTRO_MAX_RESOLUTION,
+  watchHomeHeroSlidesToTvCarouselSlides,
 } from "@/components/home/WatchHomeTvCarousel"
 import { signWatchHomeHeroManifestCatalog } from "@/lib/watch-surface-manifest.server"
 import * as exposureBoundary from "@/components/recommendations/WatchExposureBoundary"
@@ -370,6 +371,21 @@ afterEach(async () => {
 })
 
 describe("WatchHomePage", () => {
+  it("falls synthetic blank carousel tiers through to Mux", () => {
+    // Admin currently filters non-playable dubs; this synthetic shape guards
+    // the client converter if that contract changes or malformed data leaks.
+    const [slide] = watchHomeHeroSlidesToTvCarouselSlides([
+      { ...makeCard(), eyebrow: "Featured", imageUrl: "", hls: "" },
+    ])
+
+    expect(slide).toMatchObject({
+      src: "https://stream.mux.com/mux-1.m3u8",
+      thumbnailUrl:
+        "https://image.mux.com/mux-1/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    })
+    expect(slide?.thumbnailUrl).not.toBe(slide?.posterUrl)
+  })
+
   it("selects singleton authority for the active card from an over-100 catalog without losing timeline focus", async () => {
     const heroWindows: Array<
       Parameters<typeof exposureBoundary.WatchExposureBoundary>[0]

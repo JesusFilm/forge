@@ -1,5 +1,8 @@
 import type { ErrorLike } from "@apollo/client"
-import { resolveMuxHeroPosterUrlAtMaxWidth } from "@/lib/url"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxHeroPosterUrlAtMaxWidth,
+} from "@/lib/url"
 import { cache } from "react"
 import { unstable_cache } from "next/cache"
 import { adminGraphql, type AdminResultOf } from "@forge/admin-graphql"
@@ -303,12 +306,16 @@ function muxThumbnail(playbackId: string | null): string | null {
   return playbackId ? `https://image.mux.com/${playbackId}/thumbnail.jpg` : null
 }
 
+function muxStream(playbackId: string | null): string | null {
+  return playbackId ? `https://stream.mux.com/${playbackId}.m3u8` : null
+}
+
 function adminImageUrl(image: AdminHomeImage) {
   return (
-    image.mobileCinematicHigh ??
-    image.mobileCinematicLow ??
-    image.videoStill ??
-    image.url ??
+    image.mobileCinematicHigh ||
+    image.mobileCinematicLow ||
+    image.videoStill ||
+    image.url ||
     image.thumbnail
   )
 }
@@ -641,7 +648,8 @@ function buildSections(args: {
 export function cardToCarouselSlide(
   card: WatchHomeCard,
 ): WatchHomeTvCarouselVideoSlide | null {
-  if (!card.hls) return null
+  const src = card.hls || muxStream(card.playbackId)
+  if (!src) return null
   if (WATCH_HOME_COLLECTION_BLACKLIST.has(card.coreId)) return null
   // The intro plays a slide to its natural end, so a feature film would hold
   // the hero for hours. Excluded here rather than from `heroSlides` itself:
@@ -667,9 +675,12 @@ export function cardToCarouselSlide(
       resolveMuxHeroPosterUrlAtMaxWidth(card.playbackId) ||
       card.imageUrl ||
       null,
-    thumbnailUrl: card.imageUrl,
+    thumbnailUrl:
+      card.imageUrl && card.imageUrl !== muxThumbnail(card.playbackId)
+        ? card.imageUrl
+        : resolveMuxFrameThumbnailUrl(card.playbackId),
     imageAlt: card.imageAlt,
-    src: card.hls,
+    src,
     playbackId: card.playbackId,
     subtitleVttSrc: card.subtitleVttSrc,
     subtitleLanguageBcp47: card.subtitleLanguageBcp47,

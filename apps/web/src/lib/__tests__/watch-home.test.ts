@@ -205,6 +205,45 @@ describe("buildWatchHomeModelFromVideos", () => {
     expect(Object.keys(model.carousel)).toEqual(["pools"])
   })
 
+  it("keeps pooled video slides playable when authored HLS and image fields are blank", async () => {
+    const { buildWatchHomeModelFromVideos, cardToCarouselSlide } =
+      await import("../watch-home")
+    const model = buildWatchHomeModelFromVideos({
+      locale: "en",
+      languageSlug: "english",
+      videos: [
+        makeVideo({
+          label: "SHORT_FILM",
+          preferredVariant: makeVariant({
+            hls: "",
+            muxVideo: { playbackId: "mux-blank" },
+          }),
+          images: [
+            makeImage({
+              mobileCinematicHigh: "",
+              mobileCinematicLow: "",
+              videoStill: "",
+              url: "",
+              thumbnail: "",
+            }),
+          ],
+        }),
+      ] as never,
+    })
+    const slide = cardToCarouselSlide(model.heroSlides[0]!)
+    const pooledSlide = model.carousel.pools
+      .flatMap((pool) => pool.videos)
+      .find((candidate) => candidate.id === "1_jf-0-0")
+
+    expect(slide).toMatchObject({
+      kind: "video",
+      src: "https://stream.mux.com/mux-blank.m3u8",
+      thumbnailUrl:
+        "https://image.mux.com/mux-blank/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    })
+    expect(pooledSlide).toEqual(slide)
+  })
+
   it("renders limited child cards with standalone discovery routes", async () => {
     const { buildWatchHomeModelFromVideos } = await import("../watch-home")
 
@@ -292,10 +331,22 @@ describe("buildWatchHomeModelFromVideos", () => {
         makeVideo({
           images: [
             makeImage({
-              documentId: "img-without-render-url",
+              documentId: "img-fully-empty",
               url: null,
               thumbnail: null,
               mobileCinematicHigh: null,
+              mobileCinematicLow: null,
+              videoStill: null,
+              blurDataUrl: "data:image/jpeg;base64,empty-row",
+              dominantColor: "#000000",
+            }),
+            makeImage({
+              documentId: "img-without-render-url",
+              url: "https://cdn.example/fallback-url.jpg",
+              thumbnail: "https://cdn.example/fallback-thumb.jpg",
+              mobileCinematicHigh: "",
+              mobileCinematicLow: "",
+              videoStill: "https://cdn.example/fallback-still.jpg",
               blurDataUrl: "data:image/jpeg;base64,wrong-row",
               dominantColor: "#ffffff",
             }),
@@ -311,9 +362,9 @@ describe("buildWatchHomeModelFromVideos", () => {
     })
 
     expect(model.heroSlides[0]).toMatchObject({
-      imageUrl: "https://cdn.example/rendered.jpg",
-      blurDataUrl: "data:image/jpeg;base64,right-row",
-      dominantColor: "#123456",
+      imageUrl: "https://cdn.example/fallback-still.jpg",
+      blurDataUrl: "data:image/jpeg;base64,wrong-row",
+      dominantColor: "#ffffff",
     })
   })
 
