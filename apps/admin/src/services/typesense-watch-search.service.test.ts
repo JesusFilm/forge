@@ -32,9 +32,11 @@ import {
 import {
   containerWatchability,
   previewWatchabilityKind,
+  searchResolvedTypesenseWatchSearch,
   typesenseLexicalMatchQuality,
   TypesenseWatchSearchService,
 } from "./typesense-watch-search.service"
+import { WatchSearchTimeoutError } from "./watch-search.service"
 import { WATCH_SEARCH_TITLE_AND_BRAND_RANKING_IMPLEMENTATION } from "./typesense-watch-search-ranking"
 
 vi.mock("./search-language-resolution", async (importOriginal) => {
@@ -4143,6 +4145,326 @@ describe("TypesenseWatchSearchService", () => {
     ).rejects.toThrow("upstream unavailable")
     expect(embedder).toHaveBeenCalledTimes(1)
     expect(typesense.multiSearch).toHaveBeenCalledTimes(1)
+  })
+
+  describe("request deadline", () => {
+    const input = { query: "communion", targetLanguageSlug: "french" }
+    const never = () => new Promise<never>(() => {})
+    const delay = (ms: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+    function semanticFixture() {
+      return typesenseFixture({
+        lexical: [catalogDocument],
+        semantic: [
+          {
+            videoId: catalogDocument.id,
+            text: "Ils partageaient tout ce qu'ils avaient.",
+            vectorDistance: 0.2,
+          },
+        ],
+      })
+    }
+
+    type Fixture = ReturnType<typeof typesenseFixture>
+    function holdRequests(
+      typesense: Fixture,
+      collection: string,
+      hold: () => Promise<unknown>,
+    ) {
+      const respond = typesense.multiSearch.getMockImplementation()!
+      typesense.multiSearch.mockImplementation(async (searches) => {
+        if (searches.some((search) => search.collection === collection)) {
+          await hold()
+        }
+        return respond(searches)
+      })
+    }
+
+    function collectionsDispatched(typesense: Fixture) {
+      return typesense.multiSearch.mock.calls.flatMap(([searches]) =>
+        searches.map((search) => search.collection),
+      )
+    }
+
+    function serviceFor(
+      typesense: Fixture,
+      deps: ConstructorParameters<typeof TypesenseWatchSearchService>[2] = {},
+    ) {
+      const logger = { warn: vi.fn() }
+      const service = new TypesenseWatchSearchService(
+        prismaFixture(),
+        typesense as unknown as TypesenseClient,
+        { embedder: vi.fn(async () => embedding), logger, ...deps },
+      )
+      return { service, logger }
+    }
+
+    function deadlineLog(logger: { warn: ReturnType<typeof vi.fn> }) {
+      return logger.warn.mock.calls
+        .map(([line]) => String(line))
+        .find((line) => line.includes("watch_search_deadline_exceeded"))
+    }
+
+    it("returns the unbounded response when every stage beats the deadline", async () => {
+      const unboundedTypesense = semanticFixture()
+      const boundedTypesense = semanticFixture()
+
+      const unbounded =
+        await serviceFor(unboundedTypesense).service.search(input)
+      const bounded = await serviceFor(boundedTypesense).service.search(input, {
+        hardTimeoutMs: 2_300,
+      })
+
+      expect(bounded.results).toEqual(unbounded.results)
+      expect(bounded.degraded).toBe(false)
+      expect(
+        bounded.laneStatuses?.map(({ lane, status, reason }) => ({
+          lane,
+          status,
+          reason,
+        })),
+      ).toEqual(
+        unbounded.laneStatuses?.map(({ lane, status, reason }) => ({
+          lane,
+          status,
+          reason,
+        })),
+      )
+      // Retrieval stays one bundled multi_search on both paths.
+      expect(boundedTypesense.multiSearch.mock.calls[0]?.[0]).toEqual(
+        unboundedTypesense.multiSearch.mock.calls[0]?.[0],
+      )
+      expect(
+        unboundedTypesense.multiSearch.mock.calls.every(
+          (call) => call.length === 1,
+        ),
+      ).toBe(true)
+      // The public deadline must replace the client's 2-second cap. Otherwise
+      // the transport abort wins before the typed 504 can be returned.
+      expect(
+        (boundedTypesense.multiSearch.mock.calls[0] as unknown[])[1],
+      ).toEqual(expect.objectContaining({ timeoutMs: expect.any(Number) }))
+      expect(
+        (
+          (boundedTypesense.multiSearch.mock.calls[0] as unknown[])[1] as {
+            timeoutMs: number
+          }
+        ).timeoutMs,
+      ).toBeGreaterThan(2_000)
+      for (const call of boundedTypesense.multiSearch.mock.calls) {
+        const { timeoutMs } = (call as unknown[])[1] as { timeoutMs: number }
+        expect(timeoutMs).toBeGreaterThan(0)
+        expect(timeoutMs).toBeLessThanOrEqual(2_300 + 50)
+      }
+    })
+
+    it("keeps lexical results when the embedding misses its capped budget", async () => {
+      const typesense = semanticFixture()
+      const { service } = serviceFor(typesense, {
+        embedder: vi.fn(never),
+        embeddingTimeoutMs: 60_000,
+      })
+
+      const startedAt = performance.now()
+      const response = await service.search(input, { hardTimeoutMs: 300 })
+
+      expect(performance.now() - startedAt).toBeLessThan(300)
+      expect(response.degraded).toBe(true)
+      expect(response.results.map((result) => result.id)).toEqual([
+        catalogDocument.id,
+      ])
+      expect(response.results[0]).toMatchObject({
+        playbackId: "playback-fr",
+        availability: { kind: "target_audio", languageSlug: "french" },
+      })
+      expect(response.laneStatuses).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            lane: "semantic_embedding",
+            status: "degraded",
+            reason: "request_budget_exceeded",
+          }),
+          expect.objectContaining({
+            lane: "semantic_retrieval",
+            status: "skipped",
+            reason: "missing_query_embedding",
+          }),
+        ]),
+      )
+      expect(collectionsDispatched(typesense)).not.toContain(
+        TYPESENSE_WATCH_TRANSCRIPT_ALIAS,
+      )
+    })
+
+    it("answers a stalled bundled retrieval with a query-free deadline error", async () => {
+      const typesense = semanticFixture()
+      holdRequests(typesense, TYPESENSE_WATCH_LEXICAL_ALIAS, never)
+      const { service, logger } = serviceFor(typesense)
+
+      const startedAt = performance.now()
+      const error = await service
+        .search(
+          { ...input, clientRequestId: "request-deadline-1" },
+          { hardTimeoutMs: 300 },
+        )
+        .catch((caught: unknown) => caught)
+
+      expect(performance.now() - startedAt).toBeLessThan(400)
+      expect(error).toBeInstanceOf(WatchSearchTimeoutError)
+      expect(error).toMatchObject({ event: "watch_search_deadline_exceeded" })
+      expect(deadlineLog(logger)).toMatch(
+        /^\[typesense-watch-search\] event=watch_search_deadline_exceeded stage=retrieval request_id=request-deadline-1 elapsed_ms=\d+$/,
+      )
+      expect(deadlineLog(logger)).not.toContain("communion")
+    })
+
+    it("starts no hydration after retrieval resolves past the caller deadline", async () => {
+      const typesense = semanticFixture()
+      holdRequests(typesense, TYPESENSE_WATCH_LEXICAL_ALIAS, () => delay(330))
+      const { service } = serviceFor(typesense)
+
+      await expect(
+        service.search(input, { hardTimeoutMs: 300 }),
+      ).rejects.toMatchObject({ event: "watch_search_deadline_exceeded" })
+      await delay(100)
+
+      expect(collectionsDispatched(typesense)).not.toContain(
+        TYPESENSE_WATCH_AVAILABILITY_ALIAS,
+      )
+      expect(collectionsDispatched(typesense)).not.toContain(
+        TYPESENSE_WATCH_CATALOG_ALIAS,
+      )
+    })
+
+    it("fails closed instead of guessing availability when hydration stalls", async () => {
+      const typesense = semanticFixture()
+      holdRequests(typesense, TYPESENSE_WATCH_AVAILABILITY_ALIAS, never)
+      const { service, logger } = serviceFor(typesense)
+
+      const startedAt = performance.now()
+      await expect(
+        service.search(input, { hardTimeoutMs: 300 }),
+      ).rejects.toMatchObject({ event: "watch_search_deadline_exceeded" })
+
+      expect(performance.now() - startedAt).toBeLessThan(400)
+      expect(deadlineLog(logger)).toContain("stage=availability_hydration")
+    })
+
+    it("dispatches no retrieval when language resolves after the retrieval cutoff", async () => {
+      // 250ms lands between the 210ms retrieval cutoff and the 300ms hard
+      // deadline, so only the stage boundary can refuse the retrieval.
+      const resolveLanguage = vi
+        .mocked(resolveSearchLanguageSignals)
+        .getMockImplementation()!
+      vi.mocked(resolveSearchLanguageSignals).mockImplementationOnce(
+        async (...args) => {
+          await delay(250)
+          return resolveLanguage(...args)
+        },
+      )
+      const typesense = semanticFixture()
+      const { service, logger } = serviceFor(typesense)
+
+      await expect(
+        service.search(input, { hardTimeoutMs: 300 }),
+      ).rejects.toMatchObject({ event: "watch_search_deadline_exceeded" })
+      await delay(150)
+
+      expect(typesense.multiSearch).not.toHaveBeenCalled()
+      expect(deadlineLog(logger)).toContain("stage=language_resolution")
+    })
+
+    it("keeps direct and diagnostic calls unbounded", async () => {
+      const typesense = semanticFixture()
+      holdRequests(typesense, TYPESENSE_WATCH_LEXICAL_ALIAS, () => delay(350))
+      const { service } = serviceFor(typesense)
+
+      const direct = await service.search(input)
+      const { response: diagnostic } =
+        await service.searchWithDiagnostics(input)
+
+      for (const response of [direct, diagnostic]) {
+        expect(response.degraded).toBe(false)
+        expect(response.results.map((result) => result.id)).toEqual([
+          catalogDocument.id,
+        ])
+      }
+      expect(
+        typesense.multiSearch.mock.calls.every((call) => call.length === 1),
+      ).toBe(true)
+    })
+
+    describe("candidate serving proxy", () => {
+      it("fails a profile that never resolves within the budget", async () => {
+        const { logger } = serviceFor(semanticFixture())
+
+        const startedAt = performance.now()
+        await expect(
+          searchResolvedTypesenseWatchSearch(
+            never,
+            input,
+            { hardTimeoutMs: 300 },
+            logger,
+          ),
+        ).rejects.toMatchObject({ event: "watch_search_deadline_exceeded" })
+
+        expect(performance.now() - startedAt).toBeLessThan(300)
+        expect(deadlineLog(logger)).toContain("stage=serving_profile")
+      })
+
+      it("dispatches no search when the profile resolves after the cutoff", async () => {
+        const typesense = semanticFixture()
+        const { service, logger } = serviceFor(typesense)
+        const search = vi.spyOn(service, "search")
+
+        await expect(
+          searchResolvedTypesenseWatchSearch(
+            async () => {
+              await delay(250)
+              return service
+            },
+            input,
+            { hardTimeoutMs: 300 },
+            logger,
+          ),
+        ).rejects.toMatchObject({ event: "watch_search_deadline_exceeded" })
+        await delay(100)
+
+        expect(search).not.toHaveBeenCalled()
+        expect(typesense.multiSearch).not.toHaveBeenCalled()
+      })
+
+      it("charges profile resolution to the original request budget", async () => {
+        const typesense = semanticFixture()
+        holdRequests(typesense, TYPESENSE_WATCH_AVAILABILITY_ALIAS, never)
+        const { service } = serviceFor(typesense)
+
+        const startedAt = performance.now()
+        await expect(
+          searchResolvedTypesenseWatchSearch(
+            async () => {
+              await delay(150)
+              return service
+            },
+            input,
+            { hardTimeoutMs: 300 },
+          ),
+        ).rejects.toMatchObject({ event: "watch_search_deadline_exceeded" })
+
+        // A fresh budget at the service would run until ~450ms.
+        expect(performance.now() - startedAt).toBeLessThan(400)
+      })
+
+      it("passes unbounded calls through unchanged", async () => {
+        const { service } = serviceFor(semanticFixture())
+        const search = vi.spyOn(service, "search")
+
+        await searchResolvedTypesenseWatchSearch(async () => service, input)
+
+        expect(search).toHaveBeenCalledWith(input, {})
+      })
+    })
   })
 
   describe("container availability", () => {
