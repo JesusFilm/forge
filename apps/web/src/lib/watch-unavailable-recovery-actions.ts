@@ -119,8 +119,7 @@ export async function resolveWatchUnavailableRecovery(
     }
 
     const display = deriveLanguageDisplay(languageSlug, variant.language?.name)
-    const nativeName =
-      display.nativeName ?? variant.language?.nativeName?.trim() ?? null
+    const nativeName = variant.language?.nativeName?.trim() || null
     audioOptions.push({
       slug: languageSlug,
       name: display.name,

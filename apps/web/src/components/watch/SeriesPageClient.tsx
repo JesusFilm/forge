@@ -256,7 +256,7 @@ export function SeriesPageClient({
   // Two downstream consumers need a per-language projection, built in one
   // pass keyed by slug:
   //  - languageOptions — the inline LanguageCombobox feed (sorted A→Z
-  //    by English form via deriveLanguageDisplay).
+  //    by admin's English name, slug-derived only when the name is missing).
   //  - variantsForLanguagePicker — the LanguagePickerModal feed. The modal
   //    filters its input through isPlayableLanguageVariant (it also serves
   //    the watch page, which passes unfiltered variants). These entries are

@@ -486,6 +486,38 @@ describe("LanguagePickerModal — globe overlay", () => {
     expect(selectedLanguageLink.textContent).toContain(expectedInventoryLabel)
   })
 
+  it("labels a language with admin's name, never a slug-derived one", () => {
+    // "Urdu - C" has a letter its slug lacks; the retired Strapi heuristic
+    // read that as a native form and relabelled it "Urdu Hoda" from the slug.
+    renderModal({
+      open: true,
+      variants: [
+        makeVariant({
+          documentId: "v-urdu",
+          languageSlug: "urdu-hoda",
+          language: {
+            coreId: "185348",
+            slug: "urdu-hoda",
+            name: "Urdu - C",
+            nativeName: null,
+          },
+        }),
+      ],
+      currentLanguageSlug: "urdu-hoda",
+      subtitles: [makeSubtitle("s-ar", "arabic", "Arabic, Modern Standard")],
+    })
+
+    const selectedLanguageLink = $(
+      '[data-testid="watch-language-picker-selected-language-link"]',
+    ) as HTMLAnchorElement
+
+    expect(selectedLanguageLink.getAttribute("aria-label")).toBe(
+      `See all videos in ${isolate("Urdu - C")}`,
+    )
+    expect(document.body.textContent).toContain("Urdu - C")
+    expect(document.body.textContent).not.toContain("Urdu Hoda")
+  })
+
   it("isolates an LTR language name inside an RTL inventory template", () => {
     setLanguagePickerCatalog(arMessages, "ar")
     renderModal({ open: true, variants: baseVariants })
