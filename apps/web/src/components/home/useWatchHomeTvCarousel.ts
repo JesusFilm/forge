@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -231,6 +232,7 @@ export function useWatchHomeTvCarousel(
   sequence: WatchHomeCarouselSequenceData | null = null,
   options: {
     autoAdvancePausedForSlideId?: string | null
+    pauseAdvanceForInteraction?: boolean
     randomSource?: () => number
     suppressLeavingSlide?: boolean
   } = {},
@@ -368,6 +370,7 @@ export function useWatchHomeTvCarousel(
   const autoAdvancePaused =
     activeSlide != null &&
     activeSlide.id === options.autoAdvancePausedForSlideId
+  const pauseAdvanceForInteraction = options.pauseAdvanceForInteraction ?? false
   // Only a video slide can be waiting on bytes; an image slide is fully on
   // screen the moment it is chosen.
   const isBuffering = Boolean(activeSlide?.src) && isBufferingMedia
@@ -375,7 +378,7 @@ export function useWatchHomeTvCarousel(
   // holds its turn the same way a buffering one does. The two are kept
   // separate for the ring: only buffering is a stall worth explaining.
   const isMediaHeld = Boolean(activeSlide?.src) && isMediaPaused
-  const isTurnHeld = isBuffering || isMediaHeld
+  const isTurnHeld = isBuffering || isMediaHeld || pauseAdvanceForInteraction
   // One resolved duration feeds both the ring and the backstop, so the two
   // cannot drift apart. The measurement only counts for the slide it was read
   // from.
@@ -403,6 +406,8 @@ export function useWatchHomeTvCarousel(
   const portraitSkipCountRef = useRef(0)
   // `advance` is defined below the metadata handler that needs it.
   const advanceRef = useRef<(() => void) | null>(null)
+  const interactionPausedRef = useRef(pauseAdvanceForInteraction)
+  const endedWhileInteractionPausedRef = useRef(false)
 
   // The homepage is statically rendered and shared by every visitor, so the
   // per-visit draw happens here — once, right after mount — over the pools the
@@ -503,6 +508,7 @@ export function useWatchHomeTvCarousel(
         }, 900)
       }
       const isSameSlide = nextSlide != null && nextSlide.id === activeSlide?.id
+      endedWhileInteractionPausedRef.current = false
       clearSlideAdvanceTimeout()
       clearVideoPosterHold()
       // Every selection opens a new turn, so timers armed for the previous one
@@ -576,9 +582,25 @@ export function useWatchHomeTvCarousel(
     selectIndex(nextIndex)
   }, [displaySlides, isSequenced, safeActiveIndex, selectIndex])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     advanceRef.current = advance
   }, [advance])
+
+  const handleEnded = useCallback(() => {
+    if (interactionPausedRef.current) {
+      endedWhileInteractionPausedRef.current = true
+      return
+    }
+    advanceRef.current?.()
+  }, [])
+
+  useLayoutEffect(() => {
+    interactionPausedRef.current = pauseAdvanceForInteraction
+    if (!pauseAdvanceForInteraction && endedWhileInteractionPausedRef.current) {
+      endedWhileInteractionPausedRef.current = false
+      advanceRef.current?.()
+    }
+  }, [pauseAdvanceForInteraction])
 
   const toggleMuted = useCallback(() => {
     setIsMuted((current) => {
@@ -940,7 +962,7 @@ export function useWatchHomeTvCarousel(
       // reinterpreting a running one.
       ringAnimationKey: `${activeSlide?.id ?? "none"}:${advanceDurationSeconds}:${restartCount}`,
       handleCanPlay,
-      handleEnded: advance,
+      handleEnded,
       handleLoadedMetadata,
       handlePause,
       handlePlay,
@@ -966,6 +988,7 @@ export function useWatchHomeTvCarousel(
       advanceDurationSeconds,
       restartCount,
       handleCanPlay,
+      handleEnded,
       handleLoadedMetadata,
       handlePause,
       handlePlay,

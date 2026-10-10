@@ -416,7 +416,9 @@ describe("WatchHomePage", () => {
     const target = next
       .getAttribute("aria-label")!
       .replace("Show Candidate ", "")
-    next.focus()
+    await act(async () => {
+      next.focus()
+    })
     await act(async () => {
       next.dispatchEvent(new MouseEvent("click", { bubbles: true }))
     })
@@ -614,6 +616,205 @@ describe("WatchHomePage", () => {
         })
 
         expect(carouselLabel()).not.toBe(openingTitle)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it.each(["hover", "focus"] as const)(
+      "keeps the active hero stable during %s and resumes its remaining time afterward",
+      async (interaction) => {
+        vi.useFakeTimers()
+        try {
+          const video = await startFirstSlide(makeTimedSequencedModel(10))
+          const region = container.querySelector<HTMLElement>(
+            '[data-testid="watch-home-tv-carousel"]',
+          )!
+          const openingTitle = carouselLabel()
+          const dispatchPointer = (type: "pointerover" | "pointerout") => {
+            const event = new Event(type, { bubbles: true })
+            Object.defineProperty(event, "pointerType", { value: "mouse" })
+            if (type === "pointerout") {
+              Object.defineProperty(event, "relatedTarget", {
+                value: document.body,
+              })
+            }
+            region.dispatchEvent(event)
+          }
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          expect(video.play).toHaveBeenCalled()
+          const stopInteraction = () => {
+            if (interaction === "hover") {
+              dispatchPointer("pointerout")
+            } else {
+              container
+                .querySelector<HTMLAnchorElement>(
+                  '[data-testid="watch-home-tv-actions"] a',
+                )
+                ?.blur()
+            }
+          }
+
+          await act(async () => {
+            if (interaction === "hover") {
+              dispatchPointer("pointerover")
+            } else {
+              container
+                .querySelector<HTMLAnchorElement>(
+                  '[data-testid="watch-home-tv-actions"] a',
+                )
+                ?.focus()
+            }
+          })
+          await act(async () => {
+            vi.advanceTimersByTime(20_000)
+          })
+          expect(carouselLabel()).toBe(openingTitle)
+
+          await act(async () => {
+            stopInteraction()
+          })
+          expect(
+            container
+              .querySelector(
+                '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+              )
+              ?.getAttribute("data-paused"),
+          ).toBe("false")
+          await act(async () => {
+            vi.advanceTimersByTime(13_000)
+          })
+          expect(carouselLabel()).toBe(openingTitle)
+          await act(async () => {
+            vi.advanceTimersByTime(2_001)
+          })
+          expect(carouselLabel()).not.toBe(openingTitle)
+        } finally {
+          vi.useRealTimers()
+        }
+      },
+    )
+
+    it("does not treat touch pointer entry as a hover hold", async () => {
+      vi.useFakeTimers()
+      try {
+        await startFirstSlide(makeTimedSequencedModel(10))
+        const region = container.querySelector<HTMLElement>(
+          '[data-testid="watch-home-tv-carousel"]',
+        )!
+        const touchEnter = new Event("pointerover", { bubbles: true })
+        Object.defineProperty(touchEnter, "pointerType", { value: "touch" })
+        await act(async () => {
+          region.dispatchEvent(touchEnter)
+          vi.advanceTimersByTime(15_001)
+        })
+        expect(carouselLabel()).toBe("Queued Two")
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("defers a video's ended advance until the hero interaction ends", async () => {
+      vi.useFakeTimers()
+      try {
+        const video = await startFirstSlide(makeTimedSequencedModel(10))
+        const region = container.querySelector<HTMLElement>(
+          '[data-testid="watch-home-tv-carousel"]',
+        )!
+        const openingTitle = carouselLabel()
+        const pointerEvent = (type: "pointerover" | "pointerout") => {
+          const event = new Event(type, { bubbles: true })
+          Object.defineProperty(event, "pointerType", { value: "mouse" })
+          if (type === "pointerout") {
+            Object.defineProperty(event, "relatedTarget", {
+              value: document.body,
+            })
+          }
+          return event
+        }
+        await act(async () => {
+          region.dispatchEvent(pointerEvent("pointerover"))
+        })
+        await act(async () => {
+          video.dispatchEvent(new Event("ended", { bubbles: true }))
+        })
+        expect(carouselLabel()).toBe(openingTitle)
+
+        await act(async () => {
+          region.dispatchEvent(pointerEvent("pointerout"))
+        })
+        expect(carouselLabel()).toBe("Queued Two")
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it("clears the keyboard hold if the focused Watch Now link is removed", async () => {
+      vi.useFakeTimers()
+      try {
+        const model = makeModel({
+          carousel: {
+            pools: [
+              {
+                id: "pool-a",
+                collectionIds: ["pool-a"],
+                videos: [
+                  makeCarouselSlide(),
+                  makeCarouselSlide({
+                    id: "queued-2",
+                    title: "Queued Two",
+                    href: null,
+                    src: "https://stream.example/queued-two.m3u8",
+                  }),
+                ],
+              },
+            ],
+          },
+        })
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={model} />)
+        })
+        const watchNow = container.querySelector<HTMLAnchorElement>(
+          '[data-testid="watch-home-tv-actions"] a',
+        )!
+        await act(async () => {
+          watchNow.focus()
+        })
+        expect(document.activeElement).toBe(watchNow)
+
+        await act(async () => {
+          container
+            .querySelector<HTMLButtonElement>(
+              'button[aria-label="Show Queued Two"]',
+            )
+            ?.dispatchEvent(new MouseEvent("click", { bubbles: true }))
+          vi.advanceTimersByTime(0)
+        })
+        expect(carouselLabel()).toBe("Queued Two")
+        expect(
+          container
+            .querySelector(
+              '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+            )
+            ?.getAttribute("data-paused"),
+        ).toBe("true")
+        const selectedVideo = container.querySelector(
+          '[data-testid="watch-home-tv-video"]',
+        )!
+        await act(async () => {
+          selectedVideo.dispatchEvent(new Event("canplay", { bubbles: true }))
+          vi.advanceTimersByTime(0)
+        })
+        expect(
+          container
+            .querySelector(
+              '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+            )
+            ?.getAttribute("data-paused"),
+        ).toBe("false")
       } finally {
         vi.useRealTimers()
       }
@@ -2098,7 +2299,9 @@ describe("WatchHomePage", () => {
     const queuedTwoButton = container.querySelector(
       'button[aria-label="Show Queued Two"]',
     ) as HTMLButtonElement
-    queuedTwoButton.focus()
+    await act(async () => {
+      queuedTwoButton.focus()
+    })
     expect(document.activeElement).toBe(queuedTwoButton)
 
     await act(async () => {
@@ -2273,7 +2476,7 @@ describe("WatchHomePage", () => {
     ).toBe(false)
   })
 
-  it("moves focus to the current circle when autoplay removes the focused past circle", async () => {
+  it("defers an ended slide change until keyboard focus leaves the hero", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
     const numberWords = ["One", "Two", "Three", "Four", "Five"]
 
@@ -2311,7 +2514,9 @@ describe("WatchHomePage", () => {
     const pastButton = container.querySelector(
       '[data-testid="watch-home-video-timeline"] [data-offset="-1"] button',
     ) as HTMLButtonElement
-    pastButton.focus()
+    await act(async () => {
+      pastButton.focus()
+    })
     expect(document.activeElement).toBe(pastButton)
 
     await act(async () => {
@@ -2320,11 +2525,21 @@ describe("WatchHomePage", () => {
         ?.dispatchEvent(new Event("ended", { bubbles: true }))
     })
 
-    const currentButton = container.querySelector(
-      '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
-    ) as HTMLButtonElement
-    expect(currentButton.getAttribute("aria-label")).toBe("Queued Three")
-    expect(document.activeElement).toBe(currentButton)
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Queued Two")
+    expect(document.activeElement).toBe(pastButton)
+
+    await act(async () => {
+      pastButton.blur()
+    })
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Queued Three")
 
     await act(async () => {
       container
@@ -2337,13 +2552,11 @@ describe("WatchHomePage", () => {
         ?.dispatchEvent(new Event("ended", { bubbles: true }))
     })
 
-    const repeatedlyRecoveredCurrentButton = container.querySelector(
-      '[data-testid="watch-home-video-timeline"][data-size="large"] [data-offset="0"] button',
-    ) as HTMLButtonElement
-    expect(repeatedlyRecoveredCurrentButton.getAttribute("aria-label")).toBe(
-      "Queued Five",
-    )
-    expect(document.activeElement).toBe(repeatedlyRecoveredCurrentButton)
+    expect(
+      container
+        .querySelector('[data-testid="watch-home-tv-carousel"]')
+        ?.getAttribute("aria-label"),
+    ).toBe("Queued Five")
   })
 
   it("holds the playback ring and shows a loader until the hero video loads", async () => {
@@ -2687,11 +2900,22 @@ describe("WatchHomePage", () => {
       const muteButton = container.querySelector(
         'button[aria-label="Unmute preview"]',
       ) as HTMLButtonElement
-      muteButton.focus()
+      await act(async () => {
+        muteButton.focus()
+      })
       expect(document.activeElement).toBe(muteButton)
 
       await act(async () => {
         finalUnplayedVideo.dispatchEvent(new Event("ended", { bubbles: true }))
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBe(finalUnplayedVideo)
+      expect(carousel?.getAttribute("aria-label")).toBe("Queued Three")
+
+      await act(async () => {
+        muteButton.blur()
       })
 
       const replacementVideo = container.querySelector(
@@ -2704,10 +2928,7 @@ describe("WatchHomePage", () => {
       expect(replacementVideo).not.toBe(finalUnplayedVideo)
       expect(replacementVideo.getAttribute("src")).not.toBe(finalUnplayedSrc)
       expect(carousel?.getAttribute("aria-label")).not.toBe("Queued Three")
-      expect(
-        container.querySelector('button[aria-label="Unmute preview"]'),
-      ).toBe(muteButton)
-      expect(document.activeElement).toBe(muteButton)
+      expect(document.activeElement).not.toBe(muteButton)
 
       await act(async () => {
         replacementVideo.dispatchEvent(new Event("canplay", { bubbles: true }))
@@ -2720,7 +2941,9 @@ describe("WatchHomePage", () => {
       const watchNow = container.querySelector(
         '[data-testid="watch-home-tv-actions"] a',
       ) as HTMLAnchorElement
-      watchNow.focus()
+      await act(async () => {
+        watchNow.focus()
+      })
       expect(document.activeElement).toBe(watchNow)
 
       await act(async () => {
@@ -2728,9 +2951,15 @@ describe("WatchHomePage", () => {
       })
 
       expect(
-        container.querySelector('[data-testid="watch-home-tv-actions"] a'),
-      ).toBe(watchNow)
-      expect(document.activeElement).toBe(watchNow)
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBe(replacementVideo)
+      await act(async () => {
+        watchNow.blur()
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).not.toBe(replacementVideo)
     } finally {
       vi.useRealTimers()
     }
