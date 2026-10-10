@@ -279,6 +279,15 @@ export function inspectWatchSitemapIndex(
   const childUrls = sitemapNodes
     .map((node) => asText(asRecord(node)?.loc))
     .filter((url): url is string => Boolean(url))
+  const hasValidLastmod = sitemapNodes.every((node) => {
+    const lastmod = asText(asRecord(node)?.lastmod)
+    return (
+      lastmod === null ||
+      (lastmod !== null &&
+        Number.isFinite(Date.parse(lastmod)) &&
+        /^\d{4}-\d{2}-\d{2}T/.test(lastmod))
+    )
+  })
 
   if (
     !sitemapIndex ||
@@ -289,6 +298,16 @@ export function inspectWatchSitemapIndex(
       documentIssue(
         "invalid_index",
         "Expected a sitemapindex containing one loc per sitemap child",
+        document.url,
+      ),
+    )
+  }
+
+  if (!hasValidLastmod) {
+    issues.push(
+      documentIssue(
+        "invalid_index",
+        "Sitemap child lastmod values must be valid timestamps",
         document.url,
       ),
     )
@@ -417,6 +436,7 @@ export class WatchSitemapAuditSession {
       for (const node of urlNodes) {
         const entry = asRecord(node)
         const loc = asText(entry?.loc)
+        const lastmod = asText(entry?.lastmod)
         if (!loc) {
           this.issues.push(
             documentIssue(
@@ -426,6 +446,19 @@ export class WatchSitemapAuditSession {
             ),
           )
           continue
+        }
+        if (
+          lastmod !== null &&
+          (!Number.isFinite(Date.parse(lastmod)) ||
+            !/^\d{4}-\d{2}-\d{2}T/.test(lastmod))
+        ) {
+          this.issues.push(
+            documentIssue(
+              "invalid_xml",
+              "Sitemap URL lastmod must be a valid timestamp",
+              loc,
+            ),
+          )
         }
         locCount += 1
         const locClassification = this.classifyUrl(loc)

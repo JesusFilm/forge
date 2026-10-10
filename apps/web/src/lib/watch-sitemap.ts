@@ -79,12 +79,14 @@ export type WatchSitemapAlternate = WatchSeoManifestAlternate & {
 export type WatchSitemapEntry = {
   loc: string
   alternates: WatchSitemapAlternate[]
+  lastModified?: string
 }
 
 export type WatchSitemapChunkEntry = {
   alternatesXml: string
   bytes: number
   loc: string
+  lastModified?: string
 }
 
 export type WatchSitemapChunk = {
@@ -96,6 +98,7 @@ type ResolvedSitemapGroup = {
   alternateLinksXml: string
   alternateLinksBytes: number
   locs: string[]
+  lastModified?: string
 }
 
 const chunkCache = new WeakMap<WatchSeoManifest, WatchSitemapChunk[]>()
@@ -156,8 +159,15 @@ function renderAlternate(alternate: WatchSitemapAlternate): string {
 function renderEntryXml({
   alternatesXml,
   loc,
-}: Pick<WatchSitemapChunkEntry, "alternatesXml" | "loc">): string {
-  return `<url><loc>${xmlEscape(loc)}</loc>${alternatesXml}</url>`
+  lastModified,
+}: Pick<
+  WatchSitemapChunkEntry,
+  "alternatesXml" | "lastModified" | "loc"
+>): string {
+  const lastModifiedXml = lastModified
+    ? `<lastmod>${xmlEscape(lastModified)}</lastmod>`
+    : ""
+  return `<url><loc>${xmlEscape(loc)}</loc>${lastModifiedXml}${alternatesXml}</url>`
 }
 
 function groupEntries(
@@ -182,8 +192,10 @@ function groupEntries(
 function groupForAlternates(
   alternates: WatchSeoManifestAlternate[],
   hrefForLanguage: (languageSlug: string) => string | null,
+  lastModified?: string,
 ): ResolvedSitemapGroup | null {
-  return groupForEntries(groupEntries(alternates, hrefForLanguage))
+  const group = groupForEntries(groupEntries(alternates, hrefForLanguage))
+  return group && lastModified ? { ...group, lastModified } : group
 }
 
 function groupForEntries(
@@ -206,8 +218,10 @@ function createWatchSitemapGroups(
   const groups: ResolvedSitemapGroup[] = []
 
   for (const group of manifest.videoRouteGroups) {
-    const sitemapGroup = groupForAlternates(group.alternates, (languageSlug) =>
-      videoHref(group.contentSlug, languageSlug),
+    const sitemapGroup = groupForAlternates(
+      group.alternates,
+      (languageSlug) => videoHref(group.contentSlug, languageSlug),
+      group.lastModified,
     )
     if (sitemapGroup) groups.push(sitemapGroup)
   }
@@ -227,6 +241,10 @@ export function createWatchSitemapEntries(
     entries.push(
       ...groupEntries(group.alternates, (languageSlug) =>
         videoHref(group.contentSlug, languageSlug),
+      ).map((entry) =>
+        group.lastModified
+          ? { ...entry, lastModified: group.lastModified }
+          : entry,
       ),
     )
   }
@@ -282,10 +300,14 @@ export function getWatchSitemapChunks(
       const entry: WatchSitemapChunkEntry = {
         alternatesXml: group.alternateLinksXml,
         bytes:
-          Buffer.byteLength("<url><loc></loc></url>", "utf8") +
+          Buffer.byteLength(
+            `<url><loc></loc>${group.lastModified ? `<lastmod>${xmlEscape(group.lastModified)}</lastmod>` : ""}</url>`,
+            "utf8",
+          ) +
           Buffer.byteLength(xmlEscape(loc), "utf8") +
           group.alternateLinksBytes,
         loc,
+        ...(group.lastModified ? { lastModified: group.lastModified } : {}),
       }
       if (wrapperBytes + entry.bytes > maxBytes) {
         throw new WatchSitemapGenerationError("entry_exceeds_max_bytes", {
@@ -350,10 +372,19 @@ export function renderWatchSitemapIndex(
 ): string {
   const chunks = getWatchSitemapChunks(manifest, limits)
   const entries = chunks
-    .map(
-      (_chunk, index) =>
-        `<sitemap><loc>${xmlEscape(watchSitemapChunkUrl(index))}</loc></sitemap>`,
-    )
+    .map((chunk, index) => {
+      const lastModified = chunk.entries.reduce<string | undefined>(
+        (latest, entry) =>
+          entry.lastModified && (!latest || entry.lastModified > latest)
+            ? entry.lastModified
+            : latest,
+        undefined,
+      )
+      const lastModifiedXml = lastModified
+        ? `<lastmod>${xmlEscape(lastModified)}</lastmod>`
+        : ""
+      return `<sitemap><loc>${xmlEscape(watchSitemapChunkUrl(index))}</loc>${lastModifiedXml}</sitemap>`
+    })
     .join("")
   return `${XML_HEADER}${SITEMAPINDEX_OPEN}${entries}${SITEMAPINDEX_CLOSE}`
 }
