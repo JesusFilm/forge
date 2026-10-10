@@ -42,4 +42,4 @@ Run the focused locale test, Web typecheck, targeted lint/format, and generated 
 
 ## Status
 
-FGE-282 is partially advanced. N25 has a source-backed code correction in [draft PR #2676](https://github.com/JesusFilm/forge/pull/2676); N16 and N19 require separate locale-specific source verification before edits. `feat-665` was allocated after coordination for the concurrently active roadmap IDs.
+FGE-282 is partially advanced. N25 has a source-backed code correction in [draft PR #2676](https://github.com/JesusFilm/forge/pull/2676); N16 and N19 require separate locale-specific source verification before edits. The edit changes `tk.json` bytes, so `docs/i18n/watch-ui-provisional-catalogs.json` records the new `tk` `catalogDigest` (`335de92a…` → `7015502e…`, the same digest the provisional-catalog test recomputes) plus a `manual-source-correction` scoped revision for the three corrected paths dated 2026-10-09; `model` and `sourceDigest` are unchanged because the English source did not move. `feat-665` was allocated after coordination for the concurrently active roadmap IDs.
