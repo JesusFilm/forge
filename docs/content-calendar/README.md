@@ -9,11 +9,17 @@ tile. Lyuba uses it for planning.
 - Data: the artifact's database, collection `posts`, one document per post
 - Thumbnails: the artifact's asset store; local copies in `~/Desktop/Social Media/Calendar/thumbs/`
 
-## Rule for every session that publishes or schedules
+## Who writes the calendar
 
-Whenever a post goes live or gets scheduled (YouTube, Facebook, Instagram), add
-or update its row here in the same turn, next to the story README's
-"PUBLISHED" log. Do not republish the page to add posts; write to the database.
+One writer only (from 2026-10-10): the **"Calendar" session** (local_32447311-7285-4bcd-9696-e4a683c4d597, Analytics group) (the session
+that built this page) owns the `posts` collection. Other sessions do not write rows.
+When Publishing (or any session) publishes or schedules a post, it sends that session
+a short message with: story, kind/cut, platforms, status, date and time, title, links
+(YouTube / Facebook / Instagram), local file path. The calendar session then makes the
+thumbnail and writes the row. Analytics and other sessions send plan changes the same
+way.
+
+The recipe below is what the calendar session follows.
 
 ### 1. Make a thumbnail (small JPG)
 
@@ -51,7 +57,7 @@ Updating an existing row (schedule moved, now live): `get` it first and pass its
   "story": "Martha",
   "kind": "short", // long | short | reel | story | post (carousel/image)
   "platforms": ["yt-en"], // any of yt-en, yt-ru, fb, ig (FB + IG same time = one row)
-  "status": "scheduled", // published | scheduled
+  "status": "scheduled", // published | scheduled | planned (in the plan, not uploaded yet)
   "date": "2026-10-07", // Europe/Sofia
   "time": "13:00", // optional, Europe/Sofia, 24 h (shown on hover only)
   "duration": "0:22", // video length m:ss, shown on the tile: ffprobe -v error -show_entries format=duration -of csv=p=0 <file>
@@ -67,6 +73,10 @@ Updating an existing row (schedule moved, now live): `get` it first and pass its
   "campaign": true // optional; hides the row (ad-campaign creatives that are not organic posts)
 }
 ```
+
+Planned rows use ids `plan-<story>-<kind>-<cut>-<channel>` and carry `story` + `cut`
+(written on the tile, e.g. "Story A / intro"); thumb optional. When the real post is
+scheduled or published, delete the `plan-` row and write the real one.
 
 A `scheduled` row turns into a posted tile by itself once its date and time pass,
 so there is no need to flip the status afterwards. Delete a row only if the

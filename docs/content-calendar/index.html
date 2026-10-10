@@ -230,8 +230,52 @@
   .tile.noimg .face {
     background: linear-gradient(135deg, #3a1d16, #1d1613);
   }
+  /* Scheduled: real, queued on the platform. Dimmed picture, orange dashed frame, orange clock. */
   .tile.scheduled img {
-    opacity: 0.45;
+    opacity: 0.6;
+  }
+  .tile.scheduled .face::after,
+  .tile.planned .face::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 6px;
+    border: 2px dashed var(--flame);
+  }
+  /* Planned: only in the plan, not uploaded yet. No picture, muted dashed frame, story and cut written in. */
+  .tile.planned .face {
+    background: repeating-linear-gradient(
+      135deg,
+      #1f1714 0 6px,
+      #241b17 6px 12px
+    );
+  }
+  .tile.planned .face::after {
+    border: 1.5px dashed var(--muted);
+    opacity: 0.6;
+  }
+  .tile.planned img {
+    opacity: 0.25;
+  }
+  .plabel {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    gap: 3px;
+    text-align: center;
+    padding: 4px;
+    color: var(--muted);
+  }
+  .plabel b {
+    font: 400 15px/1.1 var(--serif);
+    color: var(--ink);
+  }
+  .plabel i {
+    font: 600 8px/1 var(--sans);
+    font-style: normal;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
   }
   /* Stack: the same video on 2+ platforms gets cards fanned out behind it. */
   .tile.stack::before,
@@ -293,9 +337,9 @@
     z-index: 2;
     top: 4px;
     right: 4px;
-    width: 16px;
-    height: 16px;
-    color: var(--ink);
+    width: 18px;
+    height: 18px;
+    color: #fff;
     filter: drop-shadow(0 1px 2px #000);
   }
   .tile .dur {
@@ -572,7 +616,7 @@
     fb: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#0866ff"/><path d="M13.3 23v-8.2h2.6l.4-3h-3v-1.9c0-.9.3-1.5 1.5-1.5h1.6V5.7c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H7.6v3h2.6V23z" fill="#fff"/></svg>',
     ig: '<svg viewBox="0 0 24 24"><defs><linearGradient id="igg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#feda75"/><stop offset=".35" stop-color="#fa7e1e"/><stop offset=".6" stop-color="#d62976"/><stop offset="1" stop-color="#4f5bd5"/></linearGradient></defs><rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="url(#igg)"/><rect x="6" y="6" width="12" height="12" rx="3.6" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="12" cy="12" r="3" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="16.3" cy="7.7" r="1" fill="#fff"/></svg>',
     clock:
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9" fill="rgba(0,0,0,.55)"/><path d="M12 7v5l3 2"/></svg>',
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10" fill="#e2583a" stroke="none"/><path d="M12 7v5l3 2"/></svg>',
   }
   // A post's platforms: any of yt-en, yt-ru, fb, ig. Shown in this order.
   const PLATS = [
@@ -634,6 +678,7 @@
       new Date(p.date + "T" + (p.time || "23:59")) > new Date()
     )
   }
+  const isPlanned = (p) => p.status === "planned"
   // "martha-short-history-yt-en" and "martha-reel-history-meta" are the same cut: key "martha|history".
   function cutKey(p) {
     if (p.group) return p.group
@@ -689,6 +734,7 @@
         links[k] = {
           url: urlFor(m, k),
           scheduled: isFuture(m),
+          planned: isPlanned(m),
           time: m.time || "",
         }
       })
@@ -707,6 +753,9 @@
           lead.duration || (ms.find((p) => p.duration) || {}).duration || "",
         paid: ms.some((p) => p.paid),
         scheduled: ms.every(isFuture),
+        planned: ms.every(isPlanned),
+        story: lead.story || "",
+        cut: lead.cut || (lead.kind === "long" ? "long form" : ""),
         platforms,
         links,
       }
@@ -741,6 +790,7 @@
       n > 1 ? "stack" : "",
       n > 2 ? "three" : "",
       it.scheduled ? "scheduled" : "",
+      it.planned ? "planned" : "",
       it.thumb ? "" : "noimg",
     ].join(" ")
     return (
@@ -754,6 +804,13 @@
       '<span class="face">' +
       (it.thumb
         ? '<img src="' + esc(it.thumb) + '" alt="" loading="lazy">'
+        : "") +
+      (it.planned
+        ? '<span class="plabel"><b>' +
+          esc(it.story) +
+          "</b><i>" +
+          esc(it.cut) +
+          "</i></span>"
         : "") +
       "</span>" +
       badges(it) +
@@ -907,12 +964,14 @@
             ? (it.kind === "short" ? "YouTube Shorts" : "YouTube") +
               (p.ru ? " RU" : "")
             : p.label
-        const note = l.scheduled
-          ? "Scheduled " + (l.time || "")
-          : l.url
-            ? "Open ↗"
-            : "No link yet"
-        return l.url && !l.scheduled
+        const note = l.planned
+          ? "Planned " + (l.time || "")
+          : l.scheduled
+            ? "Scheduled " + (l.time || "") + (l.url ? " ↗" : "")
+            : l.url
+              ? "Open ↗"
+              : "No link yet"
+        return l.url
           ? '<a class="pbtn" href="' +
               esc(l.url) +
               '" target="_blank" rel="noopener">' +
@@ -968,7 +1027,11 @@
   function showTip(el) {
     const it = items[+el.dataset.i]
     if (!it) return
-    const when = it.time ? (it.scheduled ? "Scheduled " : "") + it.time : ""
+    const when = it.planned
+      ? "Planned" + (it.time ? " " + it.time : "")
+      : it.time
+        ? (it.scheduled ? "Scheduled " : "") + it.time
+        : ""
     tip.innerHTML =
       "<b>" +
       esc(it.title) +
@@ -997,7 +1060,6 @@
   renderFilters()
   render()
   document.getElementById("status").textContent = "Loading posts…"
-
   ;(async () => {
     const db = await window.claude?.use?.("db")
     const status = document.getElementById("status")
