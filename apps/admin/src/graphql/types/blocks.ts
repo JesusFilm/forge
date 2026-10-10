@@ -88,6 +88,9 @@ type MediaCollectionItem = AuthoredMediaCollectionItem & {
   // Mirrors PREVIEW_LOCALE_KEY in services/experience-preview-blocks.ts, which
   // a type position cannot import. Rename both together.
   previewLocale?: string
+  episodeCount?: number
+  audioLanguageCount?: number
+  subtitleLanguageCount?: number
 }
 type NavigationCarouselBlock = z.infer<typeof NavigationCarouselBlockSchema>
 type NavigationCarouselItem = z.infer<typeof NavigationCarouselItemSchema>
@@ -499,6 +502,11 @@ MediaCollectionItemRef.implement({
       },
     }),
     videoId: t.exposeString("videoId", { nullable: true }),
+    episodeCount: t.exposeInt("episodeCount", { nullable: true }),
+    audioLanguageCount: t.exposeInt("audioLanguageCount", { nullable: true }),
+    subtitleLanguageCount: t.exposeInt("subtitleLanguageCount", {
+      nullable: true,
+    }),
     languageId: t.exposeString("languageId", { nullable: true }),
     languageSlug: t.string({
       nullable: true,
@@ -915,7 +923,42 @@ MediaCollectionBlockRef.implement({
     items: t.field({
       type: [MediaCollectionItemRef],
       nullable: false,
-      resolve: (row) => row.items,
+      resolve: async (row, _args, ctx) => {
+        const items = row.items ?? []
+        const videoIds = Array.from(
+          new Set(
+            items
+              .map((item) => optionalString(item?.videoId))
+              .filter((videoId): videoId is string => videoId != null),
+          ),
+        )
+        if (videoIds.length === 0) return items
+
+        const metadata = await Promise.all(
+          videoIds.map((videoId) =>
+            ctx.loaders.watchCollectionCardMetadataByVideoId.load(videoId),
+          ),
+        )
+        const metadataByVideoId = new Map(
+          metadata
+            .filter((item) => item != null)
+            .map((item) => [item.videoId, item]),
+        )
+
+        return items.map((item) => {
+          if (!item) return item
+          const videoId = optionalString(item.videoId)
+          if (!videoId) return item
+          const cardMetadata = metadataByVideoId.get(videoId)
+          if (!cardMetadata) return item
+          return {
+            ...item,
+            episodeCount: cardMetadata.episodeCount,
+            audioLanguageCount: cardMetadata.audioLanguageCount,
+            subtitleLanguageCount: cardMetadata.subtitleLanguageCount,
+          }
+        })
+      },
     }),
   }),
 })

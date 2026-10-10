@@ -14,6 +14,10 @@ import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { WatchHomeBodyZone } from "@/components/home/WatchHomeBodyZone"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
+import {
+  WatchContinueWatchingRail,
+  type WatchContinueWatchingItem,
+} from "@/components/home/WatchContinueWatchingRail"
 import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { createInitialDynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-cache-signature"
@@ -24,6 +28,50 @@ import {
 } from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
 import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
+import { enrichMediaItem } from "@/lib/enrichment"
+
+function collectWatchHomeResumeItems(
+  blocks: readonly Section[],
+): WatchContinueWatchingItem[] {
+  const items = new Map<string, WatchContinueWatchingItem>()
+
+  const visit = (block: unknown) => {
+    if (typeof block !== "object" || block == null) return
+    const candidate = block as {
+      readonly __typename?: string | null
+      readonly items?: readonly unknown[] | null
+      readonly content?: readonly unknown[] | null
+      readonly sectionContent?: readonly unknown[] | null
+    }
+
+    if (
+      candidate.__typename === "MediaCollectionBlock" &&
+      Array.isArray(candidate.items)
+    ) {
+      for (const rawItem of candidate.items) {
+        if (typeof rawItem !== "object" || rawItem == null) continue
+        const item = enrichMediaItem(
+          rawItem as Parameters<typeof enrichMediaItem>[0],
+        )
+        if (!item.id || !item.title || !item.videoSlug) continue
+        items.set(item.id, {
+          videoId: item.id,
+          title: item.title,
+          videoSlug: item.videoSlug,
+          languageSlug: item.languageSlug,
+          imageUrl: item.imageUrl,
+        })
+      }
+    }
+
+    for (const child of [candidate.content, candidate.sectionContent]) {
+      if (Array.isArray(child)) child.forEach(visit)
+    }
+  }
+
+  blocks.forEach(visit)
+  return [...items.values()]
+}
 
 type WatchHomeExperiencePageProps = {
   heroModel: WatchHomeModel
@@ -150,6 +198,7 @@ export function WatchHomeExperiencePage({
   const t = useTranslations("WatchHome")
   const backdrop = findBackdropImage(heroModel)
   const normalized = normalizeAuthoredPageHeadings(blocks)
+  const continueWatchingItems = collectWatchHomeResumeItems(normalized.blocks)
   const hasHeroBlock = normalized.blocks.some(isWatchHomeHeroBlock)
   // The intro is sticky and the body zone scrolls over it, so the carousel has
   // to render OUTSIDE that zone. An authored hero block renders the very same
@@ -339,6 +388,10 @@ export function WatchHomeExperiencePage({
             />
           ) : null}
           <WatchHomeBodyZone>
+            <WatchContinueWatchingRail
+              items={continueWatchingItems}
+              fallbackLanguageSlug={languageSlug}
+            />
             {heroAboveBodyZone ? compatibilityCategoryRail : null}
             {bodyZoneBlocks.map((block, index) =>
               // Keep the original index so a block without a `sectionKey`

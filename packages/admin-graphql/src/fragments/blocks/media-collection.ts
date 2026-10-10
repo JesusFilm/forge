@@ -37,6 +37,9 @@ export const adminMediaCollectionFragment = adminGraphql(
       backgroundColor
       items {
         videoId
+        episodeCount
+        audioLanguageCount
+        subtitleLanguageCount
         languageId
         languageSlug
         coreId

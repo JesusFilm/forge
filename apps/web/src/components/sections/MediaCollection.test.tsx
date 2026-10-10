@@ -129,6 +129,10 @@ function makeRouteVideo(videoSlug: string): RouteVideo {
       videoSlug,
       muxPlaybackId: "mux-route-child",
       languageSlug: null,
+      durationSeconds: null,
+      episodeCount: null,
+      audioLanguageCount: null,
+      subtitleLanguageCount: null,
     },
   ]
   return {
@@ -270,6 +274,45 @@ describe("MediaCollection VideoCard href", () => {
     expect(title?.className).not.toContain("font-bold")
     expect(eyebrow?.className).toContain("tracking-eyebrow")
     expect(eyebrow?.className).not.toContain("tracking-wider")
+  })
+
+  it("renders runtime, episode count, language count, and captions metadata", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            itemsSource: "manual",
+            items: [
+              makeManualItem({
+                videoDub: { duration: 540, muxVideo: null },
+                episodeCount: 8,
+                audioLanguageCount: 12,
+                subtitleLanguageCount: 4,
+              }),
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="media-collection-card-runtime"]')
+        ?.textContent,
+    ).toBe("9:00")
+    expect(
+      container.querySelector(
+        '[data-testid="media-collection-card-episode-count"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelector(
+        '[data-testid="media-collection-card-language-count"]',
+      ),
+    ).not.toBeNull()
+    expect(
+      container.querySelector('[data-testid="media-collection-card-captions"]')
+        ?.textContent,
+    ).toBe("CC")
   })
 
   it("links manual items with the resolved video dub language", () => {

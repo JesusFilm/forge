@@ -550,6 +550,44 @@ describe("MediaCollectionItem videoSlug resolver", () => {
   })
 })
 
+describe("MediaCollectionBlock item metadata projection", () => {
+  it("batches linked video ids and attaches episode and language counts", async () => {
+    const loadMetadata = vi.fn().mockResolvedValue({
+      videoId: "video-1",
+      episodeCount: 8,
+      audioLanguageCount: 12,
+      subtitleLanguageCount: 4,
+    })
+    const items = [
+      { videoId: "video-1", titleOverride: "Series" },
+      { videoId: null, titleOverride: "Authored" },
+    ]
+
+    const result = await fieldResolver("MediaCollectionBlock", "items")(
+      { items },
+      {},
+      {
+        loaders: {
+          watchCollectionCardMetadataByVideoId: { load: loadMetadata },
+        },
+      },
+      fakeInfo,
+    )
+
+    expect(loadMetadata).toHaveBeenCalledWith("video-1")
+    expect(result).toEqual([
+      {
+        videoId: "video-1",
+        titleOverride: "Series",
+        episodeCount: 8,
+        audioLanguageCount: 12,
+        subtitleLanguageCount: 4,
+      },
+      { videoId: null, titleOverride: "Authored" },
+    ])
+  })
+})
+
 describe("MediaCollectionItem video image resolver", () => {
   const scheduleBlurGeneration = vi.mocked(getOrScheduleVideoImageBlurDataUrl)
 

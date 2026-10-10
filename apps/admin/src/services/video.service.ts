@@ -189,6 +189,13 @@ export type WatchCollectionLanguageCounts = {
   subtitleLanguageCount: number
 }
 
+export type WatchCollectionCardMetadata = {
+  videoId: string
+  episodeCount: number
+  audioLanguageCount: number
+  subtitleLanguageCount: number
+}
+
 export type WatchLanguageInventoryCounts = {
   audioCollections: number
   audioVideos: number
@@ -2614,6 +2621,116 @@ export class VideoService {
     }))
   }
 
+  async getWatchCollectionCardMetadataByVideoIds({
+    videoIds,
+    user,
+  }: {
+    videoIds: readonly string[]
+    user: Principal | null
+  }): Promise<WatchCollectionCardMetadata[]> {
+    const normalized = [...new Set(videoIds.filter(Boolean))].slice(0, 400)
+    if (normalized.length === 0) return []
+
+    const childVisibility = isEditorOrAdmin(user)
+      ? Prisma.sql``
+      : Prisma.sql`AND NOT ('watch' = ANY(child.restrict_view_platforms))
+          AND EXISTS (
+            SELECT 1
+            FROM video_locale child_locale
+            WHERE child_locale.video_id = child.id
+              AND child_locale.deleted_at IS NULL
+              AND child_locale.status = 'published'
+          )`
+    const rows = await this.prisma.$transaction(
+      async (tx) => {
+        await tx.$executeRawUnsafe(
+          WATCH_COLLECTION_LANGUAGE_COUNTS_STATEMENT_TIMEOUT_SQL,
+        )
+        return tx.$queryRaw<WatchCollectionCardMetadataRow[]>`
+          WITH requested AS (
+            SELECT id FROM video
+            WHERE id = ANY(${normalized}::text[])
+              AND deleted_at IS NULL
+          ), visible_child AS MATERIALIZED (
+            SELECT requested.id AS "videoId", child.id AS "childId"
+            FROM requested
+            JOIN video_relation relation ON relation.parent_id = requested.id
+            JOIN video child ON child.id = relation.child_id
+            WHERE child.deleted_at IS NULL
+              ${childVisibility}
+          ), episode AS (
+            SELECT "videoId", COUNT(DISTINCT "childId")::int AS "count"
+            FROM visible_child GROUP BY "videoId"
+          ), audio AS (
+            SELECT visible_child."videoId",
+              COUNT(DISTINCT dub.language_id)::int AS "count"
+            FROM visible_child
+            JOIN video_dub dub ON dub.video_id = visible_child."childId"
+              AND dub.deleted_at IS NULL AND dub.published = TRUE
+              AND dub.hls IS NOT NULL AND dub.language_id IS NOT NULL
+            JOIN language dub_language ON dub_language.id = dub.language_id
+              AND dub_language.slug IS NOT NULL AND dub_language.deleted_at IS NULL
+            GROUP BY visible_child."videoId"
+          ), subtitle AS (
+            SELECT visible_child."videoId",
+              COUNT(DISTINCT subtitle.language_id)::int AS "count"
+            FROM visible_child
+            JOIN video_subtitle subtitle ON subtitle.video_id = visible_child."childId"
+              AND subtitle.deleted_at IS NULL AND subtitle.language_id IS NOT NULL
+              AND NULLIF(BTRIM(subtitle.vtt_src), '') IS NOT NULL
+            JOIN language subtitle_language ON subtitle_language.id = subtitle.language_id
+              AND subtitle_language.slug IS NOT NULL AND subtitle_language.deleted_at IS NULL
+            GROUP BY visible_child."videoId"
+          ), direct_audio AS (
+            SELECT dub.video_id AS "videoId",
+              COUNT(DISTINCT dub.language_id)::int AS "count"
+            FROM video_dub dub
+            JOIN requested ON requested.id = dub.video_id
+            JOIN language dub_language ON dub_language.id = dub.language_id
+              AND dub_language.slug IS NOT NULL AND dub_language.deleted_at IS NULL
+            WHERE dub.deleted_at IS NULL AND dub.published = TRUE
+              AND dub.hls IS NOT NULL AND dub.language_id IS NOT NULL
+            GROUP BY dub.video_id
+          ), direct_subtitle AS (
+            SELECT subtitle.video_id AS "videoId",
+              COUNT(DISTINCT subtitle.language_id)::int AS "count"
+            FROM video_subtitle subtitle
+            JOIN requested ON requested.id = subtitle.video_id
+            JOIN language subtitle_language ON subtitle_language.id = subtitle.language_id
+              AND subtitle_language.slug IS NOT NULL AND subtitle_language.deleted_at IS NULL
+            WHERE subtitle.deleted_at IS NULL AND subtitle.language_id IS NOT NULL
+              AND NULLIF(BTRIM(subtitle.vtt_src), '') IS NOT NULL
+            GROUP BY subtitle.video_id
+          )
+          SELECT requested.id AS "videoId",
+            COALESCE(episode."count", 0) AS "episodeCount",
+            CASE WHEN COALESCE(episode."count", 0) > 0
+              THEN COALESCE(audio."count", 0)
+              ELSE COALESCE(direct_audio."count", 0)
+            END AS "audioLanguageCount",
+            CASE WHEN COALESCE(episode."count", 0) > 0
+              THEN COALESCE(subtitle."count", 0)
+              ELSE COALESCE(direct_subtitle."count", 0)
+            END AS "subtitleLanguageCount"
+          FROM requested
+          LEFT JOIN episode ON episode."videoId" = requested.id
+          LEFT JOIN audio ON audio."videoId" = requested.id
+          LEFT JOIN subtitle ON subtitle."videoId" = requested.id
+          LEFT JOIN direct_audio ON direct_audio."videoId" = requested.id
+          LEFT JOIN direct_subtitle ON direct_subtitle."videoId" = requested.id
+        `
+      },
+      { timeout: WATCH_COLLECTION_LANGUAGE_COUNTS_TRANSACTION_TIMEOUT_MS },
+    )
+
+    return rows.map((row) => ({
+      videoId: row.videoId,
+      episodeCount: row.episodeCount ?? 0,
+      audioLanguageCount: row.audioLanguageCount ?? 0,
+      subtitleLanguageCount: row.subtitleLanguageCount ?? 0,
+    }))
+  }
+
   async getWatchLanguageInventory({
     languageSlug,
     limit,
@@ -3499,6 +3616,13 @@ type WatchLanguageInventoryBucket =
 
 type WatchCollectionLanguageCountsRow = {
   slug: string
+  audioLanguageCount: number | null
+  subtitleLanguageCount: number | null
+}
+
+type WatchCollectionCardMetadataRow = {
+  videoId: string
+  episodeCount: number | null
   audioLanguageCount: number | null
   subtitleLanguageCount: number | null
 }

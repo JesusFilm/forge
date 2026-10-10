@@ -111,12 +111,17 @@ export async function createContext({
       }
     }
   }
+  const services = createServices(prisma)
+  const loaders = createLoaders(prisma, (videoIds) =>
+    services.video.getWatchCollectionCardMetadataByVideoIds({ videoIds, user }),
+  )
+
   return {
     user,
     request,
     prisma,
     watchHomeCategoryRailRolloutCompleted,
-    loaders: createLoaders(prisma),
-    services: createServices(prisma),
+    loaders,
+    services,
   }
 }
