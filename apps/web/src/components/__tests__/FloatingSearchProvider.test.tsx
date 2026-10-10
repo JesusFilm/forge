@@ -5050,6 +5050,49 @@ describe("FloatingSearchProvider — search language selection", () => {
     expect(document.body.textContent).toContain("Japanese Result")
   })
 
+  it("shows Admin's inferred Russian language for a Cyrillic query", async () => {
+    mockedGetSearchLanguageOptions.mockResolvedValue({
+      ok: true,
+      options: [englishSearchLanguage, russianSearchLanguage],
+      countrySuggestion: null,
+      recommendedLanguage: englishSearchLanguage,
+      countryCode: null,
+      countryName: null,
+    })
+    mockedRunSearch.mockResolvedValueOnce(
+      searchResult("watch-search", {
+        results: [makeSearchResult("russian-jesus", "ИИСУС")],
+        query: "Иисус",
+        targetLanguageSlug: "russian",
+        resolvedLanguage: {
+          locale: "ru",
+          publicSlug: "russian",
+          englishName: "Russian",
+          source: "fallback",
+        },
+      }),
+    )
+
+    const input = await openSearchOverlay()
+    await submitSearch(input, "Иисус")
+
+    expect(mockedRunSearch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        languageContext: expect.objectContaining({ targetLanguageSlug: null }),
+        query: "Иисус",
+      }),
+    )
+    expect(
+      document.querySelector('[data-testid="search-language-context"]')
+        ?.textContent,
+    ).toBe("Searching in Russian")
+    expect(
+      document.querySelector('[data-testid="language-combobox-trigger"]')
+        ?.textContent,
+    ).toBe("Russian")
+    expect(document.body.textContent).toContain("ИИСУС")
+  })
+
   it("keeps an unavailable recovery card in the completed mixed result window", async () => {
     vi.useFakeTimers()
     mockedGetSearchLanguageOptions.mockResolvedValue({
