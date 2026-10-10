@@ -22,19 +22,20 @@ import {
   stripHtmlSuffix,
 } from "./url-shape"
 
-// Cache intent the proxy translates into a Cache-Control header. `long` is
-// reserved for permanent normalizations (trailing-slash strip, eventually
-// alias resolution after stable observation); `short` covers everything else.
-// Add `"no-store"` here when Phase 3 wires cookie-driven redirects through
-// canonicalize — they MUST NOT cache (user-state-dependent).
+// Cache intent the proxy translates into a Cache-Control header. `long` marks
+// a permanent normalization (308); `short` marks a temporary one (307). Every
+// rule here is a pure function of the path, which is what makes `long` safe to
+// share across visitors. A cookie- or header-driven redirect must never be
+// routed through canonicalize — it varies per visitor and MUST NOT cache.
 /**
  * Result of `canonicalizeWatchPath`:
  *
  * - `{ kind: "canonical" }` — input is already in canonical form (or is
  *   excluded by guards / reserved prefix / fast-path).
  * - `{ kind: "redirect", pathname, status, cache }` — emit `Location: <pathname>`
- *   with status (308 for trailing-slash-only, 307 otherwise) and the cache
- *   intent the proxy translates into a `Cache-Control` header.
+ *   with status (308 / `long` for permanent normalizations, 307 / `short` as
+ *   soon as Rule 5 contributes) and the cache intent the proxy translates into
+ *   a `Cache-Control` header.
  */
 export type CanonicalizeResult =
   | { kind: "canonical" }
@@ -55,8 +56,14 @@ const MAX_PATH_LEN = 2048
 // Literals that MUST NOT trigger Rule 5 (single-segment-duplicate).
 // `languages` is a 1-segment index; `whats-new` is the 1-segment Watch
 // product-update page; `search` is a deprecated inbound redirect into the
-// global search modal. None should become a synthetic `.html` watch URL.
-const ONE_SEGMENT_EXEMPT = new Set(["languages", "whats-new", "search"])
+// global search modal; `history` is the 1-segment watch-history page the proxy
+// rewrites directly. None should become a synthetic `.html` watch URL.
+const ONE_SEGMENT_EXEMPT = new Set([
+  "languages",
+  "whats-new",
+  "search",
+  "history",
+])
 const LOCALIZED_UTILITY_SEGMENTS = new Set(["videos", "languages", "history"])
 
 // Origin-invariance + injection guard. Any input that fails MUST short-circuit
@@ -74,20 +81,23 @@ const HTML_SUFFIX_LOWER = HTML_SUFFIX // ".html"
 const HTML_SUFFIX_REGEX_GI = /\.html(?=\/|$)/gi
 
 /**
- * Apply six legacy-URL normalization rules in a single deterministic pass.
+ * Apply the legacy-URL normalization rules in a single deterministic pass.
  * Returns a `CanonicalizeResult` the proxy translates into a redirect
  * response or a passthrough.
  *
  * Rules (in order):
- * 1. Trailing-slash strip → 308 / long cache.
- * 2. Lowercase `.HTML` → `.html` → 307 / short.
- * 3. Legacy 4-segment-shape episode rewrite → 307 / short.
+ * 1. Trailing-slash strip → 308 / long.
+ * 1.5. Legacy `/videos` index redirect → `/languages` → 308 / long.
+ * 2. Lowercase `.HTML` → `.html` → 308 / long.
+ * 3. Legacy 4-segment-shape episode rewrite → 308 / long.
  * 4. Per-segment `.html` append (segment-count-aware); language videos keep
- *    `/videos` bare → 307 / short.
- * 4.5. Strip `.html` from middle segment in 3-seg shape (episode-bare contract) → 307 / short.
- * 5. Legacy `/videos` index redirect → `/languages` → 307 / short.
- * 6. Single-segment-no-`.html` duplicate expansion → 307 / short.
- * 7. Language-slug alias resolution → 307 / short.
+ *    `/videos` bare → 308 / long.
+ * 4.5. Strip `.html` from middle segment in 3-seg shape (episode-bare contract) → 308 / long.
+ * 5. Single-segment-no-`.html` duplicate expansion → 307 / short. The one
+ *    temporary rule: its synthesized target 404s for real content slugs and
+ *    is due to be replaced (FGE-203 / W-070), so it must not be cached or
+ *    consolidated by crawlers. Any redirect it contributes to is temporary.
+ * 6. Language-slug alias resolution → 308 / long.
  *
  * Termination guarantee: each rule is idempotent, applied at most once,
  * never re-enters the sequence. Therefore `canonicalize(canonicalize(x).pathname) === { kind: "canonical" }`.
@@ -119,31 +129,24 @@ export function canonicalizeWatchPath(
 
   // Run rules. Each is a pure function (path → path) that no-ops when input
   // doesn't match. After all rules, if path !== raw, emit ONE redirect with
-  // status and cache intent computed from which rules fired.
+  // status and cache intent computed from which rules fired: permanent
+  // unless a temporary rule (only Rule 5) took part.
   let path = raw
-  let onlyTrailingSlashChanged = true
+  let temporaryRuleFired = false
 
-  // Rule 1: trailing-slash strip → 308
+  // Rule 1: trailing-slash strip
   if (path !== "/" && path.endsWith("/")) {
     path = path.slice(0, -1)
   }
-  // (preserve onlyTrailingSlashChanged = true if only this fired)
 
   // Rule 1.5: legacy language index path. `/videos` used to be the public
   // language catalog entry; `/languages` is the canonical slug.
   if (path === "/videos") {
     path = "/languages"
-    onlyTrailingSlashChanged = false
   }
 
   // Rule 2: lowercase ".HTML" suffix (case-insensitive match → lowercase replace)
-  if (HTML_SUFFIX_REGEX_GI.test(path)) {
-    const lowered = path.replace(HTML_SUFFIX_REGEX_GI, HTML_SUFFIX_LOWER)
-    if (lowered !== path) {
-      path = lowered
-      onlyTrailingSlashChanged = false
-    }
-  }
+  path = path.replace(HTML_SUFFIX_REGEX_GI, HTML_SUFFIX_LOWER)
 
   // Rule 3: legacy 4-segment episode shape rewrite.
   // /{series}/{ep}.html/{lang}.html → /{series}.html/{ep}/{lang}.html
@@ -162,7 +165,6 @@ export function canonicalizeWatchPath(
         segs[2],
       ]
       path = `/${newSegs.join("/")}`
-      onlyTrailingSlashChanged = false
     }
   }
 
@@ -181,22 +183,14 @@ export function canonicalizeWatchPath(
             secondBare,
           ]
         : segs.map((s) => (hasHtmlSuffix(s) ? s : `${s}${HTML_SUFFIX_LOWER}`))
-      const candidate = `/${next.join("/")}`
-      if (candidate !== path) {
-        path = candidate
-        onlyTrailingSlashChanged = false
-      }
+      path = `/${next.join("/")}`
     } else if (segs.length === 3) {
       const next = [
         hasHtmlSuffix(segs[0]) ? segs[0] : `${segs[0]}${HTML_SUFFIX_LOWER}`,
         segs[1],
         hasHtmlSuffix(segs[2]) ? segs[2] : `${segs[2]}${HTML_SUFFIX_LOWER}`,
       ]
-      const candidate = `/${next.join("/")}`
-      if (candidate !== path) {
-        path = candidate
-        onlyTrailingSlashChanged = false
-      }
+      path = `/${next.join("/")}`
     }
   }
 
@@ -208,11 +202,7 @@ export function canonicalizeWatchPath(
     const segs = path.split("/").filter(Boolean)
     if (segs.length === 3 && hasHtmlSuffix(segs[1])) {
       const next = [segs[0], stripHtmlSuffix(segs[1]), segs[2]]
-      const candidate = `/${next.join("/")}`
-      if (candidate !== path) {
-        path = candidate
-        onlyTrailingSlashChanged = false
-      }
+      path = `/${next.join("/")}`
     }
   }
 
@@ -230,7 +220,7 @@ export function canonicalizeWatchPath(
       SAFE_SLUG_PATTERN.test(segs[0])
     ) {
       path = `/${segs[0]}${HTML_SUFFIX_LOWER}/${segs[0]}${HTML_SUFFIX_LOWER}`
-      onlyTrailingSlashChanged = false
+      temporaryRuleFired = true
     }
   }
 
@@ -250,7 +240,6 @@ export function canonicalizeWatchPath(
       if (canonical && canonical !== bare) {
         segs[localeIdx] = `${canonical}${HTML_SUFFIX_LOWER}`
         path = `/${segs.join("/")}`
-        onlyTrailingSlashChanged = false
       }
     }
   }
@@ -265,7 +254,7 @@ export function canonicalizeWatchPath(
   return {
     kind: "redirect",
     pathname: path,
-    status: onlyTrailingSlashChanged ? 308 : 307,
-    cache: onlyTrailingSlashChanged ? "long" : "short",
+    status: temporaryRuleFired ? 307 : 308,
+    cache: temporaryRuleFired ? "short" : "long",
   }
 }

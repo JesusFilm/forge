@@ -161,13 +161,33 @@ describe("Rule 1: trailing-slash strip → 308 with long cache", () => {
   })
 })
 
-describe("Rule 2: lowercase .HTML → .html → 307", () => {
+describe("Rule 1.5: legacy /videos index → /languages → 308", () => {
+  it("redirects legacy /videos to /languages", () => {
+    expect(canonical({ rawPathname: "/videos" })).toEqual({
+      kind: "redirect",
+      pathname: "/languages",
+      status: 308,
+      cache: "long",
+    })
+  })
+
+  it("keeps the move permanent when a trailing slash is also stripped", () => {
+    expect(canonical({ rawPathname: "/videos/" })).toEqual({
+      kind: "redirect",
+      pathname: "/languages",
+      status: 308,
+      cache: "long",
+    })
+  })
+})
+
+describe("Rule 2: lowercase .HTML → .html → 308", () => {
   it("lowercases uppercase suffix", () => {
     expect(canonical({ rawPathname: "/jesus.HTML/english.html" })).toEqual({
       kind: "redirect",
       pathname: "/jesus.html/english.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 
@@ -175,13 +195,13 @@ describe("Rule 2: lowercase .HTML → .html → 307", () => {
     expect(canonical({ rawPathname: "/jesus.HTML/english.HTML" })).toEqual({
       kind: "redirect",
       pathname: "/jesus.html/english.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 })
 
-describe("Rule 3: legacy 4-segment-shape episode rewrite → 307", () => {
+describe("Rule 3: legacy 4-segment-shape episode rewrite → 308", () => {
   it("rewrites /series/ep.html/lang.html → /series.html/ep/lang.html", () => {
     expect(
       canonical({
@@ -191,8 +211,8 @@ describe("Rule 3: legacy 4-segment-shape episode rewrite → 307", () => {
     ).toEqual({
       kind: "redirect",
       pathname: "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 
@@ -204,19 +224,19 @@ describe("Rule 3: legacy 4-segment-shape episode rewrite → 307", () => {
     ).toEqual({
       kind: "redirect",
       pathname: "/jesus.html/the-beginning/english.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 })
 
-describe("Rule 4: per-segment .html append → 307", () => {
+describe("Rule 4: per-segment .html append → 308", () => {
   it("appends .html on 2-segment missing both", () => {
     expect(canonical({ rawPathname: "/foo/bar" })).toEqual({
       kind: "redirect",
       pathname: "/foo.html/bar.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 
@@ -224,8 +244,8 @@ describe("Rule 4: per-segment .html append → 307", () => {
     expect(canonical({ rawPathname: "/jesus.html/english" })).toEqual({
       kind: "redirect",
       pathname: "/jesus.html/english.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 
@@ -235,16 +255,16 @@ describe("Rule 4: per-segment .html append → 307", () => {
     ).toEqual({
       kind: "redirect",
       pathname: "/spanish-latin-american.html/videos",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
     expect(
       canonical({ rawPathname: "/spanish-latin-american.html/videos.html" }),
     ).toEqual({
       kind: "redirect",
       pathname: "/spanish-latin-american.html/videos",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 
@@ -252,8 +272,8 @@ describe("Rule 4: per-segment .html append → 307", () => {
     expect(canonical({ rawPathname: "/jesus/the-beginning/english" })).toEqual({
       kind: "redirect",
       pathname: "/jesus.html/the-beginning/english.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 
@@ -291,15 +311,6 @@ describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
     })
   })
 
-  it("redirects legacy /videos to /languages", () => {
-    expect(canonical({ rawPathname: "/videos" })).toEqual({
-      kind: "redirect",
-      pathname: "/languages",
-      status: 307,
-      cache: "short",
-    })
-  })
-
   it("does NOT fire for /whats-new (exempt)", () => {
     expect(canonical({ rawPathname: "/whats-new" })).toEqual({
       kind: "canonical",
@@ -317,6 +328,19 @@ describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
     })
   })
 
+  it("does NOT fire for /history (exempt)", () => {
+    expect(canonical({ rawPathname: "/history" })).toEqual({
+      kind: "canonical",
+    })
+    // Without the exemption /history/ chained into a cacheable 308 that 404s.
+    expect(canonical({ rawPathname: "/history/" })).toEqual({
+      kind: "redirect",
+      pathname: "/history",
+      status: 308,
+      cache: "long",
+    })
+  })
+
   it("does NOT fire for deprecated /search", () => {
     expect(canonical({ rawPathname: "/search" })).toEqual({
       kind: "canonical",
@@ -330,7 +354,7 @@ describe("Rule 5: single-segment → duplicate-with-.html → 307", () => {
   })
 })
 
-describe("Rule 4.5: 3-segment episode-bare contract → 307", () => {
+describe("Rule 4.5: 3-segment episode-bare contract → 308", () => {
   // Production contract: in /{series}.html/{episode}/{lang}.html the episode
   // segment must be bare. Catch the case where all three arrive .html-suffixed.
 
@@ -343,8 +367,8 @@ describe("Rule 4.5: 3-segment episode-bare contract → 307", () => {
     ).toEqual({
       kind: "redirect",
       pathname: "/lumo-the-gospel-of-john.html/wedding-in-cana/english.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 
@@ -356,8 +380,8 @@ describe("Rule 4.5: 3-segment episode-bare contract → 307", () => {
     ).toEqual({
       kind: "redirect",
       pathname: "/jesus.html/the-beginning/spanish-castilian.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 
@@ -380,15 +404,15 @@ describe("Rule 4.5: 3-segment episode-bare contract → 307", () => {
   })
 })
 
-describe("Rule 6: language-slug alias → 307", () => {
+describe("Rule 6: language-slug alias → 308", () => {
   it("rewrites chinese-mandarin → mandarin-china in locale segment", () => {
     expect(
       canonical({ rawPathname: "/jesus.html/chinese-mandarin.html" }),
     ).toEqual({
       kind: "redirect",
       pathname: "/jesus.html/mandarin-china.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 
@@ -408,8 +432,8 @@ describe("Rule 6: language-slug alias → 307", () => {
       kind: "redirect",
       pathname:
         "/lumo-the-gospel-of-john.html/wedding-in-cana/mandarin-china.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 
@@ -423,8 +447,8 @@ describe("Rule 6: language-slug alias → 307", () => {
       ).toEqual({
         kind: "redirect",
         pathname: `/mandarin-china.html/${utility}`,
-        status: 307,
-        cache: "short",
+        status: 308,
+        cache: "long",
       })
     },
   )
@@ -438,17 +462,17 @@ describe("Rule 6: language-slug alias → 307", () => {
   })
 })
 
-describe("rule composition: any non-trailing-slash transform → 307", () => {
+describe("rule composition: permanent unless Rule 5 contributes", () => {
   // Per docs/research/jesusfilm-watch-url-patterns.md §3: production is
   // case-sensitive on the slug content but case-insensitive on the .html
   // suffix only. We mirror that — uppercase slugs are NOT lowercased.
 
-  it("/Jesus.HTML/ composes slash-strip + suffix-lowercase → 307", () => {
+  it("/Jesus.HTML/ composes slash-strip + suffix-lowercase → 308", () => {
     expect(canonical({ rawPathname: "/Jesus.HTML/" })).toEqual({
       kind: "redirect",
       pathname: "/Jesus.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 
@@ -456,8 +480,8 @@ describe("rule composition: any non-trailing-slash transform → 307", () => {
     expect(canonical({ rawPathname: "/Jesus.HTML/English" })).toEqual({
       kind: "redirect",
       pathname: "/Jesus.html/English.html",
-      status: 307,
-      cache: "short",
+      status: 308,
+      cache: "long",
     })
   })
 
@@ -465,9 +489,56 @@ describe("rule composition: any non-trailing-slash transform → 307", () => {
     expect(canonical({ rawPathname: "/Jesus.HTML/english" })).toEqual({
       kind: "redirect",
       pathname: "/Jesus.html/english.html",
+      status: 308,
+      cache: "long",
+    })
+  })
+})
+
+describe("rule composition: Rule 5 keeps the whole redirect temporary", () => {
+  // Rule 5's synthesized `/{seg}.html/{seg}.html` target 404s for real
+  // content slugs (FGE-203 / W-070). A permanent rule firing alongside it
+  // must not promote the hop to a cacheable 308.
+
+  it("/foo/ composes slash-strip + Rule 5 → 307 / short", () => {
+    expect(canonical({ rawPathname: "/foo/" })).toEqual({
+      kind: "redirect",
+      pathname: "/foo.html/foo.html",
       status: 307,
       cache: "short",
     })
+  })
+
+  it("/chinese-mandarin composes Rule 5 + Rule 6 alias → 307 / short", () => {
+    expect(canonical({ rawPathname: "/chinese-mandarin" })).toEqual({
+      kind: "redirect",
+      pathname: "/chinese-mandarin.html/mandarin-china.html",
+      status: 307,
+      cache: "short",
+    })
+  })
+
+  it("status and cache intent never disagree", () => {
+    const inputs = [
+      "/jesus.html/",
+      "/videos",
+      "/jesus.HTML",
+      "/jesus/the-beginning.html/english.html",
+      "/jesus/english",
+      "/jesus.html/the-beginning.html/english.html",
+      "/jesus.html/chinese-mandarin.html",
+      "/foo",
+      "/foo/",
+      "/chinese-mandarin",
+    ]
+    for (const raw of inputs) {
+      const result = canonical({ rawPathname: raw })
+      expect(result.kind).toBe("redirect")
+      if (result.kind !== "redirect") continue
+      expect([result.status, result.cache]).toEqual(
+        result.status === 308 ? [308, "long"] : [307, "short"],
+      )
+    }
   })
 })
 
@@ -507,6 +578,9 @@ describe("idempotence: canonicalize(canonicalize(x).pathname) === canonical", ()
     "/lumo-the-gospel-of-john/wedding-in-cana.html/english.html",
     "/jesus/the-beginning/english",
     "/lumo.html/cana/chinese-mandarin.html",
+    "/history/",
+    "/videos/",
+    "/chinese-mandarin",
   ]
 
   for (const input of adversarialInputs) {

@@ -103,7 +103,7 @@ Adopt a **hybrid route + middleware** model:
 3. **Centralized URL builder.** New `apps/web/src/lib/routes.ts` is the single source of truth for emitting watch URLs. Every href emission site replaced. One `as Route` cast at the builder boundary contains the `typedRoutes: true` blast radius.
 4. **Middleware (`proxy.ts`) owns normalization.** All six normalization rules run before the route handler. Rule composition is sequenced as a single transformation that produces ONE terminal 307 (no chained redirects). Reserved subtrees (`/api/*`, `/_next/*`, `/assets/*`) are excluded at the matcher.
 5. **Alias table is static + admin-validated.** Ship a hand-curated alias map in `apps/web/src/lib/language-aliases.ts` for known legacy slugs. CI validation cross-references against admin's `Language.slug` corpus and fails if any alias points to a non-existent canonical.
-6. **Cache discipline on 30x responses.** Every normalization 307/308 emits `Cache-Control: private, max-age=0` for at least the first 30 days post-cutover to keep Cloudflare from caching mis-targeted redirects.
+6. **Cache discipline on 30x responses.** Every normalization 307/308 emits `Cache-Control: private, max-age=0` for at least the first 30 days post-cutover to keep Cloudflare from caching mis-targeted redirects. **Superseded 2026-10-08 by feat-633 (FGE-198 / W-069):** permanent canonicalize normalizations (rules 1, 1.5, 2, 3, 4, 4.5 and 6) now return `308` with `Cache-Control: public, max-age=3600, s-maxage=86400`, hardcoded rather than behind an env flag; only Rule 5 stays a `private, max-age=0` 307, and non-canonicalize redirects keep `private, max-age=0`.
 7. **Probe harness gates the deploy.** `apps/web/scripts/probe-watch-urls.ts` runs the §5 URL matrix from the research doc against (live production, rewrite preview) and reports parity. Numeric pass gate before flipping DNS.
 
 ## Technical Approach
@@ -1056,11 +1056,10 @@ export const metadata = {
 
 **Best practices:**
 
-- Send `Cache-Control: private, max-age=0, must-revalidate` on every 30x during cutover (first 30 days). Cloudflare's default cache behavior doc confirms the edge does NOT cache responses with `private`, `no-store`, `no-cache`, or `max-age=0`.
-- After 30 stable days, flip env var to relax to `Cache-Control: public, max-age=3600, s-maxage=86400` on stable normalization redirects (trailing-slash, lowercase, alias). The cookie-driven redirect MUST stay `no-store` permanently.
+- The original cutover recommendation was `Cache-Control: private, max-age=0, must-revalidate` on every 30x for the first 30 days. **Superseded for permanent canonicalize redirects on 2026-10-08 by feat-633 (FGE-198 / W-069):** rules 1, 1.5, 2, 3, 4, 4.5 and 6 now return `308` with `Cache-Control: public, max-age=3600, s-maxage=86400`. Rule 5 and non-canonicalize redirects remain `private, max-age=0`; cookie-driven redirects must never be cached.
+- The original plan proposed an env-var switch to relax cache headers after 30 stable days. **Superseded by feat-633:** the permanent canonicalize tier is enabled directly with a bounded one-day shared lifetime.
 - **Verify Cloudflare's "Browser Cache TTL" zone setting** before launch. If set to a value other than "Respect Existing Headers", it silently overrides origin `Cache-Control` on 30x and breaks the cutover discipline. (Multiple community reports of this footgun.)
 - Wire the Cloudflare cache-purge API by URL prefix into the rollback runbook (see `deployment §6`). Single-URL purge first, prefix purge only if > 10 slugs affected, nuclear `purge_everything` is last resort and rate-limited.
-- Tier the cache lifetime: stable normalizations (trailing-slash, lowercase, legacy-episode shape, alias) get `max-age=3600` after 30-day window; cookie-pref redirect stays `no-store` (it's user-state-dependent).
 
 **Anti-patterns:**
 
