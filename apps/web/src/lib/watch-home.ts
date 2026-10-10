@@ -671,8 +671,8 @@ export function cardToCarouselSlide(
       card.imageUrl ||
       null,
     thumbnailUrl:
+      card.imageUrl?.trim() ||
       resolveMuxFrameThumbnailUrl(card.playbackId) ||
-      card.imageUrl ||
       resolveMuxHeroPosterUrlAtMaxWidth(card.playbackId),
     imageAlt: card.imageAlt,
     src: card.hls,

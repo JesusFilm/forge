@@ -194,8 +194,8 @@ export function watchHomeHeroSlidesToTvCarouselSlides(
         href: slide.href,
         posterUrl,
         thumbnailUrl:
+          slide.imageUrl?.trim() ||
           resolveMuxFrameThumbnailUrl(slide.playbackId) ||
-          slide.imageUrl ||
           posterUrl,
         imageAlt: slide.imageAlt,
         src: slide.hls ?? muxStreamUrl(slide.playbackId),

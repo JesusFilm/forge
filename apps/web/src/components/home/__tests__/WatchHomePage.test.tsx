@@ -3323,13 +3323,23 @@ describe("WatchHomePage", () => {
     expect(video.getAttribute("poster")).toBe(poster)
   })
 
-  it("uses the warm landscape Mux derivative for circular timeline thumbnails", () => {
+  it("preserves authored artwork for circular timeline thumbnails", () => {
     const [slide] = watchHomeHeroSlidesToTvCarouselSlides([
       { ...makeCard(), eyebrow: "Featured" },
     ])
 
-    expect(slide?.thumbnailUrl).toBe(resolveMuxFrameThumbnailUrl("mux-1"))
+    expect(slide?.thumbnailUrl).toBe(makeCard().imageUrl)
   })
+
+  it.each([null, "", "   "])(
+    "uses the pinned timeline frame when authored art is absent (%j)",
+    (imageUrl) => {
+      const [slide] = watchHomeHeroSlidesToTvCarouselSlides([
+        { ...makeCard(), eyebrow: "Featured", imageUrl },
+      ])
+      expect(slide?.thumbnailUrl).toBe(resolveMuxFrameThumbnailUrl("mux-1"))
+    },
+  )
 
   it.each([
     [

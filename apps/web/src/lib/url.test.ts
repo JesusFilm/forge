@@ -4,19 +4,12 @@ import {
   BLURRED_BACKDROP_MAX_WIDTH,
   resolveBlurredBackdropUrl,
   resolveMuxFrameThumbnailUrl,
-  resolveMuxPortraitThumbnailUrl,
 } from "./url"
 
 describe("Mux Watch thumbnails", () => {
   it("requests the warm landscape frame derivative for compact timeline thumbnails", () => {
     expect(resolveMuxFrameThumbnailUrl("playback-id")).toBe(
       "https://image.mux.com/playback-id/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
-    )
-  })
-
-  it("requests portrait smartcrop derivatives for vertical Watch surfaces", () => {
-    expect(resolveMuxPortraitThumbnailUrl("playback-id")).toBe(
-      "https://image.mux.com/playback-id/thumbnail.jpg?width=448&height=672&fit_mode=smartcrop&time=2",
     )
   })
 })

@@ -34,7 +34,7 @@ import { resolveMediaImageUrl } from "@/lib/media-image-url"
 import { hexToRgb, readableScrimRgb } from "@/lib/readable-scrim-color"
 import {
   resolveMuxAnimatedPreviewUrl,
-  resolveMuxPortraitThumbnailUrl,
+  resolveMuxFrameThumbnailUrl,
 } from "@/lib/url"
 import { cn } from "@/lib/utils"
 import { normalizeWatchRootHref } from "@/lib/watch-paths"
@@ -844,13 +844,15 @@ function VideoCard({
         onHover?.()
       }
     : undefined
-  const authoredImageSrc = resolveMediaImageUrl(mediaItemDisplayImageUrl(item))
+  const authoredImageSrc = resolveMediaImageUrl(
+    mediaItemDisplayImageUrl(item)?.trim() ?? null,
+  )
   const muxPreviewUrl = resolveMuxAnimatedPreviewUrl(item.muxPlaybackId)
   const isVertical = orientation === "vertical"
-  const portraitMuxImageSrc = isVertical
-    ? resolveMuxPortraitThumbnailUrl(item.muxPlaybackId)
+  const muxFrameImageSrc = isVertical
+    ? resolveMuxFrameThumbnailUrl(item.muxPlaybackId)
     : null
-  const imageSrc = authoredImageSrc ?? portraitMuxImageSrc
+  const imageSrc = authoredImageSrc ?? muxFrameImageSrc
   const blurDataUrl = authoredImageSrc
     ? (item.blurDataUrl ?? undefined)
     : undefined

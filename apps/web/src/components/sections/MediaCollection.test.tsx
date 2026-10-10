@@ -657,13 +657,71 @@ describe("MediaCollection VideoCard href", () => {
     )
     expect(image?.getAttribute("src")).toContain(
       encodeURIComponent(
-        "https://image.mux.com/mux-route-child/thumbnail.jpg?width=448&height=672&fit_mode=smartcrop&time=2",
+        "https://image.mux.com/mux-route-child/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
       ),
     )
     expect(image?.getAttribute("sizes")).toContain("46vw")
   })
 
-  it("keeps authored art ahead of a vertical Mux crop", () => {
+  it.each([null, "", "   "])(
+    "uses the pinned frame for absent vertical artwork (%j)",
+    (imageUrl) => {
+      act(() => {
+        root.render(
+          <MediaCollection
+            data={makeData({
+              mediaCollectionVariant: "grid",
+              thumbnailOrientation: "vertical",
+            })}
+            routeVideo={{
+              ...makeRouteVideo("the-gospel-of-john"),
+              relatedItems: [
+                {
+                  ...makeRouteVideo("the-gospel-of-john").relatedItems[0],
+                  imageUrl,
+                },
+              ],
+            }}
+          />,
+        )
+      })
+      const image = container.querySelector<HTMLImageElement>(
+        '[data-testid="VideoCard"] img',
+      )
+      expect(image?.getAttribute("src")).toContain(
+        encodeURIComponent(
+          "https://image.mux.com/mux-route-child/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+        ),
+      )
+      expect(image?.getAttribute("src")).not.toContain("height%3D672")
+    },
+  )
+
+  it("keeps the placeholder when vertical artwork and playback are absent", () => {
+    act(() => {
+      root.render(
+        <MediaCollection
+          data={makeData({
+            mediaCollectionVariant: "grid",
+            thumbnailOrientation: "vertical",
+          })}
+          routeVideo={{
+            ...makeRouteVideo("the-gospel-of-john"),
+            relatedItems: [
+              {
+                ...makeRouteVideo("the-gospel-of-john").relatedItems[0],
+                imageUrl: null,
+                muxPlaybackId: null,
+              },
+            ],
+          }}
+        />,
+      )
+    })
+    expect(container.querySelector('[data-testid="VideoCard"] img')).toBeNull()
+  })
+
+  it("keeps authored art ahead of a vertical Mux fallback", () => {
     const authoredUrl = "https://cdn.example/authored.jpg"
     act(() => {
       root.render(
