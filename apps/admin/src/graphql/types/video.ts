@@ -1586,6 +1586,13 @@ WatchRouteSnapshotRef.implement({
     playableDubLanguageCount: t.exposeInt("playableDubLanguageCount", {
       nullable: false,
     }),
+    requestedLanguage: t.field({
+      type: WatchRouteSnapshotLanguageRef,
+      nullable: true,
+      description:
+        "Active catalog language whose slug exactly matches the requested languageSlug, independent of whether this video has a playable dub in it. Null when no languageSlug was requested or no active language has that slug. Never taken from preferredVariant, which may be a fallback dub.",
+      resolve: (row) => row.requestedLanguage ?? null,
+    }),
     preferredVariant: t.field({
       type: WatchRouteSnapshotPreferredVariantRef,
       nullable: true,

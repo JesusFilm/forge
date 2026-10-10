@@ -6,6 +6,7 @@ import {
   resolveWatchLanguagePickerVariants,
   resolveWatchUnavailableRecoveryTarget,
 } from "./content"
+import type { SearchLanguageOption } from "./search-language"
 import { deriveLanguageDisplay } from "./language-display"
 import { tryAsContentSlug, tryAsLocaleSlug, watchVideoPath } from "./routes"
 import { logWatchServerEvent } from "./watch-observability"
@@ -23,6 +24,7 @@ export type WatchUnavailableRecoveryAudioOption = {
 }
 
 export type WatchUnavailableRecoveryResolution = {
+  requestedLanguage: SearchLanguageOption | null
   verifiedGap: boolean
   contentTitle: string | null
   targetImageUrl: string | null
@@ -53,6 +55,7 @@ function approvedArtworkUrl(value: unknown): string | null {
 
 export const EMPTY_WATCH_UNAVAILABLE_RECOVERY: WatchUnavailableRecoveryResolution =
   {
+    requestedLanguage: null,
     verifiedGap: false,
     contentTitle: null,
     targetImageUrl: null,
@@ -133,6 +136,10 @@ export async function resolveWatchUnavailableRecovery(
   audioOptions.sort((a, b) => a.name.localeCompare(b.name))
 
   return {
+    requestedLanguage:
+      target?.requestedLanguage?.publicSlug === requestedLanguageSlug
+        ? target.requestedLanguage
+        : null,
     verifiedGap: true,
     contentTitle: target?.contentTitle?.trim() || null,
     targetImageUrl: approvedArtworkUrl(target?.imageUrl),

@@ -132,6 +132,7 @@ if (
 }
 
 const resolvedRecovery: WatchUnavailableRecoveryResolution = {
+  requestedLanguage: null,
   verifiedGap: true,
   contentTitle: "耶稣受难日直播",
   targetImageUrl:
@@ -163,6 +164,7 @@ const resolvedRecovery: WatchUnavailableRecoveryResolution = {
 
 async function renderClient(
   initialResolution: WatchUnavailableRecoveryResolution,
+  requestedLanguageSlug = parsedPath.requestedLanguageSlug,
 ) {
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -178,7 +180,7 @@ async function renderClient(
           }}
         >
           <WatchUnavailableLanguageClient
-            parsed={parsedPath}
+            parsed={{ ...parsedPath, requestedLanguageSlug }}
             initialResolution={initialResolution}
           />
         </NextIntlClientProvider>
@@ -188,6 +190,49 @@ async function renderClient(
 }
 
 describe("WatchUnavailableLanguageClient", () => {
+  it("uses the exact provider variant name in the heading and inventory link", async () => {
+    await renderClient(
+      {
+        ...resolvedRecovery,
+        requestedLanguage: {
+          englishName: "French, African",
+          nativeName: null,
+          bcp47: "fra",
+          publicSlug: "french-african",
+          regionNames: [],
+        },
+      },
+      "french-african",
+    )
+    expect(container?.querySelector("h1")?.textContent).toContain(
+      "French, African",
+    )
+    const inventoryLink = container?.querySelector(
+      'a[href="/french-african.html/videos"]',
+    )
+    expect(inventoryLink?.textContent).toContain("French, African")
+  })
+
+  it("does not display stale metadata for a different selected language", async () => {
+    await renderClient(
+      {
+        ...resolvedRecovery,
+        requestedLanguage: {
+          englishName: "French, African",
+          nativeName: null,
+          bcp47: "fra",
+          publicSlug: "french-african",
+          regionNames: [],
+        },
+      },
+      "french",
+    )
+    expect(container?.querySelector("h1")?.textContent).not.toContain(
+      "French, African",
+    )
+    expect(container?.querySelector("h1")?.textContent).toContain("法语")
+  })
+
   it("renders final title, artwork, and audio choices on its first render", async () => {
     await renderClient(resolvedRecovery)
     const artwork = container?.querySelector(
@@ -263,6 +308,7 @@ describe("WatchUnavailableLanguageClient", () => {
 
   it("renders one stable fallback when recovery data is unavailable", async () => {
     await renderClient({
+      requestedLanguage: null,
       verifiedGap: false,
       contentTitle: null,
       targetImageUrl: null,

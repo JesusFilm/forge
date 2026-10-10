@@ -16,6 +16,7 @@ import {
   getWatchVideoDubDetailOperation,
   getWatchVideoLocalizedCopyBySlugOperation,
   getWatchVideoRouteSnapshotBySlugOperation,
+  getLegacyWatchVideoRouteSnapshotBySlugOperation,
   legacyWatchExperienceFragment,
   preCopyWatchExperienceFragment,
   watchExperienceFragment,
@@ -989,6 +990,11 @@ type AdminVideoRouteSnapshotParentRelation = {
 type AdminVideoRouteSnapshotRaw = AdminVideoRaw &
   AdminVideoRouteSnapshotAliases &
   AdminVideoRouteSnapshotStudyQuestionAliases & {
+    requestedLanguage?: {
+      slug?: string | null
+      name?: unknown
+      bcp47?: string | null
+    } | null
     preferredVariant?: AdminVideoVariantRaw | null
     playableDubLanguageCount?: number | null
     parents?: AdminVideoRouteSnapshotParentRelation[] | null
@@ -2068,6 +2074,28 @@ async function queryWatchLanguagePickerVariantsBySlug(
   return result.data?.videoBySlug ?? null
 }
 
+// Retry only the exact additive-field validation failure during independent
+// deploys. A brief process-local cooldown avoids repeated failed probes; all
+// other GraphQL/server failures preserve their existing error behavior.
+let requestedLanguageSnapshotRetryAfter = 0
+function isRequestedLanguageSchemaLag(result: {
+  error?: ErrorLike | null
+  errors?: unknown[]
+}): boolean {
+  const errors = graphqlErrorsFromResult(result)
+  return (
+    errors.length > 0 &&
+    errors.every(
+      (entry) =>
+        isValidationShaped(entry) &&
+        typeof entry.message === "string" &&
+        /^Cannot query field "requestedLanguage" on type "WatchRouteSnapshot"\./.test(
+          entry.message,
+        ),
+    )
+  )
+}
+
 async function queryWatchVideoRouteSnapshotBySlug(
   videoSlug: string,
   variables: {
@@ -2076,18 +2104,39 @@ async function queryWatchVideoRouteSnapshotBySlug(
     subtitleLanguageSlug?: string | null
   },
 ): Promise<AdminVideoRouteSnapshotRaw | null> {
-  const result = await client.query({
-    query: getWatchVideoRouteSnapshotBySlugOperation,
-    variables: {
-      locale: variables.locale,
-      languageSlug: variables.languageSlug,
-      ...(variables.subtitleLanguageSlug
-        ? { subtitleLanguageSlug: variables.subtitleLanguageSlug }
-        : {}),
-      videoSlug,
-    },
-    fetchPolicy: "no-cache",
-  })
+  const queryVariables = {
+    locale: variables.locale,
+    languageSlug: variables.languageSlug,
+    ...(variables.subtitleLanguageSlug
+      ? { subtitleLanguageSlug: variables.subtitleLanguageSlug }
+      : {}),
+    videoSlug,
+  }
+  const query = (legacy: boolean) =>
+    client.query({
+      query: legacy
+        ? getLegacyWatchVideoRouteSnapshotBySlugOperation
+        : getWatchVideoRouteSnapshotBySlugOperation,
+      variables: queryVariables,
+      fetchPolicy: "no-cache",
+    })
+  const useLegacy = Date.now() < requestedLanguageSnapshotRetryAfter
+  let result
+  try {
+    result = await query(useLegacy)
+  } catch (error) {
+    if (
+      useLegacy ||
+      !isRequestedLanguageSchemaLag({ error: error as ErrorLike })
+    )
+      throw error
+    requestedLanguageSnapshotRetryAfter = Date.now() + 60_000
+    result = await query(true)
+  }
+  if (!useLegacy && isRequestedLanguageSchemaLag(result)) {
+    requestedLanguageSnapshotRetryAfter = Date.now() + 60_000
+    result = await query(true)
+  }
 
   const error = graphqlError(
     result as { error?: ErrorLike; errors?: unknown[] },
@@ -2178,6 +2227,13 @@ export const resolveWatchLanguagePickerVariants = cache(
 )
 
 export type WatchUnavailableRecoveryTarget = {
+  requestedLanguage: {
+    publicSlug: string
+    englishName: string
+    nativeName: string | null
+    bcp47: string | null
+    regionNames: string[]
+  } | null
   contentTitle: string | null
   imageUrl: string | null
 }
@@ -2201,9 +2257,23 @@ export const resolveWatchUnavailableRecoveryTarget = cache(
     const video = normalizeAdminVideo(localizedCopy)
     if (!video) return null
 
+    const requestedLanguageName = pickLocalizedName(
+      snapshot.requestedLanguage?.name,
+    )?.trim()
     return {
       contentTitle: video.title,
       imageUrl: resolvePosterUrl(video.images[0]),
+      requestedLanguage:
+        snapshot.requestedLanguage?.slug === requestedLanguageSlug &&
+        requestedLanguageName
+          ? {
+              publicSlug: requestedLanguageSlug,
+              englishName: requestedLanguageName,
+              nativeName: null,
+              bcp47: snapshot.requestedLanguage.bcp47 ?? null,
+              regionNames: [],
+            }
+          : null,
     }
   },
 )
@@ -2288,6 +2358,11 @@ function mergeParentRelationsShellAndCopy(
 
 function mergeWatchVideoShellWithCopy(
   shell: AdminVideoRaw & {
+    requestedLanguage?: {
+      slug?: string | null
+      name?: unknown
+      bcp47?: string | null
+    } | null
     preferredVariant?: AdminVideoVariantRaw | null
     playableDubLanguageCount?: number | null
     variants?: AdminVideoVariantRaw[] | null
