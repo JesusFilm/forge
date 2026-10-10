@@ -1755,6 +1755,149 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
       expect(header.className).toContain("opacity-0")
     })
 
+    describe("input modality changing while the same control stays focused", () => {
+      // jsdom reports every programmatic focus as :focus-visible, so stand in
+      // for a click-focused control by reporting it as not focus-visible, as
+      // browsers do at focus time. The keydown/pointerdown re-classification
+      // under test does not depend on this stand-in. The real-browser
+      // transition (Chromium flips :focus-visible on the next key press) is
+      // recorded separately on the PR.
+      function mockClickFocusedControl() {
+        const originalMatches = Element.prototype.matches
+        vi.spyOn(Element.prototype, "matches").mockImplementation(function (
+          this: Element,
+          selector: string,
+        ) {
+          return selector === ":focus-visible"
+            ? false
+            : originalMatches.call(this, selector)
+        })
+      }
+
+      function pressKey(target: HTMLElement, key: string) {
+        act(() => {
+          target.dispatchEvent(
+            new KeyboardEvent("keydown", { key, bubbles: true }),
+          )
+        })
+      }
+
+      function focusLogoByClick() {
+        mockClickFocusedControl()
+        renderProvider()
+        const logo = document.querySelector(
+          '[data-testid="floating-header-logo"]',
+        ) as HTMLElement
+        act(() => dispatchChromeVisibility(false))
+        act(() => logo.focus())
+        // Chrome still fades a click-focused header.
+        act(() => dispatchChromeVisibility(false, 0))
+        expect(headerElement().className).toContain(HEADER_HIDDEN_CLASS)
+        act(() => dispatchChromeVisibility(true, 1))
+        return logo
+      }
+
+      it.each(["ArrowRight", " ", "Enter"])(
+        "pins the header once %j is pressed on a control that was focused by a click",
+        (key) => {
+          const logo = focusLogoByClick()
+          const header = headerElement()
+
+          pressKey(logo, key)
+          act(() => dispatchChromeVisibility(false, 0))
+
+          expect(document.activeElement).toBe(logo)
+          expectHeaderRevealed(header)
+        },
+      )
+
+      it("does not treat a bare modifier key as keyboard use", () => {
+        const logo = focusLogoByClick()
+        const header = headerElement()
+
+        pressKey(logo, "Shift")
+        act(() => dispatchChromeVisibility(false, 0))
+
+        expect(document.activeElement).toBe(logo)
+        expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+        expect(header.className).toContain("opacity-0")
+      })
+
+      it("lets the fade resume when a click lands on a keyboard-focused control, and re-pins on the next key", () => {
+        renderProvider()
+        const header = headerElement()
+        const logo = document.querySelector(
+          '[data-testid="floating-header-logo"]',
+        ) as HTMLElement
+        act(() => dispatchChromeVisibility(false))
+        act(() => logo.focus())
+        act(() => dispatchChromeVisibility(false, 0))
+        expectHeaderRevealed(header)
+
+        act(() => {
+          logo.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }))
+        })
+        act(() => dispatchChromeVisibility(false, 0))
+
+        expect(document.activeElement).toBe(logo)
+        expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+
+        pressKey(logo, "ArrowRight")
+        act(() => dispatchChromeVisibility(false, 0))
+
+        expectHeaderRevealed(header)
+      })
+
+      it("lets the fade resume after blur once keyboard use had pinned a click-focused control", () => {
+        const logo = focusLogoByClick()
+        const header = headerElement()
+        const outside = document.querySelector(
+          '[data-testid="outside-control"]',
+        ) as HTMLElement
+        pressKey(logo, "ArrowRight")
+        act(() => dispatchChromeVisibility(false, 0))
+        expectHeaderRevealed(header)
+
+        act(() => outside.focus())
+
+        expect(header.className).toContain(HEADER_HIDDEN_CLASS)
+        expect(header.className).toContain("opacity-0")
+      })
+
+      it("leaves modal containment unchanged by modality key and pointer presses", async () => {
+        const revealListener = vi.fn()
+        await openSearchOverlay()
+        const header = headerElement()
+        const logo = document.querySelector(
+          '[data-testid="floating-header-logo"]',
+        ) as HTMLElement
+        const pageWrapper = document.querySelector("[inert]") as HTMLElement
+        window.addEventListener(
+          WATCH_PLAYER_CHROME_REVEAL_EVENT,
+          revealListener,
+        )
+
+        act(() => logo.focus())
+        pressKey(logo, "ArrowRight")
+        act(() => {
+          logo.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }))
+        })
+        pressKey(logo, "ArrowRight")
+        act(() => dispatchChromeVisibility(false, 0))
+
+        expect(header.className).toContain(FLOATING_MODAL_HEADER_LAYOUT_CLASS)
+        expect(header.className).toContain("pointer-events-none")
+        expect(header.className).toContain("translate-y-0 opacity-100")
+        expect(header.hasAttribute("inert")).toBe(false)
+        expect(document.querySelector("[inert]")).toBe(pageWrapper)
+        expect(revealListener).not.toHaveBeenCalled()
+        window.removeEventListener(
+          WATCH_PLAYER_CHROME_REVEAL_EVENT,
+          revealListener,
+        )
+      })
+    })
+
     it("leaves modal containment unchanged when focus is in the header", async () => {
       const revealListener = vi.fn()
       await openSearchOverlay()

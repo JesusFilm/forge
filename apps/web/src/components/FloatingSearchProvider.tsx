@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type FocusEvent as ReactFocusEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from "react"
@@ -138,6 +139,20 @@ type WatchRouteSurfaceRegistrationState = {
 type ParsedWatchPath = ReturnType<typeof parseWatchPath>
 
 type HeaderFocusSource = "none" | "pointer" | "keyboard"
+
+// Keys that only change a modifier state; pressing one is not keyboard use of
+// the focused control.
+const MODIFIER_ONLY_KEYS = new Set([
+  "Alt",
+  "AltGraph",
+  "CapsLock",
+  "Control",
+  "Fn",
+  "Meta",
+  "NumLock",
+  "ScrollLock",
+  "Shift",
+])
 
 // `:focus-visible` is the browser's own keyboard-versus-pointer focus signal.
 // Where it cannot be evaluated, treat focus as keyboard focus: showing the
@@ -827,6 +842,27 @@ export function FloatingSearchProvider({
     ],
   )
 
+  // Focus can stay on one control while the input modality changes: a control
+  // focused by a click becomes keyboard-operated on its next key press (the
+  // browser flips `:focus-visible` without a new focus event), and a
+  // keyboard-focused control becomes pointer-operated on a press. Re-classify
+  // on those inputs so the header reveal follows how it is actually used.
+  const handleHeaderKeyDown = useCallback(
+    (event: ReactKeyboardEvent<HTMLElement>) => {
+      if (MODIFIER_ONLY_KEYS.has(event.key)) return
+      setHeaderFocusSource((current) =>
+        current === "pointer" ? "keyboard" : current,
+      )
+    },
+    [],
+  )
+
+  const handleHeaderPointerDown = useCallback(() => {
+    setHeaderFocusSource((current) =>
+      current === "keyboard" ? "pointer" : current,
+    )
+  }, [])
+
   const handleHeaderBlur = useCallback(
     (event: ReactFocusEvent<HTMLElement>) => {
       if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
@@ -914,6 +950,8 @@ export function FloatingSearchProvider({
           aria-hidden={headerChromeInert || undefined}
           onFocusCapture={handleHeaderFocus}
           onBlurCapture={handleHeaderBlur}
+          onKeyDownCapture={handleHeaderKeyDown}
+          onPointerDownCapture={handleHeaderPointerDown}
           className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
             modalChromeHidden
               ? FLOATING_MODAL_HEADER_LAYOUT_CLASS

@@ -7,12 +7,12 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (October 10, 2026)
 
 - **Total tickets:** 794
-- **Complete:** 595
+- **Complete:** 596
 - **Cancelled:** 39
-- **In progress:** 61
+- **In progress:** 60
 - **Not started:** 42
 - **Blocked:** 57
-- **Overdue and open:** 145
+- **Overdue and open:** 144
 
 ## Feature Index
 
@@ -827,5 +827,5 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-438](topic-experiences/feat-438-watch-immersive-section-background-saturation.md)     | Watch immersive section background saturation                                    | vlad          | P2       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-263](topic-experiences/feat-263-ai-assembled-showcase-reel.md)                        | AI-assembled Showcase reel                                                       | urim          | P2       | 2026-09-01 | 14   | 2026-09-14 | blocked     |
 | [feat-481](topic-experiences/feat-481-lg-webos-simulator-demo.md)                           | LG webOS simulator demo                                                          | ekkasit       | P2       | 2026-09-04 | 1    | 2026-09-04 | in-progress |
-| [feat-679](topic-experiences/feat-679-watch-header-keyboard-reveal.md)                      | Reveal the Watch header through keyboard focus                                   | vladmitkovsky | P2       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
+| [feat-679](topic-experiences/feat-679-watch-header-keyboard-reveal.md)                      | Reveal the Watch header through keyboard focus                                   | vladmitkovsky | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                                            | tataihono     | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |
