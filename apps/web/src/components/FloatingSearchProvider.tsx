@@ -71,6 +71,7 @@ import {
   tryAsLocaleSlug,
 } from "@/lib/routes"
 import { isOneSegmentCollectionSlug } from "@/lib/url-shape"
+import { WATCH_MAIN_CONTENT_ID } from "@/lib/watch-main-content"
 import {
   loadWatchInteraction,
   scheduleWatchInteractionWarmup,
@@ -980,7 +981,7 @@ export function FloatingSearchProvider({
         <div
           inert={modalChromeHidden || undefined}
           aria-hidden={modalChromeHidden || undefined}
-          id="watch-main-content"
+          id={WATCH_MAIN_CONTENT_ID}
           tabIndex={-1}
           className={
             modalChromeHidden

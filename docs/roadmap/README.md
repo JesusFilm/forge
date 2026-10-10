@@ -4,15 +4,15 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 8, 2026)
+## Status (October 9, 2026)
 
-- **Total tickets:** 794
-- **Complete:** 595
+- **Total tickets:** 795
+- **Complete:** 596
 - **Cancelled:** 39
-- **In progress:** 61
-- **Not started:** 42
+- **In progress:** 60
+- **Not started:** 43
 - **Blocked:** 57
-- **Overdue and open:** 142
+- **Overdue and open:** 144
 
 ## Feature Index
 
@@ -769,7 +769,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-013](topic-experiences/feat-013-bulk-experience-generation.md)                        | Bulk Experience Generation Pipeline                                              | ekkasit    | P0       | 2026-04-14 | 42   | 2026-05-25 | blocked     |
 | [feat-401](topic-experiences/feat-401-tv-stream-url-whitespace-normalization.md)            | TV stream URL whitespace normalization                                           | ekkasit    | P0       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-618](topic-experiences/feat-618-tv-search-menu-back-navigation.md)                    | TV search Menu back navigation                                                   | ekkasit    | P0       | 2026-08-27 | 1    | 2026-08-27 | complete    |
-| [feat-631](topic-experiences/feat-631-watch-keyboard-navigation-landmarks.md)               | Watch keyboard navigation landmarks                                              | vlad       | P1       | —          | —    | —          | in-progress |
+| [feat-631](topic-experiences/feat-631-watch-keyboard-navigation-landmarks.md)               | Watch keyboard navigation landmarks                                              | vlad       | P1       | —          | —    | —          | complete    |
 | [feat-047](topic-experiences/feat-047-watch-template-settings-and-single-video-fallback.md) | Watch Template Settings and Single Video Fallback Hardening                      | urim       | P1       | 2026-04-04 | 3    | 2026-04-06 | complete    |
 | [feat-048](topic-experiences/feat-048-cms-text-block-publish-normalization.md)              | Normalize CMS Text Blocks During Experience Publish                              | urim       | P1       | 2026-04-04 | 1    | 2026-04-04 | complete    |
 | [feat-049](topic-experiences/feat-049-single-video-template-related-media-collection.md)    | Single-Video Template Related Media Collection                                   | urim       | P1       | 2026-04-08 | 2    | 2026-04-09 | complete    |
@@ -828,4 +828,5 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-438](topic-experiences/feat-438-watch-immersive-section-background-saturation.md)     | Watch immersive section background saturation                                    | vlad       | P2       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-263](topic-experiences/feat-263-ai-assembled-showcase-reel.md)                        | AI-assembled Showcase reel                                                       | urim       | P2       | 2026-09-01 | 14   | 2026-09-14 | blocked     |
 | [feat-481](topic-experiences/feat-481-lg-webos-simulator-demo.md)                           | LG webOS simulator demo                                                          | ekkasit    | P2       | 2026-09-04 | 1    | 2026-09-04 | in-progress |
+| [feat-672](topic-experiences/feat-672-watch-skip-link-copy-localization.md)                 | Verify localized Watch skip-link copy                                            | vlad       | P2       | 2026-10-09 | 2    | 2026-10-10 | not-started |
 | [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                                            | tataihono  | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |

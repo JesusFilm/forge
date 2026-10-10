@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 
 import { reportDatadogRumError } from "@/components/DatadogRum"
 import { ExperienceError } from "@/components/ExperienceError"
+import { watchMainContentTargetProps } from "@/lib/watch-main-content"
 
 // Segment-level fallback for unexpected root/home/languages render errors.
 // Resolver errors are handled inline in the page components when possible.
@@ -24,7 +25,11 @@ export default function WatchLocaleError({
   }, [error])
 
   return (
-    <main className="min-h-screen bg-stone-900 text-stone-100">
+    <main
+      // Renders outside WatchChromeShell, so it owns the skip-link target.
+      {...watchMainContentTargetProps}
+      className="min-h-screen bg-stone-900 text-stone-100"
+    >
       <ExperienceError message="Something went wrong loading this page." />
       <div className="mx-auto flex max-w-md flex-col items-center gap-4 px-4 py-8">
         <button

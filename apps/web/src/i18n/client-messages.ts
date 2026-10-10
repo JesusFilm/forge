@@ -19,7 +19,6 @@ export const GLOBAL_CLIENT_MESSAGE_NAMESPACES = [
   "VideoLabels",
   "WatchModal",
   "WatchNotFound",
-  "WatchAccessibility",
 ] as const satisfies readonly ClientMessageNamespace[]
 
 export const WATCH_HOME_CLIENT_MESSAGE_NAMESPACES = [

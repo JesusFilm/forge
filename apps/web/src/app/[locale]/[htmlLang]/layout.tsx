@@ -5,6 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server"
 import "../../globals.css"
 import { hasUiLocale } from "@/i18n/locales"
 import { cn } from "@/lib/utils"
+import { WATCH_MAIN_CONTENT_ID } from "@/lib/watch-main-content"
 import {
   DEFAULT_LOCALE,
   resolveWatchLocaleIdentity,
@@ -77,9 +78,9 @@ export default async function RootLayout({
       </head>
       <body className="overflow-x-clip bg-black">
         <a
-          href="#watch-main-content"
+          href={`#${WATCH_MAIN_CONTENT_ID}`}
           data-testid="watch-skip-to-main"
-          className="sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:block focus:rounded-md focus:bg-white focus:px-4 focus:py-3 focus:text-black focus:shadow-lg focus:outline-2 focus:outline-offset-2 focus:outline-black"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-[100] focus:block focus:rounded-md focus:bg-white focus:px-4 focus:py-3 focus:text-black focus:shadow-lg focus:outline-2 focus:outline-offset-2 focus:outline-black"
         >
           {accessibilityT("skipToMainContent")}
         </a>
