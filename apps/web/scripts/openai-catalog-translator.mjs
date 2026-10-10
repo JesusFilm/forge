@@ -173,6 +173,11 @@ const MESSAGE_CONTEXT_OVERRIDES = {
     role: "video-preview accessibility action label",
     visibility: "assistive technology only",
   },
+  "WatchHome.noSignUpToWatch": {
+    role: "trust statement",
+    composition:
+      "Shown under the homepage heading that offers free Christian videos in the visitor's language. It promises only that WATCHING needs no account or registration; downloads can require signing in, so do not widen it to the whole site or to downloading.",
+  },
   "WatchHomePromo.buildingNext": {
     role: "heading introducing the following feature cards",
     composition:

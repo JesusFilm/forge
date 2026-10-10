@@ -528,10 +528,8 @@
     "nextVideoPreview": "Preview video boux lai",
     "mediaCollection": "Collection media",
     "scrollToVideo": "Lohj daengz video {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Mbouj yungh dwk geiq"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Homepage Jesus Film Project",

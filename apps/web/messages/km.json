@@ -528,10 +528,8 @@
     "nextVideoPreview": "មើលវីដេអូបន្ទាប់ជាមុន",
     "mediaCollection": "កម្រងមេឌៀ",
     "scrollToVideo": "រំកិលទៅកាន់វីដេអូ {title}",
-    "forYou": "សម្រាប់អ្នក"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "មិនចាំបាច់ចុះឈ្មោះ"
+    "forYou": "សម្រាប់អ្នក",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "ទំព័រដើម Jesus Film Project",

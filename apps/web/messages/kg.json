@@ -528,10 +528,8 @@
     "nextVideoPreview": "Preview ya vidéo oyo ekolanda",
     "mediaCollection": "Lisangá ya média",
     "scrollToVideo": "Kokita na vidéo ya {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Kusonika zina ke fwete ve"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Ndako ya Jesus Film Project",

@@ -528,10 +528,8 @@
     "nextVideoPreview": "Кэлэр видео дьылаһына",
     "mediaCollection": "Медиа коллекция",
     "scrollToVideo": "{title} видеога төнн",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Бэлиэтэнии наадата суох"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project бастыҥ сирэйи",

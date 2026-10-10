@@ -528,10 +528,8 @@
     "nextVideoPreview": "Növbəti video önizləməsi",
     "mediaCollection": "Media kolleksiyası",
     "scrollToVideo": "{title} videosuna sürüşdür",
-    "forYou": "Sizin üçün"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Qeydiyyat tələb olunmur"
+    "forYou": "Sizin üçün",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ana səhifəsi",

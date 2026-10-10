@@ -528,10 +528,8 @@
     "nextVideoPreview": "შემდეგი ვიდეოს წინასწარი ჩვენება",
     "mediaCollection": "მედია კოლექცია",
     "scrollToVideo": "გადადი {title} ვიდეოზე",
-    "forYou": "თქვენთვის"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "რეგისტრაცია არ არის საჭირო"
+    "forYou": "თქვენთვის",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-ის მთავარი გვერდი",

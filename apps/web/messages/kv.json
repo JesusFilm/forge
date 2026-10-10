@@ -528,10 +528,8 @@
     "nextVideoPreview": "Мӧд видео предпросмотр",
     "mediaCollection": "Медиа коллекция",
     "scrollToVideo": "{title} видео вылӧ скроллить",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Регистрируйтчыны оз ков"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project оланнин",

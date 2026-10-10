@@ -528,10 +528,8 @@
     "nextVideoPreview": "Awòyẹwò fídíò tó tẹ̀lé",
     "mediaCollection": "Àkójọpọ̀ media",
     "scrollToVideo": "Yí lọ sí fídíò {title}",
-    "forYou": "Fún ọ"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Kò sí ìforúkọsílẹ̀ tí a nílò"
+    "forYou": "Fún ọ",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Ojú-ìbẹ̀rẹ̀ Jesus Film Project",

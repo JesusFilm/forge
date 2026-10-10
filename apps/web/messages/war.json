@@ -528,10 +528,8 @@
     "nextVideoPreview": "Preview han sunod nga video",
     "mediaCollection": "Koleksyon han media",
     "scrollToVideo": "I-scroll ngadto ha video nga {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Diri kinahanglan an pag-sign up"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Home han Jesus Film Project",

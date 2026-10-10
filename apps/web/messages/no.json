@@ -528,10 +528,8 @@
     "nextVideoPreview": "Neste videoforhåndsvisning",
     "mediaCollection": "Mediesamling",
     "scrollToVideo": "Rull til videoen {title}",
-    "forYou": "For deg"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Ingen registrering nødvendig"
+    "forYou": "For deg",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-hjem",

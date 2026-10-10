@@ -528,10 +528,8 @@
     "nextVideoPreview": "Video kaŋ preview",
     "mediaCollection": "Koleksyɔn media",
     "scrollToVideo": "Kɛ scroll ka {title} video",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "No sign-up required"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project kɔnɔ",

@@ -528,10 +528,8 @@
     "nextVideoPreview": "Iganisha rya videwo",
     "mediaCollection": "Ihuriro rya media",
     "scrollToVideo": "Yiyunguruze kuri videwo ya {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Nta kwiyandikisha bikenewe"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Urugo rwa Jesus Film Project",

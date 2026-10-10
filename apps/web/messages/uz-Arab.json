@@ -528,10 +528,8 @@
     "nextVideoPreview": "پیش‌نمایش ویدیوی بعدی",
     "mediaCollection": "مجموعهٔ رسانه‌ای",
     "scrollToVideo": "به ویدیوی {title} بروید",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "رۉیخطدن اۉتیش شرط ایمس"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "صفحهٔ اصلی Jesus Film Project",

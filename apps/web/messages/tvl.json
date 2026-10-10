@@ -528,10 +528,8 @@
     "nextVideoPreview": "Vitio preview e sosoa",
     "mediaCollection": "Fakaputuga o te media",
     "scrollToVideo": "Sukesuke ki lalo ki te vitio {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Sē manakogina se lesitala"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Te kāiga o Jesus Film Project",

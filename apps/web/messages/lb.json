@@ -528,10 +528,8 @@
     "nextVideoPreview": "Virschau vum nächste Video",
     "mediaCollection": "Mediekollektioun",
     "scrollToVideo": "Zum Video {title} rullen",
-    "forYou": "Fir dech"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Keng Umeldung néideg"
+    "forYou": "Fir dech",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project Startsäit",

@@ -528,10 +528,8 @@
     "nextVideoPreview": "Fa'aaliga muamua o le vitio e soso'o ai",
     "mediaCollection": "Aoina o fa'asalalauga",
     "scrollToVideo": "Fa'asolo i le vitio {title}",
-    "forYou": "Mo oe"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "E le manaʻomia le resitala"
+    "forYou": "Mo oe",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Itulau autū o Jesus Film Project",

@@ -528,10 +528,8 @@
     "nextVideoPreview": "Næsta videobrotsforskot",
     "mediaCollection": "Miðlasavn",
     "scrollToVideo": "Rulla til videobrotið {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Eingin tilmelding kravd"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project forsíða",

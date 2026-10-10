@@ -528,10 +528,8 @@
     "nextVideoPreview": "Кхин видео превью",
     "mediaCollection": "Медиа коллекци",
     "scrollToVideo": "{title} видео тӀе кӀелахьа",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "ДӀаяздар ца оьшу"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project коьрта",

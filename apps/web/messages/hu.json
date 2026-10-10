@@ -528,10 +528,8 @@
     "nextVideoPreview": "Következő videó előnézete",
     "mediaCollection": "Médiagyűjtemény",
     "scrollToVideo": "Görgess a {title} videóhoz",
-    "forYou": "Neked"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Nincs szükség regisztrációra"
+    "forYou": "Neked",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project kezdőlap",

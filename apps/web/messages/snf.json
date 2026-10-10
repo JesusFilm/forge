@@ -528,10 +528,8 @@
     "nextVideoPreview": "Aperçu de la vidéo suivante",
     "mediaCollection": "Collection de médias",
     "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Aucune inscription requise"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Accueil de Jesus Film Project",

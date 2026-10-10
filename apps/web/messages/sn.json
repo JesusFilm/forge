@@ -528,10 +528,8 @@
     "nextVideoPreview": "Preview yevhidhiyo inotevera",
     "mediaCollection": "Muunganidzwa wezvinyorwa zvevhidhiyo",
     "scrollToVideo": "Skrola kuvhidhiyo ye {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Hapana kunyoresa kunodiwa"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Peji guru reJesus Film Project",

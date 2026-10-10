@@ -528,10 +528,8 @@
     "nextVideoPreview": "תצוגה מקדימה של הסרטון הבא",
     "mediaCollection": "אוסף מדיה",
     "scrollToVideo": "גללו לסרטון {title}",
-    "forYou": "בשבילך"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "אין צורך בהרשמה"
+    "forYou": "בשבילך",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "דף הבית של Jesus Film Project",

@@ -528,10 +528,8 @@
     "nextVideoPreview": "Наступны папярэдні прагляд відэа",
     "mediaCollection": "Медыякалекцыя",
     "scrollToVideo": "Пракруціць да відэа {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Рэгістрацыя не патрабуецца"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Галоўная Jesus Film Project",

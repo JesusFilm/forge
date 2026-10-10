@@ -528,10 +528,8 @@
     "nextVideoPreview": "Preview video jun chik",
     "mediaCollection": "Colección de medios",
     "scrollToVideo": "Desplázate al video {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "No sign-up required"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project takya'j",

@@ -30,7 +30,6 @@ type WatchHomeExperiencePageProps = {
   heroModel: WatchHomeModel
   blocks: readonly Section[]
   locale?: string
-  htmlLang?: string
   languageSlug: string
   publicDocumentPathname?: string
   legacyCategoryRailCompatibility?: boolean
@@ -149,7 +148,6 @@ export function WatchHomeExperiencePage({
   heroModel,
   blocks,
   locale = "en",
-  htmlLang = locale,
   languageSlug,
   publicDocumentPathname,
   legacyCategoryRailCompatibility = false,
@@ -340,7 +338,10 @@ export function WatchHomeExperiencePage({
           {heroAboveBodyZone ? (
             <WatchHomeTvCarousel
               heroIntro={
-                <WatchHomeFirstScreen locale={locale} htmlLang={htmlLang} />
+                <WatchHomeFirstScreen
+                  locale={locale}
+                  languageSlug={languageSlug}
+                />
               }
               heroManifestCatalog={
                 signWatchHomeHeroManifestCatalog(

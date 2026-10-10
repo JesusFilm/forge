@@ -528,10 +528,8 @@
     "nextVideoPreview": "Ukubuka kuqala kwevidiyo elandelayo",
     "mediaCollection": "Iqoqo lemidiya",
     "scrollToVideo": "Skrola uye kuvidiyo ka-{title}",
-    "forYou": "Okwakho"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Akudingeki ukubhalisa"
+    "forYou": "Okwakho",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Ikhaya le-Jesus Film Project",

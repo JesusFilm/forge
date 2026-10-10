@@ -528,10 +528,8 @@
     "nextVideoPreview": "Ukubuka kuqala kwevidiyo elandelayo",
     "mediaCollection": "Iqoqo lezindaba",
     "scrollToVideo": "Skrola uye kuvidiyo ethi {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Akutlhogeki ukutlolisa"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Ikhasi lasekhaya le-Jesus Film Project",

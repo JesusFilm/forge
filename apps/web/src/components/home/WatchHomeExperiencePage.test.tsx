@@ -52,8 +52,8 @@ vi.mock("next-intl", () => ({
       if (namespace === "LanguagePickerModal" && key === "seeAllLanguages") {
         return "See all languages"
       }
-      if (namespace === "WatchHomeTrust" && key === "noSignUpRequired") {
-        return "No sign-up required"
+      if (namespace === "WatchHome" && key === "noSignUpToWatch") {
+        return "No sign-up needed to watch"
       }
       return key === "pageTitle" ? "Jesus Film Project Watch" : key
     },
@@ -351,7 +351,26 @@ describe("WatchHomeExperiencePage", () => {
     expect(
       serverContainer.querySelector('[data-testid="watch-home-trust-strip"]')
         ?.textContent,
-    ).toContain("No sign-up required")
+    ).toContain("No sign-up needed to watch")
+  })
+
+  it("names the language home's content language in the first-screen h1", () => {
+    // Language homes render through `[...rest]` with English chrome for a
+    // language that has no UI catalog; the h1 must follow `languageSlug`.
+    const html = renderToStaticMarkup(
+      <WatchHomeExperiencePage
+        heroModel={heroModel}
+        blocks={[]}
+        locale="en"
+        languageSlug="arabic-najdi"
+      />,
+    )
+    const serverContainer = document.createElement("div")
+    serverContainer.innerHTML = html
+
+    expect(serverContainer.querySelector("h1")?.textContent).toBe(
+      "Free Christian videos in Najdi Arabic",
+    )
   })
 
   it("keeps the authored topic below the first-screen h1 in the heading hierarchy", async () => {

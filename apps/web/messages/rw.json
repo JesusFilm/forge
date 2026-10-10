@@ -528,10 +528,8 @@
     "nextVideoPreview": "Udufoto tw'ibanze twa video ikurikira",
     "mediaCollection": "Icyegeranyo cy'ibitangazamakuru",
     "scrollToVideo": "Kanda hasi werekeza kuri video ya {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Nta kwiyandikisha bisabwa"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Urupapuro rwa mbere rwa Jesus Film Project",

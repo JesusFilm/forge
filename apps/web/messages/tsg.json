@@ -528,10 +528,8 @@
     "nextVideoPreview": "Preview han sunod nga video",
     "mediaCollection": "Koleksyon sin Media",
     "scrollToVideo": "I-scroll ngadto ha {title} nga video",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Way kinahanglan mag-sign up"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Homan han Jesus Film Project",

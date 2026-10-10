@@ -528,10 +528,8 @@
     "nextVideoPreview": "Neiste Video-foarsehoon",
     "mediaCollection": "Media-sammlung",
     "scrollToVideo": "Na {title} Video skrolle",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Nian uunmeldang nüüdag"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project-hooftside",

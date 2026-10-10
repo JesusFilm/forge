@@ -528,10 +528,8 @@
     "nextVideoPreview": "Hi'oraa i mua o te video i muri mai",
     "mediaCollection": "Ha'aputuhia media",
     "scrollToVideo": "A panuku i te video {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Aita e titauhia te tapaʻo i te iʻoa"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Te fare Jesus Film Project",

@@ -528,10 +528,8 @@
     "nextVideoPreview": "Apercebut del vidèo seguent",
     "mediaCollection": "Colleccion de mèdias",
     "scrollToVideo": "Far defilar cap al vidèo {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Cap d'inscripcion requesida"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Pagina d'acuèlh Jesus Film Project",

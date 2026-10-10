@@ -528,10 +528,8 @@
     "nextVideoPreview": "Susundan a preview na video",
     "mediaCollection": "Koleksyon na Media",
     "scrollToVideo": "I-scroll so video a {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Ag kaukolan so pan-sign up"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Home na Jesus Film Project",

@@ -4,7 +4,7 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 8, 2026)
+## Status (October 9, 2026)
 
 - **Total tickets:** 794
 - **Complete:** 595
@@ -12,7 +12,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 - **In progress:** 61
 - **Not started:** 42
 - **Blocked:** 57
-- **Overdue and open:** 142
+- **Overdue and open:** 144
 
 ## Feature Index
 
@@ -183,6 +183,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-573](content-discovery/feat-573-sustainable-cowatch-live-refresh.md)                                     | Sustain live co-watch with bounded graph refresh                                                | nisal      | P1       | 2026-10-01 | 3    | 2026-10-03 | complete    |
 | [feat-589](content-discovery/feat-589-recommendation-audio-aware-retrieval-locale-identity.md)                 | Repair recommendation audio-aware retrieval and locale identity                                 | nisal      | P1       | 2026-10-01 | 5    | 2026-10-05 | complete    |
 | [feat-609](content-discovery/feat-609-filtered-hnsw-fixture-recall.md)                                         | Diagnose intermittent filtered HNSW recommendation fixture recall                               | nisal      | P1       | 2026-10-06 | 2    | 2026-10-07 | in-progress |
+| [feat-675](content-discovery/feat-675-watch-home-first-screen-promise.md)                                      | Watch home first screen promise                                                                 | vlad       | P1       | 2026-10-08 | 2    | 2026-10-09 | in-progress |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | cancelled   |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | cancelled   |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | cancelled   |
@@ -769,7 +770,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-013](topic-experiences/feat-013-bulk-experience-generation.md)                        | Bulk Experience Generation Pipeline                                              | ekkasit    | P0       | 2026-04-14 | 42   | 2026-05-25 | blocked     |
 | [feat-401](topic-experiences/feat-401-tv-stream-url-whitespace-normalization.md)            | TV stream URL whitespace normalization                                           | ekkasit    | P0       | 2026-08-21 | 1    | 2026-08-21 | complete    |
 | [feat-618](topic-experiences/feat-618-tv-search-menu-back-navigation.md)                    | TV search Menu back navigation                                                   | ekkasit    | P0       | 2026-08-27 | 1    | 2026-08-27 | complete    |
-| [feat-630](topic-experiences/feat-630-watch-home-first-screen-promise.md)                   | Watch home first screen promise                                                  | vlad       | P1       | —          | —    | —          | in-progress |
 | [feat-047](topic-experiences/feat-047-watch-template-settings-and-single-video-fallback.md) | Watch Template Settings and Single Video Fallback Hardening                      | urim       | P1       | 2026-04-04 | 3    | 2026-04-06 | complete    |
 | [feat-048](topic-experiences/feat-048-cms-text-block-publish-normalization.md)              | Normalize CMS Text Blocks During Experience Publish                              | urim       | P1       | 2026-04-04 | 1    | 2026-04-04 | complete    |
 | [feat-049](topic-experiences/feat-049-single-video-template-related-media-collection.md)    | Single-Video Template Related Media Collection                                   | urim       | P1       | 2026-04-08 | 2    | 2026-04-09 | complete    |

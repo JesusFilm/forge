@@ -528,10 +528,8 @@
     "nextVideoPreview": "Дараагийн видеоны урьдчилсан үзүүлбэр",
     "mediaCollection": "Медиа цуглуулга",
     "scrollToVideo": "{title} видеон руу очих",
-    "forYou": "Танд зориулсан"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Бүртгүүлэх шаардлагагүй"
+    "forYou": "Танд зориулсан",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project нүүр хуудас",

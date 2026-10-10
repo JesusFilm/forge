@@ -528,10 +528,8 @@
     "nextVideoPreview": "የሚቀጥለው ቪዲዮ ቅድመ እይታ",
     "mediaCollection": "የሚዲያ ስብስብ",
     "scrollToVideo": "ወደ {title} ቪዲዮ ይሸብልሉ",
-    "forYou": "ለእርስዎ"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "መመዝገብ አያስፈልግም"
+    "forYou": "ለእርስዎ",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project መነሻ",

@@ -528,10 +528,8 @@
     "nextVideoPreview": "Soňky wideo deslapky görkezilişi",
     "mediaCollection": "Media ýygyndysy",
     "scrollToVideo": "{title} wideosyna geçiň",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Hasaba durmak gerek däl"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project baş sahypasy",

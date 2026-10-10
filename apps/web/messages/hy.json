@@ -528,10 +528,8 @@
     "nextVideoPreview": "Հաջորդ տեսանյութի նախադիտում",
     "mediaCollection": "Մեդիա հավաքածու",
     "scrollToVideo": "Տեղափոխվել դեպի {title} տեսանյութը",
-    "forYou": "Ձեզ համար"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Գրանցում չի պահանջվում"
+    "forYou": "Ձեզ համար",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project գլխավոր էջ",

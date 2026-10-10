@@ -528,10 +528,8 @@
     "nextVideoPreview": "Previsualització del vídeo següent",
     "mediaCollection": "Col·lecció de mitjans",
     "scrollToVideo": "Desplaça’t fins al vídeo {title}",
-    "forYou": "Per a tu"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "No cal registrar-se"
+    "forYou": "Per a tu",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Inici de Jesus Film Project",

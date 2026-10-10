@@ -528,10 +528,8 @@
     "nextVideoPreview": "Jun chic preview re video",
     "mediaCollection": "Jun colección media",
     "scrollToVideo": "{title} video chi q'ala'j",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Ye'l nik'ulej tatz'ib'aj awib'"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project rochoch",

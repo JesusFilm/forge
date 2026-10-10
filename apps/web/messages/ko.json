@@ -344,7 +344,8 @@
     "featured": "추천",
     "mediaCollection": "미디어 컬렉션",
     "scrollToVideo": "{title} 동영상으로 스크롤",
-    "forYou": "추천 동영상"
+    "forYou": "추천 동영상",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "언어",
@@ -394,9 +395,6 @@
     "actionsLabel": "페이지를 찾을 수 없을 때의 작업",
     "backToWatch": "Watch로 돌아가기",
     "browseVideos": "동영상 둘러보기"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "가입 필요 없음"
   },
   "WatchFooter": {
     "home": "Jesus Film Project 홈",

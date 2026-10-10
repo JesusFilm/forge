@@ -528,10 +528,8 @@
     "nextVideoPreview": "Следващ преглед на видео",
     "mediaCollection": "Медийна колекция",
     "scrollToVideo": "Превъртете до видеото {title}",
-    "forYou": "За вас"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Не се изисква регистрация"
+    "forYou": "За вас",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Начална страница на Jesus Film Project",

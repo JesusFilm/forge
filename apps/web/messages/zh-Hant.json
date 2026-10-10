@@ -344,7 +344,8 @@
     "featured": "精選",
     "mediaCollection": "媒體合集",
     "scrollToVideo": "捲動至影片「{title}」",
-    "forYou": "為你推薦"
+    "forYou": "為你推薦",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "語言",
@@ -407,9 +408,6 @@
     "languageVersionLabel": "音訊語言",
     "selectLanguageVersion": "選擇語言版本",
     "watchSelectedVersion": "觀看所選版本"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "無需註冊"
   },
   "WatchFooter": {
     "home": "Jesus Film Project 首頁",

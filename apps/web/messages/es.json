@@ -344,7 +344,8 @@
     "featured": "Destacado",
     "mediaCollection": "Colección de medios",
     "scrollToVideo": "Desplazarse al video {title}",
-    "forYou": "Recomendados para ti"
+    "forYou": "Recomendados para ti",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Idiomas",
@@ -394,9 +395,6 @@
     "actionsLabel": "Acciones de página no encontrada",
     "backToWatch": "Volver a Ver",
     "browseVideos": "Explorar videos"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "No es necesario registrarse"
   },
   "WatchFooter": {
     "home": "Inicio de Jesus Film Project",

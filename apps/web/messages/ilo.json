@@ -528,10 +528,8 @@
     "nextVideoPreview": "Masurot a video preview",
     "mediaCollection": "Koleksion ti media",
     "scrollToVideo": "Igid a {title} a video",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Saan a kasapulan ti agrehistro"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Balay ti Jesus Film Project",

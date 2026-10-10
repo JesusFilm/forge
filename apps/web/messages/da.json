@@ -528,10 +528,8 @@
     "nextVideoPreview": "Forhåndsvisning af næste video",
     "mediaCollection": "Mediesamling",
     "scrollToVideo": "Rul til videoen {title}",
-    "forYou": "Til dig"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Ingen tilmelding påkrævet"
+    "forYou": "Til dig",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project forside",

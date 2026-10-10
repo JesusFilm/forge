@@ -528,10 +528,8 @@
     "nextVideoPreview": "अगिला वीडियो पूर्वावलोकन",
     "mediaCollection": "मीडिया संग्रह",
     "scrollToVideo": "{title} वीडियो दिस स्क्रोल करू",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "साइन-अप आवश्यक नहि"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project होम",

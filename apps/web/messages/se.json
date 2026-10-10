@@ -528,10 +528,8 @@
     "nextVideoPreview": "Boahtte video ovdančájeheapmi",
     "mediaCollection": "Mediabuvttad",
     "scrollToVideo": "Rullat {title} videoa guvlui",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Ii dárbbaš registreret"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ruovttusiidu",

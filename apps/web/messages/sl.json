@@ -528,10 +528,8 @@
     "nextVideoPreview": "Predogled naslednjega videoposnetka",
     "mediaCollection": "Zbirka medijskih vsebin",
     "scrollToVideo": "Pomakni se do videoposnetka {title}",
-    "forYou": "Za vas"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Registracija ni potrebna"
+    "forYou": "Za vas",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Domača stran Jesus Film Project",

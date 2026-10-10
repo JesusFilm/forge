@@ -528,10 +528,8 @@
     "nextVideoPreview": "Preview vídeo tuir mai",
     "mediaCollection": "Koleksaun média",
     "scrollToVideo": "Hamutuk ba vídeo {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "La presiza rejistu"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project uma",

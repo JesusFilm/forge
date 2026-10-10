@@ -537,10 +537,8 @@
     "scrollToVideo": "Перейти к видео «{title}»",
     "previousVideoPreview": "Предыдущее видео в предпросмотре",
     "nextVideoPreview": "Следующее видео в предпросмотре",
-    "forYou": "Рекомендуем вам"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Регистрация не требуется"
+    "forYou": "Рекомендуем вам",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Главная Jesus Film Project",

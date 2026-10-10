@@ -528,10 +528,8 @@
     "nextVideoPreview": "Video oútava preview",
     "mediaCollection": "Colección de medios",
     "scrollToVideo": "Ehecha hag̃ua video {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Natekotevẽi reñemboheravo"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project óga",

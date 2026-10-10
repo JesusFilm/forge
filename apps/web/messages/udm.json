@@ -528,10 +528,8 @@
     "nextVideoPreview": "Икебас видео превью",
     "mediaCollection": "Медиа йыйынтык",
     "scrollToVideo": "{title} видеоез шоры скроллить",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Регистрация кулэ ӧвӧл"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project шӧр",

@@ -344,7 +344,8 @@
     "featured": "Tampok",
     "mediaCollection": "Koleksyon ng media",
     "scrollToVideo": "Mag-scroll sa video na {title}",
-    "forYou": "Para sa iyo"
+    "forYou": "Para sa iyo",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Mga wika",
@@ -394,9 +395,6 @@
     "actionsLabel": "Mga aksyon para sa page na hindi nahanap",
     "backToWatch": "Bumalik sa Watch",
     "browseVideos": "Mag-browse ng mga video"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Hindi kailangang mag-sign up"
   },
   "WatchFooter": {
     "home": "Tahanan ng Jesus Film Project",

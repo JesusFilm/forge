@@ -344,7 +344,8 @@
     "featured": "Nổi bật",
     "mediaCollection": "Bộ sưu tập truyền thông",
     "scrollToVideo": "Cuộn đến video {title}",
-    "forYou": "Đề xuất cho bạn"
+    "forYou": "Đề xuất cho bạn",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Ngôn ngữ",
@@ -394,9 +395,6 @@
     "actionsLabel": "Các hành động khi không tìm thấy trang",
     "backToWatch": "Quay lại Watch",
     "browseVideos": "Duyệt video"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Không cần đăng ký"
   },
   "WatchFooter": {
     "home": "Trang chủ Jesus Film Project",

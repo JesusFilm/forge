@@ -528,10 +528,8 @@
     "nextVideoPreview": "Nästa förhandsvisning av video",
     "mediaCollection": "Mediesamling",
     "scrollToVideo": "Bläddra till videon {title}",
-    "forYou": "För dig"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Ingen registrering krävs"
+    "forYou": "För dig",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project startsida",

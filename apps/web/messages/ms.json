@@ -344,7 +344,8 @@
     "featured": "Pilihan utama",
     "mediaCollection": "Koleksi media",
     "scrollToVideo": "Skrol ke video {title}",
-    "forYou": "Untuk anda"
+    "forYou": "Untuk anda",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Bahasa",
@@ -394,9 +395,6 @@
     "actionsLabel": "Tindakan halaman tidak ditemui",
     "backToWatch": "Kembali ke Watch",
     "browseVideos": "Semak imbas video"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Tidak perlu mendaftar"
   },
   "WatchFooter": {
     "home": "Laman utama Jesus Film Project",

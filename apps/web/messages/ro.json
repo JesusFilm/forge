@@ -344,7 +344,8 @@
     "featured": "Recomandate",
     "mediaCollection": "Colecție media",
     "scrollToVideo": "Derulează la videoclipul {title}",
-    "forYou": "Pentru tine"
+    "forYou": "Pentru tine",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Limbi",
@@ -394,9 +395,6 @@
     "actionsLabel": "Acțiuni pentru pagina negăsită",
     "backToWatch": "Înapoi la Watch",
     "browseVideos": "Răsfoiește videoclipurile"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Nu este necesară înregistrarea"
   },
   "WatchFooter": {
     "home": "Pagina principală Jesus Film Project",

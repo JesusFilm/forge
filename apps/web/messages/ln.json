@@ -528,10 +528,8 @@
     "nextVideoPreview": "Aperçu ya video oyo ekolanda",
     "mediaCollection": "Collection ya média",
     "scrollToVideo": "Kende na video ya {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Kokoma nkombo esengeli te"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Ndako ya Jesus Film Project",

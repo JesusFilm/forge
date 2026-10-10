@@ -344,7 +344,8 @@
     "featured": "注目",
     "mediaCollection": "メディアコレクション",
     "scrollToVideo": "{title}の動画へスクロール",
-    "forYou": "あなたへのおすすめ"
+    "forYou": "あなたへのおすすめ",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "言語",
@@ -394,9 +395,6 @@
     "actionsLabel": "ページが見つからない場合の操作",
     "backToWatch": "Watch に戻る",
     "browseVideos": "動画を閲覧"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "登録不要"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ホーム",

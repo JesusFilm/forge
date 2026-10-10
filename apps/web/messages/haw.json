@@ -528,10 +528,8 @@
     "nextVideoPreview": "Nāmua wikiō aʻe",
     "mediaCollection": "Hōʻiliʻili Media",
     "scrollToVideo": "ʻAu i ka wikiō {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "ʻAʻole pono e kākau inoa"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "ʻAoʻao home o Jesus Film Project",

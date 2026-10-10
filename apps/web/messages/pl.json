@@ -344,7 +344,8 @@
     "featured": "Polecane",
     "mediaCollection": "Kolekcja multimediów",
     "scrollToVideo": "Przewiń do filmu {title}",
-    "forYou": "Dla Ciebie"
+    "forYou": "Dla Ciebie",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Języki",
@@ -394,9 +395,6 @@
     "actionsLabel": "Działania przy braku strony",
     "backToWatch": "Wróć do Watch",
     "browseVideos": "Przeglądaj filmy"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Rejestracja nie jest wymagana"
   },
   "WatchFooter": {
     "home": "Strona główna Jesus Film Project",

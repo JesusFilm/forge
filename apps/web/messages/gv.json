@@ -528,10 +528,8 @@
     "nextVideoPreview": "Video roihaghyn er-dy-chooyl",
     "mediaCollection": "Co-chruinnaght media",
     "scrollToVideo": "Scroll dys video {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Cha nel feme er claaraghey"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Cheead Jesus Film Project",

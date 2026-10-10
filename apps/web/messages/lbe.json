@@ -528,10 +528,8 @@
     "nextVideoPreview": "Ӧдӥц видео preview",
     "mediaCollection": "Медиа коллекция",
     "scrollToVideo": "{title} видео шоры шорыты",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Регистрация хьхьарасса бакъар"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project шоры",

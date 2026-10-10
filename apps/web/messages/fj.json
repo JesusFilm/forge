@@ -528,10 +528,8 @@
     "nextVideoPreview": "Preview ni vidio e tarava",
     "mediaCollection": "Veikau ni media",
     "scrollToVideo": "Lako ki na vidio {title}",
-    "forYou": "Me baleti iko"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Sega ni gadrevi me vola na yacamu"
+    "forYou": "Me baleti iko",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Tabana levu ni Jesus Film Project",

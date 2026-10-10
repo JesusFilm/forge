@@ -528,10 +528,8 @@
     "nextVideoPreview": "Къваналаб видео preview",
     "mediaCollection": "Медиа коллекция",
     "scrollToVideo": "{title} видеоялде кӏолӏе",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Регистрация хӀажатаб гьечӀо"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project хона",

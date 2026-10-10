@@ -1169,7 +1169,9 @@ export function WatchHomeTvCarousel({
         )}
       >
         {heroIntro ? (
-          <div className="absolute inset-x-0 top-0 z-20">{heroIntro}</div>
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-20">
+            {heroIntro}
+          </div>
         ) : null}
         <WatchHomeTvMedia
           activeSlide={activeSlide}

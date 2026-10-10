@@ -528,10 +528,8 @@
     "nextVideoPreview": "Preview bu wideo bu topp",
     "mediaCollection": "Collection de médias",
     "scrollToVideo": "Faire défiler jusqu’à la vidéo {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "No sign-up required"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Kër Jesus Film Project",

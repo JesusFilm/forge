@@ -528,10 +528,8 @@
     "nextVideoPreview": "اڳين وڊيو جو پريو",
     "mediaCollection": "मीडिया संग्रह",
     "scrollToVideo": "{title} वीडियो पर जाएँ",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "سائن اپ جي ضرورت ناهي"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project هوم",

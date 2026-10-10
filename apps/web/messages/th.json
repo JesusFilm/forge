@@ -344,7 +344,8 @@
     "featured": "แนะนำ",
     "mediaCollection": "คอลเลกชันสื่อ",
     "scrollToVideo": "เลื่อนไปที่วิดีโอ {title}",
-    "forYou": "แนะนำสำหรับคุณ"
+    "forYou": "แนะนำสำหรับคุณ",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "ภาษา",
@@ -394,9 +395,6 @@
     "actionsLabel": "การดำเนินการเมื่อไม่พบหน้า",
     "backToWatch": "กลับไปที่ Watch",
     "browseVideos": "เลือกดูวิดีโอ"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "ไม่ต้องสมัครสมาชิก"
   },
   "WatchFooter": {
     "home": "หน้าแรก Jesus Film Project",

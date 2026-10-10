@@ -528,10 +528,8 @@
     "nextVideoPreview": "Preview ya video ilandile",
     "mediaCollection": "Mbufa ya media",
     "scrollToVideo": "Pumbula ku video ya {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Kakuena dijinga dia kufunda dîna"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Tshikupu tsha Jesus Film Project",

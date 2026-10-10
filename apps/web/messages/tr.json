@@ -344,7 +344,8 @@
     "featured": "Öne çıkan",
     "mediaCollection": "Medya koleksiyonu",
     "scrollToVideo": "{title} videosuna git",
-    "forYou": "Sizin için önerilenler"
+    "forYou": "Sizin için önerilenler",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Diller",
@@ -394,9 +395,6 @@
     "actionsLabel": "Sayfa bulunamadı eylemleri",
     "backToWatch": "Watch'a dön",
     "browseVideos": "Videolara göz at"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Kayıt gerekmez"
   },
   "WatchFooter": {
     "home": "Jesus Film Project ana sayfası",

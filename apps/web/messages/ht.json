@@ -528,10 +528,8 @@
     "nextVideoPreview": "Aperçu pwochen videyo a",
     "mediaCollection": "Koleksyon medya",
     "scrollToVideo": "Desann pou videyo {title} a",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Pa bezwen enskri"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Akèy Jesus Film Project",

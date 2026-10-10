@@ -528,10 +528,8 @@
     "nextVideoPreview": "Video preview yàa",
     "mediaCollection": "Media łè ełàa gı̀lı̨",
     "scrollToVideo": "{title} video k’e gòɂǫ",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "No sign-up required"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project kǫ̀",

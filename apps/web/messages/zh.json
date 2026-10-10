@@ -344,7 +344,8 @@
     "featured": "精选",
     "mediaCollection": "媒体合集",
     "scrollToVideo": "滚动到视频“{title}”",
-    "forYou": "为你推荐"
+    "forYou": "为你推荐",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "语言",
@@ -407,9 +408,6 @@
     "languageVersionLabel": "音频语言",
     "selectLanguageVersion": "选择语言版本",
     "watchSelectedVersion": "观看所选版本"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "无需注册"
   },
   "WatchFooter": {
     "home": "Jesus Film Project 首页",

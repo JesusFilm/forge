@@ -528,10 +528,8 @@
     "nextVideoPreview": "Preview ta video chik",
     "mediaCollection": "Colección ta medios",
     "scrollToVideo": "Tz'otz' ta video {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "No sign-up required"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Ruwotot Jesus Film Project",

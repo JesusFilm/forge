@@ -528,10 +528,8 @@
     "nextVideoPreview": "Ponelopele ea video e latelang",
     "mediaCollection": "Pokello ea mecha ea litaba",
     "scrollToVideo": "Tsamaisetsa ho video ea {title}",
-    "forYou": "Recommended for You"
-  },
-  "WatchHomeTrust": {
-    "noSignUpRequired": "Ha ho hlokahale ho ingolisa"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Lehae la Jesus Film Project",
