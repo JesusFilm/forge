@@ -528,7 +528,8 @@
     "nextVideoPreview": "Masunod a video preview",
     "mediaCollection": "Koleksyon sa media",
     "scrollToVideo": "I-scroll papunta sa video ni {title}",
-    "forYou": "Recommended for You"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Homepage sa Jesus Film Project",

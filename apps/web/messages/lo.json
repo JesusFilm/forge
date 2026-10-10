@@ -528,7 +528,8 @@
     "nextVideoPreview": "ຕົວຢ່າງວິດີໂອຕໍ່ໄປ",
     "mediaCollection": "ຄໍເລັກຊັນສື່",
     "scrollToVideo": "ເລື່ອນໄປທີ່ວິດີໂອ {title}",
-    "forYou": "ສຳລັບທ່ານ"
+    "forYou": "ສຳລັບທ່ານ",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "ໜ້າຫຼັກ Jesus Film Project",

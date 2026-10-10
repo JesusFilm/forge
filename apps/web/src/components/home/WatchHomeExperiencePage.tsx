@@ -14,6 +14,7 @@ import { ExperienceSectionRenderer, type Section } from "@/components/sections"
 import { WatchHomeBodyZone } from "@/components/home/WatchHomeBodyZone"
 import { WatchHomeFooter } from "@/components/home/WatchHomeFooter"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
+import { WatchHomeFirstScreen } from "@/components/home/WatchHomeFirstScreen"
 import { WatchExposureBoundary } from "@/components/recommendations/WatchExposureBoundary"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { createInitialDynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-cache-signature"
@@ -68,7 +69,11 @@ type PageHeadingCandidate = {
   readonly sectionContent?: readonly Section[] | null
 }
 
-function normalizeAuthoredPageHeadings(blocks: readonly Section[]) {
+function normalizeAuthoredPageHeadings(
+  blocks: readonly Section[],
+  pageHeadingProvided: boolean,
+) {
+  let hasPageHeading = pageHeadingProvided
   let hasAuthoredPageHeading = false
 
   const normalizeBlock = (block: Section): Section => {
@@ -80,8 +85,9 @@ function normalizeAuthoredPageHeadings(blocks: readonly Section[]) {
       typeof candidate.heading === "string" &&
       candidate.heading.trim().length > 0
     ) {
-      if (!hasAuthoredPageHeading) {
-        hasAuthoredPageHeading = true
+      hasAuthoredPageHeading = true
+      if (!hasPageHeading) {
+        hasPageHeading = true
         return block
       }
 
@@ -149,16 +155,25 @@ export function WatchHomeExperiencePage({
 }: WatchHomeExperiencePageProps) {
   const t = useTranslations("WatchHome")
   const backdrop = findBackdropImage(heroModel)
-  const normalized = normalizeAuthoredPageHeadings(blocks)
-  const hasHeroBlock = normalized.blocks.some(isWatchHomeHeroBlock)
+  const hasHeroBlock = blocks.some(isWatchHomeHeroBlock)
+  const leadsWithHeroBlock =
+    blocks.length > 0 && isWatchHomeHeroBlock(blocks[0])
+  const heroAboveBodyZone = !hasHeroBlock || leadsWithHeroBlock
+  // The first screen supplies the page h1 when the carousel leads the page.
+  // The carousel renders nothing without slides, so it cannot supply it then.
+  const firstScreenSuppliesHeading =
+    heroAboveBodyZone && heroModel.heroSlides.length > 0
+  const normalized = normalizeAuthoredPageHeadings(
+    blocks,
+    firstScreenSuppliesHeading,
+  )
+  const hasPageHeading =
+    firstScreenSuppliesHeading || normalized.hasAuthoredPageHeading
   // The intro is sticky and the body zone scrolls over it, so the carousel has
   // to render OUTSIDE that zone. An authored hero block renders the very same
   // carousel (see `renderBlock`), so hoist it when it leads the page. An
   // authored hero placed mid-page keeps its inline position and simply does
   // not pin — pinning a hero that starts halfway down has no meaning.
-  const leadsWithHeroBlock =
-    normalized.blocks.length > 0 && isWatchHomeHeroBlock(normalized.blocks[0])
-  const heroAboveBodyZone = !hasHeroBlock || leadsWithHeroBlock
   const bodyZoneBlocks = leadsWithHeroBlock
     ? normalized.blocks.slice(1)
     : normalized.blocks
@@ -324,11 +339,17 @@ export function WatchHomeExperiencePage({
             rail to the viewport edges. `html`/`body` already clip the page,
             so nothing gains a horizontal scrollbar. */}
         <div className="relative z-10 mx-auto -mt-[100vh] max-w-[1920px]">
-          {normalized.hasAuthoredPageHeading ? null : (
+          {hasPageHeading ? null : (
             <h1 className="sr-only">{t("pageTitle")}</h1>
           )}
           {heroAboveBodyZone ? (
             <WatchHomeTvCarousel
+              heroIntro={
+                <WatchHomeFirstScreen
+                  locale={locale}
+                  languageSlug={languageSlug}
+                />
+              }
               heroManifestCatalog={
                 signWatchHomeHeroManifestCatalog(
                   watchHomeHeroSource(heroModel),

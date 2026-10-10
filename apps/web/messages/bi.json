@@ -528,7 +528,8 @@
     "nextVideoPreview": "Preview blong nex video",
     "mediaCollection": "Kolosen blong media",
     "scrollToVideo": "Scroll go long video {title}",
-    "forYou": "Recommended for You"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project hom",

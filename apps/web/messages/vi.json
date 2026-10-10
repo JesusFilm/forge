@@ -344,7 +344,8 @@
     "featured": "Nổi bật",
     "mediaCollection": "Bộ sưu tập truyền thông",
     "scrollToVideo": "Cuộn đến video {title}",
-    "forYou": "Đề xuất cho bạn"
+    "forYou": "Đề xuất cho bạn",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Ngôn ngữ",

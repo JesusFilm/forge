@@ -537,7 +537,8 @@
     "scrollToVideo": "Scroll to {title} video",
     "previousVideoPreview": "Previous video preview",
     "nextVideoPreview": "Next video preview",
-    "forYou": "Recommended for You"
+    "forYou": "Recommended for You",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project home",

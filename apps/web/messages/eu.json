@@ -528,7 +528,8 @@
     "nextVideoPreview": "Hurrengo bideoaren aurrebista",
     "mediaCollection": "Edukiontzi-bilduma",
     "scrollToVideo": "Joan {title} bideora",
-    "forYou": "Zuretzat"
+    "forYou": "Zuretzat",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project hasiera",

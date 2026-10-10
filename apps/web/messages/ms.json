@@ -344,7 +344,8 @@
     "featured": "Pilihan utama",
     "mediaCollection": "Koleksi media",
     "scrollToVideo": "Skrol ke video {title}",
-    "forYou": "Untuk anda"
+    "forYou": "Untuk anda",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Bahasa",

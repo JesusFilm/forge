@@ -528,7 +528,8 @@
     "nextVideoPreview": "Наступний перегляд відео",
     "mediaCollection": "Медіадобірка",
     "scrollToVideo": "Прокрутити до відео {title}",
-    "forYou": "Для вас"
+    "forYou": "Для вас",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Головна Jesus Film Project",

@@ -344,7 +344,8 @@
     "featured": "注目",
     "mediaCollection": "メディアコレクション",
     "scrollToVideo": "{title}の動画へスクロール",
-    "forYou": "あなたへのおすすめ"
+    "forYou": "あなたへのおすすめ",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "言語",

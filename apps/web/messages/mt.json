@@ -528,7 +528,8 @@
     "nextVideoPreview": "Previżjoni tal-video li jmiss",
     "mediaCollection": "Kollezzjoni tal-media",
     "scrollToVideo": "Skrollja għall-video {title}",
-    "forYou": "Għalik"
+    "forYou": "Għalik",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Dar Jesus Film Project",

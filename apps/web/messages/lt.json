@@ -528,7 +528,8 @@
     "nextVideoPreview": "Kito vaizdo įrašo peržiūra",
     "mediaCollection": "მედijos rinkinys",
     "scrollToVideo": "Slinkite iki {title} vaizdo įrašo",
-    "forYou": "Jums"
+    "forYou": "Jums",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Project pradžia",

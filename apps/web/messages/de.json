@@ -344,7 +344,8 @@
     "featured": "Empfohlen",
     "mediaCollection": "Mediensammlung",
     "scrollToVideo": "Zum Video {title} scrollen",
-    "forYou": "Für dich empfohlen"
+    "forYou": "Für dich empfohlen",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Sprachen",

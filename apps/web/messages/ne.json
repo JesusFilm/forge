@@ -344,7 +344,8 @@
     "featured": "विशेष",
     "mediaCollection": "मिडिया संग्रह",
     "scrollToVideo": "{title} भिडियोमा स्क्रोल गर्नुहोस्",
-    "forYou": "तपाईंको लागि"
+    "forYou": "तपाईंको लागि",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "भाषाहरू",

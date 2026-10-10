@@ -344,7 +344,8 @@
     "featured": "แนะนำ",
     "mediaCollection": "คอลเลกชันสื่อ",
     "scrollToVideo": "เลื่อนไปที่วิดีโอ {title}",
-    "forYou": "แนะนำสำหรับคุณ"
+    "forYou": "แนะนำสำหรับคุณ",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "ภาษา",

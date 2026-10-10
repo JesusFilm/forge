@@ -344,7 +344,8 @@
     "featured": "Öne çıkan",
     "mediaCollection": "Medya koleksiyonu",
     "scrollToVideo": "{title} videosuna git",
-    "forYou": "Sizin için önerilenler"
+    "forYou": "Sizin için önerilenler",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Diller",

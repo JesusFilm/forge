@@ -122,7 +122,8 @@
     "WatchHomeCategories.seeAll",
     "WatchHomeCategories.title",
     "WatchNotFound.languageDescription",
-    "WatchHome.forYou"
+    "WatchHome.forYou",
+    "WatchHome.noSignUpToWatch"
   ],
   "intentionallyLocaleNeutral": [
     "DownloadModal.termsAgreementSuffix",

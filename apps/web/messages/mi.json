@@ -528,7 +528,8 @@
     "nextVideoPreview": "Arokite ataata panuku",
     "mediaCollection": "Kohinga pāpāho",
     "scrollToVideo": "Panuku ki te ataata {title}",
-    "forYou": "Māu"
+    "forYou": "Māu",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Kainga Jesus Film Project",

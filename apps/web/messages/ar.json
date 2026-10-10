@@ -344,7 +344,8 @@
     "featured": "مميّز",
     "mediaCollection": "مجموعة وسائط",
     "scrollToVideo": "انتقل إلى فيديو {title}",
-    "forYou": "موصى به لك"
+    "forYou": "موصى به لك",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "اللغات",

@@ -528,7 +528,8 @@
     "nextVideoPreview": "Rhagolwg fideo nesaf",
     "mediaCollection": "Casgliad cyfryngau",
     "scrollToVideo": "Sgrolio i fideo {title}",
-    "forYou": "I chi"
+    "forYou": "I chi",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Hafan Jesus Film Project",

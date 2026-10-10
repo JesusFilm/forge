@@ -528,7 +528,8 @@
     "nextVideoPreview": "Onyesho la kukagua video inayofuata",
     "mediaCollection": "Mkusanyiko wa media",
     "scrollToVideo": "Sogeza hadi video ya {title}",
-    "forYou": "Kwa ajili yako"
+    "forYou": "Kwa ajili yako",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Nyumbani kwa Jesus Film Project",

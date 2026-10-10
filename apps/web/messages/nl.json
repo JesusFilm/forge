@@ -344,7 +344,8 @@
     "featured": "Uitgelicht",
     "mediaCollection": "Mediacollectie",
     "scrollToVideo": "Scroll naar de video van {title}",
-    "forYou": "Aanbevolen voor jou"
+    "forYou": "Aanbevolen voor jou",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Talen",

@@ -344,7 +344,8 @@
     "featured": "Polecane",
     "mediaCollection": "Kolekcja multimediów",
     "scrollToVideo": "Przewiń do filmu {title}",
-    "forYou": "Dla Ciebie"
+    "forYou": "Dla Ciebie",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Języki",

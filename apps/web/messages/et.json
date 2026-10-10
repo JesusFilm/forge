@@ -528,7 +528,8 @@
     "nextVideoPreview": "Järgmise video eelvaade",
     "mediaCollection": "Meediakogu",
     "scrollToVideo": "Keri video {title} juurde",
-    "forYou": "Sulle"
+    "forYou": "Sulle",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchFooter": {
     "home": "Jesus Film Projecti avaleht",

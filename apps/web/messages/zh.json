@@ -344,7 +344,8 @@
     "featured": "精选",
     "mediaCollection": "媒体合集",
     "scrollToVideo": "滚动到视频“{title}”",
-    "forYou": "为你推荐"
+    "forYou": "为你推荐",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "语言",

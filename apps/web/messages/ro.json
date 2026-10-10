@@ -344,7 +344,8 @@
     "featured": "Recomandate",
     "mediaCollection": "Colecție media",
     "scrollToVideo": "Derulează la videoclipul {title}",
-    "forYou": "Pentru tine"
+    "forYou": "Pentru tine",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Limbi",

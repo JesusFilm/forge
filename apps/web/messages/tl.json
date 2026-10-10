@@ -344,7 +344,8 @@
     "featured": "Tampok",
     "mediaCollection": "Koleksyon ng media",
     "scrollToVideo": "Mag-scroll sa video na {title}",
-    "forYou": "Para sa iyo"
+    "forYou": "Para sa iyo",
+    "noSignUpToWatch": "No sign-up needed to watch"
   },
   "WatchLanguageIndex": {
     "metadataTitle": "Mga wika",
