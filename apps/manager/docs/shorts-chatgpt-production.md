@@ -16,6 +16,15 @@ In ChatGPT's custom MCP app setup, use:
 | Client ID      | `jfp_shorts_mcp_chatgpt`                  |
 | Client secret  | Leave empty; this is a public PKCE client |
 
+In **Advanced OAuth settings**, select **User-Defined OAuth Client** and token
+endpoint authentication **none**. Disable **OIDC enabled**: this client does not
+request identity scopes. Keep only `shorts:read`, `shorts:edit`, `shorts:render`
+and `shorts:narration` as default scopes, and put `offline_access` in **Base
+scopes**. Deselect `shorts:chat` and `shorts:instructions:read`. Discovery can
+advertise capabilities for other clients; that does not authorize this client
+to request them. If render/narration are absent from discovery, wait for the
+Manager workflow deployment before completing setup.
+
 The registered redirect is exactly
 `https://chatgpt.com/connector_platform_oauth_redirect`. If the callback displayed
 by your client differs, stop and have the registration reviewed; do not add a
@@ -43,6 +52,12 @@ Use a supported skill-loading mechanism for your client. If all packaged files
 are supplied and verified as conversation reference material, describe that as
 manual skill-context loading; attaching a ZIP alone does not prove installation.
 `shorts.instructions` is hosted guidance and is not a substitute for the package.
+
+ChatGPT's native path is **Skills → Add skill → Upload from your computer**.
+Upload the ZIP and verify **Shorts creator** appears under Installed. Its editor
+should list `SKILL.md`, `agents/openai.yaml`, five examples and two references.
+Native upload and visible file presence were verified in the owner's account;
+that does not establish invocation in a conversation or a connected MCP app.
 
 Give the broad brief and keep feedback in the external conversation. Ask for a
 rendered draft and sampled inspection, with the exact review link and disclosed
