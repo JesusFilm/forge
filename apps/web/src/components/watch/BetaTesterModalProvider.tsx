@@ -202,18 +202,25 @@ function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
   useWatchModalActivity(open)
 
   useEffect(() => {
-    let active = true
+    const cleanupController = new AbortController()
+    const timeoutSignal = AbortSignal.timeout(2_000)
+    const abortOnTimeout = () => cleanupController.abort()
+    timeoutSignal.addEventListener("abort", abortOnTimeout, { once: true })
 
     void fetch(GLOBAL_BETA_TESTER_CTA_ENDPOINT, {
       cache: "no-store",
       credentials: "same-origin",
+      signal: cleanupController.signal,
     })
       .then(async (response) => {
         if (!response.ok) return null
         return (await response.json()) as { enabled?: unknown }
       })
       .then((result) => {
-        if (active && typeof result?.enabled === "boolean") {
+        if (
+          !cleanupController.signal.aborted &&
+          typeof result?.enabled === "boolean"
+        ) {
           setShowGlobalTrigger(result.enabled)
         }
       })
@@ -222,7 +229,8 @@ function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
       })
 
     return () => {
-      active = false
+      timeoutSignal.removeEventListener("abort", abortOnTimeout)
+      cleanupController.abort()
     }
   }, [])
 

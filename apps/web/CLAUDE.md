@@ -268,7 +268,8 @@ while keeping the shared modal provider available to authored beta-tester
 links; `true` renders the floating CTA. Because public Watch routes are
 statically cached, evaluate this flag through the same-origin, no-store
 `/watch/api/beta-tester-cta` endpoint after hydration rather than in a static
-layout. Keep
+layout. Bound the client request with `AbortSignal.timeout(2_000)` combined with
+a controller aborted on route change or unmount. Keep
 `FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT=false` unless intentionally testing
 or rolling out the launcher.
 

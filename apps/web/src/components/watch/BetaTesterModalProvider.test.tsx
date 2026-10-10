@@ -85,6 +85,8 @@ afterEach(() => {
   container.remove()
   document.body.innerHTML = ""
   vi.unstubAllGlobals()
+  vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 function click(selector: string) {
@@ -136,10 +138,14 @@ describe("BetaTesterModalProvider", () => {
 
     await renderProvider()
 
-    expect(fetch).toHaveBeenCalledWith("/watch/api/beta-tester-cta", {
-      cache: "no-store",
-      credentials: "same-origin",
-    })
+    expect(fetch).toHaveBeenCalledWith(
+      "/watch/api/beta-tester-cta",
+      expect.objectContaining({
+        cache: "no-store",
+        credentials: "same-origin",
+        signal: expect.any(AbortSignal),
+      }),
+    )
     expect(
       document.querySelector("[data-testid='global-beta-tester-cta']"),
     ).toBeNull()
@@ -179,12 +185,14 @@ describe("BetaTesterModalProvider", () => {
       .mockResolvedValueOnce(Response.json({ enabled: false }))
 
     await renderProvider()
+    const firstSignal = vi.mocked(fetch).mock.calls[0]?.[1]?.signal
     expect(
       document.querySelector("[data-testid='global-beta-tester-cta']"),
     ).toBeNull()
 
     navigation.pathname = "/watch/videos"
     await renderProvider()
+    expect(firstSignal?.aborted).toBe(true)
     expect(
       document.querySelector("[data-testid='global-beta-tester-cta']"),
     ).not.toBeNull()
@@ -194,6 +202,65 @@ describe("BetaTesterModalProvider", () => {
     expect(
       document.querySelector("[data-testid='global-beta-tester-cta']"),
     ).toBeNull()
+  })
+
+  it("aborts the flag request after its two-second timeout", async () => {
+    vi.useFakeTimers()
+    const timeoutController = new AbortController()
+    vi.spyOn(AbortSignal, "timeout").mockImplementation((milliseconds) => {
+      setTimeout(() => timeoutController.abort(), milliseconds)
+      return timeoutController.signal
+    })
+    let resolveFetch: ((response: Response) => void) | undefined
+    vi.mocked(fetch).mockImplementationOnce(
+      (_input, init) =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve
+          expect(init?.signal).toBeDefined()
+        }),
+    )
+
+    await renderProvider()
+    const signal = vi.mocked(fetch).mock.calls[0]?.[1]?.signal
+    expect(signal?.aborted).toBe(false)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000)
+    })
+
+    expect(signal?.aborted).toBe(true)
+
+    await act(async () => {
+      resolveFetch?.(Response.json({ enabled: true }))
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(
+      document.querySelector("[data-testid='global-beta-tester-cta']"),
+    ).toBeNull()
+  })
+
+  it("works when AbortSignal.any is unavailable", async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(AbortSignal, "any")
+    Object.defineProperty(AbortSignal, "any", {
+      configurable: true,
+      value: undefined,
+    })
+
+    try {
+      await renderProvider()
+      expect(
+        document.querySelector("[data-testid='global-beta-tester-cta']"),
+      ).not.toBeNull()
+    } finally {
+      if (descriptor) {
+        Object.defineProperty(AbortSignal, "any", descriptor)
+      } else {
+        Reflect.deleteProperty(AbortSignal, "any")
+      }
+    }
   })
 
   it("renders the global CTA in the active Watch locale", async () => {
