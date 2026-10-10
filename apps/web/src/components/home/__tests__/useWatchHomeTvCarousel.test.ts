@@ -10,6 +10,7 @@ import {
   WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS,
   addWatchHomeTvPlayedId,
   firstUnplayedWatchHomeTvCarouselIndex,
+  isWatchHomeConstrainedConnection,
   nextUnplayedWatchHomeTvCarouselIndex,
   readWatchHomeTvPlayedIds,
   watchHomeTvAdvanceBackstopSeconds,
@@ -194,5 +195,35 @@ describe("watch home TV carousel advance duration", () => {
     expect(watchHomeTvAdvanceBackstopSeconds(imageSlide(), 480)).toBe(
       WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
     )
+  })
+})
+
+describe("isWatchHomeConstrainedConnection", () => {
+  it.each([
+    [{ saveData: true }],
+    [{ saveData: true, effectiveType: "4g" }],
+    [{ effectiveType: "slow-2g" }],
+    [{ effectiveType: "2g" }],
+    [{ effectiveType: "3g" }],
+  ])("is constrained for %j", (connection) => {
+    expect(isWatchHomeConstrainedConnection({ connection })).toBe(true)
+  })
+
+  it.each([
+    [{ saveData: false, effectiveType: "4g" }],
+    [{ effectiveType: "4g" }],
+    // Only a literal `true` opts in; a truthy non-boolean is not a signal.
+    [{ saveData: "true", effectiveType: "4g" }],
+    [{ effectiveType: "3G" }],
+    [{}],
+  ])("is not constrained for %j", (connection) => {
+    expect(isWatchHomeConstrainedConnection({ connection })).toBe(false)
+  })
+
+  // Safari and Firefox expose no Network Information API.
+  it("is not constrained when the browser has no connection info", () => {
+    expect(isWatchHomeConstrainedConnection({})).toBe(false)
+    expect(isWatchHomeConstrainedConnection({ connection: null })).toBe(false)
+    expect(isWatchHomeConstrainedConnection(null)).toBe(false)
   })
 })

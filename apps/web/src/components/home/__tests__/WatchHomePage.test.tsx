@@ -3,8 +3,8 @@
  */
 
 import { act, StrictMode, useEffect, type ReactNode } from "react"
-import { createRoot, type Root } from "react-dom/client"
-import { renderToStaticMarkup } from "react-dom/server"
+import { createRoot, hydrateRoot, type Root } from "react-dom/client"
+import { renderToStaticMarkup, renderToString } from "react-dom/server"
 import { setRequestLocale } from "next-intl/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 vi.mock("@/env", () => ({
@@ -36,6 +36,7 @@ import {
 } from "@/lib/watch-player-chrome-events"
 import {
   WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS,
+  WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS,
   WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS,
   WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS,
 } from "@/components/home/useWatchHomeTvCarousel"
@@ -536,6 +537,174 @@ describe("WatchHomePage", () => {
 
     expect(video.getAttribute("src")).toBe(firstSrc)
     expect(firstSrc).toContain("max_resolution=")
+  })
+
+  // FGE-141. jsdom has no `navigator.connection`, which is why every other
+  // test in this file keeps the "playback allowed" path.
+  describe("on a Save-Data or slow connection", () => {
+    function stubConnection(connection: {
+      saveData?: boolean
+      effectiveType?: string
+    }) {
+      Object.defineProperty(navigator, "connection", {
+        configurable: true,
+        value: connection,
+      })
+    }
+
+    afterEach(() => {
+      Reflect.deleteProperty(navigator, "connection")
+    })
+
+    function posterLayer() {
+      return container.querySelector(
+        '[data-testid="watch-home-tv-visual-layer"] [role="img"]',
+      )
+    }
+
+    it.each([
+      ["saveData is on", { saveData: true, effectiveType: "4g" }],
+      ["effectiveType is slow-2g", { effectiveType: "slow-2g" }],
+      ["effectiveType is 2g", { effectiveType: "2g" }],
+      ["effectiveType is 3g", { effectiveType: "3g" }],
+    ])(
+      "renders the hero poster-only, with no stream, when %s",
+      async (_label, connection) => {
+        stubConnection(connection)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeModel()} />)
+        })
+
+        // MuxVideo never mounted, so no `.m3u8` or segment can be requested.
+        expect(muxVideoRenders).toEqual([])
+        expect(
+          container.querySelector('[data-testid="watch-home-tv-video"]'),
+        ).toBeNull()
+        expect(posterLayer()).not.toBeNull()
+        // Nothing plays, so there is nothing to unmute.
+        expect(
+          container.querySelector('button[aria-label="Unmute preview"]'),
+        ).toBeNull()
+      },
+    )
+
+    // Guards the table above against a vacuous pass: the same stub on a fast
+    // connection still mounts the capped stream.
+    it("still plays the capped stream on a 4g connection", async () => {
+      stubConnection({ saveData: false, effectiveType: "4g" })
+      await act(async () => {
+        root.render(
+          <WatchHomePage
+            model={makeModel({
+              heroSlides: [
+                {
+                  ...makeCard({ hls: "https://stream.mux.com/mux-hero.m3u8" }),
+                  eyebrow: "Featured",
+                } as WatchHomeModel["heroSlides"][number],
+              ],
+            })}
+          />,
+        )
+      })
+
+      expect(muxVideoRenders.at(-1)).toBe(
+        `https://stream.mux.com/mux-hero.m3u8?max_resolution=${WATCH_HOME_INTRO_MAX_RESOLUTION}`,
+      )
+      expect(
+        container.querySelector('button[aria-label="Unmute preview"]'),
+      ).not.toBeNull()
+    })
+
+    // `effectiveType` flaps on mobile. The gate is read once, so a later
+    // drop to 3g neither unmounts the playing stream nor restarts it.
+    it("keeps a playing stream when the connection degrades mid-session", async () => {
+      stubConnection({ effectiveType: "4g" })
+      const model = makeModel()
+      await act(async () => {
+        root.render(<WatchHomePage model={model} />)
+      })
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      )
+      expect(video).not.toBeNull()
+
+      stubConnection({ effectiveType: "3g" })
+      await act(async () => {
+        root.render(<WatchHomePage model={model} />)
+      })
+
+      expect(
+        container.querySelector('[data-testid="watch-home-tv-video"]'),
+      ).toBe(video)
+    })
+
+    // A poster-only video slide must take an image slide's turn. If only the
+    // element were hidden, the slide would sit "buffering" until the 12 s
+    // dead-stream ceiling instead.
+    it("advances a poster-only video slide on the image-slide clock", async () => {
+      stubConnection({ saveData: true })
+      vi.useFakeTimers()
+      try {
+        vi.spyOn(Math, "random").mockReturnValue(0)
+        await act(async () => {
+          root.render(<WatchHomePage model={makeTimedSequencedModel(123)} />)
+        })
+        const carouselLabel = () =>
+          container
+            .querySelector('[data-testid="watch-home-tv-carousel"]')
+            ?.getAttribute("aria-label")
+        const openingTitle = carouselLabel()
+
+        const ring = container.querySelector(
+          '[data-testid="watch-home-current-progress"] .watch-home-progress-ring',
+        ) as SVGCircleElement
+        expect(
+          ring.style.getPropertyValue("--watch-home-progress-duration"),
+        ).toBe(`${WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS}s`)
+        expect(
+          container.querySelectorAll(
+            '[data-testid="watch-home-progress-loading"]',
+          ),
+        ).toHaveLength(0)
+
+        await act(async () => {
+          vi.advanceTimersByTime(
+            WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS * 1000 - 1,
+          )
+        })
+        expect(carouselLabel()).toBe(openingTitle)
+
+        await act(async () => {
+          vi.advanceTimersByTime(1)
+        })
+        expect(carouselLabel()).not.toBe(openingTitle)
+        expect(muxVideoRenders).toEqual([])
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    // The media element starts fetching in its own mount effect, which runs
+    // before the parent re-renders with the client's connection value. So
+    // hydration must start from "not allowed"; an "allowed" server default
+    // would mount the stream for one render on a save-data connection.
+    it("never mounts the stream during hydration on a save-data connection", async () => {
+      const serverMarkup = renderToString(<WatchHomePage model={makeModel()} />)
+      expect(muxVideoRenders).toEqual([])
+
+      stubConnection({ saveData: true })
+      // Replace the createRoot from beforeEach with a hydration root.
+      await act(async () => {
+        root.unmount()
+      })
+      container.innerHTML = serverMarkup
+      await act(async () => {
+        root = hydrateRoot(container, <WatchHomePage model={makeModel()} />)
+      })
+
+      expect(muxVideoRenders).toEqual([])
+      expect(posterLayer()).not.toBeNull()
+    })
   })
 
   describe("playing a slide to its natural end", () => {
