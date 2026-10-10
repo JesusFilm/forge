@@ -1,15 +1,15 @@
 ---
-id: "feat-536"
+id: "feat-689"
 title: "Close the Watch security-header gaps"
 owner: "vlad"
 priority: "P1"
-status: "complete"
+status: "in-progress"
 start_date: "2026-09-22"
 duration: 1
 depends_on: []
 blocks:
-  - "feat-541"
-  - "feat-542"
+  - "feat-690"
+  - "feat-691"
 tags:
   - "web"
   - "infrastructure"
@@ -89,9 +89,9 @@ Measured on production and reproduced locally against `next build` + `next start
 
 ## Follow-up work split out of this ticket
 
-- `feat-541` — the `imagedelivery.net` / `image.mux.com` patterns are shape-only
+- `feat-690` — the `imagedelivery.net` / `image.mux.com` patterns are shape-only
   and do not close the open image proxy for those multitenant CDNs.
-- `feat-542` — the post-sign-out force-login marker is still burned at the login
+- `feat-691` — the post-sign-out force-login marker is still burned at the login
   redirect rather than on callback success.
 
 ## Verification

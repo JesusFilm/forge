@@ -1,5 +1,5 @@
 ---
-id: "feat-541"
+id: "feat-690"
 title: "Scope the Watch image optimizer to our own CDN tenants"
 owner: "vlad"
 priority: "P2"
@@ -7,7 +7,7 @@ status: "not-started"
 start_date: "2026-10-06"
 duration: 3
 depends_on:
-  - "feat-536"
+  - "feat-689"
 blocks: []
 tags:
   - "web"
@@ -16,7 +16,7 @@ tags:
 
 ## Problem
 
-feat-536 gave every `images.remotePatterns` entry a `pathname`, which genuinely
+feat-689 gave every `images.remotePatterns` entry a `pathname`, which genuinely
 closed the open image proxy for `images.unsplash.com` (pinned to the two fixed
 placeholder photos the app renders). It did **not** close it for the other two
 hosts, and the PR says so rather than claiming otherwise.
@@ -42,7 +42,7 @@ Path shape cannot express tenancy, so no `remotePatterns` change can fix this.
    and the comments that state the shape-only limitation.
 2. `apps/web/scripts/next-config.test.mjs` — `describe("Next.js image optimizer is
 not an open proxy")`, including the NOTE that these two assert shape only.
-3. `docs/roadmap/platform/feat-536-watch-security-header-baseline.md` — the
+3. `docs/roadmap/platform/feat-689-watch-security-header-baseline.md` — the
    originating work and its "What To Build" caveat.
 4. `apps/web/src/lib/download-allowlist.ts` — the existing origin-allowlist pattern
    and its documented redirect-chain limitation.
@@ -71,7 +71,7 @@ Pick one; the first is cheaper, the second is complete.
 
 ## Constraints
 
-- Do NOT regress the 28 real image-optimizer requests the feat-536 browser smoke
+- Do NOT regress the 28 real image-optimizer requests the feat-689 browser smoke
   captured; that run is the regression baseline.
 - Do NOT reintroduce a hostname-only pattern for any host.
 - Keep the Unsplash pins as they are — that host is already closed.

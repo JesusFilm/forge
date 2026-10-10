@@ -1,5 +1,5 @@
 ---
-id: "feat-542"
+id: "feat-691"
 title: "Burn the force-login marker on callback success, not on the login redirect"
 owner: "vlad"
 priority: "P2"
@@ -7,7 +7,7 @@ status: "not-started"
 start_date: "2026-10-06"
 duration: 2
 depends_on:
-  - "feat-536"
+  - "feat-689"
 blocks: []
 tags:
   - "web"
@@ -18,7 +18,7 @@ tags:
 
 `docs/solutions/architecture-patterns/post-sign-out-force-login-marker-oidc-relying-apps.md`
 records this exact gap and says to **apply it when the surface is next touched**.
-feat-536 touched that line (converting the clear from `cookies.delete()` to the
+feat-689 touched that line (converting the clear from `cookies.delete()` to the
 dual-path `clearWebAuthCookie`) but changed only _how_ the marker is cleared, not
 _when_ — so the trigger fired and the gap survives.
 
@@ -56,7 +56,7 @@ The 10-minute cookie TTL masks how often this is reachable; it does not fix it.
   actually happened.
 - Leave it intact on `redirectToAuthError` and on an abandoned attempt, so the next
   attempt is still forced.
-- Keep the dual-path clear feat-536 introduced: the marker still has a legacy
+- Keep the dual-path clear feat-689 introduced: the marker still has a legacy
   `Path=/` copy in browsers. Clear it after every `response.cookies.*` call on that
   response, per `docs/solutions/auth/narrowing-a-cookie-path-lets-the-legacy-copy-win-the-read.md`.
 
