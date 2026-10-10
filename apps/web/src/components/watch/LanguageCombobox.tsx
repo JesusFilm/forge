@@ -463,6 +463,7 @@ export function LanguageCombobox({
         if (option) handleSelect(option.slug)
       } else if (event.key === "Escape") {
         event.preventDefault()
+        event.stopPropagation()
         setComboboxOpen(false)
         triggerRef.current?.focus()
       }

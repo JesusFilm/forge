@@ -331,6 +331,7 @@ export function FloatingSearchProvider({
   const nextSearchSubmitIntentIdRef = useRef(0)
   const globalLanguagePendingRouteRef = useRef<RouteIdentity | null>(null)
   const globalLanguageTriggerRef = useRef<HTMLButtonElement>(null)
+  const searchReturnFocusRef = useRef<HTMLElement | null>(null)
   const pendingPageLanguageOpenRef = useRef<PendingPageLanguageOpen | null>(
     null,
   )
@@ -355,6 +356,16 @@ export function FloatingSearchProvider({
         closingTimerRef.current = null
       }
       if (next) {
+        if (typeof document !== "undefined") {
+          const active = document.activeElement
+          if (
+            active instanceof HTMLElement &&
+            active !== document.body &&
+            !active.closest('[role="dialog"]')
+          ) {
+            searchReturnFocusRef.current = active
+          }
+        }
         pendingPageLanguageOpenRef.current = null
         invalidateGlobalLanguageIntent()
         setClosing(false)
@@ -853,8 +864,8 @@ export function FloatingSearchProvider({
         />
         <header
           data-testid="floating-header"
-          inert={headerChromeHidden || undefined}
-          aria-hidden={headerChromeHidden || undefined}
+          inert={modalChromeHidden || headerChromeHidden || undefined}
+          aria-hidden={modalChromeHidden || headerChromeHidden || undefined}
           className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
             modalChromeHidden
               ? FLOATING_MODAL_HEADER_LAYOUT_CLASS
@@ -952,11 +963,10 @@ export function FloatingSearchProvider({
                 ref={globalLanguageTriggerRef}
                 data-testid="floating-header-language-button"
                 onClick={headerLanguageClick}
-                aria-busy={headerLanguageBusy}
-                disabled={headerLanguageBusy}
-                aria-label={globalLanguageLabel}
-                title={globalLanguageLabel}
-                className={`pointer-events-auto inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
+                inert={modalChromeHidden || undefined}
+                aria-hidden={modalChromeHidden || undefined}
+                tabIndex={modalChromeHidden ? -1 : undefined}
+                className={`${modalChromeHidden ? "invisible" : ""} pointer-events-auto inline-flex ${FLOATING_HEADER_LANGUAGE_SLOT_CLASS} ${
                   modalChromeHidden
                     ? FLOATING_MODAL_HEADER_LANGUAGE_POSITION_CLASS
                     : ""
@@ -965,6 +975,10 @@ export function FloatingSearchProvider({
                     ? `${modalChromeHidden ? "" : "-mr-[18.25px]"} w-auto min-w-[4.25rem] gap-1.5 px-2 md:w-auto md:min-w-[4.75rem]`
                     : ""
                 }`}
+                aria-busy={headerLanguageBusy}
+                disabled={headerLanguageBusy}
+                aria-label={globalLanguageLabel}
+                title={globalLanguageLabel}
               >
                 <Globe
                   aria-hidden
@@ -1020,6 +1034,7 @@ export function FloatingSearchProvider({
             languageVideosHref={languageVideosHref}
             resetToken={searchResetToken}
             pendingSubmitIntent={pendingSearchSubmitIntent}
+            returnFocusRef={searchReturnFocusRef}
             onReady={markSearchControllerReady}
           />
         ) : null}
