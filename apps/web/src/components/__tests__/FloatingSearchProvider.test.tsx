@@ -868,6 +868,9 @@ describe("FloatingSearchProvider — search mode", () => {
         }),
       }),
     )
+    expect(mockedGetSearchLanguageOptions).toHaveBeenCalledWith(
+      expect.objectContaining({ uiLocale: "es" }),
+    )
   })
 
   it("preserves a canonical English localized-home route", async () => {
