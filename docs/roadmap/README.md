@@ -7,9 +7,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 ## Status (October 8, 2026)
 
 - **Total tickets:** 795
-- **Complete:** 596
+- **Complete:** 597
 - **Cancelled:** 39
-- **In progress:** 60
+- **In progress:** 59
 - **Not started:** 43
 - **Blocked:** 57
 - **Overdue and open:** 142
@@ -666,6 +666,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-611](platform/feat-611-renovate-google-maven-lookup.md)                          | Resolve Android dependencies in Renovate                                           | tataihono  | P1       | 2026-10-06 | 1    | 2026-10-06 | complete    |
 | [feat-614](platform/feat-614-expo-patch-ci-recovery.md)                                | Align Expo patch versions to restore CI                                            | nisal      | P1       | 2026-10-07 | 1    | 2026-10-07 | complete    |
 | [feat-649](platform/feat-649-watch-unicode-content-routes.md)                          | Watch routes for Unicode content slugs                                             | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-653](platform/feat-653-watch-title-availability-regressions.md)                  | Verify My Last Day and Mostly Tea Watch availability                               | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |

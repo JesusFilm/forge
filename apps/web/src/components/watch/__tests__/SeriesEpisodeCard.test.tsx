@@ -364,6 +364,7 @@ describe("SeriesEpisodeCard — href", () => {
     "la-búsqueda-the-search",
     "la-liberté-de-l-interieur-freedom-within",
     "jätku-leiba",
+    "çoğu-çay-mostly-tea",
   ])("links a playable child with the native slug %s", (slug) => {
     renderCard({
       episode: makeEpisode({ slug }),
@@ -374,6 +375,18 @@ describe("SeriesEpisodeCard — href", () => {
     const anchor = container.querySelector("a")
     expect(anchor?.getAttribute("href")).toBe(
       `/conversation-starters.html/${slug}.html`,
+    )
+  })
+
+  it("keeps My Last Day linked from Conversation Starters", () => {
+    renderCard({
+      episode: makeEpisode({ slug: "my-last-day" }),
+      languageSlug: "english",
+      parentSlug: "conversation-starters",
+    })
+
+    expect(container.querySelector("a")?.getAttribute("href")).toBe(
+      "/conversation-starters.html/my-last-day.html",
     )
   })
 
