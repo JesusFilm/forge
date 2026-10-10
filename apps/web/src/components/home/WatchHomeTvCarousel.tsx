@@ -805,27 +805,54 @@ function WatchHomePlaybackProgressRing({
         stroke="rgba(255,255,255,0.18)"
         strokeWidth="3"
       />
-      <g style={{ opacity: buffering ? 0.4 : 1 }}>
-        <circle
-          key={animationKey}
-          cx={center}
-          cy={center}
-          r={radius}
-          fill="none"
-          stroke="rgba(255,255,255,0.9)"
-          strokeLinecap="round"
-          strokeWidth="3"
-          className="watch-home-progress-ring"
-          data-paused={paused ? "true" : "false"}
-          strokeDasharray={`${circumference * 0.22} ${circumference}`}
-          strokeDashoffset={0}
-          style={
-            {
-              "--watch-home-progress-duration": `${advanceDurationSeconds}s`,
-              animationPlayState: paused ? "paused" : "running",
-            } as CSSProperties
-          }
-        />
+      {/* Elapsed time is the filled arc, exactly as before; only the way it
+          grows changed. `stroke-dashoffset` cannot run on the compositor, so
+          the fill is two half-ring arcs (fixed dash geometry) that each turn
+          into their own half of the ring. The viewports are static clips —
+          the first covers the half the fill travels through first, the second
+          the half it finishes in — so each arc is revealed as it rotates in
+          and the visible fill grows 0 → 100% over the slide's duration.
+          Each half rotates only `transform`; the second waits out the first
+          (half the duration) via a CSS delay, so pausing both holds the fill.
+          Butt caps: a round cap would show a dot at 0% where an arc is parked
+          just outside its clip. Only a STALL dims it; a deliberate pause
+          leaves the fill at full strength. */}
+      <g key={animationKey} style={{ opacity: buffering ? 0.4 : 1 }}>
+        {(["first", "second"] as const).map((half) => (
+          <svg
+            key={half}
+            x={0}
+            y={half === "first" ? center : 0}
+            width={svgSize}
+            height={center}
+            viewBox={`0 ${half === "first" ? center : 0} ${svgSize} ${center}`}
+            overflow="hidden"
+          >
+            <circle
+              cx={center}
+              cy={center}
+              r={radius}
+              fill="none"
+              stroke="rgba(255,255,255,0.9)"
+              strokeWidth="3"
+              className={
+                half === "first"
+                  ? "watch-home-progress-ring"
+                  : "watch-home-progress-ring watch-home-progress-ring-second"
+              }
+              data-half={half}
+              data-paused={paused ? "true" : "false"}
+              strokeDasharray={`${circumference / 2} ${circumference}`}
+              strokeDashoffset={0}
+              style={
+                {
+                  "--watch-home-progress-duration": `${advanceDurationSeconds}s`,
+                  animationPlayState: paused ? "paused" : "running",
+                } as CSSProperties
+              }
+            />
+          </svg>
+        ))}
       </g>
       {/* The loading state belongs on the ring itself: this circle is what
           promised the viewer that something was playing, so it is where the

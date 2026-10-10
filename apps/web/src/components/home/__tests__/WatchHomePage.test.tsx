@@ -928,33 +928,97 @@ describe("WatchHomePage", () => {
           '[data-testid="watch-home-progress-loading"]',
         ).length
 
-      expect(readRing().style.animationPlayState).toBe("running")
-      expect(readRing().getAttribute("stroke-dashoffset")).toBe("0")
-      const progressDash = readRing()
-        .getAttribute("stroke-dasharray")
-        ?.split(" ")
-        .map(Number)
-      expect(progressDash).toHaveLength(2)
-      expect(progressDash?.[0]).toBeLessThan(progressDash?.[1] ?? 0)
+      const readHalves = () =>
+        Array.from(
+          container
+            .querySelector('[data-testid="watch-home-current-progress"]')!
+            .querySelectorAll(".watch-home-progress-ring"),
+        ) as SVGCircleElement[]
+      const readFill = () => readRing().closest("g") as SVGGElement
+
+      // Two halves of ONE fill, so a pause or stall has to hold both.
+      expect(readHalves().map((half) => half.dataset.half)).toEqual([
+        "first",
+        "second",
+      ])
+      for (const half of readHalves()) {
+        expect(half.style.animationPlayState).toBe("running")
+      }
       expect(loaderCount()).toBe(0)
 
       await act(async () => {
         video.dispatchEvent(new Event("pause", { bubbles: true }))
       })
-      expect(readRing().style.animationPlayState).toBe("paused")
-      expect(readRing().parentElement?.getAttribute("style")).toContain(
-        "opacity: 1",
-      )
+      for (const half of readHalves()) {
+        expect(half.style.animationPlayState).toBe("paused")
+      }
+      expect(readFill().getAttribute("style")).toContain("opacity: 1")
       expect(loaderCount()).toBe(0)
 
       await act(async () => {
         video.dispatchEvent(new Event("waiting", { bubbles: true }))
       })
-      expect(readRing().style.animationPlayState).toBe("paused")
-      expect(readRing().parentElement?.getAttribute("style")).toContain(
-        "opacity: 0.4",
-      )
+      for (const half of readHalves()) {
+        expect(half.style.animationPlayState).toBe("paused")
+      }
+      expect(readFill().getAttribute("style")).toContain("opacity: 0.4")
       expect(loaderCount()).toBeGreaterThan(0)
+    })
+
+    // The ring is a progress FILL, not a decorative spinner: elapsed time is
+    // how much of the ring is lit. A rotating arc of constant length would
+    // still turn once per slide but could not show "how much is left", so the
+    // geometry that makes the fill read as progress is pinned here (the CSS
+    // half of the contract lives in `globals.test.ts`).
+    it("builds the progress ring as a fixed-geometry two-half fill", async () => {
+      await startFirstSlide(makeTimedSequencedModel(10))
+      const svg = container.querySelector(
+        '[data-testid="watch-home-current-progress"]',
+      ) as SVGSVGElement
+      const halves = Array.from(
+        svg.querySelectorAll(".watch-home-progress-ring"),
+      ) as SVGCircleElement[]
+      expect(halves).toHaveLength(2)
+
+      const radius = Number(halves[0].getAttribute("r"))
+      const circumference = 2 * Math.PI * radius
+      for (const half of halves) {
+        // Never animate the dash: it is fixed at exactly half the circle, so
+        // two halves are exactly one ring, and the offset stays 0.
+        const [dash, gap] = (half.getAttribute("stroke-dasharray") ?? "")
+          .split(" ")
+          .map(Number)
+        expect(dash).toBeCloseTo(circumference / 2, 6)
+        expect(gap).toBeCloseTo(circumference, 6)
+        expect(half.getAttribute("stroke-dashoffset")).toBe("0")
+        // Butt caps: a round cap would draw a dot at 0% where the arc is
+        // parked just outside its clip.
+        expect(half.getAttribute("stroke-linecap")).toBeNull()
+      }
+
+      // Each half sits in its own static viewport — the two together tile the
+      // full ring height, with no overlap, so the first-half arc can never
+      // light the second half early (or the reverse).
+      const [first, second] = halves.map(
+        (half) => half.parentElement as unknown as SVGSVGElement,
+      )
+      const tile = (el: SVGSVGElement) => ({
+        y: Number(el.getAttribute("y")),
+        height: Number(el.getAttribute("height")),
+      })
+      expect(first.getAttribute("overflow")).toBe("hidden")
+      expect(second.getAttribute("overflow")).toBe("hidden")
+      expect(tile(first).y).toBe(tile(second).y + tile(second).height)
+      expect(tile(first).height + tile(second).height).toBe(
+        Number(svg.getAttribute("height")),
+      )
+
+      // Both halves carry the slide's own length.
+      for (const half of halves) {
+        expect(
+          half.style.getPropertyValue("--watch-home-progress-duration"),
+        ).toBe("10s")
+      }
     })
 
     it("does not let the dead-stream ceiling advance a hero the viewer paused", async () => {
