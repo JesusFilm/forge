@@ -4,6 +4,14 @@
 
 import { afterEach, describe, expect, it, vi } from "vitest"
 
+import { stubWebAuthEnv } from "../test-support"
+import {
+  WEB_AUTH_FORCE_LOGIN_COOKIE,
+  WEB_AUTH_RETURN_TO_COOKIE,
+  WEB_AUTH_STATE_COOKIE,
+  WEB_AUTH_VERIFIER_COOKIE,
+} from "@/auth/web-session"
+
 vi.mock("next/headers", () => ({
   cookies: vi.fn(async () => ({
     get: vi.fn(() => undefined),
@@ -31,12 +39,7 @@ vi.mock("@/auth/oauth-state", () => ({
 
 async function importRoute() {
   vi.resetModules()
-  vi.stubEnv("WEB_AUTH_BASE_URL", "https://auth.example.test")
-  vi.stubEnv("WEB_BASE_URL", "http://localhost:3000")
-  vi.stubEnv(
-    "WEB_SESSION_SECRET",
-    "test-session-secret-at-least-thirty-two-chars",
-  )
+  stubWebAuthEnv()
   return import("./route")
 }
 
@@ -48,7 +51,6 @@ afterEach(() => {
 describe("GET /watch/api/auth/login", () => {
   it("stores the request-origin homepage for returnTo=/watch", async () => {
     const { GET } = await importRoute()
-    const { WEB_AUTH_RETURN_TO_COOKIE } = await import("@/auth/web-session")
 
     const response = await GET(
       new Request(
@@ -64,7 +66,6 @@ describe("GET /watch/api/auth/login", () => {
 
   it("uses the configured homepage fallback for unsafe returnTo values", async () => {
     const { GET } = await importRoute()
-    const { WEB_AUTH_RETURN_TO_COOKIE } = await import("@/auth/web-session")
 
     const response = await GET(
       new Request(
@@ -76,5 +77,47 @@ describe("GET /watch/api/auth/login", () => {
     expect(response.cookies.get(WEB_AUTH_RETURN_TO_COOKIE)?.value).toBe(
       "http://localhost:3000/watch",
     )
+  })
+})
+
+describe("GET /watch/api/auth/login cookie scope", () => {
+  it("writes the OAuth handshake cookies inside the Watch scope", async () => {
+    // Call-site pin: webAuthCookieOptions() is the seam, but a one-line
+    // `path: "/"` override at this call site would restore the leak with the
+    // module-level test still green.
+    const { GET } = await importRoute()
+
+    const response = await GET(
+      new Request(
+        "http://localhost:3102/watch/api/auth/login?returnTo=%2Fwatch",
+      ),
+    )
+
+    for (const name of [
+      WEB_AUTH_STATE_COOKIE,
+      WEB_AUTH_VERIFIER_COOKIE,
+      WEB_AUTH_RETURN_TO_COOKIE,
+    ]) {
+      expect(response.cookies.get(name)?.path, name).toBe("/watch")
+    }
+  })
+
+  it("clears the force-login marker at the legacy path as well", async () => {
+    // This call site moved from `cookies.delete()` (single path) to the
+    // dual-path clear. Without this case, reverting that one line leaves a
+    // pre-rollout Path=/ marker alive and no test goes red.
+    const { GET } = await importRoute()
+
+    const response = await GET(
+      new Request(
+        "http://localhost:3102/watch/api/auth/login?returnTo=%2Fwatch",
+      ),
+    )
+    const lines = response.headers
+      .getSetCookie()
+      .filter((line) => line.startsWith(`${WEB_AUTH_FORCE_LOGIN_COOKIE}=`))
+
+    expect(lines.some((line) => line.includes("Path=/watch"))).toBe(true)
+    expect(lines.some((line) => /Path=\/(?:;|$)/.test(line))).toBe(true)
   })
 })

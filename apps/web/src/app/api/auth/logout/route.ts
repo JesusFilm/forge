@@ -7,6 +7,8 @@ import {
   WEB_AUTH_SESSION_COOKIE,
   WEB_AUTH_STATE_COOKIE,
   WEB_AUTH_VERIFIER_COOKIE,
+  clearWebAuthCookie,
+  webAuthCookieOptions,
 } from "@/auth/web-session"
 import { getRequestOrigin } from "@/auth/request-origin"
 import { resolveWatchCallbackURL } from "@/lib/watch-callback"
@@ -32,17 +34,21 @@ function clearWebAuthCookies(request: Request) {
     ) ?? new URL("/watch", requestOrigin).toString()
   const response = NextResponse.redirect(returnTo)
 
-  response.cookies.delete(WEB_AUTH_SESSION_COOKIE)
-  response.cookies.delete(WEB_AUTH_STATE_COOKIE)
-  response.cookies.delete(WEB_AUTH_VERIFIER_COOKIE)
-  response.cookies.delete(WEB_AUTH_RETURN_TO_COOKIE)
+  // Set first: the cookies API rewrites the Set-Cookie header from its own
+  // name-keyed map, which would drop the raw legacy lines appended below.
   response.cookies.set(WEB_AUTH_FORCE_LOGIN_COOKIE, "1", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
+    ...webAuthCookieOptions(),
     maxAge: 60 * 10,
   })
+
+  for (const name of [
+    WEB_AUTH_SESSION_COOKIE,
+    WEB_AUTH_STATE_COOKIE,
+    WEB_AUTH_VERIFIER_COOKIE,
+    WEB_AUTH_RETURN_TO_COOKIE,
+  ]) {
+    clearWebAuthCookie(response.headers, name)
+  }
 
   return response
 }

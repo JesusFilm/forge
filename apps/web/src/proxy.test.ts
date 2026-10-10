@@ -112,9 +112,10 @@ function expectNotFoundRewrite(
 ): void {
   expect(response.status).toBe(200)
   expect(rewritePath(response)).toBe(expectedInternalPathname)
-  expect(response.headers.get("content-security-policy")).toBe(
-    "frame-ancestors 'self'",
-  )
+  // CSP is deliberately NOT set here — next.config.mjs `headers()` owns it for
+  // every route. Middleware headers overwrite config ones, so a static value
+  // written here would clobber the promoted policy after WATCH_CSP_ENFORCE.
+  expect(response.headers.get("content-security-policy")).toBeNull()
   expect(response.headers.get("referrer-policy")).toBe("strict-origin")
   expect(
     rewrittenRequestHeaders(response).get(WATCH_INTERNAL_REWRITE_HEADER),
@@ -406,11 +407,15 @@ describe("proxy — explicit locale URLs are never language-redirected", () => {
     )
   })
 
-  it("applies watch security headers (CSP) to the canonical 2-segment URL", async () => {
+  it("leaves Content-Security-Policy to next.config headers() on the canonical 2-segment URL", async () => {
+    // Middleware header writes overwrite the config-level ones for the same
+    // key, so setting a static CSP here would silently defeat the
+    // WATCH_CSP_ENFORCE promotion on every rewritten content route. The
+    // Referrer-Policy re-application stays, because its value matches and the
+    // /preview/experience override depends on middleware winning.
     const response = await proxy(makeRequest("/jesus.html/english.html"))
-    expect(response.headers.get("content-security-policy")).toBe(
-      "frame-ancestors 'self'",
-    )
+    expect(response.headers.get("content-security-policy")).toBeNull()
+    expect(response.headers.get("referrer-policy")).toBe("strict-origin")
   })
 
   it("does not emit a Vary: Cookie header (no cookie-dependent redirects)", async () => {
