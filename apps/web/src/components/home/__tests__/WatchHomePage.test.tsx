@@ -56,6 +56,7 @@ import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-producti
 import {
   WATCH_HOME_INTRO_HLS_CONFIG,
   WATCH_HOME_INTRO_MAX_RESOLUTION,
+  WatchHomeTvCarousel,
 } from "@/components/home/WatchHomeTvCarousel"
 import { signWatchHomeHeroManifestCatalog } from "@/lib/watch-surface-manifest.server"
 import * as exposureBoundary from "@/components/recommendations/WatchExposureBoundary"
@@ -1326,6 +1327,64 @@ describe("WatchHomePage", () => {
     expect(serverContainer.querySelector("h1")?.textContent).toBe(
       "Jesus Film Project Watch",
     )
+  })
+
+  it("gives the page intro its own overlay cell beside the slide copy", () => {
+    // jsdom has no layout, so this pins the structure that rules out overlap:
+    // the intro is a cell of the bottom-anchored overlay grid, not a layer
+    // over the hero. Chromium measured the earlier absolute layer covering
+    // the slide title, Watch Now, mute and thumbnails at 1280x800 (2026-10-09).
+    const serverContainer = document.createElement("div")
+    serverContainer.innerHTML = renderToStaticMarkup(
+      <WatchHomeTvCarousel
+        slides={makeModel().heroSlides}
+        heroIntro={<h1>Page intro</h1>}
+      />,
+    )
+    const overlay = serverContainer.querySelector(
+      '[data-testid="watch-home-tv-overlay"]',
+    )
+    const introCell = overlay?.querySelector(
+      ':scope > [data-testid="watch-home-tv-intro"]',
+    )
+
+    expect(introCell?.textContent).toBe("Page intro")
+    expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
+    expect(
+      introCell?.querySelector('[data-testid="watch-home-tv-actions"]'),
+    ).toBeNull()
+    expect(
+      overlay?.querySelector('[data-testid="watch-home-tv-actions"]'),
+    ).not.toBeNull()
+    // The hero height is fixed by the categories-rail fit, so beside the
+    // intro the slide title is held to two lines and its eyebrow drops below
+    // `lg`. Chromium measured a three-line title pushing the copy under the
+    // header at 1280x800 and 1024x768 without the clamp (2026-10-09).
+    const title = overlay?.querySelector(
+      '[data-testid="watch-home-tv-active-title"]',
+    )
+    expect(title?.classList.contains("line-clamp-2")).toBe(true)
+    expect(
+      title?.previousElementSibling?.classList.contains("max-lg:hidden"),
+    ).toBe(true)
+  })
+
+  it("keeps the full slide copy when the hero has no page intro", () => {
+    const serverContainer = document.createElement("div")
+    serverContainer.innerHTML = renderToStaticMarkup(
+      <WatchHomeTvCarousel slides={makeModel().heroSlides} />,
+    )
+    const title = serverContainer.querySelector(
+      '[data-testid="watch-home-tv-active-title"]',
+    )
+
+    expect(
+      serverContainer.querySelector('[data-testid="watch-home-tv-intro"]'),
+    ).toBeNull()
+    expect(title?.classList.contains("line-clamp-2")).toBe(false)
+    expect(
+      title?.previousElementSibling?.classList.contains("max-lg:hidden"),
+    ).toBe(false)
   })
 
   it("localizes semantic carousel, card, and promo copy in Russian", async () => {

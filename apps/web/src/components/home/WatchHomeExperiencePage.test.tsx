@@ -9,7 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { Section } from "@/components/sections"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import type { DynamicCollectionFeedCacheSignatures } from "@/lib/dynamic-collection-contract"
-import type { WatchHomeModel } from "@/lib/watch-home"
+import type { WatchHomeHeroSlide, WatchHomeModel } from "@/lib/watch-home"
 vi.mock("@/lib/watch-surface-manifest.server", () => ({
   signWatchSurfaceManifest: () => null,
   signWatchHomeHeroManifestCatalog: vi.fn(
@@ -72,16 +72,19 @@ vi.mock("@/components/home/WatchHomeTvCarousel", () => ({
     ({
       heroIntro,
       pinned = true,
+      slides = [],
     }: {
       heroIntro?: React.ReactNode
       pinned?: boolean
+      slides?: readonly unknown[]
     }) => (
       <section
         data-testid="watch-home-hero"
         data-block-marker="WatchHomeHeroBlock"
         data-pinned={pinned ? "true" : "false"}
       >
-        {heroIntro}
+        {/* Like the real carousel, which renders nothing without a slide. */}
+        {slides.length > 0 ? heroIntro : null}
       </section>
     ),
   ),
@@ -178,6 +181,13 @@ const heroModel = {
   sections: [],
   carousel: { pools: [] },
   missingData: [],
+} satisfies WatchHomeModel
+
+const heroModelWithSlide = {
+  ...heroModel,
+  heroSlides: [
+    { id: "hero-slide", title: "Hero slide" } as unknown as WatchHomeHeroSlide,
+  ],
 } satisfies WatchHomeModel
 
 function makeBlock(__typename: string, sectionKey: string) {
@@ -327,7 +337,7 @@ describe("WatchHomeExperiencePage", () => {
   it("server-renders the visible translated hero h1 without an authored heading", () => {
     const html = renderToStaticMarkup(
       <WatchHomeExperiencePage
-        heroModel={heroModel}
+        heroModel={heroModelWithSlide}
         blocks={[]}
         languageSlug="english"
       />,
@@ -359,7 +369,7 @@ describe("WatchHomeExperiencePage", () => {
     // language that has no UI catalog; the h1 must follow `languageSlug`.
     const html = renderToStaticMarkup(
       <WatchHomeExperiencePage
-        heroModel={heroModel}
+        heroModel={heroModelWithSlide}
         blocks={[]}
         locale="en"
         languageSlug="arabic-najdi"
@@ -377,7 +387,7 @@ describe("WatchHomeExperiencePage", () => {
     const blocks = [makeNestedPageHeadingBlock()]
     const html = renderToStaticMarkup(
       <WatchHomeExperiencePage
-        heroModel={heroModel}
+        heroModel={heroModelWithSlide}
         blocks={blocks}
         languageSlug="english"
       />,
@@ -396,7 +406,7 @@ describe("WatchHomeExperiencePage", () => {
     await act(async () => {
       root.render(
         <WatchHomeExperiencePage
-          heroModel={heroModel}
+          heroModel={heroModelWithSlide}
           blocks={blocks}
           languageSlug="english"
         />,
@@ -416,7 +426,7 @@ describe("WatchHomeExperiencePage", () => {
     ]
     const html = renderToStaticMarkup(
       <WatchHomeExperiencePage
-        heroModel={heroModel}
+        heroModel={heroModelWithSlide}
         blocks={blocks}
         languageSlug="english"
       />,
@@ -442,7 +452,7 @@ describe("WatchHomeExperiencePage", () => {
     await act(async () => {
       root.render(
         <WatchHomeExperiencePage
-          heroModel={heroModel}
+          heroModel={heroModelWithSlide}
           blocks={blocks}
           languageSlug="english"
         />,
@@ -458,6 +468,26 @@ describe("WatchHomeExperiencePage", () => {
         (heading) => heading.textContent,
       ),
     ).toContain("Secondary page heading")
+  })
+
+  it("keeps the authored h1 when the hero has no slide to carry the first screen", () => {
+    const html = renderToStaticMarkup(
+      <WatchHomeExperiencePage
+        heroModel={heroModel}
+        blocks={[makePageHeadingBlock()]}
+        languageSlug="english"
+      />,
+    )
+    const serverContainer = document.createElement("div")
+    serverContainer.innerHTML = html
+
+    expect(serverContainer.querySelectorAll("h1")).toHaveLength(1)
+    expect(serverContainer.querySelector("h1")?.textContent).toBe(
+      "Watch free Christian videos, Bible stories, and films",
+    )
+    expect(
+      serverContainer.querySelector('[data-testid="watch-home-first-screen"]'),
+    ).toBeNull()
   })
 
   it("contains only top-level standalone video blocks on the Watch rail", async () => {

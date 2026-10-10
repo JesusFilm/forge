@@ -1,17 +1,6 @@
-/**
- * @vitest-environment jsdom
- */
-import { renderToStaticMarkup } from "react-dom/server"
-import { describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 
-import {
-  WatchHomeFirstScreen,
-  watchHomeLanguageName,
-} from "./WatchHomeFirstScreen"
-
-vi.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
-}))
+import { watchHomeLanguageName } from "./WatchHomeFirstScreen"
 
 describe("watchHomeLanguageName", () => {
   it("names the root English home in its chrome language", () => {
@@ -40,27 +29,5 @@ describe("watchHomeLanguageName", () => {
     expect(watchHomeLanguageName("newly-published-language", "es")).toBe(
       "Newly Published Language",
     )
-  })
-})
-
-describe("WatchHomeFirstScreen", () => {
-  it("lets clicks through to the hero controls except on its own link", () => {
-    // jsdom cannot hit-test, so this pins the classes that decide it. The
-    // first screen overlays Watch Now, mute, and the slide thumbnails; a
-    // pointer-events-auto box here made all of them unclickable at 1280x800
-    // (Chromium elementFromPoint check, 2026-10-09).
-    const container = document.createElement("div")
-    container.innerHTML = renderToStaticMarkup(
-      <WatchHomeFirstScreen locale="en" languageSlug="english" />,
-    )
-    const root = container.querySelector(
-      '[data-testid="watch-home-first-screen"]',
-    )
-    const link = container.querySelector(
-      '[data-testid="watch-home-find-language"]',
-    )
-
-    expect(root?.classList.contains("pointer-events-none")).toBe(true)
-    expect(container.querySelector(".pointer-events-auto")).toBe(link)
   })
 })

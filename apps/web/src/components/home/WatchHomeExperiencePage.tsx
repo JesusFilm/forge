@@ -160,8 +160,15 @@ export function WatchHomeExperiencePage({
     blocks.length > 0 && isWatchHomeHeroBlock(blocks[0])
   const heroAboveBodyZone = !hasHeroBlock || leadsWithHeroBlock
   // The first screen supplies the page h1 when the carousel leads the page.
-  const normalized = normalizeAuthoredPageHeadings(blocks, heroAboveBodyZone)
-  const hasPageHeading = heroAboveBodyZone || normalized.hasAuthoredPageHeading
+  // The carousel renders nothing without slides, so it cannot supply it then.
+  const firstScreenSuppliesHeading =
+    heroAboveBodyZone && heroModel.heroSlides.length > 0
+  const normalized = normalizeAuthoredPageHeadings(
+    blocks,
+    firstScreenSuppliesHeading,
+  )
+  const hasPageHeading =
+    firstScreenSuppliesHeading || normalized.hasAuthoredPageHeading
   // The intro is sticky and the body zone scrolls over it, so the carousel has
   // to render OUTSIDE that zone. An authored hero block renders the very same
   // carousel (see `renderBlock`), so hoist it when it leads the page. An

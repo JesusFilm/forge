@@ -61,6 +61,13 @@ W-098; measured 2026-10-09).
    H1 blocks to H2.
 5. Render the first screen on the server. Do not add its namespaces to
    `WATCH_HOME_CLIENT_MESSAGE_NAMESPACES`.
+6. Place it as a cell of the hero overlay grid (`watch-home-tv-intro`), never
+   as a layer over the hero: right column above the slide rail from `lg` and
+   on short landscape phones, stacked above the slide copy otherwise. Beside
+   it the slide title is clamped to two lines and the slide eyebrow drops
+   below `lg`, because the hero height stays fixed by the categories-rail fit.
+7. When the hero has no slide, the carousel renders nothing, so the authored
+   or fallback H1 stays the page H1.
 
 ## Constraints
 
@@ -77,8 +84,12 @@ W-098; measured 2026-10-09).
 - `pnpm --filter @forge/web check:provisional-ui-catalogs`
 - `pnpm --filter @forge/web typecheck`
 - `pnpm --filter @forge/web lint`
-- At 1280x800, the H1, language count, language link, and trust statement sit
-  above y=800 on `/watch`.
+- In a production build at 1920x1080, 1440x900, 1280x800, 1024x768,
+  768x1024, 390x844, 360x740, and 844x390, with real copy and with the longest
+  real H1 (Tongan, 60 characters): the intro intersects neither the slide copy,
+  its controls, the slide rail, nor header controls; it stays inside the hero;
+  every hero control and the language link take clicks; no horizontal scroll;
+  hero height and category-rail position are unchanged.
 
 ## Follow-up
 

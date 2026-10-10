@@ -551,6 +551,7 @@ function WatchHomeTvOverlay({
   ringAnimationKey,
   exposurePlacement,
   heroManifestCatalog,
+  intro,
 }: {
   activeIndex: number
   activeSlide: WatchHomeTvCarouselSlide
@@ -566,6 +567,7 @@ function WatchHomeTvOverlay({
   slides: readonly WatchHomeTvCarouselSlide[]
   exposurePlacement: string
   heroManifestCatalog?: WatchHomeHeroManifestCatalog
+  intro?: ReactNode
 }) {
   const t = useTranslations("WatchHome")
   const actionsRef = useRef<HTMLDivElement>(null)
@@ -577,22 +579,37 @@ function WatchHomeTvOverlay({
 
   return (
     <div
+      // A grid, so the page intro gets its own cell and can never sit on top
+      // of the slide copy or its controls: above the slide copy on narrow
+      // screens, in the right column over the slide rail from `lg` and on
+      // short landscape phones. The hero's height is fixed by the
+      // categories-rail fit, so the intro shares it rather than growing it.
       className={cn(
-        "absolute inset-x-0 bottom-0 z-10 flex items-end justify-between gap-4 pb-4 sm:pb-8 compact-landscape:pb-4",
+        "absolute inset-x-0 bottom-0 z-10 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-x-4 pb-4 sm:pb-8 compact-landscape:pb-4",
         WATCH_PAGE_RAIL_PADDING_CLASSES,
       )}
       data-testid="watch-home-tv-overlay"
     >
-      <div className="min-w-0 flex-1 text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)]">
+      {intro ? (
+        <div
+          data-testid="watch-home-tv-intro"
+          className="col-span-2 row-start-1 mb-4 min-w-0 sm:mb-5 lg:col-span-1 lg:col-start-2 lg:mb-6 lg:w-[24rem] xl:w-[26rem] compact-landscape:col-span-1 compact-landscape:col-start-2 compact-landscape:mb-2 compact-landscape:w-[18rem]"
+        >
+          {intro}
+        </div>
+      ) : null}
+      <div className="col-start-1 row-start-2 min-w-0 text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.7)] lg:row-span-2 lg:row-start-1 compact-landscape:row-span-2 compact-landscape:row-start-1">
         <div className="relative">
           {leavingSlide ? (
             <WatchHomeTvOverlayContent
+              besideIntro={Boolean(intro)}
               key={`${leavingSlide.id}-leaving-copy`}
               mode="leaving"
               slide={leavingSlide}
             />
           ) : null}
           <WatchHomeTvOverlayContent
+            besideIntro={Boolean(intro)}
             key={`${activeSlide.id}-entering-copy`}
             enterDelayOffsetMs={leavingSlide ? 430 : 0}
             mode="entering"
@@ -653,7 +670,7 @@ function WatchHomeTvOverlay({
           </div>
         </WatchExposureBoundary>
       </div>
-      <div className="hidden shrink-0 items-center gap-4 text-white sm:flex">
+      <div className="col-start-2 row-start-2 hidden shrink-0 items-center gap-4 justify-self-end text-white sm:flex">
         <WatchHomeVideoTimeline
           activeIndex={activeIndex}
           advanceDurationSeconds={advanceDurationSeconds}
@@ -678,10 +695,17 @@ function WatchHomeTvSlideLabel({ slide }: { slide: WatchHomeTvCarouselSlide }) {
 }
 
 function WatchHomeTvOverlayContent({
+  besideIntro = false,
   enterDelayOffsetMs = 0,
   mode,
   slide,
 }: {
+  /**
+   * The page intro shares a hero whose height the categories-rail fit fixes.
+   * Hold the title to two lines so a long one cannot push the copy under the
+   * header, and drop the eyebrow below `lg`, where the intro stacks above.
+   */
+  besideIntro?: boolean
   enterDelayOffsetMs?: number
   mode: "entering" | "leaving"
   slide: WatchHomeTvCarouselSlide
@@ -714,14 +738,17 @@ function WatchHomeTvOverlayContent({
       className={wrapperClassName}
       ariaHidden={mode === "leaving"}
       label={<WatchHomeTvSlideLabel slide={slide} />}
-      labelSlot={{ className: itemClassName, style: delayStyle(0) }}
+      labelSlot={{
+        className: cn(itemClassName, besideIntro && "max-lg:hidden"),
+        style: delayStyle(0),
+      }}
       title={slide.title}
       titleAs="p"
       titleTestId={
         mode === "entering" ? "watch-home-tv-active-title" : undefined
       }
       titleSlot={{
-        className: itemClassName,
+        className: cn(itemClassName, besideIntro && "line-clamp-2"),
         style: delayStyle(1),
       }}
     />
@@ -1168,11 +1195,6 @@ export function WatchHomeTvCarousel({
             : "h-[66svh] md:h-[min(100svh,56.25vw)]",
         )}
       >
-        {heroIntro ? (
-          <div className="pointer-events-none absolute inset-x-0 top-0 z-20">
-            {heroIntro}
-          </div>
-        ) : null}
         <WatchHomeTvMedia
           activeSlide={activeSlide}
           isMuted={isMuted}
@@ -1205,6 +1227,7 @@ export function WatchHomeTvCarousel({
           ringAnimationKey={ringAnimationKey}
           slides={timelineSlides}
           heroManifestCatalog={heroManifestCatalog}
+          intro={heroIntro}
           exposurePlacement={
             exposurePlacement ?? (pinned ? "home-hero" : "authored-hero")
           }
