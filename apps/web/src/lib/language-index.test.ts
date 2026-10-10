@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 
 import { buildWatchLanguageIndex } from "./language-index"
+import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
 
 describe("buildWatchLanguageIndex", () => {
   it("builds routable language rows with region groups and flag hints", () => {
@@ -82,10 +83,11 @@ describe("buildWatchLanguageIndex", () => {
       ],
     })
 
-    expect(index.languages.map((language) => language.publicSlug)).toEqual([
-      "spanish-latin-american",
-      "french",
-    ])
+    expect(
+      index.languages
+        .filter((language) => !language.id.startsWith("public:"))
+        .map((language) => language.publicSlug),
+    ).toEqual(["spanish-latin-american", "french"])
     expect(
       index.languages.find(
         (language) => language.publicSlug === "spanish-latin-american",
@@ -183,14 +185,16 @@ describe("buildWatchLanguageIndex", () => {
       ],
     })
 
-    expect(index.languages.map((language) => language.publicSlug)).toEqual([
-      "french",
-      "russian",
-      "spanish-latin-american",
-    ])
-    expect(index.languages.map((language) => language.speakerCount)).toEqual([
-      10_000, 5_000, 3_000,
-    ])
+    expect(
+      index.languages
+        .filter((language) => !language.id.startsWith("public:"))
+        .map((language) => language.publicSlug),
+    ).toEqual(["french", "russian", "spanish-latin-american"])
+    expect(
+      index.languages
+        .filter((language) => !language.id.startsWith("public:"))
+        .map((language) => language.speakerCount),
+    ).toEqual([10_000, 5_000, 3_000])
     expect(index.regions[0]?.countries[0]).toMatchObject({
       name: "Canada",
       speakerCount: 18_000,
@@ -222,5 +226,45 @@ describe("buildWatchLanguageIndex", () => {
         aliasOwnerSlug: null,
       }),
     )
+  })
+
+  it("includes public corpus languages missing from Admin in the Other group", () => {
+    const index = buildWatchLanguageIndex({ languages: [], countries: [] })
+
+    expect(index.languages).toHaveLength(PUBLIC_WATCH_LANGUAGE_SLUGS.size)
+    expect(Buffer.byteLength(JSON.stringify(index))).toBeLessThan(2_500_000)
+    expect(index.languages).toContainEqual(
+      expect.objectContaining({
+        publicSlug: "english",
+        href: "/english.html/videos",
+        regionNames: ["Other"],
+        speakerCount: 0,
+      }),
+    )
+    expect(
+      index.regions.find((region) => region.name === "Other")?.countries,
+    ).toEqual([
+      expect.objectContaining({
+        name: "Unassigned",
+        languages: expect.arrayContaining([
+          expect.objectContaining({ publicSlug: "english" }),
+        ]),
+      }),
+    ])
+  })
+
+  it("uses distinct slug labels for fallback languages sharing a BCP-47 tag", () => {
+    const index = buildWatchLanguageIndex({ languages: [], countries: [] })
+
+    expect(
+      index.languages.find(
+        ({ publicSlug }) => publicSlug === "cakchiquel-central",
+      )?.englishLabel,
+    ).toBe("Cakchiquel Central")
+    expect(
+      index.languages.find(
+        ({ publicSlug }) => publicSlug === "cakchiquel-eastern",
+      )?.englishLabel,
+    ).toBe("Cakchiquel Eastern")
   })
 })
