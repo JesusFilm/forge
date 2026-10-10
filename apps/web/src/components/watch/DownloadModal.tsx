@@ -4,6 +4,11 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import Image from "next/image"
 import {
+  isAdminMuxCardThumbnail,
+  isMuxImageUrl,
+  muxImageLoader,
+} from "@/lib/provider-image"
+import {
   Check,
   ChevronDown,
   Download as DownloadIcon,
@@ -309,6 +314,12 @@ export function DownloadModal({
           {posterUrl ? (
             <Image
               src={posterUrl}
+              loader={
+                isMuxImageUrl(posterUrl) && !isAdminMuxCardThumbnail(posterUrl)
+                  ? muxImageLoader
+                  : undefined
+              }
+              unoptimized={isAdminMuxCardThumbnail(posterUrl)}
               alt={videoTitle ?? t("posterAlt")}
               fill
               sizes="(min-width: 640px) 224px, 100vw"

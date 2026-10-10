@@ -17,6 +17,11 @@ import {
 import { MuxHoverPreview } from "@/components/watch/MuxHoverPreview"
 import { WatchProgressBar } from "@/components/watch/WatchProgressBar"
 import { formatDuration } from "@/lib/format-duration"
+import {
+  isAdminMuxCardThumbnail,
+  isMuxImageUrl,
+  muxImageLoader,
+} from "@/lib/provider-image"
 import { markWatchUrlForPlaybackSource } from "@/lib/playback-discovery"
 import { isSeriesRecord } from "@/lib/watch-content-kind"
 import {
@@ -275,6 +280,13 @@ export function VideoCard({
         {thumbnailSrc ? (
           <Image
             src={thumbnailSrc}
+            loader={
+              isMuxImageUrl(thumbnailSrc) &&
+              !isAdminMuxCardThumbnail(thumbnailSrc)
+                ? muxImageLoader
+                : undefined
+            }
+            unoptimized={isAdminMuxCardThumbnail(thumbnailSrc)}
             alt={result.title ?? t("thumbnailAlt")}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
