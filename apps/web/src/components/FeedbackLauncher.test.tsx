@@ -354,6 +354,9 @@ describe("FeedbackLauncher", () => {
     expect(button?.className).toContain("bg-white")
     expect(button?.className).toContain("text-black")
     expect(button?.className).toContain("hover:bg-red-500")
+    expect(button?.className).toContain(
+      "bottom-[calc(5.5rem+env(safe-area-inset-bottom,0px))]",
+    )
     expect(button?.hasAttribute("data-feedback-ignore")).toBe(true)
     expect(document.querySelector('[data-testid="feedback-modal"]')).toBeNull()
 
@@ -1757,6 +1760,10 @@ describe("FeedbackLauncher", () => {
 
     expect(document.body.textContent).toContain("Feedback form could not load")
     expect(document.querySelector("a")).toBeNull()
+    expect(
+      document.querySelector('[data-testid="feedback-modal-loading"]')
+        ?.className,
+    ).toContain("bottom-[calc(9rem+env(safe-area-inset-bottom,0px))]")
     const buttons = Array.from(document.querySelectorAll("button"))
     act(() => {
       buttons.find((button) => button.textContent === "Retry")?.click()
