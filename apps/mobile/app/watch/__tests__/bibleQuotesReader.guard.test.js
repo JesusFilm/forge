@@ -20,6 +20,9 @@ const CAROUSEL = path.join(
   "sections",
   "BibleQuotesCarouselRenderer.tsx",
 )
+const BIBLE = path.join(__dirname, "..", "..", "..", "src", "lib", "bible")
+const CARD_QUOTE = path.join(BIBLE, "quotes", "cardQuote.ts")
+const READER_CHAPTER = path.join(BIBLE, "reader", "useReaderChapter.ts")
 
 describe("video details page Bible quotes carousel opens the reader", () => {
   it("passes the reader handler to the carousel", () => {
@@ -43,6 +46,35 @@ describe("video details page Bible quotes carousel opens the reader", () => {
     )
     // KD3: the video keeps playing under the reader.
     expect(handler[1]).not.toMatch(/pause|Interruption|openPassageSheet/)
+  })
+
+  // Plan 2026-10-08 (KTD3, KTD11): the cards take the reader's inputs from
+  // here, and the hook's suite cannot see what the route passes.
+  it("passes the dub preference and the focus to the quote hook", () => {
+    const source = fs.readFileSync(ROUTE, "utf8")
+    const call = source.match(/useBibleVerses\(([\s\S]*?)\n {2}\)/)
+
+    // Anti-vacuous: the call is really there to inspect.
+    expect(call).not.toBeNull()
+    expect(call[1]).toMatch(/audioLanguage:\s*audioLanguageIso3\b/)
+    expect(call[1]).toMatch(/audioReady:\s*preferencesReady\b/)
+    expect(call[1]).toMatch(/focused:\s*quotesFocused\b/)
+    expect(source).toMatch(/const quotesFocused = useIsFocused\(\)/)
+    expect(source).toMatch(
+      /\{\s*audioLanguageIso3,\s*isReady:\s*preferencesReady\s*\}\s*=\s*useWatchPreferences\(\)/,
+    )
+  })
+
+  // KTD12: "Read full passage" carries no translation, so the card and the
+  // reader agree only because both ask the same resolver.
+  it("resolves a card's translation with the reader's own resolver", () => {
+    for (const file of [CARD_QUOTE, READER_CHAPTER]) {
+      const source = fs.readFileSync(file, "utf8")
+      expect(source).toMatch(
+        /import \{[^}]*\bresolveShownTranslation\b[^}]*\} from "\.\.\/language\/defaultTranslation"/,
+      )
+      expect(source).toMatch(/\bresolveShownTranslation\(\{/)
+    }
   })
 
   it("leaves the Bible.com sheet and the playback interruption behind", () => {

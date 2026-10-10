@@ -10,6 +10,7 @@ import type {
   ChapterAddress,
   ChapterFetchResult,
 } from "./repository/fetchChapter"
+import type { ChapterReadSource } from "./repository/resolveChapter"
 import type { DownloadOutcome } from "./repository/translationDownloads"
 import type { ReaderPushSource } from "./routes/readerRoute"
 import { mappedLastVerse } from "./versification/convert"
@@ -47,10 +48,12 @@ export function reportTranslationDownload(
 }
 
 // Named fields only: a failure has no body today, and a spread of the result
-// would send one the day a failure carries it (KTD3).
+// would send one the day a failure carries it (KTD3). An untagged read is the
+// reader's own, so dashboards can split card reads out (KTD10).
 function reportChapterFetchFailed(
   address: ChapterAddress,
   failure: ChapterFailure,
+  source: ChapterReadSource | undefined,
 ): void {
   datadogLog.warn("bible_reader.chapter_fetch_failed", {
     reader_translation_id: address.translationId,
@@ -58,19 +61,25 @@ function reportChapterFetchFailed(
     reader_chapter: address.chapter,
     reader_reason: failure.reason,
     reader_http_status: failure.httpStatus ?? 0,
+    reader_fetch_source: source ?? "reader",
   })
 }
 
 export type ChapterFetch = (
   address: ChapterAddress,
+  source?: ChapterReadSource,
 ) => Promise<ChapterFetchResult>
 
 /** Reports each failed network fetch once. The repository shares one fetch
  *  between the two reader hosts, so a shared failure logs once. */
-export function withFetchFailureReport(fetch: ChapterFetch): ChapterFetch {
-  return async (address) => {
+export function withFetchFailureReport(
+  fetch: (address: ChapterAddress) => Promise<ChapterFetchResult>,
+): ChapterFetch {
+  return async (address, source) => {
     const result = await fetch(address)
-    if (result.status === "failed") reportChapterFetchFailed(address, result)
+    if (result.status === "failed") {
+      reportChapterFetchFailed(address, result, source)
+    }
     return result
   }
 }

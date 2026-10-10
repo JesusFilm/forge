@@ -29,6 +29,16 @@ jest.mock("../../../lib/datadog", () => ({
 let mockUiTag = "en"
 jest.mock("../../../hooks/useUiTag", () => ({ useUiTag: () => mockUiTag }))
 
+// Only the Burmese UI case starts the locale store; every other case reads
+// en.json as before.
+const mockGetLocales = jest.fn()
+jest.mock("expo-localization", () => ({
+  getLocales: () => mockGetLocales(),
+}))
+jest.mock("expo-localization/build/ExpoLocalization", () => ({
+  addLocaleListener: () => ({ remove: () => undefined }),
+}))
+
 import { act } from "react"
 import type React from "react"
 import { AccessibilityInfo, Dimensions } from "react-native"
@@ -50,6 +60,11 @@ import {
   verseTypography,
 } from "../../../lib/bibleCardFit"
 import { computeTypographyScale } from "../../../hooks/useTypography"
+import {
+  resetLocaleStoreForTests,
+  startLocaleSync,
+} from "../../../i18n/localeStore"
+import { phoneLocales } from "../../../test-utils/uiLocaleFixture"
 import { readerHref } from "../../../lib/bible/routes/readerRoute"
 import type { VerseRef } from "../../../lib/bible/versification/convert"
 import {
@@ -276,6 +291,228 @@ describe("BibleQuotesCarouselRenderer — the passage language", () => {
   it("leaves the Experience quote as it was", () => {
     const renderer = render([EXPERIENCE_QUOTE])
     expect(cardLanguages(renderer, "John 3:16")).toEqual([undefined])
+  })
+})
+
+// Plan 2026-10-08 (KTD7, KTD13): a card from the reader's translation takes
+// its marks from the catalog, not from the UI or `textLang`.
+describe("BibleQuotesCarouselRenderer — a reader-translation card", () => {
+  const KOREAN_CARD: Quote = {
+    ...PASSAGE_QUOTE,
+    reference: "요한복음 3:16",
+    text: "하나님이 세상을 이처럼 사랑하사 독생자를 주셨으니",
+    translation: "한국어 성경",
+    copyright: "public domain",
+    textLang: "ko",
+    verseDirection: "ltr",
+    verseLang: "ko",
+    citationStart: { book: "JHN", chapter: 3, verse: 16 },
+  }
+  const ARABIC_CARD: Quote = {
+    ...KOREAN_CARD,
+    reference: "يُوحَنّا 3:16",
+    text: "لِأَنَّهُ هَكَذَا أَحَبَّ ٱللهُ ٱلْعَالَمَ",
+    translation: "الكتاب المقدس باللغة العربية، فان دايك",
+    textLang: "ar",
+    verseDirection: "rtl",
+    verseLang: "ar",
+  }
+
+  function direction(renderer: TestInstance, needle: string) {
+    const style = flatStyle(findText(renderer, needle))
+    return [style.writingDirection, style.direction]
+  }
+
+  function cardLanguage(renderer: TestInstance, label: string): unknown[] {
+    const cards = renderer.root.findAll(
+      (node) =>
+        node.props.accessible === true &&
+        typeof node.props.accessibilityLabel === "string" &&
+        node.props.accessibilityLabel.startsWith(label),
+    )
+    expect(cards.length).toBeGreaterThan(0)
+    return [...new Set(cards.map((node) => node.props.accessibilityLanguage))]
+  }
+
+  afterEach(() => {
+    mockUiTag = "en"
+  })
+
+  it("marks a Korean card ltr on a Korean UI, read as Korean", () => {
+    mockUiTag = "ko"
+    const renderer = render([KOREAN_CARD])
+
+    for (const needle of ["요한복음 3:16", "하나님이 세상을", "한국어 성경"]) {
+      expect(direction(renderer, needle)).toEqual(["ltr", "ltr"])
+    }
+    expect(cardLanguage(renderer, "요한복음 3:16")).toEqual(["ko"])
+  })
+
+  it("marks an Arabic card rtl on an English UI, with an ltr credit", () => {
+    const renderer = render([ARABIC_CARD])
+
+    for (const needle of [
+      "يُوحَنّا 3:16",
+      "لِأَنَّهُ هَكَذَا",
+      "الكتاب المقدس باللغة العربية",
+    ]) {
+      expect(direction(renderer, needle)).toEqual(["rtl", "rtl"])
+    }
+    expect(direction(renderer, "public domain")).toEqual(["ltr", "ltr"])
+    expect(cardLanguage(renderer, "يُوحَنّا 3:16")).toEqual(["ar"])
+  })
+
+  it("upper-cases a Turkish reference with a dotted capital İ", () => {
+    const renderer = render([
+      {
+        ...KOREAN_CARD,
+        reference: "Elçilerin İşleri 2:38",
+        textLang: "tr",
+        verseLang: "tr",
+      },
+    ])
+
+    expect(findText(renderer, "ELÇİLERİN İŞLERİ 2:38")).toBeDefined()
+  })
+
+  it("caps a long name and credit at 2 lines and keeps the verse", () => {
+    const renderer = render([
+      {
+        ...KOREAN_CARD,
+        translation: "N".repeat(140),
+        copyright: "C".repeat(121),
+      },
+    ])
+
+    expect(findText(renderer, "N".repeat(140))?.props.numberOfLines).toBe(
+      TRANSLATION_MAX_LINES,
+    )
+    expect(findText(renderer, "C".repeat(121))?.props.numberOfLines).toBe(
+      COPYRIGHT_MAX_LINES,
+    )
+    expect(
+      findText(renderer, "하나님이 세상을")?.props.numberOfLines,
+    ).toBeGreaterThan(0)
+  })
+})
+
+// A fixed line height cuts the tops off Myanmar letters on iOS (simulator,
+// 2026-10-09), so a Myanmar row takes the font's own line height.
+describe("BibleQuotesCarouselRenderer — Myanmar rows", () => {
+  const MYANMAR_CARD: Quote = {
+    ...PASSAGE_QUOTE,
+    reference: "ကမ္ဘာဦးကျမ်း 1:26-27",
+    text: "တဖန် ဘုရားသခင်က၊ ငါတို့ပုံသဏ္ဌာန်နှင့်အညီ လူကိုဖန်ဆင်းကြစို့",
+    translation: "မြန်မာကျမ်းစာ",
+    copyright: "public domain",
+    textLang: "my",
+    verseDirection: "ltr",
+    verseLang: "my",
+  }
+  const typography = computeTypographyScale(Dimensions.get("window").width)
+
+  afterEach(() => {
+    resetLocaleStoreForTests()
+    mockGetLocales.mockReset()
+  })
+
+  it("gives the reference and the name no fixed line height", () => {
+    const renderer = render([MYANMAR_CARD])
+
+    const reference = flatStyle(findText(renderer, "ကမ္ဘာဦးကျမ်း"))
+    const name = flatStyle(findText(renderer, "မြန်မာကျမ်းစာ"))
+    expect(reference.fontSize).toBe(typography.bodySmall.fontSize)
+    expect(reference).not.toHaveProperty("lineHeight")
+    expect(name.fontSize).toBe(typography.caption.fontSize)
+    expect(name).not.toHaveProperty("lineHeight")
+    // The verse fits its own line height on the device, so it keeps it.
+    expect(flatStyle(findText(renderer, "တဖန်")).lineHeight).toBe(
+      verseTypography(typography).lineHeight,
+    )
+  })
+
+  it("keeps the fixed line heights on a Latin card", () => {
+    const renderer = render([PASSAGE_QUOTE])
+
+    expect(flatStyle(findText(renderer, "GENESIS 1:26-27")).lineHeight).toBe(
+      typography.bodySmall.lineHeight,
+    )
+    expect(
+      flatStyle(findText(renderer, "World English Bible")).lineHeight,
+    ).toBe(typography.caption.lineHeight)
+  })
+
+  // The fit must budget the taller rows, or the bottom-aligned stack overflows
+  // and the clip takes the reference off the top.
+  it("gives the verse fewer lines than a Latin card at the same size", () => {
+    const size = { width: 411.43, fontScale: 1.3 }
+    const verseLines = (quote: Quote, needle: string) =>
+      findText(renderAtSize([quote], size, jest.fn()), needle)?.props
+        .numberOfLines as number
+
+    const latin = verseLines(JOHN_QUOTE, "For God so loved")
+    const myanmar = verseLines(MYANMAR_CARD, "တဖန်")
+
+    expect(myanmar).toBeGreaterThan(0)
+    expect(myanmar).toBeLessThan(latin)
+  })
+
+  // One Myanmar row per case, so dropping any one row's fit input fails here.
+  // At these sizes that row alone costs the John card one verse line.
+  function johnVerseLines(
+    change: Quote,
+    size: { width: number; fontScale: number },
+  ) {
+    const renderer = renderAtSize(
+      [{ ...JOHN_QUOTE, ...change }],
+      size,
+      jest.fn(),
+    )
+    return findText(renderer, "For God so loved")?.props.numberOfLines
+  }
+
+  it.each([
+    ["reference", { reference: "ယောဟန် 3:16-17" }],
+    ["translation name", { translation: "မြန်မာကျမ်းစာ" }],
+  ])("budgets a Myanmar %s by itself", (_row, change) => {
+    const size = { width: 411.43, fontScale: 1.3 }
+
+    expect(johnVerseLines({}, size)).toBe(3)
+    expect(johnVerseLines(change, size)).toBe(2)
+  })
+
+  it("budgets a Burmese reader link by itself", () => {
+    const size = { width: 440, fontScale: 1.5 }
+    expect(johnVerseLines({}, size)).toBe(3)
+
+    mockGetLocales.mockReturnValue(phoneLocales("my-MM"))
+    startLocaleSync()
+
+    expect(johnVerseLines({}, size)).toBe(2)
+  })
+
+  it("gives the Burmese reader link no fixed line height", () => {
+    mockGetLocales.mockReturnValue(phoneLocales("my-MM"))
+    startLocaleSync()
+    const renderer = render([PASSAGE_QUOTE], undefined, jest.fn())
+
+    const link = flatStyle(findText(renderer, "ကျမ်းပိုဒ်"))
+    expect(link.fontSize).toBe(typography.bodySmall.fontSize)
+    expect(link).not.toHaveProperty("lineHeight")
+  })
+
+  it("gives a Burmese promo button no fixed line height", () => {
+    const renderer = render([
+      {
+        ...EXPERIENCE_QUOTE,
+        ctaLabel: "ကျွန်ုပ်တို့၏ ကျမ်းစာလေ့လာမှုတွင် ပါဝင်ပါ",
+        ctaLink: "https://join.bsfinternational.org/",
+      },
+    ])
+
+    const button = flatStyle(findText(renderer, "ကျမ်းစာလေ့လာမှု"))
+    expect(button.fontSize).toBe(typography.bodySmall.fontSize)
+    expect(button).not.toHaveProperty("lineHeight")
   })
 })
 

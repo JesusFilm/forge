@@ -1,9 +1,27 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 
 import type { AdminLanguageForms } from "../i18n/adminLanguage"
 import { useT } from "../i18n/useT"
 import { getApolloClient } from "../lib/apolloClient"
+import type { ReadingPositionSnapshot } from "../lib/bible/position/store"
 import { isBsbVerseRef } from "../lib/bible/position/snapshot"
+import {
+  cardQuoteKey,
+  resolveCardQuotes,
+  type CardQuote,
+  type CardQuoteFallbackReason,
+  type CardQuoteResult,
+  type CardQuoteServices,
+} from "../lib/bible/quotes/cardQuote"
+import { getCardQuoteServices } from "../lib/bible/quotes/services"
+import type { TextDirection } from "../lib/bible/text/types"
 import type { VerseRef } from "../lib/bible/versification/convert"
 import { deriveBibleCardArt, type BibleCardArt } from "../lib/bibleCardArt"
 import {
@@ -100,6 +118,12 @@ export type BibleQuoteBlock = {
   /** The language of the verse, translation, and copyright: the UI's, or `en`
    *  for the English passage (R10). Null when the card shows no passage. */
   textLang: string | null
+  /** A card from the reader's translation: the catalog's direction for the
+   *  verse, reference, and name (KTD7). Null on admin's cards. */
+  verseDirection: TextDirection | null
+  /** A card from the reader's translation: its BCP-47 tag, for the screen
+   *  reader and the reference's upper case (KTD7). Null on admin's cards. */
+  verseLang: string | null
   /** Where "Read full passage" opens the reader, in BSB numbering (KTD17).
    *  Named like `artCandidates`. Null shows no button, whatever the passage. */
   citationStart: VerseRef | null
@@ -126,7 +150,8 @@ export function citationReaderStart(
 
 export type BibleQuotesState = {
   cards: BibleQuoteBlock[]
-  /** True until the passage read settles, on every path including failure. */
+  /** True while any card waits for its source, on every path including
+   *  failure: the passage read, or the reader translation's read. */
   loading: boolean
   /**
    * A card's artwork failed; advance it one rung. Owned HERE, not in the card:
@@ -291,6 +316,265 @@ function readCachedPassages(
   }
 }
 
+// ── Cards from the reader's translation (plan 2026-10-08) ─────────────────
+
+/** The reader translation's inputs, threaded in by the watch route (KTD3). */
+export type ReaderTranslationInputs = {
+  /** `WatchPreferences.audioLanguageIso3`. */
+  audioLanguage: string | null
+  /** False until the watch preferences are read. */
+  audioReady: boolean
+  /** Each return to the screen resolves the cards again (KTD11). */
+  focused: boolean
+}
+
+/** A card's source on this open: its reader translation, the verse from that
+ *  translation (null for admin's card), and the reader inputs it settled under. */
+type SettledCard = {
+  translationId: string | null
+  quote: CardQuote | null
+  readerKey: string
+}
+
+type ReaderCards = {
+  slug: string
+  settled: ReadonlyMap<string, SettledCard>
+  /** Cards whose new reader translation is loading (KTD11). */
+  reloading: ReadonlySet<string>
+}
+
+const NO_SETTLED: ReadonlyMap<string, SettledCard> = new Map()
+const NO_RELOADING: ReadonlySet<string> = new Set()
+const NO_READER_CARDS: ReaderCards = {
+  slug: "",
+  settled: NO_SETTLED,
+  reloading: NO_RELOADING,
+}
+
+/** What the card run needs from admin's read (KTD4, KTD5). */
+type AdminOutcome = {
+  passages: PassageMap
+  /** False on the cooldown path, which reads only the device. */
+  network: boolean
+}
+
+/** One admin read. `outcome` never rejects, and an abort leaves it pending. */
+type AdminRead = {
+  startedAt: number
+  outcome: Promise<AdminOutcome>
+  settle: (outcome: AdminOutcome) => void
+  /** The budget of this open's runs, renewed when the reader inputs change. */
+  budget: { readerKey: string; startedAt: number } | null
+}
+
+function startAdminRead(): AdminRead {
+  let settle: (outcome: AdminOutcome) => void = () => {}
+  const outcome = new Promise<AdminOutcome>((resolve) => {
+    settle = resolve
+  })
+  return { startedAt: Date.now(), outcome, settle, budget: null }
+}
+
+/** Why a card that could have shown its reader translation shows admin's. */
+type SettleReason = CardQuoteFallbackReason | "timeout" | "no-network"
+
+type RunResult = {
+  settled: Map<string, SettledCard>
+  local: number
+  admin: number
+  fallbacks: Record<SettleReason, number>
+}
+
+function emptyRun(): RunResult {
+  return {
+    settled: new Map(),
+    local: 0,
+    admin: 0,
+    fallbacks: {
+      "unknown-translation": 0,
+      "no-verse": 0,
+      "too-long": 0,
+      "read-failed": 0,
+      error: 0,
+      timeout: 0,
+      "no-network": 0,
+    },
+  }
+}
+
+type RunInput = {
+  services: CardQuoteServices
+  citations: readonly WatchBibleCitation[]
+  audioLanguage: string | null
+  payloadSettled: boolean
+  admin: AdminRead
+  /** The time at which the run's budget ends (KTD4, KTD11). */
+  deadline: number
+  /** The viewer's inputs: pick, dub, and focus epoch (KTD11). */
+  readerKey: string
+  /** The cards this open already settled, by `cardQuoteKey`. */
+  previous: ReadonlyMap<string, SettledCard>
+  signal: AbortSignal
+  onReloading: (keys: ReadonlySet<string>) => void
+}
+
+/** The value, or null once the time is up or the run is left. */
+function within<T>(
+  promise: Promise<T>,
+  ms: number,
+  signal: AbortSignal,
+): Promise<T | null> {
+  return withTimeout(promise, Math.max(ms, 0), signal).catch(() => null)
+}
+
+/**
+ * One pass over the cards: each card not yet settled, and each settled gap
+ * card whose reader translation changed (KTD11), gets its final source. Null
+ * when the run was left. Device reads run beside admin's read; a network read
+ * waits for it and runs only for a gap card (R1, KTD4).
+ */
+async function runReaderCards(input: RunInput): Promise<RunResult | null> {
+  const { services, citations, audioLanguage, admin, previous, signal } = input
+  const { readerKey } = input
+  const result = emptyRun()
+  const settle = (
+    key: string,
+    translationId: string | null,
+    quote: CardQuote | null,
+    reason: SettleReason | "admin" | "local",
+  ) => {
+    result.settled.set(key, { translationId, quote, readerKey })
+    if (reason === "local") result.local += 1
+    else if (reason === "admin") result.admin += 1
+    else result.fallbacks[reason] += 1
+  }
+  const settleNew = (reason: SettleReason) => {
+    for (const citation of citations) {
+      const key = cardQuoteKey(citation)
+      if (!previous.has(key)) settle(key, null, null, reason)
+    }
+  }
+  /** Settles an answer that names the card's source; false when it does not. */
+  const settleFound = (
+    key: string,
+    translationId: string | null,
+    found: CardQuoteResult,
+  ): boolean => {
+    if (found.status === "local") {
+      settle(key, translationId, found.quote, "local")
+    } else if (found.status === "fallback") {
+      settle(key, translationId, null, found.reason)
+    } else if (found.status === "admin")
+      settle(key, translationId, null, "admin")
+    else return false
+    return true
+  }
+
+  try {
+    const left = () => input.deadline - Date.now()
+    const device = await within(
+      resolveCardQuotes(services, {
+        citations,
+        audioLanguage,
+        reach: "device",
+      }),
+      left(),
+      signal,
+    )
+    const adminOutcome = await within(admin.outcome, left(), signal)
+    if (signal.aborted) return null
+    if (device == null) {
+      settleNew("timeout")
+      return result
+    }
+    // An admin read out of time gives no passage (R1), so a verse on the
+    // device still shows; the spent budget leaves no network read.
+    const passages = adminOutcome?.passages ?? NO_PASSAGES
+
+    const network: {
+      citation: WatchBibleCitation
+      translationId: string | null
+    }[] = []
+    for (const citation of citations) {
+      const key = cardQuoteKey(citation)
+      const found = device.get(key)
+      if (found == null || found.status === "pending") {
+        // KTD9: a book still unknown waits for the payload.
+        if (input.payloadSettled && !previous.has(key)) {
+          settle(key, null, null, "no-verse")
+        }
+        continue
+      }
+      const { translationId } = found
+      const entry = passages.get(citation.documentId)
+      const gap = entry == null || entry.lang === ENGLISH_TEXT_LANG
+      // KTD11: only the viewer's new inputs reload a settled card, and only
+      // when its reader translation changed (R12 keeps the rest).
+      const known = previous.get(key)
+      if (
+        known &&
+        (known.readerKey === readerKey ||
+          !gap ||
+          known.translationId === translationId)
+      ) {
+        continue
+      }
+      if (!gap) settle(key, translationId, null, "admin")
+      else if (!settleFound(key, translationId, found)) {
+        if (adminOutcome?.network) network.push({ citation, translationId })
+        else
+          settle(
+            key,
+            translationId,
+            null,
+            adminOutcome ? "no-network" : "timeout",
+          )
+      }
+    }
+    if (network.length === 0) return result
+
+    const reloading = new Set(
+      network
+        .map(({ citation }) => cardQuoteKey(citation))
+        .filter((key) => previous.has(key)),
+    )
+    if (reloading.size > 0) input.onReloading(reloading)
+    const read = await within(
+      resolveCardQuotes(services, {
+        citations: network.map(({ citation }) => citation),
+        audioLanguage,
+        reach: "network",
+      }),
+      left(),
+      signal,
+    )
+    if (signal.aborted) return null
+    for (const { citation, translationId } of network) {
+      const key = cardQuoteKey(citation)
+      const found = read?.get(key)
+      if (found == null) settle(key, translationId, null, "timeout")
+      else if (!settleFound(key, translationId, found)) {
+        settle(key, translationId, null, "read-failed")
+      }
+    }
+    return result
+  } catch {
+    // Every card that has no source yet gets admin's, or it would load forever.
+    if (signal.aborted) return null
+    settleNew("error")
+    return result
+  }
+}
+
+/** The viewer's pick, the one part of the reading position a card reads. */
+function readerPickKey(position: ReadingPositionSnapshot): string {
+  return `${position.translationId ?? ""}|${position.sessionTranslationId ?? ""}`
+}
+
+function subscribeToNothing(): () => void {
+  return () => {}
+}
+
 /**
  * Resolve admin's Bible passages for a video's citations and compose the
  * carousel's cards.
@@ -299,6 +583,9 @@ function readCachedPassages(
  * (KTD1), so a slow or failed passage never delays playback. It is keyed on the
  * route slug rather than on the citations array, which republishes at least
  * twice per open, and on whether any citation exists at all.
+ *
+ * Where admin's passage would be English, a card shows the verse from the
+ * viewer's Bible reader translation instead (plan 2026-10-08, R1).
  */
 export function useBibleVerses(
   slug: string,
@@ -306,11 +593,14 @@ export function useBibleVerses(
   art: BibleCardArtSource,
   /** The route's captured forms (KTD16); never the store's. */
   forms: AdminLanguageForms,
+  reader: ReaderTranslationInputs,
 ): BibleQuotesState {
   const t = useT("BibleQuotes")
   const [read, setRead] = useState<ReadState>(IDLE)
   // A superseded video's response must never land on the new one's cards.
   const requestIdRef = useRef(0)
+  // The latest admin read, for the card run that starts in the same commit.
+  const adminRef = useRef<AdminRead | null>(null)
   const hasCitations = citations.length > 0
 
   const { variants, authoredImageUrl, primaryLanguageCoreId, payloadSettled } =
@@ -323,9 +613,12 @@ export function useBibleVerses(
 
     // R12: a video with no citations makes no request.
     if (!slug || !hasCitations) {
+      adminRef.current = null
       setRead(IDLE)
       return
     }
+    const admin = startAdminRead()
+    adminRef.current = admin
 
     // Suppress the NETWORK, never the cache. `withTimeout` only abandons the
     // wait — it cannot cancel the Apollo request, so a read that overruns the
@@ -337,7 +630,12 @@ export function useBibleVerses(
         reason: "cooldown_suppressed",
         slug,
       })
-      setRead(readCachedPassages(slug, language))
+      const cached = readCachedPassages(slug, language)
+      setRead(cached)
+      admin.settle({
+        passages: cached.status === "settled" ? cached.passages : NO_PASSAGES,
+        network: false,
+      })
       return
     }
 
@@ -356,6 +654,7 @@ export function useBibleVerses(
         slug,
       })
       setRead(SETTLED_EMPTY)
+      admin.settle({ passages: NO_PASSAGES, network: true })
     }
 
     void (async () => {
@@ -395,10 +694,9 @@ export function useBibleVerses(
       if (requestIdRef.current !== thisRequest) return
 
       const rows = outcome.value?.data?.videoBySlug?.bibleCitations ?? []
-      setRead({
-        status: "settled",
-        passages: collectPassages(rows, slug, language),
-      })
+      const passages = collectPassages(rows, slug, language)
+      setRead({ status: "settled", passages })
+      admin.settle({ passages, network: true })
     })()
 
     // Retires the in-flight read. Setup always mints a fresh id and a fresh
@@ -409,6 +707,110 @@ export function useBibleVerses(
       controller.abort()
     }
   }, [slug, hasCitations, textSlug, uiLang])
+
+  // ── Cards from the reader's translation (plan 2026-10-08, KTD3, KTD11) ──
+  const quoteServices = getCardQuoteServices()
+  const { positionStore } = quoteServices
+  // A video with no citations leaves the store alone, so its read stays lazy.
+  const pickKey = useSyncExternalStore(
+    hasCitations ? positionStore.subscribe : subscribeToNothing,
+    () => (hasCitations ? readerPickKey(positionStore.getSnapshot()) : ""),
+    () => "",
+  )
+  // Each return to the screen starts a new epoch, and so a new run.
+  const [focus, setFocus] = useState({ focused: reader.focused, epoch: 0 })
+  if (focus.focused !== reader.focused) {
+    setFocus({
+      focused: reader.focused,
+      epoch: reader.focused ? focus.epoch + 1 : focus.epoch,
+    })
+  }
+  const { audioLanguage, audioReady } = reader
+  const [readerCards, setReaderCards] = useState<ReaderCards>(NO_READER_CARDS)
+  // The viewer's inputs. A change is a re-resolve with its own budget (KTD11).
+  const readerKey = [pickKey, audioLanguage ?? "", focus.epoch].join("¦")
+  // Every input of a run, so the effect below starts one per change. It names
+  // the passage read's inputs too, so both effects re-run in one commit.
+  const runKey = [
+    slug,
+    textSlug,
+    uiLang,
+    citations.map(cardQuoteKey).join("~"),
+    payloadSettled,
+    readerKey,
+  ].join("¦")
+
+  useEffect(() => {
+    const admin = adminRef.current
+    if (!slug || !hasCitations || !audioReady || admin == null) return
+    const previous =
+      readerCards.slug === slug ? readerCards.settled : NO_SETTLED
+    // A pick made in the reader waits for the return, which runs once.
+    if (!reader.focused && previous.size > 0) return
+    // KTD4: one budget per open; a payload or citation restart keeps it.
+    if (admin.budget?.readerKey !== readerKey) {
+      const startedAt = admin.budget ? Date.now() : admin.startedAt
+      admin.budget = { readerKey, startedAt }
+    }
+    const controller = new AbortController()
+    const { signal } = controller
+    void runReaderCards({
+      services: quoteServices,
+      citations,
+      audioLanguage,
+      payloadSettled,
+      admin,
+      deadline: admin.budget.startedAt + PASSAGE_FETCH_DEADLINE_MS,
+      readerKey,
+      previous,
+      signal,
+      onReloading(keys) {
+        if (signal.aborted) return
+        setReaderCards((current) =>
+          current.slug === slug
+            ? {
+                ...current,
+                reloading: new Set([...current.reloading, ...keys]),
+              }
+            : current,
+        )
+      },
+    }).then((result) => {
+      if (result == null || signal.aborted) return
+      // A run settles every card that needed a source, so none still reloads.
+      setReaderCards((current) =>
+        result.settled.size === 0 &&
+        current.slug === slug &&
+        current.reloading.size === 0
+          ? current
+          : {
+              slug,
+              settled: new Map([
+                ...(current.slug === slug ? current.settled : NO_SETTLED),
+                ...result.settled,
+              ]),
+              reloading: NO_RELOADING,
+            },
+      )
+      if (result.settled.size === 0) return
+      // KTD10: one event per settle. The counts are inline, not in the message.
+      datadogLog.info("bible_quotes.reader_translation", {
+        slug,
+        card_count: result.settled.size,
+        local_count: result.local,
+        admin_count: result.admin,
+        fallback_unknown_translation: result.fallbacks["unknown-translation"],
+        fallback_no_verse: result.fallbacks["no-verse"],
+        fallback_too_long: result.fallbacks["too-long"],
+        fallback_read_failed: result.fallbacks["read-failed"],
+        fallback_error: result.fallbacks.error,
+        fallback_timeout: result.fallbacks.timeout,
+        fallback_no_network: result.fallbacks["no-network"],
+      })
+    })
+    return () => controller.abort()
+    // Keyed on runKey: it holds every input that changes a card's source.
+  }, [runKey, audioReady])
 
   // The hold's own release. Re-armed per video, and cleared on the way out so
   // a StrictMode setup -> cleanup -> setup cycle re-arms rather than firing the
@@ -488,8 +890,9 @@ export function useBibleVerses(
     })
   }, [slug, hasCitations, payloadSettled, cardArt, citations.length])
 
-  const loading = read.status === "unsettled"
+  const passageLoading = read.status === "unsettled"
   const passages = read.status === "settled" ? read.passages : NO_PASSAGES
+  const sources = readerCards.slug === slug ? readerCards : NO_READER_CARDS
 
   return useMemo(() => {
     const cards: BibleQuoteBlock[] = citations.map((citation, index) => {
@@ -502,10 +905,13 @@ export function useBibleVerses(
         (url) => artFailures[`${slug}:${index}:${url}`] !== true,
       )
       const artIndex = firstUsable === -1 ? artCandidates.length : firstUsable
-      return {
-        // R10: a citation with no renderable passage keeps its own reference.
-        reference: passage?.reference ?? formatCitationLabel(citation, t),
-        text: passage?.content ?? "",
+      const key = cardQuoteKey(citation)
+      const source = sources.settled.get(key)
+      // R12: a card shows nothing until both reads settle it.
+      const cardLoading =
+        passageLoading || source == null || sources.reloading.has(key)
+      const quote = cardLoading ? null : (source?.quote ?? null)
+      const cardBase = {
         attribution: null,
         imageUrl: artCandidates[artIndex] ?? null,
         artCandidates,
@@ -513,13 +919,37 @@ export function useBibleVerses(
         backgroundColor: null,
         ctaLabel: null,
         ctaLink: null,
+        citationStart: citationReaderStart(citation),
+        loading: cardLoading,
+      }
+      if (quote) {
+        return {
+          ...cardBase,
+          reference: formatCitationLabel(quote.reference, t),
+          text: quote.text,
+          translation: quote.translationName,
+          copyright: quote.credit,
+          textLang: quote.languageTag,
+          verseDirection: quote.textDirection,
+          verseLang: quote.languageTag,
+        }
+      }
+      return {
+        ...cardBase,
+        // R10: a citation with no renderable passage keeps its own reference,
+        // and so does a loading card, which may yet show another translation.
+        reference:
+          (cardLoading ? null : passage?.reference) ??
+          formatCitationLabel(citation, t),
+        text: passage?.content ?? "",
         translation: passage?.versionTitle ?? null,
         copyright: passage?.copyright ?? null,
         textLang: entry?.lang ?? null,
-        citationStart: citationReaderStart(citation),
-        loading,
+        verseDirection: null,
+        verseLang: null,
       }
     })
+    const loading = cards.some((card) => card.loading)
 
     // Built AFTER the citation map, never inside it: that is what keeps the
     // promotional card out of the ladder, rather than an index check a later
@@ -537,6 +967,8 @@ export function useBibleVerses(
       translation: null,
       copyright: null,
       textLang: null,
+      verseDirection: null,
+      verseLang: null,
       citationStart: null,
       loading: false,
     })
@@ -545,7 +977,8 @@ export function useBibleVerses(
   }, [
     citations,
     passages,
-    loading,
+    passageLoading,
+    sources,
     cardArt,
     artFailures,
     slug,

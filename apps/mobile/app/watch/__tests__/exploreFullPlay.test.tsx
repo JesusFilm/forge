@@ -45,6 +45,8 @@ jest.mock("@react-native-async-storage/async-storage", () =>
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams.current,
   useRouter: () => ({ push: jest.fn(), replace: jest.fn() }),
+  // The watch screen re-reads its quote cards on each return (KTD11).
+  useIsFocused: () => true,
   // PlayerSlot listens on the root stack through getParent(); none here.
   useNavigation: () => ({}),
 }))
