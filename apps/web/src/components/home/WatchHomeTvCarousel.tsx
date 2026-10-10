@@ -238,6 +238,8 @@ function WatchHomeTvMedia({
   isMuted,
   leavingSlide,
   mediaReady,
+  openingSlideId,
+  pinned,
   onCanPlay,
   onEnded,
   onLoadedMetadata,
@@ -252,6 +254,8 @@ function WatchHomeTvMedia({
   wrapperRef,
 }: {
   activeSlide: WatchHomeTvCarouselSlide
+  openingSlideId: string | null
+  pinned: boolean
   isMuted: boolean
   leavingSlide: WatchHomeTvCarouselSlide | null
   mediaReady: boolean
@@ -338,7 +342,7 @@ function WatchHomeTvMedia({
         key={`${activeSlide.id}-entering`}
         slide={activeSlide}
         className="watch-home-media-enter z-10"
-        priority
+        priority={pinned && activeSlide.id === openingSlideId}
       />
       {previewSrc ? (
         <MuxVideo
@@ -522,6 +526,7 @@ function WatchHomeTvVisualLayer({
           alt={slide.imageAlt}
           fill
           priority={priority}
+          fetchPriority={priority ? "high" : undefined}
           sizes="100vw"
           className="object-cover"
         />
@@ -1078,6 +1083,7 @@ export function WatchHomeTvCarousel({
   const {
     activeIndex,
     activeSlide,
+    openingSlideId,
     advanceDurationSeconds,
     handleCanPlay,
     handleEnded,
@@ -1168,6 +1174,8 @@ export function WatchHomeTvCarousel({
       >
         <WatchHomeTvMedia
           activeSlide={activeSlide}
+          openingSlideId={openingSlideId}
+          pinned={pinned}
           isMuted={isMuted}
           leavingSlide={leavingSlide}
           mediaReady={mediaReady}

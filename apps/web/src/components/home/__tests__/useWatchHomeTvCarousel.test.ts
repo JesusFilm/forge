@@ -9,8 +9,8 @@ import {
   WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
   WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS,
   addWatchHomeTvPlayedId,
-  firstUnplayedWatchHomeTvCarouselIndex,
   nextUnplayedWatchHomeTvCarouselIndex,
+  watchHomeTvCarouselInitialIndex,
   readWatchHomeTvPlayedIds,
   watchHomeTvAdvanceBackstopSeconds,
   watchHomeTvSlideDurationSeconds,
@@ -69,19 +69,15 @@ describe("watch home TV carousel browser storage sequencing", () => {
     ).toBeNull()
   })
 
-  it("starts on the first playable slide the browser has not already seen", () => {
+  it("keeps the opening slide deterministic even when the browser has seen it", () => {
     window.localStorage.setItem(
       WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
       JSON.stringify({ month: currentMonth, ids: ["video-1"] }),
     )
 
     expect(
-      firstUnplayedWatchHomeTvCarouselIndex([
-        slide("video-1"),
-        slide("video-2"),
-        slide("video-3"),
-      ]),
-    ).toBe(1)
+      watchHomeTvCarouselInitialIndex([slide("video-1"), slide("video-2")]),
+    ).toBe(0)
   })
 
   it("advances to the next unplayed playable slide before repeating", () => {

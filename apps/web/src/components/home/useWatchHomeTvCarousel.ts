@@ -16,7 +16,6 @@ import {
   buildWatchHomeVideoQueue,
   markWatchHomeVideoPlayed,
   isWatchHomeHeroPlayableAspect,
-  pickRandomWatchHomeHeroVideo,
   readWatchHomeTvPlayedIds,
   readWatchHomeVerticalVideoIds,
   resetWatchHomeTvPlayedIds,
@@ -175,29 +174,18 @@ function firstPlayableIndex(slides: readonly WatchHomeTvCarouselSlide[]) {
   return index >= 0 ? index : 0
 }
 
+export function watchHomeTvCarouselInitialIndex(
+  slides: readonly WatchHomeTvCarouselSlide[],
+) {
+  return firstPlayableIndex(slides)
+}
+
 function playableSlideIndexes(slides: readonly WatchHomeTvCarouselSlide[]) {
   const indexes = slides
     .map((slide, index) => (slide.src ? index : -1))
     .filter((index) => index >= 0)
 
   return indexes.length > 0 ? indexes : slides.map((_, index) => index)
-}
-
-export function firstUnplayedWatchHomeTvCarouselIndex(
-  slides: readonly WatchHomeTvCarouselSlide[],
-) {
-  if (slides.length === 0) return 0
-
-  const played = new Set(readWatchHomeTvPlayedIds())
-  const candidateIndexes = playableSlideIndexes(slides)
-  const unplayedIndex = candidateIndexes.find(
-    (index) => !played.has(slides[index].id),
-  )
-
-  if (unplayedIndex != null) return unplayedIndex
-
-  resetWatchHomeTvPlayedIds()
-  return candidateIndexes[0] ?? 0
 }
 
 export function nextUnplayedWatchHomeTvCarouselIndex(
@@ -320,8 +308,14 @@ export function useWatchHomeTvCarousel(
       return { videos: [], nextPoolIndex: 0 }
     }
 
+    const openingVideo = sequence.pools
+      .flatMap((pool) => pool.videos)
+      .find((video) => Boolean(video.src))
+    if (!openingVideo) return { videos: [], nextPoolIndex: 0 }
+
     return buildWatchHomeVideoQueue({
       pools: sequence.pools,
+      existingVideos: [openingVideo],
       startPoolIndex: 0,
       targetVideoCount: 7,
       useStoredProgress: false,
@@ -346,14 +340,11 @@ export function useWatchHomeTvCarousel(
 
   const displaySlides = sequencedSlides ?? slides
 
-  // Server render and the first client render must agree, so the sequenced
-  // hero opens on the deterministic queue's first playable slide. The random
-  // per-visit draw lands right after mount, once hydration can no longer break.
-  const defaultActiveIndex = isSequenced
-    ? firstPlayableIndex(displaySlides)
-    : hasHydrated
-      ? firstUnplayedWatchHomeTvCarouselIndex(displaySlides)
-      : firstPlayableIndex(displaySlides)
+  // Keep the first poster identical in server HTML and after hydration. The
+  // per-visit random draw used to replace it immediately on the client, after
+  // the browser had already requested the server's different preload.
+  const defaultActiveIndex = watchHomeTvCarouselInitialIndex(displaySlides)
+  const openingSlideId = displaySlides[defaultActiveIndex]?.id ?? null
   const [activeSlideId, setActiveSlideId] = useState<string | null>(null)
 
   const selectedActiveSlide =
@@ -399,34 +390,23 @@ export function useWatchHomeTvCarousel(
   const autoAdvancePausedRef = useRef(autoAdvancePaused)
   const randomSourceRef = useRef(options.randomSource ?? Math.random)
   const randomStartAppliedRef = useRef(false)
-  const pendingRandomHeroIdRef = useRef<string | null>(null)
   const portraitSkipCountRef = useRef(0)
   // `advance` is defined below the metadata handler that needs it.
   const advanceRef = useRef<(() => void) | null>(null)
 
-  // The homepage is statically rendered and shared by every visitor, so the
-  // per-visit draw happens here — once, right after mount — over the pools the
-  // server already shipped. No extra request, no extra server render.
+  // Build the rest of a sequenced queue after mount, keeping its first video
+  // aligned with the deterministic poster in the server-rendered document.
   useEffect(() => {
     if (randomStartAppliedRef.current) return
     randomStartAppliedRef.current = true
 
     const random = randomSourceRef.current
-    const playedIds = readWatchHomeTvPlayedIds()
-    // Videos an earlier load measured as portrait are out of the draw entirely;
-    // the hero is a wide frame and would crop them to a centre strip.
-    // Not mirrored into state: the queue below is built with them excluded, so
-    // a stored portrait video never reaches the slide list in the first place.
-    const excludedIds = readWatchHomeVerticalVideoIds()
-
     if (isSequenced && sequence) {
-      const hero = pickRandomWatchHomeHeroVideo({
-        excludedIds,
-        playedIds,
-        pools: sequence.pools,
-        random,
-      })
-      if (!hero) return
+      const hero = displaySlides[defaultActiveIndex]
+      if (!hero || hero.kind !== "video") return
+      const excludedIds = readWatchHomeVerticalVideoIds().filter(
+        (id) => id !== hero.id,
+      )
 
       const built = buildWatchHomeVideoQueue({
         pools: sequence.pools,
@@ -437,31 +417,13 @@ export function useWatchHomeTvCarousel(
         randomSource: random,
       })
 
-      pendingRandomHeroIdRef.current = hero.id
       setPrefetchedQueue({
         sequenceKey,
         videos: built.videos,
         nextPoolIndex: built.nextPoolIndex,
       })
-      setActiveSlideId(hero.id)
-      return
     }
-
-    const excluded = new Set(excludedIds)
-    const playable = displaySlides.filter(
-      (slide) => Boolean(slide.src) && !excluded.has(slide.id),
-    )
-    const candidates = playable.length > 0 ? playable : displaySlides
-    if (candidates.length === 0) return
-    const played = new Set(playedIds)
-    const unplayed = candidates.filter((slide) => !played.has(slide.id))
-    const drawFrom = unplayed.length > 0 ? unplayed : candidates
-    const hero = drawFrom[boundedRandomIndex(drawFrom.length, random)]
-    if (!hero) return
-
-    pendingRandomHeroIdRef.current = hero.id
-    setActiveSlideId(hero.id)
-  }, [displaySlides, isSequenced, sequence, sequenceKey])
+  }, [defaultActiveIndex, displaySlides, isSequenced, sequence, sequenceKey])
 
   const clearVideoPosterHold = useCallback(() => {
     if (videoPosterHoldTimeoutRef.current != null) {
@@ -732,19 +694,7 @@ export function useWatchHomeTvCarousel(
 
   useEffect(() => {
     clearVideoPosterHold()
-    // Between mount and the per-visit draw committing, the active slide is the
-    // deterministic bootstrap slide nobody actually watched. Recording it would
-    // permanently exclude that one video from every visitor's random draw.
-    // Compared against the id we set rather than the resolved slide, so a
-    // drawn id that fails to resolve cannot wedge play tracking off for the
-    // rest of the session.
-    const awaitingRandomHero =
-      pendingRandomHeroIdRef.current != null &&
-      activeSlideId !== pendingRandomHeroIdRef.current
-    if (activeSlideId === pendingRandomHeroIdRef.current) {
-      pendingRandomHeroIdRef.current = null
-    }
-    if (hasHydrated && !awaitingRandomHero) {
+    if (hasHydrated) {
       if (isSequenced) {
         markWatchHomeVideoPlayed(activeSlide)
         saveWatchHomeCurrentVideoSession(activeSlide)
@@ -939,6 +889,7 @@ export function useWatchHomeTvCarousel(
       // replayed, so the ring's CSS animation restarts instead of
       // reinterpreting a running one.
       ringAnimationKey: `${activeSlide?.id ?? "none"}:${advanceDurationSeconds}:${restartCount}`,
+      openingSlideId,
       handleCanPlay,
       handleEnded: advance,
       handleLoadedMetadata,
@@ -962,6 +913,7 @@ export function useWatchHomeTvCarousel(
     [
       safeActiveIndex,
       activeSlide,
+      openingSlideId,
       advance,
       advanceDurationSeconds,
       restartCount,

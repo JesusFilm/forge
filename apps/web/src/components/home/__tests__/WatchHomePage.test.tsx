@@ -25,7 +25,6 @@ vi.mock("@/lib/watch-surface-manifest.server", () => ({
 }))
 import {
   addWatchHomeTvPlayedId,
-  buildWatchHomeVideoQueue,
   readWatchHomeTvPlayedIds,
   readWatchHomeVerticalVideoIds,
   type WatchHomeTvCarouselVideoSlide,
@@ -37,6 +36,7 @@ import {
 import {
   WATCH_HOME_TV_ENDED_BACKSTOP_GRACE_SECONDS,
   WATCH_HOME_TV_MEDIA_WAIT_TIMEOUT_MS,
+  WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
   WATCH_HOME_TV_UNKNOWN_DURATION_SECONDS,
 } from "@/components/home/useWatchHomeTvCarousel"
 import {
@@ -65,6 +65,7 @@ vi.mock("next/image", () => ({
   default: ({
     alt,
     className,
+    fetchPriority,
     loading,
     priority,
     sizes,
@@ -72,6 +73,7 @@ vi.mock("next/image", () => ({
   }: {
     alt: string
     className?: string
+    fetchPriority?: "high" | "low" | "auto"
     loading?: "eager" | "lazy"
     priority?: boolean
     sizes?: string
@@ -83,6 +85,7 @@ vi.mock("next/image", () => ({
       className={className}
       data-loading={priority ? "eager" : (loading ?? "lazy")}
       data-priority={priority === true ? "true" : "false"}
+      data-fetch-priority={fetchPriority}
       data-sizes={sizes}
       data-src={src}
     />
@@ -370,6 +373,56 @@ afterEach(async () => {
 })
 
 describe("WatchHomePage", () => {
+  it("keeps the first hero poster as the only priority image despite stored progress", async () => {
+    const firstHero = makeCard({
+      id: "hero-first",
+      coreId: "hero-first",
+      title: "Deterministic first hero",
+      playbackId: "mux-first-hero",
+    })
+    const secondHero = makeCard({
+      id: "hero-second",
+      coreId: "hero-second",
+      title: "Previously unseen hero",
+      playbackId: "mux-second-hero",
+    })
+    const currentMonth = new Date().toISOString().slice(0, 7)
+    window.localStorage.setItem(
+      WATCH_HOME_TV_PLAYED_IDS_STORAGE_KEY,
+      JSON.stringify({ month: currentMonth, ids: ["hero-first"] }),
+    )
+
+    await act(async () => {
+      root.render(
+        <WatchHomePage
+          model={makeModel({
+            heroSlides: [
+              { ...firstHero, eyebrow: "Watch" },
+              { ...secondHero, eyebrow: "Watch" },
+            ],
+          })}
+        />,
+      )
+    })
+
+    expect(
+      container.querySelector('[data-testid="watch-home-tv-active-title"]')
+        ?.textContent,
+    ).toBe("Deterministic first hero")
+
+    const heroPosters = Array.from(
+      container.querySelectorAll(
+        '[data-testid="watch-home-tv-visual-layer"] [role="img"]',
+      ),
+    )
+    const priorityPosters = heroPosters.filter(
+      (poster) => poster.getAttribute("data-priority") === "true",
+    )
+
+    expect(priorityPosters).toHaveLength(1)
+    expect(priorityPosters[0]?.getAttribute("data-fetch-priority")).toBe("high")
+  })
+
   it("selects singleton authority for the active card from an over-100 catalog without losing timeline focus", async () => {
     const heroWindows: Array<
       Parameters<typeof exposureBoundary.WatchExposureBoundary>[0]
@@ -2661,7 +2714,7 @@ describe("WatchHomePage", () => {
     }
   })
 
-  it("continues autoplay after the final unplayed pooled video ends", async () => {
+  it("uses the deterministic opening poster before continuing past played videos", async () => {
     vi.useFakeTimers()
 
     try {
@@ -2676,13 +2729,13 @@ describe("WatchHomePage", () => {
       const carousel = container.querySelector(
         '[data-testid="watch-home-tv-carousel"]',
       )
-      const finalUnplayedVideo = container.querySelector(
+      const openingVideo = container.querySelector(
         '[data-testid="watch-home-tv-video"]',
       ) as HTMLVideoElement
-      const finalUnplayedSrc = finalUnplayedVideo.getAttribute("src")
+      const openingVideoSrc = openingVideo.getAttribute("src")
 
-      expect(carousel?.getAttribute("aria-label")).toBe("Queued Three")
-      expect(finalUnplayedSrc).toBe("https://stream.example/queued-three.m3u8")
+      expect(carousel?.getAttribute("aria-label")).toBe("Queued One")
+      expect(openingVideoSrc).toBe("https://stream.example/queued-one.m3u8")
 
       const muteButton = container.querySelector(
         'button[aria-label="Unmute preview"]',
@@ -2691,7 +2744,7 @@ describe("WatchHomePage", () => {
       expect(document.activeElement).toBe(muteButton)
 
       await act(async () => {
-        finalUnplayedVideo.dispatchEvent(new Event("ended", { bubbles: true }))
+        openingVideo.dispatchEvent(new Event("ended", { bubbles: true }))
       })
 
       const replacementVideo = container.querySelector(
@@ -2701,9 +2754,11 @@ describe("WatchHomePage", () => {
       replacementVideo.play =
         replacementPlay as unknown as HTMLVideoElement["play"]
 
-      expect(replacementVideo).not.toBe(finalUnplayedVideo)
-      expect(replacementVideo.getAttribute("src")).not.toBe(finalUnplayedSrc)
-      expect(carousel?.getAttribute("aria-label")).not.toBe("Queued Three")
+      expect(replacementVideo).not.toBe(openingVideo)
+      expect(replacementVideo.getAttribute("src")).toBe(
+        "https://stream.example/queued-three.m3u8",
+      )
+      expect(carousel?.getAttribute("aria-label")).toBe("Queued Three")
       expect(
         container.querySelector('button[aria-label="Unmute preview"]'),
       ).toBe(muteButton)
@@ -2755,7 +2810,7 @@ describe("WatchHomePage", () => {
     expect(markup[0]).not.toContain("Billions are searching")
   })
 
-  it("opens a different library video per visit", async () => {
+  it("keeps the same opening library video across visits", async () => {
     const model = makeSequencedModel()
     const opened: Array<string | null> = []
 
@@ -2784,10 +2839,10 @@ describe("WatchHomePage", () => {
       vi.restoreAllMocks()
     }
 
-    expect(opened).toEqual(["Queued One", "Queued Two", "Queued Three"])
+    expect(opened).toEqual(["Queued One", "Queued One", "Queued One"])
   })
 
-  it("re-arms the per-visit draw under StrictMode double mounting", async () => {
+  it("keeps the deterministic opening slide under StrictMode double mounting", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0.99)
 
     await act(async () => {
@@ -2802,27 +2857,15 @@ describe("WatchHomePage", () => {
       container
         .querySelector('[data-testid="watch-home-tv-carousel"]')
         ?.getAttribute("aria-label"),
-    ).toBe("Queued Three")
+    ).toBe("Queued One")
   })
 
-  it("only records the video the visitor actually opened as played", async () => {
+  it("records only the deterministic opening video as played", async () => {
     const model = makeSequencedModel()
-    const poolIds = model.carousel.pools[0].videos.map((entry) => entry.id)
-    const bootstrap = buildWatchHomeVideoQueue({
-      pools: model.carousel.pools,
-      targetVideoCount: 7,
-      useStoredProgress: false,
-    }).videos[0]
-    const bootstrapId = bootstrap?.id
-    const bootstrapTitle = bootstrap?.title
-    // Anti-vacuous: the guard only does work while the deterministic bootstrap
-    // slide differs from the drawn hero, so the draw is aimed away from it.
-    expect(poolIds).toContain(bootstrapId)
-
-    const heroId = poolIds.find((id) => id !== bootstrapId)
-    vi.spyOn(Math, "random").mockReturnValue(
-      (poolIds.indexOf(heroId ?? "") + 0.5) / poolIds.length,
-    )
+    const openingVideo = model.carousel.pools
+      .flatMap((pool) => pool.videos)
+      .find((entry) => Boolean(entry.src))
+    expect(openingVideo).toBeDefined()
     await act(async () => {
       root.render(<WatchHomePage model={model} />)
     })
@@ -2831,8 +2874,8 @@ describe("WatchHomePage", () => {
       container
         .querySelector('[data-testid="watch-home-tv-carousel"]')
         ?.getAttribute("aria-label"),
-    ).not.toBe(bootstrapTitle)
-    expect(readWatchHomeTvPlayedIds()).toEqual([heroId])
+    ).toBe(openingVideo?.title)
+    expect(readWatchHomeTvPlayedIds()).toEqual([openingVideo?.id])
   })
 
   function defineVideoSize(
@@ -2902,7 +2945,8 @@ describe("WatchHomePage", () => {
     ).toBe("Landscape One")
     expect(readWatchHomeVerticalVideoIds()).toEqual(["portrait-1"])
 
-    // A later visit draws from the same pool and must not land on it again.
+    // A later visit keeps the same deterministic opening so the server
+    // preload remains the image the browser paints.
     await act(async () => {
       root.render(<WatchHomePage model={verticalPoolModel()} />)
     })
@@ -2916,7 +2960,7 @@ describe("WatchHomePage", () => {
       secondContainer
         .querySelector('[data-testid="watch-home-tv-carousel"]')
         ?.getAttribute("aria-label"),
-    ).toBe("Landscape One")
+    ).toBe("Portrait One")
     await act(async () => {
       secondRoot.unmount()
     })
@@ -3428,6 +3472,9 @@ describe("WatchHomePage", () => {
     // The carousel now starts it. Coverage has not changed, so only the
     // element's own `play` can re-open the check.
     Object.defineProperty(video, "paused", { configurable: true, value: false })
+    await act(async () => {
+      video.dispatchEvent(new Event("canplay"))
+    })
     await act(async () => {
       video.dispatchEvent(new Event("play"))
       await new Promise((resolve) => requestAnimationFrame(() => resolve(null)))
