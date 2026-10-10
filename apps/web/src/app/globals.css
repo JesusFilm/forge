@@ -5,6 +5,64 @@
 @custom-variant dark (&:is(.dark *));
 @custom-variant compact-landscape (@media (max-width: 1023px) and (max-height: 500px) and (orientation: landscape));
 
+@font-face {
+  font-family: "Noto Sans Arabic";
+  src: url("/watch/fonts/noto-sans-arabic.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range:
+    U+0600-06FF, U+0750-077F, U+0870-0891, U+0897-08E1, U+08E3-08FF,
+    U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF, U+FE70-FE74,
+    U+FE76-FEFC, U+102E0-102FB, U+10E60-10E7E, U+10EC2-10EC7, U+10EC9-10EEE,
+    U+10EF0-10EFF, U+1EE00-1EE03, U+1EE05-1EE1F, U+1EE21-1EE22, U+1EE24,
+    U+1EE27, U+1EE29-1EE32, U+1EE34-1EE37, U+1EE39, U+1EE3B, U+1EE42, U+1EE47,
+    U+1EE49, U+1EE4B, U+1EE4D-1EE4F, U+1EE51-1EE52, U+1EE54, U+1EE57, U+1EE59,
+    U+1EE5B, U+1EE5D, U+1EE5F, U+1EE61-1EE62, U+1EE64, U+1EE67-1EE6A,
+    U+1EE6C-1EE72, U+1EE74-1EE77, U+1EE79-1EE7C, U+1EE7E, U+1EE80-1EE89,
+    U+1EE8B-1EE9B, U+1EEA1-1EEA3, U+1EEA5-1EEA9, U+1EEAB-1EEBB, U+1EEF0-1EEF1;
+}
+
+@font-face {
+  font-family: "Noto Sans Hebrew";
+  src: url("/watch/fonts/noto-sans-hebrew.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0590-05FF, U+FB1D-FB4F;
+}
+
+@font-face {
+  font-family: "Noto Sans Devanagari";
+  src: url("/watch/fonts/noto-sans-devanagari.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range:
+    U+0900-097F, U+1CD0-1CF4, U+1CF7-1CF9, U+200C-200D, U+20A8, U+20B9, U+20F0,
+    U+25CC, U+A830-A839, U+A8E0-A8FF, U+11B00-11B0A;
+}
+
+@font-face {
+  font-family: "Noto Sans Ethiopic";
+  src: url("/watch/fonts/noto-sans-ethiopic.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range:
+    U+030E, U+1200-1399, U+2D80-2DDE, U+AB01-AB2E, U+1E7E0-1E7E6, U+1E7E8-1E7EB,
+    U+1E7ED-1E7EE, U+1E7F0-1E7FE;
+}
+
+@font-face {
+  font-family: "Noto Sans Thai";
+  src: url("/watch/fonts/noto-sans-thai.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+
 @theme {
   --color-brand-red: #ef3340;
 
@@ -56,7 +114,9 @@
   --watch-sticker-pile-scale: 1.25;
   --font-native-sans:
     "Avenir Next", Avenir, "Helvetica Neue", Helvetica, "Segoe UI", Roboto,
-    "Noto Sans", "Liberation Sans", Arial, sans-serif;
+    "Noto Sans", "Noto Sans Arabic", "Noto Sans Hebrew", "Noto Sans Devanagari",
+    "Noto Sans Thai", "Noto Sans Ethiopic", "Noto Sans JP", "Noto Sans KR",
+    "Noto Sans SC", "Noto Sans TC", "Liberation Sans", Arial, sans-serif;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);

@@ -16,6 +16,7 @@ import GoogleAnalytics from "@/components/GoogleAnalytics"
 import { BetaTesterModalProvider } from "@/components/watch/BetaTesterModalProvider"
 import { WatchChromeShell } from "@/components/WatchChromeShell"
 import { RecommendationConsentShell } from "@/components/recommendations/RecommendationConsentShell"
+import { watchScriptFontPreload } from "@/lib/watch-script-font"
 
 function findElement(
   node: ReactNode,
@@ -94,6 +95,43 @@ describe("Watch root layout <html lang>/<dir> (FGE-170 / W-082)", () => {
     await expect(htmlAttributes("es", "ars")).resolves.toEqual({
       lang: "es",
       dir: "ltr",
+    })
+  })
+})
+
+describe("Watch script font preloads (FGE-181 / W-084)", () => {
+  it.each([
+    ["ar", "/watch/fonts/noto-sans-arabic.woff2"],
+    ["he", "/watch/fonts/noto-sans-hebrew.woff2"],
+    ["hi", "/watch/fonts/noto-sans-devanagari.woff2"],
+    ["th", "/watch/fonts/noto-sans-thai.woff2"],
+    ["am", "/watch/fonts/noto-sans-ethiopic.woff2"],
+  ])("preloads the matching subset for %s", (htmlLang, expected) => {
+    expect(watchScriptFontPreload(htmlLang)).toBe(expected)
+  })
+
+  it.each(["en", "ja", "zh-Hans", "not-a-language"])(
+    "does not preload a mismatched or unconfigured subset for %s",
+    (htmlLang) => {
+      expect(watchScriptFontPreload(htmlLang)).toBeNull()
+    },
+  )
+
+  it("renders the base-path-aware subset preload in the document head", async () => {
+    const layout = await RootLayout({
+      children: <main>Arabic Watch page</main>,
+      params: Promise.resolve({ locale: "ar", htmlLang: "ar" }),
+    })
+    const preload = findElement(layout, "link") as ReactElement<{
+      href: string
+      rel: string
+      as: string
+    }>
+
+    expect(preload.props).toMatchObject({
+      href: "/watch/fonts/noto-sans-arabic.woff2",
+      rel: "preload",
+      as: "font",
     })
   })
 })
