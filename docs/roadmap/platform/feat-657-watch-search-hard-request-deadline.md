@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-10-08"
 duration: 2
 depends_on: []
-blocks: []
+blocks:
+  - "feat-678"
 tags:
   - "platform"
   - "watch"
@@ -163,4 +164,10 @@ DEFAULT (Postgres):
 - Production p50/p95/p99 by path, script, and degraded reason, and the
   alerts that FGE-29 asks for, remain follow-up work. These tests prove
   behavior, not production latency.
-- The ID `feat-657` was not checked against other open pull requests.
+- Roadmap allocation checked on October 9: main had IDs through feat-639;
+  all 307 cached origin refs contained only this feat-657 path, and all-ref
+  history contained only its original f64b106 commit. This checks known refs,
+  not future allocations.
+- Residual FGE-29 production percentile, representative query-matrix, and
+  monitoring/alert acceptance is tracked in feat-678; the Linear issue remains
+  partially addressed until the normal PR-to-main deployment is validated.
