@@ -37,7 +37,44 @@ async function adminFetch(path: string, init: RequestInit): Promise<Response> {
   })
 }
 
+/**
+ * These helpers already answer an unhealthy upstream with an empty list
+ * (`if (!response.ok) return []`), but only for a response that arrives. The
+ * `AbortSignal.timeout` above, a DNS or connection error, and a non-JSON body
+ * all REJECT instead, skipping that contract entirely: the rejection escapes
+ * `/api/watch-progress`, becomes a 500, and `watch-progress-client.ts` reads
+ * any non-OK response as "not signed in" — the same silent sign-out FGE-185
+ * fixed on the GraphQL fan-out. Failing soft here closes the second path to
+ * it rather than choosing a new behaviour: `[]` is already what this function
+ * returns when the upstream is unhealthy.
+ */
+async function softFetch<T>(
+  label: string,
+  read: () => Promise<T>,
+  fallback: T,
+): Promise<T> {
+  try {
+    return await read()
+  } catch (error: unknown) {
+    // Plain `event=` string, never JSON.stringify: Railway logsV2 silences
+    // stringified payloads from Next.js route handlers. Type name only — a
+    // rejected fetch's message can carry upstream body fragments.
+    console.warn(
+      `[watch-progress-server] event=${label} reason=${
+        error instanceof Error ? error.name : typeof error
+      }`,
+    )
+    return fallback
+  }
+}
+
 export async function fetchWatchProgressForUser(
+  userId: string,
+): Promise<WatchProgressServerEntry[]> {
+  return softFetch("progress_read_unavailable", () => readProgress(userId), [])
+}
+
+async function readProgress(
   userId: string,
 ): Promise<WatchProgressServerEntry[]> {
   const response = await adminFetch(
@@ -65,7 +102,14 @@ export async function fetchWatchProgressForUser(
     : []
 }
 
-export async function syncWatchProgressForUser({
+export async function syncWatchProgressForUser(args: {
+  userId: string
+  entries: WatchProgressServerEntry[]
+}): Promise<WatchProgressServerEntry[]> {
+  return softFetch("progress_write_unavailable", () => writeProgress(args), [])
+}
+
+async function writeProgress({
   userId,
   entries,
 }: {
@@ -87,6 +131,14 @@ export async function syncWatchProgressForUser({
 export async function deleteWatchProgressForUser(
   userId: string,
 ): Promise<boolean> {
+  return softFetch(
+    "progress_delete_unavailable",
+    () => runDelete(userId),
+    false,
+  )
+}
+
+async function runDelete(userId: string): Promise<boolean> {
   const response = await adminFetch("", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },

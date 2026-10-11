@@ -8,7 +8,8 @@ start_date: "2026-07-14"
 duration: 7
 depends_on:
   - "feat-146"
-blocks: []
+blocks:
+  - "feat-537"
 tags:
   - "platform"
   - "accounts"
