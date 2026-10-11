@@ -9,6 +9,10 @@ import {
   resolveWatchSearchInputForRequest,
 } from "@/graphql/queries/watch-search"
 import { schema } from "@/graphql/schema"
+import {
+  WATCH_SEARCH_HARD_TIMEOUT_MS,
+  WatchSearchTimeoutError,
+} from "@/services/watch-search.service"
 
 const { enqueueWatchSearchShadowMock, enqueueWatchSearchTraceMock } =
   vi.hoisted(() => ({
@@ -348,7 +352,9 @@ describe("watchSearch mode routing", () => {
 
     const result = await invoke({ input })
 
-    expect(typesenseSearchMock).toHaveBeenCalledWith(input)
+    expect(typesenseSearchMock).toHaveBeenCalledWith(input, {
+      hardTimeoutMs: WATCH_SEARCH_HARD_TIMEOUT_MS,
+    })
     expect(searchMock).not.toHaveBeenCalled()
     expect(result).toMatchObject({ searchMode: "watch-search-typesense" })
   })
@@ -358,7 +364,9 @@ describe("watchSearch mode routing", () => {
 
     await invoke({ input })
 
-    expect(searchMock).toHaveBeenCalledWith(input)
+    expect(searchMock).toHaveBeenCalledWith(input, {
+      hardTimeoutMs: WATCH_SEARCH_HARD_TIMEOUT_MS,
+    })
     expect(typesenseSearchMock).not.toHaveBeenCalled()
   })
 
@@ -440,7 +448,9 @@ describe("watchSearch mode routing", () => {
       }),
     )
 
-    expect(typesenseSearchMock).toHaveBeenCalledWith(effectiveInput)
+    expect(typesenseSearchMock).toHaveBeenCalledWith(effectiveInput, {
+      hardTimeoutMs: WATCH_SEARCH_HARD_TIMEOUT_MS,
+    })
     expect(searchMock).not.toHaveBeenCalled()
     expect(enqueueWatchSearchShadowMock).toHaveBeenCalledWith({
       input: effectiveInput,
@@ -538,8 +548,33 @@ describe("watchSearch resolver", () => {
 
     await invoke({ input })
 
-    expect(searchMock).toHaveBeenCalledWith(input)
+    expect(searchMock).toHaveBeenCalledWith(input, {
+      hardTimeoutMs: WATCH_SEARCH_HARD_TIMEOUT_MS,
+    })
   })
+
+  it.each([
+    ["default", undefined, searchMock],
+    ["modern", "modern" as const, typesenseSearchMock],
+  ])(
+    "maps the %s-mode deadline to an HTTP 504 GraphQL error",
+    async (_label, mode, mock) => {
+      mock.mockRejectedValueOnce(
+        new WatchSearchTimeoutError("watch_search_deadline_exceeded"),
+      )
+
+      await expect(
+        invoke({ input: { query: "jesus", mode } }),
+      ).rejects.toMatchObject({
+        message: "Watch search timed out",
+        extensions: {
+          code: "WATCH_SEARCH_TIMEOUT",
+          http: { status: 504 },
+        },
+      })
+      expect(enqueueWatchSearchTraceMock).not.toHaveBeenCalled()
+    },
+  )
 
   it("returns the service response unchanged", async () => {
     const result = await invoke({ input: { query: "jesus" } })
