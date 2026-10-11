@@ -19,7 +19,7 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Setup pnpm
@@ -41,7 +41,7 @@ jobs:
       portal_allowlist: ${{ steps.affected.outputs.portal_allowlist }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Setup pnpm
@@ -94,7 +94,7 @@ jobs:
     needs: affected
     if: needs.affected.outputs.portal_allowlist == 'true'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7.0.1
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v6
         with:
@@ -112,7 +112,7 @@ jobs:
     if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/admin-graphql')
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
@@ -152,7 +152,7 @@ jobs:
           --health-retries 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
@@ -299,7 +299,7 @@ jobs:
           --health-retries 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
@@ -333,7 +333,7 @@ jobs:
           --health-retries 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
@@ -377,7 +377,7 @@ jobs:
           --health-retries 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
@@ -415,7 +415,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
@@ -432,7 +432,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup Node
         uses: actions/setup-node@v6
         with:
@@ -449,7 +449,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
@@ -471,7 +471,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - name: Test roadmap ID check
@@ -485,7 +485,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Validate resolved devcontainer Compose contract
         run: >-
           docker compose -f .devcontainer/docker-compose.yml config --format json |
@@ -495,7 +495,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       # Always reports a status so it can be required without path-filtered
@@ -518,7 +518,7 @@ jobs:
         service: ${{ fromJson(needs.affected.outputs.services) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
@@ -548,7 +548,7 @@ jobs:
         service: ${{ fromJson(needs.affected.outputs.services) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
@@ -600,7 +600,7 @@ jobs:
     if: needs.affected.outputs.services != '[]' && contains(fromJson(needs.affected.outputs.services), '@forge/mobile')
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
@@ -636,7 +636,7 @@ jobs:
         service: ${{ fromJson(needs.affected.outputs.services) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7.0.1
       - name: Setup pnpm
         uses: pnpm/action-setup@v6
       - name: Setup Node
