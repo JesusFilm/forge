@@ -165,6 +165,22 @@ function fixture() {
 }
 
 describe("TypesenseWatchSearchCandidateEvaluationService", () => {
+  it("serves a fenced live catalog probe without claiming a Candidate lease", async () => {
+    const { deps } = fixture()
+    const live = {
+      response: searchResult().response,
+      revision: "live-revision",
+    }
+    const searchLive = vi.fn(async () => live)
+    const service = new TypesenseWatchSearchCandidateEvaluationService({
+      ...deps,
+      source: "SERVING",
+      searchLive,
+    })
+    expect(await service.search({ query: "Jesus" })).toEqual(live)
+    expect(searchLive).toHaveBeenCalledOnce()
+    expect(deps.acquireLease).not.toHaveBeenCalled()
+  })
   it("runs four concurrent searches under unique leases with one immutable revision", async () => {
     const { deps, searchWithDiagnostics } = fixture()
     const service = new TypesenseWatchSearchCandidateEvaluationService(deps)

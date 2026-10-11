@@ -73,6 +73,15 @@ const VIDEOS_QUERY = `
     }
   }
 `
+// Core's public Watch projection filters unpublished and restricted records.
+// An updatedAt-filtered page cannot report a video that disappeared from that
+// projection, so reconcile identities after an otherwise successful phase.
+const VIDEO_IDS_QUERY = `
+  query WatchVideoIds($offset: Int!, $limit: Int!, $where: VideosFilter) {
+    videos(offset: $offset, limit: $limit, where: $where) { id }
+    videosCount(where: $where)
+  }
+`
 // Never select Core's publisher-gated Video fields here
 // (`restrictViewPlatforms`, `restrictDownloadPlatforms` —
 // `t.withAuth({ isPublisher: true })` in api-media). The sync runs without a
@@ -684,6 +693,50 @@ export async function syncVideos({
     }
   }
 
+  if (since && stats.errors === 0) {
+    try {
+      const ids = new Set<string>()
+      const limit = 200
+      let expectedCount: number | null = null
+      for (let idOffset = 0; ; idOffset += limit) {
+        const result = await coreQuery<{
+          videos: Array<{ id: string }>
+          videosCount: number
+        }>(VIDEO_IDS_QUERY, {
+          offset: idOffset,
+          limit,
+          where: { published: true },
+        })
+        const page = result.data?.videos
+        const count = result.data?.videosCount
+        if (!Array.isArray(page))
+          throw new Error("Core Watch eligibility page is missing")
+        if (!Number.isSafeInteger(count) || count! <= 0)
+          throw new Error("Core Watch eligibility count is invalid")
+        if (expectedCount != null && expectedCount !== count)
+          throw new Error("Core Watch eligibility count changed during scan")
+        expectedCount = count!
+        for (const item of page) {
+          if (typeof item?.id !== "string" || !item.id || ids.has(item.id))
+            throw new Error("Core Watch eligibility page is invalid")
+          ids.add(item.id)
+        }
+        if (page.length < limit) break
+      }
+      if (ids.size !== expectedCount)
+        throw new Error("Core Watch eligibility scan is incomplete")
+      for (const id of ids) seenCoreIds.add(id)
+    } catch (error) {
+      stats.errors++
+      console.error(
+        JSON.stringify({
+          event: "core-sync.video.eligibility-error",
+          error: error instanceof Error ? error.message : String(error),
+        }),
+      )
+    }
+  }
+
   if (!since && firstPageCount === 0) {
     console.warn(
       JSON.stringify({
@@ -694,7 +747,7 @@ export async function syncVideos({
     return stats
   }
 
-  if (!since && stats.errors === 0 && seenCoreIds.size > 0) {
+  if (stats.errors === 0 && seenCoreIds.size > 0) {
     try {
       const result = await withPrismaPoolTimeoutRetry(
         () =>

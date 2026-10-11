@@ -4,6 +4,8 @@ import {
   createCandidateWatchSearchProfile,
   type TypesenseWatchSearchProfile,
 } from "./typesense-watch-search-profile"
+import { candidateWatchCollectionNames } from "./typesense-watch-search-schema"
+import type { TypesenseCollectionField } from "./typesense-client"
 
 export const WATCH_CATALOG_PUBLICATION_ID = "core"
 const RELEVANT_PHASES = new Set([
@@ -30,7 +32,7 @@ export function shouldRequestWatchCatalogPublication(
 ): boolean {
   // A retry can report zero changes after its previous attempt committed the
   // data but lost the completion acknowledgment. Always queue successful
-  // relevant runs; the publisher's content digest avoids redundant indexing.
+  // relevant runs; the per-video ledger avoids redundant Typesense writes.
   return (
     phases.length > 0 &&
     phases.every((p) => p.errors === 0) &&
@@ -79,11 +81,32 @@ export async function resolvePublishedWatchCatalog({
     where: { id: WATCH_CATALOG_PUBLICATION_ID },
   })
   if (
-    !publication?.generationId ||
+    !publication ||
     publication.baseGenerationId !== base.generationId ||
     publication.rankingRevision !== rankingRevision
   )
     return base
+  if (publication.liveCollectionId) {
+    const names = candidateWatchCollectionNames(publication.liveCollectionId)
+    const lexicalFields = publication.liveLexicalFields
+    if (!Array.isArray(lexicalFields)) return base
+    return createCandidateWatchSearchProfile(
+      {
+        generationId: publication.liveCollectionId,
+        indexContractRevision: base.indexContractRevision!,
+        contentEmbeddingContractId: base.contentEmbeddingContractId!,
+        transcriptChunkingVersion: base.transcriptChunkingVersion!,
+        transcriptProjectionRevision: base.transcriptProjectionRevision!,
+        collections: { ...names, transcript: base.binding.transcript },
+        fieldManifests: {
+          ...base.fieldManifests!,
+          lexical: lexicalFields as TypesenseCollectionField[],
+        },
+      },
+      `catalog-refresh:${publication.searchVersion}:${publication.lastPublishedAt?.toISOString() ?? "initial"}:${base.qrelsRevision}`,
+    )
+  }
+  if (!publication.generationId) return base
   const generation = await generations.resolveGeneration({
     generationId: publication.generationId,
     indexContractRevision: base.indexContractRevision!,

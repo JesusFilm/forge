@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { PrismaClient } from "@prisma/client"
 import {
   afterAll,
@@ -83,6 +84,66 @@ describe.runIf(enabled)("Core Watch durable delivery on Postgres", () => {
         where: { id: "core" },
       }),
     ).toMatchObject({ requestedVersion: 12, searchVersion: 0, webVersion: 0 })
+  })
+
+  it("queues a video and its parent when an edition-wide subtitle language changes", async () => {
+    const prefix = `delivery-${randomUUID()}`
+    const child = `${prefix}-child`
+    const parent = `${prefix}-parent`
+    const audioLanguage = `${prefix}-audio`
+    const subtitleLanguage = `${prefix}-subtitle`
+    const edition = `${prefix}-edition`
+    await prisma.language.createMany({
+      data: [audioLanguage, subtitleLanguage].map((id) => ({
+        id,
+        coreId: id,
+        slug: id,
+      })),
+    })
+    await prisma.videoEdition.create({
+      data: { id: edition, coreId: edition, name: "Test edition" },
+    })
+    await prisma.video.create({
+      data: {
+        id: child,
+        coreId: child,
+        slug: child,
+        dubs: {
+          create: {
+            coreId: `${prefix}-dub`,
+            languageId: audioLanguage,
+            videoEditionId: edition,
+          },
+        },
+      },
+    })
+    await prisma.video.create({
+      data: { id: parent, coreId: parent, slug: parent },
+    })
+    await prisma.videoRelation.create({
+      data: { parentId: parent, childId: child },
+    })
+    await prisma.videoSubtitle.create({
+      data: {
+        coreId: `${prefix}-subtitle-track`,
+        videoEditionId: edition,
+        languageId: subtitleLanguage,
+        vttSrc: "https://example.test/subtitle.vtt",
+      },
+    })
+    await prisma.watchCatalogDirtyVideo.deleteMany({
+      where: { videoId: { in: [child, parent] } },
+    })
+    await prisma.language.update({
+      where: { id: subtitleLanguage },
+      data: { deletedAt: new Date() },
+    })
+    const queued = await prisma.watchCatalogDirtyVideo.findMany({
+      where: { videoId: { in: [child, parent] } },
+      orderBy: { videoId: "asc" },
+      select: { videoId: true },
+    })
+    expect(queued).toEqual([{ videoId: child }, { videoId: parent }])
   })
 
   it("enqueues once and replays a completed long phase without another writer", async () => {
