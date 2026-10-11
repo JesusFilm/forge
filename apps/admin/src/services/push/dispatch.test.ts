@@ -64,6 +64,7 @@ const {
 } = await import("./dispatch")
 const {
   PushCampaignsDisabledError,
+  PushNotFoundError,
   PushRunAlreadyActiveError,
   PushStaleContentVersionError,
 } = await import("./errors")
@@ -182,7 +183,8 @@ function fakePrisma(state: Partial<FakeState> = {}) {
           data: Record<string, unknown>
         }) => {
           calls.campaignUpdates.push({ where, data })
-          if (store.campaign) store.campaign = { ...store.campaign, ...data }
+          if (!store.campaign) return { count: 0 }
+          store.campaign = { ...store.campaign, ...data }
           return { count: 1 }
         },
       ),
@@ -293,6 +295,27 @@ describe("dispatchPushCampaignRun", () => {
       runtimeRunId: "runtime-1",
       kind: "LIVE",
     })
+  })
+
+  // A delete can commit between the caller's checks and this link, and a run
+  // for a missing campaign would only fail later with an orphan ledger row.
+  it("starts no run for a campaign deleted after the checks, and fails the ledger row", async () => {
+    const { prisma, calls } = fakePrisma({ campaign: null })
+
+    await expect(
+      dispatchPushCampaignRun(
+        { campaignId: CAMPAIGN_ID, actorId: "actor-1", kind: "TEST" },
+        { prisma, campaignsEnabled: true },
+      ),
+    ).rejects.toThrowError(PushNotFoundError)
+
+    expect(start).not.toHaveBeenCalled()
+    expect(calls.ledgerUpdates).toEqual([
+      {
+        id: "ledger-1",
+        data: expect.objectContaining({ status: "FAILED" }),
+      },
+    ])
   })
 
   it("dispatches through start, with the campaign and ledger ids", async () => {

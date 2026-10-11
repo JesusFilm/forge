@@ -7,6 +7,13 @@ import {
 } from "react"
 
 import { usePersistedPrefs } from "../lib/persistedPrefs"
+import { restartWatchForPreview } from "../lib/restartWatchForPreview"
+import {
+  DEFAULT_LOADING_ANIMATION,
+  DEFAULT_STARTUP_ANIMATION,
+  type LoadingAnimationId,
+  type LogoAnimationId,
+} from "../lib/logoAnimations"
 import {
   DEFAULT_WATCH_PREFERENCES,
   loadWatchPreferences,
@@ -23,6 +30,11 @@ import {
  * seam (U2) is the explicit dub-selection seam in WatchSessionProvider.
  */
 type WatchPreferencesContextValue = WatchPreferences & {
+  startupAnimationId: LogoAnimationId
+  loadingAnimationId: LoadingAnimationId
+  setStartupAnimationId: (id: LogoAnimationId) => void
+  setLoadingAnimationId: (id: LoadingAnimationId) => void
+  restartAppForPreview: () => Promise<void>
   setAudioLanguageSlug: (slug: string | null) => void
   setAndroidPlayerVariant: (
     variant: WatchPreferences["androidPlayerVariant"],
@@ -60,6 +72,18 @@ export function WatchPreferencesProvider({
     [setPref],
   )
 
+  const setStartupAnimationId = useCallback(
+    (id: LogoAnimationId) => setPref("startupAnimationId", id),
+    [setPref],
+  )
+  const setLoadingAnimationId = useCallback(
+    (id: LoadingAnimationId) => setPref("loadingAnimationId", id),
+    [setPref],
+  )
+  const restartAppForPreview = useCallback(async () => {
+    await restartWatchForPreview(prefs)
+  }, [prefs])
+
   const setNativePlayerVariant = useCallback(
     (variant: WatchPreferences["nativePlayerVariant"]) =>
       setPref("nativePlayerVariant", variant),
@@ -69,6 +93,11 @@ export function WatchPreferencesProvider({
   const value = useMemo<WatchPreferencesContextValue>(
     () => ({
       ...prefs,
+      startupAnimationId: prefs.startupAnimationId ?? DEFAULT_STARTUP_ANIMATION,
+      loadingAnimationId: prefs.loadingAnimationId ?? DEFAULT_LOADING_ANIMATION,
+      setStartupAnimationId,
+      setLoadingAnimationId,
+      restartAppForPreview,
       setAudioLanguageSlug,
       setAndroidPlayerVariant,
       setNativePlayerVariant,
@@ -76,6 +105,9 @@ export function WatchPreferencesProvider({
     }),
     [
       prefs,
+      setStartupAnimationId,
+      setLoadingAnimationId,
+      restartAppForPreview,
       setAudioLanguageSlug,
       setAndroidPlayerVariant,
       setNativePlayerVariant,

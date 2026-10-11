@@ -16,6 +16,7 @@ import { getAdminMessages } from "@/i18n/server"
 import { countPushAudience } from "@/services/push/audience.service"
 import {
   createPushCampaignDraft,
+  deletePushCampaign,
   updatePushCampaign,
 } from "@/services/push/campaign.service"
 import {
@@ -31,6 +32,7 @@ import {
   sendPushCampaignTestRun,
 } from "@/services/push/dispatch"
 import {
+  PushNotFoundError,
   PushServiceError,
   PushStaleContentVersionError,
 } from "@/services/push/errors"
@@ -382,6 +384,28 @@ export async function cancelCampaignAction(
   return ok(
     `Cancelled. ${zonesCancelled} zone(s) that had not started are not sent.`,
   )
+}
+
+/**
+ * Deletes the campaign and its report, then opens the list. A campaign that is
+ * already gone counts as deleted, so a second tab lands on the list too.
+ */
+export async function deleteCampaignAction(
+  _previous: PushActionState,
+  formData: FormData,
+): Promise<PushActionState> {
+  const actorId = await requirePushActor()
+  const campaignId = text(formData, "campaignId")
+  if (!campaignId) return refuse("This form carries no campaign")
+
+  try {
+    await deletePushCampaign(prisma, { campaignId, actorId })
+  } catch (error) {
+    if (!(error instanceof PushNotFoundError)) return toRefusal(error)
+  }
+
+  revalidateCampaign(campaignId)
+  redirect(PUSH_CAMPAIGNS_PATH)
 }
 
 /** The report re-aggregates on every read, so a refresh is a revalidation. */

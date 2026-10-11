@@ -1,6 +1,7 @@
 ---
 title: "iOS aligns React Native text by the app's native localization, not by the UI Locale"
 date: "2026-09-30"
+last_updated: "2026-10-08"
 category: "ui-bugs"
 module: "apps/mobile"
 problem_type: "ui_bug"
@@ -41,11 +42,11 @@ localization is the localization that iOS picks for the app from its
 `CFBundleLocalizations`. iOS does not use the JS UI Locale (the catalog tag),
 and it does not use React Native's `I18nManager`.
 
-The mobile UI localization branch (unmerged as of 2026-09-30) declares 225
+The mobile UI localization work (PR #2510, merged 2026-10-04) declares 225
 locales natively. `apps/mobile/app.json:138-370` carries the
 `expo-localization` plugin with `supportedLocales`, `supportsRTL: false`
-(`app.json:367`), and `allowDynamicLocaleChangesAndroid: true`. Of these
-locales, 13 are right-to-left by `isRtlTag` (`apps/mobile/src/i18n/resolveLocale.ts:124`):
+(`app.json:368`), and `allowDynamicLocaleChangesAndroid: true`. Of these
+locales, 13 are right-to-left by `isRtlTag` (`apps/mobile/src/i18n/resolveLocale.ts:143`):
 `ar`, `az-Arab`, `ckb`, `dv`, `fa`, `he`, `ks`, `ms-Arab`, `ps`, `sd`, `ug`,
 `ur`, and `uz-Arab`.
 
@@ -78,10 +79,13 @@ The defect has two cases:
    headings by their homepage's language" records the shelf case: "On an
    Arabic simulator, English shelf headings from the English fallback homepage
    aligned right".
-2. **All English text before the first full translation run (U16).** Only
-   `apps/mobile/messages/en.json` ships (checked 2026-09-30). An Arabic phone
-   resolves the `en` catalog, but iOS still picks the `ar` native
-   localization. All English text right-aligns in dev and preview builds.
+2. **All English text while the phone reads the `en` catalog.** Until the
+   first full translation run (U16, PR #2604, open as of 2026-10-08) merges,
+   only `apps/mobile/messages/en.json` ships. An Arabic phone resolves the `en`
+   catalog, but iOS still picks the `ar` native localization. All English
+   text right-aligns in dev and preview builds. After U16, this case remains
+   for `ks`, the one right-to-left English-only Locale: a Kashmiri phone reads
+   the `en` catalog while iOS picks the `ks` native localization.
 
 ## What Didn't Work
 
@@ -202,6 +206,12 @@ any left-to-right `lang` (line 55). No English text gets a style, so all
 English text keeps natural alignment and aligns right under the `ar` native
 localization.
 
+After U16, an Arabic phone resolves the `ar` catalog, so `useUiTag()`
+returns `ar`. UI text gets `rtl`, and English fallback text gets `ltr`
+(line 55), so the fix takes effect. `ks` keeps the pre-U16 result. The store
+never selects an English-only catalog (`apps/mobile/src/i18n/localeStore.ts:192`),
+so a Kashmiri phone reads `en`, and its English text gets no direction style.
+
 This pre-U16 state is known and accepted. `apps/mobile/CLAUDE.md` ("Native
 configuration and the native-build window") says the production native build
 that carries U3 waits for U16. The plan (line 342) lists the interim effects
@@ -225,8 +235,10 @@ one more reason for the same wait (auto memory [claude]).
   an iOS simulator in `ar` and in `en`.
 - **Record the pre-U16 alignment effect.** Add it to the interim-effects list
   in the plan (line 342) and in the `apps/mobile/CLAUDE.md` native-build
-  window section. Until U16, do not report right-aligned English in a dev or
-  preview build as a new defect.
+  window section. Until U16 merges, do not report right-aligned English in a
+  dev or preview build as a new defect. After it merges, right-aligned English
+  in a right-to-left UI is a defect again, except for pending keys (below) and
+  the English-only `ks` locale.
 - **Know one limit after U16.** A pending key shows English in the other
   catalogs (`apps/mobile/CLAUDE.md`, "Pending list"). In an Arabic UI, that
   English text gets the `ui` style `rtl` (`textDirection.ts:101`) and aligns

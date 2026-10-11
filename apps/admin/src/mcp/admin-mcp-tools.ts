@@ -55,7 +55,8 @@ const PUSH_DRAFT_RULES = [
   "Every campaign needs English copy. A phone with no copy in its language gets the English copy.",
   "Set audience.languageFilter only when the author asks that only phones in the written languages get the campaign.",
   `One call carries at most ${PUSH_MAX_COPY_ROWS_PER_CALL} copy rows. Add more languages with later push.campaign.update calls.`,
-  "This tool saves a draft only. It cannot test, schedule, or send. A person reviews, tests, and publishes the campaign in the dashboard.",
+  "This tool saves a draft only. It cannot test, schedule, send, cancel, or delete. A person reviews, tests, and publishes the campaign in the dashboard, and cancels or deletes it there.",
+  "Every update checks the whole saved audience again. A saved country that admin refuses, such as UK, fails each update until you send audience.countries again with valid codes.",
   "Give the author the editorUrl, and relay nextSteps and warnings as written.",
   "Expected failures return {ok:false, reason, retryable, message}. The reasons are invalid_input (issues name each field to fix), unknown_language, unknown_destination, not_found, not_editable, stale_revision, and too_many_rows. Nothing is saved on a failure.",
 ].join(" ")
@@ -110,7 +111,7 @@ const PUSH_AUDIENCE_PROPERTIES = {
     items: { type: "string", minLength: 2, maxLength: 2 },
     maxItems: PUSH_MAX_AUDIENCE_COUNTRIES,
     description:
-      "Two-letter ISO country codes. Empty when scope is EVERYWHERE.",
+      "Two-letter ISO country codes that phones report, such as GB for the United Kingdom. Admin refuses aliases such as UK and group codes such as EU. Empty when scope is EVERYWHERE.",
   },
   languageFilter: {
     type: "array",

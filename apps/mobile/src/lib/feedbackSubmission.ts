@@ -33,6 +33,9 @@ export const FEEDBACK_POSITION_MAX_SECONDS = 1_000_000
 
 /** Mirrors admin's SLUG: a bounded charset, not an exact slug shape. */
 const SLUG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/u
+/** Mirrors admin's UI_LOCALE: a BCP 47 shape and a length bound. */
+const UI_LOCALE_PATTERN = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,4}$/u
+export const FEEDBACK_UI_LOCALE_MAX_LENGTH = 35
 
 const emailSchema = z.email().max(FEEDBACK_EMAIL_MAX_LENGTH)
 
@@ -92,6 +95,21 @@ function safeSlug(value: string | null | undefined): string | undefined {
   return slug
 }
 
+function safeUiLocale(value: string | null | undefined): string | undefined {
+  const tag = value?.trim()
+  if (!tag || tag.length > FEEDBACK_UI_LOCALE_MAX_LENGTH) return undefined
+  return UI_LOCALE_PATTERN.test(tag) ? tag : undefined
+}
+
+/** The app language that a report of `kind` carries, or undefined. The
+ * sheet's "What this sends" list reads it too, so the list matches the wire. */
+export function feedbackUiLocale(
+  kind: FeedbackKind,
+  tag: string | null | undefined,
+): string | undefined {
+  return kind === "TRANSLATION" ? safeUiLocale(tag) : undefined
+}
+
 function safePosition(value: number | null | undefined): number | undefined {
   if (typeof value !== "number" || !Number.isFinite(value)) return undefined
   if (value < 0 || value > FEEDBACK_POSITION_MAX_SECONDS) return undefined
@@ -137,6 +155,8 @@ export type FeedbackSubmissionArgs = {
   deviceDetails?: FeedbackDeviceDetails | null
   /** KD5: present only while the person keeps the tag. */
   video?: FeedbackVideoContext | null
+  /** The catalog tag the app shows. Only a TRANSLATION report sends it. */
+  uiLocale?: string | null
 }
 
 /** R8: carries only what the person typed, tagged, or switched on. Nothing
@@ -149,6 +169,9 @@ export function buildFeedbackSubmissionInput(
   const email = clamped(draft.email, FEEDBACK_EMAIL_MAX_LENGTH)
   const video = safeVideo(args.video)
   const deviceDetails = safeDeviceDetails(args.deviceDetails)
+  // The sheet tells the person that a translation report sends the language;
+  // no other kind says so, so no other kind may send it.
+  const uiLocale = feedbackUiLocale(draft.kind, args.uiLocale)
 
   return {
     submissionId: args.submissionId,
@@ -157,6 +180,7 @@ export function buildFeedbackSubmissionInput(
     message: clamped(draft.message, FEEDBACK_MESSAGE_MAX_LENGTH),
     ...(name ? { name } : {}),
     ...(email ? { email } : {}),
+    ...(uiLocale ? { uiLocale } : {}),
     ...(video ? { video } : {}),
     ...(deviceDetails ? { deviceDetails } : {}),
   }

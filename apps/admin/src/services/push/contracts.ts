@@ -1,5 +1,6 @@
 import { z } from "zod"
 
+import { pushCountryCodeRefusal } from "./country-code"
 import { PUSH_ENGLISH_LANGUAGE_SLUG } from "./language-resolution"
 import { PushInputError, type PushInputIssue } from "./errors"
 
@@ -32,6 +33,10 @@ export const PushCountryCodeSchema = z
   .trim()
   .regex(/^[A-Za-z]{2}$/, "A country is a two-letter ISO code")
   .transform((code) => code.toUpperCase())
+  .superRefine((code, context) => {
+    const refusal = pushCountryCodeRefusal(code)
+    if (refusal) context.addIssue({ code: "custom", message: refusal })
+  })
 
 function unique<T>(values: readonly T[]): T[] {
   return [...new Set(values)]

@@ -464,7 +464,7 @@ describe("a UI language change (KTD16)", () => {
   })
 })
 
-// R21: `ha` and `yo` have no UI catalog, so the change keeps the epoch and
+// R21: `ha` and `ig` have no UI catalog, so the change keeps the epoch and
 // moves only the default audio, which only a viewer with no pick hears.
 describe("a phone change that keeps the catalog (R21)", () => {
   it("asks for the new default audio once Home has focus, and keeps the slate on show", async () => {
@@ -476,14 +476,14 @@ describe("a phone change that keeps the catalog (R21)", () => {
     const before = c.fetch.mock.calls.length
     const rendersBefore = hook.all().length
 
-    await changePhone("yo-NG")
+    await changePhone("ig-NG")
     await flush()
     expect(c.fetch).toHaveBeenCalledTimes(before)
 
     hook.rerender(OPEN)
     await flush()
     expect(askedSince(c, before)).toEqual([
-      { locale: "en", audioLanguageSlug: "yoruba", count: 6, attempt: 1 },
+      { locale: "en", audioLanguageSlug: "igbo", count: 6, attempt: 1 },
     ])
     const after = hook.all().slice(rendersBefore)
     expect(after.filter((seen) => seen.slate === null)).toHaveLength(0)
@@ -496,11 +496,11 @@ describe("a phone change that keeps the catalog (R21)", () => {
     await mountShelf(c)
     const before = c.fetch.mock.calls.length
 
-    await changePhone("yo-NG")
+    await changePhone("ig-NG")
     await flush()
     expect(
       askedSince(c, before).map((input) => input.audioLanguageSlug),
-    ).toEqual(["yoruba"])
+    ).toEqual(["igbo"])
   })
 
   it("changes nothing for a viewer with an audio pick", async () => {
@@ -512,7 +512,7 @@ describe("a phone change that keeps the catalog (R21)", () => {
     expect(shown).not.toBeNull()
     const rendersBefore = hook.all().length
 
-    await changePhone("yo-NG")
+    await changePhone("ig-NG")
     await flush()
     hook.rerender({ gateOpen: true, focused: false })
     await flush()

@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 import { adminMessages } from "@/i18n/messages"
 import {
+  PushCampaignNotDeletableError,
   PushCampaignsDisabledError,
   PushDuplicateTestDeviceError,
   PushFrozenError,
   PushInputError,
+  PushNotFoundError,
   PushNotTestedError,
   PushStaleContentVersionError,
   PushTokenShapedIdError,
@@ -19,6 +21,7 @@ const redirect = vi.fn((url: string) => {
 
 const createPushCampaignDraft = vi.fn()
 const updatePushCampaign = vi.fn()
+const deletePushCampaign = vi.fn()
 const countPushAudience = vi.fn()
 const readPushCampaignDetail = vi.fn()
 const readPushActorNames = vi.fn()
@@ -60,6 +63,7 @@ vi.mock("@/services/push/campaign.service", () => ({
   createPushCampaignDraft: (...args: unknown[]) =>
     createPushCampaignDraft(...args),
   updatePushCampaign: (...args: unknown[]) => updatePushCampaign(...args),
+  deletePushCampaign: (...args: unknown[]) => deletePushCampaign(...args),
   readPushTestSendOutcome: vi.fn(async () => []),
 }))
 
@@ -95,6 +99,7 @@ import {
   addTestDeviceAction,
   cancelCampaignAction,
   createCampaignAction,
+  deleteCampaignAction,
   removeTestDeviceAction,
   saveCampaignAction,
   scheduleCampaignAction,
@@ -175,6 +180,7 @@ describe("push campaign server actions", () => {
     sendPushCampaignNowRun.mockResolvedValue({ campaignId: CAMPAIGN })
     sendPushCampaignTestRun.mockResolvedValue({ campaignId: CAMPAIGN })
     cancelPushCampaignRun.mockResolvedValue({ zonesCancelled: 3 })
+    deletePushCampaign.mockResolvedValue({ deliveriesDeleted: 12 })
   })
 
   describe("access", () => {
@@ -604,6 +610,67 @@ describe("push campaign server actions", () => {
         actorId: "user_1",
       })
       expect(result.status === "ok" && result.message).toContain("3")
+    })
+  })
+
+  describe("deleteCampaignAction", () => {
+    it("sends a principal without the campaign permission away before any delete", async () => {
+      requireSession.mockResolvedValue({ id: "user_2", role: "PUBLIC" })
+      await expect(
+        deleteCampaignAction(PUSH_ACTION_IDLE, form({ campaignId: CAMPAIGN })),
+      ).rejects.toThrow("NEXT_REDIRECT:/dashboard")
+      expect(deletePushCampaign).not.toHaveBeenCalled()
+    })
+
+    it("deletes as the signed-in actor, then opens the campaign list", async () => {
+      await expect(
+        deleteCampaignAction(PUSH_ACTION_IDLE, form({ campaignId: CAMPAIGN })),
+      ).rejects.toThrow("NEXT_REDIRECT:/dashboard/push-campaigns")
+      expect(deletePushCampaign).toHaveBeenCalledWith(expect.anything(), {
+        campaignId: CAMPAIGN,
+        actorId: "user_1",
+      })
+      expect(revalidatePath).toHaveBeenCalledWith("/dashboard/push-campaigns")
+    })
+
+    it("keeps the page and names the wait when the service refuses", async () => {
+      deletePushCampaign.mockRejectedValue(
+        new PushCampaignNotDeletableError(
+          "Delete it after 2026-10-09 12:00 UTC.",
+        ),
+      )
+      const result = await deleteCampaignAction(
+        PUSH_ACTION_IDLE,
+        form({ campaignId: CAMPAIGN }),
+      )
+      expect(result).toEqual({
+        status: "error",
+        reason: "Delete it after 2026-10-09 12:00 UTC.",
+      })
+      expect(redirect).not.toHaveBeenCalled()
+    })
+
+    it("opens the list when another tab already deleted the campaign", async () => {
+      deletePushCampaign.mockRejectedValue(
+        new PushNotFoundError("That campaign does not exist"),
+      )
+      await expect(
+        deleteCampaignAction(PUSH_ACTION_IDLE, form({ campaignId: CAMPAIGN })),
+      ).rejects.toThrow("NEXT_REDIRECT:/dashboard/push-campaigns")
+    })
+
+    it("rethrows a fault that is not a service refusal", async () => {
+      deletePushCampaign.mockRejectedValue(new Error("connection reset"))
+      await expect(
+        deleteCampaignAction(PUSH_ACTION_IDLE, form({ campaignId: CAMPAIGN })),
+      ).rejects.toThrow("connection reset")
+      expect(redirect).not.toHaveBeenCalled()
+    })
+
+    it("refuses a form with no campaign id before it reaches the service", async () => {
+      const result = await deleteCampaignAction(PUSH_ACTION_IDLE, form({}))
+      expect(result.status).toBe("error")
+      expect(deletePushCampaign).not.toHaveBeenCalled()
     })
   })
 

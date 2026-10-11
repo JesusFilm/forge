@@ -32,6 +32,7 @@ function parseArgs(argv) {
     check: false,
     messagesDir: path.join(MOBILE, "messages"),
     outDir: path.join(MOBILE, "src", "i18n"),
+    policyFile: path.join(MOBILE, "i18n", "translation-policy.json"),
   }
   for (const arg of argv) {
     if (arg === "--check") options.check = true
@@ -39,6 +40,8 @@ function parseArgs(argv) {
       options.messagesDir = path.resolve(arg.slice("--messages-dir=".length))
     } else if (arg.startsWith("--out-dir=")) {
       options.outDir = path.resolve(arg.slice("--out-dir=".length))
+    } else if (arg.startsWith("--policy=")) {
+      options.policyFile = path.resolve(arg.slice("--policy=".length))
     } else {
       throw new CatalogIndexError(`Unknown argument: ${arg}`)
     }
@@ -74,6 +77,23 @@ function readCatalogTags(messagesDir) {
   return tags
 }
 
+// The catalogs that copy en.json (`englishOnlyLocales`), in catalog order.
+function readEnglishOnlyTags(policyFile, tags) {
+  let listed
+  try {
+    listed = JSON.parse(fs.readFileSync(policyFile, "utf8")).englishOnlyLocales
+  } catch (error) {
+    throw new CatalogIndexError(`${policyFile}: ${error.message}`)
+  }
+  if (!Array.isArray(listed)) {
+    throw new CatalogIndexError(
+      `${policyFile}: englishOnlyLocales must be a list of catalog tags.`,
+    )
+  }
+  const englishOnly = new Set(listed)
+  return tags.filter((tag) => tag !== DEFAULT_TAG && englishOnly.has(tag))
+}
+
 function readPluralDataTags() {
   const entry = createRequire(path.join(MOBILE, "package.json")).resolve(
     PLURAL_DATA_PACKAGE,
@@ -88,8 +108,10 @@ function readPluralDataTags() {
 }
 
 // The exact data tag the polyfill has for a catalog tag: the tag, the tag
-// without its script, then the language. No CLDR data means English (KTD1).
-function pluralDataTagFor(tag, dataTags) {
+// without its script, then the language. No CLDR data, or an English-only
+// catalog, means English (KTD1).
+function pluralDataTagFor(tag, dataTags, englishOnly) {
+  if (englishOnly.has(tag)) return DEFAULT_TAG
   const [language, ...rest] = tag.split("-")
   const candidates = [tag]
   if (rest[0]?.length === 4) {
@@ -105,7 +127,7 @@ const HEADER = [
   "/* eslint-disable @typescript-eslint/no-require-imports */",
 ].join("\n")
 
-function catalogsSource(tags, messagesImportPath) {
+function catalogsSource(tags, englishOnlyTags, messagesImportPath) {
   const loaders = tags
     .map(
       (tag) =>
@@ -118,6 +140,9 @@ export const CATALOG_TAGS = ${codeString(tags)} as const
 
 export type CatalogTag = (typeof CATALOG_TAGS)[number]
 
+// These catalogs copy en.json, so the resolver skips them (feat-604).
+export const ENGLISH_ONLY_TAGS: readonly CatalogTag[] = ${codeString(englishOnlyTags)}
+
 // A thunk keeps its catalog in the bundle but off the heap until it runs (R8).
 export const CATALOG_LOADERS: Record<CatalogTag, () => object> = {
 ${loaders}
@@ -125,8 +150,12 @@ ${loaders}
 `
 }
 
-function pluralDataSource(tags, dataTags) {
-  const byCatalog = tags.map((tag) => [tag, pluralDataTagFor(tag, dataTags)])
+function pluralDataSource(tags, englishOnlyTags, dataTags) {
+  const englishOnly = new Set(englishOnlyTags)
+  const byCatalog = tags.map((tag) => [
+    tag,
+    pluralDataTagFor(tag, dataTags, englishOnly),
+  ])
   const loadedTags = [
     ...new Set(byCatalog.map(([, dataTag]) => dataTag)),
   ].sort()
@@ -171,14 +200,17 @@ async function format(source) {
 async function main() {
   const options = parseArgs(process.argv.slice(2))
   const tags = readCatalogTags(options.messagesDir)
+  const englishOnlyTags = readEnglishOnlyTags(options.policyFile, tags)
   const messagesImportPath = path
     .relative(options.outDir, options.messagesDir)
     .split(path.sep)
     .join("/")
   const outputs = {
-    [CATALOGS_FILE]: await format(catalogsSource(tags, messagesImportPath)),
+    [CATALOGS_FILE]: await format(
+      catalogsSource(tags, englishOnlyTags, messagesImportPath),
+    ),
     [PLURAL_DATA_FILE]: await format(
-      pluralDataSource(tags, readPluralDataTags()),
+      pluralDataSource(tags, englishOnlyTags, readPluralDataTags()),
     ),
   }
 

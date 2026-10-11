@@ -18,6 +18,7 @@ import { hexToRgba } from "../../lib/colors"
 import { validateStreamingUrl } from "../../lib/validateUrl"
 import { WATCH_THEME, HERO_BOTTOM_FADE_HEIGHT } from "./watchDetailTheme"
 import { computeBackdropGate, isAppStateForeground } from "./videoBackdropGate"
+import { useStartupIntroActive } from "../../contexts/StartupIntroProvider"
 
 // Hold the poster over the (invisible) video for this long after the stream is
 // ready, then crossfade the video in — gives the eye a stable still instead of
@@ -63,6 +64,7 @@ export function VideoBackdrop({
   muted = true,
   active = true,
 }: VideoBackdropProps) {
+  const introActive = useStartupIntroActive()
   const [reduceMotion, setReduceMotion] = useState(false)
   useEffect(() => {
     let cancelled = false
@@ -104,7 +106,7 @@ export function VideoBackdrop({
   const { shouldPlay, shouldMountVideo } = computeBackdropGate({
     muted,
     active,
-    overlayVisible,
+    overlayVisible: overlayVisible || introActive,
     appForeground,
   })
 

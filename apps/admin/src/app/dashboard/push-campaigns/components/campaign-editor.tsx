@@ -28,7 +28,11 @@ import { PUSH_ENGLISH_LANGUAGE_SLUG } from "@/services/push/language-resolution"
 import { saveCampaignAction } from "../actions"
 import { ActionFeedback } from "./action-feedback"
 import { PUSH_ACTION_IDLE, pushActionStateForPage } from "./action-state"
-import { normalizePushCountryInput, pushCopyFieldError } from "./campaign-view"
+import {
+  formatPushCountry,
+  normalizePushCountryInput,
+  pushCopyFieldError,
+} from "./campaign-view"
 import { DestinationPicker, type DestinationValue } from "./destination-picker"
 import {
   LoadLatestVersion,
@@ -398,10 +402,10 @@ function CampaignFields({
                           current.filter((entry) => entry !== country),
                         )
                       }
-                      aria-label={`Remove ${country}`}
-                      className="mono-meta inline-flex h-7 cursor-pointer items-center gap-1 rounded-sm border border-[var(--color-hairline)] px-2 hover:border-[var(--color-danger-border)] hover:text-[var(--color-danger)]"
+                      aria-label={`Remove ${formatPushCountry(country)}`}
+                      className="inline-flex h-7 cursor-pointer items-center gap-1 rounded-sm border border-[var(--color-hairline)] px-2 text-[12px] hover:border-[var(--color-danger-border)] hover:text-[var(--color-danger)]"
                     >
-                      {country}
+                      {formatPushCountry(country)}
                       <Trash2 className="h-3 w-3" strokeWidth={1.5} />
                     </button>
                   </li>

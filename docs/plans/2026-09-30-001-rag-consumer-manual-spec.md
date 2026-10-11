@@ -133,7 +133,7 @@ deployment. All deferred bench work is preserved in the companion spec/ticket.
 
 ## Further Notes
 
-- Tracker: [feat-575](../roadmap/rag/feat-575-rag-consumer-manual.md), tagged ready-for-agent. The exact implementation entry points and commands live in that roadmap ticket.
+- Tracker: [feat-620](../roadmap/rag/feat-620-rag-consumer-manual.md), tagged ready-for-agent. The exact implementation entry points and commands live in that roadmap ticket.
 - Follow-up: [feat-576](../roadmap/rag/feat-576-rag-governed-test-bench.md) and [execution spec](2026-09-30-002-rag-governed-test-bench-spec.md).
 - Historical design seed: [jesusfilm-rag issue 98](https://github.com/JesusFilm/jesusfilm-rag/issues/98). The user's annotated A/D combination and this spec supersede the older layouts, invented fields and illustrative values.
 - Current-state reference: Forge main at 761b33714. The public contract and current RAG architecture take precedence over legacy glossary wording that still calls the service external.

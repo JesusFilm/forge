@@ -29,9 +29,9 @@ jest.mock("expo-localization/build/ExpoLocalization", () => ({
   },
 }))
 
-// A fixture catalog set: mobile ships only `en` today. Each loader records
-// its call, so a case can prove which catalogs reached the heap (R8). The
-// `fr` catalog file fails to load, and `fr` has no plural data either.
+// A synthetic catalog set, not the shipped one. Each loader records its call,
+// so a case can prove which catalogs reached the heap (R8). The `fr` catalog
+// file fails to load, and `fr` has no plural data either.
 const mockCatalogLoads: string[] = []
 jest.mock("../catalogs.generated", () => {
   const catalogs: Record<string, object | null> = {
@@ -50,6 +50,7 @@ jest.mock("../catalogs.generated", () => {
   }
   return {
     CATALOG_TAGS: Object.keys(catalogs),
+    ENGLISH_ONLY_TAGS: [],
     CATALOG_LOADERS: Object.fromEntries(
       Object.entries(catalogs).map(([tag, messages]) => [
         tag,
@@ -326,12 +327,12 @@ describe("refreshLocale", () => {
     const listener = jest.fn()
     subscribeLocale(listener)
 
-    mockGetLocales.mockReturnValue(phone("yo-NG"))
+    mockGetLocales.mockReturnValue(phone("ig-NG"))
     refreshLocale()
     expect(getCatalogTag()).toBe("en")
     expect(getLocaleEpoch()).toBe(0)
     expect(listener).toHaveBeenCalledTimes(1)
-    expect(defaultAudioLanguage()).toEqual({ tag: "yo-NG", slug: "yoruba" })
+    expect(defaultAudioLanguage()).toEqual({ tag: "ig-NG", slug: "igbo" })
 
     refreshLocale()
     refreshLocale()

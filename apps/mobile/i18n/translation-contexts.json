@@ -544,15 +544,19 @@
     },
     "Feedback.kindBroken": {
       "role": "choice button",
-      "composition": "One of three kinds of feedback: something in the app does not work."
+      "composition": "One kind of feedback: something in the app does not work."
     },
     "Feedback.kindIdea": {
       "role": "choice button",
-      "composition": "One of three kinds of feedback: a suggestion."
+      "composition": "One kind of feedback: a suggestion."
     },
     "Feedback.kindOther": {
       "role": "choice button",
-      "composition": "One of three kinds of feedback: anything else."
+      "composition": "One kind of feedback: anything else."
+    },
+    "Feedback.kindTranslation": {
+      "role": "choice button",
+      "composition": "One kind of feedback: text in the app is translated wrong. Shows only when the app is not in English."
     },
     "Feedback.failureMessage": {
       "role": "error message",
@@ -593,6 +597,18 @@
     "Feedback.tooLong": {
       "role": "inline error under a form field",
       "composition": "{max} is the most characters the field accepts. Keep the number form \"{x, number, ::group-off}\": it prints the limit with no thousands separator."
+    },
+    "Feedback.translationMessagePlaceholder": {
+      "role": "placeholder of the message field",
+      "composition": "Shows after the viewer picks the wrong-translation kind. It asks for the wrong text, its screen, and a better translation."
+    },
+    "Feedback.translationLanguageNotice": {
+      "role": "notice",
+      "composition": "Shows after the viewer picks the wrong-translation kind. The report includes the language that the app shows."
+    },
+    "Feedback.appLanguageLabel": {
+      "role": "label in the list of what the report sends",
+      "composition": "Shows only for a wrong-translation report. The value after it is the language tag of the app, such as es or zh-Hans."
     }
   }
 }

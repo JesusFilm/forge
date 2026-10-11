@@ -62,10 +62,14 @@ export async function readPushTestRunState(
   }
 }
 
-/** `HH:MM` UTC. The minute rounds up, so the time is never before `at`. */
+/** The minute rounds up, so a time shown to an editor is never before `at`. */
+export function ceilPushMinute(at: Date): Date {
+  return new Date(Math.ceil(at.getTime() / 60_000) * 60_000)
+}
+
+/** `HH:MM` UTC. */
 export function formatPushReceiptsClock(at: Date): string {
-  const minute = new Date(Math.ceil(at.getTime() / 60_000) * 60_000)
-  return minute.toISOString().slice(11, 16)
+  return ceilPushMinute(at).toISOString().slice(11, 16)
 }
 
 /** KTD17 — a test cannot be cancelled, so the refusal names when it ends. */

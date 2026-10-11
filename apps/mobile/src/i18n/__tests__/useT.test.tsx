@@ -1,11 +1,12 @@
 // The store, the translator, and useT together, with the real en.json and
 // generated index. Only the native module is faked, and fixture `es` and `ar`
-// catalogs join the real set so a language change can happen.
+// catalogs replace the real ones so a case can assert a known string.
 import { StrictMode, act, type ReactElement } from "react"
 import { Text } from "react-native"
 
 import * as localeStore from "../localeStore"
 import {
+  getCatalogTag,
   getLocaleEpoch,
   refreshLocale,
   resetLocaleStoreForTests,
@@ -31,6 +32,7 @@ jest.mock("expo-localization/build/ExpoLocalization", () => ({
 jest.mock("../catalogs.generated", () => {
   const actual = jest.requireActual("../catalogs.generated")
   return {
+    ...actual,
     CATALOG_TAGS: [...actual.CATALOG_TAGS, "es", "ar"],
     CATALOG_LOADERS: {
       ...actual.CATALOG_LOADERS,
@@ -171,10 +173,11 @@ describe("useDefaultAudioSlug", () => {
     const renderer = await render(<DefaultAudio />)
     expect(hasText(renderer, "hausa")).toBe(true)
 
-    await changePhoneLanguage("yo-NG")
+    // Neither Hausa nor Igbo has a catalog, so both phones read English.
+    await changePhoneLanguage("ig-NG")
 
     expect(getLocaleEpoch()).toBe(0)
-    expect(hasText(renderer, "yoruba")).toBe(true)
+    expect(hasText(renderer, "igbo")).toBe(true)
     await unmount(renderer)
   })
 })
@@ -207,6 +210,33 @@ describe("getT", () => {
 
     expect(t("goBackAriaLabel")).toBe("Volver")
   })
+})
+
+// The real index and policy: an English-only catalog (feat-604) resolves as
+// if it had no catalog, so English plural rules and left-to-right text apply.
+describe("an English-only phone language", () => {
+  it.each(["ks-IN", "sg-CF", "ff-SN"])(
+    "%s reads the English catalog",
+    (tag) => {
+      startOn(tag)
+      expect(getCatalogTag()).toBe("en")
+    },
+  )
+
+  it("falls through to a later translated language: [ff-SN, fr-SN] reads fr", () => {
+    mockGetLocales.mockReturnValue([
+      { languageTag: "ff-SN" },
+      { languageTag: "fr-SN" },
+    ])
+    startLocaleSync()
+    expect(getCatalogTag()).toBe("fr")
+  })
+})
+
+// The only Punjabi catalog is Gurmukhi, and a Pakistani phone reads Shahmukhi.
+it("a pa-PK phone reads English, not the Gurmukhi catalog", () => {
+  startOn("pa-PK")
+  expect(getCatalogTag()).toBe("en")
 })
 
 // Compile-time only: tsc fails if a missing key or namespace stops erroring.

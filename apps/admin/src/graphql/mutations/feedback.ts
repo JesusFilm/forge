@@ -24,6 +24,11 @@ const FeedbackKindEnum = builder.enumType("FeedbackKind", {
     BROKEN: { value: "BROKEN" },
     IDEA: { value: "IDEA" },
     OTHER: { value: "OTHER" },
+    TRANSLATION: {
+      value: "TRANSLATION",
+      description:
+        "A translation in the app is wrong. The phone sends `uiLocale` with it.",
+    },
   } as const,
 })
 
@@ -88,6 +93,11 @@ const FeedbackSubmissionInput = builder.inputType("FeedbackSubmissionInput", {
     platform: t.field({ type: FeedbackPlatformEnum, required: true }),
     name: t.string({ required: false }),
     email: t.string({ required: false }),
+    uiLocale: t.string({
+      required: false,
+      description:
+        "The catalog tag of the language that the app showed, such as `zh-Hans`. Sent with a TRANSLATION report.",
+    }),
     video: t.field({ type: FeedbackVideoContextInput, required: false }),
     deviceDetails: t.field({
       type: FeedbackDeviceDetailsInput,
@@ -135,16 +145,25 @@ const SLUG = z
   .trim()
   .regex(/^[A-Za-z0-9][A-Za-z0-9._-]{0,199}$/u)
 
+/** A BCP 47 shape, not a list of catalog tags, so a new catalog never refuses
+ * a report. The phone mirrors it and drops a tag that fails. */
+const UI_LOCALE = z
+  .string()
+  .trim()
+  .max(35)
+  .regex(/^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8}){0,4}$/u)
+
 /** KTD7. The phone checks the same bounds before Send, so a failure here
  *  should never happen and answers `INVALID_INPUT`. */
 const submissionSchema = z
   .object({
     submissionId: z.uuid(),
-    kind: z.enum(["BROKEN", "IDEA", "OTHER"]),
+    kind: z.enum(["BROKEN", "IDEA", "OTHER", "TRANSLATION"]),
     message: z.string().trim().min(10).max(1000),
     platform: z.enum(["IOS", "ANDROID"]),
     name: bounded(100).optional(),
     email: z.email().max(254).optional(),
+    uiLocale: UI_LOCALE.optional(),
     video: z
       .object({
         title: bounded(200),
@@ -181,11 +200,12 @@ function refuse(
 /** Drops the absent optionals so the parsed object matches U1's type. */
 function toCandidate(input: {
   submissionId: string
-  kind: "BROKEN" | "IDEA" | "OTHER"
+  kind: "BROKEN" | "IDEA" | "OTHER" | "TRANSLATION"
   message: string
   platform: "IOS" | "ANDROID"
   name?: string | null
   email?: string | null
+  uiLocale?: string | null
   video?: {
     title: string
     positionSeconds?: number | null
@@ -207,6 +227,7 @@ function toCandidate(input: {
     platform: input.platform,
     ...(input.name != null ? { name: input.name } : {}),
     ...(input.email != null ? { email: input.email } : {}),
+    ...(input.uiLocale != null ? { uiLocale: input.uiLocale } : {}),
     ...(video != null
       ? {
           video: {

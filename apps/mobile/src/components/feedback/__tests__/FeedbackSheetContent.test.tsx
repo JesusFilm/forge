@@ -33,6 +33,11 @@ jest.mock("expo-device", () => ({
     return "iPhone17,2"
   },
 }))
+// The store knows only English before U16, so a test sets the tag here.
+let mockUiTag = "en"
+jest.mock("../../../hooks/useUiTag", () => ({
+  useUiTag: () => mockUiTag,
+}))
 
 import { act, StrictMode } from "react"
 import { AccessibilityInfo, Animated } from "react-native"
@@ -115,6 +120,7 @@ function submittedInput(): FeedbackSubmissionInput {
 
 beforeEach(() => {
   jest.useFakeTimers()
+  mockUiTag = "en"
   mutate.mockReset()
   acceptNext()
   mockedGetApolloClient.mockReset()
@@ -285,6 +291,46 @@ describe("step one (R4, R5)", () => {
     announce.mockClear()
     await press(pressableByLabel(renderer, "Back"))
     expect(announce).toHaveBeenCalledWith(FEEDBACK_PICK_KIND_HEADING)
+  })
+})
+
+describe("translation reports (feat-604)", () => {
+  const TILE = t("kindTranslation")
+
+  it("offers no translation tile while the app shows English", async () => {
+    const { renderer } = await render()
+    expect(
+      renderer.root.findAll((node) => node.props.accessibilityLabel === TILE),
+    ).toHaveLength(0)
+  })
+
+  it("says that the app language goes with the report, and sends the catalog tag", async () => {
+    mockUiTag = "zh-Hans"
+    const { renderer } = await render()
+    await press(pressableByLabel(renderer, TILE))
+
+    expect(hasText(renderer, t("translationLanguageNotice"))).toBe(true)
+    expect(inputByLabel(renderer, "Your message").props.placeholder).toBe(
+      t("translationMessagePlaceholder"),
+    )
+    // "What this sends" names the language that the request below carries.
+    expect(disclosureValue(renderer, "App language")).toBe("zh-Hans")
+    await composeAndSend(renderer)
+    expect(submittedInput()).toMatchObject({
+      kind: "TRANSLATION",
+      uiLocale: "zh-Hans",
+    })
+  })
+
+  it("sends no app language with another kind", async () => {
+    mockUiTag = "zh-Hans"
+    const { renderer } = await render()
+    await press(pressableByLabel(renderer, "Something else"))
+
+    expect(hasText(renderer, t("translationLanguageNotice"))).toBe(false)
+    expect(disclosureValue(renderer, "App language")).toBeUndefined()
+    await composeAndSend(renderer)
+    expect("uiLocale" in submittedInput()).toBe(false)
   })
 })
 

@@ -1,7 +1,7 @@
 import { isRtlTag, resolveLocale } from "../resolveLocale"
 
-// A subset of apps/web/messages, spelled as web spells the file names. Today
-// mobile ships only `en`, so these cases pass the catalog set in directly.
+// A subset of apps/web/messages, spelled as web spells the file names. The
+// cases pass the catalog set in directly, so they do not follow messages/.
 const WEB_TAGS = [
   "ar",
   "de",
@@ -102,8 +102,42 @@ describe("resolveLocale", () => {
   })
 
   it("considers only the catalogs that exist", () => {
-    // Today's real catalog set: everything resolves to English.
     expect(resolveLocale(["es-MX", "fr"], ["en"]).tag).toBe("en")
+  })
+})
+
+describe("resolveLocale with a bare catalog in another script", () => {
+  const TAGS = ["en", "mn", "pa", "sr", "ur", "uz"]
+
+  it.each([
+    ["pa-PK", "en"],
+    ["pa-Arab-PK", "en"],
+    ["mn-CN", "en"],
+    ["mn-Mong-CN", "en"],
+  ])("skips the bare catalog for %s, so it reads %s", (phoneTag, tag) => {
+    expect(resolveLocale([phoneTag], TAGS).tag).toBe(tag)
+  })
+
+  it.each([
+    ["pa-IN", "pa"],
+    ["pa-Guru-IN", "pa"],
+    ["sr-Cyrl-RS", "sr"],
+    ["uz-Latn-UZ", "uz"],
+    ["mn-MN", "mn"],
+  ])("keeps the bare catalog for %s, whose script matches", (phoneTag, tag) => {
+    expect(resolveLocale([phoneTag], TAGS)).toEqual({
+      tag,
+      match: "language",
+      matchedIndex: 0,
+    })
+  })
+
+  it("moves on to the next phone language: [pa-PK, ur-PK] resolves to ur", () => {
+    expect(resolveLocale(["pa-PK", "ur-PK"], TAGS)).toEqual({
+      tag: "ur",
+      match: "language",
+      matchedIndex: 1,
+    })
   })
 })
 

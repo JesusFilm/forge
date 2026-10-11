@@ -21,6 +21,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { useTypography } from "../../hooks/useTypography"
+import { useUiTag } from "../../hooks/useUiTag"
 import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import {
@@ -36,12 +37,12 @@ import {
   getFeedbackPlatform,
   readFeedbackDeviceDetails,
 } from "../../lib/feedbackDeviceDetails"
-import { FEEDBACK_KINDS } from "../../lib/feedbackQueries"
 import {
   createFeedbackSubmission,
   FEEDBACK_EMAIL_MAX_LENGTH,
   FEEDBACK_MESSAGE_MAX_LENGTH,
   FEEDBACK_NAME_MAX_LENGTH,
+  feedbackUiLocale,
   type FeedbackSubmissionModel,
 } from "../../lib/feedbackSubmission"
 import { feedback } from "../../styles/shared"
@@ -55,6 +56,7 @@ import {
   feedbackProblemText,
   feedbackStepHeading,
   feedbackTagText,
+  visibleFeedbackKinds,
   FEEDBACK_STEP_FADE_MS,
   FEEDBACK_SUCCESS_CLOSE_MS,
   type FeedbackSheetContext,
@@ -81,6 +83,7 @@ export function FeedbackSheetContent({
   const reduceMotion = useReduceMotion()
   const t = useT("Feedback")
   const uiDirection = useTextDirection().ui
+  const uiTag = useUiTag()
   const [state, dispatch] = useReducer(
     feedbackFlowReducer,
     context,
@@ -96,9 +99,13 @@ export function FeedbackSheetContent({
   // ONE read feeds both the disclosure and the submission, so the list cannot
   // describe values other than the ones sent (AE4).
   const deviceDetails = useMemo(() => readFeedbackDeviceDetails(), [])
+  // The same function decides what send() puts on the wire.
+  const appLanguage = state.kind
+    ? feedbackUiLocale(state.kind, uiTag)
+    : undefined
   const disclosureRows = useMemo(
-    () => feedbackDisclosureRows(t, platform, deviceDetails),
-    [t, platform, deviceDetails],
+    () => feedbackDisclosureRows(t, platform, deviceDetails, appLanguage),
+    [t, platform, deviceDetails, appLanguage],
   )
 
   const inFlight = useRef(false)
@@ -174,6 +181,7 @@ export function FeedbackSheetContent({
         platform,
         deviceDetails: state.includeDeviceDetails ? deviceDetails : null,
         video: state.video,
+        uiLocale: uiTag,
       })
       // U3 contracts send() to resolve on every path, so there is one failure
       // branch here and no rejection handler.
@@ -186,7 +194,7 @@ export function FeedbackSheetContent({
             : { type: "sendFailed" },
         )
       })
-  }, [deviceDetails, model, platform, state])
+  }, [deviceDetails, model, platform, state, uiTag])
 
   const handleClose = useCallback(() => {
     if (dismissLocked) return
@@ -254,7 +262,7 @@ export function FeedbackSheetContent({
         <Text style={[styles.heading, typography.titleLarge, uiDirection]}>
           {t("pickKindHeading")}
         </Text>
-        {FEEDBACK_KINDS.map((kind) => (
+        {visibleFeedbackKinds(uiTag).map((kind) => (
           <Pressable
             key={kind}
             onPress={() => dispatch({ type: "chooseKind", kind })}
@@ -360,6 +368,11 @@ export function FeedbackSheetContent({
       <Text style={[styles.kindLine, typography.bodySmall, uiDirection]}>
         {feedbackKindLabel(t, state.kind)}
       </Text>
+      {state.kind === "TRANSLATION" ? (
+        <Text style={[styles.kindLine, typography.bodySmall, uiDirection]}>
+          {t("translationLanguageNotice")}
+        </Text>
+      ) : null}
 
       {state.video ? (
         <View style={styles.tagRow}>
@@ -392,7 +405,11 @@ export function FeedbackSheetContent({
           editable={!dismissLocked}
           multiline
           textAlignVertical="top"
-          placeholder={t("messagePlaceholder")}
+          placeholder={
+            state.kind === "TRANSLATION"
+              ? t("translationMessagePlaceholder")
+              : t("messagePlaceholder")
+          }
           placeholderTextColor={TEXT_SECONDARY}
           accessibilityLabel={t("messageAriaLabel")}
         />

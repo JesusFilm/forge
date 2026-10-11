@@ -7,6 +7,7 @@
  * U3 owns the bounds and the wire shape. This module never re-states a bound —
  * it imports each one, so a change on admin's side reaches the inline copy.
  */
+import { DEFAULT_LOCALE } from "../../i18n/resolveLocale"
 import type { UiMessageKey, UiT } from "../../i18n/useT"
 import {
   FEEDBACK_EMAIL_MAX_LENGTH,
@@ -20,11 +21,12 @@ import {
   type FeedbackProblem,
 } from "../../lib/feedbackSubmission"
 import { FEEDBACK_PLATFORM_LABEL } from "../../lib/feedbackDeviceDetails"
-import type {
-  FeedbackDeviceDetails,
-  FeedbackKind,
-  FeedbackPlatform,
-  FeedbackVideoContext,
+import {
+  FEEDBACK_KINDS,
+  type FeedbackDeviceDetails,
+  type FeedbackKind,
+  type FeedbackPlatform,
+  type FeedbackVideoContext,
 } from "../../lib/feedbackQueries"
 
 /** The form's words (KTD2 of the localization plan): helpers take `t`. */
@@ -38,10 +40,20 @@ export const FEEDBACK_KIND_LABEL_KEY: Record<
   BROKEN: "kindBroken",
   IDEA: "kindIdea",
   OTHER: "kindOther",
+  TRANSLATION: "kindTranslation",
 }
 
 export function feedbackKindLabel(t: FeedbackT, kind: FeedbackKind): string {
   return t(FEEDBACK_KIND_LABEL_KEY[kind])
+}
+
+/** The step-one tiles. The `en` catalog has no translation to report. */
+export function visibleFeedbackKinds(
+  catalogTag: string,
+): readonly FeedbackKind[] {
+  return catalogTag === DEFAULT_LOCALE
+    ? FEEDBACK_KINDS.filter((kind) => kind !== "TRANSLATION")
+    : FEEDBACK_KINDS
 }
 
 /** R12: the sheet closes on its own after this, or sooner on a tap. */
@@ -110,15 +122,19 @@ export function feedbackProblemText(
 export type FeedbackDisclosureRow = { label: string; value: string }
 
 /** The list the disclosure renders AND the fields the submission carries, from
- * one read (AE4). The platform leads: it rides along whatever the switch says;
- * every other row depends on the switch. */
+ * one read (AE4). The platform and a translation report's app language ride
+ * along whatever the switch says; every other row depends on the switch. */
 export function feedbackDisclosureRows(
   t: FeedbackT,
   platform: FeedbackPlatform,
   details: FeedbackDeviceDetails,
+  appLanguage?: string,
 ): FeedbackDisclosureRow[] {
   return [
     { label: t("platformLabel"), value: FEEDBACK_PLATFORM_LABEL[platform] },
+    ...(appLanguage
+      ? [{ label: t("appLanguageLabel"), value: appLanguage }]
+      : []),
     { label: t("appVersionLabel"), value: details.appVersion },
     { label: t("appBuildLabel"), value: details.appBuild },
     { label: t("osVersionLabel"), value: details.osVersion },

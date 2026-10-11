@@ -47,6 +47,13 @@ function fixture(tags) {
   return { messagesDir, outDir, dirArgs }
 }
 
+/** A translation-policy.json with only the English-only list. */
+function policyFile(englishOnlyLocales) {
+  const file = path.join(tempDir(), "translation-policy.json")
+  fs.writeFileSync(file, JSON.stringify({ englishOnlyLocales }))
+  return file
+}
+
 /** Reads `tag: "data"` pairs from the generated PLURAL_DATA_TAG object. */
 function pluralDataTags(source) {
   const block = source.match(/PLURAL_DATA_TAG[^=]*=\s*\{([^}]*)\}/)
@@ -140,6 +147,45 @@ describe("UI catalog index", () => {
     expect(loaded.sort()).toEqual(
       ["ar", "en", "fil", "pt", "ru", "sr", "tl", "zh"].sort(),
     )
+  })
+
+  it("lists English-only catalogs and gives them English plural data (feat-604)", () => {
+    const { outDir, dirArgs } = fixture(["en", "fr", "sg"])
+    const policy = policyFile(["crk", "sg"])
+    expect(runGenerator([...dirArgs, `--policy=${policy}`]).status).toBe(0)
+    const catalogs = fs.readFileSync(
+      path.join(outDir, "catalogs.generated.ts"),
+      "utf8",
+    )
+    // `crk` has no catalog here, so the index leaves it out.
+    expect(catalogs).toMatch(/ENGLISH_ONLY_TAGS[^=]*=\s*\["sg"\]/)
+    const plural = fs.readFileSync(
+      path.join(outDir, "pluralData.generated.ts"),
+      "utf8",
+    )
+    expect(pluralDataTags(plural)).toEqual({ en: "en", fr: "fr", sg: "en" })
+  })
+
+  it("--check fails when the English-only list changes without regeneration", () => {
+    const { dirArgs } = fixture(["en", "fr", "sg"])
+    const policy = policyFile([])
+    const args = [...dirArgs, `--policy=${policy}`]
+    expect(runGenerator(args).status).toBe(0)
+    expect(runGenerator([...args, "--check"]).status).toBe(0)
+
+    fs.writeFileSync(policy, JSON.stringify({ englishOnlyLocales: ["sg"] }))
+    const result = runGenerator([...args, "--check"])
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain("catalogs.generated.ts")
+  })
+
+  it("refuses a policy without an englishOnlyLocales list", () => {
+    const { dirArgs } = fixture(["en"])
+    const policy = path.join(tempDir(), "policy.json")
+    fs.writeFileSync(policy, "{}\n")
+    const result = runGenerator([...dirArgs, `--policy=${policy}`])
+    expect(result.status).toBe(1)
+    expect(result.stderr).toContain("englishOnlyLocales")
   })
 
   it("refuses a file name that is not a catalog tag", () => {

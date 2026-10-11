@@ -184,10 +184,26 @@ content, translated content, and translation model that produced it. It covers
 the translated portion of a catalog, so Pending Translation Paths do not claim
 completed-translation provenance.
 
+### English-only Locale
+
+A supported UI locale whose Watch UI Catalog is a deliberate whole copy of the
+English source that never goes to a translator, distinct from a Pending
+Translation Path, which marks single unfinished messages.
+_Avoid:_ provisional locale
+
+An English-only Locale keeps its catalog so the client supports the same
+locales as Web, and it carries no Translation Provenance. On mobile it never
+becomes the UI Locale: a phone that prefers it falls through to its next
+language, then English, so English plural rules and left-to-right text apply.
+A locale joins the list when it cannot be translated reliably, and it leaves
+the list only through a new translation run.
+
 ### UI Locale
 
 The locale of the Watch UI Catalog that a client renders its interface copy
 in. It is always a shipped catalog, or English when no shipped catalog fits.
+On mobile, an English-only Locale does not fit, and neither does a bare
+language catalog that is known to use a different script from the phone's.
 It is distinct from the audio Language, even where one choice sets both: Web
 derives the UI Locale from the public language slug, so Arabic Najdi renders
 English interface copy. Admin content requests derive three language forms
@@ -1777,7 +1793,7 @@ The record also holds the video's title, because a Lapse Reminder names the vide
 
 ### Announcement Campaign
 
-A server-sent message the ministry writes once, per campaign, in one or more languages with English required, and sends to the mobile app's registered devices. It names one catalog destination (a video, a series, or an experience), an audience of chosen countries or everywhere with an optional language filter, and either a date with a local hour or an immediate send. Each device receives the copy for its resolved language: the app language, then the phone language, then English. A campaign is fixed once sending starts; it can be cancelled but not edited. The app never models a campaign: it receives a destination and an opaque campaign identifier.
+A server-sent message the ministry writes once, per campaign, in one or more languages with English required, and sends to the mobile app's registered devices. It names one catalog destination (a video, a series, or an experience), an audience of chosen countries or everywhere with an optional language filter, and either a date with a local hour or an immediate send. Each device receives the copy for its resolved language: the app language, then the phone language, then English. A campaign is fixed once sending starts; it can be cancelled but not edited. A campaign that is not scheduled or sending can be deleted once no run is in flight for it, and the delete removes its report too. The delete waits while any device's local day still depends on the campaign's deliveries, so it never reopens that day to a second announcement. The app never models a campaign: it receives a destination and an opaque campaign identifier.
 
 _Avoid:_ lapse reminder (a local notification the app schedules for itself), notification (too broad; say which kind).
 
@@ -1809,7 +1825,7 @@ _Avoid:_ AI-generated campaign (it suggests that the agent wrote all of it).
 
 A message a person sends from inside an app — the Watch feedback form on web, the feedback sheet on mobile — that the receiving server files as one Linear issue under a Feedback label, quoting the message verbatim.
 
-It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates it, and no Ticket Outbox stands between the person and Linear. The server files at once and reports any failure to the person, who keeps their draft. The message is Untrusted Evidence at the ticket boundary, so it is escaped before it is written into the issue. A submission sent from inside the mobile player also names the Video in view, but only a title that came from the resolved Video: the ticket is read where the reporter's context is absent, so a screen that has only a Watch Seed sends no video at all.
+It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates it, and no Ticket Outbox stands between the person and Linear. The server files at once and reports any failure to the person, who keeps their draft. The message is Untrusted Evidence at the ticket boundary, so it is escaped before it is written into the issue. A submission sent from inside the mobile player also names the Video in view, but only a title that came from the resolved Video: the ticket is read where the reporter's context is absent, so a screen that has only a Watch Seed sends no video at all. A mobile report of the translation kind also names the UI Locale that the app showed, and no other kind sends it; the kind shows only when that UI Locale is not English.
 
 ## Flagged ambiguities
 
