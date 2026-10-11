@@ -5428,6 +5428,7 @@ model RecommendationCuratedPointer {
 
 // Shorts authoring is independent of Manager render jobs and catalog lifecycle.
 model Short {
+  deletedAt             DateTime?                 @map("deleted_at")
   narrationAllowance    ShortNarrationAllowance?
   narrationAdmissions   ShortNarrationAdmission[]
   sourceVideoDubId      String?                   @map("source_video_dub_id")
