@@ -70,7 +70,8 @@ Updating an existing row (schedule moved, now live): `get` it first and pass its
   "thumb": "/_blob/<asset id>",
   "paid": true, // optional; a boosted organic post (gold dot)
   "group": "martha-history", // optional; forces rows into one stacked tile
-  "campaign": true // optional; hides the row (ad-campaign creatives that are not organic posts)
+  "campaign": true, // optional; hides the row (ad-campaign creatives that are not organic posts)
+  "note": "redo, Meta dropped it" // optional; shown on hover and in the overlay
 }
 ```
 

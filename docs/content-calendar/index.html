@@ -707,7 +707,7 @@
         out.push({ members: [p] })
         return
       }
-      const key = p.date + "|" + cutKey(p)
+      const key = p.date + "|" + cutKey(p) + (isPlanned(p) ? "|planned" : "")
       const g = byKey[key]
       const pl = p.platforms || []
       if (g && !pl.some((k) => g.platforms.has(k))) {
@@ -748,6 +748,10 @@
         kind: lead.kind,
         tall: isTall(lead),
         title: lead.title,
+        note: ms
+          .map((p) => p.note)
+          .filter(Boolean)
+          .join(" · "),
         thumb: lead.thumb || (ms.find((p) => p.thumb) || {}).thumb || "",
         duration:
           lead.duration || (ms.find((p) => p.duration) || {}).duration || "",
@@ -993,7 +997,7 @@
       '<div class="ov-side"><h2>' +
       esc(it.title) +
       '</h2><div class="ov-meta">' +
-      esc(when) +
+      esc(when + (it.note ? " · " + it.note : "")) +
       "</div>" +
       btns +
       "</div>" +
@@ -1036,7 +1040,11 @@
       "<b>" +
       esc(it.title) +
       "</b>" +
-      (when ? "<span>" + esc(when) + "</span>" : "")
+      (when || it.note
+        ? "<span>" +
+          esc([when, it.note].filter(Boolean).join(" · ")) +
+          "</span>"
+        : "")
     tip.hidden = false
     const r = el.getBoundingClientRect()
     const tw = tip.offsetWidth,
