@@ -679,6 +679,13 @@ export default async function SlugRestPage({ params }: PageProps) {
     shape.kind === "one-segment"
       ? null
       : getTranslations({ locale: shape.locale, namespace: "HeroPlayer" })
+  // Started early so it overlaps the message load, but it is only awaited after
+  // that load. Without a handler attached now, a rejection while the load is
+  // pending (or after the load rejects and the page has already thrown) is an
+  // unhandled rejection. This marks the rejection observed without changing
+  // it: the original promise is still awaited below and still throws there, and
+  // a loadClientMessages failure still wins because it is awaited first.
+  translateAvailabilityCountsPromise?.catch(() => {})
   const messages = await loadClientMessages(shape.locale, namespaces)
 
   let content: ReactNode

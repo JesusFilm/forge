@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 6, 2026)
 
-- **Total tickets:** 784
-- **Complete:** 590
+- **Total tickets:** 785
+- **Complete:** 591
 - **Cancelled:** 39
 - **In progress:** 56
 - **Not started:** 42
@@ -819,4 +819,5 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-438](topic-experiences/feat-438-watch-immersive-section-background-saturation.md)     | Watch immersive section background saturation                                    | vlad       | P2       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-263](topic-experiences/feat-263-ai-assembled-showcase-reel.md)                        | AI-assembled Showcase reel                                                       | urim       | P2       | 2026-09-01 | 14   | 2026-09-14 | blocked     |
 | [feat-481](topic-experiences/feat-481-lg-webos-simulator-demo.md)                           | LG webOS simulator demo                                                          | ekkasit    | P2       | 2026-09-04 | 1    | 2026-09-04 | in-progress |
+| [feat-685](topic-experiences/feat-685-watch-catch-all-translation-promise-rejection.md)     | Own the catch-all route's translation promise rejection                          | vlad       | P2       | 2026-10-10 | 1    | 2026-10-10 | complete    |
 | [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                                            | tataihono  | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |
