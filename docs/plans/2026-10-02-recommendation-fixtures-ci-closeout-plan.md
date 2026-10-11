@@ -9,7 +9,7 @@ date: 2026-10-02
 
 ## Scope
 
-Close `feat-590` and `feat-591` on current main. Keep the playback upgrade's historical migration chain and production expiry check; make request and served-item timestamps consistent with the fixed historical expiry. Load the complete recommendation migration chain in the runtime viewing-mode fixture so owner-release filtering exercises the current schema.
+Close `feat-612` and `feat-591` on current main. Keep the playback upgrade's historical migration chain and production expiry check; make request and served-item timestamps consistent with the fixed historical expiry. Load the complete recommendation migration chain in the runtime viewing-mode fixture so owner-release filtering exercises the current schema.
 
 Add the four existing co-watch PostgreSQL suites to `admin-schema-drift`. Use the owned `forge_test` database for refresh and measurement reuse, and the separately migrated `forge_feat565_test` database for trial authority and source query. Keep the suites' safety guards and assertions intact.
 

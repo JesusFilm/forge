@@ -77,6 +77,14 @@ const PERSISTENCE_DISPOSITIONS = new Set([
 type DeliveryObservation = {
   trafficCategory?: string
   persistenceDisposition?: string
+  experimentAdmission?:
+    | "missing_visit_id"
+    | "browser_identity_unavailable"
+    | "visit_identity_conflict"
+    | "public_delivery_unavailable"
+    | "verification_required"
+  experimentObservation?: "committed" | "partial" | "unavailable"
+  turnstileStatus?: "verified" | "fixture_verified" | "rejected" | "unavailable"
   endpoint: "seeded" | "for_you"
   httpStatus: number
   delivery?: {
@@ -129,6 +137,15 @@ export function observeRecommendationDelivery(
         input.endpoint === "seeded" || input.endpoint === "for_you"
           ? input.endpoint
           : "unknown",
+      ...(input.experimentAdmission
+        ? { experimentAdmission: input.experimentAdmission }
+        : {}),
+      ...(input.experimentObservation
+        ? { experimentObservation: input.experimentObservation }
+        : {}),
+      ...(input.turnstileStatus
+        ? { turnstileStatus: input.turnstileStatus }
+        : {}),
       httpStatus:
         Number.isInteger(httpStatus) && httpStatus >= 100 && httpStatus <= 599
           ? httpStatus

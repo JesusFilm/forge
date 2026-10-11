@@ -14,7 +14,10 @@ import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
-import { recommendationRuntimeMigrationSql } from "./current-schema.test-fixture"
+import {
+  recommendationPrecomputedMigrationSql,
+  recommendationRuntimeBaseMigrationSql,
+} from "./current-schema.test-fixture"
 import { createLoaders } from "@/graphql/loaders"
 import { RecommendationEvidenceService } from "./evidence.service"
 import { RecommendationEpisodeService } from "./episode.service"
@@ -37,7 +40,7 @@ import {
 } from "./token.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
-const recommendationMigrations = recommendationRuntimeMigrationSql
+const recommendationMigrations = recommendationRuntimeBaseMigrationSql
 
 const caller = {
   id: "forge-web",
@@ -62,6 +65,12 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
       await client.query(`CREATE SCHEMA "${schemaName}"`)
       await client.query(`SET search_path TO "${schemaName}", public`)
       for (const migration of recommendationMigrations) {
+        await client.query(migration)
+      }
+      // Current selection consults the real private visit lineage even for
+      // ordinary requests. Install those migration roots in this owned schema.
+      await client.query("CREATE TABLE video (id text PRIMARY KEY)")
+      for (const migration of recommendationPrecomputedMigrationSql) {
         await client.query(migration)
       }
       const url = new URL(env.DATABASE_URL)

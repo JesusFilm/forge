@@ -16,6 +16,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Feature Index
 
+Added October 5, after the status snapshot above:
+[feat-590 — Precomputed video recommendation experiment](content-discovery/feat-590-precomputed-video-recommendation-experiment.md)
+is in progress. The completed integration-fixture maintenance record was
+renumbered to feat-612 to keep the two feature identities distinct.
+
 ### Content Discovery
 
 | ID                                                                                                             | Feature                                                                                         | Owner      | Priority | Start      | Days | Due        | Status      |
@@ -216,7 +221,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-552](content-discovery/feat-552-mobile-explore-clips-feed.md)                                            | Mobile Explore clips feed                                                                       | urim       | P2       | 2026-09-25 | 21   | 2026-10-15 | complete    |
 | [feat-563](content-discovery/feat-563-shadow-evaluation-dispatch-recovery.md)                                  | Atomic and recoverable shadow evaluation dispatch                                               | nisal      | P2       | 2026-09-29 | 3    | 2026-10-01 | complete    |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | cancelled   |
-| [feat-590](content-discovery/feat-590-refresh-recommendation-integration-fixtures.md)                          | Refresh stale recommendation integration test fixtures                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
+| [feat-612](content-discovery/feat-612-refresh-recommendation-integration-fixtures.md)                          | Refresh stale recommendation integration test fixtures                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
 
 ### Media Generation
 

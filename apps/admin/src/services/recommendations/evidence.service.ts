@@ -33,6 +33,7 @@ import type { DeliveryCapabilityBinding } from "./token.service"
 import { RECOMMENDATION_TOKEN_CLOCK_SKEW_SECONDS } from "./token.service"
 import { recordFirstEligiblePromotionExposure } from "./promotion/service"
 import { resolveActiveRecommendationProfileLink } from "./profiles/active-profile-link"
+import { lockPrivatePrecomputedRequestEvidence } from "./precomputed/visit-selection"
 
 const Event = z
   .object({
@@ -166,6 +167,7 @@ export class RecommendationEvidenceService {
             sessionDigest: true,
             surfaceVersion: true,
             manifestId: true,
+            privatePrecomputedVisitId: true,
             experimentAssignment: {
               include: { experiment: true, profile: true },
             },
@@ -174,7 +176,7 @@ export class RecommendationEvidenceService {
         },
       },
     })
-    const now = this.deps.now?.() ?? new Date()
+    let now = this.deps.now?.() ?? new Date()
     if (
       !item ||
       item.requestId !== input.requestId ||
@@ -279,6 +281,21 @@ export class RecommendationEvidenceService {
         throw new RecommendationBindingError(
           "Recommendation evidence binding is invalid",
         )
+      }
+      if (item.request.privatePrecomputedVisitId) {
+        const privateReceiptAt = await lockPrivatePrecomputedRequestEvidence(
+          tx,
+          {
+            requestId: item.requestId,
+            expectedVisitId: item.request.privatePrecomputedVisitId,
+            clock: this.deps.now ?? (() => new Date()),
+          },
+        )
+        if (!privateReceiptAt)
+          throw new RecommendationBindingError(
+            "Recommendation private evidence binding is invalid",
+          )
+        now = privateReceiptAt
       }
       const directInfluenceAllowed = await ownerReleaseInfluenceAllowed(
         tx,

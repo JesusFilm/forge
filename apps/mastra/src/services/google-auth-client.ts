@@ -42,7 +42,7 @@ type GoogleAuthFactory = (options: {
   getAccessToken: () => Promise<string | null | undefined>
 }
 
-function parseGoogleServiceAccountCredentials(
+export function parseGoogleServiceAccountCredentials(
   credentialsJson: string,
   expectedProjectId: string,
 ): GoogleServiceAccountCredentials | null {
@@ -164,6 +164,17 @@ export async function requestGoogleJson(options: {
   timeoutMs: number
   maxResponseBytes: number
   maxAttempts: number
+  maxElapsedMs?: number
+  retryHttp?: (failure: {
+    status: number
+    attempt: number
+    retryAfter: string | null
+  }) => number | null
+  propagateFetchError?: boolean
+  retryFetchError?: (failure: {
+    error: unknown
+    attempt: number
+  }) => number | null
   fetchImpl?: typeof fetch
   sleep?: (ms: number) => Promise<void>
 }): Promise<
@@ -180,12 +191,21 @@ export async function requestGoogleJson(options: {
   const sleep =
     options.sleep ??
     ((ms: number) => new Promise((resolve) => setTimeout(resolve, ms)))
+  const deadline =
+    options.maxElapsedMs === undefined
+      ? null
+      : Date.now() + options.maxElapsedMs
   let last: SeoProviderFailure = {
     ok: false,
     reason: "network_error",
     retryable: true,
   }
   for (let attempt = 1; attempt <= options.maxAttempts; attempt += 1) {
+    const timeoutMs =
+      deadline === null
+        ? options.timeoutMs
+        : Math.min(options.timeoutMs, deadline - Date.now())
+    if (timeoutMs <= 0) return { ...last, attempts: attempt - 1 }
     let response: Response
     try {
       response = await fetchImpl(options.url, {
@@ -197,9 +217,26 @@ export async function requestGoogleJson(options: {
         },
         body: JSON.stringify(options.body),
         redirect: "error",
-        signal: AbortSignal.timeout(options.timeoutMs),
+        signal: AbortSignal.timeout(timeoutMs),
       })
     } catch (error) {
+      if (options.propagateFetchError) {
+        const delay =
+          attempt < options.maxAttempts
+            ? options.retryFetchError?.({ error, attempt })
+            : null
+        if (
+          delay !== null &&
+          delay !== undefined &&
+          Number.isSafeInteger(delay) &&
+          delay >= 0 &&
+          (deadline === null || delay < deadline - Date.now())
+        ) {
+          await sleep(delay)
+          continue
+        }
+        throw error
+      }
       last = {
         ok: false,
         reason:
@@ -220,11 +257,23 @@ export async function requestGoogleJson(options: {
         ...classifySeoHttpStatus(response.status),
       }
       if (last.retryable && attempt < options.maxAttempts) {
-        await sleep(
-          retryAfterMs(response.headers.get("retry-after")) ??
-            Math.min(250 * 2 ** (attempt - 1), 2_000),
-        )
-        continue
+        const delay = options.retryHttp
+          ? options.retryHttp({
+              status: response.status,
+              attempt,
+              retryAfter: response.headers.get("retry-after"),
+            })
+          : (retryAfterMs(response.headers.get("retry-after")) ??
+            Math.min(250 * 2 ** (attempt - 1), 2_000))
+        if (
+          delay !== null &&
+          Number.isSafeInteger(delay) &&
+          delay >= 0 &&
+          (deadline === null || delay < deadline - Date.now())
+        ) {
+          await sleep(delay)
+          continue
+        }
       }
       return { ...last, attempts: attempt }
     }
@@ -251,6 +300,7 @@ export async function requestGoogleJson(options: {
         reason: body.reason === "timeout" ? "timeout" : "network_error",
         retryable: true,
       }
+      if (options.propagateFetchError) return { ...last, attempts: attempt }
       if (attempt < options.maxAttempts) {
         await sleep(Math.min(250 * 2 ** (attempt - 1), 2_000))
         continue

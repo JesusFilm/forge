@@ -2073,7 +2073,7 @@ type Mutation {
   """
   retractWhatsNewFeatureVote(ballotId: String!, placementId: String): WhatsNewFeatureVoteResult!
   reviewManagerSeoLesson(input: ManagerSeoLessonReviewInput!): ManagerSeoLesson!
-  selectSemanticRecommendation(capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String, sessionToken: String, tabDigest: String, viewerToken: String): SemanticRecommendationSelectionReceipt!
+  selectSemanticRecommendation(browserDigest: String, capability: String!, claimNonce: String!, contractVersion: String!, eventId: String!, itemId: ID!, occurredAt: String!, requestId: ID!, sessionDigest: String, sessionToken: String, tabDigest: String, viewerToken: String): SemanticRecommendationSelectionReceipt!
   stageShortsCatalog(input: JSON!): ShortsCatalogRelease
   startShortsAttempt(input: ShortsStartInput!): ShortsCommandResult
   """
@@ -2222,6 +2222,31 @@ type Passage {
   versionTitle: String
 }
 
+type PrecomputedWatchPublicVisitDelivery {
+  arm: String
+  delivery: SemanticRecommendationDelivery
+  disposition: String!
+  experimentId: String
+  generationId: String
+  measurementStatus: String!
+  qualification: String
+  reason: String
+  status: String!
+  visitId: ID!
+}
+
+type PrivatePrecomputedWatchVisitDelivery {
+  arm: String
+  delivery: SemanticRecommendationDelivery
+  experimentId: String
+  generationId: String
+  measurementStatus: String!
+  qualification: String
+  reason: String
+  status: String!
+  visitId: ID!
+}
+
 """Promotional banner with heading, description, and CTA."""
 type PromoBannerBlock {
   backgroundColor: String
@@ -2337,6 +2362,9 @@ type Query {
   """List media folders ordered for tree rendering."""
   mediaFolders: [MediaFolder!]
   myWatchProgress: [WatchProgressEntry!]
+  precomputedWatchPreviewDelivery(audioLanguageSlug: String!, locale: String!, seedMediaId: ID!, sessionDigest: String!): SemanticRecommendationDelivery!
+  precomputedWatchPublicVisitDelivery(audioLanguageSlug: String!, browserDigest: String!, clientDeliveryContract: String, consentReceiptDigest: String, humanVerificationReceipt: String, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String!, visitId: ID!): PrecomputedWatchPublicVisitDelivery!
+  privatePrecomputedWatchVisitDelivery(audioLanguageSlug: String!, browserDigest: String!, clientDeliveryContract: String, consentReceiptDigest: String, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String!, visitId: ID!): PrivatePrecomputedWatchVisitDelivery!
   """
   Transcript-backed cosine-similarity recommendations. PUBLIC — see published, non-deleted rows only. Either videoId or slug must be supplied.
   """
@@ -2345,7 +2373,7 @@ type Query {
   Semantic search over Experience locales. Pass a 1536-dimension embedding vector. PUBLIC sees published only; EDITOR/ADMIN see all statuses.
   """
   searchExperiences(limit: Int = 10, locale: String, vector: JSON!): [ExperienceLocale!]
-  semanticRecommendationDelivery(audioLanguageSlug: String!, clientDeliveryContract: String, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String): SemanticRecommendationDelivery!
+  semanticRecommendationDelivery(audioLanguageSlug: String!, clientDeliveryContract: String, consentReceiptDigest: String, eligibleHuman: Boolean, locale: String!, privatePreviewFallback: Boolean, profileTokenDigest: String, seedMediaId: ID!, sessionDigest: String!, trafficCategory: String): SemanticRecommendationDelivery!
   shortsApprovals(cursor: ID, limit: Int, projectId: ID!): [ShortsApproval!]
   shortsAsset(reference: JSON!): ShortsAssetVersion
   shortsAssets(input: JSON): [ShortsAssetVersion!]
@@ -2607,6 +2635,7 @@ type SemanticRecommendationDelivery {
   composedCount: Int
   contractVersion: String!
   expiresAt: String
+  generationId: String
   items: [SemanticRecommendationDeliveryItem!]!
   personalization: RecommendationPersonalizationDelivery
   reason: String

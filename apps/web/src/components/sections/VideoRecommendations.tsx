@@ -90,6 +90,9 @@ function RecommendationCard<T extends SceneRecommendation>({
       ref={cardRef}
       href={hrefBuilder(rec, locale)}
       onClick={(event) => onSelect?.(rec, event)}
+      onAuxClick={(event) => {
+        if (event.button === 1) onSelect?.(rec, event)
+      }}
       aria-busy={busy || undefined}
       aria-label={busy ? `Opening ${rec.videoTitle}` : undefined}
       data-recommendation-key={itemKey}

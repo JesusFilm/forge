@@ -3,13 +3,16 @@ import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
-import { recommendationRuntimeMigrationSql } from "./current-schema.test-fixture"
+import { currentAdminMigrationSql } from "./current-schema.test-fixture"
 import { RecommendationEvidenceService } from "./evidence.service"
 import { RecommendationBindingError } from "./errors"
 import { RecommendationProfileService } from "./profile.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
-const recommendationMigrations = recommendationRuntimeMigrationSql
+// EvidenceService selects the current private-request provenance marker even
+// for public requests, so this native fixture needs the actual catalog and
+// precomputed migrations rather than a catalog-free legacy runtime slice.
+const recommendationMigrations = currentAdminMigrationSql
 
 const webCaller = {
   id: "forge-web",

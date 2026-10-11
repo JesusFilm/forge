@@ -4,7 +4,10 @@ import { PrismaPg } from "@prisma/adapter-pg"
 import { Client, Pool } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
-import { recommendationRuntimeMigrationSql } from "../current-schema.test-fixture"
+import {
+  recommendationPrecomputedMigrationSql,
+  recommendationRuntimeBaseMigrationSql,
+} from "../current-schema.test-fixture"
 import {
   ACTIVE_CONTENT_EMBEDDING_CONTRACT_ID,
   ACTIVE_CONTENT_QUERY_EMBEDDING_DIMENSIONS,
@@ -38,7 +41,7 @@ import {
 } from "./profile-lineage"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
-const recommendationMigrations = recommendationRuntimeMigrationSql
+const recommendationMigrations = recommendationRuntimeBaseMigrationSql
 
 const webCaller = {
   id: "forge-web",
@@ -251,6 +254,8 @@ describe.skipIf(!RUN_REAL_DB_TEST)(
         await admin.query(migration)
       }
       await installCatalogFixture(admin)
+      for (const migration of recommendationPrecomputedMigrationSql)
+        await admin.query(migration)
       const fixtureUrl = new URL(env.DATABASE_URL)
       fixtureUrl.searchParams.delete("options")
       fixtureUrl.searchParams.set("schema", schema)

@@ -16,6 +16,7 @@ import type { AnySpan, SpanOutputProcessor } from "@mastra/core/observability"
 import { registerApiRoute } from "@mastra/core/server"
 import { InMemoryStore, MastraCompositeStore } from "@mastra/core/storage"
 import { DuckDBStore } from "@mastra/duckdb"
+import { startPrecomputedRuntimeRetention } from "./precomputed-runtime-retention-schedule"
 import { MastraEditor } from "@mastra/editor"
 import { PinoLogger } from "@mastra/loggers"
 import {
@@ -177,6 +178,8 @@ import { seoDailyAuditWorkflow } from "./workflows/seo-daily-audit"
 import { seoExperimentEvaluationWorkflow } from "./workflows/seo-experiment-evaluation"
 import { seoTicketDispatchWorkflow } from "./workflows/seo-ticket-dispatch"
 import { watchRouteAlertsWorkflow } from "./workflows/watch-route-alerts"
+import { handlePrecomputedSourceRouteRequest } from "./workflows/precomputed-source-generation"
+import { handlePrecomputedCatalogRouteRequest } from "./workflows/precomputed-catalog-generation"
 import {
   isValidServiceBearer,
   parseServiceApiKeys,
@@ -430,6 +433,34 @@ export const mastra = new Mastra({
       },
     ],
     apiRoutes: [
+      registerApiRoute("/forge-precomputed-catalog-generation", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handlePrecomputedCatalogRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            request: c.req.raw,
+          })
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
+      registerApiRoute("/forge-precomputed-source-generation", {
+        method: "POST",
+        handler: async (c) => {
+          const outcome = await handlePrecomputedSourceRouteRequest({
+            authHeader: c.req.header("authorization"),
+            serviceKeys,
+            request: c.req.raw,
+          })
+          return new Response(JSON.stringify(outcome.body), {
+            status: outcome.status,
+            headers: { "content-type": "application/json" },
+          })
+        },
+      }),
       registerApiRoute("/forge-shorts-calendar", {
         method: "POST",
         handler: async (c) => {
@@ -1075,6 +1106,8 @@ if (env.NODE_ENV === "production") {
   // retention (kill-switch completeness follows data lifetime). Same
   // single-instance assumption as above.
   startLangfuseTraceRetention()
+  if (env.MASTRA_STORAGE_BACKEND !== "memory")
+    startPrecomputedRuntimeRetention(observabilityStore.observability)
 }
 
 let calendarRuntime: ReturnType<typeof createCalendarRuntime> | undefined

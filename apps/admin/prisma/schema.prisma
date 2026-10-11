@@ -2690,6 +2690,9 @@ model Video {
   parents        VideoRelation[]      @relation("VideoParents")
   children       VideoRelation[]      @relation("VideoChildren")
   watchProgress  WatchProgress[]
+  precomputedRecommendationSources RecommendationPrecomputedSource[]
+  precomputedBuildSources RecommendationPrecomputedBuildSource[]
+  precomputedContentProfiles RecommendationPrecomputedContentProfile[]
 
   @@index([primaryLanguageId])
   @@index([originId])
@@ -3717,6 +3720,8 @@ model RecommendationStrategyManifest {
   personalizationDecisions     RecommendationPersonalizationDecision[]
   activePromotionPointers      RecommendationPromotionPointer[]            @relation("RecommendationPromotionPointerActive")
   fallbackPromotionPointers    RecommendationPromotionPointer[]            @relation("RecommendationPromotionPointerFallback")
+  privatePrecomputedControls    RecommendationPrecomputedExperiment[]       @relation("PrecomputedExperimentControl")
+  privatePrecomputedChallengers RecommendationPrecomputedExperiment[]       @relation("PrecomputedExperimentChallenger")
 
   @@unique([strategyVersion, contractVersion, surfaceVersion], map: "recommendation_manifest_contract_key")
   @@map("recommendation_strategy_manifest")
@@ -3777,6 +3782,7 @@ model RecommendationRequest {
   renderedFacts           RecommendationRenderedFact[]
   impressions             RecommendationImpression[]
   selections              RecommendationSelection[]
+  precomputedBaselineVisits RecommendationPrecomputedBaselineVisitRequest[]
   episodes                RecommendationPlaybackEpisode[]
   playbackFacts           RecommendationPlaybackFact[]
   outcomes                RecommendationOutcomeRevision[]
@@ -3790,6 +3796,9 @@ model RecommendationRequest {
   experimentExposures     RecommendationExperimentExposure[]
   promotionSlateFence     RecommendationPromotionSlateFence?
   personalizationDecision RecommendationPersonalizationDecision?
+  precomputedVisitLink    RecommendationPrecomputedVisitRequest?
+  /// Survives the link cascade until this bounded request itself expires.
+  privatePrecomputedVisitId String? @map("private_precomputed_visit_id") @db.Uuid
 
   @@index([expiresAt, id], map: "recommendation_request_expiry_idx")
   @@index([createdAt, id], map: "recommendation_request_created_idx")
@@ -6718,4 +6727,715 @@ model RecommendationCowatchRefreshAttempt {
   @@index([grantId, startedAt(sort: Desc)], map: "recommendation_cowatch_refresh_attempt_grant_idx")
   @@index([publishedAt(sort: Desc)], map: "recommendation_cowatch_refresh_attempt_publication_idx")
   @@map("recommendation_cowatch_refresh_attempt")
+}
+
+/// Private, versioned model build. Completion does not select a public strategy.
+model RecommendationPrecomputedGeneration {
+  id String @id
+  modelId String @map("model_id")
+  promptVersion String @map("prompt_version")
+  inputDigest String @map("input_digest")
+  sourceSetDigest String @map("source_set_digest")
+  inputCutoff DateTime @map("input_cutoff")
+  expectedSourceCount Int @map("expected_source_count")
+  protocolVersion Int @default(1) @map("protocol_version")
+  /// Set only when a new generation is explicitly started by the local subscription runner.
+  executionBackend String? @map("execution_backend")
+  manifestCommittedAt DateTime? @map("manifest_committed_at")
+  /// Physical free-space is externally attested against the PostgreSQL cluster;
+  /// Admin cross-checks the cluster and database size, never its own filesystem.
+  capacityPreflight Json? @map("capacity_preflight") @db.JsonB
+  historicalQualification Json? @map("historical_qualification") @db.JsonB
+  historicalQualificationDigest String? @map("historical_qualification_digest") @db.Char(64)
+  cancelledAt DateTime? @map("cancelled_at")
+  /// Content-only builds do not claim to include historical GA warehouse inputs.
+  inputMode String @default("fixture") @map("input_mode")
+  /// observed_fenced means current rows were checked against the cutoff;
+  /// preflight_failed means that input discovery failed before a full digest.
+  /// Overwritten/deleted historic content cannot be reconstructed.
+  inputSnapshotMode String @default("fixture") @map("input_snapshot_mode")
+  /// Compact aggregate provenance only; no warehouse rows, viewer IDs, or credentials.
+  historicalProvenance Json? @map("historical_provenance") @db.JsonB
+  status String @default("incomplete")
+  createdAt DateTime @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+  failedAt DateTime? @map("failed_at")
+  failureCode String? @map("failure_code")
+  /// An operator-required rollback target survives terminal-generation cleanup.
+  /// The two newest complete generations are protected independently of this pin.
+  rollbackRetentionHold Boolean @default(false) @map("rollback_retention_hold")
+  /// Retiring is a non-servable, bounded child-drain state; terminal timestamps remain.
+  retiringAt DateTime? @map("retiring_at")
+  sources RecommendationPrecomputedSource[]
+  modelCalls RecommendationPrecomputedModelCall[]
+  executionAttempts RecommendationPrecomputedExecutionAttempt[]
+  contentProfiles RecommendationPrecomputedContentProfile[]
+  profileCalls RecommendationPrecomputedProfileCall[]
+  edgeBatchCalls RecommendationPrecomputedEdgeBatchCall[]
+  buildSources RecommendationPrecomputedBuildSource[]
+  historyCalls RecommendationPrecomputedHistoryCall[]
+  buildBudget RecommendationPrecomputedBuildBudget?
+  privateExperiments RecommendationPrecomputedExperiment[]
+
+  @@index([createdAt(sort: Desc)], map: "recommendation_precomputed_generation_created_at_idx")
+  @@map("recommendation_precomputed_generation")
+}
+
+/// Bounded identity proof for Mastra runtime cleanup after the generation and
+/// its larger child graph have been reclaimed. No FK deliberately extends it.
+model RecommendationPrecomputedGenerationRetentionProof {
+  generationId String @id @map("generation_id")
+  generationProtocolVersion Int @map("generation_protocol_version")
+  inputCutoff DateTime @map("input_cutoff")
+  inputDigest String @map("input_digest") @db.Char(64)
+  inputMode String @map("input_mode")
+  state String
+  recordedAt DateTime @map("recorded_at")
+  expiresAt DateTime @map("expires_at")
+  snapshotSha256 String? @map("snapshot_sha256") @db.Char(64)
+  artifactDeletedAt DateTime? @map("artifact_deleted_at")
+
+  @@index([expiresAt, generationId], map: "precomputed_retention_proof_expiry_idx")
+  @@map("recommendation_precomputed_generation_retention_proof")
+}
+
+/// Compact lifecycle receipt for a private immutable GA capture object. No FK
+/// keeps unbound uploads visible to cleanup after generation retirement.
+model RecommendationPrecomputedGaCaptureArtifact {
+  generationId String @map("generation_id")
+  artifactSha256 String @map("artifact_sha256") @db.Char(64)
+  storageKey String @map("storage_key") @db.VarChar(300)
+  artifactBytes BigInt @map("artifact_bytes")
+  createdAt DateTime @default(now()) @map("created_at")
+  boundAt DateTime? @map("bound_at")
+
+  @@id([generationId, artifactSha256])
+  @@index([createdAt, generationId], map: "precomputed_ga_capture_artifact_created_idx")
+  @@map("recommendation_precomputed_ga_capture_artifact")
+}
+
+/// Destination-owned import evidence and cleanup handle. Deliberately no FK:
+/// staged or bound objects remain discoverable after generation retirement.
+model RecommendationPrecomputedGaCaptureImport {
+  destinationGenerationId String @id @map("destination_generation_id")
+  destinationIdentity Json @map("destination_identity") @db.JsonB
+  preparedDigest String @map("prepared_digest") @db.Char(64)
+  originGenerationId String? @map("origin_generation_id")
+  originIdentity Json? @map("origin_identity") @db.JsonB
+  originProofDigest String? @map("origin_proof_digest") @db.Char(64)
+  copyRequestDigest String? @map("copy_request_digest") @db.Char(64)
+  copyAttemptId String? @map("copy_attempt_id") @db.Uuid
+  artifactSha256 String? @map("artifact_sha256") @db.Char(64)
+  artifactBytes BigInt? @map("artifact_bytes")
+  storageKey String? @map("storage_key") @db.VarChar(300)
+  state String
+  copyClaimId String? @map("copy_claim_id") @db.Uuid
+  copyClaimEpoch Int @default(0) @map("copy_claim_epoch")
+  copyLeaseExpiresAt DateTime? @map("copy_lease_expires_at")
+  tempReservedBytes BigInt @default(0) @map("temp_reserved_bytes")
+  stagingDeadlineAt DateTime? @map("staging_deadline_at")
+  confirmedAt DateTime? @map("confirmed_at")
+  boundAt DateTime? @map("bound_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  lastCleanupAt DateTime? @map("last_cleanup_at")
+  cleanedAt DateTime? @map("cleaned_at")
+
+  @@index([state, stagingDeadlineAt], map: "precomputed_ga_import_state_deadline_idx")
+  @@index([originGenerationId, state], map: "precomputed_ga_import_origin_state_idx")
+  @@map("recommendation_precomputed_ga_capture_import")
+}
+
+/// Frozen Watch cohort. Only the separate, explicit public pointer can select it.
+model RecommendationPrecomputedExperiment {
+  id String @id @db.VarChar(191)
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Restrict)
+  controlManifestId String @map("control_manifest_id") @db.VarChar(191)
+  controlManifest RecommendationStrategyManifest @relation("PrecomputedExperimentControl", fields: [controlManifestId], references: [id], onDelete: Restrict)
+  challengerManifestId String @map("challenger_manifest_id") @db.VarChar(191)
+  challengerManifest RecommendationStrategyManifest @relation("PrecomputedExperimentChallenger", fields: [challengerManifestId], references: [id], onDelete: Restrict)
+  controlManifestDigest String @map("control_manifest_digest") @db.Char(64)
+  controlRoutingDigest String @map("control_routing_digest") @db.Char(64)
+  sourceSetDigest String @map("source_set_digest") @db.Char(64)
+  assignmentPolicyVersion String @map("assignment_policy_version") @db.VarChar(64)
+  eligibilityPolicyVersion String @map("eligibility_policy_version") @db.VarChar(64)
+  deliveryPolicyVersion String @map("delivery_policy_version") @db.VarChar(64)
+  configurationDigest String @map("configuration_digest") @db.Char(64)
+  /// Compact evidence snapshot for a verified live prepare; null for fixtures.
+  liveEvidence Json? @map("live_evidence") @db.JsonB
+  state String @default("private_test") @db.VarChar(32)
+  startsAt DateTime @map("starts_at")
+  endsAt DateTime @map("ends_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  visits RecommendationPrecomputedVisit[]
+  ctrPolicy RecommendationPrecomputedCtrPolicy?
+  ctrArchivedVisits RecommendationPrecomputedCtrArchivedVisit[]
+  ctrClusters RecommendationPrecomputedCtrCluster[]
+  ctrTotals RecommendationPrecomputedCtrTotals[]
+  ctrReports RecommendationPrecomputedCtrReport[]
+  finalCalibration RecommendationPrecomputedFinalCalibration?
+  activePublicControls RecommendationPrecomputedPublicControl[] @relation("PrecomputedPublicActiveExperiment")
+  retainedPublicControls RecommendationPrecomputedPublicControl[] @relation("PrecomputedPublicRetainedExperiment")
+
+  @@index([state, startsAt, endsAt], map: "recommendation_precomputed_experiment_window_idx")
+  @@index([expiresAt], map: "recommendation_precomputed_experiment_expiry_idx")
+  @@map("recommendation_precomputed_experiment")
+}
+
+/// Separate append-only physical headroom evidence for a completed build.
+/// Refreshing this never changes the generation's build-capacity receipt.
+model RecommendationPrecomputedLaunchCapacityReceipt {
+  id String @id @db.Uuid
+  generationId String @map("generation_id")
+  actorId String @map("actor_id") @db.VarChar(191)
+  measurement Json @db.JsonB
+  receiptDigest String @map("receipt_digest") @db.Char(64)
+  status String @db.VarChar(16)
+  measuredAt DateTime @map("measured_at") @db.Timestamptz(6)
+  observedDbBytes BigInt @map("observed_db_bytes")
+  projectedBytes BigInt @map("projected_bytes")
+  availableAfterReserveBytes BigInt @map("available_after_reserve_bytes")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([generationId, createdAt(sort: Desc)], map: "precomputed_launch_capacity_generation_idx")
+  @@index([expiresAt], map: "precomputed_launch_capacity_expiry_idx")
+  @@map("recommendation_precomputed_launch_capacity_receipt")
+}
+
+/// Singleton manual serving choice. Migrations seed incumbent; builds and
+/// evaluations never update this pointer.
+model RecommendationPrecomputedPublicControl {
+  id String @id @db.VarChar(64)
+  version Int @default(1)
+  mode String @default("incumbent") @db.VarChar(16)
+  activeExperimentId String? @map("active_experiment_id") @db.VarChar(191)
+  activeExperiment RecommendationPrecomputedExperiment? @relation("PrecomputedPublicActiveExperiment", fields: [activeExperimentId], references: [id], onDelete: Restrict)
+  retainedExperimentId String? @map("retained_experiment_id") @db.VarChar(191)
+  retainedExperiment RecommendationPrecomputedExperiment? @relation("PrecomputedPublicRetainedExperiment", fields: [retainedExperimentId], references: [id], onDelete: Restrict)
+  reportRevision Int? @map("report_revision")
+  reportEvidenceDigest String? @map("report_evidence_digest") @db.Char(64)
+  authority String? @db.VarChar(32)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("recommendation_precomputed_public_control")
+}
+
+/// Compact, append-only operator decisions; no raw visit identities or
+/// model response bodies. Ordinary retention removes events after one year.
+model RecommendationPrecomputedPublicControlEvent {
+  id String @id @db.Uuid
+  controlVersion Int @unique @map("control_version")
+  action String @db.VarChar(32)
+  actorId String @map("actor_id") @db.VarChar(191)
+  reasonCode String? @map("reason_code") @db.VarChar(64)
+  experimentId String? @map("experiment_id") @db.VarChar(191)
+  generationId String? @map("generation_id")
+  reportRevision Int? @map("report_revision")
+  reportEvidenceDigest String? @map("report_evidence_digest") @db.Char(64)
+  authority String? @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([expiresAt, controlVersion], map: "recommendation_precomputed_public_control_event_expiry_idx")
+  @@map("recommendation_precomputed_public_control_event")
+}
+
+/// Minimal 29-day admission root, including visits without any delivery request.
+/// The browser unit is a per-experiment digest; raw cookies are never stored.
+model RecommendationPrecomputedVisit {
+  id String @id @db.Uuid
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Restrict)
+  browserUnitDigest String? @map("browser_unit_digest") @db.Char(64)
+  /// Legacy receipt binding retained for old private visits. New visits use
+  /// browserUnitDigest and leave this nullable field empty.
+  consentBindingDigest String? @map("consent_binding_digest") @db.Char(64)
+  sourceVideoId String @map("source_video_id") @db.VarChar(191)
+  locale String @db.VarChar(32)
+  audioLanguageSlug String @map("audio_language_slug") @db.VarChar(64)
+  eligibility String @db.VarChar(24)
+  qualification String @db.VarChar(40)
+  exclusionReason String? @map("exclusion_reason") @db.VarChar(64)
+  arm RecommendationExperimentArm?
+  deliveryResult String @default("not_attempted") @map("delivery_result") @db.VarChar(32)
+  actualStrategy String? @map("actual_strategy") @db.VarChar(64)
+  deliveryRequestId String? @map("delivery_request_id") @db.VarChar(191)
+  fallbackReason String? @map("fallback_reason") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+  requests RecommendationPrecomputedVisitRequest[]
+
+  @@index([experimentId, eligibility, arm, createdAt], map: "recommendation_precomputed_visit_report_idx")
+  @@index([expiresAt, id], map: "recommendation_precomputed_visit_expiry_idx")
+  @@map("recommendation_precomputed_visit")
+}
+
+/// A thin request-to-visit lineage for retries and later click attribution.
+model RecommendationPrecomputedVisitRequest {
+  requestId String @id @map("request_id") @db.VarChar(191)
+  request RecommendationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  visitId String @map("visit_id") @db.Uuid
+  visit RecommendationPrecomputedVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  expiresAt DateTime @map("expires_at")
+
+  @@index([visitId, createdAt], map: "recommendation_precomputed_visit_request_visit_idx")
+  @@index([expiresAt], map: "recommendation_precomputed_visit_request_expiry_idx")
+  @@map("recommendation_precomputed_visit_request")
+}
+
+/// Operator-enabled, incumbent-only human baseline. It has no experiment FK
+/// and cannot alter the public serving pointer.
+model RecommendationPrecomputedBaselineRun {
+  id String @id @db.Uuid
+  enabled Boolean @default(false)
+  verificationAuthority String @map("verification_authority") @db.VarChar(32)
+  startsAt DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt DateTime @map("ends_at") @db.Timestamptz(6)
+  stoppedAt DateTime? @map("stopped_at") @db.Timestamptz(6)
+  stoppedBy String? @map("stopped_by") @db.VarChar(191)
+  controlRoutingDigest String @map("control_routing_digest") @db.Char(64)
+  actorId String @map("actor_id") @db.VarChar(191)
+  finalReport Json? @map("final_report") @db.JsonB
+  finalReportDigest String? @map("final_report_digest") @db.Char(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  visits RecommendationPrecomputedBaselineVisit[]
+
+  @@index([endsAt, enabled], map: "recommendation_precomputed_baseline_run_window_idx")
+  @@index([expiresAt], map: "recommendation_precomputed_baseline_run_expiry_idx")
+  @@map("recommendation_precomputed_baseline_run")
+}
+
+/// Minimal, verified visit. Raw browser identity and tokens are not persisted.
+model RecommendationPrecomputedBaselineVisit {
+  id String @id @db.Uuid
+  runId String @map("run_id") @db.Uuid
+  run RecommendationPrecomputedBaselineRun @relation(fields: [runId], references: [id], onDelete: Restrict)
+  browserUnitDigest String @map("browser_unit_digest") @db.Char(64)
+  sourceVideoId String @map("source_video_id") @db.VarChar(191)
+  locale String @db.VarChar(32)
+  audioLanguageSlug String @map("audio_language_slug") @db.VarChar(64)
+  deliveryResult String @default("not_attempted") @map("delivery_result") @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+  requests RecommendationPrecomputedBaselineVisitRequest[]
+
+  @@index([runId, createdAt], map: "recommendation_precomputed_baseline_visit_report_idx")
+  @@index([runId, browserUnitDigest], map: "recommendation_precomputed_baseline_visit_browser_idx")
+  @@index([expiresAt, id], map: "recommendation_precomputed_baseline_visit_expiry_idx")
+  @@map("recommendation_precomputed_baseline_visit")
+}
+
+model RecommendationPrecomputedBaselineVisitRequest {
+  requestId String @id @map("request_id") @db.VarChar(191)
+  request RecommendationRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  visitId String @map("visit_id") @db.Uuid
+  visit RecommendationPrecomputedBaselineVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([visitId], map: "recommendation_precomputed_baseline_request_visit_idx")
+  @@index([expiresAt], map: "recommendation_precomputed_baseline_request_expiry_idx")
+  @@map("recommendation_precomputed_baseline_visit_request")
+}
+
+/// Immutable fixture/prelaunch settings; no public activation authority.
+model RecommendationPrecomputedCtrPolicy {
+  experimentId String @id @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  version String @db.VarChar(64)
+  method String @db.VarChar(64)
+  settings Json @db.JsonB
+  lateEventCutoffHours Int @map("late_event_cutoff_hours")
+  settingsDigest String @map("settings_digest") @db.Char(64)
+  authority String @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("recommendation_precomputed_ctr_policy")
+}
+
+/// UUID-only replay marker after a raw visit transfers to compact counters.
+model RecommendationPrecomputedCtrArchivedVisit {
+  visitId String @id @map("visit_id") @db.Uuid
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+
+  @@index([experimentId], map: "recommendation_precomputed_ctr_archived_visit_experiment_idx")
+  @@map("recommendation_precomputed_ctr_archived_visit")
+}
+
+/// Per-browser counters retain the cluster-delta method after raw expiry.
+model RecommendationPrecomputedCtrCluster {
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  browserUnitDigest String @map("browser_unit_digest") @db.Char(64)
+  arm RecommendationExperimentArm
+  eligibleVisits BigInt @default(0) @map("eligible_visits")
+  clickedVisits BigInt @default(0) @map("clicked_visits")
+
+  @@id([experimentId, browserUnitDigest])
+  @@map("recommendation_precomputed_ctr_cluster")
+}
+
+/// Archived diagnostic counts, separate from the cluster uncertainty rows.
+model RecommendationPrecomputedCtrTotals {
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  arm String @db.VarChar(16)
+  eligibleVisits BigInt @default(0) @map("eligible_visits")
+  clickedVisits BigInt @default(0) @map("clicked_visits")
+  acceptedSelections BigInt @default(0) @map("accepted_selections")
+  qualifiedImpressions BigInt @default(0) @map("qualified_impressions")
+  matchedSelections BigInt @default(0) @map("matched_selections")
+  servedVisits BigInt @default(0) @map("served_visits")
+  emptyVisits BigInt @default(0) @map("empty_visits")
+  unavailableVisits BigInt @default(0) @map("unavailable_visits")
+  notAttemptedVisits BigInt @default(0) @map("not_attempted_visits")
+  actualFallbackVisits BigInt @default(0) @map("actual_fallback_visits")
+  privateRecoveryAttemptVisits BigInt @default(0) @map("private_recovery_attempt_visits")
+  unlinkedDeliveredVisits BigInt @default(0) @map("unlinked_delivered_visits")
+  excludedAutomation BigInt @default(0) @map("excluded_automation")
+  excludedPreview BigInt @default(0) @map("excluded_preview")
+  excludedUnknown BigInt @default(0) @map("excluded_unknown")
+  excludedOutsideCohort BigInt @default(0) @map("excluded_outside_cohort")
+  excludedOther BigInt @default(0) @map("excluded_other")
+  unversionedArchivedVisits BigInt @default(0) @map("unversioned_archived_visits")
+
+  @@id([experimentId, arm])
+  @@map("recommendation_precomputed_ctr_totals")
+}
+
+/// A reviewed revision is append-only until the parent config expires.
+model RecommendationPrecomputedCtrReport {
+  experimentId String @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  revision Int
+  policyDigest String @map("policy_digest") @db.Char(64)
+  evidenceDigest String @map("evidence_digest") @db.Char(64)
+  asOf DateTime @map("as_of")
+  isFinal Boolean @map("is_final")
+  result Json @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([experimentId, revision])
+  @@map("recommendation_precomputed_ctr_report")
+}
+
+/// One independently signed, append-only final-horizon calibration per live
+/// experiment. It follows the frozen experiment's bounded retention.
+model RecommendationPrecomputedFinalCalibration {
+  experimentId String @id @map("experiment_id") @db.VarChar(191)
+  experiment RecommendationPrecomputedExperiment @relation(fields: [experimentId], references: [id], onDelete: Cascade)
+  generationId String @map("generation_id")
+  configurationDigest String @map("configuration_digest") @db.Char(64)
+  policyDigest String @map("policy_digest") @db.Char(64)
+  startsAt DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt DateTime @map("ends_at") @db.Timestamptz(6)
+  finalAt DateTime @map("final_at") @db.Timestamptz(6)
+  sourceId String @map("source_id") @db.VarChar(191)
+  sourceRunId String @map("source_run_id") @db.VarChar(191)
+  keyId String @map("key_id") @db.VarChar(191)
+  publicKeyDigest String @map("public_key_digest") @db.Char(64)
+  assertion String @db.VarChar(8192)
+  assertionDigest String @map("assertion_digest") @db.Char(64)
+  lossUpperBound Float @map("loss_upper_bound")
+  observedAt DateTime @map("observed_at") @db.Timestamptz(6)
+  actorId String @map("actor_id") @db.VarChar(191)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+
+  @@index([expiresAt], map: "precomputed_final_calibration_expiry_idx")
+  @@map("recommendation_precomputed_final_calibration")
+}
+
+/// One compact choice set per source Video per generation. Reasons and evidence
+/// are stored here once, never copied onto visit or served-item rows.
+model RecommendationPrecomputedSource {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  sourceVideoId String @map("source_video_id")
+  sourceVideo Video @relation(fields: [sourceVideoId], references: [id], onDelete: Restrict)
+  payload Json @db.JsonB
+  submissionDigest String @map("submission_digest")
+  acceptedCount Int @map("accepted_count")
+  status String @default("complete")
+  failureCode String? @map("failure_code")
+
+  @@id([generationId, sourceVideoId])
+  @@map("recommendation_precomputed_source")
+}
+
+/// One compact provider-call record; prompts, transcript text, and credentials
+/// are intentionally excluded. Nullable usage means the provider did not
+/// report it, not that the call cost zero tokens.
+model RecommendationPrecomputedModelCall {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  callId String @map("call_id")
+  attemptId String? @map("attempt_id") @db.Uuid
+  executionAttempt RecommendationPrecomputedExecutionAttempt? @relation(fields: [generationId, attemptId], references: [generationId, attemptId], onDelete: Restrict)
+  sourceVideoId String @map("source_video_id")
+  stage String
+  status String
+  modelId String @map("model_id")
+  inputDigest String @map("input_digest")
+  outputDigest String? @map("output_digest")
+  inputTokens Int? @map("input_tokens")
+  outputTokens Int? @map("output_tokens")
+  cachedInputTokens Int? @map("cached_input_tokens")
+  costUsd Decimal? @map("cost_usd") @db.Decimal(18, 9)
+  reservationLeaseToken String? @map("reservation_lease_token") @db.Uuid
+  receiptDigest String? @map("receipt_digest") @db.Char(64)
+  receiptCheckpointApplied Boolean? @map("receipt_checkpoint_applied")
+  receiptAppliedRevision Int? @map("receipt_applied_revision")
+  errorCode String? @map("error_code")
+  startedAt DateTime @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+
+  @@id([generationId, callId])
+  @@index([generationId, sourceVideoId], map: "recommendation_precomputed_model_call_source_idx")
+  @@map("recommendation_precomputed_model_call")
+}
+
+/// One explicit local start/resume, with bounded runner-reported account and
+/// allowance provenance. The producer bearer authenticates writes, not a person.
+model RecommendationPrecomputedExecutionAttempt {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  attemptId String @map("attempt_id") @db.Uuid
+  invocation String
+  accountRef String @map("account_ref")
+  backend String
+  billingBasis String @map("billing_basis")
+  authMethod String @map("auth_method")
+  modelId String @map("model_id")
+  identityObservedAt DateTime @map("identity_observed_at")
+  allowanceObservedAt DateTime @map("allowance_observed_at")
+  weeklyRemainingPercent Decimal @map("weekly_remaining_percent") @db.Decimal(5, 2)
+  fiveHourKind String @map("five_hour_kind")
+  fiveHourRemainingPercent Decimal? @map("five_hour_remaining_percent") @db.Decimal(5, 2)
+  startedAt DateTime @default(now()) @map("started_at")
+  endedAt DateTime? @map("ended_at")
+  endReason String? @map("end_reason")
+  modelCalls RecommendationPrecomputedModelCall[]
+  profileCalls RecommendationPrecomputedProfileCall[]
+  edgeBatchCalls RecommendationPrecomputedEdgeBatchCall[]
+
+  @@id([generationId, attemptId])
+  @@map("recommendation_precomputed_execution_attempt")
+}
+
+/// Compact, generation-scoped content navigation aid. The selected transcript
+/// and model prompt stay outside PostgreSQL; only digests and bounded output live here.
+model RecommendationPrecomputedContentProfile {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  cacheKey String @map("cache_key") @db.Char(64)
+  videoId String @map("video_id")
+  video Video @relation(fields: [videoId], references: [id], onDelete: Restrict)
+  modelId String @map("model_id")
+  backend String
+  promptVersion String @map("prompt_version")
+  schemaVersion String @map("schema_version")
+  metadataDigest String @map("metadata_digest") @db.Char(64)
+  chunkDigest String @map("chunk_digest") @db.Char(64)
+  selectedTranscriptCount Int @map("selected_transcript_count")
+  selectedChunkCount Int @map("selected_chunk_count")
+  sourceTextBytes Int @map("source_text_bytes")
+  partDigests Json @map("part_digests") @db.JsonB
+  coverageDigest String @map("coverage_digest") @db.Char(64)
+  kind String
+  state String
+  finalCallId String? @map("final_call_id") @db.Uuid
+  finalizationDigest String? @map("finalization_digest") @db.Char(64)
+  profileJson Json? @map("profile_json") @db.JsonB
+  failureCode String? @map("failure_code")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  terminalAt DateTime? @map("terminal_at")
+  calls RecommendationPrecomputedProfileCall[]
+  edgeSourceMembers RecommendationPrecomputedEdgeBatchMember[]
+
+  @@id([generationId, cacheKey])
+  @@index([generationId, videoId], map: "precomputed_content_profile_video_idx")
+  @@map("recommendation_precomputed_content_profile")
+}
+
+/// One physical Astra invocation and one observed-usage receipt. A pending row
+/// remains pending after an ambiguous local process outcome.
+model RecommendationPrecomputedProfileCall {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  callId String @map("call_id") @db.Uuid
+  attemptId String @map("attempt_id") @db.Uuid
+  executionAttempt RecommendationPrecomputedExecutionAttempt @relation(fields: [generationId, attemptId], references: [generationId, attemptId], onDelete: Restrict)
+  cacheKey String @map("cache_key") @db.Char(64)
+  profile RecommendationPrecomputedContentProfile @relation(fields: [generationId, cacheKey], references: [generationId, cacheKey], onDelete: Restrict)
+  nodeKey String @map("node_key") @db.Char(64)
+  stage String
+  stagePromptVersion String @map("stage_prompt_version")
+  inputDigest String @map("input_digest") @db.Char(64)
+  partIndex Int? @map("part_index")
+  childCallIds Json? @map("child_call_ids") @db.JsonB
+  startedAt DateTime @map("started_at")
+  status String
+  outputDigest String? @map("output_digest") @db.Char(64)
+  nodeJson Json? @map("node_json") @db.JsonB
+  coveredPartStart Int? @map("covered_part_start")
+  coveredPartEnd Int? @map("covered_part_end")
+  inputTokens Int? @map("input_tokens")
+  outputTokens Int? @map("output_tokens")
+  cachedInputTokens Int? @map("cached_input_tokens")
+  errorCode String? @map("error_code")
+  finishedAt DateTime? @map("finished_at")
+  receiptDigest String? @map("receipt_digest") @db.Char(64)
+  receiptNodeApplied Boolean? @map("receipt_node_applied")
+
+  @@id([generationId, callId])
+  @@index([generationId, cacheKey, startedAt], map: "precomputed_profile_call_profile_idx")
+  @@map("recommendation_precomputed_profile_call")
+}
+
+/// One physical Astra invocation shared by one or two source members. Usage is
+/// recorded here once, never copied to member rows.
+model RecommendationPrecomputedEdgeBatchCall {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  callId String @map("call_id") @db.Uuid
+  attemptId String @map("attempt_id") @db.Uuid
+  executionAttempt RecommendationPrecomputedExecutionAttempt @relation(fields: [generationId, attemptId], references: [generationId, attemptId], onDelete: Restrict)
+  modelId String @map("model_id")
+  backend String
+  promptVersion String @map("prompt_version")
+  schemaVersion String @map("schema_version")
+  inputDigest String @map("input_digest") @db.Char(64)
+  membershipDigest String @map("membership_digest") @db.Char(64)
+  selectedCorpusDigest String @map("selected_corpus_digest") @db.Char(64)
+  candidatePoolDigest String @map("candidate_pool_digest") @db.Char(64)
+  captureRefDigest String? @map("capture_ref_digest") @db.Char(64)
+  spanOfferDigest String @map("span_offer_digest") @db.Char(64)
+  spanOffers Json @map("span_offers") @db.JsonB
+  requestDigest String @map("request_digest") @db.Char(64)
+  startedAt DateTime @map("started_at")
+  status String
+  outputDigest String? @map("output_digest") @db.Char(64)
+  inputTokens Int? @map("input_tokens")
+  outputTokens Int? @map("output_tokens")
+  cachedInputTokens Int? @map("cached_input_tokens")
+  errorCode String? @map("error_code")
+  finishedAt DateTime? @map("finished_at")
+  receiptDigest String? @map("receipt_digest") @db.Char(64)
+  members RecommendationPrecomputedEdgeBatchMember[]
+
+  @@id([generationId, callId])
+  @@map("recommendation_precomputed_edge_batch_call")
+}
+
+/// A fenced source/page in one shared edge call; it carries no token charge.
+model RecommendationPrecomputedEdgeBatchMember {
+  generationId String @map("generation_id")
+  callId String @map("call_id") @db.Uuid
+  call RecommendationPrecomputedEdgeBatchCall @relation(fields: [generationId, callId], references: [generationId, callId], onDelete: Restrict, map: "precomputed_edge_batch_member_call_fk")
+  sourceVideoId String @map("source_video_id")
+  source RecommendationPrecomputedBuildSource @relation(fields: [generationId, sourceVideoId], references: [generationId, sourceVideoId], onDelete: Restrict, map: "precomputed_edge_batch_member_source_fk")
+  leaseToken String @map("lease_token") @db.Uuid
+  checkpointRevision Int @map("checkpoint_revision")
+  pageIndex Int @map("page_index")
+  sourceProfileKey String @map("source_profile_key") @db.Char(64)
+  sourceProfile RecommendationPrecomputedContentProfile @relation(fields: [generationId, sourceProfileKey], references: [generationId, cacheKey], onDelete: Restrict, map: "precomputed_edge_batch_member_profile_fk")
+  candidates Json @db.JsonB
+  candidatePageDigest String @map("candidate_page_digest") @db.Char(64)
+  sourceCandidateCount Int @map("source_candidate_count")
+  sourceCandidateDigest String @map("source_candidate_digest") @db.Char(64)
+  historicalRefDigest String @map("historical_ref_digest") @db.Char(64)
+  applicationState String @map("application_state")
+  appliedRevision Int? @map("applied_revision")
+  resultChoiceCount Int? @map("result_choice_count")
+
+  @@id([generationId, callId, sourceVideoId])
+  @@index([generationId, sourceVideoId, pageIndex, callId], map: "precomputed_edge_batch_member_source_idx")
+  @@map("recommendation_precomputed_edge_batch_member")
+}
+
+/// Source membership and progress are independent of the final immutable
+/// choice set. Leases fence stale producers without storing transcript text.
+model RecommendationPrecomputedBuildSource {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  sourceVideoId String @map("source_video_id")
+  sourceVideo Video @relation(fields: [sourceVideoId], references: [id], onDelete: Restrict)
+  state String @default("pending")
+  claimId String? @map("claim_id")
+  leaseToken String? @map("lease_token") @db.Uuid
+  leaseExpiresAt DateTime? @map("lease_expires_at")
+  attemptNumber Int @default(0) @map("attempt_number")
+  checkpoint Json @default("{}") @db.JsonB
+  historicalProvenance Json? @map("historical_provenance") @db.JsonB
+  checkpointRevision Int @default(0) @map("checkpoint_revision")
+  checkpointId String? @map("checkpoint_id")
+  checkpointDigest String? @map("checkpoint_digest")
+  failureCode String? @map("failure_code")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  completedAt DateTime? @map("completed_at")
+  choices RecommendationPrecomputedBuildChoice[]
+  edgeBatchMembers RecommendationPrecomputedEdgeBatchMember[]
+  edgeSourceCandidateCount Int? @map("edge_source_candidate_count")
+  edgeSourceCandidateDigest String? @map("edge_source_candidate_digest") @db.Char(64)
+  edgeSourceProfileKey String? @map("edge_source_profile_key") @db.Char(64)
+  edgeCandidatePoolDigest String? @map("edge_candidate_pool_digest") @db.Char(64)
+  edgeHistoricalRefDigest String? @map("edge_historical_ref_digest") @db.Char(64)
+
+  @@id([generationId, sourceVideoId])
+  @@index([generationId, state], map: "recommendation_precomputed_build_source_state_idx")
+  @@map("recommendation_precomputed_build_source")
+}
+
+/// Provisional, bounded one-target decisions; only a finalized source is read
+/// by private comparison/Watch. Exact-target retries cannot create duplicates.
+model RecommendationPrecomputedBuildChoice {
+  generationId String @map("generation_id")
+  sourceVideoId String @map("source_video_id")
+  source RecommendationPrecomputedBuildSource @relation(fields: [generationId, sourceVideoId], references: [generationId, sourceVideoId], onDelete: Cascade)
+  targetVideoId String @map("target_video_id")
+  payload Json @db.JsonB
+  submissionDigest String @map("submission_digest") @db.Char(64)
+
+  @@id([generationId, sourceVideoId, targetVideoId])
+  @@map("recommendation_precomputed_build_choice")
+}
+
+/// One reservation per actual GA request, including qualification and retry
+/// requests. Pending means incurred bytes/charges could not be established.
+model RecommendationPrecomputedHistoryCall {
+  generationId String @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  callId String @map("call_id")
+  sourceVideoId String? @map("source_video_id")
+  stage String
+  status String @default("pending")
+  requestDigest String @map("request_digest") @db.Char(64)
+  bytesProcessed BigInt? @map("bytes_processed")
+  costUsd Decimal? @map("cost_usd") @db.Decimal(18, 9)
+  receiptDigest String? @map("receipt_digest") @db.Char(64)
+  errorCode String? @map("error_code")
+  startedAt DateTime @map("started_at")
+  reservedAt DateTime @default(now()) @map("reserved_at")
+  finishedAt DateTime? @map("finished_at")
+
+  @@id([generationId, callId])
+  @@map("recommendation_precomputed_history_call")
+}
+
+/// A conservative byte admission counter since the latest physical capacity
+/// attestation. This is not a substitute for measured database/volume size.
+model RecommendationPrecomputedBuildBudget {
+  generationId String @id @map("generation_id")
+  generation RecommendationPrecomputedGeneration @relation(fields: [generationId], references: [id], onDelete: Cascade)
+  consumedBytes BigInt @default(0) @map("consumed_bytes")
+
+  @@map("recommendation_precomputed_build_budget")
 }
