@@ -117,9 +117,11 @@ export type WatchSearchInput = {
 
 export type WatchSearchLanguageInterpretation = {
   queryLanguageSlug: string | null
+  queryLanguageBcp47?: string | null
   queryNamedLanguageSlug: string | null
   targetLanguageSlug: string
   targetLanguageSource: SearchLanguageSignalSource
+  targetLanguageBcp47?: string | null
   displayLanguageSlug: string | null
   displayLanguageBcp47?: string | null
   routeLanguageSlug: string | null
@@ -363,6 +365,17 @@ export class WatchSearchService {
       localeForLanguageSlug(languageInterpretation.routeLanguageSlug) ??
       languageInterpretation.routeLanguageBcp47 ??
       "en"
+    // Lexical title fields are localized content. Prefer the language the
+    // query was written in, then the selected target language, and only then
+    // the UI/route locale. The latter describes chrome, not title relevance.
+    const lexicalLocale =
+      localeForLanguageSlug(languageInterpretation.queryLanguageSlug) ??
+      languageInterpretation.queryLanguageBcp47 ??
+      (languageInterpretation.targetLanguageSource === "explicit_target"
+        ? (localeForLanguageSlug(languageInterpretation.targetLanguageSlug) ??
+          languageInterpretation.targetLanguageBcp47)
+        : null) ??
+      displayLocale
     const titleQuery = queryWithoutLanguageHints(query, [
       languageInterpretation.queryNamedLanguageSlug,
       languageInterpretation.targetLanguageSlug,
@@ -380,19 +393,22 @@ export class WatchSearchService {
     const metadataRetrievalPromise = Promise.all([
       searchByKeywordWeighted(this.prisma, {
         query: titleQuery,
-        locale: displayLocale,
+        locale: lexicalLocale,
+        displayLocale,
         limit: lexicalLimit,
       }),
       searchByTrigram(this.prisma, {
         query: titleQuery,
-        locale: displayLocale,
+        locale: lexicalLocale,
+        displayLocale,
         limit: lexicalLimit,
       }),
     ])
     const exactTitleStartedAt = nowMs()
     const exactTitlePromise = searchByExactTitle(this.prisma, {
       query: titleQuery,
-      locale: displayLocale,
+      locale: lexicalLocale,
+      displayLocale,
       limit: lexicalLimit,
     })
     const exactPipelinePromise = exactTitlePromise.then(async (exactTitle) => {
@@ -619,7 +635,7 @@ export class WatchSearchService {
           ...entry,
           wholeTitleMatch: isWholeTitleMatch(
             titleQuery,
-            entry.candidate.videoTitle,
+            String(entry.candidate.matchedTitle ?? entry.candidate.videoTitle),
           ),
           watchability,
           watchabilityRank: watchabilityRank(watchability),
@@ -969,6 +985,7 @@ type MetadataCandidate = FusedResult & {
   videoCoreId: string | null
   videoSlug: string
   videoTitle: string
+  matchedTitle?: string
   imageUrl: null
   description: string | null
 }
@@ -1407,6 +1424,7 @@ function fuseMetadataCandidates({
     videoCoreId: candidate.videoCoreId ?? null,
     videoSlug: String(candidate.videoSlug ?? ""),
     videoTitle: String(candidate.videoTitle ?? ""),
+    matchedTitle: String(candidate.matchedTitle ?? candidate.videoTitle ?? ""),
     imageUrl: null,
     description:
       typeof candidate.description === "string" ? candidate.description : null,
@@ -1427,6 +1445,7 @@ function curatedCandidateFromExactTitle(
     videoCoreId: candidate.videoCoreId,
     videoSlug: candidate.videoSlug,
     videoTitle: candidate.videoTitle,
+    matchedTitle: candidate.matchedTitle,
     imageUrl: null,
     description: candidate.description,
     score: 0,
@@ -1499,7 +1518,12 @@ export function availabilityScore(
 
 function matchScore(entry: RankedWatchCandidate, query: string): number {
   if (entry.kind === "exact") {
-    return isWholeTitleMatch(query, entry.candidate.videoTitle) ? 0.45 : 0.2
+    return isWholeTitleMatch(
+      query,
+      entry.candidate.matchedTitle ?? entry.candidate.videoTitle,
+    )
+      ? 0.45
+      : 0.2
   }
   if (entry.kind === "metadata" || entry.kind === "curated") return 0.14
   return 0.08

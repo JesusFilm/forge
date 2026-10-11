@@ -157,13 +157,18 @@ function watchabilityForKind(videoId: string, kind: WatchabilityKind) {
   }
 }
 
-function exactTitleResult(resultId: string, videoTitle: string) {
+function exactTitleResult(
+  resultId: string,
+  videoTitle: string,
+  matchedTitle = videoTitle,
+) {
   return {
     resultType: "video",
     resultId,
     videoCoreId: `core-${resultId}`,
     videoSlug: resultId,
     videoTitle,
+    matchedTitle,
     imageUrl: null,
     description: null,
     titleLength: videoTitle.length,
@@ -364,7 +369,7 @@ describe("WatchSearchService", () => {
     }
   })
 
-  it("uses the canonical Language BCP-47 value for non-English lexical retrieval", async () => {
+  it("uses target-language BCP-47 for lexical retrieval when query language is unknown", async () => {
     await service.search({
       query: "Hoffnung",
       targetLanguageSlug: "english",
@@ -385,12 +390,102 @@ describe("WatchSearchService", () => {
       expect(retriever).toHaveBeenNthCalledWith(
         1,
         prisma,
-        expect.objectContaining({ locale: "de" }),
+        expect.objectContaining({ locale: "en" }),
       )
       expect(retriever).toHaveBeenNthCalledWith(
         2,
         prisma,
-        expect.objectContaining({ locale: "de" }),
+        expect.objectContaining({ locale: "en" }),
+      )
+    }
+  })
+
+  it("uses query or explicitly selected target language for lexical retrieval", async () => {
+    await service.search({
+      query: "Jesús",
+      queryLanguageSlug: "spanish-castilian",
+      targetLanguageSlug: "spanish-castilian",
+      displayLanguageSlug: "english",
+    })
+    await service.search({
+      query: "Jésus",
+      targetLanguageSlug: "french",
+      displayLanguageSlug: "english",
+    })
+    await service.search({
+      query: "Jesus",
+      queryLanguageSlug: "english",
+      targetLanguageSlug: "spanish-castilian",
+      displayLanguageSlug: "spanish-castilian",
+    })
+
+    for (const retriever of [
+      searchByExactTitleMock,
+      searchByKeywordWeightedMock,
+      searchByTrigramMock,
+    ]) {
+      expect(retriever).toHaveBeenNthCalledWith(
+        1,
+        prisma,
+        expect.objectContaining({ locale: "es", displayLocale: "en" }),
+      )
+      expect(retriever).toHaveBeenNthCalledWith(
+        2,
+        prisma,
+        expect.objectContaining({ locale: "fr", displayLocale: "en" }),
+      )
+      expect(retriever).toHaveBeenNthCalledWith(
+        3,
+        prisma,
+        expect.objectContaining({ locale: "en", displayLocale: "es" }),
+      )
+    }
+  })
+
+  it("keeps inferred query-named and route targets from overriding display-locale retrieval", async () => {
+    await service.search({
+      query: "jesus film spanish",
+      displayLanguageSlug: "english",
+    })
+    await service.search({
+      query: "Jesus",
+      routeLanguageSlug: "spanish-castilian",
+      displayLanguageSlug: "english",
+    })
+
+    for (const retriever of [
+      searchByExactTitleMock,
+      searchByKeywordWeightedMock,
+      searchByTrigramMock,
+    ]) {
+      expect(retriever).toHaveBeenNthCalledWith(
+        1,
+        prisma,
+        expect.objectContaining({ locale: "en", displayLocale: "en" }),
+      )
+      expect(retriever).toHaveBeenNthCalledWith(
+        2,
+        prisma,
+        expect.objectContaining({ locale: "en", displayLocale: "en" }),
+      )
+    }
+  })
+
+  it("uses canonical BCP-47 locales for language slugs without a hard-coded mapping", async () => {
+    await service.search({
+      query: "Hoffnung",
+      targetLanguageSlug: "german-standard",
+      displayLanguageSlug: "english",
+    })
+
+    for (const retriever of [
+      searchByExactTitleMock,
+      searchByKeywordWeightedMock,
+      searchByTrigramMock,
+    ]) {
+      expect(retriever).toHaveBeenCalledWith(
+        prisma,
+        expect.objectContaining({ locale: "de", displayLocale: "en" }),
       )
     }
   })
@@ -511,7 +606,8 @@ describe("WatchSearchService", () => {
     ]) {
       expect(retriever).toHaveBeenCalledWith(prisma, {
         query: "JESUS",
-        locale: "en",
+        locale: "ru",
+        displayLocale: "en",
         limit: 100,
       })
     }
@@ -555,6 +651,43 @@ describe("WatchSearchService", () => {
         },
       }),
     ])
+  })
+
+  it("ranks by the matched-language title while returning the display-language title", async () => {
+    mockLexicalResultsOnce(
+      lexicalResults({
+        exactTitle: [
+          exactTitleResult("localized-hit", "Jesus", "Jesús"),
+          exactTitleResult(
+            "broad-hit",
+            "The Life of Jesus",
+            "La vida de Jesús",
+          ),
+        ],
+      }),
+    )
+    hydrateMock.mockImplementation(
+      async ({ candidates }: { candidates: Array<{ videoId: string }> }) =>
+        new Map(
+          candidates.map(({ videoId }) => [
+            videoId,
+            watchabilityForKind(videoId, "target_audio"),
+          ]),
+        ),
+    )
+
+    const result = await service.search({
+      query: "Jesús",
+      queryLanguageSlug: "spanish-castilian",
+      displayLanguageSlug: "english",
+      limit: 2,
+    })
+
+    expect(result.results.map(({ id }) => id)[0]).toBe("localized-hit")
+    expect(result.results[0]).toMatchObject({
+      title: "Jesus",
+      scoreBreakdown: { match: 0.45 },
+    })
   })
 
   it("hydrates catalog fields only for the final result page", async () => {
