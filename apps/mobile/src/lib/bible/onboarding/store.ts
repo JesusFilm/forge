@@ -6,6 +6,7 @@ import { useSyncExternalStore } from "react"
 
 import {
   createPersistedRecordStore,
+  type RecordReadOutcome,
   type RecordSnapshot,
   type RecordStorage,
 } from "../position/persistedRecordStore"
@@ -32,7 +33,7 @@ export type ReaderOnboardingStore = {
   /** Also starts the read of the saved flags, once. */
   subscribe(listener: () => void): () => void
   /** Never rejects. A failed read keeps the defaults. */
-  hydrate(): Promise<void>
+  hydrate(): Promise<RecordReadOutcome>
   retireHint(): void
   markDemoPlayed(): void
   reset(): void
