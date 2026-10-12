@@ -14,6 +14,20 @@ export function layoutSign(): 1 | -1 {
   return isLayoutRtl() ? -1 : 1
 }
 
+/** Side padding that keeps each safe-area inset on its own physical side.
+ *  React Native reads `paddingLeft` as the start side, which is the right side
+ *  in a right-to-left layout, so the two insets change places there. */
+export function insetPadding(insets: { left: number; right: number }): {
+  paddingLeft: number
+  paddingRight: number
+} {
+  const rtl = isLayoutRtl()
+  return {
+    paddingLeft: rtl ? insets.right : insets.left,
+    paddingRight: rtl ? insets.left : insets.right,
+  }
+}
+
 const MIRRORED_ICONS = {
   "chevron-back": "chevron-forward",
   "chevron-forward": "chevron-back",
