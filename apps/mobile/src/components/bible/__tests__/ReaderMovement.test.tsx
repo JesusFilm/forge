@@ -1423,6 +1423,20 @@ describe("the first-run swipe demo (R16)", () => {
       .filter((x) => x !== undefined)
     expect(fingers).toHaveLength(1)
     expect(fingers[0]).toBeLessThan(0)
+    expect(textNodes(renderer, readerT("demoChapterRtl"))).toHaveLength(1)
+    expect(textNodes(renderer, readerT("demoChapter"))).toHaveLength(0)
+  })
+
+  it("tells a left-to-right layout to swipe left for the next chapter", async () => {
+    jest.useFakeTimers()
+    const { renderer } = await openAt(
+      { book: "JHN", chapter: 3, verse: 16 },
+      { onboarding: createReaderOnboardingStore(memoryStorage()) },
+    )
+    await arm()
+    expect(demo(renderer)).toHaveLength(1)
+    expect(textNodes(renderer, readerT("demoChapter"))).toHaveLength(1)
+    expect(textNodes(renderer, readerT("demoChapterRtl"))).toHaveLength(0)
   })
 
   it("is skipped with a screen reader on", async () => {

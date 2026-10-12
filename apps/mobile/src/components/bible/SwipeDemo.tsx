@@ -20,7 +20,7 @@ import {
   partTravelKeyframes,
   type SwipeDemoPart,
 } from "../../lib/bible/onboarding/swipeDemoTimeline"
-import { layoutSign } from "../../i18n/layoutRtl"
+import { isLayoutRtl, layoutSign } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import type { ReaderTokens } from "../../lib/bible/theme/palettes"
 
@@ -148,7 +148,7 @@ export function SwipeDemo({ tokens, onDone }: SwipeDemoProps) {
             { key: "verse", text: t("demoVerse"), opacity: verse.opacity },
             {
               key: "chapter",
-              text: t("demoChapter"),
+              text: t(isLayoutRtl() ? "demoChapterRtl" : "demoChapter"),
               opacity: chapter.opacity,
             },
           ].map((caption) => (

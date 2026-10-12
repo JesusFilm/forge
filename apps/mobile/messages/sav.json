@@ -138,6 +138,7 @@
     "versesAriaValue": "Verses {first} to {last} of {total}, {chapter}",
     "demoVerse": "Swipe up for the next verse",
     "demoChapter": "Swipe left for the next chapter",
+    "demoChapterRtl": "Swipe right for the next chapter",
     "demoSkip": "Tap to skip",
     "demoSkipAriaLabel": "Skip the swipe demonstration",
     "selectVerseAriaHint": "Double-tap to select this verse",
