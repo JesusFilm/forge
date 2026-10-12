@@ -101,49 +101,70 @@
     gap: 2px;
   }
 
-  /* Filters: click one platform to see only its posts; click it again (or "All") to see everything. */
+  /* Filters: icons only. Click one platform to see only its posts; click it again to see everything. */
   .filters {
     display: flex;
-    gap: 6px;
+    gap: 2px;
     align-items: center;
   }
   .fchip {
     appearance: none;
-    border: 1px solid var(--line);
+    border: 0;
     background: transparent;
-    color: var(--ink);
-    border-radius: 999px;
+    border-radius: 8px;
+    width: 34px;
     height: 34px;
-    padding: 0 12px 0 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
+    display: inline-grid;
+    place-items: center;
     cursor: pointer;
-    font: 500 13px/1 var(--sans);
+    position: relative;
   }
   .fchip:hover {
     background: var(--hover);
   }
   .fchip svg {
-    width: 18px;
-    height: 18px;
-    flex: none;
+    width: 20px;
+    height: 20px;
+  }
+  .filters.picked .fchip[aria-pressed="false"] {
+    opacity: 0.3;
   }
   .fchip[aria-pressed="true"] {
-    background: var(--ink);
-    color: var(--ground);
-    border-color: var(--ink);
+    background: var(--hover);
   }
-  .fchip.all {
-    padding: 0 12px;
+  .fchip[aria-pressed="true"]::after {
+    content: "";
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    margin-left: -2px;
+    border-radius: 50%;
+    background: var(--ink);
   }
   .fchip .ru {
-    font: 700 9px/1 var(--sans);
+    position: absolute;
+    right: 3px;
+    bottom: 6px;
+    font: 700 7px/1 var(--sans);
     background: var(--flame);
     color: #fff;
-    border-radius: 3px;
-    padding: 2px 3px;
-    margin-left: -3px;
+    border-radius: 2px;
+    padding: 1px 2px;
+  }
+  .divider {
+    width: 1px;
+    height: 20px;
+    background: var(--line);
+    margin: 0 6px;
+  }
+  .ghost.link {
+    text-decoration: none;
+  }
+  .ghost.link svg {
+    width: 20px;
+    height: 20px;
   }
 
   .grid {
@@ -602,6 +623,23 @@
       role="group"
       aria-label="Show only one platform"
     ></div>
+    <span class="divider" aria-hidden="true"></span>
+    <a
+      class="ghost link"
+      href="https://claude.ai/artifact/T3QFpYWsVKKk1Px4k1QhNS"
+      target="_blank"
+      rel="noopener"
+      title="Analytics dashboard"
+      aria-label="Analytics dashboard"
+      ><svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+      >
+        <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg
+    ></a>
   </header>
   <div class="grid" id="grid"></div>
   <div class="agenda" id="agenda"></div>
@@ -895,25 +933,23 @@
   }
 
   function renderFilters() {
-    document.getElementById("filters").innerHTML =
-      '<button class="fchip all" data-k="" aria-pressed="' +
-      !only +
-      '">All</button>' +
-      PLATS.map(
-        (c) =>
-          '<button class="fchip" data-k="' +
-          c.key +
-          '" aria-pressed="' +
-          (only === c.key) +
-          '" title="Show only ' +
-          c.label +
-          '">' +
-          ICON[c.icon] +
-          (c.ru ? '<span class="ru">RU</span>' : "") +
-          '<span class="lbl">' +
-          c.label.replace(" RU", "") +
-          "</span></button>",
-      ).join("")
+    const box = document.getElementById("filters")
+    box.classList.toggle("picked", !!only)
+    box.innerHTML = PLATS.map(
+      (c) =>
+        '<button class="fchip" data-k="' +
+        c.key +
+        '" aria-pressed="' +
+        (only === c.key) +
+        '" title="Show only ' +
+        c.label +
+        '" aria-label="Show only ' +
+        c.label +
+        '">' +
+        ICON[c.icon] +
+        (c.ru ? '<span class="ru">RU</span>' : "") +
+        "</button>",
+    ).join("")
   }
   document.getElementById("filters").addEventListener("click", (e) => {
     const b = e.target.closest(".fchip")
