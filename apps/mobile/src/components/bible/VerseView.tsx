@@ -490,7 +490,10 @@ function VerseBody({
     fontFamily,
     color: tokens.text,
     // R32: right-to-left text aligns right; left-to-right text is centered.
-    textAlign: textDirection === "rtl" ? "right" : "center",
+    // feat-692 KTD6: with `direction` set, "left" is the start of the text's
+    // own language, so a mirrored layout cannot move it to the left edge.
+    direction: textDirection,
+    textAlign: textDirection === "rtl" ? "left" : "center",
     writingDirection: textDirection,
     // R19, after Still: an underline marks a selected verse.
     ...(selected ? { textDecorationLine: "underline" as const } : null),

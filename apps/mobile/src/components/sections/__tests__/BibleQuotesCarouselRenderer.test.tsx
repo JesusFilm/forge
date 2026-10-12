@@ -273,8 +273,9 @@ describe("BibleQuotesCarouselRenderer — the passage language", () => {
   it.each([
     ["an English passage in an Arabic UI", "ar", "en", ["en"], "ltr"],
     ["an Arabic passage in an Arabic UI", "ar", "ar", [undefined], "rtl"],
-    ["an English passage in an English UI", "en", "en", ["en"], undefined],
-    ["a Russian passage in an English UI", "en", "ru", [undefined], undefined],
+    // feat-692 KTD6: with mirroring on, every known language sets its edge.
+    ["an English passage in an English UI", "en", "en", ["en"], "ltr"],
+    ["a Russian passage in an English UI", "en", "ru", [undefined], "ltr"],
   ])("marks and sets %s", (_case, uiTag, textLang, marks, direction) => {
     mockUiTag = uiTag
     const renderer = render([{ ...PASSAGE_QUOTE, textLang }])
@@ -286,6 +287,19 @@ describe("BibleQuotesCarouselRenderer — the passage language", () => {
         direction,
       ])
     }
+  })
+
+  // R16, R17: in a left-to-right layout, the Arabic verse keeps its own start
+  // edge (the right), and its short credit goes to the layout's start (the left).
+  it("aligns the verse as a paragraph and the credit as short text", () => {
+    mockUiTag = "en"
+    const renderer = render([{ ...PASSAGE_QUOTE, textLang: "ar" }])
+    expect(flatStyle(findText(renderer, PASSAGE_TEXTS[0]!)).textAlign).toBe(
+      "left",
+    )
+    expect(flatStyle(findText(renderer, "Public Domain")).textAlign).toBe(
+      "right",
+    )
   })
 
   it("leaves the Experience quote as it was", () => {

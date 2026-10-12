@@ -183,19 +183,21 @@ describe("useDefaultAudioSlug", () => {
 })
 
 describe("useTextDirection", () => {
+  // feat-692 U4: the edge follows the layout, which only a reload changes, so
+  // the language mark is what a live UI language change must update.
   function FallbackText() {
     const { text } = useTextDirection()
-    return <Text>{text("en").style?.direction ?? "none"}</Text>
+    return <Text>{text("en").accessibilityLanguage ?? "none"}</Text>
   }
 
-  it("re-reads the style for a live UI language change", async () => {
+  it("re-reads the props for a live UI language change", async () => {
     startOn("en-US")
     const renderer = await render(<FallbackText />)
     expect(hasText(renderer, "none")).toBe(true)
 
     await changePhoneLanguage("ar-EG")
 
-    expect(hasText(renderer, "ltr")).toBe(true)
+    expect(hasText(renderer, "en")).toBe(true)
     await unmount(renderer)
   })
 })

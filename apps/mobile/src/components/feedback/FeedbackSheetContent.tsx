@@ -82,7 +82,7 @@ export function FeedbackSheetContent({
   const typography = useTypography()
   const reduceMotion = useReduceMotion()
   const t = useT("Feedback")
-  const uiDirection = useTextDirection().ui
+  const { ui: uiDirection, uiParagraph } = useTextDirection()
   const uiTag = useUiTag()
   const [state, dispatch] = useReducer(
     feedbackFlowReducer,
@@ -288,7 +288,7 @@ export function FeedbackSheetContent({
         <View style={styles.noticeRow}>
           <Ionicons name="warning" size={20} color={WARNING_COLOR} />
           {/* R13/KD10: the one message, whatever the refusal was. */}
-          <Text style={[styles.noticeText, typography.body, uiDirection]}>
+          <Text style={[styles.noticeText, typography.body, uiParagraph]}>
             {t("failureMessage")}
           </Text>
         </View>
@@ -397,7 +397,12 @@ export function FeedbackSheetContent({
 
       <View style={styles.field}>
         <TextInput
-          style={[styles.input, styles.messageInput, typography.body]}
+          style={[
+            styles.input,
+            styles.messageInput,
+            typography.body,
+            uiDirection,
+          ]}
           value={state.message}
           onChangeText={(value) =>
             dispatch({ type: "editField", field: "message", value })

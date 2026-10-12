@@ -11,6 +11,7 @@ const path = require("path")
 const I18N = path.join(__dirname, "..")
 const FLAG = path.join(I18N, "mirroredLayout.ts")
 const CONTROLLER = path.join(I18N, "layoutDirection.ts")
+const ALIGNMENT = path.join(I18N, "textDirection.ts")
 
 const FLAG_PATTERN = /^export const MIRRORED_LAYOUT_ENABLED = (true|false)$/gm
 
@@ -52,5 +53,14 @@ describe("the mirrored layout off switch", () => {
     )
     expect(controller).toContain("mirroringEnabled: MIRRORED_LAYOUT_ENABLED,")
     expect(controller).not.toMatch(/mirroringEnabled:\s*(true|false)/)
+  })
+
+  // KTD5: the same switch turns off the alignment rule (R9, R10).
+  it("has the alignment helper read the switch on both of its paths", () => {
+    const helper = fs.readFileSync(ALIGNMENT, "utf8")
+    expect(helper).toContain(
+      'import { MIRRORED_LAYOUT_ENABLED } from "./mirroredLayout"',
+    )
+    expect(helper.match(/if \(!MIRRORED_LAYOUT_ENABLED\)/g)).toHaveLength(2)
   })
 })

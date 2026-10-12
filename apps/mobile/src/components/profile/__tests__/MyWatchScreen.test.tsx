@@ -441,12 +441,13 @@ describe("MyWatchScreen in a right-to-left UI (KTD13)", () => {
     }
   }
 
-  it("gives the Downloads heading the UI direction, and none in English", async () => {
+  // feat-692 KTD6: with mirroring on, English UI text sets its edge too.
+  it("gives the Downloads heading the UI direction in English and Arabic", async () => {
     mockDownloads.offlineRecords = [record("v-1", "downloaded")]
     const english = await renderScreen()
     expect(headingDirection(english)).toEqual({
-      direction: undefined,
-      writingDirection: undefined,
+      direction: "ltr",
+      writingDirection: "ltr",
     })
     await unmount(english)
 

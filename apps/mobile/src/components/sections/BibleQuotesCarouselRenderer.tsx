@@ -44,8 +44,7 @@ import {
 import type { VerseRef } from "../../lib/bible/versification/convert"
 import { datadogLog } from "../../lib/datadog"
 import {
-  LTR_STYLE,
-  RTL_STYLE,
+  explicitDirectionStyle,
   useTextDirection,
 } from "../../i18n/textDirection"
 import { useLocaleEpoch, useT } from "../../i18n/useT"
@@ -128,9 +127,6 @@ const SHARE_URL = "https://www.jesusfilm.org/watch"
 
 // A second tap while the first push animates would stack two readers.
 export const READER_OPEN_DEBOUNCE_MS = 1000
-
-/** A reader-translation card's direction, set even where it matches the UI. */
-const EXPLICIT_DIRECTION = { ltr: LTR_STYLE, rtl: RTL_STYLE } as const
 
 /**
  * The scrim is opaque behind the text stack, so this does NOT carry the
@@ -265,16 +261,23 @@ function QuoteCard({
   // R10: an English passage keeps its language mark. KTD13: the passage takes
   // its direction from its own language.
   const englishPassage = quote.textLang === "en"
-  const adminDirection = useTextDirection().text(quote.textLang).style
+  const direction = useTextDirection()
+  const adminDirection = direction.text(quote.textLang).style
   // Plan 2026-10-08 KTD7: a card from the reader's translation takes its marks
   // from the catalog, and its English credit stays left to right.
   const verseDirection = quote.verseDirection ?? null
   const verseLang = quote.verseLang ?? undefined
   const readerCard = verseDirection != null
   const passageDirection = readerCard
-    ? EXPLICIT_DIRECTION[verseDirection]
+    ? explicitDirectionStyle(verseDirection)
     : adminDirection
-  const creditDirection = readerCard ? EXPLICIT_DIRECTION.ltr : adminDirection
+  // feat-692 R17: the verse is a paragraph; its reference and credit are short.
+  const verseParagraph = readerCard
+    ? explicitDirectionStyle(verseDirection, { kind: "paragraph" })
+    : direction.text(quote.textLang, { kind: "paragraph" }).style
+  const creditDirection = readerCard
+    ? explicitDirectionStyle("ltr")
+    : adminDirection
   const cardLanguage = readerCard
     ? verseLang
     : englishPassage
@@ -455,7 +458,7 @@ function QuoteCard({
               isWatchCard
                 ? [styles.passageVerse, verseTypography(typography)]
                 : [styles.authoredVerse, typography.body],
-              passageDirection,
+              verseParagraph,
             ]}
             numberOfLines={isWatchCard ? regions.verseLines : undefined}
           >
