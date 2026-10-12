@@ -375,7 +375,7 @@ export async function startPrecomputedPublicExperiment(
     input.authority === "live_verified" &&
     (!candidate ||
       !declaredPolicy ||
-      saved?.contractVersion !== "precomputed-live-evidence-v1" ||
+      saved?.contractVersion !== "precomputed-live-evidence-v2" ||
       saved.evidenceDigest !== liveEvidenceDigest(saved))
   )
     throw new PrecomputedPublicControlError("readiness_unavailable", [

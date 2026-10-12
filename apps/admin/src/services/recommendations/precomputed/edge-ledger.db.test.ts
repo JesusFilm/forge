@@ -7,6 +7,7 @@ import { currentAdminMigrationSql } from "../current-schema.test-fixture"
 import { submitDurablePrecomputedRecommendation } from "./durable-build"
 import { purgeExpiredPrecomputedGenerations } from "./generation-retention"
 import { loadPrecomputedStorageCapacityReport } from "./storage-capacity"
+import { loadQualifiedManualEdgeRecovery } from "./edge-ledger"
 
 const digest = (value: unknown) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex")
@@ -980,6 +981,253 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           where: { generationId: base.generationId, sourceVideoId },
         }),
       ).toBe(2)
+    })
+    it("qualifies only the exact acknowledged unknown after a known two-member replacement is applied and closed", async () => {
+      const recoveryGenerationId = "subscription-astra-budget2-20261008-v4"
+      const originalCallId = "8ab8a620-1608-4115-812e-200bb2fb4b6d"
+      const originalAttemptId = "6ef8681b-1607-4ae9-b0b1-c28c41225d6b"
+      const replacementCallId = randomUUID()
+      const replacementAttemptId = randomUUID()
+      const recoveredSources = [
+        "cmokmj8ka0njkqsccfvhbto3g",
+        "cmokmjc390nk2qscc79tyun6g",
+      ]
+      await prisma.recommendationPrecomputedGeneration.create({
+        data: {
+          id: recoveryGenerationId,
+          modelId: "gpt-6-astra",
+          promptVersion: "recovery-fixture",
+          inputDigest:
+            "36d168040f404b12e12be8d4ecdf8b75c102fe459bcefb22753f434fe29443b9",
+          sourceSetDigest: digest(recoveredSources),
+          inputCutoff: new Date(),
+          expectedSourceCount: 2,
+          protocolVersion: 4,
+          executionBackend: "codex_chatgpt_subscription",
+        },
+      })
+      for (const sourceVideoId of recoveredSources) {
+        await prisma.video.create({
+          data: {
+            id: sourceVideoId,
+            coreId: `core-${sourceVideoId}`,
+            slug: sourceVideoId,
+          },
+        })
+        await prisma.recommendationPrecomputedBuildSource.create({
+          data: { generationId: recoveryGenerationId, sourceVideoId },
+        })
+        await prisma.recommendationPrecomputedContentProfile.create({
+          data: {
+            generationId: recoveryGenerationId,
+            cacheKey: digest(["profile", sourceVideoId]),
+            videoId: sourceVideoId,
+            modelId: "gpt-6-astra",
+            backend: "codex_chatgpt_subscription",
+            promptVersion: "recovery-fixture",
+            schemaVersion: "recovery-fixture",
+            metadataDigest: digest(["metadata", sourceVideoId]),
+            chunkDigest: digest(["chunks", sourceVideoId]),
+            selectedTranscriptCount: 0,
+            selectedChunkCount: 0,
+            sourceTextBytes: 0,
+            partDigests: [],
+            coverageDigest: digest(["coverage", sourceVideoId]),
+            kind: "metadata_only",
+            state: "ready",
+            terminalAt: new Date(),
+          },
+        })
+      }
+      for (const [attemptId, endedAt] of [
+        [originalAttemptId, new Date(Date.now() - 30_000)],
+        [replacementAttemptId, null],
+      ] as const)
+        await prisma.recommendationPrecomputedExecutionAttempt.create({
+          data: {
+            generationId: recoveryGenerationId,
+            attemptId,
+            invocation: "start",
+            accountRef: "edge-account-123",
+            backend: "codex_chatgpt_subscription",
+            billingBasis: "included_subscription",
+            authMethod: "chatgpt",
+            modelId: "gpt-6-astra",
+            identityObservedAt: new Date(),
+            allowanceObservedAt: new Date(),
+            weeklyRemainingPercent: 50,
+            fiveHourKind: "limited",
+            fiveHourRemainingPercent: 50,
+            startedAt: new Date(Date.now() - 60_000),
+            endedAt,
+            endReason: endedAt ? "paused" : null,
+          },
+        })
+      const candidatesFor = (sourceVideoId: string) =>
+        Array.from({ length: 4 }, (_, poolRank) => ({
+          poolRank,
+          targetVideoId: `target-${sourceVideoId}-${poolRank}`,
+          targetProfileKey: digest([sourceVideoId, poolRank]),
+        }))
+      const members = recoveredSources.map((sourceVideoId) => {
+        const candidates = candidatesFor(sourceVideoId)
+        return {
+          sourceVideoId,
+          leaseToken: randomUUID(),
+          checkpointRevision: 1,
+          pageIndex: 0,
+          sourceProfileKey: digest(["profile", sourceVideoId]),
+          candidates,
+          candidatePageDigest: digest([
+            sourceVideoId,
+            0,
+            candidates.map((item) => [
+              item.poolRank,
+              item.targetVideoId,
+              item.targetProfileKey,
+            ]),
+          ]),
+          sourceCandidateCount: 4,
+          sourceCandidateDigest: digest(["source-candidates", sourceVideoId]),
+          historicalRefDigest: digest(["history", sourceVideoId]),
+          applicationState: "pending",
+        }
+      })
+      const call = {
+        generationId: recoveryGenerationId,
+        modelId: "gpt-6-astra",
+        backend: "codex_chatgpt_subscription",
+        promptVersion: "recovery-fixture",
+        schemaVersion: "recovery-fixture",
+        membershipDigest:
+          "ec3d4b7ffdfad5bd1ef03d68a5577df2aa6b14969191e9de53b9a0ac8d983b72",
+        selectedCorpusDigest: digest("selected-corpus"),
+        candidatePoolDigest:
+          "0780cfd0199c04f88076afcd7869140b56bca02b3253dd5d3c21cd0de4a8797a",
+        captureRefDigest:
+          "8edf8cce9a1ed5abf1ad847c47dd7f3389a9d1e431f8690ad9b3f0450b3e1cc8",
+        spanOfferDigest: digest([]),
+        spanOffers: [],
+        requestDigest: digest("request"),
+        startedAt: new Date(),
+        status: "pending",
+      }
+      await prisma.recommendationPrecomputedEdgeBatchCall.create({
+        data: {
+          ...call,
+          callId: originalCallId,
+          attemptId: originalAttemptId,
+          inputDigest:
+            "d87ad22523187a6e2bdedbb6a948057fddaa9d18f7a1efe8bb3a3224587a8824",
+        },
+      })
+      await prisma.recommendationPrecomputedEdgeBatchMember.createMany({
+        data: members.map((member) => ({
+          ...member,
+          generationId: recoveryGenerationId,
+          callId: originalCallId,
+        })),
+      })
+      expect(
+        await loadQualifiedManualEdgeRecovery(prisma, recoveryGenerationId),
+      ).toMatchObject({ qualifiedAcknowledgedUnknownCount: 0 })
+      await prisma.recommendationPrecomputedEdgeBatchCall.update({
+        where: {
+          generationId_callId: {
+            generationId: recoveryGenerationId,
+            callId: originalCallId,
+          },
+        },
+        data: {
+          recoveryReplacementCallId: replacementCallId,
+          recoveryOperatorAccountRef: "edge-account-123",
+          recoveryAcknowledgedAt: new Date(),
+          recoveryOldProcessExitedAttested: true,
+        },
+      })
+      await prisma.recommendationPrecomputedEdgeBatchMember.updateMany({
+        where: { generationId: recoveryGenerationId, callId: originalCallId },
+        data: { applicationState: "acknowledged_unknown" },
+      })
+      await prisma.recommendationPrecomputedEdgeBatchCall.create({
+        data: {
+          ...call,
+          callId: replacementCallId,
+          attemptId: replacementAttemptId,
+          inputDigest: digest("repaired-envelope"),
+        },
+      })
+      await prisma.recommendationPrecomputedEdgeBatchMember.createMany({
+        data: members.map((member) => ({
+          ...member,
+          generationId: recoveryGenerationId,
+          callId: replacementCallId,
+          leaseToken: randomUUID(),
+        })),
+      })
+      expect(
+        await loadQualifiedManualEdgeRecovery(prisma, recoveryGenerationId),
+      ).toMatchObject({ qualifiedAcknowledgedUnknownCount: 0 })
+      await prisma.recommendationPrecomputedEdgeBatchCall.update({
+        where: {
+          generationId_callId: {
+            generationId: recoveryGenerationId,
+            callId: replacementCallId,
+          },
+        },
+        data: {
+          status: "succeeded",
+          outputDigest: digest("validated-result"),
+          inputTokens: 33_110,
+          outputTokens: 1_496,
+          finishedAt: new Date(),
+          receiptDigest: digest("validated-receipt"),
+        },
+      })
+      await prisma.recommendationPrecomputedEdgeBatchMember.updateMany({
+        where: {
+          generationId: recoveryGenerationId,
+          callId: replacementCallId,
+        },
+        data: { applicationState: "applied_edges", appliedRevision: 2 },
+      })
+      await prisma.recommendationPrecomputedExecutionAttempt.update({
+        where: {
+          generationId_attemptId: {
+            generationId: recoveryGenerationId,
+            attemptId: replacementAttemptId,
+          },
+        },
+        data: { endedAt: new Date(), endReason: "completed" },
+      })
+      expect(
+        await loadQualifiedManualEdgeRecovery(prisma, recoveryGenerationId),
+      ).toMatchObject({
+        qualifiedAcknowledgedUnknownCount: 1,
+        qualifiedAcknowledgmentDigest: expect.stringMatching(/^[a-f0-9]{64}$/),
+      })
+      expect(
+        await prisma.recommendationPrecomputedEdgeBatchCall.count({
+          where: {
+            generationId: recoveryGenerationId,
+            OR: [{ inputTokens: null }, { outputTokens: null }],
+          },
+        }),
+      ).toBe(1)
+      expect(
+        await prisma.recommendationPrecomputedEdgeBatchCall.findUniqueOrThrow({
+          where: {
+            generationId_callId: {
+              generationId: recoveryGenerationId,
+              callId: originalCallId,
+            },
+          },
+        }),
+      ).toMatchObject({
+        status: "pending",
+        inputTokens: null,
+        outputTokens: null,
+      })
     })
     it("records known failed invocation usage even when its output envelope is contradictory", async () => {
       const { base, start } = await reserveOne("edge-failed-envelope")

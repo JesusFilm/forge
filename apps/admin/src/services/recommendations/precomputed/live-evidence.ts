@@ -4,6 +4,7 @@ import type { CtrPolicySettings } from "./ctr-policy"
 import { loadPrecomputedFullCatalogSourceSet } from "./catalog"
 import { precomputedCtrPolicyDigest } from "./ctr-report"
 import { hasQualifiedGaCapture } from "./ga-capture-import"
+import { loadQualifiedManualEdgeRecovery } from "./edge-ledger"
 import type { PrecomputedBaselineReport } from "./incumbent-baseline"
 import {
   evaluatePrecomputedLiveFacts,
@@ -24,7 +25,7 @@ export type LivePolicyAgreement = {
 }
 
 export type LiveEvidenceSnapshot = {
-  contractVersion: "precomputed-live-evidence-v1"
+  contractVersion: "precomputed-live-evidence-v2"
   baselineId: string | null
   baselineReportDigest: string | null
   launchCapacityReceiptId: string | null
@@ -36,6 +37,8 @@ export type LiveEvidenceSnapshot = {
   historicalQualificationDigest: string | null
   modelCallCount: number
   unknownModelCostCount: number
+  qualifiedAcknowledgedUnknownCount: number
+  qualifiedAcknowledgmentDigest: string | null
   policyDigest: string
   policyAuthority: "prelaunch_agreed"
   webHealthDigest: string | null
@@ -143,6 +146,13 @@ export async function loadLiveEvidence(
     generation?.protocolVersion === 4
       ? unknownProfileCalls + unknownEdgeCalls
       : unknownModelCosts
+  const qualifiedRecovery =
+    generation?.protocolVersion === 4
+      ? await loadQualifiedManualEdgeRecovery(db, input.generationId)
+      : {
+          qualifiedAcknowledgedUnknownCount: 0,
+          qualifiedAcknowledgmentDigest: null,
+        }
   const catalog = generation
     ? await loadPrecomputedFullCatalogSourceSet(
         db,
@@ -256,6 +266,7 @@ export async function loadLiveEvidence(
           catalogSourceSetDigest: catalog?.sourceSetDigest ?? null,
           modelCallCount: actualModelCalls,
           unknownModelCostCount: unknownUsageCalls,
+          ...qualifiedRecovery,
         }
       : null,
     capacity:
@@ -302,7 +313,7 @@ export async function loadLiveEvidence(
           .digest("hex")
       : null
   const snapshot: LiveEvidenceSnapshot = {
-    contractVersion: "precomputed-live-evidence-v1",
+    contractVersion: "precomputed-live-evidence-v2",
     baselineId: baseline?.id ?? null,
     baselineReportDigest: baseline?.finalReportDigest ?? null,
     launchCapacityReceiptId: capacity?.id ?? null,
@@ -315,6 +326,7 @@ export async function loadLiveEvidence(
       generation?.historicalQualificationDigest ?? null,
     modelCallCount: actualModelCalls,
     unknownModelCostCount: unknownUsageCalls,
+    ...qualifiedRecovery,
     policyDigest,
     policyAuthority: "prelaunch_agreed",
     webHealthDigest,

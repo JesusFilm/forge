@@ -225,6 +225,7 @@ const actionSchema = z.discriminatedUnion("action", [
 type Action = z.infer<typeof actionSchema>
 
 type Tx = Prisma.TransactionClient
+type ReadDb = PrismaClient | Prisma.TransactionClient
 type Generation = {
   id: string
   status: string
@@ -488,6 +489,174 @@ async function replacementReconciled(
         ["applied_edges", "applied_empty"].includes(item.applicationState),
     ),
   )
+}
+
+/** The single owner-acknowledged reservation stays pending with unknown usage.
+ * This read-only proof qualifies that exception only after the exact replacement
+ * has a known receipt and both frozen members have been applied. */
+export async function loadQualifiedManualEdgeRecovery(
+  db: ReadDb,
+  generationId: string,
+): Promise<{
+  qualifiedAcknowledgedUnknownCount: 0 | 1
+  qualifiedAcknowledgmentDigest: string | null
+}> {
+  const unqualified = {
+    qualifiedAcknowledgedUnknownCount: 0 as const,
+    qualifiedAcknowledgmentDigest: null,
+  }
+  if (generationId !== RECOVERY_GENERATION_ID) return unqualified
+  const generation = await db.recommendationPrecomputedGeneration.findUnique({
+    where: { id: generationId },
+    select: { inputDigest: true },
+  })
+  if (generation?.inputDigest !== RECOVERY_GENERATION_INPUT_DIGEST)
+    return unqualified
+  const original = await db.recommendationPrecomputedEdgeBatchCall.findUnique({
+    where: {
+      generationId_callId: { generationId, callId: RECOVERY_ORIGINAL_CALL_ID },
+    },
+    include: {
+      members: { orderBy: { sourceVideoId: "asc" } },
+      executionAttempt: { select: { endedAt: true } },
+    },
+  })
+  if (
+    !original ||
+    original.attemptId !== RECOVERY_OLD_ATTEMPT_ID ||
+    original.modelId !== "gpt-6-astra" ||
+    original.backend !== "codex_chatgpt_subscription" ||
+    original.status !== "pending" ||
+    original.inputDigest !== RECOVERY_INPUT_DIGEST ||
+    original.membershipDigest !== RECOVERY_MEMBERSHIP_DIGEST ||
+    original.candidatePoolDigest !== RECOVERY_CANDIDATE_POOL_DIGEST ||
+    original.captureRefDigest !== RECOVERY_CAPTURE_REF_DIGEST ||
+    original.inputTokens !== null ||
+    original.outputTokens !== null ||
+    original.cachedInputTokens !== null ||
+    original.outputDigest !== null ||
+    original.errorCode !== null ||
+    original.finishedAt !== null ||
+    original.receiptDigest !== null ||
+    !original.executionAttempt.endedAt ||
+    !original.recoveryAcknowledgedAt ||
+    !original.recoveryOperatorAccountRef ||
+    original.recoveryOldProcessExitedAttested !== true ||
+    !original.recoveryReplacementCallId ||
+    original.members.length !== RECOVERY_SOURCE_IDS.length ||
+    original.members.some((member, index) => {
+      const candidates = z.array(candidate).safeParse(member.candidates)
+      return (
+        member.sourceVideoId !== RECOVERY_SOURCE_IDS[index] ||
+        member.pageIndex !== 0 ||
+        member.applicationState !== "acknowledged_unknown" ||
+        member.appliedRevision !== null ||
+        !candidates.success ||
+        candidates.data.length !== 4 ||
+        candidates.data.some((item, rank) => item.poolRank !== rank) ||
+        member.candidatePageDigest !==
+          hash([
+            member.sourceVideoId,
+            member.pageIndex,
+            candidates.data.map((item) => [
+              item.poolRank,
+              item.targetVideoId,
+              item.targetProfileKey,
+            ]),
+          ])
+      )
+    })
+  )
+    return unqualified
+  const replacement =
+    await db.recommendationPrecomputedEdgeBatchCall.findUnique({
+      where: {
+        generationId_callId: {
+          generationId,
+          callId: original.recoveryReplacementCallId,
+        },
+      },
+      include: {
+        members: { orderBy: { sourceVideoId: "asc" } },
+        executionAttempt: {
+          select: {
+            endedAt: true,
+            accountRef: true,
+            billingBasis: true,
+            backend: true,
+            modelId: true,
+            authMethod: true,
+          },
+        },
+      },
+    })
+  if (
+    !replacement ||
+    replacement.callId === original.callId ||
+    replacement.attemptId === original.attemptId ||
+    replacement.status !== "succeeded" ||
+    replacement.modelId !== "gpt-6-astra" ||
+    replacement.backend !== "codex_chatgpt_subscription" ||
+    !Number.isSafeInteger(replacement.inputTokens) ||
+    replacement.inputTokens === null ||
+    replacement.inputTokens <= 0 ||
+    !Number.isSafeInteger(replacement.outputTokens) ||
+    replacement.outputTokens === null ||
+    replacement.outputTokens < 0 ||
+    !digest.safeParse(replacement.receiptDigest).success ||
+    !digest.safeParse(replacement.outputDigest).success ||
+    !replacement.finishedAt ||
+    !replacement.executionAttempt.endedAt ||
+    replacement.executionAttempt.accountRef !==
+      original.recoveryOperatorAccountRef ||
+    replacement.executionAttempt.billingBasis !== "included_subscription" ||
+    replacement.executionAttempt.backend !== "codex_chatgpt_subscription" ||
+    replacement.executionAttempt.modelId !== "gpt-6-astra" ||
+    replacement.executionAttempt.authMethod !== "chatgpt" ||
+    replacement.selectedCorpusDigest !== original.selectedCorpusDigest ||
+    replacement.candidatePoolDigest !== original.candidatePoolDigest ||
+    replacement.captureRefDigest !== original.captureRefDigest ||
+    replacement.members.length !== original.members.length ||
+    replacement.members.some((member, index) => {
+      const frozen = original.members[index]!
+      return (
+        member.sourceVideoId !== frozen.sourceVideoId ||
+        member.pageIndex !== frozen.pageIndex ||
+        member.sourceProfileKey !== frozen.sourceProfileKey ||
+        member.sourceCandidateCount !== frozen.sourceCandidateCount ||
+        member.sourceCandidateDigest !== frozen.sourceCandidateDigest ||
+        member.historicalRefDigest !== frozen.historicalRefDigest ||
+        member.candidatePageDigest !== frozen.candidatePageDigest ||
+        hash(member.candidates) !== hash(frozen.candidates) ||
+        !["applied_edges", "applied_empty"].includes(member.applicationState) ||
+        member.appliedRevision === null
+      )
+    })
+  )
+    return unqualified
+  return {
+    qualifiedAcknowledgedUnknownCount: 1,
+    qualifiedAcknowledgmentDigest: hash([
+      "qualified-manual-edge-recovery-v1",
+      generationId,
+      original.callId,
+      original.inputDigest,
+      original.membershipDigest,
+      original.recoveryAcknowledgedAt.toISOString(),
+      original.recoveryOperatorAccountRef,
+      replacement.callId,
+      replacement.attemptId,
+      replacement.receiptDigest,
+      replacement.inputTokens,
+      replacement.outputTokens,
+      replacement.executionAttempt.endedAt.toISOString(),
+      replacement.members.map((member) => [
+        member.sourceVideoId,
+        member.applicationState,
+        member.appliedRevision,
+      ]),
+    ]),
+  }
 }
 
 export async function submitEdgeAction(

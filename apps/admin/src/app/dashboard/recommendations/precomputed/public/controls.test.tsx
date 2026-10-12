@@ -52,6 +52,13 @@ function readiness(fixture: boolean): Readiness {
         completedAt: new Date("2026-10-06T00:00:00.000Z"),
       },
     ],
+    generationModelUsage: {
+      generationId: "generation-1",
+      modelCallCount: 1,
+      unknownModelUsageCount: 0,
+      qualifiedAcknowledgedUnknownCount: 0,
+      qualifiedAcknowledgmentDigest: null,
+    },
     experiments: [],
     authoritativeCatalogCoverage: null,
     fixtureRehearsalEnvironment: fixture,

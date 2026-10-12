@@ -17,6 +17,7 @@ import { loadPrecomputedFullCatalogSourceSet } from "./catalog"
 import type { CtrPolicySettings } from "./ctr-policy"
 import { hasSealedGaCapture } from "./ga-capture-artifact"
 import { hasQualifiedGaCapture } from "./ga-capture-import"
+import { loadQualifiedManualEdgeRecovery } from "./edge-ledger"
 
 const experimentSelect = {
   id: true,
@@ -190,6 +191,13 @@ export async function loadPrecomputedPublicReadiness(
     latestGeneration?.protocolVersion === 4
       ? unknownProfileCalls + unknownEdgeCalls
       : unknownModelCostCount
+  const qualifiedRecovery =
+    latestGeneration?.protocolVersion === 4
+      ? await loadQualifiedManualEdgeRecovery(prisma, latestGeneration.id)
+      : {
+          qualifiedAcknowledgedUnknownCount: 0,
+          qualifiedAcknowledgmentDigest: null,
+        }
   const agreedSettings = livePrepared?.ctrPolicy?.settings as
     | CtrPolicySettings
     | undefined
@@ -258,6 +266,7 @@ export async function loadPrecomputedPublicReadiness(
           catalogSourceSetDigest: fullCatalog?.sourceSetDigest ?? null,
           modelCallCount: actualModelCallCount,
           unknownModelCostCount: unknownUsageCount,
+          ...qualifiedRecovery,
         }
       : null,
     capacity: latestCapacity
@@ -321,6 +330,14 @@ export async function loadPrecomputedPublicReadiness(
         }
       : null,
     generations,
+    generationModelUsage: latestGeneration
+      ? {
+          generationId: latestGeneration.id,
+          modelCallCount: actualModelCallCount,
+          unknownModelUsageCount: unknownUsageCount,
+          ...qualifiedRecovery,
+        }
+      : null,
     authoritativeCatalogCoverage: latestGeneration
       ? {
           generationId: latestGeneration.id,

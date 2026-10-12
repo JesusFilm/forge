@@ -150,11 +150,21 @@ describe("stored live launch evidence", () => {
     })
     expect(result.reasons).toEqual([])
     expect(result.snapshot).toMatchObject({
+      contractVersion: "precomputed-live-evidence-v2",
       baselineReportDigest: digest("b"),
       launchCapacityReceiptDigest: digest("d"),
       policyAuthority: "prelaunch_agreed",
+      qualifiedAcknowledgedUnknownCount: 0,
+      qualifiedAcknowledgmentDigest: null,
     })
     expect(liveEvidenceDigest(result.snapshot)).toMatch(/^[a-f0-9]{64}$/)
+    expect(
+      liveEvidenceDigest({
+        ...result.snapshot,
+        qualifiedAcknowledgedUnknownCount: 1,
+        qualifiedAcknowledgmentDigest: digest("f"),
+      }),
+    ).not.toBe(liveEvidenceDigest(result.snapshot))
     expect(
       liveEvidenceDigest(
         Object.fromEntries(

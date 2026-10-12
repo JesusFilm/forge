@@ -45,6 +45,8 @@ export type PrecomputedLiveFacts = {
     catalogSourceSetDigest: string | null
     modelCallCount: number
     unknownModelCostCount: number
+    qualifiedAcknowledgedUnknownCount?: number
+    qualifiedAcknowledgmentDigest?: string | null
   } | null
   capacity: {
     status: string
@@ -136,7 +138,21 @@ export function evaluatePrecomputedLiveFacts(
     generation.modelCallCount <= 0
   )
     reasons.push("actual_catalog_build_unverified")
-  if (generation && generation.unknownModelCostCount > 0)
+  const qualifiedUnknown = generation?.qualifiedAcknowledgedUnknownCount ?? 0
+  const validQualification =
+    Number.isSafeInteger(qualifiedUnknown) &&
+    qualifiedUnknown >= 0 &&
+    qualifiedUnknown <= 1 &&
+    (qualifiedUnknown === 0
+      ? generation?.qualifiedAcknowledgmentDigest == null
+      : generation?.protocolVersion === 4 &&
+        HEX_DIGEST.test(generation.qualifiedAcknowledgmentDigest ?? ""))
+  if (
+    generation &&
+    (!validQualification ||
+      !Number.isSafeInteger(generation.unknownModelCostCount) ||
+      generation.unknownModelCostCount !== qualifiedUnknown)
+  )
     reasons.push(
       generation.protocolVersion === 4
         ? "model_usage_unknown"

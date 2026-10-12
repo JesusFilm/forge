@@ -86,6 +86,43 @@ describe("contingent public Watch live readiness", () => {
     ).toEqual([])
   })
 
+  it("qualifies only one proven acknowledged unknown call without hiding its usage", () => {
+    const facts = verified()
+    const generation = {
+      ...facts.generation,
+      protocolVersion: 4,
+      gaCaptureSealed: true,
+      unknownModelCostCount: 1,
+      qualifiedAcknowledgedUnknownCount: 1,
+      qualifiedAcknowledgmentDigest: "f".repeat(64),
+    }
+    expect(evaluatePrecomputedLiveFacts({ ...facts, generation })).toEqual([])
+    expect(
+      evaluatePrecomputedLiveFacts({
+        ...facts,
+        generation: { ...generation, unknownModelCostCount: 2 },
+      }),
+    ).toContain("model_usage_unknown")
+    expect(
+      evaluatePrecomputedLiveFacts({
+        ...facts,
+        generation: { ...generation, qualifiedAcknowledgmentDigest: null },
+      }),
+    ).toContain("model_usage_unknown")
+    expect(
+      evaluatePrecomputedLiveFacts({
+        ...facts,
+        generation: { ...generation, qualifiedAcknowledgedUnknownCount: 2 },
+      }),
+    ).toContain("model_usage_unknown")
+    expect(
+      evaluatePrecomputedLiveFacts({
+        ...facts,
+        generation: { ...generation, protocolVersion: 3 },
+      }),
+    ).toContain("model_cost_unknown")
+  })
+
   it("names fixture, Web loss, unknown model cost, and stale capacity independently", () => {
     const facts = verified()
     expect(
