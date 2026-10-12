@@ -11,9 +11,9 @@ const path = require("path")
 const APP_ROOT = path.resolve(__dirname, "../../..")
 
 const PINNED_VERSIONS = {
-  expo: "57.0.27",
+  expo: "57.0.28",
   "expo-notifications": "57.0.22",
-  "expo-updates": "57.0.25",
+  "expo-updates": "57.0.26",
 }
 
 const RECHECK =
