@@ -13,6 +13,74 @@ describes the private reporting contract and limits.
 
 ## Current checkpoint — October 12
 
+As of 03:23 UTC, **all three representative local pilots have passed**. Generation
+`subscription-astra-budget2-20261008-v4` retains **29 ready profiles and 20
+provisional connections across six source videos**, with **zero finalized
+sources**. The 1,031-video catalog remains incomplete and public A/B is off.
+All model and operator bridge processes are stopped. The durable local database,
+external GA artifact, and verified backups are retained.
+
+The third pilot ran on `352fc1390` from 02:57:30.957 to 03:17:13.983 UTC. Its ten
+complete-transcript profiles cover 292 selected chunks. Thirty-four map calls
+and seven reduce calls used 701,980 input / 20,304 output tokens; one edge call
+used 26,323 input / 1,101 output tokens and accepted seven of eight candidate
+connections for JESUS and 5.3 Are Christians Out of Touch?. Four choices use
+transcript evidence and three use metadata evidence. All 42 calls succeeded;
+the attempt paused at its pilot boundary with zero GA requests and no source
+finalizations. Known v4 usage is **1,285,240 input / 36,170 output tokens across
+67 successful physical calls**. The original unknown call remains separately
+recorded and is not counted as zero.
+
+The third pilot's observed physical PG growth was **335,872 bytes (328 KiB)**,
+bringing the three pilot deltas to **630,784 bytes (616 KiB)**. The sealed
+**16,674,551-byte GA snapshot stays outside PostgreSQL**. These measurements do
+not establish a full-catalog database bound. The post-stage-three archive is
+763,973 bytes, SHA-256
+`89838dcb74e5e0ccee5257b53d87ae34a4fd88e4b70ab19de9f1e5d50d7e52c1`.
+Its independent restore reproduced all **30 control tables / 12,443 rows** with
+exact per-table signatures; the source was unchanged and the scratch container
+was removed. Evidence: `pilot-stage3-result-verification.json` and
+`stage3-backup-restore-verification.json` in the protected operator directory.
+
+The efficiency hold below was resolved by `skills.include_instructions=false`
+in `352fc1390`, replacing the diagnostic tiny skill budget. A real saved-content
+benchmark passed through the actual edge validator: seven valid choices from
+eight candidate pairs, **23,964 input / 1,113 output tokens**, no CLI errors or
+tool events. This is **27.62% less input** than the earlier 33,110-input-token
+call on the same candidate sample, not a full-catalog forecast. Exact Astra,
+complete input evidence, current reasoning effort, manual-only invocation and
+the 25% admission reserve remain unchanged. The benchmark made zero generation
+writes or GA requests; its usage is separate from v4. The earlier unknown probe
+remains unknown, and the second rejected probe's known usage remains recorded.
+Evidence: `compact-edge-benchmark-report.json`. Larger page sizes were examined
+read-only and are not implemented.
+
+A production-path audit found **no supported complete-generation transfer from
+local Admin to production Admin**. Current imports transfer only a sealed GA
+capture before model work, and their verified origin must already exist in the
+same target Admin. Consequently, a full local build would not be deployable
+through the supported reader path. The full production build must target the
+deployed Admin after separate normal PR-to-main merge/deployment approval, with
+that Admin's verified GA origin and private object storage prepared first.
+Production availability and that origin are not yet verified. Raw database
+restoration is not a release mechanism.
+
+Latest CI run `38197790387` on `352fc1390` found two native test model fixtures
+that still parsed legacy edge JSON. The test-only decoder repair is integrated
+as `8500c54bc`; both regressions were reproduced and all **34 native integration
+tests now pass** without changing runtime behavior or assertions. A fresh CI run
+is required. Runtime validation also includes 129 focused tests, all 3,548
+Mastra tests (45 existing skips), and 54 adapter tests after the final skill flag.
+
+The local UI preview is owner-accepted. Remaining launch work is the complete
+production catalog and measured retained capacity, a verified seven-day human
+baseline, independent tracking-loss evidence, agreed numeric policy thresholds,
+and separate manual activation. The one-calendar-month stop is approved; no
+merge, production deployment, full build or public launch is authorized by this
+checkpoint. Historical checkpoints below retain their original observations.
+
+## Earlier October 12 checkpoint — before the final pilot
+
 All required CI jobs passed on `90f964f60` in run `38192366116`. The later
 documentation-only run `38194336323` exposed a timing-sensitive native capacity
 test (`stale_measurement`); the single-timestamp fixture repair is integrated

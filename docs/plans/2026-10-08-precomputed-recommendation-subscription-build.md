@@ -255,7 +255,7 @@ checks. Full-build call count, duration, and token projections must use the
 observed subscription runner; earlier API-price illustrations are not measured
 subscription consumption or an established full-catalog token bound.
 
-## October 12: full-run efficiency hold
+## October 12: full-run efficiency hold (historical)
 
 After the second pilot, a read-only pass through the actual frozen catalog found
 936 planned map parts, 172 metadata-only sources, and 4,128,488 bytes of complete
@@ -298,4 +298,51 @@ usage of 11,816 input / 19 output tokens and CLI exit zero, but a 221-byte error
 item preceded the answer. It was correctly rejected; the error text was not
 retained. No catalog or GA writes occurred. The original unknown probe stays
 unknown; the second probe's known usage is accounted separately from v4. Further
-model work remains held pending zero-inference identification of the error.
+model work remained held pending zero-inference identification of the error.
+
+## October 12: efficiency verified and all local pilots complete
+
+The final adapter uses `skills.include_instructions=false` instead of the tiny
+skill budget, with strict invocation config, memories disabled, no local tools,
+and exact `gpt-6-astra`. Explicit CLI errors still fail closed. A real saved-input
+edge benchmark on `352fc1390` accepted seven of eight candidate pairs through
+the production validator, using 23,964 input / 1,113 output tokens. The earlier
+same-sample call used 33,110 input / 1,496 output tokens: a measured 27.62% input
+reduction in this one sample. No generation records or GA queries were changed.
+Neither this sample nor the account-wide allowance meter establishes a full-build
+cost, time, or subscription-percentage forecast. Both earlier probe receipts
+remain intact, including the first probe's unknown usage.
+
+The third manual pilot then completed ten full-transcript profiles spanning 292
+selected chunks. Thirty-four map and seven reduce calls used 701,980 input /
+20,304 output tokens. One shared edge call used 26,323 input / 1,101 output
+tokens, producing seven provisional connections for JESUS and 5.3 Are Christians
+Out of Touch?. The attempt ran for 19 minutes 43 seconds, then paused at its
+pilot boundary. All 42 calls succeeded; zero sources were finalized and zero
+new GA requests occurred. Fresh identity, allowance, capacity, and the 25% reserve
+were checked before dispatch. All operator/model processes are stopped.
+
+The three pilots now retain **29 ready profiles and 20 provisional connections**
+across six sources. Known v4 usage totals 1,285,240 input / 36,170 output tokens
+over 67 successful calls, separately from the original unknown call and the
+standalone adapter probes. Stage three grew local PG by 328 KiB; all three pilot
+deltas total 616 KiB. The 16,674,551-byte GA artifact remains external. This is
+not a full-catalog storage bound. The new backup independently restored all 30
+control tables / 12,443 rows with exact signatures and no source changes.
+
+The 1,031-video catalog is not complete and public A/B remains off. A read-only
+deployment audit confirmed there is no supported whole-generation local-to-prod
+import. The manual CLI writes to its configured Admin; production Watch reads
+that same Admin's completed generations. Its sealed-GA import is only valid
+before model work and requires a verified origin already in the target Admin.
+Therefore, the next full catalog run must target deployed Admin after separately
+approved normal PR-to-main deployment and target GA-origin verification. A full
+local run would require a second build or a newly designed transfer feature;
+raw database restoration is not a supported deployment path. See
+[the current operator runbook](../operations/precomputed-catalog-build.md).
+
+The latest native CI fixture repair decodes compact prompts before the existing
+model assertions; all 34 native integration tests pass. Full CI is still required
+on the final integration head. Complete production catalog/capacity proof, live
+human baseline and tracking verification, numeric thresholds, and manual launch
+remain separate outstanding acceptance gates.
