@@ -64,6 +64,17 @@ configuration are present; those presence checks are not operational proof.
 Canonical Watch is `https://www.jesusfilm.org/watch`; the bare hostname redirects
 there. The strict measurement URL includes the HTTPS `/watch` prefix.
 
+First successor CI run `38299201591` on `c4db6430c` exposed the required Expo
+compatibility gate: eight SDK 57 mobile patch versions were behind the current
+Expo compatibility matrix. These packages were unchanged from current main.
+The root updated only those direct mobile declarations and their lockfile
+resolutions; Expo's real compatibility check now passes. Full-suite teardown then exposed leaked mounted splash/autostart test trees.
+Test-owned renderers now unmount in `act` after each case, releasing pending
+timers/listeners without changing production code. Both focused cleanup suites pass 23 cases; the full mobile suite exits cleanly
+with 490 suites / 8,824 tests passed and four existing skips. Fresh final-head CI
+must pass before release. The roadmap advisory passes on
+this successor head after the current-main merge.
+
 The catalog repair adds explicit local `precomputed:ga:capture-origin` execution.
 It seals and verifies the target GA artifact, then returns an incomplete origin
 before any model construction, source claim, source completion or activation.
