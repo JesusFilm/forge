@@ -32,8 +32,10 @@ export function HistoricalQualificationDetails({
           Unavailable historical prefix{" "}
           {sourceAvailability.unavailablePrefixStart} to{" "}
           {sourceAvailability.unavailablePrefixEnd} remains unknown. GA reported{" "}
-          {sourceAvailability.truncationType} on{" "}
-          {sourceAvailability.truncationDate}. Observed event months{" "}
+          {sourceAvailability.truncationType === "DATA_TRUNCATION_TYPE_PROPERTY"
+            ? `${sourceAvailability.truncationType} on ${sourceAvailability.truncationDate}`
+            : `${sourceAvailability.truncationType} for ${sourceAvailability.dataTruncationDateRanges[0].startDate} to ${sourceAvailability.dataTruncationDateRanges[0].endDate}`}
+          . Observed event months{" "}
           {sourceAvailability.observedFirstMonth ?? "unknown"} to{" "}
           {sourceAvailability.observedLastMonth ?? "unknown"}.
         </p>

@@ -264,208 +264,239 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       })
     })
 
-    it("reviews a completed usable GA navigation snapshot while retaining its unknown historical prefix", async () => {
-      const generation = `ga-navigation-${suffix}`
-      const cutoff = new Date(Date.now() + 5_000).toISOString()
-      createdGenerationIds.push(generation)
-      await submitPrecomputedRecommendation(prisma, {
-        action: "start",
-        generationId: generation,
-        modelId: "gpt-6-astra",
-        promptVersion: "astra-source-history-navigation-v1",
-        inputMode: "historical_analytics",
-        inputDigest: "a".repeat(64),
-        sourceSetDigest,
-        inputCutoff: cutoff,
-        expectedSourceCount: 1,
-      })
-      const history = {
-        provider: "ga_data_api",
-        status: "complete",
-        queryId: "watch-referrer-navigation-v1",
-        rangeStart: "2022-08-06",
-        rangeEnd: "2026-10-03",
-        cutoff,
-        identity: "current_catalog_watch_path",
-        botFiltering: "unknown",
-        measurement: "observed_events",
-        overlap: "unknown",
-        qualification: {
-          evidenceKind: "referrer_navigation_v1",
-          sourceResource: "properties/320198532",
-          sourceAvailability: {
-            coverage: "partial_source_history",
-            requestedStart: "2020-01-01",
-            requestedEnd: "2026-10-03",
-            usableStart: "2022-08-06",
-            usableEnd: "2026-10-03",
-            truncationType: "DATA_TRUNCATION_TYPE_PROPERTY",
-            truncationDate: "2022-08-05",
-            unavailablePrefixStart: "2020-01-01",
-            unavailablePrefixEnd: "2022-08-05",
-            observedFirstMonth: "202208",
-            observedLastMonth: "202610",
-          },
-          watchScope: {
-            version: "jesusfilm-watch-v1",
-            hosts: ["jesusfilm.org", "www.jesusfilm.org"],
-            pathRule: "watch-route-and-children",
-            eventName: "videostarts",
-            includedEvents: 10,
-            totalEvents: null,
-            missingUrlEvents: null,
-            malformedUrlEvents: null,
-            excludedHostEvents: null,
-            excludedPathEvents: null,
-          },
-          mediaComponentIdCoverage: {
-            sourceDimension: "customEvent:mediacomponentid",
-            inScopeEvents: 10,
-            withMediaComponentIdEvents: 7,
-            canonicalVideoMappedEvents: null,
-          },
-          engagement: {
-            definitionVersion: "watch-videostarts-v1",
-            botBasis: "unverified",
-            overlapIdentity: "unknown",
-            exposures: "unavailable",
-          },
-          transitions: {
-            status: "unavailable",
-            reason: "missing_session_identity",
-          },
-          navigation: {
-            status: "available",
-            definitionVersion: "watch-referrer-v1",
-            basis: "same_event_page_referrer_to_page_path",
-            interpretation: "navigation_not_playback_sequence",
-            botBasis: "unverified",
-            overlapIdentity: "unknown",
-          },
-          mapping: {
-            basis: "current_catalog_cutoff_fenced",
-            historicalOwnership: "unverified",
-          },
-        },
-        navigationCoverage: {
-          candidateEvents: 10,
-          qualifiedEvents: 3,
-          homeEvents: 1,
-          selfEvents: 1,
-          crossHostEvents: 1,
-          malformedEvents: 1,
-          unmappedEvents: 2,
-          ambiguousEvents: 1,
-        },
-        rowCount: 2,
-        catalogCandidates: 1,
-        inspectedCandidates: 1,
-        unmappedCandidates: 0,
-        mappedRows: 1,
-        unmappedRows: 1,
-        pageCount: 2,
-        queryExecutionCount: 2,
-        queryUsageDigest: "b".repeat(64),
-        resultDigest: "c".repeat(64),
-        unmappedDigest: "d".repeat(64),
-        bytesProcessed: null,
-        costQualification: "unavailable",
-      }
-      await expect(
-        submitPrecomputedRecommendation(prisma, {
-          action: "history",
+    it.each([
+      {
+        coverage: "partial_source_history",
+        requestedStart: "2020-01-01",
+        requestedEnd: "2026-10-03",
+        usableStart: "2022-08-06",
+        usableEnd: "2026-10-03",
+        truncationType: "DATA_TRUNCATION_TYPE_PROPERTY",
+        truncationDate: "2022-08-05",
+        unavailablePrefixStart: "2020-01-01",
+        unavailablePrefixEnd: "2022-08-05",
+        observedFirstMonth: "202208",
+        observedLastMonth: "202610",
+      },
+      {
+        coverage: "partial_source_history",
+        requestedStart: "2022-06-21",
+        requestedEnd: "2026-10-03",
+        usableStart: "2022-08-11",
+        usableEnd: "2026-10-03",
+        truncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+        dataTruncationDateRanges: [
+          { startDate: "2022-06-21", endDate: "2022-08-10" },
+        ],
+        unavailablePrefixStart: "2022-06-21",
+        unavailablePrefixEnd: "2022-08-10",
+        observedFirstMonth: "202208",
+        observedLastMonth: "202610",
+      },
+    ])(
+      "reviews usable GA navigation while retaining $truncationType prefix provenance",
+      async (sourceAvailability) => {
+        const generation = `ga-navigation-${sourceAvailability.truncationType}-${suffix}`
+        const cutoff = new Date(Date.now() + 5_000).toISOString()
+        createdGenerationIds.push(generation)
+        await submitPrecomputedRecommendation(prisma, {
+          action: "start",
           generationId: generation,
-          history: {
-            ...history,
-            navigationCoverage: {
-              ...history.navigationCoverage,
-              candidateEvents: 11,
-            },
-          },
-        }),
-      ).rejects.toMatchObject({ code: "invalid" })
-      await expect(
-        submitPrecomputedRecommendation(prisma, {
-          action: "history",
-          generationId: generation,
-          history: {
-            ...history,
-            qualification: {
-              ...history.qualification,
-              sourceAvailability: {
-                ...history.qualification.sourceAvailability,
-                unavailablePrefixEnd: "2022-08-04",
-              },
-            },
-          },
-        }),
-      ).rejects.toMatchObject({ code: "invalid" })
-      await expect(
-        submitPrecomputedRecommendation(prisma, {
-          action: "history",
-          generationId: generation,
-          history: {
-            ...history,
-            qualification: {
-              ...history.qualification,
-              watchScope: {
-                ...history.qualification.watchScope,
-                totalEvents: 0,
-              },
-            },
-          },
-        }),
-      ).rejects.toMatchObject({ code: "invalid" })
-      await expect(
-        submitPrecomputedRecommendation(prisma, {
-          action: "history",
-          generationId: generation,
-          history,
-        }),
-      ).resolves.toMatchObject({ replay: false })
-      await submitPrecomputedRecommendation(prisma, {
-        action: "source",
-        generationId: generation,
-        sourceVideoId,
-        choices: [],
-      })
-      await submitPrecomputedRecommendation(prisma, {
-        action: "complete",
-        generationId: generation,
-      })
-      const comparison = await loadPrecomputedRecommendationComparison(prisma, {
-        generationId: generation,
-        sourceVideoId,
-        audioLanguageSlug,
-      })
-      expect(comparison).toMatchObject({
-        state: "ready",
-        history: {
+          modelId: "gpt-6-astra",
+          promptVersion: "astra-source-history-navigation-v1",
+          inputMode: "historical_analytics",
+          inputDigest: "a".repeat(64),
+          sourceSetDigest,
+          inputCutoff: cutoff,
+          expectedSourceCount: 1,
+        })
+        const history = {
           provider: "ga_data_api",
+          status: "complete",
+          queryId: "watch-referrer-navigation-v1",
+          rangeStart: sourceAvailability.usableStart,
+          rangeEnd: "2026-10-03",
+          cutoff,
+          identity: "current_catalog_watch_path",
+          botFiltering: "unknown",
+          measurement: "observed_events",
+          overlap: "unknown",
           qualification: {
-            sourceAvailability: {
-              coverage: "partial_source_history",
-              requestedStart: "2020-01-01",
-              usableStart: "2022-08-06",
+            evidenceKind: "referrer_navigation_v1",
+            sourceResource: "properties/320198532",
+            sourceAvailability,
+            watchScope: {
+              version: "jesusfilm-watch-v1",
+              hosts: ["jesusfilm.org", "www.jesusfilm.org"],
+              pathRule: "watch-route-and-children",
+              eventName: "videostarts",
+              includedEvents: 10,
+              totalEvents: null,
+              missingUrlEvents: null,
+              malformedUrlEvents: null,
+              excludedHostEvents: null,
+              excludedPathEvents: null,
+            },
+            mediaComponentIdCoverage: {
+              sourceDimension: "customEvent:mediacomponentid",
+              inScopeEvents: 10,
+              withMediaComponentIdEvents: 7,
+              canonicalVideoMappedEvents: null,
+            },
+            engagement: {
+              definitionVersion: "watch-videostarts-v1",
+              botBasis: "unverified",
+              overlapIdentity: "unknown",
+              exposures: "unavailable",
+            },
+            transitions: {
+              status: "unavailable",
+              reason: "missing_session_identity",
+            },
+            navigation: {
+              status: "available",
+              definitionVersion: "watch-referrer-v1",
+              basis: "same_event_page_referrer_to_page_path",
+              interpretation: "navigation_not_playback_sequence",
+              botBasis: "unverified",
+              overlapIdentity: "unknown",
+            },
+            mapping: {
+              basis: "current_catalog_cutoff_fenced",
+              historicalOwnership: "unverified",
             },
           },
-        },
-      })
-      const html = renderToStaticMarkup(
-        createElement(PrecomputedComparisonView, { comparison }),
-      )
-      expect(html).toContain("Usable snapshot complete")
-      expect(html).toContain("full requested history 2020-01-01")
-      expect(html).toContain("usable query interval 2022-08-06")
-      expect(html).toContain("Unavailable historical prefix")
-      expect(html).toContain(
-        "navigation evidence, not a consecutive watched-video transition",
-      )
-      expect(html).toContain(
-        "Current-catalog Watch path mapping has unverified historical ownership",
-      )
-      expect(html).toContain("These counts describe only queried rows")
-    })
+          navigationCoverage: {
+            candidateEvents: 10,
+            qualifiedEvents: 3,
+            homeEvents: 1,
+            selfEvents: 1,
+            crossHostEvents: 1,
+            malformedEvents: 1,
+            unmappedEvents: 2,
+            ambiguousEvents: 1,
+          },
+          rowCount: 2,
+          catalogCandidates: 1,
+          inspectedCandidates: 1,
+          unmappedCandidates: 0,
+          mappedRows: 1,
+          unmappedRows: 1,
+          pageCount: 2,
+          queryExecutionCount: 2,
+          queryUsageDigest: "b".repeat(64),
+          resultDigest: "c".repeat(64),
+          unmappedDigest: "d".repeat(64),
+          bytesProcessed: null,
+          costQualification: "unavailable",
+        }
+        await expect(
+          submitPrecomputedRecommendation(prisma, {
+            action: "history",
+            generationId: generation,
+            history: {
+              ...history,
+              navigationCoverage: {
+                ...history.navigationCoverage,
+                candidateEvents: 11,
+              },
+            },
+          }),
+        ).rejects.toMatchObject({ code: "invalid" })
+        await expect(
+          submitPrecomputedRecommendation(prisma, {
+            action: "history",
+            generationId: generation,
+            history: {
+              ...history,
+              qualification: {
+                ...history.qualification,
+                sourceAvailability: {
+                  ...history.qualification.sourceAvailability,
+                  unavailablePrefixEnd: "2022-08-04",
+                },
+              },
+            },
+          }),
+        ).rejects.toMatchObject({ code: "invalid" })
+        await expect(
+          submitPrecomputedRecommendation(prisma, {
+            action: "history",
+            generationId: generation,
+            history: {
+              ...history,
+              qualification: {
+                ...history.qualification,
+                watchScope: {
+                  ...history.qualification.watchScope,
+                  totalEvents: 0,
+                },
+              },
+            },
+          }),
+        ).rejects.toMatchObject({ code: "invalid" })
+        await expect(
+          submitPrecomputedRecommendation(prisma, {
+            action: "history",
+            generationId: generation,
+            history,
+          }),
+        ).resolves.toMatchObject({ replay: false })
+        await submitPrecomputedRecommendation(prisma, {
+          action: "source",
+          generationId: generation,
+          sourceVideoId,
+          choices: [],
+        })
+        await submitPrecomputedRecommendation(prisma, {
+          action: "complete",
+          generationId: generation,
+        })
+        const comparison = await loadPrecomputedRecommendationComparison(
+          prisma,
+          {
+            generationId: generation,
+            sourceVideoId,
+            audioLanguageSlug,
+          },
+        )
+        expect(comparison).toMatchObject({
+          state: "ready",
+          history: {
+            provider: "ga_data_api",
+            qualification: {
+              sourceAvailability,
+            },
+          },
+        })
+        const html = renderToStaticMarkup(
+          createElement(PrecomputedComparisonView, { comparison }),
+        )
+        expect(html).toContain("Usable snapshot complete")
+        expect(html).toContain(
+          `full requested history ${sourceAvailability.requestedStart}`,
+        )
+        expect(html).toContain(
+          `usable query interval ${sourceAvailability.usableStart}`,
+        )
+        expect(html).toContain("Unavailable historical prefix")
+        if (
+          sourceAvailability.truncationType ===
+          "DATA_TRUNCATION_TYPE_DATE_RANGE"
+        ) {
+          expect(html).toContain(
+            "DATA_TRUNCATION_TYPE_DATE_RANGE for 2022-06-21 to 2022-08-10",
+          )
+        }
+        expect(html).toContain(
+          "navigation evidence, not a consecutive watched-video transition",
+        )
+        expect(html).toContain(
+          "Current-catalog Watch path mapping has unverified historical ownership",
+        )
+        expect(html).toContain("These counts describe only queried rows")
+      },
+    )
 
     it("records a failed source and prevents it from completing the generation", async () => {
       const generation = `astra-failed-${suffix}`

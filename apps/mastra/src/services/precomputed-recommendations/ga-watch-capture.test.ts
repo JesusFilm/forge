@@ -14,7 +14,10 @@ import { describe, expect, it, vi } from "vitest"
 
 import { captureGaWatchAggregates } from "./ga-watch-capture"
 import { createGaWatchHistoryReader } from "./ga-watch-history"
-import { HistoricalAnalyticsError } from "./historical-analytics"
+import {
+  HistoricalAnalyticsError,
+  readHistoricalDefinition,
+} from "./historical-analytics"
 
 const source = {
   id: "source",
@@ -41,6 +44,7 @@ const target = {
 
 function gaFixtureFetch(
   mode?:
+    | "date_range"
     | "drift"
     | "threshold"
     | "many_starts"
@@ -116,12 +120,24 @@ function gaFixtureFetch(
         })),
         metadata: {
           timeZone: "America/New_York",
-          ...(requestedReferrer
+          ...(requestedReferrer ||
+          (mode === "date_range" &&
+            kind === "year" &&
+            body.dateRanges[0]?.startDate === "2022-06-21")
             ? {
                 dataTruncationReasons: [
                   {
-                    dataTruncationType: "DATA_TRUNCATION_TYPE_PROPERTY",
-                    dataTruncationDate: "2022-08-05",
+                    ...(mode === "date_range"
+                      ? {
+                          dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+                          dataTruncationDateRanges: [
+                            { startDate: "2022-06-21", endDate: "2022-08-10" },
+                          ],
+                        }
+                      : {
+                          dataTruncationType: "DATA_TRUNCATION_TYPE_PROPERTY",
+                          dataTruncationDate: "2022-08-05",
+                        }),
                   },
                 ],
               }
@@ -174,6 +190,238 @@ function captureInput(
 }
 
 describe("GA Watch aggregate capture", () => {
+  it("seals a requalified date-range prefix with exact inclusive provenance and replays without GA", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "ga-date-range-"))
+    const fetchImpl = gaFixtureFetch("date_range")
+    const input = captureInput(directory, fetchImpl)
+    try {
+      const sealed = await captureGaWatchAggregates(input)
+      expect(sealed.header).toMatchObject({
+        verification: "two_matching_passes",
+        usableStart: "2022-08-11",
+        sourceAvailability: {
+          coverage: "partial_source_history",
+          requestedStart: "2022-06-21",
+          requestedEnd: "2022-10-31",
+          truncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+          dataTruncationDateRanges: [
+            { startDate: "2022-06-21", endDate: "2022-08-10" },
+          ],
+          unavailablePrefixStart: "2022-06-21",
+          unavailablePrefixEnd: "2022-08-10",
+          usableStart: "2022-08-11",
+          usableEnd: "2022-10-31",
+        },
+      })
+      expect(sealed.header.sourceAvailability).not.toHaveProperty(
+        "truncationDate",
+      )
+      fetchImpl.mockImplementation(async () => {
+        throw new Error("GA read after seal")
+      })
+      expect((await captureGaWatchAggregates(input)).artifactSha256).toBe(
+        sealed.artifactSha256,
+      )
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it.each([
+    [
+      "missing ranges",
+      { dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE" },
+    ],
+    [
+      "empty ranges",
+      {
+        dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+        dataTruncationDateRanges: [],
+      },
+    ],
+    [
+      "nonprefix",
+      {
+        dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+        dataTruncationDateRanges: [
+          { startDate: "2022-07-01", endDate: "2022-08-10" },
+        ],
+      },
+    ],
+    [
+      "reversed",
+      {
+        dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+        dataTruncationDateRanges: [
+          { startDate: "2022-06-21", endDate: "2022-06-20" },
+        ],
+      },
+    ],
+    [
+      "before request",
+      {
+        dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+        dataTruncationDateRanges: [
+          { startDate: "2022-06-20", endDate: "2022-08-10" },
+        ],
+      },
+    ],
+    [
+      "no usable suffix",
+      {
+        dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+        dataTruncationDateRanges: [
+          { startDate: "2022-06-21", endDate: "2022-10-31" },
+        ],
+      },
+    ],
+    [
+      "beyond request",
+      {
+        dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+        dataTruncationDateRanges: [
+          { startDate: "2022-06-21", endDate: "2022-11-01" },
+        ],
+      },
+    ],
+    [
+      "conflicting reports",
+      {
+        dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+        dataTruncationDateRanges: [
+          { startDate: "2022-06-21", endDate: "2022-08-11" },
+        ],
+      },
+    ],
+    [
+      "gap",
+      {
+        dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+        dataTruncationDateRanges: [
+          { startDate: "2022-06-21", endDate: "2022-08-01" },
+          { startDate: "2022-08-03", endDate: "2022-08-10" },
+        ],
+      },
+    ],
+    [
+      "adjacent ranges",
+      {
+        dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+        dataTruncationDateRanges: [
+          { startDate: "2022-06-21", endDate: "2022-08-01" },
+          { startDate: "2022-08-02", endDate: "2022-08-10" },
+        ],
+      },
+    ],
+    [
+      "scalar mixed with ranges",
+      {
+        dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+        dataTruncationDate: "2022-08-10",
+        dataTruncationDateRanges: [
+          { startDate: "2022-06-21", endDate: "2022-08-10" },
+        ],
+      },
+    ],
+    [
+      "mixed report types",
+      {
+        dataTruncationType: "DATA_TRUNCATION_TYPE_PROPERTY",
+        dataTruncationDate: "2022-08-10",
+      },
+    ],
+    [
+      "unknown type",
+      {
+        dataTruncationType: "UNKNOWN",
+        dataTruncationDateRanges: [
+          { startDate: "2022-06-21", endDate: "2022-08-10" },
+        ],
+      },
+    ],
+    [
+      "malformed date",
+      {
+        dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+        dataTruncationDateRanges: [
+          { startDate: "2022-06-21", endDate: "2022-02-30" },
+        ],
+      },
+    ],
+  ])("rejects date-range evidence with %s", async (_name, reason) => {
+    const base = gaFixtureFetch("date_range")
+    const fetchImpl = vi.fn(
+      async (url: URL | RequestInfo, init?: RequestInit) => {
+        const response = await base(url, init)
+        const body: {
+          dateRanges: { startDate: string }[]
+          dimensions: { name: string }[]
+        } = JSON.parse(String(init?.body))
+        const report: { metadata: Record<string, unknown> } =
+          await response.json()
+        if (
+          body.dateRanges[0]?.startDate === "2022-06-21" &&
+          body.dimensions[0]?.name === "pageReferrer"
+        )
+          report.metadata.dataTruncationReasons = [reason]
+        return new Response(JSON.stringify(report), { status: 200 })
+      },
+    )
+    const input = captureInput("unused", fetchImpl)
+    await expect(
+      readHistoricalDefinition(
+        input.createReader("2022-06-21", "2022-10-31"),
+        input.binding.inputCutoff,
+      ),
+    ).rejects.toMatchObject({ code: "analytics_incomplete" })
+  })
+
+  it.each([
+    [
+      "truncation",
+      {
+        dataTruncationReasons: [
+          {
+            dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+            dataTruncationDateRanges: [
+              { startDate: "2022-08-11", endDate: "2022-08-12" },
+            ],
+          },
+        ],
+      },
+    ],
+    ["thresholding", { subjectToThresholding: true }],
+    ["sampling", { samplingMetadatas: [{}] }],
+    ["restriction", { schemaRestrictionResponse: {} }],
+    ["other row", { dataLossFromOtherRow: true }],
+    ["timezone mismatch", { timeZone: "UTC" }],
+  ])(
+    "rejects a date-range suffix with remaining %s",
+    async (_name, metadata) => {
+      const base = gaFixtureFetch("date_range")
+      const fetchImpl = vi.fn(
+        async (url: URL | RequestInfo, init?: RequestInit) => {
+          const response = await base(url, init)
+          const body: { dateRanges: { startDate: string }[] } = JSON.parse(
+            String(init?.body),
+          )
+          const report: { metadata: Record<string, unknown> } =
+            await response.json()
+          if (body.dateRanges[0]?.startDate === "2022-08-11")
+            Object.assign(report.metadata, metadata)
+          return new Response(JSON.stringify(report), { status: 200 })
+        },
+      )
+      const input = captureInput("unused", fetchImpl)
+      await expect(
+        readHistoricalDefinition(
+          input.createReader("2022-06-21", "2022-10-31"),
+          input.binding.inputCutoff,
+        ),
+      ).rejects.toMatchObject({ code: "analytics_incomplete" })
+    },
+  )
+
   it("seals two matching complete reports and resumes without any GA read", async () => {
     const directory = await mkdtemp(join(tmpdir(), "ga-capture-run-"))
     const fetchImpl = gaFixtureFetch()
