@@ -22,6 +22,8 @@ import {
 } from "@forge/studio-contracts"
 import { studioCall } from "./client"
 import { EditorSession } from "./editor-session"
+import { startEditorAutosave } from "./editor-autosave"
+import { guardEditorNavigation } from "./editor-navigation"
 import { Inspector } from "./inspector"
 import { Timeline } from "./timeline"
 import { CanvasSelection } from "./canvas-selection"
@@ -119,9 +121,11 @@ function Editor({
     [productionOpen, setProductionOpen] = useState(false),
     [generationOpen, setGenerationOpen] = useState(false)
   const report = useCallback((s: string) => setError(s), [])
+  useEffect(() => startEditorAutosave(session), [session])
+  useEffect(() => guardEditorNavigation(session, window, document), [session])
   useEffect(() => {
     try {
-      if (state.status === "saved")
+      if (!state.hasUnsavedChanges)
         sessionStorage.removeItem(`studio-recovery:${projectId}`)
       else
         sessionStorage.setItem(
@@ -131,7 +135,14 @@ function Editor({
     } catch {
       /* Saving still works when browser recovery storage is unavailable. */
     }
-  }, [state.document, state.revision, state.status, projectId, session])
+  }, [
+    state.document,
+    state.revision,
+    state.status,
+    state.hasUnsavedChanges,
+    projectId,
+    session,
+  ])
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (
@@ -207,15 +218,17 @@ function Editor({
             History
           </button>
           <span className="nle-save-status" role="status">
-            {state.status === "saved"
-              ? `Saved · r${state.revision}`
-              : state.status === "saving"
-                ? "Saving…"
-                : state.status === "conflict"
-                  ? "Save conflict"
-                  : state.status === "failed"
-                    ? "Save failed"
-                    : "Unsaved changes"}
+            {state.authenticationRequired
+              ? "Sign in required"
+              : state.status === "saved"
+                ? `Saved · r${state.revision}`
+                : state.status === "saving"
+                  ? "Saving…"
+                  : state.status === "conflict"
+                    ? "Save conflict"
+                    : state.status === "failed"
+                      ? "Save failed"
+                      : "Unsaved changes · autosave pending"}
           </span>
           <button
             className="nle-primary"
@@ -231,9 +244,21 @@ function Editor({
           </button>
         </div>
       </header>
-      {(error || state.error) && (
+      {state.authenticationRequired && (
         <div className="nle-notice" role="alert">
-          <span>{error || state.error}</span>
+          <span>
+            {state.hasUnsavedChanges
+              ? "Your changes are not saved — sign in again, then retry saving. Your edits are retained in this tab."
+              : "Your session has expired — sign in again to continue. Your saved edits are safe."}
+          </span>
+          <a href="/login" target="_blank" rel="noopener noreferrer">
+            Sign in again in a new tab
+          </a>
+        </div>
+      )}
+      {!state.authenticationRequired && (error || state.error) && (
+        <div className="nle-notice" role="alert">
+          <span>{state.error || error}</span>
           <button onClick={() => setError("")}>Dismiss</button>
         </div>
       )}

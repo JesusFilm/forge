@@ -49,7 +49,7 @@ type WatchSessionContextValue = {
   video: WatchVideoRecord | null
   setVideo: (video: WatchVideoRecord | null) => void
   activeVariantIndex: number
-  setActiveVariantIndex: (index: number) => void
+  setActiveVariantIndex: (index: number, persistPreference?: boolean) => void
   subtitleEnabled: boolean
   setSubtitleEnabled: (enabled: boolean) => void
   activeSubtitleSlug: string | null
@@ -132,12 +132,16 @@ export function WatchSessionProvider({ children }: { children: ReactNode }) {
   // (which call the raw state setters) never trip these guards. The audio setter
   // also persists the pick app-wide (U2); subtitles stay in-memory on TV v1.
   const setActiveVariantIndex = useCallback(
-    (index: number) => {
+    (index: number, persistPreference = true) => {
       userChoseVariantRef.current = true
       setActiveVariantIndexState(index)
       // Both watch surfaces (LanguagePanel + in-player menu) drive this seam.
       // Persist only a slug-bearing pick; a slugless variant is left unwritten.
-      const slug = slugToPersistForPick(videoRef.current, index)
+      const slug = slugToPersistForPick(
+        videoRef.current,
+        index,
+        persistPreference,
+      )
       if (slug) setAudioLanguageSlug(slug)
     },
     [setAudioLanguageSlug],
