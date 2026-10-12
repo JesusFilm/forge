@@ -191,12 +191,15 @@ export const SYSTEM_PROMPT = [
   "- opening: see THE OPENING below.",
   "- paragraphs: the reflection, heard after 'Let's look more closely at what",
   "  this story means.' 350 to 500 words in 10 to 16 short paragraphs.",
-  "- takeaway: one sentence under 20 words that the viewer can DO and",
-  "  remember all week: one small, concrete step that lives out the message.",
-  "  Not a summary of the message. Open it any natural way; do not start every",
-  "  takeaway with 'This week'. A step a person would really take, not a rule",
-  "  for every moment (not 'read Scripture before every task'). Example: 'When",
-  "  God blesses someone else, thank him before you count what you got.'",
+  "- takeaway: one sentence under 20 words, the CONCLUSION of the whole",
+  "  reflection, set large on screen right after it: the piece gathered into",
+  "  one line that lands, a truth about Christ and us that this story earned.",
+  "  A statement, never an instruction or a step: the question and the prayer",
+  "  are the practical part, so the takeaway does not tell the viewer what to",
+  "  do next time. Not obvious, not a summary in new words, not a slogan; a",
+  "  line the viewer would want to write down. Its picture comes from THIS",
+  "  story (owner, 2026-10-12; it was a weekly step before). Example, for the",
+  "  ten lepers: 'Healing met them on the road; wholeness waited at His feet.'",
   "- question: spoken after 'First, ask yourself:'. ONE clear question about",
   "  the viewer's OWN life right now, in the second person, that only their",
   "  life can answer: never one a retelling of the story would answer. One",
@@ -263,8 +266,8 @@ export const SYSTEM_PROMPT = [
   "- What a character CLAIMS is his claim, not the narrator's fact: say who",
   "  says what.",
   "- Describe, don't command: no imperatives, no 'we must', 'let us', 'you",
-  "  should'. A gentle 'notice' or 'look at' is fine. The one exception is",
-  "  the takeaway's one step.",
+  "  should'. A gentle 'notice' or 'look at' is fine. The prayer, which",
+  "  tells the viewer what to bring to God, is the one exception.",
   "- The audience already follows Jesus: deepen, never evangelize or question",
   "  whether they are saved.",
   "- No denominational polemic, no predestination, no judgement of Judaism or",
@@ -584,19 +587,29 @@ export function takeawayQuestionProblems(
   return out
 }
 
-/** The command and appeal checks on the takeaway. Its "This week," step is
- *  the one sanctioned imperative; a collective command ("we must", "let us")
- *  is still caught. */
+/** The command and appeal checks on the takeaway. Since 2026-10-12 it is the
+ *  reflection's conclusion, a statement (owner: the weekly step read as
+ *  obvious next to a question and a prayer that are already practical), so
+ *  any command is caught, and so is the step shape ("Next time...,
+ *  thank..."), which reads as advice without a bare imperative up front. */
 export function takeawayVoiceProblems(takeaway: string) {
-  return checkReflectionVoice(takeaway, { lang: "en" }).filter(
-    (f) =>
-      // The takeaway is a step the viewer takes, so a plain imperative is
-      // fine there (owner relaxed the "This week," opener, 2026-10-08); a
-      // collective command and an appeal are still caught.
-      f.rule === "appeal" ||
-      (f.rule === "command" &&
-        /\b(we must|we need to|let us|let's)\b/i.test(f.sentence)),
+  const voice = checkReflectionVoice(takeaway, { lang: "en" }).filter(
+    (f) => f.rule === "appeal" || f.rule === "command",
   )
+  const step =
+    /^(?:the next time|next time|this week|whenever|when\b[^,]*,\s*(?:say|stop|go|thank|tell|take|ask|remember|pause))/i.test(
+      takeaway.trim(),
+    )
+  return step
+    ? [
+        ...voice,
+        {
+          rule: "command",
+          sentence: takeaway,
+          why: "the takeaway gives a step for next time; it is the reflection's conclusion, a statement the story earned",
+        },
+      ]
+    : voice
 }
 
 /**

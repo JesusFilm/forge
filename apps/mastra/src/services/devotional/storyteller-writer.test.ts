@@ -154,12 +154,24 @@ describe("takeawayQuestionProblems", () => {
 })
 
 describe("takeawayVoiceProblems", () => {
-  it("allows the takeaway's plain imperative step", () => {
+  it("passes a conclusion stated as a truth", () => {
     expect(
       takeawayVoiceProblems(
-        "Remember to thank God when someone else is blessed.",
+        "Healing met them on the road; wholeness waited at His feet.",
       ),
     ).toEqual([])
+  })
+  it("catches a step for next time, the takeaway's old shape", () => {
+    expect(
+      takeawayVoiceProblems(
+        "The next time a prayer is answered, stop and thank Jesus before you tell anyone else.",
+      ),
+    ).not.toEqual([])
+    expect(
+      takeawayVoiceProblems(
+        "When something you prayed for arrives, say thank you to Jesus first.",
+      ),
+    ).not.toEqual([])
   })
   it("still catches a collective command", () => {
     expect(
