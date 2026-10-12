@@ -209,7 +209,9 @@ derives the UI Locale from the public language slug, so Arabic Najdi renders
 English interface copy. Admin content requests derive three language forms
 from it: the catalog tag for homepage Experiences and recommendations, the
 Language slug for video text rows, search, and Bible passages, and Admin's own
-BCP-47 tag for language-name and Bible-book-name maps.
+BCP-47 tag for language-name and Bible-book-name maps. On mobile, the UI Locale
+also sets the layout direction: a right-to-left UI Locale mirrors the layout,
+and the phone language alone never does.
 
 ### Contextual Watch Route
 

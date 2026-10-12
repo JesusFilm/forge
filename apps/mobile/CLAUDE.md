@@ -2907,10 +2907,11 @@ catalog) stays left-to-right. The plan is
     direction again before each frame.
 - **A reload that does not happen (seen 2026-10-13, Pixel 9a emulator).** The
   save sets React Native's own direction before the reload, and React Native's
-  layout reads it on each pass. Android's `reloadAppAsync` resolves with no
-  reload when the current activity is not a ready `ReactActivity`; once, on a
-  return during a per-app language change, that left English text right-aligned
-  over a left-to-right layout. So a reload that rejects, or that has not ended
+  layout reads it on each pass. Android's `reloadAppAsync` can resolve with no
+  reload, for example when the current activity is not a `ReactActivity`. Once,
+  on a return during a per-app language change, a return reload did not happen,
+  and English text sat right-aligned over a left-to-right layout. The cause is
+  not established. So a reload that rejects, or that has not ended
   the runtime after `RELOAD_DEADLINE_MS`, saves and applies the direction in use
   again and reports `reload_failed` or `reload_stalled`. The start gate opens
   after at most `RESTORE_WAIT_MS` more, even when that native restore does not
