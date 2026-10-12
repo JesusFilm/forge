@@ -657,8 +657,10 @@ function TeaserCaptions({
   endBy?: number
 }) {
   const inset = px(28)
-  // Clear of the rail on the right (x > 940 of 1080).
-  const maxWidth = frameWidth * (920 / 1080) - inset
+  // Clear of the rail on the right (x > 920 of 1080), with a margin: a
+  // hero line set at full width still crossed 920 by 10 px (Ten Lepers,
+  // "AWAY FROM EVERYONE", 2026-10-12).
+  const maxWidth = frameWidth * (880 / 1080) - inset
   return (
     <>
       {lines.map((ln, i) => {

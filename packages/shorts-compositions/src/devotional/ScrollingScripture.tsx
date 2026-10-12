@@ -223,7 +223,9 @@ export function ScrollingScripture({
       : chapter
   // The block is centred on the frame, 839 wide (vertical: 660); nothing
   // crosses the hairline's ends, verse numbers included.
-  const blockW = vertical ? dp(660) : dp(839)
+  // Vertical was 660 (Figma) = 792 px of 1080, right edge 936: past the
+  // action rail at 920 (Ten Lepers film-verse, 2026-10-12). 620 ends at 912.
+  const blockW = vertical ? dp(620) : dp(839)
   const numW = dp(118)
   const left = frameWidth / 2 - blockW / 2 - bleedX
   let n = 0
