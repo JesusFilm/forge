@@ -280,6 +280,26 @@ async function main() {
       ...(arg("bg-rate") ? { backdropRate: Number(arg("bg-rate")) } : {}),
       ...(arg("bg-from") ? { backdropFromSec: Number(arg("bg-from")) } : {}),
       ...(arg("bg-seam") ? { backdropSeamSec: Number(arg("bg-seam")) } : {}),
+      // `--bg-shots`: plan the backdrop shot by shot (no shot twice in a
+      // row); `--bg-slow=155,161` slows those shots smoothly (`--bg-slow-speed`,
+      // default 0.5); `--bg-stills=163.5,175` holds those frames with a push-in.
+      ...(process.argv.includes("--bg-shots") ||
+      arg("bg-slow") ||
+      arg("bg-stills")
+        ? {
+            backdropShots: {
+              ...(arg("bg-slow")
+                ? { slowAt: arg("bg-slow")!.split(",").map(Number) }
+                : {}),
+              ...(arg("bg-slow-speed")
+                ? { slowSpeed: Number(arg("bg-slow-speed")) }
+                : {}),
+              ...(arg("bg-stills")
+                ? { stillsAt: arg("bg-stills")!.split(",").map(Number) }
+                : {}),
+            },
+          }
+        : {}),
       coverOnly: process.argv.includes("--cover-only"),
       ...(arg("music-file") ? { musicFile: arg("music-file") } : {}),
       // `--voice-v4`: the narration read on Eleven v4 in continuous runs, with

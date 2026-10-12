@@ -18,6 +18,12 @@ import { pathToFileURL } from "node:url"
 import { z } from "zod"
 
 import { repoRoot } from "./repo-root"
+import {
+  itemScreenSec,
+  scheduleShots,
+  shotsFromCuts,
+  type ShotItem,
+} from "./background-shots"
 
 import {
   buildNarrationSegments,
@@ -1168,6 +1174,141 @@ export function planBackgroundSegments(input: {
   return out
 }
 
+/** Scene cuts in [startSec, startSec+lengthSec] of `src`, in film seconds. */
+function detectShotCuts(
+  src: string,
+  startSec: number,
+  lengthSec: number,
+): Promise<number[]> {
+  return new Promise((resolve, reject) => {
+    const c = spawn("ffmpeg", [
+      "-hide_banner",
+      "-ss",
+      String(startSec),
+      "-t",
+      String(lengthSec),
+      "-i",
+      src,
+      "-an",
+      "-vf",
+      "scale=480:-2,scdet=threshold=12",
+      "-f",
+      "null",
+      "-",
+    ])
+    let err = ""
+    c.stderr.on("data", (d) => (err += String(d)))
+    c.on("error", reject)
+    c.on("close", (code) => {
+      if (code !== 0) return reject(new Error(`scdet exit ${code}`))
+      resolve(
+        [...err.matchAll(/lavfi\.scd\.time: ([0-9.]+)/g)].map(
+          (m) => startSec + Number(m[1]),
+        ),
+      )
+    })
+  })
+}
+
+/**
+ * Encode a shot schedule into one backdrop file: each item on its own
+ * (slowed clip, smooth slow clip, or a held frame with a slow push-in), then
+ * joined with hard cuts. Video only, plus a silent track, as the concat-built
+ * backdrop has one.
+ */
+async function buildShotBackground(
+  src: string,
+  dest: string,
+  items: ReadonlyArray<ShotItem>,
+  work: string,
+): Promise<void> {
+  const size = (await probeVideoSize(src)) ?? { width: 1920, height: 1080 }
+  const W = size.width - (size.width % 2)
+  const H = size.height - (size.height % 2)
+  const parts: string[] = []
+  for (const [i, it] of items.entries()) {
+    const out = path.join(work, `shot-${String(i).padStart(3, "0")}.mp4`)
+    if (it.kind === "still") {
+      const png = path.join(work, `still-${i}.png`)
+      await runFfmpeg([
+        "-y",
+        "-ss",
+        String(it.atSec),
+        "-i",
+        src,
+        "-frames:v",
+        "1",
+        png,
+      ])
+      const n = Math.max(1, Math.round(it.screenSec * 30))
+      await runFfmpeg([
+        "-y",
+        "-loop",
+        "1",
+        "-i",
+        png,
+        "-vf",
+        // Upscale first: zoompan steps in whole pixels, which judders at 1x.
+        `scale=${W * 3}:-2,zoompan=z='1+0.06*on/${n}':x='iw/2-(iw/zoom/2)':` +
+          `y='ih/2-(ih/zoom/2)':d=${n}:s=${W}x${H}:fps=30,format=yuv420p`,
+        "-frames:v",
+        String(n),
+        "-c:v",
+        "libx264",
+        ...INTERMEDIATE_X264,
+        out,
+      ])
+    } else {
+      // Smooth: interpolate up to the rate that lands at 30 fps once slowed.
+      const pre = it.smooth
+        ? `minterpolate=fps=${Math.round(30 / it.speed)}:mi_mode=mci:mc_mode=aobmc:me_mode=bidir:vsbmc=1,`
+        : ""
+      await runFfmpeg([
+        "-y",
+        "-ss",
+        String(it.startSec),
+        "-t",
+        String(it.lengthSec),
+        "-i",
+        src,
+        "-an",
+        "-vf",
+        `scale=${W}:${H},${pre}setpts=PTS/${it.speed},fps=30,format=yuv420p`,
+        "-c:v",
+        "libx264",
+        ...INTERMEDIATE_X264,
+        out,
+      ])
+    }
+    parts.push(out)
+  }
+  const list = path.join(work, "shots.txt")
+  await writeFile(list, parts.map((p) => `file '${p}'`).join("\n"))
+  await runFfmpeg([
+    "-y",
+    "-f",
+    "concat",
+    "-safe",
+    "0",
+    "-i",
+    list,
+    "-f",
+    "lavfi",
+    "-i",
+    "anullsrc=r=48000:cl=stereo",
+    "-map",
+    "0:v",
+    "-map",
+    "1:a",
+    "-shortest",
+    "-c:v",
+    "copy",
+    "-c:a",
+    "aac",
+    dest,
+  ])
+}
+
 async function buildBackground(
   src: string,
   dest: string,
@@ -1622,6 +1763,16 @@ export type RenderOptions = {
   backdropFromSec?: number
   /** Seam between backdrop pieces: 0 (default) cuts, > 0 dissolves. */
   backdropSeamSec?: number
+  /** Plan the backdrop shot by shot (background-shots.ts): no shot twice in
+   *  a row, chosen calm shots slowed smoothly, chosen frames held as stills.
+   *  Owner, 2026-10-12 (Ten Lepers): a short scene repeated back to back. */
+  backdropShots?: {
+    /** Film seconds inside the shots to slow (smooth slow motion). */
+    slowAt?: number[]
+    slowSpeed?: number
+    /** Film seconds of frames held as stills with a slow push-in. */
+    stillsAt?: number[]
+  }
   /** Shift every caption later by this many seconds (negative = earlier).
    *
    *  The film's SRT can lead its own audio. Our trim is frame-accurate — 30.000s
@@ -3180,14 +3331,53 @@ async function renderInStage(
           // harmless while running short freezes the picture.
           extraSourceSec: Math.max(2, bgSeamSec * 4),
         })
-  await buildBackground(
-    full,
-    path.join(stage, "bg.mp4"),
-    bgSegments,
-    bgTimelineSec,
-    bgRate,
-    bgSeamSec,
-  )
+  if (options.backdropShots) {
+    const cuts = await detectShotCuts(full, bgStart, bgWindowLen)
+    const shots = shotsFromCuts(cuts, bgStart, bgStart + bgWindowLen)
+    const items = scheduleShots({
+      shots,
+      coverSec: bgTimelineSec,
+      speed: bgRate,
+      ...(options.backdropShots.slowAt
+        ? { slowShotsAt: options.backdropShots.slowAt }
+        : {}),
+      ...(options.backdropShots.slowSpeed
+        ? { slowSpeed: options.backdropShots.slowSpeed }
+        : {}),
+      ...(options.backdropShots.stillsAt
+        ? { stillsAt: options.backdropShots.stillsAt }
+        : {}),
+      anchors: brollAnchors,
+    })
+    let at = 0
+    for (const it of items) {
+      log(
+        `backdrop shot ${at.toFixed(1)}s: ` +
+          (it.kind === "still"
+            ? `still at film ${it.atSec.toFixed(1)}s`
+            : `film ${it.startSec.toFixed(1)}s ×${it.speed}${it.smooth ? " smooth" : ""}`),
+      )
+      at += itemScreenSec(it)
+    }
+    const work = path.join(stage, "bg-shots")
+    await mkdir(work, { recursive: true })
+    await buildShotBackground(full, path.join(stage, "bg.mp4"), items, work)
+    const built = await probeDuration(path.join(stage, "bg.mp4"))
+    if (built < bgTimelineSec - 1.5)
+      throw new Error(
+        `shot backdrop is ${built.toFixed(0)}s but the timeline needs ${bgTimelineSec.toFixed(0)}s`,
+      )
+    log(`backdrop: ${shots.length} shots, ${items.length} pieces`)
+  } else {
+    await buildBackground(
+      full,
+      path.join(stage, "bg.mp4"),
+      bgSegments,
+      bgTimelineSec,
+      bgRate,
+      bgSeamSec,
+    )
+  }
   // bg.mp4 is now built to cover the timeline (slowed AND repeated), so the
   // composition must play it straight — re-applying the rate would stretch it
   // a second time and leave the same hole this loop was added to close.

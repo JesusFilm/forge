@@ -3675,7 +3675,7 @@ function ClipIntro({
 
 /** Grain over the blurred verse and questions cards when the render does
  *  not set `blurGrain`. */
-export const DEFAULT_BLUR_GRAIN = 0.35
+export const DEFAULT_BLUR_GRAIN = 0.3
 
 function Grain({
   opacity,
