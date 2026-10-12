@@ -1633,17 +1633,25 @@ design record is
     or another `onNewIntent` override. A skip would ship the defect. Never
     write the text `super.onCreate(` in a block: expo-splash-screen and
     react-native-google-cast anchor on the first line that holds it.
+- **The plugin ships only in a native build.** It changes the app config, so
+  it moves the fingerprint runtime version on Android and iOS. An
+  `eas update` published before that build reaches no installed app.
 - **`src/lib/__tests__/androidPushTapUpstream.guard.test.js` is the
   tripwire.** It pins `expo` 57.0.27, `expo-notifications` 57.0.22,
-  `expo-updates` 57.0.25, and eight upstream facts. A red test means: re-check
-  expo/expo#49254 and the plugin. Expect the Expo SDK 58 upgrade to trip it,
-  because expo PR #47615 drains the tap queue.
+  `expo-updates` 57.0.25, and eleven upstream facts. Three of the facts pin
+  Expo's `isFCMIntent` gate, which is why removing the key makes the listener
+  ignore a tap. A red test means: re-check expo/expo#49254 and the plugin.
+  Expect the Expo SDK 58 upgrade to trip the version pins. Then re-read expo
+  PR #47615 (merged 2026-07-09): it drains the tap queue after a listener
+  handles a tap.
 - **Make a cold tap with `am kill`, not a force stop.** Pause the media, press
   Home, then run `adb shell am kill org.jesusfilm.forgewatch`. A playing mini
   player keeps the process alive, and `am kill` then does nothing. Check that
   `pidof` is empty and the task is still in Recents. A force stop also blocks
   push delivery until the next launch.
-- **Read two logs.** `adb logcat -s ForgePushTap` shows each block.
+- **Read two logs.** `adb logcat -s ForgePushTap` shows each block. Block B's
+  line means that the hand-off ran, not that the tap was kept: until
+  JavaScript loads, the queue keeps only the first tap.
   `adb logcat -b events` shows `wm_new_intent`, then `wm_restart_activity`,
   and no `wm_create_activity` for `MainActivity`. A dev client cannot show
   the replay cases, because the dev launcher restarts the task with

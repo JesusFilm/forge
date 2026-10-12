@@ -142,6 +142,50 @@ const FACTS = [
         "extras.containsKey(OTHER_KEY) ||",
       ),
   },
+  // Single delivery rests on these three: once the relay removes the tap key,
+  // the listener must treat the intent as not FCM and forward nothing.
+  {
+    name: "the listener's isFCMIntent keys on GOOGLE_MESSAGE_ID_KEY alone",
+    pkg: "expo-notifications",
+    file: LISTENER,
+    matches: (s) =>
+      /private fun isFCMIntent\(extras: Bundle\): Boolean \{\s*return extras\.containsKey\(GOOGLE_MESSAGE_ID_KEY\)\s*\}/.test(
+        s,
+      ),
+    breakIt: (s) =>
+      s.replace(
+        "return extras.containsKey(GOOGLE_MESSAGE_ID_KEY)",
+        'return extras.containsKey("google.sent_time")',
+      ),
+  },
+  {
+    name: "the listener's onCreate forwards nothing for an intent that is not FCM",
+    pkg: "expo-notifications",
+    file: LISTENER,
+    matches: (s) =>
+      /override fun onCreate\(activity: Activity, savedInstanceState: Bundle\?\) \{(?:(?!override fun)[\s\S])*?if \(!isFCMIntent\(extras\)\) \{\s*return\s*\}(?:(?!override fun)[\s\S])*?NotificationManager\.onNotificationResponseFromExtras\(extras\)/.test(
+        s,
+      ),
+    breakIt: (s) =>
+      s.replace(
+        /(override fun onCreate\(activity: Activity, savedInstanceState: Bundle\?\) \{(?:(?!override fun)[\s\S])*?)if \(!isFCMIntent\(extras\)\) \{\s*return\s*\}/,
+        "$1",
+      ),
+  },
+  {
+    name: "the listener's onNewIntent forwards nothing for an intent that is not FCM",
+    pkg: "expo-notifications",
+    file: LISTENER,
+    matches: (s) =>
+      /override fun onNewIntent\(intent: Intent\): Boolean \{(?:(?!override fun)[\s\S])*?if \(!isFCMIntent\(extras\)\) \{\s*return false\s*\}(?:(?!override fun)[\s\S])*?NotificationManager\.onNotificationResponseFromExtras\(extras\)/.test(
+        s,
+      ),
+    breakIt: (s) =>
+      s.replace(
+        /(override fun onNewIntent\(intent: Intent\): Boolean \{(?:(?!override fun)[\s\S])*?)if \(!isFCMIntent\(extras\)\) \{\s*return false\s*\}/,
+        "$1",
+      ),
+  },
   {
     name: "the tap queue adds a bundle only while the queue is empty",
     pkg: "expo-notifications",

@@ -55,14 +55,9 @@ const FORBIDDEN_OPTION_KEYS = [
   "enableBackgroundRemoteNotifications",
 ]
 
-// U7: Android needs the Firebase app config to register with FCM at all, and
-// the config is referenced from here. It is a Firebase-console download, so it
-// is NOT committed — a placeholder would build fine and fail registration
-// silently on device. `expo prebuild --platform android` refuses while the file
-// is absent, which is the gate that makes the missing download visible. That
-// refusal is `setGoogleServicesFile` in @expo/config-plugins, which throws
-// "Cannot copy google-services.json from …" (read from the installed package
-// on 2026-09-21; no prebuild was run here).
+// U7: Android registers with FCM only through this committed Firebase config. A
+// placeholder builds and then fails registration silently on device, and an
+// Android prebuild throws "Cannot copy google-services.json" without the file.
 const ANDROID_GOOGLE_SERVICES_FILE = "./google-services.json"
 
 // R10: an Android build with the Firebase config must also carry the cold-tap
