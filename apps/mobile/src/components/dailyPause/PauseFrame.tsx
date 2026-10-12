@@ -80,7 +80,7 @@ type PauseButtonProps = {
 
 /** iOS 26 Liquid Glass. isGlassEffectAPIAvailable guards iOS 26 betas that
  *  crash without it. */
-function liquidGlass(): boolean {
+export function liquidGlass(): boolean {
   return (
     Platform.OS === "ios" &&
     isLiquidGlassAvailable() &&
