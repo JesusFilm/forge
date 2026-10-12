@@ -347,6 +347,7 @@ async function runCodex(input: {
   const args = [
     "exec",
     "--ignore-user-config",
+    "--strict-config",
     "--ephemeral",
     "--skip-git-repo-check",
     "--sandbox",
@@ -372,6 +373,11 @@ async function runCodex(input: {
     "features.apps=false",
     "-c",
     "project_doc_max_bytes=0",
+    // Catalog decisions use only the supplied request; retained Codex context is irrelevant.
+    "-c",
+    "memories.use_memories=false",
+    "-c",
+    "skills.max_context_tokens=1",
     "-",
   ]
   const state: CodexEvents = { phase: "initial" }

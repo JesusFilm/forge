@@ -431,8 +431,13 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     })
 
     const captured = JSON.parse(await readFile(cli.capture, "utf8"))
+    const configOverrides = captured.args.flatMap(
+      (arg: string, index: number) =>
+        arg === "-c" ? [captured.args[index + 1]] : [],
+    )
     expect(captured.args).toContain("gpt-6-astra")
     expect(captured.args).toContain("--ignore-user-config")
+    expect(captured.args).toContain("--strict-config")
     expect(captured.args).toContain("--ephemeral")
     expect(captured.args).toContain("read-only")
     expect(captured.args).toContain('forced_login_method="chatgpt"')
@@ -440,8 +445,20 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     expect(captured.args).toContain("features.shell_tool=false")
     expect(captured.args).toContain("features.unified_exec=false")
     expect(captured.args).toContain("features.apps=false")
+    expect(configOverrides).toContain("memories.use_memories=false")
+    expect(configOverrides).toContain("skills.max_context_tokens=1")
+    expect(
+      configOverrides.some((value: string) =>
+        value.startsWith("model_reasoning_effort="),
+      ),
+    ).toBe(false)
     expect(captured.args.at(-1)).toBe("-")
-    expect(captured.prompt).toContain(input.prompt)
+    expect(JSON.parse(captured.prompt)).toEqual({
+      instructions: input.system,
+      untrustedCatalogData: input.prompt,
+      response:
+        "Return only the JSON object required by the provided output schema. Do not call tools.",
+    })
     expect(captured.schema.properties.summaryEnglish.type).toBe("string")
     expect(captured.cwd.startsWith(join(tmpdir(), "forge-codex-astra-"))).toBe(
       true,
