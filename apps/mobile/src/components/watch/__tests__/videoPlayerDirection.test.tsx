@@ -1,0 +1,241 @@
+/**
+ * VideoPlayer in a right-to-left layout (feat-692 R11, R12, KTD7): the player
+ * layer keeps a left-to-right layout, so the double-tap seek flash shows on
+ * the side the viewer tapped. The settings and feedback sheets are not
+ * playback controls, so they take the app's own direction back.
+ */
+
+// Ionicons requires native font modules at import time under jest.
+jest.mock("@expo/vector-icons/Ionicons", () => ({
+  __esModule: true,
+  default: () => null,
+}))
+jest.mock("expo-image", () => ({ Image: () => null }))
+jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
+jest.mock("expo-network", () => ({
+  useNetworkState: () => ({ isInternetReachable: true }),
+}))
+jest.mock("react-native-safe-area-context", () => ({
+  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+}))
+jest.mock("../../../lib/datadog", () => ({
+  datadogLog: {
+    debug: jest.fn(),
+    info: jest.fn(),
+    warn: jest.fn(),
+    error: jest.fn(),
+  },
+  reportDatadogAction: jest.fn(),
+}))
+// The chrome must be mounted for the settings opener to exist; the visibility
+// machine has its own suite.
+jest.mock("../../../hooks/useControlsVisibility", () => {
+  const { Animated } = jest.requireActual("react-native")
+  const opacityAnim = new Animated.Value(1)
+  return {
+    useControlsVisibility: () => ({
+      controlsVisible: true,
+      mounted: true,
+      opacityAnim,
+      hide: () => {},
+      revealIfHidden: () => {},
+      isVisibleNow: () => true,
+      noteInteraction: () => {},
+      isPlaying: true,
+    }),
+  }
+})
+jest.mock("../../../hooks/useEndedPosterFade", () => {
+  const { Animated } = jest.requireActual("react-native")
+  const posterFade = new Animated.Value(1)
+  return { useEndedPosterFade: () => ({ ended: false, posterFade }) }
+})
+jest.mock("../../../hooks/useErrorRecovery", () => ({
+  useErrorRecovery: () => () => {},
+}))
+jest.mock("../PlayerLoadingVeil", () => ({ PlayerLoadingVeil: () => null }))
+jest.mock("../SubtitleOverlay", () => ({ SubtitleOverlay: () => null }))
+jest.mock("../PlayerControls", () => {
+  const { Pressable } = jest.requireActual("react-native")
+  return {
+    PlayerControls: ({ onOpenSettings }: { onOpenSettings: () => void }) => (
+      <Pressable accessibilityLabel="Settings" onPress={onOpenSettings} />
+    ),
+    RouteButtons: () => null,
+    fullscreenCaptionOffset: () => 0,
+  }
+})
+jest.mock("../PlayerSettingsSheet", () => {
+  const { Pressable } = jest.requireActual("react-native")
+  return {
+    PlayerSettingsSheet: ({
+      onClose,
+      onReportProblem,
+    }: {
+      onClose: () => void
+      onReportProblem: () => void
+    }) => (
+      <>
+        <Pressable
+          accessibilityLabel="Report a problem with this video"
+          onPress={onReportProblem}
+        />
+        <Pressable accessibilityLabel="Dismiss settings" onPress={onClose} />
+      </>
+    ),
+  }
+})
+jest.mock("../../feedback/FeedbackModal", () => {
+  const { Pressable } = jest.requireActual("react-native")
+  return {
+    FeedbackModal: ({ onClose }: { onClose: () => void }) => (
+      <Pressable accessibilityLabel="Close feedback" onPress={onClose} />
+    ),
+  }
+})
+
+import { act } from "react"
+import {
+  I18nManager,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native"
+import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
+
+import { VideoPlayer } from "../VideoPlayer"
+import {
+  TestRenderer,
+  press,
+  pressableByLabel,
+  unmount,
+  type RenderedNode,
+  type TestInstance,
+} from "../../../test-utils/rnTestRenderer"
+
+function layoutIs(isRTL: boolean) {
+  jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+    ...I18nManager.getConstants(),
+    isRTL,
+  })
+  jest.replaceProperty(I18nManager, "isRTL", isRTL)
+}
+
+/** The direction the node's parent lays it out in: the nearest `direction`
+ *  set above it. Undefined means the app's own layout direction. */
+function directionAbove(node: RenderedNode): unknown {
+  for (let n = node.parent; n != null; n = n.parent) {
+    if (typeof n.type !== "string") continue
+    const direction = StyleSheet.flatten(
+      n.props.style as StyleProp<ViewStyle>,
+    )?.direction
+    if (direction != null) return direction
+  }
+  return undefined
+}
+
+function hostByLabel(renderer: TestInstance, label: string): RenderedNode {
+  const [node] = renderer.root.findAll(
+    (n) => n.props.accessibilityLabel === label && typeof n.type === "string",
+  )
+  if (node == null) throw new Error(`no host node labelled ${label}`)
+  return node
+}
+
+function fakePlayer() {
+  return {
+    playing: true,
+    currentTime: 60,
+    duration: 600,
+    isExternalPlaybackActive: false,
+    allowsExternalPlayback: true,
+    addListener: () => ({ remove: () => {} }),
+    play: () => {},
+    pause: () => {},
+  }
+}
+
+async function render(): Promise<TestInstance> {
+  let renderer!: TestInstance
+  await act(async () => {
+    renderer = TestRenderer.create(
+      <VideoPlayer
+        player={fakePlayer() as unknown as ExpoVideoPlayer}
+        isPlaying
+        streamingUrl="https://stream.mux.com/abc123.m3u8"
+        posterUrl={null}
+        feedbackContext={null}
+        cast={null}
+      />,
+    )
+  })
+  return renderer
+}
+
+afterEach(() => {
+  jest.restoreAllMocks()
+})
+
+describe("the double-tap seek flash (feat-692 R12)", () => {
+  it("shows a left-side rewind at the physical left, inside a left-to-right layer", async () => {
+    layoutIs(true)
+    const renderer = await render()
+    const tapTarget = pressableByLabel(renderer, "Toggle player controls")
+    const tap = tapTarget.props as unknown as {
+      onLayout: (e: unknown) => void
+      onPressIn: () => void
+      onPress: (e: unknown) => void
+    }
+    await act(async () => {
+      tap.onLayout({
+        nativeEvent: { layout: { x: 0, y: 0, width: 300, height: 200 } },
+      })
+    })
+    // Two taps inside the double-tap window, on the left third of the player.
+    await act(async () => {
+      tap.onPressIn()
+      tap.onPress({ nativeEvent: { locationX: 40 } })
+      tap.onPressIn()
+      tap.onPress({ nativeEvent: { locationX: 40 } })
+    })
+
+    const [label] = renderer.root.findAll(
+      (n) => n.props.children === "10s" && typeof n.type === "string",
+    )
+    let flash = label.parent
+    while (flash != null && typeof flash.type !== "string") flash = flash.parent
+    if (flash == null) throw new Error("no seek flash view")
+    expect(StyleSheet.flatten(flash.props.style as never)).toMatchObject({
+      left: "14%",
+    })
+    expect(directionAbove(flash)).toBe("ltr")
+    await unmount(renderer)
+  })
+})
+
+describe("the player's sheets (feat-692 R11)", () => {
+  it.each([
+    { layout: "right-to-left", isRTL: true, expected: "rtl" },
+    { layout: "left-to-right", isRTL: false, expected: "ltr" },
+  ])(
+    "lay out in the app's own direction in a $layout layout",
+    async ({ isRTL, expected }) => {
+      layoutIs(isRTL)
+      const renderer = await render()
+
+      await press(pressableByLabel(renderer, "Settings"))
+      expect(directionAbove(hostByLabel(renderer, "Dismiss settings"))).toBe(
+        expected,
+      )
+
+      await press(
+        pressableByLabel(renderer, "Report a problem with this video"),
+      )
+      await press(pressableByLabel(renderer, "Dismiss settings"))
+      expect(directionAbove(hostByLabel(renderer, "Close feedback"))).toBe(
+        expected,
+      )
+      await unmount(renderer)
+    },
+  )
+})

@@ -243,6 +243,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 2,
+    // The mute target draws at the hero's measured x (feat-692 KTD7), so
+    // React Native must not swap its `left` in a right-to-left app.
+    direction: "ltr",
   },
   feedItemBackground: {
     backgroundColor: hexToRgba(BG_COLOR, 0.9),

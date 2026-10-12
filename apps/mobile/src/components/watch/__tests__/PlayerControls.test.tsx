@@ -53,7 +53,13 @@ jest.mock("react-native-safe-area-context", () => ({
 }))
 
 import { act } from "react"
-import { Platform } from "react-native"
+import {
+  I18nManager,
+  Platform,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native"
 
 import {
   PlayerControls,
@@ -68,6 +74,7 @@ import {
   unmount,
   type NodePath,
   type NodeRequireLike,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 
@@ -684,5 +691,55 @@ describe("fullscreenCaptionOffset", () => {
     expect(fullscreenCaptionOffset(21)).toBeLessThan(
       throughSeekBar + ROW_ABOVE_SEEK_BAR,
     )
+  })
+})
+
+describe("PlayerControls in a right-to-left layout (feat-692 R12, KTD7)", () => {
+  beforeEach(() => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+    jest.replaceProperty(I18nManager, "isRTL", true)
+  })
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  /** The direction the node's parent lays it out in: the nearest `direction`
+   *  set above it. Undefined means the app's own layout direction. */
+  function directionAbove(node: RenderedNode): unknown {
+    for (let n = node.parent; n != null; n = n.parent) {
+      if (typeof n.type !== "string") continue
+      const direction = StyleSheet.flatten(
+        n.props.style as StyleProp<ViewStyle>,
+      )?.direction
+      if (direction != null) return direction
+    }
+    return undefined
+  }
+
+  function hostByLabel(renderer: TestInstance, label: string): RenderedNode {
+    const [node] = renderer.root.findAll(
+      (n) => n.props.accessibilityLabel === label && typeof n.type === "string",
+    )
+    if (node == null) throw new Error(`no host node labelled ${label}`)
+    return node
+  }
+
+  it("keeps skip back, play, and skip forward in a left-to-right row", async () => {
+    const renderer = await render(false)
+    for (const label of ["Back 10 seconds", "Play", "Forward 10 seconds"]) {
+      expect(directionAbove(hostByLabel(renderer, label))).toBe("ltr")
+    }
+    await unmount(renderer)
+  })
+
+  it("lays out the fullscreen bar left to right, so its side insets keep their sides", async () => {
+    const renderer = await render(true)
+    // The seek bar is a direct child of the bar that carries the insets.
+    expect(directionAbove(hostByLabel(renderer, "Seek bar"))).toBe("ltr")
+    expect(directionAbove(hostByLabel(renderer, "Exit fullscreen"))).toBe("ltr")
+    await unmount(renderer)
   })
 })

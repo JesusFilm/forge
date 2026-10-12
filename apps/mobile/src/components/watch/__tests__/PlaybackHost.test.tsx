@@ -194,8 +194,11 @@ import {
   Animated,
   AppState,
   Dimensions,
+  I18nManager,
   Platform,
   StyleSheet,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native"
 
 import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
@@ -258,6 +261,7 @@ import {
   TestRenderer,
   type NodePath,
   type NodeRequireLike,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 
@@ -5419,5 +5423,67 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
       expect(ends.events).toHaveLength(0)
       expect(hasFullViewChrome(renderer)).toBe(true)
     })
+  })
+})
+
+describe("physical coordinates in a right-to-left layout (feat-692 KTD7)", () => {
+  beforeEach(() => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+    jest.replaceProperty(I18nManager, "isRTL", true)
+  })
+
+  /** The direction the node's parent lays it out in: the nearest `direction`
+   *  set above it. Undefined means the app's own layout direction. */
+  function directionAbove(node: RenderedNode): unknown {
+    for (let n = node.parent; n != null; n = n.parent) {
+      if (typeof n.type !== "string") continue
+      const direction = StyleSheet.flatten(
+        n.props.style as StyleProp<ViewStyle>,
+      )?.direction
+      if (direction != null) return direction
+    }
+    return undefined
+  }
+
+  function hostByTestId(renderer: TestInstance, id: string): RenderedNode {
+    const [node] = renderer.root.findAll(
+      (n) => n.props.testID === id && typeof n.type === "string",
+    )
+    if (node == null) throw new Error(`no host node with testID ${id}`)
+    return node
+  }
+
+  it("draws the frame at the measured x 0 inside a left-to-right layer, and leaves the back affordance to the app", async () => {
+    attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+
+    const frame = hostByTestId(renderer, "playback-frame")
+    expect(RECT.x).toBe(0)
+    expect(StyleSheet.flatten(frame.props.style as never)).toMatchObject({
+      left: 0,
+    })
+    expect(directionAbove(frame)).toBe("ltr")
+
+    // The back affordance mirrors with the app (R11), so it stays outside.
+    const [back] = renderer.root.findAll(
+      (node) => (node as { type?: unknown }).type === FloatingBackButton,
+    )
+    expect(directionAbove(back)).toBeUndefined()
+  })
+
+  it("keeps the mini player window inside that layer", async () => {
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+
+    expect(hasWindowChrome(renderer)).toBe(true)
+    expect(directionAbove(hostByTestId(renderer, "mini-player-window"))).toBe(
+      "ltr",
+    )
   })
 })

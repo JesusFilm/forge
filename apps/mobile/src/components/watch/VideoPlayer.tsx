@@ -15,6 +15,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useNetworkState } from "expo-network"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
+import { isLayoutRtl } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -762,11 +763,12 @@ export function VideoPlayer({
     ? Math.max(insets.left, insets.right, 56)
     : 56
   const subtitleFontSize = fullscreen ? 22 : 16
+  const appDirection = isLayoutRtl() ? "rtl" : "ltr"
 
   return (
     // absoluteFill, not a sized box: the host's frame owns the geometry (KTD17)
     // and paints the letterbox black behind the video view this chrome covers.
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View style={styles.root} pointerEvents="box-none">
       {/* R7: the phone shows the poster while the TV plays — the paused
           local frame would read as a broken player. Ended reuses the layer so
           the replay state never sits on a black last frame. */}
@@ -913,25 +915,42 @@ export function VideoPlayer({
         </Animated.View>
       )}
 
-      {settingsOpen && (
-        <PlayerSettingsSheet
-          onClose={() => setSettingsOpen(false)}
-          onReportProblem={handleReportProblem}
-          castActive={castRemoteActive}
-          streamingUrl={streamingUrl}
-        />
-      )}
+      {/* The sheets are not playback controls, so they mirror with the app
+          (feat-692 R11). A Modal takes its layout direction from this parent. */}
+      <View
+        style={[styles.sheetHost, { direction: appDirection }]}
+        pointerEvents="box-none"
+      >
+        {settingsOpen && (
+          <PlayerSettingsSheet
+            onClose={() => setSettingsOpen(false)}
+            onReportProblem={handleReportProblem}
+            castActive={castRemoteActive}
+            streamingUrl={streamingUrl}
+          />
+        )}
 
-      {/* Mounted only once the settings sheet is gone (the effect above);
-          Back inside it is the form's own step change, never a way back here. */}
-      {openFeedback != null && (
-        <FeedbackModal context={openFeedback} onClose={handleFeedbackClose} />
-      )}
+        {/* Mounted only once the settings sheet is gone (the effect above);
+            Back inside it is the form's own step change, never a way back here. */}
+        {openFeedback != null && (
+          <FeedbackModal context={openFeedback} onClose={handleFeedbackClose} />
+        )}
+      </View>
     </View>
   )
 }
 
 const styles = StyleSheet.create({
+  // Playback does not mirror (feat-692 R12): the seek flash shows on the side
+  // that the viewer tapped, which is a physical x.
+  root: {
+    ...StyleSheet.absoluteFill,
+    direction: "ltr",
+  },
+  // No size: a Modal draws over the whole screen in its own window.
+  sheetHost: {
+    position: "absolute",
+  },
   chromeScrim: {
     position: "absolute",
     left: 0,

@@ -200,9 +200,11 @@ export function ClipOverlay({
   const [lowerBar, setLowerBar] = useState<number | null>(null)
   const [railLeft, setRailLeft] = useState<number | null>(null)
   const [railY, setRailY] = useState(0)
+  const [railWidth, setRailWidth] = useState(0)
   const handleRailLayout = useCallback((e: LayoutChangeEvent) => {
     setRailLeft(Math.round(e.nativeEvent.layout.x))
     setRailY(Math.round(e.nativeEvent.layout.y))
+    setRailWidth(Math.round(e.nativeEvent.layout.width))
   }, [])
   const [muteFrame, setMuteFrame] = useState<RailFrame | null>(null)
   const [shareFrame, setShareFrame] = useState<RailFrame | null>(null)
@@ -220,9 +222,14 @@ export function ClipOverlay({
     ? Math.max(bandInset ?? 0, aboveTitle)
     : aboveTitle + PORTRAIT_CAPTION_LIFT
   const captionBottom = captionFloor + CAPTION_GAP
-  const captionRightInset =
+  // feat-692 R11: the rail mirrors to the left in a right-to-left layout. Its
+  // measured x is physical there too, so the inset side is where it sits.
+  const railOnLeft = railLeft != null && railLeft + railWidth / 2 < rowWidth / 2
+  const captionSideInset =
     railLeft != null && rowWidth > 0
-      ? rowWidth - railLeft + CAPTION_GAP
+      ? railOnLeft
+        ? railLeft + railWidth + CAPTION_GAP
+        : rowWidth - railLeft + CAPTION_GAP
       : undefined
   // The inset applies only when the caption would cover Mute or Share (owner,
   // 2026-09-28). Until both are measured, it always applies.
@@ -283,8 +290,9 @@ export function ClipOverlay({
           player={player}
           vttSrc={captionSrc}
           bottomOffset={captionBottom}
-          rightInset={captionRightInset}
-          rightInsetBoxes={captionInsetBoxes}
+          sideInset={captionSideInset}
+          insetSide={railOnLeft ? "left" : "right"}
+          sideInsetBoxes={captionInsetBoxes}
         />
       )}
 
