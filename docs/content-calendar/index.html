@@ -6,19 +6,28 @@
   href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,300;7..72,400&family=Inter:wght@400;500;600;700&display=swap"
 />
 <style>
-  /* Layout: a month wall of days. Per day: each long video on its own 16:9 row, then one strip of vertical posts.
-     The same cut posted on several platforms the same day is ONE stacked tile with one icon per platform.
-     Click any tile: an overlay with the big thumbnail and one button per platform. Dark only, by choice. */
+  /* Layout (Figma option A3): the month as a stack of weeks. Each week = a row of day headers + three channel lanes
+     (YouTube EN, YouTube RU, Facebook + Instagram), each lane with its own tint. In a day cell: long forms as a
+     thumbnail + working name, a divider, then Shorts/reels three in a row labelled by type. Dark only, by choice. */
   :root {
     --ground: #15100e;
-    --cell: #1d1613;
-    --cell-off: #181210;
     --line: #2f2420;
     --ink: #f6ece2;
+    --soft: #d9cbbf;
     --muted: #9c8a7f;
     --hover: #2a201c;
     --flame: #e2583a;
     --gold: #efd08a;
+    --red: #ff4d4d;
+    --en: #221614;
+    --en-lab: #1b1210;
+    --en-div: #3a2622;
+    --ru: #211b13;
+    --ru-lab: #1a150f;
+    --ru-div: #382d20;
+    --meta: #161a20;
+    --meta-lab: #11151a;
+    --meta-div: #262c36;
     --serif: "Literata", Georgia, "Times New Roman", serif;
     --sans:
       "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
@@ -85,10 +94,15 @@
     font: 500 18px/1 var(--sans);
     padding: 0 6px;
     position: relative;
+    text-decoration: none;
   }
   .ghost:hover {
     background: var(--hover);
     color: var(--ink);
+  }
+  .ghost svg {
+    width: 20px;
+    height: 20px;
   }
   button:focus-visible,
   a:focus-visible,
@@ -96,17 +110,20 @@
     outline: 2px solid var(--gold);
     outline-offset: 2px;
   }
-  .nav {
-    display: flex;
-    gap: 2px;
-  }
-
-  /* Filters: icons only. Click one platform to see only its posts; click it again to see everything. */
+  .nav,
   .filters {
     display: flex;
     gap: 2px;
     align-items: center;
   }
+  .divider {
+    width: 1px;
+    height: 20px;
+    background: var(--line);
+    margin: 0 6px;
+  }
+
+  /* Filters: icons only. Click one lane to see only it; click again to see all. */
   .fchip {
     appearance: none;
     border: 0;
@@ -119,7 +136,8 @@
     cursor: pointer;
     position: relative;
   }
-  .fchip:hover {
+  .fchip:hover,
+  .fchip[aria-pressed="true"] {
     background: var(--hover);
   }
   .fchip svg {
@@ -128,9 +146,6 @@
   }
   .filters.picked .fchip[aria-pressed="false"] {
     opacity: 0.3;
-  }
-  .fchip[aria-pressed="true"] {
-    background: var(--hover);
   }
   .fchip[aria-pressed="true"]::after {
     content: "";
@@ -143,260 +158,238 @@
     border-radius: 50%;
     background: var(--ink);
   }
-  .fchip .ru {
+  .fchip .pair {
+    display: flex;
+    gap: 2px;
+  }
+  .fchip .pair svg {
+    width: 16px;
+    height: 16px;
+  }
+  .tag {
     position: absolute;
-    right: 3px;
-    bottom: 6px;
+    right: 2px;
+    bottom: 5px;
     font: 700 7px/1 var(--sans);
-    background: var(--flame);
     color: #fff;
     border-radius: 2px;
     padding: 1px 2px;
+    background: #5a4a42;
   }
-  .divider {
-    width: 1px;
-    height: 20px;
-    background: var(--line);
-    margin: 0 6px;
-  }
-  .ghost.link {
-    text-decoration: none;
-  }
-  .ghost.link svg {
-    width: 20px;
-    height: 20px;
+  .tag.ru {
+    background: var(--flame);
   }
 
-  .grid {
+  /* Weeks */
+  .weeks {
     display: grid;
-    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .week {
+    display: grid;
+    grid-template-columns: 64px repeat(7, minmax(0, 1fr));
     gap: 1px;
     background: var(--line);
-    border: 1px solid var(--line);
     border-radius: 10px;
     overflow: hidden;
   }
-  .dow {
+  .dh {
     background: var(--ground);
     color: var(--muted);
-    font-size: 11px;
-    letter-spacing: 0.12em;
+    font: 600 11px/1 var(--sans);
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    padding: 8px 10px;
-  }
-  .day {
-    background: var(--cell);
-    min-height: 120px;
-    padding: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 0;
-  }
-  .day.off {
-    background: var(--cell-off);
-  }
-  .day.off .num {
-    opacity: 0.35;
-  }
-  .num {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--muted);
+    padding: 10px 12px;
     font-variant-numeric: tabular-nums;
   }
-  .day.today .num b {
+  .dh.off {
+    opacity: 0.35;
+  }
+  .dh.today b {
     background: var(--gold);
     color: var(--ground);
     border-radius: 999px;
-    padding: 1px 7px;
+    padding: 2px 7px;
+    font-weight: 700;
+  }
+  .lab {
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 4px;
+    padding-top: 14px;
+  }
+  .lab svg {
+    width: 28px;
+    height: 28px;
+  }
+  .lab .t {
+    font: 700 10px/1 var(--sans);
+    color: #fff;
+    border-radius: 3px;
+    padding: 2px 3px;
+    background: #5a4a42;
+  }
+  .lab .t.ru {
+    background: var(--flame);
+  }
+  .cell {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    padding-block: 12px;
+    min-width: 0;
+    min-height: 56px;
+  }
+  .cell.off {
+    opacity: 0.35;
+  }
+  .yt-en {
+    background: var(--en);
+  }
+  .yt-en.lab {
+    background: var(--en-lab);
+  }
+  .yt-ru {
+    background: var(--ru);
+  }
+  .yt-ru.lab {
+    background: var(--ru-lab);
+  }
+  .meta {
+    background: var(--meta);
+  }
+  .meta.lab {
+    background: var(--meta-lab);
+  }
+  .cell hr {
+    border: 0;
+    height: 1px;
+    margin: 0;
+  }
+  .yt-en hr {
+    background: var(--en-div);
+  }
+  .yt-ru hr {
+    background: var(--ru-div);
+  }
+  .meta hr {
+    background: var(--meta-div);
+  }
+  .longs {
+    display: grid;
+    gap: 10px;
+    padding-inline: 12px;
+  }
+  .shorts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 6px;
+    padding-inline: 12px;
   }
 
   /* Tiles */
   .tile {
-    position: relative;
-    display: block;
-    border-radius: 6px;
-    background: #000;
-    max-width: 100%;
-    cursor: pointer;
-    transition: transform 0.15s ease;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
     appearance: none;
     border: 0;
     padding: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+    text-align: left;
+    font: inherit;
   }
-  .tile .face {
-    position: absolute;
-    inset: 0;
-    border-radius: 6px;
+  .tile .pic {
+    position: relative;
+    display: block;
+    border-radius: 4px;
     overflow: hidden;
-    background: #000;
+    background: #2a201c;
+    transition: transform 0.15s ease;
   }
-  .tile.wide {
-    aspect-ratio: 16 / 9;
-    width: 100%;
-  }
-  .tile.tall {
-    aspect-ratio: 9 / 16;
-    flex: 0 0 46%;
-  }
-  .tile img {
+  .tile .pic img {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
-  .tile.noimg .face {
-    background: linear-gradient(135deg, #3a1d16, #1d1613);
+  .tile:hover .pic {
+    transform: scale(1.05);
   }
-  /* Scheduled: real, queued on the platform. Dimmed picture, orange dashed frame, orange clock. */
-  .tile.scheduled img {
+  .long {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .long .pic {
+    flex: none;
+    width: 92px;
+    aspect-ratio: 16 / 9;
+  }
+  .long .nm {
+    font-size: 11px;
+    line-height: 1.25;
+    color: var(--soft);
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+  .short {
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    width: 42px;
+  }
+  .short .pic {
+    width: 42px;
+    aspect-ratio: 9 / 16;
+  }
+  .short .ct {
+    font: 500 9px/1.2 var(--sans);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  /* States */
+  .tile.scheduled .pic img {
     opacity: 0.6;
   }
-  .tile.scheduled .face::after,
-  .tile.planned .face::after {
+  .tile.scheduled .pic::after,
+  .tile.planned .pic::after {
     content: "";
     position: absolute;
     inset: 0;
-    border-radius: 6px;
-    border: 2px dashed var(--flame);
+    border-radius: 4px;
+    border: 1.5px dashed var(--flame);
   }
-  /* Planned: only in the plan, not uploaded yet. No picture, muted dashed frame, story and cut written in. */
-  .tile.planned .face {
+  .tile.scheduled .pic::before {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: 3px;
+    right: 3px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--flame);
+    box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.5);
+  }
+  .tile.planned .pic {
     background: repeating-linear-gradient(
       135deg,
-      #1f1714 0 6px,
-      #241b17 6px 12px
+      #1f1714 0 5px,
+      #261c18 5px 10px
     );
   }
-  .tile.planned .face::after {
-    border: 1.5px dashed var(--muted);
-    opacity: 0.6;
-  }
-  .tile.planned img {
+  .tile.planned .pic img {
     opacity: 0.25;
   }
-  .plabel {
-    position: absolute;
-    inset: 0;
-    display: grid;
-    place-content: center;
-    gap: 3px;
-    text-align: center;
-    padding: 4px;
-    color: var(--muted);
+  .tile.planned .pic::after {
+    border-color: var(--muted);
+    opacity: 0.7;
   }
-  .plabel b {
-    font: 400 15px/1.1 var(--serif);
-    color: var(--ink);
-  }
-  .plabel i {
-    font: 600 8px/1 var(--sans);
-    font-style: normal;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-  /* Stack: the same video on 2+ platforms gets cards fanned out behind it. */
-  .tile.stack::before,
-  .tile.stack::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 6px;
-    background: #3a2c26;
-    box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.6);
-  }
-  .tile.stack::before {
-    transform: translate(5px, -5px);
-    opacity: 0.55;
-  }
-  .tile.stack::after {
-    transform: translate(2.5px, -2.5px);
-    opacity: 0.85;
-  }
-  .tile.stack.three::before {
-    transform: translate(6px, -6px);
-  }
-  .tile .face {
-    z-index: 1;
-  }
-  .plats {
-    position: absolute;
-    z-index: 2;
-    top: 4px;
-    left: 4px;
-    display: flex;
-    gap: 3px;
-  }
-  .badge {
-    width: 18px;
-    height: 18px;
-    border-radius: 5px;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    place-items: center;
-    position: relative;
-  }
-  .badge svg {
-    width: 14px;
-    height: 14px;
-  }
-  .badge .ru {
-    position: absolute;
-    right: -4px;
-    bottom: -4px;
-    font: 700 7px/1 var(--sans);
-    background: var(--flame);
-    color: #fff;
-    border-radius: 2px;
-    padding: 1px 2px;
-  }
-  .tile .clock {
-    position: absolute;
-    z-index: 2;
-    top: 4px;
-    right: 4px;
-    width: 18px;
-    height: 18px;
-    color: #fff;
-    filter: drop-shadow(0 1px 2px #000);
-  }
-  .tile .dur {
-    position: absolute;
-    z-index: 2;
-    right: 4px;
-    bottom: 4px;
-    font: 600 10px/1 var(--sans);
-    font-variant-numeric: tabular-nums;
-    background: rgba(0, 0, 0, 0.75);
-    color: #fff;
-    border-radius: 3px;
-    padding: 2px 3px;
-  }
-  .tile .paid {
-    position: absolute;
-    z-index: 2;
-    left: 5px;
-    bottom: 5px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--gold);
-    box-shadow: 0 0 0 1.5px rgba(0, 0, 0, 0.6);
-  }
-  .tile:hover {
-    transform: translateY(-2px) scale(1.04);
-    z-index: 5;
-  }
-
-  .strip {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 10px 8%;
-    padding-top: 6px;
+  .tile.paid .pic {
+    box-shadow: 0 0 0 1.5px var(--gold);
   }
 
   #tip {
@@ -519,7 +512,59 @@
     top: 14px;
     right: 16px;
   }
-  @media (max-width: 760px) {
+
+  .status {
+    color: var(--muted);
+    font-size: 12px;
+    min-height: 1em;
+  }
+  .empty {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 28px 0;
+    text-align: center;
+  }
+
+  /* Phone: one day per block, the three lanes stacked inside it. */
+  .agenda {
+    display: none;
+    gap: 14px;
+  }
+  .aday {
+    display: grid;
+    gap: 1px;
+    background: var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .aday h3 {
+    margin: 0;
+    background: var(--ground);
+    font: 600 12px var(--sans);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 12px;
+  }
+  .aday h3.today {
+    color: var(--gold);
+  }
+  .arow {
+    display: grid;
+    grid-template-columns: 52px 1fr;
+    gap: 1px;
+  }
+  .arow .lab svg {
+    width: 24px;
+    height: 24px;
+  }
+  @media (max-width: 860px) {
+    .weeks {
+      display: none;
+    }
+    .agenda {
+      display: grid;
+    }
     .ov-card {
       flex-direction: column-reverse;
       gap: 14px;
@@ -534,58 +579,11 @@
       width: min(92vw, 520px);
     }
   }
-
-  .status {
-    color: var(--muted);
-    font-size: 12px;
-    min-height: 1em;
-  }
-  .empty {
-    color: var(--muted);
-    font-size: 13px;
-    padding: 28px 0;
-    text-align: center;
-  }
-
-  .agenda {
-    display: none;
-    gap: 16px;
-  }
-  .agenda .aday {
-    display: grid;
-    gap: 8px;
-  }
-  .agenda h3 {
-    margin: 0;
-    font: 600 12px var(--sans);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-  .agenda h3.today {
-    color: var(--gold);
-  }
-  .agenda .stack-list {
-    display: grid;
-    gap: 8px;
-    max-width: 360px;
-  }
-  @media (max-width: 760px) {
-    .grid {
-      display: none;
-    }
-    .agenda {
-      display: grid;
-    }
-    .filters .lbl {
-      display: none;
-    }
-  }
   @media (prefers-reduced-motion: reduce) {
-    .tile {
+    .tile .pic {
       transition: none;
     }
-    .tile:hover {
+    .tile:hover .pic {
       transform: none;
     }
   }
@@ -621,11 +619,11 @@
       class="filters"
       id="filters"
       role="group"
-      aria-label="Show only one platform"
+      aria-label="Show only one channel"
     ></div>
     <span class="divider" aria-hidden="true"></span>
     <a
-      class="ghost link"
+      class="ghost"
       href="https://claude.ai/artifact/T3QFpYWsVKKk1Px4k1QhNS"
       target="_blank"
       rel="noopener"
@@ -641,7 +639,7 @@
         <path d="M4 20V10M10 20V4M16 20v-7M22 20H2" /></svg
     ></a>
   </header>
-  <div class="grid" id="grid"></div>
+  <div class="weeks" id="weeks"></div>
   <div class="agenda" id="agenda"></div>
   <div class="status" id="status"></div>
 </div>
@@ -653,15 +651,18 @@
     yt: '<svg viewBox="0 0 24 24"><rect x="1" y="4.5" width="22" height="15" rx="4.5" fill="#ff0033"/><path d="M9.8 8.6v6.8l5.9-3.4z" fill="#fff"/></svg>',
     fb: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#0866ff"/><path d="M13.3 23v-8.2h2.6l.4-3h-3v-1.9c0-.9.3-1.5 1.5-1.5h1.6V5.7c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H7.6v3h2.6V23z" fill="#fff"/></svg>',
     ig: '<svg viewBox="0 0 24 24"><defs><linearGradient id="igg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#feda75"/><stop offset=".35" stop-color="#fa7e1e"/><stop offset=".6" stop-color="#d62976"/><stop offset="1" stop-color="#4f5bd5"/></linearGradient></defs><rect x="1.5" y="1.5" width="21" height="21" rx="6" fill="url(#igg)"/><rect x="6" y="6" width="12" height="12" rx="3.6" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="12" cy="12" r="3" fill="none" stroke="#fff" stroke-width="1.8"/><circle cx="16.3" cy="7.7" r="1" fill="#fff"/></svg>',
-    clock:
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="10" fill="#e2583a" stroke="none"/><path d="M12 7v5l3 2"/></svg>',
   }
-  // A post's platforms: any of yt-en, yt-ru, fb, ig. Shown in this order.
+  // Platforms on a row: any of yt-en, yt-ru, fb, ig. Lanes: yt-en, yt-ru, meta (fb + ig).
   const PLATS = [
     { key: "yt-en", icon: "yt", label: "YouTube" },
     { key: "yt-ru", icon: "yt", ru: true, label: "YouTube RU" },
     { key: "fb", icon: "fb", label: "Facebook" },
     { key: "ig", icon: "ig", label: "Instagram" },
+  ]
+  const LANES = [
+    { key: "yt-en", label: "YouTube EN", plats: ["yt-en"] },
+    { key: "yt-ru", label: "YouTube RU", plats: ["yt-ru"] },
+    { key: "meta", label: "Facebook + Instagram", plats: ["fb", "ig"] },
   ]
   const DOW = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
   const MONTHS = [
@@ -688,8 +689,8 @@
     }
   }
   let posts = []
-  let items = [] // grouped tiles
-  let only = store("dbp-cal-only") || null // null = all platforms
+  let items = []
+  let only = store("dbp-cal-lane") || null
   const now = new Date()
   let view = { y: now.getFullYear(), m: now.getMonth() }
   const pad = (n) => String(n).padStart(2, "0")
@@ -709,66 +710,93 @@
         })[c],
     )
 
-  const isTall = (p) => p.kind !== "long"
-  function isFuture(p) {
-    return (
-      p.status === "scheduled" &&
-      new Date(p.date + "T" + (p.time || "23:59")) > new Date()
-    )
-  }
+  const isLong = (p) => p.kind === "long"
   const isPlanned = (p) => p.status === "planned"
-  // "martha-short-history-yt-en" and "martha-reel-history-meta" are the same cut: key "martha|history".
-  function cutKey(p) {
-    if (p.group) return p.group
-    const id = String(p.id || "").replace(/-(yt-en|yt-ru|meta|fb|ig)$/, "")
+  const isFuture = (p) =>
+    p.status === "scheduled" &&
+    new Date(p.date + "T" + (p.time || "23:59")) > new Date()
+  // "martha-short-history-yt-en" -> story "martha", cut "history". Planned rows: "plan-a-short-intro-en".
+  function parseId(p) {
+    const id = String(p.id || "")
+      .replace(/^plan-/, "")
+      .replace(/-(yt-en|yt-ru|meta|fb|ig|en|ru)$/, "")
     const m = id.match(/^(.*?)-(short|reel|post|story)-(.+)$/)
-    return m ? m[1] + "|" + m[3] : id
+    return m ? { story: m[1], cut: m[3] } : { story: id, cut: "" }
   }
-  // The URL for one platform of one row: links[k] first, else `link` when it belongs to that platform.
+  const cutKey = (p) =>
+    p.group || parseId(p).story + "|" + (p.cut || parseId(p).cut)
+  // Short label under a vertical tile: intro / verse / insight / refl. / teaser.
+  function cutLabel(p) {
+    const c = String(p.cut || parseId(p).cut).toLowerCase()
+    if (/refl/.test(c)) return "refl."
+    if (/insight|history|language|vox|word/.test(c)) return "insight"
+    if (/verse|scene/.test(c)) return "verse"
+    if (/intro/.test(c)) return "intro"
+    if (/teaser/.test(c)) return "teaser"
+    if (/carousel|post/.test(c) || p.kind === "post") return "post"
+    if (/long/.test(c)) return "full"
+    return c.split("-")[0].slice(0, 8)
+  }
+  // Working name of a long form: the story, plus LUMO for the LUMO cut.
+  function workName(p) {
+    const s = p.story || parseId(p).story
+    const name = s.replace(/-/g, " ").replace(/\b\w/g, (x) => x.toUpperCase())
+    return /lumo/i.test(p.id) ? name + " LUMO" : name
+  }
   function urlFor(p, k) {
     if (p.links && p.links[k]) return p.links[k]
-    if (!p.link) return ""
-    const host = p.link
-    if (k === "fb") return /facebook\.com/.test(host) ? host : ""
-    if (k === "ig") return /instagram\.com/.test(host) ? host : ""
-    if (k === "yt-en" || k === "yt-ru") return /youtu/.test(host) ? host : ""
-    return ""
+    const l = p.link || ""
+    if (k === "fb") return /facebook\.com/.test(l) ? l : ""
+    if (k === "ig") return /instagram\.com/.test(l) ? l : ""
+    return /youtu/.test(l) ? l : ""
   }
 
-  // Merge rows into tiles: same day + same cut + vertical + no shared platform = one stacked tile.
+  // One tile per (date, lane, cut). The overlay of a tile lists every platform the same cut went to that day.
   function build() {
     const live = posts.filter((p) => p.date && !p.campaign)
-    const out = []
-    const byKey = {}
-    live.forEach((p) => {
-      if (!isTall(p)) {
-        out.push({ members: [p] })
-        return
+    const tiles = new Map()
+    for (const p of live) {
+      for (const lane of LANES) {
+        const plats = (p.platforms || []).filter((k) => lane.plats.includes(k))
+        if (!plats.length) continue
+        const key =
+          p.date +
+          "|" +
+          lane.key +
+          "|" +
+          (isLong(p) ? "long|" + p.id : cutKey(p)) +
+          (isPlanned(p) ? "|planned" : "")
+        if (!tiles.has(key))
+          tiles.set(key, {
+            date: p.date,
+            lane: lane.key,
+            long: isLong(p),
+            rows: [],
+            plats: new Set(),
+          })
+        const t = tiles.get(key)
+        t.rows.push(p)
+        plats.forEach((k) => t.plats.add(k))
       }
-      const key = p.date + "|" + cutKey(p) + (isPlanned(p) ? "|planned" : "")
-      const g = byKey[key]
-      const pl = p.platforms || []
-      if (g && !pl.some((k) => g.platforms.has(k))) {
-        g.members.push(p)
-        pl.forEach((k) => g.platforms.add(k))
-      } else {
-        const ng = { members: [p], platforms: new Set(pl) }
-        byKey[key] = ng
-        out.push(ng)
-      }
-    })
-    items = out.map((g) => {
-      const ms = g.members
-      const yt = ms.find((p) =>
-        (p.platforms || []).some((k) => k.startsWith("yt")),
-      )
-      const lead = yt || ms[0]
+    }
+    items = [...tiles.values()].map((t) => {
+      const lead = t.rows[0]
+      // Siblings: the same cut on the same day in other lanes, so the overlay shows all its platforms.
+      const sib = t.long
+        ? t.rows
+        : live.filter(
+            (q) =>
+              q.date === t.date &&
+              !isLong(q) &&
+              cutKey(q) === cutKey(lead) &&
+              isPlanned(q) === isPlanned(lead),
+          )
       const platforms = PLATS.map((x) => x.key).filter((k) =>
-        ms.some((p) => (p.platforms || []).includes(k)),
+        sib.some((q) => (q.platforms || []).includes(k)),
       )
       const links = {}
       platforms.forEach((k) => {
-        const m = ms.find((p) => (p.platforms || []).includes(k))
+        const m = sib.find((q) => (q.platforms || []).includes(k))
         links[k] = {
           url: urlFor(m, k),
           scheduled: isFuture(m),
@@ -776,144 +804,169 @@
           time: m.time || "",
         }
       })
-      const times = ms
-        .map((p) => p.time)
+      const times = t.rows
+        .map((q) => q.time)
         .filter(Boolean)
         .sort()
       return {
-        date: lead.date,
-        time: times[0] || "",
+        date: t.date,
+        lane: t.lane,
+        long: t.long,
+        tall: !t.long,
         kind: lead.kind,
-        tall: isTall(lead),
-        title: lead.title,
-        note: ms
-          .map((p) => p.note)
+        time: times[0] || "",
+        title: lead.title || "",
+        label: t.long ? workName(lead) : cutLabel(lead),
+        thumb: (t.rows.find((q) => q.thumb) || {}).thumb || "",
+        duration: (t.rows.find((q) => q.duration) || {}).duration || "",
+        note: t.rows
+          .map((q) => q.note)
           .filter(Boolean)
           .join(" · "),
-        thumb: lead.thumb || (ms.find((p) => p.thumb) || {}).thumb || "",
-        duration:
-          lead.duration || (ms.find((p) => p.duration) || {}).duration || "",
-        paid: ms.some((p) => p.paid),
-        scheduled: ms.every(isFuture),
-        planned: ms.every(isPlanned),
-        story: lead.story || "",
-        cut: lead.cut || (lead.kind === "long" ? "long form" : ""),
+        paid: t.rows.some((q) => q.paid),
+        scheduled: t.rows.every(isFuture),
+        planned: t.rows.every(isPlanned),
         platforms,
         links,
       }
     })
   }
 
-  function badges(it) {
-    return (
-      '<span class="plats">' +
-      it.platforms
-        .map((k) => {
-          const d = PLATS.find((x) => x.key === k)
-          return (
-            '<span class="badge" title="' +
-            d.label +
-            '">' +
-            ICON[d.icon] +
-            (d.ru ? '<span class="ru">RU</span>' : "") +
-            "</span>"
-          )
-        })
-        .join("") +
-      "</span>"
-    )
-  }
   function tile(it) {
     const i = items.indexOf(it)
-    const n = it.platforms.length
     const cls = [
       "tile",
-      it.tall ? "tall" : "wide",
-      n > 1 ? "stack" : "",
-      n > 2 ? "three" : "",
+      it.long ? "long" : "short",
       it.scheduled ? "scheduled" : "",
       it.planned ? "planned" : "",
-      it.thumb ? "" : "noimg",
+      it.paid ? "paid" : "",
     ].join(" ")
-    return (
-      '<button type="button" data-i="' +
-      i +
-      '" class="' +
-      cls +
-      '" aria-label="' +
-      esc(it.title) +
-      '">' +
-      '<span class="face">' +
+    const pic =
+      '<span class="pic">' +
       (it.thumb
         ? '<img src="' + esc(it.thumb) + '" alt="" loading="lazy">'
         : "") +
-      (it.planned
-        ? '<span class="plabel"><b>' +
-          esc(it.story) +
-          "</b><i>" +
-          esc(it.cut) +
-          "</i></span>"
-        : "") +
-      "</span>" +
-      badges(it) +
-      (it.scheduled ? '<span class="clock">' + ICON.clock + "</span>" : "") +
-      (it.duration ? '<span class="dur">' + esc(it.duration) + "</span>" : "") +
-      (it.paid ? '<span class="paid" title="Promoted"></span>' : "") +
+      "</span>"
+    return (
+      '<button type="button" class="' +
+      cls +
+      '" data-i="' +
+      i +
+      '" aria-label="' +
+      esc(it.title || it.label) +
+      '">' +
+      pic +
+      (it.long
+        ? '<span class="nm">' + esc(it.label) + "</span>"
+        : '<span class="ct">' + esc(it.label) + "</span>") +
       "</button>"
     )
   }
-  function dayContent(list) {
-    const byTime = (a, b) => (a.time || "99").localeCompare(b.time || "99")
-    const longs = list.filter((it) => !it.tall).sort(byTime)
-    const talls = list.filter((it) => it.tall).sort(byTime)
+  const byTime = (a, b) => (a.time || "99").localeCompare(b.time || "99")
+  function cellInner(list) {
+    const longs = list.filter((it) => it.long).sort(byTime)
+    const shorts = list.filter((it) => !it.long).sort(byTime)
     return (
-      longs.map(tile).join("") +
-      (talls.length
-        ? '<div class="strip">' + talls.map(tile).join("") + "</div>"
+      (longs.length
+        ? '<div class="longs">' + longs.map(tile).join("") + "</div>"
+        : "") +
+      (longs.length && shorts.length ? "<hr>" : "") +
+      (shorts.length
+        ? '<div class="shorts">' + shorts.map(tile).join("") + "</div>"
         : "")
     )
   }
-  const visible = (it) => !only || it.platforms.includes(only)
+  function laneMark(lane) {
+    if (lane.key === "meta") return ICON.fb + ICON.ig
+    return (
+      ICON.yt +
+      '<span class="t' +
+      (lane.key === "yt-ru" ? " ru" : "") +
+      '">' +
+      (lane.key === "yt-ru" ? "RU" : "EN") +
+      "</span>"
+    )
+  }
 
   function render() {
     document.getElementById("month").innerHTML =
       MONTHS[view.m] + " <span>" + view.y + "</span>"
+    const lanes = LANES.filter((l) => !only || l.key === only)
+    const idx = {}
+    items.forEach((it) => {
+      ;(idx[it.date + "|" + it.lane] = idx[it.date + "|" + it.lane] || []).push(
+        it,
+      )
+    })
+
     const first = new Date(view.y, view.m, 1)
     const start = new Date(first)
     start.setDate(1 - ((first.getDay() + 6) % 7))
     const last = new Date(view.y, view.m + 1, 0)
-    const end = new Date(last)
-    end.setDate(last.getDate() + (6 - ((last.getDay() + 6) % 7)))
-    const byDay = {}
-    items
-      .filter(visible)
-      .forEach((it) => (byDay[it.date] = byDay[it.date] || []).push(it))
-
-    let html = DOW.map((d) => '<div class="dow">' + d + "</div>").join("")
-    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const k = ymd(d)
-      const cls = [
-        "day",
-        d.getMonth() !== view.m ? "off" : "",
-        k === todayKey ? "today" : "",
-      ].join(" ")
+    let html = ""
+    for (let ws = new Date(start); ws <= last; ws.setDate(ws.getDate() + 7)) {
+      const days = [...Array(7)].map((_, i) => {
+        const d = new Date(ws)
+        d.setDate(ws.getDate() + i)
+        return d
+      })
       html +=
-        '<div class="' +
-        cls +
-        '"><div class="num"><b>' +
-        d.getDate() +
-        "</b></div>" +
-        (byDay[k] ? dayContent(byDay[k]) : "") +
-        "</div>"
+        '<section class="week"><div class="dh"></div>' +
+        days
+          .map((d) => {
+            const k = ymd(d)
+            return (
+              '<div class="dh' +
+              (d.getMonth() !== view.m ? " off" : "") +
+              (k === todayKey ? " today" : "") +
+              '">' +
+              DOW[(d.getDay() + 6) % 7] +
+              " <b>" +
+              d.getDate() +
+              "</b></div>"
+            )
+          })
+          .join("")
+      for (const lane of lanes) {
+        html +=
+          '<div class="' +
+          lane.key +
+          ' lab" title="' +
+          lane.label +
+          '">' +
+          laneMark(lane) +
+          "</div>"
+        html += days
+          .map(
+            (d) =>
+              '<div class="cell ' +
+              lane.key +
+              (d.getMonth() !== view.m ? " off" : "") +
+              '">' +
+              cellInner(idx[ymd(d) + "|" + lane.key] || []) +
+              "</div>",
+          )
+          .join("")
+      }
+      html += "</section>"
     }
-    document.getElementById("grid").innerHTML = html
+    document.getElementById("weeks").innerHTML = html
 
+    // Phone agenda: only days with posts.
     const monthKey = view.y + "-" + pad(view.m + 1)
-    const days = Object.keys(byDay)
-      .filter((k) => k.startsWith(monthKey))
-      .sort()
-    document.getElementById("agenda").innerHTML = days.length
-      ? days
+    const dates = [
+      ...new Set(
+        items
+          .filter(
+            (it) =>
+              it.date.startsWith(monthKey) &&
+              lanes.some((l) => l.key === it.lane),
+          )
+          .map((it) => it.date),
+      ),
+    ].sort()
+    document.getElementById("agenda").innerHTML = dates.length
+      ? dates
           .map((k) => {
             const d = new Date(k + "T12:00")
             return (
@@ -923,9 +976,23 @@
               DOW[(d.getDay() + 6) % 7] +
               " " +
               d.getDate() +
-              '</h3><div class="stack-list">' +
-              dayContent(byDay[k]) +
-              "</div></section>"
+              "</h3>" +
+              lanes
+                .filter((l) => idx[k + "|" + l.key])
+                .map(
+                  (l) =>
+                    '<div class="arow"><div class="' +
+                    l.key +
+                    ' lab">' +
+                    laneMark(l) +
+                    '</div><div class="cell ' +
+                    l.key +
+                    '">' +
+                    cellInner(idx[k + "|" + l.key]) +
+                    "</div></div>",
+                )
+                .join("") +
+              "</section>"
             )
           })
           .join("")
@@ -935,28 +1002,33 @@
   function renderFilters() {
     const box = document.getElementById("filters")
     box.classList.toggle("picked", !!only)
-    box.innerHTML = PLATS.map(
-      (c) =>
+    box.innerHTML = LANES.map(
+      (l) =>
         '<button class="fchip" data-k="' +
-        c.key +
+        l.key +
         '" aria-pressed="' +
-        (only === c.key) +
+        (only === l.key) +
         '" title="Show only ' +
-        c.label +
+        l.label +
         '" aria-label="Show only ' +
-        c.label +
+        l.label +
         '">' +
-        ICON[c.icon] +
-        (c.ru ? '<span class="ru">RU</span>' : "") +
+        (l.key === "meta"
+          ? '<span class="pair">' + ICON.fb + ICON.ig + "</span>"
+          : ICON.yt +
+            '<span class="tag' +
+            (l.key === "yt-ru" ? " ru" : "") +
+            '">' +
+            (l.key === "yt-ru" ? "RU" : "EN") +
+            "</span>") +
         "</button>",
     ).join("")
   }
   document.getElementById("filters").addEventListener("click", (e) => {
     const b = e.target.closest(".fchip")
     if (!b) return
-    const k = b.dataset.k || null
-    only = only === k ? null : k
-    store("dbp-cal-only", only)
+    only = only === b.dataset.k ? null : b.dataset.k
+    store("dbp-cal-lane", only)
     renderFilters()
     render()
   })
@@ -981,7 +1053,7 @@
     render()
   }
 
-  // Overlay: big thumbnail + one button per platform, each with its own link.
+  // Overlay: big thumbnail + one button per platform the cut went to.
   const ov = document.getElementById("ov")
   let lastFocus = null
   function openOverlay(it) {
@@ -1001,7 +1073,7 @@
         const l = it.links[k] || {}
         const label =
           k === "yt-en" || k === "yt-ru"
-            ? (it.kind === "short" ? "YouTube Shorts" : "YouTube") +
+            ? (it.kind === "long" ? "YouTube" : "YouTube Shorts") +
               (p.ru ? " RU" : "")
             : p.label
         const note = l.planned
@@ -1031,7 +1103,7 @@
     ov.innerHTML =
       '<button class="ghost ov-x" id="ovx" aria-label="Close">✕</button><div class="ov-card">' +
       '<div class="ov-side"><h2>' +
-      esc(it.title) +
+      esc(it.title || it.label) +
       '</h2><div class="ov-meta">' +
       esc(when + (it.note ? " · " + it.note : "")) +
       "</div>" +
@@ -1072,15 +1144,12 @@
       : it.time
         ? (it.scheduled ? "Scheduled " : "") + it.time
         : ""
+    const sub = [when, it.note].filter(Boolean).join(" · ")
     tip.innerHTML =
       "<b>" +
-      esc(it.title) +
+      esc(it.title || it.label) +
       "</b>" +
-      (when || it.note
-        ? "<span>" +
-          esc([when, it.note].filter(Boolean).join(" · ")) +
-          "</span>"
-        : "")
+      (sub ? "<span>" + esc(sub) + "</span>" : "")
     tip.hidden = false
     const r = el.getBoundingClientRect()
     const tw = tip.offsetWidth,
@@ -1104,6 +1173,7 @@
   renderFilters()
   render()
   document.getElementById("status").textContent = "Loading posts…"
+
   ;(async () => {
     const db = await window.claude?.use?.("db")
     const status = document.getElementById("status")
@@ -1117,7 +1187,7 @@
         build()
         status.textContent = posts.length
           ? ""
-          : "No posts yet. A Claude session adds them as they go live or get scheduled."
+          : "No posts yet. The Calendar session adds them as they go live or get scheduled."
         render()
       },
       (err) => {

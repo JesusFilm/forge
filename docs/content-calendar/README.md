@@ -38,8 +38,13 @@ The result gives `/_blob/<id>`; that string is the row's `thumb`.
 Thumbnails are vertical for everything except YouTube long forms (Shorts and all
 Facebook / Instagram posts: 270x480 frame); long forms use the 16:9 cover.
 A Meta reel cut from the same file as a YouTube Short reuses the Short's thumb.
-The tile shows only the picture, platform icons, duration, and a clock if scheduled;
-the title appears on hover. Clicking a tile opens an overlay with one button per platform.
+Layout (Figma "A3", 2026-10-12): each week is three lanes, YouTube EN, YouTube RU and
+Facebook + Instagram. A long form shows its thumbnail and working name (from `story`, plus
+"LUMO" when the id has "lumo"). Below a divider come the Shorts/reels, labelled only by type
+(intro / verse / insight / refl. / teaser), taken from `cut` or from the doc id. Rows with
+fb+ig land in the Meta lane. A planned row on yt-en+fb+ig appears in both lanes. The title
+shows on hover. Clicking a tile opens an overlay with one button per platform the cut went
+to that day.
 
 ### 2. Write the row (ArtifactData)
 
