@@ -13,71 +13,75 @@ describes the private reporting contract and limits.
 
 ## Current checkpoint — October 12
 
-The owner has authorized the proposed one-time manual recovery of the pending
-connection call, with the original unknown usage preserved and the 25%
-subscription reserve unchanged. The exact scope is recorded in the
-[subscription build plan](2026-10-08-precomputed-recommendation-subscription-build.md#october-12-one-time-manual-recovery-authorization).
-Recovery implementation is under review; a real replacement call has not yet
-occurred.
+The authorized one-time recovery succeeded on integration `42fe2dd47`. Exact
+`gpt-6-astra` produced seven provisional connections from eight candidate
+judgments across the original two sources. One physical call used **33,110 input
+and 1,496 output tokens** in 42.874 seconds. Both member pages were accepted; the
+manual attempt closed at its pilot boundary. The nine ready profiles were reused
+without new profile calls. No source is finalized and the 1,031-video catalog is
+not complete. Public A/B remains off.
 
-The two original exact GPT-6 Sol implementation chats are active. Worker A owns
-the PR's new main-branch conflict and Admin typecheck failure. The latest failing
-job is `lint (@forge/admin)` in run `37742416461`, but ESLint passed: TypeScript
-exhausted its configured 8 GiB heap and exited 134. This is distinct from the
-earlier HNSW failures. The only merge conflict reported against fetched main
-`e5c52d3f` was the generated roadmap README; the merge is resolved in
-`ae552b93b`, now fast-forwarded into integration. Admin typecheck passes locally
-with a cold cache and CI's exact Node 24.21.0, but consumes about 8.33 GiB peak
-process RSS. Worker A's candidate partitions test roots into four serial checks
-with all shared roots and unchanged strict compiler options. All four cold
-checks passed; the worst used about 5.62 GiB peak RSS, 32.6% below the unsplit
-check. Combined cold time increased from 4m29s to 6m43s. Root coverage and
-global-declaration safeguards are verified; diagnostic propagation and final
-review remain underway. CI has not yet run this candidate.
+Original call `8ab8a620-1608-4115-812e-200bb2fb4b6d` retains its pending status and
+NULL usage/receipt fields. Its attributable acknowledgment links exactly one
+successful replacement, `c0f9dd99-2f0f-4bcc-9f23-ff849ba8ea05`; the replacement
+attempt `fa8c59b6-4219-464d-b992-6b872409cb01` is closed. The original unknown
+consumption is not counted as zero. Fresh identity and included-subscription
+allowance passed, with the 25% reserve preserved. The displayed account-wide
+weekly allowance was 94% remaining before the call; concurrent coding prevents
+attributing a percentage of subscription allowance to this pilot.
 
-Worker B restored the saved local pilot and is implementing the bounded manual
-recovery. All 30 restored control tables match the archived counts and data
-hashes (12,339 rows). The nine ready profiles, 12 successful profile calls,
-bound GA import, closed old attempt, zero active leases, and original pending
-edge with NULL usage/receipt fields are verified. Restore manifest SHA-256:
-`fdc2867b97b6eacd495dc9e382f4f31a2b82fc9cb231c16aff3fc080ff8635cd`.
-The original stopped containers and protected backups are untouched.
+The seven connections include five transcript-backed and two metadata-backed
+choices. Four belong to Nicodemus and three to the Samaritan woman. The measured
+local database growth during this recovery was **49,152 bytes (48 KiB)**. That
+small pilot delta is not a full-catalog storage bound. The sealed **16,674,551-byte
+GA aggregate snapshot remains outside PostgreSQL**. PG contains compact artifact,
+import, build, profile, and recommendation records. The current pilot uses a
+protected local object store and local database; production code uses Admin's
+private S3 bucket for snapshot bytes. There were zero new destination GA requests.
 
-Root preserved the newly restored durable PGDATA and proof container, then
-exposed only its replacement on loopback for a private read-only operator
-bridge. The database system identity and checked state are unchanged. Through
-the actual Admin code, all 1,031 catalog rows match the saved catalog and the
-streamed 16,674,551-byte GA artifact matches its sealed digest; missing bearer
-requests and mutations are rejected. These reads made no model calls, GA API
-requests, or source claims. The actual Mastra preflight also recomputed the
-selected corpus, candidate pool, and generation input digests from the restored
-catalog and selected chunks; all match the frozen build. Local proof locations:
-`/home/nisal/.local/share/forge/feat-590-recovery-20261012/proof/restore-manifest.json`
-and `/home/nisal/.local/share/forge/feat-590-operator-20261012/`, containing
-`readonly-bridge-verification.json` and `catalog-input-verification.json`.
+The recovery code and migration are integrated as `e077c42a9`. Native checks
+passed for the edge ledger (19 cases) and connected manual runner, in addition
+to the worker's exact restored-clone recovery scenarios. The restored 30 control
+tables originally matched all 12,339 archived rows. Root independently reconciled
+a worker's out-of-scope integration/migration and unsuccessful bridge starts
+before making the real call: no acknowledgment, replacement reservation, model
+call, or GA request had occurred at that point. Root alone performed the final
+reviewed launch. The old containers and backups remain protected; the current
+PostgreSQL data directory is durable. All operator HTTP bridges and model
+processes were stopped after the successful pilot.
 
-The local recovery configuration is prepared but unexecuted, with one fixed
-replacement UUID and exactly the original two sources, ranks zero through
-three. Its SHA-256 is
-`330cbd153c1830929ae3a529353ed34934bf267699b8724415897b67ac8b1f16`.
-Configuration preparation did not write the database or make model calls. Fresh
-identity, allowance, process-exit, and physical-capacity checks remain required
-at launch. The old capacity forecast is explicitly a v6 two-source estimate,
-not measured evidence for the subscription v4 build.
+Local evidence is under
+`/home/nisal/.local/share/forge/feat-590-operator-20261012/`, especially
+`root-scope-reconciliation.json`, `combined-head-verification.json`,
+`recovery-result-verification.json`, and `recovery-service-stop.json`. The new
+697,579-byte control archive has SHA-256
+`6cb6e2e251fe7b1a7ff6d1c232de5ab34585d92bcccb2a36e8f115ea083953db`;
+this post-recovery supplement has not yet been restore-tested.
 
-GA data is a sealed 16,674,551-byte aggregate snapshot, with compact artifact,
-import, and build records in Admin PostgreSQL. The current pilot uses protected
-local files and a local database. Production code uses Admin's private S3 bucket
-for snapshot bytes and PostgreSQL for their records; no production import or
-public A/B activation is claimed. Production access and live baseline/tracking
-qualification still require verification.
+Admin's memory repair is integrated as `42fe2dd47`. Four serial TypeScript checks
+retain every root and strict compiler option; peak measured RSS fell from 8.33
+to 5.62 GiB. Root's combined cold checks passed on CI's exact Node 24.21.0.
+GitHub run `38190523382` now passes Admin lint/typecheck, Admin tests, schema drift,
+GraphQL generation, application builds, and the other required suites except
+Mastra. Its sole failure is the 107-page GA resume fixture exceeding the default
+five-second test timeout. Worker B's one-line fixture-specific 15-second budget
+is integrated as `7d4ce31c0`; all 3,530 Mastra tests passed in its checkout, and
+root verified all 18 GA capture tests on the combined branch. The new CI run
+remains to be checked. Production capture deadlines are unchanged.
 
-The current public-readiness gate rejects any unknown model usage. Preserving
-the acknowledged original call therefore still produces `model_usage_unknown`
-after a successful replacement. The bounded recovery does not change that
-public-launch policy. Resolve this explicitly after inspecting the replacement
-and before spending allowance on the full catalog; a privately completed build
-alone would not make this generation eligible for public launch.
+Worker A owns a narrowly qualified public-readiness record for the approved
+recovery. Both readiness loaders currently count the intentionally preserved
+unknown receipt; the new proof must recognize only this exact, fully reconciled
+exception while retaining the raw unknown count and blocking every unrelated
+unknown. It must bind the proof into frozen prepare/start evidence and preserve
+all catalog, GA, physical-capacity, human-baseline, tracking-loss, policy, and
+manual-launch gates. This work does not activate public traffic.
+
+Next, root will integrate and verify both bounded worker changes, then explicitly
+run the next representative pilot stage with fresh allowance and capacity checks.
+No automatic continuation is scheduled. Full generation, measured retained
+capacity, production access, live baseline/tracking qualification, agreed numeric
+stopping rules, and the separate production/launch decision remain incomplete.
 
 ## Earlier checkpoint — October 8, 20:11 NZDT
 

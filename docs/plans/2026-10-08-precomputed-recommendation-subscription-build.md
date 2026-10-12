@@ -205,3 +205,27 @@ The concrete proposal and original evidence remain preserved in
 `/home/nisal/.local/share/forge/feat-590-evidence-20261007/subscription-edge-schema-repair-20261008T071236Z/`.
 Authorization is recorded here; implementation and execution remain separate
 verification milestones.
+
+## October 12: verified recovery outcome
+
+The one authorized replacement ran at integration `42fe2dd47` and succeeded:
+`c0f9dd99-2f0f-4bcc-9f23-ff849ba8ea05` used 33,110 input / 1,496 output tokens in
+42.874 seconds. Both original two-source member pages reached `applied_edges`;
+seven provisional choices were stored. The nine ready profiles were reused,
+zero new GA requests were made, and the attempt closed at the pilot boundary.
+No source was finalized. The original pending receipt remains unchanged except
+for its four attributable recovery-acknowledgment fields; its usage remains NULL.
+
+Local PG grew by 48 KiB during the replacement. The 16.7 MB sealed aggregate GA
+artifact remains in the protected object store. This pilot does not establish a
+full-catalog storage bound or the percentage of subscription allowance required.
+Detailed proof and a protected post-recovery control archive are recorded in the
+[current orchestration checkpoint](2026-10-05-precomputed-video-recommendation-status.md#current-checkpoint--october-12).
+The operator bridge and model process have exited; there is no scheduled resume.
+
+The approved exception also needs a narrowly qualified readiness proof: retain
+the raw unknown count while recognizing only the pinned original receipt after
+its exact successful replacement is fully applied and closed. Bind that proof to
+frozen prepare/start evidence, and continue blocking unrelated or unreconciled
+unknown usage. This implements the existing single-call authorization; it does
+not waive any other public-launch gate or authorize public activation.
