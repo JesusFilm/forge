@@ -204,6 +204,7 @@ const VOICE_ENUM = z.enum([
   "spanish",
   "spanish-female",
   "russian-female",
+  "russian-ivo",
 ])
 
 /** Zod schema mirroring GeneratedDevotional, for crossing Mastra step boundaries. */

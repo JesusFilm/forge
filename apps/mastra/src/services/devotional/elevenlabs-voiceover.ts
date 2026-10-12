@@ -61,6 +61,10 @@ export const DEVOTIONAL_VOICES = {
   // She is generated ~12 dB quieter than the male voice; the render's
   // per-voice levelling brings her up.
   "russian-female": "7G0NvIkWRnU0Dqjgz13p",
+  // "Ivo - Calming, chill and narrative" from the voice library: a calm,
+  // younger Russian male narrator (20s-30s). Owner's pick from four samples
+  // on Ten Lepers (2026-10-12) for a whole Russian video beside Kate.
+  "russian-ivo": "hD8aK7CmEPgH3mbFO08e",
 } as const
 
 export type DevotionalVoiceName = keyof typeof DEVOTIONAL_VOICES
