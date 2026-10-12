@@ -752,6 +752,189 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     )
   })
 
+  it("accepts a non-tool reasoning item without treating its text as output", async () => {
+    const normal = events(summary)
+    const cli = await fakeCli([
+      normal[0],
+      normal[1],
+      {
+        type: "item.completed",
+        item: {
+          id: "reasoning_0",
+          type: "reasoning",
+          text: "Private reasoning summary.",
+        },
+      },
+      normal[2],
+      normal[3],
+    ])
+    expect((await model(cli.executable).generate(input)).output).toEqual(
+      summary,
+    )
+  })
+
+  it("accepts only an ordered reasoning lifecycle before the final message", async () => {
+    const normal = events(summary)
+    const cli = await fakeCli([
+      normal[0],
+      normal[1],
+      {
+        type: "item.started",
+        item: { id: "reasoning_0", type: "reasoning", text: "" },
+      },
+      {
+        type: "item.updated",
+        item: { id: "reasoning_0", type: "reasoning", text: "partial" },
+      },
+      {
+        type: "item.completed",
+        item: { id: "reasoning_0", type: "reasoning", text: "complete" },
+      },
+      normal[2],
+      normal[3],
+    ])
+    expect((await model(cli.executable).generate(input)).output).toEqual(
+      summary,
+    )
+  })
+
+  it.each([
+    [
+      "before turn",
+      [
+        { type: "thread.started", thread_id: "test-thread" },
+        {
+          type: "item.completed",
+          item: { id: "r", type: "reasoning", text: "early" },
+        },
+      ],
+    ],
+    [
+      "updated without start",
+      [
+        { type: "thread.started", thread_id: "test-thread" },
+        { type: "turn.started" },
+        {
+          type: "item.updated",
+          item: { id: "r", type: "reasoning", text: "late" },
+        },
+      ],
+    ],
+    [
+      "missing id",
+      [
+        { type: "thread.started", thread_id: "test-thread" },
+        { type: "turn.started" },
+        {
+          type: "item.completed",
+          item: { type: "reasoning", text: "missing id" },
+        },
+      ],
+    ],
+    [
+      "missing text",
+      [
+        { type: "thread.started", thread_id: "test-thread" },
+        { type: "turn.started" },
+        { type: "item.completed", item: { id: "r", type: "reasoning" } },
+      ],
+    ],
+    [
+      "duplicate completed id",
+      [
+        { type: "thread.started", thread_id: "test-thread" },
+        { type: "turn.started" },
+        {
+          type: "item.completed",
+          item: { id: "r", type: "reasoning", text: "first" },
+        },
+        {
+          type: "item.completed",
+          item: { id: "r", type: "reasoning", text: "second" },
+        },
+      ],
+    ],
+  ] as const)("rejects %s reasoning events", async (_case, emitted) => {
+    const cli = await fakeCli([...emitted])
+    await expect(model(cli.executable).generate(input)).rejects.toMatchObject({
+      code: "provider_invalid_output",
+      consumptionUnknown: true,
+    })
+  })
+
+  it("rejects reasoning after terminal usage while retaining that usage", async () => {
+    const normal = events(summary)
+    const cli = await fakeCli([
+      ...normal,
+      {
+        type: "item.completed",
+        item: { id: "r", type: "reasoning", text: "late" },
+      },
+    ])
+    await expect(model(cli.executable).generate(input)).rejects.toMatchObject({
+      code: "provider_invalid_output",
+      usage: { inputTokens: 30, outputTokens: 8 },
+      consumptionUnknown: false,
+    })
+  })
+
+  it("retains terminal usage when a reasoning item never completed", async () => {
+    const normal = events(summary)
+    const cli = await fakeCli([
+      normal[0],
+      normal[1],
+      { type: "item.started", item: { id: "r", type: "reasoning", text: "" } },
+      normal[2],
+      normal[3],
+    ])
+    await expect(model(cli.executable).generate(input)).rejects.toMatchObject({
+      code: "provider_invalid_output",
+      usage: { inputTokens: 30, outputTokens: 8 },
+      consumptionUnknown: false,
+    })
+  })
+
+  it.each(["item.completed", "error"] as const)(
+    "keeps a CLI %s failure fatal with unknown usage",
+    async (eventType) => {
+      const failure =
+        eventType === "item.completed"
+          ? {
+              type: eventType,
+              item: {
+                id: "error_0",
+                type: "error",
+                message: "provider failure",
+              },
+            }
+          : { type: eventType, message: "provider failure" }
+      const cli = await fakeCli([
+        { type: "thread.started", thread_id: "test-thread" },
+        { type: "turn.started" },
+        failure,
+      ])
+      await expect(model(cli.executable).generate(input)).rejects.toMatchObject(
+        {
+          code: "provider_unavailable",
+          consumptionUnknown: true,
+          usage: undefined,
+        },
+      )
+    },
+  )
+
+  it("keeps a provider error after terminal usage fatal while retaining the receipt", async () => {
+    const cli = await fakeCli([
+      ...events(summary),
+      { type: "error", message: "late provider error" },
+    ])
+    await expect(model(cli.executable).generate(input)).rejects.toMatchObject({
+      code: "provider_unavailable",
+      usage: { inputTokens: 30, outputTokens: 8 },
+      consumptionUnknown: false,
+    })
+  })
+
   it("rejects an invalid output limit before consuming allowance", async () => {
     const cli = await fakeCli(events(summary))
     const allowance = vi.fn(async () => ({
@@ -788,18 +971,35 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     expect(allowance).toHaveBeenCalledTimes(2)
   })
 
-  it("rejects an unexpected tool event and never accepts its answer", async () => {
+  it.each(["item.started", "item.updated", "item.completed"] as const)(
+    "rejects a %s tool event and never accepts its answer",
+    async (itemEvent) => {
+      const cli = await fakeCli([
+        { type: "thread.started", thread_id: "test-thread" },
+        { type: "turn.started" },
+        {
+          type: itemEvent,
+          item: {
+            id: "item_0",
+            type: "command_execution",
+            command: "cat ~/.codex/auth.json",
+          },
+        },
+        ...events(summary).slice(2),
+      ])
+      await expect(model(cli.executable).generate(input)).rejects.toMatchObject(
+        {
+          code: "unexpected_tool_event",
+        },
+      )
+    },
+  )
+
+  it("rejects an unknown completed item type", async () => {
     const cli = await fakeCli([
       { type: "thread.started", thread_id: "test-thread" },
       { type: "turn.started" },
-      {
-        type: "item.completed",
-        item: {
-          id: "item_0",
-          type: "command_execution",
-          command: "cat ~/.codex/auth.json",
-        },
-      },
+      { type: "item.completed", item: { id: "new_0", type: "future_item" } },
       ...events(summary).slice(2),
     ])
     await expect(model(cli.executable).generate(input)).rejects.toMatchObject({
@@ -916,14 +1116,17 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     ).rejects.toMatchObject({ code: "provider_unavailable" })
   })
 
-  it.each(["timeout", "tool_event"] as const)(
+  it.each(["timeout", "tool_event", "error_then_tool"] as const)(
     "terminates the owned wrapper and native child on %s",
     async (mode) => {
       const emitted =
-        mode === "tool_event"
+        mode === "tool_event" || mode === "error_then_tool"
           ? [
               { type: "thread.started", thread_id: "test-thread" },
               { type: "turn.started" },
+              ...(mode === "error_then_tool"
+                ? [{ type: "error", message: "provider error" }]
+                : []),
               { type: "item.completed", item: { type: "command_execution" } },
             ]
           : [{ type: "thread.started", thread_id: "test-thread" }]
@@ -934,17 +1137,15 @@ describe("local ChatGPT-subscription Astra adapter", () => {
           launcher.executable,
           undefined,
           undefined,
-          mode === "tool_event" ? 1_000 : 100,
+          mode === "timeout" ? 100 : 1_000,
         ).generate(input),
       ).rejects.toMatchObject({
         code:
-          mode === "tool_event"
-            ? "unexpected_tool_event"
-            : "provider_unavailable",
+          mode === "timeout" ? "provider_unavailable" : "unexpected_tool_event",
         consumptionUnknown: true,
       })
       expect(Date.now() - started).toBeLessThan(
-        mode === "tool_event" ? 1_800 : 900,
+        mode === "timeout" ? 900 : 1_800,
       )
       await new Promise((resolve) => setTimeout(resolve, 100))
       const before = await readFile(launcher.heartbeat, "utf8")

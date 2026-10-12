@@ -241,6 +241,7 @@ type CodexEvents = {
   output?: string
   usage?: ModelUsage
   phase: "initial" | "thread" | "turn" | "completed"
+  reasoning: Map<string, "started" | "completed">
   failed?:
     | "provider_invalid_output"
     | "provider_unavailable"
@@ -261,7 +262,7 @@ function processEvent(raw: string, state: CodexEvents): void {
   }
   const item = event as {
     type: unknown
-    item?: { type?: unknown; text?: unknown }
+    item?: { id?: unknown; type?: unknown; text?: unknown }
     usage?: Record<string, unknown>
   }
   if (item.type === "thread.started") {
@@ -274,9 +275,48 @@ function processEvent(raw: string, state: CodexEvents): void {
     else state.phase = "turn"
     return
   }
-  if (item.type === "item.completed") {
+  if (
+    item.type === "item.started" ||
+    item.type === "item.updated" ||
+    item.type === "item.completed"
+  ) {
+    if (item.item?.type === "reasoning") {
+      const id = item.item.id
+      if (
+        state.phase !== "turn" ||
+        typeof id !== "string" ||
+        !id ||
+        typeof item.item.text !== "string"
+      ) {
+        state.failed ??= "provider_invalid_output"
+        return
+      }
+      const prior = state.reasoning.get(id)
+      if (
+        (item.type === "item.started" && prior !== undefined) ||
+        (item.type === "item.updated" && prior !== "started") ||
+        (item.type === "item.completed" && prior === "completed")
+      ) {
+        state.failed ??= "provider_invalid_output"
+        return
+      }
+      if (item.type !== "item.updated")
+        state.reasoning.set(
+          id,
+          item.type === "item.started" ? "started" : "completed",
+        )
+      return
+    }
+    if (item.item?.type === "error") {
+      state.failed ??= "provider_unavailable"
+      return
+    }
+    if (item.type !== "item.completed") {
+      state.failed = "unexpected_tool_event"
+      return
+    }
     if (item.item?.type !== "agent_message") {
-      state.failed ??= "unexpected_tool_event"
+      state.failed = "unexpected_tool_event"
       return
     }
     if (
@@ -309,12 +349,16 @@ function processEvent(raw: string, state: CodexEvents): void {
     if (state.usage.cachedInputTokens === undefined)
       delete state.usage.cachedInputTokens
     state.phase = "completed"
+    if ([...state.reasoning.values()].some((phase) => phase !== "completed"))
+      state.failed ??= "provider_invalid_output"
     return
   }
-  state.failed ??=
-    item.type === "turn.failed"
-      ? "provider_unavailable"
-      : "unexpected_tool_event"
+  if (item.type === "error") {
+    state.failed ??= "provider_unavailable"
+    return
+  }
+  if (item.type === "turn.failed") state.failed ??= "provider_unavailable"
+  else state.failed = "unexpected_tool_event"
 }
 
 async function prepareCodex(
@@ -380,7 +424,7 @@ async function runCodex(input: {
     "skills.max_context_tokens=1",
     "-",
   ]
-  const state: CodexEvents = { phase: "initial" }
+  const state: CodexEvents = { phase: "initial", reasoning: new Map() }
   let bytes = 0
   let lines = 0
   let remainder = ""
