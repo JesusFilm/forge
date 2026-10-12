@@ -168,6 +168,23 @@ describe("splash host ownership", () => {
     ).toBe(true)
   })
 
+  // feat-692 U2: a start reload for direction must happen behind the native
+  // splash, so its bare view hides nothing and mounts the tree only after it.
+  it("keeps the native splash up while a direction reload is pending", () => {
+    const content = read(LAYOUT)
+    const gate = blockAfter(content, "if (directionReloadPending) {")
+    expect(gate).not.toBeNull()
+    expect(gate).toContain("return <View")
+    expect(gate).not.toContain("hideNativeSplash")
+    expect(gate).not.toContain("releaseSplashImmediately")
+    const root = blockAfter(content, "export default function RootLayout(")
+    expect(root).not.toBeNull()
+    expect(root.indexOf("if (directionReloadPending) {")).toBeGreaterThan(-1)
+    expect(root.indexOf("if (directionReloadPending) {")).toBeLessThan(
+      root.indexOf("return <AppRoot />"),
+    )
+  })
+
   it("releases the splash session on BOTH diagnostic paths", () => {
     const content = read(LAYOUT)
     // R5 has two halves: the native splash AND the React cover. Asserting one

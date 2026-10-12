@@ -45,6 +45,8 @@ enum LayoutDirectionStore {
     defaults.set(reloadCount, forKey: reloadCountKey)
     defaults.set(reloadKind, forKey: reloadKindKey)
     defaults.set(reloadBundle, forKey: reloadBundleKey)
+    // A new reload record has no fault yet; the runtime it starts reads it that way.
+    defaults.removeObject(forKey: reportedFaultKey)
     return defaults.synchronize()
   }
 

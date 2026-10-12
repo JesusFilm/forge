@@ -118,20 +118,53 @@ function startsLocaleSyncInGuardedBlock(source) {
   )
 }
 
-/** True when RootLayout's own body calls useLocaleResolutionLog(hydrated). */
-function logsLocaleInRootLayout(source) {
+/** The comment-free body of `function <name>(…) {`, brace-matched; or null. */
+function functionBody(source, name) {
   const [code, masked] = scan(source)
-  const head = /export default function RootLayout\([^)]*\)\s*\{/.exec(masked)
-  if (!head) return false
+  const head = new RegExp(`function ${name}\\([^)]*\\)\\s*\\{`).exec(masked)
+  if (!head) return null
   const open = head.index + head[0].length - 1
   let level = 0
   for (let k = open; k < masked.length; k += 1) {
     if (masked[k] === "{") level += 1
     else if (masked[k] === "}" && (level -= 1) === 0) {
-      return code.slice(open, k).includes("useLocaleResolutionLog(hydrated)")
+      return code.slice(open, k)
     }
   }
-  return false
+  return null
+}
+
+/** True when the root layout renders AppRoot and AppRoot's own body calls
+ *  useLocaleResolutionLog(hydrated). feat-692 U2 moved the tree into AppRoot. */
+function logsLocaleInAppRoot(source) {
+  const root = functionBody(source, "RootLayout")
+  const app = functionBody(source, "AppRoot")
+  return (
+    root != null &&
+    app != null &&
+    root.includes("<AppRoot />") &&
+    app.includes("useLocaleResolutionLog(hydrated)")
+  )
+}
+
+/** True when a guarded block starts the layout direction after the locale
+ *  store, with its own `try` so a failure never reaches the Startup Error panel. */
+function startsDirectionAfterLocale(source) {
+  const [code, masked] = scan(source)
+  const blocks = tryBlocks(masked)
+  const guarded = blocks.filter((block) => block.depth === 0)
+  const nested = blocks.filter((block) => block.depth > 0)
+  const locale = indexesOf(code, "startLocaleSync(")
+  const starts = indexesOf(code, "startLayoutDirection(")
+  const requires = indexesOf(code, 'require("../src/i18n/layoutDirection")')
+  return (
+    starts.length === 1 &&
+    requires.length === 1 &&
+    inside(guarded, starts[0]) &&
+    inside(nested, starts[0]) &&
+    inside(nested, requires[0]) &&
+    locale.some((index) => index < starts[0])
+  )
 }
 
 /** True when every load of `specifier` is a require inside a `try` block. */
@@ -206,28 +239,62 @@ describe("UI locale start-up order (KTD3)", () => {
 
 // The hook's own suite renders its own root, so only this pins the call site.
 describe("the ui_locale.resolved log", () => {
-  it("is called from RootLayout with the hydration flag", () => {
-    expect(logsLocaleInRootLayout(fs.readFileSync(LAYOUT, "utf8"))).toBe(true)
+  it("is called from AppRoot, which RootLayout renders, with the hydration flag", () => {
+    expect(logsLocaleInAppRoot(fs.readFileSync(LAYOUT, "utf8"))).toBe(true)
   })
 
   it.each([
     [
       "the call",
-      "export default function RootLayout() {\n  useLocaleResolutionLog(hydrated)\n}",
+      "export default function RootLayout() {\n  return <AppRoot />\n}\nfunction AppRoot() {\n  useLocaleResolutionLog(hydrated)\n}",
       true,
     ],
     [
       "a commented-out call",
-      "export default function RootLayout() {\n  // useLocaleResolutionLog(hydrated)\n}",
+      "export default function RootLayout() {\n  return <AppRoot />\n}\nfunction AppRoot() {\n  // useLocaleResolutionLog(hydrated)\n}",
       false,
     ],
     [
-      "a call outside RootLayout",
-      "function Other() {\n  useLocaleResolutionLog(hydrated)\n}\nexport default function RootLayout() {}",
+      "an AppRoot that RootLayout never renders",
+      "export default function RootLayout() {\n  return null\n}\nfunction AppRoot() {\n  useLocaleResolutionLog(hydrated)\n}",
+      false,
+    ],
+    [
+      "a call outside AppRoot",
+      "function Other() {\n  useLocaleResolutionLog(hydrated)\n}\nexport default function RootLayout() {\n  return <AppRoot />\n}\nfunction AppRoot() {}",
       false,
     ],
   ])("reads %s as %s", (_label, source, expected) => {
-    expect(logsLocaleInRootLayout(source)).toBe(expected)
+    expect(logsLocaleInAppRoot(source)).toBe(expected)
+  })
+})
+
+describe("the layout direction start (feat-692 KTD3)", () => {
+  it("starts in the guarded block, after the locale store, in its own try", () => {
+    expect(startsDirectionAfterLocale(fs.readFileSync(LAYOUT, "utf8"))).toBe(
+      true,
+    )
+  })
+
+  const requireLine = '    const d = require("../src/i18n/layoutDirection")'
+  it.each([
+    [
+      "a nested try after the locale store",
+      `try {\n  store.startLocaleSync()\n  try {\n${requireLine}\n    d.startLayoutDirection()\n  } catch {}\n} catch {}`,
+      true,
+    ],
+    [
+      "a start before the locale store",
+      `try {\n  try {\n${requireLine}\n    d.startLayoutDirection()\n  } catch {}\n  store.startLocaleSync()\n} catch {}`,
+      false,
+    ],
+    [
+      "a start with no try of its own",
+      `try {\n  store.startLocaleSync()\n${requireLine}\n  d.startLayoutDirection()\n} catch {}`,
+      false,
+    ],
+  ])("reads %s as %s", (_label, source, expected) => {
+    expect(startsDirectionAfterLocale(source)).toBe(expected)
   })
 })
 

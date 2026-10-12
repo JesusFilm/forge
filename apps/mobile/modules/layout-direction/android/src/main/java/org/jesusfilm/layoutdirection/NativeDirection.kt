@@ -64,6 +64,8 @@ internal object LayoutDirectionStore {
       .putInt(KEY_RELOAD_COUNT, reloadCount)
       .putString(KEY_RELOAD_KIND, reloadKind)
       .putString(KEY_RELOAD_BUNDLE, reloadBundle)
+      // A new reload record has no fault yet; the runtime it starts reads it that way.
+      .remove(KEY_REPORTED_FAULT)
       .commit()
     return reactSaved && ownSaved
   }

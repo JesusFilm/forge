@@ -22,7 +22,8 @@ export type LayoutDirectionModule = {
   /** False in Expo Go, older dev clients, and Jest: every call does nothing. */
   available: boolean
   getState(): LayoutDirectionState
-  /** Resolves only after React Native's direction, the native mode, and the reload record are on disk. */
+  /** Resolves only after React Native's direction, the native mode, and the
+   *  reload record are on disk. A new record clears the reported fault. */
   saveDirection(input: SaveDirectionInput): Promise<void>
   saveNativeMode(mode: NativeMode): Promise<void>
   /** Applies a mode to native containers without saving it. */
