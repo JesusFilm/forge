@@ -15,7 +15,7 @@
     "restore:video-db:latest": "tsx src/scripts/restore-latest-video-db.ts",
     "fetch-secrets": "../../scripts/fetch-secrets.sh forge-admin .env",
     "lint": "NODE_OPTIONS=\"$NODE_OPTIONS --max-old-space-size=8192\" eslint .",
-    "typecheck": "NODE_OPTIONS=\"$NODE_OPTIONS --max-old-space-size=8192\" tsc --noEmit",
+    "typecheck": "NODE_OPTIONS=\"$NODE_OPTIONS --max-old-space-size=8192\" node scripts/typecheck-shards.mjs",
     "test": "vitest run",
     "test:precomputed-integration": "vitest run --config vitest.precomputed-integration.config.ts",
     "test:watch": "vitest",
