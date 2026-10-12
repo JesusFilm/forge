@@ -260,6 +260,8 @@ export const devotionalCardSchema = z.object({
          *  accents, picked by hand (owner, 2026-10-08). */
         hero: z.string().optional(),
         accents: z.array(z.string()).optional(),
+        /** Scroll style: hold the passage still, light words only. */
+        still: z.boolean().optional(),
       }),
     )
     .optional(),

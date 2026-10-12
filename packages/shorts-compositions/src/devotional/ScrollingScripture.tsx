@@ -36,6 +36,9 @@ export type ScriptureCue = {
   endSec: number
   words?: ReadonlyArray<number>
   verse?: string
+  /** Hold the whole passage still and only light the spoken word (the
+   *  verse-of-the-day short, owner 2026-10-12): no scroll, no window. */
+  still?: boolean
 }
 
 type Word = { text: string; start: number }
@@ -147,6 +150,7 @@ export function ScrollingScripture({
     ? frameHeight / 2 - dp(50 + 20 + 2 + 24 + 383) / 2 + dp(0.5)
     : (topPx ?? dp(657))
   const verses = scriptureVerses(cues)
+  const still = cues.some((c) => c.still)
   const all = verses.flatMap((v) => v.words)
   const listRef = useRef<HTMLDivElement>(null)
   const [ready, setReady] = useState(false)
@@ -185,6 +189,10 @@ export function ScrollingScripture({
   useLayoutEffect(() => {
     const list = listRef.current
     if (!ready || !list) return
+    if (still) {
+      list.style.transform = "none"
+      return
+    }
     const spans = list.querySelectorAll<HTMLElement>("[data-w]")
     const centres = Array.from(spans).map(
       (el) => el.offsetTop + el.offsetHeight / 2,
@@ -313,12 +321,16 @@ export function ScrollingScripture({
           left,
           top: top0 + dp(50 + 20 + 24),
           width: blockW,
-          height: windowH,
-          overflow: "hidden",
-          WebkitMaskImage:
-            "linear-gradient(180deg, transparent 0%, #000 30%, #000 70%, transparent 100%)",
-          maskImage:
-            "linear-gradient(180deg, transparent 0%, #000 30%, #000 70%, transparent 100%)",
+          ...(still
+            ? {}
+            : {
+                height: windowH,
+                overflow: "hidden",
+                WebkitMaskImage:
+                  "linear-gradient(180deg, transparent 0%, #000 30%, #000 70%, transparent 100%)",
+                maskImage:
+                  "linear-gradient(180deg, transparent 0%, #000 30%, #000 70%, transparent 100%)",
+              }),
         }}
       >
         <div
@@ -328,7 +340,7 @@ export function ScrollingScripture({
             display: "flex",
             flexDirection: "column",
             fontFamily: SERIF,
-            fontSize: dp(56),
+            fontSize: still ? dp(48) : dp(56),
             lineHeight: 1.25,
             color: "rgba(255,255,255,0.92)",
             // Bright film (a sunlit field) washed the white verses out.
