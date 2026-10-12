@@ -229,3 +229,28 @@ its exact successful replacement is fully applied and closed. Bind that proof to
 frozen prepare/start evidence, and continue blocking unrelated or unreconciled
 unknown usage. This implements the existing single-call authorization; it does
 not waive any other public-launch gate or authorize public activation.
+
+## October 12: second representative pilot
+
+A separate explicit manual invocation at `90f964f60` completed the second
+representative pilot after the prior leases naturally expired. It added ten
+ready profiles (five metadata-only) and six provisional connections across The
+Covenant and What Is Hope?. Eleven successful profile calls used 270,470 input /
+6,719 output tokens; one shared edge call used 26,495 input / 1,135 output tokens.
+The attempt stopped at its pilot boundary with no new GA requests or source
+finalizations. Local database growth was 240 KiB; bulk GA bytes remained external.
+
+Across the two completed pilot stages, the generation has 19 ready profiles and
+13 provisional choices, with 556,937 known input / 14,765 known output tokens
+across 25 successful physical calls. The original unknown call is still separate.
+A fresh pre-stage-two account check admitted the same operator with 93% weekly
+allowance remaining; this account-wide reading does not measure per-stage usage.
+The control archive's independent restore passed for all 30 tables / 12,381 rows.
+
+The final representative stage is prepared but has not run. It covers ten new
+profiles and 292 selected chunks, plus eight candidate judgments. Resume remains
+an explicit action after the existing source leases expire naturally at
+2026-10-12T02:00:05.461Z, followed by fresh identity, allowance, and capacity
+checks. Full-build call count, duration, and token projections must use the
+observed subscription runner; earlier API-price illustrations are not measured
+subscription consumption or an established full-catalog token bound.

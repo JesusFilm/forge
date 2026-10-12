@@ -13,6 +13,39 @@ describes the private reporting contract and limits.
 
 ## Current checkpoint — October 12
 
+Both reviewed fixes are integrated at `90f964f60`, and all required CI jobs pass
+in GitHub run `38192366116`. Two real manual pilot stages now retain **19 ready
+profiles and 13 provisional connections across four source videos**. All model
+and operator bridge processes have exited at their intended pilot boundaries.
+The catalog build is incomplete and public A/B remains off.
+
+The second pilot added ten profiles, including five metadata-only profiles,
+through 11 successful profile calls using 270,470 input / 6,719 output tokens.
+One shared connection call used 26,495 input / 1,135 output tokens and accepted
+six of eight candidate connections for The Covenant and What Is Hope?. Two
+choices use verified transcript evidence and four use metadata evidence. The
+attempt ran from 01:34:38.943 to 01:40:47.325 UTC and closed as paused, with zero
+new GA requests and zero source finalizations. Its physical local PG growth was
+245,760 bytes (240 KiB), separate from the earlier 48 KiB recovery delta. These
+small measurements do not establish a full-catalog storage bound or allowance
+forecast. Known v4 usage totals 556,937 input / 14,765 output tokens across 25
+successful physical model calls; the original unknown call remains separate.
+
+The final representative pilot is prepared but unexecuted: two more sources,
+eight candidates, and ten complete-transcript profiles covering 292 selected
+chunks. Ordinary manual resume must wait for the prior claimed-source leases
+to expire naturally at **2026-10-12T02:00:05.461Z**. No supported release action
+exists for unfinished sources, and a paused close can also follow errors; no
+lease fields are manually cleared. There is no scheduled automatic resume.
+
+The post-stage-two control archive is 717,462 bytes with SHA-256
+`81a65f17ea3fbde8053bebb4061d15981a9999f1abc3a634e45257ac52c5a958`.
+An isolated restore of that archive reproduced all **30 tables / 12,381 rows**
+with exact per-table data signatures. The source database was unchanged and the
+disposable container was removed. Proof: `stage2-backup-restore-verification.json`
+and `pilot-stage2-result-verification.json` in the protected operator directory
+below. The original containers, durable PGDATA, and earlier backups are retained.
+
 The authorized one-time recovery succeeded on integration `42fe2dd47`. Exact
 `gpt-6-astra` produced seven provisional connections from eight candidate
 judgments across the original two sources. One physical call used **33,110 input
@@ -66,22 +99,24 @@ GraphQL generation, application builds, and the other required suites except
 Mastra. Its sole failure is the 107-page GA resume fixture exceeding the default
 five-second test timeout. Worker B's one-line fixture-specific 15-second budget
 is integrated as `7d4ce31c0`; all 3,530 Mastra tests passed in its checkout, and
-root verified all 18 GA capture tests on the combined branch. The new CI run
-remains to be checked. Production capture deadlines are unchanged.
+root verified all 18 GA capture tests on the combined branch. The repaired fixture and all required jobs subsequently passed in run
+`38192366116`. Production capture deadlines are unchanged.
 
-Worker A owns a narrowly qualified public-readiness record for the approved
-recovery. Both readiness loaders currently count the intentionally preserved
-unknown receipt; the new proof must recognize only this exact, fully reconciled
-exception while retaining the raw unknown count and blocking every unrelated
-unknown. It must bind the proof into frozen prepare/start evidence and preserve
-all catalog, GA, physical-capacity, human-baseline, tracking-loss, policy, and
-manual-launch gates. This work does not activate public traffic.
+The narrowly qualified readiness proof is integrated as `90f964f60` (worker
+`6510bd25d`). Both readiness loaders retain the raw unknown count and report one
+separate qualified acknowledgment only for the pinned, fully reconciled recovery.
+Its fingerprint is bound into frozen live-evidence v2 and recomputed for manual
+start. Root's combined 30 readiness/UI tests and the read-only proof against the
+actual restored records pass. Worker checks include exact-CI Admin typecheck,
+20 native edge-ledger cases, 11 native public-control cases, final negative
+receipt tests, and repository-wide formatting. Catalog, GA, physical capacity,
+human baseline, tracking loss, policy, and manual-launch gates are unchanged.
 
-Next, root will integrate and verify both bounded worker changes, then explicitly
-run the next representative pilot stage with fresh allowance and capacity checks.
-No automatic continuation is scheduled. Full generation, measured retained
-capacity, production access, live baseline/tracking qualification, agreed numeric
-stopping rules, and the separate production/launch decision remain incomplete.
+Full generation, measured retained capacity, production access, live
+baseline/tracking qualification, agreed numeric stopping rules, and the separate
+production/launch decision remain incomplete. Further manual model work must
+recheck identity, allowance, and capacity; a projected token count cannot be
+converted into subscription percentage from the account-wide rounded meter.
 
 ## Earlier checkpoint — October 8, 20:11 NZDT
 
