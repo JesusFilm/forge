@@ -247,7 +247,11 @@ export async function researchBrief(input: {
     `PASSAGE (${input.passage.reference}, BSB):`,
     input.passageText,
     ...(input.settingText
-      ? ["", "SETTING (who Jesus is speaking to):", input.settingText]
+      ? [
+          "",
+          "SETTING (who Jesus is speaking to; background for you, the viewer never sees it):",
+          input.settingText,
+        ]
       : []),
     "",
     `CLASSIC COMMENTATOR (${input.classic.name}), his points:`,

@@ -122,6 +122,25 @@ describe("buildNarrativeUserPrompt", () => {
     expect(user.match(/--- SBL ---/g)).toHaveLength(1)
     expect(user).toContain("SBL NOTES")
   })
+
+  it("shows the editor what the viewer watched, so an outside reference can be caught", () => {
+    const base = {
+      sceneTitle: "Ten lepers",
+      scripture: { reference: "Luke 17:19", text: "Rise and go." },
+      paragraphs: narrativeParagraphs([{ text: "Own voice." }]),
+      conclusion: "c",
+      question: "q",
+      prayer: "p",
+      llm: { model: "x", complete: async () => ({}) as never },
+    }
+    const user = buildNarrativeUserPrompt({
+      ...base,
+      watched: { reference: "Luke 17:11-19", text: "TEN LEPERS MET HIM" },
+    })
+    expect(user).toContain("WATCHED (Luke 17:11-19)")
+    expect(user).toContain("TEN LEPERS MET HIM")
+    expect(buildNarrativeUserPrompt(base)).not.toContain("WATCHED")
+  })
 })
 
 describe("checkQuotations", () => {

@@ -258,9 +258,13 @@ export const SYSTEM_PROMPT = [
   "  ('most of what pulls us from Christ is...', 'the danger is not open sin',",
   "  'more often than') that are not true in general. Say 'here', 'in this",
   "  story', or 'often'.",
-  "- Do not point to a scene the viewer did not see (a parable told before",
-  "  this clip, another chapter) unless one clause says what it was; if it",
-  "  needs more than that, leave it out.",
+  "- The viewer has seen ONLY the clip. Do not bring in anything from outside",
+  "  it: no parable or teaching told before or after it, no other chapter, no",
+  "  other Gospel scene. The SETTING may give one plain sentence about who is",
+  "  listening, nothing more. A law or custom the story needs is said plainly",
+  "  in its own sentence before it is used, never slipped in mid-paragraph.",
+  "- Every sentence in a paragraph follows from the one before it. Never",
+  "  string separate facts together and leave the listener to connect them.",
   "- Plain, everyday words a listener gets at once; no strained images ('a",
   "  heart pulled in every direction', 'the sting is real').",
   "- The prayer tells the viewer what to bring to God or ask of him that a",
@@ -278,7 +282,11 @@ export function briefBlock(
     `PASSAGE (${passage.reference}, BSB), which the viewer just watched:`,
     passage.text,
     ...(settingText
-      ? ["", "SETTING (who Jesus is speaking to):", settingText]
+      ? [
+          "",
+          "SETTING (who Jesus is speaking to; background for you, the viewer never sees it):",
+          settingText,
+        ]
       : []),
     "",
     "RESEARCH BRIEF",

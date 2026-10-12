@@ -43,6 +43,7 @@ export type NarrativeIssueKind =
   | "misquote"
   | "hard-to-hear"
   | "contradicts-story"
+  | "outside-the-scene"
 
 export type NarrativeIssue = {
   kind: NarrativeIssueKind
@@ -76,6 +77,7 @@ const KINDS = [
   "misquote",
   "hard-to-hear",
   "contradicts-story",
+  "outside-the-scene",
 ] as const
 
 const Schema = z
@@ -182,13 +184,21 @@ export const SYSTEM_PROMPT = [
   "  In a parable about paying wages, 'he was never counting' is poetic but",
   "  odd: the landowner counts out a denarius to each man. Prefer the word the",
   "  passage itself uses ('generous', Matthew 20:15).",
+  "- outside-the-scene: the paragraph leans on something the viewer never saw",
+  "  or heard: a parable or teaching from before or after the clip, another",
+  "  chapter or Gospel, or a law or custom dropped in mid-paragraph as if",
+  "  known ('Just before this, Jesus had spoken of a servant...', 'The law",
+  "  required a priest to confirm a healing'). The listener has only the clip",
+  "  (WATCHED below) and the piece so far. Always HIGH: the listener is lost.",
+  "  Fix by cutting it; a custom the story truly needs may stay only as one",
+  "  plain sentence of its own before it is used.",
   "- misquote: words presented as an author's own (in quotation marks, or",
   "  introduced as 'X says', 'one sentence from X') that differ from that",
   "  author's evidence. Dropped qualifiers count: they change what was said.",
   "  Paraphrase that is NOT presented as the author's words is fine.",
   "",
-  "SEVERITY: high = an unsupported factual claim, a misquote, or a break that",
-  "loses the listener; medium = what a careful editor would cut (tangent,",
+  "SEVERITY: high = an unsupported factual claim, a misquote, a reference to",
+  "something outside the scene, or a break that loses the listener; medium = what a careful editor would cut (tangent,",
   "repetition, over-explaining, planted association); low = polish.",
   "An unsupported claim is HIGH only when the evidence lacks the FACT itself or",
   "contradicts it. Synonyms of what the evidence says ('grudging' for",
@@ -263,6 +273,9 @@ export function narrativeParagraphs(
 export type ReviewNarrativeInput = {
   sceneTitle: string
   scripture: { reference: string; text: string }
+  /** The passage the viewer actually watched. Anything outside it the piece
+   *  leans on is `outside-the-scene`. */
+  watched?: { reference: string; text: string }
   paragraphs: NarrativeParagraph[]
   conclusion: string
   question: string
@@ -286,6 +299,12 @@ export function buildNarrativeUserPrompt(input: ReviewNarrativeInput): string {
   return [
     `SCENE: ${input.sceneTitle}`,
     `VERSE ON SCREEN (${input.scripture.reference}): ${input.scripture.text}`,
+    ...(input.watched
+      ? [
+          `WATCHED (${input.watched.reference}), all the viewer has seen of the story:`,
+          input.watched.text,
+        ]
+      : []),
     ...(input.message
       ? [
           `INTENDED MESSAGE: ${input.message.idea}`,

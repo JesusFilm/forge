@@ -36,6 +36,7 @@ const FACT_KINDS = new Set([
   "contradicts-story",
   "misquote",
   "planted-association",
+  "outside-the-scene",
 ])
 
 export type StorytellerInput = {
@@ -291,6 +292,7 @@ export async function composeStoryteller(
         reference: input.scripture.reference,
         text: input.scripture.text,
       },
+      watched: passage,
       paragraphs: narrativeParagraphs(paragraphs),
       opening: script.opening.flatMap((o) =>
         o.onScreen ? [o.line, `(on screen) ${o.onScreen}`] : [o.line],

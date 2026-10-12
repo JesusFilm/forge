@@ -55,6 +55,9 @@ async function main() {
   const review = await reviewNarrative({
     sceneTitle: d.clip.title,
     scripture: { reference: d.scripture.reference, text: d.scripture.text },
+    ...(d.clipTranscript
+      ? { watched: { reference: d.passage.reference, text: d.clipTranscript } }
+      : {}),
     paragraphs,
     conclusion: d.conclusion,
     question: d.question,

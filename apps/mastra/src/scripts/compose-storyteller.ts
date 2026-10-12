@@ -118,10 +118,9 @@ const STORIES: Record<
     out: "Martha",
   },
   "lumo-luke-17": {
-    // Luke sets it straight after the servant who only did his duty and is
-    // owed no thanks (17:7-10); then nine are healed and do not come back,
-    // and the one who does is a Samaritan.
-    setting: { reference: "Luke 17:7-10", osis: ["Luke.17", 7, 10] },
+    // No setting: the verse before (17:7-10) is another parable, not who is
+    // listening, and handing it to the writer put it in the script as an
+    // aside the viewer never saw (owner, 2026-10-12).
     terms: [
       "Leprosy",
       "Leper, Leprosy",
