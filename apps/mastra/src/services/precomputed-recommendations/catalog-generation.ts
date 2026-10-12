@@ -88,6 +88,7 @@ export const CatalogGenerationInputSchema = z
     inputCutoff: z.string().datetime(),
     historyRequired: z.boolean().default(true),
     snapshotMode: z.literal("ga_aggregate_capture_v1").optional(),
+    captureOnly: z.literal(true).optional(),
     sourceConcurrency: z.number().int().min(1).max(4).default(1),
     capacity: z
       .object({
@@ -1233,8 +1234,12 @@ export async function runPrecomputedCatalog(
   generationId: string
   completedSourceCount: number
   failedSourceCount: number
+  gaOriginReady?: true
+  snapshotRef?: GaCaptureSnapshotRef
 }> {
   const input = CatalogGenerationInputSchema.parse(raw)
+  if (input.captureOnly && !input.snapshotMode)
+    throw new HistoricalAnalyticsError("analytics_unavailable")
   if (input.snapshotMode && (!input.historyRequired || provided.history))
     throw new HistoricalAnalyticsError("analytics_unavailable")
   if (
@@ -1566,6 +1571,19 @@ export async function runPrecomputedCatalog(
     }
     assertGaCaptureHeaderBinding(artifact.header, binding)
     assertCaptureRefMatchesHeader(ref, artifact.header, artifact.headerSha256)
+    // Provision only the verified GA origin. No model factory, source claim,
+    // generation completion or public-serving action is reached in this mode.
+    if (input.captureOnly) {
+      await rm(directory, { recursive: true, force: true })
+      return {
+        state: "incomplete",
+        generationId: input.generationId,
+        completedSourceCount: 0,
+        failedSourceCount: 0,
+        gaOriginReady: true,
+        snapshotRef: ref,
+      }
+    }
     history = await createSealedGaWatchHistoryReader({
       artifact,
       artifactSha256: ref.artifactSha256,

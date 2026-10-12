@@ -174,6 +174,34 @@ visit identities.
 
 ## Admission and remaining evidence
 
+An October 13 closeout read-only inventory (receipt timestamp
+`2026-10-12T19:15:47Z`) matched production Admin's database to
+`@forge/admin/pg`, database `railway`, cluster `7655660030928953395`.
+`PGDATA=/var/lib/postgresql/data/pgdata` resides on the mounted
+`/var/lib/postgresql/data` volume, filesystem `/dev/zd10112`. That observation
+measured **30,535,767,743 database bytes** and **18,118,115,328 available volume
+bytes** out of **48,891,670,528 total bytes**. No precomputed feature tables
+were deployed. This replaces assumptions about which Railway database/volume
+to inspect; it does not admit a build or approve launch. Re-read the actual
+cluster, database bytes and PGDATA filesystem at execution, inside the runner's
+freshness window. Neither an Admin/Mastra filesystem measurement nor this
+historical receipt can substitute for that observation.
+
+The three subscription pilots added 630,784 physical database bytes while
+retaining 29 ready profiles and 20 provisional choices across six sources, with
+zero finalized sources. This is an incomplete protocol-4 sample, not a measured
+full-source retained/build-overlap bound. The older protocol-3 two-source
+forecast below cannot establish protocol-4 profile/batch/checkpoint peak usage.
+Keep the projection basis explicit. Initial inference can use a reviewed
+conservative scenario based on the measured provisional native sample; a
+completed protocol-4 source is not a contract prerequisite for that first
+sample. Use complete candidate-pool boundaries in the existing `pilot` mode,
+then measure completed sources, retained choices/profiles, calls, WAL and
+overlap before reviewing the full-run budget.
+GA-origin capture keeps bulk aggregates in private object storage; target
+Admin's object-copy and temporary-import budgets and the operator's staging
+headroom remain separate prerequisites from PGDATA.
+
 The durable build protocol requires a fresh operator measurement of the
 **PostgreSQL PGDATA volume**, a database/cluster identity match, at least the
 implementation's 5 GB minimum reserve, and a measured source-sample

@@ -285,6 +285,197 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       }
     }
 
+    it("rejects capture-only input without sealed snapshot mode before creating a generation", async () => {
+      const generationId = `catalog-origin-invalid-${suffix}`
+      await expect(
+        runPrecomputedCatalog(
+          {
+            generationId,
+            inputCutoff: cutoff,
+            historyRequired: false,
+            captureOnly: true,
+            capacity: await fixtureCapacity(),
+          },
+          { ...dependencies(), model: controlledModel(targetId, []) },
+        ),
+      ).rejects.toMatchObject({ code: "analytics_unavailable" })
+      expect(
+        await loadDurablePrecomputedBuildReport(prisma, {
+          generationId,
+          reviewer,
+        }),
+      ).toBeNull()
+    })
+
+    it("provisions a verified GA origin for subscription import without source or model work", async () => {
+      const generationId = `catalog-origin-only-${suffix}`
+      const directory = await mkdtemp(join(tmpdir(), "catalog-origin-native-"))
+      const store = createProtectedLocalGaCaptureStore(
+        join(directory, "objects"),
+      )
+      const connected = dependencies()
+      const ga = gaWatchHistoryFixtureOptions({
+        sourceSlug: `story-0-${suffix}`,
+        targetSlug: `story-1-${suffix}`,
+      })
+      let gaRequests = 0
+      let stagedArtifactPath = ""
+      const sibling = join(directory, "runtime", "operator-note.txt")
+      await mkdir(join(directory, "runtime"), { recursive: true })
+      await writeFile(sibling, "Preserve operator staging files", {
+        mode: 0o600,
+      })
+      const ingest: SourceIngest = (raw) =>
+        submitDurablePrecomputedRecommendation(prisma, raw, bearer, {
+          gaCaptureStore: store,
+          gaImport: {
+            store,
+            objectBudgetBytes: 10_000_000,
+            tempBudgetBytes: 10_000_000,
+            tempReserveBytes: 0,
+            availableTempBytes: async () => 10_000_000,
+          },
+        })
+      const gaCaptureTransport: GaCaptureTransport = {
+        async upload(input) {
+          stagedArtifactPath = input.path
+          const response = await handleGaCapturePost(
+            prisma,
+            new Request("https://admin.fixture.test/ga-capture", {
+              method: "POST",
+              headers: {
+                authorization: bearer,
+                "content-type": "application/vnd.forge.ga-capture-v1",
+                "content-length": String(input.artifactBytes),
+                "x-forge-generation-id": input.generationId,
+                "x-forge-input-digest": input.generationInputDigest,
+                "x-forge-artifact-sha256": input.artifactSha256,
+              },
+              body: new Uint8Array(await readFile(input.path)),
+            }),
+            store,
+          )
+          const body = await response.json()
+          expect(response.status).toBe(201)
+          return gaCaptureSnapshotRefSchema.parse(body.snapshotRef)
+        },
+        async download(input) {
+          const response = await handleGaCaptureGet(
+            prisma,
+            new Request("https://admin.fixture.test/ga-capture", {
+              headers: {
+                authorization: bearer,
+                "x-forge-generation-id": input.generationId,
+                "x-forge-input-digest": input.generationInputDigest,
+              },
+            }),
+            store,
+          )
+          expect(response.status).toBe(200)
+          await mkdir(input.directory, { recursive: true, mode: 0o700 })
+          const path = join(input.directory, "verified-origin.bin")
+          await writeFile(path, Buffer.from(await response.arrayBuffer()), {
+            mode: 0o600,
+          })
+          return path
+        },
+      }
+      const input = {
+        generationId,
+        inputCutoff: cutoff,
+        historyRequired: true,
+        snapshotMode: "ga_aggregate_capture_v1" as const,
+        captureOnly: true as const,
+        capacity: await fixtureCapacity(),
+      }
+      // No injected model: a fall-through would construct the paid factory.
+      const ports = {
+        ...connected,
+        ingest,
+        gaCaptureTransport,
+        gaCaptureDirectory: join(directory, "runtime"),
+        gaTransport: {
+          serviceAccountEmail: ga.serviceAccountEmail,
+          tokenProvider: ga.tokenProvider,
+          fetchImpl: async (...args: Parameters<typeof fetch>) => {
+            gaRequests += 1
+            return ga.fetchImpl(...args)
+          },
+        },
+      }
+      Object.defineProperty(ports, "model", {
+        get() {
+          throw new Error("Model construction forbidden during origin capture")
+        },
+      })
+      try {
+        const captured = await runPrecomputedCatalog(input, ports)
+        expect(captured).toMatchObject({
+          state: "incomplete",
+          gaOriginReady: true,
+          completedSourceCount: 0,
+          failedSourceCount: 0,
+          snapshotRef: { generationId, verification: "two_matching_passes" },
+        })
+        expect(captured.snapshotRef).toMatchObject({
+          physicalHttpAttempts: gaRequests,
+          physicalSucceededCalls: gaRequests,
+        })
+        await expect(readFile(stagedArtifactPath)).rejects.toMatchObject({
+          code: "ENOENT",
+        })
+        expect(await readFile(sibling, "utf8")).toBe(
+          "Preserve operator staging files",
+        )
+        const proof = await createGaCaptureImportClient(ingest).probeOrigin({
+          originGenerationId: generationId,
+        })
+        expect(proof.origin).toMatchObject({
+          generationId,
+          propertyId: "320198532",
+          inputCutoff: cutoff,
+        })
+        const report = await loadDurablePrecomputedBuildReport(prisma, {
+          generationId,
+          sourceVideoId: sourceId,
+          reviewer,
+        })
+        expect(report).toMatchObject({
+          state: "incomplete",
+          pendingSourceCount: 2,
+          claimedSourceCount: 0,
+          completeEdgesSourceCount: 0,
+          completeEmptySourceCount: 0,
+          usage: {
+            modelCallCount: 0,
+            historyCallCount: gaRequests,
+            historyPendingCount: 0,
+          },
+        })
+        expect(gaRequests).toBeGreaterThan(0)
+        const firstRequestCount = gaRequests
+        // The same explicit capture-only invocation verifies sealed bytes without
+        // another GA call, and still cannot claim any source or invoke a model.
+        expect(
+          await runPrecomputedCatalog(
+            { ...input, capacity: await fixtureCapacity() },
+            ports,
+          ),
+        ).toEqual(captured)
+        expect(gaRequests).toBe(firstRequestCount)
+        expect(
+          await loadPrecomputedRecommendationComparison(prisma, {
+            generationId,
+            sourceVideoId: sourceId,
+            audioLanguageSlug: "english",
+            reviewer,
+          }),
+        ).toMatchObject({ state: "incomplete" })
+      } finally {
+        await rm(directory, { recursive: true, force: true })
+      }
+    }, 120_000)
+
     it("captures history once and resumes a native v3 build without live GA after a lost model receipt response", async () => {
       const generationId = `catalog-sealed-resume-${suffix}`
       const directory = await mkdtemp(join(tmpdir(), "catalog-sealed-native-"))

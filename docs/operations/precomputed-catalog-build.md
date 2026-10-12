@@ -40,7 +40,8 @@ and requested/usable coverage. The destination's qualification policy is
 generation, copies and binds the capture, and reads historical Watch aggregates
 from that immutable artifact. It does not make new GA API queries or accept a
 local-origin capture through a production Admin URL. If the target Admin lacks
-a verified origin, stop; the protocol-4 runner cannot create one.
+a verified origin, provision it with the explicit capture-only procedure below;
+the protocol-4 runner cannot create one.
 
 The compressed GA capture is stored outside PostgreSQL in Admin's private
 object store (`RAILWAY_S3_*` in the deployed setup). The operator needs local
@@ -144,7 +145,108 @@ the runner sends that bearer only to the configured HTTPS Admin endpoints (or
 permitted local/internal HTTP endpoints). Its strict config has no field for a
 paid model API key or GA credentials.
 
+## Provision a target GA origin without model calls
+
+After the separately authorized deployment and production-write decision, run
+`precomputed:ga:capture-origin` from the operator's local checkout. It uses the
+existing protocol-3 two-pass GA capture, physical HTTP receipts, private upload,
+header verification and historical qualification. Its fixed `captureOnly: true`
+mode returns **before model construction or source claims**, with
+`state: "incomplete"`, `gaOriginReady: true` and the verified `snapshotRef`.
+No OpenRouter key or Codex model invocation is required. This is GA-origin
+provisioning, not a completed recommendation generation.
+
+The deployed target needs the catalog, ingest and GA-capture routes and their
+migrations, private `RAILWAY_S3_*` storage, and a dedicated ingest bearer in
+`MASTRA_RECOMMENDATION_INGEST_API_KEYS`. On the local operator machine, load that
+same bearer as `ADMIN_MASTRA_RECOMMENDATION_API_KEY`, with:
+
+```text
+ADMIN_RECOMMENDATION_CATALOG_URL=https://admin.jesusfilm.org/api/internal/mastra/precomputed-catalog
+ADMIN_RECOMMENDATION_INGEST_URL=https://admin.jesusfilm.org/api/internal/mastra/precomputed-recommendations
+PRECOMPUTED_GA4_PROPERTY_ID=320198532
+PRECOMPUTED_GA4_SERVICE_ACCOUNT_EMAIL=watch-ga4-readonly@jesusfilm-org-1738781064783.iam.gserviceaccount.com
+```
+
+The GA-capture URL is derived from the ingest URL's origin. Authenticate GA with
+the approved local ADC impersonation path or privately loaded approved
+`PRECOMPUTED_GA4_CREDENTIALS_JSON`; neither belongs in the command config. Existing
+GA variables on hosted Mastra do not configure the local command. CI/Railway
+execution and additional config fields are refused. There is no scheduled or
+hosted capture endpoint; the old hosted catalog route remains blocked.
+
+Prepare a private file with this shape; replace the capacity placeholder with
+the exact fresh measurement object documented above:
+
+```json
+{
+  "input": {
+    "generationId": "<new-target-origin-id>",
+    "inputCutoff": "<fixed-UTC-ISO-timestamp-for-origin-and-destination>",
+    "capacity": "<fresh-measured-capacity-object>"
+  },
+  "stagingDirectory": "<absolute-existing-private-local-directory>"
+}
+```
+
+This example is not executable. The complete catalog and selected corpus are
+read from the target Admin and hashed by the producer; no local origin or
+hand-guessed identity is accepted. Review the intended target/cutoff first, then
+invoke explicitly:
+
+```bash
+pnpm --dir apps/mastra run precomputed:ga:capture-origin \
+  --config /absolute/private/path/ga-origin.json --execute
+```
+
+For an interrupted capture, inspect pending GA receipts and retained staging,
+then explicitly invoke the **same** origin ID, cutoff and staging directory with
+fresh capacity. The existing journal resumes saved pages and verification;
+unsettled recent HTTP reservations fail closed. A sealed-origin invocation
+downloads and re-verifies the immutable artifact without new GA queries.
+Capture-only never completes sources. Inspect Admin's build report for pending
+sources, zero model calls and reconciled history calls, and verify the origin
+with `ga_import_origin_probe` before preparing the subscription destination.
+Keep `captureOnly` on every origin invocation; do not continue that protocol-3
+origin as a paid catalog build. Use a distinct protocol-4 generation ID and the
+same frozen cutoff/corpus for subscription inference. Catalog changes after
+the cutoff can invalidate resumption/import and require a separately reviewed
+new origin; do not silently refreeze it.
+
+Protocol-4 import also requires explicit target Admin
+`GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES`, `GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES`
+and `GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES`. These are separate from PGDATA
+admission. Measure the target Admin's temporary filesystem, existing object
+inventory and planned origin/destination overlap before choosing them. The
+import charges a destination artifact copy against the retained object budget
+and twice its compressed artifact bytes against temporary reservations. A
+configured S3 bucket alone does not establish those budgets.
+
 ## Start, inspect and resume
+
+A first production sample can use the existing `pilot` work mode on the same
+complete frozen manifest intended for the full build. Select one or two
+reviewed source IDs and set each `exclusiveEndRank` to its **entire frozen
+candidate-pool length**, derived from `buildCandidateRetrieval`, rather than a
+short early page. The runner processes their complete selected profiles and
+candidate pages and can finalize those sources while leaving the generation
+incomplete. It reports `pilot_boundary`; whole-generation completion remains
+exclusive to `full` mode. The earlier short-boundary pilots finalized zero
+sources because they did not cover those full pools.
+
+For initial admission, use a reviewed measured native source sample with an
+explicit conservative projection and fresh target PGDATA. The contract does
+not require a finalized protocol-4 source before any inference. A historical or
+provisional sample must retain its schema/completeness qualifications; it is not
+proof of full-catalog peak growth. After the authorized bounded sample, reconcile
+every physical call and measure finalized-source, reusable-profile, batch,
+checkpoint, WAL and retained storage growth. Review the full-run overlap
+scenario, then explicitly resume the **same** generation with `work.mode: "full"`,
+unchanged frozen identities and a new execution attempt. Preserve partial
+checkpoints if allowance or capacity stops the sample; do not dispatch unknown
+usage again. This sequence creates the first completed-source capacity evidence
+without requiring an unsupported local-to-production transfer or a new build
+mode.
 
 Only after reviewing the target, config, allowance and capacity, invoke the
 runner explicitly:
