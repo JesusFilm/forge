@@ -717,6 +717,19 @@ describe("PlayerControls in a right-to-left layout (feat-694 R12, KTD7)", () => 
     await unmount(renderer)
   })
 
+  // The route buttons are not playback controls, and the watch page's minimize
+  // button mirrors to their corner, so they must mirror too (R11).
+  it("mirrors the route buttons with the app, inline and in fullscreen", async () => {
+    for (const fullscreen of [false, true]) {
+      const renderer = await render(fullscreen, { onOpenSettings: () => {} })
+      expect(directionAbove(hostByLabel(renderer, "Video settings"))).toBe(
+        "rtl",
+      )
+      expect(directionAbove(hostByLabel(renderer, "Play"))).toBe("ltr")
+      await unmount(renderer)
+    }
+  })
+
   it("lays out the fullscreen bar left to right, so its side insets keep their sides", async () => {
     const renderer = await render(true)
     // The seek bar is a direct child of the bar that carries the insets.

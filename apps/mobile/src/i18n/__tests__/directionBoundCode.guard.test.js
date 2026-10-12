@@ -165,7 +165,6 @@ const ALLOWED = [
     "src/components/watch/PlayerControls.tsx",
     "physical-side",
     [
-      "right: Math.max(insets.right, 12)",
       "paddingLeft: Math.max(insets.left, 12)",
       "paddingRight: Math.max(insets.right, 12)",
     ],

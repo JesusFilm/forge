@@ -8,6 +8,12 @@ export function isLayoutRtl(): boolean {
   return I18nManager.getConstants().isRTL
 }
 
+/** The app's layout direction as a style value, for a view inside a layer
+ *  that keeps a fixed direction. */
+export function appDirection(): "ltr" | "rtl" {
+  return isLayoutRtl() ? "rtl" : "ltr"
+}
+
 /** 1 in a left-to-right layout, -1 in a right-to-left one: it multiplies
  *  horizontal gesture and scroll math so the reading direction comes first. */
 export function layoutSign(): 1 | -1 {

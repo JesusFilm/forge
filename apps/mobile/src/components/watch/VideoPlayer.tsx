@@ -15,7 +15,7 @@ import { LinearGradient } from "expo-linear-gradient"
 import { useNetworkState } from "expo-network"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
-import { isLayoutRtl } from "../../i18n/layoutRtl"
+import { appDirection } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import { BLACK, TEXT_ON_OVERLAY, hexToRgba } from "../../lib/color"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
@@ -763,7 +763,6 @@ export function VideoPlayer({
     ? Math.max(insets.left, insets.right, 56)
     : 56
   const subtitleFontSize = fullscreen ? 22 : 16
-  const appDirection = isLayoutRtl() ? "rtl" : "ltr"
 
   return (
     // absoluteFill, not a sized box: the host's frame owns the geometry (KTD17)
@@ -831,11 +830,16 @@ export function VideoPlayer({
       {/* R14: the route buttons stay reachable while the veil suppresses the
           chrome — a viewer may cast before local playback ever starts. */}
       {awaitingAutostart && (
-        <View style={styles.veilRouteRow} pointerEvents="box-none">
-          <RouteButtons
-            externalPlaybackActive={airPlayActive}
-            castUi={castUi}
-          />
+        <View
+          style={[StyleSheet.absoluteFill, { direction: appDirection() }]}
+          pointerEvents="box-none"
+        >
+          <View style={styles.veilRouteRow} pointerEvents="box-none">
+            <RouteButtons
+              externalPlaybackActive={airPlayActive}
+              castUi={castUi}
+            />
+          </View>
         </View>
       )}
 
@@ -918,7 +922,7 @@ export function VideoPlayer({
       {/* The sheets are not playback controls, so they mirror with the app
           (feat-694 R11). A Modal takes its layout direction from this parent. */}
       <View
-        style={[styles.sheetHost, { direction: appDirection }]}
+        style={[styles.sheetHost, { direction: appDirection() }]}
         pointerEvents="box-none"
       >
         {settingsOpen && (
