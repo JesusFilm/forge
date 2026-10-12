@@ -1,6 +1,6 @@
 # Precomputed recommendation orchestration
 
-Updated: 2026-10-12 (Pacific/Auckland).
+Updated: 2026-10-13 (Pacific/Auckland).
 
 Parent: https://github.com/JesusFilm/forge/issues/2565.
 Draft integration PR: https://github.com/JesusFilm/forge/pull/2578.
@@ -11,7 +11,35 @@ preserves exact source/integration commits, checks, browser artifacts, review
 findings, and recovery history. The [CTR operations note](../operations/precomputed-ctr-report.md)
 describes the private reporting contract and limits.
 
-## Current checkpoint — October 12
+## Current checkpoint — October 13 successor closeout
+
+Sole integration owner: task `01a13185-c48d-7032-90bb-d1ffbbb36fd8`.
+Predecessor `01a109d7-dc1c-7600-a2c4-07dee79b4aff` is idle after handoff.
+Integration is clean at takeover head
+`c47b835994aa76bf0154993d31d0abf6d6f0dcef`; the remote PR head matches.
+PR #2578 is attached to the successor, open, draft and unmerged. The required
+`ci-gate` passes; the unrelated roadmap-ID advisory remains failed. Original
+checkout `/home/nisal/forge` remains dirty and untouched.
+
+| State            | Work                                                                                                                 | Owner / next evidence                                                                                                                                           |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Completed        | Handoff, branch/PR verification and CI classification                                                                | Successor orchestrator                                                                                                                                          |
+| Running          | Production GA origin, manual subscription build path, target capacity preparation; #2568/#2569/#2574                 | Exact GPT-6.1 Sol task `01a13187-12d4-7e73-b011-17e6f08ebd14`, isolated branch `codex/feat590-catalog-closeout`                                                 |
+| Running          | Deployed human/bot proof, qualified baseline, launch versus final-certification gates, numeric proposal; #2571–#2575 | Exact GPT-6.1 Sol task `01a13187-179a-7681-a23c-8646549ef118`, isolated checkout required                                                                       |
+| Running          | Release preflight, serial integration and owner decisions                                                            | Successor orchestrator                                                                                                                                          |
+| Externally gated | Normal PR merge/deploy, production catalog writes and baseline start                                                 | Prior production approval question remains unanswered; present concrete release preflight before asking once                                                    |
+| Externally gated | Public activation and numeric policy agreement                                                                       | Separate explicit owner decision after actual launch gates pass                                                                                                 |
+| Calendar gated   | Qualified baseline                                                                                                   | Not started: 168 aligned UTC hours, then 24 hours for late clicks and five-minute finalization grace; earliest actual finalization unknown until verified start |
+
+No production approval, live evidence or acceptance is inferred from this
+handoff. Public A/B remains off. No follow-up automation or automatic build
+resume is authorized. The approved stop remains one UTC calendar month after
+activation; winner promotion remains separately authorized. Worker model is
+exact `gpt-6.1-sol`; application generation model remains `gpt-6-astra`.
+The Matt Pocock implement/TDD/code-review workflow replaces the repository CE
+default; Standards and Spec reviews run sequentially.
+
+## Historical checkpoint — October 12
 
 As of 03:23 UTC, **all three representative local pilots have passed**. Generation
 `subscription-astra-budget2-20261008-v4` retains **29 ready profiles and 20
