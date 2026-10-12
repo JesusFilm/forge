@@ -54,6 +54,7 @@ import { createGaCaptureImportClient } from "../../apps/mastra/src/services/prec
 import { loadImportedGaWatchHistory } from "../../apps/mastra/src/services/precomputed-recommendations/ga-capture-import-reader"
 import { createContentProfilePersistence } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-client"
 import { createEdgeBatchPersistence } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-client"
+import { decodeEdgePrompt } from "../../apps/mastra/src/services/precomputed-recommendations/edge-prompt-renderer"
 import {
   manualGenerationInputDigest,
   runManualSubscriptionCatalog,
@@ -939,7 +940,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
                     }),
                   ),
                 })
-                .parse(JSON.parse(request.prompt))
+                .parse(decodeEdgePrompt(JSON.parse(request.prompt)))
               return {
                 kind: "dispatched",
                 reservation: decision.reservation,

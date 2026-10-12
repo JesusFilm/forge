@@ -30,6 +30,7 @@ import type { ReservationAwareStructuredModel } from "../../apps/mastra/src/serv
 import { runContentProfile } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-executor"
 import { createContentProfilePersistence } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-client"
 import { createEdgeBatchPersistence } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-client"
+import { decodeEdgePrompt } from "../../apps/mastra/src/services/precomputed-recommendations/edge-prompt-renderer"
 import {
   finalizeEdgeSource,
   runEdgeBatch,
@@ -453,7 +454,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
                 }),
               ),
             })
-            .parse(JSON.parse(prompt))
+            .parse(decodeEdgePrompt(JSON.parse(prompt)))
             .spanOffers.find(
               (span) =>
                 span.sourceVideoId === metadataId &&
