@@ -56,6 +56,41 @@ export type VoxHistorySpec = {
   /** The stamp at the end ("Fallen") and the spoken word it waits for. */
   finale?: string
   finaleOn?: string
+  /** Picture under the papers: black and white (default) or sepia. */
+  tone?: "bw" | "sepia"
+  /** Beats follow the voice (owner, 2026-10-12: "show it more
+   *  interestingly"): the verse strip arrives when this word is said
+   *  (default: at the start)... */
+  verseOn?: string
+  /** ...the clipping when this one is said (default: the second sentence)... */
+  clipOn?: string
+  /** ...and a second clipping takes its place when `on` is said: the first
+   *  slides off left, this one comes in from the right. */
+  clip2?: {
+    on: string
+    label?: string
+    headline: string
+    body: string
+    markOn?: string
+    source?: string
+  }
+}
+
+/** The first time `word` is said at or after `afterSec`. */
+function saidAfter(
+  words: ReadonlyArray<TimedWord>,
+  word: string | undefined,
+  afterSec: number,
+  fallback: number,
+): number {
+  if (!word) return fallback
+  const target = word.toLowerCase().replace(/[^a-z']/g, "")
+  const w = words.find(
+    (x) =>
+      x.startSec >= afterSec - 0.05 &&
+      x.word.toLowerCase().replace(/[^a-z']/g, "") === target,
+  )
+  return w ? w.startSec : fallback
 }
 
 export const VOX_ORANGE = "#ff7f53"
@@ -184,14 +219,32 @@ export function VoxHistoryLayout({
   const cards = Math.max(1, ...words.map((w) => w.card + 1))
   const cardStart = (c: number) =>
     words.find((w) => w.card === c)?.startSec ?? c * 3
-  const verseAt = 0.3
-  const ringAt = said(words, spec.ringOn, verseAt + 0.8)
+  const verseAt = spec.verseOn
+    ? Math.max(0.3, said(words, spec.verseOn, 0.3) - 0.15)
+    : 0.3
+  const ringAt = saidAfter(words, spec.ringOn, verseAt + 0.3, verseAt + 0.8)
   // The clipping comes in with the sentence that quotes the source.
-  const clipAt = Math.max(
-    verseAt + 1.2,
-    cardStart(Math.min(1, cards - 1)) - 0.1,
-  )
-  const markAt = said(words, spec.markOn, clipAt + 1.5, 1)
+  const clipAt = spec.clipOn
+    ? Math.max(0.3, said(words, spec.clipOn, 0.3) - 0.15)
+    : Math.max(verseAt + 1.2, cardStart(Math.min(1, cards - 1)) - 0.1)
+  const markAt = saidAfter(words, spec.markOn, clipAt + 0.3, clipAt + 1.5)
+  const clip2At = spec.clip2
+    ? Math.max(
+        clipAt + 2,
+        saidAfter(words, spec.clip2.on, clipAt + 1, 1e9) - 0.15,
+      )
+    : 1e9
+  const mark2At = spec.clip2
+    ? Math.max(
+        clip2At + 0.8,
+        saidAfter(words, spec.clip2.markOn, clip2At + 0.5, clip2At + 1.2),
+      )
+    : 1e9
+  // The first clipping leaves to the left as the second arrives.
+  const exit = interpolate(t, [clip2At - 0.05, clip2At + 0.4], [0, 1], {
+    ...clamp,
+    easing: Easing.in(Easing.cubic),
+  })
   const lastCard = cards - 1
   const strikeAt = said(
     words,
@@ -212,9 +265,13 @@ export function VoxHistoryLayout({
     ...clamp,
     easing: OUT,
   })
-  const recede = interpolate(t, [finaleAt, finaleAt + 0.3], [1, 0.3], clamp)
+  // The papers step back only for a stamp; without one they stay.
+  const recede = spec.finale
+    ? interpolate(t, [finaleAt, finaleAt + 0.3], [1, 0.3], clamp)
+    : 1
   const verse = splitAt(spec.verse.trim(), spec.ringOn)
   const body = splitAt(spec.body.trim(), spec.markOn)
+  const body2 = splitAt((spec.clip2?.body ?? "").trim(), spec.clip2?.markOn)
 
   return (
     <>
@@ -294,122 +351,216 @@ export function VoxHistoryLayout({
             </div>
           ) : null}
         </Arrive>
-        <Arrive
-          f={f}
-          t={t}
-          at={clipAt}
-          style={{
-            top: f(600),
-            left: f(90),
-            width: f(720),
-            transform: "rotate(1.5deg)",
-          }}
-          paper={{ jpg: PAPER_CLIP_JPG, mask: PAPER_CLIP_MASK }}
-          from="right"
-          pad={`${f(96)}px ${f(70)}px 0 ${f(60)}px`}
-        >
-          {/* The sheet keeps its own proportions (760 x 539). */}
-          <div style={{ height: f(511 - 96) }}>
-            <div
+        {exit < 1 ? (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              transform: `translateX(${(-exit * f(900)).toFixed(1)}px) rotate(${(-exit * 5).toFixed(2)}deg)`,
+              opacity: 1 - exit * 0.6,
+            }}
+          >
+            <Arrive
+              f={f}
+              t={t}
+              at={clipAt}
               style={{
-                fontFamily: NEWS,
-                fontWeight: 700,
-                fontSize: f(16),
-                letterSpacing: f(4),
-                textTransform: "uppercase",
-                color: "rgba(25,21,18,0.7)",
+                top: f(600),
+                left: f(90),
+                width: f(720),
+                transform: "rotate(1.5deg)",
               }}
+              paper={{ jpg: PAPER_CLIP_JPG, mask: PAPER_CLIP_MASK }}
+              from="right"
+              pad={`${f(96)}px ${f(70)}px 0 ${f(60)}px`}
             >
-              {spec.label ?? "Historical context"}
-            </div>
-            <div
-              style={{
-                fontFamily: NEWS,
-                fontWeight: 900,
-                fontSize: f(40),
-                lineHeight: 1.05,
-                color: INK,
-                width: f(530),
-                paddingTop: f(8),
-              }}
-            >
-              {spec.headline}
-            </div>
-            <div
-              style={{
-                height: f(2),
-                background: "rgba(25,21,18,0.7)",
-                margin: `${f(10)}px 0 ${f(10)}px`,
-              }}
-            />
-            <div
-              style={{
-                fontFamily: NEWS,
-                fontSize: f(26),
-                lineHeight: 1.5,
-                color: INK,
-              }}
-            >
-              {body.before}
-              {body.hit ? (
-                <Band t={t} at={markAt} color={accent}>
-                  {body.hit}
-                </Band>
-              ) : null}
-              {body.after}
-              {spec.strike ? (
-                <div style={{ paddingTop: f(30) }}>
-                  {spec.strikeBefore ?? "Not just a"}{" "}
-                  <span
-                    style={{ position: "relative", display: "inline-block" }}
-                  >
-                    <Strike
-                      t={t}
-                      at={strikeAt}
-                      width={5}
-                      id="voxh-strike"
-                      color={accent}
-                    >
-                      {spec.strike}
-                    </Strike>
-                    {spec.swapTo && swapP > 0 ? (
+              {/* The sheet keeps its own proportions (760 x 539). */}
+              <div style={{ height: f(511 - 96) }}>
+                <div
+                  style={{
+                    fontFamily: NEWS,
+                    fontWeight: 700,
+                    fontSize: f(16),
+                    letterSpacing: f(4),
+                    textTransform: "uppercase",
+                    color: "rgba(25,21,18,0.7)",
+                  }}
+                >
+                  {spec.label ?? "Historical context"}
+                </div>
+                <div
+                  style={{
+                    fontFamily: NEWS,
+                    fontWeight: 900,
+                    fontSize: f(40),
+                    lineHeight: 1.05,
+                    color: INK,
+                    width: f(530),
+                    paddingTop: f(8),
+                  }}
+                >
+                  {spec.headline}
+                </div>
+                <div
+                  style={{
+                    height: f(2),
+                    background: "rgba(25,21,18,0.7)",
+                    margin: `${f(10)}px 0 ${f(10)}px`,
+                  }}
+                />
+                <div
+                  style={{
+                    fontFamily: NEWS,
+                    fontSize: f(26),
+                    lineHeight: 1.5,
+                    color: INK,
+                  }}
+                >
+                  {body.before}
+                  {body.hit ? (
+                    <Band t={t} at={markAt} color={accent}>
+                      {body.hit}
+                    </Band>
+                  ) : null}
+                  {body.after}
+                  {spec.strike ? (
+                    <div style={{ paddingTop: f(30) }}>
+                      {spec.strikeBefore ?? "Not just a"}{" "}
                       <span
                         style={{
-                          position: "absolute",
-                          left: "50%",
-                          bottom: "78%",
-                          transform: `translateX(-50%) rotate(-6deg) scale(${(0.7 + 0.3 * swapP).toFixed(3)})`,
-                          opacity: swapP,
-                          color: INK,
-                          fontFamily: HAND,
-                          fontWeight: 700,
-                          fontSize: "1.3em",
-                          lineHeight: 1,
-                          whiteSpace: "nowrap",
+                          position: "relative",
+                          display: "inline-block",
                         }}
                       >
-                        {spec.swapTo}
+                        <Strike
+                          t={t}
+                          at={strikeAt}
+                          width={5}
+                          id="voxh-strike"
+                          color={accent}
+                        >
+                          {spec.strike}
+                        </Strike>
+                        {spec.swapTo && swapP > 0 ? (
+                          <span
+                            style={{
+                              position: "absolute",
+                              left: "50%",
+                              bottom: "78%",
+                              transform: `translateX(-50%) rotate(-6deg) scale(${(0.7 + 0.3 * swapP).toFixed(3)})`,
+                              opacity: swapP,
+                              color: INK,
+                              fontFamily: HAND,
+                              fontWeight: 700,
+                              fontSize: "1.3em",
+                              lineHeight: 1,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {spec.swapTo}
+                          </span>
+                        ) : null}
                       </span>
-                    ) : null}
-                  </span>
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
-            </div>
-            {spec.source ? (
+                {spec.source ? (
+                  <div
+                    style={{
+                      fontFamily: NEWS,
+                      fontStyle: "italic",
+                      fontSize: f(18),
+                      color: "rgba(25,21,18,0.6)",
+                      paddingTop: f(8),
+                    }}
+                  >
+                    {spec.source}
+                  </div>
+                ) : null}
+              </div>
+            </Arrive>
+          </div>
+        ) : null}
+        {spec.clip2 ? (
+          <Arrive
+            f={f}
+            t={t}
+            at={clip2At}
+            style={{
+              top: f(600),
+              left: f(90),
+              width: f(720),
+              transform: "rotate(-1deg)",
+            }}
+            paper={{ jpg: PAPER_CLIP_JPG, mask: PAPER_CLIP_MASK }}
+            from="right"
+            pad={`${f(96)}px ${f(70)}px 0 ${f(60)}px`}
+          >
+            <div style={{ height: f(511 - 96) }}>
               <div
                 style={{
                   fontFamily: NEWS,
-                  fontStyle: "italic",
-                  fontSize: f(18),
-                  color: "rgba(25,21,18,0.6)",
+                  fontWeight: 700,
+                  fontSize: f(16),
+                  letterSpacing: f(4),
+                  textTransform: "uppercase",
+                  color: "rgba(25,21,18,0.7)",
+                }}
+              >
+                {spec.clip2.label ?? spec.label ?? "Historical context"}
+              </div>
+              <div
+                style={{
+                  fontFamily: NEWS,
+                  fontWeight: 900,
+                  fontSize: f(40),
+                  lineHeight: 1.05,
+                  color: INK,
+                  width: f(530),
                   paddingTop: f(8),
                 }}
               >
-                {spec.source}
+                {spec.clip2.headline}
               </div>
-            ) : null}
-          </div>
-        </Arrive>
+              <div
+                style={{
+                  height: f(2),
+                  background: "rgba(25,21,18,0.7)",
+                  margin: `${f(10)}px 0 ${f(10)}px`,
+                }}
+              />
+              <div
+                style={{
+                  fontFamily: NEWS,
+                  fontSize: f(26),
+                  lineHeight: 1.5,
+                  color: INK,
+                }}
+              >
+                {body2.before}
+                {body2.hit ? (
+                  <Band t={t} at={mark2At} color={accent}>
+                    {body2.hit}
+                  </Band>
+                ) : null}
+                {body2.after}
+              </div>
+              {spec.clip2.source ? (
+                <div
+                  style={{
+                    fontFamily: NEWS,
+                    fontStyle: "italic",
+                    fontSize: f(18),
+                    color: "rgba(25,21,18,0.6)",
+                    paddingTop: f(8),
+                  }}
+                >
+                  {spec.clip2.source}
+                </div>
+              ) : null}
+            </div>
+          </Arrive>
+        ) : null}
       </div>
       {spec.finale ? (
         <Stamp f={f} t={t} at={finaleAt} text={spec.finale} color={accent} />

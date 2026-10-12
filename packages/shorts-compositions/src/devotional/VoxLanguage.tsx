@@ -505,10 +505,34 @@ export function Stamp({
  */
 export function VoxHalftone({
   children,
+  tone,
 }: {
   f: (n: number) => number
   children: React.ReactNode
+  /** Sepia instead of black and white (owner, 2026-10-12, Ten Lepers). */
+  tone?: "bw" | "sepia"
 }) {
+  if (tone === "sepia")
+    return (
+      <AbsoluteFill>
+        <AbsoluteFill
+          style={{
+            filter:
+              "grayscale(1) sepia(0.9) saturate(1.15) contrast(0.9) brightness(1.02)",
+          }}
+        >
+          {children}
+        </AbsoluteFill>
+        <AbsoluteFill style={{ background: "rgba(120,78,40,0.10)" }} />
+        <AbsoluteFill style={{ background: "rgba(25,18,10,0.22)" }} />
+        <AbsoluteFill
+          style={{
+            background:
+              "radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 50%, rgba(20,12,4,0.38) 100%)",
+          }}
+        />
+      </AbsoluteFill>
+    )
   // Black and white, soft (owner, 2026-10-07: the halftone was too much):
   // a gentle contrast, blacks lifted to a warm grey, a light dim so the
   // paper still leads. The heavier grain sits on top (LANGUAGE_GRAIN).

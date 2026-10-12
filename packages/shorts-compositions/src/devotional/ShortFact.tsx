@@ -211,7 +211,9 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
             )
             // The Vox explainer prints the film as a newspaper halftone.
             return fact?.vox || voxHistory ? (
-              <VoxHalftone f={f}>{film}</VoxHalftone>
+              <VoxHalftone f={f} tone={voxHistory?.tone}>
+                {film}
+              </VoxHalftone>
             ) : (
               film
             )
