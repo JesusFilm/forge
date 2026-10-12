@@ -4,10 +4,12 @@
 // sound of a skipped range reaches the screen (KTD8). Only the viewer's tap
 // pauses or resumes a part, and an interruption holds it (KTD9).
 import Ionicons from "@expo/vector-icons/Ionicons"
+import { GlassView } from "expo-glass-effect"
 import { VideoView, type VideoPlayer } from "expo-video"
 import { useEffect, useRef, useState } from "react"
 import {
   Animated,
+  Easing,
   Platform,
   Pressable,
   StyleSheet,
@@ -15,9 +17,9 @@ import {
   View,
   useWindowDimensions,
 } from "react-native"
-import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useManagedVideoPlayer } from "../../hooks/useManagedVideoPlayer"
+import { hexToRgba } from "../../lib/color"
 import {
   useDevotionalVideo,
   type Devotional,
@@ -45,10 +47,16 @@ import {
 import { devotionalVideoFrame } from "../../lib/dailyPause/videoFrame"
 import { PartProgressBar } from "./PartProgressBar"
 import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
-import { PauseButton } from "./PauseFrame"
+import { PauseButton, liquidGlass } from "./PauseFrame"
+import { useFadeOut } from "./useFadeOut"
 
-const CUE_HEIGHT = 44
-const CUE_GLYPH_SIZE = 14
+/** The paused cue: a play triangle in a translucent disc over the picture. */
+const CUE_SIZE = 88
+const CUE_GLYPH_SIZE = 40
+/** A triangle's visual center sits left of its box center. */
+const CUE_GLYPH_NUDGE = 4
+/** How long the cue fades out after the part resumes, in ms. */
+export const CUE_FADE_MS = 250
 
 type PartPlayerProps = {
   devotional: Devotional
@@ -169,7 +177,6 @@ function PartVideo({
     holdOnReturn: true,
   })
   const window = useWindowDimensions()
-  const insets = useSafeAreaInsets()
   const frame = devotionalVideoFrame(window.width, window.height)
   const progress = useRef(new Animated.Value(0)).current
   const onEndedRef = useRef(onEnded)
@@ -387,12 +394,9 @@ function PartVideo({
   const { stage, held } = current
   const covered = !active || stage !== "showing"
   const tappable = active && (stage === "showing" || held)
-  const videoBottom = frame.top + frame.height
-  // The cue sits in the bottom letterbox, above the home indicator.
-  const cueTop = Math.min(
-    videoBottom,
-    window.height - insets.bottom - CUE_HEIGHT,
-  )
+  const cue = useFadeOut(active && held, key, CUE_FADE_MS)
+  // The cue sits at the center of the picture, where the eye already is.
+  const cueTop = frame.top + frame.height / 2 - CUE_SIZE / 2
 
   return (
     <View
@@ -428,28 +432,100 @@ function PartVideo({
           top={Math.max(0, frame.top - pauseSizes.progressBarHeight)}
         />
       ) : null}
-      {active && held ? (
+      {cue.mounted ? (
+        // VoiceOver reads the full-screen "Resume video" button, so the cue
+        // stays hidden from it and takes only a touch. A fading cue takes none.
         <View
-          testID="part-paused-cue"
-          pointerEvents="none"
+          // A new view for each pause: iOS keeps a faded native opacity.
+          key={cue.show}
+          testID={cue.leaving ? "part-paused-cue-leaving" : "part-paused-cue"}
+          pointerEvents={cue.leaving ? "none" : "box-none"}
           accessibilityElementsHidden
           importantForAccessibility="no-hide-descendants"
           style={[styles.cue, { top: cueTop }]}
         >
-          <Ionicons
-            name="pause"
-            size={CUE_GLYPH_SIZE}
-            color={pauseColors.ink}
+          <PausedCue
+            leaving={cue.leaving}
+            onPress={() => toggleRef.current?.()}
           />
-          <Text style={[styles.cueLabel, font("sansMedium")]}>
-            Paused · Tap to resume
-          </Text>
         </View>
       ) : null}
       {active && stage === "failed" ? (
         <FailedNotice font={font} onRetry={onRetry} />
       ) : null}
     </View>
+  )
+}
+
+/** A play triangle on a native Liquid Glass button where iOS has it, and on a
+ *  translucent disc elsewhere. A tap on it resumes, as a tap on the picture does. */
+function PausedCue({
+  leaving,
+  onPress,
+}: {
+  leaving: boolean
+  onPress: () => void
+}) {
+  // Each pause mounts a new cue, so its value fades once and is never reset.
+  const [opacity] = useState(() => new Animated.Value(1))
+  useEffect(() => {
+    if (!leaving) return
+    const animation = Animated.timing(opacity, {
+      toValue: 0,
+      duration: CUE_FADE_MS,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    })
+    animation.start()
+    return () => animation.stop()
+  }, [leaving, opacity])
+
+  const glyph = (
+    <Ionicons
+      name="play"
+      size={CUE_GLYPH_SIZE}
+      color={pauseColors.ink}
+      style={styles.cueGlyph}
+    />
+  )
+  if (liquidGlass()) {
+    // No ancestor may fade this button: GlassView draws nothing there. So the
+    // glass leaves through its own native animation, and only the glyph fades.
+    return (
+      <Pressable onPress={onPress} accessible={false}>
+        <GlassView
+          testID="part-paused-cue-glass"
+          style={styles.cueGlass}
+          glassEffectStyle={
+            leaving
+              ? {
+                  style: "none",
+                  animate: true,
+                  animationDuration: CUE_FADE_MS / 1000,
+                }
+              : "regular"
+          }
+          colorScheme="dark"
+          isInteractive
+        >
+          <Animated.View testID="part-paused-cue-glyph" style={{ opacity }}>
+            {glyph}
+          </Animated.View>
+        </GlassView>
+      </Pressable>
+    )
+  }
+  return (
+    <Animated.View testID="part-paused-cue-fade" style={{ opacity }}>
+      <Pressable
+        testID="part-paused-cue-disc"
+        onPress={onPress}
+        accessible={false}
+        style={styles.cueDisc}
+      >
+        {glyph}
+      </Pressable>
+    </Animated.View>
   )
 }
 
@@ -467,17 +543,28 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 0,
     right: 0,
-    height: CUE_HEIGHT,
-    flexDirection: "row",
+    height: CUE_SIZE,
+    alignItems: "center",
+  },
+  cueDisc: {
+    width: CUE_SIZE,
+    height: CUE_SIZE,
+    borderRadius: CUE_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    backgroundColor: hexToRgba(pauseColors.background, 0.55),
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: hexToRgba(pauseColors.ink, 0.35),
   },
-  cueLabel: {
-    color: pauseColors.muted,
-    fontSize: 13,
-    letterSpacing: 0.4,
+  cueGlass: {
+    width: CUE_SIZE,
+    height: CUE_SIZE,
+    borderRadius: CUE_SIZE / 2,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
   },
+  cueGlyph: { marginLeft: CUE_GLYPH_NUDGE },
   failed: {
     ...StyleSheet.absoluteFill,
     alignItems: "center",

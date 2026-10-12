@@ -3,10 +3,11 @@
 // telemetry and progress modules are modelled. Every render is in StrictMode.
 import { StrictMode, act } from "react"
 import {
+  Animated,
   AppState,
   Dimensions,
+  Platform,
   StyleSheet,
-  type Animated,
   type ViewStyle,
 } from "react-native"
 
@@ -30,13 +31,32 @@ import {
 } from "../../../test-utils/rnTestRenderer"
 import { pauseTestFont as font } from "../../../test-utils/dailyPause"
 import { devotionalVideoFrame } from "../../../lib/dailyPause/videoFrame"
-import { PartPlayer } from "../PartPlayer"
+import { CUE_FADE_MS, PartPlayer } from "../PartPlayer"
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 jest.mock("expo-video", () =>
   require("../../../test-utils/expoVideoMock").createExpoVideoMock(),
 )
 /* eslint-enable @typescript-eslint/no-require-imports */
+
+// The factory owns its state, so a case can turn Liquid Glass on. Off by
+// default, as on Android and before iOS 26.
+jest.mock("expo-glass-effect", () => {
+  const react = jest.requireActual("react")
+  const state = { liquid: false }
+  return {
+    GlassView: (props: Record<string, unknown>) =>
+      react.createElement("GlassView", props),
+    isLiquidGlassAvailable: () => state.liquid,
+    isGlassEffectAPIAvailable: () => true,
+    __state: state,
+  }
+})
+const mockGlass = (
+  jest.requireMock("expo-glass-effect") as unknown as {
+    __state: { liquid: boolean }
+  }
+).__state
 
 // A live playingChange subscription, as on a device. `expo` carries more.
 jest.mock("expo", () => {
@@ -111,6 +131,7 @@ const WINDOW = { width: 402, height: 874, scale: 3, fontScale: 1 }
 const FRAME_MS = 16
 
 let renderer: TestInstance | null = null
+const platformOs = Object.getOwnPropertyDescriptor(Platform, "OS")!
 let onEnded: jest.Mock
 let appStateHandlers: Array<(state: string) => void> = []
 
@@ -158,6 +179,8 @@ afterEach(async () => {
   // Back to the double's own data property.
   delete (player as { currentTime?: number }).currentTime
   player.currentTime = 0
+  mockGlass.liquid = false
+  Object.defineProperty(Platform, "OS", platformOs)
   jest.useRealTimers()
   jest.restoreAllMocks()
 })
@@ -244,6 +267,36 @@ function covered(): boolean {
 
 function cueShown(): boolean {
   return hostByTestId("part-paused-cue").length > 0
+}
+
+function hasAncestor(node: RenderedNode, ancestor: RenderedNode): boolean {
+  for (let up = node.parent; up; up = up.parent) {
+    if (up === ancestor) return true
+  }
+  return false
+}
+
+/** Every opacity a host ancestor of the cue's glass sets. */
+function glassAncestorOpacities(): unknown[] {
+  const [glass] = hostByTestId("part-paused-cue-glass")
+  const faded: unknown[] = []
+  for (let up = glass!.parent; up; up = up.parent) {
+    if (typeof up.type !== "string") continue
+    const opacity = StyleSheet.flatten(up.props.style as ViewStyle)?.opacity
+    if (opacity != null) faded.push(opacity)
+  }
+  return faded
+}
+
+/** The one pressable inside the paused cue. */
+function cueButton(): RenderedNode {
+  const [cue] = hostByTestId("part-paused-cue")
+  const buttons = renderer!.root.findAll(
+    (node) =>
+      typeof node.props.onPress === "function" && hasAncestor(node, cue!),
+  )
+  expect(buttons.length).toBeGreaterThan(0)
+  return buttons[0]!
 }
 
 function hostButtons(): string[] {
@@ -459,6 +512,183 @@ describe("the viewer's tap (R14, AE5)", () => {
     expect(cueShown()).toBe(false)
     expect(position).toBe(30)
     expect(seeks).toEqual([PARTS.film.startSec])
+  })
+
+  // The owner, 2026-10-09: a play triangle in a translucent disc replaces the
+  // "Paused · Tap to resume" line, so the cue needs no text.
+  it("shows a play triangle in a disc at the center of the picture, with no text", async () => {
+    await mount("film")
+    await playPast("film")
+    await tap("Pause video")
+
+    const [cue] = hostByTestId("part-paused-cue")
+    const cueStyle = StyleSheet.flatten(cue!.props.style as ViewStyle)
+    const frame = devotionalVideoFrame(WINDOW.width, WINDOW.height)
+    const cueHeight = Number(cueStyle.height)
+    expect(Number(cueStyle.top) + cueHeight / 2).toBeCloseTo(
+      frame.top + frame.height / 2,
+      5,
+    )
+
+    const [disc] = hostByTestId("part-paused-cue-disc")
+    const discStyle = StyleSheet.flatten(disc!.props.style as ViewStyle)
+    expect(discStyle.width).toBe(cueHeight)
+    expect(discStyle.borderRadius).toBe(cueHeight / 2)
+    expect(String(discStyle.backgroundColor)).toMatch(/^rgba\(.*, 0\.\d+\)$/)
+
+    const glyphs = renderer!.root.findAll(
+      (node) =>
+        node.props.name === "play" && typeof node.props.size === "number",
+    )
+    expect(glyphs.length).toBeGreaterThan(0)
+    const texts = renderer!.root.findAll(
+      (node) =>
+        node.type === "Text" &&
+        typeof node.props.children === "string" &&
+        /paused|resume/i.test(node.props.children),
+    )
+    expect(texts.length).toBe(0)
+    // A screen reader still hears what a tap does.
+    expect(hostButtons()).toContain("Resume video")
+  })
+
+  it("resumes at a tap on the disc itself", async () => {
+    await mount("film")
+    await playPast("film")
+    await tap("Pause video")
+    expect(player.playing).toBe(false)
+
+    await press(cueButton())
+    expect(player.playing).toBe(true)
+    expect(cueShown()).toBe(false)
+  })
+
+  // The owner, 2026-10-09: the cue fades out instead of vanishing.
+  it("fades the disc out after a resume, takes no tap while it fades, then unmounts", async () => {
+    await mount("film")
+    await playPast("film")
+    await tap("Pause video")
+    const timing = jest.spyOn(Animated, "timing")
+
+    await tap("Resume video")
+    const [leaving] = hostByTestId("part-paused-cue-leaving")
+    expect(leaving!.props.pointerEvents).toBe("none")
+    expect(hostByTestId("part-paused-cue-fade").length).toBe(1)
+    const fades = timing.mock.calls.filter(
+      ([, config]) => config.duration === CUE_FADE_MS && config.toValue === 0,
+    )
+    expect(fades).toHaveLength(1)
+    expect(fades[0]![1].useNativeDriver).toBe(true)
+
+    await act(async () => {
+      jest.advanceTimersByTime(CUE_FADE_MS)
+    })
+    expect(hostByTestId("part-paused-cue-leaving").length).toBe(0)
+    expect(cueShown()).toBe(false)
+  })
+
+  // iOS keeps the faded native opacity on a reused view, so a new pause needs
+  // a new view (code review, 2026-10-12).
+  it("brings the cue back at once, on a new view, when the viewer pauses again during the fade", async () => {
+    await mount("film")
+    await playPast("film")
+    await tap("Pause video")
+    await tap("Resume video")
+    const [fading] = hostByTestId("part-paused-cue-leaving")
+    const [fadingDisc] = hostByTestId("part-paused-cue-fade")
+
+    await tap("Pause video")
+    expect(cueShown()).toBe(true)
+    expect(hostByTestId("part-paused-cue-leaving").length).toBe(0)
+    const [cue] = hostByTestId("part-paused-cue")
+    const [disc] = hostByTestId("part-paused-cue-fade")
+    expect(cue === fading).toBe(false)
+    expect(disc === fadingDisc).toBe(false)
+    expect(StyleSheet.flatten(disc!.props.style as ViewStyle).opacity).toBe(1)
+    await act(async () => {
+      jest.advanceTimersByTime(CUE_FADE_MS * 2)
+    })
+    expect(cueShown()).toBe(true)
+  })
+
+  // Before 2026-10-12 the cue faded over the next part after a jump while paused.
+  it("drops the cue at once when the run moves to another part while paused", async () => {
+    await mount("film")
+    await playPast("film")
+    await tap("Pause video")
+    expect(cueShown()).toBe(true)
+
+    await rerender("prayer")
+    expect(cueShown()).toBe(false)
+    expect(hostByTestId("part-paused-cue-leaving").length).toBe(0)
+  })
+
+  // The owner, 2026-10-09: where iOS has Liquid Glass, the cue is a native
+  // glass button, like the run's pills.
+  describe("with Liquid Glass", () => {
+    beforeEach(() => {
+      mockGlass.liquid = true
+      Object.defineProperty(Platform, "OS", { get: () => "ios" })
+    })
+
+    it("draws the cue on native glass, and a tap on it resumes", async () => {
+      await mount("film")
+      await playPast("film")
+      await tap("Pause video")
+
+      expect(hostByTestId("part-paused-cue-disc").length).toBe(0)
+      const [glass] = hostByTestId("part-paused-cue-glass")
+      expect(glass!.type).toBe("GlassView")
+      expect(glass!.props).toMatchObject({
+        glassEffectStyle: "regular",
+        colorScheme: "dark",
+      })
+      const glassStyle = StyleSheet.flatten(glass!.props.style as ViewStyle)
+      expect(glassStyle.borderRadius).toBe(Number(glassStyle.width) / 2)
+      const glyphs = renderer!.root.findAll(
+        (node) => node.props.name === "play" && hasAncestor(node, glass!),
+      )
+      expect(glyphs.length).toBeGreaterThan(0)
+
+      await press(cueButton())
+      expect(player.playing).toBe(true)
+      expect(cueShown()).toBe(false)
+    })
+
+    // GlassView draws no material under an ancestor that sets an opacity.
+    it("sets no opacity on any ancestor of the glass, paused or fading", async () => {
+      await mount("film")
+      await playPast("film")
+      await tap("Pause video")
+      expect(glassAncestorOpacities()).toEqual([])
+
+      await tap("Resume video")
+      expect(hostByTestId("part-paused-cue-leaving").length).toBe(1)
+      expect(glassAncestorOpacities()).toEqual([])
+    })
+
+    it("lets the glass leave through its own native animation, and fades only the glyph", async () => {
+      await mount("film")
+      await playPast("film")
+      await tap("Pause video")
+      const [shown] = hostByTestId("part-paused-cue-glass")
+      expect(shown!.props.glassEffectStyle).toBe("regular")
+
+      await tap("Resume video")
+      const [glass] = hostByTestId("part-paused-cue-glass")
+      expect(glass!.props.glassEffectStyle).toEqual({
+        style: "none",
+        animate: true,
+        animationDuration: CUE_FADE_MS / 1000,
+      })
+      const [glyph] = hostByTestId("part-paused-cue-glyph")
+      expect(hasAncestor(glyph!, glass!)).toBe(true)
+
+      await act(async () => {
+        jest.advanceTimersByTime(CUE_FADE_MS)
+      })
+      expect(hostByTestId("part-paused-cue-glass").length).toBe(0)
+    })
   })
 })
 

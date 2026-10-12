@@ -47,12 +47,6 @@ function isAway(state: AppStateStatus | null | undefined): boolean {
   return state === "background" || state === "inactive"
 }
 
-/** "0:45", "1:30". */
-export function formatClock(seconds: number): string {
-  const minutes = Math.floor(seconds / 60)
-  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`
-}
-
 function unit(count: number, word: string): string {
   return `${count} ${word}${count === 1 ? "" : "s"}`
 }

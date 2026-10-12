@@ -8,26 +8,7 @@ import {
   unmount,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
-import {
-  formatClock,
-  spokenTimeLeft,
-  useCountdown,
-  type Countdown,
-} from "../countdown"
-
-describe("formatClock", () => {
-  it.each([
-    [20, "0:20"],
-    [45, "0:45"],
-    [90, "1:30"],
-    [15, "0:15"],
-    [60, "1:00"],
-    [9, "0:09"],
-    [0, "0:00"],
-  ])("writes %i seconds as %s", (seconds, text) => {
-    expect(formatClock(seconds)).toBe(text)
-  })
-})
+import { spokenTimeLeft, useCountdown, type Countdown } from "../countdown"
 
 describe("spokenTimeLeft", () => {
   it.each([
@@ -142,7 +123,7 @@ describe("useCountdown", () => {
   it("stops at 0:00 and stays there (AE1)", async () => {
     await mount(45)
     advance(44_000)
-    expect(formatClock(latest().secondsLeft)).toBe("0:01")
+    expect(latest().secondsLeft).toBe(1)
     expect(latest().done).toBe(false)
     advance(1_000)
     expect(latest()).toMatchObject({

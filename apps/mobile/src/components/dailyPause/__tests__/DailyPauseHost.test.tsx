@@ -1,12 +1,17 @@
 /**
  * The curtain handover against the REAL curtain store, stage, mini player
- * store, and day record. Only the router, the experience selection, and the
- * native animation driver are modelled.
+ * store, day record, and search intent store. Only the router, the experience
+ * selection, and the native animation driver are modelled.
  */
 
 import { StrictMode, act, type ReactElement } from "react"
-import { Animated, BackHandler, Pressable, Text } from "react-native"
+import { Animated, BackHandler, Text } from "react-native"
 
+import {
+  dismissClosePrompt,
+  isClosePromptOpen,
+  openClosePrompt,
+} from "../../../lib/dailyPause/closePrompt"
 import {
   dayFromRecord,
   getPauseProgressStore,
@@ -20,13 +25,18 @@ import {
 import {
   endPause,
   getPausePhase,
+  liftPause,
+  reportLogoDrawn,
   requestPause,
+  requestPauseExit,
   setPauseRunOnTop,
+  type PauseExitTarget,
 } from "../../../lib/pauseCurtain"
 import {
   resetPlaybackTransportForTests,
   setPlaybackTransport,
 } from "../../../lib/playbackInterruption"
+import { getSearchIntentStore } from "../../../lib/searchIntent"
 import {
   TestRenderer,
   press,
@@ -39,8 +49,8 @@ import {
 import { PAUSE_LOGO_DRAWN_MS, PauseStage } from "../../PauseStage"
 import {
   DailyPauseHost,
+  PAUSE_EXIT_BACKSTOP_MS,
   PAUSE_HANDOVER_DEADLINE_MS,
-  useCloseDailyPause,
 } from "../DailyPauseHost"
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -72,14 +82,18 @@ jest.mock("expo-status-bar", () => ({ setStatusBarHidden: () => {} }))
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
 
 const CURTAIN_LABEL = "Daily Bible Pause. Tap to return."
+const EXIT_LABEL = "Daily Bible Pause. Leaving the devotional."
 const READY = { isReady: true, currentSlug: "jesus-film" }
+const QUESTION = "How are we commanded to pray?"
+/** The event that a put on the search intent store logs. */
+const INTENT = `intent ${QUESTION}`
 
 // ── The native animation driver and Android back, modelled ─────────
 
 type Timing = { toValue: number; finish: () => void }
 let timings: Timing[] = []
 let backHandlers: Array<() => boolean> = []
-/** What the viewer would see, in order: the route push and the lift. */
+/** What the viewer would see, in order: the route changes and the lift. */
 let events: string[] = []
 
 const lift = () => timings.find((t) => t.toValue === 0)!
@@ -100,6 +114,8 @@ const transport = {
 const mounted: TestInstance[] = []
 let ends: MiniPlayerEndEvent[] = []
 let stopEnds: () => void = () => {}
+const intents = getSearchIntentStore()
+let stopIntents: () => void = () => {}
 
 function floatingWindow() {
   sessions.start({
@@ -120,6 +136,9 @@ beforeEach(() => {
   mockSelection = READY
   Object.values(mockRouter).forEach((fn) => fn.mockReset())
   mockRouter.push.mockImplementation(() => events.push("push"))
+  mockRouter.dismissTo.mockImplementation((href: string) =>
+    events.push(`dismissTo ${href}`),
+  )
   jest.spyOn(Animated, "timing").mockImplementation((_value, config) => {
     let callback: Animated.EndCallback | undefined
     const toValue = config.toValue as number
@@ -154,14 +173,22 @@ beforeEach(() => {
   resetPlaybackTransportForTests()
   setPlaybackTransport(transport)
   resetPauseProgressStoreForTests()
+  intents.clear()
+  stopIntents = intents.subscribe(() => {
+    const intent = intents.peek()
+    if (intent != null) events.push(`intent ${intent.query}`)
+  })
 })
 
 afterEach(() => {
   // A failed test skips its own unmount, and a live host would act in the next.
   mounted.splice(0).forEach((renderer) => act(() => renderer.unmount()))
   act(() => endPause())
+  dismissClosePrompt()
   setPauseRunOnTop(false)
   stopEnds()
+  stopIntents()
+  intents.clear()
   jest.restoreAllMocks()
   jest.useRealTimers()
 })
@@ -193,6 +220,30 @@ async function advance(ms: number) {
 
 async function enter() {
   await act(async () => requestPause())
+}
+
+async function leave(target: PauseExitTarget) {
+  await act(async () => requestPauseExit(target))
+}
+
+/** The router moves: the host renders again with the new segments. */
+async function showSegments(
+  renderer: TestInstance,
+  segments: string[],
+  strict = false,
+) {
+  mockSegments = segments
+  await act(async () => renderer.update(tree(strict)))
+}
+
+/** React Native asks the last-added back listener first, then the next. */
+function pressBack(): boolean {
+  return [...backHandlers].reverse().some((handler) => handler())
+}
+
+function bellRead(): boolean {
+  const today = localDay(new Date())
+  return dayFromRecord(getPauseProgressStore().getSnapshot(), today).bellRead
 }
 
 function curtainCount(renderer: TestInstance): number {
@@ -335,36 +386,207 @@ describe("the takeover at entry (KTD6, R46)", () => {
   })
 })
 
-describe("the close (R21, R22)", () => {
-  function CloseButton() {
-    const close = useCloseDailyPause()
-    return <Pressable accessibilityLabel="Close" onPress={close} />
-  }
+// v2 R17, R18, KTD5: Share's two exits close the curtain over the run, pop
+// to their target under it, and lift once the target shows.
+describe("the exit", () => {
+  it("pops to Home when drawn, lifts only when Home shows, and leaves the player and the bell alone", async () => {
+    mockSegments = ["pause"]
+    floatingWindow()
+    const renderer = await render()
+    await leave({ kind: "home" })
+    await advance(PAUSE_LOGO_DRAWN_MS - 1)
+    expect(events).toEqual([])
+    await advance(1)
+    expect(events).toEqual(["dismissTo /(tabs)"])
+    await advance(PAUSE_EXIT_BACKSTOP_MS - 1)
+    expect(events).toEqual(["dismissTo /(tabs)"])
 
-  it("pops to the tab navigator and selects Home", async () => {
-    let renderer!: TestInstance
-    await act(async () => {
-      renderer = TestRenderer.create(<CloseButton />)
-    })
-    await press(pressableByLabel(renderer, "Close"))
-    expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1)
-    expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
+    await showSegments(renderer, ["(tabs)"])
+    expect(events).toEqual(["dismissTo /(tabs)", "lift"])
     expect(mockRouter.push).not.toHaveBeenCalled()
-    expect(mockRouter.replace).not.toHaveBeenCalled()
     expect(mockRouter.navigate).not.toHaveBeenCalled()
+    expect(mockRouter.replace).not.toHaveBeenCalled()
+    expect(sessions.getSnapshot().dismissal).toBe("none")
+    expect(ends).toEqual([])
+    expect(rootPlaying).toBe(true)
+    await act(async () => {
+      await getPauseProgressStore().hydrate()
+    })
+    expect(bellRead()).toBe(false)
+    expect(intents.peek()).toBeNull()
+    await act(async () => lift().finish())
+    expect(getPausePhase()).toBe("idle")
     await unmount(renderer)
   })
 
-  it("closes the run on Android back from the run screen", async () => {
+  it("pops to the search tab without waiting for the selection, and lifts only when that tab shows", async () => {
+    mockSegments = ["pause"]
+    mockSelection = { isReady: false, currentSlug: null }
+    const renderer = await render()
+    await leave({ kind: "search", question: QUESTION })
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch"])
+    // iOS native tabs can show Home for one render before the search tab.
+    await showSegments(renderer, ["(tabs)"])
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch"])
+    await showSegments(renderer, ["(tabs)", "watch"])
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch", "lift"])
+    await advance(PAUSE_HANDOVER_DEADLINE_MS)
+    expect(mockRouter.push).not.toHaveBeenCalled()
+    await unmount(renderer)
+  })
+
+  // AE8: the viewer chose to leave, so a tap does not stop the exit.
+  it("goes on to its target after a tap on the closing curtain", async () => {
+    mockSegments = ["pause"]
+    const renderer = await render()
+    await leave({ kind: "home" })
+    await advance(1000)
+    const curtain = renderer.root.findAll(
+      (node) => node.props.accessibilityLabel === EXIT_LABEL,
+    )
+    expect(curtain.length).toBeGreaterThan(0)
+    for (const node of curtain) await press(node)
+    expect(events).toEqual([])
+    expect(getPausePhase()).toBe("closing")
+    await advance(PAUSE_LOGO_DRAWN_MS - 1000)
+    expect(events).toEqual(["dismissTo /(tabs)"])
+    await showSegments(renderer, ["(tabs)"])
+    expect(events).toEqual(["dismissTo /(tabs)", "lift"])
+    await unmount(renderer)
+  })
+
+  it("neither lifts nor closes the run on Android back", async () => {
+    mockSegments = ["pause"]
+    const renderer = await render()
+    await leave({ kind: "search", question: QUESTION })
+    let consumed = false
+    await act(async () => {
+      consumed = pressBack()
+    })
+    expect(consumed).toBe(true)
+    expect(isClosePromptOpen()).toBe(false)
+    expect(events).toEqual([])
+    expect(getPausePhase()).toBe("closing")
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch"])
+    await unmount(renderer)
+  })
+
+  it("lifts on the backstop when the segments never show the target", async () => {
+    mockSegments = ["pause"]
+    const renderer = await render()
+    await leave({ kind: "search", question: QUESTION })
+    await advance(PAUSE_LOGO_DRAWN_MS)
+    await advance(PAUSE_EXIT_BACKSTOP_MS - 1)
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch"])
+    await advance(1)
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch", "lift"])
+    await act(async () => lift().finish())
+    expect(getPausePhase()).toBe("idle")
+    await unmount(renderer)
+  })
+
+  // AE6, KTD6: the put comes at drawn, before the pop, so a long time in the
+  // background before the logo is drawn cannot expire it.
+  it("puts the question before it pops to the search tab, and the tab can read it after the lift (AE6)", async () => {
+    mockSegments = ["pause"]
+    const renderer = await render()
+    await leave({ kind: "search", question: QUESTION })
+    await advance(PAUSE_LOGO_DRAWN_MS - 1)
+    expect(events).toEqual([])
+    expect(intents.peek()).toBeNull()
+    await advance(1)
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch"])
+    await showSegments(renderer, ["(tabs)", "watch"])
+    expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch", "lift"])
+    await act(async () => lift().finish())
+    expect(getPausePhase()).toBe("idle")
+    expect(intents.peek()).toMatchObject({
+      query: QUESTION,
+      origin: "dailyPause",
+    })
+    await unmount(renderer)
+  })
+
+  it.each<[PauseExitTarget, string[], string[]]>([
+    [{ kind: "home" }, ["(tabs)"], ["dismissTo /(tabs)", "lift"]],
+    [
+      { kind: "search", question: QUESTION },
+      ["(tabs)", "watch"],
+      [INTENT, "dismissTo /(tabs)/watch", "lift"],
+    ],
+  ])(
+    "pops and lifts once for one exit to %j under StrictMode",
+    async (target, segments, expected) => {
+      mockSegments = ["pause"]
+      const renderer = await render(true)
+      await leave(target)
+      await advance(PAUSE_LOGO_DRAWN_MS)
+      await showSegments(renderer, segments, true)
+      await advance(PAUSE_EXIT_BACKSTOP_MS + PAUSE_HANDOVER_DEADLINE_MS)
+      expect(events).toEqual(expected)
+      expect(mockRouter.push).not.toHaveBeenCalled()
+      await unmount(renderer)
+    },
+  )
+})
+
+describe("the close (R19, R22)", () => {
+  // v2 KTD5: a screen reader can still reach the close under an exit's
+  // curtain, and a prompt there could start a second exit.
+  it("opens no close prompt while an exit's curtain is up", async () => {
+    await act(async () =>
+      requestPauseExit({ kind: "search", question: QUESTION }),
+    )
+    openClosePrompt()
+    await act(async () => reportLogoDrawn())
+    openClosePrompt()
+    await act(async () => liftPause())
+    openClosePrompt()
+    expect(isClosePromptOpen()).toBe(false)
+
+    await act(async () => endPause())
+    openClosePrompt()
+    expect(isClosePromptOpen()).toBe(true)
+  })
+
+  // Close in the prompt starts the exit, and the prompt stays up under the
+  // curtain. The curtain's own back handler runs first and does nothing.
+  it("keeps the close prompt up on Android back under an exit's curtain", async () => {
+    mockSegments = ["pause"]
+    const renderer = await render()
+    openClosePrompt()
+    await act(async () => requestPauseExit({ kind: "home" }))
+    let consumed = false
+    await act(async () => {
+      consumed = pressBack()
+    })
+    expect(consumed).toBe(true)
+    expect(isClosePromptOpen()).toBe(true)
+    await unmount(renderer)
+  })
+
+  // The owner, 2026-10-12: back does what the close (×) does, so it asks first.
+  it("opens the close prompt on Android back from the run screen, and a second back cancels it", async () => {
     mockSegments = ["pause"]
     const renderer = await render()
     expect(backHandlers).toHaveLength(1)
+    expect(isClosePromptOpen()).toBe(false)
     let consumed = false
     await act(async () => {
       consumed = backHandlers[0]!()
     })
     expect(consumed).toBe(true)
-    expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
+    expect(isClosePromptOpen()).toBe(true)
+    expect(mockRouter.dismissTo).not.toHaveBeenCalled()
+
+    await act(async () => {
+      consumed = backHandlers[0]!()
+    })
+    expect(consumed).toBe(true)
+    expect(isClosePromptOpen()).toBe(false)
+    expect(mockRouter.dismissTo).not.toHaveBeenCalled()
     await unmount(renderer)
   })
 

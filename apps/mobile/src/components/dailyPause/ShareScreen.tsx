@@ -1,6 +1,6 @@
-// The Figma "Share" screen (R7, R20, R22). Reaching it marks the run's day
-// done, and "Share this video" offers the bundled video. The run screen draws
-// the close, which is the only way to leave Share.
+// The Figma "Share" screen (R7, R20; v2 R16-R20, KTD5). Reaching it marks the
+// run's day done, and "Share this video" offers the bundled video. Browse and
+// Finish leave through the curtain, as the run's close does after its prompt.
 import { useEffect, useRef, useState } from "react"
 import { ScrollView, StyleSheet, Text, View } from "react-native"
 
@@ -14,6 +14,7 @@ import {
 } from "../../lib/dailyPause/theme"
 import type { Today } from "../../lib/dailyPause/today"
 import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
+import { requestPauseExit } from "../../lib/pauseCurtain"
 import { PauseBody, PauseButton } from "./PauseFrame"
 
 const PROMPT =
@@ -50,7 +51,12 @@ export function ShareScreen({ pin, font }: ShareScreenProps) {
       })
   }
 
-  // The prompt scrolls at large text sizes, and the button stays on screen.
+  // v2 KTD5: the store takes only the first exit, so a second tap does nothing.
+  const browse = () =>
+    requestPauseExit({ kind: "search", question: devotional.question })
+  const finish = () => requestPauseExit({ kind: "home" })
+
+  // The prompt scrolls at large text sizes, and the buttons stay on screen.
   return (
     <PauseBody>
       <ScrollView
@@ -69,15 +75,19 @@ export function ShareScreen({ pin, font }: ShareScreenProps) {
         ) : null}
       </ScrollView>
       <View style={styles.buttonGap} />
-      {video.status === "error" ? (
-        <PauseButton
-          label="Try again"
-          onPress={() => setAttempt((count) => count + 1)}
-          font={font}
-        />
-      ) : (
-        <PauseButton label="Share this video" onPress={share} font={font} />
-      )}
+      <View testID="share-buttons" style={styles.buttons}>
+        {video.status === "error" ? (
+          <PauseButton
+            label="Try again"
+            onPress={() => setAttempt((count) => count + 1)}
+            font={font}
+          />
+        ) : (
+          <PauseButton label="Share this video" onPress={share} font={font} />
+        )}
+        <PauseButton label="Browse media" onPress={browse} font={font} />
+        <PauseButton label="Finish" onPress={finish} font={font} />
+      </View>
     </PauseBody>
   )
 }
@@ -102,4 +112,11 @@ const styles = StyleSheet.create({
     color: pauseColors.muted,
   },
   buttonGap: { height: pauseSpacing.shareButtonGap },
+  // The column is as wide as its widest button, and it stretches the other
+  // buttons to that width, so the three share one width (the owner, 2026-10-12).
+  buttons: {
+    alignSelf: "center",
+    alignItems: "stretch",
+    gap: pauseSpacing.screenGap,
+  },
 })

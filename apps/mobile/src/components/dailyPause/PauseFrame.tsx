@@ -7,13 +7,12 @@ import {
 } from "expo-glass-effect"
 import type { ReactNode } from "react"
 import {
+  Animated,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
-  type StyleProp,
-  type TextStyle,
 } from "react-native"
 import {
   useSafeAreaInsets,
@@ -78,47 +77,25 @@ export function PauseMasthead({
   )
 }
 
+/** A fade for a button that comes and goes. `opacity` is native-driven. */
+export type PauseButtonFade = {
+  opacity: Animated.Value
+  shown: boolean
+  durationMs: number
+}
+
 type PauseButtonProps = {
   label: string
   onPress: () => void
   font: PauseFont
   /** The outline is the frame's upcoming pill, for a second choice. */
   variant?: "primary" | "outline"
-  /** The button keeps this label's width when its own label is narrower, so
-   *  a changing label never moves its edges (the owner, 2026-10-06). */
-  widthLabel?: string
-}
-
-/** The label, and an invisible copy of `widthLabel` with no height that holds
- *  the width. The width follows the font and its size. */
-function ButtonLabel({
-  label,
-  widthLabel,
-  style,
-}: {
-  label: string
-  widthLabel?: string
-  style: StyleProp<TextStyle>
-}) {
-  if (widthLabel == null) return <Text style={style}>{label}</Text>
-  return (
-    <View style={styles.labelBox}>
-      <Text style={[style, styles.steadyDigits]}>{label}</Text>
-      <Text
-        testID="pause-button-width"
-        accessibilityElementsHidden
-        importantForAccessibility="no-hide-descendants"
-        style={[style, styles.widthHolder]}
-      >
-        {widthLabel}
-      </Text>
-    </View>
-  )
+  fade?: PauseButtonFade
 }
 
 /** iOS 26 Liquid Glass. isGlassEffectAPIAvailable guards iOS 26 betas that
  *  crash without it. */
-function liquidGlass(): boolean {
+export function liquidGlass(): boolean {
   return (
     Platform.OS === "ios" &&
     isLiquidGlassAvailable() &&
@@ -133,22 +110,23 @@ export function PauseButton({
   onPress,
   font,
   variant = "primary",
-  widthLabel,
+  fade,
 }: PauseButtonProps) {
   const outline = variant === "outline"
   const labelNode = (
-    <ButtonLabel
-      label={label}
-      widthLabel={widthLabel}
+    <Text
       style={[
         styles.buttonLabel,
         outline && styles.outlineLabel,
         pauseText(font, pauseType.button),
       ]}
-    />
+    >
+      {label}
+    </Text>
   )
   if (liquidGlass()) {
-    // No ancestor may fade this button: GlassView draws nothing there.
+    // No ancestor may fade this button: GlassView draws nothing there. So a
+    // fade runs through the glass's own animation, and only the label fades.
     return (
       <Pressable
         onPress={onPress}
@@ -158,17 +136,34 @@ export function PauseButton({
         <GlassView
           testID="pause-glass-button"
           style={styles.glassButton}
-          glassEffectStyle="regular"
+          glassEffectStyle={
+            fade == null
+              ? "regular"
+              : {
+                  style: fade.shown ? "regular" : "none",
+                  animate: true,
+                  animationDuration: fade.durationMs / 1000,
+                }
+          }
           colorScheme="dark"
           tintColor={outline ? undefined : pauseColors.ink}
           isInteractive
         >
-          {labelNode}
+          {fade == null ? (
+            labelNode
+          ) : (
+            <Animated.View
+              testID="pause-glass-label-fade"
+              style={{ opacity: fade.opacity }}
+            >
+              {labelNode}
+            </Animated.View>
+          )}
         </GlassView>
       </Pressable>
     )
   }
-  return (
+  const button = (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
@@ -182,6 +177,12 @@ export function PauseButton({
       {labelNode}
     </Pressable>
   )
+  if (fade == null) return button
+  return (
+    <Animated.View testID="pause-button-fade" style={{ opacity: fade.opacity }}>
+      {button}
+    </Animated.View>
+  )
 }
 
 /** A tap before the pause ends does nothing (R16). */
@@ -191,7 +192,6 @@ type HeldPauseButtonProps = {
   label: string
   spokenLabel: string
   font: PauseFont
-  widthLabel?: string
 }
 
 /** The frame's button while a pause timer runs. It looks the same, takes no
@@ -200,7 +200,6 @@ export function HeldPauseButton({
   label,
   spokenLabel,
   font,
-  widthLabel,
 }: HeldPauseButtonProps) {
   return (
     <View
@@ -210,12 +209,7 @@ export function HeldPauseButton({
       accessibilityState={{ disabled: true }}
       pointerEvents="none"
     >
-      <PauseButton
-        label={label}
-        onPress={ignoreTap}
-        font={font}
-        widthLabel={widthLabel}
-      />
+      <PauseButton label={label} onPress={ignoreTap} font={font} />
     </View>
   )
 }
@@ -264,10 +258,6 @@ const styles = StyleSheet.create({
     borderRadius: pauseRadii.button,
     overflow: "hidden",
   },
-  labelBox: { alignItems: "center" },
-  // Equal-width digits, so a count does not move inside the button.
-  steadyDigits: { fontVariant: ["tabular-nums"] },
-  widthHolder: { height: 0, opacity: 0 },
   buttonLabel: {
     color: pauseColors.background,
     textAlign: "center",

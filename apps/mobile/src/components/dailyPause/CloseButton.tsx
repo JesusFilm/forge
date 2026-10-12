@@ -7,7 +7,7 @@ import { Pressable, StyleSheet } from "react-native"
 import { pauseColors, pauseSpacing } from "../../lib/dailyPause/theme"
 import { useTopRowTop, type TopRowPlacement } from "./useTopRowTop"
 
-const TARGET_SIZE = 44
+export const TARGET_SIZE = 44
 const GLYPH_SIZE = 24
 
 type CloseButtonProps = {

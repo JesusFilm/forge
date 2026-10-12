@@ -11,6 +11,7 @@ import {
 import {
   PAUSE_DAY_STORAGE_KEY,
   PAUSE_DAY_VERSION,
+  PAUSE_STEPS,
   createPauseProgressStore,
   dayFromRecord,
   resumeTarget,
@@ -20,7 +21,10 @@ import {
 } from "../progress"
 import {
   RUN_START,
+  isVideoPart,
+  partStepForSection,
   runReducer,
+  sectionForStep,
   useDailyPauseRun,
   type DailyPauseRun,
   type RunState,
@@ -106,6 +110,52 @@ describe("runReducer (R10)", () => {
   it("goes back to the Opening and drops the pinned day on a reset", () => {
     const reflecting: RunState = { step: "reflectScreen", pin: MONDAY }
     expect(runReducer(reflecting, { type: "reset" })).toBe(RUN_START)
+  })
+
+  // A video marker opens another section's part (the owner, 2026-10-09).
+  it("jumps back and ahead to another step and keeps the pinned day", () => {
+    const praying: RunState = { step: "prayer", pin: MONDAY }
+    expect(runReducer(praying, { type: "jump", step: "film" })).toEqual({
+      step: "film",
+      pin: MONDAY,
+    })
+    const watching: RunState = { step: "film", pin: MONDAY }
+    expect(runReducer(watching, { type: "jump", step: "prayer" })).toEqual({
+      step: "prayer",
+      pin: MONDAY,
+    })
+  })
+
+  it("ignores a jump at the Opening, which has no pinned day", () => {
+    expect(runReducer(RUN_START, { type: "jump", step: "teaching" })).toBe(
+      RUN_START,
+    )
+  })
+})
+
+describe("partStepForSection", () => {
+  it("opens each section at its video part, the inverse of sectionForStep", () => {
+    for (const section of ["watch", "reflect", "pray"] as const) {
+      const step = partStepForSection(section)
+      expect(isVideoPart(step)).toBe(true)
+      expect(sectionForStep(step)).toBe(section)
+    }
+  })
+})
+
+// v2 plan R1, R3, KTD4: each video part belongs to one section, and the
+// step order stays the same.
+describe("sectionForStep (v2 plan R3)", () => {
+  it("maps the film to Watch, the teaching to Reflect, and the prayer to Pray", () => {
+    expect(sectionForStep("film")).toBe("watch")
+    expect(sectionForStep("teaching")).toBe("reflect")
+    expect(sectionForStep("prayer")).toBe("pray")
+  })
+
+  it("gives a section on the video parts only", () => {
+    for (const step of PAUSE_STEPS) {
+      expect(sectionForStep(step) != null).toBe(isVideoPart(step))
+    }
   })
 })
 

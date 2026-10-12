@@ -69,6 +69,18 @@ describe("searchLanguageFor", () => {
   ])("gives the query %j the query language %p", (query, language) => {
     expect(searchLanguageFor(adminFormsFor("ru"), query).query).toBe(language)
   })
+
+  // Daily Bible Pause v2 (R16): the handed-over Opening question is English.
+  it("names English as the query language of a Daily Bible Pause question", () => {
+    const question = "How are we commanded to pray?"
+    const forms = adminFormsFor("ru")
+
+    expect(searchLanguageFor(forms, question, "dailyPause")).toEqual({
+      display: "russian",
+      query: "english",
+    })
+    expect(searchLanguageFor(forms, question).query).toBeNull()
+  })
 })
 
 // Admin resolves availability, playbackId and durationSeconds against the target

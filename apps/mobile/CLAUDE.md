@@ -2068,10 +2068,14 @@ from there, so no two files can disagree about the bar's size.
   read `useTabLabels()` in `src/lib/tabBar.ts`, which maps each tab through
   `TAB_LABEL_KEYS` to the `Tabs` catalog namespace, so a rename is a one-line
   change and a language change relabels the bar without a remount.
-- **A fade is not available on the material.** `GlassView` renders nothing
-  inside a layer whose opacity an ancestor animates, so any fade of
-  `TabBarBackground` forces `PlatformBlur` on every iOS version and changes the
-  look.
+- **An opacity fade is not available on the material.** `GlassView` renders
+  nothing inside a layer whose opacity an ancestor animates. So an opacity fade
+  of `TabBarBackground` forces `PlatformBlur` on every iOS version and changes
+  the look. The glass can still fade itself through its own
+  `glassEffectStyle`, with no opacity on the glass or above it. For a fade-in,
+  switch the style two frames after mount, or the glass shows at full. See
+  `docs/solutions/best-practices/expo-glass-effect-glassview-fade-through-glass-effect-style.md`.
+  The only evidence for this fade is the Daily Bible Pause pill buttons.
 - **Fast Refresh does not reliably apply changes to the material.** A branch
   swap looked applied and measured identically to the previous run; a magenta
   probe proved the old code was still live. Terminate and relaunch the dev

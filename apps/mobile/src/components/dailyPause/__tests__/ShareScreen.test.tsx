@@ -1,9 +1,10 @@
-// The Share step (U11, R7, R20, R22, KTD11, KTD15) in StrictMode, on the REAL
-// day record and jest-expo's in-memory file system. Only AsyncStorage, the
-// asset system, and the share sheet are modelled.
+// The Share step (U11, R7, R20, R22, KTD11, KTD15; v2 R16-R20, KTD5) in
+// StrictMode, on the REAL day record, curtain store, and jest-expo's in-memory
+// file system. Only AsyncStorage, the asset system, and the sheet are modelled.
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { File, Paths } from "expo-file-system"
 import { StrictMode, act } from "react"
+import { StyleSheet, type ViewStyle } from "react-native"
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
 import {
@@ -11,13 +12,24 @@ import {
   PAUSE_DAY_VERSION,
   resetPauseProgressStoreForTests,
 } from "../../../lib/dailyPause/progress"
-import type { Today } from "../../../lib/dailyPause/today"
+import {
+  devotionalForDay,
+  localDay,
+  type Today,
+} from "../../../lib/dailyPause/today"
+import {
+  endPause,
+  getPauseExitTarget,
+  getPausePhase,
+  subscribePause,
+} from "../../../lib/pauseCurtain"
 import {
   TestRenderer,
   hasText,
   press,
   pressableByLabel,
   unmount,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 import { pauseTestFont as font } from "../../../test-utils/dailyPause"
@@ -76,6 +88,8 @@ beforeEach(async () => {
 afterEach(async () => {
   if (renderer) await unmount(renderer)
   renderer = null
+  // The curtain store is module state, and no stage here ends an exit.
+  act(() => endPause())
   jest.useRealTimers()
 })
 
@@ -91,8 +105,10 @@ async function render(pin: Today = PIN): Promise<TestInstance> {
   return renderer!
 }
 
-async function tap() {
-  await press(pressableByLabel(renderer!, "Share this video"))
+const SHARE_BUTTONS = ["Share this video", "Browse media", "Finish"]
+
+async function tap(label = "Share this video") {
+  await press(pressableByLabel(renderer!, label))
   await act(async () => {})
 }
 
@@ -119,7 +135,7 @@ function savedDays(): unknown[] {
     .map(([, value]) => JSON.parse(value) as unknown)
 }
 
-it("offers only Share this video under the SHARE prompt (R22)", async () => {
+it("offers Share this video, Browse media, and Finish under the SHARE prompt (v2 R20)", async () => {
   await render()
   expect(hasText(renderer!, "SHARE")).toBe(true)
   expect(
@@ -128,7 +144,117 @@ it("offers only Share this video under the SHARE prompt (R22)", async () => {
       "Before we close, take a moment to consider a couple friends that you could share this truth with.",
     ),
   ).toBe(true)
-  expect(buttons()).toEqual(["Share this video"])
+  expect(buttons()).toEqual(SHARE_BUTTONS)
+})
+
+// Jest has no layout, so this reads the shape: one column as wide as its widest
+// button, which stretches the others to that width (the owner, 2026-10-12).
+it("gives the three buttons one width", async () => {
+  await render()
+  const [column] = renderer!.root.findAll(
+    (node) =>
+      typeof node.type === "string" && node.props.testID === "share-buttons",
+  )
+  expect(StyleSheet.flatten(column!.props.style as ViewStyle)).toMatchObject({
+    alignSelf: "center",
+    alignItems: "stretch",
+  })
+  const shareButtons = renderer!.root.findAll(
+    (node) =>
+      typeof node.type === "string" &&
+      node.props.accessibilityRole === "button" &&
+      SHARE_BUTTONS.includes(node.props.accessibilityLabel as string),
+  )
+  expect(shareButtons.length).toBe(3)
+  for (const button of shareButtons) {
+    let node: RenderedNode | null | undefined = button
+    for (; node && node !== column; node = node.parent) {
+      if (typeof node.type !== "string") continue
+      const style = StyleSheet.flatten(node.props.style as ViewStyle) ?? {}
+      expect(style.alignSelf ?? "stretch").toBe("stretch")
+      expect(style.width).toBeUndefined()
+    }
+    expect(node === column).toBe(true)
+  }
+})
+
+// v2 R16-R18, KTD5: the two new buttons leave the run through the curtain.
+describe("the exits", () => {
+  it("Browse asks to leave for the search tab with today's Opening question (AE6)", async () => {
+    await render()
+    expect(getPausePhase()).toBe("idle")
+    await tap("Browse media")
+    expect(getPausePhase()).toBe("closing")
+    expect(getPauseExitTarget()).toEqual({
+      kind: "search",
+      question: "How are we commanded to pray?",
+    })
+  })
+
+  it("Browse hands over the pinned day's question after midnight, not the new day's", async () => {
+    // The run began on Tuesday (Lamp), and Share appears on Wednesday (Pharisee).
+    jest.useFakeTimers({ now: new Date(2026, 9, 7, 0, 5) })
+    const tuesday: Today = {
+      dayKey: "2026-10-06",
+      devotional: DEVOTIONALS.lamp,
+    }
+    expect(devotionalForDay(localDay(new Date())).id).toBe("pharisee")
+    await render(tuesday)
+    await tap("Browse media")
+    expect(getPauseExitTarget()).toEqual({
+      kind: "search",
+      question:
+        "Where is one place this week you can let someone see what Christ has done in you?",
+    })
+  })
+
+  it("Finish asks to leave for Home", async () => {
+    await render()
+    await tap("Finish")
+    expect(getPausePhase()).toBe("closing")
+    expect(getPauseExitTarget()).toEqual({ kind: "home" })
+  })
+
+  it.each<[string, () => Promise<{ localUri: string | null }>, string]>([
+    ["still loads", () => new Promise(() => {}), "Share this video"],
+    [
+      "cannot be loaded",
+      () => Promise.reject(new Error("no asset")),
+      "Try again",
+    ],
+  ])("starts each exit while the video %s", async (_case, load, first) => {
+    mockFromModule.mockImplementation(() => ({ downloadAsync: load }))
+    await render()
+    expect(buttons()).toEqual([first, "Browse media", "Finish"])
+
+    await tap("Browse media")
+    expect(getPauseExitTarget()).toEqual({
+      kind: "search",
+      question: "How are we commanded to pray?",
+    })
+
+    act(() => endPause())
+    await tap("Finish")
+    expect(getPauseExitTarget()).toEqual({ kind: "home" })
+  })
+
+  it("makes one exit request for two quick taps, and a later Browse keeps the Home target", async () => {
+    await render()
+    let changes = 0
+    const stop = subscribePause(() => {
+      changes += 1
+    })
+    try {
+      await tap("Finish")
+      await tap("Finish")
+      await tap("Browse media")
+    } finally {
+      stop()
+    }
+    expect(changes).toBe(1)
+    expect(getPausePhase()).toBe("closing")
+    expect(getPauseExitTarget()).toEqual({ kind: "home" })
+  })
 })
 
 it("marks the run's pinned day done once when Share appears, after midnight too (R7, KTD11)", async () => {
@@ -199,7 +325,7 @@ it("stays on Share with no error after a cancel, and shares again on the next ta
 
   expect(mockShareAsync).toHaveBeenCalledTimes(1)
   expect(screen()).toBe(before)
-  expect(buttons()).toEqual(["Share this video"])
+  expect(buttons()).toEqual(SHARE_BUTTONS)
 
   await tap()
   expect(mockShareAsync).toHaveBeenCalledTimes(2)
@@ -221,7 +347,7 @@ it("stays on Share after a failed share, raises nothing, and shares again on the
     expect(mockShareAsync).toHaveBeenCalledTimes(1)
     expect(unhandled).not.toHaveBeenCalled()
     expect(screen()).toBe(before)
-    expect(buttons()).toEqual(["Share this video"])
+    expect(buttons()).toEqual(SHARE_BUTTONS)
 
     await tap()
     expect(mockShareAsync).toHaveBeenCalledTimes(2)
@@ -242,13 +368,13 @@ it("offers Try again when the video cannot be loaded, and then shares it", async
         : Promise.resolve({ localUri: video.uri }),
   }))
   await render()
-  expect(buttons()).toEqual(["Try again"])
+  expect(buttons()).toEqual(["Try again", "Browse media", "Finish"])
   expect(hasText(renderer!, "This video could not be loaded.")).toBe(true)
 
   failing = false
   await press(pressableByLabel(renderer!, "Try again"))
   await act(async () => {})
-  expect(buttons()).toEqual(["Share this video"])
+  expect(buttons()).toEqual(SHARE_BUTTONS)
   await tap()
   expect(mockShareAsync).toHaveBeenCalledTimes(1)
 })
