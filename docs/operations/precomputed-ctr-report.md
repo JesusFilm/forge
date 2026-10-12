@@ -99,6 +99,83 @@ external decisions and actual observations are still required before a real
 cohort can qualify. The verifier will not accept operator-entered counters or
 a fixture signature as production authority.
 
+## Launch evidence versus final certification
+
+The [public-control runbook](precomputed-public-control.md) describes baseline
+start, verification configuration, timing and the proposed numeric policy.
+Baseline qualification is separate from the independent final attestation:
+
+| Stage              | Required evidence                                                                                                                                                                                                                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Baseline start     | Deployed production Admin/Web human-verification path, incumbent routing and explicit recent-session operator action. Begin at the next UTC hour.                                                                                                                                                         |
+| Live prepare/start | Final unstopped qualified baseline after 168 hours plus 24 late-click hours and five-minute grace; complete matching Web baseline counters; exact observed baseline CTR and agreed policy; complete real catalog and fresh launch capacity. A winner report or final calibration receipt is not required. |
+| Final evaluation   | One independent signed receipt covering cohort start through `endsAt + lateEventCutoffHours`, including every retry and quiet-hour proof, reconciled with scoped Web counters and durable Admin evidence. Missing receipt returns `final_calibration_pending` and reserves finality.                      |
+| Promotion          | Separately authorized manual action identifying the exact experiment, generation, immutable final revision and evidence digest; inconclusive results cannot promote.                                                                                                                                      |
+
+Although no final keyring or receipt is checked at launch, the independent
+collector must be operational from cohort start to make its complete-horizon
+claim possible. Choose a source that observes initiation separately from Web
+receipt, including requests lost before Web; a second reading of Admin or Redis
+is not independent evidence. A key and a successful synthetic probe alone do
+not establish live coverage. An edge collector alone also needs an approved
+conservative treatment of browser-to-edge losses. Keep the private signing
+key outside Admin and Web; provision only its approved public key/source/method
+binding to Admin through the normal authorized configuration path.
+
+At the late cutoff, the attestor must produce an assertion binding
+`experimentId`, `generationId`, `configurationDigest`, `policyDigest`,
+`startsAt`, `endsAt`, `finalAt`, `sourceId` and `sourceRunId`. Its
+`collectionMode` is `independent_initiation_and_web_receipt_v1`, `authority`
+is `independent_browser_edge`, `coverage` is `complete`, and `dropRetryProbe`
+is `passed`. Delivery and click initiation counts must each be positive;
+reached-Web counts are nonnegative and cannot exceed initiated counts. Include
+the conservative `lossUpperBoundRate`, the approved `boundMethod`, and canonical
+`quietHourBits` for every UTC hour through the late cutoff. The verifier checks
+the signed bound against the observed transport shortfall; reconciliation adds
+reached-Web attribution gaps and scoped failed responses before comparing the
+agreed loss limit. Those are attempts, not unique visitors or clicked visits.
+
+Submit within 15 minutes of the signed `observedAt`, after the full late cutoff
+and before saving a final report. Failure to gather the independent evidence
+does not extend the experiment: new admissions still stop at the frozen
+calendar-month end and serving returns to the incumbent. Preserve pending or
+inconclusive status rather than fabricate a winner.
+
+## Existing independent telemetry feasibility
+
+The October 13 production inventory confirms Web has Datadog RUM application
+and client-token configuration plus an ingestion API key. A RUM query/application
+key was not found in the inspected runtime; read access, retention filters and
+actual collection completeness remain unverified. The current
+`apps/web/src/components/DatadogRum.tsx` initializes `sessionSampleRate: 50`
+and `trackResources: true`. Recommendation delivery/selection code has no
+independent experiment-bound initiation census or attestor signing path.
+[Datadog sampling](https://docs.datadoghq.com/real_user_monitoring/guide/sampling-browser-plans/)
+and resource diagnostics can help investigate loss, but multiplying sampled
+counts cannot establish the contract's complete attempt census, signed quiet
+hours or a one-percent conservative bound. Raising sampling alone would not
+prove delivery of the independent telemetry or add the missing frozen identity.
+
+[Cloudflare HTTP logs](https://developers.cloudflare.com/logs/logpush/logpush-job/datasets/zone/http_requests/)
+expose request path, method and edge/origin response outcomes. They could help
+reconcile edge-to-Web failures if an existing complete, unsampled source and its
+delivery health are verified. Account/zone access, Logpush availability,
+sampling, configured fields, destination retention and observed drop/retry
+behavior are presently unknown. The existing delivery endpoint carries no
+experiment identity in its URL, and private capabilities/tickets in POST bodies
+must not be copied into external logs. Unattributed requests cannot silently
+be assigned to the cohort. Requests lost before reaching Cloudflare remain an
+additional blind spot.
+
+Neither inspected telemetry path presently satisfies the signed contract.
+Before requesting a new attestor, inspect authorized Datadog read access and
+Cloudflare logging configuration for an existing independently scoped source.
+Any proposed source still needs complete initiation/receipt counts, frozen
+identity, collection-health evidence, conservative treatment of pre-edge loss,
+quiet-hour proof and the drop/retry probe. This audit does not require a new
+analytics database or authorize an instrumentation rewrite; keep those unknowns
+explicit until a bounded collection method is reviewed.
+
 Ordinary retention archives each expired raw visit exactly once into compact
 per-browser clusters and per-arm totals, keeping a UUID marker to reject
 replayed visit IDs. The request retains a small private provenance marker
