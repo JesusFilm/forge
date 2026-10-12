@@ -922,6 +922,47 @@ A Video Database Snapshot reuses stored vectors; it does not generate Content Em
 
 ## Recommendations
 
+### Video Connection
+
+A meaningful relationship between Videos based on similarity, useful viewing
+progression, or unexpected relevance. The appropriate relationship and number
+of connections depend on the Video.
+
+### Precomputed Video Recommendation
+
+A suggested next Video for a source Video, prepared before a viewer requests
+recommendations. It is a reusable recommendation candidate, distinct from the
+Recommendation Served Item that records what a particular viewer was offered.
+
+### Shared Video Recommendations
+
+Recommendations associated with a source Video rather than an individual
+viewer's interests or history. Collective viewing behavior can inform shared
+recommendations without making them personalized to the current viewer.
+
+### Model-Chosen Alternative
+
+A Video suggested through a broader recommendation rationale when direct Video
+Connections are insufficient. It remains an explainable recommendation, without
+claiming a stronger content relationship than the available evidence supports.
+
+### Eligible Recommendation Visit
+
+A Watch visit admitted to a recommendation experiment independently of whether
+the assigned strategy produces recommendation cards. Bot visits are excluded.
+
+### Recommendation Visit CTR
+
+The fraction of Eligible Recommendation Visits with at least one recommendation
+click. Each visit contributes at most one clicked visit, and eligible visits
+with no recommendation cards remain in the denominator.
+
+### Recommendation Experiment Result
+
+A recorded comparison of the recommendation strategies tested for a declared
+cohort and period, with its measurement evidence and winner or inconclusive
+conclusion. A result describes the comparison; it does not activate a strategy.
+
 ### Recommendation Request
 
 The immutable root of one versioned, admitted recommendation delivery attempt
@@ -1345,11 +1386,13 @@ The credited scripture text a Watch surface renders for a Bible Citation, resolv
 
 The split matters because a Citation always exists while a Passage may not. Admin returns none when no provider key is configured, when the citation cannot be mapped, or when the translation supplies no copyright string. Attribution is therefore fail-closed by construction: a surface holding verse text always holds the credit that belongs with it.
 
+A mobile quote card does not always show the Passage. Admin answers a language that it does not map with its English version, so in most languages the Passage is English. The card then shows the verse from the viewer's Bible Reader translation, if that translation is not English. It does the same when a card has no Passage.
+
 ### Bible Reader
 
 The mobile app's native reader, which shows one verse at a time from a Bible quote or from the Bible tab. It is not a way to show a Bible Passage. The reader's text comes from a public catalog of free-use translations, and the app carries one English translation (BSB) inside the install. Admin does not resolve, cache, or credit that text.
 
-The two texts can differ for the same reference. A quote card shows the Bible Passage in the translation that Admin resolved. A tap on "Read full passage" opens the reader at the first cited verse, in the viewer's own reader translation. The reader shows the credit line from its catalog, not the Passage's copyright line. One reading position serves both ways into the reader, and it is stored in BSB verse numbers, so a reference names the same verses in every translation.
+The two texts can differ for the same reference. A quote card shows the Bible Passage in the translation that Admin resolved. When that Passage would be English, or the card has none, the card can use the viewer's reader translation. If that translation is not English, the card shows its verse, book name, native name, and catalog credit. A tap on "Read full passage" opens the reader at the first cited verse, in the viewer's own reader translation, so such a card and the reader agree. The reader shows the credit line from its catalog, not the Passage's copyright line. One reading position serves both ways into the reader, and it is stored in BSB verse numbers, so a reference names the same verses in every translation.
 
 _Avoid_: calling reader text a "passage", and reading it from Admin's passage fields.
 

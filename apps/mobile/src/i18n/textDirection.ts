@@ -12,12 +12,12 @@ export type TextDirectionStyle = {
   readonly writingDirection: "ltr" | "rtl"
 }
 
-const RTL_STYLE: TextDirectionStyle = Object.freeze({
+export const RTL_STYLE: TextDirectionStyle = Object.freeze({
   direction: "rtl",
   writingDirection: "rtl",
 })
 
-const LTR_STYLE: TextDirectionStyle = Object.freeze({
+export const LTR_STYLE: TextDirectionStyle = Object.freeze({
   direction: "ltr",
   writingDirection: "ltr",
 })

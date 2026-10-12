@@ -2720,7 +2720,11 @@ describe("WatchHomePage", () => {
       const watchNow = container.querySelector(
         '[data-testid="watch-home-tv-actions"] a',
       ) as HTMLAnchorElement
-      watchNow.focus()
+      // Focus arms the hero link's prefetch gate (a state update), so it
+      // must run inside act.
+      act(() => {
+        watchNow.focus()
+      })
       expect(document.activeElement).toBe(watchNow)
 
       await act(async () => {
