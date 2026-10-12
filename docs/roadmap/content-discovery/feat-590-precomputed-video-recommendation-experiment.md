@@ -238,6 +238,18 @@ evidence policy; it does not already implement this CTR test.
 
 ## Verification
 
+October 13 production closeout: the qualified GA origin for 1,031 frozen sources
+is sealed and independently verified (315,732 rows, 632 pages, 1,292 reconciled
+successful physical GA calls). The first protocol-4 pilot stopped before import
+or inference. A read-only reproduction measured 122,880 bytes of database growth
+between the Admin probe and physical observation, exposing exact-byte equality
+in the runner/operator front gates. Repair those gates to preserve raw physical
+measurements while permitting nonnegative growth; Admin's existing bounded-drift,
+growth, overlap-reservation, sample-floor and reserve checks remain authoritative
+and unchanged. Verify through the approved native build-through-Admin seam before
+any explicit pilot resume. Complete catalog, live baseline and manual activation
+remain outstanding, so this feature stays in progress.
+
 For the current design phase, distinguish confirmed decisions, recommendations,
 and open questions; cross-check repository claims against code and existing
 evidence. Format-check edited Markdown. Do not mark this feature complete when

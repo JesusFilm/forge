@@ -1204,6 +1204,36 @@ describe("manual subscription catalog preflight", () => {
     expect(fixture.actions).not.toContain("model_admission")
   })
 
+  it.each([
+    ["contracted database", { observedDbBytes: 99 }],
+    ["wrong cluster", { clusterSystemId: "999" }],
+    [
+      "stale observation",
+      { measuredAt: new Date(Date.now() - 26 * 60_000).toISOString() },
+    ],
+    [
+      "future observation",
+      { measuredAt: new Date(Date.now() + 60_000).toISOString() },
+    ],
+  ])("stops before import and inference for %s", async (_name, changed) => {
+    const fixture = await pilotFixture()
+    const measure = fixture.ports.measureCapacity
+    fixture.ports.measureCapacity = async (probe) => ({
+      ...(await measure(probe)),
+      ...changed,
+    })
+    const result = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(result).toMatchObject({
+      state: "stopped",
+      reason: "capacity_stopped",
+    })
+    expect(fixture.actions).not.toContain("import_prepare")
+    expect(fixture.actions).not.toContain("model_admission")
+  })
+
   it("stops before import and inference when fresh physical capacity is unavailable", async () => {
     const fixture = await pilotFixture()
     fixture.ports.measureCapacity = async () => {

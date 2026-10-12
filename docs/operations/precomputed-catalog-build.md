@@ -75,9 +75,13 @@ that probe as a final JSON argument and must return JSON containing
 `reserveBytes`, `projectedBytes`, `sampleSourceCount`, `sampleBytes` and
 `source: "operator_verified_pgdata_df"`. Measure `availableBytes` on the
 PostgreSQL **PGDATA volume**, not the Admin, Mastra or operator filesystem;
-use a measured source sample for the projection. The runner rejects a mismatch
-with Admin's database bytes/cluster ID or an observation older than 25 minutes
-and refreshes capacity during a long run. Admin imposes its own 30-minute
+use a measured source sample for the projection. The runner requires the same
+cluster ID, rejects a lower physical database byte count than the preceding
+Admin probe or an observation older than 25 minutes, and refreshes capacity
+during a long run. Contemporaneous nonnegative growth preserves the actual
+physical measurement; Admin applies its existing size-consistency check and
+accounts for subsequent growth and overlapping reservations before admission.
+Admin imposes its own 30-minute
 attestation bound and a minimum 5 GB reserve; that floor is not a measured
 total headroom budget. Neither process can derive PGDATA free bytes from the
 database-size query alone. Do not invent a capacity value.
