@@ -27,6 +27,11 @@ export type VideoSource = {
   passage: { reference: string; osisRef: string }
   /** The scene inside the component, in seconds. */
   window: { startSec: number; lengthSec: number }
+  /** A dub that reads the same scene on a different clock (the Russian
+   *  narrator of LUMO Luke 17 starts 2.5 s earlier than the English). */
+  windowByLang?: Partial<
+    Record<"ru" | "es", { startSec: number; lengthSec: number }>
+  >
   /**
    * Ceiling on the film card, seconds on screen. The default (60) is sized for
    * the JESUS film's short scenes; a whole parable is longer, and the owner
@@ -174,12 +179,19 @@ const SOURCES: VideoSource[] = [
     // The narrator's last word ("well") ends at 183.0; after it the segment
     // runs 9 s of landscape into the next scene, which read as a stall.
     window: { startSec: 117.2, lengthSec: 67 },
+    // The Russian narrator begins "По пути в Иерусалим" at 114.9 and ends
+    // "спасла тебя" at 179.0.
+    windowByLang: { ru: { startSec: 114.6, lengthSec: 66 } },
     maxVideoCardSec: 67,
     videoSpeed: 1.05,
     filmCaptionStyle: "scroll",
     filmMark: "lumo",
     style: "clean",
-    captions: { kind: "file", path: "video-sources/lumo-luke-17.en.vtt" },
+    captions: {
+      kind: "file",
+      path: "video-sources/lumo-luke-17.en.vtt",
+      byLang: { ru: "video-sources/lumo-luke-17.ru.vtt" },
+    },
   },
 ]
 

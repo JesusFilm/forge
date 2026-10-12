@@ -2298,8 +2298,14 @@ async function renderInStage(
       ? {
           id: registered.mediaComponentId,
           title: registered.title,
-          startSec: registered.window.startSec,
-          lengthSec: registered.window.lengthSec,
+          startSec: (
+            registered.windowByLang?.[locale.lang as "ru" | "es"] ??
+            registered.window
+          ).startSec,
+          lengthSec: (
+            registered.windowByLang?.[locale.lang as "ru" | "es"] ??
+            registered.window
+          ).lengthSec,
           ...(registered.maxVideoCardSec != null
             ? { maxVideoCardSec: registered.maxVideoCardSec }
             : {}),
