@@ -166,3 +166,42 @@ No real catalog inference has run through the subscription adapter.
   GA capture, its pinned operator code, all recovery evidence and unrelated
   working trees untouched. No production merge, deploy or activation follows
   automatically from this implementation.
+
+## October 12: one-time manual recovery authorization
+
+After the orchestrator presented the exact recovery proposal and asked to
+implement it and make one fresh connection attempt, the owner replied:
+"CAN I get you to get onto that work? Where is the GA being ingested into?"
+The orchestrator explicitly acknowledged this as approval of that proposal.
+
+This is a single exception to the reconciliation-before-retry rule for call
+`8ab8a620-1608-4115-812e-200bb2fb4b6d` in generation
+`subscription-astra-budget2-20261008-v4`. It does not establish that the earlier
+call consumed zero tokens or authorize automatic recovery of other calls.
+
+- Preserve the original receipt and unknown usage, with an attributable,
+  idempotent acknowledgment bound to that call and the unchanged frozen inputs.
+- Require the old attempt to be closed and fenced, no old running process, and
+  expired or released source leases. Retain the nine verified profiles.
+- Authorize at most one fresh connection call for the original two sources and
+  candidate ranks zero through three. Implement, review, and native-test the
+  recovery before the orchestrator explicitly launches that call.
+- Recheck the initiating operator's identity, included subscription allowance,
+  the 25% remaining-allowance reserve, and measured storage capacity.
+- Keep the original unknown consumption visible in reports. No automatic
+  retries, allowance resets, paid API fallback, source finalization, production
+  merge, deployment, or public A/B activation follows from this exception.
+
+The single replacement limit does not authorize another replacement on replay or
+restart. Generic continuation remains blocked until this exact replacement has a
+validated successful receipt with known usage and both members have been applied.
+After the orchestrator reviews that result, later ordinary catalog work may use
+a separate explicit manual invocation under the existing authorization and all
+normal catalog, allowance, and capacity gates. Only the exact acknowledged old
+call is exempted from the pending-call check; any other unknown call still stops
+work. The recovery invocation itself stops at the two-source pilot boundary.
+
+The concrete proposal and original evidence remain preserved in
+`/home/nisal/.local/share/forge/feat-590-evidence-20261007/subscription-edge-schema-repair-20261008T071236Z/`.
+Authorization is recorded here; implementation and execution remain separate
+verification milestones.
