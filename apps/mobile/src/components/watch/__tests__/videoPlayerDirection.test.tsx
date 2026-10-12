@@ -1,8 +1,7 @@
 /**
- * VideoPlayer in a right-to-left layout (feat-692 R11, R12, KTD7): the player
- * layer keeps a left-to-right layout, so the double-tap seek flash shows on
- * the side the viewer tapped. The settings and feedback sheets are not
- * playback controls, so they take the app's own direction back.
+ * VideoPlayer in a right-to-left layout (feat-692 R11, R12, KTD7). The player
+ * layer stays left to right, so the seek flash shows on the tapped side; the
+ * settings and feedback sheets take the app's own direction back.
  */
 
 // Ionicons requires native font modules at import time under jest.
@@ -95,12 +94,7 @@ jest.mock("../../feedback/FeedbackModal", () => {
 })
 
 import { act } from "react"
-import {
-  I18nManager,
-  StyleSheet,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native"
+import { I18nManager, StyleSheet } from "react-native"
 import type { VideoPlayer as ExpoVideoPlayer } from "expo-video"
 
 import { VideoPlayer } from "../VideoPlayer"
@@ -112,6 +106,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 function layoutIs(isRTL: boolean) {
   jest.spyOn(I18nManager, "getConstants").mockReturnValue({
@@ -119,19 +114,6 @@ function layoutIs(isRTL: boolean) {
     isRTL,
   })
   jest.replaceProperty(I18nManager, "isRTL", isRTL)
-}
-
-/** The direction the node's parent lays it out in: the nearest `direction`
- *  set above it. Undefined means the app's own layout direction. */
-function directionAbove(node: RenderedNode): unknown {
-  for (let n = node.parent; n != null; n = n.parent) {
-    if (typeof n.type !== "string") continue
-    const direction = StyleSheet.flatten(
-      n.props.style as StyleProp<ViewStyle>,
-    )?.direction
-    if (direction != null) return direction
-  }
-  return undefined
 }
 
 function hostByLabel(renderer: TestInstance, label: string): RenderedNode {

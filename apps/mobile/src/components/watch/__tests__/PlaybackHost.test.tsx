@@ -197,8 +197,6 @@ import {
   I18nManager,
   Platform,
   StyleSheet,
-  type StyleProp,
-  type ViewStyle,
 } from "react-native"
 
 import { ENDED_FADE_DURATION_MS } from "../MiniPlayerWindow"
@@ -264,6 +262,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 jest.setTimeout(20_000)
 
@@ -5434,19 +5433,6 @@ describe("physical coordinates in a right-to-left layout (feat-692 KTD7)", () =>
     })
     jest.replaceProperty(I18nManager, "isRTL", true)
   })
-
-  /** The direction the node's parent lays it out in: the nearest `direction`
-   *  set above it. Undefined means the app's own layout direction. */
-  function directionAbove(node: RenderedNode): unknown {
-    for (let n = node.parent; n != null; n = n.parent) {
-      if (typeof n.type !== "string") continue
-      const direction = StyleSheet.flatten(
-        n.props.style as StyleProp<ViewStyle>,
-      )?.direction
-      if (direction != null) return direction
-    }
-    return undefined
-  }
 
   function hostByTestId(renderer: TestInstance, id: string): RenderedNode {
     const [node] = renderer.root.findAll(

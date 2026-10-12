@@ -60,8 +60,10 @@ let useLocaleResolutionLog: typeof import("../src/i18n/useLocaleResolutionLog").
 let useT: typeof import("../src/i18n/useT").useT
 // Defaults, because a failed direction start must not reach the Startup Error
 // panel: the app then renders in the direction it has (feat-692 U2).
-let useDirectionReloadPending: () => boolean = () => false
-let directionReloadKind: () => string | null = () => null
+let useDirectionReloadPending: typeof import("../src/i18n/layoutDirection").useDirectionReloadPending =
+  () => false
+let directionReloadKind: typeof import("../src/i18n/layoutDirection").directionReloadKind =
+  () => null
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.

@@ -13,9 +13,8 @@ const path = require("path")
 // are inert against it); the nested [slug] entries cover episode→episode pops.
 
 // gestureResponseDistance confines the pop to the leading edge; the tempting
-// fullScreenGestureEnabled:false instead KILLS all back-swipe on iOS 26.
-// feat-553 R6: the pushed Bible reader has a verse scrubber and chapter swipes,
-// so the same full-width pop would take them.
+// fullScreenGestureEnabled:false KILLS all back-swipe on iOS 26. feat-553 R6:
+// a full-width pop would take the Bible reader's verse scrubber and swipes.
 const REQUIRED = [
   { file: "../_layout.tsx", screens: ["watch", "series", "reader"] },
   { file: "../watch/_layout.tsx", screens: ["[slug]"] },

@@ -14,7 +14,7 @@ const BASE: DirectionInputs = {
     reloadBundle: null,
     reportedFault: null,
   },
-  bundle: "build:7",
+  readBundle: () => "build:7",
 }
 
 function decide(change: Partial<DirectionInputs>) {
@@ -119,9 +119,37 @@ describe("decideDirection", () => {
     ).toEqual({
       kind: "stuck",
       nativeMode: "ltr",
+      saveNativeMode: true,
       fault: "rtl:build:7",
       report: true,
     })
+  })
+
+  it("does not save the native mode again on a later stuck start", () => {
+    expect(
+      decide({
+        inUseRTL: false,
+        record: {
+          nativeMode: "ltr",
+          reloadCount: 1,
+          reloadBundle: "build:7",
+          reportedFault: "rtl:build:7",
+        },
+      }),
+    ).toMatchObject({ kind: "stuck", saveNativeMode: false, report: false })
+  })
+
+  it("reads the bundle only for a mismatch", () => {
+    const readBundle = jest.fn(() => "build:7")
+    expect(decide({ readBundle })).toMatchObject({ kind: "matched" })
+    expect(decide({ readBundle, localeReadFailed: true })).toMatchObject({
+      kind: "keep",
+    })
+    expect(readBundle).not.toHaveBeenCalled()
+    expect(decide({ readBundle, inUseRTL: false })).toMatchObject({
+      kind: "reload",
+    })
+    expect(readBundle).toHaveBeenCalledTimes(1)
   })
 
   it("does not report a second stuck start for the same fault", () => {
@@ -157,7 +185,7 @@ describe("decideDirection", () => {
     expect(
       decide({
         inUseRTL: false,
-        bundle: "update:abc",
+        readBundle: () => "update:abc",
         record: {
           ...BASE.record,
           reloadCount: 1,

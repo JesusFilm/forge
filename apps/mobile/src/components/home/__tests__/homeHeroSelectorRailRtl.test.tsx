@@ -1,9 +1,7 @@
 /**
- * The hero selector rail's centering scroll in a right-to-left layout
- * (feat-692 U5). React Native's list measures a right-to-left offset from the
- * right edge of its content, so it needs the content width of the cards it
- * shows. The suite drives the list's two layout events by hand, because the
- * jest ScrollView fires none.
+ * The hero selector rail in a right-to-left layout (feat-692 U5). The list
+ * counts an offset from its content's right edge, so centering waits for that
+ * width. The jest ScrollView fires no layout event, so the suite drives both.
  */
 jest.mock("expo-image", () => ({ Image: () => null }))
 

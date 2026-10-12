@@ -261,7 +261,7 @@ describe("startLayoutDirection at start", () => {
     })
   })
 
-  it("sends no second report for a second stuck start on the same bundle", async () => {
+  it("sends no second report and writes nothing for a second stuck start on the same bundle", async () => {
     mock.uiTag = "ar"
     mock.state = {
       nativeMode: "ltr",
@@ -272,7 +272,7 @@ describe("startLayoutDirection at start", () => {
     }
     start()
     await settle()
-    expect(mock.calls).toEqual(["saveNativeMode:ltr"])
+    expect(mock.calls).toEqual([])
     expect(mock.reports).toHaveLength(0)
   })
 

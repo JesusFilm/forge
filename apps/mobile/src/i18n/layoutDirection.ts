@@ -3,7 +3,7 @@
 // direction in use costs one reload: at start, or on Android when the viewer returns.
 import { reloadAppAsync } from "expo"
 import { useSyncExternalStore } from "react"
-import { AppState, I18nManager, Platform } from "react-native"
+import { AppState, Platform } from "react-native"
 
 import {
   getLayoutDirectionModule,
@@ -18,6 +18,7 @@ import {
   getLocaleResolution,
   subscribeLocale,
 } from "./localeStore"
+import { isLayoutRtl } from "./layoutRtl"
 import { MIRRORED_LAYOUT_ENABLED } from "./mirroredLayout"
 import { isRtlTag } from "./resolveLocale"
 
@@ -35,8 +36,9 @@ export type DirectionInputs = {
   /** React Native's direction, fixed at the start of this JavaScript runtime. */
   inUseRTL: boolean
   record: DirectionRecord
-  /** The update id, or the native build number for an embedded bundle. */
-  bundle: string
+  /** The update id, or the native build number for an embedded bundle. Only a
+   *  mismatch reads it, so a matched start never loads `expo-updates`. */
+  readBundle: () => string
 }
 
 export type DirectionDecision =
@@ -47,7 +49,13 @@ export type DirectionDecision =
       clearRecord: boolean
     }
   | { kind: "reload"; wantedRTL: boolean; nativeMode: NativeMode }
-  | { kind: "stuck"; nativeMode: NativeMode; fault: string; report: boolean }
+  | {
+      kind: "stuck"
+      nativeMode: NativeMode
+      saveNativeMode: boolean
+      fault: string
+      report: boolean
+    }
   | { kind: "keep"; nativeMode: NativeMode }
 
 /** KTD5: with mirroring off, iOS forces left-to-right and Android keeps its default. */
@@ -80,12 +88,15 @@ export function decideDirection(input: DirectionInputs): DirectionDecision {
     }
   }
   // KTD4: a count from another bundle is stale, so a new update retries once.
-  const reloads = record.reloadBundle === input.bundle ? record.reloadCount : 0
+  const bundle = input.readBundle()
+  const reloads = record.reloadBundle === bundle ? record.reloadCount : 0
   if (reloads === 0) return { kind: "reload", wantedRTL, nativeMode }
-  const fault = `${wantedRTL ? "rtl" : "ltr"}:${input.bundle}`
+  const fault = `${wantedRTL ? "rtl" : "ltr"}:${bundle}`
+  const inUseMode = nativeModeFor(inUseRTL, mirroringEnabled, platform)
   return {
     kind: "stuck",
-    nativeMode: nativeModeFor(inUseRTL, mirroringEnabled, platform),
+    nativeMode: inUseMode,
+    saveNativeMode: record.nativeMode !== inUseMode,
     fault,
     report: record.reportedFault !== fault,
   }
@@ -177,7 +188,7 @@ function report(fault: LayoutDirectionFault["fault"], error?: unknown): void {
   reportDatadogError(error ?? new LayoutDirectionFault(fault), {
     "layout_direction.fault": fault,
     "layout_direction.ui_tag": getCatalogTag(),
-    "layout_direction.in_use_rtl": I18nManager.getConstants().isRTL,
+    "layout_direction.in_use_rtl": isLayoutRtl(),
   })
 }
 
@@ -209,8 +220,9 @@ function check(kind: ReloadKind): void {
   const layout = getLayoutDirectionModule()
   if (!layout.available) return
   const { record } = startSnapshot()
-  const bundle = currentBundle()
-  const inUseRTL = I18nManager.getConstants().isRTL
+  let bundle: string | undefined
+  const readBundle = () => (bundle ??= currentBundle())
+  const inUseRTL = isLayoutRtl()
   const decision = decideDirection({
     platform: Platform.OS,
     uiTag: getCatalogTag(),
@@ -218,7 +230,7 @@ function check(kind: ReloadKind): void {
     localeReadFailed: getLocaleResolution().match === "error",
     inUseRTL,
     record: kind === "start" ? record : layout.getState(),
-    bundle,
+    readBundle,
   })
   const failed = (error: unknown) => report("check_failed", error)
   switch (decision.kind) {
@@ -234,12 +246,14 @@ function check(kind: ReloadKind): void {
         decision,
         kind,
         nativeModeFor(inUseRTL, MIRRORED_LAYOUT_ENABLED, Platform.OS),
-        bundle,
+        readBundle(),
       )
       return
     case "stuck":
       // KTD4: React and native parts keep one direction, the one in use.
-      layout.saveNativeMode(decision.nativeMode).catch(failed)
+      if (decision.saveNativeMode) {
+        layout.saveNativeMode(decision.nativeMode).catch(failed)
+      }
       if (decision.report) {
         report("stuck")
         layout.saveReportedFault(decision.fault).catch(failed)

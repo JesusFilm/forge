@@ -1,5 +1,8 @@
-export type NativeMode = "rtl" | "ltr" | "none"
-export type ReloadKind = "start" | "return"
+const NATIVE_MODES = ["rtl", "ltr", "none"] as const
+const RELOAD_KINDS = ["start", "return"] as const
+
+export type NativeMode = (typeof NATIVE_MODES)[number]
+export type ReloadKind = (typeof RELOAD_KINDS)[number]
 
 export type LayoutDirectionState = {
   nativeMode: NativeMode | null
@@ -70,22 +73,22 @@ function presentString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null
 }
 
-const NATIVE_MODES: readonly string[] = ["rtl", "ltr", "none"]
-const RELOAD_KINDS: readonly string[] = ["start", "return"]
+function oneOf<T extends string>(
+  values: readonly T[],
+  value: unknown,
+): T | null {
+  return (values as readonly unknown[]).includes(value) ? (value as T) : null
+}
 
 function readState(raw: Record<string, unknown>): LayoutDirectionState {
   const count = raw.reloadCount
   return {
-    nativeMode: NATIVE_MODES.includes(raw.nativeMode as string)
-      ? (raw.nativeMode as NativeMode)
-      : null,
+    nativeMode: oneOf(NATIVE_MODES, raw.nativeMode),
     reloadCount:
       typeof count === "number" && Number.isInteger(count) && count > 0
         ? count
         : 0,
-    reloadKind: RELOAD_KINDS.includes(raw.reloadKind as string)
-      ? (raw.reloadKind as ReloadKind)
-      : null,
+    reloadKind: oneOf(RELOAD_KINDS, raw.reloadKind),
     reloadBundle: presentString(raw.reloadBundle),
     reportedFault: presentString(raw.reportedFault),
   }

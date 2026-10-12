@@ -53,13 +53,7 @@ jest.mock("react-native-safe-area-context", () => ({
 }))
 
 import { act } from "react"
-import {
-  I18nManager,
-  Platform,
-  StyleSheet,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native"
+import { I18nManager, Platform } from "react-native"
 
 import {
   PlayerControls,
@@ -77,6 +71,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 // A player stopped at 0:00 of a two-minute video.
 function makePlayer() {
@@ -705,19 +700,6 @@ describe("PlayerControls in a right-to-left layout (feat-692 R12, KTD7)", () => 
   afterEach(() => {
     jest.restoreAllMocks()
   })
-
-  /** The direction the node's parent lays it out in: the nearest `direction`
-   *  set above it. Undefined means the app's own layout direction. */
-  function directionAbove(node: RenderedNode): unknown {
-    for (let n = node.parent; n != null; n = n.parent) {
-      if (typeof n.type !== "string") continue
-      const direction = StyleSheet.flatten(
-        n.props.style as StyleProp<ViewStyle>,
-      )?.direction
-      if (direction != null) return direction
-    }
-    return undefined
-  }
 
   function hostByLabel(renderer: TestInstance, label: string): RenderedNode {
     const [node] = renderer.root.findAll(

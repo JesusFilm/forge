@@ -37,12 +37,7 @@ jest.mock("../../../lib/datadog", () => ({
 }))
 
 import { act, type ComponentProps } from "react"
-import {
-  I18nManager,
-  StyleSheet,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native"
+import { I18nManager, StyleSheet } from "react-native"
 import { readAsStringAsync } from "expo-file-system/legacy"
 
 import { SubtitleOverlay } from "../SubtitleOverlay"
@@ -55,9 +50,9 @@ import {
   unmount,
   type NodePath,
   type NodeRequireLike,
-  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 const OFFLINE_ROOT = "file:///docs/offline-downloads"
 const VTT = `WEBVTT
@@ -601,19 +596,6 @@ describe("SubtitleOverlay — the right inset only over a box (Explore, 2026-09-
 })
 
 describe("SubtitleOverlay — in a right-to-left layout (feat-692 KTD7)", () => {
-  /** The direction the node's parent lays it out in: the nearest `direction`
-   *  set above it. Undefined means the app's own layout direction. */
-  function directionAbove(node: RenderedNode): unknown {
-    for (let n = node.parent; n != null; n = n.parent) {
-      if (typeof n.type !== "string") continue
-      const direction = StyleSheet.flatten(
-        n.props.style as StyleProp<ViewStyle>,
-      )?.direction
-      if (direction != null) return direction
-    }
-    return undefined
-  }
-
   it("lays the caption out left to right, so the right inset stays on the right", async () => {
     jest.spyOn(I18nManager, "getConstants").mockReturnValue({
       ...I18nManager.getConstants(),

@@ -1,12 +1,7 @@
 /**
- * The seek bar in a right-to-left layout (feat-692 R12, KTD7, AE6): it keeps
- * its own left-to-right layout, so it fills from the left and its thumb sits
- * on the physical x that the drag math reads.
- *
- * apps/mobile's tsconfig maps `react` to its .d.ts and jest-expo mirrors
- * tsconfig paths into jest's moduleNameMapper, so the mocks below re-point
- * `react` at the real package (see apps/mobile/CLAUDE.md "Component render
- * tests").
+ * The seek bar in a right-to-left layout (feat-692 R12, KTD7, AE6) keeps a
+ * left-to-right layout, so its thumb sits on the x that the drag reads. The
+ * mocks re-point `react` at the real package (CLAUDE.md, render tests).
  */
 
 jest.mock("react", () => {
@@ -23,12 +18,7 @@ jest.mock("react/jsx-runtime", () => {
 })
 
 import { act } from "react"
-import {
-  I18nManager,
-  StyleSheet,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native"
+import { I18nManager, StyleSheet } from "react-native"
 
 import { Scrubber } from "../Scrubber"
 import {
@@ -39,6 +29,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 function layoutIsRtl() {
   jest.spyOn(I18nManager, "getConstants").mockReturnValue({
@@ -46,19 +37,6 @@ function layoutIsRtl() {
     isRTL: true,
   })
   jest.replaceProperty(I18nManager, "isRTL", true)
-}
-
-/** The direction the node's parent lays it out in: the nearest `direction`
- *  set above it. Undefined means the app's own layout direction. */
-function directionAbove(node: RenderedNode): unknown {
-  for (let n = node.parent; n != null; n = n.parent) {
-    if (typeof n.type !== "string") continue
-    const direction = StyleSheet.flatten(
-      n.props.style as StyleProp<ViewStyle>,
-    )?.direction
-    if (direction != null) return direction
-  }
-  return undefined
 }
 
 function hostById(renderer: TestInstance, id: string): RenderedNode {

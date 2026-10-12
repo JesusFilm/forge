@@ -1,12 +1,7 @@
 /**
- * The hero pager's scroll offsets in a right-to-left layout (feat-692 U5).
- *
- * React Native's list measures a right-to-left scroll offset from the right
- * edge of its content, so it needs the content width of the slides it shows.
- * Before that width is known it drops the scroll with "scrollToOffset may not
- * be called in RTL before content is laid out"; with a stale width it scrolls
- * to the wrong hero. The suite drives the list's two layout events by hand,
- * because the jest ScrollView fires none.
+ * The hero pager in a right-to-left layout (feat-692 U5). The list counts an
+ * offset from its content's right edge, so a scroll waits for the slides' width.
+ * The jest ScrollView fires no layout event, so the suite drives both by hand.
  */
 
 // Visual leaves only — none take part in the scroll offsets.

@@ -5,14 +5,7 @@
 
 import { act, createRef } from "react"
 import type React from "react"
-import {
-  I18nManager,
-  Share,
-  StyleSheet,
-  type GestureResponderEvent,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native"
+import { I18nManager, Share, type GestureResponderEvent } from "react-native"
 import type { VideoPlayer } from "expo-video"
 
 const mockInsets = { top: 59, right: 0, bottom: 83, left: 0 }
@@ -134,6 +127,7 @@ import {
   phoneLocales,
   tapActionName,
 } from "../../../test-utils/uiLocaleFixture"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 // 12:04 to 12:31: a 27 s window inside the full asset.
 const CLIP: FeedClip = {
@@ -1168,19 +1162,6 @@ describe("ClipOverlay — in a right-to-left layout (feat-692 R11, KTD7)", () =>
     })
     jest.replaceProperty(I18nManager, "isRTL", true)
   })
-
-  /** The direction the node's parent lays it out in: the nearest `direction`
-   *  set above it. Undefined means the app's own layout direction. */
-  function directionAbove(node: RenderedNode): unknown {
-    for (let n = node.parent; n != null; n = n.parent) {
-      if (typeof n.type !== "string") continue
-      const direction = StyleSheet.flatten(
-        n.props.style as StyleProp<ViewStyle>,
-      )?.direction
-      if (direction != null) return direction
-    }
-    return undefined
-  }
 
   it("mirrors the rail and the clip information with the app", () => {
     const renderer = render(props({ muted: true }))

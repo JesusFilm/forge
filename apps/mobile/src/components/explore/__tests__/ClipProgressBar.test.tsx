@@ -9,8 +9,6 @@ import {
   I18nManager,
   StyleSheet,
   type GestureResponderEvent,
-  type StyleProp,
-  type ViewStyle,
 } from "react-native"
 import type { VideoPlayer } from "expo-video"
 
@@ -21,6 +19,7 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 function layoutIsRtl() {
   jest.spyOn(I18nManager, "getConstants").mockReturnValue({
@@ -28,19 +27,6 @@ function layoutIsRtl() {
     isRTL: true,
   })
   jest.replaceProperty(I18nManager, "isRTL", true)
-}
-
-/** The direction the node's parent lays it out in: the nearest `direction`
- *  set above it. Undefined means the app's own layout direction. */
-function directionAbove(node: RenderedNode): unknown {
-  for (let n = node.parent; n != null; n = n.parent) {
-    if (typeof n.type !== "string") continue
-    const direction = StyleSheet.flatten(
-      n.props.style as StyleProp<ViewStyle>,
-    )?.direction
-    if (direction != null) return direction
-  }
-  return undefined
 }
 
 function hostById(renderer: TestInstance, id: string): RenderedNode {

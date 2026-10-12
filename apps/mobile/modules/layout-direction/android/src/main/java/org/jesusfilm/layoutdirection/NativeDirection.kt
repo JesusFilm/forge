@@ -99,7 +99,7 @@ internal object NativeDirection {
   fun apply(activity: Activity, mode: String) {
     appliedMode = mode
     applyNow(activity, mode)
-    DirectionGuard.attach(activity)
+    if (mode == MODE_RTL || mode == MODE_LTR) DirectionGuard.attach(activity)
   }
 
   /** The guard's check. It only reads, unless Android has replaced a value. */

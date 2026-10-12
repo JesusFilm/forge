@@ -10,8 +10,8 @@ import {
 import { Image } from "expo-image"
 
 import { ACCENT, TEXT_PRIMARY, TEXT_SECONDARY } from "../../lib/color"
+import { useRtlScrollGate } from "../../hooks/useRtlScrollGate"
 import { useTypography } from "../../hooks/useTypography"
-import { isLayoutRtl } from "../../i18n/layoutRtl"
 import { useLocaleEpoch, useT } from "../../i18n/useT"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import type { WatchHomeSlide } from "../../lib/watchHome/carouselSequence"
@@ -46,37 +46,28 @@ export const HomeHeroSelectorRail = memo(function HomeHeroSelectorRail({
   // cards (a horizontal FlatList stretches rows to the tallest item).
   const titleMinHeight = typography.caption.lineHeight * 2
 
-  // In a right-to-left layout the list counts an offset from its right edge by
-  // the last content width it measured, so a scroll waits for these cards.
-  const measuredRef = useRef<{ slideCount: number; width: number } | null>(null)
+  const centerActive = useCallback(() => {
+    if (slides.length <= 1) return
+    listRef.current?.scrollToIndex({
+      index: Math.min(activeIndex, slides.length - 1),
+      viewPosition: 0.5,
+      animated: false,
+    })
+  }, [activeIndex, slides.length])
+  const scrollGate = useRtlScrollGate(slides.length, centerActive)
+  const { mustWait } = scrollGate
 
   // Keep the active card centered as the pager advances. Fixed card widths
   // make getItemLayout exact, so scrollToIndex never needs a failure handler.
   useEffect(() => {
     if (slides.length <= 1) return
-    if (isLayoutRtl() && measuredRef.current?.slideCount !== slides.length) {
-      return
-    }
+    if (mustWait()) return
     listRef.current?.scrollToIndex({
       index: Math.min(activeIndex, slides.length - 1),
       viewPosition: 0.5,
       animated: true,
     })
-  }, [activeIndex, slides.length])
-
-  const handleContentSizeChange = useCallback(
-    (width: number) => {
-      const widthChanged = measuredRef.current?.width !== width
-      measuredRef.current = { slideCount: slides.length, width }
-      if (!isLayoutRtl() || !widthChanged || slides.length <= 1) return
-      listRef.current?.scrollToIndex({
-        index: Math.min(activeIndex, slides.length - 1),
-        viewPosition: 0.5,
-        animated: false,
-      })
-    },
-    [activeIndex, slides.length],
-  )
+  }, [activeIndex, slides.length, mustWait])
 
   const getItemLayout = useCallback(
     (_data: unknown, index: number) => ({
@@ -161,7 +152,7 @@ export const HomeHeroSelectorRail = memo(function HomeHeroSelectorRail({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         getItemLayout={getItemLayout}
-        onContentSizeChange={handleContentSizeChange}
+        onContentSizeChange={scrollGate.onContentSizeChange}
         accessibilityLabel={t("featuredSelectorAriaLabel")}
       />
     </View>
