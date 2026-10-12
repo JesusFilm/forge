@@ -1553,6 +1553,22 @@ design record is
   `setGoogleServicesFile` in `@expo/config-plugins`, which throws "Cannot copy
   google-services.json from …" when the copy fails (read from the installed
   package on 2026-09-21; no prebuild was run).
+- **The API key in `google-services.json` is public and restricted.** The repo
+  is public, so the restriction is the key's only protection. Since
+  2026-10-13, the Google Cloud console allows the key only for the Firebase
+  Installations API and the FCM Registration API. It also allows only
+  `org.jesusfilm.forgewatch` signed with the EAS keystore (SHA-1
+  `50:69:A0:14:F5:50:F0:DB:14:E2:29:61:C5:01:44:FF:83:58:8E:30`). Three rules
+  follow, and one symptom shows a break:
+  - A local build is signed with the debug key, so it cannot register a new
+    push token. To test push from a local build, add the debug key's SHA-1
+    for the test, then remove it.
+  - Before the first Google Play release, add the SHA-1 of Play's app-signing
+    key. Without it, Play installs never register, and nothing reports it. Do
+    the same after any change to the EAS keystore.
+  - A new Firebase feature on Android needs its API added to the key.
+  - A blocked request shows in logcat as a Firebase Installations or FCM
+    error that names the API key, and admin receives no `RegisterPushDevice`.
 - **Telemetry is `push.`-prefixed through the sink named `telemetry`**
   (`push.registration`, `push.registration_failed`, `push.revocation`). No
   token, viewer handle or test ID ever reaches a log.
