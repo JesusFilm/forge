@@ -3,13 +3,16 @@ import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it } from "vitest"
 import { env } from "@/config/env"
-import { recommendationRuntimeMigrationSql } from "./current-schema.test-fixture"
+import { currentAdminMigrationSql } from "./current-schema.test-fixture"
 import { RecommendationIntegrityService } from "./integrity.service"
 import { loadDatabaseProfileProjectionEvidence } from "./profiles/profile-projection.service"
 import { purgeExpiredRecommendationRequests } from "./retention.service"
 
 const RUN_REAL_DB_TEST = env.RECOMMENDATION_DB_TEST === "1"
-const migrationSql = recommendationRuntimeMigrationSql
+// Retention scans every current recommendation root, including private
+// precomputed visits. Build this owned schema from the real full migration
+// chain so the lifecycle test sees the same roots as the deployed database.
+const migrationSql = currentAdminMigrationSql
 
 function digest(value: string): string {
   return createHash("sha256").update(value).digest("hex")

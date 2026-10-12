@@ -1,0 +1,80 @@
+{
+  "repository": "JesusFilm/forge",
+  "parent": {
+    "number": 2565,
+    "url": "https://github.com/JesusFilm/forge/issues/2565"
+  },
+  "verification": "GitHub bodies, readiness labels, native parents and dependencies verified; Sandcastle intentionally removed by the user, so its runner check is not applicable",
+  "tickets": [
+    {
+      "review_id": "01",
+      "number": 2566,
+      "url": "https://github.com/JesusFilm/forge/issues/2566",
+      "title": "Inspect saved recommendations in Admin",
+      "blocked_by": []
+    },
+    {
+      "review_id": "02",
+      "number": 2567,
+      "url": "https://github.com/JesusFilm/forge/issues/2567",
+      "title": "Generate explainable source recommendations with Astra",
+      "blocked_by": [2566]
+    },
+    {
+      "review_id": "03",
+      "number": 2568,
+      "url": "https://github.com/JesusFilm/forge/issues/2568",
+      "title": "Use historical analytics in model decisions",
+      "blocked_by": [2567]
+    },
+    {
+      "review_id": "04",
+      "number": 2569,
+      "url": "https://github.com/JesusFilm/forge/issues/2569",
+      "title": "Complete and refresh catalog generations with cost reports",
+      "blocked_by": [2568]
+    },
+    {
+      "review_id": "05",
+      "number": 2570,
+      "url": "https://github.com/JesusFilm/forge/issues/2570",
+      "title": "Serve saved recommendations on private Watch previews",
+      "blocked_by": [2566]
+    },
+    {
+      "review_id": "06",
+      "number": 2571,
+      "url": "https://github.com/JesusFilm/forge/issues/2571",
+      "title": "Assign stable A/B arms and count eligible visits",
+      "blocked_by": [2570]
+    },
+    {
+      "review_id": "07",
+      "number": 2572,
+      "url": "https://github.com/JesusFilm/forge/issues/2572",
+      "title": "Count recommendation clicks against eligible visits",
+      "blocked_by": [2571]
+    },
+    {
+      "review_id": "08",
+      "number": 2573,
+      "url": "https://github.com/JesusFilm/forge/issues/2573",
+      "title": "Publish durable CTR results without activating a winner",
+      "blocked_by": [2572]
+    },
+    {
+      "review_id": "09",
+      "number": 2574,
+      "url": "https://github.com/JesusFilm/forge/issues/2574",
+      "title": "Bound experiment storage and prove cleanup capacity",
+      "blocked_by": [2569, 2573]
+    },
+    {
+      "review_id": "10",
+      "number": 2575,
+      "url": "https://github.com/JesusFilm/forge/issues/2575",
+      "title": "Control A/B launch, promotion, and rollback manually",
+      "blocked_by": [2574]
+    }
+  ]
+}

@@ -31,6 +31,17 @@ vi.mock("next/link", () => {
 vi.mock("@/components/watch/MuxHoverPreview", () => ({
   MuxHoverPreview: () => null,
 }))
+vi.mock("@/components/recommendations/WatchRecommendationVerification", () => ({
+  WatchRecommendationVerification: ({
+    onToken,
+  }: {
+    onToken: (token: string) => void
+  }) => (
+    <button type="button" onClick={() => onToken("verified-token")}>
+      Verify recommendations
+    </button>
+  ),
+}))
 
 import { WatchSemanticRecommendations } from "@/components/recommendations/WatchSemanticRecommendations"
 import {
@@ -58,6 +69,108 @@ describe("WatchSemanticRecommendations lifecycle", () => {
   beforeEach(() => {
     startRecommendationConsentBootstrap()
     completeRecommendationConsentBootstrap()
+  })
+
+  it("keeps the legacy delivery body compatible while sending a stable visit header", async () => {
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, _init?: RequestInit) =>
+        String(input).endsWith("/api/recommendations")
+          ? jsonResponse({
+              delivery: {
+                ...delivery,
+                result: "empty",
+                requestId: null,
+                items: [],
+              },
+            })
+          : jsonResponse({ receipts: [] }),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+    const deliveryCall = fetchMock.mock.calls.find(([input]) =>
+      String(input).endsWith("/api/recommendations"),
+    )
+    expect(deliveryCall).toBeDefined()
+    const init = deliveryCall?.[1] as RequestInit
+    expect(JSON.parse(String(init.body))).toEqual({
+      seedMediaId: "seed-1",
+      locale: "en",
+      audioLanguageSlug: "english",
+    })
+    expect(
+      (init.headers as Record<string, string>)[
+        "x-forge-recommendation-visit-id"
+      ],
+    ).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+  })
+
+  it("requests verification only after an active signal and retries the same visit", async () => {
+    let deliveryCount = 0
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).endsWith("/api/recommendations")) {
+          deliveryCount += 1
+          return deliveryCount === 1
+            ? jsonResponse({
+                delivery: {
+                  ...delivery,
+                  result: "empty",
+                  items: [],
+                  requestId: null,
+                },
+                verificationRequired: true,
+                verificationSiteKey: "watch-site-key",
+              })
+            : jsonResponse({ delivery })
+        }
+        return acceptedEvidenceResponse(init)
+      },
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    act(() => {
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+        />,
+      )
+    })
+    await flush()
+    expect(container.textContent).toContain("Verify recommendations")
+    const verify = container.querySelector("button")!
+    act(() => verify.click())
+    await flush()
+    const calls = fetchMock.mock.calls.filter(([input]) =>
+      String(input).endsWith("/api/recommendations"),
+    )
+    expect(calls).toHaveLength(2)
+    const first = calls[0]?.[1] as RequestInit
+    const second = calls[1]?.[1] as RequestInit
+    expect(
+      (second.headers as Record<string, string>)[
+        "x-forge-recommendation-visit-id"
+      ],
+    ).toBe(
+      (first.headers as Record<string, string>)[
+        "x-forge-recommendation-visit-id"
+      ],
+    )
+    expect(JSON.parse(String(second.body)).turnstileToken).toBe(
+      "verified-token",
+    )
+    expect(container.textContent).toContain("Target video")
   })
 
   it.each([-301, 0, 601])(
@@ -325,6 +438,9 @@ describe("WatchSemanticRecommendations lifecycle", () => {
       )
     })
     await flush()
+    expect(
+      fetchMock.mock.calls.filter(([url]) => String(url).endsWith("/select")),
+    ).toHaveLength(0)
     const card = container.querySelector("a")!
     act(() => {
       card.dispatchEvent(
@@ -368,6 +484,72 @@ describe("WatchSemanticRecommendations lifecycle", () => {
     )
     expect(container.innerHTML).not.toContain("capability-secret")
   })
+
+  it.each([
+    { name: "control-click", type: "click", button: 0, ctrlKey: true },
+    { name: "middle-click", type: "auxclick", button: 1, ctrlKey: false },
+  ])(
+    "records $name without delaying native new-tab navigation",
+    async (activation) => {
+      const fetchMock = vi.fn(
+        async (input: RequestInfo | URL, init?: RequestInit) => {
+          if (String(input).endsWith("/api/recommendations"))
+            return jsonResponse({ delivery })
+          if (String(input).endsWith("/select"))
+            return jsonResponse({
+              claimNonce: JSON.parse(String(init?.body)).claimNonce,
+              canonicalHref: "/watch/target.html",
+              targetMediaId: "target-1",
+            })
+          return jsonResponse({ receipts: [] })
+        },
+      )
+      vi.stubGlobal("fetch", fetchMock)
+      const navigate = vi.fn()
+      act(() => {
+        root.render(
+          <WatchSemanticRecommendations
+            seedMediaId="seed-1"
+            locale="en"
+            audioLanguageSlug="english"
+            navigate={navigate}
+          />,
+        )
+      })
+      await flush()
+      const card = container.querySelector("a")!
+      const event = new MouseEvent(activation.type, {
+        bubbles: true,
+        cancelable: true,
+        button: activation.button,
+        ctrlKey: activation.ctrlKey,
+      })
+      act(() => card.dispatchEvent(event))
+      await flush()
+      expect(event.defaultPrevented).toBe(false)
+      expect(navigate).not.toHaveBeenCalled()
+      expect(card.getAttribute("href")).toBe("/target.html")
+      expect(card.innerHTML).not.toContain("capability-secret")
+      const selections = requestBodies(fetchMock).filter(
+        (body) => body.itemId && body.claimNonce,
+      )
+      expect(selections).toHaveLength(1)
+      expect(selections[0]).toMatchObject({
+        requestId: "request-1",
+        itemId: "item-1",
+        capability: "delivery-capability-secret",
+      })
+      expect(
+        sessionStorage.getItem(RECOMMENDATION_TAB_CORRELATION_KEY),
+      ).not.toBe(selections[0]?.claimNonce)
+      expect(JSON.stringify(sessionStorage)).not.toContain("capability-secret")
+      expect(
+        fetchMock.mock.calls.find(([url]) =>
+          String(url).endsWith("/select"),
+        )?.[1]?.keepalive,
+      ).toBe(true)
+    },
+  )
 
   it("allows only one component-wide selection attempt across different cards", async () => {
     let resolveSelection!: (response: Response) => void
