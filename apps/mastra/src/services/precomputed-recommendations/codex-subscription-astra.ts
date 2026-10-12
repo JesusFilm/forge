@@ -421,7 +421,7 @@ async function runCodex(input: {
     "-c",
     "memories.use_memories=false",
     "-c",
-    "skills.max_context_tokens=1",
+    "skills.include_instructions=false",
     "-",
   ]
   const state: CodexEvents = { phase: "initial", reasoning: new Map() }

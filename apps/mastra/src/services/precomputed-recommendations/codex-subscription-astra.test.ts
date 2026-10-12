@@ -446,7 +446,12 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     expect(captured.args).toContain("features.unified_exec=false")
     expect(captured.args).toContain("features.apps=false")
     expect(configOverrides).toContain("memories.use_memories=false")
-    expect(configOverrides).toContain("skills.max_context_tokens=1")
+    expect(configOverrides).toContain("skills.include_instructions=false")
+    expect(
+      configOverrides.some((value: string) =>
+        value.startsWith("skills.max_context_tokens="),
+      ),
+    ).toBe(false)
     expect(
       configOverrides.some((value: string) =>
         value.startsWith("model_reasoning_effort="),
