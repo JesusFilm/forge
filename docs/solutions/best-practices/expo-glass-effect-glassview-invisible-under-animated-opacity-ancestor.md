@@ -1,6 +1,7 @@
 ---
 title: "expo-glass-effect GlassView renders no material under an animated-opacity ancestor"
 date: "2026-08-13"
+last_updated: "2026-10-13"
 category: "best-practices"
 module: "apps/mobile"
 problem_type: "best_practice"
@@ -135,13 +136,12 @@ export function PlatformBlur({
 }
 ```
 
-The doc comment carries the whole learning at the one place a future author
-picks the primitive. Three call sites route through it: the two hero backdrops
-in `apps/mobile/src/components/home/HomeHeroPager.tsx` and
-`apps/mobile/src/components/sections/VideoHeroRenderer.tsx` at intensity 50, and
-the player chrome backplate in
-`apps/mobile/src/components/watch/PlayerControls.tsx` at intensity 40 via a
-local `Frosted` helper.
+The doc comment carries this learning at the one place a future author picks
+the primitive. Several call sites route through `PlatformBlur`. Among them are
+the two hero backdrops in `apps/mobile/src/components/home/HomeHeroPager.tsx`
+and `apps/mobile/src/components/sections/VideoHeroRenderer.tsx`, at intensity 50. The player chrome backplate in
+`apps/mobile/src/components/watch/PlayerControls.tsx` also routes through
+`PlatformBlur`, at intensity 40, through a local `Frosted` helper.
 
 ### The scope boundary — read this before you generalize
 
@@ -160,16 +160,21 @@ So the rule is narrow: `GlassView` is not a drop-in inside a layer whose opacity
 an ancestor animates. Outside such a layer it stays the correct primitive, and
 the change that produced this learning left both existing call sites untouched.
 
+> **Added 2026-10-13.** This rule covers a fade on an ancestor of the glass. A
+> `GlassView` can still fade itself through its own `glassEffectStyle`, with no
+> opacity on the glass or above it. See
+> [Fade an expo-glass-effect GlassView through glassEffectStyle](./expo-glass-effect-glassview-fade-through-glass-effect-style.md).
+
 ### Three blur mechanisms live in this app — pick deliberately
 
 Choosing a translucent surface here is a three-way decision, not two (session
 history):
 
-| Mechanism                                    | What it is                                     | Use when                                                         |
-| -------------------------------------------- | ---------------------------------------------- | ---------------------------------------------------------------- |
-| `GlassView` (`expo-glass-effect`)            | iOS 26 system Liquid Glass material            | Static chrome outside any animated-opacity layer                 |
-| `BlurView` (`expo-blur`), via `PlatformBlur` | Live backdrop blur on iOS, flat dim on Android | Anything inside a fading or animated layer                       |
-| `blurRadius` on `Image`                      | A blurred bitmap, not a vibrancy surface       | A soft wash derived from a still image, as in `WatchAmbient.tsx` |
+| Mechanism                                    | What it is                                     | Use when                                                                                   |
+| -------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `GlassView` (`expo-glass-effect`)            | iOS 26 system Liquid Glass material            | Chrome outside any animated-opacity layer; it fades itself only through `glassEffectStyle` |
+| `BlurView` (`expo-blur`), via `PlatformBlur` | Live backdrop blur on iOS, flat dim on Android | Anything inside a fading or animated layer                                                 |
+| `blurRadius` on `Image`                      | A blurred bitmap, not a vibrancy surface       | A soft wash derived from a still image, as in `WatchAmbient.tsx`                           |
 
 The third is easy to mistake for the other two by eye. It blurs a bitmap and
 never samples what is behind it, so it is immune to this whole class of problem
@@ -193,6 +198,15 @@ on no native-layer inspection, no Xcode view-debugger capture, and no Apple
 documentation. Treat it as a hypothesis. If a later session needs the real
 answer, capture the layer tree in the Xcode view debugger with the chrome
 visible and compare the `GlassView` and `BlurView` cases.
+
+> **Added 2026-10-13.** The installed `expo-glass-effect` 57.0.4 names a
+> different cause in a source comment, in
+> `apps/mobile/node_modules/expo-glass-effect/ios/GlassView.swift`: "UIKit
+> silently skips the glass effect when the view's opacity is low, and never
+> installs it again". So 57.0.4 installs the glass only when the product of the
+> alphas up the superview chain is above 0.02. No session in this repo tested
+> either cause, so treat both as hypotheses. See
+> [Fade an expo-glass-effect GlassView through glassEffectStyle](./expo-glass-effect-glassview-fade-through-glass-effect-style.md).
 
 **Why `BlurView` escapes the same problem is also unknown.** Both are backdrop
 effects. Only the outcome was isolated. Do not build a theory of iOS compositing
@@ -219,12 +233,17 @@ diff the ancestor chain rather than the props. Here the props were identical and
 the ancestor was the whole story. A component-level conclusion ("this library is
 broken") would have been wrong and would have cost two working surfaces.
 
-**Expect no automated guard.** No jest guard forbids `GlassView` inside an
-animated-opacity layer, and none is proposed — the condition is a runtime
-rendering outcome on a native view, which jest cannot see. The `PlayerControls`
-suite deliberately mocks `BlurView` to a plain `View`, so it asserts tree shape
-and never pixels. Verify any change to a blur or glass surface on a simulator or
-device, with a screenshot.
+**Expect no app-wide automated guard.** No app-wide jest guard forbids
+`GlassView` inside an animated-opacity layer, and nobody proposes one. The
+condition is a runtime rendering outcome on a native view, which jest cannot
+see. Two Daily Bible Pause suites have a feature-level check, and each covers
+only its own surface. `PauseGlassButton.test.tsx` fails when a host ancestor of
+the Pause pill buttons sets an opacity. `PartPlayer.test.tsx` does the same for
+the glass of the paused play cue.
+
+The `PlayerControls` suite deliberately mocks `BlurView` to a plain `View`, so
+it asserts tree shape and never pixels. Verify any change to a blur or glass
+surface on a simulator or device, with a screenshot.
 
 **If you need to judge blur cost, measure it twice.** A prior session measured
 an always-on blurred layer on the Android emulator with `dumpsys gfxinfo`; the
@@ -242,6 +261,10 @@ with different fixes, and merging them produces wrong advice:
 - **Opacity animated on an ANCESTOR of the `GlassView`** (this doc): the glass
   renders nothing at all. Changing the value does not help, because there is
   nothing to fade. Use `BlurView` instead.
+
+Another trap on the same component is not an opacity failure. A
+`glassEffectStyle` change that reaches the glass before its first layout shows
+at full, with no animation. See the fade doc under Related.
 
 ## Examples
 
@@ -285,23 +308,34 @@ control's corner radius.
 - [`expo-glass-effect-interactive-flash-2026-04-08.md`](./expo-glass-effect-interactive-flash-2026-04-08.md)
   — same component, a third failure mode: `isInteractive` flashes white on
   remount. It is this app's general "how to integrate GlassView" reference and
-  does not cover animated ancestors.
+  repeats this doc's rule in short form.
 - [`mobile-auto-hide-overlay-fade-race-ref-sync.md`](../design-patterns/mobile-auto-hide-overlay-fade-race-ref-sync.md)
   — documents the exact auto-hide chrome layer that triggers this. Work on that
   layer needs both its ref-sync contract and this constraint.
 - [`expo-image-blurradius-cross-platform-calibration.md`](../mobile/expo-image-blurradius-cross-platform-calibration.md)
   — distinguishes the three blur mechanisms and establishes the iOS-blur /
   Android-dim split that `PlatformBlur` now formalizes.
+- [`expo-glass-effect-glassview-fade-through-glass-effect-style.md`](./expo-glass-effect-glassview-fade-through-glass-effect-style.md)
+  — how a `GlassView` fades itself with no opacity on the glass or above it.
+  Animate its `glassEffectStyle` between `"none"` and `"regular"`. Switch the
+  style two frames after mount, or the first change shows at full.
 
 Taken together the GlassView docs give one operating rule for
-`expo-glass-effect` in this app: `GlassView` is a static chrome primitive. Do
-not animate it, do not animate a layer that contains it, and do not set
-`isInteractive` on it. When any of those is required, use `PlatformBlur`.
+`expo-glass-effect` in this app. Do not put an animated opacity on a
+`GlassView` or on a layer that contains it. To fade the glass, animate its own
+`glassEffectStyle`, as the fade doc describes. Do not set `isInteractive` on a
+`GlassView` (see the flash doc for the evidence and its versions). When a layer
+that contains glass must fade, use `PlatformBlur`.
+
+> **Changed 2026-10-13.** This rule said "`GlassView` is a static chrome
+> primitive. Do not animate it". The fade doc above shows a verified fade of the
+> glass itself.
 
 ## Versions and verification
 
-- `expo-glass-effect` `~0.1.10`, `expo-blur` `~15.0.8`, `expo` `~54.0.36` (see
-  `apps/mobile/package.json`)
+- `expo-glass-effect` `~0.1.10`, `expo-blur` `~15.0.8`, `expo` `~54.0.36` at
+  the 2026-08-13 verification. `apps/mobile/package.json` has since moved to
+  Expo SDK 57, and this doc records no new check of this failure there.
 - iOS 26 simulator, iPhone 17 Pro Max. The Android dim path was also checked on
   the Pixel 9a emulator.
 - Verified 2026-08-13 on branch `fix/mobile-watch-player-chrome`, in PR #1927,

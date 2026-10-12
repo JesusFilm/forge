@@ -1,6 +1,7 @@
 ---
 title: "expo-glass-effect GlassView: isInteractive flash bug and cross-platform integration"
 date: "2026-04-08"
+last_updated: "2026-10-13"
 category: best-practices
 module: apps/mobile
 problem_type: best_practice
@@ -28,7 +29,7 @@ tags:
 
 ## Context
 
-Adding iOS liquid glass effect buttons to `HomeHeader.tsx` in `apps/mobile` using `expo-glass-effect` (~0.1.9; ~0.1.10 today) on Expo SDK 54 / React Native 0.81. The work required: installing the library, wrapping interactive elements correctly, providing an Android fallback, integrating with the three-layer hero z-index architecture, and fixing a white flash bug caused by `isInteractive`.
+Adding iOS liquid glass effect buttons to `HomeHeader.tsx` in `apps/mobile` using `expo-glass-effect` (~0.1.9, later ~0.1.10) on Expo SDK 54 / React Native 0.81. `apps/mobile/package.json` now has Expo SDK 57 and `expo-glass-effect` ~57.0.4 (checked 2026-10-13). The work required: installing the library, wrapping interactive elements correctly, providing an Android fallback, integrating with the three-layer hero z-index architecture, and fixing a white flash bug caused by `isInteractive`.
 
 ## Guidance
 
@@ -56,6 +57,13 @@ Place `GlassView` as the child of `Pressable`, not as the wrapper. `Pressable` o
 
 `isInteractive` tells the native iOS glass view to animate its highlight on touch. When the component remounts (e.g., on Expo Router tab switch), the native layer interprets the remount as a touch event and fires the highlight animation, producing a **white flash**.
 
+> **Note 2026-10-13.** The Daily Bible Pause branches set `isInteractive` inside
+> a `Pressable` on three glass buttons. One is the Home header bell
+> (`AnnouncementsButton.tsx`). These branches are `Ur-imazing/pause-devo-feature`
+> and PR #2680, and `main` does not have them. The iOS 26.5 simulator showed no
+> flash when the Pause buttons mount on SDK 57. Nobody tested a tab switch
+> there, so this rule stands until such a test shows no flash.
+
 **Before (causes flash on tab switch):**
 
 ```tsx
@@ -76,6 +84,10 @@ there is nothing to fade. Use `PlatformBlur`
 (`apps/mobile/src/components/ui/PlatformBlur.tsx`) for any frosted surface inside
 fading chrome. Opacity applied to the `GlassView` itself is a separate defect with
 a separate fix; both are linked under Related.
+
+A `GlassView` can still fade itself through its own `glassEffectStyle`, with no
+opacity on the glass or above it (added 2026-10-13). See
+[Fade an expo-glass-effect GlassView through glassEffectStyle](./expo-glass-effect-glassview-fade-through-glass-effect-style.md).
 
 ### Android fallback via Platform.select spread
 
@@ -244,6 +256,7 @@ const styles = StyleSheet.create({
 
 - [`homeheader-zindex-touch-interception-glassview-opacity-2026-04-09.md`](../ui-bugs/homeheader-zindex-touch-interception-glassview-opacity-2026-04-09.md) — same component. `GlassView` ignores an `opacity` value set on itself on iOS, so mount/unmount is the reliable show-hide. Also raises this doc's `zIndex: 1` to 10.
 - [`expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md`](./expo-glass-effect-glassview-invisible-under-animated-opacity-ancestor.md) — same component, third failure mode. `GlassView` renders nothing inside a layer whose opacity an ancestor animates; use `PlatformBlur` there.
+- [`expo-glass-effect-glassview-fade-through-glass-effect-style.md`](./expo-glass-effect-glassview-fade-through-glass-effect-style.md) — same component. A `GlassView` fades itself through `glassEffectStyle`; a style change before its first layout shows at full.
 - [`hero-mute-button-hybrid-overlay-touch-target.md`](../mobile/hero-mute-button-hybrid-overlay-touch-target.md) — Documents the three-layer hero architecture (zIndex 0/2) that HomeHeader integrates with at zIndex 1
 - [`full-bleed-video-hero-with-scroll-over-content.md`](../mobile/full-bleed-video-hero-with-scroll-over-content.md) — Foundational doc for the absolutely-positioned hero behind FlashList pattern
 - [`flashlist-hero-bleed-through-feed-background.md`](../mobile/flashlist-hero-bleed-through-feed-background.md) — Color token system and `hexToRgba` conventions
