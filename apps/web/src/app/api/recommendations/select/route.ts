@@ -1,11 +1,21 @@
 import { observeEvidenceResponse } from "@/lib/recommendation-evidence-response"
 import { assertRecommendationHumanAdmission } from "@/lib/recommendation-human-admission"
+import { NextRequest } from "next/server"
+import { env } from "@/env"
 import { z } from "zod"
 import {
   isCanonicalWatchRecommendationHref,
   WATCH_CANONICAL_ORIGIN,
 } from "@/lib/routes"
-import { selectSemanticRecommendation } from "@/lib/recommendations"
+import {
+  selectPrivatePrecomputedRecommendation,
+  selectSemanticRecommendation,
+} from "@/lib/recommendations"
+import { readRecommendationExperimentBrowser } from "@/lib/recommendation-experiment-browser"
+import {
+  readRecommendationExperimentTesterCookie,
+  RECOMMENDATION_EXPERIMENT_TESTER_COOKIE,
+} from "@/lib/recommendation-tester-token"
 import {
   RECOMMENDATION_EVIDENCE_BODY_BYTES,
   RecommendationRouteError,
@@ -20,6 +30,12 @@ import {
   readRecommendationSession,
 } from "@/lib/recommendation-session"
 import { RECOMMENDATION_EVIDENCE_CONTRACT } from "@/lib/recommendation-contracts"
+import {
+  recordWatchExperimentObservation,
+  recordWatchPublicObservation,
+  watchPublicObservationHour,
+} from "@/lib/recommendation-public-observation"
+import { readWatchExperimentMeasurementTicket } from "@/lib/recommendation-experiment-measurement-ticket"
 
 export const dynamic = "force-dynamic"
 export const revalidate = 0
@@ -34,10 +50,18 @@ const SelectionInput = z
     occurredAt: z.string().datetime({ offset: true }),
     tabNonce: z.string().min(1).max(191),
     claimNonce: z.string().min(16).max(191),
+    measurementTicket: z.string().min(1).max(850).optional(),
   })
   .strict()
 
 export async function POST(request: Request) {
+  const observationHour = watchPublicObservationHour()
+  const observationAttempt =
+    (env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET?.length ?? 0) >= 32
+      ? recordWatchPublicObservation("click_attempt", observationHour)
+      : Promise.resolve(false)
+  let scopedExperimentId: string | null = null
+  let scopedAttemptObserved = false
   try {
     assertRecommendationHumanAdmission(request)
     const raw = await readStrictRecommendationJson(request, {
@@ -48,11 +72,24 @@ export async function POST(request: Request) {
     if (!parsed.success) {
       throw new RecommendationRouteError(400, "invalid_body")
     }
+    const scoped = readWatchExperimentMeasurementTicket(
+      env.WATCH_RECOMMENDATION_TESTER_SECRET,
+      parsed.data.measurementTicket,
+      parsed.data.requestId,
+    )
+    if (scoped && (await observationAttempt)) {
+      scopedExperimentId = scoped.experimentId
+      scopedAttemptObserved = await recordWatchExperimentObservation(
+        scopedExperimentId,
+        "click_attempt",
+        observationHour,
+      )
+    }
     const session = readRecommendationSession(request)
     if (!session) {
       throw new RecommendationRouteError(401, "recommendation_session_required")
     }
-    const selection = await selectSemanticRecommendation({
+    const selectionInput = {
       contractVersion: parsed.data.contractVersion,
       capability: parsed.data.capability,
       requestId: parsed.data.requestId,
@@ -62,7 +99,29 @@ export async function POST(request: Request) {
       sessionDigest: session.digest,
       tabDigest: digestRecommendationValue(parsed.data.tabNonce),
       claimNonce: parsed.data.claimNonce,
-    })
+    }
+    const privateTesterCookie = new NextRequest(request.url, {
+      headers: request.headers,
+    }).cookies.get(RECOMMENDATION_EXPERIMENT_TESTER_COOKIE)?.value
+    const privateTester =
+      env.WATCH_PRECOMPUTED_RECOMMENDATIONS_TEST_ENABLED === "true" &&
+      (await readRecommendationExperimentTesterCookie(privateTesterCookie, {
+        secret: env.WATCH_RECOMMENDATION_TESTER_SECRET,
+        origin: env.NEXT_PUBLIC_CANONICAL_ORIGIN,
+      }))
+    // A card issued before rollback still belongs to its persisted visit.
+    // Bind by the signed browser cookie rather than the current serving mode.
+    const experimentBrowser = readRecommendationExperimentBrowser(
+      request,
+      env.WATCH_RECOMMENDATION_TESTER_SECRET,
+    )
+    const selection =
+      privateTester || experimentBrowser
+        ? await selectPrivatePrecomputedRecommendation({
+            ...selectionInput,
+            browserDigest: experimentBrowser?.digest ?? null,
+          })
+        : await selectSemanticRecommendation(selectionInput)
     if (
       (selection.status !== "accepted" && selection.status !== "replay") ||
       !selection.claimNonce
@@ -80,6 +139,14 @@ export async function POST(request: Request) {
       throw new RecommendationRouteError(502, "invalid_admin_response")
     }
     observeEvidenceResponse(request, "select", 200, undefined, [selection])
+    if (await observationAttempt)
+      await recordWatchPublicObservation("click_ack", observationHour)
+    if (scopedAttemptObserved && scopedExperimentId)
+      await recordWatchExperimentObservation(
+        scopedExperimentId,
+        "click_ack",
+        observationHour,
+      )
     return recommendationJson({
       claimNonce: selection.claimNonce,
       canonicalHref: selection.canonicalHref,
@@ -87,6 +154,14 @@ export async function POST(request: Request) {
     })
   } catch (error) {
     const response = recommendationError(error)
+    if (await observationAttempt)
+      await recordWatchPublicObservation("click_unavailable", observationHour)
+    if (scopedAttemptObserved && scopedExperimentId)
+      await recordWatchExperimentObservation(
+        scopedExperimentId,
+        "click_unavailable",
+        observationHour,
+      )
     observeEvidenceResponse(request, "select", response.status, error)
     return response
   }

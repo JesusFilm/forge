@@ -559,6 +559,17 @@ export const env = createEnv({
     RECOMMENDATION_SERVED_ITEM_FORMAT: z
       .enum(["legacy", "packed"])
       .default("packed"),
+    // Private saved-result Watch preview; never changes the public serving pointer.
+    RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED: z.enum(["1"]).optional(),
+    RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: z.enum(["1"]).optional(),
+    WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: z.string().min(32).optional(),
+    WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: z.string().min(1).optional(),
+    WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED: z
+      .enum(["1"])
+      .optional(),
+    PRECOMPUTED_WATCH_MEASUREMENT_URL: z.string().url().optional(),
+    WATCH_RECOMMENDATION_MEASUREMENT_API_KEY: z.string().min(32).optional(),
+    PRECOMPUTED_FINAL_CALIBRATION_PUBLIC_KEYS: z.string().min(1).optional(),
     // Isolated, opt-in recommendation storage benchmark settings. The script
     // validates its own safety guards even when CI skips application validation.
     RECOMMENDATION_STORAGE_BENCHMARK: z.enum(["1"]).optional(),
@@ -576,6 +587,8 @@ export const env = createEnv({
     // Narrow receiver-side CSV for Mastra -> Admin experience vector ingest.
     // Kept separate from transcript ingest and workflow launch credentials.
     MASTRA_EXPERIENCE_INGEST_API_KEYS: z.string().min(1).optional(),
+    // Private, default-off producer capability for saved recommendation builds.
+    MASTRA_RECOMMENDATION_INGEST_API_KEYS: z.string().min(1).optional(),
     // Narrow receiver-side CSV for the standalone Mastra chat agent's tool
     // callbacks (consolidation U7): search-videos / lookup-bible-verse /
     // fetch-video-image. A DIFFERENT capability than vector ingest or workflow
@@ -685,6 +698,24 @@ export const env = createEnv({
     RAILWAY_S3_BUCKET: z.string().min(1).optional(),
     RAILWAY_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
     RAILWAY_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
+    GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .safe()
+      .optional(),
+    GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .safe()
+      .optional(),
+    GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES: z.coerce
+      .number()
+      .int()
+      .nonnegative()
+      .safe()
+      .optional(),
     // Manager artifacts bucket — admin reads manager-produced artifacts such as
     // {assetId}/transcript.json from apps/manager's S3 bucket via
     // readManagerArtifact() in src/storage/s3.ts. Distinct from
@@ -1117,6 +1148,30 @@ export const env = createEnv({
     RECOMMENDATION_SERVED_ITEM_FORMAT:
       emptyToUndefined(process.env.RECOMMENDATION_SERVED_ITEM_FORMAT) ??
       "packed",
+    RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_PRECOMPUTED_PREVIEW_ENABLED,
+    ),
+    RECOMMENDATION_PRECOMPUTED_TEST_ENABLED: emptyToUndefined(
+      process.env.RECOMMENDATION_PRECOMPUTED_TEST_ENABLED,
+    ),
+    WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET: emptyToUndefined(
+      process.env.WATCH_RECOMMENDATION_HUMAN_PROOF_SECRET,
+    ),
+    WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES: emptyToUndefined(
+      process.env.WATCH_RECOMMENDATION_TURNSTILE_HOSTNAMES,
+    ),
+    WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED: emptyToUndefined(
+      process.env.WATCH_RECOMMENDATION_TURNSTILE_TEST_FIXTURE_ENABLED,
+    ),
+    PRECOMPUTED_WATCH_MEASUREMENT_URL: emptyToUndefined(
+      process.env.PRECOMPUTED_WATCH_MEASUREMENT_URL,
+    ),
+    WATCH_RECOMMENDATION_MEASUREMENT_API_KEY: emptyToUndefined(
+      process.env.WATCH_RECOMMENDATION_MEASUREMENT_API_KEY,
+    ),
+    PRECOMPUTED_FINAL_CALIBRATION_PUBLIC_KEYS: emptyToUndefined(
+      process.env.PRECOMPUTED_FINAL_CALIBRATION_PUBLIC_KEYS,
+    ),
     RECOMMENDATION_STORAGE_BENCHMARK: emptyToUndefined(
       process.env.RECOMMENDATION_STORAGE_BENCHMARK,
     ),
@@ -1140,6 +1195,9 @@ export const env = createEnv({
     ),
     MASTRA_EXPERIENCE_INGEST_API_KEYS: emptyToUndefined(
       process.env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+    ),
+    MASTRA_RECOMMENDATION_INGEST_API_KEYS: emptyToUndefined(
+      process.env.MASTRA_RECOMMENDATION_INGEST_API_KEYS,
     ),
     ADMIN_AGENT_TOOLS_API_KEYS: emptyToUndefined(
       process.env.ADMIN_AGENT_TOOLS_API_KEYS,
@@ -1248,6 +1306,15 @@ export const env = createEnv({
     ),
     RAILWAY_S3_SECRET_ACCESS_KEY: emptyToUndefined(
       process.env.RAILWAY_S3_SECRET_ACCESS_KEY,
+    ),
+    GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES: emptyToUndefined(
+      process.env.GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES,
+    ),
+    GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES: emptyToUndefined(
+      process.env.GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES,
+    ),
+    GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES: emptyToUndefined(
+      process.env.GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES,
     ),
     MANAGER_ARTIFACTS_S3_ENDPOINT: emptyToUndefined(
       process.env.MANAGER_ARTIFACTS_S3_ENDPOINT,
@@ -1416,6 +1483,7 @@ const BEARER_CSV_KEYS = [
   "VIDEO_MAPPER_ADMIN_API_KEYS",
   "MASTRA_TRANSCRIPT_INGEST_API_KEYS",
   "MASTRA_EXPERIENCE_INGEST_API_KEYS",
+  "MASTRA_RECOMMENDATION_INGEST_API_KEYS",
   "ADMIN_AGENT_TOOLS_API_KEYS",
   "MANAGER_ADMIN_API_KEY",
   "WEB_ADMIN_API_KEYS",
@@ -1515,6 +1583,8 @@ assertBearerCsvsDisjoint({
   VIDEO_MAPPER_ADMIN_API_KEYS: env.VIDEO_MAPPER_ADMIN_API_KEYS,
   MASTRA_TRANSCRIPT_INGEST_API_KEYS: env.MASTRA_TRANSCRIPT_INGEST_API_KEYS,
   MASTRA_EXPERIENCE_INGEST_API_KEYS: env.MASTRA_EXPERIENCE_INGEST_API_KEYS,
+  MASTRA_RECOMMENDATION_INGEST_API_KEYS:
+    env.MASTRA_RECOMMENDATION_INGEST_API_KEYS,
   ADMIN_AGENT_TOOLS_API_KEYS: env.ADMIN_AGENT_TOOLS_API_KEYS,
   MANAGER_ADMIN_API_KEY: env.MANAGER_ADMIN_API_KEY,
   WEB_ADMIN_API_KEYS: env.WEB_ADMIN_API_KEYS,
