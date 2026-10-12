@@ -249,7 +249,9 @@ export function ScrollingScripture({
           style={{
             position: "absolute",
             inset: 0,
-            background: `rgba(0,0,0,${FRAME_DIM})`,
+            // A still passage sits on the frame for its whole length, over
+            // whatever the shot is: a little more dim so the unread words read.
+            background: `rgba(0,0,0,${FRAME_DIM + (still ? 0.15 : 0)})`,
           }}
         />
       ) : null}
