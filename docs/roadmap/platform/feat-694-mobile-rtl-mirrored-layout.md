@@ -3,7 +3,7 @@ id: "feat-694"
 title: "Mirror the mobile layout for right-to-left UI languages"
 owner: "urim"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-13"
 duration: 10
 depends_on: []
