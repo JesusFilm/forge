@@ -9,6 +9,10 @@ import {
   type CompactProfile,
 } from "./content-profile-executor"
 import type { HistoricalSnapshot } from "./historical-analytics"
+import {
+  renderEdgePrompt,
+  type EdgePromptDocument,
+} from "./edge-prompt-renderer"
 import { readCompleteSelectedChunks } from "./selected-transcript"
 import type { SourceCatalog, Video } from "./source-generation"
 
@@ -1031,7 +1035,7 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
   const spanOffers = spanPlan.refs
   const offered = spanPlan.byId
   const spanOfferDigest = digest(spanOffers)
-  const prompt = JSON.stringify({
+  const promptDocument = {
     members: members.map((member, index) => ({
       source: {
         metadata: modelMetadata(member.source),
@@ -1053,7 +1057,17 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
     })),
     spanOffers: spanPlan.promptOffers,
     spanOfferCoverage: spanPlan.coverage,
-  })
+  } satisfies EdgePromptDocument
+  const renderedPrompt = input.recovery
+    ? null
+    : renderEdgePrompt(promptDocument)
+  // The reviewed recovery call retains its original exact bytes. New calls
+  // advertise their compact encoding inside the prompt; inputDigest still
+  // binds every exact byte, while the generation's semantic v1 stays stable.
+  const prompt =
+    !renderedPrompt || renderedPrompt.byteReport.savedBytes <= 0
+      ? (renderedPrompt?.legacyPrompt ?? JSON.stringify(promptDocument))
+      : renderedPrompt.prompt
   if (
     Buffer.byteLength(EDGE_SYSTEM, "utf8") + Buffer.byteLength(prompt, "utf8") >
     MAX_PROMPT_BYTES

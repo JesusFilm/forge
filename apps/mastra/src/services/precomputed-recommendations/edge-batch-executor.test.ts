@@ -10,6 +10,7 @@ import {
   runEdgeBatch as runEdgeBatchActual,
   type EdgeBatchInput,
 } from "./edge-batch-executor"
+import { decodeEdgePrompt } from "./edge-prompt-renderer"
 
 it("exempts only the reviewed unknown call for its one replacement or after reconciliation", () => {
   const original = {
@@ -720,7 +721,9 @@ describe("shared edge batch candidate pages", () => {
         ),
       }
     }
-    const result = await runEdgeBatch({
+    let recoveryCall = false
+    const modelPrompts: string[] = []
+    const batchInput: FixtureInput = {
       ...identity,
       members: [
         member("source-a", "33333333-3333-4333-8333-333333333333"),
@@ -748,18 +751,30 @@ describe("shared edge batch candidate pages", () => {
       },
       model: {
         async generate(request) {
-          const prompt = JSON.parse(request.prompt)
+          modelPrompts.push(request.prompt)
+          const wire = JSON.parse(request.prompt)
+          expect(wire.encoding).toBe(
+            recoveryCall ? undefined : "shared-edge-v1-dictionary-1",
+          )
+          const prompt = decodeEdgePrompt(wire)
           expect(prompt.members).toHaveLength(2)
-          expect(prompt.members[0].candidates).toHaveLength(8)
-          expect(prompt.members[1].candidates).toHaveLength(8)
-          expect(prompt.members[0].source.profile.anchors).toHaveLength(5)
+          expect(prompt.members[0].candidates).toHaveLength(
+            recoveryCall ? 4 : 8,
+          )
+          expect(prompt.members[1].candidates).toHaveLength(
+            recoveryCall ? 4 : 8,
+          )
+          const sourceProfile = z
+            .object({ anchors: z.array(z.unknown()) })
+            .parse(prompt.members[0].source.profile)
+          expect(sourceProfile.anchors).toHaveLength(5)
           expect(prompt.spanOffers).toHaveLength(64)
-          expect(prompt.spanOfferCoverage).toHaveLength(16)
+          expect(prompt.spanOfferCoverage).toHaveLength(recoveryCall ? 8 : 16)
           expect(prompt.spanOfferCoverage[0]).toMatchObject({
             policy: "balanced_verified_anchors_v1",
             sourceAvailable: 5,
             targetAvailable: 5,
-            offered: 4,
+            offered: recoveryCall ? 8 : 4,
           })
           return {
             output: request.schema.parse({
@@ -824,8 +839,61 @@ describe("shared edge batch candidate pages", () => {
           throw new Error("no finalization")
         },
       },
-    })
+    }
+    const result = await runEdgeBatch(batchInput)
     expect(result.state).toBe("succeeded")
+    batchInput.callId = "55555555-5555-4555-8555-555555555555"
+    batchInput.recovery = {
+      originalCallId: identity.callId,
+      replacementCallId: batchInput.callId,
+    }
+    batchInput.members.forEach((item) => {
+      item.pageSize = 4
+    })
+    recoveryCall = true
+    expect((await runEdgeBatch(batchInput)).state).toBe("succeeded")
+    expect(modelPrompts).toHaveLength(2)
+    expect(JSON.parse(modelPrompts[1]!)).toHaveProperty("spanOffers")
+    expect(createHash("sha256").update(modelPrompts[1]!).digest("hex")).toBe(
+      "9d0c881807445b35a396510517778a6fc633630a19bb1d71aae80ad32f3b899e",
+    )
+
+    // An unresolved old-format receipt fences a new compact call before
+    // reservation or dispatch, even when the candidate page still fits.
+    delete batchInput.recovery
+    batchInput.callId = "66666666-6666-4666-8666-666666666666"
+    batchInput.members.forEach((item) => {
+      item.pageSize = 8
+    })
+    batchInput.persistence.status = async (request) => ({
+      generationId: request.generationId,
+      sourceVideoId: request.sourceVideoId,
+      sourceState: "claimed",
+      checkpointRevision: 0,
+      sourceCandidateCount: null,
+      sourceCandidateDigest: null,
+      calls: [
+        {
+          callId: identity.callId,
+          attemptId: identity.attemptId,
+          status: "pending",
+          applicationState: "pending",
+          pageIndex: 0,
+          candidatePageDigest: "a".repeat(64),
+          candidates: [],
+          appliedRevision: null,
+          startedAt: "2026-10-06T20:48:05.001Z",
+          finishedAt: null,
+          memberSourceVideoIds: ["source-a", "source-b"],
+        },
+      ],
+      nextCursor: null,
+    })
+    batchInput.persistence.start = async () => {
+      throw new Error("duplicate reservation")
+    }
+    await expect(runEdgeBatch(batchInput)).rejects.toThrowError("usage_unknown")
+    expect(modelPrompts).toHaveLength(2)
   })
 })
 
