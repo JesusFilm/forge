@@ -1,7 +1,7 @@
 ---
 title: "iOS aligns React Native text by the app's native localization, not by the UI Locale"
 date: "2026-09-30"
-last_updated: "2026-10-08"
+last_updated: "2026-10-12"
 category: "ui-bugs"
 module: "apps/mobile"
 problem_type: "ui_bug"
@@ -119,6 +119,17 @@ The defect has two cases:
   text.
 
 ## Solution
+
+> **Superseded in part 2026-10-12 (feat-692):** the layout now mirrors for a
+> right-to-left UI Locale, and `withIosLeftToRightAppearance` and
+> `supportsRTL: false` are gone. While `MIRRORED_LAYOUT_ENABLED` is on,
+> `textDirectionStyle` also returns an explicit `textAlign` for every known
+> language, relative to the text's own direction. Short text goes to the
+> layout's start edge, and a paragraph in the other direction keeps its own
+> start edge. So English text in an English UI on a `ks` phone now aligns
+> left. Text that does not use the helper keeps natural alignment, and so
+> keeps this defect on a `ks` phone. With the switch off, the solution below
+> holds. See `apps/mobile/CLAUDE.md`, "Mirrored layout (feat-692)".
 
 Give each left-aligned `<Text>` an explicit direction from the language of its
 own text. `useTextDirection()` in `apps/mobile/src/i18n/textDirection.ts:96-106`

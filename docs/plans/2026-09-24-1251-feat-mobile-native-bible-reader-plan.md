@@ -135,6 +135,7 @@ Datadog has recorded taps on the button since 2026-08-28, because production RUM
 - R30. The download button shows when the current translation is fully on the device. BSB always shows as on the device.
 - R31. When a chapter is not on the device and the network or the catalog fails, the reader shows a message. The message offers a retry and a switch to a translation that is on the device.
 - R32. Right-to-left translations show right-aligned text. Chapter swipes keep the same directions in these translations, because the app's controls, progress bar, and scrubber stay left-to-right. The reading typeface applies to Latin, Greek, and Cyrillic text; other scripts use the platform font.
+  - **Superseded in part 2026-10-12 by feat-692 R14:** chapter swipes now follow the layout direction, not the language of the Bible text. In a right-to-left layout, a swipe to the right opens the next chapter, for every translation. Right-to-left text still aligns right, and playback controls stay left-to-right.
 
 **Settings and appearance**
 
