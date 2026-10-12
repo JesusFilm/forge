@@ -7329,6 +7329,10 @@ model RecommendationPrecomputedEdgeBatchCall {
   errorCode String? @map("error_code")
   finishedAt DateTime? @map("finished_at")
   receiptDigest String? @map("receipt_digest") @db.Char(64)
+  recoveryReplacementCallId String? @map("recovery_replacement_call_id") @db.Uuid
+  recoveryOperatorAccountRef String? @map("recovery_operator_account_ref")
+  recoveryAcknowledgedAt DateTime? @map("recovery_acknowledged_at")
+  recoveryOldProcessExitedAttested Boolean? @map("recovery_old_process_exited_attested")
   members RecommendationPrecomputedEdgeBatchMember[]
 
   @@id([generationId, callId])

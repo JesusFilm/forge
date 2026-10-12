@@ -13,6 +13,7 @@ const terminal = z.enum(["succeeded", "rejected", "failed"])
 const callState = z.enum(["pending", ...terminal.options])
 const applicationState = z.enum([
   "pending",
+  "acknowledged_unknown",
   "applied_edges",
   "applied_empty",
   "stale_unapplied",
@@ -84,6 +85,8 @@ const statusReply = identity.extend({
           appliedRevision: count.nullable(),
           startedAt: z.string().datetime(),
           finishedAt: z.string().datetime().nullable(),
+          recoveryReplacementCallId: z.uuid().nullable().default(null),
+          recoveryReconciled: z.boolean().default(false),
           memberSourceVideoIds: z.array(id).min(1).max(2),
         })
         .strict(),

@@ -20,6 +20,7 @@ import {
   type ProfilePersistencePort,
 } from "./content-profile-executor"
 import {
+  acknowledgedUnknownIsSafe,
   finalizeEdgeSource,
   planEdgeMemberPage,
   runEdgeBatch,
@@ -35,6 +36,15 @@ import type { SourceCatalog, SourceIngest, Video } from "./source-generation"
 
 const digest = (value: unknown) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex")
+// The operator-only command names this one reviewed recovery checkpoint.
+const RECOVERY_GENERATION_ID = "subscription-astra-budget2-20261008-v4"
+const RECOVERY_GENERATION_INPUT_DIGEST =
+  "36d168040f404b12e12be8d4ecdf8b75c102fe459bcefb22753f434fe29443b9"
+const RECOVERY_ORIGINAL_CALL_ID = "8ab8a620-1608-4115-812e-200bb2fb4b6d"
+const RECOVERY_SOURCE_IDS = [
+  "cmokmj8ka0njkqsccfvhbto3g",
+  "cmokmjc390nk2qscc79tyun6g",
+] as const
 
 export class ManualSubscriptionCatalogError extends Error {
   constructor(
@@ -93,6 +103,11 @@ export type ManualSubscriptionCatalogInput = {
         mode: "pilot"
         sources: Array<{ sourceVideoId: string; exclusiveEndRank: number }>
       }
+  recovery?: {
+    originalCallId: string
+    replacementCallId: string
+    oldProcessExitedAttested: true
+  }
 }
 
 export type ManualSubscriptionCatalogPorts = {
@@ -425,6 +440,7 @@ async function sourceProgress(
   edgePersistence: EdgeBatchPersistencePort,
   generationId: string,
   generationInputDigest: string,
+  recovery?: { originalCallId: string; replacementCallId: string },
 ): Promise<void> {
   let afterCallId: string | undefined
   const calls: Awaited<
@@ -464,7 +480,12 @@ async function sourceProgress(
       throw new ManualSubscriptionCatalogError("admin_unavailable")
     afterCallId = status.nextCursor
   }
-  if (calls.some((call) => call.status === "pending"))
+  if (
+    calls.some(
+      (call) =>
+        call.status === "pending" && !acknowledgedUnknownIsSafe(call, recovery),
+    )
+  )
     throw new ManualSubscriptionCatalogError("usage_uncertain")
   if (calls.some((call) => call.applicationState === "rejected_unapplied"))
     throw new ManualSubscriptionCatalogError("source_failed")
@@ -497,15 +518,15 @@ async function sourceProgress(
       call.status !== "succeeded" ||
       call.candidates.length < 1 ||
       call.candidatePageDigest !== planned.candidatePageDigest ||
-      JSON.stringify(call.candidates) !== JSON.stringify(planned.candidates) ||
+      call.candidates.length !== planned.candidates.length ||
       call.candidates.some(
         (candidate, index) =>
           candidate.poolRank !== rank + index ||
+          candidate.poolRank !== planned.candidates[index]?.poolRank ||
           candidate.targetVideoId !==
-            source.orderedCandidateIds[rank + index] ||
+            planned.candidates[index]?.targetVideoId ||
           candidate.targetProfileKey !==
-            source.targetsByVideoId.get(candidate.targetVideoId)?.profile
-              .cacheKey,
+            planned.candidates[index]?.targetProfileKey,
       )
     )
       throw new ManualSubscriptionCatalogError("catalog_mismatch")
@@ -542,6 +563,24 @@ export async function runManualSubscriptionCatalog(
     input.destination.selectedCorpusDigest !==
       input.reviewed.selectedCorpusDigest ||
     input.destination.candidatePoolDigest !== input.reviewed.candidatePoolDigest
+  )
+    throw new ManualSubscriptionCatalogError("input_invalid")
+  if (
+    input.recovery &&
+    (input.invocation !== "resume" ||
+      input.generationId !== RECOVERY_GENERATION_ID ||
+      input.generationInputDigest !== RECOVERY_GENERATION_INPUT_DIGEST ||
+      input.recovery.originalCallId !== RECOVERY_ORIGINAL_CALL_ID ||
+      input.recovery.replacementCallId === RECOVERY_ORIGINAL_CALL_ID ||
+      !z.uuid().safeParse(input.recovery.replacementCallId).success ||
+      input.recovery.oldProcessExitedAttested !== true ||
+      input.work.mode !== "pilot" ||
+      input.work.sources.length !== RECOVERY_SOURCE_IDS.length ||
+      input.work.sources.some(
+        (item, index) =>
+          item.sourceVideoId !== RECOVERY_SOURCE_IDS[index] ||
+          item.exclusiveEndRank !== 4,
+      ))
   )
     throw new ManualSubscriptionCatalogError("input_invalid")
   const frozen = await preflightManualCatalog(
@@ -681,6 +720,7 @@ export async function runManualSubscriptionCatalog(
   let processedPageCount = 0
   let reason: ManualSubscriptionCatalogResult["reason"]
   let lastCapacityAt = 0
+  let recoveryProfilesReused = false
   const activeLeases = new Map<string, string>()
   let heartbeatFailure: unknown
   let heartbeatTimer: ReturnType<typeof setInterval> | undefined
@@ -729,6 +769,8 @@ export async function runManualSubscriptionCatalog(
   const admittedModel: ReservationAwareStructuredModel = {
     async generateReserved(request, reserve) {
       if (heartbeatFailure) throw heartbeatFailure
+      if (input.recovery && !recoveryProfilesReused)
+        throw new ManualSubscriptionCatalogError("usage_uncertain")
       await refreshCapacity()
       return ports.model.generateReserved(request, reserve)
     },
@@ -817,6 +859,40 @@ export async function runManualSubscriptionCatalog(
       boundStatus.qualificationDigest !== imported.qualificationDigest
     )
       throw new ManualSubscriptionCatalogError("import_unavailable")
+    if (input.generationId === RECOVERY_GENERATION_ID && !input.recovery) {
+      const recoveryStatus = await ports.edgePersistence.status({
+        action: "edge_batch_status",
+        ...scope,
+        sourceVideoId: RECOVERY_SOURCE_IDS[0],
+      })
+      const original = recoveryStatus.calls.find(
+        (call) => call.callId === RECOVERY_ORIGINAL_CALL_ID,
+      )
+      if (original && !acknowledgedUnknownIsSafe(original))
+        throw new ManualSubscriptionCatalogError("usage_uncertain")
+    }
+    if (input.recovery) {
+      const acknowledged = await send(
+        z.object({
+          generationId: z.literal(RECOVERY_GENERATION_ID),
+          originalCallId: z.literal(RECOVERY_ORIGINAL_CALL_ID),
+          replacementCallId: z.uuid(),
+          state: z.literal("acknowledged_unknown"),
+          replay: z.boolean(),
+        }),
+        {
+          action: "edge_manual_recovery_ack",
+          ...scope,
+          attemptId: input.attemptId,
+          originalCallId: input.recovery.originalCallId,
+          replacementCallId: input.recovery.replacementCallId,
+          operatorAccountRef: input.initiatingAccountRef,
+          oldProcessExitedAttested: true,
+        },
+      )
+      if (acknowledged.replacementCallId !== input.recovery.replacementCallId)
+        throw new ManualSubscriptionCatalogError("admin_unavailable")
+    }
     const profileIds = new Set<string>()
     for (const item of work) {
       profileIds.add(item.sourceVideoId)
@@ -827,6 +903,22 @@ export async function runManualSubscriptionCatalog(
         profileIds.add(target)
     }
     const readyProfiles = new Map<string, ReadyEdgeProfile>()
+    const profilePersistence: ProfilePersistencePort = input.recovery
+      ? {
+          ...ports.profilePersistence,
+          async register(request) {
+            const stored = await ports.profilePersistence.status({
+              action: "profile_status",
+              generationId: request.generationId,
+              generationInputDigest: request.generationInputDigest,
+              cacheKey: request.cacheKey,
+            })
+            if (stored.profile.state !== "ready")
+              throw new ManualSubscriptionCatalogError("usage_uncertain")
+            return ports.profilePersistence.register(request)
+          },
+        }
+      : ports.profilePersistence
     for (const videoId of [...profileIds].sort()) {
       const video = byId.get(videoId)
       if (!video) throw new ManualSubscriptionCatalogError("catalog_mismatch")
@@ -842,7 +934,7 @@ export async function runManualSubscriptionCatalog(
         schemaVersion: PROFILE_SCHEMA_VERSION,
         maxPartBytes: MAX_PROFILE_PART_BYTES,
         model: admittedModel,
-        persistence: ports.profilePersistence,
+        persistence: profilePersistence,
       })
       readyProfiles.set(videoId, {
         state: "ready",
@@ -851,6 +943,7 @@ export async function runManualSubscriptionCatalog(
         profile: ready.profile,
       })
     }
+    recoveryProfilesReused = true
     heartbeatTimer = setInterval(() => {
       void heartbeatAll().catch((error: unknown) => {
         heartbeatFailure ??= error
@@ -1034,6 +1127,7 @@ export async function runManualSubscriptionCatalog(
           ports.edgePersistence,
           input.generationId,
           input.generationInputDigest,
+          input.recovery,
         )
         active.push(entry)
       }
@@ -1076,7 +1170,7 @@ export async function runManualSubscriptionCatalog(
         const result = await runEdgeBatch({
           ...scope,
           attemptId: input.attemptId,
-          callId: randomUUID(),
+          callId: input.recovery?.replacementCallId ?? randomUUID(),
           inputCutoff: input.inputCutoff,
           selectedCorpusDigest: input.reviewed.selectedCorpusDigest,
           candidatePoolDigest: input.reviewed.candidatePoolDigest,
@@ -1090,6 +1184,7 @@ export async function runManualSubscriptionCatalog(
           model: admittedModel,
           persistence: ports.edgePersistence,
           historical,
+          ...(input.recovery ? { recovery: input.recovery } : {}),
         })
         if (result.state !== "succeeded" && result.state !== "no_call")
           throw new ManualSubscriptionCatalogError("source_failed")
@@ -1123,6 +1218,7 @@ export async function runManualSubscriptionCatalog(
         }
       }
       for (const source of active) {
+        if (input.recovery) continue
         if (
           source.finalized ||
           source.startRank !== source.orderedCandidateIds.length

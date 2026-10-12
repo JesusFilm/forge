@@ -43,6 +43,14 @@ const inputSchema: z.ZodType<ManualSubscriptionCatalogInput> = z
       .strict(),
     destination: gaImportDestinationSchema,
     originGenerationId: id,
+    recovery: z
+      .object({
+        originalCallId: z.literal("8ab8a620-1608-4115-812e-200bb2fb4b6d"),
+        replacementCallId: z.uuid(),
+        oldProcessExitedAttested: z.literal(true),
+      })
+      .strict()
+      .optional(),
     work: z.discriminatedUnion("mode", [
       z.object({ mode: z.literal("full") }).strict(),
       z

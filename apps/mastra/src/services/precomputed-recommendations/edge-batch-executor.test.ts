@@ -3,12 +3,47 @@ import { createHash } from "node:crypto"
 import { z } from "zod"
 
 import {
+  acknowledgedUnknownIsSafe,
   edgeBatchModelOutputSchema,
   finalizeEdgeSource,
   planEdgeMemberPage,
   runEdgeBatch as runEdgeBatchActual,
   type EdgeBatchInput,
 } from "./edge-batch-executor"
+
+it("exempts only the reviewed unknown call for its one replacement or after reconciliation", () => {
+  const original = {
+    callId: "8ab8a620-1608-4115-812e-200bb2fb4b6d",
+    status: "pending" as const,
+    applicationState: "acknowledged_unknown" as const,
+    recoveryReplacementCallId: "22222222-2222-4222-8222-222222222222",
+    recoveryReconciled: false,
+  }
+  const recovery = {
+    originalCallId: original.callId,
+    replacementCallId: original.recoveryReplacementCallId,
+  }
+  expect(acknowledgedUnknownIsSafe(original)).toBe(false)
+  expect(acknowledgedUnknownIsSafe(original, recovery)).toBe(true)
+  expect(
+    acknowledgedUnknownIsSafe(original, {
+      ...recovery,
+      replacementCallId: "33333333-3333-4333-8333-333333333333",
+    }),
+  ).toBe(false)
+  expect(
+    acknowledgedUnknownIsSafe({ ...original, recoveryReconciled: true }),
+  ).toBe(true)
+  expect(
+    acknowledgedUnknownIsSafe({ ...original, applicationState: "pending" }),
+  ).toBe(false)
+  expect(
+    acknowledgedUnknownIsSafe(
+      { ...original, callId: recovery.replacementCallId },
+      recovery,
+    ),
+  ).toBe(false)
+})
 import type { Video } from "./source-generation"
 import type { HistoricalSnapshot } from "./historical-analytics"
 import type { StructuredModel } from "./astra-provider"

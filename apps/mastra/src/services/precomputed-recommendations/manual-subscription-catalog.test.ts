@@ -1256,6 +1256,20 @@ describe("manual subscription catalog preflight", () => {
     expect(fixture.actions).not.toContain("model_admission")
   })
 
+  it("rejects a recovery request outside the exact reviewed pilot before mutation", async () => {
+    const fixture = await pilotFixture()
+    fixture.input.recovery = {
+      originalCallId: "8ab8a620-1608-4115-812e-200bb2fb4b6d",
+      replacementCallId: "22222222-2222-4222-8222-222222222222",
+      oldProcessExitedAttested: true,
+    }
+    await expect(
+      runManualSubscriptionCatalog(fixture.input, fixture.ports),
+    ).rejects.toMatchObject({ code: "input_invalid" })
+    expect(fixture.actions).not.toContain("resume_attempt")
+    expect(fixture.actions).not.toContain("model_admission")
+  })
+
   it("continues after a verified prior page at its durable revision", async () => {
     const fixture = await pilotFixture()
     fixture.input.work = {
@@ -1288,7 +1302,12 @@ describe("manual subscription catalog preflight", () => {
             applicationState: "applied_empty",
             pageIndex: 0,
             candidatePageDigest: prior.candidatePageDigest,
-            candidates: prior.candidates,
+            // PostgreSQL JSONB returns object keys in canonical order.
+            candidates: prior.candidates.map((candidate) => ({
+              poolRank: candidate.poolRank,
+              targetProfileKey: candidate.targetProfileKey,
+              targetVideoId: candidate.targetVideoId,
+            })),
             appliedRevision: 1,
             startedAt: new Date().toISOString(),
             finishedAt: new Date().toISOString(),

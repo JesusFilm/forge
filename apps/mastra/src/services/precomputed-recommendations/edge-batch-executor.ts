@@ -159,6 +159,7 @@ export type EdgeMemberInput = {
 type Scope = { generationId: string; generationInputDigest: string }
 type ApplicationState =
   | "pending"
+  | "acknowledged_unknown"
   | "applied_edges"
   | "applied_empty"
   | "stale_unapplied"
@@ -262,6 +263,8 @@ export type EdgeBatchPersistencePort = {
       appliedRevision: number | null
       startedAt: string
       finishedAt: string | null
+      recoveryReplacementCallId?: string | null
+      recoveryReconciled?: boolean
       memberSourceVideoIds: string[]
     }>
     nextCursor: string | null
@@ -377,6 +380,29 @@ export type EdgeBatchInput = Scope & {
   model: ReservationAwareStructuredModel
   persistence: EdgeBatchPersistencePort
   historical?: HistoricalSnapshot
+  recovery?: { originalCallId: string; replacementCallId: string }
+}
+
+export function acknowledgedUnknownIsSafe(
+  call: Pick<
+    SourceStatus["calls"][number],
+    | "callId"
+    | "status"
+    | "applicationState"
+    | "recoveryReplacementCallId"
+    | "recoveryReconciled"
+  >,
+  recovery?: { originalCallId: string; replacementCallId: string },
+): boolean {
+  return (
+    call.status === "pending" &&
+    call.applicationState === "acknowledged_unknown" &&
+    call.callId === "8ab8a620-1608-4115-812e-200bb2fb4b6d" &&
+    typeof call.recoveryReplacementCallId === "string" &&
+    (call.recoveryReconciled === true ||
+      (recovery?.originalCallId === call.callId &&
+        recovery.replacementCallId === call.recoveryReplacementCallId))
+  )
 }
 
 async function readFullStatus(
@@ -461,7 +487,11 @@ export async function finalizeEdgeSource(
     status.sourceCandidateDigest !== sourceCandidateDigest
   )
     throw new EdgeBatchExecutionError("candidate_page_invalid")
-  if (status.calls.some((call) => call.status === "pending"))
+  if (
+    status.calls.some(
+      (call) => call.status === "pending" && !acknowledgedUnknownIsSafe(call),
+    )
+  )
     throw new EdgeBatchExecutionError("usage_unknown")
   const applied = status.calls
     .filter(
@@ -906,6 +936,20 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
       pageSize: member.pageSize,
     }),
   )
+  if (
+    input.recovery &&
+    (input.callId !== input.recovery.replacementCallId ||
+      members.length !== 2 ||
+      planned.some(
+        (page) =>
+          page.pageIndex !== 0 ||
+          page.candidates.length !== 4 ||
+          page.candidates.some(
+            (candidate, index) => candidate.poolRank !== index,
+          ),
+      ))
+  )
+    throw new EdgeBatchExecutionError("input_invalid")
   if (planned.some((page) => page.sourceCandidateCount === 0)) {
     if (planned.length !== 1 || planned[0]!.sourceCandidateCount !== 0)
       throw new EdgeBatchExecutionError("input_invalid")
@@ -1014,6 +1058,7 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
     Buffer.byteLength(EDGE_SYSTEM, "utf8") + Buffer.byteLength(prompt, "utf8") >
     MAX_PROMPT_BYTES
   ) {
+    if (input.recovery) throw new EdgeBatchExecutionError("input_invalid")
     const shrink = [...members]
       .map((member, index) => ({
         index,
@@ -1048,7 +1093,13 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
         status.sourceCandidateDigest !== planned[index]!.sourceCandidateDigest)
     )
       throw new EdgeBatchExecutionError("candidate_page_invalid")
-    if (status.calls.some((call) => call.status === "pending"))
+    if (
+      status.calls.some(
+        (call) =>
+          call.status === "pending" &&
+          !acknowledgedUnknownIsSafe(call, input.recovery),
+      )
+    )
       throw new EdgeBatchExecutionError("usage_unknown")
   })
   const previousCalls = statuses.map((status) =>

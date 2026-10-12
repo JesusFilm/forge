@@ -17,6 +17,24 @@ const id = z.string().trim().min(1).max(191)
 const digest = z.string().regex(/^[a-f0-9]{64}$/)
 const count = z.number().int().nonnegative().max(2_147_483_647)
 const failureCode = z.string().regex(/^[a-z][a-z0-9_]{2,63}$/)
+// Exact, owner-reviewed budget2 checkpoint. This is not a general retry path.
+const RECOVERY_GENERATION_ID = "subscription-astra-budget2-20261008-v4"
+const RECOVERY_ORIGINAL_CALL_ID = "8ab8a620-1608-4115-812e-200bb2fb4b6d"
+const RECOVERY_GENERATION_INPUT_DIGEST =
+  "36d168040f404b12e12be8d4ecdf8b75c102fe459bcefb22753f434fe29443b9"
+const RECOVERY_OLD_ATTEMPT_ID = "6ef8681b-1607-4ae9-b0b1-c28c41225d6b"
+const RECOVERY_SOURCE_IDS = [
+  "cmokmj8ka0njkqsccfvhbto3g",
+  "cmokmjc390nk2qscc79tyun6g",
+] as const
+const RECOVERY_INPUT_DIGEST =
+  "d87ad22523187a6e2bdedbb6a948057fddaa9d18f7a1efe8bb3a3224587a8824"
+const RECOVERY_MEMBERSHIP_DIGEST =
+  "ec3d4b7ffdfad5bd1ef03d68a5577df2aa6b14969191e9de53b9a0ac8d983b72"
+const RECOVERY_CANDIDATE_POOL_DIGEST =
+  "0780cfd0199c04f88076afcd7869140b56bca02b3253dd5d3c21cd0de4a8797a"
+const RECOVERY_CAPTURE_REF_DIGEST =
+  "8edf8cce9a1ed5abf1ad847c47dd7f3389a9d1e431f8690ad9b3f0450b3e1cc8"
 const provisionalChoice = precomputedChoiceSchema.omit({ rank: true }).extend({
   strength: z.number().int().min(0).max(100),
 })
@@ -65,6 +83,15 @@ const status = z
     generationInputDigest: digest,
     sourceVideoId: id,
     afterCallId: z.uuid().optional(),
+  })
+  .strict()
+const recoveryAck = base
+  .extend({
+    action: z.literal("edge_manual_recovery_ack"),
+    originalCallId: z.literal(RECOVERY_ORIGINAL_CALL_ID),
+    replacementCallId: z.uuid(),
+    operatorAccountRef: z.string().regex(/^[A-Za-z0-9:_-]{8,128}$/),
+    oldProcessExitedAttested: z.literal(true),
   })
   .strict()
 const start = base
@@ -189,6 +216,7 @@ const closeEmpty = base
   .strict()
 const actionSchema = z.discriminatedUnion("action", [
   status,
+  recoveryAck,
   start,
   finish,
   finalize,
@@ -430,6 +458,38 @@ function publicMembers(
   }))
 }
 
+async function replacementReconciled(
+  tx: Tx,
+  generationId: string,
+  replacementCallId: string | null,
+): Promise<boolean> {
+  if (!replacementCallId) return false
+  const replacement =
+    await tx.recommendationPrecomputedEdgeBatchCall.findUnique({
+      where: {
+        generationId_callId: { generationId, callId: replacementCallId },
+      },
+      include: {
+        members: { orderBy: { sourceVideoId: "asc" } },
+        executionAttempt: { select: { endedAt: true } },
+      },
+    })
+  return Boolean(
+    replacement &&
+    replacement.status === "succeeded" &&
+    replacement.inputTokens !== null &&
+    replacement.outputTokens !== null &&
+    replacement.receiptDigest !== null &&
+    replacement.executionAttempt.endedAt !== null &&
+    replacement.members.length === RECOVERY_SOURCE_IDS.length &&
+    replacement.members.every(
+      (item, index) =>
+        item.sourceVideoId === RECOVERY_SOURCE_IDS[index] &&
+        ["applied_edges", "applied_empty"].includes(item.applicationState),
+    ),
+  )
+}
+
 export async function submitEdgeAction(
   prisma: PrismaClient,
   raw: unknown,
@@ -441,7 +501,12 @@ export async function submitEdgeAction(
   const input: Action = parsed.data
   return prisma.$transaction(
     async (tx) => {
-      const generation = await guards.checkedGeneration(tx, input)
+      const generation = await guards.checkedGeneration(
+        tx,
+        input,
+        input.action === "edge_manual_recovery_ack" ||
+          input.action === "edge_batch_start",
+      )
       if (
         generation.protocol_version !== 4 ||
         generation.execution_backend !== "codex_chatgpt_subscription" ||
@@ -500,6 +565,7 @@ export async function submitEdgeAction(
                   status: true,
                   startedAt: true,
                   finishedAt: true,
+                  recoveryReplacementCallId: true,
                   members: {
                     orderBy: { sourceVideoId: "asc" },
                     select: { sourceVideoId: true },
@@ -524,6 +590,19 @@ export async function submitEdgeAction(
           })
         const page = members.slice(0, 64)
         const nextCursor = members.length > 64 ? page.at(-1)!.callId : null
+        const reconciled = new Map<string, boolean>()
+        for (const item of page) {
+          const replacementCallId = item.call.recoveryReplacementCallId
+          if (replacementCallId && !reconciled.has(replacementCallId))
+            reconciled.set(
+              replacementCallId,
+              await replacementReconciled(
+                tx,
+                input.generationId,
+                replacementCallId,
+              ),
+            )
+        }
         return {
           generationId: input.generationId,
           sourceVideoId: input.sourceVideoId,
@@ -543,12 +622,19 @@ export async function submitEdgeAction(
             appliedRevision: item.appliedRevision,
             startedAt: item.call.startedAt.toISOString(),
             finishedAt: item.call.finishedAt?.toISOString() ?? null,
+            recoveryReplacementCallId:
+              item.call.recoveryReplacementCallId ?? null,
+            recoveryReconciled: item.call.recoveryReplacementCallId
+              ? (reconciled.get(item.call.recoveryReplacementCallId) ?? false)
+              : false,
             memberSourceVideoIds: item.call.members.map(
               (member) => member.sourceVideoId,
             ),
           })),
         }
       }
+      if (input.action === "edge_manual_recovery_ack")
+        return acknowledgeManualRecovery(tx, input, generation, guards)
       if (input.action === "edge_batch_start")
         return startEdgeBatch(tx, input, generation, guards)
       if (input.action === "edge_source_finalize")
@@ -559,6 +645,242 @@ export async function submitEdgeAction(
     },
     { timeout: 30_000 },
   )
+}
+
+async function acknowledgeManualRecovery(
+  tx: Tx,
+  input: z.infer<typeof recoveryAck>,
+  generation: Generation,
+  guards: Guards,
+): Promise<Record<string, unknown>> {
+  if (
+    input.generationId !== RECOVERY_GENERATION_ID ||
+    input.generationInputDigest !== RECOVERY_GENERATION_INPUT_DIGEST ||
+    input.attemptId === RECOVERY_OLD_ATTEMPT_ID ||
+    input.replacementCallId === RECOVERY_ORIGINAL_CALL_ID ||
+    generation.status !== "incomplete"
+  )
+    conflict("Manual recovery scope differs from the reviewed checkpoint")
+  guards.requireCapacityFresh(generation)
+  const newAttempt =
+    await tx.recommendationPrecomputedExecutionAttempt.findUnique({
+      where: {
+        generationId_attemptId: {
+          generationId: input.generationId,
+          attemptId: input.attemptId,
+        },
+      },
+    })
+  if (
+    !newAttempt ||
+    newAttempt.endedAt ||
+    newAttempt.accountRef !== input.operatorAccountRef ||
+    newAttempt.billingBasis !== "included_subscription" ||
+    newAttempt.backend !== "codex_chatgpt_subscription" ||
+    newAttempt.modelId !== "gpt-6-astra"
+  )
+    conflict("Manual recovery requires the active operator attempt")
+  if (
+    (await tx.recommendationPrecomputedExecutionAttempt.count({
+      where: { generationId: input.generationId, endedAt: null },
+    })) !== 1
+  )
+    conflict("Manual recovery requires one active operator attempt")
+  await tx.$queryRaw`
+    SELECT call_id FROM recommendation_precomputed_edge_batch_call
+    WHERE generation_id = ${input.generationId}
+      AND call_id = ${input.originalCallId}::uuid FOR UPDATE`
+  const original = await tx.recommendationPrecomputedEdgeBatchCall.findUnique({
+    where: {
+      generationId_callId: {
+        generationId: input.generationId,
+        callId: input.originalCallId,
+      },
+    },
+    include: { members: { orderBy: { sourceVideoId: "asc" } } },
+  })
+  if (
+    !original ||
+    original.attemptId !== RECOVERY_OLD_ATTEMPT_ID ||
+    original.status !== "pending" ||
+    original.inputDigest !== RECOVERY_INPUT_DIGEST ||
+    original.membershipDigest !== RECOVERY_MEMBERSHIP_DIGEST ||
+    original.candidatePoolDigest !== RECOVERY_CANDIDATE_POOL_DIGEST ||
+    original.captureRefDigest !== RECOVERY_CAPTURE_REF_DIGEST ||
+    original.inputTokens !== null ||
+    original.outputTokens !== null ||
+    original.cachedInputTokens !== null ||
+    original.finishedAt !== null ||
+    original.receiptDigest !== null ||
+    original.members.length !== RECOVERY_SOURCE_IDS.length ||
+    original.members.some((item, index) => {
+      const parsed = z.array(candidate).safeParse(item.candidates)
+      return (
+        item.sourceVideoId !== RECOVERY_SOURCE_IDS[index] ||
+        item.pageIndex !== 0 ||
+        !parsed.success ||
+        parsed.data.length !== 4 ||
+        parsed.data.some((candidate, rank) => candidate.poolRank !== rank) ||
+        item.candidatePageDigest !==
+          hash([
+            item.sourceVideoId,
+            item.pageIndex,
+            parsed.data.map((candidate) => [
+              candidate.poolRank,
+              candidate.targetVideoId,
+              candidate.targetProfileKey,
+            ]),
+          ])
+      )
+    })
+  )
+    conflict("Original unresolved edge reservation differs")
+  if (original.recoveryReplacementCallId !== null) {
+    if (
+      original.recoveryReplacementCallId !== input.replacementCallId ||
+      original.recoveryOperatorAccountRef !== input.operatorAccountRef ||
+      !original.recoveryOldProcessExitedAttested ||
+      original.members.some(
+        (item) => item.applicationState !== "acknowledged_unknown",
+      )
+    )
+      conflict("Manual recovery acknowledgment differs")
+    return {
+      generationId: input.generationId,
+      originalCallId: input.originalCallId,
+      replacementCallId: input.replacementCallId,
+      state: "acknowledged_unknown",
+      replay: true,
+    }
+  }
+  const oldAttempt =
+    await tx.recommendationPrecomputedExecutionAttempt.findUnique({
+      where: {
+        generationId_attemptId: {
+          generationId: input.generationId,
+          attemptId: RECOVERY_OLD_ATTEMPT_ID,
+        },
+      },
+      select: { endedAt: true },
+    })
+  if (!oldAttempt?.endedAt)
+    conflict("Original subscription attempt remains active")
+  if (
+    (await tx.recommendationPrecomputedEdgeBatchCall.count({
+      where: { generationId: input.generationId },
+    })) !== 1 ||
+    (await tx.recommendationPrecomputedProfileCall.count({
+      where: { generationId: input.generationId, status: "pending" },
+    })) !== 0 ||
+    original.members.some((item) => item.applicationState !== "pending") ||
+    (await tx.recommendationPrecomputedBuildSource.count({
+      where: {
+        generationId: input.generationId,
+        state: "claimed",
+        leaseExpiresAt: { gt: new Date() },
+      },
+    })) !== 0
+  )
+    conflict("Manual recovery requires one unresolved call and no live leases")
+  const meta = await tx.recommendationPrecomputedGeneration.findUniqueOrThrow({
+    where: { id: input.generationId },
+  })
+  const binding = await verifiedImportedGaCapture(tx, meta)
+  if (
+    !binding ||
+    binding.bindingDigest !== RECOVERY_CAPTURE_REF_DIGEST ||
+    binding.destination.candidatePoolDigest !== RECOVERY_CANDIDATE_POOL_DIGEST
+  )
+    conflict("Historical recovery capture identity differs")
+  const sources = await tx.recommendationPrecomputedBuildSource.findMany({
+    where: {
+      generationId: input.generationId,
+      sourceVideoId: { in: [...RECOVERY_SOURCE_IDS] },
+    },
+    orderBy: { sourceVideoId: "asc" },
+  })
+  if (
+    sources.length !== RECOVERY_SOURCE_IDS.length ||
+    sources.some((source, index) => {
+      const member = original.members[index]!
+      return (
+        source.sourceVideoId !== member.sourceVideoId ||
+        source.state !== "claimed" ||
+        (source.leaseExpiresAt !== null &&
+          source.leaseExpiresAt > new Date()) ||
+        source.checkpointRevision !== member.checkpointRevision ||
+        source.edgeSourceCandidateCount !== member.sourceCandidateCount ||
+        source.edgeSourceCandidateDigest !== member.sourceCandidateDigest ||
+        source.edgeSourceProfileKey !== member.sourceProfileKey ||
+        source.edgeCandidatePoolDigest !== RECOVERY_CANDIDATE_POOL_DIGEST ||
+        source.edgeHistoricalRefDigest !== member.historicalRefDigest ||
+        source.historicalProvenance === null
+      )
+    })
+  )
+    conflict("Recovered source or historical identity differs")
+  const profileKeys = [
+    ...original.members.flatMap((item) => [
+      item.sourceProfileKey,
+      ...(item.candidates as z.infer<typeof candidate>[]).map(
+        (candidate) => candidate.targetProfileKey,
+      ),
+    ]),
+  ]
+  const profiles = await tx.recommendationPrecomputedContentProfile.findMany({
+    where: {
+      generationId: input.generationId,
+      cacheKey: { in: [...new Set(profileKeys)] },
+      state: "ready",
+    },
+    select: { cacheKey: true, videoId: true },
+  })
+  const byProfileKey = new Map(
+    profiles.map((profile) => [profile.cacheKey, profile.videoId]),
+  )
+  if (
+    profiles.length !== new Set(profileKeys).size ||
+    original.members.some(
+      (item) =>
+        byProfileKey.get(item.sourceProfileKey) !== item.sourceVideoId ||
+        (item.candidates as z.infer<typeof candidate>[]).some(
+          (candidate) =>
+            byProfileKey.get(candidate.targetProfileKey) !==
+            candidate.targetVideoId,
+        ),
+    )
+  )
+    conflict("Recovered content profiles are not ready")
+  await guards.reserveBudget(tx, input.generationId, 512)
+  await tx.recommendationPrecomputedEdgeBatchCall.update({
+    where: {
+      generationId_callId: {
+        generationId: input.generationId,
+        callId: input.originalCallId,
+      },
+    },
+    data: {
+      recoveryReplacementCallId: input.replacementCallId,
+      recoveryOperatorAccountRef: input.operatorAccountRef,
+      recoveryAcknowledgedAt: new Date(),
+      recoveryOldProcessExitedAttested: true,
+    },
+  })
+  await tx.recommendationPrecomputedEdgeBatchMember.updateMany({
+    where: {
+      generationId: input.generationId,
+      callId: input.originalCallId,
+      applicationState: "pending",
+    },
+    data: { applicationState: "acknowledged_unknown" },
+  })
+  return {
+    generationId: input.generationId,
+    originalCallId: input.originalCallId,
+    replacementCallId: input.replacementCallId,
+    state: "acknowledged_unknown",
+    replay: false,
+  }
 }
 
 async function startEdgeBatch(
@@ -577,6 +899,82 @@ async function startEdgeBatch(
   )
     conflict("Subscription attempt is inactive")
   guards.requireCapacityFresh(generation)
+  const acknowledged =
+    await tx.recommendationPrecomputedEdgeBatchCall.findFirst({
+      where: {
+        generationId: input.generationId,
+        recoveryReplacementCallId: { not: null },
+      },
+      include: { members: { orderBy: { sourceVideoId: "asc" } } },
+    })
+  if (acknowledged) {
+    if (
+      input.generationId !== RECOVERY_GENERATION_ID ||
+      acknowledged.callId !== RECOVERY_ORIGINAL_CALL_ID ||
+      !acknowledged.recoveryReplacementCallId ||
+      acknowledged.members.some(
+        (item) => item.applicationState !== "acknowledged_unknown",
+      )
+    )
+      conflict("Manual recovery acknowledgment differs")
+    if (input.callId === acknowledged.recoveryReplacementCallId) {
+      if (
+        input.members.length !== RECOVERY_SOURCE_IDS.length ||
+        input.members.some((item, index) => {
+          const original = acknowledged.members[index]
+          const originalCandidates = z
+            .array(candidate)
+            .safeParse(original?.candidates)
+          return (
+            !original ||
+            !originalCandidates.success ||
+            item.sourceVideoId !== RECOVERY_SOURCE_IDS[index] ||
+            item.sourceVideoId !== original.sourceVideoId ||
+            item.pageIndex !== 0 ||
+            item.pageIndex !== original.pageIndex ||
+            item.sourceProfileKey !== original.sourceProfileKey ||
+            item.candidatePageDigest !== original.candidatePageDigest ||
+            item.sourceCandidateCount !== original.sourceCandidateCount ||
+            item.sourceCandidateDigest !== original.sourceCandidateDigest ||
+            item.historicalRefDigest !== original.historicalRefDigest ||
+            item.candidates.length !== originalCandidates.data.length ||
+            item.candidates.some(
+              (offered, candidateIndex) =>
+                offered.poolRank !==
+                  originalCandidates.data[candidateIndex]?.poolRank ||
+                offered.targetVideoId !==
+                  originalCandidates.data[candidateIndex]?.targetVideoId ||
+                offered.targetProfileKey !==
+                  originalCandidates.data[candidateIndex]?.targetProfileKey,
+            )
+          )
+        }) ||
+        input.candidatePoolDigest !== acknowledged.candidatePoolDigest ||
+        input.selectedCorpusDigest !== acknowledged.selectedCorpusDigest ||
+        input.captureRefDigest !== acknowledged.captureRefDigest
+      )
+        conflict("Replacement edge reservation differs from original page")
+    } else {
+      if (
+        !(await replacementReconciled(
+          tx,
+          input.generationId,
+          acknowledged.recoveryReplacementCallId,
+        ))
+      )
+        conflict("Replacement edge receipt has not safely applied")
+      if (
+        (await tx.recommendationPrecomputedEdgeBatchCall.count({
+          where: {
+            generationId: input.generationId,
+            status: "pending",
+            callId: { not: RECOVERY_ORIGINAL_CALL_ID },
+          },
+        })) !== 0
+      )
+        conflict("Another unknown edge call remains pending")
+    }
+  }
   if (
     generation.input_mode === "content_only" &&
     input.captureRefDigest !== null
@@ -1081,6 +1479,8 @@ async function finishEdgeBatch(
     call.spanOfferDigest !== input.spanOfferDigest
   )
     conflict("Edge receipt has no matching reservation")
+  if (call.recoveryReplacementCallId !== null)
+    conflict("Acknowledged unknown edge call cannot apply a late receipt")
   const receiptDigest = hash(input)
   if (call.status !== "pending") {
     if (call.receiptDigest !== receiptDigest)
@@ -1361,6 +1761,29 @@ async function finalizeEdgeSource(
   })
   if (members.some((item) => item.applicationState === "pending"))
     conflict("Unknown edge call consumption remains pending")
+  for (const item of members.filter(
+    (member) => member.applicationState === "acknowledged_unknown",
+  )) {
+    const original =
+      await tx.recommendationPrecomputedEdgeBatchCall.findUniqueOrThrow({
+        where: {
+          generationId_callId: {
+            generationId: input.generationId,
+            callId: item.callId,
+          },
+        },
+        select: { recoveryReplacementCallId: true },
+      })
+    if (
+      item.callId !== RECOVERY_ORIGINAL_CALL_ID ||
+      !(await replacementReconciled(
+        tx,
+        input.generationId,
+        original.recoveryReplacementCallId,
+      ))
+    )
+      conflict("Replacement edge receipt has not safely applied")
+  }
   const applied = members.filter((item) =>
     ["applied_edges", "applied_empty"].includes(item.applicationState),
   )
