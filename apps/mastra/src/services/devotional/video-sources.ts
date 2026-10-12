@@ -164,6 +164,22 @@ const SOURCES: VideoSource[] = [
     style: "clean",
     captions: { kind: "file", path: "video-sources/lumo-luke-18.en.vtt" },
   },
+  {
+    key: "lumo-luke-17",
+    index: 1005,
+    mediaComponentId: "6_GOLuke2617",
+    title: "Jesus Heals Ten Men with Leprosy",
+    film: "lumo",
+    passage: { reference: "Luke 17:11-19", osisRef: "Luke.17.11-Luke.17.19" },
+    window: { startSec: 117.2, lengthSec: 74 },
+    // ~73s of speech ×1.05 → ~70s on screen, plus the closing hold.
+    maxVideoCardSec: 74,
+    videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
+    filmMark: "lumo",
+    style: "clean",
+    captions: { kind: "file", path: "video-sources/lumo-luke-17.en.vtt" },
+  },
 ]
 
 const BY_KEY = new Map(SOURCES.map((s) => [s.key, s]))

@@ -117,6 +117,22 @@ const STORIES: Record<
     ],
     out: "Martha",
   },
+  "lumo-luke-17": {
+    // Luke sets it straight after the servant who only did his duty and is
+    // owed no thanks (17:7-10); then nine are healed and do not come back,
+    // and the one who does is a Samaritan.
+    setting: { reference: "Luke 17:7-10", osis: ["Luke.17", 7, 10] },
+    terms: [
+      "Leprosy",
+      "Leper, Leprosy",
+      "Samaritans",
+      "Priest",
+      "Galilee",
+      "Faith",
+      "ON THE JOURNEY TO JERUSALEM - DEPARTURE FROM EPHRAIM BY WAY OF SAMARIA AND GALILEE - HEALING OF TEN LEPERS - PROPHETIC DISCOURSE OF THE COMING KINGDOM - ON DIVORCE: JEWISH VIEWS OF IT - THE BLESSING TO LITTLE CHILDREN",
+    ],
+    out: "Lepers",
+  },
   "jesus-32": {
     // Luke puts the blind man straight after the Twelve fail to understand
     // the third passion prediction ("the meaning was hidden from them"): the
