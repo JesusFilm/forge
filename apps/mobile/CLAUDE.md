@@ -1609,6 +1609,52 @@ design record is
   0-inset device, and one `ReportPushOpen` per tap in the fake-admin proxy log
   (two when admin refuses the viewer handle).
 
+### Android cold taps and the task restart
+
+- **A cold tap reaches `MainActivity` only through `onNewIntent`.** A cold
+  tap is a tap after Android stopped the process while the task stayed in
+  Recents. Android restarts the old task with its old launch intent and sends
+  the tap as a new intent. Expo's activity wrapper drops a new intent while
+  the app loads (`ReactActivityDelegateWrapper.onNewIntent` in
+  `expo@57.0.27`), so the app opened Home and reported no open
+  (expo/expo#49254). Firebase posts the notification in this state, because
+  the app is not on screen.
+- **`plugins/withAndroidPushTapRelay.js` adds two blocks to `MainActivity.kt`.**
+  - Block A runs in `onCreate`, before the superclass call. On a restore
+    (saved state, or `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`), it removes
+    `google.message_id` from the activity's own intent. The tap that created
+    the task then does not open again, and a newer tap wins.
+  - Block B overrides `onNewIntent`. It gives a Firebase-posted tap to
+    `NotificationManager.onNotificationResponseFromExtras`, then removes
+    `google.message_id`, so Expo's own listener ignores the tap. It skips an
+    intent with Expo's response keys, because Expo's forwarder already
+    delivers that tap.
+  - The plugin throws at prebuild on a Java `MainActivity`, a missing anchor,
+    or another `onNewIntent` override. A skip would ship the defect. Never
+    write the text `super.onCreate(` in a block: expo-splash-screen and
+    react-native-google-cast anchor on the first line that holds it.
+- **`src/lib/__tests__/androidPushTapUpstream.guard.test.js` is the
+  tripwire.** It pins `expo` 57.0.27, `expo-notifications` 57.0.22,
+  `expo-updates` 57.0.25, and eight upstream facts. A red test means: re-check
+  expo/expo#49254 and the plugin. Expect the Expo SDK 58 upgrade to trip it,
+  because expo PR #47615 drains the tap queue.
+- **Make a cold tap with `am kill`, not a force stop.** Pause the media, press
+  Home, then run `adb shell am kill org.jesusfilm.forgewatch`. A playing mini
+  player keeps the process alive, and `am kill` then does nothing. Check that
+  `pidof` is empty and the task is still in Recents. A force stop also blocks
+  push delivery until the next launch.
+- **Read two logs.** `adb logcat -s ForgePushTap` shows each block.
+  `adb logcat -b events` shows `wm_new_intent`, then `wm_restart_activity`,
+  and no `wm_create_activity` for `MainActivity`. A dev client cannot show
+  the replay cases, because the dev launcher restarts the task with
+  `FLAG_ACTIVITY_CLEAR_TASK`. Use a release build for them.
+- **Device pass, 2026-10-13, Samsung Galaxy S20 (Android 13).** Cold taps to
+  a video, a series, and an experience opened the destination. A newer cold
+  tap won over the tap that created the task. A reopen from Recents, from the
+  launcher, and after a force stop did not replay an earlier tap. The fake
+  admin counted one `ReportPushOpen` per dev-client tap. Not yet run: the
+  "Don't keep activities" case and the lapse reminder cold tap.
+
 ## Cast SDK sheet theming
 
 **Every cast sheet is drawn by the Cast SDK, not by us, and the only lever is
