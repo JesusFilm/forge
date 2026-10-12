@@ -40,6 +40,17 @@ describe("splitCommentaryPoints", () => {
     expect(points[1].text).toContain("he is near")
   })
 
+  it("splits Ryle's 'Let us mark' lead-ins (13 Luke sections, the ten lepers among them)", () => {
+    const lepers = `Let us mark, firstly, in this passage — how earnestly men can cry for help. They cried. Let us mark, secondly, in these verses — how help meets men in the path of obedience. Let us mark, lastly, in these verses — what a rare thing is thankfulness.`
+    const points = splitCommentaryPoints(lepers)
+    expect(points.map((p) => p.ordinal)).toEqual([
+      "firstly",
+      "secondly",
+      "lastly",
+    ])
+    expect(points[2].text).toContain("thankfulness")
+  })
+
   it("returns an empty array for continuous exposition (no ordinal structure)", () => {
     const prose =
       "The Gospel of Luke contains many precious things. We see the goodness of God in every chapter."

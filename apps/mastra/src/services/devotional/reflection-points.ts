@@ -34,7 +34,7 @@ export type CommentaryPoint = {
  * observe"…), so match on the ORDINAL rather than trying to enumerate verbs.
  */
 const ORDINAL_LEAD_IN =
-  /\b(?:we|let us)\s+(?:learn|see|observe|notice|have|are taught|should notice|should observe|should learn)\s*,?\s+(firstly|secondly|thirdly|fourthly|fifthly|sixthly|lastly)\b/gi
+  /\b(?:we|let us)\s+(?:learn|see|observe|notice|mark|have|are taught|should notice|should observe|should learn)\s*,?\s+(firstly|secondly|thirdly|fourthly|fifthly|sixthly|lastly)\b/gi
 
 /**
  * Matthew Henry numbers his points with UPPERCASE roman numerals instead of

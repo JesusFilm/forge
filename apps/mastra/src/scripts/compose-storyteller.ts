@@ -351,7 +351,12 @@ async function main() {
     (elsewhere
       ? {
           reference: verseRef!,
-          text: balanceQuotes(elsewhere),
+          // A verse cut out of a longer sentence ends on its comma ("heals all
+          // your diseases,"); on the closing card it has to end the thought.
+          text: balanceQuotes(elsewhere).replace(
+            /[,;:\u2014-]+(?=[\u201d"']*$)/,
+            ".",
+          ),
           translation: DEVOTIONAL_BIBLE.abbreviation,
           needsCanonicalSource: false,
         }
