@@ -291,12 +291,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         },
       })
       const observed = await probe()
+      const measuredAt = new Date()
       const result = await attestPrecomputedLaunchCapacity(prisma, {
         generationId,
         operator: { id: "native-capacity-operator", role: "ADMIN" },
-        now: new Date(),
+        now: measuredAt,
         measurement: {
-          measuredAt: new Date().toISOString(),
+          measuredAt: measuredAt.toISOString(),
           clusterSystemId: observed.cluster_system_id,
           observedDbBytes: Number(observed.observed_db_bytes),
           availableBytes: 6_000_000_000,
