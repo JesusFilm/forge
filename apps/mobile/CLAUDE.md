@@ -2890,7 +2890,9 @@ catalog) stays left-to-right. The plan is
   styles by itself. Directional icons go through `directionalIcon()`, and
   horizontal gesture math through `layoutSign()` (`src/i18n/layoutRtl.ts`).
   Playback controls and layers that draw at a measured x render inside a
-  `direction: "ltr"` container (R12, KTD7).
+  `direction: "ltr"` container (R12, KTD7). The player's route buttons (Cast,
+  AirPlay, settings) are not playback controls: they take `appDirection()`,
+  so they mirror and stay clear of the watch page's minimize button.
 - **Text edges.** With `direction` set to the text's own language, both
   platforms read `textAlign: "left"` as the start of that language (device
   check, 2026-10-12). `textDirection.ts` depends on this.
@@ -2903,6 +2905,14 @@ catalog) stays left-to-right. The plan is
   - Android replaces the activity resources at launch and at configuration
     changes, sometimes with no callback. A pre-draw guard applies the
     direction again before each frame.
+- **A reload that does not happen (seen 2026-10-13, Pixel 9a emulator).** The
+  save sets React Native's own direction before the reload, and React Native's
+  layout reads it on each pass. Android's `reloadAppAsync` resolves with no
+  reload when the current activity is not a ready `ReactActivity`; once, on a
+  return during a per-app language change, that left English text right-aligned
+  over a left-to-right layout. So a reload that rejects, or that has not ended
+  the runtime after `RELOAD_DEADLINE_MS`, saves and applies the direction in use
+  again and reports `reload_failed` or `reload_stalled`.
 
 #### Off switch (runbook)
 

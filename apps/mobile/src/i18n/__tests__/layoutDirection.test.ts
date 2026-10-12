@@ -304,16 +304,26 @@ describe("startLayoutDirection at start", () => {
     mock.reloadRejects = true
     const controller = start()
     await settle()
+    // React Native's own direction goes back too: its layout reads it on each pass.
     expect(mock.calls).toEqual([
       "saveDirection",
       "reload",
+      "saveDirection",
       "applyNativeMode:ltr",
-      "clearReloadRecord",
     ])
+    expect(mock.saveArgs[1]).toEqual({
+      isRTL: false,
+      nativeMode: "ltr",
+      reloadCount: 0,
+      reloadKind: null,
+      reloadBundle: null,
+    })
     expect(mock.reports).toHaveLength(1)
     expect(controller.isDirectionReloadPending()).toBe(false)
-    jest.advanceTimersByTime(controller.RELOAD_GATE_MS)
+    jest.advanceTimersByTime(controller.RELOAD_DEADLINE_MS)
+    await settle()
     expect(mock.reports).toHaveLength(1)
+    expect(mock.calls).toHaveLength(4)
   })
 
   it("opens the gate and reports when the reload never ends this runtime", async () => {
@@ -321,13 +331,27 @@ describe("startLayoutDirection at start", () => {
     const controller = start()
     await settle()
     expect(mock.calls).toEqual(["saveDirection", "reload"])
-    jest.advanceTimersByTime(controller.RELOAD_GATE_MS - 1)
+    jest.advanceTimersByTime(controller.RELOAD_DEADLINE_MS - 1)
     expect(controller.isDirectionReloadPending()).toBe(true)
     jest.advanceTimersByTime(1)
+    await settle()
     expect(controller.isDirectionReloadPending()).toBe(false)
     expect(
       mock.reports.map((r) => r.context["layout_direction.fault"]),
     ).toEqual(["reload_stalled"])
+    expect(mock.calls).toEqual([
+      "saveDirection",
+      "reload",
+      "saveDirection",
+      "applyNativeMode:ltr",
+    ])
+    expect(mock.saveArgs[1]).toEqual({
+      isRTL: false,
+      nativeMode: "ltr",
+      reloadCount: 0,
+      reloadKind: null,
+      reloadBundle: null,
+    })
   })
 
   it("clears a reload record when the next start cannot read the locale", async () => {
@@ -427,6 +451,34 @@ describe("startLayoutDirection on an Android return (KTD3.3)", () => {
     await settle()
     expect(mock.calls).toEqual(["clearReloadRecord", "saveDirection", "reload"])
     expect(mock.saveArgs).toMatchObject([{ isRTL: true, reloadKind: "return" }])
+  })
+
+  it("puts the direction in use back when a return reload never ends this runtime", async () => {
+    const controller = start()
+    await settle()
+    moveTo("background")
+    changeLocale("ar")
+    moveTo("active")
+    await settle()
+    expect(mock.calls).toEqual(["saveDirection", "reload"])
+    jest.advanceTimersByTime(controller.RELOAD_DEADLINE_MS)
+    await settle()
+    expect(mock.calls).toEqual([
+      "saveDirection",
+      "reload",
+      "saveDirection",
+      "applyNativeMode:ltr",
+    ])
+    expect(mock.saveArgs[1]).toEqual({
+      isRTL: false,
+      nativeMode: "ltr",
+      reloadCount: 0,
+      reloadKind: null,
+      reloadBundle: null,
+    })
+    expect(
+      mock.reports.map((r) => r.context["layout_direction.fault"]),
+    ).toEqual(["reload_stalled"])
   })
 
   it("waits for the move to active, as in picture-in-picture", async () => {

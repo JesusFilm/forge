@@ -138,8 +138,8 @@ const NO_RECORD: LayoutDirectionState = {
   reportedFault: null,
 }
 
-/** A reload that never tears this runtime down opens the gate after this. */
-export const RELOAD_GATE_MS = 8000
+/** A direction reload that has not ended this runtime by then did not happen. */
+export const RELOAD_DEADLINE_MS = 8000
 
 // KTD3.5: the first reader takes the record, before any clear. A reloaded
 // runtime has a count and no reported fault; a stuck one has already reported.
@@ -214,10 +214,37 @@ function report(fault: LayoutDirectionFault["fault"], error?: unknown): void {
 async function reloadFor(
   decision: Extract<DirectionDecision, { kind: "reload" }>,
   kind: ReloadKind,
-  inUseMode: NativeMode,
+  inUse: { isRTL: boolean; nativeMode: NativeMode },
   bundle: string,
 ): Promise<void> {
   const layout = getLayoutDirectionModule()
+  let restored = false
+  // The save sets React Native's own direction, which its layout reads on each
+  // pass. So a reload that fails, or never ends this runtime, puts the direction
+  // in use back; a gate behind a load also needs a time-based release.
+  const restore = async (
+    fault: LayoutDirectionFault["fault"],
+    error?: unknown,
+  ): Promise<void> => {
+    if (restored) return
+    restored = true
+    report(fault, error)
+    await layout
+      .saveDirection({
+        isRTL: inUse.isRTL,
+        nativeMode: inUse.nativeMode,
+        reloadCount: 0,
+        reloadKind: null,
+        reloadBundle: null,
+      })
+      .catch(() => {})
+    await layout.applyNativeMode(inUse.nativeMode).catch(() => {})
+    setReloadPending(false)
+  }
+  const deadline = setTimeout(
+    () => void restore("reload_stalled"),
+    RELOAD_DEADLINE_MS,
+  )
   try {
     await layout.saveDirection({
       isRTL: decision.wantedRTL,
@@ -228,10 +255,8 @@ async function reloadFor(
     })
     await reloadAppAsync("layout direction")
   } catch (error) {
-    report("reload_failed", error)
-    await layout.applyNativeMode(inUseMode).catch(() => {})
-    await layout.clearReloadRecord().catch(() => {})
-    setReloadPending(false)
+    clearTimeout(deadline)
+    await restore("reload_failed", error)
   }
 }
 
@@ -260,19 +285,18 @@ function check(kind: ReloadKind): void {
       if (decision.clearRecord) layout.clearReloadRecord().catch(failed)
       return
     case "reload":
-      if (kind === "start") {
-        setReloadPending(true)
-        // apps/mobile/CLAUDE.md: a gate behind a load needs a time-based release.
-        setTimeout(() => {
-          if (!reloadPending) return
-          report("reload_stalled")
-          setReloadPending(false)
-        }, RELOAD_GATE_MS)
-      }
+      if (kind === "start") setReloadPending(true)
       void reloadFor(
         decision,
         kind,
-        nativeModeFor(inUseRTL, MIRRORED_LAYOUT_ENABLED, Platform.OS),
+        {
+          isRTL: inUseRTL,
+          nativeMode: nativeModeFor(
+            inUseRTL,
+            MIRRORED_LAYOUT_ENABLED,
+            Platform.OS,
+          ),
+        },
         readBundle(),
       )
       return
