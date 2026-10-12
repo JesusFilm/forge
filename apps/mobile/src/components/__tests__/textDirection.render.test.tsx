@@ -10,6 +10,7 @@ const mockLayout: { rtl: boolean; mirroring: boolean } = {
   mirroring: true,
 }
 jest.mock("../../i18n/layoutRtl", () => ({
+  ...jest.requireActual("../../i18n/layoutRtl"),
   isLayoutRtl: () => mockLayout.rtl,
 }))
 jest.mock("../../i18n/mirroredLayout", () => ({

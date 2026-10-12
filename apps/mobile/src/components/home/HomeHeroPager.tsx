@@ -37,9 +37,11 @@ import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import { prefetchHeroStream, useHeroStream } from "../../hooks/useHeroStream"
 import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
 import { useUiTag } from "../../hooks/useUiTag"
+import { isLayoutRtl } from "../../i18n/layoutRtl"
 import { textDirectionProps } from "../../i18n/textDirection"
 import { useLocaleEpoch } from "../../i18n/useT"
 import { datadogLog } from "../../lib/datadog"
+import { scrollPageIndex } from "../../lib/horizontalPaging"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { sanitizeVideoErrorMessage } from "../../lib/videoQoe"
@@ -501,10 +503,19 @@ export function HomeHeroPager({
   // on a different index are stale (an older animation finishing) and must
   // not move the reducer.
   const pendingScrollIndexRef = useRef(0)
+  // In a right-to-left layout the list counts an offset from its right edge by
+  // the last content width it measured, so a scroll waits for these slides.
+  const measuredRef = useRef<{ slideCount: number; width: number } | null>(null)
 
   useEffect(() => {
     if (state.slides.length === 0) return
     pendingScrollIndexRef.current = state.currentIndex
+    if (
+      isLayoutRtl() &&
+      measuredRef.current?.slideCount !== state.slides.length
+    ) {
+      return
+    }
     try {
       listRef.current?.scrollToIndex({
         index: state.currentIndex,
@@ -515,12 +526,30 @@ export function HomeHeroPager({
     }
   }, [state.currentIndex, state.slides.length])
 
+  const handleContentSizeChange = useCallback(
+    (width: number) => {
+      const widthChanged = measuredRef.current?.width !== width
+      measuredRef.current = { slideCount: state.slides.length, width }
+      if (!isLayoutRtl() || !widthChanged) return
+      try {
+        listRef.current?.scrollToIndex({
+          index: pendingScrollIndexRef.current,
+          animated: false,
+        })
+      } catch {
+        // A shorter queue can put the pending index out of range; the scroll
+        // effect then scrolls to the reset index.
+      }
+    },
+    [state.slides.length],
+  )
+
   // List is scrollEnabled={false} — slide changes are programmatic only (all
   // route through the handle/reducer). Animated scrollToIndex still fires
   // momentum end; SLIDE_SHOWN on the settled index no-ops if it matches.
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth)
+      const index = scrollPageIndex(e.nativeEvent, screenWidth)
       // Stale settle (an older animation overtaken by a newer target) must
       // not move the reducer; legit off-page re-syncs go through
       // onScrollToIndexFailed instead.
@@ -624,6 +653,7 @@ export function HomeHeroPager({
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleMomentumScrollEnd}
+        onContentSizeChange={handleContentSizeChange}
         onScrollToIndexFailed={handleScrollToIndexFailed}
         getItemLayout={getItemLayout}
         initialNumToRender={1}

@@ -8,6 +8,7 @@ let Stack: typeof import("expo-router").Stack
 let useRouter: typeof import("expo-router").useRouter
 let StatusBar: typeof import("expo-status-bar").StatusBar
 let Ionicons: typeof import("@expo/vector-icons/Ionicons").default
+let directionalIcon: typeof import("../src/i18n/layoutRtl").directionalIcon
 let ApolloProvider: typeof import("@apollo/client/react").ApolloProvider
 let SafeAreaProvider: typeof import("react-native-safe-area-context").SafeAreaProvider
 let getApolloClient: typeof import("../src/lib/apolloClient").getApolloClient
@@ -72,6 +73,7 @@ try {
   useRouter = router.useRouter
   StatusBar = require("expo-status-bar").StatusBar
   Ionicons = require("@expo/vector-icons/Ionicons").default
+  directionalIcon = require("../src/i18n/layoutRtl").directionalIcon
   ApolloProvider = require("@apollo/client/react").ApolloProvider
   SafeAreaProvider = require("react-native-safe-area-context").SafeAreaProvider
   getApolloClient = require("../src/lib/apolloClient").getApolloClient
@@ -292,7 +294,11 @@ function HeaderBackButton() {
       {...{ "dd-action-name": "header-back" }}
       hitSlop={12}
     >
-      <Ionicons name="chevron-back" size={28} color={ACCENT} />
+      <Ionicons
+        name={directionalIcon("chevron-back")}
+        size={28}
+        color={ACCENT}
+      />
     </Pressable>
   )
 }

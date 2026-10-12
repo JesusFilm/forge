@@ -43,6 +43,7 @@ import {
   useManagedVideoPlayer,
   type SwapPositionClaim,
 } from "../../hooks/useManagedVideoPlayer"
+import { directionalIcon } from "../../i18n/layoutRtl"
 import { getAuthSession } from "../../lib/authSession"
 import { BLACK } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
@@ -2021,7 +2022,11 @@ function ActivePlaybackHost({
         !request.fullscreen && (
           <FloatingBackButton
             {...BACK_BUTTON_PROPS}
-            icon={request.session != null ? "chevron-down" : "chevron-back"}
+            icon={
+              request.session != null
+                ? "chevron-down"
+                : directionalIcon("chevron-back")
+            }
           />
         )}
     </View>

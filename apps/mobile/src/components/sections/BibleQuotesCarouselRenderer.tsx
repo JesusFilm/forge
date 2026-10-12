@@ -43,6 +43,7 @@ import {
 } from "../../lib/bibleCardTreatment"
 import type { VerseRef } from "../../lib/bible/versification/convert"
 import { datadogLog } from "../../lib/datadog"
+import { scrollPageIndex } from "../../lib/horizontalPaging"
 import {
   explicitDirectionStyle,
   useTextDirection,
@@ -590,8 +591,7 @@ export function BibleQuotesCarouselRenderer({
 
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const offsetX = e.nativeEvent.contentOffset.x
-      const index = Math.round(offsetX / (cardWidth + CARD_GAP))
+      const index = scrollPageIndex(e.nativeEvent, cardWidth + CARD_GAP)
       setActiveIndex(Math.min(Math.max(index, 0), quotes.length - 1))
     },
     [quotes.length, cardWidth],

@@ -41,7 +41,7 @@ jest.mock("expo-localization/build/ExpoLocalization", () => ({
 
 import { act } from "react"
 import type React from "react"
-import { AccessibilityInfo, Dimensions } from "react-native"
+import { AccessibilityInfo, Dimensions, I18nManager } from "react-native"
 
 import {
   CARD_CONTENT_PADDING,
@@ -1588,5 +1588,51 @@ describe("BibleQuotesCarouselRenderer — header share button", () => {
 
     expect(shareButtons(renderer)).toHaveLength(0)
     expect(findText(renderer, "GENESIS 1:26-27")).toBeDefined()
+  })
+})
+
+// feat-692 U5: both platforms report contentOffset.x from the left edge of the
+// content, so a right-to-left carousel counts its resting card from the right.
+describe("BibleQuotesCarouselRenderer — the resting card in a right-to-left layout", () => {
+  // 750 wide: five 718-wide cards, 12 between them, 16 at each end.
+  const PAGE = 730
+  const CONTENT = 3670
+  const VIEWPORT = 750
+
+  function carouselList(renderer: TestInstance): RenderedNode {
+    const [list] = renderer.root.findAll(
+      (node) =>
+        node.props.accessibilityRole === "adjustable" &&
+        typeof node.props.onMomentumScrollEnd === "function",
+    )
+    return list
+  }
+
+  it("names the card that rests in view", async () => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+    const renderer = await renderSettled(
+      Array.from({ length: 5 }, () => PASSAGE_QUOTE),
+    )
+    const settle = carouselList(renderer).props.onMomentumScrollEnd as (
+      e: unknown,
+    ) => void
+
+    act(() => {
+      settle({
+        nativeEvent: {
+          // The fourth card from the right edge.
+          contentOffset: { x: CONTENT - VIEWPORT - 3 * PAGE },
+          contentSize: { width: CONTENT },
+          layoutMeasurement: { width: VIEWPORT },
+        },
+      })
+    })
+
+    expect(carouselList(renderer).props.accessibilityValue).toEqual({
+      text: "Item 4 of 5",
+    })
   })
 })

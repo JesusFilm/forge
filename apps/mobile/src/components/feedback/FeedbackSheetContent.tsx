@@ -22,6 +22,7 @@ import Ionicons from "@expo/vector-icons/Ionicons"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { useTypography } from "../../hooks/useTypography"
 import { useUiTag } from "../../hooks/useUiTag"
+import { directionalIcon } from "../../i18n/layoutRtl"
 import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import {
@@ -231,7 +232,11 @@ export function FeedbackSheetContent({
             accessibilityLabel={t("backAriaLabel")}
             {...{ "dd-action-name": "feedback-back" }}
           >
-            <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
+            <Ionicons
+              name={directionalIcon("chevron-back")}
+              size={22}
+              color={TEXT_PRIMARY}
+            />
           </Pressable>
         ) : (
           <View style={styles.headerSlot} />
@@ -275,7 +280,11 @@ export function FeedbackSheetContent({
             <Text style={[styles.tileLabel, typography.body, uiDirection]}>
               {feedbackKindLabel(t, kind)}
             </Text>
-            <Ionicons name="chevron-forward" size={18} color={TEXT_SECONDARY} />
+            <Ionicons
+              name={directionalIcon("chevron-forward")}
+              size={18}
+              color={TEXT_SECONDARY}
+            />
           </Pressable>
         ))}
       </View>,
