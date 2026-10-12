@@ -254,3 +254,48 @@ an explicit action after the existing source leases expire naturally at
 checks. Full-build call count, duration, and token projections must use the
 observed subscription runner; earlier API-price illustrations are not measured
 subscription consumption or an established full-catalog token bound.
+
+## October 12: full-run efficiency hold
+
+After the second pilot, a read-only pass through the actual frozen catalog found
+936 planned map parts, 172 metadata-only sources, and 4,128,488 bytes of complete
+selected transcript text. The existing source pairing and eight-target pages
+produce 7,472 source pages and 3,850 edge calls before any prompt-size splitting.
+The earlier 10–20 million input-token illustration is not a verified projection
+for this implementation. No token-to-subscription-percent conversion is justified.
+
+Further model calls, including the prepared third pilot, are held while the two
+existing Sol workers implement bounded efficiency improvements: lossless edge
+prompt encoding and documented per-invocation suppression of irrelevant Codex
+context. This does not change the model, reasoning effort, candidate coverage,
+complete transcript selection, evidence validation, accepted-connection retention,
+manual-only controls, or allowance reserve. Existing profiles and receipts remain
+protected. Root will review exact provenance/replay compatibility and benchmark
+concrete changes before explicitly deciding the next manual segment.
+
+The no-inference plan and saved benchmark inputs are under the protected
+October 12 operator directory: `frozen-catalog-dry-plan.json`,
+`saved-pilot-benchmark-inputs.json`, and `saved-pilot-benchmark-history.json`.
+All input digests match the frozen generation. The read-only analysis bridge was
+stopped after export; no model call, GA API request, or database write occurred.
+
+The compact renderer and lean-context adapter are integrated at `6d06f9794`.
+The actual eight-candidate saved input, including GA aggregates, shrank from
+46,097 to 33,965 UTF-8 bytes (26.3%). The integrated 113 focused tests and Mastra
+typecheck pass. A separate tiny synthetic live probe then stopped on an
+unrecognized CLI event with unknown usage; no catalog/GA/DB writes occurred.
+Its immutable local receipt is separate from generation v4. Zero-inference CLI
+checks accept the flags, but reveal that documented non-tool reasoning/error
+events need distinct handling. That compatibility repair is in progress, and
+further inference remains held. The 90% weekly allowance read immediately before
+the probe is account-wide, not a per-call consumption measurement.
+
+The event compatibility repair is integrated in `70f6c5a70`: explicit reasoning
+lifecycle is accepted without retaining reasoning text, explicit errors fail as
+provider failures, and every actual tool/unknown item remains fatal. Root's
+combined 129 focused tests pass. A distinct instrumented probe returned known
+usage of 11,816 input / 19 output tokens and CLI exit zero, but a 221-byte error
+item preceded the answer. It was correctly rejected; the error text was not
+retained. No catalog or GA writes occurred. The original unknown probe stays
+unknown; the second probe's known usage is accounted separately from v4. Further
+model work remains held pending zero-inference identification of the error.

@@ -13,8 +13,12 @@ describes the private reporting contract and limits.
 
 ## Current checkpoint — October 12
 
-Both reviewed fixes are integrated at `90f964f60`, and all required CI jobs pass
-in GitHub run `38192366116`. Two real manual pilot stages now retain **19 ready
+All required CI jobs passed on `90f964f60` in run `38192366116`. The later
+documentation-only run `38194336323` exposed a timing-sensitive native capacity
+test (`stale_measurement`); the single-timestamp fixture repair is integrated
+in `3ea296d1e`. Native reproduction and the exact 205-test CI suite plus 34
+integration tests pass; production freshness checks remain unchanged.
+Two real manual pilot stages now retain **19 ready
 profiles and 13 provisional connections across four source videos**. All model
 and operator bridge processes have exited at their intended pilot boundaries.
 The catalog build is incomplete and public A/B remains off.
@@ -31,10 +35,45 @@ small measurements do not establish a full-catalog storage bound or allowance
 forecast. Known v4 usage totals 556,937 input / 14,765 output tokens across 25
 successful physical model calls; the original unknown call remains separate.
 
-The final representative pilot is prepared but unexecuted: two more sources,
+Further model calls are currently held for an implementation-only efficiency
+check. The complete frozen-catalog dry run found **936 map parts**, **172
+metadata-only sources**, **2,686 selected chunks**, and **4,128,488 bytes of
+selected transcript text**. With current eight-target pages and adjacent source
+pairing, the 55,700 candidate pairs require **3,850 edge calls before prompt
+splitting** (7,472 source pages). This does not support treating the earlier
+10–20 million input-token illustration as an established build estimate. The
+account-wide subscription meter cannot turn that call count into a usage percent.
+
+Lossless edge-prompt compaction and reduced Codex context are integrated at
+`6d06f9794`. With actual saved profiles, metadata, excerpts, and GA aggregates,
+the prompt is 33,965 bytes instead of 46,097 (26.3% smaller). Production rendering
+reconstructs and compares the complete semantic document before dispatch. Frozen
+input identities, legacy recovery bytes, old receipts, and ready profiles remain
+valid. The combined 113 focused tests, Mastra typecheck, and scoped lint pass.
+This byte measurement is not a live token or quality result.
+
+The first isolated synthetic probe of the lean adapter stopped with
+`unexpected_tool_event`, no completed usage receipt, and zero generation/GA/DB
+writes. Its call `3ffef745-21cc-4f03-a5f8-c12bbf049e24` remains explicitly unknown
+in the protected benchmark ledger; it is separate from the v4 generation and
+will not be retried. Zero-inference CLI diagnostics confirm that the new flags
+parse successfully and reveal non-tool `error` and documented `reasoning` events
+that the existing event parser did not distinguish. That protocol compatibility is fixed in `70f6c5a70`, preserving fatal
+tool/error checks; 129 combined focused tests pass. Exact Astra,
+current reasoning effort, candidate/content/evidence requirements, manual-only
+operation, and the 25% reserve are unchanged. A distinct instrumented probe (`cc463879-0a9d-4c1e-9763-1b171b123374`) then
+returned 11,816 input / 19 output tokens and CLI exit zero, but an explicit
+`error` item preceded the answer. The adapter correctly rejected it; these
+known tokens are separate from v4 and from the earlier unknown probe. Only
+event/item type labels were retained, so the error payload remains unknown.
+Further inference is held while zero-inference diagnostics identify that item.
+Fresh account allowance was 89% weekly remaining; it cannot predict the full
+build's consumption.
+
+The final representative pilot remains prepared but unexecuted: two more sources,
 eight candidates, and ten complete-transcript profiles covering 292 selected
-chunks. Ordinary manual resume must wait for the prior claimed-source leases
-to expire naturally at **2026-10-12T02:00:05.461Z**. No supported release action
+chunks. The prior claimed-source leases
+expired naturally at **2026-10-12T02:00:05.461Z**; the efficiency hold still applies. No supported release action
 exists for unfinished sources, and a paused close can also follow errors; no
 lease fields are manually cleared. There is no scheduled automatic resume.
 
