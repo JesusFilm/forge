@@ -6707,6 +6707,13 @@ function Background({
   // last card) — use a medium blur + lighter scrim so the footage stays legible
   // behind the text without going murky.
   const medium = card.kind === "questions"
+  // The PRAY step sits between the verse and the questions, both blurred: it
+  // keeps the blur and carries it on deepening, so the big PRAY lands over a
+  // blur instead of the picture snapping sharp for a second (owner,
+  // 2026-10-12).
+  const prayStep =
+    card.kind === "step" &&
+    (card.stepIndex ?? 0) === (card.steps?.length ?? 3) - 1
   const blurScale = props.blurScale ?? 1
   // Owner-picked levels: reflection + conclusion keep the footage nearly sharp.
   // Desktop (16:9) was "blur 10%" (px2.8) and mobile (9:16) "blur 15%" (px4.2).
@@ -6749,14 +6756,22 @@ function Background({
             extrapolateRight: "clamp",
             easing: Easing.inOut(Easing.cubic),
           }) * blurScale
-        : medium
-          ? interpolate(frame, [0, Math.round(fps * 2.2)], [px(9), px(26)], {
+        : prayStep
+          ? interpolate(frame, [0, durationInFrames], [px(9), px(16)], {
               extrapolateLeft: "clamp",
               extrapolateRight: "clamp",
-              easing: Easing.inOut(Easing.cubic),
             }) * blurScale
-          : (card.kind === "cover" ? coverBlurPx : soft ? px(8) : heavyBlurPx) *
-            blurScale
+          : medium
+            ? interpolate(frame, [0, Math.round(fps * 2.2)], [px(16), px(26)], {
+                extrapolateLeft: "clamp",
+                extrapolateRight: "clamp",
+                easing: Easing.inOut(Easing.cubic),
+              }) * blurScale
+            : (card.kind === "cover"
+                ? coverBlurPx
+                : soft
+                  ? px(8)
+                  : heavyBlurPx) * blurScale
   const wholeScrim =
     card.kind === "quote-intro"
       ? "rgba(6,4,3,0.42)"
@@ -6771,12 +6786,15 @@ function Background({
   // dark footage bands into visible steps, and grain dithers them (owner,
   // 2026-10-12). It ramps in with the blur so the cut into the card is clean.
   const grainOn =
-    (card.kind === "scripture" && !soft) || medium
+    (card.kind === "scripture" && !soft) || medium || prayStep
       ? (props.blurGrain ?? DEFAULT_BLUR_GRAIN) *
-        interpolate(frame, [0, Math.round(fps * 1.6)], [0.3, 1], {
-          extrapolateLeft: "clamp",
-          extrapolateRight: "clamp",
-        })
+        // Only the verse ramps it in; PRAY and the questions carry it on.
+        (card.kind === "scripture"
+          ? interpolate(frame, [0, Math.round(fps * 1.6)], [0.3, 1], {
+              extrapolateLeft: "clamp",
+              extrapolateRight: "clamp",
+            })
+          : 1)
       : 0
   let blurOverlay: ReactNode = null
   if (region === "whole") {

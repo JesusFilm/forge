@@ -1226,6 +1226,7 @@ async function buildShotBackground(
   const W = size.width - (size.width % 2)
   const H = size.height - (size.height % 2)
   const parts: string[] = []
+  let stillIndex = 0
   for (const [i, it] of items.entries()) {
     const out = path.join(work, `shot-${String(i).padStart(3, "0")}.mp4`)
     if (it.kind === "still") {
@@ -1241,6 +1242,17 @@ async function buildShotBackground(
         png,
       ])
       const n = Math.max(1, Math.round(it.screenSec * 30))
+      // Visible movement, a different one per still: push in, pull out, pan
+      // right, pan left (owner, 2026-10-12: the first 6% push read as a
+      // frozen frame). Eased so it starts and ends softly.
+      const p = `(0.5-0.5*cos(PI*on/${n}))`
+      const moves = [
+        { z: `1.02+0.14*${p}`, x: "iw/2-(iw/zoom/2)" },
+        { z: `1.16-0.14*${p}`, x: "iw/2-(iw/zoom/2)" },
+        { z: "1.14", x: `(iw-iw/zoom)*${p}` },
+        { z: "1.14", x: `(iw-iw/zoom)*(1-${p})` },
+      ]
+      const move = moves[stillIndex++ % moves.length]!
       await runFfmpeg([
         "-y",
         "-loop",
@@ -1249,7 +1261,7 @@ async function buildShotBackground(
         png,
         "-vf",
         // Upscale first: zoompan steps in whole pixels, which judders at 1x.
-        `scale=${W * 3}:-2,zoompan=z='1+0.06*on/${n}':x='iw/2-(iw/zoom/2)':` +
+        `scale=${W * 3}:-2,zoompan=z='${move.z}':x='${move.x}':` +
           `y='ih/2-(ih/zoom/2)':d=${n}:s=${W}x${H}:fps=30,format=yuv420p`,
         "-frames:v",
         String(n),
