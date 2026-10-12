@@ -5,7 +5,7 @@ import { join } from "node:path"
 import { gzipSync } from "node:zlib"
 import { PrismaClient, type Prisma } from "@prisma/client"
 import { Client } from "pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { env } from "@/config/env"
 import { currentAdminMigrationSql } from "../current-schema.test-fixture"
 import {
@@ -40,6 +40,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     const videoId = `source-${suffix}`
     const originId = `origin-${suffix}`
     const destinationId = `destination-${suffix}`
+    const runtimeDestinationId = `runtime-destination-${suffix}`
     const originDigest = "a".repeat(64)
     const destinationDigest = "b".repeat(64)
     const sourceSetDigest = digest([videoId])
@@ -54,6 +55,71 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       usableEnd: "2026-10-05",
       requestedCoverageDigest: "2".repeat(64),
       usableCoverageDigest: "3".repeat(64),
+    }
+
+    async function start(
+      submit: (
+        payload: unknown,
+      ) => ReturnType<typeof submitDurablePrecomputedRecommendation>,
+      generationId: string,
+      inputDigest: string,
+      protocolVersion: 3 | 4,
+    ) {
+      await submit({
+        action: "start",
+        protocolVersion,
+        generationId,
+        modelId: "gpt-6-astra",
+        promptVersion: "ga-import-test-v1",
+        inputDigest,
+        sourceSetDigest,
+        inputCutoff: cutoff,
+        expectedSourceCount: 1,
+        inputMode: "historical_analytics",
+        inputSnapshotMode:
+          protocolVersion === 3 ? "ga_aggregate_capture_v1" : "observed_fenced",
+        ...(protocolVersion === 4
+          ? {
+              executionAttempt: {
+                attemptId,
+                invocation: "start",
+                accountRef: "local-test-account",
+                backend: "codex_chatgpt_subscription",
+                billingBasis: "included_subscription",
+                authMethod: "chatgpt",
+                modelId: "gpt-6-astra",
+                identityObservedAt: new Date().toISOString(),
+                allowanceObservedAt: new Date().toISOString(),
+                weeklyRemainingPercent: 50,
+                fiveHour: { kind: "limited", remainingPercent: 50 },
+              },
+            }
+          : {}),
+      })
+      const base = { generationId, generationInputDigest: inputDigest }
+      await submit({
+        action: "manifest",
+        ...base,
+        sourceVideoIds: [videoId],
+        ...(protocolVersion === 4 ? { attemptId } : {}),
+      })
+      const probe = await submit({ action: "capacity_probe", ...base })
+      await submit({
+        action: "capacity",
+        ...base,
+        ...(protocolVersion === 4 ? { attemptId } : {}),
+        measurement: {
+          measuredAt: new Date().toISOString(),
+          clusterSystemId: probe.clusterSystemId,
+          observedDbBytes: probe.observedDbBytes,
+          availableBytes: 20_000_000_000,
+          reserveBytes: 5_000_000_000,
+          projectedBytes: 1_000_000,
+          sampleSourceCount: 1,
+          sampleBytes: 100_000,
+          source: "operator_verified_pgdata_df",
+        },
+      })
     }
 
     beforeAll(async () => {
@@ -101,6 +167,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           published: true,
         },
       })
+      await start(
+        (payload) =>
+          submitDurablePrecomputedRecommendation(prisma, payload, bearer),
+        runtimeDestinationId,
+        destinationDigest,
+        4,
+      )
     }, 120_000)
 
     afterAll(async () => {
@@ -110,6 +183,106 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await admin.end()
       }
       if (root) await rm(root, { recursive: true, force: true })
+    })
+
+    const runtimeBudgets = {
+      GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES: "268435456",
+      GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES: "134217728",
+      GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES: "1073741824",
+    }
+    const invalidBudgets: { label: string; value: string | undefined }[] = [
+      { label: "missing", value: undefined },
+      { label: "empty", value: "" },
+      { label: "blank", value: " " },
+      { label: "invalid", value: "not-a-number" },
+      { label: "unsafe", value: "9007199254740992" },
+      { label: "fractional", value: "1.5" },
+      { label: "negative", value: "-1" },
+      { label: "infinite", value: "Infinity" },
+    ]
+    it.each(
+      Object.entries(runtimeBudgets).flatMap(([name]) =>
+        [
+          ...invalidBudgets,
+          ...(name.endsWith("RESERVE_BYTES")
+            ? []
+            : [{ label: "zero", value: "0" }]),
+        ].map(({ label, value }) => ({ name, label, value })),
+      ),
+    )(
+      "rejects $label runtime $name under CI before preparation",
+      async ({ name, value }) => {
+        vi.stubEnv("CI", "true")
+        for (const [key, configured] of Object.entries(runtimeBudgets))
+          vi.stubEnv(key, configured)
+        vi.stubEnv(name, value)
+        vi.resetModules()
+        try {
+          const { submitDurablePrecomputedRecommendation: receiverSubmit } =
+            await import("./durable-build")
+          await expect(
+            receiverSubmit(
+              prisma,
+              {
+                action: "ga_import_prepare_v1",
+                generationId: runtimeDestinationId,
+                generationInputDigest: destinationDigest,
+                attemptId,
+                candidatePoolDigest,
+                ...dates,
+              },
+              bearer,
+            ),
+          ).rejects.toMatchObject({
+            code: "conflict",
+            message:
+              "GA import object and temporary storage budgets are unconfigured",
+          })
+          expect(
+            await receiverSubmit(
+              prisma,
+              {
+                action: "ga_import_status_v1",
+                generationId: runtimeDestinationId,
+                generationInputDigest: destinationDigest,
+              },
+              bearer,
+            ),
+          ).toEqual({ version: "ga_capture_import_v1", state: "absent" })
+        } finally {
+          vi.unstubAllEnvs()
+          vi.resetModules()
+        }
+      },
+    )
+
+    it("accepts explicit zero runtime temporary reserve under CI", async () => {
+      vi.stubEnv("CI", "true")
+      for (const [key, configured] of Object.entries(runtimeBudgets))
+        vi.stubEnv(key, configured)
+      vi.stubEnv("GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES", "0")
+      vi.resetModules()
+      try {
+        const { submitDurablePrecomputedRecommendation: receiverSubmit } =
+          await import("./durable-build")
+        expect(
+          await receiverSubmit(
+            prisma,
+            {
+              action: "ga_import_prepare_v1",
+              generationId: runtimeDestinationId,
+              generationInputDigest: destinationDigest,
+              attemptId,
+              candidatePoolDigest,
+              ...dates,
+            },
+            bearer,
+          ),
+        ).toMatchObject({ state: "prepared" })
+      } finally {
+        vi.unstubAllEnvs()
+        vi.resetModules()
+      }
     })
 
     it("copies verified bytes, binds once, and serves independently of the origin", async () => {
@@ -136,71 +309,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             availableTempBytes: async () => 10_000_000,
           },
         })
-      async function start(
-        generationId: string,
-        inputDigest: string,
-        protocolVersion: 3 | 4,
-      ) {
-        await submit({
-          action: "start",
-          protocolVersion,
-          generationId,
-          modelId: "gpt-6-astra",
-          promptVersion: "ga-import-test-v1",
-          inputDigest,
-          sourceSetDigest,
-          inputCutoff: cutoff,
-          expectedSourceCount: 1,
-          inputMode: "historical_analytics",
-          inputSnapshotMode:
-            protocolVersion === 3
-              ? "ga_aggregate_capture_v1"
-              : "observed_fenced",
-          ...(protocolVersion === 4
-            ? {
-                executionAttempt: {
-                  attemptId,
-                  invocation: "start",
-                  accountRef: "local-test-account",
-                  backend: "codex_chatgpt_subscription",
-                  billingBasis: "included_subscription",
-                  authMethod: "chatgpt",
-                  modelId: "gpt-6-astra",
-                  identityObservedAt: new Date().toISOString(),
-                  allowanceObservedAt: new Date().toISOString(),
-                  weeklyRemainingPercent: 50,
-                  fiveHour: { kind: "limited", remainingPercent: 50 },
-                },
-              }
-            : {}),
-        })
-        const base = { generationId, generationInputDigest: inputDigest }
-        await submit({
-          action: "manifest",
-          ...base,
-          sourceVideoIds: [videoId],
-          ...(protocolVersion === 4 ? { attemptId } : {}),
-        })
-        const probe = await submit({ action: "capacity_probe", ...base })
-        await submit({
-          action: "capacity",
-          ...base,
-          ...(protocolVersion === 4 ? { attemptId } : {}),
-          measurement: {
-            measuredAt: new Date().toISOString(),
-            clusterSystemId: probe.clusterSystemId,
-            observedDbBytes: probe.observedDbBytes,
-            availableBytes: 20_000_000_000,
-            reserveBytes: 5_000_000_000,
-            projectedBytes: 1_000_000,
-            sampleSourceCount: 1,
-            sampleBytes: 100_000,
-            source: "operator_verified_pgdata_df",
-          },
-        })
-      }
-      await start(originId, originDigest, 3)
-      await start(destinationId, destinationDigest, 4)
+      await start(submit, originId, originDigest, 3)
+      await start(submit, destinationId, destinationDigest, 4)
       const destination =
         await prisma.recommendationPrecomputedGeneration.findUniqueOrThrow({
           where: { id: destinationId },
@@ -218,6 +328,37 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           generationInputDigest: destinationDigest,
         }),
       ).toEqual({ version: "ga_capture_import_v1", state: "absent" })
+      // Reproduce the deployed receiver: real env module under CI=true,
+      // without the numeric option overrides used by the rest of this fixture.
+      vi.stubEnv("CI", "true")
+      vi.stubEnv("GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES", "268435456")
+      vi.stubEnv("GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES", "134217728")
+      vi.stubEnv("GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES", "1073741824")
+      vi.resetModules()
+      try {
+        const { submitDurablePrecomputedRecommendation: receiverSubmit } =
+          await import("./durable-build")
+        const runtimePrepared = await receiverSubmit(
+          prisma,
+          {
+            action: "ga_import_prepare_v1",
+            generationId: destinationId,
+            generationInputDigest: destinationDigest,
+            attemptId,
+            candidatePoolDigest,
+            ...dates,
+          },
+          bearer,
+          { gaImport: { store: importStore } },
+        )
+        expect(runtimePrepared).toMatchObject({
+          state: "prepared",
+          destination: identity,
+        })
+      } finally {
+        vi.unstubAllEnvs()
+        vi.resetModules()
+      }
       const prepared = await submit({
         action: "ga_import_prepare_v1",
         generationId: destinationId,
@@ -333,6 +474,44 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         originGenerationId: originId,
         originArtifactSha256: sha(body),
         originProofDigest: probe.originProofDigest,
+      }
+      // The same public copy admission must still enforce both budgets and
+      // measured temporary headroom after numeric normalization.
+      for (const limits of [
+        {
+          objectBudgetBytes: 1,
+          tempBudgetBytes: 10_000_000,
+          tempReserveBytes: 0,
+          availableTempBytes: async () => 10_000_000,
+        },
+        {
+          objectBudgetBytes: 10_000_000,
+          tempBudgetBytes: 1,
+          tempReserveBytes: 0,
+          availableTempBytes: async () => 10_000_000,
+        },
+        {
+          objectBudgetBytes: 10_000_000,
+          tempBudgetBytes: 10_000_000,
+          tempReserveBytes: 10_000_000,
+          availableTempBytes: async () => 10_000_000,
+        },
+      ]) {
+        await expect(
+          submitDurablePrecomputedRecommendation(prisma, copyRequest, bearer, {
+            gaImport: { store: importStore, ...limits },
+          }),
+        ).rejects.toMatchObject({
+          code: "conflict",
+          message: "GA import object or temporary storage budget is exhausted",
+        })
+        expect(
+          await submit({
+            action: "ga_import_status_v1",
+            generationId: destinationId,
+            generationInputDigest: destinationDigest,
+          }),
+        ).toMatchObject({ state: "prepared" })
       }
       interruptDestinationPut = true
       await expect(submit(copyRequest)).rejects.toThrow(

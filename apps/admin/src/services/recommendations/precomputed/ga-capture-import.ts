@@ -477,13 +477,23 @@ export type GaImportOptions = {
   tempReserveBytes?: number
   availableTempBytes?: () => Promise<number>
 }
+// CI can bypass env-schema coercion. Normalize only nonempty numeric values
+// here; the budget guards below remain authoritative for every caller.
+function numericBudgetBytes(value: unknown): number {
+  if (typeof value === "number") return value
+  if (typeof value === "string" && value.trim() !== "") return Number(value)
+  return Number.NaN
+}
 function budgets(options: GaImportOptions) {
-  const objectBudgetBytes =
-    options.objectBudgetBytes ?? env.GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES
-  const tempBudgetBytes =
-    options.tempBudgetBytes ?? env.GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES
-  const tempReserveBytes =
-    options.tempReserveBytes ?? env.GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES
+  const objectBudgetBytes = numericBudgetBytes(
+    options.objectBudgetBytes ?? env.GA_CAPTURE_IMPORT_OBJECT_BUDGET_BYTES,
+  )
+  const tempBudgetBytes = numericBudgetBytes(
+    options.tempBudgetBytes ?? env.GA_CAPTURE_IMPORT_TEMP_BUDGET_BYTES,
+  )
+  const tempReserveBytes = numericBudgetBytes(
+    options.tempReserveBytes ?? env.GA_CAPTURE_IMPORT_TEMP_RESERVE_BYTES,
+  )
   if (
     typeof objectBudgetBytes !== "number" ||
     !Number.isSafeInteger(objectBudgetBytes) ||

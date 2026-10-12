@@ -241,6 +241,13 @@ import charges a destination artifact copy against the retained object budget
 and twice its compressed artifact bytes against temporary reservations. A
 configured S3 bucket alone does not establish those budgets.
 
+Verify import preparation with the deployed environment path, including
+`CI=true` where present. Admin's environment-validation bypass can leave
+configured numeric values as strings; the import boundary normalizes them before
+enforcing safe-integer and range checks. Raw environment hashes alone do not
+prove import readiness. Missing, empty, invalid or unsafe values still stop
+preparation, and object/temporary exhaustion checks retain the configured limits.
+
 ## Start, inspect and resume
 
 A first production sample can use the existing `pilot` work mode on the same
