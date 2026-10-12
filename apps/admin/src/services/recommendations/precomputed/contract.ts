@@ -131,31 +131,62 @@ const legacyHistoricalProvenance = historicalCommon
     qualification: historicalQualification.optional(),
   })
   .strict()
+const gaSourceAvailability = z.object({
+  coverage: z.literal("partial_source_history"),
+  requestedStart: z.iso.date(),
+  requestedEnd: z.iso.date(),
+  usableStart: z.iso.date(),
+  usableEnd: z.iso.date(),
+  unavailablePrefixStart: z.iso.date(),
+  unavailablePrefixEnd: z.iso.date(),
+  observedFirstMonth: z
+    .string()
+    .regex(/^\d{4}(0[1-9]|1[0-2])$/)
+    .nullable(),
+  observedLastMonth: z
+    .string()
+    .regex(/^\d{4}(0[1-9]|1[0-2])$/)
+    .nullable(),
+})
 export const gaHistoricalQualification = z
   .object({
     evidenceKind: z.literal("referrer_navigation_v1"),
     sourceResource: z.literal("properties/320198532"),
-    sourceAvailability: z
-      .object({
-        coverage: z.literal("partial_source_history"),
-        requestedStart: z.iso.date(),
-        requestedEnd: z.iso.date(),
-        usableStart: z.iso.date(),
-        usableEnd: z.iso.date(),
-        truncationType: z.literal("DATA_TRUNCATION_TYPE_PROPERTY"),
-        truncationDate: z.iso.date(),
-        unavailablePrefixStart: z.iso.date(),
-        unavailablePrefixEnd: z.iso.date(),
-        observedFirstMonth: z
-          .string()
-          .regex(/^\d{4}(0[1-9]|1[0-2])$/)
-          .nullable(),
-        observedLastMonth: z
-          .string()
-          .regex(/^\d{4}(0[1-9]|1[0-2])$/)
-          .nullable(),
-      })
-      .strict(),
+    sourceAvailability: z.discriminatedUnion("truncationType", [
+      gaSourceAvailability
+        .extend({
+          truncationType: z.literal("DATA_TRUNCATION_TYPE_PROPERTY"),
+          truncationDate: z.iso.date(),
+        })
+        .strict(),
+      gaSourceAvailability
+        .extend({
+          truncationType: z.literal("DATA_TRUNCATION_TYPE_DATE_RANGE"),
+          dataTruncationDateRanges: z.tuple([
+            z
+              .object({ startDate: z.iso.date(), endDate: z.iso.date() })
+              .strict(),
+          ]),
+        })
+        .strict()
+        .refine((availability) => {
+          const range = availability.dataTruncationDateRanges[0]
+          // GA's date-range endpoints are inclusive; a qualified suffix starts
+          // on the next day and must cover the rest of the original request.
+          const nextDay = new Date(`${range.endDate}T12:00:00Z`)
+          nextDay.setUTCDate(nextDay.getUTCDate() + 1)
+          return (
+            range.startDate === availability.requestedStart &&
+            range.startDate === availability.unavailablePrefixStart &&
+            range.endDate === availability.unavailablePrefixEnd &&
+            range.startDate <= range.endDate &&
+            range.endDate < availability.requestedEnd &&
+            availability.usableStart === nextDay.toISOString().slice(0, 10) &&
+            availability.usableEnd === availability.requestedEnd &&
+            availability.usableStart <= availability.usableEnd
+          )
+        }, "Invalid GA truncated date-range prefix"),
+    ]),
     watchScope: z
       .object({
         version: z.literal("jesusfilm-watch-v1"),
@@ -250,16 +281,21 @@ function qualifiedHistoryIsConsistent(
     const coverage = history.navigationCoverage
     const firstMonth = availability.observedFirstMonth
     const lastMonth = availability.observedLastMonth
-    const nextUsableDay = new Date(`${availability.truncationDate}T12:00:00Z`)
+    const prefixEnd = availability.unavailablePrefixEnd
+    const nextUsableDay = new Date(`${prefixEnd}T12:00:00Z`)
     nextUsableDay.setUTCDate(nextUsableDay.getUTCDate() + 1)
     return (
       history.queryId === "watch-referrer-navigation-v1" &&
       history.rangeStart === availability.usableStart &&
       history.rangeEnd === availability.usableEnd &&
       availability.requestedStart === availability.unavailablePrefixStart &&
-      availability.unavailablePrefixEnd === availability.truncationDate &&
+      (availability.truncationType === "DATA_TRUNCATION_TYPE_PROPERTY"
+        ? prefixEnd === availability.truncationDate
+        : availability.dataTruncationDateRanges[0].startDate ===
+            availability.requestedStart &&
+          availability.dataTruncationDateRanges[0].endDate === prefixEnd) &&
       availability.usableStart === nextUsableDay.toISOString().slice(0, 10) &&
-      availability.requestedStart <= availability.truncationDate &&
+      availability.requestedStart <= prefixEnd &&
       availability.usableStart <= availability.usableEnd &&
       availability.usableEnd === availability.requestedEnd &&
       history.rangeEnd <= history.cutoff.slice(0, 10) &&

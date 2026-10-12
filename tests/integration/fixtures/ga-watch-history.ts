@@ -10,10 +10,12 @@ export function gaWatchHistoryFixtureOptions({
   sourceSlug,
   targetSlug,
   metadataSlug = "uncatalogued-story",
+  truncation = "property",
 }: {
   sourceSlug: string
   targetSlug: string
   metadataSlug?: string
+  truncation?: "property" | "date_range"
 }): FixtureOptions {
   return {
     propertyId: "320198532",
@@ -126,13 +128,21 @@ export function gaWatchHistoryFixtureOptions({
           })),
           metadata: {
             timeZone: "America/New_York",
-            ...(body.dateRanges[0]!.startDate === "2022-06-21"
+            ...(body.dateRanges[0]!.startDate === "2022-06-21" &&
+            (truncation === "property" || dimensions[0] !== "yearMonth")
               ? {
                   dataTruncationReasons: [
-                    {
-                      dataTruncationType: "DATA_TRUNCATION_TYPE_PROPERTY",
-                      dataTruncationDate: "2022-08-05",
-                    },
+                    truncation === "property"
+                      ? {
+                          dataTruncationType: "DATA_TRUNCATION_TYPE_PROPERTY",
+                          dataTruncationDate: "2022-08-05",
+                        }
+                      : {
+                          dataTruncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+                          dataTruncationDateRanges: [
+                            { startDate: "2022-06-21", endDate: "2022-08-10" },
+                          ],
+                        },
                   ],
                 }
               : {}),

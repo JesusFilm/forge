@@ -91,6 +91,9 @@ const reportSchema = z
 type Report = z.output<typeof reportSchema> & {
   rowCount: number
 }
+type DataTruncationReasons = NonNullable<
+  Report["metadata"]["dataTruncationReasons"]
+>
 type ReportRow = { dimensions: string[]; count: number }
 type ReportResult = {
   rows: ReportRow[]
@@ -106,6 +109,7 @@ type ReportResult = {
   sourceAvailableAfter: string | null
   truncatedDateRanges: { startDate: string; endDate: string }[]
   truncationTypes: string[]
+  dataTruncationReasons?: DataTruncationReasons
 }
 
 export type GaWatchCoverage = {
@@ -147,6 +151,7 @@ export type GaWatchCoverage = {
   sourceAvailableAfter: string | null
   truncatedDateRanges: { startDate: string; endDate: string }[]
   truncationTypes: string[]
+  dataTruncationReasons?: DataTruncationReasons
   reportLimitations: (
     | "source_truncation"
     | "report_thresholding"
@@ -509,6 +514,7 @@ async function runReport(input: {
     { startDate: string; endDate: string }
   >()
   const truncationTypes = new Set<string>()
+  const dataTruncationReasons: DataTruncationReasons = []
   do {
     if (pageCount >= MAX_REPORT_PAGES)
       throw new HistoricalAnalyticsError("analytics_incomplete")
@@ -531,6 +537,7 @@ async function runReport(input: {
     sampled ||= (page.metadata.samplingMetadatas?.length ?? 0) > 0
     restricted ||= page.metadata.schemaRestrictionResponse !== undefined
     truncated ||= (page.metadata.dataTruncationReasons?.length ?? 0) > 0
+    dataTruncationReasons.push(...(page.metadata.dataTruncationReasons ?? []))
     for (const reason of page.metadata.dataTruncationReasons ?? []) {
       truncationTypes.add(reason.dataTruncationType)
       if (
@@ -566,6 +573,7 @@ async function runReport(input: {
     sourceAvailableAfter,
     truncatedDateRanges: [...truncatedDateRanges.values()],
     truncationTypes: [...truncationTypes],
+    dataTruncationReasons,
   }
 }
 
@@ -736,6 +744,10 @@ export async function inspectGaWatchCoverage(input: {
     },
     sourceAvailableAfter,
     truncatedDateRanges,
+    dataTruncationReasons: [
+      ...(monthly.dataTruncationReasons ?? []),
+      ...(identified.dataTruncationReasons ?? []),
+    ],
     truncationTypes: [
       ...new Set([...monthly.truncationTypes, ...identified.truncationTypes]),
     ],
@@ -781,6 +793,7 @@ export async function readGaWatchStartAggregatePage(input: {
   sourceAvailableAfter: string | null
   truncatedDateRanges: { startDate: string; endDate: string }[]
   truncationTypes: string[]
+  dataTruncationReasons?: DataTruncationReasons
   canonicalMapping: "unverified"
   orderedTransitions: "unavailable"
   botFiltering: "unknown"
@@ -876,6 +889,7 @@ export async function readGaWatchStartAggregatePage(input: {
       page.metadata.dataTruncationReasons?.flatMap(
         (reason) => reason.dataTruncationDateRanges ?? [],
       ) ?? [],
+    dataTruncationReasons: page.metadata.dataTruncationReasons ?? [],
     truncationTypes: [
       ...new Set(
         page.metadata.dataTruncationReasons?.map(
@@ -989,6 +1003,7 @@ export async function readGaWatchReferrerAggregatePage(input: {
   reportLimitations: GaWatchCoverage["reportLimitations"]
   sourceAvailableAfter: string | null
   truncationTypes: string[]
+  dataTruncationReasons?: DataTruncationReasons
 }> {
   if (
     !/^\d{1,20}$/u.test(input.propertyId) ||
@@ -1095,6 +1110,7 @@ export async function readGaWatchReferrerAggregatePage(input: {
         .filter((value): value is string => value !== undefined)
         .sort()
         .at(-1) ?? null,
+    dataTruncationReasons: page.metadata.dataTruncationReasons ?? [],
     truncationTypes: [
       ...new Set(
         page.metadata.dataTruncationReasons?.map(
@@ -1746,25 +1762,78 @@ export function createGaWatchHistoryReader(input: {
       if (
         requestedReferrers.reportLimitations.join("|") !==
           "source_truncation" ||
-        fullReports.some(
-          (report) =>
-            report.reportLimitations.some(
-              (limitation) => limitation !== "source_truncation",
-            ) ||
-            report.truncationTypes.some(
-              (type) => type !== "DATA_TRUNCATION_TYPE_PROPERTY",
-            ) ||
-            (report.reportLimitations.includes("source_truncation") &&
-              report.sourceAvailableAfter === null),
+        fullReports.some((report) =>
+          report.reportLimitations.some(
+            (limitation) => limitation !== "source_truncation",
+          ),
         )
       )
         throw new HistoricalAnalyticsError("analytics_incomplete")
-      const truncationDate = fullReports
-        .map((report) => report.sourceAvailableAfter)
-        .filter((value): value is string => value !== null)
-        .sort()
-        .at(-1)!
-      const usableStart = new Date(`${truncationDate}T00:00:00.000Z`)
+      const types = new Set(
+        fullReports.flatMap((report) => report.truncationTypes),
+      )
+      let truncation:
+        | {
+            truncationType: "DATA_TRUNCATION_TYPE_PROPERTY"
+            truncationDate: string
+          }
+        | {
+            truncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE"
+            dataTruncationDateRanges: [{ startDate: string; endDate: string }]
+          }
+      let prefixEnd: string
+      if (types.size === 1 && types.has("DATA_TRUNCATION_TYPE_PROPERTY")) {
+        if (
+          fullReports.some(
+            (report) =>
+              report.reportLimitations.includes("source_truncation") &&
+              report.sourceAvailableAfter === null,
+          )
+        )
+          throw new HistoricalAnalyticsError("analytics_incomplete")
+        prefixEnd = fullReports
+          .map((report) => report.sourceAvailableAfter)
+          .filter((value): value is string => value !== null)
+          .sort()
+          .at(-1)!
+        truncation = {
+          truncationType: "DATA_TRUNCATION_TYPE_PROPERTY",
+          truncationDate: prefixEnd,
+        }
+      } else if (
+        types.size === 1 &&
+        types.has("DATA_TRUNCATION_TYPE_DATE_RANGE")
+      ) {
+        const reasons = fullReports.flatMap(
+          (report) => report.dataTruncationReasons ?? [],
+        )
+        let prefix: { startDate: string; endDate: string } | undefined
+        for (const reason of reasons) {
+          const ranges = reason.dataTruncationDateRanges
+          const range = ranges?.[0]
+          if (
+            reason.dataTruncationType !== "DATA_TRUNCATION_TYPE_DATE_RANGE" ||
+            reason.dataTruncationDate !== undefined ||
+            ranges?.length !== 1 ||
+            !range ||
+            range.startDate !== input.rangeStart ||
+            range.startDate > range.endDate ||
+            range.endDate >= input.rangeEnd ||
+            (prefix &&
+              (prefix.startDate !== range.startDate ||
+                prefix.endDate !== range.endDate))
+          )
+            throw new HistoricalAnalyticsError("analytics_incomplete")
+          prefix = range
+        }
+        if (!prefix) throw new HistoricalAnalyticsError("analytics_incomplete")
+        prefixEnd = prefix.endDate
+        truncation = {
+          truncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+          dataTruncationDateRanges: [prefix],
+        }
+      } else throw new HistoricalAnalyticsError("analytics_incomplete")
+      const usableStart = new Date(`${prefixEnd}T00:00:00.000Z`)
       usableStart.setUTCDate(usableStart.getUTCDate() + 1)
       const usableStartDate = usableStart.toISOString().slice(0, 10)
       if (usableStartDate > input.rangeEnd)
@@ -1809,10 +1878,9 @@ export function createGaWatchHistoryReader(input: {
             coverage: "partial_source_history",
             requestedStart: input.rangeStart,
             requestedEnd: input.rangeEnd,
-            truncationType: "DATA_TRUNCATION_TYPE_PROPERTY",
-            truncationDate,
+            ...truncation,
             unavailablePrefixStart: input.rangeStart,
-            unavailablePrefixEnd: truncationDate,
+            unavailablePrefixEnd: prefixEnd,
             usableStart: usableStartDate,
             usableEnd: input.rangeEnd,
             observedFirstMonth: observed[0] ?? null,

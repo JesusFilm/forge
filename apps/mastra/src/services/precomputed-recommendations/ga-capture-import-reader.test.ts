@@ -40,7 +40,10 @@ const target = {
 }
 const routeCatalog = [source, target]
 
-async function fixture(directory: string) {
+async function fixture(
+  directory: string,
+  dateRanges?: { startDate: string; endDate: string }[],
+) {
   const starts = await writeGaWatchCapturePage({
     directory,
     kind: "start_page",
@@ -77,8 +80,15 @@ async function fixture(directory: string) {
     coverage: "partial_source_history",
     requestedStart: "2022-08-06",
     requestedEnd: "2022-10-31",
-    truncationType: "DATA_TRUNCATION_TYPE_PROPERTY",
-    truncationDate: "2022-08-07",
+    ...(dateRanges
+      ? {
+          truncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+          dataTruncationDateRanges: dateRanges,
+        }
+      : {
+          truncationType: "DATA_TRUNCATION_TYPE_PROPERTY",
+          truncationDate: "2022-08-07",
+        }),
     unavailablePrefixStart: "2022-08-06",
     unavailablePrefixEnd: "2022-08-07",
     usableStart: "2022-08-08",
@@ -221,6 +231,76 @@ async function fixture(directory: string) {
 }
 
 describe("destination-bound imported Watch history", () => {
+  it("imports exact date-range prefix provenance from a sealed copy without GA capability", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "ga-import-date-range-"))
+    try {
+      const f = await fixture(directory, [
+        { startDate: "2022-08-06", endDate: "2022-08-07" },
+      ])
+      const imported = await loadImportedGaWatchHistory({
+        destination: f.destination,
+        client: createGaCaptureImportClient(async () => f.status),
+        transport: { download: f.download },
+        directory,
+      })
+      try {
+        expect(imported.definition.qualification).toMatchObject({
+          sourceAvailability: {
+            truncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+            dataTruncationDateRanges: [
+              { startDate: "2022-08-06", endDate: "2022-08-07" },
+            ],
+            usableStart: "2022-08-08",
+          },
+        })
+        expect(await imported.reader.describe()).toEqual(imported.definition)
+      } finally {
+        await imported.dispose()
+      }
+    } finally {
+      await rm(directory, { recursive: true, force: true })
+    }
+  })
+
+  it.each([
+    [
+      "nonprefix",
+      [{ startDate: "2022-08-07", endDate: "2022-08-07" }],
+      "analytics_incomplete",
+    ],
+    [
+      "wrong boundary",
+      [{ startDate: "2022-08-06", endDate: "2022-08-08" }],
+      "analytics_incomplete",
+    ],
+    [
+      "multiple ranges",
+      [
+        { startDate: "2022-08-06", endDate: "2022-08-06" },
+        { startDate: "2022-08-07", endDate: "2022-08-07" },
+      ],
+      "analytics_unavailable",
+    ],
+  ])(
+    "rejects a hashed imported capture with %s date-range evidence",
+    async (_name, ranges, code) => {
+      const directory = await mkdtemp(join(tmpdir(), "ga-import-bad-prefix-"))
+      try {
+        const f = await fixture(directory, ranges)
+        await expect(
+          loadImportedGaWatchHistory({
+            destination: f.destination,
+            client: createGaCaptureImportClient(async () => f.status),
+            transport: { download: f.download },
+            directory,
+          }),
+        ).rejects.toMatchObject({ code })
+      } finally {
+        await rm(directory, { recursive: true, force: true })
+      }
+    },
+  )
+
   it("uses an unchanged verified copy for a new candidate pool with zero destination GA calls", async () => {
     const directory = await mkdtemp(join(tmpdir(), "ga-import-reader-test-"))
     try {

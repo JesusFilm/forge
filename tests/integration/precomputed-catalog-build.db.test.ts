@@ -476,7 +476,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       }
     }, 120_000)
 
-    it("captures history once and resumes a native v3 build without live GA after a lost model receipt response", async () => {
+    it("captures DATE_RANGE history once and resumes and imports without live GA after a lost model receipt response", async () => {
       const generationId = `catalog-sealed-resume-${suffix}`
       const directory = await mkdtemp(join(tmpdir(), "catalog-sealed-native-"))
       const store = createProtectedLocalGaCaptureStore(
@@ -486,6 +486,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const ga = gaWatchHistoryFixtureOptions({
         sourceSlug: `story-0-${suffix}`,
         targetSlug: `story-1-${suffix}`,
+        truncation: "date_range",
       })
       const gaFetch = vi.fn(ga.fetchImpl)
       const paidRequests: Array<{ task: string; sourceId: string }> = []
@@ -499,6 +500,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           expect(generation.protocolVersion).toBe(3)
           expect(generation.historicalQualification).toMatchObject({
             snapshotRef: { generationId, verification: "two_matching_passes" },
+            sourceAvailability: {
+              truncationType: "DATA_TRUNCATION_TYPE_DATE_RANGE",
+              dataTruncationDateRanges: [
+                { startDate: "2022-06-21", endDate: "2022-08-10" },
+              ],
+              usableStart: "2022-08-11",
+            },
           })
           expect(
             await prisma.recommendationPrecomputedHistoryCall.count({
@@ -724,6 +732,10 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         const importClient = createGaCaptureImportClient(ingest)
         const originProof = await importClient.probeOrigin({
           originGenerationId: generationId,
+        })
+        expect(originProof.origin).toMatchObject({
+          requestedStart: "2022-06-21",
+          usableStart: "2022-08-11",
         })
         const catalogPage = await connected.catalog.catalog({ cutoff })
         expect(catalogPage.nextCursor).toBeNull()

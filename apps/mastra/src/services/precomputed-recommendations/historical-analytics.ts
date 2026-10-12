@@ -104,31 +104,47 @@ const legacyDefinitionSchema = z
     qualification,
   })
   .strict()
+const gaSourceAvailability = {
+  coverage: z.literal("partial_source_history"),
+  requestedStart: z.iso.date(),
+  requestedEnd: z.iso.date(),
+  unavailablePrefixStart: z.iso.date(),
+  unavailablePrefixEnd: z.iso.date(),
+  usableStart: z.iso.date(),
+  usableEnd: z.iso.date(),
+  observedFirstMonth: z
+    .string()
+    .regex(/^\d{6}$/u)
+    .nullable(),
+  observedLastMonth: z
+    .string()
+    .regex(/^\d{6}$/u)
+    .nullable(),
+}
 const gaQualification = z
   .object({
     evidenceKind: z.literal("referrer_navigation_v1"),
     sourceResource: z.literal("properties/320198532"),
-    sourceAvailability: z
-      .object({
-        coverage: z.literal("partial_source_history"),
-        requestedStart: z.iso.date(),
-        requestedEnd: z.iso.date(),
-        truncationType: z.literal("DATA_TRUNCATION_TYPE_PROPERTY"),
-        truncationDate: z.iso.date(),
-        unavailablePrefixStart: z.iso.date(),
-        unavailablePrefixEnd: z.iso.date(),
-        usableStart: z.iso.date(),
-        usableEnd: z.iso.date(),
-        observedFirstMonth: z
-          .string()
-          .regex(/^\d{6}$/u)
-          .nullable(),
-        observedLastMonth: z
-          .string()
-          .regex(/^\d{6}$/u)
-          .nullable(),
-      })
-      .strict(),
+    sourceAvailability: z.discriminatedUnion("truncationType", [
+      z
+        .object({
+          ...gaSourceAvailability,
+          truncationType: z.literal("DATA_TRUNCATION_TYPE_PROPERTY"),
+          truncationDate: z.iso.date(),
+        })
+        .strict(),
+      z
+        .object({
+          ...gaSourceAvailability,
+          truncationType: z.literal("DATA_TRUNCATION_TYPE_DATE_RANGE"),
+          dataTruncationDateRanges: z.tuple([
+            z
+              .object({ startDate: z.iso.date(), endDate: z.iso.date() })
+              .strict(),
+          ]),
+        })
+        .strict(),
+    ]),
     watchScope: z
       .object({
         version: z.literal(HISTORICAL_WATCH_SCOPE_VERSION),
@@ -387,15 +403,23 @@ export async function readHistoricalDefinition(
     throw new HistoricalAnalyticsError("analytics_unavailable")
   if (definition.provider === "ga_data_api") {
     const availability = definition.qualification.sourceAvailability
-    const nextDay = new Date(`${availability.truncationDate}T00:00:00.000Z`)
+    const prefixEnd = availability.unavailablePrefixEnd
+    const prefixIsConsistent =
+      availability.truncationType === "DATA_TRUNCATION_TYPE_PROPERTY"
+        ? availability.truncationDate === prefixEnd
+        : availability.dataTruncationDateRanges[0].startDate ===
+            availability.requestedStart &&
+          availability.dataTruncationDateRanges[0].endDate === prefixEnd &&
+          prefixEnd < availability.requestedEnd
+    const nextDay = new Date(`${prefixEnd}T00:00:00.000Z`)
     nextDay.setUTCDate(nextDay.getUTCDate() + 1)
     const observedFirstMonth = availability.observedFirstMonth
     const observedLastMonth = availability.observedLastMonth
     if (
       definition.rangeStart !== availability.usableStart ||
       definition.rangeEnd !== availability.usableEnd ||
-      availability.requestedStart > availability.truncationDate ||
-      availability.truncationDate !== availability.unavailablePrefixEnd ||
+      availability.requestedStart > prefixEnd ||
+      !prefixIsConsistent ||
       availability.unavailablePrefixStart !== availability.requestedStart ||
       availability.usableStart !== nextDay.toISOString().slice(0, 10) ||
       availability.usableEnd !== availability.requestedEnd ||

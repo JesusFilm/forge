@@ -79,8 +79,10 @@ The user authorized an orchestrator that creates GPT-6 Sol chats using Matt
 Pocock's implement workflow. Compound Engineering skills are explicitly excluded,
 including indirect invocation. This overrides the repository's default workflow
 for this effort while preserving other standards. Astra remains the product's
-generation model. Draft [PR #2578](https://github.com/JesusFilm/forge/pull/2578)
-integrates verified Admin comparison, source generation, private Watch serving,
+generation model. [PR #2578](https://github.com/JesusFilm/forge/pull/2578)
+was squash-merged on October 12, 2026 at 20:32:18 UTC to main commit
+`9cdb2b74567c2a7f21cdb6d5b9a658236a52363e`. It integrates verified Admin
+comparison, source generation, private Watch serving,
 visit/click attribution and private durable CTR reporting. #2568's fixture and
 source-qualification boundary is verified, and the programmatic GA report reader
 has passed live read-only checks. The user approved referrer links plus engagement
@@ -101,6 +103,23 @@ loss policy and actual live human/bot/loss evidence remain unconfigured. Full
 catalog execution and production capacity also remain incomplete. The execution ledger is
 `docs/plans/2026-10-05-precomputed-video-recommendation-status.md`. Public
 experimental serving remains default-off.
+
+Admin and Mastra are deployed; production migration verification passed with
+19 migrations and 30 tables. The initial origin-capture attempts stopped safely
+after six successful physical GA reads, zero pending reads and zero model calls,
+without an artifact: the reader rejected the observed singleton leading
+`DATA_TRUNCATION_TYPE_DATE_RANGE` prefix. The October 13 qualification fix retains
+that exact raw range and original requested history, requalifies from August 11,
+2022 after inclusive truncation through August 10, and rejects ambiguous ranges
+or remaining usable-range limitations. Existing property-truncation behavior is
+preserved; see `docs/operations/precomputed-catalog-build.md`.
+
+The user authorized normal deployment, private configuration, bounded manual
+catalog execution and a qualified baseline. Full catalog execution, baseline
+qualification and public activation remain incomplete; public activation and
+promotion are not authorized. Capture continuation remains manual after the
+normal reviewed PR-to-main deployment. Keep `feat-590` in progress until its
+acceptance gates are met.
 
 Confirmed target: a separable catalog-wide recommendation experiment with an
 initial historical-data build, persisted recommendation results, and later

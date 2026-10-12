@@ -156,6 +156,21 @@ mode returns **before model construction or source claims**, with
 No OpenRouter key or Codex model invocation is required. This is GA-origin
 provisioning, not a completed recommendation generation.
 
+Qualification accepts the existing `DATA_TRUNCATION_TYPE_PROPERTY` boundary or
+one unambiguous `DATA_TRUNCATION_TYPE_DATE_RANGE` leading unavailable prefix.
+For date-range truncation, every reported range must be the same singleton,
+start at the original requested start, and end before the requested end. GA's
+[start and end dates are inclusive](https://developers.google.com/analytics/devguides/reporting/data/v1/rest/v1beta/ResponseMetaData),
+so an unavailable range of `2022-06-21` through `2022-08-10` produces a candidate
+usable start of `2022-08-11`. The artifact records the exact raw singleton in
+`sourceAvailability.dataTruncationDateRanges`, retains the original requested
+range, and does not invent a scalar `truncationDate` for this case. Qualification
+requeries the usable range and still rejects truncation, thresholding, sampling,
+schema restrictions, other-row loss, or timezone mismatch. Gaps, nonprefix,
+multiple ranges, conflicting or mixed evidence fail closed. The two complete
+capture passes and destination verification remain required; this change does
+not establish full-history support or automatically resume a failed capture.
+
 The deployed target needs the catalog, ingest and GA-capture routes and their
 migrations, private `RAILWAY_S3_*` storage, and a dedicated ingest bearer in
 `MASTRA_RECOMMENDATION_INGEST_API_KEYS`. On the local operator machine, load that
