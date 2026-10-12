@@ -300,6 +300,8 @@
     font: inherit;
   }
   .tile .pic {
+    outline: 0.5px solid rgba(255, 255, 255, 0.07);
+    outline-offset: -0.5px;
     position: relative;
     display: block;
     border-radius: 4px;
@@ -610,9 +612,9 @@
       <h1 class="month" id="month"></h1>
     </div>
     <div class="nav">
-      <button class="ghost" id="prev" aria-label="Previous month">‹</button>
-      <button class="ghost" id="todayBtn" aria-label="This month">•</button>
-      <button class="ghost" id="next" aria-label="Next month">›</button>
+      <button class="ghost" id="prev" aria-label="Previous week">‹</button>
+      <button class="ghost" id="todayBtn" aria-label="This week">•</button>
+      <button class="ghost" id="next" aria-label="Next week">›</button>
     </div>
     <div class="spacer"></div>
     <div
@@ -692,7 +694,7 @@
   let items = []
   let only = store("dbp-cal-lane") || null
   const now = new Date()
-  let view = { y: now.getFullYear(), m: now.getMonth() }
+  let week = null // first Monday shown; set below once weekStart exists
   const pad = (n) => String(n).padStart(2, "0")
   const ymd = (d) =>
     d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate())
@@ -888,9 +890,21 @@
     )
   }
 
+  // The page shows one week (Mon–Sun). The title is the month of that week's Thursday.
+  function weekStart(d) {
+    const s = new Date(d.getFullYear(), d.getMonth(), d.getDate())
+    s.setDate(s.getDate() - ((s.getDay() + 6) % 7))
+    return s
+  }
   function render() {
+    const days = [...Array(7)].map((_, i) => {
+      const d = new Date(week)
+      d.setDate(week.getDate() + i)
+      return d
+    })
+    const th = days[3]
     document.getElementById("month").innerHTML =
-      MONTHS[view.m] + " <span>" + view.y + "</span>"
+      MONTHS[th.getMonth()] + " <span>" + th.getFullYear() + "</span>"
     const lanes = LANES.filter((l) => !only || l.key === only)
     const idx = {}
     items.forEach((it) => {
@@ -898,75 +912,53 @@
         it,
       )
     })
-
-    const first = new Date(view.y, view.m, 1)
-    const start = new Date(first)
-    start.setDate(1 - ((first.getDay() + 6) % 7))
-    const last = new Date(view.y, view.m + 1, 0)
-    let html = ""
-    for (let ws = new Date(start); ws <= last; ws.setDate(ws.getDate() + 7)) {
-      const days = [...Array(7)].map((_, i) => {
-        const d = new Date(ws)
-        d.setDate(ws.getDate() + i)
-        return d
-      })
-      html +=
-        '<section class="week"><div class="dh"></div>' +
-        days
-          .map((d) => {
-            const k = ymd(d)
-            return (
-              '<div class="dh' +
-              (d.getMonth() !== view.m ? " off" : "") +
-              (k === todayKey ? " today" : "") +
-              '">' +
-              DOW[(d.getDay() + 6) % 7] +
-              " <b>" +
-              d.getDate() +
-              "</b></div>"
-            )
-          })
-          .join("")
-      for (const lane of lanes) {
-        html +=
-          '<div class="' +
-          lane.key +
-          ' lab" title="' +
-          lane.label +
-          '">' +
-          laneMark(lane) +
-          "</div>"
-        html += days
-          .map(
-            (d) =>
-              '<div class="cell ' +
-              lane.key +
-              (d.getMonth() !== view.m ? " off" : "") +
-              '">' +
-              cellInner(idx[ymd(d) + "|" + lane.key] || []) +
-              "</div>",
+    let html =
+      '<section class="week"><div class="dh"></div>' +
+      days
+        .map((d) => {
+          const k = ymd(d)
+          return (
+            '<div class="dh' +
+            (k === todayKey ? " today" : "") +
+            '">' +
+            DOW[(d.getDay() + 6) % 7] +
+            " <b>" +
+            d.getDate() +
+            "</b>" +
+            (d.getDate() === 1 ? " " + MONTHS[d.getMonth()].slice(0, 3) : "") +
+            "</div>"
           )
-          .join("")
-      }
-      html += "</section>"
+        })
+        .join("")
+    for (const lane of lanes) {
+      html +=
+        '<div class="' +
+        lane.key +
+        ' lab" title="' +
+        lane.label +
+        '">' +
+        laneMark(lane) +
+        "</div>"
+      html += days
+        .map(
+          (d) =>
+            '<div class="cell ' +
+            lane.key +
+            '">' +
+            cellInner(idx[ymd(d) + "|" + lane.key] || []) +
+            "</div>",
+        )
+        .join("")
     }
+    html += "</section>"
     document.getElementById("weeks").innerHTML = html
 
-    // Phone agenda: only days with posts.
-    const monthKey = view.y + "-" + pad(view.m + 1)
-    const dates = [
-      ...new Set(
-        items
-          .filter(
-            (it) =>
-              it.date.startsWith(monthKey) &&
-              lanes.some((l) => l.key === it.lane),
-          )
-          .map((it) => it.date),
-      ),
-    ].sort()
-    document.getElementById("agenda").innerHTML = dates.length
-      ? dates
+    // Phone: the same week as a list of days that have posts.
+    const keys = days
+      .map(ymd)
+      .filter((k) => lanes.some((l) => idx[k + "|" + l.key]))
+    document.getElementById("agenda").innerHTML = keys.length
+      ? keys
           .map((k) => {
             const d = new Date(k + "T12:00")
             return (
@@ -996,7 +988,7 @@
             )
           })
           .join("")
-      : '<div class="empty">Nothing this month yet.</div>'
+      : '<div class="empty">Nothing this week yet.</div>'
   }
 
   function renderFilters() {
@@ -1032,26 +1024,36 @@
     renderFilters()
     render()
   })
-  document.getElementById("prev").onclick = () => {
-    view.m--
-    if (view.m < 0) {
-      view.m = 11
-      view.y--
-    }
+  const step = (n) => {
+    week.setDate(week.getDate() + 7 * n)
     render()
   }
-  document.getElementById("next").onclick = () => {
-    view.m++
-    if (view.m > 11) {
-      view.m = 0
-      view.y++
-    }
-    render()
-  }
+  document.getElementById("prev").onclick = () => step(-1)
+  document.getElementById("next").onclick = () => step(1)
   document.getElementById("todayBtn").onclick = () => {
-    view = { y: now.getFullYear(), m: now.getMonth() }
+    week = weekStart(new Date())
     render()
   }
+  // Arrow keys and a horizontal swipe also move a week.
+  addEventListener("keydown", (e) => {
+    if (!document.getElementById("ov").hidden) return
+    if (e.key === "ArrowLeft") step(-1)
+    if (e.key === "ArrowRight") step(1)
+  })
+  let tx = null
+  addEventListener(
+    "touchstart",
+    (e) => {
+      tx = e.touches[0].clientX
+    },
+    { passive: true },
+  )
+  addEventListener("touchend", (e) => {
+    if (tx === null) return
+    const dx = e.changedTouches[0].clientX - tx
+    tx = null
+    if (Math.abs(dx) > 60) step(dx < 0 ? 1 : -1)
+  })
 
   // Overlay: big thumbnail + one button per platform the cut went to.
   const ov = document.getElementById("ov")
@@ -1170,10 +1172,10 @@
   })
   addEventListener("scroll", hideTip, { passive: true })
 
+  week = weekStart(now)
   renderFilters()
   render()
   document.getElementById("status").textContent = "Loading posts…"
-
   ;(async () => {
     const db = await window.claude?.use?.("db")
     const status = document.getElementById("status")
