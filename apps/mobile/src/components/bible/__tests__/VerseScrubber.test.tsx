@@ -5,6 +5,7 @@
 
 import { StrictMode, act } from "react"
 import {
+  I18nManager,
   StyleSheet,
   type GestureResponderEvent,
   type StyleProp,
@@ -306,5 +307,27 @@ describe("VerseScrubber (R18, KD7)", () => {
     const { renderer } = await render({ progress: 18 / 36 })
     const [fill] = byTestId(renderer, "bible-reader-progress-fill")
     expect(flat(fill!).width).toBe("50%")
+  })
+})
+
+// feat-692 R11: the bar shows verse order, so it mirrors. Verse 1 is at the
+// right edge, and a drag to the left moves to later verses. Touch x stays
+// physical, so only the drag's sign changes.
+describe("VerseScrubber in a right-to-left layout (feat-692 R11)", () => {
+  beforeEach(() => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+  })
+  afterEach(() => jest.restoreAllMocks())
+
+  it("moves to later verses on a drag to the left and earlier ones on a drag to the right", async () => {
+    // Verse 18 of 36 is at the middle of the bar in both layouts.
+    const { renderer, onPreview, onEnd } = await render({ progress: 0.5 })
+    const moving = await drag(renderer, [barX(0.25), barX(0.75)])
+    await moving.release()
+    expect(onPreview.mock.calls.map(([verse]) => verse)).toEqual([27, 9])
+    expect(onEnd).toHaveBeenCalledWith(9)
   })
 })

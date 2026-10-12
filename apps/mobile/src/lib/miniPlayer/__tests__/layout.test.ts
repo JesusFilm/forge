@@ -449,6 +449,110 @@ describe("the reader corner policy", () => {
   })
 })
 
+// feat-692 R11, KTD7: a right-to-left layout moves the default corners to the
+// other side. The frames and the snap stay physical, because the host draws
+// the window inside a left-to-right layer.
+describe("the corners in each layout direction", () => {
+  const LTR: MiniPlayerLayoutConfig = { ...PHONE, layoutSign: 1 }
+  const RTL: MiniPlayerLayoutConfig = { ...PHONE, layoutSign: -1 }
+  const { width } = miniPlayerWindowSize(PHONE)
+  // Physical x of each side: 12 from the left edge, 214 for the right side.
+  const left = WINDOW_EDGE_MARGIN
+  const right = PHONE.screen.width - WINDOW_EDGE_MARGIN - width
+
+  it("starts a new window at the bottom right, or the bottom left right to left", () => {
+    expect(defaultCornerFrame(LTR)).toMatchObject({
+      corner: "bottomRight",
+      x: right,
+    })
+    expect(defaultCornerFrame(RTL)).toMatchObject({
+      corner: "bottomLeft",
+      x: left,
+    })
+  })
+
+  it("mirrors the corner order right to left", () => {
+    expect(allowedCorners(LTR)).toEqual([
+      "bottomRight",
+      "bottomLeft",
+      "topRight",
+      "topLeft",
+    ])
+    expect(allowedCorners(RTL)).toEqual([
+      "bottomLeft",
+      "bottomRight",
+      "topLeft",
+      "topRight",
+    ])
+  })
+
+  it.each([
+    ["left to right", LTR],
+    ["right to left", RTL],
+  ])(
+    "snaps a release to the nearest physical corner (%s)",
+    (_label, config) => {
+      const far = { x: config.screen.width + 50, y: config.screen.height + 50 }
+      expect(snapToCorner(config, { x: -50, y: -50 })).toMatchObject({
+        corner: "topLeft",
+        x: left,
+      })
+      expect(snapToCorner(config, { x: far.x, y: -50 })).toMatchObject({
+        corner: "topRight",
+        x: right,
+      })
+      expect(snapToCorner(config, { x: -50, y: far.y })).toMatchObject({
+        corner: "bottomLeft",
+        x: left,
+      })
+      expect(snapToCorner(config, far)).toMatchObject({
+        corner: "bottomRight",
+        x: right,
+      })
+    },
+  )
+
+  it("starts the reader's window at the top left on a phone and the bottom left on a tablet, right to left", () => {
+    const base = {
+      host: "pushed" as const,
+      movementBand: 0,
+      tabBar: 49,
+      layoutSign: -1 as const,
+    }
+    expect(readerCornerPolicy({ ...base, layout: "phone" }).startCorner).toBe(
+      "topLeft",
+    )
+    expect(readerCornerPolicy({ ...base, layout: "tablet" }).startCorner).toBe(
+      "bottomLeft",
+    )
+  })
+
+  // PlaybackHost passes no sign and reads DEFAULT_CORNER as a constant. The
+  // module mock, not an I18nManager spy, makes a read of the layout from any
+  // source but the shared helper (KTD8) fail here.
+  it("reads the layout in use when the caller passes no sign", () => {
+    jest.isolateModules(() => {
+      jest.doMock("../../../i18n/layoutRtl", () => ({
+        layoutSign: () => -1,
+        isLayoutRtl: () => true,
+      }))
+      // eslint-disable-next-line @typescript-eslint/no-require-imports -- the module reads the layout as it loads
+      const rtl = require("../layout") as typeof import("../layout")
+      expect(rtl.DEFAULT_CORNER).toBe("bottomLeft")
+      expect(rtl.defaultCornerFrame(PHONE).corner).toBe("bottomLeft")
+      expect(
+        rtl.readerCornerPolicy({
+          layout: "phone",
+          host: "pushed",
+          movementBand: 0,
+          tabBar: 49,
+        }).startCorner,
+      ).toBe("topLeft")
+    })
+    jest.dontMock("../../../i18n/layoutRtl")
+  })
+})
+
 describe("root screen bottom clearance", () => {
   // Measured against the frame PlaybackHost snaps to, not a copy of the sum.
   it.each([
