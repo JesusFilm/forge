@@ -709,8 +709,9 @@ export async function writeStory(input: {
     schema: Schema,
     temperature: input.revise ? 0.3 : 0.7,
     // 5000 cut a script off after the paragraphs once (Martha, 2026-10-01):
-    // the JSON closed without its takeaway, question and prayer.
-    maxTokens: 9000,
+    // the JSON closed without its takeaway, question and prayer. 9000 did
+    // the same twice on Lepers (2026-10-12) once the prompt grew.
+    maxTokens: 20000,
   })
 }
 
