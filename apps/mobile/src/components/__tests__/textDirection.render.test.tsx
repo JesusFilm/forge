@@ -1,4 +1,4 @@
-/** U14 (KTD13) and feat-692 U4 (R15-R17, AE5): start-aligned text takes its
+/** U14 (KTD13) and feat-694 U4 (R15-R17, AE5): start-aligned text takes its
  *  direction from its own language and its edge from the layout. With mirroring
  *  off, an English UI renders every covered surface with no new props (R10). */
 let mockUiTag = "en"
@@ -99,7 +99,7 @@ import {
 } from "../../test-utils/rnTestRenderer"
 
 // With `direction` set, textAlign "left" is the start of the text's own
-// language and "right" its end (device check, feat-692 U4).
+// language and "right" its end (device check, feat-694 U4).
 const RTL_START = {
   direction: "rtl",
   writingDirection: "rtl",

@@ -16,6 +16,7 @@ const mock = {
     reportedFault: null,
   } as LayoutDirectionState,
   saveArgs: [] as unknown[],
+  stateThrows: false,
   reloadRejects: false,
   os: "android",
   isRTL: false,
@@ -33,7 +34,10 @@ jest.mock("../../../modules/layout-direction", () => ({
     get available() {
       return mock.available
     },
-    getState: () => mock.state,
+    getState: () => {
+      if (mock.stateThrows) throw new Error("no react context")
+      return mock.state
+    },
     saveDirection: async (input: unknown) => {
       mock.calls.push("saveDirection")
       mock.saveArgs.push(input)
@@ -144,7 +148,9 @@ function moveTo(state: string) {
   mock.appStateListeners.forEach((listener) => listener(state))
 }
 
+// Fake timers, because a start reload arms the gate's time-based release.
 beforeEach(() => {
+  jest.useFakeTimers()
   mock.calls = []
   mock.available = true
   mock.state = {
@@ -155,6 +161,7 @@ beforeEach(() => {
     reportedFault: null,
   }
   mock.saveArgs = []
+  mock.stateThrows = false
   mock.reloadRejects = false
   mock.os = "android"
   mock.isRTL = false
@@ -165,6 +172,10 @@ beforeEach(() => {
   mock.reports = []
   mock.localeListeners = []
   mock.appStateListeners = []
+})
+
+afterEach(() => {
+  jest.useRealTimers()
 })
 
 describe("startLayoutDirection at start", () => {
@@ -301,6 +312,48 @@ describe("startLayoutDirection at start", () => {
     ])
     expect(mock.reports).toHaveLength(1)
     expect(controller.isDirectionReloadPending()).toBe(false)
+    jest.advanceTimersByTime(controller.RELOAD_GATE_MS)
+    expect(mock.reports).toHaveLength(1)
+  })
+
+  it("opens the gate and reports when the reload never ends this runtime", async () => {
+    mock.uiTag = "ar"
+    const controller = start()
+    await settle()
+    expect(mock.calls).toEqual(["saveDirection", "reload"])
+    jest.advanceTimersByTime(controller.RELOAD_GATE_MS - 1)
+    expect(controller.isDirectionReloadPending()).toBe(true)
+    jest.advanceTimersByTime(1)
+    expect(controller.isDirectionReloadPending()).toBe(false)
+    expect(
+      mock.reports.map((r) => r.context["layout_direction.fault"]),
+    ).toEqual(["reload_stalled"])
+  })
+
+  it("clears a reload record when the next start cannot read the locale", async () => {
+    mock.localeFailed = true
+    mock.state = {
+      nativeMode: "ltr",
+      reloadCount: 1,
+      reloadKind: "return",
+      reloadBundle: "build:7",
+      reportedFault: null,
+    }
+    const controller = start()
+    await settle()
+    expect(controller.afterReturnReload()).toBe(true)
+    expect(mock.calls).toEqual(["applyNativeMode:ltr", "clearReloadRecord"])
+  })
+
+  it("reads a failed native record as no record, reports it, and does not throw", async () => {
+    mock.stateThrows = true
+    const controller = start()
+    await settle()
+    expect(controller.afterReturnReload()).toBe(false)
+    expect(controller.directionReloadKind()).toBeNull()
+    expect(mock.reports[0]!.context).toMatchObject({
+      "layout_direction.fault": "check_failed",
+    })
   })
 
   it("does nothing, and does not throw, with no native module", async () => {
@@ -354,6 +407,25 @@ describe("startLayoutDirection on an Android return (KTD3.3)", () => {
     moveTo("active")
     await settle()
     expect(mock.calls).toEqual(["saveDirection", "reload"])
+    expect(mock.saveArgs).toMatchObject([{ isRTL: true, reloadKind: "return" }])
+  })
+
+  it("reloads on a return after a start reload, because it reads the live record", async () => {
+    mock.state = {
+      nativeMode: "ltr",
+      reloadCount: 1,
+      reloadKind: "start",
+      reloadBundle: "build:7",
+      reportedFault: null,
+    }
+    start()
+    await settle()
+    expect(mock.calls).toEqual(["clearReloadRecord"])
+    moveTo("background")
+    changeLocale("ar")
+    moveTo("active")
+    await settle()
+    expect(mock.calls).toEqual(["clearReloadRecord", "saveDirection", "reload"])
     expect(mock.saveArgs).toMatchObject([{ isRTL: true, reloadKind: "return" }])
   })
 

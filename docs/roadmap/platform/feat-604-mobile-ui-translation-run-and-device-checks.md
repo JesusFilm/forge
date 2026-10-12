@@ -128,7 +128,7 @@ Follow-ups from U16:
 | Recommended shelf                 | Against a provisioned Admin, with the shelf in a non-English UI.                                              |
 | Translation report                | Non-English UI: the fourth tile, the notice, and one report that reaches Linear with its "App language" line. |
 
-> **Superseded 2026-10-12 by feat-692:** the "Right-to-left text" row does not hold for a build that carries feat-692. That build mirrors the layout, and text aligns by R15-R17 of `docs/plans/2026-10-12-1325-feat-mobile-rtl-mirrored-layout-plan.md`. Check it with the feat-692 device record.
+> **Superseded 2026-10-12 by feat-694:** the "Right-to-left text" row does not hold for a build that carries feat-694. That build mirrors the layout, and text aligns by R15-R17 of `docs/plans/2026-10-12-1325-feat-mobile-rtl-mirrored-layout-plan.md`. Check it with the feat-694 device record.
 
 ### Native build
 

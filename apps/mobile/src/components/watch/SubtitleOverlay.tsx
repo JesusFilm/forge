@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     alignItems: "center",
     paddingHorizontal: 16,
-    // The side inset and the caption boxes use physical x values (feat-692
+    // The side inset and the caption boxes use physical x values (feat-694
     // KTD7), so the inset stays on its physical side in every app direction.
     direction: "ltr",
   },

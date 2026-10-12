@@ -490,7 +490,7 @@ function VerseBody({
     fontFamily,
     color: tokens.text,
     // R32: right-to-left text aligns right; left-to-right text is centered.
-    // feat-692 KTD6: with `direction` set, "left" is the start of the text's
+    // feat-694 KTD6: with `direction` set, "left" is the start of the text's
     // own language, so a mirrored layout cannot move it to the left edge.
     direction: textDirection,
     textAlign: textDirection === "rtl" ? "left" : "center",

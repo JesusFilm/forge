@@ -135,7 +135,7 @@ function functionBody(source, name) {
 }
 
 /** True when the root layout renders AppRoot and AppRoot's own body calls
- *  useLocaleResolutionLog(hydrated). feat-692 U2 moved the tree into AppRoot. */
+ *  useLocaleResolutionLog(hydrated). feat-694 U2 moved the tree into AppRoot. */
 function logsLocaleInAppRoot(source) {
   const root = functionBody(source, "RootLayout")
   const app = functionBody(source, "AppRoot")
@@ -165,6 +165,17 @@ function startsDirectionAfterLocale(source) {
     inside(nested, requires[0]) &&
     locale.some((index) => index < starts[0])
   )
+}
+
+/** A value import of src/i18n/layoutDirection, by any relative path. */
+function importsDirectionController(source) {
+  const [code] = scan(source)
+  const named = /^[ \t]*import\s+([^"';]*?)\bfrom\s+["']([^"']+)["']/gm
+  for (const [, clause, from] of code.matchAll(named)) {
+    if (/^type\b/.test(clause.trim())) continue
+    if (/(^|\/)layoutDirection$/.test(from)) return true
+  }
+  return false
 }
 
 /** True when every load of `specifier` is a require inside a `try` block. */
@@ -269,7 +280,7 @@ describe("the ui_locale.resolved log", () => {
   })
 })
 
-describe("the layout direction start (feat-692 KTD3)", () => {
+describe("the layout direction start (feat-694 KTD3)", () => {
   it("starts in the guarded block, after the locale store, in its own try", () => {
     expect(startsDirectionAfterLocale(fs.readFileSync(LAYOUT, "utf8"))).toBe(
       true,
@@ -295,6 +306,33 @@ describe("the layout direction start (feat-692 KTD3)", () => {
     ],
   ])("reads %s as %s", (_label, source, expected) => {
     expect(startsDirectionAfterLocale(source)).toBe(expected)
+  })
+
+  // A static importer evaluates the controller before the nested try, so a
+  // throwing import would reach the outer catch: the Startup Error panel.
+  it("finds no static import of the direction controller in app or src", () => {
+    const files = [
+      ...sourceFiles(path.join(MOBILE_DIR, "app")),
+      ...sourceFiles(path.join(MOBILE_DIR, "src")),
+    ]
+    // A floor, so a broken walk cannot pass by scanning nothing.
+    expect(files.length).toBeGreaterThan(100)
+    const importers = files
+      .filter((file) =>
+        importsDirectionController(fs.readFileSync(file, "utf8")),
+      )
+      .map((file) => path.relative(MOBILE_DIR, file))
+    expect(importers).toEqual([])
+  })
+
+  it.each([
+    ['import { afterReturnReload } from "../../i18n/layoutDirection"', true],
+    ['import { directionReloadKind } from "./layoutDirection"', true],
+    ['import type { ReloadKind } from "./layoutDirection"', false],
+    ['// import { afterReturnReload } from "./layoutDirection"', false],
+    ['const d = require("./layoutDirection")', false],
+  ])("reads %s as a static import: %s", (source, expected) => {
+    expect(importsDirectionController(source)).toBe(expected)
   })
 })
 

@@ -11,7 +11,7 @@ import {
 } from "../scrubber"
 
 // The module mock, not an I18nManager spy, so a guard that reads the direction
-// from anywhere but the shared source (feat-692 KTD8) fails here.
+// from anywhere but the shared source (feat-694 KTD8) fails here.
 const mockLayoutRtl = { current: false }
 jest.mock("../../i18n/layoutRtl", () => ({
   isLayoutRtl: () => mockLayoutRtl.current,

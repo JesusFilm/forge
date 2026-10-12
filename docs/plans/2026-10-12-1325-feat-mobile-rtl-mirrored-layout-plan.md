@@ -486,7 +486,7 @@ flowchart TB
   - Modify `docs/plans/2026-09-28-1016-feat-mobile-ui-localization-plan.md` (KD3, R6, KTD4, KTD13, U14)
   - Modify `docs/plans/2026-09-24-1251-feat-mobile-native-bible-reader-plan.md` (R32)
   - Modify `docs/plans/2026-08-12-001-feat-mobile-mini-player-plan.md` (corner preference)
-  - Modify `docs/roadmap/platform/feat-604-mobile-ui-translation-run-and-device-checks.md` (the right-to-left row) and `docs/roadmap/platform/feat-692-mobile-rtl-mirrored-layout.md` (status)
+  - Modify `docs/roadmap/platform/feat-604-mobile-ui-translation-run-and-device-checks.md` (the right-to-left row) and `docs/roadmap/platform/feat-694-mobile-rtl-mirrored-layout.md` (status)
 - **Approach:** Add dated notes next to the old text and do not rewrite it, per the retired-mechanism prose sweep in the root `CLAUDE.md`. The runbook says that any later update, or an `eas update:rollback` to an update from before the off update, turns mirroring back on. Run `git grep -niE 'supportsRTL|forceLeftToRight|layout never mirrors|left-to-right layout' -- '*.md'` and classify each hit.
 - **Test expectation:** none -- documentation only. `npx prettier --check` passes on every edited file.
 - **Verification:** The grep finds no forward-looking instruction that still describes the left-to-right layout as current.
@@ -522,7 +522,7 @@ The device record (Success Criteria) runs on those builds. Set the iOS language 
 - Every unit's test scenarios exist and pass, and the Verification Contract gates pass.
 - The device record covers every Success Criteria item and every case in the Verification Contract, with screenshots or frame captures, and lists any surface that it did not check.
 - R1–R19 and AE1–AE8 each trace to a passing test or a device record entry.
-- The docs in U9 carry dated supersession notes, and feat-692 shows its status.
+- The docs in U9 carry dated supersession notes, and feat-694 shows its status.
 - No code from abandoned attempts stays in the diff, such as a spike branch in the module or a mechanism that U1 did not choose.
 
 ---

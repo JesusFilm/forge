@@ -65,7 +65,7 @@ flowchart TB
 
 - R1. Pressing back from a video detail screen shrinks the player into a floating window in one smooth, continuous animation — the window never appears abruptly — and playback continues without a pause, a gap, or a black frame.
 - R2. The viewer can drag the window, which settles into one of the four screen corners.
-  - **Superseded in part 2026-10-12 by feat-692 R11:** in a right-to-left layout, the corner preference mirrors, so a new window starts at the bottom left. The window's controls (R5) and its snap stay physical, because the player layer is left-to-right (feat-692 KTD7).
+  - **Superseded in part 2026-10-12 by feat-694 R11:** in a right-to-left layout, the corner preference mirrors, so a new window starts at the bottom left. The window's controls (R5) and its snap stay physical, because the player layer is left-to-right (feat-694 KTD7).
 - R3. The window persists across tab changes and further route pushes until the viewer dismisses it, and playback continues while it is suppressed.
 - R4. Tapping the window returns to the full video screen at the position playback has reached.
 - R5. The window carries a play-pause control near its top-left corner, a dismiss control near its top-right corner, and a non-interactive playback-position indicator. Both controls render directly over the video with drop shadows and stay persistently visible. No scrim, backplate, blur, or translucent layer sits behind them.

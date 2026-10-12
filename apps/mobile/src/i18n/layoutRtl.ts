@@ -1,6 +1,6 @@
 import { I18nManager } from "react-native"
 
-// feat-692 KTD8: the one source for the layout direction in use. It is fixed
+// feat-694 KTD8: the one source for the layout direction in use. It is fixed
 // for the life of a JavaScript runtime, because a direction change reloads.
 
 /** True when the layout in use reads right-to-left. */

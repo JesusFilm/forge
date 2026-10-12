@@ -524,7 +524,7 @@ describe("BibleReader — the verse", () => {
     expect(numbers.length).toBeGreaterThan(0)
   })
 
-  // feat-692 KTD6: with `direction` set, textAlign "left" is the start of the
+  // feat-694 KTD6: with `direction` set, textAlign "left" is the start of the
   // verse's own language, so the verse aligns right in both layouts.
   it("right-aligns a right-to-left translation (R32)", async () => {
     const { services } = makeServices(async () => ({

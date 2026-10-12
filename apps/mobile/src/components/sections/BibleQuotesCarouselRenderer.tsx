@@ -272,7 +272,7 @@ function QuoteCard({
   const passageDirection = readerCard
     ? explicitDirectionStyle(verseDirection)
     : adminDirection
-  // feat-692 R17: the verse is a paragraph; its reference and credit are short.
+  // feat-694 R17: the verse is a paragraph; its reference and credit are short.
   const verseParagraph = readerCard
     ? explicitDirectionStyle(verseDirection, { kind: "paragraph" })
     : direction.text(quote.textLang, { kind: "paragraph" }).style

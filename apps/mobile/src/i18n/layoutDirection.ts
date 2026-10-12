@@ -1,4 +1,4 @@
-// feat-692 KTD3: the app decides the layout direction from the UI Locale, and the
+// feat-694 KTD3: the app decides the layout direction from the UI Locale, and the
 // layout-direction module saves it and applies it to native parts. A wrong
 // direction in use costs one reload: at start, or on Android when the viewer returns.
 import { reloadAppAsync } from "expo"
@@ -56,7 +56,7 @@ export type DirectionDecision =
       fault: string
       report: boolean
     }
-  | { kind: "keep"; nativeMode: NativeMode }
+  | { kind: "keep"; nativeMode: NativeMode; clearRecord: boolean }
 
 /** KTD5: with mirroring off, iOS forces left-to-right and Android keeps its default. */
 export function nativeModeFor(
@@ -75,6 +75,8 @@ export function decideDirection(input: DirectionInputs): DirectionDecision {
     return {
       kind: "keep",
       nativeMode: nativeModeFor(inUseRTL, mirroringEnabled, platform),
+      // A reload record left here would mark the next cold start as reloaded.
+      clearRecord: record.reloadCount > 0 && record.reportedFault == null,
     }
   }
   const wantedRTL = mirroringEnabled && isRtlTag(input.uiTag)
@@ -109,6 +111,7 @@ export class LayoutDirectionFault extends Error {
       | "stuck"
       | "locale_read_failed"
       | "reload_failed"
+      | "reload_stalled"
       | "check_failed",
   ) {
     super(`layout direction: ${fault}`)
@@ -127,11 +130,27 @@ let started = false
 let reloadPending = false
 const pendingListeners = new Set<() => void>()
 
+const NO_RECORD: LayoutDirectionState = {
+  nativeMode: null,
+  reloadCount: 0,
+  reloadKind: null,
+  reloadBundle: null,
+  reportedFault: null,
+}
+
+/** A reload that never tears this runtime down opens the gate after this. */
+export const RELOAD_GATE_MS = 8000
+
 // KTD3.5: the first reader takes the record, before any clear. A reloaded
 // runtime has a count and no reported fault; a stuck one has already reported.
 function startSnapshot(): StartSnapshot {
   if (snapshot) return snapshot
-  const record = getLayoutDirectionModule().getState()
+  let record = NO_RECORD
+  try {
+    record = getLayoutDirectionModule().getState()
+  } catch (error) {
+    report("check_failed", error)
+  }
   const reloaded = record.reloadCount > 0 && record.reportedFault == null
   snapshot = { record, reloadedBy: reloaded ? record.reloadKind : null }
   return snapshot
@@ -241,7 +260,15 @@ function check(kind: ReloadKind): void {
       if (decision.clearRecord) layout.clearReloadRecord().catch(failed)
       return
     case "reload":
-      if (kind === "start") setReloadPending(true)
+      if (kind === "start") {
+        setReloadPending(true)
+        // apps/mobile/CLAUDE.md: a gate behind a load needs a time-based release.
+        setTimeout(() => {
+          if (!reloadPending) return
+          report("reload_stalled")
+          setReloadPending(false)
+        }, RELOAD_GATE_MS)
+      }
       void reloadFor(
         decision,
         kind,
@@ -261,6 +288,7 @@ function check(kind: ReloadKind): void {
       return
     case "keep":
       layout.applyNativeMode(decision.nativeMode).catch(failed)
+      if (decision.clearRecord) layout.clearReloadRecord().catch(failed)
       report("locale_read_failed")
       return
   }

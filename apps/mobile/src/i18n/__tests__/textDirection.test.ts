@@ -17,7 +17,7 @@ import {
   textDirectionStyle,
 } from "../textDirection"
 
-// feat-692 KTD6, checked on the iOS 26.5 simulator and the Android 15 emulator
+// feat-694 KTD6, checked on the iOS 26.5 simulator and the Android 15 emulator
 // (RN 0.86.3): with `direction` set to the text's own language, `textAlign`
 // "left" is the start of that language and "right" is its end, on both platforms.
 const LTR_LEFT = {

@@ -200,7 +200,27 @@ describe("decideDirection", () => {
     expect(decide({ localeReadFailed: true, uiTag: "en" })).toEqual({
       kind: "keep",
       nativeMode: "rtl",
+      clearRecord: false,
     })
+  })
+
+  it("clears a reload record on a failed locale read, but keeps a reported fault", () => {
+    const returned = {
+      nativeMode: "rtl" as const,
+      reloadCount: 1,
+      reloadBundle: "build:7",
+      reportedFault: null,
+    }
+    expect(decide({ localeReadFailed: true, record: returned })).toMatchObject({
+      kind: "keep",
+      clearRecord: true,
+    })
+    expect(
+      decide({
+        localeReadFailed: true,
+        record: { ...returned, reportedFault: "rtl:build:7" },
+      }),
+    ).toMatchObject({ kind: "keep", clearRecord: false })
   })
 
   it("covers AE8: the off switch reloads an Arabic UI to left-to-right", () => {

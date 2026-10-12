@@ -11,13 +11,26 @@
 import * as Notifications from "expo-notifications"
 import Constants from "expo-constants"
 
-import { afterReturnReload } from "../../i18n/layoutDirection"
 import { PUSH_ANNOUNCEMENTS_CHANNEL_ID } from "../push/constants"
 import { presentationForTrigger } from "../push/foreground"
 import {
   LAPSE_REMINDER_CHANNEL_ID,
   type LapseReminderPermission,
 } from "./constants"
+
+// A lazy require: the root layout guards the direction module's import, and a
+// static import here would evaluate it first, outside that guard.
+function afterDirectionReturnReload(): boolean {
+  try {
+    /* eslint-disable-next-line @typescript-eslint/no-require-imports */
+    const { afterReturnReload } = require("../../i18n/layoutDirection") as {
+      afterReturnReload: () => boolean
+    }
+    return afterReturnReload()
+  } catch {
+    return false
+  }
+}
 import type { LapseReminderPayload } from "./payload"
 
 // KTD1: module scope, reached from the root layout's guarded require block, the
@@ -180,9 +193,9 @@ export const lapseReminderNotifications: LapseReminderNotificationsAdapter = {
    *  start the OS-side manager replays the tap into this rather than into the
    *  listener, so the cold and warm paths never both fire for one tap. */
   getLastResponseData() {
-    // feat-692 KTD9: a return reload opens Home, so the tap that started the
+    // feat-694 KTD9: a return reload opens Home, so the tap that started the
     // session must not replay into the runtime that the reload starts.
-    if (afterReturnReload()) return null
+    if (afterDirectionReturnReload()) return null
     return (
       Notifications.getLastNotificationResponse()?.notification.request.content
         .data ?? null

@@ -5,7 +5,7 @@
 const fs = require("fs")
 const path = require("path")
 
-// feat-692 KTD5: one OTA update turns mirroring off by changing one literal. An
+// feat-694 KTD5: one OTA update turns mirroring off by changing one literal. An
 // expression or an import could change at build time, so the guard allows only
 // a bare literal, and pins that the controller reads it.
 const I18N = path.join(__dirname, "..")

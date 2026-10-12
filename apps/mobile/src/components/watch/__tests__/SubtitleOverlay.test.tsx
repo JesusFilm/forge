@@ -539,7 +539,7 @@ describe("SubtitleOverlay — the right inset only over a box (Explore, 2026-09-
     await unmount(renderer)
   })
 
-  // feat-692 R11: in a right-to-left layout the rail sits on the left.
+  // feat-694 R11: in a right-to-left layout the rail sits on the left.
   it("takes the inset on the left for a rail on the left", async () => {
     const renderer = await renderWith(makePlayer(), {
       bottomOffset: 300,
@@ -595,7 +595,7 @@ describe("SubtitleOverlay — the right inset only over a box (Explore, 2026-09-
   })
 })
 
-describe("SubtitleOverlay — in a right-to-left layout (feat-692 KTD7)", () => {
+describe("SubtitleOverlay — in a right-to-left layout (feat-694 KTD7)", () => {
   it("lays the caption out left to right, so the right inset stays on the right", async () => {
     jest.spyOn(I18nManager, "getConstants").mockReturnValue({
       ...I18nManager.getConstants(),

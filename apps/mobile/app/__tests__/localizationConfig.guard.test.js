@@ -12,7 +12,7 @@ const { resolveLocale } = require("../../src/i18n/resolveLocale")
 const { CATALOG_TAGS } = require("../../src/i18n/catalogs.generated")
 
 // Guard (KTD4): the platform offers the per-app language on iOS and Android.
-// feat-692 KTD1: the layout-direction module owns the layout direction.
+// feat-694 KTD1: the layout-direction module owns the layout direction.
 const MOBILE_DIR = path.join(__dirname, "..", "..")
 const APP_JSON = path.join(MOBILE_DIR, "app.json")
 const NATIVE_LOCALES = path.join(MOBILE_DIR, "i18n", "native-locales.json")
@@ -305,7 +305,7 @@ jest.mock("../../src/lib/explore/availability", () => ({
   isExploreAvailable: () => true,
 }))
 // The module mock, not an I18nManager spy, so a layout that reads the
-// direction from anywhere but the shared source (feat-692 KTD8) fails here.
+// direction from anywhere but the shared source (feat-694 KTD8) fails here.
 jest.mock("../../src/i18n/layoutRtl", () => ({
   isLayoutRtl: () => mockLayoutRtl.current,
 }))
@@ -341,7 +341,7 @@ function fixtureLayout(props) {
   return () => createElement(NativeTabs, props(), null)
 }
 
-describe("iOS native tab bar direction (feat-692 R4)", () => {
+describe("iOS native tab bar direction (feat-694 R4)", () => {
   afterEach(() => {
     mockNativeTabsProps.current = undefined
     mockLayoutRtl.current = false

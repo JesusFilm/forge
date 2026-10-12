@@ -707,7 +707,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     justifyContent: "center",
     alignItems: "center",
-    // Playback does not mirror (feat-692 R12): the transport order and the
+    // Playback does not mirror (feat-694 R12): the transport order and the
     // fullscreen bar's side insets stay physical in a right-to-left app.
     direction: "ltr",
   },

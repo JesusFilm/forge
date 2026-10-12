@@ -1154,7 +1154,7 @@ describe("ClipOverlay — a scrub holds the clip end", () => {
   })
 })
 
-describe("ClipOverlay — in a right-to-left layout (feat-692 R11, KTD7)", () => {
+describe("ClipOverlay — in a right-to-left layout (feat-694 R11, KTD7)", () => {
   beforeEach(() => {
     jest.spyOn(I18nManager, "getConstants").mockReturnValue({
       ...I18nManager.getConstants(),

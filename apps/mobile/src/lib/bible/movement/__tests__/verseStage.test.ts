@@ -30,7 +30,7 @@ type Stage = VerseStage<View, Fit>
 const sameView = (a: View, b: View) =>
   a.text === b.text && a.selected === b.selected
 const sameFit = (a: Fit, b: Fit) => a.size === b.size
-/** The layout sign (feat-692 KTD8): 1 left to right, -1 right to left. */
+/** The layout sign (feat-694 KTD8): 1 left to right, -1 right to left. */
 const LTR = 1
 const RTL = -1
 
@@ -397,7 +397,7 @@ describe("across a chapter load", () => {
     expect(stage.change?.direction).toBe("forward")
   })
 
-  // feat-692 R11: the leaving verse keeps the side it was moving to.
+  // feat-694 R11: the leaving verse keeps the side it was moving to.
   it("interrupts a chapter change from where it is in a right-to-left layout", () => {
     const swipe = (id: number) => ({
       id,
@@ -521,7 +521,7 @@ describe("slideCurves", () => {
     )
   })
 
-  // feat-692 R11: a chapter moves in the reading direction; a verse does not.
+  // feat-694 R11: a chapter moves in the reading direction; a verse does not.
   it("moves both verses right for the next chapter in a right-to-left layout", () => {
     const next = slideCurves("forward", "chapter", AT_REST, 0.5, RTL)
     expect(curveAt(next.outgoing.translateX, 1)).toBe(VERSE_SLIDE_SHIFT)

@@ -1,5 +1,5 @@
 /**
- * The hero selector rail in a right-to-left layout (feat-692 U5). The list
+ * The hero selector rail in a right-to-left layout (feat-694 U5). The list
  * counts an offset from its content's right edge, so centering waits for that
  * width. The jest ScrollView fires no layout event, so the suite drives both.
  */

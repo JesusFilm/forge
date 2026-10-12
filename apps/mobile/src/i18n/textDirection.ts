@@ -1,4 +1,4 @@
-// KTD13: a text takes its writing direction from its own language. feat-692
+// KTD13: a text takes its writing direction from its own language. feat-694
 // KTD6: with mirroring on, its edge follows R15-R17 in both layout directions.
 import { useMemo } from "react"
 import { Platform } from "react-native"
@@ -26,7 +26,7 @@ const LTR_STYLE: TextDirectionStyle = Object.freeze({
   writingDirection: "ltr",
 })
 
-// Device check (feat-692 U4): with `direction` set to the text's own language,
+// Device check (feat-694 U4): with `direction` set to the text's own language,
 // both platforms read `textAlign` "left" as that language's start edge.
 const EDGE_STYLES = {
   ltr: {

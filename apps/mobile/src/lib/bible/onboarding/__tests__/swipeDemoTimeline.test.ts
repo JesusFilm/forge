@@ -98,7 +98,7 @@ describe("the swipe demo timeline (R16)", () => {
     }
   })
 
-  // feat-692 R11, R14: the chapter finger shows the swipe that opens the next
+  // feat-694 R11, R14: the chapter finger shows the swipe that opens the next
   // chapter, so it mirrors. The verse finger still moves up.
   it("moves the chapter finger right in a right-to-left layout", () => {
     const up = partTravelKeyframes("verse", 80, -1)

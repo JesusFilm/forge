@@ -29,7 +29,7 @@ beforeEach(() => {
   mockDirection.afterReturnReload = false
 })
 
-describe("getLastResponseData (feat-692 KTD9)", () => {
+describe("getLastResponseData (feat-694 KTD9)", () => {
   it("replays the tap that started the session after a start reload", () => {
     expect(lapseReminderNotifications.getLastResponseData()).toEqual(TAP)
   })

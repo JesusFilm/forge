@@ -689,7 +689,7 @@ describe("fullscreenCaptionOffset", () => {
   })
 })
 
-describe("PlayerControls in a right-to-left layout (feat-692 R12, KTD7)", () => {
+describe("PlayerControls in a right-to-left layout (feat-694 R12, KTD7)", () => {
   beforeEach(() => {
     jest.spyOn(I18nManager, "getConstants").mockReturnValue({
       ...I18nManager.getConstants(),

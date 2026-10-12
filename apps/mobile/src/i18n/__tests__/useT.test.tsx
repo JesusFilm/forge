@@ -183,7 +183,7 @@ describe("useDefaultAudioSlug", () => {
 })
 
 describe("useTextDirection", () => {
-  // feat-692 U4: the edge follows the layout, which only a reload changes, so
+  // feat-694 U4: the edge follows the layout, which only a reload changes, so
   // the language mark is what a live UI language change must update.
   function FallbackText() {
     const { text } = useTextDirection()

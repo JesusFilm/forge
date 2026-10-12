@@ -78,7 +78,7 @@ const MIRRORED_CORNER: Record<MiniPlayerCorner, MiniPlayerCorner> = {
   bottomRight: "bottomLeft",
 }
 
-/** feat-692 R11: a right-to-left layout (`sign` -1) moves that chrome to the
+/** feat-694 R11: a right-to-left layout (`sign` -1) moves that chrome to the
  *  right edge, so the order mirrors. Each corner's frame stays physical. */
 function cornerPreference(sign: 1 | -1): readonly MiniPlayerCorner[] {
   return sign === 1
@@ -237,7 +237,7 @@ export type ReaderCornerPolicy = {
 
 /** feat-553 KTD11, KD9, KD26: a new window starts at the top right on a phone
  *  and the bottom right on a tablet, at the left in a right-to-left layout
- *  (feat-692 R11). It may rest in any corner between the top bar and footer. */
+ *  (feat-694 R11). It may rest in any corner between the top bar and footer. */
 export function readerCornerPolicy(input: {
   layout: ReaderLayout
   host: "tab" | "pushed"

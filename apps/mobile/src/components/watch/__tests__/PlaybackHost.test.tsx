@@ -5425,7 +5425,7 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
   })
 })
 
-describe("physical coordinates in a right-to-left layout (feat-692 KTD7)", () => {
+describe("physical coordinates in a right-to-left layout (feat-694 KTD7)", () => {
   beforeEach(() => {
     jest.spyOn(I18nManager, "getConstants").mockReturnValue({
       ...I18nManager.getConstants(),
