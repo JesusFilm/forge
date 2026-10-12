@@ -1,21 +1,8 @@
 import { useEffect, useRef } from "react"
 
 import { datadogLog } from "../lib/datadog"
+import { readDirectionReloadKind } from "./lazyLayoutDirection"
 import { getLocaleResolution, localeResolutionAttributes } from "./localeStore"
-
-// A lazy require: the root layout guards the direction module's import, and a
-// static import here would evaluate it first, outside that guard.
-function readDirectionReloadKind(): string | null {
-  try {
-    /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-    const { directionReloadKind } = require("./layoutDirection") as {
-      directionReloadKind: () => string | null
-    }
-    return directionReloadKind()
-  } catch {
-    return null
-  }
-}
 
 /** Logs `ui_locale.resolved` once per mount, on the first commit where
  *  `hydrated` is true. The root layout passes its cache hydration gate. */

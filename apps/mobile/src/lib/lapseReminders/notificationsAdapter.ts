@@ -11,26 +11,13 @@
 import * as Notifications from "expo-notifications"
 import Constants from "expo-constants"
 
+import { afterDirectionReturnReload } from "../../i18n/lazyLayoutDirection"
 import { PUSH_ANNOUNCEMENTS_CHANNEL_ID } from "../push/constants"
 import { presentationForTrigger } from "../push/foreground"
 import {
   LAPSE_REMINDER_CHANNEL_ID,
   type LapseReminderPermission,
 } from "./constants"
-
-// A lazy require: the root layout guards the direction module's import, and a
-// static import here would evaluate it first, outside that guard.
-function afterDirectionReturnReload(): boolean {
-  try {
-    /* eslint-disable-next-line @typescript-eslint/no-require-imports */
-    const { afterReturnReload } = require("../../i18n/layoutDirection") as {
-      afterReturnReload: () => boolean
-    }
-    return afterReturnReload()
-  } catch {
-    return false
-  }
-}
 import type { LapseReminderPayload } from "./payload"
 
 // KTD1: module scope, reached from the root layout's guarded require block, the

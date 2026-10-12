@@ -55,12 +55,12 @@ jest.mock("../../../hooks/useErrorRecovery", () => ({
 jest.mock("../PlayerLoadingVeil", () => ({ PlayerLoadingVeil: () => null }))
 jest.mock("../SubtitleOverlay", () => ({ SubtitleOverlay: () => null }))
 jest.mock("../PlayerControls", () => {
-  const { Pressable } = jest.requireActual("react-native")
+  const { Pressable, View } = jest.requireActual("react-native")
   return {
     PlayerControls: ({ onOpenSettings }: { onOpenSettings: () => void }) => (
       <Pressable accessibilityLabel="Settings" onPress={onOpenSettings} />
     ),
-    RouteButtons: () => null,
+    RouteButtons: () => <View testID="route-buttons" />,
     fullscreenCaptionOffset: () => 0,
   }
 })
@@ -124,9 +124,9 @@ function hostByLabel(renderer: TestInstance, label: string): RenderedNode {
   return node
 }
 
-function fakePlayer() {
+function fakePlayer(playing: boolean) {
   return {
-    playing: true,
+    playing,
     currentTime: 60,
     duration: 600,
     isExternalPlaybackActive: false,
@@ -137,13 +137,17 @@ function fakePlayer() {
   }
 }
 
-async function render(): Promise<TestInstance> {
+/** `awaitingAutostart` renders the veil, with the route buttons over it. */
+async function render({
+  awaitingAutostart = false,
+}: { awaitingAutostart?: boolean } = {}): Promise<TestInstance> {
   let renderer!: TestInstance
   await act(async () => {
     renderer = TestRenderer.create(
       <VideoPlayer
-        player={fakePlayer() as unknown as ExpoVideoPlayer}
-        isPlaying
+        player={fakePlayer(!awaitingAutostart) as unknown as ExpoVideoPlayer}
+        isPlaying={!awaitingAutostart}
+        autostart={awaitingAutostart}
         streamingUrl="https://stream.mux.com/abc123.m3u8"
         posterUrl={null}
         feedbackContext={null}
@@ -193,6 +197,25 @@ describe("the double-tap seek flash (feat-694 R12)", () => {
     expect(directionAbove(flash)).toBe("ltr")
     await unmount(renderer)
   })
+})
+
+describe("the autostart veil's route buttons (feat-694 R11)", () => {
+  it.each([
+    { layout: "right-to-left", isRTL: true, expected: "rtl" },
+    { layout: "left-to-right", isRTL: false, expected: "ltr" },
+  ])(
+    "lay out in the app's own direction in a $layout layout",
+    async ({ isRTL, expected }) => {
+      layoutIs(isRTL)
+      const renderer = await render({ awaitingAutostart: true })
+      const hosts = renderer.root.findAll(
+        (n) => n.props.testID === "route-buttons" && typeof n.type === "string",
+      )
+      expect(hosts).toHaveLength(1)
+      expect(directionAbove(hosts[0]!)).toBe(expected)
+      await unmount(renderer)
+    },
+  )
 })
 
 describe("the player's sheets (feat-694 R11)", () => {

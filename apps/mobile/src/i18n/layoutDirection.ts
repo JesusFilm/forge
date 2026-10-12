@@ -58,6 +58,11 @@ export type DirectionDecision =
     }
   | { kind: "keep"; nativeMode: NativeMode; clearRecord: boolean }
 
+/** A record that a direction reload wrote, with no fault reported since. */
+function isReloadRecord(record: DirectionRecord): boolean {
+  return record.reloadCount > 0 && record.reportedFault == null
+}
+
 /** KTD5: with mirroring off, iOS forces left-to-right and Android keeps its default. */
 export function nativeModeFor(
   isRTL: boolean,
@@ -76,7 +81,7 @@ export function decideDirection(input: DirectionInputs): DirectionDecision {
       kind: "keep",
       nativeMode: nativeModeFor(inUseRTL, mirroringEnabled, platform),
       // A reload record left here would mark the next cold start as reloaded.
-      clearRecord: record.reloadCount > 0 && record.reportedFault == null,
+      clearRecord: isReloadRecord(record),
     }
   }
   const wantedRTL = mirroringEnabled && isRtlTag(input.uiTag)
@@ -140,6 +145,8 @@ const NO_RECORD: LayoutDirectionState = {
 
 /** A direction reload that has not ended this runtime by then did not happen. */
 export const RELOAD_DEADLINE_MS = 8000
+/** The longest wait for the native restore before the start gate opens. */
+export const RESTORE_WAIT_MS = 1000
 
 // KTD3.5: the first reader takes the record, before any clear. A reloaded
 // runtime has a count and no reported fault; a stuck one has already reported.
@@ -151,8 +158,10 @@ function startSnapshot(): StartSnapshot {
   } catch (error) {
     report("check_failed", error)
   }
-  const reloaded = record.reloadCount > 0 && record.reportedFault == null
-  snapshot = { record, reloadedBy: reloaded ? record.reloadKind : null }
+  snapshot = {
+    record,
+    reloadedBy: isReloadRecord(record) ? record.reloadKind : null,
+  }
   return snapshot
 }
 
@@ -203,6 +212,18 @@ function currentBundle(): string {
   return `build:${readAppVersionParts().build ?? "unknown"}`
 }
 
+/** Resolves when `work` settles or after `ms`, whichever comes first. */
+function settleWithin(work: Promise<void>, ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms)
+    const done = () => {
+      clearTimeout(timer)
+      resolve()
+    }
+    work.then(done, done)
+  })
+}
+
 function report(fault: LayoutDirectionFault["fault"], error?: unknown): void {
   reportDatadogError(error ?? new LayoutDirectionFault(fault), {
     "layout_direction.fault": fault,
@@ -229,16 +250,20 @@ async function reloadFor(
     if (restored) return
     restored = true
     report(fault, error)
-    await layout
-      .saveDirection({
-        isRTL: inUse.isRTL,
-        nativeMode: inUse.nativeMode,
-        reloadCount: 0,
-        reloadKind: null,
-        reloadBundle: null,
-      })
-      .catch(() => {})
-    await layout.applyNativeMode(inUse.nativeMode).catch(() => {})
+    const putBack = (async () => {
+      await layout
+        .saveDirection({
+          isRTL: inUse.isRTL,
+          nativeMode: inUse.nativeMode,
+          reloadCount: 0,
+          reloadKind: null,
+          reloadBundle: null,
+        })
+        .catch(() => {})
+      await layout.applyNativeMode(inUse.nativeMode).catch(() => {})
+    })()
+    // A native call that never settles must not keep the gate shut.
+    await settleWithin(putBack, RESTORE_WAIT_MS)
     setReloadPending(false)
   }
   const deadline = setTimeout(
@@ -253,6 +278,8 @@ async function reloadFor(
       reloadKind: kind,
       reloadBundle: bundle,
     })
+    // A save that ended after the deadline: the restore has run, so no reload.
+    if (restored) return
     await reloadAppAsync("layout direction")
   } catch (error) {
     clearTimeout(deadline)

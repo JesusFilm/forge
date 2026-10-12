@@ -2912,7 +2912,11 @@ catalog) stays left-to-right. The plan is
   return during a per-app language change, that left English text right-aligned
   over a left-to-right layout. So a reload that rejects, or that has not ended
   the runtime after `RELOAD_DEADLINE_MS`, saves and applies the direction in use
-  again and reports `reload_failed` or `reload_stalled`.
+  again and reports `reload_failed` or `reload_stalled`. The start gate opens
+  after at most `RESTORE_WAIT_MS` more, even when that native restore does not
+  settle. A first save that ends after the deadline does not reload. The restore
+  clears the reload count, so a start reload that stalls on every launch tries
+  again at each cold start, at a cost of up to 8 s behind the native splash.
 
 #### Off switch (runbook)
 

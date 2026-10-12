@@ -167,15 +167,22 @@ function startsDirectionAfterLocale(source) {
   )
 }
 
-/** A value import of src/i18n/layoutDirection, by any relative path. */
+/** A load of src/i18n/layoutDirection outside a `require`, by any relative
+ *  path: an import, a re-export, a bare import, or a dynamic import. */
 function importsDirectionController(source) {
   const [code] = scan(source)
-  const named = /^[ \t]*import\s+([^"';]*?)\bfrom\s+["']([^"']+)["']/gm
+  const target = /(^|\/)layoutDirection$/
+  const named =
+    /^[ \t]*(?:import|export)\s+([^"';]*?)\bfrom\s+["']([^"']+)["']/gm
   for (const [, clause, from] of code.matchAll(named)) {
     if (/^type\b/.test(clause.trim())) continue
-    if (/(^|\/)layoutDirection$/.test(from)) return true
+    if (target.test(from)) return true
   }
-  return false
+  const bare = /^[ \t]*import\s*["']([^"']+)["']/gm
+  const dynamic = /(?<!typeof\s)\bimport\(\s*["']([^"']+)["']/g
+  return [...code.matchAll(bare), ...code.matchAll(dynamic)].some(([, from]) =>
+    target.test(from),
+  )
 }
 
 /** True when every load of `specifier` is a require inside a `try` block. */
@@ -328,7 +335,14 @@ describe("the layout direction start (feat-694 KTD3)", () => {
   it.each([
     ['import { afterReturnReload } from "../../i18n/layoutDirection"', true],
     ['import { directionReloadKind } from "./layoutDirection"', true],
+    ['export { afterReturnReload } from "./layoutDirection"', true],
+    ['export * from "../i18n/layoutDirection"', true],
+    ['import "./layoutDirection"', true],
+    ['const d = await import("./layoutDirection")', true],
     ['import type { ReloadKind } from "./layoutDirection"', false],
+    ['export type { ReloadKind } from "./layoutDirection"', false],
+    ['type C = typeof import("./layoutDirection")', false],
+    ['import { readDirectionReloadKind } from "./lazyLayoutDirection"', false],
     ['// import { afterReturnReload } from "./layoutDirection"', false],
     ['const d = require("./layoutDirection")', false],
   ])("reads %s as a static import: %s", (source, expected) => {

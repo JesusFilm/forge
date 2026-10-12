@@ -16,6 +16,8 @@ const mock = {
     reportedFault: null,
   } as LayoutDirectionState,
   saveArgs: [] as unknown[],
+  /** One entry per saveDirection call, in order: the call waits for it. */
+  saveWaits: [] as (Promise<void> | undefined)[],
   stateThrows: false,
   reloadRejects: false,
   os: "android",
@@ -41,6 +43,8 @@ jest.mock("../../../modules/layout-direction", () => ({
     saveDirection: async (input: unknown) => {
       mock.calls.push("saveDirection")
       mock.saveArgs.push(input)
+      const wait = mock.saveWaits.shift()
+      if (wait) await wait
     },
     saveNativeMode: async (mode: string) => {
       mock.calls.push(`saveNativeMode:${mode}`)
@@ -136,7 +140,7 @@ function start(): Controller {
 
 /** Lets the save, reload, and catch chain settle. */
 async function settle() {
-  for (let i = 0; i < 5; i += 1) await Promise.resolve()
+  for (let i = 0; i < 10; i += 1) await Promise.resolve()
 }
 
 function changeLocale(uiTag: string) {
@@ -161,6 +165,7 @@ beforeEach(() => {
     reportedFault: null,
   }
   mock.saveArgs = []
+  mock.saveWaits = []
   mock.stateThrows = false
   mock.reloadRejects = false
   mock.os = "android"
@@ -352,6 +357,89 @@ describe("startLayoutDirection at start", () => {
       reloadKind: null,
       reloadBundle: null,
     })
+  })
+
+  // An Arabic viewer who picks English: the restore must put right to left
+  // back, or React Native lays out left to right under a right-to-left screen.
+  it.each([
+    ["android", "rejects", "reload_failed"],
+    ["android", "never ends", "reload_stalled"],
+    ["ios", "rejects", "reload_failed"],
+    ["ios", "never ends", "reload_stalled"],
+  ])(
+    "on %s, restores a right-to-left direction in use when the reload %s",
+    async (os, _how, fault) => {
+      mock.os = os
+      mock.isRTL = true
+      mock.uiTag = "en"
+      mock.reloadRejects = fault === "reload_failed"
+      const controller = start()
+      await settle()
+      jest.advanceTimersByTime(controller.RELOAD_DEADLINE_MS)
+      await settle()
+      expect(mock.saveArgs[0]).toMatchObject({
+        isRTL: false,
+        nativeMode: "ltr",
+        reloadCount: 1,
+      })
+      expect(mock.saveArgs[1]).toEqual({
+        isRTL: true,
+        nativeMode: "rtl",
+        reloadCount: 0,
+        reloadKind: null,
+        reloadBundle: null,
+      })
+      expect(mock.calls).toEqual([
+        "saveDirection",
+        "reload",
+        "saveDirection",
+        "applyNativeMode:rtl",
+      ])
+      expect(
+        mock.reports.map((r) => r.context["layout_direction.fault"]),
+      ).toEqual([fault])
+      expect(controller.isDirectionReloadPending()).toBe(false)
+    },
+  )
+
+  it("does not reload when the save ends after the deadline", async () => {
+    let endSave!: () => void
+    mock.saveWaits = [
+      new Promise<void>((resolve) => {
+        endSave = resolve
+      }),
+    ]
+    mock.uiTag = "ar"
+    const controller = start()
+    await settle()
+    jest.advanceTimersByTime(controller.RELOAD_DEADLINE_MS)
+    await settle()
+    expect(controller.isDirectionReloadPending()).toBe(false)
+    endSave()
+    await settle()
+    expect(mock.calls).toEqual([
+      "saveDirection",
+      "saveDirection",
+      "applyNativeMode:ltr",
+    ])
+    expect(
+      mock.reports.map((r) => r.context["layout_direction.fault"]),
+    ).toEqual(["reload_stalled"])
+  })
+
+  it("opens the gate when the restore's save never settles", async () => {
+    mock.saveWaits = [undefined, new Promise<void>(() => {})]
+    mock.uiTag = "ar"
+    mock.reloadRejects = true
+    const controller = start()
+    await settle()
+    expect(mock.calls).toEqual(["saveDirection", "reload", "saveDirection"])
+    jest.advanceTimersByTime(controller.RESTORE_WAIT_MS - 1)
+    await settle()
+    expect(controller.isDirectionReloadPending()).toBe(true)
+    jest.advanceTimersByTime(1)
+    await settle()
+    expect(controller.isDirectionReloadPending()).toBe(false)
   })
 
   it("clears a reload record when the next start cannot read the locale", async () => {
