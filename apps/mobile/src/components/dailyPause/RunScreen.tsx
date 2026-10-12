@@ -6,6 +6,13 @@ import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
 import { useCallback, useEffect, useRef, type ReactNode } from "react"
 import { StyleSheet, View } from "react-native"
 
+import { useReduceMotion } from "../../hooks/useReduceMotion"
+import {
+  cancelClosePrompt,
+  dismissClosePrompt,
+  openClosePrompt,
+  useClosePromptOpen,
+} from "../../lib/dailyPause/closePrompt"
 import type { DevotionalPart } from "../../lib/dailyPause/devotionals"
 import { usePauseFonts } from "../../lib/dailyPause/fonts"
 import { usePauseDay, type PauseStep } from "../../lib/dailyPause/progress"
@@ -20,9 +27,9 @@ import {
 import { usePauseSettings } from "../../lib/dailyPause/settings"
 import { pauseColors } from "../../lib/dailyPause/theme"
 import { localDay, useToday } from "../../lib/dailyPause/today"
-import { useEntryRequestsOnTop } from "../../lib/pauseCurtain"
+import { requestPauseExit, useEntryRequestsOnTop } from "../../lib/pauseCurtain"
 import { CloseButton } from "./CloseButton"
-import { useCloseDailyPause } from "./DailyPauseHost"
+import { CLOSE_PROMPT_FADE_MS, ClosePrompt } from "./ClosePrompt"
 import { DevSkipButton } from "./DevSkipButton"
 import { OpeningScreen } from "./OpeningScreen"
 import { PartPlayer } from "./PartPlayer"
@@ -30,6 +37,7 @@ import { PrayScreen } from "./PrayScreen"
 import { ReflectScreen } from "./ReflectScreen"
 import { SectionMarkers } from "./SectionMarkers"
 import { ShareScreen } from "./ShareScreen"
+import { useFadeOut } from "./useFadeOut"
 import { WatchScreen } from "./WatchScreen"
 
 const KEEP_AWAKE_TAG = "daily-pause-run"
@@ -62,13 +70,21 @@ function partForStep(step: PauseStep): DevotionalPart | null {
 
 export function RunScreen() {
   const router = useRouter()
-  const close = useCloseDailyPause()
   const today = useToday()
   const settings = usePauseSettings()
   const day = usePauseDay(today.dayKey)
   const { ready: fontsReady, font } = usePauseFonts()
   const run = useDailyPauseRun()
   const { state } = run
+  const prompting = useClosePromptOpen()
+  // A prompt left open must not show again on the next run.
+  useEffect(() => dismissClosePrompt, [])
+  const reduceMotion = useReduceMotion()
+  const promptView = useFadeOut(
+    prompting,
+    "prompt",
+    reduceMotion ? 0 : CLOSE_PROMPT_FADE_MS,
+  )
 
   // One stable callback, so the memoized stepper does not render again on
   // each tick of the Reflect and Pray timers.
@@ -162,35 +178,57 @@ export function RunScreen() {
 
   return (
     <View style={styles.screen}>
-      {/* One player from the film part to the prayer part (KTD7). It keeps
-          this first place, so a step change never mounts it again. */}
-      {part != null && state.pin != null ? (
-        <PartPlayer
-          devotional={state.pin.devotional}
-          part={part}
-          active={isVideoPart(state.step)}
-          focused={focused}
+      {/* A screen reader reaches only the close prompt while it shows. */}
+      <View
+        style={styles.screen}
+        accessibilityElementsHidden={prompting}
+        importantForAccessibility={prompting ? "no-hide-descendants" : "auto"}
+      >
+        {/* One player from the film part to the prayer part (KTD7). It keeps
+            this first place, so a step change never mounts it again. */}
+        {part != null && state.pin != null ? (
+          <PartPlayer
+            devotional={state.pin.devotional}
+            part={part}
+            active={isVideoPart(state.step)}
+            focused={focused && !prompting}
+            font={font}
+            onEnded={run.advance}
+          />
+        ) : null}
+        {content}
+        {/* Keyed by section, so each part plays its own marker arrival. */}
+        {section != null ? (
+          <SectionMarkers
+            key={section}
+            section={section}
+            font={font}
+            onSelect={(other) => run.jump(partStepForSection(other))}
+          />
+        ) : null}
+        <CloseButton onPress={openClosePrompt} placement={topRow} />
+        {__DEV__ && loaded && TIMED_STEPS.has(state.step) ? (
+          <DevSkipButton
+            onPress={run.advance}
+            placement={topRow}
+            font={font}
+            belowMarkers={section != null}
+          />
+        ) : null}
+      </View>
+      {promptView.mounted ? (
+        <ClosePrompt
+          // A prompt opened again during its fade-out starts a new fade-in.
+          key={promptView.show}
+          finished={state.step === "share"}
+          leaving={promptView.leaving}
+          reduceMotion={reduceMotion}
           font={font}
-          onEnded={run.advance}
-        />
-      ) : null}
-      {content}
-      {/* Keyed by section, so each part plays its own marker arrival. */}
-      {section != null ? (
-        <SectionMarkers
-          key={section}
-          section={section}
-          font={font}
-          onSelect={(other) => run.jump(partStepForSection(other))}
-        />
-      ) : null}
-      <CloseButton onPress={close} placement={topRow} />
-      {__DEV__ && loaded && TIMED_STEPS.has(state.step) ? (
-        <DevSkipButton
-          onPress={run.advance}
-          placement={topRow}
-          font={font}
-          belowMarkers={section != null}
+          // The owner, 2026-10-12: Close leaves through the curtain and the
+          // logo, as Finish does. The prompt stays up under the curtain, so
+          // the run never shows unblurred; the unmount clears it.
+          onClose={() => requestPauseExit({ kind: "home" })}
+          onCancel={cancelClosePrompt}
         />
       ) : null}
     </View>

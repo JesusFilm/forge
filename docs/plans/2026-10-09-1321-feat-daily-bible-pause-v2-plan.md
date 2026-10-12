@@ -30,7 +30,7 @@ execution: code
 
 ### Summary
 
-The run keeps its current step order. Each video part shows the WATCH, REFLECT, and PRAY markers across the top, with its own section in gold. The stepper pills share one width. From the Reflect screen on, a tap on another pill opens the start of that section. A tap on another marker opens that section's video part. Reflect gets the countdown ring that Pray already has. Share gets "Browse suggested media" and "Finish", and both leave through the curtain-and-logo transition that opens the devotional.
+The run keeps its current step order. Each video part shows the WATCH, REFLECT, and PRAY markers across the top, with its own section in gold. The stepper pills share one width. From the Reflect screen on, a tap on another pill opens the start of that section. A tap on another marker opens that section's video part. Reflect gets the countdown ring that Pray already has. Share gets "Browse media" and "Finish", and both leave through the curtain-and-logo transition that opens the devotional.
 
 ### Problem Frame
 
@@ -51,11 +51,11 @@ On 2026-10-08 the branch had tappable pills (`f29eb9393`) and a Reflect ring (`8
 - **Keep the current step order.** The v2 board shows each section screen before its video, but the Reflect video must play before the Reflect verse screen. Governs R1. (session-settled: user-directed — chosen over the v2 board order and over a mix with the v2 order for Pray only: the teaching part ends on the verse that the Reflect screen holds, so it plays first, as it does today.)
 - **Each video part shows the section it belongs to.** The film part is Watch, the teaching part is Reflect, and the prayer part is Pray, as `CONCEPTS.md` pairs each section with a video part and a screen. Governs R3. (session-settled: user-approved — chosen over showing the section of the last stepper screen, which would show no video as PRAY.)
 - **A pill tap opens the start of that section; the current pill takes no tap.** Changed 2026-10-09 by the owner, after the first build: a pill tap used to replay the current screen's arrival. Governs R7, R8. (session-settled: user-directed — the section's start chosen over the section's screen; the owner also asked that the current pill do nothing, with no replay.)
-- **"Browse suggested media" searches for the Opening question.** It is the text the viewer saw first. Governs R16. (session-settled: user-directed — chosen over the passage, the short name, and a new authored title.)
+- **"Browse media" searches for the Opening question.** It is the text the viewer saw first. Governs R16. (session-settled: user-directed — chosen over the passage, the short name, and a new authored title.)
 - **Reflect takes Pray's countdown.** One behavior for both pauses. Pray's ring, fade, and grey button are already on the branch. Governs R11, R12, R13.
 - **The exit plays the full opening sequence, logo included.** The owner asked for the same transition. It takes about 4 seconds. Governs R18.
 - **The markers are chapter markers: a tap opens that section's video part.** Changed 2026-10-09 by the owner, after the first build: the markers were labels with no tap. Each part plays a marker arrival: a gold line draws along the row to the part's section, which then lights up gold. A tap on another marker opens that section's part, back or ahead. Since 2026-10-12 (the owner), a tap on the current marker does nothing, as on the current pill; it played the arrival again before. A tap off the markers still pauses or resumes the video. Governs R4. (session-settled: user-directed — chosen over a light-up with no line and over an underline under the current marker only, from a sketch of all three.)
-- **The close (×) keeps its instant exit.** Only the two new buttons get the transition. Governs R19.
+- **The close (×) asks first, then leaves through the transition.** Changed 2026-10-12 by the owner: the close kept its instant exit before, and only Share's two buttons got the transition. Governs R19, R22.
 - **A tap on the exit curtain does not cancel the exit.** The viewer already chose to leave, so the opening's tap-to-cancel does not apply here. Governs R18.
 
 ### Requirements
@@ -87,11 +87,12 @@ On 2026-10-08 the branch had tappable pills (`f29eb9393`) and a Reflect ring (`8
 
 **Share exits**
 
-- R16. "Browse suggested media" opens the search tab with today's Opening question in the search bar, and the search runs at once, as a tap on a browse topic does. The question replaces any earlier query in the bar.
+- R16. "Browse media" opens the search tab with today's Opening question in the search bar, and the search runs at once, as a tap on a browse topic does. The question replaces any earlier query in the bar.
 - R17. "Finish" returns the viewer to Home.
-- R18. Both buttons leave the run through the curtain-and-logo transition that opens the devotional (R1 of the 2026-10-02 plan): the curtain closes over Share, the logo draws, and the curtain lifts over the search tab or Home. A tap on the curtain does not stop the exit.
-- R19. The close (×) on Share keeps its instant exit to Home, and Android back keeps closing the run as it does today.
-- R20. Share shows three buttons, from top to bottom: "Share this video", "Browse suggested media", and "Finish". "Share this video" keeps its current behavior.
+- R18. Both buttons leave the run through the curtain-and-logo transition that opens the devotional (R1 of the 2026-10-02 plan): the curtain closes over Share, the logo draws, and the curtain lifts over the search tab or Home. A tap on the curtain does not stop the exit. Since 2026-10-12 (the owner), Close in the close prompt (R22) uses the same transition to Home.
+- R19. The close (×) and Android back leave the run for Home through the curtain (R18), after the viewer confirms in the close prompt (R22). (Changed 2026-10-12 by the owner: the close and Android back left at once with no curtain before.)
+- R20. Share shows three buttons, from top to bottom: "Share this video", "Browse media", and "Finish". The three buttons have one width, which fits the widest label. "Share this video" keeps its current behavior. (Changed 2026-10-12 by the owner: the label was "Browse suggested media", and each button took the width of its own label.)
+- R22. On every step, a tap on the close (×) or Android back opens a close prompt, not a native alert. The prompt blurs and darkens the whole run. It shows "Close the devotional?" in the run's display font, a subtitle, and the pill buttons "Cancel" and "Close" side by side, with one width. The subtitle is "You can pick up where you left off the next time you open it." On Share, where the day is done, it is "You finished today’s devotional." Close leaves the run for Home through the curtain-and-logo transition (R18), and the prompt stays up under the curtain. Cancel, or a second Android back, returns to the same place. A playing part holds while the prompt shows, and stays held after Cancel. A screen reader reaches only the prompt. The blur, the text, and the buttons fade in and out together in 250 ms; with Reduce Motion on, the prompt shows and leaves at once. (Added 2026-10-12 by the owner.)
 
 ### Key Flows
 
@@ -104,11 +105,11 @@ flowchart TB
   R --> P["prayer part: PRAY in gold"]
   P --> Y["Pray screen: ring, then Amen"]
   Y --> S["Share"]
-  S -->|"Browse suggested media"| C1["Curtain and logo"]
+  S -->|"Browse media"| C1["Curtain and logo"]
   C1 --> Q["Search tab with the Opening question"]
   S -->|"Finish"| C2["Curtain and logo"]
   C2 --> H["Home"]
-  S -->|"Close"| H
+  S -->|"Close, then Close in the prompt"| C2
 ```
 
 - F1. A video part with markers
@@ -126,8 +127,8 @@ flowchart TB
   - **Steps:** The ring and its count fade out. The grey button fades to cream.
   - **Outcome:** A tap on Continue or Amen moves the run to the next step.
   - **Covered by:** R11, R12, R13
-- F4. Browse suggested media
-  - **Trigger:** The viewer taps "Browse suggested media" on Share.
+- F4. Browse media
+  - **Trigger:** The viewer taps "Browse media" on Share.
   - **Steps:** The curtain closes over Share, and the logo draws. Under the curtain, the run closes, the search tab opens with the Opening question in the bar, and the search starts. The curtain lifts.
   - **Outcome:** The viewer sees the search tab with the question and its results.
   - **Covered by:** R16, R18
@@ -144,10 +145,10 @@ flowchart TB
 - AE3. **Covers R8.** Given the Watch screen, when the viewer taps PRAY, then nothing happens, because no pill on the Watch screen takes a tap. (Changed 2026-10-09 by the owner: the arrival played again before.)
 - AE4. **Covers R9.** Given Reduce Motion is on, when the viewer taps a pill, then the stepper shows its end state with no animation.
 - AE5. **Covers R12, R13.** Given the Pray ring counts, when the viewer taps Amen, then nothing happens. When the ring reaches zero, the ring fades out, Amen turns from grey to cream, and a tap on Amen moves the run to Share.
-- AE6. **Covers R16, R18.** Given today's devotional is Pharisee, when the viewer taps "Browse suggested media", then the curtain closes, the logo draws, and the curtain lifts on the search tab with "How are we commanded to pray?" in the bar.
-- AE7. **Covers R16.** Given the search tab held the earlier query "Jesus", when "Browse suggested media" opens it, then the bar shows the Opening question and not "Jesus".
+- AE6. **Covers R16, R18.** Given today's devotional is Pharisee, when the viewer taps "Browse media", then the curtain closes, the logo draws, and the curtain lifts on the search tab with "How are we commanded to pray?" in the bar.
+- AE7. **Covers R16.** Given the search tab held the earlier query "Jesus", when "Browse media" opens it, then the bar shows the Opening question and not "Jesus".
 - AE8. **Covers R18.** Given the exit curtain is closing, when the viewer taps it, then the exit continues to its end.
-- AE9. **Covers R19.** Given the Share screen, when the viewer taps the close (×), then Home shows at once with no curtain.
+- AE9. **Covers R19, R22.** Given the Share screen, when the viewer taps the close (×) and then Close, then the curtain closes, the logo draws, and the curtain lifts on Home. (Changed 2026-10-12 by the owner: Home showed at once with no curtain before.)
 
 ### Success Criteria
 
@@ -158,7 +159,7 @@ flowchart TB
 
 - The run does not take the v2 board's step order (per R1).
 - A pill tap does not skip a video part or a countdown in place. It opens the start of another section (R7). Changed 2026-10-09 by the owner: before, a pill tap opened no section, and the behavior of `f29eb9393` stayed reverted.
-- The close (×) gets no transition (per R19).
+- The close (×) asks first, then leaves through the curtain (R19, R22). (Changed 2026-10-12 by the owner: the close got no transition before.)
 - Search results for a question-shaped query are not tuned. A curated list of suggested media for each devotional is deferred.
 - The new button labels are English-only, like the rest of the Daily Bible Pause. Localization stays the owned open debt that the copy guard records.
 - The light and gradient passes, the podcast path, and the ideas in the Figma notes (a home screen widget design, an evangelism card, note taking) are out of scope.
@@ -192,7 +193,7 @@ flowchart TB
 - `apps/mobile/src/components/dailyPause/ReflectScreen.tsx`: the clock inside the button that R11 replaces.
 - `apps/mobile/src/components/dailyPause/StepperPills.tsx`: the arrival plan, pills that take no tap, and pills sized to their labels.
 - `apps/mobile/src/components/dailyPause/PartPlayer.tsx` and `RunScreen.tsx`: the video overlays, the `contain` fit, and the close in the letterbox.
-- `apps/mobile/src/components/dailyPause/ShareScreen.tsx` and `DailyPauseHost.tsx` (`useCloseDailyPause`): the Share button and the close.
+- `apps/mobile/src/components/dailyPause/ShareScreen.tsx` and `DailyPauseHost.tsx`: the Share button and Android back. Since 2026-10-12 the close is `ClosePrompt.tsx` with `apps/mobile/src/lib/dailyPause/closePrompt.ts`, and `useCloseDailyPause` is removed.
 - `apps/mobile/src/components/PauseStage.tsx` and `apps/mobile/src/lib/pauseCurtain.ts`: the opening curtain.
 - `apps/mobile/app/(tabs)/watch.tsx` (`handleSelectTopic`): a browse topic fills the bar and searches at once.
 - Commits `87682f435` (Reflect ring and a shared `PauseFinish`) and `f29eb9393` (pill taps that opened sections), both reverted by `5317c3069`.
@@ -267,7 +268,7 @@ sequenceDiagram
 
 These are unconfirmed bets from planning. Each one is built as written and named in the PR.
 
-- **Android back during an exit does nothing.** R19's "as it does today" applies while the curtain is idle. This matches R18, where the exit cannot be stopped.
+- **Android back during an exit does nothing.** While the curtain is idle, back opens the close prompt, and a second back cancels it (R22). This matches R18, where the exit cannot be stopped. (Changed 2026-10-12: back closed the run at once before.)
 - **The marker row shows on every video step,** also while a part loads, fails, or shows the cover between parts.
 - **On a screen with no top band, the marker row sits over the top of the picture** in the close's row, as the close and the progress bar already do there. The top band is 0.2 pt on an iPhone SE and 0 pt on an iPad in portrait. This is the plan's reading of R5 for those screens.
 - **Superseded 2026-10-09 (R4): each marker is a button** labelled "<Section> section", for example "Reflect section". VoiceOver reads the current marker as selected and dimmed. Before, a screen reader got the row as one text element. The label does not use the stepper's "Name, state" shape, which `RunScreen.test.tsx`'s `pills()` helper matches. Gold is the only visual cue for the current section, as in the v2 frames.
@@ -275,7 +276,7 @@ These are unconfirmed bets from planning. Each one is built as written and named
 - **The question is the pinned run's question** (`pin.devotional.question`), also when the viewer reaches Share after midnight. Finish still lands on Home, which shows the new day.
 - **The exit has no Reduce Motion path,** the same as the opening today. The 2026-10-02 plan's KTD18 promises instant changes under Reduce Motion, and neither direction keeps that promise yet.
 - **A notification or widget tap during an exit is dropped,** the same as during the opening.
-- **In the error state, Share shows "Try again", "Browse suggested media", and "Finish".** This is the plan's reading of R20.
+- **In the error state, Share shows "Try again", "Browse media", and "Finish".** This is the plan's reading of R20.
 
 ### Implementation Constraints
 
@@ -368,7 +369,7 @@ U1, U2, U3, U4, and U5 do not depend on each other. U6 depends on U4 and U5, bec
 ### U3. Section markers on the video parts
 
 - **Goal:** Each video part shows WATCH, REFLECT, and PRAY at the top, with its own section in gold.
-- **Requirements:** R1, R2, R3, R4, R5; AE1; F1; KTD4.
+- **Requirements:** R1, R2, R3, R4, R5, R21; AE1; F1; KTD4.
 - **Dependencies:** None.
 - **Files:**
   - `apps/mobile/src/components/dailyPause/SectionMarkers.tsx` (new)
@@ -410,7 +411,7 @@ U1, U2, U3, U4, and U5 do not depend on each other. U6 depends on U4 and U5, bec
   1. Add the exit request, the stored target, and a hook to read the direction to the store. Clear them in `endPause()`, and in the store suite's `afterEach`.
   2. In `PauseStage`, make the tap, the back listener, the role, and the label depend on the direction, per KTD5. The exit's label text lives in this exempt file.
   3. In `DailyPauseHost`, add the exit branch at `drawn`. It carries the target only; U6 connects the Browse branch to the U5 store. The entry branch stays as it is.
-  4. Make the close that `useCloseDailyPause` returns do nothing while the curtain phase is not `idle`, per KTD5.
+  4. Make the close do nothing while an exit's curtain is up, per KTD5. (Changed 2026-10-12: `openClosePrompt` refuses during an exit; `useCloseDailyPause` is removed.)
 - **Patterns to follow:** the existing entry path; the StrictMode-safe phase re-check in `handOver`; the event log in `DailyPauseHost.test.tsx`.
 - **Test scenarios:**
   - An exit request from `idle` with the run on top moves the phase to `closing`, and `entryRequestsOnTop` does not change.
@@ -423,7 +424,7 @@ U1, U2, U3, U4, and U5 do not depend on each other. U6 depends on U4 and U5, bec
   - A Finish exit logs `dismissTo("/(tabs)")` at `drawn`, then the lift only after the segments change, with no push, no player takeover, and no bell read.
   - A Browse exit logs `dismissTo("/(tabs)/watch")` at `drawn`, then the lift, with no push.
   - When the segments never change, the backstop lifts the curtain.
-  - During an exit, a press on the run's close (×) does not call `dismissTo`. While the curtain is idle, the close still calls `dismissTo("/(tabs)")` at once.
+  - During an exit, a press on the run's close (×) opens no prompt. While the curtain is idle, the close opens the close prompt (R22). (Changed 2026-10-12: the close called `dismissTo("/(tabs)")` at once before.)
   - Under StrictMode, the host runs the exit branch once.
 - **Verification:** The suites pass. A 60 fps simulator recording shows the curtain close over Share, the logo, and a lift onto the target with no flash of another tab. On iOS, a back swipe after the exit does not show the run. On Android, back during the exit does nothing.
 
@@ -456,8 +457,8 @@ U1, U2, U3, U4, and U5 do not depend on each other. U6 depends on U4 and U5, bec
 
 ### U6. Share's three buttons and the exits
 
-- **Goal:** Share offers "Share this video", "Browse suggested media", and "Finish", and the two new buttons start the exit.
-- **Requirements:** R16, R17, R18, R19, R20; AE6, AE9; KTD5, KTD6.
+- **Goal:** Share offers "Share this video", "Browse media", and "Finish", and the two new buttons start the exit.
+- **Requirements:** R16, R17, R18, R19, R20, R22; AE6, AE9; KTD5, KTD6.
 - **Dependencies:** U4, U5.
 - **Files:**
   - `apps/mobile/src/components/dailyPause/ShareScreen.tsx`
@@ -472,14 +473,14 @@ U1, U2, U3, U4, and U5 do not depend on each other. U6 depends on U4 and U5, bec
   4. Connect the host's Browse branch to the U5 store: put the intent at `drawn`, before `dismissTo`, so a long time in the background cannot expire it.
 - **Patterns to follow:** `PauseButton` in `PauseFrame.tsx`; the existing button stack in `ShareScreen.tsx`.
 - **Test scenarios:**
-  - Share renders "Share this video", "Browse suggested media", and "Finish" in that order.
-  - When the video fails, Share renders "Try again", "Browse suggested media", and "Finish".
+  - Share renders "Share this video", "Browse media", and "Finish" in that order.
+  - When the video fails, Share renders "Try again", "Browse media", and "Finish".
   - Covers AE6. On a Pharisee day, Browse requests an exit to search with "How are we commanded to pray?".
   - A run pinned to yesterday that reaches Share after midnight hands over yesterday's question.
   - Finish requests an exit to Home.
   - While the video still loads, Browse and Finish each request their exit.
   - Two quick taps on Finish make one exit request, because the store refuses the second.
-  - Covers AE9. The close (×) on Share still calls `dismissTo("/(tabs)")` at once, with no curtain.
+  - Covers AE9. The close (×) on Share, then Close in the prompt, requests the exit to Home through the curtain. (Changed 2026-10-12: the close called `dismissTo("/(tabs)")` at once before.)
   - A host Browse exit logs the intent put before `dismissTo("/(tabs)/watch")`, then the lift, and the search tab reads that intent.
 - **Verification:** The suites pass. On a simulator, Browse lands on the search tab with the question and its results, and Finish lands on Home, both after the curtain and the logo.
 
@@ -504,7 +505,7 @@ U1, U2, U3, U4, and U5 do not depend on each other. U6 depends on U4 and U5, bec
 
 ## Definition of Done
 
-- Every R1 to R20 and AE1 to AE9 is covered by a unit's test scenario, a verification step, or a scope boundary.
+- Every R1 to R22 and AE1 to AE9 is covered by a unit's test scenario, a verification step, or a scope boundary. (R21 and R22 were added 2026-10-12; U3 owns R21 and U6 owns R22.)
 - Every command in the Verification Contract passes.
 - Each simulator check ran, or the PR names the check that did not run and why.
 - The PR body lists each item under Assumptions.

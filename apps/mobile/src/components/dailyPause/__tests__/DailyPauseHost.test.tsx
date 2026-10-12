@@ -5,8 +5,13 @@
  */
 
 import { StrictMode, act, type ReactElement } from "react"
-import { Animated, BackHandler, Pressable, Text } from "react-native"
+import { Animated, BackHandler, Text } from "react-native"
 
+import {
+  dismissClosePrompt,
+  isClosePromptOpen,
+  openClosePrompt,
+} from "../../../lib/dailyPause/closePrompt"
 import {
   dayFromRecord,
   getPauseProgressStore,
@@ -46,7 +51,6 @@ import {
   DailyPauseHost,
   PAUSE_EXIT_BACKSTOP_MS,
   PAUSE_HANDOVER_DEADLINE_MS,
-  useCloseDailyPause,
 } from "../DailyPauseHost"
 
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -180,6 +184,7 @@ afterEach(() => {
   // A failed test skips its own unmount, and a live host would act in the next.
   mounted.splice(0).forEach((renderer) => act(() => renderer.unmount()))
   act(() => endPause())
+  dismissClosePrompt()
   setPauseRunOnTop(false)
   stopEnds()
   stopIntents()
@@ -460,6 +465,7 @@ describe("the exit", () => {
       consumed = pressBack()
     })
     expect(consumed).toBe(true)
+    expect(isClosePromptOpen()).toBe(false)
     expect(events).toEqual([])
     expect(getPausePhase()).toBe("closing")
     await advance(PAUSE_LOGO_DRAWN_MS)
@@ -526,84 +532,61 @@ describe("the exit", () => {
   )
 })
 
-describe("the close (R21, R22)", () => {
-  function CloseButton() {
-    const close = useCloseDailyPause()
-    return <Pressable accessibilityLabel="Close" onPress={close} />
-  }
-
-  it("pops to the tab navigator and selects Home", async () => {
-    let renderer!: TestInstance
-    await act(async () => {
-      renderer = TestRenderer.create(<CloseButton />)
-    })
-    await press(pressableByLabel(renderer, "Close"))
-    expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1)
-    expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
-    expect(mockRouter.push).not.toHaveBeenCalled()
-    expect(mockRouter.replace).not.toHaveBeenCalled()
-    expect(mockRouter.navigate).not.toHaveBeenCalled()
-    await unmount(renderer)
-  })
-
+describe("the close (R19, R22)", () => {
   // v2 KTD5: a screen reader can still reach the close under an exit's
-  // curtain, and a close there would send a search exit to Home.
-  it("does nothing while an exit's curtain is up, and closes at once when it is down", async () => {
-    let renderer!: TestInstance
-    await act(async () => {
-      renderer = TestRenderer.create(<CloseButton />)
-    })
-    mounted.push(renderer)
+  // curtain, and a prompt there could start a second exit.
+  it("opens no close prompt while an exit's curtain is up", async () => {
     await act(async () =>
       requestPauseExit({ kind: "search", question: QUESTION }),
     )
-    await press(pressableByLabel(renderer, "Close"))
+    openClosePrompt()
     await act(async () => reportLogoDrawn())
-    await press(pressableByLabel(renderer, "Close"))
+    openClosePrompt()
     await act(async () => liftPause())
-    await press(pressableByLabel(renderer, "Close"))
-    expect(mockRouter.dismissTo).not.toHaveBeenCalled()
+    openClosePrompt()
+    expect(isClosePromptOpen()).toBe(false)
 
     await act(async () => endPause())
-    await press(pressableByLabel(renderer, "Close"))
-    expect(mockRouter.dismissTo).toHaveBeenCalledTimes(1)
-    expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
-    await unmount(renderer)
+    openClosePrompt()
+    expect(isClosePromptOpen()).toBe(true)
   })
 
-  // AE9: only Share's two new buttons take the curtain.
-  it("leaves the run screen for Home at once with no curtain (AE9)", async () => {
+  // Close in the prompt starts the exit, and the prompt stays up under the
+  // curtain. The curtain's own back handler runs first and does nothing.
+  it("keeps the close prompt up on Android back under an exit's curtain", async () => {
     mockSegments = ["pause"]
-    let renderer!: TestInstance
+    const renderer = await render()
+    openClosePrompt()
+    await act(async () => requestPauseExit({ kind: "home" }))
+    let consumed = false
     await act(async () => {
-      renderer = TestRenderer.create(
-        <PauseStage>
-          <CloseButton />
-          <DailyPauseHost />
-        </PauseStage>,
-      )
+      consumed = pressBack()
     })
-    mounted.push(renderer)
-    await press(pressableByLabel(renderer, "Close"))
-    expect(events).toEqual(["dismissTo /(tabs)"])
-    expect(getPausePhase()).toBe("idle")
-    expect(timings).toHaveLength(0)
-    await advance(PAUSE_LOGO_DRAWN_MS + PAUSE_EXIT_BACKSTOP_MS)
-    expect(events).toEqual(["dismissTo /(tabs)"])
-    expect(timings).toHaveLength(0)
+    expect(consumed).toBe(true)
+    expect(isClosePromptOpen()).toBe(true)
     await unmount(renderer)
   })
 
-  it("closes the run on Android back from the run screen", async () => {
+  // The owner, 2026-10-12: back does what the close (×) does, so it asks first.
+  it("opens the close prompt on Android back from the run screen, and a second back cancels it", async () => {
     mockSegments = ["pause"]
     const renderer = await render()
     expect(backHandlers).toHaveLength(1)
+    expect(isClosePromptOpen()).toBe(false)
     let consumed = false
     await act(async () => {
       consumed = backHandlers[0]!()
     })
     expect(consumed).toBe(true)
-    expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
+    expect(isClosePromptOpen()).toBe(true)
+    expect(mockRouter.dismissTo).not.toHaveBeenCalled()
+
+    await act(async () => {
+      consumed = backHandlers[0]!()
+    })
+    expect(consumed).toBe(true)
+    expect(isClosePromptOpen()).toBe(false)
+    expect(mockRouter.dismissTo).not.toHaveBeenCalled()
     await unmount(renderer)
   })
 

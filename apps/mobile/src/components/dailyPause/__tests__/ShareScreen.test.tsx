@@ -4,6 +4,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { File, Paths } from "expo-file-system"
 import { StrictMode, act } from "react"
+import { StyleSheet, type ViewStyle } from "react-native"
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
 import {
@@ -28,6 +29,7 @@ import {
   press,
   pressableByLabel,
   unmount,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 import { pauseTestFont as font } from "../../../test-utils/dailyPause"
@@ -103,7 +105,7 @@ async function render(pin: Today = PIN): Promise<TestInstance> {
   return renderer!
 }
 
-const SHARE_BUTTONS = ["Share this video", "Browse suggested media", "Finish"]
+const SHARE_BUTTONS = ["Share this video", "Browse media", "Finish"]
 
 async function tap(label = "Share this video") {
   await press(pressableByLabel(renderer!, label))
@@ -133,7 +135,7 @@ function savedDays(): unknown[] {
     .map(([, value]) => JSON.parse(value) as unknown)
 }
 
-it("offers Share this video, Browse suggested media, and Finish under the SHARE prompt (v2 R20)", async () => {
+it("offers Share this video, Browse media, and Finish under the SHARE prompt (v2 R20)", async () => {
   await render()
   expect(hasText(renderer!, "SHARE")).toBe(true)
   expect(
@@ -145,12 +147,43 @@ it("offers Share this video, Browse suggested media, and Finish under the SHARE 
   expect(buttons()).toEqual(SHARE_BUTTONS)
 })
 
+// Jest has no layout, so this reads the shape: one column as wide as its widest
+// button, which stretches the others to that width (the owner, 2026-10-12).
+it("gives the three buttons one width", async () => {
+  await render()
+  const [column] = renderer!.root.findAll(
+    (node) =>
+      typeof node.type === "string" && node.props.testID === "share-buttons",
+  )
+  expect(StyleSheet.flatten(column!.props.style as ViewStyle)).toMatchObject({
+    alignSelf: "center",
+    alignItems: "stretch",
+  })
+  const shareButtons = renderer!.root.findAll(
+    (node) =>
+      typeof node.type === "string" &&
+      node.props.accessibilityRole === "button" &&
+      SHARE_BUTTONS.includes(node.props.accessibilityLabel as string),
+  )
+  expect(shareButtons.length).toBe(3)
+  for (const button of shareButtons) {
+    let node: RenderedNode | null | undefined = button
+    for (; node && node !== column; node = node.parent) {
+      if (typeof node.type !== "string") continue
+      const style = StyleSheet.flatten(node.props.style as ViewStyle) ?? {}
+      expect(style.alignSelf ?? "stretch").toBe("stretch")
+      expect(style.width).toBeUndefined()
+    }
+    expect(node === column).toBe(true)
+  }
+})
+
 // v2 R16-R18, KTD5: the two new buttons leave the run through the curtain.
 describe("the exits", () => {
   it("Browse asks to leave for the search tab with today's Opening question (AE6)", async () => {
     await render()
     expect(getPausePhase()).toBe("idle")
-    await tap("Browse suggested media")
+    await tap("Browse media")
     expect(getPausePhase()).toBe("closing")
     expect(getPauseExitTarget()).toEqual({
       kind: "search",
@@ -167,7 +200,7 @@ describe("the exits", () => {
     }
     expect(devotionalForDay(localDay(new Date())).id).toBe("pharisee")
     await render(tuesday)
-    await tap("Browse suggested media")
+    await tap("Browse media")
     expect(getPauseExitTarget()).toEqual({
       kind: "search",
       question:
@@ -192,9 +225,9 @@ describe("the exits", () => {
   ])("starts each exit while the video %s", async (_case, load, first) => {
     mockFromModule.mockImplementation(() => ({ downloadAsync: load }))
     await render()
-    expect(buttons()).toEqual([first, "Browse suggested media", "Finish"])
+    expect(buttons()).toEqual([first, "Browse media", "Finish"])
 
-    await tap("Browse suggested media")
+    await tap("Browse media")
     expect(getPauseExitTarget()).toEqual({
       kind: "search",
       question: "How are we commanded to pray?",
@@ -214,7 +247,7 @@ describe("the exits", () => {
     try {
       await tap("Finish")
       await tap("Finish")
-      await tap("Browse suggested media")
+      await tap("Browse media")
     } finally {
       stop()
     }
@@ -335,7 +368,7 @@ it("offers Try again when the video cannot be loaded, and then shares it", async
         : Promise.resolve({ localUri: video.uri }),
   }))
   await render()
-  expect(buttons()).toEqual(["Try again", "Browse suggested media", "Finish"])
+  expect(buttons()).toEqual(["Try again", "Browse media", "Finish"])
   expect(hasText(renderer!, "This video could not be loaded.")).toBe(true)
 
   failing = false

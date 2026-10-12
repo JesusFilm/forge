@@ -43,10 +43,19 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import {
+  CLOSE_PROMPT_FADE_MS,
+  CLOSE_PROMPT_FINISHED,
+  CLOSE_PROMPT_RESUME,
+  CLOSE_PROMPT_TITLE,
+} from "../ClosePrompt"
 import { PAUSE_INTRO_MS } from "../PauseIntro"
 import {
   endPause,
+  getPauseExitTarget,
+  getPausePhase,
   requestPause,
+  requestPauseExit,
   setPauseRunOnTop,
 } from "../../../lib/pauseCurtain"
 import { RunScreen } from "../RunScreen"
@@ -140,6 +149,11 @@ jest.mock("expo-font", () => ({
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 62, bottom: 34, left: 0, right: 0 }),
 }))
+// The OS read lands after mount; the hook reads it from the first render here.
+let mockReduceMotion = false
+jest.mock("../../../hooks/useReduceMotion", () => ({
+  useReduceMotion: () => mockReduceMotion,
+}))
 
 /** The native module keeps a set of tags, and any tag keeps the screen on. */
 const mockAwakeTags = new Set<string>()
@@ -181,6 +195,9 @@ beforeEach(async () => {
 afterEach(async () => {
   if (renderer) await unmount(renderer)
   renderer = null
+  // A close through the prompt starts an exit; the next test starts idle.
+  act(() => endPause())
+  mockReduceMotion = false
   jest.useRealTimers()
 })
 
@@ -217,6 +234,40 @@ async function closeRoute() {
 async function tap(label: string) {
   await press(pressableByLabel(renderer!, label))
   await act(async () => {})
+}
+
+function within(node: RenderedNode, root: RenderedNode): boolean {
+  for (let up = node.parent; up; up = up.parent) if (up === root) return true
+  return false
+}
+
+/** The close prompt's root, or null while it does not show. */
+function prompt(): RenderedNode | null {
+  const [root] = renderer!.root.findAll(
+    (node) =>
+      typeof node.type === "string" && node.props.testID === "close-prompt",
+  )
+  return root ?? null
+}
+
+async function tapInPrompt(label: string) {
+  const root = prompt()
+  expect(root == null).toBe(false)
+  const [button] = renderer!.root.findAll(
+    (node) =>
+      node.props.accessibilityLabel === label &&
+      typeof node.props.onPress === "function" &&
+      within(node, root!),
+  )
+  expect(button == null).toBe(false)
+  await press(button!)
+  await act(async () => {})
+}
+
+/** The close (×), then Close in the prompt (the owner, 2026-10-12). */
+async function closeRun() {
+  await tap("Close")
+  await tapInPrompt("Close")
 }
 
 async function frames(count = 1) {
@@ -450,14 +501,14 @@ it("keeps one part player mounted from the film part to the prayer part (KTD7)",
   expect(mockDownloadAsync.mock.calls.length).toBe(mounts)
 })
 
-it("offers Share this video, Browse suggested media, Finish, and the close on Share (v2 R20)", async () => {
+it("offers Share this video, Browse media, Finish, and the close on Share (v2 R20)", async () => {
   await seedDay("prayScreen")
   await open()
   await tap("Resume")
   await next()
   expect(buttons()).toEqual([
     "Share this video",
-    "Browse suggested media",
+    "Browse media",
     "Finish",
     "Close",
   ])
@@ -531,8 +582,8 @@ it("lets the screen sleep after the close", async () => {
   await tap("Begin Devotional")
   await tap("Continue")
   expect(mockAwakeTags.size).toBe(1)
-  await tap("Close")
-  expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
+  await closeRun()
+  expect(getPauseExitTarget()).toEqual({ kind: "home" })
   await closeRoute()
   expect(mockAwakeTags.size).toBe(0)
 })
@@ -854,8 +905,263 @@ it("offers Try again when a part never starts, and the close stays reachable", a
     "Close",
     DEV_SKIP,
   ])
-  await tap("Close")
-  expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
+  await closeRun()
+  expect(getPauseExitTarget()).toEqual({ kind: "home" })
+})
+
+// The owner, 2026-10-12: the close (×) asks first, on a blurred and darkened
+// screen with the run's fonts, not in a native alert.
+describe("the close prompt", () => {
+  /** True when a host ancestor hides the node from a screen reader. */
+  function hidden(node: RenderedNode): boolean {
+    for (let up = node.parent; up; up = up.parent) {
+      if (
+        typeof up.type === "string" &&
+        up.props.accessibilityElementsHidden === true &&
+        up.props.importantForAccessibility === "no-hide-descendants"
+      ) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /** The close (×) of the run, not the prompt's Close. */
+  function closeX(): RenderedNode {
+    const root = prompt()
+    const [x] = renderer!.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.accessibilityLabel === "Close" &&
+        (root == null || !within(node, root)),
+    )
+    expect(x == null).toBe(false)
+    return x!
+  }
+
+  it("asks before the run closes, and Cancel keeps the run where it was", async () => {
+    await open()
+    await tap("Begin Devotional")
+    expect(prompt() == null).toBe(true)
+
+    await tap("Close")
+    expect(mockRouter.dismissTo).not.toHaveBeenCalled()
+    expect(prompt() == null).toBe(false)
+    expect(hasText(renderer!, CLOSE_PROMPT_TITLE)).toBe(true)
+    expect(hasText(renderer!, CLOSE_PROMPT_RESUME)).toBe(true)
+    expect(prompt()!.props.accessibilityViewIsModal).toBe(true)
+    expect(hidden(closeX())).toBe(true)
+
+    await tapInPrompt("Cancel")
+    expect(prompt() == null).toBe(true)
+    expect(mockRouter.dismissTo).not.toHaveBeenCalled()
+    expect(savedDay().step).toBe("watchScreen")
+    expect(pills()).toEqual(WATCH)
+    expect(hidden(closeX())).toBe(false)
+  })
+
+  // The owner, 2026-10-12: the blur, the text, and the buttons fade in and out.
+  it("fades in, and fades out after Cancel, taking no tap while it fades", async () => {
+    await open()
+    await tap("Begin Devotional")
+    const timing = jest.spyOn(Animated, "timing")
+    // An earlier test's spy can still hold its calls.
+    timing.mockClear()
+    const fades = (toValue: number) =>
+      timing.mock.calls.filter(
+        ([, config]) =>
+          config.duration === CLOSE_PROMPT_FADE_MS &&
+          config.toValue === toValue &&
+          config.useNativeDriver === true,
+      ).length
+    const leaving = () =>
+      renderer!.root.findAll(
+        (node) =>
+          typeof node.type === "string" &&
+          node.props.testID === "close-prompt-leaving",
+      )
+
+    await tap("Close")
+    // The fade waits two frames, so iOS draws the glass empty first.
+    expect(fades(1)).toBe(0)
+    await frames(2)
+    expect(fades(1)).toBeGreaterThan(0)
+    expect(fades(0)).toBe(0)
+
+    await tapInPrompt("Cancel")
+    expect(prompt() == null).toBe(true)
+    expect(leaving().length).toBe(1)
+    expect(leaving()[0]!.props.pointerEvents).toBe("none")
+    expect(leaving()[0]!.props.accessibilityElementsHidden).toBe(true)
+    expect(fades(0)).toBeGreaterThan(0)
+
+    await act(async () => {
+      jest.advanceTimersByTime(CLOSE_PROMPT_FADE_MS - 1)
+    })
+    expect(leaving().length).toBe(1)
+    await act(async () => {
+      jest.advanceTimersByTime(1)
+    })
+    expect(leaving().length).toBe(0)
+  })
+
+  // The owner, 2026-10-12: Close takes the same curtain and logo as Finish.
+  // DailyPauseHost pops to Home under the drawn curtain.
+  it("leaves for Home through the curtain at Close in the prompt", async () => {
+    await open()
+    await tap("Begin Devotional")
+    expect(getPausePhase()).toBe("idle")
+    await closeRun()
+    expect(getPausePhase()).toBe("closing")
+    expect(getPauseExitTarget()).toEqual({ kind: "home" })
+    expect(mockRouter.dismissTo).not.toHaveBeenCalled()
+    // The prompt stays up under the closing curtain, so the run never shows
+    // unblurred; it goes with the run.
+    await act(async () => {
+      jest.advanceTimersByTime(CLOSE_PROMPT_FADE_MS * 2)
+    })
+    expect(prompt() == null).toBe(false)
+    await closeRoute()
+    await open()
+    expect(prompt() == null).toBe(true)
+  })
+
+  // Under an exit's curtain a screen reader can still reach the close, and a
+  // prompt there could start a second exit.
+  it("opens no prompt while an exit's curtain is up", async () => {
+    await open()
+    await tap("Begin Devotional")
+    await act(async () => requestPauseExit({ kind: "home" }))
+    await tap("Close")
+    expect(prompt() == null).toBe(true)
+    expect(getPauseExitTarget()).toEqual({ kind: "home" })
+  })
+
+  it("puts Cancel and Close side by side, with one width", async () => {
+    await open()
+    await tap("Begin Devotional")
+    await tap("Close")
+    const [row] = renderer!.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "close-prompt-buttons",
+    )
+    expect(StyleSheet.flatten(row!.props.style as ViewStyle)).toMatchObject({
+      flexDirection: "row",
+      alignSelf: "stretch",
+    })
+    const cells = (row!.children ?? []).filter(
+      (child): child is RenderedNode => typeof child !== "string",
+    )
+    expect(cells.length).toBe(2)
+    for (const cell of cells) {
+      expect(StyleSheet.flatten(cell.props.style as ViewStyle).flex).toBe(1)
+    }
+    const labels = renderer!.root
+      .findAll(
+        (node) =>
+          typeof node.type === "string" &&
+          node.props.accessibilityRole === "button" &&
+          within(node, row!),
+      )
+      .map((node) => node.props.accessibilityLabel)
+    expect(labels).toEqual(["Cancel", "Close"])
+  })
+
+  it("says the day is finished on Share, where nothing is left to resume", async () => {
+    await seedDay("prayScreen")
+    await open()
+    await tap("Resume")
+    await waitOutPause()
+    await tap("Amen")
+    expect(buttons()).toContain("Browse media")
+
+    await tap("Close")
+    expect(hasText(renderer!, CLOSE_PROMPT_FINISHED)).toBe(true)
+    expect(hasText(renderer!, CLOSE_PROMPT_RESUME)).toBe(false)
+  })
+
+  it("holds a playing part while it shows, and the part stays held after Cancel", async () => {
+    await seedDay("film")
+    await open()
+    await tap("Resume")
+    await videoReady()
+    await frames(1)
+    await tickTo(PARTS.film.startSec + 0.2)
+    await frames(1)
+    expect(player.playing).toBe(true)
+
+    await tap("Close")
+    expect(player.playing).toBe(false)
+    await tapInPrompt("Cancel")
+    expect(player.playing).toBe(false)
+    expect(buttons()).toContain("Resume video")
+  })
+
+  it("does not show again when the run opens after a close with the prompt up", async () => {
+    await open()
+    await tap("Begin Devotional")
+    await tap("Close")
+    expect(prompt() == null).toBe(false)
+    await closeRoute()
+
+    await open()
+    expect(prompt() == null).toBe(true)
+  })
+
+  function leavingPrompts(): number {
+    return renderer!.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "close-prompt-leaving",
+    ).length
+  }
+
+  // R22 (code review, 2026-10-13): no fade time under Reduce Motion.
+  it("shows and leaves at once under Reduce Motion", async () => {
+    mockReduceMotion = true
+    await open()
+    await tap("Begin Devotional")
+    const timing = jest.spyOn(Animated, "timing")
+    // An earlier test's spy can still hold its calls.
+    timing.mockClear()
+    await tap("Close")
+    await frames(2)
+    const shows = timing.mock.calls.filter(
+      ([, config]) => config.toValue === 1 && config.useNativeDriver === true,
+    )
+    expect(shows.length).toBeGreaterThan(0)
+    expect(shows.every(([, config]) => config.duration === 0)).toBe(true)
+
+    await tapInPrompt("Cancel")
+    await act(async () => {
+      jest.advanceTimersByTime(1)
+    })
+    expect(leavingPrompts()).toBe(0)
+    expect(prompt() == null).toBe(true)
+  })
+
+  // The prompt stays up under the closing curtain, so Cancel there does
+  // nothing; the run never shows unblurred (code review, 2026-10-13).
+  it("keeps the prompt up when Cancel is pressed under the exit's curtain", async () => {
+    await open()
+    await tap("Begin Devotional")
+    await closeRun()
+    await tapInPrompt("Cancel")
+    expect(prompt() == null).toBe(false)
+    expect(leavingPrompts()).toBe(0)
+  })
+
+  it("cancels on the VoiceOver escape gesture, as Android back does", async () => {
+    await open()
+    await tap("Begin Devotional")
+    await tap("Close")
+    const escape = prompt()!.props.onAccessibilityEscape as () => void
+    await act(async () => escape())
+    expect(prompt() == null).toBe(true)
+    expect(leavingPrompts()).toBe(1)
+    expect(mockRouter.dismissTo).not.toHaveBeenCalled()
+  })
 })
 
 describe("the developer Skip", () => {
@@ -879,7 +1185,7 @@ describe("the developer Skip", () => {
     expect(savedDay()).toMatchObject({ step: "share", done: true })
     expect(buttons()).toEqual([
       "Share this video",
-      "Browse suggested media",
+      "Browse media",
       "Finish",
       "Close",
     ])

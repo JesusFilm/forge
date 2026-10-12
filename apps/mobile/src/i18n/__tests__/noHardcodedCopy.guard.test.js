@@ -123,6 +123,7 @@ const COPY_EXEMPT_FILES = {
     [
       "src/components/PauseStage.tsx",
       "src/components/dailyPause/CloseButton.tsx",
+      "src/components/dailyPause/ClosePrompt.tsx",
       "src/components/dailyPause/CustomizeSheet.tsx",
       "src/components/dailyPause/OpeningScreen.tsx",
       "src/components/dailyPause/PartPlayer.tsx",

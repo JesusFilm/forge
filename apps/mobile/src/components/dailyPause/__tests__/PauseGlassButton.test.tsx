@@ -21,6 +21,7 @@ import {
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
 import { advance, pauseTestFont as font } from "../../../test-utils/dailyPause"
+import { CLOSE_PROMPT_FADE_MS, ClosePrompt } from "../ClosePrompt"
 import { OpeningScreen } from "../OpeningScreen"
 import { PAUSE_INTRO_MS } from "../PauseIntro"
 import { PrayScreen } from "../PrayScreen"
@@ -219,6 +220,80 @@ function glassLooks(root: TestInstance) {
 
 const PRIMARY = { tint: pauseColors.ink, color: pauseColors.background }
 const OUTLINE = { tint: undefined, color: pauseColors.ink }
+
+// The owner, 2026-10-12: the close prompt fades in and out. Its glass buttons
+// fade through the glass's own animation, and only their labels fade.
+it("fades the close prompt's glass buttons with no fading ancestor", async () => {
+  const prompt = (leaving: boolean) => (
+    <ClosePrompt
+      finished={false}
+      leaving={leaving}
+      reduceMotion={false}
+      font={font}
+      onClose={() => {}}
+      onCancel={() => {}}
+    />
+  )
+  const root = await render(prompt(false))
+  const glassStyle = (shown: boolean) => ({
+    style: shown ? "regular" : "none",
+    animate: true,
+    animationDuration: CLOSE_PROMPT_FADE_MS / 1000,
+  })
+  expect(glassLabels(root)).toEqual(["Cancel", "Close"])
+  // iOS animates no change in the frame that first draws the glass. So the
+  // glass first draws with no material and fades in two frames later.
+  for (const glass of glasses(root)) {
+    expect(glass.props.glassEffectStyle).toEqual(glassStyle(false))
+  }
+  await act(async () => {
+    jest.advanceTimersByTime(50)
+  })
+  for (const glass of glasses(root)) {
+    expect(glass.props.glassEffectStyle).toEqual(glassStyle(true))
+    expect(opacitiesAbove(glass)).toEqual([])
+    const labelFades = root.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "pause-glass-label-fade" &&
+        isInside(node, glass),
+    )
+    expect(labelFades.length).toBe(1)
+  }
+
+  await act(async () => {
+    root.update(prompt(true))
+  })
+  for (const glass of glasses(root)) {
+    expect(glass.props.glassEffectStyle).toEqual(glassStyle(false))
+    expect(opacitiesAbove(glass)).toEqual([])
+  }
+})
+
+// R22: with Reduce Motion on, the prompt shows and leaves at once.
+it("gives the close prompt's glass no fade time under Reduce Motion", async () => {
+  const root = await render(
+    <ClosePrompt
+      finished={false}
+      leaving={false}
+      reduceMotion
+      font={font}
+      onClose={() => {}}
+      onCancel={() => {}}
+    />,
+  )
+  await act(async () => {
+    jest.advanceTimersByTime(50)
+  })
+  expect(glasses(root).length).toBe(2)
+  for (const glass of glasses(root)) {
+    expect(glass.props.glassEffectStyle).toEqual({
+      style: "regular",
+      animate: true,
+      animationDuration: 0,
+    })
+  }
+})
 
 it("draws the primary pill tinted cream and the outline pill clear", async () => {
   const root = await render(

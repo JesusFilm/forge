@@ -6,7 +6,14 @@ import {
   isLiquidGlassAvailable,
 } from "expo-glass-effect"
 import type { ReactNode } from "react"
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native"
+import {
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native"
 import {
   useSafeAreaInsets,
   type EdgeInsets,
@@ -70,12 +77,20 @@ export function PauseMasthead({
   )
 }
 
+/** A fade for a button that comes and goes. `opacity` is native-driven. */
+export type PauseButtonFade = {
+  opacity: Animated.Value
+  shown: boolean
+  durationMs: number
+}
+
 type PauseButtonProps = {
   label: string
   onPress: () => void
   font: PauseFont
   /** The outline is the frame's upcoming pill, for a second choice. */
   variant?: "primary" | "outline"
+  fade?: PauseButtonFade
 }
 
 /** iOS 26 Liquid Glass. isGlassEffectAPIAvailable guards iOS 26 betas that
@@ -95,6 +110,7 @@ export function PauseButton({
   onPress,
   font,
   variant = "primary",
+  fade,
 }: PauseButtonProps) {
   const outline = variant === "outline"
   const labelNode = (
@@ -109,7 +125,8 @@ export function PauseButton({
     </Text>
   )
   if (liquidGlass()) {
-    // No ancestor may fade this button: GlassView draws nothing there.
+    // No ancestor may fade this button: GlassView draws nothing there. So a
+    // fade runs through the glass's own animation, and only the label fades.
     return (
       <Pressable
         onPress={onPress}
@@ -119,17 +136,34 @@ export function PauseButton({
         <GlassView
           testID="pause-glass-button"
           style={styles.glassButton}
-          glassEffectStyle="regular"
+          glassEffectStyle={
+            fade == null
+              ? "regular"
+              : {
+                  style: fade.shown ? "regular" : "none",
+                  animate: true,
+                  animationDuration: fade.durationMs / 1000,
+                }
+          }
           colorScheme="dark"
           tintColor={outline ? undefined : pauseColors.ink}
           isInteractive
         >
-          {labelNode}
+          {fade == null ? (
+            labelNode
+          ) : (
+            <Animated.View
+              testID="pause-glass-label-fade"
+              style={{ opacity: fade.opacity }}
+            >
+              {labelNode}
+            </Animated.View>
+          )}
         </GlassView>
       </Pressable>
     )
   }
-  return (
+  const button = (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
@@ -142,6 +176,12 @@ export function PauseButton({
     >
       {labelNode}
     </Pressable>
+  )
+  if (fade == null) return button
+  return (
+    <Animated.View testID="pause-button-fade" style={{ opacity: fade.opacity }}>
+      {button}
+    </Animated.View>
   )
 }
 

@@ -8,11 +8,15 @@ import { useRouter, useSegments, type Href } from "expo-router"
 
 import { useExperienceSelection } from "../../contexts/ExperienceSelectionProvider"
 import { markTodaysDevotionalRead } from "../../lib/announcements"
+import {
+  cancelClosePrompt,
+  isClosePromptOpen,
+  openClosePrompt,
+} from "../../lib/dailyPause/closePrompt"
 import { stepTakeover } from "../../lib/explore/takeover"
 import { getMiniPlayerStore } from "../../lib/miniPlayer/store"
 import { routePattern } from "../../lib/miniPlayer/suppression"
 import {
-  getPauseDirection,
   getPauseExitTarget,
   getPausePhase,
   liftPause,
@@ -60,25 +64,12 @@ function takeOverPlayer(): void {
   if (step.dismiss) sessions.requestDismiss()
 }
 
-/** R21, R22: the close leaves the run for Home. `dismissTo` pops to the tab
- *  navigator below and selects Home; `navigate` would push a second one. */
-export function useCloseDailyPause(): () => void {
-  const router = useRouter()
-  return useCallback(() => {
-    // v2 KTD5: a screen reader can reach the close under an exit's curtain,
-    // and a close there would send an exit to the search tab to Home.
-    if (getPauseDirection() === "exit") return
-    router.dismissTo("/(tabs)")
-  }, [router])
-}
-
 export function DailyPauseHost(): null {
   const router = useRouter()
   const pattern = routePattern(useSegments())
   const { isReady, currentSlug } = useExperienceSelection()
   const phase = usePausePhase()
   const exiting = usePauseDirection() === "exit"
-  const close = useCloseDailyPause()
 
   const runOnTop = pattern.split("/")[0] === RUN_GROUP
   const selectionReady = isReady && currentSlug != null
@@ -129,18 +120,20 @@ export function DailyPauseHost(): null {
     if (EXIT_ROUTES[target.kind].patterns.includes(pattern)) liftPause()
   }, [phase, exiting, pattern])
 
-  // KTD4: Android back on the run screen closes the run, as the close does.
+  // KTD4: Android back on the run screen does what the close does: it opens
+  // the close prompt (the owner, 2026-10-12). A second back cancels it.
   useEffect(() => {
     if (pattern !== RUN_SCREEN_PATTERN) return
     const subscription = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
-        close()
+        if (isClosePromptOpen()) cancelClosePrompt()
+        else openClosePrompt()
         return true
       },
     )
     return () => subscription.remove()
-  }, [pattern, close])
+  }, [pattern])
 
   return null
 }
