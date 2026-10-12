@@ -18,6 +18,7 @@ import { researchBrief, type ResearchBrief } from "./research-brief"
 import {
   scriptProblems,
   writeStory,
+  type RecentEpisode,
   type StoryScript,
 } from "./storyteller-writer"
 
@@ -44,6 +45,8 @@ export type StorytellerInput = {
   passage: { reference: string; osisRef: string }
   passageText: string
   settingText?: string
+  /** The last few episodes, so the writer does not echo them. */
+  recent?: RecentEpisode[]
   scripture: GeneratedDevotional["scripture"]
   classic: { name: string; credit: string; entries: ReflectionEntry[] }
   contextTerms?: string[]
@@ -248,7 +251,10 @@ export async function composeStoryteller(
     reference: input.passage.reference,
     text: input.passageText,
   }
-  const setting = input.settingText ? { settingText: input.settingText } : {}
+  const setting = {
+    ...(input.settingText ? { settingText: input.settingText } : {}),
+    ...(input.recent?.length ? { recent: input.recent } : {}),
+  }
   let script = await writeStory({
     brief,
     passage,

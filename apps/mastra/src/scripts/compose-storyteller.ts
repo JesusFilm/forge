@@ -12,7 +12,14 @@
  *     src/scripts/compose-storyteller.ts --chapter=32
  */
 import { existsSync } from "node:fs"
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises"
+import {
+  copyFile,
+  mkdir,
+  readFile,
+  readdir,
+  stat,
+  writeFile,
+} from "node:fs/promises"
 import { homedir } from "node:os"
 import path from "node:path"
 
@@ -48,6 +55,7 @@ import {
 import { loadReferenceCorpora } from "../services/devotional/reference-corpus"
 import { loadReflectionCorpora } from "../services/devotional/reflection-corpus"
 import { repoRoot } from "../services/devotional/repo-root"
+import type { RecentEpisode } from "../services/devotional/storyteller-writer"
 import {
   arclightMediaInfo,
   parseSubtitles,
@@ -234,6 +242,46 @@ async function nextFree(p: string): Promise<string> {
   }
 }
 
+/** The last few English episodes in the devotional cache, newest first, so
+ *  the writer can avoid echoing them (owner, 2026-10-12: the scripts had begun
+ *  to sound alike). Localized copies (-ru, -es) and this story are skipped. */
+async function recentEpisodes(
+  skipDir: string,
+  limit = 4,
+): Promise<RecentEpisode[]> {
+  const root = path.join(repoRoot(), "devo/cache")
+  const dirs = (await readdir(root).catch(() => [] as string[])).filter(
+    (d) => /^ch\d+-seq\d+$/.test(d) && d !== skipDir,
+  )
+  const dated = await Promise.all(
+    dirs.map(async (d) => {
+      const f = path.join(root, d, "devo.json")
+      return existsSync(f) ? { f, t: (await stat(f)).mtimeMs } : undefined
+    }),
+  )
+  const out: RecentEpisode[] = []
+  for (const { f } of dated
+    .filter((x): x is { f: string; t: number } => !!x)
+    .sort((a, b) => b.t - a.t)) {
+    if (out.length >= limit) break
+    try {
+      const d = JSON.parse(await readFile(f, "utf8")) as {
+        title?: string
+        openingLines?: string[]
+        reflection?: { paragraphs?: { text: string }[] }
+      }
+      const start = (d.reflection?.paragraphs ?? [])
+        .slice(0, 2)
+        .map((p) => p.text)
+      if (!d.title || !start.length) continue
+      out.push({ title: d.title, opening: d.openingLines ?? [], start })
+    } catch {
+      // An unreadable cache entry is simply not a reference.
+    }
+  }
+  return out
+}
+
 async function main() {
   const chapterArg = arg("chapter")
   const key = chapterArg ? `jesus-${chapterArg}` : (arg("source") ?? "")
@@ -319,6 +367,7 @@ async function main() {
     passage: src.passage,
     passageText,
     ...(settingText ? { settingText } : {}),
+    recent: await recentEpisodes(`ch${src.index}-seq${seq}`),
     scripture,
     classic: {
       name: "J.C. Ryle, Expository Thoughts on the Gospels: Luke",

@@ -230,6 +230,22 @@ export const SYSTEM_PROMPT = [
   "  two or three times; move the thought forward instead.",
   "- End on the viewer and on Christ, with a statement, never a command.",
   "",
+  "EACH STORY ITS OWN SHAPE (owner, 2026-10-12): the rules above are what",
+  "every episode keeps; HOW the reflection gets there is new each time. Let",
+  "the story pick the route: a detail that does not fit, a word, a cost, a",
+  "silence, a question someone in the scene asks, the moment before the",
+  "turn. Do not reach for the series' worn moves, which viewers now hear in",
+  "every episode:",
+  "- defending a character before the turn: 'X did nothing wrong', 'they are",
+  "  not villains', 'not lazy', 'ordinary people on an ordinary day', 'no",
+  "  fault at all';",
+  "- siding with the viewer against the story: 'Most of us would side",
+  "  with...', 'Most of us would have done the same', 'It is an honest",
+  "  question'.",
+  "Grant a character sympathy only when THIS story turns on it, and then in",
+  "the story's own words. RECENT EPISODES, when given, are what the viewer",
+  "heard last: do not echo their hook, their turn or their phrasing.",
+  "",
   "ROLES: tag each paragraph with what it draws on: 'history' or",
   "'language' (the insight's facts, whichever kind the brief gives),",
   "'classic' (the commentator's points), 'reflection' (your own voice). One",
@@ -318,6 +334,53 @@ export function briefBlock(
         ]
       : []),
   ].join("\n")
+}
+
+/** The series' worn moves (owner, 2026-10-12): every script defended a
+ *  character before the turn ("not villains", "ordinary people") or sided
+ *  with the viewer ("most of us would..."), and the episodes began to sound
+ *  alike. The prompt asks for each story's own shape; this catches the
+ *  phrases themselves, which the model kept reaching for. */
+const WORN_MOVES: ReadonlyArray<[RegExp, string]> = [
+  [/\bdid nothing wrong\b/i, "defends the characters before the turn"],
+  [/\bnot (?:the )?villains?\b/i, "defends the characters before the turn"],
+  [/\bordinary (?:people|men|women|day)\b/i, "the 'ordinary people' move"],
+  [/\bno fault\b/i, "defends the characters before the turn"],
+  [
+    /\bwere not lazy\b|\bare not lazy\b/i,
+    "defends the characters before the turn",
+  ],
+  [
+    /\bmost of us (?:would|have|might)\b/i,
+    "sides with the viewer against the story",
+  ],
+  [
+    /\b(?:an|a fair|an honest) (?:honest |fair )?question\b/i,
+    "the 'honest question' move",
+  ],
+]
+
+export function wornMoves(
+  script: Pick<StoryScript, "paragraphs" | "opening" | "title">,
+): { rule: string; sentence: string; why: string }[] {
+  const parts = [
+    script.title,
+    ...script.opening.map((o) => o.line),
+    ...script.paragraphs.map((p) => p.text),
+  ]
+  const out: { rule: string; sentence: string; why: string }[] = []
+  for (const text of parts) {
+    for (const sentence of text.split(/(?<=[.!?])\s+/)) {
+      const hit = WORN_MOVES.find(([re]) => re.test(sentence))
+      if (hit)
+        out.push({
+          rule: "worn-move",
+          sentence,
+          why: `${hit[1]}: a move every recent episode makes. Find this story's own way into the turn, or cut it.`,
+        })
+    }
+  }
+  return out
 }
 
 /** Phrases of six words or more said twice anywhere in the script. */
@@ -590,6 +653,26 @@ export function scriptProblems(s: StoryScript, brief: ResearchBrief) {
     ...shapeProblems(s.paragraphs),
     ...insightProblems(s.paragraphs),
     ...repeatedPhrases(s),
+    ...wornMoves(s),
+  ]
+}
+
+export type RecentEpisode = {
+  title: string
+  opening: string[]
+  /** The reflection's first paragraphs: where the hook and the turn live. */
+  start: string[]
+}
+
+export function recentBlock(recent?: RecentEpisode[]): string[] {
+  if (!recent?.length) return []
+  return [
+    "",
+    "RECENT EPISODES (heard last; do not echo their hook, turn or phrasing):",
+    ...recent.map(
+      (r) =>
+        `- ${r.title}\n  opening: ${r.opening.join(" / ")}\n  reflection began: ${r.start.join(" ")}`,
+    ),
   ]
 }
 
@@ -597,12 +680,15 @@ export async function writeStory(input: {
   brief: ResearchBrief
   passage: { reference: string; text: string }
   settingText?: string
+  /** The last few episodes the viewer heard, so this one does not echo them. */
+  recent?: RecentEpisode[]
   llm: DevotionalLlm
   /** The previous script and what must change (a check or the owner). */
   revise?: { script: StoryScript; problems: string[] }
 }): Promise<StoryScript> {
   const user = [
     briefBlock(input.brief, input.passage, input.settingText),
+    ...recentBlock(input.recent),
     ...(input.revise
       ? [
           "",

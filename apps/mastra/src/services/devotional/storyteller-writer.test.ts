@@ -5,6 +5,7 @@ import {
   openingProblems,
   takeawayQuestionProblems,
   takeawayVoiceProblems,
+  wornMoves,
   type OpeningLine,
 } from "./storyteller-writer"
 
@@ -209,6 +210,35 @@ describe("insightProblems", () => {
         p("reflection", 20),
         p("history", 35),
       ]),
+    ).toEqual([])
+  })
+})
+
+describe("wornMoves", () => {
+  const script = (texts: string[]) => ({
+    title: "A title",
+    opening: [],
+    paragraphs: texts.map((text) => ({ text, role: "reflection" as const })),
+  })
+
+  it("flags the series' worn moves, sentence by sentence", () => {
+    const hits = wornMoves(
+      script([
+        "The nine are not villains. They walked on.",
+        "Most of us would side with Martha.",
+        "It is an honest question, and Peter asks it.",
+      ]),
+    )
+    expect(hits.map((h) => h.sentence)).toEqual([
+      "The nine are not villains.",
+      "Most of us would side with Martha.",
+      "It is an honest question, and Peter asks it.",
+    ])
+  })
+
+  it("leaves a story's own way into the turn alone", () => {
+    expect(
+      wornMoves(script(["One man stops on the road and turns around."])),
     ).toEqual([])
   })
 })
