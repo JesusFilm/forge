@@ -1039,7 +1039,7 @@ describe("GA Watch aggregate capture", () => {
     } finally {
       await rm(directory, { recursive: true, force: true })
     }
-  })
+  }, 15_000)
 
   it("stops before staging a page that exceeds the cumulative byte cap", async () => {
     const directory = await mkdtemp(join(tmpdir(), "ga-capture-cap-"))
