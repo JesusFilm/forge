@@ -21,15 +21,15 @@ PR #2578 is attached to the successor, open, draft and unmerged. The required
 `ci-gate` passes; the unrelated roadmap-ID advisory remains failed. Original
 checkout `/home/nisal/forge` remains dirty and untouched.
 
-| State            | Work                                                                                                                 | Owner / next evidence                                                                                                                                           |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Completed        | Handoff, branch/PR verification and CI classification                                                                | Successor orchestrator                                                                                                                                          |
-| Running          | Production GA origin, manual subscription build path, target capacity preparation; #2568/#2569/#2574                 | Exact GPT-6.1 Sol task `01a13187-12d4-7e73-b011-17e6f08ebd14`, isolated branch `codex/feat590-catalog-closeout`                                                 |
-| Running          | Deployed human/bot proof, qualified baseline, launch versus final-certification gates, numeric proposal; #2571–#2575 | Exact GPT-6.1 Sol task `01a13187-179a-7681-a23c-8646549ef118`, isolated checkout required                                                                       |
-| Running          | Release preflight, serial integration and owner decisions                                                            | Successor orchestrator                                                                                                                                          |
-| Externally gated | Normal PR merge/deploy, production catalog writes and baseline start                                                 | Prior production approval question remains unanswered; present concrete release preflight before asking once                                                    |
-| Externally gated | Public activation and numeric policy agreement                                                                       | Separate explicit owner decision after actual launch gates pass                                                                                                 |
-| Calendar gated   | Qualified baseline                                                                                                   | Not started: 168 aligned UTC hours, then 24 hours for late clicks and five-minute finalization grace; earliest actual finalization unknown until verified start |
+| State                 | Work                                                                                          | Owner / next evidence                                                                                                                                           |
+| --------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Completed             | Handoff, branch/PR verification and CI classification                                         | Successor orchestrator                                                                                                                                          |
+| Completed preparation | GA-only origin repair, subscription configuration and capacity preparation; #2568/#2569/#2574 | Exact GPT-6.1 Sol task `01a13187-12d4-7e73-b011-17e6f08ebd14`, worker `3b1f6d00b`, integrated `afdf18678`; production acceptance remains open                   |
+| Completed preparation | Measurement/launch contract audit and corrected runbooks; #2571–#2575                         | Exact GPT-6.1 Sol task `01a13187-179a-7681-a23c-8646549ef118`, worker `917cb712d`, integrated `5d8c7aa21`; live acceptance remains open                         |
+| Running               | Release preflight, serial integration and owner decisions                                     | Successor orchestrator                                                                                                                                          |
+| Externally gated      | Normal PR merge/deploy, production catalog writes and baseline start                          | Prior production approval question remains unanswered; present concrete release preflight before asking once                                                    |
+| Externally gated      | Public activation and numeric policy agreement                                                | Separate explicit owner decision after actual launch gates pass                                                                                                 |
+| Calendar gated        | Qualified baseline                                                                            | Not started: 168 aligned UTC hours, then 24 hours for late clicks and five-minute finalization grace; earliest actual finalization unknown until verified start |
 
 No production approval, live evidence or acceptance is inferred from this
 handoff. Public A/B remains off. No follow-up automation or automatic build
@@ -38,6 +38,64 @@ activation; winner promotion remains separately authorized. Worker model is
 exact `gpt-6.1-sol`; application generation model remains `gpt-6-astra`.
 The Matt Pocock implement/TDD/code-review workflow replaces the repository CE
 default; Standards and Spec reviews run sequentially.
+
+The successor merged current `main` (`2c8eb369b`) without conflicts as
+`4930e77aa`; unrelated Manager/mobile/TV work is preserved. Actual Railway
+production deployments bind to `main`. Admin's active configuration reads
+`/apps/admin/railway.toml` and runs `db:migrate:deploy` before startup. Admin
+health is HTTP 200, while catalog/ingest/public-control feature routes are
+HTTP 404 and the target contains zero precomputed tables: the feature remains
+undeployed. Exact-head release CI must cover the integrated repair before production approval.
+
+At **October 13, 08:15:47 NZDT** (`2026-10-12T19:15:47Z`), the actual Admin
+database `railway` on `@forge/admin/pg`, cluster `7655660030928953395`, measured
+30,535,767,743 database bytes and 18,118,115,328 free bytes on PGDATA's mounted
+`/var/lib/postgresql/data` volume. Recommendation relations measured
+12,734,922,752 bytes in a subsequent read. These are snapshots, not admission,
+approved catalog/launch budgets or measured baseline growth. The operator's
+read-only account check admits exact Astra with included Pro subscription
+allowance, 86% weekly remaining and no applicable five-hour window. This does
+not forecast full-build consumption and must be repeated before actual calls.
+
+Fresh production configuration inspection confirms missing dedicated ingest
+bearer configuration, all three GA-import storage budgets, human-proof secrets,
+real Turnstile values and measurement URL/key. Admin private S3 and Web Redis
+configuration are present; those presence checks are not operational proof.
+Canonical Watch is `https://www.jesusfilm.org/watch`; the bare hostname redirects
+there. The strict measurement URL includes the HTTPS `/watch` prefix.
+
+The catalog repair adds explicit local `precomputed:ga:capture-origin` execution.
+It seals and verifies the target GA artifact, then returns an incomplete origin
+before any model construction, source claim, source completion or activation.
+The 36 connected native tests pass, including importability, exact GA accounting,
+zero inference/claims, sealed replay and scoped cleanup. All 3,548 Mastra tests
+pass (45 existing skips), both scoped typechecks pass, normal hooks pass, and
+sequential Standards/Spec review has no unresolved finding.
+
+Private preparation artifacts derive invocation digests and full-pool pilot
+boundaries from the deployed target using read-only Admin actions. They have
+not yet produced a successful production configuration because the feature
+routes and target origin are absent. Proposed bootstrap capacity (2 GiB projected
+plus 5 GiB reserve) and GA-import limits (256 MiB object / 128 MiB temporary /
+1 GiB temporary reserve) remain unapproved. The bootstrap sample is not a full
+protocol-4 catalog bound: first finalize one or two sources through the existing
+manual pilot mode, measure actual source growth and WAL, then explicitly review
+and resume the same generation with fresh capacity and allowance evidence.
+A full build cannot reuse the bootstrap basis. No production writes or model
+calls occurred during this successor preflight.
+
+The measurement worker's 13 focused tests, normal hooks and sequential
+Standards/Spec reviews pass. Its numeric policy is an **unapproved proposal**;
+actual baseline CTR, sample feasibility, variance and retained traffic growth
+remain unknown. Independent signed calibration is a final-certification code
+gate, not a prepare/start code gate. Its collection path still must exist before
+cohort start to support the required complete horizon. Existing 50%-sampled
+Datadog RUM lacks an experiment-bound initiation census; edge logs alone miss
+browser-before-edge failures. The Datadog connector returned
+`oauth_token_invalid_grant` before any event read. Cloudflare has no available
+credential/session in inspected stores; the available browser is signed out.
+Owner access questions are pending for Cloudflare and Datadog reauthentication.
+No window, collector requirement or live evidence is waived.
 
 ## Historical checkpoint — October 12
 
