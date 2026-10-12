@@ -3,7 +3,7 @@
 // Share (KTD10, R25). v2 plan: each video part shows its section (R2, KTD4).
 import { useIsFocused, useRouter } from "expo-router"
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake"
-import { useEffect, useRef, type ReactNode } from "react"
+import { useCallback, useEffect, useRef, type ReactNode } from "react"
 import { StyleSheet, View } from "react-native"
 
 import type { DevotionalPart } from "../../lib/dailyPause/devotionals"
@@ -11,6 +11,9 @@ import { usePauseFonts } from "../../lib/dailyPause/fonts"
 import { usePauseDay, type PauseStep } from "../../lib/dailyPause/progress"
 import {
   isVideoPart,
+  partStepForSection,
+  sectionStartStep,
+  type StepperStage,
   sectionForStep,
   useDailyPauseRun,
 } from "../../lib/dailyPause/run"
@@ -66,6 +69,15 @@ export function RunScreen() {
   const { ready: fontsReady, font } = usePauseFonts()
   const run = useDailyPauseRun()
   const { state } = run
+
+  // One stable callback, so the memoized stepper does not render again on
+  // each tick of the Reflect and Pray timers.
+  const jumpRef = useRef(run.jump)
+  jumpRef.current = run.jump
+  const selectSection = useCallback(
+    (section: StepperStage) => jumpRef.current(sectionStartStep(section)),
+    [],
+  )
 
   // An entry point names today. A run pinned to an earlier day, such as one
   // left open overnight, goes back to the Opening and today's devotional.
@@ -126,6 +138,7 @@ export function RunScreen() {
         meditationLength={settings.meditationLength}
         font={font}
         onContinue={run.advance}
+        onSelectSection={selectSection}
       />
     )
   } else if (state.step === "prayScreen") {
@@ -135,6 +148,7 @@ export function RunScreen() {
         meditationLength={settings.meditationLength}
         font={font}
         onContinue={run.advance}
+        onSelectSection={selectSection}
       />
     )
   } else if (state.step === "share") {
@@ -161,12 +175,23 @@ export function RunScreen() {
         />
       ) : null}
       {content}
+      {/* Keyed by section, so each part plays its own marker arrival. */}
       {section != null ? (
-        <SectionMarkers section={section} font={font} />
+        <SectionMarkers
+          key={section}
+          section={section}
+          font={font}
+          onSelect={(other) => run.jump(partStepForSection(other))}
+        />
       ) : null}
       <CloseButton onPress={close} placement={topRow} />
       {__DEV__ && loaded && TIMED_STEPS.has(state.step) ? (
-        <DevSkipButton onPress={run.advance} placement={topRow} font={font} />
+        <DevSkipButton
+          onPress={run.advance}
+          placement={topRow}
+          font={font}
+          belowMarkers={section != null}
+        />
       ) : null}
     </View>
   )

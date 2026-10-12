@@ -53,12 +53,11 @@ export const pauseSpacing = {
   /** The Reflect and Pray screens' fixed gap between the stepper and the
    *  ring box. */
   ringGap: 87,
-  /** The Pray screen's empty box between the attribution and Amen. */
-  prayButtonGap: 42,
-  /** The Reflect screen's gap between its scroll view and Continue, and the
-   *  lift of Continue off the bottom edge (the owner, 2026-10-07). */
-  reflectButtonGap: 32,
-  reflectButtonLift: 40,
+  /** The Reflect and Pray gap between the scroll view and the button. */
+  buttonGap: 32,
+  /** The lift of the Watch, Reflect, and Pray buttons off the bottom edge,
+   *  so the three share one height (the owner, 2026-10-07 and 2026-10-12). */
+  buttonLift: 40,
   /** The Share screen's fixed top spacer and its spacer above the button. */
   shareTop: 264,
   shareButtonGap: 17,

@@ -116,17 +116,6 @@ function labels(): string[] {
 
 const STAGES = ["watch", "reflect", "pray"]
 
-/** Every layer that a native clock drives. */
-const LAYERS = [
-  "stepper-node-top-fill",
-  "stepper-line-0-fill",
-  "stepper-line-1-fill",
-  "stepper-line-2-fill",
-  ...STAGES.flatMap((stage) =>
-    ["upcoming", "done", "active"].map((one) => `stepper-${stage}-${one}`),
-  ),
-]
-
 /** The host view of the pill button that reads this label. */
 function button(label: string): RenderedNode {
   const [found] = renderer!.root.findAll(
@@ -176,81 +165,45 @@ function fakeArrivalRuns() {
   })
 }
 
-/** The calls of Animated.Value's setValue that reached one of these clocks. */
-function writesTo(
-  spy: jest.SpyInstance,
-  clocks: readonly Animated.Value[],
-): number {
-  return spy.mock.contexts.filter((one) =>
-    clocks.includes(one as Animated.Value),
-  ).length
-}
-
 const onContinue = jest.fn()
 
-const SCREENS = [
+type SelectSection = (section: StepperStage) => void
+
+const SCREENS: {
+  name: string
+  element: (onSelectSection?: SelectSection) => React.ReactElement
+  previous: string
+  previousStage: StepperStage
+}[] = [
   {
     name: "Reflect",
-    element: () => (
+    element: (onSelectSection) => (
       <ReflectScreen
         devotional={DEVOTIONALS.pharisee}
         meditationLength={3}
         font={font}
         onContinue={onContinue}
+        onSelectSection={onSelectSection}
       />
     ),
     previous: "Watch, done",
+    previousStage: "watch",
   },
   {
     name: "Pray",
-    element: () => (
+    element: (onSelectSection) => (
       <PrayScreen
         devotional={DEVOTIONALS.pharisee}
         meditationLength={3}
         font={font}
         onContinue={onContinue}
+        onSelectSection={onSelectSection}
       />
     ),
     previous: "Reflect, done",
+    previousStage: "reflect",
   },
 ]
-
-/** The seconds that the screen's countdown says are left. */
-function secondsLeft(): number {
-  const counts = new Set(
-    renderer!.root
-      .findAll(
-        (node) =>
-          typeof node.type === "string" &&
-          typeof node.props.accessibilityLabel === "string" &&
-          /\d+ seconds? left$/.test(node.props.accessibilityLabel),
-      )
-      .map((node) =>
-        Number(/(\d+) seconds? left$/.exec(node.props.accessibilityLabel!)![1]),
-      ),
-  )
-  if (counts.size !== 1) throw new Error(`counts: ${[...counts].join(",")}`)
-  return [...counts][0]!
-}
-
-/** True while VoiceOver reaches the content below the stepper. */
-function contentShown(): boolean {
-  return byId("pause-intro-content").props.accessibilityElementsHidden === false
-}
-
-/** True while Continue shows as a dimmed button that takes no tap. */
-function continueHeld(): boolean {
-  return (
-    renderer!.root.findAll(
-      (node) =>
-        typeof node.type === "string" &&
-        node.props.accessibilityRole === "button" &&
-        String(node.props.accessibilityLabel).startsWith("Continue") &&
-        (node.props.accessibilityState as { disabled?: boolean } | undefined)
-          ?.disabled === true,
-    ).length > 0
-  )
-}
 
 describe("the end state of each arrival step (Reduce Motion)", () => {
   it.each<[StepperStage, string[], string[], number[]]>([
@@ -406,11 +359,15 @@ describe("one pill width (R6, KTD2)", () => {
 
 describe("the pill buttons (R10)", () => {
   it("makes each pill a button that says its state, with a target at least 44 pt tall", async () => {
-    await render("reflect")
+    await mount(
+      <StepperPills arrival="reflect" font={font} onSelect={() => {}} />,
+    )
     const spoken = ["Watch, done", "Reflect, current step", "Pray, upcoming"]
     for (const label of spoken) {
       const target = StyleSheet.flatten(button(label).props.style as ViewStyle)
       expect(Number(target.height)).toBeGreaterThanOrEqual(44)
+    }
+    for (const label of ["Watch, done", "Pray, upcoming"]) {
       expect(typeof pressableByLabel(renderer!, label).props.onPress).toBe(
         "function",
       )
@@ -420,8 +377,10 @@ describe("the pill buttons (R10)", () => {
 
   // A pressed look on a layer that a native clock drives does not show on iOS.
   it("dims a pressed pill on its button, not on its looks", async () => {
-    await render("reflect")
-    const pressable = pressableByLabel(renderer!, "Reflect, current step")
+    await mount(
+      <StepperPills arrival="reflect" font={font} onSelect={() => {}} />,
+    )
+    const pressable = pressableByLabel(renderer!, "Watch, done")
     const pressedStyle = pressable.props.style as (state: {
       pressed: boolean
     }) => ViewStyle
@@ -434,137 +393,115 @@ describe("the pill buttons (R10)", () => {
   })
 })
 
-describe("a pill tap replays the arrival (R7-R9, KTD1)", () => {
+// The owner, 2026-10-09: a tap on another pill opens the start of that
+// section, and the current pill takes no tap and replays nothing.
+describe("a pill tap", () => {
+  const onSelect = jest.fn()
+
   beforeEach(() => {
     fakeArrivalRuns()
+    onSelect.mockClear()
   })
 
-  it("replays the top node, the line, and WATCH at a tap on PRAY, and PRAY stays upcoming (AE3)", async () => {
-    await render("watch")
-    expect(runs.length).toBe(1)
-    const first = runs[0]!
-    act(() => first.setValue(1))
-    expect(opacity("stepper-node-top-fill")).toBe(1)
-    expect(scaleY("stepper-line-0")).toBe(1)
-    expect(STAGES.map(look)).toEqual(["active", "upcoming", "upcoming"])
+  async function renderWith(arrival: StepperStage) {
+    return mount(
+      <StepperPills arrival={arrival} font={font} onSelect={onSelect} />,
+    )
+  }
 
+  it("asks for another section at a tap on its pill, back or ahead, and starts no new run", async () => {
+    await renderWith("reflect")
+    const before = runs.length
+    await press(pressableByLabel(renderer!, "Watch, done"))
     await press(pressableByLabel(renderer!, "Pray, upcoming"))
-    expect(runs.length).toBe(2)
-    expect(runs[1] === first).toBe(false)
-    expect(opacity("stepper-node-top-fill")).toBe(0)
-    expect(scaleY("stepper-line-0")).toBe(0)
-    expect(STAGES.map(look)).toEqual(["upcoming", "upcoming", "upcoming"])
+    expect(onSelect.mock.calls).toEqual([["watch"], ["pray"]])
+    expect(runs.length).toBe(before)
+  })
 
-    act(() => runs[1]!.setValue(1))
-    expect(STAGES.map(look)).toEqual(["active", "upcoming", "upcoming"])
-    expect(labels()).toEqual([
+  it("does nothing at a tap on the current pill: no run, no section, and the look stays", async () => {
+    await renderWith("reflect")
+    const before = runs.length
+    act(() => runs[before - 1]!.setValue(1))
+    const current = button("Reflect, current step")
+    expect(current.props.accessibilityState).toMatchObject({ disabled: true })
+    const pressables = renderer!.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === "Reflect, current step" &&
+        typeof node.props.onPress === "function",
+    )
+    expect(pressables.length).toBe(0)
+    // A press that reaches the button anyway changes nothing.
+    await act(async () => {
+      ;(current.props.onPress as (() => void) | undefined)?.()
+    })
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(runs.length).toBe(before)
+    expect(STAGES.map(look)).toEqual(["done", "active", "upcoming"])
+  })
+
+  // The first screen gives no onSelect, so none of its pills takes a tap.
+  it("takes no tap on any pill without onSelect, and VoiceOver reads each as dimmed", async () => {
+    await render("watch")
+    const spoken = [
       "Watch, current step",
       "Reflect, upcoming",
       "Pray, upcoming",
+    ]
+    const tappable = renderer!.root.findAll(
+      (node) =>
+        spoken.includes(node.props.accessibilityLabel as string) &&
+        typeof node.props.onPress === "function",
+    )
+    expect(tappable.length).toBe(0)
+    for (const label of spoken) {
+      expect(button(label).props.accessibilityState).toMatchObject({
+        disabled: true,
+      })
+      expect(button(label).props.accessibilityHint).toBeUndefined()
+    }
+  })
+
+  it("tells VoiceOver where another pill goes, and gives the current pill no hint", async () => {
+    await renderWith("watch")
+    expect(
+      ["Watch, current step", "Reflect, upcoming", "Pray, upcoming"].map(
+        (label) => button(label).props.accessibilityHint ?? null,
+      ),
+    ).toEqual([
+      null,
+      "Goes to the start of the Reflect section",
+      "Goes to the start of the Pray section",
     ])
   })
 
-  it("starts the arrival over at a tap mid-run, on a new clock each time, and writes no old clock", async () => {
-    await render("reflect")
-    const setValue = jest.spyOn(Animated.Value.prototype, "setValue")
-    await press(pressableByLabel(renderer!, "Reflect, current step"))
-    await press(pressableByLabel(renderer!, "Watch, done"))
-    expect(runs.length).toBe(3)
-    expect(new Set(runs).size).toBe(3)
-    expect(writesTo(setValue, runs)).toBe(0)
-    expect(STAGES.map(look)).toEqual(["active", "upcoming", "upcoming"])
-  })
-
-  // iOS keeps a native-driven view's last values, so a replay needs new
-  // layers. A new button would lose VoiceOver's focus.
-  it("keeps each pill button mounted and draws the replay on new layers", async () => {
-    await render("reflect")
-    const buttons = ["Watch, done", "Reflect, current step", "Pray, upcoming"]
-    const before = buttons.map(button)
-    const layers = LAYERS.map(byId)
-    await press(pressableByLabel(renderer!, "Pray, upcoming"))
-    expect(buttons.filter((label, i) => button(label) !== before[i])).toEqual(
-      [],
-    )
-    expect(LAYERS.filter((id, i) => byId(id) === layers[i])).toEqual([])
-  })
-
-  it("starts one new run per tap under StrictMode", async () => {
+  it("asks once per tap under StrictMode", async () => {
     await mount(
       <StrictMode>
-        <StepperPills arrival="reflect" font={font} />
+        <StepperPills arrival="pray" font={font} onSelect={onSelect} />
       </StrictMode>,
     )
-    const before = runs.length
-    expect(before).toBeGreaterThan(0)
-    await press(pressableByLabel(renderer!, "Reflect, current step"))
-    expect(runs.length).toBe(before + 1)
-    expect(runs.slice(0, before).includes(runs[before]!)).toBe(false)
+    await press(pressableByLabel(renderer!, "Watch, done"))
+    expect(onSelect.mock.calls).toEqual([["watch"]])
   })
 
-  it("shows the end state at a tap under Reduce Motion, with no run and no new layers (AE4)", async () => {
+  it("keeps the end state under Reduce Motion and still opens another section", async () => {
     await reduceMotion()
-    await render("reflect")
+    await renderWith("reflect")
     const before = runs.length
-    const layers = LAYERS.map(byId)
     const setValue = jest.spyOn(Animated.Value.prototype, "setValue")
-    for (const label of [
-      "Watch, done",
-      "Reflect, current step",
-      "Pray, upcoming",
-    ]) {
-      await press(pressableByLabel(renderer!, label))
-    }
+    await press(pressableByLabel(renderer!, "Pray, upcoming"))
+    expect(onSelect.mock.calls).toEqual([["pray"]])
     expect(runs.length).toBe(before)
     expect(setValue.mock.calls.length).toBe(0)
-    expect(LAYERS.filter((id, i) => byId(id) !== layers[i])).toEqual([])
     expect(STAGES.map(look)).toEqual(["done", "active", "upcoming"])
-    expect([0, 1, 2].map((i) => scaleY(`stepper-line-${i}`))).toEqual([1, 1, 0])
-    expect(opacity("stepper-node-top-fill")).toBe(1)
-  })
-
-  it("replays REFLECT at a tap on WATCH, and the countdown keeps its count (AE2)", async () => {
-    await mount(<StrictMode>{SCREENS[0]!.element()}</StrictMode>)
-    advance(PAUSE_INTRO_MS)
-    advance(25_000)
-    expect(secondsLeft()).toBe(20)
-    expect(continueHeld()).toBe(true)
-    const before = runs.length
-    const first = runs[before - 1]!
-    act(() => first.setValue(1))
-    expect(STAGES.map(look)).toEqual(["done", "active", "upcoming"])
-
-    await press(pressableByLabel(renderer!, "Watch, done"))
-    expect(runs.length).toBe(before + 1)
-    expect(runs[before] === first).toBe(false)
-    expect(STAGES.map(look)).toEqual(["active", "upcoming", "upcoming"])
-    expect(scaleY("stepper-line-1")).toBe(0)
-    expect(secondsLeft()).toBe(20)
-    expect(continueHeld()).toBe(true)
-    advance(1_000)
-    expect(secondsLeft()).toBe(19)
-    expect(continueHeld()).toBe(true)
   })
 
   describe.each(SCREENS)("on the $name screen", (screen) => {
-    it("keeps the intro and the countdown's start at a tap during the intro (R8)", async () => {
-      await mount(<StrictMode>{screen.element()}</StrictMode>)
-      const full = secondsLeft()
-      const tapAt = Math.floor(PAUSE_INTRO_MS / 2)
-      advance(tapAt)
-      const before = runs.length
+    it("passes a tap on an earlier pill to onSelectSection, during the intro too", async () => {
+      await mount(<StrictMode>{screen.element(onSelect)}</StrictMode>)
+      advance(Math.floor(PAUSE_INTRO_MS / 2))
       await press(pressableByLabel(renderer!, screen.previous))
-      expect(runs.length).toBe(before + 1)
-
-      advance(PAUSE_INTRO_MS - tapAt - 1)
-      expect(contentShown()).toBe(false)
-      expect(secondsLeft()).toBe(full)
-      advance(1)
-      expect(contentShown()).toBe(true)
-      advance(999)
-      expect(secondsLeft()).toBe(full)
-      advance(1)
-      expect(secondsLeft()).toBe(full - 1)
+      expect(onSelect.mock.calls).toEqual([[screen.previousStage]])
     })
   })
 })

@@ -21,7 +21,7 @@ import {
   usePauseIntro,
 } from "./PauseIntro"
 import { FinishButton, FinishRing, usePauseFinish } from "./PauseFinish"
-import { StepperPills } from "./StepperPills"
+import { StepperPills, type StepperStage } from "./StepperPills"
 import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { PauseBody } from "./PauseFrame"
 
@@ -33,6 +33,8 @@ type ReflectScreenProps = {
   meditationLength: MeditationLength
   font: PauseFont
   onContinue: () => void
+  /** A tap on another section's stepper pill. */
+  onSelectSection?: (section: StepperStage) => void
 }
 
 export function ReflectScreen({
@@ -40,6 +42,7 @@ export function ReflectScreen({
   meditationLength,
   font,
   onContinue,
+  onSelectSection,
 }: ReflectScreenProps) {
   const intro = usePauseIntro("reflect")
   const countdown = useCountdown(
@@ -56,7 +59,11 @@ export function ReflectScreen({
         onLayout={intro.onScrollLayout}
       >
         <IntroStepper intro={intro}>
-          <StepperPills arrival="reflect" font={font} />
+          <StepperPills
+            arrival="reflect"
+            font={font}
+            onSelect={onSelectSection}
+          />
         </IntroStepper>
         <View style={styles.ringGap} />
         <IntroContent intro={intro} style={styles.content}>
@@ -103,12 +110,12 @@ const styles = StyleSheet.create({
   // line above Continue (v2 R14).
   ringGap: { flexGrow: 1, maxHeight: pauseSpacing.ringGap },
   // The body's own gap already sits above the button, so the margin adds
-  // only the rest of the Reflect gap.
+  // only the rest of the button gap.
   buttonRow: {
     alignSelf: "stretch",
     alignItems: "center",
-    marginTop: pauseSpacing.reflectButtonGap - pauseSpacing.screenGap,
-    marginBottom: pauseSpacing.reflectButtonLift,
+    marginTop: pauseSpacing.buttonGap - pauseSpacing.screenGap,
+    marginBottom: pauseSpacing.buttonLift,
   },
   verse: {
     alignSelf: "stretch",

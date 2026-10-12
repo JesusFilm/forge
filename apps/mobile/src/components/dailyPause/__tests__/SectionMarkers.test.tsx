@@ -1,17 +1,31 @@
-// The section markers of the video parts (v2 plan R2-R4, AE1, KTD4). The run
-// screen's suite pins where the row sits beside the close (R5).
-import { act } from "react"
-import { StyleSheet, type TextStyle } from "react-native"
+// The section markers of the video parts (v2 plan R2-R5, AE1, KTD4). A tap on
+// another marker opens its section, and the current marker takes no tap (the
+// owner, 2026-10-09 and 2026-10-12). Jest moves a fake clock by hand.
+import { StrictMode, act, type ReactElement } from "react"
+import {
+  AccessibilityInfo,
+  Animated,
+  AppState,
+  StyleSheet,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native"
 
 import { pauseColors } from "../../../lib/dailyPause/theme"
 import { pauseTestFont as font } from "../../../test-utils/dailyPause"
 import {
   TestRenderer,
+  press,
+  pressableByLabel,
   unmount,
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
-import { MARKER_MAX_SCALE, SectionMarkers } from "../SectionMarkers"
+import {
+  MARKER_ARRIVAL_MS,
+  MARKER_MAX_SCALE,
+  SectionMarkers,
+} from "../SectionMarkers"
 import type { StepperStage } from "../StepperPills"
 
 jest.mock("react-native-safe-area-context", () => ({
@@ -20,107 +34,303 @@ jest.mock("react-native-safe-area-context", () => ({
 
 let renderer: TestInstance | null = null
 
+/** The arrival runs the row starts, in order. Each clock stays in JS, so a
+ *  test can move it with setValue. */
+let runs: Animated.Value[] = []
+
+beforeEach(() => {
+  jest
+    .spyOn(AccessibilityInfo, "isReduceMotionEnabled")
+    .mockResolvedValue(false)
+  jest
+    .spyOn(AppState, "addEventListener")
+    .mockImplementation((() => ({ remove: () => {} })) as never)
+  runs = []
+  const timing = Animated.timing
+  jest.spyOn(Animated, "timing").mockImplementation((value, config) => {
+    if (config.duration !== MARKER_ARRIVAL_MS) return timing(value, config)
+    return {
+      start: () => runs.push(value as Animated.Value),
+      stop: () => {},
+      reset: () => {},
+    } as unknown as Animated.CompositeAnimation
+  })
+})
+
 afterEach(async () => {
   if (renderer) await unmount(renderer)
   renderer = null
+  jest.restoreAllMocks()
 })
 
-async function mount(section: StepperStage) {
+async function mountElement(element: ReactElement) {
   await act(async () => {
-    renderer = TestRenderer.create(
-      <SectionMarkers section={section} font={font} />,
+    renderer = TestRenderer.create(element)
+  })
+  await act(async () => {})
+}
+
+const onSelect = jest.fn()
+
+async function mount(section: StepperStage) {
+  onSelect.mockClear()
+  await mountElement(
+    <SectionMarkers section={section} font={font} onSelect={onSelect} />,
+  )
+}
+
+async function reduceMotion() {
+  jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true)
+}
+
+function hosts(test: (node: RenderedNode) => boolean): RenderedNode[] {
+  return renderer!.root.findAll(
+    (node) => typeof node.type === "string" && test(node),
+  )
+}
+
+function byId(testID: string): RenderedNode {
+  const [found] = hosts((node) => node.props.testID === testID)
+  if (!found) throw new Error(`no view "${testID}"`)
+  return found
+}
+
+function has(testID: string): boolean {
+  return hosts((node) => node.props.testID === testID).length > 0
+}
+
+function style(testID: string): ViewStyle & TextStyle {
+  return StyleSheet.flatten(byId(testID).props.style as ViewStyle & TextStyle)
+}
+
+function opacity(testID: string): number {
+  return Number(style(testID).opacity ?? 1)
+}
+
+/** How far the line has drawn, from its fill's scale. */
+function lineDrawn(): number {
+  const transform = (style("section-markers-line-fill").transform ??
+    []) as unknown as Record<string, number>[]
+  const entry = transform.find((one) => "scaleX" in one)
+  return Number(entry?.scaleX ?? 1)
+}
+
+/** Each marker button, left to right. */
+function markerButtons(): RenderedNode[] {
+  return hosts((node) => node.props.accessibilityRole === "button")
+}
+
+/** The labels that show in gold, at full opacity. */
+function litGold(): string[] {
+  return hosts((node) => node.type === "Text")
+    .filter(
+      (node) =>
+        StyleSheet.flatten(node.props.style as TextStyle).color ===
+          pauseColors.accent &&
+        Number(StyleSheet.flatten(node.props.style as TextStyle).opacity) === 1,
     )
+    .map((node) => node.props.children as string)
+}
+
+async function layOut(label: string, x: number, width: number) {
+  const [marker] = hosts((node) => node.props.accessibilityLabel === label)
+  const onLayout = marker!.props.onLayout as
+    | ((event: { nativeEvent: { layout: object } }) => void)
+    | undefined
+  await act(async () => {
+    onLayout?.({ nativeEvent: { layout: { x, y: 0, width, height: 44 } } })
   })
 }
 
-/** The host text nodes of the row, left to right. */
-function markers(): RenderedNode[] {
-  return renderer!.root.findAll(
-    (node) => node.type === "Text" && typeof node.props.children === "string",
-  )
-}
+describe("the arrival", () => {
+  it("starts with no line and REFLECT plain, then draws the line and lights REFLECT gold (AE1)", async () => {
+    await mount("reflect")
+    expect(runs.length).toBe(1)
+    expect(lineDrawn()).toBe(0)
+    expect(opacity("section-marker-reflect-plain")).toBe(1)
+    expect(opacity("section-marker-reflect-gold")).toBe(0)
+    expect(litGold()).toEqual([])
 
-/** Each marker's text and color. */
-function looks(): [string, unknown][] {
-  return markers().map((node) => [
-    node.props.children as string,
-    StyleSheet.flatten(node.props.style as TextStyle).color,
-  ])
-}
+    act(() => runs[0]!.setValue(1))
+    expect(lineDrawn()).toBe(1)
+    expect(opacity("section-marker-reflect-plain")).toBe(0)
+    expect(litGold()).toEqual(["REFLECT"])
+  })
 
-function row(): RenderedNode {
-  const [one] = renderer!.root.findAll(
-    (node) =>
-      typeof node.type === "string" && node.props.testID === "section-markers",
-  )
-  return one!
-}
-
-const GOLD = pauseColors.accent
-const PLAIN = pauseColors.ink
-
-it("shows REFLECT in gold, and WATCH and PRAY plain, on the teaching part (AE1)", async () => {
-  await mount("reflect")
-  expect(looks()).toEqual([
-    ["WATCH", PLAIN],
-    ["REFLECT", GOLD],
-    ["PRAY", PLAIN],
-  ])
-})
-
-it.each<[StepperStage, [string, unknown][]]>([
-  [
-    "watch",
-    [
-      ["WATCH", GOLD],
-      ["REFLECT", PLAIN],
-      ["PRAY", PLAIN],
-    ],
-  ],
-  [
-    "pray",
-    [
-      ["WATCH", PLAIN],
-      ["REFLECT", PLAIN],
-      ["PRAY", GOLD],
-    ],
-  ],
-])("shows only the %s marker in gold (R3)", async (section, expected) => {
-  await mount(section)
-  expect(looks()).toEqual(expected)
-})
-
-it.each<[StepperStage, string]>([
-  ["watch", "Watch section"],
-  ["reflect", "Reflect section"],
-  ["pray", "Pray section"],
-])(
-  "gives a screen reader one text element for the %s section",
-  async (section, label) => {
+  it.each<[StepperStage, string]>([
+    ["watch", "WATCH"],
+    ["pray", "PRAY"],
+  ])("lights only the %s marker gold (R3)", async (section, gold) => {
     await mount(section)
-    const spoken = renderer!.root.findAll(
-      (node) =>
-        typeof node.type === "string" &&
-        typeof node.props.accessibilityLabel === "string",
-    )
-    expect(spoken).toHaveLength(1)
-    expect(spoken[0]!.props).toMatchObject({
-      accessible: true,
-      accessibilityRole: "text",
-      accessibilityLabel: label,
-    })
-  },
-)
+    act(() => runs[0]!.setValue(1))
+    expect(litGold()).toEqual([gold])
+    for (const stage of ["watch", "reflect", "pray"]) {
+      expect(has(`section-marker-${stage}-gold`)).toBe(stage === section)
+    }
+  })
 
-it("takes no touch, so a tap reaches the video under it (R4)", async () => {
-  await mount("reflect")
-  expect(row().props.pointerEvents).toBe("none")
+  it("runs the line from the left edge of WATCH to the right edge of the current marker", async () => {
+    await mount("reflect")
+    expect(style("section-markers-line").width).toBe(0)
+    expect(style("section-markers-line").left).toBe(0)
+    await layOut("Reflect section", 96, 84)
+    expect(style("section-markers-line").width).toBe(180)
+    // Only the current marker measures, so another layout moves nothing.
+    await layOut("Watch section", 0, 60)
+    expect(style("section-markers-line").width).toBe(180)
+  })
+
+  it("keeps the line inside the row, below the text", async () => {
+    await mount("pray")
+    const row = style("section-markers")
+    const line = style("section-markers-line")
+    expect(line.bottom).toBeGreaterThan(0)
+    expect(Number(line.bottom) + Number(line.height)).toBeLessThan(
+      Number(row.height) / 2,
+    )
+  })
+
+  it("shows the end state at once under Reduce Motion", async () => {
+    await reduceMotion()
+    await mount("pray")
+    expect(lineDrawn()).toBe(1)
+    expect(litGold()).toEqual(["PRAY"])
+  })
 })
 
-it("caps the text scale of every marker", async () => {
-  await mount("reflect")
-  expect(MARKER_MAX_SCALE).toBeGreaterThan(1)
-  expect(Number.isFinite(MARKER_MAX_SCALE)).toBe(true)
-  const caps = markers().map((node) => node.props.maxFontSizeMultiplier)
-  expect(caps).toEqual([MARKER_MAX_SCALE, MARKER_MAX_SCALE, MARKER_MAX_SCALE])
+describe("the marker buttons", () => {
+  it.each<[StepperStage, string]>([
+    ["watch", "Watch section"],
+    ["reflect", "Reflect section"],
+    ["pray", "Pray section"],
+  ])(
+    "makes each marker a button, and marks only the %s marker selected and dimmed",
+    async (section, current) => {
+      await mount(section)
+      expect(
+        markerButtons().map((node) => {
+          const state = node.props.accessibilityState as {
+            selected?: boolean
+            disabled?: boolean
+          }
+          return [node.props.accessibilityLabel, state.selected, state.disabled]
+        }),
+      ).toEqual(
+        ["Watch section", "Reflect section", "Pray section"].map((label) => [
+          label,
+          label === current,
+          label === current,
+        ]),
+      )
+    },
+  )
+
+  it("gives each marker a target as tall as the close's", async () => {
+    await mount("reflect")
+    for (const node of markerButtons()) {
+      const height = StyleSheet.flatten(
+        typeof node.props.style === "function"
+          ? node.props.style({ pressed: false })
+          : (node.props.style as ViewStyle),
+      ).height
+      expect(height).toBe(44)
+    }
+  })
+
+  // A tap off the markers must still reach the video's pause button under it.
+  it("passes a touch off the markers through to the video", async () => {
+    await mount("reflect")
+    expect(byId("section-markers").props.pointerEvents).toBe("box-none")
+    expect(byId("section-markers-group").props.pointerEvents).toBe("box-none")
+    expect(byId("section-markers-line").props.pointerEvents).toBe("none")
+  })
+
+  it("hides the line from VoiceOver", async () => {
+    await mount("reflect")
+    expect(byId("section-markers-line").props).toMatchObject({
+      accessibilityElementsHidden: true,
+      importantForAccessibility: "no-hide-descendants",
+    })
+  })
+
+  it("caps the text scale of every marker", async () => {
+    await mount("reflect")
+    expect(MARKER_MAX_SCALE).toBeGreaterThan(1)
+    expect(Number.isFinite(MARKER_MAX_SCALE)).toBe(true)
+    const caps = hosts((node) => node.type === "Text").map(
+      (node) => node.props.maxFontSizeMultiplier,
+    )
+    expect(caps.length).toBeGreaterThanOrEqual(3)
+    expect(new Set(caps)).toEqual(new Set([MARKER_MAX_SCALE]))
+  })
+})
+
+describe("a marker tap", () => {
+  it("opens another section: a tap on PRAY or WATCH asks for that section, and the row does not replay", async () => {
+    await mount("reflect")
+    act(() => runs[0]!.setValue(1))
+    await press(pressableByLabel(renderer!, "Pray section"))
+    await press(pressableByLabel(renderer!, "Watch section"))
+    expect(onSelect.mock.calls).toEqual([["pray"], ["watch"]])
+    expect(runs.length).toBe(1)
+    expect(litGold()).toEqual(["REFLECT"])
+  })
+
+  // Before 2026-10-12 a tap on the current marker played the arrival again.
+  it("takes no tap on the current marker: no section, no new run, and the light stays", async () => {
+    await mount("reflect")
+    act(() => runs[0]!.setValue(1))
+    const tappable = renderer!.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === "Reflect section" &&
+        typeof node.props.onPress === "function",
+    )
+    expect(tappable.length).toBe(0)
+    const pressables = renderer!.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === "Reflect section" &&
+        node.props.disabled === true,
+    )
+    expect(pressables.length).toBeGreaterThan(0)
+    expect(onSelect).not.toHaveBeenCalled()
+    expect(runs.length).toBe(1)
+    expect(lineDrawn()).toBe(1)
+    expect(litGold()).toEqual(["REFLECT"])
+  })
+
+  it("tells a screen reader where another marker goes, and gives the current marker no hint", async () => {
+    await mount("watch")
+    expect(
+      markerButtons().map((node) => node.props.accessibilityHint ?? null),
+    ).toEqual([
+      null,
+      "Plays the Reflect part of the video",
+      "Plays the Pray part of the video",
+    ])
+  })
+
+  it("opens another section once per tap under StrictMode", async () => {
+    await mountElement(
+      <StrictMode>
+        <SectionMarkers section="pray" font={font} onSelect={onSelect} />
+      </StrictMode>,
+    )
+    await press(pressableByLabel(renderer!, "Watch section"))
+    expect(onSelect.mock.calls).toEqual([["watch"]])
+  })
+
+  it("keeps the end state at a tap under Reduce Motion, with no run, and still opens another section", async () => {
+    await reduceMotion()
+    await mount("watch")
+    const before = runs.length
+    const setValue = jest.spyOn(Animated.Value.prototype, "setValue")
+    for (const label of ["Reflect section", "Pray section"]) {
+      await press(pressableByLabel(renderer!, label))
+    }
+    expect(runs.length).toBe(before)
+    expect(setValue.mock.calls.length).toBe(0)
+    expect(lineDrawn()).toBe(1)
+    expect(litGold()).toEqual(["WATCH"])
+    expect(onSelect.mock.calls).toEqual([["reflect"], ["pray"]])
+  })
 })

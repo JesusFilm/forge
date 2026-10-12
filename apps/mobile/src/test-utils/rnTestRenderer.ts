@@ -37,6 +37,8 @@ export type RenderedNode = {
   }
   /** The node above this one; null at the root. */
   parent?: RenderedNode | null
+  /** The nodes below this one. A text child is a string. */
+  children?: (RenderedNode | string)[]
 }
 export type TestInstance = {
   root: { findAll(predicate: (node: RenderedNode) => boolean): RenderedNode[] }

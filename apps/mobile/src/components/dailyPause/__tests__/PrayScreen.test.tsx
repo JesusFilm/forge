@@ -13,6 +13,7 @@ import {
 
 import { DEVOTIONALS } from "../../../lib/dailyPause/devotionals"
 import type { MeditationLength } from "../../../lib/dailyPause/settings"
+import { pauseSpacing } from "../../../lib/dailyPause/theme"
 import {
   TestRenderer,
   hasText,
@@ -24,6 +25,7 @@ import {
 } from "../../../test-utils/rnTestRenderer"
 import {
   advance,
+  buttonPlacement,
   pauseTestFont as font,
   pulses,
 } from "../../../test-utils/dailyPause"
@@ -200,6 +202,17 @@ it("shows the stepper with PRAY active and the two before it done (R11)", async 
   for (const label of ["Watch, done", "Reflect, done", "Pray, current step"]) {
     expect(hostsWithLabel(root, label)).toHaveLength(1)
   }
+})
+
+// Before 2026-10-12 the free space sat below Amen, so Amen rode about 120 pt
+// above Reflect's Continue on the iPhone 17 Pro Max simulator.
+it("puts Amen at the height of the Watch and Reflect buttons (the owner, 2026-10-12)", async () => {
+  const root = await render()
+  expect(buttonPlacement(root, "Amen")).toEqual({
+    lift: pauseSpacing.buttonLift,
+    inLastChild: true,
+    spaceAbove: true,
+  })
 })
 
 it("shows the prayer prompt and the attribution of the devotional it gets (R19)", async () => {

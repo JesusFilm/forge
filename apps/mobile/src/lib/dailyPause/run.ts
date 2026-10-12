@@ -23,6 +23,7 @@ export type RunAction =
   | { type: "startOver"; today: Today }
   | { type: "resume"; today: Today; step: PauseStep }
   | { type: "advance" }
+  | { type: "jump"; step: RunStep }
   | { type: "reset" }
 
 export const RUN_START: RunState = Object.freeze({
@@ -52,6 +53,31 @@ export function sectionForStep(step: PauseStep): StepperStage | null {
   }
 }
 
+/** The first step of each section, where a stepper pill tap goes (the owner,
+ *  2026-10-09): Watch opens on its screen, Reflect and Pray on their video. */
+export function sectionStartStep(section: StepperStage): RunStep {
+  switch (section) {
+    case "watch":
+      return "watchScreen"
+    case "reflect":
+      return "teaching"
+    case "pray":
+      return "prayer"
+  }
+}
+
+/** The video part of each section, where a marker tap goes. */
+export function partStepForSection(section: StepperStage): RunStep {
+  switch (section) {
+    case "watch":
+      return "film"
+    case "reflect":
+      return "teaching"
+    case "pray":
+      return "prayer"
+  }
+}
+
 export function runReducer(state: RunState, action: RunAction): RunState {
   switch (action.type) {
     case "begin":
@@ -66,6 +92,10 @@ export function runReducer(state: RunState, action: RunAction): RunState {
       const next = PAUSE_STEPS[PAUSE_STEPS.indexOf(state.step) + 1] as RunStep
       return { step: next, pin: state.pin }
     }
+    case "jump":
+      // A marker or pill opens another section, back or ahead (owner, 2026-10-09).
+      if (state.step === "opening") return state
+      return { step: action.step, pin: state.pin }
     case "reset":
       return RUN_START
   }
@@ -78,6 +108,8 @@ export type DailyPauseRun = {
   /** The Watch screen again; its write replaces the saved step. */
   startOver(today: Today): void
   advance(): void
+  /** Another step of the same run, as a marker or pill tap asks. */
+  jump(step: RunStep): void
   /** The Opening again, with no pinned day. */
   reset(): void
 }
@@ -101,6 +133,7 @@ export function useDailyPauseRun(
       resume: (today, step) => dispatch({ type: "resume", today, step }),
       startOver: (today) => dispatch({ type: "startOver", today }),
       advance: () => dispatch({ type: "advance" }),
+      jump: (step) => dispatch({ type: "jump", step }),
       reset: () => dispatch({ type: "reset" }),
     }),
     [state],

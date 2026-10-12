@@ -13,7 +13,7 @@ execution: code
 ## Goal Capsule
 
 - **Objective:** In a Daily Bible Pause run on mobile, the viewer always sees the current section. Reflect and Pray count down the same way. Share gives the viewer a clear next step: suggested media or Home.
-- **Means:** Changes to the existing run on branch `Ur-imazing/pause-devo-feature-v2`: a replayable stepper clock (KTD1), Pray's countdown shared with Reflect (KTD3), a marker row drawn by the run (KTD4), and a second direction of the opening curtain (KTD5). This plan extends `docs/plans/2026-10-02-1318-feat-daily-bible-pause-flow-plan.md` and changes some of its requirements (see Dependencies / Assumptions).
+- **Means:** Changes to the existing run on branch `Ur-imazing/pause-devo-feature-v2`: a replayable stepper clock (KTD1, since superseded by section jumps), Pray's countdown shared with Reflect (KTD3), a marker row drawn by the run (KTD4), and a second direction of the opening curtain (KTD5). This plan extends `docs/plans/2026-10-02-1318-feat-daily-bible-pause-flow-plan.md` and changes some of its requirements (see Dependencies / Assumptions).
 - **Product authority:** The mobile owner decides scope. The design source is the Figma frame "v2" (file `0x3kAiEt7C7kSHpg0f4wiD`, node `390:356`). The v2 step order, the light and gradient passes, the podcast path, and the ideas in the Figma notes are not active scope.
 - **Authority hierarchy:** The Product Contract decides behavior. A Key Technical Decision decides mechanism inside the requirements it cites. A unit overrides neither. An item under Assumptions is an unconfirmed bet: build it as written, and report it in the PR.
 - **Stop conditions:** Stop and report when any of these occurs:
@@ -30,7 +30,7 @@ execution: code
 
 ### Summary
 
-The run keeps its current step order. Each video part shows the WATCH, REFLECT, and PRAY markers across the top, with its own section in gold. The stepper pills share one width, and a tap on any pill plays the screen's arrival animation again. Reflect gets the countdown ring that Pray already has. Share gets "Browse suggested media" and "Finish", and both leave through the curtain-and-logo transition that opens the devotional.
+The run keeps its current step order. Each video part shows the WATCH, REFLECT, and PRAY markers across the top, with its own section in gold. The stepper pills share one width. From the Reflect screen on, a tap on another pill opens the start of that section. A tap on another marker opens that section's video part. Reflect gets the countdown ring that Pray already has. Share gets "Browse suggested media" and "Finish", and both leave through the curtain-and-logo transition that opens the devotional.
 
 ### Problem Frame
 
@@ -44,17 +44,17 @@ On Share, the close is the only way out (R22 of the 2026-10-02 plan). It goes to
 
 The stepper pills size to their labels, so the stack has three widths. The pills take no tap, so a viewer cannot see the arrival animation again.
 
-On 2026-10-08 the branch had tappable pills (`f29eb9393`) and a Reflect ring (`87682f435`). The owner reverted both on 2026-10-09 (`5317c3069`). Those pill taps opened sections. The pill taps in this plan only play an animation.
+On 2026-10-08 the branch had tappable pills (`f29eb9393`) and a Reflect ring (`87682f435`). The owner reverted both on 2026-10-09 (`5317c3069`). Those pill taps opened sections. This plan first made a pill tap only play an animation. The owner changed this on 2026-10-09: a pill tap opens a section again (R7).
 
 ### Key Decisions
 
 - **Keep the current step order.** The v2 board shows each section screen before its video, but the Reflect video must play before the Reflect verse screen. Governs R1. (session-settled: user-directed — chosen over the v2 board order and over a mix with the v2 order for Pray only: the teaching part ends on the verse that the Reflect screen holds, so it plays first, as it does today.)
 - **Each video part shows the section it belongs to.** The film part is Watch, the teaching part is Reflect, and the prayer part is Pray, as `CONCEPTS.md` pairs each section with a video part and a screen. Governs R3. (session-settled: user-approved — chosen over showing the section of the last stepper screen, which would show no video as PRAY.)
-- **A pill tap plays the current screen's arrival, whichever pill the viewer taps.** Governs R7, R8. (session-settled: user-directed — chosen over playing the tapped pill's own arrival and over playing the whole path from the top node, after a sketch of all three.)
+- **A pill tap opens the start of that section; the current pill takes no tap.** Changed 2026-10-09 by the owner, after the first build: a pill tap used to replay the current screen's arrival. Governs R7, R8. (session-settled: user-directed — the section's start chosen over the section's screen; the owner also asked that the current pill do nothing, with no replay.)
 - **"Browse suggested media" searches for the Opening question.** It is the text the viewer saw first. Governs R16. (session-settled: user-directed — chosen over the passage, the short name, and a new authored title.)
 - **Reflect takes Pray's countdown.** One behavior for both pauses. Pray's ring, fade, and grey button are already on the branch. Governs R11, R12, R13.
 - **The exit plays the full opening sequence, logo included.** The owner asked for the same transition. It takes about 4 seconds. Governs R18.
-- **The markers are labels, not controls.** A tap on a video keeps its one job: pause or resume. Governs R4.
+- **The markers are chapter markers: a tap opens that section's video part.** Changed 2026-10-09 by the owner, after the first build: the markers were labels with no tap. Each part plays a marker arrival: a gold line draws along the row to the part's section, which then lights up gold. A tap on another marker opens that section's part, back or ahead. Since 2026-10-12 (the owner), a tap on the current marker does nothing, as on the current pill; it played the arrival again before. A tap off the markers still pauses or resumes the video. Governs R4. (session-settled: user-directed — chosen over a light-up with no line and over an underline under the current marker only, from a sketch of all three.)
 - **The close (×) keeps its instant exit.** Only the two new buttons get the transition. Governs R19.
 - **A tap on the exit curtain does not cancel the exit.** The viewer already chose to leave, so the opening's tap-to-cancel does not apply here. Governs R18.
 
@@ -65,15 +65,16 @@ On 2026-10-08 the branch had tappable pills (`f29eb9393`) and a Reflect ring (`8
 - R1. The run keeps its current step order: Opening, Watch screen, film part, teaching part, Reflect screen, prayer part, Pray screen, Share.
 - R2. Each video part shows WATCH, REFLECT, and PRAY in one row at the top of the screen, as the v2 "Video" frames show.
 - R3. The marker of the part's own section shows in gold, and the other two markers show as plain labels: WATCH on the film part, REFLECT on the teaching part, PRAY on the prayer part.
-- R4. The markers take no tap of their own. A tap on a marker pauses or resumes the video, as a tap anywhere on the video does today.
+- R4. When a part starts, a gold line draws along the marker row from WATCH to the part's own marker, and that marker lights up gold. A tap on another marker opens that section's video part from its start, back or ahead. WATCH opens the film part, REFLECT the teaching part, and PRAY the prayer part. A tap on the current marker does nothing, and the video keeps playing. VoiceOver reads the current marker as a selected, dimmed button. A tap off the markers pauses or resumes the video. With Reduce Motion on, the end state shows at once. (Changed 2026-10-09 by the owner: the markers took no tap before. Changed 2026-10-12 by the owner: a tap on the current marker played the arrival again before.)
 - R5. The markers, the close (×), and the progress bar stay clear of the captions and the gold ring in the video (R24 of the 2026-10-02 plan), and the close keeps a 44 pt target.
+- R21. A paused part shows a large play triangle in a translucent circle at the center of the picture, with no text. On iOS 26 the circle is a Liquid Glass button; elsewhere it is a plain disc. A tap resumes the video, and the cue fades out in 250 ms. (Added 2026-10-12 from the owner's requests of 2026-10-09 to 2026-10-12.)
 
 **Stepper pills**
 
 - R6. The three stepper pills on the Watch, Reflect, and Pray screens have one shared width in every state (upcoming, current, done). The width fits the widest label in its largest state.
-- R7. A tap on any stepper pill plays the current screen's arrival again: the line draws to the current pill, and the pill lights up. A tap while the arrival plays starts it again from the beginning.
-- R8. A pill tap changes only the animation. The step, the countdown, and the screen's intro do not change.
-- R9. With Reduce Motion on, a pill tap shows the end state at once, as the arrival does today.
+- R7. A tap on another section's stepper pill opens the start of that section, back or ahead: WATCH opens the Watch screen, REFLECT opens the teaching part, and PRAY opens the prayer part. (Changed 2026-10-09 by the owner: a pill tap replayed the arrival before.)
+- R8. A tap on the current pill does nothing: no step change and no replay. On the first screen (the Watch screen), no pill takes a tap; the pills take taps from the Reflect screen on. VoiceOver reads a pill that takes no tap as a dimmed button.
+- R9. With Reduce Motion on, the arrival shows its end state at once, and a pill tap still opens its section.
 - R10. Each pill is a labelled button with a target of at least 44 pt, and its label keeps the pill's state ("Reflect, current step").
 
 **Reflect and Pray countdown**
@@ -82,7 +83,7 @@ On 2026-10-08 the branch had tappable pills (`f29eb9393`) and a Reflect ring (`8
 - R12. While the ring counts, Continue on Reflect and Amen on Pray show grey and take no tap.
 - R13. When the ring reaches zero, the ring and its count fade out, and then the button fades to cream and takes taps. Reflect uses the timing that Pray uses today.
 - R14. The Reflect screen follows the v2 "Transition · Reflect" frame: the stepper at the top, the ring below it, then the verse, its reference, and "We'll give you some time." The quote mark goes away.
-- R15. Continue stays at the bottom of the Reflect screen, although the v2 frame shows no button there.
+- R15. Continue stays at the bottom of the Reflect screen, although the v2 frame shows no button there. Changed 2026-10-12 by the owner: the Watch screen's Continue and the Pray screen's Amen sit at the same height as Reflect's Continue. That height is `pauseSpacing.buttonLift` above the body's bottom padding. Before this change, Amen sat directly below the Pray text, and the Watch Continue sat 40 pt lower.
 
 **Share exits**
 
@@ -112,13 +113,13 @@ flowchart TB
 
 - F1. A video part with markers
   - **Trigger:** The run reaches the film, teaching, or prayer part.
-  - **Steps:** The part plays full screen. The marker row shows the part's section in gold. A tap anywhere pauses or resumes the part.
+  - **Steps:** The part plays full screen. The marker row plays its arrival and shows the part's section in gold. A tap on another marker opens that section's part; a tap on the current marker does nothing. A tap anywhere else pauses or resumes the part.
   - **Outcome:** The part ends, and the run moves to the next step.
   - **Covered by:** R2, R3, R4, R5
 - F2. A pill tap
-  - **Trigger:** The viewer taps any pill on the Watch, Reflect, or Pray screen.
-  - **Steps:** The current screen's arrival plays again. The countdown, if one runs, continues without a change.
-  - **Outcome:** The stepper shows the same state as before the tap.
+  - **Trigger:** The viewer taps another pill on the Reflect or Pray screen.
+  - **Steps:** The run moves to the start of that section. WATCH opens the Watch screen, REFLECT the teaching part, and PRAY the prayer part. (Changed 2026-10-09 by the owner: the arrival played again before.)
+  - **Outcome:** The run continues from that step. A tap on the current pill, or on any pill of the Watch screen, does nothing.
   - **Covered by:** R7, R8, R9
 - F3. The end of a countdown
   - **Trigger:** The ring on Reflect or Pray reaches zero.
@@ -139,8 +140,8 @@ flowchart TB
 ### Acceptance Examples
 
 - AE1. **Covers R3.** Given the run is in the teaching part, when the video plays, then REFLECT shows in gold, and WATCH and PRAY show as plain labels.
-- AE2. **Covers R7, R8.** Given the Reflect ring shows 20, when the viewer taps WATCH, then the line to REFLECT draws again and REFLECT lights up, and the ring keeps counting from 20 with Continue still grey.
-- AE3. **Covers R7.** Given the Watch screen, when the viewer taps PRAY, then the top node, the line, and WATCH play their arrival again, and PRAY stays upcoming.
+- AE2. **Covers R7.** Given the Reflect ring shows 20, when the viewer taps WATCH, then the run opens the Watch screen, and the Reflect countdown stops. (Changed 2026-10-09 by the owner: the arrival played again before.)
+- AE3. **Covers R8.** Given the Watch screen, when the viewer taps PRAY, then nothing happens, because no pill on the Watch screen takes a tap. (Changed 2026-10-09 by the owner: the arrival played again before.)
 - AE4. **Covers R9.** Given Reduce Motion is on, when the viewer taps a pill, then the stepper shows its end state with no animation.
 - AE5. **Covers R12, R13.** Given the Pray ring counts, when the viewer taps Amen, then nothing happens. When the ring reaches zero, the ring fades out, Amen turns from grey to cream, and a tap on Amen moves the run to Share.
 - AE6. **Covers R16, R18.** Given today's devotional is Pharisee, when the viewer taps "Browse suggested media", then the curtain closes, the logo draws, and the curtain lifts on the search tab with "How are we commanded to pray?" in the bar.
@@ -156,7 +157,7 @@ flowchart TB
 ### Scope Boundaries
 
 - The run does not take the v2 board's step order (per R1).
-- A pill tap does not open a section, skip a video, or skip a countdown (per R8). The reverted behavior of `f29eb9393` stays reverted.
+- A pill tap does not skip a video part or a countdown in place. It opens the start of another section (R7). Changed 2026-10-09 by the owner: before, a pill tap opened no section, and the behavior of `f29eb9393` stayed reverted.
 - The close (×) gets no transition (per R19).
 - Search results for a question-shaped query are not tuned. A curated list of suggested media for each devotional is deferred.
 - The new button labels are English-only, like the rest of the Daily Bible Pause. Localization stays the owned open debt that the copy guard records.
@@ -204,10 +205,10 @@ flowchart TB
 
 ### Key Technical Decisions
 
-- KTD1. **Replay the arrival through a restart on the stepper's own clock.** `usePauseClock` gets a restart that puts a new `Animated.Value(0)` and a run id in state, and does nothing under Reduce Motion. `StepperPills` keys only its animated layers (node fill, line fills, pill looks) by the run id, so the pill buttons stay mounted and keep screen-reader focus. The replay plays the whole arrival plan, lead included: the current pill goes back to its upcoming look, and the previous pill goes back to its current look, before the line draws. A key remount of `StepperPills` is rejected: `useReduceMotion()` reads false for one commit, so Reduce Motion would start a native run (R9). A `setValue(0)` on the shared value is rejected: the native stop report can overwrite it, and a reset can land one frame late (`docs/solutions/ui-bugs/native-animated-stop-report-overwrites-immediate-setvalue.md`). Never chain the next run inside a `stopAnimation` callback. Governs R7, R8, R9. (session-settled: user-directed — chosen over replaying the tapped pill's own arrival and over replaying the whole path from the top node: the user picked it from a sketch of all three.)
+- KTD1. **Superseded 2026-10-09 for the pills.** A pill tap now dispatches the run's `jump` to `sectionStartStep`. One stable `RunScreen` callback does this, so the memoized stepper does not render on each timer tick. The current pill is disabled, and the stepper no longer restarts its clock. **Superseded 2026-10-12 for the markers too.** The current marker is disabled, and `usePauseClock` no longer has a restart. So U1's replay steps below are history. The original decision follows. **Replay the arrival through a restart on the stepper's own clock.** `usePauseClock` gets a restart that puts a new `Animated.Value(0)` and a run id in state, and does nothing under Reduce Motion. `StepperPills` keys only its animated layers (node fill, line fills, pill looks) by the run id, so the pill buttons stay mounted and keep screen-reader focus. The replay plays the whole arrival plan, lead included: the current pill goes back to its upcoming look, and the previous pill goes back to its current look, before the line draws. A key remount of `StepperPills` is rejected: `useReduceMotion()` reads false for one commit, so Reduce Motion would start a native run (R9). A `setValue(0)` on the shared value is rejected: the native stop report can overwrite it, and a reset can land one frame late (`docs/solutions/ui-bugs/native-animated-stop-report-overwrites-immediate-setvalue.md`). Never chain the next run inside a `stopAnimation` callback. Governs R7, R8, R9. (session-settled: user-directed — chosen over replaying the tapped pill's own arrival and over replaying the whole path from the top node: the user picked it from a sketch of all three.)
 - KTD2. **One shared pill width comes from a hidden sizer.** Each slot holds an unseen copy of the widest label in both wide looks: "REFLECT" at the active size, and the check plus "REFLECT" at the done size. The three look layers stretch to that sizer, with the label centered. The pill button covers the sizer's width and the full 46 pt slot height. The width then follows the font and Dynamic Type with no measuring, as `ButtonLabel` in `apps/mobile/src/components/dailyPause/PauseFrame.tsx` and `PillSizer` in `f29eb9393` do. A fixed number is rejected because it breaks under Dynamic Type. An `onLayout` measure is rejected because it jumps one frame. Governs R6, R10.
 - KTD3. **Restore the shared countdown from `87682f435`, and port the two screens by hand.** Restore `apps/mobile/src/components/dailyPause/PauseFinish.tsx` and the ring token renames from that commit. A cherry-pick conflicts in `PrayScreen.tsx`, `ReflectScreen.tsx`, and `RunScreen.test.tsx`, because those hunks sit on the reverted pill-tap commit. Keep Pray's existing mechanisms: one finish clock, a JS timer that enables the button, and a grey cover over the button, because nothing may fade an ancestor of a Liquid Glass button. Reflect copies Pray in each detail: the held button reads "Continue" with no clock, the ring shows whole seconds, and the button's pulse waits for the fade. The 87682f435 Reflect layout kept the quote mark, so the layout follows R14 instead. Governs R11, R12, R13, R14, R15.
-- KTD4. **The run draws the marker row on every video step.** A new `SectionMarkers` component renders from `RunScreen` while `isVideoPart(state.step)` is true. The section comes from `state.step`: film is Watch, teaching is Reflect, and prayer is Pray. It never comes from `PartPlayer`'s `part` prop, because the prayer part stays mounted behind the Reflect screen. The row sits in the close's row (`useTopRowTop("letterbox", rowHeight)`), centered, with `pointerEvents="none"`, so a tap reaches the full-screen pause button (R4). The labels come from the stepper's `STAGES`. The row caps its font scale, as `CountdownRing.tsx` caps its numeral, so a large text size cannot push the row onto the picture on phones that have a band. The new file gets its own entry on the copy-guard exemption list. Governs R2, R3, R4, R5.
+- KTD4. **The run draws the marker row on every video step.** A new `SectionMarkers` component renders from `RunScreen` while `isVideoPart(state.step)` is true. The section comes from `state.step`: film is Watch, teaching is Reflect, and prayer is Pray. It never comes from `PartPlayer`'s `part` prop, because the prayer part stays mounted behind the Reflect screen. The row sits in the close's row (`useTopRowTop("letterbox", rowHeight)`), centered. Since the 2026-10-09 change to R4, each marker is a 44 pt button. A tap on another marker dispatches the run's `jump` to `partStepForSection` of that marker, and `PartPlayer` covers, seeks, and plays the new part as it does after an advance. The current marker is disabled, as the current pill is (changed 2026-10-12; it called `usePauseClock`'s `restart` before). The developer Skip moves one row lower on a video part, so it never covers PRAY. The row and its group are `pointerEvents="box-none"`, so a tap off the markers still reaches the full-screen pause button. `RunScreen` keys the row by section, so each part plays its own arrival. The labels come from the stepper's `STAGES`. The row caps its font scale, as `CountdownRing.tsx` caps its numeral, so a large text size cannot push the row onto the picture on phones that have a band. The new file gets its own entry on the copy-guard exemption list. Governs R2, R3, R4, R5.
 - KTD5. **The exit is a second direction of the opening curtain.**
   - `apps/mobile/src/lib/pauseCurtain.ts` gets an exit request that stores a target: Home, or search with a question. The store accepts it only from `idle`, whatever `runOnTop` says. `endPause()` clears the target. `requestPause()` is rejected for the exit, because while the run is on top it only adds to `entryRequestsOnTop`, and the run can then reset itself.
   - `apps/mobile/src/components/PauseStage.tsx` reads the direction. During an exit, the curtain has no tap action and no button role, its label says that the viewer is leaving, and its back listener swallows Android back.
@@ -269,7 +270,7 @@ These are unconfirmed bets from planning. Each one is built as written and named
 - **Android back during an exit does nothing.** R19's "as it does today" applies while the curtain is idle. This matches R18, where the exit cannot be stopped.
 - **The marker row shows on every video step,** also while a part loads, fails, or shows the cover between parts.
 - **On a screen with no top band, the marker row sits over the top of the picture** in the close's row, as the close and the progress bar already do there. The top band is 0.2 pt on an iPhone SE and 0 pt on an iPad in portrait. This is the plan's reading of R5 for those screens.
-- **A screen reader gets the marker row as one text element** labelled "<Section> section", for example "Reflect section". The label does not use the stepper's "Name, state" shape, which `RunScreen.test.tsx`'s `pills()` helper matches. Gold is the only visual cue for the current section, as in the v2 frames.
+- **Superseded 2026-10-09 (R4): each marker is a button** labelled "<Section> section", for example "Reflect section". VoiceOver reads the current marker as selected and dimmed. Before, a screen reader got the row as one text element. The label does not use the stepper's "Name, state" shape, which `RunScreen.test.tsx`'s `pills()` helper matches. Gold is the only visual cue for the current section, as in the v2 frames.
 - **Browse searches with English as the query language,** because the Opening question is English. The language choice stays inside `apps/mobile/src/lib/watchSearch.ts`, as `watchSearchInput.guard.test.js` requires.
 - **The question is the pinned run's question** (`pin.devotional.question`), also when the viewer reaches Share after midnight. Finish still lands on Home, which shows the new day.
 - **The exit has no Reduce Motion path,** the same as the opening today. The 2026-10-02 plan's KTD18 promises instant changes under Reduce Motion, and neither direction keeps that promise yet.
@@ -380,14 +381,14 @@ U1, U2, U3, U4, and U5 do not depend on each other. U6 depends on U4 and U5, bec
   1. Map the run step to a section (film to watch, teaching to reflect, prayer to pray) as a pure function beside `isVideoPart` in `apps/mobile/src/lib/dailyPause/run.ts`, with a case in `apps/mobile/src/lib/dailyPause/__tests__/run.test.ts`. The step order (R1) does not change.
   2. Build the row from the stage labels: the current section in the accent gold, the others in a plain label color, with `pauseType.label` and a capped font scale.
   3. Render it from `RunScreen` beside the close, on every video step, per KTD4 and Assumptions.
-  4. Give the row one accessible text element, per Assumptions.
+  4. Give the row one accessible text element, per Assumptions. (Superseded 2026-10-09: each marker is a button, per R4 and KTD4.)
 - **Patterns to follow:** `PartProgressBar.tsx` (a `pointerEvents="none"` overlay); `CloseButton.tsx` and `useTopRowTop.ts` (the letterbox row); `CountdownRing.tsx` (font scale cap).
 - **Test scenarios:**
   - Covers AE1. During the teaching part, REFLECT renders in gold, and WATCH and PRAY render plain.
   - During the film part, WATCH is gold. During the prayer part, PRAY is gold.
   - The row does not render on the Opening, the Watch, Reflect, and Pray screens, or Share.
   - The row renders while a part loads and after a part fails.
-  - A press on the full-screen "Pause video" button still pauses the part when the row is present, and the row sets `pointerEvents="none"`.
+  - A press on the full-screen "Pause video" button still pauses the part when the row is present, and the row sets `pointerEvents="box-none"`. (Changed 2026-10-09 from `"none"`, when the markers became buttons.)
   - On a 402 x 874 window the row's vertical center matches the close's. On a 375 x 667 window the row starts at the top edge, over the picture.
   - The row's label is "Reflect section" during the teaching part, and the run walk's pill matcher finds no pill on any video step.
   - The marker text sets a font scale cap.
@@ -486,18 +487,18 @@ U1, U2, U3, U4, and U5 do not depend on each other. U6 depends on U4 and U5, bec
 
 ## Verification Contract
 
-| Check                     | Command or method                                       | Proves                                                                                                                     |
-| ------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Unit and render tests     | `pnpm --filter @forge/mobile test`                      | All U1 to U6 test scenarios, and the existing Daily Bible Pause suites                                                     |
-| Types                     | `pnpm --filter @forge/mobile typecheck`                 | The new store, props, and hooks type-check                                                                                 |
-| Lint, as CI runs it       | `pnpm --filter @forge/mobile run lint --max-warnings=0` | The package's own lint config, which differs from the pre-commit hook                                                      |
-| Copy guard and tab guards | Part of the test run                                    | `noHardcodedCopy`, `tabBarLensOrder`, `watchSearchInput`, and `screenFreeze` stay green                                    |
-| Markdown format           | `npx prettier --check` on each changed `.md` file       | CI's `format` job                                                                                                          |
-| Motion and navigation     | iOS simulator, 60 fps `simctl io recordVideo`           | Pill replay, Reflect's ring end and Continue's fade, and the exit lands on the target with no flash of another tab         |
-| Back stack                | iOS back swipe and Android back after each exit         | The finished run never comes back                                                                                          |
-| Small and large screens   | iPhone SE and iPhone 17 Pro simulators                  | Marker row placement (R5 and Assumptions)                                                                                  |
-| Screen readers            | VoiceOver on iOS, TalkBack on Android                   | Pill buttons, the marker label, and the exit curtain label                                                                 |
-| Start-up cost             | Code reading plus one cold launch                       | The only new code outside the Pause route is the small intent store that `watch.tsx` imports, so no start-up cost is added |
+| Check                     | Command or method                                       | Proves                                                                                                                       |
+| ------------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Unit and render tests     | `pnpm --filter @forge/mobile test`                      | All U1 to U6 test scenarios, and the existing Daily Bible Pause suites                                                       |
+| Types                     | `pnpm --filter @forge/mobile typecheck`                 | The new store, props, and hooks type-check                                                                                   |
+| Lint, as CI runs it       | `pnpm --filter @forge/mobile run lint --max-warnings=0` | The package's own lint config, which differs from the pre-commit hook                                                        |
+| Copy guard and tab guards | Part of the test run                                    | `noHardcodedCopy`, `tabBarLensOrder`, `watchSearchInput`, and `screenFreeze` stay green                                      |
+| Markdown format           | `npx prettier --check` on each changed `.md` file       | CI's `format` job                                                                                                            |
+| Motion and navigation     | iOS simulator, 60 fps `simctl io recordVideo`           | Pill and marker jumps, Reflect's ring end and Continue's fade, and the exit lands on the target with no flash of another tab |
+| Back stack                | iOS back swipe and Android back after each exit         | The finished run never comes back                                                                                            |
+| Small and large screens   | iPhone SE and iPhone 17 Pro simulators                  | Marker row placement (R5 and Assumptions)                                                                                    |
+| Screen readers            | VoiceOver on iOS, TalkBack on Android                   | Pill buttons, the marker label, and the exit curtain label                                                                   |
+| Start-up cost             | Code reading plus one cold launch                       | The only new code outside the Pause route is the small intent store that `watch.tsx` imports, so no start-up cost is added   |
 
 ---
 
@@ -507,7 +508,7 @@ U1, U2, U3, U4, and U5 do not depend on each other. U6 depends on U4 and U5, bec
 - Every command in the Verification Contract passes.
 - Each simulator check ran, or the PR names the check that did not run and why.
 - The PR body lists each item under Assumptions.
-- No code from an abandoned approach stays in the diff, including any code from `f29eb9393` other than the pill sizer and the pill button.
+- No code from an abandoned approach stays in the diff, including any code from `f29eb9393` other than the pill sizer and the pill button. Since 2026-10-09 the pill taps open sections again (R7), through new code in `run.ts`, not through `f29eb9393` code.
 
 ### Per-unit done
 

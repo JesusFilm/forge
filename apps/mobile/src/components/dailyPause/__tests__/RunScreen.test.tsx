@@ -4,6 +4,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { StrictMode, act } from "react"
 import {
+  Animated,
   Dimensions,
   StyleSheet,
   type TextStyle,
@@ -49,6 +50,7 @@ import {
   setPauseRunOnTop,
 } from "../../../lib/pauseCurtain"
 import { RunScreen } from "../RunScreen"
+import { MARKER_ARRIVAL_MS } from "../SectionMarkers"
 
 // The stores read the module's `default`, so the mock must carry one.
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -332,21 +334,42 @@ function closeTop(): number {
   return StyleSheet.flatten(close!.props.style as ViewStyle).top as number
 }
 
-/** The section marker row (v2 plan R2), found by what VoiceOver reads. */
-function markerRows(): RenderedNode[] {
+/** The section marker buttons (v2 plan R2), found by what VoiceOver reads. */
+function markerButtons(): RenderedNode[] {
   return renderer!.root.findAll(
     (node) =>
       typeof node.type === "string" &&
-      typeof node.props.accessibilityLabel === "string" &&
-      / section$/.test(node.props.accessibilityLabel),
+      node.props.accessibilityRole === "button" &&
+      /^(Watch|Reflect|Pray) section$/.test(
+        node.props.accessibilityLabel ?? "",
+      ),
   )
 }
 
-/** What VoiceOver reads on the marker row; null without one. */
+function isSelected(node: RenderedNode): boolean {
+  const state = node.props.accessibilityState as
+    | { selected?: boolean }
+    | undefined
+  return state?.selected === true
+}
+
+/** The marker VoiceOver reads as selected; null without a marker row. */
 function markerLabel(): string | null {
-  const rows = markerRows()
-  expect(rows.length).toBeLessThanOrEqual(1)
-  return rows[0]?.props.accessibilityLabel ?? null
+  const markers = markerButtons()
+  if (markers.length === 0) return null
+  expect(markers.length).toBe(3)
+  const selected = markers.filter(isSelected)
+  expect(selected.length).toBe(1)
+  return selected[0]!.props.accessibilityLabel as string
+}
+
+/** The marker row itself. */
+function markerRow(): RenderedNode {
+  const [row] = renderer!.root.findAll(
+    (node) =>
+      typeof node.type === "string" && node.props.testID === "section-markers",
+  )
+  return row!
 }
 
 /** The markers that show in gold. */
@@ -367,7 +390,7 @@ function goldMarkers(): string[] {
 
 /** The marker row's top edge and height in window points. */
 function markerBox(): { top: number; height: number } {
-  const style = StyleSheet.flatten(markerRows()[0]!.props.style as ViewStyle)
+  const style = StyleSheet.flatten(markerRow().props.style as ViewStyle)
   return { top: style.top as number, height: style.height as number }
 }
 
@@ -587,8 +610,74 @@ it("puts the close in the safe area on screens and in the top letterbox on video
   expect(closeTop() + 44).toBeLessThanOrEqual(videoTop)
 })
 
-// v2 plan R2-R5, AE1, KTD4: each part shows its own section in the close's
-// row, and the row never takes the tap that pauses the part.
+// The owner, 2026-10-09: a stepper pill opens the start of its section, back
+// or ahead, and the current pill takes no tap. No pill on the first screen
+// (the Watch screen) takes a tap.
+describe("the stepper pills", () => {
+  it.each<[PauseStep, string, PauseStep, string[], string | null]>([
+    ["prayScreen", "Watch, done", "watchScreen", WATCH, null],
+    ["prayScreen", "Reflect, done", "teaching", [], "Reflect section"],
+    ["reflectScreen", "Watch, done", "watchScreen", WATCH, null],
+    ["reflectScreen", "Pray, upcoming", "prayer", [], "Pray section"],
+  ])(
+    "on the %s step, a tap on %s opens the %s step",
+    async (from, pill, to, stepper, marker) => {
+      await seedDay(from)
+      await open()
+      await tap("Resume")
+      await tap(pill)
+      expect(savedDay().step).toBe(to)
+      expect(pills()).toEqual(stepper)
+      expect(markerLabel()).toBe(marker)
+    },
+  )
+
+  it.each<[PauseStep, string, string[]]>([
+    ["watchScreen", "Watch, current step", WATCH],
+    ["reflectScreen", "Reflect, current step", REFLECT],
+    ["prayScreen", "Pray, current step", PRAY],
+  ])(
+    "on the %s step, the current pill takes no tap",
+    async (step, pill, stepper) => {
+      await seedDay(step)
+      await open()
+      await tap("Resume")
+      const current = renderer!.root.findAll(
+        (node) =>
+          node.props.accessibilityLabel === pill &&
+          typeof node.props.onPress === "function",
+      )
+      expect(current.length).toBe(0)
+      expect(savedDay().step).toBe(step)
+      expect(pills()).toEqual(stepper)
+    },
+  )
+
+  it("takes no tap on any pill of the first screen, and VoiceOver reads all three as dimmed", async () => {
+    await open()
+    await tap("Begin Devotional")
+    expect(pills()).toEqual(WATCH)
+    const tappable = renderer!.root.findAll(
+      (node) =>
+        WATCH.includes(node.props.accessibilityLabel as string) &&
+        typeof node.props.onPress === "function",
+    )
+    expect(tappable.length).toBe(0)
+    const dimmed = renderer!.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        WATCH.includes(node.props.accessibilityLabel as string) &&
+        (node.props.accessibilityState as { disabled?: boolean } | undefined)
+          ?.disabled === true,
+    )
+    expect(dimmed.length).toBe(3)
+    expect(savedDay().step).toBe("watchScreen")
+  })
+})
+
+// v2 plan R2-R5, AE1, KTD4: each part shows its own section in the close's row.
+// A tap on another marker opens its part (owner, 2026-10-09). The current marker
+// takes no tap (2026-10-12). A tap off the markers still pauses the part.
 describe("the section markers", () => {
   it.each<[PauseStep, string, string]>([
     ["film", "WATCH", "Watch section"],
@@ -617,7 +706,7 @@ describe("the section markers", () => {
     expect(markerLabel()).toBe("Watch section")
   })
 
-  it("leaves the tap to the video: a press pauses the part under the row (R4)", async () => {
+  it("takes no tap on the current marker and keeps the part playing; a tap off the markers still pauses it", async () => {
     await seedDay("teaching")
     await open()
     await tap("Resume")
@@ -626,12 +715,102 @@ describe("the section markers", () => {
     await tickTo(PARTS.teaching.startSec + 0.2)
     await frames(1)
     expect(player.playing).toBe(true)
-    expect(markerRows()[0]!.props.pointerEvents).toBe("none")
+    expect(markerRow().props.pointerEvents).toBe("box-none")
+
+    const tappable = renderer!.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === "Reflect section" &&
+        typeof node.props.onPress === "function",
+    )
+    expect(tappable.length).toBe(0)
+    expect(player.playing).toBe(true)
+    expect(markerLabel()).toBe("Reflect section")
+    expect(savedDay().step).toBe("teaching")
 
     await tap("Pause video")
     expect(player.playing).toBe(false)
     expect(buttons()).toContain("Resume video")
+  })
+
+  // The owner, 2026-10-09: a marker tap switches the video to that section.
+  it.each<[PauseStep, string, PauseStep, string]>([
+    ["film", "Pray section", "prayer", "PRAY"],
+    ["teaching", "Watch section", "film", "WATCH"],
+    ["prayer", "Reflect section", "teaching", "REFLECT"],
+  ])(
+    "from the %s part, a tap on %s opens the %s part from its start",
+    async (from, marker, to, gold) => {
+      await seedDay(from)
+      await open()
+      await tap("Resume")
+      await videoReady()
+      await frames(1)
+      await tickTo(PARTS[from as keyof typeof PARTS].startSec + 0.2)
+      await frames(1)
+      expect(player.playing).toBe(true)
+
+      await tap(marker)
+      expect(savedDay().step).toBe(to)
+      expect(markerLabel()).toBe(marker)
+      expect(goldMarkers()).toEqual([gold])
+      // The old part goes quiet at once, and the new one seeks to its start
+      // two frames later, behind the cover.
+      expect(player.muted).toBe(true)
+      await frames(2)
+      expect(player.currentTime).toBe(PARTS[to as keyof typeof PARTS].startSec)
+
+      await tickTo(PARTS[to as keyof typeof PARTS].startSec + 0.2)
+      await frames(1)
+      expect(player.playing).toBe(true)
+      expect(player.muted).toBe(false)
+    },
+  )
+
+  it("from a paused part, a marker tap plays the new part with no play cue over it", async () => {
+    const cues = () =>
+      renderer!.root.findAll(
+        (node) =>
+          typeof node.type === "string" &&
+          ["part-paused-cue", "part-paused-cue-leaving"].includes(
+            node.props.testID as string,
+          ),
+      ).length
+    await seedDay("teaching")
+    await open()
+    await tap("Resume")
+    await videoReady()
+    await frames(1)
+    await tickTo(PARTS.teaching.startSec + 0.2)
+    await frames(1)
+    await tap("Pause video")
+    expect(player.playing).toBe(false)
+    expect(cues()).toBe(1)
+
+    await tap("Pray section")
+    expect(savedDay().step).toBe("prayer")
+    expect(cues()).toBe(0)
+    await frames(2)
+    expect(player.currentTime).toBe(PARTS.prayer.startSec)
+    await tickTo(PARTS.prayer.startSec + 0.2)
+    await frames(1)
+    expect(player.playing).toBe(true)
+    expect(cues()).toBe(0)
+  })
+
+  it("plays a new marker arrival when the next part starts", async () => {
+    await seedDay("film")
+    await open()
+    const timing = jest.spyOn(Animated, "timing")
+    await tap("Resume")
+    const arrivals = () =>
+      timing.mock.calls.filter(
+        ([, config]) => config.duration === MARKER_ARRIVAL_MS,
+      ).length
+    const first = arrivals()
+    expect(first).toBeGreaterThan(0)
+    await next()
     expect(markerLabel()).toBe("Reflect section")
+    expect(arrivals()).toBeGreaterThan(first)
   })
 
   it("centers the row on the close's row on a phone with a top band (R5)", async () => {
@@ -667,7 +846,14 @@ it("offers Try again when a part never starts, and the close stays reachable", a
     jest.advanceTimersByTime(PART_START_BACKSTOP_MS + FRAME_MS)
   })
   // The developer Skip shows because jest runs as a development bundle.
-  expect(buttons()).toEqual(["Try again", "Close", DEV_SKIP])
+  expect(buttons()).toEqual([
+    "Try again",
+    "Watch section",
+    "Reflect section",
+    "Pray section",
+    "Close",
+    DEV_SKIP,
+  ])
   await tap("Close")
   expect(mockRouter.dismissTo).toHaveBeenCalledWith("/(tabs)")
 })

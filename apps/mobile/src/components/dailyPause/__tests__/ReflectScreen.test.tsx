@@ -24,6 +24,7 @@ import {
 } from "../../../test-utils/rnTestRenderer"
 import {
   advance,
+  buttonPlacement,
   pauseTestFont as font,
   pulses,
 } from "../../../test-utils/dailyPause"
@@ -248,6 +249,15 @@ it("lays the screen out in the v2 order, with no quote mark (R14, R15)", async (
   for (let node = button!.parent; node; node = node.parent) {
     expect(node).not.toBe(scroll)
   }
+})
+
+it("puts Continue at the height of the Watch and Pray buttons (the owner, 2026-10-12)", async () => {
+  const root = await render()
+  expect(buttonPlacement(root, "Continue")).toEqual({
+    lift: pauseSpacing.buttonLift,
+    inLastChild: true,
+    spaceAbove: true,
+  })
 })
 
 // Jest has no layout, so this pins the shape only. On the iPhone 17 Pro

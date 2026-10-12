@@ -3,6 +3,7 @@ import { StyleSheet, View } from "react-native"
 
 import type { PauseFont } from "../../lib/dailyPause/fonts"
 import type { MeditationLength } from "../../lib/dailyPause/settings"
+import { pauseSpacing } from "../../lib/dailyPause/theme"
 import { PauseBody, PauseButton, PauseMasthead } from "./PauseFrame"
 import { Pulse } from "./Pulse"
 import { StepperPills } from "./StepperPills"
@@ -22,15 +23,19 @@ export function WatchScreen({
     <PauseBody>
       <PauseMasthead meditationLength={meditationLength} font={font} />
       <View style={styles.spacer} />
+      {/* The first screen's pills take no tap (the owner, 2026-10-09). */}
       <StepperPills arrival="watch" font={font} />
       <View style={styles.spacer} />
-      <Pulse>
-        <PauseButton label="Continue" onPress={onContinue} font={font} />
-      </Pulse>
+      <View style={styles.buttonRow}>
+        <Pulse>
+          <PauseButton label="Continue" onPress={onContinue} font={font} />
+        </Pulse>
+      </View>
     </PauseBody>
   )
 }
 
 const styles = StyleSheet.create({
   spacer: { flex: 1 },
+  buttonRow: { alignSelf: "stretch", marginBottom: pauseSpacing.buttonLift },
 })

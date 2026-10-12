@@ -21,7 +21,7 @@ import {
   usePauseIntro,
 } from "./PauseIntro"
 import { FinishButton, FinishRing, usePauseFinish } from "./PauseFinish"
-import { StepperPills } from "./StepperPills"
+import { StepperPills, type StepperStage } from "./StepperPills"
 import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { PauseBody } from "./PauseFrame"
 
@@ -33,6 +33,8 @@ type PrayScreenProps = {
   meditationLength: MeditationLength
   font: PauseFont
   onContinue: () => void
+  /** A tap on another section's stepper pill. */
+  onSelectSection?: (section: StepperStage) => void
 }
 
 export function PrayScreen({
@@ -40,6 +42,7 @@ export function PrayScreen({
   meditationLength,
   font,
   onContinue,
+  onSelectSection,
 }: PrayScreenProps) {
   const intro = usePauseIntro("pray")
   const countdown = useCountdown(
@@ -56,7 +59,7 @@ export function PrayScreen({
         onLayout={intro.onScrollLayout}
       >
         <IntroStepper intro={intro}>
-          <StepperPills arrival="pray" font={font} />
+          <StepperPills arrival="pray" font={font} onSelect={onSelectSection} />
         </IntroStepper>
         <View style={styles.ringGap} />
         <IntroContent intro={intro} style={styles.content}>
@@ -68,7 +71,6 @@ export function PrayScreen({
             {devotional.attribution}
           </Text>
         </IntroContent>
-        <View style={styles.buttonGap} />
       </ScrollView>
       <IntroCovered intro={intro} style={styles.buttonRow}>
         <FinishButton
@@ -83,9 +85,9 @@ export function PrayScreen({
 }
 
 const styles = StyleSheet.create({
-  // It takes its content's height, and it shrinks and scrolls only when the
-  // content does not fit, so the free space stays below Amen as in the frame.
-  scroll: { flexGrow: 0, alignSelf: "stretch" },
+  // It fills the body down to Amen, so the free space stays below the
+  // attribution and Amen sits at the shared button height.
+  scroll: { flex: 1, alignSelf: "stretch" },
   scrollContent: {
     alignItems: "center",
     gap: pauseSpacing.screenGap,
@@ -95,7 +97,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: pauseSpacing.screenGap,
   },
-  buttonRow: { alignSelf: "stretch", alignItems: "center" },
+  // The body's own gap already sits above the button, so the margin adds
+  // only the rest of the button gap.
+  buttonRow: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    marginTop: pauseSpacing.buttonGap - pauseSpacing.screenGap,
+    marginBottom: pauseSpacing.buttonLift,
+  },
   ringGap: { height: pauseSpacing.ringGap },
   prompt: {
     alignSelf: "stretch",
@@ -105,5 +114,4 @@ const styles = StyleSheet.create({
     alignSelf: "stretch",
     color: pauseColors.accent,
   },
-  buttonGap: { height: pauseSpacing.prayButtonGap },
 })

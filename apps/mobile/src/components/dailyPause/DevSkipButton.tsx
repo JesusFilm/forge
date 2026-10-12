@@ -20,15 +20,19 @@ type DevSkipButtonProps = {
   onPress: () => void
   placement: TopRowPlacement
   font: PauseFont
+  /** One row lower, so it never covers the video's PRAY marker. */
+  belowMarkers?: boolean
 }
 
 export function DevSkipButton({
   onPress,
   placement,
   font,
+  belowMarkers = false,
 }: DevSkipButtonProps) {
-  // The same row as the close, so it never covers the picture.
-  const top = useTopRowTop(placement, TARGET_HEIGHT)
+  // The close's row, or the row below it on a video part.
+  const rowTop = useTopRowTop(placement, TARGET_HEIGHT)
+  const top = belowMarkers ? rowTop + TARGET_HEIGHT : rowTop
 
   return (
     <Pressable

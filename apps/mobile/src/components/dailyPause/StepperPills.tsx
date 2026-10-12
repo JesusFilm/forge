@@ -1,6 +1,6 @@
 // The stepper (R11 of the 2026-10-02 plan): each screen plays one arrival, and
-// Reduce Motion shows the end. v2 plan: the pills share one width (R6, KTD2),
-// and a tap on a pill button plays the arrival again (R7-R10, KTD1).
+// Reduce Motion shows the end. v2 plan: the pills share one width (R6, KTD2).
+// A tap on another pill opens that section; the current pill takes no tap.
 import { memo } from "react"
 import {
   Animated,
@@ -125,6 +125,9 @@ type StepperPillsProps = {
   /** The step the path arrives at. */
   arrival: StepperStage
   font: PauseFont
+  /** A tap on another section's pill; the current pill takes no tap. With no
+   *  onSelect, no pill does. Keep it stable: see the memo note below. */
+  onSelect?: (section: StepperStage) => void
 }
 
 /** The Reflect and Pray screens render each second for their timers; the
@@ -132,9 +135,10 @@ type StepperPillsProps = {
 export const StepperPills = memo(function StepperPills({
   arrival,
   font,
+  onSelect,
 }: StepperPillsProps) {
   const plan = planFor(arrival)
-  const { progress, run, restart } = usePauseClock(plan.totalMs)
+  const { progress } = usePauseClock(plan.totalMs)
   const index = STAGES.findIndex(({ stage }) => stage === arrival)
 
   const step = (phase: Phase): Level =>
@@ -158,25 +162,33 @@ export const StepperPills = memo(function StepperPills({
     return pill < index ? "done" : pill === index ? "active" : "upcoming"
   }
 
-  // iOS keeps a native-driven view's last values, so each run mounts new
-  // layers (KTD1). The buttons stay mounted, so VoiceOver keeps its focus.
   return (
     <View style={styles.stepper}>
-      <Node testID="stepper-node-top" lit={topNode} run={run} />
+      <Node testID="stepper-node-top" lit={topNode} />
       <Line
         testID="stepper-line-0"
         length={NODE_LINE_LENGTH}
         level={lineLevel(0)}
-        run={run}
       />
       {STAGES.map(({ stage, label, name }, pill) => {
         const levels = looks(pill)
+        // The owner, 2026-10-09: the current pill takes no tap, and no pill
+        // does on a screen that gives no onSelect (the Watch screen).
+        const select =
+          onSelect != null && pill !== index ? () => onSelect(stage) : undefined
         return (
           <View key={stage} style={styles.slotGroup}>
             <Pressable
-              onPress={restart}
+              onPress={select}
+              disabled={select == null}
               accessibilityRole="button"
               accessibilityLabel={`${name}, ${STATE_WORDS[endLook(pill)]}`}
+              accessibilityState={{ disabled: select == null }}
+              accessibilityHint={
+                select == null
+                  ? undefined
+                  : `Goes to the start of the ${name} section`
+              }
               style={({ pressed }) => [
                 styles.target,
                 pressed && styles.pressed,
@@ -185,7 +197,7 @@ export const StepperPills = memo(function StepperPills({
               <PillSizer stage={stage} font={font} />
               {(["upcoming", "done", "active"] as const).map((one) => (
                 <Animated.View
-                  key={`${one}-${run}`}
+                  key={one}
                   testID={`stepper-${stage}-${one}`}
                   style={[
                     styles.pill,
@@ -213,7 +225,6 @@ export const StepperPills = memo(function StepperPills({
                 testID={`stepper-line-${pill + 1}`}
                 length={PILL_LINE_LENGTH}
                 level={lineLevel(pill + 1)}
-                run={run}
               />
             ) : null}
           </View>
@@ -248,15 +259,7 @@ function PillSizer({ stage, font }: { stage: StepperStage; font: PauseFont }) {
 
 /** The top node: an outline ring, and a disc that fades in over it.
  *  The disc has the ring's own outer edge, so a lit node shows no seam. */
-function Node({
-  testID,
-  lit,
-  run,
-}: {
-  testID: string
-  lit: Level
-  run: number
-}) {
+function Node({ testID, lit }: { testID: string; lit: Level }) {
   return (
     <View
       testID={testID}
@@ -266,7 +269,6 @@ function Node({
     >
       <View style={styles.nodeRing} />
       <Animated.View
-        key={run}
         testID={`${testID}-fill`}
         style={[styles.nodeFill, { opacity: lit }]}
       />
@@ -279,12 +281,10 @@ function Line({
   testID,
   length,
   level,
-  run,
 }: {
   testID: string
   length: number
   level: Level
-  run: number
 }) {
   return (
     <View
@@ -294,7 +294,6 @@ function Line({
       style={[styles.line, { height: length }]}
     >
       <Animated.View
-        key={run}
         testID={`${testID}-fill`}
         style={[styles.lineFill, { transform: [{ scaleY: level }] }]}
       />
