@@ -284,6 +284,7 @@ describe("declared native locales (R5)", () => {
 // The `mock` prefix is required: babel-plugin-jest-hoist lifts jest.mock above
 // this declaration and rejects any other out-of-scope name in the factory.
 const mockNativeTabsProps = { current: undefined }
+const mockLayoutRtl = { current: false }
 
 jest.mock("expo-router/unstable-native-tabs", () => {
   const Trigger = Object.assign(() => null, {
@@ -303,36 +304,83 @@ jest.mock("expo-router/unstable-native-tabs", () => {
 jest.mock("../../src/lib/explore/availability", () => ({
   isExploreAvailable: () => true,
 }))
+// The module mock, not an I18nManager spy, so a layout that reads the
+// direction from anywhere but the shared source (feat-692 KTD8) fails here.
+jest.mock("../../src/i18n/layoutRtl", () => ({
+  isLayoutRtl: () => mockLayoutRtl.current,
+}))
 
 // The iOS host reads `direction` at the top level of `unstable_nativeProps`.
 // An `ios` slice or a trigger's own native props never reaches the tab bar.
-const forcesLeftToRight = (props) =>
-  props?.unstable_nativeProps?.direction === "ltr"
+const tabBarDirection = (props) => props?.unstable_nativeProps?.direction
 
-describe("iOS native tab bar direction (R6)", () => {
-  afterEach(() => {
+// UIKit tabs follow the native localization unless told, so `inherit` or a
+// missing prop can disagree with the React layout. Both directions must land.
+const FOLLOWS_LAYOUT = { rtl: "rtl", ltr: "ltr" }
+
+/** The tab bar direction that a layout passes in each layout direction. */
+async function tabBarDirections(Layout) {
+  const seen = {}
+  for (const rtl of [true, false]) {
+    mockLayoutRtl.current = rtl
     mockNativeTabsProps.current = undefined
-  })
-
-  it.each([
-    ["no native props", {}],
-    ["an empty native props object", { unstable_nativeProps: {} }],
-    ["rtl", { unstable_nativeProps: { direction: "rtl" } }],
-    ["inherit", { unstable_nativeProps: { direction: "inherit" } }],
-    ["an ios slice", { unstable_nativeProps: { ios: { direction: "ltr" } } }],
-    ["a top-level direction", { direction: "ltr" }],
-  ])("rejects %s (negative control)", (_, props) => {
-    expect(forcesLeftToRight(props)).toBe(false)
-  })
-
-  it("passes direction ltr to NativeTabs in _layout.ios.tsx", async () => {
-    const IosTabLayout = require("../(tabs)/_layout.ios.tsx").default
     let renderer
     await act(async () => {
-      renderer = TestRenderer.create(createElement(IosTabLayout))
+      renderer = TestRenderer.create(createElement(Layout))
     })
     await unmount(renderer)
     expect(mockNativeTabsProps.current).toBeDefined()
-    expect(forcesLeftToRight(mockNativeTabsProps.current)).toBe(true)
+    seen[rtl ? "rtl" : "ltr"] = tabBarDirection(mockNativeTabsProps.current)
+  }
+  return seen
+}
+
+/** A stand-in layout that gives NativeTabs these props. */
+function fixtureLayout(props) {
+  const { NativeTabs } = require("expo-router/unstable-native-tabs")
+  return () => createElement(NativeTabs, props(), null)
+}
+
+describe("iOS native tab bar direction (feat-692 R4)", () => {
+  afterEach(() => {
+    mockNativeTabsProps.current = undefined
+    mockLayoutRtl.current = false
+  })
+
+  const { isLayoutRtl } = require("../../src/i18n/layoutRtl")
+  const fromLayout = () => (isLayoutRtl() ? "rtl" : "ltr")
+
+  it("accepts a layout that passes the layout direction (positive control)", async () => {
+    const layout = fixtureLayout(() => ({
+      unstable_nativeProps: { direction: fromLayout() },
+    }))
+    expect(await tabBarDirections(layout)).toEqual(FOLLOWS_LAYOUT)
+  })
+
+  it.each([
+    [
+      "a hard-coded ltr",
+      () => ({ unstable_nativeProps: { direction: "ltr" } }),
+    ],
+    [
+      "a hard-coded rtl",
+      () => ({ unstable_nativeProps: { direction: "rtl" } }),
+    ],
+    ["inherit", () => ({ unstable_nativeProps: { direction: "inherit" } })],
+    ["a removed prop", () => ({})],
+    ["an empty native props object", () => ({ unstable_nativeProps: {} })],
+    [
+      "an ios slice",
+      () => ({ unstable_nativeProps: { ios: { direction: fromLayout() } } }),
+    ],
+    ["a top-level direction", () => ({ direction: fromLayout() })],
+  ])("rejects %s (negative control)", async (_, props) => {
+    const seen = await tabBarDirections(fixtureLayout(props))
+    expect(seen).not.toEqual(FOLLOWS_LAYOUT)
+  })
+
+  it("passes the layout direction to NativeTabs in _layout.ios.tsx", async () => {
+    const IosTabLayout = require("../(tabs)/_layout.ios.tsx").default
+    expect(await tabBarDirections(IosTabLayout)).toEqual(FOLLOWS_LAYOUT)
   })
 })

@@ -12,7 +12,7 @@ const path = require("path")
 // The pop that dismisses the page belongs to the ROOT stack (nested options
 // are inert against it); the nested [slug] entries cover episode→episode pops.
 
-// gestureResponseDistance confines the pop to the left edge; the tempting
+// gestureResponseDistance confines the pop to the leading edge; the tempting
 // fullScreenGestureEnabled:false instead KILLS all back-swipe on iOS 26.
 // feat-553 R6: the pushed Bible reader has a verse scrubber and chapter swipes,
 // so the same full-width pop would take them.
