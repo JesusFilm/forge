@@ -112,6 +112,9 @@ async function main() {
       ...(arg("grain-filter") ? { grainFilter: arg("grain-filter") } : {}),
       ...(arg("grain-blend") ? { grainBlend: arg("grain-blend") } : {}),
       ...(arg("blur-scale") ? { blurScale: Number(arg("blur-scale")) } : {}),
+      ...(arg("blur-grain") !== undefined
+        ? { blurGrain: Number(arg("blur-grain")) }
+        : {}),
       steps: !process.argv.includes("--no-steps"),
       // A/B: `--structure=clip-first` opens on the film (see RenderOptions).
       ...(process.argv.includes("--step-ring") ? { stepRing: true } : {}),

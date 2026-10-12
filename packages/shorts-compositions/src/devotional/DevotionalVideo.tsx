@@ -3673,6 +3673,10 @@ function ClipIntro({
   )
 }
 
+/** Grain over the blurred verse and questions cards when the render does
+ *  not set `blurGrain`. */
+export const DEFAULT_BLUR_GRAIN = 0.35
+
 function Grain({
   opacity,
   sizePx,
@@ -6763,17 +6767,38 @@ function Background({
           : medium
             ? "rgba(6,4,3,0.36)"
             : "rgba(6,4,3,0.46)"
+  // Fine neutral grain over the two heavily blurred cards: a smooth blur of
+  // dark footage bands into visible steps, and grain dithers them (owner,
+  // 2026-10-12). It ramps in with the blur so the cut into the card is clean.
+  const grainOn =
+    (card.kind === "scripture" && !soft) || medium
+      ? (props.blurGrain ?? DEFAULT_BLUR_GRAIN) *
+        interpolate(frame, [0, Math.round(fps * 1.6)], [0.3, 1], {
+          extrapolateLeft: "clamp",
+          extrapolateRight: "clamp",
+        })
+      : 0
   let blurOverlay: ReactNode = null
   if (region === "whole") {
     blurOverlay = (
-      <AbsoluteFill
-        style={{
-          backdropFilter: `blur(${BLUR}px)`,
-          WebkitBackdropFilter: `blur(${BLUR}px)`,
-          background: wholeScrim,
-          pointerEvents: "none",
-        }}
-      />
+      <>
+        <AbsoluteFill
+          style={{
+            backdropFilter: `blur(${BLUR}px)`,
+            WebkitBackdropFilter: `blur(${BLUR}px)`,
+            background: wholeScrim,
+            pointerEvents: "none",
+          }}
+        />
+        {grainOn > 0.001 && (
+          <Grain
+            opacity={grainOn}
+            sizePx={px(150)}
+            tint="grayscale(1) contrast(1.6)"
+            blend="overlay"
+          />
+        )}
+      </>
     )
   } else if (isLandscape && props.wideText === "right" && region !== "none") {
     // Landscape right-panel variant: a vertical blur panel on the right —
@@ -7288,7 +7313,8 @@ function StepRowOverlay({
     <>
       {/* A soft dark ellipse behind the row so the labels read over bright
           film (Figma 366-2094: 868×126 at 1080p, black 60% → 0, blur 40,
-          85% opacity). */}
+          85% opacity). Lightened to 38% at 70% (owner, 2026-10-12: too
+          dark on the Ten Lepers draft). */}
       <div
         style={{
           position: "absolute",
@@ -7299,10 +7325,10 @@ function StepRowOverlay({
           transform: "translate(-50%, -50%)",
           borderRadius: px(33),
           background:
-            "radial-gradient(closest-side, rgba(0,0,0,0.6), rgba(0,0,0,0))",
+            "radial-gradient(closest-side, rgba(0,0,0,0.38), rgba(0,0,0,0))",
           // Figma's layer blur 40 is about half that as a CSS radius.
           filter: `blur(${px(6.7)}px)`,
-          opacity: 0.85 * on,
+          opacity: 0.7 * on,
           pointerEvents: "none",
         }}
       />

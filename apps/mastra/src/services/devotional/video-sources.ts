@@ -171,9 +171,10 @@ const SOURCES: VideoSource[] = [
     title: "Jesus Heals Ten Men with Leprosy",
     film: "lumo",
     passage: { reference: "Luke 17:11-19", osisRef: "Luke.17.11-Luke.17.19" },
-    window: { startSec: 117.2, lengthSec: 74 },
-    // ~73s of speech ×1.05 → ~70s on screen, plus the closing hold.
-    maxVideoCardSec: 74,
+    // The narrator's last word ("well") ends at 183.0; after it the segment
+    // runs 9 s of landscape into the next scene, which read as a stall.
+    window: { startSec: 117.2, lengthSec: 67 },
+    maxVideoCardSec: 67,
     videoSpeed: 1.05,
     filmCaptionStyle: "scroll",
     filmMark: "lumo",

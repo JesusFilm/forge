@@ -503,6 +503,9 @@ async function main() {
       ...(arg("blur-scale", "")
         ? { blurScale: Number(arg("blur-scale", "")) }
         : {}),
+      ...(arg("blur-grain", "") !== ""
+        ? { blurGrain: Number(arg("blur-grain", "")) }
+        : {}),
       // CLI flag wins; otherwise the MANIFEST's holds. The manifest carried
       // `introHoldSec` for months and nothing here read it, so the clip-first
       // cut asked for no intro hold and got the composition's default second

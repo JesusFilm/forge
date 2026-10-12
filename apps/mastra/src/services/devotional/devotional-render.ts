@@ -1450,6 +1450,8 @@ export function runRender(
     grainBlend?: string
     /** Multiplier on every card's background blur. */
     blurScale?: number
+    /** Grain over the blurred verse and questions cards (0 to 1). */
+    blurGrain?: number
     /** Render only this slice of the timeline, "start-end" in frames. */
     frameRange?: string
     /** Draft: output at this fraction of full size (0.25 of 1080p = 270p). */
@@ -1502,6 +1504,9 @@ export function runRender(
         ...(opts.grainFilter ? [`--grain-filter=${opts.grainFilter}`] : []),
         ...(opts.grainBlend ? [`--grain-blend=${opts.grainBlend}`] : []),
         ...(opts.blurScale ? [`--blur-scale=${opts.blurScale}`] : []),
+        ...(opts.blurGrain !== undefined
+          ? [`--blur-grain=${opts.blurGrain}`]
+          : []),
       ],
       { stdio: "inherit", cwd: REPO_ROOT },
     )
@@ -1847,6 +1852,8 @@ export type RenderOptions = {
   grainBlend?: string
   /** Multiplier on every card's background blur (default 1). */
   blurScale?: number
+  /** Grain over the blurred verse and questions cards (0 to 1). */
+  blurGrain?: number
   /**
    * Put the spoken lead-ins on their own STEPPER cards (READ / WATCH /
    * REFLECT / PRAY) instead of inline on the host cards, and render that
@@ -3393,6 +3400,9 @@ async function renderInStage(
     ...(options.grainFilter ? { grainFilter: options.grainFilter } : {}),
     ...(options.grainBlend ? { grainBlend: options.grainBlend } : {}),
     ...(options.blurScale ? { blurScale: options.blurScale } : {}),
+    ...(options.blurGrain !== undefined
+      ? { blurGrain: options.blurGrain }
+      : {}),
   }
   const musicVolume = options.musicVolume ?? MUSIC_VOLUME_DEFAULT
   const xfadeSec = options.cardXfadeSec ?? options.xfadeSec ?? 1.2

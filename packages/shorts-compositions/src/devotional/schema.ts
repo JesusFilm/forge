@@ -639,6 +639,11 @@ export const devotionalInputPropsSchema = z.object({
    *  conclusion/questions text). Default 1. Used to preview softer blur levels
    *  (e.g. 0.9 = 10% less). */
   blurScale: z.number().positive().optional(),
+  /** Film grain over the heavily blurred verse and questions/prayer cards,
+   *  0 to 1 (overlay opacity). A smooth blur of dark footage bands into
+   *  visible steps; fine grain dithers them (owner, 2026-10-12: "sometimes it
+   *  just looks ugly"). Default DEFAULT_BLUR_GRAIN; 0 turns it off. */
+  blurGrain: z.number().min(0).max(1).optional(),
   /** Typeface for the spoken-text cards (reflection/conclusion). "sans" is the
    *  established Inter; "serif" switches them to the editorial serif stack the
    *  owner asked to try. Cover/eyebrows/labels are unaffected. */
