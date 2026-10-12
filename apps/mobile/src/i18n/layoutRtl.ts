@@ -13,3 +13,21 @@ export function isLayoutRtl(): boolean {
 export function layoutSign(): 1 | -1 {
   return isLayoutRtl() ? -1 : 1
 }
+
+const MIRRORED_ICONS = {
+  "chevron-back": "chevron-forward",
+  "chevron-forward": "chevron-back",
+  "arrow-back": "arrow-forward",
+  "arrow-forward": "arrow-back",
+} as const
+
+/** An Ionicons name that points back or forward in the reading direction.
+ *  Playback icons such as `play-back` are not directional (R12). */
+export type DirectionalIconName = keyof typeof MIRRORED_ICONS
+
+/** KTD8: the icon that points `name` in the layout's reading direction. */
+export function directionalIcon(
+  name: DirectionalIconName,
+): DirectionalIconName {
+  return isLayoutRtl() ? MIRRORED_ICONS[name] : name
+}
