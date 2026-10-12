@@ -117,7 +117,8 @@
       "^(\\.{1,2}/.*)\\.js$": "$1",
       "^react$": "<rootDir>/node_modules/react",
       "^react/jsx-runtime$": "<rootDir>/node_modules/react/jsx-runtime.js",
-      "^react/jsx-dev-runtime$": "<rootDir>/node_modules/react/jsx-dev-runtime.js"
+      "^react/jsx-dev-runtime$": "<rootDir>/node_modules/react/jsx-dev-runtime.js",
+      "^.*/assets/devotionals/([a-z0-9-]+)\\.mp4$": "<rootDir>/src/test-utils/devotionalVideos/$1.cjs"
     }
   },
   "private": true

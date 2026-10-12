@@ -77,7 +77,8 @@ describe("the bundled devotionals (R39, R40)", () => {
   })
 
   it.each(IDS)("%s refers to its own bundled video", (id) => {
-    // React Native's jest transform turns an .mp4 require into its file path.
+    // The videos are not in git, so the jest config maps each one to a stub
+    // that holds its own file path. A swapped require still fails here.
     expect(DEVOTIONALS[id].video).toEqual({
       testUri: expect.stringMatching(
         new RegExp(`/assets/devotionals/${id}\\.mp4$`),
