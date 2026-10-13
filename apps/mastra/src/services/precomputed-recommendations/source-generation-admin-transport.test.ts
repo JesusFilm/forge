@@ -97,6 +97,27 @@ describe("Admin producer transport", () => {
     },
   )
 
+  it.each([
+    ["profile_status", 3 * 1024 * 1024, true],
+    ["profile_status", 4 * 1024 * 1024 + 1, false],
+    ["status", 3 * 1024 * 1024, false],
+  ])(
+    "bounds %s response bytes independently (%s)",
+    async (action, size, accepted) => {
+      const result = { payload: "x".repeat(size) }
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => Response.json({ result })),
+      )
+      const request = createAdminSourceDependencies().ingest({ action })
+      if (accepted) expect(await request).toEqual(result)
+      else
+        await expect(request).rejects.toMatchObject({
+          code: "catalog_unavailable",
+        })
+    },
+  )
+
   it("retains a sealed catalog identity when transcript descriptors cross HTTP", async () => {
     const cutoff = "2026-10-06T00:00:00.000Z"
     const video: Video = {

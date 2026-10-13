@@ -28,7 +28,8 @@ const kind = z.enum(["transcript", "metadata_only"])
 const terminalCallState = z.enum(["succeeded", "rejected", "failed"])
 const callState = z.enum(["pending", ...terminalCallState.options])
 const profile = compactProfileSchema.refine(
-  (value) => Buffer.byteLength(JSON.stringify(value), "utf8") <= 4_096,
+  (value) =>
+    Buffer.byteLength(JSON.stringify(value), "utf8") <= MAX_PROFILE_NODE_BYTES,
 )
 const node = profileNodeSchema.refine(
   (value) =>
@@ -128,7 +129,14 @@ export function createContentProfilePersistence(
       throw new ContentProfileExecutionError("profile_invalid")
     const raw = await ingest(input)
     // 127 bounded nodes plus their identities fit within this response ceiling.
-    if (!fitsJson(raw, 1024 * 1024))
+    if (
+      !fitsJson(
+        raw,
+        "action" in input && input.action === "profile_status"
+          ? 4 * 1024 * 1024
+          : 1024 * 1024,
+      )
+    )
       throw new ContentProfileExecutionError("profile_conflict")
     const reply = schema.safeParse(raw)
     if (

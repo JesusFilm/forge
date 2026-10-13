@@ -1178,99 +1178,344 @@ const validEdge = {
 }
 
 describe("shared edge batch rejection and replay", () => {
-  it("downsized pages keep the complete frozen candidate identity", async () => {
-    const harness = oneMemberBatch({
-      results: [{ sourceVideoId: "source-one", edges: [] }],
+  it("completes a near-16 KiB profile pair with frozen-catalog metadata, history, and eight grounded offers", async () => {
+    const excerpt = "A meaningful grounded line of dialogue. ".repeat(5).trim()
+    const richVideo = (id: string): Video => ({
+      ...video(id),
+      description: "m".repeat(4000),
+      transcriptLanguages: ["en"],
+      transcriptSelection: {
+        policy: "english-per-edition-with-complete-fallback-v1",
+        availableTranscriptCount: 1,
+        incompleteTranscriptCount: 0,
+        skippedEditionCount: 0,
+        selected: [
+          {
+            transcriptId: `${id}-transcript`,
+            videoEditionId: `${id}-edition`,
+            language: "en",
+            totalChunks: 8,
+          },
+        ],
+      },
     })
-    const ids = Array.from({ length: 8 }, (_, index) => `target-${index}`)
-    const member = harness.input.members[0]!
-    member.orderedCandidateIds = ids
-    member.pageSize = 8
-    member.targetsByVideoId = new Map(
-      ids.map((id) => [
-        id,
-        {
-          video: { ...video(id), description: "Long description ".repeat(600) },
-          profile: readyProfile(id),
-        },
-      ]),
-    )
-    let offered = 0
-    let firstPageDigest = ""
-    let startedAt = ""
-    let sourceDigest = ""
-    let firstCandidates: Array<{
-      targetVideoId: string
-      targetProfileKey: string
-      poolRank: number
-    }> = []
-    const sizes: number[] = []
-    const originalStart = harness.input.persistence.start
-    harness.input.persistence.start = async (request) => {
-      offered = request.members[0]!.candidates.length
-      sizes.push(offered)
-      if (sizes.length === 1) {
-        firstPageDigest = request.members[0]!.candidatePageDigest
-        firstCandidates = request.members[0]!.candidates
-        startedAt = request.startedAt
-        sourceDigest = request.members[0]!.sourceCandidateDigest
+    const richProfile = (id: string) => {
+      const profile = {
+        version: "complete_profile_v1" as const,
+        summaryEnglish: "s".repeat(600),
+        themes: Array(12).fill("界".repeat(80)),
+        people: Array(12).fill("人".repeat(80)),
+        places: Array(12).fill("p"),
+        citations: Array(12).fill("c"),
+        anchors: Array.from({ length: 8 }, (_, index) => ({
+          videoId: id,
+          chunkId: `${id}-chunk-${index}`,
+          transcriptId: `${id}-transcript`,
+          language: "en",
+          chunkIndex: index,
+          startChar: 0,
+          endChar: excerpt.length,
+          textSha256: createHash("sha256").update(excerpt).digest("hex"),
+          claimEnglish: "界".repeat(180),
+        })),
       }
-      expect(request.members[0]).toMatchObject({
-        sourceCandidateCount: 8,
-        sourceCandidateDigest: createHash("sha256")
-          .update(JSON.stringify(ids))
-          .digest("hex"),
-      })
-      expect(
-        request.members[0]!.candidates.map((candidate) => candidate.poolRank),
-      ).toEqual(
-        Array.from(
-          { length: offered },
-          (_, index) => request.members[0]!.candidates[0]!.poolRank + index,
-        ),
-      )
-      return originalStart(request)
+      const node = {
+        profile,
+        coveredPartStart: 0,
+        coveredPartEnd: 1,
+        childNodeDigests: [],
+      }
+      const bytes = () => Buffer.byteLength(JSON.stringify(node))
+      for (const list of [profile.places, profile.citations])
+        for (let index = 0; index < list.length; index++) {
+          while (list[index]!.length < 80 && 16384 - bytes() >= 3)
+            list[index] += "界"
+          list[index] += "x".repeat(
+            Math.min(80 - list[index]!.length, 16384 - bytes()),
+          )
+        }
+      expect(bytes()).toBe(16384)
+      return { ...readyProfile(id), kind: "transcript" as const, profile }
     }
-    const firstResult = await runEdgeBatch(harness.input)
-    expect(firstResult.state).toBe("succeeded")
-    expect(firstResult.pages[0]?.candidates).toHaveLength(offered)
-    expect(offered).toBeGreaterThan(0)
-    expect(offered).toBeLessThan(8)
-    const firstOffered = offered
-    member.pageIndex = 1
-    member.startRank = firstOffered
-    member.pageSize = 8 - firstOffered
-    member.checkpointRevision = 1
-    harness.input.callId = "55555555-5555-4555-8555-555555555555"
-    harness.input.persistence.status = async () => ({
-      generationId: identity.generationId,
-      sourceVideoId: "source-one",
-      sourceState: "claimed",
-      checkpointRevision: 1,
-      sourceCandidateCount: 8,
-      sourceCandidateDigest: sourceDigest,
-      calls: [
-        {
-          callId: identity.callId,
-          attemptId: identity.attemptId,
-          status: "succeeded",
-          applicationState: "applied_empty",
-          pageIndex: 0,
-          candidatePageDigest: firstPageDigest,
-          candidates: firstCandidates,
-          appliedRevision: 1,
-          startedAt,
-          finishedAt: identity.inputCutoff,
-          memberSourceVideoIds: ["source-one"],
-        },
+    const harness = oneMemberBatch(null)
+    const member = harness.input.members[0]!
+    member.source = richVideo("source-one")
+    member.sourceProfile = richProfile("source-one")
+    member.targetsByVideoId = new Map([
+      [
+        "target-one",
+        { video: richVideo("target-one"), profile: richProfile("target-one") },
       ],
+    ])
+    harness.input.captureRefDigest = "d".repeat(64)
+    harness.input.historical = {
+      definitionsForModel: {
+        provider: "ga_data_api",
+        queryId: "watch-referrer-navigation-v1",
+        engagement: "Observed Watch video starts, exposures unavailable",
+        transitions: "Unavailable: no verified session sequence",
+        navigation: "Same-event page referrer, not consecutive playback",
+      },
+      signal(videoId: string) {
+        return {
+          videoKey: videoId,
+          views: 12,
+          engagedViews: null,
+          exposures: null,
+        }
+      },
+      transition() {
+        return null
+      },
+      navigation() {
+        return 4
+      },
+    } as unknown as HistoricalSnapshot
+    harness.input.catalog.chunks = async (request) => ({
+      chunks: Array.from({ length: 8 }, (_, index) => ({
+        id: `${request.videoId}-chunk-${index}`,
+        transcriptId: `${request.videoId}-transcript`,
+        language: "en",
+        chunkIndex: index,
+        text: excerpt,
+      })),
       nextCursor: null,
     })
-    const secondResult = await runEdgeBatch(harness.input)
-    expect(secondResult.state).toBe("succeeded")
-    expect(secondResult.pages[0]?.candidates).toHaveLength(8 - firstOffered)
-    expect(sizes).toEqual([firstOffered, 8 - firstOffered])
+    let dispatchedBytes = 0
+    harness.input.model = {
+      async generate(request) {
+        dispatchedBytes =
+          Buffer.byteLength(request.system) + Buffer.byteLength(request.prompt)
+        expect(dispatchedBytes).toBeLessThanOrEqual(65536)
+        const prompt = decodeEdgePrompt(JSON.parse(request.prompt))
+        expect(prompt.members).toHaveLength(1)
+        expect(prompt.members[0]!.candidates).toHaveLength(1)
+        expect(prompt.members[0]!.historical).toMatchObject({
+          definitions: {
+            navigation: "Same-event page referrer, not consecutive playback",
+          },
+          candidates: [{ targetVideoId: "target-one", referrerNavigation: 4 }],
+        })
+        expect(prompt.spanOffers).toHaveLength(8)
+        expect(prompt.spanOfferCoverage).toEqual([
+          {
+            sourceVideoId: "source-one",
+            targetVideoId: "target-one",
+            policy: "balanced_verified_anchors_v1",
+            sourceAvailable: 8,
+            targetAvailable: 8,
+            offered: 8,
+          },
+        ])
+        return {
+          output: request.schema.parse({
+            results: [
+              {
+                sourceVideoId: "source-one",
+                edges: [
+                  {
+                    ...validEdge,
+                    evidence: {
+                      basis: "transcript",
+                      spanIds: [prompt.spanOffers[0]!.spanId],
+                    },
+                  },
+                ],
+              },
+            ],
+          }),
+          usage: { inputTokens: 14000, outputTokens: 100 },
+        }
+      },
+    }
+    harness.input.persistence.start = async (request) => {
+      expect(request.spanOffers).toHaveLength(8)
+      expect(request.members[0]!.candidates).toHaveLength(1)
+      return {
+        generationId: request.generationId,
+        callId: request.callId,
+        state: "pending",
+        replay: false,
+        members: [
+          {
+            sourceVideoId: "source-one",
+            applicationState: "pending",
+            appliedRevision: null,
+            checkpointRevision: 0,
+          },
+        ],
+      }
+    }
+    harness.input.persistence.finish = async (request) => {
+      expect(request.status).toBe("succeeded")
+      expect(request.results?.[0]!.choices).toHaveLength(1)
+      expect(request.results?.[0]!.choices[0]!.evidence).toMatchObject({
+        basis: "transcript",
+        passages: [{ excerpt }],
+      })
+      return {
+        generationId: request.generationId,
+        callId: request.callId,
+        state: "succeeded",
+        receiptStored: true,
+        replay: false,
+        members: [
+          {
+            sourceVideoId: "source-one",
+            applicationState: "applied_edges",
+            appliedRevision: 1,
+            checkpointRevision: 1,
+          },
+        ],
+      }
+    }
+    const result = await runEdgeBatch(harness.input)
+    expect(dispatchedBytes).toBeGreaterThan(0)
+    expect(result.state).toBe("succeeded")
+    expect(
+      result.pages[0]!.candidates.map((candidate) => candidate.targetVideoId),
+    ).toEqual(["target-one"])
+    expect(result.members[0]!.applicationState).toBe("applied_edges")
   })
+
+  it.each([false, true])(
+    "downsized pages keep complete frozen candidate identity (rich profiles=%s)",
+    async (rich) => {
+      const harness = oneMemberBatch({
+        results: [{ sourceVideoId: "source-one", edges: [] }],
+      })
+      const ids = Array.from({ length: 8 }, (_, index) => `target-${index}`)
+      const member = harness.input.members[0]!
+      member.orderedCandidateIds = ids
+      member.pageSize = 8
+      member.targetsByVideoId = new Map(
+        ids.map((id) => [
+          id,
+          {
+            video: {
+              ...video(id),
+              description: "Long description ".repeat(600),
+            },
+            profile: readyProfile(id),
+          },
+        ]),
+      )
+      if (rich) {
+        const profile = {
+          version: "complete_profile_v1" as const,
+          summaryEnglish: "s".repeat(600),
+          themes: Array(12).fill("t".repeat(80)),
+          people: Array(12).fill("p".repeat(80)),
+          places: Array(12).fill("l".repeat(80)),
+          citations: Array(12).fill("c".repeat(80)),
+          anchors: [],
+        }
+        expect(Buffer.byteLength(JSON.stringify(profile))).toBeGreaterThan(4096)
+        member.sourceProfile = {
+          ...readyProfile("source-one"),
+          kind: "transcript",
+          profile,
+        }
+        member.targetsByVideoId = new Map(
+          ids.map((id) => [
+            id,
+            {
+              video: {
+                ...video(id),
+                description: "Long description ".repeat(500),
+              },
+              profile: { ...readyProfile(id), kind: "transcript", profile },
+            },
+          ]),
+        )
+        const originalModel = harness.input.model
+        harness.input.model = {
+          async generate(request) {
+            expect(
+              Buffer.byteLength(request.system) +
+                Buffer.byteLength(request.prompt),
+            ).toBeLessThanOrEqual(65536)
+            return originalModel.generate(request)
+          },
+        }
+      }
+      let offered = 0
+      let firstPageDigest = ""
+      let startedAt = ""
+      let sourceDigest = ""
+      let firstCandidates: Array<{
+        targetVideoId: string
+        targetProfileKey: string
+        poolRank: number
+      }> = []
+      const sizes: number[] = []
+      const originalStart = harness.input.persistence.start
+      harness.input.persistence.start = async (request) => {
+        offered = request.members[0]!.candidates.length
+        sizes.push(offered)
+        if (sizes.length === 1) {
+          firstPageDigest = request.members[0]!.candidatePageDigest
+          firstCandidates = request.members[0]!.candidates
+          startedAt = request.startedAt
+          sourceDigest = request.members[0]!.sourceCandidateDigest
+        }
+        expect(request.members[0]).toMatchObject({
+          sourceCandidateCount: 8,
+          sourceCandidateDigest: createHash("sha256")
+            .update(JSON.stringify(ids))
+            .digest("hex"),
+        })
+        expect(
+          request.members[0]!.candidates.map((candidate) => candidate.poolRank),
+        ).toEqual(
+          Array.from(
+            { length: offered },
+            (_, index) => request.members[0]!.candidates[0]!.poolRank + index,
+          ),
+        )
+        return originalStart(request)
+      }
+      const firstResult = await runEdgeBatch(harness.input)
+      expect(firstResult.state).toBe("succeeded")
+      expect(firstResult.pages[0]?.candidates).toHaveLength(offered)
+      expect(offered).toBeGreaterThan(0)
+      expect(offered).toBeLessThan(8)
+      const firstOffered = offered
+      member.pageIndex = 1
+      member.startRank = firstOffered
+      member.pageSize = 8 - firstOffered
+      member.checkpointRevision = 1
+      harness.input.callId = "55555555-5555-4555-8555-555555555555"
+      harness.input.persistence.status = async () => ({
+        generationId: identity.generationId,
+        sourceVideoId: "source-one",
+        sourceState: "claimed",
+        checkpointRevision: 1,
+        sourceCandidateCount: 8,
+        sourceCandidateDigest: sourceDigest,
+        calls: [
+          {
+            callId: identity.callId,
+            attemptId: identity.attemptId,
+            status: "succeeded",
+            applicationState: "applied_empty",
+            pageIndex: 0,
+            candidatePageDigest: firstPageDigest,
+            candidates: firstCandidates,
+            appliedRevision: 1,
+            startedAt,
+            finishedAt: identity.inputCutoff,
+            memberSourceVideoIds: ["source-one"],
+          },
+        ],
+        nextCursor: null,
+      })
+      const secondResult = await runEdgeBatch(harness.input)
+      expect(secondResult.state).toBe("succeeded")
+      expect(secondResult.pages[0]?.candidates).toHaveLength(8 - firstOffered)
+      expect(sizes).toEqual([firstOffered, 8 - firstOffered])
+    },
+  )
 
   it("refuses a still-oversized single pair before any reservation", async () => {
     const harness = oneMemberBatch({
