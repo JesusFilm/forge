@@ -158,7 +158,9 @@ export function planContentProfile(input: {
   const { video, chunks } = input
   if (!Number.isSafeInteger(input.maxPartBytes) || input.maxPartBytes <= 0)
     throw new ContentProfilePlanError("part_budget_invalid")
-  const citationIds = input.promptVersion === "complete-profile-v5"
+  const citationIds = ["complete-profile-v5", "complete-profile-v6"].includes(
+    input.promptVersion,
+  )
   // Leave room for system instructions and the fixed output-schema envelope.
   const maxPartBytes = citationIds
     ? Math.min(input.maxPartBytes, 56_000)

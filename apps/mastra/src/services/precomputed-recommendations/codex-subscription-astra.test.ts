@@ -17,6 +17,7 @@ import {
   summarySchema,
 } from "./source-generation"
 import { spanJudgmentSchema } from "./catalog-evidence-spans"
+import { compactProfileSchema } from "./content-profile-executor"
 
 const scratch: string[] = []
 
@@ -157,6 +158,54 @@ const summary = {
 }
 
 describe("local ChatGPT-subscription Astra adapter", () => {
+  it.each([2048, 2249])(
+    "enforces the output cap for schema-valid reduction usage %s",
+    async (outputTokens) => {
+      const profile = compactProfileSchema.parse({
+        version: "complete_profile_v1",
+        summaryEnglish: "Nicodemus asks Jesus about new birth.",
+        themes: ["new birth"],
+        people: ["Nicodemus", "Jesus"],
+        places: [],
+        citations: [],
+        anchors: [],
+      })
+      // Synthetic schema-valid response, not replay of the discarded production
+      // response. Only the observed usage differs between the control and RED.
+      const cli = await fakeCli(
+        events(profile, {
+          input_tokens: 27143,
+          cached_input_tokens: 0,
+          output_tokens: outputTokens,
+        }),
+      )
+      expect(compactProfileSchema.safeParse(profile).success).toBe(true)
+      const invocation = model(cli.executable).generateReserved(
+        { ...input, schema: compactProfileSchema, maxOutputTokens: 2048 },
+        async () => ({ kind: "dispatch", reservation: null }),
+      )
+      if (outputTokens > 2048) {
+        await expect(invocation).rejects.toMatchObject({
+          code: "provider_invalid_output",
+          consumptionUnknown: false,
+          usage: {
+            inputTokens: 27143,
+            outputTokens: 2249,
+            cachedInputTokens: 0,
+          },
+        })
+        return
+      }
+      await expect(invocation).resolves.toMatchObject({
+        kind: "dispatched",
+        response: {
+          output: profile,
+          usage: { inputTokens: 27143, outputTokens, cachedInputTokens: 0 },
+        },
+      })
+    },
+  )
+
   it("refuses insufficient allowance before reserving or spawning", async () => {
     const cli = await fakeCli(events(summary))
     const reserve = vi.fn(async () => ({

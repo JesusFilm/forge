@@ -701,7 +701,7 @@ describe("manual subscription catalog preflight", () => {
       maxPartBytes: 24576,
       modelId: "gpt-6-astra",
       backend: "codex_chatgpt_subscription",
-      promptVersion: "complete-profile-v5",
+      promptVersion: "complete-profile-v6",
       schemaVersion: "complete-profile-schema-v1",
     })
     const profileReplacement = {
@@ -713,7 +713,7 @@ describe("manual subscription catalog preflight", () => {
       replacementCallId: "22222222-2222-4222-8222-222222222222",
       oldProcessExitedAttested: true as const,
     }
-    const nodeKey = digest([plan.cacheKey, "map", 0, "complete-profile-v5:map"])
+    const nodeKey = digest([plan.cacheKey, "map", 0, "complete-profile-v6:map"])
     fixture.ports.profilePersistence.status = async (request) => ({
       generationId: request.generationId,
       cacheKey: plan.cacheKey,
@@ -842,7 +842,7 @@ describe("manual subscription catalog preflight", () => {
       vi.unstubAllEnvs()
     }
   })
-  it("requires a new generation digest for grounded citation IDs while preserving the stored profile schema", () => {
+  it("requires a new generation digest for lossless reducer anchor references while preserving the stored profile schema", () => {
     const input = {
       inputCutoff: cutoff,
       videos: [video("source-one")],
@@ -871,6 +871,9 @@ describe("manual subscription catalog preflight", () => {
         candidatePoolDigest: input.candidatePoolDigest,
       })
     expect(manualGenerationInputDigest(input)).toBe(
+      expected("complete-profile-v6"),
+    )
+    expect(manualGenerationInputDigest(input)).not.toBe(
       expected("complete-profile-v5"),
     )
     expect(manualGenerationInputDigest(input)).not.toBe(
