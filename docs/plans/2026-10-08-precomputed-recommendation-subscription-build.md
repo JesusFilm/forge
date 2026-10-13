@@ -377,3 +377,19 @@ which exceeds the 2 GiB bootstrap projection. Neither is a measured physical
 storage forecast. Full-catalog admission requires separate retained/overlap and
 measured-storage review. Production resume, catalog completion, baseline, and
 public activation remain separate gates.
+
+### October 14: bounded destination import verification
+
+The fresh v4 pilot stopped before any model call or persisted import row. Admin's
+GA prepare request reached its unchanged 120-second HTTP limit while reconstructing
+the destination identity through sequential per-video catalog transactions.
+`ga-capture-import-identity.ts` now verifies at most four videos concurrently,
+below the existing ten-connection pool. Pagination remains sequential within each
+video; all catalog, selection, observed-version and complete-chunk checks remain.
+Each window settles before errors propagate, and corpus hashes are updated in
+sorted video order. Metadata-only videos still receive their fenced chunk read.
+No origin-hash shortcut, cross-request cache, retry or timeout increase is added.
+Native public-service tests cover all 1,031 videos, multi-page transcripts, the
+original sequential corpus digest, out-of-order completion and error draining.
+Production continuation and full-catalog capacity qualification remain operator
+steps after normal review, merge and deployment.
