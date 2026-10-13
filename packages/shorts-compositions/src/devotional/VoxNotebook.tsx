@@ -1,3 +1,4 @@
+import { createContext, useContext } from "react"
 import { Easing, interpolate } from "remotion"
 
 import {
@@ -89,11 +90,25 @@ export type NotebookPage = {
   shapes: NotebookShape[]
   photos?: NotebookPhoto[]
 }
-export type NotebookSpec = { pages: NotebookPage[] }
+export type NotebookSpec = {
+  pages: NotebookPage[]
+  /** `paper` (a lined page) or `film`: the same drawing in light ink right
+   *  over our film, no page (owner, 2026-10-13: the notebook page is not our
+   *  look, the drawings are). */
+  theme?: "paper" | "film"
+}
 
-const color = (c?: "ink" | "red") => (c === "red" ? RED : INK)
+/** Ink and accent for the page or for the film. */
+const Pal = createContext({ ink: INK, red: RED, film: false })
+
+function useColor() {
+  const pal = useContext(Pal)
+  return (c?: "ink" | "red") => (c === "red" ? pal.red : pal.ink)
+}
 
 function Shape({ s, t, a }: { s: NotebookShape; t: number; a: number }) {
+  const color = useColor()
+  const pal = useContext(Pal)
   if (s.kind === "ring")
     return (
       <Draw
@@ -148,10 +163,10 @@ function Shape({ s, t, a }: { s: NotebookShape; t: number; a: number }) {
               opacity={k}
               transform={`translate(${x},${y}) scale(${k})`}
             >
-              <circle cx={0} cy={0} r={9} fill={INK} />
+              <circle cx={0} cy={0} r={9} fill={pal.ink} />
               <path
                 d="M0,10 L0,36 M-12,22 L12,22 M0,36 L-9,52 M0,36 L9,52"
-                stroke={INK}
+                stroke={pal.ink}
                 strokeWidth={4}
                 strokeLinecap="round"
                 fill="none"
@@ -177,6 +192,7 @@ function Shape({ s, t, a }: { s: NotebookShape; t: number; a: number }) {
               key={i}
               d={`M${x - 18},${y} L${x - 18},${y - 24} L${x},${y - 40} L${x + 18},${y - 24} L${x + 18},${y} Z`}
               p={prog(t, a + i * 0.12, 0.35)}
+              color={pal.ink}
               width={4}
             />
           )
@@ -188,7 +204,7 @@ function Shape({ s, t, a }: { s: NotebookShape; t: number; a: number }) {
     let d = `M${s.x},${s.y1}`
     for (let y = s.y1, k = 0; y < s.y2; y += 28, k++)
       d += ` L${s.x + (k % 2 ? 14 : -14)},${y + 28}`
-    return <Draw d={d} p={prog(t, a, 0.6)} color={RED} width={7} />
+    return <Draw d={d} p={prog(t, a, 0.6)} color={pal.red} width={7} />
   }
   return (
     <Draw
@@ -201,14 +217,20 @@ function Shape({ s, t, a }: { s: NotebookShape; t: number; a: number }) {
 }
 
 /** The line with `under` underlined in red as `p` runs 0..1. */
-function Underlined({
+function Underlined(props: { text: string; under?: string; p: number }) {
+  return <UnderlinedInner {...props} pal={useContext(Pal)} />
+}
+
+function UnderlinedInner({
   text,
   under,
   p,
+  pal,
 }: {
   text: string
   under?: string
   p: number
+  pal: { red: string }
 }) {
   const i = under ? text.indexOf(under) : -1
   if (!under || i < 0) return <>{text}</>
@@ -225,7 +247,7 @@ function Underlined({
             top: "96%",
             height: "0.09em",
             borderRadius: "0.05em",
-            background: RED,
+            background: pal.red,
             transform: `scaleX(${p.toFixed(4)}) rotate(-0.8deg)`,
             transformOrigin: "0 50%",
           }}
@@ -249,6 +271,23 @@ function Page({
   page: NotebookPage
   shift: number
 }) {
+  const pal = useContext(Pal)
+  const color = useColor()
+  if (pal.film) {
+    // Over the film: no page; the next drawing comes in as the last one goes.
+    return (
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: 1 - shift / 900,
+          filter: `drop-shadow(0 ${f(3)}px ${f(6)}px rgba(0,0,0,0.75))`,
+        }}
+      >
+        <PageMarks f={f} t={t} words={words} page={page} color={color} />
+      </div>
+    )
+  }
   return (
     <div
       style={{
@@ -290,6 +329,27 @@ function Page({
           backgroundSize: `${f(6)}px ${f(6)}px`,
         }}
       />
+      <PageMarks f={f} t={t} words={words} page={page} color={color} />
+    </div>
+  )
+}
+
+/** What is drawn and written on a page: shapes, lines, taped photos. */
+function PageMarks({
+  f,
+  t,
+  words,
+  page,
+  color,
+}: {
+  f: (n: number) => number
+  t: number
+  words: ReadonlyArray<TimedWord>
+  page: NotebookPage
+  color: (c?: "ink" | "red") => string
+}) {
+  return (
+    <>
       <svg
         viewBox="0 0 900 1600"
         style={{
@@ -355,7 +415,7 @@ function Page({
           </div>
         )
       })}
-    </div>
+    </>
   )
 }
 
@@ -377,35 +437,43 @@ export function VoxNotebook({
   let top = 0
   for (let i = 1; i < turns.length; i++) if (t >= turns[i]!) top = i
   const shown = top > 0 ? [top - 1, top] : [0]
+  const film = spec.theme === "film"
+  const pal = film
+    ? { ink: "#f6ecd9", red: "#ff8a5c", film: true }
+    : { ink: INK, red: RED, film: false }
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        overflow: "hidden",
-        background: "#2b2118",
-      }}
-    >
-      {shown.map((i) => {
-        const turnAt = turns[i]!
-        const shift =
-          i === top && i > 0
-            ? interpolate(t, [turnAt, turnAt + 0.55], [900, 0], {
-                ...clamp,
-                easing: Easing.bezier(0.3, 0, 0.2, 1),
-              })
-            : 0
-        return (
-          <Page
-            key={i}
-            f={f}
-            t={t}
-            words={words}
-            page={spec.pages[i]!}
-            shift={shift}
-          />
-        )
-      })}
-    </div>
+    <Pal.Provider value={pal}>
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          overflow: "hidden",
+          background: film ? undefined : "#2b2118",
+        }}
+      >
+        {shown.map((i) => {
+          const incoming = interpolate(
+            t,
+            [turns[top]!, turns[top]! + 0.55],
+            [900, 0],
+            { ...clamp, easing: Easing.bezier(0.3, 0, 0.2, 1) },
+          )
+          // Paper: the new page slides over the old one. Film: the old
+          // drawing fades out as the new one fades in.
+          const shift =
+            i === top && i > 0 ? incoming : film && top > 0 ? 900 - incoming : 0
+          return (
+            <Page
+              key={i}
+              f={f}
+              t={t}
+              words={words}
+              page={spec.pages[i]!}
+              shift={shift}
+            />
+          )
+        })}
+      </div>
+    </Pal.Provider>
   )
 }

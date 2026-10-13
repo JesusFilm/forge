@@ -475,7 +475,10 @@ type BoardNote = {
   on?: string | number
   text: string
 }
-/** The map sheet, 1000 x 760 inside; each mark waits for its word. */
+/** The map sheet (1000 x 760 inside, scaled to `w`): the village, Jesus at
+ *  its edge, a red fence, the ten beyond it, and the distance the law set.
+ *  Each mark waits for its word; labels never sit on a line (owner,
+ *  2026-10-13: "text must not be crossed by lines"). */
 type BoardMap = {
   kind: "map"
   id: string
@@ -484,14 +487,30 @@ type BoardMap = {
   w: number
   rot?: number
   on?: string | number
-  title?: string
   village: { on: string; label: string }
-  edge?: { on: string; label: string }
-  dots: { on: string }
+  dots: { on: string; label?: string }
   jesus: { on: string; label: string }
   cut?: { on: string; label: string }
-  distance?: { on: string; label: string }
-  home?: { on: string; label: string }
+  distance?: { on: string; label: string; lawOn?: string; law?: string }
+  /** The distance marks fade when this is said (the story moves on). */
+  fadeOn?: string
+  /** A small printed header, there from the start so the sheet is never blank. */
+  header?: string
+}
+/** The way home as a chain of boxes drawn on a sheet (700 x 1000 inside,
+ *  scaled to `w`), the last one a house and the word, ringed. */
+type BoardFlow = {
+  kind: "flow"
+  id: string
+  x: number
+  y: number
+  w: number
+  rot?: number
+  on?: string | number
+  title: string
+  titleOn: string
+  steps: { text: string; on: string; red?: boolean }[]
+  home: { text: string; on: string; houseOn?: string }
 }
 export type BoardItem =
   | BoardClip
@@ -499,6 +518,7 @@ export type BoardItem =
   | BoardStrip
   | BoardNote
   | BoardMap
+  | BoardFlow
 
 export type BoardSpec = {
   /** Canvas size in frame units. */
@@ -509,8 +529,103 @@ export type BoardSpec = {
   shots: { on: string | number; x: number; y: number; zoom: number }[]
 }
 
-function MapSheet({
+/** A little stick person (head, arms, legs) at (x, y), popping in by `k`. */
+export function StickPerson({
+  x,
+  y,
+  k,
+  color = INK,
+}: {
+  x: number
+  y: number
+  k: number
+  color?: string
+}) {
+  if (k <= 0) return null
+  return (
+    <g opacity={Math.min(1, k)} transform={`translate(${x},${y}) scale(${k})`}>
+      <circle cx={0} cy={0} r={9} fill={color} />
+      <path
+        d="M0,10 L0,36 M-12,22 L12,22 M0,36 L-9,52 M0,36 L9,52"
+        stroke={color}
+        strokeWidth={4}
+        strokeLinecap="round"
+        fill="none"
+      />
+    </g>
+  )
+}
+
+/** The fence nobody crosses: a red zigzag. */
+export function zigzag(x: number, y1: number, y2: number): string {
+  let d = `M${x},${y1}`
+  for (let y = y1, k = 0; y < y2; y += 28, k++)
+    d += ` L${x + (k % 2 ? 14 : -14)},${y + 28}`
+  return d
+}
+
+/** A house doodle with its door at (x, y). */
+export const house = (x: number, y: number, s = 1) =>
+  `M${x - 20 * s},${y} L${x - 20 * s},${y - 26 * s} L${x},${y - 44 * s} L${x + 20 * s},${y - 26 * s} L${x + 20 * s},${y} Z`
+
+function HandLabel({
   f,
+  x,
+  y,
+  s,
+  text,
+  size = 40,
+  color = INK,
+}: {
+  f: (n: number) => number
+  x: number
+  y: number
+  s: number
+  text: string
+  size?: number
+  color?: string
+}) {
+  if (s <= 0) return null
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: f(x),
+        top: f(y),
+        fontFamily: HAND,
+        fontWeight: 700,
+        fontSize: f(size),
+        lineHeight: 1.1,
+        color,
+        whiteSpace: "nowrap",
+        clipPath: `inset(-20% ${((1 - s) * 110 - 10).toFixed(1)}% -30% -2%)`,
+      }}
+    >
+      {text}
+    </div>
+  )
+}
+
+/** Rough paper behind a sheet. */
+function RoughPaper() {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        WebkitMaskImage: `url(${PAPER_ROUGH_MASK})`,
+        WebkitMaskSize: "100% 100%",
+        maskImage: `url(${PAPER_ROUGH_MASK})`,
+        maskSize: "100% 100%",
+        backgroundImage: `url(${PAPER_ROUGH_JPG})`,
+        backgroundSize: "100% 100%",
+      }}
+    />
+  )
+}
+
+function MapSheet({
+  f: f0,
   t,
   m,
   words,
@@ -522,49 +637,21 @@ function MapSheet({
 }) {
   const W = 1000
   const H = 760
+  const f = (n: number) => f0((n * m.w) / W)
   const vAt = at(words, m.village.on, 1e9)
   const dAt = at(words, m.dots.on, 1e9)
   const jAt = at(words, m.jesus.on, 1e9)
-  const eAt = at(words, m.edge?.on, 1e9)
   const cAt = at(words, m.cut?.on, 1e9)
   const sAt = at(words, m.distance?.on, 1e9)
-  const hAt = at(words, m.home?.on, 1e9)
-  // The village on the left, the ten outside it on the right, the road
-  // coming in from the top right to the village's edge.
-  const vx = 300
-  const vy = 400
-  const dots = Array.from({ length: 10 }, (_, i) => ({
-    x: 700 + (i % 4) * 46 + (Math.floor(i / 4) % 2) * 22,
-    y: 470 + Math.floor(i / 4) * 52,
-  }))
-  const jx = 560
-  const jy = 250
-  const label = (
-    x: number,
-    y: number,
-    s: number,
-    text: string,
-    size = 40,
-    color = INK,
-  ) =>
-    s > 0 ? (
-      <div
-        style={{
-          position: "absolute",
-          left: f(x),
-          top: f(y),
-          fontFamily: HAND,
-          fontWeight: 700,
-          fontSize: f(size),
-          color,
-          whiteSpace: "nowrap",
-          opacity: Math.min(1, s * 2),
-          clipPath: `inset(-20% ${((1 - s) * 100).toFixed(1)}% -30% 0)`,
-        }}
-      >
-        {text}
-      </div>
-    ) : null
+  const lAt = at(words, m.distance?.lawOn, 1e9)
+  const fade = 1 - prog(t, at(words, m.fadeOn, 1e9), 0.5)
+  const houses: [number, number][] = [
+    [205, 450],
+    [285, 420],
+    [335, 505],
+    [235, 530],
+    [150, 495],
+  ]
   return (
     <div
       style={{
@@ -574,16 +661,7 @@ function MapSheet({
         filter: `drop-shadow(0 ${f(12)}px ${f(16)}px rgba(0,0,0,0.45))`,
       }}
     >
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          WebkitMaskImage: `url(${PAPER_ROUGH_MASK})`,
-          WebkitMaskSize: "100% 100%",
-          backgroundImage: `url(${PAPER_ROUGH_JPG})`,
-          backgroundSize: "100% 100%",
-        }}
-      />
+      <RoughPaper />
       <svg
         viewBox={`0 0 ${W} ${H}`}
         style={{
@@ -594,147 +672,283 @@ function MapSheet({
           overflow: "visible",
         }}
       >
-        {/* Contour lines: an old map's hills, faint. */}
-        <path
-          d="M60,640 C220,600 300,690 470,650 S760,600 940,660"
-          fill="none"
-          stroke="rgba(29,23,18,0.18)"
-          strokeWidth={3}
-        />
-        <path
-          d="M80,690 C240,650 330,730 490,700 S770,650 930,705"
-          fill="none"
-          stroke="rgba(29,23,18,0.14)"
-          strokeWidth={3}
-        />
-        {/* Village: wall, then houses. */}
         <Draw
-          d={handEllipse(vx, vy, 190, 165, 3)}
+          d={handEllipse(270, 425, 190, 160, 3)}
           p={prog(t, vAt, 0.8)}
           width={6}
         />
-        {[
-          [250, 360],
-          [320, 330],
-          [350, 420],
-          [255, 450],
-          [190, 395],
-        ].map(([x, y], i) => (
+        {houses.map(([x, y], i) => (
           <Draw
             key={i}
-            d={`M${x - 20},${y} L${x - 20},${y - 26} L${x},${y - 44} L${x + 20},${y - 26} L${x + 20},${y} Z`}
+            d={house(x, y)}
             p={prog(t, vAt + 0.35 + i * 0.08, 0.35)}
             width={4}
           />
         ))}
-        {/* The road to the village's edge. */}
         <Draw
-          d={`M980,40 C840,120 700,180 ${jx + 10},${jy + 6} S470,330 480,360`}
-          p={prog(t, jAt - 0.4, 0.9)}
-          width={4}
-          dash="14 12"
+          d={handEllipse(560, 300, 88, 44, 5)}
+          p={prog(t, jAt, 0.6)}
+          color={RED}
+          width={6}
         />
-        {/* The ten. */}
-        {dots.map((d, i) => {
-          const s = prog(
-            t,
-            dAt + i * 0.05,
-            0.25,
-            Easing.bezier(0.2, 1.6, 0.4, 1),
-          )
-          return s > 0 ? (
-            <circle key={i} cx={d.x} cy={d.y} r={13 * s} fill={INK} />
-          ) : null
-        })}
-        {/* Jesus, at the edge. */}
-        {prog(t, jAt, 0.3) > 0 ? (
-          <g opacity={prog(t, jAt, 0.3)}>
-            <circle cx={jx} cy={jy} r={17} fill={RED} />
-            <circle
-              cx={jx}
-              cy={jy}
-              r={28}
-              fill="none"
-              stroke={RED}
-              strokeWidth={4}
-            />
-          </g>
-        ) : null}
-        {/* Cut off: a red wall between the village and the ten. */}
         <Draw
-          d="M560,420 C590,500 540,560 585,640 S560,720 590,750"
+          d={zigzag(700, 262, 542)}
           p={prog(t, cAt, 0.6)}
           color={RED}
-          width={9}
-        />
-        {/* The distance they kept: a double arrow to Jesus. */}
-        <Draw
-          d={handLine(700, 450, jx + 20, jy + 30, 0.06)}
-          p={prog(t, sAt, 0.6)}
-          color={RED}
-          width={5}
-        />
-        <Draw
-          d={arrowHead(
-            jx + 20,
-            jy + 30,
-            Math.atan2(jy + 30 - 450, jx + 20 - 700),
-          )}
-          p={prog(t, sAt + 0.5, 0.25)}
-          color={RED}
-          width={5}
-        />
-        <Draw
-          d={arrowHead(700, 450, Math.atan2(450 - (jy + 30), 700 - (jx + 20)))}
-          p={prog(t, sAt + 0.5, 0.25)}
-          color={RED}
-          width={5}
-        />
-        {/* The way home: from the ten, round the wall, into the village. */}
-        <Draw
-          d="M760,560 C700,720 420,720 330,520"
-          p={prog(t, hAt - 0.6, 0.9)}
-          color={RED}
           width={8}
         />
-        <Draw
-          d={arrowHead(330, 520, Math.atan2(520 - 600, 330 - 380), 30)}
-          p={prog(t, hAt + 0.25, 0.25)}
-          color={RED}
-          width={8}
-        />
+        {Array.from({ length: 10 }, (_, i) => (
+          <StickPerson
+            key={i}
+            x={752 + (i % 5) * 44}
+            y={320 + Math.floor(i / 5) * 75}
+            k={prog(t, dAt + i * 0.06, 0.25, Easing.bezier(0.2, 1.6, 0.4, 1))}
+          />
+        ))}
+        <g opacity={fade}>
+          <Draw
+            d={handLine(575, 585, 875, 585, 0.01)}
+            p={prog(t, sAt, 0.6)}
+            color={RED}
+            width={5}
+          />
+          <Draw
+            d={arrowHead(875, 585, 0)}
+            p={prog(t, sAt + 0.5, 0.2)}
+            color={RED}
+            width={5}
+          />
+          <Draw
+            d={arrowHead(575, 585, Math.PI)}
+            p={prog(t, sAt + 0.5, 0.2)}
+            color={RED}
+            width={5}
+          />
+        </g>
       </svg>
-      {m.title ? (
+      {m.header ? (
         <div
           style={{
             position: "absolute",
-            left: f(50),
-            top: f(40),
+            left: f(60),
+            top: f(48),
             fontFamily: SANS,
             fontWeight: 700,
-            fontSize: f(16),
+            fontSize: f(20),
             letterSpacing: f(4),
             textTransform: "uppercase",
-            color: "rgba(29,23,18,0.6)",
-            opacity: prog(t, vAt - 0.3, 0.4),
+            color: "rgba(29,23,18,0.55)",
           }}
         >
-          {m.title}
+          {m.header}
         </div>
       ) : null}
-      {label(205, 545, prog(t, vAt + 0.6, 0.5), m.village.label)}
-      {label(605, 165, prog(t, jAt + 0.2, 0.5), m.jesus.label, 40, RED)}
-      {m.edge ? label(410, 300, prog(t, eAt, 0.5), m.edge.label, 34) : null}
-      {m.cut
-        ? label(470, 655, prog(t, cAt + 0.4, 0.5), m.cut.label, 38, RED)
-        : null}
-      {m.distance
-        ? label(660, 320, prog(t, sAt + 0.6, 0.5), m.distance.label, 38, RED)
-        : null}
-      {m.home
-        ? label(440, 690, prog(t, hAt + 0.3, 0.5), m.home.label, 46, RED)
-        : null}
-      {label(735, 640, prog(t, dAt + 0.6, 0.4), "10", 46)}
+      <HandLabel
+        f={f}
+        x={205}
+        y={282}
+        s={prog(t, vAt + 0.6, 0.5)}
+        text={m.village.label}
+      />
+      <HandLabel
+        f={f}
+        x={502}
+        y={274}
+        s={prog(t, jAt + 0.2, 0.5)}
+        text={m.jesus.label}
+        size={44}
+        color={RED}
+      />
+      {m.cut ? (
+        <HandLabel
+          f={f}
+          x={640}
+          y={196}
+          s={prog(t, cAt + 0.4, 0.5)}
+          text={m.cut.label}
+          size={40}
+          color={RED}
+        />
+      ) : null}
+      <HandLabel
+        f={f}
+        x={728}
+        y={480}
+        s={prog(t, dAt + 0.6, 0.4)}
+        text={m.dots.label ?? "10 прокажённых"}
+        size={36}
+      />
+      {m.distance ? (
+        <div style={{ opacity: fade }}>
+          <HandLabel
+            f={f}
+            x={560}
+            y={610}
+            s={prog(t, sAt + 0.5, 0.5)}
+            text={m.distance.label}
+            size={40}
+            color={RED}
+          />
+          {m.distance.law ? (
+            <HandLabel
+              f={f}
+              x={758}
+              y={610}
+              s={prog(t, lAt, 0.4)}
+              text={m.distance.law}
+              size={40}
+              color={RED}
+            />
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function FlowSheet({
+  f: f0,
+  t,
+  fl,
+  words,
+}: {
+  f: (n: number) => number
+  t: number
+  fl: BoardFlow
+  words: ReadonlyArray<TimedWord>
+}) {
+  const W = 700
+  const H = 1000
+  const f = (n: number) => f0((n * fl.w) / W)
+  const top = 160
+  const step = 150
+  const bw = 520
+  const bh = 92
+  const hAt = at(words, fl.home.on, 1e9)
+  const houseAt = at(words, fl.home.houseOn ?? fl.home.on, hAt)
+  const homeY = top + fl.steps.length * step + 30
+  return (
+    <div
+      style={{
+        position: "relative",
+        width: f(W),
+        height: f(H),
+        filter: `drop-shadow(0 ${f(12)}px ${f(16)}px rgba(0,0,0,0.45))`,
+      }}
+    >
+      <RoughPaper />
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          overflow: "visible",
+        }}
+      >
+        {fl.steps.map((s, i) => {
+          const a = at(words, s.on, 1e9)
+          const y = top + i * step
+          const c = s.red ? RED : INK
+          return (
+            <g key={i}>
+              {i > 0 ? (
+                <>
+                  <Draw
+                    d={handLine(
+                      W / 2 - 40,
+                      y - step + bh + 6,
+                      W / 2 - 40,
+                      y - 8,
+                      0.02,
+                    )}
+                    p={prog(t, a - 0.35, 0.3)}
+                    width={5}
+                  />
+                  <Draw
+                    d={arrowHead(W / 2 - 40, y - 8, Math.PI / 2, 18)}
+                    p={prog(t, a - 0.05, 0.15)}
+                    width={5}
+                  />
+                </>
+              ) : null}
+              <Draw
+                d={`M${90},${y} L${90 + bw},${y + 3} L${88 + bw},${y + bh} L${92},${y + bh - 2} Z`}
+                p={prog(t, a, 0.5)}
+                color={c}
+                width={5}
+              />
+            </g>
+          )
+        })}
+        <Draw
+          d={handLine(
+            W / 2 - 40,
+            top + (fl.steps.length - 1) * step + bh + 6,
+            W / 2 - 40,
+            homeY + 20,
+            0.02,
+          )}
+          p={prog(t, hAt - 1.5, 0.5)}
+          color={RED}
+          width={7}
+        />
+        <Draw
+          d={arrowHead(W / 2 - 40, homeY + 20, Math.PI / 2, 22)}
+          p={prog(t, hAt - 1, 0.2)}
+          color={RED}
+          width={7}
+        />
+        {[
+          [-70, 0],
+          [-10, -24],
+          [40, 10],
+        ].map(([dx, dy], i) => (
+          <Draw
+            key={i}
+            d={house(200 + dx!, homeY + 150 + dy!)}
+            p={prog(t, houseAt - 0.3 + i * 0.1, 0.35)}
+            width={5}
+          />
+        ))}
+        <Draw
+          d={handEllipse(W / 2 - 10, homeY + 118, 260, 86, 7)}
+          p={prog(t, hAt + 0.3, 0.7)}
+          color={RED}
+          width={7}
+        />
+      </svg>
+      <HandLabel
+        f={f}
+        x={70}
+        y={40}
+        s={prog(t, at(words, fl.titleOn, 1e9), 0.6)}
+        text={fl.title}
+        size={66}
+        color={RED}
+      />
+      {fl.steps.map((s, i) => (
+        <HandLabel
+          key={i}
+          f={f}
+          x={118}
+          y={top + i * step + 18}
+          s={prog(t, at(words, s.on, 1e9) + 0.15, 0.5)}
+          text={s.text}
+          size={46}
+          color={s.red ? RED : INK}
+        />
+      ))}
+      <HandLabel
+        f={f}
+        x={300}
+        y={homeY + 76}
+        s={prog(t, hAt, 0.45)}
+        text={fl.home.text}
+        size={72}
+        color={RED}
+      />
     </div>
   )
 }
@@ -815,8 +1029,13 @@ export function VoxBoard({
           }}
         />
         {spec.items.map((it) => {
-          const a = at(words, it.on, 0)
-          const p = prog(t, a, 0.5, Easing.bezier(0.16, 1.08, 0.3, 1))
+          // On the board from the start unless an item names its word: the
+          // camera travels to things already there (owner, 2026-10-13).
+          const a = it.on == null ? -1 : at(words, it.on, 0)
+          const p =
+            it.on == null
+              ? 1
+              : prog(t, a, 0.5, Easing.bezier(0.16, 1.08, 0.3, 1))
           if (t < a - 0.02) return null
           const drop = (1 - p) * 60
           const body =
@@ -837,6 +1056,8 @@ export function VoxBoard({
               />
             ) : it.kind === "map" ? (
               <MapSheet f={f} t={t} m={it} words={words} />
+            ) : it.kind === "flow" ? (
+              <FlowSheet f={f} t={t} fl={it} words={words} />
             ) : it.kind === "strip" ? (
               <div
                 style={{
@@ -904,6 +1125,20 @@ export function VoxBoard({
           )
         })}
       </div>
+      {/* The phone's own buttons sit over the frame's foot: the board darkens
+          there, so nothing under them reads as something to read. */}
+      <div
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          top: f(1180),
+          bottom: 0,
+          background:
+            "linear-gradient(to bottom, rgba(20,13,8,0) 0%, rgba(20,13,8,0.82) 38%, rgba(20,13,8,0.9) 100%)",
+          pointerEvents: "none",
+        }}
+      />
       {/* A soft vignette on the frame, like a lens. */}
       <div
         style={{

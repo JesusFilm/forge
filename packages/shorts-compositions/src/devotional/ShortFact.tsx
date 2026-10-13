@@ -193,8 +193,12 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
   const vox = Boolean(fact?.vox || voxHistory)
   // The board and the notebook draw their own world (owner, 2026-10-13):
   // no film under them, no dark pool.
+  const filmNotes =
+    voxHistory?.style === "notebook" &&
+    (voxHistory.notebook as NotebookSpec | undefined)?.theme === "film"
   const drawn =
-    voxHistory?.style === "board" || voxHistory?.style === "notebook"
+    voxHistory?.style === "board" ||
+    (voxHistory?.style === "notebook" && !filmNotes)
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
@@ -334,15 +338,35 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
         />
       ) : voxHistory ? (
         <>
-          <VoxHistoryTag
-            f={f}
-            t={t}
-            accent={voxHistory.accent ?? VOX_ORANGE}
-            text={
-              isRussian(words) ? "Из полного видео" : "From the Full Devotional"
-            }
-          />
-          {drawn ? null : (
+          <div
+            style={{
+              // On the board the tag would sit on the map; it says its piece
+              // in the first seconds and goes.
+              opacity:
+                voxHistory.style === "board"
+                  ? interpolate(t, [4.2, 4.8], [1, 0], clamp)
+                  : 1,
+            }}
+          >
+            <VoxHistoryTag
+              f={f}
+              t={t}
+              accent={voxHistory.accent ?? VOX_ORANGE}
+              text={
+                isRussian(words)
+                  ? "Из полного видео"
+                  : "From the Full Devotional"
+              }
+            />
+          </div>
+          {filmNotes ? (
+            <VoxNotebook
+              f={f}
+              t={t}
+              words={words}
+              spec={voxHistory.notebook as NotebookSpec}
+            />
+          ) : drawn ? null : (
             <VoxHistoryLayout f={f} t={t} words={words} spec={voxHistory} />
           )}
           <VoxCaption
