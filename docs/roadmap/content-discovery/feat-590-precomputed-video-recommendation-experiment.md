@@ -19,11 +19,17 @@ tags:
 ## Problem
 
 October 14 closeout: the owner requested a full-catalogue processing target below
-eight hours. Add bounded local concurrency (1–12; default 1) for independent
+eight hours. Add bounded local concurrency (1–16; default 1) for independent
 profiles and source-pair batches, retain full profiles and the same Astra model,
 and drain in-flight receipts before pause or failure closes an attempt. Measure
 live throughput before claiming the target is achieved. Public activation
 remains a separate decision.
+
+The four-call production trial retained 21 successful calls with no failed or
+unresolved receipts and measured 3.3 times the serial call throughput. The next
+run reached twelve simultaneous reservations without request errors. Raise the
+operator ceiling to sixteen to give the eight-hour target more headroom; the
+model, quality settings, admission checks and graceful drain remain unchanged.
 
 Explore whether a capable reasoning model can find useful connections across
 the video catalog from transcripts, metadata, and historical analytics, with

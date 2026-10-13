@@ -579,7 +579,7 @@ export async function runManualSubscriptionCatalog(
   if (
     !Number.isSafeInteger(concurrency) ||
     concurrency < 1 ||
-    concurrency > 12 ||
+    concurrency > 16 ||
     (concurrency !== 1 && (input.recovery || input.profileReplacement))
   )
     throw new ManualSubscriptionCatalogError("input_invalid")
