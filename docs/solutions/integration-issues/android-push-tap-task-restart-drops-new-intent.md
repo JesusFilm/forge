@@ -14,7 +14,7 @@ symptoms:
 root_cause: async_timing
 resolution_type: code_fix
 framework_version: "expo 57.0.27, expo-notifications 57.0.22, expo-updates 57.0.25"
-retire_when: "expo/expo#49254 is closed with a fix in a released expo-notifications version; check with `gh issue view 49254 --repo expo/expo` and compare the fix version with the pins in apps/mobile/src/lib/__tests__/androidPushTapUpstream.guard.test.js"
+retire_when: "expo/expo#49254 is closed with a fix in a released expo-notifications version, AND release-build device cases V4, V5, and V9 pass with Block A removed; check the issue with `gh issue view 49254 --repo expo/expo` and compare the fix version with the pins in apps/mobile/src/lib/__tests__/androidPushTapUpstream.guard.test.js"
 related_components:
   - expo-notifications
   - firebase-cloud-messaging
@@ -103,7 +103,7 @@ Device evidence (S20, release build, 2026-10-13): cold taps to a video, a series
 
 - **Never write the text `super.onCreate(` inside a generated block.** expo-splash-screen and react-native-google-cast insert their blocks at the FIRST line that holds it. The plugin test checks that no generated line holds that text, and it runs the real vendor plugins in `app.json` order and in reverse.
 - **Fail at prebuild, never skip.** The plugin throws on a Java `MainActivity`, a missing anchor, or another `onNewIntent` override. A skipped plugin would ship the defect silently.
-- **Re-check at every Expo SDK upgrade.** The tripwire's version pins fail on any upgrade. Three of its facts pin the `isFCMIntent` gate that single delivery depends on. Re-read expo PR #47615 (merged to Expo's main branch on 2026-07-09, expected in SDK 58), which drains the tap queue after a listener handles a tap, and re-check expo/expo#49254. If upstream fixes the drop, remove the plugin after a device pass.
+- **Re-check at every Expo SDK upgrade.** The tripwire's version pins fail on any upgrade. Three of its facts pin the `isFCMIntent` gate that single delivery depends on. Re-read expo PR #47615 (merged to Expo's main branch on 2026-07-09, expected in SDK 58), which drains the tap queue after a listener handles a tap, and re-check expo/expo#49254. If upstream fixes the drop, Block B can go after a device pass. Block A is separate: it stops a restored launch from replaying an old tap, and an upstream fix for the drop may not cover that. Remove it only when release-build cases V4, V5, and V9 pass without it.
 - **Verify on a device with a release build.** Use `am kill` after you pause media and press Home, check that `pidof` is empty and the task is still in Recents, and read `adb logcat -s ForgePushTap` and `adb logcat -b events`. Block B's log line means that the hand-off ran, not that the queue kept the tap.
 - **Ship it in a native build.** The plugin changes the app config, so it moves the fingerprint runtime version on both platforms. An `eas update` reaches no installed build until a new native build ships.
 
