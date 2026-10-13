@@ -6,6 +6,7 @@ import {
   selectedTranscriptSelections,
 } from "./catalog"
 import { PrecomputedRecommendationError } from "./contract"
+import { auditedNoDispatchReservationWhere } from "./edge-ledger"
 
 const id = z.string().trim().min(1).max(191)
 const digest = z.string().regex(/^[a-f0-9]{64}$/)
@@ -896,7 +897,11 @@ export async function submitProfileAction(
               where: { generationId: input.generationId, status: "pending" },
             }),
             tx.recommendationPrecomputedEdgeBatchCall.count({
-              where: { generationId: input.generationId, status: "pending" },
+              where: {
+                generationId: input.generationId,
+                status: "pending",
+                NOT: auditedNoDispatchReservationWhere,
+              },
             }),
             tx.recommendationPrecomputedModelCall.count({
               where: {

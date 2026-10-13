@@ -4,7 +4,10 @@ import type { CtrPolicySettings } from "./ctr-policy"
 import { loadPrecomputedFullCatalogSourceSet } from "./catalog"
 import { precomputedCtrPolicyDigest } from "./ctr-report"
 import { hasQualifiedGaCapture } from "./ga-capture-import"
-import { loadQualifiedManualEdgeRecovery } from "./edge-ledger"
+import {
+  loadQualifiedManualEdgeRecovery,
+  auditedNoDispatchReservationWhere,
+} from "./edge-ledger"
 import type { PrecomputedBaselineReport } from "./incumbent-baseline"
 import {
   evaluatePrecomputedLiveFacts,
@@ -124,7 +127,10 @@ export async function loadLiveEvidence(
             where: { generationId: input.generationId },
           }),
           db.recommendationPrecomputedEdgeBatchCall.count({
-            where: { generationId: input.generationId },
+            where: {
+              generationId: input.generationId,
+              NOT: auditedNoDispatchReservationWhere,
+            },
           }),
           db.recommendationPrecomputedProfileCall.count({
             where: {
@@ -135,6 +141,7 @@ export async function loadLiveEvidence(
           db.recommendationPrecomputedEdgeBatchCall.count({
             where: {
               generationId: input.generationId,
+              NOT: auditedNoDispatchReservationWhere,
               OR: [{ inputTokens: null }, { outputTokens: null }],
             },
           }),

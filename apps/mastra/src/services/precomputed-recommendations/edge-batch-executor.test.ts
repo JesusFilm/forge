@@ -1937,43 +1937,46 @@ describe("shared edge batch rejection and replay", () => {
     ])
   })
 
-  it("does not reserve behind an unresolved call from source status", async () => {
-    const harness = oneMemberBatch(null)
-    harness.input.persistence.status = async () => ({
-      generationId: identity.generationId,
-      sourceVideoId: "source-one",
-      sourceState: "claimed",
-      checkpointRevision: 0,
-      sourceCandidateCount: null,
-      sourceCandidateDigest: null,
-      calls: [
-        {
-          callId: "previous-call",
-          attemptId: identity.attemptId,
-          status: "pending",
-          applicationState: "pending",
-          pageIndex: 0,
-          candidatePageDigest: "a".repeat(64),
-          candidates: [
-            {
-              targetVideoId: "target-one",
-              targetProfileKey: readyProfile("target-one").cacheKey,
-              poolRank: 0,
-            },
-          ],
-          appliedRevision: null,
-          startedAt: identity.inputCutoff,
-          finishedAt: null,
-          memberSourceVideoIds: ["source-one"],
-        },
-      ],
-      nextCursor: null,
-    })
-    await expect(runEdgeBatch(harness.input)).rejects.toThrowError(
-      "usage_unknown",
-    )
-    expect(harness.modelCalls()).toBe(0)
-  })
+  it.each(["pending", "no_dispatch_unapplied"] as const)(
+    "does not reserve behind an unresolved %s call from source status",
+    async (applicationState) => {
+      const harness = oneMemberBatch(null)
+      harness.input.persistence.status = async () => ({
+        generationId: identity.generationId,
+        sourceVideoId: "source-one",
+        sourceState: "claimed",
+        checkpointRevision: 0,
+        sourceCandidateCount: null,
+        sourceCandidateDigest: null,
+        calls: [
+          {
+            callId: "previous-call",
+            attemptId: identity.attemptId,
+            status: "pending",
+            applicationState,
+            pageIndex: 0,
+            candidatePageDigest: "a".repeat(64),
+            candidates: [
+              {
+                targetVideoId: "target-one",
+                targetProfileKey: readyProfile("target-one").cacheKey,
+                poolRank: 0,
+              },
+            ],
+            appliedRevision: null,
+            startedAt: identity.inputCutoff,
+            finishedAt: null,
+            memberSourceVideoIds: ["source-one"],
+          },
+        ],
+        nextCursor: null,
+      })
+      await expect(runEdgeBatch(harness.input)).rejects.toThrowError(
+        "usage_unknown",
+      )
+      expect(harness.modelCalls()).toBe(0)
+    },
+  )
 
   it("does not redispatch a replayed pending reservation", async () => {
     const harness = oneMemberBatch(null)

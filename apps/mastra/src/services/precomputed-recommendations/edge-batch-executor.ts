@@ -164,6 +164,7 @@ type Scope = { generationId: string; generationInputDigest: string }
 type ApplicationState =
   | "pending"
   | "acknowledged_unknown"
+  | "no_dispatch_unapplied"
   | "applied_edges"
   | "applied_empty"
   | "stale_unapplied"
@@ -269,6 +270,11 @@ export type EdgeBatchPersistencePort = {
       finishedAt: string | null
       recoveryReplacementCallId?: string | null
       recoveryReconciled?: boolean
+      reservationDisposition?: {
+        reason: "reservation_timeout_before_dispatch"
+        evidenceDigest: string
+        acknowledgedAt: string
+      } | null
       memberSourceVideoIds: string[]
     }>
     nextCursor: string | null
@@ -409,6 +415,30 @@ export function acknowledgedUnknownIsSafe(
   )
 }
 
+export function auditedNoDispatchIsSafe(
+  call: SourceStatus["calls"][number],
+): boolean {
+  return (
+    call.callId === "f6cdb507-e7e3-4172-b31f-27ace231f2c3" &&
+    call.attemptId === "93be0f68-3564-4da7-a81d-0d7bb4b79212" &&
+    call.status === "pending" &&
+    call.applicationState === "no_dispatch_unapplied" &&
+    call.appliedRevision === null &&
+    call.finishedAt === null &&
+    call.memberSourceVideoIds.length === 1 &&
+    call.memberSourceVideoIds[0] === "cmp76xcw602imny01vnsbwwy9" &&
+    call.pageIndex === 20 &&
+    call.candidates.length === 8 &&
+    call.candidates.every(
+      (candidate, index) => candidate.poolRank === 68 + index,
+    ) &&
+    call.reservationDisposition?.reason ===
+      "reservation_timeout_before_dispatch" &&
+    call.reservationDisposition.evidenceDigest ===
+      "43cdc25082e85c9b2a743a62da0dfc2857ce7b037d52a4467818dbf9a1e9422d"
+  )
+}
+
 async function readFullStatus(
   persistence: Pick<EdgeBatchPersistencePort, "status">,
   scope: Scope,
@@ -493,7 +523,10 @@ export async function finalizeEdgeSource(
     throw new EdgeBatchExecutionError("candidate_page_invalid")
   if (
     status.calls.some(
-      (call) => call.status === "pending" && !acknowledgedUnknownIsSafe(call),
+      (call) =>
+        call.status === "pending" &&
+        !acknowledgedUnknownIsSafe(call) &&
+        !auditedNoDispatchIsSafe(call),
     )
   )
     throw new EdgeBatchExecutionError("usage_unknown")
@@ -1118,7 +1151,8 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
       status.calls.some(
         (call) =>
           call.status === "pending" &&
-          !acknowledgedUnknownIsSafe(call, input.recovery),
+          !acknowledgedUnknownIsSafe(call, input.recovery) &&
+          !auditedNoDispatchIsSafe(call),
       )
     )
       throw new EdgeBatchExecutionError("usage_unknown")

@@ -442,6 +442,27 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     })
   })
 
+  it("never launches the CLI after a timed-out reservation later commits", async () => {
+    const cli = await fakeCli(events(summary))
+    let acceptReservation = () => {}
+    const committedResponse = new Promise<void>((resolve) => {
+      acceptReservation = resolve
+    })
+    const reserve = vi.fn(async () => {
+      await committedResponse
+      return { kind: "dispatch" as const, reservation: "late-pending" }
+    })
+    await expect(
+      model(cli.executable).generateReserved(input, reserve),
+    ).rejects.toMatchObject({ code: "reservation_uncertain" })
+    acceptReservation()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(reserve).toHaveBeenCalledTimes(1)
+    await expect(readFile(cli.capture)).rejects.toMatchObject({
+      code: "ENOENT",
+    })
+  }, 30_000)
+
   it("preserves known usage when the signed-in account drifts after a reserved call", async () => {
     const cli = await fakeCli(events(summary))
     let reads = 0

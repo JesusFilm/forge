@@ -35,6 +35,42 @@ const RECOVERY_CANDIDATE_POOL_DIGEST =
   "0780cfd0199c04f88076afcd7869140b56bca02b3253dd5d3c21cd0de4a8797a"
 const RECOVERY_CAPTURE_REF_DIGEST =
   "8edf8cce9a1ed5abf1ad847c47dd7f3389a9d1e431f8690ad9b3f0450b3e1cc8"
+const NO_DISPATCH_GENERATION_ID = "production-astra-catalog-20261013-v6"
+const NO_DISPATCH_GENERATION_INPUT_DIGEST =
+  "e2ad59bb95b497738290c6dee1d0dd487886f34019ea721ce6971e12dfddd3a5"
+const NO_DISPATCH_CALL_ID = "f6cdb507-e7e3-4172-b31f-27ace231f2c3"
+const NO_DISPATCH_ATTEMPT_ID = "93be0f68-3564-4da7-a81d-0d7bb4b79212"
+const NO_DISPATCH_REQUEST_DIGEST =
+  "dd72735e1bcdb439f39a824dbdfe37c408af7e414ff8a095cdf5c549e1dd5437"
+const NO_DISPATCH_EVIDENCE_DIGEST =
+  "43cdc25082e85c9b2a743a62da0dfc2857ce7b037d52a4467818dbf9a1e9422d"
+const NO_DISPATCH_SOURCE_ID = "cmp76xcw602imny01vnsbwwy9"
+// Read-side qualification uses both the sealed server audit and its committed
+// member disposition. Every other pending or null-usage row remains unknown.
+export const auditedNoDispatchReservationWhere: Prisma.RecommendationPrecomputedEdgeBatchCallWhereInput =
+  {
+    generationId: NO_DISPATCH_GENERATION_ID,
+    callId: NO_DISPATCH_CALL_ID,
+    attemptId: NO_DISPATCH_ATTEMPT_ID,
+    status: "pending",
+    requestDigest: NO_DISPATCH_REQUEST_DIGEST,
+    noDispatchDisposition: {
+      is: {
+        reason: "reservation_timeout_before_dispatch",
+        evidenceDigest: NO_DISPATCH_EVIDENCE_DIGEST,
+      },
+    },
+    members: {
+      some: {
+        sourceVideoId: NO_DISPATCH_SOURCE_ID,
+        applicationState: "no_dispatch_unapplied",
+      },
+      every: {
+        sourceVideoId: NO_DISPATCH_SOURCE_ID,
+        applicationState: "no_dispatch_unapplied",
+      },
+    },
+  }
 const provisionalChoice = precomputedChoiceSchema.omit({ rank: true }).extend({
   strength: z.number().int().min(0).max(100),
 })
@@ -90,6 +126,17 @@ const recoveryAck = base
     action: z.literal("edge_manual_recovery_ack"),
     originalCallId: z.literal(RECOVERY_ORIGINAL_CALL_ID),
     replacementCallId: z.uuid(),
+    operatorAccountRef: z.string().regex(/^[A-Za-z0-9:_-]{8,128}$/),
+    oldProcessExitedAttested: z.literal(true),
+  })
+  .strict()
+const noDispatchAck = base
+  .extend({
+    action: z.literal("edge_no_dispatch_ack"),
+    originalCallId: z.uuid(),
+    originalAttemptId: z.uuid(),
+    expectedRequestDigest: digest,
+    evidenceDigest: digest,
     operatorAccountRef: z.string().regex(/^[A-Za-z0-9:_-]{8,128}$/),
     oldProcessExitedAttested: z.literal(true),
   })
@@ -217,6 +264,7 @@ const closeEmpty = base
 const actionSchema = z.discriminatedUnion("action", [
   status,
   recoveryAck,
+  noDispatchAck,
   start,
   finish,
   finalize,
@@ -362,25 +410,43 @@ async function offeredExcerpt(
   tx: Tx,
   offer: z.infer<typeof spanOffer>,
   cutoff: Date,
+  evidence?: {
+    selected: Awaited<ReturnType<typeof selectedTranscriptSelections>>
+    chunks: Map<
+      string,
+      {
+        transcriptId: string
+        transcript: { videoId: string }
+        rawSourceText: string | null
+        text: string
+      }
+    >
+  },
 ): Promise<string | null> {
-  try {
-    await assertPrecomputedObservedVersion(tx, [offer.videoId], cutoff)
-  } catch {
-    return null
+  if (!evidence) {
+    try {
+      await assertPrecomputedObservedVersion(tx, [offer.videoId], cutoff)
+    } catch {
+      return null
+    }
   }
   const selected =
-    (await selectedTranscriptSelections(tx, [offer.videoId])).get(offer.videoId)
-      ?.selected ?? []
+    (
+      evidence?.selected ??
+      (await selectedTranscriptSelections(tx, [offer.videoId]))
+    ).get(offer.videoId)?.selected ?? []
   const transcriptIds = new Set(selected.map((item) => item.transcriptId))
-  const chunk = await tx.videoTranscriptChunk.findUnique({
-    where: { id: offer.chunkId },
-    select: {
-      transcriptId: true,
-      transcript: { select: { videoId: true } },
-      rawSourceText: true,
-      text: true,
-    },
-  })
+  const chunk = evidence
+    ? evidence.chunks.get(offer.chunkId)
+    : await tx.videoTranscriptChunk.findUnique({
+        where: { id: offer.chunkId },
+        select: {
+          transcriptId: true,
+          transcript: { select: { videoId: true } },
+          rawSourceText: true,
+          text: true,
+        },
+      })
   if (
     !chunk ||
     chunk.transcript.videoId !== offer.videoId ||
@@ -413,6 +479,30 @@ async function validateSpanOffers(
   )
   const seen = new Set<string>()
   const pairCounts = new Map<string, number>()
+  if (input.spanOffers.length === 0) return
+  const videoIds = [...new Set(input.spanOffers.map((offer) => offer.videoId))]
+  try {
+    await assertPrecomputedObservedVersion(tx, videoIds, cutoff)
+  } catch {
+    invalid("Edge span offer is not an exact selected passage")
+  }
+  const selected = await selectedTranscriptSelections(tx, videoIds)
+  const chunks = await tx.videoTranscriptChunk.findMany({
+    where: {
+      id: { in: [...new Set(input.spanOffers.map((offer) => offer.chunkId))] },
+    },
+    select: {
+      id: true,
+      transcriptId: true,
+      transcript: { select: { videoId: true } },
+      rawSourceText: true,
+      text: true,
+    },
+  })
+  const evidence = {
+    selected,
+    chunks: new Map(chunks.map((chunk) => [chunk.id, chunk])),
+  }
   for (const offer of input.spanOffers) {
     const item = memberBySource.get(offer.sourceVideoId)
     const pair = JSON.stringify([offer.sourceVideoId, offer.targetVideoId])
@@ -436,7 +526,7 @@ async function validateSpanOffers(
       ) ||
       ![offer.sourceVideoId, offer.targetVideoId].includes(offer.videoId) ||
       (pairCounts.get(pair) ?? 0) >= 8 ||
-      !(await offeredExcerpt(tx, offer, cutoff))
+      !(await offeredExcerpt(tx, offer, cutoff, evidence))
     )
       invalid("Edge span offer is not an exact selected passage")
     seen.add(offer.spanId)
@@ -674,6 +764,7 @@ export async function submitEdgeAction(
         tx,
         input,
         input.action === "edge_manual_recovery_ack" ||
+          input.action === "edge_no_dispatch_ack" ||
           input.action === "edge_batch_start",
       )
       if (
@@ -735,6 +826,13 @@ export async function submitEdgeAction(
                   startedAt: true,
                   finishedAt: true,
                   recoveryReplacementCallId: true,
+                  noDispatchDisposition: {
+                    select: {
+                      reason: true,
+                      evidenceDigest: true,
+                      acknowledgedAt: true,
+                    },
+                  },
                   members: {
                     orderBy: { sourceVideoId: "asc" },
                     select: { sourceVideoId: true },
@@ -796,6 +894,16 @@ export async function submitEdgeAction(
             recoveryReconciled: item.call.recoveryReplacementCallId
               ? (reconciled.get(item.call.recoveryReplacementCallId) ?? false)
               : false,
+            ...(item.applicationState === "no_dispatch_unapplied" &&
+            item.call.noDispatchDisposition
+              ? {
+                  reservationDisposition: {
+                    ...item.call.noDispatchDisposition,
+                    acknowledgedAt:
+                      item.call.noDispatchDisposition.acknowledgedAt.toISOString(),
+                  },
+                }
+              : {}),
             memberSourceVideoIds: item.call.members.map(
               (member) => member.sourceVideoId,
             ),
@@ -804,6 +912,8 @@ export async function submitEdgeAction(
       }
       if (input.action === "edge_manual_recovery_ack")
         return acknowledgeManualRecovery(tx, input, generation, guards)
+      if (input.action === "edge_no_dispatch_ack")
+        return acknowledgeNoDispatch(tx, input, generation, guards)
       if (input.action === "edge_batch_start")
         return startEdgeBatch(tx, input, generation, guards)
       if (input.action === "edge_source_finalize")
@@ -814,6 +924,216 @@ export async function submitEdgeAction(
     },
     { timeout: 30_000 },
   )
+}
+
+async function acknowledgeNoDispatch(
+  tx: Tx,
+  input: z.infer<typeof noDispatchAck>,
+  generation: Generation,
+  guards: Guards,
+): Promise<Record<string, unknown>> {
+  if (
+    input.generationId !== NO_DISPATCH_GENERATION_ID ||
+    input.generationInputDigest !== NO_DISPATCH_GENERATION_INPUT_DIGEST ||
+    input.originalCallId !== NO_DISPATCH_CALL_ID ||
+    input.originalAttemptId !== NO_DISPATCH_ATTEMPT_ID ||
+    input.expectedRequestDigest !== NO_DISPATCH_REQUEST_DIGEST ||
+    input.evidenceDigest !== NO_DISPATCH_EVIDENCE_DIGEST ||
+    input.attemptId === NO_DISPATCH_ATTEMPT_ID ||
+    generation.status !== "incomplete"
+  )
+    conflict("No-dispatch scope differs from the reviewed reservation")
+  const existingAudit =
+    await tx.recommendationPrecomputedEdgeNoDispatchDisposition.findUnique({
+      where: {
+        generationId_callId: {
+          generationId: input.generationId,
+          callId: input.originalCallId,
+        },
+      },
+    })
+  if (!existingAudit) guards.requireCapacityFresh(generation)
+  const attempts = await tx.recommendationPrecomputedExecutionAttempt.findMany({
+    where: { generationId: input.generationId },
+  })
+  const originalAttempt = attempts.find(
+    (attempt) => attempt.attemptId === input.originalAttemptId,
+  )
+  const maintenance = attempts.find(
+    (attempt) => attempt.attemptId === input.attemptId,
+  )
+  if (
+    !originalAttempt?.endedAt ||
+    originalAttempt.endReason !== "paused" ||
+    originalAttempt.accountRef !== input.operatorAccountRef ||
+    (!existingAudit &&
+      (!maintenance ||
+        maintenance.endedAt ||
+        maintenance.invocation !== "resume" ||
+        maintenance.accountRef !== originalAttempt.accountRef ||
+        maintenance.backend !== "codex_chatgpt_subscription" ||
+        maintenance.billingBasis !== "included_subscription" ||
+        maintenance.modelId !== "gpt-6-astra" ||
+        attempts.filter((attempt) => !attempt.endedAt).length !== 1))
+  )
+    conflict(
+      "No-dispatch acknowledgement requires the same-account maintenance attempt",
+    )
+  const sources = await tx.$queryRaw<
+    Array<{
+      source_video_id: string
+      checkpoint_revision: number
+      checkpoint: unknown
+      lease_expires_at: Date | null
+    }>
+  >`
+    SELECT source_video_id, checkpoint_revision, checkpoint, lease_expires_at
+    FROM recommendation_precomputed_build_source WHERE generation_id = ${input.generationId}
+    ORDER BY source_video_id FOR UPDATE`
+  if (
+    !existingAudit &&
+    sources.some(
+      (source) =>
+        source.lease_expires_at && source.lease_expires_at > new Date(),
+    )
+  )
+    conflict("A source lease is still live")
+  const source = sources.find(
+    (item) => item.source_video_id === NO_DISPATCH_SOURCE_ID,
+  )
+  const checkpoint = z
+    .object({
+      stage: z.literal("edge_page_applied_v1"),
+      cursor: z.object({ candidateIndex: z.literal(68) }).strict(),
+    })
+    .strict()
+  if (
+    !existingAudit &&
+    (!source ||
+      source.checkpoint_revision !== 21 ||
+      !checkpoint.safeParse(source.checkpoint).success)
+  )
+    conflict("No-dispatch source checkpoint differs")
+  await tx.$queryRaw`SELECT call_id FROM recommendation_precomputed_edge_batch_call
+    WHERE generation_id = ${input.generationId} AND call_id = ${input.originalCallId}::uuid FOR UPDATE`
+  const original = await tx.recommendationPrecomputedEdgeBatchCall.findUnique({
+    where: {
+      generationId_callId: {
+        generationId: input.generationId,
+        callId: input.originalCallId,
+      },
+    },
+    include: { members: true, noDispatchDisposition: true },
+  })
+  if (
+    !original ||
+    original.attemptId !== input.originalAttemptId ||
+    original.requestDigest !== input.expectedRequestDigest ||
+    original.status !== "pending" ||
+    original.finishedAt !== null ||
+    original.inputTokens !== null ||
+    original.outputTokens !== null ||
+    original.cachedInputTokens !== null ||
+    original.receiptDigest !== null ||
+    original.outputDigest !== null ||
+    original.errorCode !== null ||
+    original.recoveryReplacementCallId !== null ||
+    original.members.length !== 1
+  )
+    conflict("No-dispatch reservation is not the reviewed pending call")
+  const member = original.members[0]!
+  const candidates = z.array(candidate).safeParse(member.candidates)
+  if (
+    member.sourceVideoId !== NO_DISPATCH_SOURCE_ID ||
+    member.pageIndex !== 20 ||
+    member.checkpointRevision !== 21 ||
+    member.sourceCandidateCount !== 86 ||
+    member.appliedRevision !== null ||
+    member.resultChoiceCount !== null ||
+    !candidates.success ||
+    candidates.data.length !== 8 ||
+    candidates.data.some((item, index) => item.poolRank !== 68 + index)
+  )
+    conflict("No-dispatch member differs from the reviewed page")
+  if (original.noDispatchDisposition) {
+    const audit = original.noDispatchDisposition
+    if (
+      member.applicationState !== "no_dispatch_unapplied" ||
+      audit.maintenanceAttemptId !== input.attemptId ||
+      audit.evidenceDigest !== input.evidenceDigest ||
+      audit.operatorAccountRef !== input.operatorAccountRef
+    )
+      conflict("No-dispatch acknowledgement replay differs")
+    return {
+      generationId: input.generationId,
+      callId: original.callId,
+      disposition: audit.reason,
+      replay: true,
+    }
+  }
+  if (member.applicationState !== "pending")
+    conflict("No-dispatch member is no longer pending")
+  if (!maintenance) conflict("No-dispatch maintenance attempt is missing")
+  const frozen =
+    await tx.recommendationPrecomputedBuildSource.findUniqueOrThrow({
+      where: {
+        generationId_sourceVideoId: {
+          generationId: input.generationId,
+          sourceVideoId: member.sourceVideoId,
+        },
+      },
+    })
+  if (
+    frozen.state !== "claimed" ||
+    frozen.leaseToken !== member.leaseToken ||
+    frozen.edgeSourceCandidateCount !== member.sourceCandidateCount ||
+    frozen.edgeSourceCandidateDigest !== member.sourceCandidateDigest ||
+    frozen.edgeSourceProfileKey !== member.sourceProfileKey ||
+    frozen.edgeCandidatePoolDigest !== original.candidatePoolDigest ||
+    frozen.edgeHistoricalRefDigest !== member.historicalRefDigest
+  )
+    conflict("No-dispatch frozen source identity differs")
+  const [snapshot] = await tx.$queryRaw<
+    Array<{ originalMembers: Prisma.JsonValue; memberSnapshotDigest: string }>
+  >`
+    WITH snapshot AS (SELECT jsonb_agg(to_jsonb(m) ORDER BY m.source_video_id) AS members
+      FROM recommendation_precomputed_edge_batch_member m WHERE generation_id = ${input.generationId} AND call_id = ${input.originalCallId}::uuid)
+    SELECT members AS "originalMembers", encode(sha256(convert_to(members::text, 'UTF8')), 'hex') AS "memberSnapshotDigest" FROM snapshot`
+  if (!snapshot || bytes(snapshot.originalMembers) > 8192)
+    conflict("No-dispatch evidence exceeds its storage bound")
+  await guards.reserveBudget(tx, input.generationId, 16_384)
+  await tx.recommendationPrecomputedEdgeNoDispatchDisposition.create({
+    data: {
+      generationId: input.generationId,
+      callId: original.callId,
+      originalAttemptId: original.attemptId,
+      maintenanceAttemptId: maintenance.attemptId,
+      requestDigest: original.requestDigest,
+      evidenceDigest: input.evidenceDigest,
+      operatorAccountRef: originalAttempt.accountRef,
+      reason: "reservation_timeout_before_dispatch",
+      acknowledgedAt: new Date(),
+      oldProcessExitedAttested: true,
+      originalMembers: json(snapshot.originalMembers),
+      memberSnapshotDigest: snapshot.memberSnapshotDigest,
+    },
+  })
+  await tx.recommendationPrecomputedEdgeBatchMember.update({
+    where: {
+      generationId_callId_sourceVideoId: {
+        generationId: input.generationId,
+        callId: original.callId,
+        sourceVideoId: member.sourceVideoId,
+      },
+    },
+    data: { applicationState: "no_dispatch_unapplied" },
+  })
+  return {
+    generationId: input.generationId,
+    callId: original.callId,
+    disposition: "reservation_timeout_before_dispatch",
+    replay: false,
+  }
 }
 
 async function acknowledgeManualRecovery(
@@ -1138,6 +1458,7 @@ async function startEdgeBatch(
             generationId: input.generationId,
             status: "pending",
             callId: { not: RECOVERY_ORIGINAL_CALL_ID },
+            NOT: auditedNoDispatchReservationWhere,
           },
         })) !== 0
       )
@@ -1191,10 +1512,15 @@ async function startEdgeBatch(
         callId: input.callId,
       },
     },
-    include: { members: { orderBy: { sourceVideoId: "asc" } } },
+    include: {
+      members: { orderBy: { sourceVideoId: "asc" } },
+      noDispatchDisposition: true,
+    },
   })
   const requestDigest = hash(input)
   if (previous) {
+    if (previous.noDispatchDisposition)
+      conflict("No-dispatch reservation cannot dispatch on replay")
     if (previous.requestDigest !== requestDigest)
       conflict("Edge reservation retry differs")
     return {
@@ -1229,10 +1555,15 @@ async function startEdgeBatch(
           callId: input.callId,
         },
       },
-      include: { members: { orderBy: { sourceVideoId: "asc" } } },
+      include: {
+        members: { orderBy: { sourceVideoId: "asc" } },
+        noDispatchDisposition: true,
+      },
     },
   )
   if (concurrent) {
+    if (concurrent.noDispatchDisposition)
+      conflict("No-dispatch reservation cannot dispatch on replay")
     if (concurrent.requestDigest !== requestDigest)
       conflict("Edge reservation retry differs")
     return {
@@ -1356,13 +1687,25 @@ async function startEdgeBatch(
       orderBy: [{ pageIndex: "asc" }, { callId: "asc" }],
       include: {
         call: {
-          select: { candidatePoolDigest: true, selectedCorpusDigest: true },
+          select: {
+            candidatePoolDigest: true,
+            selectedCorpusDigest: true,
+            noDispatchDisposition: { select: { callId: true } },
+          },
         },
       },
     })
     if (prior.length >= 512) conflict("Edge source call history limit reached")
     if (prior.some((row) => row.applicationState === "pending"))
       conflict("Unknown edge call consumption remains pending")
+    if (
+      prior.some(
+        (row) =>
+          row.applicationState === "no_dispatch_unapplied" &&
+          !row.call.noDispatchDisposition,
+      )
+    )
+      conflict("No-dispatch member has no matching operator evidence")
     if (
       prior.some(
         (row) =>
@@ -1378,6 +1721,18 @@ async function startEdgeBatch(
     const applied = prior.filter((row) =>
       ["applied_edges", "applied_empty"].includes(row.applicationState),
     )
+    const disposed = prior.find(
+      (row) =>
+        row.applicationState === "no_dispatch_unapplied" &&
+        row.call.noDispatchDisposition,
+    )
+    if (
+      disposed &&
+      !applied.some((row) => row.pageIndex === disposed.pageIndex) &&
+      (item.pageIndex !== disposed.pageIndex ||
+        item.candidatePageDigest !== disposed.candidatePageDigest)
+    )
+      conflict("Edge continuation differs from the audited unconsumed page")
     const priorRanks = applied
       .flatMap((row) =>
         (row.candidates as z.infer<typeof candidate>[]).map(
@@ -1650,6 +2005,17 @@ async function finishEdgeBatch(
     conflict("Edge receipt has no matching reservation")
   if (call.recoveryReplacementCallId !== null)
     conflict("Acknowledged unknown edge call cannot apply a late receipt")
+  if (
+    await tx.recommendationPrecomputedEdgeNoDispatchDisposition.findUnique({
+      where: {
+        generationId_callId: {
+          generationId: input.generationId,
+          callId: input.callId,
+        },
+      },
+    })
+  )
+    conflict("No-dispatch reservation cannot accept a late receipt")
   const receiptDigest = hash(input)
   if (call.status !== "pending") {
     if (call.receiptDigest !== receiptDigest)
@@ -1926,10 +2292,25 @@ async function finalizeEdgeSource(
       sourceVideoId: input.sourceVideoId,
     },
     orderBy: [{ pageIndex: "asc" }, { callId: "asc" }],
-    include: { call: { select: { status: true } } },
+    include: {
+      call: {
+        select: {
+          status: true,
+          noDispatchDisposition: { select: { callId: true } },
+        },
+      },
+    },
   })
   if (members.some((item) => item.applicationState === "pending"))
     conflict("Unknown edge call consumption remains pending")
+  if (
+    members.some(
+      (item) =>
+        item.applicationState === "no_dispatch_unapplied" &&
+        !item.call.noDispatchDisposition,
+    )
+  )
+    conflict("No-dispatch member has no matching operator evidence")
   for (const item of members.filter(
     (member) => member.applicationState === "acknowledged_unknown",
   )) {

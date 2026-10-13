@@ -17,7 +17,10 @@ import { loadPrecomputedFullCatalogSourceSet } from "./catalog"
 import type { CtrPolicySettings } from "./ctr-policy"
 import { hasSealedGaCapture } from "./ga-capture-artifact"
 import { hasQualifiedGaCapture } from "./ga-capture-import"
-import { loadQualifiedManualEdgeRecovery } from "./edge-ledger"
+import {
+  loadQualifiedManualEdgeRecovery,
+  auditedNoDispatchReservationWhere,
+} from "./edge-ledger"
 
 const experimentSelect = {
   id: true,
@@ -167,7 +170,10 @@ export async function loadPrecomputedPublicReadiness(
             where: { generationId: latestGeneration.id },
           }),
           prisma.recommendationPrecomputedEdgeBatchCall.count({
-            where: { generationId: latestGeneration.id },
+            where: {
+              generationId: latestGeneration.id,
+              NOT: auditedNoDispatchReservationWhere,
+            },
           }),
           prisma.recommendationPrecomputedProfileCall.count({
             where: {
@@ -178,6 +184,7 @@ export async function loadPrecomputedPublicReadiness(
           prisma.recommendationPrecomputedEdgeBatchCall.count({
             where: {
               generationId: latestGeneration.id,
+              NOT: auditedNoDispatchReservationWhere,
               OR: [{ inputTokens: null }, { outputTokens: null }],
             },
           }),

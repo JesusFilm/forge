@@ -14,6 +14,7 @@ const callState = z.enum(["pending", ...terminal.options])
 const applicationState = z.enum([
   "pending",
   "acknowledged_unknown",
+  "no_dispatch_unapplied",
   "applied_edges",
   "applied_empty",
   "stale_unapplied",
@@ -87,6 +88,15 @@ const statusReply = identity.extend({
           finishedAt: z.string().datetime().nullable(),
           recoveryReplacementCallId: z.uuid().nullable().default(null),
           recoveryReconciled: z.boolean().default(false),
+          reservationDisposition: z
+            .object({
+              reason: z.literal("reservation_timeout_before_dispatch"),
+              evidenceDigest: digest,
+              acknowledgedAt: z.string().datetime(),
+            })
+            .strict()
+            .nullable()
+            .default(null),
           memberSourceVideoIds: z.array(id).min(1).max(2),
         })
         .strict(),
