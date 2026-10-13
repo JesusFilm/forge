@@ -250,6 +250,16 @@ and unchanged. Verify through the approved native build-through-Admin seam befor
 any explicit pilot resume. Complete catalog, live baseline and manual activation
 remain outstanding, so this feature stays in progress.
 
+The capacity repair shipped in PR #2696 and the explicit pilot resume passed
+live capacity admission. Import preparation then returned HTTP 409 before any
+model work. Production has `CI=true`; the real receiver environment reproduced
+string-valued import budgets because that flag bypasses environment coercion.
+The native public import handler reproduces the resulting unconfigured-budget
+conflict with the exact approved values. Normalize numeric configuration at the
+import boundary while retaining safe-integer, positivity and exhaustion checks;
+keep the 256 MiB object budget, 128 MiB temporary budget and 1 GiB temporary
+reserve unchanged. The generation remains incomplete with no model calls.
+
 For the current design phase, distinguish confirmed decisions, recommendations,
 and open questions; cross-check repository claims against code and existing
 evidence. Format-check edited Markdown. Do not mark this feature complete when
