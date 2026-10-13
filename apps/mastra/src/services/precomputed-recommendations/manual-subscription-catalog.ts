@@ -61,6 +61,7 @@ export class ManualSubscriptionCatalogError extends Error {
       | "source_failed"
       | "usage_uncertain"
       | "admin_unavailable"
+      | "operator_paused"
       | "input_invalid",
   ) {
     super(code)
@@ -134,6 +135,13 @@ export type ManualSubscriptionCatalogPorts = {
   }) => Promise<z.output<typeof capacityMeasurement>>
 }
 
+export type ManualSubscriptionCatalogOptions = {
+  /** Independent profiles/source pairs; calls within one profile stay ordered. */
+  concurrency?: number
+  /** Stop new work and drain dispatched calls before closing the attempt. */
+  signal?: AbortSignal
+}
+
 export type ManualSubscriptionCatalogResult = {
   state: "completed" | "stopped"
   reason?:
@@ -144,6 +152,7 @@ export type ManualSubscriptionCatalogResult = {
     | "source_failed"
     | "usage_uncertain"
     | "admin_unavailable"
+    | "operator_paused"
   generationId: string
   attemptId: string
   completedSourceCount: number
@@ -368,6 +377,7 @@ function classify(
     return "admission_refused"
   if (code === "capacity_blocked" || code === "capacity_stopped")
     return "capacity_stopped"
+  if (code === "operator_paused") return "operator_paused"
   if (
     code === "source_failed" ||
     code === "profile_invalid" ||
@@ -563,7 +573,16 @@ async function sourceProgress(
 export async function runManualSubscriptionCatalog(
   input: ManualSubscriptionCatalogInput,
   ports: ManualSubscriptionCatalogPorts,
+  options: ManualSubscriptionCatalogOptions = {},
 ): Promise<ManualSubscriptionCatalogResult> {
+  const concurrency = options.concurrency ?? 1
+  if (
+    !Number.isSafeInteger(concurrency) ||
+    concurrency < 1 ||
+    concurrency > 12 ||
+    (concurrency !== 1 && (input.recovery || input.profileReplacement))
+  )
+    throw new ManualSubscriptionCatalogError("input_invalid")
   if (
     !id.safeParse(input.generationId).success ||
     !id.safeParse(input.originGenerationId).success ||
@@ -841,10 +860,42 @@ export async function runManualSubscriptionCatalog(
   let recoveryProfilesReused = false
   const activeLeases = new Map<string, string>()
   let heartbeatFailure: unknown
+  let firstFailure: { error: unknown } | undefined
   let heartbeatTimer: ReturnType<typeof setInterval> | undefined
+  let capacityInFlight: Promise<void> | undefined
+  let heartbeatInFlight: Promise<void> | undefined
+  const lastHeartbeatAt = new Map<string, number>()
+  const checkRunning = () => {
+    if (firstFailure) throw firstFailure.error
+    if (heartbeatFailure) throw heartbeatFailure
+    if (options.signal?.aborted)
+      throw new ManualSubscriptionCatalogError("operator_paused")
+  }
+  const runConcurrent = async <T>(
+    items: readonly T[],
+    run: (item: T) => Promise<void>,
+  ) => {
+    let next = 0
+    const worker = async () => {
+      try {
+        while (next < items.length) {
+          checkRunning()
+          const item = items[next++]!
+          await run(item)
+        }
+      } catch (error: unknown) {
+        firstFailure ??= { error }
+      }
+    }
+    // Workers contain their errors so closure waits for every in-flight receipt.
+    await Promise.all(
+      Array.from({ length: Math.min(concurrency, items.length) }, worker),
+    )
+    checkRunning()
+  }
   const send = async <T extends z.ZodType>(schema: T, payload: unknown) =>
     parsed(schema, await ports.ingest(payload))
-  const refreshCapacity = async (force = false) => {
+  const measureAndRefreshCapacity = async (force = false) => {
     if (!force && Date.now() - lastCapacityAt < CAPACITY_REFRESH_MS) return
     const probe = await send(
       z.object({
@@ -886,18 +937,30 @@ export async function runManualSubscriptionCatalog(
       throw new ManualSubscriptionCatalogError("capacity_stopped")
     lastCapacityAt = Date.parse(measurement.measuredAt)
   }
+  const refreshCapacity = (force = false) => {
+    capacityInFlight ??= measureAndRefreshCapacity(force).finally(() => {
+      capacityInFlight = undefined
+    })
+    return capacityInFlight
+  }
   const admittedModel: ReservationAwareStructuredModel = {
     async generateReserved(request, reserve) {
-      if (heartbeatFailure) throw heartbeatFailure
+      checkRunning()
       if (input.recovery && !recoveryProfilesReused)
         throw new ManualSubscriptionCatalogError("usage_uncertain")
       await refreshCapacity()
-      return ports.model.generateReserved(request, reserve)
+      checkRunning()
+      return ports.model.generateReserved(request, async () => {
+        checkRunning()
+        return reserve()
+      })
     },
   }
-  const heartbeatAll = async () => {
+  const renewLeases = async () => {
     if (heartbeatFailure) throw heartbeatFailure
     for (const [sourceVideoId, leaseToken] of activeLeases) {
+      if (Date.now() - (lastHeartbeatAt.get(sourceVideoId) ?? 0) < HEARTBEAT_MS)
+        continue
       const reply = await send(
         z.object({ sourceState: z.literal("claimed") }),
         {
@@ -910,9 +973,22 @@ export async function runManualSubscriptionCatalog(
       )
       if (reply.sourceState !== "claimed")
         throw new ManualSubscriptionCatalogError("source_failed")
+      lastHeartbeatAt.set(sourceVideoId, Date.now())
     }
   }
+  const heartbeatAll = () => {
+    heartbeatInFlight ??= renewLeases().finally(() => {
+      heartbeatInFlight = undefined
+    })
+    return heartbeatInFlight
+  }
+  const stopHeartbeat = async (sourceVideoId: string) => {
+    activeLeases.delete(sourceVideoId)
+    await heartbeatInFlight
+    lastHeartbeatAt.delete(sourceVideoId)
+  }
   try {
+    checkRunning()
     if (input.invocation === "start") {
       const started = await send(stateReply, {
         action: "start",
@@ -1038,7 +1114,7 @@ export async function runManualSubscriptionCatalog(
       )
       profileOrder.unshift(input.profileReplacement.videoId)
     }
-    for (const videoId of profileOrder) {
+    await runConcurrent(profileOrder, async (videoId) => {
       const video = byId.get(videoId)
       if (!video) throw new ManualSubscriptionCatalogError("catalog_mismatch")
       const ready = await runContentProfile({
@@ -1064,7 +1140,7 @@ export async function runManualSubscriptionCatalog(
         cacheKey: ready.cacheKey,
         profile: ready.profile,
       })
-    }
+    })
     recoveryProfilesReused = true
     heartbeatTimer = setInterval(() => {
       void heartbeatAll().catch((error: unknown) => {
@@ -1072,17 +1148,23 @@ export async function runManualSubscriptionCatalog(
       })
     }, HEARTBEAT_MS)
     heartbeatTimer.unref()
-    for (let groupStart = 0; groupStart < work.length; groupStart += 2) {
+    const importedHistory = imported
+    const groupStarts = Array.from(
+      { length: Math.ceil(work.length / 2) },
+      (_, index) => index * 2,
+    )
+    await runConcurrent(groupStarts, async (groupStart) => {
       const active: ActiveSource[] = []
       for (const item of work.slice(groupStart, groupStart + 2)) {
+        checkRunning()
         await refreshCapacity()
         const source = byId.get(item.sourceVideoId)!
         const orderedCandidateIds = frozen.retrieval.candidateIdsBySource.get(
           source.id,
         )!
         const snapshot = await readHistoricalSnapshot({
-          reader: imported.reader,
-          definition: imported.definition,
+          reader: importedHistory.reader,
+          definition: importedHistory.definition,
           catalog: frozen.videos,
           routeCatalog: frozen.videos,
           sourceVideoId: source.id,
@@ -1094,9 +1176,9 @@ export async function runManualSubscriptionCatalog(
         if (
           provenance.captureMode !== "imported_capture_derived_v1" ||
           provenance.importBindingDigest !==
-            imported.importBinding.bindingDigest ||
+            importedHistory.importBinding.bindingDigest ||
           provenance.artifactSha256 !==
-            imported.importBinding.copy.artifactSha256 ||
+            importedHistory.importBinding.copy.artifactSha256 ||
           !provenance.derivedSubsetDigest ||
           provenance.queryExecutionCount !== 0 ||
           !provenance.navigationCoverage
@@ -1129,12 +1211,13 @@ export async function runManualSubscriptionCatalog(
         )
           throw new ManualSubscriptionCatalogError("admin_unavailable")
         activeLeases.set(source.id, claimed.leaseToken)
+        lastHeartbeatAt.set(source.id, 0)
         const history = {
           evidenceKind: "referrer_navigation_v1",
           sourceResource: "properties/320198532",
-          queryId: imported.definition.queryId,
-          rangeStart: imported.definition.rangeStart,
-          rangeEnd: imported.definition.rangeEnd,
+          queryId: importedHistory.definition.queryId,
+          rangeStart: importedHistory.definition.rangeStart,
+          rangeEnd: importedHistory.definition.rangeEnd,
           resultDigest: provenance.resultDigest,
           rowCount: provenance.rowCount,
           mappedRows: provenance.mappedRows,
@@ -1142,10 +1225,10 @@ export async function runManualSubscriptionCatalog(
           pageCount: provenance.pageCount,
           queryExecutionCount: 0,
           navigationCoverage: provenance.navigationCoverage,
-          qualificationDigest: imported.qualificationDigest,
+          qualificationDigest: importedHistory.qualificationDigest,
           captureMode: "imported_capture_derived_v1",
-          importBindingDigest: imported.importBinding.bindingDigest,
-          artifactSha256: imported.importBinding.copy.artifactSha256,
+          importBindingDigest: importedHistory.importBinding.bindingDigest,
+          artifactSha256: importedHistory.importBinding.copy.artifactSha256,
           derivedSubsetDigest: provenance.derivedSubsetDigest,
           pageCountKind: "virtual_validation",
           status: "complete",
@@ -1283,7 +1366,7 @@ export async function runManualSubscriptionCatalog(
               source.orderedCandidateIds.length === 0),
         )
       ) {
-        if (heartbeatFailure) throw heartbeatFailure
+        checkRunning()
         await heartbeatAll()
         const remaining = active.filter(
           (source) =>
@@ -1311,6 +1394,9 @@ export async function runManualSubscriptionCatalog(
         const historical = combinedHistorical(
           new Map(batch.map((source) => [source.source.id, source.snapshot])),
         )
+        // An empty page finalizes inside the executor. Drain its heartbeat first.
+        if (batch[0]!.orderedCandidateIds.length === 0)
+          await stopHeartbeat(batch[0]!.source.id)
         const result = await runEdgeBatch({
           ...scope,
           attemptId: input.attemptId,
@@ -1318,7 +1404,7 @@ export async function runManualSubscriptionCatalog(
           inputCutoff: input.inputCutoff,
           selectedCorpusDigest: input.reviewed.selectedCorpusDigest,
           candidatePoolDigest: input.reviewed.candidatePoolDigest,
-          captureRefDigest: imported.importBinding.bindingDigest,
+          captureRefDigest: importedHistory.importBinding.bindingDigest,
           modelId: PRECOMPUTED_MODEL_ID,
           backend: "codex_chatgpt_subscription",
           promptVersion: EDGE_PROMPT_VERSION,
@@ -1368,7 +1454,7 @@ export async function runManualSubscriptionCatalog(
           source.startRank !== source.orderedCandidateIds.length
         )
           continue
-        await heartbeatAll()
+        await stopHeartbeat(source.source.id)
         const finalized = await finalizeEdgeSource({
           ...scope,
           attemptId: input.attemptId,
@@ -1395,7 +1481,7 @@ export async function runManualSubscriptionCatalog(
         completedSourceCount++
       }
       for (const source of active) activeLeases.delete(source.source.id)
-    }
+    })
     if (input.work.mode === "full") {
       if (completedSourceCount !== frozen.videos.length)
         throw new ManualSubscriptionCatalogError("source_failed")
@@ -1414,6 +1500,9 @@ export async function runManualSubscriptionCatalog(
     reason = classify(error)
   } finally {
     if (heartbeatTimer) clearInterval(heartbeatTimer)
+    await heartbeatInFlight?.catch(() => {
+      reason ??= "admin_unavailable"
+    })
     if (imported)
       await imported.dispose().catch(() => {
         reason ??= "import_unavailable"

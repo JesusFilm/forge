@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto"
 
 import { describe, expect, it, vi } from "vitest"
+import { z } from "zod"
 
 import {
   buildCandidateRetrieval,
@@ -576,6 +577,199 @@ async function pilotFixture(
 }
 
 describe("manual subscription catalog preflight", () => {
+  it("accepts bounded operator concurrency without changing generation identity", async () => {
+    const fixture = await pilotFixture()
+    const config = {
+      input: fixture.input,
+      concurrency: 12,
+      codexExecutable: "/tmp/fixture-codex",
+      stagingDirectory: "/tmp/fixture-staging",
+      capacityProbe: { executable: "/tmp/fixture-capacity", args: [] },
+    }
+    for (const key of [
+      "CI",
+      "RAILWAY_ENVIRONMENT",
+      "RAILWAY_ENVIRONMENT_NAME",
+      "RAILWAY_SERVICE_ID",
+    ])
+      vi.stubEnv(key, "")
+    try {
+      const args = ["--config", "/tmp/fixture-config.json", "--execute"]
+      const parsed = parseManualCatalogCommand(config, args)
+      expect(parsed.concurrency).toBe(12)
+      expect(parsed.input.generationInputDigest).toBe(
+        fixture.input.generationInputDigest,
+      )
+      for (const concurrency of [0, 13, 1.5])
+        expect(() =>
+          parseManualCatalogCommand({ ...config, concurrency }, args),
+        ).toThrow()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
+  it("drains concurrent edge batches before operator pause and leaves queued sources untouched", async () => {
+    const fixture = await pilotFixture("bound", [
+      "source-1",
+      "source-2",
+      "source-3",
+      "source-4",
+      "source-5",
+      "source-6",
+    ])
+    fixture.input.work = {
+      mode: "pilot",
+      sources: fixture.input.reviewed.sourceVideoIds.map((sourceVideoId) => ({
+        sourceVideoId,
+        exclusiveEndRank: 1,
+      })),
+    }
+    const controller = new AbortController()
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const batches = new Map<
+      string,
+      Array<{ sourceVideoId: string; checkpointRevision: number }>
+    >()
+    const originalStart = fixture.ports.edgePersistence.start
+    fixture.ports.edgePersistence.start = async (request) => {
+      batches.set(request.callId, request.members)
+      return originalStart(request)
+    }
+    const finished: string[] = []
+    fixture.ports.edgePersistence.finish = async (request) => {
+      finished.push(request.callId)
+      return {
+        generationId: request.generationId,
+        callId: request.callId,
+        state: "succeeded",
+        receiptStored: true,
+        replay: false,
+        members: batches.get(request.callId)!.map((member) => ({
+          sourceVideoId: member.sourceVideoId,
+          applicationState: "applied_empty",
+          appliedRevision: member.checkpointRevision + 1,
+          checkpointRevision: member.checkpointRevision + 1,
+        })),
+      }
+    }
+    fixture.ports.model.generateReserved = async (request, reserve) => {
+      const decision = await reserve()
+      if (decision.kind === "skip")
+        return { kind: "skipped", reservation: decision.reservation }
+      await gate
+      const reservation = z
+        .object({ callId: z.string() })
+        .parse(decision.reservation)
+      return {
+        kind: "dispatched",
+        reservation: decision.reservation,
+        response: {
+          output: request.schema.parse({
+            results: batches.get(reservation.callId)!.map((member) => ({
+              sourceVideoId: member.sourceVideoId,
+              edges: [],
+            })),
+          }),
+          usage: { inputTokens: 42, outputTokens: 12 },
+        },
+      }
+    }
+    const running = runManualSubscriptionCatalog(fixture.input, fixture.ports, {
+      concurrency: 2,
+      signal: controller.signal,
+    })
+    try {
+      await vi.waitFor(() => expect(batches.size).toBe(2))
+      controller.abort()
+      expect(fixture.actions).not.toContain("attempt_close")
+      expect(finished).toHaveLength(0)
+    } finally {
+      release()
+    }
+    await expect(running).resolves.toMatchObject({
+      state: "stopped",
+      reason: "operator_paused",
+      processedPageCount: 4,
+    })
+    expect(finished).toHaveLength(2)
+    expect(batches.size).toBe(2)
+    expect(fixture.actions).toContain("attempt_close")
+  })
+
+  it("prepares independent profiles concurrently at the operator limit", async () => {
+    const fixture = await pilotFixture()
+    const register = fixture.ports.profilePersistence.register
+    let release!: () => void
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const started = new Set<string>()
+    fixture.ports.profilePersistence.register = async (request) => {
+      started.add(request.videoId)
+      await gate
+      return register(request)
+    }
+    const running = runManualSubscriptionCatalog(fixture.input, fixture.ports, {
+      concurrency: 2,
+    })
+    try {
+      await vi.waitFor(() => expect(started.size).toBe(2), { timeout: 1000 })
+      expect(fixture.actions).not.toContain("attempt_close")
+    } finally {
+      release()
+      await running
+    }
+    await expect(running).resolves.toMatchObject({
+      state: "stopped",
+      reason: "pilot_boundary",
+    })
+  })
+
+  it("drains a sibling profile and stops queued profiles after failure", async () => {
+    const fixture = await pilotFixture()
+    fixture.input.work = {
+      mode: "pilot",
+      sources: [{ sourceVideoId: "source-one", exclusiveEndRank: 2 }],
+    }
+    const originalRegister = fixture.ports.profilePersistence.register
+    const started: string[] = []
+    const releases: Array<() => void> = []
+    fixture.ports.profilePersistence.register = async (request) => {
+      const index = started.push(request.videoId) - 1
+      await new Promise<void>((resolve) => {
+        releases[index] = resolve
+      })
+      if (index === 0)
+        throw Object.assign(new Error("fixture capacity refusal"), {
+          code: "capacity_stopped",
+        })
+      return originalRegister(request)
+    }
+    const running = runManualSubscriptionCatalog(fixture.input, fixture.ports, {
+      concurrency: 2,
+    })
+    try {
+      await vi.waitFor(() => expect(started).toHaveLength(2))
+      releases[0]!()
+      await new Promise<void>((resolve) => setTimeout(resolve, 20))
+      expect(fixture.actions).not.toContain("attempt_close")
+      expect(started).toHaveLength(2)
+    } finally {
+      for (const release of releases) release?.()
+    }
+    await expect(running).resolves.toMatchObject({
+      state: "stopped",
+      reason: "capacity_stopped",
+    })
+    expect(started).toHaveLength(2)
+    expect(fixture.profileKeys.size).toBe(1)
+    expect(fixture.actions).toContain("attempt_close")
+  })
+
   it("rejects a manual replacement outside selected pilot profiles before any write or model call", async () => {
     const fixture = await pilotFixture()
     const selected =
