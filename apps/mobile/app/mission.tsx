@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useTypography } from "../src/hooks/useTypography"
 import { INLINE_MARK, splitAtMarker } from "../src/i18n/splitAtMarker"
+import { useTextDirection } from "../src/i18n/textDirection"
 import { useT } from "../src/i18n/useT"
 import {
   ACCENT_ON_DARK,
@@ -52,6 +53,8 @@ const BACK_BUTTON_CLEARANCE = BACK_BUTTON_PROPS.topOffset + 40 + 14
 export default function MissionScreen() {
   const typography = useTypography()
   const t = useT("Mission")
+  // feat-695 R17: the prose keeps the start edge of its own language.
+  const paragraph = useTextDirection().uiParagraph
   const [headlineBefore, headlineAfter] = splitAtMarker(
     t("inviteHeadline", { accent: INLINE_MARK }),
     INLINE_MARK,
@@ -130,7 +133,9 @@ export default function MissionScreen() {
         >
           {t("headline")}
         </Text>
-        <Text style={[styles.intro, typography.body]}>{t("intro")}</Text>
+        <Text style={[styles.intro, typography.body, paragraph]}>
+          {t("intro")}
+        </Text>
 
         <View style={styles.cardStack}>
           {MISSION_POINTS.map((point) => (
@@ -143,7 +148,7 @@ export default function MissionScreen() {
               <Text style={[styles.cardTitle, typography.titleSmall]}>
                 {t(point.titleKey)}
               </Text>
-              <Text style={[styles.cardBody, typography.bodySmall]}>
+              <Text style={[styles.cardBody, typography.bodySmall, paragraph]}>
                 {t(point.descriptionKey)}
               </Text>
             </View>
@@ -169,7 +174,7 @@ export default function MissionScreen() {
               >
                 {t(highlight.titleKey)}
               </Text>
-              <Text style={[styles.cardBody, typography.bodySmall]}>
+              <Text style={[styles.cardBody, typography.bodySmall, paragraph]}>
                 {t(highlight.descriptionKey)}
               </Text>
             </View>

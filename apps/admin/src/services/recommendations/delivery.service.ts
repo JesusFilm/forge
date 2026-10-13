@@ -225,7 +225,10 @@ export class RecommendationDeliveryService {
   ): Promise<SemanticRecommendationDelivery> {
     const nowMilliseconds = this.deps.nowMilliseconds ?? Date.now
     const deliveryStartedAt = nowMilliseconds()
-    const serviceDeadlineAt = deliveryStartedAt + DELIVERY_RETRIEVAL_BUDGET_MS
+    const serviceDeadlineAt = Math.min(
+      deliveryStartedAt + DELIVERY_RETRIEVAL_BUDGET_MS,
+      input.deadlineAt ?? Number.POSITIVE_INFINITY,
+    )
     const candidateDeadlineAt = serviceDeadlineAt - DELIVERY_ISSUANCE_RESERVE_MS
     const issuanceDeadlineAt = serviceDeadlineAt - DELIVERY_RESPONSE_RESERVE_MS
     assertWebRecommendationCaller(input.caller)
@@ -374,6 +377,8 @@ export class RecommendationDeliveryService {
       )
       const experimentPromise = profileTokenDigestPromise.then(
         (profileTokenDigest) => {
+          if (input.suppressExperimentEnrollment)
+            return { assignment: null, bypassReason: null }
           if (profileTokenDigest != null) {
             return { assignment: null, bypassReason: null }
           }
@@ -576,7 +581,11 @@ export class RecommendationDeliveryService {
         }
         // Owner releases never create an assignment. Activation serializes with
         // study activation and refuses overlapping authority for this cohort.
-        if (!ownerAuthority && this.deps.assignProfileExperiment) {
+        if (
+          !ownerAuthority &&
+          !input.suppressExperimentEnrollment &&
+          this.deps.assignProfileExperiment
+        ) {
           try {
             experiment = await withinDeadline(
               () =>

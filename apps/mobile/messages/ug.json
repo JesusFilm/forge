@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-ئايەتتىن {last}-ئايەتكىچە، جەمئىي {total}، {chapter}",
     "demoVerse": "كېيىنكى ئايەت ئۈچۈن ئۈستىگە سىيرىڭ",
     "demoChapter": "كېيىنكى باب ئۈچۈن سولغا سىيرىڭ",
+    "demoChapterRtl": "كېيىنكى باب ئۈچۈن ئوڭغا سىيرىڭ",
     "demoSkip": "ئاتلاش ئۈچۈن چېكىڭ",
     "demoSkipAriaLabel": "سىيرىش كۆرسەتمىسىدىن ئاتلاش",
     "selectVerseAriaHint": "بۇ ئايەتنى تاللاش ئۈچۈن قوش چېكىڭ",

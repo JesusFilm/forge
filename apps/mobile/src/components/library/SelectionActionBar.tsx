@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
 import { useTypography } from "../../hooks/useTypography"
+import { insetPadding } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import { ACCENT, TEXT_ON_OVERLAY, TEXT_PRIMARY } from "../../lib/color"
 import { formatLibraryBytes } from "../../lib/libraryDownloads"
@@ -45,6 +46,7 @@ export function SelectionActionBar({
   // The host is a root route, so the inset holds the home indicator only.
   const indicator = insets.bottom
 
+  const sidePadding = insetPadding(insets)
   const shape = isPill
     ? {
         height: TAB_BAR_HEIGHT_IOS + indicator,
@@ -52,8 +54,8 @@ export function SelectionActionBar({
         paddingBottom: indicator,
         // An edge padding replaces styles.bar's paddingHorizontal outright, so
         // the base value has to be added back in or the buttons touch the edge.
-        paddingLeft: BAR_SIDE_PADDING + insets.left,
-        paddingRight: BAR_SIDE_PADDING + insets.right,
+        paddingLeft: BAR_SIDE_PADDING + sidePadding.paddingLeft,
+        paddingRight: BAR_SIDE_PADDING + sidePadding.paddingRight,
         backgroundColor: undefined,
         borderTopWidth: 0,
       }

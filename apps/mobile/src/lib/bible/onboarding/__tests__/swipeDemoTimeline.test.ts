@@ -85,8 +85,8 @@ describe("the swipe demo timeline (R16)", () => {
   })
 
   it("moves the finger up for a verse and left for a chapter in every cycle", () => {
-    const up = partTravelKeyframes("verse", 80)
-    const left = partTravelKeyframes("chapter", 80)
+    const up = partTravelKeyframes("verse", 80, 1)
+    const left = partTravelKeyframes("chapter", 80, 1)
     for (const [keyframes, spans] of [
       [up, visibleSpans(verse)],
       [left, visibleSpans(chapter)],
@@ -98,11 +98,26 @@ describe("the swipe demo timeline (R16)", () => {
     }
   })
 
+  // feat-695 R11, R14: the chapter finger shows the swipe that opens the next
+  // chapter, so it mirrors. The verse finger still moves up.
+  it("moves the chapter finger right in a right-to-left layout", () => {
+    const up = partTravelKeyframes("verse", 80, -1)
+    const right = partTravelKeyframes("chapter", 80, -1)
+    for (const [start, end] of visibleSpans(chapter)) {
+      expect(valueAt(right, start)).toBe(-40)
+      expect(valueAt(right, end)).toBe(40)
+    }
+    for (const [start, end] of visibleSpans(verse)) {
+      expect(valueAt(up, start)).toBe(40)
+      expect(valueAt(up, end)).toBe(-40)
+    }
+  })
+
   it("gives Animated input ranges that never go backwards", () => {
     for (const keyframes of [
       verse,
       chapter,
-      partTravelKeyframes("verse", 80),
+      partTravelKeyframes("verse", 80, 1),
       demoOpacityKeyframes(),
     ]) {
       const { inputRange } = keyframes

@@ -138,6 +138,7 @@
     "versesAriaValue": "Stihovi od {first} do {last}, od ukupno {total}, {chapter}",
     "demoVerse": "Prevucite nagore za sledeći stih",
     "demoChapter": "Prevucite ulevo za sledeće poglavlje",
+    "demoChapterRtl": "Prevucite udesno za sledeće poglavlje",
     "demoSkip": "Dodirnite da preskočite",
     "demoSkipAriaLabel": "Preskoči demonstraciju prevlačenja",
     "selectVerseAriaHint": "Dvaput dodirnite da izaberete ovaj stih",

@@ -16,6 +16,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Feature Index
 
+Added October 5, after the status snapshot above:
+[feat-590 — Precomputed video recommendation experiment](content-discovery/feat-590-precomputed-video-recommendation-experiment.md)
+is in progress. The completed integration-fixture maintenance record was
+renumbered to feat-612 to keep the two feature identities distinct.
+
 ### Content Discovery
 
 | ID                                                                                                             | Feature                                                                                         | Owner      | Priority | Start      | Days | Due        | Status      |
@@ -183,6 +188,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-573](content-discovery/feat-573-sustainable-cowatch-live-refresh.md)                                     | Sustain live co-watch with bounded graph refresh                                                | nisal      | P1       | 2026-10-01 | 3    | 2026-10-03 | complete    |
 | [feat-589](content-discovery/feat-589-recommendation-audio-aware-retrieval-locale-identity.md)                 | Repair recommendation audio-aware retrieval and locale identity                                 | nisal      | P1       | 2026-10-01 | 5    | 2026-10-05 | complete    |
 | [feat-609](content-discovery/feat-609-filtered-hnsw-fixture-recall.md)                                         | Diagnose intermittent filtered HNSW recommendation fixture recall                               | nisal      | P1       | 2026-10-06 | 2    | 2026-10-07 | in-progress |
+| [feat-683](content-discovery/feat-683-watch-home-touch-prefetch-gate.md)                                       | Gate Watch home prefetch on touch                                                               | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | cancelled   |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | cancelled   |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | cancelled   |
@@ -216,7 +222,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-552](content-discovery/feat-552-mobile-explore-clips-feed.md)                                            | Mobile Explore clips feed                                                                       | urim       | P2       | 2026-09-25 | 21   | 2026-10-15 | complete    |
 | [feat-563](content-discovery/feat-563-shadow-evaluation-dispatch-recovery.md)                                  | Atomic and recoverable shadow evaluation dispatch                                               | nisal      | P2       | 2026-09-29 | 3    | 2026-10-01 | complete    |
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | cancelled   |
-| [feat-590](content-discovery/feat-590-refresh-recommendation-integration-fixtures.md)                          | Refresh stale recommendation integration test fixtures                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
+| [feat-612](content-discovery/feat-612-refresh-recommendation-integration-fixtures.md)                          | Refresh stale recommendation integration test fixtures                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
+| [feat-659](content-discovery/feat-659-watch-language-index-rtl.md)                                             | Complete RTL and mixed-language markup on the Watch language index                              | urim       | P2       | 2026-10-08 | 2    | 2026-10-09 | complete    |
 
 ### Media Generation
 

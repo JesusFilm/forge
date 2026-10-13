@@ -8,6 +8,7 @@ let Stack: typeof import("expo-router").Stack
 let useRouter: typeof import("expo-router").useRouter
 let StatusBar: typeof import("expo-status-bar").StatusBar
 let Ionicons: typeof import("@expo/vector-icons/Ionicons").default
+let directionalIcon: typeof import("../src/i18n/layoutRtl").directionalIcon
 let ApolloProvider: typeof import("@apollo/client/react").ApolloProvider
 let SafeAreaProvider: typeof import("react-native-safe-area-context").SafeAreaProvider
 let getApolloClient: typeof import("../src/lib/apolloClient").getApolloClient
@@ -57,6 +58,12 @@ let getSplashSession:
   | undefined
 let useLocaleResolutionLog: typeof import("../src/i18n/useLocaleResolutionLog").useLocaleResolutionLog
 let useT: typeof import("../src/i18n/useT").useT
+// Defaults, because a failed direction start must not reach the Startup Error
+// panel: the app then renders in the direction it has (feat-695 U2).
+let useDirectionReloadPending: typeof import("../src/i18n/layoutDirection").useDirectionReloadPending =
+  () => false
+let directionReloadKind: typeof import("../src/i18n/layoutDirection").directionReloadKind =
+  () => null
 
 // require() is intentional — static imports cause silent white screens when
 // module-level throws (e.g., env validation) crash the entire module graph.
@@ -68,6 +75,7 @@ try {
   useRouter = router.useRouter
   StatusBar = require("expo-status-bar").StatusBar
   Ionicons = require("@expo/vector-icons/Ionicons").default
+  directionalIcon = require("../src/i18n/layoutRtl").directionalIcon
   ApolloProvider = require("@apollo/client/react").ApolloProvider
   SafeAreaProvider = require("react-native-safe-area-context").SafeAreaProvider
   getApolloClient = require("../src/lib/apolloClient").getApolloClient
@@ -130,6 +138,15 @@ try {
   // phone's language. A failed phone read keeps English and does not throw.
   const localeStore = require("../src/i18n/localeStore")
   localeStore.startLocaleSync()
+  // feat-695 KTD3: right after the UI Locale resolves, before the first render.
+  try {
+    const layoutDirection = require("../src/i18n/layoutDirection")
+    layoutDirection.startLayoutDirection()
+    useDirectionReloadPending = layoutDirection.useDirectionReloadPending
+    directionReloadKind = layoutDirection.directionReloadKind
+  } catch (error: unknown) {
+    reportDatadogError?.(error, { "layout_direction.fault": "start_failed" })
+  }
   useLocaleResolutionLog =
     require("../src/i18n/useLocaleResolutionLog").useLocaleResolutionLog
   useT = require("../src/i18n/useT").useT
@@ -279,7 +296,11 @@ function HeaderBackButton() {
       {...{ "dd-action-name": "header-back" }}
       hitSlop={12}
     >
-      <Ionicons name="chevron-back" size={28} color={ACCENT} />
+      <Ionicons
+        name={directionalIcon("chevron-back")}
+        size={28}
+        color={ACCENT}
+      />
     </Pressable>
   )
 }
@@ -338,6 +359,17 @@ export default function RootLayout() {
     )
   }
 
+  // feat-695 KTD3: a runtime that reloads for direction mounts no provider, so
+  // the downloader, reminders, sign-in refresh, and Datadog never start in it.
+  // The native splash stays up, because nothing here hides it.
+  const directionReloadPending = useDirectionReloadPending()
+  if (directionReloadPending) {
+    return <View style={{ flex: 1, backgroundColor: BG_COLOR }} />
+  }
+  return <AppRoot />
+}
+
+function AppRoot() {
   const clientRef = useRef(getApolloClient())
 
   // Lock the whole app to portrait; only the fullscreen video player rotates
@@ -384,7 +416,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (!hydrated || jsTtiEmittedRef.current) return
     jsTtiEmittedRef.current = true
-    addDatadogTiming("js_tti")
+    // feat-695 U2: a runtime after a direction reload gets its own name, so
+    // cold-start numbers do not mix the two cases.
+    addDatadogTiming(
+      directionReloadKind() == null ? "js_tti" : "js_tti_direction_reload",
+    )
   }, [hydrated])
 
   // After hydration, so MobileDatadogProvider has mounted; the SDK buffers

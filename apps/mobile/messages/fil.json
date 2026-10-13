@@ -138,6 +138,7 @@
     "versesAriaValue": "Mga talata {first} hanggang {last} sa {total}, {chapter}",
     "demoVerse": "Mag-swipe pataas para sa susunod na talata",
     "demoChapter": "Mag-swipe pakaliwa para sa susunod na kabanata",
+    "demoChapterRtl": "Mag-swipe pakanan para sa susunod na kabanata",
     "demoSkip": "I-tap para laktawan",
     "demoSkipAriaLabel": "Laktawan ang demo ng pag-swipe",
     "selectVerseAriaHint": "I-double tap para piliin ang talatang ito",

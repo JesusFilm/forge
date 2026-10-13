@@ -138,6 +138,7 @@
     "versesAriaValue": "Retci od {first} do {last}, od ukupno {total}, {chapter}",
     "demoVerse": "Povucite prema gore za sljedeći redak",
     "demoChapter": "Povucite ulijevo za sljedeće poglavlje",
+    "demoChapterRtl": "Povucite udesno za sljedeće poglavlje",
     "demoSkip": "Dodirnite za preskakanje",
     "demoSkipAriaLabel": "Preskoči prikaz povlačenja",
     "selectVerseAriaHint": "Dvaput dodirnite za odabir ovog retka",
