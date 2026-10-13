@@ -393,3 +393,45 @@ Native public-service tests cover all 1,031 videos, multi-page transcripts, the
 original sequential corpus digest, out-of-order completion and error draining.
 Production continuation and full-catalog capacity qualification remain operator
 steps after normal review, merge and deployment.
+
+### October 14: bind map citations before model selection
+
+The deployed 16 KiB profile and bounded import repairs passed live verification:
+GA preparation completed in 26.6 seconds and copy/bind in 31.7 seconds. The v4
+pilot then retained six ready profiles and ten successful physical map calls.
+Two later maps of the same six-part transcript rejected `profile_map_anchor_invalid`;
+the explicit replacement for the first rejection succeeded, while the final part
+rejected separately. All twelve physical-call receipts have complete known usage,
+zero calls remain pending, and no recommendation source has finalized. Preserve
+these receipts and the existing single-replacement authorization. Rejected raw
+answers were not retained, so exact quotation-error replay is unavailable.
+
+The scoped repair changes the map response from copied quotation text and
+fragment identifiers to a citation ID selected from exact spans prepared for
+that map part. Repeated text at different source offsets receives distinct IDs.
+The server resolves only current-part offers and materializes the existing
+video/chunk/transcript/language, UTF-16 range and text-hash proof. Unknown IDs
+reject the whole map with observed usage; no fuzzy match, evidence omission or
+retry is introduced. Citation identity establishes provenance, not the semantic
+truth of the model's English claim.
+
+Render every original selected transcript fragment as ordered text segments
+with citation labels, preserving every character and whitespace exactly once.
+Joining each fragment's segment text must reproduce the original UTF-8 bytes;
+short or whitespace-only segments remain readable even when they have no citation
+ID. This supplies the complete transcript without duplicating it as an offer
+list. Expose citations throughout each part, retain every profile field and up
+to eight anchors, and respect Unicode scalar boundaries and exact offsets.
+Count actual rendered prompt and schema overhead before reserving a call; retain the 65,536
+byte prompt, 16,384 byte materialized node, 17,408 byte call reservation, 2,048
+output-token, 64-part and 127-call bounds. The reducer still copies only verified
+child anchors and covers the complete ordered child range. Persisted profile
+and Admin evidence contracts do not change.
+
+Version the changed map wire/prompt identity as `complete-profile-v5`; start a
+new generation after normal review and deployment, keeping v4 immutable and
+reusing the sealed analytics origin only through the existing identity checks.
+A fresh pilot must demonstrate completion and support measured capacity review
+before full-catalog admission. Deterministic fixtures cover citation ambiguity,
+later spans, Unicode offsets, unknown IDs, complete input coverage, replay and
+byte/schema bounds; they do not establish live recommendation quality.
