@@ -344,6 +344,13 @@ describe("runWatchRouteAlerts", () => {
       result: { run: claimResult().result.run, replayed: false },
     }))
     const queryLane = vi.fn<typeof queryWatchRouteNotFoundLane>()
+    const probe = vi.fn(async ({ path }: { path: string }) => ({
+      kind: "healthy_html" as const,
+      status: 200,
+      probedAt: "2026-09-10T12:15:00.000Z",
+      finalUrl: `https://www.jesusfilm.org${path}`,
+      contentType: "text/html",
+    }))
 
     const result = await runWatchRouteAlerts(
       { scheduledFor: "2026-09-10T12:15:00.000Z" },
@@ -353,10 +360,17 @@ describe("runWatchRouteAlerts", () => {
         claim: vi.fn(async () => claimResult()),
         complete,
         queryLane,
+        probe,
       },
     )
 
     expect(queryLane).not.toHaveBeenCalled()
+    expect(probe).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        origin: "https://www.jesusfilm.org",
+        path: "/watch/old.html",
+      }),
+    )
     expect(result).toMatchObject({ ok: false, reason: "failed" })
     expect(complete).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -138,6 +138,7 @@
     "versesAriaValue": "Kpukpui {first} va se ɖe {last} le {total} me, {chapter}",
     "demoVerse": "Ʋã asi ɖe dzi nàkpɔ kpukpui si kplɔe ɖo",
     "demoChapter": "Ʋã asi ɖe miame nàkpɔ ta si kplɔe ɖo",
+    "demoChapterRtl": "Ʋã asi ɖe ɖusime nàkpɔ ta si kplɔe ɖo",
     "demoSkip": "Ka asi nàtso eŋu",
     "demoSkipAriaLabel": "Tso asiʋãʋã ƒe fiafia la ŋu",
     "selectVerseAriaHint": "Ka asi eŋu zi eve nàtia kpukpui sia",

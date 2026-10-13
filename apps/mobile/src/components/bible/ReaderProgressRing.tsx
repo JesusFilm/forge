@@ -70,31 +70,36 @@ export function ReaderProgressRing({
 
   return (
     <View style={[styles.root, { width: size, height: size }]}>
-      <View
-        style={[styles.layer, circle, { borderColor: trackColor }]}
-        testID="reader-progress-ring-track"
-      />
-      <View
-        style={[styles.clip, { left: radius, width: radius, height: size }]}
-      >
-        <Animated.View
-          testID="reader-progress-ring-right"
-          style={[
-            styles.layer,
-            halfRing,
-            { left: -radius, transform: [{ rotate: rightTurn }] },
-          ]}
+      {/* A ring fills clockwise in every layout (Material bidirectionality), but
+          React Native swaps the clips' `left` in a right-to-left layout. So
+          the drawing is left-to-right; the center keeps the app's direction. */}
+      <View style={styles.drawing} testID="reader-progress-ring-drawing">
+        <View
+          style={[styles.layer, circle, { borderColor: trackColor }]}
+          testID="reader-progress-ring-track"
         />
-      </View>
-      <View style={[styles.clip, { left: 0, width: radius, height: size }]}>
-        <Animated.View
-          testID="reader-progress-ring-left"
-          style={[
-            styles.layer,
-            halfRing,
-            { left: 0, transform: [{ rotate: leftTurn }] },
-          ]}
-        />
+        <View
+          style={[styles.clip, { left: radius, width: radius, height: size }]}
+        >
+          <Animated.View
+            testID="reader-progress-ring-right"
+            style={[
+              styles.layer,
+              halfRing,
+              { left: -radius, transform: [{ rotate: rightTurn }] },
+            ]}
+          />
+        </View>
+        <View style={[styles.clip, { left: 0, width: radius, height: size }]}>
+          <Animated.View
+            testID="reader-progress-ring-left"
+            style={[
+              styles.layer,
+              halfRing,
+              { left: 0, transform: [{ rotate: leftTurn }] },
+            ]}
+          />
+        </View>
       </View>
       {children != null && <View style={styles.center}>{children}</View>}
     </View>
@@ -103,6 +108,12 @@ export function ReaderProgressRing({
 
 const styles = StyleSheet.create({
   root: { alignItems: "center", justifyContent: "center" },
+  drawing: {
+    ...StyleSheet.absoluteFill,
+    alignItems: "center",
+    justifyContent: "center",
+    direction: "ltr",
+  },
   layer: { position: "absolute", top: 0 },
   clip: { position: "absolute", top: 0, overflow: "hidden" },
   center: {

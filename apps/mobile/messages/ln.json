@@ -138,6 +138,7 @@
     "versesAriaValue": "Ba vɛrsɛ {first} tii {last} kati na {total}, {chapter}",
     "demoVerse": "Benda na likolo mpo na vɛrsɛ oyo ekolanda",
     "demoChapter": "Benda na loboko ya mwasi mpo na mokapo oyo ekolanda",
+    "demoChapterRtl": "Benda na loboko ya mobali mpo na mokapo oyo ekolanda",
     "demoSkip": "Fina mpo na koleka",
     "demoSkipAriaLabel": "Leka lilakisi ya kobenda",
     "selectVerseAriaHint": "Fina mbala mibale mpo na kopona vɛrsɛ oyo",

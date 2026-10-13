@@ -53,7 +53,7 @@ jest.mock("react-native-safe-area-context", () => ({
 }))
 
 import { act } from "react"
-import { Platform } from "react-native"
+import { I18nManager, Platform } from "react-native"
 
 import {
   PlayerControls,
@@ -68,8 +68,10 @@ import {
   unmount,
   type NodePath,
   type NodeRequireLike,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 // A player stopped at 0:00 of a two-minute video.
 function makePlayer() {
@@ -684,5 +686,55 @@ describe("fullscreenCaptionOffset", () => {
     expect(fullscreenCaptionOffset(21)).toBeLessThan(
       throughSeekBar + ROW_ABOVE_SEEK_BAR,
     )
+  })
+})
+
+describe("PlayerControls in a right-to-left layout (feat-695 R12, KTD7)", () => {
+  beforeEach(() => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+    jest.replaceProperty(I18nManager, "isRTL", true)
+  })
+  afterEach(() => {
+    jest.restoreAllMocks()
+  })
+
+  function hostByLabel(renderer: TestInstance, label: string): RenderedNode {
+    const [node] = renderer.root.findAll(
+      (n) => n.props.accessibilityLabel === label && typeof n.type === "string",
+    )
+    if (node == null) throw new Error(`no host node labelled ${label}`)
+    return node
+  }
+
+  it("keeps skip back, play, and skip forward in a left-to-right row", async () => {
+    const renderer = await render(false)
+    for (const label of ["Back 10 seconds", "Play", "Forward 10 seconds"]) {
+      expect(directionAbove(hostByLabel(renderer, label))).toBe("ltr")
+    }
+    await unmount(renderer)
+  })
+
+  // The route buttons are not playback controls, and the watch page's minimize
+  // button mirrors to their corner, so they must mirror too (R11).
+  it("mirrors the route buttons with the app, inline and in fullscreen", async () => {
+    for (const fullscreen of [false, true]) {
+      const renderer = await render(fullscreen, { onOpenSettings: () => {} })
+      expect(directionAbove(hostByLabel(renderer, "Video settings"))).toBe(
+        "rtl",
+      )
+      expect(directionAbove(hostByLabel(renderer, "Play"))).toBe("ltr")
+      await unmount(renderer)
+    }
+  })
+
+  it("lays out the fullscreen bar left to right, so its side insets keep their sides", async () => {
+    const renderer = await render(true)
+    // The seek bar is a direct child of the bar that carries the insets.
+    expect(directionAbove(hostByLabel(renderer, "Seek bar"))).toBe("ltr")
+    expect(directionAbove(hostByLabel(renderer, "Exit fullscreen"))).toBe("ltr")
+    await unmount(renderer)
   })
 })

@@ -138,6 +138,7 @@
     "versesAriaValue": "Nkyekyɛm {first} kosi {last} wɔ {total} mu, {chapter}",
     "demoVerse": "Pra kɔ soro ma nkyekyɛm a edi hɔ",
     "demoChapter": "Pra kɔ benkum ma ti a edi hɔ",
+    "demoChapterRtl": "Pra kɔ nifa ma ti a edi hɔ",
     "demoSkip": "Bɔ so na twa so",
     "demoSkipAriaLabel": "Twa pra nkyerɛkyerɛ no so",
     "selectVerseAriaHint": "Bɔ so mprenu na paw nkyekyɛm yi",

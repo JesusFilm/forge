@@ -138,6 +138,7 @@
     "versesAriaValue": "{first} илә {last} арасы ајәләр, ҹәми {total}, {chapter}",
     "demoVerse": "Нөвбәти ајә үчүн јухары сүрүшдүрүн",
     "demoChapter": "Нөвбәти фәсил үчүн сола сүрүшдүрүн",
+    "demoChapterRtl": "Нөвбәти фәсил үчүн саға сүрүшдүрүн",
     "demoSkip": "Кечмәк үчүн тохунун",
     "demoSkipAriaLabel": "Сүрүшдүрмә нүмајишини кеч",
     "selectVerseAriaHint": "Бу ајәни сечмәк үчүн ики дәфә тохунун",

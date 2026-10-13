@@ -14,6 +14,7 @@ import {
   watchEpisodePath,
   watchVideoPath,
 } from "@/lib/routes"
+import { selectOwnLanguageName } from "@/lib/language-native-name"
 import { WATCH_CACHE_TAGS } from "@/lib/watch-cache-tags"
 import {
   getWatchRouteManifest,
@@ -193,6 +194,8 @@ export type WatchLanguageInventorySwitcherLanguage = {
   slug: string
   languageName: string
   nativeName: string | null
+  /** Verified declarable tag of `nativeName`; absent means untagged. */
+  nativeNameLang?: string
   bcp47: string | null
 }
 
@@ -419,6 +422,20 @@ function nativeLanguageNameFromJson(
   return null
 }
 
+// Tag only when the displayed text is the language's OWN-language entry
+// (`selectOwnLanguageName`); the `native`/`local`/script-mismatched fallbacks in
+// `nativeLanguageNameFromJson` stay untagged.
+function nativeNameLangFromJson(
+  name: unknown,
+  bcp47: string | null | undefined,
+  nativeName: string | null,
+): { nativeNameLang?: string } {
+  const own = nativeName ? selectOwnLanguageName(name, bcp47) : null
+  return own?.lang && own.text === nativeName
+    ? { nativeNameLang: own.lang }
+    : {}
+}
+
 /**
  * `additionalAdmittedSlugs` widens this veto beyond the compiled corpus. The
  * corpus alone silently drops every language admin published since the last
@@ -443,14 +460,16 @@ function switcherLanguageFromRaw(
     return null
   }
   const languageName = languageNameFromJson(language.name, slug)
+  const nativeName = nativeLanguageNameFromJson(
+    language.name,
+    language.bcp47,
+    languageName,
+  )
   return {
     slug,
     languageName,
-    nativeName: nativeLanguageNameFromJson(
-      language.name,
-      language.bcp47,
-      languageName,
-    ),
+    nativeName,
+    ...nativeNameLangFromJson(language.name, language.bcp47, nativeName),
     bcp47: language.bcp47 ?? null,
   }
 }
@@ -657,6 +676,11 @@ export async function resolveWatchLanguageInventory(
     slug: resolvedLanguageSlug,
     languageName,
     nativeName: languageNativeName,
+    ...nativeNameLangFromJson(
+      raw.language?.name,
+      raw.language?.bcp47,
+      languageNativeName,
+    ),
     bcp47: raw.language?.bcp47 ?? null,
   } satisfies WatchLanguageInventorySwitcherLanguage
   // Independent of each other, so they must not form a serial waterfall on the

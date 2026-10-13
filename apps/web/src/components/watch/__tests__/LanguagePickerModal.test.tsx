@@ -421,6 +421,35 @@ describe("LanguagePickerModal — globe overlay", () => {
     )
   })
 
+  it("keeps verified English labels with accented place names separate from the endonym", () => {
+    renderModal({
+      open: true,
+      variants: [
+        makeVariant({
+          documentId: "v-fr",
+          languageSlug: "french-reunion",
+          language: {
+            coreId: "fr",
+            slug: "french-reunion",
+            name: "French, Réunion",
+            nameLang: "en",
+            nativeName: "Français",
+            nativeNameLang: "fr",
+            bcp47: "fr",
+          },
+        }),
+      ],
+      currentLanguageSlug: "french-reunion",
+    })
+    const trigger = $('[data-testid="language-combobox-trigger"]')!
+    expect(trigger.querySelector('bdi[lang="en"]')?.textContent).toBe(
+      "French, Réunion",
+    )
+    expect(trigger.querySelector('bdi[lang="fr"]')?.textContent).toBe(
+      "Français",
+    )
+  })
+
   it("renders Russian catalog links with the selected native language name", () => {
     setLanguagePickerCatalog(ruMessages, "ru")
     const russianVariants = [
