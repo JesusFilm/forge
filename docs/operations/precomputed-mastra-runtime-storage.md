@@ -13,6 +13,17 @@ the private launch paths also request hidden trace input/output.
 
 ## Retention and safety
 
+Complete content-profile nodes are bounded to 4,096 minified UTF-8 JSON bytes,
+including verified anchor metadata, covered range and child digests. Each
+physical profile call reserves 5,120 bytes (the node plus the existing 1 KiB
+receipt allowance); final profiles retain their existing 4,096-byte bound.
+The 127-call status reply has a 1 MiB ceiling. Prompt version
+`complete-profile-v3` requires a new generation identity; it does not reset old
+terminal profiles or retry rejected calls. Full selected transcript input,
+candidate coverage and profile field maxima remain unchanged. Existing measured
+capacity, overlap, reserve and freshness checks still govern admission; these
+logical bounds do not substitute for physical storage measurement.
+
 The deployed production runtime arms a six-hour retention timer; importing
 the module, building it, or running development does not delete rows. This
 timer is **not** a catalog refresh schedule. Each sweep is bounded to ten

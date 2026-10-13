@@ -3,6 +3,7 @@ import {
   ContentProfileExecutionError,
   compactProfileSchema,
   profileNodeSchema,
+  MAX_PROFILE_NODE_BYTES,
   type ProfilePersistencePort,
 } from "./content-profile-executor"
 import type { SourceIngest } from "./source-generation"
@@ -30,7 +31,8 @@ const profile = compactProfileSchema.refine(
   (value) => Buffer.byteLength(JSON.stringify(value), "utf8") <= 4_096,
 )
 const node = profileNodeSchema.refine(
-  (value) => Buffer.byteLength(JSON.stringify(value), "utf8") <= 2_048,
+  (value) =>
+    Buffer.byteLength(JSON.stringify(value), "utf8") <= MAX_PROFILE_NODE_BYTES,
 )
 const registrationReply = identity.extend({
   kind,
@@ -106,7 +108,7 @@ export function createContentProfilePersistence(
       throw new ContentProfileExecutionError("profile_invalid")
     const raw = await ingest(input)
     // 127 bounded nodes plus their identities fit within this response ceiling.
-    if (!fitsJson(raw, 512 * 1024))
+    if (!fitsJson(raw, 1024 * 1024))
       throw new ContentProfileExecutionError("profile_conflict")
     const reply = schema.safeParse(raw)
     if (
