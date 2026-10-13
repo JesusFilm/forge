@@ -1807,6 +1807,12 @@ The record a device creates with admin when notification permission is granted: 
 
 The delivery of one Announcement Campaign across time zones: each device receives it at the campaign's local hour in its own zone, so a single send spreads over about a day and the report is complete only after the last zone. The wave enforces one announcement per device per local day; when two campaigns collide, the earlier scheduled one wins. "Send now everywhere" is the explicit exception that ignores the local hour.
 
+### Cold Tap
+
+A tap on an Announcement Campaign or a Lapse Reminder after the phone has stopped the app's process while the app's task stays in the list of recent apps. For an Announcement Campaign, the destination must still open and the open must still be reported.
+
+On Android the phone restarts the old task from its original launch, so the tap reaches the app as a later delivery to that restarted screen, not as the launch itself, and the app has to catch it there. The restart also brings back the launch that first created the task, so a tap that created it must not open its destination again on a later reopen, and a newer Cold Tap must win over it. A tap that finds no task starts the app fresh, and a tap while the process is alive is a warm tap; neither is a Cold Tap.
+
 ### Campaign Revision
 
 The number that names one state of an Announcement Campaign's copy, destination, and audience; an AI agent and the dashboard both write against it, so a write made from an older revision is refused instead of overwriting newer work.
@@ -1838,4 +1844,5 @@ It is not a Triage Signal: nothing detects it, nothing baselines or deduplicates
 - "Chapter" carries two unrelated meanings. A **Chapter** is a segment of one feature film (a catalog relationship); a **felt-need chapter** is a themed section of Showcase Mode's reel, announced by a Chapter Card. Qualify which is meant whenever both surfaces are in scope.
 - "Episode" had been used loosely for any child Video, which is what let a film's Chapters be counted and billed as episodes. An Episode is a child of a series and stands alone; a film's children are Chapters.
 - "Backdrop" names two unrelated blurred-artwork layers on different platforms: the **Immersive Backdrop** is the Watch web wash behind a collection panel, while the **Ambient Backdrop** fills the letterboxing around the mobile and TV player. Qualify which is meant.
+- "Cold" tap had been used both for any tap that starts the app and for the narrower case where the process stopped but the app's task survived. A **Cold Tap** is only the narrower case; say "a tap that starts the app" for the wider one.
 - "Description" is ambiguous for a Video's localized copy: a locale carries both a short authored snippet and a longer catalog description, and which one a surface shows is decided per surface, not per client. The watch-home hero and the video watch page prefer the snippet and fall back to the description; the series page body, SEO metadata, and structured data prefer the description and fall back to the snippet. So a request to change or remove "the description" may act on either field — name the surface, and check its fallback order before assuming which.
