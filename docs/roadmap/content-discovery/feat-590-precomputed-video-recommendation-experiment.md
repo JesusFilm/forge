@@ -18,6 +18,13 @@ tags:
 
 ## Problem
 
+October 14 closeout: the owner requested a full-catalogue processing target below
+eight hours. Add bounded local concurrency (1–12; default 1) for independent
+profiles and source-pair batches, retain full profiles and the same Astra model,
+and drain in-flight receipts before pause or failure closes an attempt. Measure
+live throughput before claiming the target is achieved. Public activation
+remains a separate decision.
+
 Explore whether a capable reasoning model can find useful connections across
 the video catalog from transcripts, metadata, and historical analytics, with
 recommendations computed periodically and stored in PostgreSQL before viewers
