@@ -470,6 +470,12 @@ async function main() {
     for (const clip of manifest.shortFact?.explainer?.clips ?? []) {
       await stage(clip.audioFile)
     }
+    // The history board and notebook pin film stills (VoxBoard.tsx,
+    // VoxNotebook.tsx); they belong to no card.
+    const vh = manifest.shortFact?.voxHistory
+    for (const it of vh?.board?.items ?? []) await stage(it.file)
+    for (const pg of vh?.notebook?.pages ?? [])
+      for (const ph of pg.photos ?? []) await stage(ph.file)
     for (const c of manifest.cards) {
       await stage(c.audioFile)
       await stage(c.videoFile)

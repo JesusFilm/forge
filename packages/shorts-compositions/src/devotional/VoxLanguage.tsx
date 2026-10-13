@@ -841,10 +841,13 @@ export function VoxCaption({
   f,
   t,
   tokens,
+  top = 1100,
 }: {
   f: (n: number) => number
   t: number
   tokens: ReadonlyArray<{ word: string; startSec: number; endSec: number }>
+  /** Frame units; the notebook sets it under its drawing. */
+  top?: number
 }) {
   const cur = tokens.findIndex((w, i) => {
     const next = tokens[i + 1]
@@ -863,7 +866,7 @@ export function VoxCaption({
     <div
       style={{
         position: "absolute",
-        top: f(1100),
+        top: f(top),
         left: "50%",
         transform: `translateX(-50%) scale(${(0.92 + 0.08 * pop).toFixed(4)})`,
         opacity: pop,

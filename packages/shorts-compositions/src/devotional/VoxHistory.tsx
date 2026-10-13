@@ -28,8 +28,11 @@ import {
  */
 
 export type VoxHistorySpec = {
-  /** `clipping` (design B). Room for the notebook (C) later. */
-  style?: "clipping"
+  /** `clipping` (design B); `board` and `notebook` draw their own world
+   *  (VoxBoard.tsx, VoxNotebook.tsx; owner, 2026-10-13). */
+  style?: "clipping" | "board" | "notebook"
+  board?: unknown
+  notebook?: unknown
   /** Every mark and the label: ring, marker, strike, stamp. */
   accent?: string
   /** The verse on the strip ("…who sent him into his fields to feed pigs."). */

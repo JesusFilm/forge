@@ -18,6 +18,7 @@ import type { DevotionalCard, DevotionalInputProps } from "./schema"
 import { KineticCaption } from "./KineticCaption"
 import { AnimatedBook, AnimatedScroll } from "./SourceEmblems"
 import { StampLine } from "./StampLine"
+import { type BoardSpec, VoxBoard } from "./VoxBoard"
 import { type ExplainerSpec, VoxExplainer } from "./VoxExplainer"
 import {
   type VoxHistorySpec,
@@ -25,6 +26,7 @@ import {
   VoxHistoryTag,
   VOX_ORANGE,
 } from "./VoxHistory"
+import { type NotebookSpec, VoxNotebook } from "./VoxNotebook"
 import {
   VoxCaption,
   VoxHalftone,
@@ -189,10 +191,29 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
       ? (fact.voxHistory as VoxHistorySpec | undefined)
       : undefined
   const vox = Boolean(fact?.vox || voxHistory)
+  // The board and the notebook draw their own world (owner, 2026-10-13):
+  // no film under them, no dark pool.
+  const drawn =
+    voxHistory?.style === "board" || voxHistory?.style === "notebook"
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
-      {props.bgFile
+      {drawn && voxHistory?.style === "board" ? (
+        <VoxBoard
+          f={f}
+          t={t}
+          words={words}
+          spec={voxHistory.board as BoardSpec}
+        />
+      ) : drawn && voxHistory?.style === "notebook" ? (
+        <VoxNotebook
+          f={f}
+          t={t}
+          words={words}
+          spec={voxHistory.notebook as NotebookSpec}
+        />
+      ) : null}
+      {props.bgFile && !drawn
         ? (() => {
             const film = (
               <AbsoluteFill
@@ -220,9 +241,12 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
           })()
         : null}
       {/* An even dim, then the Figma's soft dark pool behind the text. */}
-      <AbsoluteFill style={{ background: "rgba(0,0,0,0.28)" }} />
+      {drawn ? null : (
+        <AbsoluteFill style={{ background: "rgba(0,0,0,0.28)" }} />
+      )}
       <div
         style={{
+          display: drawn ? "none" : undefined,
           // History: the taller pool of Figma 427-2745 (951 high, centred
           // 156.5 above the middle), under the credit and the captions.
           position: "absolute",
@@ -254,7 +278,7 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
             backgroundPosition: `${(((Math.floor(frame / 2) * 73) % 220) * width) / 900}px ${(((Math.floor(frame / 2) * 131) % 220) * width) / 900}px`,
             mixBlendMode: "overlay",
             // The black-and-white Vox film carries a heavier grain.
-            opacity: vox ? 0.55 : LANGUAGE_GRAIN_OPACITY,
+            opacity: drawn ? 0.3 : vox ? 0.55 : LANGUAGE_GRAIN_OPACITY,
             pointerEvents: "none",
           }}
         />
@@ -318,8 +342,15 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
               isRussian(words) ? "Из полного видео" : "From the Full Devotional"
             }
           />
-          <VoxHistoryLayout f={f} t={t} words={words} spec={voxHistory} />
-          <VoxCaption f={f} t={t} tokens={captionTokens(words)} />
+          {drawn ? null : (
+            <VoxHistoryLayout f={f} t={t} words={words} spec={voxHistory} />
+          )}
+          <VoxCaption
+            f={f}
+            t={t}
+            tokens={captionTokens(words)}
+            {...(voxHistory.style === "notebook" ? { top: 1170 } : {})}
+          />
         </>
       ) : language && fact?.vox ? (
         <>
