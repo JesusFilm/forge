@@ -1,6 +1,7 @@
 /* global jest */
 // Runs the REAL expo/config-plugins chain with the REAL expo-splash-screen and
 // react-native-google-cast plugins, so the anchors and the mod order are real.
+const { execFileSync } = require("child_process")
 const path = require("path")
 const { CodeGenerator, withPlugins } = require("expo/config-plugins")
 
@@ -457,5 +458,44 @@ describe("the plugin entry point", () => {
     expect(() =>
       plugin({ modResults: { language: "java", contents: TEMPLATE } }),
     ).toThrow(/Kotlin MainActivity/)
+  })
+})
+
+// The fixture above is a hand copy, and the restart path depends on singleTask,
+// so an Expo bump that changes either must fail here, not on a device.
+describe("the installed expo template", () => {
+  const templateTgz = path.join(
+    path.dirname(
+      require.resolve("expo/package.json", {
+        paths: [path.join(__dirname, "..")],
+      }),
+    ),
+    "template.tgz",
+  )
+  const readTemplateFile = (file) =>
+    execFileSync("tar", ["-xzOf", templateTgz, `package/${file}`], {
+      encoding: "utf8",
+    })
+  const SINGLE_TASK =
+    /<activity android:name="\.MainActivity"[^>]*android:launchMode="singleTask"/
+
+  it("still matches the TEMPLATE fixture", () => {
+    expect(
+      readTemplateFile(
+        "android/app/src/main/java/com/helloworld/MainActivity.kt",
+      ),
+    ).toBe(TEMPLATE)
+  })
+
+  it("still launches MainActivity as singleTask", () => {
+    expect(
+      readTemplateFile("android/app/src/main/AndroidManifest.xml"),
+    ).toMatch(SINGLE_TASK)
+  })
+
+  it("rejects another launch mode (negative control)", () => {
+    expect(
+      '<activity android:name=".MainActivity" android:launchMode="singleTop">',
+    ).not.toMatch(SINGLE_TASK)
   })
 })
