@@ -260,6 +260,20 @@ import boundary while retaining safe-integer, positivity and exhaustion checks;
 keep the 256 MiB object budget, 128 MiB temporary budget and 1 GiB temporary
 reserve unchanged. The generation remains incomplete with no model calls.
 
+After PR #2697, import succeeded and the authorized production pilot recorded
+four successful profile maps and one terminal `profile_node_bytes_exceeded`
+rejection, with known usage and no edge calls. The rejected response was not
+retained, so an exact production replay is unavailable. The scoped repair keeps
+the useful profile schema and full transcript/candidate coverage, aligns the
+complete-node application cap to 4,096 bytes, reserves 5,120 bytes per physical
+profile call, and bounds profile status replies to 1 MiB. Prompt version
+`complete-profile-v3` requires a new generation; old terminal ledgers remain
+immutable and compatible GA origin reuse still requires the existing checks.
+Native exact-boundary verification also exposed the PostgreSQL spaced-JSON
+constraint dependency. Deployment, generation completion, live baseline and
+manual activation remain outstanding; measured storage and allowance gates
+remain authoritative.
+
 For the current design phase, distinguish confirmed decisions, recommendations,
 and open questions; cross-check repository claims against code and existing
 evidence. Format-check edited Markdown. Do not mark this feature complete when

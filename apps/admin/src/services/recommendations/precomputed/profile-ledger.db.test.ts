@@ -338,7 +338,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           version: "complete_profile_v1",
           summaryEnglish: "S".repeat(600),
           themes: Array(12).fill("T".repeat(80)),
-          people: Array(3).fill("P".repeat(80)),
+          people: Array(12).fill("P".repeat(80)),
           places: [],
           citations: [],
           anchors: [],
@@ -349,7 +349,10 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       }
       expect(
         Buffer.byteLength(JSON.stringify(node), "utf8"),
-      ).toBeLessThanOrEqual(2048)
+      ).toBeLessThanOrEqual(4096)
+      expect(Buffer.byteLength(JSON.stringify(node), "utf8")).toBeGreaterThan(
+        2048,
+      )
       expect(
         await submit({
           action: "profile_call_finish",
@@ -376,6 +379,182 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           expectedNodeDigests: [digest(node)],
         }),
       ).toMatchObject({ state: "ready" })
+    })
+    it.each([4096, 4097])(
+      "enforces the exact canonical %s-byte node boundary with usage and replay",
+      async (targetBytes) => {
+        const base = await build(`profile-canonical-${targetBytes}`)
+        const input = registration(base, "transcript", [digest("part-zero")])
+        await submit(input)
+        const callId = randomUUID()
+        const stagePromptVersion = `${input.promptVersion}:map`
+        const binding = {
+          ...base,
+          callId,
+          cacheKey: input.cacheKey,
+          stage: "map",
+          stagePromptVersion,
+          nodeKey: nodeKey(input.cacheKey, "map", 0, stagePromptVersion),
+          inputDigest: digest("boundary-prompt"),
+          partIndex: 0,
+        }
+        await submit({
+          action: "profile_call_start",
+          ...binding,
+          startedAt: new Date().toISOString(),
+        })
+        const node = {
+          profile: {
+            version: "complete_profile_v1",
+            summaryEnglish: "S".repeat(600),
+            themes: Array(12).fill("T".repeat(80)),
+            people: Array(12).fill("P".repeat(80)),
+            places: Array(12).fill("é"),
+            citations: Array(12).fill("C"),
+            anchors: [],
+          },
+          coveredPartStart: 0,
+          coveredPartEnd: 1,
+          childNodeDigests: [],
+        }
+        const bytes = () => Buffer.byteLength(JSON.stringify(node), "utf8")
+        for (const list of [node.profile.places, node.profile.citations]) {
+          for (let index = 0; index < list.length; index++) {
+            list[index] += "x".repeat(
+              Math.min(80 - list[index]!.length, targetBytes - bytes()),
+            )
+          }
+        }
+        expect(bytes()).toBe(targetBytes)
+        const finish = {
+          action: "profile_call_finish",
+          ...binding,
+          status: "succeeded",
+          outputDigest: digest(node),
+          node,
+          usage: { inputTokens: 33, outputTokens: 6 },
+          finishedAt: new Date().toISOString(),
+        }
+        expect(await submit(finish)).toMatchObject({
+          receiptStored: true,
+          nodeApplied: targetBytes === 4096,
+          state: targetBytes === 4096 ? "succeeded" : "rejected",
+          replay: false,
+        })
+        expect(await submit(finish)).toMatchObject({
+          receiptStored: true,
+          nodeApplied: targetBytes === 4096,
+          replay: true,
+        })
+        const status = await submit({
+          action: "profile_status",
+          generationId: base.generationId,
+          generationInputDigest,
+          cacheKey: input.cacheKey,
+        })
+        expect(status).toMatchObject({
+          calls: [{ status: targetBytes === 4096 ? "succeeded" : "rejected" }],
+        })
+        const row =
+          await prisma.recommendationPrecomputedProfileCall.findFirstOrThrow({
+            where: { generationId: base.generationId, callId },
+          })
+        expect(row).toMatchObject({
+          inputTokens: 33,
+          outputTokens: 6,
+          receiptNodeApplied: targetBytes === 4096,
+        })
+        if (targetBytes > 4096) {
+          expect(row.nodeJson).toBeNull()
+          await expect(
+            submit({
+              action: "profile_call_start",
+              ...binding,
+              callId: randomUUID(),
+              startedAt: new Date().toISOString(),
+            }),
+          ).rejects.toThrow("Profile is terminal")
+          return
+        }
+        const [stored] = await prisma.$queryRaw<Array<{ bytes: number }>>`
+        SELECT octet_length(node_json::text)::integer AS bytes
+        FROM recommendation_precomputed_profile_call
+        WHERE generation_id = ${base.generationId} AND call_id = ${callId}::uuid`
+        expect(stored!.bytes).toBeGreaterThan(4096)
+        expect(stored!.bytes).toBeLessThanOrEqual(8192)
+        const [constraint] = await prisma.$queryRaw<
+          Array<{ validated: boolean; definition: string }>
+        >`
+          SELECT convalidated AS validated, pg_get_constraintdef(oid) AS definition
+          FROM pg_constraint
+          WHERE conrelid = 'recommendation_precomputed_profile_call'::regclass
+            AND conname = 'recommendation_precomputed_profile_call_node_json_check'`
+        expect(constraint!.validated).toBe(true)
+        expect(constraint!.definition).toContain("8192")
+        expect(
+          await submit({
+            action: "profile_finalize",
+            ...base,
+            cacheKey: input.cacheKey,
+            finalCallId: callId,
+            coverageDigest: input.coverageDigest,
+            expectedNodeDigests: [digest(node)],
+          }),
+        ).toMatchObject({ state: "ready" })
+      },
+    )
+    it("reserves 4 KiB plus receipt overhead and refuses the former 3 KiB headroom before a call", async () => {
+      const base = await build("profile-call-reservation")
+      const input = registration(base, "transcript", [digest("part-zero")])
+      await submit(input)
+      const budget = async () => {
+        const [row] = await prisma.$queryRaw<Array<{ consumed_bytes: bigint }>>`
+          SELECT consumed_bytes FROM recommendation_precomputed_build_budget
+          WHERE generation_id = ${base.generationId}`
+        return row!.consumed_bytes
+      }
+      const before = await budget()
+      await prisma.$executeRaw`
+        UPDATE recommendation_precomputed_generation
+        SET capacity_preflight = jsonb_set(capacity_preflight, '{projectedBytes}', to_jsonb(${before + 3072n}::bigint))
+        WHERE id = ${base.generationId}`
+      const callId = randomUUID()
+      const stagePromptVersion = `${input.promptVersion}:map`
+      const start = {
+        action: "profile_call_start",
+        ...base,
+        callId,
+        cacheKey: input.cacheKey,
+        stage: "map",
+        stagePromptVersion,
+        nodeKey: nodeKey(input.cacheKey, "map", 0, stagePromptVersion),
+        inputDigest: digest("reservation-prompt"),
+        partIndex: 0,
+        startedAt: new Date().toISOString(),
+      }
+      await expect(submit(start)).rejects.toMatchObject({
+        code: "capacity_budget_exceeded",
+      })
+      expect(await budget()).toBe(before)
+      expect(
+        await prisma.recommendationPrecomputedProfileCall.count({
+          where: { generationId: base.generationId },
+        }),
+      ).toBe(0)
+      await prisma.$executeRaw`
+        UPDATE recommendation_precomputed_generation
+        SET capacity_preflight = jsonb_set(capacity_preflight, '{projectedBytes}', to_jsonb(${before + 5120n}::bigint))
+        WHERE id = ${base.generationId}`
+      expect(await submit(start)).toMatchObject({
+        state: "pending",
+        replay: false,
+      })
+      expect(await budget()).toBe(before + 5120n)
+      expect(await submit(start)).toMatchObject({
+        state: "pending",
+        replay: true,
+      })
+      expect(await budget()).toBe(before + 5120n)
     })
     it("validates a passage anchor against the selected frozen chunk", async () => {
       const editionId = `anchor-edition-${suffix}`
