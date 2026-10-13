@@ -862,7 +862,7 @@ describe("WatchWhatsNewPage", () => {
         '[data-testid="whats-new-tint-band"]',
       )
       expect(band).not.toBeNull()
-      // The radials live in globals.css keyed on this class name; a rename
+      // The radials live in whats-new.css keyed on this class name; a rename
       // on either side leaves a band with insets, a mask, and no colour.
       expect(band!.className).toContain("whats-new-tint-band")
       // Every negative inset cancels one of the cell's padding steps; drop
