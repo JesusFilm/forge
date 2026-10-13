@@ -1689,8 +1689,9 @@ design record is
   tap won over the tap that created the task. A reopen from Recents, from the
   launcher, and after a force stop did not replay an earlier tap. The fake
   admin counted one `ReportPushOpen` per dev-client tap. A lapse reminder
-  cold tap opened its video, and one Back press returned to Home. Not yet
-  run: the "Don't keep activities" case.
+  cold tap opened its video, and one Back press returned to Home. With
+  "Don't keep activities" on and the process alive, a tap opened its video
+  once, and one Back press returned to Home.
 - **Create the test task from the launcher icon.** A task that a deep link
   created replays that link when Android restores it. A cold tap on such a
   task opens the link's screen and the tap's destination, so the screen can
