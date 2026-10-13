@@ -138,6 +138,7 @@
     "versesAriaValue": "Bersikulo {first} agingga iti {last} iti {total}, {chapter}",
     "demoVerse": "I-swipe nga agpangato para iti sumaruno a bersikulo",
     "demoChapter": "I-swipe nga agpakannigid para iti sumaruno a kapitulo",
+    "demoChapterRtl": "I-swipe nga agpakannawan para iti sumaruno a kapitulo",
     "demoSkip": "I-tap tapno labsan",
     "demoSkipAriaLabel": "Labsan ti pannakaipakita ti panag-swipe",
     "selectVerseAriaHint": "Mamindua nga i-tap tapno mapili daytoy a bersikulo",

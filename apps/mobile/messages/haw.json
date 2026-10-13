@@ -138,6 +138,7 @@
     "versesAriaValue": "Nā paukū {first} a {last} o {total}, {chapter}",
     "demoVerse": "Kahili i luna no ka paukū aʻe",
     "demoChapter": "Kahili i ka hema no ka mokuna aʻe",
+    "demoChapterRtl": "Kahili i ka ʻākau no ka mokuna aʻe",
     "demoSkip": "Kaomi e lele",
     "demoSkipAriaLabel": "Lele i ka hōʻikeʻike kahili",
     "selectVerseAriaHint": "Kaomi pālua e koho i kēia paukū",

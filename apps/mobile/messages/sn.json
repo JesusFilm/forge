@@ -138,6 +138,7 @@
     "versesAriaValue": "Ndima {first} kusvika {last} pa {total}, {chapter}",
     "demoVerse": "Svedza kumusoro kuti uone ndima inotevera",
     "demoChapter": "Svedza kuruboshwe kuti uone chitsauko chinotevera",
+    "demoChapterRtl": "Svedza kurudyi kuti uone chitsauko chinotevera",
     "demoSkip": "Dzvanya kuti usvetuke",
     "demoSkipAriaLabel": "Svetuka muenzaniso wekusvedza",
     "selectVerseAriaHint": "Dzvanya kaviri kuti usarudze ndima iyi",

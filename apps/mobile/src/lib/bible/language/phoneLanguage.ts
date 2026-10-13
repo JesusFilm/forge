@@ -277,6 +277,28 @@ export function catalogLanguageCode(
   return null
 }
 
+const ISO_639_3_TO_639_1: ReadonlyMap<string, string> = new Map(
+  Object.entries(ISO_639_1_TO_639_3).map(([two, three]) => [three, two]),
+)
+
+const MACROLANGUAGE_OF: ReadonlyMap<string, string> = new Map(
+  Object.entries(MACROLANGUAGE_MEMBERS).flatMap(([macro, members]) =>
+    members.map((member) => [member, macro] as const),
+  ),
+)
+
+/** The shortest BCP-47 tag for a catalog language: `kor` is `ko`, and `arb`
+ *  takes Arabic's `ar`. A code with no two-letter form stays as it is. */
+export function catalogLanguageTag(code: string): string {
+  const lower = code.trim().toLowerCase()
+  const macro = MACROLANGUAGE_OF.get(lower)
+  return (
+    ISO_639_3_TO_639_1.get(lower) ??
+    (macro === undefined ? undefined : ISO_639_3_TO_639_1.get(macro)) ??
+    lower
+  )
+}
+
 /** The language subtag ("zh" for "zh-Hant-TW") of the phone's first language,
  *  the one the default audio uses (KD11, KTD12), or null. */
 export function readPhoneLanguageCode(): string | null {

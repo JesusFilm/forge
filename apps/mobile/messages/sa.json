@@ -138,6 +138,7 @@
     "versesAriaValue": "पदानि {first} तः {last} पर्यन्तम्, आहत्य {total}, {chapter}",
     "demoVerse": "अग्रिम-पदाय उपरि सरयतु",
     "demoChapter": "अग्रिम-अध्यायाय वामतः सरयतु",
+    "demoChapterRtl": "अग्रिम-अध्यायाय दक्षिणतः सरयतु",
     "demoSkip": "अतिक्रमितुं स्पृशतु",
     "demoSkipAriaLabel": "सरण-प्रदर्शनम् अतिक्रामतु",
     "selectVerseAriaHint": "इदं पदं चेतुं द्विवारं स्पृशतु",

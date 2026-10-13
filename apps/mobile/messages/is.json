@@ -138,6 +138,7 @@
     "versesAriaValue": "Vers {first} til {last} af {total}, {chapter}",
     "demoVerse": "Strjúktu upp fyrir næsta vers",
     "demoChapter": "Strjúktu til vinstri fyrir næsta kafla",
+    "demoChapterRtl": "Strjúktu til hægri fyrir næsta kafla",
     "demoSkip": "Pikkaðu til að sleppa",
     "demoSkipAriaLabel": "Sleppa sýnikennslu á strokum",
     "selectVerseAriaHint": "Ýttu tvisvar til að velja þetta vers",

@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-оятдан {last}-оятгача, жами {total} та, {chapter}",
     "demoVerse": "Кейинги оят учун юқорига суринг",
     "demoChapter": "Кейинги боб учун чапга суринг",
+    "demoChapterRtl": "Кейинги боб учун ўнгга суринг",
     "demoSkip": "Ўтказиб юбориш учун босинг",
     "demoSkipAriaLabel": "Суриш намойишини ўтказиб юбориш",
     "selectVerseAriaHint": "Бу оятни танлаш учун икки марта босинг",
