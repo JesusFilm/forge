@@ -30,6 +30,9 @@ type Stage = VerseStage<View, Fit>
 const sameView = (a: View, b: View) =>
   a.text === b.text && a.selected === b.selected
 const sameFit = (a: Fit, b: Fit) => a.size === b.size
+/** The layout sign (feat-695 KTD8): 1 left to right, -1 right to left. */
+const LTR = 1
+const RTL = -1
 
 function verse(index: number, chapterKey = "BSB:JHN.3"): StageVerse<View> {
   return {
@@ -182,7 +185,7 @@ describe("a scrub", () => {
 
   it("keeps the old verse fading when the new one has not shown yet", () => {
     // At 0.2 the old verse is still fading out and 6 is hidden.
-    const stage = interruptChange(running(), verse(7), 0.2)
+    const stage = interruptChange(running(), verse(7), 0.2, LTR)
     expect(stage.shown?.key).toBe(verse(7).key)
     const from = stage.change!.from!
     expect(from.verse.key).toBe(verse(5).key)
@@ -195,7 +198,7 @@ describe("a scrub", () => {
 
   it("lets the new verse go from where it is once it shows", () => {
     // At 0.8 verse 6 is most of the way in; it leaves from there.
-    const stage = interruptChange(running(), verse(7), 0.8)
+    const stage = interruptChange(running(), verse(7), 0.8, LTR)
     const from = stage.change!.from!
     expect(from.verse.key).toBe(verse(6).key)
     expect(from.fit).toEqual({ size: 28 })
@@ -208,7 +211,7 @@ describe("a scrub", () => {
   })
 
   it("needs no still copy at the midpoint, where neither verse shows", () => {
-    const stage = interruptChange(running(), verse(7), 0.5)
+    const stage = interruptChange(running(), verse(7), 0.5, LTR)
     expect(stage.change?.from).toBeNull()
     expect(stageStill(stage, { live: verse(7), loading: false })).toBeNull()
     expect(changeTiming(stage.change!)).toEqual({
@@ -218,7 +221,7 @@ describe("a scrub", () => {
   })
 
   it("fades a faint verse out sooner, so the next verse comes in sooner", () => {
-    const faint = interruptChange(running(), verse(7), 0.45)
+    const faint = interruptChange(running(), verse(7), 0.45, LTR)
     const { duration, split } = changeTiming(faint.change!)
     expect(duration).toBeLessThan(VERSE_SCRUB_SLIDE_MS)
     expect(duration).toBeGreaterThan(VERSE_SCRUB_SLIDE_MS / 2)
@@ -228,7 +231,7 @@ describe("a scrub", () => {
   it("does not show a verse that never reported its fit", () => {
     // 6 never measured: at 0.8 it is still hidden, so 5 is the one that shows.
     const unmeasured = scrubTo(scrubTo(showing(verse(5)), verse(6)), verse(7))
-    const stage = interruptChange(unmeasured, verse(7), 0.8)
+    const stage = interruptChange(unmeasured, verse(7), 0.8, LTR)
     expect(stage.change?.from).toBeNull()
   })
 
@@ -236,9 +239,11 @@ describe("a scrub", () => {
     // 5 -> 8 runs and 8 shows; the thumb goes back to 6, then on to 7.
     let stage = measured(scrubTo(showing(verse(5)), verse(8)))
     stage = scrubTo(scrubTo(stage, verse(6)), verse(7))
-    expect(interruptChange(stage, verse(7), 0.8).change?.direction).toBe("back")
+    expect(interruptChange(stage, verse(7), 0.8, LTR).change?.direction).toBe(
+      "back",
+    )
     // Early on, 5 is the verse that shows, and 5 -> 7 is forward.
-    expect(interruptChange(stage, verse(7), 0.1).change?.direction).toBe(
+    expect(interruptChange(stage, verse(7), 0.1, LTR).change?.direction).toBe(
       "forward",
     )
   })
@@ -260,7 +265,7 @@ describe("a scrub", () => {
     // The release saves verse 9: the same key, and no scrub any more.
     stage = advance(stage, input({ live: verse(9) }))
     expect(needsInterrupt(stage, verse(9))).toBe(true)
-    stage = interruptChange(stage, verse(9), 0.3)
+    stage = interruptChange(stage, verse(9), 0.3, LTR)
     expect(stage.change).toMatchObject({ pace: "scrub", direction: "forward" })
     expect(stage.shown?.key).toBe(verse(9).key)
   })
@@ -268,7 +273,7 @@ describe("a scrub", () => {
   it("ignores the end of a change that was interrupted", () => {
     const before = running()
     const oldId = before.change!.id
-    const stage = interruptChange(before, verse(7), 0.3)
+    const stage = interruptChange(before, verse(7), 0.3, LTR)
     expect(endChange(stage, oldId)).toBe(stage)
   })
 
@@ -391,6 +396,28 @@ describe("across a chapter load", () => {
     )
     expect(stage.change?.direction).toBe("forward")
   })
+
+  // feat-695 R11: the leaving verse keeps the side it was moving to.
+  it("interrupts a chapter change from where it is in a right-to-left layout", () => {
+    const swipe = (id: number) => ({
+      id,
+      direction: "forward" as const,
+      axis: "chapter" as const,
+    })
+    const john5 = verse(1, "BSB:JHN.5")
+    let stage = advance(
+      showing(verse(16)),
+      input({ live: verse(1, "BSB:JHN.4"), slide: swipe(1) }),
+    )
+    stage = advance(measured(stage), input({ live: john5, slide: swipe(2) }))
+    expect(needsInterrupt(stage, john5)).toBe(true)
+    // At 0.2 the old verse is still fading out as it moves.
+    const rtl = interruptChange(stage, john5, 0.2, RTL).change!.from!
+    expect(rtl.verse.key).toBe(verse(16).key)
+    expect(rtl.x).toBeGreaterThan(0)
+    const ltr = interruptChange(stage, john5, 0.2, LTR).change!.from!
+    expect(ltr.x).toBeLessThan(0)
+  })
 })
 
 describe("the shown verse", () => {
@@ -408,7 +435,13 @@ describe("slideCurves", () => {
   const AT_REST = { opacity: 1, x: 0, y: 0 }
 
   it("fades the old verse out and the new verse in, a few points each", () => {
-    const { outgoing, incoming } = slideCurves("forward", "verse", AT_REST, 0.5)
+    const { outgoing, incoming } = slideCurves(
+      "forward",
+      "verse",
+      AT_REST,
+      0.5,
+      LTR,
+    )
     expect(curveAt(outgoing.opacity, 0)).toBe(1)
     expect(curveAt(outgoing.opacity, 1)).toBe(0)
     expect(curveAt(incoming.opacity, 0)).toBe(0)
@@ -421,13 +454,25 @@ describe("slideCurves", () => {
   })
 
   it("moves both verses down for the verse before", () => {
-    const { outgoing, incoming } = slideCurves("back", "verse", AT_REST, 0.5)
+    const { outgoing, incoming } = slideCurves(
+      "back",
+      "verse",
+      AT_REST,
+      0.5,
+      LTR,
+    )
     expect(curveAt(outgoing.translateY, 1)).toBe(VERSE_SLIDE_SHIFT)
     expect(curveAt(incoming.translateY, 0)).toBe(-VERSE_SLIDE_SHIFT)
   })
 
   it("never shows the two verses together", () => {
-    const { outgoing, incoming } = slideCurves("forward", "verse", AT_REST, 0.5)
+    const { outgoing, incoming } = slideCurves(
+      "forward",
+      "verse",
+      AT_REST,
+      0.5,
+      LTR,
+    )
     for (let p = 0; p <= 1; p += 0.01) {
       const both =
         curveAt(outgoing.opacity, p) > 0 && curveAt(incoming.opacity, p) > 0
@@ -437,7 +482,7 @@ describe("slideCurves", () => {
 
   it("starts a leaving verse from where it is, and moves it less", () => {
     const from = { opacity: 0.5, x: 0, y: 4 }
-    const { outgoing } = slideCurves("forward", "verse", from, 0.3)
+    const { outgoing } = slideCurves("forward", "verse", from, 0.3, LTR)
     expect(curveAt(outgoing.opacity, 0)).toBe(0.5)
     expect(curveAt(outgoing.translateY, 0)).toBe(4)
     expect(curveAt(outgoing.translateY, 0.3)).toBe(4 - VERSE_SLIDE_SHIFT / 2)
@@ -451,6 +496,7 @@ describe("slideCurves", () => {
       "chapter",
       AT_REST,
       0.5,
+      LTR,
     )
     expect(curveAt(outgoing.translateX, 0)).toBe(0)
     expect(curveAt(outgoing.translateX, 1)).toBe(-VERSE_SLIDE_SHIFT)
@@ -460,14 +506,14 @@ describe("slideCurves", () => {
       expect(curveAt(outgoing.translateY, p)).toBe(0)
       expect(curveAt(incoming.translateY, p)).toBe(0)
     }
-    const back = slideCurves("back", "chapter", AT_REST, 0.5)
+    const back = slideCurves("back", "chapter", AT_REST, 0.5, LTR)
     expect(curveAt(back.outgoing.translateX, 1)).toBe(VERSE_SLIDE_SHIFT)
     expect(curveAt(back.incoming.translateX, 0)).toBe(-VERSE_SLIDE_SHIFT)
   })
 
   it("keeps a leaving verse's other offset still while it moves sideways", () => {
     const from = { opacity: 0.6, x: 0, y: -5 }
-    const { outgoing } = slideCurves("forward", "chapter", from, 0.3)
+    const { outgoing } = slideCurves("forward", "chapter", from, 0.3, LTR)
     expect(curveAt(outgoing.translateY, 0)).toBe(-5)
     expect(curveAt(outgoing.translateY, 0.3)).toBe(-5)
     expect(curveAt(outgoing.translateX, 0.3)).toBeCloseTo(
@@ -475,9 +521,36 @@ describe("slideCurves", () => {
     )
   })
 
+  // feat-695 R11: a chapter moves in the reading direction; a verse does not.
+  it("moves both verses right for the next chapter in a right-to-left layout", () => {
+    const next = slideCurves("forward", "chapter", AT_REST, 0.5, RTL)
+    expect(curveAt(next.outgoing.translateX, 1)).toBe(VERSE_SLIDE_SHIFT)
+    expect(curveAt(next.incoming.translateX, 0)).toBe(-VERSE_SLIDE_SHIFT)
+    expect(curveAt(next.incoming.translateX, 1)).toBe(0)
+    const back = slideCurves("back", "chapter", AT_REST, 0.5, RTL)
+    expect(curveAt(back.outgoing.translateX, 1)).toBe(-VERSE_SLIDE_SHIFT)
+    expect(curveAt(back.incoming.translateX, 0)).toBe(VERSE_SLIDE_SHIFT)
+  })
+
+  it("moves a verse up for the next verse in a right-to-left layout too", () => {
+    const { outgoing, incoming } = slideCurves(
+      "forward",
+      "verse",
+      AT_REST,
+      0.5,
+      RTL,
+    )
+    expect(curveAt(outgoing.translateY, 1)).toBe(-VERSE_SLIDE_SHIFT)
+    expect(curveAt(incoming.translateY, 0)).toBe(VERSE_SLIDE_SHIFT)
+    for (const p of [0, 0.5, 1]) {
+      expect(curveAt(outgoing.translateX, p)).toBe(0)
+      expect(curveAt(incoming.translateX, p)).toBe(0)
+    }
+  })
+
   it("gives the native driver increasing input ranges", () => {
     for (const split of [0, 0.2, 0.5]) {
-      const curves = slideCurves("forward", "verse", AT_REST, split)
+      const curves = slideCurves("forward", "verse", AT_REST, split, LTR)
       for (const layer of [curves.outgoing, curves.incoming]) {
         for (const curve of [
           layer.opacity,

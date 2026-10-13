@@ -98,6 +98,51 @@ describe("WatchSemanticRecommendations", () => {
     expect(container.textContent).toContain("Target video")
   })
 
+  it("returns the in-memory experiment measurement ticket only in the selection body", async () => {
+    startRecommendationConsentBootstrap()
+    completeRecommendationConsentBootstrap()
+    const measurementTicket = `v1.${"A".repeat(24)}.${"B".repeat(43)}`
+    const fetchMock = vi.fn(
+      async (input: RequestInfo | URL, init?: RequestInit) =>
+        String(input).endsWith("/api/recommendations")
+          ? jsonResponse({
+              delivery: { ...sixItemDelivery, measurementTicket },
+            })
+          : String(input).endsWith("/select")
+            ? jsonResponse({
+                claimNonce: JSON.parse(String(init?.body)).claimNonce,
+                canonicalHref: sixItemDelivery.items[0].canonicalHref,
+                targetMediaId: sixItemDelivery.items[0].targetMediaId,
+              })
+            : acceptedEvidenceResponse(init),
+    )
+    vi.stubGlobal("fetch", fetchMock)
+    const navigate = vi.fn()
+    act(() =>
+      root.render(
+        <WatchSemanticRecommendations
+          seedMediaId="seed-1"
+          locale="en"
+          audioLanguageSlug="english"
+          navigate={navigate}
+        />,
+      ),
+    )
+    await flush()
+    expect(container.innerHTML).not.toContain(measurementTicket)
+    act(() =>
+      container
+        .querySelector("a[data-recommendation-key]")
+        ?.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        ),
+    )
+    await flush()
+    expect(
+      requestBodies(fetchMock).find((body) => body.claimNonce)
+        ?.measurementTicket,
+    ).toBe(measurementTicket)
+  })
   it("renders the governed co-watch/MMR response without exposing trial internals", async () => {
     startRecommendationConsentBootstrap()
     completeRecommendationConsentBootstrap()

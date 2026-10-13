@@ -10,6 +10,7 @@
  * reachable and none covers a chrome tap target.
  */
 
+import { layoutSign } from "../../i18n/layoutRtl"
 import {
   READER_CHROME_HEIGHTS,
   type ReaderLayout,
@@ -59,16 +60,37 @@ export const WINDOW_WIDTH_FRACTION = 0.42
 export const WINDOW_EDGE_MARGIN = 12
 
 /**
- * Corner preference. The app's focusable chrome — floating back buttons,
- * headers, the hero's overlay controls — sits along the top and left edges, so
- * the bottom-right corner obscures no focusable control.
+ * Corner preference in a left-to-right layout. The app's focusable chrome —
+ * floating back buttons, headers, the hero's overlay controls — sits along the
+ * top and left edges, so the bottom-right corner obscures no focusable control.
  */
-export const CORNER_PREFERENCE = [
+const LTR_CORNER_PREFERENCE = [
   "bottomRight",
   "bottomLeft",
   "topRight",
   "topLeft",
 ] as const satisfies readonly MiniPlayerCorner[]
+
+const MIRRORED_CORNER: Record<MiniPlayerCorner, MiniPlayerCorner> = {
+  topLeft: "topRight",
+  topRight: "topLeft",
+  bottomLeft: "bottomRight",
+  bottomRight: "bottomLeft",
+}
+
+/** feat-695 R11: a right-to-left layout (`sign` -1) moves that chrome to the
+ *  right edge, so the order mirrors. Each corner's frame stays physical. */
+function cornerPreference(sign: 1 | -1): readonly MiniPlayerCorner[] {
+  return sign === 1
+    ? LTR_CORNER_PREFERENCE
+    : LTR_CORNER_PREFERENCE.map((corner) => MIRRORED_CORNER[corner])
+}
+
+// KTD8: the layout is fixed for the life of a runtime. PlaybackHost reads
+// DEFAULT_CORNER as a constant, so this module reads the layout once, here.
+const LAYOUT_SIGN = layoutSign()
+
+export const CORNER_PREFERENCE = cornerPreference(LAYOUT_SIGN)
 
 export const DEFAULT_CORNER: MiniPlayerCorner = CORNER_PREFERENCE[0]
 
@@ -88,6 +110,8 @@ export type MiniPlayerLayoutConfig = MiniPlayerSizeConfig & {
   excludedCorners?: readonly MiniPlayerCorner[]
   /** Share of the travel between the two snap positions on each axis. */
   snapBias?: number
+  /** 1 or -1 (KTD8); it sets the corner order only. Omitted: the layout in use. */
+  layoutSign?: 1 | -1
 }
 
 /** KTD6's floor: a MAXIMUM of the control row and the video's own minimum. */
@@ -184,9 +208,10 @@ export function miniPlayerCornerFrame(
 export function allowedCorners(
   config: MiniPlayerLayoutConfig,
 ): readonly MiniPlayerCorner[] {
+  const preference = cornerPreference(config.layoutSign ?? LAYOUT_SIGN)
   const excluded = new Set(config.excludedCorners ?? [])
-  const allowed = CORNER_PREFERENCE.filter((corner) => !excluded.has(corner))
-  return allowed.length > 0 ? allowed : [DEFAULT_CORNER]
+  const allowed = preference.filter((corner) => !excluded.has(corner))
+  return allowed.length > 0 ? allowed : [preference[0]]
 }
 
 export function miniPlayerCornerFrames(
@@ -211,8 +236,8 @@ export type ReaderCornerPolicy = {
 }
 
 /** feat-553 KTD11, KD9, KD26: a new window starts at the top right on a phone
- *  and the bottom right on a tablet. It may rest in any corner between the
- *  reader's top bar and its footer, so no corner is excluded. */
+ *  and the bottom right on a tablet, at the left in a right-to-left layout
+ *  (feat-695 R11). It may rest in any corner between the top bar and footer. */
 export function readerCornerPolicy(input: {
   layout: ReaderLayout
   host: "tab" | "pushed"
@@ -220,9 +245,13 @@ export function readerCornerPolicy(input: {
   movementBand: number
   /** The tab bar a root-mounted surface reserves. Only the Bible tab has one. */
   tabBar: number
+  /** 1 or -1 (KTD8). Omitted: the layout in use. */
+  layoutSign?: 1 | -1
 }): ReaderCornerPolicy {
+  const start = input.layout === "tablet" ? "bottomRight" : "topRight"
+  const sign = input.layoutSign ?? LAYOUT_SIGN
   return {
-    startCorner: input.layout === "tablet" ? "bottomRight" : "topRight",
+    startCorner: sign === 1 ? start : MIRRORED_CORNER[start],
     chrome: {
       top: READER_CHROME_HEIGHTS.topBar,
       bottom:

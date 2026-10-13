@@ -138,6 +138,7 @@
     "versesAriaValue": "Aayadaha {first} ilaa {last} oo ka mid ah {total}, {chapter}",
     "demoVerse": "Kor u jiid si aad u aragto aayadda xigta",
     "demoChapter": "Bidix u jiid si aad u aragto cutubka xiga",
+    "demoChapterRtl": "Midig u jiid si aad u aragto cutubka xiga",
     "demoSkip": "Taabo si aad uga boodo",
     "demoSkipAriaLabel": "Ka bood tusaalaha jiidista",
     "selectVerseAriaHint": "Laba jeer taabo si aad aayaddan u doorato",

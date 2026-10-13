@@ -138,6 +138,7 @@
     "versesAriaValue": "آیات {first} تا {last} از {total}، {chapter}",
     "demoVerse": "اگلی آیت کے لیے اوپر سوائپ کریں",
     "demoChapter": "اگلے باب کے لیے بائیں سوائپ کریں",
+    "demoChapterRtl": "اگلے باب کے لیے دائیں سوائپ کریں",
     "demoSkip": "چھوڑنے کے لیے ٹیپ کریں",
     "demoSkipAriaLabel": "سوائپ کا مظاہرہ چھوڑیں",
     "selectVerseAriaHint": "یہ آیت منتخب کرنے کے لیے دو بار ٹیپ کریں",

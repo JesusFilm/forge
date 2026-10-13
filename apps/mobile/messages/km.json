@@ -138,6 +138,7 @@
     "versesAriaValue": "ខទី {first} ដល់ {last} ក្នុងចំណោម {total}, {chapter}",
     "demoVerse": "អូសឡើងលើដើម្បីទៅខបន្ទាប់",
     "demoChapter": "អូសទៅឆ្វេងដើម្បីទៅជំពូកបន្ទាប់",
+    "demoChapterRtl": "អូសទៅស្ដាំដើម្បីទៅជំពូកបន្ទាប់",
     "demoSkip": "ចុចដើម្បីរំលង",
     "demoSkipAriaLabel": "រំលងការបង្ហាញពីរបៀបអូស",
     "selectVerseAriaHint": "ចុចពីរដងដើម្បីជ្រើសរើសខនេះ",

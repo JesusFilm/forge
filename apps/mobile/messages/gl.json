@@ -138,6 +138,7 @@
     "versesAriaValue": "Versículos do {first} ao {last} de {total}, {chapter}",
     "demoVerse": "Desliza cara arriba para ver o seguinte versículo",
     "demoChapter": "Desliza cara á esquerda para ver o seguinte capítulo",
+    "demoChapterRtl": "Desliza cara á dereita para ver o seguinte capítulo",
     "demoSkip": "Toca para omitir",
     "demoSkipAriaLabel": "Omitir a demostración do xesto de deslizar",
     "selectVerseAriaHint": "Toca dúas veces para seleccionar este versículo",

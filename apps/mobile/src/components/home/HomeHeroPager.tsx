@@ -36,10 +36,12 @@ import {
 import { useTypography, type TypographyScale } from "../../hooks/useTypography"
 import { prefetchHeroStream, useHeroStream } from "../../hooks/useHeroStream"
 import { useMiniPlayerHoldsVideo } from "../../hooks/useMiniPlayerHoldsVideo"
+import { useRtlScrollGate } from "../../hooks/useRtlScrollGate"
 import { useUiTag } from "../../hooks/useUiTag"
 import { textDirectionProps } from "../../i18n/textDirection"
 import { useLocaleEpoch } from "../../i18n/useT"
 import { datadogLog } from "../../lib/datadog"
+import { scrollPageIndex } from "../../lib/horizontalPaging"
 import { PlatformBlur } from "../ui/PlatformBlur"
 import { resolveImageUrl } from "../../lib/resolveImageUrl"
 import { sanitizeVideoErrorMessage } from "../../lib/videoQoe"
@@ -501,10 +503,24 @@ export function HomeHeroPager({
   // on a different index are stale (an older animation finishing) and must
   // not move the reducer.
   const pendingScrollIndexRef = useRef(0)
+  const scrollToPending = useCallback(() => {
+    try {
+      listRef.current?.scrollToIndex({
+        index: pendingScrollIndexRef.current,
+        animated: false,
+      })
+    } catch {
+      // A shorter queue can put the pending index out of range; the scroll
+      // effect then scrolls to the reset index.
+    }
+  }, [])
+  const scrollGate = useRtlScrollGate(state.slides.length, scrollToPending)
+  const { mustWait } = scrollGate
 
   useEffect(() => {
     if (state.slides.length === 0) return
     pendingScrollIndexRef.current = state.currentIndex
+    if (mustWait()) return
     try {
       listRef.current?.scrollToIndex({
         index: state.currentIndex,
@@ -513,14 +529,14 @@ export function HomeHeroPager({
     } catch {
       // List not laid out yet; getItemLayout makes later calls reliable.
     }
-  }, [state.currentIndex, state.slides.length])
+  }, [state.currentIndex, state.slides.length, mustWait])
 
   // List is scrollEnabled={false} — slide changes are programmatic only (all
   // route through the handle/reducer). Animated scrollToIndex still fires
   // momentum end; SLIDE_SHOWN on the settled index no-ops if it matches.
   const handleMomentumScrollEnd = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth)
+      const index = scrollPageIndex(e.nativeEvent, screenWidth)
       // Stale settle (an older animation overtaken by a newer target) must
       // not move the reducer; legit off-page re-syncs go through
       // onScrollToIndexFailed instead.
@@ -624,6 +640,7 @@ export function HomeHeroPager({
         pagingEnabled
         showsHorizontalScrollIndicator={false}
         onMomentumScrollEnd={handleMomentumScrollEnd}
+        onContentSizeChange={scrollGate.onContentSizeChange}
         onScrollToIndexFailed={handleScrollToIndexFailed}
         getItemLayout={getItemLayout}
         initialNumToRender={1}

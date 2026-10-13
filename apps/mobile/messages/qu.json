@@ -138,6 +138,7 @@
     "versesAriaValue": "Versículokuna {first}manta {last}kama, llapan {total}, {chapter}",
     "demoVerse": "Qatiq versículopaq hanaqman aysay",
     "demoChapter": "Qatiq capítulopaq lluq’iman aysay",
+    "demoChapterRtl": "Qatiq capítulopaq pañaman aysay",
     "demoSkip": "Kayta pasanaykipaq ñit’iy",
     "demoSkipAriaLabel": "Aysay rikuchiyta pasay",
     "selectVerseAriaHint": "Kay versículota akllanaykipaq iskay kutita ñit’iy",

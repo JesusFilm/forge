@@ -6,7 +6,7 @@ priority: "P1"
 status: "not-started"
 start_date: "2026-09-30"
 duration: 5
-depends_on: ["feat-575"]
+depends_on: ["feat-620"]
 blocks: []
 tags:
   [
@@ -28,7 +28,7 @@ limits would obscure usage and risk competing with normal retrieval traffic.
 ## Entry Points — Read These First
 
 1. [Execution spec](../../plans/2026-09-30-002-rag-governed-test-bench-spec.md) — complete behavior, variable/default table, activation sequence, and acceptance cases.
-2. [feat-575](feat-575-rag-consumer-manual.md) and its approved mockup — UI to enable; remove the synthetic output when implementing this ticket.
+2. [feat-620](feat-620-rag-consumer-manual.md) and its approved mockup — UI to enable; remove the synthetic output when implementing this ticket.
 3. `apps/rag/src/serving/http/{portal.ts,portal-consumers.ts,app.ts,auth.ts,usage.ts}` — portal admission/origin checks, registered-consumer authentication, source intersection, and request accounting.
 4. `apps/rag/src/contracts/{consumer-access.ts,consumer-usage.ts,deadline.ts,ports.ts}`, `apps/rag/src/retrieval/retrieve.ts`, `apps/rag/src/adapters/postgres/index.ts` — bounded work and cancellation through existing seams.
 5. `apps/rag/src/config/`, `apps/rag/src/main.ts`, `apps/rag/scripts/serve.ts` — validated environment configuration and dependency injection.
@@ -89,7 +89,7 @@ logs, PRs, screenshots and fixtures.
 
 ## Delivery scope
 
-Implementation depends on feat-575. This entry preserves the explicitly deferred
+Implementation depends on feat-620. This entry preserves the explicitly deferred
 work; neither publication of the spec nor mockup approval enables the test bench.
 
 Specs and roadmap publication: [#2485](https://github.com/JesusFilm/forge/pull/2485). The implementation status remains not started.

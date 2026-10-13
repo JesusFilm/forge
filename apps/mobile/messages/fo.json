@@ -138,6 +138,7 @@
     "versesAriaValue": "Vers {first} til {last} av {total}, {chapter}",
     "demoVerse": "Strúka upp fyri næsta vers",
     "demoChapter": "Strúka til vinstru fyri næsta kapittul",
+    "demoChapterRtl": "Strúka til høgru fyri næsta kapittul",
     "demoSkip": "Trýst fyri at leypa um",
     "demoSkipAriaLabel": "Leyp um vísingina av strúkingini",
     "selectVerseAriaHint": "Trýst tvær ferðir fyri at velja hetta versið",
