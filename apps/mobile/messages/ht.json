@@ -138,6 +138,7 @@
     "versesAriaValue": "Vèsè {first} rive {last} sou {total}, {chapter}",
     "demoVerse": "Glise anlè pou pwochen vèsè a",
     "demoChapter": "Glise sou bò gòch pou pwochen chapit la",
+    "demoChapterRtl": "Glise sou bò dwat pou pwochen chapit la",
     "demoSkip": "Tape pou sote",
     "demoSkipAriaLabel": "Sote demonstrasyon glisman an",
     "selectVerseAriaHint": "Tape de fwa pou chwazi vèsè sa a",

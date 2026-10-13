@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} में से पद {first} से {last}, {chapter}",
     "demoVerse": "अगला पद के लिए ऊपर स्वाइप करो",
     "demoChapter": "अगला अध्याय के लिए बाएँ स्वाइप करो",
+    "demoChapterRtl": "अगला अध्याय के लिए दाएँ स्वाइप करो",
     "demoSkip": "छोड़े के लिए टैप करो",
     "demoSkipAriaLabel": "स्वाइप वाला डेमो छोड़ो",
     "selectVerseAriaHint": "ई पद चुने के लिए दुई बार टैप करो",

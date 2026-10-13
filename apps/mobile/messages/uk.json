@@ -138,6 +138,7 @@
     "versesAriaValue": "Вірші з {first} по {last} із {total}, {chapter}",
     "demoVerse": "Гортайте вгору до наступного вірша",
     "demoChapter": "Гортайте вліво до наступного розділу",
+    "demoChapterRtl": "Гортайте вправо до наступного розділу",
     "demoSkip": "Торкніться, щоб пропустити",
     "demoSkipAriaLabel": "Пропустити демонстрацію гортання",
     "selectVerseAriaHint": "Двічі торкніться, щоб вибрати цей вірш",

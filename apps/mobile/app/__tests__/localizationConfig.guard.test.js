@@ -11,8 +11,8 @@ const { TestRenderer, unmount } = require("../../src/test-utils/rnTestRenderer")
 const { resolveLocale } = require("../../src/i18n/resolveLocale")
 const { CATALOG_TAGS } = require("../../src/i18n/catalogs.generated")
 
-// Guard (KTD4): the platform offers the per-app language on iOS and Android,
-// and it never mirrors the app for a right-to-left phone (R6).
+// Guard (KTD4): the platform offers the per-app language on iOS and Android.
+// feat-695 KTD1: the layout-direction module owns the layout direction.
 const MOBILE_DIR = path.join(__dirname, "..", "..")
 const APP_JSON = path.join(MOBILE_DIR, "app.json")
 const NATIVE_LOCALES = path.join(MOBILE_DIR, "i18n", "native-locales.json")
@@ -22,6 +22,10 @@ const WEB_MESSAGES = path.join(MOBILE_DIR, "..", "web", "messages")
 const LOCALIZATION_PLUGIN = "expo-localization"
 const LTR_PLUGIN = "./plugins/withIosLeftToRightAppearance"
 const GRADLE_PLUGIN = "./plugins/withoutAndroidResourceConfigurations"
+// The plugin merges expo.extra into its options and writes each of these keys
+// that it finds. expo-localization then rewrites React Native's direction at
+// every start, over the direction that the layout-direction module saved.
+const RTL_KEYS = ["supportsRTL", "forcesRTL"]
 
 const readJson = (file) => JSON.parse(fs.readFileSync(file, "utf8"))
 const clone = (value) => JSON.parse(JSON.stringify(value))
@@ -66,15 +70,14 @@ function localizationProblems(config, declared) {
   }
   const problems = []
   const options = localizationOptions(config)
-  if (options.supportsRTL !== false) problems.push("supportsRTL must be false")
-  // The plugin writes forcesRTL for any non-null value, from its options or
-  // from expo.extra. iOS then forces right-to-left on a right-to-left phone.
-  if ("forcesRTL" in options) problems.push("remove forcesRTL from the plugin")
-  if ("forcesRTL" in (config.extra ?? {})) {
-    problems.push("remove forcesRTL from expo.extra")
-  }
-  if ("ExpoLocalization_forcesRTL" in (config.ios?.infoPlist ?? {})) {
-    problems.push("remove ExpoLocalization_forcesRTL from ios.infoPlist")
+  for (const key of RTL_KEYS) {
+    if (key in options) problems.push(`remove ${key} from the plugin`)
+    if (key in (config.extra ?? {})) {
+      problems.push(`remove ${key} from expo.extra`)
+    }
+    if (`ExpoLocalization_${key}` in (config.ios?.infoPlist ?? {})) {
+      problems.push(`remove ExpoLocalization_${key} from ios.infoPlist`)
+    }
   }
   if (options.allowDynamicLocaleChangesAndroid !== true) {
     problems.push("allowDynamicLocaleChangesAndroid must be true")
@@ -88,11 +91,9 @@ function localizationProblems(config, declared) {
   if (config.ios?.infoPlist?.UIPrefersShowingLanguageSettings !== true) {
     problems.push("ios.infoPlist.UIPrefersShowingLanguageSettings must be true")
   }
-  const ltr = pluginEntries(config, LTR_PLUGIN)
-  if (ltr.length !== 1) {
-    problems.push(`expected one ${LTR_PLUGIN} entry, found ${ltr.length}`)
-  } else if (ltr[0].index < entries[0].index) {
-    problems.push(`register ${LTR_PLUGIN} after ${LOCALIZATION_PLUGIN}`)
+  // The removed plugin forced UIKit left-to-right at every launch.
+  if (pluginEntries(config, LTR_PLUGIN).length > 0) {
+    problems.push(`remove ${LTR_PLUGIN}`)
   }
   // Mods run last-registered first, so the gradle plugin must come BEFORE
   // expo-localization to strip the resourceConfigurations line it appends.
@@ -129,8 +130,9 @@ describe("expo-localization plugin options (KTD4)", () => {
     ["forcesRTL", false, "remove forcesRTL from the plugin"],
     ["forcesRTL", true, "remove forcesRTL from the plugin"],
     ["forcesRTL", null, "remove forcesRTL from the plugin"],
-    ["supportsRTL", true, "supportsRTL must be false"],
-    ["supportsRTL", undefined, "supportsRTL must be false"],
+    ["supportsRTL", false, "remove supportsRTL from the plugin"],
+    ["supportsRTL", true, "remove supportsRTL from the plugin"],
+    ["supportsRTL", null, "remove supportsRTL from the plugin"],
     [
       "allowDynamicLocaleChangesAndroid",
       false,
@@ -146,15 +148,18 @@ describe("expo-localization plugin options (KTD4)", () => {
     expect(localizationProblems(config, nativeLocales())).toEqual([problem])
   })
 
-  it("rejects a forcesRTL key in expo.extra or ios.infoPlist", () => {
-    const config = clone(expo())
-    config.extra = { ...config.extra, forcesRTL: false }
-    config.ios.infoPlist.ExpoLocalization_forcesRTL = false
-    expect(localizationProblems(config, nativeLocales())).toEqual([
-      "remove forcesRTL from expo.extra",
-      "remove ExpoLocalization_forcesRTL from ios.infoPlist",
-    ])
-  })
+  it.each(RTL_KEYS)(
+    "rejects a %s key in expo.extra or ios.infoPlist (negative control)",
+    (key) => {
+      const config = clone(expo())
+      config.extra = { ...config.extra, [key]: false }
+      config.ios.infoPlist[`ExpoLocalization_${key}`] = false
+      expect(localizationProblems(config, nativeLocales())).toEqual([
+        `remove ${key} from expo.extra`,
+        `remove ExpoLocalization_${key} from ios.infoPlist`,
+      ])
+    },
+  )
 
   it("rejects a missing UIPrefersShowingLanguageSettings (negative control)", () => {
     const config = clone(expo())
@@ -164,13 +169,11 @@ describe("expo-localization plugin options (KTD4)", () => {
     ])
   })
 
-  it("rejects a left-to-right plugin registered before expo-localization", () => {
+  it("rejects the left-to-right appearance plugin (negative control)", () => {
     const config = clone(expo())
-    const ltr = pluginEntries(config, LTR_PLUGIN)[0]
-    config.plugins.splice(ltr.index, 1)
-    config.plugins.unshift(LTR_PLUGIN)
+    config.plugins.push(LTR_PLUGIN)
     expect(localizationProblems(config, nativeLocales())).toEqual([
-      `register ${LTR_PLUGIN} after ${LOCALIZATION_PLUGIN}`,
+      `remove ${LTR_PLUGIN}`,
     ])
   })
 
@@ -194,17 +197,20 @@ describe("expo-localization plugin options (KTD4)", () => {
 
   // The two tests below read the installed plugin's output, which is what the
   // native module reads at launch, not the options that feed it.
-  it("makes the installed plugin write the left-to-right Info.plist keys", () => {
+  it("makes the installed plugin write no right-to-left Info.plist key", () => {
     const plist = pluginInfoPlist(expo())
-    expect(plist.ExpoLocalization_supportsRTL).toBe(false)
+    expect("ExpoLocalization_supportsRTL" in plist).toBe(false)
     expect("ExpoLocalization_forcesRTL" in plist).toBe(false)
     expect(plist.CFBundleLocalizations).toEqual(nativeLocales())
   })
 
-  it("sees the installed plugin write forcesRTL: false (the premise)", () => {
-    const config = withOptions(expo(), (o) => ({ ...o, forcesRTL: false }))
-    expect(pluginInfoPlist(config).ExpoLocalization_forcesRTL).toBe(false)
-  })
+  it.each(RTL_KEYS)(
+    "sees the installed plugin write %s: false (the premise)",
+    (key) => {
+      const config = withOptions(expo(), (o) => ({ ...o, [key]: false }))
+      expect(pluginInfoPlist(config)[`ExpoLocalization_${key}`]).toBe(false)
+    },
+  )
 })
 
 describe("declared native locales (R5)", () => {
@@ -278,6 +284,7 @@ describe("declared native locales (R5)", () => {
 // The `mock` prefix is required: babel-plugin-jest-hoist lifts jest.mock above
 // this declaration and rejects any other out-of-scope name in the factory.
 const mockNativeTabsProps = { current: undefined }
+const mockLayoutRtl = { current: false }
 
 jest.mock("expo-router/unstable-native-tabs", () => {
   const Trigger = Object.assign(() => null, {
@@ -297,36 +304,83 @@ jest.mock("expo-router/unstable-native-tabs", () => {
 jest.mock("../../src/lib/explore/availability", () => ({
   isExploreAvailable: () => true,
 }))
+// The module mock, not an I18nManager spy, so a layout that reads the
+// direction from anywhere but the shared source (feat-695 KTD8) fails here.
+jest.mock("../../src/i18n/layoutRtl", () => ({
+  isLayoutRtl: () => mockLayoutRtl.current,
+}))
 
 // The iOS host reads `direction` at the top level of `unstable_nativeProps`.
 // An `ios` slice or a trigger's own native props never reaches the tab bar.
-const forcesLeftToRight = (props) =>
-  props?.unstable_nativeProps?.direction === "ltr"
+const tabBarDirection = (props) => props?.unstable_nativeProps?.direction
 
-describe("iOS native tab bar direction (R6)", () => {
-  afterEach(() => {
+// UIKit tabs follow the native localization unless told, so `inherit` or a
+// missing prop can disagree with the React layout. Both directions must land.
+const FOLLOWS_LAYOUT = { rtl: "rtl", ltr: "ltr" }
+
+/** The tab bar direction that a layout passes in each layout direction. */
+async function tabBarDirections(Layout) {
+  const seen = {}
+  for (const rtl of [true, false]) {
+    mockLayoutRtl.current = rtl
     mockNativeTabsProps.current = undefined
-  })
-
-  it.each([
-    ["no native props", {}],
-    ["an empty native props object", { unstable_nativeProps: {} }],
-    ["rtl", { unstable_nativeProps: { direction: "rtl" } }],
-    ["inherit", { unstable_nativeProps: { direction: "inherit" } }],
-    ["an ios slice", { unstable_nativeProps: { ios: { direction: "ltr" } } }],
-    ["a top-level direction", { direction: "ltr" }],
-  ])("rejects %s (negative control)", (_, props) => {
-    expect(forcesLeftToRight(props)).toBe(false)
-  })
-
-  it("passes direction ltr to NativeTabs in _layout.ios.tsx", async () => {
-    const IosTabLayout = require("../(tabs)/_layout.ios.tsx").default
     let renderer
     await act(async () => {
-      renderer = TestRenderer.create(createElement(IosTabLayout))
+      renderer = TestRenderer.create(createElement(Layout))
     })
     await unmount(renderer)
     expect(mockNativeTabsProps.current).toBeDefined()
-    expect(forcesLeftToRight(mockNativeTabsProps.current)).toBe(true)
+    seen[rtl ? "rtl" : "ltr"] = tabBarDirection(mockNativeTabsProps.current)
+  }
+  return seen
+}
+
+/** A stand-in layout that gives NativeTabs these props. */
+function fixtureLayout(props) {
+  const { NativeTabs } = require("expo-router/unstable-native-tabs")
+  return () => createElement(NativeTabs, props(), null)
+}
+
+describe("iOS native tab bar direction (feat-695 R4)", () => {
+  afterEach(() => {
+    mockNativeTabsProps.current = undefined
+    mockLayoutRtl.current = false
+  })
+
+  const { isLayoutRtl } = require("../../src/i18n/layoutRtl")
+  const fromLayout = () => (isLayoutRtl() ? "rtl" : "ltr")
+
+  it("accepts a layout that passes the layout direction (positive control)", async () => {
+    const layout = fixtureLayout(() => ({
+      unstable_nativeProps: { direction: fromLayout() },
+    }))
+    expect(await tabBarDirections(layout)).toEqual(FOLLOWS_LAYOUT)
+  })
+
+  it.each([
+    [
+      "a hard-coded ltr",
+      () => ({ unstable_nativeProps: { direction: "ltr" } }),
+    ],
+    [
+      "a hard-coded rtl",
+      () => ({ unstable_nativeProps: { direction: "rtl" } }),
+    ],
+    ["inherit", () => ({ unstable_nativeProps: { direction: "inherit" } })],
+    ["a removed prop", () => ({})],
+    ["an empty native props object", () => ({ unstable_nativeProps: {} })],
+    [
+      "an ios slice",
+      () => ({ unstable_nativeProps: { ios: { direction: fromLayout() } } }),
+    ],
+    ["a top-level direction", () => ({ direction: fromLayout() })],
+  ])("rejects %s (negative control)", async (_, props) => {
+    const seen = await tabBarDirections(fixtureLayout(props))
+    expect(seen).not.toEqual(FOLLOWS_LAYOUT)
+  })
+
+  it("passes the layout direction to NativeTabs in _layout.ios.tsx", async () => {
+    const IosTabLayout = require("../(tabs)/_layout.ios.tsx").default
+    expect(await tabBarDirections(IosTabLayout)).toEqual(FOLLOWS_LAYOUT)
   })
 })

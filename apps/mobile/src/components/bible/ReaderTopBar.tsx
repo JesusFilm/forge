@@ -9,6 +9,7 @@ import {
 } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
 
+import { directionalIcon } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import {
   READER_CHROME_MAX_FONT_SCALE,
@@ -109,7 +110,11 @@ export function ReaderTopBar({
             actionName="bible-reader-back"
             onPress={onBack}
           >
-            <Ionicons name="chevron-back" size={24} color={tokens.icon} />
+            <Ionicons
+              name={directionalIcon("chevron-back")}
+              size={24}
+              color={tokens.icon}
+            />
           </ReaderGlassButton>
         )}
         <ChapterPill

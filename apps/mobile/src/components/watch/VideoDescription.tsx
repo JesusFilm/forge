@@ -31,7 +31,9 @@ export function VideoDescription({
 }: VideoDescriptionProps) {
   const typography = useTypography()
   const t = useT("Common")
-  const bodyDirection = useTextDirection().text(descriptionLang)
+  const bodyDirection = useTextDirection().text(descriptionLang, {
+    kind: "paragraph",
+  })
 
   // A mounted instance can go partial -> full under cache-first, so the hook
   // re-measures when the text changes.

@@ -479,6 +479,7 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - **Set `preservesPitch` EXPLICITLY on every player — never trust the default.** expo-video's TS types document it as `@default true`, but the ANDROID native default is `false` (`expo-video/android/.../player/VideoPlayer.kt`: `var preservesPitch = false`), and `applyPitchCorrection` then sets `pitch = speed`. So a playback-speed pick also shifted the speaker's voice up or down — chipmunk at 1.5x, baritone at 0.75x. iOS never showed it because AVPlayer corrects pitch itself, which is exactly why the wrong default survived review. `useManagedVideoPlayer` sets it at creation, which covers every surface that can change speed (the heroes are muted and never change rate). Measured on the Pixel 9a emulator by reading the property back through the native getter: `false` before the set, `true` after. The shared jest double defaults it to `false` ON PURPOSE — mirroring Android, not the types — so the assertion in `useManagedVideoPlayer.test.tsx` can only pass if the app sets it.
 - Gating chrome — or any recovery affordance — behind a load: enumerate every path that fails to release the gate. "Playback started OR the player errored" misses "neither": backgrounding mid-load, and a source that wedges without ever erroring. Both leave the viewer with no controls and no way out, and neither logs anything. Always pair such a gate with an unconditional time-based release, and gate the tap target with the same predicate as the chrome it hides. See `docs/solutions/logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md`.
 - iOS 26 makes the stack back-swipe FULL-WIDTH by default (react-native-screens turns it on when `fullScreenSwipeEnabled` is unset), and a JS PanResponder can never outrace it: the native recognizer claims the touch at delivery, before JS runs. So a rightward scrub on the seek bar IS the pop gesture. **Split the screen instead of racing it.** The watch/series routes confine the pop to a 24pt left strip via `gestureResponseDistance`, and the Scrubber DECLINES touches that start inside that strip (`mayStartScrub` in `src/lib/scrubber.ts`, on BOTH responder gates). One constant feeds both halves (`src/lib/backSwipe.ts`) so they cannot disagree. `fullScreenGestureEnabled: false` is the wrong tool — it kills ALL back-swipe on iOS 26, because no legacy edge recognizer fires.
+  - **Superseded 2026-10-12 by feat-695 U3:** in a right-to-left layout, react-native-screens moves the strip to the right edge, and `mayStartScrub` declines the right strip there. Touch x stays physical, so the guard measures from the window's right edge.
 - **Do not gate the back-swipe on chrome visibility.** An earlier fix held `gestureEnabled` false while the player chrome was mounted. `shouldArmHideTimer` never arms while paused or ended, so the chrome never auto-hides in those states and the hold never released: pausing a video killed the edge back-swipe for the screen's whole life. Only fullscreen may disable the gesture. Every `gestureEnabled` write must still land on BOTH the screen and its parent stack — the pop that dismisses a nested route belongs to the ROOT stack, which consults only its own top screen. `app/__tests__/backSwipeGesture.guard.test.js` pins the layout options AND the edge width; `useFullscreenPresentation.test.tsx` pins that the gesture stays enabled outside fullscreen.
 - **Never set a react-native-screens `orientation` screen option.** `expo-screen-orientation`'s `ScreenOrientationViewController` answers UIKit from its OWN registry mask — what `lockAsync` writes — only while no screen carries an orientation. The moment one does, it defers to the react-native-screens view-controller chain instead, and a **dev client** has `expo-dev-launcher`'s `DevLauncherViewController` sitting in that chain: the resolved mask loses landscape, UIKit refuses the geometry request (`UIWindowScene.interfaceOrientationsNotSupported`, readable via `xcrun simctl spawn <udid> log stream`), fullscreen stays portrait, and leaving fullscreen strands the details page in landscape until the route pops. The option was always redundant — `src/lib/orientation.ts`'s lock already names the orientation on both platforms — so `useFullscreenPresentation` sets only the lock, and the dev client now rotates exactly like a Release build. Verified 2026-08-26 on the iPhone 17 Pro Max simulator in BOTH build types. `app/__tests__/screenOrientationOption.guard.test.js` blocks the one-line revert across every `.ts`/`.tsx` file under `app/` and `src/`, with a >100-file floor so the scan cannot silently go empty. It has TWO rules, and both are live: Rule 1 matches the key next to a quoted orientation value anywhere in the file (this catches the ternary across line breaks); Rule 2 matches a bare `orientation` KEY of any value shape — named constant, shorthand property — but only inside a brace-matched `screenOptions`/`options` object, so `src/lib/watchHome/`'s unrelated `orientation` key does not trip it. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 - **`PlayerSlot` must never depend on getting exactly one good `onLayout`.** `measureInWindow` SILENTLY drops its callback when the native node is not attached yet, and the host (`PlaybackHost`) returns null while the slot's rect is null — so one unlucky cold open leaves an opaque black box with no poster, no chrome, and no recovery except leaving the screen. Measured on the iPhone 17 Pro Max simulator over 10 cold deep-link opens: 2/10 on unmodified main, 0/10 after the bounded `requestAnimationFrame` re-measure. Three parts, and all three matter: retry until a rect lands, refuse a zero-size measure, and gate `isDrawn` on the RECT rather than on the attachment so the slot keeps its own poster while the host has nothing to draw. `src/components/watch/__tests__/PlayerSlot.test.tsx` drives a real `measureInWindow` callback and pins all three parts: a zero-size measure publishes nothing, a valid one publishes exactly the measured rect, and the pump stops asking once a rect lands. Exhaustion logs `player_slot.measure_exhausted` once, so an unmeasurable slot is visible in production instead of silent. The instrumentation that separates the cases is a `console.log` in `measureIntoStore` plus one inside the `measureInWindow` callback — `onLayout` fires in BOTH the good and the black run; only the callback differs. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
@@ -1104,6 +1105,10 @@ routes, every rule in this section is unchanged.
   its own remembered corner apart from the app's corner, so a drag in one
   never moves the other. `PlaybackHost` reads the effective corner: the
   reader corner on reader routes, and the app corner elsewhere.
+  - **Superseded in part 2026-10-12 by feat-695 U6:** in a right-to-left
+    layout, the corner order mirrors. A new window starts at the bottom left
+    (the app) and at the top left on a phone reader, bottom left on an iPad.
+    The corner frames and the snap stay physical.
 
 **Picture-in-picture: one props object, one latch, chrome-only suppression.**
 Every video view that can enter the OS window spreads
@@ -2375,6 +2380,9 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   before (owner, 2026-09-28). A verse move into the next chapter stays
   vertical. A picker jump changes in place, and so does every change with
   Reduce Motion on.
+  - **Superseded in part 2026-10-12 by feat-695 U6 (R14):** the chapter axis
+    takes the layout sign. In a right-to-left layout, a swipe to the right
+    opens the next chapter, and the slide moves the other way.
   - **A newer verse interrupts the running change** (owner, 2026-09-28;
     `interruptChange` in `src/lib/bible/movement/verseStage.ts`). The one
     verse on screen at that point leaves from its current opacity and
@@ -2736,6 +2744,13 @@ import, and the provenance records it.
   `*Lang` field; UI text uses the catalog tag. English fallback text also gets
   `accessibilityLanguage="en"` on iOS. It never applies to containers or to
   centered text, and the layout never mirrors (KTD4).
+  - **Superseded 2026-10-12 by feat-695 U4:** while `MIRRORED_LAYOUT_ENABLED`
+    is on, the layout mirrors for a right-to-left UI Locale, and the style
+    also sets an explicit edge for every known language. Short text goes to
+    the layout's start edge. A paragraph in the other direction keeps the
+    start edge of its own language (`{ kind: "paragraph" }`, or
+    `uiParagraph` for catalog text). With the switch off, the rule above
+    holds. See "Mirrored layout (feat-695)" below.
 
 ### Translate with Claude (local mode)
 
@@ -2911,13 +2926,24 @@ runs the pre-install hook before `pnpm install`.
   drop library translations in region folders, such as the Cast framework's
   `values-zh-rCN`. The Info.plist key makes iOS always show the per-app
   language row.
+  - **Superseded 2026-10-12 by feat-695 U1:** `withIosLeftToRightAppearance`
+    is removed. The local module `modules/layout-direction` applies the saved
+    direction to UIKit at `willFinishLaunching`.
 - **Never add a `forcesRTL` key to the plugin options, not even `false`.** The
   plugin writes the key for any non-null value, and iOS then forces
   right-to-left on an Arabic, Farsi, or Urdu phone. The guard rejects it. With
   `supportsRTL: false`, iOS resets `allowRTL(false)` and `forceRTL(false)` at
   every launch before React loads; Android calls only `allowRTL(false)`.
+  - **Superseded 2026-10-12 by feat-695 U1 (KTD1):** add neither `supportsRTL`
+    nor `forcesRTL`, in the plugin options, `expo.extra`, or `ios.infoPlist`.
+    With either key, `expo-localization` rewrites React Native's direction at
+    every start, over the direction that the module saved. The guard rejects
+    both keys.
 - The iOS `NativeTabs` bar gets `unstable_nativeProps={{ direction: "ltr" }}`,
   because UIKit tabs ignore `allowRTL`.
+  - **Superseded 2026-10-12 by feat-695 U3:** the bar gets
+    `direction: isLayoutRtl() ? "rtl" : "ltr"`. Never remove the prop, because
+    `inherit` follows the native localization.
 - **These changes move the fingerprint runtime version:** the
   `expo-localization` native module (U2), the `app.json` plugins and the
   Info.plist key (U3), and the `update:production` edit (U4). A native build
@@ -2930,6 +2956,92 @@ runs the pre-install hook before `pnpm install`.
 - **A locale that web adds later** ships its mobile catalog at once by
   over-the-air update: run the command, then the catalog index generator. It
   joins `native-locales.json` and `app.json` at the next native build.
+
+### Mirrored layout (feat-695)
+
+The layout mirrors when the UI Locale is a right-to-left catalog. The phone
+language alone never sets the direction, so a `ks` phone (English-only
+catalog) stays left-to-right. The plan is
+`docs/plans/2026-10-12-1325-feat-mobile-rtl-mirrored-layout-plan.md`.
+
+- **The app decides, and the module applies.** `src/i18n/layoutDirection.ts`
+  decides the direction at module scope in `app/_layout.tsx`, right after
+  `startLocaleSync()`. `modules/layout-direction` saves it and applies it to
+  native parts: React Native's settings, the iOS `UIView` appearance, and on
+  Android the Activity window, the dialog configuration, and the default
+  locale.
+- **One reload at most.** A wrong direction at start costs one reload behind
+  the native splash. While it is pending, the root layout renders a bare view
+  and mounts no provider. On Android, the check runs again only on a move to
+  `active` after a locale change. That return reload opens Home, and the last
+  push response does not replay (`app/+native-intent.tsx`).
+- **The reload record** counts direction reloads per bundle: the update id,
+  or `build:<number>` for an embedded bundle. A device whose direction does
+  not take effect reloads once, applies the direction in use, reports one
+  `LayoutDirectionFault` per fault, and retries once after a new update or
+  native build.
+- **Telemetry.** A runtime after a direction reload records
+  `js_tti_direction_reload` in place of `js_tti`, and its
+  `ui_locale.resolved` log has `ui_locale.direction_reload`.
+- **What mirrors and what does not.** React Native swaps `left` and `right`
+  styles by itself. Directional icons go through `directionalIcon()`, and
+  horizontal gesture math through `layoutSign()` (`src/i18n/layoutRtl.ts`).
+  Playback controls and layers that draw at a measured x render inside a
+  `direction: "ltr"` container (R12, KTD7). The player's route buttons (Cast,
+  AirPlay, settings) are not playback controls: they take `appDirection()`,
+  so they mirror and stay clear of the watch page's minimize button.
+- **A progress ring fills clockwise in every layout.** The circular direction
+  of time does not mirror (Material bidirectionality). `DownloadProgressRing`
+  and `ReaderProgressRing` draw in a `direction: "ltr"` layer, and their
+  center keeps the app's direction. Without that layer, the two halves swap
+  sides: the fill turns counter-clockwise, and a half's square corner shows
+  outside the ring (iPhone 17 Pro Max simulator and Pixel 9a emulator,
+  2026-10-13). A new ring built from `left`-placed halves needs the same layer.
+- **Text edges.** With `direction` set to the text's own language, both
+  platforms read `textAlign: "left"` as the start of that language (device
+  check, 2026-10-12). `textDirection.ts` depends on this.
+- **Android pitfalls (verified 2026-10-12, Pixel 9a emulator, Android 15).**
+  - AppCompat dialog button bars use `layoutDirection="locale"`, which reads
+    `Locale.getDefault()`. Android sets the default to the best match among
+    the app's own resources, which is `en-US` for `ps`. The module sets the
+    default to the first device locale, and only when its direction is the
+    wanted one, so `LocaleList.getDefault()` does not change.
+  - Android replaces the activity resources at launch and at configuration
+    changes, sometimes with no callback. A pre-draw guard applies the
+    direction again before each frame.
+- **A reload that does not happen (seen 2026-10-13, Pixel 9a emulator).** The
+  save sets React Native's own direction before the reload, and React Native's
+  layout reads it on each pass. Android's `reloadAppAsync` can resolve with no
+  reload, for example when the current activity is not a `ReactActivity`. Once,
+  on a return during a per-app language change, a return reload did not happen,
+  and English text sat right-aligned over a left-to-right layout. The cause is
+  not established. So a reload that rejects, or that has not ended
+  the runtime after `RELOAD_DEADLINE_MS`, saves and applies the direction in use
+  again and reports `reload_failed` or `reload_stalled`. The start gate opens
+  after at most `RESTORE_WAIT_MS` more, even when that native restore does not
+  settle. A first save that ends after the deadline does not reload. The restore
+  clears the reload count, so a start reload that stalls on every launch tries
+  again at each cold start, at a cost of up to 8 s behind the native splash.
+
+#### Off switch (runbook)
+
+`MIRRORED_LAYOUT_ENABLED` in `src/i18n/mirroredLayout.ts` turns off both the
+mirrored layout and the two-way alignment rule. It works only in native builds
+that contain feat-695.
+
+1. Set the line to `export const MIRRORED_LAYOUT_ENABLED = false`. Keep a bare
+   literal: `mirroredLayoutKillSwitch.guard.test.js` rejects anything else.
+2. Merge, and publish the production update as "Publishing an EAS Update"
+   describes.
+3. A right-to-left viewer gets today's left-to-right screens after the update
+   downloads and the app reloads once.
+4. Every later update must keep `false` until the team decides to turn
+   mirroring on again. A later update with `true`, or an `eas update:rollback`
+   to an update from before the off update, turns mirroring back on.
+
+Check the switch without an update: build a second local release build with
+the switch `false`, and install it over a mirrored install without removing
+its data (`xcrun simctl install`, `adb install -r`).
 
 ## Component render tests
 

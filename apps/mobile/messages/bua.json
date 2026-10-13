@@ -138,6 +138,7 @@
     "versesAriaValue": "Шүлэгүүд {first} — {last}, бүгэдэ {total}, {chapter}",
     "demoVerse": "Удаадахи шүлэгтэ дээшээ гүйлгэгты",
     "demoChapter": "Удаадахи бүлэгтэ зүүн тээшэ гүйлгэгты",
+    "demoChapterRtl": "Удаадахи бүлэгтэ баруун тээшэ гүйлгэгты",
     "demoSkip": "Алгасахын тула дарагты",
     "demoSkipAriaLabel": "Гүйлгэлгын харуулга алгасаха",
     "selectVerseAriaHint": "Энэ шүлэг шэлэхын тула хоёр дахин дарагты",

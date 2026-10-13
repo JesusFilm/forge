@@ -41,7 +41,7 @@ jest.mock("expo-localization/build/ExpoLocalization", () => ({
 
 import { act } from "react"
 import type React from "react"
-import { AccessibilityInfo, Dimensions } from "react-native"
+import { AccessibilityInfo, Dimensions, I18nManager } from "react-native"
 
 import {
   CARD_CONTENT_PADDING,
@@ -273,8 +273,9 @@ describe("BibleQuotesCarouselRenderer — the passage language", () => {
   it.each([
     ["an English passage in an Arabic UI", "ar", "en", ["en"], "ltr"],
     ["an Arabic passage in an Arabic UI", "ar", "ar", [undefined], "rtl"],
-    ["an English passage in an English UI", "en", "en", ["en"], undefined],
-    ["a Russian passage in an English UI", "en", "ru", [undefined], undefined],
+    // feat-695 KTD6: with mirroring on, every known language sets its edge.
+    ["an English passage in an English UI", "en", "en", ["en"], "ltr"],
+    ["a Russian passage in an English UI", "en", "ru", [undefined], "ltr"],
   ])("marks and sets %s", (_case, uiTag, textLang, marks, direction) => {
     mockUiTag = uiTag
     const renderer = render([{ ...PASSAGE_QUOTE, textLang }])
@@ -286,6 +287,19 @@ describe("BibleQuotesCarouselRenderer — the passage language", () => {
         direction,
       ])
     }
+  })
+
+  // R16, R17: in a left-to-right layout, the Arabic verse keeps its own start
+  // edge (the right), and its short credit goes to the layout's start (the left).
+  it("aligns the verse as a paragraph and the credit as short text", () => {
+    mockUiTag = "en"
+    const renderer = render([{ ...PASSAGE_QUOTE, textLang: "ar" }])
+    expect(flatStyle(findText(renderer, PASSAGE_TEXTS[0]!)).textAlign).toBe(
+      "left",
+    )
+    expect(flatStyle(findText(renderer, "Public Domain")).textAlign).toBe(
+      "right",
+    )
   })
 
   it("leaves the Experience quote as it was", () => {
@@ -1574,5 +1588,51 @@ describe("BibleQuotesCarouselRenderer — header share button", () => {
 
     expect(shareButtons(renderer)).toHaveLength(0)
     expect(findText(renderer, "GENESIS 1:26-27")).toBeDefined()
+  })
+})
+
+// feat-695 U5: both platforms report contentOffset.x from the left edge of the
+// content, so a right-to-left carousel counts its resting card from the right.
+describe("BibleQuotesCarouselRenderer — the resting card in a right-to-left layout", () => {
+  // 750 wide: five 718-wide cards, 12 between them, 16 at each end.
+  const PAGE = 730
+  const CONTENT = 3670
+  const VIEWPORT = 750
+
+  function carouselList(renderer: TestInstance): RenderedNode {
+    const [list] = renderer.root.findAll(
+      (node) =>
+        node.props.accessibilityRole === "adjustable" &&
+        typeof node.props.onMomentumScrollEnd === "function",
+    )
+    return list
+  }
+
+  it("names the card that rests in view", async () => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+    const renderer = await renderSettled(
+      Array.from({ length: 5 }, () => PASSAGE_QUOTE),
+    )
+    const settle = carouselList(renderer).props.onMomentumScrollEnd as (
+      e: unknown,
+    ) => void
+
+    act(() => {
+      settle({
+        nativeEvent: {
+          // The fourth card from the right edge.
+          contentOffset: { x: CONTENT - VIEWPORT - 3 * PAGE },
+          contentSize: { width: CONTENT },
+          layoutMeasurement: { width: VIEWPORT },
+        },
+      })
+    })
+
+    expect(carouselList(renderer).props.accessibilityValue).toEqual({
+      text: "Item 4 of 5",
+    })
   })
 })
