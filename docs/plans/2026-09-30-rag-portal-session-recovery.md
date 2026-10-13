@@ -159,5 +159,5 @@ browser harness uses synthetic sign-in and real PostgreSQL sessions. The
 portal's earlier no-browser-storage guidance is superseded only for the
 nonsecret, per-tab view state described above.
 
-The matching roadmap ticket is feat-575. Production changes use the normal
+The matching roadmap ticket is feat-619 (formerly feat-575). Production changes use the normal
 reviewed PR and Railway autodeploy path.

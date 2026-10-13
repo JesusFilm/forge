@@ -194,6 +194,7 @@ import {
   Animated,
   AppState,
   Dimensions,
+  I18nManager,
   Platform,
   StyleSheet,
 } from "react-native"
@@ -258,8 +259,10 @@ import {
   TestRenderer,
   type NodePath,
   type NodeRequireLike,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 jest.setTimeout(20_000)
 
@@ -5419,5 +5422,54 @@ describe("the reader cover and the reader corners (feat-553 U13)", () => {
       expect(ends.events).toHaveLength(0)
       expect(hasFullViewChrome(renderer)).toBe(true)
     })
+  })
+})
+
+describe("physical coordinates in a right-to-left layout (feat-695 KTD7)", () => {
+  beforeEach(() => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+    jest.replaceProperty(I18nManager, "isRTL", true)
+  })
+
+  function hostByTestId(renderer: TestInstance, id: string): RenderedNode {
+    const [node] = renderer.root.findAll(
+      (n) => n.props.testID === id && typeof n.type === "string",
+    )
+    if (node == null) throw new Error(`no host node with testID ${id}`)
+    return node
+  }
+
+  it("draws the frame at the measured x 0 inside a left-to-right layer, and leaves the back affordance to the app", async () => {
+    attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+
+    const frame = hostByTestId(renderer, "playback-frame")
+    expect(RECT.x).toBe(0)
+    expect(StyleSheet.flatten(frame.props.style as never)).toMatchObject({
+      left: 0,
+    })
+    expect(directionAbove(frame)).toBe("ltr")
+
+    // The back affordance mirrors with the app (R11), so it stays outside.
+    const [back] = renderer.root.findAll(
+      (node) => (node as { type?: unknown }).type === FloatingBackButton,
+    )
+    expect(directionAbove(back)).toBeUndefined()
+  })
+
+  it("keeps the mini player window inside that layer", async () => {
+    const id = attachSlot()
+    const renderer = await renderHost()
+    await startPlayback()
+    await detach(id)
+
+    expect(hasWindowChrome(renderer)).toBe(true)
+    expect(directionAbove(hostByTestId(renderer, "mini-player-window"))).toBe(
+      "ltr",
+    )
   })
 })

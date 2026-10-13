@@ -80,6 +80,319 @@ export const adminSemanticRecommendationDeliveryOperation = adminGraphql(
   adminSemanticRecommendationDeliveryQuery,
 )
 
+// This private recovery document may require the new Admin schema. Keep the
+// ordinary delivery document above compatible with older Admin deployments.
+export const adminPrivateSemanticRecommendationFallbackQuery = `
+  query PrivateSemanticRecommendationFallback(
+    $seedMediaId: ID!
+    $locale: String!
+    $audioLanguageSlug: String!
+    $sessionDigest: String!
+  ) {
+    semanticRecommendationDelivery(
+      seedMediaId: $seedMediaId
+      locale: $locale
+      audioLanguageSlug: $audioLanguageSlug
+      sessionDigest: $sessionDigest
+      privatePreviewFallback: true
+    ) {
+      contractVersion
+      surfaceVersion
+      strategyVersion
+      classifierVersion
+      requestId
+      result
+      reason
+      expiresAt
+      requestedCount
+      composedCount
+      shortfallReason
+      personalization {
+        contractVersion
+        lane
+        executionMode
+        effectiveManifestId
+        profileState
+        projectionVersion
+        projectionGeneration
+        interestCount
+        sessionIntentPresent
+        reason
+      }
+      items {
+        id
+        position
+        targetMediaId
+        canonicalHref
+        candidateGenerator
+        contributors {
+          generator
+          generatorVersion
+          rank
+        }
+        capability
+        videoSlug
+        videoTitle
+        imageUrl
+        sceneIndex
+        description
+        startSeconds
+        endSeconds
+        durationSeconds
+        similarity
+        themes
+        demographics
+        spiritualContext
+        playbackId
+      }
+    }
+  }
+` as const
+
+export const adminPrivateSemanticRecommendationFallbackOperation = adminGraphql(
+  adminPrivateSemanticRecommendationFallbackQuery,
+)
+
+export const adminPrecomputedWatchPreviewDeliveryQuery = `
+  query PrecomputedWatchPreviewDelivery(
+    $seedMediaId: ID!
+    $locale: String!
+    $audioLanguageSlug: String!
+    $sessionDigest: String!
+  ) {
+    precomputedWatchPreviewDelivery(
+      seedMediaId: $seedMediaId
+      locale: $locale
+      audioLanguageSlug: $audioLanguageSlug
+      sessionDigest: $sessionDigest
+    ) {
+      contractVersion
+      surfaceVersion
+      strategyVersion
+      classifierVersion
+      generationId
+      requestId
+      result
+      reason
+      expiresAt
+      requestedCount
+      composedCount
+      shortfallReason
+      items {
+        id
+        position
+        targetMediaId
+        canonicalHref
+        candidateGenerator
+        contributors {
+          generator
+          generatorVersion
+          rank
+        }
+        capability
+        videoSlug
+        videoTitle
+        imageUrl
+        sceneIndex
+        description
+        startSeconds
+        endSeconds
+        durationSeconds
+        similarity
+        themes
+        demographics
+        spiritualContext
+        playbackId
+      }
+    }
+  }
+` as const
+
+export const adminPrecomputedWatchPreviewDeliveryOperation = adminGraphql(
+  adminPrecomputedWatchPreviewDeliveryQuery,
+)
+
+export const adminPrivatePrecomputedWatchVisitDeliveryQuery = `
+  query PrivatePrecomputedWatchVisitDelivery(
+    $visitId: ID!
+    $browserDigest: String!
+    $consentReceiptDigest: String
+    $profileTokenDigest: String
+    $seedMediaId: ID!
+    $locale: String!
+    $audioLanguageSlug: String!
+    $sessionDigest: String!
+    $trafficCategory: String!
+    $clientDeliveryContract: String
+  ) {
+    privatePrecomputedWatchVisitDelivery(
+      visitId: $visitId
+      browserDigest: $browserDigest
+      consentReceiptDigest: $consentReceiptDigest
+      profileTokenDigest: $profileTokenDigest
+      seedMediaId: $seedMediaId
+      locale: $locale
+      audioLanguageSlug: $audioLanguageSlug
+      sessionDigest: $sessionDigest
+      trafficCategory: $trafficCategory
+      clientDeliveryContract: $clientDeliveryContract
+    ) {
+      status
+      visitId
+      experimentId
+      generationId
+      arm
+      reason
+      qualification
+      measurementStatus
+      delivery {
+        contractVersion
+        surfaceVersion
+        strategyVersion
+        classifierVersion
+        generationId
+        requestId
+        result
+        reason
+        expiresAt
+        requestedCount
+        composedCount
+        shortfallReason
+        personalization {
+          contractVersion
+          lane
+          executionMode
+          effectiveManifestId
+          profileState
+          projectionVersion
+          projectionGeneration
+          interestCount
+          sessionIntentPresent
+          reason
+        }
+        items {
+          id
+          position
+          targetMediaId
+          canonicalHref
+          candidateGenerator
+          contributors { generator generatorVersion rank }
+          capability
+          videoSlug
+          videoTitle
+          imageUrl
+          sceneIndex
+          description
+          startSeconds
+          endSeconds
+          durationSeconds
+          similarity
+          themes
+          demographics
+          spiritualContext
+          playbackId
+        }
+      }
+    }
+  }
+` as const
+
+export const adminPrivatePrecomputedWatchVisitDeliveryOperation = adminGraphql(
+  adminPrivatePrecomputedWatchVisitDeliveryQuery,
+)
+
+export const adminPrecomputedWatchPublicVisitDeliveryQuery = `
+  query PrecomputedWatchPublicVisitDelivery(
+    $visitId: ID!
+    $browserDigest: String!
+    $consentReceiptDigest: String
+    $profileTokenDigest: String
+    $seedMediaId: ID!
+    $locale: String!
+    $audioLanguageSlug: String!
+    $sessionDigest: String!
+    $trafficCategory: String!
+    $clientDeliveryContract: String
+    $humanVerificationReceipt: String
+  ) {
+    precomputedWatchPublicVisitDelivery(
+      visitId: $visitId
+      browserDigest: $browserDigest
+      consentReceiptDigest: $consentReceiptDigest
+      profileTokenDigest: $profileTokenDigest
+      seedMediaId: $seedMediaId
+      locale: $locale
+      audioLanguageSlug: $audioLanguageSlug
+      sessionDigest: $sessionDigest
+      trafficCategory: $trafficCategory
+      clientDeliveryContract: $clientDeliveryContract
+      humanVerificationReceipt: $humanVerificationReceipt
+    ) {
+      disposition
+      status
+      visitId
+      experimentId
+      generationId
+      arm
+      reason
+      qualification
+      measurementStatus
+      delivery {
+        contractVersion
+        surfaceVersion
+        strategyVersion
+        classifierVersion
+        generationId
+        requestId
+        result
+        reason
+        expiresAt
+        requestedCount
+        composedCount
+        shortfallReason
+        personalization {
+          contractVersion
+          lane
+          executionMode
+          effectiveManifestId
+          profileState
+          projectionVersion
+          projectionGeneration
+          interestCount
+          sessionIntentPresent
+          reason
+        }
+        items {
+          id
+          position
+          targetMediaId
+          canonicalHref
+          candidateGenerator
+          contributors { generator generatorVersion rank }
+          capability
+          videoSlug
+          videoTitle
+          imageUrl
+          sceneIndex
+          description
+          startSeconds
+          endSeconds
+          durationSeconds
+          similarity
+          themes
+          demographics
+          spiritualContext
+          playbackId
+        }
+      }
+    }
+  }
+` as const
+
+export const adminPrecomputedWatchPublicVisitDeliveryOperation = adminGraphql(
+  adminPrecomputedWatchPublicVisitDeliveryQuery,
+)
+
 export const adminRecordSemanticRecommendationEvidenceMutation = `
   mutation RecordSemanticRecommendationEvidence(
     $contractVersion: String!
@@ -149,6 +462,48 @@ export const adminSelectSemanticRecommendationMutation = `
 export const adminSelectSemanticRecommendationOperation = adminGraphql(
   adminSelectSemanticRecommendationMutation,
 )
+
+// Keep the public operation unchanged for flag-off and older Admin servers.
+// Only the gated private Watch test sends its signed browser-cookie digest.
+export const adminSelectPrivatePrecomputedRecommendationMutation = `
+  mutation SelectPrivatePrecomputedRecommendation(
+    $contractVersion: String!
+    $capability: String!
+    $requestId: ID!
+    $itemId: ID!
+    $sessionDigest: String
+    $viewerToken: String
+    $sessionToken: String
+    $eventId: String!
+    $occurredAt: String!
+    $tabDigest: String
+    $claimNonce: String!
+    $browserDigest: String
+  ) {
+    selectSemanticRecommendation(
+      contractVersion: $contractVersion
+      capability: $capability
+      requestId: $requestId
+      itemId: $itemId
+      sessionDigest: $sessionDigest
+      viewerToken: $viewerToken
+      sessionToken: $sessionToken
+      eventId: $eventId
+      occurredAt: $occurredAt
+      tabDigest: $tabDigest
+      claimNonce: $claimNonce
+      browserDigest: $browserDigest
+    ) {
+      status
+      claimNonce
+      canonicalHref
+      targetMediaId
+    }
+  }
+` as const
+
+export const adminSelectPrivatePrecomputedRecommendationOperation =
+  adminGraphql(adminSelectPrivatePrecomputedRecommendationMutation)
 
 export const adminClaimSemanticRecommendationEpisodeMutation = `
   mutation ClaimSemanticRecommendationEpisode(

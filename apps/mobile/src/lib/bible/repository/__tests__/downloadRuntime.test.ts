@@ -203,10 +203,41 @@ describe("Bible repository runtime", () => {
           reader_chapter: 3,
           reader_reason: "not-found",
           reader_http_status: 404,
+          reader_fetch_source: "reader",
         },
       ],
     ])
     expect(JSON.stringify(warn.mock.calls)).not.toMatch(/html|loved/i)
+  })
+
+  // KTD10: a quote card's read shares the reader's repository, and its tag
+  // reaches the log through the app's one fetch binding.
+  it("tags a quote card's failed fetch", async () => {
+    const warn = datadogLog.warn as unknown as jest.Mock
+    warn.mockClear()
+    globalThis.fetch = jest.fn(
+      async () => new Response("", { status: 500 }),
+    ) as unknown as typeof fetch
+
+    await getChapterRepository().resolve(
+      {
+        translationId: "gue_wbt",
+        bookId: "RUT",
+        chapter: 2,
+        sha256: GUE.sha256,
+      },
+      { source: "quote" },
+    )
+
+    expect(warn.mock.calls).toEqual([
+      [
+        "bible_reader.chapter_fetch_failed",
+        expect.objectContaining({
+          reader_book: "RUT",
+          reader_fetch_source: "quote",
+        }),
+      ],
+    ])
   })
 })
 

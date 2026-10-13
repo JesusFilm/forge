@@ -138,6 +138,7 @@
     "versesAriaValue": "Оятҳои {first} то {last} аз {total}, {chapter}",
     "demoVerse": "Барои ояти навбатӣ ба боло кашед",
     "demoChapter": "Барои боби навбатӣ ба чап кашед",
+    "demoChapterRtl": "Барои боби навбатӣ ба рост кашед",
     "demoSkip": "Барои гузаштан ламс кунед",
     "demoSkipAriaLabel": "Гузаштан аз намоиши ишораҳо",
     "selectVerseAriaHint": "Барои интихоби ин оят ду бор ламс кунед",

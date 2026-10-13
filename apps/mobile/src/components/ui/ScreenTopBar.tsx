@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useRouter } from "expo-router"
 
 import { useTypography } from "../../hooks/useTypography"
+import { directionalIcon } from "../../i18n/layoutRtl"
 import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import { BG_COLOR, TEXT_PRIMARY } from "../../lib/color"
@@ -90,7 +91,11 @@ export function ScreenTopBar({
               pressed && feedback.pressed,
             ]}
           >
-            <Ionicons name="chevron-back" size={28} color={TEXT_PRIMARY} />
+            <Ionicons
+              name={directionalIcon("chevron-back")}
+              size={28}
+              color={TEXT_PRIMARY}
+            />
           </Pressable>
         )}
         {title != null ? (

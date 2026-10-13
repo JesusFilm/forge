@@ -122,6 +122,7 @@ export const studioDelegatedActions = [
   "history",
   "apply",
   "create",
+  "delete",
   "assets",
   "packs",
   "pack",

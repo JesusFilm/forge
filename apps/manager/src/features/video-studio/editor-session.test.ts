@@ -297,3 +297,21 @@ it("saves and reopens text styling and animation with undo/redo intact", async (
   expect(reopened.getSnapshot().document.items[0]).toMatchObject({ properties })
   expect(reopened.getSnapshot().revision).toBe(2)
 })
+
+it("keeps an explicit sign-in warning after an expired-session save and later edits", async () => {
+  const session = new EditorSession(project, {
+    read: async () => project,
+    apply: async () => {
+      throw Object.assign(
+        new StudioEditorFixtureError("Interactive Manager session required"),
+        { status: 401 },
+      )
+    },
+  })
+  session.edit((doc) => ({ ...doc, items: [] }))
+  await session.save()
+  expect(session.getSnapshot().error).toContain("sign in again")
+  expect(session.getSnapshot().document.items).toEqual([])
+  session.edit((doc) => ({ ...doc, title: "Keep working" }))
+  expect(session.getSnapshot().error).toContain("sign in again")
+})
