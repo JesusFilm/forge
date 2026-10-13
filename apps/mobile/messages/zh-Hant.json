@@ -138,6 +138,7 @@
     "versesAriaValue": "第{first}至{last}節，共{total}節，{chapter}",
     "demoVerse": "向上滑動看下一節",
     "demoChapter": "向左滑動看下一章",
+    "demoChapterRtl": "向右滑動看下一章",
     "demoSkip": "點一下即可略過",
     "demoSkipAriaLabel": "略過滑動示範",
     "selectVerseAriaHint": "點兩下即可選取這節經文",

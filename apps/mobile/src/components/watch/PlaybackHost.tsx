@@ -43,6 +43,7 @@ import {
   useManagedVideoPlayer,
   type SwapPositionClaim,
 } from "../../hooks/useManagedVideoPlayer"
+import { directionalIcon } from "../../i18n/layoutRtl"
 import { getAuthSession } from "../../lib/authSession"
 import { BLACK } from "../../lib/color"
 import { datadogLog } from "../../lib/datadog"
@@ -1894,7 +1895,7 @@ function ActivePlaybackHost({
           // box, chrome, video — slides out together (KTD5: one driver per
           // node; the frame below keeps the JS-driven drag).
           style={[
-            StyleSheet.absoluteFill,
+            styles.exitLayer,
             { opacity: exitOpacity, transform: [{ translateY: exitY }] },
           ]}
           pointerEvents="box-none"
@@ -2021,7 +2022,11 @@ function ActivePlaybackHost({
         !request.fullscreen && (
           <FloatingBackButton
             {...BACK_BUTTON_PROPS}
-            icon={request.session != null ? "chevron-down" : "chevron-back"}
+            icon={
+              request.session != null
+                ? "chevron-down"
+                : directionalIcon("chevron-back")
+            }
           />
         )}
     </View>
@@ -2029,6 +2034,12 @@ function ActivePlaybackHost({
 }
 
 const styles = StyleSheet.create({
+  // The frame draws at a measured window x and snaps to physical corners
+  // (feat-695 KTD7), so this layer stays left-to-right in every app direction.
+  exitLayer: {
+    ...StyleSheet.absoluteFill,
+    direction: "ltr",
+  },
   frame: {
     position: "absolute",
     backgroundColor: BLACK,

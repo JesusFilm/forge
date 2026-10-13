@@ -1,5 +1,6 @@
 import { NativeTabs } from "expo-router/unstable-native-tabs"
 
+import { isLayoutRtl } from "../../src/i18n/layoutRtl"
 import { ACCENT, BG_COLOR, TEXT_SECONDARY as MUTED } from "../../src/lib/color"
 import { isExploreAvailable } from "../../src/lib/explore/availability"
 import {
@@ -47,9 +48,10 @@ export default function TabLayout() {
       disableTransparentOnScrollEdge
       iconColor={{ default: MUTED, selected: ACCENT }}
       labelStyle={{ default: { color: MUTED }, selected: { color: ACCENT } }}
-      // UIKit tabs ignore React Native's allowRTL and follow the app language,
-      // so an Arabic phone would reverse the tab order (R6).
-      unstable_nativeProps={{ direction: "ltr" }}
+      // UIKit tabs ignore React Native's direction and follow the native
+      // localization, so `inherit` can give them the wrong order. Never
+      // remove the prop: the tab order must follow the layout (feat-695 R4).
+      unstable_nativeProps={{ direction: isLayoutRtl() ? "rtl" : "ltr" }}
     >
       {TAB_ROUTE_NAMES.map((name) => (
         <NativeTabs.Trigger

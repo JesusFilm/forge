@@ -138,6 +138,7 @@
     "versesAriaValue": "Vers {first} til {last} av {total}, {chapter}",
     "demoVerse": "Sveip opp for neste vers",
     "demoChapter": "Sveip til venstre for neste kapittel",
+    "demoChapterRtl": "Sveip til høgre for neste kapittel",
     "demoSkip": "Trykk for å hoppe over",
     "demoSkipAriaLabel": "Hopp over sveipedemonstrasjonen",
     "selectVerseAriaHint": "Dobbelttrykk for å velje dette verset",

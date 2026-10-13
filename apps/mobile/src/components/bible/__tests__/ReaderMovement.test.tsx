@@ -51,6 +51,7 @@ import {
   Animated,
   BackHandler,
   Dimensions,
+  I18nManager,
   Share,
   StyleSheet,
   type GestureResponderEvent,
@@ -488,6 +489,31 @@ const swipeDown = (r: TestInstance) => swipe(r, DOWN.from, DOWN.to)
 const swipeLeft = (r: TestInstance) => swipe(r, LEFT.from, LEFT.to)
 const swipeRight = (r: TestInstance) => swipe(r, RIGHT.from, RIGHT.to)
 
+/** feat-695: the layout in use reads right to left. Touch x stays physical,
+ *  and afterEach restores the spy. Call it before the reader mounts. */
+function layoutIsRtl() {
+  jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+    ...I18nManager.getConstants(),
+    isRTL: true,
+  })
+}
+
+/** A host node's own translateX, if it has one. */
+function translateXOf(node: RenderedNode): number | undefined {
+  const transform = flat(node).transform as
+    | { translateX?: number }[]
+    | undefined
+  return transform?.find((step) => "translateX" in step)?.translateX
+}
+
+/** True when a node sits inside the node with this testID. */
+function within(node: RenderedNode, testID: string): boolean {
+  for (let above = node.parent; above != null; above = above.parent) {
+    if (above.props.testID === testID) return true
+  }
+  return false
+}
+
 beforeEach(() => {
   timings = []
   mockFocus.focused = true
@@ -767,6 +793,17 @@ describe("the verse slide", () => {
     expect(pillPassage(renderer)).toBe("John 3:1")
     expect(slideX(byTestId(renderer, "bible-verse")[0]!)).toBeLessThan(0)
   })
+
+  // feat-695 R11: a transform never mirrors, so the reader flips the slide.
+  it("slides the next chapter in from the left in a right-to-left layout", async () => {
+    layoutIsRtl()
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    await swipeRight(renderer)
+    await settleFit(renderer)
+    expect(pillPassage(renderer)).toBe("John 4:1")
+    expect(slideX(byTestId(renderer, "bible-verse")[0]!)).toBeLessThan(0)
+    expect(liveY(renderer)).toBe(0)
+  })
 })
 
 describe("swipes (R12, R14, KTD13)", () => {
@@ -828,6 +865,38 @@ describe("swipes (R12, R14, KTD13)", () => {
     await swipeRight(renderer)
     expect(pillPassage(renderer)).toBe("John 3:1")
     expect(timingsWith({ duration: CHAPTER_PULSE_MS })).toHaveLength(2)
+  })
+
+  // feat-695 R14: the layout sets the direction, not the Bible text's language.
+  it("covers AE6: a swipe right opens the next chapter in a right-to-left layout, and a swipe left the one before", async () => {
+    layoutIsRtl()
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    await swipeRight(renderer)
+    expect(pillPassage(renderer)).toBe("John 4:1")
+    await swipeLeft(renderer)
+    expect(pillPassage(renderer)).toBe("John 3:1")
+  })
+
+  it("previews each chapter with a chevron that points the way it comes from, right to left (R13)", async () => {
+    layoutIsRtl()
+    const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
+    const icons = () =>
+      renderer.root
+        .findAll(
+          (node) =>
+            typeof node.props.name === "string" &&
+            within(node, "bible-chapter-preview"),
+        )
+        .map((node) => node.props.name as string)
+    const next = await beginSwipe(renderer, RIGHT.from, RIGHT.to)
+    expect(textNodes(renderer, "John 4")).not.toHaveLength(0)
+    expect(icons()).toEqual(["chevron-back"])
+    await next!.release()
+
+    const back = await beginSwipe(renderer, LEFT.from, LEFT.to)
+    expect(textNodes(renderer, "John 3")).not.toHaveLength(0)
+    expect(icons()).toEqual(["chevron-forward"])
+    await back!.release()
   })
 
   it("passes through the Matthew 18:11 note (R21)", async () => {
@@ -1336,6 +1405,38 @@ describe("the first-run swipe demo (R16)", () => {
     expect(demo(renderer)).toHaveLength(0)
     expect(store.getSnapshot().demoPlayed).toBe(true)
     expect(moveTo).not.toHaveBeenCalled()
+  })
+
+  // feat-695 R14: the chapter finger shows the swipe that opens the next
+  // chapter, so it starts at the left and moves right.
+  it("starts the chapter finger at the left in a right-to-left layout", async () => {
+    jest.useFakeTimers()
+    layoutIsRtl()
+    const { renderer } = await openAt(
+      { book: "JHN", chapter: 3, verse: 16 },
+      { onboarding: createReaderOnboardingStore(memoryStorage()) },
+    )
+    await arm()
+    expect(demo(renderer)).toHaveLength(1)
+    const fingers = hosts(renderer, (node) => within(node, "bible-swipe-demo"))
+      .map(translateXOf)
+      .filter((x) => x !== undefined)
+    expect(fingers).toHaveLength(1)
+    expect(fingers[0]).toBeLessThan(0)
+    expect(textNodes(renderer, readerT("demoChapterRtl"))).toHaveLength(1)
+    expect(textNodes(renderer, readerT("demoChapter"))).toHaveLength(0)
+  })
+
+  it("tells a left-to-right layout to swipe left for the next chapter", async () => {
+    jest.useFakeTimers()
+    const { renderer } = await openAt(
+      { book: "JHN", chapter: 3, verse: 16 },
+      { onboarding: createReaderOnboardingStore(memoryStorage()) },
+    )
+    await arm()
+    expect(demo(renderer)).toHaveLength(1)
+    expect(textNodes(renderer, readerT("demoChapter"))).toHaveLength(1)
+    expect(textNodes(renderer, readerT("demoChapterRtl"))).toHaveLength(0)
   })
 
   it("is skipped with a screen reader on", async () => {

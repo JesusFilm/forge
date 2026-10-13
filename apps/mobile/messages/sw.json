@@ -138,6 +138,7 @@
     "versesAriaValue": "Mistari {first} hadi {last} kati ya {total}, {chapter}",
     "demoVerse": "Telezesha juu kwa mstari unaofuata",
     "demoChapter": "Telezesha kushoto kwa sura inayofuata",
+    "demoChapterRtl": "Telezesha kulia kwa sura inayofuata",
     "demoSkip": "Gusa ili kuruka",
     "demoSkipAriaLabel": "Ruka maonyesho ya kutelezesha",
     "selectVerseAriaHint": "Gusa mara mbili ili kuchagua mstari huu",

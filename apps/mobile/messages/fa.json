@@ -138,6 +138,7 @@
     "versesAriaValue": "آیه‌های {first} تا {last} از {total}، {chapter}",
     "demoVerse": "برای آیهٔ بعدی به بالا بکشید",
     "demoChapter": "برای باب بعدی به چپ بکشید",
+    "demoChapterRtl": "برای باب بعدی به راست بکشید",
     "demoSkip": "برای رد شدن ضربه بزنید",
     "demoSkipAriaLabel": "رد کردن راهنمای کشیدن",
     "selectVerseAriaHint": "برای انتخاب این آیه دو بار ضربه بزنید",
