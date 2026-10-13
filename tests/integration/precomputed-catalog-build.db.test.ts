@@ -1298,6 +1298,52 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           (await importClient.status({ destination: manualDestination })).state,
         ).toBe("prepared")
         manualPorts.measureCapacity = regularMeasurement
+        // Pause at the transport boundary after real Admin applied the edge
+        // receipts, preserving its actual compact checkpoint for recovery.
+        manualPorts.edgePersistence = createEdgeBatchPersistence(
+          async (raw) => {
+            if ((raw as { action: string }).action === "edge_source_finalize")
+              throw new Error("Fixture stopped before source finalization")
+            return ingest(raw)
+          },
+        )
+        const appliedStop = await runManualSubscriptionCatalog(
+          { ...manualInput, invocation: "resume", attemptId: randomUUID() },
+          manualPorts,
+        )
+        expect(appliedStop).toMatchObject({
+          reason: "admin_unavailable",
+          completedSourceCount: 0,
+          processedPageCount: 2,
+        })
+        for (const sourceVideoId of videoIds) {
+          const applied = await loadDurablePrecomputedBuildReport(prisma, {
+            generationId: manualDestination.generationId,
+            sourceVideoId,
+            reviewer,
+          })
+          expect(applied?.source?.historicalProvenance).toMatchObject({
+            captureMode: "imported_capture_derived_v1",
+            status: "complete",
+          })
+        }
+        // Arrange natural lease expiry only in this isolated native fixture.
+        await admin.query(
+          "UPDATE recommendation_precomputed_build_source SET lease_expires_at=clock_timestamp()-interval '1 second' WHERE generation_id=$1 AND state='claimed'",
+          [manualDestination.generationId],
+        )
+        manualPorts.edgePersistence = createEdgeBatchPersistence(ingest)
+        manualPorts.ingest = async (raw) => {
+          const response = await ingest(raw)
+          if ((raw as { action: string }).action === "claim")
+            expect(
+              z.object({ checkpoint: z.unknown() }).parse(response).checkpoint,
+            ).toEqual({
+              stage: "edge_page_applied_v1",
+              cursor: { candidateIndex: 1 },
+            })
+          return response
+        }
         const manual = await runManualSubscriptionCatalog(
           { ...manualInput, invocation: "resume", attemptId: randomUUID() },
           manualPorts,
@@ -1305,12 +1351,12 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         expect(manual).toMatchObject({
           state: "completed",
           completedSourceCount: 2,
-          processedPageCount: 2,
+          processedPageCount: 0,
           knownUsage: {
             profileCallCount: 0,
-            edgeBatchCallCount: 1,
-            edgeBatchInputTokens: 200,
-            edgeBatchOutputTokens: 40,
+            edgeBatchCallCount: 0,
+            edgeBatchInputTokens: 0,
+            edgeBatchOutputTokens: 0,
           },
         })
         expect(subscriptionCalls).toBe(1)

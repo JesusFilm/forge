@@ -1613,8 +1613,164 @@ describe("manual subscription catalog preflight", () => {
     expect(fixture.actions).not.toContain("model_admission")
   })
 
+  it("resumes an applied edge checkpoint and finalizes exhausted ranks without another model call", async () => {
+    const fixture = await pilotFixture()
+    expect(
+      (await runManualSubscriptionCatalog(fixture.input, fixture.ports)).reason,
+    ).toBe("pilot_boundary")
+    const previousDispatches = fixture.actions.filter(
+      (action) => action === "model_dispatch",
+    ).length
+    const previousWrites = fixture.actions.filter(
+      (action) => action === "checkpoint" || action === "source_history",
+    ).length
+    fixture.input.invocation = "resume"
+    fixture.input.attemptId = "44444444-4444-4444-8444-444444444444"
+    fixture.input.work = {
+      mode: "pilot",
+      sources: [{ sourceVideoId: "source-one", exclusiveEndRank: 2 }],
+    }
+    const ingest = fixture.ports.ingest
+    const appliedShape = {
+      stage: "edge_page_applied_v1",
+      cursor: { candidateIndex: 2 },
+    }
+    let claimPatch: { checkpoint: unknown; historicalProvenance?: unknown } = {
+      checkpoint: appliedShape,
+    }
+    let savedClaim: {
+      checkpoint: Record<string, unknown>
+      historicalProvenance: Record<string, unknown>
+    }
+    fixture.ports.ingest = async (raw) => {
+      const response = await ingest(raw)
+      if ((raw as { action: string }).action !== "claim") return response
+      savedClaim = response as typeof savedClaim
+      return { ...(response as object), checkpointRevision: 2, ...claimPatch }
+    }
+    fixture.ports.edgePersistence.status = async (request) => {
+      const prior = planEdgeMemberPage({
+        sourceVideoId: "source-one",
+        orderedCandidateIds:
+          fixture.retrieval.candidateIdsBySource.get("source-one")!,
+        profileKeysByVideoId: fixture.profileKeys,
+        pageIndex: 0,
+        startRank: 0,
+        pageSize: 2,
+      })
+      return {
+        generationId: request.generationId,
+        sourceVideoId: request.sourceVideoId,
+        sourceState: "claimed",
+        checkpointRevision: 2,
+        sourceCandidateCount: prior.sourceCandidateCount,
+        sourceCandidateDigest: prior.sourceCandidateDigest,
+        nextCursor: null,
+        calls: [
+          {
+            callId: "33333333-3333-4333-8333-333333333333",
+            attemptId: "11111111-1111-4111-8111-111111111111",
+            status: "succeeded",
+            applicationState: "applied_empty",
+            pageIndex: 0,
+            candidatePageDigest: prior.candidatePageDigest,
+            candidates: prior.candidates,
+            appliedRevision: 2,
+            startedAt: cutoff,
+            finishedAt: cutoff,
+            memberSourceVideoIds: ["source-one"],
+          },
+        ],
+      }
+    }
+    let finalized = 0
+    fixture.ports.edgePersistence.finalizeSource = async (request) => {
+      finalized++
+      expect(request.expectedRevision).toBe(2)
+      return {
+        generationId: request.generationId,
+        sourceVideoId: request.sourceVideoId,
+        sourceState: "complete_empty",
+        acceptedCount: 0,
+        checkpointRevision: 3,
+        replay: false,
+      }
+    }
+    const resumed = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(resumed).toMatchObject({
+      state: "stopped",
+      reason: "pilot_boundary",
+      completedSourceCount: 1,
+      processedPageCount: 0,
+    })
+    expect(finalized).toBe(1)
+    expect(
+      fixture.actions.filter((action) => action === "model_dispatch"),
+    ).toHaveLength(previousDispatches)
+    expect(
+      fixture.actions.filter(
+        (action) => action === "checkpoint" || action === "source_history",
+      ),
+    ).toHaveLength(previousWrites)
+    const initial = savedClaim!
+    for (const changedClaim of [
+      { checkpoint: { ...initial.checkpoint, stage: "unknown_stage" } },
+      { checkpoint: { ...appliedShape, cursor: { candidateIndex: 0 } } },
+      { checkpoint: { ...appliedShape, cursor: { candidateIndex: 3 } } },
+      { checkpoint: { ...appliedShape, cursor: { candidateIndex: 1 } } },
+      { checkpoint: { ...appliedShape, extra: "unrecognized" } },
+      { historicalProvenance: null },
+      {
+        historicalProvenance: {
+          ...initial.historicalProvenance,
+          resultDigest: "0".repeat(64),
+        },
+      },
+    ]) {
+      claimPatch = { checkpoint: appliedShape, ...changedClaim }
+      const refused = await runManualSubscriptionCatalog(
+        fixture.input,
+        fixture.ports,
+      )
+      expect(refused.reason).toBe("source_failed")
+      expect(finalized).toBe(1)
+      expect(
+        fixture.actions.filter((action) => action === "model_dispatch"),
+      ).toHaveLength(previousDispatches)
+      expect(
+        fixture.actions.filter(
+          (action) => action === "checkpoint" || action === "source_history",
+        ),
+      ).toHaveLength(previousWrites)
+    }
+  })
+
   it("continues after a verified prior page at its durable revision", async () => {
     const fixture = await pilotFixture()
+    expect(
+      (await runManualSubscriptionCatalog(fixture.input, fixture.ports)).reason,
+    ).toBe("pilot_boundary")
+    const previousDispatches = fixture.actions.filter(
+      (action) => action === "model_dispatch",
+    ).length
+    fixture.input.invocation = "resume"
+    fixture.input.attemptId = "44444444-4444-4444-8444-444444444444"
+    const ingest = fixture.ports.ingest
+    fixture.ports.ingest = async (raw) => {
+      const response = await ingest(raw)
+      if ((raw as { action: string }).action !== "claim") return response
+      return {
+        ...(response as object),
+        checkpointRevision: 2,
+        checkpoint: {
+          stage: "edge_page_applied_v1",
+          cursor: { candidateIndex: 1 },
+        },
+      }
+    }
     fixture.input.work = {
       mode: "pilot",
       sources: [{ sourceVideoId: "source-one", exclusiveEndRank: 2 }],
@@ -1634,7 +1790,7 @@ describe("manual subscription catalog preflight", () => {
       })
       return {
         ...current,
-        checkpointRevision: 1,
+        checkpointRevision: 2,
         sourceCandidateCount: prior.sourceCandidateCount,
         sourceCandidateDigest: prior.sourceCandidateDigest,
         calls: [
@@ -1651,7 +1807,7 @@ describe("manual subscription catalog preflight", () => {
               targetProfileKey: candidate.targetProfileKey,
               targetVideoId: candidate.targetVideoId,
             })),
-            appliedRevision: 1,
+            appliedRevision: 2,
             startedAt: new Date().toISOString(),
             finishedAt: new Date().toISOString(),
             memberSourceVideoIds: ["source-one"],
@@ -1660,8 +1816,12 @@ describe("manual subscription catalog preflight", () => {
       }
     }
     let observedRevision: number | undefined
+    let observedRanks: number[] | undefined
     fixture.ports.edgePersistence.start = async (request) => {
       observedRevision = request.members[0]?.checkpointRevision
+      observedRanks = request.members[0]?.candidates.map(
+        (candidate) => candidate.poolRank,
+      )
       throw new Error("synthetic stop after inspecting reservation")
     }
     const result = await runManualSubscriptionCatalog(
@@ -1669,8 +1829,11 @@ describe("manual subscription catalog preflight", () => {
       fixture.ports,
     )
     expect(result.reason).toBe("admin_unavailable")
-    expect(observedRevision).toBe(1)
-    expect(fixture.actions).not.toContain("model_dispatch")
+    expect(observedRevision).toBe(2)
+    expect(observedRanks).toEqual([1])
+    expect(
+      fixture.actions.filter((action) => action === "model_dispatch"),
+    ).toHaveLength(previousDispatches)
   })
 
   it("completes an explicit full single-video catalog without inference", async () => {

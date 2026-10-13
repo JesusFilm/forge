@@ -307,6 +307,14 @@ const claimReply = scopeReply.extend({
   checkpoint: z.unknown().nullable().optional(),
   historicalProvenance: z.unknown().nullable().optional(),
 })
+const appliedEdgeCheckpoint = z
+  .object({
+    stage: z.literal("edge_page_applied_v1"),
+    cursor: z
+      .object({ candidateIndex: z.number().int().positive().max(128) })
+      .strict(),
+  })
+  .strict()
 const checkpointReply = scopeReply.extend({
   checkpointRevision: z.number().int().positive(),
   replay: z.boolean(),
@@ -1154,6 +1162,7 @@ export async function runManualSubscriptionCatalog(
           pageCountKind: history.pageCountKind,
         }
         let checkpointRevision = claimed.checkpointRevision
+        let appliedCandidateIndex: number | undefined
         if (claimed.checkpoint === null) {
           if (checkpointRevision !== 0 || claimed.historicalProvenance !== null)
             throw new ManualSubscriptionCatalogError("source_failed")
@@ -1178,15 +1187,31 @@ export async function runManualSubscriptionCatalog(
             throw new ManualSubscriptionCatalogError("admin_unavailable")
           checkpointRevision = checkpoint.checkpointRevision
         } else {
-          const previous = z
-            .object({ historySummary: z.unknown() })
-            .safeParse(claimed.checkpoint)
-          if (
-            checkpointRevision < 1 ||
-            !previous.success ||
-            !sameCanonicalJson(previous.data.historySummary, historySummary)
-          )
-            throw new ManualSubscriptionCatalogError("source_failed")
+          const applied = appliedEdgeCheckpoint.safeParse(claimed.checkpoint)
+          if (applied.success) {
+            if (
+              checkpointRevision < 2 ||
+              claimed.historicalProvenance === null ||
+              applied.data.cursor.candidateIndex > orderedCandidateIds.length
+            )
+              throw new ManualSubscriptionCatalogError("source_failed")
+            appliedCandidateIndex = applied.data.cursor.candidateIndex
+          } else {
+            const previous = z
+              .object({
+                stage: z.literal("subscription_imported_history_ready"),
+                cursor: z.object({}).strict(),
+                historySummary: z.unknown(),
+              })
+              .strict()
+              .safeParse(claimed.checkpoint)
+            if (
+              checkpointRevision < 1 ||
+              !previous.success ||
+              !sameCanonicalJson(previous.data.historySummary, historySummary)
+            )
+              throw new ManualSubscriptionCatalogError("source_failed")
+          }
         }
         if (claimed.historicalProvenance !== null) {
           if (!sameCanonicalJson(claimed.historicalProvenance, history))
@@ -1240,6 +1265,11 @@ export async function runManualSubscriptionCatalog(
           input.generationInputDigest,
           input.recovery,
         )
+        if (
+          appliedCandidateIndex !== undefined &&
+          entry.startRank !== appliedCandidateIndex
+        )
+          throw new ManualSubscriptionCatalogError("source_failed")
         active.push(entry)
       }
       while (
