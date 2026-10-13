@@ -1,4 +1,4 @@
-// feat-694 KTD9: an Android return reload reads the launch link again, so its
+// feat-695 KTD9: an Android return reload reads the launch link again, so its
 // first route goes to Home (R5). A start reload keeps its link: the reloaded
 // runtime is the first one to read it.
 export function redirectSystemPath({

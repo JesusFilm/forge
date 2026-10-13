@@ -168,7 +168,7 @@ describe("splash host ownership", () => {
     ).toBe(true)
   })
 
-  // feat-694 U2: a start reload for direction must happen behind the native
+  // feat-695 U2: a start reload for direction must happen behind the native
   // splash, so its bare view hides nothing and mounts the tree only after it.
   it("keeps the native splash up while a direction reload is pending", () => {
     const content = read(LAYOUT)

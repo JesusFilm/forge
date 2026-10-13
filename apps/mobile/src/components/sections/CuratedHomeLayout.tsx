@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 2,
-    // The mute target draws at the hero's measured x (feat-694 KTD7), so
+    // The mute target draws at the hero's measured x (feat-695 KTD7), so
     // React Native must not swap its `left` in a right-to-left app.
     direction: "ltr",
   },

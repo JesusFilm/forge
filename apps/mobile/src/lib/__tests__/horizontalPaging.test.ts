@@ -18,7 +18,7 @@ function swipeFrom1(dx: number) {
   return heroSwipeTarget({ dx, index: 1, slideCount: 4, commitPx: COMMIT_PX })
 }
 
-describe("heroSwipeTarget (feat-694 U5)", () => {
+describe("heroSwipeTarget (feat-695 U5)", () => {
   it("moves to the next hero on a drag to the right in a right-to-left layout", () => {
     layoutIs(true)
     expect(swipeFrom1(60)).toBe(2)
@@ -50,7 +50,7 @@ describe("heroSwipeTarget (feat-694 U5)", () => {
   })
 })
 
-describe("scrollPageIndex (feat-694 U5)", () => {
+describe("scrollPageIndex (feat-695 U5)", () => {
   // Both platforms report contentOffset.x from the left edge of the content,
   // in either layout direction (RCTScrollViewComponentView _scrollViewMetrics,
   // ReactScrollViewHelper.emitScrollEvent).

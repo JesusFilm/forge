@@ -1,5 +1,5 @@
 ---
-id: "feat-694"
+id: "feat-695"
 title: "Mirror the mobile layout for right-to-left UI languages"
 owner: "urim"
 priority: "P2"

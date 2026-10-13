@@ -310,10 +310,10 @@ describe("VerseScrubber (R18, KD7)", () => {
   })
 })
 
-// feat-694 R11: the bar shows verse order, so it mirrors. Verse 1 is at the
+// feat-695 R11: the bar shows verse order, so it mirrors. Verse 1 is at the
 // right edge, and a drag to the left moves to later verses. Touch x stays
 // physical, so only the drag's sign changes.
-describe("VerseScrubber in a right-to-left layout (feat-694 R11)", () => {
+describe("VerseScrubber in a right-to-left layout (feat-695 R11)", () => {
   beforeEach(() => {
     jest.spyOn(I18nManager, "getConstants").mockReturnValue({
       ...I18nManager.getConstants(),

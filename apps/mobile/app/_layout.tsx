@@ -59,7 +59,7 @@ let getSplashSession:
 let useLocaleResolutionLog: typeof import("../src/i18n/useLocaleResolutionLog").useLocaleResolutionLog
 let useT: typeof import("../src/i18n/useT").useT
 // Defaults, because a failed direction start must not reach the Startup Error
-// panel: the app then renders in the direction it has (feat-694 U2).
+// panel: the app then renders in the direction it has (feat-695 U2).
 let useDirectionReloadPending: typeof import("../src/i18n/layoutDirection").useDirectionReloadPending =
   () => false
 let directionReloadKind: typeof import("../src/i18n/layoutDirection").directionReloadKind =
@@ -138,7 +138,7 @@ try {
   // phone's language. A failed phone read keeps English and does not throw.
   const localeStore = require("../src/i18n/localeStore")
   localeStore.startLocaleSync()
-  // feat-694 KTD3: right after the UI Locale resolves, before the first render.
+  // feat-695 KTD3: right after the UI Locale resolves, before the first render.
   try {
     const layoutDirection = require("../src/i18n/layoutDirection")
     layoutDirection.startLayoutDirection()
@@ -359,7 +359,7 @@ export default function RootLayout() {
     )
   }
 
-  // feat-694 KTD3: a runtime that reloads for direction mounts no provider, so
+  // feat-695 KTD3: a runtime that reloads for direction mounts no provider, so
   // the downloader, reminders, sign-in refresh, and Datadog never start in it.
   // The native splash stays up, because nothing here hides it.
   const directionReloadPending = useDirectionReloadPending()
@@ -416,7 +416,7 @@ function AppRoot() {
   useEffect(() => {
     if (!hydrated || jsTtiEmittedRef.current) return
     jsTtiEmittedRef.current = true
-    // feat-694 U2: a runtime after a direction reload gets its own name, so
+    // feat-695 U2: a runtime after a direction reload gets its own name, so
     // cold-start numbers do not mix the two cases.
     addDatadogTiming(
       directionReloadKind() == null ? "js_tti" : "js_tti_direction_reload",

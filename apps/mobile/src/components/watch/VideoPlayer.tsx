@@ -920,7 +920,7 @@ export function VideoPlayer({
       )}
 
       {/* The sheets are not playback controls, so they mirror with the app
-          (feat-694 R11). A Modal takes its layout direction from this parent. */}
+          (feat-695 R11). A Modal takes its layout direction from this parent. */}
       <View
         style={[styles.sheetHost, { direction: appDirection() }]}
         pointerEvents="box-none"
@@ -945,7 +945,7 @@ export function VideoPlayer({
 }
 
 const styles = StyleSheet.create({
-  // Playback does not mirror (feat-694 R12): the seek flash shows on the side
+  // Playback does not mirror (feat-695 R12): the seek flash shows on the side
   // that the viewer tapped, which is a physical x.
   root: {
     ...StyleSheet.absoluteFill,

@@ -50,7 +50,7 @@ export default function TabLayout() {
       labelStyle={{ default: { color: MUTED }, selected: { color: ACCENT } }}
       // UIKit tabs ignore React Native's direction and follow the native
       // localization, so `inherit` can give them the wrong order. Never
-      // remove the prop: the tab order must follow the layout (feat-694 R4).
+      // remove the prop: the tab order must follow the layout (feat-695 R4).
       unstable_nativeProps={{ direction: isLayoutRtl() ? "rtl" : "ltr" }}
     >
       {TAB_ROUTE_NAMES.map((name) => (

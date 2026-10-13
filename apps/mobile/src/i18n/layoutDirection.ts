@@ -1,4 +1,4 @@
-// feat-694 KTD3: the app decides the layout direction from the UI Locale, and the
+// feat-695 KTD3: the app decides the layout direction from the UI Locale, and the
 // layout-direction module saves it and applies it to native parts. A wrong
 // direction in use costs one reload: at start, or on Android when the viewer returns.
 import { reloadAppAsync } from "expo"

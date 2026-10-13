@@ -2,7 +2,7 @@
 title: "Android reloadAppAsync can resolve without a reload, and a saved layout direction then mixes the screen"
 date: "2026-10-13"
 category: integration-issues
-module: "apps/mobile — mirrored layout direction reload (feat-694)"
+module: "apps/mobile — mirrored layout direction reload (feat-695)"
 problem_type: integration_issue
 component: tooling
 symptoms:
@@ -35,7 +35,7 @@ tags:
 
 ## Problem
 
-The mirrored layout (feat-694) applies a new direction by a save and then a reload. On Android, `reloadAppAsync` can resolve and not reload. The save had already changed the direction that React Native's native layout reads, so the runtime that did not reload showed a screen with two directions.
+The mirrored layout (feat-695) applies a new direction by a save and then a reload. On Android, `reloadAppAsync` can resolve and not reload. The save had already changed the direction that React Native's native layout reads, so the runtime that did not reload showed a screen with two directions.
 
 ## Symptoms
 
@@ -102,4 +102,4 @@ So a save that sets the new direction changes the native layout of the runtime t
 - `docs/solutions/ui-bugs/android-tv-preview-restart-stale-root-20261008.md`: another `reloadAppAsync` call on Android (TV, legacy architecture) that gave no clean reload.
 - `docs/solutions/logic-errors/liveness-watchdog-armed-on-success-and-unpaired-latch-heartbeat.md`: arm a watchdog on intent, not on the success of the thing it guards.
 - `docs/solutions/logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md`: a gate with no time-based release path stays shut.
-- `apps/mobile/CLAUDE.md`, "Mirrored layout (feat-694)" > "A reload that does not happen".
+- `apps/mobile/CLAUDE.md`, "Mirrored layout (feat-695)" > "A reload that does not happen".

@@ -9,7 +9,7 @@ type ScrollMetrics = {
 
 /**
  * The hero a released swipe moves to, or null when the drag is too short.
- * A drag against the reading direction moves to the next hero (feat-694 R11):
+ * A drag against the reading direction moves to the next hero (feat-695 R11):
  * to the left in a left-to-right layout, to the right in a right-to-left one.
  */
 export function heroSwipeTarget({

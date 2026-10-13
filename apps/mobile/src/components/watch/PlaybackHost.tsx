@@ -2035,7 +2035,7 @@ function ActivePlaybackHost({
 
 const styles = StyleSheet.create({
   // The frame draws at a measured window x and snaps to physical corners
-  // (feat-694 KTD7), so this layer stays left-to-right in every app direction.
+  // (feat-695 KTD7), so this layer stays left-to-right in every app direction.
   exitLayer: {
     ...StyleSheet.absoluteFill,
     direction: "ltr",

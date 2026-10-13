@@ -11,7 +11,7 @@ function layoutIs(isRTL: boolean) {
 
 afterEach(() => jest.restoreAllMocks())
 
-describe("directionalIcon (feat-694 KTD8)", () => {
+describe("directionalIcon (feat-695 KTD8)", () => {
   it.each([
     ["chevron-back", "chevron-forward"],
     ["chevron-forward", "chevron-back"],

@@ -563,7 +563,7 @@ export function PlayerControls({
     <View style={styles.container} pointerEvents="box-none">
       {/* External routes live at the top end corner, clear of the bottom
           transport rows; fullscreen clears the notch and side inset. They are
-          not playback controls, so they mirror with the app (feat-694 R11). */}
+          not playback controls, so they mirror with the app (feat-695 R11). */}
       <View
         style={[StyleSheet.absoluteFill, { direction: appDirection() }]}
         pointerEvents="box-none"
@@ -714,7 +714,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     justifyContent: "center",
     alignItems: "center",
-    // Playback does not mirror (feat-694 R12): the transport order and the
+    // Playback does not mirror (feat-695 R12): the transport order and the
     // fullscreen bar's side insets stay physical in a right-to-left app.
     direction: "ltr",
   },

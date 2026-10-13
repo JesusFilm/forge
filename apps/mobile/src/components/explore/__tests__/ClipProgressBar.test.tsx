@@ -1,5 +1,5 @@
 /**
- * The clip progress bar in a right-to-left layout (feat-694 R12, KTD7): it
+ * The clip progress bar in a right-to-left layout (feat-695 R12, KTD7): it
  * keeps its own left-to-right layout, so the thumb and the time pill sit on
  * the x that the drag reads. Its time and seek behavior is in ClipOverlay.test.
  */
@@ -108,7 +108,7 @@ function renderDragging(): TestInstance {
   return renderer as TestInstance
 }
 
-describe("ClipProgressBar — in a right-to-left layout (feat-694 R12)", () => {
+describe("ClipProgressBar — in a right-to-left layout (feat-695 R12)", () => {
   it("places the thumb and the time pill from the left edge, inside a left-to-right container", () => {
     const bar = renderDragging()
 

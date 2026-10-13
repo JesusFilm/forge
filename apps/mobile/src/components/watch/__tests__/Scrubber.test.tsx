@@ -1,5 +1,5 @@
 /**
- * The seek bar in a right-to-left layout (feat-694 R12, KTD7, AE6) keeps a
+ * The seek bar in a right-to-left layout (feat-695 R12, KTD7, AE6) keeps a
  * left-to-right layout, so its thumb sits on the x that the drag reads. The
  * mocks re-point `react` at the real package (CLAUDE.md, render tests).
  */
@@ -75,7 +75,7 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
-describe("Scrubber — in a right-to-left layout (feat-694 R12, AE6)", () => {
+describe("Scrubber — in a right-to-left layout (feat-695 R12, AE6)", () => {
   it("fills from the left edge, inside a left-to-right container", async () => {
     const renderer = await renderMeasured()
     const fill = hostById(renderer, "scrubber-fill")

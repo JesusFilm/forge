@@ -135,7 +135,7 @@ function functionBody(source, name) {
 }
 
 /** True when the root layout renders AppRoot and AppRoot's own body calls
- *  useLocaleResolutionLog(hydrated). feat-694 U2 moved the tree into AppRoot. */
+ *  useLocaleResolutionLog(hydrated). feat-695 U2 moved the tree into AppRoot. */
 function logsLocaleInAppRoot(source) {
   const root = functionBody(source, "RootLayout")
   const app = functionBody(source, "AppRoot")
@@ -287,7 +287,7 @@ describe("the ui_locale.resolved log", () => {
   })
 })
 
-describe("the layout direction start (feat-694 KTD3)", () => {
+describe("the layout direction start (feat-695 KTD3)", () => {
   it("starts in the guarded block, after the locale store, in its own try", () => {
     expect(startsDirectionAfterLocale(fs.readFileSync(LAYOUT, "utf8"))).toBe(
       true,

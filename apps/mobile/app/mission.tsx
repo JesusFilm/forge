@@ -53,7 +53,7 @@ const BACK_BUTTON_CLEARANCE = BACK_BUTTON_PROPS.topOffset + 40 + 14
 export default function MissionScreen() {
   const typography = useTypography()
   const t = useT("Mission")
-  // feat-694 R17: the prose keeps the start edge of its own language.
+  // feat-695 R17: the prose keeps the start edge of its own language.
   const paragraph = useTextDirection().uiParagraph
   const [headlineBefore, headlineAfter] = splitAtMarker(
     t("inviteHeadline", { accent: INLINE_MARK }),

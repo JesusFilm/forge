@@ -120,7 +120,7 @@ The defect has two cases:
 
 ## Solution
 
-> **Superseded in part 2026-10-12 (feat-694):** the layout now mirrors for a
+> **Superseded in part 2026-10-12 (feat-695):** the layout now mirrors for a
 > right-to-left UI Locale, and `withIosLeftToRightAppearance` and
 > `supportsRTL: false` are gone. While `MIRRORED_LAYOUT_ENABLED` is on,
 > `textDirectionStyle` also returns an explicit `textAlign` for every known
@@ -129,7 +129,7 @@ The defect has two cases:
 > start edge. So English text in an English UI on a `ks` phone now aligns
 > left. Text that does not use the helper keeps natural alignment, and so
 > keeps this defect on a `ks` phone. With the switch off, the solution below
-> holds. See `apps/mobile/CLAUDE.md`, "Mirrored layout (feat-694)".
+> holds. See `apps/mobile/CLAUDE.md`, "Mirrored layout (feat-695)".
 
 Give each left-aligned `<Text>` an explicit direction from the language of its
 own text. `useTextDirection()` in `apps/mobile/src/i18n/textDirection.ts:96-106`

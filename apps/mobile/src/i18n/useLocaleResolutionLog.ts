@@ -11,7 +11,7 @@ export function useLocaleResolutionLog(hydrated: boolean): void {
   useEffect(() => {
     if (!hydrated || loggedRef.current) return
     loggedRef.current = true
-    // feat-694 U2: the log fires once per JavaScript runtime, so a runtime
+    // feat-695 U2: the log fires once per JavaScript runtime, so a runtime
     // after a direction reload says so.
     datadogLog.info("ui_locale.resolved", {
       ...localeResolutionAttributes(getLocaleResolution()),

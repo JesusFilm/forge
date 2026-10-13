@@ -180,7 +180,7 @@ export const lapseReminderNotifications: LapseReminderNotificationsAdapter = {
    *  start the OS-side manager replays the tap into this rather than into the
    *  listener, so the cold and warm paths never both fire for one tap. */
   getLastResponseData() {
-    // feat-694 KTD9: a return reload opens Home, so the tap that started the
+    // feat-695 KTD9: a return reload opens Home, so the tap that started the
     // session must not replay into the runtime that the reload starts.
     if (afterDirectionReturnReload()) return null
     return (

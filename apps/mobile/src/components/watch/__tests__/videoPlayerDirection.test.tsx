@@ -1,5 +1,5 @@
 /**
- * VideoPlayer in a right-to-left layout (feat-694 R11, R12, KTD7). The player
+ * VideoPlayer in a right-to-left layout (feat-695 R11, R12, KTD7). The player
  * layer stays left to right, so the seek flash shows on the tapped side; the
  * settings and feedback sheets take the app's own direction back.
  */
@@ -162,7 +162,7 @@ afterEach(() => {
   jest.restoreAllMocks()
 })
 
-describe("the double-tap seek flash (feat-694 R12)", () => {
+describe("the double-tap seek flash (feat-695 R12)", () => {
   it("shows a left-side rewind at the physical left, inside a left-to-right layer", async () => {
     layoutIs(true)
     const renderer = await render()
@@ -199,7 +199,7 @@ describe("the double-tap seek flash (feat-694 R12)", () => {
   })
 })
 
-describe("the autostart veil's route buttons (feat-694 R11)", () => {
+describe("the autostart veil's route buttons (feat-695 R11)", () => {
   it.each([
     { layout: "right-to-left", isRTL: true, expected: "rtl" },
     { layout: "left-to-right", isRTL: false, expected: "ltr" },
@@ -218,7 +218,7 @@ describe("the autostart veil's route buttons (feat-694 R11)", () => {
   )
 })
 
-describe("the player's sheets (feat-694 R11)", () => {
+describe("the player's sheets (feat-695 R11)", () => {
   it.each([
     { layout: "right-to-left", isRTL: true, expected: "rtl" },
     { layout: "left-to-right", isRTL: false, expected: "ltr" },

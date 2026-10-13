@@ -6,7 +6,7 @@ const fs = require("fs")
 const path = require("path")
 const ts = require("typescript")
 
-// Guard (feat-694 R19, KTD10): React Native mirrors `left` and `right` styles
+// Guard (feat-695 R19, KTD10): React Native mirrors `left` and `right` styles
 // by itself, but not icon names, horizontal transforms, touch or scroll x math,
 // or measured x values in side styles. Each such site is mirrored or excepted.
 const MOBILE_ROOT = path.join(__dirname, "..", "..", "..")

@@ -441,7 +441,7 @@ describe("MyWatchScreen in a right-to-left UI (KTD13)", () => {
     }
   }
 
-  // feat-694 KTD6: with mirroring on, English UI text sets its edge too.
+  // feat-695 KTD6: with mirroring on, English UI text sets its edge too.
   it("gives the Downloads heading the UI direction in English and Arabic", async () => {
     mockDownloads.offlineRecords = [record("v-1", "downloaded")]
     const english = await renderScreen()

@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   hitArea: {
     height: SCRUBBER_HIT_HEIGHT,
     justifyContent: "center",
-    // Playback does not mirror (feat-694 R12). React Native swaps `left` and
+    // Playback does not mirror (feat-695 R12). React Native swaps `left` and
     // `right` in a right-to-left app, so the bar sets its own direction.
     direction: "ltr",
   },

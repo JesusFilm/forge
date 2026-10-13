@@ -449,7 +449,7 @@ describe("the reader corner policy", () => {
   })
 })
 
-// feat-694 R11, KTD7: a right-to-left layout moves the default corners to the
+// feat-695 R11, KTD7: a right-to-left layout moves the default corners to the
 // other side. The frames and the snap stay physical, because the host draws
 // the window inside a left-to-right layer.
 describe("the corners in each layout direction", () => {

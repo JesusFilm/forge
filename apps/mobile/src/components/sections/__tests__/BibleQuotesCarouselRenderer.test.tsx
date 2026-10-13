@@ -273,7 +273,7 @@ describe("BibleQuotesCarouselRenderer — the passage language", () => {
   it.each([
     ["an English passage in an Arabic UI", "ar", "en", ["en"], "ltr"],
     ["an Arabic passage in an Arabic UI", "ar", "ar", [undefined], "rtl"],
-    // feat-694 KTD6: with mirroring on, every known language sets its edge.
+    // feat-695 KTD6: with mirroring on, every known language sets its edge.
     ["an English passage in an English UI", "en", "en", ["en"], "ltr"],
     ["a Russian passage in an English UI", "en", "ru", [undefined], "ltr"],
   ])("marks and sets %s", (_case, uiTag, textLang, marks, direction) => {
@@ -1591,7 +1591,7 @@ describe("BibleQuotesCarouselRenderer — header share button", () => {
   })
 })
 
-// feat-694 U5: both platforms report contentOffset.x from the left edge of the
+// feat-695 U5: both platforms report contentOffset.x from the left edge of the
 // content, so a right-to-left carousel counts its resting card from the right.
 describe("BibleQuotesCarouselRenderer — the resting card in a right-to-left layout", () => {
   // 750 wide: five 718-wide cards, 12 between them, 16 at each end.

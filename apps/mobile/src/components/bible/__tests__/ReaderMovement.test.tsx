@@ -489,7 +489,7 @@ const swipeDown = (r: TestInstance) => swipe(r, DOWN.from, DOWN.to)
 const swipeLeft = (r: TestInstance) => swipe(r, LEFT.from, LEFT.to)
 const swipeRight = (r: TestInstance) => swipe(r, RIGHT.from, RIGHT.to)
 
-/** feat-694: the layout in use reads right to left. Touch x stays physical,
+/** feat-695: the layout in use reads right to left. Touch x stays physical,
  *  and afterEach restores the spy. Call it before the reader mounts. */
 function layoutIsRtl() {
   jest.spyOn(I18nManager, "getConstants").mockReturnValue({
@@ -794,7 +794,7 @@ describe("the verse slide", () => {
     expect(slideX(byTestId(renderer, "bible-verse")[0]!)).toBeLessThan(0)
   })
 
-  // feat-694 R11: a transform never mirrors, so the reader flips the slide.
+  // feat-695 R11: a transform never mirrors, so the reader flips the slide.
   it("slides the next chapter in from the left in a right-to-left layout", async () => {
     layoutIsRtl()
     const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
@@ -867,7 +867,7 @@ describe("swipes (R12, R14, KTD13)", () => {
     expect(timingsWith({ duration: CHAPTER_PULSE_MS })).toHaveLength(2)
   })
 
-  // feat-694 R14: the layout sets the direction, not the Bible text's language.
+  // feat-695 R14: the layout sets the direction, not the Bible text's language.
   it("covers AE6: a swipe right opens the next chapter in a right-to-left layout, and a swipe left the one before", async () => {
     layoutIsRtl()
     const { renderer } = await openAt({ book: "JHN", chapter: 3, verse: 16 })
@@ -1407,7 +1407,7 @@ describe("the first-run swipe demo (R16)", () => {
     expect(moveTo).not.toHaveBeenCalled()
   })
 
-  // feat-694 R14: the chapter finger shows the swipe that opens the next
+  // feat-695 R14: the chapter finger shows the swipe that opens the next
   // chapter, so it starts at the left and moves right.
   it("starts the chapter finger at the left in a right-to-left layout", async () => {
     jest.useFakeTimers()

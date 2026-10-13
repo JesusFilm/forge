@@ -222,7 +222,7 @@ export function ClipOverlay({
     ? Math.max(bandInset ?? 0, aboveTitle)
     : aboveTitle + PORTRAIT_CAPTION_LIFT
   const captionBottom = captionFloor + CAPTION_GAP
-  // feat-694 R11: the rail mirrors to the left in a right-to-left layout. Its
+  // feat-695 R11: the rail mirrors to the left in a right-to-left layout. Its
   // measured x is physical there too, so the inset side is where it sits.
   const railOnLeft = railLeft != null && railLeft + railWidth / 2 < rowWidth / 2
   const captionSideInset =
