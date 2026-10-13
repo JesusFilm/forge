@@ -138,6 +138,7 @@
     "versesAriaValue": "Versi da {first} a {last} de {total}, {chapter}",
     "demoVerse": "Scori in su par el verso dopo",
     "demoChapter": "Scori a sanca par el capìtolo dopo",
+    "demoChapterRtl": "Scori a drita par el capìtolo dopo",
     "demoSkip": "Toca par saltar",
     "demoSkipAriaLabel": "Salta la dimostrassion de come scorer",
     "selectVerseAriaHint": "Toca do volte par selessionar sto verso",
@@ -773,5 +774,8 @@
     "send": "Manda",
     "sending": "Mandando…",
     "sendAriaLabel": "Manda el parere"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "L’app la dòpara la to rete locale par catar i dispositivi dove trasmeter, cussì te pol riprodur i video su la to TV."
   }
 }

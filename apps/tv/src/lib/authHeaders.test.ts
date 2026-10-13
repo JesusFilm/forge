@@ -2,6 +2,7 @@ import {
   authHeadersForOperation,
   buildAuthHeaders,
   FLEET_TOKEN_OPERATIONS,
+  RECOMMENDATION_OPERATION_NAMES,
   headersForOperation,
   overlappingAllowlistOperations,
   SEARCH_OPERATION_NAME,
@@ -32,6 +33,20 @@ describe("buildAuthHeaders", () => {
 })
 
 describe("authHeadersForOperation (fleet-protection contract)", () => {
+  it.each(RECOMMENDATION_OPERATION_NAMES)(
+    "uses only the fleet bearer for %s, never account authority or search identity",
+    (operationName) => {
+      expect(
+        headersForOperation({
+          operationName,
+          fleetToken: FLEET,
+          userAccessToken: USER,
+          viewerId: "search-only-install-id",
+        }),
+      ).toEqual({ Authorization: `Bearer ${FLEET}` })
+      expect(userAuthHeadersForOperation(operationName, USER)).toEqual({})
+    },
+  )
   it("attaches the bearer to the WatchSearch operation", () => {
     expect(authHeadersForOperation(SEARCH_OPERATION_NAME, "k")).toEqual({
       Authorization: "Bearer k",
@@ -134,7 +149,10 @@ describe("credential separation", () => {
   // merge. Adding an op to both lists is the mistake this catches.
   it("keeps the two allowlists disjoint", () => {
     expect(overlappingAllowlistOperations()).toEqual([])
-    expect(FLEET_TOKEN_OPERATIONS).toEqual([SEARCH_OPERATION_NAME])
+    expect(FLEET_TOKEN_OPERATIONS).toEqual([
+      SEARCH_OPERATION_NAME,
+      ...RECOMMENDATION_OPERATION_NAMES,
+    ])
     // feat-322 Continue Watching merge: the user bearer now also rides the
     // two viewer-scoped watch-progress ops — still the viewer's OWN data only.
     expect(USER_TOKEN_OPERATIONS).toEqual([

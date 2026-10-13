@@ -138,6 +138,7 @@
     "versesAriaValue": "آیتونه {first} تر {last}، له {total} څخه، {chapter}",
     "demoVerse": "د بل آیت لپاره پورته کش کړئ",
     "demoChapter": "د بل څپرکي لپاره کیڼ لور ته کش کړئ",
+    "demoChapterRtl": "د بل څپرکي لپاره ښي لور ته کش کړئ",
     "demoSkip": "د تېرېدو لپاره ټک وکړئ",
     "demoSkipAriaLabel": "د کش کولو ښودنه پرېږدئ",
     "selectVerseAriaHint": "د دې آیت د ټاکلو لپاره دوه ځله ټک وکړئ",
@@ -773,5 +774,8 @@
     "send": "لېږل",
     "sending": "لېږل کېږي…",
     "sendAriaLabel": "نظر ولېږئ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "اپ ستاسو ځايي شبکه د کاسټ وسیلو موندلو لپاره کاروي، ترڅو وکولای شئ ویډیوګانې په خپل تلویزیون کې وچلوئ."
   }
 }

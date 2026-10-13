@@ -35,11 +35,20 @@ export type SupersededChapter = { status: "superseded" }
 
 export type ShownChapter = ChapterResolution | SupersededChapter
 
+/** Who asked for a chapter, for the fetch-failure report. The reader's own
+ *  reads have no tag (KTD10). */
+export type ChapterReadSource = "quote"
+
+export type ChapterReadOptions = { source?: ChapterReadSource }
+
 export type ChapterSources = {
   loadBundledBook: (bookId: UsfmBookId) => Promise<BundledResult<BookText>>
   downloads: Pick<TranslationDownloads, "check" | "getState" | "readBook">
   cache: ChapterCache
-  fetchChapter: (address: ChapterAddress) => Promise<ChapterFetchResult>
+  fetchChapter: (
+    address: ChapterAddress,
+    source?: ChapterReadSource,
+  ) => Promise<ChapterFetchResult>
 }
 
 /** One per reader screen: it answers only for the chapter shown last. */
@@ -49,7 +58,13 @@ export type ChapterView = {
 
 export type ChapterRepository = {
   /** Never rejects. Two calls for one chapter share one read. */
-  resolve(request: ChapterRequest): Promise<ChapterResolution>
+  resolve(
+    request: ChapterRequest,
+    options?: ChapterReadOptions,
+  ): Promise<ChapterResolution>
+  /** Never rejects and never reads the network: BSB, a downloaded book, or a
+   *  fresh kept chapter. Null when the device has none of them. */
+  readOnDevice(request: ChapterRequest): Promise<ResolvedChapter | null>
   createView(): ChapterView
   /** Keeps the next chapter, only after the network last answered. */
   prefetch(request: ChapterRequest): void
@@ -111,26 +126,42 @@ export function createChapterRepository(
     return result.value
   }
 
-  async function read(request: ChapterRequest): Promise<ChapterResolution> {
+  /** The device sources in order, plus a stale kept text for the network path. */
+  async function readDevice(
+    request: ChapterRequest,
+  ): Promise<{ found: ResolvedChapter | null; stale: ChapterText | null }> {
     const { translationId, bookId, chapter } = request
     if (translationId === BSB_TRANSLATION_ID) {
       const book = await bundledBook(bookId)
       const text = book && chapterOf(book, chapter)
-      if (text) return resolved(text, "bundled")
+      if (text) return { found: resolved(text, "bundled"), stale: null }
     }
 
     const downloaded = await sources.downloads.readBook(translationId, bookId)
     const fromDownload = downloaded && chapterOf(downloaded, chapter)
-    if (fromDownload) return resolved(fromDownload, "downloaded")
+    if (fromDownload) {
+      return { found: resolved(fromDownload, "downloaded"), stale: null }
+    }
 
     const kept = await sources.cache.read(request)
-    if (kept && !kept.stale) return resolved(kept.text, "kept")
+    if (kept && !kept.stale) {
+      return { found: resolved(kept.text, "kept"), stale: null }
+    }
+    return { found: null, stale: kept?.text ?? null }
+  }
 
-    const fetched = await sources.fetchChapter({
-      translationId,
-      bookId,
-      chapter,
-    })
+  async function read(
+    request: ChapterRequest,
+    source: ChapterReadSource | undefined,
+  ): Promise<ChapterResolution> {
+    const device = await readDevice(request)
+    if (device.found) return device.found
+
+    const { translationId, bookId, chapter } = request
+    const address = { translationId, bookId, chapter }
+    const fetched = await (source === undefined
+      ? sources.fetchChapter(address)
+      : sources.fetchChapter(address, source))
     networkAnswered =
       fetched.status === "ok" ||
       (fetched.reason !== "offline" && fetched.reason !== "timeout")
@@ -139,15 +170,21 @@ export function createChapterRepository(
       return resolved(fetched.text, "network")
     }
     // An older text of the same chapter is better than R31's message.
-    if (kept) return resolved(kept.text, "kept", true)
+    if (device.stale) return resolved(device.stale, "kept", true)
     return fetched
   }
 
-  function resolve(request: ChapterRequest): Promise<ChapterResolution> {
+  // The tag of the read that starts a flight is the one that a failure logs.
+  function resolve(
+    request: ChapterRequest,
+    options: ChapterReadOptions = {},
+  ): Promise<ChapterResolution> {
     const key = keyOf(request)
     const known = inflight.get(key)
     if (known) return known
-    const flight = read(request).catch(() => chapterFailure("unavailable"))
+    const flight = read(request, options.source).catch(() =>
+      chapterFailure("unavailable"),
+    )
     inflight.set(key, flight)
     // Identity check: a later flight for the same key keeps its own slot.
     const release = () => {
@@ -169,6 +206,14 @@ export function createChapterRepository(
 
   return {
     resolve,
+
+    async readOnDevice(request) {
+      try {
+        return (await readDevice(request)).found
+      } catch {
+        return null
+      }
+    },
 
     createView() {
       let shown: string | null = null

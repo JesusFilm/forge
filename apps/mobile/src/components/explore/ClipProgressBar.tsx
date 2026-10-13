@@ -308,6 +308,9 @@ const styles = StyleSheet.create({
     height: HIT_HEIGHT,
     marginHorizontal: 16,
     justifyContent: "center",
+    // Playback does not mirror (feat-695 R12). React Native swaps `left` and
+    // `right` in a right-to-left app, so the bar sets its own direction.
+    direction: "ltr",
   },
   track: {
     height: TRACK_HEIGHT,

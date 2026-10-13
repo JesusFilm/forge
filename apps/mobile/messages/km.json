@@ -138,6 +138,7 @@
     "versesAriaValue": "ខទី {first} ដល់ {last} ក្នុងចំណោម {total}, {chapter}",
     "demoVerse": "អូសឡើងលើដើម្បីទៅខបន្ទាប់",
     "demoChapter": "អូសទៅឆ្វេងដើម្បីទៅជំពូកបន្ទាប់",
+    "demoChapterRtl": "អូសទៅស្ដាំដើម្បីទៅជំពូកបន្ទាប់",
     "demoSkip": "ចុចដើម្បីរំលង",
     "demoSkipAriaLabel": "រំលងការបង្ហាញពីរបៀបអូស",
     "selectVerseAriaHint": "ចុចពីរដងដើម្បីជ្រើសរើសខនេះ",
@@ -773,5 +774,8 @@
     "send": "ផ្ញើ",
     "sending": "កំពុងផ្ញើ…",
     "sendAriaLabel": "ផ្ញើមតិយោបល់"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "កម្មវិធីប្រើបណ្ដាញមូលដ្ឋានរបស់អ្នក ដើម្បីស្វែងរកឧបករណ៍ដែលអាចទទួលការបញ្ជូនបាន ដូច្នេះអ្នកអាចចាក់វីដេអូនៅលើទូរទស្សន៍របស់អ្នក។"
   }
 }

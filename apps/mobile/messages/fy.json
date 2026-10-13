@@ -138,6 +138,7 @@
     "versesAriaValue": "Fersen {first} oant {last} fan {total}, {chapter}",
     "demoVerse": "Skow omheech foar it folgjende fers",
     "demoChapter": "Skow nei links foar it folgjende haadstik",
+    "demoChapterRtl": "Skow nei rjochts foar it folgjende haadstik",
     "demoSkip": "Tik om oer te slaan",
     "demoSkipAriaLabel": "De skow-demonstraasje oerslaan",
     "selectVerseAriaHint": "Dûbeltik om dit fers te selektearjen",
@@ -773,5 +774,8 @@
     "send": "Stjoere",
     "sending": "Wurdt stjoerd…",
     "sendAriaLabel": "Feedback stjoere"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "De app brûkt jo lokale netwurk om Cast-apparaten te finen, sadat jo fideo’s op jo tv ôfspylje kinne."
   }
 }

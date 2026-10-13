@@ -138,6 +138,7 @@
     "versesAriaValue": "Betsu {first} asta {last} ginen {total}, {chapter}",
     "demoVerse": "Na’kalamten pa’ hilo’ para i sigiente na betsu",
     "demoChapter": "Na’kalamten pa’ akague para i sigiente na kapitulo",
+    "demoChapterRtl": "Na’kalamten pa’ agapa’ para i sigiente na kapitulo",
     "demoSkip": "Pacha para un na’lofan",
     "demoSkipAriaLabel": "Na’lofan i demonstrasion",
     "selectVerseAriaHint": "Pacha dos biåhi para un ayek este na betsu",
@@ -773,5 +774,8 @@
     "send": "Na’hånao",
     "sending": "Ma na’hahånao…",
     "sendAriaLabel": "Na’hånao i hinasso-mu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "I app ha usa i lokat na network-mu para u sodda’ i aparatu siha para na’hånao gi TV, para siña un egga’ i bidio siha gi TV-mu."
   }
 }

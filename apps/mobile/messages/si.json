@@ -138,6 +138,7 @@
     "versesAriaValue": "පද {first} සිට {last} දක්වා, මුළු ගණන {total}, {chapter}",
     "demoVerse": "ඊළඟ පදය සඳහා ඉහළට ස්වයිප් කරන්න",
     "demoChapter": "ඊළඟ පරිච්ඡේදය සඳහා වමට ස්වයිප් කරන්න",
+    "demoChapterRtl": "ඊළඟ පරිච්ඡේදය සඳහා දකුණට ස්වයිප් කරන්න",
     "demoSkip": "මඟ හැරීමට තට්ටු කරන්න",
     "demoSkipAriaLabel": "ස්වයිප් ආදර්ශනය මඟ හරින්න",
     "selectVerseAriaHint": "මෙම පදය තේරීමට දෙවරක් තට්ටු කරන්න",
@@ -773,5 +774,8 @@
     "send": "යවන්න",
     "sending": "යවමින්…",
     "sendAriaLabel": "ප්‍රතිපෝෂණ යවන්න"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "විකාශන උපාංග සොයා ගැනීමට යෙදුම ඔබේ දේශීය ජාලය භාවිත කරයි, එවිට ඔබට ඔබේ රූපවාහිනියේ වීඩියෝ වාදනය කළ හැක."
   }
 }

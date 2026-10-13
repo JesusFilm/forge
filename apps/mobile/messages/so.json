@@ -138,6 +138,7 @@
     "versesAriaValue": "Aayadaha {first} ilaa {last} oo ka mid ah {total}, {chapter}",
     "demoVerse": "Kor u jiid si aad u aragto aayadda xigta",
     "demoChapter": "Bidix u jiid si aad u aragto cutubka xiga",
+    "demoChapterRtl": "Midig u jiid si aad u aragto cutubka xiga",
     "demoSkip": "Taabo si aad uga boodo",
     "demoSkipAriaLabel": "Ka bood tusaalaha jiidista",
     "selectVerseAriaHint": "Laba jeer taabo si aad aayaddan u doorato",
@@ -773,5 +774,8 @@
     "send": "Dir",
     "sending": "Waa la dirayaa…",
     "sendAriaLabel": "Dir jawaab-celinta"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App-ku wuxuu isticmaalaa shabakaddaada maxalliga ah si uu u helo qalabka aad fiidiyowyada u diri karto, si aad fiidiyowyada ugu daari karto TV-gaaga."
   }
 }

@@ -138,6 +138,7 @@
     "versesAriaValue": "Ayet {first} ile {last} arası, toplam {total} ayet, {chapter}",
     "demoVerse": "Sonraki ayet için yukarı kaydırın",
     "demoChapter": "Sonraki bölüm için sola kaydırın",
+    "demoChapterRtl": "Sonraki bölüm için sağa kaydırın",
     "demoSkip": "Geçmek için dokunun",
     "demoSkipAriaLabel": "Kaydırma gösterimini geç",
     "selectVerseAriaHint": "Bu ayeti seçmek için iki kez dokunun",
@@ -773,5 +774,8 @@
     "send": "Gönder",
     "sending": "Gönderiliyor…",
     "sendAriaLabel": "Geri bildirimi gönder"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Uygulama, yayın yapılabilecek cihazları bulmak için yerel ağınızı kullanır; böylece televizyonunuzda video oynatabilirsiniz."
   }
 }

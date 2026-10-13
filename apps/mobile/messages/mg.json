@@ -138,6 +138,7 @@
     "versesAriaValue": "Andininy {first} ka hatramin’ny {last} amin’ny {total}, {chapter}",
     "demoVerse": "Ahisaho miakatra raha hijery ny andininy manaraka",
     "demoChapter": "Ahisaho mankavia raha hijery ny toko manaraka",
+    "demoChapterRtl": "Ahisaho mankavanana raha hijery ny toko manaraka",
     "demoSkip": "Tsindrio raha handingana",
     "demoSkipAriaLabel": "Dingano ny fampisehoana ny fanisahana",
     "selectVerseAriaHint": "Tsindrio indroa raha hifidy ity andininy ity",
@@ -773,5 +774,8 @@
     "send": "Alefaso",
     "sending": "Mandefa…",
     "sendAriaLabel": "Alefaso ny fanehoan-kevitra"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Mampiasa ny tambajotranao eo an-toerana ny fampiharana mba hitady fitaovana azo andefasana lahatsary, ka afaka mandefa lahatsary amin’ny fahitalavitrao ianao."
   }
 }

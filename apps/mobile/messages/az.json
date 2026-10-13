@@ -138,6 +138,7 @@
     "versesAriaValue": "{first} ilə {last} arası ayələr, cəmi {total}, {chapter}",
     "demoVerse": "Növbəti ayə üçün yuxarı sürüşdürün",
     "demoChapter": "Növbəti fəsil üçün sola sürüşdürün",
+    "demoChapterRtl": "Növbəti fəsil üçün sağa sürüşdürün",
     "demoSkip": "Keçmək üçün toxunun",
     "demoSkipAriaLabel": "Sürüşdürmə nümayişini keç",
     "selectVerseAriaHint": "Bu ayəni seçmək üçün iki dəfə toxunun",
@@ -773,5 +774,8 @@
     "send": "Göndər",
     "sending": "Göndərilir…",
     "sendAriaLabel": "Rəy göndər"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Tətbiq ötürmə cihazlarını tapmaq üçün yerli şəbəkənizdən istifadə edir ki, videoları televizorunuzda oynada biləsiniz."
   }
 }

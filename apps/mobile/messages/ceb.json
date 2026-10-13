@@ -138,6 +138,7 @@
     "versesAriaValue": "Mga bersikulo {first} hangtod {last} sa {total}, {chapter}",
     "demoVerse": "I-swipe pataas para sa sunod nga bersikulo",
     "demoChapter": "I-swipe pawala para sa sunod nga kapitulo",
+    "demoChapterRtl": "I-swipe pakanan para sa sunod nga kapitulo",
     "demoSkip": "I-tap aron laktawan",
     "demoSkipAriaLabel": "Laktawi ang pagpakita sa pag-swipe",
     "selectVerseAriaHint": "I-double tap aron mapili kini nga bersikulo",
@@ -773,5 +774,8 @@
     "send": "Ipadala",
     "sending": "Ginapadala…",
     "sendAriaLabel": "Ipadala ang feedback"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Gigamit sa app ang imong lokal nga network sa pagpangita og mga Cast device, aron makapatokar ka og mga bidyo sa imong TV."
   }
 }

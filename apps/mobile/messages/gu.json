@@ -138,6 +138,7 @@
     "versesAriaValue": "{total}માંથી કલમો {first} થી {last}, {chapter}",
     "demoVerse": "આગલી કલમ માટે ઉપર સ્વાઇપ કરો",
     "demoChapter": "આગલા અધ્યાય માટે ડાબી બાજુ સ્વાઇપ કરો",
+    "demoChapterRtl": "આગલા અધ્યાય માટે જમણી બાજુ સ્વાઇપ કરો",
     "demoSkip": "છોડવા માટે ટૅપ કરો",
     "demoSkipAriaLabel": "સ્વાઇપનું પ્રદર્શન છોડો",
     "selectVerseAriaHint": "આ કલમ પસંદ કરવા માટે બે વાર ટૅપ કરો",
@@ -773,5 +774,8 @@
     "send": "મોકલો",
     "sending": "મોકલી રહ્યાં છીએ…",
     "sendAriaLabel": "પ્રતિસાદ મોકલો"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ઍપ કાસ્ટ ડિવાઇસ શોધવા માટે તમારા સ્થાનિક નેટવર્કનો ઉપયોગ કરે છે, જેથી તમે તમારા ટીવી પર વીડિયો ચલાવી શકો."
   }
 }

@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "L’aplicació fa servir la teva xarxa local per trobar dispositius on emetre, perquè puguis reproduir vídeos al teu televisor."
+  }
+}

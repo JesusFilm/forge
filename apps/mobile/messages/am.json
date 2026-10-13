@@ -138,6 +138,7 @@
     "versesAriaValue": "ቁጥር {first} እስከ {last} ከ{total}፣ {chapter}",
     "demoVerse": "ለሚቀጥለው ቁጥር ወደ ላይ ያንሸራትቱ",
     "demoChapter": "ለሚቀጥለው ምዕራፍ ወደ ግራ ያንሸራትቱ",
+    "demoChapterRtl": "ለሚቀጥለው ምዕራፍ ወደ ቀኝ ያንሸራትቱ",
     "demoSkip": "ለመዝለል ይንኩ",
     "demoSkipAriaLabel": "የማንሸራተቻ ማሳያውን ዝለል",
     "selectVerseAriaHint": "ይህን ቁጥር ለመምረጥ ሁለቴ መታ ያድርጉ",
@@ -773,5 +774,8 @@
     "send": "ላክ",
     "sending": "በመላክ ላይ…",
     "sendAriaLabel": "አስተያየት ላክ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "መተግበሪያው የማስተላለፊያ መሣሪያዎችን ለማግኘት የአካባቢ ኔትወርክዎን ይጠቀማል፤ በዚህም ቪዲዮዎችን በቲቪዎ ላይ ማጫወት ይችላሉ።"
   }
 }

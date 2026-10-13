@@ -138,6 +138,7 @@
     "versesAriaValue": "Rannan {first} gu {last} à {total}, {chapter}",
     "demoVerse": "Grad-shlaighd suas airson an ath rainn",
     "demoChapter": "Grad-shlaighd gu clì airson na h-ath chaibideil",
+    "demoChapterRtl": "Grad-shlaighd gu deas airson na h-ath chaibideil",
     "demoSkip": "Thoir gnogag gus leum thairis air",
     "demoSkipAriaLabel": "Leum thairis air taisbeanadh a’ ghrad-shlaighdidh",
     "selectVerseAriaHint": "Thoir gnogag dhùbailte gus an rann seo a thaghadh",
@@ -773,5 +774,8 @@
     "send": "Cuir",
     "sending": "A’ cur…",
     "sendAriaLabel": "Cuir am fios-air-ais"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Cleachdaidh an aplacaid an lìonra ionadail agad gus uidheaman tilgeil a lorg, airson ’s gun urrainn dhut bhideothan a chluich air an telebhisean agad."
   }
 }

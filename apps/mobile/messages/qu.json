@@ -138,6 +138,7 @@
     "versesAriaValue": "Versículokuna {first}manta {last}kama, llapan {total}, {chapter}",
     "demoVerse": "Qatiq versículopaq hanaqman aysay",
     "demoChapter": "Qatiq capítulopaq lluq’iman aysay",
+    "demoChapterRtl": "Qatiq capítulopaq pañaman aysay",
     "demoSkip": "Kayta pasanaykipaq ñit’iy",
     "demoSkipAriaLabel": "Aysay rikuchiyta pasay",
     "selectVerseAriaHint": "Kay versículota akllanaykipaq iskay kutita ñit’iy",
@@ -773,5 +774,8 @@
     "send": "Apachiy",
     "sending": "Apachichkan…",
     "sendAriaLabel": "Yuyayniykita apachiy"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Kay appqa kayllapi kaq llikaykitam llamk’achin televisorman apachinapaq aparatokunata tarinanpaq, chaynapi televisorniykipi videokunata purichinaykipaq."
   }
 }
