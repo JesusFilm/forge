@@ -746,7 +746,9 @@ export async function runManualSubscriptionCatalog(
     }
     const measurementAge = Date.now() - Date.parse(measurement.measuredAt)
     if (
-      measurement.observedDbBytes !== probe.observedDbBytes ||
+      // The physical observation follows the Admin probe. Preserve its raw
+      // values; Admin revalidates size drift and deducts subsequent growth.
+      measurement.observedDbBytes < probe.observedDbBytes ||
       measurement.clusterSystemId !== probe.clusterSystemId ||
       !Number.isFinite(measurementAge) ||
       measurementAge < 0 ||

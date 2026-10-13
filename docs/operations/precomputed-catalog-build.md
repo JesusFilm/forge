@@ -75,9 +75,13 @@ that probe as a final JSON argument and must return JSON containing
 `reserveBytes`, `projectedBytes`, `sampleSourceCount`, `sampleBytes` and
 `source: "operator_verified_pgdata_df"`. Measure `availableBytes` on the
 PostgreSQL **PGDATA volume**, not the Admin, Mastra or operator filesystem;
-use a measured source sample for the projection. The runner rejects a mismatch
-with Admin's database bytes/cluster ID or an observation older than 25 minutes
-and refreshes capacity during a long run. Admin imposes its own 30-minute
+use a measured source sample for the projection. The runner requires the same
+cluster ID, rejects a lower physical database byte count than the preceding
+Admin probe or an observation older than 25 minutes, and refreshes capacity
+during a long run. Contemporaneous nonnegative growth preserves the actual
+physical measurement; Admin applies its existing size-consistency check and
+accounts for subsequent growth and overlapping reservations before admission.
+Admin imposes its own 30-minute
 attestation bound and a minimum 5 GB reserve; that floor is not a measured
 total headroom budget. Neither process can derive PGDATA free bytes from the
 database-size query alone. Do not invent a capacity value.
@@ -236,6 +240,13 @@ inventory and planned origin/destination overlap before choosing them. The
 import charges a destination artifact copy against the retained object budget
 and twice its compressed artifact bytes against temporary reservations. A
 configured S3 bucket alone does not establish those budgets.
+
+Verify import preparation with the deployed environment path, including
+`CI=true` where present. Admin's environment-validation bypass can leave
+configured numeric values as strings; the import boundary normalizes them before
+enforcing safe-integer and range checks. Raw environment hashes alone do not
+prove import readiness. Missing, empty, invalid or unsafe values still stop
+preparation, and object/temporary exhaustion checks retain the configured limits.
 
 ## Start, inspect and resume
 
