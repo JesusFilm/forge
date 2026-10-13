@@ -391,3 +391,32 @@ A fresh pilot must demonstrate completion and support measured capacity review
 before full-catalog admission. Deterministic fixtures cover citation ambiguity,
 later spans, Unicode offsets, unknown IDs, complete input coverage, replay and
 byte/schema bounds; they do not establish live recommendation quality.
+
+## Lossless reducer references after the v5 pilot
+
+The v5 pilot completed the formerly blocked Children’s profile with all eight
+maps and its reduction, then stopped on a later 26-map profile's first reduction.
+That call recorded 27,143 input and 2,249 output tokens against the unchanged
+2,048 output-token request. A schema-valid synthetic response with those usage
+counts deterministically triggers the adapter cap rejection and the public
+`profile_adapter_output_invalid` receipt; the discarded production response is
+not available for an exact replay or exclusion of additional schema problems.
+
+For `complete-profile-v6`, each reducer receives full readable child profiles
+with enumerated references scoped to the exact child digest and anchor index.
+It returns references for up to eight anchors; the server restores every original
+anchor field and claim exactly before the existing provenance and node checks.
+Summary, themes, people, places, citations, complete transcript and ordered child
+coverage remain unchanged. Unknown references fail closed. Actual rendered
+system, input and dynamic schema bytes govern grouping and dispatch before
+reservation; empty anchors avoid empty enums and `oneOf`. All existing byte,
+2,048-token, 64-part and 127-call limits remain unchanged. V4/v5 wire contracts
+and receipts retain their prior behavior. Deterministic tests establish lossless
+rehydration and native persistence/replay, not a live output-size guarantee.
+
+The old v4/v5 generations were closed using the normal cancellation lifecycle
+as superseded, never activated runs. Immutable call/profile evidence, input and
+execution bindings, analytics artifact and sealed origin remain preserved under
+the existing diagnostic retention policy. Start a fresh v6 generation only after
+normal review/release and the unchanged account, capacity, corpus, origin and
+pilot gates; do not resume v5 or introduce retries or recovery exceptions.

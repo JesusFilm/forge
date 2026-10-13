@@ -1,9 +1,13 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { createHash } from "node:crypto"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { z } from "zod"
 
 import {
   profileCoverageDigest,
+  compactProfileSchema,
   profileJsonBudget,
   profileMapAnchorExpansionBound,
   runContentProfile as runContentProfileActual,
@@ -13,7 +17,10 @@ import {
 } from "./content-profile-executor"
 import { planContentProfile } from "./content-profile-plan"
 import type { StructuredModel } from "./astra-provider"
-import { CodexSubscriptionAstraError } from "./codex-subscription-astra"
+import {
+  CodexSubscriptionAstraError,
+  createCodexSubscriptionAstraModel,
+} from "./codex-subscription-astra"
 import type { ReservationAwareStructuredModel } from "./codex-subscription-astra"
 import type { Chunk, SourceCatalog, Video } from "./source-generation"
 
@@ -244,6 +251,275 @@ function recordingProfilePersistence() {
 }
 
 describe("complete content profile execution", () => {
+  it.each([2048, 2249])(
+    "journals the output cap for schema-valid v5 reduction usage %s",
+    async (outputTokens) => {
+      const directory = await mkdtemp(
+        join(tmpdir(), "forge-profile-usage-diagnostic-"),
+      )
+      vi.stubEnv("CI", "")
+      try {
+        const profile = compactProfileSchema.parse({
+          ...supportedProfile,
+          anchors: [],
+        })
+        const executable = join(directory, "fake-codex.cjs")
+        // Fake only the external CLI. Every model response is schema-valid;
+        // map usage stays fixed, and only reduction output usage varies.
+        await writeFile(
+          executable,
+          `#!/usr/bin/env node
+const fs = require("node:fs")
+const request = JSON.parse(fs.readFileSync(0, "utf8"))
+const data = JSON.parse(request.untrustedCatalogData)
+const output = ${JSON.stringify(profile)}
+const usage = data.children
+  ? { input_tokens: 27143, output_tokens: ${outputTokens}, cached_input_tokens: 0 }
+  : { input_tokens: 80, output_tokens: 20, cached_input_tokens: 0 }
+for (const event of [
+  { type: "thread.started", thread_id: "diagnostic-thread" },
+  { type: "turn.started" },
+  { type: "item.completed", item: { id: "message-one", type: "agent_message", text: JSON.stringify(output) } },
+  { type: "turn.completed", usage },
+]) process.stdout.write(JSON.stringify(event) + "\\n")
+`,
+          { mode: 0o700 },
+        )
+        const model = createCodexSubscriptionAstraModel({
+          codexExecutable: executable,
+          initiatingAccountRef: "diagnostic-account",
+          readOperatorIdentity: async () => ({
+            accountRef: "diagnostic-account",
+            authMethod: "chatgpt",
+            observedAt: new Date().toISOString(),
+          }),
+          readAllowance: async () => ({
+            accountRef: "diagnostic-account",
+            billingBasis: "included_subscription",
+            weeklyRemainingPercent: 91,
+            fiveHour: { kind: "not_applicable", plan: "pro" },
+            observedAt: new Date().toISOString(),
+          }),
+        })
+        const chunks = Array.from({ length: 2 }, (_, index) => ({
+          ...oneChunk,
+          id: `diagnostic-chunk-${index}`,
+          chunkIndex: index,
+          text: passage.repeat(20),
+        }))
+        const selected = transcriptVideo()
+        selected.transcriptSelection!.selected[0]!.totalChunks = 2
+        const args = {
+          ...identity,
+          promptVersion: "complete-profile-v5",
+          maxPartBytes: 2000,
+          video: selected,
+          catalog: transcriptCatalog(chunks),
+          model,
+        }
+        expect(
+          planContentProfile({ ...args, chunks }).parts.length,
+        ).toBeGreaterThan(1)
+        const recorded = recordingProfilePersistence()
+        const outcome = await runContentProfileActual({
+          ...args,
+          persistence: recorded.persistence,
+        }).then(
+          (result) => ({ result, error: null }),
+          (error: unknown) => ({ result: null, error }),
+        )
+        const reduction = recorded.receipts.find(
+          (receipt) => receipt.stage === "reduce",
+        )
+        if (!reduction) throw outcome.error
+        expect(reduction?.usage).toEqual({
+          inputTokens: 27143,
+          outputTokens,
+          cachedInputTokens: 0,
+        })
+        if (outputTokens > 2048) {
+          expect(reduction).toMatchObject({
+            status: "rejected",
+            errorCode: "profile_adapter_output_invalid",
+          })
+          expect(outcome.error).toMatchObject({
+            code: "provider_invalid_output",
+            consumptionUnknown: false,
+          })
+          expect(outcome.result).toBeNull()
+          return
+        }
+        expect(reduction?.status).toBe("succeeded")
+        expect(reduction?.errorCode).toBeUndefined()
+        expect(outcome.result?.state).toBe("ready")
+      } finally {
+        vi.unstubAllEnvs()
+        await rm(directory, { recursive: true, force: true })
+      }
+    },
+  )
+
+  it.each(["ordinary", "rich", "empty", "unknown"])(
+    "rehydrates v6 reducer references losslessly with full profile replay (%s)",
+    async (mode) => {
+      const chunks = Array.from(
+        { length: mode === "rich" ? 17 : 2 },
+        (_, index) => ({
+          ...oneChunk,
+          id: `reference-chunk-${String(index).padStart(2, "0")}`,
+          chunkIndex: index,
+          text: `Unique opening ${index}: ${"a".repeat(1000)}`,
+        }),
+      )
+      const selected = transcriptVideo()
+      selected.transcriptSelection!.selected[0]!.totalChunks = chunks.length
+      const recorded = recordingProfilePersistence()
+      let expectedAnchors: CompactProfile["anchors"] = []
+      let dispatches = 0
+      let reductions = 0
+      let seenText = ""
+      const fields =
+        mode === "rich"
+          ? {
+              ...supportedProfile,
+              summaryEnglish: "s".repeat(600),
+              themes: Array(12).fill("t".repeat(80)),
+              people: Array(12).fill("p".repeat(80)),
+              places: Array(12).fill("l".repeat(80)),
+              citations: Array(12).fill("c".repeat(80)),
+            }
+          : supportedProfile
+      const args: Parameters<typeof runContentProfile>[0] = {
+        ...identity,
+        promptVersion: "complete-profile-v6",
+        maxPartBytes: 2000,
+        video: selected,
+        catalog: transcriptCatalog(chunks),
+        persistence: recorded.persistence,
+        model: {
+          async generate(request) {
+            dispatches++
+            expect(request.maxOutputTokens).toBe(2048)
+            const schema = JSON.stringify(
+              z.toJSONSchema(request.schema, {
+                target: "draft-07",
+                unrepresentable: "throw",
+              }),
+            )
+            expect(schema).not.toContain('"oneOf"')
+            expect(Buffer.byteLength(schema)).toBeLessThanOrEqual(128000)
+            expect(
+              Buffer.byteLength(request.system) +
+                Buffer.byteLength(request.prompt) +
+                Buffer.byteLength(schema),
+            ).toBeLessThanOrEqual(65536)
+            const data = JSON.parse(request.prompt) as {
+              fragments?: Array<{
+                chunkId: string
+                fragmentIndex: number
+                text: string
+                spans?: Array<{ citationId: string | null; text: string }>
+              }>
+              children?: Array<{
+                profile: Omit<CompactProfile, "anchors"> & {
+                  anchors: Array<
+                    CompactProfile["anchors"][number] & { anchorRef?: string }
+                  >
+                }
+              }>
+            }
+            const fragment = data.fragments?.[0]
+            if (data.fragments)
+              seenText += data.fragments
+                .flatMap(
+                  (item) => item.spans?.map((span) => span.text) ?? [item.text],
+                )
+                .join("")
+            if (data.children) reductions++
+            const anchors =
+              mode === "empty"
+                ? []
+                : fragment
+                  ? Array.from({ length: 8 }, (_, index) => ({
+                      ...(fragment.spans
+                        ? {
+                            citationId: fragment.spans.find(
+                              (span) => span.citationId,
+                            )!.citationId,
+                          }
+                        : {
+                            chunkId: fragment.chunkId,
+                            fragmentIndex: fragment.fragmentIndex,
+                            excerpt: fragment.text.slice(0, 64),
+                          }),
+                      claimEnglish:
+                        mode === "rich"
+                          ? `${index}: ${"界".repeat(176)}`
+                          : `The selected transcript supports claim ${index}.`,
+                    }))
+                  : data.children!.at(-1)!.profile.anchors.map((anchor) => ({
+                      anchorRef:
+                        mode === "unknown"
+                          ? "foreign-child-reference"
+                          : (anchor.anchorRef ?? "missing-reference"),
+                    }))
+            if (data.children)
+              expectedAnchors = data.children
+                .at(-1)!
+                .profile.anchors.map((anchor) => {
+                  const { anchorRef, ...original } = anchor
+                  expect(anchorRef).toBeDefined()
+                  return original
+                })
+            const usage = { inputTokens: 100, outputTokens: 20 }
+            try {
+              return {
+                output: request.schema.parse({ ...fields, anchors }),
+                usage,
+              }
+            } catch {
+              throw new CodexSubscriptionAstraError("provider_invalid_output", {
+                usage,
+              })
+            }
+          },
+        },
+      }
+      if (mode === "unknown") {
+        await expect(runContentProfile(args)).rejects.toMatchObject({
+          code: "provider_invalid_output",
+          usage: { inputTokens: 100, outputTokens: 20 },
+        })
+        expect(recorded.receipts.at(-1)).toMatchObject({
+          stage: "reduce",
+          status: "rejected",
+          errorCode: "profile_adapter_output_invalid",
+        })
+        return
+      }
+      const result = await runContentProfile(args)
+      expect(result.state).toBe("ready")
+      expect(result.profile).toEqual({ ...fields, anchors: expectedAnchors })
+      expect(expectedAnchors).toHaveLength(mode === "empty" ? 0 : 8)
+      expect(seenText).toBe(chunks.map((chunk) => chunk.text).join(""))
+      expect(recorded.receipts.length).toBeLessThanOrEqual(127)
+      if (mode === "rich") expect(reductions).toBeGreaterThan(1)
+      expect(JSON.stringify(result.profile!.anchors)).toBe(
+        JSON.stringify(expectedAnchors),
+      )
+      expect(
+        recorded.receipts.every(
+          (receipt) =>
+            receipt.node &&
+            Buffer.byteLength(JSON.stringify(receipt.node)) <= 16384,
+        ),
+      ).toBe(true)
+      const beforeReplay = dispatches
+      expect((await runContentProfile(args)).profile).toEqual(result.profile)
+      expect(dispatches).toBe(beforeReplay)
+    },
+  )
+
   it("retains legacy rejection of an ambiguous exact repeated transcript quotation", async () => {
     const text = "Repeated dialogue. Repeated dialogue."
     const recorded = recordingProfilePersistence()

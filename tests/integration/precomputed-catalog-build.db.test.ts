@@ -53,6 +53,8 @@ import type { GaCaptureTransport } from "../../apps/mastra/src/services/precompu
 import { createGaCaptureImportClient } from "../../apps/mastra/src/services/precomputed-recommendations/ga-capture-import-client"
 import { loadImportedGaWatchHistory } from "../../apps/mastra/src/services/precomputed-recommendations/ga-capture-import-reader"
 import { runContentProfile } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-executor"
+import { planContentProfile } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-plan"
+import { readCompleteSelectedChunks } from "../../apps/mastra/src/services/precomputed-recommendations/selected-transcript"
 import { createContentProfilePersistence } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-client"
 import { createEdgeBatchPersistence } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-client"
 import { decodeEdgePrompt } from "../../apps/mastra/src/services/precomputed-recommendations/edge-prompt-renderer"
@@ -3522,7 +3524,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       // Earlier tests legitimately update catalog rows after the suite's
       // historical cutoff. Fence this build after those fixture mutations.
       const spanCutoff = new Date().toISOString()
-      // Exercise the v5 model wire through real Admin reservation, receipt,
+      // Exercise the v6 map/reducer wire through real Admin reservation, receipt,
       // finalization and replay while retaining the later-page edge assertions.
       const profileGenerationId = `catalog-citation-profile-${suffix}`
       const profileInputDigest = "c".repeat(64)
@@ -3538,7 +3540,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         generationId: profileGenerationId,
         protocolVersion: 4,
         modelId: "gpt-6-astra",
-        promptVersion: "complete-profile-v5-native",
+        promptVersion: "complete-profile-v6-native",
         inputDigest: profileInputDigest,
         sourceSetDigest: createHash("sha256")
           .update(JSON.stringify([videoId]))
@@ -3589,6 +3591,33 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const selectedVideo = await catalog.video({ videoId, cutoff: spanCutoff })
       if (!selectedVideo) throw new Error("Missing native citation fixture")
       const profilePersistence = createContentProfilePersistence(submitProfile)
+      const selectedChunks = await readCompleteSelectedChunks(
+        catalog,
+        selectedVideo,
+        spanCutoff,
+      )
+      const singlePart = planContentProfile({
+        video: selectedVideo,
+        chunks: selectedChunks.chunks,
+        modelId: "gpt-6-astra",
+        backend: "codex_chatgpt_subscription",
+        promptVersion: "complete-profile-v6",
+        schemaVersion: "complete-profile-schema-v1",
+        maxPartBytes: 24576,
+      })
+      expect(singlePart.parts).toHaveLength(1)
+      const twoPartLimit = singlePart.parts[0]!.inputBytes - 1
+      const twoParts = planContentProfile({
+        video: selectedVideo,
+        chunks: selectedChunks.chunks,
+        modelId: "gpt-6-astra",
+        backend: "codex_chatgpt_subscription",
+        promptVersion: "complete-profile-v6",
+        schemaVersion: "complete-profile-schema-v1",
+        maxPartBytes: twoPartLimit,
+      })
+      expect(twoParts.parts).toHaveLength(2)
+      let mappedText = ""
       let citationModelCalls = 0
       const citationInput: Parameters<typeof runContentProfile>[0] = {
         ...profileBase,
@@ -3598,9 +3627,9 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         catalog,
         modelId: "gpt-6-astra",
         backend: "codex_chatgpt_subscription",
-        promptVersion: "complete-profile-v5",
+        promptVersion: "complete-profile-v6",
         schemaVersion: "complete-profile-schema-v1",
-        maxPartBytes: 24576,
+        maxPartBytes: twoPartLimit,
         persistence: profilePersistence,
         model: {
           async generateReserved(request, reserve) {
@@ -3616,17 +3645,34 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
               chunkId: string
               spans: Array<{ citationId: string | null; text: string }>
             }> = data.fragments
-            expect(
-              fragments
+            if (fragments)
+              mappedText += fragments
                 .map((fragment) =>
                   fragment.spans.map((span) => span.text).join(""),
                 )
-                .join(""),
-            ).toBe(firstText + secondText)
+                .join("")
             const citation = fragments
-              .find((fragment) => fragment.chunkId === secondChunkId)!
-              .spans.find((span) => span.citationId)!
-            expect(citation.text).toBe(secondText)
+              ?.find((fragment) => fragment.chunkId === secondChunkId)
+              ?.spans.find((span) => span.citationId)
+            if (citation) expect(citation.text).toBe(secondText)
+            const anchors = fragments
+              ? citation
+                ? [
+                    {
+                      citationId: citation.citationId,
+                      claimEnglish:
+                        "The later passage describes hope and courage through hardship.",
+                    },
+                  ]
+                : []
+              : data.children.flatMap(
+                  (child: {
+                    profile: { anchors: Array<{ anchorRef: string }> }
+                  }) =>
+                    child.profile.anchors.map((anchor) => ({
+                      anchorRef: anchor.anchorRef,
+                    })),
+                )
             const schema = JSON.stringify(
               z.toJSONSchema(request.schema, {
                 target: "draft-07",
@@ -3651,13 +3697,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
                   people: [],
                   places: [],
                   citations: [],
-                  anchors: [
-                    {
-                      citationId: citation.citationId,
-                      claimEnglish:
-                        "The later passage describes hope and courage through hardship.",
-                    },
-                  ],
+                  anchors,
                 }),
                 usage: { inputTokens: 120, outputTokens: 30 },
               },
@@ -3682,7 +3722,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         },
       ])
       expect(await runContentProfile(citationInput)).toEqual(citationProfile)
-      expect(citationModelCalls).toBe(1)
+      expect(mappedText).toBe(firstText + secondText)
+      expect(citationModelCalls).toBe(3)
       const citationStatus = await profilePersistence.status({
         ...profileBase,
         cacheKey: citationProfile.cacheKey,
@@ -3692,11 +3733,22 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         state: "ready",
         profileJson: citationProfile.profile,
       })
-      expect(citationStatus.calls).toHaveLength(1)
-      expect(citationStatus.calls[0]).toMatchObject({
-        status: "succeeded",
-        nodeApplied: true,
-      })
+      expect(citationStatus.calls).toHaveLength(3)
+      expect(
+        citationStatus.calls.every(
+          (call) => call.status === "succeeded" && call.nodeApplied,
+        ),
+      ).toBe(true)
+      expect(
+        citationStatus.calls.filter((call) => call.stage === "map"),
+      ).toHaveLength(2)
+      expect(
+        citationStatus.calls.filter((call) => call.stage === "reduce"),
+      ).toHaveLength(1)
+      expect(
+        citationStatus.calls.find((call) => call.stage === "reduce")!.node!
+          .profile.anchors,
+      ).toEqual(citationProfile.profile!.anchors)
       await expect(
         runPrecomputedCatalog(
           {
