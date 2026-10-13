@@ -581,7 +581,7 @@ describe("manual subscription catalog preflight", () => {
     const fixture = await pilotFixture()
     const config = {
       input: fixture.input,
-      concurrency: 12,
+      concurrency: 16,
       codexExecutable: "/tmp/fixture-codex",
       stagingDirectory: "/tmp/fixture-staging",
       capacityProbe: { executable: "/tmp/fixture-capacity", args: [] },
@@ -596,11 +596,11 @@ describe("manual subscription catalog preflight", () => {
     try {
       const args = ["--config", "/tmp/fixture-config.json", "--execute"]
       const parsed = parseManualCatalogCommand(config, args)
-      expect(parsed.concurrency).toBe(12)
+      expect(parsed.concurrency).toBe(16)
       expect(parsed.input.generationInputDigest).toBe(
         fixture.input.generationInputDigest,
       )
-      for (const concurrency of [0, 13, 1.5])
+      for (const concurrency of [0, 17, 1.5])
         expect(() =>
           parseManualCatalogCommand({ ...config, concurrency }, args),
         ).toThrow()
