@@ -15,6 +15,9 @@ import {
   type ManualSubscriptionCatalogInput,
   type ManualSubscriptionCatalogPorts,
 } from "./manual-subscription-catalog"
+import { parseManualCatalogCommand } from "../../scripts/run-manual-subscription-catalog"
+import { planContentProfile } from "./content-profile-plan"
+import { profileCoverageDigest } from "./content-profile-executor"
 import { planEdgeMemberPage } from "./edge-batch-executor"
 import type { HistoricalSnapshot } from "./historical-analytics"
 import type { SourceCatalog, Video } from "./source-generation"
@@ -573,6 +576,272 @@ async function pilotFixture(
 }
 
 describe("manual subscription catalog preflight", () => {
+  it("rejects a manual replacement outside selected pilot profiles before any write or model call", async () => {
+    const fixture = await pilotFixture()
+    const selected =
+      fixture.input.work.mode === "pilot"
+        ? fixture.input.work.sources[0]!
+        : undefined
+    const profiles = new Set([
+      selected!.sourceVideoId,
+      ...fixture.retrieval.candidateIdsBySource
+        .get(selected!.sourceVideoId)!
+        .slice(0, selected!.exclusiveEndRank),
+    ])
+    const outside = fixture.input.reviewed.sourceVideoIds.find(
+      (id) => !profiles.has(id),
+    )!
+    expect(outside).toBeDefined()
+    const profileReplacement = {
+      videoId: outside,
+      cacheKey: "a".repeat(64),
+      partIndex: 3,
+      originalCallId: "11111111-1111-4111-8111-111111111111",
+      originalReceiptDigest: "b".repeat(64),
+      replacementCallId: "22222222-2222-4222-8222-222222222222",
+      oldProcessExitedAttested: true as const,
+    }
+    await expect(
+      runManualSubscriptionCatalog(
+        { ...fixture.input, invocation: "resume", profileReplacement },
+        fixture.ports,
+      ),
+    ).rejects.toMatchObject({ code: "input_invalid" })
+    expect(fixture.ingestInputs).toHaveLength(0)
+    expect(fixture.actions).not.toContain("model")
+    await expect(
+      runManualSubscriptionCatalog(
+        { ...fixture.input, profileReplacement },
+        fixture.ports,
+      ),
+    ).rejects.toMatchObject({ code: "input_invalid" })
+    expect(fixture.ingestInputs).toHaveLength(0)
+  })
+  it("rejects a manual replacement of a metadata-only pilot target before any write", async () => {
+    const fixture = await pilotFixture()
+    await expect(
+      runManualSubscriptionCatalog(
+        {
+          ...fixture.input,
+          invocation: "resume",
+          profileReplacement: {
+            videoId: "source-one",
+            cacheKey: "a".repeat(64),
+            partIndex: 0,
+            originalCallId: "11111111-1111-4111-8111-111111111111",
+            originalReceiptDigest: "b".repeat(64),
+            replacementCallId: "22222222-2222-4222-8222-222222222222",
+            oldProcessExitedAttested: true,
+          },
+        },
+        fixture.ports,
+      ),
+    ).rejects.toMatchObject({ code: "input_invalid" })
+    expect(fixture.ingestInputs).toHaveLength(0)
+    expect(fixture.actions).not.toContain("model")
+  })
+  it("stops an acknowledged pending replacement before an earlier unbuilt profile can dispatch", async () => {
+    const fixture = await pilotFixture()
+    const page = await fixture.ports.catalog.catalog({ cutoff })
+    const chunks = new Map(
+      page.videos.map((item) => [
+        item.id,
+        [
+          {
+            id: `chunk-${item.id}`,
+            transcriptId: `transcript-${item.id}`,
+            language: "en",
+            chunkIndex: 0,
+            text: "A complete passage that must remain supplied.",
+          },
+        ],
+      ]),
+    )
+    for (const item of page.videos) {
+      item.transcriptLanguages = ["en"]
+      item.transcriptSelection = {
+        policy: "english-per-edition-with-complete-fallback-v1",
+        availableTranscriptCount: 1,
+        incompleteTranscriptCount: 0,
+        skippedEditionCount: 0,
+        selected: [
+          {
+            transcriptId: `transcript-${item.id}`,
+            videoEditionId: `edition-${item.id}`,
+            language: "en",
+            totalChunks: 1,
+          },
+        ],
+      }
+    }
+    fixture.ports.catalog.chunks = async ({ videoId }) => ({
+      chunks: chunks.get(videoId)!,
+      nextCursor: null,
+    })
+    const retrieval = await buildCandidateRetrieval(
+      fixture.ports.catalog,
+      page.videos,
+      cutoff,
+    )
+    const reviewed = {
+      ...fixture.input.reviewed,
+      selectedCorpusDigest: retrieval.selectedCorpusDigest,
+      candidatePoolDigest: retrieval.candidatePoolDigest,
+    }
+    const generationInputDigest = manualGenerationInputDigest({
+      inputCutoff: cutoff,
+      videos: page.videos,
+      selectedCorpusDigest: reviewed.selectedCorpusDigest,
+      candidatePoolDigest: reviewed.candidatePoolDigest,
+    })
+    const target = page.videos.find((item) => item.id === "target-two")!
+    const plan = planContentProfile({
+      video: target,
+      chunks: chunks.get(target.id)!,
+      maxPartBytes: 24576,
+      modelId: "gpt-6-astra",
+      backend: "codex_chatgpt_subscription",
+      promptVersion: "complete-profile-v3",
+      schemaVersion: "complete-profile-schema-v1",
+    })
+    const profileReplacement = {
+      videoId: target.id,
+      cacheKey: plan.cacheKey,
+      partIndex: 0,
+      originalCallId: "11111111-1111-4111-8111-111111111111",
+      originalReceiptDigest: "b".repeat(64),
+      replacementCallId: "22222222-2222-4222-8222-222222222222",
+      oldProcessExitedAttested: true as const,
+    }
+    const nodeKey = digest([plan.cacheKey, "map", 0, "complete-profile-v3:map"])
+    fixture.ports.profilePersistence.status = async (request) => ({
+      generationId: request.generationId,
+      cacheKey: plan.cacheKey,
+      profile: {
+        state: "in_progress",
+        kind: "transcript",
+        profileJson: null,
+        finalCallId: null,
+        coverageDigest: profileCoverageDigest(plan, chunks.get(target.id)!),
+        manualReplacement: {
+          ...profileReplacement,
+          nodeKey,
+          inputDigest: "a".repeat(64),
+        },
+      },
+      calls: [
+        {
+          callId: profileReplacement.originalCallId,
+          nodeKey,
+          stage: "map",
+          inputDigest: "a".repeat(64),
+          status: "rejected",
+          receiptDigest: profileReplacement.originalReceiptDigest,
+          errorCode: "profile_map_anchor_invalid",
+          inputTokens: 100,
+          outputTokens: 20,
+          nodeApplied: false,
+          outputDigest: null,
+          node: null,
+        },
+        {
+          callId: profileReplacement.replacementCallId,
+          nodeKey,
+          stage: "map",
+          inputDigest: "a".repeat(64),
+          status: "pending",
+          nodeApplied: false,
+          outputDigest: null,
+          node: null,
+        },
+      ],
+    })
+    await expect(
+      runManualSubscriptionCatalog(
+        {
+          ...fixture.input,
+          invocation: "resume",
+          generationInputDigest,
+          reviewed,
+          destination: {
+            ...fixture.input.destination,
+            generationInputDigest,
+            selectedCorpusDigest: reviewed.selectedCorpusDigest,
+            candidatePoolDigest: reviewed.candidatePoolDigest,
+          },
+          work: {
+            mode: "pilot",
+            sources: [{ sourceVideoId: "source-one", exclusiveEndRank: 2 }],
+          },
+          profileReplacement,
+        },
+        fixture.ports,
+      ),
+    ).rejects.toMatchObject({ code: "usage_uncertain" })
+    expect(fixture.ingestInputs).toHaveLength(0)
+    expect(fixture.actions).not.toContain("model")
+  })
+  it("parses an explicit resume-only profile directive without changing generation identity", async () => {
+    const fixture = await pilotFixture()
+    const profileReplacement = {
+      videoId: "source-one",
+      cacheKey: "a".repeat(64),
+      partIndex: 3,
+      originalCallId: "11111111-1111-4111-8111-111111111111",
+      originalReceiptDigest: "b".repeat(64),
+      replacementCallId: "22222222-2222-4222-8222-222222222222",
+      oldProcessExitedAttested: true as const,
+    }
+    const config = {
+      input: { ...fixture.input, invocation: "resume", profileReplacement },
+      codexExecutable: "/tmp/fixture-codex",
+      stagingDirectory: "/tmp/fixture-staging",
+      capacityProbe: { executable: "/tmp/fixture-capacity", args: [] },
+    }
+    for (const key of [
+      "CI",
+      "RAILWAY_ENVIRONMENT",
+      "RAILWAY_ENVIRONMENT_NAME",
+      "RAILWAY_SERVICE_ID",
+    ])
+      vi.stubEnv(key, "")
+    try {
+      expect(
+        parseManualCatalogCommand(config, [
+          "--config",
+          "/tmp/fixture-config.json",
+          "--execute",
+        ]).input,
+      ).toMatchObject({
+        profileReplacement,
+        generationInputDigest: fixture.input.generationInputDigest,
+      })
+      expect(() =>
+        parseManualCatalogCommand(
+          { ...config, input: { ...config.input, invocation: "start" } },
+          ["--config", "/tmp/fixture-config.json", "--execute"],
+        ),
+      ).toThrow()
+      expect(() =>
+        parseManualCatalogCommand(
+          {
+            ...config,
+            input: {
+              ...config.input,
+              recovery: {
+                originalCallId: "8ab8a620-1608-4115-812e-200bb2fb4b6d",
+                replacementCallId: profileReplacement.replacementCallId,
+                oldProcessExitedAttested: true,
+              },
+            },
+          },
+          ["--config", "/tmp/fixture-config.json", "--execute"],
+        ),
+      ).toThrow()
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
   it("requires a new generation digest for the 4 KiB profile prompt while preserving the schema", () => {
     const input = {
       inputCutoff: cutoff,

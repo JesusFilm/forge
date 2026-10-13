@@ -54,6 +54,16 @@ export const profileActionSchema = z.discriminatedUnion("action", [
     .strict(),
   callBase
     .extend({
+      action: z.literal("profile_manual_replacement_start"),
+      originalCallId: z.uuid(),
+      originalReceiptDigest: digest,
+      coverageDigest: digest,
+      oldProcessExitedAttested: z.literal(true),
+      startedAt: z.string().datetime(),
+    })
+    .strict(),
+  callBase
+    .extend({
       action: z.literal("profile_call_finish"),
       status: z.enum(["succeeded", "rejected", "failed"]),
       outputDigest: digest.optional(),
@@ -183,7 +193,12 @@ const json = (value: unknown) => value as Prisma.InputJsonValue
 function requireCallShape(
   input: Extract<
     Action,
-    { action: "profile_call_start" | "profile_call_finish" }
+    {
+      action:
+        | "profile_call_start"
+        | "profile_call_finish"
+        | "profile_manual_replacement_start"
+    }
   >,
 ) {
   if (
@@ -199,7 +214,12 @@ function callBinding(
   call: NonNullable<Call>,
   input: Extract<
     Action,
-    { action: "profile_call_start" | "profile_call_finish" }
+    {
+      action:
+        | "profile_call_start"
+        | "profile_call_finish"
+        | "profile_manual_replacement_start"
+    }
   >,
 ) {
   return (
@@ -318,10 +338,34 @@ function publicCall(call: NonNullable<Call>) {
     stage: call.stage,
     inputDigest: call.inputDigest,
     status: call.status,
+    receiptDigest: call.receiptDigest,
+    errorCode: call.errorCode,
+    inputTokens: call.inputTokens,
+    outputTokens: call.outputTokens,
     nodeApplied: call.receiptNodeApplied === true,
     outputDigest: call.outputDigest,
     node: call.status === "succeeded" ? nodeSchema.parse(call.nodeJson) : null,
   }
+}
+
+type ManualReplacement = {
+  originalCallId: string
+  replacementCallId: string
+  originalReceiptDigest: string
+  nodeKey: string
+  inputDigest: string
+  partIndex: number
+}
+async function loadManualReplacement(
+  tx: Tx,
+  generationId: string,
+  cacheKey: string,
+): Promise<ManualReplacement[]> {
+  return tx.$queryRaw<
+    ManualReplacement[]
+  >`SELECT a.original_call_id::text AS "originalCallId", a.replacement_call_id::text AS "replacementCallId", a.original_receipt_digest AS "originalReceiptDigest", c.node_key AS "nodeKey", c.input_digest AS "inputDigest", c.part_index AS "partIndex"
+    FROM recommendation_precomputed_profile_manual_replacement a JOIN recommendation_precomputed_profile_call c ON c.generation_id = a.generation_id AND c.call_id = a.original_call_id
+    WHERE a.generation_id = ${generationId} AND a.cache_key = ${cacheKey}`
 }
 
 export async function submitProfileAction(
@@ -338,7 +382,8 @@ export async function submitProfileAction(
       const generation = await guards.checkedGeneration(
         tx,
         input,
-        input.action === "profile_register",
+        input.action === "profile_register" ||
+          input.action === "profile_manual_replacement_start",
       )
       if (
         generation.protocol_version !== 4 ||
@@ -368,6 +413,14 @@ export async function submitProfileAction(
           generationId: input.generationId,
           cacheKey: input.cacheKey,
           profile: {
+            manualReplacement:
+              (
+                await loadManualReplacement(
+                  tx,
+                  input.generationId,
+                  input.cacheKey,
+                )
+              )[0] ?? null,
             state: profile.state,
             kind: profile.kind,
             profileJson: profile.profileJson,
@@ -711,7 +764,35 @@ export async function submitProfileAction(
         input.stagePromptVersion !== `${profile.promptVersion}:${input.stage}`
       )
         invalid("Profile stage prompt version differs")
-      if (input.action === "profile_call_start") {
+      if (
+        input.action === "profile_call_start" ||
+        input.action === "profile_manual_replacement_start"
+      ) {
+        const manual = input.action === "profile_manual_replacement_start"
+        const authorization = manual
+          ? (
+              await loadManualReplacement(
+                tx,
+                input.generationId,
+                input.cacheKey,
+              )
+            )[0]
+          : undefined
+        if (
+          manual &&
+          (input.stage !== "map" ||
+            input.coverageDigest !== profile.coverageDigest ||
+            input.originalCallId === input.callId)
+        )
+          conflict("Manual profile replacement binding differs")
+        if (
+          manual &&
+          authorization &&
+          (authorization.originalCallId !== input.originalCallId ||
+            authorization.replacementCallId !== input.callId ||
+            authorization.originalReceiptDigest !== input.originalReceiptDigest)
+        )
+          conflict("Manual profile replacement already authorized")
         if (generation.status !== "incomplete" || !active)
           conflict("Generation or attempt is closed")
         const existing =
@@ -740,7 +821,102 @@ export async function submitProfileAction(
           }
         }
         guards.requireCapacityFresh(generation)
-        if (["ready", "rejected", "invalid", "failed"].includes(profile.state))
+        if (manual) {
+          if (authorization)
+            conflict("Authorized replacement reservation is unavailable")
+          if (
+            profile.state !== "rejected" ||
+            profile.failureCode !== "profile_map_anchor_invalid" ||
+            profile.kind !== "transcript"
+          )
+            conflict("Profile is not a known rejected map")
+          const original =
+            await tx.recommendationPrecomputedProfileCall.findUnique({
+              where: {
+                generationId_callId: {
+                  generationId: input.generationId,
+                  callId: input.originalCallId,
+                },
+              },
+            })
+          if (
+            !original ||
+            original.status !== "rejected" ||
+            original.errorCode !== "profile_map_anchor_invalid" ||
+            original.receiptDigest !== input.originalReceiptDigest ||
+            original.receiptNodeApplied !== false ||
+            original.nodeJson !== null ||
+            original.outputDigest !== null ||
+            original.inputTokens === null ||
+            original.outputTokens === null ||
+            !original.finishedAt ||
+            original.cacheKey !== input.cacheKey ||
+            original.nodeKey !== input.nodeKey ||
+            original.stage !== "map" ||
+            original.stagePromptVersion !== input.stagePromptVersion ||
+            original.inputDigest !== input.inputDigest ||
+            original.partIndex !== input.partIndex
+          )
+            conflict("Original rejected map receipt differs")
+          const actor =
+            await tx.recommendationPrecomputedExecutionAttempt.findUnique({
+              where: {
+                generationId_attemptId: {
+                  generationId: input.generationId,
+                  attemptId: input.attemptId,
+                },
+              },
+            })
+          const oldActor =
+            await tx.recommendationPrecomputedExecutionAttempt.findUnique({
+              where: {
+                generationId_attemptId: {
+                  generationId: input.generationId,
+                  attemptId: original.attemptId,
+                },
+              },
+            })
+          if (
+            !actor ||
+            actor.endedAt ||
+            actor.invocation !== "resume" ||
+            actor.attemptId === original.attemptId ||
+            actor.startedAt < original.finishedAt ||
+            !oldActor?.endedAt ||
+            actor.accountRef !== oldActor.accountRef
+          )
+            conflict(
+              "Manual replacement requires a fresh matching operator resume",
+            )
+          const pendingCounts = await Promise.all([
+            tx.recommendationPrecomputedProfileCall.count({
+              where: { generationId: input.generationId, status: "pending" },
+            }),
+            tx.recommendationPrecomputedEdgeBatchCall.count({
+              where: { generationId: input.generationId, status: "pending" },
+            }),
+            tx.recommendationPrecomputedModelCall.count({
+              where: {
+                generationId: input.generationId,
+                OR: [
+                  { status: "pending" },
+                  { attemptId: null, costUsd: null },
+                  { attemptId: { not: null }, inputTokens: null },
+                  { attemptId: { not: null }, outputTokens: null },
+                ],
+              },
+            }),
+            tx.recommendationPrecomputedHistoryCall.count({
+              where: { generationId: input.generationId, status: "pending" },
+            }),
+          ])
+          if (pendingCounts.some((count) => count > 0))
+            conflict("Unknown generation consumption blocks manual replacement")
+        }
+        if (
+          !manual &&
+          ["ready", "rejected", "invalid", "failed"].includes(profile.state)
+        )
           conflict("Profile is terminal")
         const existingCalls =
           await tx.recommendationPrecomputedProfileCall.count({
@@ -842,6 +1018,37 @@ export async function submitProfileAction(
             status: "pending",
           },
         })
+        if (manual) {
+          const actor =
+            await tx.recommendationPrecomputedExecutionAttempt.findUniqueOrThrow(
+              {
+                where: {
+                  generationId_attemptId: {
+                    generationId: input.generationId,
+                    attemptId: input.attemptId,
+                  },
+                },
+                select: { accountRef: true },
+              },
+            )
+          const record = {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            originalCallId: input.originalCallId,
+            replacementCallId: input.callId,
+            originalReceiptDigest: input.originalReceiptDigest,
+            attemptId: input.attemptId,
+            accountRef: actor.accountRef,
+          }
+          await guards.reserveBudget(
+            tx,
+            input.generationId,
+            byteLength(record) + 256,
+          )
+          await tx.$executeRaw`INSERT INTO recommendation_precomputed_profile_manual_replacement
+            (generation_id, cache_key, original_call_id, replacement_call_id, original_receipt_digest, attempt_id, account_ref)
+            VALUES (${input.generationId}, ${input.cacheKey}, ${input.originalCallId}::uuid, ${input.callId}::uuid, ${input.originalReceiptDigest}, ${input.attemptId}::uuid, ${actor.accountRef})`
+        }
         await tx.recommendationPrecomputedContentProfile.update({
           where: {
             generationId_cacheKey: {
@@ -849,7 +1056,10 @@ export async function submitProfileAction(
               cacheKey: input.cacheKey,
             },
           },
-          data: { state: "in_progress" },
+          data: {
+            state: "in_progress",
+            ...(manual ? { failureCode: null, terminalAt: null } : {}),
+          },
         })
         return {
           generationId: input.generationId,

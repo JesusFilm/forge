@@ -1315,6 +1315,7 @@ async function storedSize(prisma: PrismaClient | Tx, generationId: string) {
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_execution_attempt t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_content_profile t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_profile_call t WHERE generation_id = ${generationId}) +
+      (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_profile_manual_replacement t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_edge_batch_call t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_edge_batch_member t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_history_call t WHERE generation_id = ${generationId}) +
@@ -1329,6 +1330,7 @@ async function storedSize(prisma: PrismaClient | Tx, generationId: string) {
       pg_total_relation_size('recommendation_precomputed_execution_attempt') +
       pg_total_relation_size('recommendation_precomputed_content_profile') +
       pg_total_relation_size('recommendation_precomputed_profile_call') +
+      pg_total_relation_size('recommendation_precomputed_profile_manual_replacement') +
       pg_total_relation_size('recommendation_precomputed_edge_batch_call') +
       pg_total_relation_size('recommendation_precomputed_edge_batch_member') +
       pg_total_relation_size('recommendation_precomputed_history_call') +

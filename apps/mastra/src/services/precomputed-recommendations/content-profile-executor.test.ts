@@ -1582,6 +1582,228 @@ describe("complete content profile execution", () => {
     ])
   })
 
+  it.each(["succeeded", "rejected", "pending-replay"])(
+    "manually replaces only an acknowledged rejection (%s)",
+    async (outcome) => {
+      const chunks = Array.from({ length: 6 }, (_, index) => ({
+        ...oneChunk,
+        id: `chunk-${index}`,
+        chunkIndex: index,
+        startChar: index * 300,
+        endChar: index * 300 + 300,
+        text: `${index}: ${"a".repeat(297)}`,
+      }))
+      const video = transcriptVideo()
+      video.transcriptSelection!.selected[0]!.totalChunks = chunks.length
+      let state: ProfileState = "planned"
+      let coverageDigest = ""
+      let cacheKey = ""
+      let finalCallId: string | null = null
+      let finalProfile: CompactProfile | null = null
+      let authorization:
+        | import("./content-profile-executor").ProfileReplacementAuthorization
+        | null = null
+      const calls: Awaited<
+        ReturnType<ProfilePersistencePort["status"]>
+      >["calls"] = []
+      let dispatches = 0
+      let currentPart = -1
+      const persistence: ProfilePersistencePort = {
+        async register(input) {
+          coverageDigest = input.coverageDigest
+          cacheKey = input.cacheKey
+          return {
+            generationId: input.generationId,
+            cacheKey,
+            kind: "transcript",
+            state,
+            replay: calls.length > 0,
+          }
+        },
+        async status(input) {
+          return {
+            generationId: input.generationId,
+            cacheKey,
+            profile: {
+              state,
+              kind: "transcript",
+              profileJson: finalProfile,
+              finalCallId,
+              coverageDigest,
+              manualReplacement: authorization,
+            },
+            calls,
+          }
+        },
+        async callStart(input) {
+          currentPart = input.partIndex ?? -1
+          state = "in_progress"
+          return {
+            generationId: input.generationId,
+            cacheKey,
+            callId: input.callId,
+            state: "pending",
+            replay: false,
+          }
+        },
+        async manualReplacementStart(input) {
+          expect(input.originalCallId).toBe(calls[3]!.callId)
+          expect(input.nodeKey).toBe(calls[3]!.nodeKey)
+          expect(input.inputDigest).toBe(calls[3]!.inputDigest)
+          authorization = {
+            originalCallId: input.originalCallId,
+            originalReceiptDigest: input.originalReceiptDigest,
+            replacementCallId: input.callId,
+            nodeKey: input.nodeKey,
+            inputDigest: input.inputDigest,
+            partIndex: input.partIndex!,
+          }
+          currentPart = input.partIndex!
+          state = "in_progress"
+          if (outcome === "pending-replay")
+            calls.push({
+              callId: input.callId,
+              nodeKey: input.nodeKey,
+              stage: "map",
+              inputDigest: input.inputDigest,
+              status: "pending",
+              nodeApplied: false,
+              outputDigest: null,
+              node: null,
+            })
+          return {
+            generationId: input.generationId,
+            cacheKey,
+            callId: input.callId,
+            state: "pending",
+            replay: outcome === "pending-replay",
+          }
+        },
+        async callFinish(input) {
+          calls.push({
+            callId: input.callId,
+            nodeKey: input.nodeKey,
+            stage: input.stage,
+            inputDigest: input.inputDigest,
+            status: input.status,
+            nodeApplied: input.status === "succeeded",
+            outputDigest: input.outputDigest ?? null,
+            node: input.node ?? null,
+          })
+          if (input.status !== "succeeded") state = "rejected"
+          return {
+            generationId: input.generationId,
+            cacheKey,
+            callId: input.callId,
+            state: input.status,
+            receiptStored: true,
+            nodeApplied: input.status === "succeeded",
+            replay: false,
+          }
+        },
+        async finalize(input) {
+          const final = calls.find((c) => c.callId === input.finalCallId)!
+          expect(final.node!.coveredPartStart).toBe(0)
+          expect(final.node!.coveredPartEnd).toBeGreaterThanOrEqual(6)
+          expect(input.expectedNodeDigests).toHaveLength(
+            calls.filter((c) => c.status === "succeeded").length,
+          )
+          state = "ready"
+          finalProfile = final.node!.profile
+          finalCallId = final.callId
+          return {
+            generationId: input.generationId,
+            cacheKey,
+            state,
+            profileJson: finalProfile,
+            finalCallId,
+            replay: false,
+          }
+        },
+      }
+      let recovering = false
+      const model: StructuredModel = {
+        async generate(input) {
+          dispatches++
+          return {
+            output: input.schema.parse(
+              currentPart === 3 && (!recovering || outcome === "rejected")
+                ? {
+                    ...supportedMapProfile,
+                    anchors: [
+                      {
+                        ...supportedMapProfile.anchors[0]!,
+                        excerpt: "unsupported excerpt",
+                      },
+                    ],
+                  }
+                : { ...supportedProfile, anchors: [] },
+            ),
+            usage: { inputTokens: 100, outputTokens: 20 },
+          }
+        },
+      }
+      const args = {
+        ...identity,
+        maxPartBytes: 1100,
+        video,
+        catalog: transcriptCatalog(chunks),
+        model,
+        persistence,
+      }
+      await expect(runContentProfile(args)).rejects.toMatchObject({
+        code: "profile_invalid",
+      })
+      expect(calls).toHaveLength(4)
+      const before = structuredClone(calls)
+      const beforeDispatches = dispatches
+      recovering = true
+      const manualReplacement = {
+        videoId: video.id,
+        cacheKey,
+        partIndex: 3,
+        originalCallId: calls[3]!.callId,
+        originalReceiptDigest: "a".repeat(64),
+        replacementCallId: "11111111-1111-4111-8111-111111111111",
+        oldProcessExitedAttested: true as const,
+      }
+      if (outcome === "succeeded") {
+        expect(
+          (await runContentProfile({ ...args, manualReplacement })).state,
+        ).toBe("ready")
+        const after = dispatches
+        expect(
+          (await runContentProfile({ ...args, manualReplacement })).state,
+        ).toBe("ready")
+        expect(dispatches).toBe(after)
+        expect((await runContentProfile(args)).state).toBe("ready")
+        expect(dispatches).toBe(after)
+      } else {
+        await expect(
+          runContentProfile({ ...args, manualReplacement }),
+        ).rejects.toMatchObject({
+          code:
+            outcome === "rejected" ? "profile_invalid" : "profile_unavailable",
+        })
+        expect(dispatches - beforeDispatches).toBe(
+          outcome === "rejected" ? 1 : 0,
+        )
+        await expect(
+          runContentProfile({ ...args, manualReplacement }),
+        ).rejects.toMatchObject({
+          code:
+            outcome === "pending-replay"
+              ? "usage_unknown"
+              : "profile_unavailable",
+        })
+        expect(dispatches - beforeDispatches).toBe(
+          outcome === "rejected" ? 1 : 0,
+        )
+      }
+      expect(calls.slice(0, 4)).toEqual(before)
+    },
+  )
+
   it("never dispatches the model when call reservation is refused", async () => {
     let coverageDigest = ""
     let modelCalls = 0

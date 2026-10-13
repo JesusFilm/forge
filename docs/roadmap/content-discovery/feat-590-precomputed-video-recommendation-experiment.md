@@ -274,6 +274,16 @@ constraint dependency. Deployment, generation completion, live baseline and
 manual activation remain outstanding; measured storage and allowance gates
 remain authoritative.
 
+The 4 KiB repair shipped and the formerly oversized profile became ready with
+seven anchors. A later map rejected an invalid anchor after three accepted
+parts of a six-part profile, with complete observed usage. Preserve this work
+and evidence validation through an explicit, once-only known-rejection
+replacement reservation in the same generation with unchanged node input.
+Its immutable authorization and separate audit reservation retain both charged
+receipts; pending replay or another rejection stops. This is a narrowly scoped
+manual continuation, not a prompt change or automatic retry loop. Catalog
+completion, live baseline and manual activation remain outstanding.
+
 For the current design phase, distinguish confirmed decisions, recommendations,
 and open questions; cross-check repository claims against code and existing
 evidence. Format-check edited Markdown. Do not mark this feature complete when
