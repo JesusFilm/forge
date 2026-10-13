@@ -2990,6 +2990,13 @@ catalog) stays left-to-right. The plan is
   `direction: "ltr"` container (R12, KTD7). The player's route buttons (Cast,
   AirPlay, settings) are not playback controls: they take `appDirection()`,
   so they mirror and stay clear of the watch page's minimize button.
+- **A progress ring fills clockwise in every layout.** The circular direction
+  of time does not mirror (Material bidirectionality). `DownloadProgressRing`
+  and `ReaderProgressRing` draw in a `direction: "ltr"` layer, and their
+  center keeps the app's direction. Without that layer, the two halves swap
+  sides: the fill turns counter-clockwise, and a half's square corner shows
+  outside the ring (iPhone 17 Pro Max simulator and Pixel 9a emulator,
+  2026-10-13). A new ring built from `left`-placed halves needs the same layer.
 - **Text edges.** With `direction` set to the text's own language, both
   platforms read `textAlign: "left"` as the start of that language (device
   check, 2026-10-12). `textDirection.ts` depends on this.
