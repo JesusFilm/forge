@@ -138,6 +138,7 @@
     "versesAriaValue": "Verzen {first} tot en met {last} van {total}, {chapter}",
     "demoVerse": "Veeg omhoog voor het volgende vers",
     "demoChapter": "Veeg naar links voor het volgende hoofdstuk",
+    "demoChapterRtl": "Veeg naar rechts voor het volgende hoofdstuk",
     "demoSkip": "Tik om over te slaan",
     "demoSkipAriaLabel": "Veegdemonstratie overslaan",
     "selectVerseAriaHint": "Dubbeltik om dit vers te selecteren",

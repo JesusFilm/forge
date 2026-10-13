@@ -138,6 +138,7 @@
     "versesAriaValue": "Ves {first} i go {last} bilong {total}, {chapter}",
     "demoVerse": "Pusim i go antap long ves bihain",
     "demoChapter": "Pusim i go long han kais long sapta bihain",
+    "demoChapterRtl": "Pusim i go long han sut long sapta bihain",
     "demoSkip": "Tapim bilong abrusim",
     "demoSkipAriaLabel": "Abrusim soim bilong pusim skrin",
     "selectVerseAriaHint": "Tapim tupela taim bilong makim dispela ves",

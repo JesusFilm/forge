@@ -138,6 +138,7 @@
     "versesAriaValue": "Versen {first} bis {last} vun {total}, {chapter}",
     "demoVerse": "No uewe wësche fir de nächste Vers",
     "demoChapter": "No lénks wësche fir dat nächst Kapitel",
+    "demoChapterRtl": "No riets wësche fir dat nächst Kapitel",
     "demoSkip": "Tippt, fir z’iwwersprangen",
     "demoSkipAriaLabel": "D’Demonstratioun vum Wëschen iwwersprangen",
     "selectVerseAriaHint": "Tippt duebel, fir dëse Vers auszewielen",

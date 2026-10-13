@@ -6,6 +6,7 @@ import { useSyncExternalStore } from "react"
 
 import {
   createPersistedRecordStore,
+  type RecordReadOutcome,
   type RecordSnapshot,
   type RecordStorage,
 } from "../position/persistedRecordStore"
@@ -28,7 +29,7 @@ export type ReaderSettingsStore = {
   /** Also starts the read of the saved settings, once. */
   subscribe(listener: () => void): () => void
   /** Never rejects. A failed read keeps the defaults and a later call retries. */
-  hydrate(): Promise<void>
+  hydrate(): Promise<RecordReadOutcome>
   /** Sets the valid fields and drops the rest. False when none was valid. */
   update(patch: Partial<ReaderSettings>): boolean
   reset(): void

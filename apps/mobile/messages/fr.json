@@ -138,6 +138,7 @@
     "versesAriaValue": "Versets {first} à {last} sur {total}, {chapter}",
     "demoVerse": "Balayez vers le haut pour le verset suivant",
     "demoChapter": "Balayez vers la gauche pour le chapitre suivant",
+    "demoChapterRtl": "Balayez vers la droite pour le chapitre suivant",
     "demoSkip": "Touchez pour passer",
     "demoSkipAriaLabel": "Passer la démonstration du balayage",
     "selectVerseAriaHint": "Touchez deux fois pour sélectionner ce verset",

@@ -2123,11 +2123,26 @@
   animation: watch-home-player-enter 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 /* The duration is always supplied inline from the slide's resolved length.
-   The fallback only covers a ring rendered before that value lands; it is
-   deliberately not the old 30s preview cap, which no longer exists. */
+   The ring is two half-ring arcs, each clipped to its own half by a static
+   viewport and each animating `transform` only (compositor-friendly, unlike
+   `stroke-dashoffset`). The first turns in over the first half of the slide;
+   the second waits that long, then turns in over the rest — so the visible
+   fill still grows 0 → 100% with elapsed time. At rest both arcs sit outside
+   their clips, which is also the empty ring a reduced-motion viewer gets.
+   `fill-box` is what makes `center` the circle's own centre. */
 .watch-home-progress-ring {
-  animation: watch-home-progress-ring var(--watch-home-progress-duration, 10s)
-    linear forwards;
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: rotate(-180deg);
+  animation: watch-home-progress-ring-first
+    calc(var(--watch-home-progress-duration, 10s) / 2) linear forwards;
+}
+
+.watch-home-progress-ring-second {
+  transform: rotate(0deg);
+  animation-name: watch-home-progress-ring-second;
+  animation-delay: calc(var(--watch-home-progress-duration, 10s) / 2);
+  animation-fill-mode: both;
 }
 
 /* Delayed on purpose: a stream that arrives promptly should never flash a
@@ -2520,9 +2535,21 @@
   }
 }
 
-@keyframes watch-home-progress-ring {
+@keyframes watch-home-progress-ring-first {
+  from {
+    transform: rotate(-180deg);
+  }
   to {
-    stroke-dashoffset: 0;
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes watch-home-progress-ring-second {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(180deg);
   }
 }
 
@@ -2544,11 +2571,9 @@
 @keyframes watch-home-progress-ring-reset {
   0% {
     opacity: 1;
-    stroke-dashoffset: 0;
   }
   100% {
-    opacity: 0.72;
-    stroke-dashoffset: var(--watch-home-progress-circumference);
+    opacity: 0;
   }
 }
 

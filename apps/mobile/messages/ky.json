@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-аяттан {last}-аятка чейин, жалпы {total} аят, {chapter}",
     "demoVerse": "Кийинки аят үчүн өйдө сүрүңүз",
     "demoChapter": "Кийинки бап үчүн солго сүрүңүз",
+    "demoChapterRtl": "Кийинки бап үчүн оңго сүрүңүз",
     "demoSkip": "Өткөрүп жиберүү үчүн таптаңыз",
     "demoSkipAriaLabel": "Сүрүү көрсөтмөсүн өткөрүп жиберүү",
     "selectVerseAriaHint": "Бул аятты тандоо үчүн эки жолу таптаңыз",

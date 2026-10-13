@@ -26,6 +26,8 @@ export type EditorSnapshot = {
   canUndo: boolean
   canRedo: boolean
   editable: boolean
+  hasUnsavedChanges: boolean
+  authenticationRequired: boolean
 }
 const equal = (a: StudioDocument, b: StudioDocument) =>
   JSON.stringify(a) === JSON.stringify(b)
@@ -54,6 +56,8 @@ export class EditorSession {
       remote: null,
       canUndo: false,
       canRedo: false,
+      hasUnsavedChanges: false,
+      authenticationRequired: false,
       editable: project.lifecycle === "DRAFT" && !project.firstPublishedAt,
     }
   }
@@ -70,6 +74,12 @@ export class EditorSession {
       ...patch,
       canUndo: this.undoStack.length > 0,
       canRedo: this.redoStack.length > 0,
+    }
+    if (patch.document || patch.status) {
+      this.state.hasUnsavedChanges =
+        this.flight !== null || !equal(this.saved, this.state.document)
+      if (this.state.status === "unsaved" && !this.state.hasUnsavedChanges)
+        this.state.status = "saved"
     }
     this.listeners.forEach((fn) => fn())
   }
@@ -104,11 +114,16 @@ export class EditorSession {
     this.set({
       document: next,
       status: this.dirtyStatus(),
-      error: null,
+      error: this.state.error,
     })
   }
+  requireSignIn = () => {
+    this.set({ authenticationRequired: true })
+  }
   private dirtyStatus(): EditorSnapshot["status"] {
-    return this.state.status === "saving" || this.state.status === "conflict"
+    return this.state.status === "saving" ||
+      this.state.status === "conflict" ||
+      this.state.status === "failed"
       ? this.state.status
       : "unsaved"
   }
@@ -168,6 +183,7 @@ export class EditorSession {
   async save() {
     if (
       !this.state.editable ||
+      !this.state.hasUnsavedChanges ||
       this.state.status === "saving" ||
       this.state.status === "conflict"
     )
@@ -191,10 +207,13 @@ export class EditorSession {
       this.flight = null
       this.set({
         revision: result.revision,
+        authenticationRequired: false,
         status: equal(this.saved, this.state.document) ? "saved" : "unsaved",
         error: null,
       })
     } catch (error) {
+      const authenticationRequired =
+        error instanceof Error && "status" in error && error.status === 401
       const conflict =
         error instanceof Error &&
         (error.message === "CONFLICT" ||
@@ -204,10 +223,14 @@ export class EditorSession {
         : null
       this.set({
         status: conflict ? "conflict" : "failed",
+        authenticationRequired:
+          authenticationRequired || this.state.authenticationRequired,
         remote,
         error: conflict
           ? "This project changed in another session. Compare versions before saving."
-          : "Save failed. Your changes are retained; retry sends the same save.",
+          : authenticationRequired
+            ? "Your changes are not saved — sign in again, then retry saving. Your edits are retained in this tab."
+            : "Your changes are not saved. Retry save; your edits are retained in this tab.",
       })
     }
   }
@@ -224,6 +247,7 @@ export class EditorSession {
       status: "saved",
       remote: null,
       error: null,
+      authenticationRequired: false,
       editable: remote.lifecycle === "DRAFT" && !remote.firstPublishedAt,
     })
   }

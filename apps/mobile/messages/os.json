@@ -138,6 +138,7 @@
     "versesAriaValue": "Стихтӕ {first} – {last}, иумӕ {total}, {chapter}",
     "demoVerse": "Уӕлӕмӕ — иннӕ стих",
     "demoChapter": "Галиуӕрдӕм — иннӕ сӕр",
+    "demoChapterRtl": "Рахизырдӕм — иннӕ сӕр",
     "demoSkip": "Ахизынӕн — ӕлхъив",
     "demoSkipAriaLabel": "Равдыст ахизын",
     "selectVerseAriaHint": "Ацы стих равзарынӕн — дыууӕ хатты ӕлхъив",

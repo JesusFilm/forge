@@ -33,6 +33,70 @@ async function expectRouteError(
 }
 
 describe("readStrictRecommendationJson", () => {
+  it.each(["https://www.jesusfilm.org", "https://develop.jesusfilm.org"])(
+    "accepts the trusted Watch origin %s in production",
+    async (origin) => {
+      vi.stubEnv("NODE_ENV", "production")
+      try {
+        await expect(
+          readStrictRecommendationJson(request("{}", { origin }), {
+            expectedOrigin: "https://www.jesusfilm.org",
+            maxBytes: 1024,
+          }),
+        ).resolves.toEqual({})
+      } finally {
+        vi.unstubAllEnvs()
+      }
+    },
+  )
+
+  it.each([
+    "http://develop.jesusfilm.org",
+    "https://develop.jesusfilm.org:8443",
+    "https://develop.jesusfilm.org/",
+    "https://develop.jesusfilm.org.attacker.example",
+    "https://other.jesusfilm.org",
+    "https://develop.jesusfilm.org, https://www.jesusfilm.org",
+    "null",
+  ])("rejects untrusted develop variants: %s", async (origin) => {
+    await expectRouteError(
+      readStrictRecommendationJson(request("{}", { origin }), {
+        expectedOrigin: "https://www.jesusfilm.org",
+        maxBytes: 1024,
+      }),
+      403,
+      "invalid_origin",
+    )
+  })
+
+  it("does not admit develop to an unrelated canonical deployment", async () => {
+    await expectRouteError(
+      readStrictRecommendationJson(
+        request("{}", { origin: "https://develop.jesusfilm.org" }),
+        { expectedOrigin: EXPECTED_ORIGIN, maxBytes: 1024 },
+      ),
+      403,
+      "invalid_origin",
+    )
+  })
+
+  it.each(["same-site", "cross-site", "none", ""])(
+    "still rejects develop requests with fetch metadata %s",
+    async (fetchSite) => {
+      await expectRouteError(
+        readStrictRecommendationJson(
+          request("{}", {
+            origin: "https://develop.jesusfilm.org",
+            "sec-fetch-site": fetchSite,
+          }),
+          { expectedOrigin: "https://www.jesusfilm.org", maxBytes: 1024 },
+        ),
+        403,
+        "invalid_fetch_metadata",
+      )
+    },
+  )
+
   it("parses one exact-origin, same-origin, unencoded JSON object", async () => {
     await expect(
       readStrictRecommendationJson(request('{"item":{"id":"one"}}'), {

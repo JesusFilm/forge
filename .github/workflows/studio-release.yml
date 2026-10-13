@@ -27,7 +27,7 @@ jobs:
       candidate-sha256: ${{ steps.candidate.outputs.sha256 }}
       artifact-id: ${{ steps.upload.outputs.artifact-id }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
@@ -37,7 +37,7 @@ jobs:
         run: python3 apps/studio-render/ops/release/ci.py preflight
       - name: Install exact ORAS into runner temporary storage
         run: python3 apps/studio-render/ops/release/ci.py tools
-      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069
         env:
           DOCKER_CONFIG: ${{ runner.temp }}/studio-release/docker-public
         with:
@@ -73,7 +73,7 @@ jobs:
       actions: read
     steps:
       # Trusted main checkout only; never checkout candidate-supplied source.
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.sha }}
           persist-credentials: false

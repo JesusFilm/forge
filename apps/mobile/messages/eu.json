@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}. bertsetetik {last}. bertsetera, guztira {total}, {chapter}",
     "demoVerse": "Pasatu hatza gora hurrengo bertsetera joateko",
     "demoChapter": "Pasatu hatza ezkerrera hurrengo kapitulura joateko",
+    "demoChapterRtl": "Pasatu hatza eskuinera hurrengo kapitulura joateko",
     "demoSkip": "Ukitu saltatzeko",
     "demoSkipAriaLabel": "Saltatu hatza pasatzeko erakustaldia",
     "selectVerseAriaHint": "Ukitu birritan bertsete hau hautatzeko",

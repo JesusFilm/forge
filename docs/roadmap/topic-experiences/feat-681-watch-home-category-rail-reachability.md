@@ -56,3 +56,11 @@ the opposite arrow only when the arrow that actually holds focus is spent.
 Focused Web tests, typecheck, lint, `check:provisional-ui-catalogs`, and a real
 Next production build measured at 390/768/1280/1440 (including RTL via `dir` on
 the real page and an alternating before/after page-load comparison).
+
+## Current Main Integration
+
+The October 13 refresh preserves the per-link `useTouchGatedPrefetch` behavior
+from PR #2648 on both category tiles and the inventory link. Focused home and
+i18n validation passes 717 tests, including the touch-prefetch interaction suite.
+The rail layout and scroll implementation remain the previously measured code;
+its browser and performance evidence retains the limits described above.

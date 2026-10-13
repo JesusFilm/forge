@@ -138,6 +138,7 @@
     "versesAriaValue": "Imirongo kuva kuri {first} kugeza kuri {last} muri {total}, {chapter}",
     "demoVerse": "Kurura ujya hejuru ubone umurongo ukurikira",
     "demoChapter": "Kurura ujya ibumoso ubone igice gikurikira",
+    "demoChapterRtl": "Kurura ujya iburyo ubone igice gikurikira",
     "demoSkip": "Kanda usimbuke",
     "demoSkipAriaLabel": "Simbuka urugero rwo kurura",
     "selectVerseAriaHint": "Kanda kabiri uhitemo uyu murongo",
