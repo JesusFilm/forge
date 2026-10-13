@@ -8,6 +8,8 @@ import {
   hasUiLocale,
 } from "@/i18n/generated-ui-locales"
 import { isSourceEquivalent } from "../../../scripts/openai-catalog-translator.mjs"
+import { findPluralCategoryGaps, pluralGapKey } from "../plural-category-gaps"
+import { icuSampleValues } from "./icu-sample-values"
 
 vi.unmock("next-intl")
 
@@ -122,26 +124,6 @@ function sameSet(left: Set<string>, right: Set<string>): boolean {
   return (
     left.size === right.size && [...left].every((value) => right.has(value))
   )
-}
-
-function formattingValues(message: string): Record<string, unknown> {
-  const values: Record<string, unknown> = {}
-  const numericVariables = new Set(
-    [
-      ...message.matchAll(
-        /\{([A-Za-z][A-Za-z0-9_]*)\s*,\s*(?:plural|selectordinal|number)\b/g,
-      ),
-    ].map((match) => match[1]),
-  )
-  for (const match of message.matchAll(
-    /\{([A-Za-z][A-Za-z0-9_]*)\s*(?:,|\})/g,
-  )) {
-    values[match[1]] = numericVariables.has(match[1]) ? 2 : "Sample"
-  }
-  for (const match of message.matchAll(/<\/?([A-Za-z][A-Za-z0-9_]*)>/g)) {
-    values[match[1]] = (chunks: unknown) => chunks
-  }
-  return values
 }
 
 function languagePickerMessages(locale: string): Record<string, string> {
@@ -337,7 +319,7 @@ describe("messages catalogs — ICU and rich-text syntax", () => {
       for (const [path, message] of Object.entries(flattenCatalog(locale))) {
         activePath = path
         try {
-          const formatted = translateRich(path, formattingValues(message))
+          const formatted = translateRich(path, icuSampleValues(message))
           if (
             typeof formatted === "string" &&
             /\{[A-Za-z][^{}]*,\s*(?:plural|selectordinal|select)\b/.test(
@@ -356,6 +338,84 @@ describe("messages catalogs — ICU and rich-text syntax", () => {
 
     expect(errors).toEqual([])
   }, 15_000)
+})
+
+/**
+ * Plural-category completeness against each locale's own CLDR rules (the
+ * forge#N33 class — see src/i18n/plural-category-gaps.ts for why next-intl's
+ * silent `other` fallback lets these ship). A tracked pre-existing backlog
+ * lives in docs/i18n/watch-ui-plural-category-gaps.json; failing CI on all
+ * of it at once would block every unrelated PR over a translation backlog,
+ * not a regression. The check is a ratchet in both directions:
+ *  - a gap NOT in the backlog fails (a new plural block, a new locale, or a
+ *    category regressing), and
+ *  - a backlog entry that is already fixed fails too, so fixed gaps can't
+ *    stay silently allowlisted and later regress unnoticed.
+ * Regenerate the backlog with scripts/generate-plural-category-gaps.ts.
+ */
+const knownPluralGaps = JSON.parse(
+  readFileSync(
+    join(
+      __dirname,
+      "../../../../../docs/i18n/watch-ui-plural-category-gaps.json",
+    ),
+    "utf-8",
+  ),
+).knownGaps as Record<string, Record<string, string[]>>
+
+describe("messages catalogs — CLDR plural-category completeness (ratchet)", () => {
+  const locales = readdirSync(messagesDir)
+    .filter((file) => file.endsWith(".json"))
+    .map((file) => file.slice(0, -5))
+
+  it.each(locales)(
+    "%s has no plural-category gap beyond the tracked backlog",
+    (locale) => {
+      const gaps = findPluralCategoryGaps(locale, loadCatalog(locale))
+      if (gaps == null) return // Intl.PluralRules can't resolve this tag
+      const known = knownPluralGaps[locale] ?? {}
+
+      const unexpected = gaps.flatMap((gap) => {
+        const tracked = known[pluralGapKey(gap.path, gap.variable)] ?? []
+        const newlyMissing = gap.missing.filter((c) => !tracked.includes(c))
+        return newlyMissing.length > 0
+          ? [
+              `${gap.path} ({${gap.variable}, plural, ...}) is missing: ${newlyMissing.join(", ")}`,
+            ]
+          : []
+      })
+
+      expect(unexpected).toEqual([])
+    },
+  )
+
+  it.each(Object.keys(knownPluralGaps))(
+    "%s backlog entries are all still real gaps (remove fixed ones)",
+    (locale) => {
+      expect(
+        locales.includes(locale),
+        `${locale} is in the backlog but has no catalog`,
+      ).toBe(true)
+      const gaps = findPluralCategoryGaps(locale, loadCatalog(locale)) ?? []
+      const actual = new Map(
+        gaps.map((gap) => [pluralGapKey(gap.path, gap.variable), gap.missing]),
+      )
+
+      const stale = Object.entries(knownPluralGaps[locale]).flatMap(
+        ([key, tracked]) => {
+          const stillMissing = actual.get(key) ?? []
+          const fixed = tracked.filter((c) => !stillMissing.includes(c))
+          return fixed.length > 0
+            ? [
+                `${key}: ${fixed.join(", ")} now defined — regenerate docs/i18n/watch-ui-plural-category-gaps.json`,
+              ]
+            : []
+        },
+      )
+
+      expect(stale).toEqual([])
+    },
+  )
 })
 
 describe("generated UI locale list ↔ filesystem catalogs — drift gate", () => {
