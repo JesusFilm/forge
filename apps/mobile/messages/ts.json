@@ -138,6 +138,7 @@
     "versesAriaValue": "Tindzimana ta {first} ku ya eka {last} eka {total}, {chapter}",
     "demoVerse": "Kokela ehenhla u ya eka ndzimana leyi landzelaka",
     "demoChapter": "Kokela hi le ximatsini u ya eka ndzima leyi landzelaka",
+    "demoChapterRtl": "Kokela hi le xineneni u ya eka ndzima leyi landzelaka",
     "demoSkip": "Khumba u tlula",
     "demoSkipAriaLabel": "Tlula xikombiso xa ku kokela",
     "selectVerseAriaHint": "Khumba kambirhi ku hlawula ndzimana leyi",

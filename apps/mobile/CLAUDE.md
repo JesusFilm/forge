@@ -91,7 +91,7 @@ Admin GraphQL → gql.tada typed query → dispatcher → renderers
 - Card/poster art comes from `pickCardImage` in `src/lib/cardImage.ts` (SYNC with `apps/tv`) — never hand-roll a field chain. A record's bare `images[].url` is the variant-less Cloudflare delivery base and 400s, so it ranks LAST; the scan is field-major so a `videoStill`-first entry falls through to a sibling's cinematic art. Any query selecting `images` must select `videoStill` too.
 - Composite React keys: `key={\`${item.__typename}-${index}\`}` or content-derived keys.
 - Admin's `name: JSON` fields are locale maps — use `pickLocalizedName()` from `src/lib/pickLocalizedName.ts`.
-- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`, asking `passage(languageSlug:)` with the screen's captured text slug plus an `englishPassage`; with no passage in the UI language the card shows the English one with an English language mark), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
+- **A Bible quote card's verse text comes from admin's resolved `BibleCitation.passage`, never from a public Bible mirror.** One exception (feat-667): where admin's passage would be English, or admin gives the card no passage, and the viewer's Bible reader translation is not English, the card shows that translation's verse. It reads that verse only through the reader's own data layer, with the reader's catalog credit; see "Bible reader (feat-553)". This rule covers the quote card only. The native Bible reader (feat-553) shows its own catalog text from `bible.helloao.org` and the bundled BSB, never admin's passage; see "Bible reader (feat-553)". The old jsDelivr fetch dropped verse ranges, inlined footnotes, truncated poetry to its first line, and credited nobody. The read is a COMPANION query (`GET_VIDEO_BIBLE_PASSAGES` in `src/lib/queries.ts`, asking `passage(languageSlug:)` with the screen's captured text slug plus an `englishPassage`; with no passage in the UI language the card shows the English one with an English language mark), never a selection on `watchVideoFragment` — five call sites execute that fragment and only the watch screen renders a Bible card. `documentId: id` on `videoBySlug` **itself** is load-bearing: without it the companion write cannot normalize the video, so it replaces the shared reference and a SUCCESSFUL passage read silently collapses the player-gating query. `src/lib/__tests__/queries.test.ts` guards both halves, and `biblePassages.test.ts` pins the cache mechanism against a real `InMemoryCache`. A passage reaches a card only through the fail-closed gate in `src/lib/biblePassages.ts` — all eight values, the seven strings on truthiness (admin passes provider columns through raw, so a present-but-blank field is a real shape) and `versionId` as a positive integer. **Scripture never renders uncredited:** when the card cannot fit a verse with its translation and copyright, `src/lib/bibleCardFit.ts` drops the VERSE, not the credit. `apps/tv` still holds its own copy of the retired mirror stack and does NOT inherit this.
 
 ## Admin endpoint resolution (feat-339)
 
@@ -479,6 +479,7 @@ Client-side RUM + Logs via `@datadog/mobile-react-native`; helpers in
 - **Set `preservesPitch` EXPLICITLY on every player — never trust the default.** expo-video's TS types document it as `@default true`, but the ANDROID native default is `false` (`expo-video/android/.../player/VideoPlayer.kt`: `var preservesPitch = false`), and `applyPitchCorrection` then sets `pitch = speed`. So a playback-speed pick also shifted the speaker's voice up or down — chipmunk at 1.5x, baritone at 0.75x. iOS never showed it because AVPlayer corrects pitch itself, which is exactly why the wrong default survived review. `useManagedVideoPlayer` sets it at creation, which covers every surface that can change speed (the heroes are muted and never change rate). Measured on the Pixel 9a emulator by reading the property back through the native getter: `false` before the set, `true` after. The shared jest double defaults it to `false` ON PURPOSE — mirroring Android, not the types — so the assertion in `useManagedVideoPlayer.test.tsx` can only pass if the app sets it.
 - Gating chrome — or any recovery affordance — behind a load: enumerate every path that fails to release the gate. "Playback started OR the player errored" misses "neither": backgrounding mid-load, and a source that wedges without ever erroring. Both leave the viewer with no controls and no way out, and neither logs anything. Always pair such a gate with an unconditional time-based release, and gate the tap target with the same predicate as the chrome it hides. See `docs/solutions/logic-errors/mobile-watch-autostart-veil-gate-missing-release-path.md`.
 - iOS 26 makes the stack back-swipe FULL-WIDTH by default (react-native-screens turns it on when `fullScreenSwipeEnabled` is unset), and a JS PanResponder can never outrace it: the native recognizer claims the touch at delivery, before JS runs. So a rightward scrub on the seek bar IS the pop gesture. **Split the screen instead of racing it.** The watch/series routes confine the pop to a 24pt left strip via `gestureResponseDistance`, and the Scrubber DECLINES touches that start inside that strip (`mayStartScrub` in `src/lib/scrubber.ts`, on BOTH responder gates). One constant feeds both halves (`src/lib/backSwipe.ts`) so they cannot disagree. `fullScreenGestureEnabled: false` is the wrong tool — it kills ALL back-swipe on iOS 26, because no legacy edge recognizer fires.
+  - **Superseded 2026-10-12 by feat-695 U3:** in a right-to-left layout, react-native-screens moves the strip to the right edge, and `mayStartScrub` declines the right strip there. Touch x stays physical, so the guard measures from the window's right edge.
 - **Do not gate the back-swipe on chrome visibility.** An earlier fix held `gestureEnabled` false while the player chrome was mounted. `shouldArmHideTimer` never arms while paused or ended, so the chrome never auto-hides in those states and the hold never released: pausing a video killed the edge back-swipe for the screen's whole life. Only fullscreen may disable the gesture. Every `gestureEnabled` write must still land on BOTH the screen and its parent stack — the pop that dismisses a nested route belongs to the ROOT stack, which consults only its own top screen. `app/__tests__/backSwipeGesture.guard.test.js` pins the layout options AND the edge width; `useFullscreenPresentation.test.tsx` pins that the gesture stays enabled outside fullscreen.
 - **Never set a react-native-screens `orientation` screen option.** `expo-screen-orientation`'s `ScreenOrientationViewController` answers UIKit from its OWN registry mask — what `lockAsync` writes — only while no screen carries an orientation. The moment one does, it defers to the react-native-screens view-controller chain instead, and a **dev client** has `expo-dev-launcher`'s `DevLauncherViewController` sitting in that chain: the resolved mask loses landscape, UIKit refuses the geometry request (`UIWindowScene.interfaceOrientationsNotSupported`, readable via `xcrun simctl spawn <udid> log stream`), fullscreen stays portrait, and leaving fullscreen strands the details page in landscape until the route pops. The option was always redundant — `src/lib/orientation.ts`'s lock already names the orientation on both platforms — so `useFullscreenPresentation` sets only the lock, and the dev client now rotates exactly like a Release build. Verified 2026-08-26 on the iPhone 17 Pro Max simulator in BOTH build types. `app/__tests__/screenOrientationOption.guard.test.js` blocks the one-line revert across every `.ts`/`.tsx` file under `app/` and `src/`, with a >100-file floor so the scan cannot silently go empty. It has TWO rules, and both are live: Rule 1 matches the key next to a quoted orientation value anywhere in the file (this catches the ternary across line breaks); Rule 2 matches a bare `orientation` KEY of any value shape — named constant, shorthand property — but only inside a brace-matched `screenOptions`/`options` object, so `src/lib/watchHome/`'s unrelated `orientation` key does not trip it. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
 - **`PlayerSlot` must never depend on getting exactly one good `onLayout`.** `measureInWindow` SILENTLY drops its callback when the native node is not attached yet, and the host (`PlaybackHost`) returns null while the slot's rect is null — so one unlucky cold open leaves an opaque black box with no poster, no chrome, and no recovery except leaving the screen. Measured on the iPhone 17 Pro Max simulator over 10 cold deep-link opens: 2/10 on unmodified main, 0/10 after the bounded `requestAnimationFrame` re-measure. Three parts, and all three matter: retry until a rect lands, refuse a zero-size measure, and gate `isDrawn` on the RECT rather than on the attachment so the slot keeps its own poster while the host has nothing to draw. `src/components/watch/__tests__/PlayerSlot.test.tsx` drives a real `measureInWindow` callback and pins all three parts: a zero-size measure publishes nothing, a valid one publishes exactly the measured rect, and the pump stops asking once a rect lands. Exhaustion logs `player_slot.measure_exhausted` once, so an unmeasurable slot is visible in production instead of silent. The instrumentation that separates the cases is a `console.log` in `measureIntoStore` plus one inside the `measureInWindow` callback — `onLayout` fires in BOTH the good and the black run; only the callback differs. See `docs/solutions/integration-issues/expo-screen-orientation-rnscreens-deferral-blocks-fullscreen-rotate.md`.
@@ -1104,6 +1105,10 @@ routes, every rule in this section is unchanged.
   its own remembered corner apart from the app's corner, so a drag in one
   never moves the other. `PlaybackHost` reads the effective corner: the
   reader corner on reader routes, and the app corner elsewhere.
+  - **Superseded in part 2026-10-12 by feat-695 U6:** in a right-to-left
+    layout, the corner order mirrors. A new window starts at the bottom left
+    (the app) and at the top left on a phone reader, bottom left on an iPad.
+    The corner frames and the snap stay physical.
 
 **Picture-in-picture: one props object, one latch, chrome-only suppression.**
 Every video view that can enter the OS window spreads
@@ -1541,14 +1546,34 @@ design record is
   `appLanguage.ts` as soon as the preferences hydrate, because the preferences
   provider persists without awaiting and a payload read from storage alone can
   carry the previous pick.
-- **`google-services.json` is NOT committed and Android cannot register without
-  it.** `app.json` references it, and `expo prebuild --platform android` refuses
-  while it is absent — which is the gate that makes the missing Firebase
-  download visible. A placeholder file would build and then fail FCM
-  registration silently on device. iOS is unaffected. The refusal is
+- **`google-services.json` is committed, and Android cannot register without
+  it.** It is the config of the Android app `org.jesusfilm.forgewatch` in the
+  Firebase project `jesus-film-watch-mobile` (added 2026-10-09). It holds no
+  secret. EAS builds use only committed files, so the file must stay in git.
+  `app.json` references it, and `expo prebuild --platform android` refuses
+  while it is absent. Do not replace it with a placeholder: a placeholder
+  builds and then fails FCM registration silently on device. iOS is
+  unaffected. The FCM V1 send key is a different file. Only EAS credentials
+  hold it, and it never goes in the repo. The refusal is
   `setGoogleServicesFile` in `@expo/config-plugins`, which throws "Cannot copy
   google-services.json from …" when the copy fails (read from the installed
   package on 2026-09-21; no prebuild was run).
+- **The API key in `google-services.json` is public and restricted.** The repo
+  is public, so the restriction is the key's only protection. Since
+  2026-10-13, the Google Cloud console allows the key only for the Firebase
+  Installations API and the FCM Registration API. It also allows only
+  `org.jesusfilm.forgewatch` signed with the EAS keystore (SHA-1
+  `50:69:A0:14:F5:50:F0:DB:14:E2:29:61:C5:01:44:FF:83:58:8E:30`). Three rules
+  follow, and one symptom shows a break:
+  - A local build is signed with the debug key, so it cannot register a new
+    push token. To test push from a local build, add the debug key's SHA-1
+    for the test, then remove it.
+  - Before the first Google Play release, add the SHA-1 of Play's app-signing
+    key. Without it, Play installs never register, and nothing reports it. Do
+    the same after any change to the EAS keystore.
+  - A new Firebase feature on Android needs its API added to the key.
+  - A blocked request shows in logcat as a Firebase Installations or FCM
+    error that names the API key, and admin receives no `RegisterPushDevice`.
 - **Telemetry is `push.`-prefixed through the sink named `telemetry`**
   (`push.registration`, `push.registration_failed`, `push.revocation`). No
   token, viewer handle or test ID ever reaches a log.
@@ -1604,6 +1629,83 @@ design record is
   kind with one unpublished slug each, the message clearing the tab bar on a
   0-inset device, and one `ReportPushOpen` per tap in the fake-admin proxy log
   (two when admin refuses the viewer handle).
+
+### Android cold taps and the task restart
+
+- **A cold tap reaches `MainActivity` only through `onNewIntent`.** A cold
+  tap is a tap after Android stopped the process while the task stayed in
+  Recents. Android restarts the old task with its old launch intent and sends
+  the tap as a new intent. Expo's activity wrapper drops a new intent while
+  the app loads (`ReactActivityDelegateWrapper.onNewIntent` in
+  `expo@57.0.27`), so the app opened Home and reported no open
+  (expo/expo#49254). Firebase posts the notification in this state, because
+  the app is not on screen.
+- **`plugins/withAndroidPushTapRelay.js` adds two blocks to `MainActivity.kt`.**
+  - Block A runs in `onCreate`, before the superclass call. On a restore
+    (saved state, or `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`), it removes
+    `google.message_id` from the activity's own intent. The tap that created
+    the task then does not open again, and a newer tap wins.
+  - Block B overrides `onNewIntent`. It gives a Firebase-posted tap to
+    `NotificationManager.onNotificationResponseFromExtras`, then removes
+    `google.message_id`, so Expo's own listener ignores the tap. It skips an
+    intent with Expo's response keys, because Expo's forwarder already
+    delivers that tap.
+  - The plugin throws at prebuild on a Java `MainActivity`, a missing anchor,
+    or another `onNewIntent` override. A skip would ship the defect. Never
+    write the text `super.onCreate(` in a block: expo-splash-screen and
+    react-native-google-cast anchor on the first line that holds it.
+- **The plugin ships only in a native build.** It changes the app config, so
+  it moves the fingerprint runtime version on Android and iOS. An
+  `eas update` published before that build reaches no installed app.
+- **`src/lib/__tests__/androidPushTapUpstream.guard.test.js` is the
+  tripwire.** It pins `expo` 57.0.28, `expo-notifications` 57.0.22,
+  `expo-updates` 57.0.26, and eleven upstream facts. Three of the facts pin
+  Expo's `isFCMIntent` gate, which is why removing the key makes the listener
+  ignore a tap. A red test means: re-check expo/expo#49254 and the plugin.
+  Expect the Expo SDK 58 upgrade to trip the version pins. Then re-read expo
+  PR #47615 (merged 2026-07-09): it drains the tap queue after a listener
+  handles a tap.
+  - For a patch bump, diff the old and new packages' `android/` folders under
+    `node_modules/.pnpm`. Bump the pins without a new device pass only when
+    every fact passes and the diff changes nothing but the package's own
+    `version`, `versionName`, and `versionCode` lines.
+  - Any other change needs a cold tap on a release build first: stop the
+    process with `am kill`, tap an announcement, and read the two logs below.
+    A changed dependency version counts, for example `firebase-messaging` in
+    expo-notifications' `build.gradle` or in the `.pom` under its
+    `local-maven-repo/`, because the build links that prebuilt library.
+  - The device pass ran on `expo` 57.0.27 and `expo-updates` 57.0.25. On
+    2026-10-13 the pins moved to 57.0.28 and 57.0.26 by that check: only each
+    package's own `version` and `versionName` lines differed.
+- **Make a cold tap with `am kill`, not a force stop.** Pause the media, press
+  Home, then run `adb shell am kill org.jesusfilm.forgewatch`. A playing mini
+  player keeps the process alive, and `am kill` then does nothing. Check that
+  `pidof` is empty and the task is still in Recents. A force stop also blocks
+  push delivery until the next launch.
+- **Read two logs.** `adb logcat -s ForgePushTap` shows each block. Block B's
+  line means that the hand-off ran, not that the tap was kept: until
+  JavaScript loads, the queue keeps only the first tap.
+  `adb logcat -b events` shows `wm_new_intent`, then `wm_restart_activity`,
+  and no `wm_create_activity` for `MainActivity`. A dev client cannot show
+  the replay cases, because the dev launcher restarts the task with
+  `FLAG_ACTIVITY_CLEAR_TASK`. Use a release build for them.
+- **Device pass, 2026-10-13, Samsung Galaxy S20 (Android 13).** Cold taps to
+  a video, a series, and an experience opened the destination. A newer cold
+  tap won over the tap that created the task. A reopen from Recents, from the
+  launcher, and after a force stop did not replay an earlier tap. The fake
+  admin counted one `ReportPushOpen` per dev-client tap. A lapse reminder
+  cold tap opened its video, and one Back press returned to Home. With
+  "Don't keep activities" on and the process alive, a tap opened its video
+  once, and one Back press returned to Home.
+- **Create the test task from the launcher icon.** A task that a deep link
+  created replays that link when Android restores it. A cold tap on such a
+  task opens the link's screen and the tap's destination, so the screen can
+  appear twice. This is restore behavior, not the relay.
+- **To test a lapse reminder without a clock change,** temporarily schedule
+  the day-1 reminder 90 seconds after the pass (`date` in
+  `src/lib/lapseReminders/lifecycle.ts`), build a release APK, and revert the
+  change. `deps.now()` returns a number, not a `Date`. The alarm is inexact,
+  so it can fire minutes late.
 
 ## Cast SDK sheet theming
 
@@ -2092,11 +2194,66 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
 
 - **The reader's text is not admin's Bible Passage.** The reader shows text
   from the Free Use Bible API at `bible.helloao.org`, and BSB ships inside the
-  app. The quote card still shows admin's resolved passage (see
-  "Conventions"). A "Read full passage" tap pushes `readerHref(ref, "quote")`
+  app. The quote card still shows admin's resolved passage, except in the
+  English gap of the next bullet (see "Conventions"). A "Read full passage"
+  tap pushes `readerHref(ref, "quote")`
   at the first cited verse, in BSB numbering. The tap no longer opens
   `bible.com`, and it does not pause the video. The accessibility label stays
   "Read full passage", so the Datadog RUM tap series continues (KD17).
+- **A quote card can show the reader's translation (feat-667).** The design
+  record is
+  `docs/plans/2026-10-08-1419-feat-mobile-bible-quotes-reader-translation-plan.md`;
+  it defines the R, AE, and KTD numbers that the source cites.
+  - A card uses the reader's translation only when admin's passage is English
+    or absent, and that translation is not English (R1). Admin answers every
+    language it does not map with its English version (3034), and the card
+    already marks such a passage `en`. Every other card shows admin's passage.
+  - `src/lib/bible/quotes/cardQuote.ts` finds each card's translation with the
+    reader's own `resolveShownTranslation` and inputs, with `offline: false`,
+    after the position store's hydrate and the downloads check (KTD2). So
+    "Read full passage" opens the translation that the card shows, with no
+    route parameter. `app/watch/__tests__/bibleQuotesReader.guard.test.js`
+    pins that both call sites use that resolver (KTD12). A hydrate that misses
+    storage (`hydrate()` gives `missed`) keeps admin's card (KTD8).
+  - The verses convert through the reader's versification. Each end must
+    round-trip exactly and land on a verse, not a gap. A quote over more than
+    2 translation chapters keeps admin's card (KTD6).
+  - `useBibleVerses` starts admin's read and the device-only reads
+    (`readOnDevice`) together. A network chapter read starts only after admin
+    settles, only for such a card, and only inside the 8 s budget. The
+    cooldown path reads only the device. Each card stays loading until it
+    settles, so it never shows English and then the local text (R12).
+  - A return to the watch screen, a new pick in the reader, or a new dub
+    resolves the cards again. Only a card whose reader translation changed
+    reloads, with its own budget (KTD11). The route passes the dub preference
+    and its focus into the hook (KTD3).
+  - A restart for the payload or for new citations keeps the open's budget,
+    and never reloads a card that already settled (R12). A pick made in the
+    reader waits for the return to the watch screen, so it reads once.
+  - When admin's read runs out of time, the cards count it as "no passage".
+    A verse that is already on the device still shows.
+  - A local card sets `verseDirection` and `verseLang`. The verse, the
+    reference, and the translation name take the catalog's direction; the
+    credit stays English and left to right (KTD7).
+  - **A Myanmar row on a card has no fixed line height.** iOS draws Myanmar
+    in Noto Sans Myanmar, which is 2.18 em tall, and a fixed line height cuts
+    the tops off its letters. `cardRow` in `src/lib/bibleCardFit.ts` removes
+    the line height of a Myanmar reference, translation name, reader link, or
+    promo button. The fit budgets 2.2 em for the reference, name, and link
+    rows. The promo, Experience, and SDUI cards have no fit, so a large text
+    size can still push their text out of the square (feat-669). Khmer
+    (1.99 em) does not clip, so it keeps the token. The verse keeps its line
+    height, because it does not clip. Checked on 2026-10-09 on the iPhone 17
+    Pro Max simulator and on the Pixel 9a emulator (Android 15), where every
+    card row also rendered whole. Android's own Myanmar font metrics were not
+    measured.
+  - Card reads share the reader's repository, so they fill its kept-chapter
+    cache. A card's network read also sets the repository's "network
+    answered" signal, which the reader's prefetch reads. Two reads of one
+    chapter share one fetch, and a failure logs the tag of the read that
+    started it, so `reader_fetch_source` is close, not exact.
+  - `bible_quotes.reader_translation` logs one event per settle, with the
+    count of local cards, admin's cards, and each fallback reason (KTD10).
 - **One build script makes every bundled Bible file (KTD1).**
   `scripts/build-bible-data.mjs` writes 66 BSB book files as `.bible` Metro
   assets under `assets/bible/bsb/`, the catalog snapshot
@@ -2223,6 +2380,9 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
   before (owner, 2026-09-28). A verse move into the next chapter stays
   vertical. A picker jump changes in place, and so does every change with
   Reduce Motion on.
+  - **Superseded in part 2026-10-12 by feat-695 U6 (R14):** the chapter axis
+    takes the layout sign. In a right-to-left layout, a swipe to the right
+    opens the next chapter, and the slide moves the other way.
   - **A newer verse interrupts the running change** (owner, 2026-09-28;
     `interruptChange` in `src/lib/bible/movement/verseStage.ts`). The one
     verse on screen at that point leaves from its current opacity and
@@ -2384,9 +2544,11 @@ defines the KD, KTD, R, and AE numbers that the source comments cite.
     `reader_reason`, `reader_download_bytes`) comes from `runDownloadAction`
     when the download ends. The bytes are the catalog size.
   - `bible_reader.chapter_fetch_failed` (`reader_translation_id`,
-    `reader_book`, `reader_chapter`, `reader_reason`, `reader_http_status`)
-    comes from the fetch binding in `downloadRuntime.ts`, once per network
-    fetch. The repository shares one fetch between the two hosts.
+    `reader_book`, `reader_chapter`, `reader_reason`, `reader_http_status`,
+    `reader_fetch_source`) comes from the fetch binding in
+    `downloadRuntime.ts`, once per network fetch. The repository shares one
+    fetch between the two hosts. `reader_fetch_source` is `quote` for a quote
+    card's read (feat-667) and `reader` for the reader's own.
   - `bible_reader.versification_mismatch` (`reader_translation_id`,
     `reader_book`, `reader_chapter`, `reader_system`,
     `reader_mapped_last_verse`, `reader_actual_last_verse`) fires once per
@@ -2585,6 +2747,13 @@ import, and the provenance records it.
   `*Lang` field; UI text uses the catalog tag. English fallback text also gets
   `accessibilityLanguage="en"` on iOS. It never applies to containers or to
   centered text, and the layout never mirrors (KTD4).
+  - **Superseded 2026-10-12 by feat-695 U4:** while `MIRRORED_LAYOUT_ENABLED`
+    is on, the layout mirrors for a right-to-left UI Locale, and the style
+    also sets an explicit edge for every known language. Short text goes to
+    the layout's start edge. A paragraph in the other direction keeps the
+    start edge of its own language (`{ kind: "paragraph" }`, or
+    `uiParagraph` for catalog text). With the switch off, the rule above
+    holds. See "Mirrored layout (feat-695)" below.
 
 ### Translate with Claude (local mode)
 
@@ -2762,6 +2931,9 @@ runs the pre-install hook before `pnpm install`.
   drop library translations in region folders, such as the Cast framework's
   `values-zh-rCN`. The Info.plist key makes iOS always show the per-app
   language row.
+  - **Superseded 2026-10-12 by feat-695 U1:** `withIosLeftToRightAppearance`
+    is removed. The local module `modules/layout-direction` applies the saved
+    direction to UIKit at `willFinishLaunching`.
 - **Text in iOS permission alerts (feat-627).** iOS reads the Local Network
   sentence (`NSLocalNetworkUsageDescription`) from `Info.plist`, or from
   `<tag>.lproj/InfoPlist.strings`, before any JS runs. So the catalogs alone
@@ -2794,8 +2966,16 @@ runs the pre-install hook before `pnpm install`.
   right-to-left on an Arabic, Farsi, or Urdu phone. The guard rejects it. With
   `supportsRTL: false`, iOS resets `allowRTL(false)` and `forceRTL(false)` at
   every launch before React loads; Android calls only `allowRTL(false)`.
+  - **Superseded 2026-10-12 by feat-695 U1 (KTD1):** add neither `supportsRTL`
+    nor `forcesRTL`, in the plugin options, `expo.extra`, or `ios.infoPlist`.
+    With either key, `expo-localization` rewrites React Native's direction at
+    every start, over the direction that the module saved. The guard rejects
+    both keys.
 - The iOS `NativeTabs` bar gets `unstable_nativeProps={{ direction: "ltr" }}`,
   because UIKit tabs ignore `allowRTL`.
+  - **Superseded 2026-10-12 by feat-695 U3:** the bar gets
+    `direction: isLayoutRtl() ? "rtl" : "ltr"`. Never remove the prop, because
+    `inherit` follows the native localization.
 - **These changes move the fingerprint runtime version:** the
   `expo-localization` native module (U2), the `app.json` plugins and the
   Info.plist key (U3), and the `update:production` edit (U4). A native build
@@ -2809,6 +2989,92 @@ runs the pre-install hook before `pnpm install`.
   over-the-air update: run the command, then the catalog index generator. It
   joins `native-locales.json` and `app.json` at the next native build. Then
   also run `node scripts/i18n/generate-native-strings.mjs`.
+
+### Mirrored layout (feat-695)
+
+The layout mirrors when the UI Locale is a right-to-left catalog. The phone
+language alone never sets the direction, so a `ks` phone (English-only
+catalog) stays left-to-right. The plan is
+`docs/plans/2026-10-12-1325-feat-mobile-rtl-mirrored-layout-plan.md`.
+
+- **The app decides, and the module applies.** `src/i18n/layoutDirection.ts`
+  decides the direction at module scope in `app/_layout.tsx`, right after
+  `startLocaleSync()`. `modules/layout-direction` saves it and applies it to
+  native parts: React Native's settings, the iOS `UIView` appearance, and on
+  Android the Activity window, the dialog configuration, and the default
+  locale.
+- **One reload at most.** A wrong direction at start costs one reload behind
+  the native splash. While it is pending, the root layout renders a bare view
+  and mounts no provider. On Android, the check runs again only on a move to
+  `active` after a locale change. That return reload opens Home, and the last
+  push response does not replay (`app/+native-intent.tsx`).
+- **The reload record** counts direction reloads per bundle: the update id,
+  or `build:<number>` for an embedded bundle. A device whose direction does
+  not take effect reloads once, applies the direction in use, reports one
+  `LayoutDirectionFault` per fault, and retries once after a new update or
+  native build.
+- **Telemetry.** A runtime after a direction reload records
+  `js_tti_direction_reload` in place of `js_tti`, and its
+  `ui_locale.resolved` log has `ui_locale.direction_reload`.
+- **What mirrors and what does not.** React Native swaps `left` and `right`
+  styles by itself. Directional icons go through `directionalIcon()`, and
+  horizontal gesture math through `layoutSign()` (`src/i18n/layoutRtl.ts`).
+  Playback controls and layers that draw at a measured x render inside a
+  `direction: "ltr"` container (R12, KTD7). The player's route buttons (Cast,
+  AirPlay, settings) are not playback controls: they take `appDirection()`,
+  so they mirror and stay clear of the watch page's minimize button.
+- **A progress ring fills clockwise in every layout.** The circular direction
+  of time does not mirror (Material bidirectionality). `DownloadProgressRing`
+  and `ReaderProgressRing` draw in a `direction: "ltr"` layer, and their
+  center keeps the app's direction. Without that layer, the two halves swap
+  sides: the fill turns counter-clockwise, and a half's square corner shows
+  outside the ring (iPhone 17 Pro Max simulator and Pixel 9a emulator,
+  2026-10-13). A new ring built from `left`-placed halves needs the same layer.
+- **Text edges.** With `direction` set to the text's own language, both
+  platforms read `textAlign: "left"` as the start of that language (device
+  check, 2026-10-12). `textDirection.ts` depends on this.
+- **Android pitfalls (verified 2026-10-12, Pixel 9a emulator, Android 15).**
+  - AppCompat dialog button bars use `layoutDirection="locale"`, which reads
+    `Locale.getDefault()`. Android sets the default to the best match among
+    the app's own resources, which is `en-US` for `ps`. The module sets the
+    default to the first device locale, and only when its direction is the
+    wanted one, so `LocaleList.getDefault()` does not change.
+  - Android replaces the activity resources at launch and at configuration
+    changes, sometimes with no callback. A pre-draw guard applies the
+    direction again before each frame.
+- **A reload that does not happen (seen 2026-10-13, Pixel 9a emulator).** The
+  save sets React Native's own direction before the reload, and React Native's
+  layout reads it on each pass. Android's `reloadAppAsync` can resolve with no
+  reload, for example when the current activity is not a `ReactActivity`. Once,
+  on a return during a per-app language change, a return reload did not happen,
+  and English text sat right-aligned over a left-to-right layout. The cause is
+  not established. So a reload that rejects, or that has not ended
+  the runtime after `RELOAD_DEADLINE_MS`, saves and applies the direction in use
+  again and reports `reload_failed` or `reload_stalled`. The start gate opens
+  after at most `RESTORE_WAIT_MS` more, even when that native restore does not
+  settle. A first save that ends after the deadline does not reload. The restore
+  clears the reload count, so a start reload that stalls on every launch tries
+  again at each cold start, at a cost of up to 8 s behind the native splash.
+
+#### Off switch (runbook)
+
+`MIRRORED_LAYOUT_ENABLED` in `src/i18n/mirroredLayout.ts` turns off both the
+mirrored layout and the two-way alignment rule. It works only in native builds
+that contain feat-695.
+
+1. Set the line to `export const MIRRORED_LAYOUT_ENABLED = false`. Keep a bare
+   literal: `mirroredLayoutKillSwitch.guard.test.js` rejects anything else.
+2. Merge, and publish the production update as "Publishing an EAS Update"
+   describes.
+3. A right-to-left viewer gets today's left-to-right screens after the update
+   downloads and the app reloads once.
+4. Every later update must keep `false` until the team decides to turn
+   mirroring on again. A later update with `true`, or an `eas update:rollback`
+   to an update from before the off update, turns mirroring back on.
+
+Check the switch without an update: build a second local release build with
+the switch `false`, and install it over a mirrored install without removing
+its data (`xcrun simctl install`, `adb install -r`).
 
 ## Component render tests
 

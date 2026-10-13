@@ -1,15 +1,18 @@
 // Settings screen (D-pad list, WATCH_THEME). v1 content is Showcase Mode only:
 // a start action + the launch-only auto-start toggle, both persisted on device.
 
-import { useFocusEffect, useRouter } from "expo-router"
-import { useCallback, useMemo, useRef } from "react"
+import { useFocusEffect, usePathname, useRouter } from "expo-router"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Animated,
+  BackHandler,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
+  ScrollView,
+  TVEventControl,
 } from "react-native"
 import type { View as ViewType } from "react-native"
 import Ionicons from "@expo/vector-icons/Ionicons"
@@ -21,6 +24,16 @@ import { createFocusMemory, type FocusMemory } from "../home/focusMemory"
 import { useFocusVisual } from "../focus/useFocusVisual"
 import { AnimatedFocusIcon } from "../watch/AnimatedFocusIcon"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
+import { useWatchHome } from "../../hooks/useWatchHome"
+import { useTopShelfSync } from "../../lib/topShelf/useTopShelfSync"
+import {
+  TOP_SHELF_PREVIEW_OPTIONS,
+  topShelfPreviewEnabled,
+} from "../../lib/topShelf/preview"
+import {
+  loadContinueWatching,
+  type ContinueWatchingEntry,
+} from "../../lib/watchEvents/continueWatching"
 
 type IconName = React.ComponentProps<typeof Ionicons>["name"]
 
@@ -28,12 +41,32 @@ const ICON_SIZE = Math.round(scale(26))
 
 export function SettingsScreen() {
   const router = useRouter()
+  const pathname = usePathname()
+  const leaveSettings = useCallback(() => router.dismissTo("/"), [router])
+  useFocusEffect(
+    useCallback(() => {
+      const back = BackHandler.addEventListener("hardwareBackPress", () => {
+        leaveSettings()
+        return true
+      })
+      if (Platform.OS === "ios" && Platform.isTV)
+        TVEventControl.enableTVMenuKey()
+      return () => {
+        back.remove()
+        if (Platform.OS === "ios" && Platform.isTV)
+          TVEventControl.disableTVMenuKey()
+      }
+    }, [leaveSettings]),
+  )
   const { prefs, hydrated, setAutoStart } = useShowcasePrefs()
   const {
     androidPlayerVariant,
     setAndroidPlayerVariant,
     nativePlayerVariant,
     setNativePlayerVariant,
+    topShelfPreviewStyle,
+    setTopShelfPreviewStyle,
+    topShelfPreviewMessage,
     hydrated: watchPreferencesHydrated,
   } = useWatchPreferences()
 
@@ -75,8 +108,58 @@ export function SettingsScreen() {
   }, [prefs.autoStart, setAutoStart])
 
   return (
-    <View style={styles.screen}>
+    <ScrollView contentContainerStyle={styles.screen}>
       <Text style={styles.title}>Settings</Text>
+
+      <SettingsRow
+        testID="settings-back-home"
+        icon="chevron-back"
+        label="Back to Home"
+        onPress={leaveSettings}
+        onFocusNode={captureFocusedNode}
+      />
+      <View style={styles.section}>
+        <Text style={styles.sectionHeading}>Watch animations</Text>
+        <SettingsRow
+          testID="settings-animations"
+          icon="sparkles-outline"
+          label="Animations"
+          onPress={() => router.push("/settings/animations")}
+          onFocusNode={captureFocusedNode}
+        />
+      </View>
+
+      {topShelfPreviewEnabled(
+        process.env.EXPO_PUBLIC_TV_TOP_SHELF_PREVIEW_ENABLED,
+        Platform.OS,
+        Platform.isTV,
+      ) && (
+        <View style={styles.section}>
+          {pathname === "/settings" && topShelfPreviewStyle ? (
+            <BetaTopShelfPreviewSync />
+          ) : null}
+          <Text style={styles.sectionHeading}>Top Shelf — Beta</Text>
+          <Text style={styles.sectionNote}>
+            Choose a style, then return to Apple TV Home and highlight Watch.
+            Styles without matching content use Automatic.
+          </Text>
+          {topShelfPreviewMessage ? (
+            <Text style={styles.sectionNote}>{topShelfPreviewMessage}</Text>
+          ) : null}
+          {TOP_SHELF_PREVIEW_OPTIONS.map((option) => (
+            <SettingsRow
+              key={option.value}
+              testID={`settings-top-shelf-${option.value}`}
+              icon="tv-outline"
+              label={option.label}
+              selected={(topShelfPreviewStyle ?? "automatic") === option.value}
+              disabled={!watchPreferencesHydrated}
+              onPress={() => setTopShelfPreviewStyle(option.value)}
+              onFocusNode={captureFocusedNode}
+            />
+          ))}
+        </View>
+      )}
 
       <View style={styles.section}>
         <Text style={styles.sectionHeading}>Showcase Mode</Text>
@@ -179,8 +262,24 @@ export function SettingsScreen() {
           />
         </View>
       ) : null}
-    </View>
+    </ScrollView>
   )
+}
+
+function BetaTopShelfPreviewSync() {
+  const { model } = useWatchHome()
+  const [entries, setEntries] = useState<ContinueWatchingEntry[]>([])
+  useEffect(() => {
+    let cancelled = false
+    void loadContinueWatching().then((value) => {
+      if (!cancelled) setEntries(value)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+  useTopShelfSync(model, entries, true, true)
+  return null
 }
 
 type SettingsRowProps = {
@@ -200,7 +299,7 @@ type SettingsRowProps = {
   hasTVPreferredFocus?: boolean
 }
 
-function SettingsRow({
+export function SettingsRow({
   testID,
   icon,
   label,
@@ -298,10 +397,11 @@ function SettingsRow({
 
 const styles = StyleSheet.create({
   screen: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: WATCH_THEME.below,
     paddingHorizontal: scale(80),
     paddingTop: scale(78),
+    paddingBottom: scale(80),
   },
   title: {
     fontFamily: "System",

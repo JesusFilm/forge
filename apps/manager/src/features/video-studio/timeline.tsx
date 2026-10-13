@@ -11,16 +11,8 @@ import {
   type TimelineGroup,
 } from "./timeline-layout"
 
-export const itemLabel = (item: StudioTimelineItem) =>
-  item.kind === "text"
-    ? item.text || "Text"
-    : item.kind === "video"
-      ? "Source footage"
-      : item.kind === "component"
-        ? "Custom component"
-        : item.kind === "audio"
-          ? "Audio"
-          : "Image"
+import { itemLabel } from "./item-presentation"
+export { itemLabel } from "./item-presentation"
 export function Timeline({
   session,
   state,
@@ -44,6 +36,7 @@ export function Timeline({
     start: number
     duration: number
     sourceStart: number
+    rate: number
     mode: "move" | "left" | "right"
     track: string
   } | null>(null)
@@ -129,6 +122,7 @@ export function Timeline({
           : item.kind === "audio"
             ? item.sourceStartMs
             : (item.startFrame * 1000) / doc.fps,
+      rate: item.kind === "video" ? (item.playbackRate ?? 1) : 1,
       mode,
       track: item.trackId,
     }
@@ -153,7 +147,7 @@ export function Timeline({
     if (a.mode === "left") {
       start = Math.max(
         0,
-        a.start - Math.floor((a.sourceStart * doc.fps) / 1000),
+        a.start - Math.floor((a.sourceStart * doc.fps) / (1000 * a.rate)),
         Math.min(a.start + a.duration - 1, a.start + delta),
       )
       duration = a.duration - (start - a.start)
@@ -168,7 +162,7 @@ export function Timeline({
       ?.closest<HTMLElement>("[data-track]")
     const item = doc.items.find((i) => i.id === drag.id)
     const target =
-      item && targetRow?.dataset.group === itemGroup(item)
+      item && targetRow?.dataset.group === itemGroup(item, doc)
         ? targetRow.dataset.track
         : undefined
     setDrag({
@@ -209,7 +203,9 @@ export function Timeline({
             const startMs = Math.max(
               0,
               Math.round(
-                i.source.startMs + ((value.start - a.start) * 1000) / d.fps,
+                i.source.startMs +
+                  ((value.start - a.start) * 1000 * (i.playbackRate ?? 1)) /
+                    d.fps,
               ),
             )
             return {
@@ -218,7 +214,11 @@ export function Timeline({
               source: {
                 ...i.source,
                 startMs,
-                endMs: startMs + Math.round((value.duration * 1000) / d.fps),
+                endMs:
+                  startMs +
+                  Math.round(
+                    (value.duration * 1000 * (i.playbackRate ?? 1)) / d.fps,
+                  ),
               },
               volume: i.volume,
             }
@@ -330,7 +330,7 @@ export function Timeline({
                     key={i.id}
                     role="button"
                     tabIndex={0}
-                    aria-label={`${itemLabel(i)} timeline item`}
+                    aria-label={`${itemLabel(i, doc)} timeline item`}
                     aria-pressed={state.selection === i.id}
                     className={`nle-clip nle-clip-${i.kind}`}
                     style={{
@@ -376,7 +376,7 @@ export function Timeline({
                       onPointerDown={(e) => start(e, i, "left")}
                       aria-label="Trim start"
                     />
-                    <span>{itemLabel(i)}</span>
+                    <span>{itemLabel(i, doc)}</span>
                     <span
                       className="nle-trim right"
                       onPointerDown={(e) => start(e, i, "right")}

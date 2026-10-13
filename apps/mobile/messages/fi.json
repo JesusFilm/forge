@@ -138,6 +138,7 @@
     "versesAriaValue": "Jakeet {first}–{last}, yhteensä {total}, {chapter}",
     "demoVerse": "Pyyhkäise ylös seuraavaan jakeeseen",
     "demoChapter": "Pyyhkäise vasemmalle seuraavaan lukuun",
+    "demoChapterRtl": "Pyyhkäise oikealle seuraavaan lukuun",
     "demoSkip": "Ohita napauttamalla",
     "demoSkipAriaLabel": "Ohita pyyhkäisyesittely",
     "selectVerseAriaHint": "Valitse tämä jae kaksoisnapauttamalla",

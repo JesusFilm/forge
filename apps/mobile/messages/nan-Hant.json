@@ -138,6 +138,7 @@
     "versesAriaValue": "{chapter}，第 {first} 到 {last} 節，總共 {total} 節",
     "demoVerse": "向頂懸滑看後一節",
     "demoChapter": "向倒爿滑看後一章",
+    "demoChapterRtl": "向正爿滑看後一章",
     "demoSkip": "揤一下跳過",
     "demoSkipAriaLabel": "跳過滑動示範",
     "selectVerseAriaHint": "揤兩下揀這節",

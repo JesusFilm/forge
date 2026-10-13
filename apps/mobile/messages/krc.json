@@ -138,6 +138,7 @@
     "versesAriaValue": "Аятла {first}–{last}, барысы {total}, {chapter}",
     "demoVerse": "Ызындагъы аят ючюн ёрге тартыгъыз",
     "demoChapter": "Ызындагъы бёлюм ючюн солгъа тартыгъыз",
+    "demoChapterRtl": "Ызындагъы бёлюм ючюн онгнга тартыгъыз",
     "demoSkip": "Ётер ючюн басыгъыз",
     "demoSkipAriaLabel": "Тартыу юлгюсюнден ёт",
     "selectVerseAriaHint": "Бу аятны сайлар ючюн эки кере басыгъыз",

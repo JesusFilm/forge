@@ -138,6 +138,7 @@
     "versesAriaValue": "Mavesi {first} mpaka {last} mwa {total}, {chapter}",
     "demoVerse": "Sunthani mmwamba kuti mupite ku vesi lotsatira",
     "demoChapter": "Sunthani kumanzere kuti mupite ku mutu wotsatira",
+    "demoChapterRtl": "Sunthani kumanja kuti mupite ku mutu wotsatira",
     "demoSkip": "Dinani kuti mudumphe",
     "demoSkipAriaLabel": "Dumphani chionetsero cha kusuntha",
     "selectVerseAriaHint": "Dinani kawiri kuti musankhe vesili",

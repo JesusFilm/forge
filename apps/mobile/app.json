@@ -75,6 +75,7 @@
       "./plugins/withCastUIStyle",
       "./plugins/withAndroidCastTheme",
       "./plugins/withAndroidNavigationBar",
+      "./plugins/withAndroidPushTapRelay",
       [
         "react-native-google-cast",
         {
@@ -365,11 +366,9 @@
             "zh-Hant",
             "zu"
           ],
-          "supportsRTL": false,
           "allowDynamicLocaleChangesAndroid": true
         }
-      ],
-      "./plugins/withIosLeftToRightAppearance"
+      ]
     ],
     "extra": {
       "router": {

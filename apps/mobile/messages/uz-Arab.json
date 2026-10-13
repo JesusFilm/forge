@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} تا آیتدن {first}–{last}-آیتلر، {chapter}",
     "demoVerse": "کیینگی آیت اوچون یوقاری‌گه سورینگ",
     "demoChapter": "کیینگی باب اوچون چپگه سورینگ",
+    "demoChapterRtl": "کیینگی باب اوچون اونگگه سورینگ",
     "demoSkip": "اوتکزیب یوباریش اوچون باسینگ",
     "demoSkipAriaLabel": "سوریش نمایشینی اوتکزیب یوباریش",
     "selectVerseAriaHint": "بو آیتنی تنلش اوچون ایککی مرته باسینگ",

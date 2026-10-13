@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} पैकी वचनां {first} ते {last}, {chapter}",
     "demoVerse": "फुडल्या वचना खातीर वयर स्वायप करात",
     "demoChapter": "फुडल्या अध्याया खातीर दाव्या वटेन स्वायप करात",
+    "demoChapterRtl": "फुडल्या अध्याया खातीर उजव्या वटेन स्वायप करात",
     "demoSkip": "वगळपाक टॅप करात",
     "demoSkipAriaLabel": "स्वायपाचें प्रात्यक्षिक वगळात",
     "selectVerseAriaHint": "हें वचन निवडपाक दोन फावटीं टॅप करात",

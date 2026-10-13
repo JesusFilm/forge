@@ -5,7 +5,7 @@
 
 import { act, createRef } from "react"
 import type React from "react"
-import { Share, type GestureResponderEvent } from "react-native"
+import { I18nManager, Share, type GestureResponderEvent } from "react-native"
 import type { VideoPlayer } from "expo-video"
 
 const mockInsets = { top: 59, right: 0, bottom: 83, left: 0 }
@@ -127,6 +127,7 @@ import {
   phoneLocales,
   tapActionName,
 } from "../../../test-utils/uiLocaleFixture"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 // 12:04 to 12:31: a 27 s window inside the full asset.
 const CLIP: FeedClip = {
@@ -608,7 +609,7 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
     const caption = () =>
       mockSubtitleOverlay.mock.calls.at(-1)?.[0] as {
         bottomOffset: number
-        rightInset?: number
+        sideInset?: number
       }
     layOutBottom(renderer)
     // The lower bar runs from the frame's bottom edge to the region's, which
@@ -616,7 +617,7 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
     fireLayout(renderer, "clip-band-bar", { height: 124 }, 1)
 
     expect(caption().bottomOffset).toBe(124 + 200 + 8)
-    expect(caption().rightInset).toBe(402 - 318 + 8)
+    expect(caption().sideInset).toBe(402 - 318 + 8)
 
     // A frame that fills the region leaves no lower bar: the caption sits on
     // the title's top edge.
@@ -634,7 +635,7 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
     const caption = () =>
       mockSubtitleOverlay.mock.calls.at(-1)?.[0] as {
         bottomOffset: number
-        rightInset?: number
+        sideInset?: number
       }
     layOutBottom(renderer)
 
@@ -643,20 +644,20 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
     expect(byTestId(renderer, "clip-band-backdrop")).toHaveLength(0)
     expect(caption().bottomOffset).toBe(200 + 15 + 8)
     // Beside Mute and Share now, so it narrows when it would cover them.
-    expect(caption().rightInset).toBe(402 - 318 + 8)
+    expect(caption().sideInset).toBe(402 - 318 + 8)
   })
 
   it("takes the inset only over Mute or Share, measured in the caption's frame", () => {
     const renderer = render(props({ muted: true }))
     const caption = () =>
       mockSubtitleOverlay.mock.calls.at(-1)?.[0] as {
-        rightInset?: number
-        rightInsetBoxes?: unknown
+        sideInset?: number
+        sideInsetBoxes?: unknown
       }
     layOutBottom(renderer)
     fireLayout(renderer, "clip-band-bar", { height: 124 }, 1)
     // Until both buttons are measured, the inset always applies.
-    expect(caption().rightInsetBoxes).toBeUndefined()
+    expect(caption().sideInsetBoxes).toBeUndefined()
 
     fireLayout(renderer, "clip-overlay-rail", { x: 318, y: 20 })
     fireLayout(renderer, "clip-rail-mute", { x: 10, width: 60, height: 74 })
@@ -667,9 +668,9 @@ describe("ClipOverlay — captions in the band (R13, KTD18)", () => {
       height: 74,
     })
 
-    expect(caption().rightInset).toBe(402 - 318 + 8)
+    expect(caption().sideInset).toBe(402 - 318 + 8)
     // Up from the page's bottom edge: the block is 380 tall, the rail 20 in.
-    expect(caption().rightInsetBoxes).toEqual([
+    expect(caption().sideInsetBoxes).toEqual([
       { left: 328, right: 388, bottom: 380 - 20 - 74, top: 380 - 20 },
       { left: 332, right: 384, bottom: 380 - 106 - 74, top: 380 - 106 },
     ])
@@ -1150,5 +1151,37 @@ describe("ClipOverlay — a scrub holds the clip end", () => {
     grab(renderer)
     hideOverlay()
     expect(requestNext()).toBe(true)
+  })
+})
+
+describe("ClipOverlay — in a right-to-left layout (feat-695 R11, KTD7)", () => {
+  beforeEach(() => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+    jest.replaceProperty(I18nManager, "isRTL", true)
+  })
+
+  it("mirrors the rail and the clip information with the app", () => {
+    const renderer = render(props({ muted: true }))
+    const [rail] = byTestId(renderer, "clip-overlay-rail")
+    expect(directionAbove(rail)).toBeUndefined()
+  })
+
+  it("puts the caption inset on the left when the rail sits on the left", () => {
+    const renderer = render(props({ muted: true }))
+    const caption = () =>
+      mockSubtitleOverlay.mock.calls.at(-1)?.[0] as {
+        sideInset?: number
+        insetSide?: string
+      }
+    layOutBottom(renderer)
+    expect(caption().insetSide).toBe("right")
+
+    // Yoga gives a mirrored rail a physical x at the left edge.
+    fireLayout(renderer, "clip-overlay-rail", { x: 8, width: 76 })
+    expect(caption().insetSide).toBe("left")
+    expect(caption().sideInset).toBe(8 + 76 + 8)
   })
 })

@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}節から{last}節、全{total}節、{chapter}",
     "demoVerse": "上にスワイプして次の節へ",
     "demoChapter": "左にスワイプして次の章へ",
+    "demoChapterRtl": "右にスワイプして次の章へ",
     "demoSkip": "タップしてスキップ",
     "demoSkipAriaLabel": "スワイプのデモをスキップ",
     "selectVerseAriaHint": "ダブルタップしてこの節を選択",

@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-oyatdan {last}-oyatgacha, jami {total} ta, {chapter}",
     "demoVerse": "Keyingi oyat uchun yuqoriga suring",
     "demoChapter": "Keyingi bob uchun chapga suring",
+    "demoChapterRtl": "Keyingi bob uchun o‘ngga suring",
     "demoSkip": "O‘tkazib yuborish uchun bosing",
     "demoSkipAriaLabel": "Surish namoyishini o‘tkazib yuborish",
     "selectVerseAriaHint": "Bu oyatni tanlash uchun ikki marta bosing",

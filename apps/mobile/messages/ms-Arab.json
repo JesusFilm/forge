@@ -138,6 +138,7 @@
     "versesAriaValue": "ايات {first} هيڠݢ {last} درڤد {total}، {chapter}",
     "demoVerse": "ليريت ک اتس اونتوق ايات ستروسڽ",
     "demoChapter": "ليريت ک کيري اونتوق ڤاسل ستروسڽ",
+    "demoChapterRtl": "ليريت ک کانن اونتوق ڤاسل ستروسڽ",
     "demoSkip": "کتيق اونتوق لڠکاو",
     "demoSkipAriaLabel": "لڠکاو دمونستراسي ليريتن",
     "selectVerseAriaHint": "کتيق دوا کالي اونتوق مميليه ايات اين",

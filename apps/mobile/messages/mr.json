@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} पैकी वचने {first} ते {last}, {chapter}",
     "demoVerse": "पुढील वचनासाठी वर स्वाइप करा",
     "demoChapter": "पुढील अध्यायासाठी डावीकडे स्वाइप करा",
+    "demoChapterRtl": "पुढील अध्यायासाठी उजवीकडे स्वाइप करा",
     "demoSkip": "वगळण्यासाठी टॅप करा",
     "demoSkipAriaLabel": "स्वाइपचे प्रात्यक्षिक वगळा",
     "selectVerseAriaHint": "हे वचन निवडण्यासाठी दोनदा टॅप करा",

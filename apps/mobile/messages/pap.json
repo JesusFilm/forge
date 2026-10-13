@@ -138,6 +138,7 @@
     "versesAriaValue": "Versíkulonan {first} te {last} di {total}, {chapter}",
     "demoVerse": "Lastra pa ariba pa e próksimo versíkulo",
     "demoChapter": "Lastra pa man robes pa e próksimo kapítulo",
+    "demoChapterRtl": "Lastra pa man drechi pa e próksimo kapítulo",
     "demoSkip": "Toka pa salta",
     "demoSkipAriaLabel": "Salta e demonstrashon di lastra",
     "selectVerseAriaHint": "Toka dos biaha pa selektá e versíkulo aki",

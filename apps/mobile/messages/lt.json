@@ -138,6 +138,7 @@
     "versesAriaValue": "Eilutės nuo {first} iki {last} iš {total}, {chapter}",
     "demoVerse": "Braukite aukštyn – kita eilutė",
     "demoChapter": "Braukite kairėn – kitas skyrius",
+    "demoChapterRtl": "Braukite dešinėn – kitas skyrius",
     "demoSkip": "Bakstelėkite, kad praleistumėte",
     "demoSkipAriaLabel": "Praleisti braukimo demonstraciją",
     "selectVerseAriaHint": "Dukart bakstelėkite, kad pažymėtumėte šią eilutę",

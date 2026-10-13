@@ -138,6 +138,7 @@
     "versesAriaValue": "Ki dkhot {first} haduh {last} na {total}, {chapter}",
     "demoVerse": "Tan sha neng na bynta ka dkhot ba bud",
     "demoChapter": "Tan sha kadiang na bynta ka lynnong ba bud",
+    "demoChapterRtl": "Tan sha kamon na bynta ka lynnong ba bud",
     "demoSkip": "Tiep ban lait",
     "demoSkipAriaLabel": "Lait ia ka jingpyni kumno ban tan",
     "selectVerseAriaHint": "Tiep arsien ban jied ia kane ka dkhot",

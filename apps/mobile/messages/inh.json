@@ -138,6 +138,7 @@
     "versesAriaValue": "Стихаш {first} тӀара {last} кхаччалца, деррига {total}, {chapter}",
     "demoVerse": "ТӀехьарча стихага лакхахьа хьакха",
     "demoChapter": "ТӀехьарча кортага аьрру агӀорахьа хьакха",
+    "demoChapterRtl": "ТӀехьарча кортага аьтту агӀорахьа хьакха",
     "demoSkip": "ДӀадита лаъча, тӀатаӀа",
     "demoSkipAriaLabel": "Хьакхар гойтар дӀадита",
     "selectVerseAriaHint": "Ер стих харжа, шозза тӀатаӀа",

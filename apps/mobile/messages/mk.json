@@ -138,6 +138,7 @@
     "versesAriaValue": "Стихови {first} до {last} од {total}, {chapter}",
     "demoVerse": "Повлечете нагоре за следниот стих",
     "demoChapter": "Повлечете лево за следната глава",
+    "demoChapterRtl": "Повлечете десно за следната глава",
     "demoSkip": "Допрете за да прескокнете",
     "demoSkipAriaLabel": "Прескокни го прикажувањето на повлекувањето",
     "selectVerseAriaHint": "Допрете двапати за да го изберете овој стих",

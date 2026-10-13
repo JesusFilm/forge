@@ -138,6 +138,7 @@
     "versesAriaValue": "Versíkulu {first} to’o {last} husi {total}, {chapter}",
     "demoVerse": "Dada ba leten atu ba versíkulu tuir mai",
     "demoChapter": "Dada ba karuk atu ba kapítulu tuir mai",
+    "demoChapterRtl": "Dada ba los atu ba kapítulu tuir mai",
     "demoSkip": "Kona atu liu",
     "demoSkipAriaLabel": "Liu demonstrasaun dada",
     "selectVerseAriaHint": "Kona dala rua atu hili versíkulu ne’e",

@@ -138,6 +138,7 @@
     "versesAriaValue": "ข้อ {first} ถึง {last} จาก {total}, {chapter}",
     "demoVerse": "ปัดขึ้นเพื่อไปข้อถัดไป",
     "demoChapter": "ปัดซ้ายเพื่อไปบทถัดไป",
+    "demoChapterRtl": "ปัดขวาเพื่อไปบทถัดไป",
     "demoSkip": "แตะเพื่อข้าม",
     "demoSkipAriaLabel": "ข้ามการสาธิตการปัด",
     "selectVerseAriaHint": "แตะสองครั้งเพื่อเลือกข้อนี้",

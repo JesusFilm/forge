@@ -60,7 +60,9 @@ export function ClipDescription({
 }: ClipDescriptionProps) {
   const typography = useTypography()
   const t = useT("Explore")
-  const bodyDirection = useTextDirection().text(descriptionLang)
+  const bodyDirection = useTextDirection().text(descriptionLang, {
+    kind: "paragraph",
+  })
   const { height } = useWindowDimensions()
   // The hook's reset on new text does not call `onCollapse`: a swipe has
   // already cleared the feed's pause, and a late call would act on the next clip.

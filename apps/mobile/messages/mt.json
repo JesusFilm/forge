@@ -138,6 +138,7 @@
     "versesAriaValue": "Versi {first} sa {last} minn {total}, {chapter}",
     "demoVerse": "Żerżaq ’il fuq għall-vers li jmiss",
     "demoChapter": "Żerżaq lejn ix-xellug għall-kapitlu li jmiss",
+    "demoChapterRtl": "Żerżaq lejn il-lemin għall-kapitlu li jmiss",
     "demoSkip": "Taptap biex taqbeż",
     "demoSkipAriaLabel": "Aqbeż id-dimostrazzjoni taż-żerżiq",
     "selectVerseAriaHint": "Taptap darbtejn biex tagħżel dan il-vers",

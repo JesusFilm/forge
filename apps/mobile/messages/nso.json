@@ -138,6 +138,7 @@
     "versesAriaValue": "Ditemana {first} go fihla go {last} tša {total}, {chapter}",
     "demoVerse": "Gogela godimo go ya temaneng ye e latelago",
     "demoChapter": "Gogela go la nngele go ya kgaolong ye e latelago",
+    "demoChapterRtl": "Gogela go la go ja go ya kgaolong ye e latelago",
     "demoSkip": "Kgotla gore o tshele",
     "demoSkipAriaLabel": "Tshela pontšho ya go gogela",
     "selectVerseAriaHint": "Kgotla gabedi go kgetha temana ye",

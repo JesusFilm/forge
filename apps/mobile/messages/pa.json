@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} ਵਿੱਚੋਂ ਆਇਤਾਂ {first} ਤੋਂ {last}, {chapter}",
     "demoVerse": "ਅਗਲੀ ਆਇਤ ਲਈ ਉੱਪਰ ਸਵਾਈਪ ਕਰੋ",
     "demoChapter": "ਅਗਲੇ ਅਧਿਆਇ ਲਈ ਖੱਬੇ ਸਵਾਈਪ ਕਰੋ",
+    "demoChapterRtl": "ਅਗਲੇ ਅਧਿਆਇ ਲਈ ਸੱਜੇ ਸਵਾਈਪ ਕਰੋ",
     "demoSkip": "ਛੱਡਣ ਲਈ ਟੈਪ ਕਰੋ",
     "demoSkipAriaLabel": "ਸਵਾਈਪ ਦਾ ਪ੍ਰਦਰਸ਼ਨ ਛੱਡੋ",
     "selectVerseAriaHint": "ਇਹ ਆਇਤ ਚੁਣਨ ਲਈ ਦੋ ਵਾਰ ਟੈਪ ਕਰੋ",

@@ -138,6 +138,7 @@
     "versesAriaValue": "Amavesi {first} kuya ku-{last} kwe-{total}, {chapter}",
     "demoVerse": "Swayiphela phezulu ukuthola ivesi elilandelayo",
     "demoChapter": "Swayiphela kwesobunxele ukuthola isahluko esilandelayo",
+    "demoChapterRtl": "Swayiphela kwesokudla ukuthola isahluko esilandelayo",
     "demoSkip": "Thepha ukuze weqe",
     "demoSkipAriaLabel": "Yeqa umboniso wokuswayipha",
     "selectVerseAriaHint": "Thepha kabili ukuze ukhethe leli vesi",

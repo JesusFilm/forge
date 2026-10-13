@@ -138,6 +138,7 @@
     "versesAriaValue": "Аяттар {first}–{last}, барлығы {total}, {chapter}",
     "demoVerse": "Киләһе аят өсөн өҫкә һыпырығыҙ",
     "demoChapter": "Киләһе бүлек өсөн һулға һыпырығыҙ",
+    "demoChapterRtl": "Киләһе бүлек өсөн уңға һыпырығыҙ",
     "demoSkip": "Үткәреп ебәреү өсөн баҫығыҙ",
     "demoSkipAriaLabel": "Һыпырыу күрһәтмәһен үткәреп ебәреү",
     "selectVerseAriaHint": "Был аятты һайлау өсөн ике тапҡыр баҫығыҙ",

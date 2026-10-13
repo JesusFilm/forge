@@ -138,6 +138,7 @@
     "versesAriaValue": "Câu {first} đến {last} trên {total}, {chapter}",
     "demoVerse": "Vuốt lên để xem câu tiếp theo",
     "demoChapter": "Vuốt sang trái để xem chương tiếp theo",
+    "demoChapterRtl": "Vuốt sang phải để xem chương tiếp theo",
     "demoSkip": "Chạm để bỏ qua",
     "demoSkipAriaLabel": "Bỏ qua phần hướng dẫn thao tác vuốt",
     "selectVerseAriaHint": "Chạm hai lần để chọn câu này",

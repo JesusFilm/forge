@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-це стихстэ {last}-це стихс, весемезэ {total}, {chapter}",
     "demoVerse": "Верев — сыця стих",
     "demoChapter": "Керш ёнов — сыця пря",
+    "demoChapterRtl": "Вить ёнов — сыця пря",
     "demoSkip": "Ютамс — токак",
     "demoSkipAriaLabel": "Ютамс невтевксэнть",
     "selectVerseAriaHint": "Те стихенть кочкамс — кавксть токак",

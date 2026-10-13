@@ -138,6 +138,7 @@
     "versesAriaValue": "Mga bersikulo {first} tubtob {last} han {total}, {chapter}",
     "demoVerse": "I-swipe paigbaw para ha sunod nga bersikulo",
     "demoChapter": "I-swipe pawala para ha sunod nga kapitulo",
+    "demoChapterRtl": "I-swipe patuo para ha sunod nga kapitulo",
     "demoSkip": "Pindota basi laktawan",
     "demoSkipAriaLabel": "Laktawan an pagpakita han pag-swipe",
     "selectVerseAriaHint": "Pindota hin makaduha basi pilion ini nga bersikulo",

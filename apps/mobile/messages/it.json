@@ -138,6 +138,7 @@
     "versesAriaValue": "Versetti da {first} a {last} di {total}, {chapter}",
     "demoVerse": "Scorri verso l’alto per il versetto successivo",
     "demoChapter": "Scorri verso sinistra per il capitolo successivo",
+    "demoChapterRtl": "Scorri verso destra per il capitolo successivo",
     "demoSkip": "Tocca per saltare",
     "demoSkipAriaLabel": "Salta la dimostrazione dello scorrimento",
     "selectVerseAriaHint": "Tocca due volte per selezionare questo versetto",

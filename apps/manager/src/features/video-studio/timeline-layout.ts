@@ -3,6 +3,8 @@ import type {
   StudioTimelineItem,
 } from "@forge/studio-contracts"
 
+import { isTextComponent } from "./item-presentation"
+
 export type TimelineGroup = "Video" | "Audio" | "Text"
 export const timelineGroups: TimelineGroup[] = ["Video", "Audio", "Text"]
 export const groupTrackKind = {
@@ -10,8 +12,15 @@ export const groupTrackKind = {
   Audio: "audio",
   Text: "caption",
 } as const
-export const itemGroup = (item: StudioTimelineItem): TimelineGroup =>
-  item.kind === "audio" ? "Audio" : item.kind === "text" ? "Text" : "Video"
+export const itemGroup = (
+  item: StudioTimelineItem,
+  document?: StudioDocument,
+): TimelineGroup =>
+  item.kind === "audio"
+    ? "Audio"
+    : item.kind === "text" || isTextComponent(item, document)
+      ? "Text"
+      : "Video"
 
 export type TimelineRow = {
   id: string
@@ -26,7 +35,7 @@ export function timelineRows(document: StudioDocument): TimelineRow[] {
     const rows: TimelineRow[] = []
     for (const track of document.tracks) {
       const items = document.items.filter((i) => i.trackId === track.id)
-      const members = items.filter((i) => itemGroup(i) === group)
+      const members = items.filter((i) => itemGroup(i, document) === group)
       if (
         !members.length &&
         (items.length || track.kind !== groupTrackKind[group])

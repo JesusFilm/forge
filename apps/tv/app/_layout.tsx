@@ -25,6 +25,10 @@ import {
   type WatchEventIdentity,
 } from "../src/lib/watchEvents/watchEvents"
 import { saveResumeSnapshot } from "../src/lib/watchEvents/continueWatching"
+import {
+  StartupIntroProvider,
+  useStartupIntroActive,
+} from "../src/contexts/StartupIntroProvider"
 
 /** Background color from Crimson Gallery design system */
 const BG_COLOR = "#161311"
@@ -64,6 +68,7 @@ try {
 
 /** Renders the full-screen video player overlay when a video is active. */
 function VideoPlayerOverlay() {
+  const introActive = useStartupIntroActive()
   const { state, dismissVideo, markUpNextChain } = useVideoPlayerContext()
   const {
     androidPlayerVariant,
@@ -175,7 +180,7 @@ function VideoPlayerOverlay() {
     [dismissVideo, markUpNextChain],
   )
 
-  if (!state.isVisible || state.currentUrl == null) {
+  if (introActive || !state.isVisible || state.currentUrl == null) {
     return null
   }
 
@@ -381,23 +386,25 @@ export default function RootLayout() {
                 resolution reads the persisted audio-language preference (U2), and
                 the preference must outlive WatchSession's unmount on leaving watch. */}
             <WatchPreferencesProvider>
-              {/* WatchSession is OUTER of VideoPlayer so the overlay VideoPlayer can
+              <StartupIntroProvider>
+                {/* WatchSession is OUTER of VideoPlayer so the overlay VideoPlayer can
                   call useWatchSession() (live dub/subtitle handoff). Below ErrorBoundary
                   so a throw degrades to the error screen. Inert until a video is published (KTD2, U3). */}
-              <WatchSessionProvider>
-                <VideoPlayerProvider>
-                  <StatusBar style="light" />
-                  <DatadogRouteTracker />
-                  <AssistantSearchBridge />
-                  <Stack
-                    screenOptions={{
-                      headerShown: false,
-                      contentStyle: { backgroundColor: BG_COLOR },
-                    }}
-                  />
-                  <VideoPlayerOverlay />
-                </VideoPlayerProvider>
-              </WatchSessionProvider>
+                <WatchSessionProvider>
+                  <VideoPlayerProvider>
+                    <StatusBar style="light" />
+                    <DatadogRouteTracker />
+                    <AssistantSearchBridge />
+                    <Stack
+                      screenOptions={{
+                        headerShown: false,
+                        contentStyle: { backgroundColor: BG_COLOR },
+                      }}
+                    />
+                    <VideoPlayerOverlay />
+                  </VideoPlayerProvider>
+                </WatchSessionProvider>
+              </StartupIntroProvider>
             </WatchPreferencesProvider>
           </SeriesLanguageProvider>
         </ApolloProvider>

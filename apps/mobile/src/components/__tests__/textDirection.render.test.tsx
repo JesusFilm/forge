@@ -1,8 +1,22 @@
-/** U14 (KTD13, AE5, R10): left-aligned text takes its direction from its own
- *  language. An English UI renders every covered surface with no new props. */
+/** U14 (KTD13) and feat-695 U4 (R15-R17, AE5): start-aligned text takes its
+ *  direction from its own language and its edge from the layout. With mirroring
+ *  off, an English UI renders every covered surface with no new props (R10). */
 let mockUiTag = "en"
 jest.mock("../../hooks/useUiTag", () => ({
   useUiTag: () => mockUiTag,
+}))
+const mockLayout: { rtl: boolean; mirroring: boolean } = {
+  rtl: false,
+  mirroring: true,
+}
+jest.mock("../../i18n/layoutRtl", () => ({
+  ...jest.requireActual("../../i18n/layoutRtl"),
+  isLayoutRtl: () => mockLayout.rtl,
+}))
+jest.mock("../../i18n/mirroredLayout", () => ({
+  get MIRRORED_LAYOUT_ENABLED() {
+    return mockLayout.mirroring
+  },
 }))
 jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
@@ -84,8 +98,33 @@ import {
   type TestInstance,
 } from "../../test-utils/rnTestRenderer"
 
-const RTL = { direction: "rtl", writingDirection: "rtl" }
-const LTR = { direction: "ltr", writingDirection: "ltr" }
+// With `direction` set, textAlign "left" is the start of the text's own
+// language and "right" its end (device check, feat-695 U4).
+const RTL_START = {
+  direction: "rtl",
+  writingDirection: "rtl",
+  textAlign: "left",
+}
+const RTL_END = {
+  direction: "rtl",
+  writingDirection: "rtl",
+  textAlign: "right",
+}
+const LTR_START = {
+  direction: "ltr",
+  writingDirection: "ltr",
+  textAlign: "left",
+}
+const LTR_END = {
+  direction: "ltr",
+  writingDirection: "ltr",
+  textAlign: "right",
+}
+// Today's rule, with mirroring off.
+const RTL = { direction: "rtl", writingDirection: "rtl", textAlign: undefined }
+const LTR = { direction: "ltr", writingDirection: "ltr", textAlign: undefined }
+
+type Expected = typeof RTL_START | typeof RTL | null
 
 const mounted: TestInstance[] = []
 
@@ -94,6 +133,8 @@ afterEach(() => {
     mounted.splice(0).forEach((renderer) => renderer.unmount())
   })
   mockUiTag = "en"
+  mockLayout.rtl = false
+  mockLayout.mirroring = true
 })
 
 function render(element: ReactElement): TestInstance {
@@ -118,20 +159,29 @@ function directionOf(node: RenderedNode) {
   const flat = (StyleSheet.flatten(node.props.style as never) ?? {}) as {
     direction?: unknown
     writingDirection?: unknown
+    textAlign?: unknown
   }
-  return { direction: flat.direction, writingDirection: flat.writingDirection }
+  return {
+    direction: flat.direction,
+    writingDirection: flat.writingDirection,
+    textAlign: flat.textAlign,
+  }
+}
+
+const NO_STYLE = {
+  direction: undefined,
+  writingDirection: undefined,
+  textAlign: undefined,
 }
 
 function expectDirection(
   renderer: TestInstance,
   needle: string,
-  expected: typeof RTL | typeof LTR | null,
+  expected: Expected,
   language?: string,
 ) {
   for (const node of texts(renderer, needle)) {
-    expect(directionOf(node)).toEqual(
-      expected ?? { direction: undefined, writingDirection: undefined },
-    )
+    expect(directionOf(node)).toEqual(expected ?? NO_STYLE)
     // A hidden measuring copy is never read, so it carries no language mark.
     if (typeof node.props.onTextLayout !== "function") {
       expect(node.props.accessibilityLanguage).toBe(language)
@@ -231,24 +281,25 @@ function title(text: string, lang: string) {
   )
 }
 
-describe("an Arabic UI (AE5)", () => {
+describe("an Arabic UI in a mirrored layout (AE5)", () => {
   beforeEach(() => {
     mockUiTag = "ar"
+    mockLayout.rtl = true
   })
 
-  it("renders an Arabic watch title right to left", () => {
-    expectDirection(render(title("يسوع", "ar")), "يسوع", RTL)
+  it("renders an Arabic watch title at the start edge", () => {
+    expectDirection(render(title("يسوع", "ar")), "يسوع", RTL_START)
   })
 
-  it("renders an English fallback watch title left to right, marked English", () => {
-    expectDirection(render(title("JESUS", "en")), "JESUS", LTR, "en")
+  it("covers AE5: puts a short English title at the right edge, marked English", () => {
+    expectDirection(render(title("JESUS", "en")), "JESUS", LTR_END, "en")
   })
 
-  it("renders the description in its own language", () => {
+  it("covers AE5: puts an English description at the left edge", () => {
     const renderer = render(
       <VideoDescription description="Life of Jesus" descriptionLang="en" />,
     )
-    expectDirection(renderer, "Life of Jesus", LTR, "en")
+    expectDirection(renderer, "Life of Jesus", LTR_START, "en")
   })
 
   it("renders the study questions' UI heading and an English fallback list", () => {
@@ -259,110 +310,181 @@ describe("an Arabic UI (AE5)", () => {
         questionsLang="en"
       />,
     )
-    expectDirection(renderer, "Study questions", RTL)
-    expectDirection(renderer, "Who is Jesus?", LTR, "en")
+    expectDirection(renderer, "Study questions", RTL_START)
+    expectDirection(renderer, "Who is Jesus?", LTR_END, "en")
     expect(pressableLanguages(renderer, "Who is Jesus?")).toEqual(["en"])
   })
 
-  it("renders a Home card title with `lang: ar` right to left", () => {
+  it("puts an opened English answer at the left edge, as a paragraph", () => {
+    const section = {
+      ...QUESTIONS,
+      questions: [{ question: "Who is Jesus?", answer: "He is the Son." }],
+    } as AdminBlock
+    const renderer = render(
+      <RelatedQuestionsRenderer
+        section={section}
+        headingLang="ar"
+        questionsLang="en"
+      />,
+    )
+    const [row] = renderer.root.findAll(
+      (node) =>
+        node.props.accessibilityLabel === "Who is Jesus?" &&
+        typeof node.props.onPress === "function",
+    )
+    const press = row!.props.onPress as () => void
+    act(() => press())
+    expectDirection(renderer, "He is the Son.", LTR_START, "en")
+  })
+
+  it("renders a Home card title with `lang: ar` at the start edge", () => {
     expectDirection(
       render(<HomeCard card={CARD} variant="landscape" />),
       "يسوع",
-      RTL,
+      RTL_START,
     )
   })
 
-  it("renders a Home card title with `lang: en` left to right, marked English", () => {
+  it("renders a Home card title with `lang: en` at the right edge, marked English", () => {
     const card = { ...CARD, title: "JESUS", titleLang: "en" }
     const renderer = render(<HomeCard card={card} variant="landscape" />)
-    expectDirection(renderer, "JESUS", LTR, "en")
+    expectDirection(renderer, "JESUS", LTR_END, "en")
     expect(pressableLanguages(renderer, "JESUS")).toEqual(["en"])
   })
 
-  it("renders an English fallback shelf heading left to right, marked English", () => {
+  it("renders an English fallback shelf heading at the right edge, marked English", () => {
     const heading = "What Really Makes Us Happy?"
     const renderer = render(<HomeShelf section={shelf(heading, "en")} />)
-    expectDirection(renderer, heading, LTR, "en")
+    expectDirection(renderer, heading, LTR_END, "en")
   })
 
   it("renders the app's own shelf heading as UI text", () => {
     expectDirection(
       render(<HomeShelf section={shelf("مختارات")} />),
       "مختارات",
-      RTL,
+      RTL_START,
     )
   })
 
-  it("renders an English fallback episode title left to right", () => {
+  it("renders an English fallback episode title at the right edge", () => {
     const renderer = render(
       <SeriesEpisodeCard episode={EPISODE} onSelect={() => {}} />,
     )
-    expectDirection(renderer, "Episode One", LTR, "en")
+    expectDirection(renderer, "Episode One", LTR_END, "en")
   })
 
   it("renders the screen top bar title as UI text", () => {
     expectDirection(
       render(<ScreenTopBar title="الحساب" showBack />),
       "الحساب",
-      RTL,
+      RTL_START,
     )
   })
 
-  it("renders an Arabic language name right to left", () => {
+  it("renders an Arabic language name at the start edge", () => {
     const renderer = render(languageSheet([variant("arabic", "العربية", "ar")]))
-    expectDirection(renderer, "العربية", RTL)
+    expectDirection(renderer, "العربية", RTL_START)
   })
 
-  it("renders an English fallback language name left to right, marked English", () => {
+  it("renders an English fallback language name at the right edge, marked English", () => {
     const renderer = render(languageSheet([variant("hausa", "Hausa", "en")]))
-    expectDirection(renderer, "Hausa", LTR, "en")
+    expectDirection(renderer, "Hausa", LTR_END, "en")
     expect(pressableLanguages(renderer, "Hausa")).toEqual(["en"])
   })
 })
 
-describe("an English UI", () => {
-  it("adds no direction style and no language mark to any covered surface", () => {
-    const card = { ...CARD, title: "Card", titleLang: "en" }
-    const renderer = render(
-      <>
-        <VideoMetadata
-          label="featureFilm"
-          title="JESUS"
-          titleLang="en"
-          subtitle={null}
-        />
-        <VideoDescription description="Life of Jesus" descriptionLang="en" />
-        <HomeCard card={card} variant="landscape" />
-        <HomeShelf section={{ ...shelf("Picks", "en"), cards: [card] }} />
-        <SeriesEpisodeCard episode={EPISODE} onSelect={() => {}} />
-        {languageSheet([variant("english", "English", "en")])}
-        <RelatedQuestionsRenderer
-          section={QUESTIONS}
-          headingLang="en"
-          questionsLang="en"
-        />
-        <ScreenTopBar title="Account" showBack />
-      </>,
+describe("an English UI with Arabic content (AE5)", () => {
+  it("covers AE5: puts a short Arabic card title at the left edge", () => {
+    expectDirection(
+      render(<HomeCard card={CARD} variant="landscape" />),
+      "يسوع",
+      RTL_END,
+      "ar",
     )
-    for (const needle of [
-      "JESUS",
-      "Life of Jesus",
-      "Card",
-      "Picks",
-      "Episode One",
-      "English",
-      "Who is Jesus?",
-      "Account",
-    ]) {
+  })
+
+  it("covers AE5: puts an Arabic description at the right edge", () => {
+    const renderer = render(
+      <VideoDescription description="حياة يسوع" descriptionLang="ar" />,
+    )
+    expectDirection(renderer, "حياة يسوع", RTL_START, "ar")
+  })
+})
+
+const ENGLISH_SURFACES = (
+  <>
+    <VideoMetadata
+      label="featureFilm"
+      title="JESUS"
+      titleLang="en"
+      subtitle={null}
+    />
+    <VideoDescription description="Life of Jesus" descriptionLang="en" />
+    <HomeCard
+      card={{ ...CARD, title: "Card", titleLang: "en" }}
+      variant="landscape"
+    />
+    <HomeShelf
+      section={{
+        ...shelf("Picks", "en"),
+        cards: [{ ...CARD, title: "Card", titleLang: "en" }],
+      }}
+    />
+    <SeriesEpisodeCard episode={EPISODE} onSelect={() => {}} />
+    {languageSheet([variant("english", "English", "en")])}
+    <RelatedQuestionsRenderer
+      section={QUESTIONS}
+      headingLang="en"
+      questionsLang="en"
+    />
+    <ScreenTopBar title="Account" showBack />
+  </>
+)
+
+const ENGLISH_NEEDLES = [
+  "JESUS",
+  "Life of Jesus",
+  "Card",
+  "Picks",
+  "Episode One",
+  "English",
+  "Who is Jesus?",
+  "Account",
+]
+
+describe("an English UI", () => {
+  it("puts every covered surface at the left edge, with no language mark", () => {
+    const renderer = render(ENGLISH_SURFACES)
+    for (const needle of ENGLISH_NEEDLES) {
+      expectDirection(renderer, needle, LTR_START, undefined)
+    }
+  })
+})
+
+describe("mirroring off (R10)", () => {
+  beforeEach(() => {
+    mockLayout.mirroring = false
+  })
+
+  it("adds no direction style and no language mark to any covered surface in an English UI", () => {
+    const renderer = render(ENGLISH_SURFACES)
+    for (const needle of ENGLISH_NEEDLES) {
       expectDirection(renderer, needle, null, undefined)
     }
     const all = renderer.root.findAll((node) => typeof node.type === "string")
     for (const node of all) {
-      expect(directionOf(node)).toEqual({
-        direction: undefined,
-        writingDirection: undefined,
-      })
+      expect(directionOf(node)).toEqual(NO_STYLE)
       expect(node.props.accessibilityLanguage).toBeUndefined()
     }
+  })
+
+  it("keeps today's own-language rule in an Arabic UI", () => {
+    mockUiTag = "ar"
+    expectDirection(render(title("يسوع", "ar")), "يسوع", RTL)
+    expectDirection(render(title("JESUS", "en")), "JESUS", LTR, "en")
+    const renderer = render(
+      <VideoDescription description="Life of Jesus" descriptionLang="en" />,
+    )
+    expectDirection(renderer, "Life of Jesus", LTR, "en")
   })
 })

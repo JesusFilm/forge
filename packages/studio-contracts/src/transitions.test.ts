@@ -106,3 +106,25 @@ it("offers a fade through black without extra source footage", () => {
   expect(transitionPresentation(cuts, "v1", 96).brightness).toBe(0.5)
   expect(transitionPresentation(cuts, "v1", 102).brightness).toBe(1)
 })
+
+it("keeps source trim and crossfade handles in source time at slow and fast rates", () => {
+  for (const playbackRate of [0.5, 2]) {
+    const raw = structuredClone(document)
+    for (const item of raw.items) {
+      if (item.kind !== "video") continue
+      item.playbackRate = playbackRate
+      item.source.endMs = item.source.startMs + 3000 * playbackRate
+    }
+    const parsed = studioDocumentSchema.parse(raw)
+    expect(studioMediaStartTimes(parsed).get("v1")).toBe(
+      4000 - 400 * playbackRate,
+    )
+    const incoming = raw.items[1]!
+    if (incoming.kind !== "video") throw new Error("Video fixture required")
+    incoming.source.startMs = 100
+    incoming.source.endMs = 100 + 3000 * playbackRate
+    expect(studioCuts(raw)[0]?.frames).toBe(Math.floor(3 / playbackRate))
+    incoming.playbackRate = 0
+    expect(studioDocumentSchema.safeParse(raw).success).toBe(false)
+  }
+})

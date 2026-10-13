@@ -138,6 +138,7 @@
     "versesAriaValue": "Salmid {first} kuni {last} {total}-st, {chapter}",
     "demoVerse": "Järgmise salmi nägemiseks pühi üles",
     "demoChapter": "Järgmise peatüki nägemiseks pühi vasakule",
+    "demoChapterRtl": "Järgmise peatüki nägemiseks pühi paremale",
     "demoSkip": "Toksa, et vahele jätta",
     "demoSkipAriaLabel": "Jäta pühkimise näidis vahele",
     "selectVerseAriaHint": "Selle salmi valimiseks toksa kaks korda",

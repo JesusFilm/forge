@@ -138,6 +138,7 @@
     "versesAriaValue": "Ayat {first} hingga {last} daripada {total}, {chapter}",
     "demoVerse": "Leret ke atas untuk ayat seterusnya",
     "demoChapter": "Leret ke kiri untuk pasal seterusnya",
+    "demoChapterRtl": "Leret ke kanan untuk pasal seterusnya",
     "demoSkip": "Ketik untuk langkau",
     "demoSkipAriaLabel": "Langkau demonstrasi leret",
     "selectVerseAriaHint": "Ketik dua kali untuk memilih ayat ini",

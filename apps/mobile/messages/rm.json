@@ -138,6 +138,7 @@
     "versesAriaValue": "Vers {first} fin {last} da {total}, {chapter}",
     "demoVerse": "Spustai il det ensi per il proxim vers",
     "demoChapter": "Spustai il det a sanestra per il proxim chapitel",
+    "demoChapterRtl": "Spustai il det a dretga per il proxim chapitel",
     "demoSkip": "Tutgai per sursiglir",
     "demoSkipAriaLabel": "Sursiglir la demonstraziun",
     "selectVerseAriaHint": "Tutgai duas giadas per selecziunar quest vers",
