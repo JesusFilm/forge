@@ -774,5 +774,8 @@
     "send": "Tumira",
     "sending": "Kutumira…",
     "sendAriaLabel": "Tumira mhinduro"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Apu inoshandisa netiweki yako yepedyo kutsvaga zvishandiso zvinogamuchira mavhidhiyo aunotumira, kuti ugone kutamba mavhidhiyo paTV yako."
   }
 }

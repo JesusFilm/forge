@@ -774,5 +774,8 @@
     "send": "لېږل",
     "sending": "لېږل کېږي…",
     "sendAriaLabel": "نظر ولېږئ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "اپ ستاسو ځايي شبکه د کاسټ وسیلو موندلو لپاره کاروي، ترڅو وکولای شئ ویډیوګانې په خپل تلویزیون کې وچلوئ."
   }
 }

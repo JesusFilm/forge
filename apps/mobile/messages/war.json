@@ -774,5 +774,8 @@
     "send": "Ipadara",
     "sending": "Ginpapadara…",
     "sendAriaLabel": "Ipadara an feedback"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Gingagamit han app an imo lokal nga network ha pagbiling han mga Cast device, basi makapag-play ka hin mga bidyo ha imo TV."
   }
 }

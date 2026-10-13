@@ -774,5 +774,8 @@
     "send": "Romela",
     "sending": "E a romelwa…",
     "sendAriaLabel": "Romela maikutlo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App e dirisa neteweke ya gago ya selegae go batla didirisiwa tse o ka romelang dibidio kwa go tsone, gore o kgone go tshameka dibidio mo TV ya gago."
   }
 }

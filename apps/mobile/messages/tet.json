@@ -774,5 +774,8 @@
     "send": "Haruka",
     "sending": "Haruka hela…",
     "sendAriaLabel": "Haruka komentáriu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikasaun ne’e uza ita-nia rede lokál atu buka aparellu sira hodi haruka ba TV, nune’e ita bele toka vídeu iha ita-nia TV."
   }
 }

@@ -774,5 +774,8 @@
     "send": "Indsend",
     "sending": "Sender…",
     "sendAriaLabel": "Indsend feedback"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Appen bruger dit lokale netværk til at finde Cast-enheder, så du kan afspille videoer på dit tv."
   }
 }

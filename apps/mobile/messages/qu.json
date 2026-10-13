@@ -774,5 +774,8 @@
     "send": "Apachiy",
     "sending": "Apachichkan…",
     "sendAriaLabel": "Yuyayniykita apachiy"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Kay appqa kayllapi kaq llikaykitam llamk’achin televisorman apachinapaq aparatokunata tarinanpaq, chaynapi televisorniykipi videokunata purichinaykipaq."
   }
 }

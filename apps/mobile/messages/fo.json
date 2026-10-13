@@ -774,5 +774,8 @@
     "send": "Send inn",
     "sending": "Sendir…",
     "sendAriaLabel": "Send afturmelding"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Appin brúkar títt lokala net til at finna tól at senda til, so at tú kanst spæla videobrot á sjónvarpinum."
   }
 }

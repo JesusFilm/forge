@@ -774,5 +774,8 @@
     "send": "送出",
     "sending": "咧送出…",
     "sendAriaLabel": "送出意見"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "應用程式會用你的區域網路揣投放裝置，予你會當佇電視播影片。"
   }
 }

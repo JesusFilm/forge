@@ -774,5 +774,8 @@
     "send": "傳送",
     "sending": "正在傳送…",
     "sendAriaLabel": "傳送意見回饋"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App 會使用你的區域網路尋找投放裝置，讓你可以在電視上播放影片。"
   }
 }

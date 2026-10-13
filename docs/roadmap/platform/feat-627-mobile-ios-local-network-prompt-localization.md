@@ -3,7 +3,7 @@ id: "feat-627"
 title: "Translate the iOS Local Network permission prompt"
 owner: "urim"
 priority: "P2"
-status: "not-started"
+status: "complete"
 start_date: "2026-10-09"
 duration: 2
 depends_on: []
@@ -62,6 +62,8 @@ When the prompt shows: `app.json` sets the `react-native-google-cast` plugin opt
 
    Then add `expo.locales` to `app.json`, with one entry per translated tag (`"es": "./i18n/native/es.json"`). Skip `en` and the `englishOnlyLocales` tags: iOS falls back to the English sentence in `infoPlist`. Give the script a `--check` mode, as `generate-catalog-index.mjs` has, so CI fails on drift.
 
+   > **Superseded 2026-10-14 (PR #2710):** every tag in `i18n/native-locales.json` except `en` gets a file, and a tag with no translation gets the English text. So `expo.locales` changes only when `native-locales.json` changes, and a later translation can still ship over the air. See the bullet "Text in iOS permission alerts (feat-627)" in `apps/mobile/CLAUDE.md`.
+
 3. **Keep one source for the English.** `infoPlist.NSLocalNetworkUsageDescription` and the `en.json` key must hold the same text. Add a guard test that compares them.
 
 4. **Optional, owner decision first:** `iosStartDiscoveryAfterFirstTapOnCastButton: true` delays the prompt until the first tap on the Cast button, so the user sees it when they want to cast. This changes when Cast finds TVs, so it is a product decision and not part of the translation.
@@ -78,6 +80,19 @@ When the prompt shows: `app.json` sets the `react-native-google-cast` plugin opt
 
 - `pnpm --filter @forge/mobile test` passes, including the new guard (English source matches `infoPlist`) and the generator's `--check`.
 - `node scripts/i18n/translate-catalogs.mjs --dry-run` shows 0 requests after the import.
-- `npx expo prebuild --platform ios --no-install`, then `plutil -p ios/forgewatch/es.lproj/InfoPlist.strings` shows the Spanish sentence. Spot-check `ar`, `zh-Hans` and `sr-Latn` too. Delete `ios/` afterwards if it did not exist before.
+- `npx expo prebuild --platform ios --no-install`, then `plutil -p ios/forgewatch/Supporting/es.lproj/InfoPlist.strings` shows the Spanish sentence. Spot-check `ar`, `zh-Hans` and `sr-Latn` too. Delete `ios/` afterwards if it did not exist before.
 - On an iOS simulator with a fresh install (erase the simulator, or use a new one, because iOS keeps the Local Network answer per install), launch with `-AppleLanguages "(es)" -AppleLocale es_ES`, and screenshot the Local Network alert: the middle sentence is Spanish.
 - Repeat with an English-only tag (for example `ff`): the alert shows the English sentence.
+
+> **Corrected 2026-10-14:** the iOS Simulator never shows the Local Network alert, so the two checks above cannot run on a Simulator. Check the files in the compiled `.app`, and check the alert on a physical iPhone. See `docs/solutions/developer-experience/ios-simulator-never-shows-local-network-alert.md`.
+
+## Results — 2026-10-14
+
+PR #2710 holds the change.
+
+- **Checks** — the generator's `--check`, 510 of 510 jest suites, lint, typecheck, and the translation dry run (0 requests) pass. Prebuild writes 224 `InfoPlist.strings` files, and all 224 pass `plutil -lint`.
+- **Compiled app** — the Debug dev client holds all 224 `<tag>.lproj/InfoPlist.strings` files, and its `Info.plist` lists 225 `CFBundleLocalizations`.
+- **Simulator** — a fresh install on a new iPhone 17 Simulator (iOS 26.5) showed no Local Network alert. The Simulator does not apply Local Network privacy.
+- **Device** — on an iPhone 15 Pro (iOS 26.5) with the phone language set to Arabic, a fresh install showed the Arabic sentence from `ar.lproj` in the middle of the alert. The English-only case (`ff`) is checked in the compiled `.app` only. The dev launcher also searches Bonjour for Metro, so this check does not show when a release build first shows the alert. No one has measured a release build yet.
+- **Release** — the change moves the fingerprint runtime version. Users get the translated text in the next native build (feat-604).
+- **Not done** — step 4 of What To Build (`iosStartDiscoveryAfterFirstTapOnCastButton: true`) needs an owner decision first. This ticket did not change it.

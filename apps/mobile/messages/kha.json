@@ -774,5 +774,8 @@
     "send": "Phah",
     "sending": "Dang phah…",
     "sendAriaLabel": "Phah ia ka jingmut"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Ka app ka pyndonkam ia ka network ba hajan jong phi ban wad ia ki tiar ban pyni ha ka TV, khnang ba phi lah ban pynïaid ia ki video ha ka TV jong phi."
   }
 }

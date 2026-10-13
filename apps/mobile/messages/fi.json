@@ -774,5 +774,8 @@
     "send": "Lähetä",
     "sending": "Lähetetään…",
     "sendAriaLabel": "Lähetä palaute"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Sovellus käyttää paikallisverkkoasi suoratoistolaitteiden löytämiseen, jotta voit toistaa videoita televisiossasi."
   }
 }

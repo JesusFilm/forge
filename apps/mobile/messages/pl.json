@@ -774,5 +774,8 @@
     "send": "Wyślij",
     "sending": "Wysyłanie…",
     "sendAriaLabel": "Wyślij opinię"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikacja korzysta z Twojej sieci lokalnej, aby znaleźć urządzenia do przesyłania, dzięki czemu możesz odtwarzać filmy na swoim telewizorze."
   }
 }

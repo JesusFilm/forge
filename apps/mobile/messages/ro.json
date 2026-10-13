@@ -774,5 +774,8 @@
     "send": "Trimite",
     "sending": "Se trimite…",
     "sendAriaLabel": "Trimite feedbackul"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplicația folosește rețeaua ta locală pentru a găsi dispozitive de proiectare, ca să poți reda videoclipuri pe televizorul tău."
   }
 }

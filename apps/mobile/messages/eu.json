@@ -774,5 +774,8 @@
     "send": "Bidali",
     "sending": "Bidaltzen…",
     "sendAriaLabel": "Bidali iritzia"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikazioak zure sare lokala erabiltzen du igorpenerako gailuak aurkitzeko, bideoak zure telebistan erreproduzitu ahal izan ditzazun."
   }
 }

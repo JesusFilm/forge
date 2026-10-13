@@ -774,5 +774,8 @@
     "send": "Versturen",
     "sending": "Versturen…",
     "sendAriaLabel": "Feedback versturen"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "De app gebruikt je lokale netwerk om Cast-apparaten te vinden, zodat je video’s op je tv kunt afspelen."
   }
 }
