@@ -302,3 +302,34 @@ WAL, bytes per visit/connection/generation, projected retained footprint, and
 build/rollback overlap. Prove cleanup throughput under loaded conditions;
 distinguish reusable pages from recovered volume space. Reuse the existing
 compression work rather than adding a parallel verbose ledger.
+
+### October 14 profile byte-capacity repair
+
+The fresh v3 pilot stopped on a known-usage `profile_node_bytes_exceeded`
+map rejection (918 output tokens). Its raw response and measured rejected byte
+length were not retained; the regression fixtures are not exact production replay.
+Keep the full profile schema, eight grounded anchors, complete transcript/part
+coverage, and complete candidate pools. Raise canonical nodes to 16,384 UTF-8
+bytes, physical-call reservations to 17,408 bytes, and PostgreSQL JSONB text
+guards for call nodes and final profiles to 32,768 bytes in additive migration 0149. Version the manual profile prompt as `complete-profile-v4`; require a new
+generation and retain every prior generation, receipt, and terminal profile.
+Compatible sealed GA origin reuse still requires the existing identity checks.
+
+Profile status stays bounded to 127 physical calls and 4 MiB; only the shared
+HTTP reader's `profile_status` action receives that response limit. Other
+request/response limits remain unchanged. Map and reduce prompts stay at 65,536
+bytes. Reduce contiguous ordered groups of two to eight children, choosing the
+largest group whose actual rendered system plus prompt bytes fit; grouping and
+dispatch share the renderer. Keep every child and final postorder coverage proof.
+Edge execution retains page shrinking/member splitting and full pool coverage.
+
+The map/reduce output-token cap stays at 2,048; the larger byte limit does not
+guarantee every schema-valid model answer can be generated. The global node
+budget remains authoritative: some combinations of all Unicode
+schema maxima exceed 16 KiB. Do not truncate fields or weaken grounding. The
+125-profile pilot's worst-case physical-call reservation is 276,352,000 logical
+bytes; the 1,031-profile catalog's corresponding bound is 2,279,351,296 bytes,
+which exceeds the 2 GiB bootstrap projection. Neither is a measured physical
+storage forecast. Full-catalog admission requires separate retained/overlap and
+measured-storage review. Production resume, catalog completion, baseline, and
+public activation remain separate gates.

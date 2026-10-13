@@ -440,7 +440,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           },
         })
         expect(await budget()).toBe(beforeBudget)
-        await prisma.$executeRaw`UPDATE recommendation_precomputed_generation SET capacity_preflight = jsonb_set(capacity_preflight, '{projectedBytes}', to_jsonb(${beforeBudget + 5120n}::bigint)) WHERE id = ${base.generationId}`
+        await prisma.$executeRaw`UPDATE recommendation_precomputed_generation SET capacity_preflight = jsonb_set(capacity_preflight, '{projectedBytes}', to_jsonb(${beforeBudget + 17408n}::bigint)) WHERE id = ${base.generationId}`
         await expect(submit(request)).rejects.toMatchObject({
           code: "capacity_budget_exceeded",
         })
@@ -478,7 +478,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         expect(await budget()).toBe(
           beforeBudget +
             BigInt(
-              5120 +
+              17408 +
                 Buffer.byteLength(JSON.stringify(authorizationRecord), "utf8") +
                 256,
             ),
@@ -491,7 +491,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         expect(await budget()).toBe(
           beforeBudget +
             BigInt(
-              5120 +
+              17408 +
                 Buffer.byteLength(JSON.stringify(authorizationRecord), "utf8") +
                 256,
             ),
@@ -937,9 +937,44 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         }),
       ).toMatchObject({ state: "ready" })
     })
-    it.each([4096, 4097])(
+    it.each([16384, 16385])(
       "enforces the exact canonical %s-byte node boundary with usage and replay",
       async (targetBytes) => {
+        const editionId = `capacity-edition-${targetBytes}-${suffix}`
+        const transcriptId = `capacity-transcript-${targetBytes}-${suffix}`
+        const chunkId = `capacity-chunk-${targetBytes}-${suffix}`
+        const text = "A grounded capacity fixture passage."
+        await prisma.videoEdition.create({
+          data: { id: editionId, coreId: editionId, name: "Capacity edition" },
+        })
+        await prisma.videoTranscript.create({
+          data: {
+            id: transcriptId,
+            videoEditionId: editionId,
+            videoId,
+            language: "en",
+            model: "fixture",
+            dimensions: 1536,
+            chunkingType: "fixture",
+            maxChunkTokens: 100,
+            overlapTokens: 0,
+            totalChunks: 1,
+            totalTokens: 10,
+            generatedAt: new Date(),
+          },
+        })
+        await prisma.videoTranscriptChunk.create({
+          data: {
+            id: chunkId,
+            transcriptId,
+            language: "en",
+            chunkIndex: 0,
+            chunkId: "capacity-0",
+            text,
+            rawSourceText: text,
+            tokenCount: 10,
+          },
+        })
         const base = await build(`profile-canonical-${targetBytes}`)
         const input = registration(base, "transcript", [digest("part-zero")])
         await submit(input)
@@ -964,11 +999,21 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           profile: {
             version: "complete_profile_v1",
             summaryEnglish: "S".repeat(600),
-            themes: Array(12).fill("T".repeat(80)),
-            people: Array(12).fill("P".repeat(80)),
+            themes: Array(12).fill("界".repeat(80)),
+            people: Array(12).fill("人".repeat(80)),
             places: Array(12).fill("é"),
             citations: Array(12).fill("C"),
-            anchors: [],
+            anchors: Array.from({ length: 8 }, () => ({
+              videoId,
+              chunkId,
+              transcriptId,
+              language: "en",
+              chunkIndex: 0,
+              startChar: 0,
+              endChar: text.length,
+              textSha256: createHash("sha256").update(text).digest("hex"),
+              claimEnglish: "界".repeat(180),
+            })),
           },
           coveredPartStart: 0,
           coveredPartEnd: 1,
@@ -977,6 +1022,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         const bytes = () => Buffer.byteLength(JSON.stringify(node), "utf8")
         for (const list of [node.profile.places, node.profile.citations]) {
           for (let index = 0; index < list.length; index++) {
+            while (list[index]!.length < 80 && targetBytes - bytes() >= 3)
+              list[index] += "界"
             list[index] += "x".repeat(
               Math.min(80 - list[index]!.length, targetBytes - bytes()),
             )
@@ -994,13 +1041,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         }
         expect(await submit(finish)).toMatchObject({
           receiptStored: true,
-          nodeApplied: targetBytes === 4096,
-          state: targetBytes === 4096 ? "succeeded" : "rejected",
+          nodeApplied: targetBytes === 16384,
+          state: targetBytes === 16384 ? "succeeded" : "rejected",
           replay: false,
         })
         expect(await submit(finish)).toMatchObject({
           receiptStored: true,
-          nodeApplied: targetBytes === 4096,
+          nodeApplied: targetBytes === 16384,
           replay: true,
         })
         const status = await submit({
@@ -1010,7 +1057,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           cacheKey: input.cacheKey,
         })
         expect(status).toMatchObject({
-          calls: [{ status: targetBytes === 4096 ? "succeeded" : "rejected" }],
+          calls: [{ status: targetBytes === 16384 ? "succeeded" : "rejected" }],
         })
         const row =
           await prisma.recommendationPrecomputedProfileCall.findFirstOrThrow({
@@ -1019,9 +1066,9 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         expect(row).toMatchObject({
           inputTokens: 33,
           outputTokens: 6,
-          receiptNodeApplied: targetBytes === 4096,
+          receiptNodeApplied: targetBytes === 16384,
         })
-        if (targetBytes > 4096) {
+        if (targetBytes > 16384) {
           expect(row.nodeJson).toBeNull()
           await expect(
             submit({
@@ -1037,8 +1084,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         SELECT octet_length(node_json::text)::integer AS bytes
         FROM recommendation_precomputed_profile_call
         WHERE generation_id = ${base.generationId} AND call_id = ${callId}::uuid`
-        expect(stored!.bytes).toBeGreaterThan(4096)
-        expect(stored!.bytes).toBeLessThanOrEqual(8192)
+        expect(stored!.bytes).toBeGreaterThan(16384)
+        expect(stored!.bytes).toBeLessThanOrEqual(32768)
         const [constraint] = await prisma.$queryRaw<
           Array<{ validated: boolean; definition: string }>
         >`
@@ -1047,7 +1094,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           WHERE conrelid = 'recommendation_precomputed_profile_call'::regclass
             AND conname = 'recommendation_precomputed_profile_call_node_json_check'`
         expect(constraint!.validated).toBe(true)
-        expect(constraint!.definition).toContain("8192")
+        expect(constraint!.definition).toContain("32768")
         expect(
           await submit({
             action: "profile_finalize",
@@ -1060,7 +1107,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         ).toMatchObject({ state: "ready" })
       },
     )
-    it("reserves 4 KiB plus receipt overhead and refuses the former 3 KiB headroom before a call", async () => {
+    it("reserves 16 KiB plus receipt overhead and refuses former 5 KiB headroom before a call", async () => {
       const base = await build("profile-call-reservation")
       const input = registration(base, "transcript", [digest("part-zero")])
       await submit(input)
@@ -1073,7 +1120,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       const before = await budget()
       await prisma.$executeRaw`
         UPDATE recommendation_precomputed_generation
-        SET capacity_preflight = jsonb_set(capacity_preflight, '{projectedBytes}', to_jsonb(${before + 3072n}::bigint))
+        SET capacity_preflight = jsonb_set(capacity_preflight, '{projectedBytes}', to_jsonb(${before + 5120n}::bigint))
         WHERE id = ${base.generationId}`
       const callId = randomUUID()
       const stagePromptVersion = `${input.promptVersion}:map`
@@ -1100,18 +1147,18 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       ).toBe(0)
       await prisma.$executeRaw`
         UPDATE recommendation_precomputed_generation
-        SET capacity_preflight = jsonb_set(capacity_preflight, '{projectedBytes}', to_jsonb(${before + 5120n}::bigint))
+        SET capacity_preflight = jsonb_set(capacity_preflight, '{projectedBytes}', to_jsonb(${before + 17408n}::bigint))
         WHERE id = ${base.generationId}`
       expect(await submit(start)).toMatchObject({
         state: "pending",
         replay: false,
       })
-      expect(await budget()).toBe(before + 5120n)
+      expect(await budget()).toBe(before + 17408n)
       expect(await submit(start)).toMatchObject({
         state: "pending",
         replay: true,
       })
-      expect(await budget()).toBe(before + 5120n)
+      expect(await budget()).toBe(before + 17408n)
     })
     it("validates a passage anchor against the selected frozen chunk", async () => {
       const editionId = `anchor-edition-${suffix}`

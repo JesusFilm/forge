@@ -1,6 +1,14 @@
 import { describe, expect, it, vi } from "vitest"
 
 import { createContentProfilePersistence } from "./content-profile-client"
+vi.mock("../../config/env", () => ({
+  env: {
+    ADMIN_MASTRA_RECOMMENDATION_API_KEY: "fixture-key",
+    ADMIN_RECOMMENDATION_CATALOG_URL: "http://localhost/catalog",
+    ADMIN_RECOMMENDATION_INGEST_URL: "http://localhost/ingest",
+  },
+}))
+import { createAdminSourceDependencies } from "./source-generation"
 import type { ProfilePersistencePort } from "./content-profile-executor"
 
 const registration: Parameters<ProfilePersistencePort["register"]>[0] = {
@@ -37,18 +45,28 @@ const call = {
 }
 
 describe("Admin content profile client", () => {
-  it.each([4096, 4097])(
+  it.each([16384, 16385])(
     "validates %s-byte nodes in a full 127-call status reply",
     async (bytes) => {
       const node = {
         profile: {
           version: "complete_profile_v1",
           summaryEnglish: "s".repeat(600),
-          themes: Array(12).fill("t".repeat(80)),
-          people: Array(12).fill("p".repeat(80)),
+          themes: Array(12).fill("界".repeat(80)),
+          people: Array(12).fill("人".repeat(80)),
           places: Array(12).fill("é"),
           citations: Array(12).fill("c"),
-          anchors: [],
+          anchors: Array.from({ length: 8 }, () => ({
+            videoId: "source",
+            chunkId: "chunk",
+            transcriptId: "transcript",
+            language: "en",
+            chunkIndex: 0,
+            startChar: 0,
+            endChar: 12,
+            textSha256: "a".repeat(64),
+            claimEnglish: "界".repeat(180),
+          })),
         },
         coveredPartStart: 0,
         coveredPartEnd: 1,
@@ -56,20 +74,23 @@ describe("Admin content profile client", () => {
       }
       const nodeBytes = () => Buffer.byteLength(JSON.stringify(node), "utf8")
       for (const list of [node.profile.places, node.profile.citations]) {
-        for (let index = 0; index < list.length; index++)
+        for (let index = 0; index < list.length; index++) {
+          while (list[index]!.length < 80 && bytes - nodeBytes() >= 3)
+            list[index] += "界"
           list[index] += "x".repeat(
             Math.min(80 - list[index]!.length, bytes - nodeBytes()),
           )
+        }
       }
       expect(nodeBytes()).toBe(bytes)
       const reply = {
         generationId: registration.generationId,
         cacheKey: registration.cacheKey,
         profile: {
-          state: "in_progress",
+          state: "ready",
           kind: "transcript",
-          profileJson: null,
-          finalCallId: null,
+          profileJson: node.profile,
+          finalCallId: call.callId,
           coverageDigest: registration.coverageDigest,
         },
         calls: Array.from({ length: 127 }, (_, index) => ({
@@ -84,21 +105,36 @@ describe("Admin content profile client", () => {
         })),
       }
       expect(Buffer.byteLength(JSON.stringify(reply), "utf8")).toBeGreaterThan(
-        512 * 1024,
+        2 * 1024 * 1024,
       )
       expect(Buffer.byteLength(JSON.stringify(reply), "utf8")).toBeLessThan(
-        1024 * 1024,
+        4 * 1024 * 1024,
       )
-      const client = createContentProfilePersistence(async () => reply)
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => Response.json({ result: reply })),
+      )
+      const client = createContentProfilePersistence(
+        createAdminSourceDependencies().ingest,
+      )
       const result = client.status({
         action: "profile_status",
         generationId: registration.generationId,
         generationInputDigest: registration.generationInputDigest,
         cacheKey: registration.cacheKey,
       })
-      if (bytes === 4096) expect((await result).calls).toHaveLength(127)
-      else
-        await expect(result).rejects.toMatchObject({ code: "profile_conflict" })
+      try {
+        if (bytes === 16384) {
+          const ready = await result
+          expect(ready.calls).toHaveLength(127)
+          expect(ready.profile.profileJson).toEqual(node.profile)
+        } else
+          await expect(result).rejects.toMatchObject({
+            code: "profile_conflict",
+          })
+      } finally {
+        vi.unstubAllGlobals()
+      }
     },
   )
   it("refuses a ready reply belonging to a different generation", async () => {

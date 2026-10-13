@@ -337,6 +337,13 @@ async function postAdmin(
     redirect: "error",
     signal: AbortSignal.timeout(timeoutMs),
   })
+  const maxResponseBytes =
+    typeof body === "object" &&
+    body !== null &&
+    "action" in body &&
+    body.action === "profile_status"
+      ? 4 * 1024 * 1024
+      : 2 * 1024 * 1024
   async function readBoundedResponse(): Promise<unknown> {
     const reader = response.body?.getReader()
     if (!reader) throw new SourceGenerationError("catalog_unavailable")
@@ -346,7 +353,7 @@ async function postAdmin(
       const { done, value } = await reader.read()
       if (done) break
       size += value.byteLength
-      if (size > 2 * 1024 * 1024) {
+      if (size > maxResponseBytes) {
         await reader.cancel().catch(() => undefined)
         throw new SourceGenerationError("catalog_unavailable")
       }

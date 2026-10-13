@@ -318,9 +318,10 @@ describe("complete content profile execution", () => {
     expect(starts).toBe(0)
   })
 
-  it.each([false, true])(
-    "persists a verified one-part map receipt before finalizing (large=%s)",
-    async (large) => {
+  it.each(["small", "4k", "rich"])(
+    "persists a verified one-part map receipt before finalizing (size=%s)",
+    async (size) => {
+      const large = size !== "small"
       const mapOutput: Omit<CompactProfile, "anchors"> & {
         anchors: typeof supportedMapProfile.anchors
       } = large
@@ -339,7 +340,24 @@ describe("complete content profile execution", () => {
         places: [...mapOutput.places],
         citations: [...mapOutput.citations],
       }
-      if (large) {
+      if (size === "rich") {
+        mapOutput.places = Array(12).fill("place".repeat(16))
+        mapOutput.citations = Array(12).fill("citation".repeat(10))
+        mapOutput.anchors = Array.from({ length: 8 }, (_, index) => ({
+          ...supportedMapProfile.anchors[0]!,
+          claimEnglish: `${index} ${"claim".repeat(35)}`,
+        }))
+        expectedProfile.places = mapOutput.places
+        expectedProfile.citations = mapOutput.citations
+        expectedProfile.anchors = mapOutput.anchors.map((anchor) => ({
+          ...supportedProfile.anchors[0]!,
+          claimEnglish: anchor.claimEnglish,
+        }))
+        expect(
+          Buffer.byteLength(JSON.stringify(expectedProfile)),
+        ).toBeGreaterThan(4096)
+      }
+      if (size === "4k") {
         mapOutput.places = Array(12).fill("é")
         mapOutput.citations = Array(12).fill("c")
         expectedProfile.places = mapOutput.places
@@ -383,7 +401,7 @@ describe("complete content profile execution", () => {
               }),
             ).not.toThrow()
             expect(input.system).not.toContain("compute SHA-256")
-            expect(input.system).toContain("4,096 UTF-8 bytes")
+            expect(input.system).toContain("16,384 UTF-8 bytes")
             expect(input.system).toContain(
               `stored profile JSON budget for this node is ${profileJsonBudget(0, 1, [])} UTF-8 bytes`,
             )
@@ -465,7 +483,7 @@ describe("complete content profile execution", () => {
               ).toBeGreaterThan(2048)
               expect(
                 Buffer.byteLength(JSON.stringify(input.node), "utf8"),
-              ).toBeLessThanOrEqual(4096)
+              ).toBeLessThanOrEqual(size === "rich" ? 16384 : 4096)
             }
             expect(input.usage).toEqual({
               inputTokens: 120,
@@ -647,7 +665,7 @@ describe("complete content profile execution", () => {
       coveredPartEnd: 8,
       childNodeDigests: digests,
     }
-    expect(Buffer.byteLength(JSON.stringify(atLimit), "utf8")).toBe(4_096)
+    expect(Buffer.byteLength(JSON.stringify(atLimit), "utf8")).toBe(16_384)
   })
 
   it("accounts for anchor expansion that exceeded the former 2 KiB cap and fits 4 KiB", () => {
@@ -936,19 +954,18 @@ describe("complete content profile execution", () => {
         ...supportedMapProfile,
         ...(oversized
           ? {
-              summaryEnglish: "s".repeat(600),
-              themes: Array.from({ length: 12 }, () => "t".repeat(80)),
-              people: Array.from({ length: 12 }, () => "p".repeat(80)),
-              places: Array.from({ length: 12 }, () => "l".repeat(80)),
-              citations: Array.from({ length: 12 }, () => "c".repeat(80)),
+              summaryEnglish: "界".repeat(600),
+              themes: Array.from({ length: 12 }, () => "界".repeat(80)),
+              people: Array.from({ length: 12 }, () => "人".repeat(80)),
+              places: Array.from({ length: 12 }, () => "地".repeat(80)),
+              citations: Array.from({ length: 12 }, () => "文".repeat(80)),
             }
           : {}),
-        anchors: [
-          {
-            ...supportedMapProfile.anchors[0],
-            excerpt,
-          },
-        ],
+        anchors: Array.from({ length: oversized ? 8 : 1 }, () => ({
+          ...supportedMapProfile.anchors[0],
+          excerpt,
+          ...(oversized ? { claimEnglish: "界".repeat(180) } : {}),
+        })),
       }
       await expect(
         runContentProfile({
@@ -1151,228 +1168,227 @@ describe("complete content profile execution", () => {
     expect(invocations).toBe(1)
   })
 
-  it("reduces more than eight map parts with a complete postorder proof and reuses every receipt", async () => {
-    const chunks = Array.from(
-      { length: 17 },
-      (_, index): Chunk => ({
-        id: `chunk-${String(index).padStart(2, "0")}`,
-        transcriptId: "transcript-one",
-        language: "en",
-        chunkIndex: index,
-        text: `Part ${index}: ${"A complete selected transcript sentence. ".repeat(7)}`,
-      }),
-    )
-    const longVideo = transcriptVideo()
-    longVideo.transcriptSelection!.selected[0]!.totalChunks = chunks.length
-    const smallerInput = { ...identity, maxPartBytes: 1_100 }
-    const plan = planContentProfile({
-      video: longVideo,
-      chunks,
-      maxPartBytes: smallerInput.maxPartBytes,
-      modelId: smallerInput.modelId,
-      backend: smallerInput.backend,
-      promptVersion: smallerInput.promptVersion,
-      schemaVersion: smallerInput.schemaVersion,
-    })
-    expect(plan.parts.length).toBeGreaterThan(8)
-    const richProfile = {
-      ...supportedProfile,
-      summaryEnglish: "s".repeat(600),
-      themes: Array(12).fill("t"),
-      people: Array(12).fill("p"),
-      places: Array(12).fill("l"),
-      citations: Array(12).fill("c"),
-      anchors: [],
-    }
-    const largestEnvelopeBudget = profileJsonBudget(
-      0,
-      plan.parts.length,
-      Array(8).fill("a".repeat(64)),
-    )
-    for (const list of [
-      richProfile.themes,
-      richProfile.people,
-      richProfile.places,
-      richProfile.citations,
-    ]) {
-      for (let index = 0; index < list.length; index++)
-        list[index] += "x".repeat(
-          Math.min(
-            80 - list[index]!.length,
-            largestEnvelopeBudget -
-              Buffer.byteLength(JSON.stringify(richProfile), "utf8"),
-          ),
-        )
-    }
-    expect(Buffer.byteLength(JSON.stringify(richProfile), "utf8")).toBe(
-      largestEnvelopeBudget,
-    )
-    let profileState: ProfileState = "planned"
-    let coverageDigest = ""
-    let finalCallId: string | null = null
-    let finalProfile: typeof supportedProfile | null = null
-    const calls: Awaited<
-      ReturnType<ProfilePersistencePort["status"]>
-    >["calls"] = []
-    const callStarts: Array<{
-      callId: string
-      stage: "map" | "reduce"
-      childCallIds?: string[]
-    }> = []
-    let modelCalls = 0
-    const persistence: ProfilePersistencePort = {
-      async register(input) {
-        coverageDigest = input.coverageDigest
-        expect(input.partDigests).toHaveLength(plan.parts.length)
-        return {
-          generationId: input.generationId,
-          cacheKey: input.cacheKey,
-          kind: "transcript",
-          state: profileState,
-          replay: profileState !== "planned",
-        }
-      },
-      async status(input) {
-        return {
-          generationId: input.generationId,
-          cacheKey: input.cacheKey,
-          profile: {
-            state: profileState,
+  it.each([false, true])(
+    "reduces large map nodes with complete postorder proof and receipt replay (rich metadata=%s)",
+    async (richMetadata) => {
+      const chunks = Array.from(
+        { length: 17 },
+        (_, index): Chunk => ({
+          id: `chunk-${String(index).padStart(2, "0")}`,
+          transcriptId: "transcript-one",
+          language: "en",
+          chunkIndex: index,
+          text: `Part ${index}: ${"A complete selected transcript sentence. ".repeat(richMetadata ? 100 : 7)}`,
+        }),
+      )
+      const longVideo = transcriptVideo()
+      longVideo.transcriptSelection!.selected[0]!.totalChunks = chunks.length
+      if (richMetadata) longVideo.description = "界".repeat(6000)
+      const smallerInput = {
+        ...identity,
+        maxPartBytes: richMetadata ? 24_576 : 1_100,
+      }
+      const plan = planContentProfile({
+        video: longVideo,
+        chunks,
+        maxPartBytes: smallerInput.maxPartBytes,
+        modelId: smallerInput.modelId,
+        backend: smallerInput.backend,
+        promptVersion: smallerInput.promptVersion,
+        schemaVersion: smallerInput.schemaVersion,
+      })
+      expect(plan.parts.length).toBeGreaterThan(8)
+      const richProfile = {
+        ...supportedProfile,
+        summaryEnglish: "界".repeat(600),
+        themes: Array(12).fill("界".repeat(80)),
+        people: Array(12).fill("人".repeat(80)),
+        places: Array(12).fill("地".repeat(80)),
+        citations: Array(12).fill("文".repeat(80)),
+        anchors: [],
+      }
+      expect(
+        Buffer.byteLength(JSON.stringify(richProfile), "utf8"),
+      ).toBeGreaterThan(12_000)
+      let profileState: ProfileState = "planned"
+      let coverageDigest = ""
+      let finalCallId: string | null = null
+      let finalProfile: typeof supportedProfile | null = null
+      const calls: Awaited<
+        ReturnType<ProfilePersistencePort["status"]>
+      >["calls"] = []
+      const callStarts: Array<{
+        callId: string
+        stage: "map" | "reduce"
+        childCallIds?: string[]
+      }> = []
+      let modelCalls = 0
+      const persistence: ProfilePersistencePort = {
+        async register(input) {
+          coverageDigest = input.coverageDigest
+          expect(input.partDigests).toHaveLength(plan.parts.length)
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
             kind: "transcript",
+            state: profileState,
+            replay: profileState !== "planned",
+          }
+        },
+        async status(input) {
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            profile: {
+              state: profileState,
+              kind: "transcript",
+              profileJson: finalProfile,
+              finalCallId,
+              coverageDigest,
+            },
+            calls,
+          }
+        },
+        async callStart(input) {
+          profileState = "in_progress"
+          callStarts.push({
+            callId: input.callId,
+            stage: input.stage,
+            childCallIds: input.childCallIds,
+          })
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            callId: input.callId,
+            state: "pending",
+            replay: false,
+          }
+        },
+        async callFinish(input) {
+          expect(input.status).toBe("succeeded")
+          expect(input.node).toBeDefined()
+          expect(
+            Buffer.byteLength(JSON.stringify(input.node), "utf8"),
+          ).toBeGreaterThan(2048)
+          expect(
+            Buffer.byteLength(JSON.stringify(input.node), "utf8"),
+          ).toBeLessThanOrEqual(16384)
+          expect(input.outputDigest).toBeDefined()
+          calls.push({
+            callId: input.callId,
+            nodeKey: input.nodeKey,
+            stage: input.stage,
+            inputDigest: input.inputDigest,
+            status: "succeeded",
+            nodeApplied: true,
+            outputDigest: input.outputDigest!,
+            node: input.node!,
+          })
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            callId: input.callId,
+            state: "succeeded",
+            receiptStored: true,
+            nodeApplied: true,
+            replay: false,
+          }
+        },
+        async finalize(input) {
+          expect(input.coverageDigest).toBe(coverageDigest)
+          expect(input.expectedNodeDigests).toHaveLength(calls.length)
+          const byCall = new Map(calls.map((call) => [call.callId, call]))
+          const childIds = new Map(
+            callStarts.map((call) => [call.callId, call.childCallIds ?? []]),
+          )
+          const postorder = (callId: string): string[] => [
+            ...childIds.get(callId)!.flatMap(postorder),
+            byCall.get(callId)!.outputDigest!,
+          ]
+          expect(input.expectedNodeDigests).toEqual(
+            postorder(input.finalCallId),
+          )
+          expect(
+            calls.find((call) => call.callId === input.finalCallId)?.node,
+          ).toMatchObject({
+            coveredPartStart: 0,
+            coveredPartEnd: plan.parts.length,
+          })
+          profileState = "ready"
+          finalCallId = input.finalCallId
+          finalProfile = calls.find((call) => call.callId === finalCallId)!
+            .node!.profile as typeof supportedProfile
+          return {
+            generationId: input.generationId,
+            cacheKey: input.cacheKey,
+            state: "ready",
             profileJson: finalProfile,
             finalCallId,
-            coverageDigest,
-          },
-          calls,
-        }
-      },
-      async callStart(input) {
-        profileState = "in_progress"
-        callStarts.push({
-          callId: input.callId,
-          stage: input.stage,
-          childCallIds: input.childCallIds,
-        })
-        return {
-          generationId: input.generationId,
-          cacheKey: input.cacheKey,
-          callId: input.callId,
-          state: "pending",
-          replay: false,
-        }
-      },
-      async callFinish(input) {
-        expect(input.status).toBe("succeeded")
-        expect(input.node).toBeDefined()
-        expect(
-          Buffer.byteLength(JSON.stringify(input.node), "utf8"),
-        ).toBeGreaterThan(2048)
-        expect(
-          Buffer.byteLength(JSON.stringify(input.node), "utf8"),
-        ).toBeLessThanOrEqual(4096)
-        expect(input.outputDigest).toBeDefined()
-        calls.push({
-          callId: input.callId,
-          nodeKey: input.nodeKey,
-          stage: input.stage,
-          inputDigest: input.inputDigest,
-          status: "succeeded",
-          nodeApplied: true,
-          outputDigest: input.outputDigest!,
-          node: input.node!,
-        })
-        return {
-          generationId: input.generationId,
-          cacheKey: input.cacheKey,
-          callId: input.callId,
-          state: "succeeded",
-          receiptStored: true,
-          nodeApplied: true,
-          replay: false,
-        }
-      },
-      async finalize(input) {
-        expect(input.coverageDigest).toBe(coverageDigest)
-        expect(input.expectedNodeDigests).toHaveLength(calls.length)
-        const byCall = new Map(calls.map((call) => [call.callId, call]))
-        const childIds = new Map(
-          callStarts.map((call) => [call.callId, call.childCallIds ?? []]),
-        )
-        const postorder = (callId: string): string[] => [
-          ...childIds.get(callId)!.flatMap(postorder),
-          byCall.get(callId)!.outputDigest!,
-        ]
-        expect(input.expectedNodeDigests).toEqual(postorder(input.finalCallId))
-        expect(
-          calls.find((call) => call.callId === input.finalCallId)?.node,
-        ).toMatchObject({
-          coveredPartStart: 0,
-          coveredPartEnd: plan.parts.length,
-        })
-        profileState = "ready"
-        finalCallId = input.finalCallId
-        finalProfile = calls.find((call) => call.callId === finalCallId)!.node!
-          .profile as typeof supportedProfile
-        return {
-          generationId: input.generationId,
-          cacheKey: input.cacheKey,
-          state: "ready",
-          profileJson: finalProfile,
-          finalCallId,
-          replay: false,
-        }
-      },
-    }
-    const model: StructuredModel = {
-      async generate(input) {
-        modelCalls++
-        expect(
-          Buffer.byteLength(input.prompt, "utf8") +
-            Buffer.byteLength(input.system, "utf8"),
-        ).toBeLessThanOrEqual(65536)
-        return {
-          output: input.schema.parse(richProfile),
-          usage: { inputTokens: 100, outputTokens: 20 },
-        }
-      },
-    }
-    const args = {
-      ...smallerInput,
-      video: longVideo,
-      catalog: transcriptCatalog(chunks),
-      persistence,
-      model,
-    }
-    const first = await runContentProfile(args)
-    expect(first.state).toBe("ready")
-    expect(
-      callStarts.filter((call) => call.stage === "reduce").length,
-    ).toBeGreaterThan(1)
-    const priorModelCalls = modelCalls
-    const firstNode = calls[0]!.node!
-    calls[0]!.node = {
-      childNodeDigests: firstNode.childNodeDigests,
-      coveredPartEnd: firstNode.coveredPartEnd,
-      coveredPartStart: firstNode.coveredPartStart,
-      profile: {
-        anchors: firstNode.profile.anchors,
-        citations: firstNode.profile.citations,
-        places: firstNode.profile.places,
-        people: firstNode.profile.people,
-        themes: firstNode.profile.themes,
-        summaryEnglish: firstNode.profile.summaryEnglish,
-        version: firstNode.profile.version,
-      },
-    }
-    const replay = await runContentProfile(args)
-    expect(replay).toEqual(first)
-    expect(modelCalls).toBe(priorModelCalls)
-    calls[0]!.outputDigest = "f".repeat(64)
-    await expect(runContentProfile(args)).rejects.toMatchObject({
-      code: "profile_conflict",
-    })
-    expect(modelCalls).toBe(priorModelCalls)
-  })
+            replay: false,
+          }
+        },
+      }
+      const model: StructuredModel = {
+        async generate(input) {
+          modelCalls++
+          expect(
+            Buffer.byteLength(input.prompt, "utf8") +
+              Buffer.byteLength(input.system, "utf8"),
+          ).toBeLessThanOrEqual(65536)
+          return {
+            output: input.schema.parse(richProfile),
+            usage: { inputTokens: 100, outputTokens: 20 },
+          }
+        },
+      }
+      const args = {
+        ...smallerInput,
+        video: longVideo,
+        catalog: transcriptCatalog(chunks),
+        persistence,
+        model,
+      }
+      const first = await runContentProfile(args)
+      expect(first.state).toBe("ready")
+      expect(
+        callStarts.filter((call) => call.stage === "reduce").length,
+      ).toBeGreaterThan(1)
+      expect(
+        callStarts
+          .filter((call) => call.stage === "reduce")
+          .every(
+            (call) =>
+              call.childCallIds!.length >= 2 && call.childCallIds!.length < 8,
+          ),
+      ).toBe(true)
+      expect(calls.length).toBeLessThanOrEqual(127)
+      expect(first.profile).toEqual(richProfile)
+      const priorModelCalls = modelCalls
+      const firstNode = calls[0]!.node!
+      calls[0]!.node = {
+        childNodeDigests: firstNode.childNodeDigests,
+        coveredPartEnd: firstNode.coveredPartEnd,
+        coveredPartStart: firstNode.coveredPartStart,
+        profile: {
+          anchors: firstNode.profile.anchors,
+          citations: firstNode.profile.citations,
+          places: firstNode.profile.places,
+          people: firstNode.profile.people,
+          themes: firstNode.profile.themes,
+          summaryEnglish: firstNode.profile.summaryEnglish,
+          version: firstNode.profile.version,
+        },
+      }
+      const replay = await runContentProfile(args)
+      expect(replay).toEqual(first)
+      expect(modelCalls).toBe(priorModelCalls)
+      calls[0]!.outputDigest = "f".repeat(64)
+      await expect(runContentProfile(args)).rejects.toMatchObject({
+        code: "profile_conflict",
+      })
+      expect(modelCalls).toBe(priorModelCalls)
+    },
+  )
 
   it("never reuses an unapplied late success, then recomputes under a new attempt", async () => {
     let coverageDigest = ""

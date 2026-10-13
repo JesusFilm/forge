@@ -409,7 +409,7 @@ export async function submitProfileAction(
         })
         if (calls.length > 127)
           conflict("Profile call history exceeds bounded status")
-        return {
+        const result = {
           generationId: input.generationId,
           cacheKey: input.cacheKey,
           profile: {
@@ -429,6 +429,9 @@ export async function submitProfileAction(
           },
           calls: calls.map(publicCall),
         }
+        if (byteLength(result) > 4 * 1024 * 1024)
+          conflict("Profile status exceeds bounded response")
+        return result
       }
       const active = await guards.hasOpenSubscriptionAttempt(
         tx,
@@ -690,7 +693,7 @@ export async function submitProfileAction(
           span.end === (profile.partDigests as string[]).length &&
           finalNode.success &&
           same(ordered, input.expectedNodeDigests) &&
-          byteLength(finalNode.data.profile) <= 4096 &&
+          byteLength(finalNode.data.profile) <= 16_384 &&
           (await validateAnchors(
             tx,
             profile.videoId,
@@ -999,7 +1002,7 @@ export async function submitProfileAction(
           })
         if (completedNode)
           conflict("Profile node already has an accepted receipt")
-        await guards.reserveBudget(tx, input.generationId, 5_120)
+        await guards.reserveBudget(tx, input.generationId, 17_408)
         await tx.recommendationPrecomputedProfileCall.create({
           data: {
             generationId: input.generationId,
@@ -1105,7 +1108,7 @@ export async function submitProfileAction(
         if (
           input.errorCode !== undefined ||
           !parsedNode.success ||
-          byteLength(input.node) > 4096 ||
+          byteLength(input.node) > 16_384 ||
           input.outputDigest !==
             (parsedNode.success ? hash(parsedNode.data) : "")
         )
