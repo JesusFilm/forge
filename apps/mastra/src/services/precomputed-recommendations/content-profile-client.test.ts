@@ -37,6 +37,70 @@ const call = {
 }
 
 describe("Admin content profile client", () => {
+  it.each([4096, 4097])(
+    "validates %s-byte nodes in a full 127-call status reply",
+    async (bytes) => {
+      const node = {
+        profile: {
+          version: "complete_profile_v1",
+          summaryEnglish: "s".repeat(600),
+          themes: Array(12).fill("t".repeat(80)),
+          people: Array(12).fill("p".repeat(80)),
+          places: Array(12).fill("é"),
+          citations: Array(12).fill("c"),
+          anchors: [],
+        },
+        coveredPartStart: 0,
+        coveredPartEnd: 1,
+        childNodeDigests: [],
+      }
+      const nodeBytes = () => Buffer.byteLength(JSON.stringify(node), "utf8")
+      for (const list of [node.profile.places, node.profile.citations]) {
+        for (let index = 0; index < list.length; index++)
+          list[index] += "x".repeat(
+            Math.min(80 - list[index]!.length, bytes - nodeBytes()),
+          )
+      }
+      expect(nodeBytes()).toBe(bytes)
+      const reply = {
+        generationId: registration.generationId,
+        cacheKey: registration.cacheKey,
+        profile: {
+          state: "in_progress",
+          kind: "transcript",
+          profileJson: null,
+          finalCallId: null,
+          coverageDigest: registration.coverageDigest,
+        },
+        calls: Array.from({ length: 127 }, (_, index) => ({
+          callId: `22222222-2222-4222-8222-${String(index).padStart(12, "0")}`,
+          nodeKey: "6".repeat(64),
+          stage: "map",
+          inputDigest: "7".repeat(64),
+          status: "succeeded",
+          nodeApplied: true,
+          outputDigest: "8".repeat(64),
+          node,
+        })),
+      }
+      expect(Buffer.byteLength(JSON.stringify(reply), "utf8")).toBeGreaterThan(
+        512 * 1024,
+      )
+      expect(Buffer.byteLength(JSON.stringify(reply), "utf8")).toBeLessThan(
+        1024 * 1024,
+      )
+      const client = createContentProfilePersistence(async () => reply)
+      const result = client.status({
+        action: "profile_status",
+        generationId: registration.generationId,
+        generationInputDigest: registration.generationInputDigest,
+        cacheKey: registration.cacheKey,
+      })
+      if (bytes === 4096) expect((await result).calls).toHaveLength(127)
+      else
+        await expect(result).rejects.toMatchObject({ code: "profile_conflict" })
+    },
+  )
   it("refuses a ready reply belonging to a different generation", async () => {
     const client = createContentProfilePersistence(async () => ({
       generationId: "another-generation",
@@ -143,7 +207,7 @@ describe("Admin content profile client", () => {
   })
 
   it("does not expose an oversized untrusted response in its error", async () => {
-    const untrusted = "private-response-".repeat(40_000)
+    const untrusted = "private-response-".repeat(80_000)
     const client = createContentProfilePersistence(async () => untrusted)
     await expect(client.register(registration)).rejects.toMatchObject({
       code: "profile_conflict",

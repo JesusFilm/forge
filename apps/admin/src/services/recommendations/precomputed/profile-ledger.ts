@@ -823,7 +823,7 @@ export async function submitProfileAction(
           })
         if (completedNode)
           conflict("Profile node already has an accepted receipt")
-        await guards.reserveBudget(tx, input.generationId, 3_072)
+        await guards.reserveBudget(tx, input.generationId, 5_120)
         await tx.recommendationPrecomputedProfileCall.create({
           data: {
             generationId: input.generationId,
@@ -895,7 +895,7 @@ export async function submitProfileAction(
         if (
           input.errorCode !== undefined ||
           !parsedNode.success ||
-          byteLength(input.node) > 2048 ||
+          byteLength(input.node) > 4096 ||
           input.outputDigest !==
             (parsedNode.success ? hash(parsedNode.data) : "")
         )
