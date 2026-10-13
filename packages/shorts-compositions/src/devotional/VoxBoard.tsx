@@ -974,7 +974,9 @@ export function VoxBoard({
   let z = cam.zoom
   for (let i = 1; i < shots.length; i++) {
     const s = shots[i]!
-    const p = prog(t, s.at - 0.25, 0.9, Easing.bezier(0.45, 0, 0.2, 1))
+    // A longer trip across the board takes longer, up to 1.5s.
+    const trip = Math.min(1.5, 0.9 + Math.hypot(s.x - x, s.y - y) / 3500)
+    const p = prog(t, s.at - 0.3, trip, Easing.bezier(0.45, 0, 0.2, 1))
     if (p <= 0) break
     // A wide move dips the zoom a little mid-way, like a hand-held pan.
     const dip =

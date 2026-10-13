@@ -246,7 +246,11 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
         : null}
       {/* An even dim, then the Figma's soft dark pool behind the text. */}
       {drawn ? null : (
-        <AbsoluteFill style={{ background: "rgba(0,0,0,0.28)" }} />
+        // Drawings over the film want the picture as atmosphere only
+        // (owner, 2026-10-13): darker and grainier.
+        <AbsoluteFill
+          style={{ background: `rgba(0,0,0,${filmNotes ? 0.66 : 0.28})` }}
+        />
       )}
       <div
         style={{
@@ -282,7 +286,13 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
             backgroundPosition: `${(((Math.floor(frame / 2) * 73) % 220) * width) / 900}px ${(((Math.floor(frame / 2) * 131) % 220) * width) / 900}px`,
             mixBlendMode: "overlay",
             // The black-and-white Vox film carries a heavier grain.
-            opacity: drawn ? 0.3 : vox ? 0.55 : LANGUAGE_GRAIN_OPACITY,
+            opacity: drawn
+              ? 0.3
+              : filmNotes
+                ? 0.9
+                : vox
+                  ? 0.55
+                  : LANGUAGE_GRAIN_OPACITY,
             pointerEvents: "none",
           }}
         />

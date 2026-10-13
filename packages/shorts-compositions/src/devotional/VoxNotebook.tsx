@@ -13,6 +13,7 @@ import {
   Photo,
   prog,
   RED,
+  SERIF,
   Written,
 } from "./VoxBoard"
 import type { TimedWord } from "./VoxLanguage"
@@ -348,6 +349,7 @@ function PageMarks({
   page: NotebookPage
   color: (c?: "ink" | "red") => string
 }) {
+  const { film } = useContext(Pal)
   return (
     <>
       <svg
@@ -371,8 +373,9 @@ function PageMarks({
             position: "absolute",
             left: f(l.x),
             top: f(l.y),
-            fontFamily: HAND,
-            fontWeight: 700,
+            // Over the film: the board's serif (owner, 2026-10-13).
+            fontFamily: film ? SERIF : HAND,
+            fontWeight: film ? ((l.size ?? 48) >= 60 ? 700 : 400) : 700,
             fontSize: f(l.size ?? 48),
             lineHeight: 1.1,
             color: color(l.color),
