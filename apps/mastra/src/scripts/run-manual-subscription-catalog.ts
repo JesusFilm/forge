@@ -108,7 +108,7 @@ const capacityMeasurement = z
 const configSchema = z
   .object({
     input: inputSchema,
-    concurrency: z.number().int().min(1).max(12).optional(),
+    concurrency: z.number().int().min(1).max(16).optional(),
     codexExecutable: localPath,
     stagingDirectory: localPath,
     capacityProbe: z

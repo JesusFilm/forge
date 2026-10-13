@@ -17,7 +17,7 @@ allowance; do not label that consumption as a $0 API bill or infer a refresh
 cadence from a small pilot.
 
 The local config accepts an optional top-level `concurrency` integer from 1 to
-12; omission preserves serial execution. It bounds independent video profiles
+16; omission preserves serial execution. It bounds independent video profiles
 and source-pair recommendation batches as well as simultaneous Codex calls.
 Maps and reductions within one profile, and pages within one source, remain
 ordered. The model, prompts, evidence, output limits and generation digest do

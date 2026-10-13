@@ -532,7 +532,7 @@ export function createCodexSubscriptionAstraModel(
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300_000)
     throw new CodexSubscriptionAstraError("operator_only")
   const concurrency = options.concurrency ?? 1
-  if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 12)
+  if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 16)
     throw new CodexSubscriptionAstraError("operator_only")
   let running = 0
   const waiting: Array<() => void> = []
