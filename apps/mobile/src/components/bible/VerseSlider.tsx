@@ -8,6 +8,7 @@ import {
 } from "react"
 import { Animated, Easing, StyleSheet, View } from "react-native"
 
+import { layoutSign } from "../../i18n/layoutRtl"
 import {
   advanceStage,
   changeReady,
@@ -88,6 +89,8 @@ export function VerseSlider({
   columnWidth,
 }: VerseSliderProps) {
   const input = { live, loading, slide, scrubbing, reduceMotion }
+  // A transform never mirrors, so a chapter change takes the sign (R11).
+  const sign = layoutSign()
   const [saved, setStage] = useState<Stage>(() => initialStage(input))
   const stage = advanceStage(saved, input, sameSource)
   if (stage !== saved) setStage(stage)
@@ -167,10 +170,10 @@ export function VerseSlider({
     const done = Math.min(1, elapsed / timing.duration)
     setStage((current) =>
       current.change?.id === changeId
-        ? interruptChange(current, live, done)
+        ? interruptChange(current, live, done, sign)
         : current,
     )
-  }, [interrupting, live, changeId, timing.duration])
+  }, [interrupting, live, changeId, timing.duration, sign])
 
   useEffect(() => {
     if (changeId === null || ready) return
@@ -218,7 +221,7 @@ export function VerseSlider({
   const fromY = change?.from?.y ?? 0
   const layers = useMemo(() => {
     const place = { opacity: fromOpacity, x: fromX, y: fromY }
-    const curves = slideCurves(direction, axis, place, timing.split)
+    const curves = slideCurves(direction, axis, place, timing.split, sign)
     const along = (curve: SlideCurve) =>
       progress.interpolate({ ...curve, extrapolate: "clamp" })
     const style = (layer: {
@@ -236,7 +239,7 @@ export function VerseSlider({
       incoming: style(curves.incoming),
       outgoing: style(curves.outgoing),
     }
-  }, [direction, axis, fromOpacity, fromX, fromY, timing.split, progress])
+  }, [direction, axis, fromOpacity, fromX, fromY, timing.split, progress, sign])
 
   // Until the interrupt lands, the shown verse keeps its view.
   const view =

@@ -138,6 +138,7 @@
     "versesAriaValue": "Шигырьләр {first}–{last}, барлыгы {total}, {chapter}",
     "demoVerse": "Киләсе шигырь өчен өскә сыпырыгыз",
     "demoChapter": "Киләсе бүлек өчен сулга сыпырыгыз",
+    "demoChapterRtl": "Киләсе бүлек өчен уңга сыпырыгыз",
     "demoSkip": "Калдыру өчен басыгыз",
     "demoSkipAriaLabel": "Сыпыру күрсәтмәсен калдыру",
     "selectVerseAriaHint": "Бу шигырьне сайлау өчен ике тапкыр басыгыз",

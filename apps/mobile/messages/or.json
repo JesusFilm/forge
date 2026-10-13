@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} ମଧ୍ୟରୁ ପଦ {first}ରୁ {last}, {chapter}",
     "demoVerse": "ପରବର୍ତ୍ତୀ ପଦ ପାଇଁ ଉପରକୁ ସ୍ୱାଇପ୍ କରନ୍ତୁ",
     "demoChapter": "ପରବର୍ତ୍ତୀ ଅଧ୍ୟାୟ ପାଇଁ ବାମକୁ ସ୍ୱାଇପ୍ କରନ୍ତୁ",
+    "demoChapterRtl": "ପରବର୍ତ୍ତୀ ଅଧ୍ୟାୟ ପାଇଁ ଡାହାଣକୁ ସ୍ୱାଇପ୍ କରନ୍ତୁ",
     "demoSkip": "ଛାଡ଼ିବାକୁ ଟ୍ୟାପ୍ କରନ୍ତୁ",
     "demoSkipAriaLabel": "ସ୍ୱାଇପ୍ ପ୍ରଦର୍ଶନ ଛାଡ଼ନ୍ତୁ",
     "selectVerseAriaHint": "ଏହି ପଦ ବାଛିବାକୁ ଦୁଇଥର ଟ୍ୟାପ୍ କରନ୍ତୁ",

@@ -96,6 +96,7 @@ type FadeSpy = {
   calls: number
 }
 let fade: FadeSpy
+const renderers = new Set<TestInstance>()
 
 beforeEach(() => {
   jest.clearAllMocks()
@@ -119,6 +120,10 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  act(() => {
+    for (const renderer of renderers) renderer.unmount()
+  })
+  renderers.clear()
   jest.restoreAllMocks()
 })
 
@@ -128,6 +133,7 @@ function renderHost(): TestInstance {
     renderer = TestRenderer.create(createElement(SplashHost))
   })
   if (!renderer) throw new Error("render failed")
+  renderers.add(renderer)
   return renderer
 }
 
@@ -316,6 +322,7 @@ describe("SplashCoveredTree", () => {
       )
     })
     if (!renderer) throw new Error("render failed")
+    renderers.add(renderer)
     return renderer
   }
 

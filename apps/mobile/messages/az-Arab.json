@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} آیه‌دن {first} نۆمره‌دن {last} نۆمره‌یه قدر آیه‌لر، {chapter}",
     "demoVerse": "سونراکی آیه اۆچۆن یوخاری سۆرۆشدۆرۆن",
     "demoChapter": "سونراکی فصل اۆچۆن سولا سۆرۆشدۆرۆن",
+    "demoChapterRtl": "سونراکی فصل اۆچۆن ساغا سۆرۆشدۆرۆن",
     "demoSkip": "کئچمک اۆچۆن توخونون",
     "demoSkipAriaLabel": "سۆرۆشدۆرمه گؤستریشینی کئچ",
     "selectVerseAriaHint": "بو آیه‌نی سئچمک اۆچۆن ایکی دفعه توخونون",

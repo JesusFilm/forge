@@ -138,6 +138,7 @@
     "versesAriaValue": "ຂໍ້ {first} ຫາ {last} ຈາກ {total}, {chapter}",
     "demoVerse": "ປັດຂຶ້ນເພື່ອໄປຂໍ້ຕໍ່ໄປ",
     "demoChapter": "ປັດຊ້າຍເພື່ອໄປບົດຕໍ່ໄປ",
+    "demoChapterRtl": "ປັດຂວາເພື່ອໄປບົດຕໍ່ໄປ",
     "demoSkip": "ແຕະເພື່ອຂ້າມ",
     "demoSkipAriaLabel": "ຂ້າມການສາທິດການປັດ",
     "selectVerseAriaHint": "ແຕະສອງເທື່ອເພື່ອເລືອກຂໍ້ນີ້",

@@ -1,0 +1,407 @@
+{
+  "translation": {
+    "id": "jpn_loc",
+    "name": "新改訳新約聖書(1965年版)",
+    "website": "https://ebible.org/Scriptures/details.php?id=jpn1965",
+    "licenseUrl": "https://ebible.org/Scriptures/details.php?id=jpn1965",
+    "shortName": "LOC",
+    "englishName": "New Japanese NT",
+    "language": "jpn",
+    "textDirection": "ltr",
+    "sha256": "64b42650f0f927e4ba1d8875fd03d14601dbb0e688aba42457115253791ae1ef",
+    "availableFormats": ["json"],
+    "listOfBooksApiLink": "/api/jpn_loc/books.json",
+    "completeTranslationApiLink": "/api/jpn_loc/complete.json",
+    "simpleCompleteTranslationApiLink": "/api/jpn_loc/complete.simple.json",
+    "numberOfBooks": 27,
+    "totalNumberOfChapters": 260,
+    "totalNumberOfVerses": 7939,
+    "languageName": "日本語",
+    "languageEnglishName": "Japanese"
+  },
+  "book": {
+    "id": "MAT",
+    "translationId": "jpn_loc",
+    "name": "マタイの福音書",
+    "commonName": "マタイの福音書",
+    "title": "マタイの福音書",
+    "order": 40,
+    "numberOfChapters": 28,
+    "sha256": "bb83bdff5b5d8457a4552f127efa9a63f41be93716d55f104de9e82841b1ac28",
+    "firstChapterNumber": 1,
+    "firstChapterApiLink": "/api/jpn_loc/MAT/1.json",
+    "firstChapterReference": {
+      "translationId": "jpn_loc",
+      "book": "MAT",
+      "chapter": 1
+    },
+    "lastChapterNumber": 28,
+    "lastChapterApiLink": "/api/jpn_loc/MAT/28.json",
+    "lastChapterReference": {
+      "translationId": "jpn_loc",
+      "book": "MAT",
+      "chapter": 28
+    },
+    "totalNumberOfVerses": 1071
+  },
+  "chapter": {
+    "number": 5,
+    "content": [
+      {
+        "type": "verse",
+        "number": 1,
+        "content": [
+          "この群衆を見て、イエスは山に登り、おすわりになると、弟子たちがみもとに来た。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 2,
+        "content": ["そこで、イエスは口を開き、彼らに教えて、言われた。"]
+      },
+      {
+        "type": "verse",
+        "number": 3,
+        "content": [
+          "「心の貧しい者は幸いです。天の御国はその人のものだからです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 4,
+        "content": ["悲しむ者は幸いです。その人は慰められるからです。"]
+      },
+      {
+        "type": "verse",
+        "number": 5,
+        "content": ["柔和な者は幸いです。その人は地を相続するからです。"]
+      },
+      {
+        "type": "verse",
+        "number": 6,
+        "content": [
+          "義に飢え渇いている者は幸いです。その人は満ち足りるからです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 7,
+        "content": [
+          "あわれみ深い者は幸いです。その人はあわれみを受けるからです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 8,
+        "content": ["心のきよい者は幸いです。その人は神を見るからです。"]
+      },
+      {
+        "type": "verse",
+        "number": 9,
+        "content": [
+          "平和をつくる者は幸いです。その人は神の子どもと呼ばれるからです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 10,
+        "content": [
+          "義のために迫害されている者は幸いです。天の御国はその人のものだからです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 11,
+        "content": [
+          "わたしのために、ののしられたり、迫害されたり、また、ありもしないことで悪口雑言を言われたりするとき、あなたがたは幸いです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 12,
+        "content": [
+          "喜びなさい。喜びおどりなさい。天においてあなたがたの報いは大きいのだから。あなたがたより前に来た預言者たちも、そのように迫害されました。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 13,
+        "content": [
+          "あなたがたは、地の塩です。もし塩が塩けをなくしたら、何によって塩けをつけるのでしょう。もう何の役にも立たず、外に捨てられて、人々に踏みつけられるだけです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 14,
+        "content": [
+          "あなたがたは、世界の光です。山の上にある町は隠れる事ができません。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 15,
+        "content": [
+          "また、あかりをつけて、それを枡の下に置く者はありません。燭台の上に置きます。そうすれば、家にいる人々全部を照らします。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 16,
+        "content": [
+          "このように、あなたがたの光を人々の前で輝かせ、人々があなたがたの良い行ないを見て、天におられるあなたがたの父をあがめるようにしなさい。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 17,
+        "content": [
+          "わたしが来たのは律法や預言者を廃棄するためだと思ってはなりません。廃棄するためにではなく、成就するために来たのです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 18,
+        "content": [
+          "まことに、あなたがたに告げます。天地が滅びうせない限り、律法の中の一点一画でも決してすたれることはありません。全部が成就されます。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 19,
+        "content": [
+          "だから、戒めのうち最も小さいものの一つでも、これを破ったり、また破るように人に教えたりする者は、天の御国で、最も小さい者と呼ばれます。しかし、それを守り、また守るように教える者は、天の御国で、偉大な者と呼ばれます。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 20,
+        "content": [
+          "まことに、あなたがたに告げます。もしあなたがたの義が、律法学者やパリサイ人の義にまさるものでないなら、あなたがたは決して天の御国に、はいれません。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 21,
+        "content": [
+          "昔の人々に、『人を殺してはならない。人を殺す者はさばきを受けなければならない。』と言われたのを、あなたがたは聞いています。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 22,
+        "content": [
+          "しかし、わたしはあなたがたに言います。兄弟に向かって腹を立てる者は、だれでもさばきを受けなければなりません。兄弟に向かって『能なし。』と言うような者は、最高議会に引き渡されます。また、『ばか者。』と言うような者は燃えるゲヘナに投げ込まれます。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 23,
+        "content": [
+          "だから、祭壇の上に供え物をささげようとしているとき、もし兄弟に恨まれていることをそこで思い出したなら、"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 24,
+        "content": [
+          "供え物はそこに、祭壇の前に置いたままにして、出て行って、まずあなたの兄弟と仲直りをしなさい。それから、来て、その供え物をささげなさい。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 25,
+        "content": [
+          "あなたを告訴する者とは、あなたが彼といっしょに途中にある間に早く仲良くなりなさい。そうでないと、告訴する者は、あなたを裁判官に引き渡し、裁判官は下役に引き渡して、あなたはついに牢に入れられることになります。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 26,
+        "content": [
+          "まことに、あなたに告げます。あなたは最後の一コドラントを支払うまでは、そこから出ては来られません。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 27,
+        "content": [
+          "『姦淫してはならない。』と言われたのを、あなたがたは聞いています。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 28,
+        "content": [
+          "しかし、わたしはあなたがたに言います。だれでも情欲をいだいて女を見る者は、すでに心の中で姦淫を犯したのです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 29,
+        "content": [
+          "もし、右の目が、あなたをつまずかせるなら、えぐり出して、捨ててしまいなさい。からだの一部を失っても、からだ全体ゲヘナに投げ込まれるよりは、よいからです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 30,
+        "content": [
+          "もし、右の手があなたをつまずかせるなら、切って、捨ててしまいなさい。からだの一部を失っても、からだ全体ゲヘナに落ちるよりは、よいからです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 31,
+        "content": [
+          "また『だれでも、妻を離別する者は、妻に離婚状を与えよ。』と言われています。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 32,
+        "content": [
+          "しかし、わたしはあなたがたに言います。だれであっても、不貞以外の理由で妻を離別する者は、妻に姦淫を犯させるのです。また、だれでも、離別された女と結婚すれば、姦淫を犯すのです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 33,
+        "content": [
+          "さらにまた、昔の人々に、『偽りの誓いを立ててはならない。あなたの誓ったことを主に果たせ。』と言われていたのを、あなたがたは聞いています。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 34,
+        "content": [
+          "しかし、わたしはあなたがたに言います。決して誓ってはいけません。すなわち、天をさして誓ってはいけません。そこは神の御座だからです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 35,
+        "content": [
+          "地をさして誓ってもいけません。そこは神の足台だからです。エルサレムをさして誓ってもいけません。そこは偉大な王の都だからです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 36,
+        "content": [
+          "あなたの頭をさして誓ってもいけません。あなたは、一本の髪の毛すら、白くも黒くもできないからです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 37,
+        "content": [
+          "だから、あなたがたは、『はい。』は『はい。』、『いいえ。』は『いいえ。』とだけ言いなさい。それ以上のことは悪いことです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 38,
+        "content": [
+          "『目には目で、歯には歯で。』と言われたのを、あなたがたは聞いています。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 39,
+        "content": [
+          "しかし、わたしはあなたがたに言います。悪い者に手向かってはいけません。あなたの右の頬を打つような者には、左の頬も向けなさい。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 40,
+        "content": [
+          "あなたを告訴して下着を取ろうとする者には、上着もやりなさい。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 41,
+        "content": [
+          "あなたに一ミリオン行けと強いるような者とは、いっしょに二ミリオン行きなさい。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 42,
+        "content": [
+          "求める者には与え、借りようとする者は断わらないようにしなさい。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 43,
+        "content": [
+          "『自分の隣人を愛し、自分の敵を憎め。』と言われたのを、あなたがたは聞いています。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 44,
+        "content": [
+          "しかし、わたしはあなたがたに言います。自分の敵を愛し、迫害する者のために祈りなさい。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 45,
+        "content": [
+          "それでこそ、天におられるあなたがたの父の子どもになれるのです。天の父は、悪い人にも良い人にも太陽を上らせ、正しい人にも正しくない人にも雨を降らせてくださるからです。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 46,
+        "content": [
+          "自分を愛してくれる者を愛したからといって、何の報いが受けられるでしょう。取税人でも、同じことをしているではありませんか。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 47,
+        "content": [
+          "また、自分の兄弟にだけあいさつしたからといって、どれだけまさったことをしたのでしょう。異邦人でも同じことをするではありませんか。"
+        ]
+      },
+      {
+        "type": "verse",
+        "number": 48,
+        "content": [
+          "だから、あなたがたは、天の父が完全なように、完全でありなさい。"
+        ]
+      }
+    ],
+    "footnotes": []
+  },
+  "thisChapterLink": "/api/jpn_loc/MAT/5.json",
+  "thisChapterReference": {
+    "translationId": "jpn_loc",
+    "book": "MAT",
+    "chapter": 5
+  },
+  "thisChapterAudioLinks": {},
+  "nextChapterApiLink": "/api/jpn_loc/MAT/6.json",
+  "nextChapterReference": {
+    "translationId": "jpn_loc",
+    "book": "MAT",
+    "chapter": 6
+  },
+  "nextChapterAudioLinks": {},
+  "previousChapterApiLink": "/api/jpn_loc/MAT/4.json",
+  "previousChapterReference": {
+    "translationId": "jpn_loc",
+    "book": "MAT",
+    "chapter": 4
+  },
+  "previousChapterAudioLinks": {},
+  "thisChapterAudioTimings": {},
+  "nextChapterAudioTimings": {},
+  "previousChapterAudioTimings": {},
+  "numberOfVerses": 48,
+  "simpleChapterApiLink": "/api/jpn_loc/MAT/5.simple.json"
+}

@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}-тӥ стихысен {last}-тӥ стихозь, ваньмыз {total}, {chapter}",
     "demoVerse": "Вуоно стих понна выллань нюртэ",
     "demoChapter": "Вуоно глава понна паллян пала нюртэ",
+    "demoChapterRtl": "Вуоно глава понна бур пала нюртэ",
     "demoSkip": "Ортчытон понна ӟыгыртэ",
     "demoSkipAriaLabel": "Нюртон возьматонэз ортчытыны",
     "selectVerseAriaHint": "Та стихез быръян понна кык пол ӟыгыртэ",

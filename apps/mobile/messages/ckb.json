@@ -138,6 +138,7 @@
     "versesAriaValue": "ئایەتەکانی {first} تا {last} لە {total}، {chapter}",
     "demoVerse": "بۆ ئایەتی دواتر پەنجە بەرەو سەرەوە بخشێنە",
     "demoChapter": "بۆ بەشی دواتر پەنجە بەرەو چەپ بخشێنە",
+    "demoChapterRtl": "بۆ بەشی دواتر پەنجە بەرەو ڕاست بخشێنە",
     "demoSkip": "بۆ تێپەڕاندن دەستی لێ بدە",
     "demoSkipAriaLabel": "تێپەڕاندنی نمایشی خشاندن",
     "selectVerseAriaHint": "دوو جار دەستی لێ بدە بۆ هەڵبژاردنی ئەم ئایەتە",

@@ -138,6 +138,7 @@
     "versesAriaValue": "Litemana tsa {first} ho isa ho {last} ho tse {total}, {chapter}",
     "demoVerse": "Hula holimo bakeng sa temana e latelang",
     "demoChapter": "Hula ho ea leqeleng bakeng sa khaolo e latelang",
+    "demoChapterRtl": "Hula ho ea ka ho le letona bakeng sa khaolo e latelang",
     "demoSkip": "Tlanya ho tlola",
     "demoSkipAriaLabel": "Tlola pontšo ea ho hula",
     "selectVerseAriaHint": "Tlanya habeli ho khetha temana ena",

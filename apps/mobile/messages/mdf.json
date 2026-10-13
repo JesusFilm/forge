@@ -138,6 +138,7 @@
     "versesAriaValue": "Стихт {first}-ста {last}-с, сембе {total}, {chapter}",
     "demoVerse": "Сай стихть инкса таргада верев",
     "demoChapter": "Сай главать инкса таргада керш ширес",
+    "demoChapterRtl": "Сай главать инкса таргада вить ширес",
     "demoSkip": "Ётамс инкса токада",
     "demoSkipAriaLabel": "Таргамань няфтемать ётамс",
     "selectVerseAriaHint": "Тя стихть кочкамс инкса кафксть токада",
