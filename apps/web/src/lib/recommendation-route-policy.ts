@@ -30,8 +30,14 @@ function validateRecommendationHeaders(
   expectedOrigin: string,
 ): void {
   const origin = request.headers.get("origin")
+  // Develop proxies the production Watch app. Its browser Origin stays develop;
+  // Next.js serverActions.allowedOrigins does not apply to these Route Handlers.
+  const isTrustedDevelopOrigin =
+    expectedOrigin === "https://www.jesusfilm.org" &&
+    origin === "https://develop.jesusfilm.org"
   if (
     origin !== expectedOrigin &&
+    !isTrustedDevelopOrigin &&
     !isForwardedLoopbackDevelopmentOrigin(origin, expectedOrigin)
   ) {
     throw new RecommendationRouteError(403, "invalid_origin")
