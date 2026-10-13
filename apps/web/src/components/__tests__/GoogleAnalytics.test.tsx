@@ -127,14 +127,104 @@ describe("GoogleAnalytics", () => {
     expect(scripts).toHaveLength(2)
     expect(
       scripts.map((script) => script.getAttribute("data-strategy")),
-    ).toEqual(["afterInteractive", "afterInteractive"])
+    ).toEqual(["lazyOnload", "afterInteractive"])
     expect(scripts[0]?.getAttribute("data-src")).toBe(
       "https://www.googletagmanager.com/gtag/js?id=G-TEST12345",
     )
     expect(scripts[1]?.id).toBe("google-analytics-init")
     expect(scripts[1]?.textContent).toContain(
-      "window.gtag('config', \"G-TEST12345\")",
+      "window.gtag('config', \"G-TEST12345\", { page_location: window.location.href, page_title: document.title })",
     )
+  })
+
+  // W-026: the external tag is `lazyOnload` so Next emits no head preload for
+  // it and it never competes with LCP. That is only safe because the inline
+  // bootstrap stays early and buffers every call until the tag arrives.
+  it("queues gtag calls in dataLayer before the lazily loaded tag arrives", async () => {
+    mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-TEST12345"
+
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    const scripts = Array.from(container.querySelectorAll("[data-next-script]"))
+    const tag = scripts.find((script) => script.hasAttribute("data-src"))
+    const bootstrap = scripts.find(
+      (script) => script.id === "google-analytics-init",
+    )
+    expect(tag?.getAttribute("data-strategy")).toBe("lazyOnload")
+    expect(bootstrap?.getAttribute("data-strategy")).toBe("afterInteractive")
+
+    // Run the bootstrap as the browser would, with no Google tag present.
+    const landingHref = window.location.href
+    const landingTitle = document.title
+    new Function(bootstrap?.textContent ?? "")()
+
+    expect(typeof window.gtag).toBe("function")
+    reportGoogleAnalyticsEvent("watch_share_opened", { surface: "header" })
+
+    // The reader moves on before the tag arrives. The queued `config` must
+    // still name the landing page, or the late tag would report the landing
+    // page view under this one.
+    window.history.pushState({}, "", "/watch/after-landing.html")
+    document.title = "After landing"
+    try {
+      const queued = (window.dataLayer ?? []).map((entry) =>
+        Array.from(entry as ArrayLike<unknown>),
+      )
+      expect(queued.map(([command]) => command)).toEqual([
+        "js",
+        "config",
+        "event",
+      ])
+      expect(queued[1]).toEqual([
+        "config",
+        "G-TEST12345",
+        { page_location: landingHref, page_title: landingTitle },
+      ])
+      expect(landingHref).not.toBe(window.location.href)
+      expect(queued[2]).toEqual([
+        "event",
+        "share_opened",
+        { surface: "header" },
+      ])
+    } finally {
+      window.history.replaceState({}, "", landingHref)
+      document.title = landingTitle
+    }
+  })
+
+  it("pins the v1 route-change location and title at call time", async () => {
+    const gtag = vi.fn()
+    window.gtag = gtag
+    mockEnv.NEXT_PUBLIC_GOOGLE_ANALYTICS_MEASUREMENT_ID = "G-TEST12345"
+    const landingHref = window.location.href
+    const landingTitle = document.title
+
+    act(() => {
+      root.render(<GoogleAnalytics />)
+    })
+    await flushEffects()
+
+    try {
+      window.history.pushState({}, "", "/watch/languages.html")
+      document.title = "Languages"
+      navigationState.pathname = "/watch/languages.html"
+      act(() => {
+        root.render(<GoogleAnalytics />)
+      })
+      await flushEffects()
+
+      expect(gtag).toHaveBeenCalledWith("config", "G-TEST12345", {
+        page_path: "/watch/languages.html",
+        page_location: new URL("/watch/languages.html", landingHref).href,
+        page_title: "Languages",
+      })
+    } finally {
+      window.history.replaceState({}, "", landingHref)
+      document.title = landingTitle
+    }
   })
 
   // v1 CHARACTERIZATION. The assertions below freeze the collector behavior the
@@ -153,12 +243,13 @@ describe("GoogleAnalytics", () => {
     const bootstrap = Array.from(
       container.querySelectorAll("[data-next-script]"),
     )[1]
-    // v1 bootstraps with a bare `config` and no options object, so GA4's
+    // v1 bootstraps `config` with only the browser's own location and title
+    // (captured at call time for the lazily loaded tag, W-026), so GA4's
     // automatic `send_page_view` fires for the raw browser URL. R8 requires v2
     // to set `send_page_view: false` here; pinning its absence makes that a
     // visible change rather than a silent one.
     expect(bootstrap?.textContent).toContain(
-      "window.gtag('config', \"G-TEST12345\")",
+      "window.gtag('config', \"G-TEST12345\", { page_location: window.location.href, page_title: document.title })",
     )
     expect(bootstrap?.textContent).not.toContain("send_page_view")
     // No manual page view is emitted from React on the initial commit.
@@ -186,6 +277,8 @@ describe("GoogleAnalytics", () => {
 
     expect(gtag).toHaveBeenCalledWith("config", "G-TEST12345", {
       page_path: "/watch/languages.html?source=header",
+      page_location: window.location.href,
+      page_title: document.title,
     })
     // v1 route changes are `config` calls, not `event`/`page_view` calls, and
     // the query string is part of the reported page identity (superseded by
@@ -496,6 +589,8 @@ describe("GoogleAnalytics — flag-off rollback (R24)", () => {
     expect(pageViews(gtag)).toHaveLength(0)
     expect(gtag).toHaveBeenCalledWith("config", MEASUREMENT_ID, {
       page_path: "/watch/jesus.html/urdu.html",
+      page_location: window.location.href,
+      page_title: document.title,
     })
     const bootstrap = Array.from(
       container.querySelectorAll("[data-next-script]"),
