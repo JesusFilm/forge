@@ -278,20 +278,26 @@ export async function deriveGaImportDestinationIdentity(
     fail()
   videos.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
   const corpus = createHash("sha256")
-  for (const video of videos) {
-    const chunkDigest = await selectedChunkDigest(
-      prisma,
-      authorizationHeader,
-      cutoff,
-      video,
+  // Stay below Admin's 10-connection pool. Drain the current window before
+  // returning an error, and hash in catalog order regardless of completion order.
+  for (let offset = 0; offset < videos.length; offset += 4) {
+    const window = videos.slice(offset, offset + 4)
+    const digests = await Promise.allSettled(
+      window.map((video) =>
+        selectedChunkDigest(prisma, authorizationHeader, cutoff, video),
+      ),
     )
-    corpus.update(
-      JSON.stringify([
-        video.id,
-        video.transcriptSelection ?? null,
-        chunkDigest,
-      ]),
-    )
+    for (const [index, result] of digests.entries()) {
+      if (result.status === "rejected") throw result.reason
+      const video = window[index]
+      corpus.update(
+        JSON.stringify([
+          video.id,
+          video.transcriptSelection ?? null,
+          result.value,
+        ]),
+      )
+    }
   }
   const routeMappingDigest = sha(
     JSON.stringify(

@@ -611,5 +611,274 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       expect(downloaded.status).toBe(200)
       expect(Buffer.from(await downloaded.arrayBuffer())).toEqual(body)
     })
+    it("verifies all 1031 videos with four bounded reads and preserves identity despite out-of-order completion", async () => {
+      await prisma.video.update({
+        where: { id: videoId },
+        data: { restrictViewPlatforms: ["watch"] },
+      })
+      const ids = Array.from(
+        { length: 1031 },
+        (_, index) => `bounded-${String(index).padStart(4, "0")}`,
+      )
+      await prisma.video.createMany({
+        data: ids.map((id) => ({ id, coreId: id, slug: id })),
+      })
+      await prisma.videoLocale.createMany({
+        data: ids.map((id) => ({
+          id: `locale-${id}`,
+          videoId: id,
+          locale: "en",
+          status: "PUBLISHED",
+          title: id,
+        })),
+      })
+      await prisma.videoDub.createMany({
+        data: ids.map((id) => ({
+          id: `dub-${id}`,
+          coreId: `dub-${id}`,
+          videoId: id,
+          languageId: `language-${suffix}`,
+          muxVideoId: `mux-${suffix}`,
+          published: true,
+        })),
+      })
+      for (const id of ids.slice(0, 2)) {
+        await prisma.videoEdition.create({
+          data: {
+            id: `edition-${id}`,
+            coreId: `edition-${id}`,
+            name: "Bounded fixture",
+          },
+        })
+        await prisma.videoTranscript.create({
+          data: {
+            id: `transcript-${id}`,
+            videoEditionId: `edition-${id}`,
+            videoId: id,
+            language: "en",
+            model: "fixture",
+            dimensions: 1536,
+            chunkingType: "fixture",
+            maxChunkTokens: 100,
+            overlapTokens: 0,
+            totalChunks: 51,
+            totalTokens: 51,
+            generatedAt: new Date(),
+          },
+        })
+        await prisma.videoTranscriptChunk.createMany({
+          data: Array.from({ length: 51 }, (_, index) => ({
+            id: `${id}-chunk-${String(index).padStart(2, "0")}`,
+            transcriptId: `transcript-${id}`,
+            language: "en",
+            chunkIndex: index,
+            chunkId: `chunk-${index}`,
+            text: `Grounded source ${id} chunk ${index}.`,
+            rawSourceText: `Grounded source ${id} chunk ${index}.`,
+            tokenCount: 1,
+          })),
+        })
+      }
+      const generation = {
+        id: "bounded-generation",
+        inputDigest: destinationDigest,
+        sourceSetDigest: digest(ids),
+        inputCutoff: new Date(Date.now() + 120_000),
+        expectedSourceCount: ids.length,
+      }
+      const intent = { candidatePoolDigest, ...dates }
+      const baseline = await deriveGaImportDestinationIdentity(
+        prisma,
+        bearer,
+        generation,
+        intent,
+      )
+      expect(baseline.selectedCorpusDigest).toBe(
+        "ce4f0097455cee16d19c0ffe2c193fbad00f2e5e3ab1703ad8ed9eb04f45d0ee",
+      )
+      const transaction = prisma.$transaction.bind(prisma)
+      let active = 0
+      let peak = 0
+      const completed: string[] = []
+      const reads: string[] = []
+      const observedPrisma = new Proxy(prisma, {
+        get(target, key) {
+          if (key !== "$transaction") return Reflect.get(target, key)
+          return async (
+            callback: (tx: Prisma.TransactionClient) => Promise<unknown>,
+            options?: {
+              isolationLevel?: Prisma.TransactionIsolationLevel
+              timeout?: number
+              maxWait?: number
+            },
+          ) => {
+            const result: unknown = await transaction(callback, options)
+            if (
+              typeof result === "object" &&
+              result !== null &&
+              "action" in result &&
+              result.action === "chunks" &&
+              "videoId" in result &&
+              typeof result.videoId === "string"
+            ) {
+              active++
+              peak = Math.max(peak, active)
+              reads.push(result.videoId)
+              try {
+                const index = ids.indexOf(result.videoId)
+                if (index < 4)
+                  await new Promise((resolve) =>
+                    setTimeout(resolve, (4 - index) * 20),
+                  )
+                completed.push(result.videoId)
+              } finally {
+                active--
+              }
+            }
+            return result
+          }
+        },
+      })
+      try {
+        const concurrent = await deriveGaImportDestinationIdentity(
+          observedPrisma,
+          bearer,
+          generation,
+          intent,
+        )
+        expect(concurrent).toEqual(baseline)
+        expect(new Set(reads)).toEqual(new Set(ids))
+        expect(reads.filter((id) => id === ids[0])).toHaveLength(2)
+        expect(reads.filter((id) => id === ids[1])).toHaveLength(2)
+        expect(peak).toBe(4)
+        expect(active).toBe(0)
+        expect(completed[0]).not.toBe(ids[0])
+      } finally {
+        await prisma.videoDub.deleteMany({ where: { videoId: { in: ids } } })
+        await prisma.videoTranscript.deleteMany({
+          where: { videoId: { in: ids } },
+        })
+        await prisma.videoLocale.deleteMany({ where: { videoId: { in: ids } } })
+        await prisma.video.deleteMany({ where: { id: { in: ids } } })
+      }
+    }, 120_000)
+    it("drains already-running catalog reads before propagating a failure and does not start the next window", async () => {
+      await prisma.video.update({
+        where: { id: videoId },
+        data: { restrictViewPlatforms: ["watch"] },
+      })
+      const ids = Array.from({ length: 8 }, (_, index) => `drain-${index}`)
+      await prisma.video.createMany({
+        data: ids.map((id) => ({ id, coreId: id, slug: id })),
+      })
+      await prisma.videoLocale.createMany({
+        data: ids.map((id) => ({
+          id: `locale-${id}`,
+          videoId: id,
+          locale: "en",
+          status: "PUBLISHED",
+          title: id,
+        })),
+      })
+      await prisma.videoDub.createMany({
+        data: ids.map((id) => ({
+          id: `dub-${id}`,
+          coreId: `dub-${id}`,
+          videoId: id,
+          languageId: `language-${suffix}`,
+          muxVideoId: `mux-${suffix}`,
+          published: true,
+        })),
+      })
+      const generation = {
+        id: "drain-generation",
+        inputDigest: destinationDigest,
+        sourceSetDigest: digest(ids),
+        inputCutoff: new Date(Date.now() + 120_000),
+        expectedSourceCount: ids.length,
+      }
+      const transaction = prisma.$transaction.bind(prisma)
+      const failure = new Error("fixture database read failed")
+      let release!: () => void
+      const blocked = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      let started!: () => void
+      const allStarted = new Promise<void>((resolve) => {
+        started = resolve
+      })
+      let failed!: () => void
+      const failureStarted = new Promise<void>((resolve) => {
+        failed = resolve
+      })
+      let active = 0
+      let settled = false
+      const reads: string[] = []
+      const observedPrisma = new Proxy(prisma, {
+        get(target, key) {
+          if (key !== "$transaction") return Reflect.get(target, key)
+          return async (
+            callback: (tx: Prisma.TransactionClient) => Promise<unknown>,
+            options?: {
+              isolationLevel?: Prisma.TransactionIsolationLevel
+              timeout?: number
+              maxWait?: number
+            },
+          ) => {
+            const result: unknown = await transaction(callback, options)
+            if (
+              typeof result === "object" &&
+              result !== null &&
+              "action" in result &&
+              result.action === "chunks" &&
+              "videoId" in result &&
+              typeof result.videoId === "string"
+            ) {
+              reads.push(result.videoId)
+              if (result.videoId === ids[0]) {
+                failed()
+                throw failure
+              }
+              active++
+              if (active === 3) started()
+              try {
+                await blocked
+              } finally {
+                active--
+              }
+            }
+            return result
+          }
+        },
+      })
+      const outcome = deriveGaImportDestinationIdentity(
+        observedPrisma,
+        bearer,
+        generation,
+        { candidatePoolDigest, ...dates },
+      ).then(
+        (value) => {
+          settled = true
+          return value
+        },
+        (error: unknown) => {
+          settled = true
+          return error
+        },
+      )
+      try {
+        await Promise.all([allStarted, failureStarted])
+        await new Promise((resolve) => setImmediate(resolve))
+        expect(settled).toBe(false)
+        expect(active).toBe(3)
+        release()
+        expect(await outcome).toBe(failure)
+        expect(active).toBe(0)
+        expect(reads.sort()).toEqual(ids.slice(0, 4))
+      } finally {
+        release()
+        await outcome
+      }
+    }, 30_000)
   },
 )
