@@ -1661,11 +1661,17 @@ design record is
   PR #47615 (merged 2026-07-09): it drains the tap queue after a listener
   handles a tap.
   - For a patch bump, diff the old and new packages' `android/` folders under
-    `node_modules/.pnpm`. When only the version strings changed and every fact
-    passes, bump the pins; the device pass still applies.
+    `node_modules/.pnpm`. Bump the pins without a new device pass only when
+    every fact passes and the diff changes nothing but the package's own
+    `version`, `versionName`, and `versionCode` lines.
+  - Any other change needs a cold tap on a release build first: stop the
+    process with `am kill`, tap an announcement, and read the two logs below.
+    A changed dependency version counts, for example `firebase-messaging` in
+    expo-notifications' `build.gradle` or in the `.pom` under its
+    `local-maven-repo/`, because the build links that prebuilt library.
   - The device pass ran on `expo` 57.0.27 and `expo-updates` 57.0.25. On
-    2026-10-13 the pins moved to 57.0.28 and 57.0.26 by that check: only
-    `build.gradle` version strings differed.
+    2026-10-13 the pins moved to 57.0.28 and 57.0.26 by that check: only each
+    package's own `version` and `versionName` lines differed.
 - **Make a cold tap with `am kill`, not a force stop.** Pause the media, press
   Home, then run `adb shell am kill org.jesusfilm.forgewatch`. A playing mini
   player keeps the process alive, and `am kill` then does nothing. Check that
