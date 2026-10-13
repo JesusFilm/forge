@@ -233,6 +233,11 @@
   .lab .t.ru {
     background: var(--flame);
   }
+  .lane-gap {
+    grid-column: 1 / -1;
+    height: 8px;
+    background: var(--ground);
+  }
   .cell {
     display: flex;
     flex-direction: column;
@@ -930,7 +935,9 @@
           )
         })
         .join("")
-    for (const lane of lanes) {
+    lanes.forEach((lane, li) => {
+      // A clear break between channels: a strip of page background across the whole week.
+      if (li) html += '<div class="lane-gap" aria-hidden="true"></div>'
       html +=
         '<div class="' +
         lane.key +
@@ -949,7 +956,7 @@
             "</div>",
         )
         .join("")
-    }
+    })
     html += "</section>"
     document.getElementById("weeks").innerHTML = html
 
