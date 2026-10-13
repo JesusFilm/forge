@@ -12,6 +12,7 @@ export function resolveSeriesLanguageIdentity(
   options: readonly SeriesLanguageOption[],
   requested: string,
   fallback?: SeriesLanguageOption | null,
+  preferredFallbackSlug?: string | null,
 ): ResolvedSeriesLanguage | null {
   const requestedLower = requested.toLowerCase()
   const validOptions = options.flatMap((option) => {
@@ -27,6 +28,11 @@ export function resolveSeriesLanguageIdentity(
     ) ??
     validOptions.find(
       (option) => option.bcp47?.toLowerCase() === requestedLower,
+    ) ??
+    validOptions.find(
+      (option) =>
+        option.slug === preferredFallbackSlug ||
+        option.slug.toLowerCase() === preferredFallbackSlug?.toLowerCase(),
     ) ??
     validOptions[0] ??
     (() => {
