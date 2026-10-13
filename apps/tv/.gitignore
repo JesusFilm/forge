@@ -7,3 +7,8 @@ node_modules/
 # EAS build artifacts downloaded locally (e.g. by /build-android)
 *.apk
 *.aab
+
+# Local Cloud-to-VM preferences, build evidence and Python caches.
+.dev.local.json
+.build-results/
+__pycache__/
