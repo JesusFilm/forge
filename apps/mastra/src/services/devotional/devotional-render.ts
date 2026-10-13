@@ -2175,7 +2175,7 @@ async function renderInStage(
       // cut: its last line is a call to action, and the scene starts on it.
       if (options.intro === "montage") {
         montageStarts = montageLineStarts(
-          (options.hookLine ?? "").split(/\n\s*\n/).filter((p) => p.trim()),
+          montageScreens(options),
           seg.audio.words ?? [],
         )
         const last = montageStarts?.[montageStarts.length - 1]
@@ -2250,9 +2250,7 @@ async function renderInStage(
           }
           // The written CTA lands a beat after the voice stops: the cut
           // line's word times move there (they still time the CTA).
-          const hookLines = (options.hookLine ?? "")
-            .split(/\n\s*\n/)
-            .filter((p) => p.trim())
+          const hookLines = montageScreens(options)
           const lastAt = hookLines
             .slice(0, -1)
             .reduce((n, l) => n + l.split(/\s+/).filter(Boolean).length, 0)
@@ -4489,7 +4487,32 @@ function montageDisplayText(
   const spoken = options.hookLine ?? ""
   const shown = options.hookTitle ?? ""
   const count = (t: string) => t.split(/\n\s*\n/).filter((p) => p.trim()).length
-  return options.intro === "montage" && shown && count(shown) === count(spoken)
+  return options.intro === "montage" &&
+    shown &&
+    (count(shown) === count(spoken) || isFinerSplit(shown, spoken))
     ? shown
     : spoken
+}
+
+/** `--hook-title` holds the take's own words, cut into more screens ("…the
+ *  only way home." / "And one turns back." as two screens over one recorded
+ *  line, owner 2026-10-13). */
+function isFinerSplit(shown: string, spoken: string): boolean {
+  const paras = (t: string) => t.split(/\n\s*\n/).filter((p) => p.trim())
+  const words = (t: string) => t.split(/\s+/).filter(Boolean).join(" ")
+  return (
+    paras(shown).length > paras(spoken).length && words(shown) === words(spoken)
+  )
+}
+
+/** The montage's screens: one shot and one caption each. A finer split from
+ *  `--hook-title` when it gives one, else the spoken lines. */
+function montageScreens(
+  options: Pick<RenderOptions, "intro" | "hookLine" | "hookTitle">,
+): string[] {
+  const spoken = options.hookLine ?? ""
+  const shown = options.hookTitle ?? ""
+  return (isFinerSplit(shown, spoken) ? shown : spoken)
+    .split(/\n\s*\n/)
+    .filter((p) => p.trim())
 }
