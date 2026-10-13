@@ -85,6 +85,18 @@ import {
   type WatchSearchResult,
   WatchSearchValidationError,
 } from "./watch-search.service"
+import {
+  assertBeforeDeadline,
+  beforeDeadline,
+  createWatchSearchRequestDeadline,
+  isWatchSearchDeadlineExceeded,
+  remainingBudgetMs,
+  settleBeforeDeadline,
+  WATCH_SEARCH_DEADLINE_EXCEEDED_EVENT,
+  WatchSearchStageBudgetError,
+  type WatchSearchDeadlineStage,
+  type WatchSearchRequestDeadline,
+} from "./watch-search-request-deadline"
 
 const DEFAULT_LIMIT = 20
 const MAX_LIMIT = 50
@@ -110,6 +122,12 @@ const MAX_CATALOG_HYDRATION_BATCH = 250
 const MAX_EVIDENCE_LOCALES = 3
 const MAX_RANKING_TRACE_ENTRIES = 250
 const DEFAULT_EMBEDDING_TIMEOUT_MS = 1_000
+export const TYPESENSE_WATCH_SEARCH_REQUEST_TIMEOUT_MS = 2_000
+// A deadline-bounded Typesense request aborts this long after the deadline,
+// so the typed deadline error (HTTP 504) always wins the race and the abort
+// only frees the abandoned socket. It replaces the client's own timeout, which
+// could otherwise fire first as an untyped error.
+const DEADLINE_TRANSPORT_ABORT_GRACE_MS = 50
 const LANGUAGE_CONTEXT_CACHE_TTL_MS = 5 * 60 * 1_000
 const LANGUAGE_CONTEXT_CACHE_MAX_ENTRIES = 4_096
 const MIN_SEMANTIC_SIMILARITY = 0.5
@@ -169,6 +187,17 @@ type TypesenseWatchSearchDeps = {
   embeddingTimeoutMs?: number
   logger?: Pick<Console, "warn">
   profile?: TypesenseWatchSearchProfile
+}
+
+// `hardTimeoutMs` opts one call into the request-start-derived deadline. Only
+// the public GraphQL resolver passes it; offline evaluation, benchmarks,
+// comparison, shadow, and agent callers keep the unbounded behavior.
+// `requestStartedAtMs` (a `performance.now()` reading) lets a caller that did
+// work before reaching the service, such as resolving the serving profile,
+// count that work against the same budget.
+export type TypesenseWatchSearchOptions = {
+  hardTimeoutMs?: number
+  requestStartedAtMs?: number
 }
 
 export type TypesenseWatchSearchDiagnostics = {
@@ -1184,6 +1213,50 @@ async function withTimeout<T>(
   }
 }
 
+// Under a deadline: check the budget BEFORE starting the dependency call, then
+// race it. Without a deadline the call runs exactly as before.
+function withinStage<T>(
+  start: () => Promise<T>,
+  deadline: WatchSearchRequestDeadline | undefined,
+  stage: WatchSearchDeadlineStage,
+  atMs: number | undefined,
+): Promise<T> {
+  if (!deadline || atMs == null) return start()
+  deadline.stage = stage
+  assertBeforeDeadline(atMs)
+  return beforeDeadline(start(), atMs)
+}
+
+// The embedding timer started with the request; under a deadline its wait is
+// also capped at the retrieval cutoff. A miss degrades the semantic lane and
+// retrieval goes out lexical-only.
+async function embeddingOutcomeBeforeCutoff(
+  promise: Promise<EmbeddingOutcome>,
+  embeddingStartedAt: number,
+  atMs: number,
+): Promise<EmbeddingOutcome> {
+  const outcome = await settleBeforeDeadline(promise, atMs)
+  if (outcome.status === "fulfilled") return outcome.value
+  if (outcome.status === "rejected") throw outcome.error
+  return {
+    status: "rejected",
+    error: new WatchSearchStageBudgetError(),
+    elapsedMs: performance.now() - embeddingStartedAt,
+  }
+}
+
+// Query-free: the request id, stage, and elapsed time identify the breach
+// without retaining what the viewer typed.
+function logWatchSearchDeadlineExceeded(
+  logger: Pick<Console, "warn">,
+  input: WatchSearchInput,
+  deadline: WatchSearchRequestDeadline,
+): void {
+  logger.warn(
+    `[typesense-watch-search] event=${WATCH_SEARCH_DEADLINE_EXCEEDED_EVENT} stage=${deadline.stage} request_id=${normalizeRequestId(input.clientRequestId)} elapsed_ms=${Math.round(performance.now() - deadline.startedAtMs)}`,
+  )
+}
+
 export class TypesenseWatchSearchService {
   private readonly embedder: WatchSearchQueryEmbedder
   private readonly embeddingTimeoutMs: number
@@ -1278,7 +1351,11 @@ export class TypesenseWatchSearchService {
   private async multiSearch<T>(
     searches: readonly TypesenseSearchRequest[],
     diagnostics?: MutableSearchDiagnostics,
+    deadline?: WatchSearchRequestDeadline,
   ): Promise<TypesenseSearchResult<T>[]> {
+    // Every Typesense dispatch is a stage boundary: none starts once the
+    // budget is gone.
+    if (deadline) assertBeforeDeadline(deadline.deadlineAtMs)
     if (diagnostics) {
       diagnostics.retrievalCalls += 1
       diagnostics.logicalSubsearches += searches.length
@@ -1294,7 +1371,13 @@ export class TypesenseWatchSearchService {
       }
     }
     const startedAt = diagnostics ? performance.now() : 0
-    const results = await this.typesense.multiSearch<T>(searches)
+    const results = deadline
+      ? await this.typesense.multiSearch<T>(searches, {
+          timeoutMs:
+            Math.ceil(remainingBudgetMs(deadline.deadlineAtMs)) +
+            DEADLINE_TRANSPORT_ABORT_GRACE_MS,
+        })
+      : await this.typesense.multiSearch<T>(searches)
     if (diagnostics) {
       diagnostics.typesenseWallTimeMs += performance.now() - startedAt
       diagnostics.parsedResponseBytes += Buffer.byteLength(
@@ -1312,13 +1395,33 @@ export class TypesenseWatchSearchService {
     return results
   }
 
-  async search(input: WatchSearchInput): Promise<WatchSearchResponse> {
-    return this.executeSearch(input)
+  async search(
+    input: WatchSearchInput,
+    options: TypesenseWatchSearchOptions = {},
+  ): Promise<WatchSearchResponse> {
+    if (!options.hardTimeoutMs) return this.executeSearch(input)
+    const deadline = createWatchSearchRequestDeadline({
+      startedAtMs: options.requestStartedAtMs ?? performance.now(),
+      hardTimeoutMs: options.hardTimeoutMs,
+    })
+    try {
+      assertBeforeDeadline(deadline.retrievalDeadlineAtMs)
+      return await beforeDeadline(
+        this.executeSearch(input, undefined, deadline),
+        deadline.deadlineAtMs,
+      )
+    } catch (error) {
+      if (isWatchSearchDeadlineExceeded(error)) {
+        logWatchSearchDeadlineExceeded(this.logger, input, deadline)
+      }
+      throw error
+    }
   }
 
   private async executeSearch(
     input: WatchSearchInput,
     diagnostics?: MutableSearchDiagnostics,
+    deadline?: WatchSearchRequestDeadline,
   ): Promise<WatchSearchResponse> {
     const startedAt = performance.now()
     const query = input.query.trim().slice(0, MAX_QUERY_LENGTH)
@@ -1347,17 +1450,31 @@ export class TypesenseWatchSearchService {
       }),
     )
     const languageStartedAt = performance.now()
-    const baseLanguageInterpretation = await resolveSearchLanguageSignals({
-      prisma: this.prisma,
-      input,
-    })
+    // Language context is required to build every retrieval request, so a
+    // stage that misses the retrieval cutoff fails the request.
+    const baseLanguageInterpretation = await withinStage(
+      () =>
+        resolveSearchLanguageSignals({
+          prisma: this.prisma,
+          input,
+        }),
+      deadline,
+      "language_resolution",
+      deadline?.retrievalDeadlineAtMs,
+    )
     const candidateQueryPlan =
       this.profile.kind === "CANDIDATE"
-        ? await buildTypesenseWatchSearchQueryPlan({
-            prisma: this.prisma,
-            query,
-            baseResolution: baseLanguageInterpretation,
-          })
+        ? await withinStage(
+            () =>
+              buildTypesenseWatchSearchQueryPlan({
+                prisma: this.prisma,
+                query,
+                baseResolution: baseLanguageInterpretation,
+              }),
+            deadline,
+            "language_resolution",
+            deadline?.retrievalDeadlineAtMs,
+          )
         : null
     let languageInterpretation = candidateQueryPlan
       ? {
@@ -1371,10 +1488,16 @@ export class TypesenseWatchSearchService {
       : baseLanguageInterpretation
     const provisionalTargetLanguageSlug =
       languageInterpretation.targetLanguageSlug
-    const [provisionalTarget, evidenceLocales] = await Promise.all([
-      this.targetLanguageContext(provisionalTargetLanguageSlug),
-      this.evidenceLocales(languageInterpretation),
-    ])
+    const [provisionalTarget, evidenceLocales] = await withinStage(
+      () =>
+        Promise.all([
+          this.targetLanguageContext(provisionalTargetLanguageSlug),
+          this.evidenceLocales(languageInterpretation),
+        ]),
+      deadline,
+      "language_resolution",
+      deadline?.retrievalDeadlineAtMs,
+    )
     let target = provisionalTarget
     laneStatuses.push(
       laneStatus({
@@ -1459,6 +1582,7 @@ export class TypesenseWatchSearchService {
       timelineStartedAt: startedAt,
       laneStatuses,
       diagnostics,
+      deadline,
     })
     const rankingGroups = ensureCuratedGroupsOnFirstPage(
       retrieval.groups,
@@ -1495,8 +1619,14 @@ export class TypesenseWatchSearchService {
         languageInterpretation.targetLanguageSlug !==
         provisionalTargetLanguageSlug
       ) {
-        target = await this.targetLanguageContext(
-          languageInterpretation.targetLanguageSlug,
+        target = await withinStage(
+          () =>
+            this.targetLanguageContext(
+              languageInterpretation.targetLanguageSlug,
+            ),
+          deadline,
+          "target_language",
+          deadline?.deadlineAtMs,
         )
       }
     }
@@ -1515,10 +1645,17 @@ export class TypesenseWatchSearchService {
         0,
         nativeOffset + limit + 1,
       )
-      hydratedById = await this.hydrateResultDocuments(
-        candidateGroups.flatMap((group) => group.members),
-        target,
-        diagnostics,
+      hydratedById = await withinStage(
+        () =>
+          this.hydrateResultDocuments(
+            candidateGroups.flatMap((group) => group.members),
+            target,
+            diagnostics,
+            deadline,
+          ),
+        deadline,
+        "availability_hydration",
+        deadline?.deadlineAtMs,
       )
       rankedCandidates = candidateGroups.flatMap((group) => {
         const watchableMembers = group.members.flatMap((candidate) => {
@@ -1550,12 +1687,18 @@ export class TypesenseWatchSearchService {
       const missingPreviewIds = candidates
         .map((candidate) => candidate.videoId)
         .filter((videoId) => !previewById.has(videoId))
-      const missingPreviews =
-        await this.catalogDocuments<TypesenseWatchCatalogWatchabilityPreviewDocument>(
-          missingPreviewIds,
-          CATALOG_WATCHABILITY_PREVIEW_FIELDS,
-          diagnostics,
-        )
+      const missingPreviews = await withinStage(
+        () =>
+          this.catalogDocuments<TypesenseWatchCatalogWatchabilityPreviewDocument>(
+            missingPreviewIds,
+            CATALOG_WATCHABILITY_PREVIEW_FIELDS,
+            diagnostics,
+            deadline,
+          ),
+        deadline,
+        "availability_hydration",
+        deadline?.deadlineAtMs,
+      )
       for (const [videoId, document] of missingPreviews) {
         previewById.set(videoId, document)
       }
@@ -1588,12 +1731,20 @@ export class TypesenseWatchSearchService {
           return left.candidate.videoId.localeCompare(right.candidate.videoId)
         })
       const fallbackPage = rankedCandidates.slice(offset, offset + limit)
-      hydratedById = await this.hydrateResultDocuments(
-        fallbackPage.map((entry) => entry.candidate),
-        target,
-        diagnostics,
+      hydratedById = await withinStage(
+        () =>
+          this.hydrateResultDocuments(
+            fallbackPage.map((entry) => entry.candidate),
+            target,
+            diagnostics,
+            deadline,
+          ),
+        deadline,
+        "availability_hydration",
+        deadline?.deadlineAtMs,
       )
     }
+    if (deadline) deadline.stage = "response"
     if (diagnostics) diagnostics.hydratedRecords = hydratedById.size
     const pageCandidates = nativeRanking
       ? rankedCandidates.slice(nativeOffset, nativeOffset + limit)
@@ -1770,6 +1921,7 @@ export class TypesenseWatchSearchService {
     timelineStartedAt,
     laneStatuses,
     diagnostics,
+    deadline,
   }: {
     titleQuery: string
     preferredLocale: string
@@ -1784,6 +1936,7 @@ export class TypesenseWatchSearchService {
     timelineStartedAt: number
     laneStatuses: WatchSearchLaneStatus[]
     diagnostics?: MutableSearchDiagnostics
+    deadline?: WatchSearchRequestDeadline
   }): Promise<CandidateRetrieval> {
     const globalCandidateRecall = this.profile.kind === "CANDIDATE"
     const semanticEligible = globalCandidateRecall || evidenceLocales.length > 0
@@ -1801,7 +1954,16 @@ export class TypesenseWatchSearchService {
       )
     }
 
-    const embeddingOutcome = semanticEligible ? await embeddingPromise : null
+    if (deadline) deadline.stage = "retrieval"
+    const embeddingOutcome = !semanticEligible
+      ? null
+      : deadline
+        ? await embeddingOutcomeBeforeCutoff(
+            embeddingPromise,
+            embeddingStartedAt,
+            deadline.retrievalDeadlineAtMs,
+          )
+        : await embeddingPromise
     let embedding: number[] | null = null
     if (embeddingOutcome?.status === "fulfilled") {
       embedding = embeddingOutcome.embedding
@@ -1914,6 +2076,7 @@ export class TypesenseWatchSearchService {
       >(
         retrievalLanes.map(({ request }) => request),
         diagnostics,
+        deadline,
       )
       const resultByLane = new Map(
         retrievalLanes.map(({ kind }, index) => [kind, results[index]]),
@@ -2012,6 +2175,7 @@ export class TypesenseWatchSearchService {
             : []),
         ],
         diagnostics,
+        deadline,
       )
       const lexicalHits = await this.withLegacyLocaleProjection(
         results
@@ -2022,6 +2186,7 @@ export class TypesenseWatchSearchService {
             candidateLimit,
           ) as TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[],
         diagnostics,
+        deadline,
       )
       const semanticHits = embedding
         ? ((results.at(-1)?.hits ??
@@ -2619,6 +2784,7 @@ export class TypesenseWatchSearchService {
     candidates: readonly CandidateHydrationScope[],
     target: TargetLanguageContext,
     diagnostics?: MutableSearchDiagnostics,
+    deadline?: WatchSearchRequestDeadline,
   ): Promise<Map<string, HydratedResultDocument>> {
     const candidateScopeByVideoId = new Map<string, CandidateHydrationScope>()
     for (const candidate of candidates) {
@@ -2670,7 +2836,7 @@ export class TypesenseWatchSearchService {
     try {
       const initialResults = await this.multiSearchInBatches<
         TypesenseWatchCatalogResultDocument | TypesenseWatchAvailabilityDocument
-      >([...catalogSearches, ...availabilitySearches], diagnostics)
+      >([...catalogSearches, ...availabilitySearches], diagnostics, deadline)
       const catalogResults = initialResults.slice(0, catalogSearches.length)
       const availabilityResults = initialResults.slice(catalogSearches.length)
       const overflowSearches: TypesenseSearchRequest[] = []
@@ -2695,6 +2861,7 @@ export class TypesenseWatchSearchService {
         await this.multiSearchInBatches<TypesenseWatchAvailabilityDocument>(
           overflowSearches,
           diagnostics,
+          deadline,
         )
       const availabilityByVideoId = new Map<
         string,
@@ -2754,6 +2921,7 @@ export class TypesenseWatchSearchService {
           ids,
           LEGACY_CATALOG_RESULT_FIELDS,
           diagnostics,
+          deadline,
         )
       return new Map(
         [...legacyById].map(([id, document]) => [
@@ -2775,6 +2943,7 @@ export class TypesenseWatchSearchService {
   private async multiSearchInBatches<TDocument>(
     searches: readonly TypesenseSearchRequest[],
     diagnostics?: MutableSearchDiagnostics,
+    deadline?: WatchSearchRequestDeadline,
   ): Promise<TypesenseSearchResult<TDocument>[]> {
     const results: TypesenseSearchResult<TDocument>[] = []
     for (
@@ -2786,6 +2955,7 @@ export class TypesenseWatchSearchService {
         ...(await this.multiSearch<TDocument>(
           searches.slice(index, index + TYPESENSE_MAX_MULTI_SEARCHES),
           diagnostics,
+          deadline,
         )),
       )
     }
@@ -2798,6 +2968,7 @@ export class TypesenseWatchSearchService {
     videoIds: readonly string[],
     includeFields?: string,
     diagnostics?: MutableSearchDiagnostics,
+    deadline?: WatchSearchRequestDeadline,
   ): Promise<Map<string, TDocument>> {
     const ids = [...new Set(videoIds)]
     if (ids.length === 0) return new Map()
@@ -2816,7 +2987,11 @@ export class TypesenseWatchSearchService {
         include_fields: includeFields,
       })
     }
-    const results = await this.multiSearch<TDocument>(searches, diagnostics)
+    const results = await this.multiSearch<TDocument>(
+      searches,
+      diagnostics,
+      deadline,
+    )
     return new Map(
       results.flatMap((result) =>
         (result.hits ?? []).map(
@@ -2829,6 +3004,7 @@ export class TypesenseWatchSearchService {
   private async withLegacyLocaleProjection(
     hits: TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[],
     diagnostics?: MutableSearchDiagnostics,
+    deadline?: WatchSearchRequestDeadline,
   ): Promise<TypesenseSearchHit<TypesenseWatchCatalogPreviewDocument>[]> {
     const legacyIds = hits
       .filter((hit) => !hasAlignedLocaleCodes(hit.document))
@@ -2840,6 +3016,7 @@ export class TypesenseWatchSearchService {
         legacyIds,
         LEGACY_CATALOG_LOCALE_FIELDS,
         diagnostics,
+        deadline,
       )
     return hits.map((hit) => {
       const legacy = legacyById.get(hit.document.id)
@@ -2962,6 +3139,41 @@ export class TypesenseWatchSearchService {
   }
 }
 
+// The candidate serving proxy resolves its profile (Typesense and Prisma reads,
+// refreshed every 30 seconds) before a service exists. A bounded call starts
+// its deadline here, and the service reuses this start, so profile work
+// consumes the same request budget.
+export async function searchResolvedTypesenseWatchSearch(
+  resolveService: () => Promise<TypesenseWatchSearchService>,
+  input: WatchSearchInput,
+  options: TypesenseWatchSearchOptions = {},
+  logger: Pick<Console, "warn"> = console,
+): Promise<WatchSearchResponse> {
+  if (!options.hardTimeoutMs) {
+    return (await resolveService()).search(input, options)
+  }
+  const requestStartedAtMs = options.requestStartedAtMs ?? performance.now()
+  const deadline = createWatchSearchRequestDeadline({
+    startedAtMs: requestStartedAtMs,
+    hardTimeoutMs: options.hardTimeoutMs,
+  })
+  let service: TypesenseWatchSearchService
+  try {
+    service = await withinStage(
+      resolveService,
+      deadline,
+      "serving_profile",
+      deadline.retrievalDeadlineAtMs,
+    )
+  } catch (error) {
+    if (isWatchSearchDeadlineExceeded(error)) {
+      logWatchSearchDeadlineExceeded(logger, input, deadline)
+    }
+    throw error
+  }
+  return service.search(input, { ...options, requestStartedAtMs })
+}
+
 export function createTypesenseWatchSearchService(
   prisma: PrismaClient,
   profile: TypesenseWatchSearchProfile = createCurrentWatchSearchProfile(),
@@ -2975,7 +3187,11 @@ export function createTypesenseWatchSearchService(
   if (!host || !apiKey) return null
   return new TypesenseWatchSearchService(
     prisma,
-    new TypesenseClient({ host, apiKey, timeoutMs: 2_000 }),
+    new TypesenseClient({
+      host,
+      apiKey,
+      timeoutMs: TYPESENSE_WATCH_SEARCH_REQUEST_TIMEOUT_MS,
+    }),
     { profile },
   )
 }

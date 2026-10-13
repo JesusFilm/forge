@@ -138,6 +138,7 @@
     "versesAriaValue": "পদ {first}ৰ পৰা {last}লৈ, মুঠ {total}, {chapter}",
     "demoVerse": "পৰৱৰ্তী পদৰ বাবে ওপৰলৈ ছোৱাইপ কৰক",
     "demoChapter": "পৰৱৰ্তী অধ্যায়ৰ বাবে বাওঁফালে ছোৱাইপ কৰক",
+    "demoChapterRtl": "পৰৱৰ্তী অধ্যায়ৰ বাবে সোঁফালে ছোৱাইপ কৰক",
     "demoSkip": "এৰি যাবলৈ টিপক",
     "demoSkipAriaLabel": "ছোৱাইপৰ প্ৰদৰ্শন এৰি যাওক",
     "selectVerseAriaHint": "এই পদটো বাছনি কৰিবলৈ দুবাৰ টিপক",

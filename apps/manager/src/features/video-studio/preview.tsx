@@ -21,7 +21,8 @@ type Prepared = {
   signature: string
 }
 type Props = {
-  session: Pick<EditorSession, "edit" | "seek" | "reportPlaybackFrame">
+  session: Pick<EditorSession, "edit" | "seek" | "reportPlaybackFrame"> &
+    Partial<Pick<EditorSession, "requireSignIn">>
   state: EditorSnapshot
   projectId: string
   playing: boolean
@@ -108,6 +109,7 @@ function LivePlayer({
 }
 export default function Preview(props: Props) {
   const { state, projectId, onPlaying } = props
+  const requireSignIn = props.session.requireSignIn
   const [prepared, setPrepared] = useState<Prepared | null>(null)
   const [error, setError] = useState("")
   const [attempt, setAttempt] = useState(0)
@@ -160,6 +162,8 @@ export default function Preview(props: Props) {
         const value = (await response.json()) as BrowserPreview & {
           error?: string
         }
+        if (response.status === 401 && !controller.signal.aborted)
+          requireSignIn?.()
         if (!response.ok)
           throw new StudioPreviewError(value.error ?? "Preview unavailable")
         return value
@@ -195,7 +199,7 @@ export default function Preview(props: Props) {
       controller.abort()
       ownedUrls.forEach((url) => URL.revokeObjectURL(url))
     }
-  }, [projectId, signature, attempt, fail])
+  }, [projectId, signature, attempt, fail, requireSignIn])
   const ready = prepared?.signature === signature && !error
   return (
     <div className="nle-preview" data-preview-ready={Boolean(ready)}>

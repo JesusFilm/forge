@@ -138,6 +138,7 @@
     "versesAriaValue": "Rārangi {first} ki {last} o {total}, {chapter}",
     "demoVerse": "Pānekeneke whakarunga mō te rārangi panuku",
     "demoChapter": "Pānekeneke whakamauī mō te upoko panuku",
+    "demoChapterRtl": "Pānekeneke whakamatau mō te upoko panuku",
     "demoSkip": "Pātō kia peke",
     "demoSkipAriaLabel": "Pekea te whakaaturanga pānekeneke",
     "selectVerseAriaHint": "Pātō rua kia tīpako i tēnei rārangi",

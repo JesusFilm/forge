@@ -138,6 +138,7 @@
     "versesAriaValue": "Fuaiupu {first} e oʻo i le {last} mai le {total}, {chapter}",
     "demoVerse": "Toso i luga mo le fuaiupu e sosoʻo ai",
     "demoChapter": "Toso i le agavale mo le mataupu e sosoʻo ai",
+    "demoChapterRtl": "Toso i le taumatau mo le mataupu e sosoʻo ai",
     "demoSkip": "Paʻi e oso ai",
     "demoSkipAriaLabel": "Faʻamuta le faʻataʻitaʻiga o le toso",
     "selectVerseAriaHint": "Paʻi faʻalua e filifili ai lenei fuaiupu",

@@ -52,7 +52,13 @@ function AnswerFallback() {
 
   return (
     <View style={styles.fallbackContainer}>
-      <Text style={[styles.fallbackBody, typography.bodySmall, direction.ui]}>
+      <Text
+        style={[
+          styles.fallbackBody,
+          typography.bodySmall,
+          direction.uiParagraph,
+        ]}
+      >
         {t("fallbackBody")}
       </Text>
       <View style={styles.fallbackButtonRow}>
@@ -104,11 +110,13 @@ function QuestionRow({
   isExpanded,
   onToggle,
   questionDirection,
+  answerDirection,
 }: {
   item: QuestionItem
   isExpanded: boolean
   onToggle: () => void
   questionDirection: TextDirectionProps
+  answerDirection: TextDirectionProps
 }) {
   const typography = useTypography()
   const hasAnswer = item.answer != null && item.answer.trim() !== ""
@@ -142,7 +150,14 @@ function QuestionRow({
       </Pressable>
       {isExpanded &&
         (hasAnswer ? (
-          <Text style={[styles.answerText, typography.bodySmall]}>
+          <Text
+            style={[
+              styles.answerText,
+              typography.bodySmall,
+              answerDirection.style,
+            ]}
+            accessibilityLanguage={answerDirection.accessibilityLanguage}
+          >
             {item.answer}
           </Text>
         ) : (
@@ -162,6 +177,7 @@ export function RelatedQuestionsRenderer({
   const direction = useTextDirection()
   const headingDirection = direction.text(headingLang)
   const questionDirection = direction.text(questionsLang)
+  const answerDirection = direction.text(questionsLang, { kind: "paragraph" })
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
 
   const s = section as Record<string, unknown>
@@ -221,6 +237,7 @@ export function RelatedQuestionsRenderer({
           isExpanded={expandedIndex === index}
           onToggle={() => handleToggle(index)}
           questionDirection={questionDirection}
+          answerDirection={answerDirection}
         />
       ))}
     </View>
