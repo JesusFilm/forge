@@ -29,6 +29,7 @@ vi.mock("@/env", () => ({
 import { signWatchHomeHeroManifestCatalog } from "@/lib/watch-surface-manifest.server"
 import { selectWatchHomeHeroManifest } from "@/lib/watch-home-hero-manifest"
 import { WatchHomeTvCarousel } from "@/components/home/WatchHomeTvCarousel"
+import { decodeWatchHomeCarouselSequence } from "@/lib/watch-home-carousel-sequence-wire"
 
 const createCacheSignatures = vi.hoisted(() => vi.fn())
 
@@ -261,9 +262,15 @@ describe("WatchHomeExperiencePage", () => {
     expect(
       heroes.map((props) => props.heroManifestCatalog?.manifest.placement),
     ).toEqual(["home-hero", "authored-hero-2"])
+    // Both heroes share ONE encoded object, so the flight payload outlines
+    // it once; and it is the compact wire form, not the raw pools.
+    expect(heroes[0].sequence).toBe(heroes[1].sequence)
+    expect(heroes[0].sequence).not.toBe(model.carousel)
     for (const props of heroes) {
       expect(props.slides).toBe(model.heroSlides)
-      expect(props.sequence).toBe(model.carousel)
+      expect(
+        props.sequence && decodeWatchHomeCarouselSequence(props.sequence),
+      ).toEqual(model.carousel)
       expect(props.heroManifestCatalog?.items).toHaveLength(110)
       const selected = selectWatchHomeHeroManifest(
         props.heroManifestCatalog,

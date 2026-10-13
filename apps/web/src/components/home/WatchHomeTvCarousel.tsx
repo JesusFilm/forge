@@ -28,8 +28,11 @@ import {
   type WatchPlayerChromeVisibilityDetail,
 } from "@/lib/watch-player-chrome-events"
 import type { WatchHomeHeroSlide } from "@/lib/watch-home"
-import type { WatchHomeCarouselSequenceData } from "@/lib/watch-home-carousel-sequence"
 import { isWatchHomeIntroEligibleVideoLabel } from "@/lib/watch-home-carousel-sequence"
+import {
+  decodeWatchHomeCarouselSequence,
+  type WatchHomeCarouselSequenceWire,
+} from "@/lib/watch-home-carousel-sequence-wire"
 import { cn } from "@/lib/utils"
 import { useTouchGatedPrefetch } from "@/components/home/useTouchGatedPrefetch"
 import {
@@ -67,7 +70,12 @@ type WatchHomeTvCarouselProps = {
   heroManifestCatalog?: WatchHomeHeroManifestCatalog
   exposurePlacement?: string
   slides: WatchHomeHeroSlide[]
-  sequence?: WatchHomeCarouselSequenceData | null
+  /**
+   * The rotation pools in their compact wire form — see
+   * `encodeWatchHomeCarouselSequence`. Server callers must encode them; this
+   * prop is serialized into the page's inline RSC payload.
+   */
+  sequence?: WatchHomeCarouselSequenceWire | null
   /**
    * Pin the intro and let the body scroll over it. False for an authored hero
    * block placed mid-page: it renders inside the body zone, so it has nothing
@@ -1082,6 +1090,12 @@ export function WatchHomeTvCarousel({
     () => watchHomeHeroSlidesToTvCarouselSlides(slides),
     [slides],
   )
+  // Decoded once per prop identity, so the hook's `[sequence]` memos (queue,
+  // sequence key) see a stable object across renders.
+  const decodedSequence = useMemo(
+    () => (sequence ? decodeWatchHomeCarouselSequence(sequence) : null),
+    [sequence],
+  )
   const {
     activeIndex,
     activeSlide,
@@ -1105,7 +1119,7 @@ export function WatchHomeTvCarousel({
     slides: timelineSlides,
     toggleMuted,
     videoRef,
-  } = useWatchHomeTvCarousel(carouselSlides, sequence)
+  } = useWatchHomeTvCarousel(carouselSlides, decodedSequence)
   const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   // Separate from wrapperRef: that one is on the media layer, which reaches

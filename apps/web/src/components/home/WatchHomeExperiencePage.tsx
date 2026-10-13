@@ -23,6 +23,7 @@ import {
   type DynamicCollectionFeedCacheScope,
 } from "@/lib/dynamic-collection-contract"
 import type { WatchHomeModel } from "@/lib/watch-home"
+import { encodeWatchHomeCarouselSequence } from "@/lib/watch-home-carousel-sequence-wire"
 import { collectFeaturedCollectionReferences } from "@/lib/featured-collection-references"
 
 type WatchHomeExperiencePageProps = {
@@ -193,6 +194,9 @@ export function WatchHomeExperiencePage({
     cacheScope: dynamicCollectionCacheScope,
     cacheSignatures: dynamicCollectionCacheSignatures,
   }
+  // Encoded once and shared: a leading and an authored hero pass the SAME
+  // object, so the flight payload outlines it once instead of twice.
+  const carouselSequence = encodeWatchHomeCarouselSequence(heroModel.carousel)
   const compatibilityCategoryRail = legacyCategoryRailCompatibility ? (
     <ExperienceSectionRenderer
       section={LEGACY_CATEGORY_RAIL_SECTION}
@@ -222,7 +226,7 @@ export function WatchHomeExperiencePage({
               ) ?? undefined
             }
             slides={heroModel.heroSlides}
-            sequence={heroModel.carousel}
+            sequence={carouselSequence}
           />
           {compatibilityCategoryRail}
         </Fragment>
@@ -335,7 +339,7 @@ export function WatchHomeExperiencePage({
                 ) ?? undefined
               }
               slides={heroModel.heroSlides}
-              sequence={heroModel.carousel}
+              sequence={carouselSequence}
             />
           ) : null}
           <WatchHomeBodyZone>
