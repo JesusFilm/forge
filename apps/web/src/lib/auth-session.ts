@@ -4,7 +4,7 @@ import {
   readWebAuthSessionCookie,
 } from "@/auth/web-session"
 
-type AuthSessionResult =
+export type AuthSessionResult =
   | {
       authenticated: true
       userId: string

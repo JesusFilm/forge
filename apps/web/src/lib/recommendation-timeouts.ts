@@ -13,3 +13,10 @@ export const RECOMMENDATION_PROFILE_UPSTREAM_TIMEOUT_MS = 3_000
 // Leave room for admission, Web execution, and browser-to-edge transit around
 // the upstream budget. The browser deadline must remain the larger boundary.
 export const RECOMMENDATION_PROFILE_BROWSER_DEADLINE_MS = 5_000
+
+// The automatic profile status/grant POST waits for browser idle so it does
+// not compete with hydration, LCP and hero media. Recommendation delivery and
+// playback evidence wait on that bootstrap, so the delay stays bounded: idle
+// cap plus the profile upstream budget (1.5 s + 3 s) stays under the 5 s
+// browser deadline that playback evidence applies to the bootstrap wait.
+export const RECOMMENDATION_PROFILE_IDLE_TIMEOUT_MS = 1_500

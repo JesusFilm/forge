@@ -88,7 +88,30 @@ function renderShell() {
   )
 }
 
+type IdleCallbackStub = (
+  callback: () => void,
+  options?: { timeout: number },
+) => number
+
+let idleCallbacks: Array<{ callback: () => void; timeout?: number }> = []
+let runIdleImmediately = true
+
 beforeEach(() => {
+  idleCallbacks = []
+  runIdleImmediately = true
+  // The automatic profile bootstrap waits for idle. Most cases exercise the
+  // profile protocol itself, so idle arrives at once unless a case holds it.
+  vi.stubGlobal("requestIdleCallback", ((callback, options) => {
+    if (runIdleImmediately) {
+      queueMicrotask(callback)
+      return 0
+    }
+    idleCallbacks.push({ callback, timeout: options?.timeout })
+    return idleCallbacks.length
+  }) satisfies IdleCallbackStub)
+  vi.stubGlobal("cancelIdleCallback", (handle: number) => {
+    idleCallbacks[handle - 1] = { callback: () => undefined }
+  })
   vi.stubGlobal("navigator", {
     locks: {
       request: (_name: string, operation: () => Promise<unknown>) =>
@@ -108,6 +131,46 @@ afterEach(() => {
 })
 
 describe("RecommendationConsentShell", () => {
+  it("defers the automatic profile POST until the browser is idle", async () => {
+    runIdleImmediately = false
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(undecided))
+      .mockResolvedValueOnce(response(activeProfile))
+    vi.stubGlobal("fetch", fetchMock)
+
+    renderShell()
+    await flush()
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(idleCallbacks).toHaveLength(1)
+    expect(idleCallbacks[0]?.timeout).toBe(1_500)
+
+    await act(async () => idleCallbacks[0]?.callback())
+    await flush()
+
+    const actions = fetchMock.mock.calls.map(
+      ([, init]) => JSON.parse(String(init?.body)).action,
+    )
+    expect(actions).toEqual(["status", "grant"])
+  })
+
+  it("cancels a pending idle profile bootstrap when the shell unmounts", async () => {
+    runIdleImmediately = false
+    const fetchMock = vi.fn().mockResolvedValue(response(undecided))
+    vi.stubGlobal("fetch", fetchMock)
+
+    renderShell()
+    await flush()
+    const pending = idleCallbacks[0]
+    act(() => root.render(<></>))
+
+    await act(async () => pending?.callback())
+    await flush()
+
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
   it("keeps the browser control deadline above the upstream profile budget", async () => {
     const timeoutSpy = vi.spyOn(window, "setTimeout")
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response(undecided)))
@@ -581,7 +644,8 @@ describe("RecommendationConsentShell", () => {
   })
 
   it("retries a transient automatic grant failure without requiring a reload", async () => {
-    vi.useFakeTimers()
+    // Fake only the retry timer; the idle stub keeps the bootstrap immediate.
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(response(undecided))

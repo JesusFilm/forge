@@ -51,6 +51,7 @@ vi.mock("next/dynamic", () => ({
 }))
 
 import {
+  __resetBetaTesterCtaBootstrapForTests,
   BetaTesterModalProvider,
   BetaTesterTrigger,
   useBetaTesterModal,
@@ -61,6 +62,20 @@ import {
   usePauseForWatchModal,
 } from "@/components/watch/WatchModalActivityProvider"
 import { BETA_TESTER_URL } from "@/lib/beta-tester"
+import { __resetWatchBootstrapForTests } from "@/lib/watch-bootstrap-client"
+
+function bootstrapResponse(betaTesterCta: unknown) {
+  return Response.json({
+    contractVersion: "watch-bootstrap-v1",
+    account: null,
+    betaTesterCta,
+    watchProgress: null,
+  })
+}
+
+function requestedUrls() {
+  return vi.mocked(fetch).mock.calls.map(([input]) => String(input))
+}
 
 let container: HTMLDivElement
 let root: Root
@@ -71,9 +86,15 @@ beforeEach(() => {
   search.playerChromeVisible = true
   search.searchOpen = false
   lazyModal.stalled = false
+  __resetWatchBootstrapForTests()
+  __resetBetaTesterCtaBootstrapForTests()
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => Response.json({ enabled: true }, { status: 200 })),
+    vi.fn(async (input: RequestInfo | URL) =>
+      String(input).includes("/watch/api/bootstrap")
+        ? bootstrapResponse({ enabled: true })
+        : Response.json({ enabled: true }, { status: 200 }),
+    ),
   )
   container = document.createElement("div")
   document.body.appendChild(container)
@@ -136,16 +157,17 @@ describe("BetaTesterModalProvider", () => {
 
     await renderProvider()
 
-    expect(fetch).toHaveBeenCalledWith("/watch/api/beta-tester-cta", {
-      cache: "no-store",
-      credentials: "same-origin",
-    })
+    // The first mount reads the flag from the shared bootstrap, not the
+    // dedicated endpoint.
+    expect(requestedUrls()).toEqual([
+      "http://localhost:3000/watch/api/bootstrap?callbackURL=%2F",
+    ])
     expect(
       document.querySelector("[data-testid='global-beta-tester-cta']"),
     ).toBeNull()
 
     await act(async () => {
-      resolveFetch?.(Response.json({ enabled: true }))
+      resolveFetch?.(bootstrapResponse({ enabled: true }))
       await Promise.resolve()
     })
 
@@ -174,9 +196,10 @@ describe("BetaTesterModalProvider", () => {
 
   it("refreshes the global CTA flag when navigation remounts the provider", async () => {
     vi.mocked(fetch)
-      .mockResolvedValueOnce(Response.json({ enabled: false }))
+      .mockResolvedValueOnce(bootstrapResponse({ enabled: false }))
       .mockResolvedValueOnce(Response.json({ enabled: true }))
       .mockResolvedValueOnce(Response.json({ enabled: false }))
+      .mockResolvedValueOnce(Response.json({ enabled: true }))
 
     await renderProvider()
     expect(
@@ -191,6 +214,35 @@ describe("BetaTesterModalProvider", () => {
 
     navigation.pathname = "/watch/history"
     await renderProvider()
+    expect(
+      document.querySelector("[data-testid='global-beta-tester-cta']"),
+    ).toBeNull()
+
+    // Returning to the document's first path re-evaluates too; the
+    // document-load bootstrap value is never reused after navigation.
+    navigation.pathname = "/watch"
+    await renderProvider()
+    expect(
+      document.querySelector("[data-testid='global-beta-tester-cta']"),
+    ).not.toBeNull()
+
+    expect(requestedUrls()).toEqual([
+      "http://localhost:3000/watch/api/bootstrap?callbackURL=%2F",
+      "/watch/api/beta-tester-cta",
+      "/watch/api/beta-tester-cta",
+      "/watch/api/beta-tester-cta",
+    ])
+    expect(vi.mocked(fetch).mock.calls[1]?.[1]).toEqual({
+      cache: "no-store",
+      credentials: "same-origin",
+    })
+  })
+
+  it("stays off when the bootstrap cannot evaluate the flag", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce(bootstrapResponse(null))
+
+    await renderProvider()
+
     expect(
       document.querySelector("[data-testid='global-beta-tester-cta']"),
     ).toBeNull()

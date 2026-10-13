@@ -19,6 +19,7 @@ import { useFloatingSearchPinned } from "@/components/FloatingSearchProvider"
 import { useWatchModalActivity } from "@/components/watch/WatchModalActivityProvider"
 import { WatchModalViewportCloseButton } from "@/components/watch/WatchModalViewportCloseButton"
 import { BETA_TESTER_URL } from "@/lib/beta-tester"
+import { loadWatchBootstrap } from "@/lib/watch-bootstrap-client"
 import { cn } from "@/lib/utils"
 
 type BetaTesterModalContextValue = {
@@ -31,6 +32,45 @@ type BetaTesterModalContextValue = {
 const BetaTesterModalContext =
   createContext<BetaTesterModalContextValue | null>(null)
 const GLOBAL_BETA_TESTER_CTA_ENDPOINT = "/watch/api/beta-tester-cta"
+
+// The pathname whose provider may read the flag from the document's
+// post-hydration bootstrap. `undefined` until the first mount claims it;
+// `null` once a client navigation leaves it, so a later return to that path
+// re-evaluates the flag instead of reusing the document-load value.
+let bootstrapCtaPathname: string | null | undefined
+
+/**
+ * The first provider of a document reads the flag from the shared
+ * `/watch/api/bootstrap` response, adding no request of its own. Each client
+ * navigation remounts the provider (keyed by pathname) and re-evaluates the
+ * flag through the dedicated no-store endpoint, as before the bootstrap.
+ */
+async function loadGlobalBetaTesterCtaEnabled(
+  pathname: string,
+): Promise<boolean | undefined> {
+  if (bootstrapCtaPathname === undefined) bootstrapCtaPathname = pathname
+  if (bootstrapCtaPathname === pathname) {
+    const bootstrap = await loadWatchBootstrap()
+    return bootstrap?.betaTesterCta?.enabled
+  }
+  bootstrapCtaPathname = null
+
+  try {
+    const response = await fetch(GLOBAL_BETA_TESTER_CTA_ENDPOINT, {
+      cache: "no-store",
+      credentials: "same-origin",
+    })
+    if (!response.ok) return undefined
+    const result = (await response.json()) as { enabled?: unknown }
+    return typeof result?.enabled === "boolean" ? result.enabled : undefined
+  } catch {
+    return undefined
+  }
+}
+
+export function __resetBetaTesterCtaBootstrapForTests() {
+  bootstrapCtaPathname = undefined
+}
 
 const LazyBetaTesterModal = dynamic(
   () =>
@@ -185,13 +225,19 @@ export function BetaTesterTrigger({
 export function BetaTesterModalProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   return (
-    <BetaTesterModalPathProvider key={pathname}>
+    <BetaTesterModalPathProvider key={pathname} pathname={pathname}>
       {children}
     </BetaTesterModalPathProvider>
   )
 }
 
-function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
+function BetaTesterModalPathProvider({
+  children,
+  pathname,
+}: {
+  children: ReactNode
+  pathname: string
+}) {
   const t = useTranslations("BetaTesterModal")
   const { playerChromeVisible, searchOpen } = useFloatingSearchPinned()
   const [open, setOpen] = useState(false)
@@ -204,27 +250,17 @@ function BetaTesterModalPathProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true
 
-    void fetch(GLOBAL_BETA_TESTER_CTA_ENDPOINT, {
-      cache: "no-store",
-      credentials: "same-origin",
+    void loadGlobalBetaTesterCtaEnabled(pathname).then((enabled) => {
+      if (active && typeof enabled === "boolean") {
+        setShowGlobalTrigger(enabled)
+      }
+      // Otherwise fail closed: the authored nested triggers remain available.
     })
-      .then(async (response) => {
-        if (!response.ok) return null
-        return (await response.json()) as { enabled?: unknown }
-      })
-      .then((result) => {
-        if (active && typeof result?.enabled === "boolean") {
-          setShowGlobalTrigger(result.enabled)
-        }
-      })
-      .catch(() => {
-        // Fail closed: the authored nested triggers remain available.
-      })
 
     return () => {
       active = false
     }
-  }, [])
+  }, [pathname])
 
   const openModal = useCallback(
     (trigger?: HTMLElement | null) => {
