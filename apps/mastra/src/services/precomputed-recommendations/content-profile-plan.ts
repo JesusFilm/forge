@@ -45,6 +45,55 @@ export type ProfileFragment = {
   text: string
 }
 
+export type ProfileCitationSpan = { citationId: string | null; text: string }
+
+/** Exact, scalar-safe source spans. Whitespace remains readable but uncitable. */
+export function citationProfilePartInput(input: ProfilePart["input"]) {
+  return {
+    metadata: input.metadata,
+    partIndex: input.partIndex,
+    fragments: input.fragments.map((fragment, ordinal) => {
+      const { text, ...identity } = fragment
+      const spans: ProfileCitationSpan[] = []
+      let offset = 0
+      while (offset < text.length) {
+        let end = Math.min(offset + 240, text.length)
+        // Never split a UTF-16 surrogate pair.
+        if (end < text.length && /[\uDC00-\uDFFF]/u.test(text[end]!)) end--
+        if (end < text.length) {
+          const window = text.slice(offset, end)
+          const newline = window.lastIndexOf("\n")
+          const boundary = [...window.matchAll(/[.!?。！？](?:\s|$)/gu)].at(-1)
+          if (newline >= 0) end = offset + newline + 1
+          else if (boundary) end = offset + boundary.index + boundary[0].length
+          else {
+            const space = window.lastIndexOf(" ")
+            if (space > 0) end = offset + space + 1
+          }
+        }
+        const raw = text.slice(offset, end)
+        const trimmed = raw.trim()
+        const leading = raw.length - raw.trimStart().length
+        const startChar = fragment.startChar + offset + leading
+        if (trimmed.length < 8) spans.push({ citationId: null, text: raw })
+        else {
+          if (leading)
+            spans.push({ citationId: null, text: raw.slice(0, leading) })
+          spans.push({
+            citationId: `p${input.partIndex}:f${ordinal}.${fragment.fragmentIndex}:${startChar}-${startChar + trimmed.length}`,
+            text: trimmed,
+          })
+          const trailing = leading + trimmed.length
+          if (trailing < raw.length)
+            spans.push({ citationId: null, text: raw.slice(trailing) })
+        }
+        offset = end
+      }
+      return { ...identity, spans }
+    }),
+  }
+}
+
 export type ProfilePart = {
   input: {
     metadata: ReturnType<typeof contentProfileMetadata>
@@ -81,8 +130,19 @@ export class ContentProfilePlanError extends Error {
   }
 }
 
-function inputBytes(input: ProfilePart["input"]): number {
-  return Buffer.byteLength(JSON.stringify(input), "utf8")
+function inputBytes(input: ProfilePart["input"], citationIds: boolean): number {
+  if (!citationIds) return Buffer.byteLength(JSON.stringify(input), "utf8")
+  const rendered = citationProfilePartInput(input)
+  const ids = rendered.fragments.flatMap((fragment) =>
+    fragment.spans.flatMap((span) =>
+      span.citationId ? [span.citationId] : [],
+    ),
+  )
+  // IDs appear in both the input labels and the structured-output enum.
+  return (
+    Buffer.byteLength(JSON.stringify(rendered), "utf8") +
+    Buffer.byteLength(JSON.stringify(ids), "utf8")
+  )
 }
 
 /** Pure byte planner: every selected character appears in exactly one part. */
@@ -95,7 +155,14 @@ export function planContentProfile(input: {
   promptVersion: string
   schemaVersion: string
 }): ContentProfilePlan {
-  const { video, chunks, maxPartBytes } = input
+  const { video, chunks } = input
+  if (!Number.isSafeInteger(input.maxPartBytes) || input.maxPartBytes <= 0)
+    throw new ContentProfilePlanError("part_budget_invalid")
+  const citationIds = input.promptVersion === "complete-profile-v5"
+  // Leave room for system instructions and the fixed output-schema envelope.
+  const maxPartBytes = citationIds
+    ? Math.min(input.maxPartBytes, 56_000)
+    : input.maxPartBytes
   if (
     !video.transcriptSelection ||
     video.transcriptSelection.policy !==
@@ -135,7 +202,7 @@ export function planContentProfile(input: {
     fragments: next,
   })
   const fits = (next: ProfileFragment[]) =>
-    inputBytes(envelope(next)) <= maxPartBytes
+    inputBytes(envelope(next), citationIds) <= maxPartBytes
   if (chunks.length && !fits([]))
     throw new ContentProfilePlanError("part_budget_too_small")
   const flush = () => {
@@ -143,8 +210,8 @@ export function planContentProfile(input: {
     const data = envelope(fragments)
     parts.push({
       input: data,
-      inputBytes: inputBytes(data),
-      partDigest: digest(data),
+      inputBytes: inputBytes(data, citationIds),
+      partDigest: digest(citationIds ? citationProfilePartInput(data) : data),
     })
     fragments = []
   }

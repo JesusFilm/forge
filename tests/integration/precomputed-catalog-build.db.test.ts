@@ -52,6 +52,7 @@ import { runPrecomputedCatalog } from "../../apps/mastra/src/services/precompute
 import type { GaCaptureTransport } from "../../apps/mastra/src/services/precomputed-recommendations/ga-watch-capture-transport"
 import { createGaCaptureImportClient } from "../../apps/mastra/src/services/precomputed-recommendations/ga-capture-import-client"
 import { loadImportedGaWatchHistory } from "../../apps/mastra/src/services/precomputed-recommendations/ga-capture-import-reader"
+import { runContentProfile } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-executor"
 import { createContentProfilePersistence } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-client"
 import { createEdgeBatchPersistence } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-client"
 import { decodeEdgePrompt } from "../../apps/mastra/src/services/precomputed-recommendations/edge-prompt-renderer"
@@ -3521,6 +3522,181 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       // Earlier tests legitimately update catalog rows after the suite's
       // historical cutoff. Fence this build after those fixture mutations.
       const spanCutoff = new Date().toISOString()
+      // Exercise the v5 model wire through real Admin reservation, receipt,
+      // finalization and replay while retaining the later-page edge assertions.
+      const profileGenerationId = `catalog-citation-profile-${suffix}`
+      const profileInputDigest = "c".repeat(64)
+      const profileAttemptId = randomUUID()
+      const profileBase = {
+        generationId: profileGenerationId,
+        generationInputDigest: profileInputDigest,
+      }
+      const submitProfile = (input: unknown) =>
+        submitDurablePrecomputedRecommendation(prisma, input, bearer)
+      await submitProfile({
+        action: "start",
+        generationId: profileGenerationId,
+        protocolVersion: 4,
+        modelId: "gpt-6-astra",
+        promptVersion: "complete-profile-v5-native",
+        inputDigest: profileInputDigest,
+        sourceSetDigest: createHash("sha256")
+          .update(JSON.stringify([videoId]))
+          .digest("hex"),
+        inputCutoff: spanCutoff,
+        expectedSourceCount: 1,
+        inputMode: "content_only",
+        executionAttempt: {
+          attemptId: profileAttemptId,
+          invocation: "start",
+          accountRef: "native-citation-account",
+          backend: "codex_chatgpt_subscription",
+          billingBasis: "included_subscription",
+          authMethod: "chatgpt",
+          modelId: "gpt-6-astra",
+          identityObservedAt: new Date().toISOString(),
+          allowanceObservedAt: new Date().toISOString(),
+          weeklyRemainingPercent: 50,
+          fiveHour: { kind: "limited", remainingPercent: 50 },
+        },
+      })
+      await submitProfile({
+        action: "manifest",
+        ...profileBase,
+        attemptId: profileAttemptId,
+        sourceVideoIds: [videoId],
+      })
+      const profileProbe = await submitProfile({
+        action: "capacity_probe",
+        ...profileBase,
+      })
+      await submitProfile({
+        action: "capacity",
+        ...profileBase,
+        attemptId: profileAttemptId,
+        measurement: {
+          measuredAt: new Date().toISOString(),
+          clusterSystemId: profileProbe.clusterSystemId,
+          observedDbBytes: profileProbe.observedDbBytes,
+          availableBytes: 20_000_000_000,
+          reserveBytes: 5_000_000_000,
+          projectedBytes: 1_000_000,
+          sampleSourceCount: 1,
+          sampleBytes: 100_000,
+          source: "operator_verified_pgdata_df",
+        },
+      })
+      const selectedVideo = await catalog.video({ videoId, cutoff: spanCutoff })
+      if (!selectedVideo) throw new Error("Missing native citation fixture")
+      const profilePersistence = createContentProfilePersistence(submitProfile)
+      let citationModelCalls = 0
+      const citationInput: Parameters<typeof runContentProfile>[0] = {
+        ...profileBase,
+        attemptId: profileAttemptId,
+        inputCutoff: spanCutoff,
+        video: selectedVideo,
+        catalog,
+        modelId: "gpt-6-astra",
+        backend: "codex_chatgpt_subscription",
+        promptVersion: "complete-profile-v5",
+        schemaVersion: "complete-profile-schema-v1",
+        maxPartBytes: 24576,
+        persistence: profilePersistence,
+        model: {
+          async generateReserved(request, reserve) {
+            const decision = await reserve()
+            if (decision.kind !== "dispatch")
+              return {
+                kind: "skipped" as const,
+                reservation: decision.reservation,
+              }
+            citationModelCalls++
+            const data = JSON.parse(request.prompt)
+            const fragments: Array<{
+              chunkId: string
+              spans: Array<{ citationId: string | null; text: string }>
+            }> = data.fragments
+            expect(
+              fragments
+                .map((fragment) =>
+                  fragment.spans.map((span) => span.text).join(""),
+                )
+                .join(""),
+            ).toBe(firstText + secondText)
+            const citation = fragments
+              .find((fragment) => fragment.chunkId === secondChunkId)!
+              .spans.find((span) => span.citationId)!
+            expect(citation.text).toBe(secondText)
+            const schema = JSON.stringify(
+              z.toJSONSchema(request.schema, {
+                target: "draft-07",
+                unrepresentable: "throw",
+              }),
+            )
+            expect(schema).not.toContain('"oneOf"')
+            expect(
+              Buffer.byteLength(request.system) +
+                Buffer.byteLength(request.prompt) +
+                Buffer.byteLength(schema),
+            ).toBeLessThanOrEqual(65536)
+            return {
+              kind: "dispatched" as const,
+              reservation: decision.reservation,
+              response: {
+                output: request.schema.parse({
+                  version: "complete_profile_v1",
+                  summaryEnglish:
+                    "The complete Amharic story describes hope and courage through hardship.",
+                  themes: ["hope", "courage"],
+                  people: [],
+                  places: [],
+                  citations: [],
+                  anchors: [
+                    {
+                      citationId: citation.citationId,
+                      claimEnglish:
+                        "The later passage describes hope and courage through hardship.",
+                    },
+                  ],
+                }),
+                usage: { inputTokens: 120, outputTokens: 30 },
+              },
+            }
+          },
+        },
+      }
+      const citationProfile = await runContentProfile(citationInput)
+      expect(citationProfile.state).toBe("ready")
+      expect(citationProfile.profile!.anchors).toEqual([
+        {
+          videoId,
+          chunkId: secondChunkId,
+          transcriptId,
+          language: "am",
+          chunkIndex: 1,
+          startChar: 0,
+          endChar: secondText.length,
+          textSha256: createHash("sha256").update(secondText).digest("hex"),
+          claimEnglish:
+            "The later passage describes hope and courage through hardship.",
+        },
+      ])
+      expect(await runContentProfile(citationInput)).toEqual(citationProfile)
+      expect(citationModelCalls).toBe(1)
+      const citationStatus = await profilePersistence.status({
+        ...profileBase,
+        cacheKey: citationProfile.cacheKey,
+        action: "profile_status",
+      })
+      expect(citationStatus.profile).toMatchObject({
+        state: "ready",
+        profileJson: citationProfile.profile,
+      })
+      expect(citationStatus.calls).toHaveLength(1)
+      expect(citationStatus.calls[0]).toMatchObject({
+        status: "succeeded",
+        nodeApplied: true,
+      })
       await expect(
         runPrecomputedCatalog(
           {

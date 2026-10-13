@@ -159,7 +159,519 @@ const supportedMapProfile = {
   ],
 }
 
+function recordingProfilePersistence() {
+  let coverageDigest = ""
+  let state: ProfileState = "planned"
+  let finalCallId: string | null = null
+  let profileJson: CompactProfile | null = null
+  const calls: Awaited<ReturnType<ProfilePersistencePort["status"]>>["calls"] =
+    []
+  const receipts: Parameters<ProfilePersistencePort["callFinish"]>[0][] = []
+  const persistence: ProfilePersistencePort = {
+    async register(input) {
+      coverageDigest = input.coverageDigest
+      return {
+        generationId: input.generationId,
+        cacheKey: input.cacheKey,
+        kind: input.kind,
+        state,
+        replay: false,
+      }
+    },
+    async status(input) {
+      return {
+        generationId: input.generationId,
+        cacheKey: input.cacheKey,
+        profile: {
+          state,
+          kind: "transcript",
+          profileJson,
+          finalCallId,
+          coverageDigest,
+        },
+        calls,
+      }
+    },
+    async callStart(input) {
+      state = "in_progress"
+      return {
+        generationId: input.generationId,
+        cacheKey: input.cacheKey,
+        callId: input.callId,
+        state: "pending",
+        replay: false,
+      }
+    },
+    async callFinish(input) {
+      receipts.push(input)
+      if (input.node && input.outputDigest)
+        calls.push({
+          callId: input.callId,
+          nodeKey: input.nodeKey,
+          stage: input.stage,
+          inputDigest: input.inputDigest,
+          status: input.status,
+          nodeApplied: true,
+          node: input.node,
+          outputDigest: input.outputDigest,
+        })
+      return {
+        generationId: input.generationId,
+        cacheKey: input.cacheKey,
+        callId: input.callId,
+        state: input.status,
+        receiptStored: true,
+        nodeApplied: input.status === "succeeded",
+        replay: false,
+      }
+    },
+    async finalize(input) {
+      state = "ready"
+      finalCallId = input.finalCallId
+      profileJson = calls.find((call) => call.callId === finalCallId)!.node!
+        .profile
+      return {
+        generationId: input.generationId,
+        cacheKey: input.cacheKey,
+        state,
+        profileJson,
+        finalCallId,
+        replay: false,
+      }
+    },
+  }
+  return { persistence, receipts }
+}
+
 describe("complete content profile execution", () => {
+  it("retains legacy rejection of an ambiguous exact repeated transcript quotation", async () => {
+    const text = "Repeated dialogue. Repeated dialogue."
+    const recorded = recordingProfilePersistence()
+    await expect(
+      runContentProfile({
+        ...identity,
+        video: transcriptVideo(),
+        catalog: transcriptCatalog([{ ...oneChunk, text }]),
+        persistence: recorded.persistence,
+        model: {
+          async generate(request) {
+            return {
+              output: request.schema.parse({
+                ...supportedMapProfile,
+                anchors: [
+                  {
+                    chunkId: oneChunk.id,
+                    fragmentIndex: 0,
+                    excerpt: "Repeated dialogue.",
+                    claimEnglish: "The dialogue repeats a supported statement.",
+                  },
+                ],
+              }),
+              usage: { inputTokens: 80, outputTokens: 20 },
+            }
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "profile_invalid",
+      receiptCode: "profile_map_anchor_invalid",
+    })
+    expect(recorded.receipts[0]).toMatchObject({
+      status: "rejected",
+      errorCode: "profile_map_anchor_invalid",
+      usage: { inputTokens: 80, outputTokens: 20 },
+    })
+  })
+
+  it("grounds v5 repeated quotation citation IDs at distinct Unicode offsets without model proof arithmetic", async () => {
+    const repeated = "Repeated dialogue line. ".repeat(8)
+    const text = "🙂".repeat(120) + "\n" + repeated + "\n" + repeated + "\n"
+    const recorded = recordingProfilePersistence()
+    const result = await runContentProfile({
+      ...identity,
+      promptVersion: "complete-profile-v5",
+      video: transcriptVideo(),
+      catalog: transcriptCatalog([{ ...oneChunk, text }]),
+      persistence: recorded.persistence,
+      model: {
+        async generate(request) {
+          const data = JSON.parse(request.prompt) as {
+            fragments: Array<{
+              spans: Array<{ citationId: string | null; text: string }>
+            }>
+          }
+          expect(
+            data.fragments
+              .flatMap((fragment) => fragment.spans.map((span) => span.text))
+              .join(""),
+          ).toBe(text)
+          const matches = data.fragments
+            .flatMap((fragment) => fragment.spans)
+            .filter((span) => span.text === repeated.trim())
+          expect(matches).toHaveLength(2)
+          expect(matches[0]!.citationId).not.toBe(matches[1]!.citationId)
+          return {
+            output: request.schema.parse({
+              ...supportedProfile,
+              anchors: [
+                {
+                  citationId: matches[1]!.citationId,
+                  claimEnglish: "The dialogue repeats a supported statement.",
+                },
+              ],
+            }),
+            usage: { inputTokens: 80, outputTokens: 20 },
+          }
+        },
+      },
+    })
+    expect(result.state).toBe("ready")
+    expect(result.profile!.anchors[0]).toEqual({
+      videoId: "video-one",
+      chunkId: "chunk-one",
+      transcriptId: "transcript-one",
+      language: "en",
+      chunkIndex: 0,
+      startChar: 434,
+      endChar: 625,
+      textSha256: createHash("sha256").update(repeated.trim()).digest("hex"),
+      claimEnglish: "The dialogue repeats a supported statement.",
+    })
+    expect(recorded.receipts[0]).toMatchObject({
+      status: "succeeded",
+      node: { coveredPartStart: 0, coveredPartEnd: 1 },
+    })
+  })
+
+  it("delivers every v5 fragment character once with bounded compatible schemas and replays late-fragment receipts", async () => {
+    const chunks = [
+      {
+        ...oneChunk,
+        text: " \t🙂 A repeated grounded sentence.\n".repeat(180),
+      },
+      { ...oneChunk, id: "chunk-two", chunkIndex: 1, text: " \nshort\t" },
+    ]
+    const selectedVideo = transcriptVideo()
+    selectedVideo.transcriptSelection!.selected[0]!.totalChunks = 2
+    const recorded = recordingProfilePersistence()
+    const frames: Array<{
+      partIndex: number
+      fragments: Array<{
+        chunkId: string
+        fragmentIndex: number
+        startChar: number
+        endChar: number
+        spans: Array<{ citationId: string | null; text: string }>
+      }>
+    }> = []
+    let calls = 0
+    const input: Parameters<typeof runContentProfile>[0] = {
+      ...identity,
+      promptVersion: "complete-profile-v5",
+      maxPartBytes: 3000,
+      video: selectedVideo,
+      catalog: transcriptCatalog(chunks),
+      persistence: recorded.persistence,
+      model: {
+        async generate(request) {
+          calls++
+          const schemaJson = JSON.stringify(
+            z.toJSONSchema(request.schema, {
+              target: "draft-07",
+              unrepresentable: "throw",
+            }),
+          )
+          expect(schemaJson).not.toContain('"oneOf"')
+          expect(Buffer.byteLength(schemaJson)).toBeLessThanOrEqual(128000)
+          expect(
+            Buffer.byteLength(request.system) +
+              Buffer.byteLength(request.prompt) +
+              Buffer.byteLength(schemaJson),
+          ).toBeLessThanOrEqual(65536)
+          expect(request.maxOutputTokens).toBe(2048)
+          const data = JSON.parse(request.prompt)
+          let anchors
+          if (data.fragments) {
+            frames.push(data)
+            const ids = data.fragments.flatMap(
+              (fragment: (typeof frames)[number]["fragments"][number]) => {
+                expect(fragment.spans.map((span) => span.text).join("")).toBe(
+                  chunks
+                    .find((chunk) => chunk.id === fragment.chunkId)!
+                    .text.slice(fragment.startChar, fragment.endChar),
+                )
+                for (const span of fragment.spans) {
+                  expect(span.text).not.toMatch(
+                    /^[\uDC00-\uDFFF]|[\uD800-\uDBFF]$/u,
+                  )
+                  if (span.citationId) {
+                    expect(span.text.length).toBeGreaterThanOrEqual(8)
+                    expect(span.text.length).toBeLessThanOrEqual(240)
+                  }
+                }
+                return fragment.spans.flatMap((span) =>
+                  span.citationId ? [span.citationId] : [],
+                )
+              },
+            )
+            const schema = JSON.parse(schemaJson)
+            if (ids.length)
+              expect(
+                schema.properties.anchors.items.properties.citationId.enum,
+              ).toEqual(ids)
+            else expect(schema.properties.anchors.maxItems).toBe(0)
+            anchors = ids.length
+              ? [
+                  {
+                    citationId: ids.at(-1),
+                    claimEnglish:
+                      "The frozen passage repeats a grounded sentence.",
+                  },
+                ]
+              : []
+          } else {
+            anchors = data.children
+              .flatMap(
+                (child: { profile: CompactProfile }) => child.profile.anchors,
+              )
+              .slice(-1)
+          }
+          return {
+            output: request.schema.parse({ ...supportedProfile, anchors }),
+            usage: { inputTokens: 80, outputTokens: 20 },
+          }
+        },
+      },
+    }
+    const first = await runContentProfile(input)
+    expect(first.state).toBe("ready")
+    expect(frames.length).toBeGreaterThan(1)
+    expect(
+      frames.some(
+        (frame) =>
+          frame.partIndex > 0 &&
+          frame.fragments.some((fragment) => fragment.fragmentIndex > 0),
+      ),
+    ).toBe(true)
+    for (const chunk of chunks)
+      expect(
+        frames
+          .flatMap((frame) => frame.fragments)
+          .filter((fragment) => fragment.chunkId === chunk.id)
+          .flatMap((fragment) => fragment.spans.map((span) => span.text))
+          .join(""),
+      ).toBe(chunk.text)
+    expect(recorded.receipts).toHaveLength(calls)
+    expect(calls).toBeLessThanOrEqual(127)
+    for (const receipt of recorded.receipts)
+      expect(
+        Buffer.byteLength(JSON.stringify(receipt.node)),
+      ).toBeLessThanOrEqual(16384)
+    const count = calls
+    expect(await runContentProfile(input)).toEqual(first)
+    expect(calls).toBe(count)
+    const laterId = frames[1]!.fragments
+      .flatMap((fragment) => fragment.spans)
+      .find((span) => span.citationId)!.citationId
+    const foreign = recordingProfilePersistence()
+    await expect(
+      runContentProfile({
+        ...input,
+        persistence: foreign.persistence,
+        model: {
+          async generate(request) {
+            const invalid = {
+              ...supportedProfile,
+              anchors: [
+                {
+                  citationId: laterId,
+                  claimEnglish:
+                    "A claim names a later map part's exact passage.",
+                },
+              ],
+            }
+            expect(request.schema.safeParse(invalid).success).toBe(false)
+            return {
+              output: JSON.parse(JSON.stringify(invalid)),
+              usage: { inputTokens: 80, outputTokens: 20 },
+            }
+          },
+        },
+      }),
+    ).rejects.toMatchObject({
+      code: "profile_invalid",
+      receiptCode: "profile_adapter_output_invalid",
+    })
+    expect(foreign.receipts).toHaveLength(1)
+    expect(foreign.receipts[0]).toMatchObject({
+      status: "rejected",
+      usage: { inputTokens: 80, outputTokens: 20 },
+    })
+  })
+
+  it.each(["not-offered", "p1:f0.1:500-740"])(
+    "rejects v5 unknown or foreign-part citation %s with known usage and no finalization",
+    async (citationId) => {
+      const recorded = recordingProfilePersistence()
+      await expect(
+        runContentProfile({
+          ...identity,
+          promptVersion: "complete-profile-v5",
+          video: transcriptVideo(),
+          catalog: transcriptCatalog(),
+          persistence: recorded.persistence,
+          model: {
+            async generate(request) {
+              const invalid = {
+                ...supportedProfile,
+                anchors: [
+                  {
+                    citationId,
+                    claimEnglish:
+                      "This claim names unavailable transcript support.",
+                  },
+                ],
+              }
+              expect(request.schema.safeParse(invalid).success).toBe(false)
+              return {
+                output: JSON.parse(JSON.stringify(invalid)),
+                usage: { inputTokens: 80, outputTokens: 20 },
+              }
+            },
+          },
+        }),
+      ).rejects.toMatchObject({
+        code: "profile_invalid",
+        receiptCode: "profile_adapter_output_invalid",
+      })
+      expect(recorded.receipts).toHaveLength(1)
+      expect(recorded.receipts[0]).toMatchObject({
+        status: "rejected",
+        errorCode: "profile_adapter_output_invalid",
+        usage: { inputTokens: 80, outputTokens: 20 },
+      })
+      expect(recorded.receipts[0]!.node).toBeUndefined()
+    },
+  )
+
+  it("keeps short whitespace v5 transcripts readable with zero offered anchors and no empty enum", async () => {
+    const text = " \nshort\t "
+    const recorded = recordingProfilePersistence()
+    const result = await runContentProfile({
+      ...identity,
+      promptVersion: "complete-profile-v5",
+      video: transcriptVideo(),
+      catalog: transcriptCatalog([{ ...oneChunk, text }]),
+      persistence: recorded.persistence,
+      model: {
+        async generate(request) {
+          const data = JSON.parse(request.prompt)
+          expect(data.fragments[0].spans).toEqual([{ citationId: null, text }])
+          const schema = z.toJSONSchema(request.schema, {
+            target: "draft-07",
+            unrepresentable: "throw",
+          })
+          expect(JSON.stringify(schema)).not.toContain('"enum":[]')
+          return {
+            output: request.schema.parse({ ...supportedProfile, anchors: [] }),
+            usage: { inputTokens: 80, outputTokens: 20 },
+          }
+        },
+      },
+    })
+    expect(result.profile!.anchors).toEqual([])
+  })
+
+  it.each([false, true])(
+    "retains eight v5 proof anchors and the complete 16KiB node budget (oversized=%s)",
+    async (oversized) => {
+      const selectedVideo = transcriptVideo()
+      selectedVideo.id = "v".repeat(191)
+      selectedVideo.transcriptSelection!.selected[0]!.transcriptId = "t".repeat(
+        191,
+      )
+      selectedVideo.transcriptSelection!.selected[0]!.language = "l".repeat(64)
+      const chunk = {
+        ...oneChunk,
+        id: "c".repeat(191),
+        transcriptId: "t".repeat(191),
+        language: "l".repeat(64),
+      }
+      const recorded = recordingProfilePersistence()
+      const char = oversized ? "界" : "a"
+      const rich = {
+        ...supportedProfile,
+        summaryEnglish: char.repeat(600),
+        themes: Array(12).fill(char.repeat(80)),
+        people: Array(12).fill(char.repeat(80)),
+        places: Array(12).fill(char.repeat(80)),
+        citations: Array(12).fill(char.repeat(80)),
+      }
+      let wireBytes = 0
+      let expansion = 0
+      const result = runContentProfile({
+        ...identity,
+        promptVersion: "complete-profile-v5",
+        video: selectedVideo,
+        catalog: transcriptCatalog([chunk]),
+        persistence: recorded.persistence,
+        model: {
+          async generate(request) {
+            const data = JSON.parse(request.prompt)
+            const citationId = data.fragments[0].spans.find(
+              (span: { citationId: string | null }) => span.citationId,
+            ).citationId
+            const output = {
+              ...rich,
+              anchors: Array.from({ length: 8 }, (_, index) => ({
+                citationId,
+                claimEnglish: `Claim ${index}: ` + char.repeat(171),
+              })),
+            }
+            wireBytes = Buffer.byteLength(JSON.stringify(output))
+            expansion = Number(
+              request.system.match(
+                /maximum JSON expansion is (\d+) UTF-8 bytes/,
+              )![1],
+            )
+            return {
+              output: request.schema.parse(output),
+              usage: { inputTokens: 80, outputTokens: 20 },
+            }
+          },
+        },
+      })
+      if (oversized) {
+        await expect(result).rejects.toMatchObject({
+          code: "profile_invalid",
+          receiptCode: "profile_node_bytes_exceeded",
+        })
+        expect(recorded.receipts[0]).toMatchObject({
+          status: "rejected",
+          errorCode: "profile_node_bytes_exceeded",
+          usage: { inputTokens: 80, outputTokens: 20 },
+        })
+        expect(recorded.receipts[0]!.node).toBeUndefined()
+      } else {
+        const profile = (await result).profile!
+        expect({ ...profile, anchors: [] }).toEqual({ ...rich, anchors: [] })
+        expect(profile.anchors).toHaveLength(8)
+        expect(profile.anchors[7]!.claimEnglish).toBe(
+          "Claim 7: " + char.repeat(171),
+        )
+        expect(Buffer.byteLength(JSON.stringify(profile))).toBeLessThanOrEqual(
+          wireBytes + 8 * expansion,
+        )
+        expect(wireBytes + 8 * expansion).toBeLessThanOrEqual(
+          profileJsonBudget(0, 1, []),
+        )
+        expect(
+          Buffer.byteLength(JSON.stringify(recorded.receipts[0]!.node)),
+        ).toBeLessThanOrEqual(16384)
+      }
+    },
+  )
+
   it("readies a metadata-only profile without calling Astra or inventing transcript evidence", async () => {
     const actions: string[] = []
     let coverageDigest = ""
