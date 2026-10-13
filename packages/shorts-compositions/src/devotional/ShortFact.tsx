@@ -314,7 +314,9 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
             f={f}
             t={t}
             accent={voxHistory.accent ?? VOX_ORANGE}
-            text="From the Full Devotional"
+            text={
+              isRussian(words) ? "Из полного видео" : "From the Full Devotional"
+            }
           />
           <VoxHistoryLayout f={f} t={t} words={words} spec={voxHistory} />
           <VoxCaption f={f} t={t} tokens={captionTokens(words)} />

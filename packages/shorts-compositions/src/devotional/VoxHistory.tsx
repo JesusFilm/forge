@@ -84,11 +84,12 @@ function saidAfter(
   fallback: number,
 ): number {
   if (!word) return fallback
-  const target = word.toLowerCase().replace(/[^a-z']/g, "")
+  // Letters of any script: an ASCII-only class emptied every Russian word,
+  // and an empty target matched the first word after the time.
+  const bare = (s: string) => s.toLowerCase().replace(/[^\p{L}']/gu, "")
+  const target = bare(word)
   const w = words.find(
-    (x) =>
-      x.startSec >= afterSec - 0.05 &&
-      x.word.toLowerCase().replace(/[^a-z']/g, "") === target,
+    (x) => x.startSec >= afterSec - 0.05 && bare(x.word) === target,
   )
   return w ? w.startSec : fallback
 }
