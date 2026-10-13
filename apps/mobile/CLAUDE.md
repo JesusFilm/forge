@@ -1546,14 +1546,34 @@ design record is
   `appLanguage.ts` as soon as the preferences hydrate, because the preferences
   provider persists without awaiting and a payload read from storage alone can
   carry the previous pick.
-- **`google-services.json` is NOT committed and Android cannot register without
-  it.** `app.json` references it, and `expo prebuild --platform android` refuses
-  while it is absent — which is the gate that makes the missing Firebase
-  download visible. A placeholder file would build and then fail FCM
-  registration silently on device. iOS is unaffected. The refusal is
+- **`google-services.json` is committed, and Android cannot register without
+  it.** It is the config of the Android app `org.jesusfilm.forgewatch` in the
+  Firebase project `jesus-film-watch-mobile` (added 2026-10-09). It holds no
+  secret. EAS builds use only committed files, so the file must stay in git.
+  `app.json` references it, and `expo prebuild --platform android` refuses
+  while it is absent. Do not replace it with a placeholder: a placeholder
+  builds and then fails FCM registration silently on device. iOS is
+  unaffected. The FCM V1 send key is a different file. Only EAS credentials
+  hold it, and it never goes in the repo. The refusal is
   `setGoogleServicesFile` in `@expo/config-plugins`, which throws "Cannot copy
   google-services.json from …" when the copy fails (read from the installed
   package on 2026-09-21; no prebuild was run).
+- **The API key in `google-services.json` is public and restricted.** The repo
+  is public, so the restriction is the key's only protection. Since
+  2026-10-13, the Google Cloud console allows the key only for the Firebase
+  Installations API and the FCM Registration API. It also allows only
+  `org.jesusfilm.forgewatch` signed with the EAS keystore (SHA-1
+  `50:69:A0:14:F5:50:F0:DB:14:E2:29:61:C5:01:44:FF:83:58:8E:30`). Three rules
+  follow, and one symptom shows a break:
+  - A local build is signed with the debug key, so it cannot register a new
+    push token. To test push from a local build, add the debug key's SHA-1
+    for the test, then remove it.
+  - Before the first Google Play release, add the SHA-1 of Play's app-signing
+    key. Without it, Play installs never register, and nothing reports it. Do
+    the same after any change to the EAS keystore.
+  - A new Firebase feature on Android needs its API added to the key.
+  - A blocked request shows in logcat as a Firebase Installations or FCM
+    error that names the API key, and admin receives no `RegisterPushDevice`.
 - **Telemetry is `push.`-prefixed through the sink named `telemetry`**
   (`push.registration`, `push.registration_failed`, `push.revocation`). No
   token, viewer handle or test ID ever reaches a log.
@@ -1609,6 +1629,83 @@ design record is
   kind with one unpublished slug each, the message clearing the tab bar on a
   0-inset device, and one `ReportPushOpen` per tap in the fake-admin proxy log
   (two when admin refuses the viewer handle).
+
+### Android cold taps and the task restart
+
+- **A cold tap reaches `MainActivity` only through `onNewIntent`.** A cold
+  tap is a tap after Android stopped the process while the task stayed in
+  Recents. Android restarts the old task with its old launch intent and sends
+  the tap as a new intent. Expo's activity wrapper drops a new intent while
+  the app loads (`ReactActivityDelegateWrapper.onNewIntent` in
+  `expo@57.0.27`), so the app opened Home and reported no open
+  (expo/expo#49254). Firebase posts the notification in this state, because
+  the app is not on screen.
+- **`plugins/withAndroidPushTapRelay.js` adds two blocks to `MainActivity.kt`.**
+  - Block A runs in `onCreate`, before the superclass call. On a restore
+    (saved state, or `FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY`), it removes
+    `google.message_id` from the activity's own intent. The tap that created
+    the task then does not open again, and a newer tap wins.
+  - Block B overrides `onNewIntent`. It gives a Firebase-posted tap to
+    `NotificationManager.onNotificationResponseFromExtras`, then removes
+    `google.message_id`, so Expo's own listener ignores the tap. It skips an
+    intent with Expo's response keys, because Expo's forwarder already
+    delivers that tap.
+  - The plugin throws at prebuild on a Java `MainActivity`, a missing anchor,
+    or another `onNewIntent` override. A skip would ship the defect. Never
+    write the text `super.onCreate(` in a block: expo-splash-screen and
+    react-native-google-cast anchor on the first line that holds it.
+- **The plugin ships only in a native build.** It changes the app config, so
+  it moves the fingerprint runtime version on Android and iOS. An
+  `eas update` published before that build reaches no installed app.
+- **`src/lib/__tests__/androidPushTapUpstream.guard.test.js` is the
+  tripwire.** It pins `expo` 57.0.28, `expo-notifications` 57.0.22,
+  `expo-updates` 57.0.26, and eleven upstream facts. Three of the facts pin
+  Expo's `isFCMIntent` gate, which is why removing the key makes the listener
+  ignore a tap. A red test means: re-check expo/expo#49254 and the plugin.
+  Expect the Expo SDK 58 upgrade to trip the version pins. Then re-read expo
+  PR #47615 (merged 2026-07-09): it drains the tap queue after a listener
+  handles a tap.
+  - For a patch bump, diff the old and new packages' `android/` folders under
+    `node_modules/.pnpm`. Bump the pins without a new device pass only when
+    every fact passes and the diff changes nothing but the package's own
+    `version`, `versionName`, and `versionCode` lines.
+  - Any other change needs a cold tap on a release build first: stop the
+    process with `am kill`, tap an announcement, and read the two logs below.
+    A changed dependency version counts, for example `firebase-messaging` in
+    expo-notifications' `build.gradle` or in the `.pom` under its
+    `local-maven-repo/`, because the build links that prebuilt library.
+  - The device pass ran on `expo` 57.0.27 and `expo-updates` 57.0.25. On
+    2026-10-13 the pins moved to 57.0.28 and 57.0.26 by that check: only each
+    package's own `version` and `versionName` lines differed.
+- **Make a cold tap with `am kill`, not a force stop.** Pause the media, press
+  Home, then run `adb shell am kill org.jesusfilm.forgewatch`. A playing mini
+  player keeps the process alive, and `am kill` then does nothing. Check that
+  `pidof` is empty and the task is still in Recents. A force stop also blocks
+  push delivery until the next launch.
+- **Read two logs.** `adb logcat -s ForgePushTap` shows each block. Block B's
+  line means that the hand-off ran, not that the tap was kept: until
+  JavaScript loads, the queue keeps only the first tap.
+  `adb logcat -b events` shows `wm_new_intent`, then `wm_restart_activity`,
+  and no `wm_create_activity` for `MainActivity`. A dev client cannot show
+  the replay cases, because the dev launcher restarts the task with
+  `FLAG_ACTIVITY_CLEAR_TASK`. Use a release build for them.
+- **Device pass, 2026-10-13, Samsung Galaxy S20 (Android 13).** Cold taps to
+  a video, a series, and an experience opened the destination. A newer cold
+  tap won over the tap that created the task. A reopen from Recents, from the
+  launcher, and after a force stop did not replay an earlier tap. The fake
+  admin counted one `ReportPushOpen` per dev-client tap. A lapse reminder
+  cold tap opened its video, and one Back press returned to Home. With
+  "Don't keep activities" on and the process alive, a tap opened its video
+  once, and one Back press returned to Home.
+- **Create the test task from the launcher icon.** A task that a deep link
+  created replays that link when Android restores it. A cold tap on such a
+  task opens the link's screen and the tap's destination, so the screen can
+  appear twice. This is restore behavior, not the relay.
+- **To test a lapse reminder without a clock change,** temporarily schedule
+  the day-1 reminder 90 seconds after the pass (`date` in
+  `src/lib/lapseReminders/lifecycle.ts`), build a release APK, and revert the
+  change. `deps.now()` returns a number, not a `Date`. The alarm is inexact,
+  so it can fire minutes late.
 
 ## Cast SDK sheet theming
 

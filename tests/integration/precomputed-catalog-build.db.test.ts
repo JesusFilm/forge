@@ -1051,6 +1051,9 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         }
         let subscriptionCalls = 0
         let capacityAvailable = false
+        let capacityGrowth:
+          | { probeBytes: number; measuredBytes: number }
+          | undefined
         let failCopyBeforeReservation = true
         const manualInput: ManualSubscriptionCatalogInput = {
           invocation: "start",
@@ -1092,6 +1095,30 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
               directory,
             }),
           async measureCapacity(probe) {
+            if (capacityAvailable && !capacityGrowth) {
+              // Allocated growth is real; physical headroom remains an explicitly
+              // synthetic fixture attestation, never production evidence.
+              await admin.query(
+                "CREATE TABLE capacity_observation_growth (payload bytea)",
+              )
+              await admin.query(
+                "INSERT INTO capacity_observation_growth SELECT decode(repeat(md5(i::text), 4), 'hex') FROM generate_series(1, 8192) i",
+              )
+              const measured = await fixtureCapacity()
+              capacityGrowth = {
+                probeBytes: probe.observedDbBytes,
+                measuredBytes: measured.observedDbBytes,
+              }
+              expect(capacityGrowth.measuredBytes).toBeGreaterThan(
+                capacityGrowth.probeBytes,
+              )
+              // A second allocation after the physical observation must be
+              // deducted by Admin when it revalidates the admission.
+              await admin.query(
+                "INSERT INTO capacity_observation_growth SELECT decode(repeat(md5(i::text), 4), 'hex') FROM generate_series(8193, 16384) i",
+              )
+              return measured
+            }
             return {
               ...probe,
               measuredAt: new Date().toISOString(),
@@ -1196,12 +1223,78 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           reason: "admin_unavailable",
           knownUsage: { profileCallCount: 0, edgeBatchCallCount: 0 },
         })
+        const capacityState = z
+          .object({
+            capacity: z.object({
+              observedDbBytes: z.number(),
+              observedDbGrowthBytes: z.number(),
+              availableBytes: z.number(),
+              reserveBytes: z.number(),
+              projectedBytes: z.number(),
+              otherReservedBytes: z.number(),
+              unaccountedGrowthBytes: z.number(),
+              status: z.literal("passed"),
+            }),
+          })
+          .parse(
+            await ingest({
+              action: "status",
+              generationId: manualDestination.generationId,
+              generationInputDigest: manualDestination.generationInputDigest,
+            }),
+          )
+        expect(capacityState.capacity.observedDbBytes).toBe(
+          capacityGrowth?.measuredBytes,
+        )
+        expect(capacityState.capacity.observedDbGrowthBytes).toBeGreaterThan(0)
+        expect(
+          capacityState.capacity.unaccountedGrowthBytes,
+        ).toBeGreaterThanOrEqual(capacityState.capacity.observedDbGrowthBytes)
+        expect(capacityState.capacity).toMatchObject({
+          availableBytes: 20_000_000_000,
+          reserveBytes: 5_000_000_000,
+          projectedBytes: 1_000_000,
+        })
+        expect(
+          capacityState.capacity.availableBytes -
+            capacityState.capacity.reserveBytes -
+            capacityState.capacity.otherReservedBytes -
+            capacityState.capacity.unaccountedGrowthBytes,
+        ).toBeGreaterThanOrEqual(capacityState.capacity.projectedBytes)
         const preparedImport = await importClient.status({
           destination: manualDestination,
         })
         expect(preparedImport.state).toBe("prepared")
         expect(subscriptionCalls).toBe(0)
         expect(gaFetch).toHaveBeenCalledTimes(gaCallsAfterCapture)
+        const regularMeasurement = manualPorts.measureCapacity
+        manualPorts.measureCapacity = async () => {
+          const measured = await fixtureCapacity()
+          await admin.query(
+            "INSERT INTO capacity_observation_growth SELECT decode(repeat(md5(i::text), 4), 'hex') FROM generate_series(16385, 24576) i",
+          )
+          return {
+            ...measured,
+            availableBytes:
+              measured.reserveBytes +
+              measured.projectedBytes +
+              capacityState.capacity.otherReservedBytes,
+          }
+        }
+        const growthBlocked = await runManualSubscriptionCatalog(
+          { ...manualInput, invocation: "resume", attemptId: randomUUID() },
+          manualPorts,
+        )
+        expect(growthBlocked).toMatchObject({
+          state: "stopped",
+          reason: "capacity_stopped",
+          knownUsage: { profileCallCount: 0, edgeBatchCallCount: 0 },
+        })
+        expect(subscriptionCalls).toBe(0)
+        expect(
+          (await importClient.status({ destination: manualDestination })).state,
+        ).toBe("prepared")
+        manualPorts.measureCapacity = regularMeasurement
         const manual = await runManualSubscriptionCatalog(
           { ...manualInput, invocation: "resume", attemptId: randomUUID() },
           manualPorts,

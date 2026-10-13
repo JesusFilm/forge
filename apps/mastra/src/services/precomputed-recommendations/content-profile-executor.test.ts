@@ -318,176 +318,231 @@ describe("complete content profile execution", () => {
     expect(starts).toBe(0)
   })
 
-  it("persists a verified one-part map receipt before finalizing the profile", async () => {
-    const actions: string[] = []
-    let coverageDigest = ""
-    let completedCallId = ""
-    const result = await runContentProfile({
-      ...identity,
-      video: transcriptVideo(),
-      catalog: transcriptCatalog(),
-      model: {
-        async generate(input) {
-          actions.push("model")
-          expect(input.prompt).toContain(passage)
-          expect(() =>
-            z.toJSONSchema(input.schema, {
-              target: "draft-07",
-              unrepresentable: "throw",
-            }),
-          ).not.toThrow()
-          expect(input.system).not.toContain("compute SHA-256")
-          expect(input.system).toContain("2,048 UTF-8 bytes")
-          expect(input.system).toContain(
-            `stored profile JSON budget for this node is ${profileJsonBudget(0, 1, [])} UTF-8 bytes`,
-          )
-          expect(input.system).toContain(
-            "minified response profile JSON bytes + returned anchor count ×",
-          )
-          const mapInput = JSON.parse(input.prompt) as {
-            fragments: Parameters<typeof profileMapAnchorExpansionBound>[0]
+  it.each([false, true])(
+    "persists a verified one-part map receipt before finalizing (large=%s)",
+    async (large) => {
+      const mapOutput: Omit<CompactProfile, "anchors"> & {
+        anchors: typeof supportedMapProfile.anchors
+      } = large
+        ? {
+            ...supportedMapProfile,
+            summaryEnglish: "s".repeat(600),
+            themes: Array(12).fill("t".repeat(80)),
+            people: Array(12).fill("p".repeat(80)),
           }
-          const expansionBound = profileMapAnchorExpansionBound(
-            mapInput.fragments,
-            "video-one",
+        : supportedMapProfile
+      const expectedProfile: CompactProfile = {
+        ...supportedProfile,
+        summaryEnglish: mapOutput.summaryEnglish,
+        themes: mapOutput.themes,
+        people: mapOutput.people,
+        places: [...mapOutput.places],
+        citations: [...mapOutput.citations],
+      }
+      if (large) {
+        mapOutput.places = Array(12).fill("é")
+        mapOutput.citations = Array(12).fill("c")
+        expectedProfile.places = mapOutput.places
+        expectedProfile.citations = mapOutput.citations
+        const nodeBytes = () =>
+          Buffer.byteLength(
+            JSON.stringify({
+              profile: expectedProfile,
+              coveredPartStart: 0,
+              coveredPartEnd: 1,
+              childNodeDigests: [],
+            }),
+            "utf8",
           )
-          expect(input.system).toContain(
-            `returned anchor count × ${expansionBound} at or below ${profileJsonBudget(0, 1, [])} UTF-8 bytes`,
-          )
-          expect(input.system).toContain(
-            "Schema field maxima are ceilings, not targets.",
-          )
-          return {
-            output: input.schema.parse(supportedMapProfile),
-            usage: {
+        for (const list of [mapOutput.places, mapOutput.citations]) {
+          for (let index = 0; index < list.length; index++) {
+            const padding = Math.min(
+              80 - list[index]!.length,
+              4096 - nodeBytes(),
+            )
+            list[index] += "x".repeat(padding)
+          }
+        }
+        expect(nodeBytes()).toBe(4096)
+      }
+      const actions: string[] = []
+      let coverageDigest = ""
+      let completedCallId = ""
+      const result = await runContentProfile({
+        ...identity,
+        video: transcriptVideo(),
+        catalog: transcriptCatalog(),
+        model: {
+          async generate(input) {
+            actions.push("model")
+            expect(input.prompt).toContain(passage)
+            expect(() =>
+              z.toJSONSchema(input.schema, {
+                target: "draft-07",
+                unrepresentable: "throw",
+              }),
+            ).not.toThrow()
+            expect(input.system).not.toContain("compute SHA-256")
+            expect(input.system).toContain("4,096 UTF-8 bytes")
+            expect(input.system).toContain(
+              `stored profile JSON budget for this node is ${profileJsonBudget(0, 1, [])} UTF-8 bytes`,
+            )
+            expect(input.system).toContain(
+              "minified response profile JSON bytes + returned anchor count ×",
+            )
+            const mapInput = JSON.parse(input.prompt) as {
+              fragments: Parameters<typeof profileMapAnchorExpansionBound>[0]
+            }
+            const expansionBound = profileMapAnchorExpansionBound(
+              mapInput.fragments,
+              "video-one",
+            )
+            expect(input.system).toContain(
+              `returned anchor count × ${expansionBound} at or below ${profileJsonBudget(0, 1, [])} UTF-8 bytes`,
+            )
+            expect(input.system).toContain(
+              "Schema field maxima are ceilings, not targets.",
+            )
+            return {
+              output: input.schema.parse(mapOutput),
+              usage: {
+                inputTokens: 120,
+                outputTokens: 32,
+                cachedInputTokens: 0,
+              },
+            }
+          },
+        },
+        persistence: {
+          async register(input) {
+            actions.push(input.action)
+            coverageDigest = input.coverageDigest
+            expect(input.kind).toBe("transcript")
+            expect(input.partDigests).toHaveLength(1)
+            return {
+              generationId: input.generationId,
+              cacheKey: input.cacheKey,
+              kind: "transcript" as const,
+              state: "planned" as const,
+              replay: false,
+            }
+          },
+          async status(input) {
+            actions.push(input.action)
+            return {
+              generationId: input.generationId,
+              cacheKey: input.cacheKey,
+              profile: {
+                state: "planned" as const,
+                kind: "transcript" as const,
+                profileJson: null,
+                finalCallId: null,
+                coverageDigest,
+              },
+              calls: [],
+            }
+          },
+          async callStart(input) {
+            actions.push(input.action)
+            completedCallId = input.callId
+            expect(input.stage).toBe("map")
+            expect(input.partIndex).toBe(0)
+            expect(input.stagePromptVersion).toBe("complete-profile-v2:map")
+            return {
+              generationId: input.generationId,
+              cacheKey: input.cacheKey,
+              callId: input.callId,
+              state: "pending" as const,
+              replay: false,
+            }
+          },
+          async callFinish(input) {
+            actions.push(input.action)
+            expect(input.status).toBe("succeeded")
+            if (large) {
+              expect(
+                Buffer.byteLength(JSON.stringify(input.node), "utf8"),
+              ).toBeGreaterThan(2048)
+              expect(
+                Buffer.byteLength(JSON.stringify(input.node), "utf8"),
+              ).toBeLessThanOrEqual(4096)
+            }
+            expect(input.usage).toEqual({
               inputTokens: 120,
               outputTokens: 32,
               cachedInputTokens: 0,
-            },
-          }
+            })
+            expect(input.node).toMatchObject({
+              coveredPartStart: 0,
+              coveredPartEnd: 1,
+              childNodeDigests: [],
+              profile: expectedProfile,
+            })
+            expect(Object.keys(input.node!)).toEqual([
+              "profile",
+              "coveredPartStart",
+              "coveredPartEnd",
+              "childNodeDigests",
+            ])
+            expect(Object.keys(input.node!.profile)).toEqual([
+              "version",
+              "summaryEnglish",
+              "themes",
+              "people",
+              "places",
+              "citations",
+              "anchors",
+            ])
+            expect(Object.keys(input.node!.profile.anchors[0]!)).toEqual([
+              "videoId",
+              "chunkId",
+              "transcriptId",
+              "language",
+              "chunkIndex",
+              "startChar",
+              "endChar",
+              "textSha256",
+              "claimEnglish",
+            ])
+            expect(JSON.stringify(input)).not.toContain(passage)
+            return {
+              generationId: input.generationId,
+              cacheKey: input.cacheKey,
+              callId: input.callId,
+              state: "succeeded" as const,
+              receiptStored: true as const,
+              nodeApplied: true,
+              replay: false,
+            }
+          },
+          async finalize(input) {
+            actions.push(input.action)
+            expect(input.finalCallId).toBe(completedCallId)
+            expect(input.coverageDigest).toBe(coverageDigest)
+            expect(input.expectedNodeDigests).toHaveLength(1)
+            return {
+              generationId: input.generationId,
+              cacheKey: input.cacheKey,
+              state: "ready" as const,
+              profileJson: expectedProfile,
+              finalCallId: input.finalCallId,
+              replay: false,
+            }
+          },
         },
-      },
-      persistence: {
-        async register(input) {
-          actions.push(input.action)
-          coverageDigest = input.coverageDigest
-          expect(input.kind).toBe("transcript")
-          expect(input.partDigests).toHaveLength(1)
-          return {
-            generationId: input.generationId,
-            cacheKey: input.cacheKey,
-            kind: "transcript" as const,
-            state: "planned" as const,
-            replay: false,
-          }
-        },
-        async status(input) {
-          actions.push(input.action)
-          return {
-            generationId: input.generationId,
-            cacheKey: input.cacheKey,
-            profile: {
-              state: "planned" as const,
-              kind: "transcript" as const,
-              profileJson: null,
-              finalCallId: null,
-              coverageDigest,
-            },
-            calls: [],
-          }
-        },
-        async callStart(input) {
-          actions.push(input.action)
-          completedCallId = input.callId
-          expect(input.stage).toBe("map")
-          expect(input.partIndex).toBe(0)
-          expect(input.stagePromptVersion).toBe("complete-profile-v2:map")
-          return {
-            generationId: input.generationId,
-            cacheKey: input.cacheKey,
-            callId: input.callId,
-            state: "pending" as const,
-            replay: false,
-          }
-        },
-        async callFinish(input) {
-          actions.push(input.action)
-          expect(input.status).toBe("succeeded")
-          expect(input.usage).toEqual({
-            inputTokens: 120,
-            outputTokens: 32,
-            cachedInputTokens: 0,
-          })
-          expect(input.node).toMatchObject({
-            coveredPartStart: 0,
-            coveredPartEnd: 1,
-            childNodeDigests: [],
-            profile: supportedProfile,
-          })
-          expect(Object.keys(input.node!)).toEqual([
-            "profile",
-            "coveredPartStart",
-            "coveredPartEnd",
-            "childNodeDigests",
-          ])
-          expect(Object.keys(input.node!.profile)).toEqual([
-            "version",
-            "summaryEnglish",
-            "themes",
-            "people",
-            "places",
-            "citations",
-            "anchors",
-          ])
-          expect(Object.keys(input.node!.profile.anchors[0]!)).toEqual([
-            "videoId",
-            "chunkId",
-            "transcriptId",
-            "language",
-            "chunkIndex",
-            "startChar",
-            "endChar",
-            "textSha256",
-            "claimEnglish",
-          ])
-          expect(JSON.stringify(input)).not.toContain(passage)
-          return {
-            generationId: input.generationId,
-            cacheKey: input.cacheKey,
-            callId: input.callId,
-            state: "succeeded" as const,
-            receiptStored: true as const,
-            nodeApplied: true,
-            replay: false,
-          }
-        },
-        async finalize(input) {
-          actions.push(input.action)
-          expect(input.finalCallId).toBe(completedCallId)
-          expect(input.coverageDigest).toBe(coverageDigest)
-          expect(input.expectedNodeDigests).toHaveLength(1)
-          return {
-            generationId: input.generationId,
-            cacheKey: input.cacheKey,
-            state: "ready" as const,
-            profileJson: supportedProfile,
-            finalCallId: input.finalCallId,
-            replay: false,
-          }
-        },
-      },
-    })
-    expect(result.state).toBe("ready")
-    expect(result.profile).toEqual(supportedProfile)
-    expect(actions).toEqual([
-      "profile_register",
-      "profile_status",
-      "profile_call_start",
-      "model",
-      "profile_call_finish",
-      "profile_finalize",
-    ])
-  })
+      })
+      expect(result.state).toBe("ready")
+      expect(result.profile).toEqual(expectedProfile)
+      expect(actions).toEqual([
+        "profile_register",
+        "profile_status",
+        "profile_call_start",
+        "model",
+        "profile_call_finish",
+        "profile_finalize",
+      ])
+    },
+  )
 
   it("materializes UTF-16 offsets and the excerpt hash from frozen text, not model arithmetic", async () => {
     const text = "🙂🙂 Nicodemus asked about a new birth."
@@ -592,10 +647,10 @@ describe("complete content profile execution", () => {
       coveredPartEnd: 8,
       childNodeDigests: digests,
     }
-    expect(Buffer.byteLength(JSON.stringify(atLimit), "utf8")).toBe(2_048)
+    expect(Buffer.byteLength(JSON.stringify(atLimit), "utf8")).toBe(4_096)
   })
 
-  it("shows that a short schema-shaped map answer can expand past the stored node cap", () => {
+  it("accounts for anchor expansion that exceeded the former 2 KiB cap and fits 4 KiB", () => {
     const videoId = "v".repeat(25)
     const chunkId = "c".repeat(36)
     const transcriptId = "t".repeat(25)
@@ -655,7 +710,7 @@ describe("complete content profile execution", () => {
       ],
       videoId,
     )
-    expect(bytes(wire) + excerpts.length * expansionBound).toBeGreaterThan(
+    expect(bytes(wire) + excerpts.length * expansionBound).toBeLessThanOrEqual(
       profileJsonBudget(0, 1, []),
     )
   })
@@ -884,6 +939,8 @@ describe("complete content profile execution", () => {
               summaryEnglish: "s".repeat(600),
               themes: Array.from({ length: 12 }, () => "t".repeat(80)),
               people: Array.from({ length: 12 }, () => "p".repeat(80)),
+              places: Array.from({ length: 12 }, () => "l".repeat(80)),
+              citations: Array.from({ length: 12 }, () => "c".repeat(80)),
             }
           : {}),
         anchors: [
@@ -1118,6 +1175,38 @@ describe("complete content profile execution", () => {
       schemaVersion: smallerInput.schemaVersion,
     })
     expect(plan.parts.length).toBeGreaterThan(8)
+    const richProfile = {
+      ...supportedProfile,
+      summaryEnglish: "s".repeat(600),
+      themes: Array(12).fill("t"),
+      people: Array(12).fill("p"),
+      places: Array(12).fill("l"),
+      citations: Array(12).fill("c"),
+      anchors: [],
+    }
+    const largestEnvelopeBudget = profileJsonBudget(
+      0,
+      plan.parts.length,
+      Array(8).fill("a".repeat(64)),
+    )
+    for (const list of [
+      richProfile.themes,
+      richProfile.people,
+      richProfile.places,
+      richProfile.citations,
+    ]) {
+      for (let index = 0; index < list.length; index++)
+        list[index] += "x".repeat(
+          Math.min(
+            80 - list[index]!.length,
+            largestEnvelopeBudget -
+              Buffer.byteLength(JSON.stringify(richProfile), "utf8"),
+          ),
+        )
+    }
+    expect(Buffer.byteLength(JSON.stringify(richProfile), "utf8")).toBe(
+      largestEnvelopeBudget,
+    )
     let profileState: ProfileState = "planned"
     let coverageDigest = ""
     let finalCallId: string | null = null
@@ -1175,6 +1264,12 @@ describe("complete content profile execution", () => {
       async callFinish(input) {
         expect(input.status).toBe("succeeded")
         expect(input.node).toBeDefined()
+        expect(
+          Buffer.byteLength(JSON.stringify(input.node), "utf8"),
+        ).toBeGreaterThan(2048)
+        expect(
+          Buffer.byteLength(JSON.stringify(input.node), "utf8"),
+        ).toBeLessThanOrEqual(4096)
         expect(input.outputDigest).toBeDefined()
         calls.push({
           callId: input.callId,
@@ -1231,8 +1326,12 @@ describe("complete content profile execution", () => {
     const model: StructuredModel = {
       async generate(input) {
         modelCalls++
+        expect(
+          Buffer.byteLength(input.prompt, "utf8") +
+            Buffer.byteLength(input.system, "utf8"),
+        ).toBeLessThanOrEqual(65536)
         return {
-          output: input.schema.parse({ ...supportedProfile, anchors: [] }),
+          output: input.schema.parse(richProfile),
           usage: { inputTokens: 100, outputTokens: 20 },
         }
       },

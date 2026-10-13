@@ -55,15 +55,14 @@ const FORBIDDEN_OPTION_KEYS = [
   "enableBackgroundRemoteNotifications",
 ]
 
-// U7: Android needs the Firebase app config to register with FCM at all, and
-// the config is referenced from here. It is a Firebase-console download, so it
-// is NOT committed — a placeholder would build fine and fail registration
-// silently on device. `expo prebuild --platform android` refuses while the file
-// is absent, which is the gate that makes the missing download visible. That
-// refusal is `setGoogleServicesFile` in @expo/config-plugins, which throws
-// "Cannot copy google-services.json from …" (read from the installed package
-// on 2026-09-21; no prebuild was run here).
+// U7: Android registers with FCM only through this committed Firebase config. A
+// placeholder builds and then fails registration silently on device, and an
+// Android prebuild throws "Cannot copy google-services.json" without the file.
 const ANDROID_GOOGLE_SERVICES_FILE = "./google-services.json"
+
+// R10: an Android build with the Firebase config must also carry the cold-tap
+// fix, or every tap after Android stops the process opens Home.
+const PUSH_TAP_RELAY_PLUGIN = "./plugins/withAndroidPushTapRelay"
 
 // Google Play restricts these to alarm and calendar apps. R6 tolerates the
 // module's own inexact-alarm fallback instead, so neither may ever appear.
@@ -122,6 +121,12 @@ function pluginOptions(config, name) {
 /** The index of every entry, in either bare-string or [name, options] form. */
 function pluginIndexes(config, name) {
   return pluginEntries(config, name).map(({ index }) => index)
+}
+
+/** True unless the Firebase config is set and the cold-tap relay is not. */
+function hasPushTapRelayWhenFirebaseIsSet(config) {
+  if (!config.expo.android?.googleServicesFile) return true
+  return pluginIndexes(config, PUSH_TAP_RELAY_PLUGIN).length > 0
 }
 
 /**
@@ -321,6 +326,27 @@ describe("the notifications plugin declares no more than local reminders need", 
     expect(readAppJson().expo.android?.googleServicesFile).toBe(
       ANDROID_GOOGLE_SERVICES_FILE,
     )
+  })
+
+  it("registers the cold-tap relay whenever the Firebase config is set (R10)", () => {
+    const config = readAppJson()
+
+    // The rule binds only with the Firebase config, so prove it is set here.
+    expect(config.expo.android?.googleServicesFile).toBe(
+      ANDROID_GOOGLE_SERVICES_FILE,
+    )
+    expect(hasPushTapRelayWhenFirebaseIsSet(config)).toBe(true)
+  })
+
+  it("rejects the Firebase config without the cold-tap relay (negative control)", () => {
+    const withoutRelay = {
+      expo: {
+        plugins: ["./plugins/withAndroidNavigationBar", "expo-splash-screen"],
+        android: { googleServicesFile: ANDROID_GOOGLE_SERVICES_FILE },
+      },
+    }
+
+    expect(hasPushTapRelayWhenFirebaseIsSet(withoutRelay)).toBe(false)
   })
 
   it("keeps the EAS project id the token read resolves (U7/KTD9)", () => {

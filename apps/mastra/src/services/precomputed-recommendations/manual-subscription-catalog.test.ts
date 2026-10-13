@@ -2,7 +2,10 @@ import { createHash } from "node:crypto"
 
 import { describe, expect, it, vi } from "vitest"
 
-import { buildCandidateRetrieval } from "./candidate-retrieval"
+import {
+  buildCandidateRetrieval,
+  CANDIDATE_RETRIEVAL_REVISION,
+} from "./candidate-retrieval"
 import { gaCaptureDigest } from "./ga-watch-capture-artifact"
 import { gaImportPreparedDigest } from "./ga-capture-import-client"
 import {
@@ -570,6 +573,41 @@ async function pilotFixture(
 }
 
 describe("manual subscription catalog preflight", () => {
+  it("requires a new generation digest for the 4 KiB profile prompt while preserving the schema", () => {
+    const input = {
+      inputCutoff: cutoff,
+      videos: [video("source-one")],
+      selectedCorpusDigest: "1".repeat(64),
+      candidatePoolDigest: "2".repeat(64),
+    }
+    const expected = (profilePromptVersion: string) =>
+      digest({
+        version: "manual_subscription_catalog_v1",
+        protocolVersion: 4,
+        cutoff,
+        inputMode: "historical_analytics",
+        inputSnapshotMode: "observed_fenced",
+        importPolicy: "ga_capture_import_v1",
+        modelId: "gpt-6-astra",
+        backend: "codex_chatgpt_subscription",
+        promptVersion: "subscription-profile-edge-v1",
+        profilePromptVersion,
+        profileSchemaVersion: "complete-profile-schema-v1",
+        edgePromptVersion: "shared-edge-v1",
+        edgeSchemaVersion: "shared-edge-schema-v1",
+        videos: input.videos,
+        sourceSetDigest: digest(["source-one"]),
+        candidateRetrievalRevision: CANDIDATE_RETRIEVAL_REVISION,
+        selectedCorpusDigest: input.selectedCorpusDigest,
+        candidatePoolDigest: input.candidatePoolDigest,
+      })
+    expect(manualGenerationInputDigest(input)).toBe(
+      expected("complete-profile-v3"),
+    )
+    expect(manualGenerationInputDigest(input)).not.toBe(
+      expected("complete-profile-v2"),
+    )
+  })
   it("rejects a changed frozen candidate pool before any build action", async () => {
     const videos = [video("source-one"), video("target-one")]
     const source = catalog(videos)
@@ -1201,6 +1239,36 @@ describe("manual subscription catalog preflight", () => {
       runManualSubscriptionCatalog(fixture.input, fixture.ports),
     ).rejects.toMatchObject({ code: "import_unavailable" })
     expect(fixture.actions).not.toContain("start")
+    expect(fixture.actions).not.toContain("model_admission")
+  })
+
+  it.each([
+    ["contracted database", { observedDbBytes: 99 }],
+    ["wrong cluster", { clusterSystemId: "999" }],
+    [
+      "stale observation",
+      { measuredAt: new Date(Date.now() - 26 * 60_000).toISOString() },
+    ],
+    [
+      "future observation",
+      { measuredAt: new Date(Date.now() + 60_000).toISOString() },
+    ],
+  ])("stops before import and inference for %s", async (_name, changed) => {
+    const fixture = await pilotFixture()
+    const measure = fixture.ports.measureCapacity
+    fixture.ports.measureCapacity = async (probe) => ({
+      ...(await measure(probe)),
+      ...changed,
+    })
+    const result = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(result).toMatchObject({
+      state: "stopped",
+      reason: "capacity_stopped",
+    })
+    expect(fixture.actions).not.toContain("import_prepare")
     expect(fixture.actions).not.toContain("model_admission")
   })
 

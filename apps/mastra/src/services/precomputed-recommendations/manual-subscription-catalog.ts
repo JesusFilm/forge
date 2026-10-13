@@ -242,7 +242,7 @@ export async function preflightManualCatalog(
 }
 
 const BUILD_PROMPT_VERSION = "subscription-profile-edge-v1"
-const PROFILE_PROMPT_VERSION = "complete-profile-v2"
+const PROFILE_PROMPT_VERSION = "complete-profile-v3"
 const PROFILE_SCHEMA_VERSION = "complete-profile-schema-v1"
 const EDGE_PROMPT_VERSION = "shared-edge-v1"
 const EDGE_SCHEMA_VERSION = "shared-edge-schema-v1"
@@ -746,7 +746,9 @@ export async function runManualSubscriptionCatalog(
     }
     const measurementAge = Date.now() - Date.parse(measurement.measuredAt)
     if (
-      measurement.observedDbBytes !== probe.observedDbBytes ||
+      // The physical observation follows the Admin probe. Preserve its raw
+      // values; Admin revalidates size drift and deducts subsequent growth.
+      measurement.observedDbBytes < probe.observedDbBytes ||
       measurement.clusterSystemId !== probe.clusterSystemId ||
       !Number.isFinite(measurementAge) ||
       measurementAge < 0 ||
