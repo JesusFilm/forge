@@ -31,6 +31,7 @@ import type { TimedWord } from "./VoxLanguage"
 
 export const INK = "#1d1712"
 export const RED = "#c8412f"
+export const GREEN = "#2e8b4f"
 const NEWSPRINT = "#ece6d8"
 export const HAND = `'${SHORT_FONT_FAMILIES.caveat}', cursive`
 export const SERIF = `'${SHORT_FONT_FAMILIES.ptSerif}', Georgia, serif`
@@ -509,7 +510,8 @@ type BoardFlow = {
   on?: string | number
   title: string
   titleOn: string
-  steps: { text: string; on: string; red?: boolean }[]
+  /** `ok`: the verdict, green with a tick. */
+  steps: { text: string; on: string; ok?: boolean }[]
   home: { text: string; on: string; houseOn?: string }
 }
 export type BoardItem =
@@ -568,6 +570,36 @@ export function zigzag(x: number, y1: number, y2: number): string {
 export const house = (x: number, y: number, s = 1) =>
   `M${x - 20 * s},${y} L${x - 20 * s},${y - 26 * s} L${x},${y - 44 * s} L${x + 20 * s},${y - 26 * s} L${x + 20 * s},${y} Z`
 
+function HandLabelText({
+  f,
+  s,
+  text,
+  size,
+  color,
+}: {
+  f: (n: number) => number
+  s: number
+  text: string
+  size: number
+  color: string
+}) {
+  return (
+    <div
+      style={{
+        fontFamily: HAND,
+        fontWeight: 700,
+        fontSize: f(size),
+        lineHeight: 1.1,
+        color,
+        whiteSpace: "nowrap",
+        clipPath: `inset(-20% ${((1 - s) * 110 - 10).toFixed(1)}% -30% -2%)`,
+      }}
+    >
+      {text}
+    </div>
+  )
+}
+
 function HandLabel({
   f,
   x,
@@ -576,6 +608,7 @@ function HandLabel({
   text,
   size = 40,
   color = INK,
+  width,
 }: {
   f: (n: number) => number
   x: number
@@ -584,8 +617,25 @@ function HandLabel({
   text: string
   size?: number
   color?: string
+  /** Centre the label in a box this wide (from `x`). */
+  width?: number
 }) {
   if (s <= 0) return null
+  if (width != null)
+    return (
+      <div
+        style={{
+          position: "absolute",
+          left: f(x),
+          top: f(y),
+          width: f(width),
+          display: "flex",
+          justifyContent: "center",
+        }}
+      >
+        <HandLabelText f={f} s={s} text={text} size={size} color={color} />
+      </div>
+    )
   return (
     <div
       style={{
@@ -820,13 +870,16 @@ function FlowSheet({
   const W = 700
   const H = 1000
   const f = (n: number) => f0((n * fl.w) / W)
-  const top = 160
-  const step = 150
-  const bw = 520
+  // Everything on the sheet's centre line (owner, 2026-10-13).
+  const cx = W / 2
+  const top = 190
+  const step = 140
+  const bw = 500
   const bh = 92
+  const bx = cx - bw / 2
   const hAt = at(words, fl.home.on, 1e9)
   const houseAt = at(words, fl.home.houseOn ?? fl.home.on, hAt)
-  const homeY = top + fl.steps.length * step + 30
+  const homeY = top + fl.steps.length * step + 20
   return (
     <div
       style={{
@@ -850,104 +903,109 @@ function FlowSheet({
         {fl.steps.map((s, i) => {
           const a = at(words, s.on, 1e9)
           const y = top + i * step
-          const c = s.red ? RED : INK
+          // The verdict is good news: green with a tick, never red
+          // (owner, 2026-10-13: red read as a refusal).
+          const c = s.ok ? GREEN : INK
           return (
             <g key={i}>
               {i > 0 ? (
                 <>
                   <Draw
-                    d={handLine(
-                      W / 2 - 40,
-                      y - step + bh + 6,
-                      W / 2 - 40,
-                      y - 8,
-                      0.02,
-                    )}
+                    d={handLine(cx, y - step + bh + 6, cx, y - 8, 0.02)}
                     p={prog(t, a - 0.35, 0.3)}
                     width={5}
                   />
                   <Draw
-                    d={arrowHead(W / 2 - 40, y - 8, Math.PI / 2, 18)}
+                    d={arrowHead(cx, y - 8, Math.PI / 2, 18)}
                     p={prog(t, a - 0.05, 0.15)}
                     width={5}
                   />
                 </>
               ) : null}
               <Draw
-                d={`M${90},${y} L${90 + bw},${y + 3} L${88 + bw},${y + bh} L${92},${y + bh - 2} Z`}
+                d={`M${bx},${y} L${bx + bw},${y + 3} L${bx + bw - 2},${y + bh} L${bx + 2},${y + bh - 2} Z`}
                 p={prog(t, a, 0.5)}
                 color={c}
-                width={5}
+                width={s.ok ? 6 : 5}
               />
+              {s.ok ? (
+                <Draw
+                  d={`M${bx + bw + 22},${y + 46} L${bx + bw + 40},${y + 66} L${bx + bw + 74},${y + 18}`}
+                  p={prog(t, a + 0.55, 0.3)}
+                  color={GREEN}
+                  width={9}
+                />
+              ) : null}
             </g>
           )
         })}
         <Draw
           d={handLine(
-            W / 2 - 40,
+            cx,
             top + (fl.steps.length - 1) * step + bh + 6,
-            W / 2 - 40,
-            homeY + 20,
+            cx,
+            homeY + 30,
             0.02,
           )}
           p={prog(t, hAt - 1.5, 0.5)}
-          color={RED}
+          color={GREEN}
           width={7}
         />
         <Draw
-          d={arrowHead(W / 2 - 40, homeY + 20, Math.PI / 2, 22)}
+          d={arrowHead(cx, homeY + 30, Math.PI / 2, 22)}
           p={prog(t, hAt - 1, 0.2)}
-          color={RED}
+          color={GREEN}
           width={7}
         />
         {[
-          [-70, 0],
-          [-10, -24],
-          [40, 10],
+          [-60, 0],
+          [0, -24],
+          [55, 8],
         ].map(([dx, dy], i) => (
           <Draw
             key={i}
-            d={house(200 + dx!, homeY + 150 + dy!)}
+            d={house(cx - 130 + dx!, homeY + 160 + dy!)}
             p={prog(t, houseAt - 0.3 + i * 0.1, 0.35)}
             width={5}
           />
         ))}
         <Draw
-          d={handEllipse(W / 2 - 10, homeY + 118, 260, 86, 7)}
+          d={handEllipse(cx, homeY + 128, 250, 84, 7)}
           p={prog(t, hAt + 0.3, 0.7)}
-          color={RED}
+          color={GREEN}
           width={7}
         />
       </svg>
       <HandLabel
         f={f}
-        x={70}
-        y={40}
+        x={0}
+        width={W}
+        y={70}
         s={prog(t, at(words, fl.titleOn, 1e9), 0.6)}
         text={fl.title}
         size={66}
-        color={RED}
       />
       {fl.steps.map((s, i) => (
         <HandLabel
           key={i}
           f={f}
-          x={118}
+          x={bx}
+          width={bw}
           y={top + i * step + 18}
           s={prog(t, at(words, s.on, 1e9) + 0.15, 0.5)}
           text={s.text}
           size={46}
-          color={s.red ? RED : INK}
+          color={s.ok ? GREEN : INK}
         />
       ))}
       <HandLabel
         f={f}
-        x={300}
-        y={homeY + 76}
+        x={cx - 40}
+        y={homeY + 86}
         s={prog(t, hAt, 0.45)}
         text={fl.home.text}
         size={72}
-        color={RED}
+        color={GREEN}
       />
     </div>
   )
@@ -1127,20 +1185,6 @@ export function VoxBoard({
           )
         })}
       </div>
-      {/* The phone's own buttons sit over the frame's foot: the board darkens
-          there, so nothing under them reads as something to read. */}
-      <div
-        style={{
-          position: "absolute",
-          left: 0,
-          right: 0,
-          top: f(1180),
-          bottom: 0,
-          background:
-            "linear-gradient(to bottom, rgba(20,13,8,0) 0%, rgba(20,13,8,0.82) 38%, rgba(20,13,8,0.9) 100%)",
-          pointerEvents: "none",
-        }}
-      />
       {/* A soft vignette on the frame, like a lens. */}
       <div
         style={{

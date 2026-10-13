@@ -12,6 +12,7 @@ import {
   INK,
   Photo,
   prog,
+  GREEN,
   RED,
   SERIF,
   Written,
@@ -35,12 +36,23 @@ export type NotebookLine = {
   x: number
   y: number
   size?: number
-  color?: "ink" | "red"
+  color?: "ink" | "red" | "green"
   /** A red underline under `under` (a substring), drawn when `underOn` is said. */
   under?: string
   underOn?: string
+  /** `x` is the line's centre, not its left edge. */
+  center?: boolean
+  /** Shouted: each word bursts in with a shake ("Нечист! Нечист!"). */
+  shout?: boolean
 }
 export type NotebookShape =
+  | {
+      kind: "check"
+      on: string | number
+      x: number
+      y: number
+      color?: "ink" | "red" | "green"
+    }
   | {
       kind: "ring"
       on: string | number
@@ -48,7 +60,7 @@ export type NotebookShape =
       y: number
       rx: number
       ry: number
-      color?: "ink" | "red"
+      color?: "ink" | "red" | "green"
     }
   | {
       kind: "line"
@@ -58,7 +70,7 @@ export type NotebookShape =
       x2: number
       y2: number
       arrow?: "end" | "both"
-      color?: "ink" | "red"
+      color?: "ink" | "red" | "green"
       width?: number
       bend?: number
     }
@@ -72,7 +84,7 @@ export type NotebookShape =
       y: number
       w: number
       h: number
-      color?: "ink" | "red"
+      color?: "ink" | "red" | "green"
     }
 export type NotebookPhoto = {
   on: string | number
@@ -100,16 +112,26 @@ export type NotebookSpec = {
 }
 
 /** Ink and accent for the page or for the film. */
-const Pal = createContext({ ink: INK, red: RED, film: false })
+const Pal = createContext({ ink: INK, red: RED, green: GREEN, film: false })
 
 function useColor() {
   const pal = useContext(Pal)
-  return (c?: "ink" | "red") => (c === "red" ? pal.red : pal.ink)
+  return (c?: "ink" | "red" | "green") =>
+    c === "red" ? pal.red : c === "green" ? pal.green : pal.ink
 }
 
 function Shape({ s, t, a }: { s: NotebookShape; t: number; a: number }) {
   const color = useColor()
   const pal = useContext(Pal)
+  if (s.kind === "check")
+    return (
+      <Draw
+        d={`M${s.x},${s.y + 28} L${s.x + 18},${s.y + 48} L${s.x + 52},${s.y}`}
+        p={prog(t, a, 0.3)}
+        color={color(s.color)}
+        width={9}
+      />
+    )
   if (s.kind === "ring")
     return (
       <Draw
@@ -259,6 +281,95 @@ function UnderlinedInner({
   )
 }
 
+/** Charcoal on the film: a rough, broken edge on every stroke (owner,
+ *  2026-10-13: "as if written in charcoal, not even lines"). */
+function CharcoalFilter() {
+  return (
+    <defs>
+      <filter
+        id="nb-charcoal"
+        filterUnits="userSpaceOnUse"
+        x={0}
+        y={0}
+        width={900}
+        height={1600}
+      >
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.9"
+          numOctaves="2"
+          seed={4}
+          result="n"
+        />
+        <feDisplacementMap
+          in="SourceGraphic"
+          in2="n"
+          scale="6"
+          xChannelSelector="R"
+          yChannelSelector="G"
+          result="d"
+        />
+        <feColorMatrix
+          in="n"
+          type="matrix"
+          values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -2.4 1.85"
+          result="grit"
+        />
+        <feComposite in="d" in2="grit" operator="in" />
+      </filter>
+    </defs>
+  )
+}
+
+/** A shouted line: each word bursts in big and shakes, then settles. */
+function Shout({
+  f,
+  t,
+  start,
+  text,
+}: {
+  f: (n: number) => number
+  t: number
+  start: number
+  text: string
+}) {
+  const ws = text.split(" ")
+  return (
+    <span>
+      {ws.map((w, i) => {
+        const a = start + i * 0.42
+        if (t < a)
+          return (
+            <span key={i} style={{ opacity: 0 }}>
+              {w + " "}
+            </span>
+          )
+        const k = interpolate(t, [a, a + 0.22], [1.7, 1], {
+          ...clamp,
+          easing: Easing.bezier(0.2, 1.5, 0.4, 1),
+        })
+        // A shake that dies away over a second.
+        const amp = interpolate(t, [a, a + 1.1], [1, 0], clamp)
+        const fr = Math.floor(t * 30)
+        const jx = Math.sin(fr * 2.7 + i) * 6 * amp
+        const jy = Math.cos(fr * 3.3 + i * 2) * 4 * amp
+        return (
+          <span
+            key={i}
+            style={{
+              display: "inline-block",
+              transform: `translate(${f(jx).toFixed(1)}px, ${f(jy).toFixed(1)}px) scale(${k.toFixed(3)}) rotate(${(Math.sin(fr * 1.9 + i) * 2.5 * amp).toFixed(2)}deg)`,
+              marginRight: "0.3em",
+            }}
+          >
+            {w}
+          </span>
+        )
+      })}
+    </span>
+  )
+}
+
 function Page({
   f,
   t,
@@ -347,7 +458,7 @@ function PageMarks({
   t: number
   words: ReadonlyArray<TimedWord>
   page: NotebookPage
-  color: (c?: "ink" | "red") => string
+  color: (c?: "ink" | "red" | "green") => string
 }) {
   const { film } = useContext(Pal)
   return (
@@ -362,9 +473,12 @@ function PageMarks({
           overflow: "visible",
         }}
       >
-        {page.shapes.map((s, i) => (
-          <Shape key={i} s={s} t={t} a={at(words, s.on, 1e9)} />
-        ))}
+        {film ? <CharcoalFilter /> : null}
+        <g filter={film ? "url(#nb-charcoal)" : undefined}>
+          {page.shapes.map((s, i) => (
+            <Shape key={i} s={s} t={t} a={at(words, s.on, 1e9)} />
+          ))}
+        </g>
       </svg>
       {page.lines.map((l, i) => (
         <div
@@ -373,6 +487,8 @@ function PageMarks({
             position: "absolute",
             left: f(l.x),
             top: f(l.y),
+            transform: l.center ? "translateX(-50%)" : undefined,
+            whiteSpace: "nowrap",
             // Over the film: the board's serif (owner, 2026-10-13).
             fontFamily: film ? SERIF : HAND,
             fontWeight: film ? ((l.size ?? 48) >= 60 ? 700 : 400) : 700,
@@ -381,13 +497,17 @@ function PageMarks({
             color: color(l.color),
           }}
         >
-          <Written t={t} start={at(words, l.on, 1e9)} text={l.text} cps={24}>
-            <Underlined
-              text={l.text}
-              under={l.under}
-              p={prog(t, at(words, l.underOn ?? l.under, 1e9), 0.4)}
-            />
-          </Written>
+          {l.shout ? (
+            <Shout f={f} t={t} start={at(words, l.on, 1e9)} text={l.text} />
+          ) : (
+            <Written t={t} start={at(words, l.on, 1e9)} text={l.text} cps={24}>
+              <Underlined
+                text={l.text}
+                under={l.under}
+                p={prog(t, at(words, l.underOn ?? l.under, 1e9), 0.4)}
+              />
+            </Written>
+          )}
         </div>
       ))}
       {(page.photos ?? []).map((p, i) => {
@@ -442,8 +562,8 @@ export function VoxNotebook({
   const shown = top > 0 ? [top - 1, top] : [0]
   const film = spec.theme === "film"
   const pal = film
-    ? { ink: "#f6ecd9", red: "#ff8a5c", film: true }
-    : { ink: INK, red: RED, film: false }
+    ? { ink: "#f6ecd9", red: "#ff8a5c", green: "#86d69a", film: true }
+    : { ink: INK, red: RED, green: GREEN, film: false }
   return (
     <Pal.Provider value={pal}>
       <div
