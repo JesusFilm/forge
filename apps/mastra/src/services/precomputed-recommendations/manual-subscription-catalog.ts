@@ -17,8 +17,11 @@ import {
 import type { loadImportedGaWatchHistory } from "./ga-capture-import-reader"
 import {
   runContentProfile,
+  profileCoverageDigest,
   type ProfilePersistencePort,
 } from "./content-profile-executor"
+import { planContentProfile } from "./content-profile-plan"
+import { readCompleteSelectedChunks } from "./selected-transcript"
 import {
   acknowledgedUnknownIsSafe,
   finalizeEdgeSource,
@@ -103,6 +106,7 @@ export type ManualSubscriptionCatalogInput = {
         mode: "pilot"
         sources: Array<{ sourceVideoId: string; exclusiveEndRank: number }>
       }
+  profileReplacement?: import("./content-profile-executor").ManualProfileReplacement
   recovery?: {
     originalCallId: string
     replacementCallId: string
@@ -566,6 +570,13 @@ export async function runManualSubscriptionCatalog(
   )
     throw new ManualSubscriptionCatalogError("input_invalid")
   if (
+    input.profileReplacement &&
+    (input.invocation !== "resume" ||
+      input.recovery ||
+      !input.reviewed.sourceVideoIds.includes(input.profileReplacement.videoId))
+  )
+    throw new ManualSubscriptionCatalogError("input_invalid")
+  if (
     input.recovery &&
     (input.invocation !== "resume" ||
       input.generationId !== RECOVERY_GENERATION_ID ||
@@ -621,6 +632,102 @@ export async function runManualSubscriptionCatalog(
     })
   )
     throw new ManualSubscriptionCatalogError("catalog_mismatch")
+  const profileIds = new Set<string>()
+  for (const item of work) {
+    profileIds.add(item.sourceVideoId)
+    for (const target of frozen.retrieval.candidateIdsBySource
+      .get(item.sourceVideoId)!
+      .slice(0, item.exclusiveEndRank))
+      profileIds.add(target)
+  }
+  if (input.profileReplacement) {
+    const directive = input.profileReplacement
+    if (!profileIds.has(directive.videoId))
+      throw new ManualSubscriptionCatalogError("input_invalid")
+    const target = byId.get(directive.videoId)!
+    const selected = await readCompleteSelectedChunks(
+      frozen.catalog,
+      target,
+      input.inputCutoff,
+    )
+    const plan = planContentProfile({
+      video: target,
+      chunks: selected.chunks,
+      maxPartBytes: MAX_PROFILE_PART_BYTES,
+      modelId: PRECOMPUTED_MODEL_ID,
+      backend: "codex_chatgpt_subscription",
+      promptVersion: PROFILE_PROMPT_VERSION,
+      schemaVersion: PROFILE_SCHEMA_VERSION,
+    })
+    if (
+      plan.metadataOnly ||
+      plan.cacheKey !== directive.cacheKey ||
+      !Number.isSafeInteger(directive.partIndex) ||
+      directive.partIndex < 0 ||
+      directive.partIndex >= plan.parts.length ||
+      !z.uuid().safeParse(directive.originalCallId).success ||
+      !z.uuid().safeParse(directive.replacementCallId).success ||
+      directive.originalCallId === directive.replacementCallId ||
+      !hex.test(directive.originalReceiptDigest) ||
+      directive.oldProcessExitedAttested !== true
+    )
+      throw new ManualSubscriptionCatalogError("input_invalid")
+    const status = await ports.profilePersistence.status({
+      action: "profile_status",
+      generationId: input.generationId,
+      generationInputDigest: input.generationInputDigest,
+      cacheKey: plan.cacheKey,
+    })
+    const original = status.calls.find(
+      (call) => call.callId === directive.originalCallId,
+    )
+    const ack = status.profile.manualReplacement
+    if (
+      status.generationId !== input.generationId ||
+      status.cacheKey !== plan.cacheKey ||
+      status.profile.coverageDigest !==
+        profileCoverageDigest(plan, selected.chunks) ||
+      !original ||
+      original.receiptDigest !== directive.originalReceiptDigest ||
+      original.errorCode !== "profile_map_anchor_invalid" ||
+      !original.inputTokens ||
+      original.outputTokens === undefined ||
+      original.outputTokens === null ||
+      original.status !== "rejected" ||
+      original.nodeApplied ||
+      original.node ||
+      original.outputDigest ||
+      original.stage !== "map" ||
+      original.nodeKey !==
+        digest([
+          plan.cacheKey,
+          "map",
+          directive.partIndex,
+          `${PROFILE_PROMPT_VERSION}:map`,
+        ]) ||
+      (ack
+        ? ack.originalCallId !== directive.originalCallId ||
+          ack.replacementCallId !== directive.replacementCallId ||
+          ack.originalReceiptDigest !== directive.originalReceiptDigest ||
+          ack.partIndex !== directive.partIndex ||
+          ack.inputDigest !== original.inputDigest
+        : status.profile.state !== "rejected")
+    )
+      throw new ManualSubscriptionCatalogError("input_invalid")
+    if (status.calls.some((call) => call.status === "pending"))
+      throw new ManualSubscriptionCatalogError("usage_uncertain")
+    if (
+      status.calls.some(
+        (call) =>
+          call !== original &&
+          (call.status !== "succeeded" ||
+            !call.nodeApplied ||
+            !call.node ||
+            !call.outputDigest),
+      )
+    )
+      throw new ManualSubscriptionCatalogError("input_invalid")
+  }
   const attestation = await ports.readAttestation()
   if (
     attestation.admission !== "admitted" ||
@@ -895,15 +1002,6 @@ export async function runManualSubscriptionCatalog(
       if (acknowledged.replacementCallId !== input.recovery.replacementCallId)
         throw new ManualSubscriptionCatalogError("admin_unavailable")
     }
-    const profileIds = new Set<string>()
-    for (const item of work) {
-      profileIds.add(item.sourceVideoId)
-      const pool = frozen.retrieval.candidateIdsBySource.get(
-        item.sourceVideoId,
-      )!
-      for (const target of pool.slice(0, item.exclusiveEndRank))
-        profileIds.add(target)
-    }
     const readyProfiles = new Map<string, ReadyEdgeProfile>()
     const profilePersistence: ProfilePersistencePort = input.recovery
       ? {
@@ -921,7 +1019,15 @@ export async function runManualSubscriptionCatalog(
           },
         }
       : ports.profilePersistence
-    for (const videoId of [...profileIds].sort()) {
+    const profileOrder = [...profileIds].sort()
+    if (input.profileReplacement) {
+      profileOrder.splice(
+        profileOrder.indexOf(input.profileReplacement.videoId),
+        1,
+      )
+      profileOrder.unshift(input.profileReplacement.videoId)
+    }
+    for (const videoId of profileOrder) {
       const video = byId.get(videoId)
       if (!video) throw new ManualSubscriptionCatalogError("catalog_mismatch")
       const ready = await runContentProfile({
@@ -937,6 +1043,9 @@ export async function runManualSubscriptionCatalog(
         maxPartBytes: MAX_PROFILE_PART_BYTES,
         model: admittedModel,
         persistence: profilePersistence,
+        ...(input.profileReplacement?.videoId === videoId
+          ? { manualReplacement: input.profileReplacement }
+          : {}),
       })
       readyProfiles.set(videoId, {
         state: "ready",

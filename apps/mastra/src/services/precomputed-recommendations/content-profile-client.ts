@@ -47,6 +47,18 @@ const statusReply = identity.extend({
       profileJson: profile.nullable(),
       finalCallId: z.uuid().nullable(),
       coverageDigest: digest,
+      manualReplacement: z
+        .object({
+          originalCallId: z.uuid(),
+          replacementCallId: z.uuid(),
+          originalReceiptDigest: digest,
+          nodeKey: digest,
+          inputDigest: digest,
+          partIndex: z.number().int().min(0).max(63),
+        })
+        .strict()
+        .nullable()
+        .optional(),
     })
     .strict(),
   calls: z
@@ -58,6 +70,14 @@ const statusReply = identity.extend({
           stage: z.enum(["map", "reduce"]),
           inputDigest: digest,
           status: callState,
+          receiptDigest: digest.nullable().optional(),
+          errorCode: z
+            .string()
+            .regex(/^[a-z][a-z0-9_]{2,63}$/u)
+            .nullable()
+            .optional(),
+          inputTokens: z.number().int().positive().nullable().optional(),
+          outputTokens: z.number().int().nonnegative().nullable().optional(),
           nodeApplied: z.boolean(),
           outputDigest: digest.nullable(),
           node: node.nullable(),
@@ -130,6 +150,7 @@ export function createContentProfilePersistence(
     },
     status: (input) => request(statusReply, input),
     callStart: (input) => request(callStartReply, input),
+    manualReplacementStart: (input) => request(callStartReply, input),
     callFinish: (input) => request(callFinishReply, input),
     finalize: (input) => request(finalizeReply, input),
   }

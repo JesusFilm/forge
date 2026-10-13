@@ -43,6 +43,18 @@ const inputSchema: z.ZodType<ManualSubscriptionCatalogInput> = z
       .strict(),
     destination: gaImportDestinationSchema,
     originGenerationId: id,
+    profileReplacement: z
+      .object({
+        videoId: id,
+        cacheKey: digest,
+        partIndex: z.number().int().min(0).max(63),
+        originalCallId: z.uuid(),
+        originalReceiptDigest: digest,
+        replacementCallId: z.uuid(),
+        oldProcessExitedAttested: z.literal(true),
+      })
+      .strict()
+      .optional(),
     recovery: z
       .object({
         originalCallId: z.literal("8ab8a620-1608-4115-812e-200bb2fb4b6d"),
@@ -72,6 +84,14 @@ const inputSchema: z.ZodType<ManualSubscriptionCatalogInput> = z
     ]),
   })
   .strict()
+  .refine(
+    (value) =>
+      !value.profileReplacement ||
+      (value.invocation === "resume" &&
+        !value.recovery &&
+        value.profileReplacement.originalCallId !==
+          value.profileReplacement.replacementCallId),
+  )
 const capacityMeasurement = z
   .object({
     measuredAt: z.string().datetime(),

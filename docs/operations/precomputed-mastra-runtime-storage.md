@@ -13,6 +13,39 @@ the private launch paths also request hidden trace input/output.
 
 ## Retention and safety
 
+### Manual known-rejection profile replacement
+
+The local manual command accepts `input.profileReplacement` only on an explicit
+resume, separately from the older edge recovery directive. Specify `videoId`,
+`cacheKey`, `partIndex`, `originalCallId`, `originalReceiptDigest`, a fresh
+`replacementCallId`, and `oldProcessExitedAttested: true`. Reconcile the old
+process, all pending usage, and current capacity/allowance before invocation.
+The target must belong to the selected source/candidate profile work and retain
+the exact generation, full selected-part plan, prompt/schema and node input.
+Ready targets require the matching durable authorization; metadata-only or
+unrelated targets fail before attempt/import writes or model dispatch.
+
+Admin authorizes only a known-usage rejected map with
+`profile_map_anchor_invalid`, using the account from a distinct active resume
+attempt. Its atomic reservation charges 5,120 bytes for the physical call plus
+the exact bounded authorization metadata JSON bytes and a 256-byte allowance.
+Both are logical write reservations, not physical heap/index/TOAST estimates;
+neither is refunded. Capacity reports include the authorization relation and
+its indexes. One immutable authorization links the original and replacement
+receipts per profile. The original rejection and accepted nodes stay unchanged.
+
+Only a freshly created replacement reservation dispatches. A pending replay or
+lost process stops with unknown consumption; a rejected/failed replacement
+stays terminal. Successful replacements and prior nodes remain reusable on
+later explicit resumes. All grounding, complete coverage, profile detail, byte
+bounds and subscription/storage admission checks still apply. No automatic
+retry, reset, prompt repair or transcript truncation is part of this operation.
+The adapter's raw answer is ephemeral and cannot be salvaged after rejection.
+
+Authorization updates are forbidden by a database trigger. Protected generation
+retention preserves the record; retiring either owned call cascades its audit
+record before the referenced execution attempts can be removed.
+
 Complete content-profile nodes are bounded to 4,096 minified UTF-8 JSON bytes,
 including verified anchor metadata, covered range and child digests. Each
 physical profile call reserves 5,120 bytes (the node plus the existing 1 KiB

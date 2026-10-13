@@ -6,6 +6,27 @@ Historical entries describe their stated revision and are not claims about later
 
 Updated: 2026-10-06 (Pacific/Auckland).
 
+## Manual known-rejection replacement, 2026-10-13
+
+Keep the current generation, rich profile schema, full transcript/candidate
+coverage and all accepted nodes. A separate operator directive may authorize
+one new physical call for a precisely bound known-usage map rejection;
+ordinary resume continues to block unacknowledged terminal or pending calls.
+The dedicated Admin reservation verifies the original receipt and unchanged
+node input, derives its actor from a fresh matching resume attempt, and
+atomically appends an immutable authorization, reserves call/audit storage,
+creates the pending replacement and reopens only the profile execution state.
+No rejected receipt is rewritten or accepted as evidence. Failed replacement
+is terminal; successful replacement permits ordinary complete-DAG finalization.
+
+Verify through public executor and native Admin seams: six-part finalization
+with old hashes/usage unchanged, exact scope/actor/capacity/127-call guards,
+concurrent idempotency and single reservation, pending replay without dispatch,
+continued grounding rejection with known usage, both-call accounting,
+Unicode-sized audit reservation, protected retention and FK cascade cleanup.
+Deploy normally before an explicit operator invocation. Preserve the old usage
+ledger; discarded raw production output cannot support an exact replay.
+
 ## Integration ownership
 
 - Parent: https://github.com/JesusFilm/forge/issues/2565; roadmap: feat-590.

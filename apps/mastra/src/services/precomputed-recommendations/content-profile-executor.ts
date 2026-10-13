@@ -299,6 +299,20 @@ type CallBase = ProfileScope & {
   childCallIds?: string[]
 }
 
+export type ManualProfileReplacement = {
+  videoId: string
+  cacheKey: string
+  partIndex: number
+  originalCallId: string
+  originalReceiptDigest: string
+  replacementCallId: string
+  oldProcessExitedAttested: true
+}
+export type ProfileReplacementAuthorization = Pick<
+  ManualProfileReplacement,
+  "originalCallId" | "originalReceiptDigest" | "replacementCallId" | "partIndex"
+> & { nodeKey: string; inputDigest: string }
+
 export type ProfilePersistencePort = {
   register(
     input: Scope & {
@@ -335,6 +349,7 @@ export type ProfilePersistencePort = {
       profileJson: CompactProfile | null
       finalCallId: string | null
       coverageDigest: string
+      manualReplacement?: ProfileReplacementAuthorization | null
     }
     calls: Array<{
       callId: string
@@ -342,6 +357,10 @@ export type ProfilePersistencePort = {
       stage: "map" | "reduce"
       inputDigest: string
       status: "pending" | "succeeded" | "rejected" | "failed"
+      receiptDigest?: string | null
+      errorCode?: string | null
+      inputTokens?: number | null
+      outputTokens?: number | null
       nodeApplied: boolean
       outputDigest: string | null
       node: ProfileNode | null
@@ -361,6 +380,16 @@ export type ProfilePersistencePort = {
     outputDigest?: string | null
     node?: ProfileNode | null
   }>
+  manualReplacementStart?(
+    input: CallBase & {
+      action: "profile_manual_replacement_start"
+      startedAt: string
+      originalCallId: string
+      originalReceiptDigest: string
+      coverageDigest: string
+      oldProcessExitedAttested: true
+    },
+  ): ReturnType<ProfilePersistencePort["callStart"]>
   callFinish(
     input: CallBase & {
       action: "profile_call_finish"
@@ -536,6 +565,7 @@ export async function runContentProfile(input: {
   maxPartBytes: number
   model: ReservationAwareStructuredModel
   persistence: ProfilePersistencePort
+  manualReplacement?: ManualProfileReplacement
 }): Promise<{
   state: "ready"
   kind: "transcript" | "metadata_only"
@@ -589,7 +619,21 @@ export async function runContentProfile(input: {
     throw new ContentProfileExecutionError("profile_conflict")
   if (registered.state === "invalid")
     throw new ContentProfileExecutionError("profile_invalid")
-  if (registered.state === "rejected" || registered.state === "failed")
+  const manual = input.manualReplacement
+  if (
+    manual &&
+    (manual.videoId !== input.video.id ||
+      manual.cacheKey !== plan.cacheKey ||
+      manual.partIndex < 0 ||
+      manual.partIndex >= plan.parts.length ||
+      manual.originalCallId === manual.replacementCallId ||
+      manual.oldProcessExitedAttested !== true)
+  )
+    throw new ContentProfileExecutionError("profile_conflict")
+  if (
+    (registered.state === "rejected" && !manual) ||
+    registered.state === "failed"
+  )
     throw new ContentProfileExecutionError("profile_unavailable")
   const stored = await input.persistence.status({
     ...scope,
@@ -618,9 +662,50 @@ export async function runContentProfile(input: {
       profile: null,
     }
   }
+  const authorization = stored.profile.manualReplacement
+  if (manual && !authorization && stored.profile.state !== "rejected")
+    throw new ContentProfileExecutionError("profile_conflict")
   if (
-    !["planned", "in_progress", "ready"].includes(stored.profile.state) ||
-    stored.calls.some((call) => call.status !== "succeeded")
+    manual &&
+    authorization &&
+    (manual.originalCallId !== authorization.originalCallId ||
+      manual.replacementCallId !== authorization.replacementCallId ||
+      manual.originalReceiptDigest !== authorization.originalReceiptDigest ||
+      manual.partIndex !== authorization.partIndex)
+  )
+    throw new ContentProfileExecutionError("profile_conflict")
+  const replacement = authorization ?? manual
+  const original = replacement
+    ? stored.calls.find((call) => call.callId === replacement.originalCallId)
+    : undefined
+  if (
+    replacement &&
+    (!original ||
+      original.status !== "rejected" ||
+      original.nodeApplied ||
+      original.node ||
+      original.outputDigest ||
+      original.stage !== "map" ||
+      original.nodeKey !==
+        digest([
+          plan.cacheKey,
+          "map",
+          replacement.partIndex,
+          `${input.promptVersion}:map`,
+        ]) ||
+      (authorization && original.inputDigest !== authorization.inputDigest))
+  )
+    throw new ContentProfileExecutionError("profile_conflict")
+  if (
+    ![
+      "planned",
+      "in_progress",
+      "ready",
+      ...(manual ? ["rejected"] : []),
+    ].includes(stored.profile.state) ||
+    stored.calls.some(
+      (call) => call.status !== "succeeded" && call !== original,
+    )
   )
     throw new ContentProfileExecutionError(
       stored.calls.some((call) => call.status === "pending")
@@ -704,7 +789,19 @@ export async function runContentProfile(input: {
     }
     if (stored.profile.state === "ready")
       throw new ContentProfileExecutionError("profile_conflict")
-    const callId = randomUUID()
+    const isReplacement =
+      stage === "map" && replacement?.partIndex === part?.input.partIndex
+    if (
+      isReplacement &&
+      (!original ||
+        original.nodeKey !== nodeKey ||
+        original.inputDigest !== inputDigest)
+    )
+      throw new ContentProfileExecutionError("profile_conflict")
+    const callId =
+      isReplacement && replacement
+        ? replacement.replacementCallId
+        : randomUUID()
     const callBase: CallBase = {
       ...scope,
       attemptId: input.attemptId,
@@ -719,11 +816,25 @@ export async function runContentProfile(input: {
     }
     let reservationAccepted = false
     const reserve = async () => {
-      const reservation = await input.persistence.callStart({
-        ...callBase,
-        action: "profile_call_start",
-        startedAt: new Date().toISOString(),
-      })
+      const reservation = isReplacement
+        ? await (() => {
+            if (!manual || !input.persistence.manualReplacementStart)
+              throw new ContentProfileExecutionError("profile_unavailable")
+            return input.persistence.manualReplacementStart({
+              ...callBase,
+              action: "profile_manual_replacement_start",
+              startedAt: new Date().toISOString(),
+              originalCallId: manual.originalCallId,
+              originalReceiptDigest: manual.originalReceiptDigest,
+              coverageDigest,
+              oldProcessExitedAttested: manual.oldProcessExitedAttested,
+            })
+          })()
+        : await input.persistence.callStart({
+            ...callBase,
+            action: "profile_call_start",
+            startedAt: new Date().toISOString(),
+          })
       if (
         reservation.generationId !== scope.generationId ||
         reservation.cacheKey !== scope.cacheKey ||
