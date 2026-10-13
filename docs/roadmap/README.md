@@ -327,6 +327,8 @@ renumbered to feat-612 to keep the two feature identities distinct.
 
 ### Platform
 
+[feat-696 — Normalize percent-escape case at the public Watch proxy](platform/feat-696-watch-percent-escape-case.md) is in progress; added after the status snapshot above.
+
 | ID                                                                                     | Feature                                                                            | Owner      | Priority | Start      | Days | Due        | Status      |
 | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------- | -------- | ---------- | ---- | ---------- | ----------- |
 | [feat-026](platform/feat-026-graphql-pipeline.md)                                      | GraphQL Pipeline (Contract-First Typed Client)                                     | tataihono  | P0       | 2026-02-12 | 47   | 2026-03-30 | complete    |
