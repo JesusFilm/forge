@@ -7333,10 +7333,32 @@ model RecommendationPrecomputedEdgeBatchCall {
   recoveryOperatorAccountRef String? @map("recovery_operator_account_ref")
   recoveryAcknowledgedAt DateTime? @map("recovery_acknowledged_at")
   recoveryOldProcessExitedAttested Boolean? @map("recovery_old_process_exited_attested")
+  noDispatchDisposition RecommendationPrecomputedEdgeNoDispatchDisposition?
   members RecommendationPrecomputedEdgeBatchMember[]
 
   @@id([generationId, callId])
   @@map("recommendation_precomputed_edge_batch_call")
+}
+
+/// Explicit operator evidence that this reviewed reservation never dispatched.
+/// Provider usage stays null on the immutable original call.
+model RecommendationPrecomputedEdgeNoDispatchDisposition {
+  generationId String @map("generation_id")
+  callId String @map("call_id") @db.Uuid
+  call RecommendationPrecomputedEdgeBatchCall @relation(fields: [generationId, callId], references: [generationId, callId], onDelete: Cascade)
+  originalAttemptId String @map("original_attempt_id") @db.Uuid
+  maintenanceAttemptId String @map("maintenance_attempt_id") @db.Uuid
+  requestDigest String @map("request_digest") @db.Char(64)
+  evidenceDigest String @map("evidence_digest") @db.Char(64)
+  operatorAccountRef String @map("operator_account_ref")
+  reason String
+  acknowledgedAt DateTime @map("acknowledged_at")
+  oldProcessExitedAttested Boolean @map("old_process_exited_attested")
+  originalMembers Json @map("original_members") @db.JsonB
+  memberSnapshotDigest String @map("member_snapshot_digest") @db.Char(64)
+
+  @@id([generationId, callId])
+  @@map("recommendation_precomputed_edge_no_dispatch_disposition")
 }
 
 /// A fenced source/page in one shared edge call; it carries no token charge.

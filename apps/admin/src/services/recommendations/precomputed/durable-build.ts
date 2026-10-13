@@ -22,7 +22,10 @@ import {
 } from "./ga-capture-store"
 import { verifyBoundGaCapture } from "./ga-capture-transport"
 import { submitProfileAction } from "./profile-ledger"
-import { submitEdgeAction } from "./edge-ledger"
+import {
+  submitEdgeAction,
+  auditedNoDispatchReservationWhere,
+} from "./edge-ledger"
 import {
   importedGaCaptureQualificationSchema,
   submitGaCaptureImport,
@@ -697,43 +700,53 @@ async function usage(prisma: PrismaClient | Tx, generationId: string) {
            COALESCE(sum(cost_usd), 0)::text AS known_cost_usd,
            COALESCE(sum(bytes_processed), 0)::bigint AS known_bytes
     FROM recommendation_precomputed_history_call WHERE generation_id = ${generationId}`
-  const [attempts, attemptUsage, profileAttemptUsage, edgeAttemptUsage] =
-    await Promise.all([
-      prisma.recommendationPrecomputedExecutionAttempt.findMany({
-        where: { generationId },
-        orderBy: [{ startedAt: "asc" }, { attemptId: "asc" }],
-      }),
-      prisma.recommendationPrecomputedModelCall.groupBy({
-        by: ["attemptId"],
-        where: { generationId, attemptId: { not: null } },
-        _count: true,
-        _sum: {
-          inputTokens: true,
-          outputTokens: true,
-          cachedInputTokens: true,
-        },
-      }),
-      prisma.recommendationPrecomputedProfileCall.groupBy({
-        by: ["attemptId"],
-        where: { generationId },
-        _count: true,
-        _sum: {
-          inputTokens: true,
-          outputTokens: true,
-          cachedInputTokens: true,
-        },
-      }),
-      prisma.recommendationPrecomputedEdgeBatchCall.groupBy({
-        by: ["attemptId"],
-        where: { generationId },
-        _count: true,
-        _sum: {
-          inputTokens: true,
-          outputTokens: true,
-          cachedInputTokens: true,
-        },
-      }),
-    ])
+  const [
+    attempts,
+    attemptUsage,
+    profileAttemptUsage,
+    edgeAttemptUsage,
+    edgeReservationAttemptUsage,
+  ] = await Promise.all([
+    prisma.recommendationPrecomputedExecutionAttempt.findMany({
+      where: { generationId },
+      orderBy: [{ startedAt: "asc" }, { attemptId: "asc" }],
+    }),
+    prisma.recommendationPrecomputedModelCall.groupBy({
+      by: ["attemptId"],
+      where: { generationId, attemptId: { not: null } },
+      _count: true,
+      _sum: {
+        inputTokens: true,
+        outputTokens: true,
+        cachedInputTokens: true,
+      },
+    }),
+    prisma.recommendationPrecomputedProfileCall.groupBy({
+      by: ["attemptId"],
+      where: { generationId },
+      _count: true,
+      _sum: {
+        inputTokens: true,
+        outputTokens: true,
+        cachedInputTokens: true,
+      },
+    }),
+    prisma.recommendationPrecomputedEdgeBatchCall.groupBy({
+      by: ["attemptId"],
+      where: { generationId, NOT: auditedNoDispatchReservationWhere },
+      _count: true,
+      _sum: {
+        inputTokens: true,
+        outputTokens: true,
+        cachedInputTokens: true,
+      },
+    }),
+    prisma.recommendationPrecomputedEdgeBatchCall.groupBy({
+      by: ["attemptId"],
+      where: { generationId },
+      _count: true,
+    }),
+  ])
   const [subscriptionCounts] = await prisma.$queryRaw<
     Array<{ calls: bigint; pending: bigint; legacy_unknown_cost: bigint }>
   >`
@@ -785,6 +798,14 @@ async function usage(prisma: PrismaClient | Tx, generationId: string) {
         profileOutputTokens: profileCounts?._sum.outputTokens ?? 0,
         profileCachedInputTokens: profileCounts?._sum.cachedInputTokens,
         edgeBatchCallCount: edgeCounts?._count ?? 0,
+        edgeBatchReservationCount:
+          edgeReservationAttemptUsage.find(
+            (item) => item.attemptId === attempt.attemptId,
+          )?._count ?? 0,
+        edgeBatchNoDispatchReservationCount:
+          (edgeReservationAttemptUsage.find(
+            (item) => item.attemptId === attempt.attemptId,
+          )?._count ?? 0) - (edgeCounts?._count ?? 0),
         edgeBatchInputTokens: edgeCounts?._sum.inputTokens ?? 0,
         edgeBatchOutputTokens: edgeCounts?._sum.outputTokens ?? 0,
         edgeBatchCachedInputTokens: edgeCounts?._sum.cachedInputTokens,
@@ -1318,6 +1339,7 @@ async function storedSize(prisma: PrismaClient | Tx, generationId: string) {
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_profile_manual_replacement t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_edge_batch_call t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_edge_batch_member t WHERE generation_id = ${generationId}) +
+      (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_edge_no_dispatch_disposition t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_history_call t WHERE generation_id = ${generationId}) +
       (SELECT COALESCE(sum(pg_column_size(t)), 0) FROM recommendation_precomputed_build_budget t WHERE generation_id = ${generationId})
     )::bigint AS generation_row_bytes,
@@ -1333,6 +1355,7 @@ async function storedSize(prisma: PrismaClient | Tx, generationId: string) {
       pg_total_relation_size('recommendation_precomputed_profile_manual_replacement') +
       pg_total_relation_size('recommendation_precomputed_edge_batch_call') +
       pg_total_relation_size('recommendation_precomputed_edge_batch_member') +
+      pg_total_relation_size('recommendation_precomputed_edge_no_dispatch_disposition') +
       pg_total_relation_size('recommendation_precomputed_history_call') +
       pg_total_relation_size('recommendation_precomputed_build_budget')
     )::bigint AS tables_physical_bytes`
@@ -1385,6 +1408,7 @@ export async function loadDurablePrecomputedBuildReport(
     edgeCalls,
     edgeMembers,
     pendingEdgeCalls,
+    noDispatchReservations,
   ] = await Promise.all([
     prisma.recommendationPrecomputedBuildSource.groupBy({
       by: ["state"],
@@ -1495,7 +1519,11 @@ export async function loadDurablePrecomputedBuildReport(
       _count: true,
     }),
     prisma.recommendationPrecomputedEdgeBatchCall.findMany({
-      where: { generationId: input.generationId, status: "pending" },
+      where: {
+        generationId: input.generationId,
+        status: "pending",
+        NOT: auditedNoDispatchReservationWhere,
+      },
       orderBy: [{ startedAt: "asc" }, { callId: "asc" }],
       take: 100,
       select: {
@@ -1506,6 +1534,20 @@ export async function loadDurablePrecomputedBuildReport(
           select: { sourceVideoId: true },
           orderBy: { sourceVideoId: "asc" },
         },
+      },
+    }),
+    prisma.recommendationPrecomputedEdgeNoDispatchDisposition.findMany({
+      where: {
+        generationId: input.generationId,
+        call: { is: auditedNoDispatchReservationWhere },
+      },
+      select: {
+        callId: true,
+        originalAttemptId: true,
+        reason: true,
+        evidenceDigest: true,
+        acknowledgedAt: true,
+        memberSnapshotDigest: true,
       },
     }),
   ])
@@ -1587,6 +1629,18 @@ export async function loadDurablePrecomputedBuildReport(
         count: row._count,
       })),
       pendingCalls: pendingEdgeCalls,
+      noDispatchReservations,
+      physicalReservationCount: edgeCalls.reduce(
+        (total, row) => total + row._count,
+        0,
+      ),
+      observedInferenceCount: edgeCalls
+        .filter((row) => row.status !== "pending")
+        .reduce((total, row) => total + row._count, 0),
+      unresolvedPendingCount:
+        (edgeCalls.find((row) => row.status === "pending")?._count ?? 0) -
+        noDispatchReservations.length,
+      noDispatchReservationCount: noDispatchReservations.length,
       billingBasis: "included_subscription" as const,
       usdCharge: null,
     },

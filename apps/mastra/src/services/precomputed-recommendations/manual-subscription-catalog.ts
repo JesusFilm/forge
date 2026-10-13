@@ -24,6 +24,7 @@ import { planContentProfile } from "./content-profile-plan"
 import { readCompleteSelectedChunks } from "./selected-transcript"
 import {
   acknowledgedUnknownIsSafe,
+  auditedNoDispatchIsSafe,
   finalizeEdgeSource,
   planEdgeMemberPage,
   runEdgeBatch,
@@ -495,7 +496,9 @@ async function sourceProgress(
   if (
     calls.some(
       (call) =>
-        call.status === "pending" && !acknowledgedUnknownIsSafe(call, recovery),
+        call.status === "pending" &&
+        !acknowledgedUnknownIsSafe(call, recovery) &&
+        !auditedNoDispatchIsSafe(call),
     )
   )
     throw new ManualSubscriptionCatalogError("usage_uncertain")

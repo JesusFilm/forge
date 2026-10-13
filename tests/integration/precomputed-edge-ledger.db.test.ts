@@ -1,13 +1,25 @@
 import { createHash, randomUUID } from "node:crypto"
-import { PrismaClient, type Prisma } from "@prisma/client"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
+import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
-import { afterAll, beforeAll, describe, expect, it } from "vitest"
-import { env } from "@/config/env"
-import { currentAdminMigrationSql } from "../current-schema.test-fixture"
-import { submitDurablePrecomputedRecommendation } from "./durable-build"
-import { purgeExpiredPrecomputedGenerations } from "./generation-retention"
-import { loadPrecomputedStorageCapacityReport } from "./storage-capacity"
-import { loadQualifiedManualEdgeRecovery } from "./edge-ledger"
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
+import { z } from "zod"
+import { createCodexSubscriptionAstraModel } from "../../apps/mastra/src/services/precomputed-recommendations/codex-subscription-astra"
+import { createEdgeBatchPersistence } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-client"
+import { finalizeEdgeSource } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-executor"
+import { loadLiveEvidence } from "../../apps/admin/src/services/recommendations/precomputed/live-evidence"
+import { loadPrecomputedPublicReadiness } from "../../apps/admin/src/services/recommendations/precomputed/public-readiness"
+import { env } from "../../apps/admin/src/config/env"
+import { currentAdminMigrationSql } from "../../apps/admin/src/services/recommendations/current-schema.test-fixture"
+import {
+  submitDurablePrecomputedRecommendation,
+  loadDurablePrecomputedBuildReport,
+} from "../../apps/admin/src/services/recommendations/precomputed/durable-build"
+import { purgeExpiredPrecomputedGenerations } from "../../apps/admin/src/services/recommendations/precomputed/generation-retention"
+import { loadPrecomputedStorageCapacityReport } from "../../apps/admin/src/services/recommendations/precomputed/storage-capacity"
+import { loadQualifiedManualEdgeRecovery } from "../../apps/admin/src/services/recommendations/precomputed/edge-ledger"
 
 const digest = (value: unknown) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex")
@@ -16,6 +28,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
   "shared edge ledger on native PostgreSQL",
   () => {
     let prisma: PrismaClient
+    let reservationQueries: string[] | null = null
     let admin: Client
     const suffix = `${Date.now()}-${Math.random().toString(36).slice(2)}`
     const schema = `edge_ledger_${Date.now()}_${Math.random().toString(36).slice(2)}`
@@ -33,17 +46,28 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     async function build(
       name: string,
       sourceIds = [sourceVideoId, targetVideoId],
+      identity?: {
+        generationId: string
+        attemptId: string
+        generationInputDigest: string
+      },
     ) {
-      const generationId = `${name}-${suffix}`
-      const attemptId = randomUUID()
-      const base = { generationId, generationInputDigest, attemptId }
+      const generationId = identity?.generationId ?? `${name}-${suffix}`
+      const attemptId = identity?.attemptId ?? randomUUID()
+      const inputDigest =
+        identity?.generationInputDigest ?? generationInputDigest
+      const base = {
+        generationId,
+        generationInputDigest: inputDigest,
+        attemptId,
+      }
       await submit({
         action: "start",
         generationId,
         protocolVersion: 4,
         modelId: "gpt-6-astra",
         promptVersion: "build-v4",
-        inputDigest: generationInputDigest,
+        inputDigest,
         sourceSetDigest: digest([...sourceIds].sort()),
         inputCutoff: new Date(Date.now() + 60_000).toISOString(),
         expectedSourceCount: sourceIds.length,
@@ -77,7 +101,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           observedDbBytes: probe.observedDbBytes,
           availableBytes: 20_000_000_000,
           reserveBytes: 5_000_000_000,
-          projectedBytes: 1_000_000,
+          projectedBytes: identity ? 20_000_000 : 1_000_000,
           sampleSourceCount: sourceIds.length,
           sampleBytes: 100_000,
           source: "operator_verified_pgdata_df",
@@ -311,9 +335,14 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         await admin.query(migration)
       const url = new URL(env.DATABASE_URL)
       url.searchParams.set("schema", schema)
-      prisma = new PrismaClient<Prisma.PrismaClientOptions>({
+      const queryClient = new PrismaClient({
         datasources: { db: { url: url.toString() } },
+        log: [{ emit: "event", level: "query" }],
       })
+      queryClient.$on("query", (event) => {
+        reservationQueries?.push(event.query)
+      })
+      prisma = queryClient
       for (const [id, title] of [
         [sourceVideoId, "Source story"],
         [targetVideoId, "Another story"],
@@ -352,6 +381,885 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         sourceCandidateDigest: null,
         calls: [],
       })
+    })
+    it("leaves a late native reservation pending without launching the external CLI", async () => {
+      const fixture = await reserveOne("late-native-reservation", false)
+      const directory = await mkdtemp(
+        join(tmpdir(), "edge-no-dispatch-native-"),
+      )
+      const executable = join(directory, "fake-codex")
+      const capture = join(directory, "launched")
+      await writeFile(
+        executable,
+        `#!/usr/bin/env node\nrequire("node:fs").writeFileSync(${JSON.stringify(capture)}, "launched")\nprocess.exit(1)\n`,
+        { mode: 0o700 },
+      )
+      for (const key of [
+        "CI",
+        "RAILWAY_ENVIRONMENT",
+        "RAILWAY_ENVIRONMENT_NAME",
+        "RAILWAY_SERVICE_ID",
+      ])
+        vi.stubEnv(key, "")
+      try {
+        const adapter = createCodexSubscriptionAstraModel({
+          codexExecutable: executable,
+          initiatingAccountRef: "edge-account-123",
+          readAllowance: async () => ({
+            observedAt: new Date().toISOString(),
+            accountRef: "edge-account-123",
+            billingBasis: "included_subscription",
+            weeklyRemainingPercent: 50,
+            fiveHour: { kind: "limited", remainingPercent: 50 },
+          }),
+          readOperatorIdentity: async () => ({
+            observedAt: new Date().toISOString(),
+            accountRef: "edge-account-123",
+            authMethod: "chatgpt",
+          }),
+        })
+        let releaseResponse: () => void = () => {
+          throw new Error("Reservation callback did not begin")
+        }
+        const delayedResponse = new Promise<void>((resolve) => {
+          releaseResponse = resolve
+        })
+        let committed = false
+        await expect(
+          adapter.generateReserved(
+            {
+              schema: z.object({ summary: z.string() }).strict(),
+              system: "Choose a summary.",
+              prompt: "Synthetic native reservation.",
+              maxOutputTokens: 200,
+            },
+            async () => {
+              const response = await submit(fixture.start)
+              committed = true
+              await delayedResponse
+              return { kind: "dispatch", reservation: response }
+            },
+          ),
+        ).rejects.toMatchObject({ code: "reservation_uncertain" })
+        expect(committed).toBe(true)
+        releaseResponse()
+        await new Promise((resolve) => setTimeout(resolve, 50))
+        await expect(readFile(capture)).rejects.toMatchObject({
+          code: "ENOENT",
+        })
+        expect(
+          await submit({
+            action: "edge_batch_status",
+            generationId: fixture.base.generationId,
+            generationInputDigest: fixture.base.generationInputDigest,
+            sourceVideoId,
+          }),
+        ).toMatchObject({
+          calls: [
+            {
+              status: "pending",
+              applicationState: "pending",
+              finishedAt: null,
+            },
+          ],
+        })
+      } finally {
+        vi.unstubAllEnvs()
+        await rm(directory, { recursive: true, force: true })
+      }
+    }, 30_000)
+    it("audits the reviewed no-dispatch reservation without creating a provider receipt", async () => {
+      const reviewedSource = "cmp76xcw602imny01vnsbwwy9"
+      await prisma.video.create({
+        data: {
+          id: reviewedSource,
+          coreId: reviewedSource,
+          slug: reviewedSource,
+        },
+      })
+      const targetIds = Array.from(
+        { length: 86 },
+        (_, index) => `no-dispatch-target-${index}-${suffix}`,
+      )
+      await prisma.video.createMany({
+        data: targetIds.map((id) => ({ id, coreId: randomUUID(), slug: id })),
+      })
+      await prisma.videoLocale.createMany({
+        data: [reviewedSource, ...targetIds].map((videoId, index) => ({
+          videoId,
+          locale: "en",
+          title: `Distinct reviewed story ${index}`,
+          status: "PUBLISHED",
+        })),
+      })
+      const base = await build(
+        "reviewed-no-dispatch",
+        [reviewedSource, ...targetIds],
+        {
+          generationId: "production-astra-catalog-20261013-v6",
+          attemptId: "93be0f68-3564-4da7-a81d-0d7bb4b79212",
+          generationInputDigest:
+            "e2ad59bb95b497738290c6dee1d0dd487886f34019ea721ce6971e12dfddd3a5",
+        },
+      )
+      const sourceKey = await readyMetadataProfile(base, reviewedSource)
+      const profileKeys = new Map<string, string>()
+      for (const id of targetIds)
+        profileKeys.set(id, await readyMetadataProfile(base, id))
+      const sourceClaim = await claim(base, reviewedSource)
+      const callId = "f6cdb507-e7e3-4172-b31f-27ace231f2c3"
+      const requestDigest =
+        "dd72735e1bcdb439f39a824dbdfe37c408af7e414ff8a095cdf5c549e1dd5437"
+      const candidates = targetIds
+        .slice(68, 76)
+        .map((targetVideoId, index) => ({
+          targetVideoId,
+          targetProfileKey: profileKeys.get(targetVideoId)!,
+          poolRank: 68 + index,
+        }))
+      // Seed the retained late-committed reservation, never a provider receipt.
+      await prisma.recommendationPrecomputedBuildSource.update({
+        where: {
+          generationId_sourceVideoId: {
+            generationId: base.generationId,
+            sourceVideoId: reviewedSource,
+          },
+        },
+        data: {
+          checkpointRevision: 21,
+          checkpoint: {
+            stage: "edge_page_applied_v1",
+            cursor: { candidateIndex: 68 },
+          },
+        },
+      })
+      await prisma.recommendationPrecomputedEdgeBatchCall.create({
+        data: {
+          generationId: base.generationId,
+          callId,
+          attemptId: base.attemptId,
+          modelId: "gpt-6-astra",
+          backend: "codex_chatgpt_subscription",
+          promptVersion: "edge-v1",
+          schemaVersion: "edge-schema-v1",
+          inputDigest: digest("reviewed-input"),
+          membershipDigest: digest("reviewed-members"),
+          selectedCorpusDigest: digest("reviewed-corpus"),
+          candidatePoolDigest: digest("reviewed-pool"),
+          captureRefDigest: null,
+          spanOfferDigest: digest([]),
+          spanOffers: [],
+          requestDigest,
+          startedAt: new Date(),
+          status: "pending",
+          members: {
+            create: [
+              {
+                sourceVideoId: reviewedSource,
+                leaseToken: sourceClaim.leaseToken,
+                checkpointRevision: 21,
+                pageIndex: 20,
+                sourceProfileKey: sourceKey,
+                candidates,
+                candidatePageDigest: digest([
+                  reviewedSource,
+                  20,
+                  candidates.map((item) => [
+                    item.poolRank,
+                    item.targetVideoId,
+                    item.targetProfileKey,
+                  ]),
+                ]),
+                sourceCandidateCount: 86,
+                sourceCandidateDigest: digest(targetIds),
+                historicalRefDigest: digest(["none", reviewedSource]),
+                applicationState: "pending",
+              },
+            ],
+          },
+        },
+      })
+      const originalCall =
+        await prisma.recommendationPrecomputedEdgeBatchCall.findUniqueOrThrow({
+          where: {
+            generationId_callId: { generationId: base.generationId, callId },
+          },
+        })
+      const originalMember =
+        await prisma.recommendationPrecomputedEdgeBatchMember.findUniqueOrThrow(
+          {
+            where: {
+              generationId_callId_sourceVideoId: {
+                generationId: base.generationId,
+                callId,
+                sourceVideoId: reviewedSource,
+              },
+            },
+          },
+        )
+      let priorRank = 0
+      await prisma.recommendationPrecomputedBuildSource.update({
+        where: {
+          generationId_sourceVideoId: {
+            generationId: base.generationId,
+            sourceVideoId: reviewedSource,
+          },
+        },
+        data: {
+          edgeSourceCandidateCount: originalMember.sourceCandidateCount,
+          edgeSourceCandidateDigest: originalMember.sourceCandidateDigest,
+          edgeSourceProfileKey: originalMember.sourceProfileKey,
+          edgeCandidatePoolDigest: originalCall.candidatePoolDigest,
+          edgeHistoricalRefDigest: originalMember.historicalRefDigest,
+        },
+      })
+      const {
+        generationId: _originalGeneration,
+        callId: _originalCallId,
+        ...originalMemberPayload
+      } = originalMember
+      void [_originalGeneration, _originalCallId]
+      for (let page = 0; page < 20; page++) {
+        const pageSize = page < 12 ? 3 : 4
+        const priorCandidates = targetIds
+          .slice(priorRank, priorRank + pageSize)
+          .map((targetVideoId, index) => ({
+            targetVideoId,
+            targetProfileKey: profileKeys.get(targetVideoId)!,
+            poolRank: priorRank + index,
+          }))
+        const priorCallId = randomUUID()
+        await prisma.recommendationPrecomputedEdgeBatchCall.create({
+          data: {
+            ...originalCall,
+            callId: priorCallId,
+            spanOffers: [],
+            status: "succeeded",
+            inputTokens: 10,
+            outputTokens: 1,
+            receiptDigest: digest([page, "receipt"]),
+            outputDigest: digest([]),
+            finishedAt: new Date(),
+            members: {
+              create: [
+                {
+                  ...originalMemberPayload,
+                  candidates: priorCandidates,
+                  checkpointRevision: page + 1,
+                  pageIndex: page,
+                  candidatePageDigest: digest([
+                    reviewedSource,
+                    page,
+                    priorCandidates.map((item) => [
+                      item.poolRank,
+                      item.targetVideoId,
+                      item.targetProfileKey,
+                    ]),
+                  ]),
+                  applicationState: "applied_empty",
+                  appliedRevision: page + 2,
+                  resultChoiceCount: 0,
+                },
+              ],
+            },
+          },
+        })
+        priorRank += pageSize
+      }
+      expect(priorRank).toBe(68)
+      await submit({ action: "attempt_close", ...base, reason: "paused" })
+      const maintenanceId = randomUUID()
+      const maintenance = { ...base, attemptId: maintenanceId }
+      await prisma.recommendationPrecomputedBuildSource.updateMany({
+        where: { generationId: base.generationId, state: "claimed" },
+        data: { leaseExpiresAt: new Date(0) },
+      })
+      await submit({
+        action: "resume_attempt",
+        generationId: base.generationId,
+        generationInputDigest: base.generationInputDigest,
+        executionAttempt: {
+          attemptId: maintenanceId,
+          invocation: "resume",
+          accountRef: "edge-account-123",
+          backend: "codex_chatgpt_subscription",
+          billingBasis: "included_subscription",
+          authMethod: "chatgpt",
+          modelId: "gpt-6-astra",
+          identityObservedAt: new Date().toISOString(),
+          allowanceObservedAt: new Date().toISOString(),
+          weeklyRemainingPercent: 50,
+          fiveHour: { kind: "limited", remainingPercent: 50 },
+        },
+      })
+      const acknowledgement = {
+        action: "edge_no_dispatch_ack",
+        ...maintenance,
+        originalCallId: callId,
+        originalAttemptId: base.attemptId,
+        expectedRequestDigest: requestDigest,
+        evidenceDigest:
+          "43cdc25082e85c9b2a743a62da0dfc2857ce7b037d52a4467818dbf9a1e9422d",
+        operatorAccountRef: "edge-account-123",
+        oldProcessExitedAttested: true,
+      }
+      const budgetBefore =
+        await prisma.recommendationPrecomputedBuildBudget.findUniqueOrThrow({
+          where: { generationId: base.generationId },
+        })
+      const closedAttempt =
+        await prisma.recommendationPrecomputedExecutionAttempt.findUniqueOrThrow(
+          {
+            where: {
+              generationId_attemptId: {
+                generationId: base.generationId,
+                attemptId: base.attemptId,
+              },
+            },
+          },
+        )
+      await prisma.recommendationPrecomputedExecutionAttempt.update({
+        where: {
+          generationId_attemptId: {
+            generationId: base.generationId,
+            attemptId: maintenanceId,
+          },
+        },
+        data: { endedAt: new Date(), endReason: "paused" },
+      })
+      await prisma.recommendationPrecomputedExecutionAttempt.update({
+        where: {
+          generationId_attemptId: {
+            generationId: base.generationId,
+            attemptId: base.attemptId,
+          },
+        },
+        data: { endedAt: null, endReason: null },
+      })
+      await expect(submit(acknowledgement)).rejects.toMatchObject({
+        code: "conflict",
+      })
+      await prisma.recommendationPrecomputedExecutionAttempt.update({
+        where: {
+          generationId_attemptId: {
+            generationId: base.generationId,
+            attemptId: base.attemptId,
+          },
+        },
+        data: {
+          endedAt: closedAttempt.endedAt,
+          endReason: closedAttempt.endReason,
+        },
+      })
+      await prisma.recommendationPrecomputedExecutionAttempt.update({
+        where: {
+          generationId_attemptId: {
+            generationId: base.generationId,
+            attemptId: maintenanceId,
+          },
+        },
+        data: { endedAt: null, endReason: null },
+      })
+      await prisma.recommendationPrecomputedBuildSource.update({
+        where: {
+          generationId_sourceVideoId: {
+            generationId: base.generationId,
+            sourceVideoId: reviewedSource,
+          },
+        },
+        data: { leaseExpiresAt: new Date(Date.now() + 60_000) },
+      })
+      await expect(submit(acknowledgement)).rejects.toMatchObject({
+        code: "conflict",
+      })
+      await prisma.recommendationPrecomputedBuildSource.update({
+        where: {
+          generationId_sourceVideoId: {
+            generationId: base.generationId,
+            sourceVideoId: reviewedSource,
+          },
+        },
+        data: {
+          leaseExpiresAt: new Date(0),
+          checkpoint: {
+            stage: "edge_page_applied_v1",
+            cursor: { candidateIndex: 69 },
+          },
+        },
+      })
+      await expect(submit(acknowledgement)).rejects.toMatchObject({
+        code: "conflict",
+      })
+      await prisma.recommendationPrecomputedBuildSource.update({
+        where: {
+          generationId_sourceVideoId: {
+            generationId: base.generationId,
+            sourceVideoId: reviewedSource,
+          },
+        },
+        data: {
+          checkpoint: {
+            stage: "edge_page_applied_v1",
+            cursor: { candidateIndex: 68 },
+          },
+          edgeSourceCandidateDigest: "f".repeat(64),
+        },
+      })
+      await expect(submit(acknowledgement)).rejects.toMatchObject({
+        code: "conflict",
+      })
+      await prisma.recommendationPrecomputedBuildSource.update({
+        where: {
+          generationId_sourceVideoId: {
+            generationId: base.generationId,
+            sourceVideoId: reviewedSource,
+          },
+        },
+        data: {
+          edgeSourceCandidateDigest: originalMember.sourceCandidateDigest,
+        },
+      })
+      await expect(
+        submit({ ...acknowledgement, expectedRequestDigest: "f".repeat(64) }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      const lateFinish = {
+        action: "edge_batch_finish",
+        ...base,
+        callId,
+        inputDigest: originalCall.inputDigest,
+        membershipDigest: originalCall.membershipDigest,
+        spanOfferDigest: originalCall.spanOfferDigest,
+        status: "succeeded",
+        results: [{ sourceVideoId: reviewedSource, choices: [] }],
+        outputDigest: digest([{ sourceVideoId: reviewedSource, choices: [] }]),
+        usage: { inputTokens: 10, outputTokens: 1 },
+        finishedAt: new Date().toISOString(),
+      }
+      // Hold the source fence until a real finish has acquired its generation
+      // share lock; the competing acknowledgement then queues behind it.
+      await admin.query("BEGIN")
+      await admin.query(
+        "SELECT source_video_id FROM recommendation_precomputed_build_source WHERE generation_id=$1 AND source_video_id=$2 FOR UPDATE",
+        [base.generationId, reviewedSource],
+      )
+      const finishRace = submit(lateFinish).then(
+        (value) => ({ accepted: true, value }),
+        (error: unknown) => ({ accepted: false, error }),
+      )
+      let startAcknowledgement: () => void = () => {
+        throw new Error("Race gate not initialized")
+      }
+      const finishReady = new Promise<void>((resolve) => {
+        startAcknowledgement = resolve
+      })
+      const acknowledgementRace = finishReady
+        .then(() => submit(acknowledgement))
+        .then(
+          (value) => ({ accepted: true, value }),
+          (error: unknown) => ({ accepted: false, error }),
+        )
+      let finishWaiting = false
+      try {
+        for (let probe = 0; probe < 100; probe++) {
+          await admin.query("SELECT pg_stat_clear_snapshot()")
+          const waiting = await admin.query<{ waiting: boolean }>(
+            "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%recommendation_precomputed_build_source%') AS waiting",
+          )
+          if (waiting.rows[0]?.waiting) {
+            finishWaiting = true
+            break
+          }
+          await new Promise((resolve) => setTimeout(resolve, 10))
+        }
+        expect(finishWaiting).toBe(true)
+        startAcknowledgement()
+        let acknowledgementWaiting = false
+        for (let probe = 0; probe < 100; probe++) {
+          await admin.query("SELECT pg_stat_clear_snapshot()")
+          const waiting = await admin.query<{ waiting: boolean }>(
+            "SELECT EXISTS(SELECT 1 FROM pg_stat_activity WHERE datname=current_database() AND wait_event_type='Lock' AND query LIKE '%recommendation_precomputed_generation%') AS waiting",
+          )
+          if (waiting.rows[0]?.waiting) {
+            acknowledgementWaiting = true
+            break
+          }
+          await new Promise((resolve) => setTimeout(resolve, 10))
+        }
+        expect(acknowledgementWaiting).toBe(true)
+      } finally {
+        await admin.query("COMMIT")
+      }
+      const race = await Promise.all([finishRace, acknowledgementRace])
+      expect(race.map((item) => item.accepted)).toEqual([true, false])
+      expect(
+        await prisma.recommendationPrecomputedEdgeNoDispatchDisposition.count({
+          where: { generationId: base.generationId },
+        }),
+      ).toBe(0)
+      expect(
+        await prisma.recommendationPrecomputedEdgeBatchCall.findUniqueOrThrow({
+          where: {
+            generationId_callId: { generationId: base.generationId, callId },
+          },
+        }),
+      ).toMatchObject({ inputTokens: 10, outputTokens: 1 })
+      // Reset only synthetic fixture state to exercise the opposite winner:
+      // acknowledgement is accepted and every subsequent finish is refused.
+      await prisma.recommendationPrecomputedEdgeBatchCall.update({
+        where: {
+          generationId_callId: { generationId: base.generationId, callId },
+        },
+        data: {
+          status: "pending",
+          inputTokens: null,
+          outputTokens: null,
+          cachedInputTokens: null,
+          outputDigest: null,
+          errorCode: null,
+          finishedAt: null,
+          receiptDigest: null,
+        },
+      })
+      await prisma.recommendationPrecomputedEdgeBatchMember.update({
+        where: {
+          generationId_callId_sourceVideoId: {
+            generationId: base.generationId,
+            callId,
+            sourceVideoId: reviewedSource,
+          },
+        },
+        data: {
+          applicationState: "pending",
+          appliedRevision: null,
+          resultChoiceCount: null,
+        },
+      })
+      const acknowledgements = await Promise.all([
+        submit(acknowledgement),
+        submit(acknowledgement),
+      ])
+      expect(acknowledgements.map((item) => item.replay).sort()).toEqual([
+        false,
+        true,
+      ])
+      expect(acknowledgements[0]).toMatchObject({
+        disposition: "reservation_timeout_before_dispatch",
+      })
+      const budgetAfter =
+        await prisma.recommendationPrecomputedBuildBudget.findUniqueOrThrow({
+          where: { generationId: base.generationId },
+        })
+      expect(budgetAfter.consumedBytes - budgetBefore.consumedBytes).toBe(
+        16_384n,
+      )
+      await expect(
+        submit({ ...acknowledgement, evidenceDigest: "f".repeat(64) }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      await expect(
+        submit({ ...acknowledgement, operatorAccountRef: "different-account" }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      await expect(
+        submit({
+          action: "edge_batch_finish",
+          ...base,
+          callId,
+          inputDigest: originalCall.inputDigest,
+          membershipDigest: originalCall.membershipDigest,
+          spanOfferDigest: originalCall.spanOfferDigest,
+          status: "succeeded",
+          results: [{ sourceVideoId: reviewedSource, choices: [] }],
+          outputDigest: digest([
+            { sourceVideoId: reviewedSource, choices: [] },
+          ]),
+          usage: { inputTokens: 10, outputTokens: 1 },
+          finishedAt: new Date().toISOString(),
+        }),
+      ).rejects.toMatchObject({ code: "conflict" })
+      await expect(
+        prisma.recommendationPrecomputedEdgeNoDispatchDisposition.update({
+          where: {
+            generationId_callId: { generationId: base.generationId, callId },
+          },
+          data: { evidenceDigest: "f".repeat(64) },
+        }),
+      ).rejects.toThrow("immutable")
+      await expect(
+        prisma.recommendationPrecomputedEdgeBatchMember.update({
+          where: {
+            generationId_callId_sourceVideoId: {
+              generationId: base.generationId,
+              callId,
+              sourceVideoId: reviewedSource,
+            },
+          },
+          data: { applicationState: "pending" },
+        }),
+      ).rejects.toThrow("immutable")
+      const report = await loadDurablePrecomputedBuildReport(prisma, {
+        generationId: base.generationId,
+        reviewer: { id: "fixture-reviewer", role: "ADMIN" },
+      })
+      expect(report).toMatchObject({
+        edgeLedger: {
+          unresolvedPendingCount: 0,
+          noDispatchReservationCount: 1,
+          pendingCalls: [],
+        },
+      })
+      expect(
+        report?.usage.attempts.find(
+          (attempt) => attempt.attemptId === base.attemptId,
+        ),
+      ).toMatchObject({
+        edgeBatchCallCount: 20,
+        edgeBatchReservationCount: 21,
+        edgeBatchNoDispatchReservationCount: 1,
+      })
+      await prisma.recommendationPrecomputedGeneration.update({
+        where: { id: base.generationId },
+        data: { status: "complete", completedAt: new Date() },
+      })
+      const policySettings = {
+        baselineHumanVisitCtr: 0.04,
+        minimumDetectableAbsoluteUplift: 0.02,
+        minimumPracticalAbsoluteUplift: 0.01,
+        plannedPower: 0.8,
+        minimumEligibleVisitsPerArm: 100,
+        minimumIndependentBrowsersPerArm: 100,
+        minimumDurationHours: 168,
+        lateEventCutoffHours: 48,
+        maximumActualFallbackRate: 0.05,
+        maximumUnlinkedDeliveryRate: 0.01,
+        maximumEndToEndLossRate: 0.1,
+      }
+      const live = await loadLiveEvidence(prisma, {
+        generationId: base.generationId,
+        startsAt: new Date(),
+        now: new Date(),
+        policySettings,
+        policyAgreement: null,
+        operatorId: "fixture-reviewer",
+        webMeasurement: null,
+      })
+      expect(live.snapshot).toMatchObject({
+        modelCallCount: 20,
+        unknownModelCostCount: 0,
+      })
+      expect(live.reasons).not.toContain("model_usage_unknown")
+      const readiness = await loadPrecomputedPublicReadiness(prisma, {
+        id: "fixture-reviewer",
+        role: "ADMIN",
+      })
+      expect(readiness.generationModelUsage).toMatchObject({
+        modelCallCount: 20,
+        unknownModelUsageCount: 0,
+      })
+      await prisma.recommendationPrecomputedGeneration.update({
+        where: { id: base.generationId },
+        data: { status: "incomplete", completedAt: null },
+      })
+      const status = await submit({
+        action: "edge_batch_status",
+        generationId: base.generationId,
+        generationInputDigest: base.generationInputDigest,
+        sourceVideoId: reviewedSource,
+      })
+      expect(status).toMatchObject({
+        checkpointRevision: 21,
+        calls: expect.arrayContaining([
+          expect.objectContaining({
+            status: "pending",
+            applicationState: "no_dispatch_unapplied",
+            reservationDisposition: {
+              reason: "reservation_timeout_before_dispatch",
+              evidenceDigest: acknowledgement.evidenceDigest,
+              acknowledgedAt: expect.any(String),
+            },
+          }),
+        ]),
+      })
+      expect(
+        await prisma.recommendationPrecomputedEdgeBatchCall.findUniqueOrThrow({
+          where: {
+            generationId_callId: { generationId: base.generationId, callId },
+          },
+        }),
+      ).toEqual(originalCall)
+      expect(
+        await prisma.recommendationPrecomputedEdgeBatchMember.findUniqueOrThrow(
+          {
+            where: {
+              generationId_callId_sourceVideoId: {
+                generationId: base.generationId,
+                callId,
+                sourceVideoId: reviewedSource,
+              },
+            },
+          },
+        ),
+      ).toEqual({
+        ...originalMember,
+        applicationState: "no_dispatch_unapplied",
+      })
+      await submit({
+        action: "attempt_close",
+        ...maintenance,
+        reason: "paused",
+      })
+      const producer = { ...base, attemptId: randomUUID() }
+      expect(await submit(acknowledgement)).toMatchObject({ replay: true })
+      await submit({
+        action: "resume_attempt",
+        generationId: base.generationId,
+        generationInputDigest: base.generationInputDigest,
+        executionAttempt: {
+          attemptId: producer.attemptId,
+          invocation: "resume",
+          accountRef: "edge-account-123",
+          backend: "codex_chatgpt_subscription",
+          billingBasis: "included_subscription",
+          authMethod: "chatgpt",
+          modelId: "gpt-6-astra",
+          identityObservedAt: new Date().toISOString(),
+          allowanceObservedAt: new Date().toISOString(),
+          weeklyRemainingPercent: 50,
+          fiveHour: { kind: "limited", remainingPercent: 50 },
+        },
+      })
+      const freshClaim = await claim(producer, reviewedSource)
+      // Real consumer parsing recognizes the audited reservation, but its
+      // unconsumed page never contributes applied coverage or finalization.
+      await expect(
+        finalizeEdgeSource({
+          ...producer,
+          sourceVideoId: reviewedSource,
+          leaseToken: freshClaim.leaseToken,
+          expectedRevision: 21,
+          sourceProfileKey: sourceKey,
+          orderedCandidateIds: targetIds,
+          profileKeysByVideoId: profileKeys,
+          persistence: createEdgeBatchPersistence(submit),
+        }),
+      ).rejects.toMatchObject({ code: "candidate_page_invalid" })
+      const memberIdentity = {
+        sourceVideoId: reviewedSource,
+        checkpointRevision: freshClaim.checkpointRevision,
+        pageIndex: 20,
+        sourceProfileKey: sourceKey,
+        candidates,
+        candidatePageDigest: originalMember.candidatePageDigest,
+        sourceCandidateCount: 86,
+        sourceCandidateDigest: originalMember.sourceCandidateDigest,
+        historicalRefDigest: originalMember.historicalRefDigest,
+      }
+      const nextCallId = randomUUID()
+      expect(
+        await submit({
+          action: "edge_batch_start",
+          ...producer,
+          callId: nextCallId,
+          modelId: originalCall.modelId,
+          backend: originalCall.backend,
+          promptVersion: originalCall.promptVersion,
+          schemaVersion: originalCall.schemaVersion,
+          inputDigest: digest("next-model-input"),
+          membershipDigest: digest([memberIdentity]),
+          selectedCorpusDigest: originalCall.selectedCorpusDigest,
+          candidatePoolDigest: originalCall.candidatePoolDigest,
+          captureRefDigest: null,
+          spanOfferDigest: digest([]),
+          startedAt: new Date().toISOString(),
+          members: [{ ...memberIdentity, leaseToken: freshClaim.leaseToken }],
+          spanOffers: [],
+        }),
+      ).toMatchObject({ state: "pending", replay: false })
+      const continued = await submit({
+        action: "edge_batch_status",
+        generationId: base.generationId,
+        generationInputDigest: base.generationInputDigest,
+        sourceVideoId: reviewedSource,
+      })
+      expect(continued).toMatchObject({
+        checkpointRevision: 21,
+        calls: expect.arrayContaining([
+          expect.objectContaining({
+            callId: nextCallId,
+            pageIndex: 20,
+            candidates,
+          }),
+        ]),
+      })
+      const unresolvedReport = await loadDurablePrecomputedBuildReport(prisma, {
+        generationId: base.generationId,
+        reviewer: { id: "fixture-reviewer", role: "ADMIN" },
+      })
+      expect(unresolvedReport).toMatchObject({
+        edgeLedger: {
+          physicalReservationCount: 22,
+          observedInferenceCount: 20,
+          unresolvedPendingCount: 1,
+          noDispatchReservationCount: 1,
+        },
+      })
+      const unresolvedLive = await loadLiveEvidence(prisma, {
+        generationId: base.generationId,
+        startsAt: new Date(),
+        now: new Date(),
+        policySettings,
+        policyAgreement: null,
+        operatorId: "fixture-reviewer",
+        webMeasurement: null,
+      })
+      expect(unresolvedLive.snapshot).toMatchObject({
+        modelCallCount: 21,
+        unknownModelCostCount: 1,
+      })
+      expect(unresolvedLive.reasons).toContain("model_usage_unknown")
+      await submit({ action: "attempt_close", ...producer, reason: "paused" })
+      await prisma.recommendationPrecomputedGeneration.update({
+        where: { id: base.generationId },
+        data: { status: "cancelled", cancelledAt: new Date() },
+      })
+      await prisma.$transaction((tx) =>
+        purgeExpiredPrecomputedGenerations(tx, new Date(), 1),
+      )
+      expect(
+        await prisma.recommendationPrecomputedEdgeNoDispatchDisposition.count({
+          where: { generationId: base.generationId },
+        }),
+      ).toBe(1)
+      await prisma.$transaction((tx) =>
+        purgeExpiredPrecomputedGenerations(
+          tx,
+          new Date(Date.now() + 100 * 86_400_000),
+          1,
+        ),
+      )
+      expect(
+        await prisma.recommendationPrecomputedEdgeNoDispatchDisposition.count({
+          where: { generationId: base.generationId },
+        }),
+      ).toBe(0)
+      for (let page = 0; page < 10; page++) {
+        if (
+          !(await prisma.recommendationPrecomputedGeneration.findUnique({
+            where: { id: base.generationId },
+          }))
+        )
+          break
+        await prisma.$transaction((tx) =>
+          purgeExpiredPrecomputedGenerations(
+            tx,
+            new Date(Date.now() + 100 * 86_400_000),
+            1,
+          ),
+        )
+      }
+      expect(
+        await prisma.recommendationPrecomputedGeneration.findUnique({
+          where: { id: base.generationId },
+        }),
+      ).toBeNull()
     })
     it("reserves one physical call for two fenced source members and replays exactly", async () => {
       const base = await build("edge-shared-start")
@@ -1659,7 +2567,47 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         members: [member],
         spanOffers: [offer],
       }
+      // Eight exact offers from one selected chunk should share the same
+      // external database reads rather than repeat its selection aggregate.
+      const additionalOffers = Array.from(
+        { length: text.length - 8 },
+        (_, i) => i + 8,
+      )
+        .filter((end) => text.slice(0, end) === text.slice(0, end).trim())
+        .slice(0, 7)
+        .map((endChar) => {
+          const textSha256 = createHash("sha256")
+            .update(text.slice(0, endChar))
+            .digest("hex")
+          return {
+            ...offer,
+            startChar: 0,
+            endChar,
+            textSha256,
+            spanId: digest([
+              generationInputDigest,
+              inputCutoff,
+              callId,
+              sourceVideoId,
+              spanTargetVideoId,
+              spanTargetVideoId,
+              chunkId,
+              0,
+              endChar,
+              textSha256,
+            ]).slice(0, 32),
+          }
+        })
+      start.spanOffers = [offer, ...additionalOffers]
+      start.spanOfferDigest = digest(start.spanOffers)
+      reservationQueries = []
       await submit(start)
+      const selectionQueries = reservationQueries.filter((query) =>
+        query.includes("WITH candidates AS"),
+      )
+      reservationQueries = null
+      expect(start.spanOffers).toHaveLength(8)
+      expect(selectionQueries).toHaveLength(1)
       const results = [
         {
           sourceVideoId,
