@@ -1688,8 +1688,18 @@ design record is
   a video, a series, and an experience opened the destination. A newer cold
   tap won over the tap that created the task. A reopen from Recents, from the
   launcher, and after a force stop did not replay an earlier tap. The fake
-  admin counted one `ReportPushOpen` per dev-client tap. Not yet run: the
-  "Don't keep activities" case and the lapse reminder cold tap.
+  admin counted one `ReportPushOpen` per dev-client tap. A lapse reminder
+  cold tap opened its video, and one Back press returned to Home. Not yet
+  run: the "Don't keep activities" case.
+- **Create the test task from the launcher icon.** A task that a deep link
+  created replays that link when Android restores it. A cold tap on such a
+  task opens the link's screen and the tap's destination, so the screen can
+  appear twice. This is restore behavior, not the relay.
+- **To test a lapse reminder without a clock change,** temporarily schedule
+  the day-1 reminder 90 seconds after the pass (`date` in
+  `src/lib/lapseReminders/lifecycle.ts`), build a release APK, and revert the
+  change. `deps.now()` returns a number, not a `Date`. The alarm is inexact,
+  so it can fire minutes late.
 
 ## Cast SDK sheet theming
 
