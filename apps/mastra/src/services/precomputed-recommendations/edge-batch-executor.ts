@@ -707,36 +707,43 @@ async function buildSpanOffers(input: {
     }
     const byId = new Map(chunks.map((chunk) => [chunk.id, chunk]))
     const seen = new Set<string>()
-    return profile.profile.anchors.map((anchor) => {
-      const chunk = byId.get(anchor.chunkId)
-      const identity = JSON.stringify([
-        anchor.chunkId,
-        anchor.startChar,
-        anchor.endChar,
-      ])
-      if (
-        seen.has(identity) ||
-        anchor.videoId !== video.id ||
-        !chunk ||
-        chunk.transcriptId !== anchor.transcriptId ||
-        chunk.language !== anchor.language ||
-        chunk.chunkIndex !== anchor.chunkIndex ||
-        anchor.startChar < 0 ||
-        anchor.endChar > chunk.text.length ||
-        anchor.endChar <= anchor.startChar
-      )
-        throw new EdgeBatchExecutionError("input_invalid")
-      seen.add(identity)
-      const excerpt = chunk.text.slice(anchor.startChar, anchor.endChar)
-      if (
-        excerpt.length < 8 ||
-        excerpt.length > 240 ||
-        excerpt !== excerpt.trim() ||
-        createHash("sha256").update(excerpt).digest("hex") !== anchor.textSha256
-      )
-        throw new EdgeBatchExecutionError("input_invalid")
-      return { anchor, excerpt }
-    })
+    return profile.profile.anchors
+      .map((anchor) => {
+        const chunk = byId.get(anchor.chunkId)
+        if (
+          anchor.videoId !== video.id ||
+          !chunk ||
+          chunk.transcriptId !== anchor.transcriptId ||
+          chunk.language !== anchor.language ||
+          chunk.chunkIndex !== anchor.chunkIndex ||
+          anchor.startChar < 0 ||
+          anchor.endChar > chunk.text.length ||
+          anchor.endChar <= anchor.startChar
+        )
+          throw new EdgeBatchExecutionError("input_invalid")
+        const excerpt = chunk.text.slice(anchor.startChar, anchor.endChar)
+        if (
+          excerpt.length < 8 ||
+          excerpt.length > 240 ||
+          excerpt !== excerpt.trim() ||
+          createHash("sha256").update(excerpt).digest("hex") !==
+            anchor.textSha256
+        )
+          throw new EdgeBatchExecutionError("input_invalid")
+        return { anchor, excerpt }
+      })
+      .filter(({ anchor }) => {
+        // Distinct profile claims may cite one span. Validate every original
+        // proof above before offering each grounded source span once.
+        const identity = JSON.stringify([
+          anchor.chunkId,
+          anchor.startChar,
+          anchor.endChar,
+        ])
+        if (seen.has(identity)) return false
+        seen.add(identity)
+        return true
+      })
   }
   const refs: SpanOffer[] = []
   const promptOffers: Array<SpanOffer & { excerpt: string; language: string }> =

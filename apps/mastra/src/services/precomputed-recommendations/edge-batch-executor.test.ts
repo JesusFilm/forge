@@ -1178,6 +1178,102 @@ const validEdge = {
 }
 
 describe("shared edge batch rejection and replay", () => {
+  it("offers one verified span for distinct retained claims sharing the same source evidence", async () => {
+    const harness = oneMemberBatch({
+      results: [{ sourceVideoId: "source-one", edges: [] }],
+    })
+    const member = harness.input.members[0]!
+    const target = member.targetsByVideoId.get("target-one")!
+    const text = "Jesus invites the listener to follow him and find new life."
+    target.video = {
+      ...target.video,
+      transcriptLanguages: ["en"],
+      transcriptSelection: {
+        policy: "english-per-edition-with-complete-fallback-v1",
+        availableTranscriptCount: 1,
+        incompleteTranscriptCount: 0,
+        skippedEditionCount: 0,
+        selected: [
+          {
+            transcriptId: "target-transcript",
+            videoEditionId: "target-edition",
+            language: "en",
+            totalChunks: 1,
+          },
+        ],
+      },
+    }
+    const proof = {
+      videoId: "target-one",
+      chunkId: "target-chunk",
+      transcriptId: "target-transcript",
+      language: "en",
+      chunkIndex: 0,
+      startChar: 0,
+      endChar: text.length,
+      textSha256: createHash("sha256").update(text).digest("hex"),
+    }
+    const profile = {
+      version: "complete_profile_v1" as const,
+      summaryEnglish: "An invitation to follow Jesus.",
+      themes: ["discipleship", "new life"],
+      people: ["Jesus"],
+      places: [],
+      citations: [],
+      anchors: [
+        { ...proof, claimEnglish: "Jesus invites the listener to follow him." },
+        { ...proof, claimEnglish: "Following Jesus offers new life." },
+      ],
+    }
+    target.profile = { ...target.profile, kind: "transcript", profile }
+    const original = JSON.stringify(profile)
+    harness.input.catalog.chunks = async () => ({
+      chunks: [
+        {
+          id: "target-chunk",
+          transcriptId: "target-transcript",
+          language: "en",
+          chunkIndex: 0,
+          text,
+        },
+      ],
+      nextCursor: null,
+    })
+    const generate = harness.input.model.generate
+    harness.input.model.generate = async (request) => {
+      const prompt = decodeEdgePrompt(JSON.parse(request.prompt))
+      expect(prompt.members[0]!.candidates[0]!.profile).toEqual(profile)
+      expect(prompt.spanOffers).toHaveLength(1)
+      expect(prompt.spanOfferCoverage[0]).toMatchObject({
+        targetAvailable: 1,
+        offered: 1,
+      })
+      return generate(request)
+    }
+    expect((await runEdgeBatch(harness.input)).state).toBe("succeeded")
+    expect(JSON.stringify(profile)).toBe(original)
+    expect(harness.modelCalls()).toBe(1)
+    const retained = profile.anchors[1]!
+    for (const alteredProof of [
+      { videoId: "foreign-video" },
+      { chunkId: "missing-chunk" },
+      { transcriptId: "foreign-transcript" },
+      { language: "es" },
+      { chunkIndex: 1 },
+      { startChar: 1 },
+      { endChar: text.length + 1 },
+      { textSha256: "0".repeat(64) },
+    ]) {
+      profile.anchors[1] = { ...retained, ...alteredProof }
+      await expect(runEdgeBatch(harness.input)).rejects.toMatchObject({
+        code: "input_invalid",
+      })
+      expect(harness.modelCalls()).toBe(1)
+    }
+    profile.anchors[1] = retained
+    expect(JSON.stringify(profile)).toBe(original)
+  })
+
   it("completes a near-16 KiB profile pair with frozen-catalog metadata, history, and eight grounded offers", async () => {
     const excerpt = "A meaningful grounded line of dialogue. ".repeat(5).trim()
     const richVideo = (id: string): Video => ({
