@@ -116,6 +116,8 @@ type Options = {
   /** A live, injected account meter read. No undocumented CLI quota scraping. */
   readAllowance: () => Promise<CodexAllowanceSnapshot>
   timeoutMs?: number
+  /** Operator-selected bound; each call still receives fresh admission. */
+  concurrency?: number
 }
 
 function percent(value: number): boolean {
@@ -529,14 +531,26 @@ export function createCodexSubscriptionAstraModel(
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 300_000)
     throw new CodexSubscriptionAstraError("operator_only")
-  let tail: Promise<unknown> = Promise.resolve()
+  const concurrency = options.concurrency ?? 1
+  if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 12)
+    throw new CodexSubscriptionAstraError("operator_only")
+  let running = 0
+  const waiting: Array<() => void> = []
   let paused = false
   let provenance: CodexOperatorProvenance | undefined
   function queue<T extends z.ZodType, R>(
     request: GenerateRequest<T>,
     reserve: () => Promise<ReservationDecision<R>>,
   ): Promise<ReservedGeneration<T, R>> {
-    const task = tail.then(async (): Promise<ReservedGeneration<T, R>> => {
+    const slot = new Promise<void>((resolve) => {
+      const start = () => {
+        running++
+        resolve()
+      }
+      if (running < concurrency) start()
+      else waiting.push(start)
+    })
+    const task = slot.then(async (): Promise<ReservedGeneration<T, R>> => {
       if (paused) throw new CodexSubscriptionAstraError("adapter_paused")
       if (
         !Number.isSafeInteger(request.maxOutputTokens) ||
@@ -581,6 +595,9 @@ export function createCodexSubscriptionAstraModel(
         throw new CodexSubscriptionAstraError("input_too_large")
       const prepared = await prepareCodex(schema)
       try {
+        // A sibling can fail while this call prepares. Stop before reserving;
+        // once reserved, finish the call and preserve its actual usage.
+        if (paused) throw new CodexSubscriptionAstraError("adapter_paused")
         if (!reservationFresh(identityObservedAt))
           throw new CodexSubscriptionAstraError("identity_stale")
         if (!reservationFresh(allowance.observedAt))
@@ -664,13 +681,19 @@ export function createCodexSubscriptionAstraModel(
         )
       }
     })
-    tail = task.catch(() => {
-      paused = true
-    })
     return task
+      .catch((error: unknown) => {
+        paused = true
+        throw error
+      })
+      .finally(() => {
+        running--
+        waiting.shift()?.()
+      })
   }
   return {
-    getOperatorProvenance: () => provenance && { ...provenance },
+    getOperatorProvenance: () =>
+      !paused && provenance ? { ...provenance } : undefined,
     generateReserved: (request, reserve) => queue(request, reserve),
   }
 }

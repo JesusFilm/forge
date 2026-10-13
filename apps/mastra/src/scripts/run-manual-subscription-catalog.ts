@@ -108,6 +108,7 @@ const capacityMeasurement = z
 const configSchema = z
   .object({
     input: inputSchema,
+    concurrency: z.number().int().min(1).max(12).optional(),
     codexExecutable: localPath,
     stagingDirectory: localPath,
     capacityProbe: z
@@ -160,33 +161,45 @@ async function main(args: string[]) {
     initiatingAccountRef: config.input.initiatingAccountRef,
     readOperatorIdentity: account.readOperatorIdentity,
     readAllowance: account.readAllowance,
+    concurrency: config.concurrency,
   })
   const admin = createAdminSourceDependencies()
   const importClient = createGaCaptureImportClient(admin.ingest)
   const transport = createAdminGaCaptureTransport()
-  const result = await runManualSubscriptionCatalog(config.input, {
-    catalog: admin.catalog,
-    ingest: admin.ingest,
-    model,
-    readAttestation: account.readAttestation,
-    profilePersistence: createContentProfilePersistence(admin.ingest),
-    edgePersistence: createEdgeBatchPersistence(admin.ingest),
-    importClient,
-    loadImport: (destination) =>
-      loadImportedGaWatchHistory({
-        destination,
-        client: importClient,
-        transport,
-        directory: config.stagingDirectory,
-      }),
-    async measureCapacity(probe) {
-      const { stdout } = await runFile(
-        config.capacityProbe.executable,
-        [...config.capacityProbe.args, JSON.stringify(probe)],
-        { timeout: 30_000, maxBuffer: 4_096, windowsHide: true },
-      )
-      return capacityMeasurement.parse(JSON.parse(stdout) as unknown)
+  const controller = new AbortController()
+  const pause = () => controller.abort()
+  process.on("SIGINT", pause)
+  process.on("SIGTERM", pause)
+  const result = await runManualSubscriptionCatalog(
+    config.input,
+    {
+      catalog: admin.catalog,
+      ingest: admin.ingest,
+      model,
+      readAttestation: account.readAttestation,
+      profilePersistence: createContentProfilePersistence(admin.ingest),
+      edgePersistence: createEdgeBatchPersistence(admin.ingest),
+      importClient,
+      loadImport: (destination) =>
+        loadImportedGaWatchHistory({
+          destination,
+          client: importClient,
+          transport,
+          directory: config.stagingDirectory,
+        }),
+      async measureCapacity(probe) {
+        const { stdout } = await runFile(
+          config.capacityProbe.executable,
+          [...config.capacityProbe.args, JSON.stringify(probe)],
+          { timeout: 30_000, maxBuffer: 4_096, windowsHide: true },
+        )
+        return capacityMeasurement.parse(JSON.parse(stdout) as unknown)
+      },
     },
+    { concurrency: config.concurrency, signal: controller.signal },
+  ).finally(() => {
+    process.off("SIGINT", pause)
+    process.off("SIGTERM", pause)
   })
   process.stdout.write(JSON.stringify(result) + "\n")
   if (result.state !== "completed" && result.reason !== "pilot_boundary")

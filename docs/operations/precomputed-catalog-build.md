@@ -16,6 +16,29 @@ bill, or evidence of production readiness. Subscription calls consume included
 allowance; do not label that consumption as a $0 API bill or infer a refresh
 cadence from a small pilot.
 
+The local config accepts an optional top-level `concurrency` integer from 1 to
+12; omission preserves serial execution. It bounds independent video profiles
+and source-pair recommendation batches as well as simultaneous Codex calls.
+Maps and reductions within one profile, and pages within one source, remain
+ordered. The model, prompts, evidence, output limits and generation digest do
+not change. More concurrency can reduce elapsed time but does not reduce total
+allowance usage or promise a proportional speedup.
+
+Keep one runner and one active attempt for a generation. Do not launch several
+copies of the command to add concurrency. Each call still obtains fresh account,
+allowance and durable reservation admission. A failed task stops new work;
+already-dispatched calls drain and save their receipts before the attempt closes.
+Capacity refreshes and lease heartbeats are shared within the runner.
+
+For the updated CLI, send `SIGINT` or `SIGTERM` to the actual runner Node process
+to request a graceful pause. Wait for its `operator_paused` terminal result and
+reconcile receipts before resuming with a new attempt. The signal does not kill
+active model calls; those retain their existing timeout and usage handling.
+Recovery and explicit manual profile replacement remain concurrency 1. Review
+physical overlap and observe throughput at the chosen concurrency before using
+it to forecast a completion time. Earlier CLI versions do not have this signal
+handler and must not be stopped using this procedure.
+
 ## Prepare a protocol-4 run
 
 Use the target Admin's read-only catalog to review **every** eligible source at

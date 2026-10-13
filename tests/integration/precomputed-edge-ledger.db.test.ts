@@ -382,6 +382,114 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         calls: [],
       })
     })
+    it("retains concurrent reservations and receipts for independent sources in one attempt", async () => {
+      const sourceIds = [sourceVideoId, targetVideoId]
+      const base = await build("concurrent-sources", [
+        ...sourceIds,
+        thirdVideoId,
+      ])
+      const targetKey = await readyMetadataProfile(base, thirdVideoId)
+      const starts = await Promise.all(
+        sourceIds.map(async (id) => {
+          const sourceKey = await readyMetadataProfile(base, id)
+          const claimed = await claim(base, id)
+          const member = {
+            sourceVideoId: id,
+            checkpointRevision: claimed.checkpointRevision,
+            pageIndex: 0,
+            sourceProfileKey: sourceKey,
+            candidates: [
+              {
+                targetVideoId: thirdVideoId,
+                targetProfileKey: targetKey,
+                poolRank: 0,
+              },
+            ],
+            candidatePageDigest: digest([
+              id,
+              0,
+              [[0, thirdVideoId, targetKey]],
+            ]),
+            sourceCandidateCount: 1,
+            sourceCandidateDigest: digest([thirdVideoId]),
+            historicalRefDigest: digest(["none", id]),
+          }
+          return {
+            action: "edge_batch_start",
+            ...base,
+            callId: randomUUID(),
+            modelId: "gpt-6-astra",
+            backend: "codex_chatgpt_subscription",
+            promptVersion: "edge-v1",
+            schemaVersion: "edge-schema-v1",
+            inputDigest: digest([id, "input"]),
+            membershipDigest: digest([member]),
+            selectedCorpusDigest: digest("selected-corpus"),
+            candidatePoolDigest: digest("candidate-pool"),
+            captureRefDigest: null,
+            spanOfferDigest: digest([]),
+            spanOffers: [],
+            startedAt: new Date().toISOString(),
+            members: [{ ...member, leaseToken: claimed.leaseToken }],
+          }
+        }),
+      )
+      const reserved = await Promise.all(starts.map(submit))
+      expect(reserved).toEqual(
+        starts.map((start) =>
+          expect.objectContaining({ callId: start.callId, state: "pending" }),
+        ),
+      )
+      const pending = await loadDurablePrecomputedBuildReport(prisma, {
+        generationId: base.generationId,
+        reviewer: { id: "fixture-reviewer", role: "ADMIN" },
+      })
+      expect(pending).toMatchObject({
+        edgeLedger: { physicalReservationCount: 2, unresolvedPendingCount: 2 },
+      })
+      const finishes = await Promise.all(
+        starts.map((start) => {
+          const results = start.members.map((member) => ({
+            sourceVideoId: member.sourceVideoId,
+            choices: [],
+          }))
+          return submit({
+            action: "edge_batch_finish",
+            ...base,
+            callId: start.callId,
+            inputDigest: start.inputDigest,
+            membershipDigest: start.membershipDigest,
+            spanOfferDigest: start.spanOfferDigest,
+            status: "succeeded",
+            outputDigest: digest(results),
+            results,
+            usage: { inputTokens: 40, outputTokens: 9 },
+            finishedAt: new Date().toISOString(),
+          })
+        }),
+      )
+      expect(finishes).toEqual(
+        starts.map((start) =>
+          expect.objectContaining({
+            callId: start.callId,
+            state: "succeeded",
+            receiptStored: true,
+          }),
+        ),
+      )
+      const report = await loadDurablePrecomputedBuildReport(prisma, {
+        generationId: base.generationId,
+        reviewer: { id: "fixture-reviewer", role: "ADMIN" },
+      })
+      expect(report).toMatchObject({
+        edgeLedger: {
+          physicalReservationCount: 2,
+          observedInferenceCount: 2,
+          unresolvedPendingCount: 0,
+        },
+      })
+      await submit({ action: "attempt_close", ...base, reason: "paused" })
+    })
     it("leaves a late native reservation pending without launching the external CLI", async () => {
       const fixture = await reserveOne("late-native-reservation", false)
       const directory = await mkdtemp(
