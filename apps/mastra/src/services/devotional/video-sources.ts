@@ -193,6 +193,31 @@ const SOURCES: VideoSource[] = [
       byLang: { ru: "video-sources/lumo-luke-17.ru.vtt" },
     },
   },
+  {
+    // The persistent widow closes the same segment as the ten lepers: 18:1
+    // ("Then Jesus told his disciples a parable") starts at 359.05 after 17
+    // wordless seconds that follow "the vultures will gather", and "will he
+    // find faith on the earth?" ends at 425.65, half a second before the
+    // segment does (whisper per speech burst on the isolated dialogue,
+    // 2026-10-13).
+    key: "lumo-luke-18-widow",
+    index: 1006,
+    mediaComponentId: "6_GOLuke2617",
+    title: "The Persistent Widow",
+    film: "lumo",
+    passage: { reference: "Luke 18:1-8", osisRef: "Luke.18.1-Luke.18.8" },
+    window: { startSec: 358.7, lengthSec: 67.1 },
+    // ~66.6s of speech ×1.05 → ~64s on screen, plus the closing hold.
+    maxVideoCardSec: 67,
+    videoSpeed: 1.05,
+    filmCaptionStyle: "scroll",
+    filmMark: "lumo",
+    style: "clean",
+    captions: {
+      kind: "file",
+      path: "video-sources/lumo-luke-18-widow.en.vtt",
+    },
+  },
 ]
 
 const BY_KEY = new Map(SOURCES.map((s) => [s.key, s]))

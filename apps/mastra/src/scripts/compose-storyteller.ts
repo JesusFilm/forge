@@ -140,6 +140,22 @@ const STORIES: Record<
     ],
     out: "Lepers",
   },
+  "lumo-luke-18-widow": {
+    // No setting: the verses before (17:22-37, the day of the Son of Man) are
+    // in the same film segment but outside the card, so the viewer never sees
+    // them (the Lepers rule, owner 2026-10-12).
+    terms: [
+      "Widows",
+      "Widow",
+      "Judge",
+      "Judges",
+      "Adversary",
+      "Prayer",
+      "Effectual prayer",
+      "THE THREE LAST PARABLES OF THE PERÆAN SERIES: THE UNRIGHTEOUS JUDGE - THE SELF-RIGHTEOUS PHARISEE AND THE PUBLICAN - THE UNMERCIFUL SERVANT",
+    ],
+    out: "Widow",
+  },
   "jesus-32": {
     // Luke puts the blind man straight after the Twelve fail to understand
     // the third passion prediction ("the meaning was hidden from them"): the
