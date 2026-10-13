@@ -374,8 +374,19 @@ type Shape =
   | { kind: "unknown" }
 
 function stripSafeSegment(segment: string): string | null {
-  const stripped = stripHtmlSuffix(segment)
-  return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
+  let decoded: string
+  try {
+    // Catch-all params can contain UTF-8 percent escapes after Next parses the
+    // internal rewrite. Keep encoded separators/reserved characters encoded so
+    // the safe slug grammar still rejects them.
+    decoded = decodeURI(segment)
+  } catch {
+    return null
+  }
+  const stripped = stripHtmlSuffix(decoded)
+  return SAFE_SLUG_PATTERN.test(stripped) && stripped === stripped.toLowerCase()
+    ? stripped
+    : null
 }
 
 function routeIntentFromRest(rest: string[]) {
