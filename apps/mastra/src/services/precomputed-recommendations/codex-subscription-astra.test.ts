@@ -171,12 +171,13 @@ const summary = {
 
 describe("local ChatGPT-subscription Astra adapter", () => {
   it("stops queued reservations after a sibling fails while preserving an admitted sibling", async () => {
-    const cli = await fakeCli(events(summary), { sleepMs: 400 })
+    const cli = await fakeCli(events(summary), { waitForRelease: true })
     const adapter = model(cli.executable, undefined, undefined, undefined, 2)
     const releases: Array<() => void> = []
     const reservations: number[] = []
-    const calls = [0, 1, 2].map((id) =>
+    const calls = [0, 1, 2].map(() =>
       adapter.generateReserved(input, async () => {
+        const id = reservations.length
         reservations.push(id)
         if (id === 1) {
           await new Promise<void>((resolve) => {
@@ -191,18 +192,34 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     try {
       await vi.waitFor(() => expect(reservations).toHaveLength(2))
       releases[1]!()
-      await expect(calls[1]).rejects.toThrow("reservation unavailable")
-      expect(reservations).toHaveLength(2)
     } finally {
       for (const release of releases) release?.()
+      await writeFile(cli.release, "ready")
     }
-    await settled
-    await expect(calls[0]).resolves.toMatchObject({
-      kind: "dispatched",
-      reservation: 0,
-      response: { usage: { inputTokens: 30, outputTokens: 8 } },
-    })
-    await expect(calls[2]).rejects.toMatchObject({ code: "adapter_paused" })
+    const results = await settled
+    expect(
+      results.filter((result) => result.status === "fulfilled"),
+    ).toMatchObject([
+      {
+        value: {
+          kind: "dispatched",
+          reservation: 0,
+          response: { usage: { inputTokens: 30, outputTokens: 8 } },
+        },
+      },
+    ])
+    expect(results.filter((result) => result.status === "rejected")).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          reason: expect.objectContaining({
+            message: "reservation unavailable",
+          }),
+        }),
+        expect.objectContaining({
+          reason: expect.objectContaining({ code: "adapter_paused" }),
+        }),
+      ]),
+    )
     expect(reservations).toEqual([0, 1])
   })
 
