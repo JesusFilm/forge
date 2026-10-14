@@ -118,6 +118,8 @@ type Options = {
   timeoutMs?: number
   /** Operator-selected bound; each call still receives fresh admission. */
   concurrency?: number
+  /** Pace new process starts without retrying calls or changing their concurrency. */
+  minCallStartIntervalMs?: number
 }
 
 function percent(value: number): boolean {
@@ -534,10 +536,19 @@ export function createCodexSubscriptionAstraModel(
   const concurrency = options.concurrency ?? 1
   if (!Number.isSafeInteger(concurrency) || concurrency < 1 || concurrency > 16)
     throw new CodexSubscriptionAstraError("operator_only")
+  const minCallStartIntervalMs = options.minCallStartIntervalMs ?? 0
+  if (
+    !Number.isSafeInteger(minCallStartIntervalMs) ||
+    minCallStartIntervalMs < 0 ||
+    minCallStartIntervalMs > 30_000
+  )
+    throw new CodexSubscriptionAstraError("operator_only")
   let running = 0
   const waiting: Array<() => void> = []
   let paused = false
   let reservationTail = Promise.resolve()
+  let startTail = Promise.resolve()
+  let nextStartAt = 0
   let provenance: CodexOperatorProvenance | undefined
   function queue<T extends z.ZodType, R>(
     request: GenerateRequest<T>,
@@ -552,150 +563,183 @@ export function createCodexSubscriptionAstraModel(
       else waiting.push(start)
     })
     const task = slot.then(async (): Promise<ReservedGeneration<T, R>> => {
-      if (paused) throw new CodexSubscriptionAstraError("adapter_paused")
-      if (
-        !Number.isSafeInteger(request.maxOutputTokens) ||
-        request.maxOutputTokens < 1 ||
-        typeof request.system !== "string" ||
-        typeof request.prompt !== "string"
-      )
-        throw new CodexSubscriptionAstraError("input_invalid")
-      const { observedAt: identityObservedAt, ...identity } =
-        await requireIdentity(options)
-      const allowance = await requireAllowance(
-        options.readAllowance,
-        identity.accountRef,
-      )
-      provenance = {
-        ...identity,
-        allowanceAdmissionBasis: "included_subscription",
-      }
-      let schema: unknown
-      try {
-        schema = z.toJSONSchema(request.schema, {
-          target: "draft-07",
-          unrepresentable: "throw",
+      let releaseStart = () => {}
+      if (minCallStartIntervalMs > 0) {
+        const previousStart = startTail
+        startTail = new Promise<void>((resolve) => {
+          releaseStart = resolve
         })
-      } catch {
-        throw new CodexSubscriptionAstraError("schema_unsupported")
+        await previousStart
       }
-      // Codex's structured output route supports nested anyOf, not oneOf.
-      // Reject it before the durable reservation rather than leaving a
-      // pending call after a fast provider-side schema refusal.
-      if (hasOneOf(schema))
-        throw new CodexSubscriptionAstraError("schema_unsupported")
-      if (Buffer.byteLength(JSON.stringify(schema), "utf8") > MAX_SCHEMA_BYTES)
-        throw new CodexSubscriptionAstraError("schema_unsupported")
-      const prompt = JSON.stringify({
-        instructions: request.system,
-        untrustedCatalogData: request.prompt,
-        response:
-          "Return only the JSON object required by the provided output schema. Do not call tools.",
-      })
-      if (Buffer.byteLength(prompt, "utf8") > MAX_PROMPT_BYTES)
-        throw new CodexSubscriptionAstraError("input_too_large")
-      const prepared = await prepareCodex(schema)
       try {
-        // Admin locks the generation while reserving. Queue that short write,
-        // not the model execution, so concurrent calls cannot exhaust its pool
-        // or consume one another's reservation deadline.
-        const previousReservation = reservationTail
-        let releaseReservation!: () => void
-        reservationTail = new Promise<void>((resolve) => {
-          releaseReservation = resolve
-        })
-        await previousReservation
-        let decision: ReservationDecision<R>
-        try {
-          // A sibling can fail while this call prepares. Stop before reserving;
-          // once reserved, finish the call and preserve its actual usage.
-          if (paused) throw new CodexSubscriptionAstraError("adapter_paused")
-          if (!reservationFresh(identityObservedAt))
-            throw new CodexSubscriptionAstraError("identity_stale")
-          if (!reservationFresh(allowance.observedAt))
-            throw new CodexSubscriptionAstraError("allowance_stale")
-          let reservationTimer: ReturnType<typeof setTimeout> | undefined
-          try {
-            // A crash or lost reply can leave a durable pending row without a
-            // spawn. Never infer that it is safe to clear or retry that row.
-            decision = await Promise.race([
-              reserve(),
-              new Promise<never>((_resolve, reject) => {
-                reservationTimer = setTimeout(
-                  () =>
-                    reject(
-                      new CodexSubscriptionAstraError("reservation_uncertain"),
-                    ),
-                  MAX_RESERVATION_DELAY_MS,
-                )
-              }),
-            ])
-          } finally {
-            if (reservationTimer) clearTimeout(reservationTimer)
-          }
-        } catch (error) {
-          paused = true
-          throw error
-        } finally {
-          releaseReservation()
-        }
-        if (decision.kind === "skip")
-          return { kind: "skipped", reservation: decision.reservation }
-        if (decision.kind !== "dispatch")
-          throw new CodexSubscriptionAstraError("reservation_uncertain")
-        let response: { output: string; usage: ModelUsage }
-        try {
-          response = await runCodex({
-            executable: options.codexExecutable,
-            ...prepared,
-            prompt,
-            timeoutMs,
-          })
-        } catch (error) {
-          provenance = undefined
-          if (error instanceof CodexSubscriptionAstraError) throw error
-          throw new CodexSubscriptionAstraError("provider_unavailable", {
-            consumptionUnknown: true,
-          })
-        }
-        try {
-          await requireIdentity(options)
-        } catch (error) {
-          provenance = undefined
-          throw new CodexSubscriptionAstraError(
-            error instanceof CodexSubscriptionAstraError
-              ? error.code
-              : "identity_unavailable",
-            { usage: response.usage },
+        if (paused) throw new CodexSubscriptionAstraError("adapter_paused")
+        // Wait before identity, allowance, or durable reservation. A queued call
+        // must receive current admission evidence when it is actually ready.
+        while (minCallStartIntervalMs > 0 && performance.now() < nextStartAt) {
+          await new Promise<void>((resolve) =>
+            setTimeout(resolve, Math.ceil(nextStartAt - performance.now())),
           )
         }
+        if (paused) throw new CodexSubscriptionAstraError("adapter_paused")
         if (
-          response.usage.outputTokens !== undefined &&
-          response.usage.outputTokens > request.maxOutputTokens
+          !Number.isSafeInteger(request.maxOutputTokens) ||
+          request.maxOutputTokens < 1 ||
+          typeof request.system !== "string" ||
+          typeof request.prompt !== "string"
         )
-          throw new CodexSubscriptionAstraError("provider_invalid_output", {
-            usage: response.usage,
-          })
-        try {
-          const parsed: unknown = JSON.parse(response.output)
-          return {
-            kind: "dispatched",
-            reservation: decision.reservation,
-            response: {
-              output: request.schema.parse(parsed),
-              usage: response.usage,
-            },
-          }
-        } catch {
-          throw new CodexSubscriptionAstraError("provider_invalid_output", {
-            usage: response.usage,
-          })
+          throw new CodexSubscriptionAstraError("input_invalid")
+        const { observedAt: identityObservedAt, ...identity } =
+          await requireIdentity(options)
+        const allowance = await requireAllowance(
+          options.readAllowance,
+          identity.accountRef,
+        )
+        provenance = {
+          ...identity,
+          allowanceAdmissionBasis: "included_subscription",
         }
-      } finally {
-        // Cleanup failure must not replace a potentially charged call's usage.
-        await rm(prepared.directory, { recursive: true, force: true }).catch(
-          () => {},
+        let schema: unknown
+        try {
+          schema = z.toJSONSchema(request.schema, {
+            target: "draft-07",
+            unrepresentable: "throw",
+          })
+        } catch {
+          throw new CodexSubscriptionAstraError("schema_unsupported")
+        }
+        // Codex's structured output route supports nested anyOf, not oneOf.
+        // Reject it before the durable reservation rather than leaving a
+        // pending call after a fast provider-side schema refusal.
+        if (hasOneOf(schema))
+          throw new CodexSubscriptionAstraError("schema_unsupported")
+        if (
+          Buffer.byteLength(JSON.stringify(schema), "utf8") > MAX_SCHEMA_BYTES
         )
+          throw new CodexSubscriptionAstraError("schema_unsupported")
+        const prompt = JSON.stringify({
+          instructions: request.system,
+          untrustedCatalogData: request.prompt,
+          response:
+            "Return only the JSON object required by the provided output schema. Do not call tools.",
+        })
+        if (Buffer.byteLength(prompt, "utf8") > MAX_PROMPT_BYTES)
+          throw new CodexSubscriptionAstraError("input_too_large")
+        const prepared = await prepareCodex(schema)
+        try {
+          // Admin locks the generation while reserving. Queue that short write,
+          // not the model execution, so concurrent calls cannot exhaust its pool
+          // or consume one another's reservation deadline.
+          const previousReservation = reservationTail
+          let releaseReservation!: () => void
+          reservationTail = new Promise<void>((resolve) => {
+            releaseReservation = resolve
+          })
+          await previousReservation
+          let decision: ReservationDecision<R>
+          try {
+            // A sibling can fail while this call prepares. Stop before reserving;
+            // once reserved, finish the call and preserve its actual usage.
+            if (paused) throw new CodexSubscriptionAstraError("adapter_paused")
+            if (!reservationFresh(identityObservedAt))
+              throw new CodexSubscriptionAstraError("identity_stale")
+            if (!reservationFresh(allowance.observedAt))
+              throw new CodexSubscriptionAstraError("allowance_stale")
+            let reservationTimer: ReturnType<typeof setTimeout> | undefined
+            try {
+              // A crash or lost reply can leave a durable pending row without a
+              // spawn. Never infer that it is safe to clear or retry that row.
+              decision = await Promise.race([
+                reserve(),
+                new Promise<never>((_resolve, reject) => {
+                  reservationTimer = setTimeout(
+                    () =>
+                      reject(
+                        new CodexSubscriptionAstraError(
+                          "reservation_uncertain",
+                        ),
+                      ),
+                    MAX_RESERVATION_DELAY_MS,
+                  )
+                }),
+              ])
+            } finally {
+              if (reservationTimer) clearTimeout(reservationTimer)
+            }
+          } catch (error) {
+            paused = true
+            throw error
+          } finally {
+            releaseReservation()
+          }
+          if (decision.kind === "skip")
+            return { kind: "skipped", reservation: decision.reservation }
+          if (decision.kind !== "dispatch")
+            throw new CodexSubscriptionAstraError("reservation_uncertain")
+          let response: { output: string; usage: ModelUsage }
+          try {
+            const invocation = runCodex({
+              executable: options.codexExecutable,
+              ...prepared,
+              prompt,
+              timeoutMs,
+            })
+            // runCodex spawns synchronously before its first await. Release the
+            // start gate immediately so admitted model work can overlap.
+            nextStartAt = performance.now() + minCallStartIntervalMs
+            releaseStart()
+            response = await invocation
+          } catch (error) {
+            paused = true
+            provenance = undefined
+            if (error instanceof CodexSubscriptionAstraError) throw error
+            throw new CodexSubscriptionAstraError("provider_unavailable", {
+              consumptionUnknown: true,
+            })
+          }
+          try {
+            await requireIdentity(options)
+          } catch (error) {
+            provenance = undefined
+            throw new CodexSubscriptionAstraError(
+              error instanceof CodexSubscriptionAstraError
+                ? error.code
+                : "identity_unavailable",
+              { usage: response.usage },
+            )
+          }
+          if (
+            response.usage.outputTokens !== undefined &&
+            response.usage.outputTokens > request.maxOutputTokens
+          )
+            throw new CodexSubscriptionAstraError("provider_invalid_output", {
+              usage: response.usage,
+            })
+          try {
+            const parsed: unknown = JSON.parse(response.output)
+            return {
+              kind: "dispatched",
+              reservation: decision.reservation,
+              response: {
+                output: request.schema.parse(parsed),
+                usage: response.usage,
+              },
+            }
+          } catch {
+            throw new CodexSubscriptionAstraError("provider_invalid_output", {
+              usage: response.usage,
+            })
+          }
+        } finally {
+          // Cleanup failure must not replace a potentially charged call's usage.
+          await rm(prepared.directory, { recursive: true, force: true }).catch(
+            () => {},
+          )
+        }
+      } catch (error) {
+        paused = true
+        throw error
+      } finally {
+        releaseStart()
       }
     })
     return task

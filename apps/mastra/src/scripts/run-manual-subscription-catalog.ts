@@ -109,6 +109,7 @@ const configSchema = z
   .object({
     input: inputSchema,
     concurrency: z.number().int().min(1).max(16).optional(),
+    minCallStartIntervalMs: z.number().int().min(0).max(30_000).optional(),
     codexExecutable: localPath,
     stagingDirectory: localPath,
     capacityProbe: z
@@ -162,6 +163,7 @@ async function main(args: string[]) {
     readOperatorIdentity: account.readOperatorIdentity,
     readAllowance: account.readAllowance,
     concurrency: config.concurrency,
+    minCallStartIntervalMs: config.minCallStartIntervalMs,
   })
   const admin = createAdminSourceDependencies()
   const importClient = createGaCaptureImportClient(admin.ingest)

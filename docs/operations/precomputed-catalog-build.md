@@ -41,6 +41,13 @@ For the updated CLI, send `SIGINT` or `SIGTERM` to the actual runner Node proces
 to request a graceful pause. Wait for its `operator_paused` terminal result and
 reconcile receipts before resuming with a new attempt. The signal does not kill
 active model calls; those retain their existing timeout and usage handling.
+The optional `minCallStartIntervalMs` setting (0–30,000; default 0) spaces new
+model process starts while allowing existing calls to overlap. Use it alongside
+`concurrency` when the provider rejects bursts. The delay occurs before fresh
+identity and allowance checks and before reserving a call. It adds no retries:
+a failed call without a usage receipt still pauses admission and remains unknown.
+Choose the interval from observed results; no provider rate threshold is assumed.
+
 Recovery and explicit manual profile replacement remain concurrency 1. Review
 physical overlap and observe throughput at the chosen concurrency before using
 it to forecast a completion time. Earlier CLI versions do not have this signal

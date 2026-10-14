@@ -18,6 +18,15 @@ tags:
 
 ## Problem
 
+October 15 continuation: metadata-only diagnostics confirmed provider rate-limit
+errors at concurrency twelve. Add optional bounded spacing between new model
+process starts, with fresh admission after waiting and no automatic retries.
+All 1,031 profiles and 2,909 comparisons are saved; seven interrupted calls across
+ten sources still require recovery. A later catalog sync also advanced observed
+timestamps. Read-only revalidation found all profile keys, selected transcripts,
+and candidate pools unchanged; frozen route identity still needs the original
+catalog snapshot. Complete that resume repair before claiming generation runs.
+
 October 14 closeout: the owner requested a full-catalogue processing target below
 eight hours. Add bounded local concurrency (1–16; default 1) for independent
 profiles and source-pair batches, retain full profiles and the same Astra model,
