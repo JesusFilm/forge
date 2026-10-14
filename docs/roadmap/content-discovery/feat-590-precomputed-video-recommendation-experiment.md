@@ -40,6 +40,14 @@ original receipts and source checkpoints. Resume through the native operator
 acknowledgement after normal deployment and expired leases; never replay the
 original reservation or infer completed comparisons from it.
 
+The queued run preserved 66 successful comparison calls before a two-source
+batch shrank to one source and changed its historical-context digest. Keep the
+first reservation's source membership when rebuilding analytics context across
+pages and resumes, including a prior partner that is no longer active. Sources
+with different frozen contexts run in separate batches. This uses the existing
+imported capture and ledger membership; no database rewrite, new GA query,
+profile shortening or model change is required.
+
 Explore whether a capable reasoning model can find useful connections across
 the video catalog from transcripts, metadata, and historical analytics, with
 recommendations computed periodically and stored in PostgreSQL before viewers
