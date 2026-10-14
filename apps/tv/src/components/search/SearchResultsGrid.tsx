@@ -22,6 +22,7 @@ import { TVFocusGuideView } from "../TVFocusGuideView"
 import { WATCH_THEME } from "../watch/watchDetailTheme"
 import { ResultCard } from "./ResultCard"
 import { searchResultPath } from "./searchResultPath"
+import { rememberPlaybackEntry } from "../../lib/recommendations/playbackEntry"
 import { SEARCH_THEME } from "./searchTheme"
 
 type Props = {
@@ -77,6 +78,7 @@ export function SearchResultsGrid({
           searchRequestId,
         }),
       )
+      rememberPlaybackEntry(result.slug, { source: "search" })
       router.push(searchResultPath(result))
     },
     [router, searchRequestId],

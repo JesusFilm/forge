@@ -45,3 +45,14 @@ Selector tests, native prebuild, signed extension build, cold/warm deep links, r
 October 8 focused Apple integration is in progress on `codex/apple-tv-top-shelf-integration`, based on main after #2070, #2610 and #2623. Source worktree remains untouched. Scope, previous-PR audit and simulator/video verification: `docs/plans/2026-10-08-apple-tv-top-shelf-integration.md`. Only the Apple TV 4K simulator is authorized for this task; older physical-device approvals above are historical.
 
 Apple integration milestone: implemented; all five real-content styles, Automatic, native resume, cold/warm links and Search Back verified in the 4K simulator. 165 suites / 2,116 tests and Release native build passed. Matching local app/extension versions: 1.0.0 (1). Overall status remains in progress for native carousel OS action focus, signed distribution and separately scoped Android gates. The new Apple-only PR must not be treated as a completed store release.
+
+## October 14 local integration
+
+Integrated on `feat/tv-discovery-local` over current main while preserving the
+latest TV players, Apple Top Shelf and development harness. Static TV checks
+pass (173 suites / 2,182 tests); tvOS Debug build and Settings/Back smoke pass.
+Exact native/runtime evidence, credential requirements and remaining performance
+and Google TV device gates are in
+`docs/plans/2026-10-14-tv-discovery-local-integration.md`.
+No push, deployment or beta upload was requested or performed. Overall release
+status remains in progress until the documented runtime gates are closed.

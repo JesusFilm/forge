@@ -630,6 +630,10 @@ export type VideoPlayerProps = {
   /** Periodic playback position for the Continue Watching shelf: every ~10s
    *  during playback, on natural completion, and on unmount (Back). */
   onPlaybackPosition?: (snapshot: PlaybackSnapshot) => void
+  sourceGeneration?: number
+  onPlaybackState?: (
+    snapshot: import("../lib/recommendations/playbackRecorder").PlaybackObservation,
+  ) => void
   /** The next episode to offer when playback ends, or null/omitted (standalone
    *  film, last episode, experience-card playback). */
   upNextTarget?: UpNextTarget | null
@@ -652,6 +656,8 @@ export function VideoPlayer({
   meaningfulResetKey,
   startAtSeconds,
   onPlaybackPosition,
+  sourceGeneration = 0,
+  onPlaybackState,
   upNextTarget,
   onPlayNext,
 }: VideoPlayerProps) {
@@ -1013,6 +1019,41 @@ export function VideoPlayer({
       setDuration(p.duration)
     }
   })
+  const observationEndedRef = useRef(false)
+  const observationCallbackRef = useRef({ sourceGeneration, onPlaybackState })
+  observationCallbackRef.current = { sourceGeneration, onPlaybackState }
+  useEffect(() => {
+    observationEndedRef.current = false
+    const emit = () => {
+      const state = observationEndedRef.current
+        ? "ended"
+        : player.status === "error"
+          ? "error"
+          : player.status === "loading"
+            ? "buffering"
+            : player.playing
+              ? "playing"
+              : "paused"
+      onPlaybackState?.({
+        sourceGeneration,
+        state,
+        positionSeconds: Math.max(0, player.currentTime),
+        durationSeconds: player.duration > 0 ? player.duration : null,
+        seeking:
+          sourceSwappingRef.current ||
+          seekTargetRef.current != null ||
+          pendingStartAtRef.current != null,
+      })
+    }
+    const status = player.addListener("statusChange", emit)
+    const playing = player.addListener("playingChange", emit)
+    const interval = setInterval(emit, 250)
+    return () => {
+      clearInterval(interval)
+      status.remove()
+      playing.remove()
+    }
+  }, [player, sourceGeneration, onPlaybackState])
 
   // ── Playback QoE session (U13) ──────────────────────────────────────
   // Pure accumulator created once per session (mount = ttff origin). content_id
@@ -1112,6 +1153,13 @@ export function VideoPlayer({
       }
     }
     const subscription = player.addListener("playToEnd", () => {
+      observationEndedRef.current = true
+      observationCallbackRef.current.onPlaybackState?.({
+        sourceGeneration: observationCallbackRef.current.sourceGeneration,
+        state: "ended",
+        positionSeconds: Math.max(0, player.currentTime),
+        durationSeconds: player.duration > 0 ? player.duration : null,
+      })
       // QoE: natural completion. finalize is idempotent — if unmount already
       // fired ("abandoned"), this is a no-op; else it emits the "ended" summary.
       const summary = qoeRef.current?.finalize("ended")
