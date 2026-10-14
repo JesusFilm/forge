@@ -1,6 +1,7 @@
 import { Easing, interpolate, interpolateColors } from "remotion"
 
 import type { DevotionalCard } from "./schema"
+import { measureText } from "./SourceMarkOverlay"
 import type { CardFrames } from "./timing"
 
 /**
@@ -17,6 +18,38 @@ const EASE = Easing.bezier(0.4, 0, 0.2, 1)
 const clamp = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const
 const GOLD = "#F2C46B"
 const REST = "rgba(255,255,255,0.92)"
+
+/** The callout must end above the reflection's own subtitles (1080 frame:
+ *  they start near y 760). A long verse first widens, then shrinks, instead
+ *  of running into them (owner, 2026-10-14, Luke 18:7 RU over the captions). */
+const TOP = 284
+const BOTTOM = 740
+const WIDTHS = [753, 960, 1180, 1400]
+const SIZES = [56, 52, 48, 44, 40]
+const LINE = 1.25
+/** A lit phrase is set on one line (it is an inline block with its rule);
+ *  longer than this it would force its own line, so it is not lit. */
+const MAX_LIT_CHARS = 24
+
+function fit(
+  text: string,
+  serif: string,
+  u: (n: number) => number,
+): { width: number; size: number } {
+  for (const size of SIZES)
+    for (const width of WIDTHS) {
+      const m = measureText(
+        text,
+        undefined,
+        { family: serif, sizePx: u(size) },
+        u(width),
+      )
+      // No DOM (tests): estimate half an em per character.
+      const lines = m?.lines ?? Math.ceil((text.length * size * 0.5) / width)
+      if (lines * size * LINE <= BOTTOM - TOP) return { width, size }
+    }
+  return { width: WIDTHS[WIDTHS.length - 1]!, size: SIZES[SIZES.length - 1]! }
+}
 
 /** A verse lifted out of a speech keeps its closing quote mark; drop an
  *  unmatched one so the callout does not end on a stray mark. */
@@ -68,7 +101,8 @@ export function VerseCalloutOverlay({
     const breath = 0.5 - 0.5 * Math.cos(((t - 1.6) / 1.8) * 2 * Math.PI)
     const glow = lit * (t > 1.6 ? 0.35 + 0.65 * breath : 0.35 * lit)
     const text = standalone(c.text)
-    const at = c.highlight
+    const lit_ = c.highlight && c.highlight.length <= MAX_LIT_CHARS
+    const at = lit_
       ? text.toLowerCase().search(
           // Letter boundaries of any script: `\b` and `[a-z]` are ASCII-only
           // and silently lost the Russian «спасла» (2026-10-06).
@@ -78,15 +112,17 @@ export function VerseCalloutOverlay({
           ),
         )
       : -1
-    const word = at >= 0 ? text.slice(at, at + c.highlight.length) : ""
+    const word =
+      at >= 0 && c.highlight ? text.slice(at, at + c.highlight.length) : ""
     // Russian takes guillemets, English curly quotes.
     const cyrillic = /[А-Яа-яЁё]/.test(text)
     const [open, close] = cyrillic ? ["«", "»"] : ["“", "”"]
+    const box = fit(`${open}${text}${close}`, serif, u)
     return (
       <div
         style={{
           position: "absolute",
-          top: u(284),
+          top: u(TOP),
           left: 0,
           right: 0,
           display: "flex",
@@ -99,15 +135,15 @@ export function VerseCalloutOverlay({
         <p
           style={{
             margin: 0,
-            width: u(753),
+            width: u(box.width),
             textAlign: "center",
             fontFamily: serif,
             fontStyle: "italic",
             // Lighter than the Figma frame's regular (owner, 2026-09-30:
             // too bold on the picture), the word a step above it.
             fontWeight: 300,
-            fontSize: u(56),
-            lineHeight: 1.25,
+            fontSize: u(box.size),
+            lineHeight: LINE,
             color: REST,
             textShadow: "0 2px 18px rgba(0,0,0,0.55), 0 0 3px rgba(0,0,0,0.6)",
           }}
@@ -124,6 +160,7 @@ export function VerseCalloutOverlay({
                 style={{
                   position: "relative",
                   display: "inline-block",
+                  whiteSpace: "nowrap",
                   fontWeight: 500,
                   color: interpolateColors(lit, [0, 1], [REST, "#ffffff"]),
                 }}

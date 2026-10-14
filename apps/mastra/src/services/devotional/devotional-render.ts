@@ -7,6 +7,7 @@ import {
   mkdir,
   mkdtemp,
   readFile,
+  rename,
   rm,
   stat,
   writeFile,
@@ -2320,6 +2321,35 @@ async function renderInStage(
       `(Arclight's own "high" is 720p; a 1080p Mux rendition is used when published)`,
   )
   await download(clipInfo.downloadUrl, full)
+  // A scene that closes its segment (the persistent widow ends 0.4s before
+  // the file does) leaves no footage for the card's tail and fade: the fade
+  // landed ON the last word (owner, 2026-10-14). Hold the last frame, with
+  // silence, for the source's `endPadSec`.
+  if (registered?.endPadSec) {
+    const padded = path.join(stage, "full-padded.mp4")
+    await runFfmpeg([
+      "-y",
+      "-i",
+      full,
+      "-vf",
+      `tpad=stop_mode=clone:stop_duration=${registered.endPadSec}`,
+      "-af",
+      `apad=pad_dur=${registered.endPadSec}`,
+      "-c:v",
+      "libx264",
+      "-preset",
+      "veryfast",
+      "-crf",
+      "16",
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      padded,
+    ])
+    await rename(padded, full)
+    log(`held the segment's last frame ${registered.endPadSec}s (endPadSec)`)
+  }
   const fullDur = await probeDuration(full)
   // Every JESUS-film chapter ends with ~8s of QR code + titles — never show it.
   // A LUMO segment ends on picture (checked on Luke 10, 2026-10-01): the 8s

@@ -40,6 +40,12 @@ export type VideoSource = {
    */
   maxVideoCardSec?: number
   /**
+   * Seconds of held last frame (and silence) added after the segment, for a
+   * scene that ends the segment with no footage left for the card's tail and
+   * fade (owner, 2026-10-14: the widow's last word was faded out).
+   */
+  endPadSec?: number
+  /**
    * Playback speed of the film card. LUMO is shot at a natural pace; the
    * JESUS film's 1.12 made its actors look jerky (owner, 2026-09-30), so
    * LUMO plays at 1.05. `--video-speed` still wins.
@@ -210,6 +216,7 @@ const SOURCES: VideoSource[] = [
     // The Russian dub starts 18:1 at 358.3 and ends "веру на земле?" at
     // 424.55, 0.4 s before the segment does.
     windowByLang: { ru: { startSec: 358.0, lengthSec: 66.7 } },
+    endPadSec: 3,
     // ~66.6s of speech ×1.05 → ~64s on screen, plus the closing hold.
     maxVideoCardSec: 67,
     videoSpeed: 1.05,
