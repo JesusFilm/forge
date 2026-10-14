@@ -24,8 +24,12 @@ process starts, with fresh admission after waiting and no automatic retries.
 All 1,031 profiles and 2,909 comparisons are saved; seven interrupted calls across
 ten sources still require recovery. A later catalog sync also advanced observed
 timestamps. Read-only revalidation found all profile keys, selected transcripts,
-and candidate pools unchanged; frozen route identity still needs the original
-catalog snapshot. Complete that resume repair before claiming generation runs.
+and candidate pools unchanged. The saved original catalog also matches the
+sealed route digest. Add a hash-pinned local resume reader and generation-bound
+Admin content revalidation, preserving strict discovery and changed-content
+rejection. Native tests exercise a paused build through finalization after
+timestamp-only sync and reject altered transcript text, metadata and eligibility.
+Complete deployment and observe saved comparisons before claiming generation runs.
 
 October 14 closeout: the owner requested a full-catalogue processing target below
 eight hours. Add bounded local concurrency (1–16; default 1) for independent

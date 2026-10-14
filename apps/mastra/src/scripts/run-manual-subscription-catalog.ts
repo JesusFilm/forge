@@ -20,6 +20,7 @@ import {
   type ManualSubscriptionCatalogInput,
 } from "../services/precomputed-recommendations/manual-subscription-catalog"
 import { createAdminSourceDependencies } from "../services/precomputed-recommendations/source-generation"
+import { loadFrozenCatalog } from "../services/precomputed-recommendations/frozen-catalog"
 
 const runFile = promisify(execFile)
 const id = z.string().trim().min(1).max(191)
@@ -110,6 +111,10 @@ const configSchema = z
     input: inputSchema,
     concurrency: z.number().int().min(1).max(16).optional(),
     minCallStartIntervalMs: z.number().int().min(0).max(30_000).optional(),
+    frozenCatalog: z
+      .object({ path: localPath, sha256: digest })
+      .strict()
+      .optional(),
     codexExecutable: localPath,
     stagingDirectory: localPath,
     capacityProbe: z
@@ -120,6 +125,9 @@ const configSchema = z
       .strict(),
   })
   .strict()
+  .refine(
+    (value) => !value.frozenCatalog || value.input.invocation === "resume",
+  )
 
 export function parseManualCatalogCommand(raw: unknown, args: string[]) {
   if (
@@ -166,6 +174,9 @@ async function main(args: string[]) {
     minCallStartIntervalMs: config.minCallStartIntervalMs,
   })
   const admin = createAdminSourceDependencies()
+  const catalog = config.frozenCatalog
+    ? await loadFrozenCatalog({ ...config.frozenCatalog, scope: config.input })
+    : admin.catalog
   const importClient = createGaCaptureImportClient(admin.ingest)
   const transport = createAdminGaCaptureTransport()
   const controller = new AbortController()
@@ -175,7 +186,7 @@ async function main(args: string[]) {
   const result = await runManualSubscriptionCatalog(
     config.input,
     {
-      catalog: admin.catalog,
+      catalog,
       ingest: admin.ingest,
       model,
       readAttestation: account.readAttestation,

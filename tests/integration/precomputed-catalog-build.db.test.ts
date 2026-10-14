@@ -54,6 +54,7 @@ import { createGaCaptureImportClient } from "../../apps/mastra/src/services/prec
 import { loadImportedGaWatchHistory } from "../../apps/mastra/src/services/precomputed-recommendations/ga-capture-import-reader"
 import { runContentProfile } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-executor"
 import { planContentProfile } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-plan"
+import { loadFrozenCatalog } from "../../apps/mastra/src/services/precomputed-recommendations/frozen-catalog"
 import { readCompleteSelectedChunks } from "../../apps/mastra/src/services/precomputed-recommendations/selected-transcript"
 import { createContentProfilePersistence } from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-client"
 import { createEdgeBatchPersistence } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-client"
@@ -1344,10 +1345,37 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
             })
           return response
         }
+        const snapshotPath = join(directory, "frozen-catalog.json")
+        const snapshot = JSON.stringify({
+          version: "frozen_catalog_v1",
+          generationId: manualInput.generationId,
+          generationInputDigest: manualInput.generationInputDigest,
+          inputCutoff: cutoff,
+          entries: videos.map((video) => ({ video, chunks: [] })),
+        })
+        await writeFile(snapshotPath, snapshot)
+        manualPorts.catalog = await loadFrozenCatalog({
+          path: snapshotPath,
+          sha256: createHash("sha256").update(snapshot).digest("hex"),
+          scope: manualInput,
+        })
+        await prisma.videoLocale.updateMany({
+          where: { videoId: { in: videoIds } },
+          data: { updatedAt: new Date() },
+        })
+        await expect(
+          connected.catalog.catalog({ cutoff }),
+        ).rejects.toMatchObject({ code: "stale_cutoff" })
         const manual = await runManualSubscriptionCatalog(
           { ...manualInput, invocation: "resume", attemptId: randomUUID() },
           manualPorts,
-        )
+        ).finally(async () => {
+          // Restore only this isolated fixture for the later serving assertions.
+          await prisma.videoLocale.updateMany({
+            where: { videoId: { in: videoIds } },
+            data: { updatedAt: catalogCreatedAt },
+          })
+        })
         expect(manual).toMatchObject({
           state: "completed",
           completedSourceCount: 2,

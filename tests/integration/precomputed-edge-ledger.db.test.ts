@@ -6,6 +6,14 @@ import { PrismaClient } from "@prisma/client"
 import { Client } from "pg"
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest"
 import { z } from "zod"
+import {
+  planContentProfile,
+  type ContentProfilePlan,
+} from "../../apps/mastra/src/services/precomputed-recommendations/content-profile-plan"
+import {
+  readPrecomputedCatalog,
+  assertPrecomputedProfileVersion,
+} from "../../apps/admin/src/services/recommendations/precomputed/catalog"
 import { createCodexSubscriptionAstraModel } from "../../apps/mastra/src/services/precomputed-recommendations/codex-subscription-astra"
 import { createEdgeBatchPersistence } from "../../apps/mastra/src/services/precomputed-recommendations/edge-batch-client"
 import {
@@ -119,10 +127,13 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         attemptId: string
       },
       videoId: string,
+      plan?: ContentProfilePlan,
     ) {
-      const metadataDigest = digest(["metadata", videoId])
-      const chunkDigest = digest(["chunks", "metadata_only"])
-      const promptVersion = "complete-profile-v1"
+      const metadataDigest =
+        plan?.metadataDigest ?? digest(["metadata", videoId])
+      const chunkDigest =
+        plan?.chunkDigest ?? digest(["chunks", "metadata_only"])
+      const promptVersion = plan ? "complete-profile-v6" : "complete-profile-v1"
       const schemaVersion = "profile-schema-v1"
       const cacheKey = digest({
         revision: "complete-selected-profile-plan-v1",
@@ -227,11 +238,14 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       transcriptId: string,
       text: string,
       excerpt: string,
+      plan?: ContentProfilePlan,
     ) {
-      const metadataDigest = digest(["metadata", videoId])
-      const chunkDigest = digest(["selected-chunk", chunkId, text])
+      const metadataDigest =
+        plan?.metadataDigest ?? digest(["metadata", videoId])
+      const chunkDigest =
+        plan?.chunkDigest ?? digest(["selected-chunk", chunkId, text])
       const partDigests = [digest(["part", chunkId])]
-      const promptVersion = "complete-profile-v1"
+      const promptVersion = plan ? "complete-profile-v6" : "complete-profile-v1"
       const schemaVersion = "profile-schema-v1"
       const cacheKey = digest({
         revision: "complete-selected-profile-plan-v1",
@@ -2825,6 +2839,26 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
     })
 
     it("persists the exact selected Spanish passage selected by a frozen span ID", async () => {
+      const languageId = `span-language-${suffix}`
+      const muxId = `span-mux-${suffix}`
+      await prisma.language.create({
+        data: { id: languageId, coreId: languageId, slug: "spanish" },
+      })
+      await prisma.muxVideo.create({
+        data: { id: muxId, playbackId: "fixture-playback" },
+      })
+      for (const videoId of [sourceVideoId, spanTargetVideoId]) {
+        await prisma.videoDub.create({
+          data: {
+            id: `span-dub-${videoId}`,
+            coreId: `span-dub-${videoId}`,
+            videoId,
+            languageId,
+            muxVideoId: muxId,
+            published: true,
+          },
+        })
+      }
       const editionId = `edge-span-edition-${suffix}`
       const transcriptId = `edge-span-transcript-${suffix}`
       const chunkId = `edge-span-chunk-${suffix}`
@@ -2865,7 +2899,45 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         sourceVideoId,
         spanTargetVideoId,
       ])
-      const sourceKey = await readyMetadataProfile(base, sourceVideoId)
+      const inputCutoff = (
+        await prisma.recommendationPrecomputedGeneration.findUniqueOrThrow({
+          where: { id: base.generationId },
+          select: { inputCutoff: true },
+        })
+      ).inputCutoff.toISOString()
+      async function nativePlan(videoId: string) {
+        const video = await readPrecomputedCatalog(
+          prisma,
+          { action: "video", videoId, cutoff: inputCutoff },
+          "Bearer preview-test-key",
+        )
+        const chunks = await readPrecomputedCatalog(
+          prisma,
+          { action: "chunks", videoId, cutoff: inputCutoff },
+          "Bearer preview-test-key",
+        )
+        if (
+          video.action !== "video" ||
+          chunks.action !== "chunks" ||
+          chunks.nextCursor
+        )
+          throw new Error("Invalid fixture")
+        return planContentProfile({
+          video: video.video,
+          chunks: chunks.chunks,
+          maxPartBytes: 24_576,
+          modelId: "gpt-6-astra",
+          backend: "codex_chatgpt_subscription",
+          promptVersion: "complete-profile-v6",
+          schemaVersion: "profile-schema-v1",
+        })
+      }
+      const sourcePlan = await nativePlan(sourceVideoId)
+      const sourceKey = await readyMetadataProfile(
+        base,
+        sourceVideoId,
+        sourcePlan,
+      )
       const targetProfile = await readyTranscriptProfile(
         base,
         spanTargetVideoId,
@@ -2873,14 +2945,76 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         transcriptId,
         text,
         excerpt,
+        await nativePlan(spanTargetVideoId),
       )
       const sourceClaim = await claim(base, sourceVideoId)
-      const inputCutoff = (
-        await prisma.recommendationPrecomputedGeneration.findUniqueOrThrow({
-          where: { id: base.generationId },
-          select: { inputCutoff: true },
-        })
-      ).inputCutoff.toISOString()
+      const verify = (
+        generationId = base.generationId,
+        cutoff = new Date(inputCutoff),
+      ) =>
+        prisma.$transaction((tx) =>
+          assertPrecomputedProfileVersion(
+            tx,
+            [sourceVideoId, spanTargetVideoId],
+            cutoff,
+            generationId,
+          ),
+        )
+      // A hard deletion leaves no later timestamp to find. It must still fail.
+      const originalChunk = await prisma.videoTranscriptChunk.findUniqueOrThrow(
+        { where: { id: chunkId } },
+      )
+      await prisma.videoTranscriptChunk.delete({ where: { id: chunkId } })
+      await expect(verify()).rejects.toMatchObject({ code: "stale_cutoff" })
+      await prisma.videoTranscriptChunk.create({ data: originalChunk })
+      // Simulate a sync after the original cutoff without changing profile bytes.
+      const changedAt = new Date(new Date(inputCutoff).getTime() + 1_000)
+      await prisma.videoTranscriptChunk.update({
+        where: { id: chunkId },
+        data: { updatedAt: changedAt },
+      })
+      await expect(verify()).resolves.toBeUndefined()
+      await expect(verify("unrelated-generation")).rejects.toMatchObject({
+        code: "stale_cutoff",
+      })
+      await expect(
+        verify(
+          base.generationId,
+          new Date(new Date(inputCutoff).getTime() - 1),
+        ),
+      ).rejects.toMatchObject({ code: "stale_cutoff" })
+      // Same chunk count and same offered excerpt, but changed unseen content.
+      await prisma.videoTranscriptChunk.update({
+        where: { id: chunkId },
+        data: {
+          rawSourceText: `${text} Changed elsewhere.`,
+          updatedAt: changedAt,
+        },
+      })
+      await expect(verify()).rejects.toMatchObject({ code: "stale_cutoff" })
+      await prisma.videoTranscriptChunk.update({
+        where: { id: chunkId },
+        data: { rawSourceText: text, updatedAt: changedAt },
+      })
+      await prisma.videoLocale.updateMany({
+        where: { videoId: spanTargetVideoId },
+        data: { title: "Changed title", updatedAt: changedAt },
+      })
+      await expect(verify()).rejects.toMatchObject({ code: "stale_cutoff" })
+      await prisma.videoLocale.updateMany({
+        where: { videoId: spanTargetVideoId },
+        data: { title: "Spanish transcript story", updatedAt: changedAt },
+      })
+      await prisma.video.update({
+        where: { id: spanTargetVideoId },
+        data: { restrictViewPlatforms: ["watch"], updatedAt: changedAt },
+      })
+      await expect(verify()).rejects.toMatchObject({ code: "stale_cutoff" })
+      await prisma.video.update({
+        where: { id: spanTargetVideoId },
+        data: { restrictViewPlatforms: [], updatedAt: changedAt },
+      })
+      await expect(verify()).resolves.toBeUndefined()
       const callId = randomUUID()
       const offer = {
         spanId: digest([
@@ -2994,7 +3128,7 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
       )
       reservationQueries = null
       expect(start.spanOffers).toHaveLength(8)
-      expect(selectionQueries).toHaveLength(1)
+      expect(selectionQueries).toHaveLength(2)
       const results = [
         {
           sourceVideoId,
