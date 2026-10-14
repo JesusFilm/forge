@@ -1271,6 +1271,17 @@ and `useExploreTakeover` hooks.
     `console.log` of the move trigger in `ExploreFeed`'s `handleMove` tells a
     leaked swipe from a clip-end move. Fast Refresh keeps the old pager
     engine in its ref, so a pager change needs a cold relaunch to show.
+- **A hold on either side of a clip plays it at 2x (owner, 2026-10-14).**
+  `ClipFastSides` in `ExploreFeed.tsx` puts two strips over the tap surface,
+  each `EXPLORE_FAST_SIDE_SHARE` (25%) of the width. A hold of
+  `EXPLORE_FAST_HOLD_MS` (250 ms) starts 2x, a lift or a pager drag ends it,
+  and a shorter press pauses. On a paused clip the strips have no long press,
+  so a press of any length resumes it. The middle keeps the old surface, because a
+  long-press-as-tap there would pause the clip when the pager takes the
+  finger. The hold takes the pager's `feedMove` hold, so a clip end loops.
+  `useFeedPlayers` writes `playbackRate` only while the player plays, just
+  before `play()`, and on `playingChange(true)`: on iOS a rate write starts a
+  paused player.
 - **The pager rebases at every settle, or iOS hides the clip from VoiceOver.**
   See the Common Pitfalls entry on frames that miss their parent's bounds.
   `ExplorePager.test.tsx` "accessibility tree geometry (R35)" pins it.
