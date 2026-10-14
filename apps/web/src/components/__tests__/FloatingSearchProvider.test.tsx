@@ -1977,7 +1977,22 @@ describe("FloatingSearchProvider — watch playback chrome", () => {
 describe("FloatingSearchProvider — language switcher chrome", () => {
   it.each([
     ["root home", "/", "english", "EN"],
-    ["localized home", "/spanish-castilian.html", "spanish-castilian", "ES"],
+    ["localized home", "/spanish-castilian.html", "spanish-castilian", "ES-ES"],
+    ["Portuguese, Portugal", "/portuguese-portugal.html", "english", "PT-PT"],
+    [
+      "Portuguese, Mozambique",
+      "/portuguese-mozambique.html",
+      "english",
+      "PT-MZ",
+    ],
+    ["Korean, North", "/korean-north.html", "english", "KO-NOR"],
+    ["long badge on root home", "/", "huasteco-san-luis-potosi", "HUS-MX-SLP"],
+    [
+      "long badge on video",
+      "/jesus.html/huasteco-san-luis-potosi.html",
+      "english",
+      "HUS-MX-SLP",
+    ],
     ["legacy videos index", "/videos", "english", "EN"],
     ["authored experience", "/easter.html", "english", "EN"],
     ["languages index", "/languages", "english", "EN"],
@@ -2013,6 +2028,9 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
           '[data-testid="floating-header-language-code"]',
         )?.textContent,
       ).toBe(expectedCode)
+      expect(languageButtons[0]?.getAttribute("aria-label")).toContain(
+        expectedCode,
+      )
     },
   )
 
@@ -2058,6 +2076,38 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     },
   )
 
+  it("uses the registered language name that matches its page-specific badge", () => {
+    const onLanguageClick = vi.fn()
+    navigationMocks.pathname = "/jesus.html/russian.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="russian">
+          <main>Video</main>
+        </FloatingSearchProvider>,
+      )
+    })
+    act(() => {
+      dispatchLanguageSwitcher({
+        visible: true,
+        onClick: onLanguageClick,
+        languageCode: "PT-MZ",
+        languageName: "Portuguese, Mozambique",
+      })
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
+    expect(
+      languageButton?.querySelector(
+        '[data-testid="floating-header-language-code"]',
+      )?.textContent,
+    ).toBe("PT-MZ")
+    expect(languageButton?.getAttribute("aria-label")).toBe(
+      "Change audio language: Portuguese, Mozambique (PT-MZ)",
+    )
+  })
+
   it("marks the global trigger busy during lazy loading and blocks duplicate activation", async () => {
     const moduleLoad = deferred<unknown>()
     const globalLanguageLoader = vi.fn(() => moduleLoad.promise)
@@ -2077,7 +2127,7 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       '[data-testid="floating-header-language-button"]',
     ) as HTMLButtonElement
     expect(languageButton.getAttribute("aria-label")).toBe(
-      "Change audio language",
+      "Change audio language: English (EN)",
     )
     expect(languageButton.className).toContain("focus-visible:ring-2")
 
@@ -2104,6 +2154,29 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
     expect(
       document.querySelector('[data-testid="global-language-picker-modal"]'),
     ).not.toBeNull()
+  })
+
+  it("names the active language variant in the header control", () => {
+    navigationMocks.pathname = "/portuguese-mozambique.html"
+    act(() => {
+      root.render(
+        <FloatingSearchProvider defaultLanguageSlug="english">
+          <main>Page</main>
+        </FloatingSearchProvider>,
+      )
+    })
+
+    const languageButton = document.querySelector(
+      '[data-testid="floating-header-language-button"]',
+    )
+    expect(
+      languageButton?.querySelector(
+        '[data-testid="floating-header-language-code"]',
+      )?.textContent,
+    ).toBe("PT-MZ")
+    expect(languageButton?.getAttribute("aria-label")).toBe(
+      "Change audio language: Portuguese Mozambique (PT-MZ)",
+    )
   })
 
   it("recovers the global trigger after a module-load failure and retries", async () => {

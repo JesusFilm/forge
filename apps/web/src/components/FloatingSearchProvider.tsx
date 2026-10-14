@@ -60,7 +60,7 @@ import {
   WATCH_PAGE_LEFT_EDGE_CLASSES,
   WATCH_PAGE_RIGHT_EDGE_CLASSES,
 } from "@/lib/content-width"
-import { languageCodeFor } from "@/lib/language-code"
+import { languageBadgeCodeFor } from "@/lib/language-code"
 import {
   deriveLanguageDisplay,
   isolateLanguageName,
@@ -118,6 +118,7 @@ type HeaderLanguageSwitcherState = {
   visible: boolean
   onClick: (() => void) | null
   languageCode: string | null
+  languageName: string | null
   ownerToken: symbol | null
   pathname: string | null
 }
@@ -285,9 +286,17 @@ export function FloatingSearchProvider({
     parsedPath,
     currentLanguageSlug,
   )
-  const currentLanguageCode =
-    languageCodeFor({ slug: headerLanguageSlug }) ??
-    languageCodeFor({ slug: currentLanguageSlug })
+  const currentLanguageCodeSlug =
+    languageBadgeCodeFor({ slug: headerLanguageSlug }) != null
+      ? headerLanguageSlug
+      : currentLanguageSlug
+  const currentLanguageCode = languageBadgeCodeFor({
+    slug: currentLanguageCodeSlug,
+  })
+  const currentLanguageName = deriveLanguageDisplay(
+    currentLanguageCodeSlug,
+    null,
+  ).name
   // This is a client component, so it cannot await the route manifest the way
   // the inventory route's own admission does — the compiled corpus is the only
   // namespace it can see. The route itself no longer 404s outside that corpus,
@@ -343,6 +352,7 @@ export function FloatingSearchProvider({
       visible: false,
       onClick: null,
       languageCode: null,
+      languageName: null,
       ownerToken: null,
       pathname: null,
     })
@@ -578,6 +588,7 @@ export function FloatingSearchProvider({
                 visible: false,
                 onClick: null,
                 languageCode: null,
+                languageName: null,
                 ownerToken: null,
                 pathname: null,
               }
@@ -588,6 +599,7 @@ export function FloatingSearchProvider({
           visible: true,
           onClick: detail.onClick,
           languageCode: detail.languageCode ?? null,
+          languageName: detail.languageName ?? null,
           ownerToken,
           pathname,
         }
@@ -757,9 +769,23 @@ export function FloatingSearchProvider({
   const globalLanguageLoadFailed =
     !pageSpecificLanguageSwitcherActive &&
     globalLanguageErrorRoute === routeIdentity
+  const globalLanguageName = !headerLanguageCode
+    ? null
+    : pageSpecificLanguageSwitcherActive
+      ? (headerLanguageSwitcher.languageName ??
+        (headerLanguageSwitcher.languageCode == null ||
+        headerLanguageSwitcher.languageCode === currentLanguageCode
+          ? currentLanguageName
+          : headerLanguageCode))
+      : currentLanguageName
+  const globalLanguageDescription = headerLanguageCode
+    ? globalLanguageName && globalLanguageName !== headerLanguageCode
+      ? `${globalLanguageName} (${headerLanguageCode})`
+      : headerLanguageCode
+    : null
   const globalLanguageLabel = globalLanguageLoadFailed
-    ? `${t("changeAudioLanguage")}. ${searchT("connectionHint")}`
-    : t("changeAudioLanguage")
+    ? `${t("changeAudioLanguage")}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}. ${searchT("connectionHint")}`
+    : `${t("changeAudioLanguage")}${globalLanguageDescription ? `: ${globalLanguageDescription}` : ""}`
   const headerHoverZoneActive =
     !modalChromeHidden &&
     (playerPlayingWithSound || playerChromeOpacity < 1 || !playerChromeVisible)
@@ -955,7 +981,7 @@ export function FloatingSearchProvider({
           className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
             modalChromeHidden
               ? FLOATING_MODAL_HEADER_LAYOUT_CLASS
-              : FLOATING_HEADER_LAYOUT_CLASS
+              : `${FLOATING_HEADER_LAYOUT_CLASS} max-[360px]:gap-2`
           } transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
         >
           <Link
@@ -1070,7 +1096,7 @@ export function FloatingSearchProvider({
                 {headerLanguageCode ? (
                   <span
                     data-testid="floating-header-language-code"
-                    className="text-xs font-bold tracking-[0.14em] sm:text-[10px]"
+                    className="max-w-28 truncate text-xs font-bold tracking-[0.14em] max-[360px]:max-w-12 max-[360px]:overflow-visible max-[360px]:break-words max-[360px]:text-clip max-[360px]:leading-3 max-[360px]:whitespace-normal sm:text-[10px]"
                   >
                     {headerLanguageCode}
                   </span>

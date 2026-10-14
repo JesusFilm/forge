@@ -4,15 +4,15 @@
 
 Build trusted, scalable AI capabilities that help people discover gospel content, engage meaningfully with Scripture, and take faithful next steps.
 
-## Status (October 13, 2026)
+## Status (October 14, 2026)
 
-- **Total tickets:** 824
-- **Complete:** 612
+- **Total tickets:** 829
+- **Complete:** 616
 - **Cancelled:** 39
-- **In progress:** 66
+- **In progress:** 67
 - **Not started:** 50
 - **Blocked:** 57
-- **Overdue and open:** 154
+- **Overdue and open:** 157
 
 ## Feature Index
 
@@ -326,8 +326,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-693](media-generation/feat-693-studio-history-navigation-fallback.md)                 | Studio history navigation protection without Navigation API           | tataihono | P2       | 2026-10-13 | 2    | 2026-10-14 | not-started |
 
 ### Platform
-
-[feat-696 — Normalize percent-escape case at the public Watch proxy](platform/feat-696-watch-percent-escape-case.md) is in progress; added after the status snapshot above.
 
 | ID                                                                                     | Feature                                                                            | Owner      | Priority | Start      | Days | Due        | Status      |
 | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ---------- | -------- | ---------- | ---- | ---------- | ----------- |
@@ -683,6 +681,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-674](platform/feat-674-watch-download-quality-tiers.md)                          | Watch download quality tiers ignore legacy distro rows                             | vlad       | P1       | 2026-10-09 | 1    | 2026-10-09 | complete    |
 | [feat-678](platform/feat-678-watch-search-production-budget-verification.md)           | Validate Watch search production budget and alerts                                 | vlad       | P1       | 2026-10-09 | 2    | 2026-10-10 | not-started |
 | [feat-686](platform/feat-686-pages-hidden-provenance-artifact.md)                      | Preserve declared Pages provenance with upload action v5                           | tataihono  | P1       | 2026-10-12 | 1    | 2026-10-12 | complete    |
+| [feat-696](platform/feat-696-watch-percent-escape-case.md)                             | Normalize percent-escape case from the public Watch reverse proxy                  | vlad       | P1       | 2026-10-13 | 1    | 2026-10-13 | in-progress |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |
@@ -766,7 +765,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-613](platform/feat-613-push-campaign-mcp-drafts.md)                              | Agents draft push campaigns through the admin MCP, and a person publishes          | urim       | P2       | 2026-10-06 | 7    | 2026-10-12 | complete    |
 | [feat-690](platform/feat-690-watch-image-optimizer-tenant-scoping.md)                  | Scope the Watch image optimizer to our own CDN tenants                             | vlad       | P2       | 2026-10-06 | 3    | 2026-10-08 | not-started |
 | [feat-691](platform/feat-691-force-login-marker-consumption-point.md)                  | Burn the force-login marker on callback success, not on the login redirect         | vlad       | P2       | 2026-10-06 | 2    | 2026-10-07 | not-started |
-| [feat-627](platform/feat-627-mobile-ios-local-network-prompt-localization.md)          | Translate the iOS Local Network permission prompt                                  | urim       | P2       | 2026-10-09 | 2    | 2026-10-10 | not-started |
+| [feat-648](platform/feat-648-watch-variant-language-badges.md)                         | Distinguish Watch player language variants in chrome                               | codex      | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-627](platform/feat-627-mobile-ios-local-network-prompt-localization.md)          | Translate the iOS Local Network permission prompt                                  | urim       | P2       | 2026-10-09 | 2    | 2026-10-10 | complete    |
 | [feat-676](platform/feat-676-watch-native-language-markup.md)                          | Declare verified native language names in Watch language pickers                   | vlad       | P2       | 2026-10-09 | 2    | 2026-10-10 | complete    |
 | [feat-669](platform/feat-669-mobile-myanmar-ui-text-clipping.md)                       | Mobile Myanmar UI text clips under fixed line heights                              | urim       | P2       | 2026-10-12 | 3    | 2026-10-14 | not-started |
 | [feat-695](platform/feat-695-mobile-rtl-mirrored-layout.md)                            | Mirror the mobile layout for right-to-left UI languages                            | urim       | P2       | 2026-10-13 | 10   | 2026-10-22 | complete    |
@@ -848,6 +848,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-671](topic-experiences/feat-671-watch-home-compositor-progress-ring.md)               | Watch Home compositor progress ring                                              | codex         | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-681](topic-experiences/feat-681-watch-home-category-rail-reachability.md)             | Make every Watch home category reachable                                         | vlad          | P1       | 2026-10-08 | 2    | 2026-10-09 | complete    |
 | [feat-687](topic-experiences/feat-687-watch-content-action-timeout-order.md)                | Keep Watch content-action timeouts in deadline order                             | vlad          | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-699](topic-experiences/feat-699-watch-uncached-upstream-errors.md)                    | Keep transient Watch lookup failures out of shared Data Cache                    | vlad          | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-700](topic-experiences/feat-700-watch-transient-html-cache-errors.md)                 | Prevent transient Watch render failures from becoming cached HTML                | vlad          | P1       | 2026-10-14 | 3    | 2026-10-16 | not-started |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad          | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit       | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim          | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
@@ -856,8 +858,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-438](topic-experiences/feat-438-watch-immersive-section-background-saturation.md)     | Watch immersive section background saturation                                    | vlad          | P2       | 2026-08-26 | 1    | 2026-08-26 | complete    |
 | [feat-263](topic-experiences/feat-263-ai-assembled-showcase-reel.md)                        | AI-assembled Showcase reel                                                       | urim          | P2       | 2026-09-01 | 14   | 2026-09-14 | blocked     |
 | [feat-481](topic-experiences/feat-481-lg-webos-simulator-demo.md)                           | LG webOS simulator demo                                                          | ekkasit       | P2       | 2026-09-04 | 1    | 2026-09-04 | in-progress |
+| [feat-679](topic-experiences/feat-679-watch-header-keyboard-reveal.md)                      | Reveal the Watch header through keyboard focus                                   | vladmitkovsky | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-685](topic-experiences/feat-685-watch-catch-all-translation-promise-rejection.md)     | Own the catch-all route's translation promise rejection                          | vlad          | P2       | 2026-10-10 | 1    | 2026-10-10 | complete    |
 | [feat-684](topic-experiences/feat-684-watch-home-category-rail-arrow-translations.md)       | Translate the Watch category rail arrow labels                                   | vlad          | P2       | 2026-10-12 | 2    | 2026-10-13 | not-started |
 | [feat-688](topic-experiences/feat-688-watch-surface-deadline-order.md)                      | Order the Watch surface deadline pairs                                           | vlad          | P2       | 2026-10-12 | 1    | 2026-10-12 | not-started |
+| [feat-697](topic-experiences/feat-697-watch-home-category-rail-scrollbar.md)                | Hide the Watch home category rail scrollbar                                      | vlad          | P2       | 2026-10-14 | 1    | 2026-10-14 | complete    |
 | [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                                            | tataihono     | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |
-| [feat-679](topic-experiences/feat-679-watch-header-keyboard-reveal.md)                      | Reveal the Watch header through keyboard focus                                   | vladmitkovsky | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
