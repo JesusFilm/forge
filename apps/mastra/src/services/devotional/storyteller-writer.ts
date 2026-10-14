@@ -123,7 +123,7 @@ const JSON_SCHEMA = {
  * to the film. Shared by the writer and by writeOpening.
  */
 export const OPENING_RULES = [
-  "THE OPENING: four short lines (five at most) spoken over the film's own shots,",
+  "THE OPENING: three to five short lines (four is usual) spoken over the film's own shots,",
   "before 'Let's watch.' (added for you: do not write it). No greeting, no",
   "channel name, no 'in this video', no 'stay tuned' or 'keep watching'.",
   "Voice and picture are designed together: for each line give the moment",
@@ -133,35 +133,31 @@ export const OPENING_RULES = [
   "the video is about. On-screen words are claims too: only what the",
   "passage or the reflection says. About 12 to 15 seconds: at most 40",
   "words in all, 12 per line.",
-  "  Lines 1 and 2 are the HOOK; line 3 says plainly what the viewer will",
-  "  get; line 4 turns to the viewer (owner, 2026-10-06).",
-  "  1. PROMISE, the first line, under ten words: the promise in the scene,",
-  "     with a person in it. The viewer knows at once this is the video they",
-  "     clicked. Do not quote the title.",
-  "  2. CONTEXT AND GAP, one line: the one fact the tension turns on, set",
-  "     against the promise so it lands as a contradiction the viewer",
-  "     cannot resolve yet. Use vivid, emotional words for the people (a",
-  "     beggar YELLING by the road, not a man speaking), never a flat summary.",
-  "     Do not retell the plot: the film is about to show it. Name the one",
-  "     fact the tension turns on, and leave the rest for the film.",
-  "     Recognition, never shame: the viewer thinks 'I know this', not",
-  "     'this video is judging me'.",
-  "  3. PREVIEW, one line that starts 'In this devotional, we': a full,",
+  "  The order is NERVE, STORY, PREVIEW (owner, 2026-10-14; it replaces",
+  "  the 2026-10-06 order that ended on a question to the viewer).",
+  "  1. NERVE, the first line: touch something the viewer lives with, the",
+  "     felt need this story speaks to, in their own terms ('we', 'you'),",
+  "     so they think 'that is me' before anything else. Gentle and",
+  "     concrete, recognition never shame. NOT a fixed formula: never 'This",
+  "     video is for...', 'For anyone who...', 'If you have ever...' or",
+  "     'Have you ever...'; the series used those until viewers heard the",
+  "     pattern. Find words for THIS story, unlike the RECENT EPISODES'",
+  "     openings. A statement or a question, whichever is truer here.",
+  "  2. STORY, one or two lines: the scene's own elements, told with vivid,",
+  "     emotional words for the people (a beggar YELLING by the road, a",
+  "     judge who could be bought), set so the tension shows: the one fact",
+  "     it turns on. Do not retell the plot: the film is about to show it.",
+  "  3. PREVIEW, the LAST line, starting 'In this devotional, we': a full,",
   "     clear sentence with a verb saying what we will look at (the insight,",
   "     named by WHERE it is and WHAT it concerns) and, honestly, what it",
-  "     does: 'In this devotional, we look at one word in Jesus' answer, and",
-  "     why it says more than it seems.' Never a fragment ('In this",
-  "     devotional: one word...'), never the answer itself, and no hype it",
-  "     cannot keep ('changes everything', 'turns it upside down'). Promise",
-  "     only what the reflection delivers, in the reflection's own terms.",
-  "  4. TURN TO THE VIEWER, the last line: one short line, in the second",
-  "     person, that lets the viewer see themselves in the story, often a",
-  "     question ('What cry have you been hushing?'). Recognition, never",
-  "     shame, and not the word 'watch': 'Let's watch.' follows it.",
-  "The four lines are either separate cut-outs or ONE short story; when they",
-  "  tell a story, carry its key word through every line and bring in no new",
-  "  noun at the end (the beggar CRIES OUT, Jesus answers the CRY, 'What cry",
-  "  are you hushing?', not a new 'request'). Owner, 2026-10-06.",
+  "     does: 'In this devotional, we look at who this judge really was.'",
+  "     Never a fragment ('In this devotional: one word...'), never the",
+  "     answer itself, and no hype it cannot keep ('changes everything',",
+  "     'turns it upside down'). Promise only what the reflection delivers.",
+  "     Do not say 'watch': 'Let's watch.' follows it.",
+  "The lines tell ONE short story from the viewer's nerve into the scene:",
+  "  carry the key word or its opposite through (we STOP praying; a widow",
+  "  who KEEPS coming back), and bring in no new noun in the preview.",
   "Do not reuse the reflection's wording: the viewer hears both.",
   "Never give the takeaway or the answer to the gap away.",
 ]
@@ -460,7 +456,7 @@ export function openingProblems(
     out.push({
       rule: "opening-bridge",
       sentence: bridge,
-      why: "'Let's watch.' follows the bridge; do not say watch twice or tell the viewer what to do",
+      why: "'Let's watch.' follows the last line; do not say watch twice or tell the viewer what to do",
     })
   if (reflection?.length) {
     const grams = (t: string, n: number) => {
@@ -486,17 +482,31 @@ export function openingProblems(
         })
     }
   }
-  if (lines.length < 4 || lines.length > 5)
+  if (lines.length < 3 || lines.length > 5)
     out.push({
       rule: "opening-length",
       sentence: `${lines.length} line(s)`,
-      why: "the opening is four lines, five at most",
+      why: "the opening is three to five lines: nerve, story, preview",
     })
-  if (lines[0] && words(lines[0]) >= 10)
+  // The first line touches the viewer's nerve in their own terms, without
+  // the worn "This video is for those who..." formula (owner, 2026-10-14).
+  const nerve = lines[0]
+  if (nerve && !/\b(we|us|our|you|your)\b/i.test(nerve))
     out.push({
-      rule: "opening-promise",
-      sentence: lines[0],
-      why: "the first line is the promise, under ten words",
+      rule: "opening-nerve",
+      sentence: nerve,
+      why: "the first line touches something the viewer lives with, in their own terms ('we', 'you')",
+    })
+  if (
+    nerve &&
+    /\b(this (video|devotional) is for|for anyone who|if you('ve| have) ever|have you ever)\b/i.test(
+      nerve,
+    )
+  )
+    out.push({
+      rule: "opening-nerve-formula",
+      sentence: nerve,
+      why: "no fixed formula ('This video is for...', 'If you have ever...'): find words for this story",
     })
   for (const l of lines) {
     if (
@@ -518,11 +528,11 @@ export function openingProblems(
       sentence: `${previews.length} preview line(s)`,
       why: "exactly one line starts 'In this devotional'",
     })
-  if (previews.length === 1 && lines.indexOf(previews[0]) === lines.length - 1)
+  if (previews.length === 1 && lines.indexOf(previews[0]) !== lines.length - 1)
     out.push({
-      rule: "opening-bridge",
+      rule: "opening-preview-last",
       sentence: previews[0],
-      why: "the last line turns to the viewer, after the preview",
+      why: "the preview is the last line: nerve, story, then what we will look at",
     })
   // The preview is a full sentence about what WE will look at (owner,
   // 2026-10-06: "In this devotional: one word in Jesus' reply" read as a
@@ -544,13 +554,6 @@ export function openingProblems(
       rule: "opening-preview-hype",
       sentence: preview,
       why: "say honestly what the insight does; no hype the reflection cannot keep",
-    })
-  // The last line turns to the viewer (owner, 2026-10-06).
-  if (bridge && bridge !== preview && !/\b(you|your|yours)\b/i.test(bridge))
-    out.push({
-      rule: "opening-turn-to-viewer",
-      sentence: bridge,
-      why: "the last line speaks to the viewer, in the second person, so they see themselves in the story",
     })
   return out
 }

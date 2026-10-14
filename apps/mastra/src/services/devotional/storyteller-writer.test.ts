@@ -11,26 +11,43 @@ import {
 
 const o = (line: string): OpeningLine => ({ line, visual: "v", onScreen: "" })
 const good = [
-  o("He never left. Now he will not go in."),
-  o("His brother wasted everything, and the party is for him."),
-  o("In this devotional, we look at one word in the father's reply."),
-  o("Where do you stand tonight?"),
+  o("Some prayers we quietly stop praying, because nothing changes."),
+  o("Jesus tells of a judge who could be bought."),
+  o("And a widow with nothing to pay, who keeps coming back."),
+  o("In this devotional, we look at who this judge really was."),
 ]
 
 describe("openingProblems", () => {
-  it("passes a promise, context, gap, one preview and a bridge", () => {
+  it("passes nerve, story and one preview as the last line (2026-10-14)", () => {
     expect(openingProblems(good)).toEqual([])
+    expect(openingProblems([good[0], good[1], good[3]])).toEqual([])
   })
 
-  it("wants exactly one preview line, not the last one", () => {
+  it("wants exactly one preview line, and it is the last", () => {
     const rules = (lines: OpeningLine[]) =>
       openingProblems(lines).map((p) => p.rule)
     expect(
-      rules([...good.slice(0, 2), o("And the father comes out."), good[3]]),
+      rules([...good.slice(0, 3), o("And the judge gives in.")]),
     ).toContain("opening-preview")
-    expect(rules([good[0], good[1], good[3], good[2]])).toContain(
-      "opening-bridge",
+    expect(rules([good[0], good[3], good[1], good[2]])).toContain(
+      "opening-preview-last",
     )
+  })
+
+  it("opens on the viewer's nerve, never on the worn formula", () => {
+    const rules = (lines: OpeningLine[]) =>
+      openingProblems(lines).map((p) => p.rule)
+    expect(
+      rules([o("A judge sits in a small town."), ...good.slice(1)]),
+    ).toContain("opening-nerve")
+    for (const worn of [
+      "This video is for you if you are tired of asking.",
+      "If you have ever stopped praying, this is for you.",
+      "Have you ever given up on a prayer?",
+    ])
+      expect(rules([o(worn), ...good.slice(1)])).toContain(
+        "opening-nerve-formula",
+      )
   })
 
   it("refuses greetings, teaser talk and a written 'Let's watch'", () => {
@@ -40,21 +57,21 @@ describe("openingProblems", () => {
       "Let's watch.",
     ]) {
       expect(
-        openingProblems([o(bad), ...good.slice(1)]).some(
+        openingProblems([good[0], o(bad), ...good.slice(2)]).some(
           (p) => p.rule === "opening-no-teaser-talk",
         ),
       ).toBe(true)
     }
   })
 
-  it("keeps the first line short and the opening four to six lines", () => {
+  it("keeps lines short and the opening three to five lines", () => {
     const long = o(
-      "The older son who stayed home and worked every day came back from the field",
+      "We all know the prayers we stopped praying long ago because nothing ever changed",
     )
     expect(
       openingProblems([long, ...good.slice(1)]).map((p) => p.rule),
-    ).toContain("opening-promise")
-    expect(openingProblems(good.slice(0, 3)).map((p) => p.rule)).toContain(
+    ).toContain("opening-line-too-long")
+    expect(openingProblems(good.slice(2)).map((p) => p.rule)).toContain(
       "opening-length",
     )
     const wordy = good.map((l) => o(`${l.line} And then some more words.`))
@@ -63,54 +80,34 @@ describe("openingProblems", () => {
     )
   })
 
-  it("wants a full preview sentence, honest, and a last line to the viewer (2026-10-06)", () => {
+  it("wants a full, honest preview sentence", () => {
     const rules = (lines: OpeningLine[]) =>
       openingProblems(lines).map((p) => p.rule)
     expect(
-      rules([
-        good[0],
-        good[1],
-        o("In this devotional: one word in Jesus' reply."),
-        good[3],
-      ]),
+      rules([...good.slice(0, 3), o("In this devotional: the judge.")]),
     ).toContain("opening-preview-sentence")
     expect(
       rules([
-        good[0],
-        good[1],
-        o("In this devotional, we look at one word that changes everything."),
-        good[3],
+        ...good.slice(0, 3),
+        o("In this devotional, we look at a judge who changes everything."),
       ]),
     ).toContain("opening-preview-hype")
-    expect(
-      rules([
-        ...good.slice(0, 3),
-        o("Here is the cry the crowd tried to hush."),
-      ]),
-    ).toContain("opening-turn-to-viewer")
-    expect(rules(good)).not.toContain("opening-turn-to-viewer")
   })
 
-  it("does not say watch in the bridge, nor reuse the reflection's words", () => {
-    const withWatch = [
-      ...good.slice(0, 4),
-      o("The father comes out. Watch what he does."),
-    ]
-    expect(openingProblems(withWatch).map((p) => p.rule)).toContain(
-      "opening-bridge",
-    )
-    const reflection = [
-      { text: "His brother burned through his share far from home." },
-    ]
-    const reused = [
-      good[0],
-      o("His brother burned through his share far from home."),
-      ...good.slice(2),
-    ]
-    expect(openingProblems(reused, reflection).map((p) => p.rule)).toContain(
+  it("does not say watch in the last line, nor reuse the reflection's words", () => {
+    expect(
+      openingProblems([
+        ...good.slice(0, 3),
+        o("In this devotional, we watch who this judge was."),
+      ]).map((p) => p.rule),
+    ).toContain("opening-bridge")
+    const reflection = [{ text: "Jesus tells of a judge who could be bought." }]
+    expect(openingProblems(good, reflection).map((p) => p.rule)).toContain(
       "opening-reuses-reflection",
     )
-    expect(openingProblems(good, reflection)).toEqual([])
+    expect(
+      openingProblems(good, [{ text: "The widow had nothing to pay with." }]),
+    ).toEqual([])
   })
 })
 
