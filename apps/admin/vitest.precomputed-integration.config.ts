@@ -34,6 +34,7 @@ export default defineConfig({
       "tests/integration/precomputed-source-build.db.test.ts",
       "tests/integration/precomputed-catalog-build.db.test.ts",
       "tests/integration/precomputed-edge-ledger.db.test.ts",
+      "tests/integration/precomputed-reviewed-edge-recovery.db.test.ts",
     ],
     setupFiles: [resolve(__dirname, "vitest.setup.ts")],
   },

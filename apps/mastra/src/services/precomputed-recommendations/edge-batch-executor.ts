@@ -1,3 +1,4 @@
+import { REVIEWED_EDGE_RECOVERIES } from "./reviewed-edge-recoveries"
 import { createHash } from "node:crypto"
 
 import { z } from "zod"
@@ -407,7 +408,9 @@ export function acknowledgedUnknownIsSafe(
   return (
     call.status === "pending" &&
     call.applicationState === "acknowledged_unknown" &&
-    call.callId === "8ab8a620-1608-4115-812e-200bb2fb4b6d" &&
+    REVIEWED_EDGE_RECOVERIES.some(
+      (scope) => scope.originalCallId === call.callId,
+    ) &&
     typeof call.recoveryReplacementCallId === "string" &&
     (call.recoveryReconciled === true ||
       (recovery?.originalCallId === call.callId &&

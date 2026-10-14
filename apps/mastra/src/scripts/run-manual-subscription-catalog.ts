@@ -58,7 +58,7 @@ const inputSchema: z.ZodType<ManualSubscriptionCatalogInput> = z
       .optional(),
     recovery: z
       .object({
-        originalCallId: z.literal("8ab8a620-1608-4115-812e-200bb2fb4b6d"),
+        originalCallId: z.uuid(),
         replacementCallId: z.uuid(),
         oldProcessExitedAttested: z.literal(true),
       })
