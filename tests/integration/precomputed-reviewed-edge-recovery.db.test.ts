@@ -478,11 +478,15 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
           finishedAt: null,
           recoveryReplacementCallId: replacementCallId,
         })
-        // Release native fixture leases before admitting the next serial recovery.
-        await prisma.recommendationPrecomputedBuildSource.updateMany({
-          where: { generationId, state: "claimed" },
-          data: { leaseExpiresAt: oldDate },
-        })
+        expect(
+          await prisma.recommendationPrecomputedBuildSource.count({
+            where: {
+              generationId,
+              state: "claimed",
+              leaseExpiresAt: { gt: new Date() },
+            },
+          }),
+        ).toBe(0)
         previousReplacement = replacementCallId
       }
       expect(qualified).toBe(2)

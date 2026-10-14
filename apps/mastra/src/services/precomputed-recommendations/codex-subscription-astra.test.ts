@@ -701,10 +701,31 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     expect(reserve).toHaveBeenCalledTimes(2)
   })
 
+  it("dispatches once after a valid twenty-second Admin reservation", async () => {
+    const cli = await fakeCli(events(summary))
+    const reserve = vi.fn(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20_000))
+      return {
+        kind: "dispatch" as const,
+        reservation: "committed-within-admin-budget",
+      }
+    })
+    expect(
+      await model(cli.executable).generateReserved(input, reserve),
+    ).toMatchObject({
+      kind: "dispatched",
+      reservation: "committed-within-admin-budget",
+    })
+    expect(reserve).toHaveBeenCalledTimes(1)
+    expect(
+      (await readFile(cli.starts, "utf8")).trim().split("\n"),
+    ).toHaveLength(1)
+  }, 30_000)
+
   it("keeps reservation latency within the admission snapshot's freshness budget", async () => {
     const cli = await fakeCli(events(summary))
     const allowance = async (): Promise<CodexAllowanceSnapshot> => ({
-      observedAt: new Date(Date.now() - 50_000).toISOString(),
+      observedAt: new Date(Date.now() - 16_000).toISOString(),
       accountRef: "initiating-account-123",
       billingBasis: "included_subscription",
       weeklyRemainingPercent: 70,
@@ -718,6 +739,26 @@ describe("local ChatGPT-subscription Astra adapter", () => {
       model(cli.executable, allowance).generateReserved(input, reserve),
     ).rejects.toMatchObject({ code: "allowance_stale" })
     expect(reserve).not.toHaveBeenCalled()
+    await expect(readFile(cli.capture)).rejects.toMatchObject({
+      code: "ENOENT",
+    })
+  })
+
+  it("refuses dispatch when the admission expires before a reservation reply is handled", async () => {
+    const cli = await fakeCli(events(summary))
+    vi.useFakeTimers({ toFake: ["Date"] })
+    vi.setSystemTime(new Date())
+    const reserve = vi.fn(async () => {
+      vi.setSystemTime(Date.now() + 61_000)
+      return {
+        kind: "dispatch" as const,
+        reservation: "committed-after-clock-stall",
+      }
+    })
+    await expect(
+      model(cli.executable).generateReserved(input, reserve),
+    ).rejects.toMatchObject({ code: "identity_stale" })
+    expect(reserve).toHaveBeenCalledTimes(1)
     await expect(readFile(cli.capture)).rejects.toMatchObject({
       code: "ENOENT",
     })
@@ -742,7 +783,7 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     await expect(readFile(cli.capture)).rejects.toMatchObject({
       code: "ENOENT",
     })
-  }, 30_000)
+  }, 60_000)
 
   it("preserves known usage when the signed-in account drifts after a reserved call", async () => {
     const cli = await fakeCli(events(summary))

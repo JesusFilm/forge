@@ -35,7 +35,11 @@ Keep one runner and one active attempt for a generation. Do not launch several
 copies of the command to add concurrency. Each call still obtains fresh account,
 allowance and durable reservation admission. A failed task stops new work;
 already-dispatched calls drain and save their receipts before the attempt closes.
-Capacity refreshes and lease heartbeats are shared within the runner.
+Capacity refreshes and lease heartbeats are shared within the runner. A protocol-4
+attempt that closes with all physical calls receipted releases its live leases in
+the same locked transaction, allowing immediate manual continuation. An attempt
+with any pending or incomplete receipt retains its leases until expiry. Replaying
+an older close does not release claims from a later attempt.
 
 For the updated CLI, send `SIGINT` or `SIGTERM` to the actual runner Node process
 to request a graceful pause. Wait for its `operator_paused` terminal result and
@@ -47,6 +51,15 @@ model process starts while allowing existing calls to overlap. Use it alongside
 identity and allowance checks and before reserving a call. It adds no retries:
 a failed call without a usage receipt still pauses admission and remains unknown.
 Choose the interval from observed results; no provider rate threshold is assumed.
+
+Reservation admission waits at most 45 seconds, covering Admin's 30-second
+transaction and response overhead. Identity and allowance observations must be
+at most 15 seconds old before reservation, and still within 60 seconds when its
+reply is handled. A timeout never launches the model after a late response.
+A proven no-dispatch incident needs its explicit reviewed Admin audit; it is not
+permission to retry an uncertain dispatched model call. The third sealed incident
+is `734caa08-6a97-4704-b1a7-bab5b2b017e7`, admitted by migration 0153. Its two
+members retain their original pending usage and resume the same candidate pages.
 
 Recovery and explicit manual profile replacement remain concurrency 1. Review
 physical overlap and observe throughput at the chosen concurrency before using
