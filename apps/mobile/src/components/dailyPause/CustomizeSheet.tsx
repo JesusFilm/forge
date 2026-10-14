@@ -57,7 +57,6 @@ const CUSTOMIZE_COPY = {
     "2. Tap Edit, then tap Add Widget.",
     "3. Search for Jesus Film Watch, then add Daily Bible Pause.",
   ],
-  done: "Done",
 } as const
 
 const MIN_TARGET = 44
@@ -94,11 +93,9 @@ function reminderTimeOf(date: Date): ReminderTime {
 /** "asking" holds the switch on while the permission flow runs. */
 type ReminderRequest = "idle" | "asking" | "denied"
 
-type CustomizeSheetProps = {
-  onDone: () => void
-}
-
-export function CustomizeSheet({ onDone }: CustomizeSheetProps) {
+/** R27's settings. Each change is saved at once, so the sheet has no Done:
+ *  a swipe down or a tap outside closes it (the owner, 2026-10-13). */
+export function CustomizeSheet() {
   const insets = useSafeAreaInsets()
   const { height: windowHeight } = useWindowDimensions()
   const height = useSheetListHeight(windowHeight)
@@ -312,17 +309,6 @@ export function CustomizeSheet({ onDone }: CustomizeSheetProps) {
               ))}
             </View>
           )}
-
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={CUSTOMIZE_COPY.done}
-            onPress={onDone}
-            style={({ pressed }) => [styles.done, pressed && feedback.pressed]}
-          >
-            <Text style={[font("sansSemiBold"), styles.doneText]}>
-              {CUSTOMIZE_COPY.done}
-            </Text>
-          </Pressable>
         </ScrollView>
       )}
     </View>
@@ -457,17 +443,5 @@ const styles = StyleSheet.create({
     width: pauseSizes.switchKnob,
     height: pauseSizes.switchKnob,
     borderRadius: pauseSizes.switchKnob / 2,
-  },
-  done: {
-    minHeight: MIN_TARGET,
-    paddingVertical: pauseSpacing.doneButtonPaddingY,
-    borderRadius: pauseRadii.button,
-    backgroundColor: pauseColors.ink,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  doneText: {
-    fontSize: 16,
-    color: pauseColors.background,
   },
 })

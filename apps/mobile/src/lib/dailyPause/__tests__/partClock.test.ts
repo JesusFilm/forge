@@ -11,6 +11,7 @@ import {
   partStarted,
   partStopAt,
   partStopDue,
+  partTimeAt,
   projectClock,
   startBackstopDue,
   startClock,
@@ -43,6 +44,15 @@ describe("the projected media clock", () => {
     const ticked = tickClock(clock, 20, 1_400)
     expect(ticked).toBe(clock)
     expect(projectClock(ticked, 1_500)).toBeCloseTo(20.5, 6)
+  })
+
+  // The owner, 2026-10-14: a hold on either side plays the part at 2x.
+  it("advances at the playback rate, and a tick keeps the rate", () => {
+    const clock = startClock(20, 1_000, true, 2)
+    expect(projectClock(clock, 1_500)).toBeCloseTo(21, 6)
+    const ticked = tickClock(clock, 20.9, 1_500)
+    expect(projectClock(ticked, 2_000)).toBeCloseTo(21.9, 6)
+    expect(startClock(20, 1_000, true).rate).toBe(1)
   })
 
   it("stands still while paused", () => {
@@ -104,6 +114,27 @@ describe("the guard stop", () => {
         expect(stopAt - (frameWatchAt ?? stopAt)).toBeGreaterThan(1)
       }
     }
+  })
+
+  // At 2x the media time runs twice as fast as the wall time. The per-frame
+  // read must still start well before the stop.
+  it("enters the frame watch in time at 2x too", () => {
+    const stopAt = partStopAt(FILM)
+    const FRAME_MS = 1000 / 60
+    let clock = startClock(FILM.startSec, 0, true, 2)
+    let nextTick = 0
+    let frameWatchAt: number | null = null
+    for (let wall = 0; frameWatchAt == null; wall += FRAME_MS) {
+      const media = FILM.startSec + (2 * wall) / 1000
+      if (wall / 1000 >= nextTick) {
+        clock = tickClock(clock, media, wall)
+        nextTick += PART_TICK_SECONDS
+      }
+      if (watchMode(projectClock(clock, wall), FILM) === "frame") {
+        frameWatchAt = media
+      }
+    }
+    expect(stopAt - frameWatchAt).toBeGreaterThan(1)
   })
 
   // Measured facts, not derived ones: the first frame of each skipped range in
@@ -195,5 +226,18 @@ describe("the part progress", () => {
     expect(partProgress((FILM.startSec + stopAt) / 2, FILM)).toBeCloseTo(0.5)
     expect(partProgress(stopAt, FILM)).toBe(1)
     expect(partProgress(FILM.endSec + 5, FILM)).toBe(1)
+  })
+
+  // A tap or a drag on the bar names a place from the start to the stop, so
+  // a seek never reaches the skipped range after the part (KTD8).
+  it("maps a place on the bar back to a time inside the part", () => {
+    const stopAt = partStopAt(FILM)
+    expect(partTimeAt(0, FILM)).toBe(FILM.startSec)
+    expect(partTimeAt(0.5, FILM)).toBeCloseTo((FILM.startSec + stopAt) / 2)
+    expect(partTimeAt(1, FILM)).toBeCloseTo(stopAt)
+    expect(partTimeAt(-1, FILM)).toBe(FILM.startSec)
+    expect(partTimeAt(2, FILM)).toBeCloseTo(stopAt)
+    expect(partTimeAt(Number.NaN, FILM)).toBe(FILM.startSec)
+    expect(partProgress(partTimeAt(0.3, FILM), FILM)).toBeCloseTo(0.3)
   })
 })

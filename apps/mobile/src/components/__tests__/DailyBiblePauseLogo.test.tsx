@@ -262,4 +262,24 @@ describe("DailyBiblePauseLogo", () => {
     expect(letterOpacities(renderer).every((o) => o === 1)).toBe(true)
     await unmount(renderer)
   })
+
+  // The Home card shows the mark alone (the owner, 2026-10-13).
+  it("draws the mark with no title when the title is off", async () => {
+    const draw = new Animated.Value(1)
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <DailyBiblePauseLogo draw={draw} title={false} />,
+      )
+    })
+    const all = inks(renderer)
+    expect(all).toHaveLength(strokes.length)
+    for (const ink of all) expect(inkShift(ink)).toBe(0)
+    expect(letterOpacities(renderer)).toHaveLength(0)
+    const texts = renderer.root.findAll(
+      (node) => typeof node.props.children === "string",
+    )
+    expect(texts).toHaveLength(0)
+    await unmount(renderer)
+  })
 })

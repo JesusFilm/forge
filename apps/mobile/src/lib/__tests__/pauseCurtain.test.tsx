@@ -124,14 +124,14 @@ describe("the exit direction", () => {
 
   it("refuses a second exit while the first closes, and drops an entry", () => {
     setPauseRunOnTop(true)
-    requestPauseExit({ kind: "search", question: QUESTION })
+    requestPauseExit({ kind: "search", query: QUESTION })
     requestPauseExit({ kind: "home" })
-    expect(getPauseExitTarget()).toEqual({ kind: "search", question: QUESTION })
+    expect(getPauseExitTarget()).toEqual({ kind: "search", query: QUESTION })
     const before = getEntryRequestsOnTop()
     requestPause()
     expect(getPausePhase()).toBe("closing")
     expect(getEntryRequestsOnTop()).toBe(before)
-    expect(getPauseExitTarget()).toEqual({ kind: "search", question: QUESTION })
+    expect(getPauseExitTarget()).toEqual({ kind: "search", query: QUESTION })
   })
 
   it("refuses an exit while an entry's curtain is up", async () => {
@@ -145,7 +145,7 @@ describe("the exit direction", () => {
 
   it("clears the direction and the target when the curtain ends", async () => {
     const renderer = await mount()
-    act(() => requestPauseExit({ kind: "search", question: QUESTION }))
+    act(() => requestPauseExit({ kind: "search", query: QUESTION }))
     act(() => reportLogoDrawn())
     act(() => liftPause())
     expect(directions.at(-1)).toBe("exit")

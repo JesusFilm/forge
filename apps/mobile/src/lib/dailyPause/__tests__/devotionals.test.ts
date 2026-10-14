@@ -87,6 +87,22 @@ describe("the bundled devotionals (R39, R40)", () => {
   })
 })
 
+// The owner, 2026-10-14: Browse media searched for the whole question, and
+// Search returned nothing. Local admin, 2026-10-14: both questions found 0
+// videos, while "Pharisee prayer" and "Lamp" each found 5, led by the parable.
+describe("the search terms", () => {
+  it.each(Object.values(DEVOTIONALS).map((d) => [d.id, d] as const))(
+    "gives %s one or two plain words for Search",
+    (_id, devotional) => {
+      const words = devotional.searchTerm.trim().split(/\s+/)
+      expect(words.length).toBeGreaterThanOrEqual(1)
+      expect(words.length).toBeLessThanOrEqual(2)
+      for (const word of words) expect(word).toMatch(/^[A-Za-z]+$/)
+      expect(devotional.searchTerm).not.toBe(devotional.question)
+    },
+  )
+})
+
 describe("useDevotionalVideo", () => {
   const seen: DevotionalVideoState[] = []
 

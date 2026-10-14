@@ -17,10 +17,10 @@ export type PausePhase =
  *  the run and lifts onto its target. */
 export type PauseDirection = "entry" | "exit"
 
-/** Where an exit lands: Home, or the search tab with a question to search. */
+/** Where an exit lands: Home, or the search tab with a term to search. */
 export type PauseExitTarget =
   | { kind: "home" }
-  | { kind: "search"; question: string }
+  | { kind: "search"; query: string }
 
 let phase: PausePhase = "idle"
 let exitTarget: PauseExitTarget | null = null

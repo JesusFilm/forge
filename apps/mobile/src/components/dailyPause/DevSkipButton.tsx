@@ -1,63 +1,82 @@
-// A developer-only Skip at the top-right of the steps that hold the run for a
-// time: the three video parts and the Reflect and Pray countdowns. The run
-// screen renders it only under __DEV__, so a release bundle drops it.
+// A developer-only Skip on the steps that hold the run for a time: the video
+// parts and the Reflect and Pray countdowns. The run screen renders it only
+// under __DEV__, so a release bundle drops it.
 import Ionicons from "@expo/vector-icons/Ionicons"
-import { Pressable, StyleSheet, Text } from "react-native"
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from "react-native"
 
 import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
-import {
-  pauseColors,
-  pauseSpacing,
-  pauseType,
-} from "../../lib/dailyPause/theme"
-import { useTopRowTop, type TopRowPlacement } from "./useTopRowTop"
+import { pauseColors, pauseSizes, pauseType } from "../../lib/dailyPause/theme"
+import { RUN_BAR_CLEARANCE } from "../../lib/dailyPause/videoFrame"
+import { useRunVideoLayout } from "./useTopRowTop"
 
-const TARGET_HEIGHT = 44
 const GLYPH_SIZE = 16
 const SIDE_PADDING = 10
+/** Below the bar's touch strip there is only the home indicator's band, so the
+ *  Skip there is short enough to clear the indicator's pill. */
+const FOOTER_HEIGHT = 24
 
 type DevSkipButtonProps = {
   onPress: () => void
-  placement: TopRowPlacement
   font: PauseFont
-  /** One row lower, so it never covers the video's PRAY marker. */
-  belowMarkers?: boolean
 }
 
-export function DevSkipButton({
-  onPress,
-  placement,
-  font,
-  belowMarkers = false,
-}: DevSkipButtonProps) {
-  // The close's row, or the row below it on a video part.
-  const rowTop = useTopRowTop(placement, TARGET_HEIGHT)
-  const top = belowMarkers ? rowTop + TARGET_HEIGHT : rowTop
+export function DevSkipButton({ onPress, font }: DevSkipButtonProps) {
+  const { barTop } = useRunVideoLayout()
+  const window = useWindowDimensions()
+
+  // One place on every step (the owner, 2026-10-14): centred below a video's
+  // timeline, where the bar's touch strip ends. With no home indicator the
+  // strip ends at the screen's foot, so the Skip moves up and gets shorter.
+  const barFoot = barTop + pauseSizes.progressBarHeight
+  const footerTop = Math.max(
+    barFoot,
+    Math.min(barFoot + RUN_BAR_CLEARANCE, window.height - FOOTER_HEIGHT),
+  )
+  const footerHeight = Math.min(FOOTER_HEIGHT, window.height - footerTop)
 
   return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      accessibilityLabel="Skip this step (developer)"
-      style={({ pressed }) => [styles.skip, { top }, pressed && styles.pressed]}
+    <View
+      testID="dev-skip-footer"
+      pointerEvents="box-none"
+      style={[styles.footer, { top: footerTop, height: footerHeight }]}
     >
-      <Text style={[styles.label, pauseText(font, pauseType.label)]}>
-        DEV SKIP
-      </Text>
-      <Ionicons
-        name="play-skip-forward"
-        size={GLYPH_SIZE}
-        color={pauseColors.muted}
-      />
-    </Pressable>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel="Skip this step (developer)"
+        style={({ pressed }) => [
+          styles.skip,
+          { height: footerHeight },
+          pressed && styles.pressed,
+        ]}
+      >
+        <Text style={[styles.label, pauseText(font, pauseType.label)]}>
+          DEV SKIP
+        </Text>
+        <Ionicons
+          name="play-skip-forward"
+          size={GLYPH_SIZE}
+          color={pauseColors.muted}
+        />
+      </Pressable>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
-  skip: {
+  footer: {
     position: "absolute",
-    right: pauseSpacing.screenSide - SIDE_PADDING,
-    height: TARGET_HEIGHT,
+    left: 0,
+    right: 0,
+    alignItems: "center",
+  },
+  skip: {
     paddingHorizontal: SIDE_PADDING,
     flexDirection: "row",
     alignItems: "center",

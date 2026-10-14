@@ -1,22 +1,20 @@
 import { useWindowDimensions } from "react-native"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 
-import { devotionalVideoFrame } from "../../lib/dailyPause/videoFrame"
+import {
+  runVideoLayout,
+  type RunVideoLayout,
+} from "../../lib/dailyPause/videoFrame"
 
-export type TopRowPlacement = "screen" | "letterbox"
+/** The top of the run's top row (the close): the safe area's edge on every
+ *  step, where the marker row also sits. */
+export function useTopRowTop(): number {
+  return useSafeAreaInsets().top
+}
 
-/** The top of the run's top row (the close and the developer Skip). On a
- *  screen it is the safe area. On a video part the row's bottom edge meets the
- *  video's top edge, so it never covers the picture or its captions (R24). */
-export function useTopRowTop(
-  placement: TopRowPlacement,
-  rowHeight: number,
-): number {
+/** Where the picture, the bar, and the marker row of a video part sit. */
+export function useRunVideoLayout(): RunVideoLayout {
   const insets = useSafeAreaInsets()
   const window = useWindowDimensions()
-  if (placement === "screen") return insets.top
-  return Math.max(
-    0,
-    devotionalVideoFrame(window.width, window.height).top - rowHeight,
-  )
+  return runVideoLayout(window.width, window.height, insets)
 }

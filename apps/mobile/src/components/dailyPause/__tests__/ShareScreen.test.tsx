@@ -180,18 +180,20 @@ it("gives the three buttons one width", async () => {
 
 // v2 R16-R18, KTD5: the two new buttons leave the run through the curtain.
 describe("the exits", () => {
-  it("Browse asks to leave for the search tab with today's Opening question (AE6)", async () => {
+  // The owner, 2026-10-14: the whole question found nothing in Search, so
+  // Browse hands over the day's one- or two-word search term instead.
+  it("Browse asks to leave for the search tab with today's search term (AE6)", async () => {
     await render()
     expect(getPausePhase()).toBe("idle")
     await tap("Browse media")
     expect(getPausePhase()).toBe("closing")
     expect(getPauseExitTarget()).toEqual({
       kind: "search",
-      question: "How are we commanded to pray?",
+      query: "Pharisee prayer",
     })
   })
 
-  it("Browse hands over the pinned day's question after midnight, not the new day's", async () => {
+  it("Browse hands over the pinned day's search term after midnight, not the new day's", async () => {
     // The run began on Tuesday (Lamp), and Share appears on Wednesday (Pharisee).
     jest.useFakeTimers({ now: new Date(2026, 9, 7, 0, 5) })
     const tuesday: Today = {
@@ -201,11 +203,7 @@ describe("the exits", () => {
     expect(devotionalForDay(localDay(new Date())).id).toBe("pharisee")
     await render(tuesday)
     await tap("Browse media")
-    expect(getPauseExitTarget()).toEqual({
-      kind: "search",
-      question:
-        "Where is one place this week you can let someone see what Christ has done in you?",
-    })
+    expect(getPauseExitTarget()).toEqual({ kind: "search", query: "Lamp" })
   })
 
   it("Finish asks to leave for Home", async () => {
@@ -230,7 +228,7 @@ describe("the exits", () => {
     await tap("Browse media")
     expect(getPauseExitTarget()).toEqual({
       kind: "search",
-      question: "How are we commanded to pray?",
+      query: "Pharisee prayer",
     })
 
     act(() => endPause())

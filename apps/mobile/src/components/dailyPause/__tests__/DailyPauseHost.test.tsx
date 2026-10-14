@@ -84,9 +84,10 @@ jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
 const CURTAIN_LABEL = "Daily Bible Pause. Tap to return."
 const EXIT_LABEL = "Daily Bible Pause. Leaving the devotional."
 const READY = { isReady: true, currentSlug: "jesus-film" }
-const QUESTION = "How are we commanded to pray?"
+/** What Browse media hands to Search: a short term, not the question. */
+const SEARCH_TERM = "Pharisee prayer"
 /** The event that a put on the search intent store logs. */
-const INTENT = `intent ${QUESTION}`
+const INTENT = `intent ${SEARCH_TERM}`
 
 // ── The native animation driver and Android back, modelled ─────────
 
@@ -423,7 +424,7 @@ describe("the exit", () => {
     mockSegments = ["pause"]
     mockSelection = { isReady: false, currentSlug: null }
     const renderer = await render()
-    await leave({ kind: "search", question: QUESTION })
+    await leave({ kind: "search", query: SEARCH_TERM })
     await advance(PAUSE_LOGO_DRAWN_MS)
     expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch"])
     // iOS native tabs can show Home for one render before the search tab.
@@ -459,7 +460,7 @@ describe("the exit", () => {
   it("neither lifts nor closes the run on Android back", async () => {
     mockSegments = ["pause"]
     const renderer = await render()
-    await leave({ kind: "search", question: QUESTION })
+    await leave({ kind: "search", query: SEARCH_TERM })
     let consumed = false
     await act(async () => {
       consumed = pressBack()
@@ -476,7 +477,7 @@ describe("the exit", () => {
   it("lifts on the backstop when the segments never show the target", async () => {
     mockSegments = ["pause"]
     const renderer = await render()
-    await leave({ kind: "search", question: QUESTION })
+    await leave({ kind: "search", query: SEARCH_TERM })
     await advance(PAUSE_LOGO_DRAWN_MS)
     await advance(PAUSE_EXIT_BACKSTOP_MS - 1)
     expect(events).toEqual([INTENT, "dismissTo /(tabs)/watch"])
@@ -492,7 +493,7 @@ describe("the exit", () => {
   it("puts the question before it pops to the search tab, and the tab can read it after the lift (AE6)", async () => {
     mockSegments = ["pause"]
     const renderer = await render()
-    await leave({ kind: "search", question: QUESTION })
+    await leave({ kind: "search", query: SEARCH_TERM })
     await advance(PAUSE_LOGO_DRAWN_MS - 1)
     expect(events).toEqual([])
     expect(intents.peek()).toBeNull()
@@ -503,7 +504,7 @@ describe("the exit", () => {
     await act(async () => lift().finish())
     expect(getPausePhase()).toBe("idle")
     expect(intents.peek()).toMatchObject({
-      query: QUESTION,
+      query: SEARCH_TERM,
       origin: "dailyPause",
     })
     await unmount(renderer)
@@ -512,7 +513,7 @@ describe("the exit", () => {
   it.each<[PauseExitTarget, string[], string[]]>([
     [{ kind: "home" }, ["(tabs)"], ["dismissTo /(tabs)", "lift"]],
     [
-      { kind: "search", question: QUESTION },
+      { kind: "search", query: SEARCH_TERM },
       ["(tabs)", "watch"],
       [INTENT, "dismissTo /(tabs)/watch", "lift"],
     ],
@@ -537,7 +538,7 @@ describe("the close (R19, R22)", () => {
   // curtain, and a prompt there could start a second exit.
   it("opens no close prompt while an exit's curtain is up", async () => {
     await act(async () =>
-      requestPauseExit({ kind: "search", question: QUESTION }),
+      requestPauseExit({ kind: "search", query: SEARCH_TERM }),
     )
     openClosePrompt()
     await act(async () => reportLogoDrawn())

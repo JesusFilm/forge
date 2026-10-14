@@ -32,6 +32,7 @@ import {
   createDailyPauseWidgetWriter,
   type DailyPauseWidgetProps,
 } from "../widgetTimeline"
+import type { WidgetArt } from "../widgetArt"
 
 type Timeline = WidgetTimelineEntry<DailyPauseWidgetProps>[]
 
@@ -91,13 +92,20 @@ function questionOn(index: number): string {
     : DEVOTIONALS.lamp.question
 }
 
-function questionProps(question: string, done: boolean) {
+function questionProps(question: string, done: boolean, background = "") {
   return {
     label: "DAILY BIBLE PAUSE",
     question,
     done,
     url: WIDGET_URL,
+    background,
   }
+}
+
+/** Staged art for both devotionals, as the App Group copy names it. */
+const ART = {
+  pharisee: "file:///group/daily-pause-widget/pharisee-a.jpg",
+  lamp: "file:///group/daily-pause-widget/lamp-b.jpg",
 }
 
 function memoryStorage(seed: Record<string, string> = {}) {
@@ -118,7 +126,12 @@ function idle(): Promise<void> {
 function harness({
   now = MONDAY_9AM,
   progressSeed = {},
-}: { now?: number; progressSeed?: Record<string, string> } = {}) {
+  stageArt = async () => ({}),
+}: {
+  now?: number
+  progressSeed?: Record<string, string>
+  stageArt?: () => Promise<WidgetArt>
+} = {}) {
   const timelines: Timeline[] = []
   const widget = {
     updateTimeline: (entries: Timeline) => {
@@ -138,6 +151,7 @@ function harness({
       }
     },
     now: () => clock,
+    stageArt,
   })
   return {
     timelines,
@@ -205,6 +219,48 @@ describe("buildDailyPauseWidgetTimeline", () => {
     expect(
       entries.filter((entry) => "done" in entry.props && entry.props.done),
     ).toHaveLength(0)
+  })
+})
+
+describe("the widget's background", () => {
+  it("gives each day its own devotional's art", () => {
+    const entries = buildDailyPauseWidgetTimeline(MONDAY_9AM, NO_DAY, ART)
+    entries.forEach((entry, index) => {
+      expect(entry.props.background).toBe(
+        index % 2 === 0 ? ART.pharisee : ART.lamp,
+      )
+    })
+  })
+
+  it("leaves a day with no staged art on the plain ground", () => {
+    const entries = buildDailyPauseWidgetTimeline(MONDAY_9AM, NO_DAY, {
+      lamp: ART.lamp,
+    })
+    expect(entries[0]!.props.background).toBe("")
+    expect(entries[1]!.props.background).toBe(ART.lamp)
+  })
+
+  it("still writes the timeline when the art cannot be staged", async () => {
+    const h = harness({
+      stageArt: async () => {
+        throw new Error("no App Group")
+      },
+    })
+    await h.writer.runPass()
+    expect(h.latest()[0]!.props).toEqual(
+      questionProps(DEVOTIONALS.pharisee.question, false),
+    )
+  })
+
+  it("writes the timeline again once the art is staged", async () => {
+    let art: WidgetArt = {}
+    const h = harness({ stageArt: async () => art })
+    await h.writer.runPass()
+    expect(h.timelines).toHaveLength(1)
+    art = ART
+    await h.writer.runPass()
+    expect(h.timelines).toHaveLength(2)
+    expect(h.latest()[0]!.props.background).toBe(ART.pharisee)
   })
 })
 

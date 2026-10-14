@@ -53,7 +53,7 @@ export function ShareScreen({ pin, font }: ShareScreenProps) {
 
   // v2 KTD5: the store takes only the first exit, so a second tap does nothing.
   const browse = () =>
-    requestPauseExit({ kind: "search", question: devotional.question })
+    requestPauseExit({ kind: "search", query: devotional.searchTerm })
   const finish = () => requestPauseExit({ kind: "home" })
 
   // The prompt scrolls at large text sizes, and the buttons stay on screen.

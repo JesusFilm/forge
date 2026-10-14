@@ -69,7 +69,6 @@ export const pauseSpacing = {
   segmentPaddingY: 12,
   /** Between a settings row's title and its subtitle. */
   rowCopyGap: 3,
-  doneButtonPaddingY: 15,
 } as const
 
 export const pauseSizes = {

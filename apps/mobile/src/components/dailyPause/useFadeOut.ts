@@ -1,5 +1,5 @@
 // Keeps a view mounted while it plays its exit, so it can fade out instead of
-// leaving at once. The paused cue and the close prompt use it.
+// leaving at once. The paused cue, the part cover, and the close prompt use it.
 import { useEffect, useState } from "react"
 
 type FadeState = {

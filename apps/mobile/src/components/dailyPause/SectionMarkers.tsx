@@ -8,20 +8,32 @@ import {
   Pressable,
   StyleSheet,
   View,
+  useWindowDimensions,
   type LayoutChangeEvent,
 } from "react-native"
 
 import { pauseText, type PauseFont } from "../../lib/dailyPause/fonts"
 import { pauseColors, pauseType } from "../../lib/dailyPause/theme"
-import { TARGET_SIZE as CLOSE_TARGET_SIZE } from "./CloseButton"
+import {
+  CLOSE_RIGHT_EDGE,
+  TARGET_SIZE as CLOSE_TARGET_SIZE,
+} from "./CloseButton"
 import { sampledCurve } from "./sampledCurve"
 import { STAGES, type StepperStage } from "./StepperPills"
 import { usePauseClock } from "./usePauseClock"
-import { useTopRowTop } from "./useTopRowTop"
+import { useRunVideoLayout } from "./useTopRowTop"
 
 /** The close's target height, so the row and the close share one center. */
 const ROW_HEIGHT = CLOSE_TARGET_SIZE
-const MARKER_GAP = 24
+/** The space between two markers at the default text size (the owner,
+ *  2026-10-14: 24 was too tight). */
+export const MARKER_GAP = 40
+/** WATCH, REFLECT, and PRAY at text scale 1 on the iPhone 17 simulator
+ *  (53 + 64 + 39 points, 2026-10-14). The row's width starts from it. */
+const LABELS_WIDTH = 156
+/** The row keeps this much space clear of the close, on both sides. */
+export const MARKER_CLOSE_CLEARANCE = 8
+const MARKER_HIT_SLOP = 8
 /** The row does not grow with the text past this scale, so it stays clear of
  *  the close on a narrow phone. VoiceOver reads the section in full. */
 export const MARKER_MAX_SCALE = 1.3
@@ -65,7 +77,16 @@ export function SectionMarkers({
   font,
   onSelect,
 }: SectionMarkersProps) {
-  const top = useTopRowTop("letterbox", ROW_HEIGHT)
+  const top = useRunVideoLayout().rowTop
+  const window = useWindowDimensions()
+  // The labels sit at the row's two ends and its centre, so the gaps take
+  // what is left. On a narrow phone with large text they close up rather
+  // than let WATCH reach the close.
+  const groupWidth = Math.min(
+    LABELS_WIDTH * Math.min(window.fontScale, MARKER_MAX_SCALE) +
+      2 * MARKER_GAP,
+    window.width - 2 * (CLOSE_RIGHT_EDGE + MARKER_CLOSE_CLEARANCE),
+  )
   const { progress } = usePauseClock(MARKER_ARRIVAL_MS)
   // The line runs from the left edge of WATCH to the right edge of the
   // current marker. That edge is known only after layout.
@@ -88,7 +109,7 @@ export function SectionMarkers({
       <View
         testID="section-markers-group"
         pointerEvents="box-none"
-        style={styles.group}
+        style={[styles.group, { width: groupWidth }]}
       >
         <View
           testID="section-markers-line"
@@ -110,7 +131,7 @@ export function SectionMarkers({
               onPress={current ? undefined : () => onSelect(stage)}
               disabled={current}
               onLayout={current ? measure : undefined}
-              hitSlop={{ left: MARKER_GAP / 2, right: MARKER_GAP / 2 }}
+              hitSlop={{ left: MARKER_HIT_SLOP, right: MARKER_HIT_SLOP }}
               accessibilityRole="button"
               accessibilityLabel={`${name} section`}
               accessibilityHint={
@@ -168,7 +189,7 @@ const styles = StyleSheet.create({
     height: ROW_HEIGHT,
     flexDirection: "row",
     alignItems: "center",
-    gap: MARKER_GAP,
+    justifyContent: "space-between",
   },
   marker: { height: ROW_HEIGHT, justifyContent: "center" },
   pressed: { opacity: PRESSED_OPACITY },
