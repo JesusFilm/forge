@@ -2794,6 +2794,36 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         }),
       ).toBe(0)
     })
+    it("keeps offline comparison queries out of parallel shared memory without changing the connection default", async () => {
+      const baseline = await prisma.$queryRaw<[{ value: string }]>`
+        SELECT current_setting('max_parallel_workers_per_gather') AS value`
+      expect(Number(baseline[0].value)).toBeGreaterThan(0)
+      await admin.query(`
+        CREATE FUNCTION require_serial_edge_query() RETURNS trigger
+        LANGUAGE plpgsql AS $$ BEGIN
+          IF current_setting('max_parallel_workers_per_gather') <> '0' THEN
+            RAISE EXCEPTION 'Offline comparison can allocate parallel shared memory';
+          END IF;
+          RETURN NEW;
+        END $$;
+        CREATE TRIGGER check_edge_query_memory BEFORE INSERT
+          ON recommendation_precomputed_edge_batch_call
+          FOR EACH ROW EXECUTE FUNCTION require_serial_edge_query();
+      `)
+      try {
+        const { start } = await reserveOne("serial-edge-query")
+        expect(await submit(start)).toMatchObject({ replay: true })
+        expect(
+          await prisma.$queryRaw`SELECT current_setting('max_parallel_workers_per_gather') AS value`,
+        ).toEqual(baseline)
+      } finally {
+        await admin.query(`
+          DROP TRIGGER check_edge_query_memory ON recommendation_precomputed_edge_batch_call;
+          DROP FUNCTION require_serial_edge_query();
+        `)
+      }
+    })
+
     it("persists the exact selected Spanish passage selected by a frozen span ID", async () => {
       const editionId = `edge-span-edition-${suffix}`
       const transcriptId = `edge-span-transcript-${suffix}`
@@ -2948,6 +2978,15 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         })
       start.spanOffers = [offer, ...additionalOffers]
       start.spanOfferDigest = digest(start.spanOffers)
+      // A database read failure must remain an infrastructure error, not an
+      // invalid passage. Rename only this disposable fixture's table, then
+      // restore it before exercising the exact same valid reservation.
+      await admin.query("ALTER TABLE video RENAME TO unavailable_video")
+      try {
+        await expect(submit(start)).rejects.toMatchObject({ code: "P2021" })
+      } finally {
+        await admin.query("ALTER TABLE unavailable_video RENAME TO video")
+      }
       reservationQueries = []
       await submit(start)
       const selectionQueries = reservationQueries.filter((query) =>

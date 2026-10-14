@@ -55,6 +55,14 @@ the unknown original call and its ten comparisons for explicit recovery;
 unaffected sources can use the existing bounded-work interface. This timeout
 change does not establish a completion ETA or reconcile the interrupted call.
 
+The resumed run saved another 111 comparison calls before PostgreSQL exhausted
+its shared-memory mount during the catalog-version proof. The broad catch
+incorrectly labeled SQLSTATE 53100 as an invalid passage. Keep edge transactions
+out of parallel query shared memory with a transaction-local worker limit, and
+only translate catalog validation errors into passage rejection. The sixteen
+model calls, full profiles, frozen input, and evidence checks remain unchanged.
+The rejected reservation created no call row; all 111 admitted calls finished.
+
 Explore whether a capable reasoning model can find useful connections across
 the video catalog from transcripts, metadata, and historical analytics, with
 recommendations computed periodically and stored in PostgreSQL before viewers
