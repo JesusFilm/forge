@@ -75,6 +75,62 @@ function getServerHydrationSnapshot() {
   return false
 }
 
+/**
+ * `effectiveType` values too slow to spend bytes on a decorative hero stream.
+ * The intro is the one surface that fetches video nobody asked for, so it is
+ * the one that has to honour the browser's data-saving hints.
+ */
+const CONSTRAINED_EFFECTIVE_TYPES: ReadonlySet<string> = new Set([
+  "slow-2g",
+  "2g",
+  "3g",
+])
+
+/**
+ * The Network Information API is not in TypeScript's DOM lib, so the slice
+ * read here is declared locally.
+ */
+type NavigatorWithConnection = {
+  connection?: { saveData?: unknown; effectiveType?: unknown } | null
+}
+
+/**
+ * Pure. True when the viewer asked the browser to save data, or the measured
+ * connection is `slow-2g`, `2g`, or `3g`. The Network Information API is
+ * Chromium-only; Safari and Firefox have no `navigator.connection`, so there
+ * the answer is always "not constrained".
+ */
+export function isWatchHomeConstrainedConnection(
+  nav: NavigatorWithConnection | null | undefined,
+): boolean {
+  const connection = nav?.connection
+  if (!connection) return false
+  if (connection.saveData === true) return true
+  return (
+    typeof connection.effectiveType === "string" &&
+    CONSTRAINED_EFFECTIVE_TYPES.has(connection.effectiveType)
+  )
+}
+
+/** Never subscribed; the hook latches the first client value. */
+function getClientPlaybackAllowedSnapshot() {
+  return !isWatchHomeConstrainedConnection(
+    typeof navigator === "undefined"
+      ? null
+      : (navigator as Navigator & NavigatorWithConnection),
+  )
+}
+
+/**
+ * "Not allowed" on the server and through hydration. The media element starts
+ * fetching HLS in its own mount effect, which runs before the parent re-renders
+ * with the client value — so defaulting to "allowed" here would request the
+ * manifest on a save-data connection before the gate could close.
+ */
+function getServerPlaybackAllowedSnapshot() {
+  return false
+}
+
 export function nextWatchHomeTvCarouselIndex(
   currentIndex: number,
   slideCount: number,
@@ -240,6 +296,24 @@ export function useWatchHomeTvCarousel(
     getClientHydrationSnapshot,
     getServerHydrationSnapshot,
   )
+  // Poster-only when the browser signals Save-Data or a slow connection. The
+  // slides keep their `src` (the random draw and the playable-index helpers
+  // read it); only whether the ACTIVE slide is treated as media changes.
+  const livePlaybackAllowed = useSyncExternalStore(
+    subscribeToHydrationStore,
+    getClientPlaybackAllowedSnapshot,
+    getServerPlaybackAllowedSnapshot,
+  )
+  // Latched on the first client render: `effectiveType` flaps on mobile, and a
+  // flap must neither unmount a video that is playing nor restart it from zero.
+  const [latchedPlaybackAllowed, setLatchedPlaybackAllowed] = useState<
+    boolean | null
+  >(null)
+  if (hasHydrated && latchedPlaybackAllowed === null) {
+    setLatchedPlaybackAllowed(livePlaybackAllowed)
+  }
+  const playbackEnabled =
+    latchedPlaybackAllowed ?? (hasHydrated && livePlaybackAllowed)
   const [prefetchedQueue, setPrefetchedQueue] = useState<{
     sequenceKey: string
     videos: WatchHomeTvCarouselVideoSlide[]
@@ -368,13 +442,16 @@ export function useWatchHomeTvCarousel(
   const autoAdvancePaused =
     activeSlide != null &&
     activeSlide.id === options.autoAdvancePausedForSlideId
+  // A video slide on a gated connection renders its poster only, so for every
+  // clock and ring decision it is an image slide.
+  const activeHasMedia = Boolean(activeSlide?.src) && playbackEnabled
   // Only a video slide can be waiting on bytes; an image slide is fully on
   // screen the moment it is chosen.
-  const isBuffering = Boolean(activeSlide?.src) && isBufferingMedia
+  const isBuffering = activeHasMedia && isBufferingMedia
   // A slide's turn is time the viewer spends WATCHING it, so a paused hero
   // holds its turn the same way a buffering one does. The two are kept
   // separate for the ring: only buffering is a stall worth explaining.
-  const isMediaHeld = Boolean(activeSlide?.src) && isMediaPaused
+  const isMediaHeld = activeHasMedia && isMediaPaused
   const isTurnHeld = isBuffering || isMediaHeld
   // One resolved duration feeds both the ring and the backstop, so the two
   // cannot drift apart. The measurement only counts for the slide it was read
@@ -384,11 +461,20 @@ export function useWatchHomeTvCarousel(
     measuredDuration.slideId === activeSlide?.id
       ? measuredDuration.seconds
       : null
-  const advanceDurationSeconds = activeSlide
-    ? watchHomeTvSlideDurationSeconds(activeSlide, activeMeasuredSeconds)
+  const activeTimingSlide = activeSlide
+    ? {
+        src: activeHasMedia ? activeSlide.src : null,
+        durationSeconds: activeSlide.durationSeconds,
+      }
+    : null
+  const advanceDurationSeconds = activeTimingSlide
+    ? watchHomeTvSlideDurationSeconds(activeTimingSlide, activeMeasuredSeconds)
     : WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
-  const advanceBackstopSeconds = activeSlide
-    ? watchHomeTvAdvanceBackstopSeconds(activeSlide, activeMeasuredSeconds)
+  const advanceBackstopSeconds = activeTimingSlide
+    ? watchHomeTvAdvanceBackstopSeconds(
+        activeTimingSlide,
+        activeMeasuredSeconds,
+      )
     : WATCH_HOME_TV_IMAGE_SLIDE_ADVANCE_SECONDS
   const safeActiveIndex = activeSlide
     ? Math.max(
@@ -782,7 +868,7 @@ export function useWatchHomeTvCarousel(
     // animates over the same duration) honest by construction.
     if (autoAdvancePaused || isTurnHeld) return undefined
 
-    const advanceAfterMs = activeSlide.src
+    const advanceAfterMs = activeHasMedia
       ? advanceBackstopSeconds * 1000
       : IMAGE_SLIDE_ADVANCE_MS
     const startedAt = Date.now()
@@ -844,6 +930,7 @@ export function useWatchHomeTvCarousel(
     activeSlide?.durationSeconds,
     activeSlide?.id,
     activeSlide?.src,
+    activeHasMedia,
     advance,
     advanceBackstopSeconds,
     advanceDurationSeconds,
@@ -952,6 +1039,7 @@ export function useWatchHomeTvCarousel(
       isMuted,
       leavingSlide,
       mediaReady,
+      playbackEnabled,
       playbackTimeSeconds:
         playbackTime.slideId === activeSlide?.id ? playbackTime.seconds : 0,
       selectSlide,
@@ -978,6 +1066,7 @@ export function useWatchHomeTvCarousel(
       isMuted,
       leavingSlide,
       mediaReady,
+      playbackEnabled,
       playbackTime,
       selectSlide,
       toggleMuted,
