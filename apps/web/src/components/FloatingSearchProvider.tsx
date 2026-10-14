@@ -981,7 +981,7 @@ export function FloatingSearchProvider({
           className={`fixed ${WATCH_PAGE_LEFT_EDGE_CLASSES} ${WATCH_PAGE_RIGHT_EDGE_CLASSES} ${headerTopClass} z-50 ${
             modalChromeHidden
               ? FLOATING_MODAL_HEADER_LAYOUT_CLASS
-              : FLOATING_HEADER_LAYOUT_CLASS
+              : `${FLOATING_HEADER_LAYOUT_CLASS} max-[360px]:gap-2`
           } transition-[top,opacity,translate] duration-500 ease-[cubic-bezier(0.2,0.9,0.2,1)] ${headerMotionClass}`}
         >
           <Link
@@ -1096,7 +1096,7 @@ export function FloatingSearchProvider({
                 {headerLanguageCode ? (
                   <span
                     data-testid="floating-header-language-code"
-                    className="max-w-28 truncate text-xs font-bold tracking-[0.14em] sm:text-[10px]"
+                    className="max-w-28 truncate text-xs font-bold tracking-[0.14em] max-[360px]:max-w-12 max-[360px]:overflow-visible max-[360px]:break-words max-[360px]:text-clip max-[360px]:leading-3 max-[360px]:whitespace-normal sm:text-[10px]"
                   >
                     {headerLanguageCode}
                   </span>

@@ -1986,6 +1986,13 @@ describe("FloatingSearchProvider — language switcher chrome", () => {
       "PT-MZ",
     ],
     ["Korean, North", "/korean-north.html", "english", "KO-NOR"],
+    ["long badge on root home", "/", "huasteco-san-luis-potosi", "HUS-MX-SLP"],
+    [
+      "long badge on video",
+      "/jesus.html/huasteco-san-luis-potosi.html",
+      "english",
+      "HUS-MX-SLP",
+    ],
     ["legacy videos index", "/videos", "english", "EN"],
     ["authored experience", "/easter.html", "english", "EN"],
     ["languages index", "/languages", "english", "EN"],
