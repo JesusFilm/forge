@@ -1319,8 +1319,8 @@ export async function readGaNavigationSnapshot(
     }
     return false
   }
-  if (!hasUniqueRoute(source))
-    throw new HistoricalAnalyticsError("analytics_mapping_unverified")
+  // A missing unique source route is coverage, not an invalid capture. Keep
+  // reading its observations; the per-row mapper below leaves them unassigned.
   const sourceBatches = patternChunks("source", routePatterns(source))
   const queryableSelected = new Set<string>()
   const targetPatterns: string[] = []

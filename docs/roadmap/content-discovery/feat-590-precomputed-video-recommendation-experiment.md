@@ -18,6 +18,13 @@ tags:
 
 ## Problem
 
+All seven interrupted batches recovered, then the full run reached 3,884
+comparisons and 73 finalized sources. An uppercase source slug exposed a
+source-only analytics mapping precondition that stops the entire catalog.
+Preserve unknown analytics and coverage counts through the existing per-row
+mapping checks while continuing content comparisons; retain frozen inputs.
+See `docs/plans/2026-10-15-006-fix-unmapped-source-history-coverage-plan.md`.
+
 The deployed recovery attempt exposed a producer guard still restricted to the
 older two-source first page. Validate each executor recovery against its reviewed
 source/page/rank bounds and preserve the current generation's lossless prompt
