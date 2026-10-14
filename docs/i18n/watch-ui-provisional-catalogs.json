@@ -13506,8 +13506,8 @@
         "tk": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "d5e027a7eaade8cde9e765ecefb44676518d89ff9bd14abc2be949d5cccad4d3",
-          "catalogDigest": "335de92aea1d34c9ad31bffaece1d1227ff765edc48d1fef6850066f2a20e580",
-          "generatedOn": "2026-08-27",
+          "catalogDigest": "7015502e08d32c393af6ccae642882354c6b3303014a6ff3a44a2cd98a633494",
+          "generatedOn": "2026-10-09",
           "scopedRevisions": [
             {
               "model": "gpt-5.6",
@@ -13571,6 +13571,15 @@
                 "RecommendationConsent.settingsDescription"
               ],
               "generatedOn": "2026-08-27"
+            },
+            {
+              "model": "manual-source-correction",
+              "messagePaths": [
+                "HeroPlayer.subtitleCount",
+                "LanguageInventory.subtitles",
+                "LanguagePickerModal.subtitlesHeading"
+              ],
+              "generatedOn": "2026-10-09"
             }
           ]
         },

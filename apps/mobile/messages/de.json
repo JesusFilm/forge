@@ -138,6 +138,7 @@
     "versesAriaValue": "Verse {first} bis {last} von {total}, {chapter}",
     "demoVerse": "Nach oben wischen für den nächsten Vers",
     "demoChapter": "Nach links wischen für das nächste Kapitel",
+    "demoChapterRtl": "Nach rechts wischen für das nächste Kapitel",
     "demoSkip": "Zum Überspringen tippen",
     "demoSkipAriaLabel": "Wisch-Vorführung überspringen",
     "selectVerseAriaHint": "Doppeltippen, um diesen Vers auszuwählen",
@@ -773,5 +774,8 @@
     "send": "Senden",
     "sending": "Wird gesendet…",
     "sendAriaLabel": "Feedback senden"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Die App nutzt dein lokales Netzwerk, um Geräte für die Übertragung zu finden, damit du Videos auf deinem Fernseher abspielen kannst."
   }
 }

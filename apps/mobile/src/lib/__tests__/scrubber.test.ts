@@ -1,3 +1,5 @@
+import { Dimensions } from "react-native"
+
 import {
   clamp,
   hasUsableDuration,
@@ -8,28 +10,93 @@ import {
   thumbOutputRange,
 } from "../scrubber"
 
+// The module mock, not an I18nManager spy, so a guard that reads the direction
+// from anywhere but the shared source (feat-695 KTD8) fails here.
+const mockLayoutRtl = { current: false }
+jest.mock("../../i18n/layoutRtl", () => ({
+  isLayoutRtl: () => mockLayoutRtl.current,
+}))
+
+function windowIs(width: number) {
+  jest
+    .spyOn(Dimensions, "get")
+    .mockReturnValue({ width, height: 844, scale: 3, fontScale: 1 })
+}
+
+afterEach(() => {
+  mockLayoutRtl.current = false
+  jest.restoreAllMocks()
+})
+
 describe("mayStartScrub (back-swipe edge guard)", () => {
-  it("declines a touch that starts inside the strip the pop owns", () => {
-    // iOS 26 claims this touch natively before JS runs; accepting it is how a
-    // page-dismiss drag got half-read as a scrub.
-    expect(mayStartScrub(0, 24)).toBe(false)
-    expect(mayStartScrub(23.9, 24)).toBe(false)
+  describe("in a left-to-right layout", () => {
+    beforeEach(() => {
+      mockLayoutRtl.current = false
+      windowIs(390)
+    })
+
+    it("declines a touch that starts inside the strip the pop owns", () => {
+      // iOS 26 claims this touch natively before JS runs; accepting it is how a
+      // page-dismiss drag got half-read as a scrub.
+      expect(mayStartScrub(0, 24)).toBe(false)
+      expect(mayStartScrub(23.9, 24)).toBe(false)
+    })
+
+    it("accepts a touch at or past the strip's edge", () => {
+      expect(mayStartScrub(24, 24)).toBe(true)
+      expect(mayStartScrub(200, 24)).toBe(true)
+    })
+
+    it("accepts a touch inside the right strip, which the pop does not own", () => {
+      expect(mayStartScrub(380, 24)).toBe(true)
+      expect(mayStartScrub(389, 24)).toBe(true)
+    })
+
+    it("accepts everything when no guard is active (fullscreen)", () => {
+      // Fullscreen disables the pop, so the bar keeps its full width there.
+      expect(mayStartScrub(0, 0)).toBe(true)
+      expect(mayStartScrub(5, 0)).toBe(true)
+    })
+
+    it("fails open on non-finite input rather than deadening the bar", () => {
+      expect(mayStartScrub(Number.NaN, 24)).toBe(true)
+      expect(mayStartScrub(10, Number.NaN)).toBe(true)
+    })
   })
 
-  it("accepts a touch at or past the strip's edge", () => {
-    expect(mayStartScrub(24, 24)).toBe(true)
-    expect(mayStartScrub(200, 24)).toBe(true)
-  })
+  // react-native-screens measures the pop's strip from the right edge of the
+  // window in a right-to-left layout (RNSScreenStack.mm, isInGestureResponseDistance).
+  describe("in a right-to-left layout", () => {
+    beforeEach(() => {
+      mockLayoutRtl.current = true
+    })
 
-  it("accepts everything when no guard is active (fullscreen)", () => {
-    // Fullscreen disables the pop, so the bar keeps its full width there.
-    expect(mayStartScrub(0, 0)).toBe(true)
-    expect(mayStartScrub(5, 0)).toBe(true)
-  })
+    it("declines a touch that starts inside the right strip", () => {
+      windowIs(390)
+      expect(mayStartScrub(389, 24)).toBe(false)
+      expect(mayStartScrub(366.1, 24)).toBe(false)
+      windowIs(1024)
+      expect(mayStartScrub(1010, 24)).toBe(false)
+    })
 
-  it("fails open on non-finite input rather than deadening the bar", () => {
-    expect(mayStartScrub(Number.NaN, 24)).toBe(true)
-    expect(mayStartScrub(10, Number.NaN)).toBe(true)
+    it("accepts a touch at or past the right strip's edge", () => {
+      windowIs(390)
+      expect(mayStartScrub(366, 24)).toBe(true)
+      expect(mayStartScrub(200, 24)).toBe(true)
+      windowIs(1024)
+      expect(mayStartScrub(390, 24)).toBe(true)
+    })
+
+    it("accepts a touch inside the left strip, which the pop does not own", () => {
+      windowIs(390)
+      expect(mayStartScrub(0, 24)).toBe(true)
+      expect(mayStartScrub(10, 24)).toBe(true)
+    })
+
+    it("accepts everything when no guard is active (fullscreen)", () => {
+      windowIs(390)
+      expect(mayStartScrub(389, 0)).toBe(true)
+    })
   })
 })
 

@@ -138,6 +138,7 @@
     "versesAriaValue": "Versículo {first} guive {last} peve, {total} apytégui, {chapter}",
     "demoVerse": "Embosyry yvate gotyo versículo oúvape",
     "demoChapter": "Embosyry asu gotyo capítulo oúvape",
+    "demoChapterRtl": "Embosyry akatúa gotyo capítulo oúvape",
     "demoSkip": "Epoko ehasa hag̃ua",
     "demoSkipAriaLabel": "Ehasa pe jehechauka mbosyry rehegua",
     "selectVerseAriaHint": "Epoko mokõi jey eiporavo hag̃ua ko versículo",
@@ -773,5 +774,8 @@
     "send": "Emondo",
     "sending": "Oñemondohína…",
     "sendAriaLabel": "Emondo ne remiandu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Ko tembiporu’i oipuru nde ñanduti tendapegua ohekávo mba’e’oka omondóva TV-pe, ikatu hag̃uáicha rehecha ta’ãngamýi nde TV-pe."
   }
 }

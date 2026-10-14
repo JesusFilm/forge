@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "De app gebruikt je lokale netwerk om Cast-apparaten te vinden, zodat je video’s op je tv kunt afspelen."
+  }
+}

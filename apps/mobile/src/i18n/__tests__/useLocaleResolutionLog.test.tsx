@@ -18,6 +18,10 @@ jest.mock("expo-localization", () => ({
 jest.mock("expo-localization/build/ExpoLocalization", () => ({
   addLocaleListener: () => ({ remove: () => undefined }),
 }))
+const mockDirection: { reloadKind: string | null } = { reloadKind: null }
+jest.mock("../layoutDirection", () => ({
+  directionReloadKind: () => mockDirection.reloadKind,
+}))
 
 function Root({ hydrated }: { hydrated: boolean }) {
   useLocaleResolutionLog(hydrated)
@@ -42,6 +46,7 @@ beforeEach(() => {
   resetLocaleStoreForTests()
   startLocaleSync()
   jest.mocked(datadogLog.info).mockClear()
+  mockDirection.reloadKind = null
 })
 
 // StrictMode runs each mount effect twice, as a development build does.
@@ -65,6 +70,17 @@ it("logs the resolution once, and only after hydration", async () => {
     "ui_locale.resolved": "en",
     "ui_locale.requested": "ha-NG",
     "ui_locale.fallback": "english",
+    "ui_locale.direction_reload": "none",
   })
+  await unmount(renderer)
+})
+
+it("names the direction reload that started this runtime", async () => {
+  mockDirection.reloadKind = "return"
+  const renderer = await render(true)
+  expect(datadogLog.info).toHaveBeenCalledWith(
+    "ui_locale.resolved",
+    expect.objectContaining({ "ui_locale.direction_reload": "return" }),
+  )
   await unmount(renderer)
 })

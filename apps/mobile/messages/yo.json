@@ -138,6 +138,7 @@
     "versesAriaValue": "Ẹsẹ {first} sí {last} nínú {total}, {chapter}",
     "demoVerse": "Fa ìka sókè fún ẹsẹ tó tẹ̀lé",
     "demoChapter": "Fa ìka sí òsì fún orí tó tẹ̀lé",
+    "demoChapterRtl": "Fa ìka sí ọ̀tún fún orí tó tẹ̀lé",
     "demoSkip": "Tẹ̀ ẹ́ láti fò ó",
     "demoSkipAriaLabel": "Fo àfihàn bí a ṣe ń fa ìka",
     "selectVerseAriaHint": "Tẹ̀ ẹ́ lẹ́ẹ̀mejì láti yan ẹsẹ yìí",
@@ -773,5 +774,8 @@
     "send": "Fi ránṣẹ́",
     "sending": "Ń fi ránṣẹ́…",
     "sendAriaLabel": "Fi èrò rẹ ránṣẹ́"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Áàpù náà ń lo nẹ́tíwọ́ọ̀kì tó wà nítòsí rẹ láti wá àwọn ẹ̀rọ tí o lè fi fídíò hàn lórí wọn, kí o lè wo àwọn fídíò lórí TV rẹ."
   }
 }

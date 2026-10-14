@@ -138,6 +138,7 @@
     "versesAriaValue": "Aaya {first} ba {last} ci {total}, {chapter}",
     "demoVerse": "Yóbbul sa baaraam ci kaw ngir aaya bi ci topp",
     "demoChapter": "Yóbbul sa baaraam ci càmmooñ ngir saar bi ci topp",
+    "demoChapterRtl": "Yóbbul sa baaraam ci ndijoor ngir saar bi ci topp",
     "demoSkip": "Bësal ngir weesu",
     "demoSkipAriaLabel": "Weesu wone bi",
     "selectVerseAriaHint": "Bësal ñaari yoon ngir tànn aaya bii",
@@ -773,5 +774,8 @@
     "send": "Yónnee",
     "sending": "Mi ngi yónnee…",
     "sendAriaLabel": "Yónnee sa xalaat"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App bi dafay jëfandikoo sa réseau bu jege ngir wut jumtukaay yu mën a wone wideyo yi nga yónnee, ngir nga mën a doxal wideyo ci sa tele."
   }
 }

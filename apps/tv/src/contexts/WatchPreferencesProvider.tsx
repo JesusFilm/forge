@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useMemo,
+  useState,
   type ReactNode,
 } from "react"
 
@@ -42,6 +43,12 @@ type WatchPreferencesContextValue = WatchPreferences & {
   setNativePlayerVariant: (
     variant: WatchPreferences["nativePlayerVariant"],
   ) => void
+  setTopShelfPreviewStyle: (
+    style: NonNullable<WatchPreferences["topShelfPreviewStyle"]>,
+  ) => void
+  topShelfPreviewMessage: string
+  setTopShelfPreviewMessage: (message: string) => void
+  topShelfPreviewRevision: number
   /** False until the on-disk read resolves (or times out to defaults). */
   hydrated: boolean
 }
@@ -54,6 +61,8 @@ export function WatchPreferencesProvider({
 }: {
   children: ReactNode
 }) {
+  const [topShelfPreviewMessage, setTopShelfPreviewMessage] = useState("")
+  const [topShelfPreviewRevision, setTopShelfPreviewRevision] = useState(0)
   const { prefs, hydrated, setPref } = usePersistedPrefs<WatchPreferences>({
     defaults: DEFAULT_WATCH_PREFERENCES,
     load: loadWatchPreferences,
@@ -90,6 +99,15 @@ export function WatchPreferencesProvider({
     [setPref],
   )
 
+  const setTopShelfPreviewStyle = useCallback(
+    (style: NonNullable<WatchPreferences["topShelfPreviewStyle"]>) => {
+      setTopShelfPreviewMessage("Updating Top Shelf…")
+      setTopShelfPreviewRevision((value) => value + 1)
+      setPref("topShelfPreviewStyle", style)
+    },
+    [setPref],
+  )
+
   const value = useMemo<WatchPreferencesContextValue>(
     () => ({
       ...prefs,
@@ -101,6 +119,10 @@ export function WatchPreferencesProvider({
       setAudioLanguageSlug,
       setAndroidPlayerVariant,
       setNativePlayerVariant,
+      setTopShelfPreviewStyle,
+      topShelfPreviewMessage,
+      setTopShelfPreviewMessage,
+      topShelfPreviewRevision,
       hydrated,
     }),
     [
@@ -111,6 +133,9 @@ export function WatchPreferencesProvider({
       setAudioLanguageSlug,
       setAndroidPlayerVariant,
       setNativePlayerVariant,
+      setTopShelfPreviewStyle,
+      topShelfPreviewMessage,
+      topShelfPreviewRevision,
       hydrated,
     ],
   )

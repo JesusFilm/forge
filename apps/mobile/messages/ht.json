@@ -138,6 +138,7 @@
     "versesAriaValue": "Vèsè {first} rive {last} sou {total}, {chapter}",
     "demoVerse": "Glise anlè pou pwochen vèsè a",
     "demoChapter": "Glise sou bò gòch pou pwochen chapit la",
+    "demoChapterRtl": "Glise sou bò dwat pou pwochen chapit la",
     "demoSkip": "Tape pou sote",
     "demoSkipAriaLabel": "Sote demonstrasyon glisman an",
     "selectVerseAriaHint": "Tape de fwa pou chwazi vèsè sa a",
@@ -773,5 +774,8 @@
     "send": "Voye",
     "sending": "Ap voye…",
     "sendAriaLabel": "Voye kòmantè a"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikasyon an itilize rezo lokal ou pou jwenn aparèy difizyon yo, konsa ou ka jwe videyo sou televizyon ou."
   }
 }

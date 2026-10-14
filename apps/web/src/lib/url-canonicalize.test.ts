@@ -159,6 +159,15 @@ describe("Rule 1: trailing-slash strip → 308 with long cache", () => {
       cache: "long",
     })
   })
+
+  it("strips a trailing slash from the bare Watch history route", () => {
+    expect(canonical({ rawPathname: "/history/" })).toEqual({
+      kind: "redirect",
+      pathname: "/history",
+      status: 308,
+      cache: "long",
+    })
+  })
 })
 
 describe("Rule 2: lowercase .HTML → .html → 307", () => {
@@ -413,7 +422,7 @@ describe("Rule 6: language-slug alias → 307", () => {
     })
   })
 
-  it.each(["languages", "history", "videos"])(
+  it.each(["languages", "history", "videos", "whats-new"])(
     "applies alias to localized %s routes",
     (utility) => {
       expect(

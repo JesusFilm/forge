@@ -138,6 +138,7 @@
     "versesAriaValue": "{first}. bertsetetik {last}. bertsetera, guztira {total}, {chapter}",
     "demoVerse": "Pasatu hatza gora hurrengo bertsetera joateko",
     "demoChapter": "Pasatu hatza ezkerrera hurrengo kapitulura joateko",
+    "demoChapterRtl": "Pasatu hatza eskuinera hurrengo kapitulura joateko",
     "demoSkip": "Ukitu saltatzeko",
     "demoSkipAriaLabel": "Saltatu hatza pasatzeko erakustaldia",
     "selectVerseAriaHint": "Ukitu birritan bertsete hau hautatzeko",
@@ -773,5 +774,8 @@
     "send": "Bidali",
     "sending": "Bidaltzen…",
     "sendAriaLabel": "Bidali iritzia"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikazioak zure sare lokala erabiltzen du igorpenerako gailuak aurkitzeko, bideoak zure telebistan erreproduzitu ahal izan ditzazun."
   }
 }

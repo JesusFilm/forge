@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { print } from "graphql"
 
-const { queryMock, routeManifestMock, unstableCacheCalls } = vi.hoisted(() => ({
+const {
+  queryMock,
+  routeManifestMock,
+  unstableCacheCalls,
+  unstableCacheResults,
+  cacheUnstableSuccesses,
+} = vi.hoisted(() => ({
   queryMock: vi.fn(),
   // Live watch-route manifest as seen by content.ts. Defaults to "not
   // available" so every existing test runs against the compiled corpus
@@ -12,6 +18,8 @@ const { queryMock, routeManifestMock, unstableCacheCalls } = vi.hoisted(() => ({
     keyParts: unknown[]
     options: { revalidate?: unknown; tags?: unknown }
   }[],
+  unstableCacheResults: new Map<string, unknown>(),
+  cacheUnstableSuccesses: { value: false },
 }))
 
 vi.mock("@/lib/watch-route-manifest", async () => {
@@ -43,7 +51,14 @@ vi.mock("next/cache", () => ({
     options?: { revalidate?: unknown; tags?: unknown },
   ) => {
     unstableCacheCalls.push({ keyParts, options: options ?? {} })
-    return fn
+    return (async (...args: unknown[]) => {
+      if (!cacheUnstableSuccesses.value) return fn(...args)
+      const key = JSON.stringify([keyParts, args])
+      if (unstableCacheResults.has(key)) return unstableCacheResults.get(key)
+      const result = await fn(...args)
+      unstableCacheResults.set(key, result)
+      return result
+    }) as T
   },
 }))
 
@@ -160,6 +175,8 @@ describe("resolveWatchPage", () => {
   afterEach(() => {
     queryMock.mockReset()
     unstableCacheCalls.length = 0
+    unstableCacheResults.clear()
+    cacheUnstableSuccesses.value = false
     vi.resetModules()
   })
 
@@ -239,6 +256,108 @@ describe("resolveWatchPage", () => {
         slug: "home",
       },
     })
+  })
+
+  it("retries a transient homepage failure instead of caching its error", async () => {
+    cacheUnstableSuccesses.value = true
+    queryMock.mockRejectedValueOnce(new Error("Admin temporarily unavailable"))
+    queryMock.mockResolvedValueOnce({
+      data: {
+        watchSetting: {
+          documentId: "watch-settings-1",
+          homepageExperience: {
+            __typename: "ExperienceLocale",
+            id: "exp-home-1",
+            slug: "home",
+            title: "Home",
+          },
+          defaultTemplateExperience: null,
+        },
+      },
+    })
+
+    const { resolveWatchPage } = await import("./content")
+    const failed = await resolveWatchPage("en")
+    const recovered = await resolveWatchPage("en")
+
+    expect(failed).toMatchObject({
+      data: null,
+      error: { message: "Admin temporarily unavailable" },
+    })
+    expect(recovered).toMatchObject({
+      error: null,
+      data: { kind: "experience", experience: { slug: "home" } },
+    })
+    expect(queryMock).toHaveBeenCalledTimes(2)
+
+    await resolveWatchPage("en")
+    expect(queryMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("retries a transient curated Experience failure instead of caching its error", async () => {
+    cacheUnstableSuccesses.value = true
+    queryMock
+      .mockRejectedValueOnce(new Error("Admin temporarily unavailable"))
+      .mockResolvedValueOnce({
+        data: {
+          experienceBySlug: {
+            __typename: "ExperienceLocale",
+            id: "exp-christmas-1",
+            slug: "christmas",
+            title: "Christmas",
+          },
+        },
+      })
+
+    const { resolveWatchExperiencePage } = await import("./content")
+    const failed = await resolveWatchExperiencePage("en", "christmas")
+    const recovered = await resolveWatchExperiencePage("en", "christmas")
+
+    expect(failed).toMatchObject({
+      data: null,
+      error: { message: "Admin temporarily unavailable" },
+    })
+    expect(recovered).toMatchObject({
+      error: null,
+      data: { kind: "experience", experience: { slug: "christmas" } },
+    })
+    expect(queryMock).toHaveBeenCalledTimes(2)
+
+    await resolveWatchExperiencePage("en", "christmas")
+    expect(queryMock).toHaveBeenCalledTimes(2)
+  })
+
+  it("keeps an intentional missing homepage result cacheable", async () => {
+    cacheUnstableSuccesses.value = true
+    queryMock.mockResolvedValue({
+      data: {
+        watchSetting: {
+          homepageExperience: null,
+          defaultTemplateExperience: null,
+        },
+      },
+    })
+    const { resolveWatchPage, isWatchPageMissingError } =
+      await import("./content")
+    const first = await resolveWatchPage("en")
+    const second = await resolveWatchPage("en")
+    expect(first.data).toBeNull()
+    expect(isWatchPageMissingError(first.error)).toBe(true)
+    expect(second).toEqual(first)
+    expect(queryMock).toHaveBeenCalledTimes(1)
+  })
+
+  it("keeps an intentional missing curated Experience result cacheable", async () => {
+    cacheUnstableSuccesses.value = true
+    queryMock.mockResolvedValue({ data: { experienceBySlug: null } })
+    const { resolveWatchExperiencePage, isWatchPageMissingError } =
+      await import("./content")
+    const first = await resolveWatchExperiencePage("en", "missing-curated")
+    const second = await resolveWatchExperiencePage("en", "missing-curated")
+    expect(first.data).toBeNull()
+    expect(isWatchPageMissingError(first.error)).toBe(true)
+    expect(second).toEqual(first)
+    expect(queryMock).toHaveBeenCalledTimes(1)
   })
 
   const copyLagErrors = ["eyebrow", "title", "description", "ctaLabel"].map(
@@ -1187,6 +1306,101 @@ describe("resolveWatchVideoBySlug — locale fallback", () => {
     expect(result?.video.subtitles).toEqual([
       expect.objectContaining({ documentId: "sub-russian-edition-wide" }),
     ])
+  })
+
+  it("selects each language's own-name entry by its bcp47, not the first non-en key (FGE-50)", async () => {
+    const frenchVariant = {
+      ...(makeAdminVideo().variants as Record<string, unknown>[])[0],
+      documentId: "variant-french",
+      slug: "french",
+      language: {
+        coreId: "496",
+        bcp47: "fr",
+        slug: "french",
+        // Shuffled: the first non-en key is a German translation.
+        name: { de: "Französisch", en: "French", fr: "Français" },
+      },
+    }
+    const subtitle = (
+      slug: string,
+      bcp47: string,
+      name: Record<string, string>,
+    ) => ({
+      documentId: `sub-${slug}`,
+      vttSrc: `https://cdn.example/${slug}.vtt`,
+      srtSrc: null,
+      primary: false,
+      aiGenerated: false,
+      video: null,
+      language: { coreId: slug, bcp47, slug, name },
+    })
+    queryMock
+      .mockResolvedValueOnce({
+        data: {
+          watchVideoRouteSnapshotBySlug: makeAdminVideo({
+            slug: "perfect-3",
+            variants: [frenchVariant],
+          }),
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          videoDub: makeAdminDub({
+            ...frenchVariant,
+            videoEdition: {
+              subtitles: [
+                subtitle("russian", "ru", {
+                  de: "Russisch",
+                  en: "Russian",
+                  ru: "Русский",
+                }),
+                // `ku` is Latin-script Kurmanji; this row is ku-Arab, so the
+                // entry is not its own name.
+                subtitle("kurdish-arab", "ku-Arab", {
+                  en: "Kurdish",
+                  ku: "kurdî",
+                }),
+                subtitle("arabic", "ar", { en: "Arabic", ar: "العربية" }),
+                // No `en` entry: the label is the slug's English form, never the
+                // first translation (Spanish "Alemán").
+                subtitle("german", "de", { es: "Alemán", fr: "Allemand" }),
+              ],
+            },
+          }),
+        },
+      })
+
+    const { resolveWatchVideoBySlug } = await import("./content")
+
+    const result = await resolveWatchVideoBySlug("perfect-3", "french")
+
+    expect(result?.selectedVariant.language).toMatchObject({
+      name: "French",
+      nameLang: "en",
+      nativeName: "Français",
+      nativeNameLang: "fr",
+    })
+    const byslug = Object.fromEntries(
+      (result?.video.subtitles ?? []).map((track) => [
+        track.language.slug,
+        track.language,
+      ]),
+    )
+    expect(byslug["russian"]).toMatchObject({
+      nativeName: "Русский",
+      nativeNameLang: "ru",
+    })
+    expect(byslug["arabic"]).toMatchObject({
+      nativeName: "العربية",
+      nativeNameLang: "ar",
+    })
+    expect(byslug["kurdish-arab"]).toMatchObject({ nativeName: null })
+    expect(byslug["kurdish-arab"]).not.toHaveProperty("nativeNameLang")
+    expect(byslug["german"]).toMatchObject({ name: "German" })
+    expect(byslug["german"]).not.toHaveProperty("nameLang")
+    expect(byslug["german"]).toMatchObject({ nativeName: null })
+    // Names are English: map `en` (de/ru translations never win).
+    expect(byslug["russian"]).toMatchObject({ name: "Russian", nameLang: "en" })
   })
 
   it("does not re-fetch when the primary fetch already returns a locale row", async () => {

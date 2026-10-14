@@ -23,8 +23,10 @@ export const WATCH_HEADER_LANGUAGE_SWITCHER_EVENT =
 export type WatchHeaderLanguageSwitcherDetail = {
   visible: boolean
   onClick: (() => void) | null
-  /** Active audio language's BCP 47 primary subtag, ready for display. */
+  /** Active audio language code, including a compact variant suffix if present. */
   languageCode?: string | null
+  /** Display name for the language represented by `languageCode`. */
+  languageName?: string | null
   /** Stable mount token so stale cleanup cannot clear a newer registration. */
   ownerToken?: symbol
 }
