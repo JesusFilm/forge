@@ -138,6 +138,7 @@
     "versesAriaValue": "Stihovi {first} do {last} od {total}, {chapter}",
     "demoVerse": "Prevucite gore za sljedeći stih",
     "demoChapter": "Prevucite lijevo za sljedeće poglavlje",
+    "demoChapterRtl": "Prevucite desno za sljedeće poglavlje",
     "demoSkip": "Dodirnite da preskočite",
     "demoSkipAriaLabel": "Preskoči demonstraciju prevlačenja",
     "selectVerseAriaHint": "Dvaput dodirnite da odaberete ovaj stih",
@@ -773,5 +774,8 @@
     "send": "Pošalji",
     "sending": "Slanje…",
     "sendAriaLabel": "Pošalji povratne informacije"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikacija koristi vašu lokalnu mrežu da pronađe uređaje za emitiranje kako biste mogli puštati videozapise na svom televizoru."
   }
 }

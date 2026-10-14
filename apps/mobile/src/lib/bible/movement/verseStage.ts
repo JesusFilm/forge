@@ -208,6 +208,7 @@ export function interruptChange<V, F>(
   stage: VerseStage<V, F>,
   live: StageVerse<V>,
   progress: number,
+  layoutSign: 1 | -1,
 ): VerseStage<V, F> {
   const { change, shown, waiting } = stage
   if (!change || !shown || !waiting || shown.key === live.key) return stage
@@ -216,6 +217,7 @@ export function interruptChange<V, F>(
     change.axis,
     change.from,
     changeTiming(change).split,
+    layoutSign,
   )
   const at = (curve: SlideCurve) => curveAt(curve, progress)
   // A verse that has not reported its fit is still hidden.
@@ -382,19 +384,20 @@ const still = (value: number): SlideCurve => ({
   outputRange: [value, value],
 })
 
-// Forward moves both verses up for the next verse, and left for the next
-// chapter. The old verse fades out until `split`, and the new verse fades in
-// after it; they never overlap. The other axis holds where the verse was.
+// Forward moves up for the next verse, and left for the next chapter (right in
+// a right-to-left layout, because a transform never mirrors). The old verse
+// fades out until `split`, then the new one fades in; the other axis holds.
 export function slideCurves(
   direction: MoveDirection,
   axis: SwipeAxis,
   from: VersePlace | null,
   split: number,
+  layoutSign: 1 | -1,
   shift: number = VERSE_SLIDE_SHIFT,
 ): SlideCurves {
-  const sign = direction === "forward" ? -1 : 1
-  const start = from ?? { opacity: 0, x: 0, y: 0 }
   const vertical = axis === "verse"
+  const sign = (direction === "forward" ? -1 : 1) * (vertical ? 1 : layoutSign)
+  const start = from ?? { opacity: 0, x: 0, y: 0 }
   const along = vertical ? start.y : start.x
   const across = vertical ? start.x : start.y
   const outgoingAlong =

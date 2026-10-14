@@ -138,6 +138,7 @@
     "versesAriaValue": "Iivesi {first} ukuya ku-{last} kwe-{total}, {chapter}",
     "demoVerse": "Tyibilikisa phezulu uye kwivesi elandelayo",
     "demoChapter": "Tyibilikisa ngasekhohlo uye kwisahluko esilandelayo",
+    "demoChapterRtl": "Tyibilikisa ngasekunene uye kwisahluko esilandelayo",
     "demoSkip": "Chukumisa ukuze utsibe",
     "demoSkipAriaLabel": "Tsiba umboniso wokutyibilikisa",
     "selectVerseAriaHint": "Chukumisa kabini ukuze ukhethe le vesi",
@@ -773,5 +774,8 @@
     "send": "Thumela",
     "sending": "Kuyathunyelwa…",
     "sendAriaLabel": "Thumela impendulo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "I-app isebenzisa uthungelwano lwakho lwendawo ukukhangela izixhobo onokuthumela kuzo iividiyo, ukuze ukwazi ukudlala iividiyo kumabonakude wakho."
   }
 }

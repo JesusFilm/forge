@@ -138,6 +138,7 @@
     "versesAriaValue": "Ba vɛrsɛ {first} tii {last} kati na {total}, {chapter}",
     "demoVerse": "Benda na likolo mpo na vɛrsɛ oyo ekolanda",
     "demoChapter": "Benda na loboko ya mwasi mpo na mokapo oyo ekolanda",
+    "demoChapterRtl": "Benda na loboko ya mobali mpo na mokapo oyo ekolanda",
     "demoSkip": "Fina mpo na koleka",
     "demoSkipAriaLabel": "Leka lilakisi ya kobenda",
     "selectVerseAriaHint": "Fina mbala mibale mpo na kopona vɛrsɛ oyo",
@@ -773,5 +774,8 @@
     "send": "Tinda",
     "sending": "Ezali kotinda…",
     "sendAriaLabel": "Tinda makanisi"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Application esalelaka réseau ya esika ozali mpo na koluka bisaleli oyo okoki kotindela ba vidéo, mpo okoka kotambwisa ba vidéo na TV na yo."
   }
 }

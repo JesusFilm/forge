@@ -138,6 +138,7 @@
     "versesAriaValue": "Vers {first} bis {last} vo {total}, {chapter}",
     "demoVerse": "Uffe wische für de nächschti Vers",
     "demoChapter": "Nach links wische für s’nächschte Kapitel",
+    "demoChapterRtl": "Nach rächts wische für s’nächschte Kapitel",
     "demoSkip": "Tippe zum Überspringe",
     "demoSkipAriaLabel": "Wisch-Vorfüehrig überspringe",
     "selectVerseAriaHint": "Doppelt tippe, zum de Vers uswähle",
@@ -773,5 +774,8 @@
     "send": "Schicke",
     "sending": "Wird gschickt…",
     "sendAriaLabel": "Feedback schicke"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "D’App bruucht dis lokale Netz, zum Grät für d’Übertragig finde, damit du Videos uf dim Fernseh chasch abspiele."
   }
 }

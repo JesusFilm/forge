@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 
 import { useDownloads } from "../../contexts/DownloadsProvider"
 import { useTypography } from "../../hooks/useTypography"
+import { directionalIcon } from "../../i18n/layoutRtl"
 import { useTextDirection } from "../../i18n/textDirection"
 import { useT } from "../../i18n/useT"
 import { TEXT_SECONDARY } from "../../lib/color"
@@ -117,7 +118,7 @@ export function MyWatchScreen() {
                     {t("seeAll")}
                   </Text>
                   <Ionicons
-                    name="chevron-forward"
+                    name={directionalIcon("chevron-forward")}
                     size={16}
                     color={TEXT_SECONDARY}
                   />

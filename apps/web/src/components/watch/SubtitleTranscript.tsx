@@ -21,6 +21,7 @@ import type { MuxPlayerRef } from "@forge/video-player"
 import type { WatchSubtitle } from "@/lib/content"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
 import { GLASS_OUTLINE_CLASS } from "@/lib/glass-outline"
+import { isolateLanguageName } from "@/lib/language-display"
 import {
   filterTranscriptSubtitlesForAudio,
   formatCompactTranscript,
@@ -28,6 +29,8 @@ import {
   type InitialSubtitleTranscript,
   type SubtitleCue,
 } from "@/lib/subtitle-transcript"
+
+import { NativeLanguageName } from "./NativeLanguageName"
 
 type InteractiveTranscriptModule =
   typeof import("./InteractiveSubtitleTranscript")
@@ -238,11 +241,38 @@ export function SubtitleTranscript({
 
   if (transcriptSubtitles.length === 0) return null
 
-  const languageLabel = (subtitle: WatchSubtitle) =>
-    subtitle.language.nativeName &&
+  const hasNativeLabel = (subtitle: WatchSubtitle) =>
+    Boolean(subtitle.language.nativeName) &&
     subtitle.language.nativeName !== subtitle.language.name
-      ? `${subtitle.language.name} (${subtitle.language.nativeName})`
+
+  // Native <option> content is text only: nested markup is dropped and a `lang`
+  // on the <option> would tag the whole mixed label. Keep one plain label and
+  // isolate each name so an RTL native name cannot reorder its neighbours.
+  const optionLabel = (subtitle: WatchSubtitle) =>
+    hasNativeLabel(subtitle)
+      ? `${isolateLanguageName(subtitle.language.name)} (${isolateLanguageName(subtitle.language.nativeName!)})`
       : subtitle.language.name
+
+  const chipLabel = (subtitle: WatchSubtitle) =>
+    hasNativeLabel(subtitle) ? (
+      <>
+        {subtitle.language.nameLang === "en" ? (
+          <bdi lang="en" dir="ltr">
+            {subtitle.language.name}
+          </bdi>
+        ) : (
+          <bdi>{subtitle.language.name}</bdi>
+        )}{" "}
+        (
+        <NativeLanguageName
+          text={subtitle.language.nativeName!}
+          lang={subtitle.language.nativeNameLang}
+        />
+        )
+      </>
+    ) : (
+      subtitle.language.name
+    )
 
   const openTranscript = () => {
     if (activeVttSrc && loadedTranscripts.get(activeVttSrc) === null) {
@@ -402,7 +432,7 @@ export function SubtitleTranscript({
                         key={subtitle.documentId}
                         value={subtitle.language.slug}
                       >
-                        {languageLabel(subtitle)}
+                        {optionLabel(subtitle)}
                         {subtitle.aiGenerated ? t("aiSuffix") : ""}
                       </option>
                     ))}
@@ -410,7 +440,7 @@ export function SubtitleTranscript({
                 </label>
               ) : (
                 <span className="rounded-full bg-stone-900/60 px-3 py-1 text-sm sm:text-xs font-medium uppercase tracking-wide text-stone-300">
-                  {activeSubtitle ? languageLabel(activeSubtitle) : ""}
+                  {activeSubtitle ? chipLabel(activeSubtitle) : ""}
                   {activeSubtitle?.aiGenerated ? t("aiSuffix") : ""}
                 </span>
               )}

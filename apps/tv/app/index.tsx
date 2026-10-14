@@ -91,6 +91,7 @@ import { useShowcasePrefs } from "../src/lib/showcaseMode/useShowcasePrefs"
 import { scale } from "../src/lib/scale"
 import { resolveHomeScreenState } from "../src/lib/watchHome/homeScreenState"
 import type { WatchHomeCard } from "../src/lib/watchHome/model"
+import { useTopShelfSync } from "../src/lib/topShelf/useTopShelfSync"
 
 /**
  * Forge TV Home redesign: curated watch-home set (useWatchHome lean fetch, R8)
@@ -123,6 +124,7 @@ export default function HomeScreen() {
     ContinueWatchingEntry[]
   >([])
   const [myListEntries, setMyListEntries] = useState<MyListEntry[]>([])
+  useTopShelfSync(model, continueEntries, usePathname() === "/" && !introActive)
   useFocusEffect(
     useCallback(() => {
       let cancelled = false

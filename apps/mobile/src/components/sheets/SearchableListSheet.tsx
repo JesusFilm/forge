@@ -276,7 +276,12 @@ export function SearchableListSheet<T>({
           color={colors.secondaryText}
         />
         <TextInput
-          style={[styles.searchInput, typography.body, primaryText]}
+          style={[
+            styles.searchInput,
+            typography.body,
+            primaryText,
+            direction.ui,
+          ]}
           placeholder={searchPlaceholder}
           placeholderTextColor={colors.secondaryText}
           value={query}

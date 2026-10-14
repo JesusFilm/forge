@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
+import { WATCH_REFERRER_POLICY } from "../watch-security-headers.mjs"
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -64,7 +65,7 @@ export type ProxyRequest = {
 
 const REDIRECT_CACHE_CONTROL = "private, max-age=0"
 const MAX_PATH_LEN = 2048
-const SAFE_PUBLIC_PATH = /^\/[A-Za-z0-9._\-/]+$/
+const SAFE_PUBLIC_PATH = /^\/[\p{Ll}\p{Nd}A-Za-z0-9._\-/]+$/u
 const DEMO_PREFIXES = new Set([
   "demo-search",
   "demo-recommendations",
@@ -220,9 +221,25 @@ function redirectDeprecatedSearch(request: ProxyRequest): NextResponse {
   return buildRedirect(url, 307)
 }
 
+/**
+ * The baseline security-header set lives in next.config.mjs `headers()` (see
+ * watch-security-headers.mjs), which covers every route including the basePath
+ * root this function never sees.
+ *
+ * Only `Referrer-Policy` is re-applied here, and deliberately NOT
+ * `Content-Security-Policy`. Next evaluates config `headers()` BEFORE
+ * middleware and merges middleware's headers over them with a plain
+ * last-write-wins assignment, so anything middleware sets clobbers the config
+ * value for the same key. That is harmless for Referrer-Policy, whose value is
+ * identical here and whose middleware-wins behaviour is what lets
+ * `applyExperiencePreviewHeaders` override it with `no-referrer`. It would be
+ * actively harmful for CSP: once an operator promotes the full policy with
+ * `WATCH_CSP_ENFORCE=true`, a static `frame-ancestors 'self'` written here
+ * would silently overwrite it on every rewritten content route, and the
+ * promotion would look done while doing nothing.
+ */
 function applyWatchSecurityHeaders(response: NextResponse): NextResponse {
-  response.headers.set("Content-Security-Policy", "frame-ancestors 'self'")
-  response.headers.set("Referrer-Policy", "strict-origin")
+  response.headers.set("Referrer-Policy", WATCH_REFERRER_POLICY)
   return response
 }
 
@@ -247,14 +264,33 @@ function shouldBypassLocaleRewrite(pathname: string): boolean {
 function isSafeCanonicalPath(pathname: string): boolean {
   if (pathname === "/") return true
   if (pathname.length > MAX_PATH_LEN) return false
-  if (UNSAFE_PATH_PATTERN.test(pathname)) return false
-  if (pathname.split("/").some((segment) => segment === "..")) return false
-  return SAFE_PUBLIC_PATH.test(pathname)
+  let decodedPathname: string
+  try {
+    // decodeURI preserves encoded separators and reserved URL characters.
+    decodedPathname = decodeURI(pathname)
+  } catch {
+    return false
+  }
+  // Admit one spelling per path so caches and canonical URL checks agree.
+  if (encodeURI(decodedPathname) !== pathname) return false
+  if (UNSAFE_PATH_PATTERN.test(decodedPathname)) return false
+  if (decodedPathname.split("/").some((segment) => segment === "..")) {
+    return false
+  }
+  return SAFE_PUBLIC_PATH.test(decodedPathname)
 }
 
 function stripSafeSlug(segment: string): string | null {
-  const stripped = stripHtmlSuffix(segment)
-  return SAFE_SLUG_PATTERN.test(stripped) ? stripped : null
+  let decoded: string
+  try {
+    decoded = decodeURI(segment)
+  } catch {
+    return null
+  }
+  const stripped = stripHtmlSuffix(decoded)
+  return SAFE_SLUG_PATTERN.test(stripped) && stripped === stripped.toLowerCase()
+    ? stripped
+    : null
 }
 
 function internalPrefixDecision(pathname: string): InternalPrefixDecision {
@@ -294,9 +330,11 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
       audioLanguageSlug &&
       isPublicWatchLanguageSlug(audioLanguageSlug)
     ) {
-      canonicalPublicPath = watchVideoPath(
-        asContentSlug(contentSlug),
-        asLocaleSlug(audioLanguageSlug),
+      canonicalPublicPath = encodeURI(
+        watchVideoPath(
+          asContentSlug(contentSlug),
+          asLocaleSlug(audioLanguageSlug),
+        ),
       )
     }
   }
@@ -310,10 +348,12 @@ function internalPrefixDecision(pathname: string): InternalPrefixDecision {
       audioLanguageSlug &&
       isPublicWatchLanguageSlug(audioLanguageSlug)
     ) {
-      canonicalPublicPath = watchEpisodePath(
-        asContentSlug(parentSlug),
-        asContentSlug(childSlug),
-        asLocaleSlug(audioLanguageSlug),
+      canonicalPublicPath = encodeURI(
+        watchEpisodePath(
+          asContentSlug(parentSlug),
+          asContentSlug(childSlug),
+          asLocaleSlug(audioLanguageSlug),
+        ),
       )
     }
   }
@@ -561,7 +601,11 @@ function internalRewritePathname(
   const subtitleSuffix = subtitleLanguageSlug
     ? `/${watchSubtitleIntentSegment(subtitleLanguageSlug)}`
     : ""
-  return `/${decision.locale}/${decision.htmlLang}${suffix}${subtitleSuffix}`
+  const internalPathname = `/${decision.locale}/${decision.htmlLang}${suffix}${subtitleSuffix}`
+  // Keep one URL encoding across direct rewrites and re-entry admission. Some
+  // routes use a decoded manifest slug for their internal target while the
+  // public path arrived percent-encoded.
+  return encodeURI(decodeURI(internalPathname))
 }
 
 function subtitleIntentForRewrite(
@@ -860,7 +904,15 @@ async function isAdmittedInternalRewrite(
 }
 
 export async function proxy(request: ProxyRequest): Promise<NextResponse> {
-  const { pathname } = request.nextUrl
+  // The production reverse proxy lowercases percent escapes before forwarding.
+  // Hex case does not change their bytes; restore the
+  // canonical spelling before the existing exact decoding/admission checks.
+  // Do not decode here: separators, malformed escapes and ASCII aliases must
+  // still fail the strict round-trip check below.
+  const pathname = request.nextUrl.pathname.replace(
+    /%[0-9a-f]{2}/gi,
+    (escape) => escape.toUpperCase(),
+  )
 
   if (pathname.startsWith(EXPERIENCE_PREVIEW_PREFIX)) {
     return applyExperiencePreviewHeaders(NextResponse.next())

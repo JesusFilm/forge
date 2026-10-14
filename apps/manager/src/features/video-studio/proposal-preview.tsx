@@ -22,6 +22,8 @@ export default function ProposalPreview({
       canUndo: false,
       canRedo: false,
       editable: false,
+      hasUnsavedChanges: false,
+      authenticationRequired: false,
     }),
     [playing, setPlaying] = useState(false)
   const session = {

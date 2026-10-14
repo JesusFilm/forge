@@ -26,6 +26,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { useTypography } from "../../hooks/useTypography"
+import { appDirection, insetPadding } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import { NativeCastButton } from "../../lib/cast/NativeCastButton"
 import { applySkip } from "../../lib/scrubber"
@@ -560,19 +561,25 @@ export function PlayerControls({
 
   return (
     <View style={styles.container} pointerEvents="box-none">
-      {/* External routes live at the top-right corner, clear of the
-          bottom transport rows; fullscreen clears the notch and side inset. */}
+      {/* External routes live at the top end corner, clear of the bottom
+          transport rows; fullscreen clears the notch and side inset. They are
+          not playback controls, so they mirror with the app (feat-695 R11). */}
       <View
-        style={[
-          styles.routeRow,
-          fullscreen && {
-            top: Math.max(insets.top, 8),
-            right: Math.max(insets.right, 12),
-          },
-        ]}
+        style={[StyleSheet.absoluteFill, { direction: appDirection() }]}
         pointerEvents="box-none"
       >
-        {routeButtons}
+        <View
+          style={[
+            styles.routeRow,
+            fullscreen && {
+              top: Math.max(insets.top, 8),
+              right: Math.max(insetPadding(insets).paddingRight, 12),
+            },
+          ]}
+          pointerEvents="box-none"
+        >
+          {routeButtons}
+        </View>
       </View>
 
       <View style={styles.controlsRow}>
@@ -707,6 +714,9 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
     justifyContent: "center",
     alignItems: "center",
+    // Playback does not mirror (feat-695 R12): the transport order and the
+    // fullscreen bar's side insets stay physical in a right-to-left app.
+    direction: "ltr",
   },
   controlsRow: {
     flex: 1,

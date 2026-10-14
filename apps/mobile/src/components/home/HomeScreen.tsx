@@ -38,6 +38,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { useTabBarClearance } from "../../lib/tabBar"
+import { heroSwipeTarget } from "../../lib/horizontalPaging"
 import { isSeriesLabel } from "../../lib/isSeriesRecord"
 import { nextHomeLogoHidden } from "../../lib/homeLogoVisibility"
 import { heroPlaybackPaused } from "../../lib/miniPlayer/heroYield"
@@ -289,12 +290,14 @@ export function HomeScreen() {
           const { slideCount } = swipeStateRef.current
           const index = gestureStartIndexRef.current
           if (slideCount === 0) return
-          if (gesture.dx < -HERO_SWIPE_COMMIT_PX) {
-            pagerRef.current?.swipeToSlide(Math.min(index + 1, slideCount - 1))
-          } else if (gesture.dx > HERO_SWIPE_COMMIT_PX) {
-            pagerRef.current?.swipeToSlide(Math.max(index - 1, 0))
-          }
+          const target = heroSwipeTarget({
+            dx: gesture.dx,
+            index,
+            slideCount,
+            commitPx: HERO_SWIPE_COMMIT_PX,
+          })
           // Sub-threshold drag: no slide change.
+          if (target != null) pagerRef.current?.swipeToSlide(target)
         },
       }),
     [],

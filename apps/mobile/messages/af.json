@@ -138,6 +138,7 @@
     "versesAriaValue": "Verse {first} tot {last} van {total}, {chapter}",
     "demoVerse": "Swiep op vir die volgende vers",
     "demoChapter": "Swiep links vir die volgende hoofstuk",
+    "demoChapterRtl": "Swiep regs vir die volgende hoofstuk",
     "demoSkip": "Tik om oor te slaan",
     "demoSkipAriaLabel": "Slaan die swiepdemonstrasie oor",
     "selectVerseAriaHint": "Dubbeltik om hierdie vers te kies",
@@ -773,5 +774,8 @@
     "send": "Stuur",
     "sending": "Stuur tans…",
     "sendAriaLabel": "Stuur terugvoer"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Die app gebruik jou plaaslike netwerk om toestelle te vind waarna jy kan uitsaai, sodat jy video’s op jou TV kan speel."
   }
 }
