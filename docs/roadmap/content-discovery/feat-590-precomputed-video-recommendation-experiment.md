@@ -18,6 +18,12 @@ tags:
 
 ## Problem
 
+The deployed recovery attempt exposed a producer guard still restricted to the
+older two-source first page. Validate each executor recovery against its reviewed
+source/page/rank bounds and preserve the current generation's lossless prompt
+format. Add execution tests for all seven v6 shapes before resuming recovery.
+Unaffected catalogue generation continues on the existing released producer.
+
 The frozen resume saved three model receipts and 21 comparisons, reaching 2,930
 comparisons and 42 finalized videos. A reservation then committed after 19.177s,
 beyond the local 15s deadline but within Admin's 30s transaction allowance. Align

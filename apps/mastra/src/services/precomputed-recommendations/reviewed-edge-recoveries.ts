@@ -9,10 +9,14 @@ export const REVIEWED_EDGE_RECOVERIES = [
       {
         sourceVideoId: "cmokmj8ka0njkqsccfvhbto3g",
         exclusiveEndRank: 4,
+        pageIndex: 0,
+        startRank: 0,
       },
       {
         sourceVideoId: "cmokmjc390nk2qscc79tyun6g",
         exclusiveEndRank: 4,
+        pageIndex: 0,
+        startRank: 0,
       },
     ],
   },
@@ -25,6 +29,8 @@ export const REVIEWED_EDGE_RECOVERIES = [
       {
         sourceVideoId: "cmokmpysx0ohcqsccm3d7jssu",
         exclusiveEndRank: 58,
+        pageIndex: 10,
+        startRank: 54,
       },
     ],
   },
@@ -37,10 +43,14 @@ export const REVIEWED_EDGE_RECOVERIES = [
       {
         sourceVideoId: "cmokml1vs0nykqscc8bgble8n",
         exclusiveEndRank: 48,
+        pageIndex: 8,
+        startRank: 43,
       },
       {
         sourceVideoId: "cmokml41j0nz2qsccum7lf8kc",
         exclusiveEndRank: 40,
+        pageIndex: 8,
+        startRank: 35,
       },
     ],
   },
@@ -53,6 +63,8 @@ export const REVIEWED_EDGE_RECOVERIES = [
       {
         sourceVideoId: "cmp76fdgi0010ny017qq1dmyq",
         exclusiveEndRank: 48,
+        pageIndex: 8,
+        startRank: 40,
       },
     ],
   },
@@ -65,6 +77,8 @@ export const REVIEWED_EDGE_RECOVERIES = [
       {
         sourceVideoId: "cmp76huak0056ny01fdctsvy2",
         exclusiveEndRank: 22,
+        pageIndex: 4,
+        startRank: 15,
       },
     ],
   },
@@ -77,10 +91,14 @@ export const REVIEWED_EDGE_RECOVERIES = [
       {
         sourceVideoId: "cmp76h0gs0044ny01kpsgjamo",
         exclusiveEndRank: 28,
+        pageIndex: 6,
+        startRank: 24,
       },
       {
         sourceVideoId: "cmp76h7zf004gny01dgda140w",
         exclusiveEndRank: 23,
+        pageIndex: 6,
+        startRank: 20,
       },
     ],
   },
@@ -93,6 +111,8 @@ export const REVIEWED_EDGE_RECOVERIES = [
       {
         sourceVideoId: "cmp76gs4a003qny010bcs7ag0",
         exclusiveEndRank: 33,
+        pageIndex: 8,
+        startRank: 25,
       },
     ],
   },
@@ -105,10 +125,14 @@ export const REVIEWED_EDGE_RECOVERIES = [
       {
         sourceVideoId: "cmp76fz8p002iny01fjtsfju9",
         exclusiveEndRank: 31,
+        pageIndex: 8,
+        startRank: 28,
       },
       {
         sourceVideoId: "cmp76g4q3002wny01very7csl",
         exclusiveEndRank: 27,
+        pageIndex: 8,
+        startRank: 25,
       },
     ],
   },
