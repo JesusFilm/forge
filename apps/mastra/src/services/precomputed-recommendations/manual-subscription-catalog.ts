@@ -629,7 +629,13 @@ export async function runManualSubscriptionCatalog(
       !z.uuid().safeParse(input.recovery.replacementCallId).success ||
       input.recovery.oldProcessExitedAttested !== true ||
       input.work.mode !== "pilot" ||
-      !sameCanonicalJson(input.work.sources, recoveryScope.sources))
+      !sameCanonicalJson(
+        input.work.sources,
+        recoveryScope.sources.map(({ sourceVideoId, exclusiveEndRank }) => ({
+          sourceVideoId,
+          exclusiveEndRank,
+        })),
+      ))
   )
     throw new ManualSubscriptionCatalogError("input_invalid")
   const frozen = await preflightManualCatalog(

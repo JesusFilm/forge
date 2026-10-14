@@ -738,8 +738,14 @@ describe("shared edge batch candidate pages", () => {
     const batchInput: FixtureInput = {
       ...identity,
       members: [
-        member("source-a", "33333333-3333-4333-8333-333333333333"),
-        member("source-b", "44444444-4444-4444-8444-444444444444"),
+        member(
+          "cmokmj8ka0njkqsccfvhbto3g",
+          "33333333-3333-4333-8333-333333333333",
+        ),
+        member(
+          "cmokmjc390nk2qscc79tyun6g",
+          "44444444-4444-4444-8444-444444444444",
+        ),
       ],
       catalog: {
         async video() {
@@ -791,8 +797,8 @@ describe("shared edge batch candidate pages", () => {
           return {
             output: request.schema.parse({
               results: [
-                { sourceVideoId: "source-a", edges: [] },
-                { sourceVideoId: "source-b", edges: [] },
+                { sourceVideoId: "cmokmj8ka0njkqsccfvhbto3g", edges: [] },
+                { sourceVideoId: "cmokmjc390nk2qscc79tyun6g", edges: [] },
               ],
             }),
             usage: { inputTokens: 5_000, outputTokens: 30 },
@@ -855,8 +861,11 @@ describe("shared edge batch candidate pages", () => {
     const result = await runEdgeBatch(batchInput)
     expect(result.state).toBe("succeeded")
     batchInput.callId = "55555555-5555-4555-8555-555555555555"
+    batchInput.generationId = "subscription-astra-budget2-20261008-v4"
+    batchInput.generationInputDigest =
+      "36d168040f404b12e12be8d4ecdf8b75c102fe459bcefb22753f434fe29443b9"
     batchInput.recovery = {
-      originalCallId: identity.callId,
+      originalCallId: "8ab8a620-1608-4115-812e-200bb2fb4b6d",
       replacementCallId: batchInput.callId,
     }
     batchInput.members.forEach((item) => {
@@ -867,7 +876,7 @@ describe("shared edge batch candidate pages", () => {
     expect(modelPrompts).toHaveLength(2)
     expect(JSON.parse(modelPrompts[1]!)).toHaveProperty("spanOffers")
     expect(createHash("sha256").update(modelPrompts[1]!).digest("hex")).toBe(
-      "9d0c881807445b35a396510517778a6fc633630a19bb1d71aae80ad32f3b899e",
+      "4bf2dfd692e49884a8eeab0a67f009cd7d6318c4c9751ebce74f0235a981207d",
     )
 
     // An unresolved old-format receipt fences a new compact call before
@@ -896,7 +905,10 @@ describe("shared edge batch candidate pages", () => {
           appliedRevision: null,
           startedAt: "2026-10-06T20:48:05.001Z",
           finishedAt: null,
-          memberSourceVideoIds: ["source-a", "source-b"],
+          memberSourceVideoIds: [
+            "cmokmj8ka0njkqsccfvhbto3g",
+            "cmokmjc390nk2qscc79tyun6g",
+          ],
         },
       ],
       nextCursor: null,

@@ -41,6 +41,23 @@ fixture contains only incident identities, candidate IDs and span hashes. Prior
 pages and replacement outputs are synthetic; no test invokes a model or claims
 production recommendation quality.
 
+The first live v6 recovery exposed a second producer boundary: `runEdgeBatch`
+still required two sources on page zero with four candidates each. Extending the
+Admin allowlist and the manual command did not exercise that executor guard.
+Keep page index and starting rank in the producer's reviewed manifest, and run
+every reviewed shape through the actual executor with fake model/ingest ports.
+The seven v6 cases must reserve once, preserve the exact candidate ranges and
+store known usage. Reject altered generation, source, page, rank and replacement
+IDs before reservation. Preserve the legacy v4 prompt bytes while current v6
+recoveries use the same lossless representation as their ordinary calls.
+
+An acknowledged replacement blocks other new calls until its receipt applies.
+If the runner stops before reserving that replacement, resume the same approved
+replacement ID in a fresh attempt after proving no replacement row exists and
+all prior attempts and leases have closed. Do not launch unrelated work while
+that acknowledgement is unresolved, and never clear the original unknown usage.
+
 References: `docs/operations/precomputed-catalog-build.md`,
 `tests/integration/precomputed-reviewed-edge-recovery.db.test.ts`,
+`apps/mastra/src/services/precomputed-recommendations/reviewed-edge-execution.test.ts`,
 `apps/admin/src/services/recommendations/precomputed/reviewed-edge-recoveries.ts`.

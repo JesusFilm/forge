@@ -1020,18 +1020,33 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
       pageSize: member.pageSize,
     }),
   )
+  const reviewedRecovery = input.recovery
+    ? REVIEWED_EDGE_RECOVERIES.find(
+        (scope) =>
+          scope.generationId === input.generationId &&
+          scope.generationInputDigest === input.generationInputDigest &&
+          scope.originalCallId === input.recovery?.originalCallId,
+      )
+    : undefined
   if (
     input.recovery &&
     (input.callId !== input.recovery.replacementCallId ||
-      members.length !== 2 ||
-      planned.some(
-        (page) =>
-          page.pageIndex !== 0 ||
-          page.candidates.length !== 4 ||
+      !reviewedRecovery ||
+      members.length !== reviewedRecovery.sources.length ||
+      planned.some((page, index) => {
+        const reviewed = reviewedRecovery.sources[index]
+        return (
+          !reviewed ||
+          page.sourceVideoId !== reviewed.sourceVideoId ||
+          page.pageIndex !== reviewed.pageIndex ||
+          page.candidates.length !==
+            reviewed.exclusiveEndRank - reviewed.startRank ||
           page.candidates.some(
-            (candidate, index) => candidate.poolRank !== index,
-          ),
-      ))
+            (candidate, offset) =>
+              candidate.poolRank !== reviewed.startRank + offset,
+          )
+        )
+      }))
   )
     throw new EdgeBatchExecutionError("input_invalid")
   if (planned.some((page) => page.sourceCandidateCount === 0)) {
@@ -1138,10 +1153,12 @@ export async function runEdgeBatch(input: EdgeBatchInput): Promise<
     spanOffers: spanPlan.promptOffers,
     spanOfferCoverage: spanPlan.coverage,
   } satisfies EdgePromptDocument
-  const renderedPrompt = input.recovery
+  const legacyRecovery =
+    reviewedRecovery?.generationId === "subscription-astra-budget2-20261008-v4"
+  const renderedPrompt = legacyRecovery
     ? null
     : renderEdgePrompt(promptDocument)
-  // The reviewed recovery call retains its original exact bytes. New calls
+  // The v4 recovery retains its original exact bytes. Current-generation calls
   // advertise their compact encoding inside the prompt; inputDigest still
   // binds every exact byte, while the generation's semantic v1 stays stable.
   const prompt =
