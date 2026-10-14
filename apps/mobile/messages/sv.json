@@ -138,6 +138,7 @@
     "versesAriaValue": "Vers {first} till {last} av {total}, {chapter}",
     "demoVerse": "Svep uppåt för nästa vers",
     "demoChapter": "Svep åt vänster för nästa kapitel",
+    "demoChapterRtl": "Svep åt höger för nästa kapitel",
     "demoSkip": "Tryck för att hoppa över",
     "demoSkipAriaLabel": "Hoppa över svepdemonstrationen",
     "selectVerseAriaHint": "Dubbeltryck för att markera versen",
@@ -773,5 +774,8 @@
     "send": "Skicka",
     "sending": "Skickar…",
     "sendAriaLabel": "Skicka feedback"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Appen använder ditt lokala nätverk för att hitta Cast-enheter, så att du kan spela upp videor på din tv."
   }
 }

@@ -138,6 +138,7 @@
     "versesAriaValue": "Panti {first} līdz {last} no {total}, {chapter}",
     "demoVerse": "Velciet augšup, lai pārietu uz nākamo pantu",
     "demoChapter": "Velciet pa kreisi, lai pārietu uz nākamo nodaļu",
+    "demoChapterRtl": "Velciet pa labi, lai pārietu uz nākamo nodaļu",
     "demoSkip": "Pieskarieties, lai izlaistu",
     "demoSkipAriaLabel": "Izlaist vilkšanas demonstrāciju",
     "selectVerseAriaHint": "Pieskarieties divreiz, lai atlasītu šo pantu",
@@ -773,5 +774,8 @@
     "send": "Sūtīt",
     "sending": "Notiek sūtīšana…",
     "sendAriaLabel": "Sūtīt atsauksmi"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Lietotne izmanto jūsu lokālo tīklu apraides ierīču atrašanai, lai jūs varētu atskaņot video savā televizorā."
   }
 }

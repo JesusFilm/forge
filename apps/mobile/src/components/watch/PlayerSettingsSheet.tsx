@@ -19,6 +19,7 @@ import {
   hexToRgba,
 } from "../../lib/color"
 import { setCastPlaybackRateLogged } from "../../lib/cast/castAdapter"
+import { directionalIcon } from "../../i18n/layoutRtl"
 import { useT, type UiT } from "../../i18n/useT"
 import {
   PLAYBACK_SPEEDS,
@@ -123,7 +124,11 @@ export function PlayerSettingsSheet({
       <Text style={styles.rowTitle}>{title}</Text>
       <View style={styles.rowValue}>
         <Text style={styles.rowValueText}>{value}</Text>
-        <Ionicons name="chevron-forward" size={16} color={TEXT_SECONDARY} />
+        <Ionicons
+          name={directionalIcon("chevron-forward")}
+          size={16}
+          color={TEXT_SECONDARY}
+        />
       </View>
     </Pressable>
   )
@@ -210,7 +215,11 @@ export function PlayerSettingsSheet({
           {...{ "dd-action-name": "player-settings-report-problem" }}
         >
           <Text style={styles.rowTitle}>{t("reportProblem")}</Text>
-          <Ionicons name="chevron-forward" size={16} color={TEXT_SECONDARY} />
+          <Ionicons
+            name={directionalIcon("chevron-forward")}
+            size={16}
+            color={TEXT_SECONDARY}
+          />
         </Pressable>
       </>
     )
@@ -269,7 +278,11 @@ export function PlayerSettingsSheet({
                 accessibilityLabel={t("backAriaLabel")}
                 {...{ "dd-action-name": "player-settings-back" }}
               >
-                <Ionicons name="chevron-back" size={22} color={TEXT_PRIMARY} />
+                <Ionicons
+                  name={directionalIcon("chevron-back")}
+                  size={22}
+                  color={TEXT_PRIMARY}
+                />
               </Pressable>
             ) : (
               <View style={styles.headerButton} />

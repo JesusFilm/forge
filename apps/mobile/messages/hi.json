@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} में से पद {first} से {last}, {chapter}",
     "demoVerse": "अगले पद के लिए ऊपर स्वाइप करें",
     "demoChapter": "अगले अध्याय के लिए बाएँ स्वाइप करें",
+    "demoChapterRtl": "अगले अध्याय के लिए दाएँ स्वाइप करें",
     "demoSkip": "छोड़ने के लिए टैप करें",
     "demoSkipAriaLabel": "स्वाइप का प्रदर्शन छोड़ें",
     "selectVerseAriaHint": "यह पद चुनने के लिए दो बार टैप करें",
@@ -773,5 +774,8 @@
     "send": "भेजें",
     "sending": "भेजा जा रहा है…",
     "sendAriaLabel": "प्रतिक्रिया भेजें"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ऐप कास्ट डिवाइस ढूँढने के लिए आपके स्थानीय नेटवर्क का उपयोग करता है, ताकि आप अपने टीवी पर वीडियो चला सकें।"
   }
 }

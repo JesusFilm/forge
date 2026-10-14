@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useNonRouteSheetSuppression } from "../../hooks/useNonRouteSheetSuppression"
 import { useReduceMotion } from "../../hooks/useReduceMotion"
 import { useSlideUpSheet } from "../../hooks/useSlideUpSheet"
+import { insetPadding } from "../../i18n/layoutRtl"
 import { useT } from "../../i18n/useT"
 import { BG_COLOR, BLACK, hexToRgba } from "../../lib/color"
 import { FeedbackSheetContent } from "./FeedbackSheetContent"
@@ -93,8 +94,7 @@ export function FeedbackModal({ context, onClose }: FeedbackModalProps) {
               styles.panel,
               {
                 paddingBottom: Math.max(insets.bottom, 12),
-                paddingLeft: insets.left,
-                paddingRight: insets.right,
+                ...insetPadding(insets),
               },
               {
                 transform: [

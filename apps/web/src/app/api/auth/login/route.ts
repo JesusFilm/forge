@@ -7,6 +7,8 @@ import {
   WEB_AUTH_RETURN_TO_COOKIE,
   WEB_AUTH_STATE_COOKIE,
   WEB_AUTH_VERIFIER_COOKIE,
+  clearLegacyWebAuthCookie,
+  clearWebAuthCookie,
   requireWebSessionSecret,
   webAuthCookieOptions,
 } from "@/auth/web-session"
@@ -62,7 +64,17 @@ export async function GET(request: Request) {
     ...cookieOptions,
     maxAge: 60 * 10,
   })
-  response.cookies.delete(WEB_AUTH_FORCE_LOGIN_COOKIE)
+  clearWebAuthCookie(response.headers, WEB_AUTH_FORCE_LOGIN_COOKIE)
+  // Same shadowing hazard as the session cookie, on a ~10 minute window: an
+  // abandoned pre-rollout sign-in leaves Path=/ state/verifier cookies that
+  // would win the read and reject this handshake as invalid_state.
+  for (const name of [
+    WEB_AUTH_STATE_COOKIE,
+    WEB_AUTH_VERIFIER_COOKIE,
+    WEB_AUTH_RETURN_TO_COOKIE,
+  ]) {
+    clearLegacyWebAuthCookie(response.headers, name)
+  }
 
   return response
 }

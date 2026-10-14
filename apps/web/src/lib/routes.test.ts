@@ -37,10 +37,24 @@ const spanishCastilian = asLocaleSlug("spanish-castilian")
 const portugueseBrazil = asLocaleSlug("portuguese-brazil")
 
 describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
+  it.each([
+    "tümlükden-nura",
+    "la-liberté-de-l-interieur-freedom-within",
+    "la-búsqueda-the-search",
+    "jätku-leiba",
+  ])("accepts the reported Unicode content slug %s", (slug) => {
+    expect(tryAsContentSlug(slug)).toBe(slug)
+    expect(asContentSlug(slug)).toBe(slug)
+  })
+
   it("returns branded slug on valid input", () => {
     expect(tryAsContentSlug("jesus")).toBe("jesus")
     expect(tryAsContentSlug("soccer_event_collection")).toBe(
       "soccer_event_collection",
+    )
+    expect(tryAsContentSlug("kılıç")).toBe("kılıç")
+    expect(tryAsContentSlug("la-liberté-de-l-interieur-freedom-within")).toBe(
+      "la-liberté-de-l-interieur-freedom-within",
     )
     expect(tryAsLocaleSlug("portuguese-brazil")).toBe("portuguese-brazil")
   })
@@ -53,6 +67,14 @@ describe("tryAsContentSlug / tryAsLocaleSlug (Result-shape)", () => {
     expect(tryAsContentSlug("Jesus")).toBeNull()
     expect(tryAsLocaleSlug("English")).toBeNull()
   })
+
+  it.each(["ｊｅｓｕｓ", "ᴀlpha", "ʰome", "ɪesus", "ꜱcript", "ﬁlm"])(
+    "rejects lookalike Unicode content slug %s",
+    (slug) => {
+      expect(tryAsContentSlug(slug)).toBeNull()
+      expect(() => asContentSlug(slug)).toThrow()
+    },
+  )
 
   it("returns null on dot", () => {
     expect(tryAsContentSlug("jesus.html")).toBeNull()

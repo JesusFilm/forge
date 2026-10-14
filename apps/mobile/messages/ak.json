@@ -138,6 +138,7 @@
     "versesAriaValue": "Nkyekyɛm {first} kosi {last} wɔ {total} mu, {chapter}",
     "demoVerse": "Pra kɔ soro ma nkyekyɛm a edi hɔ",
     "demoChapter": "Pra kɔ benkum ma ti a edi hɔ",
+    "demoChapterRtl": "Pra kɔ nifa ma ti a edi hɔ",
     "demoSkip": "Bɔ so na twa so",
     "demoSkipAriaLabel": "Twa pra nkyerɛkyerɛ no so",
     "selectVerseAriaHint": "Bɔ so mprenu na paw nkyekyɛm yi",
@@ -773,5 +774,8 @@
     "send": "Soma",
     "sending": "Ɛresoma…",
     "sendAriaLabel": "Soma adwenkyerɛ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App no de wo mpɔtam network hwehwɛ mfiri a wubetumi de video akɔ so, sɛnea ɛbɛyɛ a wubetumi abɔ video ahorow wɔ wo TV so."
   }
 }

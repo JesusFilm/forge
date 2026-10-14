@@ -138,6 +138,7 @@
     "versesAriaValue": "Vers {first} til {last} af {total}, {chapter}",
     "demoVerse": "Stryg op for at se næste vers",
     "demoChapter": "Stryg til venstre for at se næste kapitel",
+    "demoChapterRtl": "Stryg til højre for at se næste kapitel",
     "demoSkip": "Tryk for at springe over",
     "demoSkipAriaLabel": "Spring demonstrationen af strygebevægelser over",
     "selectVerseAriaHint": "Tryk to gange for at vælge dette vers",
@@ -773,5 +774,8 @@
     "send": "Indsend",
     "sending": "Sender…",
     "sendAriaLabel": "Indsend feedback"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Appen bruger dit lokale netværk til at finde Cast-enheder, så du kan afspille videoer på dit tv."
   }
 }

@@ -2969,6 +2969,31 @@ describe("Catch-all routing — slug→bcp47 family fallback for UI chrome (2-se
 })
 
 describe("Catch-all routing — 3-seg episode branch", () => {
+  it.each([
+    "tümlükden-nura",
+    "la-búsqueda-the-search",
+    "la-liberté-de-l-interieur-freedom-within",
+    "jätku-leiba",
+  ])(
+    "decodes a percent-encoded episode slug for resolution: %s",
+    async (slug) => {
+      resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
+
+      await renderLanguageLessEpisode(
+        "conversation-starters.html",
+        `${encodeURIComponent(slug)}.html`,
+      )
+
+      expect(resolveSeriesEpisodeBySlugMock).toHaveBeenCalledWith(
+        "conversation-starters",
+        slug,
+        "english",
+      )
+      expect(watchPageClientMock).toHaveBeenCalledTimes(1)
+      expect(notFoundMock).not.toHaveBeenCalled()
+    },
+  )
+
   it("renders a language-less two-segment episode as contextual English", async () => {
     resolveSeriesEpisodeBySlugMock.mockResolvedValue(makeEpisodeResult())
 

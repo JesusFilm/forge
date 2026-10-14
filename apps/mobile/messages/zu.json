@@ -138,6 +138,7 @@
     "versesAriaValue": "Amavesi {first} kuya ku-{last} kwe-{total}, {chapter}",
     "demoVerse": "Swayiphela phezulu ukuthola ivesi elilandelayo",
     "demoChapter": "Swayiphela kwesobunxele ukuthola isahluko esilandelayo",
+    "demoChapterRtl": "Swayiphela kwesokudla ukuthola isahluko esilandelayo",
     "demoSkip": "Thepha ukuze weqe",
     "demoSkipAriaLabel": "Yeqa umboniso wokuswayipha",
     "selectVerseAriaHint": "Thepha kabili ukuze ukhethe leli vesi",
@@ -773,5 +774,8 @@
     "send": "Thumela",
     "sending": "Kuyathunyelwa…",
     "sendAriaLabel": "Thumela impendulo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "I-app isebenzisa inethiwekhi yakho yendawo ukuthola amadivayisi ongasakazela kuwo, ukuze ukwazi ukudlala amavidiyo ku-TV yakho."
   }
 }

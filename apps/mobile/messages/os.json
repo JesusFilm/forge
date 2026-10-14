@@ -138,6 +138,7 @@
     "versesAriaValue": "Стихтӕ {first} – {last}, иумӕ {total}, {chapter}",
     "demoVerse": "Уӕлӕмӕ — иннӕ стих",
     "demoChapter": "Галиуӕрдӕм — иннӕ сӕр",
+    "demoChapterRtl": "Рахизырдӕм — иннӕ сӕр",
     "demoSkip": "Ахизынӕн — ӕлхъив",
     "demoSkipAriaLabel": "Равдыст ахизын",
     "selectVerseAriaHint": "Ацы стих равзарынӕн — дыууӕ хатты ӕлхъив",
@@ -773,5 +774,8 @@
     "send": "Арвитын",
     "sending": "Арвитын…",
     "sendAriaLabel": "Хъуыды арвитын"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Приложени дӕ локалон сетьӕй пайда кӕны, цӕмӕй ссара телевизорыл равдисынӕн устройствотӕ ӕмӕ дӕ бон уа видеотӕм дӕ телевизорыл кӕсын."
   }
 }

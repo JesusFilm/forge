@@ -38,7 +38,8 @@
     "Discover": "The search tab: a search field, a grid of video results, a button that loads more results, and the messages for no results and for a failed search.",
     "BrowseTopics": "The topic cards that the search tab shows before the viewer types. Each card names a topic of Christian videos, and a tap searches that topic.",
     "Mission": "The mission page and the three mission cards at the bottom of Home. The page describes the ministry's video library, the tools it builds next, and an invitation to test new tools early. An eyebrow is a short line in capital letters above a heading.",
-    "Feedback": "The feedback form. A viewer opens it from the More screen, or from the player's settings to report a problem with the video. Step one picks the kind of feedback; step two takes the message, an optional name and email, and an opt-in switch for device details. The Jesus Film Project team reads what the viewer sends."
+    "Feedback": "The feedback form. A viewer opens it from the More screen, or from the player's settings to report a problem with the video. Step one picks the kind of feedback; step two takes the message, an optional name and email, and an opt-in switch for device details. The Jesus Film Project team reads what the viewer sends.",
+    "NativePermissions": "Text that iOS shows in its own system alerts when the app asks for a permission. iOS writes the alert title and the buttons in the phone's language; this text is the explanation under the title."
   },
   "keys": {
     "Common.goBackAriaLabel": {
@@ -96,6 +97,11 @@
       "role": "spoken download status of the shown translation",
       "visibility": "assistive technology only",
       "composition": "Inserted as {status} into BibleReader.translationWithStatusAriaLabel, after the translation name and a comma. Start lowercase, with no final period."
+    },
+    "BibleReader.demoChapterRtl": {
+      "role": "caption of the first-run swipe demonstration",
+      "visibility": "shown only when the app layout reads right to left",
+      "composition": "The right-to-left form of BibleReader.demoChapter. In that layout, a swipe to the right opens the next chapter. \"Right\" is the direction, not \"correct\". Keep the wording of BibleReader.demoChapter and change only the direction."
     },
     "BiblePassagePicker.bookWithNoteAriaLabel": {
       "role": "list row accessibility label",
@@ -609,6 +615,10 @@
     "Feedback.appLanguageLabel": {
       "role": "label in the list of what the report sends",
       "composition": "Shows only for a wrong-translation report. The value after it is the language tag of the app, such as es or zh-Hans."
+    },
+    "NativePermissions.localNetworkUsageDescription": {
+      "role": "permission explanation in an iOS system alert",
+      "composition": "Shows under an iOS title that asks to find and connect to devices on the local network, above the Allow and Don't Allow buttons. Cast devices are TVs and speakers that receive video with Google Cast. Write one plain sentence with no placeholders and no quotation marks."
     }
   }
 }

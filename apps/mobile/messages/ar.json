@@ -138,6 +138,7 @@
     "versesAriaValue": "الآيات {first} إلى {last} من {total}، {chapter}",
     "demoVerse": "اسحب لأعلى للانتقال إلى الآية التالية",
     "demoChapter": "اسحب لليسار للانتقال إلى الأصحاح التالي",
+    "demoChapterRtl": "اسحب لليمين للانتقال إلى الأصحاح التالي",
     "demoSkip": "اضغط للتخطي",
     "demoSkipAriaLabel": "تخطي العرض التوضيحي للسحب",
     "selectVerseAriaHint": "اضغط مرتين لتحديد هذه الآية",
@@ -773,5 +774,8 @@
     "send": "إرسال",
     "sending": "جارٍ الإرسال…",
     "sendAriaLabel": "إرسال الملاحظات"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "يستخدم التطبيق شبكتك المحلية للعثور على أجهزة البث، لتتمكن من تشغيل مقاطع الفيديو على تلفازك."
   }
 }

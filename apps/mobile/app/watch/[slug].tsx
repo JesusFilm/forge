@@ -14,7 +14,7 @@ import {
   View,
 } from "react-native"
 import { StatusBar } from "expo-status-bar"
-import { useLocalSearchParams, useRouter } from "expo-router"
+import { useIsFocused, useLocalSearchParams, useRouter } from "expo-router"
 import { useApolloClient, useQuery } from "@apollo/client/react"
 
 import { GET_VIDEO_BY_SLUG, GET_VIDEO_TEXT } from "../../src/lib/queries"
@@ -111,6 +111,7 @@ import {
 } from "../../src/lib/playerLayout"
 import { useWatchSession } from "../../src/contexts/WatchSessionProvider"
 import { useDownloads } from "../../src/contexts/DownloadsProvider"
+import { useWatchPreferences } from "../../src/contexts/WatchPreferencesProvider"
 import { validateLocalMediaUrl } from "../../src/lib/validateLocalMediaUrl"
 import { OFFLINE_ROOT } from "../../src/lib/offlineFileSystem"
 import { buildSubtitlePath } from "../../src/lib/offlineFiles"
@@ -336,6 +337,9 @@ export default function WatchVideoPage() {
   // request for the last one's — and paint its references for a frame.
   const routeCitations =
     video?.slug === decodedSlug ? video.bibleCitations : EMPTY_CITATIONS
+  // The cards' reader translation reads what the reader reads (KTD3, KTD11).
+  const quotesFocused = useIsFocused()
+  const { audioLanguageIso3, isReady: preferencesReady } = useWatchPreferences()
   // Threaded from here: the hook's only call site, and the only place the dubs
   // and authored image are in scope. `loading` is the settled signal — the
   // query returns partial cached data with neither runtime nor playback id.
@@ -351,6 +355,11 @@ export default function WatchVideoPage() {
     },
     // KTD16: the route's captured forms, so a live change moves no passage.
     adminForms,
+    {
+      audioLanguage: audioLanguageIso3,
+      audioReady: preferencesReady,
+      focused: quotesFocused,
+    },
   )
 
   // KD3: no pause. The video keeps playing while the reader covers this screen.

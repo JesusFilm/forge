@@ -3,13 +3,12 @@ import {
   recommendationFetchWithRetry,
 } from "@/lib/recommendation-browser"
 import { RECOMMENDATION_CONTENT_ACTION_CONTRACT } from "@/lib/recommendation-contracts"
+import { RECOMMENDATION_CONTENT_ACTION_BROWSER_DEADLINE_MS } from "@/lib/recommendation-timeouts"
 import { watchPath } from "@/lib/watch-paths"
 
 const CONTENT_ACTION_ENDPOINT = watchPath(
   "/api/recommendations/content-actions",
 )
-const CONTENT_ACTION_DEADLINE_MS = 700
-
 export type WatchShareActionDetail =
   | "link_copy"
   | "embed_copy"
@@ -39,7 +38,7 @@ export function recordWatchShareAction(
       headers: { "content-type": "application/json" },
       body,
     },
-    CONTENT_ACTION_DEADLINE_MS,
+    RECOMMENDATION_CONTENT_ACTION_BROWSER_DEADLINE_MS,
   ).catch(() => {
     // Sharing is the viewer outcome. Telemetry remains best effort and must
     // never turn a successful copy/share intent into a Watch error.

@@ -56,13 +56,16 @@ export function partOpacityKeyframes(part: SwipeDemoPart): Keyframes {
   return everyCycle(part, [0, 1, 1, 0])
 }
 
-/** The finger moves from `+travel / 2` to `-travel / 2` in every cycle. It
- *  goes back to the start while it is hidden. */
+/** The finger moves from `+travel / 2` to `-travel / 2` in every cycle: up,
+ *  or left for a chapter. A right-to-left layout (`layoutSign` -1) moves the
+ *  chapter finger right (R14). It goes back to the start while it is hidden. */
 export function partTravelKeyframes(
   part: SwipeDemoPart,
   travel: number,
+  layoutSign: 1 | -1,
 ): Keyframes {
-  return everyCycle(part, [travel / 2, travel / 2, -travel / 2, -travel / 2])
+  const half = (part === "chapter" ? layoutSign : 1) * (travel / 2)
+  return everyCycle(part, [half, half, -half, -half])
 }
 
 /** The whole demo stays until the last pause ends, then fades out. */

@@ -138,6 +138,7 @@
     "versesAriaValue": "{total} पदमे सँ पद {first} सँ {last} धरि, {chapter}",
     "demoVerse": "अगिला पदक लेल ऊपर स्वाइप करू",
     "demoChapter": "अगिला अध्यायक लेल बामा स्वाइप करू",
+    "demoChapterRtl": "अगिला अध्यायक लेल दाहिना स्वाइप करू",
     "demoSkip": "छोड़बाक लेल टैप करू",
     "demoSkipAriaLabel": "स्वाइपक प्रदर्शन छोड़ू",
     "selectVerseAriaHint": "ई पद चुनबाक लेल दू बेर टैप करू",
@@ -773,5 +774,8 @@
     "send": "पठाउ",
     "sending": "पठाओल जा रहल अछि…",
     "sendAriaLabel": "प्रतिपुष्टि पठाउ"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ऐप कास्ट डिवाइस ताकबाक लेल अहाँक स्थानीय नेटवर्कक उपयोग करैत अछि, जाहिसँ अहाँ अपन टीवी पर वीडियो चला सकी।"
   }
 }

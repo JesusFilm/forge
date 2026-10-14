@@ -754,6 +754,7 @@ export function FeedbackModal({
           searchAliasSlug: option.aliasOwnerSlug,
           name: option.englishName,
           nativeName: option.nativeName,
+          nativeNameLang: option.nativeNameLang,
         }))
         setLanguageOptions(nextOptions)
         setLanguageOptionsState("ready")
