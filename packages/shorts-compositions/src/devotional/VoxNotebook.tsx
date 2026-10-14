@@ -489,9 +489,12 @@ function PageMarks({
             top: f(l.y),
             transform: l.center ? "translateX(-50%)" : undefined,
             whiteSpace: "nowrap",
-            // Over the film: the board's serif (owner, 2026-10-13).
+            // Over the film: the serif in its real italic, regular weight,
+            // as if written by a careful hand (owner, 2026-10-14: neater than
+            // the board, italic; 2026-10-13 had the upright serif, bold titles).
             fontFamily: film ? SERIF : HAND,
-            fontWeight: film ? ((l.size ?? 48) >= 60 ? 700 : 400) : 700,
+            fontStyle: film ? "italic" : undefined,
+            fontWeight: film ? 400 : 700,
             fontSize: f(l.size ?? 48),
             lineHeight: 1.1,
             color: color(l.color),

@@ -254,7 +254,9 @@ export function DevotionalShortFact(props: DevotionalInputProps) {
       )}
       <div
         style={{
-          display: drawn ? "none" : undefined,
+          // Notes over the film need no pool: the film is already dimmed and
+          // grainy, and the pool read as a dark patch (owner, 2026-10-14).
+          display: drawn || filmNotes ? "none" : undefined,
           // History: the taller pool of Figma 427-2745 (951 high, centred
           // 156.5 above the middle), under the credit and the captions.
           position: "absolute",
