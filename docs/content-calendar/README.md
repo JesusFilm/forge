@@ -88,6 +88,15 @@ A `scheduled` row turns into a posted tile by itself once its date and time pass
 so there is no need to flip the status afterwards. Delete a row only if the
 post was removed or cancelled.
 
+## Static copy for Netlify
+
+`build-static.py` freezes a snapshot (posts embedded, thumbnails copied, the analytics
+dashboard added as `dashboard.html`) into a folder Lyuba drops into Netlify, by default
+`~/Desktop/Social Media/Calendar/netlify/`. It does not update itself: rebuild and
+re-drop it when she asks. Inputs: an ArtifactData `list` of `posts` saved with
+`out_dir`, and a blob map `{asset id: local jpg}` (match the asset listing's sha256
+against `~/Desktop/Social Media/Calendar/thumbs/`).
+
 ## Backfill status
 
 Backfilled on 2026-10-09 back to the first post (Instagram, 2026-08-20). Known gaps:
