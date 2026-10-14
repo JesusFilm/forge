@@ -737,7 +737,10 @@
     const c = String(p.cut || parseId(p).cut).toLowerCase()
     if (/refl/.test(c)) return "refl."
     if (/insight|history|language|vox|word/.test(c)) return "insight"
-    if (/verse|scene/.test(c)) return "verse"
+    // A piece of the film is a "clip"; a Bible verse card is a "verse".
+    if (/film|clip|scene/.test(c) || /film-verse|clip/.test(String(p.id || "")))
+      return "clip"
+    if (/verse/.test(c)) return "verse"
     if (/intro/.test(c)) return "intro"
     if (/teaser/.test(c)) return "teaser"
     if (/carousel|post/.test(c) || p.kind === "post") return "post"
