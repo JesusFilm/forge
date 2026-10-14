@@ -249,9 +249,9 @@ describe("DownloadModal — quality bucketing", () => {
     const downloads: DownloadModalDownload[] = [
       makeDownload({ documentId: "fhd", quality: "fhd" }), // -> Highest
       makeDownload({ documentId: "high", quality: "high" }), // -> High
-      makeDownload({ documentId: "distroHigh", quality: "distroHigh" }), // collapsed under High
+      makeDownload({ documentId: "distroHigh", quality: "distroHigh" }), // legacy: never a tier
       makeDownload({ documentId: "low", quality: "low" }), // -> Low
-      makeDownload({ documentId: "distroLow", quality: "distroLow" }), // collapsed under Low
+      makeDownload({ documentId: "distroLow", quality: "distroLow" }), // legacy: never a tier
     ]
     act(() => {
       root.render(
@@ -316,9 +316,14 @@ describe("DownloadModal — quality bucketing", () => {
               size: 700 * 1024 * 1024,
             }),
             makeDownload({
-              documentId: "distroHigh",
-              quality: "distroHigh",
+              documentId: "low",
+              quality: "low",
               size: 500 * 1024 * 1024,
+            }),
+            makeDownload({
+              documentId: "distroSd",
+              quality: "distroSd",
+              size: 600 * 1024 * 1024,
             }),
           ]}
           onClose={vi.fn()}
@@ -776,6 +781,91 @@ describe("DownloadModal — account-authenticated downloads", () => {
     )
     expect(onClose).toHaveBeenCalledTimes(1)
   })
+
+  it.each([
+    ["high", "dl-high"],
+    ["low", "dl-low"],
+  ] as const)(
+    "downloading the %s tier requests the real %s row, never a distro row",
+    async (tier, expectedDownloadId) => {
+      act(() => {
+        root.render(
+          <TestDownloadModal
+            open
+            downloads={[
+              makeDownload({
+                documentId: "dl-fhd",
+                quality: "fhd",
+                size: 5521959728,
+              }),
+              // Misleading sizes: legacy rows sit where the size middle/tail was.
+              makeDownload({
+                documentId: "dl-distroSd",
+                quality: "distroSd",
+                size: 1561752518,
+              }),
+              makeDownload({
+                documentId: "dl-high",
+                quality: "high",
+                size: 2962849007,
+              }),
+              makeDownload({
+                documentId: "dl-sd",
+                quality: "sd",
+                size: 658922306,
+              }),
+              makeDownload({
+                documentId: "dl-distroLow",
+                quality: "distroLow",
+                size: 207141494,
+              }),
+              makeDownload({
+                documentId: "dl-low",
+                quality: "low",
+                size: 585287114,
+              }),
+            ]}
+            onClose={vi.fn()}
+          />,
+        )
+      })
+
+      act(() => {
+        ;(
+          $(
+            '[data-testid="watch-download-modal-size-trigger"]',
+          ) as HTMLButtonElement
+        ).click()
+      })
+      const option = $$(
+        '[data-testid="watch-download-modal-size-option"]',
+      ).find((o) => o.getAttribute("data-tier") === tier)
+      act(() => {
+        option?.click()
+      })
+      acceptTerms()
+      const created: HTMLAnchorElement[] = []
+      const realAppend = document.body.appendChild.bind(document.body)
+      const appendSpy = vi
+        .spyOn(document.body, "appendChild")
+        .mockImplementation(((node: Node) => {
+          if (node instanceof HTMLAnchorElement) created.push(node)
+          return realAppend(node)
+        }) as typeof document.body.appendChild)
+
+      await act(async () => {
+        ;(
+          $('[data-testid="watch-download-modal-confirm"]') as HTMLButtonElement
+        ).click()
+      })
+
+      expect(created.length).toBe(1)
+      const href = created[0]?.getAttribute("href") ?? ""
+      expect(href).toContain(`downloadId=${expectedDownloadId}&`)
+      expect(href).not.toContain("distro")
+      appendSpy.mockRestore()
+    },
+  )
 
   it("download click triggers a programmatic <a> pointing at the same-origin proxy with a filename", async () => {
     act(() => {

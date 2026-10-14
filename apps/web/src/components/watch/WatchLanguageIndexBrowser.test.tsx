@@ -37,7 +37,7 @@ function language(index: number, overrides: TestLanguageOverrides = {}) {
     publicSlug,
     aliasOwnerSlug: publicSlug,
     href: `/language-${index}.html/videos`,
-    bcp47: `l${index}`,
+    bcp47: "fr",
     speakerCount: 10_000 - index,
     regionNames: ["Africa"],
     flagPngSrc: null,
@@ -106,6 +106,132 @@ describe("WatchLanguageIndexBrowser", () => {
 
     const clearButton = html.querySelector('button[aria-label="Clear search"]')
     expect(clearButton?.classList.contains("z-10")).toBe(true)
+    expect(clearButton?.classList.contains("end-3")).toBe(true)
+    expect(searchIcon?.classList.contains("start-5")).toBe(true)
+    expect(input?.classList.contains("ps-[3.25rem]")).toBe(true)
+    expect(input?.classList.contains("pe-12")).toBe(true)
+    expect(input?.className).not.toMatch(
+      /(?:^|\s)(?:-?pl-|pr-|ml-|mr-|left-|right-|text-left|text-right)/,
+    )
+    expect(searchIcon?.getAttribute("class")).not.toMatch(
+      /(?:^|\s)(?:-?pl-|pr-|ml-|mr-|left-|right-|text-left|text-right)/,
+    )
+  })
+
+  it("declares mixed-language labels and mirrors the navigation arrow in RTL", () => {
+    const arabic = language(1, {
+      englishLabel: "Arabic",
+      nativeLabel: "العربية",
+      publicSlug: "arabic-modern-standard",
+      bcp47: "ar",
+    })
+    const html = renderBrowser({
+      regions: [
+        {
+          name: "Africa",
+          languages: [arabic],
+          countries: [
+            {
+              id: "country-eg",
+              coreId: "EG",
+              name: "Egypt",
+              flagPngSrc: null,
+              speakerCount: arabic.speakerCount,
+              languageSpeakerCounts: languageSpeakerCounts([arabic]),
+              languages: [arabic],
+            },
+          ],
+        },
+      ],
+    })
+    const englishLabel = Array.from(
+      html.querySelectorAll("bdi[lang='en']"),
+    ).find((element) => element.textContent === "Arabic")
+    const nativeLabel = Array.from(
+      html.querySelectorAll("bdi[lang='ar']"),
+    ).find((element) => element.textContent === "العربية")
+    const arrow = html.querySelector("svg.lucide-arrow-right")
+
+    expect(englishLabel?.getAttribute("dir")).toBe("ltr")
+    expect(nativeLabel?.getAttribute("dir")).toBe("rtl")
+    expect(arrow?.classList.contains("rtl:rotate-180")).toBe(true)
+  })
+
+  it("uses English markup when the native label falls back to English", () => {
+    const arabic = language(1, {
+      englishLabel: "Arabic",
+      nativeLabel: "Arabic",
+      publicSlug: "arabic-modern-standard",
+      bcp47: "ar",
+    })
+    const html = renderBrowser({
+      regions: [
+        {
+          name: "Africa",
+          languages: [arabic],
+          countries: [
+            {
+              id: "country-eg",
+              coreId: "EG",
+              name: "Egypt",
+              flagPngSrc: null,
+              speakerCount: arabic.speakerCount,
+              languageSpeakerCounts: languageSpeakerCounts([arabic]),
+              languages: [arabic],
+            },
+          ],
+        },
+      ],
+    })
+    const labels = Array.from(html.querySelectorAll("bdi"))
+
+    const englishLabels = labels.filter(
+      (label) => label.textContent === "Arabic",
+    )
+    expect(englishLabels).toHaveLength(2)
+    expect(englishLabels.map((label) => label.getAttribute("lang"))).toEqual([
+      "en",
+      "en",
+    ])
+    expect(englishLabels.map((label) => label.getAttribute("dir"))).toEqual([
+      "ltr",
+      "ltr",
+    ])
+  })
+
+  it("uses the undetermined language fallback for unsupported metadata tags", () => {
+    const languageWithInvalidTag = language(1, {
+      englishLabel: "Language",
+      nativeLabel: "Nom inconnu",
+      publicSlug: "language-1",
+      bcp47: "nan-CN-46",
+    })
+    const html = renderBrowser({
+      regions: [
+        {
+          name: "Asia",
+          languages: [languageWithInvalidTag],
+          countries: [
+            {
+              id: "country-cn",
+              coreId: "CN",
+              name: "China",
+              flagPngSrc: null,
+              speakerCount: languageWithInvalidTag.speakerCount,
+              languageSpeakerCounts: languageSpeakerCounts([
+                languageWithInvalidTag,
+              ]),
+              languages: [languageWithInvalidTag],
+            },
+          ],
+        },
+      ],
+    })
+    const nativeLabel = Array.from(
+      html.querySelectorAll("bdi[lang='und']"),
+    ).find((element) => element.textContent === "Nom inconnu")
+
+    expect(nativeLabel?.getAttribute("dir")).toBe("auto")
   })
 
   it("uses the shared Watch content rail", () => {
@@ -275,7 +401,7 @@ describe("WatchLanguageIndexBrowser", () => {
     searchLanguages(html, "roma")
 
     const [firstCountry] = countrySections(html)
-    expect(firstCountry?.getAttribute("aria-label")).toBe("Romania languages")
+    expect(firstCountry?.querySelector("h4")?.textContent).toBe("Romania")
     expect(firstCountry?.querySelector("a")?.textContent).toContain("Romanian")
   })
 
@@ -342,10 +468,10 @@ describe("WatchLanguageIndexBrowser", () => {
     searchLanguages(html, "russ")
 
     expect(
-      countrySections(html).map((section) =>
-        section.getAttribute("aria-label"),
+      countrySections(html).map(
+        (section) => section.querySelector("h4")?.textContent,
       ),
-    ).toEqual(["Russia languages", "Ukraine languages", "Canada languages"])
+    ).toEqual(["Russia", "Ukraine", "Canada"])
   })
 
   it("finds a reviewed alias and preserves speaker-count ordering", () => {
@@ -393,9 +519,9 @@ describe("WatchLanguageIndexBrowser", () => {
     expect(html.textContent).toContain("Cantonese")
     expect(html.textContent).toContain("廣東話")
     expect(
-      countrySections(html).map((section) =>
-        section.getAttribute("aria-label"),
+      countrySections(html).map(
+        (section) => section.querySelector("h4")?.textContent,
       ),
-    ).toEqual(["China languages", "Hong Kong languages"])
+    ).toEqual(["China", "Hong Kong"])
   })
 })

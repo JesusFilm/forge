@@ -10,6 +10,10 @@ vi.mock("next/headers", () => ({
   headers: vi.fn(),
 }))
 
+vi.mock("next-intl/server", () => ({
+  getLocale: vi.fn(async () => "en"),
+}))
+
 vi.mock("next/cache", () => ({
   unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
 }))
@@ -178,6 +182,36 @@ describe("getSearchLanguageOptions", () => {
       recommendedLanguage: {
         englishName: "Spanish, Castilian",
         publicSlug: "spanish-castilian",
+      },
+    })
+  })
+
+  it("localizes country names in language suggestions using the UI locale", async () => {
+    queryMock.mockResolvedValueOnce({
+      data: {
+        languages: [englishLanguage],
+        countries: [
+          {
+            id: "country-us",
+            coreId: "US",
+            name: { en: "United States" },
+            countryLanguages: [
+              {
+                primary: true,
+                language: englishLanguage,
+              },
+            ],
+          },
+        ],
+      },
+    })
+
+    await expect(
+      getSearchLanguageOptions({ uiLocale: "ar" }),
+    ).resolves.toMatchObject({
+      countryName: new Intl.DisplayNames(["ar"], { type: "region" }).of("US"),
+      countrySuggestion: {
+        countryName: new Intl.DisplayNames(["ar"], { type: "region" }).of("US"),
       },
     })
   })

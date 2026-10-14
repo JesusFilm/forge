@@ -138,6 +138,7 @@
     "versesAriaValue": "Litemana tsa {first} ho isa ho {last} ho tse {total}, {chapter}",
     "demoVerse": "Hula holimo bakeng sa temana e latelang",
     "demoChapter": "Hula ho ea leqeleng bakeng sa khaolo e latelang",
+    "demoChapterRtl": "Hula ho ea ka ho le letona bakeng sa khaolo e latelang",
     "demoSkip": "Tlanya ho tlola",
     "demoSkipAriaLabel": "Tlola pontšo ea ho hula",
     "selectVerseAriaHint": "Tlanya habeli ho khetha temana ena",
@@ -773,5 +774,8 @@
     "send": "Romela",
     "sending": "Ho romela…",
     "sendAriaLabel": "Romela maikutlo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App e sebelisa marang-rang a hao a haufi ho batla lisebelisoa tseo u ka romelang livideo ho tsona, e le hore u khone ho bapala livideo ho TV ea hao."
   }
 }

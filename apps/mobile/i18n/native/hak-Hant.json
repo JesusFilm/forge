@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "應用程式會用你个區域網路尋投放裝置，分你在電視播放影片。"
+  }
+}

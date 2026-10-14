@@ -37,7 +37,7 @@ jest.mock("../../../lib/datadog", () => ({
 }))
 
 import { act, type ComponentProps } from "react"
-import { StyleSheet } from "react-native"
+import { I18nManager, StyleSheet } from "react-native"
 import { readAsStringAsync } from "expo-file-system/legacy"
 
 import { SubtitleOverlay } from "../SubtitleOverlay"
@@ -52,6 +52,7 @@ import {
   type NodeRequireLike,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { directionAbove } from "../../../test-utils/layoutDirection"
 
 const OFFLINE_ROOT = "file:///docs/offline-downloads"
 const VTT = `WEBVTT
@@ -458,6 +459,8 @@ describe("SubtitleOverlay — the right inset only over a box (Explore, 2026-09-
       (n) => n.props.pointerEvents === "none",
     )
     return StyleSheet.flatten(node.props.style) as {
+      paddingHorizontal?: number
+      paddingLeft?: number
       paddingRight?: number
       opacity?: number
     }
@@ -481,8 +484,8 @@ describe("SubtitleOverlay — the right inset only over a box (Explore, 2026-09-
   it("measures a new cue unseen, at full width, before it decides", async () => {
     const renderer = await renderWith(makePlayer(), {
       bottomOffset: 300,
-      rightInset: RIGHT_INSET,
-      rightInsetBoxes: BOXES,
+      sideInset: RIGHT_INSET,
+      sideInsetBoxes: BOXES,
     })
 
     expect(hasText(renderer, "Hello world")).toBe(true)
@@ -495,8 +498,8 @@ describe("SubtitleOverlay — the right inset only over a box (Explore, 2026-09-
     // At Mute's height, but it stops at x 260, left of the rail at 328.
     const renderer = await renderWith(makePlayer(), {
       bottomOffset: 300,
-      rightInset: RIGHT_INSET,
-      rightInsetBoxes: BOXES,
+      sideInset: RIGHT_INSET,
+      sideInsetBoxes: BOXES,
     })
     layOutText(renderer, { x: 60, width: 200, height: 40 })
 
@@ -509,8 +512,8 @@ describe("SubtitleOverlay — the right inset only over a box (Explore, 2026-09-
     // As wide as the page, but its bottom edge is above Mute's top at 360.
     const renderer = await renderWith(makePlayer(), {
       bottomOffset: 368,
-      rightInset: RIGHT_INSET,
-      rightInsetBoxes: BOXES,
+      sideInset: RIGHT_INSET,
+      sideInsetBoxes: BOXES,
     })
     layOutText(renderer, { x: 16, width: 370, height: 60 })
 
@@ -521,8 +524,8 @@ describe("SubtitleOverlay — the right inset only over a box (Explore, 2026-09-
   it("takes the inset for a caption that covers Mute, and holds it", async () => {
     const renderer = await renderWith(makePlayer(), {
       bottomOffset: 300,
-      rightInset: RIGHT_INSET,
-      rightInsetBoxes: BOXES,
+      sideInset: RIGHT_INSET,
+      sideInsetBoxes: BOXES,
     })
     layOutText(renderer, { x: 20, width: 362, height: 60 })
 
@@ -536,13 +539,32 @@ describe("SubtitleOverlay — the right inset only over a box (Explore, 2026-09-
     await unmount(renderer)
   })
 
+  // feat-695 R11: in a right-to-left layout the rail sits on the left.
+  it("takes the inset on the left for a rail on the left", async () => {
+    const renderer = await renderWith(makePlayer(), {
+      bottomOffset: 300,
+      sideInset: RIGHT_INSET,
+      insetSide: "left",
+      sideInsetBoxes: [
+        { left: 14, right: 74, bottom: 286, top: 360 },
+        { left: 18, right: 70, bottom: 200, top: 274 },
+      ],
+    })
+    layOutText(renderer, { x: 20, width: 362, height: 60 })
+
+    const style = container(renderer)
+    expect(style.paddingLeft).toBe(RIGHT_INSET)
+    expect(style.paddingRight ?? style.paddingHorizontal).toBe(16)
+    await unmount(renderer)
+  })
+
   it("decides again for the next cue", async () => {
     jest.useFakeTimers()
     const player = makePlayer()
     const renderer = await renderWith(player, {
       bottomOffset: 300,
-      rightInset: RIGHT_INSET,
-      rightInsetBoxes: BOXES,
+      sideInset: RIGHT_INSET,
+      sideInsetBoxes: BOXES,
     })
     layOutText(renderer, { x: 20, width: 362, height: 60 })
     expect(container(renderer).paddingRight).toBe(RIGHT_INSET)
@@ -564,11 +586,46 @@ describe("SubtitleOverlay — the right inset only over a box (Explore, 2026-09-
   it("always takes the inset without boxes, as the watch page does", async () => {
     const renderer = await renderWith(makePlayer(), {
       bottomOffset: 300,
-      rightInset: RIGHT_INSET,
+      sideInset: RIGHT_INSET,
     })
 
     expect(container(renderer).opacity).not.toBe(0)
     expect(container(renderer).paddingRight).toBe(RIGHT_INSET)
+    await unmount(renderer)
+  })
+})
+
+describe("SubtitleOverlay — in a right-to-left layout (feat-695 KTD7)", () => {
+  it("lays the caption out left to right, so the right inset stays on the right", async () => {
+    jest.spyOn(I18nManager, "getConstants").mockReturnValue({
+      ...I18nManager.getConstants(),
+      isRTL: true,
+    })
+    jest.replaceProperty(I18nManager, "isRTL", true)
+    fetchMock.mockResolvedValueOnce(new Response(VTT))
+    const vttSrc = nextUrl()
+    let renderer!: TestInstance
+    await act(async () => {
+      renderer = TestRenderer.create(
+        <SubtitleOverlay
+          player={makePlayer() as never}
+          vttSrc={vttSrc}
+          sideInset={92}
+        />,
+      )
+    })
+    await flush()
+
+    const [caption] = renderer.root.findAll(
+      (n) => n.props.children === "Hello world" && typeof n.type === "string",
+    )
+    expect(directionAbove(caption)).toBe("ltr")
+    const [box] = renderer.root.findAll(
+      (n) => n.props.pointerEvents === "none" && typeof n.type === "string",
+    )
+    expect(StyleSheet.flatten(box.props.style as never)).toMatchObject({
+      paddingRight: 92,
+    })
     await unmount(renderer)
   })
 })

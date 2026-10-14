@@ -1,5 +1,7 @@
 "use client"
 
+import { Suspense } from "react"
+
 import type { MuxPlayerRef } from "@forge/video-player"
 import { DEFAULT_WATCH_LANGUAGE_SLUG } from "@forge/watch-url-policy/routes"
 
@@ -16,6 +18,7 @@ import { BibleQuotesSection } from "@/components/watch/BibleQuotesSection"
 import { HeroPlayer } from "@/components/watch/HeroPlayer"
 import { SiblingCarousel } from "@/components/watch/SiblingCarousel"
 import { WatchBody } from "@/components/watch/WatchBody"
+import { WatchPlayerLoadingIndicator } from "@/components/watch/WatchPlayerLoadingIndicator"
 import type { WatchModalCallbacks } from "@/components/watch/WatchPageClient"
 import type { WatchChapterNavigationIntent } from "@/components/watch/chapter-navigation"
 import { WATCH_PAGE_CONTENT_CLASSES } from "@/lib/content-width"
@@ -101,32 +104,40 @@ export function WatchSectionRenderer({
   return (
     <>
       {topBlocks.map((block, index) => (
-        <WatchBlockEntry
+        <Suspense
           key={blockKey(block, index)}
-          block={block}
-          manifest={surfaceManifests?.[index] ?? undefined}
-          index={index}
-          downloadButtonLabel={downloadButtonLabel}
-          downloadError={downloadError}
-          downloadHref={downloadHref}
-          downloadPending={downloadPending}
-          studyQuestionsBlock={studyQuestionsBlock}
-          modalCallbacks={modalCallbacks}
-          onPlayerReady={onPlayerReady}
-          onPlayerActivated={onPlayerActivated}
-          onPlayerViewabilityChange={onPlayerViewabilityChange}
-          languageSlug={languageSlug}
-          locale={locale}
-          hasSubtitleOptions={hasSubtitleOptions}
-          subtitleLanguageCode={subtitleLanguageCode}
-          shareHref={shareHref}
-          subtitleVttSrc={subtitleVttSrc}
-          hideBibleQuotes={hideBibleQuotes}
-          pendingChapter={pendingChapter}
-          coverBlackoutKey={coverBlackoutKey}
-          coverBlackoutPhase={coverBlackoutPhase}
-          onChapterNavigateIntent={onChapterNavigateIntent}
-        />
+          fallback={
+            <div className="relative flex h-[66svh] min-h-[320px] w-full items-center justify-center bg-black md:h-[min(100svh,56.25vw)]">
+              <WatchPlayerLoadingIndicator />
+            </div>
+          }
+        >
+          <WatchBlockEntry
+            block={block}
+            manifest={surfaceManifests?.[index] ?? undefined}
+            index={index}
+            downloadButtonLabel={downloadButtonLabel}
+            downloadError={downloadError}
+            downloadHref={downloadHref}
+            downloadPending={downloadPending}
+            studyQuestionsBlock={studyQuestionsBlock}
+            modalCallbacks={modalCallbacks}
+            onPlayerReady={onPlayerReady}
+            onPlayerActivated={onPlayerActivated}
+            onPlayerViewabilityChange={onPlayerViewabilityChange}
+            languageSlug={languageSlug}
+            locale={locale}
+            hasSubtitleOptions={hasSubtitleOptions}
+            subtitleLanguageCode={subtitleLanguageCode}
+            shareHref={shareHref}
+            subtitleVttSrc={subtitleVttSrc}
+            hideBibleQuotes={hideBibleQuotes}
+            pendingChapter={pendingChapter}
+            coverBlackoutKey={coverBlackoutKey}
+            coverBlackoutPhase={coverBlackoutPhase}
+            onChapterNavigateIntent={onChapterNavigateIntent}
+          />
+        </Suspense>
       ))}
       {bodyBlocks.length > 0 ? (
         <section
@@ -147,33 +158,37 @@ export function WatchSectionRenderer({
               className={`relative z-2 flex flex-col items-stretch justify-center gap-6 pt-2 pb-16 ${WATCH_PAGE_CONTENT_CLASSES}`}
             >
               {bodyBlocks.map((block, index) => (
-                <WatchBlockEntry
+                <Suspense
                   key={blockKey(block, index + topBlocks.length)}
-                  block={block}
-                  manifest={
-                    surfaceManifests?.[index + topBlocks.length] ?? undefined
-                  }
-                  index={index + topBlocks.length}
-                  downloadButtonLabel={downloadButtonLabel}
-                  downloadError={downloadError}
-                  downloadHref={downloadHref}
-                  downloadPending={downloadPending}
-                  studyQuestionsBlock={studyQuestionsBlock}
-                  modalCallbacks={modalCallbacks}
-                  onPlayerReady={onPlayerReady}
-                  onPlayerActivated={onPlayerActivated}
-                  onPlayerViewabilityChange={onPlayerViewabilityChange}
-                  languageSlug={languageSlug}
-                  locale={locale}
-                  hasSubtitleOptions={hasSubtitleOptions}
-                  subtitleLanguageCode={subtitleLanguageCode}
-                  shareHref={shareHref}
-                  hideBibleQuotes={hideBibleQuotes}
-                  pendingChapter={pendingChapter}
-                  coverBlackoutKey={coverBlackoutKey}
-                  coverBlackoutPhase={coverBlackoutPhase}
-                  onChapterNavigateIntent={onChapterNavigateIntent}
-                />
+                  fallback={null}
+                >
+                  <WatchBlockEntry
+                    block={block}
+                    manifest={
+                      surfaceManifests?.[index + topBlocks.length] ?? undefined
+                    }
+                    index={index + topBlocks.length}
+                    downloadButtonLabel={downloadButtonLabel}
+                    downloadError={downloadError}
+                    downloadHref={downloadHref}
+                    downloadPending={downloadPending}
+                    studyQuestionsBlock={studyQuestionsBlock}
+                    modalCallbacks={modalCallbacks}
+                    onPlayerReady={onPlayerReady}
+                    onPlayerActivated={onPlayerActivated}
+                    onPlayerViewabilityChange={onPlayerViewabilityChange}
+                    languageSlug={languageSlug}
+                    locale={locale}
+                    hasSubtitleOptions={hasSubtitleOptions}
+                    subtitleLanguageCode={subtitleLanguageCode}
+                    shareHref={shareHref}
+                    hideBibleQuotes={hideBibleQuotes}
+                    pendingChapter={pendingChapter}
+                    coverBlackoutKey={coverBlackoutKey}
+                    coverBlackoutPhase={coverBlackoutPhase}
+                    onChapterNavigateIntent={onChapterNavigateIntent}
+                  />
+                </Suspense>
               ))}
             </div>
           </div>

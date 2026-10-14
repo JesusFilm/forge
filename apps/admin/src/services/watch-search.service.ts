@@ -48,6 +48,8 @@ const MIN_METADATA_TOTAL_SCORE = 0.3
 const MIN_SEMANTIC_TOTAL_SCORE = 0.35
 const MIN_SEMANTIC_SOURCE_SCORE = 0.5
 const DEFAULT_SEMANTIC_EMBEDDING_TIMEOUT_MS = 1_000
+export const WATCH_SEARCH_HARD_TIMEOUT_MS = 2_300
+const WATCH_SEARCH_FINAL_HYDRATION_RESERVE_MS = 400
 const QUERY_EMBEDDING_CACHE_TTL_MS = 24 * 60 * 60 * 1000
 export const WATCH_SEARCH_STARTER_QUERIES = [
   "bible stories",
@@ -97,6 +99,7 @@ export type WatchSearchLaneName =
   | "metadata_retrieval"
   | "metadata_watchability"
   | "semantic_watchability"
+  | "final_hydration"
 
 export type WatchSearchInput = {
   query: string
@@ -249,6 +252,8 @@ export type WatchSearchServiceDeps = {
   semanticEmbeddingTimeoutMs?: number
 }
 
+export type WatchSearchOptions = { hardTimeoutMs?: number }
+
 function normalizeLimit(value: number | null | undefined): number {
   if (value == null) return DEFAULT_LIMIT
   if (!Number.isFinite(value)) return DEFAULT_LIMIT
@@ -297,8 +302,49 @@ export class WatchSearchService {
       deps.semanticEmbeddingTimeoutMs ?? DEFAULT_SEMANTIC_EMBEDDING_TIMEOUT_MS
   }
 
-  async search(input: WatchSearchInput): Promise<WatchSearchResponse> {
+  async search(
+    input: WatchSearchInput,
+    options: WatchSearchOptions = {},
+  ): Promise<WatchSearchResponse> {
     const startedAt = performance.now()
+    const hardTimeoutMs = options.hardTimeoutMs
+    const deadlineAtMs = hardTimeoutMs ? startedAt + hardTimeoutMs : null
+    const requestId = normalizeClientRequestId(input.clientRequestId)
+
+    try {
+      const search = this.searchWithinDeadline(
+        input,
+        startedAt,
+        deadlineAtMs,
+        requestId,
+      )
+      return hardTimeoutMs
+        ? await withTimeout(
+            search,
+            hardTimeoutMs,
+            "watch_search_deadline_exceeded",
+          )
+        : await search
+    } catch (error) {
+      if (
+        error instanceof WatchSearchTimeoutError &&
+        error.event === "watch_search_deadline_exceeded"
+      ) {
+        this.logger.warn(
+          `[watch-search] event=${error.event} request_id=${requestId} elapsed_ms=${Math.round(performance.now() - startedAt)}`,
+        )
+        throw error
+      }
+      throw error
+    }
+  }
+
+  private async searchWithinDeadline(
+    input: WatchSearchInput,
+    startedAt: number,
+    deadlineAtMs: number | null,
+    requestId: string,
+  ): Promise<WatchSearchResponse> {
     const query = input.query.trim().slice(0, MAX_QUERY_LENGTH)
     if (!query) {
       throw new WatchSearchValidationError("Search query is required")
@@ -306,12 +352,22 @@ export class WatchSearchService {
 
     const offset = normalizeOffset(input.offset)
     const limit = normalizeLimit(input.limit)
-    const requestId = normalizeClientRequestId(input.clientRequestId)
     validateResultTypes(input.resultTypes)
+    const requestBudgetMs =
+      deadlineAtMs == null ? null : deadlineAtMs - startedAt
+    const retrievalDeadlineAtMs =
+      deadlineAtMs == null || requestBudgetMs == null
+        ? null
+        : deadlineAtMs -
+          Math.min(
+            WATCH_SEARCH_FINAL_HYDRATION_RESERVE_MS,
+            requestBudgetMs * 0.3,
+          )
     const languageInterpretation = await resolveSearchLanguageSignals({
       prisma: this.prisma,
       input,
     })
+    assertBeforeDeadline(retrievalDeadlineAtMs)
     const wantsVideos =
       input.resultTypes == null ||
       input.resultTypes.length === 0 ||
@@ -322,6 +378,8 @@ export class WatchSearchService {
           limit,
           offset,
           languageInterpretation,
+          deadlineAtMs,
+          retrievalDeadlineAtMs,
         })
       : { results: [], hasMore: false, degraded: false, laneStatuses: [] }
 
@@ -344,11 +402,15 @@ export class WatchSearchService {
     limit,
     offset,
     languageInterpretation,
+    deadlineAtMs,
+    retrievalDeadlineAtMs,
   }: {
     query: string
     limit: number
     offset: number
     languageInterpretation: WatchSearchLanguageInterpretation
+    deadlineAtMs: number | null
+    retrievalDeadlineAtMs: number | null
   }): Promise<{
     results: WatchSearchResult[]
     hasMore: boolean
@@ -357,6 +419,11 @@ export class WatchSearchService {
   }> {
     const laneStatuses: WatchSearchLaneStatus[] = []
     const timelineStartedAt = nowMs()
+    const semanticStartedAt = nowMs()
+    const semanticDeadlineAtMs = retrievalDeadlineAtMs
+    const semanticLaneStatuses: WatchSearchLaneStatus[] = []
+    let semanticStage: "evidence_locales" | "embedding" | "retrieval" =
+      "evidence_locales"
     const displayLocale =
       localeForLanguageSlug(languageInterpretation.displayLanguageSlug) ??
       languageInterpretation.displayLanguageBcp47 ??
@@ -367,11 +434,17 @@ export class WatchSearchService {
       languageInterpretation.queryNamedLanguageSlug,
       languageInterpretation.targetLanguageSlug,
     ])
-    const semanticSearchPromise = this.searchSemanticVideos({
+    const semanticSearchWork = this.searchSemanticVideos({
       query,
       languageInterpretation,
       timelineStartedAt,
+      deadlineAtMs: semanticDeadlineAtMs,
+      laneStatuses: semanticLaneStatuses,
+      setStage: (stage) => {
+        semanticStage = stage
+      },
     })
+    const semanticSearchPromise = semanticSearchWork
     const lexicalLimit = Math.max(
       offset + limit + 1,
       WATCHABILITY_RERANK_CANDIDATE_LIMIT,
@@ -395,7 +468,13 @@ export class WatchSearchService {
       locale: displayLocale,
       limit: lexicalLimit,
     })
+    let exactTitleForFallback: ExactTitleResult[] = []
+    let exactTitleRetrieved = false
+    let exactWatchabilityStarted = false
     const exactPipelinePromise = exactTitlePromise.then(async (exactTitle) => {
+      exactTitleForFallback = exactTitle
+      exactTitleRetrieved = true
+      assertBeforeDeadline(retrievalDeadlineAtMs)
       const exactTitleLaneStatus = laneStatus({
         lane: "exact_title",
         status: "fulfilled",
@@ -407,6 +486,7 @@ export class WatchSearchService {
         videoId: candidate.resultId,
       }))
       const exactWatchabilityStartedAt = nowMs()
+      exactWatchabilityStarted = exactWatchabilityCandidates.length > 0
       const exactWatchability =
         exactWatchabilityCandidates.length === 0
           ? new Map<string, SearchWatchability>()
@@ -437,8 +517,43 @@ export class WatchSearchService {
         ],
       }
     })
+    const exactPipelineWithBudget = withDeadlineFallback(
+      exactPipelinePromise,
+      retrievalDeadlineAtMs,
+      "exact_watchability",
+      (elapsed) => ({
+        exactTitle: [],
+        exactWatchability: new Map<string, SearchWatchability>(),
+        laneStatuses: [
+          laneStatus({
+            lane: "exact_title",
+            status: exactTitleRetrieved ? "fulfilled" : "degraded",
+            startedOffsetMs: exactTitleStartedAt - timelineStartedAt,
+            elapsedMs: elapsedMs(exactTitleStartedAt),
+            resultCount: exactTitleForFallback.length,
+            reason: exactTitleRetrieved ? null : "request_budget_exceeded",
+          }),
+          laneStatus({
+            lane: "exact_watchability",
+            status: exactWatchabilityStarted ? "degraded" : "skipped",
+            startedOffsetMs: exactTitleStartedAt - timelineStartedAt,
+            elapsedMs: elapsed,
+            resultCount: 0,
+            reason: exactWatchabilityStarted
+              ? "request_budget_exceeded"
+              : "lane_budget_exceeded_before_watchability",
+          }),
+        ],
+      }),
+    )
+    let metadataRetrievalCompleted = false
+    let metadataRetrievalResultCount = 0
+    let metadataWatchabilityStarted = false
     const metadataPipelinePromise = metadataRetrievalPromise.then(
       async ([keywordWeighted, trigram]) => {
+        assertBeforeDeadline(retrievalDeadlineAtMs)
+        metadataRetrievalCompleted = true
+        metadataRetrievalResultCount = keywordWeighted.length + trigram.length
         const metadataRetrievalLaneStatus = laneStatus({
           lane: "metadata_retrieval",
           status: "fulfilled",
@@ -446,25 +561,17 @@ export class WatchSearchService {
           elapsedMs: elapsedMs(metadataRetrievalStartedAt),
           resultCount: keywordWeighted.length + trigram.length,
         })
-        const exactTitle = await exactTitlePromise
-        const exactVideoIds = new Set(
-          exactTitle
-            .filter(isExactTitleCandidate)
-            .map((candidate) => candidate.resultId),
-        )
         const metadataCandidates = fuseMetadataCandidates({
           keywordWeighted,
           trigram,
         })
-        const uniqueMetadataCandidates = metadataCandidates.filter(
-          (candidate) => !exactVideoIds.has(candidate.resultId),
-        )
-        const metadataWatchabilityCandidates = uniqueMetadataCandidates.map(
+        const metadataWatchabilityCandidates = metadataCandidates.map(
           (candidate) => ({
             videoId: candidate.resultId,
           }),
         )
         const metadataWatchabilityStartedAt = nowMs()
+        metadataWatchabilityStarted = metadataWatchabilityCandidates.length > 0
         const metadataWatchability =
           metadataWatchabilityCandidates.length === 0
             ? new Map<string, SearchWatchability>()
@@ -474,7 +581,7 @@ export class WatchSearchService {
               })
 
         return {
-          metadataCandidates: uniqueMetadataCandidates,
+          metadataCandidates,
           metadataWatchability,
           laneStatuses: [
             metadataRetrievalLaneStatus,
@@ -497,12 +604,50 @@ export class WatchSearchService {
         }
       },
     )
-    const semanticPipelinePromise = semanticSearchPromise.then(
+    const metadataPipelineWithBudget = withDeadlineFallback(
+      metadataPipelinePromise,
+      retrievalDeadlineAtMs,
+      "metadata_watchability",
+      (elapsed) => ({
+        metadataCandidates: [],
+        metadataWatchability: new Map<string, SearchWatchability>(),
+        laneStatuses: [
+          laneStatus({
+            lane: "metadata_retrieval",
+            status: metadataRetrievalCompleted ? "fulfilled" : "degraded",
+            startedOffsetMs: metadataRetrievalStartedAt - timelineStartedAt,
+            elapsedMs: elapsedMs(metadataRetrievalStartedAt),
+            resultCount: metadataRetrievalResultCount,
+            reason: metadataRetrievalCompleted
+              ? null
+              : "request_budget_exceeded",
+          }),
+          laneStatus({
+            lane: "metadata_watchability",
+            status: metadataWatchabilityStarted ? "degraded" : "skipped",
+            startedOffsetMs: metadataRetrievalStartedAt - timelineStartedAt,
+            elapsedMs: elapsed,
+            resultCount: 0,
+            reason: metadataWatchabilityStarted
+              ? "request_budget_exceeded"
+              : "lane_budget_exceeded_before_watchability",
+          }),
+        ],
+      }),
+    )
+    let semanticSearchForFallback: Awaited<
+      typeof semanticSearchPromise
+    > | null = null
+    let semanticWatchabilityStarted = false
+    const semanticPipelineWork = semanticSearchPromise.then(
       async (semanticSearch) => {
+        semanticSearchForFallback = semanticSearch
+        assertBeforeDeadline(semanticDeadlineAtMs)
         const semanticCandidates = semanticSearch.results.filter(
           (candidate) => candidate.similarity >= MIN_SEMANTIC_SOURCE_SCORE,
         )
         const semanticWatchabilityStartedAt = nowMs()
+        semanticWatchabilityStarted = semanticCandidates.length > 0
         const semanticWatchability =
           semanticCandidates.length === 0
             ? new Map<string, SearchWatchability>()
@@ -531,12 +676,91 @@ export class WatchSearchService {
         }
       },
     )
+    const semanticPipelinePromise = semanticDeadlineAtMs
+      ? withTimeout(
+          semanticPipelineWork,
+          Math.max(1, semanticDeadlineAtMs - performance.now()),
+          "semantic_request_budget_exceeded",
+        ).catch((error: unknown) => {
+          if (!(error instanceof WatchSearchTimeoutError)) throw error
+          const timedOutAt = nowMs()
+          const semanticSearch = semanticSearchForFallback
+          return {
+            results: semanticSearch?.results ?? [],
+            degraded: true,
+            laneStatuses: semanticSearch?.laneStatuses ?? [
+              ...semanticLaneStatuses,
+              ...(semanticStage === "evidence_locales"
+                ? [
+                    laneStatus({
+                      lane: "semantic_embedding",
+                      status: "skipped",
+                      startedOffsetMs: semanticStartedAt - timelineStartedAt,
+                      elapsedMs: timedOutAt - semanticStartedAt,
+                      resultCount: 0,
+                      reason: "evidence_locale_budget_exceeded",
+                    }),
+                    laneStatus({
+                      lane: "semantic_retrieval",
+                      status: "skipped",
+                      startedOffsetMs: semanticStartedAt - timelineStartedAt,
+                      elapsedMs: 0,
+                      resultCount: 0,
+                      reason: "evidence_locale_budget_exceeded",
+                    }),
+                  ]
+                : semanticStage === "embedding"
+                  ? [
+                      laneStatus({
+                        lane: "semantic_embedding",
+                        status: "degraded",
+                        startedOffsetMs: semanticStartedAt - timelineStartedAt,
+                        elapsedMs: timedOutAt - semanticStartedAt,
+                        resultCount: 0,
+                        reason: "request_budget_exceeded",
+                      }),
+                      laneStatus({
+                        lane: "semantic_retrieval",
+                        status: "skipped",
+                        startedOffsetMs: semanticStartedAt - timelineStartedAt,
+                        elapsedMs: 0,
+                        resultCount: 0,
+                        reason: "missing_query_embedding",
+                      }),
+                    ]
+                  : [
+                      laneStatus({
+                        lane: "semantic_retrieval",
+                        status: "degraded",
+                        startedOffsetMs: semanticStartedAt - timelineStartedAt,
+                        elapsedMs: timedOutAt - semanticStartedAt,
+                        resultCount: 0,
+                        reason: "request_budget_exceeded",
+                      }),
+                    ]),
+            ],
+            semanticCandidates: [],
+            semanticWatchability: new Map<string, SearchWatchability>(),
+            semanticWatchabilityLaneStatus: laneStatus({
+              lane: "semantic_watchability",
+              status: semanticWatchabilityStarted ? "degraded" : "skipped",
+              startedOffsetMs: semanticStartedAt - timelineStartedAt,
+              elapsedMs: timedOutAt - semanticStartedAt,
+              resultCount: 0,
+              reason: semanticWatchabilityStarted
+                ? "request_budget_exceeded"
+                : "semantic_request_budget_exceeded",
+            }),
+          }
+        })
+      : semanticPipelineWork
     const [exactPipeline, metadataPipeline, semanticPipeline] =
       await Promise.all([
-        exactPipelinePromise,
-        metadataPipelinePromise,
+        exactPipelineWithBudget,
+        metadataPipelineWithBudget,
         semanticPipelinePromise,
       ])
+    assertBeforeDeadline(deadlineAtMs)
     const { exactWatchability } = exactPipeline
     const { metadataWatchability } = metadataPipeline
     laneStatuses.push(
@@ -685,10 +909,39 @@ export class WatchSearchService {
         watchability: entry.watchability,
       })
     })
-    const [catalogByVideoId, imagesByVideoId] = await Promise.all([
+    const finalHydrationStartedAt = nowMs()
+    let finalHydrationDegraded = false
+    const finalHydrationPromise = Promise.all([
       this.catalogFieldsForResults(results),
       this.imagesForResults(results),
     ])
+    const [catalogByVideoId, imagesByVideoId] =
+      deadlineAtMs == null
+        ? await finalHydrationPromise
+        : await withTimeout(
+            finalHydrationPromise,
+            Math.max(1, deadlineAtMs - performance.now() - 100),
+            "final_hydration_budget_exceeded",
+          ).catch((error: unknown) => {
+            if (!(error instanceof WatchSearchTimeoutError)) throw error
+            finalHydrationDegraded = true
+            return [
+              new Map<string, WatchSearchResultCatalog>(),
+              new Map<string, WatchSearchResultImage>(),
+            ] as const
+          })
+    if (finalHydrationDegraded) {
+      laneStatuses.push(
+        laneStatus({
+          lane: "final_hydration",
+          status: "degraded",
+          startedOffsetMs: finalHydrationStartedAt - timelineStartedAt,
+          elapsedMs: elapsedMs(finalHydrationStartedAt),
+          resultCount: 0,
+          reason: "request_budget_exceeded",
+        }),
+      )
+    }
 
     return {
       results: results.map((result) =>
@@ -698,7 +951,10 @@ export class WatchSearchService {
         ),
       ),
       hasMore: candidates.length > limit,
-      degraded: semanticPipeline.degraded,
+      degraded:
+        semanticPipeline.degraded ||
+        finalHydrationDegraded ||
+        laneStatuses.some((lane) => lane.status === "degraded"),
       laneStatuses,
     }
   }
@@ -707,18 +963,24 @@ export class WatchSearchService {
     query,
     languageInterpretation,
     timelineStartedAt,
+    deadlineAtMs,
+    laneStatuses,
+    setStage,
   }: {
     query: string
     languageInterpretation: WatchSearchLanguageInterpretation
     timelineStartedAt: number
+    deadlineAtMs: number | null
+    laneStatuses: WatchSearchLaneStatus[]
+    setStage: (stage: "evidence_locales" | "embedding" | "retrieval") => void
   }): Promise<{
     results: SemanticVideoSearchResult[]
     degraded: boolean
     laneStatuses: WatchSearchLaneStatus[]
   }> {
-    const laneStatuses: WatchSearchLaneStatus[] = []
     const semanticStartedAt = nowMs()
     const evidenceLocales = await this.evidenceLocales(languageInterpretation)
+    assertBeforeDeadline(deadlineAtMs)
     if (evidenceLocales.length === 0) {
       laneStatuses.push(
         laneStatus({
@@ -742,6 +1004,7 @@ export class WatchSearchService {
     }
 
     let queryEmbedding: string
+    setStage("embedding")
     const embeddingStartedAt = nowMs()
     try {
       const embeddingResult = normalizeQueryEmbeddingResult(
@@ -763,6 +1026,7 @@ export class WatchSearchService {
         }),
       )
     } catch (error) {
+      assertBeforeDeadline(deadlineAtMs)
       const logFields = queryEmbeddingFailureLogFields(error)
       this.logger.warn(
         `[watch-search] event=${queryEmbeddingFailureReason(error)} error_class=${error instanceof Error ? error.constructor.name : "UnknownError"}${logFields ? ` ${logFields}` : ""}`,
@@ -789,6 +1053,8 @@ export class WatchSearchService {
       return { results: [], degraded: true, laneStatuses }
     }
 
+    assertBeforeDeadline(deadlineAtMs)
+    setStage("retrieval")
     const retrievalStartedAt = nowMs()
     const retrievals = await Promise.all(
       evidenceLocales.map(async ({ languageSlug, locale }) => {
@@ -818,6 +1084,7 @@ export class WatchSearchService {
         }
       }),
     )
+    assertBeforeDeadline(deadlineAtMs)
     const rawSemanticResults = dedupeSemanticResults(
       retrievals.flatMap((retrieval) => retrieval.results),
     )
@@ -1313,10 +1580,16 @@ export async function prewarmWatchSearchQueryEmbeddings({
   )
 }
 
-class WatchSearchTimeoutError extends Error {
+export class WatchSearchTimeoutError extends Error {
   constructor(readonly event: string) {
-    super(event)
+    super("Watch search timed out")
     this.name = "WatchSearchTimeoutError"
+  }
+}
+
+function assertBeforeDeadline(deadlineAtMs: number | null): void {
+  if (deadlineAtMs != null && performance.now() >= deadlineAtMs) {
+    throw new WatchSearchTimeoutError("watch_search_deadline_exceeded")
   }
 }
 
@@ -1339,6 +1612,24 @@ async function withTimeout<T>(
   } finally {
     if (timeout) clearTimeout(timeout)
   }
+}
+
+function withDeadlineFallback<T>(
+  promise: Promise<T>,
+  deadlineAtMs: number | null,
+  event: string,
+  fallback: (elapsedMs: number) => T,
+): Promise<T> {
+  if (deadlineAtMs == null) return promise
+  const startedAt = performance.now()
+  return withTimeout(
+    promise,
+    Math.max(1, deadlineAtMs - performance.now()),
+    event,
+  ).catch((error: unknown) => {
+    if (!(error instanceof WatchSearchTimeoutError)) throw error
+    return fallback(performance.now() - startedAt)
+  })
 }
 
 function uniqueNonNull(values: ReadonlyArray<string | null | undefined>) {

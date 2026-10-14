@@ -138,6 +138,7 @@
     "versesAriaValue": "Retci od {first} do {last}, od ukupno {total}, {chapter}",
     "demoVerse": "Povucite prema gore za sljedeći redak",
     "demoChapter": "Povucite ulijevo za sljedeće poglavlje",
+    "demoChapterRtl": "Povucite udesno za sljedeće poglavlje",
     "demoSkip": "Dodirnite za preskakanje",
     "demoSkipAriaLabel": "Preskoči prikaz povlačenja",
     "selectVerseAriaHint": "Dvaput dodirnite za odabir ovog retka",
@@ -773,5 +774,8 @@
     "send": "Pošalji",
     "sending": "Slanje…",
     "sendAriaLabel": "Pošalji povratne informacije"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikacija upotrebljava vašu lokalnu mrežu za pronalaženje uređaja za emitiranje kako biste mogli reproducirati videozapise na svojem televizoru."
   }
 }

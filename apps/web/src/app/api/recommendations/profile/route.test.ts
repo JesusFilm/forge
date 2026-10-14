@@ -278,6 +278,7 @@ describe("POST /watch/api/recommendations/profile", () => {
     expect(setCookie).toContain("HttpOnly")
     expect(setCookie).toContain("Secure")
     expect(setCookie).toContain("forge_recommendation_profile=;")
+    expect(setCookie).not.toContain("forge_recommendation_experiment_browser=;")
     const variables = mutate.mock.calls[0]?.[0]?.variables
     expect(variables).toMatchObject({
       consentContractVersion: "recommendation-consent-v1",
@@ -288,6 +289,28 @@ describe("POST /watch/api/recommendations/profile", () => {
     })
     expect(variables.proposedConsentReceiptDigest).toMatch(/^[a-f0-9]{64}$/)
   })
+
+  it.each(["reset", "delete"])(
+    "clears the private browser and tester identities after %s",
+    async (action) => {
+      mutate.mockResolvedValueOnce({
+        data: {
+          transitionRecommendationProfile: {
+            ...sessionOnly,
+            consentChoice: "essential_only",
+            consentExpiresAt: "2027-02-21T00:00:00.000Z",
+            consentCookieDisposition: "clear",
+            cookieDisposition: "clear",
+          },
+        },
+      })
+      const response = await POST(request(action))
+      expect(response.status).toBe(200)
+      const setCookie = response.headers.get("set-cookie") ?? ""
+      expect(setCookie).toContain("forge_recommendation_experiment_browser=;")
+      expect(setCookie).toContain("forge_recommendation_experiment_tester=;")
+    },
+  )
 
   it("fails ambiguous consent cookies closed and never forwards their value", async () => {
     const response = await POST(
