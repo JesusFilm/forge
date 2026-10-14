@@ -1239,6 +1239,12 @@ and `useExploreTakeover` hooks.
   carries `explore_swipe_trigger` (`viewer` or `clipEnd`). Filter on `viewer`
   to count only the viewer's swipes.
 
+- **A tap on the description text works as "more" and "less" (owner,
+  2026-10-15).** `ClipDescription.tsx` wraps the text in a `Pressable`, not a
+  `Text` `onPress`, which draws a grey highlight box on iOS. The cut text
+  takes the tap only when it overflows. The `Pressable` is `accessible={false}`,
+  so screen readers keep "more" and "less" as the controls. A drag that moves
+  the pager, or scrolls the open text, cancels the tap.
 - **A child that scrolls on the pager's axis must hold the pager (owner,
   2026-10-01).** On Fabric iOS, a pager that takes the JS responder stops every
   nested scroll view from starting a drag. `RCTScrollViewComponentView`'s
