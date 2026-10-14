@@ -24,6 +24,13 @@ ordered. The model, prompts, evidence, output limits and generation digest do
 not change. More concurrency can reduce elapsed time but does not reduce total
 allowance usage or promise a proportional speedup.
 
+Each source keeps the analytics context from its first reserved batch, even
+after its partner finishes or is omitted from a resume. The runner reconstructs
+that membership from the existing edge ledger and reads the same imported
+capture. A source's final singleton page must not drop its original partner's
+engagement signals. Sources with different frozen contexts use separate
+batches; this changes scheduling only and preserves prior receipts and inputs.
+
 Keep one runner and one active attempt for a generation. Do not launch several
 copies of the command to add concurrency. Each call still obtains fresh account,
 allowance and durable reservation admission. A failed task stops new work;
