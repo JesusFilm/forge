@@ -9,6 +9,7 @@ import {
 } from "./contract"
 import {
   assertPrecomputedObservedVersion,
+  PrecomputedCatalogError,
   selectedTranscriptSelections,
 } from "./catalog"
 import { verifiedImportedGaCapture } from "./ga-capture-import"
@@ -475,7 +476,8 @@ async function offeredExcerpt(
   if (!evidence) {
     try {
       await assertPrecomputedObservedVersion(tx, [offer.videoId], cutoff)
-    } catch {
+    } catch (error) {
+      if (!(error instanceof PrecomputedCatalogError)) throw error
       return null
     }
   }
@@ -532,7 +534,8 @@ async function validateSpanOffers(
   const videoIds = [...new Set(input.spanOffers.map((offer) => offer.videoId))]
   try {
     await assertPrecomputedObservedVersion(tx, videoIds, cutoff)
-  } catch {
+  } catch (error) {
+    if (!(error instanceof PrecomputedCatalogError)) throw error
     invalid("Edge span offer is not an exact selected passage")
   }
   const selected = await selectedTranscriptSelections(tx, videoIds)
@@ -809,6 +812,10 @@ export async function submitEdgeAction(
   const input: Action = parsed.data
   return prisma.$transaction(
     async (tx) => {
+      // Offline comparisons already run concurrently at the model layer.
+      // Keep their catalog proofs out of PostgreSQL's small shared-memory
+      // pool; SET LOCAL restores the connection default at transaction end.
+      await tx.$executeRaw`SET LOCAL max_parallel_workers_per_gather = 0`
       const generation = await guards.checkedGeneration(
         tx,
         input,
