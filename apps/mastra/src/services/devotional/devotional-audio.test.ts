@@ -4,6 +4,7 @@ import {
   buildNarrationSegments,
   produceDevotionalAudio,
   segmentModel,
+  THOUGHT_PAUSE_SEC,
   voiceTake,
 } from "./devotional-audio"
 import type { GeneratedDevotional } from "./generate-devotional"
@@ -428,6 +429,36 @@ describe("buildNarrationSegments — authored paragraphs and voices", () => {
     expect(byId.questions).toBe("male-e")
     // Not named in `voices`: reads in `voice`, so it carries no override.
     expect(byId.conclusion).toBeUndefined()
+  })
+})
+
+describe("buildNarrationSegments — thought pauses (owner, 2026-10-13)", () => {
+  const withPauses: GeneratedDevotional = {
+    ...DEVO,
+    reflection: {
+      ...DEVO.reflection,
+      text: "Why him? He could be bought. God cannot.",
+      paragraphs: [
+        { text: "Why him? He could be bought.", pauses: ["Why him?"] },
+        { text: "God cannot.", pauses: ["God cannot."], pauseAfterSec: 2 },
+      ],
+    },
+  }
+  const pauses = buildNarrationSegments(withPauses, undefined, {
+    structure: "clip-first",
+  })
+    .filter((s) => /^reflection-\d+$/.test(s.id))
+    .map((s) => [s.display, s.pauseAfterSec ?? 0])
+
+  it("holds a beat after each marked sentence, and only there", () => {
+    expect(pauses.slice(0, 2)).toEqual([
+      ["Why him?", THOUGHT_PAUSE_SEC],
+      ["He could be bought.", 0],
+    ])
+  })
+
+  it("keeps the paragraph's own longer pause on its last sentence", () => {
+    expect(pauses[2]).toEqual(["God cannot.", 2])
   })
 })
 

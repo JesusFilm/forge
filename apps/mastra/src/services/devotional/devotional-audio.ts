@@ -263,6 +263,20 @@ function buildClipFirstSegments(
     direction?: string
     pauseAfterSec?: number
   }
+  // A marked sentence gets a thought pause; the paragraph's own
+  // pauseAfterSec still applies to its last sentence (the longer one wins).
+  const pauseAfter = (
+    p: { pauses?: string[]; pauseAfterSec?: number },
+    sentence: string,
+    last: boolean,
+  ) => {
+    const norm = (t: string) => t.replace(/\s+/g, " ").trim()
+    const marked = (p.pauses ?? []).some((q) => norm(q) === norm(sentence))
+    return Math.max(
+      marked ? THOUGHT_PAUSE_SEC : 0,
+      last ? (p.pauseAfterSec ?? 0) : 0,
+    )
+  }
   const chunks: Chunk[] = d.reflection.paragraphs?.length
     ? d.reflection.paragraphs.flatMap((p) => {
         const parts = splitReflection(p.text.trim())
@@ -272,8 +286,8 @@ function buildClipFirstSegments(
           ...(p.mark && j === 0 ? { mark: p.mark } : {}),
           ...(p.callout ? { callout: p.callout } : {}),
           ...(p.direction && j === 0 ? { direction: p.direction } : {}),
-          ...(p.pauseAfterSec && j === parts.length - 1
-            ? { pauseAfterSec: p.pauseAfterSec }
+          ...(pauseAfter(p, text, j === parts.length - 1)
+            ? { pauseAfterSec: pauseAfter(p, text, j === parts.length - 1) }
             : {}),
         }))
       })
@@ -815,6 +829,10 @@ export type ProduceDevotionalAudioDeps = {
  * a rate-limited unit permanently loses its whole segment.
  */
 const TTS_MAX_RETRIES = 3
+
+/** Silence after a sentence marked in a paragraph's `pauses`, on top of the
+ *  voice's own short gap (owner, 2026-10-13). */
+export const THOUGHT_PAUSE_SEC = 0.9
 const TTS_BACKOFF_MS = 1_500
 
 /** Bumped whenever the two-voice opening's delivery or cutting changes, so a

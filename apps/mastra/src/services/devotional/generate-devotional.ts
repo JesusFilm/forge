@@ -91,6 +91,12 @@ export type ReflectionParagraph = {
   /** Extra silence (s) after the paragraph's last sentence, to let strong
    *  words land (owner, 2026-10-08: "…и в жизни, и в смерти."). */
   pauseAfterSec?: number
+  /** Sentences of this paragraph after which the voice stops for a beat
+   *  (THOUGHT_PAUSE_SEC of real silence, the text held on screen), so a
+   *  weighty line can land before the next one (owner, 2026-10-13: equal
+   *  gaps after every sentence made it hard to hear where a thought ends;
+   *  Eleven v4 has no reliable pause control of its own). */
+  pauses?: string[]
 }
 
 export type VerseCallout = {
@@ -269,6 +275,7 @@ export const GeneratedDevotionalSchema = z.object({
             .optional(),
           direction: z.string().optional(),
           pauseAfterSec: z.number().min(0).max(5).optional(),
+          pauses: z.array(z.string()).optional(),
         }),
       )
       .optional(),
