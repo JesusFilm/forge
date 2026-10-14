@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 13, 2026)
 
-- **Total tickets:** 824
-- **Complete:** 612
+- **Total tickets:** 825
+- **Complete:** 613
 - **Cancelled:** 39
 - **In progress:** 66
 - **Not started:** 50
@@ -764,6 +764,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-509](platform/feat-509-mobile-export-save-sheet-native-module.md)                | Mobile raw export: iOS Save sheet via an export-mode native module                 | urim       | P2       | 2026-10-01 | 3    | 2026-10-03 | blocked     |
 | [feat-591](platform/feat-591-cowatch-postgresql-regressions-ci.md)                     | Run Co-watch PostgreSQL regressions in CI                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
 | [feat-613](platform/feat-613-push-campaign-mcp-drafts.md)                              | Agents draft push campaigns through the admin MCP, and a person publishes          | urim       | P2       | 2026-10-06 | 7    | 2026-10-12 | complete    |
+| [feat-648](platform/feat-648-watch-variant-language-badges.md)                         | Distinguish Watch player language variants in chrome                               | codex      | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-690](platform/feat-690-watch-image-optimizer-tenant-scoping.md)                  | Scope the Watch image optimizer to our own CDN tenants                             | vlad       | P2       | 2026-10-06 | 3    | 2026-10-08 | not-started |
 | [feat-691](platform/feat-691-force-login-marker-consumption-point.md)                  | Burn the force-login marker on callback success, not on the login redirect         | vlad       | P2       | 2026-10-06 | 2    | 2026-10-07 | not-started |
 | [feat-627](platform/feat-627-mobile-ios-local-network-prompt-localization.md)          | Translate the iOS Local Network permission prompt                                  | urim       | P2       | 2026-10-09 | 2    | 2026-10-10 | not-started |
