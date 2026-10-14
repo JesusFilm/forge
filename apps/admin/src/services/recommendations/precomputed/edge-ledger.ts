@@ -38,38 +38,87 @@ const RECOVERY_CAPTURE_REF_DIGEST =
 const NO_DISPATCH_GENERATION_ID = "production-astra-catalog-20261013-v6"
 const NO_DISPATCH_GENERATION_INPUT_DIGEST =
   "e2ad59bb95b497738290c6dee1d0dd487886f34019ea721ce6971e12dfddd3a5"
-const NO_DISPATCH_CALL_ID = "f6cdb507-e7e3-4172-b31f-27ace231f2c3"
-const NO_DISPATCH_ATTEMPT_ID = "93be0f68-3564-4da7-a81d-0d7bb4b79212"
-const NO_DISPATCH_REQUEST_DIGEST =
-  "dd72735e1bcdb439f39a824dbdfe37c408af7e414ff8a095cdf5c549e1dd5437"
-const NO_DISPATCH_EVIDENCE_DIGEST =
-  "43cdc25082e85c9b2a743a62da0dfc2857ce7b037d52a4467818dbf9a1e9422d"
-const NO_DISPATCH_SOURCE_ID = "cmp76xcw602imny01vnsbwwy9"
-// Read-side qualification uses both the sealed server audit and its committed
-// member disposition. Every other pending or null-usage row remains unknown.
+// Deliberate operator exceptions, each bound to a sealed incident and exact pages.
+// This is not permission to clear an arbitrary pending provider invocation.
+const REVIEWED_NO_DISPATCH = [
+  {
+    callId: "f6cdb507-e7e3-4172-b31f-27ace231f2c3",
+    attemptId: "93be0f68-3564-4da7-a81d-0d7bb4b79212",
+    requestDigest:
+      "dd72735e1bcdb439f39a824dbdfe37c408af7e414ff8a095cdf5c549e1dd5437",
+    evidenceDigest:
+      "43cdc25082e85c9b2a743a62da0dfc2857ce7b037d52a4467818dbf9a1e9422d",
+    members: [
+      {
+        sourceVideoId: "cmp76xcw602imny01vnsbwwy9",
+        pageIndex: 20,
+        checkpointRevision: 21,
+        firstRank: 68,
+        candidateCount: 8,
+        sourceCandidateCount: 86,
+      },
+    ],
+  },
+  {
+    callId: "d541c707-abd6-4f01-9a8f-038c11b2a4e7",
+    attemptId: "b01b7bb1-5b87-4630-baca-7640e76cfd62",
+    requestDigest:
+      "72ef38c5db10293ad056e13a7de10e37995b9e6d54e614766a5ae2008fd242af",
+    evidenceDigest:
+      "ff0f204b63dbc2ccd51e60d8225cc714c2d6c2aa82d0a866d506bb44384d1c92",
+    members: [
+      {
+        sourceVideoId: "cmokmkp5h0nvkqsccj7ysgsz2",
+        pageIndex: 2,
+        checkpointRevision: 3,
+        firstRank: 8,
+        candidateCount: 4,
+        sourceCandidateCount: 51,
+      },
+      {
+        sourceVideoId: "cmokmkra70nw2qscc6utvnl84",
+        pageIndex: 2,
+        checkpointRevision: 3,
+        firstRank: 7,
+        candidateCount: 3,
+        sourceCandidateCount: 51,
+      },
+    ],
+  },
+]
+// Every reviewed member must have the audited disposition. Other pending or
+// null-usage reservations, including partially disposed calls, remain unknown.
 export const auditedNoDispatchReservationWhere: Prisma.RecommendationPrecomputedEdgeBatchCallWhereInput =
   {
-    generationId: NO_DISPATCH_GENERATION_ID,
-    callId: NO_DISPATCH_CALL_ID,
-    attemptId: NO_DISPATCH_ATTEMPT_ID,
-    status: "pending",
-    requestDigest: NO_DISPATCH_REQUEST_DIGEST,
-    noDispatchDisposition: {
-      is: {
-        reason: "reservation_timeout_before_dispatch",
-        evidenceDigest: NO_DISPATCH_EVIDENCE_DIGEST,
+    OR: REVIEWED_NO_DISPATCH.map((reviewed) => ({
+      generationId: NO_DISPATCH_GENERATION_ID,
+      callId: reviewed.callId,
+      attemptId: reviewed.attemptId,
+      status: "pending",
+      requestDigest: reviewed.requestDigest,
+      noDispatchDisposition: {
+        is: {
+          reason: "reservation_timeout_before_dispatch",
+          evidenceDigest: reviewed.evidenceDigest,
+        },
       },
-    },
-    members: {
-      some: {
-        sourceVideoId: NO_DISPATCH_SOURCE_ID,
-        applicationState: "no_dispatch_unapplied",
+      AND: reviewed.members.map((member) => ({
+        members: {
+          some: {
+            sourceVideoId: member.sourceVideoId,
+            applicationState: "no_dispatch_unapplied",
+          },
+        },
+      })),
+      members: {
+        every: {
+          sourceVideoId: {
+            in: reviewed.members.map((member) => member.sourceVideoId),
+          },
+          applicationState: "no_dispatch_unapplied",
+        },
       },
-      every: {
-        sourceVideoId: NO_DISPATCH_SOURCE_ID,
-        applicationState: "no_dispatch_unapplied",
-      },
-    },
+    })),
   }
 const provisionalChoice = precomputedChoiceSchema.omit({ rank: true }).extend({
   strength: z.number().int().min(0).max(100),
@@ -932,14 +981,17 @@ async function acknowledgeNoDispatch(
   generation: Generation,
   guards: Guards,
 ): Promise<Record<string, unknown>> {
+  const reviewed = REVIEWED_NO_DISPATCH.find(
+    (item) => item.callId === input.originalCallId,
+  )
   if (
+    !reviewed ||
     input.generationId !== NO_DISPATCH_GENERATION_ID ||
     input.generationInputDigest !== NO_DISPATCH_GENERATION_INPUT_DIGEST ||
-    input.originalCallId !== NO_DISPATCH_CALL_ID ||
-    input.originalAttemptId !== NO_DISPATCH_ATTEMPT_ID ||
-    input.expectedRequestDigest !== NO_DISPATCH_REQUEST_DIGEST ||
-    input.evidenceDigest !== NO_DISPATCH_EVIDENCE_DIGEST ||
-    input.attemptId === NO_DISPATCH_ATTEMPT_ID ||
+    input.originalAttemptId !== reviewed.attemptId ||
+    input.expectedRequestDigest !== reviewed.requestDigest ||
+    input.evidenceDigest !== reviewed.evidenceDigest ||
+    input.attemptId === reviewed.attemptId ||
     generation.status !== "incomplete"
   )
     conflict("No-dispatch scope differs from the reviewed reservation")
@@ -998,20 +1050,26 @@ async function acknowledgeNoDispatch(
     )
   )
     conflict("A source lease is still live")
-  const source = sources.find(
-    (item) => item.source_video_id === NO_DISPATCH_SOURCE_ID,
-  )
   const checkpoint = z
     .object({
       stage: z.literal("edge_page_applied_v1"),
-      cursor: z.object({ candidateIndex: z.literal(68) }).strict(),
+      cursor: z.object({ candidateIndex: count }).strict(),
     })
     .strict()
   if (
     !existingAudit &&
-    (!source ||
-      source.checkpoint_revision !== 21 ||
-      !checkpoint.safeParse(source.checkpoint).success)
+    reviewed.members.some((member) => {
+      const source = sources.find(
+        (item) => item.source_video_id === member.sourceVideoId,
+      )
+      const parsed = checkpoint.safeParse(source?.checkpoint)
+      return (
+        !source ||
+        source.checkpoint_revision !== member.checkpointRevision ||
+        !parsed.success ||
+        parsed.data.cursor.candidateIndex !== member.firstRank
+      )
+    })
   )
     conflict("No-dispatch source checkpoint differs")
   await tx.$queryRaw`SELECT call_id FROM recommendation_precomputed_edge_batch_call
@@ -1038,27 +1096,35 @@ async function acknowledgeNoDispatch(
     original.outputDigest !== null ||
     original.errorCode !== null ||
     original.recoveryReplacementCallId !== null ||
-    original.members.length !== 1
+    original.members.length !== reviewed.members.length
   )
     conflict("No-dispatch reservation is not the reviewed pending call")
-  const member = original.members[0]!
-  const candidates = z.array(candidate).safeParse(member.candidates)
-  if (
-    member.sourceVideoId !== NO_DISPATCH_SOURCE_ID ||
-    member.pageIndex !== 20 ||
-    member.checkpointRevision !== 21 ||
-    member.sourceCandidateCount !== 86 ||
-    member.appliedRevision !== null ||
-    member.resultChoiceCount !== null ||
-    !candidates.success ||
-    candidates.data.length !== 8 ||
-    candidates.data.some((item, index) => item.poolRank !== 68 + index)
-  )
-    conflict("No-dispatch member differs from the reviewed page")
+  for (const member of original.members) {
+    const expected = reviewed.members.find(
+      (item) => item.sourceVideoId === member.sourceVideoId,
+    )
+    const candidates = z.array(candidate).safeParse(member.candidates)
+    if (
+      !expected ||
+      member.pageIndex !== expected.pageIndex ||
+      member.checkpointRevision !== expected.checkpointRevision ||
+      member.sourceCandidateCount !== expected.sourceCandidateCount ||
+      member.appliedRevision !== null ||
+      member.resultChoiceCount !== null ||
+      !candidates.success ||
+      candidates.data.length !== expected.candidateCount ||
+      candidates.data.some(
+        (item, index) => item.poolRank !== expected.firstRank + index,
+      )
+    )
+      conflict("No-dispatch member differs from the reviewed page")
+  }
   if (original.noDispatchDisposition) {
     const audit = original.noDispatchDisposition
     if (
-      member.applicationState !== "no_dispatch_unapplied" ||
+      original.members.some(
+        (member) => member.applicationState !== "no_dispatch_unapplied",
+      ) ||
       audit.maintenanceAttemptId !== input.attemptId ||
       audit.evidenceDigest !== input.evidenceDigest ||
       audit.operatorAccountRef !== input.operatorAccountRef
@@ -1071,28 +1137,30 @@ async function acknowledgeNoDispatch(
       replay: true,
     }
   }
-  if (member.applicationState !== "pending")
+  if (original.members.some((member) => member.applicationState !== "pending"))
     conflict("No-dispatch member is no longer pending")
   if (!maintenance) conflict("No-dispatch maintenance attempt is missing")
-  const frozen =
-    await tx.recommendationPrecomputedBuildSource.findUniqueOrThrow({
-      where: {
-        generationId_sourceVideoId: {
-          generationId: input.generationId,
-          sourceVideoId: member.sourceVideoId,
+  for (const member of original.members) {
+    const frozen =
+      await tx.recommendationPrecomputedBuildSource.findUniqueOrThrow({
+        where: {
+          generationId_sourceVideoId: {
+            generationId: input.generationId,
+            sourceVideoId: member.sourceVideoId,
+          },
         },
-      },
-    })
-  if (
-    frozen.state !== "claimed" ||
-    frozen.leaseToken !== member.leaseToken ||
-    frozen.edgeSourceCandidateCount !== member.sourceCandidateCount ||
-    frozen.edgeSourceCandidateDigest !== member.sourceCandidateDigest ||
-    frozen.edgeSourceProfileKey !== member.sourceProfileKey ||
-    frozen.edgeCandidatePoolDigest !== original.candidatePoolDigest ||
-    frozen.edgeHistoricalRefDigest !== member.historicalRefDigest
-  )
-    conflict("No-dispatch frozen source identity differs")
+      })
+    if (
+      frozen.state !== "claimed" ||
+      frozen.leaseToken !== member.leaseToken ||
+      frozen.edgeSourceCandidateCount !== member.sourceCandidateCount ||
+      frozen.edgeSourceCandidateDigest !== member.sourceCandidateDigest ||
+      frozen.edgeSourceProfileKey !== member.sourceProfileKey ||
+      frozen.edgeCandidatePoolDigest !== original.candidatePoolDigest ||
+      frozen.edgeHistoricalRefDigest !== member.historicalRefDigest
+    )
+      conflict("No-dispatch frozen source identity differs")
+  }
   const [snapshot] = await tx.$queryRaw<
     Array<{ originalMembers: Prisma.JsonValue; memberSnapshotDigest: string }>
   >`
@@ -1118,14 +1186,8 @@ async function acknowledgeNoDispatch(
       memberSnapshotDigest: snapshot.memberSnapshotDigest,
     },
   })
-  await tx.recommendationPrecomputedEdgeBatchMember.update({
-    where: {
-      generationId_callId_sourceVideoId: {
-        generationId: input.generationId,
-        callId: original.callId,
-        sourceVideoId: member.sourceVideoId,
-      },
-    },
+  await tx.recommendationPrecomputedEdgeBatchMember.updateMany({
+    where: { generationId: input.generationId, callId: original.callId },
     data: { applicationState: "no_dispatch_unapplied" },
   })
   return {

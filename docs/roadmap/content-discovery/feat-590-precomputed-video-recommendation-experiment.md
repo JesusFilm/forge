@@ -31,6 +31,15 @@ run reached twelve simultaneous reservations without request errors. Raise the
 operator ceiling to sixteen to give the eight-hour target more headroom; the
 model, quality settings, admission checks and graceful drain remain unchanged.
 
+The sixteen-call run completed all 1,031 profiles. Concurrent edge reservations
+then exposed Admin's generation lock: one admission took 18,147 ms, beyond the
+local 15-second deadline. Serialize only reservation writes while keeping up to
+sixteen model calls active. Migration 0151 extends the sealed no-dispatch
+allowlist to that exact two-member reservation, preserving null provider usage,
+original receipts and source checkpoints. Resume through the native operator
+acknowledgement after normal deployment and expired leases; never replay the
+original reservation or infer completed comparisons from it.
+
 Explore whether a capable reasoning model can find useful connections across
 the video catalog from transcripts, metadata, and historical analytics, with
 recommendations computed periodically and stored in PostgreSQL before viewers
