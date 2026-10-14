@@ -207,6 +207,9 @@ const SOURCES: VideoSource[] = [
     film: "lumo",
     passage: { reference: "Luke 18:1-8", osisRef: "Luke.18.1-Luke.18.8" },
     window: { startSec: 358.7, lengthSec: 67.1 },
+    // The Russian dub starts 18:1 at 358.3 and ends "веру на земле?" at
+    // 424.55, 0.4 s before the segment does.
+    windowByLang: { ru: { startSec: 358.0, lengthSec: 66.7 } },
     // ~66.6s of speech ×1.05 → ~64s on screen, plus the closing hold.
     maxVideoCardSec: 67,
     videoSpeed: 1.05,
@@ -216,6 +219,7 @@ const SOURCES: VideoSource[] = [
     captions: {
       kind: "file",
       path: "video-sources/lumo-luke-18-widow.en.vtt",
+      byLang: { ru: "video-sources/lumo-luke-18-widow.ru.vtt" },
     },
   },
 ]

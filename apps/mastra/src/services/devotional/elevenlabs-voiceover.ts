@@ -65,6 +65,11 @@ export const DEVOTIONAL_VOICES = {
   // younger Russian male narrator (20s-30s). Owner's pick from four samples
   // on Ten Lepers (2026-10-12) for a whole Russian video beside Kate.
   "russian-ivo": "hD8aK7CmEPgH3mbFO08e",
+  // "Tatyana Voloshina - Dramatic, Rich" from the voice library: expressive
+  // Russian female narrator. Used in Bartimaeus RU's opening (2026-10-07);
+  // owner's pick for the whole Russian female part from the Persistent
+  // Widow on (2026-10-14).
+  "russian-tatyana": "nkvv6waLzFah2jTNUZGT",
 } as const
 
 export type DevotionalVoiceName = keyof typeof DEVOTIONAL_VOICES
