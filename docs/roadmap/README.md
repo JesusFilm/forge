@@ -6,20 +6,15 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 13, 2026)
 
-- **Total tickets:** 817
-- **Complete:** 608
+- **Total tickets:** 821
+- **Complete:** 610
 - **Cancelled:** 39
-- **In progress:** 65
-- **Not started:** 48
+- **In progress:** 66
+- **Not started:** 49
 - **Blocked:** 57
 - **Overdue and open:** 154
 
 ## Feature Index
-
-Added October 5, after the status snapshot above:
-[feat-590 — Precomputed video recommendation experiment](content-discovery/feat-590-precomputed-video-recommendation-experiment.md)
-is in progress. The completed integration-fixture maintenance record was
-renumbered to feat-612 to keep the two feature identities distinct.
 
 ### Content Discovery
 
@@ -187,8 +182,10 @@ renumbered to feat-612 to keep the two feature identities distinct.
 | [feat-579](content-discovery/feat-579-watch-search-catalog-publication.md)                                     | Publish Core catalog changes into the serving Watch search index                                | nisal      | P1       | 2026-09-30 | 5    | 2026-10-04 | complete    |
 | [feat-573](content-discovery/feat-573-sustainable-cowatch-live-refresh.md)                                     | Sustain live co-watch with bounded graph refresh                                                | nisal      | P1       | 2026-10-01 | 3    | 2026-10-03 | complete    |
 | [feat-589](content-discovery/feat-589-recommendation-audio-aware-retrieval-locale-identity.md)                 | Repair recommendation audio-aware retrieval and locale identity                                 | nisal      | P1       | 2026-10-01 | 5    | 2026-10-05 | complete    |
+| [feat-590](content-discovery/feat-590-precomputed-video-recommendation-experiment.md)                          | Precomputed video recommendation experiment                                                     | nisal      | P1       | 2026-10-05 | 7    | 2026-10-11 | in-progress |
 | [feat-609](content-discovery/feat-609-filtered-hnsw-fixture-recall.md)                                         | Diagnose intermittent filtered HNSW recommendation fixture recall                               | nisal      | P1       | 2026-10-06 | 2    | 2026-10-07 | in-progress |
-| [feat-683](content-discovery/feat-683-watch-home-touch-prefetch-gate.md)                                       | Gate Watch home prefetch on touch                                                               | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
+| [feat-683](content-discovery/feat-683-watch-home-touch-prefetch-gate.md)                                       | Gate Watch home hero CTA and category rail prefetch on touch                                    | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
+| [feat-694](content-discovery/feat-694-develop-recommendation-origin.md)                                        | Allow develop Watch recommendation requests                                                     | nisal      | P1       | 2026-10-13 | 1    | 2026-10-13 | in-progress |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | cancelled   |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | cancelled   |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | cancelled   |
@@ -316,6 +313,8 @@ renumbered to feat-612 to keep the two feature identities distinct.
 | [feat-608](media-generation/feat-608-studio-colleague-production-replay.md)                 | Verify colleague LUMO and Shorts MCP feedback in production           | tataihono | P1       | 2026-10-06 | 1    | 2026-10-06 | not-started |
 | [feat-628](media-generation/feat-628-studio-editor-feedback.md)                             | Studio clip speed, named text components, canvas selection and sizing | tataihono | P1       | 2026-10-08 | 3    | 2026-10-10 | complete    |
 | [feat-629](media-generation/feat-629-studio-failed-render-diagnosis.md)                     | Diagnose Lyuba's failed Studio export                                 | tataihono | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
+| [feat-630](media-generation/feat-630-shorts-project-deletion.md)                            | Owner project deletion in Shorts Studio and MCP                       | tataihono | P1       | 2026-10-09 | 1    | 2026-10-09 | complete    |
+| [feat-692](media-generation/feat-692-studio-autosave-and-session-warning.md)                | Studio autosave and expired-session edit protection                   | tataihono | P1       | 2026-10-12 | 2    | 2026-10-13 | complete    |
 | [feat-438](media-generation/feat-438-subtitle-quality-lab-modularization.md)                | Subtitle quality lab modularization                                   | vlad      | P2       | —          | 4    | —          | blocked     |
 | [feat-053](media-generation/feat-053-ai-video-inspiration-platform.md)                      | AI Video Inspiration Platform                                         | vlad      | P2       | 2026-05-01 | 31   | 2026-05-31 | not-started |
 | [feat-175](media-generation/feat-175-instagram-ai-christian-discovery-workflow.md)          | Instagram AI Christian discovery workflow                             | vlad      | P2       | 2026-06-10 | 1    | 2026-06-10 | complete    |
@@ -324,6 +323,7 @@ renumbered to feat-612 to keep the two feature identities distinct.
 | [feat-252](media-generation/feat-252-instagram-discovery-daily-schedule.md)                 | Instagram discovery daily schedule                                    | vlad      | P2       | 2026-07-14 | 1    | 2026-07-14 | complete    |
 | [feat-494](media-generation/feat-494-studio-bounded-failure-diagnostics.md)                 | Retain bounded Studio worker failure classifications                  | tataihono | P2       | 2026-09-13 | 2    | 2026-09-14 | not-started |
 | [feat-065](media-generation/feat-065-full-content-translation.md)                           | Full Content Translation                                              | vlad      | P2       | 2026-10-01 | 61   | 2026-11-30 | blocked     |
+| [feat-693](media-generation/feat-693-studio-history-navigation-fallback.md)                 | Studio history navigation protection without Navigation API           | tataihono | P2       | 2026-10-13 | 2    | 2026-10-14 | not-started |
 
 ### Platform
 
@@ -398,8 +398,8 @@ renumbered to feat-612 to keep the two feature identities distinct.
 | [feat-574](platform/feat-574-recommendation-storage-efficiency.md)                     | Reduce recommendation event, served-item and profile storage growth                | nisal      | P0       | 2026-09-30 | 3    | 2026-10-02 | complete    |
 | [feat-575](platform/feat-575-early-legacy-recommendation-retirement.md)                | Retire legacy recommendation trace detail early                                    | nisal      | P0       | 2026-09-30 | 3    | 2026-10-02 | complete    |
 | [feat-592](platform/feat-592-nextjs-september-30-security.md)                          | Apply the September 30 Next.js security patches                                    | tataihono  | P0       | 2026-10-02 | 1    | 2026-10-02 | complete    |
+| [feat-639](platform/feat-639-current-base-dependency-backports.md)                     | Refresh held dependency backports on October default                               | tataihono  | P0       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-278](platform/feat-278-watch-russian-authored-content-localization.md)           | Watch Russian authored content localization                                        | unassigned | P1       | —          | 2    | —          | not-started |
-| [feat-652](platform/feat-652-watch-route-loading-streaming.md)                         | Watch route loading and section streaming boundaries                               | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-456](platform/feat-456-watch-page-not-found-telemetry.md)                        | Emit Watch page-not-found telemetry                                                | codex      | P1       | —          | 2    | —          | blocked     |
 | [feat-036](platform/feat-036-cms-local-postgres-io-concurrency-compatibility.md)       | CMS local PostgreSQL I/O concurrency compatibility                                 | tataihono  | P1       | 2026-04-01 | 1    | 2026-04-01 | complete    |
 | [feat-019](platform/feat-019-scaffolding-support-urim.md)                              | Scaffolding Support for Urim                                                       | tataihono  | P1       | 2026-04-07 | 21   | 2026-04-27 | blocked     |
@@ -651,6 +651,7 @@ renumbered to feat-612 to keep the two feature identities distinct.
 | [feat-524](platform/feat-524-watch-recommendation-tester-access.md)                    | Private Watch recommendation tester links without login UI                         | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | complete    |
 | [feat-525](platform/feat-525-activate-watch-recommendation-testers.md)                 | Activate and verify the three-person Watch recommendation pilot                    | nisal      | P1       | 2026-09-21 | 1    | 2026-09-21 | complete    |
 | [feat-531](platform/feat-531-repair-production-watch-revalidation-endpoint.md)         | Repair Admin production Watch revalidation endpoint                                | nisal      | P1       | 2026-09-22 | 1    | 2026-09-22 | complete    |
+| [feat-689](platform/feat-689-watch-security-header-baseline.md)                        | Close the Watch security-header gaps                                               | vlad       | P1       | 2026-09-22 | 1    | 2026-09-22 | complete    |
 | [feat-532](platform/feat-532-changelog-preapproval-redemption.md)                      | Redeem Changelog Contributor preapprovals for active accounts                      | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-534](platform/feat-534-changelog-membership-activation.md)                       | Activate preapproved Changelog memberships                                         | edmondshen | P1       | 2026-09-23 | 1    | 2026-09-23 | complete    |
 | [feat-543](platform/feat-543-mobile-sign-in-gate.md)                                   | Mobile sign-in gate hides sign-in until an environment turns it on                 | urim       | P1       | 2026-09-23 | 2    | 2026-09-24 | in-progress |
@@ -676,6 +677,12 @@ renumbered to feat-612 to keep the two feature identities distinct.
 | [feat-611](platform/feat-611-renovate-google-maven-lookup.md)                          | Resolve Android dependencies in Renovate                                           | tataihono  | P1       | 2026-10-06 | 1    | 2026-10-06 | complete    |
 | [feat-614](platform/feat-614-expo-patch-ci-recovery.md)                                | Align Expo patch versions to restore CI                                            | nisal      | P1       | 2026-10-07 | 1    | 2026-10-07 | complete    |
 | [feat-649](platform/feat-649-watch-unicode-content-routes.md)                          | Watch routes for Unicode content slugs                                             | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-652](platform/feat-652-watch-route-loading-streaming.md)                         | Watch route loading and section streaming boundaries                               | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
+| [feat-657](platform/feat-657-watch-search-hard-request-deadline.md)                    | Enforce Watch search hard request deadline                                         | vlad       | P1       | 2026-10-08 | 2    | 2026-10-09 | complete    |
+| [feat-667](platform/feat-667-mobile-bible-quotes-reader-translation.md)                | Mobile Bible quote cards in the reader's translation                               | urim       | P1       | 2026-10-09 | 3    | 2026-10-11 | complete    |
+| [feat-674](platform/feat-674-watch-download-quality-tiers.md)                          | Watch download quality tiers ignore legacy distro rows                             | vlad       | P1       | 2026-10-09 | 1    | 2026-10-09 | complete    |
+| [feat-678](platform/feat-678-watch-search-production-budget-verification.md)           | Validate Watch search production budget and alerts                                 | vlad       | P1       | 2026-10-09 | 2    | 2026-10-10 | not-started |
+| [feat-686](platform/feat-686-pages-hidden-provenance-artifact.md)                      | Preserve declared Pages provenance with upload action v5                           | tataihono  | P1       | 2026-10-12 | 1    | 2026-10-12 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |
@@ -757,7 +764,12 @@ renumbered to feat-612 to keep the two feature identities distinct.
 | [feat-509](platform/feat-509-mobile-export-save-sheet-native-module.md)                | Mobile raw export: iOS Save sheet via an export-mode native module                 | urim       | P2       | 2026-10-01 | 3    | 2026-10-03 | blocked     |
 | [feat-591](platform/feat-591-cowatch-postgresql-regressions-ci.md)                     | Run Co-watch PostgreSQL regressions in CI                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
 | [feat-613](platform/feat-613-push-campaign-mcp-drafts.md)                              | Agents draft push campaigns through the admin MCP, and a person publishes          | urim       | P2       | 2026-10-06 | 7    | 2026-10-12 | complete    |
+| [feat-690](platform/feat-690-watch-image-optimizer-tenant-scoping.md)                  | Scope the Watch image optimizer to our own CDN tenants                             | vlad       | P2       | 2026-10-06 | 3    | 2026-10-08 | not-started |
+| [feat-691](platform/feat-691-force-login-marker-consumption-point.md)                  | Burn the force-login marker on callback success, not on the login redirect         | vlad       | P2       | 2026-10-06 | 2    | 2026-10-07 | not-started |
 | [feat-627](platform/feat-627-mobile-ios-local-network-prompt-localization.md)          | Translate the iOS Local Network permission prompt                                  | urim       | P2       | 2026-10-09 | 2    | 2026-10-10 | not-started |
+| [feat-676](platform/feat-676-watch-native-language-markup.md)                          | Declare verified native language names in Watch language pickers                   | vlad       | P2       | 2026-10-09 | 2    | 2026-10-10 | complete    |
+| [feat-669](platform/feat-669-mobile-myanmar-ui-text-clipping.md)                       | Mobile Myanmar UI text clips under fixed line heights                              | urim       | P2       | 2026-10-12 | 3    | 2026-10-14 | not-started |
+| [feat-695](platform/feat-695-mobile-rtl-mirrored-layout.md)                            | Mirror the mobile layout for right-to-left UI languages                            | urim       | P2       | 2026-10-13 | 10   | 2026-10-22 | complete    |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                             | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-544](platform/feat-544-mobile-remove-sign-in-gate.md)                            | Remove the mobile sign-in gate when accounts open                                  | urim       | P2       | 2026-11-02 | 1    | 2026-11-02 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                              | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | not-started |
@@ -829,10 +841,12 @@ renumbered to feat-612 to keep the two feature identities distinct.
 | [feat-445](topic-experiences/feat-445-watch-home-next-video-thumbnail-control.md)           | Watch Home Video Timeline Controls                                               | vlad       | P1       | 2026-09-04 | 1    | 2026-09-04 | complete    |
 | [feat-501](topic-experiences/feat-501-watch-category-rail-editable-copy.md)                 | Editable copy in the Watch category rail block                                   | vlad       | P1       | 2026-09-14 | 1    | 2026-09-14 | complete    |
 | [feat-522](topic-experiences/feat-522-watch-language-search-input-icons.md)                 | Keep Watch language search icons visible above the input                         | vlad       | P1       | 2026-09-17 | 1    | 2026-09-17 | complete    |
-| [feat-671](topic-experiences/feat-671-watch-home-compositor-progress-ring.md)               | Watch Home compositor progress ring                                              | codex      | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-630](topic-experiences/feat-630-tv-system-home-five-concept-rotation.md)              | Five-concept TV system Home rotation                                             | ekkasit    | P1       | 2026-10-02 | 7    | 2026-10-08 | in-progress |
 | [feat-615](topic-experiences/feat-615-tv-startup-logo-audio.md)                             | TV fresh-launch logo animation and sound                                         | ekkasit    | P1       | 2026-10-07 | 1    | 2026-10-07 | in-progress |
 | [feat-616](topic-experiences/feat-616-tv-animation-settings.md)                             | Watch startup and loading animation choices                                      | ekkasit    | P1       | 2026-10-07 | 2    | 2026-10-08 | in-progress |
 | [feat-636](topic-experiences/feat-636-watch-auth-canonical-origin.md)                       | Use an allowlisted origin for Watch authentication                               | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
+| [feat-671](topic-experiences/feat-671-watch-home-compositor-progress-ring.md)               | Watch Home compositor progress ring                                              | codex      | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-681](topic-experiences/feat-681-watch-home-category-rail-reachability.md)             | Make every Watch home category reachable                                         | vlad       | P1       | 2026-10-08 | 2    | 2026-10-09 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad       | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit    | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim       | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
@@ -842,4 +856,5 @@ renumbered to feat-612 to keep the two feature identities distinct.
 | [feat-263](topic-experiences/feat-263-ai-assembled-showcase-reel.md)                        | AI-assembled Showcase reel                                                       | urim       | P2       | 2026-09-01 | 14   | 2026-09-14 | blocked     |
 | [feat-481](topic-experiences/feat-481-lg-webos-simulator-demo.md)                           | LG webOS simulator demo                                                          | ekkasit    | P2       | 2026-09-04 | 1    | 2026-09-04 | in-progress |
 | [feat-685](topic-experiences/feat-685-watch-catch-all-translation-promise-rejection.md)     | Own the catch-all route's translation promise rejection                          | vlad       | P2       | 2026-10-10 | 1    | 2026-10-10 | complete    |
+| [feat-684](topic-experiences/feat-684-watch-home-category-rail-arrow-translations.md)       | Translate the Watch category rail arrow labels                                   | vlad       | P2       | 2026-10-12 | 2    | 2026-10-13 | not-started |
 | [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                                            | tataihono  | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |
