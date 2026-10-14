@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 14, 2026)
 
-- **Total tickets:** 829
-- **Complete:** 616
+- **Total tickets:** 830
+- **Complete:** 617
 - **Cancelled:** 39
 - **In progress:** 67
 - **Not started:** 50
@@ -186,6 +186,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-609](content-discovery/feat-609-filtered-hnsw-fixture-recall.md)                                         | Diagnose intermittent filtered HNSW recommendation fixture recall                               | nisal      | P1       | 2026-10-06 | 2    | 2026-10-07 | in-progress |
 | [feat-683](content-discovery/feat-683-watch-home-touch-prefetch-gate.md)                                       | Gate Watch home hero CTA and category rail prefetch on touch                                    | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-694](content-discovery/feat-694-develop-recommendation-origin.md)                                        | Allow develop Watch recommendation requests                                                     | nisal      | P1       | 2026-10-13 | 1    | 2026-10-13 | in-progress |
+| [feat-701](content-discovery/feat-701-watch-bare-slug-redirect-recovery.md)                                    | Recover Watch bare slug and legacy duplicate links                                              | vlad       | P1       | 2026-10-14 | 1    | 2026-10-14 | complete    |
 | [feat-394](content-discovery/feat-394-bounded-recommendation-exploration.md)                                   | Bounded recommendation exploration                                                              | nisal      | P2       | —          | 6    | —          | cancelled   |
 | [feat-395](content-discovery/feat-395-learned-multi-outcome-reranker.md)                                       | Learned multi-outcome re-ranker                                                                 | nisal      | P2       | —          | 10   | —          | cancelled   |
 | [feat-396](content-discovery/feat-396-recommendation-privacy-capacity-graduation.md)                           | Recommendation privacy and capacity graduation                                                  | nisal      | P2       | —          | 5    | —          | cancelled   |
