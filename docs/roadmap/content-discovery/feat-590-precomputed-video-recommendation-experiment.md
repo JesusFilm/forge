@@ -48,6 +48,13 @@ with different frozen contexts run in separate batches. This uses the existing
 imported capture and ledger membership; no database rewrite, new GA query,
 profile shortening or model change is required.
 
+The next run saved 81 comparison calls before one dispatched Astra process hit
+the three-minute default deadline without a usage receipt. Allow up to the
+existing five-minute maximum by default so slower replies can finish. Preserve
+the unknown original call and its ten comparisons for explicit recovery;
+unaffected sources can use the existing bounded-work interface. This timeout
+change does not establish a completion ETA or reconcile the interrupted call.
+
 Explore whether a capable reasoning model can find useful connections across
 the video catalog from transcripts, metadata, and historical analytics, with
 recommendations computed periodically and stored in PostgreSQL before viewers

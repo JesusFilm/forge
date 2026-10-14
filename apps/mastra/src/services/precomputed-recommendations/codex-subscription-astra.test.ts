@@ -30,6 +30,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   vi.unstubAllEnvs()
+  vi.useRealTimers()
   await Promise.all(
     scratch.splice(0).map((path) => rm(path, { recursive: true, force: true })),
   )
@@ -41,12 +42,14 @@ async function fakeCli(
     exitCode?: number
     stderr?: string
     sleepMs?: number
+    waitForRelease?: boolean
     splitOnAccent?: boolean
   } = {},
 ) {
   const directory = await mkdtemp(join(tmpdir(), "forge-codex-astra-test-"))
   scratch.push(directory)
   const capture = join(directory, "capture.json")
+  const release = join(directory, "release")
   const executable = join(directory, "fake-codex.cjs")
   const script = `#!/usr/bin/env node
 const fs = require("node:fs")
@@ -55,7 +58,14 @@ const prompt = fs.readFileSync(0, "utf8")
 const schemaPath = process.argv[process.argv.indexOf("--output-schema") + 1]
 fs.writeFileSync(capture, JSON.stringify({ args: process.argv.slice(2), prompt, schema: JSON.parse(fs.readFileSync(schemaPath, "utf8")), cwd: process.cwd(), env: process.env }))
 const eventBytes = Buffer.from(${JSON.stringify(events)}.map((event) => JSON.stringify(event)).join("\\n") + "\\n")
-if (${options.splitOnAccent ?? false}) {
+if (${options.waitForRelease ?? false}) {
+  const timer = setInterval(() => {
+    if (!fs.existsSync(${JSON.stringify(release)})) return
+    clearInterval(timer)
+    fs.writeSync(1, eventBytes)
+    process.exit(${options.exitCode ?? 0})
+  }, 5)
+} else if (${options.splitOnAccent ?? false}) {
   const split = eventBytes.indexOf(Buffer.from("é")) + 1
   fs.writeSync(1, eventBytes.subarray(0, split))
   setTimeout(() => { fs.writeSync(1, eventBytes.subarray(split)); process.exit(${options.exitCode ?? 0}) }, 10)
@@ -67,7 +77,7 @@ process.stderr.write(${JSON.stringify(options.stderr ?? "")})
 `
   await writeFile(executable, script, { mode: 0o700 })
   await chmod(executable, 0o700)
-  return { executable, capture }
+  return { executable, capture, release }
 }
 
 async function fakeNodeLauncher(eventsToEmit: unknown[]) {
@@ -1278,6 +1288,26 @@ describe("local ChatGPT-subscription Astra adapter", () => {
     expect(adapter.getOperatorProvenance()).toBeUndefined()
     const captured = JSON.parse(await readFile(cli.capture, "utf8"))
     await expect(stat(captured.cwd)).rejects.toMatchObject({ code: "ENOENT" })
+  })
+
+  it("accepts a metered reply after four minutes with the default deadline", async () => {
+    const cli = await fakeCli(events(summary), { waitForRelease: true })
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] })
+    const result = Promise.allSettled([model(cli.executable).generate(input)])
+    try {
+      await vi.waitFor(async () =>
+        expect(await stat(cli.capture)).toBeDefined(),
+      )
+      await vi.advanceTimersByTimeAsync(240_000)
+    } finally {
+      await writeFile(cli.release, "ready")
+    }
+    await expect(result).resolves.toMatchObject([
+      {
+        status: "fulfilled",
+        value: { usage: { inputTokens: 30, outputTokens: 8 } },
+      },
+    ])
   })
 
   it("bounds output bytes and wall time", async () => {
