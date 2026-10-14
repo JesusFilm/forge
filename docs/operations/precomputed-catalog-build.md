@@ -55,6 +55,29 @@ handler and must not be stopped using this procedure.
 
 ## Prepare a protocol-4 run
 
+An explicit `resume` may supply `frozenCatalog: { path, sha256 }` in the local
+command configuration. The absolute path identifies a private JSON file bounded
+to 32 MiB. Its envelope is `{ version: "frozen_catalog_v1", generationId,
+generationInputDigest, inputCutoff, entries: [{ video, chunks }] }`, with strictly
+sorted unique video IDs and complete selected chunks ordered by chunk ID. Use
+the original captured video objects, including their Watch route identities.
+The loader verifies file bytes, generation/cutoff identity and complete chunk
+coverage; normal preflight still verifies the source set, corpus, candidate pool,
+generation input digest and the sealed GA import's route mapping. It makes no
+live GA queries and cannot start a new generation.
+
+A nightly sync can change timestamps without changing profiled content. For
+protocol-4 edge writes and ready metadata registration, Admin compares current
+content against each video's single ready `complete-profile-v6` profile in the
+same generation, including when no later timestamp remains after a deletion.
+Metadata, complete selected transcript bytes and counts
+must match exactly, and each video must still be watchable. Changed or missing
+content, another generation/cutoff, an absent/ambiguous profile, or an older
+profile format still rejects the write. Ordinary catalog reads retain their
+strict timestamp fence. Never backdate production rows or move the cutoff to
+make a resume pass. Frozen route observations describe the original GA import;
+this resume permission does not certify public serving readiness.
+
 Use the target Admin's read-only catalog to review **every** eligible source at
 one fixed UTC `inputCutoff`. Supply its strictly sorted `sourceVideoIds`,
 `sourceSetDigest`, `selectedCorpusDigest` and `candidatePoolDigest`. The runner

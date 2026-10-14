@@ -8,7 +8,7 @@ import {
   validatePrecomputedChoices,
 } from "./contract"
 import {
-  assertPrecomputedObservedVersion,
+  assertPrecomputedProfileVersion,
   PrecomputedCatalogError,
   selectedTranscriptSelections,
 } from "./catalog"
@@ -460,6 +460,7 @@ async function offeredExcerpt(
   tx: Tx,
   offer: z.infer<typeof spanOffer>,
   cutoff: Date,
+  generationId: string,
   evidence?: {
     selected: Awaited<ReturnType<typeof selectedTranscriptSelections>>
     chunks: Map<
@@ -475,7 +476,12 @@ async function offeredExcerpt(
 ): Promise<string | null> {
   if (!evidence) {
     try {
-      await assertPrecomputedObservedVersion(tx, [offer.videoId], cutoff)
+      await assertPrecomputedProfileVersion(
+        tx,
+        [offer.videoId],
+        cutoff,
+        generationId,
+      )
     } catch (error) {
       if (!(error instanceof PrecomputedCatalogError)) throw error
       return null
@@ -533,7 +539,12 @@ async function validateSpanOffers(
   if (input.spanOffers.length === 0) return
   const videoIds = [...new Set(input.spanOffers.map((offer) => offer.videoId))]
   try {
-    await assertPrecomputedObservedVersion(tx, videoIds, cutoff)
+    await assertPrecomputedProfileVersion(
+      tx,
+      videoIds,
+      cutoff,
+      input.generationId,
+    )
   } catch (error) {
     if (!(error instanceof PrecomputedCatalogError)) throw error
     invalid("Edge span offer is not an exact selected passage")
@@ -578,7 +589,7 @@ async function validateSpanOffers(
       ) ||
       ![offer.sourceVideoId, offer.targetVideoId].includes(offer.videoId) ||
       (pairCounts.get(pair) ?? 0) >= 8 ||
-      !(await offeredExcerpt(tx, offer, cutoff, evidence))
+      !(await offeredExcerpt(tx, offer, cutoff, input.generationId, evidence))
     )
       invalid("Edge span offer is not an exact selected passage")
     seen.add(offer.spanId)
@@ -1994,7 +2005,8 @@ async function checkedResults(
             offer.sourceVideoId !== result.sourceVideoId ||
             offer.targetVideoId !== choice.targetVideoId ||
             offer.chunkId !== passage.chunkId ||
-            (await offeredExcerpt(tx, offer, cutoff)) !== passage.excerpt
+            (await offeredExcerpt(tx, offer, cutoff, input.generationId)) !==
+              passage.excerpt
           )
             return null
         }
@@ -2454,10 +2466,11 @@ async function finalizeEdgeSource(
     where: { id: input.generationId },
     select: { inputCutoff: true },
   })
-  await assertPrecomputedObservedVersion(
+  await assertPrecomputedProfileVersion(
     tx,
     [input.sourceVideoId, ...choices.map((item) => item.targetVideoId)],
     meta.inputCutoff,
+    input.generationId,
   )
   const payload = await validatePrecomputedChoices(
     tx,

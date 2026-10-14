@@ -61,6 +61,31 @@ function parse(value: unknown) {
 }
 
 describe("manual subscription catalog command", () => {
+  it("allows a pinned frozen catalog only on explicit resume", () => {
+    const frozenCatalog = { path: "/tmp/catalog.json", sha256: digest }
+    expect(parse({ ...config(), frozenCatalog }).frozenCatalog).toEqual(
+      frozenCatalog,
+    )
+    expect(() =>
+      parse({
+        ...config(),
+        input: { ...config().input, invocation: "start" },
+        frozenCatalog,
+      }),
+    ).toThrow()
+    expect(() =>
+      parse({
+        ...config(),
+        frozenCatalog: { ...frozenCatalog, path: "relative.json" },
+      }),
+    ).toThrow()
+    expect(() =>
+      parse({
+        ...config(),
+        frozenCatalog: { ...frozenCatalog, sha256: "invalid" },
+      }),
+    ).toThrow()
+  })
   it("accepts an explicit pacing interval and preserves configurations without it", () => {
     expect(parse(config()).minCallStartIntervalMs).toBeUndefined()
     expect(

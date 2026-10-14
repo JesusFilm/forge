@@ -35,7 +35,7 @@ export const SourceGenerationInputSchema = z
   .strict()
 export type SourceGenerationInput = z.output<typeof SourceGenerationInputSchema>
 
-const videoSchema = z.object({
+export const videoSchema = z.object({
   id: videoId,
   coreId: z.string(),
   slug: z.string(),
@@ -77,7 +77,7 @@ const videoSchema = z.object({
     })
     .optional(),
 })
-const chunkSchema = z.object({
+export const chunkSchema = z.object({
   id: videoId,
   language: z.string(),
   transcriptId: videoId,
