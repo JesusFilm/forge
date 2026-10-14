@@ -161,33 +161,35 @@ const summary = {
 
 describe("local ChatGPT-subscription Astra adapter", () => {
   it("stops queued reservations after a sibling fails while preserving an admitted sibling", async () => {
-    const cli = await fakeCli(events(summary))
+    const cli = await fakeCli(events(summary), { sleepMs: 400 })
     const adapter = model(cli.executable, undefined, undefined, undefined, 2)
     const releases: Array<() => void> = []
     const reservations: number[] = []
     const calls = [0, 1, 2].map((id) =>
       adapter.generateReserved(input, async () => {
         reservations.push(id)
-        await new Promise<void>((resolve) => {
-          releases[id] = resolve
-        })
-        if (id === 0) throw new Error("reservation unavailable")
+        if (id === 1) {
+          await new Promise<void>((resolve) => {
+            releases[id] = resolve
+          })
+          throw new Error("reservation unavailable")
+        }
         return { kind: "dispatch", reservation: id }
       }),
     )
     const settled = Promise.allSettled(calls)
     try {
       await vi.waitFor(() => expect(reservations).toHaveLength(2))
-      releases[0]!()
-      await expect(calls[0]).rejects.toThrow("reservation unavailable")
+      releases[1]!()
+      await expect(calls[1]).rejects.toThrow("reservation unavailable")
       expect(reservations).toHaveLength(2)
     } finally {
       for (const release of releases) release?.()
     }
     await settled
-    await expect(calls[1]).resolves.toMatchObject({
+    await expect(calls[0]).resolves.toMatchObject({
       kind: "dispatched",
-      reservation: 1,
+      reservation: 0,
       response: { usage: { inputTokens: 30, outputTokens: 8 } },
     })
     await expect(calls[2]).rejects.toMatchObject({ code: "adapter_paused" })
@@ -195,7 +197,7 @@ describe("local ChatGPT-subscription Astra adapter", () => {
   })
 
   it("admits independent calls concurrently within the explicit limit", async () => {
-    const cli = await fakeCli(events(summary), { sleepMs: 30 })
+    const cli = await fakeCli(events(summary), { sleepMs: 400 })
     const adapter = createCodexSubscriptionAstraModel({
       codexExecutable: cli.executable,
       initiatingAccountRef: "initiating-account-123",
@@ -226,6 +228,8 @@ describe("local ChatGPT-subscription Astra adapter", () => {
       }),
     )
     try {
+      await vi.waitFor(() => expect(reservations).toHaveLength(1))
+      release()
       await vi.waitFor(() => expect(reservations).toHaveLength(2), {
         timeout: 1000,
       })
@@ -241,6 +245,38 @@ describe("local ChatGPT-subscription Astra adapter", () => {
         expect.objectContaining({ kind: "dispatched", reservation: 2 }),
       ]),
     )
+  })
+
+  it("queues reservations without serializing model execution", async () => {
+    const cli = await fakeCli(events(summary), { sleepMs: 400 })
+    const adapter = model(cli.executable, undefined, undefined, undefined, 2)
+    let activeReservations = 0
+    let maximumReservations = 0
+    let reservations = 0
+    let completedCalls = 0
+    const calls = [0, 1].map((id) =>
+      adapter
+        .generateReserved(input, async () => {
+          activeReservations++
+          maximumReservations = Math.max(
+            maximumReservations,
+            activeReservations,
+          )
+          reservations++
+          // Both reservations must finish while the first model call is still running.
+          expect(completedCalls).toBe(0)
+          await new Promise((resolve) => setTimeout(resolve, 40))
+          activeReservations--
+          return { kind: "dispatch", reservation: id }
+        })
+        .then((result) => {
+          completedCalls++
+          return result
+        }),
+    )
+    await expect(Promise.all(calls)).resolves.toHaveLength(2)
+    expect(reservations).toBe(2)
+    expect(maximumReservations).toBe(1)
   })
 
   it.each([2048, 2249])(

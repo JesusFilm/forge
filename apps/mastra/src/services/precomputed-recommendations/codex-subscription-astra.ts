@@ -537,6 +537,7 @@ export function createCodexSubscriptionAstraModel(
   let running = 0
   const waiting: Array<() => void> = []
   let paused = false
+  let reservationTail = Promise.resolve()
   let provenance: CodexOperatorProvenance | undefined
   function queue<T extends z.ZodType, R>(
     request: GenerateRequest<T>,
@@ -595,32 +596,48 @@ export function createCodexSubscriptionAstraModel(
         throw new CodexSubscriptionAstraError("input_too_large")
       const prepared = await prepareCodex(schema)
       try {
-        // A sibling can fail while this call prepares. Stop before reserving;
-        // once reserved, finish the call and preserve its actual usage.
-        if (paused) throw new CodexSubscriptionAstraError("adapter_paused")
-        if (!reservationFresh(identityObservedAt))
-          throw new CodexSubscriptionAstraError("identity_stale")
-        if (!reservationFresh(allowance.observedAt))
-          throw new CodexSubscriptionAstraError("allowance_stale")
-        let reservationTimer: ReturnType<typeof setTimeout> | undefined
+        // Admin locks the generation while reserving. Queue that short write,
+        // not the model execution, so concurrent calls cannot exhaust its pool
+        // or consume one another's reservation deadline.
+        const previousReservation = reservationTail
+        let releaseReservation!: () => void
+        reservationTail = new Promise<void>((resolve) => {
+          releaseReservation = resolve
+        })
+        await previousReservation
         let decision: ReservationDecision<R>
         try {
-          // A crash or lost reply can leave a durable pending row without a
-          // spawn. Never infer that it is safe to clear or retry that row.
-          decision = await Promise.race([
-            reserve(),
-            new Promise<never>((_resolve, reject) => {
-              reservationTimer = setTimeout(
-                () =>
-                  reject(
-                    new CodexSubscriptionAstraError("reservation_uncertain"),
-                  ),
-                MAX_RESERVATION_DELAY_MS,
-              )
-            }),
-          ])
+          // A sibling can fail while this call prepares. Stop before reserving;
+          // once reserved, finish the call and preserve its actual usage.
+          if (paused) throw new CodexSubscriptionAstraError("adapter_paused")
+          if (!reservationFresh(identityObservedAt))
+            throw new CodexSubscriptionAstraError("identity_stale")
+          if (!reservationFresh(allowance.observedAt))
+            throw new CodexSubscriptionAstraError("allowance_stale")
+          let reservationTimer: ReturnType<typeof setTimeout> | undefined
+          try {
+            // A crash or lost reply can leave a durable pending row without a
+            // spawn. Never infer that it is safe to clear or retry that row.
+            decision = await Promise.race([
+              reserve(),
+              new Promise<never>((_resolve, reject) => {
+                reservationTimer = setTimeout(
+                  () =>
+                    reject(
+                      new CodexSubscriptionAstraError("reservation_uncertain"),
+                    ),
+                  MAX_RESERVATION_DELAY_MS,
+                )
+              }),
+            ])
+          } finally {
+            if (reservationTimer) clearTimeout(reservationTimer)
+          }
+        } catch (error) {
+          paused = true
+          throw error
         } finally {
-          if (reservationTimer) clearTimeout(reservationTimer)
+          releaseReservation()
         }
         if (decision.kind === "skip")
           return { kind: "skipped", reservation: decision.reservation }
