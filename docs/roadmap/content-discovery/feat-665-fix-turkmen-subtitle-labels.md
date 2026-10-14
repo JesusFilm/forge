@@ -3,7 +3,7 @@ id: "feat-665"
 title: "Correct the Turkmen subtitle label"
 owner: "vlad"
 priority: "P2"
-status: "in-progress"
+status: "complete"
 start_date: "2026-10-08"
 duration: 1
 depends_on: []
