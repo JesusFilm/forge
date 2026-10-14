@@ -1,7 +1,6 @@
 import { Easing, interpolate, interpolateColors } from "remotion"
 
 import type { DevotionalCard } from "./schema"
-import { measureText } from "./SourceMarkOverlay"
 import type { CardFrames } from "./timing"
 
 /**
@@ -20,10 +19,10 @@ const GOLD = "#F2C46B"
 const REST = "rgba(255,255,255,0.92)"
 
 /** The callout must end above the reflection's own subtitles (1080 frame:
- *  they start near y 760). A long verse first widens, then shrinks, instead
+ *  a two-line caption starts near y 700; measured on the Widow RU draft). A long verse first widens, then shrinks, instead
  *  of running into them (owner, 2026-10-14, Luke 18:7 RU over the captions). */
 const TOP = 284
-const BOTTOM = 740
+const BOTTOM = 620
 const WIDTHS = [753, 960, 1180, 1400]
 const SIZES = [56, 52, 48, 44, 40]
 const LINE = 1.25
@@ -31,21 +30,14 @@ const LINE = 1.25
  *  longer than this it would force its own line, so it is not lit. */
 const MAX_LIT_CHARS = 24
 
-function fit(
-  text: string,
-  serif: string,
-  u: (n: number) => number,
-): { width: number; size: number } {
+function fit(text: string): { width: number; size: number } {
+  // Estimated, not measured: the DOM probe sets the upright face, and the
+  // light italic Cyrillic runs ~0.66 em a character (6 lines where the probe
+  // counted 4, Widow RU 2026-10-14). +10% for the slack of a greedy wrap.
+  const em = /[А-Яа-яЁё]/.test(text) ? 0.66 : 0.56
   for (const size of SIZES)
     for (const width of WIDTHS) {
-      const m = measureText(
-        text,
-        undefined,
-        { family: serif, sizePx: u(size) },
-        u(width),
-      )
-      // No DOM (tests): estimate half an em per character.
-      const lines = m?.lines ?? Math.ceil((text.length * size * 0.5) / width)
+      const lines = Math.ceil((text.length * em * size * 1.1) / width)
       if (lines * size * LINE <= BOTTOM - TOP) return { width, size }
     }
   return { width: WIDTHS[WIDTHS.length - 1]!, size: SIZES[SIZES.length - 1]! }
@@ -117,7 +109,7 @@ export function VerseCalloutOverlay({
     // Russian takes guillemets, English curly quotes.
     const cyrillic = /[А-Яа-яЁё]/.test(text)
     const [open, close] = cyrillic ? ["«", "»"] : ["“", "”"]
-    const box = fit(`${open}${text}${close}`, serif, u)
+    const box = fit(`${open}${text}${close}`)
     return (
       <div
         style={{
