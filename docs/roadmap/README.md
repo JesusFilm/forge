@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 14, 2026)
 
-- **Total tickets:** 829
-- **Complete:** 616
+- **Total tickets:** 830
+- **Complete:** 617
 - **Cancelled:** 39
 - **In progress:** 67
 - **Not started:** 50
@@ -674,6 +674,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-604](platform/feat-604-mobile-ui-translation-run-and-device-checks.md)           | Mobile UI first translation run (U16) and open device checks                       | urim       | P1       | 2026-10-06 | 7    | 2026-10-12 | in-progress |
 | [feat-611](platform/feat-611-renovate-google-maven-lookup.md)                          | Resolve Android dependencies in Renovate                                           | tataihono  | P1       | 2026-10-06 | 1    | 2026-10-06 | complete    |
 | [feat-614](platform/feat-614-expo-patch-ci-recovery.md)                                | Align Expo patch versions to restore CI                                            | nisal      | P1       | 2026-10-07 | 1    | 2026-10-07 | complete    |
+| [feat-645](platform/feat-645-watch-language-preference-redirect.md)                    | Resolve Watch entry language from saved preference and browser locale              | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-649](platform/feat-649-watch-unicode-content-routes.md)                          | Watch routes for Unicode content slugs                                             | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-652](platform/feat-652-watch-route-loading-streaming.md)                         | Watch route loading and section streaming boundaries                               | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-657](platform/feat-657-watch-search-hard-request-deadline.md)                    | Enforce Watch search hard request deadline                                         | vlad       | P1       | 2026-10-08 | 2    | 2026-10-09 | complete    |
