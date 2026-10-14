@@ -19,6 +19,7 @@ import {
 import { parseManualCatalogCommand } from "../../scripts/run-manual-subscription-catalog"
 import { planContentProfile } from "./content-profile-plan"
 import { profileCoverageDigest } from "./content-profile-executor"
+import { CodexSubscriptionAstraError } from "./codex-subscription-astra"
 import { planEdgeMemberPage } from "./edge-batch-executor"
 import type { HistoricalSnapshot } from "./historical-analytics"
 import type { SourceCatalog, Video } from "./source-generation"
@@ -576,7 +577,216 @@ async function pilotFixture(
   }
 }
 
+// Persist reservations and terminal receipts across runner invocations.
+async function rejectedEdgeFixture(rejectCount: number) {
+  const fixture = await pilotFixture()
+  type Persistence = ManualSubscriptionCatalogPorts["edgePersistence"]
+  type Start = Parameters<Persistence["start"]>[0]
+  type Call = Awaited<ReturnType<Persistence["status"]>>["calls"][number]
+  const reservations = new Map<string, Start>()
+  const calls: Call[] = []
+  const start = fixture.ports.edgePersistence.start
+  const status = fixture.ports.edgePersistence.status
+  const finish = fixture.ports.edgePersistence.finish
+  const model = fixture.ports.model.generateReserved
+  let dispatches = 0
+  fixture.ports.edgePersistence.start = async (request) => {
+    reservations.set(request.callId, request)
+    const member = request.members[0]!
+    calls.push({
+      callId: request.callId,
+      attemptId: request.attemptId,
+      status: "pending",
+      applicationState: "pending",
+      pageIndex: member.pageIndex,
+      candidatePageDigest: member.candidatePageDigest,
+      candidates: member.candidates,
+      appliedRevision: null,
+      startedAt: request.startedAt,
+      finishedAt: null,
+      memberSourceVideoIds: request.members.map((item) => item.sourceVideoId),
+    })
+    return start(request)
+  }
+  fixture.ports.edgePersistence.status = async (request) => ({
+    ...(await status(request)),
+    calls: structuredClone(calls),
+  })
+  fixture.ports.edgePersistence.finish = async (request) => {
+    const saved = calls.find((call) => call.callId === request.callId)!
+    saved.status = request.status
+    saved.finishedAt = request.finishedAt
+    if (request.status === "succeeded") {
+      saved.applicationState = "applied_empty"
+      saved.appliedRevision = 2
+      return finish(request)
+    }
+    saved.applicationState = "rejected_unapplied"
+    return {
+      generationId: request.generationId,
+      callId: request.callId,
+      state: request.status,
+      receiptStored: true,
+      replay: false,
+      members: reservations.get(request.callId)!.members.map((member) => ({
+        sourceVideoId: member.sourceVideoId,
+        applicationState: "rejected_unapplied",
+        appliedRevision: null,
+        checkpointRevision: member.checkpointRevision,
+      })),
+    }
+  }
+  fixture.ports.model.generateReserved = async (request, reserve) => {
+    const result = await model(request, reserve)
+    if (result.kind !== "dispatched") return result
+    dispatches++
+    if (dispatches > rejectCount) return result
+    return {
+      ...result,
+      response: {
+        ...result.response,
+        output: request.schema.parse({
+          results: [{ sourceVideoId: "foreign-source", edges: [] }],
+        }),
+      },
+    }
+  }
+  return { ...fixture, calls, reservations, dispatches: () => dispatches }
+}
+
 describe("manual subscription catalog preflight", () => {
+  it("retries one receipted rejection with a fresh call and unchanged candidate page", async () => {
+    const fixture = await rejectedEdgeFixture(1)
+    const result = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(result).toMatchObject({
+      reason: "pilot_boundary",
+      processedPageCount: 1,
+    })
+    expect(fixture.dispatches()).toBe(2)
+    expect(fixture.calls.map((call) => call.status)).toEqual([
+      "rejected",
+      "succeeded",
+    ])
+    expect(new Set(fixture.calls.map((call) => call.callId)).size).toBe(2)
+    expect(fixture.calls[0]).toMatchObject({
+      applicationState: "rejected_unapplied",
+      appliedRevision: null,
+    })
+    expect(fixture.calls[1]!.candidates).toEqual(fixture.calls[0]!.candidates)
+    expect(
+      fixture.actions.filter((action) => action === "model_admission"),
+    ).toHaveLength(2)
+  })
+
+  it("resumes a known rejection after process exit without changing its saved receipt", async () => {
+    const fixture = await rejectedEdgeFixture(1)
+    const controller = new AbortController()
+    const finish = fixture.ports.edgePersistence.finish
+    fixture.ports.edgePersistence.finish = async (request) => {
+      const receipt = await finish(request)
+      if (request.status === "rejected") controller.abort()
+      return receipt
+    }
+    await runManualSubscriptionCatalog(fixture.input, fixture.ports, {
+      signal: controller.signal,
+    })
+    expect(fixture.dispatches()).toBe(1)
+    const original = structuredClone(fixture.calls[0])
+    fixture.input.invocation = "resume"
+    fixture.input.attemptId = "55555555-5555-4555-8555-555555555555"
+    const resumed = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(resumed).toMatchObject({
+      reason: "pilot_boundary",
+      processedPageCount: 1,
+    })
+    expect(fixture.dispatches()).toBe(2)
+    expect(fixture.calls[0]).toEqual(original)
+  })
+
+  it("exhausts the rejected-page retry bound durably across runner restarts", async () => {
+    const fixture = await rejectedEdgeFixture(Infinity)
+    const stopped = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(stopped).toMatchObject({
+      reason: "source_failed",
+      processedPageCount: 0,
+    })
+    expect(fixture.dispatches()).toBe(2)
+    fixture.input.invocation = "resume"
+    fixture.input.attemptId = "55555555-5555-4555-8555-555555555555"
+    expect(
+      (await runManualSubscriptionCatalog(fixture.input, fixture.ports)).reason,
+    ).toBe("source_failed")
+    expect(fixture.dispatches()).toBe(2)
+  })
+
+  it("rechecks the allowance before retrying a known rejected page", async () => {
+    const fixture = await rejectedEdgeFixture(1)
+    const model = fixture.ports.model.generateReserved
+    fixture.ports.model.generateReserved = async (request, reserve) => {
+      if (fixture.dispatches() > 0)
+        throw new CodexSubscriptionAstraError("allowance_insufficient")
+      return model(request, reserve)
+    }
+    const result = await runManualSubscriptionCatalog(
+      fixture.input,
+      fixture.ports,
+    )
+    expect(result.reason).toBe("admission_refused")
+    expect(fixture.dispatches()).toBe(1)
+    expect(fixture.reservations.size).toBe(1)
+  })
+
+  it.each([
+    "pending",
+    "failed",
+    "stale",
+    "missing_finish",
+    "succeeded_unapplied",
+    "missing_member",
+    "different_call",
+  ] as const)(
+    "never retries a %s receipt after a dispatched call",
+    async (kind) => {
+      const fixture = await rejectedEdgeFixture(1)
+      const finish = fixture.ports.edgePersistence.finish
+      fixture.ports.edgePersistence.finish = async (request) => {
+        const receipt = await finish(request)
+        const saved = fixture.calls[0]!
+        if (kind === "pending") {
+          saved.status = "pending"
+          saved.applicationState = "pending"
+          saved.finishedAt = null
+        } else if (kind === "failed") saved.status = "failed"
+        else if (kind === "stale") {
+          saved.status = "succeeded"
+          saved.applicationState = "stale_unapplied"
+        } else if (kind === "missing_finish") saved.finishedAt = null
+        else if (kind === "missing_member")
+          saved.memberSourceVideoIds.push("target-one")
+        else if (kind === "different_call")
+          saved.callId = "77777777-7777-4777-8777-777777777777"
+        else saved.status = "succeeded"
+        return receipt
+      }
+      const result = await runManualSubscriptionCatalog(
+        fixture.input,
+        fixture.ports,
+      )
+      expect(result.state).toBe("stopped")
+      expect(result.processedPageCount).toBe(0)
+      expect(fixture.dispatches()).toBe(1)
+    },
+  )
+
   it("accepts bounded operator concurrency without changing generation identity", async () => {
     const fixture = await pilotFixture()
     const config = {
@@ -2022,6 +2232,19 @@ describe("manual subscription catalog preflight", () => {
         sourceCandidateDigest: prior.sourceCandidateDigest,
         nextCursor: null,
         calls: [
+          {
+            callId: "66666666-6666-4666-8666-666666666666",
+            attemptId: "11111111-1111-4111-8111-111111111111",
+            status: "rejected",
+            applicationState: "rejected_unapplied",
+            pageIndex: 0,
+            candidatePageDigest: prior.candidatePageDigest,
+            candidates: prior.candidates,
+            appliedRevision: null,
+            startedAt: cutoff,
+            finishedAt: cutoff,
+            memberSourceVideoIds: ["source-one"],
+          },
           {
             callId: "33333333-3333-4333-8333-333333333333",
             attemptId: "11111111-1111-4111-8111-111111111111",
