@@ -61,6 +61,10 @@ import {
 import { signWatchHomeHeroManifestCatalog } from "@/lib/watch-surface-manifest.server"
 import * as exposureBoundary from "@/components/recommendations/WatchExposureBoundary"
 import { WatchHomePage } from "@/components/home/WatchHomePage"
+import {
+  useWatchModalActivity,
+  WatchModalActivityProvider,
+} from "@/components/watch/WatchModalActivityProvider"
 
 vi.mock("next/image", () => ({
   default: ({
@@ -211,6 +215,11 @@ vi.mock("@/components/ui/carousel", () => ({
     />
   ),
 }))
+
+function WatchModalOwner({ open }: { open: boolean }) {
+  useWatchModalActivity(open, { releaseDelayMs: 0 })
+  return null
+}
 
 function makeCard(overrides: Record<string, unknown> = {}) {
   return {
@@ -917,6 +926,67 @@ describe("WatchHomePage", () => {
     // iOS Safari plays Mux HLS natively and buffers only metadata until
     // `play()` is called, so `canplay` never arrives on its own there.
     describe("when canplay never arrives before the poster hold ends", () => {
+      // A Watch modal pauses media that starts under it and resumes only
+      // media that was already playing when it opened, so a request made
+      // while one is open would leave the hero paused after it closes.
+      async function renderUnderWatchModal(modalOpen: boolean) {
+        await act(async () => {
+          root.render(
+            <WatchModalActivityProvider>
+              <WatchModalOwner open={modalOpen} />
+              <WatchHomePage model={makeTimedSequencedModel(123)} />
+            </WatchModalActivityProvider>,
+          )
+        })
+      }
+
+      it("holds its request while a Watch modal is open and makes it on close", async () => {
+        vi.useFakeTimers()
+        try {
+          vi.spyOn(Math, "random").mockReturnValue(0)
+          await renderUnderWatchModal(false)
+          const play = stubPlay(currentVideo())
+
+          await act(async () => {
+            vi.advanceTimersByTime(500)
+          })
+          await renderUnderWatchModal(true)
+          await act(async () => {
+            vi.advanceTimersByTime(1_000)
+          })
+          expect(play).not.toHaveBeenCalled()
+
+          await renderUnderWatchModal(false)
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
+      it("holds a canplay-path request while a Watch modal is open", async () => {
+        vi.useFakeTimers()
+        try {
+          vi.spyOn(Math, "random").mockReturnValue(0)
+          await renderUnderWatchModal(false)
+          const video = currentVideo()
+          const play = stubPlay(video)
+
+          await act(async () => {
+            video.dispatchEvent(new Event("canplay", { bubbles: true }))
+          })
+          await renderUnderWatchModal(true)
+          await act(async () => {
+            vi.advanceTimersByTime(1_500)
+          })
+          expect(play).not.toHaveBeenCalled()
+
+          await renderUnderWatchModal(false)
+          expect(play).toHaveBeenCalledTimes(1)
+        } finally {
+          vi.useRealTimers()
+        }
+      })
+
       it("requests playback itself once the hold ends", async () => {
         vi.useFakeTimers()
         try {
@@ -1286,10 +1356,17 @@ describe("WatchHomePage", () => {
             Promise.reject(new DOMException("Interrupted", "AbortError")),
           ) as unknown as HTMLVideoElement["play"]
           const openingTitle = carouselLabel()
+          // `canplay` first, so the loading ring is down when play() is
+          // aborted: only an abort treated as a failure would raise it again.
+          await act(async () => {
+            video.dispatchEvent(new Event("canplay", { bubbles: true }))
+          })
           await act(async () => {
             vi.advanceTimersByTime(1_500)
           })
 
+          expect(video.play).toHaveBeenCalledTimes(1)
+          expect(loaderCount()).toBe(0)
           expect(ringDuration()).toBe("123s")
           await act(async () => {
             vi.advanceTimersByTime(REFUSED_TURN_MS + 1)

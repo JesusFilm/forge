@@ -244,6 +244,11 @@ export function useWatchHomeTvCarousel(
   sequence: WatchHomeCarouselSequenceData | null = null,
   options: {
     autoAdvancePausedForSlideId?: string | null
+    // True while something else owns interaction (a Watch modal). Playback
+    // this hook would start is deferred until it clears, because the owner
+    // pauses media that starts under it and only resumes media that was
+    // already playing when it opened.
+    playbackHeld?: boolean
     randomSource?: () => number
     suppressLeavingSlide?: boolean
   } = {},
@@ -315,6 +320,9 @@ export function useWatchHomeTvCarousel(
   // The slide the current turn belongs to, for callbacks that must stay
   // stable across slides.
   const turnSlideIdRef = useRef<string | null>(null)
+  // The turn whose playback request was held back, so the request can be
+  // made once the hold clears.
+  const deferredPlayTurnRef = useRef<number | null>(null)
   const mediaWaitTimeoutRef = useRef<number | null>(null)
   // The advance clock is parked while buffering, so the elapsed time has to
   // survive the re-runs that park and restart it.
@@ -445,7 +453,8 @@ export function useWatchHomeTvCarousel(
         displaySlides.findIndex((slide) => slide.id === activeSlide.id),
       )
     : 0
-  const autoAdvancePausedRef = useRef(autoAdvancePaused)
+  const playbackBlocked = autoAdvancePaused || options.playbackHeld === true
+  const playbackBlockedRef = useRef(playbackBlocked)
   const randomSourceRef = useRef(options.randomSource ?? Math.random)
   const randomStartAppliedRef = useRef(false)
   const pendingRandomHeroIdRef = useRef<string | null>(null)
@@ -749,7 +758,11 @@ export function useWatchHomeTvCarousel(
     videoPosterHoldTimeoutRef.current = window.setTimeout(() => {
       mediaReadyRef.current = true
       setMediaReady(true)
-      if (!autoAdvancePausedRef.current) requestPlayback(video)
+      if (playbackBlockedRef.current) {
+        deferredPlayTurnRef.current = turnTokenRef.current
+      } else {
+        requestPlayback(video)
+      }
       videoPosterHoldTimeoutRef.current = null
     }, VIDEO_POSTER_HOLD_MS)
   }, [clearTurnStartPlay, clearVideoPosterHold, requestPlayback])
@@ -786,10 +799,14 @@ export function useWatchHomeTvCarousel(
     turnStartPlayTimeoutRef.current = window.setTimeout(() => {
       turnStartPlayTimeoutRef.current = null
       if (turnTokenRef.current !== armedForTurn) return
-      if (mediaReadyRef.current || autoAdvancePausedRef.current) return
+      if (mediaReadyRef.current) return
       const video = videoRef.current
       if (!video) return
       posterHoldServedRef.current = true
+      if (playbackBlockedRef.current) {
+        deferredPlayTurnRef.current = armedForTurn
+        return
+      }
       requestPlayback(video)
     }, VIDEO_POSTER_HOLD_MS)
 
@@ -824,9 +841,18 @@ export function useWatchHomeTvCarousel(
     setIsMediaPaused(false)
   }, [])
 
+  // A request held back for this turn is made as soon as the hold clears.
+  // A request from an earlier turn is dropped: that turn's slide is gone.
   useEffect(() => {
-    autoAdvancePausedRef.current = autoAdvancePaused
-  }, [autoAdvancePaused])
+    playbackBlockedRef.current = playbackBlocked
+    if (playbackBlocked) return
+    const deferredTurn = deferredPlayTurnRef.current
+    deferredPlayTurnRef.current = null
+    if (deferredTurn == null || deferredTurn !== turnTokenRef.current) return
+    const video = videoRef.current
+    if (!video) return
+    requestPlayback(video)
+  }, [playbackBlocked, requestPlayback, videoRef])
 
   useEffect(() => {
     isMutedRef.current = isMuted

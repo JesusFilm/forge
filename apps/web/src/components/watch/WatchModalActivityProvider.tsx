@@ -135,6 +135,11 @@ export function useWatchModalActivity(
   }, [releaseToken, token])
 }
 
+/** True while any Watch modal owns interaction, including its close delay. */
+export function useIsWatchModalActive() {
+  return useContext(WatchModalActiveContext) ?? false
+}
+
 /** Make a media callback ref reactive so modal activity covers ref changes. */
 export function useWatchModalMediaRef<T extends WatchPausableMedia>(
   playbackIdentity?: unknown,
