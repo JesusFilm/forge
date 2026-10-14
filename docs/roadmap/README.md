@@ -6,11 +6,11 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 13, 2026)
 
-- **Total tickets:** 822
-- **Complete:** 611
+- **Total tickets:** 824
+- **Complete:** 612
 - **Cancelled:** 39
 - **In progress:** 66
-- **Not started:** 49
+- **Not started:** 50
 - **Blocked:** 57
 - **Overdue and open:** 154
 
@@ -847,6 +847,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-636](topic-experiences/feat-636-watch-auth-canonical-origin.md)                       | Use an allowlisted origin for Watch authentication                               | vlad          | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-671](topic-experiences/feat-671-watch-home-compositor-progress-ring.md)               | Watch Home compositor progress ring                                              | codex         | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-681](topic-experiences/feat-681-watch-home-category-rail-reachability.md)             | Make every Watch home category reachable                                         | vlad          | P1       | 2026-10-08 | 2    | 2026-10-09 | complete    |
+| [feat-687](topic-experiences/feat-687-watch-content-action-timeout-order.md)                | Keep Watch content-action timeouts in deadline order                             | vlad          | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-020](topic-experiences/feat-020-ai-topic-content-generation.md)                       | AI Topic Content Generation Service                                              | vlad          | P2       | 2026-04-28 | 28   | 2026-05-25 | blocked     |
 | [feat-021](topic-experiences/feat-021-generation-quality-monitoring.md)                     | Generation Quality & Monitoring Dashboard                                        | ekkasit       | P2       | 2026-05-05 | 21   | 2026-05-25 | blocked     |
 | [feat-146](topic-experiences/feat-146-watch-bible-quotes-promo-cta-wrap.md)                 | Watch Bible Quotes Promo CTA Wrap                                                | urim          | P2       | 2026-06-13 | 1    | 2026-06-13 | complete    |
@@ -857,5 +858,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-481](topic-experiences/feat-481-lg-webos-simulator-demo.md)                           | LG webOS simulator demo                                                          | ekkasit       | P2       | 2026-09-04 | 1    | 2026-09-04 | in-progress |
 | [feat-685](topic-experiences/feat-685-watch-catch-all-translation-promise-rejection.md)     | Own the catch-all route's translation promise rejection                          | vlad          | P2       | 2026-10-10 | 1    | 2026-10-10 | complete    |
 | [feat-684](topic-experiences/feat-684-watch-home-category-rail-arrow-translations.md)       | Translate the Watch category rail arrow labels                                   | vlad          | P2       | 2026-10-12 | 2    | 2026-10-13 | not-started |
+| [feat-688](topic-experiences/feat-688-watch-surface-deadline-order.md)                      | Order the Watch surface deadline pairs                                           | vlad          | P2       | 2026-10-12 | 1    | 2026-10-12 | not-started |
 | [feat-069](topic-experiences/feat-069-validated-topic-pages.md)                             | Validated Topic Pages                                                            | tataihono     | P2       | 2026-11-01 | 61   | 2026-12-31 | blocked     |
 | [feat-679](topic-experiences/feat-679-watch-header-keyboard-reveal.md)                      | Reveal the Watch header through keyboard focus                                   | vladmitkovsky | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
