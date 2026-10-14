@@ -27,6 +27,8 @@ which evaluations remain intentional before deciding whether to provision,
 rename, retire or change logging for a key. In particular, feat-146 documents
 removal of the download account rollout gate; do not recreate retired policy.
 
+2026-10-08: feat-667 retired `forge.watch.globalBetaTesterCta` and its evaluation callsite after the owner ended the Watch beta program. Do not provision or restore that key; continue investigating the other keys under this ticket.
+
 ## Entry Points — Read These First
 
 1. `apps/web/src/lib/feature-flags.ts` — app client and explicit fallback values.

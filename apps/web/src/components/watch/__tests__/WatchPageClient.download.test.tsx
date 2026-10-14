@@ -70,10 +70,6 @@ vi.mock("@/components/FloatingSearchProvider", () => ({
   useFloatingSearchPinned: () => ({ searchOpen: false }),
 }))
 
-vi.mock("@/components/watch/BetaTesterModalProvider", () => ({
-  useBetaTesterModal: () => null,
-}))
-
 vi.mock("@/components/watch/SubtitleTranscript", () => ({
   SubtitleTranscript: () => null,
 }))

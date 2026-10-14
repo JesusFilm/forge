@@ -262,15 +262,10 @@ default and keeps anonymous downloads available through opaque download IDs;
 the gated path. Do not use this flag as restricted-content authorization; it is
 a UX/product rollout gate with a fail-open fallback.
 
-`forge.watch.globalBetaTesterCta` is a temporary LaunchDarkly-backed release
-flag for the global floating beta tester CTA. `false` omits the floating CTA
-while keeping the shared modal provider available to authored beta-tester
-links; `true` renders the floating CTA. Because public Watch routes are
-statically cached, evaluate this flag through the same-origin, no-store
-`/watch/api/beta-tester-cta` endpoint after hydration rather than in a static
-layout. Keep
-`FORGE_WATCH_GLOBAL_BETA_TESTER_CTA_DEFAULT=false` unless intentionally testing
-or rolling out the launcher.
+The Watch beta testing program was retired on 2026-10-08. Do not restore
+signup buttons, its Mailchimp modal, or the runtime CTA flag request.
+Authored CTA sections linking to the retired signup URL are suppressed by
+`src/lib/retired-watch-beta-signup.ts`. Other authored CTAs remain available.
 
 Watch Bible passage text is resolved by Admin through
 `BibleCitation.passage`; Web must not hold YouVersion provider keys or call the
