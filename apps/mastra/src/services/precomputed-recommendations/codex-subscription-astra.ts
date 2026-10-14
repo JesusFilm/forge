@@ -13,7 +13,9 @@ const MAX_EVENT_BYTES = 512_000
 const MAX_SCHEMA_BYTES = 128_000
 const MAX_EVENT_COUNT = 256
 const MAX_ALLOWANCE_AGE_MS = 60_000
-const MAX_RESERVATION_DELAY_MS = 15_000
+// Admin allows a 30s transaction. Leave room for connection/response overhead;
+// reservationFresh reserves this entire wait inside the 60s admission window.
+const MAX_RESERVATION_DELAY_MS = 45_000
 const DEFAULT_TIMEOUT_MS = 300_000
 const MIN_REMAINING_PERCENT = 25
 
@@ -675,6 +677,12 @@ export function createCodexSubscriptionAstraModel(
             return { kind: "skipped", reservation: decision.reservation }
           if (decision.kind !== "dispatch")
             throw new CodexSubscriptionAstraError("reservation_uncertain")
+          // A delayed event loop must not turn a timely reservation response
+          // into a dispatch with expired admission observations.
+          if (!fresh(identityObservedAt))
+            throw new CodexSubscriptionAstraError("identity_stale")
+          if (!fresh(allowance.observedAt))
+            throw new CodexSubscriptionAstraError("allowance_stale")
           let response: { output: string; usage: ModelUsage }
           try {
             const invocation = runCodex({

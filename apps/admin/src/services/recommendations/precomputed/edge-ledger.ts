@@ -73,6 +73,32 @@ const REVIEWED_NO_DISPATCH = [
       },
     ],
   },
+  {
+    callId: "734caa08-6a97-4704-b1a7-bab5b2b017e7",
+    attemptId: "b29eb01c-ba09-4ae2-8d32-a0fb5b581b15",
+    requestDigest:
+      "025d1acbe592eb0b91d9bf38335659d6674c1b9d00913eaa912d7592ffe827c6",
+    evidenceDigest:
+      "b988c277eb6acc82ef3cbacde68407292ae700d2143eba6199dceb55863b1d3f",
+    members: [
+      {
+        sourceVideoId: "cmokmltnh0o4sqscc538f8ft5",
+        pageIndex: 9,
+        checkpointRevision: 10,
+        firstRank: 32,
+        candidateCount: 3,
+        sourceCandidateCount: 54,
+      },
+      {
+        sourceVideoId: "cmokmlvtk0o5cqscc95pobxr0",
+        pageIndex: 9,
+        checkpointRevision: 10,
+        firstRank: 29,
+        candidateCount: 2,
+        sourceCandidateCount: 62,
+      },
+    ],
+  },
 ]
 // Every reviewed member must have the audited disposition. Other pending or
 // null-usage reservations, including partially disposed calls, remain unknown.

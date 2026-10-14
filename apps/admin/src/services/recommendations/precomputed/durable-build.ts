@@ -1089,7 +1089,7 @@ export async function submitDurablePrecomputedRecommendation(
         },
         data: { endedAt: new Date(), endReason: input.reason },
       })
-      if (generation.protocol_version === 4)
+      if (generation.protocol_version === 4) {
         await tx.recommendationPrecomputedContentProfile.updateMany({
           where: {
             generationId: input.generationId,
@@ -1098,6 +1098,37 @@ export async function submitDurablePrecomputedRecommendation(
           },
           data: { state: "blocked_unknown" },
         })
+        // The generation lock and single active attempt make these live leases
+        // this attempt's claims. Release only after every physical call has a
+        // terminal receipt; uncertain calls retain the existing lease fence.
+        const unresolved = {
+          generationId: input.generationId,
+          attemptId: input.attemptId,
+          OR: [
+            { status: "pending" },
+            { inputTokens: null },
+            { outputTokens: null },
+            { finishedAt: null },
+            { receiptDigest: null },
+          ],
+        }
+        const unknownCounts = await Promise.all([
+          tx.recommendationPrecomputedProfileCall.count({ where: unresolved }),
+          tx.recommendationPrecomputedEdgeBatchCall.count({
+            where: unresolved,
+          }),
+          tx.recommendationPrecomputedModelCall.count({ where: unresolved }),
+        ])
+        if (unknownCounts.every((count) => count === 0))
+          await tx.recommendationPrecomputedBuildSource.updateMany({
+            where: {
+              generationId: input.generationId,
+              state: "claimed",
+              leaseExpiresAt: { gt: new Date() },
+            },
+            data: { leaseExpiresAt: new Date() },
+          })
+      }
       return {
         generationId: input.generationId,
         attemptId: input.attemptId,

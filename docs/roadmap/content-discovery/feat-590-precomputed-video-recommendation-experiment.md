@@ -18,6 +18,16 @@ tags:
 
 ## Problem
 
+The frozen resume saved three model receipts and 21 comparisons, reaching 2,930
+comparisons and 42 finalized videos. A reservation then committed after 19.177s,
+beyond the local 15s deadline but within Admin's 30s transaction allowance. Align
+reservation waiting with the existing 60s freshness budget (45s wait, observations
+at most 15s old before reserving). Audit the exact third no-dispatch reservation;
+keep its original null usage and same-page continuation constraints. Release live
+leases after a fully receipted protocol-4 attempt closes, preserving unresolved
+leases and closed-attempt replay isolation, to avoid 20-minute gaps between clean
+manual recoveries.
+
 The frozen-catalog resume fix shipped through PR #2722. Recovery now extends the
 existing operator path to the seven exact interrupted v6 calls. Preserve original
 unknown usage, bind replacements to the same frozen pages, admit them serially,

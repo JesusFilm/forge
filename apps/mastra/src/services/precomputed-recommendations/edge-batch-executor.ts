@@ -444,6 +444,21 @@ export function auditedNoDispatchIsSafe(
         "43cdc25082e85c9b2a743a62da0dfc2857ce7b037d52a4467818dbf9a1e9422d"
     )
   }
+  if (call.callId === "734caa08-6a97-4704-b1a7-bab5b2b017e7") {
+    return (
+      call.attemptId === "b29eb01c-ba09-4ae2-8d32-a0fb5b581b15" &&
+      call.memberSourceVideoIds.length === 2 &&
+      call.memberSourceVideoIds[0] === "cmokmltnh0o4sqscc538f8ft5" &&
+      call.memberSourceVideoIds[1] === "cmokmlvtk0o5cqscc95pobxr0" &&
+      call.pageIndex === 9 &&
+      ((call.candidates.length === 3 &&
+        call.candidates.every((c, index) => c.poolRank === 32 + index)) ||
+        (call.candidates.length === 2 &&
+          call.candidates.every((c, index) => c.poolRank === 29 + index))) &&
+      call.reservationDisposition.evidenceDigest ===
+        "b988c277eb6acc82ef3cbacde68407292ae700d2143eba6199dceb55863b1d3f"
+    )
+  }
   return (
     call.callId === "d541c707-abd6-4f01-9a8f-038c11b2a4e7" &&
     call.attemptId === "b01b7bb1-5b87-4630-baca-7640e76cfd62" &&
