@@ -1986,6 +1986,123 @@ describe("WatchHomePage", () => {
     expect(video.querySelector("track[data-subtitle-track]")).toBeNull()
   })
 
+  describe("clicking the muted intro's video area", () => {
+    function click(element: Element | null) {
+      expect(element).not.toBeNull()
+      element?.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      )
+    }
+
+    async function renderHero(model: WatchHomeModel = makeModel()) {
+      await act(async () => {
+        root.render(<WatchHomePage model={model} />)
+      })
+      return container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+    }
+
+    function muteButtonLabel() {
+      return container
+        .querySelector(
+          'button[aria-label="Unmute preview"], button[aria-label="Mute preview"]',
+        )
+        ?.getAttribute("aria-label")
+    }
+
+    it("unmutes exactly as the unmute button does", async () => {
+      const video = await renderHero()
+      expect(video.muted).toBe(true)
+      expect(muteButtonLabel()).toBe("Unmute preview")
+
+      await act(async () => {
+        click(
+          container.querySelector('[data-testid="watch-home-tv-media-frame"]'),
+        )
+      })
+
+      expect(video.muted).toBe(false)
+      expect(muteButtonLabel()).toBe("Mute preview")
+    })
+
+    it("unmutes from the title copy laid over the video", async () => {
+      const video = await renderHero()
+
+      await act(async () => {
+        click(
+          container.querySelector('[data-testid="watch-home-tv-active-title"]'),
+        )
+      })
+
+      expect(video.muted).toBe(false)
+    })
+
+    it("never mutes an unmuted intro", async () => {
+      const video = await renderHero()
+      const frame = container.querySelector(
+        '[data-testid="watch-home-tv-media-frame"]',
+      )
+
+      await act(async () => {
+        click(frame)
+      })
+      await act(async () => {
+        click(frame)
+      })
+
+      expect(video.muted).toBe(false)
+      expect(muteButtonLabel()).toBe("Mute preview")
+    })
+
+    it("leaves the intro's own controls to do only their own job", async () => {
+      const video = await renderHero()
+
+      // The mute button toggles once — the surface must not also fire on the
+      // bubbled click and cancel it back out.
+      await act(async () => {
+        click(container.querySelector('button[aria-label="Unmute preview"]'))
+      })
+      expect(video.muted).toBe(false)
+      await act(async () => {
+        click(container.querySelector('button[aria-label="Mute preview"]'))
+      })
+      expect(video.muted).toBe(true)
+
+      const watchNow = container.querySelector(
+        "a[href='/jesus.html/english.html?autoplay=1']",
+      )
+      watchNow?.addEventListener("click", (event) => event.preventDefault())
+      await act(async () => {
+        click(watchNow)
+      })
+
+      expect(video.muted).toBe(true)
+      expect(muteButtonLabel()).toBe("Unmute preview")
+    })
+
+    it("lets a timeline circle change slide without unmuting", async () => {
+      vi.spyOn(Math, "random").mockReturnValue(0)
+      await renderHero(makeSequencedModel())
+      const activeTitle = () =>
+        container.querySelector('[data-testid="watch-home-tv-active-title"]')
+          ?.textContent
+
+      // A different slide's circle, not the current one: the current circle's
+      // own handler is a no-op, so it could not show the click stayed its own.
+      await act(async () => {
+        click(container.querySelector('button[aria-label="Show Queued Two"]'))
+      })
+
+      expect(activeTitle()).toBe("Queued Two")
+      const video = container.querySelector(
+        '[data-testid="watch-home-tv-video"]',
+      ) as HTMLVideoElement
+      expect(video.muted).toBe(true)
+      expect(muteButtonLabel()).toBe("Unmute preview")
+    })
+  })
+
   it("advances between pooled library videos with no branded slide in the sequence", async () => {
     vi.spyOn(Math, "random").mockReturnValue(0)
     await act(async () => {
