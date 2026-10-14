@@ -106,7 +106,7 @@ export function DailyPauseHost(): null {
     if (phase !== "drawn" || !exiting || target == null) return
     // v2 KTD6: the put comes here and not at the tap, so the time limit runs
     // from the pop. A long time in the background cannot expire it.
-    if (target.kind === "search") getSearchIntentStore().put(target.question)
+    if (target.kind === "search") getSearchIntentStore().put(target.query)
     router.dismissTo(EXIT_ROUTES[target.kind].href)
     const backstop = setTimeout(liftPause, PAUSE_EXIT_BACKSTOP_MS)
     return () => clearTimeout(backstop)

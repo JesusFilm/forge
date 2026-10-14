@@ -13,6 +13,7 @@ import {
 } from "./progress"
 import { attachPassTriggers, createPassRunner } from "./passRunner"
 import { devotionalForDay, localDay, onDay, useToday } from "./today"
+import { appWidgetArtPort, stageWidgetArt, type WidgetArt } from "./widgetArt"
 
 /** The widget's `widgetURL`. `app/+native-intent.tsx` turns it into a curtain
  *  request. */
@@ -30,6 +31,8 @@ export type DailyPauseWidgetProps = {
   /** R9: the check beside the question. */
   done: boolean
   url: string
+  /** The day's still as a file in the App Group, or "" for the plain ground. */
+  background: string
 }
 
 export type DailyPauseWidgetTimelineEntry =
@@ -40,23 +43,26 @@ export type DailyPauseWidgetPort = {
   updateTimeline: (entries: DailyPauseWidgetTimelineEntry[]) => void
 }
 
-/** R38, R9: the 14 days from today with each day's question and done flag.
- *  Each entry starts at its local midnight. */
+/** R38, R9: the 14 days from today with each day's question, done flag, and
+ *  its devotional's still. Each entry starts at its local midnight. */
 export function buildDailyPauseWidgetTimeline(
   nowMs: number,
   record: PauseDayRecord,
+  art: WidgetArt = {},
 ): DailyPauseWidgetTimelineEntry[] {
   const now = new Date(nowMs)
   return Array.from({ length: DAILY_PAUSE_WIDGET_DAYS }, (_, index) => {
     const date = onDay(now, index)
     const dayKey = localDay(date)
+    const devotional = devotionalForDay(dayKey)
     return {
       date,
       props: {
         label: LABEL,
-        question: devotionalForDay(dayKey).question,
+        question: devotional.question,
         done: dayFromRecord(record, dayKey).done,
         url: DAILY_PAUSE_WIDGET_URL,
+        background: art[devotional.id] ?? "",
       },
     }
   })
@@ -67,6 +73,8 @@ export type DailyPauseWidgetWriterDeps = {
   progress: Pick<PauseProgressStore, "getSnapshot" | "subscribe" | "hydrate">
   subscribeToAppState: (listener: (state: string) => void) => () => void
   now: () => number
+  /** Copies the stills where the widget can read them. */
+  stageArt: () => Promise<WidgetArt>
 }
 
 export type DailyPauseWidgetWriter = {
@@ -84,9 +92,12 @@ export function createDailyPauseWidgetWriter(
     // The empty record reads as not done, so a pass before the read would
     // drop today's check for a moment.
     await deps.progress.hydrate()
+    // A failed copy leaves the plain ground; the timeline is written anyway.
+    const art = await deps.stageArt().catch((): WidgetArt => ({}))
     const entries = buildDailyPauseWidgetTimeline(
       deps.now(),
       deps.progress.getSnapshot(),
+      art,
     )
     const key = JSON.stringify(
       entries.map((entry) => [entry.date.getTime(), entry.props]),
@@ -127,6 +138,7 @@ export function DailyPauseWidgetTimeline({
         return () => subscription.remove()
       },
       now: () => Date.now(),
+      stageArt: () => stageWidgetArt(appWidgetArtPort()),
     }).attach()
   }, [widget, dayKey])
 

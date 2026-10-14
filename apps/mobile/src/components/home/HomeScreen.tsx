@@ -481,7 +481,7 @@ export function HomeScreen() {
             onRefresh={refreshSlate}
           />
         ) : item.kind === "dailyPause" ? (
-          <DailyPauseCard />
+          <DailyPauseCard focused={focused} />
         ) : (
           <HomeMissionSection />
         )

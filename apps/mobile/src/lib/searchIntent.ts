@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from "react"
 
 /**
- * Daily Bible Pause v2 (R16, KTD6): the run hands its question to the search
- * tab through this one-shot store. Navigation carries the path only, so a deep
+ * Daily Bible Pause v2 (R16, KTD6): the run hands a short search term to the
+ * search tab through this one-shot store. Navigation carries the path only, so a deep
  * link cannot fill the bar. A subscription, because on iOS the tab is mounted.
  */
 

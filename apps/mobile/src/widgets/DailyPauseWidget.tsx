@@ -1,11 +1,17 @@
-import { HStack, Image, Spacer, Text, VStack } from "@expo/ui/swift-ui"
+import { HStack, Image, Spacer, Text, VStack, ZStack } from "@expo/ui/swift-ui"
 import {
+  aspectRatio,
+  clipped,
   containerBackground,
   font,
   foregroundStyle,
+  frame,
   kerning,
   lineLimit,
+  padding,
+  resizable,
   truncationMode,
+  widgetAccentedRenderingMode,
   widgetURL,
 } from "@expo/ui/swift-ui/modifiers"
 import { createWidget, type WidgetEnvironment } from "expo-widgets"
@@ -27,45 +33,67 @@ const DailyPauseWidgetLayout = (
   const root = [containerBackground(background, "widget")]
   if (props.url) root.push(widgetURL(props.url))
   return (
-    <HStack modifiers={root}>
-      <VStack alignment="leading" spacing={0}>
-        {props.label ? (
-          <Text
-            modifiers={[
-              font({ size: 11, weight: "semibold" }),
-              kerning(1.5),
-              foregroundStyle(accent),
-              lineLimit(1),
-            ]}
-          >
-            {props.label}
-          </Text>
-        ) : null}
-        <Spacer minLength={8} />
-        {props.question ? (
-          <HStack alignment="firstTextBaseline" spacing={6}>
-            {props.done ? (
-              <Image
-                systemName="checkmark"
-                size={questionSize - 3}
-                color={accent}
-              />
-            ) : null}
+    <ZStack modifiers={root}>
+      {props.background ? (
+        <Image
+          uiImage={props.background}
+          modifiers={[
+            resizable(),
+            aspectRatio({ contentMode: "fill" }),
+            frame({
+              minWidth: 0,
+              maxWidth: 10000,
+              minHeight: 0,
+              maxHeight: 10000,
+            }),
+            clipped(),
+            // A negative padding draws past the content margins without
+            // growing the layout; the widget's own shape clips the rest.
+            padding({ all: -24 }),
+            widgetAccentedRenderingMode("desaturated"),
+          ]}
+        />
+      ) : null}
+      <HStack>
+        <VStack alignment="leading" spacing={0}>
+          {props.label ? (
             <Text
               modifiers={[
-                font({ design: "serif", size: questionSize }),
-                foregroundStyle(ink),
-                lineLimit(3),
-                truncationMode("tail"),
+                font({ size: 11, weight: "semibold" }),
+                kerning(1.5),
+                foregroundStyle(accent),
+                lineLimit(1),
               ]}
             >
-              {props.question}
+              {props.label}
             </Text>
-          </HStack>
-        ) : null}
-      </VStack>
-      <Spacer minLength={0} />
-    </HStack>
+          ) : null}
+          <Spacer minLength={8} />
+          {props.question ? (
+            <HStack alignment="firstTextBaseline" spacing={6}>
+              {props.done ? (
+                <Image
+                  systemName="checkmark"
+                  size={questionSize - 3}
+                  color={accent}
+                />
+              ) : null}
+              <Text
+                modifiers={[
+                  font({ design: "serif", size: questionSize }),
+                  foregroundStyle(ink),
+                  lineLimit(3),
+                  truncationMode("tail"),
+                ]}
+              >
+                {props.question}
+              </Text>
+            </HStack>
+          ) : null}
+        </VStack>
+        <Spacer minLength={0} />
+      </HStack>
+    </ZStack>
   )
 }
 

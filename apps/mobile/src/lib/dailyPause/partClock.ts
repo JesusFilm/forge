@@ -32,20 +32,23 @@ export type PartClock = {
   readonly mediaSec: number
   readonly wallMs: number
   readonly running: boolean
+  /** Media seconds per wall second: 2 while the viewer holds a side. */
+  readonly rate: number
 }
 
 export function startClock(
   mediaSec: number,
   wallMs: number,
   running: boolean,
+  rate = 1,
 ): PartClock {
-  return { mediaSec, wallMs, running }
+  return { mediaSec, wallMs, running, rate }
 }
 
-/** The media time now: the base plus the wall time since, while it runs. */
+/** The media time now: the base plus the wall time since, at the rate. */
 export function projectClock(clock: PartClock, wallMs: number): number {
   if (!clock.running) return clock.mediaSec
-  return clock.mediaSec + (wallMs - clock.wallMs) / 1000
+  return clock.mediaSec + ((wallMs - clock.wallMs) / 1000) * clock.rate
 }
 
 /** A tick that moved is the truth, so the clock rebases on it. */
@@ -55,7 +58,7 @@ export function tickClock(
   wallMs: number,
 ): PartClock {
   if (!Number.isFinite(mediaSec) || mediaSec === clock.mediaSec) return clock
-  return { mediaSec, wallMs, running: clock.running }
+  return { ...clock, mediaSec, wallMs }
 }
 
 export function partStopAt(part: PartRange): number {
@@ -104,6 +107,15 @@ export function partStarted(positionSec: number, part: PartRange): boolean {
 
 export function startBackstopDue(armedAtMs: number, nowMs: number): boolean {
   return nowMs - armedAtMs >= PART_START_BACKSTOP_MS
+}
+
+/** The time at a 0..1 place on the part's bar, from the start to the stop. A
+ *  seek then never reaches the skipped range after the part. */
+export function partTimeAt(fraction: number, part: PartRange): number {
+  const place = Number.isFinite(fraction)
+    ? Math.min(1, Math.max(0, fraction))
+    : 0
+  return part.startSec + place * (partStopAt(part) - part.startSec)
 }
 
 /** 0 at the start, 1 at the stop. */

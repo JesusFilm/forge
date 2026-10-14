@@ -21,6 +21,10 @@ export type Devotional = {
   passage: string
   /** The Opening's question. */
   question: string
+  /** One or two words that Browse media puts in Search (the owner,
+   *  2026-10-14). A whole question returns nothing there. The question's key
+   *  word where it has one, else the story's subject. */
+  searchTerm: string
   /** The verse that the teaching part ends on. */
   verse: string
   verseLabel: string
@@ -29,11 +33,19 @@ export type Devotional = {
   parts: Readonly<Record<DevotionalPart, PartRange>>
   /** The Metro asset module of the bundled video. */
   video: number
+  /** The Home card's background, from scripts/build-pause-card-art.sh. */
+  cardArt: number
+  /** The iOS widget's background, from scripts/build-pause-card-art.sh. */
+  widgetArt: number
 }
 
 /* eslint-disable @typescript-eslint/no-require-imports */
 const PHARISEE_VIDEO: number = require("../../../assets/devotionals/pharisee.mp4")
 const LAMP_VIDEO: number = require("../../../assets/devotionals/lamp.mp4")
+const PHARISEE_CARD_ART: number = require("../../../assets/dailyPause/pharisee-card.jpg")
+const LAMP_CARD_ART: number = require("../../../assets/dailyPause/lamp-card.jpg")
+const PHARISEE_WIDGET_ART: number = require("../../../assets/dailyPause/pharisee-widget.jpg")
+const LAMP_WIDGET_ART: number = require("../../../assets/dailyPause/lamp-widget.jpg")
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 export const DEVOTIONALS: Readonly<Record<DevotionalId, Devotional>> = {
@@ -42,6 +54,7 @@ export const DEVOTIONALS: Readonly<Record<DevotionalId, Devotional>> = {
     name: "Pharisee",
     passage: "Luke 18:9-14",
     question: "How are we commanded to pray?",
+    searchTerm: "Pharisee prayer",
     verse:
       "I tell you, this man, rather than the Pharisee, went home justified. For everyone who exalts himself will be humbled, but the one who humbles himself will be exalted.",
     verseLabel: "LUKE 18:14 · BSB",
@@ -50,6 +63,8 @@ export const DEVOTIONALS: Readonly<Record<DevotionalId, Devotional>> = {
     attribution: "Adapted from a trusted classic · J.C.\u00a0Ryle, 1858",
     parts: timeline.pharisee.parts,
     video: PHARISEE_VIDEO,
+    cardArt: PHARISEE_CARD_ART,
+    widgetArt: PHARISEE_WIDGET_ART,
   },
   lamp: {
     id: "lamp",
@@ -57,6 +72,9 @@ export const DEVOTIONALS: Readonly<Record<DevotionalId, Devotional>> = {
     passage: "Luke 8:16-18",
     question:
       "Where is one place this week you can let someone see what Christ has done in you?",
+    // The question never names its subject, and its words ("Christ",
+    // "place") find unrelated videos. The parable's lamp finds the parable.
+    searchTerm: "Lamp",
     verse:
       "No one, when he has lit a lamp, covers it with a container, or puts it under a bed; but puts it on a stand, that those who enter in may see the light.",
     verseLabel: "LUKE 8:16",
@@ -65,6 +83,8 @@ export const DEVOTIONALS: Readonly<Record<DevotionalId, Devotional>> = {
     attribution: "Adapted from a trusted classic · J.C.\u00a0Ryle",
     parts: timeline.lamp.parts,
     video: LAMP_VIDEO,
+    cardArt: LAMP_CARD_ART,
+    widgetArt: LAMP_WIDGET_ART,
   },
 }
 

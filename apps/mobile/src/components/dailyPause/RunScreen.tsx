@@ -19,6 +19,7 @@ import { usePauseDay, type PauseStep } from "../../lib/dailyPause/progress"
 import {
   isVideoPart,
   partStepForSection,
+  type RunStep,
   sectionStartStep,
   type StepperStage,
   sectionForStep,
@@ -38,6 +39,7 @@ import { ReflectScreen } from "./ReflectScreen"
 import { SectionMarkers } from "./SectionMarkers"
 import { ShareScreen } from "./ShareScreen"
 import { useFadeOut } from "./useFadeOut"
+import { useStepDip } from "./useStepDip"
 import { WatchScreen } from "./WatchScreen"
 
 const KEEP_AWAKE_TAG = "daily-pause-run"
@@ -86,13 +88,20 @@ export function RunScreen() {
     reduceMotion ? 0 : CLOSE_PROMPT_FADE_MS,
   )
 
-  // One stable callback, so the memoized stepper does not render again on
-  // each tick of the Reflect and Pray timers.
-  const jumpRef = useRef(run.jump)
-  jumpRef.current = run.jump
+  // Every step change dips through the ground, so no step cuts to the next.
+  const { dip, veil: dipVeil } = useStepDip(reduceMotion)
+  // Stable callbacks, so the memoized stepper does not render again on each
+  // tick of the Reflect and Pray timers.
+  const runRef = useRef(run)
+  runRef.current = run
+  const advance = useCallback(() => dip(() => runRef.current.advance()), [dip])
+  const jumpTo = useCallback(
+    (step: RunStep) => dip(() => runRef.current.jump(step), "jump"),
+    [dip],
+  )
   const selectSection = useCallback(
-    (section: StepperStage) => jumpRef.current(sectionStartStep(section)),
-    [],
+    (section: StepperStage) => jumpTo(sectionStartStep(section)),
+    [jumpTo],
   )
 
   // An entry point names today. A run pinned to an earlier day, such as one
@@ -133,9 +142,9 @@ export function RunScreen() {
         meditationLength={settings.meditationLength}
         day={day}
         font={font}
-        onBegin={() => run.begin(today)}
-        onResume={(step) => run.resume(today, step)}
-        onStartOver={() => run.startOver(today)}
+        onBegin={() => dip(() => run.begin(today))}
+        onResume={(step) => dip(() => run.resume(today, step))}
+        onStartOver={() => dip(() => run.startOver(today))}
         onCustomize={() => router.push(CUSTOMIZE_HREF)}
       />
     )
@@ -144,7 +153,7 @@ export function RunScreen() {
       <WatchScreen
         meditationLength={settings.meditationLength}
         font={font}
-        onContinue={run.advance}
+        onContinue={advance}
       />
     )
   } else if (state.step === "reflectScreen") {
@@ -153,7 +162,7 @@ export function RunScreen() {
         devotional={state.pin.devotional}
         meditationLength={settings.meditationLength}
         font={font}
-        onContinue={run.advance}
+        onContinue={advance}
         onSelectSection={selectSection}
       />
     )
@@ -163,7 +172,7 @@ export function RunScreen() {
         devotional={state.pin.devotional}
         meditationLength={settings.meditationLength}
         font={font}
-        onContinue={run.advance}
+        onContinue={advance}
         onSelectSection={selectSection}
       />
     )
@@ -172,7 +181,6 @@ export function RunScreen() {
   }
 
   const part = loaded && state.pin != null ? partForStep(state.step) : null
-  const topRow = isVideoPart(state.step) ? "letterbox" : "screen"
   // From the step, not the player's part: the prayer part waits behind Reflect.
   const section = sectionForStep(state.step)
 
@@ -193,7 +201,7 @@ export function RunScreen() {
             active={isVideoPart(state.step)}
             focused={focused && !prompting}
             font={font}
-            onEnded={run.advance}
+            onEnded={advance}
           />
         ) : null}
         {content}
@@ -203,18 +211,17 @@ export function RunScreen() {
             key={section}
             section={section}
             font={font}
-            onSelect={(other) => run.jump(partStepForSection(other))}
+            onSelect={(other) => jumpTo(partStepForSection(other))}
           />
         ) : null}
-        <CloseButton onPress={openClosePrompt} placement={topRow} />
+        <CloseButton onPress={openClosePrompt} />
         {__DEV__ && loaded && TIMED_STEPS.has(state.step) ? (
           <DevSkipButton
-            onPress={run.advance}
-            placement={topRow}
+            onPress={() => dip(() => runRef.current.advance(), "jump")}
             font={font}
-            belowMarkers={section != null}
           />
         ) : null}
+        {dipVeil}
       </View>
       {promptView.mounted ? (
         <ClosePrompt

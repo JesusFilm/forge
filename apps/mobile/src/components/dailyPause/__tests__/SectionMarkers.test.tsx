@@ -6,6 +6,7 @@ import {
   AccessibilityInfo,
   Animated,
   AppState,
+  Dimensions,
   StyleSheet,
   type TextStyle,
   type ViewStyle,
@@ -21,8 +22,11 @@ import {
   type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { CLOSE_RIGHT_EDGE } from "../CloseButton"
 import {
   MARKER_ARRIVAL_MS,
+  MARKER_CLOSE_CLEARANCE,
+  MARKER_GAP,
   MARKER_MAX_SCALE,
   SectionMarkers,
 } from "../SectionMarkers"
@@ -332,5 +336,50 @@ describe("a marker tap", () => {
     expect(lineDrawn()).toBe(1)
     expect(litGold()).toEqual(["WATCH"])
     expect(onSelect.mock.calls).toEqual([["reflect"], ["pray"]])
+  })
+})
+
+// The owner, 2026-10-14: wider gaps between WATCH, REFLECT, and PRAY.
+describe("the row's spacing", () => {
+  const DEFAULT_WINDOW = Dimensions.get("window")
+  const DEFAULT_SCREEN = Dimensions.get("screen")
+  afterEach(() => {
+    Dimensions.set({ window: DEFAULT_WINDOW, screen: DEFAULT_SCREEN })
+  })
+
+  function setWindow(width: number, fontScale: number) {
+    const window = { width, height: 874, scale: 3, fontScale }
+    Dimensions.set({ window, screen: window })
+  }
+
+  function groupStyle(): ViewStyle {
+    return StyleSheet.flatten(
+      byId("section-markers-group").props.style as ViewStyle,
+    )
+  }
+
+  it("spaces the markers wider than before at the default text size", async () => {
+    setWindow(402, 1)
+    await mount("watch")
+    expect(MARKER_GAP).toBeGreaterThan(24)
+    expect(groupStyle().justifyContent).toBe("space-between")
+    // The three labels plus two full gaps fit on an iPhone 17.
+    const width = groupStyle().width as number
+    expect(width).toBeGreaterThan(156 + 2 * 24)
+    expect((402 - width) / 2).toBeGreaterThanOrEqual(
+      CLOSE_RIGHT_EDGE + MARKER_CLOSE_CLEARANCE,
+    )
+  })
+
+  it("keeps WATCH clear of the close on a narrow phone with the largest text", async () => {
+    setWindow(375, 3)
+    await mount("watch")
+    const width = groupStyle().width as number
+    // The row is centred, so its left edge is half the space left over.
+    expect((375 - width) / 2).toBeGreaterThanOrEqual(
+      CLOSE_RIGHT_EDGE + MARKER_CLOSE_CLEARANCE,
+    )
+    // The labels themselves still fit: 156 points at the 1.3 text cap.
+    expect(width).toBeGreaterThanOrEqual(156 * MARKER_MAX_SCALE)
   })
 })

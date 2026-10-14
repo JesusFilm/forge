@@ -9,6 +9,7 @@ import DateTimePicker, {
 import AsyncStorage from "@react-native-async-storage/async-storage"
 import { Linking, Platform, StyleSheet } from "react-native"
 
+import DailyPauseLayout from "../../../../app/pause/_layout"
 import CustomizeRoute from "../../../../app/pause/customize"
 import {
   PAUSE_SETTINGS_STORAGE_KEY,
@@ -34,10 +35,19 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 /* eslint-enable @typescript-eslint/no-require-imports */
 
 const mockRouter = { back: jest.fn() }
-jest.mock("expo-router", () => ({
-  useRouter: () => mockRouter,
-  useNavigation: () => ({ addListener: () => () => {} }),
-}))
+// The Stack renders as host nodes, so a test reads the options it is given.
+jest.mock("expo-router", () => {
+  const react = jest.requireActual("react")
+  const Stack = (props: Record<string, unknown>) =>
+    react.createElement("Stack", props)
+  Stack.Screen = (props: Record<string, unknown>) =>
+    react.createElement("StackScreen", props)
+  return {
+    Stack,
+    useRouter: () => mockRouter,
+    useNavigation: () => ({ addListener: () => () => {} }),
+  }
+})
 jest.mock("react-native-safe-area-context", () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 34, left: 0, right: 0 }),
 }))
@@ -305,12 +315,33 @@ describe("CustomizeSheet", () => {
     expect(control(renderer, "Notifications")).toBeDefined()
   })
 
-  it("closes the sheet on Done (R27)", async () => {
+  // The owner, 2026-10-13: no Done button. A swipe down or a tap outside
+  // closes the native form sheet, and each setting is saved as it changes.
+  it("has no Done button, and saves a change at once", async () => {
     const renderer = await render()
 
-    await tap(renderer, "Done")
+    expect(control(renderer, "Done")).toBeUndefined()
+    expect(hasText(renderer, "Done")).toBe(false)
+    await tap(renderer, "5 minutes")
+    expect(settings().meditationLength).toBe(5)
+    expect(mockRouter.back).not.toHaveBeenCalled()
+  })
 
-    expect(mockRouter.back).toHaveBeenCalledTimes(1)
+  // With no button, the sheet's own dismiss is the only way out of it. The
+  // layout renders here, so an option anywhere in it is read, not its text.
+  it("stays a form sheet that a swipe down closes", async () => {
+    await act(async () => {
+      mounted = TestRenderer.create(<DailyPauseLayout />)
+    })
+    const [stack] = mounted!.root.findAll((node) => node.type === "Stack")
+    const [sheet] = mounted!.root.findAll(
+      (node) => node.type === "StackScreen" && node.props.name === "customize",
+    )
+    const options = sheet!.props.options as Record<string, unknown>
+    const shared = stack!.props.screenOptions as Record<string, unknown>
+    expect(options.presentation).toBe("formSheet")
+    expect(options.gestureEnabled).not.toBe(false)
+    expect(shared.gestureEnabled).not.toBe(false)
   })
 
   it("gives every control a label and a 44-point target", async () => {
@@ -322,7 +353,6 @@ describe("CustomizeSheet", () => {
       "1 minute",
       "3 minutes",
       "5 minutes",
-      "Done",
       "How to add the widget",
       "Notifications",
       "Reminder time, 7:00 AM",
@@ -336,7 +366,6 @@ describe("CustomizeSheet", () => {
       "1 minute",
       "3 minutes",
       "5 minutes",
-      "Done",
       "How to add the widget",
       "Notifications",
       "Notifications are off in iOS Settings. Open Settings",

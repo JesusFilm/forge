@@ -228,9 +228,16 @@ export function logoStrokes(): Stroke[] {
   ]
 }
 
-/** The Daily Bible Pause mark as `draw` runs 0 to 1: pens draw two pause
- *  bars, then each bar's inner side shrinks into the logo's trapezium. */
-export function DailyBiblePauseLogo({ draw }: { draw: Animated.Value }) {
+/** The Daily Bible Pause mark as `draw` runs 0 to 1. Pens draw two pause bars,
+ *  then each bar's inner side shrinks into the logo's trapezium. With `title`
+ *  off, the mark shows alone, as on the Home card. */
+export function DailyBiblePauseLogo({
+  draw,
+  title = true,
+}: {
+  draw: Animated.Value
+  title?: boolean
+}) {
   const strokes = useMemo(logoStrokes, [])
 
   const at = (input: number[], output: number[] | string[]) =>
@@ -264,7 +271,13 @@ export function DailyBiblePauseLogo({ draw }: { draw: Animated.Value }) {
   })
 
   return (
-    <Animated.View style={[styles.lockup, { transform: [{ scale }] }]}>
+    <Animated.View
+      style={[
+        styles.lockup,
+        !title && styles.markOnly,
+        { transform: [{ scale }] },
+      ]}
+    >
       <View
         style={{
           width: ART_ICON_WIDTH * SCALE,
@@ -320,24 +333,26 @@ export function DailyBiblePauseLogo({ draw }: { draw: Animated.Value }) {
           </Animated.View>
         ))}
       </View>
-      <View style={styles.title}>
-        {letters.map(({ char, opacity }, index) =>
-          char === " " ? (
-            <View key={index} style={styles.space} />
-          ) : (
-            <Animated.Text
-              key={index}
-              style={[
-                styles.letter,
-                index < TITLE.length - 1 && styles.tracked,
-                { opacity },
-              ]}
-            >
-              {char}
-            </Animated.Text>
-          ),
-        )}
-      </View>
+      {title ? (
+        <View style={styles.title}>
+          {letters.map(({ char, opacity }, index) =>
+            char === " " ? (
+              <View key={index} style={styles.space} />
+            ) : (
+              <Animated.Text
+                key={index}
+                style={[
+                  styles.letter,
+                  index < TITLE.length - 1 && styles.tracked,
+                  { opacity },
+                ]}
+              >
+                {char}
+              </Animated.Text>
+            ),
+          )}
+        </View>
+      ) : null}
     </Animated.View>
   )
 }
@@ -345,6 +360,7 @@ export function DailyBiblePauseLogo({ draw }: { draw: Animated.Value }) {
 const styles = StyleSheet.create({
   // Balances the empty line box under the caps, so the visible mark centres.
   lockup: { alignItems: "center", paddingTop: TITLE_LEADING },
+  markOnly: { paddingTop: 0 },
   track: {
     position: "absolute",
     height: STROKE,

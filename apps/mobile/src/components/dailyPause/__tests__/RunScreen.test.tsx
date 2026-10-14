@@ -32,7 +32,9 @@ import {
   getPauseSettingsStore,
   resetPauseSettingsStoreForTests,
 } from "../../../lib/dailyPause/settings"
-import { pauseColors } from "../../../lib/dailyPause/theme"
+import { DIP_TIMINGS, type DipKind } from "../../../lib/dailyPause/stepDip"
+import { pauseColors, pauseSizes } from "../../../lib/dailyPause/theme"
+import { runVideoLayout } from "../../../lib/dailyPause/videoFrame"
 import type { ExpoVideoMock } from "../../../test-utils/expoVideoMock"
 import {
   TestRenderer,
@@ -60,6 +62,7 @@ import {
 } from "../../../lib/pauseCurtain"
 import { RunScreen } from "../RunScreen"
 import { MARKER_ARRIVAL_MS } from "../SectionMarkers"
+import { DIP_END_MARGIN_MS } from "../useStepDip"
 
 // The stores read the module's `default`, so the mock must carry one.
 /* eslint-disable @typescript-eslint/no-require-imports */
@@ -146,8 +149,10 @@ jest.mock("expo-font", () => ({
   loadAsync: jest.fn(async () => {}),
   isLoaded: jest.fn(() => true),
 }))
+const IPHONE_17_INSETS = { top: 62, bottom: 34, left: 0, right: 0 }
+let mockInsets = IPHONE_17_INSETS
 jest.mock("react-native-safe-area-context", () => ({
-  useSafeAreaInsets: () => ({ top: 62, bottom: 34, left: 0, right: 0 }),
+  useSafeAreaInsets: () => mockInsets,
 }))
 // The OS read lands after mount; the hook reads it from the first render here.
 let mockReduceMotion = false
@@ -198,6 +203,7 @@ afterEach(async () => {
   // A close through the prompt starts an exit; the next test starts idle.
   act(() => endPause())
   mockReduceMotion = false
+  mockInsets = IPHONE_17_INSETS
   jest.useRealTimers()
 })
 
@@ -234,6 +240,33 @@ async function closeRoute() {
 async function tap(label: string) {
   await press(pressableByLabel(renderer!, label))
   await act(async () => {})
+  await settleDip()
+}
+
+/** The step-change veil, or null while no dip runs. */
+function dipVeil(): RenderedNode | null {
+  const [veil] = renderer!.root.findAll(
+    (node) =>
+      typeof node.type === "string" && node.props.testID === "pause-step-dip",
+  )
+  return veil ?? null
+}
+
+/** Presses a control that changes the step, and stops at the dip's swap:
+ *  the moment the step changes under the dark veil. */
+async function tapToSwap(label: string, kind: DipKind) {
+  await press(pressableByLabel(renderer!, label))
+  await act(async () => {})
+  await act(async () => {
+    jest.advanceTimersByTime(DIP_TIMINGS[kind].swapMs)
+  })
+}
+
+/** A step change dips through the ground first; this runs the whole dip. */
+async function settleDip() {
+  if (dipVeil() == null) return
+  const dipMs = DIP_TIMINGS.flow.totalMs + DIP_END_MARGIN_MS
+  for (let ms = 0; ms <= dipMs; ms += FRAME_MS) await frames(1)
 }
 
 function within(node: RenderedNode, root: RenderedNode): boolean {
@@ -299,6 +332,7 @@ async function playToStop(range: PartRange) {
   await frames(1)
   await tickTo(partStopAt(range))
   await frames(1)
+  await settleDip()
 }
 
 /** Lets the intro and the default pause run out (Reflect 0:45, then Pray
@@ -650,15 +684,21 @@ it("opens the customize sheet over the Opening", async () => {
   expect(mockRouter.push).toHaveBeenCalledWith("/pause/customize")
 })
 
-it("puts the close in the safe area on screens and in the top letterbox on video parts (R24)", async () => {
-  const videoTop = (WINDOW.height - (WINDOW.width * 1920) / 1080) / 2
+/** This suite's safe area: 62 at the top, 34 at the bottom. */
+const INSETS = { top: 62, bottom: 34 }
+
+// The owner, 2026-10-14: on a video part the close sits in the marker row,
+// over the picture, at the safe area's edge, where it sits on every step.
+it("keeps the close at the safe area's edge on every step, over the picture on video parts", async () => {
+  const { frame, rowTop } = runVideoLayout(WINDOW.width, WINDOW.height, INSETS)
   await open()
   expect(closeTop()).toBe(62)
   await tap("Begin Devotional")
   expect(closeTop()).toBe(62)
   await tap("Continue")
-  expect(closeTop()).toBeGreaterThanOrEqual(0)
-  expect(closeTop() + 44).toBeLessThanOrEqual(videoTop)
+  expect(closeTop()).toBe(rowTop)
+  expect(closeTop()).toBe(62)
+  expect(closeTop()).toBeGreaterThan(frame.top)
 })
 
 // The owner, 2026-10-09: a stepper pill opens the start of its section, back
@@ -800,7 +840,7 @@ describe("the section markers", () => {
       await frames(1)
       expect(player.playing).toBe(true)
 
-      await tap(marker)
+      await tapToSwap(marker, "jump")
       expect(savedDay().step).toBe(to)
       expect(markerLabel()).toBe(marker)
       expect(goldMarkers()).toEqual([gold])
@@ -864,27 +904,42 @@ describe("the section markers", () => {
     expect(arrivals()).toBeGreaterThan(first)
   })
 
-  it("centers the row on the close's row on a phone with a top band (R5)", async () => {
-    const videoTop = (WINDOW.height - (WINDOW.width * 1920) / 1080) / 2
+  it("centers the row on the close's row (R5)", async () => {
     await seedDay("film")
     await open()
     await tap("Resume")
     const { top, height } = markerBox()
     expect(top + height / 2).toBeCloseTo(closeTop() + 44 / 2, 5)
-    expect(top + height).toBeLessThanOrEqual(videoTop)
   })
 
-  it("puts the row at the top edge, over the picture, on an iPhone SE", async () => {
-    const se = { width: 375, height: 667, scale: 2, fontScale: 1 }
-    Dimensions.set({ window: se, screen: se })
-    const videoTop = (se.height - (se.width * 1920) / 1080) / 2
+  // The owner, 2026-10-14: a tap on the bar landed on a marker, because the
+  // row's targets reached over the bar. The bar now sits at the picture's
+  // foot, far from the row at its top.
+  it("keeps the row clear of the bar's touch strip, so a tap on the bar seeks", async () => {
     await seedDay("film")
     await open()
     await tap("Resume")
     const { top, height } = markerBox()
-    expect(top).toBe(0)
-    expect(top + height).toBeGreaterThan(videoTop)
-    expect(closeTop()).toBe(0)
+    const [strip] = renderer!.root.findAll(
+      (node) =>
+        typeof node.type === "string" && node.props.testID === "part-progress",
+    )
+    const style = StyleSheet.flatten(strip!.props.style as ViewStyle)
+    expect(style.top as number).toBeGreaterThan(top + height)
+  })
+
+  it("keeps the row over the picture and narrows the picture on an iPhone SE", async () => {
+    const se = { width: 375, height: 667, scale: 2, fontScale: 1 }
+    Dimensions.set({ window: se, screen: se })
+    const { frame, rowTop } = runVideoLayout(se.width, se.height, INSETS)
+    await seedDay("film")
+    await open()
+    await tap("Resume")
+    const { top } = markerBox()
+    expect(top).toBe(rowTop)
+    expect(closeTop()).toBe(rowTop)
+    expect(top).toBeGreaterThan(frame.top)
+    expect(frame.width).toBeLessThan(se.width)
   })
 })
 
@@ -1164,6 +1219,137 @@ describe("the close prompt", () => {
   })
 })
 
+// The owner, 2026-10-13: no step cuts to the next. The run dips to its ground,
+// the step changes while all is dark, and the next step fades in.
+describe("the step dip", () => {
+  // Read before any test runs: an earlier test's spy on timing stays in place.
+  const realTiming = Animated.timing
+
+  it("dips to the ground before Continue opens the film part", async () => {
+    await open()
+    await tap("Begin Devotional")
+    await press(pressableByLabel(renderer!, "Continue"))
+    await act(async () => {})
+    expect(dipVeil()).not.toBeNull()
+    expect(savedDay().step).toBe("watchScreen")
+
+    await act(async () => {
+      jest.advanceTimersByTime(DIP_TIMINGS.flow.swapMs - 1)
+    })
+    expect(savedDay().step).toBe("watchScreen")
+    await act(async () => {
+      jest.advanceTimersByTime(1)
+    })
+    expect(savedDay().step).toBe("film")
+
+    await settleDip()
+    expect(dipVeil()).toBeNull()
+  })
+
+  it("dips to the ground when a part ends, before the next part", async () => {
+    await seedDay("film")
+    await open()
+    await tap("Resume")
+    await videoReady()
+    await frames(1)
+    await tickTo(PARTS.film.startSec + 0.2)
+    await frames(1)
+    await tickTo(partStopAt(PARTS.film))
+    await frames(1)
+    expect(dipVeil()).not.toBeNull()
+    expect(savedDay().step).toBe("film")
+
+    await act(async () => {
+      jest.advanceTimersByTime(DIP_TIMINGS.flow.swapMs)
+    })
+    expect(savedDay().step).toBe("teaching")
+  })
+
+  // Code review, 2026-10-13: the shared tap() waits out every dip, so these
+  // controls passed with or without one. Each one keeps the old step up
+  // until the swap under the dark veil.
+  it.each<[string, PauseStep | null, DipKind]>([
+    ["Begin Devotional", null, "flow"],
+    ["Resume", "reflectScreen", "flow"],
+    ["Start over", "prayer", "flow"],
+    ["Continue", "reflectScreen", "flow"],
+    ["Amen", "prayScreen", "flow"],
+    ["Watch, done", "reflectScreen", "jump"],
+    ["Pray, upcoming", "reflectScreen", "jump"],
+  ])(
+    "%s changes the step only at the dip's swap",
+    async (label, seeded, kind) => {
+      if (seeded) await seedDay(seeded)
+      await open()
+      if (seeded && label !== "Resume" && label !== "Start over") {
+        await tap("Resume")
+      }
+      if (label === "Continue" || label === "Amen") await waitOutPause()
+
+      await press(pressableByLabel(renderer!, label))
+      await act(async () => {})
+      expect(dipVeil()).not.toBeNull()
+      await act(async () => {
+        jest.advanceTimersByTime(DIP_TIMINGS[kind].swapMs - 1)
+      })
+      expect(buttons()).toContain(label)
+      await act(async () => {
+        jest.advanceTimersByTime(1)
+      })
+      expect(buttons()).not.toContain(label)
+    },
+  )
+
+  it("uses the quick dip for a step of the flow under Reduce Motion", async () => {
+    mockReduceMotion = true
+    await open()
+    await press(pressableByLabel(renderer!, "Begin Devotional"))
+    await act(async () => {})
+    await act(async () => {
+      jest.advanceTimersByTime(DIP_TIMINGS.jump.swapMs)
+    })
+    expect(DIP_TIMINGS.jump.swapMs).toBeLessThan(DIP_TIMINGS.flow.swapMs)
+    expect(buttons()).not.toContain("Begin Devotional")
+  })
+
+  // Code review, 2026-10-13: the quick dip changes the step before the cover
+  // has settled over the part that stopped. The next part stays fully covered.
+  it("keeps the next part fully covered when a part ends under Reduce Motion", async () => {
+    // Jest's native driver ends after one frame at the start value.
+    const timing = jest
+      .spyOn(Animated, "timing")
+      .mockImplementation((value, config) =>
+        realTiming(value, { ...config, useNativeDriver: false }),
+      )
+    try {
+      mockReduceMotion = true
+      await seedDay("teaching")
+      await open()
+      await tap("Resume")
+      await videoReady()
+      await frames(1)
+      await tickTo(PARTS.teaching.startSec + 0.2)
+      await frames(1)
+      await tickTo(partStopAt(PARTS.teaching))
+      await frames(1)
+      await act(async () => {
+        jest.advanceTimersByTime(DIP_TIMINGS.jump.swapMs)
+      })
+      expect(savedDay().step).toBe("reflectScreen")
+
+      const [cover] = renderer!.root.findAll(
+        (node) =>
+          typeof node.type === "string" && node.props.testID === "part-cover",
+      )
+      expect(StyleSheet.flatten(cover!.props.style as ViewStyle).opacity).toBe(
+        1,
+      )
+    } finally {
+      timing.mockRestore()
+    }
+  })
+})
+
 describe("the developer Skip", () => {
   it("shows only on the timed steps, and each tap moves the run on", async () => {
     await open()
@@ -1191,6 +1377,68 @@ describe("the developer Skip", () => {
     ])
   })
 
+  // The owner, 2026-10-14: centred below the timeline, clear of the bar's
+  // touch strip, and in the same place on the Reflect and Pray screens.
+  it("sits centred below the timeline, in one place on every step", async () => {
+    await seedDay("film")
+    await open()
+    await tap("Resume")
+    const [footer] = renderer!.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "dev-skip-footer",
+    )
+    const footerStyle = StyleSheet.flatten(footer!.props.style as ViewStyle)
+    expect(footerStyle).toMatchObject({
+      left: 0,
+      right: 0,
+      alignItems: "center",
+    })
+    const [strip] = renderer!.root.findAll(
+      (node) =>
+        typeof node.type === "string" && node.props.testID === "part-progress",
+    )
+    const stripStyle = StyleSheet.flatten(strip!.props.style as ViewStyle)
+    const footerTop = footerStyle.top as number
+    expect(footerTop).toBe(
+      (stripStyle.top as number) + (stripStyle.height as number),
+    )
+    expect(footerTop + (footerStyle.height as number)).toBeLessThanOrEqual(
+      WINDOW.height,
+    )
+
+    await tap(DEV_SKIP)
+    await tap(DEV_SKIP)
+    expect(savedDay().step).toBe("reflectScreen")
+    const [screenFooter] = renderer!.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "dev-skip-footer",
+    )
+    expect(StyleSheet.flatten(screenFooter!.props.style as ViewStyle)).toEqual(
+      footerStyle,
+    )
+  })
+
+  it("stays on screen below the timeline on a phone with no home indicator", async () => {
+    const se = { width: 375, height: 667, scale: 2, fontScale: 1 }
+    Dimensions.set({ window: se, screen: se })
+    mockInsets = { top: 20, bottom: 0, left: 0, right: 0 }
+    await seedDay("film")
+    await open()
+    await tap("Resume")
+    const [footer] = renderer!.root.findAll(
+      (node) =>
+        typeof node.type === "string" &&
+        node.props.testID === "dev-skip-footer",
+    )
+    const style = StyleSheet.flatten(footer!.props.style as ViewStyle)
+    const { barTop } = runVideoLayout(se.width, se.height, mockInsets)
+    // Below the bar's line, and ending at the screen's foot.
+    expect(style.top as number).toBe(barTop + pauseSizes.progressBarHeight)
+    expect((style.top as number) + (style.height as number)).toBe(se.height)
+  })
+
   it("silences a part that it ends in the middle of playback", async () => {
     await open()
     await tap("Begin Devotional")
@@ -1201,7 +1449,7 @@ describe("the developer Skip", () => {
     await frames(1)
     expect(player.muted).toBe(false)
 
-    await tap(DEV_SKIP)
+    await tapToSwap(DEV_SKIP, "jump")
     expect(savedDay().step).toBe("teaching")
     expect(player.muted).toBe(true)
   })
