@@ -841,7 +841,15 @@ async function isAdmittedInternalRewrite(
 }
 
 export async function proxy(request: ProxyRequest): Promise<NextResponse> {
-  const { pathname } = request.nextUrl
+  // The production reverse proxy lowercases percent escapes before forwarding.
+  // Hex case does not change their bytes; restore the
+  // canonical spelling before the existing exact decoding/admission checks.
+  // Do not decode here: separators, malformed escapes and ASCII aliases must
+  // still fail the strict round-trip check below.
+  const pathname = request.nextUrl.pathname.replace(
+    /%[0-9a-f]{2}/gi,
+    (escape) => escape.toUpperCase(),
+  )
 
   if (pathname.startsWith(EXPERIENCE_PREVIEW_PREFIX)) {
     return applyExperiencePreviewHeaders(NextResponse.next())
