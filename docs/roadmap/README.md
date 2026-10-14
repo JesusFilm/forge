@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 14, 2026)
 
-- **Total tickets:** 830
-- **Complete:** 617
+- **Total tickets:** 831
+- **Complete:** 618
 - **Cancelled:** 39
 - **In progress:** 67
 - **Not started:** 50
@@ -221,6 +221,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-063](content-discovery/feat-063-personalize-discovery-experiences.md)                                    | Personalize Discovery Experiences                                                               | tataihono  | P2       | 2026-10-01 | 45   | 2026-11-14 | cancelled   |
 | [feat-612](content-discovery/feat-612-refresh-recommendation-integration-fixtures.md)                          | Refresh stale recommendation integration test fixtures                                          | nisal      | P2       | 2026-10-01 | 1    | 2026-10-01 | complete    |
 | [feat-659](content-discovery/feat-659-watch-language-index-rtl.md)                                             | Complete RTL and mixed-language markup on the Watch language index                              | urim       | P2       | 2026-10-08 | 2    | 2026-10-09 | complete    |
+| [feat-665](content-discovery/feat-665-fix-turkmen-subtitle-labels.md)                                          | Correct the Turkmen subtitle label                                                              | vlad       | P2       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 
 ### Media Generation
 
