@@ -418,24 +418,46 @@ export function acknowledgedUnknownIsSafe(
 export function auditedNoDispatchIsSafe(
   call: SourceStatus["calls"][number],
 ): boolean {
+  if (
+    call.status !== "pending" ||
+    call.applicationState !== "no_dispatch_unapplied" ||
+    call.appliedRevision !== null ||
+    call.finishedAt !== null ||
+    call.reservationDisposition?.reason !==
+      "reservation_timeout_before_dispatch"
+  )
+    return false
+  if (call.callId === "f6cdb507-e7e3-4172-b31f-27ace231f2c3") {
+    return (
+      call.attemptId === "93be0f68-3564-4da7-a81d-0d7bb4b79212" &&
+      call.memberSourceVideoIds.length === 1 &&
+      call.memberSourceVideoIds[0] === "cmp76xcw602imny01vnsbwwy9" &&
+      call.pageIndex === 20 &&
+      call.candidates.length === 8 &&
+      call.candidates.every(
+        (candidate, index) => candidate.poolRank === 68 + index,
+      ) &&
+      call.reservationDisposition.evidenceDigest ===
+        "43cdc25082e85c9b2a743a62da0dfc2857ce7b037d52a4467818dbf9a1e9422d"
+    )
+  }
   return (
-    call.callId === "f6cdb507-e7e3-4172-b31f-27ace231f2c3" &&
-    call.attemptId === "93be0f68-3564-4da7-a81d-0d7bb4b79212" &&
-    call.status === "pending" &&
-    call.applicationState === "no_dispatch_unapplied" &&
-    call.appliedRevision === null &&
-    call.finishedAt === null &&
-    call.memberSourceVideoIds.length === 1 &&
-    call.memberSourceVideoIds[0] === "cmp76xcw602imny01vnsbwwy9" &&
-    call.pageIndex === 20 &&
-    call.candidates.length === 8 &&
-    call.candidates.every(
-      (candidate, index) => candidate.poolRank === 68 + index,
-    ) &&
-    call.reservationDisposition?.reason ===
-      "reservation_timeout_before_dispatch" &&
+    call.callId === "d541c707-abd6-4f01-9a8f-038c11b2a4e7" &&
+    call.attemptId === "b01b7bb1-5b87-4630-baca-7640e76cfd62" &&
+    call.memberSourceVideoIds.length === 2 &&
+    call.memberSourceVideoIds[0] === "cmokmkp5h0nvkqsccj7ysgsz2" &&
+    call.memberSourceVideoIds[1] === "cmokmkra70nw2qscc6utvnl84" &&
+    call.pageIndex === 2 &&
+    ((call.candidates.length === 4 &&
+      call.candidates.every(
+        (candidate, index) => candidate.poolRank === 8 + index,
+      )) ||
+      (call.candidates.length === 3 &&
+        call.candidates.every(
+          (candidate, index) => candidate.poolRank === 7 + index,
+        ))) &&
     call.reservationDisposition.evidenceDigest ===
-      "43cdc25082e85c9b2a743a62da0dfc2857ce7b037d52a4467818dbf9a1e9422d"
+      "ff0f204b63dbc2ccd51e60d8225cc714c2d6c2aa82d0a866d506bb44384d1c92"
   )
 }
 

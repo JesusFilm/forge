@@ -700,6 +700,167 @@ describe("manual subscription catalog preflight", () => {
     expect(fixture.actions).toContain("attempt_close")
   })
 
+  it("keeps source history stable when its paired source finishes first", async () => {
+    const fixture = await pilotFixture(
+      "bound",
+      Array.from(
+        { length: 12 },
+        (_, index) => `source-${String(index + 1).padStart(2, "0")}`,
+      ),
+    )
+    fixture.input.work = {
+      mode: "pilot",
+      sources: [
+        { sourceVideoId: "source-01", exclusiveEndRank: 1 },
+        { sourceVideoId: "source-02", exclusiveEndRank: 9 },
+      ],
+    }
+    expect(fixture.retrieval.candidateIdsBySource.get("source-02")).toContain(
+      "source-01",
+    )
+    const loadImport = fixture.ports.loadImport
+    fixture.ports.loadImport = async (...args) => {
+      const imported = await loadImport(...args)
+      const readSnapshot = imported.reader.readNavigationSnapshot!
+      imported.reader.readNavigationSnapshot = async (input) => ({
+        ...(await readSnapshot(input)),
+        signal: (videoId) =>
+          videoId === input.sourceVideoId
+            ? {
+                videoKey: videoId,
+                views: 17,
+                engagedViews: null,
+                exposures: null,
+              }
+            : null,
+      })
+      return imported
+    }
+    const historyBySource = new Map<string, string>()
+    const batches = new Map<
+      string,
+      Parameters<
+        ManualSubscriptionCatalogPorts["edgePersistence"]["start"]
+      >[0]["members"]
+    >()
+    const originalStart = fixture.ports.edgePersistence.start
+    fixture.ports.edgePersistence.start = async (request) => {
+      for (const member of request.members) {
+        const previous = historyBySource.get(member.sourceVideoId)
+        if (previous !== undefined && previous !== member.historicalRefDigest)
+          throw new Error(
+            "Edge source candidate identity differs from frozen pool",
+          )
+        historyBySource.set(member.sourceVideoId, member.historicalRefDigest)
+      }
+      batches.set(request.callId, request.members)
+      return originalStart(request)
+    }
+    fixture.ports.edgePersistence.finish = async (request) => ({
+      generationId: request.generationId,
+      callId: request.callId,
+      state: "succeeded",
+      receiptStored: true,
+      replay: false,
+      members: batches.get(request.callId)!.map((member) => ({
+        sourceVideoId: member.sourceVideoId,
+        applicationState: "applied_empty",
+        appliedRevision: member.checkpointRevision + 1,
+        checkpointRevision: member.checkpointRevision + 1,
+      })),
+    })
+    fixture.ports.model.generateReserved = async (request, reserve) => {
+      const decision = await reserve()
+      if (decision.kind === "skip")
+        return { kind: "skipped", reservation: decision.reservation }
+      const reservation = z
+        .object({ callId: z.string() })
+        .parse(decision.reservation)
+      return {
+        kind: "dispatched",
+        reservation: decision.reservation,
+        response: {
+          output: request.schema.parse({
+            results: batches.get(reservation.callId)!.map((member) => ({
+              sourceVideoId: member.sourceVideoId,
+              edges: [],
+            })),
+          }),
+          usage: { inputTokens: 42, outputTokens: 12 },
+        },
+      }
+    }
+    await expect(
+      runManualSubscriptionCatalog(fixture.input, fixture.ports),
+    ).resolves.toMatchObject({ state: "stopped", reason: "pilot_boundary" })
+    expect([...batches.values()].map((members) => members.length)).toEqual([
+      2, 1,
+    ])
+
+    // Resume only the unfinished source: its first reservation still binds the
+    // original pair, even though the most recent reservation was a singleton.
+    fixture.input.invocation = "resume"
+    fixture.input.attemptId = "44444444-4444-4444-8444-444444444444"
+    fixture.input.work = {
+      mode: "pilot",
+      sources: [{ sourceVideoId: "source-02", exclusiveEndRank: 10 }],
+    }
+    const ingest = fixture.ports.ingest
+    fixture.ports.ingest = async (raw) => {
+      const response = await ingest(raw)
+      if ((raw as { action: string }).action !== "claim") return response
+      return {
+        ...(response as object),
+        checkpointRevision: 3,
+        checkpoint: {
+          stage: "edge_page_applied_v1",
+          cursor: { candidateIndex: 9 },
+        },
+      }
+    }
+    fixture.ports.edgePersistence.status = async (request) => {
+      const calls = [...batches].flatMap(([callId, members]) =>
+        members
+          .filter((member) => member.sourceVideoId === request.sourceVideoId)
+          .map((member) => ({
+            callId,
+            attemptId: "11111111-1111-4111-8111-111111111111",
+            status: "succeeded" as const,
+            applicationState: "applied_empty" as const,
+            pageIndex: member.pageIndex,
+            candidatePageDigest: member.candidatePageDigest,
+            candidates: member.candidates,
+            appliedRevision: member.checkpointRevision + 1,
+            startedAt: cutoff,
+            finishedAt: cutoff,
+            memberSourceVideoIds: members.map((entry) => entry.sourceVideoId),
+          })),
+      )
+      return {
+        generationId: request.generationId,
+        sourceVideoId: request.sourceVideoId,
+        sourceState: "claimed",
+        checkpointRevision: calls.at(-1)!.appliedRevision,
+        sourceCandidateCount: 11,
+        sourceCandidateDigest: digest(
+          fixture.retrieval.candidateIdsBySource.get(request.sourceVideoId),
+        ),
+        calls,
+        nextCursor: null,
+      }
+    }
+    await expect(
+      runManualSubscriptionCatalog(fixture.input, fixture.ports),
+    ).resolves.toMatchObject({
+      state: "stopped",
+      reason: "pilot_boundary",
+      processedPageCount: 1,
+    })
+    expect([...batches.values()].map((members) => members.length)).toEqual([
+      2, 1, 1,
+    ])
+  })
+
   it("prepares independent profiles concurrently at the operator limit", async () => {
     const fixture = await pilotFixture()
     const register = fixture.ports.profilePersistence.register

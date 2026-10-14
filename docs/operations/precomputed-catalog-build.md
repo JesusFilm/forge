@@ -24,6 +24,13 @@ ordered. The model, prompts, evidence, output limits and generation digest do
 not change. More concurrency can reduce elapsed time but does not reduce total
 allowance usage or promise a proportional speedup.
 
+Each source keeps the analytics context from its first reserved batch, even
+after its partner finishes or is omitted from a resume. The runner reconstructs
+that membership from the existing edge ledger and reads the same imported
+capture. A source's final singleton page must not drop its original partner's
+engagement signals. Sources with different frozen contexts use separate
+batches; this changes scheduling only and preserves prior receipts and inputs.
+
 Keep one runner and one active attempt for a generation. Do not launch several
 copies of the command to add concurrency. Each call still obtains fresh account,
 allowance and durable reservation admission. A failed task stops new work;
@@ -355,3 +362,29 @@ retain their original protocol and qualification. That route and a paid
 OpenRouter key are **not** fallback paths for the subscription runner or this
 first protocol-4 build. Do not add a snapshot mode to an existing generation or
 carry its model decisions into a new qualification.
+
+### Concurrent reservation admission (October 14)
+
+Keep model concurrency at up to sixteen, but serialize local reservation writes.
+Admin locks the generation for each reservation; the queue starts each 15-second
+reservation timer only when that request can be sent. Identity and allowance
+freshness remain required before the write, and a failure stops queued work while
+already admitted calls drain their actual receipts.
+
+Migration 0151 adds only the sealed `d541c707-abd6-4f01-9a8f-038c11b2a4e7`
+reservation to the existing operator acknowledgement. It retains the original
+pending call and null usage, stores both original member snapshots, and changes
+only those members to `no_dispatch_unapplied` atomically. No checkpoint advances,
+provider receipt, budget refund, automatic retry or new generation is created.
+The sealed evidence is under
+`docs/validation/precomputed-concurrent-reservations/no-dispatch-evidence.json`.
+
+Deploy through PR-to-main. Once the old producer has exited and every source
+lease has expired, open a same-account maintenance attempt, refresh physical
+capacity, acknowledge the exact request/evidence hashes, and close the attempt.
+Verify all call rows and successful profile/edge receipts are unchanged before
+resuming the frozen generation. The migration is additive to the reviewed
+allowlist and preserves 0150's immutability triggers. After the second audit is
+written, retain it on rollback and pause this generation; do not delete evidence
+to make an older reader accept it. The reversible concurrency setting can still
+be reduced without changing the model or profile content.
