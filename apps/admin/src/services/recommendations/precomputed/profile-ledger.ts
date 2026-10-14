@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient } from "@prisma/client"
 import { z } from "zod"
 import {
   assertPrecomputedObservedVersion,
+  assertPrecomputedProfileVersion,
   selectedTranscriptSelections,
 } from "./catalog"
 import { PrecomputedRecommendationError } from "./contract"
@@ -488,7 +489,12 @@ export async function submitProfileAction(
             })
           ).inputCutoff
           try {
-            await assertPrecomputedObservedVersion(tx, [input.videoId], cutoff)
+            await assertPrecomputedProfileVersion(
+              tx,
+              [input.videoId],
+              cutoff,
+              input.generationId,
+            )
           } catch {
             metadataFailure = "profile_metadata_unavailable"
           }

@@ -398,6 +398,177 @@ export async function assertPrecomputedObservedVersion(
   }
 }
 
+/** A sync timestamp alone does not invalidate already profiled content.
+ * Ready v6 content is revalidated even when no later timestamp is visible.
+ * Ordinary discovery and all legacy callers retain the strict cutoff fence. */
+export async function assertPrecomputedProfileVersion(
+  tx: Prisma.TransactionClient,
+  videoIds: string[],
+  cutoff: Date,
+  generationId: string,
+): Promise<void> {
+  const fail = (): never => {
+    throw new PrecomputedCatalogError(
+      "stale_cutoff",
+      "Current content differs from the frozen ready profile",
+    )
+  }
+  const ids = [...new Set(videoIds)]
+  const profiles = await tx.recommendationPrecomputedContentProfile.findMany({
+    where: { generationId, videoId: { in: ids }, state: "ready" },
+    select: {
+      videoId: true,
+      modelId: true,
+      backend: true,
+      promptVersion: true,
+      metadataDigest: true,
+      chunkDigest: true,
+      selectedTranscriptCount: true,
+      selectedChunkCount: true,
+      sourceTextBytes: true,
+    },
+  })
+  // Ready v6 profiles always revalidate bytes, including hard deletions that
+  // leave no later timestamp. Legacy/unprofiled input keeps the original fence.
+  if (
+    !profiles.length ||
+    profiles.every((profile) => profile.promptVersion !== "complete-profile-v6")
+  ) {
+    await assertPrecomputedObservedVersion(tx, videoIds, cutoff)
+    return
+  }
+  const generation = await tx.recommendationPrecomputedGeneration.findUnique({
+    where: { id: generationId },
+    select: {
+      protocolVersion: true,
+      inputCutoff: true,
+      modelId: true,
+      executionBackend: true,
+    },
+  })
+  if (
+    !generation ||
+    generation.protocolVersion !== 4 ||
+    generation.inputCutoff.getTime() !== cutoff.getTime() ||
+    generation.executionBackend !== "codex_chatgpt_subscription"
+  )
+    fail()
+  if (
+    profiles.length !== ids.length ||
+    new Set(profiles.map((p) => p.videoId)).size !== ids.length
+  )
+    fail()
+  const videos = await tx.video.findMany({
+    where: { id: { in: ids } },
+    select: videoSelect(),
+  })
+  if (videos.length !== ids.length) fail()
+  const selections = await selectedTranscriptSelections(tx, ids)
+  for (const row of videos) {
+    if (!isWatchable(row)) fail()
+    const profile = profiles.find((p) => p.videoId === row.id) ?? fail()
+    if (
+      profile.modelId !== generation!.modelId ||
+      profile.backend !== generation!.executionBackend ||
+      profile.promptVersion !== "complete-profile-v6"
+    )
+      fail()
+    const selection = selections.get(row.id) ?? emptyTranscriptSelection()
+    const video = compactVideo(row, selection)
+    // Same byte contract as Mastra's contentProfileMetadata; the native test
+    // uses the real producer planner to guard against serialization drift.
+    const metadata = {
+      videoId: video.id,
+      coreId: video.coreId,
+      locale: video.locale,
+      title: video.title,
+      description: video.description,
+      descriptionTruncated: video.descriptionTruncated,
+      keywords: video.keywords,
+      keywordsTruncated: video.keywordsTruncated,
+      bibleCitations: video.bibleCitations,
+      bibleCitationsTruncated: video.bibleCitationsTruncated,
+      parentVideoIds: video.parentVideoIds,
+      childVideoIds: video.childVideoIds,
+      transcriptSelection: {
+        policy: selection.policy,
+        selected: selection.selected.map((item) => ({
+          language: item.language,
+          totalChunks: item.totalChunks,
+          transcriptId: item.transcriptId,
+          videoEditionId: item.videoEditionId,
+        })),
+      },
+    }
+    if (
+      createHash("sha256").update(JSON.stringify(metadata)).digest("hex") !==
+      profile.metadataDigest
+    )
+      fail()
+    const chunks = await tx.videoTranscriptChunk.findMany({
+      where: {
+        transcriptId: {
+          in: selection.selected.map((item) => item.transcriptId),
+        },
+      },
+      orderBy: { id: "asc" },
+      take: 100_001,
+      select: {
+        id: true,
+        transcriptId: true,
+        language: true,
+        chunkIndex: true,
+        rawSourceText: true,
+        text: true,
+      },
+    })
+    if (
+      chunks.length > 100_000 ||
+      profile.selectedTranscriptCount !== selection.selected.length ||
+      profile.selectedChunkCount !== chunks.length
+    )
+      fail()
+    const hash = createHash("sha256")
+    let sourceTextBytes = 0
+    const indices = new Map<string, Set<number>>()
+    for (const chunk of chunks) {
+      const selected =
+        selection.selected.find(
+          (item) => item.transcriptId === chunk.transcriptId,
+        ) ?? fail()
+      const seen = indices.get(chunk.transcriptId) ?? new Set<number>()
+      if (
+        chunk.language !== selected.language ||
+        chunk.chunkIndex < 0 ||
+        chunk.chunkIndex >= selected.totalChunks ||
+        seen.has(chunk.chunkIndex)
+      )
+        fail()
+      seen.add(chunk.chunkIndex)
+      indices.set(chunk.transcriptId, seen)
+      const text = chunk.rawSourceText ?? chunk.text
+      sourceTextBytes += Buffer.byteLength(text, "utf8")
+      hash.update(
+        JSON.stringify([
+          chunk.id,
+          chunk.transcriptId,
+          chunk.language,
+          chunk.chunkIndex,
+          text,
+        ]),
+      )
+    }
+    if (
+      selection.selected.some(
+        (item) => indices.get(item.transcriptId)?.size !== item.totalChunks,
+      ) ||
+      hash.digest("hex") !== profile.chunkDigest ||
+      sourceTextBytes !== profile.sourceTextBytes
+    )
+      fail()
+  }
+}
+
 /** Reconstruct the producer's complete Watch-eligible source identity from
  * Admin-owned rows at the build cutoff. A self-declared two-video manifest
  * cannot certify coverage of a larger catalog. Changed current rows fail
