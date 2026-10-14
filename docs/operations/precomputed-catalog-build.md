@@ -53,6 +53,25 @@ physical overlap and observe throughput at the chosen concurrency before using
 it to forecast a completion time. Earlier CLI versions do not have this signal
 handler and must not be stopped using this procedure.
 
+## Reviewed interrupted-call recovery
+
+Seven interrupted calls in `production-astra-catalog-20261013-v6` have no usage
+receipt. Their exact identities and candidate pages are pinned in Admin's
+`precomputed/reviewed-edge-recoveries.ts`; the existing v4 exception is retained.
+Only these reviewed calls can receive `edge_manual_recovery_ack`. Each needs a
+new replacement UUID, a closed original attempt, no live source leases, ready
+profiles and an explicit operator attestation that the original process exited.
+
+Run one serial `resume` with `recovery` and the exact source/end-rank bounds in
+Mastra's matching manifest. Use the frozen catalog for v6. Finish and close that
+attempt before acknowledging the next call. A replacement may evaluate only the
+original candidate page; arbitrary retries or different candidates are rejected.
+The original remains pending with null usage, and its acknowledged call/member
+records become immutable. Readiness separately qualifies each exception only
+after its replacement has known usage, an applied receipt and a closed attempt.
+Seven qualified exceptions still mean seven original calls with unknown usage.
+Normal generation completion and public activation remain separate operations.
+
 ## Prepare a protocol-4 run
 
 An explicit `resume` may supply `frozenCatalog: { path, sha256 }` in the local

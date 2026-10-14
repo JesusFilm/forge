@@ -18,6 +18,13 @@ tags:
 
 ## Problem
 
+The frozen-catalog resume fix shipped through PR #2722. Recovery now extends the
+existing operator path to the seven exact interrupted v6 calls. Preserve original
+unknown usage, bind replacements to the same frozen pages, admit them serially,
+and qualify each only after a saved receipt and closed replacement attempt.
+Native proof covers two recoveries in one generation, immutable originals and
+rejection of live leases, changed seals and reused replacement IDs.
+
 October 15 continuation: metadata-only diagnostics confirmed provider rate-limit
 errors at concurrency twelve. Add optional bounded spacing between new model
 process starts, with fresh admission after waiting and no automatic retries.

@@ -142,7 +142,8 @@ export function evaluatePrecomputedLiveFacts(
   const validQualification =
     Number.isSafeInteger(qualifiedUnknown) &&
     qualifiedUnknown >= 0 &&
-    qualifiedUnknown <= 1 &&
+    // The authenticated ledger qualifies at most the seven reviewed v6 calls.
+    qualifiedUnknown <= 7 &&
     (qualifiedUnknown === 0
       ? generation?.qualifiedAcknowledgmentDigest == null
       : generation?.protocolVersion === 4 &&

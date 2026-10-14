@@ -12,39 +12,51 @@ import {
 } from "./edge-batch-executor"
 import { decodeEdgePrompt } from "./edge-prompt-renderer"
 
-it("exempts only the reviewed unknown call for its one replacement or after reconciliation", () => {
-  const original = {
-    callId: "8ab8a620-1608-4115-812e-200bb2fb4b6d",
-    status: "pending" as const,
-    applicationState: "acknowledged_unknown" as const,
-    recoveryReplacementCallId: "22222222-2222-4222-8222-222222222222",
-    recoveryReconciled: false,
-  }
-  const recovery = {
-    originalCallId: original.callId,
-    replacementCallId: original.recoveryReplacementCallId,
-  }
-  expect(acknowledgedUnknownIsSafe(original)).toBe(false)
-  expect(acknowledgedUnknownIsSafe(original, recovery)).toBe(true)
-  expect(
-    acknowledgedUnknownIsSafe(original, {
-      ...recovery,
-      replacementCallId: "33333333-3333-4333-8333-333333333333",
-    }),
-  ).toBe(false)
-  expect(
-    acknowledgedUnknownIsSafe({ ...original, recoveryReconciled: true }),
-  ).toBe(true)
-  expect(
-    acknowledgedUnknownIsSafe({ ...original, applicationState: "pending" }),
-  ).toBe(false)
-  expect(
-    acknowledgedUnknownIsSafe(
-      { ...original, callId: recovery.replacementCallId },
-      recovery,
-    ),
-  ).toBe(false)
-})
+it.each([
+  "8ab8a620-1608-4115-812e-200bb2fb4b6d",
+  "0f532ef1-3358-42b8-859b-61957633f591",
+  "16540542-b0cd-4000-a1cf-300c11f5d721",
+  "1b52ddfd-6ec9-48c8-b87f-1f290c2e8125",
+  "1c9be609-c76c-4828-8934-6e976ca135ce",
+  "23b3b0a0-af22-4f40-b499-790d84a3cb2c",
+  "6cf1da28-020c-4ad2-9572-3bc4c91af9d5",
+  "beeba49b-0f6f-4d70-87c0-4d36a9e81f16",
+])(
+  "exempts reviewed call %s only for its replacement or after reconciliation",
+  (callId) => {
+    const original = {
+      callId,
+      status: "pending" as const,
+      applicationState: "acknowledged_unknown" as const,
+      recoveryReplacementCallId: "22222222-2222-4222-8222-222222222222",
+      recoveryReconciled: false,
+    }
+    const recovery = {
+      originalCallId: original.callId,
+      replacementCallId: original.recoveryReplacementCallId,
+    }
+    expect(acknowledgedUnknownIsSafe(original)).toBe(false)
+    expect(acknowledgedUnknownIsSafe(original, recovery)).toBe(true)
+    expect(
+      acknowledgedUnknownIsSafe(original, {
+        ...recovery,
+        replacementCallId: "33333333-3333-4333-8333-333333333333",
+      }),
+    ).toBe(false)
+    expect(
+      acknowledgedUnknownIsSafe({ ...original, recoveryReconciled: true }),
+    ).toBe(true)
+    expect(
+      acknowledgedUnknownIsSafe({ ...original, applicationState: "pending" }),
+    ).toBe(false)
+    expect(
+      acknowledgedUnknownIsSafe(
+        { ...original, callId: recovery.replacementCallId },
+        recovery,
+      ),
+    ).toBe(false)
+  },
+)
 import type { Video } from "./source-generation"
 import type { HistoricalSnapshot } from "./historical-analytics"
 import type { StructuredModel } from "./astra-provider"

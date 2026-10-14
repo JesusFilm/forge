@@ -2122,82 +2122,8 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
         "pending",
       )
     })
-    it("keeps acknowledged unknown usage immutable while releasing only its pending-source slot", async () => {
+    it("rejects an unreviewed recovery acknowledgement at the database boundary", async () => {
       const { base, start } = await reserveOne("edge-recovery-ddl")
-      const replacementCallId = randomUUID()
-      await prisma.recommendationPrecomputedEdgeBatchCall.update({
-        where: {
-          generationId_callId: {
-            generationId: base.generationId,
-            callId: start.callId,
-          },
-        },
-        data: {
-          recoveryReplacementCallId: replacementCallId,
-          recoveryOperatorAccountRef: "edge-account-123",
-          recoveryAcknowledgedAt: new Date(),
-          recoveryOldProcessExitedAttested: true,
-        },
-      })
-      await prisma.recommendationPrecomputedEdgeBatchMember.update({
-        where: {
-          generationId_callId_sourceVideoId: {
-            generationId: base.generationId,
-            callId: start.callId,
-            sourceVideoId,
-          },
-        },
-        data: { applicationState: "acknowledged_unknown" },
-      })
-      const original =
-        await prisma.recommendationPrecomputedEdgeBatchCall.findUniqueOrThrow({
-          where: {
-            generationId_callId: {
-              generationId: base.generationId,
-              callId: start.callId,
-            },
-          },
-        })
-      expect(original).toMatchObject({
-        status: "pending",
-        inputTokens: null,
-        outputTokens: null,
-        finishedAt: null,
-        receiptDigest: null,
-        recoveryReplacementCallId: replacementCallId,
-      })
-      expect(
-        await submit({
-          action: "edge_batch_status",
-          generationId: base.generationId,
-          generationInputDigest,
-          sourceVideoId,
-        }),
-      ).toMatchObject({
-        calls: [
-          {
-            callId: start.callId,
-            status: "pending",
-            applicationState: "acknowledged_unknown",
-            recoveryReplacementCallId: replacementCallId,
-            recoveryReconciled: false,
-          },
-        ],
-      })
-      await expect(
-        submit({
-          action: "edge_batch_finish",
-          ...base,
-          callId: start.callId,
-          inputDigest: start.inputDigest,
-          membershipDigest: start.membershipDigest,
-          spanOfferDigest: start.spanOfferDigest,
-          status: "failed",
-          errorCode: "late_receipt",
-          usage: { inputTokens: 1, outputTokens: 0 },
-          finishedAt: new Date().toISOString(),
-        }),
-      ).rejects.toThrow("cannot apply a late receipt")
       await expect(
         prisma.recommendationPrecomputedEdgeBatchCall.update({
           where: {
@@ -2206,51 +2132,14 @@ describe.skipIf(env.RECOMMENDATION_DB_TEST !== "1")(
               callId: start.callId,
             },
           },
-          data: { inputDigest: "f".repeat(64) },
-        }),
-      ).rejects.toThrow("Acknowledged unresolved edge call is immutable")
-      await expect(
-        prisma.recommendationPrecomputedEdgeBatchMember.update({
-          where: {
-            generationId_callId_sourceVideoId: {
-              generationId: base.generationId,
-              callId: start.callId,
-              sourceVideoId,
-            },
+          data: {
+            recoveryReplacementCallId: randomUUID(),
+            recoveryOperatorAccountRef: "edge-account-123",
+            recoveryAcknowledgedAt: new Date(),
+            recoveryOldProcessExitedAttested: true,
           },
-          data: { applicationState: "pending" },
         }),
-      ).rejects.toThrow("Acknowledged unresolved edge member is immutable")
-      const secondCallId = randomUUID()
-      await admin.query(
-        `INSERT INTO recommendation_precomputed_edge_batch_call
-          (generation_id,call_id,attempt_id,model_id,backend,prompt_version,schema_version,
-           input_digest,membership_digest,selected_corpus_digest,candidate_pool_digest,
-           capture_ref_digest,span_offer_digest,span_offers,request_digest,started_at,status)
-         SELECT generation_id,$2::uuid,attempt_id,model_id,backend,prompt_version,schema_version,
-                input_digest,membership_digest,selected_corpus_digest,candidate_pool_digest,
-                capture_ref_digest,span_offer_digest,span_offers,request_digest,now(),'pending'
-         FROM recommendation_precomputed_edge_batch_call
-         WHERE generation_id=$1 AND call_id=$3`,
-        [base.generationId, secondCallId, start.callId],
-      )
-      await admin.query(
-        `INSERT INTO recommendation_precomputed_edge_batch_member
-          (generation_id,call_id,source_video_id,lease_token,checkpoint_revision,
-           page_index,source_profile_key,candidates,candidate_page_digest,
-           source_candidate_count,source_candidate_digest,historical_ref_digest,application_state)
-         SELECT generation_id,$2::uuid,source_video_id,lease_token,checkpoint_revision,
-                page_index,source_profile_key,candidates,candidate_page_digest,
-                source_candidate_count,source_candidate_digest,historical_ref_digest,'pending'
-         FROM recommendation_precomputed_edge_batch_member
-         WHERE generation_id=$1 AND call_id=$3`,
-        [base.generationId, secondCallId, start.callId],
-      )
-      expect(
-        await prisma.recommendationPrecomputedEdgeBatchMember.count({
-          where: { generationId: base.generationId, sourceVideoId },
-        }),
-      ).toBe(2)
+      ).rejects.toThrow("precomputed_edge_reviewed_recovery_scope_check")
     })
     it("qualifies only the exact acknowledged unknown after a known two-member replacement is applied and closed", async () => {
       const recoveryGenerationId = "subscription-astra-budget2-20261008-v4"

@@ -1,3 +1,4 @@
+import { REVIEWED_EDGE_RECOVERIES } from "./reviewed-edge-recoveries"
 import { createHash, randomUUID } from "node:crypto"
 
 import { z } from "zod"
@@ -42,8 +43,6 @@ const digest = (value: unknown) =>
   createHash("sha256").update(JSON.stringify(value)).digest("hex")
 // The operator-only command names this one reviewed recovery checkpoint.
 const RECOVERY_GENERATION_ID = "subscription-astra-budget2-20261008-v4"
-const RECOVERY_GENERATION_INPUT_DIGEST =
-  "36d168040f404b12e12be8d4ecdf8b75c102fe459bcefb22753f434fe29443b9"
 const RECOVERY_ORIGINAL_CALL_ID = "8ab8a620-1608-4115-812e-200bb2fb4b6d"
 const RECOVERY_SOURCE_IDS = [
   "cmokmj8ka0njkqsccfvhbto3g",
@@ -614,22 +613,23 @@ export async function runManualSubscriptionCatalog(
       !input.reviewed.sourceVideoIds.includes(input.profileReplacement.videoId))
   )
     throw new ManualSubscriptionCatalogError("input_invalid")
+  const recoveryScope =
+    input.recovery &&
+    REVIEWED_EDGE_RECOVERIES.find(
+      (scope) =>
+        scope.generationId === input.generationId &&
+        scope.generationInputDigest === input.generationInputDigest &&
+        scope.originalCallId === input.recovery?.originalCallId,
+    )
   if (
     input.recovery &&
-    (input.invocation !== "resume" ||
-      input.generationId !== RECOVERY_GENERATION_ID ||
-      input.generationInputDigest !== RECOVERY_GENERATION_INPUT_DIGEST ||
-      input.recovery.originalCallId !== RECOVERY_ORIGINAL_CALL_ID ||
-      input.recovery.replacementCallId === RECOVERY_ORIGINAL_CALL_ID ||
+    (!recoveryScope ||
+      input.invocation !== "resume" ||
+      input.recovery.replacementCallId === input.recovery.originalCallId ||
       !z.uuid().safeParse(input.recovery.replacementCallId).success ||
       input.recovery.oldProcessExitedAttested !== true ||
       input.work.mode !== "pilot" ||
-      input.work.sources.length !== RECOVERY_SOURCE_IDS.length ||
-      input.work.sources.some(
-        (item, index) =>
-          item.sourceVideoId !== RECOVERY_SOURCE_IDS[index] ||
-          item.exclusiveEndRank !== 4,
-      ))
+      !sameCanonicalJson(input.work.sources, recoveryScope.sources))
   )
     throw new ManualSubscriptionCatalogError("input_invalid")
   const frozen = await preflightManualCatalog(
@@ -1078,8 +1078,8 @@ export async function runManualSubscriptionCatalog(
     if (input.recovery) {
       const acknowledged = await send(
         z.object({
-          generationId: z.literal(RECOVERY_GENERATION_ID),
-          originalCallId: z.literal(RECOVERY_ORIGINAL_CALL_ID),
+          generationId: z.literal(input.generationId),
+          originalCallId: z.literal(input.recovery.originalCallId),
           replacementCallId: z.uuid(),
           state: z.literal("acknowledged_unknown"),
           replay: z.boolean(),
