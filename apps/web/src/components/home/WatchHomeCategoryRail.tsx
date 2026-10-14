@@ -359,7 +359,7 @@ export function WatchHomeCategoryRail({
           <div
             ref={attachScroller}
             role="list"
-            className="flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto overscroll-x-contain px-5 py-1 md:scroll-px-16 md:px-16 xl:scroll-px-24 xl:px-24 min-[1440px]:grid min-[1440px]:w-full min-[1440px]:snap-none min-[1440px]:grid-cols-7 min-[1440px]:overflow-visible"
+            className="flex snap-x snap-mandatory scroll-px-5 gap-4 overflow-x-auto overscroll-x-contain px-5 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:scroll-px-16 md:px-16 xl:scroll-px-24 xl:px-24 min-[1440px]:grid min-[1440px]:w-full min-[1440px]:snap-none min-[1440px]:grid-cols-7 min-[1440px]:overflow-visible"
             data-testid="watch-home-category-scroller"
           >
             {cards.map((card) => {
