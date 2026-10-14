@@ -226,9 +226,9 @@ export function canonicalizeWatchPath(
   //
   // The legacy site answered a bare `/foo` with `/foo.html/foo.html` and this
   // rule mirrored it verbatim. That target is a two-segment shape whose second
-  // segment is read as a language (or an episode), so real bare video links land on
-  // a missing page while `/foo.html` serves — `/watch/jesus` redirected into
-  // a dead end. Append the suffix and stop there; the one-segment route IS the
+  // segment is read as a language (or an episode), so real bare video links
+  // land on a missing page while `/foo.html` serves — `/watch/jesus` redirected
+  // into a dead end. Append the suffix and stop there; the one-segment route IS the
   // canonical destination. See Linear FGE-203 (W-070).
   {
     const segs = path.split("/").filter(Boolean)

@@ -731,16 +731,16 @@ async function classifyManifestAdmission(
     }
     // `/slug.html/slug.html` is what the legacy site synthesized for a bare
     // `/slug`, and what canonicalize's Rule 5 mirrored until FGE-203 (W-070).
-    // Nothing emits it any more, so every remaining hit is an inbound link
-    // from that era: send it to the one-segment page instead of the terminal
-    // 404 it used to get.
+    // After preserving exactly admitted episodes above, this equal-segment
+    // shape can be an old synthesized inbound link. Recover it to the same
+    // admitted destination as a direct one-segment request.
     //
     // Gated on `classifyOneSegmentAdmission` — the SAME answer a direct
     // `/{slug}.html` request gets, not a looser `oneSegmentSlugs` check — so
     // the redirect cannot point at a 404. `!== "not-found"` rather than
     // `=== "admit"` because a known-content-language-gap slug still has a
     // destination: `/{slug}.html` renders the unavailable-language sentinel,
-    // and sending a legacy link to a hard 404 instead would make the collapse
+    // and sending a legacy link to a missing page instead would make the collapse
     // disagree with the page it claims to model.
     //
     // 307, not 301: the only thing separating this shape from a GENUINE
