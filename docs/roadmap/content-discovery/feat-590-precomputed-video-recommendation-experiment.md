@@ -18,6 +18,11 @@ tags:
 
 ## Problem
 
+A known-usage rejected edge response stopped the run at 4,927 comparisons and
+89 finalized sources. Add a single durably bounded retry after fresh receipt
+verification, preserving all completed pages and original usage records.
+See `docs/plans/2026-10-15-007-fix-known-rejected-edge-resume-plan.md`.
+
 All seven interrupted batches recovered, then the full run reached 3,884
 comparisons and 73 finalized sources. An uppercase source slug exposed a
 source-only analytics mapping precondition that stops the entire catalog.
