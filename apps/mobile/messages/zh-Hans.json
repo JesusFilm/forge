@@ -774,5 +774,8 @@
     "send": "发送",
     "sending": "正在发送…",
     "sendAriaLabel": "发送反馈"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "应用会使用你的本地网络查找投屏设备，以便你在电视上播放视频。"
   }
 }

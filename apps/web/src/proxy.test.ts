@@ -1,3 +1,4 @@
+import { NextRequest } from "next/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 import { PUBLIC_WATCH_LANGUAGE_SLUGS } from "@forge/watch-url-policy/routes"
@@ -887,6 +888,64 @@ describe("proxy — internal locale/htmlLang rewrites", () => {
     },
   )
 
+  it.each([
+    "çoğu-çay-mostly-tea",
+    "tümlükden-nura",
+    "la-búsqueda-the-search",
+    "la-liberté-de-l-interieur-freedom-within",
+    "jätku-leiba",
+  ])("admits upstream lowercased percent escapes for %s", async (slug) => {
+    resetManifestSource?.()
+    resetManifestSource = setWatchRouteManifestSourceForTest(async () => ({
+      ...TEST_MANIFEST,
+      contentSlugs: [
+        ...TEST_MANIFEST.contentSlugs,
+        "conversation-starters",
+        slug,
+      ],
+      oneSegmentSlugs: [...TEST_MANIFEST.oneSegmentSlugs, slug],
+      audioLanguageIndexesByContent: {
+        ...TEST_MANIFEST.audioLanguageIndexesByContent,
+        [slug]: [2],
+      },
+      episodePairsByParent: {
+        ...TEST_MANIFEST.episodePairsByParent,
+        "conversation-starters": [slug],
+      },
+      audioLanguageIndexesByEpisode: {
+        ...TEST_MANIFEST.audioLanguageIndexesByEpisode,
+        "conversation-starters": { [slug]: [2] },
+      },
+    }))
+    for (const path of [
+      `/${encodeURI(slug)}.html`,
+      `/conversation-starters.html/${encodeURI(slug)}.html`,
+    ]) {
+      const canonicalRequest = new NextRequest(
+        `https://www.jesusfilm.org/watch${path}`,
+        { nextConfig: { basePath: "/watch" } },
+      )
+      const upstreamRequest = new NextRequest(
+        `https://www.jesusfilm.org/watch${path.toLowerCase()}`,
+        { nextConfig: { basePath: "/watch" } },
+      )
+      expect(upstreamRequest.nextUrl.pathname).toBe(path.toLowerCase())
+      const canonicalResponse = await proxy(canonicalRequest)
+      const upstreamResponse = await proxy(upstreamRequest)
+      expect(upstreamResponse.headers.get("location")).toBeNull()
+      expect(rewritePath(upstreamResponse)).toBe(rewritePath(canonicalResponse))
+      const expected = path.startsWith("/conversation-starters")
+        ? `/watch/en/en/conversation-starters.html/${encodeURI(slug)}.html`
+        : `/watch/en/en/${encodeURI(slug)}.html/english.html`
+      expect(rewritePath(upstreamResponse)).toBe(expected)
+      expect(
+        rewrittenRequestHeaders(upstreamResponse).get(
+          WATCH_INTERNAL_REWRITE_HEADER,
+        ),
+      ).toBe(path)
+    }
+  })
+
   it("rewrites a short legacy episode alias to its exact current English context", async () => {
     const response = await proxy(
       makeRequest("/lumo-the-gospel-of-john.html/wedding-in-cana.html"),
@@ -1638,15 +1697,27 @@ describe("proxy — resilience on malformed inputs", () => {
   })
 
   it.each([
+    "/conversation-starters.html/t%c3%bcml%c3%bckden%2fnura.html",
+    "/conversation-starters.html/t%c3%bcml%c3%bckden%5cnura.html",
+    "/t%c3%bcml%c3%bckden%0anura.html",
+    "/t%c3%bcml%c3%bckden%00nura.html",
+    "/t%c3%bcml%c3%bckden%3fnura.html",
+    "/t%c3%bcml%c3%bckden%23nura.html",
+    "/%6aesus.html",
+    "/%25c3%25a7o%25c4%259fu-%25c3%25a7ay-mostly-tea.html",
+    "/tu%cc%88mlu%cc%88kden-nura.html",
+    "/conversation-starters.html/%2e%2e%2fjesus.html",
+    "/conversation-starters.html/%c3%9cber.html",
+    "/conversation-starters.html/%zz.html",
+    "/conversation-starters.html/%c3.html",
     "/conversation-starters.html/t%C3%BCml%C3%BCkden%2Fnura.html",
     "/conversation-starters.html/t%C3%BCml%C3%BCkden%5Cnura.html",
     "/conversation-starters.html/%E0%A4.html",
     "/%6Aesus.html",
-    "/t%c3%bcml%c3%bckden-nura.html",
     "/%2E%2E/conversation-starters.html",
     "/conversation-starters.html/%C3%9Cber.html",
   ])(
-    "rejects unsafe or non-canonical Unicode route encoding %s",
+    "rejects unsafe or noncanonical Unicode route encoding %s",
     async (path) => {
       const response = await proxy(makeRequest(path))
       expect(response.status).not.toBe(307)

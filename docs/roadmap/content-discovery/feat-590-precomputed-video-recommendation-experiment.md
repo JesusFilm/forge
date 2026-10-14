@@ -31,6 +31,38 @@ run reached twelve simultaneous reservations without request errors. Raise the
 operator ceiling to sixteen to give the eight-hour target more headroom; the
 model, quality settings, admission checks and graceful drain remain unchanged.
 
+The sixteen-call run completed all 1,031 profiles. Concurrent edge reservations
+then exposed Admin's generation lock: one admission took 18,147 ms, beyond the
+local 15-second deadline. Serialize only reservation writes while keeping up to
+sixteen model calls active. Migration 0151 extends the sealed no-dispatch
+allowlist to that exact two-member reservation, preserving null provider usage,
+original receipts and source checkpoints. Resume through the native operator
+acknowledgement after normal deployment and expired leases; never replay the
+original reservation or infer completed comparisons from it.
+
+The queued run preserved 66 successful comparison calls before a two-source
+batch shrank to one source and changed its historical-context digest. Keep the
+first reservation's source membership when rebuilding analytics context across
+pages and resumes, including a prior partner that is no longer active. Sources
+with different frozen contexts run in separate batches. This uses the existing
+imported capture and ledger membership; no database rewrite, new GA query,
+profile shortening or model change is required.
+
+The next run saved 81 comparison calls before one dispatched Astra process hit
+the three-minute default deadline without a usage receipt. Allow up to the
+existing five-minute maximum by default so slower replies can finish. Preserve
+the unknown original call and its ten comparisons for explicit recovery;
+unaffected sources can use the existing bounded-work interface. This timeout
+change does not establish a completion ETA or reconcile the interrupted call.
+
+The resumed run saved another 111 comparison calls before PostgreSQL exhausted
+its shared-memory mount during the catalog-version proof. The broad catch
+incorrectly labeled SQLSTATE 53100 as an invalid passage. Keep edge transactions
+out of parallel query shared memory with a transaction-local worker limit, and
+only translate catalog validation errors into passage rejection. The sixteen
+model calls, full profiles, frozen input, and evidence checks remain unchanged.
+The rejected reservation created no call row; all 111 admitted calls finished.
+
 Explore whether a capable reasoning model can find useful connections across
 the video catalog from transcripts, metadata, and historical analytics, with
 recommendations computed periodically and stored in PostgreSQL before viewers

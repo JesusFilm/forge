@@ -774,5 +774,8 @@
     "send": "שליחה",
     "sending": "בשליחה…",
     "sendAriaLabel": "שליחת משוב"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "האפליקציה משתמשת ברשת המקומית שלכם כדי למצוא מכשירים להעברה למסך, כך שתוכלו להפעיל סרטונים בטלוויזיה."
   }
 }

@@ -774,5 +774,8 @@
     "send": "Skicka",
     "sending": "Skickar…",
     "sendAriaLabel": "Skicka feedback"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Appen använder ditt lokala nätverk för att hitta Cast-enheter, så att du kan spela upp videor på din tv."
   }
 }

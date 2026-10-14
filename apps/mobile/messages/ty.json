@@ -774,5 +774,8 @@
     "send": "Hāpono",
     "sending": "Te hāpono nei…",
     "sendAriaLabel": "Hāpono i tō ʻoe manaʻo"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "E faʻaʻohipa te porotarama i tō ʻoe tāʻamuraa fātata nō te ʻimi i te mau tauihaa nō te hāpono i te ʻāfata teata, ia nehenehe ʻoe e mātaʻitaʻi i te mau video i niʻa i tō ʻoe ʻāfata teata."
   }
 }

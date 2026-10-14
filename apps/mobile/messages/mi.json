@@ -774,5 +774,8 @@
     "send": "Tukua",
     "sending": "E tuku ana…",
     "sendAriaLabel": "Tukua te urupare"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Ka whakamahi te taupānga i tō whatunga paetata hei kimi i ngā pūrere tuku, kia taea ai e koe te pūrei ataata i tō pouaka whakaata."
   }
 }

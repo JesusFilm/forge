@@ -455,6 +455,7 @@ type ActiveSource = {
   sourceProfile: ReadyEdgeProfile
   targetsByVideoId: Map<string, { video: Video; profile: ReadyEdgeProfile }>
   snapshot: HistoricalSnapshot
+  historicalSourceVideoIds?: string[]
   finalized: boolean
 }
 
@@ -516,6 +517,13 @@ async function sourceProgress(
     throw new ManualSubscriptionCatalogError("source_failed")
   if (calls.some((call) => call.applicationState === "stale_unapplied"))
     throw new ManualSubscriptionCatalogError("usage_uncertain")
+  // The first reservation froze this source's analytics context, including its
+  // paired source's engagement. Keep that membership through pagination/resume.
+  const firstReservation = [...calls].sort(
+    (a, b) =>
+      a.pageIndex - b.pageIndex || a.startedAt.localeCompare(b.startedAt),
+  )[0]
+  source.historicalSourceVideoIds = firstReservation?.memberSourceVideoIds
   const applied = calls
     .filter(
       (call) =>
@@ -1155,20 +1163,20 @@ export async function runManualSubscriptionCatalog(
     )
     await runConcurrent(groupStarts, async (groupStart) => {
       const active: ActiveSource[] = []
-      for (const item of work.slice(groupStart, groupStart + 2)) {
-        checkRunning()
-        await refreshCapacity()
-        const source = byId.get(item.sourceVideoId)!
-        const orderedCandidateIds = frozen.retrieval.candidateIdsBySource.get(
-          source.id,
-        )!
+      const snapshots = new Map<string, HistoricalSnapshot>()
+      const snapshotFor = async (sourceVideoId: string) => {
+        const cached = snapshots.get(sourceVideoId)
+        if (cached) return cached
+        if (!byId.has(sourceVideoId))
+          throw new ManualSubscriptionCatalogError("import_unavailable")
         const snapshot = await readHistoricalSnapshot({
           reader: importedHistory.reader,
           definition: importedHistory.definition,
           catalog: frozen.videos,
           routeCatalog: frozen.videos,
-          sourceVideoId: source.id,
-          selectedVideoIds: orderedCandidateIds,
+          sourceVideoId,
+          selectedVideoIds:
+            frozen.retrieval.candidateIdsBySource.get(sourceVideoId)!,
           includeSourceEngagement: true,
           cutoff: input.inputCutoff,
         })
@@ -1184,6 +1192,18 @@ export async function runManualSubscriptionCatalog(
           !provenance.navigationCoverage
         )
           throw new ManualSubscriptionCatalogError("import_unavailable")
+        snapshots.set(sourceVideoId, snapshot)
+        return snapshot
+      }
+      for (const item of work.slice(groupStart, groupStart + 2)) {
+        checkRunning()
+        await refreshCapacity()
+        const source = byId.get(item.sourceVideoId)!
+        const orderedCandidateIds = frozen.retrieval.candidateIdsBySource.get(
+          source.id,
+        )!
+        const snapshot = await snapshotFor(source.id)
+        const provenance = snapshot.provenance
         const claimed = await send(claimReply, {
           action: "claim",
           ...scope,
@@ -1358,6 +1378,24 @@ export async function runManualSubscriptionCatalog(
           throw new ManualSubscriptionCatalogError("source_failed")
         active.push(entry)
       }
+      const initialMemberIds = active
+        .filter(
+          (source) =>
+            source.historicalSourceVideoIds === undefined &&
+            source.orderedCandidateIds.length > 0,
+        )
+        .map((source) => source.source.id)
+        .sort()
+      for (const source of active) {
+        source.historicalSourceVideoIds ??=
+          source.orderedCandidateIds.length === 0
+            ? [source.source.id]
+            : initialMemberIds
+        const history = new Map<string, HistoricalSnapshot>()
+        for (const id of source.historicalSourceVideoIds)
+          history.set(id, await snapshotFor(id))
+        source.snapshot = combinedHistorical(history)
+      }
       while (
         active.some(
           (source) =>
@@ -1378,7 +1416,14 @@ export async function runManualSubscriptionCatalog(
           remaining[0]!.orderedCandidateIds.length === 0
             ? remaining.slice(0, 1)
             : remaining
-                .filter((source) => source.orderedCandidateIds.length > 0)
+                .filter(
+                  (source) =>
+                    source.orderedCandidateIds.length > 0 &&
+                    sameCanonicalJson(
+                      source.historicalSourceVideoIds,
+                      remaining[0]!.historicalSourceVideoIds,
+                    ),
+                )
                 .slice(0, 2)
         const members: EdgeMemberInput[] = batch.map((source) => ({
           source: source.source,
@@ -1391,9 +1436,7 @@ export async function runManualSubscriptionCatalog(
           checkpointRevision: source.checkpointRevision,
           targetsByVideoId: source.targetsByVideoId,
         }))
-        const historical = combinedHistorical(
-          new Map(batch.map((source) => [source.source.id, source.snapshot])),
-        )
+        const historical = batch[0]!.snapshot
         // An empty page finalizes inside the executor. Drain its heartbeat first.
         if (batch[0]!.orderedCandidateIds.length === 0)
           await stopHeartbeat(batch[0]!.source.id)

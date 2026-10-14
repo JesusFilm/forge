@@ -774,5 +774,8 @@
     "send": "Yónnee",
     "sending": "Mi ngi yónnee…",
     "sendAriaLabel": "Yónnee sa xalaat"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "App bi dafay jëfandikoo sa réseau bu jege ngir wut jumtukaay yu mën a wone wideyo yi nga yónnee, ngir nga mën a doxal wideyo ci sa tele."
   }
 }

@@ -774,5 +774,8 @@
     "send": "Envia",
     "sending": "S’està enviant…",
     "sendAriaLabel": "Envia els comentaris"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "L’aplicació fa servir la teva xarxa local per trobar dispositius on emetre, perquè puguis reproduir vídeos al teu televisor."
   }
 }

@@ -774,5 +774,8 @@
     "send": "Sūtīt",
     "sending": "Notiek sūtīšana…",
     "sendAriaLabel": "Sūtīt atsauksmi"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Lietotne izmanto jūsu lokālo tīklu apraides ierīču atrašanai, lai jūs varētu atskaņot video savā televizorā."
   }
 }

@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Gigamit sa app ang imong lokal nga network sa pagpangita og mga Cast device, aron makapatokar ka og mga bidyo sa imong TV."
+  }
+}

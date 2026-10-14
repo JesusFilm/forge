@@ -774,5 +774,8 @@
     "send": "Odoslať",
     "sending": "Odosiela sa…",
     "sendAriaLabel": "Odoslať spätnú väzbu"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikácia používa vašu lokálnu sieť na vyhľadanie zariadení na prenos, aby ste mohli prehrávať videá vo svojom televízore."
   }
 }

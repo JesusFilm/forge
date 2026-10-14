@@ -774,5 +774,8 @@
     "send": "Sádde",
     "sending": "Sáddemin…",
     "sendAriaLabel": "Sádde máhcahusa"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Áppa geavaha du báikkálaš neahta gávdnan dihtii ovttadagaid maidda sáhtát sáddet, vai sáhtát čuojahit videoid du TV:s."
   }
 }

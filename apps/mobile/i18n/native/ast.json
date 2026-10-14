@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "L’app usa la to rede llocal p’atopar preseos onde emitir, pa que puedas reproducir videos na to televisión."
+  }
+}

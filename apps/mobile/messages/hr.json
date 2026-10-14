@@ -774,5 +774,8 @@
     "send": "Pošalji",
     "sending": "Slanje…",
     "sendAriaLabel": "Pošalji povratne informacije"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikacija upotrebljava vašu lokalnu mrežu za pronalaženje uređaja za emitiranje kako biste mogli reproducirati videozapise na svojem televizoru."
   }
 }

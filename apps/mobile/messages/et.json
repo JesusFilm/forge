@@ -774,5 +774,8 @@
     "send": "Saada",
     "sending": "Saatmine…",
     "sendAriaLabel": "Saada tagasiside"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Rakendus kasutab sinu kohtvõrku ülekandeseadmete leidmiseks, et saaksid videoid oma teleris esitada."
   }
 }

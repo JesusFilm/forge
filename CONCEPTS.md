@@ -213,6 +213,18 @@ BCP-47 tag for language-name and Bible-book-name maps. On mobile, the UI Locale
 also sets the layout direction: a right-to-left UI Locale mirrors the layout,
 and the phone language alone never does.
 
+### Native Localization
+
+The localization that iOS picks from the app bundle for the phone language, or
+for the per-app language that the user sets in iOS Settings, distinct from the
+UI Locale that the app renders its own interface copy in.
+
+iOS uses it for the text that iOS draws for the app, such as the app's sentence
+in a permission alert and the natural alignment of text. The app's in-app
+language choice does not change it, so one screen can show interface copy in
+one language and system-drawn text in another. A permission alert takes its
+text when it first appears, so the language at that moment decides it.
+
 ### Contextual Watch Route
 
 A public Watch URL that identifies a parent collection, child Video, and

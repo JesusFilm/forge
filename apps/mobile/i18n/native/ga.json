@@ -1,0 +1,5 @@
+{
+  "ios": {
+    "NSLocalNetworkUsageDescription": "Úsáideann an aip do líonra áitiúil chun gléasanna teilgin a aimsiú, ionas gur féidir leat físeáin a sheinm ar do theilifís."
+  }
+}

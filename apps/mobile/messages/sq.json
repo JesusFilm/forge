@@ -774,5 +774,8 @@
     "send": "Dërgo",
     "sending": "Po dërgohet…",
     "sendAriaLabel": "Dërgo komentet"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Aplikacioni përdor rrjetin tuaj lokal për të gjetur pajisje transmetimi, që të mund të luani video në televizorin tuaj."
   }
 }

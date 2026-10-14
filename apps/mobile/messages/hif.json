@@ -774,5 +774,8 @@
     "send": "भेजो",
     "sending": "भेजत है…",
     "sendAriaLabel": "फीडबैक भेजो"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "ऐप कास्ट डिवाइस खोजे खातिर आपके लोकल नेटवर्क के इस्तेमाल करत है, ताकि आप आपके टीवी पे वीडियो चलाए सको।"
   }
 }

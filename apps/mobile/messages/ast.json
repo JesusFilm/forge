@@ -774,5 +774,8 @@
     "send": "Unviar",
     "sending": "Unviando…",
     "sendAriaLabel": "Unviar los comentarios"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "L’app usa la to rede llocal p’atopar preseos onde emitir, pa que puedas reproducir videos na to televisión."
   }
 }

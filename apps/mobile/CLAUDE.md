@@ -2649,7 +2649,10 @@ the KD, KTD, R, and U numbers that the source cites.
    `node scripts/i18n/translate-catalogs.mjs` with no mode flag. The command is
    not a `package.json` script, because a new script entry moves the
    fingerprint runtime version.
-3. Commit `en.json`, the changed catalogs, and `i18n/*.json` in the same PR as
+3. After a change to a `NativePermissions` key, run
+   `node scripts/i18n/generate-native-strings.mjs` (see "Native
+   configuration"). A change to its English also goes into `app.json`.
+4. Commit `en.json`, the changed catalogs, and `i18n/*.json` in the same PR as
    the code (KD6).
 
 **Until the first full translation run (U16), no locale catalog exists.** Use
@@ -2787,7 +2790,9 @@ real script still checks every answer and writes every catalog. The code is
    the answer files and run the import again until every locale finishes. The
    command exits 1 while a locale is not finished.
 6. When the export made a new catalog file, run
-   `node scripts/i18n/generate-catalog-index.mjs`. Then run the CI suites.
+   `node scripts/i18n/generate-catalog-index.mjs`. When the run translated a
+   `NativePermissions` key, run `node scripts/i18n/generate-native-strings.mjs`.
+   Then run the CI suites.
 
 **Large runs.** A request file for a full catalog is about 280 KB, which is
 more than one file read shows. Read it in parts with `jq`:
@@ -2929,6 +2934,33 @@ runs the pre-install hook before `pnpm install`.
   - **Superseded 2026-10-12 by feat-695 U1:** `withIosLeftToRightAppearance`
     is removed. The local module `modules/layout-direction` applies the saved
     direction to UIKit at `willFinishLaunching`.
+- **Text in iOS permission alerts (feat-627).** iOS reads the Local Network
+  sentence (`NSLocalNetworkUsageDescription`) from `Info.plist`, or from
+  `<tag>.lproj/InfoPlist.strings`, before any JS runs. So the catalogs alone
+  cannot translate it. The source is `NativePermissions.localNetworkUsageDescription`
+  in `messages/en.json`, and it must equal the `ios.infoPlist` value in
+  `app.json`. `node scripts/i18n/generate-native-strings.mjs [--check]` writes
+  `i18n/native/<tag>.json` and the `expo.locales` map in `app.json`, and
+  prebuild turns each file into `InfoPlist.strings`.
+  - Every tag in `i18n/native-locales.json` except `en` gets a file. A tag
+    with no translation (pending, English-only, or no catalog) gets the
+    English text, so iOS shows English.
+  - So `expo.locales` changes only when `native-locales.json` changes, at a
+    native build. A later translation changes only its own file. The
+    fingerprint does not hash that file (checked with
+    `expo-updates fingerprint:generate` on 2026-10-08), so the runtime
+    version stays the same and the catalog can still ship over the air. The
+    alert text changes at the next native build.
+  - Each file keeps the key under `ios`. Expo also gives top-level keys to
+    Android as string resources. On Android, Expo writes an empty
+    `values-b+<tag>/strings.xml` for each locale; `aapt2` accepts them.
+  - Expo writes the text into `InfoPlist.strings` with no escaping, and the
+    catalog holds ICU source. So the script refuses a `"`, a `\`, a line
+    break, and the ICU escape `''`.
+  - `src/i18n/__tests__/nativeStrings.guard.test.js` runs `--check`, compares
+    the English with `app.json`, and reads the files through Expo's own
+    locale resolver. `--check` compares `expo.locales` by value, so another
+    edit to `app.json` does not count as drift.
 - **Never add a `forcesRTL` key to the plugin options, not even `false`.** The
   plugin writes the key for any non-null value, and iOS then forces
   right-to-left on an Arabic, Farsi, or Urdu phone. The guard rejects it. With
@@ -2955,7 +2987,8 @@ runs the pre-install hook before `pnpm install`.
   that build, because the pending list is empty before U16.
 - **A locale that web adds later** ships its mobile catalog at once by
   over-the-air update: run the command, then the catalog index generator. It
-  joins `native-locales.json` and `app.json` at the next native build.
+  joins `native-locales.json` and `app.json` at the next native build. Then
+  also run `node scripts/i18n/generate-native-strings.mjs`.
 
 ### Mirrored layout (feat-695)
 

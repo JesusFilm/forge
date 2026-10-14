@@ -774,5 +774,8 @@
     "send": "Siųsti",
     "sending": "Siunčiama…",
     "sendAriaLabel": "Siųsti atsiliepimą"
+  },
+  "NativePermissions": {
+    "localNetworkUsageDescription": "Programėlė naudoja jūsų vietinį tinklą transliavimo įrenginiams rasti, kad galėtumėte leisti vaizdo įrašus savo televizoriuje."
   }
 }
