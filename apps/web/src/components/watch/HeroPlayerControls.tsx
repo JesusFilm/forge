@@ -158,6 +158,22 @@ export function HeroPlayerControls({
   useEffect(() => {
     setWrapperEl(wrapperRef.current)
   }, [wrapperRef])
+  // The F shortcut flips the chrome portal between overlayAnchor and the
+  // wrapper, which replaces the focused control's DOM node and drops focus
+  // to <body>; neither shortcut listener sees keys from there, so a second F
+  // (or K/M) would go dead. The shortcut arms this latch (a timestamp, so a
+  // refused fullscreen request cannot leave it armed forever) and the effect
+  // below hands focus to the click surface, which lives outside the portal.
+  const clickSurfaceRef = useRef<HTMLButtonElement | null>(null)
+  const refocusAfterFullscreenAtRef = useRef<number | null>(null)
+  useEffect(() => {
+    const armedAt = refocusAfterFullscreenAtRef.current
+    refocusAfterFullscreenAtRef.current = null
+    if (armedAt == null || Date.now() - armedAt > 2000) return
+    const active = document.activeElement
+    if (active != null && active !== document.body) return
+    clickSurfaceRef.current?.focus({ preventScroll: true })
+  }, [isFullscreen])
   const [chromeVisibility, setChromeVisibility] =
     useState<ChromeVisibility>("dim")
   const [hoveringControls, setHoveringControls] = useState(false)
@@ -843,6 +859,7 @@ export function HeroPlayerControls({
           toggleMute()
           break
         case "f":
+          refocusAfterFullscreenAtRef.current = Date.now()
           toggleFullscreen()
           break
       }
@@ -1465,6 +1482,7 @@ export function HeroPlayerControls({
           this surface out of the accessibility tree so it doesn't duplicate. */}
       <button
         type="button"
+        ref={clickSurfaceRef}
         aria-hidden="true"
         tabIndex={-1}
         data-testid="hero-player-click-surface"
