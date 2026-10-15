@@ -292,3 +292,54 @@ describe("useControlsVisibility — the published glass value (KTD5)", () => {
     expect(glass()).toBe(true)
   })
 })
+
+describe("useControlsVisibility — a press during the hide fade", () => {
+  // The native side reports a stopped fade's position back late and
+  // overwrites an immediate reset; this holds that reply back.
+  let heldReplies: Array<(value: number) => void>
+
+  beforeEach(() => {
+    heldReplies = []
+    jest
+      .spyOn(Animated.Value.prototype, "stopAnimation")
+      .mockImplementation((callback?: (value: number) => void) => {
+        if (callback != null) heldReplies.push(callback)
+      })
+  })
+
+  const opacity = () =>
+    (api().opacityAnim as unknown as { __getValue(): number }).__getValue()
+
+  /** The stopped fade's late position report, as the native side sends it. */
+  function lateStopReport(value: number) {
+    act(() => api().opacityAnim.setValue(value))
+  }
+
+  it("ends at full opacity after the stopped fade's late report", async () => {
+    await render()
+    act(() => api().hide())
+    act(() => api().noteInteraction())
+    lateStopReport(0.32)
+
+    act(() => heldReplies.forEach((reply) => reply(0.32)))
+
+    expect(opacity()).toBe(1)
+    expect(api().visibleStore.get()).toBe(true)
+  })
+
+  it("leaves a new hide fade alone when it starts before the native reply", async () => {
+    await render()
+    act(() => api().hide())
+    act(() => api().noteInteraction())
+    act(() => api().hide())
+    const newFade = fades[fades.length - 1]
+    lateStopReport(0.5)
+
+    act(() => heldReplies.forEach((reply) => reply(0.5)))
+
+    expect(opacity()).toBe(0.5)
+    expect(newFade.toValue).toBe(0)
+    expect(newFade.stopped).toBe(false)
+    expect(api().visibleStore.get()).toBe(false)
+  })
+})

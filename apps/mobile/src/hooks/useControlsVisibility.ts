@@ -176,16 +176,26 @@ export function useControlsVisibility(player: VideoPlayer): ControlsVisibility {
   // from background. Stopping an in-flight hide fade keeps its completion
   // callback from unmounting the chrome the viewer just brought back.
   const snapReveal = useCallback(() => {
-    if (hideAnimRef.current != null) {
-      hideAnimRef.current.stop()
+    const stoppedFade = hideAnimRef.current
+    if (stoppedFade != null) {
+      stoppedFade.stop()
       hideAnimRef.current = null
     }
     const next = step("reveal")
     setMounted(next.mounted)
     setControlsVisible(next.visible)
     opacityAnim.setValue(1)
+    if (stoppedFade != null) {
+      // The stopped fade reports its native position late and overwrites the
+      // 1; a plate that re-renders then draws a dim glyph. Reset in the reply.
+      opacityAnim.stopAnimation(() => {
+        if (visibleStore.get() && hideAnimRef.current == null) {
+          opacityAnim.setValue(1)
+        }
+      })
+    }
     scheduleHide()
-  }, [opacityAnim, scheduleHide, step])
+  }, [opacityAnim, scheduleHide, step, visibleStore])
 
   scheduleHideRef.current = scheduleHide
   revealRef.current = reveal
