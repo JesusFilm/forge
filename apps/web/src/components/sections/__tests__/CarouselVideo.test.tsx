@@ -29,7 +29,9 @@ vi.mock("@/components/ui/carousel", () => {
 })
 
 vi.mock("next/image", () => ({
-  default: () => null,
+  default: ({ src, alt }: { src: string; alt: string }) => (
+    <span data-testid="mock-image" data-src={src} aria-label={alt} />
+  ),
 }))
 
 import { CarouselVideo } from "@/components/sections/CarouselVideo"
@@ -117,6 +119,141 @@ describe("CarouselVideo", () => {
       ),
     ).not.toBeNull()
   })
+
+  it("uses Admin localized card copy and cached Mux thumbnail fallbacks", async () => {
+    const data = {
+      ...baseFragment,
+      items: [
+        {
+          ...baseFragment.items[0],
+          titleOverride: null,
+          resolvedTitle: "Título localizado",
+          videoDub: { muxVideo: { playbackId: "playback-id" } },
+        },
+      ],
+    } as Parameters<typeof CarouselVideo>[0]["data"]
+
+    await act(async () => {
+      root.render(<CarouselVideo data={data} />)
+    })
+
+    expect(
+      container.querySelector('[aria-label="Show Título localizado"]'),
+    ).not.toBeNull()
+    expect(
+      container
+        .querySelector('[data-testid="mock-image"]')
+        ?.getAttribute("data-src"),
+    ).toContain(
+      "https://image.mux.com/playback-id/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
+    )
+    expect(container.querySelector("video")?.getAttribute("poster")).toBe(
+      "https://image.mux.com/playback-id/thumbnail.webp?time=2",
+    )
+  })
+
+  it("renders all ten identity-only course rows from the Admin projection", async () => {
+    const items = Array.from({ length: 10 }, (_, index) => ({
+      videoId: `video-${index}`,
+      languageId: "spanish-language",
+      titleOverride: null,
+      imageAsset: null,
+      resolvedTitle: `${index + 1}. Título del curso`,
+      videoImage: { previewUrl: `https://example.com/course-${index}.jpg` },
+      videoDub: {
+        hls: `https://example.com/course-${index}.m3u8`,
+        muxVideo: { playbackId: `playback-${index}` },
+      },
+    }))
+    const data = { ...baseFragment, items } as Parameters<
+      typeof CarouselVideo
+    >[0]["data"]
+
+    await act(async () => {
+      root.render(<CarouselVideo data={data} />)
+    })
+
+    const cards = Array.from(
+      container.querySelectorAll('[role="button"][aria-label^="Show "]'),
+    )
+    expect(cards).toHaveLength(10)
+    cards.forEach((card, index) => {
+      expect(card.getAttribute("aria-label")).toBe(
+        `Show ${index + 1}. Título del curso`,
+      )
+      expect(card.querySelector("h3")?.textContent).toBe(
+        items[index].resolvedTitle,
+      )
+      expect(card.querySelector("[data-src]")?.getAttribute("data-src")).toBe(
+        items[index].videoImage.previewUrl,
+      )
+    })
+    expect(container.querySelector("video")?.getAttribute("poster")).toBe(
+      items[0].videoImage.previewUrl,
+    )
+    await act(async () => {
+      cards[9].dispatchEvent(new MouseEvent("click", { bubbles: true }))
+    })
+    expect(container.querySelector("video")?.getAttribute("poster")).toBe(
+      items[9].videoImage.previewUrl,
+    )
+  })
+
+  it.each([
+    [
+      "authored",
+      "  Authored title  ",
+      " https://example.com/authored.jpg ",
+      "Authored title",
+      "https://example.com/authored.jpg",
+    ],
+    [
+      "blank authored",
+      "   ",
+      "  ",
+      "Título localizado",
+      "https://example.com/linked.jpg",
+    ],
+  ])(
+    "preserves the %s title and poster fallback tier",
+    async (
+      _label,
+      titleOverride,
+      authoredImage,
+      expectedTitle,
+      expectedImage,
+    ) => {
+      const data = {
+        ...baseFragment,
+        items: [
+          {
+            ...baseFragment.items[0],
+            titleOverride,
+            imageAsset: { previewUrl: authoredImage },
+            imageUrl: "",
+            resolvedTitle: "Título localizado",
+            videoImage: { previewUrl: "https://example.com/linked.jpg" },
+          },
+        ],
+      } as Parameters<typeof CarouselVideo>[0]["data"]
+
+      await act(async () => {
+        root.render(<CarouselVideo data={data} />)
+      })
+
+      expect(
+        container
+          .querySelector('[role="button"][aria-label^="Show "]')
+          ?.getAttribute("aria-label"),
+      ).toBe(`Show ${expectedTitle}`)
+      expect(
+        container.querySelector("[data-src]")?.getAttribute("data-src"),
+      ).toBe(expectedImage)
+      expect(container.querySelector("video")?.getAttribute("poster")).toBe(
+        expectedImage,
+      )
+    },
+  )
 
   it("uses the shared focus frame and preserves selected-state framing", async () => {
     const data = {

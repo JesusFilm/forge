@@ -576,7 +576,7 @@ function isValidationShaped(entry: GraphqlErrorCandidate): boolean {
   return code === undefined || code === "GRAPHQL_VALIDATION_FAILED"
 }
 
-type CategoryRailSchemaLag = "none" | "copy" | "legacy"
+type CategoryRailSchemaLag = "none" | "copy" | "carousel" | "legacy"
 
 function classifyCategoryRailSchemaLag(result: {
   error?: ErrorLike | null
@@ -594,24 +594,33 @@ function classifyCategoryRailSchemaLag(result: {
     CATEGORY_RAIL_COPY_SCHEMA_LAG_MESSAGES.some((pattern) =>
       pattern.test(message),
     )
+  const isCarouselMessage = (message: string) =>
+    /^Cannot query field "(?:resolvedTitle|videoImage)" on type "VideoCarouselItem"\./.test(
+      message,
+    )
+  if (messages.every(isCarouselMessage)) return "carousel"
   if (
     messages.some(isLegacyMessage) &&
     messages.every(
-      (message) => isLegacyMessage(message) || isCopyMessage(message),
+      (message) =>
+        isLegacyMessage(message) ||
+        isCopyMessage(message) ||
+        isCarouselMessage(message),
     )
   ) {
     return "legacy"
   }
 
+  const copyMessages = messages.filter((message) => !isCarouselMessage(message))
   const matchedCopyFields = new Set(
-    messages.flatMap((message) =>
+    copyMessages.flatMap((message) =>
       CATEGORY_RAIL_COPY_SCHEMA_LAG_MESSAGES.flatMap((pattern, index) =>
         pattern.test(message) ? [CATEGORY_RAIL_COPY_FIELDS[index]] : [],
       ),
     ),
   )
-  return messages.every(isCopyMessage) &&
-    errors.length === CATEGORY_RAIL_COPY_FIELDS.length &&
+  return copyMessages.every(isCopyMessage) &&
+    copyMessages.length === CATEGORY_RAIL_COPY_FIELDS.length &&
     matchedCopyFields.size === CATEGORY_RAIL_COPY_FIELDS.length
     ? "copy"
     : "none"
@@ -712,7 +721,7 @@ async function getExperienceBySlug(
     result === null
       ? rejectedLag
       : classifyCategoryRailSchemaLag(resultWithErrors)
-  if (lag === "copy") {
+  if (lag === "copy" || lag === "carousel") {
     return getExperienceBySlug(locale, slug, "pre-copy")
   }
   if (lag === "legacy") {
@@ -754,7 +763,7 @@ async function getWatchSettings(locale: string): Promise<{
     result === null
       ? rejectedLag
       : classifyCategoryRailSchemaLag(resultWithErrors)
-  if (lag === "copy") {
+  if (lag === "copy" || lag === "carousel") {
     let preCopyRejectedLag: CategoryRailSchemaLag = "none"
     const preCopyResult = await client
       .query({

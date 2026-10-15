@@ -926,6 +926,58 @@ describe("MediaCollectionItem resolvedTitle resolver", () => {
   )
 })
 
+describe("VideoCarouselItem linked presentation", () => {
+  it.each([null, "", "   "])(
+    "resolves published Spanish copy when the authored title is %j",
+    async (titleOverride) => {
+      const loadLocales = vi.fn().mockResolvedValue([
+        { locale: "en", title: "English control" },
+        { locale: "es", title: "  El evangelio sencillo  " },
+      ])
+      const result = await fieldResolver("VideoCarouselItem", "resolvedTitle")(
+        { videoId: "course-1", titleOverride },
+        { locale: "es" },
+        {
+          loaders: {
+            videoById: {
+              load: vi
+                .fn()
+                .mockResolvedValue({ id: "course-1", deletedAt: null }),
+            },
+            videoLocalesByVideoIdAndFilter: { load: loadLocales },
+          },
+        },
+        fakeInfo,
+      )
+      expect(result).toBe("El evangelio sencillo")
+      expect(loadLocales).toHaveBeenCalledWith({
+        videoId: "course-1",
+        locale: "es",
+        languageSlug: null,
+        visibleOnly: true,
+      })
+    },
+  )
+
+  it("loads the linked course poster through the shared image loader", async () => {
+    const image = {
+      id: "course-image",
+      url: "https://example.com/course.jpg",
+      blurDataUrl: "data:image/jpeg;base64,fixture",
+      dominantColor: "#123456",
+    }
+    const load = vi.fn().mockResolvedValue([image])
+    const result = await fieldResolver("VideoCarouselItem", "videoImage")(
+      { videoId: "course-1" },
+      {},
+      { loaders: { videoImagesByVideoId: { load } }, prisma: {} },
+      fakeInfo,
+    )
+    expect(result).toBe(image)
+    expect(load).toHaveBeenCalledWith("course-1")
+  })
+})
+
 describe("MediaCollectionBlock defaultCollectionSlug resolver", () => {
   const resolveDefaultCollectionSlug = fieldResolver(
     "MediaCollectionBlock",
@@ -1197,6 +1249,13 @@ describe("MediaCollectionItem.coreId resolver", () => {
 })
 
 describe("Edge cases", () => {
+  it("exposes localized title and linked poster fields on VideoCarouselItem", () => {
+    const type = schema.getType("VideoCarouselItem")
+    const fields = type && "getFields" in type ? type.getFields() : null
+    expect(fields?.resolvedTitle).toBeDefined()
+    expect(fields?.videoImage).toBeDefined()
+  })
+
   it("exposes videoSlug and image objects on MediaCollectionItem for authored card links and posters", () => {
     const type = schema.getType("MediaCollectionItem")
     const fields = type && "getFields" in type ? type.getFields() : null

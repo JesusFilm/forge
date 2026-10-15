@@ -32,6 +32,7 @@ import {
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
+import { resolveMuxFrameThumbnailUrl, resolveMuxHeroPosterUrl } from "@/lib/url"
 import { resolvedBlockStreamingUrl } from "./video-dub"
 
 export { videoCarouselFragment }
@@ -374,8 +375,24 @@ function ThumbnailCard({
 }) {
   const t = useTranslations("WatchHome")
   const videoLabels = useTranslations("VideoLabels")
-  const imageUrl = item.imageUrl ?? item.video?.images?.[0]?.url
-  const title = item.titleOverride ?? item.video?.title ?? ""
+  const adminItem = item as typeof item & {
+    imageAsset?: { previewUrl?: string | null } | null
+    videoImage?: { previewUrl?: string | null } | null
+    resolvedTitle?: string | null
+    videoDub?: { muxVideo?: { playbackId?: string | null } | null } | null
+  }
+  const playbackId = adminItem.videoDub?.muxVideo?.playbackId
+  const imageUrl =
+    adminItem.imageAsset?.previewUrl?.trim() ||
+    item.imageUrl?.trim() ||
+    adminItem.videoImage?.previewUrl?.trim() ||
+    item.video?.images?.[0]?.url?.trim() ||
+    resolveMuxFrameThumbnailUrl(playbackId)
+  const title =
+    item.titleOverride?.trim() ||
+    adminItem.resolvedTitle ||
+    item.video?.title ||
+    ""
 
   return (
     <div
@@ -449,8 +466,19 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
 
   const clampedIndex = Math.min(selectedIndex, validItems.length - 1)
   const selectedItem = validItems[clampedIndex]
+  const selectedAdminItem = selectedItem as typeof selectedItem & {
+    imageAsset?: { previewUrl?: string | null } | null
+    videoImage?: { previewUrl?: string | null } | null
+    videoDub?: { muxVideo?: { playbackId?: string | null } | null } | null
+  }
+  const selectedPlaybackId = selectedAdminItem.videoDub?.muxVideo?.playbackId
   const posterUrl =
-    selectedItem.imageUrl ?? selectedItem.video?.images?.[0]?.url ?? undefined
+    selectedAdminItem.imageAsset?.previewUrl?.trim() ||
+    selectedItem.imageUrl?.trim() ||
+    selectedAdminItem.videoImage?.previewUrl?.trim() ||
+    selectedItem.video?.images?.[0]?.url?.trim() ||
+    resolveMuxHeroPosterUrl(selectedPlaybackId) ||
+    undefined
 
   const descriptionWords = carouselDescription?.split(" ") ?? []
   const boldPart = descriptionWords.slice(0, 4).join(" ")
