@@ -63,6 +63,22 @@
   unicode-range: U+0E01-0E5B, U+200C-200D, U+25CC;
 }
 
+/* Urdu is set in Nastaliq, which the Naskh "Noto Sans Arabic" face above is not.
+   Nothing but `:root:lang(ur)` below puts this family in a font stack, so a
+   browser never fetches the file for any other document language (including
+   Arabic pages, which share the code points): declaring a face costs nothing
+   until a rendered element resolves to it. The unicode-range keeps Latin
+   brand names and digits on Montserrat. Regular weight only; headings are
+   synthesized bold — a bold face would double the Urdu download. */
+@font-face {
+  font-family: "Noto Nastaliq Urdu";
+  src: url("/watch/fonts/noto-nastaliq-urdu.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0600-06FF, U+0750-077F, U+200C-200F, U+2010-2011, U+25CC;
+}
+
 @theme {
   --color-brand-red: #ef3340;
 
@@ -186,8 +202,14 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-montserrat, var(--font-native-sans));
-  --font-serif: var(--font-montserrat, var(--font-native-sans));
+  --font-sans: var(
+    --watch-font-ur,
+    var(--font-montserrat, var(--font-native-sans))
+  );
+  --font-serif: var(
+    --watch-font-ur,
+    var(--font-montserrat, var(--font-native-sans))
+  );
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -242,6 +264,26 @@
     @apply font-sans;
     overflow-x: hidden;
   }
+  /* Urdu documents lead the sans stack with Nastaliq. Set on the root (not on
+     any `:lang(ur)` element) so a lone Urdu phrase on a non-Urdu page, e.g. a
+     language's native name, stays Naskh and never fetches the Nastaliq file. */
+  :root:lang(ur) {
+    --watch-font-ur:
+      "Noto Nastaliq Urdu", var(--font-montserrat, var(--font-native-sans));
+  }
+}
+
+/* Nastaliq's strokes hang far above and below the baseline, so the tight
+   leading the Latin-tuned utilities set (leading-tight/snug/none, 1.25-ish)
+   makes neighbouring lines collide. Deliberately UNLAYERED so it outranks
+   those utilities — they live in `@layer utilities`, and an unlayered rule
+   beats any layered one regardless of specificity. Text blocks only: buttons,
+   badges and other fixed-height controls keep their own metrics. */
+:root:lang(ur) :is(p, li, blockquote, figcaption) {
+  line-height: 2;
+}
+:root:lang(ur) :is(h1, h2, h3, h4, h5, h6) {
+  line-height: 1.8;
 }
 
 @layer utilities {

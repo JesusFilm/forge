@@ -125,6 +125,39 @@ describe("Watch script font preloads (FGE-181 / W-084)", () => {
     expect(watchScriptFontPreload(htmlLang)).toBe(expected)
   })
 
+  it.each(["ur", "ur-PK", "ur-IN"])(
+    "preloads Nastaliq, not Naskh, for Urdu (%s)",
+    (htmlLang) => {
+      expect(watchScriptFontPreload(htmlLang)).toBe(
+        "/watch/fonts/noto-nastaliq-urdu.woff2",
+      )
+    },
+  )
+
+  it.each(["fa", "ps", "sd", "ar-EG"])(
+    "keeps the Naskh preload for other Arabic-script language %s",
+    (htmlLang) => {
+      expect(watchScriptFontPreload(htmlLang)).toBe(
+        "/watch/fonts/noto-sans-arabic.woff2",
+      )
+    },
+  )
+
+  it("does not preload Nastaliq for Urdu written in Latin script", () => {
+    expect(watchScriptFontPreload("ur-Latn")).toBeNull()
+  })
+
+  it("renders the Nastaliq preload for an Urdu document only", async () => {
+    const layout = await RootLayout({
+      children: <main>Urdu Watch page</main>,
+      params: Promise.resolve({ locale: "ur", htmlLang: "ur" }),
+    })
+    const preload = findElement(layout, "link") as ReactElement<{
+      href: string
+    }>
+    expect(preload.props.href).toBe("/watch/fonts/noto-nastaliq-urdu.woff2")
+  })
+
   it.each(["en", "ja", "zh-Hans", "not-a-language"])(
     "does not preload a mismatched or unconfigured subset for %s",
     (htmlLang) => {
