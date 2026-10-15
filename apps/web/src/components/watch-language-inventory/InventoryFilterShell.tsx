@@ -68,9 +68,15 @@ const EMPTY_STATE: FilterState = { length: null, type: null, added: null }
 
 // URL query keys. Filters live in the query string so a filtered view survives
 // reload, sharing and back/forward. The route stays statically cached: the
-// query is read from `window.location` inside effects only (never
-// `useSearchParams`, which would opt the page out of static rendering), and
-// written with `history.replaceState` so no RSC refetch of the ~7 MB page runs.
+// query is read through `useSyncExternalStore` (client snapshot is
+// `window.location.search`, server snapshot is empty), never the server
+// `searchParams` prop, so the static HTML is identical for every query. Writes
+// use `history.replaceState` so no RSC refetch of the ~7 MB page runs. Passing
+// `window.history.state` back keeps Next's `__NA` marker, so Next's patched
+// `replaceState` skips its router sync (same idiom as WatchPageClient): no
+// router transition, no per-filter page_view from `useSearchParams` consumers.
+// Nothing on this static page commits router state while it is open, so the
+// router's canonical URL is not re-applied over the filtered one.
 const PARAM_LENGTH = "length"
 const PARAM_TYPE = "type"
 const PARAM_ADDED = "added"
