@@ -1,6 +1,7 @@
 /** U10: Home's own states and hero controls read the `Home` catalog, and each
- *  moved control keeps one tap name in both languages. The feed's children
- *  stay mocked out, as in homeSplashHandover.test.tsx. */
+ *  moved control keeps one tap name in both languages. Also the hero mute's
+ *  glass (R8, AE6). The feed's children stay mocked out, as in
+ *  homeSplashHandover.test.tsx. */
 
 jest.mock("@react-native-async-storage/async-storage", () => ({
   __esModule: true,
@@ -27,7 +28,22 @@ jest.mock("@expo/vector-icons/Ionicons", () => ({
   __esModule: true,
   default: () => null,
 }))
-jest.mock("@shopify/flash-list", () => ({ FlashList: () => null }))
+// Keeps the feed's scroll handler, so a case can scroll the hero chrome.
+const mockFeed: { onScroll?: (e: unknown) => void } = {}
+jest.mock("@shopify/flash-list", () => ({
+  FlashList: (props: { onScroll?: (e: unknown) => void }) => {
+    mockFeed.onScroll = props.onScroll
+    return null
+  },
+}))
+// The `mock` prefix lets babel-plugin-jest-hoist accept this name. A case
+// takes the glass branch unless it turns the gate off.
+const mockGlass = { on: true }
+jest.mock("../../../lib/liquidGlass", () => ({
+  canUseLiquidGlass: () => mockGlass.on,
+}))
+// A host stand-in, so a case can see where the glass draws.
+jest.mock("expo-glass-effect", () => ({ GlassView: "GlassView" }))
 jest.mock("expo-image", () => ({ __esModule: true, Image: () => null }))
 jest.mock("expo-linear-gradient", () => ({
   __esModule: true,
@@ -118,6 +134,12 @@ jest.mock("../../../i18n/pluralData.generated", () =>
 )
 
 import { act, createElement } from "react"
+import {
+  Dimensions,
+  StyleSheet,
+  type StyleProp,
+  type ViewStyle,
+} from "react-native"
 
 import { HomeScreen } from "../HomeScreen"
 import {
@@ -134,8 +156,10 @@ import {
   TestRenderer,
   hasText,
   pressableByLabel,
+  type RenderedNode,
   type TestInstance,
 } from "../../../test-utils/rnTestRenderer"
+import { feedback } from "../../../styles/shared"
 
 const { useWatchHome } = jest.requireMock("../../../hooks/useWatchHome") as {
   useWatchHome: jest.Mock
@@ -213,6 +237,7 @@ afterEach(() => {
   act(() => {
     mounted.splice(0).forEach((renderer) => renderer.unmount())
   })
+  mockGlass.on = true
 })
 afterAll(() => resetLocaleStoreForTests())
 
@@ -255,5 +280,130 @@ describe("Home's hero controls", () => {
     ]
     expect(spanish).toEqual(english)
     expect(english).toEqual(["hero-card", "hero-mute-toggle"])
+  })
+})
+
+describe("Home's hero mute glass (R8, AE6)", () => {
+  function hostOf(home: TestInstance, test: (n: RenderedNode) => boolean) {
+    const found = home.root.findAll(
+      (n) => typeof n.type === "string" && test(n),
+    )
+    expect(found).toHaveLength(1)
+    return found[0]
+  }
+  const chrome = (home: TestInstance) =>
+    hostOf(home, (n) => n.props.testID === "home-hero-chrome")
+  const watchNow = (home: TestInstance) =>
+    hostOf(home, (n) => n.props.accessibilityLabel === "Watch JESUS now")
+  const muteButton = (home: TestInstance) =>
+    hostOf(home, (n) => n.props.accessibilityLabel === "Unmute video")
+  const glass = (home: TestInstance) =>
+    hostOf(home, (n) => n.type === "GlassView")
+  /** The host node right behind the mute glyph. */
+  function behindMuteGlyph(home: TestInstance): RenderedNode {
+    const [glyph] = home.root.findAll((n) => n.props.name === "volume-mute")
+    let at = glyph?.parent
+    while (at != null && typeof at.type !== "string") at = at.parent
+    if (at == null) throw new Error("no host node behind the mute glyph")
+    return at
+  }
+  const ownStyle = (node: RenderedNode) =>
+    StyleSheet.flatten(node.props.style as StyleProp<ViewStyle>) ?? {}
+
+  /** The opacity a node draws at: its own times every host node above it. */
+  function drawnOpacity(node: RenderedNode): number {
+    let opacity = 1
+    for (let at: RenderedNode | null | undefined = node; at; at = at.parent) {
+      if (typeof at.type !== "string") continue
+      const own = ownStyle(at).opacity
+      if (typeof own === "number") opacity *= own
+    }
+    return opacity
+  }
+
+  /** Scrolls the feed until the chrome should sit at this opacity. HomeScreen
+   *  fades it over the first 30% of a hero 1.2 screen widths tall. */
+  async function scrollChromeTo(opacity: number) {
+    const heroHeight = Math.round(Dimensions.get("window").width * 1.2)
+    const y = (1 - opacity) * heroHeight * 0.3
+    await act(async () => {
+      mockFeed.onScroll?.({ nativeEvent: { contentOffset: { y } } })
+    })
+  }
+
+  beforeEach(() => setHookState(heroModel(), null))
+
+  it("dissolves the mute glass where the chrome stops taking touches, and brings it back at the top", async () => {
+    const home = await render()
+
+    await scrollChromeTo(0.6)
+    expect(drawnOpacity(watchNow(home))).toBeCloseTo(0.6)
+    expect(chrome(home).props.pointerEvents).toBe("box-none")
+    expect(glass(home).props.glassEffectStyle).toMatchObject({
+      style: "regular",
+    })
+
+    await scrollChromeTo(0.4)
+    expect(drawnOpacity(watchNow(home))).toBeCloseTo(0.4)
+    expect(chrome(home).props.pointerEvents).toBe("none")
+    expect(glass(home).props.glassEffectStyle).toMatchObject({
+      style: "none",
+    })
+
+    await scrollChromeTo(1)
+    expect(chrome(home).props.pointerEvents).toBe("box-none")
+    expect(glass(home).props.glassEffectStyle).toMatchObject({
+      style: "regular",
+    })
+  })
+
+  it("on glass, fades each part instead of the chrome root", async () => {
+    const home = await render()
+    await scrollChromeTo(0.6)
+
+    expect(ownStyle(chrome(home)).opacity).toBeUndefined()
+    expect(drawnOpacity(watchNow(home))).toBeCloseTo(0.6)
+    expect(drawnOpacity(behindMuteGlyph(home))).toBeCloseTo(0.6)
+    // Any opacity below 1 above the glass stops it drawing.
+    expect(drawnOpacity(glass(home))).toBe(1)
+    expect(ownStyle(glass(home)).backgroundColor).toBeUndefined()
+  })
+
+  it("keeps today's chrome fade and the mute's dark fill where Liquid Glass is unavailable", async () => {
+    mockGlass.on = false
+    const home = await render()
+    await scrollChromeTo(0.6)
+
+    expect(ownStyle(chrome(home)).opacity).toBe(0.6)
+    // One fade only: the mute does not fade a second time.
+    expect(drawnOpacity(behindMuteGlyph(home))).toBeCloseTo(0.6)
+    expect(ownStyle(behindMuteGlyph(home)).backgroundColor).toBe(
+      "rgba(0, 0, 0, 0.5)",
+    )
+    expect(home.root.findAll((n) => n.type === "GlassView")).toHaveLength(0)
+  })
+
+  it("scales the pressed mute on glass, and dims it elsewhere", async () => {
+    for (const on of [true, false]) {
+      mockGlass.on = on
+      const home = await render()
+      const event = {
+        persist: () => {},
+        currentTarget: { measure: () => {} },
+        nativeEvent: { pageX: 0, pageY: 0, touches: [], changedTouches: [] },
+      }
+      await act(async () => {
+        ;(muteButton(home).props.onResponderGrant as (e: unknown) => void)(
+          event,
+        )
+      })
+      const surface = behindMuteGlyph(home)
+      if (on) {
+        expect(drawnOpacity(glass(home))).toBe(1)
+        expect(ownStyle(glass(home)).transform).toEqual([{ scale: 0.92 }])
+      } else {
+        expect(drawnOpacity(surface)).toBeCloseTo(feedback.pressed.opacity)
+      }
+    }
   })
 })
