@@ -156,6 +156,7 @@
           ],
           "revisedMessagePaths": {
             "DownloadModal.termsOfUse": [
+              "az-Arab",
               "az-Cyrl",
               "be",
               "bjt",
@@ -187,6 +188,7 @@
               "lt",
               "lv",
               "mdf",
+              "mn-Mong",
               "nb",
               "nn",
               "no",
@@ -225,7 +227,7 @@
             "ast": "Fixed article les -> los (Términos is masculine).",
             "av": "Low confidence (low-resource Avar); rewrote catalog prefix into verb-final 'I agree with' sentence.",
             "ay": "Low confidence Aymara; replaced colon fragment with 'iyaw sasta' (I say yes); Spanish loan pestaña per catalog habit.",
-            "az-Arab": "South Azerbaijani (Turkic) in Arabic script per catalog notes; catalog's existing term is Persian (شرایط استفاده), left as the heading.",
+            "az-Arab": "South Azerbaijani (Turkic) in Arabic script per catalog notes; catalog's existing term is Persian (شرایط استفاده), left as the heading. Heading changed from Persian to South Azerbaijani to match the agreement sentence.",
             "az-Cyrl": "Written in Azerbaijani Cyrillic per prior-round notes although these catalog strings are in Latin script; title converted to Cyrillic for consistency.",
             "bjt": "Low confidence: written in Guinea-Bissau Kriol (catalog bridge language per notes), replacing the catalog's English-loan fragment 'Kɛla terms'.",
             "bn": "Dropped the trailing দাঁড়ি (।) to match English.",
@@ -290,7 +292,7 @@
             "mg": "Added the subject 'aho' so the sentence is complete; 'tab' kept as a loan.",
             "mh": "Low confidence (Marshallese); replaced the catalog's garbled prefix.",
             "mi": "Dropped the article 'te' before plural 'Ngā'.",
-            "mn-Mong": "Traditional Mongolian script per catalog notes (these input strings were Cyrillic); medium-low confidence on classical orthography.",
+            "mn-Mong": "Traditional Mongolian script per catalog notes (these input strings were Cyrillic); medium-low confidence on classical orthography. Heading moved to traditional Mongolian script to match the agreement sentence.",
             "ms-Arab": "Wrote Jawi per catalog notes (input strings were Rumi); medium confidence on Jawi spelling.",
             "mt": "Fixed article assimilation (mal- to mat-).",
             "myv": "Low confidence (Erzya); kept the catalog's term for Terms of Use.",
@@ -1228,7 +1230,7 @@
         "az-Arab": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "b5f588b922143ea56872c70e4448067a687cfc270ec1f66eda9b0a1bb676a07b",
-          "catalogDigest": "d67caf5db853102ccdaa08db0db0e5d973cd5e6970fca1af8377ce85d481cb59",
+          "catalogDigest": "89668efaab83cff6f00614bfbc0fad40f8a6c4277c9fe4c57998f5a5ef609dce",
           "generatedOn": "2026-10-14",
           "scopedRevisions": [
             {
@@ -1300,6 +1302,11 @@
                 "DownloadModal.termsAgreement",
                 "ShareModal.opensInNewTab"
               ],
+              "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
             }
           ]
@@ -10174,7 +10181,7 @@
         "mn-Mong": {
           "model": "gpt-5.4-mini-2026-03-17",
           "sourceDigest": "b5f588b922143ea56872c70e4448067a687cfc270ec1f66eda9b0a1bb676a07b",
-          "catalogDigest": "2a0906b85989d56501f6e355a6c2725d2828a8d1f8a4b82a9b523a99c9be284f",
+          "catalogDigest": "db74657caa34a4587bd81c198c6fb92878bc9f6acb1d83b20acce629a6268065",
           "generatedOn": "2026-10-14",
           "scopedRevisions": [
             {
@@ -10246,6 +10253,11 @@
                 "DownloadModal.termsAgreement",
                 "ShareModal.opensInNewTab"
               ],
+              "generatedOn": "2026-10-14"
+            },
+            {
+              "model": "claude-opus-5-5",
+              "messagePaths": ["DownloadModal.termsOfUse"],
               "generatedOn": "2026-10-14"
             }
           ]
