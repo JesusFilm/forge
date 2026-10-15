@@ -1,7 +1,11 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows"
 import { z } from "zod"
 
-import { getDevotionalModel, getDevotionalSafetyModel } from "../../config/env"
+import {
+  getDevotionalModel,
+  getDevotionalSafetyModel,
+  isDevotionalQualityGateEnforced,
+} from "../../config/env"
 import { createAgentLlm } from "../agents/devotional/agent-llm"
 import { copyAgent } from "../agents/devotional/copy-agent"
 import { highlighterAgent } from "../agents/devotional/highlighter-agent"
@@ -33,6 +37,9 @@ import { lookupVerse } from "../../services/devotional/web-bible"
 import { generateMusic } from "../../services/devotional/elevenlabs-music"
 import { rotateFilter } from "../../services/devotional/voice-rotation"
 import { evaluateSafety } from "../../services/devotional/safety-gate"
+import { reviewDevotionalText } from "../../services/devotional/devotional-quality-gate"
+import { pickReflectionPoints } from "../../services/devotional/reflection-point-picker"
+import { writeDevotionalConclusion } from "../../services/devotional/devotional-conclusion"
 import { pickReflectionHighlights } from "../../services/devotional/reflection-highlighter"
 import { modernizeReflection } from "../../services/devotional/reflection-modernizer"
 import { pickBestSpurgeon } from "../../services/devotional/spurgeon-ranker"
@@ -131,6 +138,25 @@ function contentDependencies(
         systemPrompt: authored.prompts.prompts.highlighter,
         llm: createAgentLlm(highlighterAgent, getDevotionalModel()),
       }),
+    // These two were left unwired when they were added, so production ran them
+    // on in-code prompts while every sibling seam above reads its prompt from
+    // the Workspace. That silently took the owner's closing-line and
+    // point-selection rules off the surface she can edit without a deploy, which
+    // is the whole point of the authored plane.
+    //
+    // `systemPrompt` stays undefined when the deployed document predates the
+    // key, and the service then falls back to its in-code copy — see the
+    // `.optional()` note on those keys in authored-data.ts.
+    pickPoints: (options) =>
+      pickReflectionPoints({
+        ...options,
+        systemPrompt: authored.prompts.prompts.pointPicker,
+      }),
+    writeConclusion: (options) =>
+      writeDevotionalConclusion({
+        ...options,
+        systemPrompt: authored.prompts.prompts.conclusion,
+      }),
   }
 }
 
@@ -180,10 +206,60 @@ const SourcedSchema = z
   })
   .extend(AttemptContextSchema.shape)
 
+/** Coherence + depth + fidelity verdict. Empty `blocking` means clean. Null when
+ *  safety already blocked, since three more model calls cannot change an outcome
+ *  that is already "do not publish".
+ *
+ *  `enforced` records whether this run's verdict was ACTED ON, so a stored
+ *  verdict is never ambiguous after the fact: a report-only run carries its
+ *  findings with `enforced: false`, which is what makes the critics' false
+ *  positive rate and the provider's reliability observable BEFORE enforcement is
+ *  turned on.
+ *
+ *  `.optional()` as well as `.nullable()` is about DEPLOY, not about the happy
+ *  path: this workflow suspends for human approval, so a run persisted before
+ *  this key existed can resume after the deploy that added it. Without optional,
+ *  that resume fails schema validation. With it, the key is simply absent, which
+ *  the consumer must treat as "no verdict" — never as a pass. */
+const QualityReviewSchema = z
+  .object({ blocking: z.array(z.string()), enforced: z.boolean() })
+  .nullable()
+  .optional()
+
+type QualityVerdict = z.infer<typeof QualityReviewSchema>
+
+/**
+ * Does the quality verdict stop this run? ONE function, because the two callers
+ * (produce and publish) previously each answered it and disagreed: a legacy run
+ * rendered — paying for narration and Remotion — and was then refused at
+ * publication, so the money was spent and nothing shipped.
+ *
+ * Three states that must not be conflated:
+ *
+ *   `undefined` — LEGACY. Persisted before this key existed, so it is resuming
+ *     across the deploy that added it. Policy: treat as report-only, i.e. do NOT
+ *     block. The run was composed when no gate existed; refusing to publish it
+ *     now punishes it for a check it could never have had, and under this
+ *     rollout the gate is not enforcing anyway. Recomputing instead was the other
+ *     option, and it is worse here: the critics would judge text a human may
+ *     already have approved, at three model calls, to reach a verdict this
+ *     rollout would not act on.
+ *   `null` — safety blocked, so quality deliberately never ran. Blocks. Callers
+ *     reach their own safety clause first, so this is the belt to that braces:
+ *     absent evidence is never a pass.
+ *   present — a real verdict. Blocks only if it was ENFORCED when produced.
+ */
+export function qualityBlocksRun(quality: QualityVerdict): boolean {
+  if (quality === undefined) return false
+  if (quality === null) return true
+  return quality.enforced && quality.blocking.length > 0
+}
+
 const ContentSchema = z
   .object({
     devotional: GeneratedDevotionalSchema,
     safety: SafetyVerdictSchema,
+    quality: QualityReviewSchema,
     reservationId: z.string().uuid(),
   })
   .extend(AttemptContextSchema.shape)
@@ -192,6 +268,7 @@ const ProducedSchema = z
   .object({
     devotional: GeneratedDevotionalSchema,
     safety: SafetyVerdictSchema,
+    quality: QualityReviewSchema,
     reservationId: z.string().uuid(),
     readyForRender: z.boolean(),
   })
@@ -228,6 +305,7 @@ const RenderedSchema = z
   .object({
     devotional: GeneratedDevotionalSchema,
     safety: SafetyVerdictSchema,
+    quality: QualityReviewSchema,
     reservationId: z.string().uuid(),
     /** Durable 9:16 worker artifact; null when safety blocked. */
     portraitAsset: VideoArtifactSchema.nullable(),
@@ -271,8 +349,14 @@ const ResultSchema = z.object({
     "publish_skipped",
     "publish_failed",
   ]),
+  /** Which gate blocked, when `status` is "blocked". Without it a quality block
+   *  and a safety block are indistinguishable to the approver, and a quality
+   *  block used to fall through to `publish_failed` /
+   *  `rendered_assets_missing` — a quality problem reported as a render bug. */
+  blockedBy: z.enum(["safety", "quality"]).optional(),
   devotional: GeneratedDevotionalSchema,
   safety: SafetyVerdictSchema,
+  quality: QualityReviewSchema,
   portraitAsset: VideoArtifactSchema.nullable(),
   wideAsset: VideoArtifactSchema.nullable(),
   clipRecorded: z.boolean(),
@@ -393,10 +477,22 @@ const contentStep = createStep({
     "Reflection (rotated source, modernized) + highlights + copy, then the safety gate.",
   inputSchema: SourcedSchema,
   outputSchema: ContentSchema,
-  execute: async ({ inputData, mastra, runId }) => {
+  execute: async ({ inputData, mastra, runId, abortSignal }) => {
     try {
       await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
       const authored = await loadAttemptData(mastra, inputData.selectedSources)
+
+      // Both the picker and the critics EXPLAIN themselves — which of the
+      // author's points were kept and why, each critic's issues and suggestions,
+      // the better-fitting verse when the chosen one is a poor match. None of it
+      // fits the devotional's own shape, and both call sites used to omit this
+      // seam entirely, so all of it was computed and dropped. Collected here and
+      // written into the attempt artifact, so a run's reasoning outlives it.
+      const notes: string[] = []
+      const log = (message: string) => {
+        notes.push(message)
+      }
+
       const devotional = await composeDevotionalContent(
         {
           chapter: inputData.chapter,
@@ -404,6 +500,7 @@ const contentStep = createStep({
           sequence: inputData.sequence,
           date: inputData.date,
           llm: scriptureLlm,
+          log,
         },
         contentDependencies(authored),
       )
@@ -416,19 +513,73 @@ const contentStep = createStep({
         minConfidence: authored.safety.effectiveMinimumConfidence,
       })
 
+      // Quality is a SECOND gate, on a different axis: safety asks whether the
+      // text is doctrinally and tonally safe to publish, quality asks whether it
+      // is worth publishing (coherent with its verse, deep enough to carry
+      // something away, faithful to the source it adapts). It runs only when
+      // safety passed — three further model calls cannot change an outcome that
+      // is already "do not publish". Like safety it runs on every pass, cached
+      // text included, and fails closed: a critic that cannot run is a block.
+      // The critics run in BOTH modes. Report-only changes what happens to the
+      // verdict, never whether it is produced — a mode that skipped the calls
+      // would observe nothing, which is the opposite of the point.
+      const enforced = isDevotionalQualityGateEnforced()
+      const quality =
+        safety.verdict === "pass"
+          ? { ...(await reviewQuality()), enforced }
+          : null
+
+      // The gate CRASHING is the same class of fact as a critic that could not
+      // run: we did not check. Turning it into a verdict rather than letting it
+      // escape is what makes report-only mean what it says — a provider outage
+      // must not cost the day's devotional while the false-positive rate is still
+      // unknown. Under enforcement the same verdict blocks, which is the fail
+      // closed posture; only the consequence differs, never the record.
+      async function reviewQuality(): Promise<{ blocking: string[] }> {
+        try {
+          return await reviewDevotionalText({
+            devotional,
+            log,
+            abortSignal,
+            passageReference: inputData.chapter.reference,
+            // The composed text here is English; the localized path that makes
+            // fidelity meaningless was not carried into this runtime.
+            checkFidelity: true,
+          })
+        } catch (error) {
+          // Cancellation must NOT become a verdict. Turning it into a blocking
+          // reason produces ordinary workflow data, and in report-only mode
+          // blocking does not block — so a cancelled run continued to the paid
+          // steps, which is the opposite of what threading the signal was for.
+          if (abortSignal?.aborted) throw error
+          const reason = error instanceof Error ? error.message : String(error)
+          log(
+            `[devotional] event=quality_gate_crashed enforced=${enforced} reason=${reason}`,
+          )
+          return { blocking: [`quality gate could not run: ${reason}`] }
+        }
+      }
+      if (quality && quality.blocking.length > 0 && !enforced) {
+        log(
+          `[devotional] event=quality_gate_report_only blocking=${quality.blocking.length} ` +
+            `reasons=${JSON.stringify(quality.blocking)}`,
+        )
+      }
+
       const filesystem = mastra.getWorkspace()?.filesystem
       if (!filesystem) throw new Error("Devotional Workspace is unavailable")
       await writeAttemptJsonArtifact({
         filesystem,
         runId,
         name: "content",
-        value: { devotional, safety },
+        value: { devotional, safety, quality, notes },
       })
 
       return {
         ...attemptContext(inputData),
         devotional,
         safety,
+        quality,
         reservationId: inputData.reservationId,
       }
     } catch (error) {
@@ -452,18 +603,34 @@ export const devotionalContentWorkflow = createWorkflow({
 const produceStep = createStep({
   id: "prepare-media",
   description:
-    "Validate the exact authored media policy before the transient Worker handoff. Skipped when safety blocked.",
+    "Validate the exact authored media policy before the transient Worker handoff. Skipped when safety or quality blocked.",
   inputSchema: ContentSchema,
   outputSchema: ProducedSchema,
   execute: async ({ inputData, mastra }) => {
     try {
       await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
-      const { devotional, safety } = inputData
-      if (safety.verdict !== "pass") {
+      const { devotional, safety, quality } = inputData
+      // Both gates stand between composed text and money: ElevenLabs narration
+      // and the Worker render are downstream of here. A null quality verdict
+      // means safety already blocked, so it is not a pass by omission.
+      // `== null` catches BOTH null (safety blocked, so quality never ran) and
+      // undefined (a run persisted before this key existed, resuming across the
+      // deploy that added it). Absent evidence is not a pass: blocking such a run
+      // costs a missed publish, letting it through costs unreviewed text on the
+      // site.
+      //
+      // In report-only mode the verdict is recorded and NOT acted on, so a critic
+      // outage cannot cost a day's devotional while the false-positive rate is
+      // still unknown. `enforced` travels with the verdict rather than being
+      // re-read from env here, so a run's decision matches the mode it actually
+      // ran under even if the flag flips mid-flight.
+      const blocked = safety.verdict !== "pass" || qualityBlocksRun(quality)
+      if (blocked) {
         return {
           ...attemptContext(inputData),
           devotional,
           safety,
+          quality,
           reservationId: inputData.reservationId,
           readyForRender: false,
         }
@@ -473,6 +640,7 @@ const produceStep = createStep({
         ...attemptContext(inputData),
         devotional,
         safety,
+        quality,
         reservationId: inputData.reservationId,
         readyForRender: true,
       }
@@ -506,12 +674,13 @@ const renderStep = createStep({
   execute: async ({ inputData, runId, abortSignal, mastra }) => {
     try {
       await verifyWorkflowWorkspaceSources(mastra, inputData.selectedSources)
-      const { devotional, safety, readyForRender } = inputData
+      const { devotional, safety, quality, readyForRender } = inputData
       if (!readyForRender)
         return {
           ...attemptContext(inputData),
           devotional,
           safety,
+          quality,
           reservationId: inputData.reservationId,
           portraitAsset: null,
           wideAsset: null,
@@ -577,6 +746,7 @@ const renderStep = createStep({
         ...attemptContext(inputData),
         devotional,
         safety,
+        quality,
         reservationId: inputData.reservationId,
         portraitAsset: rendered.portrait,
         wideAsset: rendered.wide,
@@ -619,8 +789,18 @@ const approveStep = createStep({
       throw error
     }
     if (inputData.portraitAsset == null || inputData.wideAsset == null) {
-      // Safety blocked upstream — nothing to approve.
-      return { ...inputData, approved: false, notes: "skipped: safety blocked" }
+      // Nothing to approve. The REASON is derived, not assumed: this note used to
+      // say "safety blocked" unconditionally, so a quality-blocked run told the
+      // approver the wrong gate stopped it. The third case matters too — assets
+      // can be missing because a render failed, and naming a gate then would be
+      // just as wrong.
+      const reason =
+        inputData.safety.verdict !== "pass"
+          ? "safety blocked"
+          : qualityBlocksRun(inputData.quality)
+            ? "quality blocked"
+            : "no rendered assets"
+      return { ...inputData, approved: false, notes: `skipped: ${reason}` }
     }
     try {
       await verifyDevotionalWorkerArtifacts({
@@ -678,6 +858,7 @@ const publishStep = createStep({
     const {
       devotional,
       safety,
+      quality,
       reservationId,
       portraitAsset,
       wideAsset,
@@ -686,6 +867,7 @@ const publishStep = createStep({
       approvedBy,
     } = inputData
     let status: z.infer<typeof ResultSchema>["status"]
+    let blockedBy: z.infer<typeof ResultSchema>["blockedBy"]
     let publishReason: string | undefined
     let publishRetryable: boolean | undefined
     let clipRecorded = false
@@ -704,8 +886,17 @@ const publishStep = createStep({
     }
 
     let publicationIntentOwnsReservation = false
+    // Quality is checked here too, not only in produceStep. produceStep stops the
+    // paid work; this decides what the run REPORTS. Without the second branch a
+    // quality-blocked run has safety "pass" and no rendered assets, so it fell
+    // through to publish_failed / rendered_assets_missing and read as a render
+    // bug. A null verdict means safety blocked, which the first branch owns.
     if (safety.verdict !== "pass") {
       status = "blocked"
+      blockedBy = "safety"
+    } else if (qualityBlocksRun(quality)) {
+      status = "blocked"
+      blockedBy = "quality"
     } else if (!approved) {
       status = "rejected"
     } else if (!portraitAsset || !wideAsset) {
@@ -760,8 +951,14 @@ const publishStep = createStep({
     }
     const result = {
       status,
+      // Both optional in ResultSchema, so tsc stays quiet when they are
+      // forgotten. They are the only way an operator can tell a quality block
+      // from a safety block, and they also land in the publication artifact
+      // below, so a run's reason survives past the logs.
+      blockedBy,
       devotional,
       safety,
+      quality,
       portraitAsset,
       wideAsset,
       clipRecorded,

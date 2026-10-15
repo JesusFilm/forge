@@ -7,7 +7,8 @@ status: "complete"
 start_date: "2026-07-31"
 duration: 10
 depends_on: []
-blocks: []
+blocks:
+  - "feat-363"
 tags:
   - "ai-pipeline"
   - "mastra"
