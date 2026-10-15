@@ -635,6 +635,16 @@ describe("DownloadModal — Terms of Use agreement", () => {
     expect(checkbox.checked).toBe(true)
 
     act(() => {
+      label.click()
+    })
+    expect(checkbox.checked).toBe(false)
+
+    act(() => {
+      label.click()
+    })
+    expect(checkbox.checked).toBe(true)
+
+    act(() => {
       ;(
         $('[data-testid="watch-download-modal-tos-trigger"]') as HTMLElement
       ).click()
