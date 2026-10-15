@@ -30,9 +30,13 @@ function ownLanguageName(uiLocale: string): string | null {
   }
 }
 
-// Start of the string, or a sentence terminator (Latin, CJK, Arabic, Devanagari
-// danda) followed only by whitespace and opening markup.
-const SENTENCE_START_PREFIX = /(?:^|[.!?。！？؟।]\s*)$/u
+// Start of the string, or a sentence terminator (Latin, CJK, Arabic, Urdu,
+// Devanagari danda, Armenian, Ethiopic, Burmese) followed only by whitespace.
+const SENTENCE_START_PREFIX = /(?:^|[.!?。！？؟۔।։።။]\s*)$/u
+
+// `{language, select|plural|selectordinal, ...}` keys ICU branches on the exact
+// string, so changing its case could change the wording, not just the casing.
+const COMPLEX_LANGUAGE_ARGUMENT = /\{\s*language\s*,/u
 
 function startsSentenceInTemplate(template: string): boolean {
   for (const match of template.matchAll(/\{language\}/g)) {
@@ -61,9 +65,13 @@ export function inventoryLanguageNameForTemplate({
   if (own.toLocaleLowerCase(uiLocale) !== name.toLocaleLowerCase(uiLocale)) {
     return name
   }
-  // A template we cannot read is treated as sentence-initial: capitalised is
-  // the safe, pre-existing behaviour.
-  if (typeof template !== "string" || startsSentenceInTemplate(template)) {
+  // A template we cannot read, or one that branches on the name, keeps the
+  // capitalised, pre-existing behaviour.
+  if (
+    typeof template !== "string" ||
+    COMPLEX_LANGUAGE_ARGUMENT.test(template) ||
+    startsSentenceInTemplate(template)
+  ) {
     return name
   }
   return own

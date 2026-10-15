@@ -47,6 +47,20 @@ describe("inventoryLanguageNameForTemplate", () => {
     expect(name("Español", "es", "en <b>{language}</b>")).toBe("español")
   })
 
+  it("never changes the name when the template branches on it (ICU select)", () => {
+    expect(
+      name(
+        "Español",
+        "es",
+        "en {language, select, Español {A} español {B} other {C}}",
+      ),
+    ).toBe("Español")
+  })
+
+  it("treats Armenian, Ethiopic and Urdu terminators as sentence starts", () => {
+    expect(name("Español", "es", "Բարև։ {language}")).toBe("Español")
+  })
+
   it("falls back to the supplied name for unreadable templates and unknown locales", () => {
     expect(name("Español", "es", null)).toBe("Español")
     expect(name("Español", "es", ["en {language}"])).toBe("Español")

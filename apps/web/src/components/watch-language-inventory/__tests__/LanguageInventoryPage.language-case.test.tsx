@@ -172,6 +172,19 @@ describe("inventory heading language-name casing (N48a)", () => {
     ).toBe(true)
   })
 
+  it("decides casing per template, not per page", () => {
+    // Same page, same language: the az hero opens with {language} (capital) but
+    // the dubbed-section title places it mid-sentence (lower case). Passing the
+    // wrong catalog key to the helper would flip one of the two.
+    const doc = render("az", inventory("Azerbaijani", "Azərbaycan"))
+    expect(doc.querySelector("h1")?.textContent).toBe(
+      "Azərbaycan dilində pulsuz xristian videoları",
+    )
+    expect(doc.body.textContent).toContain(
+      "Kolleksiyalara görə azərbaycan videoları",
+    )
+  })
+
   it("applies the same casing to the hero copy and both section headings", () => {
     const doc = render("es", inventory("Spanish", "Español"))
     const text = doc.body.textContent ?? ""
