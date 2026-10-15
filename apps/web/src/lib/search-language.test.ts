@@ -193,7 +193,8 @@ describe("buildSearchLanguageOptions", () => {
           slug: "french",
         },
         {
-          // `ku` is Latin-script; a ku-Arab row shows it untagged.
+          // `ku` is Latin-script; a ku-Arab row must not show it as its own
+          // name (wrong script), so the label is dropped.
           id: "ku",
           coreId: "1",
           name: { en: "Kurdish Arab Script", ku: "kurdî" },
@@ -209,10 +210,51 @@ describe("buildSearchLanguageOptions", () => {
     })
     expect(byName.get("French")?.nativeName).toBe("Français")
     expect(byName.get("French")).not.toHaveProperty("nativeNameLang")
-    expect(byName.get("Kurdish Arab Script")?.nativeName).toBe("kurdî")
+    expect(byName.get("Kurdish Arab Script")?.nativeName).toBeNull()
     expect(byName.get("Kurdish Arab Script")).not.toHaveProperty(
       "nativeNameLang",
     )
+  })
+
+  it("drops a native name written in a different script than the language (N23)", () => {
+    const { options } = buildSearchLanguageOptions({
+      languages: [
+        {
+          id: "tg",
+          coreId: "2",
+          name: { en: "Tajik", tg: "تاجيكي" },
+          bcp47: "tg",
+          slug: "tajik",
+        },
+        {
+          // Legacy `native` key is the same trap as the own-tag key.
+          id: "mn",
+          coreId: "3",
+          name: { en: "Mongolian, Halh", native: "ᠮᠣᠩᠭᠣᠯ" },
+          bcp47: "mn",
+          slug: "mongolian-halh",
+        },
+        {
+          id: "so",
+          coreId: "4",
+          name: { en: "Somali", so: "Soomaali" },
+          bcp47: "so",
+          slug: "somali",
+        },
+        {
+          id: "ar",
+          coreId: "5",
+          name: { en: "Arabic", ar: "العربية" },
+          bcp47: "ar",
+          slug: "arabic",
+        },
+      ],
+    })
+    const byName = new Map(options.map((o) => [o.englishName, o]))
+    expect(byName.get("Tajik")?.nativeName).toBeNull()
+    expect(byName.get("Mongolian, Halh")?.nativeName).toBeNull()
+    expect(byName.get("Somali")?.nativeName).toBe("Soomaali")
+    expect(byName.get("Arabic")?.nativeName).toBe("العربية")
   })
 
   it("builds facet-limited language options grouped from country metadata", () => {
