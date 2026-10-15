@@ -93,10 +93,10 @@ Built and checked on the iOS 26.5 simulator (see the pull request for the eviden
 - The watch, series and feedback sheets show the native iOS 26 sheet: dark glass at a partial height, iOS's solid sheet at full height. The reader sheets follow the Dark-only rule.
 - The delete confirmation, the search tab and the dark override work as planned. iOS 18.6 shows no change apart from the dark system parts.
 - Contrast passed with no tint on every reachable surface.
+- Android shows no change. On the Pixel 9a emulator, Home, Discover, Explore, Bible, More, Downloads and the player controls look the same as on `main`.
 
 Still open:
 
-- The Android "no change" check. The shared Pixel 9a emulator did not start the dev client (an ANR at the splash, with 94% of its storage full). Unit tests cover every Android branch.
 - The device check on the first TestFlight build: the separate search circle, the delete sheet and the dark sheets.
 - The quiz window and the Experience hero mute could not be reached on local data. Unit tests cover both.
 - The `react-native-screens` upgrade for Xcode 27 is `feat-704`.
