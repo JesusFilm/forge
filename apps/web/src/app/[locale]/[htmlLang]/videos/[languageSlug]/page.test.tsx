@@ -236,6 +236,33 @@ describe("/{language}.html/videos route", () => {
     )
   })
 
+  it("lower-cases the UI language's own name mid-sentence in metadata (N48a)", async () => {
+    // Admin stores the endonym capitalised; the ru catalog places it after
+    // "Язык:", where the lower-case CLDR form is correct.
+    const base = await resolveWatchLanguageInventoryMock("ru", "russian")
+    resolveWatchLanguageInventoryMock.mockResolvedValueOnce({
+      ...base,
+      languageSlug: "russian",
+      languageName: "Russian",
+      languageNativeName: "Русский",
+      switcherLanguages: [],
+    })
+    const pageMetadata = await generateMetadata({
+      params: Promise.resolve({
+        locale: "ru",
+        htmlLang: "ru",
+        languageSlug: "russian",
+      }),
+    })
+
+    expect(pageMetadata.title).toBe(
+      "Бесплатные христианские видео. Язык: русский | Jesus Film Project",
+    )
+    expect(pageMetadata.description).toContain(
+      "Язык озвучки или субтитров: русский",
+    )
+  })
+
   it("uses Russian ICU plural categories in route-render tests", () => {
     setRequestLocale("ru")
     const html = renderToString(<RussianPluralProbe />)
