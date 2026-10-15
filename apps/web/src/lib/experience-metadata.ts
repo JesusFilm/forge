@@ -26,10 +26,12 @@ const TITLE_SUFFIX_TEXT = "Jesus Film Project"
 export const META_DESCRIPTION_MAX_LENGTH = 160
 
 /**
- * Cap a derived (non-authored) description for meta / og / twitter tags at a
- * word boundary, appending an ellipsis. Short text is returned unchanged.
- * Authored `searchDescription` / CMS descriptions are NOT passed through this
- * (editors own their length); JSON-LD keeps the full text.
+ * Cap a description for the meta / og / twitter tags at a word boundary,
+ * appending an ellipsis. Short text (including authored copy under the cap)
+ * is returned unchanged apart from whitespace collapsing. Applied to every
+ * source \u2014 derived synopsis, authored `searchDescription`, Experience
+ * `metaDescription` / `ogDescription` \u2014 because a long value in any of them
+ * reproduces QA N40. JSON-LD keeps the full text.
  */
 export function truncateMetaDescription(
   value: string,
@@ -46,19 +48,27 @@ export function truncateMetaDescription(
     if (slice.length + segment.length > maxLength - 1) break
     slice += segment
   }
+  // When the budget ends exactly at a word end, keep that whole word.
+  const endsOnWord = text.charAt(slice.length) === " "
   const lastSpace = slice.lastIndexOf(" ")
   // Cut at a word boundary unless that would throw away most of the budget.
-  const cut = lastSpace >= maxLength * 0.6 ? slice.slice(0, lastSpace) : slice
-  return `${cut.replace(/[\s.,;:!?\u2013\u2014-]+$/u, "")}\u2026`
+  const cut =
+    endsOnWord || lastSpace < maxLength * 0.6
+      ? slice
+      : slice.slice(0, lastSpace)
+  // Strip trailing punctuation (Latin, Devanagari danda, Arabic/CJK commas
+  // and full stops) so the ellipsis does not follow a sentence mark.
+  return `${cut.replace(/[\s.,;:!?\u2013\u2014\u0964\u0965\u060c\u061b\u06d4\u3001\u3002\uff0c\uff0e-]+$/u, "")}\u2026`
 }
 
-function derivedMetaDescription(
-  authored: string | null | undefined,
-  ...fallbacks: Array<string | null | undefined>
+/**
+ * First non-blank candidate (authored override first), capped for the meta /
+ * og / twitter tags.
+ */
+function cappedMetaDescription(
+  ...candidates: Array<string | null | undefined>
 ): string {
-  const trimmedAuthored = trimmedValue(authored)
-  if (trimmedAuthored) return trimmedAuthored
-  return truncateMetaDescription(fallbacks.find((v) => v?.trim()) ?? "")
+  return truncateMetaDescription(candidates.find((v) => v?.trim()) ?? "")
 }
 
 /**
@@ -248,7 +258,7 @@ export function buildWatchVideoMetadataModel(
   const structuredDataTitle = options.video.title?.trim() || null
   const title =
     trimmedValue(options.video.searchTitle) ?? `${videoTitle} ${TITLE_SUFFIX}`
-  const description = derivedMetaDescription(
+  const description = cappedMetaDescription(
     options.video.searchDescription,
     options.video.description,
     options.video.snippet,
@@ -366,7 +376,7 @@ function toMetadata(
     // Google prefers 120–160 chars in the meta description; snippets are
     // routinely below that floor (one-line taglines). Keep snippet as the
     // fallback so videos with no body description still get something.
-    const description = derivedMetaDescription(
+    const description = cappedMetaDescription(
       resolvedPage.routeVideo.searchDescription,
       resolvedPage.routeVideo.description,
       resolvedPage.routeVideo.snippet,
@@ -438,11 +448,14 @@ function toMetadata(
     ? `${options.slug} ${TITLE_SUFFIX}`
     : "Watch | Jesus Film Project"
   const title = cms?.title ? withTitleSuffix(cms.title) : fallbackTitle
-  const description =
+  const description = truncateMetaDescription(
     cms?.description ??
-    "Watch the Jesus Film Project's library of free films and short videos exploring the life and teachings of Jesus, available in thousands of languages."
+      "Watch the Jesus Film Project's library of free films and short videos exploring the life and teachings of Jesus, available in thousands of languages.",
+  )
   const ogTitle = cms?.ogTitle ? withTitleSuffix(cms.ogTitle) : title
-  const ogDescription = cms?.ogDescription ?? description
+  const ogDescription = cms?.ogDescription
+    ? truncateMetaDescription(cms.ogDescription)
+    : description
   const ogImage = cms?.ogImage
     ? {
         url: cms.ogImage.url,

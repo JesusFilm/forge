@@ -1,18 +1,20 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { WatchVideoRecord } from "./content"
 
-const { resolveWatchPageMock } = vi.hoisted(() => ({
+const { resolveWatchPageMock, experienceToMetadataMock } = vi.hoisted(() => ({
   resolveWatchPageMock: vi.fn(),
+  experienceToMetadataMock: vi.fn(),
 }))
 
 vi.mock("@/lib/content", () => ({
   resolveWatchPage: resolveWatchPageMock,
-  experienceToMetadata: vi.fn(),
+  experienceToMetadata: experienceToMetadataMock,
 }))
 
 describe("getWatchPageMetadata", () => {
   afterEach(() => {
     resolveWatchPageMock.mockReset()
+    experienceToMetadataMock.mockReset()
     vi.resetModules()
   })
 
@@ -39,6 +41,58 @@ describe("getWatchPageMetadata", () => {
     expect(metadata.description?.endsWith("\u2026")).toBe(true)
     expect(metadata.openGraph?.description).toBe(metadata.description)
     expect(metadata.twitter?.description).toBe(metadata.description)
+  })
+
+  it("caps a long authored searchDescription on template-backed pages", async () => {
+    // QA N40: any source over the cap (here an authored override) must not
+    // reach meta/og/twitter in full.
+    const authored = "An authored search description for the film. ".repeat(30)
+    resolveWatchPageMock.mockResolvedValue({
+      data: {
+        kind: "video-template",
+        template: { documentId: "exp-template-1", slug: "single-video" },
+        routeVideo: {
+          documentId: "video-1",
+          slug: "jesus",
+          title: "Jesus",
+          snippet: "The story of Jesus",
+          description: "Short body.",
+          searchDescription: authored,
+          noIndex: false,
+          relatedItems: [],
+        },
+      },
+      error: null,
+    })
+    const { getWatchPageMetadata } = await import("./experience-metadata")
+    const metadata = await getWatchPageMetadata("en", { slug: "jesus" })
+    expect(metadata.description?.length).toBeLessThanOrEqual(160)
+    expect(authored.startsWith(metadata.description!.slice(0, -1))).toBe(true)
+    expect(metadata.openGraph?.description).toBe(metadata.description)
+    expect(metadata.twitter?.description).toBe(metadata.description)
+  })
+
+  it("caps long Experience meta and og descriptions", async () => {
+    const longCopy = "Experience copy about the life of Jesus. ".repeat(40)
+    resolveWatchPageMock.mockResolvedValue({
+      data: { kind: "experience", experience: { title: "Easter" } },
+      error: null,
+    })
+    experienceToMetadataMock.mockReturnValue({
+      title: "Easter",
+      description: longCopy,
+      ogTitle: "Easter",
+      ogDescription: `OG ${longCopy}`,
+      pathSegment: null,
+      ogImage: null,
+    })
+    const { getWatchPageMetadata } = await import("./experience-metadata")
+    const metadata = await getWatchPageMetadata("en", { slug: "easter" })
+    expect(metadata.description?.length).toBeLessThanOrEqual(160)
+    expect(metadata.description?.endsWith("\u2026")).toBe(true)
+    expect(metadata.openGraph?.description?.length).toBeLessThanOrEqual(160)
+    expect(metadata.openGraph?.description?.startsWith("OG ")).toBe(true)
+    expect(metadata.twitter?.description).toBe(metadata.openGraph?.description)
   })
 
   it("uses route video metadata for template-backed watch pages", async () => {
@@ -769,7 +823,7 @@ describe("buildWatchVideoMetadataModel", () => {
     expect(metadata.twitter?.description).toBe(model.description)
   })
 
-  it("leaves short descriptions and authored searchDescription untouched", async () => {
+  it("leaves short descriptions untouched and caps long authored copy", async () => {
     const { buildWatchVideoMetadataModel } =
       await import("./experience-metadata")
     const base = {
@@ -784,9 +838,21 @@ describe("buildWatchVideoMetadataModel", () => {
     expect(
       buildWatchVideoMetadataModel({
         ...base,
-        video: { ...video, searchDescription: longSynopsis },
+        video: { ...video, searchDescription: "Authored short copy." },
       }).description,
-    ).toBe(longSynopsis)
+    ).toBe("Authored short copy.")
+    // A long authored override is capped too (QA N40); JSON-LD stays full.
+    const longAuthored = buildWatchVideoMetadataModel({
+      ...base,
+      video: {
+        ...video,
+        description: longSynopsis,
+        searchDescription: `Authored ${longSynopsis}`,
+      },
+    })
+    expect(longAuthored.description.length).toBeLessThanOrEqual(160)
+    expect(longAuthored.description.startsWith("Authored ")).toBe(true)
+    expect(longAuthored.structuredDataDescription).toBe(longSynopsis)
   })
 
   it("truncates series descriptions", async () => {
@@ -803,6 +869,20 @@ describe("buildWatchVideoMetadataModel", () => {
     } as unknown as Parameters<typeof generateSeriesMetadata>[1])
     expect(metadata.description?.length).toBeLessThanOrEqual(160)
     expect(metadata.openGraph?.description).toBe(metadata.description)
+    expect(metadata.twitter?.description).toBe(metadata.description)
+  })
+
+  it("falls through a blank description to the snippet", async () => {
+    const { buildWatchVideoMetadataModel } =
+      await import("./experience-metadata")
+    expect(
+      buildWatchVideoMetadataModel({
+        routeSlug: "life-of-jesus",
+        pathLocale: "english",
+        selectedVariant,
+        video: { ...video, description: "   ", snippet: "A short tagline." },
+      }).description,
+    ).toBe("A short tagline.")
   })
 })
 
@@ -823,5 +903,33 @@ describe("truncateMetaDescription", () => {
       "a".repeat(158) + "e\u0301".repeat(10),
     )
     expect(accent.replace("\u2026", "")).not.toMatch(/e$/)
+  })
+
+  it("returns text at exactly the cap unchanged and cuts one over", async () => {
+    const { truncateMetaDescription } = await import("./experience-metadata")
+    const exact = `${"word ".repeat(31)}abcd`
+    expect(exact).toHaveLength(159)
+    expect(truncateMetaDescription(`${exact}e`)).toBe(`${exact}e`)
+    const over = truncateMetaDescription(`${exact}ef`)
+    expect(over.length).toBeLessThanOrEqual(160)
+    expect(over.endsWith("\u2026")).toBe(true)
+  })
+
+  it("keeps a whole word that ends exactly at the budget", async () => {
+    const { truncateMetaDescription } = await import("./experience-metadata")
+    // 159 chars of words, then a space: the last word fits in the budget.
+    const head = `${"a".repeat(150)} ${"b".repeat(8)}`
+    expect(head).toHaveLength(159)
+    expect(truncateMetaDescription(`${head} ${"c".repeat(50)}`)).toBe(
+      `${head}\u2026`,
+    )
+  })
+
+  it("strips a trailing Devanagari danda before the ellipsis", async () => {
+    const { truncateMetaDescription } = await import("./experience-metadata")
+    // The word-boundary cut lands right after "है।".
+    const head = `${"a".repeat(140)} है।`
+    const out = truncateMetaDescription(`${head} ${"b".repeat(50)}`)
+    expect(out).toBe(`${"a".repeat(140)} है\u2026`)
   })
 })
