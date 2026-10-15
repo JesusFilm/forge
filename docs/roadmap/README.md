@@ -6,9 +6,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 15, 2026)
 
-- **Total tickets:** 837
-- **Complete:** 622
-- **Cancelled:** 40
+- **Total tickets:** 839
+- **Complete:** 623
+- **Cancelled:** 41
 - **In progress:** 67
 - **Not started:** 51
 - **Blocked:** 57
@@ -676,7 +676,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-604](platform/feat-604-mobile-ui-translation-run-and-device-checks.md)           | Mobile UI first translation run (U16) and open device checks                       | urim       | P1       | 2026-10-06 | 7    | 2026-10-12 | in-progress |
 | [feat-611](platform/feat-611-renovate-google-maven-lookup.md)                          | Resolve Android dependencies in Renovate                                           | tataihono  | P1       | 2026-10-06 | 1    | 2026-10-06 | complete    |
 | [feat-614](platform/feat-614-expo-patch-ci-recovery.md)                                | Align Expo patch versions to restore CI                                            | nisal      | P1       | 2026-10-07 | 1    | 2026-10-07 | complete    |
-| [feat-645](platform/feat-645-watch-language-preference-redirect.md)                    | Resolve Watch entry language from saved preference and browser locale              | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
+| [feat-645](platform/feat-645-watch-language-preference-redirect.md)                    | Resolve Watch entry language from saved preference and browser locale              | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | cancelled   |
 | [feat-649](platform/feat-649-watch-unicode-content-routes.md)                          | Watch routes for Unicode content slugs                                             | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | complete    |
 | [feat-652](platform/feat-652-watch-route-loading-streaming.md)                         | Watch route loading and section streaming boundaries                               | vlad       | P1       | 2026-10-08 | 1    | 2026-10-08 | in-progress |
 | [feat-657](platform/feat-657-watch-search-hard-request-deadline.md)                    | Enforce Watch search hard request deadline                                         | vlad       | P1       | 2026-10-08 | 2    | 2026-10-09 | complete    |
@@ -686,6 +686,9 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-686](platform/feat-686-pages-hidden-provenance-artifact.md)                      | Preserve declared Pages provenance with upload action v5                           | tataihono  | P1       | 2026-10-12 | 1    | 2026-10-12 | complete    |
 | [feat-696](platform/feat-696-watch-percent-escape-case.md)                             | Normalize percent-escape case from the public Watch reverse proxy                  | vlad       | P1       | 2026-10-13 | 1    | 2026-10-13 | in-progress |
 | [feat-704](platform/feat-704-watch-language-chunk-containment.md)                      | Contain video language picker component load failures                              | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
+| [feat-703](platform/feat-703-ci-tested-target-baseline.md)                             | Compare PR CI checks against the tested target baseline                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
+| [feat-707](platform/feat-707-watch-feedback-mobile-overflow.md)                        | Keep Watch feedback within the mobile dialog width                                 | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
+| [feat-708](platform/feat-708-watch-url-only-language-routing.md)                       | Restore URL-only Watch language routing                                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-247](platform/feat-247-watch-nested-series-language-availability.md)             | Watch nested-series language availability                                          | vlad       | P2       | —          | —    | —          | complete    |
 | [feat-336](platform/feat-336-watch-homepage-seed-schema-drift.md)                      | Repair Watch homepage Experience seed schema drift                                 | unassigned | P2       | —          | 1    | —          | not-started |
 | [feat-650](platform/feat-650-watch-unicode-consumer-coverage.md)                       | Complete Unicode Watch URL consumer support                                        | unassigned | P2       | —          | 2    | —          | not-started |
@@ -777,7 +780,6 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-669](platform/feat-669-mobile-myanmar-ui-text-clipping.md)                       | Mobile Myanmar UI text clips under fixed line heights                              | urim       | P2       | 2026-10-12 | 3    | 2026-10-14 | not-started |
 | [feat-695](platform/feat-695-mobile-rtl-mirrored-layout.md)                            | Mirror the mobile layout for right-to-left UI languages                            | urim       | P2       | 2026-10-13 | 10   | 2026-10-22 | complete    |
 | [feat-698](platform/feat-698-watch-chapter-progress-indicator.md)                      | Watch chapter thumbnail progress indicator                                         | vlad       | P2       | 2026-10-14 | 1    | 2026-10-14 | complete    |
-| [feat-703](platform/feat-703-ci-tested-target-baseline.md)                             | Compare PR CI checks against the tested target baseline                            | vlad       | P1       | 2026-10-15 | 1    | 2026-10-15 | complete    |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                             | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-544](platform/feat-544-mobile-remove-sign-in-gate.md)                            | Remove the mobile sign-in gate when accounts open                                  | urim       | P2       | 2026-11-02 | 1    | 2026-11-02 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                              | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | not-started |
