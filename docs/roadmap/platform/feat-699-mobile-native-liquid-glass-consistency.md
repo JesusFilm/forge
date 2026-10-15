@@ -3,11 +3,12 @@ id: "feat-699"
 title: "Use native Liquid Glass consistently in the mobile app"
 owner: "urim"
 priority: "P2"
-status: "not-started"
+status: "in-progress"
 start_date: "2026-10-15"
 duration: 10
 depends_on: []
-blocks: []
+blocks:
+  - "feat-704"
 tags:
   - "mobile"
 ---
@@ -75,3 +76,27 @@ Every glass element keeps its current look as the Android fallback and as the fa
 - For each changed element, take an iOS 26 simulator screenshot before and after the change. Prove that the new code path is live with a temporary loud `tintColor` (for example magenta) first, because Fast Refresh does not always apply material changes. Terminate and reopen the dev client after each change.
 - Check every changed element on Android (the Pixel 9a emulator) and confirm that it shows its old fallback look.
 - For the native sheets, also check list text contrast over a bright video at the partial detent.
+
+## Results (2026-10-15)
+
+The plan is `docs/plans/2026-10-15-1036-feat-mobile-native-liquid-glass-plan.md`. It replaces "What To Build" above, and it records the owner decisions on the questions that this ticket left open:
+
+- Bible reader sheets: glass only in the reader's Dark theme. Light and True Dark keep their solid fill.
+- The native search tab: yes, on iOS 26 and later, with the native field at the bottom.
+- The Downloads delete confirmation: the native iOS action sheet on iOS 26.
+- The mini player controls: no glass.
+- The whole iOS app shows a dark interface style, through a runtime window override.
+
+Built and checked on the iOS 26.5 simulator (see the pull request for the evidence):
+
+- Every floating control in the plan shows `GlassSurface`. A temporary loud tint proved the material on each reachable surface. The player plates passed 10 of 10 trials for hide and reveal, return from the background, and return from the reader.
+- The watch, series and feedback sheets show the native iOS 26 sheet: dark glass at a partial height, iOS's solid sheet at full height. The reader sheets follow the Dark-only rule.
+- The delete confirmation, the search tab and the dark override work as planned. iOS 18.6 shows no change apart from the dark system parts.
+- Contrast passed with no tint on every reachable surface.
+
+Still open:
+
+- The Android "no change" check. The shared Pixel 9a emulator did not start the dev client (an ANR at the splash, with 94% of its storage full). Unit tests cover every Android branch.
+- The device check on the first TestFlight build: the separate search circle, the delete sheet and the dark sheets.
+- The quiz window and the Experience hero mute could not be reached on local data. Unit tests cover both.
+- The `react-native-screens` upgrade for Xcode 27 is `feat-704`.
