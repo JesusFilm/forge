@@ -222,6 +222,34 @@ describe("non-route sheet counter", () => {
     counter.close("libraryDeleteConfirm")
     expect(counter.inlineCount()).toBe(0)
   })
+
+  // feat-699 U12: iOS draws the native action sheet above the host, as it
+  // draws a Modal, so the window stays in its corner under the dim.
+  it("counts the native delete sheet as open but not inline", () => {
+    const counter = createNonRouteSheetCounter()
+    counter.open("libraryDeleteActionSheet")
+    expect(counter.count()).toBe(1)
+    expect(counter.inlineCount()).toBe(0)
+
+    const store = createMiniPlayerStore()
+    store.start({
+      videoId: "video-1",
+      videoSlug: "birth-of-jesus",
+      title: "Birth of Jesus",
+      originPattern: "watch/[slug]",
+    })
+    const iosPresentation = miniPlayerPresentation(
+      store.getSnapshot(),
+      ["downloads"],
+      counter.count(),
+      true,
+      counter.inlineCount(),
+    )
+    expect(iosPresentation).toBe("floating")
+
+    counter.close("libraryDeleteActionSheet")
+    expect(counter.count()).toBe(0)
+  })
 })
 
 describe("isSuppressedBySheet", () => {
