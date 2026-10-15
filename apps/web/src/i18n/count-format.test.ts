@@ -140,6 +140,10 @@ describe("formatCount", () => {
     ["fa", 2273, "۲٬۲۷۳"],
     ["en", 0, "0"],
     ["en", 1234567, "1,234,567"],
+    // No CLDR data in Node: must be the explicit English fallback, never the
+    // generating machine's own locale.
+    ["bjt", 2273, "2,273"],
+    ["tnr", 2273, "2,273"],
   ])("formats %s %i as %s", (locale, count, expected) => {
     expect(formatCount(count, locale)).toBe(expected)
   })
@@ -149,6 +153,26 @@ describe("formatCount", () => {
 
     expect(hasCountNumberFormatSpec("xx-unknown")).toBe(false)
     expect(formatCount(2273, "xx-unknown")).toBe("2,273")
+  })
+
+  it("leaves non-counts to the runtime formatter", () => {
+    for (const value of [-1, 1.5, Number.MAX_SAFE_INTEGER + 2]) {
+      expect(formatCount(value, "de")).toBe(
+        new Intl.NumberFormat("de").format(value),
+      )
+    }
+  })
+
+  it("keeps styled number arguments on the runtime formatter", () => {
+    const translate = createCountTranslator({
+      locale: "tn",
+      messages: { Test: { share: "{count, number, percent}" } },
+      namespace: "Test",
+    })
+
+    expect(translate("share", { count: 25 })).toBe(
+      new Intl.NumberFormat("tn", { style: "percent" }).format(25),
+    )
   })
 
   it("has an entry for every UI locale catalog", () => {

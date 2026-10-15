@@ -26,6 +26,9 @@ const scriptDir = dirname(fileURLToPath(import.meta.url))
 const appDir = join(scriptDir, "..")
 const messagesDir = join(appDir, "messages")
 const outputPath = join(appDir, "src/i18n/generated-count-number-formats.ts")
+// Locales Node has no data for must fall back to English explicitly, not to
+// the generating machine's own locale (LC_ALL), which would leak into the table.
+const FALLBACK_LOCALE = "en"
 
 function discoverLocales() {
   return readdirSync(messagesDir)
@@ -42,7 +45,7 @@ function integerGroupSizes(formatter, value) {
 }
 
 function specFor(locale) {
-  const formatter = new Intl.NumberFormat(locale)
+  const formatter = new Intl.NumberFormat([locale, FALLBACK_LOCALE])
   const parts = formatter.formatToParts(1234567890)
   const group = parts.find((part) => part.type === "group")?.value ?? ""
   const sizes = integerGroupSizes(formatter, 1234567890)
@@ -152,7 +155,7 @@ async function main() {
   const byKey = new Map()
   for (const locale of discoverLocales()) {
     const spec = specFor(locale)
-    const formatter = new Intl.NumberFormat(locale)
+    const formatter = new Intl.NumberFormat([locale, FALLBACK_LOCALE])
     for (const value of VERIFY_VALUES) {
       const expected = formatter.format(value)
       const actual = formatWithSpec(value, spec)

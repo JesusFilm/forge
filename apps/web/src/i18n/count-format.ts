@@ -15,6 +15,11 @@ import { COUNT_NUMBER_FORMAT_CLASSES } from "./generated-count-number-formats"
 // Even locales both sides support can differ by CLDR version. Counts are
 // therefore formatted from a committed per-locale table on both sides. See
 // scripts/generate-count-number-formats.mjs.
+//
+// next-intl exposes no public way to swap only the number formatter, so this
+// uses its underscore-prefixed `_createIntlFormatters` / `_formatters` seam
+// (verified on next-intl 4.13.0). count-format.test.ts is the upgrade tripwire:
+// if the seam stops being honoured, its Tswana parity test fails.
 
 export type CountNumberFormatSpec = {
   /** The ten digits 0-9 in the locale's default numbering system. */
@@ -37,6 +42,13 @@ const SPECS_BY_LOCALE: ReadonlyMap<string, CountNumberFormatSpec> = new Map(
 
 export const FALLBACK_COUNT_NUMBER_FORMAT_LOCALE = "en"
 
+export class CountFormatTableError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = "CountFormatTableError"
+  }
+}
+
 export function countNumberFormatSpecFor(
   locale: string,
 ): CountNumberFormatSpec {
@@ -44,7 +56,7 @@ export function countNumberFormatSpecFor(
     SPECS_BY_LOCALE.get(locale) ??
     SPECS_BY_LOCALE.get(FALLBACK_COUNT_NUMBER_FORMAT_LOCALE)
   if (!spec) {
-    throw new Error(
+    throw new CountFormatTableError(
       `generated-count-number-formats.ts has no "${FALLBACK_COUNT_NUMBER_FORMAT_LOCALE}" entry`,
     )
   }
