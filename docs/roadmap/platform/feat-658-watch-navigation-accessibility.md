@@ -64,3 +64,4 @@ Watch category tiles place white labels over unrestricted gradient backgrounds, 
 - Focused category rail, footer, FloatingSearchProvider, Watch Home, and MediaCollection tests: 313 passed. Web typecheck, targeted ESLint, Prettier, and `git diff --check` passed.
 - Claude Code US Team review completed with layout concerns resolved; final review found no blockers.
 - CSS-only visual changes add no JavaScript or network requests; desktop backdrop blur remains disabled to avoid added compositing work over moving hero video.
+- 2026-10-15 follow-up (QA N62a / N66): the footer cookie settings trigger now shows the pointer cursor. Hero "Watch now" (white on `brand-red` #ef3340, 4.02:1), language-index native names (stone-500 on black, 4.39:1) and inventory row numbers (stone-500, about 3.7-3.9:1) still miss AA. Colours are not changed here; the body of PR #2669 lists AA-passing candidates for design to choose from.
