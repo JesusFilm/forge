@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest"
 
 import {
   HLS_BANDWIDTH_TEST_START,
+  type HlsForStartLevel,
+  LowestRungFallbackAbrController,
   withBandwidthTestStart,
 } from "@/lib/hls-start-level"
 
@@ -15,6 +17,7 @@ describe("withBandwidthTestStart", () => {
 
     expect(config.startLevel).toBe(-1)
     expect(config.testBandwidth).toBe(true)
+    expect(config.abrController).toBe(LowestRungFallbackAbrController)
   })
 
   it("keeps every other setting from the base config", () => {
@@ -29,6 +32,7 @@ describe("withBandwidthTestStart", () => {
       ...base,
       startLevel: -1,
       testBandwidth: true,
+      abrController: LowestRungFallbackAbrController,
     })
   })
 
@@ -47,5 +51,67 @@ describe("withBandwidthTestStart", () => {
     withBandwidthTestStart(base)
 
     expect(base).toEqual({ maxBufferLength: 10 })
+  })
+})
+
+/**
+ * A stand-in for the hls.js instance, shaped like hls.js 1.6.16: levels are
+ * sorted lowest bitrate first, and `firstLevel` starts on the first-listed
+ * variant (index 2 here: Mux lists 720p first in a 270/480/720/1080 ladder).
+ */
+function fakeHls({ minAutoLevel = 0 }: { minAutoLevel?: number } = {}) {
+  const listeners = new Map<string, Array<() => void>>()
+  class DefaultAbrController {
+    constructor(readonly hls: HlsForStartLevel) {}
+  }
+  class FakeHls {
+    static Events = { MANIFEST_PARSED: "hlsManifestParsed" }
+    static DefaultConfig = { abrController: DefaultAbrController }
+    firstLevel = 2
+    readonly minAutoLevel = minAutoLevel
+    on(event: string, listener: () => void) {
+      listeners.set(event, [...(listeners.get(event) ?? []), listener])
+    }
+  }
+  const hls = new FakeHls() as unknown as HlsForStartLevel
+  // The production type is hls.js's full constructor; the stand-in carries
+  // only the slice the fallback reads.
+  const asHlsJs = hls as unknown as ConstructorParameters<
+    typeof LowestRungFallbackAbrController
+  >[0]
+  const emit = (event: string) =>
+    listeners.get(event)?.forEach((listener) => listener())
+  return { hls, asHlsJs, emit, DefaultAbrController }
+}
+
+describe("LowestRungFallbackAbrController", () => {
+  it("hands hls.js its own default ABR controller", () => {
+    const { hls, asHlsJs, DefaultAbrController } = fakeHls()
+
+    const abr: unknown = new LowestRungFallbackAbrController(asHlsJs)
+
+    expect(abr).toBeInstanceOf(DefaultAbrController)
+    expect((abr as InstanceType<typeof DefaultAbrController>).hls).toBe(hls)
+  })
+
+  it("points the no-rung-fits start fallback at the lowest rung once the manifest is parsed", () => {
+    // Without this, a connection too slow for any rung starts on firstLevel,
+    // the first-listed 720p variant, after already paying for the test.
+    const { hls, asHlsJs, emit } = fakeHls()
+    new LowestRungFallbackAbrController(asHlsJs)
+    expect(hls.firstLevel).toBe(2)
+
+    emit("hlsManifestParsed")
+
+    expect(hls.firstLevel).toBe(0)
+  })
+
+  it("uses the lowest rung ABR may pick, not index 0", () => {
+    const { hls, asHlsJs, emit } = fakeHls({ minAutoLevel: 1 })
+    new LowestRungFallbackAbrController(asHlsJs)
+
+    emit("hlsManifestParsed")
+
+    expect(hls.firstLevel).toBe(1)
   })
 })

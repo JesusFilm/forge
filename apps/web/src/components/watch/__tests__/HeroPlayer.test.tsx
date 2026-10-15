@@ -254,6 +254,7 @@ import {
   type WatchPlayerChromeVisibilityDetail,
 } from "@/lib/watch-player-chrome-events"
 import { WATCH_PRODUCTION_PLAYER_OVERLAY_BACKGROUND } from "@/lib/watch-production-overlays"
+import { LowestRungFallbackAbrController } from "@/lib/hls-start-level"
 
 let container: HTMLDivElement
 let root: Root
@@ -1291,6 +1292,7 @@ describe("HeroPlayer — initial mount", () => {
       // first-listed 720p rung, which stalls slow connections.
       startLevel: -1,
       testBandwidth: true,
+      abrController: LowestRungFallbackAbrController,
     })
     expect(props.className).toContain("watch-hero-player-video")
     expect(props.style).toEqual({ objectFit: "cover" })
