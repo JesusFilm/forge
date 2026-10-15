@@ -41,6 +41,7 @@ const EDGE_PULL = 10
 // the content edge.
 const BACK_GLASS_SIZE = 40
 const BACK_GLASS_PULL = (TARGET_SIZE - BACK_GLASS_SIZE) / 2
+const BACK_GLASS_TITLE_GAP = 8
 // Today's bar draws the bare glyph, so the fallback adds no fill.
 const BARE_GLYPH: GlassFallback = { kind: "fill", style: null }
 
@@ -185,8 +186,10 @@ const styles = StyleSheet.create({
   leading: {
     marginLeft: -EDGE_PULL,
   },
+  // The circle fills its target, so it keeps today's gap before the title.
   leadingGlass: {
     marginLeft: -BACK_GLASS_PULL,
+    marginRight: BACK_GLASS_TITLE_GAP,
   },
   backGlass: {
     width: BACK_GLASS_SIZE,

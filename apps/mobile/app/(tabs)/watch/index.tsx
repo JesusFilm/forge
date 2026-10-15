@@ -77,11 +77,6 @@ const DEBOUNCE_MS = 300
 const PAGE_SIZE = 20
 const SKELETON_DELAY_MS = 500
 const MAX_PREFETCH_INFLIGHT = 3
-// Placeholders at today's values until a measurement on iOS 26 with the native
-// field shown pins them (feat-699 U13). The top one adds to insets.top; the
-// bottom one adds to the results' tab bar clearance.
-const NATIVE_FIELD_TOP_GAP = 0
-const NATIVE_FIELD_RESULTS_CLEARANCE = 0
 
 export default function DiscoverScreen() {
   const t = useT("Discover")
@@ -766,11 +761,8 @@ export default function DiscoverScreen() {
     [],
   )
 
-  const topGap = nativeSearch ? NATIVE_FIELD_TOP_GAP : 0
-  const nativeFieldClearance = nativeSearch ? NATIVE_FIELD_RESULTS_CLEARANCE : 0
-
   return (
-    <View style={[styles.container, { paddingTop: insets.top + topGap }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
       {nativeSearch ? (
         <Stack.SearchBar
           ref={searchBarRef}
@@ -874,11 +866,9 @@ export default function DiscoverScreen() {
               viewabilityConfig={viewabilityConfig}
               contentContainerStyle={[
                 styles.listContent,
-                { paddingBottom: 32 + tabBarClearance + nativeFieldClearance },
+                { paddingBottom: 32 + tabBarClearance },
               ]}
-              scrollIndicatorInsets={{
-                bottom: tabBarClearance + nativeFieldClearance,
-              }}
+              scrollIndicatorInsets={{ bottom: tabBarClearance }}
               columnWrapperStyle={styles.columnWrapper}
               ListFooterComponent={
                 <>

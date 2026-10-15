@@ -369,6 +369,18 @@ describe("ScreenTopBar back control on Liquid Glass (R9)", () => {
     await unmount(renderer)
   })
 
+  it("keeps a gap between the glass circle and the title", async () => {
+    // The 40pt circle fills its 44pt target; without a margin the title
+    // sat 2pt from the glass on the simulator.
+    const renderer = await render({ title: "Downloads", showBack: true })
+
+    const gap =
+      (44 - FLOATING_BACK_SIZE) / 2 +
+      Number(styleOf(backTarget(renderer)).marginRight ?? 0)
+    expect(gap).toBeGreaterThanOrEqual(8)
+    await unmount(renderer)
+  })
+
   it("scales the glass on a press and never dims the target", async () => {
     const renderer = await render({ title: "Downloads", showBack: true })
 
