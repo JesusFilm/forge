@@ -391,6 +391,7 @@ describe("WatchBody — baked-in question numbering", () => {
       "Is 2 Peter 3:9 true? 1. maybe",
       "100. Not an ordinal",
       "3.Missing space stays",
+      "4. ",
     ])
     act(() => {
       root.render(

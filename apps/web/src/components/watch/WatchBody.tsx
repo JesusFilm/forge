@@ -6,6 +6,8 @@ import type { WatchBodyBlock, WatchStudyQuestionsBlock } from "@/lib/content"
 
 // Some editorial content (e.g. Darkroom Faith) bakes "1. " / "2) " into the
 // question text. The list renders its own markers, so drop a leading ordinal.
+// Trade-off: a question that genuinely opens with a locale ordinal ("2. Weltkrieg")
+// would also lose it; accepted because the list marker is the observed case.
 const LEADING_ORDINAL = /^\s*\d{1,2}[.)]\s+/
 
 export function stripQuestionNumbering(text: string): string {
