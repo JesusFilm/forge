@@ -6,8 +6,8 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 
 ## Status (October 14, 2026)
 
-- **Total tickets:** 831
-- **Complete:** 618
+- **Total tickets:** 832
+- **Complete:** 619
 - **Cancelled:** 39
 - **In progress:** 67
 - **Not started:** 50
@@ -774,6 +774,7 @@ Build trusted, scalable AI capabilities that help people discover gospel content
 | [feat-676](platform/feat-676-watch-native-language-markup.md)                          | Declare verified native language names in Watch language pickers                   | vlad       | P2       | 2026-10-09 | 2    | 2026-10-10 | complete    |
 | [feat-669](platform/feat-669-mobile-myanmar-ui-text-clipping.md)                       | Mobile Myanmar UI text clips under fixed line heights                              | urim       | P2       | 2026-10-12 | 3    | 2026-10-14 | not-started |
 | [feat-695](platform/feat-695-mobile-rtl-mirrored-layout.md)                            | Mirror the mobile layout for right-to-left UI languages                            | urim       | P2       | 2026-10-13 | 10   | 2026-10-22 | complete    |
+| [feat-698](platform/feat-698-watch-chapter-progress-indicator.md)                      | Watch chapter thumbnail progress indicator                                         | vlad       | P2       | 2026-10-14 | 1    | 2026-10-14 | complete    |
 | [feat-066](platform/feat-066-llm-steering-system-rag-and-guardrails.md)                | LLM Steering System (RAG + Guardrails)                                             | tataihono  | P2       | 2026-10-15 | 78   | 2026-12-31 | blocked     |
 | [feat-544](platform/feat-544-mobile-remove-sign-in-gate.md)                            | Remove the mobile sign-in gate when accounts open                                  | urim       | P2       | 2026-11-02 | 1    | 2026-11-02 | blocked     |
 | [feat-064](platform/feat-064-optimize-through-data-driven-insights.md)                 | Optimize Through Data-Driven Insights                                              | tataihono  | P2       | 2026-11-15 | 46   | 2026-12-30 | not-started |
