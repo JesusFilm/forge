@@ -1655,8 +1655,15 @@ describe("HeroPlayerControls — keyboard shortcuts", () => {
     expect(active.getAttribute("data-testid")).toBe("hero-player-click-surface")
     press(active, "m")
     expect(player.muted).toBe(true)
+    // Fullscreen is now active, so a second F must take the exit branch.
+    const exit = vi.fn(() => Promise.resolve())
+    Object.defineProperty(document, "exitFullscreen", {
+      configurable: true,
+      value: exit,
+    })
     press(active, "f")
-    expect(request).toHaveBeenCalledTimes(1)
+    expect(exit).toHaveBeenCalledTimes(1)
+    Reflect.deleteProperty(document, "exitFullscreen")
   })
 
   it("does not steal focus on fullscreen changes the shortcut did not start", async () => {

@@ -164,6 +164,9 @@ export function HeroPlayerControls({
   // (or K/M) would go dead. The shortcut arms this latch (a timestamp, so a
   // refused fullscreen request cannot leave it armed forever) and the effect
   // below hands focus to the click surface, which lives outside the portal.
+  // Trade-off: the click surface is aria-hidden, so a screen reader will not
+  // announce this focus, but it is the only node that is inside the wrapper
+  // (so the listeners hear it) and outside the portal (so it survives).
   const clickSurfaceRef = useRef<HTMLButtonElement | null>(null)
   const refocusAfterFullscreenAtRef = useRef<number | null>(null)
   useEffect(() => {
@@ -798,6 +801,11 @@ export function HeroPlayerControls({
     }
   }, [playerRef, wrapperRef])
 
+  const toggleFullscreenKeepingFocus = useCallback(() => {
+    refocusAfterFullscreenAtRef.current = Date.now()
+    toggleFullscreen()
+  }, [toggleFullscreen])
+
   // Player-surface keyboard shortcuts (YouTube-style): Space/K play-pause,
   // J/L seek -/+10s, M mute, F fullscreen. Bound to the player wrapper and
   // the portaled chrome anchor only (never window) so they fire only while
@@ -859,8 +867,7 @@ export function HeroPlayerControls({
           toggleMute()
           break
         case "f":
-          refocusAfterFullscreenAtRef.current = Date.now()
-          toggleFullscreen()
+          toggleFullscreenKeepingFocus()
           break
       }
       event.preventDefault()
@@ -877,7 +884,7 @@ export function HeroPlayerControls({
   }, [
     overlayAnchor,
     playerRef,
-    toggleFullscreen,
+    toggleFullscreenKeepingFocus,
     toggleMute,
     togglePlay,
     wrapperRef,
@@ -1465,7 +1472,7 @@ export function HeroPlayerControls({
         ) : null}
 
         <ChromeButton
-          onClick={toggleFullscreen}
+          onClick={toggleFullscreenKeepingFocus}
           ariaLabel={fullscreenLabel}
           testId="hero-chrome-fullscreen"
         >
