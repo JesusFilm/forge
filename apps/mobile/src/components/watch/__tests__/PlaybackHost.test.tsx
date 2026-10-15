@@ -75,7 +75,12 @@ jest.mock("expo-network", () => ({
 }))
 jest.mock("expo-image", () => ({ Image: () => null }))
 jest.mock("expo-linear-gradient", () => ({ LinearGradient: () => null }))
-jest.mock("expo-glass-effect", () => ({ GlassView: () => null }))
+// Glass off: each shared glass surface keeps today's look in this suite.
+jest.mock("expo-glass-effect", () => ({
+  GlassView: () => null,
+  isLiquidGlassAvailable: () => false,
+  isGlassEffectAPIAvailable: () => false,
+}))
 // The host renders the screen's back affordance, which is the app's existing
 // router-owning component. expo-router is never imported unmocked in this repo.
 // `push` is captured so the expand wiring is assertable end to end.
