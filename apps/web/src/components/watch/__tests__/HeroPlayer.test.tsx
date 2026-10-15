@@ -1287,6 +1287,10 @@ describe("HeroPlayer — initial mount", () => {
       maxBufferSize: 5_000_000,
       backBufferLength: 5,
       enableWebVTT: false,
+      // Bandwidth-test start (N63a): without these hls.js starts on Mux's
+      // first-listed 720p rung, which stalls slow connections.
+      startLevel: -1,
+      testBandwidth: true,
     })
     expect(props.className).toContain("watch-hero-player-video")
     expect(props.style).toEqual({ objectFit: "cover" })
