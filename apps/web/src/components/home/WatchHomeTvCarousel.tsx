@@ -23,7 +23,10 @@ import { Play, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { WATCH_PAGE_RAIL_PADDING_CLASSES } from "@/lib/content-width"
 import { FORGE_SUBTITLE_TRACK_LABEL } from "@/components/watch/subtitle-track"
-import { usePauseForWatchModal } from "@/components/watch/WatchModalActivityProvider"
+import {
+  useIsWatchModalActive,
+  usePauseForWatchModal,
+} from "@/components/watch/WatchModalActivityProvider"
 import {
   WATCH_PLAYER_CHROME_VISIBILITY_EVENT,
   type WatchPlayerChromeVisibilityDetail,
@@ -1109,6 +1112,7 @@ export function WatchHomeTvCarousel({
     () => watchHomeHeroSlidesToTvCarouselSlides(slides),
     [slides],
   )
+  const watchModalActive = useIsWatchModalActive()
   const {
     activeIndex,
     activeSlide,
@@ -1132,7 +1136,9 @@ export function WatchHomeTvCarousel({
     slides: timelineSlides,
     toggleMuted,
     videoRef,
-  } = useWatchHomeTvCarousel(carouselSlides, sequence)
+  } = useWatchHomeTvCarousel(carouselSlides, sequence, {
+    playbackHeld: watchModalActive,
+  })
   const [subtitleCueText, setSubtitleCueText] = useState<string | null>(null)
   const wrapperRef = useRef<HTMLDivElement | null>(null)
   // Separate from wrapperRef: that one is on the media layer, which reaches
