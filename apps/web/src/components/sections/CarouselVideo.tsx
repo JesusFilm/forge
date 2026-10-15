@@ -32,7 +32,10 @@ import {
   CAROUSEL_END_SPACER,
 } from "@/lib/content-width"
 import { cn } from "@/lib/utils"
-import { resolveMuxFrameThumbnailUrl, resolveMuxHeroPosterUrl } from "@/lib/url"
+import {
+  resolveMuxFrameThumbnailUrl,
+  resolveMuxHeroPosterUrlAtMaxWidth,
+} from "@/lib/url"
 import { resolvedBlockStreamingUrl } from "./video-dub"
 
 export { videoCarouselFragment }
@@ -477,7 +480,7 @@ export function CarouselVideo({ data }: CarouselVideoProps) {
     selectedItem.imageUrl?.trim() ||
     selectedAdminItem.videoImage?.previewUrl?.trim() ||
     selectedItem.video?.images?.[0]?.url?.trim() ||
-    resolveMuxHeroPosterUrl(selectedPlaybackId) ||
+    resolveMuxHeroPosterUrlAtMaxWidth(selectedPlaybackId) ||
     undefined
 
   const descriptionWords = carouselDescription?.split(" ") ?? []

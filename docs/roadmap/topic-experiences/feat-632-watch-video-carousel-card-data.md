@@ -79,7 +79,8 @@ source.
   complete-copy-set requirement instead of forcing the broad legacy fallback.
 - Carousel cards prefer authored overrides, then linked localized data, then
   legacy data; Mux fallbacks retain the shared cached frame and hero recipes.
-  The selected poster follows course-card selection.
+  The selected poster follows course-card selection. Its direct Mux fallback uses
+  the cached 1280px hero derivative, preserving authored/linked poster precedence.
 - Red/green coverage: four Web display cases and six Admin field/resolver cases
   fail on current-main implementations; two mixed-schema retry cases fail on the
   prior PR implementation and pass after the narrowed classifier.

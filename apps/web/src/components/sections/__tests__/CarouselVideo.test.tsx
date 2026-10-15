@@ -148,7 +148,7 @@ describe("CarouselVideo", () => {
       "https://image.mux.com/playback-id/thumbnail.jpg?width=448&height=252&fit_mode=smartcrop&time=2",
     )
     expect(container.querySelector("video")?.getAttribute("poster")).toBe(
-      "https://image.mux.com/playback-id/thumbnail.webp?time=2",
+      "https://image.mux.com/playback-id/thumbnail.webp?time=2&width=1280",
     )
   })
 
