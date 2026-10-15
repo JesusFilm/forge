@@ -33,7 +33,9 @@ import type {
 } from "./search"
 import { normalizeWatchSearchQuery } from "./watch-search-query"
 
-const WATCH_SEARCH_TIMEOUT_MS = 45_000
+// Server-side public search is bounded to ~2.3s (#2671); 12s leaves headroom
+// for a slow link without leaving the spinner up for most of a minute.
+export const WATCH_SEARCH_TIMEOUT_MS = 12_000
 const MAX_WATCH_SEARCH_AUTOCOMPLETE_ROWS = 12
 const WATCH_SEARCH_SUGGESTIONS_TIMEOUT_MS = 3_500
 
@@ -102,9 +104,12 @@ function watchSearchFetchErrorKind(error: unknown): WatchSearchErrorKind {
     typeof error === "object" && error != null && "name" in error
       ? error.name
       : null
-  return name === "TimeoutError" || name === "AbortError"
-    ? "server_error"
-    : "network_error"
+  if (name === "TimeoutError" || name === "AbortError") return "server_error"
+  // A rejected fetch also covers CORS/WAF blocks, so only blame the user's
+  // connection when the browser itself reports being offline.
+  return typeof navigator !== "undefined" && navigator.onLine === false
+    ? "network_error"
+    : "unknown"
 }
 
 export type DirectWatchSearchInput = {

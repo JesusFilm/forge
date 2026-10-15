@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import {
   parseWatchSearchSurfaceManifest,
   searchWatchDirect,
+  WATCH_SEARCH_TIMEOUT_MS,
   watchSearchErrorKind,
 } from "./watch-search-client"
 
@@ -417,14 +418,38 @@ describe("searchWatchDirect", () => {
     })
   })
 
-  it("classifies a fetch rejection as a network search error", async () => {
+  it("classifies a fetch rejection as a network error only when offline", async () => {
+    vi.stubGlobal("navigator", { onLine: false })
     vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
       new TypeError("offline"),
     )
-
     await expect(searchWatchDirect({ query: "Jesus" })).rejects.toMatchObject({
       kind: "network_error",
     })
+  })
+
+  it("does not blame the network for a fetch rejection while online (e.g. a WAF block)", async () => {
+    vi.stubGlobal("navigator", { onLine: true })
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new TypeError("Failed to fetch"),
+    )
+    await expect(searchWatchDirect({ query: "Jesus" })).rejects.toMatchObject({
+      kind: "unknown",
+    })
+  })
+
+  it("classifies an abort as a server error, not a network failure", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValueOnce(
+      new DOMException("aborted", "AbortError"),
+    )
+    await expect(searchWatchDirect({ query: "Jesus" })).rejects.toMatchObject({
+      kind: "server_error",
+    })
+  })
+
+  it("pins the browser search timeout well below the old 45s", () => {
+    expect(WATCH_SEARCH_TIMEOUT_MS).toBeLessThanOrEqual(15_000)
+    expect(WATCH_SEARCH_TIMEOUT_MS).toBeGreaterThan(2_300)
   })
 
   it("does not report a request timeout as a network failure", async () => {
